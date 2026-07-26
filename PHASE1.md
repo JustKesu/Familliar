@@ -186,9 +186,28 @@ older export, a hand-edited file, or the wrong file entirely. The store
 holds every character the player owns, so the cost of accepting garbage
 is not one bad character — it is a store that may no longer load at all.
 
-Open, and deliberately not decided here: whether export writes one
-character per file or the whole array, and what import does when the
-incoming character collides with one already stored.
+**Export file format — an ARRAY, always, even for one character.** An
+export file's top level is a list of characters, never a bare single
+character object. The phase 1 UI only ever exports one character at a
+time, so in practice every file holds a one-element array.
+
+Rationale: same argument as the storage array. Exporting the whole
+roster at once is a plausible later feature, and with the array shape
+already in place it needs no format change — only the UI gains a
+button. Committing to a bare-object format now would mean either a
+breaking format change later or permanently supporting two shapes.
+
+**Import — never overwrites.** Every imported character is added to the
+store as a NEW character with a freshly generated id, regardless of
+whether a character with the same name or id already exists. Import
+cannot destroy or replace anything already in the store.
+
+Rationale: the whole point of export/import is to protect against loss
+(see above). An import path that can silently overwrite an existing
+character turns the safety net into a new way to lose one — importing
+an old backup by mistake would clobber current progress. Duplicate
+names are a cosmetic problem the UI can surface (e.g. showing the
+import date), not a destructive one.
 
 ### How many characters per browser — a LIST from day one
 Storage holds an ARRAY of characters, not a single character, from the
