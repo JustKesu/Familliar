@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CharacterStore } from './storage/characterStore'
 import { StorageError } from './storage/errors'
-import type { Character } from './storage/character'
+import type { Character, CharacterClass } from './storage/character'
+import { ClassPicker, type ClassLevelChoice } from './classes/ClassPicker'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
@@ -107,6 +108,7 @@ function CharacterManager() {
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [actionError, setActionError] = useState<string | null>(null)
 	const [newName, setNewName] = useState('')
+	const [classChoice, setClassChoice] = useState<ClassLevelChoice | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	function refresh(): void {
@@ -133,9 +135,20 @@ function CharacterManager() {
 
 	function handleCreate(): void {
 		if (!store.store) return
+		const classes: CharacterClass[] = classChoice
+			? [
+					{
+						className: classChoice.className,
+						classSource: classChoice.classSource,
+						subclass: null,
+						level: classChoice.level,
+					},
+				]
+			: []
 		withErrorHandling(() => {
-			store.store?.create(newName)
+			store.store?.create(newName, classes)
 			setNewName('')
+			setClassChoice(null)
 		})
 	}
 
@@ -222,10 +235,11 @@ function CharacterManager() {
 					value={newName}
 					onChange={(event) => setNewName(event.target.value)}
 					onKeyDown={(event) => {
-						if (event.key === 'Enter') handleCreate()
+						if (event.key === 'Enter' && classChoice) handleCreate()
 					}}
 				/>
-				<button type="button" onClick={handleCreate}>
+				<ClassPicker onChange={setClassChoice} />
+				<button type="button" disabled={!classChoice || !newName.trim()} onClick={handleCreate}>
 					Create
 				</button>
 			</div>
