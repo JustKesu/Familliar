@@ -7,14 +7,18 @@ scripts/validate-data.js (103 checks green).
 
 Phase 1 build order (PHASE1.md section E): step 1 (markup renderer,
 src/markup/) and step 2 (app skeleton + persistence, src/storage/ +
-src/CharacterManager.tsx, including export/import) are DONE. See
-PHASE1.md section D for the storage layer's actual shape, and
+src/CharacterManager.tsx, including export/import) are DONE. Step 3
+(character creation) is IN PROGRESS: class/level (src/classes/),
+ability scores — all three methods (src/abilities/), and species
+selection (src/species/) are built and on main. Background, languages,
+and the level-1-to-target walkthrough of per-level choices are not yet
+built. See PHASE1.md section D for the storage layer's actual shape, and
 PHASE1.md section D "Temporary scaffolding" for every throwaway UI
 surface currently in the app.
 
 ## Next step
-Phase 1 step 3: character creation — class, species, background, ability
-scores (all three methods).
+Phase 1 step 3, remaining slices: background, languages, and the
+level-1-to-target walkthrough of per-level choices.
 
 ## Setup facts
 Windows. VS Code + Claude Code. Node.js and npm installed.

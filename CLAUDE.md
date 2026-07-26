@@ -18,6 +18,16 @@ Use scripts, tests, or a counting command instead. If you need to see the shape 
 
 When investigating the shape of `data/` or `data-source/`, write a script to `scripts/` and have it print a SUMMARY: counts, and at most 3 examples. Never print whole entries or whole files to the console — the output lands in context and is the single biggest cost in this project.
 
+## Documentation
+
+Every task keeps the project documentation in step with the code, alongside writing REPORT.md.
+
+**Update, without being asked:** NOTES.md "Where we are" and "Next step", and the build order status in PHASE1.md section E (marking steps or slices done, in the same style as the steps already marked DONE). These record what exists, and a task that changes what exists must leave them true.
+
+**Never change on your own initiative:** any decision in PHASE1.md section D, any open question in PHASE1.md section F, or any decision in NOTES.md. Those are the user's to settle. If a task's findings make one of them stale or wrong, say so in REPORT.md and leave the file alone — unless the prompt for that task explicitly asks for the edit.
+
+Documentation edits stay factual and short. Do not restate reasoning that is already recorded.
+
 ## Verification
 
 Do not re-run the full verification suite after every intermediate step. Run typecheck and tests once, at the end of a task.

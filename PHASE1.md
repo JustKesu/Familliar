@@ -431,17 +431,18 @@ UI. Each is labelled on screen and in its file's top comment as temporary,
 naming what replaces it. Listed here so none of them is later mistaken
 for real work:
 
-- **`src/CharacterManager.tsx`** — lists, creates (name/class/ability
-  scores only), renames, deletes, exports and imports characters, and
-  lets the player select one to inspect. Proves the storage layer (build
-  order step 2) and the class/ability-score pickers (step 3) work.
-  Replaced by real character creation (step 3, remaining slices) and the
-  sheet (step 5).
+- **`src/CharacterManager.tsx`** — lists, creates (name, class/level,
+  species, ability scores — background, languages and per-level choices
+  not yet wired in), renames, deletes, exports and imports characters,
+  and lets the player select one to inspect. Proves the storage layer
+  (build order step 2) and the class, species and ability-score pickers
+  (step 3) work. Replaced by real character creation (step 3, remaining
+  slices) and the sheet (step 5).
 - **`src/CharacterInspector.tsx`** — read-only dump of everything stored
-  on a selected `Character`: id, name, classes, and ability scores
-  (including the rolled dice sets as stored, unconnected to a specific
-  ability since that mapping is not persisted). No derived values.
-  Replaced by the sheet (step 5).
+  on a selected `Character`: id, name, classes, species, and ability
+  scores (including the rolled dice sets as stored, unconnected to a
+  specific ability since that mapping is not persisted). No derived
+  values. Replaced by the sheet (step 5).
 - **`src/MarkupDemo.tsx`** — renders a handful of real data/ entries
   through the markup renderer (step 1) so it can be checked against real
   content. Replaced by character creation (step 3) and the sheet (step 5),
@@ -478,7 +479,18 @@ Each step is finished and tested before the next begins.
    corrupt data, unknown schema versions, quota/storage-unavailable
    errors, and import never overwriting existing characters.
 3. **Character creation** — class, species, background, ability scores
-   (all three methods).
+   (all three methods), languages, and the level-1-to-target walkthrough
+   of per-level choices. IN PROGRESS. Three slices done, on main:
+   class/level selection (`src/classes/`), ability scores — all three
+   methods, persisted with the method used and the individual rolls
+   (`src/abilities/`), and species selection — filtering entries
+   superseded by a newer reprint and prefixing Genasi subrace display
+   names with their parent species (`src/species/`). Not yet built:
+   background, languages, and the level-1-to-target walkthrough of
+   per-level choices. A temporary UI, `src/CharacterManager.tsx` +
+   `src/CharacterInspector.tsx` (see "Temporary scaffolding" below),
+   exercises the built slices by hand pending the real creation flow and
+   the sheet.
 4. **Calculation layer** — PB, skills, saves, AC, attacks, spell DCs.
 5. **Sheet display** — the read-only view of a finished character.
 6. **Spells** — spell list, preparation, slots.
