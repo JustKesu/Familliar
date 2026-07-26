@@ -1,3 +1,4 @@
+import type { CharacterAbilityScores } from '../abilities/abilityScores'
 import type { Character, CharacterClass } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import {
@@ -137,11 +138,11 @@ export class CharacterStore {
 		}
 	}
 
-	create(name: string, classes: CharacterClass[] = []): Character {
+	create(name: string, classes: CharacterClass[] = [], abilityScores?: CharacterAbilityScores): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
 
-		const character: Character = { id: newId(), name: trimmed, classes }
+		const character: Character = { id: newId(), name: trimmed, classes, ...(abilityScores ? { abilityScores } : {}) }
 		this.writeAll([...this.list(), character])
 		return character
 	}

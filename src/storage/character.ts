@@ -1,10 +1,13 @@
 /*
  * Placeholder character shape (PHASE1.md build order step 2).
  *
- * Only id, name and the multiclass `classes` array exist at this point.
- * The real model (species, background, abilities, HP, ...) arrives with
- * character creation (step 3). Do not add fields here for later steps.
+ * id, name, classes and (as of the ability scores slice) abilityScores
+ * exist at this point. The real model (species, background, HP, ...)
+ * arrives with the rest of character creation. Do not add fields here for
+ * later steps.
  */
+
+import type { CharacterAbilityScores } from '../abilities/abilityScores'
 
 export interface CharacterClass {
 	className: string
@@ -17,6 +20,11 @@ export interface Character {
 	id: string
 	name: string
 	classes: CharacterClass[]
+	/**
+	 * Optional so characters saved before this field existed still load
+	 * (PHASE1.md section D — additive fields must not break old saves).
+	 */
+	abilityScores?: CharacterAbilityScores
 }
 
 /**

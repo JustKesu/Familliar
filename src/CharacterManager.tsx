@@ -3,6 +3,8 @@ import { CharacterStore } from './storage/characterStore'
 import { StorageError } from './storage/errors'
 import type { Character, CharacterClass } from './storage/character'
 import { ClassPicker, type ClassLevelChoice } from './classes/ClassPicker'
+import { AbilityScorePicker } from './abilities/AbilityScorePicker'
+import type { CharacterAbilityScores } from './abilities/abilityScores'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
@@ -109,6 +111,7 @@ function CharacterManager() {
 	const [actionError, setActionError] = useState<string | null>(null)
 	const [newName, setNewName] = useState('')
 	const [classChoice, setClassChoice] = useState<ClassLevelChoice | null>(null)
+	const [abilityScores, setAbilityScores] = useState<CharacterAbilityScores | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	function refresh(): void {
@@ -146,9 +149,10 @@ function CharacterManager() {
 				]
 			: []
 		withErrorHandling(() => {
-			store.store?.create(newName, classes)
+			store.store?.create(newName, classes, abilityScores ?? undefined)
 			setNewName('')
 			setClassChoice(null)
+			setAbilityScores(null)
 		})
 	}
 
@@ -239,6 +243,7 @@ function CharacterManager() {
 					}}
 				/>
 				<ClassPicker onChange={setClassChoice} />
+				<AbilityScorePicker onChange={setAbilityScores} />
 				<button type="button" disabled={!classChoice || !newName.trim()} onClick={handleCreate}>
 					Create
 				</button>

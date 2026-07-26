@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { CharacterAbilityScores } from '../abilities/abilityScores'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
 import {
 	CharacterNotFoundError,
@@ -117,6 +118,69 @@ describe('CharacterStore.create', () => {
 	it('throws StorageFullError when the backing storage is full', () => {
 		const store = new CharacterStore(new FullStorage())
 		expect(() => store.create('Aria')).toThrow(StorageFullError)
+	})
+})
+
+describe('CharacterStore.create with ability scores', () => {
+	it('saves and reloads ability scores from the point buy method', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const abilityScores: CharacterAbilityScores = {
+			method: 'pointBuy',
+			scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
+		}
+		const character = store.create('Aria', [], abilityScores)
+		expect(character.abilityScores).toEqual(abilityScores)
+
+		const reloaded = store.list().find((c) => c.id === character.id)
+		expect(reloaded?.abilityScores).toEqual(abilityScores)
+	})
+
+	it('saves and reloads rolled sets so a rolled value never changes on reload', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const abilityScores: CharacterAbilityScores = {
+			method: 'roll',
+			scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 9, wisdom: 13, charisma: 10 },
+			rolledSets: [
+				{ dice: [6, 6, 4, 1], total: 16 },
+				{ dice: [5, 4, 3, 1], total: 12 },
+				{ dice: [6, 5, 3, 2], total: 14 },
+				{ dice: [4, 3, 2, 1], total: 9 },
+				{ dice: [5, 4, 4, 1], total: 13 },
+				{ dice: [4, 3, 3, 2], total: 10 },
+			],
+		}
+		const character = store.create('Bram', [], abilityScores)
+
+		const reloaded = store.list().find((c) => c.id === character.id)
+		expect(reloaded?.abilityScores).toEqual(abilityScores)
+	})
+
+	it('leaves abilityScores undefined when none were provided (old-save compatibility)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create('Cato')
+		expect(character.abilityScores).toBeUndefined()
+		expect(store.list()[0]?.abilityScores).toBeUndefined()
+	})
+
+	it('rejects a saved character whose ability score is out of range', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: 1,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					abilityScores: {
+						method: 'pointBuy',
+						scores: { strength: 99, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
+					},
+				},
+			]),
+		)
+		const badStore = new CharacterStore(backing)
+		expect(() => badStore.list()).toThrow(CorruptDataError)
 	})
 })
 
