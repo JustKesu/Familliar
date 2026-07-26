@@ -7,3 +7,7 @@ dist/
 # Copied from data/ by scripts/copy-data.js so Vite can serve it.
 # data/ at the repo root is the single source of truth and is tracked.
 public/data/
+
+# Written fresh by Claude Code at the end of every task; a message to the
+# user, not project content, so it isn't version-controlled.
+REPORT.md
