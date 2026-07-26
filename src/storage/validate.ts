@@ -1,5 +1,5 @@
 import { ABILITIES, type AbilityScoreMethod, type AbilityScores, type CharacterAbilityScores, type RolledSet } from '../abilities/abilityScores'
-import type { Character, CharacterClass } from './character'
+import type { Character, CharacterClass, CharacterSpecies } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import type { StoredCharacter } from './wireFormat'
 
@@ -111,7 +111,20 @@ function toAbilityScores(value: Record<string, unknown>): CharacterAbilityScores
 	}
 }
 
-/** Validates the Character-shaped fields only (id, name, classes, abilityScores) — no version. */
+/** Validates an optional `species` field. Returns null if the field is absent (it's optional). */
+export function describeSpeciesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return `species is not an object`
+	if (!isNonEmptyString(value['name'])) return `species.name is missing or not a string`
+	if (!isNonEmptyString(value['source'])) return `species.source is missing or not a string`
+	return null
+}
+
+function toCharacterSpecies(value: Record<string, unknown>): CharacterSpecies {
+	return { name: value['name'] as string, source: value['source'] as string }
+}
+
+/** Validates the Character-shaped fields only (id, name, classes, abilityScores, species) — no version. */
 export function describeCharacterError(value: unknown, index: number): string | null {
 	if (!isRecord(value)) return `[${index}] is not an object`
 	if (!isNonEmptyString(value['id'])) return `[${index}].id is missing or not a string`
@@ -124,6 +137,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	}
 	const abilityScoresError = describeAbilityScoresError(value['abilityScores'])
 	if (abilityScoresError) return `[${index}].${abilityScoresError}`
+	const speciesError = describeSpeciesError(value['species'])
+	if (speciesError) return `[${index}].${speciesError}`
 	return null
 }
 
@@ -138,11 +153,13 @@ export function describeStoredCharacterError(value: unknown, index: number): str
 
 export function toCharacter(value: Record<string, unknown>): Character {
 	const abilityScores = value['abilityScores']
+	const species = value['species']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
 		classes: (value['classes'] as unknown[]).map((entry) => toCharacterClass(entry as Record<string, unknown>)),
 		...(isRecord(abilityScores) ? { abilityScores: toAbilityScores(abilityScores) } : {}),
+		...(isRecord(species) ? { species: toCharacterSpecies(species) } : {}),
 	}
 }
 

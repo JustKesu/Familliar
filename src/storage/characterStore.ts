@@ -1,5 +1,5 @@
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
-import type { Character, CharacterClass } from './character'
+import type { Character, CharacterClass, CharacterSpecies } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import {
 	CharacterNotFoundError,
@@ -138,11 +138,22 @@ export class CharacterStore {
 		}
 	}
 
-	create(name: string, classes: CharacterClass[] = [], abilityScores?: CharacterAbilityScores): Character {
+	create(
+		name: string,
+		classes: CharacterClass[] = [],
+		abilityScores?: CharacterAbilityScores,
+		species?: CharacterSpecies,
+	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
 
-		const character: Character = { id: newId(), name: trimmed, classes, ...(abilityScores ? { abilityScores } : {}) }
+		const character: Character = {
+			id: newId(),
+			name: trimmed,
+			classes,
+			...(abilityScores ? { abilityScores } : {}),
+			...(species ? { species } : {}),
+		}
 		this.writeAll([...this.list(), character])
 		return character
 	}

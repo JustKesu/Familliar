@@ -5,6 +5,7 @@ import type { Character, CharacterClass } from './storage/character'
 import { ClassPicker, type ClassLevelChoice } from './classes/ClassPicker'
 import { AbilityScorePicker } from './abilities/AbilityScorePicker'
 import type { CharacterAbilityScores } from './abilities/abilityScores'
+import { SpeciesPicker, type SpeciesChoice } from './species/SpeciesPicker'
 import { CharacterInspector } from './CharacterInspector'
 
 /*
@@ -121,6 +122,7 @@ function CharacterManager() {
 	const [newName, setNewName] = useState('')
 	const [classChoice, setClassChoice] = useState<ClassLevelChoice | null>(null)
 	const [abilityScores, setAbilityScores] = useState<CharacterAbilityScores | null>(null)
+	const [speciesChoice, setSpeciesChoice] = useState<SpeciesChoice | null>(null)
 	const [inspectedId, setInspectedId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -159,10 +161,11 @@ function CharacterManager() {
 				]
 			: []
 		withErrorHandling(() => {
-			store.store?.create(newName, classes, abilityScores ?? undefined)
+			store.store?.create(newName, classes, abilityScores ?? undefined, speciesChoice ?? undefined)
 			setNewName('')
 			setClassChoice(null)
 			setAbilityScores(null)
+			setSpeciesChoice(null)
 		})
 	}
 
@@ -263,6 +266,7 @@ function CharacterManager() {
 					}}
 				/>
 				<ClassPicker onChange={setClassChoice} />
+				<SpeciesPicker onChange={setSpeciesChoice} />
 				<AbilityScorePicker onChange={setAbilityScores} />
 				<button type="button" disabled={!classChoice || !newName.trim()} onClick={handleCreate}>
 					Create

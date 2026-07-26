@@ -16,6 +16,12 @@ export interface CharacterClass {
 	level: number
 }
 
+/** Identifies a species.json entry unambiguously — enough to look it back up later. */
+export interface CharacterSpecies {
+	name: string
+	source: string
+}
+
 export interface Character {
 	id: string
 	name: string
@@ -25,6 +31,10 @@ export interface Character {
 	 * (PHASE1.md section D — additive fields must not break old saves).
 	 */
 	abilityScores?: CharacterAbilityScores
+	/**
+	 * Optional for the same reason as abilityScores above.
+	 */
+	species?: CharacterSpecies
 }
 
 /**

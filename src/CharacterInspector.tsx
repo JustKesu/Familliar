@@ -62,6 +62,17 @@ export function CharacterInspector({ character }: { character: Character | null 
 					)}
 				</dd>
 
+				<dt>species</dt>
+				<dd>
+					{!character.species ? (
+						<NotSet />
+					) : (
+						<span>
+							name: {character.species.name}; source: {character.species.source}
+						</span>
+					)}
+				</dd>
+
 				<dt>abilityScores</dt>
 				<dd>
 					{!character.abilityScores ? (
