@@ -25,6 +25,11 @@ Run:
   node scripts/extract-data.js     # regenerates data/
   node scripts/validate-data.js    # 103 checks, exit code 1 on failure
 
+  scripts/package.json             # not a script — a 2-line config file.
+    The root package.json sets "type": "module" for the Vite app, but the
+    scripts here are CommonJS (require/module.exports). This file sets
+    "type": "commonjs" for the folder so they keep running unchanged.
+
 ## Content scope
 ALLOWED_SOURCES: XPHB, XGE, TCE, EFA, XDMG, MPMM
 ALLOWED_CLASS_SOURCES: XPHB, EFA  (the class EDITION, not the book)
@@ -145,6 +150,26 @@ MPMM has NO `ability` field — MPMM (2022) already replaced fixed ASIs
 with floating ones. Nothing to strip. The stripping code is kept as a
 guard and the validator asserts no species has an `ability` field.
 Ability bonuses always come from the background.
+
+### Species variants come in TWO shapes, and only one is self-describing
+87 species entries include both parents and their variants. Parents stay
+selectable alongside their variants (same rule as _versions everywhere).
+The two shapes differ in whether the variant's NAME says what it is:
+
+1. `_versions` expansion — 38 entries. The parent name is baked into the
+   variant name: "Elf; Drow Lineage", "Dragonborn (Red)",
+   "Goliath; Stone Giant Ancestry", "Tiefling; Infernal Legacy",
+   "Shifter; Beasthide", "Aasimar; Radiant Soul", "Kobold; Craftiness".
+   These read correctly on their own.
+
+2. `subrace` linkage — 4 entries, ALL Genasi, and the only ones in the
+   file. They carry `raceName: "Genasi"` + `raceSource: "MPMM"` and are
+   named just "Air", "Earth", "Fire", "Water". The parent name appears
+   ONLY in those two fields, never in `name`.
+
+Genasi is the sole case of shape 2: no other species in data/ has a
+`raceName`/`raceSource` field at all (checked across all 87). See PHASE1.md
+section F — a species picker reading `name` alone is the open question.
 
 ### Feature files kept separate, not inlined
 classes.json keeps reference strings; feature text lives in

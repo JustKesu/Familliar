@@ -134,7 +134,7 @@ const PRESERVE_GATED_KEYS = [
 ];
 
 /*
- * The four `_mod` operations we support. These are the only ones that appear
+ * The six `_mod` operations we support. These are the only ones that appear
  * in the character-building data we extract. If the data ever uses another
  * one, we print a loud warning rather than silently ignoring it.
  */

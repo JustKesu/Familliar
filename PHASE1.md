@@ -308,6 +308,33 @@ probably not a valid pick. Decide whether to hide parents that have
 variants.
 STATUS: undecided.
 
+### Genasi subraces have names that mean nothing on their own
+Same family of problem as Magic Initiate above, but worse, because here
+the variant NAMES do not identify their parent.
+
+A species picker listing `name` would show five separate entries:
+
+    Genasi
+    Air
+    Earth
+    Fire
+    Water
+
+"Air", "Earth", "Fire" and "Water" are the four Genasi subraces. Nothing
+in the name says so — the link lives in `raceName: "Genasi"` and
+`raceSource: "MPMM"` (see NOTES.md, "Species variants come in TWO
+shapes").
+
+This is the ONLY species in data/ with that shape. All 87 entries were
+checked: no other entry carries a `raceName` or `raceSource` field. The
+other 38 variants come from `_versions` and name themselves properly
+("Elf; Drow Lineage", "Dragonborn (Red)"), so they are unaffected.
+
+Whatever is decided for Magic Initiate about hiding or nesting parents,
+this one additionally needs the subrace to be DISPLAYED differently from
+what `name` contains, or the player sees four bare elements.
+STATUS: undecided.
+
 ### Where data lives at deployment
 See NOTES.md. Revisit before the first deploy to a public URL.
 STATUS: deferred.
