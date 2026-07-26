@@ -9,15 +9,16 @@ Phase 1 build order (PHASE1.md section E): step 1 (markup renderer,
 src/markup/) and step 2 (app skeleton + persistence, src/storage/ +
 src/CharacterManager.tsx, including export/import) are DONE. Step 3
 (character creation) is IN PROGRESS: class/level (src/classes/),
-ability scores — all three methods (src/abilities/), and species
-selection (src/species/) are built and on main. Background, languages,
-and the level-1-to-target walkthrough of per-level choices are not yet
-built. See PHASE1.md section D for the storage layer's actual shape, and
+ability scores — all three methods (src/abilities/), species selection
+(src/species/), and background selection with the ability bonus
+distribution (src/backgrounds/) are built and on main. Languages and the
+level-1-to-target walkthrough of per-level choices are not yet built.
+See PHASE1.md section D for the storage layer's actual shape, and
 PHASE1.md section D "Temporary scaffolding" for every throwaway UI
 surface currently in the app.
 
 ## Next step
-Phase 1 step 3, remaining slices: background, languages, and the
+Phase 1 step 3, remaining slices: languages, and the
 level-1-to-target walkthrough of per-level choices.
 
 ## Setup facts
@@ -279,12 +280,28 @@ the EFA Artificer grants infusions through a regular class feature, not
 via `optionalfeatureProgression`. A UI driving infusion selection off
 optionalfeatureProgression alone will show nothing for Artificer.
 
-### Background field shapes (XPHB)
-`ability`: 2-element array — [0] = +2/+1 spread, [1] = +1 to all three.
-The trio differs per background; the UI must let the player choose.
-`feats`: array of one object keyed by a lowercase "name|source" string,
-value true. The feat name is the KEY, not a value.
+### Background field shapes (XPHB) — confirmed against all 33 entries
+`ability`: 2-element array; each element is
+`{ choose: { weighted: { from: [threeAbilities], weights } } }`. Element
+[0] always carries weights [2,1] (the +2/+1 spread), element [1] always
+[1,1,1] (the +1 to all three), both offering the same three abilities.
+`feats`: array of one object keyed by a "name|source" string, value true.
+The feat name is the KEY, not a value. Lowercase for 32 of 33 (Noble
+alone capitalizes it — see "Feat reference casing" above); lowercasing
+both sides and title-casing the result for display matches feats.json's
+own casing exactly.
 `skillProficiencies`: always exactly 2, fixed.
 `toolProficiencies`: named tool, or a category choice ({"anyArtisansTool": 1}).
-`startingEquipment`: [{A: [...items...], B: [coins]}], only keys A and B.
+`startingEquipment`: `[{ <A>: [...], <B>: [...] }]` — but the key casing
+is NOT fixed to "A"/"B": all 17 EFA entries use lowercase "a"/"b", all 16
+XPHB entries use uppercase "A"/"B". Read case-insensitively; don't branch
+on source. Array elements come in four shapes: a bare item code string
+("dagger|xphb"), `{ item, displayName?, quantity? }`, `{ value: <copper> }`
+coins, or `{ equipmentType }` (only toolArtisan, instrumentMusical,
+setGaming occur) meaning "your choice of that category". Three bare item
+codes ("holy symbol|xphb", "gaming set|xphb", "musical instrument|xphb")
+don't resolve against items.json — they're 5etools item-GROUP references,
+which extraction excludes from items.json (see "Item code legends"
+below); fall back to a humanized version of the code for those.
 `languageProficiencies` absent — 2024 moved languages out of backgrounds.
+Loader: `src/backgrounds/backgroundData.ts`.

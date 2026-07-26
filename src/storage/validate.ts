@@ -1,5 +1,5 @@
 import { ABILITIES, type AbilityScoreMethod, type AbilityScores, type CharacterAbilityScores, type RolledSet } from '../abilities/abilityScores'
-import type { Character, CharacterClass, CharacterSpecies } from './character'
+import type { AbilityBonusMap, Character, CharacterBackground, CharacterClass, CharacterSpecies } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import type { StoredCharacter } from './wireFormat'
 
@@ -124,7 +124,61 @@ function toCharacterSpecies(value: Record<string, unknown>): CharacterSpecies {
 	return { name: value['name'] as string, source: value['source'] as string }
 }
 
-/** Validates the Character-shaped fields only (id, name, classes, abilityScores, species) — no version. */
+/** Validates an optional `background` field. Returns null if the field is absent (it's optional). */
+export function describeBackgroundError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return `background is not an object`
+	if (!isNonEmptyString(value['name'])) return `background.name is missing or not a string`
+	if (!isNonEmptyString(value['source'])) return `background.source is missing or not a string`
+	return null
+}
+
+function toCharacterBackground(value: Record<string, unknown>): CharacterBackground {
+	return { name: value['name'] as string, source: value['source'] as string }
+}
+
+/**
+ * Validates an optional `abilityBonus` field. Returns null if absent. Only
+ * checks the distribution is structurally one of the two legal shapes
+ * (+2/+1 on two different abilities, or +1 on exactly three) — it cannot
+ * check the abilities are the ones a specific background offers, since
+ * that would require loading backgrounds.json into the storage layer.
+ */
+export function describeAbilityBonusError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return `abilityBonus is not an object`
+
+	const entries = Object.entries(value)
+	for (const [ability, amount] of entries) {
+		if (!ABILITIES.includes(ability as (typeof ABILITIES)[number])) {
+			return `abilityBonus has an unrecognised ability key "${ability}"`
+		}
+		if (amount !== 1 && amount !== 2) {
+			return `abilityBonus.${ability} must be 1 or 2`
+		}
+	}
+
+	if (entries.length === 2) {
+		const amounts = entries.map(([, amount]) => amount).sort()
+		if (JSON.stringify(amounts) !== JSON.stringify([1, 2])) {
+			return `abilityBonus with 2 abilities must be one +2 and one +1`
+		}
+		return null
+	}
+	if (entries.length === 3) {
+		if (!entries.every(([, amount]) => amount === 1)) {
+			return `abilityBonus with 3 abilities must be +1 to each`
+		}
+		return null
+	}
+	return `abilityBonus must have exactly 2 abilities (+2/+1) or 3 (+1/+1/+1), got ${entries.length}`
+}
+
+function toAbilityBonusMap(value: Record<string, unknown>): AbilityBonusMap {
+	return Object.fromEntries(Object.entries(value)) as AbilityBonusMap
+}
+
+/** Validates the Character-shaped fields only (id, name, classes, abilityScores, species, background, abilityBonus) — no version. */
 export function describeCharacterError(value: unknown, index: number): string | null {
 	if (!isRecord(value)) return `[${index}] is not an object`
 	if (!isNonEmptyString(value['id'])) return `[${index}].id is missing or not a string`
@@ -139,6 +193,10 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (abilityScoresError) return `[${index}].${abilityScoresError}`
 	const speciesError = describeSpeciesError(value['species'])
 	if (speciesError) return `[${index}].${speciesError}`
+	const backgroundError = describeBackgroundError(value['background'])
+	if (backgroundError) return `[${index}].${backgroundError}`
+	const abilityBonusError = describeAbilityBonusError(value['abilityBonus'])
+	if (abilityBonusError) return `[${index}].${abilityBonusError}`
 	return null
 }
 
@@ -154,12 +212,16 @@ export function describeStoredCharacterError(value: unknown, index: number): str
 export function toCharacter(value: Record<string, unknown>): Character {
 	const abilityScores = value['abilityScores']
 	const species = value['species']
+	const background = value['background']
+	const abilityBonus = value['abilityBonus']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
 		classes: (value['classes'] as unknown[]).map((entry) => toCharacterClass(entry as Record<string, unknown>)),
 		...(isRecord(abilityScores) ? { abilityScores: toAbilityScores(abilityScores) } : {}),
 		...(isRecord(species) ? { species: toCharacterSpecies(species) } : {}),
+		...(isRecord(background) ? { background: toCharacterBackground(background) } : {}),
+		...(isRecord(abilityBonus) ? { abilityBonus: toAbilityBonusMap(abilityBonus) } : {}),
 	}
 }
 

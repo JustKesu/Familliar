@@ -7,7 +7,7 @@
  * later steps.
  */
 
-import type { CharacterAbilityScores } from '../abilities/abilityScores'
+import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 
 export interface CharacterClass {
 	className: string
@@ -22,6 +22,21 @@ export interface CharacterSpecies {
 	source: string
 }
 
+/** Identifies a backgrounds.json entry unambiguously — enough to look it back up later. */
+export interface CharacterBackground {
+	name: string
+	source: string
+}
+
+/**
+ * The player's chosen distribution of a background's ability bonus
+ * (PHASE1.md A.3): either +2 to one ability and +1 to another, or +1 to
+ * each of the three the background offers. Stored as a plain mapping
+ * rather than as a discriminated choice — this is the derived amount to
+ * apply per ability, not which UI path produced it.
+ */
+export type AbilityBonusMap = Partial<Record<Ability, number>>
+
 export interface Character {
 	id: string
 	name: string
@@ -35,6 +50,17 @@ export interface Character {
 	 * Optional for the same reason as abilityScores above.
 	 */
 	species?: CharacterSpecies
+	/**
+	 * Optional for the same reason as abilityScores above.
+	 */
+	background?: CharacterBackground
+	/**
+	 * Optional for the same reason as abilityScores above. Present whenever
+	 * `background` is, but kept as its own field rather than nested inside
+	 * `background` since it's a player choice, not part of the background's
+	 * identity.
+	 */
+	abilityBonus?: AbilityBonusMap
 }
 
 /**

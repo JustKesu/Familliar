@@ -6,6 +6,7 @@ import { ClassPicker, type ClassLevelChoice } from './classes/ClassPicker'
 import { AbilityScorePicker } from './abilities/AbilityScorePicker'
 import type { CharacterAbilityScores } from './abilities/abilityScores'
 import { SpeciesPicker, type SpeciesChoice } from './species/SpeciesPicker'
+import { BackgroundPicker, type BackgroundChoice } from './backgrounds/BackgroundPicker'
 import { CharacterInspector } from './CharacterInspector'
 
 /*
@@ -123,6 +124,7 @@ function CharacterManager() {
 	const [classChoice, setClassChoice] = useState<ClassLevelChoice | null>(null)
 	const [abilityScores, setAbilityScores] = useState<CharacterAbilityScores | null>(null)
 	const [speciesChoice, setSpeciesChoice] = useState<SpeciesChoice | null>(null)
+	const [backgroundChoice, setBackgroundChoice] = useState<BackgroundChoice | null>(null)
 	const [inspectedId, setInspectedId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -161,11 +163,19 @@ function CharacterManager() {
 				]
 			: []
 		withErrorHandling(() => {
-			store.store?.create(newName, classes, abilityScores ?? undefined, speciesChoice ?? undefined)
+			store.store?.create(
+				newName,
+				classes,
+				abilityScores ?? undefined,
+				speciesChoice ?? undefined,
+				backgroundChoice ? { name: backgroundChoice.name, source: backgroundChoice.source } : undefined,
+				backgroundChoice?.abilityBonus,
+			)
 			setNewName('')
 			setClassChoice(null)
 			setAbilityScores(null)
 			setSpeciesChoice(null)
+			setBackgroundChoice(null)
 		})
 	}
 
@@ -267,6 +277,7 @@ function CharacterManager() {
 				/>
 				<ClassPicker onChange={setClassChoice} />
 				<SpeciesPicker onChange={setSpeciesChoice} />
+				<BackgroundPicker onChange={setBackgroundChoice} />
 				<AbilityScorePicker onChange={setAbilityScores} />
 				<button type="button" disabled={!classChoice || !newName.trim()} onClick={handleCreate}>
 					Create

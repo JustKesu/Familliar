@@ -104,6 +104,32 @@ export function CharacterInspector({ character }: { character: Character | null 
 						</>
 					)}
 				</dd>
+
+				<dt>background</dt>
+				<dd>
+					{!character.background ? (
+						<NotSet />
+					) : (
+						<span>
+							name: {character.background.name}; source: {character.background.source}
+						</span>
+					)}
+				</dd>
+
+				<dt>abilityBonus</dt>
+				<dd>
+					{!character.abilityBonus ? (
+						<NotSet />
+					) : (
+						<ul className="inspector__ability-bonus">
+							{Object.entries(character.abilityBonus).map(([ability, amount]) => (
+								<li key={ability}>
+									{ABILITY_LABELS[ability as keyof typeof ABILITY_LABELS]}: +{amount}
+								</li>
+							))}
+						</ul>
+					)}
+				</dd>
 			</dl>
 		</aside>
 	)
