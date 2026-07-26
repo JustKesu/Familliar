@@ -128,7 +128,7 @@ const PRESERVE_GATED_KEYS = [
  * in the character-building data we extract. If the data ever uses another
  * one, we print a loud warning rather than silently ignoring it.
  */
-const SUPPORTED_MOD_MODES = ["appendArr", "insertArr", "replaceArr", "replaceTxt"];
+const SUPPORTED_MOD_MODES = ["appendArr", "insertArr", "replaceArr", "removeArr", "replaceTxt"];
 
 /*
  * When a `_mod` uses the special property name "*", it means "apply this to
@@ -406,6 +406,63 @@ function applyOneMod(entry, propName, modInfo, label, warnings) {
 			return;
 		}
 		existing.splice(indexToReplace, 1, ...items);
+		return;
+	}
+
+	if (mode === "removeArr") {
+		// Delete one or more items from an array.
+		//
+		// There are two ways of saying WHICH items to delete, and a mod uses
+		// one or the other, never both:
+		//
+		//   names: ["Draconic Ancestry"]  -> delete the item whose `name`
+		//                                    field matches
+		//   items: ["longsword"]          -> delete the item that IS exactly
+		//                                    this value (for plain-string
+		//                                    arrays)
+		//
+		// Either one may be written as a single value instead of an array,
+		// which is why we run them through `asArray`.
+		//
+		// Only the FIRST match is removed for each entry in the list — that
+		// mirrors 5etools, which uses findIndex + a single splice.
+		if (!Array.isArray(existing)) {
+			warnings.push(`[${label}] "${entry.name}" (${entry.source}): removeArr found no array at "${propName}" — skipped.`);
+			return;
+		}
+
+		if (modInfo.names !== undefined) {
+			for (const nameToRemove of asArray(modInfo.names)) {
+				const index = existing.findIndex((item) => item !== null && typeof item === "object" && item.name === nameToRemove);
+				if (index >= 0) {
+					existing.splice(index, 1);
+				} else if (!modInfo.force) {
+					// 5etools throws an error here unless the mod sets
+					// `force: true`. We warn instead so one bad entry cannot
+					// stop the whole extraction.
+					warnings.push(`[${label}] "${entry.name}" (${entry.source}): removeArr could not find an item named "${nameToRemove}" in "${propName}" — nothing removed.`);
+				}
+				// When `force` is set, a missing item is expected — stay quiet.
+			}
+			return;
+		}
+
+		if (modInfo.items !== undefined) {
+			for (const itemToRemove of asArray(modInfo.items)) {
+				const index = existing.findIndex((item) => item === itemToRemove);
+				if (index >= 0) {
+					existing.splice(index, 1);
+				} else {
+					// This form has no `force` escape hatch in 5etools; a miss
+					// is always an error there.
+					warnings.push(`[${label}] "${entry.name}" (${entry.source}): removeArr could not find item ${JSON.stringify(itemToRemove)} in "${propName}" — nothing removed.`);
+				}
+			}
+			return;
+		}
+
+		// Neither form was given, which 5etools treats as an error.
+		warnings.push(`[${label}] "${entry.name}" (${entry.source}): removeArr on "${propName}" has neither "names" nor "items" — skipped.`);
 		return;
 	}
 
