@@ -1,5 +1,17 @@
 # Project Notes
 
+
+## Where we are
+Phase 0 complete. Tools installed, repo connected to GitHub, 5etools data
+extracted into data/ via scripts/extract-data.js, verified by
+scripts/validate-data.js (103 checks green).
+
+## Next step
+Phase 1: build the actual app — character creation from the extracted data,
+display, use at the table, saving.
+Nothing has been built yet; data/ is the only output so far.
+
+
 ## Open questions
 
 ### Where will 5etools data live at deployment time (phase 1+)
@@ -130,3 +142,25 @@ the KEY, not a value.
 15 of 16 XPHB backgrounds use lowercase feat references ("skilled|xphb"),
 but Noble uses "Skilled|xphb". Always lowercase both sides before matching
 or Noble silently loses its origin feat.
+
+### Feature reference IDs
+Every feature gets a stable `id`; classes/subclasses get matching
+`classFeatureIds` / `subclassFeatureIds` alongside the original strings.
+Format:
+  cf|name|className|classSource|level|source
+  scf|name|className|classSource|subclassShortName|subclassSource|level|source
+All lowercase. Zero collisions, zero dangling references (744 checked).
+
+TRAP: a blank classSource in a reference string means "PHB", NOT "same as
+this class". "Second Wind|Fighter||1" is the 2014 fighter.
+
+TRAP: features must be kept by REFERENCE, not by matching the feature's own
+className/classSource against a surviving class. The EFA Artificer's
+subclasses are _copy-derived from TCE and inherit references pointing at
+classSource=TCE features. Owner-matching drops 227 valid features.
+
+### Artificer infusions — UI note
+AI (Artificer Infusion, 16 entries) exists in optional-features.json, but
+the EFA Artificer grants infusions through a regular class feature, not via
+`optionalfeatureProgression`. A UI driving infusion selection off
+optionalfeatureProgression alone will show nothing for Artificer.
