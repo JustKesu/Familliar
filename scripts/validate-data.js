@@ -82,6 +82,19 @@ const EXPECTED_COUNTS = {
 		TCE: 21,
 		EFA: 1,
 	},
+	/*
+	 * Species counts include entries created by expansion:
+	 *   49 kept before expansion (45 race + 4 MPMM Genasi subraces)
+	 * + 28 from plain `_versions`
+	 * + 10 from the Dragonborn `_abstract` template
+	 * = 87
+	 * RHW is excluded because it is not in ALLOWED_SOURCES.
+	 */
+	species: {
+		XPHB: 34,
+		MPMM: 44,
+		EFA: 9,
+	},
 };
 
 // Never print more than this many examples of the same kind of failure.
@@ -417,6 +430,74 @@ function validateSpells() {
 	checkExpectedCounts(entries, "spells");
 }
 
+function validateSpecies() {
+	const filePath = path.join(OUTPUT_DIR, "species.json");
+	console.log("\n--- species.json ---");
+
+	if (!fs.existsSync(filePath)) {
+		results.failed++;
+		console.log(`  FAIL  file not found: ${filePath}`);
+		console.log("        Run `node scripts/extract-data.js` first.");
+		return;
+	}
+
+	const entries = readJson(filePath);
+
+	if (!Array.isArray(entries)) {
+		results.failed++;
+		console.log("  FAIL  file does not contain a JSON array at the top level");
+		return;
+	}
+
+	console.log(`  (${entries.length} entries loaded)`);
+
+	// Species use every templating mechanism we support, so check for all of
+	// them — including the template form.
+	checkNoLeftoverCopyKeys(entries, "species", [
+		"_copy",
+		"_mod",
+		"_versions",
+		"_abstract",
+		"_implementations",
+	]);
+
+	// MPMM is already part of ALLOWED_SOURCES, so this covers the
+	// "allowed list plus MPMM" requirement.
+	checkSourcesAllowed(entries, "species");
+	checkNoDuplicates(entries, "species");
+	checkNameAndEntries(entries, "species");
+
+	// Every entry must name its book.
+	const sourceFailures = [];
+	entries.forEach((entry, index) => {
+		if (typeof entry.source !== "string" || entry.source.trim() === "") {
+			sourceFailures.push({
+				label: describeEntry(entry, index),
+				detail: `source is missing or empty (got ${JSON.stringify(entry.source)})`,
+			});
+		}
+	});
+	recordCheck("species: source present", sourceFailures);
+
+	/*
+	 * Under 2024 rules a species never grants ability score increases —
+	 * those come from the background. Any surviving `ability` field would
+	 * risk being applied twice.
+	 */
+	const abilityFailures = [];
+	entries.forEach((entry, index) => {
+		if (entry.ability !== undefined) {
+			abilityFailures.push({
+				label: describeEntry(entry, index),
+				detail: `still has an "ability" field: ${JSON.stringify(entry.ability)}`,
+			});
+		}
+	});
+	recordCheck("species: no ability field", abilityFailures);
+
+	checkExpectedCounts(entries, "species");
+}
+
 /* ============================================================================
  * SECTION 6 — MAIN
  * ==========================================================================*/
@@ -430,6 +511,7 @@ function main() {
 	// ---- Add one line per category here as you build them out. ----
 	validateFeats();
 	validateSpells();
+	validateSpecies();
 	// validateBackgrounds();
 	// ---------------------------------------------------------------
 

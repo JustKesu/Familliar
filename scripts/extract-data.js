@@ -671,7 +671,97 @@ function resolveCopies(rawEntries, label) {
 
 // Keys that belong to the version's own instructions and must never be
 // copied onto the finished variant as ordinary data.
-const VERSION_INSTRUCTION_KEYS = ["_mod", "_preserve", "_templates", "_abstract", "_implementations"];
+const VERSION_INSTRUCTION_KEYS = ["_mod", "_preserve", "_templates", "_abstract", "_implementations", "_variables"];
+
+/*
+ * Fills in {{placeholder}} markers inside a template.
+ *
+ * The 2024 Dragonborn is stored once as a template whose name is
+ * "Dragonborn ({{color}})", plus a list of implementations each supplying
+ * `_variables: {color: "Black", damageType: "Acid"}`. Stamping the template
+ * out once per implementation gives the ten real dragonborn species.
+ *
+ * Two details worth knowing, both checked against 5etools' own walker
+ * (MiscUtil._WalkerSync._doObjectRecurse in js/utils.js):
+ *
+ *   - Placeholders are replaced in strings ANYWHERE inside the template,
+ *     however deeply nested in objects and arrays.
+ *   - Object KEYS are never substituted. The walker recurses into `obj[k]`
+ *     and writes the result back under the same `k`, so a key containing
+ *     "{{...}}" would be left alone. We match that behaviour.
+ */
+function substituteTemplateVariables(value, variables, missingNames) {
+	if (typeof value === "string") {
+		// The pattern finds every {{name}} marker in the string.
+		return value.replace(/{{([^}]+)}}/g, (whole, variableName) => {
+			if (!Object.prototype.hasOwnProperty.call(variables, variableName)) {
+				// 5etools would silently insert the text "undefined" here.
+				// We keep the marker and report it instead, so a typo in the
+				// data is visible rather than baked into the output.
+				missingNames.add(variableName);
+				return whole;
+			}
+			return variables[variableName];
+		});
+	}
+
+	if (Array.isArray(value)) {
+		return value.map((item) => substituteTemplateVariables(item, variables, missingNames));
+	}
+
+	if (value !== null && typeof value === "object") {
+		const out = {};
+		for (const [key, inner] of Object.entries(value)) {
+			// NOTE: `key` is copied across untouched — keys are not templated.
+			out[key] = substituteTemplateVariables(inner, variables, missingNames);
+		}
+		return out;
+	}
+
+	return value;
+}
+
+/*
+ * Turns one `_abstract` + `_implementations` pair into a list of ordinary
+ * version descriptions, which the normal version machinery can then build.
+ *
+ * Mirrors `_getVersions_template` in js/utils.js: clone the template,
+ * substitute the implementation's variables into it, then lay the
+ * implementation's own real keys over the top (a shallow, top-level merge,
+ * exactly like the reference's `Object.assign`).
+ */
+function expandAbstractTemplate(versionInfo, parentEntry, label, warnings) {
+	const built = [];
+
+	for (const implementation of versionInfo._implementations) {
+		const variables = implementation._variables || {};
+		const missingNames = new Set();
+
+		let filled = substituteTemplateVariables(versionInfo._abstract, variables, missingNames);
+
+		if (missingNames.size) {
+			warnings.push(`[${label}] "${parentEntry.name}" (${parentEntry.source}): template placeholder(s) ${[...missingNames].map((n) => `{{${n}}}`).join(", ")} had no matching _variables value — left as-is.`);
+		}
+
+		// An implementation should only supply values and plain data. If it
+		// tried to bring its own `_mod` it would silently replace the
+		// template's, so say something rather than quietly doing that.
+		if (implementation._mod) {
+			warnings.push(`[${label}] "${parentEntry.name}" (${parentEntry.source}): an _implementation carries its own "_mod", which is not supported — the template's _mod is used instead.`);
+		}
+
+		// Lay the implementation's own real keys (e.g. `resist`) over the
+		// filled-in template. Top level only, matching the reference.
+		for (const [key, value] of Object.entries(implementation)) {
+			if (key === "_variables" || key === "_mod") continue;
+			filled[key] = deepClone(value);
+		}
+
+		built.push(filled);
+	}
+
+	return built;
+}
 
 /*
  * Builds ONE finished variant from a parent entry and one `_versions` item.
@@ -716,6 +806,9 @@ function buildOneVersion(parentEntry, versionInfo, label, warnings) {
 	delete variant._versions;
 	delete variant._copy;
 	delete variant._mod;
+	delete variant._abstract;
+	delete variant._implementations;
+	delete variant._variables;
 
 	return variant;
 }
@@ -728,7 +821,7 @@ function buildOneVersion(parentEntry, versionInfo, label, warnings) {
  */
 function expandVersions(entries, label) {
 	const warnings = [];
-	const stats = { parentsExpanded: 0, variantsCreated: 0, skippedAbstract: 0 };
+	const stats = { parentsExpanded: 0, variantsCreated: 0, templatesExpanded: 0 };
 	const output = [];
 
 	for (const entry of entries) {
@@ -748,20 +841,39 @@ function expandVersions(entries, label) {
 
 		let builtAny = false;
 		for (const versionInfo of versionInfos) {
-			// The `_abstract` / `_implementations` template form is not supported.
-			if (versionInfo._abstract || versionInfo._implementations) {
-				stats.skippedAbstract++;
-				warnings.push(`[${label}] "${entry.name}" (${entry.source}): a _versions entry uses the unsupported "_abstract"/"_implementations" template form — SKIPPED, so some variants are missing.`);
-				continue;
-			}
 			if (versionInfo._templates) {
 				warnings.push(`[${label}] "${entry.name}" (${entry.source}): a _versions entry uses the unsupported "_templates" form — SKIPPED.`);
 				continue;
 			}
 
-			output.push(buildOneVersion(entry, versionInfo, label, warnings));
-			stats.variantsCreated++;
-			builtAny = true;
+			/*
+			 * A version comes in one of two forms:
+			 *
+			 *   plain     — describes a single variant directly.
+			 *   template  — an `_abstract` blueprint plus a list of
+			 *               `_implementations`, which together describe
+			 *               several variants at once (one per implementation).
+			 *
+			 * We turn the template form into a list of plain ones, then build
+			 * them all the same way.
+			 */
+			let plainVersions;
+			if (versionInfo._abstract && versionInfo._implementations) {
+				plainVersions = expandAbstractTemplate(versionInfo, entry, label, warnings);
+				stats.templatesExpanded++;
+			} else if (versionInfo._abstract || versionInfo._implementations) {
+				// One without the other is malformed — say so rather than guess.
+				warnings.push(`[${label}] "${entry.name}" (${entry.source}): a _versions entry has "_abstract" or "_implementations" but not both — SKIPPED.`);
+				continue;
+			} else {
+				plainVersions = [versionInfo];
+			}
+
+			for (const plainVersion of plainVersions) {
+				output.push(buildOneVersion(entry, plainVersion, label, warnings));
+				stats.variantsCreated++;
+				builtAny = true;
+			}
 		}
 
 		if (builtAny) stats.parentsExpanded++;
@@ -1064,6 +1176,88 @@ function extractSpells() {
 	return warnings;
 }
 
+/*
+ * SPECIES (called "races" in the source data)
+ *
+ * races.json holds two lists:
+ *   race    — 160 entries, the main species list.
+ *   subrace — 98 entries, sub-options attached to a parent race by
+ *             `raceName` + `raceSource`.
+ *
+ * Almost all subraces are 2014-era, because 2024 species fold their options
+ * into the main entry. We still need the list, though: MPMM keeps four
+ * Genasi subraces (Air, Earth, Fire, Water) that would otherwise be lost.
+ * Both lists are loaded together so `_copy` targets resolve across them.
+ */
+function extractSpecies() {
+	console.log("\n--- SPECIES ---");
+
+	const data = readJson(path.join(SOURCE_DATA_DIR, "races.json"));
+	const rawSpecies = [...(data.race || []), ...(data.subrace || [])];
+	console.log(`Loaded "race" entries:        ${(data.race || []).length}`);
+	console.log(`Loaded "subrace" entries:     ${(data.subrace || []).length}`);
+
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(rawSpecies, "species");
+
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`  ...of which had a _mod:     ${copyStats.copiesWithMod}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded}`);
+	console.log(`  ...of those, templates:     ${versionStats.templatesExpanded}`);
+	console.log(`  ...into variants:           ${versionStats.variantsCreated}`);
+
+	/*
+	 * Keep an entry if EITHER:
+	 *   - it is 2024 content (`edition: "one"`) from a book we allow, OR
+	 *   - it comes from MPMM.
+	 *
+	 * MPMM gets its own clause because it is tagged as 2014-era ("classic")
+	 * even though it is the modern home of most playable species.
+	 *
+	 * Note this correctly drops RHW: it is `edition: "one"` but is not in
+	 * ALLOWED_SOURCES, so it fails both halves of the test.
+	 */
+	const kept = resolved.filter(
+		(entry) => (entry.edition === "one" && ALLOWED_SOURCES.includes(entry.source)) || entry.source === "MPMM",
+	);
+
+	/*
+	 * Under 2024 rules, ability score increases come from your BACKGROUND,
+	 * never from your species. An `ability` field left on an MPMM entry could
+	 * be applied on top of the background's, double-counting the bonus, so we
+	 * remove it.
+	 */
+	let abilityStripped = 0;
+	for (const entry of kept) {
+		if (entry.source === "MPMM" && entry.ability !== undefined) {
+			delete entry.ability;
+			abilityStripped++;
+		}
+	}
+
+	// Sanity check: 2024 species should never have carried an `ability` field.
+	const unexpectedAbility = kept.filter((entry) => entry.ability !== undefined);
+	if (unexpectedAbility.length) {
+		warnings.push(`[species] ${unexpectedAbility.length} non-MPMM entr(ies) unexpectedly have an "ability" field, e.g. "${unexpectedAbility[0].name}" (${unexpectedAbility[0].source}).`);
+	}
+
+	const bySource = {};
+	for (const entry of kept) bySource[entry.source] = (bySource[entry.source] || 0) + 1;
+
+	console.log(`Passed the source filter:     ${kept.length}`);
+	for (const source of Object.keys(bySource).sort()) {
+		console.log(`    ${source.padEnd(6)} ${bySource[source]}`);
+	}
+	console.log(`MPMM "ability" fields removed: ${abilityStripped}`);
+
+	const outputFile = path.join(OUTPUT_DIR, "species.json");
+	const bytes = writeJson(outputFile, kept);
+	console.log(`Wrote: ${outputFile}`);
+	console.log(`Size:  ${formatBytes(bytes)}`);
+
+	return warnings;
+}
+
 /* ============================================================================
  * SECTION 5 — MAIN
  * ==========================================================================*/
@@ -1091,6 +1285,7 @@ function main() {
 	// ---- Add one line per category here as you build them out. ----
 	allWarnings.push(...extractFeats());
 	allWarnings.push(...extractSpells());
+	allWarnings.push(...extractSpecies());
 	// allWarnings.push(...extractBackgrounds());
 	// ---------------------------------------------------------------
 
