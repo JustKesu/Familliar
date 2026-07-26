@@ -424,6 +424,41 @@ since the `FS:B` code alone does not enumerate which two feats it means.
 No resolution code is written yet — this only fixes what the picker
 must look up and where.
 
+### Character creation is a multi-step wizard, organised by category
+
+Character creation is a MULTI-STEP WIZARD, not a single long page. The
+player moves through numbered steps and can go back to an earlier step
+before finishing. Nothing is written to storage until the flow completes.
+
+The steps are organised by CATEGORY, not by character level:
+
+1. Class and level — including subclass and every class feature choice
+   the character is entitled to at that level
+2. Species
+3. Background — including the background ability bonus distribution
+4. Ability scores
+5. Spells, for characters that have them
+6. Starting equipment and inventory
+
+The order follows PHB 2024 character creation as already recorded in
+section A. Ability scores come after background because the background
+ability bonus applies to them.
+
+A character created above level 1 still owns every choice granted at
+levels 1 up to the target level — section A.1 is unchanged by this.
+Those choices are presented within the category step they belong to
+(all class feature choices inside the class step, all spells inside the
+spell step), rather than as one screen per level.
+
+Every step shows what the choice GRANTS, not just its name: a background
+lists its skill proficiencies, tool proficiency, origin feat and starting
+equipment; a species lists what it gives; a class feature says what it
+does. The player should not have to look anything up elsewhere to choose.
+
+This replaces the temporary `CharacterManager.tsx` flow. The existing
+pickers (class/level, ability scores, species) are expected to be reused
+inside the wizard rather than rewritten.
+
 ### Temporary scaffolding
 
 Surfaces that exist only to prove a layer works by hand, not as finished
@@ -522,7 +557,18 @@ one symptom: a picker that reads `name` off data/species.json and lists
 what it finds shows the player entries that are either unreadable or
 indistinguishable. Both are recorded here because whatever is decided
 about hiding, nesting or labelling entries has to answer both.
-STATUS: undecided.
+STATUS: decided. The built species picker (`src/species/`) implements
+the answer:
+
+- Only the newest printing of a species is offered. Entries carrying
+  `reprintedAs` are filtered out, since that field is the older entry
+  declaring itself superseded. No hand-written list of names is used.
+  The filter lives in one place so it can be relaxed later if the table
+  ever wants older printings.
+- Genasi subraces are displayed with their parent's name prefixed,
+  derived from `raceName` — "Genasi; Air" and so on — matching how
+  `_versions` variants already name themselves. This is display only;
+  the stored `name` is not rewritten.
 
 **Cause 1 — Genasi subraces have names that mean nothing on their own**
 

@@ -190,41 +190,26 @@ Genasi is the sole case of shape 2: no other species in data/ has a
 `raceName`/`raceSource` field at all (checked across all 87). See PHASE1.md
 section F — a species picker reading `name` alone is the open question.
 
-### Nine species names occur twice, printed in two allowed books
-Separate from the variant-naming problem above, and a different cause:
-some species were reprinted in a newer allowed book, and BOTH printings
-survive extraction because both books are in ALLOWED_SOURCES.
+### Species reprints — RESOLVED, deduplicated during extraction
+Some species were reprinted in a newer allowed book, and originally both
+printings survived extraction because both books are in ALLOWED_SOURCES.
+That caused several species names — Shifter and its four variants,
+Aasimar, Goliath, Changeling, Orc — to occur twice, once per printing.
 
-Shifter is the worst case — the parent AND all four variants are doubled:
+Deduplication now happens during extraction (`removeSuperseded()`), so
+`data/species.json` currently has 78 entries, only 3 of which still carry
+`reprintedAs`, and no species name occurs twice.
 
-    Shifter                 EFA + MPMM
-    Shifter; Beasthide      EFA + MPMM
-    Shifter; Longtooth      EFA + MPMM
-    Shifter; Swiftstride    EFA + MPMM
-    Shifter; Wildhunt       EFA + MPMM
-
-Four more are doubled at the parent only, with no variants involved:
-
-    Aasimar      MPMM + XPHB      (variants exist only on the MPMM side)
-    Goliath      MPMM + XPHB      (variants exist only on the XPHB side)
-    Changeling   EFA  + MPMM
-    Orc          MPMM + XPHB
-
-Nine duplicate pairs in all, so 9 of the 87 entries are redundant
-printings rather than distinct choices.
-
-The older entry always says so itself: every MPMM member of a pair carries
+The older entry always says so itself: a superseded entry carries
 `reprintedAs` pointing at the newer one ("Shifter|EFA", "Aasimar|XPHB",
 "Goliath|XPHB", "Orc|XPHB", "Changeling|EFA"). The newer entry has no
-`reprintedAs`. So the pairs are detectable from the data without a
-hand-written list.
+`reprintedAs`. So a pair is detectable from the data without a
+hand-written list — this is the field the species picker's dedup filter
+relies on (see PHASE1.md section F).
 
 Note this is NOT the same test as the VGM/MTF exclusion. There the whole
 book was dropped up front. Here both books are wanted for other species
-and only these nine entries collide.
-
-Whether the picker should show one, the other, or both is a phase 1 UI
-question — see PHASE1.md section F. The extraction is not changed.
+and only a handful of entries collided.
 
 ### Feature files kept separate, not inlined
 classes.json keeps reference strings; feature text lives in
