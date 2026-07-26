@@ -156,9 +156,9 @@ Note the project description places "multiple characters" in phase 2.
 That still holds for the UI. Only the data shape moves earlier.
 
 ### TypeScript, strict mode
-The app is written in TypeScript with `strict: true` (tsconfig.app.json
-and tsconfig.node.json). Not negotiable per-file: no opting out with
-`any` where a real type is possible.
+The app is written in TypeScript with `strict: true` (tsconfig.app.json,
+tsconfig.node.json and tsconfig.test.json). Not negotiable per-file: no
+opting out with `any` where a real type is possible.
 
 Rationale: the 5etools data is deeply nested and irregularly shaped (see
 the whole "Traps" section of NOTES.md — blank sources meaning PHB, fields
