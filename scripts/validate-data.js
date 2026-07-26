@@ -74,6 +74,14 @@ const EXPECTED_COUNTS = {
 		TCE: 15,
 		EFA: 28, // not in the original spec, but this is what the data contains
 	},
+	// Taken from the first successful extraction run. XDMG and MPMM ship no
+	// spell files at all, so they are absent rather than zero.
+	spells: {
+		XPHB: 391,
+		XGE: 95,
+		TCE: 21,
+		EFA: 1,
+	},
 };
 
 // Never print more than this many examples of the same kind of failure.
@@ -174,9 +182,11 @@ function containsKeyDeep(value, keyName) {
  * These four are reused by every category validator you add later.
  * ==========================================================================*/
 
-// CHECK 1 — no leftover `_copy` or `_mod` anywhere in the output.
-function checkNoLeftoverCopyKeys(entries, categoryName) {
-	for (const keyName of ["_copy", "_mod"]) {
+// CHECK 1 — no leftover templating keys anywhere in the output.
+// `keyNames` lets a category ask for extra keys to be checked (spells also
+// check `_versions`).
+function checkNoLeftoverCopyKeys(entries, categoryName, keyNames = ["_copy", "_mod"]) {
+	for (const keyName of keyNames) {
 		const failures = [];
 		entries.forEach((entry, index) => {
 			if (containsKeyDeep(entry, keyName)) {
@@ -320,6 +330,93 @@ function validateFeats() {
 	checkExpectedCounts(entries, "feats");
 }
 
+function validateSpells() {
+	const filePath = path.join(OUTPUT_DIR, "spells.json");
+	console.log("\n--- spells.json ---");
+
+	if (!fs.existsSync(filePath)) {
+		results.failed++;
+		console.log(`  FAIL  file not found: ${filePath}`);
+		console.log("        Run `node scripts/extract-data.js` first.");
+		return;
+	}
+
+	const entries = readJson(filePath);
+
+	if (!Array.isArray(entries)) {
+		results.failed++;
+		console.log("  FAIL  file does not contain a JSON array at the top level");
+		return;
+	}
+
+	console.log(`  (${entries.length} entries loaded)`);
+
+	// Shared checks. Spells also get `_versions` checked.
+	checkNoLeftoverCopyKeys(entries, "spells", ["_copy", "_mod", "_versions"]);
+	checkSourcesAllowed(entries, "spells");
+	checkNoDuplicates(entries, "spells");
+
+	/*
+	 * Every spell needs the fields a character sheet actually reads.
+	 * `level` gets an extra check because it must be a whole number from 0
+	 * (a cantrip) to 9.
+	 */
+	const fieldFailures = [];
+	entries.forEach((entry, index) => {
+		const label = describeEntry(entry, index);
+
+		if (typeof entry.name !== "string" || entry.name.trim() === "") {
+			fieldFailures.push({ label, detail: `name is missing or empty (got ${JSON.stringify(entry.name)})` });
+		}
+
+		if (typeof entry.level !== "number" || !Number.isInteger(entry.level) || entry.level < 0 || entry.level > 9) {
+			fieldFailures.push({ label, detail: `level must be a whole number 0-9 (got ${JSON.stringify(entry.level)})` });
+		}
+
+		if (typeof entry.school !== "string" || entry.school.trim() === "") {
+			fieldFailures.push({ label, detail: `school is missing or empty (got ${JSON.stringify(entry.school)})` });
+		}
+
+		// These two must be non-empty arrays.
+		for (const prop of ["time", "duration", "entries"]) {
+			if (!Array.isArray(entry[prop]) || entry[prop].length === 0) {
+				fieldFailures.push({ label, detail: `"${prop}" is missing or empty` });
+			}
+		}
+
+		// These two must be objects.
+		for (const prop of ["range", "components"]) {
+			if (entry[prop] === null || typeof entry[prop] !== "object" || Array.isArray(entry[prop])) {
+				fieldFailures.push({ label, detail: `"${prop}" is missing or is not an object` });
+			}
+		}
+	});
+	recordCheck("spells: required fields present and well-formed", fieldFailures);
+
+	/*
+	 * `availableTo` is the class-availability information we attached during
+	 * extraction. Every spell must have it, with all five lists present.
+	 */
+	const availabilityFailures = [];
+	const AVAILABILITY_LISTS = ["classes", "classVariants", "subclasses", "feats", "optionalFeatures"];
+	entries.forEach((entry, index) => {
+		const label = describeEntry(entry, index);
+
+		if (entry.availableTo === null || typeof entry.availableTo !== "object" || Array.isArray(entry.availableTo)) {
+			availabilityFailures.push({ label, detail: `"availableTo" is missing or is not an object` });
+			return;
+		}
+		for (const listName of AVAILABILITY_LISTS) {
+			if (!Array.isArray(entry.availableTo[listName])) {
+				availabilityFailures.push({ label, detail: `availableTo.${listName} is missing or not an array` });
+			}
+		}
+	});
+	recordCheck("spells: availableTo present on every spell", availabilityFailures);
+
+	checkExpectedCounts(entries, "spells");
+}
+
 /* ============================================================================
  * SECTION 6 — MAIN
  * ==========================================================================*/
@@ -332,7 +429,7 @@ function main() {
 
 	// ---- Add one line per category here as you build them out. ----
 	validateFeats();
-	// validateSpells();
+	validateSpells();
 	// validateBackgrounds();
 	// ---------------------------------------------------------------
 

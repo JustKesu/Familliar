@@ -78,6 +78,16 @@ const ALLOWED_SOURCES = [
 ];
 
 /*
+ * Which CLASS sources count as "a class my 2024 game actually uses".
+ *
+ * This is deliberately narrower than ALLOWED_SOURCES. A spell can be listed
+ * against a 2014 class (classSource "PHB") as well as its 2024 replacement
+ * (classSource "XPHB"); we only want the 2024 side. "EFA" is included because
+ * that is where the 2024 Artificer lives.
+ */
+const ALLOWED_CLASS_SOURCES = ["XPHB", "EFA"];
+
+/*
  * A `_copy` block says WHICH entry it wants to copy. It always gives a `name`
  * and a `source`, but for some categories that is not specific enough (there
  * can be several subclass features with the same name), so it may also give
@@ -851,6 +861,190 @@ function extractFeats() {
 	return warnings;
 }
 
+/*
+ * SPELLS
+ *
+ * Spell files are split one-per-sourcebook, and `index.json` maps a source
+ * code to its filename. We read that index rather than hardcoding filenames,
+ * so if a book in ALLOWED_SOURCES ever gains a spell file it is picked up
+ * automatically with no code change.
+ */
+
+/*
+ * Spell entries do NOT record which classes can cast them. That information
+ * lives in a separate generated file, organised as:
+ *
+ *   [bookCodeLowercase][spellNameLowercase] -> { class, classVariant,
+ *                                                subclass, feat,
+ *                                                optionalfeature, ... }
+ *
+ * This function reads each of those sub-trees and turns them into a tidy
+ * `availableTo` object for one spell.
+ *
+ * The sub-trees are nested by SOURCE first, which is what lets us keep only
+ * the 2024 entries.
+ */
+function buildSpellAvailability(spell, lookup) {
+	// We always attach all five lists, even when empty, so every spell has the
+	// same shape and your app never has to check whether a key exists.
+	const availableTo = {
+		classes: [],
+		classVariants: [],
+		subclasses: [],
+		feats: [],
+		optionalFeatures: [],
+	};
+
+	const bookTree = lookup[String(spell.source).toLowerCase()];
+	const spellTree = bookTree ? bookTree[String(spell.name).toLowerCase()] : undefined;
+	if (!spellTree) return availableTo; // no entry at all — nothing can cast it
+
+	/*
+	 * `class` and `classVariant` have the same shape:
+	 *     { classSource: { className: true | { definedInSources: [...] } } }
+	 *
+	 * They are kept in SEPARATE lists because 5etools treats them very
+	 * differently when it renders a spell (see js/render.js around line 7566):
+	 *   - `class`        is printed as "Classes:"
+	 *   - `classVariant` is printed as "Optional/Variant Classes:"
+	 * The second means the spell is only on that class's list through an
+	 * optional rule the DM has to allow, so merging them would overstate what
+	 * a character can actually take.
+	 */
+	for (const [treeName, outputKey] of [["class", "classes"], ["classVariant", "classVariants"]]) {
+		const tree = spellTree[treeName];
+		if (!tree) continue;
+
+		for (const [classSource, classMap] of Object.entries(tree)) {
+			if (!ALLOWED_CLASS_SOURCES.includes(classSource)) continue;
+
+			for (const [className, value] of Object.entries(classMap)) {
+				const record = { name: className, classSource };
+				// `definedInSources` records which book granted this listing —
+				// e.g. a Fizban's rule adding a spell to the Ranger list.
+				if (value !== true && value && value.definedInSources) {
+					record.definedInSources = [...value.definedInSources];
+				}
+				availableTo[outputKey].push(record);
+			}
+		}
+	}
+
+	/*
+	 * `subclass` is nested one level deeper:
+	 *   { classSource: { className: { subclassSource: { shortName: {name} } } } }
+	 * The innermost value carries the subclass's full display name, and
+	 * sometimes a `subSubclasses` list (for things like the Genie warlock's
+	 * Efreeti option).
+	 */
+	if (spellTree.subclass) {
+		for (const [classSource, classMap] of Object.entries(spellTree.subclass)) {
+			for (const [className, subclassSourceMap] of Object.entries(classMap)) {
+				for (const [subclassSource, subclassMap] of Object.entries(subclassSourceMap)) {
+					// Filter on the SUBCLASS's own source, not the class's.
+					if (!ALLOWED_CLASS_SOURCES.includes(subclassSource)) continue;
+
+					for (const [shortName, info] of Object.entries(subclassMap)) {
+						const record = {
+							className,
+							classSource,
+							subclassName: (info && info.name) || shortName,
+							subclassShortName: shortName,
+							subclassSource,
+						};
+						if (info && info.subSubclasses) record.subSubclasses = [...info.subSubclasses];
+						availableTo.subclasses.push(record);
+					}
+				}
+			}
+		}
+	}
+
+	// `feat` is { featSource: { featName: true } }
+	if (spellTree.feat) {
+		for (const [source, featMap] of Object.entries(spellTree.feat)) {
+			if (!ALLOWED_SOURCES.includes(source)) continue;
+			for (const featName of Object.keys(featMap)) {
+				availableTo.feats.push({ name: featName, source });
+			}
+		}
+	}
+
+	// `optionalfeature` is { source: { name: { featureType: [...] } } }
+	// (featureType "EI" = Eldritch Invocation, "FS" = Fighting Style, etc.)
+	if (spellTree.optionalfeature) {
+		for (const [source, featureMap] of Object.entries(spellTree.optionalfeature)) {
+			if (!ALLOWED_SOURCES.includes(source)) continue;
+			for (const [featureName, info] of Object.entries(featureMap)) {
+				const record = { name: featureName, source };
+				if (info && info.featureType) record.featureType = [...info.featureType];
+				availableTo.optionalFeatures.push(record);
+			}
+		}
+	}
+
+	return availableTo;
+}
+
+function extractSpells() {
+	console.log("\n--- SPELLS ---");
+
+	const spellsDir = path.join(SOURCE_DATA_DIR, "spells");
+	const index = readJson(path.join(spellsDir, "index.json"));
+
+	// Keep only the books we care about. Reading the index (rather than
+	// listing filenames ourselves) means a newly-added book is picked up
+	// automatically, and a book with no spell file is simply absent.
+	const booksToLoad = Object.entries(index).filter(([source]) => ALLOWED_SOURCES.includes(source));
+
+	const skipped = ALLOWED_SOURCES.filter((source) => !index[source]);
+	console.log(`Spell files found for:        ${booksToLoad.map(([source]) => source).join(", ")}`);
+	if (skipped.length) console.log(`No spell file (skipped):      ${skipped.join(", ")}`);
+
+	// Load every allowed book's spells into one big list.
+	const rawSpells = [];
+	for (const [, fileName] of booksToLoad) {
+		const data = readJson(path.join(spellsDir, fileName));
+		rawSpells.push(...(data.spell || []));
+	}
+
+	// Same shared pipeline as every other category.
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(rawSpells, "spells");
+
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`  ...of which had a _mod:     ${copyStats.copiesWithMod}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded}`);
+	console.log(`  ...into variants:           ${versionStats.variantsCreated}`);
+
+	// Filter by source last, as always.
+	const kept = resolved.filter((spell) => ALLOWED_SOURCES.includes(spell.source));
+
+	// Attach the class-availability information.
+	const lookup = readJson(path.join(SOURCE_DATA_DIR, "generated", "gendata-spell-source-lookup.json"));
+	let noClassCount = 0;
+	for (const spell of kept) {
+		spell.availableTo = buildSpellAvailability(spell, lookup);
+		if (spell.availableTo.classes.length === 0) noClassCount++;
+	}
+
+	const bySource = {};
+	for (const spell of kept) bySource[spell.source] = (bySource[spell.source] || 0) + 1;
+
+	console.log(`Passed the source filter:     ${kept.length}`);
+	for (const source of Object.keys(bySource).sort()) {
+		console.log(`    ${source.padEnd(6)} ${bySource[source]}`);
+	}
+	console.log(`Spells no 2024 class can learn: ${noClassCount}`);
+
+	const outputFile = path.join(OUTPUT_DIR, "spells.json");
+	const bytes = writeJson(outputFile, kept);
+	console.log(`Wrote: ${outputFile}`);
+	console.log(`Size:  ${formatBytes(bytes)}`);
+
+	return warnings;
+}
+
 /* ============================================================================
  * SECTION 5 — MAIN
  * ==========================================================================*/
@@ -877,7 +1071,7 @@ function main() {
 
 	// ---- Add one line per category here as you build them out. ----
 	allWarnings.push(...extractFeats());
-	// allWarnings.push(...extractSpells());
+	allWarnings.push(...extractSpells());
 	// allWarnings.push(...extractBackgrounds());
 	// ---------------------------------------------------------------
 
