@@ -99,7 +99,32 @@ const EXPECTED_COUNTS = {
 		XPHB: 16,
 		EFA: 17,
 	},
+	// classes.json holds classes AND subclasses, so these are the combined
+	// per-book totals: 13 classes + 114 subclasses = 127 entries.
+	classes: {
+		XPHB: 60, // 12 classes + 48 subclasses
+		XGE: 31,
+		TCE: 30,
+		EFA: 6, // 1 class (Artificer) + 5 subclasses
+	},
+	"optional-features": {
+		XPHB: 58,
+		TCE: 47,
+		XGE: 22,
+		EFA: 4,
+	},
 };
+
+// Feature files are checked on total size rather than per-book, because a
+// feature's own source is not what decides whether it is kept.
+const EXPECTED_FEATURE_TOTALS = {
+	"class-features": 279,
+	"subclass-features": 465,
+};
+
+// Fields every class / subclass must carry for character building to work.
+const REQUIRED_CLASS_FIELDS = ["name", "source", "hd", "proficiency", "startingProficiencies", "classFeatures"];
+const REQUIRED_SUBCLASS_FIELDS = ["className", "classSource", "shortName", "subclassFeatures"];
 
 /*
  * The fields a 2024 background must carry, because they are where a
@@ -571,6 +596,188 @@ function validateBackgrounds() {
 }
 
 /* ============================================================================
+ * SECTION 5b — CLASS VALIDATORS
+ * ==========================================================================*/
+
+// Loads one of our generated files, or records a failure and returns null.
+function loadOutputFile(fileName) {
+	const filePath = path.join(OUTPUT_DIR, fileName);
+	if (!fs.existsSync(filePath)) {
+		results.failed++;
+		console.log(`  FAIL  file not found: ${filePath}`);
+		console.log("        Run `node scripts/extract-data.js` first.");
+		return null;
+	}
+	const entries = readJson(filePath);
+	if (!Array.isArray(entries)) {
+		results.failed++;
+		console.log(`  FAIL  ${fileName} does not contain a JSON array at the top level`);
+		return null;
+	}
+	return entries;
+}
+
+// Every feature must have a unique `id`, since the app builds a lookup from it.
+function checkNoDuplicateIds(entries, categoryName) {
+	const failures = [];
+	const seen = new Map();
+	entries.forEach((entry, index) => {
+		if (typeof entry.id !== "string" || entry.id.trim() === "") {
+			failures.push({ label: describeEntry(entry, index), detail: `missing or empty "id"` });
+			return;
+		}
+		if (seen.has(entry.id)) {
+			failures.push({ label: describeEntry(entry, index), detail: `duplicate id "${entry.id}" (first seen at #${seen.get(entry.id)})` });
+		} else {
+			seen.set(entry.id, index);
+		}
+	});
+	recordCheck(`${categoryName}: every entry has a unique id`, failures);
+}
+
+function validateClasses() {
+	console.log("\n--- classes.json + feature files ---");
+
+	const classEntries = loadOutputFile("classes.json");
+	const classFeatures = loadOutputFile("class-features.json");
+	const subclassFeatures = loadOutputFile("subclass-features.json");
+	if (!classEntries || !classFeatures || !subclassFeatures) return;
+
+	const classes = classEntries.filter((entry) => entry.entryType === "class");
+	const subclasses = classEntries.filter((entry) => entry.entryType === "subclass");
+	console.log(`  (${classes.length} classes, ${subclasses.length} subclasses, ${classFeatures.length} class features, ${subclassFeatures.length} subclass features)`);
+
+	// --- shared structural checks -------------------------------------------
+	for (const [entries, name] of [
+		[classEntries, "classes"],
+		[classFeatures, "class-features"],
+		[subclassFeatures, "subclass-features"],
+	]) {
+		checkNoLeftoverCopyKeys(entries, name, ["_copy", "_mod", "_versions", "_abstract", "_implementations"]);
+		checkSourcesAllowed(entries, name);
+	}
+
+	checkNoDuplicateIds(classFeatures, "class-features");
+	checkNoDuplicateIds(subclassFeatures, "subclass-features");
+
+	/*
+	 * Duplicate check for classes.json uses more than name+source: two
+	 * different classes can each have a subclass of the same name, and the
+	 * same subclass exists once per class edition.
+	 */
+	const dupFailures = [];
+	const seenKeys = new Map();
+	classEntries.forEach((entry, index) => {
+		const key = [entry.entryType, entry.name, entry.source, entry.className || "", entry.classSource || ""].join("|").toLowerCase();
+		if (seenKeys.has(key)) {
+			dupFailures.push({ label: describeEntry(entry, index), detail: `duplicate of entry #${seenKeys.get(key)} (same type, name, source, class and class edition)` });
+		} else {
+			seenKeys.set(key, index);
+		}
+	});
+	recordCheck("classes: no duplicate class/subclass entries", dupFailures);
+
+	// --- THE IMPORTANT ONE: reference integrity -----------------------------
+	/*
+	 * Every reference a class or subclass makes must resolve to a real entry
+	 * in the feature files. If this fails, the app will render a class with
+	 * missing features and no error, so it is checked explicitly.
+	 */
+	const knownFeatureIds = new Set([...classFeatures, ...subclassFeatures].map((entry) => entry.id));
+	const danglingFailures = [];
+
+	for (const entry of classEntries) {
+		const ids = entry.entryType === "class" ? entry.classFeatureIds : entry.subclassFeatureIds;
+		const originals = entry.entryType === "class" ? entry.classFeatures : entry.subclassFeatures;
+
+		if (!Array.isArray(ids)) {
+			danglingFailures.push({
+				label: `"${entry.name}" (${entry.source})`,
+				detail: `has no ${entry.entryType === "class" ? "classFeatureIds" : "subclassFeatureIds"} list`,
+			});
+			continue;
+		}
+
+		ids.forEach((id, position) => {
+			if (knownFeatureIds.has(id)) return;
+			const original = originals && originals[position];
+			const originalText = typeof original === "string" ? original : JSON.stringify(original);
+			danglingFailures.push({
+				label: `"${entry.name}" (${entry.source})`,
+				detail: `reference ${originalText} -> id "${id}" matches no feature entry`,
+			});
+		});
+	}
+
+	const totalReferences = classEntries.reduce(
+		(sum, entry) => sum + ((entry.entryType === "class" ? entry.classFeatureIds : entry.subclassFeatureIds) || []).length,
+		0,
+	);
+	recordCheck(`classes: all ${totalReferences} feature references resolve`, danglingFailures);
+
+	// --- required fields ----------------------------------------------------
+	const classFieldFailures = [];
+	classes.forEach((entry, index) => {
+		for (const field of REQUIRED_CLASS_FIELDS) {
+			if (entry[field] === undefined || entry[field] === null) {
+				classFieldFailures.push({ label: describeEntry(entry, index), detail: `missing required class field "${field}"` });
+			}
+		}
+	});
+	recordCheck(`classes: all ${classes.length} classes have ${REQUIRED_CLASS_FIELDS.join(", ")}`, classFieldFailures);
+
+	const subclassFieldFailures = [];
+	subclasses.forEach((entry, index) => {
+		for (const field of REQUIRED_SUBCLASS_FIELDS) {
+			if (entry[field] === undefined || entry[field] === null) {
+				subclassFieldFailures.push({ label: describeEntry(entry, index), detail: `missing required subclass field "${field}"` });
+			}
+		}
+	});
+	recordCheck(`classes: all ${subclasses.length} subclasses have ${REQUIRED_SUBCLASS_FIELDS.join(", ")}`, subclassFieldFailures);
+
+	// --- counts -------------------------------------------------------------
+	checkExpectedCounts(classEntries, "classes");
+
+	for (const [name, entries] of [["class-features", classFeatures], ["subclass-features", subclassFeatures]]) {
+		const expected = EXPECTED_FEATURE_TOTALS[name];
+		recordSimpleCheck(`${name}: total count`, entries.length === expected, `actual ${entries.length}, expected ${expected}`);
+	}
+}
+
+function validateOptionalFeatures() {
+	console.log("\n--- optional-features.json ---");
+
+	const entries = loadOutputFile("optional-features.json");
+	if (!entries) return;
+
+	console.log(`  (${entries.length} entries loaded)`);
+
+	checkNoLeftoverCopyKeys(entries, "optional-features", ["_copy", "_mod", "_versions", "_abstract", "_implementations"]);
+	checkSourcesAllowed(entries, "optional-features");
+	checkNoDuplicates(entries, "optional-features");
+	checkNameAndEntries(entries, "optional-features");
+
+	// Each entry must have its featureType translated into readable text.
+	const typeFailures = [];
+	entries.forEach((entry, index) => {
+		if (!Array.isArray(entry.featureTypeFull) || entry.featureTypeFull.length === 0) {
+			typeFailures.push({ label: describeEntry(entry, index), detail: `missing or empty "featureTypeFull"` });
+			return;
+		}
+		if (entry.featureTypeFull.length !== (entry.featureType || []).length) {
+			typeFailures.push({
+				label: describeEntry(entry, index),
+				detail: `featureTypeFull has ${entry.featureTypeFull.length} item(s) but featureType has ${(entry.featureType || []).length}`,
+			});
+		}
+	});
+	recordCheck("optional-features: featureTypeFull present for every featureType", typeFailures);
+
+	checkExpectedCounts(entries, "optional-features");
+}
+
+/* ============================================================================
  * SECTION 6 — MAIN
  * ==========================================================================*/
 
@@ -585,6 +792,8 @@ function main() {
 	validateSpells();
 	validateSpecies();
 	validateBackgrounds();
+	validateClasses();
+	validateOptionalFeatures();
 	// ---------------------------------------------------------------
 
 	const total = results.passed + results.failed;

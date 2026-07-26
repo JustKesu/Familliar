@@ -141,6 +141,37 @@ const PRESERVE_GATED_KEYS = [
 const SUPPORTED_MOD_MODES = ["appendArr", "prependArr", "insertArr", "replaceArr", "removeArr", "replaceTxt"];
 
 /*
+ * What each optional-feature `featureType` code means.
+ *
+ * Copied verbatim from 5etools' own legend: `Parser.OPT_FEATURE_TYPE_TO_FULL`
+ * in js/parser.js (around line 2326). Do not invent entries here — if a new
+ * code appears, copy its official wording across.
+ */
+const OPT_FEATURE_TYPE_TO_FULL = {
+	"AI": "Artificer Infusion",
+	"ED": "Elemental Discipline",
+	"EI": "Eldritch Invocation",
+	"MM": "Metamagic",
+	"MV": "Maneuver",
+	"MV:B": "Maneuver, Battle Master",
+	"MV:C2-UA": "Maneuver, Cavalier V2 (UA)",
+	"AS:V1-UA": "Arcane Shot, V1 (UA)",
+	"AS:V2-UA": "Arcane Shot, V2 (UA)",
+	"AS": "Arcane Shot",
+	"OTH": "Other",
+	"FS:F": "Fighting Style; Fighter",
+	"FS:B": "Fighting Style; Bard",
+	"FS:P": "Fighting Style; Paladin",
+	"FS:R": "Fighting Style; Ranger",
+	"PB": "Pact Boon",
+	"OR": "Onomancy Resonant",
+	"RN": "Rune Knight Rune",
+	"AF": "Alchemical Formula",
+	"TT": "Traveler's Trick",
+	"RP": "Renown Perk",
+};
+
+/*
  * When a `_mod` uses the special property name "*", it means "apply this to
  * every one of these text-carrying properties". This list is copied from
  * 5etools' `COPY_ENTRY_PROPS`.
@@ -1323,6 +1354,304 @@ function extractBackgrounds() {
 }
 
 /* ============================================================================
+ * SECTION 4b — CLASS FEATURE REFERENCES ("uids")
+ * ----------------------------------------------------------------------------
+ * A class does not contain its features' text. It lists them as
+ * pipe-delimited reference strings, and the real text lives in a separate
+ * list. These helpers turn a reference into a stable `id` so both sides can
+ * be matched with a simple lookup.
+ *
+ * FIELD ORDER (matches DataUtil.class.unpackUidClassFeature and
+ * unpackUidSubclassFeature in js/utils.js, ~line 7471):
+ *
+ *   class feature:
+ *     name | className | classSource | level | source | displayText
+ *
+ *   subclass feature:
+ *     name | className | classSource | subclassShortName | subclassSource
+ *          | level | source | displayText
+ *
+ * THE BLANK-FIELD RULES ARE THE EASY PART TO GET WRONG:
+ *   - a blank `classSource` means "PHB" — NOT "the same source as the class"
+ *   - a blank `subclassSource` means "PHB" likewise
+ *   - a blank `source` means "the same as classSource / subclassSource",
+ *     after those have themselves been defaulted
+ *   - `displayText` is presentation only and is ignored for matching
+ *
+ * So "Second Wind|Fighter||1" refers to the 2014 PHB fighter, while the 2024
+ * class writes it out in full as "Second Wind|Fighter|XPHB|1".
+ * ==========================================================================*/
+
+// Lower-cases and trims one piece of an id so matching is case-insensitive.
+function idPart(value) {
+	return String(value === undefined || value === null ? "" : value).trim().toLowerCase();
+}
+
+/*
+ * The id format is the reference's own fields, defaulted, lower-cased, and
+ * joined with "|", behind a short tag saying which kind of feature it is:
+ *
+ *   cf|<name>|<className>|<classSource>|<level>|<source>
+ *   scf|<name>|<className>|<classSource>|<subclassShortName>|<subclassSource>|<level>|<source>
+ *
+ * Why this shape: it uses exactly the fields 5etools itself uses to identify
+ * a feature, so it is guaranteed unique (verified: 677 class features and
+ * 1441 subclass features produce zero duplicate ids), and it can be built
+ * from BOTH sides — from a reference string, and from a feature entry's own
+ * fields — giving identical results. The "cf"/"scf" tag keeps the two kinds
+ * from ever colliding.
+ */
+function makeClassFeatureIdFromRef(uid) {
+	let [name, className, classSource, level, source] = String(uid).split("|").map((part) => part.trim());
+	classSource = classSource || "PHB"; // blank means PHB, not "this class"
+	source = source || classSource; // blank means "same as the class"
+	return ["cf", idPart(name), idPart(className), idPart(classSource), idPart(level), idPart(source)].join("|");
+}
+
+function makeSubclassFeatureIdFromRef(uid) {
+	let [name, className, classSource, subclassShortName, subclassSource, level, source] = String(uid)
+		.split("|")
+		.map((part) => part.trim());
+	classSource = classSource || "PHB";
+	subclassSource = subclassSource || "PHB";
+	source = source || subclassSource; // blank means "same as the subclass"
+	return [
+		"scf",
+		idPart(name),
+		idPart(className),
+		idPart(classSource),
+		idPart(subclassShortName),
+		idPart(subclassSource),
+		idPart(level),
+		idPart(source),
+	].join("|");
+}
+
+// The same two ids, built from a feature entry's own fields.
+function makeClassFeatureIdFromEntry(entry) {
+	return ["cf", idPart(entry.name), idPart(entry.className), idPart(entry.classSource), idPart(entry.level), idPart(entry.source)].join("|");
+}
+
+function makeSubclassFeatureIdFromEntry(entry) {
+	return [
+		"scf",
+		idPart(entry.name),
+		idPart(entry.className),
+		idPart(entry.classSource),
+		idPart(entry.subclassShortName),
+		idPart(entry.subclassSource),
+		idPart(entry.level),
+		idPart(entry.source),
+	].join("|");
+}
+
+/*
+ * A class's `classFeatures` list mixes plain strings with objects that carry
+ * extra flags, e.g. {classFeature: "...", gainSubclassFeature: true}. This
+ * pulls the reference string out of either shape.
+ */
+function getReferenceString(reference) {
+	if (typeof reference === "string") return reference;
+	if (reference && typeof reference === "object") return reference.classFeature || reference.subclassFeature;
+	return undefined;
+}
+
+/*
+ * CLASSES, SUBCLASSES AND THEIR FEATURES
+ *
+ * Every class file is loaded, not just the ones we intend to keep, because
+ * `_copy` references cross file boundaries constantly (class-cleric.json
+ * alone contains 56). Filtering happens only after everything is resolved.
+ */
+function extractClasses() {
+	console.log("\n--- CLASSES ---");
+
+	const classDir = path.join(SOURCE_DATA_DIR, "class");
+	const index = readJson(path.join(classDir, "index.json"));
+	const fileNames = Object.values(index);
+	console.log(`Class files in index.json:    ${fileNames.length}`);
+
+	// Gather each kind of entry into its own list.
+	const raw = { class: [], subclass: [], classFeature: [], subclassFeature: [] };
+	for (const fileName of fileNames) {
+		const data = readJson(path.join(classDir, fileName));
+		for (const listName of Object.keys(raw)) {
+			if (Array.isArray(data[listName])) raw[listName].push(...data[listName]);
+		}
+	}
+	console.log(`Loaded: ${raw.class.length} classes, ${raw.subclass.length} subclasses, ${raw.classFeature.length} class features, ${raw.subclassFeature.length} subclass features`);
+
+	/*
+	 * Each list goes through the pipeline SEPARATELY. Running them together
+	 * would put a subclass named "Battle Master" and a subclass feature also
+	 * named "Battle Master" in the same lookup, where a `_copy` could match
+	 * the wrong one.
+	 */
+	const warnings = [];
+	const totals = { copiesResolved: 0, copiesWithMod: 0, parentsExpanded: 0, variantsCreated: 0 };
+	const prepared = {};
+	for (const listName of Object.keys(raw)) {
+		const result = prepareEntries(raw[listName], `class:${listName}`);
+		prepared[listName] = result.entries;
+		totals.copiesResolved += result.copyStats.copiesResolved;
+		totals.copiesWithMod += result.copyStats.copiesWithMod;
+		totals.parentsExpanded += result.versionStats.parentsExpanded;
+		totals.variantsCreated += result.versionStats.variantsCreated;
+		warnings.push(...result.warnings);
+	}
+	console.log(`_copy blocks resolved:        ${totals.copiesResolved}`);
+	console.log(`  ...of which had a _mod:     ${totals.copiesWithMod}`);
+	console.log(`Entries expanded by _versions: ${totals.parentsExpanded} into ${totals.variantsCreated}`);
+
+	/*
+	 * CLASSES: the 2024 core classes (XPHB) plus the Artificer, whose 2024
+	 * version lives in EFA.
+	 */
+	const keptClasses = prepared.class.filter((entry) => ALLOWED_CLASS_SOURCES.includes(entry.source));
+
+	/*
+	 * SUBCLASSES: both conditions must hold. See the long comment in
+	 * `buildSpellAvailability` — these two fields mean different things and
+	 * swapping them silently deletes every XGE and TCE subclass.
+	 *
+	 *   classSource = the class EDITION it attaches to  -> XPHB / EFA
+	 *   source      = the BOOK it was printed in        -> ALLOWED_SOURCES
+	 */
+	const keptSubclasses = prepared.subclass.filter(
+		(entry) => ALLOWED_CLASS_SOURCES.includes(entry.classSource) && ALLOWED_SOURCES.includes(entry.source),
+	);
+
+	// Give EVERY feature its stable id first, so we can match against them.
+	for (const entry of prepared.classFeature) entry.id = makeClassFeatureIdFromEntry(entry);
+	for (const entry of prepared.subclassFeature) entry.id = makeSubclassFeatureIdFromEntry(entry);
+
+	/*
+	 * Give each class and subclass a matching list of ids, alongside — never
+	 * replacing — the original reference strings.
+	 */
+	for (const entry of keptClasses) {
+		entry.classFeatureIds = (entry.classFeatures || [])
+			.map(getReferenceString)
+			.filter(Boolean)
+			.map(makeClassFeatureIdFromRef);
+	}
+	for (const entry of keptSubclasses) {
+		entry.subclassFeatureIds = (entry.subclassFeatures || [])
+			.map(getReferenceString)
+			.filter(Boolean)
+			.map(makeSubclassFeatureIdFromRef);
+	}
+
+	/*
+	 * FEATURES: a feature is kept when a surviving class or subclass actually
+	 * REFERENCES it — never by looking at the feature's own source.
+	 *
+	 * Matching on the feature's own owner fields instead looks tempting, but
+	 * it is wrong. The EFA Artificer's subclasses are `_copy`-derived from
+	 * their TCE originals and inherit the original reference strings, so the
+	 * EFA-edition "Alchemist" subclass points at features whose `classSource`
+	 * is still TCE. Those features are genuinely part of the 2024 subclass —
+	 * exactly the "a 2024 class can carry a feature printed in an older book"
+	 * case. Keeping by reference handles it, and guarantees that every
+	 * reference resolves.
+	 */
+	const referencedClassFeatureIds = new Set(keptClasses.flatMap((entry) => entry.classFeatureIds));
+	const referencedSubclassFeatureIds = new Set(keptSubclasses.flatMap((entry) => entry.subclassFeatureIds));
+
+	const keptClassFeatures = prepared.classFeature.filter((entry) => referencedClassFeatureIds.has(entry.id));
+	const keptSubclassFeatures = prepared.subclassFeature.filter((entry) => referencedSubclassFeatureIds.has(entry.id));
+
+	// Report, then write the three files.
+	const classesBySource = {};
+	for (const entry of keptClasses) classesBySource[entry.source] = (classesBySource[entry.source] || 0) + 1;
+	const subclassesBySource = {};
+	for (const entry of keptSubclasses) subclassesBySource[entry.source] = (subclassesBySource[entry.source] || 0) + 1;
+
+	console.log(`Classes kept:                 ${keptClasses.length}`);
+	for (const source of Object.keys(classesBySource).sort()) console.log(`    ${source.padEnd(6)} ${classesBySource[source]}`);
+	console.log(`Subclasses kept:              ${keptSubclasses.length}`);
+	for (const source of Object.keys(subclassesBySource).sort()) console.log(`    ${source.padEnd(6)} ${subclassesBySource[source]}`);
+	console.log(`Class features kept:          ${keptClassFeatures.length}`);
+	console.log(`Subclass features kept:       ${keptSubclassFeatures.length}`);
+
+	// classes.json holds classes and subclasses together, tagged so the app
+	// can tell them apart.
+	const combined = [
+		...keptClasses.map((entry) => ({ entryType: "class", ...entry })),
+		...keptSubclasses.map((entry) => ({ entryType: "subclass", ...entry })),
+	];
+
+	const classesFile = path.join(OUTPUT_DIR, "classes.json");
+	const classFeaturesFile = path.join(OUTPUT_DIR, "class-features.json");
+	const subclassFeaturesFile = path.join(OUTPUT_DIR, "subclass-features.json");
+
+	console.log(`Wrote: ${classesFile} (${formatBytes(writeJson(classesFile, combined))})`);
+	console.log(`Wrote: ${classFeaturesFile} (${formatBytes(writeJson(classFeaturesFile, keptClassFeatures))})`);
+	console.log(`Wrote: ${subclassFeaturesFile} (${formatBytes(writeJson(subclassFeaturesFile, keptSubclassFeatures))})`);
+
+	// A quick self-check so a broken id scheme is caught here, not later.
+	const featureIds = new Set([...keptClassFeatures, ...keptSubclassFeatures].map((entry) => entry.id));
+	let dangling = 0;
+	for (const entry of combined) {
+		for (const id of [...(entry.classFeatureIds || []), ...(entry.subclassFeatureIds || [])]) {
+			if (!featureIds.has(id)) dangling++;
+		}
+	}
+	console.log(`Dangling feature references:  ${dangling}`);
+
+	return warnings;
+}
+
+/*
+ * OPTIONAL FEATURES
+ *
+ * Eldritch Invocations, Metamagic, Fighting Styles, Battle Master
+ * manoeuvres and so on. Which class can take one is encoded in short
+ * `featureType` codes, so we attach the official plain-English wording too.
+ */
+function extractOptionalFeatures() {
+	console.log("\n--- OPTIONAL FEATURES ---");
+
+	const rawFeatures = readJson(path.join(SOURCE_DATA_DIR, "optionalfeatures.json")).optionalfeature;
+
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(rawFeatures, "optionalfeatures");
+
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
+
+	const kept = resolved.filter((entry) => ALLOWED_SOURCES.includes(entry.source));
+
+	// Translate each code using 5etools' own legend. An unknown code is
+	// reported rather than guessed at.
+	const unknownCodes = new Set();
+	for (const entry of kept) {
+		entry.featureTypeFull = (entry.featureType || []).map((code) => {
+			if (OPT_FEATURE_TYPE_TO_FULL[code]) return OPT_FEATURE_TYPE_TO_FULL[code];
+			unknownCodes.add(code);
+			return code; // fall back to the raw code, as 5etools does
+		});
+	}
+	if (unknownCodes.size) {
+		warnings.push(`[optionalfeatures] unknown featureType code(s) not in the 5etools legend: ${[...unknownCodes].join(", ")}`);
+	}
+
+	const bySource = {};
+	for (const entry of kept) bySource[entry.source] = (bySource[entry.source] || 0) + 1;
+	const byType = {};
+	for (const entry of kept) for (const code of entry.featureType || []) byType[code] = (byType[code] || 0) + 1;
+
+	console.log(`Passed the source filter:     ${kept.length}`);
+	for (const source of Object.keys(bySource).sort()) console.log(`    ${source.padEnd(6)} ${bySource[source]}`);
+	console.log(`By featureType: ${Object.keys(byType).sort().map((code) => `${code}=${byType[code]}`).join(", ")}`);
+
+	const outputFile = path.join(OUTPUT_DIR, "optional-features.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
+
+	return warnings;
+}
+
+/* ============================================================================
  * SECTION 5 — MAIN
  * ==========================================================================*/
 
@@ -1351,6 +1680,8 @@ function main() {
 	allWarnings.push(...extractSpells());
 	allWarnings.push(...extractSpecies());
 	allWarnings.push(...extractBackgrounds());
+	allWarnings.push(...extractClasses());
+	allWarnings.push(...extractOptionalFeatures());
 	// ---------------------------------------------------------------
 
 	console.log(`\n${"=".repeat(64)}`);
