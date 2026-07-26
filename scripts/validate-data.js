@@ -95,7 +95,17 @@ const EXPECTED_COUNTS = {
 		MPMM: 44,
 		EFA: 9,
 	},
+	backgrounds: {
+		XPHB: 16,
+		EFA: 17,
+	},
 };
+
+/*
+ * The fields a 2024 background must carry, because they are where a
+ * character's ability increases and origin feat come from.
+ */
+const REQUIRED_BACKGROUND_FIELDS = ["ability", "feats"];
 
 // Never print more than this many examples of the same kind of failure.
 const MAX_EXAMPLES_PER_CHECK = 10;
@@ -498,6 +508,68 @@ function validateSpecies() {
 	checkExpectedCounts(entries, "species");
 }
 
+function validateBackgrounds() {
+	const filePath = path.join(OUTPUT_DIR, "backgrounds.json");
+	console.log("\n--- backgrounds.json ---");
+
+	if (!fs.existsSync(filePath)) {
+		results.failed++;
+		console.log(`  FAIL  file not found: ${filePath}`);
+		console.log("        Run `node scripts/extract-data.js` first.");
+		return;
+	}
+
+	const entries = readJson(filePath);
+
+	if (!Array.isArray(entries)) {
+		results.failed++;
+		console.log("  FAIL  file does not contain a JSON array at the top level");
+		return;
+	}
+
+	console.log(`  (${entries.length} entries loaded)`);
+
+	checkNoLeftoverCopyKeys(entries, "backgrounds", [
+		"_copy",
+		"_mod",
+		"_versions",
+		"_abstract",
+		"_implementations",
+	]);
+	checkSourcesAllowed(entries, "backgrounds");
+	checkNoDuplicates(entries, "backgrounds");
+	checkNameAndEntries(entries, "backgrounds");
+
+	/*
+	 * A 2024 background is where the character's ability score increases and
+	 * origin feat come from. If either field were missing, character creation
+	 * would silently produce a weaker character, so this gets its own check.
+	 *
+	 * Only XPHB entries are required to have them — other books may print
+	 * backgrounds that work differently.
+	 */
+	const originFailures = [];
+	const xphbEntries = entries.filter((entry) => entry.source === "XPHB");
+	for (const field of REQUIRED_BACKGROUND_FIELDS) {
+		xphbEntries.forEach((entry) => {
+			const value = entry[field];
+			const isMissing = value === undefined || value === null || (Array.isArray(value) && value.length === 0);
+			if (isMissing) {
+				originFailures.push({
+					label: `"${entry.name}" (${entry.source})`,
+					detail: `missing or empty "${field}" — a 2024 background must have it`,
+				});
+			}
+		});
+	}
+	recordCheck(
+		`backgrounds: all ${xphbEntries.length} XPHB entries have ${REQUIRED_BACKGROUND_FIELDS.map((f) => `"${f}"`).join(" and ")}`,
+		originFailures,
+	);
+
+	checkExpectedCounts(entries, "backgrounds");
+}
+
 /* ============================================================================
  * SECTION 6 — MAIN
  * ==========================================================================*/
@@ -512,7 +584,7 @@ function main() {
 	validateFeats();
 	validateSpells();
 	validateSpecies();
-	// validateBackgrounds();
+	validateBackgrounds();
 	// ---------------------------------------------------------------
 
 	const total = results.passed + results.failed;

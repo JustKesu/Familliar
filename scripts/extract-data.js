@@ -138,7 +138,7 @@ const PRESERVE_GATED_KEYS = [
  * in the character-building data we extract. If the data ever uses another
  * one, we print a loud warning rather than silently ignoring it.
  */
-const SUPPORTED_MOD_MODES = ["appendArr", "insertArr", "replaceArr", "removeArr", "replaceTxt"];
+const SUPPORTED_MOD_MODES = ["appendArr", "prependArr", "insertArr", "replaceArr", "removeArr", "replaceTxt"];
 
 /*
  * When a `_mod` uses the special property name "*", it means "apply this to
@@ -369,6 +369,14 @@ function applyOneMod(entry, propName, modInfo, label, warnings) {
 	if (mode === "appendArr") {
 		// Add the new items onto the END of the array.
 		setAtPath(entry, pathParts, existing ? existing.concat(items) : items);
+		return;
+	}
+
+	if (mode === "prependArr") {
+		// Add the new items onto the START of the array.
+		// Like appendArr (and unlike insertArr) a missing array is not an
+		// error — the items simply become the whole array.
+		setAtPath(entry, pathParts, existing ? items.concat(existing) : items);
 		return;
 	}
 
@@ -1258,6 +1266,62 @@ function extractSpecies() {
 	return warnings;
 }
 
+/*
+ * BACKGROUNDS
+ *
+ * Under 2024 rules the background carries far more mechanical weight than it
+ * used to. It is where a character gets:
+ *
+ *   ability            — the ability score increases (+2/+1 or +1/+1/+1)
+ *   feats              — the origin feat
+ *   skillProficiencies — two skills
+ *   toolProficiencies  — one tool
+ *   startingEquipment  — a choice between an equipment pack (A) or coins (B)
+ *
+ * Those fields are written out EXACTLY as they appear in the source. They
+ * use 5etools' own "choose" structures, which are fiddly but lossless; a
+ * flattened version would quietly throw away the player's choices.
+ */
+function extractBackgrounds() {
+	console.log("\n--- BACKGROUNDS ---");
+
+	const sourceFile = path.join(SOURCE_DATA_DIR, "backgrounds.json");
+	const rawBackgrounds = readJson(sourceFile).background;
+
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(rawBackgrounds, "backgrounds");
+
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`  ...of which had a _mod:     ${copyStats.copiesWithMod}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded}`);
+	console.log(`  ...into variants:           ${versionStats.variantsCreated}`);
+
+	const kept = resolved.filter((background) => ALLOWED_SOURCES.includes(background.source));
+
+	const bySource = {};
+	for (const background of kept) bySource[background.source] = (bySource[background.source] || 0) + 1;
+
+	console.log(`Passed the source filter:     ${kept.length}`);
+	for (const source of Object.keys(bySource).sort()) {
+		console.log(`    ${source.padEnd(6)} ${bySource[source]}`);
+	}
+
+	// The five character-building fields matter enough to be worth counting,
+	// so a future book with an incomplete entry is noticed straight away.
+	const KEY_FIELDS = ["ability", "feats", "skillProficiencies", "toolProficiencies", "startingEquipment"];
+	for (const field of KEY_FIELDS) {
+		const have = kept.filter((background) => background[field] !== undefined).length;
+		console.log(`    has "${field}"`.padEnd(30) + `${have}/${kept.length}`);
+	}
+
+	const outputFile = path.join(OUTPUT_DIR, "backgrounds.json");
+	const bytes = writeJson(outputFile, kept);
+	console.log(`Wrote: ${outputFile}`);
+	console.log(`Size:  ${formatBytes(bytes)}`);
+
+	return warnings;
+}
+
 /* ============================================================================
  * SECTION 5 — MAIN
  * ==========================================================================*/
@@ -1286,7 +1350,7 @@ function main() {
 	allWarnings.push(...extractFeats());
 	allWarnings.push(...extractSpells());
 	allWarnings.push(...extractSpecies());
-	// allWarnings.push(...extractBackgrounds());
+	allWarnings.push(...extractBackgrounds());
 	// ---------------------------------------------------------------
 
 	console.log(`\n${"=".repeat(64)}`);
