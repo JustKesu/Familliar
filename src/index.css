@@ -1,9 +1,22 @@
 /* Minimal baseline styling. Visual design is explicitly out of scope for
- * phase 1 (see PHASE1.md); this is just enough to be readable. */
+ * phase 1 (see PHASE1.md); this is just enough to read the output and tell
+ * the markup categories apart. */
 
 :root {
   color-scheme: light dark;
-  font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
+  font: 16px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  --rule: color-mix(in srgb, currentColor 18%, transparent);
+  --panel-bg: color-mix(in srgb, currentColor 4%, transparent);
+  --ref: #7b4bd8;
+  --value: #0d7a5f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ref: #c4a5ff;
+    --value: #5fd0ac;
+  }
 }
 
 body {
@@ -11,9 +24,9 @@ body {
 }
 
 main {
-  max-width: 40rem;
+  max-width: 48rem;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2rem 1.5rem 4rem;
 }
 
 h1 {
@@ -26,29 +39,6 @@ h1 {
   opacity: 0.7;
 }
 
-table {
-  border-collapse: collapse;
-  width: 100%;
-}
-
-th,
-td {
-  padding: 0.4rem 0.6rem;
-  text-align: left;
-  border-bottom: 1px solid currentColor;
-  border-color: color-mix(in srgb, currentColor 20%, transparent);
-}
-
-tfoot td {
-  font-weight: 600;
-  border-bottom: none;
-}
-
-.count {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 .error {
   color: #c62828;
 }
@@ -57,4 +47,178 @@ tfoot td {
   .error {
     color: #ff8a80;
   }
+}
+
+/* ---- demo panels ---- */
+
+.panel {
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.panel__head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.panel__source {
+  font-size: 0.75rem;
+  font-weight: 400;
+  opacity: 0.6;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  vertical-align: middle;
+}
+
+.panel__toggle {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  user-select: none;
+}
+
+.panel__caption {
+  margin: 0.35rem 0 1rem;
+  font-size: 0.85rem;
+  opacity: 0.65;
+}
+
+.panel__raw {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--panel-bg);
+  border-radius: 6px;
+  font: 0.78rem/1.5 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.75rem;
+}
+
+/* ---- markup renderer ---- */
+
+/* Cross-references. Plain styled text for now — links need routing we do not
+ * have yet (PHASE1.md section D). */
+.mk-ref {
+  color: var(--ref);
+}
+
+/* Dice, DCs, bonuses. */
+.mk-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--value);
+}
+
+/* An unhandled tag still shows its text; this makes it visible in review. */
+.mk-value--unknown {
+  text-decoration: underline dotted;
+}
+
+.mk-entries {
+  margin: 0 0 0.5rem;
+}
+
+.mk-entries__name,
+.mk-inset__name {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.mk-entries p,
+.mk-inset p {
+  margin: 0 0 0.6rem;
+}
+
+.mk-inset {
+  border-left: 3px solid var(--rule);
+  background: var(--panel-bg);
+  padding: 0.6rem 0.9rem;
+  margin: 0.75rem 0;
+  border-radius: 0 6px 6px 0;
+}
+
+.mk-list {
+  margin: 0 0 0.75rem;
+  padding-left: 1.35rem;
+}
+
+.mk-list__item {
+  margin-bottom: 0.3rem;
+}
+
+/* 5etools' hanging-indent list styles drop the bullet. */
+.mk-list--list-hang-notitle,
+.mk-list--list-hang {
+  list-style: none;
+  padding-left: 0;
+}
+
+.mk-options {
+  margin: 0.5rem 0;
+}
+
+.mk-options__label {
+  margin: 0 0 0.3rem;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.mk-table-wrap {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.mk-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.92rem;
+}
+
+.mk-table__caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 0.35rem;
+}
+
+.mk-table th,
+.mk-table td {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.3rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mk-table__footnotes {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-top: 0.4rem;
+}
+
+/* colStyles from the data. */
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
 }
