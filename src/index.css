@@ -105,6 +105,91 @@ h1 {
   overflow: auto;
 }
 
+/* ---- tabs ---- */
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 0;
+}
+
+.tabs__button {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: inherit;
+  border-radius: 6px 6px 0 0;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.65;
+}
+
+.tabs__button--active {
+  opacity: 1;
+  background: var(--panel-bg);
+  font-weight: 600;
+}
+
+/* ---- character manager ---- */
+
+.char-list {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.char-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.6rem;
+}
+
+.char-row--empty {
+  opacity: 0.6;
+  justify-content: center;
+}
+
+.char-row__name {
+  font-weight: 600;
+  cursor: text;
+}
+
+.char-row__name-input {
+  font: inherit;
+  font-weight: 600;
+}
+
+.char-row__meta {
+  opacity: 0.6;
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+.char-row__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.char-create,
+.char-import {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.char-import__hint {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
 .counts {
   display: flex;
   flex-wrap: wrap;
