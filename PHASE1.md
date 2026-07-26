@@ -17,6 +17,7 @@ A web app running in the browser where the user can:
 - Close the browser and reopen the character in the same state
 - Run it independently on each player's own machine (data stored locally
   per browser, no accounts, no server)
+- Export a character to a file and import it back
 
 NOT in phase 1: PDF export, homebrew, mobile layout, visual design,
 AI character generation, magic item variants (+1 weapons), monsters,
@@ -139,6 +140,55 @@ Everything below persists across browser restarts.
 ---
 
 ## D. Decisions taken
+
+### Character storage — localStorage, versioned, with file export/import
+
+**Where characters live.** In the browser's localStorage, on the machine
+that created them. Keyed per browser: no accounts, no login, no server.
+A character made in one browser is not visible in another, and two
+players on two machines share nothing.
+
+**What the store holds.** An ARRAY of characters, not a single one —
+already decided below, unchanged here.
+
+**The stored payload carries a schema version number, written from the
+very first save.** Not added later when it is first needed. The version
+is part of the payload from the first line of persistence code that ever
+runs.
+
+Rationale: the same argument as the array. Once a save exists in a
+player's browser we cannot reach in and fix it. A stored blob with no
+version can only be guessed at, so the day the format changes the honest
+options are to guess or to discard the save. A number written from the
+start means an old save can be recognised and MIGRATED to the new shape
+instead of thrown away. Writing it now is one field; retrofitting it is
+impossible for saves already on disk.
+
+**Export writes a JSON file to disk; import reads one back.** Both are in
+the definition of done, not optional extras.
+
+Rationale, two reasons. First, localStorage is not durable storage — it
+is wiped when the user clears browsing data, which people do routinely
+and without connecting it to losing a character. Export is the only
+backup a player has. Second, export is how a character moves between
+machines: with no server and no accounts, a file is the transport.
+
+**Import must validate what it reads, and refuse bad input with a clear
+message.** An import that does not recognise the file, or finds it
+malformed, or cannot handle its schema version, says so and changes
+nothing. It must never write a partially-understood character into the
+store, and must never leave the store in a worse state than before the
+attempt. A failed import is a no-op plus an explanation the player can
+act on.
+
+Rationale: the imported file came from outside the app. It may be an
+older export, a hand-edited file, or the wrong file entirely. The store
+holds every character the player owns, so the cost of accepting garbage
+is not one bad character — it is a store that may no longer load at all.
+
+Open, and deliberately not decided here: whether export writes one
+character per file or the whole array, and what import does when the
+incoming character collides with one already stored.
 
 ### How many characters per browser — a LIST from day one
 Storage holds an ARRAY of characters, not a single character, from the
@@ -308,9 +358,18 @@ probably not a valid pick. Decide whether to hide parents that have
 variants.
 STATUS: undecided.
 
-### Genasi subraces have names that mean nothing on their own
-Same family of problem as Magic Initiate above, but worse, because here
-the variant NAMES do not identify their parent.
+### The species picker lists entries a player cannot act on
+Same family of problem as Magic Initiate above. Two unrelated causes with
+one symptom: a picker that reads `name` off data/species.json and lists
+what it finds shows the player entries that are either unreadable or
+indistinguishable. Both are recorded here because whatever is decided
+about hiding, nesting or labelling entries has to answer both.
+STATUS: undecided.
+
+**Cause 1 — Genasi subraces have names that mean nothing on their own**
+
+Worse than Magic Initiate, because here the variant NAMES do not identify
+their parent.
 
 A species picker listing `name` would show five separate entries:
 
@@ -333,7 +392,55 @@ other 38 variants come from `_versions` and name themselves properly
 Whatever is decided for Magic Initiate about hiding or nesting parents,
 this one additionally needs the subrace to be DISPLAYED differently from
 what `name` contains, or the player sees four bare elements.
-STATUS: undecided.
+
+**Cause 2 — Shifter is in the list twice, and the two are identical on
+screen**
+
+Nothing wrong with the names this time. The problem is that nine species
+names occur twice over, because the species was reprinted in a second
+book that is also in ALLOWED_SOURCES and both printings survive
+extraction (see NOTES.md, "Nine species names occur twice").
+
+Shifter is the worst of them — the parent and all four of its variants
+are doubled, once from EFA and once from MPMM:
+
+    Shifter                 EFA + MPMM
+    Shifter; Beasthide      EFA + MPMM
+    Shifter; Longtooth      EFA + MPMM
+    Shifter; Swiftstride    EFA + MPMM
+    Shifter; Wildhunt       EFA + MPMM
+
+So the picker offers ten Shifter rows where the player expects five, and
+the two halves of each pair render as the same string. Aasimar,
+Goliath, Changeling and Orc are doubled the same way at the parent only.
+
+Unlike Genasi, this is not a display problem — the two entries are
+genuinely different rulesets and the mechanics differ. The question is
+which printing a player is allowed to pick, not how to label it.
+
+The data can answer "which is older" without a hand-written list: the
+superseded entry carries `reprintedAs` pointing at the newer one, and the
+newer one has no `reprintedAs`. What it cannot answer is whether this
+table wants the 2024 version only, or both.
+
+### Where does the list of selectable LANGUAGES come from
+Section A.2 says the player picks languages during origin. Nothing in the
+extracted data currently supports that.
+
+Per NOTES.md ("Background field shapes"), the 2024 rules moved languages
+out of backgrounds, and `languageProficiencies` is absent from every
+background in data/. So there is no per-background list to read, and no
+list of the languages themselves has been identified anywhere in data/
+either.
+
+We do not currently know where the selectable set is meant to come from.
+Candidates not yet checked: a languages table in the 5etools source that
+extraction never touched, a species-level grant, or a fixed list from the
+PHB 2024 text that would have to be typed in by hand.
+
+Blocks A.2 as written. Either find the source or decide the sheet stores
+languages as free text.
+STATUS: undecided, source unknown.
 
 ### Where data lives at deployment
 See NOTES.md. Revisit before the first deploy to a public URL.

@@ -171,6 +171,42 @@ Genasi is the sole case of shape 2: no other species in data/ has a
 `raceName`/`raceSource` field at all (checked across all 87). See PHASE1.md
 section F — a species picker reading `name` alone is the open question.
 
+### Nine species names occur twice, printed in two allowed books
+Separate from the variant-naming problem above, and a different cause:
+some species were reprinted in a newer allowed book, and BOTH printings
+survive extraction because both books are in ALLOWED_SOURCES.
+
+Shifter is the worst case — the parent AND all four variants are doubled:
+
+    Shifter                 EFA + MPMM
+    Shifter; Beasthide      EFA + MPMM
+    Shifter; Longtooth      EFA + MPMM
+    Shifter; Swiftstride    EFA + MPMM
+    Shifter; Wildhunt       EFA + MPMM
+
+Four more are doubled at the parent only, with no variants involved:
+
+    Aasimar      MPMM + XPHB      (variants exist only on the MPMM side)
+    Goliath      MPMM + XPHB      (variants exist only on the XPHB side)
+    Changeling   EFA  + MPMM
+    Orc          MPMM + XPHB
+
+Nine duplicate pairs in all, so 9 of the 87 entries are redundant
+printings rather than distinct choices.
+
+The older entry always says so itself: every MPMM member of a pair carries
+`reprintedAs` pointing at the newer one ("Shifter|EFA", "Aasimar|XPHB",
+"Goliath|XPHB", "Orc|XPHB", "Changeling|EFA"). The newer entry has no
+`reprintedAs`. So the pairs are detectable from the data without a
+hand-written list.
+
+Note this is NOT the same test as the VGM/MTF exclusion. There the whole
+book was dropped up front. Here both books are wanted for other species
+and only these nine entries collide.
+
+Whether the picker should show one, the other, or both is a phase 1 UI
+question — see PHASE1.md section F. The extraction is not changed.
+
 ### Feature files kept separate, not inlined
 classes.json keeps reference strings; feature text lives in
 class-features.json and subclass-features.json. The app joins them via
