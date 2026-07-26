@@ -113,6 +113,14 @@ const EXPECTED_COUNTS = {
 		XGE: 22,
 		EFA: 4,
 	},
+	// `item` + `baseitem` only — `itemGroup` is deliberately not output.
+	items: {
+		XDMG: 593,
+		XPHB: 217,
+		TCE: 84,
+		XGE: 43,
+		EFA: 6,
+	},
 };
 
 // Feature files are checked on total size rather than per-book, because a
@@ -777,6 +785,88 @@ function validateOptionalFeatures() {
 	checkExpectedCounts(entries, "optional-features");
 }
 
+function validateItems() {
+	console.log("\n--- items.json ---");
+
+	const entries = loadOutputFile("items.json");
+	if (!entries) return;
+
+	console.log(`  (${entries.length} entries loaded)`);
+
+	checkNoLeftoverCopyKeys(entries, "items", ["_copy", "_mod", "_versions", "_abstract", "_implementations"]);
+	checkSourcesAllowed(entries, "items");
+	checkNoDuplicates(entries, "items");
+
+	// Every item needs a name and a source. Items deliberately do NOT need an
+	// `entries` array — plenty of mundane gear has no descriptive text.
+	const basicFailures = [];
+	entries.forEach((entry, index) => {
+		if (typeof entry.name !== "string" || entry.name.trim() === "") {
+			basicFailures.push({ label: describeEntry(entry, index), detail: `name is missing or empty (got ${JSON.stringify(entry.name)})` });
+		}
+		if (typeof entry.source !== "string" || entry.source.trim() === "") {
+			basicFailures.push({ label: describeEntry(entry, index), detail: `source is missing or empty (got ${JSON.stringify(entry.source)})` });
+		}
+	});
+	recordCheck("items: name and source present", basicFailures);
+
+	/*
+	 * Wherever the source data carried a code, the readable version must have
+	 * been worked out. `rarity` is checked for presence only, since it is
+	 * already stored as plain words and needs no lookup.
+	 */
+	const resolvedFailures = [];
+	entries.forEach((entry, index) => {
+		const label = describeEntry(entry, index);
+
+		if (entry.type !== undefined && entry.typeFull === undefined) {
+			resolvedFailures.push({ label, detail: `has type "${entry.type}" but no resolved "typeFull"` });
+		}
+		if (entry.dmgType !== undefined && entry.dmgTypeFull === undefined) {
+			resolvedFailures.push({ label, detail: `has dmgType "${entry.dmgType}" but no resolved "dmgTypeFull"` });
+		}
+		if (Array.isArray(entry.property) && !Array.isArray(entry.propertyFull)) {
+			resolvedFailures.push({ label, detail: `has property ${JSON.stringify(entry.property)} but no resolved "propertyFull"` });
+		}
+		if (Array.isArray(entry.mastery) && !Array.isArray(entry.masteryFull)) {
+			resolvedFailures.push({ label, detail: `has mastery ${JSON.stringify(entry.mastery)} but no resolved "masteryFull"` });
+		}
+		if (entry.rarity === undefined && entry.type !== undefined) {
+			resolvedFailures.push({ label, detail: `has a type but no "rarity"` });
+		}
+	});
+	recordCheck("items: type/rarity resolved wherever the source had one", resolvedFailures);
+
+	/*
+	 * A code that could not be looked up is passed through unchanged, so a
+	 * resolved value identical to its raw code means the legend was missing
+	 * an entry. This catches that.
+	 */
+	const unresolvedFailures = [];
+	entries.forEach((entry, index) => {
+		const label = describeEntry(entry, index);
+
+		(entry.property || []).forEach((raw, position) => {
+			const uid = typeof raw === "string" ? raw : raw && raw.uid;
+			const resolved = (entry.propertyFull || [])[position];
+			if (uid !== undefined && resolved === uid) {
+				unresolvedFailures.push({ label, detail: `property code "${uid}" was not translated (no legend entry)` });
+			}
+		});
+
+		(entry.mastery || []).forEach((raw, position) => {
+			const uid = typeof raw === "string" ? raw : raw && raw.uid;
+			const resolved = (entry.masteryFull || [])[position];
+			if (uid !== undefined && resolved === uid) {
+				unresolvedFailures.push({ label, detail: `mastery code "${uid}" was not translated (no legend entry)` });
+			}
+		});
+	});
+	recordCheck("items: no unknown codes left unresolved", unresolvedFailures);
+
+	checkExpectedCounts(entries, "items");
+}
+
 /* ============================================================================
  * SECTION 6 — MAIN
  * ==========================================================================*/
@@ -794,6 +884,7 @@ function main() {
 	validateBackgrounds();
 	validateClasses();
 	validateOptionalFeatures();
+	validateItems();
 	// ---------------------------------------------------------------
 
 	const total = results.passed + results.failed;

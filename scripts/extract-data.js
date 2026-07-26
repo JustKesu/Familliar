@@ -1652,6 +1652,199 @@ function extractOptionalFeatures() {
 }
 
 /* ============================================================================
+ * SECTION 4c — ITEMS
+ * ==========================================================================*/
+
+/*
+ * Items describe themselves in short codes: type "M|XPHB", property
+ * ["V|XPHB"], dmgType "S". A character sheet has to show these as words, so
+ * we look each one up and attach a readable version alongside the original.
+ *
+ * WHERE EACH LEGEND LIVES:
+ *   type          -> the `itemType` list inside data/items-base.json
+ *   property      -> the `itemProperty` list inside data/items-base.json
+ *   mastery       -> the `itemMastery` list inside data/items-base.json
+ *   dmgType       -> Parser.DMGTYPE_JSON_TO_FULL in js/parser.js (~line 4483)
+ *   rarity        -> already plain words in the data; nothing to resolve
+ *   weaponCategory-> already plain words ("simple" / "martial")
+ *
+ * The three list-based legends are keyed by ABBREVIATION + SOURCE, because
+ * the same abbreviation means different things in different editions.
+ */
+const DMG_TYPE_TO_FULL = {
+	"A": "acid",
+	"B": "bludgeoning",
+	"C": "cold",
+	"F": "fire",
+	"O": "force",
+	"L": "lightning",
+	"N": "necrotic",
+	"P": "piercing",
+	"I": "poison",
+	"Y": "psychic",
+	"R": "radiant",
+	"S": "slashing",
+	"T": "thunder",
+};
+
+/*
+ * Splits a code like "M|XPHB" into its parts.
+ *
+ * A MISSING SOURCE MEANS "PHB" — the 2014 Player's Handbook — exactly as in
+ * DataUtil.itemType.unpackUid (js/utils.js ~7025). So a bare "M" is the 2014
+ * melee-weapon type, and "M|XPHB" is its 2024 equivalent. Both appear in the
+ * data side by side.
+ */
+function unpackItemCode(uid) {
+	const [abbreviation, source] = String(uid).split("|").map((part) => part.trim());
+	return { abbreviation, source: source || "PHB" };
+}
+
+function itemCodeKey(abbreviation, source) {
+	return `${idPart(abbreviation)}|${idPart(source)}`;
+}
+
+/*
+ * Builds the three lookup tables from items-base.json. These are read from
+ * the WHOLE legend list, not just allowed sources, because a 2024 item can
+ * still carry a bare (2014-defaulting) code.
+ */
+function buildItemLegends(baseData) {
+	const typeNames = new Map();
+	for (const entry of baseData.itemType || []) {
+		typeNames.set(itemCodeKey(entry.abbreviation, entry.source), entry.name);
+	}
+
+	const propertyNames = new Map();
+	for (const entry of baseData.itemProperty || []) {
+		// The readable name usually sits on the first nested entry; a couple
+		// carry it at the top level instead.
+		const readable = (entry.entries && entry.entries[0] && entry.entries[0].name) || entry.name;
+		propertyNames.set(itemCodeKey(entry.abbreviation, entry.source), readable);
+	}
+
+	const masteryNames = new Map();
+	for (const entry of baseData.itemMastery || []) {
+		masteryNames.set(itemCodeKey(entry.name, entry.source), entry.name);
+	}
+
+	return { typeNames, propertyNames, masteryNames };
+}
+
+/*
+ * A `property` or `mastery` list may hold either a plain code string, or an
+ * object like {uid: "2H|XPHB", note: "unless mounted"}. This gets the code
+ * out of either shape.
+ */
+function getItemCodeUid(value) {
+	if (typeof value === "string") return value;
+	if (value !== null && typeof value === "object" && value.uid) return value.uid;
+	return undefined;
+}
+
+function extractItems() {
+	console.log("\n--- ITEMS ---");
+
+	const itemsData = readJson(path.join(SOURCE_DATA_DIR, "items.json"));
+	const baseData = readJson(path.join(SOURCE_DATA_DIR, "items-base.json"));
+
+	console.log(`items.json lists:      ${Object.keys(itemsData).filter((k) => Array.isArray(itemsData[k])).map((k) => `${k}(${itemsData[k].length})`).join(", ")}`);
+	console.log(`items-base.json lists: ${Object.keys(baseData).filter((k) => Array.isArray(baseData[k])).map((k) => `${k}(${baseData[k].length})`).join(", ")}`);
+
+	/*
+	 * Both files load together so `_copy` can resolve across them. `itemGroup`
+	 * joins the pool for the same reason, but is NOT part of the output — it
+	 * holds groupings (e.g. "all the Bead of Force variants") rather than
+	 * items a character owns. A temporary marker tracks where each came from.
+	 */
+	const pool = [
+		...(baseData.baseitem || []).map((entry) => ({ ...entry, __list: "baseitem" })),
+		...(itemsData.item || []).map((entry) => ({ ...entry, __list: "item" })),
+		...(itemsData.itemGroup || []).map((entry) => ({ ...entry, __list: "itemGroup" })),
+	];
+
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(pool, "items");
+
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`  ...of which had a _mod:     ${copyStats.copiesWithMod}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
+
+	const kept = resolved.filter(
+		(entry) => ALLOWED_SOURCES.includes(entry.source) && entry.__list !== "itemGroup",
+	);
+
+	// --- resolve the codes ---------------------------------------------------
+	const legends = buildItemLegends(baseData);
+	const unknown = { type: new Set(), property: new Set(), mastery: new Set(), dmgType: new Set() };
+
+	for (const item of kept) {
+		if (item.type !== undefined) {
+			const { abbreviation, source } = unpackItemCode(item.type);
+			const name = legends.typeNames.get(itemCodeKey(abbreviation, source));
+			if (name) item.typeFull = name;
+			else unknown.type.add(item.type);
+		}
+
+		if (Array.isArray(item.property)) {
+			item.propertyFull = item.property.map((value) => {
+				const uid = getItemCodeUid(value);
+				if (uid === undefined) return null;
+				const { abbreviation, source } = unpackItemCode(uid);
+				const name = legends.propertyNames.get(itemCodeKey(abbreviation, source));
+				if (!name) unknown.property.add(uid);
+				return name || uid;
+			}).filter((value) => value !== null);
+		}
+
+		if (Array.isArray(item.mastery)) {
+			item.masteryFull = item.mastery.map((value) => {
+				const uid = getItemCodeUid(value);
+				if (uid === undefined) return null;
+				const { abbreviation, source } = unpackItemCode(uid);
+				const name = legends.masteryNames.get(itemCodeKey(abbreviation, source));
+				if (!name) unknown.mastery.add(uid);
+				return name || uid;
+			}).filter((value) => value !== null);
+		}
+
+		if (item.dmgType !== undefined) {
+			const name = DMG_TYPE_TO_FULL[item.dmgType];
+			if (name) item.dmgTypeFull = name;
+			else unknown.dmgType.add(item.dmgType);
+		}
+
+		// The marker was only for filtering; it must not reach the output.
+		delete item.__list;
+	}
+
+	for (const [family, codes] of Object.entries(unknown)) {
+		if (codes.size) warnings.push(`[items] unknown ${family} code(s) with no legend entry: ${[...codes].join(", ")}`);
+	}
+
+	// --- report --------------------------------------------------------------
+	const bySource = {};
+	for (const item of kept) bySource[item.source] = (bySource[item.source] || 0) + 1;
+
+	console.log(`Passed the source filter:     ${kept.length}`);
+	for (const source of Object.keys(bySource).sort()) console.log(`    ${source.padEnd(6)} ${bySource[source]}`);
+
+	const counts = {
+		"type -> typeFull": kept.filter((i) => i.type !== undefined).length,
+		"property -> propertyFull": kept.filter((i) => Array.isArray(i.property)).length,
+		"mastery -> masteryFull": kept.filter((i) => Array.isArray(i.mastery)).length,
+		"dmgType -> dmgTypeFull": kept.filter((i) => i.dmgType !== undefined).length,
+	};
+	for (const [label, total] of Object.entries(counts)) console.log(`    ${label.padEnd(26)} ${total}`);
+	console.log(`    weapons / armour / shields  ${kept.filter((i) => i.weapon).length} / ${kept.filter((i) => i.armor).length} / ${kept.filter((i) => unpackItemCode(i.type || "").abbreviation === "S").length}`);
+
+	const outputFile = path.join(OUTPUT_DIR, "items.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
+
+	return warnings;
+}
+
+/* ============================================================================
  * SECTION 5 — MAIN
  * ==========================================================================*/
 
@@ -1682,6 +1875,7 @@ function main() {
 	allWarnings.push(...extractBackgrounds());
 	allWarnings.push(...extractClasses());
 	allWarnings.push(...extractOptionalFeatures());
+	allWarnings.push(...extractItems());
 	// ---------------------------------------------------------------
 
 	console.log(`\n${"=".repeat(64)}`);
