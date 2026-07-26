@@ -1,166 +1,222 @@
 # Project Notes
 
-
 ## Where we are
 Phase 0 complete. Tools installed, repo connected to GitHub, 5etools data
 extracted into data/ via scripts/extract-data.js, verified by
 scripts/validate-data.js (103 checks green).
+Nothing has been built yet; data/ is the only output so far.
 
 ## Next step
 Phase 1: build the actual app — character creation from the extracted data,
 display, use at the table, saving.
-Nothing has been built yet; data/ is the only output so far.
+First sub-task: a renderer for 5etools markup (see Open questions).
 
+## Setup facts
+Windows. VS Code + Claude Code. Node.js and npm installed.
+Repo: https://github.com/JustKesu/Familliar
+Local path: C:\Users\Danik\Documents\Familliar
+
+Source data (gitignored, never modified):
+  data-source/5etools-src-main/5etools-src-main/data/
+  NOTE the doubled folder name — the zip nests one level.
+Generated output (tracked in git): data/
+
+Run:
+  node scripts/extract-data.js     # regenerates data/
+  node scripts/validate-data.js    # 103 checks, exit code 1 on failure
+
+## Content scope
+ALLOWED_SOURCES: XPHB, XGE, TCE, EFA, XDMG, MPMM
+ALLOWED_CLASS_SOURCES: XPHB, EFA  (the class EDITION, not the book)
+
+  XPHB  Player's Handbook 2024      — core
+  XGE   Xanathar's Guide            — subclasses, spells, feats
+  TCE   Tasha's Cauldron            — subclasses, spells, feats
+  EFA   Eberron: Forge of Artificer — 2024-rules Artificer
+  XDMG  Dungeon Master's Guide 2024 — magic item catalogue
+  MPMM  Monsters of the Multiverse  — 2014 species pool
+
+Deliberately excluded: PHB 2014, RHW (Reanimator subclass), all adventure
+modules, UA/playtest, Plane Shift booklets, VGM/MTF (superseded by MPMM).
+XMM (Monster Manual 2025) is NOT in the allowed list — monsters are a
+separate feature, not needed for a character sheet.
+
+## Output files
+  data/feats.json               138  (XPHB 80, EFA 28, XGE 15, TCE 15)
+  data/spells.json              508  (XPHB 391, XGE 95, TCE 21, EFA 1)
+  data/species.json              87  (XPHB 34, MPMM 44, EFA 9)
+  data/backgrounds.json          33  (XPHB 16, EFA 17)
+  data/classes.json             127  (13 classes + 114 subclasses)
+  data/class-features.json      279
+  data/subclass-features.json   465
+  data/optional-features.json   131  (XPHB 58, TCE 47, XGE 22, EFA 4)
+  data/items.json               943  (XDMG 593, XPHB 217, TCE 84,
+                                      XGE 43, EFA 6)
 
 ## Open questions
 
-### Where will 5etools data live at deployment time (phase 1+)
-For now: data stored locally in `data-source/`, not tracked by Git.
-Problem: once the app runs from a URL, a browser on someone else's
-computer can't see files on my disk. Data needs to be available
-online somehow.
+### 5etools markup tags — REQUIRED before any UI work
+Description text is not plain English. It contains 5etools' own syntax:
+{@damage 8d6}, {@dice 1d10}, {@condition prone}, {@spell fireball},
+{@item longsword}, {@variantrule Heroic Inspiration|XPHB},
+{@filter Origin feat|feats|category=o}, {@scaledamage 8d6|3-9|1d6}.
+Extraction leaves these untouched on purpose.
+The app needs a renderer that converts them to readable text or links.
+Reference implementation: js/render.js in the source repo.
 
-Options:
-1. Data inside a public repo – simplest, works for everyone.
-   Licensing question: MIT covers 5etools' code, not the content
-   itself (which comes from WotC).
-2. Private repo + deployment via Vercel/Netlify – data isn't
-   publicly exposed for download.
-3. Each user uploads their own JSON files, app stores them in
-   the browser.
+### `entries` arrays are not plain strings
+They mix strings with nested objects ({type: "entries"}, {type: "list"},
+tables...). The renderer must recurse, not join.
 
-Decision needed before first deployment to a URL.
-Until then, figure out how much data the app actually needs –
-might be a fraction of the full set.
+### Fluff / lore text not extracted
+Descriptive text and images live in separate fluff-*.json files, matched
+to entries by name. Nothing from them is currently extracted. Decide in
+phase 1 whether species/spell descriptions are needed.
+
+### Where will data live at deployment time
+Currently data/ is tracked in git and would deploy with the app.
+Options if that becomes a licensing concern:
+1. Public repo (current default) — simplest, works for everyone.
+   MIT covers 5etools' code, not the content itself (WotC).
+2. Private repo + Vercel/Netlify — data not publicly downloadable.
+3. Each user uploads their own JSON files, stored in the browser.
+Revisit before first deployment to a URL.
 
 ### Magic item variants — deferred to phase 2
-data/magicvariants.json holds 214 templates ("+1 Weapon") that combine
-with base items from items-base.json at runtime via a `requires`/`inherits`
-match. 5etools does not pre-generate the combinations; they're computed in
-the browser. Expanding them would produce thousands of entries.
-Phase 1: base equipment + named magic items from XDMG only.
+magicvariants.json holds 214 templates ("+1 Weapon") combined with base
+items at runtime via requires/inherits. Not pre-generated by 5etools;
+expanding them would produce thousands of entries.
+Phase 1: base equipment + named magic items only.
 
-### _abstract / _implementations not yet supported
-7 entries in races.json (Dragonborn XPHB and similar) use a template form
-with {{variable}} substitution instead of plain _versions. The extractor
-warns and skips them. Must be implemented before species extraction is
-trustworthy.
+### Magic Initiate parent entry — UI decision
+_versions expansion keeps the generic parent selectable alongside its
+three class variants, matching 5etools. For a character sheet the generic
+one may not be a valid pick. Decide whether to hide parents with variants.
 
-### Magic Initiate parent entry — UI decision for later
-Expanding _versions keeps the generic parent ("Magic Initiate") selectable
-alongside its three class variants, matching how 5etools behaves.
-For a character sheet the generic one may not be a valid pick. Decide at
-the UI stage whether to hide parents that have variants.
+### EFA background count — worth verifying
+EFA contributes 17 backgrounds, more than XPHB's 16. Surprising for a
+single-class book. Not blocking; sanity-check against the book sometime.
+
+### 50 extraction warnings, all in discarded sources
+PHB (30) and EGW (20), all 2014 Dragonborn variants. They never reach
+output. If EGW is ever allowed, the 20 need investigating first.
 
 ## Decisions
+
 ### _copy resolution
-295 entries across the data use `_copy` (inherit from another entry),
-77 of those also use `_mod`. Only four mod operations occur in this data:
-insertArr, replaceArr, appendArr, replaceTxt.
-Decision: write our own small resolver rather than depending on 5etools
-code. Reference implementation for checking semantics:
-js/utils.js, class _DataUtilBrewHelper, method _doMod (~line 6094).
-Copies may point at sources we don't extract (PHB, DMG, SCAG, PSA, PSK,
-DSotDQ), so: load everything → resolve copies → only then filter by source.
+295 entries use `_copy` (inherit from another entry), 77 also use `_mod`.
+Six mod operations occur: appendArr, prependArr, insertArr, replaceArr,
+removeArr, replaceTxt. All implemented in our own resolver.
+Reference for semantics: js/utils.js, class _DataUtilBrewHelper,
+method _doMod (~line 6094).
+Copies point at sources we don't extract (PHB, DMG, SCAG, PSA, PSK,
+DSotDQ), so the order is fixed: load everything → resolve copies →
+expand _versions → only then filter by source. Never filter first.
 
-### Optional features
-data/optionalfeatures.json holds Eldritch Invocations, Fighting Styles,
-Metamagic, Battle Master manoeuvres etc. 131 entries from our sources.
-Class linkage is encoded in `featureType` (e.g. FS:F = Fighting Style,
-Fighter), not in a separate field — we need our own lookup table for that.
-Included in extraction.
+### _versions and _abstract/_implementations — both implemented
+_versions spawns real selectable variants (Magic Initiate → 3 class
+versions). _abstract + _implementations is the template form with
+{{variable}} substitution (Dragonborn → 10 colours).
+Substitution applies to strings at any depth, never to object keys.
+The parent entry stays selectable, matching 5etools.
 
-### Subclass feature levels — RESOLVED
-5etools already ships XPHB-converted versions of XGE/TCE subclasses,
-with feature levels remapped to the 2024 progression (e.g. Forge Domain:
-level 1 and 2 features folded into level 3, level 8 features dropped).
-The originals (classSource "PHB") and the conversions (classSource "XPHB")
-both exist in the same file.
-Decision: filter subclasses by classSource "XPHB", not by source.
-No manual level remapping needed.
-
-### Content scope for phase 1
-Sources: XPHB, XGE, TCE, EFA (2024-rules Artificer). Everything else
-excluded for now. RHW (Reanimator subclass) deliberately skipped.
+### Subclass feature levels — RESOLVED, no manual work needed
+5etools already ships XPHB-converted versions of XGE/TCE subclasses with
+feature levels remapped to the 2024 progression (Forge Domain: level 1
+and 2 features folded into level 3, level 8 features dropped).
+Originals (classSource "PHB") and conversions (classSource "XPHB") both
+exist in the same file. We take the conversions.
 
 ### Subclass filtering rule
-Filter subclasses by `classSource` in ["XPHB", "EFA"], not by `source`.
+classSource must be in ALLOWED_CLASS_SOURCES (XPHB, EFA) — the class
+EDITION. AND source must be in ALLOWED_SOURCES — the BOOK it was printed
+in. Both conditions.
 All 57 XGE/TCE subclasses have XPHB conversions; all 4 TCE Artificer
 subclasses have EFA conversions. Nothing is missing.
-Caveat: Reanimator has source RHW but classSource EFA — excluded by an
-additional check on `source` being in the allowed list.
 
-### Species (races) scope
-2024 species identified by `edition: "one"` (sources XPHB, EFA, RHW).
-MPMM included as the 2014 species pool (30 entries) — it supersedes the
-VGM/MTF versions, which are excluded as duplicates (all 14 have
-reprintedAs pointing at MPMM).
-MPMM entries carry an `ability` field (e.g. Aasimar cha +2); XPHB species
-have none, because 2024 moves ability bonuses to backgrounds.
-Decision: strip the `ability` field from MPMM species on extraction.
+### Species scope
+2024 species identified by `edition: "one"`. MPMM included as the 2014
+species pool; it supersedes VGM/MTF, which are excluded as duplicates
+(all 14 have reprintedAs pointing at MPMM).
+MPMM has NO `ability` field — MPMM (2022) already replaced fixed ASIs
+with floating ones. Nothing to strip. The stripping code is kept as a
+guard and the validator asserts no species has an `ability` field.
 Ability bonuses always come from the background.
 
-## Expected extraction counts (verify after each run)
-Feats: XPHB 77, XGE 15, TCE 15
-Subclasses: 57 (classSource XPHB) + 4 Artificer (classSource EFA)
-Optional features: XPHB 58, TCE 47, XGE 22, EFA 4 = 131
-Species: 18 with edition "one" (XPHB/EFA/RHW) + 30 MPMM
-Backgrounds: XPHB 16
-Items: XPHB 217, XDMG 593
-
-### Spell availability: `classes` vs `classVariants`
-XGE and TCE spells were never on core class lists — they're granted as
-optional/variant content, so they land in `classVariant`, not `class`.
-109 spells have an empty `classes` array (all 95 XGE + 14 TCE); only 3
-have no availability at all.
-UI must read both `classes` and `classVariants`, ideally flagged
-differently, or every XGE/TCE spell will look uncastable.
-
-### Spell counts extracted
-XPHB 391, XGE 95, TCE 21, EFA 1. XDMG and MPMM have no spell files.
-
-### Species `ability` field — correction
-Earlier assumption was wrong: MPMM entries have NO `ability` field.
-MPMM (2022) already replaced fixed ASIs with floating ones. Nothing to
-strip; the stripping code is kept as a guard, and the validator asserts
-no species has an `ability` field.
-
-### Background field shapes (XPHB)
-`ability`: 2-element array — [0] = +2/+1 spread, [1] = +1 to all three.
-The trio of abilities differs per background. UI must let the player
-choose which spread and which abilities.
-`feats`: array of one object keyed by a lowercase "name|source" string,
-value true — e.g. {"magic initiate; cleric|xphb": true}. The feat name is
-the KEY, not a value.
-`skillProficiencies`: always exactly 2, fixed.
-`toolProficiencies`: named tool, or a category choice
-({"anyArtisansTool": 1}) — 5 of 16 use the choice form.
-`startingEquipment`: [{A: [...items...], B: [coins]}], only keys A and B.
-`languageProficiencies` absent — 2024 moved languages out of backgrounds.
-
-### TRAP: feat reference casing
-15 of 16 XPHB backgrounds use lowercase feat references ("skilled|xphb"),
-but Noble uses "Skilled|xphb". Always lowercase both sides before matching
-or Noble silently loses its origin feat.
+### Feature files kept separate, not inlined
+classes.json keeps reference strings; feature text lives in
+class-features.json and subclass-features.json. The app joins them via
+the `id` fields. Avoids duplicating text in two structures.
 
 ### Feature reference IDs
-Every feature gets a stable `id`; classes/subclasses get matching
+Every feature has a stable `id`; classes/subclasses have matching
 `classFeatureIds` / `subclassFeatureIds` alongside the original strings.
-Format:
   cf|name|className|classSource|level|source
   scf|name|className|classSource|subclassShortName|subclassSource|level|source
 All lowercase. Zero collisions, zero dangling references (744 checked).
 
-TRAP: a blank classSource in a reference string means "PHB", NOT "same as
-this class". "Second Wind|Fighter||1" is the 2014 fighter.
+### Item code legends
+type -> itemType list in items-base.json
+property -> itemProperty list, mastery -> itemMastery list (same file)
+dmgType -> Parser.DMGTYPE_JSON_TO_FULL, js/parser.js:4483
+rarity and weaponCategory need no lookup — already plain words.
+Resolved fields added alongside originals: typeFull, propertyFull,
+masteryFull, dmgTypeFull.
+itemGroup (109 entries) is loaded so _copy resolves, but excluded from
+output — it holds groupings, not ownable items.
 
-TRAP: features must be kept by REFERENCE, not by matching the feature's own
-className/classSource against a surviving class. The EFA Artificer's
-subclasses are _copy-derived from TCE and inherit references pointing at
-classSource=TCE features. Owner-matching drops 227 valid features.
+## Traps — things that silently break
 
-### Artificer infusions — UI note
+### Blank source means PHB, not "same as this"
+In class-feature references AND item codes, a blank/missing source
+defaults to the 2014 PHB. "Second Wind|Fighter||1" is the 2014 fighter.
+Bare item type "M" is the 2014 melee weapon; "M|XPHB" is the 2024 one.
+
+### Features must be kept by REFERENCE, not by owner match
+Matching a feature's own className/classSource against a surviving class
+drops 227 valid features. The EFA Artificer's subclasses are _copy-derived
+from TCE and inherit references pointing at classSource=TCE features.
+
+### Item legends must be built from the FULL list
+58 kept items are typed via 2014 legend entries. Pruning the legend tables
+to allowed sources silently loses their readable type.
+
+### Feat reference casing
+15 of 16 XPHB backgrounds use lowercase feat references ("skilled|xphb"),
+but Noble uses "Skilled|xphb". Lowercase both sides before matching or
+Noble silently loses its origin feat.
+
+### Spell availability: `classes` vs `classVariants`
+XGE and TCE spells were never on core class lists — they're granted as
+optional/variant content and land in `classVariant`, not `class`.
+109 spells have an empty `classes` array (all 95 XGE + 14 TCE); only 3
+have no availability at all.
+The UI must read both, ideally flagged differently, or every XGE/TCE
+spell will look uncastable.
+
+### Armour AC — the data won't tell you
+`ac` is the base number. There is NO Dex cap field; the cap is implied by
+the armour type code (LA light = uncapped, MA medium = +2, HA heavy = none).
+The AC calculation must hardcode that rule.
+`strength` is a string ("13") or null; `stealth: true` means disadvantage.
+
+### Identifying item kinds
+Weapons and armour have boolean flags (`weapon`, `armor`).
+Shields have NO flag — identify by type abbreviation "S".
+Containers have NO flag — identify by presence of `containerCapacity`.
+
+### Artificer infusions
 AI (Artificer Infusion, 16 entries) exists in optional-features.json, but
-the EFA Artificer grants infusions through a regular class feature, not via
-`optionalfeatureProgression`. A UI driving infusion selection off
+the EFA Artificer grants infusions through a regular class feature, not
+via `optionalfeatureProgression`. A UI driving infusion selection off
 optionalfeatureProgression alone will show nothing for Artificer.
+
+### Background field shapes (XPHB)
+`ability`: 2-element array — [0] = +2/+1 spread, [1] = +1 to all three.
+The trio differs per background; the UI must let the player choose.
+`feats`: array of one object keyed by a lowercase "name|source" string,
+value true. The feat name is the KEY, not a value.
+`skillProficiencies`: always exactly 2, fixed.
+`toolProficiencies`: named tool, or a category choice ({"anyArtisansTool": 1}).
+`startingEquipment`: [{A: [...items...], B: [coins]}], only keys A and B.
+`languageProficiencies` absent — 2024 moved languages out of backgrounds.

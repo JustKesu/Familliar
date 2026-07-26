@@ -1,2 +1,9 @@
 data-source/
 node_modules/
+
+# Build output
+dist/
+
+# Copied from data/ by scripts/copy-data.js so Vite can serve it.
+# data/ at the repo root is the single source of truth and is tracked.
+public/data/
