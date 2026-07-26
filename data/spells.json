@@ -1126,6 +1126,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -1346,7 +1353,15 @@
 		"availableTo": {
 			"classes": [],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -1510,6 +1525,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
 				}
 			],
 			"feats": [],
@@ -3387,6 +3409,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -4418,6 +4447,13 @@
 				}
 			],
 			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
 				{
 					"className": "Wizard",
 					"classSource": "XPHB",
@@ -6331,7 +6367,15 @@
 					]
 				}
 			],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -7448,6 +7492,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -10627,7 +10678,15 @@
 					]
 				}
 			],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -11263,6 +11322,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -12264,6 +12330,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -12705,6 +12778,13 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
@@ -12715,6 +12795,13 @@
 					"subclassName": "Oath of Devotion",
 					"subclassShortName": "Devotion",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -12837,6 +12924,13 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Rogue",
@@ -13361,6 +13455,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -13373,6 +13474,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -13470,7 +13578,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Boon of Siberys",
@@ -13615,6 +13731,13 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
 				{
 					"className": "Wizard",
 					"classSource": "XPHB",
@@ -13795,6 +13918,13 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Swarmkeeper",
+					"subclassShortName": "Swarmkeeper",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Rogue",
@@ -14166,7 +14296,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Mark of Warding",
@@ -14318,7 +14456,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -14415,6 +14561,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Barbarian",
+					"classSource": "XPHB",
+					"subclassName": "Path of the Ancestral Guardian",
+					"subclassShortName": "Ancestral Guardian",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
@@ -14434,6 +14587,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -14509,9 +14669,30 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -14590,6 +14771,27 @@
 					"subclassName": "Battle Smith",
 					"subclassShortName": "Battle Smith",
 					"subclassSource": "EFA"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -14676,6 +14878,20 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -14848,6 +15064,13 @@
 					"subclassName": "Oath of Vengeance",
 					"subclassShortName": "Vengeance",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -14926,6 +15149,13 @@
 					"subclassName": "Battle Smith",
 					"subclassShortName": "Battle Smith",
 					"subclassSource": "EFA"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -15036,9 +15266,30 @@
 				{
 					"className": "Paladin",
 					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
 					"subclassName": "Oath of Vengeance",
 					"subclassShortName": "Vengeance",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Horizon Walker",
+					"subclassShortName": "Horizon Walker",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Monster Slayer",
+					"subclassShortName": "Monster Slayer",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Rogue",
@@ -15046,6 +15297,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -15194,11 +15452,25 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Paladin",
 					"classSource": "XPHB",
 					"subclassName": "Oath of Devotion",
 					"subclassShortName": "Devotion",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -15459,11 +15731,25 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -15594,6 +15880,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Evoker",
@@ -15673,7 +15966,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -15871,6 +16172,13 @@
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -15966,6 +16274,13 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
+				},
 				{
 					"className": "Druid",
 					"classSource": "XPHB",
@@ -16159,6 +16474,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -16171,6 +16493,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -16259,6 +16588,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Warlock",
@@ -16366,6 +16702,23 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Marid"
+					]
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Illusionist",
@@ -16470,6 +16823,13 @@
 				{
 					"className": "Druid",
 					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
 					"subclassName": "Circle of the Land",
 					"subclassShortName": "Land",
 					"subclassSource": "XPHB",
@@ -16485,11 +16845,28 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Monk",
+					"classSource": "XPHB",
+					"subclassName": "Way of the Sun Soul",
+					"subclassShortName": "Sun Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Efreeti"
+					]
 				},
 				{
 					"className": "Warlock",
@@ -16687,6 +17064,20 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -17162,6 +17553,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -17472,6 +17870,20 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Abjurer",
@@ -17562,6 +17974,13 @@
 					"subclassSource": "EFA"
 				},
 				{
+					"className": "Barbarian",
+					"classSource": "XPHB",
+					"subclassName": "Path of the Ancestral Guardian",
+					"subclassShortName": "Ancestral Guardian",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
@@ -17581,6 +18000,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Warlock",
@@ -17857,6 +18283,20 @@
 					"subclassName": "Alchemist",
 					"subclassShortName": "Alchemist",
 					"subclassSource": "EFA"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -18112,6 +18552,27 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Sorcerer",
 					"classSource": "XPHB",
 					"subclassName": "Draconic Sorcery",
@@ -18203,11 +18664,25 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Paladin",
 					"classSource": "XPHB",
 					"subclassName": "Oath of Devotion",
 					"subclassShortName": "Devotion",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -18569,6 +19044,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Paladin",
 					"classSource": "XPHB",
 					"subclassName": "Oath of Glory",
@@ -18668,6 +19150,30 @@
 					"subclassSource": "XPHB",
 					"subSubclasses": [
 						"Polar Land"
+					]
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Marid"
 					]
 				},
 				{
@@ -18801,6 +19307,13 @@
 					"subclassName": "Trickery Domain",
 					"subclassShortName": "Trickery",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Fighter",
@@ -19108,7 +19621,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -19642,7 +20163,22 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -19800,6 +20336,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Evoker",
@@ -19937,6 +20480,30 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Marid"
+					]
 				}
 			],
 			"feats": [
@@ -20112,7 +20679,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Boon of Siberys",
@@ -20264,6 +20839,20 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
@@ -20347,6 +20936,20 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE"
 				}
 			],
 			"feats": [
@@ -20450,6 +21053,20 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
 				}
 			],
 			"feats": [
@@ -20533,7 +21150,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -20633,6 +21258,20 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE"
+				},
 				{
 					"className": "Wizard",
 					"classSource": "XPHB",
@@ -20920,9 +21559,23 @@
 				{
 					"className": "Druid",
 					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
 					"subclassName": "Circle of the Moon",
 					"subclassShortName": "Moon",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Warlock",
@@ -21371,6 +22024,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "Celestial Patron",
@@ -21453,6 +22113,13 @@
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -21750,6 +22417,20 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE"
 				}
 			],
 			"feats": [
@@ -21876,11 +22557,25 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -22009,6 +22704,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -22607,7 +23309,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -22732,6 +23442,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -22922,6 +23639,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -23141,7 +23865,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -23227,6 +23959,13 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
+				},
 				{
 					"className": "Warlock",
 					"classSource": "XPHB",
@@ -23423,9 +24162,23 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "Trickery Domain",
 					"subclassShortName": "Trickery",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Warlock",
@@ -23780,6 +24533,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Fighter",
+					"classSource": "XPHB",
+					"subclassName": "Arcane Archer",
+					"subclassShortName": "Arcane Archer",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -23906,7 +24666,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Boon of Siberys",
@@ -24073,6 +24841,20 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -24363,6 +25145,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -24813,7 +25602,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Boon of Siberys",
@@ -24913,6 +25710,13 @@
 					"subclassName": "Aberrant Sorcery",
 					"subclassShortName": "Aberrant",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
 				}
 			],
 			"feats": [],
@@ -25183,6 +25987,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -25291,9 +26102,23 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "Light Domain",
 					"subclassShortName": "Light",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Swarmkeeper",
+					"subclassShortName": "Swarmkeeper",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Warlock",
@@ -25531,6 +26356,13 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Ranger",
@@ -25788,6 +26620,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -26069,7 +26908,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -26134,6 +26981,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -26459,6 +27313,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -26471,6 +27332,16 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Efreeti"
+					]
 				},
 				{
 					"className": "Warlock",
@@ -26558,7 +27429,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Boon of Siberys",
@@ -26688,6 +27567,16 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Efreeti"
+					]
 				},
 				{
 					"className": "Warlock",
@@ -26875,11 +27764,35 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Paladin",
 					"classSource": "XPHB",
 					"subclassName": "Oath of Devotion",
 					"subclassShortName": "Devotion",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Efreeti"
+					]
 				}
 			],
 			"feats": [],
@@ -26980,6 +27893,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Fighter",
@@ -27315,6 +28235,16 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Marid"
+					]
 				}
 			],
 			"feats": [
@@ -27408,7 +28338,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -27766,6 +28704,13 @@
 				{
 					"className": "Sorcerer",
 					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
 					"subclassName": "Clockwork Sorcery",
 					"subclassShortName": "Clockwork",
 					"subclassSource": "XPHB"
@@ -27992,11 +28937,25 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Swarmkeeper",
+					"subclassShortName": "Swarmkeeper",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Rogue",
@@ -28086,7 +29045,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -28181,6 +29148,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "Fiend Patron",
@@ -28261,6 +29235,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Spores",
+					"subclassShortName": "Spores",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -28273,6 +29254,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -28612,6 +29600,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -28971,6 +29966,13 @@
 					"subclassSource": "EFA"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -28990,6 +29992,16 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Djinni"
+					]
 				},
 				{
 					"className": "Warlock",
@@ -29105,9 +30117,23 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -29195,6 +30221,13 @@
 					"subclassName": "Oath of Devotion",
 					"subclassShortName": "Devotion",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Warlock",
@@ -29399,6 +30432,13 @@
 					"subclassName": "Circle of the Stars",
 					"subclassShortName": "Stars",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -29554,6 +30594,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "Celestial Patron",
@@ -29674,6 +30721,23 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Djinni"
+					]
 				},
 				{
 					"className": "Wizard",
@@ -29931,7 +30995,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Mark of Hospitality",
@@ -30091,7 +31163,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -30193,6 +31273,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Horizon Walker",
+					"subclassShortName": "Horizon Walker",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
@@ -30270,7 +31357,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -30363,6 +31458,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -30464,6 +31566,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -30608,7 +31717,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Boon of Siberys",
@@ -30693,6 +31810,20 @@
 					"subclassName": "Battle Smith",
 					"subclassShortName": "Battle Smith",
 					"subclassSource": "EFA"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Paladin",
@@ -30904,9 +32035,30 @@
 				{
 					"className": "Paladin",
 					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
 					"subclassName": "Oath of Vengeance",
 					"subclassShortName": "Vengeance",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Monster Slayer",
+					"subclassShortName": "Monster Slayer",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -31022,6 +32174,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Druid",
 					"classSource": "XPHB",
 					"subclassName": "Circle of the Land",
@@ -31041,6 +32200,20 @@
 				{
 					"className": "Paladin",
 					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
 					"subclassName": "Oath of Vengeance",
 					"subclassShortName": "Vengeance",
 					"subclassSource": "XPHB"
@@ -31051,6 +32224,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -31124,7 +32304,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -31415,6 +32603,13 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Rogue",
@@ -31762,6 +32957,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Fighter",
@@ -32221,6 +33423,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -32328,6 +33537,20 @@
 					"subSubclasses": [
 						"Tropical Land"
 					]
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Swarmkeeper",
+					"subclassShortName": "Swarmkeeper",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Warlock",
@@ -32894,6 +34117,13 @@
 				{
 					"className": "Sorcerer",
 					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
 					"subclassName": "Draconic Sorcery",
 					"subclassShortName": "Draconic",
 					"subclassSource": "XPHB"
@@ -33068,6 +34298,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -33186,6 +34423,13 @@
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -33415,6 +34659,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Warlock",
@@ -33648,6 +34899,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Evoker",
@@ -33815,6 +35073,13 @@
 					"subclassSource": "EFA"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -33827,6 +35092,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -33947,6 +35219,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -34294,6 +35573,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Swarmkeeper",
+					"subclassShortName": "Swarmkeeper",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
@@ -34447,11 +35733,25 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Monster Slayer",
+					"subclassShortName": "Monster Slayer",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -34848,6 +36148,13 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "War Domain",
 					"subclassShortName": "War",
 					"subclassSource": "XPHB"
@@ -35090,9 +36397,23 @@
 				{
 					"className": "Druid",
 					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
 					"subclassName": "Circle of the Moon",
 					"subclassShortName": "Moon",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -35147,7 +36468,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -35230,9 +36559,23 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -35469,6 +36812,23 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Dao"
+					]
 				}
 			],
 			"feats": [],
@@ -35666,6 +37026,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -36632,6 +37999,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Ranger",
 					"classSource": "XPHB",
 					"subclassName": "Fey Wanderer",
@@ -36747,6 +38121,13 @@
 					"subclassName": "Oath of Vengeance",
 					"subclassShortName": "Vengeance",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Horizon Walker",
+					"subclassShortName": "Horizon Walker",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Ranger",
@@ -36970,11 +38351,25 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Druid",
 					"classSource": "XPHB",
 					"subclassName": "Circle of the Moon",
 					"subclassShortName": "Moon",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Paladin",
@@ -37494,6 +38889,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
@@ -37790,11 +39192,25 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Rogue",
@@ -38132,6 +39548,13 @@
 				{
 					"className": "Warlock",
 					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
 					"subclassName": "Archfey Patron",
 					"subclassShortName": "Archfey",
 					"subclassSource": "XPHB"
@@ -38246,6 +39669,20 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Wizard",
@@ -38399,7 +39836,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -38497,6 +39942,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Abjurer",
@@ -38573,7 +40025,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Boon of Siberys",
@@ -38662,6 +40122,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Paladin",
@@ -38990,7 +40457,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -39046,7 +40521,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -39261,6 +40744,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -39388,6 +40878,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Fighter",
+					"classSource": "XPHB",
+					"subclassName": "Arcane Archer",
+					"subclassShortName": "Arcane Archer",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Fighter",
@@ -40051,6 +41548,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -40084,6 +41588,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -40219,11 +41730,32 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Horizon Walker",
+					"subclassShortName": "Horizon Walker",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Monster Slayer",
+					"subclassShortName": "Monster Slayer",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -40328,6 +41860,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -40400,6 +41939,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -40513,6 +42059,13 @@
 					"subclassName": "Alchemist",
 					"subclassShortName": "Alchemist",
 					"subclassSource": "EFA"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -40577,6 +42130,13 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
 				{
 					"className": "Sorcerer",
 					"classSource": "XPHB",
@@ -41027,7 +42587,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Boon of Siberys",
@@ -41229,6 +42797,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Abjurer",
@@ -41303,6 +42878,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -41422,7 +43004,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -41583,6 +43173,20 @@
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Warlock",
@@ -41764,6 +43368,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "Celestial Patron",
@@ -41863,6 +43474,37 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Dao"
+					]
 				}
 			],
 			"feats": [
@@ -41972,6 +43614,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Druid",
+					"classSource": "XPHB",
+					"subclassName": "Circle of Wildfire",
+					"subclassShortName": "Wildfire",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -41984,6 +43633,16 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Efreeti"
+					]
 				},
 				{
 					"className": "Warlock",
@@ -42149,9 +43808,23 @@
 				{
 					"className": "Paladin",
 					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
 					"subclassName": "Oath of Vengeance",
 					"subclassShortName": "Vengeance",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -42227,7 +43900,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -42300,6 +43981,13 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "Light Domain",
 					"subclassShortName": "Light",
 					"subclassSource": "XPHB"
@@ -42310,6 +43998,13 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of the Watchers",
+					"subclassShortName": "Watchers",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Rogue",
@@ -42418,6 +44113,16 @@
 				{
 					"className": "Warlock",
 					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Djinni"
+					]
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
 					"subclassName": "Archfey Patron",
 					"subclassShortName": "Archfey",
 					"subclassSource": "XPHB"
@@ -42502,6 +44207,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -42514,6 +44226,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -42909,6 +44628,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Abjurer",
@@ -43018,6 +44744,13 @@
 					"subclassName": "Oath of Devotion",
 					"subclassShortName": "Devotion",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -43217,6 +44950,13 @@
 					"subclassName": "Battle Smith",
 					"subclassShortName": "Battle Smith",
 					"subclassSource": "EFA"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -43445,6 +45185,20 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
 				}
 			],
 			"feats": [
@@ -43733,6 +45487,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Twilight Domain",
+					"subclassShortName": "Twilight",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Druid",
 					"classSource": "XPHB",
 					"subclassName": "Circle of the Land",
@@ -43748,6 +45509,13 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Rogue",
@@ -43893,6 +45661,23 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Marid"
+					]
 				}
 			],
 			"feats": [
@@ -43982,6 +45767,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Fighter",
@@ -44175,6 +45967,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -44445,6 +46244,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -44715,6 +46521,16 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Dao"
+					]
 				}
 			],
 			"feats": [],
@@ -44805,6 +46621,13 @@
 					"subclassName": "War Domain",
 					"subclassShortName": "War",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [],
@@ -44897,6 +46720,20 @@
 					"subclassName": "War Domain",
 					"subclassShortName": "War",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -44967,7 +46804,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -45362,6 +47207,23 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Dao"
+					]
 				}
 			],
 			"feats": [
@@ -45454,6 +47316,20 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Conquest",
+					"subclassShortName": "Conquest",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Paladin",
@@ -45956,6 +47832,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "Celestial Patron",
@@ -46223,6 +48106,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
 				}
 			],
 			"feats": [],
@@ -46589,6 +48479,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Evoker",
@@ -46678,6 +48575,13 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
 				{
 					"className": "Wizard",
 					"classSource": "XPHB",
@@ -46889,6 +48793,13 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
 				{
 					"className": "Wizard",
 					"classSource": "XPHB",
@@ -47602,6 +49513,13 @@
 					"subclassName": "Cartographer",
 					"subclassShortName": "Cartographer",
 					"subclassSource": "EFA"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Horizon Walker",
+					"subclassShortName": "Horizon Walker",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -47819,6 +49737,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -48319,6 +50244,23 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Fathomless",
+					"subclassShortName": "Fathomless",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Djinni"
+					]
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Evoker",
@@ -48505,6 +50447,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -48619,6 +50568,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Wizard",
@@ -48928,7 +50884,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -48999,6 +50963,13 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				},
 				{
 					"className": "Wizard",
 					"classSource": "XPHB",
@@ -49727,6 +51698,13 @@
 				{
 					"className": "Cleric",
 					"classSource": "XPHB",
+					"subclassName": "Forge Domain",
+					"subclassShortName": "Forge",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
 					"subclassName": "Light Domain",
 					"subclassShortName": "Light",
 					"subclassSource": "XPHB"
@@ -49841,6 +51819,13 @@
 					"subclassName": "Artillerist",
 					"subclassShortName": "Artillerist",
 					"subclassSource": "EFA"
+				},
+				{
+					"className": "Paladin",
+					"classSource": "XPHB",
+					"subclassName": "Oath of Redemption",
+					"subclassShortName": "Redemption",
+					"subclassSource": "XGE"
 				},
 				{
 					"className": "Sorcerer",
@@ -50029,6 +52014,16 @@
 					]
 				},
 				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Dao"
+					]
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Evoker",
@@ -50191,6 +52186,20 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Peace Domain",
+					"subclassShortName": "Peace",
+					"subclassSource": "TCE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -50402,6 +52411,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -50518,6 +52534,13 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Swarmkeeper",
+					"subclassShortName": "Swarmkeeper",
+					"subclassSource": "TCE"
 				},
 				{
 					"className": "Rogue",
@@ -50746,6 +52769,16 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE",
+					"subSubclasses": [
+						"Djinni"
+					]
 				}
 			],
 			"feats": [
@@ -50885,7 +52918,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Genie",
+					"subclassShortName": "Genie",
+					"subclassSource": "TCE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -51091,6 +53132,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [
@@ -51166,7 +53214,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [],
 			"optionalFeatures": []
 		}
@@ -51234,7 +53290,15 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "The Hexblade",
+					"subclassShortName": "Hexblade",
+					"subclassSource": "XGE"
+				}
+			],
 			"feats": [
 				{
 					"name": "Shadow Touched",
@@ -51396,11 +53460,32 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Order Domain",
+					"subclassShortName": "Order",
+					"subclassSource": "TCE"
+				},
+				{
 					"className": "Paladin",
 					"classSource": "XPHB",
 					"subclassName": "Oath of Devotion",
 					"subclassShortName": "Devotion",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Monster Slayer",
+					"subclassShortName": "Monster Slayer",
+					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Divine Soul",
+					"subclassShortName": "Divine Soul",
+					"subclassSource": "XGE"
 				}
 			],
 			"feats": [

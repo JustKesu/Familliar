@@ -939,10 +939,29 @@ function buildSpellAvailability(spell, lookup) {
 	 */
 	if (spellTree.subclass) {
 		for (const [classSource, classMap] of Object.entries(spellTree.subclass)) {
+			/*
+			 * THE TWO SOURCE FIELDS MEAN DIFFERENT THINGS — do not swap them.
+			 *
+			 *   classSource     = which EDITION of the class this is.
+			 *                     "PHB" is the 2014 Fighter, "XPHB" is the
+			 *                     2024 Fighter. We only want 2024 classes, so
+			 *                     this is filtered against
+			 *                     ALLOWED_CLASS_SOURCES (XPHB, EFA).
+			 *
+			 *   subclassSource  = which BOOK the subclass was printed in.
+			 *                     Aberrant Mind comes from TCE, Arcane Archer
+			 *                     from XGE, and both are perfectly legal in a
+			 *                     2024 game. So this is filtered against the
+			 *                     normal book allowlist, ALLOWED_SOURCES.
+			 *
+			 * Filtering subclassSource against ALLOWED_CLASS_SOURCES would
+			 * silently throw away every XGE and TCE subclass.
+			 */
+			if (!ALLOWED_CLASS_SOURCES.includes(classSource)) continue;
+
 			for (const [className, subclassSourceMap] of Object.entries(classMap)) {
 				for (const [subclassSource, subclassMap] of Object.entries(subclassSourceMap)) {
-					// Filter on the SUBCLASS's own source, not the class's.
-					if (!ALLOWED_CLASS_SOURCES.includes(subclassSource)) continue;
+					if (!ALLOWED_SOURCES.includes(subclassSource)) continue;
 
 					for (const [shortName, info] of Object.entries(subclassMap)) {
 						const record = {
