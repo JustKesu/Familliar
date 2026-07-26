@@ -4,12 +4,15 @@
 Phase 0 complete. Tools installed, repo connected to GitHub, 5etools data
 extracted into data/ via scripts/extract-data.js, verified by
 scripts/validate-data.js (103 checks green).
-Nothing has been built yet; data/ is the only output so far.
+
+Phase 1 build order (PHASE1.md section E): step 1 (markup renderer,
+src/markup/) and step 2 (app skeleton + persistence, src/storage/ +
+src/CharacterManager.tsx, including export/import) are DONE. See
+PHASE1.md section D for the storage layer's actual shape.
 
 ## Next step
-Phase 1: build the actual app — character creation from the extracted data,
-display, use at the table, saving.
-First sub-task: a renderer for 5etools markup (see Open questions).
+Phase 1 step 3: character creation — class, species, background, ability
+scores (all three methods).
 
 ## Setup facts
 Windows. VS Code + Claude Code. Node.js and npm installed.
