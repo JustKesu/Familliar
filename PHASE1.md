@@ -334,6 +334,45 @@ verified against the 2024 rules text before coding:
 - Extra Attack does not stack
 - Only one Unarmored Defense applies
 
+### Fighting Styles resolve through feats.json, not optional-features.json
+
+**Verified.** `data/feats.json` contains 80 XPHB feats, including every
+Fighting Style: Dueling, Two-Weapon Fighting, Archery, Defense, Great
+Weapon Fighting, Protection, Blind Fighting, Interception, Thrown Weapon
+Fighting and Unarmed Fighting. Each carries `category: "FS"` and
+`prerequisite: [{ "feature": ["Fighting Style"] }]`.
+
+The 2024 rules moved Fighting Styles out of class features and into
+feats. `College of Swords` (XGE) is the one subclass in the data still
+written the 2014 way: its `optionalfeatureProgression` grants
+`featureType: ["FS:B"]`, a code that pointed at an entry in
+`optional-features.json` under the old scheme. That entry no longer
+exists — not because anything was deleted by this project, but because
+Fighting Styles as a category moved to feats.json when 2014-era
+optional-features got superseded by XPHB. Fighter, Paladin and Ranger
+don't have this problem: none of them use `optionalfeatureProgression`
+for Fighting Style at all, so whatever currently grants them a style
+choice must already route through feats.json some other way.
+
+**Decision:** Fighting Styles are feats.json entries with
+`category: "FS"`, full stop. Any `FS:*` `optionalfeatureProgression`
+reference (currently only College of Swords' `FS:B`) resolves to that
+same feats.json category, not to optional-features.json. The `:B`
+suffix does not name a different data source — the source is always
+feats.json — it constrains WHICH of the category's feats are legal for
+that particular grant (Bard subclass text only calls out Dueling and
+Two-Weapon Fighting as sensible picks).
+
+**What character creation will have to do:** when a class or subclass
+grants a Fighting Style choice, the picker must resolve it against
+`feats.json` filtered by `category === "FS"`, not against
+`optional-features.json`. Where the grant is restricted to a named
+subset (College of Swords: Dueling and Two-Weapon Fighting only), that
+subset has to be read from the subclass's flavor text or hand-mapped,
+since the `FS:B` code alone does not enumerate which two feats it means.
+No resolution code is written yet — this only fixes what the picker
+must look up and where.
+
 ---
 
 ## E. Build order

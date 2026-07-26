@@ -28,6 +28,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { execFileSync } = require("child_process");
 
 /* ============================================================================
  * SECTION 1 — CONFIGURATION
@@ -982,6 +983,25 @@ function validateItems() {
 	checkExpectedCounts(entries, "items");
 }
 
+/*
+ * Runs check-dangling-refs.js (cross-file reference integrity — prerequisites,
+ * granted features, class progressions, etc.) and folds its result into this
+ * script's pass/fail totals.
+ */
+function validateDanglingRefs() {
+	console.log("\n--- check-dangling-refs.js ---");
+	const scriptPath = path.join(__dirname, "check-dangling-refs.js");
+	try {
+		const output = execFileSync(process.execPath, [scriptPath], { encoding: "utf8" });
+		console.log(output.trimEnd());
+		results.passed++;
+	} catch (error) {
+		if (error.stdout) console.log(error.stdout.trimEnd());
+		if (error.stderr) console.log(error.stderr.trimEnd());
+		results.failed++;
+	}
+}
+
 /* ============================================================================
  * SECTION 6 — MAIN
  * ==========================================================================*/
@@ -1001,6 +1021,7 @@ function main() {
 	validateOptionalFeatures();
 	validateItems();
 	validateLanguages();
+	validateDanglingRefs();
 	// ---------------------------------------------------------------
 
 	const total = results.passed + results.failed;
