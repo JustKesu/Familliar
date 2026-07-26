@@ -5,14 +5,16 @@ import type { Character, CharacterClass } from './storage/character'
 import { ClassPicker, type ClassLevelChoice } from './classes/ClassPicker'
 import { AbilityScorePicker } from './abilities/AbilityScorePicker'
 import type { CharacterAbilityScores } from './abilities/abilityScores'
+import { CharacterInspector } from './CharacterInspector'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
  *
  * Just enough to prove persistence and export/import work by hand: list,
  * create (name only — no class/species/etc, that is character creation,
- * step 3), rename, delete, export, import. Replaced by real character
- * creation and the sheet in later steps.
+ * step 3), rename, delete, export, import, and inspect what is actually
+ * stored. Replaced by real character creation (step 3) and the sheet
+ * (step 5).
  */
 
 function describeError(error: unknown): string {
@@ -32,14 +34,18 @@ function download(filename: string, contents: string): void {
 
 function CharacterRow({
 	character,
+	selected,
 	onRename,
 	onDelete,
 	onExport,
+	onInspect,
 }: {
 	character: Character
+	selected: boolean
 	onRename: (id: string, name: string) => void
 	onDelete: (id: string) => void
 	onExport: (id: string) => void
+	onInspect: (id: string) => void
 }): ReactNode {
 	const [editing, setEditing] = useState(false)
 	const [draftName, setDraftName] = useState(character.name)
@@ -54,7 +60,7 @@ function CharacterRow({
 	}
 
 	return (
-		<li className="char-row">
+		<li className={selected ? 'char-row char-row--selected' : 'char-row'}>
 			{editing ? (
 				<input
 					className="char-row__name-input"
@@ -83,6 +89,9 @@ function CharacterRow({
 			</span>
 
 			<span className="char-row__actions">
+				<button type="button" onClick={() => onInspect(character.id)}>
+					Inspect
+				</button>
 				<button type="button" onClick={() => setEditing(true)}>
 					Rename
 				</button>
@@ -112,6 +121,7 @@ function CharacterManager() {
 	const [newName, setNewName] = useState('')
 	const [classChoice, setClassChoice] = useState<ClassLevelChoice | null>(null)
 	const [abilityScores, setAbilityScores] = useState<CharacterAbilityScores | null>(null)
+	const [inspectedId, setInspectedId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	function refresh(): void {
@@ -165,6 +175,7 @@ function CharacterManager() {
 		if (!store.store) return
 		if (!confirm('Delete this character? This cannot be undone.')) return
 		withErrorHandling(() => store.store?.delete(id))
+		setInspectedId((current) => (current === id ? null : current))
 	}
 
 	function handleExport(id: string): void {
@@ -204,7 +215,10 @@ function CharacterManager() {
 	return (
 		<main>
 			<h1>Familliar</h1>
-			<p className="subtitle">Characters — persistence &amp; export/import. Temporary UI.</p>
+			<p className="subtitle">
+				Characters — persistence &amp; export/import. Temporary UI, replaced by real character
+				creation (build order step 3) and the sheet (step 5).
+			</p>
 
 			{loadError && (
 				<p className="error">
@@ -218,18 +232,24 @@ function CharacterManager() {
 			{actionError && <p className="error">{actionError}</p>}
 
 			{!loadError && (
-				<ul className="char-list">
-					{characters.length === 0 && <li className="char-row char-row--empty">No characters saved yet.</li>}
-					{characters.map((character) => (
-						<CharacterRow
-							key={character.id}
-							character={character}
-							onRename={handleRename}
-							onDelete={handleDelete}
-							onExport={handleExport}
-						/>
-					))}
-				</ul>
+				<div className="char-layout">
+					<ul className="char-list">
+						{characters.length === 0 && <li className="char-row char-row--empty">No characters saved yet.</li>}
+						{characters.map((character) => (
+							<CharacterRow
+								key={character.id}
+								character={character}
+								selected={character.id === inspectedId}
+								onRename={handleRename}
+								onDelete={handleDelete}
+								onExport={handleExport}
+								onInspect={setInspectedId}
+							/>
+						))}
+					</ul>
+
+					<CharacterInspector character={characters.find((c) => c.id === inspectedId) ?? null} />
+				</div>
 			)}
 
 			<div className="char-create">

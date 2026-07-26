@@ -8,7 +8,9 @@ scripts/validate-data.js (103 checks green).
 Phase 1 build order (PHASE1.md section E): step 1 (markup renderer,
 src/markup/) and step 2 (app skeleton + persistence, src/storage/ +
 src/CharacterManager.tsx, including export/import) are DONE. See
-PHASE1.md section D for the storage layer's actual shape.
+PHASE1.md section D for the storage layer's actual shape, and
+PHASE1.md section D "Temporary scaffolding" for every throwaway UI
+surface currently in the app.
 
 ## Next step
 Phase 1 step 3: character creation — class, species, background, ability

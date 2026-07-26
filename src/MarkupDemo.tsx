@@ -172,7 +172,8 @@ function MarkupDemo() {
 		<main>
 			<h1>Familliar</h1>
 			<p className="subtitle">
-				5etools markup renderer — build order step 1. Temporary demo page.
+				5etools markup renderer — build order step 1. Temporary demo page, replaced by
+				character creation (step 3) and the sheet (step 5).
 			</p>
 
 			{state.status === 'loading' && <p>Loading data…</p>}
