@@ -19,3 +19,7 @@ Do not re-run the full verification suite after every intermediate step. Run typ
 ## Git
 
 After creating any commit, immediately push it to `origin/main`.
+
+## Running commands
+
+Use the npm scripts defined in `package.json` (`typecheck`, `test`, `build`, `validate-data`, `survey-markup`) rather than invoking tools directly via `npx`. The npm scripts are pre-approved in `.claude/settings.json`; `npx` is not, so every `npx` call costs a permission prompt.
