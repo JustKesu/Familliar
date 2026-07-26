@@ -5542,24 +5542,6 @@
 		]
 	},
 	{
-		"name": "Bead of Nourishment",
-		"source": "XGE",
-		"page": 136,
-		"reprintedAs": [
-			"Bead of Nourishment|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This spongy, flavorless, gelatinous bead dissolves on your tongue and provides as much nourishment as 1 day of rations."
-		],
-		"miscTags": [
-			"CF/W",
-			"CNS"
-		]
-	},
-	{
 		"name": "Bead of Refreshment",
 		"source": "XDMG",
 		"page": 235,
@@ -5574,23 +5556,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		],
-		"miscTags": [
-			"CNS"
-		]
-	},
-	{
-		"name": "Bead of Refreshment",
-		"source": "XGE",
-		"page": 136,
-		"reprintedAs": [
-			"Bead of Refreshment|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This spongy, flavorless, gelatinous bead dissolves in liquid, transforming up to a pint of the liquid into fresh, cold drinking water. The bead has no effect on magical liquids or harmful substances such as poison."
 		],
 		"miscTags": [
 			"CNS"
@@ -6450,23 +6415,6 @@
 		]
 	},
 	{
-		"name": "Boots of False Tracks",
-		"source": "XGE",
-		"page": 136,
-		"referenceSources": [
-			"WDMM"
-		],
-		"reprintedAs": [
-			"Boots of False Tracks|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"Only humanoids can wear these boots. While wearing the boots, you can choose to have them leave tracks like those of another kind of humanoid of your size."
-		]
-	},
-	{
 		"name": "Boots of Levitation",
 		"source": "XDMG",
 		"page": 239,
@@ -7107,23 +7055,6 @@
 		]
 	},
 	{
-		"name": "Candle of the Deep",
-		"source": "XGE",
-		"page": 136,
-		"referenceSources": [
-			"WDMM"
-		],
-		"reprintedAs": [
-			"Candle of the Deep|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"The flame of this candle is not extinguished when immersed in water. It gives off light and heat like a normal candle."
-		]
-	},
-	{
 		"name": "Canvas (1 sq. yd.)",
 		"source": "XDMG",
 		"page": 213,
@@ -7314,34 +7245,6 @@
 	},
 	{
 		"name": "Cauldron of Rebirth",
-		"source": "TCE",
-		"page": 122,
-		"reprintedAs": [
-			"Cauldron of Rebirth|XDMG"
-		],
-		"rarity": "very rare",
-		"reqAttune": "by a druid or warlock",
-		"reqAttuneTags": [
-			{
-				"class": "druid"
-			},
-			{
-				"class": "warlock"
-			}
-		],
-		"wondrous": true,
-		"entries": [
-			"This Tiny pot bears relief scenes of heroes on its cast iron sides. You can use the cauldron as a spellcasting focus for your spells, and it functions as a suitable component for the {@spell scrying} spell. When you finish a long rest, you can use the cauldron to create a {@item potion of greater healing}. The potion lasts for 24 hours, then loses its magic if not consumed.",
-			"As an action, you can cause the cauldron to grow large enough for a Medium creature to crouch within. You can revert the cauldron to its normal size as an action, harmlessly shunting anything that can't fit inside to the nearest unoccupied space.",
-			"If you place the corpse of a humanoid into the cauldron and cover the corpse with 200 pounds of salt (which costs 10 gp) for at least 8 hours, the salt is consumed and the creature returns to life as if by {@spell raise dead} at the next dawn. Once used, this property can't be used again for 7 days."
-		],
-		"attachedSpells": [
-			"raise dead"
-		],
-		"hasFluffImages": true
-	},
-	{
-		"name": "Cauldron of Rebirth",
 		"source": "XDMG",
 		"page": 243,
 		"rarity": "very rare",
@@ -7462,21 +7365,6 @@
 			"Implements - Common|XDMG"
 		],
 		"hasFluffImages": true
-	},
-	{
-		"name": "Charlatan's Die",
-		"source": "XGE",
-		"page": 136,
-		"reprintedAs": [
-			"Charlatan's Die|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"reqAttune": true,
-		"wondrous": true,
-		"entries": [
-			"Whenever you roll this six-sided die, you can control which number it rolls."
-		]
 	},
 	{
 		"name": "Cheese (wedge)",
@@ -7705,23 +7593,6 @@
 		"hasFluffImages": true
 	},
 	{
-		"name": "Cloak of Billowing",
-		"source": "XGE",
-		"page": 136,
-		"referenceSources": [
-			"DIP"
-		],
-		"reprintedAs": [
-			"Cloak of Billowing|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"While wearing this cloak, you can use a bonus action to make it billow dramatically."
-		]
-	},
-	{
 		"name": "Cloak of Displacement",
 		"source": "XDMG",
 		"page": 244,
@@ -7806,25 +7677,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		],
-		"hasFluffImages": true
-	},
-	{
-		"name": "Cloak of Many Fashions",
-		"source": "XGE",
-		"page": 136,
-		"referenceSources": [
-			"DIP",
-			"WBtW"
-		],
-		"reprintedAs": [
-			"Cloak of Many Fashions|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"While wearing this cloak, you can use a bonus action to change the style, color, and apparent quality of the garment. The cloak's weight doesn't change. Regardless of its appearance, the cloak can't be anything but a cloak. Although it can duplicate the appearance of other magic cloaks, it doesn't gain their magical properties."
 		],
 		"hasFluffImages": true
 	},
@@ -7929,24 +7781,6 @@
 		]
 	},
 	{
-		"name": "Clockwork Amulet",
-		"source": "XGE",
-		"page": 137,
-		"referenceSources": [
-			"DIP"
-		],
-		"reprintedAs": [
-			"Clockwork Amulet|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This copper amulet contains tiny interlocking gears and is powered by magic from Mechanus, a plane of clockwork predictability. A creature that puts an ear to the amulet can hear faint ticking and whirring noises coming from within.",
-			"When you make an attack roll while wearing the amulet, you can forgo rolling the {@dice d20} to get a 10 on the die. Once used, this property can't be used again until the next dawn."
-		]
-	},
-	{
 		"name": "Cloth-of-gold vestments",
 		"source": "XDMG",
 		"page": 215,
@@ -7969,20 +7803,6 @@
 		],
 		"lootTables": [
 			"Arcana - Common|XDMG"
-		]
-	},
-	{
-		"name": "Clothes of Mending",
-		"source": "XGE",
-		"page": 137,
-		"reprintedAs": [
-			"Clothes of Mending|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This elegant outfit of traveler's clothes magically mends itself to counteract daily wear and tear. Pieces of the outfit that are destroyed can't be repaired in this way."
 		]
 	},
 	{
@@ -8756,36 +8576,6 @@
 		"typeFull": "Spellcasting Focus"
 	},
 	{
-		"name": "Dark Shard Amulet",
-		"source": "XGE",
-		"page": 137,
-		"reprintedAs": [
-			"Dark Shard Amulet|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"reqAttune": "by a warlock",
-		"reqAttuneTags": [
-			{
-				"class": "warlock"
-			}
-		],
-		"wondrous": true,
-		"focus": [
-			"Warlock"
-		],
-		"entries": [
-			"This amulet is fashioned from a single shard of resilient extraplanar material originating from the realm of your warlock patron. While you are wearing it, you gain the following benefits:",
-			{
-				"type": "list",
-				"items": [
-					"You can use the amulet as a spellcasting focus for your warlock spells.",
-					"You can try to cast a cantrip that you don't know. The cantrip must be on the warlock spell list, and you must make a {@dc 10} Intelligence ({@skill Arcana}) check. If the check succeeds, you cast the spell. If the check fails, so does the spell, and the action used to cast the spell is wasted. In either case, you can't use this property again until you finish a long rest."
-				]
-			}
-		]
-	},
-	{
 		"name": "Decanter of Endless Water",
 		"source": "XDMG",
 		"page": 249,
@@ -9329,107 +9119,6 @@
 	},
 	{
 		"name": "Demonomicon of Iggwilv",
-		"source": "TCE",
-		"page": 125,
-		"referenceSources": [
-			"QftIS",
-			"VEoR",
-			"WBtW"
-		],
-		"reprintedAs": [
-			"Demonomicon of Iggwilv|XDMG"
-		],
-		"rarity": "artifact",
-		"reqAttune": true,
-		"wondrous": true,
-		"recharge": "dawn",
-		"rechargeAmount": "{@dice 1d8}",
-		"charges": 8,
-		"entries": [
-			"An expansive treatise documenting the Abyss's infinite layers and inhabitants, the Demonomicon of Iggwilv is the most thorough and blasphemous tome of demonology in the multiverse. The tome recounts both the oldest and most current profanities of the Abyss and demons. Demons have attempted to censor the text, and while sections have been ripped from the book's spine, the general chapters remain, ever revealing demonic secrets. And the book holds more than blasphemies. Caged behind lines of script roils a secret piece of the Abyss itself, which keeps the book up-to-date, no matter how many pages are removed, and it longs to be more than mere reference material.",
-			{
-				"type": "entries",
-				"name": "Random Properties",
-				"entries": [
-					"The artifact has the following random properties, which you can determine by rolling on the tables in the \"Artifacts\" section of the {@book Dungeon Master's Guide|DMG}:",
-					{
-						"type": "list",
-						"items": [
-							"2 {@table Artifact Properties; Minor Beneficial Properties|dmg|minor beneficial} properties",
-							"1 {@table Artifact Properties; Minor Detrimental Properties|dmg|minor detrimental} property",
-							"1 {@table Artifact Properties; Major Detrimental Properties|dmg|major detrimental} property"
-						]
-					}
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Spells",
-				"entries": [
-					"The book has 8 charges. It regains {@dice 1d8} expended charges daily at dawn. While holding it, you can use an action to cast {@spell Tasha's hideous laughter} from it or to expend 1 or more of its charges to cast one of the following spells (save {@dc 20}) from it: {@spell magic circle} (1 charge), {@spell magic jar} (3 charges), {@spell planar ally} (3 charges), {@spell planar binding} (2 charges), {@spell plane shift} (to layers of the Abyss only; 3 charges), {@spell summon fiend|TCE} (3 charges)."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Abyssal Reference",
-				"entries": [
-					"You can reference the {@i Demonomicon} whenever you make an Intelligence check to discern information about demons or a Wisdom ({@skill Survival}) check related to the Abyss. When you do so, you can add double your proficiency bonus to the check."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Fiendish Scourging",
-				"entries": [
-					"Your magic causes pain to fiends. While carrying the book, when you make a damage roll for a spell you cast against a fiend, you use the maximum possible result instead of rolling."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Ensnarement",
-				"entries": [
-					"While carrying the book, whenever you cast the {@spell magic circle} spell naming only fiends, or the {@spell planar binding} spell targeting a fiend, the spell is cast at 9th level, regardless of what level spell slot you used, if any. Additionally, the fiend has disadvantage on its saving throw against the spell."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Containment",
-				"entries": [
-					"The first 10 pages of the {@i Demonomicon} are blank. As an action while holding the book, you can target a fiend that you can see that is trapped within a {@spell magic circle}. The fiend must succeed on a {@dc 20} Charisma saving throw with disadvantage or become trapped within one of the {@i Demonomicon's} empty blank pages, which fills with writing detailing the trapped creature's widely known name and depravities. Once used, this action can't be used again until the next dawn.",
-					"When you finish a long rest, if you and the {@i Demonomicon} are on the same plane of existence, the trapped creature of the highest challenge rating within the book can attempt to possess you. You must make a {@dc 20} Charisma saving throw. On a failure, you are possessed by the creature, which controls you like a puppet. The possessing creature can release you as an action, appearing in the closest unoccupied space. On a successful save, the fiend can't try to possess you again for 7 days.",
-					"When the tome is discovered, it has {@dice 1d4} fiends occupying its pages, typically an assortment of demons."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Destroying the Demonomicon",
-				"entries": [
-					"To destroy the book, six different demon lords must each tear out a sixth of the book's pages. If this occurs, the pages reappear after 24 hours. Before all those hours pass, anyone who opens the book's remaining binding is transported to a nascent layer of the Abyss that lies hidden within the book. At the heart of this deadly, semi-sentient domain lies a long-lost artifact, {@i Fraz-Urb'luu's Staff}. If the staff is dragged from the pocket plane, the tome is reduced to a mundane and quite out-of-date copy of the {@i Tome of Zyx}, the work that served as the foundation for the {@i Demonomicon}. Once the staff emerges, the demon lord Fraz-Urb'luu instantly knows."
-				]
-			}
-		],
-		"attachedSpells": {
-			"will": [
-				"tasha's hideous laughter"
-			],
-			"charges": {
-				"1": [
-					"magic circle"
-				],
-				"2": [
-					"planar binding"
-				],
-				"3": [
-					"magic jar",
-					"planar ally",
-					"plane shift",
-					"summon fiend|tce"
-				]
-			}
-		},
-		"hasFluffImages": true
-	},
-	{
-		"name": "Demonomicon of Iggwilv",
 		"source": "XDMG",
 		"page": 252,
 		"rarity": "artifact",
@@ -9810,26 +9499,6 @@
 		"hasFluffImages": true
 	},
 	{
-		"name": "Dread Helm",
-		"source": "XGE",
-		"page": 137,
-		"referenceSources": [
-			"DIP",
-			"WBtW",
-			"WDMM"
-		],
-		"reprintedAs": [
-			"Dread Helm|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This fearsome steel helm makes your eyes glow red while you wear it."
-		],
-		"hasFluffImages": true
-	},
-	{
 		"name": "Driftglobe",
 		"source": "XDMG",
 		"page": 254,
@@ -10072,20 +9741,6 @@
 		"lootTables": [
 			"Implements - Common|XDMG",
 			"Relics - Common|XDMG"
-		]
-	},
-	{
-		"name": "Ear Horn of Hearing",
-		"source": "XGE",
-		"page": 137,
-		"reprintedAs": [
-			"Ear Horn of Hearing|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"While held up to your ear, this horn suppresses the effects of the {@condition deafened} condition on you, allowing you to hear normally."
 		]
 	},
 	{
@@ -10515,20 +10170,6 @@
 		]
 	},
 	{
-		"name": "Enduring Spellbook",
-		"source": "XGE",
-		"page": 137,
-		"reprintedAs": [
-			"Enduring Spellbook|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This spellbook, along with anything written on its pages, can't be damaged by fire or immersion in water. In addition, the spellbook doesn't deteriorate with age."
-		]
-	},
-	{
 		"name": "Enspelled Staff (Cantrip)",
 		"source": "XDMG",
 		"page": 258,
@@ -10945,28 +10586,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		]
-	},
-	{
-		"name": "Ersatz Eye",
-		"source": "XGE",
-		"page": 137,
-		"otherSources": [
-			{
-				"source": "EGW"
-			}
-		],
-		"referenceSources": [
-			"FS"
-		],
-		"reprintedAs": [
-			"Ersatz Eye|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This artificial eye replaces a real one that was lost or removed. While the ersatz eye is embedded in your eye socket, it can't be removed by anyone other than you, and you can see through the tiny orb as though it were a normal eye."
 		]
 	},
 	{
@@ -12797,23 +12416,6 @@
 		"hasFluffImages": true
 	},
 	{
-		"name": "Hat of Vermin",
-		"source": "XGE",
-		"page": 137,
-		"reprintedAs": [
-			"Hat of Vermin|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"recharge": "dawn",
-		"rechargeAmount": 3,
-		"charges": 3,
-		"entries": [
-			"This hat has 3 charges. While holding the hat, you can use an action to expend 1 of its charges and speak a command word that summons your choice of a {@creature bat}, a {@creature frog}, or a {@creature rat}. The summoned creature magically appears in the hat and tries to get away from you as quickly as possible. The creature is neither friendly nor hostile, and it isn't under your control. It behaves as an ordinary creature of its kind and disappears after 1 hour or when it drops to 0 hit points. The hat regains all expended charges daily at dawn."
-		]
-	},
-	{
 		"name": "Hat of Wizardry",
 		"source": "XDMG",
 		"page": 267,
@@ -12851,39 +12453,6 @@
 		],
 		"hasFluffImages": true,
 		"typeFull": "Spellcasting Focus"
-	},
-	{
-		"name": "Hat of Wizardry",
-		"source": "XGE",
-		"page": 137,
-		"referenceSources": [
-			"DIP"
-		],
-		"reprintedAs": [
-			"Hat of Wizardry|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"reqAttune": "by a wizard",
-		"reqAttuneTags": [
-			{
-				"class": "wizard"
-			}
-		],
-		"wondrous": true,
-		"focus": [
-			"Wizard"
-		],
-		"entries": [
-			"This antiquated, cone—shaped hat is adorned with gold crescent moons and stars. While you are wearing it, you gain the following benefits:",
-			{
-				"type": "list",
-				"items": [
-					"You can use the hat as a spellcasting focus for your wizard spells.",
-					"You can try to cast a cantrip that you don't know. The cantrip must be on the wizard spell list, and you must make a {@dc 10} Intelligence ({@skill Arcana}) check. If the check succeeds, you cast the spell. If the check fails, so does the spell, and the action used to cast the spell is wasted. In either case, you can't use this property again until you finish a long rest."
-				]
-			}
-		]
 	},
 	{
 		"name": "Headband of Intellect",
@@ -13244,23 +12813,6 @@
 		]
 	},
 	{
-		"name": "Heward's Handy Spice Pouch",
-		"source": "XGE",
-		"page": 137,
-		"reprintedAs": [
-			"Heward's Handy Spice Pouch|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"recharge": "dawn",
-		"rechargeAmount": "{@dice 1d6 + 4}",
-		"charges": 10,
-		"entries": [
-			"This belt pouch appears empty and has 10 charges. While holding the pouch, you can use an action to expend 1 of its charges, speak the name of any nonmagical food seasoning (such as salt, pepper, saffron, or cilantro), and remove a pinch of the desired seasoning from the pouch. A pinch is enough to season a single meal. The pouch regains {@dice 1d6 + 4} expended charges daily at dawn."
-		]
-	},
-	{
 		"name": "Holy Water",
 		"source": "XPHB",
 		"page": 226,
@@ -13355,26 +12907,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		],
-		"typeFull": "Instrument"
-	},
-	{
-		"name": "Horn of Silent Alarm",
-		"source": "XGE",
-		"page": 137,
-		"reprintedAs": [
-			"Horn of Silent Alarm|XDMG"
-		],
-		"baseItem": "horn|phb",
-		"type": "INS",
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"recharge": "dawn",
-		"rechargeAmount": "{@dice 1d4}",
-		"charges": 4,
-		"entries": [
-			"This horn has 4 charges. When you use an action to blow it, one creature of your choice can hear the horn's blare, provided the creature is within 600 feet of the horn and not {@condition deafened}. No other creature hears sound coming from the horn. The horn regains {@dice 1d4} expended charges daily at dawn."
 		],
 		"typeFull": "Instrument"
 	},
@@ -13616,26 +13148,6 @@
 		"hasFluffImages": true
 	},
 	{
-		"name": "Instrument of Illusions",
-		"source": "XGE",
-		"page": 137,
-		"referenceSources": [
-			"DIP"
-		],
-		"reprintedAs": [
-			"Instrument of Illusions|XDMG"
-		],
-		"type": "INS",
-		"tier": "minor",
-		"rarity": "common",
-		"reqAttune": true,
-		"wondrous": true,
-		"entries": [
-			"While you are playing this musical instrument, you can create harmless, illusory visual effects within a 5-foot-radius sphere centered on the instrument. If you are a bard, the radius increases to 15 feet. Sample visual effects include luminous musical notes, a spectral dancer, butterflies, and gently falling snow. The magical effects have neither substance nor sound, and they are obviously illusory. The effects end when you stop playing."
-		],
-		"typeFull": "Instrument"
-	},
-	{
 		"name": "Instrument of Scribing",
 		"source": "XDMG",
 		"page": 271,
@@ -13651,30 +13163,6 @@
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
 		]
-	},
-	{
-		"name": "Instrument of Scribing",
-		"source": "XGE",
-		"page": 138,
-		"referenceSources": [
-			"WBtW"
-		],
-		"reprintedAs": [
-			"Instrument of Scribing|XDMG"
-		],
-		"type": "INS",
-		"tier": "minor",
-		"rarity": "common",
-		"reqAttune": true,
-		"wondrous": true,
-		"recharge": "dawn",
-		"rechargeAmount": 3,
-		"charges": 3,
-		"entries": [
-			"This musical instrument has 3 charges. While you are playing it, you can use an action to expend 1 charge from the instrument and write a magical message on a nonmagical object or surface that you can see within 30 feet of you. The message can be up to six words long and is written in a language you know. If you are a bard, you can scribe an additional seven words and choose to make the message glow faintly, allowing it to be seen in nonmagical darkness. Casting {@spell dispel magic} on the message erases it. Otherwise, the message fades away after 24 hours.",
-			"The instrument regains all expended charges daily at dawn."
-		],
-		"typeFull": "Instrument"
 	},
 	{
 		"name": "Instrument of the Bards, Anstruth Harp",
@@ -14867,20 +14355,6 @@
 		]
 	},
 	{
-		"name": "Lock of Trickery",
-		"source": "XGE",
-		"page": 138,
-		"reprintedAs": [
-			"Lock of Trickery|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This lock appears to be an ordinary lock (of the type described in chapter 5 of the Player's Handbook) and comes with a single key. The tumblers in this lock magically adjust to thwart burglars. Dexterity checks made to pick the lock have disadvantage."
-		]
-	},
-	{
 		"name": "Lolth's Sting",
 		"source": "XDMG",
 		"page": 91,
@@ -15866,52 +15340,6 @@
 		]
 	},
 	{
-		"name": "Mystery Key",
-		"source": "XGE",
-		"page": 138,
-		"referenceSources": [
-			"DIP"
-		],
-		"reprintedAs": [
-			"Mystery Key|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"A question mark is worked into the head of this key. The key has a {@chance 5} chance of unlocking any lock into which it's inserted. Once it unlocks something, the key disappears."
-		]
-	},
-	{
-		"name": "Nature's Mantle",
-		"source": "TCE",
-		"page": 133,
-		"reprintedAs": [
-			"Nature's Mantle|XDMG"
-		],
-		"rarity": "uncommon",
-		"reqAttune": "by a druid or ranger",
-		"reqAttuneTags": [
-			{
-				"class": "druid"
-			},
-			{
-				"class": "ranger"
-			}
-		],
-		"wondrous": true,
-		"weight": 2,
-		"focus": [
-			"Druid",
-			"Ranger"
-		],
-		"entries": [
-			"This cloak shifts color and texture to blend with the terrain surrounding you. While wearing the cloak, you can use it as a spellcasting focus for your druid and ranger spells.",
-			"While you are in an area that is lightly obscured, you can {@action Hide} as a bonus action even if you are being directly observed."
-		],
-		"hasFluffImages": true
-	},
-	{
 		"name": "Nature's Mantle",
 		"source": "XDMG",
 		"page": 280,
@@ -16388,27 +15816,6 @@
 		"hasFluffImages": true
 	},
 	{
-		"name": "Orb of Direction",
-		"source": "XGE",
-		"page": 138,
-		"referenceSources": [
-			"LLK",
-			"WBtW",
-			"WDMM"
-		],
-		"reprintedAs": [
-			"Orb of Direction|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"weight": 3,
-		"entries": [
-			"While holding this orb, you can use an action to determine which way is north. This property functions only on the Material Plane."
-		],
-		"hasFluffImages": true
-	},
-	{
 		"name": "Orb of Dragonkind",
 		"source": "XDMG",
 		"page": 283,
@@ -16534,25 +15941,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		]
-	},
-	{
-		"name": "Orb of Time",
-		"source": "XGE",
-		"page": 138,
-		"referenceSources": [
-			"LLK",
-			"RtG"
-		],
-		"reprintedAs": [
-			"Orb of Time|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"weight": 3,
-		"entries": [
-			"While holding this orb, you can use an action to determine whether it is morning, afternoon, evening, or nighttime outside. This property functions only on the Material Plane."
 		]
 	},
 	{
@@ -16894,23 +16282,6 @@
 		]
 	},
 	{
-		"name": "Perfume of Bewitching",
-		"source": "XGE",
-		"page": 138,
-		"reprintedAs": [
-			"Perfume of Bewitching|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This tiny vial contains magic perfume, enough for one use. You can use an action to apply the perfume to yourself, and its effect lasts 1 hour. For the duration, you have advantage on all Charisma checks directed at humanoids of challenge rating 1 or lower. Those subjected to the perfume's effect are not aware that they've been influenced by magic."
-		],
-		"miscTags": [
-			"CNS"
-		]
-	},
-	{
 		"name": "Periapt of Health",
 		"source": "XDMG",
 		"page": 284,
@@ -17047,25 +16418,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		],
-		"hasFluffImages": true
-	},
-	{
-		"name": "Pipe of Smoke Monsters",
-		"source": "XGE",
-		"page": 138,
-		"referenceSources": [
-			"WBtW",
-			"WDMM"
-		],
-		"reprintedAs": [
-			"Pipe of Smoke Monsters|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"While smoking this pipe, you can use an action to exhale a puff of smoke that takes the form of a single creature, such as a dragon, a flumph, or a froghemoth. The form must be small enough to fit in a 1-foot cube and loses its shape after a few seconds, becoming an ordinary puff of smoke."
 		],
 		"hasFluffImages": true
 	},
@@ -17301,23 +16653,6 @@
 		]
 	},
 	{
-		"name": "Pole of Angling",
-		"source": "XGE",
-		"page": 138,
-		"referenceSources": [
-			"WDMM"
-		],
-		"reprintedAs": [
-			"Pole of Angling|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"While holding this 10-foot pole, you can speak a command word and transform it into a fishing pole with a hook, a line, and a reel. Speaking the command word again changes the fishing pole back into a normal 10-foot pole."
-		]
-	},
-	{
 		"name": "Pole of Collapsing",
 		"source": "XDMG",
 		"page": 286,
@@ -17331,25 +16666,6 @@
 		],
 		"lootTables": [
 			"Implements - Common|XDMG"
-		],
-		"hasFluffImages": true
-	},
-	{
-		"name": "Pole of Collapsing",
-		"source": "XGE",
-		"page": 138,
-		"referenceSources": [
-			"DIP",
-			"WBtW"
-		],
-		"reprintedAs": [
-			"Pole of Collapsing|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"While holding this 10-foot pole, you can use an action to speak a command word and cause it to collapse into a 1-foot-long rod, for ease of storage. The pole's weight doesn't change. You can use an action to speak a different command word and cause the rod to revert to a pole; however, the rod will elongate only as far as the surrounding space allows."
 		],
 		"hasFluffImages": true
 	},
@@ -17414,31 +16730,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Relics - Common|XDMG"
-		]
-	},
-	{
-		"name": "Pot of Awakening",
-		"source": "XGE",
-		"page": 138,
-		"otherSources": [
-			{
-				"source": "IMR",
-				"page": 95
-			}
-		],
-		"referenceSources": [
-			"IMR",
-			"WDMM"
-		],
-		"reprintedAs": [
-			"Pot of Awakening|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"If you plant an ordinary shrub in this 10-pound clay pot and let it grow for 30 days, the shrub magically transforms into an {@creature awakened shrub} at the end of that time. When the shrub awakens, its roots break the pot, destroying it.",
-			"The awakened shrub is friendly toward you. Absent commands from you, it does nothing."
 		]
 	},
 	{
@@ -18483,32 +17774,6 @@
 			"tinderbox|xphb"
 		],
 		"typeFull": "Adventuring Gear"
-	},
-	{
-		"name": "Prosthetic Limb",
-		"source": "TCE",
-		"page": 134,
-		"otherSources": [
-			{
-				"source": "ERLW",
-				"page": 278
-			},
-			{
-				"source": "EGW"
-			}
-		],
-		"referenceSources": [
-			"US"
-		],
-		"reprintedAs": [
-			"Prosthetic Limb|XDMG"
-		],
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This item replaces a lost limb-a hand, an arm, a foot, a leg, or a similar body part. While the prosthetic is attached, it functions identically to the part it replaces. You can detach or reattach it as an action, and it can't be removed against your will. It detaches if you die."
-		],
-		"hasFluffImages": true
 	},
 	{
 		"name": "Prosthetic Limb",
@@ -20802,20 +20067,6 @@
 		]
 	},
 	{
-		"name": "Rope of Mending",
-		"source": "XGE",
-		"page": 138,
-		"reprintedAs": [
-			"Rope of Mending|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"You can cut this 50-foot coil of hempen rope into any number of smaller pieces, and then use an action to speak a command word and cause the pieces to knit back together. The pieces must be in contact with each other and not otherwise in use. A rope of mending is forever shortened if a section of it is lost or destroyed."
-		]
-	},
-	{
 		"name": "Rowboat",
 		"source": "XPHB",
 		"page": 230,
@@ -20872,27 +20123,6 @@
 			"Relics - Common|XDMG"
 		],
 		"typeFull": "Spellcasting Focus"
-	},
-	{
-		"name": "Ruby of the War Mage",
-		"source": "XGE",
-		"page": 138,
-		"reprintedAs": [
-			"Ruby of the War Mage|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"reqAttune": "by a spellcaster",
-		"reqAttuneTags": [
-			{
-				"spellcasting": true
-			}
-		],
-		"wondrous": true,
-		"focus": true,
-		"entries": [
-			"Etched with eldritch runes, this 1-inch-diameter ruby allows you to use a {@filter simple or martial weapon|items|source=phb|category=basic|type=martial weapon;simple weapon} as a spellcasting focus for your spells. For this property to work, you must attach the ruby to the weapon by pressing the ruby against it for at least 10 minutes. Thereafter, the ruby can't be removed unless you detach it as an action or the weapon is destroyed. Not even an {@spell antimagic field} causes it to fall off. The ruby does fall off the weapon if your attunement to the ruby ends."
-		]
 	},
 	{
 		"name": "Sack",
@@ -21632,23 +20862,6 @@
 		"lootTables": [
 			"Armaments - Common|XDMG",
 			"Relics - Common|XDMG"
-		],
-		"typeFull": "Shield"
-	},
-	{
-		"name": "Shield of Expression",
-		"source": "XGE",
-		"page": 139,
-		"reprintedAs": [
-			"Shield of Expression|XDMG"
-		],
-		"type": "S",
-		"tier": "minor",
-		"rarity": "common",
-		"weight": 6,
-		"ac": 2,
-		"entries": [
-			"The front of this shield is shaped in the likeness of a face. While bearing the shield, you can use a bonus action to alter the face's expression."
 		],
 		"typeFull": "Shield"
 	},
@@ -22608,32 +21821,6 @@
 		"dmgTypeFull": "bludgeoning"
 	},
 	{
-		"name": "Staff of Adornment",
-		"source": "XGE",
-		"page": 139,
-		"reprintedAs": [
-			"Staff of Adornment|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"weight": 4,
-		"weaponCategory": "simple",
-		"property": [
-			"V"
-		],
-		"dmg1": "1d6",
-		"dmgType": "B",
-		"dmg2": "1d8",
-		"staff": true,
-		"entries": [
-			"If you place an object weighing no more than 1 pound (such as a shard of crystal, an egg, or a stone) above the tip of the staff while holding it, the object floats an inch from the staff's tip and remains there until it is removed or until the staff is no longer in your possession. The staff can have up to three such objects floating over its tip at any given time. While holding the staff, you can make one or more of the objects slowly spin or turn in place."
-		],
-		"propertyFull": [
-			"Versatile"
-		],
-		"dmgTypeFull": "bludgeoning"
-	},
-	{
 		"name": "Staff of Birdcalls",
 		"source": "XDMG",
 		"page": 307,
@@ -22674,39 +21861,6 @@
 		],
 		"masteryFull": [
 			"Topple"
-		],
-		"dmgTypeFull": "bludgeoning"
-	},
-	{
-		"name": "Staff of Birdcalls",
-		"source": "XGE",
-		"page": 139,
-		"referenceSources": [
-			"DIP"
-		],
-		"reprintedAs": [
-			"Staff of Birdcalls|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"weight": 4,
-		"weaponCategory": "simple",
-		"property": [
-			"V"
-		],
-		"dmg1": "1d6",
-		"dmgType": "B",
-		"dmg2": "1d8",
-		"recharge": "dawn",
-		"rechargeAmount": "{@dice 1d6 + 4}",
-		"charges": 10,
-		"staff": true,
-		"entries": [
-			"This wooden staff is decorated with bird carvings. It has 10 charges. While holding it, you can use an action to expend 1 charge from the staff and cause it to create one of the following sounds out to a range of 60 feet: a finch's chirp, a raven's caw, a duck's quack, a chicken's cluck, a goose's honk, a loon's call, a turkey's gobble, a seagull's cry, an owl's hoot, or an eagle's shriek.",
-			"The staff regains {@dice 1d6 + 4} expended charges daily at dawn. If you expend the last charge, roll a {@dice d20}. On a 1, the staff explodes in a harmless cloud of bird feathers and is lost forever."
-		],
-		"propertyFull": [
-			"Versatile"
 		],
 		"dmgTypeFull": "bludgeoning"
 	},
@@ -22966,35 +22120,6 @@
 		],
 		"masteryFull": [
 			"Topple"
-		],
-		"dmgTypeFull": "bludgeoning"
-	},
-	{
-		"name": "Staff of Flowers",
-		"source": "XGE",
-		"page": 139,
-		"reprintedAs": [
-			"Staff of Flowers|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"weight": 4,
-		"weaponCategory": "simple",
-		"property": [
-			"V"
-		],
-		"dmg1": "1d6",
-		"dmgType": "B",
-		"dmg2": "1d8",
-		"recharge": "dawn",
-		"rechargeAmount": "{@dice 1d6 + 4}",
-		"charges": 10,
-		"staff": true,
-		"entries": [
-			"This wooden staff has 10 charges. While holding it, you can use an action to expend 1 charge from the staff and cause a flower to sprout from a patch of earth or soil within 5 feet of you, or from the staff itself. Unless you choose a specific kind of flower, the staff creates a mild-scented daisy. The flower is harmless and nonmagical, and it grows or withers as a normal flower would. The staff regains {@dice 1d6 + 4} expended charges daily at dawn. If you expend the last charge, roll a {@dice d20}. On a 1, the staff turns into flower petals and is lost forever."
-		],
-		"propertyFull": [
-			"Versatile"
 		],
 		"dmgTypeFull": "bludgeoning"
 	},
@@ -24522,25 +23647,6 @@
 		"hasFluffImages": true
 	},
 	{
-		"name": "Talking Doll",
-		"source": "XGE",
-		"page": 139,
-		"referenceSources": [
-			"WBtW"
-		],
-		"reprintedAs": [
-			"Talking Doll|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"reqAttune": true,
-		"wondrous": true,
-		"entries": [
-			"While this stuffed doll is within 5 feet of you, you can spend a short rest telling it to say up to six phrases, none of which can be more than six words long, and set an observable condition under which the doll speaks each phrase. You can also replace old phrases with new ones. Whatever the condition, it must occur within 5 feet of the doll to make it speak. For example, whenever someone picks up the doll, it might say, \"I want a piece of candy.\" The doll's phrases are lost when your attunement to the doll ends."
-		],
-		"hasFluffImages": true
-	},
-	{
 		"name": "Tankard of Sobriety",
 		"source": "XDMG",
 		"page": 315,
@@ -24552,20 +23658,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		]
-	},
-	{
-		"name": "Tankard of Sobriety",
-		"source": "XGE",
-		"page": 139,
-		"reprintedAs": [
-			"Tankard of Sobriety|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"This tankard has a stern face sculpted into one side. You can drink ale, wine, or any other nonmagical alcoholic beverage poured into it without becoming inebriated. The tankard has no effect on magical liquids or harmful substances such as poison."
 		]
 	},
 	{
@@ -25726,20 +24818,6 @@
 		]
 	},
 	{
-		"name": "Veteran's Cane",
-		"source": "XGE",
-		"page": 139,
-		"reprintedAs": [
-			"Veteran's Cane|XDMG"
-		],
-		"tier": "minor",
-		"rarity": "common",
-		"wondrous": true,
-		"entries": [
-			"When you grasp this walking cane and use a bonus action to speak the command word, it transforms into an ordinary longsword and ceases to be magical."
-		]
-	},
-	{
 		"name": "Vial",
 		"source": "XPHB",
 		"page": 229,
@@ -25863,29 +24941,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		],
-		"typeFull": "Wand"
-	},
-	{
-		"name": "Wand of Conducting",
-		"source": "XGE",
-		"page": 140,
-		"referenceSources": [
-			"WDMM"
-		],
-		"reprintedAs": [
-			"Wand of Conducting|XDMG"
-		],
-		"type": "WD|DMG",
-		"tier": "minor",
-		"rarity": "common",
-		"weight": 1,
-		"recharge": "dawn",
-		"rechargeAmount": 3,
-		"charges": 3,
-		"entries": [
-			"This wand has 3 charges. While holding it, you can use an action to expend 1 of its charges and create orchestral music by waving it around. The music can be heard out to a range of 60 feet and ends when you stop waving the wand.",
-			"The wand regains all expended charges daily at dawn. If you expend the wand's last charge, roll a {@dice d20}. On a 1, a sad tuba sound plays as the wand crumbles to dust and is destroyed."
 		],
 		"typeFull": "Wand"
 	},
@@ -26399,29 +25454,6 @@
 		"lootTables": [
 			"Arcana - Common|XDMG",
 			"Implements - Common|XDMG"
-		],
-		"typeFull": "Wand"
-	},
-	{
-		"name": "Wand of Pyrotechnics",
-		"source": "XGE",
-		"page": 140,
-		"referenceSources": [
-			"DIP"
-		],
-		"reprintedAs": [
-			"Wand of Pyrotechnics|XDMG"
-		],
-		"type": "WD|DMG",
-		"tier": "minor",
-		"rarity": "common",
-		"weight": 1,
-		"recharge": "dawn",
-		"rechargeAmount": "{@dice 1d6 + 1}",
-		"charges": 7,
-		"entries": [
-			"This wand has 7 charges. While holding it, you can use an action to expend 1 of its charges and create a harmless burst of multicolored light at a point you can see up to 60 feet away. The burst of light is accompanied by a crackling noise that can be heard up to 300 feet away. The light is as bright as a torch flame but lasts only a second.",
-			"The wand regains {@dice 1d6 + 1} expended charges daily at dawn. If you expend the wand's last charge, roll a {@dice d20}. On a 1, the wand erupts in a harmless pyrotechnic display and is destroyed."
 		],
 		"typeFull": "Wand"
 	},

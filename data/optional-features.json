@@ -47,27 +47,6 @@
 	},
 	{
 		"name": "Ambush",
-		"source": "TCE",
-		"page": 42,
-		"reprintedAs": [
-			"Ambush|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"MV:B"
-		],
-		"consumes": {
-			"name": "Superiority Die"
-		},
-		"entries": [
-			"When you make a Dexterity ({@skill Stealth}) check or an initiative roll, you can expend one superiority die and add the die to the roll, provided you aren't {@condition incapacitated}."
-		],
-		"featureTypeFull": [
-			"Maneuver, Battle Master"
-		]
-	},
-	{
-		"name": "Ambush",
 		"source": "XPHB",
 		"page": 94,
 		"featureType": [
@@ -226,28 +205,6 @@
 		],
 		"featureTypeFull": [
 			"Eldritch Invocation"
-		]
-	},
-	{
-		"name": "Bait and Switch",
-		"source": "TCE",
-		"page": 42,
-		"reprintedAs": [
-			"Bait and Switch|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"MV:B"
-		],
-		"consumes": {
-			"name": "Superiority Die"
-		},
-		"entries": [
-			"When you're within 5 feet of a creature on your turn, you can expend one superiority die and switch places with that creature, provided you spend at least 5 feet of movement and the creature is willing and isn't {@condition incapacitated}. This movement doesn't provoke opportunity attacks.",
-			"Roll the superiority die. Until the start of your next turn, you or the other creature (your choice) gains a bonus to AC equal to the number rolled."
-		],
-		"featureTypeFull": [
-			"Maneuver, Battle Master"
 		]
 	},
 	{
@@ -579,27 +536,6 @@
 	},
 	{
 		"name": "Commanding Presence",
-		"source": "TCE",
-		"page": 42,
-		"reprintedAs": [
-			"Commanding Presence|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"MV:B"
-		],
-		"consumes": {
-			"name": "Superiority Die"
-		},
-		"entries": [
-			"When you make a Charisma ({@skill Intimidation}), a Charisma ({@skill Performance}), or a Charisma ({@skill Persuasion}) check, you can expend one superiority die and add the superiority die to the ability check."
-		],
-		"featureTypeFull": [
-			"Maneuver, Battle Master"
-		]
-	},
-	{
-		"name": "Commanding Presence",
 		"source": "XPHB",
 		"page": 95,
 		"featureType": [
@@ -759,24 +695,6 @@
 	},
 	{
 		"name": "Eldritch Mind",
-		"source": "TCE",
-		"page": 71,
-		"reprintedAs": [
-			"Eldritch Mind|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"EI"
-		],
-		"entries": [
-			"You have advantage on Constitution saving throws that you make to maintain your {@status concentration} on a spell."
-		],
-		"featureTypeFull": [
-			"Eldritch Invocation"
-		]
-	},
-	{
-		"name": "Eldritch Mind",
 		"source": "XPHB",
 		"page": 155,
 		"featureType": [
@@ -784,34 +702,6 @@
 		],
 		"entries": [
 			"You have {@variantrule Advantage|XPHB} on Constitution saving throws that you make to maintain {@status Concentration|XPHB}."
-		],
-		"featureTypeFull": [
-			"Eldritch Invocation"
-		]
-	},
-	{
-		"name": "Eldritch Smite",
-		"source": "XGE",
-		"page": 56,
-		"reprintedAs": [
-			"Eldritch Smite|XPHB"
-		],
-		"featureType": [
-			"EI"
-		],
-		"prerequisite": [
-			{
-				"pact": "Blade",
-				"level": {
-					"level": 5,
-					"class": {
-						"name": "Warlock"
-					}
-				}
-			}
-		],
-		"entries": [
-			"Once per turn when you hit a creature with your pact weapon, you can expend a warlock spell slot to deal an extra {@damage 1d8} force damage to the target, plus another {@damage 1d8} per level of the spell slot, and you can knock the target {@condition prone} if it is Huge or smaller."
 		],
 		"featureTypeFull": [
 			"Eldritch Invocation"
@@ -1255,47 +1145,6 @@
 	},
 	{
 		"name": "Gift of the Depths",
-		"source": "XGE",
-		"page": 57,
-		"reprintedAs": [
-			"Gift of the Depths|XPHB"
-		],
-		"featureType": [
-			"EI"
-		],
-		"prerequisite": [
-			{
-				"level": {
-					"level": 5,
-					"class": {
-						"name": "Warlock"
-					}
-				}
-			}
-		],
-		"additionalSpells": [
-			{
-				"innate": {
-					"_": {
-						"daily": {
-							"1e": [
-								"water breathing"
-							]
-						}
-					}
-				}
-			}
-		],
-		"entries": [
-			"You can breathe underwater, and you gain a swimming speed equal to your walking speed.",
-			"You can also cast {@spell water breathing} once without expending a spell slot. You regain the ability to do so when you finish a long rest."
-		],
-		"featureTypeFull": [
-			"Eldritch Invocation"
-		]
-	},
-	{
-		"name": "Gift of the Depths",
 		"source": "XPHB",
 		"page": 156,
 		"featureType": [
@@ -1348,37 +1197,6 @@
 		],
 		"entries": [
 			"Whenever you regain hit points while your familiar is within 100 feet of you, treat any dice rolled to determine the hit points you regain as having rolled their maximum value for you."
-		],
-		"featureTypeFull": [
-			"Eldritch Invocation"
-		]
-	},
-	{
-		"name": "Gift of the Protectors",
-		"source": "TCE",
-		"page": 71,
-		"reprintedAs": [
-			"Gift of the Protectors|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"EI"
-		],
-		"prerequisite": [
-			{
-				"level": {
-					"level": 9,
-					"class": {
-						"name": "Warlock"
-					}
-				},
-				"pact": "Tome"
-			}
-		],
-		"entries": [
-			"A new page appears in your Book of Shadows. With your permission, a creature can use its action to write its name on that page, which can contain a number of names equal to your proficiency bonus.",
-			"When any creature whose name is on the page is reduced to 0 hit points but not killed outright, the creature magically drops to 1 hit point instead. Once this magic is triggered, no creature can benefit from it until you finish a long rest.",
-			"As an action, you can magically erase a name on the page by touching it."
 		],
 		"featureTypeFull": [
 			"Eldritch Invocation"
@@ -1645,39 +1463,6 @@
 		"featureTypeFull": [
 			"Fighting Style; Fighter",
 			"Fighting Style; Paladin"
-		]
-	},
-	{
-		"name": "Investment of the Chain Master",
-		"source": "TCE",
-		"page": 71,
-		"reprintedAs": [
-			"Investment of the Chain Master|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"EI"
-		],
-		"prerequisite": [
-			{
-				"pact": "Chain"
-			}
-		],
-		"entries": [
-			"When you cast {@spell find familiar}, you infuse the summoned familiar with a measure of your eldritch power, granting the creature the following benefits:",
-			{
-				"type": "list",
-				"items": [
-					"The familiar gains either a flying speed or a swimming speed (your choice) of 40 feet.",
-					"As a bonus action, you can command the familiar to take the {@action Attack} action.",
-					"The familiar's weapon attacks are considered magical for the purpose of overcoming immunity and resistance to nonmagical attacks.",
-					"If the familiar forces a creature to make a saving throw, it uses your spell save DC.",
-					"When the familiar takes damage, you can use your reaction to grant it resistance against that damage."
-				]
-			}
-		],
-		"featureTypeFull": [
-			"Eldritch Invocation"
 		]
 	},
 	{
@@ -3049,29 +2834,6 @@
 	},
 	{
 		"name": "Seeking Spell",
-		"source": "TCE",
-		"page": 66,
-		"reprintedAs": [
-			"Seeking Spell|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"MM"
-		],
-		"consumes": {
-			"name": "Sorcery Point",
-			"amount": 2
-		},
-		"entries": [
-			"If you make an attack roll for a spell and miss, you can spend 2 sorcery points to reroll the {@dice d20}, and you must use the new roll.",
-			"You can use Seeking Spell even if you have already used a different Metamagic option during the casting of the spell."
-		],
-		"featureTypeFull": [
-			"Metamagic"
-		]
-	},
-	{
-		"name": "Seeking Spell",
 		"source": "XPHB",
 		"page": 142,
 		"featureType": [
@@ -3287,27 +3049,6 @@
 	},
 	{
 		"name": "Tactical Assessment",
-		"source": "TCE",
-		"page": 42,
-		"reprintedAs": [
-			"Tactical Assessment|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"MV:B"
-		],
-		"consumes": {
-			"name": "Superiority Die"
-		},
-		"entries": [
-			"When you make an Intelligence ({@skill Investigation}), an Intelligence ({@skill History}), or a Wisdom ({@skill Insight}) check, you can expend one superiority die and add the superiority die to the ability check."
-		],
-		"featureTypeFull": [
-			"Maneuver, Battle Master"
-		]
-	},
-	{
-		"name": "Tactical Assessment",
 		"source": "XPHB",
 		"page": 95,
 		"featureType": [
@@ -3400,27 +3141,6 @@
 		],
 		"featureTypeFull": [
 			"Eldritch Invocation"
-		]
-	},
-	{
-		"name": "Transmuted Spell",
-		"source": "TCE",
-		"page": 66,
-		"reprintedAs": [
-			"Transmuted Spell|XPHB"
-		],
-		"isClassFeatureVariant": true,
-		"featureType": [
-			"MM"
-		],
-		"consumes": {
-			"name": "Sorcery Point"
-		},
-		"entries": [
-			"When you cast a spell that deals a type of damage from the following list, you can spend 1 sorcery point to change that damage type to one of the other listed types: acid, cold, fire, lightning, poison, thunder."
-		],
-		"featureTypeFull": [
-			"Metamagic"
 		]
 	},
 	{

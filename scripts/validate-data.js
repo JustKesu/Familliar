@@ -69,17 +69,21 @@ const EXPECTED_COUNTS = {
 		// 77 base feats + 3 extra entries created by expanding the `_versions`
 		// on "Magic Initiate" (the parent stays selectable, and it spawns
 		// "; Cleric", "; Druid" and "; Wizard").
+		// TCE dropped from 15 to 5: ten TCE feats were superseded by their
+		// XPHB reprint (see removeSuperseded in extract-data.js).
 		XPHB: 80,
 		XGE: 15,
-		TCE: 15,
+		TCE: 5,
 		EFA: 28, // not in the original spec, but this is what the data contains
 	},
 	// Taken from the first successful extraction run. XDMG and MPMM ship no
 	// spell files at all, so they are absent rather than zero.
+	// TCE (21->12) and XGE (95->85) both dropped: spells superseded by a
+	// newer reprint we also keep are now removed (removeSuperseded).
 	spells: {
 		XPHB: 391,
-		XGE: 95,
-		TCE: 21,
+		XGE: 85,
+		TCE: 12,
 		EFA: 1,
 	},
 	/*
@@ -87,12 +91,13 @@ const EXPECTED_COUNTS = {
 	 *   49 kept before expansion (45 race + 4 MPMM Genasi subraces)
 	 * + 28 from plain `_versions`
 	 * + 10 from the Dragonborn `_abstract` template
-	 * = 87
+	 * = 87, minus 9 MPMM entries superseded by their EFA/XPHB reprint
+	 * (Shifter x4 variants, Aasimar, Goliath, Changeling, Orc) = 78.
 	 * RHW is excluded because it is not in ALLOWED_SOURCES.
 	 */
 	species: {
 		XPHB: 34,
-		MPMM: 44,
+		MPMM: 35,
 		EFA: 9,
 	},
 	backgrounds: {
@@ -107,21 +112,32 @@ const EXPECTED_COUNTS = {
 		TCE: 30,
 		EFA: 6, // 1 class (Artificer) + 5 subclasses
 	},
+	// TCE dropped from 47 to 38: nine TCE optional features were superseded
+	// by their XPHB reprint (removeSuperseded).
 	"optional-features": {
 		XPHB: 58,
-		TCE: 47,
-		XGE: 22,
+		TCE: 38,
+		XGE: 20,
 		EFA: 4,
 	},
 	// `item` + `baseitem` only — `itemGroup` is deliberately not output.
+	// TCE (84->80) and XGE (43->3) both dropped: items superseded by a newer
+	// reprint we also keep (mostly XGE -> XDMG) are now removed.
 	items: {
 		XDMG: 593,
 		XPHB: 217,
-		TCE: 84,
-		XGE: 43,
+		TCE: 80,
+		XGE: 3,
 		EFA: 6,
 	},
+	// Languages ship in a single book today, so this is just the total.
+	languages: {
+		XPHB: 19,
+	},
 };
+
+// Valid values for a language's `type` field.
+const VALID_LANGUAGE_TYPES = ["standard", "rare"];
 
 // Feature files are checked on total size rather than per-book, because a
 // feature's own source is not what decides whether it is kept.
@@ -312,6 +328,57 @@ function checkNameAndEntries(entries, categoryName) {
 	recordCheck(`${categoryName}: name and entries present`, failures);
 }
 
+/*
+ * Splits a "Name|Source" reprintedAs target the same way extract-data.js
+ * does, for the same reason: no default source is implied.
+ */
+function splitReprintTarget(target) {
+	const separatorIndex = target.lastIndexOf("|");
+	if (separatorIndex === -1) return { name: target, source: "" };
+	return { name: target.slice(0, separatorIndex), source: target.slice(separatorIndex + 1) };
+}
+
+/*
+ * CHECK 5 (shared) — no entry should still be superseded by a kept reprint.
+ *
+ * extract-data.js's removeSuperseded() is supposed to drop an entry whose
+ * OWN `reprintedAs` points at another entry we also kept. If one slipped
+ * through, this catches it.
+ *
+ * A `reprintedAs` target's name matching the entry's OWN name is what marks
+ * it as describing THIS entry's reprint. A `_versions` variant (e.g. MPMM
+ * Aasimar's "Necrotic Shroud" sub-entries) can carry a `reprintedAs`
+ * inherited from its PARENT, whose target names the parent instead — that
+ * is a different entry's business, not a leftover duplicate of this one, so
+ * it is correctly not flagged here. See extract-data.js's long comment on
+ * removeSuperseded for the full story (NOTES.md, "Nine species names occur
+ * twice").
+ */
+function checkNoSupersededDuplicates(entries, categoryName) {
+	const keptKeys = new Set(entries.map((entry) => `${entry.name}|${entry.source}`));
+	const failures = [];
+
+	entries.forEach((entry, index) => {
+		const targets = []
+			.concat(entry.reprintedAs || [])
+			.map((target) => (typeof target === "string" ? target : target && target.uid))
+			.filter(Boolean);
+
+		for (const target of targets) {
+			const { name, source } = splitReprintTarget(target);
+			if (name !== entry.name) continue; // describes a parent, not this entry
+			if (keptKeys.has(`${name}|${source}`)) {
+				failures.push({
+					label: describeEntry(entry, index),
+					detail: `still present alongside its reprint "${target}" — removeSuperseded should have dropped it`,
+				});
+			}
+		}
+	});
+
+	recordCheck(`${categoryName}: no leftover superseded duplicates`, failures);
+}
+
 // CHECK 6 — the number of entries from each book matches what we expect.
 function checkExpectedCounts(entries, categoryName) {
 	const expected = EXPECTED_COUNTS[categoryName];
@@ -364,6 +431,7 @@ function validateFeats() {
 	checkSourcesAllowed(entries, "feats");
 	checkNoDuplicates(entries, "feats");
 	checkNameAndEntries(entries, "feats");
+	checkNoSupersededDuplicates(entries, "feats");
 
 	// CHECK 5 — feats specifically must have a valid `category`.
 	const categoryFailures = [];
@@ -411,6 +479,7 @@ function validateSpells() {
 	checkNoLeftoverCopyKeys(entries, "spells", ["_copy", "_mod", "_versions"]);
 	checkSourcesAllowed(entries, "spells");
 	checkNoDuplicates(entries, "spells");
+	checkNoSupersededDuplicates(entries, "spells");
 
 	/*
 	 * Every spell needs the fields a character sheet actually reads.
@@ -509,6 +578,7 @@ function validateSpecies() {
 	checkSourcesAllowed(entries, "species");
 	checkNoDuplicates(entries, "species");
 	checkNameAndEntries(entries, "species");
+	checkNoSupersededDuplicates(entries, "species");
 
 	// Every entry must name its book.
 	const sourceFailures = [];
@@ -572,6 +642,7 @@ function validateBackgrounds() {
 	checkSourcesAllowed(entries, "backgrounds");
 	checkNoDuplicates(entries, "backgrounds");
 	checkNameAndEntries(entries, "backgrounds");
+	checkNoSupersededDuplicates(entries, "backgrounds");
 
 	/*
 	 * A 2024 background is where the character's ability score increases and
@@ -601,6 +672,47 @@ function validateBackgrounds() {
 	);
 
 	checkExpectedCounts(entries, "backgrounds");
+}
+
+function validateLanguages() {
+	console.log("\n--- languages.json ---");
+
+	const entries = loadOutputFile("languages.json");
+	if (!entries) return;
+
+	console.log(`  (${entries.length} entries loaded)`);
+
+	// Languages carry no `entries` array (see extract-data.js), so the shared
+	// checkNameAndEntries check does not apply here.
+	checkNoLeftoverCopyKeys(entries, "languages");
+	checkSourcesAllowed(entries, "languages");
+	checkNoDuplicates(entries, "languages");
+	checkNoSupersededDuplicates(entries, "languages");
+
+	const nameFailures = [];
+	entries.forEach((entry, index) => {
+		if (typeof entry.name !== "string" || entry.name.trim() === "") {
+			nameFailures.push({
+				label: describeEntry(entry, index),
+				detail: `name is missing or empty (got ${JSON.stringify(entry.name)})`,
+			});
+		}
+	});
+	recordCheck("languages: name present", nameFailures);
+
+	// CHECK — every language's `type` must be one of the values 5etools uses.
+	const typeFailures = [];
+	entries.forEach((entry, index) => {
+		if (!VALID_LANGUAGE_TYPES.includes(entry.type)) {
+			typeFailures.push({
+				label: describeEntry(entry, index),
+				detail: `type "${entry.type}" is not one of ${VALID_LANGUAGE_TYPES.join(", ")}`,
+			});
+		}
+	});
+	recordCheck("languages: every language has a valid type", typeFailures);
+
+	checkExpectedCounts(entries, "languages");
 }
 
 /* ============================================================================
@@ -684,6 +796,7 @@ function validateClasses() {
 		}
 	});
 	recordCheck("classes: no duplicate class/subclass entries", dupFailures);
+	checkNoSupersededDuplicates(classEntries, "classes");
 
 	// --- THE IMPORTANT ONE: reference integrity -----------------------------
 	/*
@@ -765,6 +878,7 @@ function validateOptionalFeatures() {
 	checkSourcesAllowed(entries, "optional-features");
 	checkNoDuplicates(entries, "optional-features");
 	checkNameAndEntries(entries, "optional-features");
+	checkNoSupersededDuplicates(entries, "optional-features");
 
 	// Each entry must have its featureType translated into readable text.
 	const typeFailures = [];
@@ -796,6 +910,7 @@ function validateItems() {
 	checkNoLeftoverCopyKeys(entries, "items", ["_copy", "_mod", "_versions", "_abstract", "_implementations"]);
 	checkSourcesAllowed(entries, "items");
 	checkNoDuplicates(entries, "items");
+	checkNoSupersededDuplicates(entries, "items");
 
 	// Every item needs a name and a source. Items deliberately do NOT need an
 	// `entries` array — plenty of mundane gear has no descriptive text.
@@ -885,6 +1000,7 @@ function main() {
 	validateClasses();
 	validateOptionalFeatures();
 	validateItems();
+	validateLanguages();
 	// ---------------------------------------------------------------
 
 	const total = results.passed + results.failed;

@@ -1,0 +1,180 @@
+[
+	{
+		"name": "Abyssal",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "Demons of the Abyss"
+	},
+	{
+		"name": "Celestial",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "Celestials"
+	},
+	{
+		"name": "Common",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Sigil"
+	},
+	{
+		"name": "Common Sign Language",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Sigil"
+	},
+	{
+		"name": "Deep Speech",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "Aberrations"
+	},
+	{
+		"name": "Draconic",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Dragons",
+		"script": "Draconic"
+	},
+	{
+		"name": "Druidic",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "Druidic circles"
+	},
+	{
+		"name": "Dwarvish",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Dwarves"
+	},
+	{
+		"name": "Elvish",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Elves"
+	},
+	{
+		"name": "Giant",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Giants"
+	},
+	{
+		"name": "Gnomish",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Gnomes"
+	},
+	{
+		"name": "Goblin",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Goblinoids"
+	},
+	{
+		"name": "Halfling",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Halflings"
+	},
+	{
+		"name": "Infernal",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "Devils of the Nine Hells"
+	},
+	{
+		"name": "Orc",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "standard",
+		"origin": "Orcs"
+	},
+	{
+		"name": "Primordial",
+		"dialects": [
+			"Auran",
+			"Aquan",
+			"Ignan",
+			"Terran"
+		],
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "Elementals"
+	},
+	{
+		"name": "Sylvan",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "The Feywild"
+	},
+	{
+		"name": "Thieves' Cant",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "Various criminal guilds"
+	},
+	{
+		"name": "Undercommon",
+		"source": "XPHB",
+		"page": 37,
+		"srd52": true,
+		"basicRules2024": true,
+		"type": "rare",
+		"origin": "The Underdark"
+	}
+]

@@ -47,16 +47,26 @@ XMM (Monster Manual 2025) is NOT in the allowed list — monsters are a
 separate feature, not needed for a character sheet.
 
 ## Output files
-  data/feats.json               138  (XPHB 80, EFA 28, XGE 15, TCE 15)
-  data/spells.json              508  (XPHB 391, XGE 95, TCE 21, EFA 1)
-  data/species.json              87  (XPHB 34, MPMM 44, EFA 9)
-  data/backgrounds.json          33  (XPHB 16, EFA 17)
-  data/classes.json             127  (13 classes + 114 subclasses)
-  data/class-features.json      279
-  data/subclass-features.json   465
-  data/optional-features.json   131  (XPHB 58, TCE 47, XGE 22, EFA 4)
-  data/items.json               943  (XDMG 593, XPHB 217, TCE 84,
-                                      XGE 43, EFA 6)
+
+Counts as of the `reprintedAs` deduplication + languages addition (before ->
+after shown where a category changed; unchanged categories listed too):
+
+  data/feats.json               138 -> 128  (XPHB 80, EFA 28, XGE 15, TCE 15->5)
+  data/spells.json              508 -> 489  (XPHB 391, XGE 95->85, TCE 21->12, EFA 1)
+  data/species.json              87 -> 78   (XPHB 34, MPMM 44->35, EFA 9)
+  data/backgrounds.json          33 -> 33   (XPHB 16, EFA 17) — unchanged
+  data/classes.json             127 -> 127  (13 classes + 114 subclasses) — unchanged
+  data/class-features.json      279 -> 279  — unchanged
+  data/subclass-features.json   465 -> 465  — unchanged
+  data/optional-features.json   131 -> 120  (XPHB 58, TCE 47->38, XGE 22->20, EFA 4)
+  data/items.json               943 -> 899  (XDMG 593, XPHB 217, TCE 84->80,
+                                      XGE 43->3, EFA 6)
+  data/languages.json             0 -> 19   (XPHB 19) — new category
+
+The drops are entries superseded by a newer reprint we also keep (e.g. TCE
+"Chef" superseded by its XPHB reprint) — see extract-data.js's
+`removeSuperseded()` and "Nine species names occur twice" below. `validate-data.js`
+now asserts these counts and checks that no superseded duplicate survives.
 
 ## Open questions
 

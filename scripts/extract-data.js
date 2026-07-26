@@ -849,6 +849,27 @@ function buildOneVersion(parentEntry, versionInfo, label, warnings) {
 	delete variant._implementations;
 	delete variant._variables;
 
+	/*
+	 * Was this variant's `reprintedAs` written for THIS variant specifically,
+	 * or just carried over from the parent by the `_preserve: {"*": true}`
+	 * default above? That distinction matters to removeSuperseded(): the
+	 * parent's `reprintedAs` names the parent's own reprint, which is not
+	 * necessarily true of every one of its variants.
+	 *
+	 * Concretely: MPMM Aasimar has three `_versions` (Necrotic Shroud, Radiant
+	 * Consumption, Radiant Soul) that XPHB Aasimar never reprinted — the 2024
+	 * remaster dropped that choice entirely. All three still inherit the
+	 * PARENT's `reprintedAs: ["Aasimar|XPHB"]` under the preserve-everything
+	 * default, which would wrongly read as "this variant was reprinted too."
+	 * Compare Shifter, where EFA genuinely reprints all four variants under
+	 * the exact same names — there the inherited value happens to be right.
+	 * removeSuperseded() tells the two apart using this marker, stripped
+	 * before output either way.
+	 */
+	if (variant.reprintedAs !== undefined) {
+		variant.__reprintedAsInherited = !Object.prototype.hasOwnProperty.call(versionInfo, "reprintedAs");
+	}
+
 	return variant;
 }
 
@@ -951,6 +972,97 @@ function prepareEntries(rawEntries, label) {
 }
 
 /* ============================================================================
+ * SECTION 3d — SUPERSEDED-DUPLICATE REMOVAL (reprintedAs)
+ * ----------------------------------------------------------------------------
+ * Some entries were reprinted in a NEWER book that is also on our allowlist,
+ * so both printings survive the source filter (see NOTES.md, "Nine species
+ * names occur twice" — Shifter, Aasimar, Goliath, Changeling, Orc, and it
+ * turns out several TCE/XGE feats, spells, items and optional features too).
+ *
+ * 5etools marks this itself: the OLDER entry carries `reprintedAs`, pointing
+ * at the entry that replaced it. This is the exact same signal already used
+ * to justify excluding VGM/MTF (NOTES.md, "Species scope") — there the whole
+ * book happened to be off our allowlist already; here both printings are
+ * allowed, so we have to act on the field ourselves.
+ *
+ * THE RULE: if a kept entry's `reprintedAs` points at ANOTHER entry we are
+ * also keeping (same category, matched by name+source), drop the older one.
+ * Runs on each category's final KEPT list — after source filtering — for the
+ * same reason the source filter itself runs last: an older entry's `_copy`
+ * target can live in a book we do not keep, but `reprintedAs` has no such
+ * constraint, so there is no ordering hazard here. Still, checking against
+ * the post-filter list is what "we are also keeping it" has to mean.
+ *
+ * `reprintedAs` values come in two shapes seen in the data: a plain
+ * "Name|Source" string, or an object `{uid: "Name|Source", tag: "..."}"`
+ * (seen on optional features). Both are handled.
+ *
+ * NOTE ON _versions: a variant built from a parent that carries
+ * `reprintedAs` inherits that same field verbatim by default (bookkeeping
+ * keys default to PRESERVED for versions — see buildOneVersion), unless the
+ * variant sets its own. Sometimes the inherited value is still correct
+ * (Shifter's four variants really were ALL reprinted into EFA under the
+ * same names). Sometimes it is not (MPMM Aasimar's three variants were
+ * never reprinted at all — XPHB Aasimar has no `_versions` of its own — so
+ * inheriting the parent's "Aasimar|XPHB" target would wrongly claim they
+ * were). buildOneVersion tags a variant whose `reprintedAs` was inherited
+ * rather than its own via `__reprintedAsInherited`; below, an inherited
+ * value is trusted only for its SOURCE, and matched against this variant's
+ * OWN name — never the inherited target's name, which describes the parent.
+ * ==========================================================================*/
+function getReprintTargets(entry) {
+	return asArray(entry.reprintedAs)
+		.map((target) => (typeof target === "string" ? target : target && target.uid))
+		.filter(Boolean);
+}
+
+/*
+ * Splits a "Name|Source" reprintedAs target into its parts. A missing source
+ * is left blank rather than defaulted — unlike class-feature/item codes,
+ * nothing in the data implies a default book for a reprintedAs target, and
+ * every real example carries an explicit source.
+ */
+function splitReprintTarget(target) {
+	const separatorIndex = target.lastIndexOf("|");
+	if (separatorIndex === -1) return { name: target, source: "" };
+	return { name: target.slice(0, separatorIndex), source: target.slice(separatorIndex + 1) };
+}
+
+function removeSuperseded(kept, label, warnings) {
+	const keptKeys = new Set(kept.map((entry) => makeNameSourceKey(entry.name, entry.source)));
+
+	const survivors = [];
+	const removed = [];
+	for (const entry of kept) {
+		// Never let this bookkeeping-only marker reach the output, whichever
+		// way the entry goes.
+		const reprintedAsInherited = entry.__reprintedAsInherited === true;
+		delete entry.__reprintedAsInherited;
+
+		const supersededByKept = getReprintTargets(entry).some((target) => {
+			const { name, source } = splitReprintTarget(target);
+			// An inherited target names the PARENT's reprint, not necessarily
+			// this variant's — trust only its source, and look for a survivor
+			// under this variant's own name (see the comment above).
+			const lookupName = reprintedAsInherited ? entry.name : name;
+			return keptKeys.has(makeNameSourceKey(lookupName, source));
+		});
+
+		if (supersededByKept) removed.push(entry);
+		else survivors.push(entry);
+	}
+
+	if (removed.length) {
+		console.log(`Superseded duplicates removed (reprintedAs): ${removed.length}`);
+		for (const entry of removed) {
+			console.log(`    ${entry.name} (${entry.source}) -> ${getReprintTargets(entry).join(", ")}`);
+		}
+	}
+
+	return survivors;
+}
+
+/* ============================================================================
  * SECTION 4 — CATEGORY EXTRACTORS
  * ----------------------------------------------------------------------------
  * One function per category. Add new ones here as you go.
@@ -978,7 +1090,11 @@ function extractFeats() {
 	console.log(`  ...into variants:           ${versionStats.variantsCreated}`);
 
 	// Step 2: NOW filter by source (never before resolving — see resolveCopies).
-	const kept = resolved.filter((feat) => ALLOWED_SOURCES.includes(feat.source));
+	let kept = resolved.filter((feat) => ALLOWED_SOURCES.includes(feat.source));
+
+	// Step 2b: drop any entry superseded by a newer reprint we are also
+	// keeping (e.g. TCE "Chef", replaced by the 2024 XPHB "Chef").
+	kept = removeSuperseded(kept, "feats", warnings);
 
 	// Step 3: fill in a missing category.
 	// 2024 feats have a `category`: "O" origin, "G" general, "FS" fighting
@@ -1009,7 +1125,10 @@ function extractFeats() {
 	console.log(`Wrote: ${outputFile}`);
 	console.log(`Size:  ${formatBytes(bytes)}`);
 
-	return warnings;
+	// Exposed so extractSpells() can drop availableTo.feats entries that would
+	// otherwise point at a feat we just removed as superseded.
+	const keptKeys = new Set(kept.map((feat) => makeNameSourceKey(feat.name, feat.source)));
+	return { warnings, keptKeys };
 }
 
 /*
@@ -1035,7 +1154,7 @@ function extractFeats() {
  * The sub-trees are nested by SOURCE first, which is what lets us keep only
  * the 2024 entries.
  */
-function buildSpellAvailability(spell, lookup) {
+function buildSpellAvailability(spell, lookup, featKeptKeys, optionalFeatureKeptKeys) {
 	// We always attach all five lists, even when empty, so every spell has the
 	// same shape and your app never has to check whether a key exists.
 	const availableTo = {
@@ -1130,11 +1249,22 @@ function buildSpellAvailability(spell, lookup) {
 		}
 	}
 
-	// `feat` is { featSource: { featName: true } }
+	/*
+	 * `feat` is { featSource: { featName: true } }
+	 *
+	 * The raw lookup lists a spell as available through BOTH an old book's
+	 * feat and its 2024 reprint side by side (e.g. TCE "Fey Touched" AND
+	 * XPHB "Fey-Touched" both grant Misty Step) — 5etools has not pruned the
+	 * older one out of this generated file. Our own feats.json has, via
+	 * removeSuperseded(), so a reference to the older one is checked against
+	 * feats.json's survivors and dropped if it no longer exists there —
+	 * otherwise this spell would point at a feat our app never sees.
+	 */
 	if (spellTree.feat) {
 		for (const [source, featMap] of Object.entries(spellTree.feat)) {
 			if (!ALLOWED_SOURCES.includes(source)) continue;
 			for (const featName of Object.keys(featMap)) {
+				if (!featKeptKeys.has(makeNameSourceKey(featName, source))) continue;
 				availableTo.feats.push({ name: featName, source });
 			}
 		}
@@ -1142,10 +1272,12 @@ function buildSpellAvailability(spell, lookup) {
 
 	// `optionalfeature` is { source: { name: { featureType: [...] } } }
 	// (featureType "EI" = Eldritch Invocation, "FS" = Fighting Style, etc.)
+	// Same superseded-reference risk as `feat` above, same fix.
 	if (spellTree.optionalfeature) {
 		for (const [source, featureMap] of Object.entries(spellTree.optionalfeature)) {
 			if (!ALLOWED_SOURCES.includes(source)) continue;
 			for (const [featureName, info] of Object.entries(featureMap)) {
+				if (!optionalFeatureKeptKeys.has(makeNameSourceKey(featureName, source))) continue;
 				const record = { name: featureName, source };
 				if (info && info.featureType) record.featureType = [...info.featureType];
 				availableTo.optionalFeatures.push(record);
@@ -1156,7 +1288,7 @@ function buildSpellAvailability(spell, lookup) {
 	return availableTo;
 }
 
-function extractSpells() {
+function extractSpells(featKeptKeys, optionalFeatureKeptKeys) {
 	console.log("\n--- SPELLS ---");
 
 	const spellsDir = path.join(SOURCE_DATA_DIR, "spells");
@@ -1188,13 +1320,17 @@ function extractSpells() {
 	console.log(`  ...into variants:           ${versionStats.variantsCreated}`);
 
 	// Filter by source last, as always.
-	const kept = resolved.filter((spell) => ALLOWED_SOURCES.includes(spell.source));
+	let kept = resolved.filter((spell) => ALLOWED_SOURCES.includes(spell.source));
+
+	// Drop spells superseded by a newer reprint we are also keeping (e.g. TCE
+	// "Mind Sliver", replaced by the 2024 XPHB version).
+	kept = removeSuperseded(kept, "spells", warnings);
 
 	// Attach the class-availability information.
 	const lookup = readJson(path.join(SOURCE_DATA_DIR, "generated", "gendata-spell-source-lookup.json"));
 	let noClassCount = 0;
 	for (const spell of kept) {
-		spell.availableTo = buildSpellAvailability(spell, lookup);
+		spell.availableTo = buildSpellAvailability(spell, lookup, featKeptKeys, optionalFeatureKeptKeys);
 		if (spell.availableTo.classes.length === 0) noClassCount++;
 	}
 
@@ -1256,9 +1392,21 @@ function extractSpecies() {
 	 * Note this correctly drops RHW: it is `edition: "one"` but is not in
 	 * ALLOWED_SOURCES, so it fails both halves of the test.
 	 */
-	const kept = resolved.filter(
+	let kept = resolved.filter(
 		(entry) => (entry.edition === "one" && ALLOWED_SOURCES.includes(entry.source)) || entry.source === "MPMM",
 	);
+
+	/*
+	 * Drop species superseded by a newer reprint we are also keeping. This is
+	 * where it matters most: Shifter, Aasimar, Goliath, Changeling and Orc
+	 * each survive twice over (see NOTES.md, "Nine species names occur
+	 * twice") because both their old (MPMM) and new (EFA/XPHB) printings are
+	 * on our allowlist. Shifter's four `_versions` variants are doubled too,
+	 * and are removed here as well — see the long comment on removeSuperseded
+	 * for why that works even though each variant's own `reprintedAs` still
+	 * names its PARENT's target, not its own.
+	 */
+	kept = removeSuperseded(kept, "species", warnings);
 
 	/*
 	 * Under 2024 rules, ability score increases come from your BACKGROUND,
@@ -1327,7 +1475,8 @@ function extractBackgrounds() {
 	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded}`);
 	console.log(`  ...into variants:           ${versionStats.variantsCreated}`);
 
-	const kept = resolved.filter((background) => ALLOWED_SOURCES.includes(background.source));
+	let kept = resolved.filter((background) => ALLOWED_SOURCES.includes(background.source));
+	kept = removeSuperseded(kept, "backgrounds", warnings);
 
 	const bySource = {};
 	for (const background of kept) bySource[background.source] = (bySource[background.source] || 0) + 1;
@@ -1349,6 +1498,50 @@ function extractBackgrounds() {
 	const bytes = writeJson(outputFile, kept);
 	console.log(`Wrote: ${outputFile}`);
 	console.log(`Size:  ${formatBytes(bytes)}`);
+
+	return warnings;
+}
+
+/*
+ * LANGUAGES
+ *
+ * The 2024 rules moved language selection out of backgrounds entirely (see
+ * NOTES.md, "Background field shapes" — `languageProficiencies` is absent
+ * from every 2024 background). This is the list a player actually picks
+ * from. Lives in its own top-level file in the source data, structured just
+ * like feats.json or backgrounds.json: a flat array under one key, no
+ * `_copy` or `_versions` anywhere in it today. Still run through the shared
+ * pipeline like every other category, so a future edit to the source data
+ * that DID add either would be picked up with no code change here.
+ */
+function extractLanguages() {
+	console.log("\n--- LANGUAGES ---");
+
+	const sourceFile = path.join(SOURCE_DATA_DIR, "languages.json");
+	const rawLanguages = readJson(sourceFile).language;
+
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(rawLanguages, "languages");
+
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
+
+	let kept = resolved.filter((language) => ALLOWED_SOURCES.includes(language.source));
+	kept = removeSuperseded(kept, "languages", warnings);
+
+	const bySource = {};
+	for (const language of kept) bySource[language.source] = (bySource[language.source] || 0) + 1;
+	const byType = {};
+	for (const language of kept) byType[language.type] = (byType[language.type] || 0) + 1;
+
+	console.log(`Passed the source filter:     ${kept.length}`);
+	for (const source of Object.keys(bySource).sort()) {
+		console.log(`    ${source.padEnd(6)} ${bySource[source]}`);
+	}
+	console.log(`By type: ${Object.keys(byType).sort().map((type) => `${type}=${byType[type]}`).join(", ")}`);
+
+	const outputFile = path.join(OUTPUT_DIR, "languages.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
 
 	return warnings;
 }
@@ -1507,7 +1700,8 @@ function extractClasses() {
 	 * CLASSES: the 2024 core classes (XPHB) plus the Artificer, whose 2024
 	 * version lives in EFA.
 	 */
-	const keptClasses = prepared.class.filter((entry) => ALLOWED_CLASS_SOURCES.includes(entry.source));
+	let keptClasses = prepared.class.filter((entry) => ALLOWED_CLASS_SOURCES.includes(entry.source));
+	keptClasses = removeSuperseded(keptClasses, "classes", warnings);
 
 	/*
 	 * SUBCLASSES: both conditions must hold. See the long comment in
@@ -1517,9 +1711,10 @@ function extractClasses() {
 	 *   classSource = the class EDITION it attaches to  -> XPHB / EFA
 	 *   source      = the BOOK it was printed in        -> ALLOWED_SOURCES
 	 */
-	const keptSubclasses = prepared.subclass.filter(
+	let keptSubclasses = prepared.subclass.filter(
 		(entry) => ALLOWED_CLASS_SOURCES.includes(entry.classSource) && ALLOWED_SOURCES.includes(entry.source),
 	);
+	keptSubclasses = removeSuperseded(keptSubclasses, "subclasses", warnings);
 
 	// Give EVERY feature its stable id first, so we can match against them.
 	for (const entry of prepared.classFeature) entry.id = makeClassFeatureIdFromEntry(entry);
@@ -1558,8 +1753,13 @@ function extractClasses() {
 	const referencedClassFeatureIds = new Set(keptClasses.flatMap((entry) => entry.classFeatureIds));
 	const referencedSubclassFeatureIds = new Set(keptSubclasses.flatMap((entry) => entry.subclassFeatureIds));
 
-	const keptClassFeatures = prepared.classFeature.filter((entry) => referencedClassFeatureIds.has(entry.id));
-	const keptSubclassFeatures = prepared.subclassFeature.filter((entry) => referencedSubclassFeatureIds.has(entry.id));
+	let keptClassFeatures = prepared.classFeature.filter((entry) => referencedClassFeatureIds.has(entry.id));
+	let keptSubclassFeatures = prepared.subclassFeature.filter((entry) => referencedSubclassFeatureIds.has(entry.id));
+
+	// Same superseded-duplicate rule as every other category, for consistency
+	// — in practice no class/subclass feature currently carries reprintedAs.
+	keptClassFeatures = removeSuperseded(keptClassFeatures, "class-features", warnings);
+	keptSubclassFeatures = removeSuperseded(keptSubclassFeatures, "subclass-features", warnings);
 
 	// Report, then write the three files.
 	const classesBySource = {};
@@ -1620,7 +1820,8 @@ function extractOptionalFeatures() {
 	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
 	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
 
-	const kept = resolved.filter((entry) => ALLOWED_SOURCES.includes(entry.source));
+	let kept = resolved.filter((entry) => ALLOWED_SOURCES.includes(entry.source));
+	kept = removeSuperseded(kept, "optionalfeatures", warnings);
 
 	// Translate each code using 5etools' own legend. An unknown code is
 	// reported rather than guessed at.
@@ -1648,7 +1849,10 @@ function extractOptionalFeatures() {
 	const outputFile = path.join(OUTPUT_DIR, "optional-features.json");
 	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
 
-	return warnings;
+	// Exposed so extractSpells() can drop availableTo.optionalFeatures entries
+	// that would otherwise point at one we just removed as superseded.
+	const keptKeys = new Set(kept.map((entry) => makeNameSourceKey(entry.name, entry.source)));
+	return { warnings, keptKeys };
 }
 
 /* ============================================================================
@@ -1770,9 +1974,13 @@ function extractItems() {
 	console.log(`  ...of which had a _mod:     ${copyStats.copiesWithMod}`);
 	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
 
-	const kept = resolved.filter(
+	let kept = resolved.filter(
 		(entry) => ALLOWED_SOURCES.includes(entry.source) && entry.__list !== "itemGroup",
 	);
+
+	// Drop items superseded by a newer reprint we are also keeping (mostly
+	// XGE items reprinted in the 2024 XDMG).
+	kept = removeSuperseded(kept, "items", warnings);
 
 	// --- resolve the codes ---------------------------------------------------
 	const legends = buildItemLegends(baseData);
@@ -1869,13 +2077,20 @@ function main() {
 	const allWarnings = [];
 
 	// ---- Add one line per category here as you build them out. ----
-	allWarnings.push(...extractFeats());
-	allWarnings.push(...extractSpells());
+	// Feats and optional features run before spells: extractSpells() needs
+	// their final (post-dedup) survivor sets to drop availableTo references
+	// that would otherwise point at a feat/feature we just removed as
+	// superseded — see the comment on buildSpellAvailability.
+	const featsResult = extractFeats();
+	const optionalFeaturesResult = extractOptionalFeatures();
+	allWarnings.push(...featsResult.warnings);
+	allWarnings.push(...optionalFeaturesResult.warnings);
+	allWarnings.push(...extractSpells(featsResult.keptKeys, optionalFeaturesResult.keptKeys));
 	allWarnings.push(...extractSpecies());
 	allWarnings.push(...extractBackgrounds());
 	allWarnings.push(...extractClasses());
-	allWarnings.push(...extractOptionalFeatures());
 	allWarnings.push(...extractItems());
+	allWarnings.push(...extractLanguages());
 	// ---------------------------------------------------------------
 
 	console.log(`\n${"=".repeat(64)}`);
