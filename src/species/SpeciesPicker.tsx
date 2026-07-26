@@ -23,18 +23,20 @@ function speciesKey(entry: SpeciesEntry): string {
 }
 
 /**
- * Lets the player pick exactly one species. Reports the current choice to
- * the parent on every change — `null` while nothing is selected yet —
- * rather than owning a submit action itself, matching ClassPicker and
- * AbilityScorePicker.
+ * Lets the player pick exactly one species. Displays `value` — the choice as
+ * the caller currently has it — and reports every change upward via
+ * `onChange`, matching ClassPicker: the caller owns the selection, so it
+ * survives this component unmounting and remounting.
  */
 export function SpeciesPicker({
+	value,
 	onChange,
 }: {
+	value: SpeciesChoice | null
 	onChange: (choice: SpeciesChoice | null) => void
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
-	const [selectedKey, setSelectedKey] = useState('')
+	const [selectedKey, setSelectedKey] = useState(value ? `${value.name}|${value.source}` : '')
 
 	useEffect(() => {
 		let cancelled = false

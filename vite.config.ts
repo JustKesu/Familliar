@@ -6,9 +6,12 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   test: {
-    // The renderer is pure presentation with no browser APIs, so tests render
-    // to a static HTML string via react-dom/server. That keeps jsdom and the
-    // testing-library stack out of the dependency tree.
+    // Default environment is 'node': the markup renderer is pure presentation
+    // with no browser APIs, so its tests render to a static HTML string via
+    // react-dom/server and never need a DOM. Component tests that simulate
+    // real interaction (the creation wizard) opt into jsdom per-file with a
+    // `// @vitest-environment jsdom` comment instead of paying the jsdom cost
+    // for every test in the project.
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
   },

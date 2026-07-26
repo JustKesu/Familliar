@@ -42,6 +42,30 @@ function isComplete(assignment: Record<Ability, number | null>): assignment is R
 	return ABILITIES.every((ability) => assignment[ability] !== null)
 }
 
+/**
+ * Reconstructs a ValuePoolAssigner's ability->slot-index assignment from a
+ * previously reported result, so a remounted picker can redisplay a choice
+ * the wizard already has instead of showing blank selects. Matches each
+ * ability's stored score to the first not-yet-used pool slot with that
+ * value, in ability order — exact for the standard array (no duplicate
+ * values) and a reasonable best effort for rolled sets (duplicate totals
+ * are possible there).
+ */
+function reconstructAssignment(values: number[], scores: AbilityScores | undefined): Record<Ability, number | null> {
+	const assignment = emptyAssignment()
+	if (!scores) return assignment
+	const used = new Set<number>()
+	for (const ability of ABILITIES) {
+		const target = scores[ability]
+		const slot = values.findIndex((value, index) => value === target && !used.has(index))
+		if (slot !== -1) {
+			assignment[ability] = slot
+			used.add(slot)
+		}
+	}
+	return assignment
+}
+
 /** Assigns a fixed pool of values (standard array values, or rolled totals) to the six abilities, each slot used once. */
 function ValuePoolAssigner({
 	values,
@@ -89,8 +113,16 @@ function ValuePoolAssigner({
 	)
 }
 
-function StandardArrayMethod({ onResult }: { onResult: (result: CharacterAbilityScores | null) => void }): ReactNode {
-	const [assignment, setAssignment] = useState<Record<Ability, number | null>>(emptyAssignment())
+function StandardArrayMethod({
+	value,
+	onResult,
+}: {
+	value: CharacterAbilityScores | null
+	onResult: (result: CharacterAbilityScores | null) => void
+}): ReactNode {
+	const [assignment, setAssignment] = useState<Record<Ability, number | null>>(() =>
+		reconstructAssignment([...STANDARD_ARRAY], value?.method === 'standardArray' ? value.scores : undefined),
+	)
 
 	function handleAssign(ability: Ability, slotIndex: number | null): void {
 		const next = { ...assignment, [ability]: slotIndex }
@@ -111,15 +143,25 @@ function StandardArrayMethod({ onResult }: { onResult: (result: CharacterAbility
 	)
 }
 
-function PointBuyMethod({ onResult }: { onResult: (result: CharacterAbilityScores | null) => void }): ReactNode {
-	const [scores, setScores] = useState<AbilityScores>({
-		strength: POINT_BUY_MIN,
-		dexterity: POINT_BUY_MIN,
-		constitution: POINT_BUY_MIN,
-		intelligence: POINT_BUY_MIN,
-		wisdom: POINT_BUY_MIN,
-		charisma: POINT_BUY_MIN,
-	})
+function PointBuyMethod({
+	value,
+	onResult,
+}: {
+	value: CharacterAbilityScores | null
+	onResult: (result: CharacterAbilityScores | null) => void
+}): ReactNode {
+	const [scores, setScores] = useState<AbilityScores>(
+		value?.method === 'pointBuy'
+			? value.scores
+			: {
+					strength: POINT_BUY_MIN,
+					dexterity: POINT_BUY_MIN,
+					constitution: POINT_BUY_MIN,
+					intelligence: POINT_BUY_MIN,
+					wisdom: POINT_BUY_MIN,
+					charisma: POINT_BUY_MIN,
+				},
+	)
 
 	const spent = pointBuyTotal(scores)
 	const remaining = POINT_BUY_BUDGET - spent
@@ -171,17 +213,31 @@ function PointBuyMethod({ onResult }: { onResult: (result: CharacterAbilityScore
 	)
 }
 
-function RollMethod({ onResult }: { onResult: (result: CharacterAbilityScores | null) => void }): ReactNode {
-	const [entryMode, setEntryMode] = useState<'roll' | 'manual'>('roll')
-	const [rolledSets, setRolledSets] = useState<RolledSet[] | null>(null)
-	const [assignment, setAssignment] = useState<Record<Ability, number | null>>(emptyAssignment())
-	const [manualScores, setManualScores] = useState<Record<Ability, string>>({
-		strength: '',
-		dexterity: '',
-		constitution: '',
-		intelligence: '',
-		wisdom: '',
-		charisma: '',
+function RollMethod({
+	value,
+	onResult,
+}: {
+	value: CharacterAbilityScores | null
+	onResult: (result: CharacterAbilityScores | null) => void
+}): ReactNode {
+	const priorRoll = value?.method === 'roll' ? value : null
+	const [entryMode, setEntryMode] = useState<'roll' | 'manual'>(
+		priorRoll && !priorRoll.rolledSets ? 'manual' : 'roll',
+	)
+	const [rolledSets, setRolledSets] = useState<RolledSet[] | null>(priorRoll?.rolledSets ?? null)
+	const [assignment, setAssignment] = useState<Record<Ability, number | null>>(() =>
+		priorRoll?.rolledSets
+			? reconstructAssignment(
+					priorRoll.rolledSets.map((set) => set.total),
+					priorRoll.scores,
+				)
+			: emptyAssignment(),
+	)
+	const [manualScores, setManualScores] = useState<Record<Ability, string>>(() => {
+		if (priorRoll && !priorRoll.rolledSets) {
+			return Object.fromEntries(ABILITIES.map((a) => [a, String(priorRoll.scores[a])])) as Record<Ability, string>
+		}
+		return { strength: '', dexterity: '', constitution: '', intelligence: '', wisdom: '', charisma: '' }
 	})
 
 	function handleRoll(): void {
@@ -285,16 +341,19 @@ function RollMethod({ onResult }: { onResult: (result: CharacterAbilityScores | 
 
 /**
  * Lets the player pick one of the three ability score methods and produces
- * the raw six scores. Reports the current result to the parent on every
- * change — `null` while the choice is incomplete — rather than owning a
- * submit action itself, matching ClassPicker.
+ * the raw six scores. Displays `value` — the result as the caller currently
+ * has it — and reports every change upward via `onChange`, matching
+ * ClassPicker: the caller owns the selection, so it survives this component
+ * (and the per-method sub-components) unmounting and remounting.
  */
 export function AbilityScorePicker({
+	value,
 	onChange,
 }: {
+	value: CharacterAbilityScores | null
 	onChange: (result: CharacterAbilityScores | null) => void
 }): ReactNode {
-	const [method, setMethod] = useState<AbilityScoreMethod>('standardArray')
+	const [method, setMethod] = useState<AbilityScoreMethod>(value?.method ?? 'standardArray')
 
 	function selectMethod(next: AbilityScoreMethod): void {
 		setMethod(next)
@@ -318,9 +377,9 @@ export function AbilityScorePicker({
 				</label>
 			</div>
 
-			{method === 'standardArray' && <StandardArrayMethod onResult={onChange} />}
-			{method === 'pointBuy' && <PointBuyMethod onResult={onChange} />}
-			{method === 'roll' && <RollMethod onResult={onChange} />}
+			{method === 'standardArray' && <StandardArrayMethod value={value} onResult={onChange} />}
+			{method === 'pointBuy' && <PointBuyMethod value={value} onResult={onChange} />}
+			{method === 'roll' && <RollMethod value={value} onResult={onChange} />}
 		</div>
 	)
 }

@@ -22,6 +22,14 @@ See PHASE1.md section D for the storage layer's actual shape, and
 PHASE1.md section D "Temporary scaffolding" for every throwaway UI
 surface currently in the app.
 
+Component testing (jsdom + @testing-library/react/user-event) was added
+alongside a fix for a wizard bug: pickers kept their selection in their
+own component state, which unmounted when the player navigated away from
+a step, so only the class step survived a trip back and forth. Pickers
+now display a `value` prop from the wizard instead. See PHASE1.md
+section D, "Tests — static HTML for the renderer, a real DOM for
+interactive components".
+
 ## Next step
 Phase 1 step 3, remaining slices: languages, and the
 level-1-to-target walkthrough of per-level choices, each added to the

@@ -335,12 +335,36 @@ They render as the target's name, with the full UID kept on the element in
 `data-ref-uid`. Inlining the real feature text belongs to the feature that
 builds class progressions.
 
-### Tests render to static HTML, not through jsdom
-Renderer tests use `renderToStaticMarkup` from `react-dom/server` and assert
-on the HTML string. The renderer has no state, no effects and no event
-handlers, so jsdom and the testing-library stack would add three
-dependencies and buy nothing.
-Revisit when a component needs real interaction.
+### Tests — static HTML for the renderer, a real DOM for interactive components
+Two different test styles now coexist, chosen per component:
+
+Renderer tests (`src/markup/`) still use `renderToStaticMarkup` from
+`react-dom/server` and assert on the HTML string. The renderer has no
+state, no effects and no event handlers, so a DOM buys nothing there —
+that reasoning was correct and is unchanged.
+
+Interactive components — starting with the creation wizard and its
+pickers — are tested through `jsdom` and `@testing-library/react`
+(`@testing-library/user-event` for simulated clicks/typing), added as dev
+dependencies. Vitest's default test environment stays `node`; jsdom is
+opted into per file with a `// @vitest-environment jsdom` comment, so the
+renderer's tests keep their original cost.
+
+**Why this was revised.** The original decision assumed no component had
+real interaction to test. `CharacterWizard.tsx` did: it navigates between
+steps and the pickers it wires in own their in-progress selection. A bug
+shipped where every picker except the class step lost its selection when
+the player navigated away and back — the picker's own state unmounted
+with the step; the wizard's state (proven correct by
+`wizardState.test.ts`) was never wrong. The existing renderer-style and
+pure-reducer tests could not have caught this: neither renders a picker
+inside the wizard and drives it with real navigation. The fix was a
+state-ownership change (pickers now display a `value` prop the wizard
+supplies and only report changes upward) verified by
+`CharacterWizard.test.tsx`, which renders the real wizard, makes a
+selection on each step, navigates away and back, and asserts the
+selection is still shown — the class of test the old decision had ruled
+out.
 
 Tests also get their own TypeScript project (tsconfig.test.json) because
 one of them reads data/ off disk. Keeping Node types out of
@@ -542,8 +566,14 @@ Each step is finished and tested before the next begins.
    (`src/backgrounds/`). The wizard shell wiring those four pickers
    together is also done: `src/creation/` (`wizardState.ts` +
    `CharacterWizard.tsx`) — see PHASE1.md section D, "Character creation
-   is a multi-step wizard, organised by category". Not yet built:
-   languages, and the level-1-to-target walkthrough of per-level choices.
+   is a multi-step wizard, organised by category". Each picker now
+   receives its current selection as a `value` prop from the wizard and
+   only reports changes upward, so a selection survives navigating away
+   from and back to its step (previously only the class step did — see
+   section D, "Tests — static HTML for the renderer, a real DOM for
+   interactive components"). Covered by `src/creation/CharacterWizard.test.tsx`.
+   Not yet built: languages, and the level-1-to-target walkthrough of
+   per-level choices.
    `src/CharacterManager.tsx` + `src/CharacterInspector.tsx` (see
    "Temporary scaffolding" below) still provide the temporary list/rename/
    delete/export/import/inspect surface around the real creation flow,

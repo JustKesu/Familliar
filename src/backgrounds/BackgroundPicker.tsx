@@ -42,6 +42,26 @@ function backgroundKey(entry: BackgroundEntry): string {
 	return `${entry.name}|${entry.source}`
 }
 
+/**
+ * Reconstructs the ability-bonus UI choice from the stored map — the inverse
+ * of `abilityBonusChoiceToMap` — so the chooser can redisplay a previously
+ * made choice after this component remounts. `null` if the map doesn't match
+ * either shape (e.g. nothing chosen yet).
+ */
+function abilityBonusMapToChoice(map: Partial<Record<Ability, number>> | undefined): AbilityBonusChoice | null {
+	if (!map) return null
+	const entries = Object.entries(map) as [Ability, number][]
+	if (entries.length === 3 && entries.every(([, bonus]) => bonus === 1)) {
+		return { kind: 'oneEach' }
+	}
+	if (entries.length === 2) {
+		const plusTwo = entries.find(([, bonus]) => bonus === 2)?.[0]
+		const plusOne = entries.find(([, bonus]) => bonus === 1)?.[0]
+		if (plusTwo && plusOne) return { kind: 'twoOne', plusTwo, plusOne }
+	}
+	return null
+}
+
 function EquipmentList({ items }: { items: BackgroundEquipmentEntry[] }): ReactNode {
 	return (
 		<ul className="background-picker__equipment-list">
@@ -64,14 +84,20 @@ function EquipmentList({ items }: { items: BackgroundEquipmentEntry[] }): ReactN
 /** The ability bonus distribution chooser for one background's offered trio. */
 function AbilityBonusChooser({
 	offered,
+	initialChoice,
 	onChoose,
 }: {
 	offered: readonly [Ability, Ability, Ability]
+	initialChoice: AbilityBonusChoice | null
 	onChoose: (choice: AbilityBonusChoice | null) => void
 }): ReactNode {
-	const [mode, setMode] = useState<'twoOne' | 'oneEach'>('twoOne')
-	const [plusTwo, setPlusTwo] = useState<Ability | ''>('')
-	const [plusOne, setPlusOne] = useState<Ability | ''>('')
+	const [mode, setMode] = useState<'twoOne' | 'oneEach'>(initialChoice?.kind ?? 'twoOne')
+	const [plusTwo, setPlusTwo] = useState<Ability | ''>(
+		initialChoice?.kind === 'twoOne' ? initialChoice.plusTwo : '',
+	)
+	const [plusOne, setPlusOne] = useState<Ability | ''>(
+		initialChoice?.kind === 'twoOne' ? initialChoice.plusOne : '',
+	)
 
 	function report(nextMode: 'twoOne' | 'oneEach', nextPlusTwo: Ability | '', nextPlusOne: Ability | ''): void {
 		if (nextMode === 'oneEach') {
@@ -190,18 +216,23 @@ function BackgroundGrants({ background }: { background: BackgroundEntry }): Reac
 
 /**
  * Lets the player pick exactly one background and distribute its ability
- * bonus. Reports the current choice to the parent on every change — `null`
- * until both the background and a valid bonus distribution are set —
- * matching ClassPicker, AbilityScorePicker and SpeciesPicker.
+ * bonus. Displays `value` — the choice as the caller currently has it — and
+ * reports every change upward via `onChange`, matching ClassPicker,
+ * AbilityScorePicker and SpeciesPicker: the caller owns the selection, so it
+ * survives this component unmounting and remounting.
  */
 export function BackgroundPicker({
+	value,
 	onChange,
 }: {
+	value: BackgroundChoice | null
 	onChange: (choice: BackgroundChoice | null) => void
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
-	const [selectedKey, setSelectedKey] = useState('')
-	const [bonusChoice, setBonusChoice] = useState<AbilityBonusChoice | null>(null)
+	const [selectedKey, setSelectedKey] = useState(value ? `${value.name}|${value.source}` : '')
+	const [bonusChoice, setBonusChoice] = useState<AbilityBonusChoice | null>(
+		abilityBonusMapToChoice(value?.abilityBonus),
+	)
 
 	useEffect(() => {
 		let cancelled = false
@@ -270,7 +301,11 @@ export function BackgroundPicker({
 			{selected && (
 				<>
 					<BackgroundGrants background={selected} />
-					<AbilityBonusChooser offered={selected.abilityChoices} onChoose={handleBonusChoice} />
+					<AbilityBonusChooser
+						offered={selected.abilityChoices}
+						initialChoice={bonusChoice}
+						onChoose={handleBonusChoice}
+					/>
 					{!bonusChoice && <p className="background-picker__hint">Choose how to distribute the ability bonus.</p>}
 				</>
 			)}

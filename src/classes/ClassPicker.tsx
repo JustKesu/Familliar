@@ -21,20 +21,23 @@ export interface ClassLevelChoice {
 }
 
 /**
- * Lets the player pick exactly one base class and a level 1-20. Reports the
- * current choice to the parent on every change — `null` while no class is
- * selected yet — rather than owning a submit action itself, since where and
- * when the choice gets used (e.g. as part of creating a character) is up to
- * the caller.
+ * Lets the player pick exactly one base class and a level 1-20. Displays
+ * `value` — the choice as the caller currently has it, e.g. from the wizard
+ * that owns the in-progress character — and reports every change upward via
+ * `onChange` rather than owning the selection itself. That is what lets the
+ * choice survive this component unmounting and remounting when the wizard
+ * navigates away from and back to this step.
  */
 export function ClassPicker({
+	value,
 	onChange,
 }: {
+	value: ClassLevelChoice | null
 	onChange: (choice: ClassLevelChoice | null) => void
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
-	const [selectedKey, setSelectedKey] = useState('')
-	const [level, setLevel] = useState(1)
+	const [selectedKey, setSelectedKey] = useState(value ? `${value.className}|${value.classSource}` : '')
+	const [level, setLevel] = useState(value?.level ?? 1)
 
 	useEffect(() => {
 		let cancelled = false

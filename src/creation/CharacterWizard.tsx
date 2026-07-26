@@ -84,25 +84,37 @@ export function CharacterWizard({
 							onChange={(event) => dispatch({ type: 'setName', name: event.target.value })}
 						/>
 					</label>
-					<ClassPicker onChange={(choice) => dispatch({ type: 'setClassChoice', choice })} />
+					<ClassPicker
+						value={state.data.classChoice}
+						onChange={(choice) => dispatch({ type: 'setClassChoice', choice })}
+					/>
 				</div>
 			)}
 
 			{state.step === 'species' && (
 				<div className="wizard__panel">
-					<SpeciesPicker onChange={(choice) => dispatch({ type: 'setSpeciesChoice', choice })} />
+					<SpeciesPicker
+						value={state.data.speciesChoice}
+						onChange={(choice) => dispatch({ type: 'setSpeciesChoice', choice })}
+					/>
 				</div>
 			)}
 
 			{state.step === 'background' && (
 				<div className="wizard__panel">
-					<BackgroundPicker onChange={(choice) => dispatch({ type: 'setBackgroundChoice', choice })} />
+					<BackgroundPicker
+						value={state.data.backgroundChoice}
+						onChange={(choice) => dispatch({ type: 'setBackgroundChoice', choice })}
+					/>
 				</div>
 			)}
 
 			{state.step === 'abilities' && (
 				<div className="wizard__panel">
-					<AbilityScorePicker onChange={(scores) => dispatch({ type: 'setAbilityScores', scores })} />
+					<AbilityScorePicker
+						value={state.data.abilityScores}
+						onChange={(scores) => dispatch({ type: 'setAbilityScores', scores })}
+					/>
 				</div>
 			)}
 
