@@ -459,6 +459,19 @@ This replaces the temporary `CharacterManager.tsx` flow. The existing
 pickers (class/level, ability scores, species) are expected to be reused
 inside the wizard rather than rewritten.
 
+**Status: shell built (build order step 3, this slice).** `src/creation/`
+holds `wizardState.ts` (pure step order, navigation and save-assembly
+logic, framework-free) and `CharacterWizard.tsx` (the React shell). The
+shell currently wires in the four pickers that exist — class/level,
+species, background (with its ability bonus distribution), ability
+scores — as steps 1-4, followed by a review step that is the only place
+`CharacterStore.create` is called. Steps 5 (spells) and 6 (equipment) are
+not built; adding them means adding an entry to `WIZARD_STEPS` and a
+matching panel, not reworking the shell. `CharacterManager.tsx` now
+delegates creation to `CharacterWizard` instead of holding the pickers
+itself — see "Temporary scaffolding" below for what in that file is still
+throwaway.
+
 ### Temporary scaffolding
 
 Surfaces that exist only to prove a layer works by hand, not as finished
@@ -466,14 +479,13 @@ UI. Each is labelled on screen and in its file's top comment as temporary,
 naming what replaces it. Listed here so none of them is later mistaken
 for real work:
 
-- **`src/CharacterManager.tsx`** — lists, creates (name, class/level,
-  species, background — with its ability bonus distribution, ability
-  scores — languages and per-level choices not yet wired in), renames,
-  deletes, exports and imports characters, and lets the player select
-  one to inspect. Proves the storage layer (build order step 2) and the
-  class, species, background and ability-score pickers (step 3) work.
-  Replaced by real character creation (step 3, remaining slices) and the
-  sheet (step 5).
+- **`src/CharacterManager.tsx`** — creation itself is now the real
+  `CharacterWizard` (see above), not temporary. What remains temporary in
+  this file: lists, renames, deletes, exports and imports characters, and
+  lets the player select one to inspect. Proves the storage layer (build
+  order step 2) works end to end with the wizard. Replaced by the sheet
+  (step 5); languages and the level-1-to-target walkthrough of per-level
+  choices still need adding to the wizard as further slices of step 3.
 - **`src/CharacterInspector.tsx`** — read-only dump of everything stored
   on a selected `Character`: id, name, classes, species, background,
   the chosen ability bonus distribution, and ability scores (including
@@ -517,7 +529,7 @@ Each step is finished and tested before the next begins.
    errors, and import never overwriting existing characters.
 3. **Character creation** — class, species, background, ability scores
    (all three methods), languages, and the level-1-to-target walkthrough
-   of per-level choices. IN PROGRESS. Four slices done, on main:
+   of per-level choices. IN PROGRESS. Four picker slices done, on main:
    class/level selection (`src/classes/`), ability scores — all three
    methods, persisted with the method used and the individual rolls
    (`src/abilities/`), species selection — filtering entries
@@ -527,11 +539,15 @@ Each step is finished and tested before the next begins.
    starting equipment options (item names resolved against items.json),
    plus the background's ability bonus distribution (+2/+1 or +1/+1/+1,
    validated against the three abilities that background offers)
-   (`src/backgrounds/`). Not yet built: languages, and the
-   level-1-to-target walkthrough of per-level choices. A temporary UI,
+   (`src/backgrounds/`). The wizard shell wiring those four pickers
+   together is also done: `src/creation/` (`wizardState.ts` +
+   `CharacterWizard.tsx`) — see PHASE1.md section D, "Character creation
+   is a multi-step wizard, organised by category". Not yet built:
+   languages, and the level-1-to-target walkthrough of per-level choices.
    `src/CharacterManager.tsx` + `src/CharacterInspector.tsx` (see
-   "Temporary scaffolding" below), exercises the built slices by hand
-   pending the real creation flow and the sheet.
+   "Temporary scaffolding" below) still provide the temporary list/rename/
+   delete/export/import/inspect surface around the real creation flow,
+   pending the sheet.
 4. **Calculation layer** — PB, skills, saves, AC, attacks, spell DCs.
 5. **Sheet display** — the read-only view of a finished character.
 6. **Spells** — spell list, preparation, slots.

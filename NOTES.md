@@ -11,7 +11,12 @@ src/CharacterManager.tsx, including export/import) are DONE. Step 3
 (character creation) is IN PROGRESS: class/level (src/classes/),
 ability scores — all three methods (src/abilities/), species selection
 (src/species/), and background selection with the ability bonus
-distribution (src/backgrounds/) are built and on main. Languages and the
+distribution (src/backgrounds/) are built and on main, and now wired
+together behind a real wizard shell (src/creation/) that walks class →
+species → background → ability scores and saves once, on the review
+step, through CharacterStore. src/CharacterManager.tsx delegates
+creation to that wizard; it still provides the temporary list/rename/
+delete/export/import/inspect surface. Languages and the
 level-1-to-target walkthrough of per-level choices are not yet built.
 See PHASE1.md section D for the storage layer's actual shape, and
 PHASE1.md section D "Temporary scaffolding" for every throwaway UI
@@ -19,7 +24,8 @@ surface currently in the app.
 
 ## Next step
 Phase 1 step 3, remaining slices: languages, and the
-level-1-to-target walkthrough of per-level choices.
+level-1-to-target walkthrough of per-level choices, each added to the
+wizard as a new step in src/creation/wizardState.ts.
 
 ## Setup facts
 Windows. VS Code + Claude Code. Node.js and npm installed.

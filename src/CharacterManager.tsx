@@ -1,22 +1,18 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CharacterStore } from './storage/characterStore'
 import { StorageError } from './storage/errors'
-import type { Character, CharacterClass } from './storage/character'
-import { ClassPicker, type ClassLevelChoice } from './classes/ClassPicker'
-import { AbilityScorePicker } from './abilities/AbilityScorePicker'
-import type { CharacterAbilityScores } from './abilities/abilityScores'
-import { SpeciesPicker, type SpeciesChoice } from './species/SpeciesPicker'
-import { BackgroundPicker, type BackgroundChoice } from './backgrounds/BackgroundPicker'
+import type { Character } from './storage/character'
+import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterInspector } from './CharacterInspector'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
  *
- * Just enough to prove persistence and export/import work by hand: list,
- * create (name only — no class/species/etc, that is character creation,
- * step 3), rename, delete, export, import, and inspect what is actually
- * stored. Replaced by real character creation (step 3) and the sheet
- * (step 5).
+ * Character creation itself is real: it delegates to CharacterWizard
+ * (PHASE1.md build order step 3, section D — the multi-step wizard). What
+ * remains temporary here is everything else — list, rename, delete,
+ * export, import, and the read-only inspect view — proving the storage
+ * layer works by hand pending the real sheet (step 5).
  */
 
 function describeError(error: unknown): string {
@@ -120,11 +116,7 @@ function CharacterManager() {
 	const [characters, setCharacters] = useState<Character[]>([])
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [actionError, setActionError] = useState<string | null>(null)
-	const [newName, setNewName] = useState('')
-	const [classChoice, setClassChoice] = useState<ClassLevelChoice | null>(null)
-	const [abilityScores, setAbilityScores] = useState<CharacterAbilityScores | null>(null)
-	const [speciesChoice, setSpeciesChoice] = useState<SpeciesChoice | null>(null)
-	const [backgroundChoice, setBackgroundChoice] = useState<BackgroundChoice | null>(null)
+	const [creating, setCreating] = useState(false)
 	const [inspectedId, setInspectedId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -150,33 +142,10 @@ function CharacterManager() {
 		}
 	}
 
-	function handleCreate(): void {
-		if (!store.store) return
-		const classes: CharacterClass[] = classChoice
-			? [
-					{
-						className: classChoice.className,
-						classSource: classChoice.classSource,
-						subclass: null,
-						level: classChoice.level,
-					},
-				]
-			: []
-		withErrorHandling(() => {
-			store.store?.create(
-				newName,
-				classes,
-				abilityScores ?? undefined,
-				speciesChoice ?? undefined,
-				backgroundChoice ? { name: backgroundChoice.name, source: backgroundChoice.source } : undefined,
-				backgroundChoice?.abilityBonus,
-			)
-			setNewName('')
-			setClassChoice(null)
-			setAbilityScores(null)
-			setSpeciesChoice(null)
-			setBackgroundChoice(null)
-		})
+	function handleWizardSaved(): void {
+		setCreating(false)
+		setActionError(null)
+		refresh()
 	}
 
 	function handleRename(id: string, name: string): void {
@@ -216,7 +185,7 @@ function CharacterManager() {
 			})
 	}
 
-	if (store.error) {
+	if (!store.store) {
 		return (
 			<main>
 				<h1>Familliar</h1>
@@ -224,13 +193,15 @@ function CharacterManager() {
 			</main>
 		)
 	}
+	const characterStore = store.store
 
 	return (
 		<main>
 			<h1>Familliar</h1>
 			<p className="subtitle">
-				Characters — persistence &amp; export/import. Temporary UI, replaced by real character
-				creation (build order step 3) and the sheet (step 5).
+				Characters. Creation below is the real wizard (build order step 3). Listing, renaming,
+				deleting, export/import and inspection are still temporary UI, replaced by the sheet
+				(step 5).
 			</p>
 
 			{loadError && (
@@ -266,22 +237,17 @@ function CharacterManager() {
 			)}
 
 			<div className="char-create">
-				<input
-					type="text"
-					placeholder="Character name"
-					value={newName}
-					onChange={(event) => setNewName(event.target.value)}
-					onKeyDown={(event) => {
-						if (event.key === 'Enter' && classChoice) handleCreate()
-					}}
-				/>
-				<ClassPicker onChange={setClassChoice} />
-				<SpeciesPicker onChange={setSpeciesChoice} />
-				<BackgroundPicker onChange={setBackgroundChoice} />
-				<AbilityScorePicker onChange={setAbilityScores} />
-				<button type="button" disabled={!classChoice || !newName.trim()} onClick={handleCreate}>
-					Create
-				</button>
+				{creating ? (
+					<CharacterWizard
+						store={characterStore}
+						onSaved={handleWizardSaved}
+						onCancel={() => setCreating(false)}
+					/>
+				) : (
+					<button type="button" onClick={() => setCreating(true)}>
+						New character
+					</button>
+				)}
 			</div>
 
 			<div className="char-import">
