@@ -137,8 +137,12 @@ export function CharacterInspector({ character }: { character: Character | null 
 						<NotSet />
 					) : (
 						<span>
-							Common (automatic),{' '}
-							{character.languages.map((l) => `${l.name} (${l.source})`).join(', ')}
+							{character.languages
+								.map(
+									(l) =>
+										`${l.name} (${l.source}, ${l.grantedBy === 'automatic' ? 'automatic' : 'chosen at creation'})`,
+								)
+								.join(', ')}
 						</span>
 					)}
 				</dd>

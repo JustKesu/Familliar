@@ -61,6 +61,7 @@ vi.mock('../backgrounds/backgroundData', () => ({
 
 vi.mock('../languages/languageData', () => ({
 	CHOSEN_LANGUAGE_COUNT: 2,
+	AUTOMATIC_LANGUAGE: { name: 'Common', source: 'XPHB' },
 	loadLanguages: vi.fn(async () => [
 		{ name: 'Draconic', source: 'XPHB' },
 		{ name: 'Dwarvish', source: 'XPHB' },

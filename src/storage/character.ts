@@ -28,10 +28,26 @@ export interface CharacterBackground {
 	source: string
 }
 
-/** Identifies a languages.json entry unambiguously — enough to look it back up later. */
+/**
+ * Where a known language came from — mirrors section B's "source of each
+ * proficiency" idea for skills (class / background / species / feat),
+ * applied to languages so overlaps and automatic grants are visible
+ * instead of a bare list of names.
+ *
+ * Only 'automatic' (the PHB 2024 Common rule) and 'creation' (the player's
+ * two picks) exist yet. Class-feature grants (Rogue's Thieves' Cant plus
+ * one, Druid's Druidic, Ranger's Deft Explorer) and feat grants are NOT
+ * built — the wizard doesn't select class features at this slice. When
+ * they arrive, add new members here (e.g. 'class-feature', 'feat') rather
+ * than reworking this type.
+ */
+export type LanguageGrantSource = 'automatic' | 'creation'
+
+/** Identifies a languages.json entry unambiguously, plus how the character came to know it. */
 export interface CharacterLanguage {
 	name: string
 	source: string
+	grantedBy: LanguageGrantSource
 }
 
 /**
@@ -68,18 +84,24 @@ export interface Character {
 	 */
 	abilityBonus?: AbilityBonusMap
 	/**
-	 * Optional for the same reason as abilityScores above. The two
-	 * player-chosen languages only — Common is not stored here, since it is
-	 * granted automatically by a fixed rule rather than picked (see
-	 * CHOSEN_LANGUAGE_COUNT in src/languages/languageData.ts). Feature-granted
-	 * languages (Thieves' Cant, Druidic, ...) are not represented yet.
+	 * Optional for the same reason as abilityScores above. Every language the
+	 * character knows, INCLUDING Common — unlike the earlier shape, Common is
+	 * stored explicitly (with `grantedBy: 'automatic'`) rather than assumed,
+	 * since a stored language without a recorded source is exactly what this
+	 * field's `grantedBy` fixes. Feature-granted languages (Thieves' Cant,
+	 * Druidic, ...) are not represented yet — see LanguageGrantSource.
 	 */
 	languages?: CharacterLanguage[]
 }
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bump this — and add a migration — whenever the
- * stored shape changes.
+ * (see wireFormat.ts). Bumped to 2 when `languages` changed from
+ * `{ name, source }` pairs for the two chosen languages only, to every
+ * known language (including Common) each carrying `grantedBy`. Per
+ * PHASE1.md section D, a version bump this app does not understand is
+ * rejected outright (UnknownSchemaVersionError) rather than guessed at —
+ * no migration from version 1 is written, so a character saved before
+ * this change will no longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 1
+export const CURRENT_SCHEMA_VERSION = 2

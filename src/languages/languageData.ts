@@ -31,6 +31,14 @@ export interface LanguageEntry {
 	source: string
 }
 
+/**
+ * The language every character knows automatically (PHB 2024 rule) — never
+ * part of the choice list above. Its book source is hardcoded here for the
+ * same reason CHOSEN_LANGUAGE_COUNT is: it's a fixed rule stated in book
+ * prose, not something extracted from data/ at runtime.
+ */
+export const AUTOMATIC_LANGUAGE: LanguageEntry = { name: COMMON_NAME, source: 'XPHB' }
+
 interface RawLanguageEntry {
 	name: string
 	source: string

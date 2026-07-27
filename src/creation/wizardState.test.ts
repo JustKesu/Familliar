@@ -153,8 +153,9 @@ describe('saveCharacter', () => {
 			{ name: 'Soldier', source: 'XPHB' },
 			{ strength: 2, constitution: 1 },
 			[
-				{ name: 'Draconic', source: 'XPHB' },
-				{ name: 'Dwarvish', source: 'XPHB' },
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
 		)
 	})

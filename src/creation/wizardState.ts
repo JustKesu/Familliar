@@ -9,13 +9,13 @@
  * panel in CharacterWizard.tsx — not reworking any of this.
  */
 
-import type { AbilityBonusMap, Character, CharacterClass } from '../storage/character'
+import type { AbilityBonusMap, Character, CharacterClass, CharacterLanguage } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassLevelChoice } from '../classes/ClassPicker'
 import type { SpeciesChoice } from '../species/SpeciesPicker'
 import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
-import { CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
+import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
 
 export const WIZARD_STEPS = ['class', 'species', 'background', 'languages', 'abilities', 'review'] as const
@@ -161,6 +161,20 @@ export function saveCharacter(store: CharacterStore, data: WizardData): Characte
 
 	const abilityBonus: AbilityBonusMap | undefined = data.backgroundChoice?.abilityBonus
 
+	/**
+	 * Common is added here, not in the picker's own value — the picker only
+	 * ever reports the player's picks. Every known language carries
+	 * `grantedBy` so its source survives into storage (see
+	 * CharacterLanguage in storage/character.ts).
+	 */
+	const languages: CharacterLanguage[] | undefined =
+		data.languageChoice.length > 0
+			? [
+					{ ...AUTOMATIC_LANGUAGE, grantedBy: 'automatic' },
+					...data.languageChoice.map((entry) => ({ ...entry, grantedBy: 'creation' as const })),
+				]
+			: undefined
+
 	return store.create(
 		data.name,
 		classes,
@@ -168,6 +182,6 @@ export function saveCharacter(store: CharacterStore, data: WizardData): Characte
 		data.speciesChoice ?? undefined,
 		data.backgroundChoice ? { name: data.backgroundChoice.name, source: data.backgroundChoice.source } : undefined,
 		abilityBonus,
-		data.languageChoice.length > 0 ? data.languageChoice : undefined,
+		languages,
 	)
 }

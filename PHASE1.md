@@ -572,8 +572,16 @@ Each step is finished and tested before the next begins.
    (`src/backgrounds/`), and language selection — exactly two standard
    languages chosen in addition to the automatic Common, filtered from
    `data/languages.json` by `type`, with the PHB 2024 choice count
-   hardcoded as `CHOSEN_LANGUAGE_COUNT` (`src/languages/`). The wizard
-   shell wiring those five pickers together is also done: `src/creation/`
+   hardcoded as `CHOSEN_LANGUAGE_COUNT` (`src/languages/`). Every known
+   language, including Common, is stored and displayed together with
+   where it came from (`grantedBy`: `'automatic'` or `'creation'`),
+   mirroring section B's proficiency-source idea — visible on the
+   language step while picking and in the read-only inspector, not only
+   in the review summary. This changed the stored shape of `languages`,
+   so `CURRENT_SCHEMA_VERSION` moved from 1 to 2 with no migration (see
+   section D); a character saved under the old shape is rejected, not
+   reinterpreted. The wizard shell wiring those five pickers together is
+   also done: `src/creation/`
    (`wizardState.ts` + `CharacterWizard.tsx`) — see PHASE1.md section D,
    "Character creation is a multi-step wizard, organised by category".
    Steps run class → species → background → languages → ability scores →

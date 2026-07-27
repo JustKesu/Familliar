@@ -59,4 +59,20 @@ describe('LanguagePicker', () => {
 		await screen.findByLabelText('Draconic (XPHB)')
 		expect(screen.queryByRole('checkbox', { name: /Common/ })).toBeNull()
 	})
+
+	it('shows Common already known and marked automatic', async () => {
+		render(<Harness initial={[]} />)
+		await screen.findByLabelText('Draconic (XPHB)')
+		expect(screen.getByText('Common (XPHB)')).toBeTruthy()
+		expect(screen.getByText('(automatic)')).toBeTruthy()
+	})
+
+	it('marks a picked language as chosen at creation', async () => {
+		const user = userEvent.setup()
+		render(<Harness initial={[]} />)
+
+		expect(screen.queryByText('(chosen at creation)')).toBeNull()
+		await user.click(await screen.findByLabelText('Draconic (XPHB)'))
+		expect(screen.getByText('(chosen at creation)')).toBeTruthy()
+	})
 })

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
+import { CURRENT_SCHEMA_VERSION } from './character'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
 import {
 	CharacterNotFoundError,
@@ -77,7 +78,7 @@ describe('CharacterStore.list', () => {
 
 	it('throws CorruptDataError when a saved character is missing required fields', () => {
 		const backing = new MemoryStorage()
-		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: 1, id: '1', classes: [] }]))
+		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', classes: [] }]))
 		const store = new CharacterStore(backing)
 		expect(() => store.list()).toThrow(CorruptDataError)
 	})
@@ -87,6 +88,32 @@ describe('CharacterStore.list', () => {
 		backing.setItem(
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: 999, id: '1', name: 'Aria', classes: [] }]),
+		)
+		const store = new CharacterStore(backing)
+		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
+	})
+
+	it('throws UnknownSchemaVersionError for a character saved under the old languages shape (schema version 1)', () => {
+		// Before this change, `languages` held only the two chosen entries as
+		// { name, source } pairs (book source), with no Common and no
+		// `grantedBy`. That shape is not migrated (see CURRENT_SCHEMA_VERSION
+		// in character.ts) — an old save like this is rejected outright rather
+		// than guessed at.
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: 1,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					languages: [
+						{ name: 'Draconic', source: 'XPHB' },
+						{ name: 'Dwarvish', source: 'XPHB' },
+					],
+				},
+			]),
 		)
 		const store = new CharacterStore(backing)
 		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
@@ -168,7 +195,7 @@ describe('CharacterStore.create with ability scores', () => {
 			STORAGE_KEY,
 			JSON.stringify([
 				{
-					schemaVersion: 1,
+					schemaVersion: CURRENT_SCHEMA_VERSION,
 					id: '1',
 					name: 'Aria',
 					classes: [],
@@ -181,6 +208,44 @@ describe('CharacterStore.create with ability scores', () => {
 		)
 		const badStore = new CharacterStore(backing)
 		expect(() => badStore.list()).toThrow(CorruptDataError)
+	})
+})
+
+describe('CharacterStore.create with languages', () => {
+	it('saves and reloads Common with the automatic source and picks with the creation source', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create('Aria', [], undefined, undefined, undefined, undefined, [
+			{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+			{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+			{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+		])
+
+		expect(character.languages).toEqual([
+			{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+			{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+			{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+		])
+
+		const reloaded = store.list().find((c) => c.id === character.id)
+		expect(reloaded?.languages).toEqual(character.languages)
+	})
+
+	it('rejects a saved language missing grantedBy', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					languages: [{ name: 'Common', source: 'XPHB' }],
+				},
+			]),
+		)
+		const store = new CharacterStore(backing)
+		expect(() => store.list()).toThrow(CorruptDataError)
 	})
 })
 
@@ -220,7 +285,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 		const character = store.create('Aria')
 		const exported: unknown = JSON.parse(store.exportCharacter(character.id))
 		expect(Array.isArray(exported)).toBe(true)
-		expect(exported).toEqual([{ ...character, schemaVersion: 1 }])
+		expect(exported).toEqual([{ ...character, schemaVersion: CURRENT_SCHEMA_VERSION }])
 	})
 
 	it('throws CharacterNotFoundError when exporting an unknown id', () => {
@@ -278,7 +343,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 	it('rejects a malformed character and leaves the store unchanged', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		store.create('Existing')
-		const badFile = JSON.stringify([{ schemaVersion: 1, id: '1', classes: [] }]) // missing name
+		const badFile = JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', classes: [] }]) // missing name
 		expect(() => store.import(badFile)).toThrow(ImportValidationError)
 		expect(store.list()).toHaveLength(1)
 	})
@@ -295,7 +360,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const badFile = JSON.stringify([
 			{
-				schemaVersion: 1,
+				schemaVersion: CURRENT_SCHEMA_VERSION,
 				id: '1',
 				name: 'Aria',
 				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 0 }],

@@ -12,8 +12,11 @@ src/CharacterManager.tsx, including export/import) are DONE. Step 3
 ability scores — all three methods (src/abilities/), species selection
 (src/species/), background selection with the ability bonus
 distribution (src/backgrounds/), and language selection — exactly two
-standard languages plus the automatic Common (src/languages/) — are
-built and on main, wired together behind a real wizard shell
+standard languages plus the automatic Common, each stored and displayed
+with its source (automatic vs. chosen at creation) so overlaps are
+visible, mirroring PHASE1.md section B's proficiency-source idea
+(src/languages/) — are built and on main, wired together behind a real
+wizard shell
 (src/creation/) that walks class → species → background → languages →
 ability scores and saves once, on the review step, through
 CharacterStore. src/CharacterManager.tsx delegates creation to that
@@ -22,6 +25,13 @@ import/inspect surface. The level-1-to-target walkthrough of per-level
 choices is not yet built. See PHASE1.md section D for the storage
 layer's actual shape, and PHASE1.md section D "Temporary scaffolding"
 for every throwaway UI surface currently in the app.
+
+The stored `languages` shape changed to record each language's source
+(automatic Common vs. player picks), a breaking change to what was
+already persisted. `CURRENT_SCHEMA_VERSION` bumped from 1 to 2; no
+migration was written, so a character saved before this change is
+rejected (`UnknownSchemaVersionError`) rather than silently reinterpreted
+— see PHASE1.md section D.
 
 Component testing (jsdom + @testing-library/react/user-event) was added
 alongside a fix for a wizard bug: pickers kept their selection in their

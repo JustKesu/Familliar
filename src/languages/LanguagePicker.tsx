@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { CHOSEN_LANGUAGE_COUNT, loadLanguages, type LanguageEntry } from './languageData'
+import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT, loadLanguages, type LanguageEntry } from './languageData'
 
 /*
  * Character creation, languages slice (PHASE1.md build order step 3).
@@ -8,6 +8,13 @@ import { CHOSEN_LANGUAGE_COUNT, loadLanguages, type LanguageEntry } from './lang
  * the standard languages. Once that many are picked, every unpicked
  * checkbox is disabled rather than merely warning after the fact, so a
  * third can never be selected in the first place.
+ *
+ * Each known language's source is shown while picking, not only in the
+ * summary afterward: Common is listed above the choices marked "automatic",
+ * and a picked language is marked "chosen at creation" once checked. The
+ * source labels are rendered outside the <label> wrapping each checkbox so
+ * the checkbox's accessible name stays "<name> (<book source>)" — tests and
+ * the wizard both look up checkboxes by that label text.
  *
  * Feature-granted languages (Thieves' Cant, Druidic, Deft Explorer) are out
  * of scope — they come from class features the wizard does not select yet.
@@ -82,6 +89,12 @@ export function LanguagePicker({
 				{CHOSEN_LANGUAGE_COUNT} chosen).
 			</p>
 			<ul className="language-picker__list">
+				<li className="language-picker__automatic">
+					<span>
+						{AUTOMATIC_LANGUAGE.name} ({AUTOMATIC_LANGUAGE.source})
+					</span>{' '}
+					<span className="language-picker__source-tag">(automatic)</span>
+				</li>
 				{state.languages.map((entry) => {
 					const key = languageKey(entry)
 					const checked = selectedKeys.has(key)
@@ -95,7 +108,8 @@ export function LanguagePicker({
 									onChange={(event) => toggle(entry, event.target.checked)}
 								/>
 								{entry.name} ({entry.source})
-							</label>
+							</label>{' '}
+							{checked && <span className="language-picker__source-tag">(chosen at creation)</span>}
 						</li>
 					)
 				})}

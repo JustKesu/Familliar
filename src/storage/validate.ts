@@ -6,6 +6,7 @@ import type {
 	CharacterClass,
 	CharacterLanguage,
 	CharacterSpecies,
+	LanguageGrantSource,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import type { StoredCharacter } from './wireFormat'
@@ -144,6 +145,8 @@ function toCharacterBackground(value: Record<string, unknown>): CharacterBackgro
 	return { name: value['name'] as string, source: value['source'] as string }
 }
 
+const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation']
+
 /** Validates an optional `languages` field. Returns null if the field is absent (it's optional). */
 export function describeLanguagesError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -153,6 +156,10 @@ export function describeLanguagesError(value: unknown): string | null {
 		if (!isRecord(entry)) return `languages[${i}] is not an object`
 		if (!isNonEmptyString(entry['name'])) return `languages[${i}].name is missing or not a string`
 		if (!isNonEmptyString(entry['source'])) return `languages[${i}].source is missing or not a string`
+		const grantedBy = entry['grantedBy']
+		if (typeof grantedBy !== 'string' || !LANGUAGE_GRANT_SOURCES.includes(grantedBy as LanguageGrantSource)) {
+			return `languages[${i}].grantedBy must be one of ${LANGUAGE_GRANT_SOURCES.join(', ')}`
+		}
 	}
 	return null
 }
@@ -160,7 +167,11 @@ export function describeLanguagesError(value: unknown): string | null {
 function toCharacterLanguages(value: unknown[]): CharacterLanguage[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
-		return { name: record['name'] as string, source: record['source'] as string }
+		return {
+			name: record['name'] as string,
+			source: record['source'] as string,
+			grantedBy: record['grantedBy'] as LanguageGrantSource,
+		}
 	})
 }
 
