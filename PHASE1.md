@@ -366,6 +366,9 @@ selection on each step, navigates away and back, and asserts the
 selection is still shown — the class of test the old decision had ruled
 out.
 
+None of this reaches a real browser; see NOTES.md, "Browser
+verification by the agent" (deferred, revisit at build order step 5).
+
 Tests also get their own TypeScript project (tsconfig.test.json) because
 one of them reads data/ off disk. Keeping Node types out of
 tsconfig.app.json means browser code cannot reach for `fs` and still
