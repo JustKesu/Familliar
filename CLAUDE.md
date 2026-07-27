@@ -28,6 +28,16 @@ Every task keeps the project documentation in step with the code, alongside writ
 
 Documentation edits stay factual and short. Do not restate reasoning that is already recorded.
 
+## Undecided questions
+
+When a task hits a question the documentation does not answer — a rule that could reasonably be implemented more than one way, a data shape nobody has ruled on, a conflict between two existing decisions — stop and ask, rather than choosing and continuing. A quiet choice ends up buried in code, nobody knows a decision was made, and it surfaces later as rework.
+
+Two exceptions, where continuing is correct: the answer is already recorded in PHASE1.md or NOTES.md and simply had not been read yet, or the choice is genuinely internal to the implementation and invisible in behaviour, data shape or UI (variable naming, file layout within a module, which loop to write).
+
+When stopping to ask, state what the question is, what the plausible answers are, and what each would mean for the user — not just that you are stuck.
+
+At the end of every task, list in REPORT.md any decision that was needed and taken during the work, or any question that was noticed and worked around. One line each. This is a report, not an edit: decisions in PHASE1.md section D, open questions in section F, and decisions in NOTES.md stay the user's to settle regardless.
+
 ## Verification
 
 Do not re-run the full verification suite after every intermediate step. Run typecheck and tests once, at the end of a task.
