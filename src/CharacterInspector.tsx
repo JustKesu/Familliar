@@ -130,6 +130,18 @@ export function CharacterInspector({ character }: { character: Character | null 
 						</ul>
 					)}
 				</dd>
+
+				<dt>languages</dt>
+				<dd>
+					{!character.languages ? (
+						<NotSet />
+					) : (
+						<span>
+							Common (automatic),{' '}
+							{character.languages.map((l) => `${l.name} (${l.source})`).join(', ')}
+						</span>
+					)}
+				</dd>
 			</dl>
 		</aside>
 	)

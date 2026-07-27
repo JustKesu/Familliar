@@ -216,8 +216,11 @@ describes the actual shape that was built, not a plan.
 **Modules, in `src/storage/`:**
 - `character.ts` — the placeholder `Character`/`CharacterClass` types
   (`id`, `name`, `classes: CharacterClass[]`, each class
-  `{ className, classSource, subclass, level }`) and
-  `CURRENT_SCHEMA_VERSION` (currently `1`).
+  `{ className, classSource, subclass, level }`, plus the optional
+  `abilityScores`, `species`, `background`, `abilityBonus` and
+  `languages` fields added by later creation slices) and
+  `CURRENT_SCHEMA_VERSION` (currently `1`, unchanged by any of those
+  additive optional fields).
 - `wireFormat.ts` — `StoredCharacter`, the on-disk/on-file shape: a
   `Character` plus its own `schemaVersion`. Both localStorage and export
   files store the same shape: a top-level ARRAY of these records, each
@@ -486,18 +489,18 @@ This replaces the temporary `CharacterManager.tsx` flow. The existing
 pickers (class/level, ability scores, species) are expected to be reused
 inside the wizard rather than rewritten.
 
-**Status: shell built (build order step 3, this slice).** `src/creation/`
-holds `wizardState.ts` (pure step order, navigation and save-assembly
-logic, framework-free) and `CharacterWizard.tsx` (the React shell). The
-shell currently wires in the four pickers that exist — class/level,
-species, background (with its ability bonus distribution), ability
-scores — as steps 1-4, followed by a review step that is the only place
-`CharacterStore.create` is called. Steps 5 (spells) and 6 (equipment) are
-not built; adding them means adding an entry to `WIZARD_STEPS` and a
-matching panel, not reworking the shell. `CharacterManager.tsx` now
-delegates creation to `CharacterWizard` instead of holding the pickers
-itself — see "Temporary scaffolding" below for what in that file is still
-throwaway.
+**Status: shell built (build order step 3), languages slice added.**
+`src/creation/` holds `wizardState.ts` (pure step order, navigation and
+save-assembly logic, framework-free) and `CharacterWizard.tsx` (the React
+shell). The shell currently wires in the five pickers that exist —
+class/level, species, background (with its ability bonus distribution),
+languages, ability scores — as steps 1-5, followed by a review step that
+is the only place `CharacterStore.create` is called. Steps 5 (spells) and
+6 (equipment) in section A/E numbering are not built; adding them means
+adding an entry to `WIZARD_STEPS` and a matching panel, not reworking the
+shell. `CharacterManager.tsx` now delegates creation to `CharacterWizard`
+instead of holding the pickers itself — see "Temporary scaffolding" below
+for what in that file is still throwaway.
 
 ### Temporary scaffolding
 
@@ -556,7 +559,7 @@ Each step is finished and tested before the next begins.
    errors, and import never overwriting existing characters.
 3. **Character creation** — class, species, background, ability scores
    (all three methods), languages, and the level-1-to-target walkthrough
-   of per-level choices. IN PROGRESS. Four picker slices done, on main:
+   of per-level choices. IN PROGRESS. Five picker slices done, on main:
    class/level selection (`src/classes/`), ability scores — all three
    methods, persisted with the method used and the individual rolls
    (`src/abilities/`), species selection — filtering entries
@@ -566,17 +569,22 @@ Each step is finished and tested before the next begins.
    starting equipment options (item names resolved against items.json),
    plus the background's ability bonus distribution (+2/+1 or +1/+1/+1,
    validated against the three abilities that background offers)
-   (`src/backgrounds/`). The wizard shell wiring those four pickers
-   together is also done: `src/creation/` (`wizardState.ts` +
-   `CharacterWizard.tsx`) — see PHASE1.md section D, "Character creation
-   is a multi-step wizard, organised by category". Each picker now
-   receives its current selection as a `value` prop from the wizard and
-   only reports changes upward, so a selection survives navigating away
-   from and back to its step (previously only the class step did — see
-   section D, "Tests — static HTML for the renderer, a real DOM for
-   interactive components"). Covered by `src/creation/CharacterWizard.test.tsx`.
-   Not yet built: languages, and the level-1-to-target walkthrough of
-   per-level choices.
+   (`src/backgrounds/`), and language selection — exactly two standard
+   languages chosen in addition to the automatic Common, filtered from
+   `data/languages.json` by `type`, with the PHB 2024 choice count
+   hardcoded as `CHOSEN_LANGUAGE_COUNT` (`src/languages/`). The wizard
+   shell wiring those five pickers together is also done: `src/creation/`
+   (`wizardState.ts` + `CharacterWizard.tsx`) — see PHASE1.md section D,
+   "Character creation is a multi-step wizard, organised by category".
+   Steps run class → species → background → languages → ability scores →
+   review, languages placed with the rest of origin per section A.2. Each
+   picker now receives its current selection as a `value` prop from the
+   wizard and only reports changes upward, so a selection survives
+   navigating away from and back to its step (previously only the class
+   step did — see section D, "Tests — static HTML for the renderer, a
+   real DOM for interactive components"). Covered by
+   `src/creation/CharacterWizard.test.tsx`. Not yet built: the
+   level-1-to-target walkthrough of per-level choices.
    `src/CharacterManager.tsx` + `src/CharacterInspector.tsx` (see
    "Temporary scaffolding" below) still provide the temporary list/rename/
    delete/export/import/inspect surface around the real creation flow,
@@ -683,23 +691,21 @@ newer one has no `reprintedAs`. What it cannot answer is whether this
 table wants the 2024 version only, or both.
 
 ### Where does the list of selectable LANGUAGES come from
-Section A.2 says the player picks languages during origin. Nothing in the
-extracted data currently supports that.
+STATUS: decided. The selectable list is `data/languages.json`, filtered to
+`type === 'standard'` — the 2024 rules only allow standard languages to be
+chosen at character creation; rare languages come from a DM's permission or
+a feature, not the base picker. `src/languages/languageData.ts` implements
+the filter.
 
-Per NOTES.md ("Background field shapes"), the 2024 rules moved languages
-out of backgrounds, and `languageProficiencies` is absent from every
-background in data/. So there is no per-background list to read, and no
-list of the languages themselves has been identified anywhere in data/
-either.
-
-We do not currently know where the selectable set is meant to come from.
-Candidates not yet checked: a languages table in the 5etools source that
-extraction never touched, a species-level grant, or a fixed list from the
-PHB 2024 text that would have to be typed in by hand.
-
-Blocks A.2 as written. Either find the source or decide the sheet stores
-languages as free text.
-STATUS: undecided, source unknown.
+Common is one of the ten standard entries in the data but is excluded from
+the choice list: it is known automatically, not picked. The count of
+languages a player CHOOSES (two, in addition to Common) is a PHB 2024 rule
+stated only in book prose — nothing in data/ carries it — so it is
+hardcoded as `CHOSEN_LANGUAGE_COUNT` in `languageData.ts`, with a comment
+citing the rule and naming it as the place to update once class features
+start granting extra languages (Rogue's Thieves' Cant plus one, Druid's
+Druidic, Ranger's Deft Explorer). Those feature-granted languages are not
+built yet — the wizard does not select class features at this slice.
 
 ### Where data lives at deployment
 See NOTES.md. Revisit before the first deploy to a public URL.

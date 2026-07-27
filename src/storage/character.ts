@@ -28,6 +28,12 @@ export interface CharacterBackground {
 	source: string
 }
 
+/** Identifies a languages.json entry unambiguously — enough to look it back up later. */
+export interface CharacterLanguage {
+	name: string
+	source: string
+}
+
 /**
  * The player's chosen distribution of a background's ability bonus
  * (PHASE1.md A.3): either +2 to one ability and +1 to another, or +1 to
@@ -61,6 +67,14 @@ export interface Character {
 	 * identity.
 	 */
 	abilityBonus?: AbilityBonusMap
+	/**
+	 * Optional for the same reason as abilityScores above. The two
+	 * player-chosen languages only — Common is not stored here, since it is
+	 * granted automatically by a fixed rule rather than picked (see
+	 * CHOSEN_LANGUAGE_COUNT in src/languages/languageData.ts). Feature-granted
+	 * languages (Thieves' Cant, Druidic, ...) are not represented yet.
+	 */
+	languages?: CharacterLanguage[]
 }
 
 /**

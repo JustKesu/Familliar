@@ -3,6 +3,7 @@ import { ClassPicker } from '../classes/ClassPicker'
 import { SpeciesPicker } from '../species/SpeciesPicker'
 import { BackgroundPicker } from '../backgrounds/BackgroundPicker'
 import { AbilityScorePicker } from '../abilities/AbilityScorePicker'
+import { LanguagePicker } from '../languages/LanguagePicker'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
@@ -33,6 +34,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	class: 'Class and level',
 	species: 'Species',
 	background: 'Background',
+	languages: 'Languages',
 	abilities: 'Ability scores',
 	review: 'Review and save',
 }
@@ -109,6 +111,15 @@ export function CharacterWizard({
 				</div>
 			)}
 
+			{state.step === 'languages' && (
+				<div className="wizard__panel">
+					<LanguagePicker
+						value={state.data.languageChoice}
+						onChange={(choice) => dispatch({ type: 'setLanguageChoice', choice })}
+					/>
+				</div>
+			)}
+
 			{state.step === 'abilities' && (
 				<div className="wizard__panel">
 					<AbilityScorePicker
@@ -126,6 +137,12 @@ export function CharacterWizard({
 					</p>
 					<p>Species: {state.data.speciesChoice?.name ?? '—'}</p>
 					<p>Background: {state.data.backgroundChoice?.name ?? '—'}</p>
+					<p>
+						Languages: Common
+						{state.data.languageChoice.length > 0
+							? `, ${state.data.languageChoice.map((l) => l.name).join(', ')}`
+							: ''}
+					</p>
 					<p>Ability score method: {state.data.abilityScores?.method ?? '—'}</p>
 					{saveError && <p className="error">{saveError}</p>}
 				</div>

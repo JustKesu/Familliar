@@ -10,17 +10,18 @@ src/markup/) and step 2 (app skeleton + persistence, src/storage/ +
 src/CharacterManager.tsx, including export/import) are DONE. Step 3
 (character creation) is IN PROGRESS: class/level (src/classes/),
 ability scores — all three methods (src/abilities/), species selection
-(src/species/), and background selection with the ability bonus
-distribution (src/backgrounds/) are built and on main, and now wired
-together behind a real wizard shell (src/creation/) that walks class →
-species → background → ability scores and saves once, on the review
-step, through CharacterStore. src/CharacterManager.tsx delegates
-creation to that wizard; it still provides the temporary list/rename/
-delete/export/import/inspect surface. Languages and the
-level-1-to-target walkthrough of per-level choices are not yet built.
-See PHASE1.md section D for the storage layer's actual shape, and
-PHASE1.md section D "Temporary scaffolding" for every throwaway UI
-surface currently in the app.
+(src/species/), background selection with the ability bonus
+distribution (src/backgrounds/), and language selection — exactly two
+standard languages plus the automatic Common (src/languages/) — are
+built and on main, wired together behind a real wizard shell
+(src/creation/) that walks class → species → background → languages →
+ability scores and saves once, on the review step, through
+CharacterStore. src/CharacterManager.tsx delegates creation to that
+wizard; it still provides the temporary list/rename/delete/export/
+import/inspect surface. The level-1-to-target walkthrough of per-level
+choices is not yet built. See PHASE1.md section D for the storage
+layer's actual shape, and PHASE1.md section D "Temporary scaffolding"
+for every throwaway UI surface currently in the app.
 
 Component testing (jsdom + @testing-library/react/user-event) was added
 alongside a fix for a wizard bug: pickers kept their selection in their
@@ -31,9 +32,9 @@ section D, "Tests — static HTML for the renderer, a real DOM for
 interactive components".
 
 ## Next step
-Phase 1 step 3, remaining slices: languages, and the
-level-1-to-target walkthrough of per-level choices, each added to the
-wizard as a new step in src/creation/wizardState.ts.
+Phase 1 step 3, remaining slice: the level-1-to-target walkthrough of
+per-level choices, added to the wizard as a new step in
+src/creation/wizardState.ts.
 
 ## Setup facts
 Windows. VS Code + Claude Code. Node.js and npm installed.

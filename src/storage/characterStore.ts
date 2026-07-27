@@ -1,5 +1,12 @@
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
-import type { AbilityBonusMap, Character, CharacterBackground, CharacterClass, CharacterSpecies } from './character'
+import type {
+	AbilityBonusMap,
+	Character,
+	CharacterBackground,
+	CharacterClass,
+	CharacterLanguage,
+	CharacterSpecies,
+} from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import {
 	CharacterNotFoundError,
@@ -145,6 +152,7 @@ export class CharacterStore {
 		species?: CharacterSpecies,
 		background?: CharacterBackground,
 		abilityBonus?: AbilityBonusMap,
+		languages?: CharacterLanguage[],
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -157,6 +165,7 @@ export class CharacterStore {
 			...(species ? { species } : {}),
 			...(background ? { background } : {}),
 			...(abilityBonus ? { abilityBonus } : {}),
+			...(languages ? { languages } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character

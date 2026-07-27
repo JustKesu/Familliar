@@ -1,5 +1,12 @@
 import { ABILITIES, type AbilityScoreMethod, type AbilityScores, type CharacterAbilityScores, type RolledSet } from '../abilities/abilityScores'
-import type { AbilityBonusMap, Character, CharacterBackground, CharacterClass, CharacterSpecies } from './character'
+import type {
+	AbilityBonusMap,
+	Character,
+	CharacterBackground,
+	CharacterClass,
+	CharacterLanguage,
+	CharacterSpecies,
+} from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import type { StoredCharacter } from './wireFormat'
 
@@ -137,6 +144,26 @@ function toCharacterBackground(value: Record<string, unknown>): CharacterBackgro
 	return { name: value['name'] as string, source: value['source'] as string }
 }
 
+/** Validates an optional `languages` field. Returns null if the field is absent (it's optional). */
+export function describeLanguagesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `languages is not an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `languages[${i}] is not an object`
+		if (!isNonEmptyString(entry['name'])) return `languages[${i}].name is missing or not a string`
+		if (!isNonEmptyString(entry['source'])) return `languages[${i}].source is missing or not a string`
+	}
+	return null
+}
+
+function toCharacterLanguages(value: unknown[]): CharacterLanguage[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return { name: record['name'] as string, source: record['source'] as string }
+	})
+}
+
 /**
  * Validates an optional `abilityBonus` field. Returns null if absent. Only
  * checks the distribution is structurally one of the two legal shapes
@@ -197,6 +224,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (backgroundError) return `[${index}].${backgroundError}`
 	const abilityBonusError = describeAbilityBonusError(value['abilityBonus'])
 	if (abilityBonusError) return `[${index}].${abilityBonusError}`
+	const languagesError = describeLanguagesError(value['languages'])
+	if (languagesError) return `[${index}].${languagesError}`
 	return null
 }
 
@@ -214,6 +243,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const species = value['species']
 	const background = value['background']
 	const abilityBonus = value['abilityBonus']
+	const languages = value['languages']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -222,6 +252,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(isRecord(species) ? { species: toCharacterSpecies(species) } : {}),
 		...(isRecord(background) ? { background: toCharacterBackground(background) } : {}),
 		...(isRecord(abilityBonus) ? { abilityBonus: toAbilityBonusMap(abilityBonus) } : {}),
+		...(Array.isArray(languages) ? { languages: toCharacterLanguages(languages) } : {}),
 	}
 }
 

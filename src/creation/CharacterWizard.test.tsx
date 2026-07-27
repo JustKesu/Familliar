@@ -59,6 +59,15 @@ vi.mock('../backgrounds/backgroundData', () => ({
 	]),
 }))
 
+vi.mock('../languages/languageData', () => ({
+	CHOSEN_LANGUAGE_COUNT: 2,
+	loadLanguages: vi.fn(async () => [
+		{ name: 'Draconic', source: 'XPHB' },
+		{ name: 'Dwarvish', source: 'XPHB' },
+		{ name: 'Elvish', source: 'XPHB' },
+	]),
+}))
+
 afterEach(cleanup)
 
 /** Reads the current value off a form control, avoiding a jest-dom dependency for one matcher. */
@@ -96,6 +105,11 @@ async function goNext(user: ReturnType<typeof userEvent.setup>) {
 
 async function goBack(user: ReturnType<typeof userEvent.setup>) {
 	await user.click(screen.getByRole('button', { name: 'Back' }))
+}
+
+async function fillLanguagesStep(user: ReturnType<typeof userEvent.setup>) {
+	await user.click(await screen.findByLabelText('Draconic (XPHB)'))
+	await user.click(screen.getByLabelText('Dwarvish (XPHB)'))
 }
 
 describe('CharacterWizard — selections survive back-navigation', () => {
@@ -138,12 +152,33 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await goNext(user)
-		await screen.findByLabelText('Strength')
+		await screen.findByLabelText('Draconic (XPHB)')
 		await goBack(user)
 
 		expect(value(await screen.findByLabelText('Background'))).toBe('Soldier|XPHB')
 		expect(value(screen.getByLabelText('+2'))).toBe('strength')
 		expect(value(screen.getByLabelText('+1'))).toBe('dexterity')
+	})
+
+	it('languages step: the chosen languages are still shown after navigating away and back', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await fillLanguagesStep(user)
+		await goNext(user)
+		await screen.findByLabelText('Strength')
+		await goBack(user)
+
+		expect((screen.getByLabelText('Draconic (XPHB)') as HTMLInputElement).checked).toBe(true)
+		expect((screen.getByLabelText('Dwarvish (XPHB)') as HTMLInputElement).checked).toBe(true)
 	})
 
 	it('abilities step: the assigned scores are still shown after navigating away and back', async () => {
@@ -157,6 +192,8 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await fillLanguagesStep(user)
 		await goNext(user)
 
 		await user.selectOptions(screen.getByLabelText('Strength'), '15')
@@ -194,6 +231,8 @@ describe('CharacterWizard — storage', () => {
 		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await fillLanguagesStep(user)
 		await goNext(user)
 		await user.selectOptions(screen.getByLabelText('Strength'), '15')
 		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')

@@ -14,13 +14,15 @@ import type { CharacterStore } from '../storage/characterStore'
 import type { ClassLevelChoice } from '../classes/ClassPicker'
 import type { SpeciesChoice } from '../species/SpeciesPicker'
 import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
+import type { LanguageChoice } from '../languages/LanguagePicker'
+import { CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
 
-export const WIZARD_STEPS = ['class', 'species', 'background', 'abilities', 'review'] as const
+export const WIZARD_STEPS = ['class', 'species', 'background', 'languages', 'abilities', 'review'] as const
 export type WizardStep = (typeof WIZARD_STEPS)[number]
 
 /** The picker steps only — every one of these must be complete before the review step may save. */
-const PICKER_STEPS: readonly WizardStep[] = ['class', 'species', 'background', 'abilities']
+const PICKER_STEPS: readonly WizardStep[] = ['class', 'species', 'background', 'languages', 'abilities']
 
 /** The in-progress character. Nothing here is written to storage until saveCharacter runs. */
 export interface WizardData {
@@ -28,6 +30,7 @@ export interface WizardData {
 	classChoice: ClassLevelChoice | null
 	speciesChoice: SpeciesChoice | null
 	backgroundChoice: BackgroundChoice | null
+	languageChoice: LanguageChoice
 	abilityScores: CharacterAbilityScores | null
 }
 
@@ -37,6 +40,7 @@ export function emptyWizardData(): WizardData {
 		classChoice: null,
 		speciesChoice: null,
 		backgroundChoice: null,
+		languageChoice: [],
 		abilityScores: null,
 	}
 }
@@ -78,6 +82,8 @@ export function isStepComplete(step: WizardStep, data: WizardData): boolean {
 			return data.speciesChoice !== null
 		case 'background':
 			return data.backgroundChoice !== null
+		case 'languages':
+			return data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
 		case 'abilities':
 			return data.abilityScores !== null
 		case 'review':
@@ -97,6 +103,7 @@ export type WizardAction =
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
+	| { type: 'setLanguageChoice'; choice: LanguageChoice }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
 
 /**
@@ -123,6 +130,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, speciesChoice: action.choice } }
 		case 'setBackgroundChoice':
 			return { ...state, data: { ...state.data, backgroundChoice: action.choice } }
+		case 'setLanguageChoice':
+			return { ...state, data: { ...state.data, languageChoice: action.choice } }
 		case 'setAbilityScores':
 			return { ...state, data: { ...state.data, abilityScores: action.scores } }
 	}
@@ -159,5 +168,6 @@ export function saveCharacter(store: CharacterStore, data: WizardData): Characte
 		data.speciesChoice ?? undefined,
 		data.backgroundChoice ? { name: data.backgroundChoice.name, source: data.backgroundChoice.source } : undefined,
 		abilityBonus,
+		data.languageChoice.length > 0 ? data.languageChoice : undefined,
 	)
 }

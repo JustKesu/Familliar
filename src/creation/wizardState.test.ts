@@ -17,6 +17,10 @@ function completeData(): WizardData {
 		classChoice: { className: 'Fighter', classSource: 'XPHB', level: 1 },
 		speciesChoice: { name: 'Elf', source: 'XPHB' },
 		backgroundChoice: { name: 'Soldier', source: 'XPHB', abilityBonus: { strength: 2, constitution: 1 } },
+		languageChoice: [
+			{ name: 'Draconic', source: 'XPHB' },
+			{ name: 'Dwarvish', source: 'XPHB' },
+		],
 		abilityScores: {
 			method: 'standardArray',
 			scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
@@ -40,11 +44,28 @@ describe('isStepComplete', () => {
 		expect(isStepComplete('class', data)).toBe(true)
 	})
 
-	it('blocks species, background and abilities until their own picker reports a choice', () => {
+	it('blocks species, background, languages and abilities until their own picker reports a choice', () => {
 		const data = emptyWizardData()
 		expect(isStepComplete('species', data)).toBe(false)
 		expect(isStepComplete('background', data)).toBe(false)
+		expect(isStepComplete('languages', data)).toBe(false)
 		expect(isStepComplete('abilities', data)).toBe(false)
+	})
+
+	it('blocks the languages step until exactly two are chosen, allows it at exactly two', () => {
+		const data = emptyWizardData()
+		expect(isStepComplete('languages', { ...data, languageChoice: [{ name: 'Draconic', source: 'XPHB' }] })).toBe(
+			false,
+		)
+		expect(
+			isStepComplete('languages', {
+				...data,
+				languageChoice: [
+					{ name: 'Draconic', source: 'XPHB' },
+					{ name: 'Dwarvish', source: 'XPHB' },
+				],
+			}),
+		).toBe(true)
 	})
 
 	it('the review step is always complete on its own', () => {
@@ -131,6 +152,10 @@ describe('saveCharacter', () => {
 			{ name: 'Elf', source: 'XPHB' },
 			{ name: 'Soldier', source: 'XPHB' },
 			{ strength: 2, constitution: 1 },
+			[
+				{ name: 'Draconic', source: 'XPHB' },
+				{ name: 'Dwarvish', source: 'XPHB' },
+			],
 		)
 	})
 
