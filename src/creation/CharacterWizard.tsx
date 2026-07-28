@@ -84,7 +84,7 @@ export function CharacterWizard({
 
 	function handleSave(): void {
 		try {
-			const character = saveCharacter(store, state.data)
+			const character = saveCharacter(store, state.data, selectedBackground?.skillProficiencies)
 			setSaveError(null)
 			onSaved(character)
 		} catch (error) {

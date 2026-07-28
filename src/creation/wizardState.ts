@@ -9,7 +9,7 @@
  * panel in CharacterWizard.tsx — not reworking any of this.
  */
 
-import type { AbilityBonusMap, Character, CharacterClass, CharacterLanguage } from '../storage/character'
+import type { AbilityBonusMap, Character, CharacterBackground, CharacterClass, CharacterLanguage } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassLevelChoice } from '../classes/ClassPicker'
 import type { SpeciesChoice } from '../species/SpeciesPicker'
@@ -166,8 +166,18 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
  * CLAUDE.md-adjacent rule from PHASE1.md section D: nothing is written
  * until the flow completes). Throws if called before every picker step is
  * complete rather than silently saving a partial character.
+ *
+ * `backgroundSkillProficiencies` is the selected background's two fixed
+ * skills (BackgroundEntry.skillProficiencies) — the wizard's own
+ * BackgroundChoice doesn't carry them (see BackgroundPicker.tsx), so the
+ * caller (CharacterWizard.tsx, which already resolves the full
+ * BackgroundEntry for D18's disabled-skills wiring) passes them in here.
  */
-export function saveCharacter(store: CharacterStore, data: WizardData): Character {
+export function saveCharacter(
+	store: CharacterStore,
+	data: WizardData,
+	backgroundSkillProficiencies?: [string, string],
+): Character {
 	if (!isReadyToSave(data)) {
 		throw new Error('Cannot save a character before every step is complete.')
 	}
@@ -177,11 +187,20 @@ export function saveCharacter(store: CharacterStore, data: WizardData): Characte
 				{
 					className: data.classChoice.className,
 					classSource: data.classChoice.classSource,
-					subclass: null,
+					subclass: data.subclass,
 					level: data.classChoice.level,
 				},
 			]
 		: []
+
+	const background: CharacterBackground | undefined =
+		data.backgroundChoice && backgroundSkillProficiencies
+			? {
+					name: data.backgroundChoice.name,
+					source: data.backgroundChoice.source,
+					skillProficiencies: backgroundSkillProficiencies,
+				}
+			: undefined
 
 	const abilityBonus: AbilityBonusMap | undefined = data.backgroundChoice?.abilityBonus
 
@@ -204,8 +223,11 @@ export function saveCharacter(store: CharacterStore, data: WizardData): Characte
 		classes,
 		data.abilityScores ?? undefined,
 		data.speciesChoice ?? undefined,
-		data.backgroundChoice ? { name: data.backgroundChoice.name, source: data.backgroundChoice.source } : undefined,
+		background,
 		abilityBonus,
 		languages,
+		data.classSkills,
+		data.masteries,
+		data.fightingStyle,
 	)
 }

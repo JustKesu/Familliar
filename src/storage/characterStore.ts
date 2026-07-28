@@ -153,6 +153,9 @@ export class CharacterStore {
 		background?: CharacterBackground,
 		abilityBonus?: AbilityBonusMap,
 		languages?: CharacterLanguage[],
+		classSkills?: string[],
+		masteries?: string[],
+		fightingStyle?: string | null,
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -166,6 +169,9 @@ export class CharacterStore {
 			...(background ? { background } : {}),
 			...(abilityBonus ? { abilityBonus } : {}),
 			...(languages ? { languages } : {}),
+			...(classSkills && classSkills.length > 0 ? { classSkills } : {}),
+			...(masteries && masteries.length > 0 ? { masteries } : {}),
+			...(fightingStyle ? { fightingStyle } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character

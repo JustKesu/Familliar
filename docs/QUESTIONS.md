@@ -93,3 +93,14 @@ Zatím to neimplementuje nic — classSkills, masteries, fightingStyle
 ani subclass úroveň nenesou. Formát se rozhodne jednou pro všechny
 volby naráz, až začne level-up (build order krok 8), ne po jedné.
 STATUS: odloženo do kroku 8.
+
+### Migrace uložených postav — zatím se neřeší, odmítá se
+
+Schema se od začátku verzuje (D1) právě proto, aby šla stará uložená
+postava převést na nový tvar místo zahození. Zatím se to tak ale
+nedělá: bumpy v1 -> v2 i v2 -> v3 starou postavu odmítly. Bylo to
+vědomé — nikdo ještě nehraje, žádná postava k záchraně neexistuje.
+Jakmile se s appkou začne opravdu hrát, tohle přestane platit a další
+bump už migraci napsat MUSÍ. Rozhodnout nejpozději před prvním
+skutečným použitím u stolu.
+STATUS: nerozhodnuto, blokuje reálné použití.

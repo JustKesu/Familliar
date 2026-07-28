@@ -138,11 +138,20 @@ export function describeBackgroundError(value: unknown): string | null {
 	if (!isRecord(value)) return `background is not an object`
 	if (!isNonEmptyString(value['name'])) return `background.name is missing or not a string`
 	if (!isNonEmptyString(value['source'])) return `background.source is missing or not a string`
+	const skillProficiencies = value['skillProficiencies']
+	if (
+		!Array.isArray(skillProficiencies) ||
+		skillProficiencies.length !== 2 ||
+		!skillProficiencies.every((skill) => isNonEmptyString(skill))
+	) {
+		return `background.skillProficiencies must be an array of exactly 2 strings`
+	}
 	return null
 }
 
 function toCharacterBackground(value: Record<string, unknown>): CharacterBackground {
-	return { name: value['name'] as string, source: value['source'] as string }
+	const skillProficiencies = value['skillProficiencies'] as [string, string]
+	return { name: value['name'] as string, source: value['source'] as string, skillProficiencies }
 }
 
 const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation']
@@ -216,6 +225,33 @@ function toAbilityBonusMap(value: Record<string, unknown>): AbilityBonusMap {
 	return Object.fromEntries(Object.entries(value)) as AbilityBonusMap
 }
 
+/** Validates an optional `classSkills` field. Returns null if the field is absent (it's optional). */
+export function describeClassSkillsError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value) || !value.every((skill) => isNonEmptyString(skill))) {
+		return `classSkills must be an array of strings`
+	}
+	return null
+}
+
+/** Validates an optional `masteries` field. Returns null if the field is absent (it's optional). */
+export function describeMasteriesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value) || !value.every((weapon) => isNonEmptyString(weapon))) {
+		return `masteries must be an array of strings`
+	}
+	return null
+}
+
+/** Validates an optional `fightingStyle` field. Returns null if the field is absent (it's optional). */
+export function describeFightingStyleError(value: unknown): string | null {
+	if (value === undefined || value === null) return null
+	if (typeof value !== 'string' || value.trim().length === 0) {
+		return `fightingStyle must be a string or null`
+	}
+	return null
+}
+
 /** Validates the Character-shaped fields only (id, name, classes, abilityScores, species, background, abilityBonus) — no version. */
 export function describeCharacterError(value: unknown, index: number): string | null {
 	if (!isRecord(value)) return `[${index}] is not an object`
@@ -237,6 +273,12 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (abilityBonusError) return `[${index}].${abilityBonusError}`
 	const languagesError = describeLanguagesError(value['languages'])
 	if (languagesError) return `[${index}].${languagesError}`
+	const classSkillsError = describeClassSkillsError(value['classSkills'])
+	if (classSkillsError) return `[${index}].${classSkillsError}`
+	const masteriesError = describeMasteriesError(value['masteries'])
+	if (masteriesError) return `[${index}].${masteriesError}`
+	const fightingStyleError = describeFightingStyleError(value['fightingStyle'])
+	if (fightingStyleError) return `[${index}].${fightingStyleError}`
 	return null
 }
 
@@ -255,6 +297,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const background = value['background']
 	const abilityBonus = value['abilityBonus']
 	const languages = value['languages']
+	const classSkills = value['classSkills']
+	const masteries = value['masteries']
+	const fightingStyle = value['fightingStyle']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -264,6 +309,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(isRecord(background) ? { background: toCharacterBackground(background) } : {}),
 		...(isRecord(abilityBonus) ? { abilityBonus: toAbilityBonusMap(abilityBonus) } : {}),
 		...(Array.isArray(languages) ? { languages: toCharacterLanguages(languages) } : {}),
+		...(Array.isArray(classSkills) ? { classSkills: classSkills as string[] } : {}),
+		...(Array.isArray(masteries) ? { masteries: masteries as string[] } : {}),
+		...(fightingStyle !== undefined ? { fightingStyle: fightingStyle as string | null } : {}),
 	}
 }
 

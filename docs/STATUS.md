@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-07-28 (subclass picker built and wired into the wizard's class step)
+Last updated: 2026-07-28 (class step choices — class skills, masteries, fighting style, subclass — and the background's fixed skill proficiencies now persist to storage)
 
 ## Build order
 
@@ -24,8 +24,8 @@ Last updated: 2026-07-28 (subclass picker built and wired into the wizard's clas
 - Investigation script — scripts/investigate-subclass-shape.js, confirms subclass linkage, D28 filtering counts, and that every class grants a subclass at level 3.
 - App skeleton — Vite + React + TypeScript, data served from public/data/.
 - Markup renderer — src/markup/, 104 tests.
-- Storage layer — src/storage/, localStorage key `familliar:characters`, schema version 2, 25 tests.
-- Character creation wizard — src/creation/, steps: class → species → background → languages → ability scores → review. The class step now also holds class skill proficiencies, weapon masteries, fighting style and subclass (D13) — all four clear when the class or level changes.
+- Storage layer — src/storage/, localStorage key `familliar:characters`, schema version 3, 36 tests. A saved character now carries classSkills, masteries, fightingStyle and (via CharacterClass.subclass) subclass, plus the background's two fixed skill proficiencies (CharacterBackground.skillProficiencies) — a version-2 save is rejected, not migrated (see docs/QUESTIONS.md, "Migrace uložených postav").
+- Character creation wizard — src/creation/, steps: class → species → background → languages → ability scores → review. The class step now also holds class skill proficiencies, weapon masteries, fighting style and subclass (D13) — all four clear when the class or level changes, and all four are now saved by the review step.
 - Five creation pickers — src/classes/, src/abilities/, src/species/, src/backgrounds/, src/languages/.
 - Class skill picker, mastery picker, fighting style picker, subclass picker — src/classSkills/, src/masteries/, src/fightingStyle/, src/subclass/, wired into the class step. Class skill picker receives the background's two fixed skills as disabledSkills (D18) once a background is chosen.
 - Component tests — jsdom + Testing Library, e.g. src/creation/CharacterWizard.test.tsx.
@@ -34,11 +34,9 @@ Last updated: 2026-07-28 (subclass picker built and wired into the wizard's clas
 
 Subclass's own internal choices (out of scope this session, D21), then
 feat/ASI. Feat/ASI, the third slice, waits until after step 4, the
-calculation layer (D16). Note: the class-specific selections wired in
-this and the previous session are not yet recorded with the level they
-were taken at (D22) — see docs/REPORT.md. The subclass CHOICE itself is
-also not yet persisted to storage — that is a separate task per this
-session's instructions.
+calculation layer (D16). Note: the class-specific selections are still
+not recorded with the level they were taken at (D22) — see
+docs/QUESTIONS.md.
 
 ## Temporary scaffolding
 

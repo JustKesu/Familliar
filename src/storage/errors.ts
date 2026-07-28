@@ -4,6 +4,8 @@
  * silently — see CLAUDE.md task instructions and PHASE1.md section D.
  */
 
+import { CURRENT_SCHEMA_VERSION } from './character'
+
 export class StorageError extends Error {
 	constructor(message: string) {
 		super(message)
@@ -39,7 +41,7 @@ export class CorruptDataError extends StorageError {
 export class UnknownSchemaVersionError extends StorageError {
 	constructor(version: unknown) {
 		super(
-			`This data uses schema version ${JSON.stringify(version)}, which this version of the app does not understand.`,
+			`This data uses schema version ${JSON.stringify(version)}, but this version of the app expects schema version ${CURRENT_SCHEMA_VERSION}.`,
 		)
 		this.name = 'UnknownSchemaVersionError'
 	}

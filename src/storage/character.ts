@@ -26,6 +26,13 @@ export interface CharacterSpecies {
 export interface CharacterBackground {
 	name: string
 	source: string
+	/**
+	 * The background's two fixed skill proficiencies (BackgroundEntry.skillProficiencies),
+	 * stored here rather than re-derived from backgrounds.json — the class step already
+	 * needs them to disable the same two skills (D18), and the sheet/calculation layer
+	 * will need them too.
+	 */
+	skillProficiencies: [string, string]
 }
 
 /**
@@ -92,16 +99,32 @@ export interface Character {
 	 * Druidic, ...) are not represented yet — see LanguageGrantSource.
 	 */
 	languages?: CharacterLanguage[]
+	/**
+	 * Optional for the same reason as abilityScores above. The class step's
+	 * own skill picks — distinct from background.skillProficiencies, the
+	 * background's fixed pair.
+	 */
+	classSkills?: string[]
+	/**
+	 * Optional for the same reason as abilityScores above.
+	 */
+	masteries?: string[]
+	/**
+	 * Optional for the same reason as abilityScores above.
+	 */
+	fightingStyle?: string | null
 }
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 2 when `languages` changed from
- * `{ name, source }` pairs for the two chosen languages only, to every
- * known language (including Common) each carrying `grantedBy`. Per
- * PHASE1.md section D, a version bump this app does not understand is
- * rejected outright (UnknownSchemaVersionError) rather than guessed at —
- * no migration from version 1 is written, so a character saved before
- * this change will no longer load and must be recreated.
+ * (see wireFormat.ts). Bumped to 3 to persist the class step's own
+ * choices — classSkills, masteries, fightingStyle, and (via
+ * CharacterClass.subclass, already present but previously always saved
+ * as null) subclass — plus the background's two fixed skill
+ * proficiencies. Per PHASE1.md section D, a version bump this app does
+ * not understand is rejected outright (UnknownSchemaVersionError) rather
+ * than guessed at — no migration from version 2 is written, so a
+ * character saved before this change will no longer load and must be
+ * recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 2
+export const CURRENT_SCHEMA_VERSION = 3

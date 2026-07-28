@@ -118,6 +118,39 @@ describe('CharacterStore.list', () => {
 		const store = new CharacterStore(backing)
 		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
 	})
+
+	it('throws UnknownSchemaVersionError for a character saved at schema version 2 (before class-choice fields existed) and leaves the store unchanged', () => {
+		// Before this change, background had no skillProficiencies and there
+		// was no classSkills/masteries/fightingStyle at all. That shape is not
+		// migrated (see CURRENT_SCHEMA_VERSION in character.ts) — a version-2
+		// save like this is rejected outright rather than guessed at.
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: 2,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					background: { name: 'Sage', source: 'XPHB' },
+				},
+			]),
+		)
+		const store = new CharacterStore(backing)
+		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
+		expect(backing.getItem(STORAGE_KEY)).toBe(
+			JSON.stringify([
+				{
+					schemaVersion: 2,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					background: { name: 'Sage', source: 'XPHB' },
+				},
+			]),
+		)
+	})
 })
 
 describe('CharacterStore.create', () => {
@@ -249,6 +282,44 @@ describe('CharacterStore.create with languages', () => {
 	})
 })
 
+describe('CharacterStore.create with class choices', () => {
+	it('saves and reloads classSkills, masteries, fightingStyle, subclass and the background skill proficiencies', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const classes = [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }]
+		const background = { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] as [string, string] }
+
+		const character = store.create(
+			'Aria',
+			classes,
+			undefined,
+			undefined,
+			background,
+			undefined,
+			undefined,
+			['acrobatics', 'perception'],
+			['longsword', 'shortbow'],
+			'Dueling',
+		)
+
+		expect(character.classes[0]?.subclass).toBe('Champion')
+		expect(character.background).toEqual(background)
+		expect(character.classSkills).toEqual(['acrobatics', 'perception'])
+		expect(character.masteries).toEqual(['longsword', 'shortbow'])
+		expect(character.fightingStyle).toBe('Dueling')
+
+		const reloaded = store.list().find((c) => c.id === character.id)
+		expect(reloaded).toEqual(character)
+	})
+
+	it('leaves classSkills, masteries and fightingStyle undefined when none were provided (old-save compatibility)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create('Cato')
+		expect(character.classSkills).toBeUndefined()
+		expect(character.masteries).toBeUndefined()
+		expect(character.fightingStyle).toBeUndefined()
+	})
+})
+
 describe('CharacterStore.rename', () => {
 	it('renames an existing character', () => {
 		const store = new CharacterStore(new MemoryStorage())
@@ -353,6 +424,29 @@ describe('CharacterStore.exportCharacter / import', () => {
 		store.create('Existing')
 		const futureFile = JSON.stringify([{ schemaVersion: 999, id: '1', name: 'Aria', classes: [] }])
 		expect(() => store.import(futureFile)).toThrow(UnknownSchemaVersionError)
+		expect(store.list()).toHaveLength(1)
+	})
+
+	it('rejects a version-2 import file, naming the version found and the version expected, and leaves the store unchanged', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		store.create('Existing')
+		const v2File = JSON.stringify([
+			{
+				schemaVersion: 2,
+				id: '1',
+				name: 'Aria',
+				classes: [],
+				background: { name: 'Sage', source: 'XPHB' },
+			},
+		])
+		expect(() => store.import(v2File)).toThrow(UnknownSchemaVersionError)
+		try {
+			store.import(v2File)
+		} catch (error) {
+			expect(error).toBeInstanceOf(UnknownSchemaVersionError)
+			expect((error as Error).message).toContain('2')
+			expect((error as Error).message).toContain(String(CURRENT_SCHEMA_VERSION))
+		}
 		expect(store.list()).toHaveLength(1)
 	})
 

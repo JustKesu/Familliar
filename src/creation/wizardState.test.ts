@@ -146,21 +146,46 @@ describe('saveCharacter', () => {
 
 	it('writes exactly once, with the assembled character, once every step is complete', () => {
 		const store = fakeStore()
-		saveCharacter(store, completeData())
+		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
 
 		expect(store.create).toHaveBeenCalledTimes(1)
 		expect(store.create).toHaveBeenCalledWith(
 			'Aria',
-			[{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }],
 			completeData().abilityScores,
 			{ name: 'Elf', source: 'XPHB' },
-			{ name: 'Soldier', source: 'XPHB' },
+			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] },
 			{ strength: 2, constitution: 1 },
 			[
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
 				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
+			['athletics', 'intimidation'],
+			['Longsword'],
+			'Archery',
+		)
+	})
+
+	it('omits background when the background skill proficiencies were not supplied', () => {
+		const store = fakeStore()
+		saveCharacter(store, completeData())
+
+		expect(store.create).toHaveBeenCalledWith(
+			'Aria',
+			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }],
+			completeData().abilityScores,
+			{ name: 'Elf', source: 'XPHB' },
+			undefined,
+			{ strength: 2, constitution: 1 },
+			[
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+			],
+			['athletics', 'intimidation'],
+			['Longsword'],
+			'Archery',
 		)
 	})
 
