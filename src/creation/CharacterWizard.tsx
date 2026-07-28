@@ -7,6 +7,7 @@ import { LanguagePicker } from '../languages/LanguagePicker'
 import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { MasteryPicker } from '../masteries/MasteryPicker'
 import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
+import { SubclassPicker } from '../subclass/SubclassPicker'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
@@ -142,6 +143,13 @@ export function CharacterWizard({
 								level={state.data.classChoice.level}
 								value={state.data.fightingStyle}
 								onChange={(style) => dispatch({ type: 'setFightingStyle', style })}
+							/>
+							<SubclassPicker
+								className={state.data.classChoice.className}
+								classSource={state.data.classChoice.classSource}
+								level={state.data.classChoice.level}
+								value={state.data.subclass}
+								onChange={(subclass) => dispatch({ type: 'setSubclass', subclass })}
 							/>
 						</>
 					)}

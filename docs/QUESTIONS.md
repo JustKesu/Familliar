@@ -85,3 +85,11 @@ protože data/items.json nese jen jméno mastery, ne text. Text existuje
 v data-source/. Rozhodnout, jestli rozšířit extract-data.js a hardcode
 nahradit.
 STATUS: nerozhodnuto.
+
+### D22 — formát uložení úrovně u volby
+
+D22 říká, že každá uložená volba nese úroveň, na které byla vzata.
+Zatím to neimplementuje nic — classSkills, masteries, fightingStyle
+ani subclass úroveň nenesou. Formát se rozhodne jednou pro všechny
+volby naráz, až začne level-up (build order krok 8), ne po jedné.
+STATUS: odloženo do kroku 8.

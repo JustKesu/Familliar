@@ -80,6 +80,14 @@ vi.mock('../fightingStyle/fightingStyleData', () => ({
 	]),
 }))
 
+vi.mock('../subclass/subclassData', () => ({
+	loadSubclassLevelFor: vi.fn(async () => 3),
+	loadSubclassesFor: vi.fn(async () => [
+		{ name: 'Champion', source: 'XPHB', entries: ['Simple, brutal effectiveness.'] },
+		{ name: 'Battle Master', source: 'XPHB', entries: ['Maneuvers and superiority dice.'] },
+	]),
+}))
+
 vi.mock('../languages/languageData', () => ({
 	CHOSEN_LANGUAGE_COUNT: 2,
 	AUTOMATIC_LANGUAGE: { name: 'Common', source: 'XPHB' },
@@ -278,6 +286,36 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		expect((await screen.findByLabelText('Athletics') as HTMLInputElement).checked).toBe(false)
 		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(false)
 		expect(screen.getByText('Choose a fighting style.')).toBeTruthy()
+	})
+
+	it('class step: a level 3 Fighter\'s subclass choice is still shown after navigating away and back', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await user.selectOptions(screen.getByLabelText('Level'), '3')
+		await user.click(await screen.findByRole('radio', { name: /Champion/ }))
+
+		await goNext(user)
+		await screen.findByLabelText('Species')
+		await goBack(user)
+
+		expect((screen.getByRole('radio', { name: /Champion/ }) as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('class step: changing the class clears the subclass selection', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await user.selectOptions(screen.getByLabelText('Level'), '3')
+		await user.click(await screen.findByRole('radio', { name: /Champion/ }))
+
+		await user.selectOptions(screen.getByLabelText('Class'), 'Wizard')
+		await user.selectOptions(screen.getByLabelText('Class'), 'Fighter')
+		await user.selectOptions(screen.getByLabelText('Level'), '3')
+
+		expect(screen.getByText('Choose a subclass.')).toBeTruthy()
 	})
 })
 

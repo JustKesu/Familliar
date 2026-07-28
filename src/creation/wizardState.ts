@@ -32,10 +32,11 @@ export interface WizardData {
 	backgroundChoice: BackgroundChoice | null
 	languageChoice: LanguageChoice
 	abilityScores: CharacterAbilityScores | null
-	/** Class skill proficiencies, weapon masteries and fighting style are the class's own choices (D13), so they clear whenever classChoice does. */
+	/** Class skill proficiencies, weapon masteries, fighting style and subclass are the class's own choices (D13), so they clear whenever classChoice does. */
 	classSkills: string[]
 	masteries: string[]
 	fightingStyle: string | null
+	subclass: string | null
 }
 
 export function emptyWizardData(): WizardData {
@@ -49,6 +50,7 @@ export function emptyWizardData(): WizardData {
 		classSkills: [],
 		masteries: [],
 		fightingStyle: null,
+		subclass: null,
 	}
 }
 
@@ -115,6 +117,7 @@ export type WizardAction =
 	| { type: 'setClassSkills'; skills: string[] }
 	| { type: 'setMasteries'; weapons: string[] }
 	| { type: 'setFightingStyle'; style: string | null }
+	| { type: 'setSubclass'; subclass: string | null }
 
 /**
  * Pure navigation + edit reducer. `next` is a no-op unless the current step
@@ -137,7 +140,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setClassChoice':
 			return {
 				...state,
-				data: { ...state.data, classChoice: action.choice, classSkills: [], masteries: [], fightingStyle: null },
+				data: { ...state.data, classChoice: action.choice, classSkills: [], masteries: [], fightingStyle: null, subclass: null },
 			}
 		case 'setSpeciesChoice':
 			return { ...state, data: { ...state.data, speciesChoice: action.choice } }
@@ -153,6 +156,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, masteries: action.weapons } }
 		case 'setFightingStyle':
 			return { ...state, data: { ...state.data, fightingStyle: action.style } }
+		case 'setSubclass':
+			return { ...state, data: { ...state.data, subclass: action.subclass } }
 	}
 }
 

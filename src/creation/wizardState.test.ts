@@ -28,6 +28,7 @@ function completeData(): WizardData {
 		classSkills: ['athletics', 'intimidation'],
 		masteries: ['Longsword'],
 		fightingStyle: 'Archery',
+		subclass: 'Champion',
 	}
 }
 
