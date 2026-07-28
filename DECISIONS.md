@@ -418,7 +418,7 @@ level.
 
 ## D23 — The species picker lists entries a player cannot act on
 
-Same family of problem as Magic Initiate above. Two unrelated causes with
+Same family of problem as the Magic Initiate parent entry in QUESTIONS.md. Two unrelated causes with
 one symptom: a picker that reads `name` off data/species.json and lists
 what it finds shows the player entries that are either unreadable or
 indistinguishable. Both are recorded here because whatever is decided
@@ -465,6 +465,10 @@ what `name` contains, or the player sees four bare elements.
 
 **Cause 2 — Shifter is in the list twice, and the two are identical on
 screen**
+
+This records the situation as it stood before extraction-time
+deduplication was added; the picker's `reprintedAs` filter is now a
+second guard rather than the only one (see D31).
 
 Nothing wrong with the names this time. The problem is that nine species
 names occur twice over, because the species was reprinted in a second
@@ -574,8 +578,8 @@ The two shapes differ in whether the variant's NAME says what it is:
    ONLY in those two fields, never in `name`.
 
 Genasi is the sole case of shape 2: no other species in data/ has a
-`raceName`/`raceSource` field at all (checked across all 87). See PHASE1.md
-section F — a species picker reading `name` alone is the open question.
+`raceName`/`raceSource` field at all (checked across all 87). See D23 —
+a species picker reading `name` alone is the open question.
 
 ## D31 — Species reprints — RESOLVED, deduplicated during extraction
 
@@ -593,7 +597,7 @@ The older entry always says so itself: a superseded entry carries
 "Goliath|XPHB", "Orc|XPHB", "Changeling|EFA"). The newer entry has no
 `reprintedAs`. So a pair is detectable from the data without a
 hand-written list — this is the field the species picker's dedup filter
-relies on (see PHASE1.md section F).
+relies on (see D23).
 
 Note this is NOT the same test as the VGM/MTF exclusion. There the whole
 book was dropped up front. Here both books are wanted for other species
