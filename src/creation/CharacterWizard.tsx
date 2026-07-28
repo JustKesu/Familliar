@@ -8,7 +8,9 @@ import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillP
 import { MasteryPicker } from '../masteries/MasteryPicker'
 import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
 import { SubclassPicker } from '../subclass/SubclassPicker'
+import { OptionalFeaturePicker } from '../optionalFeatures/OptionalFeaturePicker'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
+import { loadSubclassesFor, type SubclassOption } from '../subclass/subclassData'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
@@ -56,6 +58,7 @@ export function CharacterWizard({
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
 	const [saveError, setSaveError] = useState<string | null>(null)
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
+	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -71,11 +74,31 @@ export function CharacterWizard({
 		}
 	}, [])
 
+	useEffect(() => {
+		let cancelled = false
+		if (!state.data.classChoice) {
+			setSubclasses([])
+			return
+		}
+		loadSubclassesFor(state.data.classChoice.className, state.data.classChoice.classSource)
+			.then((loaded) => {
+				if (!cancelled) setSubclasses(loaded)
+			})
+			.catch(() => {
+				/* SubclassPicker already surfaces load errors; this lookup (for the subclass's source) is best-effort. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.classChoice])
+
 	const selectedBackground = state.data.backgroundChoice
 		? backgrounds.find(
 				(b) => b.name === state.data.backgroundChoice!.name && b.source === state.data.backgroundChoice!.source,
 			)
 		: undefined
+
+	const selectedSubclass = state.data.subclass ? subclasses.find((sc) => sc.name === state.data.subclass) : undefined
 
 	/** D18: the background's two fixed skills are shown to the class skill picker as already granted, not offered again. */
 	const disabledSkills: DisabledSkill[] = selectedBackground
@@ -151,6 +174,17 @@ export function CharacterWizard({
 								value={state.data.subclass}
 								onChange={(subclass) => dispatch({ type: 'setSubclass', subclass })}
 							/>
+							{selectedSubclass && (
+								<OptionalFeaturePicker
+									className={state.data.classChoice.className}
+									classSource={state.data.classChoice.classSource}
+									subclassName={selectedSubclass.name}
+									subclassSource={selectedSubclass.source}
+									level={state.data.classChoice.level}
+									value={state.data.optionalFeatureChoices}
+									onChange={(choices) => dispatch({ type: 'setOptionalFeatureChoices', choices })}
+								/>
+							)}
 						</>
 					)}
 				</div>

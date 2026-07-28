@@ -37,6 +37,8 @@ export interface WizardData {
 	masteries: string[]
 	fightingStyle: string | null
 	subclass: string | null
+	/** The subclass's own optionalfeatureProgression picks (D21) — clear whenever class, level or subclass changes, since the options are keyed to a specific subclass. */
+	optionalFeatureChoices: string[]
 }
 
 export function emptyWizardData(): WizardData {
@@ -51,6 +53,7 @@ export function emptyWizardData(): WizardData {
 		masteries: [],
 		fightingStyle: null,
 		subclass: null,
+		optionalFeatureChoices: [],
 	}
 }
 
@@ -118,6 +121,7 @@ export type WizardAction =
 	| { type: 'setMasteries'; weapons: string[] }
 	| { type: 'setFightingStyle'; style: string | null }
 	| { type: 'setSubclass'; subclass: string | null }
+	| { type: 'setOptionalFeatureChoices'; choices: string[] }
 
 /**
  * Pure navigation + edit reducer. `next` is a no-op unless the current step
@@ -140,7 +144,15 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setClassChoice':
 			return {
 				...state,
-				data: { ...state.data, classChoice: action.choice, classSkills: [], masteries: [], fightingStyle: null, subclass: null },
+				data: {
+					...state.data,
+					classChoice: action.choice,
+					classSkills: [],
+					masteries: [],
+					fightingStyle: null,
+					subclass: null,
+					optionalFeatureChoices: [],
+				},
 			}
 		case 'setSpeciesChoice':
 			return { ...state, data: { ...state.data, speciesChoice: action.choice } }
@@ -157,7 +169,9 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setFightingStyle':
 			return { ...state, data: { ...state.data, fightingStyle: action.style } }
 		case 'setSubclass':
-			return { ...state, data: { ...state.data, subclass: action.subclass } }
+			return { ...state, data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [] } }
+		case 'setOptionalFeatureChoices':
+			return { ...state, data: { ...state.data, optionalFeatureChoices: action.choices } }
 	}
 }
 

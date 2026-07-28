@@ -1,12 +1,12 @@
 # Status
 
-Last updated: 2026-07-28 (class step choices — class skills, masteries, fighting style, subclass — and the background's fixed skill proficiencies now persist to storage)
+Last updated: 2026-07-28 (general optionalfeatureProgression picker built and wired into the class step, for the four subclasses with structural internal choices)
 
 ## Build order
 
 1. [done] Markup renderer
 2. [done] App skeleton + persistence
-3. [in progress] Character creation — 5 pickers + wizard shell + class skill/mastery/fighting style/subclass pickers wired in; subclass's own internal choices (D21) remain
+3. [in progress] Character creation — 5 pickers + wizard shell + class skill/mastery/fighting style/subclass/optional-feature pickers wired in; persisting the optional-feature picks to storage remains
 4. [not started] Calculation layer
 4a. [not started] Feat/ASI slice
 5. [not started] Sheet display
@@ -28,14 +28,15 @@ Last updated: 2026-07-28 (class step choices — class skills, masteries, fighti
 - Character creation wizard — src/creation/, steps: class → species → background → languages → ability scores → review. The class step now also holds class skill proficiencies, weapon masteries, fighting style and subclass (D13) — all four clear when the class or level changes, and all four are now saved by the review step.
 - Five creation pickers — src/classes/, src/abilities/, src/species/, src/backgrounds/, src/languages/.
 - Class skill picker, mastery picker, fighting style picker, subclass picker — src/classSkills/, src/masteries/, src/fightingStyle/, src/subclass/, wired into the class step. Class skill picker receives the background's two fixed skills as disabledSkills (D18) once a background is chosen.
+- Optional-feature picker — src/optionalFeatures/, one generic picker for every subclass's `optionalfeatureProgression` (Battle Master's Maneuvers, Rune Knight's Runes, Arcane Archer's Arcane Shot, College of Swords' Fighting Style — the four found by the earlier investigation). `FS:*` codes resolve against feats.json category "FS" (D12); every other code resolves against optional-features.json. Wired into the class step, shown once a subclass is chosen; clears when class, level or subclass changes. Not yet persisted to storage.
 - Component tests — jsdom + Testing Library, e.g. src/creation/CharacterWizard.test.tsx.
 
 ## Next step
 
-Subclass's own internal choices (out of scope this session, D21), then
-feat/ASI. Feat/ASI, the third slice, waits until after step 4, the
-calculation layer (D16). Note: the class-specific selections are still
-not recorded with the level they were taken at (D22) — see
+Persist the optional-feature picks to storage (separate task, deliberately
+not done here), then feat/ASI. Feat/ASI, the third slice, waits until after
+step 4, the calculation layer (D16). Note: the class-specific selections are
+still not recorded with the level they were taken at (D22) — see
 docs/QUESTIONS.md.
 
 ## Temporary scaffolding

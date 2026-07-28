@@ -18,7 +18,9 @@
     "validate-data": "node scripts/validate-data.js",
     "survey-markup": "node scripts/survey-markup.js",
     "investigate-slice1": "node scripts/investigate-slice1.js",
-    "investigate-subclass-choices": "node scripts/investigate-subclass-choices.js"
+    "investigate-subclass-choices": "node scripts/investigate-subclass-choices.js",
+    "investigate-optional-feature-progression": "node scripts/investigate-optional-feature-progression.js",
+    "investigate-optional-feature-shape": "node scripts/investigate-optional-feature-shape.js"
   },
   "dependencies": {
     "react": "^19.2.7",

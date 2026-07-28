@@ -104,3 +104,13 @@ Jakmile se s appkou začne opravdu hrát, tohle přestane platit a další
 bump už migraci napsat MUSÍ. Rozhodnout nejpozději před prvním
 skutečným použitím u stolu.
 STATUS: nerozhodnuto, blokuje reálné použití.
+
+### College of Swords — FS:B nabízí všech 10 stylů
+
+D12 říká, že sufix :B v kódu FS:B omezuje volbu na podmnožinu stylů
+(próza subclassy zmiňuje Dueling a Two-Weapon Fighting). Samotný kód
+tu podmnožinu nenese — je jen v textu. Picker proto nabízí všech 10
+fighting stylů a omezení neřeší; ruční mapování jmen z prózy je přesně
+ten rostoucí seznam výjimek, kterému se D21 vyhýbá. Rozhodnout, jestli
+to stačí, až se s appkou začne hrát.
+STATUS: nerozhodnuto, nízká priorita.

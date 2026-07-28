@@ -29,6 +29,7 @@ function completeData(): WizardData {
 		masteries: ['Longsword'],
 		fightingStyle: 'Archery',
 		subclass: 'Champion',
+		optionalFeatureChoices: ['Precision Attack'],
 	}
 }
 

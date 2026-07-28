@@ -88,6 +88,22 @@ vi.mock('../subclass/subclassData', () => ({
 	]),
 }))
 
+vi.mock('../optionalFeatures/optionalFeatureData', () => ({
+	loadOptionalFeatureChoicesFor: vi.fn(async (_className: string, _classSource: string, subclassName: string) => {
+		if (subclassName === 'Battle Master') {
+			return {
+				featureType: 'MV:B',
+				count: 3,
+				options: [
+					{ name: 'Trip Attack', source: 'XPHB', entries: ['Knock them down.'] },
+					{ name: 'Riposte', source: 'XPHB', entries: ['Strike back.'] },
+				],
+			}
+		}
+		return null
+	}),
+}))
+
 vi.mock('../languages/languageData', () => ({
 	CHOSEN_LANGUAGE_COUNT: 2,
 	AUTOMATIC_LANGUAGE: { name: 'Common', source: 'XPHB' },
@@ -316,6 +332,39 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
 
 		expect(screen.getByText('Choose a subclass.')).toBeTruthy()
+	})
+
+	it('class step: a Battle Master\'s maneuver picks are still shown after navigating away and back', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await user.selectOptions(screen.getByLabelText('Level'), '3')
+		await user.click(await screen.findByRole('radio', { name: /Battle Master/ }))
+		await user.click(await screen.findByLabelText('Trip Attack'))
+
+		await goNext(user)
+		await screen.findByLabelText('Species')
+		await goBack(user)
+
+		expect((await screen.findByLabelText('Trip Attack') as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('class step: changing the subclass clears the maneuver picks', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await user.selectOptions(screen.getByLabelText('Level'), '3')
+		await user.click(await screen.findByRole('radio', { name: /Battle Master/ }))
+		await user.click(await screen.findByLabelText('Trip Attack'))
+
+		await user.click(screen.getByRole('radio', { name: /Champion/ }))
+		expect(screen.queryByLabelText('Trip Attack')).toBeNull()
+
+		await user.click(screen.getByRole('radio', { name: /Battle Master/ }))
+
+		expect((await screen.findByLabelText('Trip Attack') as HTMLInputElement).checked).toBe(false)
 	})
 })
 
