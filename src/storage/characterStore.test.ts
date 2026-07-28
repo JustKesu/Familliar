@@ -320,6 +320,97 @@ describe('CharacterStore.create with class choices', () => {
 	})
 })
 
+describe('CharacterStore.create with optionalFeatureChoices', () => {
+	it('saves and reloads a v4 character with the optional-feature picks intact, tagged with their featureType', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const classes = [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 }]
+		const optionalFeatureChoices = [{ featureType: 'MV:B', choices: ['Trip Attack', 'Riposte'] }]
+
+		const character = store.create(
+			'Aria',
+			classes,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			optionalFeatureChoices,
+		)
+
+		expect(character.optionalFeatureChoices).toEqual(optionalFeatureChoices)
+
+		const reloaded = store.list().find((c) => c.id === character.id)
+		expect(reloaded).toEqual(character)
+	})
+
+	it('leaves optionalFeatureChoices undefined when none were provided (old-save compatibility)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create('Cato')
+		expect(character.optionalFeatureChoices).toBeUndefined()
+	})
+
+	it('rejects a saved optionalFeatureChoices entry missing featureType', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					optionalFeatureChoices: [{ choices: ['Trip Attack'] }],
+				},
+			]),
+		)
+		const store = new CharacterStore(backing)
+		expect(() => store.list()).toThrow(CorruptDataError)
+	})
+
+	it('rejects a version-3 character (before optionalFeatureChoices existed) and leaves the store unchanged', () => {
+		// Per docs/QUESTIONS.md "Migrace uložených postav", the v3 -> v4 bump
+		// rejects old saves outright rather than migrating them.
+		const backing = new MemoryStorage()
+		const v3Payload = [
+			{
+				schemaVersion: 3,
+				id: '1',
+				name: 'Aria',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 }],
+			},
+		]
+		backing.setItem(STORAGE_KEY, JSON.stringify(v3Payload))
+		const store = new CharacterStore(backing)
+		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
+		expect(backing.getItem(STORAGE_KEY)).toBe(JSON.stringify(v3Payload))
+	})
+
+	it('rejects a version-3 import file, naming the version found and the version expected, and leaves the store unchanged', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		store.create('Existing')
+		const v3File = JSON.stringify([
+			{
+				schemaVersion: 3,
+				id: '1',
+				name: 'Aria',
+				classes: [],
+			},
+		])
+		expect(() => store.import(v3File)).toThrow(UnknownSchemaVersionError)
+		try {
+			store.import(v3File)
+		} catch (error) {
+			expect(error).toBeInstanceOf(UnknownSchemaVersionError)
+			expect((error as Error).message).toContain('3')
+			expect((error as Error).message).toContain(String(CURRENT_SCHEMA_VERSION))
+		}
+		expect(store.list()).toHaveLength(1)
+	})
+})
+
 describe('CharacterStore.rename', () => {
 	it('renames an existing character', () => {
 		const store = new CharacterStore(new MemoryStorage())

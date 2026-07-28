@@ -28,7 +28,7 @@ function completeData(): WizardData {
 		classSkills: ['athletics', 'intimidation'],
 		masteries: ['Longsword'],
 		fightingStyle: 'Archery',
-		subclass: 'Champion',
+		subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' },
 		optionalFeatureChoices: ['Precision Attack'],
 	}
 }
@@ -152,6 +152,56 @@ describe('saveCharacter', () => {
 		expect(store.create).toHaveBeenCalledTimes(1)
 		expect(store.create).toHaveBeenCalledWith(
 			'Aria',
+			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
+			completeData().abilityScores,
+			{ name: 'Elf', source: 'XPHB' },
+			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] },
+			{ strength: 2, constitution: 1 },
+			[
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+			],
+			['athletics', 'intimidation'],
+			['Longsword'],
+			'Archery',
+			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
+		)
+	})
+
+	it('omits background when the background skill proficiencies were not supplied', () => {
+		const store = fakeStore()
+		saveCharacter(store, completeData())
+
+		expect(store.create).toHaveBeenCalledWith(
+			'Aria',
+			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
+			completeData().abilityScores,
+			{ name: 'Elf', source: 'XPHB' },
+			undefined,
+			{ strength: 2, constitution: 1 },
+			[
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+			],
+			['athletics', 'intimidation'],
+			['Longsword'],
+			'Archery',
+			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
+		)
+	})
+
+	it('omits optionalFeatureChoices when the subclass has no optionalfeatureProgression', () => {
+		const store = fakeStore()
+		saveCharacter(
+			store,
+			{ ...completeData(), subclass: { name: 'Champion', source: 'XPHB', featureType: null } },
+			['athletics', 'intimidation'],
+		)
+
+		expect(store.create).toHaveBeenCalledWith(
+			'Aria',
 			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }],
 			completeData().abilityScores,
 			{ name: 'Elf', source: 'XPHB' },
@@ -165,28 +215,7 @@ describe('saveCharacter', () => {
 			['athletics', 'intimidation'],
 			['Longsword'],
 			'Archery',
-		)
-	})
-
-	it('omits background when the background skill proficiencies were not supplied', () => {
-		const store = fakeStore()
-		saveCharacter(store, completeData())
-
-		expect(store.create).toHaveBeenCalledWith(
-			'Aria',
-			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }],
-			completeData().abilityScores,
-			{ name: 'Elf', source: 'XPHB' },
 			undefined,
-			{ strength: 2, constitution: 1 },
-			[
-				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
-				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
-				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
-			],
-			['athletics', 'intimidation'],
-			['Longsword'],
-			'Archery',
 		)
 	})
 

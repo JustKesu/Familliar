@@ -5,6 +5,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterLanguage,
+	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
 	LanguageGrantSource,
 } from './character'
@@ -252,6 +253,34 @@ export function describeFightingStyleError(value: unknown): string | null {
 	return null
 }
 
+/** Validates an optional `optionalFeatureChoices` field. Returns null if the field is absent (it's optional). */
+export function describeOptionalFeatureChoicesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `optionalFeatureChoices must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `optionalFeatureChoices[${i}] is not an object`
+		if (!isNonEmptyString(entry['featureType'])) {
+			return `optionalFeatureChoices[${i}].featureType is missing or not a string`
+		}
+		const choices = entry['choices']
+		if (!Array.isArray(choices) || !choices.every((choice) => isNonEmptyString(choice))) {
+			return `optionalFeatureChoices[${i}].choices must be an array of strings`
+		}
+	}
+	return null
+}
+
+function toCharacterOptionalFeatureChoices(value: unknown[]): CharacterOptionalFeatureChoice[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return {
+			featureType: record['featureType'] as string,
+			choices: record['choices'] as string[],
+		}
+	})
+}
+
 /** Validates the Character-shaped fields only (id, name, classes, abilityScores, species, background, abilityBonus) — no version. */
 export function describeCharacterError(value: unknown, index: number): string | null {
 	if (!isRecord(value)) return `[${index}] is not an object`
@@ -279,6 +308,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (masteriesError) return `[${index}].${masteriesError}`
 	const fightingStyleError = describeFightingStyleError(value['fightingStyle'])
 	if (fightingStyleError) return `[${index}].${fightingStyleError}`
+	const optionalFeatureChoicesError = describeOptionalFeatureChoicesError(value['optionalFeatureChoices'])
+	if (optionalFeatureChoicesError) return `[${index}].${optionalFeatureChoicesError}`
 	return null
 }
 
@@ -300,6 +331,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const classSkills = value['classSkills']
 	const masteries = value['masteries']
 	const fightingStyle = value['fightingStyle']
+	const optionalFeatureChoices = value['optionalFeatureChoices']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -312,6 +344,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(classSkills) ? { classSkills: classSkills as string[] } : {}),
 		...(Array.isArray(masteries) ? { masteries: masteries as string[] } : {}),
 		...(fightingStyle !== undefined ? { fightingStyle: fightingStyle as string | null } : {}),
+		...(Array.isArray(optionalFeatureChoices)
+			? { optionalFeatureChoices: toCharacterOptionalFeatureChoices(optionalFeatureChoices) }
+			: {}),
 	}
 }
 

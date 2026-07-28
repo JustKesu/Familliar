@@ -56,6 +56,7 @@ interface RawSubclass {
 	className: string
 	classSource: string
 	reprintedAs?: unknown
+	optionalfeatureProgression?: unknown
 }
 
 function isRawSubclass(value: unknown): value is RawSubclass {
@@ -143,6 +144,24 @@ export interface SubclassOption {
 	name: string
 	source: string
 	entries: unknown[]
+	/**
+	 * The featureType code of the subclass's own optionalfeatureProgression
+	 * (D21), e.g. "MV:B" for Battle Master maneuvers — null if the subclass
+	 * has none. Read off the same classes.json entry already fetched here,
+	 * rather than a second fetch, so callers needing both a subclass's
+	 * source and its progression code (the class step wiring these picks to
+	 * storage) don't have to load the subclass list twice.
+	 */
+	featureType: string | null
+}
+
+/** The featureType code of `sc`'s own optionalfeatureProgression, or null if it has none (see SubclassOption.featureType). */
+function subclassFeatureType(sc: RawSubclass): string | null {
+	const progression = Array.isArray(sc.optionalfeatureProgression) ? sc.optionalfeatureProgression[0] : undefined
+	if (!isRecord(progression)) return null
+	const featureTypes = progression['featureType']
+	if (!Array.isArray(featureTypes)) return null
+	return featureTypes.find((ft): ft is string => typeof ft === 'string') ?? null
 }
 
 /**
@@ -189,7 +208,7 @@ export function subclassesFor(
 				(lowest, f) => (!lowest || f.level < lowest.level ? f : lowest),
 				undefined,
 			)
-		return { name: sc.name, source: sc.source, entries: feature?.entries ?? [] }
+		return { name: sc.name, source: sc.source, entries: feature?.entries ?? [], featureType: subclassFeatureType(sc) }
 	})
 }
 

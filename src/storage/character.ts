@@ -113,18 +113,32 @@ export interface Character {
 	 * Optional for the same reason as abilityScores above.
 	 */
 	fightingStyle?: string | null
+	/**
+	 * Optional for the same reason as abilityScores above. A subclass's own
+	 * optionalfeatureProgression picks (D21) — Battle Master maneuvers, Rune
+	 * Knight runes, Arcane Archer shots, College of Swords fighting styles.
+	 * An array, not a bare list of names, since a character could in
+	 * principle have picks from more than one progression at once; each
+	 * entry's featureType says which progression its choices belong to.
+	 */
+	optionalFeatureChoices?: CharacterOptionalFeatureChoice[]
+}
+
+/** One subclass optionalfeatureProgression's picks, tagged with which progression (featureType code) they belong to. */
+export interface CharacterOptionalFeatureChoice {
+	featureType: string
+	choices: string[]
 }
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 3 to persist the class step's own
- * choices — classSkills, masteries, fightingStyle, and (via
- * CharacterClass.subclass, already present but previously always saved
- * as null) subclass — plus the background's two fixed skill
- * proficiencies. Per PHASE1.md section D, a version bump this app does
- * not understand is rejected outright (UnknownSchemaVersionError) rather
- * than guessed at — no migration from version 2 is written, so a
+ * (see wireFormat.ts). Bumped to 4 to persist optionalFeatureChoices —
+ * the subclass optionalfeatureProgression picks the wizard already
+ * collected but did not save. Per PHASE1.md section D, and per
+ * docs/QUESTIONS.md "Migrace uložených postav", a version bump this app
+ * does not understand is rejected outright (UnknownSchemaVersionError)
+ * rather than guessed at — no migration from version 3 is written, so a
  * character saved before this change will no longer load and must be
  * recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 3
+export const CURRENT_SCHEMA_VERSION = 4

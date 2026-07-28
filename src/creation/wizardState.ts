@@ -9,7 +9,14 @@
  * panel in CharacterWizard.tsx — not reworking any of this.
  */
 
-import type { AbilityBonusMap, Character, CharacterBackground, CharacterClass, CharacterLanguage } from '../storage/character'
+import type {
+	AbilityBonusMap,
+	Character,
+	CharacterBackground,
+	CharacterClass,
+	CharacterLanguage,
+	CharacterOptionalFeatureChoice,
+} from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassLevelChoice } from '../classes/ClassPicker'
 import type { SpeciesChoice } from '../species/SpeciesPicker'
@@ -17,6 +24,18 @@ import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
+
+/**
+ * The chosen subclass, name and source together — carrying `featureType`
+ * (see SubclassOption in subclassData.ts) alongside so the class step's
+ * optional-feature picks can be tagged with the progression they came from
+ * (D21) without loading the subclass list a second time.
+ */
+export interface SubclassChoice {
+	name: string
+	source: string
+	featureType: string | null
+}
 
 export const WIZARD_STEPS = ['class', 'species', 'background', 'languages', 'abilities', 'review'] as const
 export type WizardStep = (typeof WIZARD_STEPS)[number]
@@ -36,7 +55,7 @@ export interface WizardData {
 	classSkills: string[]
 	masteries: string[]
 	fightingStyle: string | null
-	subclass: string | null
+	subclass: SubclassChoice | null
 	/** The subclass's own optionalfeatureProgression picks (D21) — clear whenever class, level or subclass changes, since the options are keyed to a specific subclass. */
 	optionalFeatureChoices: string[]
 }
@@ -120,7 +139,7 @@ export type WizardAction =
 	| { type: 'setClassSkills'; skills: string[] }
 	| { type: 'setMasteries'; weapons: string[] }
 	| { type: 'setFightingStyle'; style: string | null }
-	| { type: 'setSubclass'; subclass: string | null }
+	| { type: 'setSubclass'; subclass: SubclassChoice | null }
 	| { type: 'setOptionalFeatureChoices'; choices: string[] }
 
 /**
@@ -201,7 +220,7 @@ export function saveCharacter(
 				{
 					className: data.classChoice.className,
 					classSource: data.classChoice.classSource,
-					subclass: data.subclass,
+					subclass: data.subclass?.name ?? null,
 					level: data.classChoice.level,
 				},
 			]
@@ -232,6 +251,12 @@ export function saveCharacter(
 				]
 			: undefined
 
+	/** Tagged with the subclass's own featureType (D21) so more than one progression's picks could coexist later without ambiguity — see CharacterOptionalFeatureChoice. */
+	const optionalFeatureChoices: CharacterOptionalFeatureChoice[] | undefined =
+		data.optionalFeatureChoices.length > 0 && data.subclass?.featureType
+			? [{ featureType: data.subclass.featureType, choices: data.optionalFeatureChoices }]
+			: undefined
+
 	return store.create(
 		data.name,
 		classes,
@@ -243,5 +268,6 @@ export function saveCharacter(
 		data.classSkills,
 		data.masteries,
 		data.fightingStyle,
+		optionalFeatureChoices,
 	)
 }

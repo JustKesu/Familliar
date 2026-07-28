@@ -83,8 +83,8 @@ vi.mock('../fightingStyle/fightingStyleData', () => ({
 vi.mock('../subclass/subclassData', () => ({
 	loadSubclassLevelFor: vi.fn(async () => 3),
 	loadSubclassesFor: vi.fn(async () => [
-		{ name: 'Champion', source: 'XPHB', entries: ['Simple, brutal effectiveness.'] },
-		{ name: 'Battle Master', source: 'XPHB', entries: ['Maneuvers and superiority dice.'] },
+		{ name: 'Champion', source: 'XPHB', entries: ['Simple, brutal effectiveness.'], featureType: null },
+		{ name: 'Battle Master', source: 'XPHB', entries: ['Maneuvers and superiority dice.'], featureType: 'MV:B' },
 	]),
 }))
 
@@ -397,5 +397,54 @@ describe('CharacterWizard — storage', () => {
 
 		expect(store.create).toHaveBeenCalledTimes(1)
 		expect(onSaved).toHaveBeenCalledTimes(1)
+	})
+
+	it("a Battle Master's maneuver picks survive through to the saved character", async () => {
+		const user = userEvent.setup()
+		const { store } = renderWizard()
+
+		await fillClassStep(user)
+		await user.selectOptions(screen.getByLabelText('Level'), '3')
+		await user.click(await screen.findByRole('radio', { name: /Battle Master/ }))
+		await user.click(await screen.findByLabelText('Trip Attack'))
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await fillLanguagesStep(user)
+		await goNext(user)
+		await user.selectOptions(screen.getByLabelText('Strength'), '15')
+		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
+		await user.selectOptions(screen.getByLabelText('Constitution'), '13')
+		await user.selectOptions(screen.getByLabelText('Intelligence'), '12')
+		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
+		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
+		await goNext(user)
+
+		await user.click(screen.getByRole('button', { name: 'Create character' }))
+
+		expect(store.create).toHaveBeenCalledWith(
+			'Aria',
+			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 }],
+			{
+				method: 'standardArray',
+				scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
+			},
+			{ name: 'Elf', source: 'XPHB' },
+			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] },
+			{ strength: 2, dexterity: 1 },
+			[
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+			],
+			[],
+			[],
+			null,
+			[{ featureType: 'MV:B', choices: ['Trip Attack'] }],
+		)
 	})
 })

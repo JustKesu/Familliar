@@ -98,8 +98,6 @@ export function CharacterWizard({
 			)
 		: undefined
 
-	const selectedSubclass = state.data.subclass ? subclasses.find((sc) => sc.name === state.data.subclass) : undefined
-
 	/** D18: the background's two fixed skills are shown to the class skill picker as already granted, not offered again. */
 	const disabledSkills: DisabledSkill[] = selectedBackground
 		? selectedBackground.skillProficiencies.map((skill) => ({ skill, source: selectedBackground.name }))
@@ -171,15 +169,21 @@ export function CharacterWizard({
 								className={state.data.classChoice.className}
 								classSource={state.data.classChoice.classSource}
 								level={state.data.classChoice.level}
-								value={state.data.subclass}
-								onChange={(subclass) => dispatch({ type: 'setSubclass', subclass })}
+								value={state.data.subclass?.name ?? null}
+								onChange={(subclassName) => {
+									const found = subclassName ? subclasses.find((sc) => sc.name === subclassName) : undefined
+									dispatch({
+										type: 'setSubclass',
+										subclass: found ? { name: found.name, source: found.source, featureType: found.featureType } : null,
+									})
+								}}
 							/>
-							{selectedSubclass && (
+							{state.data.subclass && (
 								<OptionalFeaturePicker
 									className={state.data.classChoice.className}
 									classSource={state.data.classChoice.classSource}
-									subclassName={selectedSubclass.name}
-									subclassSource={selectedSubclass.source}
+									subclassName={state.data.subclass.name}
+									subclassSource={state.data.subclass.source}
 									level={state.data.classChoice.level}
 									value={state.data.optionalFeatureChoices}
 									onChange={(choices) => dispatch({ type: 'setOptionalFeatureChoices', choices })}

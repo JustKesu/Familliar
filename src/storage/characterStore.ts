@@ -5,6 +5,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterLanguage,
+	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
@@ -156,6 +157,7 @@ export class CharacterStore {
 		classSkills?: string[],
 		masteries?: string[],
 		fightingStyle?: string | null,
+		optionalFeatureChoices?: CharacterOptionalFeatureChoice[],
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -172,6 +174,7 @@ export class CharacterStore {
 			...(classSkills && classSkills.length > 0 ? { classSkills } : {}),
 			...(masteries && masteries.length > 0 ? { masteries } : {}),
 			...(fightingStyle ? { fightingStyle } : {}),
+			...(optionalFeatureChoices && optionalFeatureChoices.length > 0 ? { optionalFeatureChoices } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character
