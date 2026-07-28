@@ -61,3 +61,21 @@ commands with `;` or `&&` in a single invocation — chained
 commands defeat the permission allowlist and cause a prompt
 on every run. Write temporary scripts into `scripts/`, not
 into `/tmp`, and run them as a separate command.
+
+## Comments
+
+Comments explain WHY, never WHAT. The code already says what it does;
+a comment restating it is waste.
+
+Write a comment only when the reason is not visible in the code
+itself — a rule taken from the PHB, a data trap recorded in DATA.md,
+a constraint from a numbered decision (cite it as D<n>). One or two
+lines. Never a paragraph.
+
+Do not write comments explaining the code to a non-programmer. The
+user does not read the code; explanations belong in REPORT.md.
+
+Do not add file-header comments summarising a module, except the one
+D14 requires on temporary scaffolding.
+
+Leave existing comments alone unless the code under them changes.
