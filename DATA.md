@@ -139,8 +139,9 @@ below); fall back to a humanized version of the code for those.
 ## Fluff / lore text not extracted
 
 Descriptive text and images live in separate fluff-*.json files, matched
-to entries by name. Nothing from them is currently extracted. Decide in
-phase 1 whether species/spell descriptions are needed.
+to entries by name. Nothing from them is currently extracted. Whether the
+sheet needs it is an open question — see QUESTIONS.md, "Fluff / lore
+text".
 
 ## Magic item variants — deferred to phase 2
 

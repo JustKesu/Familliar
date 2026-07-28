@@ -99,7 +99,7 @@ tsconfig.node.json and tsconfig.test.json). Not negotiable per-file: no
 opting out with `any` where a real type is possible.
 
 Rationale: the 5etools data is deeply nested and irregularly shaped (see
-the whole "Traps" section of NOTES.md — blank sources meaning PHB, fields
+the whole "Traps" section of DATA.md — blank sources meaning PHB, fields
 that are string-or-null, flags that only exist for some item kinds).
 Those are exactly the mistakes the compiler catches for free.
 
@@ -130,7 +130,7 @@ source (class `Renderer.tag`). Reimplemented for React, not copied.
 `{@condition prone}` and `{@status concentration||concentrating}` carry no
 source. The renderer records that as an empty string rather than filling in
 a default.
-Rationale: per NOTES.md a blank source means the 2014 PHB, not "the current
+Rationale: per DATA.md a blank source means the 2014 PHB, not "the current
 book". Defaulting it inside the renderer would bury that distinction
 somewhere the feature that eventually resolves these links cannot see it.
 
@@ -189,7 +189,7 @@ selection on each step, navigates away and back, and asserts the
 selection is still shown — the class of test the old decision had ruled
 out.
 
-None of this reaches a real browser; see NOTES.md, "Browser
+None of this reaches a real browser; see QUESTIONS.md, "Browser
 verification by the agent" (deferred, revisit at build order step 5).
 
 Tests also get their own TypeScript project (tsconfig.test.json) because
@@ -356,7 +356,7 @@ later, when step 4 is built.
 
 Background skill proficiencies are FIXED — always exactly two, named by
 the background, never chosen (see "Background field shapes" in
-NOTES.md). Only the class's skills are picked by the player. Because the
+DATA.md). Only the class's skills are picked by the player. Because the
 wizard picks class skills before background is chosen, an overlap
 cannot always be prevented at the moment of picking.
 
@@ -451,7 +451,7 @@ A species picker listing `name` would show five separate entries:
 
 "Air", "Earth", "Fire" and "Water" are the four Genasi subraces. Nothing
 in the name says so — the link lives in `raceName: "Genasi"` and
-`raceSource: "MPMM"` (see NOTES.md, "Species variants come in TWO
+`raceSource: "MPMM"` (see D30, "Species variants come in TWO
 shapes").
 
 This is the ONLY species in data/ with that shape. All 87 entries were
@@ -473,7 +473,7 @@ second guard rather than the only one (see D31).
 Nothing wrong with the names this time. The problem is that nine species
 names occur twice over, because the species was reprinted in a second
 book that is also in ALLOWED_SOURCES and both printings survive
-extraction (see NOTES.md, "Nine species names occur twice").
+extraction (see D31).
 
 Shifter is the worst of them — the parent and all four of its variants
 are doubled, once from EFA and once from MPMM:

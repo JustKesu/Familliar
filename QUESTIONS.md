@@ -9,7 +9,7 @@ at which point it moves to DECISIONS.md.
 
 Species and spell descriptive text and images live in separate
 fluff-*.json files, matched to entries by name, and are currently NOT
-extracted (NOTES.md). Decide whether the sheet needs it. Leaning: not
+extracted (DATA.md). Decide whether the sheet needs it. Leaning: not
 needed for phase 1, mechanical text is enough.
 STATUS: undecided.
 
@@ -41,10 +41,10 @@ single-class book. Not blocking; sanity-check against the book sometime.
 
 The app is currently verified by hand: the user runs `npm run dev` and
 clicks through the UI. Automated tests cover pure logic and, since the
-wizard was built, component behaviour through a simulated DOM (see
+wizard was built, component behaviour through a simulated DOM (see D8,
 "Tests — static HTML for the renderer, a real DOM for interactive
-components" in PHASE1.md section D). Nothing verifies the app as it
-actually renders in a real browser.
+components"). Nothing verifies the app as it actually renders in a real
+browser.
 
 The option considered was connecting Claude Code to a real browser
 through the Playwright MCP server, letting it navigate to the dev
