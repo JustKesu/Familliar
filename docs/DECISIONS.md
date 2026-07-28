@@ -640,3 +640,14 @@ Extraction leaves these untouched on purpose.
 
 They mix strings with nested objects ({type: "entries"}, {type: "list"},
 tables...). The renderer recurses rather than joining.
+
+## D37 — Languages are their own wizard step
+
+D13 listed six category steps and folded languages into the origin
+material. The built wizard has languages as a separate step between
+background and ability scores.
+
+Rationale: the number of languages a character chooses depends on
+background-independent rules (see D24), and the picker needed its own
+state in the wizard. Splitting it out cost nothing and made the step
+list match what the player actually does.

@@ -33,7 +33,7 @@ const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
 const DATA_DIR = path.join(ROOT, "data");
-const OUTPUT_FILE = path.join(ROOT, "MARKUP-INVENTORY.md");
+const OUTPUT_FILE = path.join(ROOT, "docs", "MARKUP-INVENTORY.md");
 
 // How many real examples to keep per tag / per entry type.
 const MAX_EXAMPLES = 4;
@@ -245,7 +245,7 @@ function main() {
 		"Do not edit by hand — re-run the script instead.",
 		"",
 		"This is the authoritative list of what the renderer must handle.",
-		"The examples in NOTES.md are illustrative only; this is exhaustive.",
+		"The examples in DATA.md are illustrative only; this is exhaustive.",
 		"",
 	);
 	md.push("## Totals");

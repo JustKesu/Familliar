@@ -13,4 +13,4 @@ public/data/
 
 # Written fresh by Claude Code at the end of every task; a message to the
 # user, not project content, so it isn't version-controlled.
-REPORT.md
+docs/REPORT.md
