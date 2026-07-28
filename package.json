@@ -16,7 +16,8 @@
     "preview": "vite preview",
     "extract-data": "node scripts/extract-data.js",
     "validate-data": "node scripts/validate-data.js",
-    "survey-markup": "node scripts/survey-markup.js"
+    "survey-markup": "node scripts/survey-markup.js",
+    "investigate-slice1": "node scripts/investigate-slice1.js"
   },
   "dependencies": {
     "react": "^19.2.7",

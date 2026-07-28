@@ -19,6 +19,7 @@ Last updated: 2026-07-28
 ## What exists
 
 - Data extraction — scripts/extract-data.js + scripts/validate-data.js, 103 checks green (phase 0, complete).
+- Investigation script — scripts/investigate-slice1.js, confirms weapon mastery and fighting style data shape ahead of the remaining step-3 walkthrough work.
 - App skeleton — Vite + React + TypeScript, data served from public/data/.
 - Markup renderer — src/markup/, 104 tests.
 - Storage layer — src/storage/, localStorage key `familliar:characters`, schema version 2, 25 tests.
