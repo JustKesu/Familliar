@@ -527,6 +527,104 @@ for real work:
   content. Replaced by character creation (step 3) and the sheet (step 5),
   which will use the renderer directly instead of demo panels.
 
+### Level-1-to-target walkthrough — split into three slices
+
+The remaining part of build order step 3 (section A.4) is built as three
+separate tasks, not one:
+
+1. Class skills, weapon masteries and fighting style.
+2. Subclass and its choices.
+3. Feat/ASI.
+
+Rationale: a single task covering all of them is too large — an earlier
+attempt at this size already caused one context exhaustion in this
+project.
+
+### Feat/ASI slice moved after the calculation layer
+
+Slices 1 and 2 above stay in build order step 3. Slice 3 (feat/ASI) is
+deferred until after step 4 (calculation layer) — see section E.
+
+Rationale: feat prerequisites are stated against FINAL ability scores —
+raw scores plus the background bonus, which are deliberately stored
+separately and never combined anywhere yet (section D, ability scores).
+Combining them is a derived value belonging to the calculation layer.
+Building feat/ASI first would mean writing that sum twice.
+
+### Ability-score total — written in the calculation layer, not earlier
+
+The sum of raw ability scores and background bonus is written, when
+first needed, in the module that will hold the calculation layer (build
+order step 4), not inside whichever feature happens to need it first.
+Consumers call it rather than each computing their own copy.
+
+Rationale: putting it anywhere else guarantees a second implementation
+later, when step 4 is built.
+
+### Skill proficiency overlap between class and background
+
+Background skill proficiencies are FIXED — always exactly two, named by
+the background, never chosen (see "Background field shapes" in
+NOTES.md). Only the class's skills are picked by the player. Because the
+wizard picks class skills before background is chosen, an overlap
+cannot always be prevented at the moment of picking.
+
+- On the background step: if a background's fixed skills collide with a
+  skill already picked from the class, say so plainly and point the
+  player back to the class step to change it. Nothing is silently
+  dropped or reassigned.
+- On the class step: when a background is already chosen (true whenever
+  the player navigates back), skills the background grants are shown
+  but not selectable, labelled with where they come from.
+
+This follows section B's existing requirement that the source of every
+proficiency is visible so overlaps can be seen.
+
+### Feat eligibility — enforced by prerequisites, not by category
+
+The app offers only feats the character qualifies for, and explains why
+an ineligible feat cannot be taken rather than hiding it silently. The
+feat list is NOT filtered by `category`: the 2024 rule for the level
+4/8/12/16/19 choice grants the Ability Score Improvement feat or another
+feat of the player's choice for which they qualify, with no category
+restriction. Enforcing prerequisites handles categories on its own —
+Fighting Style feats require the Fighting Style class feature, Epic Boon
+feats require level 19, and an Origin feat remains legal at level 4 if
+its prerequisites are met.
+
+This does not contradict "Fighting Styles resolve through feats.json,
+not optional-features.json" above — that decision says where a fighting
+style is looked up when a class grants one; this says a fighting style
+is not separately offered at an ASI level unless the character
+qualifies.
+
+### ASI offered alongside feats
+
+At each ASI level the player first chooses between an ability score
+increase and a feat, then sees the options for whichever they chose.
+The increase is +2 to one ability or +1 to two, capped at 20. The cap is
+enforced.
+
+### Only structured choices inside class features are driven by the app
+
+Choices the data expresses structurally — `options` entries and
+`optionalfeatureProgression` — are presented as real pickers. Choices
+stated only in a feature's prose are displayed as text for the player to
+resolve themselves.
+
+Rationale: hand-mapping prose choices means a growing table of
+per-feature exceptions, not worth it in phase 1.
+
+### Every stored choice records the level it was made at
+
+A feat, a skill, a fighting style or a subclass choice is stored
+together with the character level at which it was taken, so a level 8
+character can tell its level 4 feat from its level 8 one. Features the
+character receives automatically are NOT stored this way — they are
+derived from class and level, which already carries their level. The
+sheet displays provenance for both: where a thing came from and at what
+level.
+
 ---
 
 ## E. Build order
@@ -592,12 +690,22 @@ Each step is finished and tested before the next begins.
    step did — see section D, "Tests — static HTML for the renderer, a
    real DOM for interactive components"). Covered by
    `src/creation/CharacterWizard.test.tsx`. Not yet built: the
-   level-1-to-target walkthrough of per-level choices.
+   level-1-to-target walkthrough of per-level choices, now split into
+   three slices (section D, "Level-1-to-target walkthrough — split into
+   three slices"): class skills/weapon masteries/fighting style, then
+   subclass and its choices, both still part of this step; feat/ASI is
+   MOVED to after step 4 below.
    `src/CharacterManager.tsx` + `src/CharacterInspector.tsx` (see
    "Temporary scaffolding" below) still provide the temporary list/rename/
    delete/export/import/inspect surface around the real creation flow,
    pending the sheet.
 4. **Calculation layer** — PB, skills, saves, AC, attacks, spell DCs.
+   Includes writing the ability-score total (raw scores + background
+   bonus) in this layer (section D, "Ability-score total — written in
+   the calculation layer, not earlier").
+4a. **Feat/ASI slice** — the level 4/8/12/16/19 feat-or-ASI choice,
+   deferred here from step 3 because it needs the ability-score total
+   step 4 produces (section D).
 5. **Sheet display** — the read-only view of a finished character.
 6. **Spells** — spell list, preparation, slots.
 7. **Inventory and equipment** — items, attunement, equipped state.

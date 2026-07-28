@@ -42,9 +42,11 @@ section D, "Tests — static HTML for the renderer, a real DOM for
 interactive components".
 
 ## Next step
-Phase 1 step 3, remaining slice: the level-1-to-target walkthrough of
-per-level choices, added to the wizard as a new step in
-src/creation/wizardState.ts.
+Phase 1 step 3, remaining walkthrough, now split into three slices (see
+PHASE1.md section D): class skills/weapon masteries/fighting style
+first, then subclass and its choices, added to the wizard as new steps
+in src/creation/wizardState.ts. Feat/ASI, the third slice, is deferred
+until after step 4 (calculation layer).
 
 ## Setup facts
 Windows. VS Code + Claude Code. Node.js and npm installed.

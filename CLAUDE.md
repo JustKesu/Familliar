@@ -51,3 +51,9 @@ After creating any commit, immediately push it to `origin/main`.
 Use the npm scripts defined in `package.json` (`typecheck`, `test`, `build`, `validate-data`, `survey-markup`) rather than invoking tools directly via `npx`. The npm scripts are pre-approved in `.claude/settings.json`; `npx` is not, so every `npx` call costs a permission prompt.
 
 Prefer one command that answers the question over several exploratory ones. If you find yourself running more than about 10 commands to answer one question, stop and tell the user what you are stuck on instead.
+
+Run shell commands one per tool call. Do not chain multiple
+commands with `;` or `&&` in a single invocation — chained
+commands defeat the permission allowlist and cause a prompt
+on every run. Write temporary scripts into `scripts/`, not
+into `/tmp`, and run them as a separate command.
