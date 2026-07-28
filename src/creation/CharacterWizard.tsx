@@ -1,9 +1,13 @@
-import { useReducer, useState, type ReactNode } from 'react'
+import { useEffect, useReducer, useState, type ReactNode } from 'react'
 import { ClassPicker } from '../classes/ClassPicker'
 import { SpeciesPicker } from '../species/SpeciesPicker'
 import { BackgroundPicker } from '../backgrounds/BackgroundPicker'
 import { AbilityScorePicker } from '../abilities/AbilityScorePicker'
 import { LanguagePicker } from '../languages/LanguagePicker'
+import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillPicker'
+import { MasteryPicker } from '../masteries/MasteryPicker'
+import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
+import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
@@ -50,6 +54,32 @@ export function CharacterWizard({
 }): ReactNode {
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
 	const [saveError, setSaveError] = useState<string | null>(null)
+	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
+
+	useEffect(() => {
+		let cancelled = false
+		loadBackgrounds()
+			.then((loaded) => {
+				if (!cancelled) setBackgrounds(loaded)
+			})
+			.catch(() => {
+				/* The background step's own picker already surfaces load errors; this lookup is best-effort. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	const selectedBackground = state.data.backgroundChoice
+		? backgrounds.find(
+				(b) => b.name === state.data.backgroundChoice!.name && b.source === state.data.backgroundChoice!.source,
+			)
+		: undefined
+
+	/** D18: the background's two fixed skills are shown to the class skill picker as already granted, not offered again. */
+	const disabledSkills: DisabledSkill[] = selectedBackground
+		? selectedBackground.skillProficiencies.map((skill) => ({ skill, source: selectedBackground.name }))
+		: []
 
 	function handleSave(): void {
 		try {
@@ -90,6 +120,31 @@ export function CharacterWizard({
 						value={state.data.classChoice}
 						onChange={(choice) => dispatch({ type: 'setClassChoice', choice })}
 					/>
+					{state.data.classChoice && (
+						<>
+							<ClassSkillPicker
+								className={state.data.classChoice.className}
+								classSource={state.data.classChoice.classSource}
+								value={state.data.classSkills}
+								onChange={(skills) => dispatch({ type: 'setClassSkills', skills })}
+								disabledSkills={disabledSkills}
+							/>
+							<MasteryPicker
+								className={state.data.classChoice.className}
+								classSource={state.data.classChoice.classSource}
+								level={state.data.classChoice.level}
+								value={state.data.masteries}
+								onChange={(weapons) => dispatch({ type: 'setMasteries', weapons })}
+							/>
+							<FightingStylePicker
+								className={state.data.classChoice.className}
+								classSource={state.data.classChoice.classSource}
+								level={state.data.classChoice.level}
+								value={state.data.fightingStyle}
+								onChange={(style) => dispatch({ type: 'setFightingStyle', style })}
+							/>
+						</>
+					)}
 				</div>
 			)}
 

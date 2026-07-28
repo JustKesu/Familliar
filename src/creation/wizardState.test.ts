@@ -25,6 +25,9 @@ function completeData(): WizardData {
 			method: 'standardArray',
 			scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
 		},
+		classSkills: ['athletics', 'intimidation'],
+		masteries: ['Longsword'],
+		fightingStyle: 'Archery',
 	}
 }
 

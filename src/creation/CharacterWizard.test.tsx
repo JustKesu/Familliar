@@ -59,6 +59,27 @@ vi.mock('../backgrounds/backgroundData', () => ({
 	]),
 }))
 
+vi.mock('../classSkills/classSkillData', () => ({
+	loadClassSkillChoice: vi.fn(async () => ({ count: 2, options: ['athletics', 'intimidation', 'perception'] })),
+}))
+
+vi.mock('../masteries/masteryData', () => ({
+	MASTERY_DESCRIPTIONS: {},
+	loadMasteryCountFor: vi.fn(async () => 1),
+	loadMasteryWeaponsFor: vi.fn(async () => [
+		{ name: 'Longsword', source: 'XPHB', masteryFull: 'Sap' },
+		{ name: 'Greatsword', source: 'XPHB', masteryFull: 'Graze' },
+	]),
+}))
+
+vi.mock('../fightingStyle/fightingStyleData', () => ({
+	loadFightingStyleGrantLevel: vi.fn(async () => 1),
+	fightingStyleOptions: vi.fn(async () => [
+		{ name: 'Archery', source: 'XPHB', entries: ['+2 to ranged attack rolls.'] },
+		{ name: 'Defense', source: 'XPHB', entries: ['+1 AC while wearing armor.'] },
+	]),
+}))
+
 vi.mock('../languages/languageData', () => ({
 	CHOSEN_LANGUAGE_COUNT: 2,
 	AUTOMATIC_LANGUAGE: { name: 'Common', source: 'XPHB' },
@@ -217,6 +238,46 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		expect(selectedOptionText(screen.getByLabelText('Intelligence'))).toBe('12')
 		expect(selectedOptionText(screen.getByLabelText('Wisdom'))).toBe('10')
 		expect(selectedOptionText(screen.getByLabelText('Charisma'))).toBe('8')
+	})
+
+	it('class step: a Fighter\'s class skill, weapon mastery and fighting style are still shown after navigating away and back', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await user.click(await screen.findByLabelText('Athletics'))
+		await user.click(await screen.findByLabelText('Longsword', { exact: false }))
+		await user.click(await screen.findByLabelText('Archery'))
+
+		await goNext(user)
+		await screen.findByLabelText('Species')
+		await goBack(user)
+
+		expect((screen.getByLabelText('Athletics') as HTMLInputElement).checked).toBe(true)
+		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(true)
+		expect((screen.getByLabelText('Archery') as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('class step: changing the class clears the class skill, weapon mastery and fighting style selections', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await user.click(await screen.findByLabelText('Athletics'))
+		await user.click(await screen.findByLabelText('Longsword', { exact: false }))
+		await user.click(await screen.findByLabelText('Archery'))
+
+		await user.selectOptions(screen.getByLabelText('Class'), 'Wizard')
+
+		expect((await screen.findByLabelText('Athletics') as HTMLInputElement).checked).toBe(false)
+		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(false)
+		expect(screen.getByText('Choose a fighting style.')).toBeTruthy()
+
+		await user.selectOptions(screen.getByLabelText('Class'), 'Fighter')
+
+		expect((await screen.findByLabelText('Athletics') as HTMLInputElement).checked).toBe(false)
+		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(false)
+		expect(screen.getByText('Choose a fighting style.')).toBeTruthy()
 	})
 })
 

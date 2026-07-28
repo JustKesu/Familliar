@@ -32,6 +32,10 @@ export interface WizardData {
 	backgroundChoice: BackgroundChoice | null
 	languageChoice: LanguageChoice
 	abilityScores: CharacterAbilityScores | null
+	/** Class skill proficiencies, weapon masteries and fighting style are the class's own choices (D13), so they clear whenever classChoice does. */
+	classSkills: string[]
+	masteries: string[]
+	fightingStyle: string | null
 }
 
 export function emptyWizardData(): WizardData {
@@ -42,6 +46,9 @@ export function emptyWizardData(): WizardData {
 		backgroundChoice: null,
 		languageChoice: [],
 		abilityScores: null,
+		classSkills: [],
+		masteries: [],
+		fightingStyle: null,
 	}
 }
 
@@ -105,6 +112,9 @@ export type WizardAction =
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
 	| { type: 'setLanguageChoice'; choice: LanguageChoice }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
+	| { type: 'setClassSkills'; skills: string[] }
+	| { type: 'setMasteries'; weapons: string[] }
+	| { type: 'setFightingStyle'; style: string | null }
 
 /**
  * Pure navigation + edit reducer. `next` is a no-op unless the current step
@@ -125,7 +135,10 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setName':
 			return { ...state, data: { ...state.data, name: action.name } }
 		case 'setClassChoice':
-			return { ...state, data: { ...state.data, classChoice: action.choice } }
+			return {
+				...state,
+				data: { ...state.data, classChoice: action.choice, classSkills: [], masteries: [], fightingStyle: null },
+			}
 		case 'setSpeciesChoice':
 			return { ...state, data: { ...state.data, speciesChoice: action.choice } }
 		case 'setBackgroundChoice':
@@ -134,6 +147,12 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, languageChoice: action.choice } }
 		case 'setAbilityScores':
 			return { ...state, data: { ...state.data, abilityScores: action.scores } }
+		case 'setClassSkills':
+			return { ...state, data: { ...state.data, classSkills: action.skills } }
+		case 'setMasteries':
+			return { ...state, data: { ...state.data, masteries: action.weapons } }
+		case 'setFightingStyle':
+			return { ...state, data: { ...state.data, fightingStyle: action.style } }
 	}
 }
 
