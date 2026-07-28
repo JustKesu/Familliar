@@ -271,10 +271,10 @@ describe('CharacterStore.delete', () => {
 		expect(store.list()).toEqual([])
 	})
 
-	it('is a no-op for an unknown id', () => {
+	it('throws CharacterNotFoundError for an unknown id and leaves the store unchanged', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		store.create('Aria')
-		expect(() => store.delete('missing')).not.toThrow()
+		expect(() => store.delete('missing')).toThrow(CharacterNotFoundError)
 		expect(store.list()).toHaveLength(1)
 	})
 })

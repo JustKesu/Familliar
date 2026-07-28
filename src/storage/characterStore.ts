@@ -185,7 +185,11 @@ export class CharacterStore {
 	}
 
 	delete(id: string): void {
-		this.writeAll(this.list().filter((character) => character.id !== id))
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		this.writeAll(characters.filter((character) => character.id !== id))
 	}
 
 	/** Serializes one saved character to an export file's contents (still an array — see wireFormat.ts). */
