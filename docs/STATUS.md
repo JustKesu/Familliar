@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-07-28
+Last updated: 2026-07-28 (class skill picker built, not yet wired in)
 
 ## Build order
 
@@ -20,19 +20,21 @@ Last updated: 2026-07-28
 
 - Data extraction — scripts/extract-data.js + scripts/validate-data.js, 103 checks green (phase 0, complete).
 - Investigation script — scripts/investigate-slice1.js, confirms weapon mastery and fighting style data shape ahead of the remaining step-3 walkthrough work.
+- Investigation script — scripts/investigate-class-skills.js, confirms all 13 classes' skill-choice shape in classes.json.
 - App skeleton — Vite + React + TypeScript, data served from public/data/.
 - Markup renderer — src/markup/, 104 tests.
 - Storage layer — src/storage/, localStorage key `familliar:characters`, schema version 2, 25 tests.
 - Character creation wizard — src/creation/, steps: class → species → background → languages → ability scores → review.
 - Five creation pickers — src/classes/, src/abilities/, src/species/, src/backgrounds/, src/languages/.
+- Class skill picker — src/classSkills/, standalone, not yet wired into the wizard.
 - Component tests — jsdom + Testing Library, e.g. src/creation/CharacterWizard.test.tsx.
 
 ## Next step
 
-Remaining part of step 3: class skills/weapon masteries/fighting style,
-then subclass and its choices, added to the wizard as new steps in
-src/creation/wizardState.ts (see D15). Feat/ASI, the third slice, waits
-until after step 4, the calculation layer (D16).
+Wire the class skill picker into the wizard (src/creation/wizardState.ts,
+see D15), then weapon masteries/fighting style, then subclass and its
+choices. Feat/ASI, the third slice, waits until after step 4, the
+calculation layer (D16).
 
 ## Temporary scaffolding
 
