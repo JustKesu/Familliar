@@ -60,3 +60,28 @@ dense, frequently re-rendered screen where a real browser check would
 pay for itself. If adopted, it should be used for narrow, named checks
 ("fill steps 1 and 2, go back, assert step 1 still shows its
 selection"), not open-ended "click around and tell me if it looks right".
+
+### Fighting Style — ověřit detekci v reálné hře
+
+Slice 1 detekuje nárok na Fighting Style podle jména class feature
+"Fighting Style" v class-features.json, ne podle seznamu tříd.
+Až bude build order krok 3 hotový celý, projít Fightera, Paladina,
+Rangera (a College of Swords barda, viz D12) a ověřit, že se volba
+nabídne přesně tam, kde má, a nikde jinde.
+STATUS: k ověření po dokončení kroku 3.
+
+### Weapon Mastery — Paladin, Ranger, Rogue nepodporovaní
+
+Pět tříd má feature "Weapon Mastery", ale jen Barbarian a Fighter
+mají počet v tabulce. U Paladina, Rangera a Roguea je počet jen v
+próze feature, takže picker jim nic nenabídne. Rozhodnout, jestli
+prózu parsovat, nebo počty ručně namapovat.
+STATUS: nerozhodnuto.
+
+### Mastery rule text je hardcodovaný
+
+masteryData.ts obsahuje ručně opsaných 8 popisů (Cleave, Sap, Topple…),
+protože data/items.json nese jen jméno mastery, ne text. Text existuje
+v data-source/. Rozhodnout, jestli rozšířit extract-data.js a hardcode
+nahradit.
+STATUS: nerozhodnuto.
