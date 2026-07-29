@@ -49,6 +49,8 @@ export interface WizardData {
 	classChoice: ClassLevelChoice | null
 	speciesChoice: SpeciesChoice | null
 	backgroundChoice: BackgroundChoice | null
+	/** The background's tool proficiency — the named tool (auto-filled) or the player's category pick. Clears whenever backgroundChoice does (D8), since a category choice is keyed to a specific background. */
+	backgroundToolProficiency: string | null
 	languageChoice: LanguageChoice
 	abilityScores: CharacterAbilityScores | null
 	/** Class skill proficiencies, weapon masteries, fighting style and subclass are the class's own choices (D13), so they clear whenever classChoice does. */
@@ -68,6 +70,7 @@ export function emptyWizardData(): WizardData {
 		classChoice: null,
 		speciesChoice: null,
 		backgroundChoice: null,
+		backgroundToolProficiency: null,
 		languageChoice: [],
 		abilityScores: null,
 		classSkills: [],
@@ -115,7 +118,7 @@ export function isStepComplete(step: WizardStep, data: WizardData): boolean {
 		case 'species':
 			return data.speciesChoice !== null
 		case 'background':
-			return data.backgroundChoice !== null
+			return data.backgroundChoice !== null && data.backgroundToolProficiency !== null
 		case 'languages':
 			return data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
 		case 'abilities':
@@ -138,6 +141,7 @@ export type WizardAction =
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
 	| { type: 'setSpeciesSkills'; skills: string[] }
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
+	| { type: 'setBackgroundToolProficiency'; tool: string | null }
 	| { type: 'setLanguageChoice'; choice: LanguageChoice }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
 	| { type: 'setClassSkills'; skills: string[] }
@@ -182,7 +186,9 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setSpeciesSkills':
 			return { ...state, data: { ...state.data, speciesSkills: action.skills } }
 		case 'setBackgroundChoice':
-			return { ...state, data: { ...state.data, backgroundChoice: action.choice } }
+			return { ...state, data: { ...state.data, backgroundChoice: action.choice, backgroundToolProficiency: null } }
+		case 'setBackgroundToolProficiency':
+			return { ...state, data: { ...state.data, backgroundToolProficiency: action.tool } }
 		case 'setLanguageChoice':
 			return { ...state, data: { ...state.data, languageChoice: action.choice } }
 		case 'setAbilityScores':
@@ -233,11 +239,12 @@ export function saveCharacter(
 		: []
 
 	const background: CharacterBackground | undefined =
-		data.backgroundChoice && backgroundSkillProficiencies
+		data.backgroundChoice && backgroundSkillProficiencies && data.backgroundToolProficiency
 			? {
 					name: data.backgroundChoice.name,
 					source: data.backgroundChoice.source,
 					skillProficiencies: backgroundSkillProficiencies,
+					toolProficiency: data.backgroundToolProficiency,
 				}
 			: undefined
 

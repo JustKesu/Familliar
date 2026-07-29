@@ -147,12 +147,20 @@ export function describeBackgroundError(value: unknown): string | null {
 	) {
 		return `background.skillProficiencies must be an array of exactly 2 strings`
 	}
+	if (!isNonEmptyString(value['toolProficiency'])) {
+		return `background.toolProficiency is missing or not a string`
+	}
 	return null
 }
 
 function toCharacterBackground(value: Record<string, unknown>): CharacterBackground {
 	const skillProficiencies = value['skillProficiencies'] as [string, string]
-	return { name: value['name'] as string, source: value['source'] as string, skillProficiencies }
+	return {
+		name: value['name'] as string,
+		source: value['source'] as string,
+		skillProficiencies,
+		toolProficiency: value['toolProficiency'] as string,
+	}
 }
 
 const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation']

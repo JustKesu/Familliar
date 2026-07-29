@@ -286,7 +286,12 @@ describe('CharacterStore.create with class choices', () => {
 	it('saves and reloads classSkills, masteries, fightingStyle, subclass and the background skill proficiencies', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const classes = [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }]
-		const background = { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] as [string, string] }
+		const background = {
+			name: 'Soldier',
+			source: 'XPHB',
+			skillProficiencies: ['athletics', 'intimidation'] as [string, string],
+			toolProficiency: 'Dice Set',
+		}
 
 		const character = store.create(
 			'Aria',

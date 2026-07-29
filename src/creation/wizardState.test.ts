@@ -17,6 +17,7 @@ function completeData(): WizardData {
 		classChoice: { className: 'Fighter', classSource: 'XPHB', level: 1 },
 		speciesChoice: { name: 'Elf', source: 'XPHB' },
 		backgroundChoice: { name: 'Soldier', source: 'XPHB', abilityBonus: { strength: 2, constitution: 1 } },
+		backgroundToolProficiency: 'Dice Set',
 		languageChoice: [
 			{ name: 'Draconic', source: 'XPHB' },
 			{ name: 'Dwarvish', source: 'XPHB' },
@@ -72,6 +73,15 @@ describe('isStepComplete', () => {
 				],
 			}),
 		).toBe(true)
+	})
+
+	it('blocks the background step until its tool proficiency is set, even with a background chosen', () => {
+		const data = {
+			...emptyWizardData(),
+			backgroundChoice: { name: 'Soldier', source: 'XPHB', abilityBonus: { strength: 2, constitution: 1 } },
+		}
+		expect(isStepComplete('background', data)).toBe(false)
+		expect(isStepComplete('background', { ...data, backgroundToolProficiency: 'Dice Set' })).toBe(true)
 	})
 
 	it('the review step is always complete on its own', () => {
@@ -156,7 +166,7 @@ describe('saveCharacter', () => {
 			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
 			completeData().abilityScores,
 			{ name: 'Elf', source: 'XPHB' },
-			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] },
+			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
 			{ strength: 2, constitution: 1 },
 			[
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
@@ -208,7 +218,7 @@ describe('saveCharacter', () => {
 			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }],
 			completeData().abilityScores,
 			{ name: 'Elf', source: 'XPHB' },
-			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] },
+			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
 			{ strength: 2, constitution: 1 },
 			[
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },

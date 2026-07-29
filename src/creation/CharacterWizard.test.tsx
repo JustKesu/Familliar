@@ -70,7 +70,24 @@ vi.mock('../backgrounds/backgroundData', () => ({
 			equipmentOptionA: [{ kind: 'item', label: 'Quarterstaff' }],
 			equipmentOptionB: [{ kind: 'coins', copper: 5000 }],
 		},
+		{
+			name: 'Artisan',
+			source: 'XPHB',
+			abilityChoices: ['strength', 'dexterity', 'intelligence'],
+			skillProficiencies: ['investigation', 'perception'],
+			toolProficiency: { kind: 'category', category: 'anyArtisansTool', label: "Artisan's tools (your choice)" },
+			originFeat: { name: 'Crafter', source: 'XPHB' },
+			equipmentOptionA: [{ kind: 'item', label: "Smith's Tools" }],
+			equipmentOptionB: [{ kind: 'coins', copper: 3200 }],
+		},
 	]),
+}))
+
+vi.mock('../toolProficiencies/toolProficiencyData', () => ({
+	loadToolCategoryOptions: vi.fn(async (category: string) => {
+		if (category === 'anyArtisansTool') return ["Carpenter's Tools", "Smith's Tools"]
+		return []
+	}),
 }))
 
 vi.mock('../classSkills/classSkillData', () => ({
@@ -258,6 +275,48 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		expect(value(await screen.findByLabelText('Background'))).toBe('Soldier|XPHB')
 		expect(value(screen.getByLabelText('+2'))).toBe('strength')
 		expect(value(screen.getByLabelText('+1'))).toBe('dexterity')
+	})
+
+	it('background step: a background with a named tool proficiency shows nothing to pick and auto-fills it', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+
+		expect(screen.queryByLabelText('Gaming Set')).toBeNull()
+
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+
+		// Reaching the languages step proves isStepComplete('background') passed,
+		// which requires backgroundToolProficiency to already be set — nothing
+		// clicked it, so the named tool must have auto-filled it.
+		expect(await screen.findByLabelText('Draconic (XPHB)')).toBeTruthy()
+	})
+
+	it('background step: a background with a category tool proficiency lets the player choose one, and the choice survives navigation', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Artisan (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await user.click(await screen.findByLabelText("Smith's Tools"))
+
+		await goNext(user)
+		await screen.findByLabelText('Draconic (XPHB)')
+		await goBack(user)
+
+		expect((await screen.findByLabelText("Smith's Tools") as HTMLInputElement).checked).toBe(true)
 	})
 
 	it('languages step: the chosen languages are still shown after navigating away and back', async () => {
@@ -488,7 +547,7 @@ describe('CharacterWizard — storage', () => {
 				scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
 			},
 			{ name: 'Elf', source: 'XPHB' },
-			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] },
+			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Gaming Set' },
 			{ strength: 2, dexterity: 1 },
 			[
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },

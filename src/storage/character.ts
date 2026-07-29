@@ -33,6 +33,14 @@ export interface CharacterBackground {
 	 * will need them too.
 	 */
 	skillProficiencies: [string, string]
+	/**
+	 * The background's tool proficiency (BackgroundEntry.toolProficiency) —
+	 * the named tool it grants outright, or the specific tool the player
+	 * chose from its category. Always exactly one tool: every background's
+	 * toolProficiencies entry offers exactly 1 (confirmed against all 33 in
+	 * scripts/investigate-tool-proficiencies.js).
+	 */
+	toolProficiency: string
 }
 
 /**
@@ -140,12 +148,12 @@ export interface CharacterOptionalFeatureChoice {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 5 to add speciesSkills — the species
- * skill proficiency wizard step. Per PHASE1.md section D, and per
+ * (see wireFormat.ts). Bumped to 6 to add background.toolProficiency — the
+ * background tool proficiency wizard step. Per PHASE1.md section D, and per
  * docs/QUESTIONS.md "Migrace uložených postav", a version bump this app
  * does not understand is rejected outright (UnknownSchemaVersionError)
- * rather than guessed at — no migration from version 4 is written, so a
+ * rather than guessed at — no migration from version 5 is written, so a
  * character saved before this change will no longer load and must be
  * recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 5
+export const CURRENT_SCHEMA_VERSION = 6

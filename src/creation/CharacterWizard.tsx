@@ -6,6 +6,7 @@ import { AbilityScorePicker } from '../abilities/AbilityScorePicker'
 import { LanguagePicker } from '../languages/LanguagePicker'
 import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { SpeciesSkillPicker } from '../speciesSkills/SpeciesSkillPicker'
+import { ToolProficiencyPicker } from '../toolProficiencies/ToolProficiencyPicker'
 import { MasteryPicker } from '../masteries/MasteryPicker'
 import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
 import { SubclassPicker } from '../subclass/SubclassPicker'
@@ -235,6 +236,13 @@ export function CharacterWizard({
 						onChange={(choice) => dispatch({ type: 'setBackgroundChoice', choice })}
 						disabledSkills={[...classSkillsAsDisabled, ...speciesSkillsAsDisabled]}
 					/>
+					{selectedBackground && (
+						<ToolProficiencyPicker
+							toolProficiency={selectedBackground.toolProficiency}
+							value={state.data.backgroundToolProficiency}
+							onChange={(tool) => dispatch({ type: 'setBackgroundToolProficiency', tool })}
+						/>
+					)}
 				</div>
 			)}
 
@@ -264,6 +272,7 @@ export function CharacterWizard({
 					</p>
 					<p>Species: {state.data.speciesChoice?.name ?? '—'}</p>
 					<p>Background: {state.data.backgroundChoice?.name ?? '—'}</p>
+					<p>Tool proficiency: {state.data.backgroundToolProficiency ?? '—'}</p>
 					<p>
 						Languages: Common
 						{state.data.languageChoice.length > 0
