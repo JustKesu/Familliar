@@ -273,6 +273,39 @@ describe('<Entries> — every nested entry type found in data/', () => {
 		// ...but the reader sees only the name, never the pipe-separated uid.
 		expect(text(<Entries entries={entry} />)).toBe(name)
 	})
+
+	it('abilityDc renders a readable sentence naming the ability', () => {
+		const out = text(
+			<Entries entries={[{ type: 'abilityDc', name: 'Arcane Shot', attributes: ['int'] }]} />,
+		)
+		expect(out).toContain('Arcane Shot')
+		expect(out).toContain('Intelligence')
+		expect(out).not.toContain('int')
+	})
+
+	it('abilityDc with multiple attributes lists them all', () => {
+		const out = text(
+			<Entries
+				entries={[{ type: 'abilityDc', name: 'Ki Save', attributes: ['str', 'dex'] }]}
+			/>,
+		)
+		expect(out).toContain('Strength')
+		expect(out).toContain('Dexterity')
+	})
+
+	it('statblock renders the target name and keeps its identifiers on the element', () => {
+		const out = html(
+			<Entries
+				entries={[{ type: 'statblock', tag: 'item', name: 'Psychic Blade', source: 'XPHB' }]}
+			/>,
+		)
+		expect(out).toContain('data-ref-category="item"')
+		expect(out).toContain('data-ref-name="Psychic Blade"')
+		expect(out).toContain('data-ref-source="XPHB"')
+		expect(text(<Entries entries={[{ type: 'statblock', tag: 'item', name: 'Psychic Blade', source: 'XPHB' }]} />)).toBe(
+			'Psychic Blade',
+		)
+	})
 })
 
 describe('<Entries> — graceful degradation', () => {

@@ -83,6 +83,20 @@ export function Markup({ text }: { text: string }): ReactNode {
  * SECTION 2 — UNKNOWN ENTRY TYPE REPORTING
  * ==========================================================================*/
 
+const ABILITY_NAMES: Record<string, string> = {
+	str: 'Strength',
+	dex: 'Dexterity',
+	con: 'Constitution',
+	int: 'Intelligence',
+	wis: 'Wisdom',
+	cha: 'Charisma',
+}
+
+/** Expands a 5etools ability abbreviation ("int") to its full name. */
+function abilityName(abbreviation: string): string {
+	return ABILITY_NAMES[abbreviation] ?? abbreviation
+}
+
 function warnUnknownEntryType(type: string): void {
 	unknownEntryWarnings.warn(
 		type,
@@ -239,6 +253,43 @@ function TypedEntry({ node }: { node: Record<string, unknown> }): ReactNode {
 			return <EntryRef uid={asString(node['optionalfeature'])} kind="optionalfeature" />
 		case 'refFeat':
 			return <EntryRef uid={asString(node['feat'])} kind="feat" />
+
+		/* A save DC derived from an ability score, e.g. "Arcane Shot" (int). */
+		case 'abilityDc': {
+			const abilities = (asArray(node['attributes']) ?? [])
+				.map((a) => asString(a))
+				.filter((a): a is string => a !== undefined)
+				.map(abilityName)
+			return (
+				<p className="mk-value mk-value--abilityDc">
+					{name && <strong>{name} </strong>}
+					save DC uses your {abilities.join(' or ')} modifier.
+				</p>
+			)
+		}
+
+		/*
+		 * A pointer to a creature or object statblock in another file. Like the
+		 * ref* types above, D7 means no cross-file lookup — show the target's
+		 * name and keep its identifiers on the element for later resolution.
+		 */
+		case 'statblock': {
+			const source = asString(node['source'])
+			const tag = asString(node['tag'])
+			if (!name) return null
+			return (
+				<p>
+					<span
+						className="mk-ref mk-ref--statblock"
+						data-ref-category={tag}
+						data-ref-name={name}
+						data-ref-source={source}
+					>
+						{name}
+					</span>
+				</p>
+			)
+		}
 
 		default: {
 			warnUnknownEntryType(type)
