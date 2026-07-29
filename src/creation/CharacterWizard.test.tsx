@@ -23,6 +23,7 @@ vi.mock('../classes/classData', () => ({
 	loadBaseClasses: vi.fn(async () => [
 		{ name: 'Fighter', source: 'XPHB', hd: { number: 1, faces: 10 } },
 		{ name: 'Wizard', source: 'XPHB', hd: { number: 1, faces: 6 } },
+		{ name: 'Rogue', source: 'XPHB', hd: { number: 1, faces: 8 } },
 	]),
 }))
 
@@ -118,6 +119,18 @@ vi.mock('../subclass/subclassData', () => ({
 		{ name: 'Battle Master', source: 'XPHB', entries: ['Maneuvers and superiority dice.'], featureType: 'MV:B' },
 	]),
 }))
+
+/** Rogue grants expertise from level 1 (2 skills, any proficiency); Fighter and Wizard grant none in these tests. */
+vi.mock('../expertise/expertiseData', async () => {
+	const actual = await vi.importActual<typeof import('../expertise/expertiseData')>('../expertise/expertiseData')
+	return {
+		...actual,
+		loadExpertiseEligibility: vi.fn(async (className: string, _classSource: string, level: number) => {
+			if (className === 'Rogue' && level >= 1) return { count: 2, restrictedTo: null }
+			return null
+		}),
+	}
+})
 
 vi.mock('../optionalFeatures/optionalFeatureData', () => ({
 	loadOptionalFeatureChoicesFor: vi.fn(async (_className: string, _classSource: string, subclassName: string) => {
@@ -559,6 +572,79 @@ describe('CharacterWizard — storage', () => {
 			null,
 			[{ featureType: 'MV:B', choices: ['Trip Attack'] }],
 			[],
+			[],
 		)
+	})
+})
+
+describe('CharacterWizard — expertise step', () => {
+	async function fillThroughBackground(user: ReturnType<typeof userEvent.setup>, cls: string) {
+		await user.type(screen.getByLabelText('Character name'), 'Aria')
+		await user.selectOptions(await screen.findByLabelText('Class'), cls)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+	}
+
+	it('a Rogue at level 1 is offered the expertise step, and the choice survives navigation', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughBackground(user, 'Rogue')
+		await goNext(user)
+
+		// Soldier grants athletics and intimidation outright — enough proficient skills to pick 2 for Expertise.
+		await user.click(await screen.findByLabelText(/Athletics/))
+		await user.click(screen.getByLabelText(/Intimidation/))
+
+		await goNext(user)
+		await screen.findByLabelText('Draconic (XPHB)')
+		await goBack(user)
+
+		expect((screen.getByLabelText(/Athletics/) as HTMLInputElement).checked).toBe(true)
+		expect((screen.getByLabelText(/Intimidation/) as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('a Fighter at level 1 is never offered the expertise step', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughBackground(user, 'Fighter')
+		await goNext(user)
+
+		// Straight to languages — no expertise panel in between, and no gap in the step numbering.
+		expect(await screen.findByLabelText('Draconic (XPHB)')).toBeTruthy()
+		expect(screen.queryByText('Expertise', { selector: 'li' })).toBeNull()
+	})
+
+	it('changing the class clears previously chosen expertise skills', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughBackground(user, 'Rogue')
+		await goNext(user)
+		await user.click(await screen.findByLabelText(/Athletics/))
+		await user.click(screen.getByLabelText(/Intimidation/))
+
+		await goBack(user) // expertise -> background
+		await goBack(user) // background -> species
+		await goBack(user) // species -> class
+
+		await user.selectOptions(screen.getByLabelText('Class'), 'Fighter')
+		await user.selectOptions(screen.getByLabelText('Class'), 'Rogue')
+
+		await goNext(user) // class -> species
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user) // species -> background
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user) // background -> expertise
+
+		expect((await screen.findByLabelText(/Athletics/) as HTMLInputElement).checked).toBe(false)
+		expect((screen.getByLabelText(/Intimidation/) as HTMLInputElement).checked).toBe(false)
 	})
 })

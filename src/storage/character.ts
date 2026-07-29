@@ -122,6 +122,13 @@ export interface Character {
 	 */
 	speciesSkills?: string[]
 	/**
+	 * Optional for the same reason as abilityScores above. The skills named
+	 * as Expertise (doubled proficiency bonus) — a subset of classSkills,
+	 * speciesSkills or background.skillProficiencies, never a skill the
+	 * character isn't otherwise proficient in.
+	 */
+	expertiseSkills?: string[]
+	/**
 	 * Optional for the same reason as abilityScores above.
 	 */
 	masteries?: string[]
@@ -148,12 +155,11 @@ export interface CharacterOptionalFeatureChoice {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 6 to add background.toolProficiency — the
- * background tool proficiency wizard step. Per PHASE1.md section D, and per
- * docs/QUESTIONS.md "Migrace uložených postav", a version bump this app
- * does not understand is rejected outright (UnknownSchemaVersionError)
- * rather than guessed at — no migration from version 5 is written, so a
- * character saved before this change will no longer load and must be
- * recreated.
+ * (see wireFormat.ts). Bumped to 7 to add expertiseSkills — the expertise
+ * wizard step. Per PHASE1.md section D, and per docs/QUESTIONS.md "Migrace
+ * uložených postav", a version bump this app does not understand is
+ * rejected outright (UnknownSchemaVersionError) rather than guessed at —
+ * no migration from version 6 is written, so a character saved before this
+ * change will no longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 6
+export const CURRENT_SCHEMA_VERSION = 7

@@ -11,17 +11,19 @@ import { MasteryPicker } from '../masteries/MasteryPicker'
 import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
 import { SubclassPicker } from '../subclass/SubclassPicker'
 import { OptionalFeaturePicker } from '../optionalFeatures/OptionalFeaturePicker'
+import { ExpertisePicker } from '../expertise/ExpertisePicker'
+import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertise/expertiseData'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
 import { loadSubclassesFor, type SubclassOption } from '../subclass/subclassData'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
-	WIZARD_STEPS,
 	initialControllerState,
 	isReadyToSave,
 	isStepComplete,
 	saveCharacter,
 	stepIndex,
+	visibleSteps,
 	wizardReducer,
 	type WizardStep,
 } from './wizardState'
@@ -43,6 +45,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	class: 'Class and level',
 	species: 'Species',
 	background: 'Background',
+	expertise: 'Expertise',
 	languages: 'Languages',
 	abilities: 'Ability scores',
 	review: 'Review and save',
@@ -61,6 +64,7 @@ export function CharacterWizard({
 	const [saveError, setSaveError] = useState<string | null>(null)
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
 	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
+	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
 
 	useEffect(() => {
 		let cancelled = false
@@ -94,6 +98,34 @@ export function CharacterWizard({
 		}
 	}, [state.data.classChoice])
 
+	/**
+	 * Loaded separately from ExpertisePicker's own fetch (same duplication
+	 * SubclassPicker already accepts above) — the wizard needs to know
+	 * whether the 'expertise' step exists at all, before that step's own
+	 * panel would ever mount.
+	 */
+	useEffect(() => {
+		let cancelled = false
+		if (!state.data.classChoice) {
+			setExpertiseEligibility(null)
+			return
+		}
+		loadExpertiseEligibility(
+			state.data.classChoice.className,
+			state.data.classChoice.classSource,
+			state.data.classChoice.level,
+		)
+			.then((eligibility) => {
+				if (!cancelled) setExpertiseEligibility(eligibility)
+			})
+			.catch(() => {
+				/* ExpertisePicker itself surfaces load errors; this lookup (for step visibility) is best-effort. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.classChoice])
+
 	const selectedBackground = state.data.backgroundChoice
 		? backgrounds.find(
 				(b) => b.name === state.data.backgroundChoice!.name && b.source === state.data.backgroundChoice!.source,
@@ -120,9 +152,40 @@ export function CharacterWizard({
 		? state.data.speciesSkills.map((skill) => ({ skill, source: state.data.speciesChoice!.name }))
 		: []
 
+	/**
+	 * Every skill the character is already proficient in, from all three
+	 * sources the expertise step may draw from (task instructions, point 3) —
+	 * the same three lists already assembled above for D18/D44's disabled-
+	 * skill wiring. First source wins if a skill somehow appears in more than
+	 * one (the earlier pickers already prevent picking the same skill twice
+	 * across sources, so this is a defensive dedupe, not an expected case).
+	 */
+	const proficientSkills: DisabledSkill[] = [
+		...classSkillsAsDisabled,
+		...backgroundSkillsAsDisabled,
+		...speciesSkillsAsDisabled,
+	].filter((entry, index, all) => all.findIndex((other) => other.skill === entry.skill) === index)
+
+	/**
+	 * The expertise pool narrowed by the class's own restriction (Scholar),
+	 * and the count clamped to what that pool can actually supply (task
+	 * instructions, point 3) — never asks for more skills than the character
+	 * has, and this is the exact number the 'expertise' step and the final
+	 * save both require.
+	 */
+	const expertisePool = expertiseEligibility?.restrictedTo
+		? proficientSkills.filter((entry) => expertiseEligibility.restrictedTo!.includes(entry.skill))
+		: proficientSkills
+	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count, expertisePool.length) : null
+
 	function handleSave(): void {
 		try {
-			const character = saveCharacter(store, state.data, selectedBackground?.skillProficiencies)
+			const character = saveCharacter(
+				store,
+				state.data,
+				selectedBackground?.skillProficiencies,
+				expertiseRequiredCount,
+			)
 			setSaveError(null)
 			onSaved(character)
 		} catch (error) {
@@ -130,12 +193,12 @@ export function CharacterWizard({
 		}
 	}
 
-	const canGoNext = isStepComplete(state.step, state.data)
+	const canGoNext = isStepComplete(state.step, state.data, expertiseRequiredCount)
 
 	return (
 		<div className="wizard">
 			<ol className="wizard__steps">
-				{WIZARD_STEPS.map((step, index) => (
+				{visibleSteps(expertiseRequiredCount).map((step, index) => (
 					<li
 						key={step}
 						className={step === state.step ? 'wizard__step wizard__step--active' : 'wizard__step'}
@@ -246,6 +309,19 @@ export function CharacterWizard({
 				</div>
 			)}
 
+			{state.step === 'expertise' && state.data.classChoice && (
+				<div className="wizard__panel">
+					<ExpertisePicker
+						className={state.data.classChoice.className}
+						classSource={state.data.classChoice.classSource}
+						level={state.data.classChoice.level}
+						proficientSkills={proficientSkills}
+						value={state.data.expertiseSkills}
+						onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
+					/>
+				</div>
+			)}
+
 			{state.step === 'languages' && (
 				<div className="wizard__panel">
 					<LanguagePicker
@@ -279,6 +355,9 @@ export function CharacterWizard({
 							? `, ${state.data.languageChoice.map((l) => l.name).join(', ')}`
 							: ''}
 					</p>
+					<p>
+						Expertise: {state.data.expertiseSkills.length > 0 ? state.data.expertiseSkills.join(', ') : '—'}
+					</p>
 					<p>Ability score method: {state.data.abilityScores?.method ?? '—'}</p>
 					{saveError && <p className="error">{saveError}</p>}
 				</div>
@@ -288,15 +367,19 @@ export function CharacterWizard({
 				<button type="button" onClick={onCancel}>
 					Cancel
 				</button>
-				<button type="button" onClick={() => dispatch({ type: 'back' })} disabled={stepIndex(state.step) === 0}>
+				<button
+					type="button"
+					onClick={() => dispatch({ type: 'back', expertiseRequiredCount })}
+					disabled={stepIndex(state.step, expertiseRequiredCount) === 0}
+				>
 					Back
 				</button>
 				{state.step === 'review' ? (
-					<button type="button" onClick={handleSave} disabled={!isReadyToSave(state.data)}>
+					<button type="button" onClick={handleSave} disabled={!isReadyToSave(state.data, expertiseRequiredCount)}>
 						Create character
 					</button>
 				) : (
-					<button type="button" onClick={() => dispatch({ type: 'next' })} disabled={!canGoNext}>
+					<button type="button" onClick={() => dispatch({ type: 'next', expertiseRequiredCount })} disabled={!canGoNext}>
 						Next
 					</button>
 				)}

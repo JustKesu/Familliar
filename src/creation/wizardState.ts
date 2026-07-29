@@ -37,11 +37,24 @@ export interface SubclassChoice {
 	featureType: string | null
 }
 
-export const WIZARD_STEPS = ['class', 'species', 'background', 'languages', 'abilities', 'review'] as const
+export const WIZARD_STEPS = ['class', 'species', 'background', 'expertise', 'languages', 'abilities', 'review'] as const
 export type WizardStep = (typeof WIZARD_STEPS)[number]
 
+/**
+ * The steps actually shown to the player. `expertise` only appears when the
+ * class grants it by the chosen level (task instructions, point 2) — a
+ * `null` count means no entitlement at all, so the step is skipped
+ * entirely rather than shown empty, and the numbering of every step after
+ * it shifts down to stay contiguous.
+ */
+export function visibleSteps(expertiseRequiredCount: number | null): readonly WizardStep[] {
+	return expertiseRequiredCount === null ? WIZARD_STEPS.filter((step) => step !== 'expertise') : WIZARD_STEPS
+}
+
 /** The picker steps only — every one of these must be complete before the review step may save. */
-const PICKER_STEPS: readonly WizardStep[] = ['class', 'species', 'background', 'languages', 'abilities']
+function pickerSteps(expertiseRequiredCount: number | null): readonly WizardStep[] {
+	return visibleSteps(expertiseRequiredCount).filter((step) => step !== 'review')
+}
 
 /** The in-progress character. Nothing here is written to storage until saveCharacter runs. */
 export interface WizardData {
@@ -57,6 +70,8 @@ export interface WizardData {
 	classSkills: string[]
 	/** The species' skill proficiencies (fixed and/or chosen) — clears whenever speciesChoice does, since the options are keyed to a specific species. */
 	speciesSkills: string[]
+	/** Which already-proficient skills the player named as Expertise (D8) — clears whenever class, level, class skills, species, species skills or background change, since all of those affect the offer or the count (task instructions, point 4). */
+	expertiseSkills: string[]
 	masteries: string[]
 	fightingStyle: string | null
 	subclass: SubclassChoice | null
@@ -75,6 +90,7 @@ export function emptyWizardData(): WizardData {
 		abilityScores: null,
 		classSkills: [],
 		speciesSkills: [],
+		expertiseSkills: [],
 		masteries: [],
 		fightingStyle: null,
 		subclass: null,
@@ -91,18 +107,20 @@ export function initialControllerState(): WizardControllerState {
 	return { step: WIZARD_STEPS[0], data: emptyWizardData() }
 }
 
-export function stepIndex(step: WizardStep): number {
-	return WIZARD_STEPS.indexOf(step)
+export function stepIndex(step: WizardStep, expertiseRequiredCount: number | null = null): number {
+	return visibleSteps(expertiseRequiredCount).indexOf(step)
 }
 
-function nextStep(step: WizardStep): WizardStep | null {
-	const idx = stepIndex(step)
-	return idx < WIZARD_STEPS.length - 1 ? WIZARD_STEPS[idx + 1] : null
+function nextStep(step: WizardStep, expertiseRequiredCount: number | null): WizardStep | null {
+	const steps = visibleSteps(expertiseRequiredCount)
+	const idx = steps.indexOf(step)
+	return idx < steps.length - 1 ? steps[idx + 1] : null
 }
 
-function previousStep(step: WizardStep): WizardStep | null {
-	const idx = stepIndex(step)
-	return idx > 0 ? WIZARD_STEPS[idx - 1] : null
+function previousStep(step: WizardStep, expertiseRequiredCount: number | null): WizardStep | null {
+	const steps = visibleSteps(expertiseRequiredCount)
+	const idx = steps.indexOf(step)
+	return idx > 0 ? steps[idx - 1] : null
 }
 
 /**
@@ -110,8 +128,18 @@ function previousStep(step: WizardStep): WizardStep | null {
  * exactly what that step's own picker already validates (a non-null
  * choice), plus the character name on the class step, since nothing else
  * collects it. No second layer of rules beyond that.
+ *
+ * `expertiseRequiredCount` is the number of Expertise skills the 'expertise'
+ * step must collect — already adjusted down if the character has fewer
+ * proficient skills than the class grants (task instructions, point 3), so
+ * an exact-match check here never becomes impossible to satisfy. `null`
+ * only reaches this case defensively; the step isn't offered at all then.
  */
-export function isStepComplete(step: WizardStep, data: WizardData): boolean {
+export function isStepComplete(
+	step: WizardStep,
+	data: WizardData,
+	expertiseRequiredCount: number | null = null,
+): boolean {
 	switch (step) {
 		case 'class':
 			return data.name.trim() !== '' && data.classChoice !== null
@@ -119,6 +147,8 @@ export function isStepComplete(step: WizardStep, data: WizardData): boolean {
 			return data.speciesChoice !== null
 		case 'background':
 			return data.backgroundChoice !== null && data.backgroundToolProficiency !== null
+		case 'expertise':
+			return expertiseRequiredCount === null || data.expertiseSkills.length === expertiseRequiredCount
 		case 'languages':
 			return data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
 		case 'abilities':
@@ -129,17 +159,18 @@ export function isStepComplete(step: WizardStep, data: WizardData): boolean {
 }
 
 /** Whether every picker step is complete — the gate for the review step's save button. */
-export function isReadyToSave(data: WizardData): boolean {
-	return PICKER_STEPS.every((step) => isStepComplete(step, data))
+export function isReadyToSave(data: WizardData, expertiseRequiredCount: number | null = null): boolean {
+	return pickerSteps(expertiseRequiredCount).every((step) => isStepComplete(step, data, expertiseRequiredCount))
 }
 
 export type WizardAction =
-	| { type: 'next' }
-	| { type: 'back' }
+	| { type: 'next'; expertiseRequiredCount?: number | null }
+	| { type: 'back'; expertiseRequiredCount?: number | null }
 	| { type: 'setName'; name: string }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
 	| { type: 'setSpeciesSkills'; skills: string[] }
+	| { type: 'setExpertiseSkills'; skills: string[] }
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
 	| { type: 'setBackgroundToolProficiency'; tool: string | null }
 	| { type: 'setLanguageChoice'; choice: LanguageChoice }
@@ -158,12 +189,13 @@ export type WizardAction =
 export function wizardReducer(state: WizardControllerState, action: WizardAction): WizardControllerState {
 	switch (action.type) {
 		case 'next': {
-			if (!isStepComplete(state.step, state.data)) return state
-			const next = nextStep(state.step)
+			const eligibility = action.expertiseRequiredCount ?? null
+			if (!isStepComplete(state.step, state.data, eligibility)) return state
+			const next = nextStep(state.step, eligibility)
 			return next ? { ...state, step: next } : state
 		}
 		case 'back': {
-			const prev = previousStep(state.step)
+			const prev = previousStep(state.step, action.expertiseRequiredCount ?? null)
 			return prev ? { ...state, step: prev } : state
 		}
 		case 'setName':
@@ -175,6 +207,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					...state.data,
 					classChoice: action.choice,
 					classSkills: [],
+					expertiseSkills: [],
 					masteries: [],
 					fightingStyle: null,
 					subclass: null,
@@ -182,11 +215,24 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 				},
 			}
 		case 'setSpeciesChoice':
-			return { ...state, data: { ...state.data, speciesChoice: action.choice, speciesSkills: [] } }
+			return {
+				...state,
+				data: { ...state.data, speciesChoice: action.choice, speciesSkills: [], expertiseSkills: [] },
+			}
 		case 'setSpeciesSkills':
-			return { ...state, data: { ...state.data, speciesSkills: action.skills } }
+			return { ...state, data: { ...state.data, speciesSkills: action.skills, expertiseSkills: [] } }
+		case 'setExpertiseSkills':
+			return { ...state, data: { ...state.data, expertiseSkills: action.skills } }
 		case 'setBackgroundChoice':
-			return { ...state, data: { ...state.data, backgroundChoice: action.choice, backgroundToolProficiency: null } }
+			return {
+				...state,
+				data: {
+					...state.data,
+					backgroundChoice: action.choice,
+					backgroundToolProficiency: null,
+					expertiseSkills: [],
+				},
+			}
 		case 'setBackgroundToolProficiency':
 			return { ...state, data: { ...state.data, backgroundToolProficiency: action.tool } }
 		case 'setLanguageChoice':
@@ -194,7 +240,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setAbilityScores':
 			return { ...state, data: { ...state.data, abilityScores: action.scores } }
 		case 'setClassSkills':
-			return { ...state, data: { ...state.data, classSkills: action.skills } }
+			return { ...state, data: { ...state.data, classSkills: action.skills, expertiseSkills: [] } }
 		case 'setMasteries':
 			return { ...state, data: { ...state.data, masteries: action.weapons } }
 		case 'setFightingStyle':
@@ -217,13 +263,18 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
  * BackgroundChoice doesn't carry them (see BackgroundPicker.tsx), so the
  * caller (CharacterWizard.tsx, which already resolves the full
  * BackgroundEntry for D18's disabled-skills wiring) passes them in here.
+ *
+ * `expertiseRequiredCount` is the same value CharacterWizard.tsx already
+ * computes for the 'expertise' step's own completion check — passed again
+ * here so this final readiness check agrees with it exactly.
  */
 export function saveCharacter(
 	store: CharacterStore,
 	data: WizardData,
 	backgroundSkillProficiencies?: [string, string],
+	expertiseRequiredCount: number | null = null,
 ): Character {
-	if (!isReadyToSave(data)) {
+	if (!isReadyToSave(data, expertiseRequiredCount)) {
 		throw new Error('Cannot save a character before every step is complete.')
 	}
 
@@ -283,5 +334,6 @@ export function saveCharacter(
 		data.fightingStyle,
 		optionalFeatureChoices,
 		data.speciesSkills,
+		data.expertiseSkills,
 	)
 }

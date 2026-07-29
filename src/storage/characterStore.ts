@@ -159,6 +159,7 @@ export class CharacterStore {
 		fightingStyle?: string | null,
 		optionalFeatureChoices?: CharacterOptionalFeatureChoice[],
 		speciesSkills?: string[],
+		expertiseSkills?: string[],
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -177,6 +178,7 @@ export class CharacterStore {
 			...(fightingStyle ? { fightingStyle } : {}),
 			...(optionalFeatureChoices && optionalFeatureChoices.length > 0 ? { optionalFeatureChoices } : {}),
 			...(speciesSkills && speciesSkills.length > 0 ? { speciesSkills } : {}),
+			...(expertiseSkills && expertiseSkills.length > 0 ? { expertiseSkills } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character

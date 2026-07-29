@@ -28,6 +28,7 @@ function completeData(): WizardData {
 		},
 		classSkills: ['athletics', 'intimidation'],
 		speciesSkills: ['perception'],
+		expertiseSkills: [],
 		masteries: ['Longsword'],
 		fightingStyle: 'Archery',
 		subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' },
@@ -178,6 +179,7 @@ describe('saveCharacter', () => {
 			'Archery',
 			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
 			['perception'],
+			[],
 		)
 	})
 
@@ -202,6 +204,7 @@ describe('saveCharacter', () => {
 			'Archery',
 			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
 			['perception'],
+			[],
 		)
 	})
 
@@ -230,6 +233,39 @@ describe('saveCharacter', () => {
 			'Archery',
 			undefined,
 			['perception'],
+			[],
+		)
+	})
+
+	it('forwards the chosen expertise skills and validates readiness against expertiseRequiredCount', () => {
+		const store = fakeStore()
+		expect(() => saveCharacter(store, completeData(), ['athletics', 'intimidation'], 2)).toThrow()
+
+		saveCharacter(
+			store,
+			{ ...completeData(), expertiseSkills: ['stealth', 'perception'] },
+			['athletics', 'intimidation'],
+			2,
+		)
+
+		expect(store.create).toHaveBeenLastCalledWith(
+			'Aria',
+			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
+			completeData().abilityScores,
+			{ name: 'Elf', source: 'XPHB' },
+			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+			{ strength: 2, constitution: 1 },
+			[
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+			],
+			['athletics', 'intimidation'],
+			['Longsword'],
+			'Archery',
+			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
+			['perception'],
+			['stealth', 'perception'],
 		)
 	})
 
