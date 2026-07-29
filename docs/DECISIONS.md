@@ -651,3 +651,115 @@ Rationale: the number of languages a character chooses depends on
 background-independent rules (see D24), and the picker needed its own
 state in the wizard. Splitting it out cost nothing and made the step
 list match what the player actually does.
+
+## D38 — Kalkulační vrstva jsou čisté funkce, data se předávají dovnitř
+
+Výpočet nikdy sám nenačítá data. Funkce dostane postavu a potřebná
+data jako vstup a vrátí výsledek okamžitě.
+
+Rationale: polovina výpočtů (proficiency bonus, modifikátory) žádná
+data nepotřebuje. Kdyby si je funkce načítala sama, čekaly by i ony a
+testy by musely simulovat síť. Takhle testu stačí podstrčit vymyšlená
+data.
+
+## D39 — Jedno místo, které načítá data, sdílené wizardem i sheetem
+
+Soubor z data/ se stáhne nejvýš jednou. Kdo si o něj řekne podruhé,
+dostane už staženou kopii. Nenačítá se všechno dopředu — jen to, co
+si někdo vyžádal.
+
+Rationale: wizard dneska načítá classes.json opakovaně (viz REPORT
+z 2026-07-28). Sheet přidá další čtenáře stejných souborů.
+
+## D40 — Každá spočítaná hodnota vrací rozklad, ne jen číslo
+
+Výsledek je číslo plus seznam příspěvků, ze kterých vzniklo
+("STR +3, proficiency +3 z Fightera").
+
+Rationale: mezivýsledky uvnitř funkce stejně existují — rozklad je
+jen nezahodí. Cena teď je jeden řádek na funkci; dopsat to později
+znamená přepsat každou funkci i každé její volání. Zároveň je to
+jediná obrana proti chybě, kterou testy nepředvídaly: u stolu je
+vidět, z čeho číslo vzniklo.
+
+## D41 — Rozklad se zobrazuje až na vyžádání
+
+Sheet ukazuje čísla a stav proficiency. Rozklad se dopočítá a zobrazí
+teprve když hráč hodnotu rozklikne.
+
+Rationale: sheet má 18 skillů, 6 savů a další hodnoty. Rozklad u všech
+naráz je nečitelný pro hráče a zbytečná práce pro prohlížeč.
+
+## D42 — Hodnota vlastnosti je SEZNAM příspěvků, ne součet dvou čísel
+
+Finální hodnota vlastnosti se počítá jako součet seznamu, který dnes
+obsahuje základ a bonus z backgroundu. ASI a feats do něj později
+přibydou jako další položky.
+
+Nulové příspěvky se do seznamu nezapisují — rozdíl mezi "žádné ASI" a
+"ASI za nula" musí být v rozkladu vidět.
+
+Rationale: napsané jako "základ + background" by to krok 4a musel
+otevřít a přepsat, a s ním i všechno, co finální hodnotu čte.
+
+## D43 — Chybějící data nikdy neshodí sheet
+
+Když výpočet nedokáže hodnotu určit (třída, kterou v datech nenajde),
+vrátí "neznámo" a UI to zobrazí viditelně jako chybu. Funkce nespadne
+a zbytek sheetu se vykreslí.
+
+Rationale: hráč u stolu nesmí přijít o celý sheet kvůli jedné hodnotě.
+Zároveň se to nesmí tvářit jako platné číslo.
+
+## D44 — Kolize proficiency se hlásí vždy, z jakéhokoli zdroje
+
+Rozšiřuje D18 za dvojici class/background. Jakákoli kolize — class,
+background, species, feat — se hlásí a hráč si musí vybrat něco
+jiného. Nic se tiše nezahazuje ani nepřeřazuje.
+
+Když už si hráč kolizi vytvořil (například species vybraná až po
+class skillech), proficiency se počítá JEDNOU a rozklad ukáže
+všechny zdroje.
+
+## D45 — Skill a save vrací číslo A stav, ne jen číslo
+
+Stav je none / proficient / expertise, u Barda navíc poloviční
+(Jack of All Trades). Sheet ho zobrazuje tečkou, ne číslem.
+Model stavů musí snést přidání dalšího.
+
+Jack of All Trades se s expertise nikdy nepotká — poloviční
+proficiency platí jen tam, kde hráč proficiency nemá.
+
+## D46 — Ověřovací skript před funkcí, test po ní
+
+Před každým výpočtem, který čte data/, jde krátký skript, který
+zjistí, jestli a v jakém tvaru tam ta data vůbec jsou. Teprve pak se
+píše funkce. Testy vznikají po ní.
+
+Rationale: u weapon mastery to odhalilo, že tři třídy počet v datech
+nemají vůbec, a ušetřilo slepou implementaci.
+
+Správnost čísel se ověřuje proti ručně dopočítaným postavám:
+Fighter 5 (základ), Bard 5 (poloviční proficiency), Rogue 5
+(expertise), Barbarian 1 (hraniční úroveň), Fighter 4 vs 5
+(zlom proficiency bonusu).
+
+## D47 — Rozsah kroku 4 je to, co má vstupy
+
+Krok 4 staví: hodnoty vlastností a modifikátory, proficiency bonus,
+iniciativu, saving throws, skilly, rychlost/velikost/darkvision,
+hit dice pool.
+
+AC, maximální HP, útoky a kouzelné DC se do stejné složky
+(src/calculation/, rozdělené po tématech) přidají jako NOVÉ soubory
+ve svých krocích (7, 8, 6). Nic z kroku 4 se kvůli nim nepřepisuje.
+
+Volat kalkulační vrstvu smí sheet i wizard — feat prerequisity čtou
+finální hodnoty vlastností (D16).
+
+## D48 — Pasivní hodnoty patří ke skillům
+
+Passive Perception, Passive Investigation a Passive Insight se počítají
+jako 10 + bonus příslušného skillu, ve stejném souboru jako skilly
+(build order krok 4). SPEC je nezmiňuje; screenshot z DnD Beyond je má
+a hráči je u stolu používají.

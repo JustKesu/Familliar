@@ -114,3 +114,64 @@ fighting stylů a omezení neřeší; ruční mapování jmen z prózy je přesn
 ten rostoucí seznam výjimek, kterému se D21 vyhýbá. Rozhodnout, jestli
 to stačí, až se s appkou začne hrát.
 STATUS: nerozhodnuto, nízká priorita.
+
+### Extra Attack — počet je ve jméně feature, ne v datech
+
+Fighter má v tabulce sloupce Second Wind a Weapon Mastery s čísly, ale
+Extra Attack tam sloupec NEMÁ. Počet útoků je schovaný ve jméně
+feature: "Extra Attack" (lvl 5), "Two Extra Attacks" (11),
+"Three Extra Attacks" (20). Jak se ta feature jmenuje u ostatních tříd
+(Barbarian, Paladin, Ranger, Monk) nikdo neověřil.
+
+Před implementací jde ověřovací skript: projít všechny třídy, najít
+každou feature se jménem obsahujícím "Extra Attack", vypsat přesná
+jména a úrovně. Teprve pak se rozhodne, jestli mapovat jména na čísla
+(krátká tabulka) nebo parsovat text (křehké).
+
+Patří ke kroku 7 (útoky) — bez zbraní není co počítat.
+STATUS: nerozhodnuto, ověřit před krokem 7.
+
+### Featy — kolik jich vůbec nese mechanický efekt strukturovaně
+
+feats.json má 128 záznamů a mnohé nemění jen číslo: Alert mění
+iniciativu, Resilient přidá save proficiency, jiný dá výhodu na CON
+save pro udržení koncentrace, další dávají skill, AC nebo rychlost.
+Každý je jiný typ zásahu do sheetu.
+
+Projít je ručně po jednom znamená napsat tabulku 128 výjimek — přesně
+to, čemu se D21 vyhýbá. Návrh: feat, který nese efekt v datech
+strukturovaně, se aplikuje; ostatní se jen zobrazí jako text. Kolik
+featů spadá kam, musí zjistit ověřovací skript.
+
+Zvlášť se musí ověřit ability bonusy: mnoho featů zvyšuje vlastnost
+o 1 (Dwarven Fortitude +1 CON, Resilient, half-featy obecně).
+5etools má na to pravděpodobně strukturované pole, ale nikdo to
+neověřil. Skript musí říct, kolik ze 128 featů takový bonus nese a
+v jakém tvaru — pokud je strukturovaný, přičte se automaticky jako
+další položka do seznamu příspěvků (D42) a žádná ruční tabulka na
+tohle nebude potřeba.
+
+Patří ke kroku 4a (feat/ASI).
+STATUS: nerozhodnuto, ověřit před krokem 4a.
+
+### Koncentrace — výhoda na CON save
+
+Screenshot z DnD Beyond ukazuje u savů poznámku "Advantage on CON to
+maintain Concentration", která tam je kvůli featu. SPEC má koncentraci
+jen jako play tracking (co postava zrovna drží), ne jako modifikátor
+savu.
+
+Souvisí s otázkou o featech výše — až se rozhodne, jak se featy
+aplikují, rozhodne se i tohle.
+STATUS: nerozhodnuto.
+
+### Expertise picker chybí v build orderu
+
+Krok 4 počítá se skilly ve třech stavech (none / proficiency /
+expertise, D45), ale wizard expertise nikde nesbírá — krok 3 vybíral
+jen class skills. Rogue a Bard ji přitom dostávají.
+
+Picker patří do kroku 3 jako samostatný úkol, před krok 4. Nejdřív
+ověřovací skript: kde je expertise v datech, které třídy ji dávají a
+na jaké úrovni, a jestli nese počet strukturovaně.
+STATUS: rozhodnuto že se přidá, neimplementováno.

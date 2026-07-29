@@ -152,6 +152,7 @@ Each step is finished and tested before the next begins.
 3. **Character creation** — class, species, background, ability scores
    (all three methods), languages, and the level-1-to-target walkthrough
    of per-level choices.
+3a. **Expertise** — the expertise picker for Rogue and Bard.
 4. **Calculation layer** — proficiency bonus, skills, saves, AC, attacks,
    spell DCs.
 4a. **Feat/ASI slice** — the level 4/8/12/16/19 feat-or-ASI choice.
