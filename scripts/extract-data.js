@@ -1639,6 +1639,29 @@ function makeSubclassFeatureIdFromEntry(entry) {
 }
 
 /*
+ * Walks an `entries` tree and collects every refClassFeature / refSubclassFeature
+ * node found anywhere inside it — these are what `{@classFeature ...}` /
+ * `{@subclassFeature ...}` markup compiles to when a feature's text links to
+ * another feature.
+ */
+function collectFeatureRefs(root) {
+	const found = [];
+	const REF_TYPE_KEYS = { refClassFeature: "classFeature", refSubclassFeature: "subclassFeature" };
+	(function walk(node) {
+		if (Array.isArray(node)) {
+			node.forEach(walk);
+			return;
+		}
+		if (node !== null && typeof node === "object") {
+			const key = REF_TYPE_KEYS[node.type];
+			if (key && typeof node[key] === "string") found.push({ type: node.type, uid: node[key] });
+			for (const value of Object.values(node)) walk(value);
+		}
+	})(root);
+	return found;
+}
+
+/*
  * A class's `classFeatures` list mixes plain strings with objects that carry
  * extra flags, e.g. {classFeature: "...", gainSubclassFeature: true}. This
  * pulls the reference string out of either shape.
@@ -1755,6 +1778,38 @@ function extractClasses() {
 
 	let keptClassFeatures = prepared.classFeature.filter((entry) => referencedClassFeatureIds.has(entry.id));
 	let keptSubclassFeatures = prepared.subclassFeature.filter((entry) => referencedSubclassFeatureIds.has(entry.id));
+
+	/*
+	 * A feature can also be referenced from INSIDE another feature's text —
+	 * a `{@classFeature ...}` / `{@subclassFeature ...}` markup node becomes a
+	 * `refClassFeature` / `refSubclassFeature` node in `entries`. Those targets
+	 * never appear in a class's or subclass's own id list, so the filter above
+	 * misses them entirely (see docs/DATA.md, "Traps"). Walk every kept
+	 * feature's entries for such nodes and pull the target in too, repeating
+	 * because a newly-added feature can itself reference another one. Each
+	 * feature is processed once, so this always terminates.
+	 */
+	const classFeatureById = new Map(prepared.classFeature.map((entry) => [entry.id, entry]));
+	const subclassFeatureById = new Map(prepared.subclassFeature.map((entry) => [entry.id, entry]));
+
+	let frontier = [...keptClassFeatures, ...keptSubclassFeatures];
+	const processed = new Set(frontier.map((entry) => entry.id));
+	while (frontier.length > 0) {
+		const nextFrontier = [];
+		for (const entry of frontier) {
+			for (const ref of collectFeatureRefs(entry.entries)) {
+				const pool = ref.type === "refClassFeature" ? classFeatureById : subclassFeatureById;
+				const id = ref.type === "refClassFeature" ? makeClassFeatureIdFromRef(ref.uid) : makeSubclassFeatureIdFromRef(ref.uid);
+				const target = pool.get(id);
+				if (!target || processed.has(target.id)) continue;
+				processed.add(target.id);
+				nextFrontier.push(target);
+				if (ref.type === "refClassFeature") keptClassFeatures.push(target);
+				else keptSubclassFeatures.push(target);
+			}
+		}
+		frontier = nextFrontier;
+	}
 
 	// Same superseded-duplicate rule as every other category, for consistency
 	// — in practice no class/subclass feature currently carries reprintedAs.
@@ -2103,5 +2158,20 @@ function main() {
 	console.log("=".repeat(64));
 }
 
-// This line actually starts everything running.
-main();
+// This line actually starts everything running — but only when the file is
+// run directly, not when investigation scripts `require()` it for its helpers.
+if (require.main === module) {
+	main();
+}
+
+module.exports = {
+	SOURCE_DATA_DIR,
+	readJson,
+	prepareEntries,
+	getReferenceString,
+	makeClassFeatureIdFromEntry,
+	makeSubclassFeatureIdFromEntry,
+	makeClassFeatureIdFromRef,
+	makeSubclassFeatureIdFromRef,
+	collectFeatureRefs,
+};

@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-07-29 (expertise picker added to the wizard — closes build order step 3)
+Last updated: 2026-07-29 (extraction now collects features referenced from inside another feature's text, not just class/subclass ID lists)
 
 ## Build order
 
@@ -18,7 +18,7 @@ Last updated: 2026-07-29 (expertise picker added to the wizard — closes build 
 
 ## What exists
 
-- Data extraction — scripts/extract-data.js + scripts/validate-data.js, 103 checks green (phase 0, complete).
+- Data extraction — scripts/extract-data.js + scripts/validate-data.js, 119 checks green (phase 0, complete). Feature collection now also walks every kept class/subclass feature's text for ref* nodes (refClassFeature/refSubclassFeature) and pulls in the target, repeating until the set stops growing — class-features.json 279->302, subclass-features.json 465->786 (see docs/DATA.md, "Traps"). check-dangling-refs.js's new check verifies every ref* node (all four types) inside any feature's text resolves, including a D12 fallback so Fighting Style optionalfeature refs resolve against feats.json category "FS".
 - Investigation script — scripts/investigate-slice1.js, confirms weapon mastery and fighting style data shape ahead of the remaining step-3 walkthrough work.
 - Investigation script — scripts/investigate-class-skills.js, confirms all 13 classes' skill-choice shape in classes.json.
 - Investigation script — scripts/investigate-subclass-shape.js, confirms subclass linkage, D28 filtering counts, and that every class grants a subclass at level 3.

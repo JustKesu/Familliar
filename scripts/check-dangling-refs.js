@@ -22,6 +22,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { makeClassFeatureIdFromRef, makeSubclassFeatureIdFromRef } = require("./extract-data.js");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 
@@ -159,27 +160,72 @@ console.log("=".repeat(64));
 	report("feats -> optionalfeatureProgression featureType", checked, dangling);
 }
 
-// --- 4. class-features / subclass-features -> optional-features -----------
-// `{@optionalfeature Name|Source}` markup renders as a `refOptionalfeature`
-// node with an `optionalfeature: "Name|Source"` string.
+// --- 4. class-features / subclass-features -> ANY ref* target inside the ---
+// feature's own text (not just the classFeatureIds/subclassFeatureIds lists
+// check #1 covers). A `{@classFeature ...}`, `{@subclassFeature ...}`,
+// `{@optionalfeature ...}` or `{@feat ...}` markup node compiles to a
+// refClassFeature / refSubclassFeature / refOptionalfeature / refFeat node
+// wherever it occurs in `entries` — including deep inside another feature's
+// description, which is exactly what extract-data.js's recursive collection
+// (see the "Traps" entry in docs/DATA.md) now pulls in.
 {
+	const REF_TYPE_KEYS = {
+		refClassFeature: "classFeature",
+		refSubclassFeature: "subclassFeature",
+		refOptionalfeature: "optionalfeature",
+		refFeat: "feat",
+	};
+
+	function collectTypedRefs(root) {
+		const found = [];
+		(function walk(node) {
+			if (Array.isArray(node)) {
+				node.forEach(walk);
+				return;
+			}
+			if (node !== null && typeof node === "object") {
+				const key = REF_TYPE_KEYS[node.type];
+				if (key && typeof node[key] === "string") found.push({ type: node.type, uid: node[key] });
+				for (const value of Object.values(node)) walk(value);
+			}
+		})(root);
+		return found;
+	}
+
+	// D12: Fighting Styles are feats.json entries with category "FS", full
+	// stop — a `{@optionalfeature Dueling}` style reference (bare name, no
+	// source, from a 2014-era feature like "Fighting Style" (XGE)) resolves
+	// there, not against optional-features.json.
+	const fightingStyleNames = new Set(feats.filter((entry) => entry.category === "FS").map((entry) => entry.name.toLowerCase()));
+
+	function refResolves(type, uid) {
+		if (type === "refClassFeature") return classFeatureIds.has(makeClassFeatureIdFromRef(uid));
+		if (type === "refSubclassFeature") return subclassFeatureIds.has(makeSubclassFeatureIdFromRef(uid));
+		if (type === "refFeat") {
+			const { name, source } = splitUid(uid);
+			return featKeys.has(lcKey(name, source));
+		}
+		if (type === "refOptionalfeature") {
+			const { name, source } = splitUid(uid);
+			if (optionalFeatureKeys.has(lcKey(name, source))) return true;
+			return fightingStyleNames.has(name.toLowerCase());
+		}
+		return false;
+	}
+
 	let checked = 0;
 	const dangling = [];
 	for (const [label, arr] of [["class-features", classFeatures], ["subclass-features", subclassFeatures]]) {
 		for (const entry of arr) {
-			for (const ref of collectByKey(entry.entries, "optionalfeature")) {
-				const refs = Array.isArray(ref) ? ref : [ref];
-				for (const uid of refs) {
-					checked++;
-					const { name, source } = splitUid(uid);
-					if (!optionalFeatureKeys.has(lcKey(name, source))) {
-						dangling.push(`${label}: ${entry.name} (${entry.source}) -> ${uid}`);
-					}
+			for (const ref of collectTypedRefs(entry.entries)) {
+				checked++;
+				if (!refResolves(ref.type, ref.uid)) {
+					dangling.push(`${label}: ${entry.name} (${entry.source}) -> ${ref.type} ${ref.uid}`);
 				}
 			}
 		}
 	}
-	report("class-features/subclass-features -> optional-features (refOptionalfeature)", checked, dangling);
+	report("class-features/subclass-features -> any ref* target in their text", checked, dangling);
 }
 
 // --- 5. optional-features.json -> optional-features.json (self-refs) ------
@@ -243,26 +289,7 @@ checkFeatRefs(species, "species");
 	report("feats -> feats (prerequisite)", checked, dangling);
 }
 
-// --- 8. class-features.json -> feats.json ----------------------------------
-{
-	let checked = 0;
-	const dangling = [];
-	for (const entry of classFeatures) {
-		for (const ref of collectByKey(entry.entries, "feat")) {
-			const refs = Array.isArray(ref) ? ref : [ref];
-			for (const uid of refs) {
-				checked++;
-				const { name, source } = splitUid(uid);
-				if (!featKeys.has(lcKey(name, source))) {
-					dangling.push(`${entry.name} (${entry.source}) -> ${uid}`);
-				}
-			}
-		}
-	}
-	report("class-features -> feats", checked, dangling);
-}
-
-// --- 9. items.json -> class-features.json ----------------------------------
+// --- 8. items.json -> class-features.json ----------------------------------
 // uid shape is "name|className|classSource|level|source" (lowercase, no
 // "cf|" prefix); class-features.json ids are "cf|name|className|classSource|level|source".
 {
@@ -283,7 +310,7 @@ checkFeatRefs(species, "species");
 	report("items -> class-features", checked, dangling);
 }
 
-// --- 10. items.json -> optional-features.json ------------------------------
+// --- 9. items.json -> optional-features.json --------------------------------
 {
 	let checked = 0;
 	const dangling = [];

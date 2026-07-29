@@ -53,8 +53,10 @@ after shown where a category changed; unchanged categories listed too):
   data/species.json              87 -> 78   (XPHB 34, MPMM 44->35, EFA 9)
   data/backgrounds.json          33 -> 33   (XPHB 16, EFA 17) — unchanged
   data/classes.json             127 -> 127  (13 classes + 114 subclasses) — unchanged
-  data/class-features.json      279 -> 279  — unchanged
-  data/subclass-features.json   465 -> 465  — unchanged
+  data/class-features.json      279 -> 302  (features reached only via a
+                                      ref* node inside another feature's
+                                      text, see "Traps" below)
+  data/subclass-features.json   465 -> 786  (same cause)
   data/optional-features.json   131 -> 120  (XPHB 58, TCE 47->38, XGE 22->20, EFA 4)
   data/items.json               943 -> 899  (XDMG 593, XPHB 217, TCE 84->80,
                                       XGE 43->3, EFA 6)
@@ -71,6 +73,18 @@ now asserts these counts and checks that no superseded duplicate survives.
 In class-feature references AND item codes, a blank/missing source
 defaults to the 2014 PHB. "Second Wind|Fighter||1" is the 2014 fighter.
 Bare item type "M" is the 2014 melee weapon; "M|XPHB" is the 2024 one.
+
+### Features referenced from inside another feature's text aren't in any ID list
+A class/subclass only lists the features it grants directly
+(`classFeatureIds`/`subclassFeatureIds`). A feature's own TEXT can link to
+another feature via `{@classFeature ...}`/`{@subclassFeature ...}` markup
+(a `refClassFeature`/`refSubclassFeature` node in `entries`) — e.g. Circle
+of Spores links to "Circle Spells", "Halo of Spores", "Symbiotic Entity".
+Filtering by the ID lists alone misses these entirely. Collection must walk
+every kept feature's `entries` for such nodes and pull the target in too,
+repeating until the set stops growing (a newly-added feature can reference
+another one) — one extra level is enough in practice, but nothing bounds it
+except that features are only ever added once.
 
 ### Features must be kept by REFERENCE, not by owner match
 Matching a feature's own className/classSource against a surviving class

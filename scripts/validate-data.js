@@ -142,9 +142,12 @@ const VALID_LANGUAGE_TYPES = ["standard", "rare"];
 
 // Feature files are checked on total size rather than per-book, because a
 // feature's own source is not what decides whether it is kept.
+// 279 -> 302 and 465 -> 786: extraction now also collects features reached
+// only via a ref* node inside another feature's text, not just the
+// classFeatureIds/subclassFeatureIds lists (see docs/DATA.md, "Traps").
 const EXPECTED_FEATURE_TOTALS = {
-	"class-features": 279,
-	"subclass-features": 465,
+	"class-features": 302,
+	"subclass-features": 786,
 };
 
 // Fields every class / subclass must carry for character building to work.
