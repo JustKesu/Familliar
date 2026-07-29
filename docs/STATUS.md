@@ -22,6 +22,7 @@ Last updated: 2026-07-29 (subclass feature join fixed for older-edition subclass
 - Investigation script — scripts/investigate-slice1.js, confirms weapon mastery and fighting style data shape ahead of the remaining step-3 walkthrough work.
 - Investigation script — scripts/investigate-class-skills.js, confirms all 13 classes' skill-choice shape in classes.json.
 - Investigation script — scripts/investigate-subclass-shape.js, confirms subclass linkage, D28 filtering counts, and that every class grants a subclass at level 3.
+- Investigation script — scripts/investigate-expertise.js, confirms the shape of expertise features and species skillProficiencies ahead of the expertise picker.
 - App skeleton — Vite + React + TypeScript, data served from public/data/.
 - Markup renderer — src/markup/, 104 tests.
 - Storage layer — src/storage/, localStorage key `familliar:characters`, schema version 4. A saved character carries classSkills, masteries, fightingStyle, (via CharacterClass.subclass) subclass, the background's two fixed skill proficiencies (CharacterBackground.skillProficiencies), and now optionalFeatureChoices — an array of `{ featureType, choices }`, so picks from more than one subclass progression could coexist without ambiguity. A version-3 save is rejected, not migrated (see docs/QUESTIONS.md, "Migrace uložených postav").
