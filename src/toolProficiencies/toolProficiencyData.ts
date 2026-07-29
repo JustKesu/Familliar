@@ -20,6 +20,8 @@
  *   exactly the 10 mundane instruments a background actually offers.
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 export type ToolCategory = 'anyArtisansTool' | 'anyMusicalInstrument' | 'anyGamingSet'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -63,10 +65,6 @@ export function extractToolCategoryOptions(parsedItems: unknown, category: strin
 
 /** Fetches items.json and returns the tool names offered by the given category key. */
 export async function loadToolCategoryOptions(category: string): Promise<string[]> {
-	const response = await fetch(`${import.meta.env.BASE_URL}data/items.json`)
-	if (!response.ok) {
-		throw new Error(`items.json — HTTP ${response.status}`)
-	}
-	const parsed: unknown = await response.json()
+	const parsed = await loadDataFile('data/items.json')
 	return extractToolCategoryOptions(parsed, category)
 }

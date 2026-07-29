@@ -10,6 +10,8 @@
  * No class was missing the field and no third shape occurred.
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 export const ALL_SKILLS = [
 	'acrobatics',
 	'animal handling',
@@ -109,10 +111,6 @@ export function extractClassSkillChoice(parsed: unknown, className: string, clas
 
 /** Fetches classes.json and returns the named class's skill choice. */
 export async function loadClassSkillChoice(className: string, classSource: string): Promise<ClassSkillChoice> {
-	const response = await fetch(`${import.meta.env.BASE_URL}data/classes.json`)
-	if (!response.ok) {
-		throw new Error(`classes.json — HTTP ${response.status}`)
-	}
-	const parsed: unknown = await response.json()
+	const parsed = await loadDataFile('data/classes.json')
 	return extractClassSkillChoice(parsed, className, classSource)
 }

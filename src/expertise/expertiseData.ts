@@ -23,6 +23,8 @@
  *   in GRANT_RULES and subclass-features.json is never consulted here.
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 export const EXPERTISE_SKILL_COUNT = 2
 export const DEFT_EXPLORER_SKILL_COUNT = 1
 export const SCHOLAR_SKILL_COUNT = 1
@@ -106,10 +108,6 @@ export async function loadExpertiseEligibility(
 	classSource: string,
 	level: number,
 ): Promise<ExpertiseEligibility | null> {
-	const response = await fetch(`${import.meta.env.BASE_URL}data/class-features.json`)
-	if (!response.ok) {
-		throw new Error(`class-features.json — HTTP ${response.status}`)
-	}
-	const parsed: unknown = await response.json()
+	const parsed = await loadDataFile('data/class-features.json')
 	return expertiseEligibilityFor(parsed, className, classSource, level)
 }

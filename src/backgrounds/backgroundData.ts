@@ -43,6 +43,7 @@
  */
 
 import type { Ability } from '../abilities/abilityScores'
+import { loadDataFile } from '../dataLoader/dataLoader'
 
 const SHORT_ABILITY: Record<string, Ability> = {
 	str: 'strength',
@@ -287,18 +288,7 @@ export function extractBackgrounds(parsed: unknown, itemNames: ReadonlyMap<strin
 
 /** Fetches backgrounds.json and items.json and returns the selectable backgrounds, sorted by name. */
 export async function loadBackgrounds(): Promise<BackgroundEntry[]> {
-	const [backgroundsResponse, itemsResponse] = await Promise.all([
-		fetch(`${import.meta.env.BASE_URL}data/backgrounds.json`),
-		fetch(`${import.meta.env.BASE_URL}data/items.json`),
-	])
-	if (!backgroundsResponse.ok) {
-		throw new Error(`backgrounds.json — HTTP ${backgroundsResponse.status}`)
-	}
-	if (!itemsResponse.ok) {
-		throw new Error(`items.json — HTTP ${itemsResponse.status}`)
-	}
-	const parsedBackgrounds: unknown = await backgroundsResponse.json()
-	const parsedItems: unknown = await itemsResponse.json()
+	const [parsedBackgrounds, parsedItems] = await Promise.all([loadDataFile('data/backgrounds.json'), loadDataFile('data/items.json')])
 	const itemNames = buildItemNameLookup(parsedItems)
 	return extractBackgrounds(parsedBackgrounds, itemNames).sort((a, b) => a.name.localeCompare(b.name))
 }

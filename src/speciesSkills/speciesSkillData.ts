@@ -24,6 +24,7 @@
  */
 
 import { ALL_SKILLS } from '../classSkills/classSkillData'
+import { loadDataFile } from '../dataLoader/dataLoader'
 
 export type SpeciesSkillProficiencies =
 	| { kind: 'fixed'; skills: string[] }
@@ -106,10 +107,6 @@ export async function loadSpeciesSkillProficiencies(
 	speciesName: string,
 	speciesSource: string,
 ): Promise<SpeciesSkillProficiencies | null> {
-	const response = await fetch(`${import.meta.env.BASE_URL}data/species.json`)
-	if (!response.ok) {
-		throw new Error(`species.json — HTTP ${response.status}`)
-	}
-	const parsed: unknown = await response.json()
+	const parsed = await loadDataFile('data/species.json')
 	return extractSpeciesSkillProficiencies(parsed, speciesName, speciesSource)
 }

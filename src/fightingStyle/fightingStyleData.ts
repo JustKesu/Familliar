@@ -9,6 +9,8 @@
  * with an `entries` array (not a plain string).
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -55,11 +57,7 @@ export function grantsFightingStyleAt(
 
 /** Fetches class-features.json and returns the level the named class grants a Fighting Style, or null. */
 export async function loadFightingStyleGrantLevel(className: string, classSource: string): Promise<number | null> {
-	const response = await fetch(`${import.meta.env.BASE_URL}data/class-features.json`)
-	if (!response.ok) {
-		throw new Error(`class-features.json — HTTP ${response.status}`)
-	}
-	const parsed: unknown = await response.json()
+	const parsed = await loadDataFile('data/class-features.json')
 	return grantsFightingStyleAt(parsed, className, classSource)
 }
 
@@ -98,10 +96,6 @@ export function fightingStyleOptionsFrom(parsedFeats: unknown): FightingStyleOpt
 
 /** Fetches feats.json and returns every category "FS" entry. */
 export async function fightingStyleOptions(): Promise<FightingStyleOption[]> {
-	const response = await fetch(`${import.meta.env.BASE_URL}data/feats.json`)
-	if (!response.ok) {
-		throw new Error(`feats.json — HTTP ${response.status}`)
-	}
-	const parsed: unknown = await response.json()
+	const parsed = await loadDataFile('data/feats.json')
 	return fightingStyleOptionsFrom(parsed)
 }

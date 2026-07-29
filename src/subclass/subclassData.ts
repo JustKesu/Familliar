@@ -39,6 +39,8 @@
  * scripts/investigate-subclass-join-fix-verify.js).
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 const ALLOWED_CLASS_SOURCES = ['XPHB', 'EFA']
 const ALLOWED_SOURCES = ['XPHB', 'XGE', 'TCE', 'EFA', 'XDMG', 'MPMM']
 
@@ -236,26 +238,18 @@ export function subclassesFor(
 	})
 }
 
-async function fetchJson(path: string): Promise<unknown> {
-	const response = await fetch(`${import.meta.env.BASE_URL}${path}`)
-	if (!response.ok) {
-		throw new Error(`${path} — HTTP ${response.status}`)
-	}
-	return response.json()
-}
-
 /** Fetches classes.json and class-features.json and returns subclassLevelFor's result. */
 export async function loadSubclassLevelFor(className: string, classSource: string): Promise<number | null> {
-	const [classes, classFeatures] = await Promise.all([fetchJson('data/classes.json'), fetchJson('data/class-features.json')])
+	const [classes, classFeatures] = await Promise.all([loadDataFile('data/classes.json'), loadDataFile('data/class-features.json')])
 	return subclassLevelFor(classes, classFeatures, className, classSource)
 }
 
 /** Fetches classes.json, subclass-features.json and class-features.json and returns the class's legal subclasses. */
 export async function loadSubclassesFor(className: string, classSource: string): Promise<SubclassOption[]> {
 	const [classes, subclassFeatures, classFeatures] = await Promise.all([
-		fetchJson('data/classes.json'),
-		fetchJson('data/subclass-features.json'),
-		fetchJson('data/class-features.json'),
+		loadDataFile('data/classes.json'),
+		loadDataFile('data/subclass-features.json'),
+		loadDataFile('data/class-features.json'),
 	])
 	return subclassesFor(classes, subclassFeatures, classFeatures, className, classSource)
 }

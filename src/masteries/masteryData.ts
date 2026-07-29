@@ -21,6 +21,8 @@
  * per-character data.
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -154,22 +156,14 @@ export function masteryWeaponsFor(parsedItems: unknown, parsedClasses: unknown, 
 	return result
 }
 
-async function fetchJson(path: string): Promise<unknown> {
-	const response = await fetch(`${import.meta.env.BASE_URL}${path}`)
-	if (!response.ok) {
-		throw new Error(`${path} — HTTP ${response.status}`)
-	}
-	return response.json()
-}
-
 /** Fetches classes.json and returns masteryCountFor's result for the given class/level. */
 export async function loadMasteryCountFor(className: string, classSource: string, level: number): Promise<number | null> {
-	const parsed = await fetchJson('data/classes.json')
+	const parsed = await loadDataFile('data/classes.json')
 	return masteryCountFor(parsed, className, classSource, level)
 }
 
 /** Fetches items.json and classes.json and returns the class's mastery weapon choices. */
 export async function loadMasteryWeaponsFor(className: string, classSource: string): Promise<MasteryWeapon[]> {
-	const [items, classes] = await Promise.all([fetchJson('data/items.json'), fetchJson('data/classes.json')])
+	const [items, classes] = await Promise.all([loadDataFile('data/items.json'), loadDataFile('data/classes.json')])
 	return masteryWeaponsFor(items, classes, className, classSource)
 }

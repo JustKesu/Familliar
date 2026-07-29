@@ -19,6 +19,8 @@
  *    The stored `name` is never rewritten — this is a display concern only.
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 /** A selectable species entry, after the reprintedAs filter. */
 export interface SpeciesEntry {
 	name: string
@@ -82,10 +84,6 @@ export function speciesDisplayName(entry: SpeciesEntry): string {
 
 /** Fetches species.json and returns the selectable species, sorted by display name. */
 export async function loadSpecies(): Promise<SpeciesEntry[]> {
-	const response = await fetch(`${import.meta.env.BASE_URL}data/species.json`)
-	if (!response.ok) {
-		throw new Error(`species.json — HTTP ${response.status}`)
-	}
-	const parsed: unknown = await response.json()
+	const parsed = await loadDataFile('data/species.json')
 	return extractSelectableSpecies(parsed).sort((a, b) => speciesDisplayName(a).localeCompare(speciesDisplayName(b)))
 }

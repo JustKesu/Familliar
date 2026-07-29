@@ -14,6 +14,8 @@
  * optional-features.json filtered by an exact featureType match.
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -172,14 +174,6 @@ export function optionalFeatureChoicesFor(
 	return { featureType: code, count, options }
 }
 
-async function fetchJson(path: string): Promise<unknown> {
-	const response = await fetch(`${import.meta.env.BASE_URL}${path}`)
-	if (!response.ok) {
-		throw new Error(`${path} — HTTP ${response.status}`)
-	}
-	return response.json()
-}
-
 /** Fetches classes.json, optional-features.json and feats.json and returns optionalFeatureChoicesFor's result. */
 export async function loadOptionalFeatureChoicesFor(
 	className: string,
@@ -189,9 +183,9 @@ export async function loadOptionalFeatureChoicesFor(
 	level: number,
 ): Promise<OptionalFeatureChoice | null> {
 	const [classes, optionalFeatures, feats] = await Promise.all([
-		fetchJson('data/classes.json'),
-		fetchJson('data/optional-features.json'),
-		fetchJson('data/feats.json'),
+		loadDataFile('data/classes.json'),
+		loadDataFile('data/optional-features.json'),
+		loadDataFile('data/feats.json'),
 	])
 	return optionalFeatureChoicesFor(classes, optionalFeatures, feats, className, classSource, subclassName, subclassSource, level)
 }

@@ -13,6 +13,8 @@
  * granted automatically rather than picked (see CHOSEN_LANGUAGE_COUNT).
  */
 
+import { loadDataFile } from '../dataLoader/dataLoader'
+
 /**
  * PHB 2024 rule (book prose, not present anywhere in data/): a character
  * knows Common automatically, plus this many of the player's choice from
@@ -73,10 +75,6 @@ export function extractSelectableLanguages(parsed: unknown): LanguageEntry[] {
 
 /** Fetches languages.json and returns the selectable languages, sorted by name. */
 export async function loadLanguages(): Promise<LanguageEntry[]> {
-	const response = await fetch(`${import.meta.env.BASE_URL}data/languages.json`)
-	if (!response.ok) {
-		throw new Error(`languages.json — HTTP ${response.status}`)
-	}
-	const parsed: unknown = await response.json()
+	const parsed = await loadDataFile('data/languages.json')
 	return extractSelectableLanguages(parsed).sort((a, b) => a.name.localeCompare(b.name))
 }
