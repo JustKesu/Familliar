@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadFightingStyleGrantLevel, fightingStyleOptions, type FightingStyleOption } from './fightingStyleData'
 import { Entries } from '../markup'
+import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 
 /*
  * Fighting style picker. Not wired into the character creation wizard —
@@ -41,6 +42,7 @@ export function FightingStylePicker({
 	onChange: (style: string | null) => void
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
+	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
 
 	useEffect(() => {
 		let cancelled = false
@@ -61,6 +63,20 @@ export function FightingStylePicker({
 			cancelled = true
 		}
 	}, [className, classSource])
+
+	useEffect(() => {
+		let cancelled = false
+		loadResolverData()
+			.then((data) => {
+				if (!cancelled) setResolverData(data)
+			})
+			.catch(() => {
+				/* Falls back to unexpanded rendering below; the picker still works without it. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
 
 	if (state.status === 'loading') return <p>Loading fighting styles…</p>
 	if (state.status === 'error') {
@@ -91,7 +107,11 @@ export function FightingStylePicker({
 								<strong>{option.name}</strong>
 							</label>
 							<div className="fighting-style-picker__description">
-								<Entries entries={option.entries} />
+								{resolverData ? (
+									<ResolvedEntries entries={option.entries} data={resolverData} />
+								) : (
+									<Entries entries={option.entries} />
+								)}
 							</div>
 						</li>
 					)

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadSubclassLevelFor, loadSubclassesFor, type SubclassOption } from './subclassData'
+import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 import { Entries } from '../markup'
 
 /*
@@ -41,6 +42,7 @@ export function SubclassPicker({
 	onChange: (subclass: string | null) => void
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
+	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
 
 	useEffect(() => {
 		let cancelled = false
@@ -61,6 +63,20 @@ export function SubclassPicker({
 			cancelled = true
 		}
 	}, [className, classSource])
+
+	useEffect(() => {
+		let cancelled = false
+		loadResolverData()
+			.then((data) => {
+				if (!cancelled) setResolverData(data)
+			})
+			.catch(() => {
+				/* Falls back to unexpanded rendering below; the picker still works without it. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
 
 	if (state.status === 'loading') return <p>Loading subclasses…</p>
 	if (state.status === 'error') {
@@ -84,7 +100,11 @@ export function SubclassPicker({
 								<strong>{option.name}</strong>
 							</label>
 							<div className="subclass-picker__description">
-								<Entries entries={option.entries} />
+								{resolverData ? (
+									<ResolvedEntries entries={option.entries} data={resolverData} />
+								) : (
+									<Entries entries={option.entries} />
+								)}
 							</div>
 						</li>
 					)

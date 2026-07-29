@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadOptionalFeatureChoicesFor, type OptionalFeatureOption } from './optionalFeatureData'
 import { Entries } from '../markup'
+import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 
 /*
  * General picker for subclass optionalfeatureProgression choices (D21) — one
@@ -46,6 +47,7 @@ export function OptionalFeaturePicker({
 	onChange: (choices: string[]) => void
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
+	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
 
 	useEffect(() => {
 		let cancelled = false
@@ -66,6 +68,20 @@ export function OptionalFeaturePicker({
 			cancelled = true
 		}
 	}, [className, classSource, subclassName, subclassSource, level])
+
+	useEffect(() => {
+		let cancelled = false
+		loadResolverData()
+			.then((data) => {
+				if (!cancelled) setResolverData(data)
+			})
+			.catch(() => {
+				/* Falls back to unexpanded rendering below; the picker still works without it. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
 
 	if (state.status === 'loading') return <p>Loading options…</p>
 	if (state.status === 'error') {
@@ -102,7 +118,11 @@ export function OptionalFeaturePicker({
 								<strong>{option.name}</strong>
 							</label>
 							<div className="optional-feature-picker__description">
-								<Entries entries={option.entries} />
+								{resolverData ? (
+									<ResolvedEntries entries={option.entries} data={resolverData} />
+								) : (
+									<Entries entries={option.entries} />
+								)}
 							</div>
 						</li>
 					)
