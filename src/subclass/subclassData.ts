@@ -23,6 +23,20 @@
  * class-features.json for its `level`. Confirmed the same investigation:
  * every one of the 13 classes grants its subclass at level 3, but nothing
  * here assumes that number — it is read off the data each time.
+ *
+ * subclass-features.json files a subclass's feature text under the
+ * classSource it was PUBLISHED for (PHB or TCE), not the XPHB the subclass
+ * itself is converted to per D27 above — so a strict classSource-matching
+ * join finds nothing for 26 of the 94 offered subclasses (e.g. Arcane
+ * Archer, Cavalier, Samurai, Rune Knight). subclassesFor tries the strict
+ * join first and only falls back to className+subclassShortName+
+ * subclassSource (ignoring classSource) when the strict join is empty.
+ * A full drop-classSource join isn't safe: 22 keys have both a legacy and a
+ * converted feature set with different content (confirmed via
+ * scripts/investigate-subclass-join-collisions.js); trying strict first
+ * means those 22 always resolve via their already-matching group and never
+ * reach the fallback (confirmed via
+ * scripts/investigate-subclass-join-fix-verify.js).
  */
 
 const ALLOWED_CLASS_SOURCES = ['XPHB', 'EFA']
@@ -198,10 +212,20 @@ export function subclassesFor(
 	const subclassFeatures = parsedSubclassFeatures.filter(isRawSubclassFeatureEntry)
 
 	return subclasses.map((sc) => {
-		const matches = subclassFeatures.filter(
+		const strictMatches = subclassFeatures.filter(
 			(f) =>
 				f.className === sc.className && f.classSource === sc.classSource && f.subclassShortName === sc.shortName && f.subclassSource === sc.source,
 		)
+		// Some subclasses are converted to the XPHB class edition (D27) but their
+		// feature text is still filed under the edition it was PUBLISHED for
+		// (PHB/TCE). Falling back only when the strict join is empty avoids
+		// merging two editions' features for subclasses that DO have distinct
+		// PHB and XPHB feature sets (confirmed collision-free via
+		// scripts/investigate-subclass-join-collisions.js).
+		const matches =
+			strictMatches.length > 0
+				? strictMatches
+				: subclassFeatures.filter((f) => f.className === sc.className && f.subclassShortName === sc.shortName && f.subclassSource === sc.source)
 		const feature =
 			(grantLevel !== null && matches.find((f) => f.level === grantLevel)) ||
 			matches.reduce<RawSubclassFeatureEntry | undefined>(
