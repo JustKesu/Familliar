@@ -1,13 +1,13 @@
 # Status
 
-Last updated: 2026-07-29 (shared data/ loader introduced; every reader converted to it)
+Last updated: 2026-07-29 (calculation layer, first half: ability scores, proficiency bonus, saving throws, initiative)
 
 ## Build order
 
 1. [done] Markup renderer
 2. [done] App skeleton + persistence
 3. [done] Character creation — 5 pickers + wizard shell + class skill/mastery/fighting style/subclass/optional-feature/expertise pickers wired in and all persisted to storage.
-4. [not started] Calculation layer
+4. [in progress] Calculation layer — ability scores/modifiers, proficiency bonus, saving throws, initiative done. Skills, passive values, speed/size/darkvision, hit dice pool still to come (4b).
 4a. [not started] Feat/ASI slice
 5. [not started] Sheet display
 6. [not started] Spells
@@ -39,11 +39,15 @@ Last updated: 2026-07-29 (shared data/ loader introduced; every reader converted
 - Component tests — jsdom + Testing Library, e.g. src/creation/CharacterWizard.test.tsx.
 - Shared data loader — src/dataLoader/dataLoader.ts (D39). `loadDataFile(path)` fetches a data/ file at most once and caches the in-flight/resolved promise per path, so a second request for the same path — or a concurrent one — never triggers a second download. A failed fetch is not cached, so the next request retries; the rejection itself still propagates to whichever caller triggered it, unchanged from the old per-module fetch. Every `*Data.ts` reader that used to fetch independently (backgrounds, classes, classSkills, expertise, featureResolver, fightingStyle, languages, masteries, optionalFeatures, species, speciesSkills, subclass, toolProficiencies — 13 modules) now goes through it; behaviour is unchanged, only the data source. src/MarkupDemo.tsx (temporary scaffolding, see below) still fetches directly. Calculation functions still take parsed data as a parameter (D38) — the loader is for callers that acquire data, not for the functions that compute from it.
 
+- Calculation layer, first half — src/calculation/ (D47). Pure functions (D38): take a `Character` and, where the data comes from data/, a small typed slice of it as a parameter — none of them fetch. Every result is `Calculated<T>` (src/calculation/types.ts): `{ status: 'known', value, breakdown }` with a `Contribution[]` breakdown (D40), or `{ status: 'unknown', reason }` when the input is missing or a class isn't found in the supplied data (D43) — never a throw. `abilityScores.ts` computes the D17 sum (raw score + background bonus) as a contribution list (D42; a zero/absent background bonus is left out of the list, not written as a zero entry) plus the modifier. `proficiencyBonus.ts` sums total level across `character.classes` (D11) and maps it to +2..+6, with one breakdown contribution per class. `savingThrows.ts` computes all 6 saves — ability modifier, plus proficiency bonus when a class in `character.classes` grants that save (matched against a caller-supplied `ClassSavingThrowProficiencies[]`, shaped after classes.json's `proficiency` field, confirmed by scripts/investigate-saving-throws.js: a 2-element array of lowercase ability codes, same shape on all 13 base classes). `initiative.ts` is the DEX modifier. Feats/ASI (Resilient, Alert) are out of scope until 4a. AC, max HP, attacks, spell DC stay out of this folder until their own steps (D47).
+
 ## Next step
 
-Feat/ASI, the third slice, waits until after step 4, the calculation layer
-(D16). Note: the class-specific selections are still not recorded with the
-level they were taken at (D22) — see docs/QUESTIONS.md.
+Calculation layer, second half (4b): skills, passive values (D48), speed,
+size, darkvision, hit dice pool. Then feat/ASI, the third slice, which
+waits until after step 4 (D16). Note: the class-specific selections are
+still not recorded with the level they were taken at (D22) — see
+docs/QUESTIONS.md.
 
 ## Temporary scaffolding
 
