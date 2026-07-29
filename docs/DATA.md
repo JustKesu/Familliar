@@ -154,3 +154,13 @@ Phase 1: base equipment + named magic items only.
 
 PHB (30) and EGW (20), all 2014 Dragonborn variants. They never reach
 output. If EGW is ever allowed, the 20 need investigating first.
+
+## Tool proficiencies
+`toolProficiencies`: vždy právě jeden prvek — buď jmenovaný nástroj,
+nebo kategorie. Kategorie jsou tři: `anyArtisansTool`,
+`anyMusicalInstrument`, `anyGamingSet` (všech 33 backgroundů jednu
+z těchto možností má, žádný ji nepostrádá).
+Pozor u `anyMusicalInstrument`: kód typu položky sdílí 15 MAGICKÝCH
+nástrojů (Horn of Valhalla, Lyre of Building, Rhythm-Maker's Drum
++1/+2/+3…). Filtr musí kromě kódu typu vyžadovat i `rarity: "none"`,
+teprve pak zbyde 10 obyčejných nástrojů, které background nabízí.
