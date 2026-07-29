@@ -3,6 +3,7 @@ import { loadBackgrounds, type BackgroundEntry, type BackgroundEquipmentEntry } 
 import { abilityBonusChoiceToMap, isValidAbilityBonusChoice, type AbilityBonusChoice } from './abilityBonus'
 import type { Ability } from '../abilities/abilityScores'
 import { Markup } from '../markup'
+import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 
 /*
  * Character creation, background slice (PHASE1.md build order step 3).
@@ -40,6 +41,10 @@ export interface BackgroundChoice {
 
 function backgroundKey(entry: BackgroundEntry): string {
 	return `${entry.name}|${entry.source}`
+}
+
+function findDisabled(skill: string, disabledSkills: DisabledSkill[]): DisabledSkill | undefined {
+	return disabledSkills.find((d) => d.skill.toLowerCase() === skill.toLowerCase())
 }
 
 /**
@@ -183,13 +188,33 @@ function AbilityBonusChooser({
 	)
 }
 
-/** Shows everything a background grants: proficiencies, feat, equipment options, and offered abilities. */
-function BackgroundGrants({ background }: { background: BackgroundEntry }): ReactNode {
+/**
+ * Shows everything a background grants: proficiencies, feat, equipment
+ * options, and offered abilities. `disabledSkills` (D18, D44) flags the
+ * background's own fixed skills that the class or species steps already
+ * granted — the background's two skills are fixed (no picker here), so this
+ * is annotation only, the same wording ClassSkillPicker uses for its own
+ * disabled skills.
+ */
+function BackgroundGrants({
+	background,
+	disabledSkills,
+}: {
+	background: BackgroundEntry
+	disabledSkills: DisabledSkill[]
+}): ReactNode {
 	return (
 		<div className="background-picker__grants">
 			<p>
 				<strong>Skill proficiencies:</strong>{' '}
-				{background.skillProficiencies.map((skill) => capitalize(skill)).join(', ')}
+				{background.skillProficiencies
+					.map((skill) => {
+						const disabled = findDisabled(skill, disabledSkills)
+						return disabled
+							? `${capitalize(skill)} (already granted by ${disabled.source})`
+							: capitalize(skill)
+					})
+					.join(', ')}
 			</p>
 			<p>
 				<strong>Tool proficiency:</strong>{' '}
@@ -224,9 +249,11 @@ function BackgroundGrants({ background }: { background: BackgroundEntry }): Reac
 export function BackgroundPicker({
 	value,
 	onChange,
+	disabledSkills = [],
 }: {
 	value: BackgroundChoice | null
 	onChange: (choice: BackgroundChoice | null) => void
+	disabledSkills?: DisabledSkill[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [selectedKey, setSelectedKey] = useState(value ? `${value.name}|${value.source}` : '')
@@ -300,7 +327,7 @@ export function BackgroundPicker({
 
 			{selected && (
 				<>
-					<BackgroundGrants background={selected} />
+					<BackgroundGrants background={selected} disabledSkills={disabledSkills} />
 					<AbilityBonusChooser
 						offered={selected.abilityChoices}
 						initialChoice={bonusChoice}

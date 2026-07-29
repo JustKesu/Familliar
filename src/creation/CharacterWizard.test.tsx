@@ -30,8 +30,22 @@ vi.mock('../species/speciesData', () => ({
 	loadSpecies: vi.fn(async () => [
 		{ name: 'Elf', source: 'XPHB' },
 		{ name: 'Dwarf', source: 'XPHB' },
+		{ name: 'Bugbear', source: 'XPHB' },
 	]),
 	speciesDisplayName: (entry: { name: string }) => entry.name,
+}))
+
+/** Elf offers a choice, Bugbear grants a fixed skill, Dwarf grants none — covers all three picker states. */
+vi.mock('../speciesSkills/speciesSkillData', () => ({
+	loadSpeciesSkillProficiencies: vi.fn(async (speciesName: string) => {
+		if (speciesName === 'Elf') {
+			return { kind: 'choice', count: 1, options: ['insight', 'perception', 'survival'] }
+		}
+		if (speciesName === 'Bugbear') {
+			return { kind: 'fixed', skills: ['stealth'] }
+		}
+		return null
+	}),
 }))
 
 vi.mock('../backgrounds/backgroundData', () => ({
@@ -184,6 +198,46 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goBack(user)
 
 		expect(value(await screen.findByLabelText('Species'))).toBe('Elf|XPHB')
+	})
+
+	it('species step: a chosen species skill is still shown after navigating away and back', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await user.click(await screen.findByLabelText('Perception'))
+
+		await goNext(user)
+		await screen.findByLabelText('Background')
+		await goBack(user)
+
+		expect((await screen.findByLabelText('Perception') as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('species step: a species with a fixed skill shows the grant, with nothing to pick', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Bugbear (XPHB)')
+
+		expect(await screen.findByText('Species grants: Stealth')).toBeTruthy()
+		expect(screen.queryByRole('checkbox')).toBeNull()
+	})
+
+	it('species step: a species with no skillProficiencies field shows no picker at all', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Dwarf (XPHB)')
+
+		expect(screen.queryByText(/Species grants/)).toBeNull()
+		expect(screen.queryByRole('checkbox')).toBeNull()
 	})
 
 	it('background step: the background and ability bonus distribution are still shown after navigating away and back', async () => {
@@ -445,6 +499,7 @@ describe('CharacterWizard — storage', () => {
 			[],
 			null,
 			[{ featureType: 'MV:B', choices: ['Trip Attack'] }],
+			[],
 		)
 	})
 })

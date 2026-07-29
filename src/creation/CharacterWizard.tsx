@@ -5,6 +5,7 @@ import { BackgroundPicker } from '../backgrounds/BackgroundPicker'
 import { AbilityScorePicker } from '../abilities/AbilityScorePicker'
 import { LanguagePicker } from '../languages/LanguagePicker'
 import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillPicker'
+import { SpeciesSkillPicker } from '../speciesSkills/SpeciesSkillPicker'
 import { MasteryPicker } from '../masteries/MasteryPicker'
 import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
 import { SubclassPicker } from '../subclass/SubclassPicker'
@@ -99,8 +100,23 @@ export function CharacterWizard({
 		: undefined
 
 	/** D18: the background's two fixed skills are shown to the class skill picker as already granted, not offered again. */
-	const disabledSkills: DisabledSkill[] = selectedBackground
+	const backgroundSkillsAsDisabled: DisabledSkill[] = selectedBackground
 		? selectedBackground.skillProficiencies.map((skill) => ({ skill, source: selectedBackground.name }))
+		: []
+
+	/** D18/D44: what the class step has already granted, shown to the species and background steps. */
+	const classSkillsAsDisabled: DisabledSkill[] = state.data.classChoice
+		? state.data.classSkills.map((skill) => ({ skill, source: state.data.classChoice!.className }))
+		: []
+
+	/**
+	 * D44: species is chosen before background, so by the time the player
+	 * reaches the background step its skills are already known and must be
+	 * flagged there — the same way the class step already flags collisions
+	 * with the background's fixed skills.
+	 */
+	const speciesSkillsAsDisabled: DisabledSkill[] = state.data.speciesChoice
+		? state.data.speciesSkills.map((skill) => ({ skill, source: state.data.speciesChoice!.name }))
 		: []
 
 	function handleSave(): void {
@@ -149,7 +165,7 @@ export function CharacterWizard({
 								classSource={state.data.classChoice.classSource}
 								value={state.data.classSkills}
 								onChange={(skills) => dispatch({ type: 'setClassSkills', skills })}
-								disabledSkills={disabledSkills}
+								disabledSkills={backgroundSkillsAsDisabled}
 							/>
 							<MasteryPicker
 								className={state.data.classChoice.className}
@@ -200,6 +216,15 @@ export function CharacterWizard({
 						value={state.data.speciesChoice}
 						onChange={(choice) => dispatch({ type: 'setSpeciesChoice', choice })}
 					/>
+					{state.data.speciesChoice && (
+						<SpeciesSkillPicker
+							speciesName={state.data.speciesChoice.name}
+							speciesSource={state.data.speciesChoice.source}
+							value={state.data.speciesSkills}
+							onChange={(skills) => dispatch({ type: 'setSpeciesSkills', skills })}
+							disabledSkills={[...classSkillsAsDisabled, ...backgroundSkillsAsDisabled]}
+						/>
+					)}
 				</div>
 			)}
 
@@ -208,6 +233,7 @@ export function CharacterWizard({
 					<BackgroundPicker
 						value={state.data.backgroundChoice}
 						onChange={(choice) => dispatch({ type: 'setBackgroundChoice', choice })}
+						disabledSkills={[...classSkillsAsDisabled, ...speciesSkillsAsDisabled]}
 					/>
 				</div>
 			)}

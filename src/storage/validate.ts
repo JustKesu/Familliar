@@ -235,6 +235,15 @@ export function describeClassSkillsError(value: unknown): string | null {
 	return null
 }
 
+/** Validates an optional `speciesSkills` field. Returns null if the field is absent (it's optional). */
+export function describeSpeciesSkillsError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value) || !value.every((skill) => isNonEmptyString(skill))) {
+		return `speciesSkills must be an array of strings`
+	}
+	return null
+}
+
 /** Validates an optional `masteries` field. Returns null if the field is absent (it's optional). */
 export function describeMasteriesError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -304,6 +313,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (languagesError) return `[${index}].${languagesError}`
 	const classSkillsError = describeClassSkillsError(value['classSkills'])
 	if (classSkillsError) return `[${index}].${classSkillsError}`
+	const speciesSkillsError = describeSpeciesSkillsError(value['speciesSkills'])
+	if (speciesSkillsError) return `[${index}].${speciesSkillsError}`
 	const masteriesError = describeMasteriesError(value['masteries'])
 	if (masteriesError) return `[${index}].${masteriesError}`
 	const fightingStyleError = describeFightingStyleError(value['fightingStyle'])
@@ -329,6 +340,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const abilityBonus = value['abilityBonus']
 	const languages = value['languages']
 	const classSkills = value['classSkills']
+	const speciesSkills = value['speciesSkills']
 	const masteries = value['masteries']
 	const fightingStyle = value['fightingStyle']
 	const optionalFeatureChoices = value['optionalFeatureChoices']
@@ -342,6 +354,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(isRecord(abilityBonus) ? { abilityBonus: toAbilityBonusMap(abilityBonus) } : {}),
 		...(Array.isArray(languages) ? { languages: toCharacterLanguages(languages) } : {}),
 		...(Array.isArray(classSkills) ? { classSkills: classSkills as string[] } : {}),
+		...(Array.isArray(speciesSkills) ? { speciesSkills: speciesSkills as string[] } : {}),
 		...(Array.isArray(masteries) ? { masteries: masteries as string[] } : {}),
 		...(fightingStyle !== undefined ? { fightingStyle: fightingStyle as string | null } : {}),
 		...(Array.isArray(optionalFeatureChoices)

@@ -106,6 +106,14 @@ export interface Character {
 	 */
 	classSkills?: string[]
 	/**
+	 * Optional for the same reason as abilityScores above. The species' own
+	 * skill proficiencies — both the fixed skill(s) some species grant
+	 * outright and the ones the player chose from that species' list.
+	 * Distinct from classSkills and background.skillProficiencies so the
+	 * sheet can show "species" as the source (SPEC section B).
+	 */
+	speciesSkills?: string[]
+	/**
 	 * Optional for the same reason as abilityScores above.
 	 */
 	masteries?: string[]
@@ -132,13 +140,12 @@ export interface CharacterOptionalFeatureChoice {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 4 to persist optionalFeatureChoices —
- * the subclass optionalfeatureProgression picks the wizard already
- * collected but did not save. Per PHASE1.md section D, and per
+ * (see wireFormat.ts). Bumped to 5 to add speciesSkills — the species
+ * skill proficiency wizard step. Per PHASE1.md section D, and per
  * docs/QUESTIONS.md "Migrace uložených postav", a version bump this app
  * does not understand is rejected outright (UnknownSchemaVersionError)
- * rather than guessed at — no migration from version 3 is written, so a
+ * rather than guessed at — no migration from version 4 is written, so a
  * character saved before this change will no longer load and must be
  * recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 4
+export const CURRENT_SCHEMA_VERSION = 5

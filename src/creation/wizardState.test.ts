@@ -26,6 +26,7 @@ function completeData(): WizardData {
 			scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
 		},
 		classSkills: ['athletics', 'intimidation'],
+		speciesSkills: ['perception'],
 		masteries: ['Longsword'],
 		fightingStyle: 'Archery',
 		subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' },
@@ -166,6 +167,7 @@ describe('saveCharacter', () => {
 			['Longsword'],
 			'Archery',
 			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
+			['perception'],
 		)
 	})
 
@@ -189,6 +191,7 @@ describe('saveCharacter', () => {
 			['Longsword'],
 			'Archery',
 			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
+			['perception'],
 		)
 	})
 
@@ -216,6 +219,7 @@ describe('saveCharacter', () => {
 			['Longsword'],
 			'Archery',
 			undefined,
+			['perception'],
 		)
 	})
 

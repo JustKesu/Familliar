@@ -53,6 +53,8 @@ export interface WizardData {
 	abilityScores: CharacterAbilityScores | null
 	/** Class skill proficiencies, weapon masteries, fighting style and subclass are the class's own choices (D13), so they clear whenever classChoice does. */
 	classSkills: string[]
+	/** The species' skill proficiencies (fixed and/or chosen) — clears whenever speciesChoice does, since the options are keyed to a specific species. */
+	speciesSkills: string[]
 	masteries: string[]
 	fightingStyle: string | null
 	subclass: SubclassChoice | null
@@ -69,6 +71,7 @@ export function emptyWizardData(): WizardData {
 		languageChoice: [],
 		abilityScores: null,
 		classSkills: [],
+		speciesSkills: [],
 		masteries: [],
 		fightingStyle: null,
 		subclass: null,
@@ -133,6 +136,7 @@ export type WizardAction =
 	| { type: 'setName'; name: string }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
+	| { type: 'setSpeciesSkills'; skills: string[] }
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
 	| { type: 'setLanguageChoice'; choice: LanguageChoice }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
@@ -174,7 +178,9 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 				},
 			}
 		case 'setSpeciesChoice':
-			return { ...state, data: { ...state.data, speciesChoice: action.choice } }
+			return { ...state, data: { ...state.data, speciesChoice: action.choice, speciesSkills: [] } }
+		case 'setSpeciesSkills':
+			return { ...state, data: { ...state.data, speciesSkills: action.skills } }
 		case 'setBackgroundChoice':
 			return { ...state, data: { ...state.data, backgroundChoice: action.choice } }
 		case 'setLanguageChoice':
@@ -269,5 +275,6 @@ export function saveCharacter(
 		data.masteries,
 		data.fightingStyle,
 		optionalFeatureChoices,
+		data.speciesSkills,
 	)
 }
