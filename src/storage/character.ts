@@ -145,6 +145,13 @@ export interface Character {
 	 * entry's featureType says which progression its choices belong to.
 	 */
 	optionalFeatureChoices?: CharacterOptionalFeatureChoice[]
+	/**
+	 * Optional for the same reason as abilityScores above. One entry per
+	 * character level that grants an ASI-or-feat choice (D16/D19/D20) —
+	 * effects are NOT applied to any calculation yet (deferred to the next
+	 * slice); this is selection and storage only.
+	 */
+	featAsiChoices?: FeatAsiChoice[]
 }
 
 /** One subclass optionalfeatureProgression's picks, tagged with which progression (featureType code) they belong to. */
@@ -154,12 +161,28 @@ export interface CharacterOptionalFeatureChoice {
 }
 
 /**
+ * The +2-to-one-ability or +1-to-two-abilities distribution for an Ability
+ * Score Improvement pick (D20). Never more than 2 keys, values always 1 or 2.
+ */
+export type AbilityIncreaseMap = Partial<Record<Ability, number>>
+
+/**
+ * One level-4/8/12/16/19(+class bonus levels)-and-up choice between an
+ * Ability Score Improvement and a feat (build order step 4a, D16/D19/D20).
+ * `level` is the character level the choice was taken at — this doubles as
+ * the D22 provenance the sheet will need, so no separate field for it.
+ */
+export type FeatAsiChoice =
+	| { level: number; kind: 'asi'; increases: AbilityIncreaseMap }
+	| { level: number; kind: 'feat'; name: string; source: string }
+
+/**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 7 to add expertiseSkills — the expertise
+ * (see wireFormat.ts). Bumped to 8 to add featAsiChoices — the feat/ASI
  * wizard step. Per PHASE1.md section D, and per docs/QUESTIONS.md "Migrace
  * uložených postav", a version bump this app does not understand is
  * rejected outright (UnknownSchemaVersionError) rather than guessed at —
- * no migration from version 6 is written, so a character saved before this
+ * no migration from version 7 is written, so a character saved before this
  * change will no longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 7
+export const CURRENT_SCHEMA_VERSION = 8

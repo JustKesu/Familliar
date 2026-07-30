@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-07-30 (feat data-shape verification script, ahead of the feat/ASI slice)
+Last updated: 2026-07-30 (feat/ASI slice: choice only, no effects applied yet)
 
 ## Build order
 
@@ -8,7 +8,7 @@ Last updated: 2026-07-30 (feat data-shape verification script, ahead of the feat
 2. [done] App skeleton + persistence
 3. [done] Character creation — 5 pickers + wizard shell + class skill/mastery/fighting style/subclass/optional-feature/expertise pickers wired in and all persisted to storage.
 4. [done] Calculation layer — ability scores/modifiers, proficiency bonus, saving throws, initiative, skills, passive values, speed/size/darkvision, hit dice pool.
-4a. [not started] Feat/ASI slice
+4a. [done] Feat/ASI slice — selection and storage only, no effects applied to any calculation yet (that's the next task).
 5. [not started] Sheet display
 6. [not started] Spells
 7. [not started] Inventory and equipment
@@ -43,12 +43,18 @@ Last updated: 2026-07-30 (feat data-shape verification script, ahead of the feat
 - Calculation layer, second half — closes build order step 4. `skills.ts` (D45, D48) computes all 18 skills, reusing `ALL_SKILLS` from classSkillData.ts rather than a second copy of the list. Each result carries a status (`none`/`half`/`proficient`/`expertise`) plus the numeric modifier; proficiency sources are `character.classSkills`, `character.background.skillProficiencies`, `character.speciesSkills` — when more than one names the same skill (D44), the bonus is added once and the breakdown joins every source into one contribution (`proficiency (class, background)`), mirroring how savingThrows.ts already joins multiple granting classes. Expertise (from `character.expertiseSkills`) doubles the proficiency bonus. Jack of All Trades (half proficiency bonus, rounded down, only where the character has no other proficiency source, never combined with expertise per D45) is hardcoded as a Bard/XPHB level-2 grant — scripts/investigate-calc-slice2.js confirmed class-features.json has exactly one "Jack of All Trades" entry, so this follows the same hardcode-from-confirmed-data precedent as expertiseData.ts rather than adding a data param. Passive Perception/Investigation/Insight (D48) live in the same file, each 10 + that skill's own breakdown. `speciesTraits.ts` computes speed, size and darkvision from a caller-supplied species data slice. Two data traps surfaced by scripts/investigate-calc-slice2.js and resolved with the user before writing the function: (1) the four Genasi subraces (Air/Earth/Fire/Water, MPMM) omit size and darkvision entirely, and Earth/Fire omit speed too — those fields exist only on the parent "Genasi" entry, linked via the same raceName/raceSource speciesData.ts already uses for display names; resolved to fall back to the parent's value for whichever field the subrace entry itself lacks. (2) 23 species (including XPHB Human, Aasimar, Tiefling) list size as a 2-element array (a real Small-or-Medium player choice with no wizard step yet); resolved to report `unknown` rather than default to one. A missing darkvision field (28 of 78 species) is a definite zero, not unknown — most species simply have none. `hitDice.ts` computes the hit dice pool (D11): one `{ className, faces, count }` entry per class in `character.classes`, faces from a caller-supplied `ClassHitDie[]` (classes.json's `hd.faces`), count from the character's own level in that class.
 
 - Investigation script — scripts/investigate-feat-structured-fields.js, confirms which of the 128 feats in feats.json carry their effect in a structured field vs. prose only, ahead of the feat/ASI slice (4a).
+- Investigation script — scripts/investigate-feat-asi-eligibility.js, confirms which class-features.json levels grant an ASI-or-feat choice per class (not the flat 4/8/12/16/19 the task brief assumed — see below), the startingProficiencies/spellcastingAbility shapes classes.json carries, and the species.json fields (`creatureTypeTags`, `size`) the `race` prerequisite needs.
+- Feat/ASI slice (4a, D16/D19/D20) — src/featAsi/. Selection and storage only; no feat or ASI effect is applied to any calculation yet (that's the next task). `featAsiData.ts` is pure logic: `featAsiGrantsFor` reads class-features.json for every level a class grants an ASI-or-feat choice — confirmed per-class, not the flat 4/8/12/16/19 the task brief assumed: most classes grant "Ability Score Improvement" at 4/8/12/16, Fighter also at 6/14, Rogue also at 10, and level 19 is a separate feature named "Epic Boon" (not "Ability Score Improvement") that grants the identical kind of choice — confirmed against PHB 2024 with the user, who also confirmed the EB category tag on Epic Boon feats is NOT a filter (D19 still applies unfiltered; EB feats are only sorted first in the level-19 list as the feature's suggested pool). `evaluateFeatPrerequisites` evaluates all 13 prerequisite shapes feats.json carries: the array is alternatives (OR), each entry's keys are AND'd, and only `race` ever holds more than one alternative within one entry. Ability scores fed in are the calculation layer's FINAL values (D16/D17) — never combined with an ASI picked earlier in the same wizard session, since the calculation layer doesn't carry that yet (documented limitation, not fixed here). `race` prerequisites resolve against species.json through two indirections: the "Elf; Drow Lineage" naming (family before "; ", subrace key after) and `creatureTypeTags` (links a renamed variant like Deep Gnome/Sea Elf back to "gnome"/"elf"). "half-elf" and "half-orc" never resolve (no such species.json entries in this app's pool) so those alternatives are always unmet, shown with a reason, never hidden (D19). `campaign` and `otherSummary` prerequisites (Eberron Dragonmarks; two Fighting-Style-timing feats already handled by the class step's own FightingStylePicker) are always unmet, each with its own visible reason. `FeatAsiPicker.tsx` shows one panel per eligible level: ASI-vs-feat first (D20), then that choice's own options. The ASI sub-picker enforces the level-20 cap by disabling any ability option that would exceed it, checked against the running total of ASI picks made earlier in the same panel. The feat sub-picker lists every feat unfiltered by category (D19); an ineligible one stays visible and disabled with its unmet-prerequisite reasons shown, never hidden. Wired into the wizard as a new `featAsi` step, positioned AFTER `abilities` (not next to `expertise`) because feat prerequisites need the final ability scores the abilities step produces; shown only when the class has at least one grant by the chosen level, numbering stays contiguous (same mechanism as the expertise step). State (`WizardData.featAsiChoices`) clears when class or level changes. Storage: `Character.featAsiChoices` (schema version 8, bumped from 7 — a version-7 save is rejected, not migrated), one entry per eligible level, each either `{ kind: 'asi', increases }` or `{ kind: 'feat', name, source }`.
 
 ## Next step
 
-Feat/ASI slice (4a, D16), now that step 4 is closed. Note: the
-class-specific selections are still not recorded with the level they were
-taken at (D22) — see docs/QUESTIONS.md.
+Sheet display (build order step 5), now that step 4a is closed. Note: the
+class-specific selections (including feat/ASI choices) are still not
+recorded with the level they were taken at as a SEPARATE provenance field —
+for feat/ASI the level is inherent in the array's own shape (one entry per
+level), but D22 proper (recording it for every OTHER choice type too) is
+still deferred — see docs/QUESTIONS.md. Feat and ASI effects are not yet
+applied to any calculation — that is its own future task.
 
 ## Temporary scaffolding
 

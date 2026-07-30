@@ -7,6 +7,7 @@ import type {
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
+	FeatAsiChoice,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import {
@@ -160,6 +161,7 @@ export class CharacterStore {
 		optionalFeatureChoices?: CharacterOptionalFeatureChoice[],
 		speciesSkills?: string[],
 		expertiseSkills?: string[],
+		featAsiChoices?: FeatAsiChoice[],
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -179,6 +181,7 @@ export class CharacterStore {
 			...(optionalFeatureChoices && optionalFeatureChoices.length > 0 ? { optionalFeatureChoices } : {}),
 			...(speciesSkills && speciesSkills.length > 0 ? { speciesSkills } : {}),
 			...(expertiseSkills && expertiseSkills.length > 0 ? { expertiseSkills } : {}),
+			...(featAsiChoices && featAsiChoices.length > 0 ? { featAsiChoices } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character

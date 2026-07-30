@@ -148,6 +148,25 @@ vi.mock('../optionalFeatures/optionalFeatureData', () => ({
 	}),
 }))
 
+/** Fighter's real class-features.json grants at 4/6/8/12/14/16 (confirmed, scripts/investigate-feat-asi-eligibility.js) — includes the bonus level 6 the flat task-brief list omitted. */
+vi.mock('../featAsi/featAsiData', async () => {
+	const actual = await vi.importActual<typeof import('../featAsi/featAsiData')>('../featAsi/featAsiData')
+	return {
+		...actual,
+		loadFeatAsiGrants: vi.fn(async (className: string, _classSource: string, level: number) => {
+			const table: Record<string, number[]> = { Fighter: [4, 6, 8, 12, 14, 16], Wizard: [4, 8, 12, 16], Rogue: [4, 8, 10, 12, 16] }
+			return (table[className] ?? []).filter((l) => l <= level).map((l) => ({ level: l, kind: 'asi' as const }))
+		}),
+		loadFeats: vi.fn(async () => [
+			{ name: 'Tough', source: 'XPHB', category: 'G' },
+			{ name: 'Actor', source: 'XPHB', category: 'G', prerequisite: [{ level: 4, ability: [{ cha: 13 }] }] },
+		]),
+		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
+		loadHasFightingStyleFeature: vi.fn(async () => false),
+		loadSpeciesPrereqInfo: vi.fn(async () => null),
+	}
+})
+
 vi.mock('../languages/languageData', () => ({
 	CHOSEN_LANGUAGE_COUNT: 2,
 	AUTOMATIC_LANGUAGE: { name: 'Common', source: 'XPHB' },
@@ -573,7 +592,92 @@ describe('CharacterWizard — storage', () => {
 			[{ featureType: 'MV:B', choices: ['Trip Attack'] }],
 			[],
 			[],
+			[],
 		)
+	})
+})
+
+describe('CharacterWizard — feat/ASI step', () => {
+	async function fillThroughAbilities(user: ReturnType<typeof userEvent.setup>, level: string) {
+		await fillClassStep(user)
+		await user.selectOptions(screen.getByLabelText('Level'), level)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await fillLanguagesStep(user)
+		await goNext(user)
+		await user.selectOptions(screen.getByLabelText('Strength'), '15')
+		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
+		await user.selectOptions(screen.getByLabelText('Constitution'), '13')
+		await user.selectOptions(screen.getByLabelText('Intelligence'), '12')
+		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
+		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
+		await goNext(user)
+	}
+
+	it('a Fighter at level 4 is offered the feat/ASI step, and an ASI choice survives navigation', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughAbilities(user, '4')
+
+		expect(await screen.findByText('Level 4')).toBeTruthy()
+		await user.click(screen.getByLabelText('Ability Score Improvement'))
+		const abilitySelect = await screen.findByRole('combobox')
+		await user.selectOptions(abilitySelect, 'strength')
+
+		await goNext(user)
+		expect(await screen.findByText(/level 4: ASI \(strength \+2\)/)).toBeTruthy()
+
+		await goBack(user)
+		expect((screen.getByLabelText('Ability Score Improvement') as HTMLInputElement).checked).toBe(true)
+		expect(selectedOptionText(screen.getByRole('combobox'))).toBe('Strength')
+	})
+
+	it('a Fighter at level 3 is never offered the feat/ASI step', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughAbilities(user, '3')
+
+		// Straight to review — no feat/ASI panel in between, and no gap in the step numbering.
+		expect(await screen.findByText('Name: Aria')).toBeTruthy()
+		expect(screen.queryByText('Ability Score Improvement / Feat', { selector: 'li' })).toBeNull()
+	})
+
+	it('a Fighter at level 12 sees a feat/ASI choice for every level the class has granted by then — four, not the generic three, because Fighter also gets one at level 6', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughAbilities(user, '12')
+
+		expect(await screen.findByText('Level 4')).toBeTruthy()
+		expect(screen.getByText('Level 6')).toBeTruthy()
+		expect(screen.getByText('Level 8')).toBeTruthy()
+		expect(screen.getByText('Level 12')).toBeTruthy()
+	})
+
+	it('a feat with an unmet prerequisite is shown but cannot be taken, and the reason is visible', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughAbilities(user, '4')
+		await user.click(screen.getByLabelText('Feat'))
+
+		const actorRadio = (await screen.findByLabelText('Actor')) as HTMLInputElement
+		expect(actorRadio.disabled).toBe(true)
+		expect(screen.getByText('Requires Charisma 13+.')).toBeTruthy()
+
+		const toughRadio = (await screen.findByLabelText('Tough')) as HTMLInputElement
+		expect(toughRadio.disabled).toBe(false)
+
+		// The level-20 ASI cap itself (D20) is exercised in FeatAsiPicker.test.tsx, which can supply a
+		// near-cap final ability score directly — standard array + a +2 background bonus tops out at 17,
+		// so the full wizard's own chargen tools can never reach the cap boundary to test it here.
 	})
 })
 

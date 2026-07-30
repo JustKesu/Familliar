@@ -1,12 +1,14 @@
 import { ABILITIES, type AbilityScoreMethod, type AbilityScores, type CharacterAbilityScores, type RolledSet } from '../abilities/abilityScores'
 import type {
 	AbilityBonusMap,
+	AbilityIncreaseMap,
 	Character,
 	CharacterBackground,
 	CharacterClass,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
+	FeatAsiChoice,
 	LanguageGrantSource,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
@@ -307,6 +309,70 @@ function toCharacterOptionalFeatureChoices(value: unknown[]): CharacterOptionalF
 	})
 }
 
+/**
+ * Validates one FeatAsiChoice's `increases` map: exactly one ability at +2,
+ * or exactly two different abilities at +1 each (D20) — a different shape
+ * than the background's abilityBonus (which also allows 3 abilities at +1).
+ */
+function describeAbilityIncreaseMapError(value: unknown): string | null {
+	if (!isRecord(value)) return `increases is not an object`
+	const entries = Object.entries(value)
+	for (const [ability, amount] of entries) {
+		if (!ABILITIES.includes(ability as (typeof ABILITIES)[number])) {
+			return `increases has an unrecognised ability key "${ability}"`
+		}
+		if (amount !== 1 && amount !== 2) return `increases.${ability} must be 1 or 2`
+	}
+	if (entries.length === 1) {
+		if (entries[0][1] !== 2) return `increases with 1 ability must be +2`
+		return null
+	}
+	if (entries.length === 2) {
+		if (!entries.every(([, amount]) => amount === 1)) return `increases with 2 abilities must be +1 each`
+		return null
+	}
+	return `increases must have exactly 1 ability (+2) or 2 (+1/+1), got ${entries.length}`
+}
+
+function toAbilityIncreaseMap(value: Record<string, unknown>): AbilityIncreaseMap {
+	return Object.fromEntries(Object.entries(value)) as AbilityIncreaseMap
+}
+
+/** Validates an optional `featAsiChoices` field. Returns null if the field is absent (it's optional). */
+export function describeFeatAsiChoicesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `featAsiChoices must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `featAsiChoices[${i}] is not an object`
+		if (typeof entry['level'] !== 'number' || !Number.isInteger(entry['level']) || entry['level'] < 1 || entry['level'] > 20) {
+			return `featAsiChoices[${i}].level must be a whole number from 1 to 20`
+		}
+		const kind = entry['kind']
+		if (kind === 'asi') {
+			const error = describeAbilityIncreaseMapError(entry['increases'])
+			if (error) return `featAsiChoices[${i}].${error}`
+		} else if (kind === 'feat') {
+			if (!isNonEmptyString(entry['name'])) return `featAsiChoices[${i}].name is missing or not a string`
+			if (!isNonEmptyString(entry['source'])) return `featAsiChoices[${i}].source is missing or not a string`
+		} else {
+			return `featAsiChoices[${i}].kind must be "asi" or "feat"`
+		}
+	}
+	return null
+}
+
+function toCharacterFeatAsiChoices(value: unknown[]): FeatAsiChoice[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		const level = record['level'] as number
+		if (record['kind'] === 'asi') {
+			return { level, kind: 'asi', increases: toAbilityIncreaseMap(record['increases'] as Record<string, unknown>) }
+		}
+		return { level, kind: 'feat', name: record['name'] as string, source: record['source'] as string }
+	})
+}
+
 /** Validates the Character-shaped fields only (id, name, classes, abilityScores, species, background, abilityBonus) — no version. */
 export function describeCharacterError(value: unknown, index: number): string | null {
 	if (!isRecord(value)) return `[${index}] is not an object`
@@ -340,6 +406,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (fightingStyleError) return `[${index}].${fightingStyleError}`
 	const optionalFeatureChoicesError = describeOptionalFeatureChoicesError(value['optionalFeatureChoices'])
 	if (optionalFeatureChoicesError) return `[${index}].${optionalFeatureChoicesError}`
+	const featAsiChoicesError = describeFeatAsiChoicesError(value['featAsiChoices'])
+	if (featAsiChoicesError) return `[${index}].${featAsiChoicesError}`
 	return null
 }
 
@@ -364,6 +432,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const masteries = value['masteries']
 	const fightingStyle = value['fightingStyle']
 	const optionalFeatureChoices = value['optionalFeatureChoices']
+	const featAsiChoices = value['featAsiChoices']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -381,6 +450,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(optionalFeatureChoices)
 			? { optionalFeatureChoices: toCharacterOptionalFeatureChoices(optionalFeatureChoices) }
 			: {}),
+		...(Array.isArray(featAsiChoices) ? { featAsiChoices: toCharacterFeatAsiChoices(featAsiChoices) } : {}),
 	}
 }
 

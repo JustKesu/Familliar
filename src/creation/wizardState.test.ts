@@ -33,6 +33,7 @@ function completeData(): WizardData {
 		fightingStyle: 'Archery',
 		subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' },
 		optionalFeatureChoices: ['Precision Attack'],
+		featAsiChoices: [],
 	}
 }
 
@@ -180,6 +181,7 @@ describe('saveCharacter', () => {
 			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
 			['perception'],
 			[],
+			[],
 		)
 	})
 
@@ -204,6 +206,7 @@ describe('saveCharacter', () => {
 			'Archery',
 			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
 			['perception'],
+			[],
 			[],
 		)
 	})
@@ -233,6 +236,7 @@ describe('saveCharacter', () => {
 			'Archery',
 			undefined,
 			['perception'],
+			[],
 			[],
 		)
 	})
@@ -266,6 +270,7 @@ describe('saveCharacter', () => {
 			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
 			['perception'],
 			['stealth', 'perception'],
+			[],
 		)
 	})
 

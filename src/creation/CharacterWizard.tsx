@@ -15,6 +15,10 @@ import { ExpertisePicker } from '../expertise/ExpertisePicker'
 import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertise/expertiseData'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
 import { loadSubclassesFor, type SubclassOption } from '../subclass/subclassData'
+import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
+import { loadFeatAsiGrants } from '../featAsi/featAsiData'
+import { computeAbilityScore } from '../calculation/abilityScores'
+import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
@@ -48,6 +52,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	expertise: 'Expertise',
 	languages: 'Languages',
 	abilities: 'Ability scores',
+	featAsi: 'Ability Score Improvement / Feat',
 	review: 'Review and save',
 }
 
@@ -65,6 +70,7 @@ export function CharacterWizard({
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
 	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
+	const [featAsiGrantCount, setFeatAsiGrantCount] = useState(0)
 
 	useEffect(() => {
 		let cancelled = false
@@ -126,6 +132,25 @@ export function CharacterWizard({
 		}
 	}, [state.data.classChoice])
 
+	/** Same reasoning as the expertise effect above — the wizard needs the grant count for step visibility before FeatAsiPicker's own panel would mount. */
+	useEffect(() => {
+		let cancelled = false
+		if (!state.data.classChoice) {
+			setFeatAsiGrantCount(0)
+			return
+		}
+		loadFeatAsiGrants(state.data.classChoice.className, state.data.classChoice.classSource, state.data.classChoice.level)
+			.then((grants) => {
+				if (!cancelled) setFeatAsiGrantCount(grants.length)
+			})
+			.catch(() => {
+				/* FeatAsiPicker itself surfaces load errors; this lookup (for step visibility) is best-effort. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.classChoice])
+
 	const selectedBackground = state.data.backgroundChoice
 		? backgrounds.find(
 				(b) => b.name === state.data.backgroundChoice!.name && b.source === state.data.backgroundChoice!.source,
@@ -178,6 +203,27 @@ export function CharacterWizard({
 		: proficientSkills
 	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count, expertisePool.length) : null
 
+	/**
+	 * FINAL ability scores (base + background bonus) via the calculation
+	 * layer's own computeAbilityScore (D16/D17, task instructions point 4) —
+	 * built from a draft Character rather than a second sum, since the real
+	 * Character doesn't exist until the review step saves. Feeds
+	 * FeatAsiPicker's prerequisite checks.
+	 */
+	const draftCharacterForAbilityScores: Character = {
+		id: '',
+		name: state.data.name,
+		classes: [],
+		...(state.data.abilityScores ? { abilityScores: state.data.abilityScores } : {}),
+		...(state.data.backgroundChoice?.abilityBonus ? { abilityBonus: state.data.backgroundChoice.abilityBonus } : {}),
+	}
+	const finalAbilityScores = Object.fromEntries(
+		ABILITIES.map((ability) => {
+			const calculated = computeAbilityScore(ability, draftCharacterForAbilityScores)
+			return [ability, calculated.status === 'known' ? calculated.value.score : undefined]
+		}),
+	) as Partial<Record<Ability, number>>
+
 	function handleSave(): void {
 		try {
 			const character = saveCharacter(
@@ -185,6 +231,7 @@ export function CharacterWizard({
 				state.data,
 				selectedBackground?.skillProficiencies,
 				expertiseRequiredCount,
+				featAsiGrantCount,
 			)
 			setSaveError(null)
 			onSaved(character)
@@ -193,12 +240,12 @@ export function CharacterWizard({
 		}
 	}
 
-	const canGoNext = isStepComplete(state.step, state.data, expertiseRequiredCount)
+	const canGoNext = isStepComplete(state.step, state.data, expertiseRequiredCount, featAsiGrantCount)
 
 	return (
 		<div className="wizard">
 			<ol className="wizard__steps">
-				{visibleSteps(expertiseRequiredCount).map((step, index) => (
+				{visibleSteps(expertiseRequiredCount, featAsiGrantCount).map((step, index) => (
 					<li
 						key={step}
 						className={step === state.step ? 'wizard__step wizard__step--active' : 'wizard__step'}
@@ -340,6 +387,21 @@ export function CharacterWizard({
 				</div>
 			)}
 
+			{state.step === 'featAsi' && state.data.classChoice && (
+				<div className="wizard__panel">
+					<FeatAsiPicker
+						className={state.data.classChoice.className}
+						classSource={state.data.classChoice.classSource}
+						level={state.data.classChoice.level}
+						finalAbilityScores={finalAbilityScores}
+						speciesName={state.data.speciesChoice?.name ?? null}
+						speciesSource={state.data.speciesChoice?.source ?? null}
+						value={state.data.featAsiChoices}
+						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
+					/>
+				</div>
+			)}
+
 			{state.step === 'review' && (
 				<div className="wizard__panel">
 					<p>Name: {state.data.name}</p>
@@ -359,6 +421,20 @@ export function CharacterWizard({
 						Expertise: {state.data.expertiseSkills.length > 0 ? state.data.expertiseSkills.join(', ') : '—'}
 					</p>
 					<p>Ability score method: {state.data.abilityScores?.method ?? '—'}</p>
+					<p>
+						Ability Score Improvements / feats:{' '}
+						{state.data.featAsiChoices.length > 0
+							? state.data.featAsiChoices
+									.map((choice) =>
+										choice.kind === 'asi'
+											? `level ${choice.level}: ASI (${Object.entries(choice.increases)
+													.map(([ability, amount]) => `${ability} +${amount}`)
+													.join(', ')})`
+											: `level ${choice.level}: ${choice.name}`,
+									)
+									.join('; ')
+							: '—'}
+					</p>
 					{saveError && <p className="error">{saveError}</p>}
 				</div>
 			)}
@@ -369,17 +445,25 @@ export function CharacterWizard({
 				</button>
 				<button
 					type="button"
-					onClick={() => dispatch({ type: 'back', expertiseRequiredCount })}
-					disabled={stepIndex(state.step, expertiseRequiredCount) === 0}
+					onClick={() => dispatch({ type: 'back', expertiseRequiredCount, featAsiEligibleLevelCount: featAsiGrantCount })}
+					disabled={stepIndex(state.step, expertiseRequiredCount, featAsiGrantCount) === 0}
 				>
 					Back
 				</button>
 				{state.step === 'review' ? (
-					<button type="button" onClick={handleSave} disabled={!isReadyToSave(state.data, expertiseRequiredCount)}>
+					<button
+						type="button"
+						onClick={handleSave}
+						disabled={!isReadyToSave(state.data, expertiseRequiredCount, featAsiGrantCount)}
+					>
 						Create character
 					</button>
 				) : (
-					<button type="button" onClick={() => dispatch({ type: 'next', expertiseRequiredCount })} disabled={!canGoNext}>
+					<button
+						type="button"
+						onClick={() => dispatch({ type: 'next', expertiseRequiredCount, featAsiEligibleLevelCount: featAsiGrantCount })}
+						disabled={!canGoNext}
+					>
 						Next
 					</button>
 				)}

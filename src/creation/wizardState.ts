@@ -16,6 +16,7 @@ import type {
 	CharacterClass,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
+	FeatAsiChoice,
 } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassLevelChoice } from '../classes/ClassPicker'
@@ -37,7 +38,7 @@ export interface SubclassChoice {
 	featureType: string | null
 }
 
-export const WIZARD_STEPS = ['class', 'species', 'background', 'expertise', 'languages', 'abilities', 'review'] as const
+export const WIZARD_STEPS = ['class', 'species', 'background', 'expertise', 'languages', 'abilities', 'featAsi', 'review'] as const
 export type WizardStep = (typeof WIZARD_STEPS)[number]
 
 /**
@@ -46,14 +47,25 @@ export type WizardStep = (typeof WIZARD_STEPS)[number]
  * `null` count means no entitlement at all, so the step is skipped
  * entirely rather than shown empty, and the numbering of every step after
  * it shifts down to stay contiguous.
+ *
+ * `featAsi` follows the same rule: it only appears when the character has
+ * at least one level-4/8/12/16/19(+class bonus levels) grant by the chosen
+ * level (D16/D19/D20, feat/ASI slice). It comes AFTER `abilities`, not next
+ * to `expertise` — feat prerequisites are checked against FINAL ability
+ * scores (base + background bonus, D16/D17), which aren't known until the
+ * abilities step has run.
  */
-export function visibleSteps(expertiseRequiredCount: number | null): readonly WizardStep[] {
-	return expertiseRequiredCount === null ? WIZARD_STEPS.filter((step) => step !== 'expertise') : WIZARD_STEPS
+export function visibleSteps(expertiseRequiredCount: number | null, featAsiEligibleLevelCount = 0): readonly WizardStep[] {
+	return WIZARD_STEPS.filter((step) => {
+		if (step === 'expertise') return expertiseRequiredCount !== null
+		if (step === 'featAsi') return featAsiEligibleLevelCount > 0
+		return true
+	})
 }
 
 /** The picker steps only — every one of these must be complete before the review step may save. */
-function pickerSteps(expertiseRequiredCount: number | null): readonly WizardStep[] {
-	return visibleSteps(expertiseRequiredCount).filter((step) => step !== 'review')
+function pickerSteps(expertiseRequiredCount: number | null, featAsiEligibleLevelCount = 0): readonly WizardStep[] {
+	return visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount).filter((step) => step !== 'review')
 }
 
 /** The in-progress character. Nothing here is written to storage until saveCharacter runs. */
@@ -77,6 +89,8 @@ export interface WizardData {
 	subclass: SubclassChoice | null
 	/** The subclass's own optionalfeatureProgression picks (D21) — clear whenever class, level or subclass changes, since the options are keyed to a specific subclass. */
 	optionalFeatureChoices: string[]
+	/** One entry per level with an ASI-or-feat grant (task instructions, point 7) — clears whenever class or level changes (point 6), since eligibility is keyed to the class's own grant levels. */
+	featAsiChoices: FeatAsiChoice[]
 }
 
 export function emptyWizardData(): WizardData {
@@ -95,6 +109,7 @@ export function emptyWizardData(): WizardData {
 		fightingStyle: null,
 		subclass: null,
 		optionalFeatureChoices: [],
+		featAsiChoices: [],
 	}
 }
 
@@ -107,18 +122,18 @@ export function initialControllerState(): WizardControllerState {
 	return { step: WIZARD_STEPS[0], data: emptyWizardData() }
 }
 
-export function stepIndex(step: WizardStep, expertiseRequiredCount: number | null = null): number {
-	return visibleSteps(expertiseRequiredCount).indexOf(step)
+export function stepIndex(step: WizardStep, expertiseRequiredCount: number | null = null, featAsiEligibleLevelCount = 0): number {
+	return visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount).indexOf(step)
 }
 
-function nextStep(step: WizardStep, expertiseRequiredCount: number | null): WizardStep | null {
-	const steps = visibleSteps(expertiseRequiredCount)
+function nextStep(step: WizardStep, expertiseRequiredCount: number | null, featAsiEligibleLevelCount: number): WizardStep | null {
+	const steps = visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount)
 	const idx = steps.indexOf(step)
 	return idx < steps.length - 1 ? steps[idx + 1] : null
 }
 
-function previousStep(step: WizardStep, expertiseRequiredCount: number | null): WizardStep | null {
-	const steps = visibleSteps(expertiseRequiredCount)
+function previousStep(step: WizardStep, expertiseRequiredCount: number | null, featAsiEligibleLevelCount: number): WizardStep | null {
+	const steps = visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount)
 	const idx = steps.indexOf(step)
 	return idx > 0 ? steps[idx - 1] : null
 }
@@ -134,11 +149,19 @@ function previousStep(step: WizardStep, expertiseRequiredCount: number | null): 
  * proficient skills than the class grants (task instructions, point 3), so
  * an exact-match check here never becomes impossible to satisfy. `null`
  * only reaches this case defensively; the step isn't offered at all then.
+ *
+ * `featAsiEligibleLevelCount` is the number of levels that grant an
+ * ASI-or-feat choice (feat/ASI slice, task instructions point 2) — the
+ * 'featAsi' step needs exactly one recorded choice per eligible level. Each
+ * choice's own validity (ASI shape/cap or feat prerequisites) is enforced
+ * by the picker before it ever reaches `onChange`, so a length check here
+ * is enough, mirroring the 'expertise' step above.
  */
 export function isStepComplete(
 	step: WizardStep,
 	data: WizardData,
 	expertiseRequiredCount: number | null = null,
+	featAsiEligibleLevelCount = 0,
 ): boolean {
 	switch (step) {
 		case 'class':
@@ -153,19 +176,32 @@ export function isStepComplete(
 			return data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
 		case 'abilities':
 			return data.abilityScores !== null
+		case 'featAsi':
+			return data.featAsiChoices.length === featAsiEligibleLevelCount && data.featAsiChoices.every(isCompleteFeatAsiChoice)
 		case 'review':
 			return true
 	}
 }
 
+/** A recorded choice must be a fully-formed ASI (valid shape, D20) or a fully-named feat — not a placeholder left over from picking "ASI" or "Feat" but nothing further. */
+function isCompleteFeatAsiChoice(choice: FeatAsiChoice): boolean {
+	if (choice.kind === 'feat') return choice.name.trim() !== '' && choice.source.trim() !== ''
+	const amounts = Object.values(choice.increases)
+	if (amounts.length === 1) return amounts[0] === 2
+	if (amounts.length === 2) return amounts.every((amount) => amount === 1)
+	return false
+}
+
 /** Whether every picker step is complete — the gate for the review step's save button. */
-export function isReadyToSave(data: WizardData, expertiseRequiredCount: number | null = null): boolean {
-	return pickerSteps(expertiseRequiredCount).every((step) => isStepComplete(step, data, expertiseRequiredCount))
+export function isReadyToSave(data: WizardData, expertiseRequiredCount: number | null = null, featAsiEligibleLevelCount = 0): boolean {
+	return pickerSteps(expertiseRequiredCount, featAsiEligibleLevelCount).every((step) =>
+		isStepComplete(step, data, expertiseRequiredCount, featAsiEligibleLevelCount),
+	)
 }
 
 export type WizardAction =
-	| { type: 'next'; expertiseRequiredCount?: number | null }
-	| { type: 'back'; expertiseRequiredCount?: number | null }
+	| { type: 'next'; expertiseRequiredCount?: number | null; featAsiEligibleLevelCount?: number }
+	| { type: 'back'; expertiseRequiredCount?: number | null; featAsiEligibleLevelCount?: number }
 	| { type: 'setName'; name: string }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
@@ -180,6 +216,7 @@ export type WizardAction =
 	| { type: 'setFightingStyle'; style: string | null }
 	| { type: 'setSubclass'; subclass: SubclassChoice | null }
 	| { type: 'setOptionalFeatureChoices'; choices: string[] }
+	| { type: 'setFeatAsiChoices'; choices: FeatAsiChoice[] }
 
 /**
  * Pure navigation + edit reducer. `next` is a no-op unless the current step
@@ -190,12 +227,13 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 	switch (action.type) {
 		case 'next': {
 			const eligibility = action.expertiseRequiredCount ?? null
-			if (!isStepComplete(state.step, state.data, eligibility)) return state
-			const next = nextStep(state.step, eligibility)
+			const featAsiCount = action.featAsiEligibleLevelCount ?? 0
+			if (!isStepComplete(state.step, state.data, eligibility, featAsiCount)) return state
+			const next = nextStep(state.step, eligibility, featAsiCount)
 			return next ? { ...state, step: next } : state
 		}
 		case 'back': {
-			const prev = previousStep(state.step, action.expertiseRequiredCount ?? null)
+			const prev = previousStep(state.step, action.expertiseRequiredCount ?? null, action.featAsiEligibleLevelCount ?? 0)
 			return prev ? { ...state, step: prev } : state
 		}
 		case 'setName':
@@ -212,6 +250,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					fightingStyle: null,
 					subclass: null,
 					optionalFeatureChoices: [],
+					featAsiChoices: [],
 				},
 			}
 		case 'setSpeciesChoice':
@@ -249,6 +288,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [] } }
 		case 'setOptionalFeatureChoices':
 			return { ...state, data: { ...state.data, optionalFeatureChoices: action.choices } }
+		case 'setFeatAsiChoices':
+			return { ...state, data: { ...state.data, featAsiChoices: action.choices } }
 	}
 }
 
@@ -264,17 +305,19 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
  * caller (CharacterWizard.tsx, which already resolves the full
  * BackgroundEntry for D18's disabled-skills wiring) passes them in here.
  *
- * `expertiseRequiredCount` is the same value CharacterWizard.tsx already
- * computes for the 'expertise' step's own completion check — passed again
- * here so this final readiness check agrees with it exactly.
+ * `expertiseRequiredCount` and `featAsiEligibleLevelCount` are the same
+ * values CharacterWizard.tsx already computes for the 'expertise' and
+ * 'featAsi' steps' own completion checks — passed again here so this final
+ * readiness check agrees with them exactly.
  */
 export function saveCharacter(
 	store: CharacterStore,
 	data: WizardData,
 	backgroundSkillProficiencies?: [string, string],
 	expertiseRequiredCount: number | null = null,
+	featAsiEligibleLevelCount = 0,
 ): Character {
-	if (!isReadyToSave(data, expertiseRequiredCount)) {
+	if (!isReadyToSave(data, expertiseRequiredCount, featAsiEligibleLevelCount)) {
 		throw new Error('Cannot save a character before every step is complete.')
 	}
 
@@ -335,5 +378,6 @@ export function saveCharacter(
 		optionalFeatureChoices,
 		data.speciesSkills,
 		data.expertiseSkills,
+		data.featAsiChoices,
 	)
 }
