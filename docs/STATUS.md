@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-08-05 (saving throws carry a proficiency status, not just a number)
+Last updated: 2026-08-05 (spells investigation script, ahead of build order step 6)
 
 ## Build order
 
@@ -25,6 +25,7 @@ Last updated: 2026-08-05 (saving throws carry a proficiency status, not just a n
 - Investigation script — scripts/investigate-expertise.js, confirms the shape of expertise features and species skillProficiencies ahead of the expertise picker.
 - Investigation script — scripts/investigate-expertise-2.js, confirms two more expertise-granting features not named "Expertise" (Ranger's Deft Explorer, level 2 not 1; Wizard's Scholar, restricted to 6 skills) and that "Infiltration Expertise" (Rogue/Assassin 9) grants no skill expertise at all despite its name.
 - Investigation script — scripts/investigate-species-skills.js, confirms parent/variant inheritance (variant entries already carry their own, identical, skillProficiencies — nothing to merge), all element counts are 1, and five distinct entry shapes across the 26 species that carry the field (fixed single skill, fixed multi-skill, choice with count, choice without count, and `{ any: N }`).
+- Investigation script — scripts/investigate-spells.js, confirms ahead of build order step 6 (Spells) what classes.json/spells.json actually hold: per-class casterProgression/spellcastingAbility, that cantrip/known/prepared counts are always structured numeric arrays (never prose-only), the classTableGroups slot-table shape, that Warlock's Pact Magic uses a flat single-slot-count/slot-level table (not the rowsSpellProgression matrix full casters use), subclass `additionalSpells` shape (72 of 114 subclasses, 14 distinct outer-key shapes), and the real classes/classVariants trap counts in this repo's filtered data/spells.json (91, not the 109 DATA.md records — see docs/REPORT.md).
 - Investigation script — scripts/investigate-tool-proficiencies.js, confirms all 33 backgrounds carry toolProficiencies (always a 1-element array), three category keys occur (anyArtisansTool, anyMusicalInstrument, anyGamingSet, all count 1), and that items.json can filter all three structurally by item `type` code — anyMusicalInstrument's "INS" code also covers 15 magic instruments, so that filter additionally needs `rarity === "none"`.
 - App skeleton — Vite + React + TypeScript, data served from public/data/.
 - Markup renderer — src/markup/, 107 tests. Now also renders `abilityDc` (a save DC named for an ability score, e.g. Arcane Shot) as a sentence naming the ability, and `statblock` (a pointer to a creature/object statblock in another file) the same way as the ref* types — target name shown, tag/name/source kept in `data-ref-*` attributes since D7 still has no cross-file lookup.
