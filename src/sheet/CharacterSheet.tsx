@@ -20,7 +20,7 @@ import type { FeatEffectEntry } from '../calculation/featEffects'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeInitiative } from '../calculation/initiative'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
-import { computeSavingThrows, type ClassSavingThrowProficiencies } from '../calculation/savingThrows'
+import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeDarkvision, computeSize, computeSpeed, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
@@ -65,6 +65,12 @@ const SKILL_STATUS_MARKS: Record<SkillValue['status'], string> = {
 	expertise: '★',
 }
 
+/** Same pattern as SKILL_STATUS_MARKS — a mark per status, not a breakdown-length check. */
+const SAVE_STATUS_MARKS: Record<SavingThrowValue['status'], string> = {
+	none: '○',
+	proficient: '●',
+}
+
 const SIZE_LABELS: Record<string, string> = {
 	T: 'Tiny',
 	S: 'Small',
@@ -103,11 +109,6 @@ function CalculatedNumber({ result, format }: { result: Calculated<number>; form
 			<span>{format ? format(result.value) : result.value}</span> <ValueBreakdown breakdown={result.breakdown} />
 		</>
 	)
-}
-
-/** Whether a saving throw's breakdown shows a proficiency contribution — the breakdown always starts with the ability modifier, so anything past index 0 means a source (class or feat) granted it. */
-function isProficientSave(result: Calculated<number>): boolean {
-	return result.status === 'known' && result.breakdown.length > 1
 }
 
 export function CharacterSheet({ character }: { character: Character }): ReactNode {
@@ -241,8 +242,14 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 						const result = savingThrows[ability]
 						return (
 							<li key={ability}>
-								{isProficientSave(result) ? '● ' : '○ '}
-								{ABILITY_LABELS[ability]}: <CalculatedNumber result={result} format={formatModifier} />
+								{result.status === 'known' ? SAVE_STATUS_MARKS[result.value.status] : '?'} {ABILITY_LABELS[ability]}:{' '}
+								{result.status === 'unknown' ? (
+									<UnresolvedValue reason={result.reason} />
+								) : (
+									<>
+										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />
+									</>
+								)}
 							</li>
 						)
 					})}

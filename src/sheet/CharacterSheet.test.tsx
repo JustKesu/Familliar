@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { CharacterSheet } from './CharacterSheet'
 import { computeAbilityScore } from '../calculation/abilityScores'
 import type { ClassHitDie } from '../calculation/hitDice'
-import { computeSavingThrow } from '../calculation/savingThrows'
+import { computeSavingThrow, computeSavingThrows } from '../calculation/savingThrows'
 import type { ClassSavingThrowProficiencies } from '../calculation/savingThrows'
 import { computeSkill } from '../calculation/skills'
 import type { SpeciesTraitsData } from '../calculation/speciesTraits'
@@ -33,6 +33,11 @@ const SPECIES_DATA: SpeciesTraitsData[] = [
 	{ name: 'Elf', source: 'XPHB', speed: 30, size: ['M'], darkvision: 60 },
 	{ name: 'Human', source: 'XPHB', speed: 30, size: ['S', 'M'], darkvision: 0 },
 ]
+
+vi.mock('../calculation/savingThrows', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../calculation/savingThrows')>()
+	return { ...actual, computeSavingThrows: vi.fn(actual.computeSavingThrows) }
+})
 
 vi.mock('./sheetData', () => ({
 	loadSavingThrowClassData: vi.fn(async () => CLASS_DATA),
@@ -96,12 +101,39 @@ describe('CharacterSheet', () => {
 		if (strengthSave.status === 'known') {
 			const item = Array.from(savesSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Strength:'))
 			expect(item?.textContent).toContain('●')
-			expect(item?.textContent).toContain(`+${strengthSave.value}`)
+			expect(item?.textContent).toContain(`+${strengthSave.value.modifier}`)
 		}
 
 		// Dexterity: Fighter is not proficient (only str/con above).
 		const dexItem = Array.from(savesSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Dexterity:'))
 		expect(dexItem?.textContent).toContain('○')
+	})
+
+	it('D60: a save whose breakdown carries a note but no proficiency source still shows the "none" mark, not a proficiency dot inferred from breakdown length', async () => {
+		vi.mocked(computeSavingThrows).mockImplementationOnce((char, classData, feats) => {
+			const real = computeSavingThrow('dexterity', char, classData, feats)
+			if (real.status !== 'known') throw new Error('fixture expects a known dexterity save')
+			return {
+				strength: computeSavingThrow('strength', char, classData, feats),
+				dexterity: {
+					status: 'known',
+					value: real.value,
+					breakdown: [...real.breakdown, { source: 'feat (Test Note Feat)', amount: 0, note: 'effect not computed (D55/D58 style)' }],
+				},
+				constitution: computeSavingThrow('constitution', char, classData, feats),
+				intelligence: computeSavingThrow('intelligence', char, classData, feats),
+				wisdom: computeSavingThrow('wisdom', char, classData, feats),
+				charisma: computeSavingThrow('charisma', char, classData, feats),
+			}
+		})
+
+		const { container } = render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		const savesSection = container.querySelector('.sheet__saving-throws')!
+		const dexItem = Array.from(savesSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Dexterity:'))
+		expect(dexItem?.textContent).toContain('○')
+		expect(dexItem?.textContent).not.toContain('●')
 	})
 
 	it('breakdown starts collapsed and shows contributions once opened', async () => {

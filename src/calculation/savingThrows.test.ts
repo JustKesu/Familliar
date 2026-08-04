@@ -32,7 +32,7 @@ describe('computeSavingThrow', () => {
 	it('adds proficiency bonus for a class-proficient save (Fighter 5, STR)', () => {
 		expect(computeSavingThrow('strength', fighter5, classData)).toEqual({
 			status: 'known',
-			value: 6,
+			value: { status: 'proficient', modifier: 6 },
 			breakdown: [
 				{ source: 'strength modifier', amount: 3 },
 				{ source: 'proficiency (Fighter)', amount: 3 },
@@ -43,7 +43,7 @@ describe('computeSavingThrow', () => {
 	it('is just the ability modifier for a non-proficient save (Fighter 5, DEX)', () => {
 		expect(computeSavingThrow('dexterity', fighter5, classData)).toEqual({
 			status: 'known',
-			value: 2,
+			value: { status: 'none', modifier: 2 },
 			breakdown: [{ source: 'dexterity modifier', amount: 2 }],
 		})
 	})
@@ -51,7 +51,7 @@ describe('computeSavingThrow', () => {
 	it('uses the +2 proficiency bonus at Barbarian 1 (boundary level)', () => {
 		expect(computeSavingThrow('strength', barbarian1, classData)).toEqual({
 			status: 'known',
-			value: 5,
+			value: { status: 'proficient', modifier: 5 },
 			breakdown: [
 				{ source: 'strength modifier', amount: 3 },
 				{ source: 'proficiency (Barbarian)', amount: 2 },
@@ -87,7 +87,7 @@ describe('computeSavingThrow', () => {
 		}
 		expect(computeSavingThrow('wisdom', withResilient, classData, [resilient])).toEqual({
 			status: 'known',
-			value: 3,
+			value: { status: 'proficient', modifier: 3 },
 			breakdown: [
 				{ source: 'wisdom modifier', amount: 0 },
 				{ source: 'proficiency (feat (Resilient))', amount: 3 },
@@ -107,12 +107,25 @@ describe('computeSavingThrow', () => {
 		}
 		expect(computeSavingThrow('strength', withResilient, classData, [resilient])).toEqual({
 			status: 'known',
-			value: 6,
+			value: { status: 'proficient', modifier: 6 },
 			breakdown: [
 				{ source: 'strength modifier', amount: 3 },
 				{ source: 'proficiency (Fighter, feat (Resilient))', amount: 3 },
 			],
 		})
+	})
+
+	it('D60: a note-only contribution in the breakdown does not flip the status to proficient (regression fixture — no real feat produces this on a save yet, see docs/REPORT.md)', () => {
+		const result = computeSavingThrow('dexterity', fighter5, classData)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+
+		const withNote = {
+			...result,
+			breakdown: [...result.breakdown, { source: 'feat (Test Note Feat)', amount: 0, note: 'effect not computed (D55/D58 style)' }],
+		}
+		expect(withNote.breakdown.length).toBeGreaterThan(1)
+		expect(withNote.value.status).toBe('none')
 	})
 })
 
@@ -121,8 +134,8 @@ describe('computeSavingThrows', () => {
 		const result = computeSavingThrows(fighter5, classData)
 		expect(Object.keys(result)).toHaveLength(6)
 		expect(result.strength.status).toBe('known')
-		expect(result.strength.status === 'known' && result.strength.value).toBe(6)
+		expect(result.strength.status === 'known' && result.strength.value).toEqual({ status: 'proficient', modifier: 6 })
 		expect(result.wisdom.status).toBe('known')
-		expect(result.wisdom.status === 'known' && result.wisdom.value).toBe(0)
+		expect(result.wisdom.status === 'known' && result.wisdom.value).toEqual({ status: 'none', modifier: 0 })
 	})
 })

@@ -4,6 +4,12 @@
  * grant proficiency in. D11 — iterate the classes array. D44 — a class and
  * a feat granting the SAME save's proficiency still counts once, with both
  * sources named in the breakdown.
+ *
+ * The result carries a STATUS (D45's pattern, applied here too — see
+ * skills.ts) rather than leaving the sheet to infer proficiency from the
+ * breakdown's shape: a breakdown can grow a zero-amount note (D55/D58 style)
+ * for reasons unrelated to proficiency, and a length check would misread
+ * that as a proficiency mark.
  */
 
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
@@ -28,12 +34,20 @@ function findClassProficiencies(
 	return classData.find((c) => c.className === characterClass.className && c.classSource === characterClass.classSource)
 }
 
+/** Must tolerate a further status being added later (mirrors skills.ts's SkillProficiencyStatus, D45); not a boolean. */
+export type SavingThrowProficiencyStatus = 'none' | 'proficient'
+
+export interface SavingThrowValue {
+	status: SavingThrowProficiencyStatus
+	modifier: number
+}
+
 export function computeSavingThrow(
 	ability: Ability,
 	character: Character,
 	classData: ClassSavingThrowProficiencies[],
 	feats: FeatEffectEntry[] = [],
-): Calculated<number> {
+): Calculated<SavingThrowValue> {
 	const abilityResult = computeAbilityScore(ability, character, feats)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
@@ -54,25 +68,26 @@ export function computeSavingThrow(
 	}
 	grantingSources.push(...featSavingThrowProficiencyNames(ability, character, feats).map((name) => `feat (${name})`))
 
+	const status: SavingThrowProficiencyStatus = grantingSources.length > 0 ? 'proficient' : 'none'
 	const breakdown: Contribution[] = [{ source: `${ability} modifier`, amount: abilityResult.value.modifier }]
 
-	if (grantingSources.length > 0) {
+	if (status === 'proficient') {
 		const bonusResult = computeProficiencyBonus(character.classes)
 		if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
 		breakdown.push({ source: `proficiency (${grantingSources.join(', ')})`, amount: bonusResult.value })
 	}
 
-	const total = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
-	return known(total, breakdown)
+	const modifier = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
+	return known({ status, modifier }, breakdown)
 }
 
 export function computeSavingThrows(
 	character: Character,
 	classData: ClassSavingThrowProficiencies[],
 	feats: FeatEffectEntry[] = [],
-): Record<Ability, Calculated<number>> {
+): Record<Ability, Calculated<SavingThrowValue>> {
 	return Object.fromEntries(ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats)])) as Record<
 		Ability,
-		Calculated<number>
+		Calculated<SavingThrowValue>
 	>
 }
