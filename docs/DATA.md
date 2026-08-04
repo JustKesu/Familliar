@@ -102,11 +102,23 @@ Noble silently loses its origin feat.
 
 ### Spell availability: `classes` vs `classVariants`
 XGE and TCE spells were never on core class lists — they're granted as
-optional/variant content and land in `classVariant`, not `class`.
-109 spells have an empty `classes` array (all 95 XGE + 14 TCE); only 3
-have no availability at all.
+optional/variant content and land in `classVariants`, not `classes`.
+91 spells have an empty `classes` array but a populated `classVariants`;
+0 have no availability at all (measured against the current filtered
+data/spells.json, 489 spells — an older 109 figure was measured against a
+larger/unfiltered set).
 The UI must read both, ideally flagged differently, or every XGE/TCE
 spell will look uncastable.
+
+### `casterProgression` names a table, not a class
+`casterProgression` (data/classes.json) names a shared spell-slot
+progression TABLE, not a class. Paladin and Ranger both carry the value
+"artificer" — the same value the actual Artificer class carries — because
+all three are half-casters sharing one slot progression. Code reading this
+field must treat the value as a table name, never as a class-identity
+check. Values seen: "full", "pact" (Warlock), "artificer" (Artificer,
+Paladin, Ranger). Non-casters (Barbarian, Fighter, Monk, Rogue) have no
+`casterProgression` field at all.
 
 ### Armour AC — the data won't tell you
 `ac` is the base number. There is NO Dex cap field; the cap is implied by
