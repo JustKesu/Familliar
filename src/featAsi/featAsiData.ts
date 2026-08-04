@@ -147,11 +147,17 @@ export interface RawFeatPrerequisiteEntry {
 	otherSummary?: { entry: string }
 }
 
+/** One feats.json `ability` array entry: either a fixed bonus (key = ability abbreviation) or a choice among named abilities. Only `choose` is read — fixed-bonus entries need no ability picker (D-ASI-ability). */
+export interface RawFeatAbilityEntry {
+	choose?: { from: AbilityAbbreviation[] }
+}
+
 export interface FeatEntry {
 	name: string
 	source: string
 	category: string
 	prerequisite?: RawFeatPrerequisiteEntry[]
+	ability?: RawFeatAbilityEntry[]
 }
 
 function isRawFeatEntry(value: unknown): value is FeatEntry {
@@ -170,6 +176,30 @@ export function extractSelectableFeats(parsed: unknown): FeatEntry[] {
 export async function loadFeats(): Promise<FeatEntry[]> {
 	const parsed = await loadDataFile('data/feats.json')
 	return extractSelectableFeats(parsed)
+}
+
+/**
+ * The named abilities a half-feat's +1 can go to, or null when the feat has
+ * a fixed bonus (13 feats) or no `ability` field at all. Every choice-shaped
+ * feat is +1 to exactly one ability from a 2-6 name list — confirmed via
+ * scripts/investigate-feat-ability-choice-shape.js (68 non-ASI feats; none
+ * mix a fixed entry with a choice, none carry more than one ability-array
+ * entry). Ability Score Improvement itself is excluded from the picker
+ * (extractSelectableFeats) so its own two-choose shape never reaches here.
+ */
+export function featAbilityChoiceOptions(feat: FeatEntry): Ability[] | null {
+	const entry = feat.ability?.[0]
+	if (!entry?.choose) return null
+	return entry.choose.from.map((abbr) => ABBREV_TO_ABILITY[abbr])
+}
+
+/** `${name}|${source}` keys for every feat that needs an ability choice — what the wizard step's completion check tests against. */
+export function featsRequiringAbilityChoice(feats: FeatEntry[]): Set<string> {
+	const keys = new Set<string>()
+	for (const feat of feats) {
+		if (featAbilityChoiceOptions(feat) !== null) keys.add(`${feat.name}|${feat.source}`)
+	}
+	return keys
 }
 
 // ---------------------------------------------------------------------------

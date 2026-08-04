@@ -155,13 +155,18 @@ function previousStep(step: WizardStep, expertiseRequiredCount: number | null, f
  * 'featAsi' step needs exactly one recorded choice per eligible level. Each
  * choice's own validity (ASI shape/cap or feat prerequisites) is enforced
  * by the picker before it ever reaches `onChange`, so a length check here
- * is enough, mirroring the 'expertise' step above.
+ * is enough, mirroring the 'expertise' step above — except a feat choice
+ * also needs `chosenAbility` once the feat itself calls for one; that can't
+ * be enforced by shape alone (it depends on feats.json), so
+ * `featsRequiringAbilityChoice` (a `${name}|${source}` key set, empty by
+ * default) is checked here too (half-feat ability-choice slice).
  */
 export function isStepComplete(
 	step: WizardStep,
 	data: WizardData,
 	expertiseRequiredCount: number | null = null,
 	featAsiEligibleLevelCount = 0,
+	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
 ): boolean {
 	switch (step) {
 		case 'class':
@@ -177,15 +182,31 @@ export function isStepComplete(
 		case 'abilities':
 			return data.abilityScores !== null
 		case 'featAsi':
-			return data.featAsiChoices.length === featAsiEligibleLevelCount && data.featAsiChoices.every(isCompleteFeatAsiChoice)
+			return (
+				data.featAsiChoices.length === featAsiEligibleLevelCount &&
+				data.featAsiChoices.every((choice) => isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice))
+			)
 		case 'review':
 			return true
 	}
 }
 
-/** A recorded choice must be a fully-formed ASI (valid shape, D20) or a fully-named feat — not a placeholder left over from picking "ASI" or "Feat" but nothing further. */
-function isCompleteFeatAsiChoice(choice: FeatAsiChoice): boolean {
-	if (choice.kind === 'feat') return choice.name.trim() !== '' && choice.source.trim() !== ''
+const EMPTY_FEAT_SET: ReadonlySet<string> = new Set()
+
+/**
+ * A recorded choice must be a fully-formed ASI (valid shape, D20) or a
+ * fully-named feat — not a placeholder left over from picking "ASI" or
+ * "Feat" but nothing further. A feat whose key is in
+ * `featsRequiringAbilityChoice` (a half-feat, task instructions point 4)
+ * additionally needs `chosenAbility` set — the step cannot complete with a
+ * feat picked but its ability bonus target unknown.
+ */
+function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityChoice: ReadonlySet<string>): boolean {
+	if (choice.kind === 'feat') {
+		if (choice.name.trim() === '' || choice.source.trim() === '') return false
+		if (featsRequiringAbilityChoice.has(`${choice.name}|${choice.source}`)) return choice.chosenAbility !== undefined
+		return true
+	}
 	const amounts = Object.values(choice.increases)
 	if (amounts.length === 1) return amounts[0] === 2
 	if (amounts.length === 2) return amounts.every((amount) => amount === 1)
@@ -193,14 +214,24 @@ function isCompleteFeatAsiChoice(choice: FeatAsiChoice): boolean {
 }
 
 /** Whether every picker step is complete — the gate for the review step's save button. */
-export function isReadyToSave(data: WizardData, expertiseRequiredCount: number | null = null, featAsiEligibleLevelCount = 0): boolean {
+export function isReadyToSave(
+	data: WizardData,
+	expertiseRequiredCount: number | null = null,
+	featAsiEligibleLevelCount = 0,
+	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
+): boolean {
 	return pickerSteps(expertiseRequiredCount, featAsiEligibleLevelCount).every((step) =>
-		isStepComplete(step, data, expertiseRequiredCount, featAsiEligibleLevelCount),
+		isStepComplete(step, data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice),
 	)
 }
 
 export type WizardAction =
-	| { type: 'next'; expertiseRequiredCount?: number | null; featAsiEligibleLevelCount?: number }
+	| {
+			type: 'next'
+			expertiseRequiredCount?: number | null
+			featAsiEligibleLevelCount?: number
+			featsRequiringAbilityChoice?: ReadonlySet<string>
+	  }
 	| { type: 'back'; expertiseRequiredCount?: number | null; featAsiEligibleLevelCount?: number }
 	| { type: 'setName'; name: string }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
@@ -228,7 +259,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'next': {
 			const eligibility = action.expertiseRequiredCount ?? null
 			const featAsiCount = action.featAsiEligibleLevelCount ?? 0
-			if (!isStepComplete(state.step, state.data, eligibility, featAsiCount)) return state
+			const featsRequiringAbilityChoice = action.featsRequiringAbilityChoice ?? EMPTY_FEAT_SET
+			if (!isStepComplete(state.step, state.data, eligibility, featAsiCount, featsRequiringAbilityChoice)) return state
 			const next = nextStep(state.step, eligibility, featAsiCount)
 			return next ? { ...state, step: next } : state
 		}
@@ -308,7 +340,9 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
  * `expertiseRequiredCount` and `featAsiEligibleLevelCount` are the same
  * values CharacterWizard.tsx already computes for the 'expertise' and
  * 'featAsi' steps' own completion checks — passed again here so this final
- * readiness check agrees with them exactly.
+ * readiness check agrees with them exactly. `featsRequiringAbilityChoice`
+ * likewise mirrors the 'featAsi' step's own check (half-feat ability-choice
+ * slice).
  */
 export function saveCharacter(
 	store: CharacterStore,
@@ -316,8 +350,9 @@ export function saveCharacter(
 	backgroundSkillProficiencies?: [string, string],
 	expertiseRequiredCount: number | null = null,
 	featAsiEligibleLevelCount = 0,
+	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
 ): Character {
-	if (!isReadyToSave(data, expertiseRequiredCount, featAsiEligibleLevelCount)) {
+	if (!isReadyToSave(data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice)) {
 		throw new Error('Cannot save a character before every step is complete.')
 	}
 

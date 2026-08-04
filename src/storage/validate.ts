@@ -1,4 +1,4 @@
-import { ABILITIES, type AbilityScoreMethod, type AbilityScores, type CharacterAbilityScores, type RolledSet } from '../abilities/abilityScores'
+import { ABILITIES, type Ability, type AbilityScoreMethod, type AbilityScores, type CharacterAbilityScores, type RolledSet } from '../abilities/abilityScores'
 import type {
 	AbilityBonusMap,
 	AbilityIncreaseMap,
@@ -355,6 +355,10 @@ export function describeFeatAsiChoicesError(value: unknown): string | null {
 		} else if (kind === 'feat') {
 			if (!isNonEmptyString(entry['name'])) return `featAsiChoices[${i}].name is missing or not a string`
 			if (!isNonEmptyString(entry['source'])) return `featAsiChoices[${i}].source is missing or not a string`
+			const chosenAbility = entry['chosenAbility']
+			if (chosenAbility !== undefined && !ABILITIES.includes(chosenAbility as (typeof ABILITIES)[number])) {
+				return `featAsiChoices[${i}].chosenAbility must be a valid ability`
+			}
 		} else {
 			return `featAsiChoices[${i}].kind must be "asi" or "feat"`
 		}
@@ -369,7 +373,14 @@ function toCharacterFeatAsiChoices(value: unknown[]): FeatAsiChoice[] {
 		if (record['kind'] === 'asi') {
 			return { level, kind: 'asi', increases: toAbilityIncreaseMap(record['increases'] as Record<string, unknown>) }
 		}
-		return { level, kind: 'feat', name: record['name'] as string, source: record['source'] as string }
+		const chosenAbility = record['chosenAbility']
+		return {
+			level,
+			kind: 'feat',
+			name: record['name'] as string,
+			source: record['source'] as string,
+			...(typeof chosenAbility === 'string' ? { chosenAbility: chosenAbility as Ability } : {}),
+		}
 	})
 }
 

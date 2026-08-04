@@ -89,6 +89,26 @@ describe('isStepComplete', () => {
 	it('the review step is always complete on its own', () => {
 		expect(isStepComplete('review', emptyWizardData())).toBe(true)
 	})
+
+	it('blocks the featAsi step when a chosen feat needs an ability choice but has none yet', () => {
+		const data = { ...emptyWizardData(), featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Athlete', source: 'XPHB' }] }
+		const requiring = new Set(['Athlete|XPHB'])
+		expect(isStepComplete('featAsi', data, null, 1, requiring)).toBe(false)
+		expect(
+			isStepComplete(
+				'featAsi',
+				{ ...data, featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' as const }] },
+				null,
+				1,
+				requiring,
+			),
+		).toBe(true)
+	})
+
+	it('does not require an ability choice for a fixed-bonus feat (not in featsRequiringAbilityChoice)', () => {
+		const data = { ...emptyWizardData(), featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Tough', source: 'XPHB' }] }
+		expect(isStepComplete('featAsi', data, null, 1, new Set(['Athlete|XPHB']))).toBe(true)
+	})
 })
 
 describe('isReadyToSave', () => {

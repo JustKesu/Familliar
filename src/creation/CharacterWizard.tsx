@@ -16,7 +16,7 @@ import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertis
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
 import { loadSubclassesFor, type SubclassOption } from '../subclass/subclassData'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
-import { loadFeatAsiGrants } from '../featAsi/featAsiData'
+import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import type { Character } from '../storage/character'
@@ -71,6 +71,7 @@ export function CharacterWizard({
 	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
 	const [featAsiGrantCount, setFeatAsiGrantCount] = useState(0)
+	const [featsNeedingAbilityChoice, setFeatsNeedingAbilityChoice] = useState<ReadonlySet<string>>(new Set())
 
 	useEffect(() => {
 		let cancelled = false
@@ -150,6 +151,27 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [state.data.classChoice])
+
+	/**
+	 * The feats needing an ability choice (half-feat ability-choice slice) —
+	 * loaded once, independent of class/level like the feat list itself.
+	 * Duplicates FeatAsiPicker's own `loadFeats` fetch, same as the other
+	 * best-effort lookups above — the wizard needs this for the 'featAsi'
+	 * step's completion check before that step's own panel would mount.
+	 */
+	useEffect(() => {
+		let cancelled = false
+		loadFeats()
+			.then((feats) => {
+				if (!cancelled) setFeatsNeedingAbilityChoice(featsRequiringAbilityChoice(feats))
+			})
+			.catch(() => {
+				/* FeatAsiPicker itself surfaces load errors; this lookup (for step completion) is best-effort. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
 
 	const selectedBackground = state.data.backgroundChoice
 		? backgrounds.find(
@@ -232,6 +254,7 @@ export function CharacterWizard({
 				selectedBackground?.skillProficiencies,
 				expertiseRequiredCount,
 				featAsiGrantCount,
+				featsNeedingAbilityChoice,
 			)
 			setSaveError(null)
 			onSaved(character)
@@ -240,7 +263,7 @@ export function CharacterWizard({
 		}
 	}
 
-	const canGoNext = isStepComplete(state.step, state.data, expertiseRequiredCount, featAsiGrantCount)
+	const canGoNext = isStepComplete(state.step, state.data, expertiseRequiredCount, featAsiGrantCount, featsNeedingAbilityChoice)
 
 	return (
 		<div className="wizard">
@@ -430,7 +453,7 @@ export function CharacterWizard({
 											? `level ${choice.level}: ASI (${Object.entries(choice.increases)
 													.map(([ability, amount]) => `${ability} +${amount}`)
 													.join(', ')})`
-											: `level ${choice.level}: ${choice.name}`,
+											: `level ${choice.level}: ${choice.name}${choice.chosenAbility ? ` (${choice.chosenAbility})` : ''}`,
 									)
 									.join('; ')
 							: '—'}
@@ -454,14 +477,21 @@ export function CharacterWizard({
 					<button
 						type="button"
 						onClick={handleSave}
-						disabled={!isReadyToSave(state.data, expertiseRequiredCount, featAsiGrantCount)}
+						disabled={!isReadyToSave(state.data, expertiseRequiredCount, featAsiGrantCount, featsNeedingAbilityChoice)}
 					>
 						Create character
 					</button>
 				) : (
 					<button
 						type="button"
-						onClick={() => dispatch({ type: 'next', expertiseRequiredCount, featAsiEligibleLevelCount: featAsiGrantCount })}
+						onClick={() =>
+							dispatch({
+								type: 'next',
+								expertiseRequiredCount,
+								featAsiEligibleLevelCount: featAsiGrantCount,
+								featsRequiringAbilityChoice: featsNeedingAbilityChoice,
+							})
+						}
 						disabled={!canGoNext}
 					>
 						Next

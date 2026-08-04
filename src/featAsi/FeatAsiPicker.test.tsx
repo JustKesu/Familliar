@@ -24,6 +24,7 @@ vi.mock('./featAsiData', async () => {
 		loadFeats: vi.fn(async () => [
 			{ name: 'Tough', source: 'XPHB', category: 'G' },
 			{ name: 'Actor', source: 'XPHB', category: 'G', prerequisite: [{ level: 4, ability: [{ cha: 13 }] }] },
+			{ name: 'Athlete', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['str', 'dex'] } }] },
 		]),
 		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
 		loadHasFightingStyleFeature: vi.fn(async () => false),
@@ -112,6 +113,112 @@ describe('FeatAsiPicker', () => {
 				speciesName={null}
 				speciesSource={null}
 				value={value}
+				onChange={onChange}
+			/>,
+		)
+
+		await user.click(await screen.findByLabelText('Tough'))
+		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }])
+	})
+
+	it('a half-feat shows an ability select once chosen; a fixed-bonus feat shows none', async () => {
+		const user = userEvent.setup()
+		const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: '', source: '' }]
+		const { rerender } = render(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={value}
+				onChange={() => {}}
+			/>,
+		)
+
+		expect(screen.queryByLabelText('Ability')).toBeNull()
+
+		await user.click(await screen.findByLabelText('Tough'))
+		rerender(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={[{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }]}
+				onChange={() => {}}
+			/>,
+		)
+		expect(screen.queryByLabelText('Ability')).toBeNull()
+
+		await user.click(await screen.findByLabelText('Athlete'))
+		rerender(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={[{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB' }]}
+				onChange={() => {}}
+			/>,
+		)
+		expect(await screen.findByLabelText('Ability')).toBeTruthy()
+	})
+
+	it('choosing the ability for a half-feat reports chosenAbility upward, and the choice holds across a re-render (navigation)', async () => {
+		const user = userEvent.setup()
+		const onChange = vi.fn()
+		const { rerender } = render(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={[{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB' }]}
+				onChange={onChange}
+			/>,
+		)
+
+		const abilitySelect = (await screen.findByLabelText('Ability')) as HTMLSelectElement
+		await user.selectOptions(abilitySelect, 'strength')
+		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' }])
+
+		// Re-render with the reported value, as the wizard would after navigating back and forward.
+		rerender(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={[{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' }]}
+				onChange={() => {}}
+			/>,
+		)
+		const select = (await screen.findByLabelText('Ability')) as HTMLSelectElement
+		expect(select.value).toBe('strength')
+	})
+
+	it('choosing a different feat clears a previously chosen ability', async () => {
+		const user = userEvent.setup()
+		const onChange = vi.fn()
+		render(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={[{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' }]}
 				onChange={onChange}
 			/>,
 		)

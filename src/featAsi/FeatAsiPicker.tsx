@@ -4,6 +4,7 @@ import type { FeatAsiChoice } from '../storage/character'
 import {
 	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
+	featAbilityChoiceOptions,
 	isValidAbilityIncrease,
 	loadClassPrereqInfo,
 	loadFeatAsiGrants,
@@ -203,8 +204,11 @@ export function FeatAsiPicker({
 								grantKind={grant.kind}
 								feats={feats}
 								context={ctx}
-								selected={current.name ? { name: current.name, source: current.source } : null}
-								onChange={(feat) => setChoiceAt(index, { level: grant.level, kind: 'feat', name: feat.name, source: feat.source })}
+								selected={current.name ? { name: current.name, source: current.source, chosenAbility: current.chosenAbility } : null}
+								onSelectFeat={(feat) => setChoiceAt(index, { level: grant.level, kind: 'feat', name: feat.name, source: feat.source })}
+								onSelectAbility={(ability) =>
+									setChoiceAt(index, { level: grant.level, kind: 'feat', name: current.name, source: current.source, chosenAbility: ability })
+								}
 							/>
 						)}
 					</fieldset>
@@ -305,14 +309,16 @@ function FeatSubPicker({
 	feats,
 	context,
 	selected,
-	onChange,
+	onSelectFeat,
+	onSelectAbility,
 }: {
 	grantLevel: number
 	grantKind: FeatAsiGrant['kind']
 	feats: FeatEntry[]
 	context: PrerequisiteContext
-	selected: { name: string; source: string } | null
-	onChange: (feat: { name: string; source: string }) => void
+	selected: { name: string; source: string; chosenAbility?: Ability } | null
+	onSelectFeat: (feat: { name: string; source: string }) => void
+	onSelectAbility: (ability: Ability) => void
 }): ReactNode {
 	const evaluated = feats.map((feat) => ({ feat, result: evaluateFeatPrerequisites(feat, context) }))
 	// Epic Boon levels show category-EB feats first (the feature's own suggested pool) — still just a sort, D19's "no category filter" is unaffected.
@@ -321,32 +327,52 @@ function FeatSubPicker({
 			? [...evaluated].sort((a, b) => Number(b.feat.category === 'EB') - Number(a.feat.category === 'EB') || a.feat.name.localeCompare(b.feat.name))
 			: [...evaluated].sort((a, b) => a.feat.name.localeCompare(b.feat.name))
 
+	const selectedFeat = selected ? feats.find((f) => f.name === selected.name && f.source === selected.source) : undefined
+	const abilityOptions = selectedFeat ? featAbilityChoiceOptions(selectedFeat) : null
+
 	return (
-		<ul className="feat-asi-picker__feats" aria-label={`Feats for level ${grantLevel}`}>
-			{sorted.map(({ feat, result }) => {
-				const isSelected = selected?.name === feat.name && selected.source === feat.source
-				return (
-					<li key={`${feat.name}|${feat.source}`} className="feat-asi-picker__feat">
-						<label>
-							<input
-								type="radio"
-								name={`feat-choice-${grantLevel}`}
-								checked={isSelected}
-								disabled={!result.eligible}
-								onChange={() => onChange({ name: feat.name, source: feat.source })}
-							/>
-							{feat.name}
-						</label>
-						{!result.eligible && (
-							<ul className="feat-asi-picker__reasons">
-								{result.reasons.map((reason) => (
-									<li key={reason}>{reason}</li>
-								))}
-							</ul>
-						)}
-					</li>
-				)
-			})}
-		</ul>
+		<>
+			<ul className="feat-asi-picker__feats" aria-label={`Feats for level ${grantLevel}`}>
+				{sorted.map(({ feat, result }) => {
+					const isSelected = selected?.name === feat.name && selected.source === feat.source
+					return (
+						<li key={`${feat.name}|${feat.source}`} className="feat-asi-picker__feat">
+							<label>
+								<input
+									type="radio"
+									name={`feat-choice-${grantLevel}`}
+									checked={isSelected}
+									disabled={!result.eligible}
+									onChange={() => onSelectFeat({ name: feat.name, source: feat.source })}
+								/>
+								{feat.name}
+							</label>
+							{!result.eligible && (
+								<ul className="feat-asi-picker__reasons">
+									{result.reasons.map((reason) => (
+										<li key={reason}>{reason}</li>
+									))}
+								</ul>
+							)}
+						</li>
+					)
+				})}
+			</ul>
+			{abilityOptions && (
+				<label className="feat-asi-picker__feat-ability">
+					Ability
+					<select value={selected?.chosenAbility ?? ''} onChange={(event) => onSelectAbility(event.target.value as Ability)}>
+						<option value="" disabled>
+							Choose an ability
+						</option>
+						{abilityOptions.map((ability) => (
+							<option key={ability} value={ability}>
+								{ABILITY_LABEL[ability]}
+							</option>
+						))}
+					</select>
+				</label>
+			)}
+		</>
 	)
 }

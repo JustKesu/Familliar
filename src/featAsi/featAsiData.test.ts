@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
 	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
+	featAbilityChoiceOptions,
 	featAsiGrantsFor,
+	featsRequiringAbilityChoice,
 	isValidAbilityIncrease,
 	speciesPrereqInfoFor,
 	type FeatEntry,
@@ -83,6 +85,34 @@ describe('exceedsAbilityScoreCap', () => {
 
 	it('checks every ability in the increase map independently', () => {
 		expect(exceedsAbilityScoreCap({ strength: 20, dexterity: 10 }, { strength: 1, dexterity: 1 })).toBe(true)
+	})
+})
+
+describe('featAbilityChoiceOptions', () => {
+	it('returns the named abilities for a choice-shaped feat (half-feat)', () => {
+		const feat: FeatEntry = { name: 'Athlete', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['str', 'dex'] } }] }
+		expect(featAbilityChoiceOptions(feat)).toEqual(['strength', 'dexterity'])
+	})
+
+	it('returns null for a fixed-bonus feat', () => {
+		const feat: FeatEntry = { name: 'Actor', source: 'XPHB', category: 'G', ability: [{ cha: 1 } as never] }
+		expect(featAbilityChoiceOptions(feat)).toBeNull()
+	})
+
+	it('returns null for a feat with no ability field at all', () => {
+		const feat: FeatEntry = { name: 'Tough', source: 'XPHB', category: 'G' }
+		expect(featAbilityChoiceOptions(feat)).toBeNull()
+	})
+})
+
+describe('featsRequiringAbilityChoice', () => {
+	it('keys only the feats whose ability bonus is a choice, by name|source', () => {
+		const feats: FeatEntry[] = [
+			{ name: 'Athlete', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['str', 'dex'] } }] },
+			{ name: 'Actor', source: 'XPHB', category: 'G' },
+			{ name: 'Tough', source: 'XPHB', category: 'G' },
+		]
+		expect(featsRequiringAbilityChoice(feats)).toEqual(new Set(['Athlete|XPHB']))
 	})
 })
 

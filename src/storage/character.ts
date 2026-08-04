@@ -174,15 +174,28 @@ export type AbilityIncreaseMap = Partial<Record<Ability, number>>
  */
 export type FeatAsiChoice =
 	| { level: number; kind: 'asi'; increases: AbilityIncreaseMap }
-	| { level: number; kind: 'feat'; name: string; source: string }
+	| {
+			level: number
+			kind: 'feat'
+			name: string
+			source: string
+			/**
+			 * Which ability the feat's bonus applies to — required only for the
+			 * 68 half-feats whose feats.json `ability` field is a choice among
+			 * named abilities (featAbilityChoiceOptions), absent for the 13
+			 * fixed-bonus feats and every feat with no ability bonus at all.
+			 * Selection only: no calculation reads this field yet.
+			 */
+			chosenAbility?: Ability
+	  }
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 8 to add featAsiChoices — the feat/ASI
- * wizard step. Per PHASE1.md section D, and per docs/QUESTIONS.md "Migrace
- * uložených postav", a version bump this app does not understand is
- * rejected outright (UnknownSchemaVersionError) rather than guessed at —
- * no migration from version 7 is written, so a character saved before this
- * change will no longer load and must be recreated.
+ * (see wireFormat.ts). Bumped to 9 to add FeatAsiChoice.chosenAbility — the
+ * half-feat ability-choice slice. Per PHASE1.md section D, and per
+ * docs/QUESTIONS.md "Migrace uložených postav", a version bump this app does
+ * not understand is rejected outright (UnknownSchemaVersionError) rather
+ * than guessed at — no migration from version 8 is written, so a character
+ * saved before this change will no longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 8
+export const CURRENT_SCHEMA_VERSION = 9
