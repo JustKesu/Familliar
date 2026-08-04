@@ -89,7 +89,7 @@ function CharacterRow({
 
 			<span className="char-row__actions">
 				<button type="button" onClick={() => onViewSheet(character.id)}>
-					Sheet
+					{sheetSelected ? 'Hide' : 'Sheet'}
 				</button>
 				<button type="button" onClick={() => setEditing(true)}>
 					Rename
@@ -228,7 +228,7 @@ function CharacterManager() {
 								onRename={handleRename}
 								onDelete={handleDelete}
 								onExport={handleExport}
-								onViewSheet={setSheetId}
+								onViewSheet={(id) => setSheetId((current) => (current === id ? null : id))}
 							/>
 						))}
 					</ul>

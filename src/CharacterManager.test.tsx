@@ -77,3 +77,43 @@ describe('CharacterManager delete', () => {
 		expect(await screen.findByText(/No character with id/)).not.toBeNull()
 	})
 })
+
+describe('CharacterManager sheet toggle', () => {
+	it('hides the sheet when the same row\'s button is clicked again', async () => {
+		const store = new CharacterStore()
+		store.create('Aria')
+
+		const user = userEvent.setup()
+		render(<CharacterManager />)
+
+		expect(await screen.findByText('Aria')).not.toBeNull()
+
+		await user.click(screen.getByRole('button', { name: 'Sheet' }))
+		expect(await screen.findByRole('button', { name: 'Hide' })).not.toBeNull()
+
+		await user.click(screen.getByRole('button', { name: 'Hide' }))
+		expect(screen.queryByRole('button', { name: 'Hide' })).toBeNull()
+		expect(screen.getByRole('button', { name: 'Sheet' })).not.toBeNull()
+	})
+
+	it('switches to a different row\'s sheet, showing only one at a time', async () => {
+		const store = new CharacterStore()
+		store.create('Aria')
+		store.create('Bree')
+
+		const user = userEvent.setup()
+		render(<CharacterManager />)
+
+		expect(await screen.findByText('Aria')).not.toBeNull()
+		expect(screen.getByText('Bree')).not.toBeNull()
+
+		const [ariaSheet, breeSheet] = screen.getAllByRole('button', { name: 'Sheet' })
+		await user.click(ariaSheet)
+		expect(await screen.findByRole('button', { name: 'Hide' })).not.toBeNull()
+
+		await user.click(breeSheet)
+
+		expect(screen.getAllByRole('button', { name: 'Hide' })).toHaveLength(1)
+		expect(screen.getAllByRole('button', { name: 'Sheet' })).toHaveLength(1)
+	})
+})
