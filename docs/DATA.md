@@ -150,6 +150,13 @@ which extraction excludes from items.json (see "Item code legends"
 below); fall back to a humanized version of the code for those.
 `languageProficiencies` absent — 2024 moved languages out of backgrounds.
 
+### Saving throw proficiency u tříd — pole se jmenuje `proficiency`
+
+V classes.json stojí savy, ve kterých třída dává proficiency,
+v top-level poli `proficiency` — NE ve `startingProficiencies.savingThrows`,
+které neexistuje. Dvouprvkové pole malými písmeny: ["str", "con"].
+Stejný tvar u všech 13 základních tříd.
+
 ## Fluff / lore text not extracted
 
 Descriptive text and images live in separate fluff-*.json files, matched
@@ -178,3 +185,20 @@ Pozor u `anyMusicalInstrument`: kód typu položky sdílí 15 MAGICKÝCH
 nástrojů (Horn of Valhalla, Lyre of Building, Rhythm-Maker's Drum
 +1/+2/+3…). Filtr musí kromě kódu typu vyžadovat i `rarity: "none"`,
 teprve pak zbyde 10 obyčejných nástrojů, které background nabízí.
+
+UID v odkazech ref* je totožné s polem id.
+
+### Feat `ability` — 13 pevných, 68 s volbou, vždy +1
+
+82 featů nese pole `ability`. 13 z nich zvyšuje vždy tutéž vlastnost,
+68 nechává hráče vybrat z 2-6 jmenovaných, vždy +1 té vybrané.
+Žádný feat obojí nemíchá a žádný nenabízí jiné rozdělení bodů.
+Pozor na počet: dřívější zadání mluvilo o 70 choice featech — ty dva
+navíc byla samotná "Ability Score Improvement", kterou picker
+z nabídky featů vyřazuje.
+
+### Feats — čím pole `senses` a `speed` NEJSOU
+
+Žádný ze 128 featů nemá pole `speed`. Pole `senses` má jen 3 featy
+a vždy jde o blindsight nebo truesight, nikdy darkvision — jediný
+smysl, který appka počítá. Ani jedno tedy nemá kam se promítnout.

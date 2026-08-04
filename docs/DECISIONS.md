@@ -237,6 +237,9 @@ verified against the 2024 rules text before coding:
 - Spells prepared calculated per class separately
 - Extra Attack does not stack
 - Only one Unarmored Defense applies
+- Saving throw proficiency dává POUZE první třída. Dnešní kód ji dá,
+  když ji uvede kterákoli z tříd postavy — bez multiclass UI to není
+  vidět, ale při kroku 10 se to musí opravit.
 
 ## D12 — Fighting Styles resolve through feats.json, not optional-features.json
 
@@ -763,3 +766,220 @@ Passive Perception, Passive Investigation a Passive Insight se počítají
 jako 10 + bonus příslušného skillu, ve stejném souboru jako skilly
 (build order krok 4). SPEC je nezmiňuje; screenshot z DnD Beyond je má
 a hráči je u stolu používají.
+
+## D49 — Expertise má vlastní krok wizardu a tři zdroje, ne jen features jménem "Expertise"
+
+Expertise je samostatný krok mezi backgroundem a languages, zobrazený
+jen tehdy, když na ni postava má nárok. Ostatní ho nevidí a číslování
+kroků zůstává souvislé.
+ b
+Rationale: pravidlo 2024 zní "vyber ze svých skill proficiencies" —
+tedy ze VŠECH, ne jen z těch od classy. V class stepu ještě není známý
+background ani species, takže tam nabídka nemůže být úplná. Stejný
+důvod, proč vlastní krok dostaly languages (D37).
+
+**Které features expertise udělují.** Ne jen těch šest, které se tak
+jmenují (Bard 2/9, Ranger 9, Rogue 1/6):
+
+- "Deft Explorer" (Ranger, level 2) — ANO. 1 skill, volný výběr.
+  Jméno feature to neříká, próza ano.
+- "Scholar" (Wizard, level 2) — ANO. 1 skill, ale jen z Arcana,
+  History, Investigation, Medicine, Nature, Religion, a jen z těch,
+  ve kterých už postava proficiency má. Nabídka je průnik obou
+  podmínek; prázdný průnik se hlásí plainem, nespadne.
+- "Infiltration Expertise" (Rogue/Assassin, level 9) — NE. Navzdory
+  jménu neuděluje skill expertise vůbec: je to Masterful Mimicry
+  a výjimka na Speed.
+
+Feature se tedy nepozná podle jména, ale podle prózy obsahující
+{@variantrule Expertise|XPHB}.
+
+**Počet skillů ani seznam u Scholara nejsou v datech strukturovaně** —
+existují jen v próze. Obojí je natvrdo v expertiseData.ts
+s komentářem, odkud pochází. Stejný případ jako CHOSEN_LANGUAGE_COUNT
+(D24).
+
+## D50 — Features odkazované zevnitř textu se sbírají rekurzivně
+
+Extrakce sbírá class/subclass features nejen podle seznamů
+`classFeatureIds` / `subclassFeatureIds`, ale i podle uzlů `ref*`
+uvnitř textu už posbíraných features. Sbírá opakovaně, dokud seznam
+roste; každá feature se zpracuje jednou.
+
+Důvod: 295 z 335 odkazů uvnitř textu nemělo v data/ cíl. Circle of
+Spores odkazoval na "Circle Spells", "Halo of Spores" a "Symbiotic
+Entity" — žádná z nich nebyla vyextrahovaná, protože v žádném ID
+seznamu není. Zanoření se ustálí po jednom dalším kole.
+
+Počty: class-features.json 279 -> 302, subclass-features.json
+465 -> 786.
+
+**Co D33 ve skutečnosti ověřovalo.** "Zero dangling references, 744
+checked" platilo jen pro ID seznamy, ne pro odkazy uvnitř textu. Nebyl
+to špatný výsledek, jen užší, než se dalo číst. `check-dangling-refs.js`
+teď kontroluje obojí — 420 odkazů uvnitř textu, nula nevyřešených.
+
+Odkaz refOptionalfeature na Fighting Style se kontroluje proti
+feats.json category "FS" podle D12, ne proti optional-features.json.
+
+## D51 — Rozbalení odkazu na feature je vlastní vrstva vedle rendereru
+
+`src/featureResolver/` dohledá, na co odkaz ref* ukazuje, a vrátí text
+cílové feature. Renderer v src/markup/ se nemění a dál zobrazuje jen
+jméno — D7 platí beze změny, tahle vrstva stojí vedle něj, ne uvnitř.
+
+Cíle se hledají podle `id` (D33); UID v odkazu
+("Rage|Barbarian|XPHB|1|XPHB") je přesně to `id`. Fighting Style se
+resolvuje proti feats.json category "FS" (D12).
+
+Rozbalování je rekurzivní — text feature může odkazovat na další.
+Každá feature se v řetězci rozbalí jednou, což je pojistka proti
+smyčce.
+
+Zobrazení: `<details>`, výchozí stav sbalený. Sbalení není kosmetika —
+bez něj by picker vypsal plný text všech features u všech nabízených
+subclass naráz. Nenalezený cíl zobrazí jméno plus viditelnou poznámku
+(D43); dnes k tomu nedochází, validátor hlásí nula nevyřešených.
+
+Nasazeno v subclass pickeru, fighting style pickeru a subclass
+optional-feature pickeru.
+
+## D52 — Chybu stažení řeší volající, ne loader
+
+Když loader nedokáže soubor z data/ stáhnout, chybu propustí ven a
+nechá rozhodnutí na tom, kdo si o data řekl. Sám nezkouší znovu
+a nenahrazuje chybějící data prázdnými.
+
+Rationale: jen volající ví, jestli je bez toho souboru obrazovka
+nepoužitelná, nebo jde vykreslit zbytek (D43). Prázdná data místo
+chyby jsou nejhorší varianta — picker by vypadal jako "není z čeho
+vybírat" a hráč by se nedozvěděl, že šlo o výpadek sítě.
+
+Neúspěšné stažení se do cache nezapisuje: další vyžádání téhož
+souboru to zkusí znovu, jinak by jeden výpadek zablokoval soubor do
+konce session.
+
+## D53 — Subrace dědí od rodiče jen to, co sama nenese
+
+Když entry species nemá pole rychlost / velikost / darkvision, vezme
+se hodnota z rodičovské entry přes raceName/raceSource. Vlastní
+hodnota má vždy přednost — Genasi; Air si rychlost 35 podrží, dědí se
+jen chybějící pole. Když pole nemá ani rodič, je to "neznámo" (D43).
+
+Rationale: 5etools u subrace zapisuje jen to, čím se liší od rodiče.
+Chybějící pole tedy neznamená chybějící údaj, ale shodu s rodičem.
+Je to stejný mechanismus, jaký speciesData.ts už používá na zobrazení
+jména (D30) — jen rozšířený na další pole.
+
+Rozklad musí ukázat, že hodnota přišla od rodiče, ne holé číslo.
+
+## D54 — Nevybraná velikost je "neznámo", ne Medium
+
+23 species (Human, Aasimar, Tiefling a další) nabízí volbu Small nebo
+Medium. Dokud ji hráč neudělá, velikost se hlásí jako nevyřešená —
+nedosazuje se Medium.
+
+Rationale: jiný případ než D53. Tam data mlčí, protože hodnota je
+jednoznačná. Tady mlčí, protože se hráč ještě nerozhodl. Dosazený
+default se na sheetu tváří jako spočítaná hodnota a hráč nepozná
+rozdíl mezi "vybral jsem Medium" a "appka to zvolila za mě". Rozdíl
+mezi Small a Medium přitom u některých zbraní a průchodnosti je.
+
+Až přibude krok wizardu na volbu velikosti, "neznámo" zmizí samo —
+nebude co přepisovat.
+
+## D55 — Feat se strukturovaným efektem se aplikuje, prózový se zobrazí a ohlásí
+
+113 ze 128 featů nese aspoň jedno strukturované pole (nejčastěji
+bonus k vlastnosti: 82 featů, z toho 13 pevných a 70 s volbou).
+Ty se aplikují automaticky — bonus k vlastnosti přibude jako další
+položka do seznamu příspěvků (D42), stejně tak skill/save/tool
+proficiency, expertise, resistance, smysly a bonusová kouzla.
+
+15 featů má efekt jen v próze. Ty se hráči zobrazí jako text
+a použije je ručně, jako u papírového sheetu. Neaplikovaný neznamená
+chybějící.
+
+**Prózový feat, který mění POČÍTANOU hodnotu, se u té hodnoty
+ohlásí.** Nedopočítá se — v rozkladu (D40) se objeví poznámka, že
+feat efekt má a není započítaný. Hráč si ho přičte sám a ví proč.
+K tomu slouží krátký ruční seznam "feat -> dotčená hodnota", jen pro
+tyhle případy. Není to tabulka 128 výjimek, které se D21 vyhýbá —
+je to nejvýš 15 položek a většina z nich žádnou počítanou hodnotu
+nemění.
+
+Známý případ dnes: Alert mění iniciativu, která se počítá od kroku 4.
+Dueling, Archery a Defense míří na útoky a AC (kroky 7 a 8) — tam se
+seznam doplní, až ty hodnoty vzniknou.
+
+Prerekvizity mají 13 různých tvarů, 15 featů žádnou nemá. Vynucují se
+podle D19.
+
+"Ability Score Improvement" je ve feats.json obyčejný záznam se stejným
+tvarem jako half-featy — D20 ho nemusí řešit jako zvláštní případ
+mimo seznam.
+
+## D56 — Úrovně s nárokem na feat/ASI se čtou z dat, ne z pevného výčtu
+
+SPEC.md uvádí úrovně 4/8/12/16/19. To je zjednodušení a neplatí:
+většina tříd má "Ability Score Improvement" na 4/8/12/16, Fighter
+navíc na 6 a 14, Rogue navíc na 10. Nárok se proto čte
+z class-features.json, ne z konstanty.
+
+Úroveň 19 je v datech samostatná feature "Epic Boon", ne opakování
+ASI. Nabízí ale stejnou volbu.
+
+**Kategorie EB není omezení.** V datech vypadá jako filtr, pravidlo
+jím ale není — ověřeno proti PHB 2024: hráč si bere Epic Boon feat
+NEBO jiný feat dle své volby, na který splňuje podmínky. D19 tedy
+platí i na úrovni 19: seznam se nefiltruje podle kategorie, EB featy
+se jen řadí nahoru jako doporučená zásoba.
+
+Dva tvary prerekvizit appka vyhodnotit nemůže: `campaign` (kampaň
+v Eberronu) a `otherSummary` (vázané na okamžik, kdy třída sama
+uděluje fighting style). Obojí se hlásí jako nesplněné s viditelným
+důvodem — stejně jako každá jiná nesplněná podmínka, ne zvláštní
+případ.
+
+## D57 — Vybraná vlastnost se u featu ukládá jen tam, kde je co vybírat
+
+Feat s volbou vlastnosti (68 kusů) nese u uložené volby i to, kterou
+vlastnost hráč zvolil. Feat s pevným bonusem (13 kusů) takové pole
+nemá vůbec — nezapisuje se prázdné.
+
+Rationale: stejný důvod jako u nulových příspěvků v D42. Prázdné pole
+se později čte jako "hráč nevybral", což u featu s pevným bonusem
+není pravda — vybírat nebylo co.
+
+Krok wizardu nejde dokončit, dokud volba u takového featu chybí.
+Jinak by vznikla postava s featem, u kterého se neví, co zvyšuje.
+
+## D58 — Feat čekající na volbu se hlásí jinak než feat nezapočítaný
+
+Dvě různé poznámky v rozkladu, které se nesmí splést:
+
+- "efekt není započítaný" (D55) — appka ten druh efektu neumí
+  spočítat vůbec. Hráč si ho dopíše natrvalo.
+- "čeká na volbu" — mechanismus je známý a strukturovaný, chybí jen
+  pick hráče, protože wizard nemá kam ho uložit. Až picker přibude,
+  poznámka zmizí sama.
+
+Týká se 5 featů (Keen Mind, Observant, Prodigy, Squat Nimbleness,
+Skill Expert) plus pole `expertise` u tří featů, které je vždy
+"vyber jeden skill, ve kterém už proficiency máš". Poznámka se
+připojí ke každému skillu, na který volba může dopadnout — u
+`expertise` tedy ke všem, ve kterých postava proficiency má.
+
+## D59 — Resilient: uložená vlastnost řeší i save proficiency
+
+Resilient jako jediný feat nese `savingThrowProficiencies` a jeho
+seznam je totožný s jeho vlastním `ability` seznamem. Uložený
+`chosenAbility` (D57) tedy určuje obojí — žádné druhé pole se
+neukládá.
+
+Ověřeno čtením textu featu, ne odhadem z tvaru dat.
+
+## D60 — Příspěvek bez čísla
+
+Položka v rozkladu (D40) může nést poznámku místo částky; částka je
+pak nula, takže se součet nemění. Slouží jen pro případy z D55 a D58.

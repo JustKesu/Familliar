@@ -62,8 +62,9 @@ either +2/+1 or +1/+1/+1, distributed among the three abilities that
 background offers (see DATA.md — Background field shapes).
 
 ### 4. Class and level choices
-Skills, fighting style, expertise, weapon masteries, feat-or-ASI at
-levels 4/8/12/16/19, spells, starting equipment.
+Skills, fighting style, expertise, weapon masteries, feat-or-ASI at every level the class grants it (read from the data,
+not a fixed list — most classes 4/8/12/16, Fighter also 6 and 14,
+Rogue also 10, plus Epic Boon at 19), spells, starting equipment.
 
 The app offers only valid options for that class, level and origin.
 

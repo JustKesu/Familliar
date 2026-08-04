@@ -131,28 +131,6 @@ jména a úrovně. Teprve pak se rozhodne, jestli mapovat jména na čísla
 Patří ke kroku 7 (útoky) — bez zbraní není co počítat.
 STATUS: nerozhodnuto, ověřit před krokem 7.
 
-### Featy — kolik jich vůbec nese mechanický efekt strukturovaně
-
-feats.json má 128 záznamů a mnohé nemění jen číslo: Alert mění
-iniciativu, Resilient přidá save proficiency, jiný dá výhodu na CON
-save pro udržení koncentrace, další dávají skill, AC nebo rychlost.
-Každý je jiný typ zásahu do sheetu.
-
-Projít je ručně po jednom znamená napsat tabulku 128 výjimek — přesně
-to, čemu se D21 vyhýbá. Návrh: feat, který nese efekt v datech
-strukturovaně, se aplikuje; ostatní se jen zobrazí jako text. Kolik
-featů spadá kam, musí zjistit ověřovací skript.
-
-Zvlášť se musí ověřit ability bonusy: mnoho featů zvyšuje vlastnost
-o 1 (Dwarven Fortitude +1 CON, Resilient, half-featy obecně).
-5etools má na to pravděpodobně strukturované pole, ale nikdo to
-neověřil. Skript musí říct, kolik ze 128 featů takový bonus nese a
-v jakém tvaru — pokud je strukturovaný, přičte se automaticky jako
-další položka do seznamu příspěvků (D42) a žádná ruční tabulka na
-tohle nebude potřeba.
-
-Patří ke kroku 4a (feat/ASI).
-STATUS: nerozhodnuto, ověřit před krokem 4a.
 
 ### Koncentrace — výhoda na CON save
 
@@ -165,13 +143,38 @@ Souvisí s otázkou o featech výše — až se rozhodne, jak se featy
 aplikují, rozhodne se i tohle.
 STATUS: nerozhodnuto.
 
-### Expertise picker chybí v build orderu
+### Nevyřešený odkaz uvnitř textu — jak ho zobrazit
 
-Krok 4 počítá se skilly ve třech stavech (none / proficiency /
-expertise, D45), ale wizard expertise nikde nesbírá — krok 3 vybíral
-jen class skills. Rogue a Bard ji přitom dostávají.
+Dnes se rozbalí všech 420, takže otázka není akutní. Ale kdyby nějaká
+budoucí kniha přinesla odkaz bez cíle, resolver se bude muset
+rozhodnout: vykreslit jen jméno jako plain text, nebo viditelnou
+poznámku "text nenalezen" (D43)? Rozhodnout, až bude resolver existovat.
+STATUS: nerozhodnuto, nízká priorita.
 
-Picker patří do kroku 3 jako samostatný úkol, před krok 4. Nejdřív
-ověřovací skript: kde je expertise v datech, které třídy ji dávají a
-na jaké úrovni, a jestli nese počet strukturovaně.
-STATUS: rozhodnuto že se přidá, neimplementováno.
+### Volba velikosti chybí ve wizardu
+
+23 species nabízí Small nebo Medium a wizard se na to neptá, takže
+velikost u nich zůstává "neznámo" (D54). Krok wizardu na to zatím
+v build orderu není. Rozhodnout, kam patří — nejspíš do species
+kroku, vedle species skillů.
+STATUS: nerozhodnuto, blokuje zobrazení velikosti na sheetu.
+
+### ASI vzatý dřív v téže session se nezapočítá do prerekvizit
+
+Prerekvizity featů se posuzují proti finálním hodnotám vlastností
+z kalkulační vrstvy. Ta ale ASI vybraný o pár úrovní dřív v témže
+průchodu wizardem zatím nenese. Postava, která si na úrovni 4 zvedne
+STR z 13 na 15, se proto na úrovni 8 tváří pořád jako STR 13 a feat
+vyžadující 15 jí wizard nenabídne.
+Po uložení a znovunačtení je to v pořádku — problém je jen uvnitř
+jednoho průchodu. Rozhodnout, jestli to řešit hned, nebo až s level-upem
+(krok 8).
+STATUS: nerozhodnuto.
+
+### Výběr dovednosti u featu se nemá kam uložit
+
+5 featů (Keen Mind, Observant, Prodigy, Squat Nimbleness, Skill
+Expert) nechává hráče vybrat dovednost; wizard umí uložit jen výběr
+vlastnosti. Zatím se hlásí jako "čeká na volbu" (D58). Rozhodnout,
+jestli přidat pole a picker, nebo to nechat.
+STATUS: nerozhodnuto.
