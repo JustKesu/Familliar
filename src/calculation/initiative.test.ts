@@ -26,4 +26,26 @@ describe('computeInitiative', () => {
 		const noScores: Character = { id: '2', name: 'Blank', classes: [] }
 		expect(computeInitiative(noScores).status).toBe('unknown')
 	})
+
+	it('Alert (a prose feat) adds a D55 note but no numeric bonus', () => {
+		const withAlert: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] }
+		const result = computeInitiative(withAlert)
+		expect(result).toEqual({
+			status: 'known',
+			value: 2,
+			breakdown: [
+				{ source: 'dexterity modifier', amount: 2 },
+				{ source: 'feat (Alert)', amount: 0, note: expect.stringContaining('D55') },
+			],
+		})
+	})
+
+	it('a feat with no listed effect on initiative adds no note', () => {
+		const withActor: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'feat', name: 'Actor', source: 'XPHB' }] }
+		expect(computeInitiative(withActor)).toEqual({
+			status: 'known',
+			value: 2,
+			breakdown: [{ source: 'dexterity modifier', amount: 2 }],
+		})
+	})
 })

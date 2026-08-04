@@ -1,14 +1,16 @@
 /*
- * Saving throws (build order step 4): ability modifier plus proficiency
- * bonus for the abilities a character's class(es) grant proficiency in.
- * D11 — iterate the classes array; feats/ASI (Resilient etc.) don't touch
- * saves yet, that's build order step 4a.
+ * Saving throws (build order step 4/4a): ability modifier plus proficiency
+ * bonus for the abilities a character's class(es), or a feat (Resilient),
+ * grant proficiency in. D11 — iterate the classes array. D44 — a class and
+ * a feat granting the SAME save's proficiency still counts once, with both
+ * sources named in the breakdown.
  */
 
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import type { Character, CharacterClass } from '../storage/character'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
+import { featSavingThrowProficiencyNames, type FeatEffectEntry } from './featEffects'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -26,8 +28,13 @@ function findClassProficiencies(
 	return classData.find((c) => c.className === characterClass.className && c.classSource === characterClass.classSource)
 }
 
-export function computeSavingThrow(ability: Ability, character: Character, classData: ClassSavingThrowProficiencies[]): Calculated<number> {
-	const abilityResult = computeAbilityScore(ability, character)
+export function computeSavingThrow(
+	ability: Ability,
+	character: Character,
+	classData: ClassSavingThrowProficiencies[],
+	feats: FeatEffectEntry[] = [],
+): Calculated<number> {
+	const abilityResult = computeAbilityScore(ability, character, feats)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
 	if (character.classes.length === 0) {
@@ -35,31 +42,36 @@ export function computeSavingThrow(ability: Ability, character: Character, class
 	}
 
 	const abbreviation = ABILITY_ABBREVIATIONS[ability]
-	const grantingClasses: string[] = []
+	const grantingSources: string[] = []
 	for (const characterClass of character.classes) {
 		const proficiencies = findClassProficiencies(characterClass, classData)
 		if (!proficiencies) {
 			return unknown(`No saving throw data for class "${characterClass.className}" (${characterClass.classSource}).`)
 		}
 		if (proficiencies.abilities.includes(abbreviation)) {
-			grantingClasses.push(characterClass.className)
+			grantingSources.push(characterClass.className)
 		}
 	}
+	grantingSources.push(...featSavingThrowProficiencyNames(ability, character, feats).map((name) => `feat (${name})`))
 
 	const breakdown: Contribution[] = [{ source: `${ability} modifier`, amount: abilityResult.value.modifier }]
 
-	if (grantingClasses.length > 0) {
+	if (grantingSources.length > 0) {
 		const bonusResult = computeProficiencyBonus(character.classes)
 		if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
-		breakdown.push({ source: `proficiency (${grantingClasses.join(', ')})`, amount: bonusResult.value })
+		breakdown.push({ source: `proficiency (${grantingSources.join(', ')})`, amount: bonusResult.value })
 	}
 
 	const total = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known(total, breakdown)
 }
 
-export function computeSavingThrows(character: Character, classData: ClassSavingThrowProficiencies[]): Record<Ability, Calculated<number>> {
-	return Object.fromEntries(ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData)])) as Record<
+export function computeSavingThrows(
+	character: Character,
+	classData: ClassSavingThrowProficiencies[],
+	feats: FeatEffectEntry[] = [],
+): Record<Ability, Calculated<number>> {
+	return Object.fromEntries(ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats)])) as Record<
 		Ability,
 		Calculated<number>
 	>

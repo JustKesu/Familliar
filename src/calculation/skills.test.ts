@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
+import type { FeatEffectEntry } from './featEffects'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkill, computeSkills } from './skills'
 
 const bard5: Character = {
@@ -126,6 +127,43 @@ describe('computeSkill', () => {
 	it('returns unknown when ability scores are missing (D43)', () => {
 		const blank: Character = { id: '4', name: 'Blank', classes: fighter5.classes }
 		expect(computeSkill('athletics', blank).status).toBe('unknown')
+	})
+
+	it('D44: a skill granted by both a class and a feat (Boon of Skill) is counted once, both sources named', () => {
+		const boonOfSkill: FeatEffectEntry = {
+			name: 'Boon of Skill',
+			source: 'XPHB',
+			skillProficiencies: [{ athletics: true } as Record<string, boolean>],
+			expertise: [{ anyProficientSkill: 1 }],
+		}
+		const withBoon: Character = { ...fighter5, featAsiChoices: [{ level: 19, kind: 'feat', name: 'Boon of Skill', source: 'XPHB' }] }
+		expect(computeSkill('athletics', withBoon, [boonOfSkill])).toEqual({
+			status: 'known',
+			value: { status: 'proficient', modifier: 6 },
+			breakdown: [
+				{ source: 'strength modifier', amount: 3 },
+				{ source: 'proficiency (class, feat (Boon of Skill))', amount: 3 },
+				{ source: 'feat (Boon of Skill)', amount: 0, note: expect.stringContaining('waiting on a player pick') },
+			],
+		})
+	})
+
+	it("a half-feat's structured skill CHOICE (Keen Mind) with no stored pick notes the skill as awaiting a choice, not silently dropped", () => {
+		const keenMind: FeatEffectEntry = {
+			name: 'Keen Mind',
+			source: 'XPHB',
+			skillProficiencies: [{ choose: { from: ['arcana', 'history', 'investigation', 'nature', 'religion'] } }],
+		}
+		const withKeenMind: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'feat', name: 'Keen Mind', source: 'XPHB' }] }
+		const result = computeSkill('arcana', withKeenMind, [keenMind])
+		expect(result.status).toBe('known')
+		expect(result.status === 'known' && result.value.status).toBe('none')
+		expect(result.status === 'known' && result.breakdown).toContainEqual(
+			expect.objectContaining({ source: 'feat (Keen Mind)', amount: 0 }),
+		)
+		// A skill Keen Mind never offers stays untouched.
+		const unrelated = computeSkill('athletics', withKeenMind, [keenMind])
+		expect(unrelated.status === 'known' && unrelated.breakdown.some((c) => c.source.includes('Keen Mind'))).toBe(false)
 	})
 })
 

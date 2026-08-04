@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
+import type { FeatEffectEntry } from './featEffects'
 import { type ClassSavingThrowProficiencies, computeSavingThrow, computeSavingThrows } from './savingThrows'
 
 const fighterProficiencies: ClassSavingThrowProficiencies = { className: 'Fighter', classSource: 'XPHB', abilities: ['str', 'con'] }
@@ -72,6 +73,46 @@ describe('computeSavingThrow', () => {
 	it('returns unknown when ability scores are missing', () => {
 		const noScores: Character = { id: '4', name: 'Blank', classes: fighter5.classes }
 		expect(computeSavingThrow('strength', noScores, classData).status).toBe('unknown')
+	})
+
+	it('Resilient adds save proficiency in the chosen ability, resolved from chosenAbility (D57)', () => {
+		const resilient: FeatEffectEntry = {
+			name: 'Resilient',
+			source: 'XPHB',
+			savingThrowProficiencies: [{ choose: { from: ['str', 'dex', 'con', 'int', 'wis', 'cha'] } }],
+		}
+		const withResilient: Character = {
+			...fighter5,
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Resilient', source: 'XPHB', chosenAbility: 'wisdom' }],
+		}
+		expect(computeSavingThrow('wisdom', withResilient, classData, [resilient])).toEqual({
+			status: 'known',
+			value: 3,
+			breakdown: [
+				{ source: 'wisdom modifier', amount: 0 },
+				{ source: 'proficiency (feat (Resilient))', amount: 3 },
+			],
+		})
+	})
+
+	it('D44: a save granted by both a class and Resilient is counted once, both sources named', () => {
+		const resilient: FeatEffectEntry = {
+			name: 'Resilient',
+			source: 'XPHB',
+			savingThrowProficiencies: [{ choose: { from: ['str', 'dex', 'con', 'int', 'wis', 'cha'] } }],
+		}
+		const withResilient: Character = {
+			...fighter5,
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Resilient', source: 'XPHB', chosenAbility: 'strength' }],
+		}
+		expect(computeSavingThrow('strength', withResilient, classData, [resilient])).toEqual({
+			status: 'known',
+			value: 6,
+			breakdown: [
+				{ source: 'strength modifier', amount: 3 },
+				{ source: 'proficiency (Fighter, feat (Resilient))', amount: 3 },
+			],
+		})
 	})
 })
 

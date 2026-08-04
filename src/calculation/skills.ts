@@ -1,20 +1,25 @@
 /*
- * Skills and passive values (build order step 4, D48 — passive values live
- * in the same file as skills since both are 10 + a skill's bonus).
+ * Skills and passive values (build order step 4/4a, D48 — passive values
+ * live in the same file as skills since both are 10 + a skill's bonus).
  *
  * D45 — a skill's result carries a STATUS (none/half/proficient/expertise),
  * not just a number; half is Jack of All Trades (Bard) and only applies
  * where the character has no other proficiency source, never alongside
- * expertise. D44 — when more than one source (class/background/species)
- * grants the same skill, proficiency is counted once but every source is
- * named in the breakdown, mirroring how savingThrows.ts already joins
- * multiple granting classes into one contribution.
+ * expertise. D44 — when more than one source (class/background/species/
+ * feat) grants the same skill, proficiency is counted once but every
+ * source is named in the breakdown, mirroring how savingThrows.ts already
+ * joins multiple granting classes into one contribution. A feat offering a
+ * skill CHOICE this app has nowhere to store (Keen Mind, Observant,
+ * Prodigy, Squat Nimbleness, Skill Expert, and every feat's `expertise`
+ * field — see featEffects.ts) adds an "awaiting a choice" note instead of a
+ * number, on every skill that choice could plausibly land on.
  */
 
 import type { Ability } from '../abilities/abilityScores'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { Character } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
+import { featFixedSkillProficiencyNames, featSkillChoiceAwaitingNotes, type FeatEffectEntry } from './featEffects'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -67,23 +72,25 @@ function hasJackOfAllTrades(character: Character): boolean {
 	)
 }
 
-/** The proficiency sources (D44) that grant a given skill, in a fixed display order. */
-function proficiencySources(skill: Skill, character: Character): string[] {
+/** The proficiency sources (D44) that grant a given skill, in a fixed display order — class/background/species, then any feat with a FIXED grant (only Boon of Skill; see featEffects.ts). */
+function proficiencySources(skill: Skill, character: Character, feats: FeatEffectEntry[]): string[] {
 	const sources: string[] = []
 	if (character.classSkills?.includes(skill)) sources.push('class')
 	if (character.background?.skillProficiencies.includes(skill)) sources.push('background')
 	if (character.speciesSkills?.includes(skill)) sources.push('species')
+	sources.push(...featFixedSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
 	return sources
 }
 
-export function computeSkill(skill: Skill, character: Character): Calculated<SkillValue> {
+export function computeSkill(skill: Skill, character: Character, feats: FeatEffectEntry[] = []): Calculated<SkillValue> {
 	const ability = SKILL_ABILITIES[skill]
-	const abilityResult = computeAbilityScore(ability, character)
+	const abilityResult = computeAbilityScore(ability, character, feats)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
-	const sources = proficiencySources(skill, character)
+	const sources = proficiencySources(skill, character, feats)
+	const isProficient = sources.length > 0
 	const status: SkillProficiencyStatus =
-		sources.length > 0 ? (character.expertiseSkills?.includes(skill) ? 'expertise' : 'proficient') : hasJackOfAllTrades(character) ? 'half' : 'none'
+		isProficient ? (character.expertiseSkills?.includes(skill) ? 'expertise' : 'proficient') : hasJackOfAllTrades(character) ? 'half' : 'none'
 
 	const breakdown: Contribution[] = [{ source: `${ability} modifier`, amount: abilityResult.value.modifier }]
 
@@ -100,17 +107,19 @@ export function computeSkill(skill: Skill, character: Character): Calculated<Ski
 		}
 	}
 
+	breakdown.push(...featSkillChoiceAwaitingNotes(skill, character, feats, isProficient))
+
 	const modifier = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known({ status, modifier }, breakdown)
 }
 
-export function computeSkills(character: Character): Record<Skill, Calculated<SkillValue>> {
-	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character)])) as Record<Skill, Calculated<SkillValue>>
+export function computeSkills(character: Character, feats: FeatEffectEntry[] = []): Record<Skill, Calculated<SkillValue>> {
+	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character, feats)])) as Record<Skill, Calculated<SkillValue>>
 }
 
 /** D48 — 10 + the named skill's bonus. Not a real skill check, so it has no proficiency status of its own. */
-function computePassiveValue(skill: Skill, character: Character): Calculated<number> {
-	const skillResult = computeSkill(skill, character)
+function computePassiveValue(skill: Skill, character: Character, feats: FeatEffectEntry[]): Calculated<number> {
+	const skillResult = computeSkill(skill, character, feats)
 	if (skillResult.status === 'unknown') return unknown(skillResult.reason)
 
 	const breakdown: Contribution[] = [{ source: 'base', amount: 10 }, ...skillResult.breakdown]
@@ -118,14 +127,14 @@ function computePassiveValue(skill: Skill, character: Character): Calculated<num
 	return known(total, breakdown)
 }
 
-export function computePassivePerception(character: Character): Calculated<number> {
-	return computePassiveValue('perception', character)
+export function computePassivePerception(character: Character, feats: FeatEffectEntry[] = []): Calculated<number> {
+	return computePassiveValue('perception', character, feats)
 }
 
-export function computePassiveInvestigation(character: Character): Calculated<number> {
-	return computePassiveValue('investigation', character)
+export function computePassiveInvestigation(character: Character, feats: FeatEffectEntry[] = []): Calculated<number> {
+	return computePassiveValue('investigation', character, feats)
 }
 
-export function computePassiveInsight(character: Character): Calculated<number> {
-	return computePassiveValue('insight', character)
+export function computePassiveInsight(character: Character, feats: FeatEffectEntry[] = []): Calculated<number> {
+	return computePassiveValue('insight', character, feats)
 }

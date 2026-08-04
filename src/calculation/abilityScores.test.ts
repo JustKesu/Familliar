@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
 import { abilityModifier, computeAbilityScore, computeAbilityScores } from './abilityScores'
+import type { FeatEffectEntry } from './featEffects'
 
 const fighter5: Character = {
 	id: '1',
@@ -49,6 +50,48 @@ describe('computeAbilityScore', () => {
 		const noScores: Character = { id: '2', name: 'Blank', classes: [] }
 		const result = computeAbilityScore('strength', noScores)
 		expect(result.status).toBe('unknown')
+	})
+
+	it('adds a half-feat\'s +1 to the chosen ability as its own contribution (D42/D57)', () => {
+		const athlete: FeatEffectEntry = { name: 'Athlete', source: 'XPHB', ability: [{ choose: { from: ['str', 'dex'] } }] }
+		const withAthlete: Character = {
+			...fighter5,
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'dexterity' }],
+		}
+		expect(computeAbilityScore('dexterity', withAthlete, [athlete])).toEqual({
+			status: 'known',
+			value: { score: 15, modifier: 2 },
+			breakdown: [
+				{ source: 'base', amount: 14 },
+				{ source: 'feat (Athlete)', amount: 1 },
+			],
+		})
+	})
+
+	it('adds a fixed-bonus feat\'s amount from the feat data, not the choice (D57)', () => {
+		const actor: FeatEffectEntry = { name: 'Actor', source: 'XPHB', ability: [{ cha: 1 }] }
+		const withActor: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'feat', name: 'Actor', source: 'XPHB' }] }
+		expect(computeAbilityScore('charisma', withActor, [actor])).toEqual({
+			status: 'known',
+			value: { score: 9, modifier: -1 },
+			breakdown: [
+				{ source: 'base', amount: 8 },
+				{ source: 'feat (Actor)', amount: 1 },
+			],
+		})
+	})
+
+	it('adds an ASI increase as a further list entry, alongside background (D42)', () => {
+		const withAsi: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 1, dexterity: 1 } }] }
+		expect(computeAbilityScore('strength', withAsi, [])).toEqual({
+			status: 'known',
+			value: { score: 18, modifier: 4 },
+			breakdown: [
+				{ source: 'base', amount: 15 },
+				{ source: 'background', amount: 2 },
+				{ source: 'ASI (level 4)', amount: 1 },
+			],
+		})
 	})
 })
 
