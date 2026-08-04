@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-08-05 (spells investigation script, ahead of build order step 6)
+Last updated: 2026-08-05 (spell attack bonus / spell save DC, build order step 6 slice a)
 
 ## Build order
 
@@ -10,7 +10,7 @@ Last updated: 2026-08-05 (spells investigation script, ahead of build order step
 4. [done] Calculation layer — ability scores/modifiers, proficiency bonus, saving throws, initiative, skills, passive values, speed/size/darkvision, hit dice pool.
 4a. [done] Feat/ASI slice — selection, storage, AND the effects computable from what's stored now feed the calculation layer (ability scores, saving throws, skills, initiative note). See "Feat/ASI effects" below for what's still deliberately out — attacks/AC-targeting feats (step 7/8) and the 5 skill-choice feats the wizard has nowhere to store a pick for (docs/REPORT.md).
 5. [done] Sheet display — first half (skeleton, header, ability scores/modifiers, proficiency bonus, saving throws, initiative) plus second half (skills, passive values, speed/size/darkvision, hit dice pool, feat list).
-6. [not started] Spells
+6. [in progress] Spells — slice (a) done: spell attack bonus / spell save DC.
 7. [not started] Inventory and equipment
 8. [not started] Level up
 9. [not started] Play tracking and rests
@@ -65,9 +65,11 @@ Last updated: 2026-08-05 (spells investigation script, ahead of build order step
 
   Temporary-scaffolding cleanup attempted but incomplete: `CharacterInspector.tsx` (D14) is unwired — the import, "Inspect" button, and `inspectedId` state are removed from `CharacterManager.tsx` — but the file itself is still on disk. A settings deny rule blocked the delete command from this session; see docs/REPORT.md for what's left to do by hand.
 
+- Spell attack bonus / spell save DC (build order step 6, slice a — closes D47's deferral of spell DC out of step 4) — `src/calculation/spellcasting.ts`. Pure (D38): takes a `Character` and a caller-supplied `ClassSpellcastingAbility[]` (classes.json's `spellcastingAbility` field, confirmed by scripts/investigate-spells.js — int/wis/cha on the casting classes, absent on Barbarian/Fighter/Monk/Rogue). `computeSpellcasting` returns `Calculated<SpellcastingEntry[]>` — one entry per casting class in `character.classes` (D11: a Wizard/Cleric multiclass gets two entries, two different abilities and numbers), reusing `computeAbilityScore` (including its `feats` parameter, so an ability-boosting feat already flows through, same as savingThrows.ts) and `computeProficiencyBonus` — neither recomputed. A class with no spellcasting ability contributes no entry (not a zero, not an error); a class named on the character but absent from the supplied `classData` entirely returns `unknown` (D43), matching hitDice.ts's pattern. Each entry carries both a `spellAttackBonus` and a `spellSaveDC`, each with its own D40 breakdown (ability modifier + proficiency bonus; DC also has the +8 base).
+
 ## Next step
 
-Build order step 6 — Spells. Before starting: delete `src/CharacterInspector.tsx` by hand (see docs/REPORT.md) — it is unwired but not removed.
+Build order step 6 — Spells, remaining slices (spell lists, slots, cantrips/known/prepared — see scripts/investigate-spells.js for the data shape). Before starting: delete `src/CharacterInspector.tsx` by hand (see docs/REPORT.md) — it is unwired but not removed.
 
 Note: the class-specific selections (including feat/ASI choices) are still not recorded with the
 level they were taken at as a SEPARATE provenance field — for feat/ASI the
