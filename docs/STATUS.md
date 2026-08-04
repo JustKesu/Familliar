@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-08-04 (feat/ASI slice closed: chosen feats/ASI now feed the calculation layer)
+Last updated: 2026-08-04 (sheet display, first half: skeleton, header, top value block)
 
 ## Build order
 
@@ -9,7 +9,7 @@ Last updated: 2026-08-04 (feat/ASI slice closed: chosen feats/ASI now feed the c
 3. [done] Character creation — 5 pickers + wizard shell + class skill/mastery/fighting style/subclass/optional-feature/expertise pickers wired in and all persisted to storage.
 4. [done] Calculation layer — ability scores/modifiers, proficiency bonus, saving throws, initiative, skills, passive values, speed/size/darkvision, hit dice pool.
 4a. [done] Feat/ASI slice — selection, storage, AND the effects computable from what's stored now feed the calculation layer (ability scores, saving throws, skills, initiative note). See "Feat/ASI effects" below for what's still deliberately out — attacks/AC-targeting feats (step 7/8) and the 5 skill-choice feats the wizard has nowhere to store a pick for (docs/REPORT.md).
-5. [not started] Sheet display
+5. [in progress] Sheet display — first half done (skeleton, header, ability scores/modifiers, proficiency bonus, saving throws, initiative). Second half (skills, passive values, speed/size/darkvision, hit dice, feat list) is 5b.
 6. [not started] Spells
 7. [not started] Inventory and equipment
 8. [not started] Level up
@@ -56,11 +56,17 @@ Last updated: 2026-08-04 (feat/ASI slice closed: chosen feats/ASI now feed the c
   - Confirmed NOT applicable to anything computed today, so left alone: no feat has a `speed` field at all (checked); `senses` (3 feats) only ever grants blindsight/truesight, never darkvision, and speciesTraits.ts computes darkvision only — nowhere for these to plug in yet.
   - `Contribution` (calculation/types.ts) gained an optional `note` field — set only on the two "not a number" cases above, `amount` stays 0 so it never changes a total.
 
+- Character sheet, first half (build order step 5a) — `src/sheet/`. `CharacterSheet.tsx` renders the skeleton, header (name, classes iterated per D11, species, background) and the top value block: all 6 ability scores/modifiers, proficiency bonus, all 6 saving throws (marked ● where the character has proficiency, from any source), and initiative. Every number is read from `src/calculation/` (D38) unmodified — nothing recomputed in the component. `sheetData.ts` shapes the two data/ files the top block needs beyond what's stored on the Character: classes.json's `proficiency` field into `savingThrows.ts`'s `ClassSavingThrowProficiencies[]`, and feats.json into `featEffects.ts`'s `FeatEffectEntry[]` (the fields it reads — ability, savingThrowProficiencies, skillProficiencies, expertise — are already top-level feats.json keys in that exact shape, confirmed by scripts/investigate-feat-calc-fields.js, so feat effects from 4a feed straight into the sheet's numbers). Both go through the shared loader (D39). `ValueBreakdown.tsx` is the one shared `<details>` component D41 asked for — `<ValueBreakdown breakdown={...} />` for a Contribution list (default collapsed, browser owns the toggle) and `<UnresolvedValue reason={...} />` for D43's visible-not-blank "unknown" state; 5b's skills reuse both rather than a second implementation. Wired into `CharacterManager.tsx` as a new "Sheet" button per row, alongside (not replacing) the existing "Inspect" button — CharacterInspector.tsx stays untouched (D14) until 5b finishes the sheet and can replace it. Skills, passive values, speed/size/darkvision, hit dice and the feat list are explicitly NOT in this half — see 5b above.
+
 ## Next step
 
-Sheet display (build order step 5), now that step 4a is fully closed
-(selection, storage, and calculation effects). Note: the class-specific
-selections (including feat/ASI choices) are still not recorded with the
+Sheet display, second half (build order step 5b) — skills, passive values,
+speed/size/darkvision, hit dice pool, and the feat/ASI list, using the same
+`ValueBreakdown`/`UnresolvedValue` components. Once 5b lands, delete
+CharacterInspector.tsx (D14) and its "Inspect" button/wiring in
+CharacterManager.tsx.
+
+Note: the class-specific selections (including feat/ASI choices) are still not recorded with the
 level they were taken at as a SEPARATE provenance field — for feat/ASI the
 level is inherent in the array's own shape (one entry per level), but D22
 proper (recording it for every OTHER choice type too) is still deferred —

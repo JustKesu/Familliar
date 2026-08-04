@@ -4,6 +4,7 @@ import { StorageError } from './storage/errors'
 import type { Character } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterInspector } from './CharacterInspector'
+import { CharacterSheet } from './sheet/CharacterSheet'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
@@ -33,17 +34,21 @@ function download(filename: string, contents: string): void {
 function CharacterRow({
 	character,
 	selected,
+	sheetSelected,
 	onRename,
 	onDelete,
 	onExport,
 	onInspect,
+	onViewSheet,
 }: {
 	character: Character
 	selected: boolean
+	sheetSelected: boolean
 	onRename: (id: string, name: string) => void
 	onDelete: (id: string) => void
 	onExport: (id: string) => void
 	onInspect: (id: string) => void
+	onViewSheet: (id: string) => void
 }): ReactNode {
 	const [editing, setEditing] = useState(false)
 	const [draftName, setDraftName] = useState(character.name)
@@ -58,7 +63,7 @@ function CharacterRow({
 	}
 
 	return (
-		<li className={selected ? 'char-row char-row--selected' : 'char-row'}>
+		<li className={selected || sheetSelected ? 'char-row char-row--selected' : 'char-row'}>
 			{editing ? (
 				<input
 					className="char-row__name-input"
@@ -90,6 +95,9 @@ function CharacterRow({
 				<button type="button" onClick={() => onInspect(character.id)}>
 					Inspect
 				</button>
+				<button type="button" onClick={() => onViewSheet(character.id)}>
+					Sheet
+				</button>
 				<button type="button" onClick={() => setEditing(true)}>
 					Rename
 				</button>
@@ -118,6 +126,7 @@ function CharacterManager() {
 	const [actionError, setActionError] = useState<string | null>(null)
 	const [creating, setCreating] = useState(false)
 	const [inspectedId, setInspectedId] = useState<string | null>(null)
+	const [sheetId, setSheetId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	function refresh(): void {
@@ -158,6 +167,7 @@ function CharacterManager() {
 		if (!confirm('Delete this character? This cannot be undone.')) return
 		withErrorHandling(() => store.store?.delete(id))
 		setInspectedId((current) => (current === id ? null : current))
+		setSheetId((current) => (current === id ? null : current))
 	}
 
 	function handleExport(id: string): void {
@@ -224,15 +234,22 @@ function CharacterManager() {
 								key={character.id}
 								character={character}
 								selected={character.id === inspectedId}
+								sheetSelected={character.id === sheetId}
 								onRename={handleRename}
 								onDelete={handleDelete}
 								onExport={handleExport}
 								onInspect={setInspectedId}
+								onViewSheet={setSheetId}
 							/>
 						))}
 					</ul>
 
 					<CharacterInspector character={characters.find((c) => c.id === inspectedId) ?? null} />
+					{sheetId &&
+						(() => {
+							const sheetCharacter = characters.find((c) => c.id === sheetId)
+							return sheetCharacter ? <CharacterSheet character={sheetCharacter} /> : null
+						})()}
 				</div>
 			)}
 
