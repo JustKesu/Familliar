@@ -983,3 +983,28 @@ Ověřeno čtením textu featu, ne odhadem z tvaru dat.
 
 Položka v rozkladu (D40) může nést poznámku místo částky; částka je
 pak nula, takže se součet nemění. Slouží jen pro případy z D55 a D58.
+
+## D61 — Cantrips and leveled spells are returned in one list, flagged by level
+
+The class-spell-list function returns cantrips (level 0) and leveled spells
+(1-9) in a SINGLE list, each spell carrying its own level, rather than split
+into two separate lists at the function level. Splitting into "cantrips" vs
+"spells" happens only at display time. Rationale: filtering by level is needed
+regardless (a character can only take spells up to a level it has access to),
+so a cantrip is just "level 0" in the same filter; splitting early would mean
+two parallel code paths for what is one operation.
+
+## D62 — Subclass additionalSpells: first pass supports only the `prepared` shape
+
+72 of 114 subclasses carry an `additionalSpells` field, but in 14 distinct key
+shapes (`prepared`, `known`, `innate`, `expanded`, plus variants carrying
+`ability`/`resourceName`/`name`) — confirmed by scripts/investigate-spells.js.
+The first implementation of subclass-granted spells (a later slice of step 6)
+will support only the `prepared` shape — the always-prepared domain/oath/circle
+spells that don't count against preparation limits, which is both the most
+common shape and the SPEC-critical one. The other shapes are deferred and added
+incrementally, not all at once. Rationale: supporting all 14 shapes in the
+first pass would balloon that slice; `prepared` covers the core case and the
+rest can follow one shape at a time. (This decision is RECORDED now but
+implemented later — it is NOT part of slice (c), which does class spell
+lists, not subclass spells.)
