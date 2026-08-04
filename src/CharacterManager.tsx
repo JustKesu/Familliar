@@ -3,7 +3,6 @@ import { CharacterStore } from './storage/characterStore'
 import { StorageError } from './storage/errors'
 import type { Character } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
-import { CharacterInspector } from './CharacterInspector'
 import { CharacterSheet } from './sheet/CharacterSheet'
 
 /*
@@ -11,9 +10,10 @@ import { CharacterSheet } from './sheet/CharacterSheet'
  *
  * Character creation itself is real: it delegates to CharacterWizard
  * (PHASE1.md build order step 3, section D — the multi-step wizard). What
- * remains temporary here is everything else — list, rename, delete,
- * export, import, and the read-only inspect view — proving the storage
- * layer works by hand pending the real sheet (step 5).
+ * remains temporary here is list, rename, delete, export and import —
+ * proving the storage layer works by hand. The read-only inspect view
+ * (CharacterInspector.tsx, D14) is gone now that the real sheet (step 5)
+ * covers everything it used to show.
  */
 
 function describeError(error: unknown): string {
@@ -33,21 +33,17 @@ function download(filename: string, contents: string): void {
 
 function CharacterRow({
 	character,
-	selected,
 	sheetSelected,
 	onRename,
 	onDelete,
 	onExport,
-	onInspect,
 	onViewSheet,
 }: {
 	character: Character
-	selected: boolean
 	sheetSelected: boolean
 	onRename: (id: string, name: string) => void
 	onDelete: (id: string) => void
 	onExport: (id: string) => void
-	onInspect: (id: string) => void
 	onViewSheet: (id: string) => void
 }): ReactNode {
 	const [editing, setEditing] = useState(false)
@@ -63,7 +59,7 @@ function CharacterRow({
 	}
 
 	return (
-		<li className={selected || sheetSelected ? 'char-row char-row--selected' : 'char-row'}>
+		<li className={sheetSelected ? 'char-row char-row--selected' : 'char-row'}>
 			{editing ? (
 				<input
 					className="char-row__name-input"
@@ -92,9 +88,6 @@ function CharacterRow({
 			</span>
 
 			<span className="char-row__actions">
-				<button type="button" onClick={() => onInspect(character.id)}>
-					Inspect
-				</button>
 				<button type="button" onClick={() => onViewSheet(character.id)}>
 					Sheet
 				</button>
@@ -125,7 +118,6 @@ function CharacterManager() {
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [actionError, setActionError] = useState<string | null>(null)
 	const [creating, setCreating] = useState(false)
-	const [inspectedId, setInspectedId] = useState<string | null>(null)
 	const [sheetId, setSheetId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -166,7 +158,6 @@ function CharacterManager() {
 		if (!store.store) return
 		if (!confirm('Delete this character? This cannot be undone.')) return
 		withErrorHandling(() => store.store?.delete(id))
-		setInspectedId((current) => (current === id ? null : current))
 		setSheetId((current) => (current === id ? null : current))
 	}
 
@@ -210,8 +201,8 @@ function CharacterManager() {
 			<h1>Familliar</h1>
 			<p className="subtitle">
 				Characters. Creation below is the real wizard (build order step 3). Listing, renaming,
-				deleting, export/import and inspection are still temporary UI, replaced by the sheet
-				(step 5).
+				deleting and export/import are still temporary UI; the "Sheet" button opens the real
+				character sheet (step 5).
 			</p>
 
 			{loadError && (
@@ -233,18 +224,15 @@ function CharacterManager() {
 							<CharacterRow
 								key={character.id}
 								character={character}
-								selected={character.id === inspectedId}
 								sheetSelected={character.id === sheetId}
 								onRename={handleRename}
 								onDelete={handleDelete}
 								onExport={handleExport}
-								onInspect={setInspectedId}
 								onViewSheet={setSheetId}
 							/>
 						))}
 					</ul>
 
-					<CharacterInspector character={characters.find((c) => c.id === inspectedId) ?? null} />
 					{sheetId &&
 						(() => {
 							const sheetCharacter = characters.find((c) => c.id === sheetId)

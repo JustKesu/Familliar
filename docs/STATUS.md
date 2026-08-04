@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-08-04 (sheet display, first half: skeleton, header, top value block)
+Last updated: 2026-08-04 (sheet display, second half — closes build order step 5)
 
 ## Build order
 
@@ -9,7 +9,7 @@ Last updated: 2026-08-04 (sheet display, first half: skeleton, header, top value
 3. [done] Character creation — 5 pickers + wizard shell + class skill/mastery/fighting style/subclass/optional-feature/expertise pickers wired in and all persisted to storage.
 4. [done] Calculation layer — ability scores/modifiers, proficiency bonus, saving throws, initiative, skills, passive values, speed/size/darkvision, hit dice pool.
 4a. [done] Feat/ASI slice — selection, storage, AND the effects computable from what's stored now feed the calculation layer (ability scores, saving throws, skills, initiative note). See "Feat/ASI effects" below for what's still deliberately out — attacks/AC-targeting feats (step 7/8) and the 5 skill-choice feats the wizard has nowhere to store a pick for (docs/REPORT.md).
-5. [in progress] Sheet display — first half done (skeleton, header, ability scores/modifiers, proficiency bonus, saving throws, initiative). Second half (skills, passive values, speed/size/darkvision, hit dice, feat list) is 5b.
+5. [done] Sheet display — first half (skeleton, header, ability scores/modifiers, proficiency bonus, saving throws, initiative) plus second half (skills, passive values, speed/size/darkvision, hit dice pool, feat list).
 6. [not started] Spells
 7. [not started] Inventory and equipment
 8. [not started] Level up
@@ -56,15 +56,15 @@ Last updated: 2026-08-04 (sheet display, first half: skeleton, header, top value
   - Confirmed NOT applicable to anything computed today, so left alone: no feat has a `speed` field at all (checked); `senses` (3 feats) only ever grants blindsight/truesight, never darkvision, and speciesTraits.ts computes darkvision only — nowhere for these to plug in yet.
   - `Contribution` (calculation/types.ts) gained an optional `note` field — set only on the two "not a number" cases above, `amount` stays 0 so it never changes a total.
 
-- Character sheet, first half (build order step 5a) — `src/sheet/`. `CharacterSheet.tsx` renders the skeleton, header (name, classes iterated per D11, species, background) and the top value block: all 6 ability scores/modifiers, proficiency bonus, all 6 saving throws (marked ● where the character has proficiency, from any source), and initiative. Every number is read from `src/calculation/` (D38) unmodified — nothing recomputed in the component. `sheetData.ts` shapes the two data/ files the top block needs beyond what's stored on the Character: classes.json's `proficiency` field into `savingThrows.ts`'s `ClassSavingThrowProficiencies[]`, and feats.json into `featEffects.ts`'s `FeatEffectEntry[]` (the fields it reads — ability, savingThrowProficiencies, skillProficiencies, expertise — are already top-level feats.json keys in that exact shape, confirmed by scripts/investigate-feat-calc-fields.js, so feat effects from 4a feed straight into the sheet's numbers). Both go through the shared loader (D39). `ValueBreakdown.tsx` is the one shared `<details>` component D41 asked for — `<ValueBreakdown breakdown={...} />` for a Contribution list (default collapsed, browser owns the toggle) and `<UnresolvedValue reason={...} />` for D43's visible-not-blank "unknown" state; 5b's skills reuse both rather than a second implementation. Wired into `CharacterManager.tsx` as a new "Sheet" button per row, alongside (not replacing) the existing "Inspect" button — CharacterInspector.tsx stays untouched (D14) until 5b finishes the sheet and can replace it. Skills, passive values, speed/size/darkvision, hit dice and the feat list are explicitly NOT in this half — see 5b above.
+- Character sheet, first half (build order step 5a) — `src/sheet/`. `CharacterSheet.tsx` renders the skeleton, header (name, classes iterated per D11, species, background) and the top value block: all 6 ability scores/modifiers, proficiency bonus, all 6 saving throws (marked ● where the character has proficiency, from any source), and initiative. Every number is read from `src/calculation/` (D38) unmodified — nothing recomputed in the component. `sheetData.ts` shapes the two data/ files the top block needs beyond what's stored on the Character: classes.json's `proficiency` field into `savingThrows.ts`'s `ClassSavingThrowProficiencies[]`, and feats.json into `featEffects.ts`'s `FeatEffectEntry[]` (the fields it reads — ability, savingThrowProficiencies, skillProficiencies, expertise — are already top-level feats.json keys in that exact shape, confirmed by scripts/investigate-feat-calc-fields.js, so feat effects from 4a feed straight into the sheet's numbers). Both go through the shared loader (D39). `ValueBreakdown.tsx` is the one shared `<details>` component D41 asked for — `<ValueBreakdown breakdown={...} />` for a Contribution list (default collapsed, browser owns the toggle) and `<UnresolvedValue reason={...} />` for D43's visible-not-blank "unknown" state; 5b's skills reuse both rather than a second implementation. Wired into `CharacterManager.tsx` as a new "Sheet" button per row, alongside the existing "Inspect" button at the time.
+
+- Character sheet, second half (build order step 5b) — closes build order step 5. `CharacterSheet.tsx` gains: all 18 skills (D45 status mark — ○/◐/●/★ for none/half/proficient/expertise — plus the numeric modifier and a `ValueBreakdown` that names every proficiency source, D44); the three passive values (D48); speed/size/darkvision (a 2-element species `size` reports as unresolved per D54, never defaulted to Medium); the hit dice pool, one line per class (D11); and the character's chosen feats, one collapsed `<details>` per feat (name + level), its text rendered through `ResolvedEntries` (src/featureResolver/, D51) so any ref* the feat's own text points at expands too — collapsed by default so the sheet doesn't drown in text. `sheetData.ts` gained three more loaders, all through the shared cache (D39, so the repeat `feats.json` fetch costs nothing extra): `loadHitDiceClassData` (classes.json's `hd.faces`, into `hitDice.ts`'s `ClassHitDie[]`), `loadSpeciesTraitsData` (species.json into `speciesTraits.ts`'s `SpeciesTraitsData[]`), `loadFeatTextEntries` (feats.json's `entries` field, for the feat-list text — a different slice of the same file `loadFeatEffectEntries` already reads). D55 vs D58's two distinct "not computed" notes needed no new sheet code — `computeSkill`/`computeInitiative` already thread the right wording through their breakdown (`featEffects.ts`, 4a's closing task), so `ValueBreakdown` shows each verbatim, never merged.
+
+  Temporary-scaffolding cleanup attempted but incomplete: `CharacterInspector.tsx` (D14) is unwired — the import, "Inspect" button, and `inspectedId` state are removed from `CharacterManager.tsx` — but the file itself is still on disk. A settings deny rule blocked the delete command from this session; see docs/REPORT.md for what's left to do by hand.
 
 ## Next step
 
-Sheet display, second half (build order step 5b) — skills, passive values,
-speed/size/darkvision, hit dice pool, and the feat/ASI list, using the same
-`ValueBreakdown`/`UnresolvedValue` components. Once 5b lands, delete
-CharacterInspector.tsx (D14) and its "Inspect" button/wiring in
-CharacterManager.tsx.
+Build order step 6 — Spells. Before starting: delete `src/CharacterInspector.tsx` by hand (see docs/REPORT.md) — it is unwired but not removed.
 
 Note: the class-specific selections (including feat/ASI choices) are still not recorded with the
 level they were taken at as a SEPARATE provenance field — for feat/ASI the
@@ -79,5 +79,5 @@ are a standing gap for whenever the wizard adds that field.
 ## Temporary scaffolding
 
 - src/CharacterManager.tsx — list/rename/delete/export/import UI; replaced by the sheet (step 5).
-- src/CharacterInspector.tsx — read-only dump of a stored character; replaced by the sheet (step 5).
+- src/CharacterInspector.tsx — read-only dump of a stored character; replaced by the sheet (step 5) and now unwired (no import or button references it anywhere), but not yet deleted — a settings deny rule blocked the delete this session (docs/REPORT.md). Delete by hand before build order step 6 starts.
 - src/MarkupDemo.tsx — renders sample data/ entries through the markup renderer; replaced by creation (step 3) and the sheet (step 5).
