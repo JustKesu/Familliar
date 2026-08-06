@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-08-05 (spell slots, build order step 6 slice b)
+Last updated: 2026-08-06 (spell level-legal filter, build order step 6 slice d1)
 
 ## Build order
 
@@ -10,7 +10,7 @@ Last updated: 2026-08-05 (spell slots, build order step 6 slice b)
 4. [done] Calculation layer — ability scores/modifiers, proficiency bonus, saving throws, initiative, skills, passive values, speed/size/darkvision, hit dice pool.
 4a. [done] Feat/ASI slice — selection, storage, AND the effects computable from what's stored now feed the calculation layer (ability scores, saving throws, skills, initiative note). See "Feat/ASI effects" below for what's still deliberately out — attacks/AC-targeting feats (step 7/8) and the 5 skill-choice feats the wizard has nowhere to store a pick for (docs/REPORT.md).
 5. [done] Sheet display — first half (skeleton, header, ability scores/modifiers, proficiency bonus, saving throws, initiative) plus second half (skills, passive values, speed/size/darkvision, hit dice pool, feat list).
-6. [in progress] Spells — slice (a) done: spell attack bonus / spell save DC. Slice (b) done: spell slots.
+6. [in progress] Spells — slice (a) done: spell attack bonus / spell save DC. Slice (b) done: spell slots. Slice (c) done: class spell list access. Slice (d1) done: level-legal spell filter (blocked for third casters — see below).
 7. [not started] Inventory and equipment
 8. [not started] Level up
 9. [not started] Play tracking and rests
@@ -71,9 +71,11 @@ Last updated: 2026-08-05 (spell slots, build order step 6 slice b)
 
 - Class spell list access layer (build order step 6, slice c) — `src/spells/classSpellListData.ts`. Not calculation (D47's `Calculated<T>` shape doesn't apply — this is a data query, so it lives outside `src/calculation/`), following the same pure-filter/thin-loader split as the other `*Data.ts` readers. `extractClassSpellList` (pure, D38) takes the parsed `spells.json` array plus one class identity (name + `classSource`) and returns every spell on that class's list — cantrips and leveled spells in ONE array, each item carrying its own `level` (D61). Confirmed via a short shape check (D46, scripts/investigate-spell-class-shape.js) that spells carry the class link under `availableTo.classes`/`availableTo.classVariants` (each entry `{ name, classSource }`, `classVariants` additionally carrying `definedInSources`) — not the bare `classes`/`classVariant` field names DATA.md's trap note uses, though the trap itself (91 spells reachable only via `classVariants`) is exactly as DATA.md describes. A spell counts as on the list if the class matches EITHER array; each returned item carries `viaVariant` so the UI can flag variant-sourced spells differently later (D62's note). `ritual` reads `meta.ritual === true`; `concentration` reads whether any element of the `duration` array carries `concentration: true`. Neither is computed — both are carried through as-is. Takes one class per call (D11) — a multiclass caller unions results itself; the function doesn't. `loadClassSpellList` fetches through the shared loader (D39). No wizard step, no preparation, no sheet wiring yet — that's the next slice (d), which sits on top of this.
 
+- Spell level-legal filter (build order step 6, slice d1) — `src/spells/spellLevelFilter.ts`. Pure function (D38), no fetching: `filterSpellsByLevel(classSpellList, spellSlots)` takes one class's slice-(c) spell list and that same class's slice-(b) `SpellSlotsEntry | undefined`, returns the sublist the character is legally allowed to take by spell level. Cantrips (level 0) always pass through untouched, confirmed with the user; leveled spells (1-9) are kept only if `level <= highest available slot level` (ordinary slots: highest index with count > 0; Pact Magic: the entry's own `slotLevel`). Investigated first (scripts/investigate-spell-cap-by-slots.js, D46): "highest slot level = highest castable spell level" holds for full casters, half casters (Paladin/Ranger/Artificer), and Warlock Pact Magic. It does NOT hold reachably for third casters (Eldritch Knight, Arcane Trickster) — their slot table lives in `subclassTableGroups` on the SUBCLASS entry, keyed to a non-caster base class (Fighter/Rogue), a shape slice (b)'s `spellSlots.ts` does not read. slice (b) returns no `SpellSlotsEntry` at all for an EK/AT character today, so this filter cannot cap them correctly yet — see docs/REPORT.md, this is a decision needed (does slice b grow a second read path, or does d1/the picker special-case subclass-held slots) before EK/AT support can be added. Every other spell field (level, ritual, concentration, viaVariant) passes through unchanged. No counts (max cantrips/prepared/known) — that's slice (d2). D11: takes one class at a time, no multiclass union.
+
 ## Next step
 
-Build order step 6, slice (d) — the wizard/UI layer built on top of the class spell list access layer: filtering by what the character can actually take (spell slots, prepared/known counts), a spell picker, and sheet display. Before starting: delete `src/CharacterInspector.tsx` by hand (see docs/REPORT.md) — it is unwired but not removed.
+Build order step 6, slice (d2) — the count layer (max cantrips known, max spells prepared/known) on top of slice (d1)'s level filter, then the picker UI and sheet display. Third-caster (EK/AT) spell-slot support is still blocked on a decision (see above and docs/REPORT.md) — resolve before wiring EK/AT into the picker. Before starting: delete `src/CharacterInspector.tsx` by hand (see docs/REPORT.md) — it is unwired but not removed.
 
 Note: the class-specific selections (including feat/ASI choices) are still not recorded with the
 level they were taken at as a SEPARATE provenance field — for feat/ASI the
