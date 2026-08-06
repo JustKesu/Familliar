@@ -23,12 +23,31 @@
  * - feats.json's `entries` field, for the sheet's feat-text list — a
  *   second, smaller shape off the same fetch (D39 caches per path, so this
  *   costs no extra request).
+ * - classes.json's `spellcastingAbility` field, shaped into
+ *   spellcasting.ts's ClassSpellcastingAbility — a class entry with no such
+ *   field (Barbarian, Fighter, Monk, Rogue) gets `ability: null`, matching
+ *   what computeSpellcasting already expects for a non-caster class.
+ * - a subclass's SOURCE, resolved from its stored NAME only (build order
+ *   step 6 slice d4). Character.classes[].subclass stores just the
+ *   subclass's name (wizardState.ts's saveCharacter drops the source it had
+ *   at selection time — an existing gap, out of scope here per the task
+ *   brief's "no wizard changes"). 11 of 103 (class, subclass name) pairs in
+ *   classes.json are genuinely ambiguous by name alone (e.g. Artificer
+ *   "Alchemist" exists under both TCE and EFA with different
+ *   additionalSpells content) — confirmed by
+ *   scripts/investigate-sheet-subclass-source.js. Per the user's decision
+ *   (this task's session): match the subclass entry whose OWN classSource
+ *   equals the character's class's classSource; if more than one entry
+ *   still matches, resolve to `null` (unresolved) rather than silently
+ *   guess — the caller shows nothing for that subclass's always-prepared
+ *   spells rather than risk the wrong sourcebook's list (D43-style).
  */
 
 import type { AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import type { FeatEffectEntry } from '../calculation/featEffects'
 import type { ClassHitDie } from '../calculation/hitDice'
 import type { ClassSavingThrowProficiencies } from '../calculation/savingThrows'
+import type { ClassSpellcastingAbility } from '../calculation/spellcasting'
 import type { SpeciesTraitsData } from '../calculation/speciesTraits'
 import { loadDataFile } from '../dataLoader/dataLoader'
 
@@ -137,4 +156,76 @@ export function extractFeatTextEntries(parsed: unknown): FeatTextEntry[] {
 export async function loadFeatTextEntries(): Promise<FeatTextEntry[]> {
 	const parsed = await loadDataFile('data/feats.json')
 	return extractFeatTextEntries(parsed)
+}
+
+function isSpellcastingAbilityEntry(value: unknown): value is { entryType: string; name: string; source: string; spellcastingAbility?: unknown } {
+	return isRecord(value) && value.entryType === 'class' && typeof value.name === 'string' && typeof value.source === 'string'
+}
+
+export function extractSpellcastingAbilityClassData(parsed: unknown): ClassSpellcastingAbility[] {
+	if (!Array.isArray(parsed)) {
+		throw new Error('classes.json: expected a top-level array.')
+	}
+
+	const result: ClassSpellcastingAbility[] = []
+	for (const entry of parsed) {
+		if (!isSpellcastingAbilityEntry(entry)) continue
+		result.push({
+			className: entry.name,
+			classSource: entry.source,
+			ability: typeof entry.spellcastingAbility === 'string' ? (entry.spellcastingAbility as AbilityAbbreviation) : null,
+		})
+	}
+	return result
+}
+
+export async function loadSpellcastingAbilityClassData(): Promise<ClassSpellcastingAbility[]> {
+	const parsed = await loadDataFile('data/classes.json')
+	return extractSpellcastingAbilityClassData(parsed)
+}
+
+interface RawSubclassSourceEntry {
+	entryType: string
+	name: string
+	source: string
+	className: string
+	classSource: string
+}
+
+function isRawSubclassSourceEntry(value: unknown): value is RawSubclassSourceEntry {
+	return (
+		isRecord(value) &&
+		value['entryType'] === 'subclass' &&
+		typeof value['name'] === 'string' &&
+		typeof value['source'] === 'string' &&
+		typeof value['className'] === 'string' &&
+		typeof value['classSource'] === 'string'
+	)
+}
+
+/**
+ * Pure (D38). Resolves a subclass's source from its name alone, since
+ * Character.classes[].subclass stores only the name. Matches by
+ * className+classSource+name, preferring an entry whose own classSource
+ * equals the class's — but that filter is a no-op for the 11 genuinely
+ * ambiguous pairs (both candidates already share the class's classSource,
+ * confirmed by scripts/investigate-sheet-subclass-source.js), so those
+ * still resolve to `null` (unresolved) rather than guess between two
+ * different sourcebooks' content.
+ */
+export function resolveSubclassSource(parsed: unknown, className: string, classSource: string, subclassName: string): string | null {
+	if (!Array.isArray(parsed)) {
+		throw new Error('classes.json: expected a top-level array.')
+	}
+
+	const candidates = parsed.filter(
+		(entry): entry is RawSubclassSourceEntry =>
+			isRawSubclassSourceEntry(entry) && entry.className === className && entry.classSource === classSource && entry.name === subclassName,
+	)
+	return candidates.length === 1 ? candidates[0].source : null
+}
+
+export async function loadSubclassSource(className: string, classSource: string, subclassName: string): Promise<string | null> {
+	const parsed = await loadDataFile('data/classes.json')
+	return resolveSubclassSource(parsed, className, classSource, subclassName)
 }

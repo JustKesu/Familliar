@@ -22,17 +22,25 @@ import { computeInitiative } from '../calculation/initiative'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
+import { computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
+import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeDarkvision, computeSize, computeSpeed, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
+import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
+import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import {
 	loadFeatEffectEntries,
 	loadFeatTextEntries,
 	loadHitDiceClassData,
 	loadSavingThrowClassData,
 	loadSpeciesTraitsData,
+	loadSpellcastingAbilityClassData,
+	loadSubclassSource,
 	type FeatTextEntry,
 } from './sheetData'
+import { combineSpellEntries, SpellList } from './SpellList'
 import type { Character } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
@@ -118,7 +126,13 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const [feats, setFeats] = useState<FeatEffectEntry[] | null>(null)
 	const [featTextEntries, setFeatTextEntries] = useState<FeatTextEntry[] | null>(null)
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
+	const [spellcastingAbilityData, setSpellcastingAbilityData] = useState<ClassSpellcastingAbility[] | null>(null)
+	const [spellSlotsClassData, setSpellSlotsClassData] = useState<ClassSpellSlotsData[] | null>(null)
+	const [spellDetails, setSpellDetails] = useState<SpellDetail[] | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
+
+	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
+	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -129,8 +143,11 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 			loadFeatEffectEntries(),
 			loadFeatTextEntries(),
 			loadResolverData(),
+			loadSpellcastingAbilityClassData(),
+			loadSpellSlotsClassData(),
+			loadSpellDetails(),
 		])
-			.then(([classData, hitDiceData, speciesData, featData, featTexts, resolver]) => {
+			.then(([classData, hitDiceData, speciesData, featData, featTexts, resolver, spellcastingData, spellSlotsData, spellDetailData]) => {
 				if (cancelled) return
 				setSavingThrowClassData(classData)
 				setHitDiceClassData(hitDiceData)
@@ -138,6 +155,9 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 				setFeats(featData)
 				setFeatTextEntries(featTexts)
 				setResolverData(resolver)
+				setSpellcastingAbilityData(spellcastingData)
+				setSpellSlotsClassData(spellSlotsData)
+				setSpellDetails(spellDetailData)
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
@@ -148,6 +168,27 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		}
 	}, [])
 
+	useEffect(() => {
+		let cancelled = false
+		const classesWithSubclass = character.classes.filter((c): c is typeof c & { subclass: string } => c.subclass !== null)
+		if (classesWithSubclass.length === 0) {
+			setSubclassSpellInfo([])
+			return
+		}
+		Promise.all(
+			classesWithSubclass.map(async (c) => {
+				const source = await loadSubclassSource(c.className, c.classSource, c.subclass)
+				const alwaysPrepared = source ? await loadSubclassAlwaysPreparedSpells(c.subclass, source, c.className, c.classSource, c.level) : []
+				return { subclassName: c.subclass, alwaysPrepared }
+			}),
+		).then((infos) => {
+			if (!cancelled) setSubclassSpellInfo(infos)
+		})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
 	if (loadError) {
 		return (
 			<article className="sheet">
@@ -156,7 +197,17 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		)
 	}
 
-	if (!savingThrowClassData || !hitDiceClassData || !speciesTraitsData || !feats || !featTextEntries || !resolverData) {
+	if (
+		!savingThrowClassData ||
+		!hitDiceClassData ||
+		!speciesTraitsData ||
+		!feats ||
+		!featTextEntries ||
+		!resolverData ||
+		!spellcastingAbilityData ||
+		!spellSlotsClassData ||
+		!spellDetails
+	) {
 		return (
 			<article className="sheet">
 				<p>Loading…</p>
@@ -177,6 +228,17 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const darkvision = computeDarkvision(character, speciesTraitsData)
 	const hitDice = computeHitDicePool(character.classes, hitDiceClassData)
 	const chosenFeats = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
+
+	const spellcasting = computeSpellcasting(character, spellcastingAbilityData, feats)
+	const spellcastingEntries = spellcasting.status === 'known' ? spellcasting.value : []
+	const spellSlots = computeSpellSlots(character, spellSlotsClassData)
+	const spellSlotsEntries = spellSlots.status === 'known' ? spellSlots.value : []
+	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
+	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0
+	const combinedSpells = combineSpellEntries(
+		character.spellChoices ?? [],
+		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, spells: info.alwaysPrepared })),
+	)
 
 	return (
 		<article className="sheet">
@@ -380,6 +442,66 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 					</ul>
 				)}
 			</section>
+
+			{isCaster && (
+				<>
+					{spellcastingEntries.length > 0 && (
+						<section className="sheet__spell-attacks">
+							<h2>Spellcasting</h2>
+							<ul>
+								{spellcastingEntries.map((entry) => (
+									<li key={`${entry.className}|${entry.classSource}`}>
+										<h3>
+											{entry.className} ({ABILITY_LABELS[entry.ability]})
+										</h3>
+										<p>
+											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
+											<ValueBreakdown breakdown={entry.spellAttackBreakdown} />
+										</p>
+										<p>
+											Spell save DC: <span>{entry.spellSaveDC}</span> <ValueBreakdown breakdown={entry.spellSaveDCBreakdown} />
+										</p>
+									</li>
+								))}
+							</ul>
+						</section>
+					)}
+
+					{spellSlotsEntries.length > 0 && (
+						<section className="sheet__spell-slots">
+							<h2>Spell slots</h2>
+							<ul>
+								{spellSlotsEntries.map((entry) => (
+									<li key={`${entry.className}|${entry.classSource}`}>
+										<h3>{entry.className}</h3>
+										{entry.ordinarySlots && (
+											<>
+												<ul>
+													{entry.ordinarySlots.map(
+														(count, index) => count > 0 && <li key={index}>Level {index + 1}: {count}</li>,
+													)}
+												</ul>
+												<ValueBreakdown breakdown={entry.ordinarySlotsBreakdown ?? []} />
+											</>
+										)}
+										{entry.pactSlots && (
+											<p>
+												Pact Magic: {entry.pactSlots.count} slot{entry.pactSlots.count === 1 ? '' : 's'} (level {entry.pactSlots.slotLevel})
+												<ValueBreakdown breakdown={entry.pactSlotsBreakdown ?? []} />
+											</p>
+										)}
+									</li>
+								))}
+							</ul>
+						</section>
+					)}
+
+					<section className="sheet__spells">
+						<h2>Spells</h2>
+						<SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />
+					</section>
+				</>
+			)}
 		</article>
 	)
 }

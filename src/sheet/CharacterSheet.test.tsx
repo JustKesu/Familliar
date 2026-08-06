@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterSheet } from './CharacterSheet'
 import { computeAbilityScore } from '../calculation/abilityScores'
@@ -8,7 +8,13 @@ import type { ClassHitDie } from '../calculation/hitDice'
 import { computeSavingThrow, computeSavingThrows } from '../calculation/savingThrows'
 import type { ClassSavingThrowProficiencies } from '../calculation/savingThrows'
 import { computeSkill } from '../calculation/skills'
+import type { ClassSpellcastingAbility } from '../calculation/spellcasting'
+import type { ClassSpellSlotsData } from '../calculation/spellSlots'
 import type { SpeciesTraitsData } from '../calculation/speciesTraits'
+import { loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetData'
+import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
+import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import type { Character } from '../storage/character'
 
 /*
@@ -45,7 +51,23 @@ vi.mock('./sheetData', () => ({
 	loadHitDiceClassData: vi.fn(async () => HIT_DICE_DATA),
 	loadSpeciesTraitsData: vi.fn(async () => SPECIES_DATA),
 	loadFeatTextEntries: vi.fn(async () => []),
+	loadSpellcastingAbilityClassData: vi.fn(async () => []),
+	loadSubclassSource: vi.fn(async () => null),
 }))
+
+vi.mock('../spells/spellSlotsClassData', () => ({
+	loadSpellSlotsClassData: vi.fn(async () => []),
+}))
+
+vi.mock('../spells/spellDetailData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/spellDetailData')>()
+	return { ...actual, loadSpellDetails: vi.fn(async () => []) }
+})
+
+vi.mock('../spells/subclassPreparedSpells', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/subclassPreparedSpells')>()
+	return { ...actual, loadSubclassAlwaysPreparedSpells: vi.fn(async () => []) }
+})
 
 vi.mock('../featureResolver', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../featureResolver')>()
@@ -273,5 +295,224 @@ describe('CharacterSheet', () => {
 		const sizeItem = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Size:'))
 		expect(sizeItem?.textContent).toContain('unresolved')
 		expect(sizeItem?.textContent).not.toContain('Medium')
+	})
+
+	function spellDetail(overrides: Partial<SpellDetail> & { name: string; source: string; level: number }): SpellDetail {
+		return {
+			ritual: false,
+			concentration: false,
+			time: [{ number: 1, unit: 'action' }],
+			range: { type: 'point', distance: { type: 'feet', amount: 30 } },
+			components: { v: true, s: true },
+			duration: [{ type: 'instant' }],
+			entries: ['A test spell description.'],
+			...overrides,
+		}
+	}
+
+	describe('spellcasting sections (build order step 6 slice d4)', () => {
+		afterEach(() => {
+			vi.mocked(loadSpellcastingAbilityClassData).mockReset().mockResolvedValue([])
+			vi.mocked(loadSpellSlotsClassData).mockReset().mockResolvedValue([])
+			vi.mocked(loadSpellDetails).mockReset().mockResolvedValue([])
+			vi.mocked(loadSubclassSource).mockReset().mockResolvedValue(null)
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockReset().mockResolvedValue([])
+		})
+
+		it('a full caster (Wizard) shows spell attack/DC with a breakdown, slots per level, and chosen spells grouped by level with detail on expand', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{
+					className: 'Wizard',
+					classSource: 'XPHB',
+					casterProgression: 'full',
+					spellSlotsByLevel: [[2], [3], [4, 2], [4, 3], [4, 3, 2]],
+					pactSlotsByLevel: null,
+				},
+			]
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Prestidigitation', source: 'XPHB', level: 0, entries: ['Cantrip flavor text.'] }),
+				spellDetail({ name: 'Fireball', source: 'XPHB', level: 3, entries: ['A bright streak flashes.'] }),
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const wizard: Character = {
+				id: 'w1',
+				name: 'Elminster',
+				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 5 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 16, wisdom: 12, charisma: 10 },
+				},
+				spellChoices: [
+					{
+						className: 'Wizard',
+						classSource: 'XPHB',
+						spells: [
+							{ name: 'Prestidigitation', source: 'XPHB' },
+							{ name: 'Fireball', source: 'XPHB' },
+						],
+					},
+				],
+			}
+
+			const user = userEvent.setup()
+			const { container } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Elminster' })
+
+			const attackSection = container.querySelector('.sheet__spell-attacks')!
+			expect(attackSection.textContent).toContain('Wizard (Intelligence)')
+			expect(attackSection.textContent).toContain('Spell attack bonus')
+			expect(attackSection.textContent).toContain('Spell save DC')
+			await user.click(attackSection.querySelector('summary')!)
+			expect(attackSection.textContent).toContain('proficiency bonus')
+
+			const slotsSection = container.querySelector('.sheet__spell-slots')!
+			expect(slotsSection.textContent).toContain('Level 1: 4')
+			expect(slotsSection.textContent).toContain('Level 2: 3')
+			expect(slotsSection.textContent).toContain('Level 3: 2')
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			expect(spellsSection.textContent).toContain('Cantrip')
+			expect(spellsSection.textContent).toContain('Prestidigitation')
+			expect(spellsSection.textContent).toContain('Level 3')
+			expect(spellsSection.textContent).toContain('Fireball')
+
+			const fireballSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fireball'))!
+			await user.click(fireballSummary)
+			expect(fireballSummary.closest('details')!.textContent).toContain('Casting Time')
+			expect(fireballSummary.closest('details')!.textContent).toContain('A bright streak flashes.')
+		})
+
+		it('a Warlock shows Pact Magic slots separately from any ordinary slot list', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{
+					className: 'Warlock',
+					classSource: 'XPHB',
+					casterProgression: 'pact',
+					spellSlotsByLevel: null,
+					pactSlotsByLevel: [
+						{ count: 1, slotLevel: 1 },
+						{ count: 2, slotLevel: 1 },
+						{ count: 2, slotLevel: 2 },
+					],
+				},
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+
+			const warlock: Character = {
+				id: 'wl1',
+				name: 'Pactbound',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+			}
+
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Pactbound' })
+
+			const slotsSection = container.querySelector('.sheet__spell-slots')!
+			expect(slotsSection.textContent).toContain('Pact Magic')
+			expect(slotsSection.textContent).toContain('2 slots (level 2)')
+			expect(slotsSection.textContent).not.toMatch(/Level \d+: \d+/) // no ordinary 1-9 list alongside it
+		})
+
+		it('a subclass caster (Cleric domain) shows the always-prepared subclass spells marked with their source, alongside any chosen spells', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Cleric', classSource: 'XPHB', ability: 'wis' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{
+					className: 'Cleric',
+					classSource: 'XPHB',
+					casterProgression: 'full',
+					spellSlotsByLevel: [[2], [3], [4, 2]],
+					pactSlotsByLevel: null,
+				},
+			]
+			const alwaysPrepared: AlwaysPreparedSpell[] = [
+				{ name: 'Cure Wounds', source: 'XPHB', level: 1, grantedAtLevel: 3, ritual: false, concentration: false, origin: 'subclass' },
+			]
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Cure Wounds', source: 'XPHB', level: 1, entries: ['A creature you touch regains hit points.'] }),
+				spellDetail({ name: 'Guidance', source: 'XPHB', level: 0, entries: ['You touch one willing creature.'] }),
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadSubclassSource).mockResolvedValue('XPHB')
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockResolvedValue(alwaysPrepared)
+
+			const cleric: Character = {
+				id: 'cl1',
+				name: 'Domain Priest',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: 'Life Domain', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 16, charisma: 10 },
+				},
+				spellChoices: [{ className: 'Cleric', classSource: 'XPHB', spells: [{ name: 'Guidance', source: 'XPHB' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={cleric} />)
+			await screen.findByRole('heading', { name: 'Domain Priest' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Cure Wounds'))
+
+			const cureWoundsSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Cure Wounds'))!
+			expect(cureWoundsSummary.textContent).toContain('always prepared (Life Domain)')
+
+			const guidanceSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Guidance'))!
+			expect(guidanceSummary.textContent).toContain('player pick')
+			expect(guidanceSummary.textContent).not.toContain('always prepared')
+		})
+
+		it('a non-caster (Fighter) shows no spellcasting sections at all', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
+			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+			expect(container.querySelector('.sheet__spells')).toBeNull()
+		})
+
+		it('a two-casting-class character shows two spell attack/DC entries, one per class (D11)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [
+				{ className: 'Wizard', classSource: 'XPHB', ability: 'int' },
+				{ className: 'Cleric', classSource: 'XPHB', ability: 'wis' },
+			]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null },
+				{ className: 'Cleric', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null },
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+
+			const multiclass: Character = {
+				id: 'mc1',
+				name: 'Theurge',
+				classes: [
+					{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 1 },
+					{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 1 },
+				],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 15, wisdom: 15, charisma: 8 },
+				},
+			}
+
+			const { container } = render(<CharacterSheet character={multiclass} />)
+			await screen.findByRole('heading', { name: 'Theurge' })
+
+			const attackSection = container.querySelector('.sheet__spell-attacks')!
+			expect(attackSection.textContent).toContain('Wizard (Intelligence)')
+			expect(attackSection.textContent).toContain('Cleric (Wisdom)')
+			expect(attackSection.querySelectorAll(':scope > ul > li')).toHaveLength(2)
+		})
 	})
 })
