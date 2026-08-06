@@ -20,6 +20,7 @@ import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../fe
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { SpellPicker } from '../spells/SpellPicker'
+import { AlwaysPreparedSpellsList } from '../spells/AlwaysPreparedSpellsList'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { computeSpellCounts } from '../calculation/spellCounts'
@@ -500,6 +501,15 @@ export function CharacterWizard({
 						value={state.data.spellChoices}
 						onChange={(choices) => dispatch({ type: 'setSpellChoices', choices })}
 					/>
+					{state.data.subclass && (
+						<AlwaysPreparedSpellsList
+							subclassName={state.data.subclass.name}
+							subclassSource={state.data.subclass.source}
+							className={state.data.classChoice.className}
+							classSource={state.data.classChoice.classSource}
+							classLevel={state.data.classChoice.level}
+						/>
+					)}
 				</div>
 			)}
 
