@@ -16,6 +16,7 @@ import type {
 	CharacterClass,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
+	CharacterSpellChoice,
 	FeatAsiChoice,
 } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
@@ -25,6 +26,8 @@ import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
+import type { SpellPick } from '../spells/SpellPicker'
+import type { SpellCountLabel } from '../calculation/spellCounts'
 
 /**
  * The chosen subclass, name and source together — carrying `featureType`
@@ -38,8 +41,15 @@ export interface SubclassChoice {
 	featureType: string | null
 }
 
-export const WIZARD_STEPS = ['class', 'species', 'background', 'expertise', 'languages', 'abilities', 'featAsi', 'review'] as const
+export const WIZARD_STEPS = ['class', 'species', 'background', 'expertise', 'languages', 'abilities', 'spells', 'featAsi', 'review'] as const
 export type WizardStep = (typeof WIZARD_STEPS)[number]
+
+/** The cantrip/leveled-spell counts the 'spells' step must satisfy (build order step 6 slice d2) — null means the class has no spellcasting by the chosen level, so the step is skipped. */
+export interface SpellRequirement {
+	cantripCount: number
+	leveledSpellCount: number
+	label: SpellCountLabel
+}
 
 /**
  * The steps actually shown to the player. `expertise` only appears when the
@@ -48,6 +58,12 @@ export type WizardStep = (typeof WIZARD_STEPS)[number]
  * entirely rather than shown empty, and the numbering of every step after
  * it shifts down to stay contiguous.
  *
+ * `spells` only appears when the class has spellcasting by the chosen level
+ * (a null SpellRequirement — non-casters, or a third-caster subclass not
+ * yet chosen/not yet level 3). It comes AFTER `abilities`: some classes'
+ * counts read a caster's FINAL level, and positioning it next to `featAsi`
+ * (also after abilities) keeps every ability-score-dependent step together.
+ *
  * `featAsi` follows the same rule: it only appears when the character has
  * at least one level-4/8/12/16/19(+class bonus levels) grant by the chosen
  * level (D16/D19/D20, feat/ASI slice). It comes AFTER `abilities`, not next
@@ -55,17 +71,26 @@ export type WizardStep = (typeof WIZARD_STEPS)[number]
  * scores (base + background bonus, D16/D17), which aren't known until the
  * abilities step has run.
  */
-export function visibleSteps(expertiseRequiredCount: number | null, featAsiEligibleLevelCount = 0): readonly WizardStep[] {
+export function visibleSteps(
+	expertiseRequiredCount: number | null,
+	featAsiEligibleLevelCount = 0,
+	spellRequirement: SpellRequirement | null = null,
+): readonly WizardStep[] {
 	return WIZARD_STEPS.filter((step) => {
 		if (step === 'expertise') return expertiseRequiredCount !== null
 		if (step === 'featAsi') return featAsiEligibleLevelCount > 0
+		if (step === 'spells') return spellRequirement !== null
 		return true
 	})
 }
 
 /** The picker steps only — every one of these must be complete before the review step may save. */
-function pickerSteps(expertiseRequiredCount: number | null, featAsiEligibleLevelCount = 0): readonly WizardStep[] {
-	return visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount).filter((step) => step !== 'review')
+function pickerSteps(
+	expertiseRequiredCount: number | null,
+	featAsiEligibleLevelCount = 0,
+	spellRequirement: SpellRequirement | null = null,
+): readonly WizardStep[] {
+	return visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount, spellRequirement).filter((step) => step !== 'review')
 }
 
 /** The in-progress character. Nothing here is written to storage until saveCharacter runs. */
@@ -91,6 +116,8 @@ export interface WizardData {
 	optionalFeatureChoices: string[]
 	/** One entry per level with an ASI-or-feat grant (task instructions, point 7) — clears whenever class or level changes (point 6), since eligibility is keyed to the class's own grant levels. */
 	featAsiChoices: FeatAsiChoice[]
+	/** The class spell picks (build order step 6 slice d2) — clears whenever class, level or subclass changes, since the offered list, counts and (for a third caster) eligibility itself are all keyed to those. */
+	spellChoices: SpellPick[]
 }
 
 export function emptyWizardData(): WizardData {
@@ -110,6 +137,7 @@ export function emptyWizardData(): WizardData {
 		subclass: null,
 		optionalFeatureChoices: [],
 		featAsiChoices: [],
+		spellChoices: [],
 	}
 }
 
@@ -122,18 +150,33 @@ export function initialControllerState(): WizardControllerState {
 	return { step: WIZARD_STEPS[0], data: emptyWizardData() }
 }
 
-export function stepIndex(step: WizardStep, expertiseRequiredCount: number | null = null, featAsiEligibleLevelCount = 0): number {
-	return visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount).indexOf(step)
+export function stepIndex(
+	step: WizardStep,
+	expertiseRequiredCount: number | null = null,
+	featAsiEligibleLevelCount = 0,
+	spellRequirement: SpellRequirement | null = null,
+): number {
+	return visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount, spellRequirement).indexOf(step)
 }
 
-function nextStep(step: WizardStep, expertiseRequiredCount: number | null, featAsiEligibleLevelCount: number): WizardStep | null {
-	const steps = visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount)
+function nextStep(
+	step: WizardStep,
+	expertiseRequiredCount: number | null,
+	featAsiEligibleLevelCount: number,
+	spellRequirement: SpellRequirement | null,
+): WizardStep | null {
+	const steps = visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount, spellRequirement)
 	const idx = steps.indexOf(step)
 	return idx < steps.length - 1 ? steps[idx + 1] : null
 }
 
-function previousStep(step: WizardStep, expertiseRequiredCount: number | null, featAsiEligibleLevelCount: number): WizardStep | null {
-	const steps = visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount)
+function previousStep(
+	step: WizardStep,
+	expertiseRequiredCount: number | null,
+	featAsiEligibleLevelCount: number,
+	spellRequirement: SpellRequirement | null,
+): WizardStep | null {
+	const steps = visibleSteps(expertiseRequiredCount, featAsiEligibleLevelCount, spellRequirement)
 	const idx = steps.indexOf(step)
 	return idx > 0 ? steps[idx - 1] : null
 }
@@ -167,6 +210,7 @@ export function isStepComplete(
 	expertiseRequiredCount: number | null = null,
 	featAsiEligibleLevelCount = 0,
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
+	spellRequirement: SpellRequirement | null = null,
 ): boolean {
 	switch (step) {
 		case 'class':
@@ -181,6 +225,8 @@ export function isStepComplete(
 			return data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
 		case 'abilities':
 			return data.abilityScores !== null
+		case 'spells':
+			return spellRequirement === null || isCompleteSpellChoices(data.spellChoices, spellRequirement)
 		case 'featAsi':
 			return (
 				data.featAsiChoices.length === featAsiEligibleLevelCount &&
@@ -189,6 +235,13 @@ export function isStepComplete(
 		case 'review':
 			return true
 	}
+}
+
+/** Cantrips and leveled spells are counted separately (a cantrip is not a leveled-spell pick) — both totals must match exactly. */
+function isCompleteSpellChoices(spellChoices: SpellPick[], spellRequirement: SpellRequirement): boolean {
+	const cantripsChosen = spellChoices.filter((pick) => pick.level === 0).length
+	const leveledChosen = spellChoices.filter((pick) => pick.level > 0).length
+	return cantripsChosen === spellRequirement.cantripCount && leveledChosen === spellRequirement.leveledSpellCount
 }
 
 const EMPTY_FEAT_SET: ReadonlySet<string> = new Set()
@@ -219,9 +272,10 @@ export function isReadyToSave(
 	expertiseRequiredCount: number | null = null,
 	featAsiEligibleLevelCount = 0,
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
+	spellRequirement: SpellRequirement | null = null,
 ): boolean {
-	return pickerSteps(expertiseRequiredCount, featAsiEligibleLevelCount).every((step) =>
-		isStepComplete(step, data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice),
+	return pickerSteps(expertiseRequiredCount, featAsiEligibleLevelCount, spellRequirement).every((step) =>
+		isStepComplete(step, data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice, spellRequirement),
 	)
 }
 
@@ -231,8 +285,14 @@ export type WizardAction =
 			expertiseRequiredCount?: number | null
 			featAsiEligibleLevelCount?: number
 			featsRequiringAbilityChoice?: ReadonlySet<string>
+			spellRequirement?: SpellRequirement | null
 	  }
-	| { type: 'back'; expertiseRequiredCount?: number | null; featAsiEligibleLevelCount?: number }
+	| {
+			type: 'back'
+			expertiseRequiredCount?: number | null
+			featAsiEligibleLevelCount?: number
+			spellRequirement?: SpellRequirement | null
+	  }
 	| { type: 'setName'; name: string }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
@@ -248,6 +308,7 @@ export type WizardAction =
 	| { type: 'setSubclass'; subclass: SubclassChoice | null }
 	| { type: 'setOptionalFeatureChoices'; choices: string[] }
 	| { type: 'setFeatAsiChoices'; choices: FeatAsiChoice[] }
+	| { type: 'setSpellChoices'; choices: SpellPick[] }
 
 /**
  * Pure navigation + edit reducer. `next` is a no-op unless the current step
@@ -260,12 +321,18 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			const eligibility = action.expertiseRequiredCount ?? null
 			const featAsiCount = action.featAsiEligibleLevelCount ?? 0
 			const featsRequiringAbilityChoice = action.featsRequiringAbilityChoice ?? EMPTY_FEAT_SET
-			if (!isStepComplete(state.step, state.data, eligibility, featAsiCount, featsRequiringAbilityChoice)) return state
-			const next = nextStep(state.step, eligibility, featAsiCount)
+			const spellRequirement = action.spellRequirement ?? null
+			if (!isStepComplete(state.step, state.data, eligibility, featAsiCount, featsRequiringAbilityChoice, spellRequirement)) return state
+			const next = nextStep(state.step, eligibility, featAsiCount, spellRequirement)
 			return next ? { ...state, step: next } : state
 		}
 		case 'back': {
-			const prev = previousStep(state.step, action.expertiseRequiredCount ?? null, action.featAsiEligibleLevelCount ?? 0)
+			const prev = previousStep(
+				state.step,
+				action.expertiseRequiredCount ?? null,
+				action.featAsiEligibleLevelCount ?? 0,
+				action.spellRequirement ?? null,
+			)
 			return prev ? { ...state, step: prev } : state
 		}
 		case 'setName':
@@ -283,6 +350,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					subclass: null,
 					optionalFeatureChoices: [],
 					featAsiChoices: [],
+					spellChoices: [],
 				},
 			}
 		case 'setSpeciesChoice':
@@ -317,11 +385,13 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setFightingStyle':
 			return { ...state, data: { ...state.data, fightingStyle: action.style } }
 		case 'setSubclass':
-			return { ...state, data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [] } }
+			return { ...state, data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [], spellChoices: [] } }
 		case 'setOptionalFeatureChoices':
 			return { ...state, data: { ...state.data, optionalFeatureChoices: action.choices } }
 		case 'setFeatAsiChoices':
 			return { ...state, data: { ...state.data, featAsiChoices: action.choices } }
+		case 'setSpellChoices':
+			return { ...state, data: { ...state.data, spellChoices: action.choices } }
 	}
 }
 
@@ -351,8 +421,9 @@ export function saveCharacter(
 	expertiseRequiredCount: number | null = null,
 	featAsiEligibleLevelCount = 0,
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
+	spellRequirement: SpellRequirement | null = null,
 ): Character {
-	if (!isReadyToSave(data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice)) {
+	if (!isReadyToSave(data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice, spellRequirement)) {
 		throw new Error('Cannot save a character before every step is complete.')
 	}
 
@@ -399,6 +470,18 @@ export function saveCharacter(
 			? [{ featureType: data.subclass.featureType, choices: data.optionalFeatureChoices }]
 			: undefined
 
+	/** Tagged with the class the picks belong to (D11), same reasoning as optionalFeatureChoices — only name+source survive into storage, the picker's own `level` field (used for its in-wizard count checks) is dropped here. */
+	const spellChoices: CharacterSpellChoice[] | undefined =
+		data.spellChoices.length > 0 && data.classChoice
+			? [
+					{
+						className: data.classChoice.className,
+						classSource: data.classChoice.classSource,
+						spells: data.spellChoices.map(({ name, source }) => ({ name, source })),
+					},
+				]
+			: undefined
+
 	return store.create(
 		data.name,
 		classes,
@@ -414,5 +497,6 @@ export function saveCharacter(
 		data.speciesSkills,
 		data.expertiseSkills,
 		data.featAsiChoices,
+		spellChoices,
 	)
 }

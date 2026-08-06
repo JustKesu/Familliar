@@ -34,6 +34,7 @@ function completeData(): WizardData {
 		subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' },
 		optionalFeatureChoices: ['Precision Attack'],
 		featAsiChoices: [],
+		spellChoices: [],
 	}
 }
 
@@ -202,6 +203,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 		)
 	})
 
@@ -228,6 +230,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 		)
 	})
 
@@ -258,6 +261,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 		)
 	})
 
@@ -291,6 +295,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			['stealth', 'perception'],
 			[],
+			undefined,
 		)
 	})
 

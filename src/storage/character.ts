@@ -152,6 +152,23 @@ export interface Character {
 	 * slice); this is selection and storage only.
 	 */
 	featAsiChoices?: FeatAsiChoice[]
+	/**
+	 * Optional for the same reason as abilityScores above. The character's
+	 * class spell picks (build order step 6 slice d2) — cantrips and leveled
+	 * spells, prepared/known distinction is a LABEL only, not stored (there is
+	 * one picker, not two). One entry per class in `character.classes` (D11),
+	 * same reasoning as optionalFeatureChoices — a future multiclass caster's
+	 * picks stay unambiguous. Subclass always-prepared spells (domains, oaths,
+	 * circles) are OUT of scope (slice d2b); nothing here represents them.
+	 */
+	spellChoices?: CharacterSpellChoice[]
+}
+
+/** One class's spell picks. `spells` names each pick (name + source) only — level, ritual, concentration etc. are re-derived from spells.json when needed (sheet display, slice d4), not duplicated here. */
+export interface CharacterSpellChoice {
+	className: string
+	classSource: string
+	spells: { name: string; source: string }[]
 }
 
 /** One subclass optionalfeatureProgression's picks, tagged with which progression (featureType code) they belong to. */
@@ -191,11 +208,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 9 to add FeatAsiChoice.chosenAbility — the
- * half-feat ability-choice slice. Per PHASE1.md section D, and per
- * docs/QUESTIONS.md "Migrace uložených postav", a version bump this app does
- * not understand is rejected outright (UnknownSchemaVersionError) rather
- * than guessed at — no migration from version 8 is written, so a character
- * saved before this change will no longer load and must be recreated.
+ * (see wireFormat.ts). Bumped to 10 to add Character.spellChoices — the
+ * class spell picker (build order step 6 slice d2). Per PHASE1.md section D,
+ * and per docs/QUESTIONS.md "Migrace uložených postav", a version bump this
+ * app does not understand is rejected outright (UnknownSchemaVersionError)
+ * rather than guessed at — no migration from version 9 is written, so a
+ * character saved before this change will no longer load and must be
+ * recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 9
+export const CURRENT_SCHEMA_VERSION = 10

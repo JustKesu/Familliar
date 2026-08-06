@@ -8,6 +8,7 @@ import type {
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
+	CharacterSpellChoice,
 	FeatAsiChoice,
 	LanguageGrantSource,
 } from './character'
@@ -366,6 +367,39 @@ export function describeFeatAsiChoicesError(value: unknown): string | null {
 	return null
 }
 
+/** Validates an optional `spellChoices` field. Returns null if the field is absent (it's optional). */
+export function describeSpellChoicesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `spellChoices must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `spellChoices[${i}] is not an object`
+		if (!isNonEmptyString(entry['className'])) return `spellChoices[${i}].className is missing or not a string`
+		if (!isNonEmptyString(entry['classSource'])) return `spellChoices[${i}].classSource is missing or not a string`
+		const spells = entry['spells']
+		if (!Array.isArray(spells)) return `spellChoices[${i}].spells must be an array`
+		for (let j = 0; j < spells.length; j++) {
+			const spell: unknown = spells[j]
+			if (!isRecord(spell)) return `spellChoices[${i}].spells[${j}] is not an object`
+			if (!isNonEmptyString(spell['name'])) return `spellChoices[${i}].spells[${j}].name is missing or not a string`
+			if (!isNonEmptyString(spell['source'])) return `spellChoices[${i}].spells[${j}].source is missing or not a string`
+		}
+	}
+	return null
+}
+
+function toCharacterSpellChoices(value: unknown[]): CharacterSpellChoice[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		const spells = record['spells'] as Record<string, unknown>[]
+		return {
+			className: record['className'] as string,
+			classSource: record['classSource'] as string,
+			spells: spells.map((spell) => ({ name: spell['name'] as string, source: spell['source'] as string })),
+		}
+	})
+}
+
 function toCharacterFeatAsiChoices(value: unknown[]): FeatAsiChoice[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
@@ -419,6 +453,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (optionalFeatureChoicesError) return `[${index}].${optionalFeatureChoicesError}`
 	const featAsiChoicesError = describeFeatAsiChoicesError(value['featAsiChoices'])
 	if (featAsiChoicesError) return `[${index}].${featAsiChoicesError}`
+	const spellChoicesError = describeSpellChoicesError(value['spellChoices'])
+	if (spellChoicesError) return `[${index}].${spellChoicesError}`
 	return null
 }
 
@@ -444,6 +480,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const fightingStyle = value['fightingStyle']
 	const optionalFeatureChoices = value['optionalFeatureChoices']
 	const featAsiChoices = value['featAsiChoices']
+	const spellChoices = value['spellChoices']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -462,6 +499,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 			? { optionalFeatureChoices: toCharacterOptionalFeatureChoices(optionalFeatureChoices) }
 			: {}),
 		...(Array.isArray(featAsiChoices) ? { featAsiChoices: toCharacterFeatAsiChoices(featAsiChoices) } : {}),
+		...(Array.isArray(spellChoices) ? { spellChoices: toCharacterSpellChoices(spellChoices) } : {}),
 	}
 }
 

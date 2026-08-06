@@ -19,6 +19,13 @@ import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
+import { SpellPicker } from '../spells/SpellPicker'
+import { loadSpellCountClassData } from '../spells/spellCountClassData'
+import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
+import { computeSpellCounts } from '../calculation/spellCounts'
+import { computeSpellSlots } from '../calculation/spellSlots'
+import type { ClassSpellCountData } from '../calculation/spellCounts'
+import type { ClassSpellSlotsData } from '../calculation/spellSlots'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
@@ -29,6 +36,7 @@ import {
 	stepIndex,
 	visibleSteps,
 	wizardReducer,
+	type SpellRequirement,
 	type WizardStep,
 } from './wizardState'
 
@@ -52,6 +60,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	expertise: 'Expertise',
 	languages: 'Languages',
 	abilities: 'Ability scores',
+	spells: 'Spells',
 	featAsi: 'Ability Score Improvement / Feat',
 	review: 'Review and save',
 }
@@ -72,6 +81,8 @@ export function CharacterWizard({
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
 	const [featAsiGrantCount, setFeatAsiGrantCount] = useState(0)
 	const [featsNeedingAbilityChoice, setFeatsNeedingAbilityChoice] = useState<ReadonlySet<string>>(new Set())
+	const [spellSlotsClassData, setSpellSlotsClassData] = useState<ClassSpellSlotsData[]>([])
+	const [spellCountClassData, setSpellCountClassData] = useState<ClassSpellCountData[]>([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -81,6 +92,34 @@ export function CharacterWizard({
 			})
 			.catch(() => {
 				/* The background step's own picker already surfaces load errors; this lookup is best-effort. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	/**
+	 * The full spell-slots/spell-count class data (all classes, every
+	 * level) — loaded once, independent of the chosen class, same reasoning
+	 * as `backgrounds` above. Feeds computeSpellSlots/computeSpellCounts
+	 * (already-built calculation layer, slice b and d2) against a draft
+	 * Character below, rather than duplicating either function's own logic.
+	 */
+	useEffect(() => {
+		let cancelled = false
+		loadSpellSlotsClassData()
+			.then((loaded) => {
+				if (!cancelled) setSpellSlotsClassData(loaded)
+			})
+			.catch(() => {
+				/* Best-effort, same as the other class-data lookups above; the spell step surfaces its own load errors. */
+			})
+		loadSpellCountClassData()
+			.then((loaded) => {
+				if (!cancelled) setSpellCountClassData(loaded)
+			})
+			.catch(() => {
+				/* Best-effort, same as the other class-data lookups above; the spell step surfaces its own load errors. */
 			})
 		return () => {
 			cancelled = true
@@ -246,6 +285,37 @@ export function CharacterWizard({
 		}),
 	) as Partial<Record<Ability, number>>
 
+	/**
+	 * Slots (slice b) and counts (slice d2) via the calculation layer,
+	 * reused unchanged — this only builds the draft Character they need
+	 * (real classes.json data loaded once above) and reads off the single
+	 * class's entry, phase-1 D11. Eldritch Knight/Arcane Trickster (D46)
+	 * flow through for free: their subclass name is already on the draft,
+	 * and both compute functions already fall back to the subclass's own
+	 * table when the base class has none.
+	 */
+	const draftCharacterForSpells: Character = {
+		id: '',
+		name: state.data.name,
+		classes: state.data.classChoice
+			? [
+					{
+						className: state.data.classChoice.className,
+						classSource: state.data.classChoice.classSource,
+						subclass: state.data.subclass?.name ?? null,
+						level: state.data.classChoice.level,
+					},
+				]
+			: [],
+	}
+	const spellSlotsResult = computeSpellSlots(draftCharacterForSpells, spellSlotsClassData)
+	const spellCountsResult = computeSpellCounts(draftCharacterForSpells, spellCountClassData)
+	const spellSlotsEntry = spellSlotsResult.status === 'known' ? spellSlotsResult.value[0] : undefined
+	const spellCountEntry = spellCountsResult.status === 'known' ? spellCountsResult.value[0] : undefined
+	const spellRequirement: SpellRequirement | null = spellCountEntry
+		? { cantripCount: spellCountEntry.cantripCount, leveledSpellCount: spellCountEntry.leveledSpellCount, label: spellCountEntry.label }
+		: null
+
 	function handleSave(): void {
 		try {
 			const character = saveCharacter(
@@ -255,6 +325,7 @@ export function CharacterWizard({
 				expertiseRequiredCount,
 				featAsiGrantCount,
 				featsNeedingAbilityChoice,
+				spellRequirement,
 			)
 			setSaveError(null)
 			onSaved(character)
@@ -263,12 +334,19 @@ export function CharacterWizard({
 		}
 	}
 
-	const canGoNext = isStepComplete(state.step, state.data, expertiseRequiredCount, featAsiGrantCount, featsNeedingAbilityChoice)
+	const canGoNext = isStepComplete(
+		state.step,
+		state.data,
+		expertiseRequiredCount,
+		featAsiGrantCount,
+		featsNeedingAbilityChoice,
+		spellRequirement,
+	)
 
 	return (
 		<div className="wizard">
 			<ol className="wizard__steps">
-				{visibleSteps(expertiseRequiredCount, featAsiGrantCount).map((step, index) => (
+				{visibleSteps(expertiseRequiredCount, featAsiGrantCount, spellRequirement).map((step, index) => (
 					<li
 						key={step}
 						className={step === state.step ? 'wizard__step wizard__step--active' : 'wizard__step'}
@@ -410,6 +488,21 @@ export function CharacterWizard({
 				</div>
 			)}
 
+			{state.step === 'spells' && state.data.classChoice && spellRequirement && (
+				<div className="wizard__panel">
+					<SpellPicker
+						className={state.data.classChoice.className}
+						classSource={state.data.classChoice.classSource}
+						spellSlots={spellSlotsEntry}
+						cantripCount={spellRequirement.cantripCount}
+						leveledSpellCount={spellRequirement.leveledSpellCount}
+						label={spellRequirement.label}
+						value={state.data.spellChoices}
+						onChange={(choices) => dispatch({ type: 'setSpellChoices', choices })}
+					/>
+				</div>
+			)}
+
 			{state.step === 'featAsi' && state.data.classChoice && (
 				<div className="wizard__panel">
 					<FeatAsiPicker
@@ -445,6 +538,9 @@ export function CharacterWizard({
 					</p>
 					<p>Ability score method: {state.data.abilityScores?.method ?? '—'}</p>
 					<p>
+						Spells: {state.data.spellChoices.length > 0 ? state.data.spellChoices.map((s) => s.name).join(', ') : '—'}
+					</p>
+					<p>
 						Ability Score Improvements / feats:{' '}
 						{state.data.featAsiChoices.length > 0
 							? state.data.featAsiChoices
@@ -468,8 +564,10 @@ export function CharacterWizard({
 				</button>
 				<button
 					type="button"
-					onClick={() => dispatch({ type: 'back', expertiseRequiredCount, featAsiEligibleLevelCount: featAsiGrantCount })}
-					disabled={stepIndex(state.step, expertiseRequiredCount, featAsiGrantCount) === 0}
+					onClick={() =>
+						dispatch({ type: 'back', expertiseRequiredCount, featAsiEligibleLevelCount: featAsiGrantCount, spellRequirement })
+					}
+					disabled={stepIndex(state.step, expertiseRequiredCount, featAsiGrantCount, spellRequirement) === 0}
 				>
 					Back
 				</button>
@@ -477,7 +575,9 @@ export function CharacterWizard({
 					<button
 						type="button"
 						onClick={handleSave}
-						disabled={!isReadyToSave(state.data, expertiseRequiredCount, featAsiGrantCount, featsNeedingAbilityChoice)}
+						disabled={
+							!isReadyToSave(state.data, expertiseRequiredCount, featAsiGrantCount, featsNeedingAbilityChoice, spellRequirement)
+						}
 					>
 						Create character
 					</button>
@@ -490,6 +590,7 @@ export function CharacterWizard({
 								expertiseRequiredCount,
 								featAsiEligibleLevelCount: featAsiGrantCount,
 								featsRequiringAbilityChoice: featsNeedingAbilityChoice,
+								spellRequirement,
 							})
 						}
 						disabled={!canGoNext}
