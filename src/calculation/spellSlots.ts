@@ -14,12 +14,27 @@
  * casterProgression only says WHICH table shape to expect (DATA.md,
  * "Traps") — the slot counts themselves always come from the class's own
  * table in the supplied data, never computed from the progression name.
+ *
+ * D46 — Eldritch Knight and Arcane Trickster ("1/3" casters) keep their
+ * slot table on the SUBCLASS entry (classes.json's `subclassTableGroups`),
+ * not the base class (Fighter/Rogue have no table of their own). Row shape
+ * there is identical to a base class's `rowsSpellProgression` — same
+ * reading/padding logic, just a second location to check when the base
+ * class itself has none. A "1/3" caster's slots are ordinary slots (never
+ * pact), just from a narrower table (max spell level 4).
  */
 
 import type { Character, CharacterClass } from '../storage/character'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
-export type CasterProgression = 'full' | 'artificer' | 'pact'
+export type CasterProgression = 'full' | 'artificer' | 'pact' | '1/3'
+
+/** One subclass's own spell-slot table (D46) — present only for a subclass that keeps its table on the subclass entry, e.g. Eldritch Knight/Arcane Trickster. */
+export interface SubclassSpellSlotsData {
+	subclassName: string
+	casterProgression: CasterProgression
+	spellSlotsByLevel: number[][]
+}
 
 /**
  * The subset of a classes.json entry this calculation needs. For a
@@ -28,6 +43,8 @@ export type CasterProgression = 'full' | 'artificer' | 'pact'
  * assumed to be 9; short rows just mean the higher spell levels don't exist
  * for that class. For a Pact Magic caster, `pactSlotsByLevel[level - 1]` is
  * that level's `{ count, slotLevel }`. A non-caster class has neither array.
+ * `subclasses` (D46) carries a slot table per subclass that keeps its own —
+ * only checked when the base class itself has no `spellSlotsByLevel`.
  */
 export interface ClassSpellSlotsData {
 	className: string
@@ -35,6 +52,7 @@ export interface ClassSpellSlotsData {
 	casterProgression: CasterProgression | null
 	spellSlotsByLevel: number[][] | null
 	pactSlotsByLevel: { count: number; slotLevel: number }[] | null
+	subclasses?: SubclassSpellSlotsData[]
 }
 
 export interface PactSlots {
@@ -57,6 +75,12 @@ function findClassSpellSlotsData(characterClass: CharacterClass, classData: Clas
 	return classData.find((c) => c.className === characterClass.className && c.classSource === characterClass.classSource)
 }
 
+/** D46: only consulted when the base class itself has no `spellSlotsByLevel` — Eldritch Knight/Arcane Trickster's table lives here instead. */
+function findSubclassSpellSlotsData(characterClass: CharacterClass, classEntry: ClassSpellSlotsData): SubclassSpellSlotsData | undefined {
+	if (!characterClass.subclass) return undefined
+	return classEntry.subclasses?.find((s) => s.subclassName === characterClass.subclass)
+}
+
 const SPELL_LEVELS = 9
 
 export function computeSpellSlots(character: Character, classData: ClassSpellSlotsData[]): Calculated<SpellSlotsEntry[]> {
@@ -73,11 +97,22 @@ export function computeSpellSlots(character: Character, classData: ClassSpellSlo
 		if (!classEntry) {
 			return unknown(`No spell slot data for class "${characterClass.className}" (${characterClass.classSource}).`)
 		}
-		if (classEntry.casterProgression === null) continue
+
+		// D46: the base class (Fighter/Rogue) carries no table of its own for a "1/3" caster — check the chosen subclass before giving up.
+		let casterProgression = classEntry.casterProgression
+		let spellSlotsByLevel = classEntry.spellSlotsByLevel
+		if (classEntry.spellSlotsByLevel === null && classEntry.casterProgression !== 'pact') {
+			const subclassEntry = findSubclassSpellSlotsData(characterClass, classEntry)
+			if (subclassEntry) {
+				casterProgression = subclassEntry.casterProgression
+				spellSlotsByLevel = subclassEntry.spellSlotsByLevel
+			}
+		}
+		if (casterProgression === null) continue
 
 		const levelIndex = characterClass.level - 1
 
-		if (classEntry.casterProgression === 'pact') {
+		if (casterProgression === 'pact') {
 			const row = classEntry.pactSlotsByLevel?.[levelIndex]
 			if (!row) {
 				return unknown(`No Pact Magic slot row for class "${characterClass.className}" at level ${characterClass.level}.`)
@@ -96,7 +131,7 @@ export function computeSpellSlots(character: Character, classData: ClassSpellSlo
 			continue
 		}
 
-		const row = classEntry.spellSlotsByLevel?.[levelIndex]
+		const row = spellSlotsByLevel?.[levelIndex]
 		if (!row) {
 			return unknown(`No spell slot row for class "${characterClass.className}" at level ${characterClass.level}.`)
 		}

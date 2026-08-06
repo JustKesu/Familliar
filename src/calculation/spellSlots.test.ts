@@ -46,21 +46,62 @@ const warlockSlots: ClassSpellSlotsData = {
 	],
 }
 
+// D46: Eldritch Knight/Arcane Trickster keep their table on the subclass entry (subclassTableGroups),
+// not the base class — rows confirmed against data/classes.json by scripts/investigate-third-caster-slots.js.
 const fighterSlots: ClassSpellSlotsData = {
 	className: 'Fighter',
 	classSource: 'XPHB',
 	casterProgression: null,
 	spellSlotsByLevel: null,
 	pactSlotsByLevel: null,
+	subclasses: [
+		{
+			subclassName: 'Eldritch Knight',
+			casterProgression: '1/3',
+			spellSlotsByLevel: [
+				[0, 0, 0, 0],
+				[0, 0, 0, 0],
+				[2, 0, 0, 0],
+				[3, 0, 0, 0],
+				[3, 0, 0, 0],
+				[3, 0, 0, 0],
+				[4, 2, 0, 0],
+			],
+		},
+		// Champion carries no spell-slot table at all — confirms a non-spellcasting subclass yields no slots, not an error.
+	],
 }
 
-const classData = [wizardSlots, paladinSlots, warlockSlots, fighterSlots]
+const rogueSlots: ClassSpellSlotsData = {
+	className: 'Rogue',
+	classSource: 'XPHB',
+	casterProgression: null,
+	spellSlotsByLevel: null,
+	pactSlotsByLevel: null,
+	subclasses: [
+		{
+			subclassName: 'Arcane Trickster',
+			casterProgression: '1/3',
+			spellSlotsByLevel: [
+				[0, 0, 0, 0],
+				[0, 0, 0, 0],
+				[2, 0, 0, 0],
+				[3, 0, 0, 0],
+				[3, 0, 0, 0],
+				[3, 0, 0, 0],
+				[4, 2, 0, 0],
+			],
+		},
+	],
+}
 
-function characterWithClass(className: string, level: number): Character {
+const classData = [wizardSlots, paladinSlots, warlockSlots, fighterSlots, rogueSlots]
+
+function characterWithClass(className: string, level: number, subclass: string | null = null): Character {
 	return {
 		id: '1',
 		name: 'Test',
-		classes: [{ className, classSource: 'XPHB', subclass: null, level }],
+		classes: [{ className, classSource: 'XPHB', subclass, level }],
 	}
 }
 
@@ -92,6 +133,30 @@ describe('computeSpellSlots', () => {
 
 	it('a non-caster (Fighter): no slots at all, cleanly — empty list, not zeroes, not an error', () => {
 		const result = computeSpellSlots(characterWithClass('Fighter', 5), classData)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toEqual([])
+	})
+
+	it('D46: Eldritch Knight (Fighter 7) reads its slot table off the SUBCLASS entry, padded to 1-9, no pact slots', () => {
+		const result = computeSpellSlots(characterWithClass('Fighter', 7, 'Eldritch Knight'), classData)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toHaveLength(1)
+		expect(result.value[0].ordinarySlots).toEqual([4, 2, 0, 0, 0, 0, 0, 0, 0])
+		expect(result.value[0].pactSlots).toBeUndefined()
+	})
+
+	it('D46: Arcane Trickster (Rogue 3) reads its slot table off the SUBCLASS entry, padded to 1-9', () => {
+		const result = computeSpellSlots(characterWithClass('Rogue', 3, 'Arcane Trickster'), classData)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value[0].ordinarySlots).toEqual([2, 0, 0, 0, 0, 0, 0, 0, 0])
+		expect(result.value[0].pactSlots).toBeUndefined()
+	})
+
+	it('D46: a Fighter with a non-spellcasting subclass (Champion) still yields no slots, cleanly — not an error', () => {
+		const result = computeSpellSlots(characterWithClass('Fighter', 7, 'Champion'), classData)
 		expect(result.status).toBe('known')
 		if (result.status !== 'known') return
 		expect(result.value).toEqual([])
