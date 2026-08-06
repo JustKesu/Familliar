@@ -100,15 +100,27 @@ to allowed sources silently loses their readable type.
 but Noble uses "Skilled|xphb". Lowercase both sides before matching or
 Noble silently loses its origin feat.
 
-### Spell availability: `classes` vs `classVariants`
+### Spell availability: `availableTo.classes` vs `availableTo.classVariants`
 XGE and TCE spells were never on core class lists — they're granted as
-optional/variant content and land in `classVariants`, not `classes`.
+optional/variant content and land in `availableTo.classVariants`, not
+`availableTo.classes`. Both fields sit nested one level under a spell's
+`availableTo` object, not top-level.
 91 spells have an empty `classes` array but a populated `classVariants`;
 0 have no availability at all (measured against the current filtered
 data/spells.json, 489 spells — an older 109 figure was measured against a
 larger/unfiltered set).
 The UI must read both, ideally flagged differently, or every XGE/TCE
 spell will look uncastable.
+
+### Third-caster spell slots live on the subclass, not the base class
+Eldritch Knight (Fighter) and Arcane Trickster (Rogue) keep their spell-slot
+table under `subclassTableGroups` on the SUBCLASS entry, not under
+`classTableGroups` on the base class where every other class's slot table
+lives. Row shape matches the base-class tables (one row per character level,
+per-spell-level slot counts, only reaching spell level 4). Of all 114
+subclasses checked, these are the only two with their own slot table. Code
+reading spell slots must fall through to the subclass's `subclassTableGroups`
+when the base class has none.
 
 ### `casterProgression` names a table, not a class
 `casterProgression` (data/classes.json) names a shared spell-slot
@@ -117,8 +129,9 @@ progression TABLE, not a class. Paladin and Ranger both carry the value
 all three are half-casters sharing one slot progression. Code reading this
 field must treat the value as a table name, never as a class-identity
 check. Values seen: "full", "pact" (Warlock), "artificer" (Artificer,
-Paladin, Ranger). Non-casters (Barbarian, Fighter, Monk, Rogue) have no
-`casterProgression` field at all.
+Paladin, Ranger), "1/3" (Eldritch Knight, Arcane Trickster — carried on
+the subclass entry, see "Third-caster spell slots" above). Non-casters
+(Barbarian, Fighter, Monk, Rogue) have no `casterProgression` field at all.
 
 ### Armour AC — the data won't tell you
 `ac` is the base number. There is NO Dex cap field; the cap is implied by
