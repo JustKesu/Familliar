@@ -7,7 +7,25 @@ const wizardAbility: ClassSpellcastingAbility = { className: 'Wizard', classSour
 const paladinAbility: ClassSpellcastingAbility = { className: 'Paladin', classSource: 'XPHB', ability: 'cha' }
 const clericAbility: ClassSpellcastingAbility = { className: 'Cleric', classSource: 'XPHB', ability: 'wis' }
 const fighterAbility: ClassSpellcastingAbility = { className: 'Fighter', classSource: 'XPHB', ability: null }
+
+// D46: Eldritch Knight/Arcane Trickster keep their ability on the subclass entry (classes.json),
+// not the base class — confirmed by scripts/investigate-subclass-spellcasting-ability.js.
+const fighterWithEkAbility: ClassSpellcastingAbility = {
+	className: 'Fighter',
+	classSource: 'XPHB',
+	ability: null,
+	subclasses: [{ subclassName: 'Eldritch Knight', ability: 'int' }],
+}
+const rogueWithAtAbility: ClassSpellcastingAbility = {
+	className: 'Rogue',
+	classSource: 'XPHB',
+	ability: null,
+	subclasses: [{ subclassName: 'Arcane Trickster', ability: 'int' }],
+	// Champion (Fighter) and other non-spellcasting subclasses carry no entry here — confirms a non-spellcasting subclass yields no ability, not an error.
+}
+
 const classData = [wizardAbility, paladinAbility, clericAbility, fighterAbility]
+const thirdCasterClassData = [wizardAbility, paladinAbility, clericAbility, fighterWithEkAbility, rogueWithAtAbility]
 
 const wizard5: Character = {
 	id: '1',
@@ -37,6 +55,33 @@ const fighter5: Character = {
 		method: 'standardArray',
 		scores: { strength: 16, dexterity: 14, constitution: 14, intelligence: 10, wisdom: 10, charisma: 8 },
 	},
+}
+
+const eldritchKnight5: Character = {
+	id: '7',
+	name: 'EldritchKnight5',
+	classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Eldritch Knight', level: 5 }],
+	abilityScores: {
+		method: 'standardArray',
+		scores: { strength: 15, dexterity: 14, constitution: 14, intelligence: 13, wisdom: 10, charisma: 8 },
+	},
+}
+
+const arcaneTrickster5: Character = {
+	id: '8',
+	name: 'ArcaneTrickster5',
+	classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: 'Arcane Trickster', level: 5 }],
+	abilityScores: {
+		method: 'standardArray',
+		scores: { strength: 8, dexterity: 16, constitution: 14, intelligence: 15, wisdom: 10, charisma: 10 },
+	},
+}
+
+const champion5: Character = {
+	id: '9',
+	name: 'Champion5',
+	classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 5 }],
+	abilityScores: fighter5.abilityScores,
 }
 
 describe('computeSpellcasting', () => {
@@ -153,5 +198,60 @@ describe('computeSpellcasting', () => {
 		if (withoutFeat.status !== 'known' || result.status !== 'known') return
 		expect(result.value[0].spellAttackBonus).toBe(withoutFeat.value[0].spellAttackBonus + 1)
 		expect(result.value[0].spellSaveDC).toBe(withoutFeat.value[0].spellSaveDC + 1)
+	})
+
+	it('D46: an Eldritch Knight (Fighter 5) gets its spellcasting ability (INT) from the subclass, not the base class', () => {
+		const result = computeSpellcasting(eldritchKnight5, thirdCasterClassData)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toEqual([
+			{
+				className: 'Fighter',
+				classSource: 'XPHB',
+				ability: 'intelligence',
+				spellAttackBonus: 4,
+				spellAttackBreakdown: [
+					{ source: 'intelligence modifier', amount: 1 },
+					{ source: 'proficiency bonus', amount: 3 },
+				],
+				spellSaveDC: 12,
+				spellSaveDCBreakdown: [
+					{ source: 'base', amount: 8 },
+					{ source: 'intelligence modifier', amount: 1 },
+					{ source: 'proficiency bonus', amount: 3 },
+				],
+			},
+		])
+	})
+
+	it('D46: an Arcane Trickster (Rogue 5) gets its spellcasting ability (INT) from the subclass, not the base class', () => {
+		const result = computeSpellcasting(arcaneTrickster5, thirdCasterClassData)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toEqual([
+			{
+				className: 'Rogue',
+				classSource: 'XPHB',
+				ability: 'intelligence',
+				spellAttackBonus: 5,
+				spellAttackBreakdown: [
+					{ source: 'intelligence modifier', amount: 2 },
+					{ source: 'proficiency bonus', amount: 3 },
+				],
+				spellSaveDC: 13,
+				spellSaveDCBreakdown: [
+					{ source: 'base', amount: 8 },
+					{ source: 'intelligence modifier', amount: 2 },
+					{ source: 'proficiency bonus', amount: 3 },
+				],
+			},
+		])
+	})
+
+	it('D46: a Fighter with a non-spellcasting subclass (Champion) contributes no entry — not an error, not a zero', () => {
+		const result = computeSpellcasting(champion5, thirdCasterClassData)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toEqual([])
 	})
 })

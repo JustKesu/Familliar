@@ -26,7 +26,11 @@
  * - classes.json's `spellcastingAbility` field, shaped into
  *   spellcasting.ts's ClassSpellcastingAbility — a class entry with no such
  *   field (Barbarian, Fighter, Monk, Rogue) gets `ability: null`, matching
- *   what computeSpellcasting already expects for a non-caster class.
+ *   what computeSpellcasting already expects for a non-caster class. D46:
+ *   Eldritch Knight/Arcane Trickster's own spellcastingAbility is carried
+ *   under `subclasses`, gated on the subclass also having its own spell-slot
+ *   table (excludes Path of the Ancestral Guardian, which has the ability
+ *   field but no slots — scripts/investigate-subclass-spellcasting-ability.js).
  * - a subclass's SOURCE, resolved from its stored NAME only (build order
  *   step 6 slice d4). Character.classes[].subclass stores just the
  *   subclass's name (wizardState.ts's saveCharacter drops the source it had
@@ -162,18 +166,52 @@ function isSpellcastingAbilityEntry(value: unknown): value is { entryType: strin
 	return isRecord(value) && value.entryType === 'class' && typeof value.name === 'string' && typeof value.source === 'string'
 }
 
+interface RawSubclassSpellcastingEntry {
+	entryType: string
+	name: string
+	className: string
+	classSource: string
+	spellcastingAbility?: unknown
+	casterProgression?: unknown
+	subclassTableGroups?: unknown
+}
+
+function isRawSubclassSpellcastingEntry(value: unknown): value is RawSubclassSpellcastingEntry {
+	return (
+		isRecord(value) &&
+		value['entryType'] === 'subclass' &&
+		typeof value['name'] === 'string' &&
+		typeof value['className'] === 'string' &&
+		typeof value['classSource'] === 'string'
+	)
+}
+
+/** D46: a subclass's own spellcastingAbility only counts here if it also has its own slot table — Path of the Ancestral Guardian carries the field but no slots, so it stays excluded (nothing to cast, per the user's decision this session). */
+function hasOwnSpellSlotTable(entry: RawSubclassSpellcastingEntry): boolean {
+	if (!entry.casterProgression) return false
+	return Array.isArray(entry.subclassTableGroups) && entry.subclassTableGroups.some((g) => isRecord(g) && Array.isArray(g['rowsSpellProgression']))
+}
+
 export function extractSpellcastingAbilityClassData(parsed: unknown): ClassSpellcastingAbility[] {
 	if (!Array.isArray(parsed)) {
 		throw new Error('classes.json: expected a top-level array.')
 	}
 
+	const subclasses = parsed.filter(isRawSubclassSpellcastingEntry)
+
 	const result: ClassSpellcastingAbility[] = []
 	for (const entry of parsed) {
 		if (!isSpellcastingAbilityEntry(entry)) continue
+		const classSubclasses = subclasses
+			.filter((sc) => sc.className === entry.name && sc.classSource === entry.source)
+			.filter((sc) => typeof sc.spellcastingAbility === 'string' && hasOwnSpellSlotTable(sc))
+			.map((sc) => ({ subclassName: sc.name, ability: sc.spellcastingAbility as AbilityAbbreviation }))
+
 		result.push({
 			className: entry.name,
 			classSource: entry.source,
 			ability: typeof entry.spellcastingAbility === 'string' ? (entry.spellcastingAbility as AbilityAbbreviation) : null,
+			...(classSubclasses.length > 0 ? { subclasses: classSubclasses } : {}),
 		})
 	}
 	return result
