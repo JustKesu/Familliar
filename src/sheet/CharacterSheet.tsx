@@ -509,12 +509,14 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 							</ul>
 						</section>
 					)}
-
-					<section className="sheet__spells">
-						<h2>Spells</h2>
-						<SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />
-					</section>
 				</>
+			)}
+
+			{combinedSpells.length > 0 && (
+				<section className="sheet__spells">
+					<h2>Spells</h2>
+					<SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />
+				</section>
 			)}
 		</article>
 	)

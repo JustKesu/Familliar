@@ -323,6 +323,7 @@ describe('CharacterSheet', () => {
 			vi.mocked(loadSpellDetails).mockReset().mockResolvedValue([])
 			vi.mocked(loadSubclassSource).mockReset().mockResolvedValue(null)
 			vi.mocked(loadSubclassAlwaysPreparedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadFeatGrantedSpells).mockReset().mockResolvedValue([])
 		})
 
 		it('a full caster (Wizard) shows spell attack/DC with a breakdown, slots per level, and chosen spells grouped by level with detail on expand', async () => {
@@ -530,6 +531,114 @@ describe('CharacterSheet', () => {
 
 			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
 			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+			expect(container.querySelector('.sheet__spells')).toBeNull()
+		})
+
+		it('a non-caster (Fighter) with Magic Initiate still shows the Spells list, with no attack/DC and no slots section', async () => {
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Fire Bolt', source: 'XPHB', level: 0, entries: ['You hurl a mote of fire.'] }),
+				spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0, entries: ['A spectral hand appears.'] }),
+				spellDetail({ name: 'Shield', source: 'XPHB', level: 1, entries: ['An invisible barrier of magical force.'] }),
+			]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Fire Bolt', source: 'XPHB', level: 0, ritual: false, concentration: false, origin: 'feat', featName: 'Magic Initiate', ability: 'int' },
+				{ name: 'Mage Hand', source: 'XPHB', level: 0, ritual: false, concentration: false, origin: 'feat', featName: 'Magic Initiate', ability: 'int' },
+				{ name: 'Shield', source: 'XPHB', level: 1, ritual: false, concentration: false, origin: 'feat', featName: 'Magic Initiate', ability: 'int' },
+			]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const fighter: Character = {
+				id: 'f1',
+				name: 'Magic Initiate Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				featAsiChoices: [
+					{
+						level: 4,
+						kind: 'feat',
+						name: 'Magic Initiate',
+						source: 'XPHB',
+						chosenAbility: 'intelligence',
+						magicInitiate: {
+							className: 'Wizard',
+							classSource: 'XPHB',
+							cantrips: [
+								{ name: 'Fire Bolt', source: 'XPHB' },
+								{ name: 'Mage Hand', source: 'XPHB' },
+							],
+							spell: { name: 'Shield', source: 'XPHB' },
+						},
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Magic Initiate Fighter' })
+
+			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
+			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+
+			const spellsSection = container.querySelector('.sheet__spells')
+			expect(spellsSection).not.toBeNull()
+			await waitFor(() => expect(spellsSection!.textContent).toContain('Fire Bolt'))
+			expect(spellsSection!.textContent).toContain('Mage Hand')
+			expect(spellsSection!.textContent).toContain('Shield')
+
+			const fireBoltSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
+			expect(fireBoltSummary.textContent).toContain('from feat (Magic Initiate)')
+		})
+
+		it('a non-caster with a fixed-ability feat spell (Fey Teleportation) shows it in the Spells list', async () => {
+			const details: SpellDetail[] = [spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2, entries: ['Briefly surrounded by silvery mist.'] })]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Misty Step', source: 'XPHB', level: 2, ritual: false, concentration: false, origin: 'feat', featName: 'Fey Teleportation', ability: 'int' },
+			]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const fighter: Character = {
+				id: 'f2',
+				name: 'Fey Touched Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Fey Teleportation', source: 'XPHB' }],
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Fey Touched Fighter' })
+
+			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
+			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+
+			const spellsSection = container.querySelector('.sheet__spells')
+			expect(spellsSection).not.toBeNull()
+			await waitFor(() => expect(spellsSection!.textContent).toContain('Misty Step'))
+			const summary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
+			expect(summary.textContent).toContain('from feat (Fey Teleportation)')
+		})
+
+		it('a non-caster with no spell-granting feat shows no Spells section', async () => {
+			const fighter: Character = {
+				id: 'f3',
+				name: 'Plain Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }],
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Plain Fighter' })
+
 			expect(container.querySelector('.sheet__spells')).toBeNull()
 		})
 
