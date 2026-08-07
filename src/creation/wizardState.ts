@@ -28,6 +28,7 @@ import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/language
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
+import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 
 /**
  * The chosen subclass, name and source together — carrying `featureType`
@@ -252,11 +253,22 @@ const EMPTY_FEAT_SET: ReadonlySet<string> = new Set()
  * "Feat" but nothing further. A feat whose key is in
  * `featsRequiringAbilityChoice` (a half-feat, task instructions point 4)
  * additionally needs `chosenAbility` set — the step cannot complete with a
- * feat picked but its ability bonus target unknown.
+ * feat picked but its ability bonus target unknown. Base Magic Initiate
+ * (d5b-2) additionally needs its own `magicInitiate` pick fully formed: a
+ * class list, exactly 2 cantrips, 1 level-1 spell, and (like a half-feat) a
+ * chosen ability.
  */
 function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityChoice: ReadonlySet<string>): boolean {
 	if (choice.kind === 'feat') {
 		if (choice.name.trim() === '' || choice.source.trim() === '') return false
+		if (isMagicInitiateFeat(choice)) {
+			return (
+				choice.chosenAbility !== undefined &&
+				choice.magicInitiate !== undefined &&
+				choice.magicInitiate.cantrips.length === 2 &&
+				choice.magicInitiate.spell !== null
+			)
+		}
 		if (featsRequiringAbilityChoice.has(`${choice.name}|${choice.source}`)) return choice.chosenAbility !== undefined
 		return true
 	}

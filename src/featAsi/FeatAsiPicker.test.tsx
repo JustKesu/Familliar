@@ -25,12 +25,38 @@ vi.mock('./featAsiData', async () => {
 			{ name: 'Tough', source: 'XPHB', category: 'G' },
 			{ name: 'Actor', source: 'XPHB', category: 'G', prerequisite: [{ level: 4, ability: [{ cha: 13 }] }] },
 			{ name: 'Athlete', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['str', 'dex'] } }] },
+			{ name: 'Magic Initiate', source: 'XPHB', category: 'G' },
 		]),
 		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
 		loadHasFightingStyleFeature: vi.fn(async () => false),
 		loadSpeciesPrereqInfo: vi.fn(async () => null),
 	}
 })
+
+/** Small, distinct per-class spell lists so a test can tell which list is being offered. */
+vi.mock('../spells/classSpellListData', () => ({
+	loadClassSpellList: vi.fn(async (className: string, _classSource: string) => {
+		const lists: Record<string, { name: string; level: number }[]> = {
+			Cleric: [
+				{ name: 'Guidance', level: 0 },
+				{ name: 'Sacred Flame', level: 0 },
+				{ name: 'Bless', level: 1 },
+			],
+			Wizard: [
+				{ name: 'Fire Bolt', level: 0 },
+				{ name: 'Mage Hand', level: 0 },
+				{ name: 'Prestidigitation', level: 0 },
+				{ name: 'Ray of Sickness', level: 1 },
+			],
+			Druid: [
+				{ name: 'Druidcraft', level: 0 },
+				{ name: 'Produce Flame', level: 0 },
+				{ name: 'Entangle', level: 1 },
+			],
+		}
+		return (lists[className] ?? []).map((s) => ({ ...s, source: 'XPHB', ritual: false, concentration: false, viaVariant: false }))
+	}),
+}))
 
 afterEach(cleanup)
 
@@ -269,5 +295,185 @@ describe('FeatAsiPicker', () => {
 		const select = await screen.findByRole('combobox')
 		await user.selectOptions(select, 'strength')
 		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'asi', increases: { strength: 2 } }])
+	})
+
+	describe('Magic Initiate (slice d5b-2)', () => {
+		it('choosing Wizard offers only Wizard cantrips/level-1 spells, and picks persist once counts are met', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Magic Initiate', source: 'XPHB' }]
+			const { rerender } = render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={onChange}
+				/>,
+			)
+
+			// Controlled component (mirrors AsiSubPicker/FeatSubPicker): the picker only shows the class's spells
+			// once the wizard feeds the selection back as `value`, same as every other pick in this component.
+			await user.click(await screen.findByRole('radio', { name: 'Wizard' }))
+			const afterClassPick = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			expect(afterClassPick[0]).toMatchObject({ magicInitiate: { className: 'Wizard', classSource: 'XPHB', cantrips: [], spell: null } })
+			rerender(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={afterClassPick}
+					onChange={onChange}
+				/>,
+			)
+
+			expect(await screen.findByLabelText('Fire Bolt')).toBeTruthy()
+			expect(screen.getByLabelText('Mage Hand')).toBeTruthy()
+			expect(screen.getByLabelText('Ray of Sickness')).toBeTruthy()
+			expect(screen.queryByLabelText('Guidance')).toBeNull()
+			expect(screen.queryByLabelText('Druidcraft')).toBeNull()
+
+			await user.click(screen.getByLabelText('Fire Bolt'))
+			let latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			rerender(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={latest}
+					onChange={onChange}
+				/>,
+			)
+			await user.click(screen.getByLabelText('Mage Hand'))
+			latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			rerender(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={latest}
+					onChange={onChange}
+				/>,
+			)
+			await user.click(screen.getByLabelText('Ray of Sickness'))
+			latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+
+			expect(latest[0]).toMatchObject({
+				name: 'Magic Initiate',
+				magicInitiate: {
+					className: 'Wizard',
+					classSource: 'XPHB',
+					cantrips: [
+						{ name: 'Fire Bolt', source: 'XPHB' },
+						{ name: 'Mage Hand', source: 'XPHB' },
+					],
+					spell: { name: 'Ray of Sickness', source: 'XPHB' },
+				},
+			})
+
+			rerender(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={latest}
+					onChange={onChange}
+				/>,
+			)
+			// A third cantrip is disabled — exactly 2, no over-picking.
+			const thirdCantrip = (await screen.findByLabelText('Prestidigitation')) as HTMLInputElement
+			expect(thirdCantrip.disabled).toBe(true)
+		})
+
+		it('choosing a different class list clears the previous list\'s picks', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const value: FeatAsiChoice[] = [
+				{
+					level: 4,
+					kind: 'feat',
+					name: 'Magic Initiate',
+					source: 'XPHB',
+					magicInitiate: {
+						className: 'Cleric',
+						classSource: 'XPHB',
+						cantrips: [
+							{ name: 'Guidance', source: 'XPHB' },
+							{ name: 'Sacred Flame', source: 'XPHB' },
+						],
+						spell: { name: 'Bless', source: 'XPHB' },
+					},
+				},
+			]
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={onChange}
+				/>,
+			)
+
+			await user.click(await screen.findByRole('radio', { name: 'Druid' }))
+			expect(onChange).toHaveBeenCalledWith([
+				{
+					level: 4,
+					kind: 'feat',
+					name: 'Magic Initiate',
+					source: 'XPHB',
+					magicInitiate: { className: 'Druid', classSource: 'XPHB', cantrips: [], spell: null },
+				},
+			])
+		})
+
+		it('stores the chosen spellcasting ability', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const value: FeatAsiChoice[] = [
+				{
+					level: 4,
+					kind: 'feat',
+					name: 'Magic Initiate',
+					source: 'XPHB',
+					magicInitiate: { className: 'Wizard', classSource: 'XPHB', cantrips: [], spell: null },
+				},
+			]
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={onChange}
+				/>,
+			)
+
+			const abilitySelect = (await screen.findByLabelText('Ability')) as HTMLSelectElement
+			await user.selectOptions(abilitySelect, 'intelligence')
+			const lastCall = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			expect(lastCall[0]).toMatchObject({ chosenAbility: 'intelligence' })
+		})
 	})
 })

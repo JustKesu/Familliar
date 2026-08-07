@@ -15,6 +15,7 @@ import { loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetDat
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import type { Character } from '../storage/character'
 
 /*
@@ -475,6 +476,52 @@ describe('CharacterSheet', () => {
 			const guidanceSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Guidance'))!
 			expect(guidanceSummary.textContent).toContain('player pick')
 			expect(guidanceSummary.textContent).not.toContain('always prepared')
+		})
+
+		it('a base Magic Initiate pick shows on the sheet marked "from feat (Magic Initiate)" (slice d5b-2)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Cleric', classSource: 'XPHB', ability: 'wis' }]
+			const spellSlots: ClassSpellSlotsData[] = [{ className: 'Cleric', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null }]
+			const details: SpellDetail[] = [spellDetail({ name: 'Fire Bolt', source: 'XPHB', level: 0, entries: ['You hurl a mote of fire.'] })]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Fire Bolt', source: 'XPHB', level: 0, ritual: false, concentration: false, origin: 'feat', featName: 'Magic Initiate', ability: 'int' },
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const cleric: Character = {
+				id: 'cl2',
+				name: 'Magic Initiate Cleric',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 14, wisdom: 16, charisma: 10 },
+				},
+				featAsiChoices: [
+					{
+						level: 4,
+						kind: 'feat',
+						name: 'Magic Initiate',
+						source: 'XPHB',
+						chosenAbility: 'intelligence',
+						magicInitiate: {
+							className: 'Wizard',
+							classSource: 'XPHB',
+							cantrips: [{ name: 'Fire Bolt', source: 'XPHB' }],
+							spell: null,
+						},
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={cleric} />)
+			await screen.findByRole('heading', { name: 'Magic Initiate Cleric' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Fire Bolt'))
+			const fireBoltSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
+			expect(fireBoltSummary.textContent).toContain('from feat (Magic Initiate)')
 		})
 
 		it('a non-caster (Fighter) shows no spellcasting sections at all', async () => {

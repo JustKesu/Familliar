@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Ability } from '../abilities/abilityScores'
-import type { Character } from '../storage/character'
+import type { Character, MagicInitiateChoice } from '../storage/character'
 import { extractFeatGrantedSpells } from './featSpells'
 
 const markOfDetection = {
@@ -175,5 +175,47 @@ describe('extractFeatGrantedSpells', () => {
 
 		expect(result.map((s) => s.name)).not.toContain('Gust of Wind')
 		expect(result.map((s) => s.name)).not.toContain('See Invisibility')
+	})
+})
+
+describe('extractFeatGrantedSpells — base Magic Initiate (slice d5b-2)', () => {
+	const fireBolt = { name: 'Fire Bolt', source: 'XPHB', level: 0, duration: [{ type: 'instant' }], meta: {} }
+	const mageHand = { name: 'Mage Hand', source: 'XPHB', level: 0, duration: [{ type: 'timed', duration: { type: 'minute', amount: 1 } }], meta: {} }
+	const rayOfSickness = { name: 'Ray of Sickness', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
+	const magicInitiateSpells = [...spells, fireBolt, mageHand, rayOfSickness]
+
+	function characterWithMagicInitiate(chosenAbility: Ability | undefined, magicInitiate: MagicInitiateChoice | undefined) {
+		const character: Character = {
+			id: 'test',
+			name: 'Test Character',
+			classes: [],
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Magic Initiate', source: 'XPHB', chosenAbility, magicInitiate }],
+		}
+		return character
+	}
+
+	it('reads the stored class-list + spell picks directly, not additionalSpells, and carries the chosen ability', () => {
+		const character = characterWithMagicInitiate('intelligence', {
+			className: 'Wizard',
+			classSource: 'XPHB',
+			cantrips: [
+				{ name: 'Fire Bolt', source: 'XPHB' },
+				{ name: 'Mage Hand', source: 'XPHB' },
+			],
+			spell: { name: 'Ray of Sickness', source: 'XPHB' },
+		})
+		const result = extractFeatGrantedSpells(feats, magicInitiateSpells, character)
+
+		expect(result.map((s) => s.name).sort()).toEqual(['Fire Bolt', 'Mage Hand', 'Ray of Sickness'])
+		expect(result.every((s) => s.origin === 'feat')).toBe(true)
+		expect(result.every((s) => s.featName === 'Magic Initiate')).toBe(true)
+		expect(result.every((s) => s.ability === 'int')).toBe(true)
+		expect(result.find((s) => s.name === 'Fire Bolt')?.level).toBe(0)
+		expect(result.find((s) => s.name === 'Ray of Sickness')?.level).toBe(1)
+	})
+
+	it('no pick recorded yet (feat just taken) returns nothing, cleanly', () => {
+		const character = characterWithMagicInitiate(undefined, undefined)
+		expect(extractFeatGrantedSpells(feats, magicInitiateSpells, character)).toEqual([])
 	})
 })

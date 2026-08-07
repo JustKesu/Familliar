@@ -1,16 +1,20 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
-import type { FeatAsiChoice } from '../storage/character'
+import type { FeatAsiChoice, MagicInitiateChoice } from '../storage/character'
+import { loadClassSpellList, type ClassSpellListSpell } from '../spells/classSpellListData'
 import {
 	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
 	featAbilityChoiceOptions,
+	isMagicInitiateFeat,
 	isValidAbilityIncrease,
 	loadClassPrereqInfo,
 	loadFeatAsiGrants,
 	loadFeats,
 	loadHasFightingStyleFeature,
 	loadSpeciesPrereqInfo,
+	MAGIC_INITIATE_ABILITY_OPTIONS,
+	MAGIC_INITIATE_CLASS_OPTIONS,
 	type ChosenFeatRef,
 	type FeatAsiGrant,
 	type FeatEntry,
@@ -211,6 +215,15 @@ export function FeatAsiPicker({
 								}
 							/>
 						)}
+
+						{current?.kind === 'feat' && current.name && isMagicInitiateFeat(current) && (
+							<MagicInitiateSubPicker
+								magicInitiate={current.magicInitiate ?? null}
+								chosenAbility={current.chosenAbility}
+								onChangeMagicInitiate={(magicInitiate) => setChoiceAt(index, { ...current, magicInitiate })}
+								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
+							/>
+						)}
 					</fieldset>
 				)
 			})}
@@ -374,5 +387,155 @@ function FeatSubPicker({
 				</label>
 			)}
 		</>
+	)
+}
+
+type MagicInitiateLoadState =
+	| { status: 'loading' }
+	| { status: 'ready'; spells: ClassSpellListSpell[] }
+	| { status: 'error'; message: string }
+
+/**
+ * Base Magic Initiate's own picker (slice d5b-2): choose ONE class list, then
+ * exactly 2 cantrips + 1 level-1 spell from that same list — the SpellPicker/
+ * slice d2 pattern, reused here with the feat's own fixed counts instead of
+ * spell-slot-derived ones. Guided (task instructions): only the chosen
+ * class's cantrips/level-1 spells are ever offered. The ability choice reuses
+ * the shared `chosenAbility` slot on the feat entry (D57), just with its own
+ * narrower int/wis/cha option set (MAGIC_INITIATE_ABILITY_OPTIONS) rather
+ * than the half-feat ABILITIES list, since it lives in `additionalSpells`,
+ * not the half-feat `ability` field featAbilityChoiceOptions reads.
+ */
+function MagicInitiateSubPicker({
+	magicInitiate,
+	chosenAbility,
+	onChangeMagicInitiate,
+	onSelectAbility,
+}: {
+	magicInitiate: MagicInitiateChoice | null
+	chosenAbility: Ability | undefined
+	onChangeMagicInitiate: (value: MagicInitiateChoice) => void
+	onSelectAbility: (ability: Ability) => void
+}): ReactNode {
+	const [state, setState] = useState<MagicInitiateLoadState>({ status: 'loading' })
+	const className = magicInitiate?.className ?? null
+	const classSource = magicInitiate?.classSource ?? null
+
+	useEffect(() => {
+		if (!className || !classSource) return
+		let cancelled = false
+		setState({ status: 'loading' })
+		loadClassSpellList(className, classSource)
+			.then((spells) => {
+				if (!cancelled) setState({ status: 'ready', spells })
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) setState({ status: 'error', message: error instanceof Error ? error.message : String(error) })
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [className, classSource])
+
+	function selectClass(option: { className: string; classSource: string }): void {
+		// A new class list clears any picks made against the previous one — they're not valid against this list.
+		onChangeMagicInitiate({ className: option.className, classSource: option.classSource, cantrips: [], spell: null })
+	}
+
+	const cantrips = magicInitiate?.cantrips ?? []
+	const chosenSpell = magicInitiate?.spell ?? null
+
+	function toggleCantrip(candidate: ClassSpellListSpell): void {
+		if (!magicInitiate) return
+		const isChosen = cantrips.some((c) => c.name === candidate.name && c.source === candidate.source)
+		if (isChosen) {
+			onChangeMagicInitiate({
+				...magicInitiate,
+				cantrips: cantrips.filter((c) => !(c.name === candidate.name && c.source === candidate.source)),
+			})
+			return
+		}
+		if (cantrips.length >= 2) return
+		onChangeMagicInitiate({ ...magicInitiate, cantrips: [...cantrips, { name: candidate.name, source: candidate.source }] })
+	}
+
+	function toggleSpell(candidate: ClassSpellListSpell): void {
+		if (!magicInitiate) return
+		const isChosen = chosenSpell !== null && chosenSpell.name === candidate.name && chosenSpell.source === candidate.source
+		onChangeMagicInitiate({ ...magicInitiate, spell: isChosen ? null : { name: candidate.name, source: candidate.source } })
+	}
+
+	return (
+		<div className="feat-asi-picker__magic-initiate">
+			<fieldset>
+				<legend>Class list</legend>
+				{MAGIC_INITIATE_CLASS_OPTIONS.map((option) => (
+					<label key={option.className}>
+						<input type="radio" name="magic-initiate-class" checked={className === option.className} onChange={() => selectClass(option)} />
+						{option.className}
+					</label>
+				))}
+			</fieldset>
+
+			{magicInitiate && state.status === 'ready' && (
+				<>
+					<div className="feat-asi-picker__magic-initiate-section">
+						<p>{cantrips.length} of 2 cantrips chosen.</p>
+						<ul className="feat-asi-picker__magic-initiate-list">
+							{state.spells
+								.filter((candidate) => candidate.level === 0)
+								.map((candidate) => {
+									const checked = cantrips.some((c) => c.name === candidate.name && c.source === candidate.source)
+									const atLimit = !checked && cantrips.length >= 2
+									return (
+										<li key={`${candidate.name}|${candidate.source}`}>
+											<label>
+												<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggleCantrip(candidate)} />
+												{candidate.name}
+											</label>
+										</li>
+									)
+								})}
+						</ul>
+					</div>
+
+					<div className="feat-asi-picker__magic-initiate-section">
+						<p>{chosenSpell ? 1 : 0} of 1 level-1 spell chosen.</p>
+						<ul className="feat-asi-picker__magic-initiate-list">
+							{state.spells
+								.filter((candidate) => candidate.level === 1)
+								.map((candidate) => {
+									const checked = chosenSpell !== null && chosenSpell.name === candidate.name && chosenSpell.source === candidate.source
+									const atLimit = !checked && chosenSpell !== null
+									return (
+										<li key={`${candidate.name}|${candidate.source}`}>
+											<label>
+												<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggleSpell(candidate)} />
+												{candidate.name}
+											</label>
+										</li>
+									)
+								})}
+						</ul>
+					</div>
+				</>
+			)}
+
+			{magicInitiate && state.status === 'error' && <p className="error">Could not load spells: {state.message}</p>}
+
+			<label className="feat-asi-picker__feat-ability">
+				Ability
+				<select value={chosenAbility ?? ''} onChange={(event) => onSelectAbility(event.target.value as Ability)}>
+					<option value="" disabled>
+						Choose an ability
+					</option>
+					{MAGIC_INITIATE_ABILITY_OPTIONS.map((ability) => (
+						<option key={ability} value={ability}>
+							{ABILITY_LABEL[ability]}
+						</option>
+					))}
+				</select>
+			</label>
+		</div>
 	)
 }

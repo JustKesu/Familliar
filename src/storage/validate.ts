@@ -11,6 +11,7 @@ import type {
 	CharacterSpellChoice,
 	FeatAsiChoice,
 	LanguageGrantSource,
+	MagicInitiateChoice,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import type { StoredCharacter } from './wireFormat'
@@ -360,11 +361,52 @@ export function describeFeatAsiChoicesError(value: unknown): string | null {
 			if (chosenAbility !== undefined && !ABILITIES.includes(chosenAbility as (typeof ABILITIES)[number])) {
 				return `featAsiChoices[${i}].chosenAbility must be a valid ability`
 			}
+			const magicInitiateError = describeMagicInitiateError(entry['magicInitiate'])
+			if (magicInitiateError) return `featAsiChoices[${i}].${magicInitiateError}`
 		} else {
 			return `featAsiChoices[${i}].kind must be "asi" or "feat"`
 		}
 	}
 	return null
+}
+
+/** Validates the spell-ref shape (`{name, source}`) shared by magicInitiate.cantrips and .spell. */
+function describeSpellRefError(value: unknown, label: string): string | null {
+	if (!isRecord(value)) return `${label} is not an object`
+	if (!isNonEmptyString(value['name'])) return `${label}.name is missing or not a string`
+	if (!isNonEmptyString(value['source'])) return `${label}.source is missing or not a string`
+	return null
+}
+
+/** Validates an optional `magicInitiate` field on a feat choice (base Magic Initiate only, slice d5b-2). Returns null if absent. */
+function describeMagicInitiateError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return `magicInitiate is not an object`
+	if (!isNonEmptyString(value['className'])) return `magicInitiate.className is missing or not a string`
+	if (!isNonEmptyString(value['classSource'])) return `magicInitiate.classSource is missing or not a string`
+	const cantrips = value['cantrips']
+	if (!Array.isArray(cantrips)) return `magicInitiate.cantrips must be an array`
+	for (let i = 0; i < cantrips.length; i++) {
+		const error = describeSpellRefError(cantrips[i], `magicInitiate.cantrips[${i}]`)
+		if (error) return error
+	}
+	const spell = value['spell']
+	if (spell !== null) {
+		const error = describeSpellRefError(spell, `magicInitiate.spell`)
+		if (error) return error
+	}
+	return null
+}
+
+function toMagicInitiateChoice(value: Record<string, unknown>): MagicInitiateChoice {
+	const cantrips = value['cantrips'] as Record<string, unknown>[]
+	const spell = value['spell'] as Record<string, unknown> | null
+	return {
+		className: value['className'] as string,
+		classSource: value['classSource'] as string,
+		cantrips: cantrips.map((c) => ({ name: c['name'] as string, source: c['source'] as string })),
+		spell: spell ? { name: spell['name'] as string, source: spell['source'] as string } : null,
+	}
 }
 
 /** Validates an optional `spellChoices` field. Returns null if the field is absent (it's optional). */
@@ -408,12 +450,14 @@ function toCharacterFeatAsiChoices(value: unknown[]): FeatAsiChoice[] {
 			return { level, kind: 'asi', increases: toAbilityIncreaseMap(record['increases'] as Record<string, unknown>) }
 		}
 		const chosenAbility = record['chosenAbility']
+		const magicInitiate = record['magicInitiate']
 		return {
 			level,
 			kind: 'feat',
 			name: record['name'] as string,
 			source: record['source'] as string,
 			...(typeof chosenAbility === 'string' ? { chosenAbility: chosenAbility as Ability } : {}),
+			...(isRecord(magicInitiate) ? { magicInitiate: toMagicInitiateChoice(magicInitiate) } : {}),
 		}
 	})
 }

@@ -184,6 +184,20 @@ export interface CharacterOptionalFeatureChoice {
 export type AbilityIncreaseMap = Partial<Record<Ability, number>>
 
 /**
+ * Base Magic Initiate's own class-list + spell picks (build order step 6,
+ * slice d5b-2) — present only when the feat entry's `name` is "Magic
+ * Initiate" (guarded the same way featSpells.ts guards Mark feats). Cleared
+ * whenever the feat itself is removed or changed, since it lives on the same
+ * FeatAsiChoice entry.
+ */
+export interface MagicInitiateChoice {
+	className: string
+	classSource: string
+	cantrips: { name: string; source: string }[]
+	spell: { name: string; source: string } | null
+}
+
+/**
  * One level-4/8/12/16/19(+class bonus levels)-and-up choice between an
  * Ability Score Improvement and a feat (build order step 4a, D16/D19/D20).
  * `level` is the character level the choice was taken at — this doubles as
@@ -197,23 +211,28 @@ export type FeatAsiChoice =
 			name: string
 			source: string
 			/**
-			 * Which ability the feat's bonus applies to — required only for the
-			 * 68 half-feats whose feats.json `ability` field is a choice among
-			 * named abilities (featAbilityChoiceOptions), absent for the 13
-			 * fixed-bonus feats and every feat with no ability bonus at all.
-			 * Selection only: no calculation reads this field yet.
+			 * Which ability the feat's bonus applies to — required for the 68
+			 * half-feats whose feats.json `ability` field is a choice among named
+			 * abilities (featAbilityChoiceOptions), AND for base Magic Initiate's
+			 * own int/wis/cha spellcasting-ability choice (which lives in
+			 * `additionalSpells`, not the half-feat `ability` field, but reuses
+			 * this same slot per the task instructions rather than a second one).
+			 * Absent for the 13 fixed-bonus feats and every feat with no ability
+			 * choice at all. Selection only: no calculation reads this field yet.
 			 */
 			chosenAbility?: Ability
+			/** Base Magic Initiate only (slice d5b-2) — see MagicInitiateChoice. */
+			magicInitiate?: MagicInitiateChoice
 	  }
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 10 to add Character.spellChoices — the
- * class spell picker (build order step 6 slice d2). Per PHASE1.md section D,
- * and per docs/QUESTIONS.md "Migrace uložených postav", a version bump this
- * app does not understand is rejected outright (UnknownSchemaVersionError)
- * rather than guessed at — no migration from version 9 is written, so a
- * character saved before this change will no longer load and must be
- * recreated.
+ * (see wireFormat.ts). Bumped to 11 to add FeatAsiChoice.magicInitiate — base
+ * Magic Initiate's class-list + spell picker (build order step 6 slice
+ * d5b-2). Per PHASE1.md section D, and per docs/QUESTIONS.md "Migrace
+ * uložených postav", a version bump this app does not understand is rejected
+ * outright (UnknownSchemaVersionError) rather than guessed at — no migration
+ * from version 10 is written, so a character saved before this change will
+ * no longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 10
+export const CURRENT_SCHEMA_VERSION = 11

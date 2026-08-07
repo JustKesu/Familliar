@@ -165,13 +165,57 @@ function isRawFeatEntry(value: unknown): value is FeatEntry {
 	return typeof value['name'] === 'string' && typeof value['source'] === 'string' && typeof value['category'] === 'string'
 }
 
-/** Every feats.json entry except "Ability Score Improvement" — that choice is offered as its own ASI-vs-feat step, not a list entry. */
+/**
+ * D23-style "which entries to hide" rule, kept in this one spot so it's easy
+ * to revisit. Hides:
+ *  - the three pre-selected "Magic Initiate; Cleric/Druid/Wizard" variants
+ *    (XPHB) — base Magic Initiate's own class-list choice (d5b-2,
+ *    MagicInitiateSubPicker) replaces them, offering the same three lists
+ *    through one feat entry instead of three.
+ *  - Boon of Siberys (EFA) — deferred; its additionalSpells is 13 full named
+ *    alternatives (one per dragonmark) the player must pick ONE of, a
+ *    distinct picker shape not built in this slice (see docs/REPORT.md).
+ */
+const HIDDEN_FEAT_KEYS = new Set(['Magic Initiate; Cleric|XPHB', 'Magic Initiate; Druid|XPHB', 'Magic Initiate; Wizard|XPHB', 'Boon of Siberys|EFA'])
+
+/** Every feats.json entry except "Ability Score Improvement" (offered as its own ASI-vs-feat step, not a list entry) and HIDDEN_FEAT_KEYS. */
 export function extractSelectableFeats(parsed: unknown): FeatEntry[] {
 	if (!Array.isArray(parsed)) {
 		throw new Error('feats.json: expected a top-level array.')
 	}
-	return parsed.filter(isRawFeatEntry).filter((f) => f.name !== 'Ability Score Improvement')
+	return parsed
+		.filter(isRawFeatEntry)
+		.filter((f) => f.name !== 'Ability Score Improvement')
+		.filter((f) => !HIDDEN_FEAT_KEYS.has(`${f.name}|${f.source}`))
 }
+
+// ---------------------------------------------------------------------------
+// 3b. Base Magic Initiate (slice d5b-2): class-list choice + its options
+// ---------------------------------------------------------------------------
+
+export const MAGIC_INITIATE_FEAT_NAME = 'Magic Initiate'
+export const MAGIC_INITIATE_FEAT_SOURCE = 'XPHB'
+
+/** True only for base Magic Initiate itself — never the (now-hidden) "; Class" variants, which don't reach the feat list at all. */
+export function isMagicInitiateFeat(feat: { name: string; source: string }): boolean {
+	return feat.name === MAGIC_INITIATE_FEAT_NAME && feat.source === MAGIC_INITIATE_FEAT_SOURCE
+}
+
+/**
+ * The three class lists base Magic Initiate lets the player choose from —
+ * feats.json's own named alternatives ("Cleric Spells"/"Druid Spells"/"Wizard
+ * Spells"), confirmed via scripts/investigate-magic-initiate-shape.js. All
+ * three read the class's spell list via classSpellListData.ts (slice c);
+ * nothing here re-parses additionalSpells at runtime.
+ */
+export const MAGIC_INITIATE_CLASS_OPTIONS: { className: string; classSource: string }[] = [
+	{ className: 'Cleric', classSource: 'XPHB' },
+	{ className: 'Druid', classSource: 'XPHB' },
+	{ className: 'Wizard', classSource: 'XPHB' },
+]
+
+/** Magic Initiate's own ability choice (additionalSpells `{"ability":{"choose":["int","wis","cha"]}}`, identical across all three class lists) — narrower than the half-feat ABILITIES list. */
+export const MAGIC_INITIATE_ABILITY_OPTIONS: Ability[] = ['intelligence', 'wisdom', 'charisma']
 
 export async function loadFeats(): Promise<FeatEntry[]> {
 	const parsed = await loadDataFile('data/feats.json')

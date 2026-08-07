@@ -1,6 +1,7 @@
 /*
  * Feat-granted spells, fully-fixed only (build order step 6, slice d5a,
- * extended in d5b-3 to the Eberron "Mark of ..." feats' fixed portion).
+ * extended in d5b-3 to the Eberron "Mark of ..." feats' fixed portion, and in
+ * d5b-2 to base Magic Initiate's own player-chosen spells).
  *
  * investigate-feat-spells.js + investigate-feat-spell-ability.js (both in
  * scripts/) found 29 feats grant spells via `additionalSpells` — the SAME
@@ -19,8 +20,13 @@
  * `expanded` is deliberately never read here — same reasoning as d6a's
  * subclass `expanded` deferral (EK/AT/Divine Soul): it widens a later
  * picker's offered pool, it does not grant a spell outright. Deferred, not
- * built. The remaining 13 feats (11 filter-choice, 2 named-alternative) are
- * still slice d5b, a picker — not touched by this module.
+ * built. Of the remaining 13 feats, base Magic Initiate is now handled too
+ * (d5b-2, extractMagicInitiateSpells below) — but it reads the character's
+ * OWN stored FeatAsiChoice.magicInitiate pick directly, not
+ * additionalSpells, since the player chose the individual spells themselves
+ * rather than receiving a fixed grant. The other 11 filter-choice feats
+ * (Artificer Initiate, Wood Elf Magic, Aberrant Dragonmark, ...) and Boon of
+ * Siberys are still slice d5b-1/deferred — not touched by this module.
  *
  * scripts/investigate-fixed-feat-spell-shape.js confirmed the exact shape for
  * the two feats d5a handles:
@@ -187,6 +193,42 @@ function totalCharacterLevel(character: Character): number {
 	return (character.classes ?? []).reduce((sum, c) => sum + c.level, 0)
 }
 
+/**
+ * Base Magic Initiate's own stored pick (build order step 6, slice d5b-2:
+ * FeatAsiChoice.magicInitiate) — not a feats.json fixed grant at all, since
+ * the player chose both the class list AND the individual spells. Reads the
+ * character's own choice directly rather than re-deriving from
+ * additionalSpells the way extractFixedFeatSpells does; level/ritual/
+ * concentration are still looked up from spells.json so the sheet gets the
+ * same detail a fixed grant would.
+ */
+function extractMagicInitiateSpells(parsedSpells: unknown, choice: FeatChoice): FeatGrantedSpell[] {
+	if (!choice.magicInitiate) return []
+	if (!Array.isArray(parsedSpells)) {
+		throw new Error('spells.json: expected a top-level array.')
+	}
+	const spells: RawSpell[] = parsedSpells.filter(isRawSpell)
+	const ability = choice.chosenAbility ? ABILITY_ABBREVIATIONS[choice.chosenAbility] : undefined
+	const picks = [...choice.magicInitiate.cantrips, ...(choice.magicInitiate.spell ? [choice.magicInitiate.spell] : [])]
+
+	const result: FeatGrantedSpell[] = []
+	for (const pick of picks) {
+		const spell = findSpell(spells, { name: pick.name.toLowerCase(), source: pick.source.toUpperCase() })
+		if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+		result.push({
+			name: spell.name,
+			source: spell.source,
+			level: spell.level,
+			ritual: spell.meta?.ritual === true,
+			concentration: hasConcentration(spell.duration),
+			origin: 'feat',
+			featName: choice.name,
+			ability,
+		})
+	}
+	return result
+}
+
 /** Every fully-fixed feat-granted spell the character's taken feats (Character.featAsiChoices) provide. Additional to the class picker's own counts — never subtracted from cantrip/prepared/known limits, same as subclass always-prepared spells. */
 export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unknown, character: Character): FeatGrantedSpell[] {
 	const result: FeatGrantedSpell[] = []
@@ -194,6 +236,7 @@ export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unk
 	for (const choice of chosenFeats(character)) {
 		const chosenAbility = choice.chosenAbility ? ABILITY_ABBREVIATIONS[choice.chosenAbility] : undefined
 		result.push(...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source, characterLevel, chosenAbility))
+		result.push(...extractMagicInitiateSpells(parsedSpells, choice))
 	}
 	return result
 }

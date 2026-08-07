@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
 	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
+	extractSelectableFeats,
 	featAbilityChoiceOptions,
 	featAsiGrantsFor,
 	featsRequiringAbilityChoice,
+	isMagicInitiateFeat,
 	isValidAbilityIncrease,
 	speciesPrereqInfoFor,
 	type FeatEntry,
@@ -113,6 +115,34 @@ describe('featsRequiringAbilityChoice', () => {
 			{ name: 'Tough', source: 'XPHB', category: 'G' },
 		]
 		expect(featsRequiringAbilityChoice(feats)).toEqual(new Set(['Athlete|XPHB']))
+	})
+})
+
+describe('extractSelectableFeats', () => {
+	const raw = [
+		{ name: 'Ability Score Improvement', source: 'XPHB', category: 'G' },
+		{ name: 'Magic Initiate', source: 'XPHB', category: 'G' },
+		{ name: 'Magic Initiate; Cleric', source: 'XPHB', category: 'G' },
+		{ name: 'Magic Initiate; Druid', source: 'XPHB', category: 'G' },
+		{ name: 'Magic Initiate; Wizard', source: 'XPHB', category: 'G' },
+		{ name: 'Boon of Siberys', source: 'EFA', category: 'EB' },
+		{ name: 'Tough', source: 'XPHB', category: 'G' },
+	]
+
+	it('offers one base Magic Initiate and hides its three preset variants plus Boon of Siberys', () => {
+		const names = extractSelectableFeats(raw).map((f) => f.name)
+		expect(names).toEqual(['Magic Initiate', 'Tough'])
+	})
+})
+
+describe('isMagicInitiateFeat', () => {
+	it('matches base Magic Initiate only', () => {
+		expect(isMagicInitiateFeat({ name: 'Magic Initiate', source: 'XPHB' })).toBe(true)
+	})
+
+	it('does not match a differently-named or -sourced feat', () => {
+		expect(isMagicInitiateFeat({ name: 'Magic Initiate; Cleric', source: 'XPHB' })).toBe(false)
+		expect(isMagicInitiateFeat({ name: 'Magic Initiate', source: 'PHB' })).toBe(false)
 	})
 })
 
