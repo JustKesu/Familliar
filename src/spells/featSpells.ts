@@ -1,5 +1,6 @@
 /*
- * Feat-granted spells, fully-fixed only (build order step 6, slice d5a).
+ * Feat-granted spells, fully-fixed only (build order step 6, slice d5a,
+ * extended in d5b-3 to the Eberron "Mark of ..." feats' fixed portion).
  *
  * investigate-feat-spells.js + investigate-feat-spell-ability.js (both in
  * scripts/) found 29 feats grant spells via `additionalSpells` — the SAME
@@ -9,28 +10,47 @@
  * and Telepathic have fixed spells too but a non-fixed ability ("inherit" —
  * derives from whatever ability the character already casts with, a rules
  * call outside this slice); the other 25 spell-granting feats let the player
- * choose the spell itself. All 27 are slice d5b, a picker, not this module.
+ * choose the spell itself. Of those 25, the 12 Eberron "Mark of ..." feats
+ * (investigate-feat-spell-choice-shapes.js) turn out to ALSO carry a fixed
+ * spell grant (not a choice) alongside a CHOICE ability (int/wis/cha) and a
+ * separate `expanded` pool-widening list — this module now also derives the
+ * marks' fixed portion (d5b-3), reading the already-stored D57
+ * `chosenAbility` since the mark's own ability field is a choice, not fixed.
+ * `expanded` is deliberately never read here — same reasoning as d6a's
+ * subclass `expanded` deferral (EK/AT/Divine Soul): it widens a later
+ * picker's offered pool, it does not grant a spell outright. Deferred, not
+ * built. The remaining 13 feats (11 filter-choice, 2 named-alternative) are
+ * still slice d5b, a picker — not touched by this module.
  *
  * scripts/investigate-fixed-feat-spell-shape.js confirmed the exact shape for
- * the two feats this module handles:
+ * the two feats d5a handles:
  *   Drow High Magic:  {"ability":"cha","innate":{"_":{"will":["detect magic"],"daily":{"1e":["levitate","dispel magic"]}}}}
  *   Fey Teleportation: {"ability":"int","innate":{"_":{"daily":{"1":["misty step"]}}}}
- * `ability` is a plain lowercase ability-abbreviation string (not "inherit",
- * not a `choose` object) — that alone is what makes a feat's ability fixed,
- * and is the filter this module applies. The `innate` grant is keyed "_"
- * (not a class level — a feat has no class level to gate on) and wrapped
- * again under `will`/`daily`, mirroring the resource-wrapper shape d6a found
- * on 5 subclasses; extractRefs (subclassPreparedSpells.ts) already discards
- * wrapper keys and finds every string at any depth, so it is reused as-is,
- * just without the level-gate loop subclass grants need.
+ * A short re-read (this task) confirmed the marks' shape, e.g. Mark of Storm:
+ *   {"ability":{"choose":["int","wis","cha"]},"known":{"_":["thunderclap"]},"prepared":{"3":{"daily":{"1":["gust of wind"]}}},"expanded":{...}}
+ * — `known`/`prepared` are the SAME fixed-grant keys subclasses use, keyed
+ * "_" (always granted) or a NUMERIC key that, for a feat, means "granted once
+ * the character reaches this TOTAL character level" (D11 — a feat isn't tied
+ * to one class, so there is no class level to gate on the way subclass grants
+ * do; confirmed no mark's `prepared`/`known` contains a `choose` node — every
+ * ref is a literal spell name, so this is genuinely a fixed-grant slice, not
+ * a picker). Only Mark feats get this choice-ability + fixed-grant treatment
+ * (guarded by name) — other choice-ability feats (Magic Initiate variants,
+ * Boon of Siberys) also carry `prepared`/`known` under a choice ability, but
+ * theirs is either choice-wrapped (safe, extractRefs finds nothing) or, for
+ * Boon of Siberys, an array of 13 full alternatives the player must pick ONE
+ * of (d5b-2, not this module) — applying this module's grant logic to every
+ * one of those 13 unconditionally would incorrectly grant all 13 at once, so
+ * the mark-name guard exists specifically to avoid that scope creep.
  *
  * A feat is a one-time yes/no grant (the character either took it or
  * didn't, via Character.featAsiChoices) — there is no "granted at level N"
- * concept the way a subclass grant has, so unlike AlwaysPreparedSpell there
- * is no grantedAtLevel field here.
+ * field on the returned spell the way a subclass grant has one, even for the
+ * marks' level-gated portion: the gate only decides whether the character
+ * has REACHED that spell yet, it isn't provenance the sheet displays.
  */
 
-import type { AbilityAbbreviation } from '../calculation/abilityAbbreviations'
+import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character, FeatAsiChoice } from '../storage/character'
 import { extractRefs, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, type RawSpell } from './subclassPreparedSpells'
@@ -46,8 +66,8 @@ export interface FeatGrantedSpell {
 	origin: 'feat'
 	/** Which feat granted this spell — the name the "from feat (...)" label needs. */
 	featName: string
-	/** The FIXED spellcasting ability feats.json names for this grant (e.g. "cha" for Drow High Magic) — carried through for a later attack/DC consumer; not computed here. */
-	ability: AbilityAbbreviation
+	/** The spellcasting ability for this grant — carried through for a later attack/DC consumer; not computed here. Fixed feats (Drow High Magic, Fey Teleportation) always have one. A Mark feat has one only once the character's D57 `chosenAbility` is on record; absent until then (the spell itself is still granted — the mark's ability choice does not gate whether the spell is granted, only what it's cast with). */
+	ability?: AbilityAbbreviation
 }
 
 interface RawFeatEntry {
@@ -67,15 +87,36 @@ function isFixedAbility(value: unknown): value is AbilityAbbreviation {
 	return typeof value === 'string' && (FIXED_ABILITIES as readonly string[]).includes(value)
 }
 
+/** True for the Magic Initiate/Mark-of-... shape `{choose: ["int","wis","cha"]}` — an ability CHOICE, not a fixed one. */
+function isChoiceAbility(value: unknown): boolean {
+	return isRecord(value) && Array.isArray(value['choose'])
+}
+
+/** Only the Eberron "Mark of ..." feats get the choice-ability + fixed-grant treatment (see module comment for why this is name-guarded rather than applied to every choice-ability feat). */
+function isMarkFeat(featName: string): boolean {
+	return featName.startsWith('Mark of ')
+}
+
 /** The fixed-grant keys this module derives spells from — same set subclassPreparedSpells.ts reads; `expanded` is excluded for the same reasons documented there. */
 const FIXED_GRANT_KEYS = ['prepared', 'known', 'innate'] as const
 
 /**
  * Pure filter (D38). One named feat's fully-fixed granted spells (empty if
- * the feat isn't found, grants no spells, or its ability isn't fixed — i.e.
- * every feat except Drow High Magic and Fey Teleportation, today).
+ * the feat isn't found or grants no spells). `characterLevel` gates a Mark
+ * feat's numerically-keyed grants (e.g. `prepared["3"]`, D11 total level —
+ * see module comment); a "_"-keyed grant (every d5a feat, and a mark's base
+ * spell) is always granted regardless of level. `chosenAbility` is the
+ * character's D57 pick, used only for a Mark feat's choice ability — a fixed-
+ * ability feat (Drow High Magic, Fey Teleportation) ignores this parameter.
  */
-export function extractFixedFeatSpells(parsedFeats: unknown, parsedSpells: unknown, featName: string, featSource: string): FeatGrantedSpell[] {
+export function extractFixedFeatSpells(
+	parsedFeats: unknown,
+	parsedSpells: unknown,
+	featName: string,
+	featSource: string,
+	characterLevel: number,
+	chosenAbility?: AbilityAbbreviation,
+): FeatGrantedSpell[] {
 	if (!Array.isArray(parsedFeats)) {
 		throw new Error('feats.json: expected a top-level array.')
 	}
@@ -88,31 +129,46 @@ export function extractFixedFeatSpells(parsedFeats: unknown, parsedSpells: unkno
 
 	const spells: RawSpell[] = parsedSpells.filter(isRawSpell)
 	const result: FeatGrantedSpell[] = []
+	const mark = isMarkFeat(feat.name)
 
 	for (const entry of feat.additionalSpells) {
 		if (!isRecord(entry)) continue
 
-		const ability = entry['ability']
-		if (!isFixedAbility(ability)) continue // choice ability, "inherit", or none at all — slice d5b, not this module.
+		const abilityField = entry['ability']
+		let ability: AbilityAbbreviation | undefined
+		if (isFixedAbility(abilityField)) {
+			ability = abilityField
+		} else if (mark && isChoiceAbility(abilityField)) {
+			ability = chosenAbility // may still be undefined if the character hasn't recorded a choice yet — the spell is granted either way.
+		} else {
+			continue // choice ability on a non-mark feat, "inherit", or no ability field at all — slice d5b, not this module.
+		}
 
 		for (const key of FIXED_GRANT_KEYS) {
-			const grant = entry[key]
-			if (grant === undefined) continue
+			const levelMap = entry[key]
+			if (levelMap === undefined) continue
+			if (!isRecord(levelMap)) continue // unexpected variant of the key itself — skip cleanly, don't invent handling.
 
-			for (const ref of extractRefs(grant)) {
-				const spell = findSpell(spells, parseSpellRef(ref))
-				if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+			for (const [levelKey, value] of Object.entries(levelMap)) {
+				const grantedAtLevel = Number(levelKey)
+				// Not finite covers the "_" (always granted) key shared by every d5a feat and each mark's base spell.
+				if (Number.isFinite(grantedAtLevel) && grantedAtLevel > characterLevel) continue
 
-				result.push({
-					name: spell.name,
-					source: spell.source,
-					level: spell.level,
-					ritual: spell.meta?.ritual === true,
-					concentration: hasConcentration(spell.duration),
-					origin: 'feat',
-					featName: feat.name,
-					ability,
-				})
+				for (const ref of extractRefs(value)) {
+					const spell = findSpell(spells, parseSpellRef(ref))
+					if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+
+					result.push({
+						name: spell.name,
+						source: spell.source,
+						level: spell.level,
+						ritual: spell.meta?.ritual === true,
+						concentration: hasConcentration(spell.duration),
+						origin: 'feat',
+						featName: feat.name,
+						ability,
+					})
+				}
 			}
 		}
 	}
@@ -126,11 +182,18 @@ function chosenFeats(character: Character): FeatChoice[] {
 	return (character.featAsiChoices ?? []).filter((choice): choice is FeatChoice => choice.kind === 'feat')
 }
 
+/** D11: total level across every class, the same sum proficiencyBonus.ts uses — a Mark feat's numeric grant keys are gated on this, not on any one class's level (a feat isn't tied to a class). */
+function totalCharacterLevel(character: Character): number {
+	return (character.classes ?? []).reduce((sum, c) => sum + c.level, 0)
+}
+
 /** Every fully-fixed feat-granted spell the character's taken feats (Character.featAsiChoices) provide. Additional to the class picker's own counts — never subtracted from cantrip/prepared/known limits, same as subclass always-prepared spells. */
 export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unknown, character: Character): FeatGrantedSpell[] {
 	const result: FeatGrantedSpell[] = []
+	const characterLevel = totalCharacterLevel(character)
 	for (const choice of chosenFeats(character)) {
-		result.push(...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source))
+		const chosenAbility = choice.chosenAbility ? ABILITY_ABBREVIATIONS[choice.chosenAbility] : undefined
+		result.push(...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source, characterLevel, chosenAbility))
 	}
 	return result
 }
