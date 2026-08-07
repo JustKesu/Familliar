@@ -77,7 +77,8 @@ export interface AlwaysPreparedSpell {
 	origin: 'subclass'
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+/** Exported for reuse by featSpells.ts (d5a) — feat-granted spells use the same additionalSpells shape as subclasses. */
+export function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
@@ -101,7 +102,7 @@ function isRawSubclassEntry(value: unknown): value is RawSubclassEntry {
 	)
 }
 
-interface RawSpell {
+export interface RawSpell {
 	name: string
 	source: string
 	level: number
@@ -109,24 +110,24 @@ interface RawSpell {
 	meta?: { ritual?: boolean }
 }
 
-function isRawSpell(value: unknown): value is RawSpell {
+export function isRawSpell(value: unknown): value is RawSpell {
 	if (!isRecord(value)) return false
 	return typeof value['name'] === 'string' && typeof value['source'] === 'string' && typeof value['level'] === 'number'
 }
 
-function hasConcentration(duration: unknown): boolean {
+export function hasConcentration(duration: unknown): boolean {
 	if (!Array.isArray(duration)) return false
 	return duration.some((entry) => isRecord(entry) && entry['concentration'] === true)
 }
 
 /** Parses a `prepared` list item ("healing word", "healing word|xphb", "mind sliver|xphb#c") into a lowercase name and optional uppercase source. */
-function parseSpellRef(ref: string): { name: string; source: string | null } {
+export function parseSpellRef(ref: string): { name: string; source: string | null } {
 	const [namePart, sourcePart] = ref.split('|')
 	const source = sourcePart ? sourcePart.split('#')[0].toUpperCase() : null
 	return { name: namePart.toLowerCase(), source }
 }
 
-function findSpell(spells: RawSpell[], ref: { name: string; source: string | null }): RawSpell | undefined {
+export function findSpell(spells: RawSpell[], ref: { name: string; source: string | null }): RawSpell | undefined {
 	return spells.find((s) => s.name.toLowerCase() === ref.name && (ref.source === null || s.source.toUpperCase() === ref.source))
 }
 
@@ -141,8 +142,13 @@ const FIXED_GRANT_KEYS = ['prepared', 'known', 'innate'] as const
  * hands"]}}`) — that per-day/ritual usage limit is tracked nowhere else in
  * this app, so both wrapper keys are discarded and every string found at
  * any depth is treated as a plain grant, same as a flat array.
+ *
+ * Exported for reuse by featSpells.ts (d5a) — Drow High Magic and Fey
+ * Teleportation wrap their `innate` grant the same way (an ability-code/
+ * count key, not a class level), and don't need the level-gate this
+ * module's own callers apply.
  */
-function extractRefs(value: unknown): string[] {
+export function extractRefs(value: unknown): string[] {
 	if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string')
 	if (!isRecord(value)) return []
 	return Object.values(value).flatMap(extractRefs)

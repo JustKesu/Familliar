@@ -69,6 +69,11 @@ vi.mock('../spells/subclassPreparedSpells', async (importOriginal) => {
 	return { ...actual, loadSubclassAlwaysPreparedSpells: vi.fn(async () => []) }
 })
 
+vi.mock('../spells/featSpells', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/featSpells')>()
+	return { ...actual, loadFeatGrantedSpells: vi.fn(async () => []) }
+})
+
 vi.mock('../featureResolver', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../featureResolver')>()
 	return {

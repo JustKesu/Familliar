@@ -27,6 +27,7 @@ import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spel
 import { computeDarkvision, computeSize, computeSpeed, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
+import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
@@ -133,6 +134,8 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
+	/** Fixed feat-granted spells (d5a) — depends on `character.featAsiChoices`, fetched separately from the main load same as subclassSpellInfo. */
+	const [featSpells, setFeatSpells] = useState<FeatGrantedSpell[]>([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -189,6 +192,16 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		}
 	}, [character])
 
+	useEffect(() => {
+		let cancelled = false
+		loadFeatGrantedSpells(character).then((spells) => {
+			if (!cancelled) setFeatSpells(spells)
+		})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
 	if (loadError) {
 		return (
 			<article className="sheet">
@@ -238,6 +251,7 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const combinedSpells = combineSpellEntries(
 		character.spellChoices ?? [],
 		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, spells: info.alwaysPrepared })),
+		featSpells,
 	)
 
 	return (

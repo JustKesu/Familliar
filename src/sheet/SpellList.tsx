@@ -18,6 +18,11 @@ import { UnresolvedValue } from './ValueBreakdown'
  * Collapsed by default (a <details> per spell, same pattern as the sheet's
  * feat list); expanding shows the fields a paper sheet shows, read from the
  * spell's own data rather than hand-formatted prose (spellFormatting.ts).
+ *
+ * d5a adds feat-granted spells (featSpells.ts) as a third source, merged the
+ * same way — `featOrigins` names the granting feat(s), distinct from
+ * `subclassOrigins`'s "always prepared (subclass)" label per the user's
+ * explicit "from feat (Feat Name)" wording.
  */
 
 export interface SheetSpellEntry {
@@ -26,12 +31,15 @@ export interface SheetSpellEntry {
 	chosen: boolean
 	/** Subclass name(s) that grant this spell as always-prepared. Almost always 0 or 1 entry; a list only to cover a character with more than one subclass-granting class at once. */
 	subclassOrigins: string[]
+	/** Feat name(s) that grant this spell (featSpells.ts, d5a). Almost always 0 or 1 entry. */
+	featOrigins: string[]
 }
 
 function provenanceLabel(entry: SheetSpellEntry): string {
 	const parts: string[] = []
 	if (entry.chosen) parts.push('player pick')
 	for (const subclassName of entry.subclassOrigins) parts.push(`always prepared (${subclassName})`)
+	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
 	return parts.join('; ')
 }
 
@@ -39,10 +47,11 @@ function keyOf(name: string, source: string): string {
 	return `${name.toLowerCase()}|${source.toUpperCase()}`
 }
 
-/** Merges the player's chosen spells and every class's subclass always-prepared spells into one list, counting an overlap once (D44 spirit). */
+/** Merges the player's chosen spells, every class's subclass always-prepared spells, and fixed feat-granted spells (d5a) into one list, counting an overlap once (D44 spirit). */
 export function combineSpellEntries(
 	spellChoices: { spells: { name: string; source: string }[] }[],
 	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string }[] }[],
+	featGrantedSpells: { featName: string; name: string; source: string }[] = [],
 ): SheetSpellEntry[] {
 	const map = new Map<string, SheetSpellEntry>()
 
@@ -51,7 +60,7 @@ export function combineSpellEntries(
 			const key = keyOf(spell.name, spell.source)
 			const existing = map.get(key)
 			if (existing) existing.chosen = true
-			else map.set(key, { name: spell.name, source: spell.source, chosen: true, subclassOrigins: [] })
+			else map.set(key, { name: spell.name, source: spell.source, chosen: true, subclassOrigins: [], featOrigins: [] })
 		}
 	}
 
@@ -62,8 +71,18 @@ export function combineSpellEntries(
 			if (existing) {
 				if (!existing.subclassOrigins.includes(group.subclassName)) existing.subclassOrigins.push(group.subclassName)
 			} else {
-				map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [group.subclassName] })
+				map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [group.subclassName], featOrigins: [] })
 			}
+		}
+	}
+
+	for (const spell of featGrantedSpells) {
+		const key = keyOf(spell.name, spell.source)
+		const existing = map.get(key)
+		if (existing) {
+			if (!existing.featOrigins.includes(spell.featName)) existing.featOrigins.push(spell.featName)
+		} else {
+			map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [], featOrigins: [spell.featName] })
 		}
 	}
 
