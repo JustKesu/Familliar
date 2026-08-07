@@ -1,37 +1,62 @@
 /*
- * Subclass always-prepared spells (build order step 6, slice d2b): the
- * domain/oath/circle spells a subclass grants outright at a given class
+ * Subclass always-prepared spells (build order step 6, slices d2b and d6a):
+ * the domain/oath/circle spells a subclass grants outright at a given class
  * level. Not preparation, not a picker choice — these are DERIVED from
  * subclass + level and are not stored (confirmed with the user); a caller
  * recomputes them from whatever is already on the Character.
  *
- * D62 — first pass supports only the `prepared` shape of a subclass's
- * additionalSpells field. A subclass whose additionalSpells uses only one
- * of the other 13 shapes (`known`, `innate`, `expanded`, ...) returns
- * nothing here, cleanly — not an error, the deferral working as intended.
+ * D62 (d2b) handled only the `prepared` shape. D6a extends the same
+ * derived-lookup treatment to the `known` and `innate` shapes (and a
+ * subclass that mixes any of the three) — same fixed-grant kind of data,
+ * just filed under a different label. `expanded` is deliberately never
+ * read here (see below); a subclass whose additionalSpells uses only
+ * `expanded` still returns nothing, cleanly.
  *
  * These spells are ADDITIONAL to the class spell picker's own
  * cantrip/prepared/known counts (slice d2) — they never add to or subtract
  * from those counts, and must be kept out of Character.spellChoices, a
  * separate, player-chosen list.
  *
- * Shape confirmed via scripts/investigate-prepared-shape.js (D46), against
- * all 48 subclass additionalSpells entries carrying a `prepared` key:
+ * Shape confirmed via scripts/investigate-prepared-shape.js (D46, d2b) and
+ * scripts/investigate-d6a-shapes.js + investigate-d6a-other-shapes.js (d6a),
+ * against all subclass additionalSpells entries:
  *
- * - `prepared` is always an object keyed by class level ("3", "5", ...),
- *   each value an array of spell references. Never an array itself.
+ * - `prepared`/`known`/`innate` are each an object keyed by class level
+ *   ("3", "5", ...), each value normally an array of spell references.
+ *   Never an array itself.
  * - A spell reference is almost always a bare lowercase name ("identify") or
  *   "name|source" ("healing word|xphb"), occasionally with a trailing
  *   "#..." tag ("mind sliver|xphb#c") that is not part of the source code
  *   and is stripped before matching.
- * - ONE exception found: Bard College of Lore, level 6, carries a nested
- *   choice object instead of a spell name —
+ * - ONE exception found in `prepared` (d2b): Bard College of Lore, level 6,
+ *   carries a nested choice object instead of a spell name —
  *   `{"choose":"level=0;1;2;3|class=Cleric;Druid;Wizard"}`. That is a
  *   player choice from other classes' lists, not a fixed always-prepared
- *   spell, and is outside what D62's `prepared` shape was scoped to cover.
- *   Per the task brief, this is reported (docs/REPORT.md) rather than
- *   handled — a non-string item in a `prepared` level's array is skipped
- *   cleanly here, same as any other unhandled shape.
+ *   spell, and is outside what this module covers (deferred to d6b) — a
+ *   non-string item in a level's array is skipped cleanly here, same as any
+ *   other unhandled shape.
+ * - d6a: 5 subclasses (Artificer Alchemist [EFA], Barbarian Path of the
+ *   Wild Heart, Fighter Psi Warrior, Warlock The Fathomless, Monk Way of
+ *   the Sun Soul/Warrior of Shadow) wrap a level's spell list one nesting
+ *   deeper, under a `resource`/`daily`/`ritual` key whose own sub-key (an
+ *   ability code, a count, ...) this app has nowhere to track a per-day/
+ *   ritual usage limit anyway — unwrapped one level and treated as a plain
+ *   grant, same as a flat array.
+ * - d6a: Warlock Archfey Patron keys its one innate grant `"_"` instead of
+ *   a class level — `Number("_")` is not finite, so the existing level-gate
+ *   check already used for `prepared` skips it cleanly with no special case.
+ * - d6a: `expanded` is NOT read at all in this module, on purpose. It hides
+ *   three different things: (1) EK/Arcane Trickster/Divine Soul use it to
+ *   WIDEN the class spell picker's offered pool ("also pick from Wizard's
+ *   list"), not to grant fixed spells — a d2-picker change, not this
+ *   module's kind of work; (2) three Warlock patrons (Celestial, Hexblade,
+ *   Fathomless) grant fixed patron-boon spells under it, but keyed by pact
+ *   slot RANK ("s1".."s5"), not class level — translating rank to the
+ *   level it's first available needs the Warlock Pact Magic slot table,
+ *   out of scope for this slice; (3) Warlock The Genie has 4 separate
+ *   additionalSpells entries, one per genie kind (Dao/Djinni/Efreeti/
+ *   Marid), and nothing in this app stores which kind the player picked.
+ *   All three are reported deferred in docs/REPORT.md rather than guessed.
  * - Two of 406 string references don't resolve against this app's filtered
  *   spells.json (e.g. "branding smite", not present in any allowed source)
  *   — skipped cleanly (D43), not an error.
@@ -105,12 +130,31 @@ function findSpell(spells: RawSpell[], ref: { name: string; source: string | nul
 	return spells.find((s) => s.name.toLowerCase() === ref.name && (ref.source === null || s.source.toUpperCase() === ref.source))
 }
 
+/** The fixed-grant keys this module derives spells from. `expanded` is deliberately excluded — see module comment. */
+const FIXED_GRANT_KEYS = ['prepared', 'known', 'innate'] as const
+
+/**
+ * A level's value is normally a flat array of spell references. d6a found 5
+ * subclasses wrap it two levels deeper instead, under a `resource`/`daily`/
+ * `ritual` key whose own value is keyed again by an ability code or a count
+ * (e.g. `{"daily":{"1":["telekinesis"]}}`, `{"resource":{"2":["burning
+ * hands"]}}`) — that per-day/ritual usage limit is tracked nowhere else in
+ * this app, so both wrapper keys are discarded and every string found at
+ * any depth is treated as a plain grant, same as a flat array.
+ */
+function extractRefs(value: unknown): string[] {
+	if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string')
+	if (!isRecord(value)) return []
+	return Object.values(value).flatMap(extractRefs)
+}
+
 /**
  * Pure filter (D38). Takes ONE subclass identity plus the character's level
  * in that class (D11 — a multiclass caller unions per class, not built
  * here) and the parsed classes.json / spells.json arrays. Returns the
  * subclass's always-prepared spells granted at or below that level, from
- * only the `prepared` shape (D62) — every other shape yields nothing.
+ * the `prepared`/`known`/`innate` shapes (D62, d6a) — `expanded` and any
+ * other shape yield nothing (see module comment).
  */
 export function extractSubclassAlwaysPreparedSpells(
 	parsedClasses: unknown,
@@ -143,29 +187,31 @@ export function extractSubclassAlwaysPreparedSpells(
 
 	for (const entry of subclass.additionalSpells) {
 		if (!isRecord(entry)) continue
-		const prepared = entry['prepared']
-		if (prepared === undefined) continue // D62: only the `prepared` shape is handled this pass.
-		if (!isRecord(prepared)) continue // unexpected variant of `prepared` itself — skip cleanly, don't invent handling.
 
-		for (const [levelKey, refs] of Object.entries(prepared)) {
-			const grantedAtLevel = Number(levelKey)
-			if (!Number.isFinite(grantedAtLevel) || grantedAtLevel > classLevel) continue
-			if (!Array.isArray(refs)) continue
+		for (const key of FIXED_GRANT_KEYS) {
+			const levelMap = entry[key]
+			if (levelMap === undefined) continue
+			if (!isRecord(levelMap)) continue // unexpected variant of the key itself — skip cleanly, don't invent handling.
 
-			for (const ref of refs) {
-				if (typeof ref !== 'string') continue // e.g. Bard College of Lore's nested `{choose: ...}` — see module comment.
-				const spell = findSpell(spells, parseSpellRef(ref))
-				if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+			for (const [levelKey, value] of Object.entries(levelMap)) {
+				const grantedAtLevel = Number(levelKey)
+				// Not finite also covers Warlock Archfey Patron's "_" level key — deferred cleanly, no special case needed.
+				if (!Number.isFinite(grantedAtLevel) || grantedAtLevel > classLevel) continue
 
-				result.push({
-					name: spell.name,
-					source: spell.source,
-					level: spell.level,
-					grantedAtLevel,
-					ritual: spell.meta?.ritual === true,
-					concentration: hasConcentration(spell.duration),
-					origin: 'subclass',
-				})
+				for (const ref of extractRefs(value)) {
+					const spell = findSpell(spells, parseSpellRef(ref))
+					if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+
+					result.push({
+						name: spell.name,
+						source: spell.source,
+						level: spell.level,
+						grantedAtLevel,
+						ritual: spell.meta?.ritual === true,
+						concentration: hasConcentration(spell.duration),
+						origin: 'subclass',
+					})
+				}
 			}
 		}
 	}

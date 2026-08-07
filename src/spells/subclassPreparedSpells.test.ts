@@ -32,6 +32,102 @@ const knownOnlySubclass = {
 	],
 }
 
+const innateOnlySubclass = {
+	entryType: 'subclass',
+	name: 'Path of the Ancestral Guardian',
+	source: 'XPHB',
+	className: 'Barbarian',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			innate: {
+				'10': ['augury', 'clairvoyance'],
+			},
+		},
+	],
+}
+
+const mixedPreparedKnownSubclass = {
+	entryType: 'subclass',
+	name: 'Grave Domain',
+	source: 'XPHB',
+	className: 'Cleric',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			prepared: {
+				'1': ['identify'],
+			},
+			known: {
+				'1': ['burning hands'],
+			},
+		},
+	],
+}
+
+const wrappedInnateSubclass = {
+	entryType: 'subclass',
+	name: 'Psi Warrior',
+	source: 'XPHB',
+	className: 'Fighter',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			innate: {
+				'18': { daily: { '1': ['heat metal'] } },
+			},
+		},
+	],
+}
+
+const nonNumericLevelKeySubclass = {
+	entryType: 'subclass',
+	name: 'Archfey Patron',
+	source: 'XPHB',
+	className: 'Warlock',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			innate: {
+				_: { daily: { cha: ['identify'] } },
+			},
+		},
+	],
+}
+
+const expandedPoolOnlySubclass = {
+	entryType: 'subclass',
+	name: 'Eldritch Knight',
+	source: 'XPHB',
+	className: 'Fighter',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			expanded: {
+				'3': [{ all: 'level=0|class=Wizard' }, { all: 'level=1|class=Wizard' }],
+			},
+		},
+	],
+}
+
+const expandedPlusKnownSubclass = {
+	entryType: 'subclass',
+	name: 'Arcane Trickster',
+	source: 'XPHB',
+	className: 'Rogue',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			known: {
+				'3': ['burning hands'],
+			},
+			expanded: {
+				'3': [{ all: 'level=0|class=Wizard' }, { all: 'level=1|class=Wizard' }],
+			},
+		},
+	],
+}
+
 const noAdditionalSpells = {
 	entryType: 'subclass',
 	name: 'Champion',
@@ -56,7 +152,18 @@ const collegeOfLore = {
 	],
 }
 
-const classes = [forgeDomain, knownOnlySubclass, noAdditionalSpells, collegeOfLore]
+const classes = [
+	forgeDomain,
+	knownOnlySubclass,
+	innateOnlySubclass,
+	mixedPreparedKnownSubclass,
+	wrappedInnateSubclass,
+	nonNumericLevelKeySubclass,
+	expandedPoolOnlySubclass,
+	expandedPlusKnownSubclass,
+	noAdditionalSpells,
+	collegeOfLore,
+]
 
 const identify = { name: 'Identify', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
 const searingSmite = { name: 'Searing Smite', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
@@ -69,8 +176,10 @@ const heatMetal = {
 }
 const magicWeapon = { name: 'Magic Weapon', source: 'XPHB', level: 2, duration: [{ type: 'instant' }], meta: {} }
 const burningHands = { name: 'Burning Hands', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
+const augury = { name: 'Augury', source: 'XPHB', level: 2, duration: [{ type: 'instant' }], meta: {} }
+const clairvoyance = { name: 'Clairvoyance', source: 'XPHB', level: 3, duration: [{ type: 'timed', duration: { type: 'minute', amount: 10 } }], meta: {} }
 
-const spells = [identify, searingSmite, heatMetal, magicWeapon, burningHands]
+const spells = [identify, searingSmite, heatMetal, magicWeapon, burningHands, augury, clairvoyance]
 
 describe('extractSubclassAlwaysPreparedSpells', () => {
 	it('returns the always-prepared spells granted at or below the given level, marked as subclass-sourced', () => {
@@ -100,9 +209,47 @@ describe('extractSubclassAlwaysPreparedSpells', () => {
 		expect(result.find((s) => s.name === 'Identify')?.concentration).toBe(false)
 	})
 
-	it('a subclass whose additionalSpells uses only a non-`prepared` shape returns nothing (D62 deferral)', () => {
-		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Fiend', 'XPHB', 'Warlock', 'XPHB', 5)
+	it('a subclass granting fixed spells under `known` (not `prepared`) is returned, marked subclass-sourced, level-gated (d6a)', () => {
+		const belowGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Fiend', 'XPHB', 'Warlock', 'XPHB', 0)
+		expect(belowGrant).toEqual([])
+
+		const atGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Fiend', 'XPHB', 'Warlock', 'XPHB', 5)
+		expect(atGrant.map((s) => s.name)).toEqual(['Burning Hands'])
+		expect(atGrant[0].origin).toBe('subclass')
+		expect(atGrant[0].grantedAtLevel).toBe(1)
+	})
+
+	it('a subclass granting fixed spells under `innate` is returned the same way, level-gated (d6a)', () => {
+		const belowGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Path of the Ancestral Guardian', 'XPHB', 'Barbarian', 'XPHB', 9)
+		expect(belowGrant).toEqual([])
+
+		const atGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Path of the Ancestral Guardian', 'XPHB', 'Barbarian', 'XPHB', 10)
+		expect(atGrant.map((s) => s.name).sort()).toEqual(['Augury', 'Clairvoyance'])
+	})
+
+	it('a subclass mixing `prepared` with another fixed key returns all its fixed spells once, none dropped, none doubled (d6a)', () => {
+		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Grave Domain', 'XPHB', 'Cleric', 'XPHB', 1)
+		expect(result.map((s) => s.name).sort()).toEqual(['Burning Hands', 'Identify'])
+	})
+
+	it('unwraps a `resource`/`daily`/`ritual`-nested grant one level deep and returns it as a plain grant (d6a)', () => {
+		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Psi Warrior', 'XPHB', 'Fighter', 'XPHB', 18)
+		expect(result.map((s) => s.name)).toEqual(['Heat Metal'])
+	})
+
+	it('a non-numeric level key (Warlock Archfey Patron\'s "_") is skipped cleanly, not granted at every level (d6a)', () => {
+		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Archfey Patron', 'XPHB', 'Warlock', 'XPHB', 20)
 		expect(result).toEqual([])
+	})
+
+	it('an `expanded`-only subclass (pool-widening, e.g. Eldritch Knight) returns nothing — deferred, not invented (d6a)', () => {
+		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Eldritch Knight', 'XPHB', 'Fighter', 'XPHB', 20)
+		expect(result).toEqual([])
+	})
+
+	it('a subclass mixing `expanded` (pool-widening) with a genuine fixed `known` grant returns only the fixed part (d6a)', () => {
+		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Arcane Trickster', 'XPHB', 'Rogue', 'XPHB', 20)
+		expect(result.map((s) => s.name)).toEqual(['Burning Hands'])
 	})
 
 	it('a subclass with no additionalSpells at all returns nothing, cleanly', () => {
