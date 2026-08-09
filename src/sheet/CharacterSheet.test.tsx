@@ -466,6 +466,36 @@ describe('CharacterSheet', () => {
 			expect(spellsSection.textContent).toContain('Cure Wounds')
 		})
 
+		it("a Wizard with Mark of Detection renders the mark's `expanded` pool-widening spell chosen during creation (D46, step 6), as a normal player pick", async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3], [4, 2]], pactSlotsByLevel: null },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Detect Evil and Good', source: 'XPHB', level: 1, entries: ['You sense the presence of fiends, celestials, and undead.'] })]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const wizardWithMark: Character = {
+				id: 'w1',
+				name: 'Marked Wizard',
+				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 16, wisdom: 10, charisma: 10 },
+				},
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Mark of Detection', source: 'EFA', chosenAbility: 'intelligence' }],
+				// Tagged with Wizard (the character's own class), same as saveCharacter does — the spell itself is drawn from the mark's `expanded` table, not Wizard's own list.
+				spellChoices: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Detect Evil and Good', source: 'XPHB' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={wizardWithMark} />)
+			await screen.findByRole('heading', { name: 'Marked Wizard' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			expect(spellsSection.textContent).toContain('Detect Evil and Good')
+		})
+
 		it('a Warlock shows Pact Magic slots separately from any ordinary slot list', async () => {
 			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
 			const spellSlots: ClassSpellSlotsData[] = [
@@ -873,6 +903,38 @@ describe('CharacterSheet', () => {
 			expect(alarmSummary.textContent).toContain('from feat (Ritual Caster)')
 			const clSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Comprehend Languages'))!
 			expect(clSummary.textContent).toContain('from feat (Ritual Caster)')
+		})
+
+		it("a non-caster (Fighter) with a Mark feat shows only the mark's FIXED spell, no crash and no attack/DC/slots — `expanded` never applies with no Spellcasting/Pact Magic feature to widen (D46)", async () => {
+			const details: SpellDetail[] = [spellDetail({ name: 'Detect Magic', source: 'XPHB', level: 1, entries: ['You sense the presence of magic.'] })]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Detect Magic', source: 'XPHB', level: 1, ritual: false, concentration: true, origin: 'feat', featName: 'Mark of Detection', ability: 'int' },
+			]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const fighter: Character = {
+				id: 'f4',
+				name: 'Marked Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Mark of Detection', source: 'EFA', chosenAbility: 'intelligence' }],
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Marked Fighter' })
+
+			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
+			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+
+			const spellsSection = container.querySelector('.sheet__spells')
+			expect(spellsSection).not.toBeNull()
+			await waitFor(() => expect(spellsSection!.textContent).toContain('Detect Magic'))
+			const summary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Detect Magic'))!
+			expect(summary.textContent).toContain('from feat (Mark of Detection)')
 		})
 
 		it('a non-caster with no spell-granting feat shows no Spells section', async () => {

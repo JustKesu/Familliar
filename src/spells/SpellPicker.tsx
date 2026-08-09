@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { loadClassSpellList, type ClassSpellListSpell } from './classSpellListData'
+import { loadClassSpellList, loadFeatExpandedSpellList, type ClassSpellListSpell } from './classSpellListData'
 import { filterSpellsByLevel } from './spellLevelFilter'
 import type { SpellSlotsEntry } from '../calculation/spellSlots'
 import type { SpellCountLabel } from '../calculation/spellCounts'
@@ -39,6 +39,7 @@ export function SpellPicker({
 	classSource,
 	expandedClassName,
 	expandedClassSource,
+	featChoices,
 	spellSlots,
 	cantripCount,
 	leveledSpellCount,
@@ -51,6 +52,8 @@ export function SpellPicker({
 	/** D46 (Divine Soul): an extra class list to UNION into the pool, e.g. Cleric alongside Sorcerer. Omitted for every other class/subclass. */
 	expandedClassName?: string
 	expandedClassSource?: string
+	/** D46 (the 12 marks): every feat the character has taken (Character.featAsiChoices) — each feat's own `expanded` pool-widening spells (classSpellListData.ts's extractFeatExpandedSpellList) are unioned in too. A feat with no `expanded` key (i.e. every feat but a mark) contributes nothing. */
+	featChoices?: { name: string; source: string }[]
 	spellSlots: SpellSlotsEntry | undefined
 	cantripCount: number
 	leveledSpellCount: number
@@ -66,11 +69,12 @@ export function SpellPicker({
 		Promise.all([
 			loadClassSpellList(className, classSource),
 			expandedClassName && expandedClassSource ? loadClassSpellList(expandedClassName, expandedClassSource) : Promise.resolve([]),
+			Promise.all((featChoices ?? []).map((feat) => loadFeatExpandedSpellList(feat.name, feat.source))),
 		])
-			.then(([spells, expandedSpells]) => {
+			.then(([spells, expandedSpells, featExpandedSpells]) => {
 				if (cancelled) return
 				const merged = new Map<string, ClassSpellListSpell>()
-				for (const spell of [...spells, ...expandedSpells]) merged.set(`${spell.name}|${spell.source}`, spell)
+				for (const spell of [...spells, ...expandedSpells, ...featExpandedSpells.flat()]) merged.set(`${spell.name}|${spell.source}`, spell)
 				setState({ status: 'ready', spells: [...merged.values()] })
 			})
 			.catch((error: unknown) => {
@@ -81,7 +85,8 @@ export function SpellPicker({
 		return () => {
 			cancelled = true
 		}
-	}, [className, classSource, expandedClassName, expandedClassSource])
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- featChoices is a fresh array each render; its content (JSON) is the real dependency.
+	}, [className, classSource, expandedClassName, expandedClassSource, JSON.stringify(featChoices)])
 
 	if (state.status === 'loading') return null
 	if (state.status === 'error') {

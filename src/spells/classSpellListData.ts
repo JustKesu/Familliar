@@ -16,6 +16,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { extractRefs as extractSpellRefs, parseSpellRef } from './subclassPreparedSpells'
 
 export interface ClassSpellListSpell {
 	name: string
@@ -153,4 +154,79 @@ const EXPANDED_POOL_ADDITIONS: Record<string, { className: string; classSource: 
 export function expandedSpellListClassFor(subclassName: string | null | undefined): { className: string; classSource: string } | null {
 	if (subclassName && subclassName in EXPANDED_POOL_ADDITIONS) return EXPANDED_POOL_ADDITIONS[subclassName]!
 	return null
+}
+
+interface RawFeatEntry {
+	name: string
+	source: string
+	additionalSpells?: unknown
+}
+
+function isRawFeatEntry(value: unknown): value is RawFeatEntry {
+	return isRecord(value) && typeof value['name'] === 'string' && typeof value['source'] === 'string'
+}
+
+/**
+ * D46 (the 12 Eberron "Mark of ..." feats): a mark's `additionalSpells.expanded`
+ * is NOT a fixed grant like its `prepared`/`known` portion (featSpells.ts's
+ * d5b-3) — Mark of Detection's rules text ("Spells of the Mark") reads "If you
+ * have the Spellcasting or Pact Magic class feature, the spells on the [...]
+ * table are added to that feature's spell list." That is the same
+ * pool-widening role as EK/AT's and Divine Soul's `expanded`
+ * (spellListClassFor/expandedSpellListClassFor above) — just keyed by spell
+ * level ("s1".."s5", confirmed against the same table's own "Spell Level"
+ * column via scripts/investigate-mark-expanded-shape.js) instead of a
+ * class-list query string, and applying on top of WHATEVER class the
+ * character plays, not one fixed class. A character with no Spellcasting or
+ * Pact Magic feature has no picker for this to widen — nothing is granted,
+ * because the wizard's 'spells' step itself never renders when
+ * spellRequirement is null (wizardState.ts), so there's nothing to guard
+ * against here.
+ *
+ * scripts/investigate-feat-expanded-scope.js confirmed feats.json's
+ * `additionalSpells.expanded` key belongs to exactly these 12 marks and no
+ * other feat, so this reads any taken feat by name/source without a
+ * mark-name guard — a feat with no `expanded` key simply yields nothing.
+ */
+export function extractFeatExpandedSpellList(parsedFeats: unknown, parsedSpells: unknown, featName: string, featSource: string): ClassSpellListSpell[] {
+	if (!Array.isArray(parsedFeats)) {
+		throw new Error('feats.json: expected a top-level array.')
+	}
+	if (!Array.isArray(parsedSpells)) {
+		throw new Error('spells.json: expected a top-level array.')
+	}
+
+	const feat = parsedFeats.find((candidate): candidate is RawFeatEntry => isRawFeatEntry(candidate) && candidate.name === featName && candidate.source === featSource)
+	if (!feat || !Array.isArray(feat.additionalSpells)) return []
+
+	const spells = parsedSpells.filter(isRawSpell)
+	const result: ClassSpellListSpell[] = []
+	for (const entry of feat.additionalSpells) {
+		if (!isRecord(entry)) continue
+		const expanded = entry['expanded']
+		if (expanded === undefined) continue
+
+		for (const ref of extractSpellRefs(expanded)) {
+			const parsed = parseSpellRef(ref)
+			const spell = spells.find((s) => s.name.toLowerCase() === parsed.name && (parsed.source === null || s.source.toUpperCase() === parsed.source))
+			if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+
+			result.push({
+				name: spell.name,
+				source: spell.source,
+				level: spell.level,
+				school: spell.school,
+				ritual: spell.meta?.ritual === true,
+				concentration: hasConcentration(spell.duration),
+				viaVariant: false,
+			})
+		}
+	}
+	return result
+}
+
+/** Fetches feats.json and spells.json and returns one feat's `expanded` pool-widening spells (empty for any feat without one). */
+export async function loadFeatExpandedSpellList(featName: string, featSource: string): Promise<ClassSpellListSpell[]> {
+	const [parsedFeats, parsedSpells] = await Promise.all([loadDataFile('data/feats.json'), loadDataFile('data/spells.json')])
+	return extractFeatExpandedSpellList(parsedFeats, parsedSpells, featName, featSource)
 }

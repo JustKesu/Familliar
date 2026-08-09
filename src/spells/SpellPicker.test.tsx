@@ -26,12 +26,19 @@ const wizardList: ClassSpellListSpell[] = [
 	spell('Chromatic Orb', 1, { viaVariant: true }),
 ]
 
+/** Mark of Detection's `expanded` spells (D46) — distinct names from wizardList so a test can tell which pool a spell came from. Magic Missile overlaps Wizard's own list (de-dup case). */
+const markOfDetectionExpanded: ClassSpellListSpell[] = [spell('Detect Evil and Good', 1), spell('Identify', 1), spell('Magic Missile', 1)]
+
 vi.mock('./classSpellListData', async () => {
 	const actual = await vi.importActual<typeof import('./classSpellListData')>('./classSpellListData')
 	return {
 		...actual,
 		loadClassSpellList: vi.fn(async (className: string) => {
 			if (className === 'Wizard') return wizardList
+			return []
+		}),
+		loadFeatExpandedSpellList: vi.fn(async (featName: string) => {
+			if (featName === 'Mark of Detection') return markOfDetectionExpanded
 			return []
 		}),
 	}
@@ -179,5 +186,70 @@ describe('SpellPicker', () => {
 
 		expect(await screen.findByText('0 of 2 spells known chosen.')).toBeTruthy()
 		expect(screen.queryByLabelText(/Prestidigitation/)).toBeNull()
+	})
+
+	describe('featChoices (D46, the 12 marks\' `expanded` pool-widening)', () => {
+		it("unions a taken feat's `expanded` spells into the pool alongside the class list, de-duping an overlap", async () => {
+			render(
+				<SpellPicker
+					className="Wizard"
+					classSource="XPHB"
+					featChoices={[{ name: 'Mark of Detection', source: 'EFA' }]}
+					spellSlots={fullSlots}
+					cantripCount={2}
+					leveledSpellCount={4}
+					label="prepared"
+					value={[]}
+					onChange={() => {}}
+				/>,
+			)
+
+			expect(await screen.findByLabelText(/Detect Evil and Good/)).toBeTruthy()
+			expect(screen.getByLabelText(/Identify/)).toBeTruthy()
+			// Magic Missile is on BOTH the Wizard list and the mark's expanded list — appears once.
+			expect(screen.getAllByLabelText(/^Magic Missile/)).toHaveLength(1)
+			// The Wizard list itself is still offered, unaffected.
+			expect(screen.getByLabelText(/Fireball/)).toBeTruthy()
+		})
+
+		it('a feat with no `expanded` spells contributes nothing, and offering none at all does not crash the picker', async () => {
+			render(
+				<SpellPicker
+					className="Wizard"
+					classSource="XPHB"
+					featChoices={[{ name: 'Tough', source: 'XPHB' }]}
+					spellSlots={fullSlots}
+					cantripCount={2}
+					leveledSpellCount={3}
+					label="prepared"
+					value={[]}
+					onChange={() => {}}
+				/>,
+			)
+
+			expect(await screen.findByLabelText(/Fireball/)).toBeTruthy()
+			expect(screen.queryByLabelText(/Detect Evil and Good/)).toBeNull()
+		})
+
+		it('a chosen mark-expanded spell can be selected and reported upward like any other pool spell', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			render(
+				<SpellPicker
+					className="Wizard"
+					classSource="XPHB"
+					featChoices={[{ name: 'Mark of Detection', source: 'EFA' }]}
+					spellSlots={fullSlots}
+					cantripCount={2}
+					leveledSpellCount={1}
+					label="prepared"
+					value={[]}
+					onChange={onChange}
+				/>,
+			)
+
+			await user.click(await screen.findByLabelText(/Detect Evil and Good/))
+			expect(onChange).toHaveBeenCalledWith([{ name: 'Detect Evil and Good', source: 'XPHB', level: 1 }])
+		})
 	})
 })

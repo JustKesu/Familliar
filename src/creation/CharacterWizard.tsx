@@ -353,6 +353,17 @@ export function CharacterWizard({
 		: null
 	/** D46: Divine Soul widens its Sorcerer pool with the Cleric list — union, not replacement (classSpellListData.ts's EXPANDED_POOL_ADDITIONS). Null for every other subclass. */
 	const expandedSpellListClass = expandedSpellListClassFor(state.data.subclass?.name)
+	/**
+	 * D46 (the 12 marks): every feat taken so far (Character.featAsiChoices) —
+	 * SpellPicker fetches each one's `expanded` pool-widening spells itself
+	 * (classSpellListData.ts's loadFeatExpandedSpellList) and unions in
+	 * whatever isn't empty. Reading current wizard state here (not a saved
+	 * Character) means stepping back to 'spells' after picking a mark on the
+	 * later 'featAsi' step shows the widened pool immediately — the wizard's
+	 * steps are revisitable (the Back button), so step ORDER doesn't gate
+	 * this the way it would a one-way form.
+	 */
+	const markFeatChoices = state.data.featAsiChoices.filter((choice) => choice.kind === 'feat').map((choice) => ({ name: choice.name, source: choice.source }))
 
 	function handleSave(): void {
 		try {
@@ -535,6 +546,7 @@ export function CharacterWizard({
 						classSource={spellListClass.classSource}
 						expandedClassName={expandedSpellListClass?.className}
 						expandedClassSource={expandedSpellListClass?.classSource}
+						featChoices={markFeatChoices}
 						spellSlots={spellSlotsEntry}
 						cantripCount={spellRequirement.cantripCount}
 						leveledSpellCount={spellRequirement.leveledSpellCount}

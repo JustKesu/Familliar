@@ -1,0 +1,6 @@
+const fs = require('fs')
+const path = require('path')
+const feats = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/feats.json'), 'utf8'))
+const m = feats.find((f) => f.name === 'Mark of Detection')
+console.log('SUMMARY')
+console.log(JSON.stringify({ ability: m.ability, category: m.category, hasFeatType: m.featType }, null, 2))
