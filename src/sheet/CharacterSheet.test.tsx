@@ -15,6 +15,7 @@ import { loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetDat
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import type { Character } from '../storage/character'
 
@@ -68,6 +69,11 @@ vi.mock('../spells/spellDetailData', async (importOriginal) => {
 vi.mock('../spells/subclassPreparedSpells', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../spells/subclassPreparedSpells')>()
 	return { ...actual, loadSubclassAlwaysPreparedSpells: vi.fn(async () => []) }
+})
+
+vi.mock('../spells/subclassSpellChoiceData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/subclassSpellChoiceData')>()
+	return { ...actual, loadSubclassChosenSpells: vi.fn(async () => []) }
 })
 
 vi.mock('../spells/featSpells', async (importOriginal) => {
@@ -477,6 +483,49 @@ describe('CharacterSheet', () => {
 			const guidanceSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Guidance'))!
 			expect(guidanceSummary.textContent).toContain('player pick')
 			expect(guidanceSummary.textContent).not.toContain('always prepared')
+		})
+
+		it('a subclass spell-choice pick (Evoker, slice d6b) shows on the sheet marked "always prepared (Evoker)"', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3]], pactSlotsByLevel: null },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Fire Bolt', source: 'XPHB', level: 0, entries: ['You hurl a mote of fire.'] })]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadSubclassSource).mockResolvedValue('XPHB')
+			vi.mocked(loadSubclassChosenSpells).mockResolvedValue([
+				{ name: 'Fire Bolt', source: 'XPHB', level: 0, grantedAtLevel: 3, ritual: false, concentration: false, origin: 'subclass' },
+			])
+
+			const wizard: Character = {
+				id: 'wz1',
+				name: 'Evocation Wizard',
+				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: 'Evoker', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 16, wisdom: 10, charisma: 10 },
+				},
+				subclassSpellChoices: [
+					{
+						subclassName: 'Evoker',
+						subclassSource: 'XPHB',
+						className: 'Wizard',
+						classSource: 'XPHB',
+						picks: [{ grantedAtLevel: 3, slotIndex: 0, name: 'Fire Bolt', source: 'XPHB' }],
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Evocation Wizard' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Fire Bolt'))
+
+			const fireBoltSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
+			expect(fireBoltSummary.textContent).toContain('always prepared (Evoker)')
 		})
 
 		it('a base Magic Initiate pick shows on the sheet marked "from feat (Magic Initiate)" (slice d5b-2)', async () => {

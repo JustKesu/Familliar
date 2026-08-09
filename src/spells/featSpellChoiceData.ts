@@ -29,6 +29,21 @@
  * level 1, +1 at 5/9/13/17) exactly track proficiencyBonusForLevel at those
  * same thresholds, so this module exposes ritualCasterSpellCount() instead
  * of re-deriving the level-gated structure from feats.json.
+ *
+ * Build order step 6, slice d6b generalized this module's mini-language
+ * parser and offering logic for reuse by subclassSpellChoiceData.ts, rather
+ * than writing a second parser: a subclass's own `choose` strings differ
+ * from a feat's in two ways confirmed by
+ * scripts/investigate-d6b-choice-shapes.js — (1) `level=` can list SEVERAL
+ * levels ("level=0;1;2;3", a level CAP, not a single spell level), so
+ * SpellChoiceSlot.level became `levels: number[]`; (2) a `class=` clause can
+ * list SEVERAL classes ("class=Cleric;Druid;Wizard", College of Lore's
+ * other-class-list choice), so SpellChoiceFilter's class kind became
+ * `classes: {className,classSource}[]`. `CLASS_NAME_LOOKUP` gained `wizard`
+ * for the same reason. `offeredSpellsForSlot`'s parameter type was loosened
+ * to the `{levels, filter}` shape both this module's SpellChoiceSlot and
+ * subclassSpellChoiceData.ts's SubclassSpellChoiceSlot satisfy — it never
+ * reads `count`.
  */
 
 import { proficiencyBonusForLevel } from '../calculation/proficiencyBonus'
@@ -39,11 +54,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export type SpellChoiceFilter = { kind: 'class'; className: string; classSource: string } | { kind: 'school'; schools: string[] } | { kind: 'ritual' }
+export type SpellChoiceFilter =
+	| { kind: 'class'; classes: { className: string; classSource: string }[]; schools?: string[] }
+	| { kind: 'school'; schools: string[] }
+	| { kind: 'ritual' }
 
 export interface SpellChoiceSlot {
-	/** 0 = cantrip, 1 = level-1 spell — both this module's slots are always one or the other (confirmed by the investigate script). */
-	level: number
+	/** 0 = cantrip, 1 = level-1 spell for every feat this module covers (both always a single-element array) — a subclass's own choose string can list several (module comment, d6b). */
+	levels: number[]
 	filter: SpellChoiceFilter
 	/** Fixed pick count for a class/school slot; always `null` for Ritual Caster's ritual slot — see module comment, its count comes from proficiency bonus instead. */
 	count: number | null
@@ -56,49 +74,87 @@ export interface FilterChoiceFeatShape {
 	spellSlot: SpellChoiceSlot | null
 }
 
-/** Maps a `class=` clause's class name (case varies in the data) to the identity classSpellListData.ts needs — scoped to only the 4 classes the 8 in-scope feats reference (D46), not a general class-name resolver. */
+/** Maps a `class=` clause's class name (case varies in the data) to the identity classSpellListData.ts needs — scoped to only the 5 classes the 8 in-scope feats plus College of Lore's class-list choice (d6b) reference, not a general class-name resolver. */
 const CLASS_NAME_LOOKUP: Record<string, { className: string; classSource: string }> = {
 	cleric: { className: 'Cleric', classSource: 'XPHB' },
 	druid: { className: 'Druid', classSource: 'XPHB' },
 	artificer: { className: 'Artificer', classSource: 'EFA' },
 	sorcerer: { className: 'Sorcerer', classSource: 'XPHB' },
+	wizard: { className: 'Wizard', classSource: 'XPHB' },
 }
 
-interface RawChooseNode {
+export interface RawChooseNode {
 	choose: string
 	count?: number
 }
 
-function isChooseNode(value: unknown): value is RawChooseNode {
+export function isChooseNode(value: unknown): value is RawChooseNode {
 	return isRecord(value) && typeof value['choose'] === 'string'
 }
 
-function findChooseNodes(value: unknown): RawChooseNode[] {
+/** Exported for reuse by subclassSpellChoiceData.ts (d6b) — finds every `{choose: "..."}` node nested anywhere under `value`. */
+export function findChooseNodes(value: unknown): RawChooseNode[] {
 	if (isChooseNode(value)) return [value]
 	if (Array.isArray(value)) return value.flatMap(findChooseNodes)
 	if (isRecord(value)) return Object.values(value).flatMap(findChooseNodes)
 	return []
 }
 
-function parseFilterClause(clause: string): SpellChoiceFilter | null {
-	if (clause.startsWith('class=')) {
-		const identity = CLASS_NAME_LOOKUP[clause.slice('class='.length).toLowerCase()]
-		return identity ? { kind: 'class', ...identity } : null
+/**
+ * Combines every filter clause after the `level=` one (usually just 1; the 4
+ * Wizard subclasses this module was generalized for, d6b, carry 2 —
+ * "class=Wizard|school=A" — a class-list clause AND a school clause, ANDed
+ * together, not two alternative filters). A `ritual` clause never combines
+ * with the others in the data seen so far, so it wins outright if present.
+ */
+function parseFilterClauses(clauses: string[]): SpellChoiceFilter | null {
+	let classes: { className: string; classSource: string }[] | undefined
+	let schools: string[] | undefined
+
+	for (const clause of clauses) {
+		if (clause.startsWith('class=')) {
+			const names = clause.slice('class='.length).split(';')
+			const resolved = names.map((n) => CLASS_NAME_LOOKUP[n.toLowerCase()])
+			if (resolved.some((c) => c === undefined)) return null
+			classes = resolved as { className: string; classSource: string }[]
+		} else if (clause.startsWith('school=')) {
+			schools = clause.slice('school='.length).split(';')
+		} else if (clause === 'components & miscellaneous=ritual') {
+			return { kind: 'ritual' }
+		} else {
+			return null // unexpected clause shape — skip cleanly (D43).
+		}
 	}
-	if (clause.startsWith('school=')) {
-		return { kind: 'school', schools: clause.slice('school='.length).split(';') }
-	}
-	if (clause === 'components & miscellaneous=ritual') return { kind: 'ritual' }
+
+	if (classes) return schools ? { kind: 'class', classes, schools } : { kind: 'class', classes }
+	if (schools) return { kind: 'school', schools }
 	return null
 }
 
-/** Parses one `{choose: "level=N|filter"}` node into a slot, or null if the mini-language doesn't parse (unexpected shape — skip cleanly, D43). */
-function parseChooseNode(node: RawChooseNode): SpellChoiceSlot | null {
-	const match = /^level=(\d+)\|(.+)$/.exec(node.choose)
-	if (!match) return null
-	const filter = parseFilterClause(match[2])
+/**
+ * Parses a `"level=N[;N...]|filter[|filter...]"` string into its levels and
+ * filter, or null if the mini-language doesn't parse (unexpected shape —
+ * skip cleanly, D43). Exported for reuse by subclassSpellChoiceData.ts
+ * (d6b) — a subclass's own choose string uses the same mini-language, just
+ * with more than one `level=` value, (for College of Lore) more than one
+ * class, and (for the 4 Wizard subclasses) a class clause AND a school
+ * clause together.
+ */
+export function parseChooseString(value: string): { levels: number[]; filter: SpellChoiceFilter } | null {
+	const parts = value.split('|')
+	if (parts.length < 2) return null
+	const levelMatch = /^level=([\d;]+)$/.exec(parts[0])
+	if (!levelMatch) return null
+	const filter = parseFilterClauses(parts.slice(1))
 	if (!filter) return null
-	return { level: Number(match[1]), filter, count: filter.kind === 'ritual' ? null : (node.count ?? 1) }
+	return { levels: levelMatch[1].split(';').map(Number), filter }
+}
+
+/** Parses one `{choose: "level=N|filter"}` node into a slot, or null if the mini-language doesn't parse. */
+function parseChooseNode(node: RawChooseNode): SpellChoiceSlot | null {
+	const parsed = parseChooseString(node.choose)
+	if (!parsed) return null
+	return { levels: parsed.levels, filter: parsed.filter, count: parsed.filter.kind === 'ritual' ? null : (node.count ?? 1) }
 }
 
 interface RawFeatEntry {
@@ -215,18 +271,39 @@ export interface FilterChoiceCandidateSpell {
 	source: string
 }
 
-/** Pure filter (D38): every spell offered for one slot — a class-list slot reuses classSpellListData.ts (slice c); school/ritual slots read spells.json directly since they aren't scoped to a class. Guided (task decision): only spells matching the slot's filter AND level are ever offered. */
-export function offeredSpellsForSlot(parsedSpells: unknown, slot: SpellChoiceSlot): FilterChoiceCandidateSpell[] {
+/**
+ * Pure filter (D38): every spell offered for one slot — a class-list slot
+ * reuses classSpellListData.ts (slice c), unioned across every class the
+ * filter names (College of Lore, d6b) and deduplicated by name+source;
+ * school/ritual slots read spells.json directly since they aren't scoped to
+ * a class. Guided (task decision): only spells matching the slot's filter
+ * AND one of its levels are ever offered. Takes the minimal `{levels,
+ * filter}` shape rather than the full SpellChoiceSlot — never reads `count`
+ * — so subclassSpellChoiceData.ts's SubclassSpellChoiceSlot (d6b) can reuse
+ * this function directly instead of a second copy.
+ */
+export function offeredSpellsForSlot(parsedSpells: unknown, slot: { levels: number[]; filter: SpellChoiceFilter }): FilterChoiceCandidateSpell[] {
 	if (slot.filter.kind === 'class') {
-		return extractClassSpellList(parsedSpells, slot.filter.className, slot.filter.classSource)
-			.filter((s) => s.level === slot.level)
-			.map((s) => ({ name: s.name, source: s.source }))
+		const schools = slot.filter.schools
+		const seen = new Set<string>()
+		const result: FilterChoiceCandidateSpell[] = []
+		for (const cls of slot.filter.classes) {
+			for (const s of extractClassSpellList(parsedSpells, cls.className, cls.classSource)) {
+				if (!slot.levels.includes(s.level)) continue
+				if (schools && (s.school === undefined || !schools.includes(s.school))) continue
+				const key = `${s.name.toLowerCase()}|${s.source.toUpperCase()}`
+				if (seen.has(key)) continue
+				seen.add(key)
+				result.push({ name: s.name, source: s.source })
+			}
+		}
+		return result
 	}
 
 	if (!Array.isArray(parsedSpells)) {
 		throw new Error('spells.json: expected a top-level array.')
 	}
-	const atLevel = parsedSpells.filter(isRawSpellForFilter).filter((s) => s.level === slot.level)
+	const atLevel = parsedSpells.filter(isRawSpellForFilter).filter((s) => slot.levels.includes(s.level))
 
 	if (slot.filter.kind === 'school') {
 		const schools = slot.filter.schools

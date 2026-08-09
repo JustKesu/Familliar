@@ -21,6 +21,8 @@ import { computeAbilityScore } from '../calculation/abilityScores'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { SpellPicker } from '../spells/SpellPicker'
 import { AlwaysPreparedSpellsList } from '../spells/AlwaysPreparedSpellsList'
+import { SubclassSpellChoicePicker } from '../spells/SubclassSpellChoicePicker'
+import { isSubclassSpellChoice, loadSubclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { computeSpellCounts } from '../calculation/spellCounts'
@@ -84,6 +86,7 @@ export function CharacterWizard({
 	const [featsNeedingAbilityChoice, setFeatsNeedingAbilityChoice] = useState<ReadonlySet<string>>(new Set())
 	const [spellSlotsClassData, setSpellSlotsClassData] = useState<ClassSpellSlotsData[]>([])
 	const [spellCountClassData, setSpellCountClassData] = useState<ClassSpellCountData[]>([])
+	const [subclassSpellChoiceSlotCount, setSubclassSpellChoiceSlotCount] = useState(0)
 
 	useEffect(() => {
 		let cancelled = false
@@ -144,6 +147,33 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [state.data.classChoice])
+
+	/**
+	 * The number of subclass spell-choice slots unlocked at the chosen class
+	 * level (build order step 6, slice d6b) — needed synchronously for the
+	 * 'spells' step's own completion check (isStepComplete/isReadyToSave in
+	 * wizardState.ts), same reasoning as featAsiGrantCount/expertiseEligibility
+	 * above: the picker's own panel loads this data too, but the wizard needs
+	 * to know the required count before that panel would ever mount.
+	 */
+	useEffect(() => {
+		let cancelled = false
+		if (!state.data.classChoice || !state.data.subclass || !isSubclassSpellChoice(state.data.subclass)) {
+			setSubclassSpellChoiceSlotCount(0)
+			return
+		}
+		loadSubclassSpellChoiceShape(state.data.subclass.name, state.data.subclass.source, state.data.classChoice.className, state.data.classChoice.classSource)
+			.then((shape) => {
+				if (cancelled) return
+				setSubclassSpellChoiceSlotCount(unlockedSubclassSpellChoiceSlots(shape, state.data.classChoice!.level).length)
+			})
+			.catch(() => {
+				/* SubclassSpellChoicePicker itself surfaces load errors; this lookup (for step completion) is best-effort. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.classChoice, state.data.subclass])
 
 	/**
 	 * Loaded separately from ExpertisePicker's own fetch (same duplication
@@ -327,6 +357,7 @@ export function CharacterWizard({
 				featAsiGrantCount,
 				featsNeedingAbilityChoice,
 				spellRequirement,
+				subclassSpellChoiceSlotCount,
 			)
 			setSaveError(null)
 			onSaved(character)
@@ -342,6 +373,7 @@ export function CharacterWizard({
 		featAsiGrantCount,
 		featsNeedingAbilityChoice,
 		spellRequirement,
+		subclassSpellChoiceSlotCount,
 	)
 
 	return (
@@ -510,6 +542,17 @@ export function CharacterWizard({
 							classLevel={state.data.classChoice.level}
 						/>
 					)}
+					{state.data.subclass && isSubclassSpellChoice(state.data.subclass) && (
+						<SubclassSpellChoicePicker
+							subclassName={state.data.subclass.name}
+							subclassSource={state.data.subclass.source}
+							className={state.data.classChoice.className}
+							classSource={state.data.classChoice.classSource}
+							classLevel={state.data.classChoice.level}
+							value={state.data.subclassSpellChoices}
+							onChange={(picks) => dispatch({ type: 'setSubclassSpellChoices', picks })}
+						/>
+					)}
 				</div>
 			)}
 
@@ -586,7 +629,14 @@ export function CharacterWizard({
 						type="button"
 						onClick={handleSave}
 						disabled={
-							!isReadyToSave(state.data, expertiseRequiredCount, featAsiGrantCount, featsNeedingAbilityChoice, spellRequirement)
+							!isReadyToSave(
+								state.data,
+								expertiseRequiredCount,
+								featAsiGrantCount,
+								featsNeedingAbilityChoice,
+								spellRequirement,
+								subclassSpellChoiceSlotCount,
+							)
 						}
 					>
 						Create character
@@ -601,6 +651,7 @@ export function CharacterWizard({
 								featAsiEligibleLevelCount: featAsiGrantCount,
 								featsRequiringAbilityChoice: featsNeedingAbilityChoice,
 								spellRequirement,
+								subclassSpellChoiceSlotCount,
 							})
 						}
 						disabled={!canGoNext}

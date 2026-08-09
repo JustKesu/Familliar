@@ -594,6 +594,7 @@ describe('CharacterWizard — storage', () => {
 			[],
 			[],
 			undefined,
+			undefined,
 		)
 	})
 })

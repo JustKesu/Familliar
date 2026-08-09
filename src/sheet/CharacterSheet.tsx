@@ -31,6 +31,7 @@ import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpel
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import {
 	loadFeatEffectEntries,
 	loadFeatTextEntries,
@@ -182,7 +183,12 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 			classesWithSubclass.map(async (c) => {
 				const source = await loadSubclassSource(c.className, c.classSource, c.subclass)
 				const alwaysPrepared = source ? await loadSubclassAlwaysPreparedSpells(c.subclass, source, c.className, c.classSource, c.level) : []
-				return { subclassName: c.subclass, alwaysPrepared }
+				/** The subclass filter-choice spell picker's own picks (d6b) — same "always prepared (subclass)" provenance label as the fixed grants above, merged into the same group rather than a separate one (CharacterSheet.tsx module comment, SpellList.tsx). */
+				const matchingChoices = (character.subclassSpellChoices ?? []).filter(
+					(choice) => choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass && choice.subclassSource === source,
+				)
+				const chosen = matchingChoices.length > 0 ? await loadSubclassChosenSpells(matchingChoices) : []
+				return { subclassName: c.subclass, alwaysPrepared: [...alwaysPrepared, ...chosen] }
 			}),
 		).then((infos) => {
 			if (!cancelled) setSubclassSpellInfo(infos)

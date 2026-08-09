@@ -35,6 +35,7 @@ function completeData(): WizardData {
 		optionalFeatureChoices: ['Precision Attack'],
 		featAsiChoices: [],
 		spellChoices: [],
+		subclassSpellChoices: [],
 	}
 }
 
@@ -229,6 +230,7 @@ describe('saveCharacter', () => {
 			[],
 			[],
 			undefined,
+			undefined,
 		)
 	})
 
@@ -255,6 +257,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 			undefined,
 		)
 	})
@@ -286,6 +289,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 			undefined,
 		)
 	})
@@ -320,6 +324,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			['stealth', 'perception'],
 			[],
+			undefined,
 			undefined,
 		)
 	})

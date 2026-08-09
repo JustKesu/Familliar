@@ -17,6 +17,8 @@ import type {
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
 	CharacterSpellChoice,
+	CharacterSubclassSpellChoice,
+	CharacterSubclassSpellChoicePick,
 	FeatAsiChoice,
 } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
@@ -120,6 +122,8 @@ export interface WizardData {
 	featAsiChoices: FeatAsiChoice[]
 	/** The class spell picks (build order step 6 slice d2) — clears whenever class, level or subclass changes, since the offered list, counts and (for a third caster) eligibility itself are all keyed to those. */
 	spellChoices: SpellPick[]
+	/** The subclass filter-choice spell picks (build order step 6 slice d6b — the 5 subclasses in subclassSpellChoiceData.ts's SUBCLASS_SPELL_CHOICE_KEYS) — clears whenever class, level or subclass changes, same reasoning as spellChoices: the offered slots and their level caps are keyed to those. */
+	subclassSpellChoices: CharacterSubclassSpellChoicePick[]
 }
 
 export function emptyWizardData(): WizardData {
@@ -140,6 +144,7 @@ export function emptyWizardData(): WizardData {
 		optionalFeatureChoices: [],
 		featAsiChoices: [],
 		spellChoices: [],
+		subclassSpellChoices: [],
 	}
 }
 
@@ -213,6 +218,7 @@ export function isStepComplete(
 	featAsiEligibleLevelCount = 0,
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
 	spellRequirement: SpellRequirement | null = null,
+	subclassSpellChoiceSlotCount = 0,
 ): boolean {
 	switch (step) {
 		case 'class':
@@ -228,7 +234,10 @@ export function isStepComplete(
 		case 'abilities':
 			return data.abilityScores !== null
 		case 'spells':
-			return spellRequirement === null || isCompleteSpellChoices(data.spellChoices, spellRequirement)
+			return (
+				(spellRequirement === null || isCompleteSpellChoices(data.spellChoices, spellRequirement)) &&
+				data.subclassSpellChoices.length === subclassSpellChoiceSlotCount
+			)
 		case 'featAsi':
 			return (
 				data.featAsiChoices.length === featAsiEligibleLevelCount &&
@@ -301,9 +310,10 @@ export function isReadyToSave(
 	featAsiEligibleLevelCount = 0,
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
 	spellRequirement: SpellRequirement | null = null,
+	subclassSpellChoiceSlotCount = 0,
 ): boolean {
 	return pickerSteps(expertiseRequiredCount, featAsiEligibleLevelCount, spellRequirement).every((step) =>
-		isStepComplete(step, data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice, spellRequirement),
+		isStepComplete(step, data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice, spellRequirement, subclassSpellChoiceSlotCount),
 	)
 }
 
@@ -314,6 +324,7 @@ export type WizardAction =
 			featAsiEligibleLevelCount?: number
 			featsRequiringAbilityChoice?: ReadonlySet<string>
 			spellRequirement?: SpellRequirement | null
+			subclassSpellChoiceSlotCount?: number
 	  }
 	| {
 			type: 'back'
@@ -337,6 +348,7 @@ export type WizardAction =
 	| { type: 'setOptionalFeatureChoices'; choices: string[] }
 	| { type: 'setFeatAsiChoices'; choices: FeatAsiChoice[] }
 	| { type: 'setSpellChoices'; choices: SpellPick[] }
+	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
 
 /**
  * Pure navigation + edit reducer. `next` is a no-op unless the current step
@@ -350,7 +362,11 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			const featAsiCount = action.featAsiEligibleLevelCount ?? 0
 			const featsRequiringAbilityChoice = action.featsRequiringAbilityChoice ?? EMPTY_FEAT_SET
 			const spellRequirement = action.spellRequirement ?? null
-			if (!isStepComplete(state.step, state.data, eligibility, featAsiCount, featsRequiringAbilityChoice, spellRequirement)) return state
+			const subclassSpellChoiceSlotCount = action.subclassSpellChoiceSlotCount ?? 0
+			if (
+				!isStepComplete(state.step, state.data, eligibility, featAsiCount, featsRequiringAbilityChoice, spellRequirement, subclassSpellChoiceSlotCount)
+			)
+				return state
 			const next = nextStep(state.step, eligibility, featAsiCount, spellRequirement)
 			return next ? { ...state, step: next } : state
 		}
@@ -379,6 +395,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					optionalFeatureChoices: [],
 					featAsiChoices: [],
 					spellChoices: [],
+					subclassSpellChoices: [],
 				},
 			}
 		case 'setSpeciesChoice':
@@ -413,13 +430,18 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setFightingStyle':
 			return { ...state, data: { ...state.data, fightingStyle: action.style } }
 		case 'setSubclass':
-			return { ...state, data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [], spellChoices: [] } }
+			return {
+				...state,
+				data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [], spellChoices: [], subclassSpellChoices: [] },
+			}
 		case 'setOptionalFeatureChoices':
 			return { ...state, data: { ...state.data, optionalFeatureChoices: action.choices } }
 		case 'setFeatAsiChoices':
 			return { ...state, data: { ...state.data, featAsiChoices: action.choices } }
 		case 'setSpellChoices':
 			return { ...state, data: { ...state.data, spellChoices: action.choices } }
+		case 'setSubclassSpellChoices':
+			return { ...state, data: { ...state.data, subclassSpellChoices: action.picks } }
 	}
 }
 
@@ -450,8 +472,18 @@ export function saveCharacter(
 	featAsiEligibleLevelCount = 0,
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
 	spellRequirement: SpellRequirement | null = null,
+	subclassSpellChoiceSlotCount = 0,
 ): Character {
-	if (!isReadyToSave(data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice, spellRequirement)) {
+	if (
+		!isReadyToSave(
+			data,
+			expertiseRequiredCount,
+			featAsiEligibleLevelCount,
+			featsRequiringAbilityChoice,
+			spellRequirement,
+			subclassSpellChoiceSlotCount,
+		)
+	) {
 		throw new Error('Cannot save a character before every step is complete.')
 	}
 
@@ -510,6 +542,20 @@ export function saveCharacter(
 				]
 			: undefined
 
+	/** Tagged with both the subclass's own identity and the class it belongs to (D11), same reasoning as spellChoices/optionalFeatureChoices. */
+	const subclassSpellChoices: CharacterSubclassSpellChoice[] | undefined =
+		data.subclassSpellChoices.length > 0 && data.classChoice && data.subclass
+			? [
+					{
+						subclassName: data.subclass.name,
+						subclassSource: data.subclass.source,
+						className: data.classChoice.className,
+						classSource: data.classChoice.classSource,
+						picks: data.subclassSpellChoices,
+					},
+				]
+			: undefined
+
 	return store.create(
 		data.name,
 		classes,
@@ -526,5 +572,6 @@ export function saveCharacter(
 		data.expertiseSkills,
 		data.featAsiChoices,
 		spellChoices,
+		subclassSpellChoices,
 	)
 }

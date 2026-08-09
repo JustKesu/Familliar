@@ -162,6 +162,18 @@ export interface Character {
 	 * circles) are OUT of scope (slice d2b); nothing here represents them.
 	 */
 	spellChoices?: CharacterSpellChoice[]
+	/**
+	 * Optional for the same reason as abilityScores above. The 5 subclasses
+	 * whose additionalSpells is a player CHOICE, not a fixed grant (build
+	 * order step 6, slice d6b — the LAST picker of step 6): Bard College of
+	 * Lore and the 4 core Wizard subclasses. Distinct from
+	 * subclassPreparedSpells.ts's DERIVED always-prepared spells (domains,
+	 * oaths, circles, and the fixed portion of these same 5 subclasses'
+	 * grants) — those are never stored; these are a player pick and must be.
+	 * One entry per class carrying one of the 5 subclasses (D11), same
+	 * reasoning as spellChoices.
+	 */
+	subclassSpellChoices?: CharacterSubclassSpellChoice[]
 }
 
 /** One class's spell picks. `spells` names each pick (name + source) only — level, ritual, concentration etc. are re-derived from spells.json when needed (sheet display, slice d4), not duplicated here. */
@@ -169,6 +181,30 @@ export interface CharacterSpellChoice {
 	className: string
 	classSource: string
 	spells: { name: string; source: string }[]
+}
+
+/** One pick for a subclass spell-choice slot (subclassSpellChoiceData.ts SubclassSpellChoiceSlot) — identified by (grantedAtLevel, slotIndex) rather than array position, so it stays self-describing regardless of storage order. */
+export interface CharacterSubclassSpellChoicePick {
+	grantedAtLevel: number
+	slotIndex: number
+	name: string
+	source: string
+}
+
+/**
+ * One subclass's own filter-choice spell picks (build order step 6, slice
+ * d6b — the LAST picker of step 6), present only for the 5 subclasses
+ * subclassSpellChoiceData.ts's SUBCLASS_SPELL_CHOICE_KEYS names. Cleared
+ * whenever class, level or subclass changes (same trigger points
+ * wizardState.ts already uses for spellChoices/optionalFeatureChoices),
+ * since the offered slots and their level caps are keyed to those.
+ */
+export interface CharacterSubclassSpellChoice {
+	subclassName: string
+	subclassSource: string
+	className: string
+	classSource: string
+	picks: CharacterSubclassSpellChoicePick[]
 }
 
 /** One subclass optionalfeatureProgression's picks, tagged with which progression (featureType code) they belong to. */
@@ -249,12 +285,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 12 to add FeatAsiChoice.filterChoiceSpells —
- * the generic filter-choice feat spell picker (build order step 6 slice
- * d5b-1). Per PHASE1.md section D, and per docs/QUESTIONS.md "Migrace
- * uložených postav", a version bump this app does not understand is rejected
- * outright (UnknownSchemaVersionError) rather than guessed at — no migration
- * from version 11 is written, so a character saved before this change will
- * no longer load and must be recreated.
+ * (see wireFormat.ts). Bumped to 13 to add Character.subclassSpellChoices —
+ * the subclass filter-choice spell picker (build order step 6 slice d6b, the
+ * LAST picker of step 6). Per PHASE1.md section D, and per docs/QUESTIONS.md
+ * "Migrace uložených postav", a version bump this app does not understand is
+ * rejected outright (UnknownSchemaVersionError) rather than guessed at — no
+ * migration from version 12 is written, so a character saved before this
+ * change will no longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 12
+export const CURRENT_SCHEMA_VERSION = 13

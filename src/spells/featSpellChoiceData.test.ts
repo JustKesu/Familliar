@@ -55,32 +55,32 @@ const feats = [artificerInitiate, blessedWarrior, woodElfMagic, feyTouched, ritu
 describe('filterChoiceFeatShape', () => {
 	it('Artificer Initiate: a cantrip slot AND a level-1 spell slot, both class-list Artificer, both count 1', () => {
 		const shape = filterChoiceFeatShape(feats, 'Artificer Initiate', 'TCE')
-		expect(shape.cantripSlot).toEqual({ level: 0, filter: { kind: 'class', className: 'Artificer', classSource: 'EFA' }, count: 1 })
-		expect(shape.spellSlot).toEqual({ level: 1, filter: { kind: 'class', className: 'Artificer', classSource: 'EFA' }, count: 1 })
+		expect(shape.cantripSlot).toEqual({ levels: [0], filter: { kind: 'class', classes: [{ className: 'Artificer', classSource: 'EFA' }] }, count: 1 })
+		expect(shape.spellSlot).toEqual({ levels: [1], filter: { kind: 'class', classes: [{ className: 'Artificer', classSource: 'EFA' }] }, count: 1 })
 	})
 
 	it('Blessed Warrior: only a cantrip slot, count 2, lowercase class name still resolves', () => {
 		const shape = filterChoiceFeatShape(feats, 'Blessed Warrior', 'XPHB')
-		expect(shape.cantripSlot).toEqual({ level: 0, filter: { kind: 'class', className: 'Cleric', classSource: 'XPHB' }, count: 2 })
+		expect(shape.cantripSlot).toEqual({ levels: [0], filter: { kind: 'class', classes: [{ className: 'Cleric', classSource: 'XPHB' }] }, count: 2 })
 		expect(shape.spellSlot).toBeNull()
 	})
 
 	it('Wood Elf Magic: only a cantrip slot — the fixed innate spells are not a choose node', () => {
 		const shape = filterChoiceFeatShape(feats, 'Wood Elf Magic', 'XGE')
-		expect(shape.cantripSlot).toEqual({ level: 0, filter: { kind: 'class', className: 'Druid', classSource: 'XPHB' }, count: 1 })
+		expect(shape.cantripSlot).toEqual({ levels: [0], filter: { kind: 'class', classes: [{ className: 'Druid', classSource: 'XPHB' }] }, count: 1 })
 		expect(shape.spellSlot).toBeNull()
 	})
 
 	it('Fey-Touched: only a spell slot, school filter, no cantrip slot', () => {
 		const shape = filterChoiceFeatShape(feats, 'Fey-Touched', 'XPHB')
 		expect(shape.cantripSlot).toBeNull()
-		expect(shape.spellSlot).toEqual({ level: 1, filter: { kind: 'school', schools: ['E', 'D'] }, count: 1 })
+		expect(shape.spellSlot).toEqual({ levels: [1], filter: { kind: 'school', schools: ['E', 'D'] }, count: 1 })
 	})
 
 	it('Ritual Caster: a ritual-filter spell slot with a NULL count — the level-keyed copies collapse to one, count comes from proficiency bonus instead', () => {
 		const shape = filterChoiceFeatShape(feats, 'Ritual Caster', 'XPHB')
 		expect(shape.cantripSlot).toBeNull()
-		expect(shape.spellSlot).toEqual({ level: 1, filter: { kind: 'ritual' }, count: null })
+		expect(shape.spellSlot).toEqual({ levels: [1], filter: { kind: 'ritual' }, count: null })
 	})
 
 	it('a feat not in FILTER_CHOICE_FEAT_KEYS returns an empty shape', () => {
@@ -102,17 +102,25 @@ describe('offeredSpellsForSlot', () => {
 	]
 
 	it('a class slot reuses classSpellListData.ts, filtered to the slot level', () => {
-		const offered = offeredSpellsForSlot(spells, { level: 0, filter: { kind: 'class', className: 'Cleric', classSource: 'XPHB' }, count: 2 })
+		const offered = offeredSpellsForSlot(spells, { levels: [0], filter: { kind: 'class', classes: [{ className: 'Cleric', classSource: 'XPHB' }] } })
 		expect(offered.map((s) => s.name).sort()).toEqual(['Guidance', 'Sacred Flame'])
 	})
 
+	it('a class slot unions candidates across every class the filter names, deduplicated', () => {
+		const offered = offeredSpellsForSlot(spells, {
+			levels: [0],
+			filter: { kind: 'class', classes: [{ className: 'Cleric', classSource: 'XPHB' }, { className: 'Wizard', classSource: 'XPHB' }] },
+		})
+		expect(offered.map((s) => s.name).sort()).toEqual(['Fire Bolt', 'Guidance', 'Sacred Flame'])
+	})
+
 	it('a school slot offers only that level\'s spells in the listed schools', () => {
-		const offered = offeredSpellsForSlot(spells, { level: 1, filter: { kind: 'school', schools: ['D', 'E'] }, count: 1 })
+		const offered = offeredSpellsForSlot(spells, { levels: [1], filter: { kind: 'school', schools: ['D', 'E'] } })
 		expect(offered.map((s) => s.name).sort()).toEqual(['Charm Person', 'Comprehend Languages', 'Detect Poison and Disease', 'Identify'])
 	})
 
 	it('a ritual slot offers only that level\'s ritual-tagged spells', () => {
-		const offered = offeredSpellsForSlot(spells, { level: 1, filter: { kind: 'ritual' }, count: null })
+		const offered = offeredSpellsForSlot(spells, { levels: [1], filter: { kind: 'ritual' } })
 		expect(offered.map((s) => s.name)).toEqual(['Comprehend Languages'])
 	})
 })

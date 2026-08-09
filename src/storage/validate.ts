@@ -9,6 +9,7 @@ import type {
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
 	CharacterSpellChoice,
+	CharacterSubclassSpellChoice,
 	FeatAsiChoice,
 	FilterChoiceSpellsChoice,
 	LanguageGrantSource,
@@ -461,6 +462,54 @@ export function describeSpellChoicesError(value: unknown): string | null {
 	return null
 }
 
+/** Validates an optional `subclassSpellChoices` field (build order step 6, slice d6b). Returns null if the field is absent (it's optional). */
+export function describeSubclassSpellChoicesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `subclassSpellChoices must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `subclassSpellChoices[${i}] is not an object`
+		if (!isNonEmptyString(entry['subclassName'])) return `subclassSpellChoices[${i}].subclassName is missing or not a string`
+		if (!isNonEmptyString(entry['subclassSource'])) return `subclassSpellChoices[${i}].subclassSource is missing or not a string`
+		if (!isNonEmptyString(entry['className'])) return `subclassSpellChoices[${i}].className is missing or not a string`
+		if (!isNonEmptyString(entry['classSource'])) return `subclassSpellChoices[${i}].classSource is missing or not a string`
+		const picks = entry['picks']
+		if (!Array.isArray(picks)) return `subclassSpellChoices[${i}].picks must be an array`
+		for (let j = 0; j < picks.length; j++) {
+			const pick: unknown = picks[j]
+			if (!isRecord(pick)) return `subclassSpellChoices[${i}].picks[${j}] is not an object`
+			if (typeof pick['grantedAtLevel'] !== 'number' || !Number.isInteger(pick['grantedAtLevel']) || pick['grantedAtLevel'] < 1 || pick['grantedAtLevel'] > 20) {
+				return `subclassSpellChoices[${i}].picks[${j}].grantedAtLevel must be a whole number from 1 to 20`
+			}
+			if (typeof pick['slotIndex'] !== 'number' || !Number.isInteger(pick['slotIndex']) || pick['slotIndex'] < 0) {
+				return `subclassSpellChoices[${i}].picks[${j}].slotIndex must be a non-negative whole number`
+			}
+			if (!isNonEmptyString(pick['name'])) return `subclassSpellChoices[${i}].picks[${j}].name is missing or not a string`
+			if (!isNonEmptyString(pick['source'])) return `subclassSpellChoices[${i}].picks[${j}].source is missing or not a string`
+		}
+	}
+	return null
+}
+
+function toCharacterSubclassSpellChoices(value: unknown[]): CharacterSubclassSpellChoice[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		const picks = record['picks'] as Record<string, unknown>[]
+		return {
+			subclassName: record['subclassName'] as string,
+			subclassSource: record['subclassSource'] as string,
+			className: record['className'] as string,
+			classSource: record['classSource'] as string,
+			picks: picks.map((pick) => ({
+				grantedAtLevel: pick['grantedAtLevel'] as number,
+				slotIndex: pick['slotIndex'] as number,
+				name: pick['name'] as string,
+				source: pick['source'] as string,
+			})),
+		}
+	})
+}
+
 function toCharacterSpellChoices(value: unknown[]): CharacterSpellChoice[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
@@ -532,6 +581,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (featAsiChoicesError) return `[${index}].${featAsiChoicesError}`
 	const spellChoicesError = describeSpellChoicesError(value['spellChoices'])
 	if (spellChoicesError) return `[${index}].${spellChoicesError}`
+	const subclassSpellChoicesError = describeSubclassSpellChoicesError(value['subclassSpellChoices'])
+	if (subclassSpellChoicesError) return `[${index}].${subclassSpellChoicesError}`
 	return null
 }
 
@@ -558,6 +609,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const optionalFeatureChoices = value['optionalFeatureChoices']
 	const featAsiChoices = value['featAsiChoices']
 	const spellChoices = value['spellChoices']
+	const subclassSpellChoices = value['subclassSpellChoices']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -577,6 +629,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 			: {}),
 		...(Array.isArray(featAsiChoices) ? { featAsiChoices: toCharacterFeatAsiChoices(featAsiChoices) } : {}),
 		...(Array.isArray(spellChoices) ? { spellChoices: toCharacterSpellChoices(spellChoices) } : {}),
+		...(Array.isArray(subclassSpellChoices) ? { subclassSpellChoices: toCharacterSubclassSpellChoices(subclassSpellChoices) } : {}),
 	}
 }
 
