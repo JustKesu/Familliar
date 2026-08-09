@@ -185,3 +185,7 @@ Expert) nechává hráče vybrat dovednost; wizard umí uložit jen výběr
 vlastnosti. Zatím se hlásí jako "čeká na volbu" (D58). Rozhodnout,
 jestli přidat pole a picker, nebo to nechat.
 STATUS: nerozhodnuto.
+
+### Missing subclass feature descriptions
+
+Missing subclass feature descriptions. Some subclasses render a named feature with "text not found" instead of its description — e.g. Sorcerer Divine Soul's "Divine Magic" and "Favored by the Gods". The feature resolver (src/featureResolver/) correctly shows a D43-style "not found" note rather than crashing, but it is not yet established whether the target text is genuinely absent from this app's extracted data (a source-filtering gap needing re-extraction) or present but not matched by the resolver's join (fixable like the 26/94 classSource fallback, D27). To investigate and resolve separately from step 6 — likely alongside step 6a (class feature choices) or as a standalone data-quality fix. Not blocking: the character is still creatable.

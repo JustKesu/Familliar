@@ -20,6 +20,7 @@ vi.mock('../classes/classData', () => ({
 		{ name: 'Fighter', source: 'XPHB', hd: { number: 1, faces: 10 } },
 		{ name: 'Wizard', source: 'XPHB', hd: { number: 1, faces: 6 } },
 		{ name: 'Cleric', source: 'XPHB', hd: { number: 1, faces: 8 } },
+		{ name: 'Rogue', source: 'XPHB', hd: { number: 1, faces: 8 } },
 	]),
 }))
 
@@ -66,13 +67,25 @@ vi.mock('../fightingStyle/fightingStyleData', () => ({
 	fightingStyleOptions: vi.fn(async () => []),
 }))
 
-/** Eldritch Knight offered alongside Champion so a Fighter can reach level 3 and pick either. */
+/**
+ * Eldritch Knight offered alongside Champion (Fighter), Arcane Trickster
+ * alongside Thief (Rogue) — each base class reaches level 3 and can pick
+ * either subclass.
+ */
 vi.mock('../subclass/subclassData', () => ({
 	loadSubclassLevelFor: vi.fn(async () => 3),
-	loadSubclassesFor: vi.fn(async () => [
-		{ name: 'Champion', source: 'XPHB', entries: ['Simple, brutal effectiveness.'], featureType: null },
-		{ name: 'Eldritch Knight', source: 'XPHB', entries: ['A spellcasting warrior.'], featureType: null },
-	]),
+	loadSubclassesFor: vi.fn(async (className: string) => {
+		if (className === 'Rogue') {
+			return [
+				{ name: 'Thief', source: 'XPHB', entries: ['Fast hands.'], featureType: null },
+				{ name: 'Arcane Trickster', source: 'XPHB', entries: ['A spellcasting rogue.'], featureType: null },
+			]
+		}
+		return [
+			{ name: 'Champion', source: 'XPHB', entries: ['Simple, brutal effectiveness.'], featureType: null },
+			{ name: 'Eldritch Knight', source: 'XPHB', entries: ['A spellcasting warrior.'], featureType: null },
+		]
+	}),
 }))
 
 vi.mock('../expertise/expertiseData', () => ({
@@ -139,6 +152,24 @@ const spellSlotsData: ClassSpellSlotsData[] = [
 			},
 		],
 	},
+	{
+		className: 'Rogue',
+		classSource: 'XPHB',
+		casterProgression: null,
+		spellSlotsByLevel: null,
+		pactSlotsByLevel: null,
+		subclasses: [
+			{
+				subclassName: 'Arcane Trickster',
+				casterProgression: '1/3',
+				spellSlotsByLevel: [
+					[0, 0, 0, 0],
+					[0, 0, 0, 0],
+					[2, 0, 0, 0],
+				],
+			},
+		],
+	},
 ]
 
 const spellCountData: ClassSpellCountData[] = [
@@ -151,6 +182,14 @@ const spellCountData: ClassSpellCountData[] = [
 		leveledSpellProgression: null,
 		label: null,
 		subclasses: [{ subclassName: 'Eldritch Knight', cantripProgression: [0, 0, 2], leveledSpellProgression: [0, 0, 3], label: 'known' }],
+	},
+	{
+		className: 'Rogue',
+		classSource: 'XPHB',
+		cantripProgression: null,
+		leveledSpellProgression: null,
+		label: null,
+		subclasses: [{ subclassName: 'Arcane Trickster', cantripProgression: [0, 0, 2], leveledSpellProgression: [0, 0, 3], label: 'known' }],
 	},
 ]
 
@@ -179,13 +218,17 @@ const wizardSpellList: ClassSpellListSpell[] = [
 
 const fighterSpellList: ClassSpellListSpell[] = [spell('Fire Bolt', 0), spell('Blade Ward', 0), spell('Shield', 1), spell('Magic Missile', 1)]
 
-vi.mock('../spells/classSpellListData', () => ({
-	loadClassSpellList: vi.fn(async (className: string) => {
-		if (className === 'Wizard' || className === 'Cleric') return wizardSpellList
-		if (className === 'Fighter') return fighterSpellList
-		return []
-	}),
-}))
+vi.mock('../spells/classSpellListData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/classSpellListData')>()
+	return {
+		...actual,
+		loadClassSpellList: vi.fn(async (className: string) => {
+			if (className === 'Wizard' || className === 'Cleric') return wizardSpellList
+			if (className === 'Fighter') return fighterSpellList
+			return []
+		}),
+	}
+})
 
 afterEach(cleanup)
 
@@ -326,7 +369,7 @@ describe('CharacterWizard — spells step', () => {
 		expect(screen.queryByText('Spells', { selector: 'li' })).toBeNull()
 	})
 
-	it('an Eldritch Knight (Fighter 3) sees the spells step and is offered spells — the third-caster slot fix flows through', async () => {
+	it('an Eldritch Knight (Fighter 3) is offered spells from the WIZARD list (not Fighter\'s own, empty, list), capped by its third-caster slot level, and the step can be completed with picks persisting', async () => {
 		const user = userEvent.setup()
 		renderWizard()
 
@@ -350,9 +393,60 @@ describe('CharacterWizard — spells step', () => {
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 		await goNext(user)
 
+		// EK's own progression: 2 cantrips, 3 leveled spells known (Fighter subclass counts, not Wizard's).
+		expect(await screen.findByText('0 of 2 cantrips chosen.')).toBeTruthy()
+		expect(screen.getByText('0 of 3 spells known chosen.')).toBeTruthy()
+		// Offered from Wizard's list, capped at EK's max slot level (1 at level 3) — Misty Step (2) and Fireball (3) must not appear.
+		expect(screen.getByLabelText(/Fire Bolt/)).toBeTruthy()
+		expect(screen.getByLabelText(/Magic Missile/)).toBeTruthy()
+		expect(screen.queryByLabelText(/Misty Step/)).toBeNull()
+		expect(screen.queryByLabelText(/Fireball/)).toBeNull()
+
+		await user.click(screen.getByLabelText(/Fire Bolt/))
+		await user.click(screen.getByLabelText(/Prestidigitation/))
+		await user.click(screen.getByLabelText(/Magic Missile/))
+		await user.click(screen.getByLabelText(/Find Familiar/))
+		await user.click(screen.getByLabelText(/Chromatic Orb/))
+		expect(screen.getByText('2 of 2 cantrips chosen.')).toBeTruthy()
+		expect(screen.getByText('3 of 3 spells known chosen.')).toBeTruthy()
+
+		await goNext(user)
+		await screen.findByText('Name: Aria')
+		await goBack(user)
+
+		expect((await screen.findByLabelText(/Fire Bolt/) as HTMLInputElement).checked).toBe(true)
+		expect((screen.getByLabelText(/Magic Missile/) as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('an Arcane Trickster (Rogue 3) is offered spells from the WIZARD list (not Rogue\'s own, empty, list), capped by its third-caster slot level', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user, 'Rogue', '3')
+		await user.click(await screen.findByRole('radio', { name: /Arcane Trickster/ }))
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await user.click(await screen.findByLabelText('Draconic (XPHB)'))
+		await user.click(screen.getByLabelText('Dwarvish (XPHB)'))
+		await goNext(user)
+		await user.selectOptions(screen.getByLabelText('Strength'), '15')
+		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
+		await user.selectOptions(screen.getByLabelText('Constitution'), '13')
+		await user.selectOptions(screen.getByLabelText('Intelligence'), '12')
+		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
+		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
+		await goNext(user)
+
 		expect(await screen.findByText('0 of 2 cantrips chosen.')).toBeTruthy()
 		expect(screen.getByText('0 of 3 spells known chosen.')).toBeTruthy()
 		expect(screen.getByLabelText(/Fire Bolt/)).toBeTruthy()
-		expect(screen.getByLabelText(/Shield/)).toBeTruthy()
+		expect(screen.getByLabelText(/Magic Missile/)).toBeTruthy()
+		expect(screen.queryByLabelText(/Misty Step/)).toBeNull()
+		expect(screen.queryByLabelText(/Fireball/)).toBeNull()
 	})
 })

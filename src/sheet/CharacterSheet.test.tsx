@@ -399,6 +399,44 @@ describe('CharacterSheet', () => {
 			expect(fireballSummary.closest('details')!.textContent).toContain('A bright streak flashes.')
 		})
 
+		it('an Eldritch Knight renders a Wizard-list spell chosen during creation (step 6 EK/AT `expanded` wiring)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [
+				{ className: 'Fighter', classSource: 'XPHB', ability: null, subclasses: [{ subclassName: 'Eldritch Knight', ability: 'int' }] },
+			]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{
+					className: 'Fighter',
+					classSource: 'XPHB',
+					casterProgression: null,
+					spellSlotsByLevel: null,
+					pactSlotsByLevel: null,
+					subclasses: [{ subclassName: 'Eldritch Knight', casterProgression: '1/3', spellSlotsByLevel: [[0], [0], [2]] }],
+				},
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Magic Missile', source: 'XPHB', level: 1, entries: ['Three glowing darts of force.'] })]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const eldritchKnight: Character = {
+				id: 'ek1',
+				name: 'Steelmind',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Eldritch Knight', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				// Tagged with Fighter (the character's own class), same as saveCharacter does — the spell itself is drawn from Wizard's list.
+				spellChoices: [{ className: 'Fighter', classSource: 'XPHB', spells: [{ name: 'Magic Missile', source: 'XPHB' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={eldritchKnight} />)
+			await screen.findByRole('heading', { name: 'Steelmind' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			expect(spellsSection.textContent).toContain('Magic Missile')
+		})
+
 		it('a Warlock shows Pact Magic slots separately from any ordinary slot list', async () => {
 			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
 			const spellSlots: ClassSpellSlotsData[] = [

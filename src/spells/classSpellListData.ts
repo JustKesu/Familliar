@@ -106,3 +106,29 @@ export async function loadClassSpellList(className: string, classSource: string)
 	const parsed = await loadDataFile('data/spells.json')
 	return extractClassSpellList(parsed, className, classSource)
 }
+
+/**
+ * D46: Eldritch Knight and Arcane Trickster carry no spell list of their
+ * own — their subclass entry's `additionalSpells.expanded` widens the
+ * class picker's pool to Wizard's list entirely (confirmed via
+ * scripts/investigate-ek-at-expanded.js: both key `{"all": "level=N|
+ * class=Wizard"}` under `expanded`), rather than granting fixed spells
+ * (subclassPreparedSpells.ts's d6a comment). The other `expanded` cases —
+ * Divine Soul's pool-widen, the 3 pact-slot-rank Warlock patrons, The
+ * Genie, the 12 marks — are NOT covered here and stay deferred
+ * (docs/REPORT.md).
+ */
+const THIRD_CASTER_SPELL_LIST: Record<string, { className: string; classSource: string }> = {
+	'Eldritch Knight': { className: 'Wizard', classSource: 'XPHB' },
+	'Arcane Trickster': { className: 'Wizard', classSource: 'XPHB' },
+}
+
+/** Which class's spell list the picker should offer for a character in `className`/`subclassName` — the class itself, except EK/AT (see THIRD_CASTER_SPELL_LIST above). */
+export function spellListClassFor(
+	className: string,
+	classSource: string,
+	subclassName: string | null | undefined,
+): { className: string; classSource: string } {
+	if (subclassName && subclassName in THIRD_CASTER_SPELL_LIST) return THIRD_CASTER_SPELL_LIST[subclassName]!
+	return { className, classSource }
+}

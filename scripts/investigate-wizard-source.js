@@ -1,0 +1,6 @@
+const fs = require('node:fs')
+const path = require('node:path')
+const classes = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'classes.json'), 'utf8'))
+const wiz = classes.filter((c) => c.entryType === 'class' && c.name === 'Wizard')
+console.log('SUMMARY: Wizard class entries:', wiz.length)
+console.log(wiz.map((c) => ({ name: c.name, source: c.source })))

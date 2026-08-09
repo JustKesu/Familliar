@@ -20,6 +20,7 @@ import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../fe
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { SpellPicker } from '../spells/SpellPicker'
+import { spellListClassFor } from '../spells/classSpellListData'
 import { AlwaysPreparedSpellsList } from '../spells/AlwaysPreparedSpellsList'
 import { SubclassSpellChoicePicker } from '../spells/SubclassSpellChoicePicker'
 import { isSubclassSpellChoice, loadSubclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
@@ -346,6 +347,10 @@ export function CharacterWizard({
 	const spellRequirement: SpellRequirement | null = spellCountEntry
 		? { cantripCount: spellCountEntry.cantripCount, leveledSpellCount: spellCountEntry.leveledSpellCount, label: spellCountEntry.label }
 		: null
+	/** D46: EK/AT's picker draws from the Wizard list, not Fighter's/Rogue's (classSpellListData.ts's THIRD_CASTER_SPELL_LIST). */
+	const spellListClass = state.data.classChoice
+		? spellListClassFor(state.data.classChoice.className, state.data.classChoice.classSource, state.data.subclass?.name)
+		: null
 
 	function handleSave(): void {
 		try {
@@ -521,11 +526,11 @@ export function CharacterWizard({
 				</div>
 			)}
 
-			{state.step === 'spells' && state.data.classChoice && spellRequirement && (
+			{state.step === 'spells' && state.data.classChoice && spellRequirement && spellListClass && (
 				<div className="wizard__panel">
 					<SpellPicker
-						className={state.data.classChoice.className}
-						classSource={state.data.classChoice.classSource}
+						className={spellListClass.className}
+						classSource={spellListClass.classSource}
 						spellSlots={spellSlotsEntry}
 						cantripCount={spellRequirement.cantripCount}
 						leveledSpellCount={spellRequirement.leveledSpellCount}
