@@ -10,6 +10,7 @@ import type {
 	CharacterSpecies,
 	CharacterSpellChoice,
 	FeatAsiChoice,
+	FilterChoiceSpellsChoice,
 	LanguageGrantSource,
 	MagicInitiateChoice,
 } from './character'
@@ -363,6 +364,8 @@ export function describeFeatAsiChoicesError(value: unknown): string | null {
 			}
 			const magicInitiateError = describeMagicInitiateError(entry['magicInitiate'])
 			if (magicInitiateError) return `featAsiChoices[${i}].${magicInitiateError}`
+			const filterChoiceSpellsError = describeFilterChoiceSpellsError(entry['filterChoiceSpells'])
+			if (filterChoiceSpellsError) return `featAsiChoices[${i}].${filterChoiceSpellsError}`
 		} else {
 			return `featAsiChoices[${i}].kind must be "asi" or "feat"`
 		}
@@ -396,6 +399,34 @@ function describeMagicInitiateError(value: unknown): string | null {
 		if (error) return error
 	}
 	return null
+}
+
+/** Validates an optional `filterChoiceSpells` field on a feat choice (the 8 generic filter-choice feats, slice d5b-1). Returns null if absent. */
+function describeFilterChoiceSpellsError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return `filterChoiceSpells is not an object`
+	const cantrips = value['cantrips']
+	if (!Array.isArray(cantrips)) return `filterChoiceSpells.cantrips must be an array`
+	for (let i = 0; i < cantrips.length; i++) {
+		const error = describeSpellRefError(cantrips[i], `filterChoiceSpells.cantrips[${i}]`)
+		if (error) return error
+	}
+	const spells = value['spells']
+	if (!Array.isArray(spells)) return `filterChoiceSpells.spells must be an array`
+	for (let i = 0; i < spells.length; i++) {
+		const error = describeSpellRefError(spells[i], `filterChoiceSpells.spells[${i}]`)
+		if (error) return error
+	}
+	return null
+}
+
+function toFilterChoiceSpellsChoice(value: Record<string, unknown>): FilterChoiceSpellsChoice {
+	const cantrips = value['cantrips'] as Record<string, unknown>[]
+	const spells = value['spells'] as Record<string, unknown>[]
+	return {
+		cantrips: cantrips.map((c) => ({ name: c['name'] as string, source: c['source'] as string })),
+		spells: spells.map((s) => ({ name: s['name'] as string, source: s['source'] as string })),
+	}
 }
 
 function toMagicInitiateChoice(value: Record<string, unknown>): MagicInitiateChoice {
@@ -451,6 +482,7 @@ function toCharacterFeatAsiChoices(value: unknown[]): FeatAsiChoice[] {
 		}
 		const chosenAbility = record['chosenAbility']
 		const magicInitiate = record['magicInitiate']
+		const filterChoiceSpells = record['filterChoiceSpells']
 		return {
 			level,
 			kind: 'feat',
@@ -458,6 +490,7 @@ function toCharacterFeatAsiChoices(value: unknown[]): FeatAsiChoice[] {
 			source: record['source'] as string,
 			...(typeof chosenAbility === 'string' ? { chosenAbility: chosenAbility as Ability } : {}),
 			...(isRecord(magicInitiate) ? { magicInitiate: toMagicInitiateChoice(magicInitiate) } : {}),
+			...(isRecord(filterChoiceSpells) ? { filterChoiceSpells: toFilterChoiceSpellsChoice(filterChoiceSpells) } : {}),
 		}
 	})
 }

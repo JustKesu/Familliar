@@ -1,7 +1,8 @@
 /*
- * Feat-granted spells, fully-fixed only (build order step 6, slice d5a,
- * extended in d5b-3 to the Eberron "Mark of ..." feats' fixed portion, and in
- * d5b-2 to base Magic Initiate's own player-chosen spells).
+ * Feat-granted spells (build order step 6, slice d5a, extended in d5b-3 to
+ * the Eberron "Mark of ..." feats' fixed portion, in d5b-2 to base Magic
+ * Initiate's own player-chosen spells, and in d5b-1 — the LAST feat-spell
+ * picker — to the 8 remaining reachable filter-choice feats).
  *
  * investigate-feat-spells.js + investigate-feat-spell-ability.js (both in
  * scripts/) found 29 feats grant spells via `additionalSpells` — the SAME
@@ -10,8 +11,9 @@
  * Fey Teleportation (INT) are ALSO fixed in spellcasting ability. Telekinetic
  * and Telepathic have fixed spells too but a non-fixed ability ("inherit" —
  * derives from whatever ability the character already casts with, a rules
- * call outside this slice); the other 25 spell-granting feats let the player
- * choose the spell itself. Of those 25, the 12 Eberron "Mark of ..." feats
+ * call outside this slice, and still deferred — NOT part of d5b-1's scope);
+ * the other 25 spell-granting feats let the player choose the spell itself.
+ * Of those 25, the 12 Eberron "Mark of ..." feats
  * (investigate-feat-spell-choice-shapes.js) turn out to ALSO carry a fixed
  * spell grant (not a choice) alongside a CHOICE ability (int/wis/cha) and a
  * separate `expanded` pool-widening list — this module now also derives the
@@ -20,13 +22,22 @@
  * `expanded` is deliberately never read here — same reasoning as d6a's
  * subclass `expanded` deferral (EK/AT/Divine Soul): it widens a later
  * picker's offered pool, it does not grant a spell outright. Deferred, not
- * built. Of the remaining 13 feats, base Magic Initiate is now handled too
- * (d5b-2, extractMagicInitiateSpells below) — but it reads the character's
- * OWN stored FeatAsiChoice.magicInitiate pick directly, not
- * additionalSpells, since the player chose the individual spells themselves
- * rather than receiving a fixed grant. The other 11 filter-choice feats
- * (Artificer Initiate, Wood Elf Magic, Aberrant Dragonmark, ...) and Boon of
- * Siberys are still slice d5b-1/deferred — not touched by this module.
+ * built. Of the remaining 13 feats, base Magic Initiate is handled (d5b-2,
+ * extractMagicInitiateSpells below) — but it reads the character's OWN
+ * stored FeatAsiChoice.magicInitiate pick directly, not additionalSpells,
+ * since the player chose the individual spells themselves rather than
+ * receiving a fixed grant. d5b-1 (extractFilterChoiceSpells below) handles
+ * the same way the 8 feats featSpellChoiceData.ts's FILTER_CHOICE_FEAT_KEYS
+ * names (Artificer Initiate, Blessed Warrior, Druidic Warrior, Wood Elf
+ * Magic, Aberrant Dragonmark, Fey-Touched, Shadow-Touched, Ritual Caster) —
+ * reading FeatAsiChoice.filterChoiceSpells, plus (Fey-Touched/Shadow-Touched
+ * only) their fixed companion spell via extractFixedFeatSpells's new
+ * filterChoice branch below. The 3 remaining "Magic Initiate; <Class>"
+ * feats.json entries in that investigate script's 11-feat group are
+ * permanently hidden from the feat picker (featAsiData.ts
+ * HIDDEN_FEAT_KEYS) and so can never be chosen — no picker was built for
+ * them. Boon of Siberys stays separately deferred (13 named alternatives, a
+ * different picker shape).
  *
  * scripts/investigate-fixed-feat-spell-shape.js confirmed the exact shape for
  * the two feats d5a handles:
@@ -59,6 +70,7 @@
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character, FeatAsiChoice } from '../storage/character'
+import { isFilterChoiceFeat } from './featSpellChoiceData'
 import { extractRefs, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, type RawSpell } from './subclassPreparedSpells'
 
 export interface FeatGrantedSpell {
@@ -103,6 +115,19 @@ function isMarkFeat(featName: string): boolean {
 	return featName.startsWith('Mark of ')
 }
 
+/**
+ * D5b-1: 2 of the 8 filter-choice feats (Fey-Touched, Shadow-Touched) also
+ * carry a FIXED companion spell (Misty Step, Invisibility) alongside their
+ * choice, under additionalSpells `{"ability":"inherit"}` — "derives from
+ * whatever ability the character already casts with" per the raw data, but
+ * the task decided these resolve through the same stored D57 `chosenAbility`
+ * every other choice-ability feat here uses (they have a normal half-feat
+ * `ability` field, so `chosenAbility` is always populated once the ability
+ * step of the picker is filled in). Reuses isFilterChoiceFeat rather than a
+ * second name list — every filter-choice feat's fixed portion (if any) goes
+ * through this path; the other 6 already resolve via isFixedAbility.
+ */
+
 /** The fixed-grant keys this module derives spells from — same set subclassPreparedSpells.ts reads; `expanded` is excluded for the same reasons documented there. */
 const FIXED_GRANT_KEYS = ['prepared', 'known', 'innate'] as const
 
@@ -136,6 +161,7 @@ export function extractFixedFeatSpells(
 	const spells: RawSpell[] = parsedSpells.filter(isRawSpell)
 	const result: FeatGrantedSpell[] = []
 	const mark = isMarkFeat(feat.name)
+	const filterChoice = isFilterChoiceFeat({ name: feat.name, source: feat.source })
 
 	for (const entry of feat.additionalSpells) {
 		if (!isRecord(entry)) continue
@@ -146,8 +172,10 @@ export function extractFixedFeatSpells(
 			ability = abilityField
 		} else if (mark && isChoiceAbility(abilityField)) {
 			ability = chosenAbility // may still be undefined if the character hasn't recorded a choice yet — the spell is granted either way.
+		} else if (filterChoice && abilityField === 'inherit') {
+			ability = chosenAbility // Fey-Touched/Shadow-Touched's fixed companion spell — see module comment above isMarkFeat.
 		} else {
-			continue // choice ability on a non-mark feat, "inherit", or no ability field at all — slice d5b, not this module.
+			continue // choice ability on a non-mark, non-filter-choice feat, "inherit" outside that set, or no ability field at all.
 		}
 
 		for (const key of FIXED_GRANT_KEYS) {
@@ -229,6 +257,60 @@ function extractMagicInitiateSpells(parsedSpells: unknown, choice: FeatChoice): 
 	return result
 }
 
+/**
+ * Resolves the ability tag for a filter-choice feat's own picked spells
+ * (extractFilterChoiceSpells below) the same way extractFixedFeatSpells
+ * resolves it for that feat's fixed companion spell, if any: a fixed
+ * ability (Artificer Initiate/Blessed Warrior/Druidic Warrior/Wood Elf
+ * Magic/Aberrant Dragonmark) always wins; otherwise (Fey-Touched/
+ * Shadow-Touched/Ritual Caster) falls back to the character's own D57
+ * `chosenAbility`.
+ */
+function resolveFilterChoiceAbility(parsedFeats: unknown, featName: string, featSource: string, chosenAbility: AbilityAbbreviation | undefined): AbilityAbbreviation | undefined {
+	if (!Array.isArray(parsedFeats)) {
+		throw new Error('feats.json: expected a top-level array.')
+	}
+	const feat = parsedFeats.find((candidate): candidate is RawFeatEntry => isRawFeatEntry(candidate) && candidate.name === featName && candidate.source === featSource)
+	const entry = feat && Array.isArray(feat.additionalSpells) ? feat.additionalSpells[0] : undefined
+	const abilityField = isRecord(entry) ? entry['ability'] : undefined
+	return isFixedAbility(abilityField) ? abilityField : chosenAbility
+}
+
+/**
+ * The generic filter-choice feat picker's own stored pick (build order
+ * step 6, slice d5b-1: FeatAsiChoice.filterChoiceSpells) — same reasoning as
+ * extractMagicInitiateSpells: the player chose the spell itself, so this
+ * reads the character's own choice directly rather than re-deriving it from
+ * additionalSpells.
+ */
+function extractFilterChoiceSpells(parsedFeats: unknown, parsedSpells: unknown, choice: FeatChoice): FeatGrantedSpell[] {
+	if (!choice.filterChoiceSpells) return []
+	if (!Array.isArray(parsedSpells)) {
+		throw new Error('spells.json: expected a top-level array.')
+	}
+	const spells: RawSpell[] = parsedSpells.filter(isRawSpell)
+	const chosenAbility = choice.chosenAbility ? ABILITY_ABBREVIATIONS[choice.chosenAbility] : undefined
+	const ability = resolveFilterChoiceAbility(parsedFeats, choice.name, choice.source, chosenAbility)
+	const picks = [...choice.filterChoiceSpells.cantrips, ...choice.filterChoiceSpells.spells]
+
+	const result: FeatGrantedSpell[] = []
+	for (const pick of picks) {
+		const spell = findSpell(spells, { name: pick.name.toLowerCase(), source: pick.source.toUpperCase() })
+		if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+		result.push({
+			name: spell.name,
+			source: spell.source,
+			level: spell.level,
+			ritual: spell.meta?.ritual === true,
+			concentration: hasConcentration(spell.duration),
+			origin: 'feat',
+			featName: choice.name,
+			ability,
+		})
+	}
+	return result
+}
+
 /** Every fully-fixed feat-granted spell the character's taken feats (Character.featAsiChoices) provide. Additional to the class picker's own counts — never subtracted from cantrip/prepared/known limits, same as subclass always-prepared spells. */
 export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unknown, character: Character): FeatGrantedSpell[] {
 	const result: FeatGrantedSpell[] = []
@@ -237,6 +319,7 @@ export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unk
 		const chosenAbility = choice.chosenAbility ? ABILITY_ABBREVIATIONS[choice.chosenAbility] : undefined
 		result.push(...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source, characterLevel, chosenAbility))
 		result.push(...extractMagicInitiateSpells(parsedSpells, choice))
+		result.push(...extractFilterChoiceSpells(parsedFeats, parsedSpells, choice))
 	}
 	return result
 }
@@ -245,4 +328,10 @@ export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unk
 export async function loadFeatGrantedSpells(character: Character): Promise<FeatGrantedSpell[]> {
 	const [parsedFeats, parsedSpells] = await Promise.all([loadDataFile('data/feats.json'), loadDataFile('data/spells.json')])
 	return extractFeatGrantedSpells(parsedFeats, parsedSpells, character)
+}
+
+/** Fetches feats.json and spells.json and returns one feat's fixed-grant spells — the async wrapper extractFixedFeatSpells itself lacks. Used by the filter-choice picker (FeatAsiPicker.tsx) to show a feat's fixed companion spell, if any, alongside its choice. */
+export async function loadFixedFeatSpells(featName: string, featSource: string, characterLevel: number, chosenAbility?: AbilityAbbreviation): Promise<FeatGrantedSpell[]> {
+	const [parsedFeats, parsedSpells] = await Promise.all([loadDataFile('data/feats.json'), loadDataFile('data/spells.json')])
+	return extractFixedFeatSpells(parsedFeats, parsedSpells, featName, featSource, characterLevel, chosenAbility)
 }

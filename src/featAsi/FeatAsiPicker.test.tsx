@@ -26,6 +26,9 @@ vi.mock('./featAsiData', async () => {
 			{ name: 'Actor', source: 'XPHB', category: 'G', prerequisite: [{ level: 4, ability: [{ cha: 13 }] }] },
 			{ name: 'Athlete', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['str', 'dex'] } }] },
 			{ name: 'Magic Initiate', source: 'XPHB', category: 'G' },
+			{ name: 'Blessed Warrior', source: 'XPHB', category: 'G' },
+			{ name: 'Fey-Touched', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['int', 'wis', 'cha'] } }] },
+			{ name: 'Ritual Caster', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['int', 'wis', 'cha'] } }] },
 		]),
 		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
 		loadHasFightingStyleFeature: vi.fn(async () => false),
@@ -57,6 +60,57 @@ vi.mock('../spells/classSpellListData', () => ({
 		return (lists[className] ?? []).map((s) => ({ ...s, source: 'XPHB', ritual: false, concentration: false, viaVariant: false }))
 	}),
 }))
+
+/** The generic filter-choice picker's own data layer (slice d5b-1) — shapes/candidates stubbed per feat name, same pattern as classSpellListData above. */
+vi.mock('../spells/featSpellChoiceData', async () => {
+	const actual = await vi.importActual<typeof import('../spells/featSpellChoiceData')>('../spells/featSpellChoiceData')
+	return {
+		...actual,
+		loadFilterChoiceFeatShape: vi.fn(async (featName: string) => {
+			const shapes: Record<string, { cantripSlot: unknown; spellSlot: unknown }> = {
+				'Blessed Warrior': { cantripSlot: { level: 0, filter: { kind: 'class', className: 'Cleric', classSource: 'XPHB' }, count: 2 }, spellSlot: null },
+				'Fey-Touched': { cantripSlot: null, spellSlot: { level: 1, filter: { kind: 'school', schools: ['E', 'D'] }, count: 1 } },
+				'Ritual Caster': { cantripSlot: null, spellSlot: { level: 1, filter: { kind: 'ritual' }, count: null } },
+			}
+			return shapes[featName] ?? { cantripSlot: null, spellSlot: null }
+		}),
+		loadSlotCandidates: vi.fn(async (slot: { filter: { kind: string } }) => {
+			if (slot.filter.kind === 'class') {
+				return [
+					{ name: 'Guidance', source: 'XPHB' },
+					{ name: 'Sacred Flame', source: 'XPHB' },
+					{ name: 'Toll the Dead', source: 'XPHB' },
+				]
+			}
+			if (slot.filter.kind === 'school') {
+				return [
+					{ name: 'Identify', source: 'XPHB' },
+					{ name: 'Charm Person', source: 'XPHB' },
+				]
+			}
+			return [
+				{ name: 'Comprehend Languages', source: 'XPHB' },
+				{ name: 'Alarm', source: 'XPHB' },
+				{ name: 'Detect Magic', source: 'XPHB' },
+				{ name: 'Find Familiar', source: 'XPHB' },
+			]
+		}),
+	}
+})
+
+/** The fixed-companion-spell lookup (Fey-Touched's Misty Step) — stubbed the same way; the real extraction logic is covered by featSpells.test.ts. */
+vi.mock('../spells/featSpells', async () => {
+	const actual = await vi.importActual<typeof import('../spells/featSpells')>('../spells/featSpells')
+	return {
+		...actual,
+		loadFixedFeatSpells: vi.fn(async (featName: string) => {
+			if (featName === 'Fey-Touched') {
+				return [{ name: 'Misty Step', source: 'XPHB', level: 2, ritual: false, concentration: false, origin: 'feat' as const, featName: 'Fey-Touched' }]
+			}
+			return []
+		}),
+	}
+})
 
 afterEach(cleanup)
 
@@ -474,6 +528,98 @@ describe('FeatAsiPicker', () => {
 			await user.selectOptions(abilitySelect, 'intelligence')
 			const lastCall = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
 			expect(lastCall[0]).toMatchObject({ chosenAbility: 'intelligence' })
+		})
+	})
+
+	describe('generic filter-choice spell picker (slice d5b-1)', () => {
+		it('Blessed Warrior (class-list): only the offered Cleric cantrips show, count enforced (2), picks persist', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Blessed Warrior', source: 'XPHB' }]
+			const { rerender } = render(
+				<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={value} onChange={onChange} />,
+			)
+
+			expect(await screen.findByLabelText('Guidance')).toBeTruthy()
+			expect(screen.getByLabelText('Sacred Flame')).toBeTruthy()
+			expect(screen.getByLabelText('Toll the Dead')).toBeTruthy()
+
+			await user.click(screen.getByLabelText('Guidance'))
+			let latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			expect(latest[0]).toMatchObject({ filterChoiceSpells: { cantrips: [{ name: 'Guidance', source: 'XPHB' }], spells: [] } })
+
+			rerender(<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={latest} onChange={onChange} />)
+			await user.click(screen.getByLabelText('Sacred Flame'))
+			latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			expect(latest[0]).toMatchObject({
+				filterChoiceSpells: {
+					cantrips: [
+						{ name: 'Guidance', source: 'XPHB' },
+						{ name: 'Sacred Flame', source: 'XPHB' },
+					],
+					spells: [],
+				},
+			})
+
+			rerender(<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={latest} onChange={onChange} />)
+			const thirdCantrip = (await screen.findByLabelText('Toll the Dead')) as HTMLInputElement
+			expect(thirdCantrip.disabled).toBe(true)
+		})
+
+		it('Fey-Touched (school): only Divination/Enchantment spells are offered for the choice, and the fixed Misty Step shows as already granted', async () => {
+			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Fey-Touched', source: 'XPHB', chosenAbility: 'wisdom' }]
+			render(
+				<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={value} onChange={() => {}} />,
+			)
+
+			expect(await screen.findByText('Misty Step')).toBeTruthy()
+			expect(await screen.findByLabelText('Identify')).toBeTruthy()
+			expect(screen.getByLabelText('Charm Person')).toBeTruthy()
+			expect(screen.queryByLabelText('Guidance')).toBeNull()
+		})
+
+		it('Ritual Caster: offered ritual spells, count = proficiency bonus for the character\'s level (9 -> 4), and picks persist', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const value: FeatAsiChoice[] = [{ level: 9, kind: 'feat', name: 'Ritual Caster', source: 'XPHB', chosenAbility: 'intelligence' }]
+			const { rerender } = render(
+				<FeatAsiPicker className="Wizard" classSource="XPHB" level={9} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={value} onChange={onChange} />,
+			)
+
+			expect(await screen.findByText('0 of 4 spells chosen.')).toBeTruthy()
+			expect(screen.getByLabelText('Comprehend Languages')).toBeTruthy()
+			expect(screen.getByLabelText('Alarm')).toBeTruthy()
+
+			await user.click(screen.getByLabelText('Comprehend Languages'))
+			const latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			expect(latest[0]).toMatchObject({ filterChoiceSpells: { cantrips: [], spells: [{ name: 'Comprehend Languages', source: 'XPHB' }] } })
+
+			rerender(<FeatAsiPicker className="Wizard" classSource="XPHB" level={9} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={latest} onChange={onChange} />)
+			expect(await screen.findByText('1 of 4 spells chosen.')).toBeTruthy()
+		})
+
+		it('switching to a different feat clears the previous filter-choice picks', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const value: FeatAsiChoice[] = [
+				{ level: 4, kind: 'feat', name: 'Blessed Warrior', source: 'XPHB', filterChoiceSpells: { cantrips: [{ name: 'Guidance', source: 'XPHB' }], spells: [] } },
+			]
+			render(
+				<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={value} onChange={onChange} />,
+			)
+
+			await user.click(await screen.findByRole('radio', { name: 'Tough' }))
+			const latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			expect(latest[0]).toEqual({ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' })
+		})
+
+		it('a character with no filter-choice feat selected shows no filter-choice picker', async () => {
+			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }]
+			const { container } = render(
+				<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={value} onChange={() => {}} />,
+			)
+			await screen.findByRole('radio', { name: 'Tough' })
+			expect(container.querySelector('.feat-asi-picker__filter-choice')).toBeNull()
 		})
 	})
 })

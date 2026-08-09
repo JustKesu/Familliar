@@ -110,6 +110,31 @@ describe('isStepComplete', () => {
 		const data = { ...emptyWizardData(), featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Tough', source: 'XPHB' }] }
 		expect(isStepComplete('featAsi', data, null, 1, new Set(['Athlete|XPHB']))).toBe(true)
 	})
+
+	it('blocks the featAsi step for a filter-choice feat (slice d5b-1) until its cantrip picks reach the feat\'s own required count', () => {
+		const data = { ...emptyWizardData(), featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Blessed Warrior', source: 'XPHB' }] }
+		expect(isStepComplete('featAsi', data, null, 1)).toBe(false)
+
+		const complete = {
+			...data,
+			featAsiChoices: [
+				{
+					level: 4,
+					kind: 'feat' as const,
+					name: 'Blessed Warrior',
+					source: 'XPHB',
+					filterChoiceSpells: {
+						cantrips: [
+							{ name: 'Guidance', source: 'XPHB' },
+							{ name: 'Sacred Flame', source: 'XPHB' },
+						],
+						spells: [],
+					},
+				},
+			],
+		}
+		expect(isStepComplete('featAsi', complete, null, 1)).toBe(true)
+	})
 })
 
 describe('isReadyToSave', () => {

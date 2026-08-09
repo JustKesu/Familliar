@@ -198,6 +198,26 @@ export interface MagicInitiateChoice {
 }
 
 /**
+ * The generic filter-choice feat picker's own picks (build order step 6,
+ * slice d5b-1 — the LAST feat-spell picker), present only when the feat
+ * entry's `name`+`source` is one of featSpellChoiceData.ts's
+ * FILTER_CHOICE_FEAT_KEYS (Artificer Initiate, Blessed Warrior, Druidic
+ * Warrior, Wood Elf Magic, Aberrant Dragonmark, Fey-Touched, Shadow-Touched,
+ * Ritual Caster). `cantrips` holds a `known`-slot pick (Artificer
+ * Initiate/Wood Elf Magic/Aberrant Dragonmark: 1; Blessed Warrior/Druidic
+ * Warrior: 2); `spells` holds an `innate`/`prepared`-slot pick (most feats:
+ * 1; Ritual Caster: the character's proficiency bonus). A feat only ever has
+ * one of the two slots filled in the data except Artificer Initiate/Wood Elf
+ * Magic/Aberrant Dragonmark, which have both. Cleared whenever the feat
+ * itself is removed or changed, since it lives on the same FeatAsiChoice
+ * entry (same pattern as MagicInitiateChoice).
+ */
+export interface FilterChoiceSpellsChoice {
+	cantrips: { name: string; source: string }[]
+	spells: { name: string; source: string }[]
+}
+
+/**
  * One level-4/8/12/16/19(+class bonus levels)-and-up choice between an
  * Ability Score Improvement and a feat (build order step 4a, D16/D19/D20).
  * `level` is the character level the choice was taken at — this doubles as
@@ -223,16 +243,18 @@ export type FeatAsiChoice =
 			chosenAbility?: Ability
 			/** Base Magic Initiate only (slice d5b-2) — see MagicInitiateChoice. */
 			magicInitiate?: MagicInitiateChoice
+			/** The 8 generic filter-choice feats only (slice d5b-1) — see FilterChoiceSpellsChoice. */
+			filterChoiceSpells?: FilterChoiceSpellsChoice
 	  }
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 11 to add FeatAsiChoice.magicInitiate — base
- * Magic Initiate's class-list + spell picker (build order step 6 slice
- * d5b-2). Per PHASE1.md section D, and per docs/QUESTIONS.md "Migrace
+ * (see wireFormat.ts). Bumped to 12 to add FeatAsiChoice.filterChoiceSpells —
+ * the generic filter-choice feat spell picker (build order step 6 slice
+ * d5b-1). Per PHASE1.md section D, and per docs/QUESTIONS.md "Migrace
  * uložených postav", a version bump this app does not understand is rejected
  * outright (UnknownSchemaVersionError) rather than guessed at — no migration
- * from version 10 is written, so a character saved before this change will
+ * from version 11 is written, so a character saved before this change will
  * no longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 11
+export const CURRENT_SCHEMA_VERSION = 12

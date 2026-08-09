@@ -29,6 +29,7 @@ import type { CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
+import { filterChoiceRequiredCounts, isFilterChoiceFeat } from '../spells/featSpellChoiceData'
 
 /**
  * The chosen subclass, name and source together — carrying `featureType`
@@ -231,7 +232,9 @@ export function isStepComplete(
 		case 'featAsi':
 			return (
 				data.featAsiChoices.length === featAsiEligibleLevelCount &&
-				data.featAsiChoices.every((choice) => isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice))
+				data.featAsiChoices.every((choice) =>
+					isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice, data.classChoice?.level ?? 0),
+				)
 			)
 		case 'review':
 			return true
@@ -256,9 +259,13 @@ const EMPTY_FEAT_SET: ReadonlySet<string> = new Set()
  * feat picked but its ability bonus target unknown. Base Magic Initiate
  * (d5b-2) additionally needs its own `magicInitiate` pick fully formed: a
  * class list, exactly 2 cantrips, 1 level-1 spell, and (like a half-feat) a
- * chosen ability.
+ * chosen ability. The 8 generic filter-choice feats (d5b-1) similarly need
+ * `filterChoiceSpells` filled to each feat's own required cantrip/spell
+ * counts (featSpellChoiceData.ts) — Ritual Caster's ability choice is
+ * covered by the ordinary `featsRequiringAbilityChoice` check below since it
+ * has a normal half-feat `ability` field, unlike Magic Initiate.
  */
-function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityChoice: ReadonlySet<string>): boolean {
+function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityChoice: ReadonlySet<string>, totalCharacterLevel: number): boolean {
 	if (choice.kind === 'feat') {
 		if (choice.name.trim() === '' || choice.source.trim() === '') return false
 		if (isMagicInitiateFeat(choice)) {
@@ -269,7 +276,16 @@ function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityCho
 				choice.magicInitiate.spell !== null
 			)
 		}
-		if (featsRequiringAbilityChoice.has(`${choice.name}|${choice.source}`)) return choice.chosenAbility !== undefined
+		if (featsRequiringAbilityChoice.has(`${choice.name}|${choice.source}`) && choice.chosenAbility === undefined) return false
+		if (isFilterChoiceFeat(choice)) {
+			const required = filterChoiceRequiredCounts(choice.name, choice.source, totalCharacterLevel)
+			return (
+				required !== null &&
+				choice.filterChoiceSpells !== undefined &&
+				choice.filterChoiceSpells.cantrips.length === required.cantrips &&
+				choice.filterChoiceSpells.spells.length === required.spells
+			)
+		}
 		return true
 	}
 	const amounts = Object.values(choice.increases)

@@ -1,7 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
-import type { FeatAsiChoice, MagicInitiateChoice } from '../storage/character'
+import type { FeatAsiChoice, FilterChoiceSpellsChoice, MagicInitiateChoice } from '../storage/character'
 import { loadClassSpellList, type ClassSpellListSpell } from '../spells/classSpellListData'
+import {
+	isFilterChoiceFeat,
+	loadFilterChoiceFeatShape,
+	loadSlotCandidates,
+	ritualCasterSpellCount,
+	type FilterChoiceCandidateSpell,
+	type FilterChoiceFeatShape,
+} from '../spells/featSpellChoiceData'
+import { ABILITY_ABBREVIATIONS } from '../calculation/abilityAbbreviations'
+import { loadFixedFeatSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import {
 	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
@@ -222,6 +232,17 @@ export function FeatAsiPicker({
 								chosenAbility={current.chosenAbility}
 								onChangeMagicInitiate={(magicInitiate) => setChoiceAt(index, { ...current, magicInitiate })}
 								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
+							/>
+						)}
+
+						{current?.kind === 'feat' && current.name && isFilterChoiceFeat(current) && (
+							<FilterChoiceSpellSubPicker
+								featName={current.name}
+								featSource={current.source}
+								characterLevel={level}
+								chosenAbility={current.chosenAbility}
+								filterChoiceSpells={current.filterChoiceSpells ?? null}
+								onChange={(filterChoiceSpells) => setChoiceAt(index, { ...current, filterChoiceSpells })}
 							/>
 						)}
 					</fieldset>
@@ -536,6 +557,162 @@ function MagicInitiateSubPicker({
 					))}
 				</select>
 			</label>
+		</div>
+	)
+}
+
+type FilterChoiceLoadState =
+	| { status: 'loading' }
+	| { status: 'ready'; shape: FilterChoiceFeatShape; cantripCandidates: FilterChoiceCandidateSpell[]; spellCandidates: FilterChoiceCandidateSpell[]; fixedCompanions: FeatGrantedSpell[] }
+	| { status: 'error'; message: string }
+
+/**
+ * The generic filter-choice feat picker (slice d5b-1 — the LAST feat-spell
+ * picker): offers ONLY the spells matching the feat's own filter (class
+ * list / school / ritual tag) and level, counts enforced (task instructions'
+ * "guided" decision). Any fixed companion spell the feat also grants
+ * (Fey-Touched's Misty Step, Wood Elf Magic's Longstrider/Pass without
+ * Trace) is shown as already granted, reusing extractFixedFeatSpells rather
+ * than a second lookup — both halves of the feat's spells come from the
+ * same data path the sheet later reads (featSpells.ts). Unlike
+ * MagicInitiateSubPicker, there's no class-list radio choice here — each of
+ * these 8 feats' filter is fixed by the feat itself, only the individual
+ * spells are the player's choice.
+ */
+function FilterChoiceSpellSubPicker({
+	featName,
+	featSource,
+	characterLevel,
+	chosenAbility,
+	filterChoiceSpells,
+	onChange,
+}: {
+	featName: string
+	featSource: string
+	characterLevel: number
+	chosenAbility: Ability | undefined
+	filterChoiceSpells: FilterChoiceSpellsChoice | null
+	onChange: (value: FilterChoiceSpellsChoice) => void
+}): ReactNode {
+	const [state, setState] = useState<FilterChoiceLoadState>({ status: 'loading' })
+
+	useEffect(() => {
+		let cancelled = false
+		setState({ status: 'loading' })
+		Promise.all([
+			loadFilterChoiceFeatShape(featName, featSource),
+			loadFixedFeatSpells(featName, featSource, characterLevel, chosenAbility ? ABILITY_ABBREVIATIONS[chosenAbility] : undefined),
+		])
+			.then(([shape, fixedCompanions]) =>
+				Promise.all([
+					shape.cantripSlot ? loadSlotCandidates(shape.cantripSlot) : Promise.resolve([]),
+					shape.spellSlot ? loadSlotCandidates(shape.spellSlot) : Promise.resolve([]),
+				]).then(([cantripCandidates, spellCandidates]) => {
+					if (cancelled) return
+					setState({ status: 'ready', shape, cantripCandidates, spellCandidates, fixedCompanions })
+				}),
+			)
+			.catch((error: unknown) => {
+				if (!cancelled) setState({ status: 'error', message: error instanceof Error ? error.message : String(error) })
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [featName, featSource, characterLevel, chosenAbility])
+
+	if (state.status === 'loading') return null
+	if (state.status === 'error') {
+		return <p className="error">Could not load spells: {state.message}</p>
+	}
+
+	const { shape, cantripCandidates, spellCandidates, fixedCompanions } = state
+	const cantrips = filterChoiceSpells?.cantrips ?? []
+	const spells = filterChoiceSpells?.spells ?? []
+	const cantripLimit = shape.cantripSlot?.count ?? 0
+	const spellLimit = shape.spellSlot ? (shape.spellSlot.count ?? ritualCasterSpellCount(characterLevel)) : 0
+
+	function current(): FilterChoiceSpellsChoice {
+		return filterChoiceSpells ?? { cantrips: [], spells: [] }
+	}
+
+	function toggleCantrip(candidate: FilterChoiceCandidateSpell): void {
+		const value = current()
+		const isChosen = value.cantrips.some((c) => c.name === candidate.name && c.source === candidate.source)
+		if (isChosen) {
+			onChange({ ...value, cantrips: value.cantrips.filter((c) => !(c.name === candidate.name && c.source === candidate.source)) })
+			return
+		}
+		if (value.cantrips.length >= cantripLimit) return
+		onChange({ ...value, cantrips: [...value.cantrips, { name: candidate.name, source: candidate.source }] })
+	}
+
+	function toggleSpell(candidate: FilterChoiceCandidateSpell): void {
+		const value = current()
+		const isChosen = value.spells.some((s) => s.name === candidate.name && s.source === candidate.source)
+		if (isChosen) {
+			onChange({ ...value, spells: value.spells.filter((s) => !(s.name === candidate.name && s.source === candidate.source)) })
+			return
+		}
+		if (value.spells.length >= spellLimit) return
+		onChange({ ...value, spells: [...value.spells, { name: candidate.name, source: candidate.source }] })
+	}
+
+	return (
+		<div className="feat-asi-picker__filter-choice">
+			{fixedCompanions.length > 0 && (
+				<div className="feat-asi-picker__filter-choice-section">
+					<p>Already granted:</p>
+					<ul className="feat-asi-picker__magic-initiate-list">
+						{fixedCompanions.map((spell) => (
+							<li key={`${spell.name}|${spell.source}`}>{spell.name}</li>
+						))}
+					</ul>
+				</div>
+			)}
+
+			{shape.cantripSlot && (
+				<div className="feat-asi-picker__filter-choice-section">
+					<p>
+						{cantrips.length} of {cantripLimit} cantrip{cantripLimit === 1 ? '' : 's'} chosen.
+					</p>
+					<ul className="feat-asi-picker__magic-initiate-list">
+						{cantripCandidates.map((candidate) => {
+							const checked = cantrips.some((c) => c.name === candidate.name && c.source === candidate.source)
+							const atLimit = !checked && cantrips.length >= cantripLimit
+							return (
+								<li key={`${candidate.name}|${candidate.source}`}>
+									<label>
+										<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggleCantrip(candidate)} />
+										{candidate.name}
+									</label>
+								</li>
+							)
+						})}
+					</ul>
+				</div>
+			)}
+
+			{shape.spellSlot && (
+				<div className="feat-asi-picker__filter-choice-section">
+					<p>
+						{spells.length} of {spellLimit} spell{spellLimit === 1 ? '' : 's'} chosen.
+					</p>
+					<ul className="feat-asi-picker__magic-initiate-list">
+						{spellCandidates.map((candidate) => {
+							const checked = spells.some((s) => s.name === candidate.name && s.source === candidate.source)
+							const atLimit = !checked && spells.length >= spellLimit
+							return (
+								<li key={`${candidate.name}|${candidate.source}`}>
+									<label>
+										<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggleSpell(candidate)} />
+										{candidate.name}
+									</label>
+								</li>
+							)
+						})}
+					</ul>
+				</div>
+			)}
 		</div>
 	)
 }

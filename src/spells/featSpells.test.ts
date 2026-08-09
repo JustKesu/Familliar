@@ -219,3 +219,66 @@ describe('extractFeatGrantedSpells — base Magic Initiate (slice d5b-2)', () =>
 		expect(extractFeatGrantedSpells(feats, magicInitiateSpells, character)).toEqual([])
 	})
 })
+
+describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice d5b-1)', () => {
+	const feyTouched = {
+		name: 'Fey-Touched',
+		source: 'XPHB',
+		additionalSpells: [{ ability: 'inherit', innate: { _: { daily: { '1e': ['misty step|xphb', { choose: 'level=1|school=E;D' }] } } } }],
+	}
+	const woodElfMagic = {
+		name: 'Wood Elf Magic',
+		source: 'XGE',
+		additionalSpells: [
+			{ ability: 'wis', innate: { _: { daily: { '1e': ['longstrider', 'pass without trace'] } } }, known: { _: [{ choose: 'level=0|class=Druid' }] } },
+		],
+	}
+	const filterChoiceFeats = [...feats, feyTouched, woodElfMagic]
+
+	const identify = { name: 'Identify', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
+	const longstrider = { name: 'Longstrider', source: 'XPHB', level: 1, duration: [{ type: 'timed', duration: { type: 'hour', amount: 1 } }], meta: {} }
+	const passWithoutTrace = { name: 'Pass without Trace', source: 'XPHB', level: 2, duration: [{ type: 'timed', duration: { type: 'hour', amount: 1 } }], meta: {} }
+	const filterChoiceSpells = [...spells, identify, longstrider, passWithoutTrace]
+
+	function characterWithFilterChoice(name: string, source: string, chosenAbility: Ability | undefined, filterChoiceSpells: { cantrips: { name: string; source: string }[]; spells: { name: string; source: string }[] } | undefined) {
+		const character: Character = {
+			id: 'test',
+			name: 'Test Character',
+			classes: [],
+			featAsiChoices: [{ level: 4, kind: 'feat', name, source, chosenAbility, filterChoiceSpells }],
+		}
+		return character
+	}
+
+	it("Fey-Touched: the fixed companion spell (Misty Step) is granted even with no pick yet, ability from chosenAbility (not 'inherit')", () => {
+		const character = characterWithFilterChoice('Fey-Touched', 'XPHB', 'wisdom', undefined)
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+
+		expect(result.map((s) => s.name)).toEqual(['Misty Step'])
+		expect(result[0].ability).toBe('wis')
+	})
+
+	it('Fey-Touched: the chosen school-filtered spell is ALSO granted, alongside the fixed one, both carrying chosenAbility', () => {
+		const character = characterWithFilterChoice('Fey-Touched', 'XPHB', 'charisma', { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] })
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+
+		expect(result.map((s) => s.name).sort()).toEqual(['Identify', 'Misty Step'])
+		expect(result.every((s) => s.ability === 'cha')).toBe(true)
+		expect(result.every((s) => s.featName === 'Fey-Touched')).toBe(true)
+	})
+
+	it('Wood Elf Magic: fixed innate spells AND the chosen cantrip are granted, ability is the FIXED wis (chosenAbility ignored)', () => {
+		const character = characterWithFilterChoice('Wood Elf Magic', 'XGE', undefined, { cantrips: [{ name: 'Druidcraft', source: 'XPHB' }], spells: [] })
+		const druidcraft = { name: 'Druidcraft', source: 'XPHB', level: 0, duration: [{ type: 'instant' }], meta: {} }
+		const result = extractFeatGrantedSpells(filterChoiceFeats, [...filterChoiceSpells, druidcraft], character)
+
+		expect(result.map((s) => s.name).sort()).toEqual(['Druidcraft', 'Longstrider', 'Pass without Trace'])
+		expect(result.every((s) => s.ability === 'wis')).toBe(true)
+	})
+
+	it('a character without any filter-choice feat is unaffected', () => {
+		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+		expect(result.map((s) => s.name).sort()).toEqual(['Detect Magic', 'Dispel Magic', 'Levitate'])
+	})
+})
