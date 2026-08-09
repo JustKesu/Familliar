@@ -37,6 +37,8 @@ type LoadState =
 export function SpellPicker({
 	className,
 	classSource,
+	expandedClassName,
+	expandedClassSource,
 	spellSlots,
 	cantripCount,
 	leveledSpellCount,
@@ -46,6 +48,9 @@ export function SpellPicker({
 }: {
 	className: string
 	classSource: string
+	/** D46 (Divine Soul): an extra class list to UNION into the pool, e.g. Cleric alongside Sorcerer. Omitted for every other class/subclass. */
+	expandedClassName?: string
+	expandedClassSource?: string
 	spellSlots: SpellSlotsEntry | undefined
 	cantripCount: number
 	leveledSpellCount: number
@@ -58,9 +63,15 @@ export function SpellPicker({
 	useEffect(() => {
 		let cancelled = false
 		setState({ status: 'loading' })
-		loadClassSpellList(className, classSource)
-			.then((spells) => {
-				if (!cancelled) setState({ status: 'ready', spells })
+		Promise.all([
+			loadClassSpellList(className, classSource),
+			expandedClassName && expandedClassSource ? loadClassSpellList(expandedClassName, expandedClassSource) : Promise.resolve([]),
+		])
+			.then(([spells, expandedSpells]) => {
+				if (cancelled) return
+				const merged = new Map<string, ClassSpellListSpell>()
+				for (const spell of [...spells, ...expandedSpells]) merged.set(`${spell.name}|${spell.source}`, spell)
+				setState({ status: 'ready', spells: [...merged.values()] })
 			})
 			.catch((error: unknown) => {
 				if (!cancelled) {
@@ -70,7 +81,7 @@ export function SpellPicker({
 		return () => {
 			cancelled = true
 		}
-	}, [className, classSource])
+	}, [className, classSource, expandedClassName, expandedClassSource])
 
 	if (state.status === 'loading') return null
 	if (state.status === 'error') {

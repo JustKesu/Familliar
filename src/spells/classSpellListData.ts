@@ -132,3 +132,25 @@ export function spellListClassFor(
 	if (subclassName && subclassName in THIRD_CASTER_SPELL_LIST) return THIRD_CASTER_SPELL_LIST[subclassName]!
 	return { className, classSource }
 }
+
+/**
+ * D46 (Divine Soul): unlike EK/AT, Sorcerer already has its own full spell
+ * list — Divine Soul's `additionalSpells.expanded` WIDENS that pool with
+ * Cleric's list rather than replacing it (confirmed via
+ * scripts/investigate-divine-soul-expanded.js: every one of Divine Soul's 5
+ * alignment options keys the identical `{"all": "level=N|class=Cleric"}`
+ * shape under `expanded`, gated by character-level thresholds that already
+ * match the existing max-slot-level filter (slice d1) a full caster gets
+ * for free — so no separate threshold table is needed here). The other
+ * `expanded` pool-widening cases — Warlock patrons, The Genie, the marks —
+ * are NOT covered here and stay deferred (docs/REPORT.md).
+ */
+const EXPANDED_POOL_ADDITIONS: Record<string, { className: string; classSource: string }> = {
+	'Divine Soul': { className: 'Cleric', classSource: 'XPHB' },
+}
+
+/** An extra class list to UNION into the picker's pool on top of `spellListClassFor`'s result — currently only Divine Soul (adds Cleric list). Returns null for every other subclass. */
+export function expandedSpellListClassFor(subclassName: string | null | undefined): { className: string; classSource: string } | null {
+	if (subclassName && subclassName in EXPANDED_POOL_ADDITIONS) return EXPANDED_POOL_ADDITIONS[subclassName]!
+	return null
+}

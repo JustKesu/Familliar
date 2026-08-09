@@ -20,7 +20,7 @@ import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../fe
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { SpellPicker } from '../spells/SpellPicker'
-import { spellListClassFor } from '../spells/classSpellListData'
+import { spellListClassFor, expandedSpellListClassFor } from '../spells/classSpellListData'
 import { AlwaysPreparedSpellsList } from '../spells/AlwaysPreparedSpellsList'
 import { SubclassSpellChoicePicker } from '../spells/SubclassSpellChoicePicker'
 import { isSubclassSpellChoice, loadSubclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
@@ -351,6 +351,8 @@ export function CharacterWizard({
 	const spellListClass = state.data.classChoice
 		? spellListClassFor(state.data.classChoice.className, state.data.classChoice.classSource, state.data.subclass?.name)
 		: null
+	/** D46: Divine Soul widens its Sorcerer pool with the Cleric list — union, not replacement (classSpellListData.ts's EXPANDED_POOL_ADDITIONS). Null for every other subclass. */
+	const expandedSpellListClass = expandedSpellListClassFor(state.data.subclass?.name)
 
 	function handleSave(): void {
 		try {
@@ -531,6 +533,8 @@ export function CharacterWizard({
 					<SpellPicker
 						className={spellListClass.className}
 						classSource={spellListClass.classSource}
+						expandedClassName={expandedSpellListClass?.className}
+						expandedClassSource={expandedSpellListClass?.classSource}
 						spellSlots={spellSlotsEntry}
 						cantripCount={spellRequirement.cantripCount}
 						leveledSpellCount={spellRequirement.leveledSpellCount}

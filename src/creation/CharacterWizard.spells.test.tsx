@@ -21,6 +21,7 @@ vi.mock('../classes/classData', () => ({
 		{ name: 'Wizard', source: 'XPHB', hd: { number: 1, faces: 6 } },
 		{ name: 'Cleric', source: 'XPHB', hd: { number: 1, faces: 8 } },
 		{ name: 'Rogue', source: 'XPHB', hd: { number: 1, faces: 8 } },
+		{ name: 'Sorcerer', source: 'XPHB', hd: { number: 1, faces: 6 } },
 	]),
 }))
 
@@ -79,6 +80,12 @@ vi.mock('../subclass/subclassData', () => ({
 			return [
 				{ name: 'Thief', source: 'XPHB', entries: ['Fast hands.'], featureType: null },
 				{ name: 'Arcane Trickster', source: 'XPHB', entries: ['A spellcasting rogue.'], featureType: null },
+			]
+		}
+		if (className === 'Sorcerer') {
+			return [
+				{ name: 'Draconic Bloodline', source: 'XPHB', entries: ['Draconic power.'], featureType: null },
+				{ name: 'Divine Soul', source: 'XGE', entries: ['A sliver of divinity.'], featureType: null },
 			]
 		}
 		return [
@@ -170,6 +177,17 @@ const spellSlotsData: ClassSpellSlotsData[] = [
 			},
 		],
 	},
+	{
+		className: 'Sorcerer',
+		classSource: 'XPHB',
+		casterProgression: 'full',
+		spellSlotsByLevel: [
+			[2, 0, 0, 0, 0, 0, 0, 0, 0],
+			[3, 0, 0, 0, 0, 0, 0, 0, 0],
+			[4, 2, 0, 0, 0, 0, 0, 0, 0],
+		],
+		pactSlotsByLevel: null,
+	},
 ]
 
 const spellCountData: ClassSpellCountData[] = [
@@ -191,6 +209,7 @@ const spellCountData: ClassSpellCountData[] = [
 		label: null,
 		subclasses: [{ subclassName: 'Arcane Trickster', cantripProgression: [0, 0, 2], leveledSpellProgression: [0, 0, 3], label: 'known' }],
 	},
+	{ className: 'Sorcerer', classSource: 'XPHB', cantripProgression: [3, 3, 3], leveledSpellProgression: [2, 3, 3], label: 'known' },
 ]
 
 vi.mock('../spells/spellSlotsClassData', () => ({
@@ -218,13 +237,20 @@ const wizardSpellList: ClassSpellListSpell[] = [
 
 const fighterSpellList: ClassSpellListSpell[] = [spell('Fire Bolt', 0), spell('Blade Ward', 0), spell('Shield', 1), spell('Magic Missile', 1)]
 
+/** Distinct from wizardSpellList — used both as Cleric's own list and as Divine Soul's `expanded` addition. Shield overlaps sorcererSpellList (slice's de-dup case); Cure Wounds is Cleric-only (the "healing spell now offered" case). */
+const clericSpellList: ClassSpellListSpell[] = [spell('Guidance', 0), spell('Cure Wounds', 1), spell('Shield', 1)]
+
+const sorcererSpellList: ClassSpellListSpell[] = [spell('Fire Bolt', 0), spell('Prestidigitation', 0), spell('Magic Missile', 1), spell('Shield', 1)]
+
 vi.mock('../spells/classSpellListData', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../spells/classSpellListData')>()
 	return {
 		...actual,
 		loadClassSpellList: vi.fn(async (className: string) => {
-			if (className === 'Wizard' || className === 'Cleric') return wizardSpellList
+			if (className === 'Wizard') return wizardSpellList
+			if (className === 'Cleric') return clericSpellList
 			if (className === 'Fighter') return fighterSpellList
+			if (className === 'Sorcerer') return sorcererSpellList
 			return []
 		}),
 	}
@@ -448,5 +474,92 @@ describe('CharacterWizard — spells step', () => {
 		expect(screen.getByLabelText(/Magic Missile/)).toBeTruthy()
 		expect(screen.queryByLabelText(/Misty Step/)).toBeNull()
 		expect(screen.queryByLabelText(/Fireball/)).toBeNull()
+	})
+
+	it("a Divine Soul Sorcerer's picker offers the Sorcerer list UNIONED with the Cleric list (D46 expanded pool-widening), counts stay Sorcerer's own, a spell on both lists appears once, and a chosen Cleric spell persists and renders on the sheet", async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user, 'Sorcerer', '3')
+		await user.click(await screen.findByRole('radio', { name: /Divine Soul/ }))
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await user.click(await screen.findByLabelText('Draconic (XPHB)'))
+		await user.click(screen.getByLabelText('Dwarvish (XPHB)'))
+		await goNext(user)
+		await user.selectOptions(screen.getByLabelText('Strength'), '15')
+		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
+		await user.selectOptions(screen.getByLabelText('Constitution'), '13')
+		await user.selectOptions(screen.getByLabelText('Intelligence'), '12')
+		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
+		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
+		await goNext(user)
+
+		// Counts are Sorcerer's own (spellCountData above), unaffected by the widened pool.
+		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
+		expect(screen.getByText('0 of 3 spells known chosen.')).toBeTruthy()
+
+		// Sorcerer's own list is offered...
+		expect(screen.getByLabelText(/Fire Bolt/)).toBeTruthy()
+		expect(screen.getByLabelText(/Prestidigitation/)).toBeTruthy()
+		expect(screen.getByLabelText(/Magic Missile/)).toBeTruthy()
+		// ...and the Cleric addition from `expanded` is offered too, including a Cleric-only healing spell.
+		expect(screen.getByLabelText(/Guidance/)).toBeTruthy()
+		expect(screen.getByLabelText(/Cure Wounds/)).toBeTruthy()
+		// Shield is on BOTH lists — it must appear exactly once, not twice.
+		expect(screen.getAllByLabelText(/^Shield/)).toHaveLength(1)
+
+		await user.click(screen.getByLabelText(/Fire Bolt/))
+		await user.click(screen.getByLabelText(/Prestidigitation/))
+		await user.click(screen.getByLabelText(/Guidance/))
+		expect(screen.getByText('3 of 3 cantrips chosen.')).toBeTruthy()
+
+		await user.click(screen.getByLabelText(/Magic Missile/))
+		await user.click(screen.getByLabelText(/^Shield/))
+		await user.click(screen.getByLabelText(/Cure Wounds/))
+		expect(screen.getByText('3 of 3 spells known chosen.')).toBeTruthy()
+
+		await goNext(user)
+		await screen.findByText('Name: Aria')
+		await goBack(user)
+
+		expect((await screen.findByLabelText(/Cure Wounds/) as HTMLInputElement).checked).toBe(true)
+	})
+
+	it('a non-Divine-Soul Sorcerer (Draconic Bloodline) is offered only the Sorcerer list — no Cleric addition', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user, 'Sorcerer', '3')
+		await user.click(await screen.findByRole('radio', { name: /Draconic Bloodline/ }))
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await user.click(await screen.findByLabelText('Draconic (XPHB)'))
+		await user.click(screen.getByLabelText('Dwarvish (XPHB)'))
+		await goNext(user)
+		await user.selectOptions(screen.getByLabelText('Strength'), '15')
+		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
+		await user.selectOptions(screen.getByLabelText('Constitution'), '13')
+		await user.selectOptions(screen.getByLabelText('Intelligence'), '12')
+		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
+		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
+		await goNext(user)
+
+		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
+		expect(screen.getByLabelText(/Fire Bolt/)).toBeTruthy()
+		expect(screen.getByLabelText(/^Shield/)).toBeTruthy()
+		// No Cleric addition — Guidance and Cure Wounds are not offered.
+		expect(screen.queryByLabelText(/Guidance/)).toBeNull()
+		expect(screen.queryByLabelText(/Cure Wounds/)).toBeNull()
 	})
 })
