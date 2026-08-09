@@ -159,6 +159,7 @@ Each step is finished and tested before the next begins.
 4a. **Feat/ASI slice** — the level 4/8/12/16/19 feat-or-ASI choice.
 5. **Sheet display** — the read-only view of a finished character.
 6. **Spells** — spell list, preparation, slots.
+6a. **Class feature choices** — selectable class/subclass features (Warlock Invocations, Fighter Maneuvers, and similar "choose from a list" features): their wizard picker, storage, sheet display, and the subset whose choice changes a calculated value. Usage trackers and rest replenishment for these features are step 9.
 7. **Inventory and equipment** — items, attunement, equipped state.
 8. **Level up** — including the per-level HP choice.
 9. **Play tracking and rests.**

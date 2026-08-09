@@ -174,6 +174,10 @@ jednoho průchodu. Rozhodnout, jestli to řešit hned, nebo až s level-upem
 (krok 8).
 STATUS: nerozhodnuto.
 
+### Class feature choices (step 6a) — open scope
+
+Which selectable "choose N from a list" class/subclass features step 6a covers beyond Warlock Invocations and Fighter Maneuvers is not yet inventoried (a full pass over class/subclass features is needed). It is also undecided how far to model the subset that changes a calculated value — which invocations/maneuvers actually alter a computed number, and whether all are feasible to model — versus showing them as text only. To be resolved when step 6a is scoped, after step 6 is complete.
+
 ### Výběr dovednosti u featu se nemá kam uložit
 
 5 featů (Keen Mind, Observant, Prodigy, Squat Nimbleness, Skill

@@ -1008,3 +1008,13 @@ first pass would balloon that slice; `prepared` covers the core case and the
 rest can follow one shape at a time. (This decision is RECORDED now but
 implemented later — it is NOT part of slice (c), which does class spell
 lists, not subclass spells.)
+
+## D63 — Class feature choices are a new build order step (6a), separate from play-tracking
+
+The build order gains step 6a, "Class feature choices," covering selectable class/subclass features the player must choose — Warlock Eldritch Invocations, Fighter Battle Master Maneuvers, and other "choose N from a list" features — including their wizard picker, storage, sheet display, and the subset whose choice modifies a calculated value (e.g. an invocation adding a Charisma bonus to a cantrip's damage), which feeds the affected value's breakdown the same way feats already feed the calculation layer.
+
+Scope boundaries. IN: the selection of these features, their persistence, their display, and calculation effects that follow directly from the selection. NOT IN (deferred to step 9, Play tracking and rests): usage trackers and rest replenishment — Rage count, Channel Divinity charges, Lay on Hands HP pool, and long/short-rest refresh of any resource. Step 6a records WHICH features a character has; step 9 tracks their per-day/per-rest USE. Unchanged: pure-text features already shown by the feature renderer (e.g. Rage's description) need no new work here.
+
+Rationale. These selectable features were absent from the original build order. They are creation-time choices like spells and feats, so they belong near those steps (hence 6a, after spells). They are distinct from usage tracking, which is inherently a play-time concern already scoped to step 9. Separating the two keeps each step bounded.
+
+Existing coverage. Some selectable features are already partially handled — the optional-feature picker (src/optionalFeatures/) covers Battle Master Maneuvers, Rune Knight Runes, Arcane Shot, and College of Swords Fighting Style. Step 6a's first task is to assess this existing coverage and extend it (Warlock Invocations being the main known gap) rather than rebuild it.
