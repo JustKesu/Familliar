@@ -220,9 +220,7 @@ export function FeatAsiPicker({
 								context={ctx}
 								selected={current.name ? { name: current.name, source: current.source, chosenAbility: current.chosenAbility } : null}
 								onSelectFeat={(feat) => setChoiceAt(index, { level: grant.level, kind: 'feat', name: feat.name, source: feat.source })}
-								onSelectAbility={(ability) =>
-									setChoiceAt(index, { level: grant.level, kind: 'feat', name: current.name, source: current.source, chosenAbility: ability })
-								}
+								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
 							/>
 						)}
 

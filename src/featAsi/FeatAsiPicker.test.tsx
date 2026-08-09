@@ -598,6 +598,28 @@ describe('FeatAsiPicker', () => {
 			expect(await screen.findByText('1 of 4 spells chosen.')).toBeTruthy()
 		})
 
+		it('choosing the ability AFTER the spell(s) does not wipe the already-chosen filterChoiceSpells', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Fey-Touched', source: 'XPHB' }]
+			const { rerender } = render(
+				<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={value} onChange={onChange} />,
+			)
+
+			await user.click(await screen.findByLabelText('Identify'))
+			let latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			expect(latest[0]).toMatchObject({ filterChoiceSpells: { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] } })
+
+			rerender(<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={latest} onChange={onChange} />)
+			const abilitySelect = (await screen.findByLabelText('Ability')) as HTMLSelectElement
+			await user.selectOptions(abilitySelect, 'wisdom')
+			latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
+			expect(latest[0]).toMatchObject({
+				chosenAbility: 'wisdom',
+				filterChoiceSpells: { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] },
+			})
+		})
+
 		it('switching to a different feat clears the previous filter-choice picks', async () => {
 			const user = userEvent.setup()
 			const onChange = vi.fn()

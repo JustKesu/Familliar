@@ -624,6 +624,141 @@ describe('CharacterSheet', () => {
 			expect(summary.textContent).toContain('from feat (Fey Teleportation)')
 		})
 
+		it('a non-caster with Drow High Magic (fixed-only feat) shows its spells in the Spells list', async () => {
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Detect Magic', source: 'XPHB', level: 1, entries: ['You sense the presence of magic.'] }),
+				spellDetail({ name: 'Levitate', source: 'XPHB', level: 2, entries: ['One creature or object rises.'] }),
+				spellDetail({ name: 'Dispel Magic', source: 'XPHB', level: 3, entries: ['Any spell effect ends.'] }),
+			]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Detect Magic', source: 'XPHB', level: 1, ritual: false, concentration: true, origin: 'feat', featName: 'Drow High Magic', ability: 'cha' },
+				{ name: 'Levitate', source: 'XPHB', level: 2, ritual: false, concentration: true, origin: 'feat', featName: 'Drow High Magic', ability: 'cha' },
+				{ name: 'Dispel Magic', source: 'XPHB', level: 3, ritual: false, concentration: false, origin: 'feat', featName: 'Drow High Magic', ability: 'cha' },
+			]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const fighter: Character = {
+				id: 'f2b',
+				name: 'Drow Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Drow High Magic', source: 'XPHB' }],
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Drow Fighter' })
+
+			const spellsSection = container.querySelector('.sheet__spells')
+			expect(spellsSection).not.toBeNull()
+			await waitFor(() => expect(spellsSection!.textContent).toContain('Detect Magic'))
+			expect(spellsSection!.textContent).toContain('Levitate')
+			expect(spellsSection!.textContent).toContain('Dispel Magic')
+			const summary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Detect Magic'))!
+			expect(summary.textContent).toContain('from feat (Drow High Magic)')
+		})
+
+		it('a non-caster with Fey-Touched shows BOTH the fixed Misty Step AND the player-chosen filter-choice spell (slice d5b-1)', async () => {
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2, entries: ['Briefly surrounded by silvery mist.'] }),
+				spellDetail({ name: 'Identify', source: 'XPHB', level: 1, entries: ['You choose one object.'] }),
+			]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Misty Step', source: 'XPHB', level: 2, ritual: false, concentration: false, origin: 'feat', featName: 'Fey-Touched', ability: 'wis' },
+				{ name: 'Identify', source: 'XPHB', level: 1, ritual: false, concentration: false, origin: 'feat', featName: 'Fey-Touched', ability: 'wis' },
+			]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const fighter: Character = {
+				id: 'f4',
+				name: 'Fey-Touched Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				featAsiChoices: [
+					{
+						level: 4,
+						kind: 'feat',
+						name: 'Fey-Touched',
+						source: 'XPHB',
+						chosenAbility: 'wisdom',
+						filterChoiceSpells: { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] },
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Fey-Touched Fighter' })
+
+			const spellsSection = container.querySelector('.sheet__spells')
+			expect(spellsSection).not.toBeNull()
+			await waitFor(() => expect(spellsSection!.textContent).toContain('Misty Step'))
+			expect(spellsSection!.textContent).toContain('Identify')
+
+			const mistyStepSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
+			expect(mistyStepSummary.textContent).toContain('from feat (Fey-Touched)')
+			const identifySummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Identify'))!
+			expect(identifySummary.textContent).toContain('from feat (Fey-Touched)')
+		})
+
+		it('a non-caster with Ritual Caster shows the player-chosen ritual spells (slice d5b-1)', async () => {
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Alarm', source: 'XPHB', level: 1, entries: ['You set an alarm against intrusion.'] }),
+				spellDetail({ name: 'Comprehend Languages', source: 'XPHB', level: 1, entries: ['You understand any language.'] }),
+			]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Alarm', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'feat', featName: 'Ritual Caster', ability: 'int' },
+				{ name: 'Comprehend Languages', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'feat', featName: 'Ritual Caster', ability: 'int' },
+			]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const fighter: Character = {
+				id: 'f5',
+				name: 'Ritual Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				featAsiChoices: [
+					{
+						level: 4,
+						kind: 'feat',
+						name: 'Ritual Caster',
+						source: 'XPHB',
+						chosenAbility: 'intelligence',
+						filterChoiceSpells: {
+							cantrips: [],
+							spells: [
+								{ name: 'Alarm', source: 'XPHB' },
+								{ name: 'Comprehend Languages', source: 'XPHB' },
+							],
+						},
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Ritual Fighter' })
+
+			const spellsSection = container.querySelector('.sheet__spells')
+			expect(spellsSection).not.toBeNull()
+			await waitFor(() => expect(spellsSection!.textContent).toContain('Alarm'))
+			expect(spellsSection!.textContent).toContain('Comprehend Languages')
+
+			const alarmSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Alarm'))!
+			expect(alarmSummary.textContent).toContain('from feat (Ritual Caster)')
+			const clSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Comprehend Languages'))!
+			expect(clSummary.textContent).toContain('from feat (Ritual Caster)')
+		})
+
 		it('a non-caster with no spell-granting feat shows no Spells section', async () => {
 			const fighter: Character = {
 				id: 'f3',
