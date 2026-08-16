@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-08-16 (build order step 6: Hexblade/Fathomless patron spells, D46 follow-up)
+Last updated: 2026-08-16 (build order step 6: feat-spell attack bonus/save DC, per feat)
 
 ## Build order
 
@@ -109,13 +109,15 @@ Last updated: 2026-08-16 (build order step 6: Hexblade/Fathomless patron spells,
 
 - EK/AT class spell picker pool-widening (build order step 6, slice d6c — EK/AT `expanded` wiring, a blocker fix). Eldritch Knight and Arcane Trickster reach the wizard's `spells` step with a real `SpellSlotsEntry`/count entry (D46's third-caster fallback already wired both), but their class spell picker asked `classSpellListData.ts` for THEIR OWN (Fighter's/Rogue's) spell list — always empty, since neither class has one — so the picker offered 0 spells and the character could never complete creation. Their subclass entry's `additionalSpells.expanded` names Wizard's list as the pool to widen into (confirmed via scripts/investigate-ek-at-expanded.js: both key `{"all": "level=N|class=Wizard"}` under `expanded`, N tracking the same third-caster max-spell-level progression the existing slot table already encodes — no separate level cap to parse). `classSpellListData.ts` gained `spellListClassFor(className, classSource, subclassName)`: a small lookup table (`THIRD_CASTER_SPELL_LIST`, keyed by subclass name) returning `{className: 'Wizard', classSource: 'XPHB'}` for these two subclasses, the class's own identity otherwise. `CharacterWizard.tsx` calls it once to compute the identity passed to `SpellPicker`, instead of always passing the character's own class — no change to `SpellPicker.tsx`, the level filter, or the counts, which already worked once given the right list. `Character.spellChoices` still tags picks with the character's OWN class (Fighter/Rogue), matching `saveCharacter`'s existing D11 tagging — only which list is OFFERED changed, not how a pick is stored or how the sheet resolves it (`SpellList.tsx` looks up spell details by name/source only, never by class). ONLY these two subclasses are wired; the other `expanded` cases (Divine Soul, the 3 pact-slot-rank patrons, The Genie, the 12 marks) are unaffected and stay deferred, since none of them are blocked (Divine Soul already has the Sorcerer list; the others are fixed-grant or unmodeled-choice cases, not empty pools) — see docs/REPORT.md.
 
+- Feat-spell attack bonus/save DC (build order step 6, closes the last standing sheet gap noted at d5a/d5b). `spellcasting.ts` gains `computeFeatSpellcasting`, the same attack-bonus/DC arithmetic as `computeSpellcasting` (ability modifier + proficiency bonus; DC also +8 base) applied to a new source — PER FEAT (D11's "one entry per source" pattern, same as one entry per casting class) rather than one blended value, so a character with Magic Initiate (CHA) and Fey-Touched (WIS) gets two entries. Takes the already-computed `FeatGrantedSpell[]` (`featSpells.ts`) and reads each feat's already-resolved `ability` straight off it — never re-derives or re-asks; a feat whose ability isn't resolved yet (a chosen-ability feat with no `chosenAbility` stored) returns the whole result `unknown` (D43), the same abort-on-missing-data behaviour `computeSpellcasting` already has for a missing class. `CharacterSheet.tsx`'s existing "Spellcasting" section now also lists a `<li>` per feat, styled identically to a class entry (`{Feat Name} (Ability)`, attack/DC with breakdown on expand) — the section's visibility check (`isCaster`) now also fires on a feat spellcasting entry alone, so a non-caster with a spell-granting feat (Fighter + Magic Initiate) shows a Spellcasting entry with no casting class and no slots section, closing the gap the d5a/d5b-1 sheet fix note left open. No storage change, no new picker.
+
 ## Next step
 
 Build order step 6 is done except for standing deferrals: a decision on the
-`expanded`-key deferrals (docs/REPORT.md), on Boon of Siberys (still
-hidden/deferred), and on feat-spell attack/DC display, before step 7 —
-Inventory and equipment. Every picker slice (d2, d2b, d5a, d5b-1/2/3, d6a,
-d6b) is now closed.
+`expanded`-key deferrals (docs/REPORT.md) and on Boon of Siberys (still
+hidden/deferred), before step 7 — Inventory and equipment. Every picker
+slice (d2, d2b, d5a, d5b-1/2/3, d6a, d6b) is closed, and feat-spell
+attack/DC now displays alongside class spellcasting.
 
 Note: the class-specific selections (including feat/ASI choices) are still not recorded with the
 level they were taken at as a SEPARATE provenance field — for feat/ASI the

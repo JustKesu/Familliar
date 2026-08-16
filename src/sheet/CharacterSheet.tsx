@@ -22,7 +22,7 @@ import { computeInitiative } from '../calculation/initiative'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
-import { computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
+import { computeFeatSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeDarkvision, computeSize, computeSpeed, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
@@ -255,8 +255,10 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const spellcastingEntries = spellcasting.status === 'known' ? spellcasting.value : []
 	const spellSlots = computeSpellSlots(character, spellSlotsClassData)
 	const spellSlotsEntries = spellSlots.status === 'known' ? spellSlots.value : []
+	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats)
+	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
-	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0
+	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
 	const combinedSpells = combineSpellEntries(
 		character.spellChoices ?? [],
 		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, spells: info.alwaysPrepared })),
@@ -468,7 +470,7 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 
 			{isCaster && (
 				<>
-					{spellcastingEntries.length > 0 && (
+					{(spellcastingEntries.length > 0 || featSpellcastingEntries.length > 0) && (
 						<section className="sheet__spell-attacks">
 							<h2>Spellcasting</h2>
 							<ul>
@@ -476,6 +478,20 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 									<li key={`${entry.className}|${entry.classSource}`}>
 										<h3>
 											{entry.className} ({ABILITY_LABELS[entry.ability]})
+										</h3>
+										<p>
+											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
+											<ValueBreakdown breakdown={entry.spellAttackBreakdown} />
+										</p>
+										<p>
+											Spell save DC: <span>{entry.spellSaveDC}</span> <ValueBreakdown breakdown={entry.spellSaveDCBreakdown} />
+										</p>
+									</li>
+								))}
+								{featSpellcastingEntries.map((entry) => (
+									<li key={`feat|${entry.featName}`}>
+										<h3>
+											{entry.featName} ({ABILITY_LABELS[entry.ability]})
 										</h3>
 										<p>
 											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}

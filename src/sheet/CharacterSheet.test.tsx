@@ -728,7 +728,7 @@ describe('CharacterSheet', () => {
 			expect(container.querySelector('.sheet__spells')).toBeNull()
 		})
 
-		it('a non-caster (Fighter) with Magic Initiate still shows the Spells list, with no attack/DC and no slots section', async () => {
+		it('a non-caster (Fighter) with Magic Initiate shows the Spells list AND a feat spellcasting entry (attack/DC), with no slots section', async () => {
 			const details: SpellDetail[] = [
 				spellDetail({ name: 'Fire Bolt', source: 'XPHB', level: 0, entries: ['You hurl a mote of fire.'] }),
 				spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0, entries: ['A spectral hand appears.'] }),
@@ -773,7 +773,13 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={fighter} />)
 			await screen.findByRole('heading', { name: 'Magic Initiate Fighter' })
 
-			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
+			const attackSection = container.querySelector('.sheet__spell-attacks')!
+			expect(attackSection).not.toBeNull()
+			expect(attackSection.textContent).toContain('Magic Initiate (Intelligence)')
+			expect(attackSection.textContent).toContain('Spell attack bonus')
+			expect(attackSection.textContent).toContain('+3')
+			expect(attackSection.textContent).toContain('Spell save DC')
+			expect(attackSection.textContent).toContain('11')
 			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
 
 			const spellsSection = container.querySelector('.sheet__spells')
@@ -786,7 +792,7 @@ describe('CharacterSheet', () => {
 			expect(fireBoltSummary.textContent).toContain('from feat (Magic Initiate)')
 		})
 
-		it('a non-caster with a fixed-ability feat spell (Fey Teleportation) shows it in the Spells list', async () => {
+		it('a non-caster with a fixed-ability feat spell (Fey Teleportation) shows it in the Spells list and a feat spellcasting entry', async () => {
 			const details: SpellDetail[] = [spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2, entries: ['Briefly surrounded by silvery mist.'] })]
 			const featGrantedSpells: FeatGrantedSpell[] = [
 				{ name: 'Misty Step', source: 'XPHB', level: 2, ritual: false, concentration: false, origin: 'feat', featName: 'Fey Teleportation', ability: 'int' },
@@ -808,7 +814,11 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={fighter} />)
 			await screen.findByRole('heading', { name: 'Fey Touched Fighter' })
 
-			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
+			const attackSection = container.querySelector('.sheet__spell-attacks')!
+			expect(attackSection).not.toBeNull()
+			expect(attackSection.textContent).toContain('Fey Teleportation (Intelligence)')
+			expect(attackSection.textContent).toContain('+3')
+			expect(attackSection.textContent).toContain('11')
 			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
 
 			const spellsSection = container.querySelector('.sheet__spells')
@@ -953,7 +963,7 @@ describe('CharacterSheet', () => {
 			expect(clSummary.textContent).toContain('from feat (Ritual Caster)')
 		})
 
-		it("a non-caster (Fighter) with a Mark feat shows only the mark's FIXED spell, no crash and no attack/DC/slots — `expanded` never applies with no Spellcasting/Pact Magic feature to widen (D46)", async () => {
+		it("a non-caster (Fighter) with a Mark feat shows the mark's FIXED spell plus its own feat spellcasting entry, no slots — `expanded` never applies with no Spellcasting/Pact Magic feature to widen (D46)", async () => {
 			const details: SpellDetail[] = [spellDetail({ name: 'Detect Magic', source: 'XPHB', level: 1, entries: ['You sense the presence of magic.'] })]
 			const featGrantedSpells: FeatGrantedSpell[] = [
 				{ name: 'Detect Magic', source: 'XPHB', level: 1, ritual: false, concentration: true, origin: 'feat', featName: 'Mark of Detection', ability: 'int' },
@@ -975,7 +985,11 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={fighter} />)
 			await screen.findByRole('heading', { name: 'Marked Fighter' })
 
-			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
+			const attackSection = container.querySelector('.sheet__spell-attacks')!
+			expect(attackSection).not.toBeNull()
+			expect(attackSection.textContent).toContain('Mark of Detection (Intelligence)')
+			expect(attackSection.textContent).toContain('+3')
+			expect(attackSection.textContent).toContain('11')
 			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
 
 			const spellsSection = container.querySelector('.sheet__spells')

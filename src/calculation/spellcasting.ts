@@ -18,6 +18,7 @@
  */
 
 import type { Ability } from '../abilities/abilityScores'
+import type { FeatGrantedSpell } from '../spells/featSpells'
 import type { Character, CharacterClass } from '../storage/character'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
@@ -126,6 +127,71 @@ export function computeSpellcasting(
 			spellSaveDCBreakdown,
 		})
 		breakdown.push({ source: characterClass.className, amount: spellAttackBonus })
+	}
+
+	return known(value, breakdown)
+}
+
+export interface FeatSpellcastingEntry {
+	featName: string
+	ability: Ability
+	spellAttackBonus: number
+	spellAttackBreakdown: Contribution[]
+	spellSaveDC: number
+	spellSaveDCBreakdown: Contribution[]
+}
+
+/**
+ * Step 6 follow-up: the same attack bonus/DC computation as computeSpellcasting,
+ * per FEAT rather than per class (D11's "one entry per source" pattern applied
+ * to a feat source) — a Fighter with Magic Initiate has no casting class at
+ * all, so its attack/DC can't live on a class entry. `featGrantedSpells`
+ * already carries each spell's resolved ability (featSpells.ts) — read here,
+ * never re-derived. If any feat's ability is unresolved (a chosen-ability feat
+ * with no chosenAbility recorded yet), the whole result is 'unknown' (D43),
+ * matching computeSpellcasting's own abort-on-missing-data behaviour.
+ */
+export function computeFeatSpellcasting(
+	character: Character,
+	featGrantedSpells: FeatGrantedSpell[],
+	feats: FeatEffectEntry[] = [],
+): Calculated<FeatSpellcastingEntry[]> {
+	if (featGrantedSpells.length === 0) {
+		return known([], [])
+	}
+
+	const bonusResult = computeProficiencyBonus(character.classes)
+	if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
+
+	const featNames = [...new Set(featGrantedSpells.map((spell) => spell.featName))]
+	const value: FeatSpellcastingEntry[] = []
+	const breakdown: Contribution[] = []
+
+	for (const featName of featNames) {
+		const abilityAbbreviation = featGrantedSpells.find((spell) => spell.featName === featName)?.ability
+		if (!abilityAbbreviation) {
+			return unknown(`Feat "${featName}" grants a spell but its spellcasting ability has not been chosen yet.`)
+		}
+
+		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
+		const abilityResult = computeAbilityScore(ability, character, feats)
+		if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
+
+		const spellAttackBreakdown: Contribution[] = [
+			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
+			{ source: 'proficiency bonus', amount: bonusResult.value },
+		]
+		const spellAttackBonus = spellAttackBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
+
+		const spellSaveDCBreakdown: Contribution[] = [
+			{ source: 'base', amount: 8 },
+			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
+			{ source: 'proficiency bonus', amount: bonusResult.value },
+		]
+		const spellSaveDC = spellSaveDCBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
+
+		value.push({ featName, ability, spellAttackBonus, spellAttackBreakdown, spellSaveDC, spellSaveDCBreakdown })
+		breakdown.push({ source: featName, amount: spellAttackBonus })
 	}
 
 	return known(value, breakdown)

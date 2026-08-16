@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import type { FeatGrantedSpell } from '../spells/featSpells'
 import type { Character } from '../storage/character'
 import type { FeatEffectEntry } from './featEffects'
-import { type ClassSpellcastingAbility, computeSpellcasting } from './spellcasting'
+import { type ClassSpellcastingAbility, computeFeatSpellcasting, computeSpellcasting } from './spellcasting'
+
+function featSpell(featName: string, ability: FeatGrantedSpell['ability']): FeatGrantedSpell {
+	return { name: 'prestidigitation', source: 'XPHB', level: 0, ritual: false, concentration: false, origin: 'feat', featName, ability }
+}
 
 const wizardAbility: ClassSpellcastingAbility = { className: 'Wizard', classSource: 'XPHB', ability: 'int' }
 const paladinAbility: ClassSpellcastingAbility = { className: 'Paladin', classSource: 'XPHB', ability: 'cha' }
@@ -253,5 +258,106 @@ describe('computeSpellcasting', () => {
 		expect(result.status).toBe('known')
 		if (result.status !== 'known') return
 		expect(result.value).toEqual([])
+	})
+})
+
+describe('computeFeatSpellcasting', () => {
+	it('a feat with a chosen ability (Magic Initiate, CHA): attack = CHA mod + PB, DC = 8 + PB + CHA mod', () => {
+		const character: Character = {
+			id: '10',
+			name: 'FighterMI',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+			abilityScores: {
+				method: 'standardArray',
+				scores: { strength: 15, dexterity: 14, constitution: 14, intelligence: 10, wisdom: 10, charisma: 16 },
+			},
+		}
+		const result = computeFeatSpellcasting(character, [featSpell('Magic Initiate', 'cha')])
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toEqual([
+			{
+				featName: 'Magic Initiate',
+				ability: 'charisma',
+				spellAttackBonus: 6,
+				spellAttackBreakdown: [
+					{ source: 'charisma modifier', amount: 3 },
+					{ source: 'proficiency bonus', amount: 3 },
+				],
+				spellSaveDC: 14,
+				spellSaveDCBreakdown: [
+					{ source: 'base', amount: 8 },
+					{ source: 'charisma modifier', amount: 3 },
+					{ source: 'proficiency bonus', amount: 3 },
+				],
+			},
+		])
+	})
+
+	it('a fixed-ability feat (Drow High Magic, CHA) computes correctly without any chosen ability', () => {
+		const character: Character = {
+			id: '11',
+			name: 'DrowWizard',
+			classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 5 }],
+			abilityScores: {
+				method: 'standardArray',
+				scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 16, wisdom: 12, charisma: 14 },
+			},
+		}
+		const result = computeFeatSpellcasting(character, [featSpell('Drow High Magic', 'cha')])
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toEqual([
+			{
+				featName: 'Drow High Magic',
+				ability: 'charisma',
+				spellAttackBonus: 5,
+				spellAttackBreakdown: [
+					{ source: 'charisma modifier', amount: 2 },
+					{ source: 'proficiency bonus', amount: 3 },
+				],
+				spellSaveDC: 13,
+				spellSaveDCBreakdown: [
+					{ source: 'base', amount: 8 },
+					{ source: 'charisma modifier', amount: 2 },
+					{ source: 'proficiency bonus', amount: 3 },
+				],
+			},
+		])
+	})
+
+	it('the per-feat case: two spell-granting feats of DIFFERENT abilities produce two entries, each with its own ability and numbers', () => {
+		const character: Character = {
+			id: '12',
+			name: 'TwoFeats',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+			abilityScores: {
+				method: 'standardArray',
+				scores: { strength: 15, dexterity: 14, constitution: 14, intelligence: 10, wisdom: 16, charisma: 16 },
+			},
+		}
+		const result = computeFeatSpellcasting(character, [featSpell('Magic Initiate', 'cha'), featSpell('Fey-Touched', 'wis')])
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toHaveLength(2)
+		expect(result.value[0]).toMatchObject({ featName: 'Magic Initiate', ability: 'charisma', spellAttackBonus: 6, spellSaveDC: 14 })
+		expect(result.value[1]).toMatchObject({ featName: 'Fey-Touched', ability: 'wisdom', spellAttackBonus: 6, spellSaveDC: 14 })
+	})
+
+	it('a non-caster (Fighter) with a feat-granted spell still gets a feat spellcasting entry, with no casting class', () => {
+		const result = computeFeatSpellcasting(fighter5, [featSpell('Magic Initiate', 'cha')])
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toHaveLength(1)
+		expect(result.value[0].featName).toBe('Magic Initiate')
+	})
+
+	it('no feat-granted spells: known empty list, not unknown', () => {
+		expect(computeFeatSpellcasting(fighter5, [])).toEqual({ status: 'known', value: [], breakdown: [] })
+	})
+
+	it('D43: an unresolved ability (a chosen-ability feat with no chosenAbility stored yet) returns unknown, never a fake zero', () => {
+		const result = computeFeatSpellcasting(fighter5, [featSpell('Magic Initiate', undefined)])
+		expect(result.status).toBe('unknown')
 	})
 })
