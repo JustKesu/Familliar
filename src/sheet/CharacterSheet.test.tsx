@@ -318,6 +318,7 @@ describe('CharacterSheet', () => {
 			components: { v: true, s: true },
 			duration: [{ type: 'instant' }],
 			entries: ['A test spell description.'],
+			entriesHigherLevel: [],
 			...overrides,
 		}
 	}
@@ -397,6 +398,70 @@ describe('CharacterSheet', () => {
 			await user.click(fireballSummary)
 			expect(fireballSummary.closest('details')!.textContent).toContain('Casting Time')
 			expect(fireballSummary.closest('details')!.textContent).toContain('A bright streak flashes.')
+		})
+
+		it('shows "At Higher Levels" text on expand when the spell has it, and omits the line when it does not (step 6 follow-up)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Cleric', classSource: 'XPHB', ability: 'wis' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{
+					className: 'Cleric',
+					classSource: 'XPHB',
+					casterProgression: 'full',
+					spellSlotsByLevel: [[2]],
+					pactSlotsByLevel: null,
+				},
+			]
+			const details: SpellDetail[] = [
+				spellDetail({
+					name: 'Healing Word',
+					source: 'XPHB',
+					level: 1,
+					entries: ['A creature of your choice regains hit points.'],
+					entriesHigherLevel: [
+						{ type: 'entries', name: 'Using a Higher-Level Spell Slot', entries: ['The healing increases by 2d4 for each spell slot level above 1.'] },
+					],
+				}),
+				spellDetail({ name: 'Guidance', source: 'XPHB', level: 0, entries: ['You touch one willing creature.'], entriesHigherLevel: [] }),
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const cleric: Character = {
+				id: 'c1',
+				name: 'Aramil',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 1 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 16, charisma: 10 },
+				},
+				spellChoices: [
+					{
+						className: 'Cleric',
+						classSource: 'XPHB',
+						spells: [
+							{ name: 'Healing Word', source: 'XPHB' },
+							{ name: 'Guidance', source: 'XPHB' },
+						],
+					},
+				],
+			}
+
+			const user = userEvent.setup()
+			const { container } = render(<CharacterSheet character={cleric} />)
+			await screen.findByRole('heading', { name: 'Aramil' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+
+			const healingWordSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Healing Word'))!
+			await user.click(healingWordSummary)
+			const healingWordDetails = healingWordSummary.closest('details')!
+			expect(healingWordDetails.textContent).toContain('At Higher Levels')
+			expect(healingWordDetails.textContent).toContain('The healing increases by 2d4 for each spell slot level above 1.')
+
+			const guidanceSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Guidance'))!
+			await user.click(guidanceSummary)
+			expect(guidanceSummary.closest('details')!.textContent).not.toContain('At Higher Levels')
 		})
 
 		it('an Eldritch Knight renders a Wizard-list spell chosen during creation (step 6 EK/AT `expanded` wiring)', async () => {

@@ -24,6 +24,13 @@
  * - `spellAttack`: array of "M" | "R" (34/489 spells) — mutually exclusive
  *   with `savingThrow` in the data seen, but both are read independently
  *   rather than assumed exclusive.
+ * - `entriesHigherLevel`: array of entry objects (187/489 spells), same
+ *   shape as `entries` — usually one `{type: "entries", name: "Using a
+ *   Higher-Level Spell Slot", entries: [...]}`. Rendered through the same
+ *   markup renderer as `entries`, per step 6 (D46). `scalingLevelDice`
+ *   (26/489, cantrip level-scaling) is a different shape — a dice-by-level
+ *   map, not entry text — and is left for a later step rather than given
+ *   ad-hoc formatting here.
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
@@ -64,6 +71,7 @@ export interface SpellDetail {
 	spellAttack?: string[]
 	savingThrow?: string[]
 	entries: unknown[]
+	entriesHigherLevel: unknown[]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -81,6 +89,7 @@ interface RawSpell {
 	spellAttack?: unknown
 	savingThrow?: unknown
 	entries?: unknown
+	entriesHigherLevel?: unknown
 	meta?: { ritual?: boolean }
 }
 
@@ -113,6 +122,7 @@ export function extractSpellDetails(parsed: unknown): SpellDetail[] {
 		spellAttack: Array.isArray(spell.spellAttack) ? (spell.spellAttack as string[]) : undefined,
 		savingThrow: Array.isArray(spell.savingThrow) ? (spell.savingThrow as string[]) : undefined,
 		entries: Array.isArray(spell.entries) ? spell.entries : [],
+		entriesHigherLevel: Array.isArray(spell.entriesHigherLevel) ? spell.entriesHigherLevel : [],
 	}))
 }
 

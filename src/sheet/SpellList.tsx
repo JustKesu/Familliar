@@ -169,6 +169,12 @@ function SpellRow({ entry, detail, resolverData }: { entry: SheetSpellEntry; det
 					<dd>{detail.source}</dd>
 				</dl>
 				<ResolvedEntries entries={detail.entries} data={resolverData} />
+				{detail.entriesHigherLevel.length > 0 && (
+					<div className="spell-list__higher-level">
+						<strong>At Higher Levels</strong>
+						<ResolvedEntries entries={detail.entriesHigherLevel} data={resolverData} />
+					</div>
+				)}
 			</details>
 		</li>
 	)
