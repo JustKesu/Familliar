@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { FeatGrantedSpell } from '../spells/featSpells'
+import { extractFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import type { Character } from '../storage/character'
 import type { FeatEffectEntry } from './featEffects'
 import { type ClassSpellcastingAbility, computeFeatSpellcasting, computeSpellcasting } from './spellcasting'
@@ -359,5 +359,89 @@ describe('computeFeatSpellcasting', () => {
 	it('D43: an unresolved ability (a chosen-ability feat with no chosenAbility stored yet) returns unknown, never a fake zero', () => {
 		const result = computeFeatSpellcasting(fighter5, [featSpell('Magic Initiate', undefined)])
 		expect(result.status).toBe('unknown')
+	})
+})
+
+/**
+ * The reported "Fighter + Magic Initiate shows no Spellcasting section" bug
+ * turned out not to reproduce (docs/REPORT.md has the full investigation):
+ * computeFeatSpellcasting itself was always correct, but every existing test
+ * fed it a HAND-BUILT FeatGrantedSpell (featSpell() above, or a hand-typed
+ * fixture in CharacterSheet.test.tsx) with `ability` set directly by the
+ * test — none of them actually ran the real extraction in featSpells.ts and
+ * piped ITS output into computeFeatSpellcasting. This closes that seam for
+ * Magic Initiate (chosen ability) and, as a regression check, Drow High
+ * Magic (fixed ability) — the two ability-resolution paths featSpells.ts
+ * has for a feat grant.
+ */
+describe('computeFeatSpellcasting — fed the REAL featSpells.ts extraction (not a hand-built ability)', () => {
+	const parsedFeats = [{ name: 'Drow High Magic', source: 'XGE', additionalSpells: [{ ability: 'cha', innate: { _: { will: ['detect magic'] } } }] }]
+	const parsedSpells = [{ name: 'Detect Magic', source: 'XPHB', level: 1, duration: [{ type: 'timed', duration: { type: 'minute', amount: 10 }, concentration: true }], meta: {} }]
+
+	it('a Fighter with Magic Initiate (chosen CHA): the real extraction resolves an ability, so the result is known, not unknown — the exact repro', () => {
+		const fighter: Character = {
+			id: 'repro',
+			name: 'ReproFighter',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+			abilityScores: {
+				method: 'standardArray',
+				scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 10, charisma: 16 },
+			},
+			featAsiChoices: [
+				{
+					level: 4,
+					kind: 'feat',
+					name: 'Magic Initiate',
+					source: 'XPHB',
+					chosenAbility: 'charisma',
+					magicInitiate: { className: 'Wizard', classSource: 'XPHB', cantrips: [], spell: { name: 'Detect Magic', source: 'XPHB' } },
+				},
+			],
+		}
+		const extracted = extractFeatGrantedSpells([], parsedSpells, fighter)
+		expect(extracted).toHaveLength(1)
+		expect(extracted[0].ability).toBe('cha') // real extraction, not a test-supplied value
+
+		const result = computeFeatSpellcasting(fighter, extracted)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value).toEqual([
+			{
+				featName: 'Magic Initiate',
+				ability: 'charisma',
+				spellAttackBonus: 5,
+				spellAttackBreakdown: [
+					{ source: 'charisma modifier', amount: 3 },
+					{ source: 'proficiency bonus', amount: 2 },
+				],
+				spellSaveDC: 13,
+				spellSaveDCBreakdown: [
+					{ source: 'base', amount: 8 },
+					{ source: 'charisma modifier', amount: 3 },
+					{ source: 'proficiency bonus', amount: 2 },
+				],
+			},
+		])
+	})
+
+	it('regression: a fixed-ability feat (Drow High Magic) still resolves through the real extraction', () => {
+		const character: Character = {
+			id: 'drow',
+			name: 'DrowFighter',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+			abilityScores: {
+				method: 'standardArray',
+				scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 10, charisma: 14 },
+			},
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Drow High Magic', source: 'XGE' }],
+		}
+		const extracted = extractFeatGrantedSpells(parsedFeats, parsedSpells, character)
+		expect(extracted).toHaveLength(1)
+		expect(extracted[0].ability).toBe('cha')
+
+		const result = computeFeatSpellcasting(character, extracted)
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value[0]).toMatchObject({ featName: 'Drow High Magic', ability: 'charisma', spellAttackBonus: 4, spellSaveDC: 12 })
 	})
 })
