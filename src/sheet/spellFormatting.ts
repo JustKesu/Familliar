@@ -6,7 +6,7 @@
  * sheet's spell detail view (build order step 6, slice d4).
  */
 
-import type { SpellComponents, SpellDuration, SpellRange, SpellTime } from '../spells/spellDetailData'
+import type { SpellComponents, SpellDuration, SpellRange, SpellScalingLevelDiceEntry, SpellTime } from '../spells/spellDetailData'
 
 const TIME_UNIT_LABELS: Record<string, string> = {
 	action: 'action',
@@ -113,4 +113,24 @@ export function formatAttackOrSave(spellAttack: string[] | undefined, savingThro
 
 export function spellLevelLabel(level: number): string {
 	return level === 0 ? 'Cantrip' : `Level ${level}`
+}
+
+/** One comma-joined line: dice value plus the character-level range it applies at, per threshold (open-ended for the last one). */
+function formatDiceThresholds(scaling: Record<string, string>): string {
+	const thresholds = Object.keys(scaling)
+		.map(Number)
+		.sort((a, b) => a - b)
+	return thresholds
+		.map((level, i) => {
+			const dice = scaling[String(level)]
+			const next = thresholds[i + 1]
+			const range = next !== undefined ? `${level}-${next - 1}` : `${level}+`
+			return `${dice} (${range})`
+		})
+		.join(', ')
+}
+
+/** One line per `scalingLevelDice` entry (usually one; Booming Blade-style spells have two). */
+export function formatScalingLevelDice(entries: SpellScalingLevelDiceEntry[]): string[] {
+	return entries.map((entry) => `${entry.label}: ${formatDiceThresholds(entry.scaling)}`)
 }

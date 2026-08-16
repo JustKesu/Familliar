@@ -319,6 +319,7 @@ describe('CharacterSheet', () => {
 			duration: [{ type: 'instant' }],
 			entries: ['A test spell description.'],
 			entriesHigherLevel: [],
+			scalingLevelDice: [],
 			...overrides,
 		}
 	}
@@ -462,6 +463,87 @@ describe('CharacterSheet', () => {
 			const guidanceSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Guidance'))!
 			await user.click(guidanceSummary)
 			expect(guidanceSummary.closest('details')!.textContent).not.toContain('At Higher Levels')
+			expect(guidanceSummary.closest('details')!.textContent).not.toContain('Cantrip scaling')
+			expect(healingWordDetails.textContent).not.toContain('Cantrip scaling')
+		})
+
+		it('shows cantrip character-level scaling on expand (single and two-dice), and omits it for a non-scaling cantrip (step 6 follow-up)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{
+					className: 'Wizard',
+					classSource: 'XPHB',
+					casterProgression: 'full',
+					spellSlotsByLevel: [[2]],
+					pactSlotsByLevel: null,
+				},
+			]
+			const details: SpellDetail[] = [
+				spellDetail({
+					name: 'Fire Bolt',
+					source: 'XPHB',
+					level: 0,
+					entries: ['You hurl a mote of fire.'],
+					scalingLevelDice: [{ label: 'Fire damage', scaling: { '1': '1d10', '5': '2d10', '11': '3d10', '17': '4d10' } }],
+				}),
+				spellDetail({
+					name: 'Booming Blade',
+					source: 'XPHB',
+					level: 0,
+					entries: ['You brandish your weapon.'],
+					scalingLevelDice: [
+						{ label: 'thunder damage on moving', scaling: { '1': '1d8', '5': '2d8', '11': '3d8', '17': '4d8' } },
+						{ label: 'thunder damage on hit', scaling: { '5': '1d8', '11': '2d8', '17': '3d8' } },
+					],
+				}),
+				spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0, entries: ['A spectral hand appears.'], scalingLevelDice: [] }),
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const wizard: Character = {
+				id: 'w2',
+				name: 'Tenser',
+				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 1 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 16, wisdom: 12, charisma: 10 },
+				},
+				spellChoices: [
+					{
+						className: 'Wizard',
+						classSource: 'XPHB',
+						spells: [
+							{ name: 'Fire Bolt', source: 'XPHB' },
+							{ name: 'Booming Blade', source: 'XPHB' },
+							{ name: 'Mage Hand', source: 'XPHB' },
+						],
+					},
+				],
+			}
+
+			const user = userEvent.setup()
+			const { container } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Tenser' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+
+			const fireBoltSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
+			await user.click(fireBoltSummary)
+			const fireBoltDetails = fireBoltSummary.closest('details')!
+			expect(fireBoltDetails.textContent).toContain('Cantrip scaling')
+			expect(fireBoltDetails.textContent).toContain('Fire damage: 1d10 (1-4), 2d10 (5-10), 3d10 (11-16), 4d10 (17+)')
+
+			const boomingBladeSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Booming Blade'))!
+			await user.click(boomingBladeSummary)
+			const boomingBladeDetails = boomingBladeSummary.closest('details')!
+			expect(boomingBladeDetails.textContent).toContain('thunder damage on moving: 1d8 (1-4), 2d8 (5-10), 3d8 (11-16), 4d8 (17+)')
+			expect(boomingBladeDetails.textContent).toContain('thunder damage on hit: 1d8 (5-10), 2d8 (11-16), 3d8 (17+)')
+
+			const mageHandSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Mage Hand'))!
+			await user.click(mageHandSummary)
+			expect(mageHandSummary.closest('details')!.textContent).not.toContain('Cantrip scaling')
 		})
 
 		it('an Eldritch Knight renders a Wizard-list spell chosen during creation (step 6 EK/AT `expanded` wiring)', async () => {

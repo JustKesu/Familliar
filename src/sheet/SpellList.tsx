@@ -3,7 +3,7 @@ import type { ResolverData } from '../featureResolver'
 import { ResolvedEntries } from '../featureResolver'
 import type { SpellDetail } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
-import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration, formatRange, spellLevelLabel } from './spellFormatting'
+import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration, formatRange, formatScalingLevelDice, spellLevelLabel } from './spellFormatting'
 import { UnresolvedValue } from './ValueBreakdown'
 
 /*
@@ -173,6 +173,16 @@ function SpellRow({ entry, detail, resolverData }: { entry: SheetSpellEntry; det
 					<div className="spell-list__higher-level">
 						<strong>At Higher Levels</strong>
 						<ResolvedEntries entries={detail.entriesHigherLevel} data={resolverData} />
+					</div>
+				)}
+				{detail.scalingLevelDice.length > 0 && (
+					<div className="spell-list__scaling">
+						<strong>Cantrip scaling</strong>
+						<ul>
+							{formatScalingLevelDice(detail.scalingLevelDice).map((line) => (
+								<li key={line}>{line}</li>
+							))}
+						</ul>
 					</div>
 				)}
 			</details>

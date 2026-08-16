@@ -27,10 +27,16 @@
  * - `entriesHigherLevel`: array of entry objects (187/489 spells), same
  *   shape as `entries` — usually one `{type: "entries", name: "Using a
  *   Higher-Level Spell Slot", entries: [...]}`. Rendered through the same
- *   markup renderer as `entries`, per step 6 (D46). `scalingLevelDice`
- *   (26/489, cantrip level-scaling) is a different shape — a dice-by-level
- *   map, not entry text — and is left for a later step rather than given
- *   ad-hoc formatting here.
+ *   markup renderer as `entries`, per step 6 (D46).
+ * - `scalingLevelDice`: cantrip character-level scaling (26/489, all level 0
+ *   — confirmed no leveled spell carries it, scripts/investigate-scaling-
+ *   level-dice-shape.js). A single `{label, scaling}` object (23/26) OR an
+ *   array of them (3/26, e.g. Booming Blade's two separate damage dice) —
+ *   normalized to always an array here. `scaling` is a map of character
+ *   level (stringified number key, thresholds vary per entry — Booming
+ *   Blade's second entry starts at "5", not "1") to a dice string
+ *   ("2d10"). Structured data, not entry text — formatted directly
+ *   (spellFormatting.ts), not through the markup renderer.
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
@@ -58,6 +64,11 @@ export interface SpellDuration {
 	concentration?: boolean
 }
 
+export interface SpellScalingLevelDiceEntry {
+	label: string
+	scaling: Record<string, string>
+}
+
 export interface SpellDetail {
 	name: string
 	source: string
@@ -72,6 +83,7 @@ export interface SpellDetail {
 	savingThrow?: string[]
 	entries: unknown[]
 	entriesHigherLevel: unknown[]
+	scalingLevelDice: SpellScalingLevelDiceEntry[]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -90,6 +102,7 @@ interface RawSpell {
 	savingThrow?: unknown
 	entries?: unknown
 	entriesHigherLevel?: unknown
+	scalingLevelDice?: unknown
 	meta?: { ritual?: boolean }
 }
 
@@ -101,6 +114,16 @@ function isRawSpell(value: unknown): value is RawSpell {
 function hasConcentration(duration: unknown): boolean {
 	if (!Array.isArray(duration)) return false
 	return duration.some((entry) => isRecord(entry) && entry['concentration'] === true)
+}
+
+function isScalingLevelDiceEntry(value: unknown): value is SpellScalingLevelDiceEntry {
+	return isRecord(value) && typeof value['label'] === 'string' && isRecord(value['scaling'])
+}
+
+/** `scalingLevelDice` is a single object OR an array of them (Booming Blade's two dice) — always normalized to an array here. */
+function extractScalingLevelDice(raw: unknown): SpellScalingLevelDiceEntry[] {
+	const asArray = Array.isArray(raw) ? raw : [raw]
+	return asArray.filter(isScalingLevelDiceEntry)
 }
 
 /** Pure (D38): the whole spells.json array, shaped into one SpellDetail per spell. */
@@ -123,6 +146,7 @@ export function extractSpellDetails(parsed: unknown): SpellDetail[] {
 		savingThrow: Array.isArray(spell.savingThrow) ? (spell.savingThrow as string[]) : undefined,
 		entries: Array.isArray(spell.entries) ? spell.entries : [],
 		entriesHigherLevel: Array.isArray(spell.entriesHigherLevel) ? spell.entriesHigherLevel : [],
+		scalingLevelDice: spell.scalingLevelDice ? extractScalingLevelDice(spell.scalingLevelDice) : [],
 	}))
 }
 
