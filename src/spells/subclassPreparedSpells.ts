@@ -45,23 +45,45 @@
  * - d6a: Warlock Archfey Patron keys its one innate grant `"_"` instead of
  *   a class level — `Number("_")` is not finite, so the existing level-gate
  *   check already used for `prepared` skips it cleanly with no special case.
- * - d6a: `expanded` is NOT read at all in this module, on purpose. It hides
- *   three different things: (1) EK/Arcane Trickster/Divine Soul use it to
- *   WIDEN the class spell picker's offered pool ("also pick from Wizard's
- *   list"), not to grant fixed spells — a d2-picker change, not this
- *   module's kind of work; (2) three Warlock patrons (Celestial, Hexblade,
- *   Fathomless) grant fixed patron-boon spells under it, but keyed by pact
- *   slot RANK ("s1".."s5"), not class level — translating rank to the
- *   level it's first available needs the Warlock Pact Magic slot table,
- *   out of scope for this slice; (3) Warlock The Genie has 4 separate
- *   additionalSpells entries, one per genie kind (Dao/Djinni/Efreeti/
- *   Marid), and nothing in this app stores which kind the player picked.
- *   All three are reported deferred in docs/REPORT.md rather than guessed.
+ * - d6a: `expanded` is NOT read for the generic prepared/known/innate loop,
+ *   on purpose — it hides several different things: (1) EK/Arcane
+ *   Trickster/Divine Soul/the 12 Eberron marks use it to WIDEN a class
+ *   spell picker's offered pool, not to grant fixed spells — a d2-picker
+ *   change, not this module's kind of work (also confirmed the marks
+ *   reuse the SAME "s1".."s5" key shape as (2) below for that unrelated
+ *   pool-widening purpose — the rules text decided that, not the shape,
+ *   see docs/STATUS.md); (2) three Warlock patrons (Celestial, Hexblade,
+ *   Fathomless) grant fixed patron-boon spells under it, keyed by pact
+ *   slot RANK ("s1".."s5") rather than class level; (3) Warlock The Genie
+ *   has 4 separate additionalSpells entries, one per genie kind (Dao/
+ *   Djinni/Efreeti/Marid), and nothing in this app stores which kind the
+ *   player picked.
+ * - Follow-up (this task): (2) is now handled by
+ *   `extractRankGrantAlwaysPreparedSpells` below, given the Warlock's own
+ *   `pactSlotsByLevel` table (spellSlots.ts) as the rank->level source of
+ *   truth (a rank is granted once the character's pact slot level first
+ *   reaches it — reads the same table spellSlots.ts already computes from,
+ *   never a second hardcoded copy). Scope checked against the real data
+ *   (scripts/investigate-patron-rank-spells.js,
+ *   investigate-celestial-all-entries.js,
+ *   investigate-hexblade-fathomless-all-entries.js,
+ *   investigate-celestial-reprint.js, investigate-genie-expanded.js):
+ *   Celestial's rank-keyed entry is "The Celestial" (XGE) — superseded by
+ *   `reprintedAs` in favour of "Celestial Patron" (XPHB), whose OWN
+ *   additionalSpells uses the already-handled `prepared` shape (class-level
+ *   keyed), so the XGE entry is never reached by subclassData.ts's D31
+ *   dedup and Celestial needed no change here. Hexblade and Fathomless have
+ *   only the one, XPHB-classSource'd subclass entry each, and it genuinely
+ *   only carries the rank-keyed `expanded` grant — so both are handled by
+ *   this follow-up. The Genie's 4-entries-per-subclass ambiguity (3) is
+ *   guarded structurally (a subclass with more than one additionalSpells
+ *   entry is skipped for rank grants), not by name, and stays deferred.
  * - Two of 406 string references don't resolve against this app's filtered
  *   spells.json (e.g. "branding smite", not present in any allowed source)
  *   — skipped cleanly (D43), not an error.
  */
 
+import type { PactSlots } from '../calculation/spellSlots'
 import { loadDataFile } from '../dataLoader/dataLoader'
 
 export interface AlwaysPreparedSpell {
@@ -134,6 +156,26 @@ export function findSpell(spells: RawSpell[], ref: { name: string; source: strin
 /** The fixed-grant keys this module derives spells from. `expanded` is deliberately excluded — see module comment. */
 const FIXED_GRANT_KEYS = ['prepared', 'known', 'innate'] as const
 
+/** Parses an `expanded` level key as a pact slot RANK ("s1".."s5" -> 1..5); any other key (a class-level key, or Genie's stray "9") is not this shape. */
+function parsePactSlotRankKey(levelKey: string): number | null {
+	const match = /^s([1-5])$/.exec(levelKey)
+	return match ? Number(match[1]) : null
+}
+
+/**
+ * The character level at which a Warlock's pact slot level first reaches
+ * `rank`, read off the class's own `pactSlotsByLevel` table (spellSlots.ts's
+ * `PactSlots` — the source of truth, never a second hardcoded table).
+ * `slotLevel` rises monotonically (1st/1, 3rd/2, 5th/3, 7th/4, 9th/5 for a
+ * single-class Warlock), so the first row reaching `rank` is the level it
+ * unlocks at. Returns null if the table doesn't reach that rank (D43: skip
+ * cleanly).
+ */
+export function levelForPactSlotRank(rank: number, pactSlotsByLevel: PactSlots[]): number | null {
+	const index = pactSlotsByLevel.findIndex((row) => row.slotLevel >= rank)
+	return index === -1 ? null : index + 1
+}
+
 /**
  * A level's value is normally a flat array of spell references. d6a found 5
  * subclasses wrap it two levels deeper instead, under a `resource`/`daily`/
@@ -159,8 +201,12 @@ export function extractRefs(value: unknown): string[] {
  * in that class (D11 — a multiclass caller unions per class, not built
  * here) and the parsed classes.json / spells.json arrays. Returns the
  * subclass's always-prepared spells granted at or below that level, from
- * the `prepared`/`known`/`innate` shapes (D62, d6a) — `expanded` and any
- * other shape yield nothing (see module comment).
+ * the `prepared`/`known`/`innate` shapes (D62, d6a) plus (this task) a
+ * pact-slot-RANK-keyed `expanded` grant (Hexblade/Fathomless) — every other
+ * use of `expanded` (pool-widening, Genie's per-kind ambiguity) still
+ * yields nothing (see module comment). `pactSlotsByLevel` (optional —
+ * absent for a non-Warlock class) is the Warlock's own Pact Magic slot
+ * table (spellSlots.ts), needed only to translate a rank grant's level.
  */
 export function extractSubclassAlwaysPreparedSpells(
 	parsedClasses: unknown,
@@ -170,6 +216,7 @@ export function extractSubclassAlwaysPreparedSpells(
 	className: string,
 	classSource: string,
 	classLevel: number,
+	pactSlotsByLevel?: PactSlots[],
 ): AlwaysPreparedSpell[] {
 	if (!Array.isArray(parsedClasses)) {
 		throw new Error('classes.json: expected a top-level array.')
@@ -220,19 +267,51 @@ export function extractSubclassAlwaysPreparedSpells(
 				}
 			}
 		}
+
+		// Pact-slot-rank-keyed `expanded` grant (Hexblade/Fathomless). Guarded to a subclass with exactly ONE additionalSpells
+		// entry — Warlock The Genie's 4 per-genie-kind entries share this same "s1".."s5" shape but nothing stores which kind
+		// the player picked, so a subclass with more than one entry is skipped here structurally (not by name).
+		if (pactSlotsByLevel && subclass.additionalSpells.length === 1) {
+			const expanded = entry['expanded']
+			if (isRecord(expanded)) {
+				for (const [levelKey, value] of Object.entries(expanded)) {
+					const rank = parsePactSlotRankKey(levelKey)
+					if (rank === null) continue // not a rank key (e.g. a class-level key some other subclass's `expanded` uses) — not this shape.
+
+					const grantedAtLevel = levelForPactSlotRank(rank, pactSlotsByLevel)
+					if (grantedAtLevel === null || grantedAtLevel > classLevel) continue
+
+					for (const ref of extractRefs(value)) {
+						const spell = findSpell(spells, parseSpellRef(ref))
+						if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+
+						result.push({
+							name: spell.name,
+							source: spell.source,
+							level: spell.level,
+							grantedAtLevel,
+							ritual: spell.meta?.ritual === true,
+							concentration: hasConcentration(spell.duration),
+							origin: 'subclass',
+						})
+					}
+				}
+			}
+		}
 	}
 
 	return result
 }
 
-/** Fetches classes.json and spells.json and returns the subclass's always-prepared spells at or below `classLevel`. */
+/** Fetches classes.json and spells.json and returns the subclass's always-prepared spells at or below `classLevel`. `pactSlotsByLevel` (optional) is the Warlock's own Pact Magic slot table, needed only to resolve a rank-keyed `expanded` grant. */
 export async function loadSubclassAlwaysPreparedSpells(
 	subclassName: string,
 	subclassSource: string,
 	className: string,
 	classSource: string,
 	classLevel: number,
+	pactSlotsByLevel?: PactSlots[],
 ): Promise<AlwaysPreparedSpell[]> {
 	const [parsedClasses, parsedSpells] = await Promise.all([loadDataFile('data/classes.json'), loadDataFile('data/spells.json')])
-	return extractSubclassAlwaysPreparedSpells(parsedClasses, parsedSpells, subclassName, subclassSource, className, classSource, classLevel)
+	return extractSubclassAlwaysPreparedSpells(parsedClasses, parsedSpells, subclassName, subclassSource, className, classSource, classLevel, pactSlotsByLevel)
 }

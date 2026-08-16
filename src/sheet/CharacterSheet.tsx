@@ -182,7 +182,10 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		Promise.all(
 			classesWithSubclass.map(async (c) => {
 				const source = await loadSubclassSource(c.className, c.classSource, c.subclass)
-				const alwaysPrepared = source ? await loadSubclassAlwaysPreparedSpells(c.subclass, source, c.className, c.classSource, c.level) : []
+				// Only Warlock's own Pact Magic table applies to a rank-keyed patron grant (subclassPreparedSpells.ts) — any other class's table would be the wrong shape's numbers entirely.
+				// spellSlotsClassData loads in parallel via a separate effect — undefined here on an early run just means no rank grant yet; this effect re-runs (dep below) once it's in, same as any other race in this file.
+				const pactSlotsByLevel = spellSlotsClassData?.find((d) => d.className === c.className && d.classSource === c.classSource)?.pactSlotsByLevel ?? undefined
+				const alwaysPrepared = source ? await loadSubclassAlwaysPreparedSpells(c.subclass, source, c.className, c.classSource, c.level, pactSlotsByLevel) : []
 				/** The subclass filter-choice spell picker's own picks (d6b) — same "always prepared (subclass)" provenance label as the fixed grants above, merged into the same group rather than a separate one (CharacterSheet.tsx module comment, SpellList.tsx). */
 				const matchingChoices = (character.subclassSpellChoices ?? []).filter(
 					(choice) => choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass && choice.subclassSource === source,
@@ -196,7 +199,7 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		return () => {
 			cancelled = true
 		}
-	}, [character])
+	}, [character, spellSlotsClassData])
 
 	useEffect(() => {
 		let cancelled = false

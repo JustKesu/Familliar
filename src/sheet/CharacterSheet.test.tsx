@@ -582,6 +582,54 @@ describe('CharacterSheet', () => {
 			expect(guidanceSummary.textContent).not.toContain('always prepared')
 		})
 
+		it('a Hexblade Warlock shows its pact-slot-rank-keyed patron spell on the sheet, at the level the resolver granted it (D46 follow-up)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{
+					className: 'Warlock',
+					classSource: 'XPHB',
+					casterProgression: 'pact',
+					spellSlotsByLevel: null,
+					pactSlotsByLevel: [
+						{ count: 1, slotLevel: 1 },
+						{ count: 2, slotLevel: 1 },
+						{ count: 2, slotLevel: 2 },
+					],
+				},
+			]
+			const alwaysPrepared: AlwaysPreparedSpell[] = [
+				{ name: 'Shield', source: 'XPHB', level: 1, grantedAtLevel: 1, ritual: false, concentration: false, origin: 'subclass' },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Shield', source: 'XPHB', level: 1, entries: ['An invisible barrier of magical force appears.'] })]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadSubclassSource).mockResolvedValue('XGE')
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockResolvedValue(alwaysPrepared)
+
+			const warlock: Character = {
+				id: 'wl2',
+				name: 'Blade Pact',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: 'The Hexblade', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+			}
+
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Blade Pact' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__spells')?.textContent).toContain('Shield'))
+			const spellsSection = container.querySelector('.sheet__spells')!
+
+			const shieldSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Shield'))!
+			expect(shieldSummary.textContent).toContain('always prepared (The Hexblade)')
+
+			// The Warlock's own pactSlotsByLevel table (from the already-loaded spellSlotsClassData) must reach the resolver, not be silently dropped.
+			expect(loadSubclassAlwaysPreparedSpells).toHaveBeenCalledWith('The Hexblade', 'XGE', 'Warlock', 'XPHB', 3, spellSlots[0].pactSlotsByLevel)
+		})
+
 		it('a subclass spell-choice pick (Evoker, slice d6b) shows on the sheet marked "always prepared (Evoker)"', async () => {
 			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
 			const spellSlots: ClassSpellSlotsData[] = [
