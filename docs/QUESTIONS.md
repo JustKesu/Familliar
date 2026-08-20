@@ -186,6 +186,22 @@ vlastnosti. Zatím se hlásí jako "čeká na volbu" (D58). Rozhodnout,
 jestli přidat pole a picker, nebo to nechat.
 STATUS: nerozhodnuto.
 
+### Warlock The Genie — deferred
+
+Warlock The Genie — deferred. The Genie patron's bonus spells are stored as four separate per-genie-kind entries (Dao, Djinni, Efreeti, Marid), and the app has nowhere to record which kind a character chose, so none of them resolve. Implementing it needs a stored genie-kind choice (a subclass-flavour choice, a shape the app doesn't otherwise have). Deliberately skipped while closing step 6. Not blocking: the patron is selectable, it simply grants no bonus spells.
+
+### Boon of Siberys — deferred
+
+Boon of Siberys — deferred. This epic boon (level 19) offers a choice among 13 named alternatives (the 12 Eberron marks plus a Sorcerer option), a picker shape not built. It is currently HIDDEN from the feat list rather than shown broken. Deliberately skipped while closing step 6, along with other level 19/20 content.
+
+### Eberron marks are unreachable in character creation
+
+Eberron marks are unreachable in character creation. All 12 "Mark of ..." feats require the Eberron campaign setting, and the app does not track campaign settings, so they are greyed out and cannot be taken. Their spell handling (fixed grants and expanded pool-widening) is fully implemented but only reachable by importing a character that already has a mark. Undecided: whether to make the marks selectable without campaign-setting tracking, or leave them unreachable until settings are modelled.
+
+### Two spells referenced but absent from the data
+
+Two spells referenced but absent from the data. Two spells granted by other content (e.g. Branding Smite via a Warlock patron) are not present in this app's extracted spell data, so they are silently skipped where granted. Undecided whether this is a source-filtering gap needing re-extraction. Not blocking.
+
 ### Missing subclass feature descriptions
 
 Missing subclass feature descriptions. Some subclasses render a named feature with "text not found" instead of its description — e.g. Sorcerer Divine Soul's "Divine Magic" and "Favored by the Gods". The feature resolver (src/featureResolver/) correctly shows a D43-style "not found" note rather than crashing, but it is not yet established whether the target text is genuinely absent from this app's extracted data (a source-filtering gap needing re-extraction) or present but not matched by the resolver's join (fixable like the 26/94 classSource fallback, D27). To investigate and resolve separately from step 6 — likely alongside step 6a (class feature choices) or as a standalone data-quality fix. Not blocking: the character is still creatable.
