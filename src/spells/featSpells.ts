@@ -71,7 +71,7 @@ import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character, FeatAsiChoice } from '../storage/character'
 import { isFilterChoiceFeat } from './featSpellChoiceData'
-import { extractRefs, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, type RawSpell } from './subclassPreparedSpells'
+import { extractRefs, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, spellIdentityKey, type RawSpell } from './subclassPreparedSpells'
 
 export interface FeatGrantedSpell {
 	name: string
@@ -130,6 +130,25 @@ function isMarkFeat(featName: string): boolean {
 
 /** The fixed-grant keys this module derives spells from — same set subclassPreparedSpells.ts reads; `expanded` is excluded for the same reasons documented there. */
 const FIXED_GRANT_KEYS = ['prepared', 'known', 'innate'] as const
+
+/**
+ * Same class of bug as subclassPreparedSpells.ts's dedupeAlwaysPreparedSpells
+ * (this task) — this module's FIXED_GRANT_KEYS loop below shares the exact
+ * shape, so a feat whose additionalSpells lists the same spell under two keys
+ * (no confirmed real instance among the feats checked, but nothing rules one
+ * out) would double-emit the same way College of Glamour did. `featName`/
+ * `ability` are identical across a duplicate from the SAME feat (the only way
+ * extractFixedFeatSpells can produce one — it only ever looks at one feat at
+ * a time), so keeping the first occurrence loses nothing.
+ */
+function dedupeFeatGrantedSpells(spells: FeatGrantedSpell[]): FeatGrantedSpell[] {
+	const byKey = new Map<string, FeatGrantedSpell>()
+	for (const spell of spells) {
+		const key = spellIdentityKey(spell.name, spell.source)
+		if (!byKey.has(key)) byKey.set(key, spell)
+	}
+	return [...byKey.values()]
+}
 
 /**
  * Pure filter (D38). One named feat's fully-fixed granted spells (empty if
@@ -207,7 +226,7 @@ export function extractFixedFeatSpells(
 		}
 	}
 
-	return result
+	return dedupeFeatGrantedSpells(result)
 }
 
 type FeatChoice = Extract<FeatAsiChoice, { kind: 'feat' }>

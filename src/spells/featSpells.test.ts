@@ -64,7 +64,20 @@ const feyTeleportation = {
 	],
 }
 
-const feats = [drowHighMagic, feyTeleportation, markOfDetection, markOfStorm]
+/** Synthetic — no real feat has this shape, but subclassPreparedSpells.ts's College of Glamour proved the SAME FIXED_GRANT_KEYS loop shape can double-emit a spell listed under two keys (this task); this fixture exercises the same dedup in extractFixedFeatSpells. */
+const duplicateGrantFeat = {
+	name: 'Test Duplicate Grant',
+	source: 'XGE',
+	additionalSpells: [
+		{
+			ability: 'wis',
+			known: { _: ['thunderclap'] },
+			innate: { _: ['thunderclap'] },
+		},
+	],
+}
+
+const feats = [drowHighMagic, feyTeleportation, markOfDetection, markOfStorm, duplicateGrantFeat]
 
 const detectMagic = { name: 'Detect Magic', source: 'XPHB', level: 1, duration: [{ type: 'timed', duration: { type: 'minute', amount: 10 }, concentration: true }], meta: {} }
 const levitate = { name: 'Levitate', source: 'XPHB', level: 2, duration: [{ type: 'timed', duration: { type: 'minute', amount: 10 }, concentration: true }], meta: {} }
@@ -103,6 +116,13 @@ describe('extractFeatGrantedSpells', () => {
 		expect(result.map((s) => s.name)).toEqual(['Misty Step'])
 		expect(result[0].featName).toBe('Fey Teleportation')
 		expect(result[0].ability).toBe('int')
+	})
+
+	it('a spell listed under two grant keys of the same feat (this task, same class of bug as College of Glamour) is returned once, not twice', () => {
+		const character = characterWithFeats([{ name: 'Test Duplicate Grant', source: 'XGE' }])
+		const result = extractFeatGrantedSpells(feats, spells, character)
+
+		expect(result.map((s) => s.name)).toEqual(['Thunderclap'])
 	})
 
 	it('a character with neither feat returns nothing, cleanly', () => {

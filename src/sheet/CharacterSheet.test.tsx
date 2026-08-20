@@ -613,6 +613,75 @@ describe('CharacterSheet', () => {
 			expect(spellsSection.textContent).toContain('Cure Wounds')
 		})
 
+		it('a duplicate subclass grant (reported bug repro: Bless showing twice for Divine Soul) shows once on the sheet — defensive dedup at the point the sheet assembles alwaysPrepared+chosen (this task)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Sorcerer', classSource: 'XPHB', ability: 'cha' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Sorcerer', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3], [4, 2]], pactSlotsByLevel: null },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Bless', source: 'XPHB', level: 1, entries: ['A creature is blessed.'] })]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadSubclassSource).mockResolvedValue('XGE')
+			// Simulates what a broken extraction would return — the same spell via two grant paths — to prove the sheet's own defensive dedup (CharacterSheet.tsx) collapses it even if the source of the array were ever buggy again.
+			const duplicateAlwaysPrepared: AlwaysPreparedSpell[] = [
+				{ name: 'Bless', source: 'XPHB', level: 1, grantedAtLevel: 1, ritual: false, concentration: true, origin: 'subclass' },
+				{ name: 'Bless', source: 'XPHB', level: 1, grantedAtLevel: 1, ritual: false, concentration: true, origin: 'subclass' },
+			]
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockResolvedValue(duplicateAlwaysPrepared)
+
+			const divineSoul: Character = {
+				id: 'ds2',
+				name: 'DupeCheck',
+				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: 'Divine Soul', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+			}
+
+			const { container } = render(<CharacterSheet character={divineSoul} />)
+			await screen.findByRole('heading', { name: 'DupeCheck' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			const blessRows = Array.from(spellsSection.querySelectorAll('summary')).filter((s) => s.textContent?.includes('Bless'))
+			expect(blessRows).toHaveLength(1)
+		})
+
+		it('a spell that is BOTH a player pick (spellChoices) AND subclass-granted (always-prepared) shows once, with both provenances joined (D44 spirit — already correct, regression guard for this task)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Sorcerer', classSource: 'XPHB', ability: 'cha' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Sorcerer', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3], [4, 2]], pactSlotsByLevel: null },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Bless', source: 'XPHB', level: 1, entries: ['A creature is blessed.'] })]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadSubclassSource).mockResolvedValue('XGE')
+			const alwaysPrepared: AlwaysPreparedSpell[] = [{ name: 'Bless', source: 'XPHB', level: 1, grantedAtLevel: 1, ritual: false, concentration: true, origin: 'subclass' }]
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockResolvedValue(alwaysPrepared)
+
+			const divineSoul: Character = {
+				id: 'ds3',
+				name: 'BothSources',
+				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: 'Divine Soul', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+				spellChoices: [{ className: 'Sorcerer', classSource: 'XPHB', spells: [{ name: 'Bless', source: 'XPHB' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={divineSoul} />)
+			await screen.findByRole('heading', { name: 'BothSources' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			const blessRows = Array.from(spellsSection.querySelectorAll('summary')).filter((s) => s.textContent?.includes('Bless'))
+			expect(blessRows).toHaveLength(1)
+			expect(blessRows[0].textContent).toContain('player pick')
+			expect(blessRows[0].textContent).toContain('always prepared (Divine Soul)')
+		})
+
 		it("a Wizard with Mark of Detection renders the mark's `expanded` pool-widening spell chosen during creation (D46, step 6), as a normal player pick", async () => {
 			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
 			const spellSlots: ClassSpellSlotsData[] = [

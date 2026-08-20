@@ -30,7 +30,7 @@ import { loadResolverData, ResolvedEntries, type ResolverData } from '../feature
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
-import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { dedupeAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import {
 	loadFeatEffectEntries,
@@ -191,7 +191,8 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 					(choice) => choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass && choice.subclassSource === source,
 				)
 				const chosen = matchingChoices.length > 0 ? await loadSubclassChosenSpells(matchingChoices) : []
-				return { subclassName: c.subclass, alwaysPrepared: [...alwaysPrepared, ...chosen] }
+				// dedupeAlwaysPreparedSpells: a d6b picked spell could in principle coincide with the subclass's own fixed grant — same "spell reachable via two paths" reasoning as subclassPreparedSpells.ts's own dedup, applied again here since this concatenation happens outside that module.
+				return { subclassName: c.subclass, alwaysPrepared: dedupeAlwaysPreparedSpells([...alwaysPrepared, ...chosen]) }
 			}),
 		).then((infos) => {
 			if (!cancelled) setSubclassSpellInfo(infos)

@@ -81,6 +81,19 @@
  * - Two of 406 string references don't resolve against this app's filtered
  *   spells.json (e.g. "branding smite", not present in any allowed source)
  *   — skipped cleanly (D43), not an error.
+ *
+ * Bug fix (this task): a spell reachable via TWO grant paths was emitted
+ * twice. Confirmed real for College of Glamour (Bard, XPHB) — "Command" sits
+ * under BOTH `prepared["6"]` and `innate["6"]` in the SAME additionalSpells
+ * entry (scripts/investigate-glamour-duplicate-2.js) — the FIXED_GRANT_KEYS
+ * loop above visits both keys and pushes it twice. The reported Divine Soul/
+ * Bless case did NOT reproduce on investigation (extractSubclassAlwaysPreparedSpells
+ * returns Bless exactly once for Divine Soul, verified directly against the
+ * real data via three independent checks — see docs/REPORT.md), but the
+ * mechanism is the same class of bug, so the fix is general: `dedupeAlwaysPreparedSpells`
+ * collapses the result by spell identity (name+source) before it's returned,
+ * keeping the LOWEST `grantedAtLevel` seen (the spell is available as soon as
+ * ANY path grants it) rather than picking a path arbitrarily.
  */
 
 import type { PactSlots } from '../calculation/spellSlots'
@@ -155,6 +168,28 @@ export function findSpell(spells: RawSpell[], ref: { name: string; source: strin
 
 /** The fixed-grant keys this module derives spells from. `expanded` is deliberately excluded — see module comment. */
 const FIXED_GRANT_KEYS = ['prepared', 'known', 'innate'] as const
+
+/** Case/format-normalized spell identity key, shared with featSpells.ts so both modules dedupe the same way. */
+export function spellIdentityKey(name: string, source: string): string {
+	return `${name.toLowerCase()}|${source.toUpperCase()}`
+}
+
+/**
+ * Collapses a spell reachable via more than one grant path (module comment
+ * above — confirmed real for College of Glamour's Command) down to one entry
+ * per spell identity, keeping the LOWEST `grantedAtLevel` seen rather than an
+ * arbitrary path's value. Order-preserving (first occurrence's position is
+ * kept) so callers that care about display order aren't disturbed.
+ */
+export function dedupeAlwaysPreparedSpells(spells: AlwaysPreparedSpell[]): AlwaysPreparedSpell[] {
+	const byKey = new Map<string, AlwaysPreparedSpell>()
+	for (const spell of spells) {
+		const key = spellIdentityKey(spell.name, spell.source)
+		const existing = byKey.get(key)
+		if (!existing || spell.grantedAtLevel < existing.grantedAtLevel) byKey.set(key, spell)
+	}
+	return [...byKey.values()]
+}
 
 /** Parses an `expanded` level key as a pact slot RANK ("s1".."s5" -> 1..5); any other key (a class-level key, or Genie's stray "9") is not this shape. */
 function parsePactSlotRankKey(levelKey: string): number | null {
@@ -300,7 +335,7 @@ export function extractSubclassAlwaysPreparedSpells(
 		}
 	}
 
-	return result
+	return dedupeAlwaysPreparedSpells(result)
 }
 
 /** Fetches classes.json and spells.json and returns the subclass's always-prepared spells at or below `classLevel`. `pactSlotsByLevel` (optional) is the Warlock's own Pact Magic slot table, needed only to resolve a rank-keyed `expanded` grant. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractSubclassAlwaysPreparedSpells, levelForPactSlotRank } from './subclassPreparedSpells'
+import { dedupeAlwaysPreparedSpells, extractSubclassAlwaysPreparedSpells, levelForPactSlotRank, type AlwaysPreparedSpell } from './subclassPreparedSpells'
 
 /** Real Warlock Pact Magic slotLevel-by-character-level progression (spellSlots.ts's PactSlots.slotLevel), levels 1-9: rank rises at 1st/3rd/5th/7th/9th. */
 const warlockPactSlotsByLevel = [
@@ -216,6 +216,42 @@ const noAdditionalSpells = {
 	additionalSpells: undefined,
 }
 
+/** Real duplicate-emission case (this task, D46 via scripts/investigate-glamour-duplicate-2.js): the SAME level-6 spell sits under both `prepared` and `innate` in the SAME additionalSpells entry. */
+const collegeOfGlamour = {
+	entryType: 'subclass',
+	name: 'College of Glamour',
+	source: 'XPHB',
+	className: 'Bard',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			prepared: {
+				'3': ['charm person', 'mirror image'],
+				'6': ['command'],
+			},
+			innate: {
+				'6': ['command'],
+			},
+		},
+	],
+}
+
+/** Real Divine Soul (Sorcerer, XGE/XPHB) shape — 5 separate additionalSpells entries (one per alignment), each with its own single-spell `known` grant and its own class-level-keyed pool-widening `expanded` (not rank-keyed, so never read by the rank-grant branch). The reported "Bless shows twice" bug did not reproduce against this shape (see docs/REPORT.md) — kept here as a non-overlap regression fixture. */
+const divineSoul = {
+	entryType: 'subclass',
+	name: 'Divine Soul',
+	source: 'XGE',
+	className: 'Sorcerer',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{ name: 'Good', known: { '1': ['cure wounds'] }, expanded: { '1': [{ all: 'level=0|class=Cleric' }] } },
+		{ name: 'Evil', known: { '1': ['inflict wounds'] }, expanded: { '1': [{ all: 'level=0|class=Cleric' }] } },
+		{ name: 'Law', known: { '1': ['bless'] }, expanded: { '1': [{ all: 'level=0|class=Cleric' }] } },
+		{ name: 'Chaos', known: { '1': ['bane'] }, expanded: { '1': [{ all: 'level=0|class=Cleric' }] } },
+		{ name: 'Neutrality', known: { '1': ['protection from evil and good'] }, expanded: { '1': [{ all: 'level=0|class=Cleric' }] } },
+	],
+}
+
 const collegeOfLore = {
 	entryType: 'subclass',
 	name: 'College of Lore',
@@ -246,6 +282,8 @@ const classes = [
 	genie,
 	noAdditionalSpells,
 	collegeOfLore,
+	collegeOfGlamour,
+	divineSoul,
 ]
 
 const identify = { name: 'Identify', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
@@ -274,6 +312,19 @@ const gustOfWind = { name: 'Gust of Wind', source: 'XPHB', level: 2, duration: [
 const silence = { name: 'Silence', source: 'XPHB', level: 2, duration: [{ type: 'timed', duration: { type: 'minute', amount: 10 } }, { type: 'instant' }], meta: {} }
 const sacredFlame = { name: 'Sacred Flame', source: 'XPHB', level: 0, duration: [{ type: 'instant' }], meta: {} }
 const cureWounds = { name: 'Cure Wounds', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
+const charmPerson = { name: 'Charm Person', source: 'XPHB', level: 1, duration: [{ type: 'timed', duration: { type: 'hour', amount: 1 } }], meta: {} }
+const mirrorImage = { name: 'Mirror Image', source: 'XPHB', level: 2, duration: [{ type: 'timed', duration: { type: 'minute', amount: 1 } }], meta: {} }
+const command = { name: 'Command', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
+const inflictWounds = { name: 'Inflict Wounds', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
+const bless = { name: 'Bless', source: 'XPHB', level: 1, duration: [{ type: 'timed', duration: { type: 'minute', amount: 1 }, concentration: true }], meta: {} }
+const bane = { name: 'Bane', source: 'XPHB', level: 1, duration: [{ type: 'timed', duration: { type: 'minute', amount: 1 }, concentration: true }], meta: {} }
+const protectionFromEvilAndGood = {
+	name: 'Protection from Evil and Good',
+	source: 'XPHB',
+	level: 1,
+	duration: [{ type: 'timed', duration: { type: 'minute', amount: 10 }, concentration: true }],
+	meta: {},
+}
 
 const spells = [
 	identify,
@@ -295,6 +346,13 @@ const spells = [
 	silence,
 	sacredFlame,
 	cureWounds,
+	charmPerson,
+	mirrorImage,
+	command,
+	inflictWounds,
+	bless,
+	bane,
+	protectionFromEvilAndGood,
 ]
 
 describe('extractSubclassAlwaysPreparedSpells', () => {
@@ -426,6 +484,24 @@ describe('extractSubclassAlwaysPreparedSpells', () => {
 			expect(result.map((s) => s.name).sort()).toEqual(['Heat Metal', 'Identify', 'Magic Weapon', 'Searing Smite'])
 		})
 	})
+
+	describe('de-duplication of a spell reachable via two grant paths (this task)', () => {
+		it('College of Glamour: Command (listed under BOTH `prepared` and `innate` at level 6) is returned exactly once', () => {
+			const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'College of Glamour', 'XPHB', 'Bard', 'XPHB', 20)
+			const commandEntries = result.filter((s) => s.name === 'Command')
+			expect(commandEntries).toHaveLength(1)
+			expect(commandEntries[0].grantedAtLevel).toBe(6)
+			// no spell lost to over-eager de-dup — the two non-overlapping spells from `prepared` are still present.
+			expect(result.map((s) => s.name).sort()).toEqual(['Charm Person', 'Command', 'Mirror Image'])
+		})
+
+		it('Divine Soul: 5 non-overlapping alignment grants (the reported repro) all resolve, each exactly once — the reported duplicate did not reproduce, this is a regression guard', () => {
+			const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Divine Soul', 'XGE', 'Sorcerer', 'XPHB', 20)
+			expect(result.map((s) => s.name).sort()).toEqual(['Bane', 'Bless', 'Cure Wounds', 'Inflict Wounds', 'Protection from Evil and Good'])
+			const blessEntries = result.filter((s) => s.name === 'Bless')
+			expect(blessEntries).toHaveLength(1)
+		})
+	})
 })
 
 describe('levelForPactSlotRank', () => {
@@ -439,5 +515,27 @@ describe('levelForPactSlotRank', () => {
 
 	it('returns null when the table never reaches the requested rank', () => {
 		expect(levelForPactSlotRank(5, warlockPactSlotsByLevel.slice(0, 5))).toBeNull()
+	})
+})
+
+describe('dedupeAlwaysPreparedSpells (this task)', () => {
+	function entry(overrides: Partial<AlwaysPreparedSpell> & { name: string; grantedAtLevel: number }): AlwaysPreparedSpell {
+		return { source: 'XPHB', level: 1, ritual: false, concentration: false, origin: 'subclass', ...overrides }
+	}
+
+	it('collapses two entries with the same name+source into one, keeping the LOWER grantedAtLevel', () => {
+		const result = dedupeAlwaysPreparedSpells([entry({ name: 'Command', grantedAtLevel: 6 }), entry({ name: 'Command', grantedAtLevel: 3 })])
+		expect(result).toHaveLength(1)
+		expect(result[0].grantedAtLevel).toBe(3)
+	})
+
+	it('source comparison is case-insensitive, matching findSpell\'s own uppercase convention', () => {
+		const result = dedupeAlwaysPreparedSpells([entry({ name: 'Bless', source: 'xphb', grantedAtLevel: 1 }), entry({ name: 'Bless', source: 'XPHB', grantedAtLevel: 1 })])
+		expect(result).toHaveLength(1)
+	})
+
+	it('leaves non-overlapping spells untouched, none lost', () => {
+		const result = dedupeAlwaysPreparedSpells([entry({ name: 'Cure Wounds', grantedAtLevel: 1 }), entry({ name: 'Bless', grantedAtLevel: 1 }), entry({ name: 'Bane', grantedAtLevel: 1 })])
+		expect(result.map((s) => s.name).sort()).toEqual(['Bane', 'Bless', 'Cure Wounds'])
 	})
 })
