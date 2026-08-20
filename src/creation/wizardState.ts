@@ -118,6 +118,15 @@ export interface WizardData {
 	subclass: SubclassChoice | null
 	/** The subclass's own optionalfeatureProgression picks (D21) — clear whenever class, level or subclass changes, since the options are keyed to a specific subclass. */
 	optionalFeatureChoices: string[]
+	/**
+	 * The CLASS's own optionalfeatureProgression picks (build order step 6a,
+	 * slice 2 — Sorcerer Metamagic, Warlock Eldritch Invocations). Already
+	 * shaped like storage, one entry per granted featureType, since a class can
+	 * grant more than one and each carries its own count. Clears whenever class
+	 * or level changes — NOT on subclass, unlike optionalFeatureChoices above:
+	 * these are granted by the class alone and never wait for a subclass.
+	 */
+	classOptionalFeatureChoices: CharacterOptionalFeatureChoice[]
 	/** One entry per level with an ASI-or-feat grant (task instructions, point 7) — clears whenever class or level changes (point 6), since eligibility is keyed to the class's own grant levels. */
 	featAsiChoices: FeatAsiChoice[]
 	/** The class spell picks (build order step 6 slice d2) — clears whenever class, level or subclass changes, since the offered list, counts and (for a third caster) eligibility itself are all keyed to those. */
@@ -142,6 +151,7 @@ export function emptyWizardData(): WizardData {
 		fightingStyle: null,
 		subclass: null,
 		optionalFeatureChoices: [],
+		classOptionalFeatureChoices: [],
 		featAsiChoices: [],
 		spellChoices: [],
 		subclassSpellChoices: [],
@@ -219,10 +229,14 @@ export function isStepComplete(
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
 	spellRequirement: SpellRequirement | null = null,
 	subclassSpellChoiceSlotCount = 0,
+	classOptionalFeaturesComplete = true,
 ): boolean {
 	switch (step) {
 		case 'class':
-			return data.name.trim() !== '' && data.classChoice !== null
+			// Every granted class-level count filled AND no pick left in the warning state
+			// (a chosen option whose prerequisite stopped holding) — computed by
+			// areClassOptionalFeaturesComplete in optionalFeatureData.ts, not re-derived here.
+			return data.name.trim() !== '' && data.classChoice !== null && classOptionalFeaturesComplete
 		case 'species':
 			return data.speciesChoice !== null
 		case 'background':
@@ -311,9 +325,19 @@ export function isReadyToSave(
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
 	spellRequirement: SpellRequirement | null = null,
 	subclassSpellChoiceSlotCount = 0,
+	classOptionalFeaturesComplete = true,
 ): boolean {
 	return pickerSteps(expertiseRequiredCount, featAsiEligibleLevelCount, spellRequirement).every((step) =>
-		isStepComplete(step, data, expertiseRequiredCount, featAsiEligibleLevelCount, featsRequiringAbilityChoice, spellRequirement, subclassSpellChoiceSlotCount),
+		isStepComplete(
+			step,
+			data,
+			expertiseRequiredCount,
+			featAsiEligibleLevelCount,
+			featsRequiringAbilityChoice,
+			spellRequirement,
+			subclassSpellChoiceSlotCount,
+			classOptionalFeaturesComplete,
+		),
 	)
 }
 
@@ -325,6 +349,7 @@ export type WizardAction =
 			featsRequiringAbilityChoice?: ReadonlySet<string>
 			spellRequirement?: SpellRequirement | null
 			subclassSpellChoiceSlotCount?: number
+			classOptionalFeaturesComplete?: boolean
 	  }
 	| {
 			type: 'back'
@@ -346,6 +371,7 @@ export type WizardAction =
 	| { type: 'setFightingStyle'; style: string | null }
 	| { type: 'setSubclass'; subclass: SubclassChoice | null }
 	| { type: 'setOptionalFeatureChoices'; choices: string[] }
+	| { type: 'setClassOptionalFeatureChoices'; choices: CharacterOptionalFeatureChoice[] }
 	| { type: 'setFeatAsiChoices'; choices: FeatAsiChoice[] }
 	| { type: 'setSpellChoices'; choices: SpellPick[] }
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
@@ -364,7 +390,16 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			const spellRequirement = action.spellRequirement ?? null
 			const subclassSpellChoiceSlotCount = action.subclassSpellChoiceSlotCount ?? 0
 			if (
-				!isStepComplete(state.step, state.data, eligibility, featAsiCount, featsRequiringAbilityChoice, spellRequirement, subclassSpellChoiceSlotCount)
+				!isStepComplete(
+					state.step,
+					state.data,
+					eligibility,
+					featAsiCount,
+					featsRequiringAbilityChoice,
+					spellRequirement,
+					subclassSpellChoiceSlotCount,
+					action.classOptionalFeaturesComplete ?? true,
+				)
 			)
 				return state
 			const next = nextStep(state.step, eligibility, featAsiCount, spellRequirement)
@@ -393,6 +428,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					fightingStyle: null,
 					subclass: null,
 					optionalFeatureChoices: [],
+					classOptionalFeatureChoices: [],
 					featAsiChoices: [],
 					spellChoices: [],
 					subclassSpellChoices: [],
@@ -436,6 +472,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			}
 		case 'setOptionalFeatureChoices':
 			return { ...state, data: { ...state.data, optionalFeatureChoices: action.choices } }
+		case 'setClassOptionalFeatureChoices':
+			return { ...state, data: { ...state.data, classOptionalFeatureChoices: action.choices } }
 		case 'setFeatAsiChoices':
 			return { ...state, data: { ...state.data, featAsiChoices: action.choices } }
 		case 'setSpellChoices':
@@ -473,6 +511,7 @@ export function saveCharacter(
 	featsRequiringAbilityChoice: ReadonlySet<string> = EMPTY_FEAT_SET,
 	spellRequirement: SpellRequirement | null = null,
 	subclassSpellChoiceSlotCount = 0,
+	classOptionalFeaturesComplete = true,
 ): Character {
 	if (
 		!isReadyToSave(
@@ -482,6 +521,7 @@ export function saveCharacter(
 			featsRequiringAbilityChoice,
 			spellRequirement,
 			subclassSpellChoiceSlotCount,
+			classOptionalFeaturesComplete,
 		)
 	) {
 		throw new Error('Cannot save a character before every step is complete.')
@@ -524,10 +564,22 @@ export function saveCharacter(
 				]
 			: undefined
 
-	/** Tagged with the subclass's own featureType (D21) so more than one progression's picks could coexist later without ambiguity — see CharacterOptionalFeatureChoice. */
-	const optionalFeatureChoices: CharacterOptionalFeatureChoice[] | undefined =
+	/**
+	 * Tagged with the subclass's own featureType (D21) so more than one
+	 * progression's picks could coexist later without ambiguity — see
+	 * CharacterOptionalFeatureChoice. The class's OWN progression picks (slice
+	 * 2) are already in that shape and join the same array: no schema change,
+	 * and nothing distinguishes the two beyond the featureType code, which is
+	 * enough to tell them apart later (chosenClassOptionalFeatures).
+	 */
+	const subclassOptionalFeatureChoices: CharacterOptionalFeatureChoice[] =
 		data.optionalFeatureChoices.length > 0 && data.subclass?.featureType
 			? [{ featureType: data.subclass.featureType, choices: data.optionalFeatureChoices }]
+			: []
+	const classOptionalFeatureChoices = data.classOptionalFeatureChoices.filter((entry) => entry.choices.length > 0)
+	const optionalFeatureChoices: CharacterOptionalFeatureChoice[] | undefined =
+		subclassOptionalFeatureChoices.length + classOptionalFeatureChoices.length > 0
+			? [...subclassOptionalFeatureChoices, ...classOptionalFeatureChoices]
 			: undefined
 
 	/** Tagged with the class the picks belong to (D11), same reasoning as optionalFeatureChoices — only name+source survive into storage, the picker's own `level` field (used for its in-wizard count checks) is dropped here. */

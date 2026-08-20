@@ -99,9 +99,14 @@ vi.mock('../expertise/expertiseData', () => ({
 	loadExpertiseEligibility: vi.fn(async () => null),
 }))
 
-vi.mock('../optionalFeatures/optionalFeatureData', () => ({
-	loadOptionalFeatureChoicesFor: vi.fn(async () => null),
-}))
+vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../optionalFeatures/optionalFeatureData')>()
+	return {
+		...actual,
+		loadOptionalFeatureChoicesFor: vi.fn(async () => null),
+		loadClassOptionalFeatureGroups: vi.fn(async () => []),
+	}
+})
 
 vi.mock('../featAsi/featAsiData', () => ({
 	loadFeatAsiGrants: vi.fn(async () => []),

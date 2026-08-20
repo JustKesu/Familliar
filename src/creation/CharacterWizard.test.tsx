@@ -132,21 +132,27 @@ vi.mock('../expertise/expertiseData', async () => {
 	}
 })
 
-vi.mock('../optionalFeatures/optionalFeatureData', () => ({
-	loadOptionalFeatureChoicesFor: vi.fn(async (_className: string, _classSource: string, subclassName: string) => {
-		if (subclassName === 'Battle Master') {
-			return {
-				featureType: 'MV:B',
-				count: 3,
-				options: [
-					{ name: 'Trip Attack', source: 'XPHB', entries: ['Knock them down.'] },
-					{ name: 'Riposte', source: 'XPHB', entries: ['Strike back.'] },
-				],
+vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../optionalFeatures/optionalFeatureData')>()
+	return {
+		...actual,
+		loadOptionalFeatureChoicesFor: vi.fn(async (_className: string, _classSource: string, subclassName: string) => {
+			if (subclassName === 'Battle Master') {
+				return {
+					featureType: 'MV:B',
+					count: 3,
+					options: [
+						{ name: 'Trip Attack', source: 'XPHB', entries: ['Knock them down.'] },
+						{ name: 'Riposte', source: 'XPHB', entries: ['Strike back.'] },
+					],
+				}
 			}
-		}
-		return null
-	}),
-}))
+			return null
+		}),
+		/** Fighter grants no class-level optional features; the Warlock/Sorcerer path has its own test file. */
+		loadClassOptionalFeatureGroups: vi.fn(async () => []),
+	}
+})
 
 /** Fighter's real class-features.json grants at 4/6/8/12/14/16 (confirmed, scripts/investigate-feat-asi-eligibility.js) — includes the bonus level 6 the flat task-brief list omitted. */
 vi.mock('../featAsi/featAsiData', async () => {

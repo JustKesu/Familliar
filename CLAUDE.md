@@ -8,15 +8,27 @@ One task per session. Do not expand scope beyond what was asked. If a prompt app
 
 At the end of every task, write a report to `docs/REPORT.md`, overwriting the previous one. Do this regardless of task size.
 
-Write it for a non-programmer. Cover three things: what changed, what was verified, and what needs my decision. Aim for under 40 lines. No code blocks unless something failed.
+The report is read by the planning agent that scopes the next task, not by a beginner learning to code. Write it densely and technically: no explanations of programming terms, no restating what the code plainly does, no encouragement. Cover three things: what changed, what was verified, and what needs my decision. Aim for under 40 lines. Code blocks only where a data shape or an error message is itself the finding.
 
 ## Data files
 
-Never read files in `data/` or `data-source/` into context. They are large generated data.
+Never open a file in `data/`, `data-source/` or `public/data/`
+directly. Not with the file-reading tool, not with `cat`, not with
+`Get-Content`, not "just the first few lines", not even to check a
+single field. These are large generated data files and reading one
+is the single biggest way a session here burns the user's tokens.
 
-Use scripts, tests, or a counting command instead. If you need to see the shape of an entry, read one entry via a command, not the file.
+The ONLY way to look at that data is a script in `scripts/` that
+prints a SUMMARY: counts, plus at most 3 short examples. The
+script's output lands in context too, so keep it small on purpose —
+never print whole entries, whole arrays or whole files.
 
-When investigating the shape of `data/` or `data-source/`, write a script to `scripts/` and have it print a SUMMARY: counts, and at most 3 examples. Never print whole entries or whole files to the console — the output lands in context and is the single biggest cost in this project.
+The same rule applies to any other large or generated file:
+`package-lock.json`, anything in `dist/` or `node_modules/`.
+
+If a script has already printed what you needed, that summary is
+your source. Do not "verify" it afterwards by opening the data file
+itself — the summary was the point.
 
 ## Documentation
 
@@ -48,7 +60,13 @@ Do not re-run the full verification suite after every intermediate step. Run typ
 
 ## Git
 
-After creating any commit, immediately push it to `origin/main`.
+At the end of every task, after typecheck and tests have run,
+commit all changes with a short message naming the build order
+step or slice, then immediately push to `origin/main`. Never
+leave a finished task uncommitted.
+
+If typecheck or tests fail, do not commit — report the failure
+instead.
 
 ## Running commands
 
@@ -56,11 +74,28 @@ Use the npm scripts defined in `package.json` (`typecheck`, `test`, `build`, `va
 
 Prefer one command that answers the question over several exploratory ones. If you find yourself running more than about 10 commands to answer one question, stop and tell the user what you are stuck on instead.
 
-Run shell commands one per tool call. Do not chain multiple
-commands with `;` or `&&` in a single invocation — chained
-commands defeat the permission allowlist and cause a prompt
-on every run. Write temporary scripts into `scripts/`, not
-into `/tmp`, and run them as a separate command.
+Run exactly ONE PLAIN shell command per tool call. Plain means a
+single command and its arguments, nothing else: no `&&`, no `||`,
+no `;`, no pipes, no output redirection (`2>/dev/null`, `>`), no
+fallback chain, no `cd` (every session already starts in the repo
+root). If a construct joins two commands or reshapes their output,
+it is not allowed — that list is illustrative, not exhaustive.
+
+Anything other than a single plain command falls outside the
+permission allowlist in `.claude/settings.json`, so it interrupts
+the user with a prompt on every single run. This is the most common
+way sessions here waste the user's attention.
+
+Do not guess at two possible paths with a fallback. If you do not
+know where something lives, run one plain listing of one directory,
+or use the search tool.
+
+If a command's output is too long to read comfortably, that is the
+script's fault, not the console's: change the script to print less
+and run it again plainly. Never filter output in the shell.
+
+Write temporary scripts into `scripts/`, not into `/tmp`, and run
+them as a separate command.
 
 ## Comments
 

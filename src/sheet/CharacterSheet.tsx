@@ -27,6 +27,7 @@ import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spel
 import { computeDarkvision, computeSize, computeSpeed, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
+import { loadChosenClassOptionalFeatures, type ChosenClassOptionalFeatureGroup } from '../optionalFeatures/optionalFeatureData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -137,6 +138,8 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
 	/** Fixed feat-granted spells (d5a) — depends on `character.featAsiChoices`, fetched separately from the main load same as subclassSpellInfo. */
 	const [featSpells, setFeatSpells] = useState<FeatGrantedSpell[]>([])
+	/** The CLASS's own optionalfeatureProgression picks (step 6a slice 2) — Metamagic, Eldritch Invocations. Depends on `character`, fetched separately same as featSpells. */
+	const [classOptionalFeatures, setClassOptionalFeatures] = useState<ChosenClassOptionalFeatureGroup[]>([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -207,6 +210,20 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		loadFeatGrantedSpells(character).then((spells) => {
 			if (!cancelled) setFeatSpells(spells)
 		})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
+	useEffect(() => {
+		let cancelled = false
+		loadChosenClassOptionalFeatures(character.classes, character.optionalFeatureChoices ?? [])
+			.then((groups) => {
+				if (!cancelled) setClassOptionalFeatures(groups)
+			})
+			.catch(() => {
+				/* Best-effort like featSpells above — the rest of the sheet still renders. */
+			})
 		return () => {
 			cancelled = true
 		}
@@ -468,6 +485,23 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 					</ul>
 				)}
 			</section>
+
+			{/* One section per granted featureType, headed by the progression's own name ("Eldritch Invocations", "Metamagic"). A character with no class-level picks renders nothing at all — no empty heading. */}
+			{classOptionalFeatures.map((group) => (
+				<section key={group.featureType} className="sheet__class-optional-features">
+					<h2>{group.name ?? group.featureType}</h2>
+					<ul>
+						{group.options.map((option) => (
+							<li key={`${option.name}|${option.source}`}>
+								<details>
+									<summary>{option.name}</summary>
+									<ResolvedEntries entries={option.entries} data={resolverData} />
+								</details>
+							</li>
+						))}
+					</ul>
+				</section>
+			))}
 
 			{isCaster && (
 				<>

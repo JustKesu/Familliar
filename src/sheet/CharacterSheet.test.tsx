@@ -81,6 +81,26 @@ vi.mock('../spells/featSpells', async (importOriginal) => {
 	return { ...actual, loadFeatGrantedSpells: vi.fn(async () => []) }
 })
 
+vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../optionalFeatures/optionalFeatureData')>()
+	return {
+		...actual,
+		loadChosenClassOptionalFeatures: vi.fn(
+			async (classes: { className: string }[], selection: { featureType: string; choices: string[] }[]) => {
+				const chosen = classes.some((c) => c.className === 'Warlock') ? (selection.find((s) => s.featureType === 'EI')?.choices ?? []) : []
+				if (chosen.length === 0) return []
+				return [
+					{
+						featureType: 'EI',
+						name: 'Eldritch Invocations',
+						options: chosen.map((name) => ({ name, source: 'XPHB', entries: [`${name} does something useful.`] })),
+					},
+				]
+			},
+		),
+	}
+})
+
 vi.mock('../featureResolver', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../featureResolver')>()
 	return {
@@ -320,9 +340,48 @@ describe('CharacterSheet', () => {
 			entries: ['A test spell description.'],
 			entriesHigherLevel: [],
 			scalingLevelDice: [],
+			damageInflict: [],
 			...overrides,
 		}
 	}
+
+	// Build order step 6a slice 2 — the display half. A picker that stores a
+	// choice the sheet never renders has happened repeatedly here (d5b-1, d6b).
+	describe('class-level optional features', () => {
+		const warlock: Character = {
+			id: 'w1',
+			name: 'Kesu',
+			classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
+			optionalFeatureChoices: [{ featureType: 'EI', choices: ['Agonizing Blast', 'Devil’s Sight'] }],
+		}
+
+		it('renders each chosen invocation by name, under the progression’s own heading', async () => {
+			render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Kesu' })
+
+			expect(await screen.findByRole('heading', { name: 'Eldritch Invocations' })).toBeTruthy()
+			expect(screen.getByText('Agonizing Blast')).toBeTruthy()
+			expect(screen.getByText('Devil’s Sight')).toBeTruthy()
+		})
+
+		it('the text is collapsed behind a details element and expands on click', async () => {
+			const user = userEvent.setup()
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Eldritch Invocations' })
+
+			const details = container.querySelector('.sheet__class-optional-features details') as HTMLDetailsElement
+			expect(details.open).toBe(false)
+			await user.click(screen.getByText('Agonizing Blast'))
+			expect(details.open).toBe(true)
+			expect(screen.getByText(/Agonizing Blast does something useful/)).toBeTruthy()
+		})
+
+		it('a character with no class-level picks renders no heading at all', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			expect(container.querySelector('.sheet__class-optional-features')).toBeNull()
+		})
+	})
 
 	describe('spellcasting sections (build order step 6 slice d4)', () => {
 		afterEach(() => {

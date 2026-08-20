@@ -33,6 +33,7 @@ function completeData(): WizardData {
 		fightingStyle: 'Archery',
 		subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' },
 		optionalFeatureChoices: ['Precision Attack'],
+		classOptionalFeatureChoices: [],
 		featAsiChoices: [],
 		spellChoices: [],
 		subclassSpellChoices: [],

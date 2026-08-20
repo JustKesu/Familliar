@@ -84,6 +84,13 @@ export interface SpellDetail {
 	entries: unknown[]
 	entriesHigherLevel: unknown[]
 	scalingLevelDice: SpellScalingLevelDiceEntry[]
+	/**
+	 * The damage types a spell inflicts (193/489 spells; always a non-empty
+	 * array when present, absent otherwise — scripts/investigate-damage-cantrip-prereq.js).
+	 * This is what makes "a Warlock Cantrip That Deals Damage" a structural
+	 * question rather than a list of spell names (D21).
+	 */
+	damageInflict: string[]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -103,6 +110,7 @@ interface RawSpell {
 	entries?: unknown
 	entriesHigherLevel?: unknown
 	scalingLevelDice?: unknown
+	damageInflict?: unknown
 	meta?: { ritual?: boolean }
 }
 
@@ -147,6 +155,7 @@ export function extractSpellDetails(parsed: unknown): SpellDetail[] {
 		entries: Array.isArray(spell.entries) ? spell.entries : [],
 		entriesHigherLevel: Array.isArray(spell.entriesHigherLevel) ? spell.entriesHigherLevel : [],
 		scalingLevelDice: spell.scalingLevelDice ? extractScalingLevelDice(spell.scalingLevelDice) : [],
+		damageInflict: Array.isArray(spell.damageInflict) ? (spell.damageInflict.filter((d) => typeof d === 'string') as string[]) : [],
 	}))
 }
 
@@ -154,6 +163,21 @@ export function extractSpellDetails(parsed: unknown): SpellDetail[] {
 export async function loadSpellDetails(): Promise<SpellDetail[]> {
 	const parsed = await loadDataFile('data/spells.json')
 	return extractSpellDetails(parsed)
+}
+
+/**
+ * Of the spells named, the ones that are cantrips AND inflict damage — the
+ * one input Agonizing Blast's `choose: "level=0|class=Warlock"` prerequisite
+ * needs (optionalFeatureData.ts). Pure (D38); the caller supplies both the
+ * details and the character's own picks for a single class.
+ */
+export function damagingCantripsAmong(details: SpellDetail[], known: { name: string; source: string }[]): string[] {
+	return known
+		.filter((pick) => {
+			const detail = findSpellDetail(details, pick.name, pick.source)
+			return detail !== undefined && detail.level === 0 && detail.damageInflict.length > 0
+		})
+		.map((pick) => pick.name)
 }
 
 /** Case-insensitive name match, source compared uppercase — mirrors subclassPreparedSpells.ts's findSpell. */
