@@ -75,6 +75,25 @@ describe('resolveRef', () => {
 		})
 	})
 
+	it('resolves a source-less optionalfeature ref by name alone against feats.json category FS, when the name is unambiguous', () => {
+		expect(resolveRef({ kind: 'optionalfeature', uid: 'Dueling' }, data)).toEqual({
+			name: 'Dueling',
+			entries: ['Dueling text.'],
+		})
+	})
+
+	it('fails to resolve a source-less optionalfeature ref when the name matches more than one FS feat, rather than picking one', () => {
+		const ambiguousData: ResolverData = {
+			...data,
+			feats: [
+				{ name: 'Blessed Warrior', source: 'XPHB', category: 'FS', entries: ['Blessed Warrior text.'] },
+				{ name: 'Dueling', source: 'XPHB', category: 'FS', entries: ['Dueling text.'] },
+				{ name: 'Dueling', source: 'AAG', category: 'FS', entries: ['A different Dueling.'] },
+			],
+		}
+		expect(resolveRef({ kind: 'optionalfeature', uid: 'Dueling' }, ambiguousData)).toBeNull()
+	})
+
 	it('resolves a feat ref by name and source', () => {
 		expect(resolveRef({ kind: 'feat', uid: 'Blessed Warrior|XPHB' }, data)).toEqual({
 			name: 'Blessed Warrior',

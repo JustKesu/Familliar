@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Character } from '../storage/character'
+import type { Character, CharacterClassFeatureChoice } from '../storage/character'
 import { type ClassSpellCountData, computeSpellCounts } from './spellCounts'
 
 // Rows confirmed against data/classes.json by scripts/investigate-spell-counts.js
@@ -54,13 +54,22 @@ const fighterCounts: ClassSpellCountData = {
 	],
 }
 
-const classData = [wizardCounts, clericCounts, paladinCounts, bardCounts, fighterCounts]
+const druidCounts: ClassSpellCountData = {
+	className: 'Druid',
+	classSource: 'XPHB',
+	cantripProgression: [2, 2, 2, 3, 3],
+	leveledSpellProgression: [4, 5, 6, 7, 9],
+	label: 'prepared',
+}
 
-function characterWithClass(className: string, level: number, subclass: string | null = null): Character {
+const classData = [wizardCounts, clericCounts, paladinCounts, bardCounts, fighterCounts, druidCounts]
+
+function characterWithClass(className: string, level: number, subclass: string | null = null, classFeatureChoices?: CharacterClassFeatureChoice[]): Character {
 	return {
 		id: '1',
 		name: 'Test',
 		classes: [{ className, classSource: 'XPHB', subclass, level }],
+		classFeatureChoices,
 	}
 }
 
@@ -130,5 +139,37 @@ describe('computeSpellCounts', () => {
 	it('returns unknown when the character has no classes', () => {
 		const result = computeSpellCounts({ id: '2', name: 'Blank', classes: [] }, classData)
 		expect(result.status).toBe('unknown')
+	})
+
+	it('a Thaumaturge Cleric has exactly one more cantrip than a Protector Cleric of the same level (PHB 2024 prose, D21)', () => {
+		const protector = computeSpellCounts(
+			characterWithClass('Cleric', 3, null, [{ className: 'Cleric', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Protector' }]),
+			classData,
+		)
+		const thaumaturge = computeSpellCounts(
+			characterWithClass('Cleric', 3, null, [{ className: 'Cleric', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' }]),
+			classData,
+		)
+		expect(protector.status).toBe('known')
+		expect(thaumaturge.status).toBe('known')
+		if (protector.status !== 'known' || thaumaturge.status !== 'known') return
+		expect(thaumaturge.value[0].cantripCount).toBe(protector.value[0].cantripCount + 1)
+		expect(thaumaturge.value[0].leveledSpellCount).toBe(protector.value[0].leveledSpellCount)
+	})
+
+	it('a Magician Druid has exactly one more cantrip than a Warden Druid of the same level (PHB 2024 prose, D21)', () => {
+		const warden = computeSpellCounts(
+			characterWithClass('Druid', 3, null, [{ className: 'Druid', classSource: 'XPHB', featureName: 'Primal Order', grantedAtLevel: 1, optionName: 'Warden' }]),
+			classData,
+		)
+		const magician = computeSpellCounts(
+			characterWithClass('Druid', 3, null, [{ className: 'Druid', classSource: 'XPHB', featureName: 'Primal Order', grantedAtLevel: 1, optionName: 'Magician' }]),
+			classData,
+		)
+		expect(warden.status).toBe('known')
+		expect(magician.status).toBe('known')
+		if (warden.status !== 'known' || magician.status !== 'known') return
+		expect(magician.value[0].cantripCount).toBe(warden.value[0].cantripCount + 1)
+		expect(magician.value[0].leveledSpellCount).toBe(warden.value[0].leveledSpellCount)
 	})
 })

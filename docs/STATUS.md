@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-08-21 (class-feature choices: Divine Order, Primal Order and Elemental Fury have a picker, storage, a class-step gate and sheet display — what they GRANT is still unapplied)
+Last updated: 2026-08-21 (Thaumaturge/Magician extra cantrip now applied; the 2 source-less refOptionalfeature uids now resolve)
 
 ## Build order
 
@@ -191,7 +191,11 @@ Last updated: 2026-08-21 (class-feature choices: Divine Order, Primal Order and 
   - Storage: `Character.classFeatureChoices` (`CharacterClassFeatureChoice[]` — className/classSource per D11, featureName, `grantedAtLevel` per D22, optionName). `describeClassFeatureChoicesError` added to validate.ts; `create` gained a trailing parameter. Schema version bumped to 15 (from 14) — a version-14 save is rejected, not migrated (docs/QUESTIONS.md, "Migrace uložených postav").
   - Sheet: a `sheet__class-feature-choices` section, one collapsed `<details>` per pick showing the chosen option's resolved text and naming the feature and its level — the same shape the feat list and class-optional-features sections use. Renders nothing at all when no choice was made.
   - The order-of-use bug this project has shipped TWICE (d5b-1's sheet fix, then Pact of the Tome) is guarded explicitly: the write callback spreads the entry it replaces, and a test picks for two features in both orders and asserts neither erases the other. The test was verified to FAIL against a deliberately reintroduced version of the bug before being kept.
-  - **Deferred on purpose, nothing applied:** Thaumaturge's and Magician's extra cantrip, and Protector's/Warden's armour and weapon proficiencies, are all recorded and displayed but feed no calculation. Armour/weapon proficiencies have nowhere to land until build order step 7 (Inventory and equipment) — which is why this task ran first, so step 7 finds the choice already stored. The extra cantrip is its own small follow-up.
+  - **Deferred on purpose, nothing applied:** Protector's/Warden's armour and weapon proficiencies are recorded and displayed but feed no calculation — they have nowhere to land until build order step 7 (Inventory and equipment). Thaumaturge's/Magician's extra cantrip is now applied — see the follow-up entry below.
+
+- Thaumaturge/Magician extra cantrip (follow-up to the class-feature-choices task above). PHB 2024 prose only — confirmed by scripts/investigate-thaumaturge-cantrip.js that neither Divine Order/Primal Order nor the Thaumaturge/Magician option entries carry any structured cantrip-count field, only prose ("You know one extra cantrip from the [class] spell list."). `spellCounts.ts` hardcodes `EXTRA_CANTRIP_OPTIONS = new Set(['Thaumaturge', 'Magician'])`, the same hardcode-from-PHB-prose precedent as expertiseData.ts/languageData.ts. `computeSpellCounts` stays pure (D38): it already takes the full `Character`, and now reads `character.classFeatureChoices` (already on the type, already stored by the class step which runs before `spells`) to add 1 to `cantripCount` when the matching class has one of these two options chosen — no fetch, no storage reach-in. `CharacterWizard.tsx`'s `draftCharacterForSpells` now threads `state.data.classFeatureChoices` through so the wizard's own spell-picker step sees the extra count immediately (D13's class step runs first, so no back-navigation is needed). No sheet change was needed — the sheet shows chosen spells, not counts, and doesn't call `computeSpellCounts` at all. Tests: a Thaumaturge Cleric's cantrip count is exactly one higher than a Protector Cleric of the same level, same for Magician/Warden Druid.
+
+- The 2 source-less refOptionalfeature uids (Bard/College of Swords' Fighting Style: "Dueling", "Two-Weapon Fighting" — flagged but deliberately left unresolved by the D21 options-node inventory) now resolve. `resolveRef.ts`'s `resolveOptionalFeature` tries the FS-list lookup by name alone when the uid carries no source segment, via a new `findByNameUnique` — resolves only when EXACTLY ONE feats.json "FS" entry matches the name; two or more matches fails to resolve rather than picking one (D43). scripts/investigate-sourceless-optionalfeature-refs.js confirms both names match exactly one FS entry each in the real data, and that these 2 are still the only source-less refOptionalfeature uids among all 74 (no wider shape change). 2 new resolveRef.ts tests: the unambiguous resolve, and a constructed ambiguous case (doesn't occur in today's data) that fails to resolve.
 
 - `wizardState.ts` step-condition parameters collapsed into one named object (pure refactor, no behaviour change — the QUESTIONS.md entry "wizardState.ts — poziční parametry se blíží limitu"). New exported `WizardStepConditions`, all fields optional: `expertiseRequiredCount` (default `null`), `featAsiEligibleLevelCount` (0), `featsRequiringAbilityChoice` (empty set), `spellRequirement` (`null`), `subclassSpellChoiceSlotCount` (0), `classOptionalFeaturesComplete` (`true`), `classOptionalFeatureGroupCount` (0), `classFeatureChoicesComplete` (`true`). It replaces the trailing positional parameters of `visibleSteps`, `pickerSteps`, `stepIndex`, `nextStep`, `previousStep`, `isStepComplete`, `isReadyToSave` and `saveCharacter`, and both navigation actions now carry a single `conditions?` field instead of their own field lists. The defaults live in one private `resolveConditions` helper, so every entry point agrees on them by construction rather than by repetition. `CharacterWizard.tsx` builds one `stepConditions` object and passes it to navigation, the Next gate and the save gate alike. Step order, visibility rules, completion rules, stored Character shape and schema version are all unchanged.
 
@@ -211,13 +215,14 @@ provenance). Next up is step 7 — Inventory and equipment — once the standing
 step-6 deferrals above are decided.
 
 The D21 class-feature choices are partly built: the three CLASS ones (Divine
-Order, Primal Order, Elemental Fury) are stored and displayed. Three follow-ups
-stand open, each its own task: applying what those options grant (the extra
-cantrip now; armour/weapon proficiencies at step 7), Barbarian/Storm Herald's
-three storm features (one choice at level 3 that two later features reference —
-and the `count` test does not detect it; recorded in docs/QUESTIONS.md,
-"Storm Herald — volba prostředí je jen v próze"), and the remaining
-subclass-level features from the 20-feature inventory.
+Order, Primal Order, Elemental Fury) are stored and displayed, and Thaumaturge/
+Magician's extra cantrip is now applied. Three follow-ups stand open, each its
+own task: Protector's/Warden's armour and weapon proficiencies (wait on step
+7), Barbarian/Storm Herald's three storm features (one choice at level 3 that
+two later features reference — and the `count` test does not detect it;
+recorded in docs/QUESTIONS.md, "Storm Herald — volba prostředí je jen v
+próze"), and the remaining subclass-level features from the 20-feature
+inventory.
 
 Note: the class-specific selections (including feat/ASI choices) are still not recorded with the
 level they were taken at as a SEPARATE provenance field — for feat/ASI the

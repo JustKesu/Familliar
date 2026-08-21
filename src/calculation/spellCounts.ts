@@ -28,12 +28,22 @@
  * preparedSpellsProgression/preparedSpellsChange directly on the SUBCLASS
  * entry (mirrors spellSlots.ts's D46 fallback exactly — same shape, just a
  * second location to check when the base class itself has none).
+ *
+ * PHB 2024 prose (not structured anywhere in the data — confirmed by
+ * scripts/investigate-thaumaturge-cantrip.js): Cleric's Thaumaturge and
+ * Druid's Magician, both options of a Divine Order/Primal Order choice
+ * (D21), each grant one extra cantrip from the class's own list. Hardcoded
+ * here the same way expertiseData.ts and languageData.ts hardcode a PHB
+ * prose count found nowhere in the data.
  */
 
 import type { Character, CharacterClass } from '../storage/character'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 export type SpellCountLabel = 'known' | 'prepared'
+
+/** D21 options that grant one extra cantrip (PHB 2024 prose) — see the module comment above. */
+const EXTRA_CANTRIP_OPTIONS = new Set(['Thaumaturge', 'Magician'])
 
 /** One subclass's own cantrip/leveled-spell counts (D46) — present only for a subclass that keeps its own, e.g. Eldritch Knight/Arcane Trickster. */
 export interface SubclassSpellCountData {
@@ -103,8 +113,14 @@ export function computeSpellCounts(character: Character, classData: ClassSpellCo
 		if (label === null) continue
 
 		const levelIndex = characterClass.level - 1
-		const cantripCount = cantripProgression?.[levelIndex] ?? 0
+		let cantripCount = cantripProgression?.[levelIndex] ?? 0
 		const leveledSpellCount = leveledSpellProgression?.[levelIndex] ?? 0
+
+		const extraCantripOption = character.classFeatureChoices?.find(
+			(choice) =>
+				choice.className === characterClass.className && choice.classSource === characterClass.classSource && EXTRA_CANTRIP_OPTIONS.has(choice.optionName),
+		)
+		if (extraCantripOption) cantripCount += 1
 
 		value.push({
 			className: characterClass.className,
@@ -114,6 +130,7 @@ export function computeSpellCounts(character: Character, classData: ClassSpellCo
 			leveledSpellCount,
 		})
 		breakdown.push({ source: characterClass.className, amount: cantripCount + leveledSpellCount })
+		if (extraCantripOption) breakdown.push({ source: extraCantripOption.optionName, amount: 0, note: 'already counted in the class total above' })
 	}
 
 	return known(value, breakdown)

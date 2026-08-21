@@ -472,6 +472,8 @@ export function CharacterWizard({
 					},
 				]
 			: [],
+		// The class step (D13) runs before 'spells', so a Thaumaturge/Magician pick is already stored here.
+		classFeatureChoices: state.data.classFeatureChoices,
 	}
 	const spellSlotsResult = computeSpellSlots(draftCharacterForSpells, spellSlotsClassData)
 	const spellCountsResult = computeSpellCounts(draftCharacterForSpells, spellCountClassData)
