@@ -4,6 +4,7 @@ import type {
 	Character,
 	CharacterBackground,
 	CharacterClass,
+	CharacterClassFeatureChoice,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
@@ -166,6 +167,7 @@ export class CharacterStore {
 		featAsiChoices?: FeatAsiChoice[],
 		spellChoices?: CharacterSpellChoice[],
 		subclassSpellChoices?: CharacterSubclassSpellChoice[],
+		classFeatureChoices?: CharacterClassFeatureChoice[],
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -188,6 +190,7 @@ export class CharacterStore {
 			...(featAsiChoices && featAsiChoices.length > 0 ? { featAsiChoices } : {}),
 			...(spellChoices && spellChoices.length > 0 ? { spellChoices } : {}),
 			...(subclassSpellChoices && subclassSpellChoices.length > 0 ? { subclassSpellChoices } : {}),
+			...(classFeatureChoices && classFeatureChoices.length > 0 ? { classFeatureChoices } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character

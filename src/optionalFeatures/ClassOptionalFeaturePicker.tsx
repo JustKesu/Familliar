@@ -4,10 +4,18 @@ import {
 	loadClassOptionalFeatureGroups,
 	type ClassOptionalFeatureContextBase,
 	type ClassOptionalFeatureGroup,
-	type OptionalFeatureSelection,
 } from './optionalFeatureData'
 import { Entries } from '../markup'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
+import {
+	loadOptionalFeatureSlotCandidates,
+	loadOptionalFeatureSpellChoiceShape,
+	offersSpellChoice,
+	type OptionalFeatureSpellChoiceShape,
+	type OptionalFeatureSpellChoiceSlot,
+} from '../spells/optionalFeatureSpellChoiceData'
+import type { FilterChoiceCandidateSpell } from '../spells/featSpellChoiceData'
+import type { CharacterOptionalFeatureChoice, OptionalFeatureSpellChoice } from '../storage/character'
 
 /*
  * Picker for a CLASS's own optionalfeatureProgression (Sorcerer Metamagic,
@@ -30,9 +38,10 @@ type LoadState =
  * upward. Renders nothing when the class grants no class-level options at
  * this level.
  *
- * `damagingCantripNames` is null when the caller cannot say which of the
- * character's cantrips deal damage — the `choose` prerequisites then stay
- * unmet with their own text rather than being guessed at either way.
+ * `damagingCantripNames`/`damagingAttackCantripNames` are null when the
+ * caller cannot say which of the character's cantrips deal damage (resp.
+ * deal it via an attack roll) — the `choose` prerequisites then stay unmet
+ * with their own text rather than being guessed at either way.
  */
 export function ClassOptionalFeaturePicker({
 	className,
@@ -41,6 +50,7 @@ export function ClassOptionalFeaturePicker({
 	level,
 	knownSpellNames,
 	damagingCantripNames,
+	damagingAttackCantripNames,
 	hasFightingStyleFeature,
 	value,
 	onChange,
@@ -51,9 +61,10 @@ export function ClassOptionalFeaturePicker({
 	level: number
 	knownSpellNames: string[]
 	damagingCantripNames: string[] | null
+	damagingAttackCantripNames: string[] | null
 	hasFightingStyleFeature: boolean
-	value: OptionalFeatureSelection[]
-	onChange: (selection: OptionalFeatureSelection[]) => void
+	value: CharacterOptionalFeatureChoice[]
+	onChange: (selection: CharacterOptionalFeatureChoice[]) => void
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
@@ -96,14 +107,42 @@ export function ClassOptionalFeaturePicker({
 		knownSpellNames,
 		hasFightingStyleFeature,
 		...(damagingCantripNames === null ? {} : { damagingCantripsByClass: { [className]: damagingCantripNames } }),
+		...(damagingAttackCantripNames === null ? {} : { damagingAttackCantripsByClass: { [className]: damagingAttackCantripNames } }),
 	}
 	const groups = evaluateClassOptionalFeatureGroups(state.groups, value, contextBase)
 
+	/**
+	 * Every writer here SPREADS the current entry instead of rebuilding it from
+	 * a subset of its fields. Slice d5b-1 shipped the opposite (FeatAsiPicker's
+	 * ability callback reconstructed the choice and silently dropped the
+	 * already-recorded spell picks whenever the player used the two controls in
+	 * the "wrong" order) — see docs/STATUS.md's sheet-fix entry.
+	 */
 	function toggle(featureType: string, optionName: string, chosen: string[], remaining: number): void {
 		const next = chosen.includes(optionName) ? chosen.filter((name) => name !== optionName) : remaining > 0 ? [...chosen, optionName] : chosen
 		if (next === chosen) return
 		const others = value.filter((entry) => entry.featureType !== featureType)
-		onChange(next.length > 0 ? [...others, { featureType, choices: next }] : others)
+		if (next.length === 0) {
+			onChange(others)
+			return
+		}
+		const current = value.find((entry) => entry.featureType === featureType)
+		const updated: CharacterOptionalFeatureChoice = { ...(current ?? { featureType, choices: [] }), featureType, choices: next }
+		// Deselecting an option deliberately drops that option's own spell picks — they describe a
+		// choice the character no longer has. Every OTHER option's picks survive untouched.
+		const keptPicks = (current?.spellChoices ?? []).filter((pick) => next.some((name) => name.toLowerCase() === pick.optionName.toLowerCase()))
+		if (keptPicks.length > 0) updated.spellChoices = keptPicks
+		else delete updated.spellChoices
+		onChange([...others, updated])
+	}
+
+	/** Records one option's spell picks, leaving `choices` and every other option's picks exactly as they were. */
+	function setSpellChoice(featureType: string, pick: OptionalFeatureSpellChoice): void {
+		const current = value.find((entry) => entry.featureType === featureType)
+		if (!current) return
+		const others = value.filter((entry) => entry.featureType !== featureType)
+		const otherPicks = (current.spellChoices ?? []).filter((existing) => existing.optionName.toLowerCase() !== pick.optionName.toLowerCase())
+		onChange([...others, { ...current, spellChoices: [...otherPicks, pick] }])
 	}
 
 	return (
@@ -151,12 +190,148 @@ export function ClassOptionalFeaturePicker({
 									<div className="class-optional-feature-picker__description">
 										{resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />}
 									</div>
+									{/* Revealed once the option is taken, the same way the feat step reveals its own spell sub-picker. */}
+									{checked && (
+										<OptionalFeatureSpellSubPicker
+											featureType={group.featureType}
+											optionName={option.name}
+											value={value.find((entry) => entry.featureType === group.featureType)?.spellChoices?.find((p) => p.optionName === option.name)}
+											onChange={(pick) => setSpellChoice(group.featureType, pick)}
+										/>
+									)}
 								</li>
 							)
 						})}
 					</ul>
 				</section>
 			))}
+		</div>
+	)
+}
+
+type ShapeState = { status: 'loading' } | { status: 'ready'; shape: OptionalFeatureSpellChoiceShape }
+
+/**
+ * The spell picks a chosen option offers (build order step 6a — Pact of the
+ * Tome is the only one in the data). Renders nothing at all for an option
+ * that grants literal spells or none, so it can be mounted unconditionally
+ * under every checked option without the caller knowing which is which.
+ *
+ * CONTROLLED (D8) like its parent: it never holds the picks itself, and its
+ * onChange reports a WHOLE OptionalFeatureSpellChoice so the parent can
+ * splice it in beside any other option's picks.
+ */
+function OptionalFeatureSpellSubPicker({
+	featureType,
+	optionName,
+	value,
+	onChange,
+}: {
+	featureType: string
+	optionName: string
+	value: OptionalFeatureSpellChoice | undefined
+	onChange: (pick: OptionalFeatureSpellChoice) => void
+}): ReactNode {
+	const [state, setState] = useState<ShapeState>({ status: 'loading' })
+
+	useEffect(() => {
+		let cancelled = false
+		setState({ status: 'loading' })
+		loadOptionalFeatureSpellChoiceShape(optionName, featureType)
+			.then((shape) => {
+				if (!cancelled) setState({ status: 'ready', shape })
+			})
+			.catch(() => {
+				/* Leaves the sub-picker in its loading state; the option itself still works. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [optionName, featureType])
+
+	if (state.status !== 'ready' || !offersSpellChoice(state.shape)) return null
+
+	const cantrips = value?.cantrips ?? []
+	const spells = value?.spells ?? []
+
+	return (
+		<div className="class-optional-feature-picker__spells">
+			{state.shape.cantripSlot && (
+				<SlotPicker
+					slot={state.shape.cantripSlot}
+					label="cantrips"
+					picked={cantrips}
+					// Spread the current pick so writing one slot never clears the other.
+					onChange={(next) => onChange({ optionName, cantrips: next, spells })}
+				/>
+			)}
+			{state.shape.spellSlot && (
+				<SlotPicker slot={state.shape.spellSlot} label="spells" picked={spells} onChange={(next) => onChange({ optionName, cantrips, spells: next })} />
+			)}
+		</div>
+	)
+}
+
+/** One slot's candidate list with its own independent count, mirroring how SpellPicker counts cantrips and leveled spells separately. */
+function SlotPicker({
+	slot,
+	label,
+	picked,
+	onChange,
+}: {
+	slot: OptionalFeatureSpellChoiceSlot
+	label: string
+	picked: { name: string; source: string }[]
+	onChange: (next: { name: string; source: string }[]) => void
+}): ReactNode {
+	const [candidates, setCandidates] = useState<FilterChoiceCandidateSpell[] | null>(null)
+
+	useEffect(() => {
+		let cancelled = false
+		loadOptionalFeatureSlotCandidates(slot)
+			.then((offered) => {
+				if (!cancelled) setCandidates(offered)
+			})
+			.catch(() => {
+				/* Leaves the list unrendered rather than showing an unfiltered pool. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [slot])
+
+	if (candidates === null) return null
+
+	const isPicked = (spell: FilterChoiceCandidateSpell): boolean =>
+		picked.some((p) => p.name.toLowerCase() === spell.name.toLowerCase() && p.source.toUpperCase() === spell.source.toUpperCase())
+
+	function toggle(spell: FilterChoiceCandidateSpell): void {
+		if (isPicked(spell)) {
+			onChange(picked.filter((p) => !(p.name.toLowerCase() === spell.name.toLowerCase() && p.source.toUpperCase() === spell.source.toUpperCase())))
+			return
+		}
+		if (picked.length >= slot.count) return
+		onChange([...picked, { name: spell.name, source: spell.source }])
+	}
+
+	return (
+		<div className="class-optional-feature-picker__slot">
+			<p className="class-optional-feature-picker__hint">
+				{picked.length} of {slot.count} {label} chosen.
+			</p>
+			<ul className="class-optional-feature-picker__slot-list">
+				{candidates.map((spell) => {
+					const checked = isPicked(spell)
+					return (
+						<li key={`${spell.name}|${spell.source}`}>
+							<label>
+								<input type="checkbox" checked={checked} disabled={!checked && picked.length >= slot.count} onChange={() => toggle(spell)} />
+								{spell.name}
+							</label>
+						</li>
+					)
+				})}
+			</ul>
 		</div>
 	)
 }

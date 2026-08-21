@@ -113,4 +113,64 @@ describe('computeDarkvision', () => {
 		const result = computeDarkvision(withSpecies('Made Up Species', 'XPHB'), speciesData)
 		expect(result.status).toBe('unknown')
 	})
+
+	/*
+	 * Senses of the same type don't stack: darkvision is the LARGEST of the
+	 * species value and any granted darkvision. Every source still gets its
+	 * own breakdown row, but only the winner carries a real amount — the
+	 * others carry 0 plus a note, so the breakdown's summed amount still
+	 * equals the displayed value.
+	 */
+	describe('with a granted darkvision', () => {
+		it('a larger grant wins over the species value, breakdown names both', () => {
+			expect(computeDarkvision(withSpecies('Elf', 'XPHB'), speciesData, [{ range: 120, origin: 'optionalFeature', name: 'Stone Rune' }])).toEqual({
+				status: 'known',
+				value: 120,
+				breakdown: [
+					{ source: 'Elf', amount: 0, note: 'does not exceed from invocation (Stone Rune) (120 ft.)' },
+					{ source: 'from invocation (Stone Rune)', amount: 120 },
+				],
+			})
+		})
+
+		it('a smaller or equal grant does not override the species value', () => {
+			expect(computeDarkvision(withSpecies('Elf', 'XPHB'), speciesData, [{ range: 30, origin: 'feat', name: 'Some Feat' }])).toEqual({
+				status: 'known',
+				value: 60,
+				breakdown: [{ source: 'Elf', amount: 60 }, { source: 'from feat (Some Feat)', amount: 0, note: 'does not exceed Elf (60 ft.)' }],
+			})
+		})
+
+		it('a species with no darkvision field plus a grant reads as the grant, not none', () => {
+			expect(computeDarkvision(withSpecies('Human', 'XPHB'), speciesData, [{ range: 60, origin: 'feat', name: 'Skulker' }])).toEqual({
+				status: 'known',
+				value: 60,
+				breakdown: [{ source: 'from feat (Skulker)', amount: 60 }],
+			})
+		})
+
+		it('an unresolved species with a grant reports the grant, and says the species figure is unknown rather than presenting the grant as the whole answer', () => {
+			const result = computeDarkvision(withSpecies('Made Up Species', 'XPHB'), speciesData, [{ range: 120, origin: 'optionalFeature', name: 'Stone Rune' }])
+			expect(result).toEqual({
+				status: 'known',
+				value: 120,
+				breakdown: [
+					{ source: 'species', amount: 0, note: expect.stringContaining('unresolved') },
+					{ source: 'from invocation (Stone Rune)', amount: 120 },
+				],
+			})
+		})
+
+		it('no species chosen at all, but a grant exists, still reports the grant', () => {
+			const character: Character = { id: '1', name: 'Test', classes: [] }
+			const result = computeDarkvision(character, speciesData, [{ range: 30, origin: 'feat', name: 'Skulker' }])
+			expect(result.status).toBe('known')
+			if (result.status === 'known') expect(result.value).toBe(30)
+		})
+
+		it('no species chosen and no grant stays unknown, unchanged', () => {
+			const character: Character = { id: '1', name: 'Test', classes: [] }
+			expect(computeDarkvision(character, speciesData, []).status).toBe('unknown')
+		})
+	})
 })

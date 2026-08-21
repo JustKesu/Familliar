@@ -2,8 +2,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { ClassOptionalFeaturePicker } from './ClassOptionalFeaturePicker'
-import type { ClassOptionalFeatureGroup, OptionalFeatureSelection } from './optionalFeatureData'
+import type { ClassOptionalFeatureGroup } from './optionalFeatureData'
+import type { CharacterOptionalFeatureChoice } from '../storage/character'
 
 /*
  * Component test for the CLASS-level optionalfeatureProgression picker
@@ -17,6 +19,7 @@ const INVOCATION_GROUP: ClassOptionalFeatureGroup = {
 	name: 'Eldritch Invocations',
 	count: 2,
 	options: [
+		{ name: 'Pact of the Tome', source: 'XPHB', entries: ['Your patron gives you a grimoire.'] },
 		{ name: 'Pact of the Blade', source: 'XPHB', entries: ['You can create a pact weapon.'] },
 		{
 			name: 'Eldritch Smite',
@@ -68,11 +71,43 @@ vi.mock('../featureResolver', async (importOriginal) => {
 	return { ...actual, loadResolverData: vi.fn(async () => ({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })) }
 })
 
+/*
+ * Pact of the Tome's real slots (scripts/investigate-pact-of-the-tome.js), with
+ * tiny candidate pools so the counts are what the test exercises, not the list
+ * length. Only the loaders are stubbed — the count enforcement under test is
+ * the picker's own.
+ */
+vi.mock('../spells/optionalFeatureSpellChoiceData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/optionalFeatureSpellChoiceData')>()
+	return {
+		...actual,
+		loadOptionalFeatureSpellChoiceShape: vi.fn(async (optionName: string) =>
+			optionName === 'Pact of the Tome'
+				? { cantripSlot: { levels: [0], filter: { kind: 'any' as const }, count: 3 }, spellSlot: { levels: [1], filter: { kind: 'ritual' as const }, count: 2 } }
+				: { cantripSlot: null, spellSlot: null },
+		),
+		loadOptionalFeatureSlotCandidates: vi.fn(async (slot: { levels: number[] }) =>
+			slot.levels.includes(0)
+				? [
+						{ name: 'Eldritch Blast', source: 'XPHB' },
+						{ name: 'Prestidigitation', source: 'XPHB' },
+						{ name: 'Mage Hand', source: 'XPHB' },
+						{ name: 'Minor Illusion', source: 'XPHB' },
+					]
+				: [
+						{ name: 'Alarm', source: 'XPHB' },
+						{ name: 'Comprehend Languages', source: 'XPHB' },
+						{ name: 'Detect Magic', source: 'XPHB' },
+					],
+		),
+	}
+})
+
 afterEach(cleanup)
 
 function renderPicker(
 	overrides: Partial<Parameters<typeof ClassOptionalFeaturePicker>[0]> = {},
-	onChange: (selection: OptionalFeatureSelection[]) => void = () => {},
+	onChange: (selection: CharacterOptionalFeatureChoice[]) => void = () => {},
 ) {
 	return render(
 		<ClassOptionalFeaturePicker
@@ -82,6 +117,7 @@ function renderPicker(
 			level={5}
 			knownSpellNames={[]}
 			damagingCantripNames={null}
+			damagingAttackCantripNames={null}
 			hasFightingStyleFeature={false}
 			value={[]}
 			onChange={onChange}
@@ -154,6 +190,7 @@ describe('ClassOptionalFeaturePicker', () => {
 				level={5}
 				knownSpellNames={[]}
 				damagingCantripNames={null}
+				damagingAttackCantripNames={null}
 				hasFightingStyleFeature={false}
 				value={[{ featureType: 'EI', choices: ['Pact of the Blade'] }]}
 				onChange={onChange}
@@ -205,5 +242,128 @@ describe('ClassOptionalFeaturePicker', () => {
 
 		await user.click(checkbox('Pact of the Blade'))
 		expect(onChange).toHaveBeenCalledWith([])
+	})
+})
+
+/*
+ * Pact of the Tome's spell sub-picker (build order step 6a). Uses a controlled
+ * harness rather than a bare mock, because what matters here is what SURVIVES
+ * across several interactions — the d5b-1 bug was invisible to a single-call
+ * assertion.
+ */
+function ControlledPicker({ initial, onValue }: { initial: CharacterOptionalFeatureChoice[]; onValue: (v: CharacterOptionalFeatureChoice[]) => void }) {
+	const [value, setValue] = useState<CharacterOptionalFeatureChoice[]>(initial)
+	return (
+		<ClassOptionalFeaturePicker
+			className="Warlock"
+			classSource="XPHB"
+			subclassName={null}
+			level={5}
+			knownSpellNames={[]}
+			damagingCantripNames={null}
+			damagingAttackCantripNames={null}
+			hasFightingStyleFeature={false}
+			value={value}
+			onChange={(next) => {
+				setValue(next)
+				onValue(next)
+			}}
+		/>
+	)
+}
+
+function tomePicks(value: CharacterOptionalFeatureChoice[]) {
+	return value.find((entry) => entry.featureType === 'EI')?.spellChoices?.find((p) => p.optionName === 'Pact of the Tome')
+}
+
+describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () => {
+	it('shows nothing until the option is taken, then offers both slots with their own counts', async () => {
+		renderPicker()
+		await screen.findByText('Pact of the Tome')
+		expect(screen.queryByText('0 of 3 cantrips chosen.')).toBeNull()
+
+		cleanup()
+		render(<ControlledPicker initial={[{ featureType: 'EI', choices: ['Pact of the Tome'] }]} onValue={() => {}} />)
+		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
+		expect(screen.getByText('0 of 2 spells chosen.')).toBeTruthy()
+		// The cantrip slot is unfiltered and the ritual slot is not — different candidate lists.
+		expect(screen.getByRole('checkbox', { name: 'Eldritch Blast' })).toBeTruthy()
+		expect(screen.getByRole('checkbox', { name: 'Alarm' })).toBeTruthy()
+	})
+
+	it('an option that grants literal spells gets no sub-picker', async () => {
+		render(<ControlledPicker initial={[{ featureType: 'EI', choices: ['Pact of the Blade'] }]} onValue={() => {}} />)
+		await screen.findByText('Pact of the Blade')
+		await waitFor(() => expect(screen.queryByText(/cantrips chosen\./)).toBeNull())
+	})
+
+	it('enforces each slot’s count independently', async () => {
+		const user = userEvent.setup()
+		render(<ControlledPicker initial={[{ featureType: 'EI', choices: ['Pact of the Tome'] }]} onValue={() => {}} />)
+		await screen.findByText('0 of 3 cantrips chosen.')
+
+		await user.click(checkbox('Eldritch Blast'))
+		await user.click(checkbox('Prestidigitation'))
+		await user.click(checkbox('Mage Hand'))
+		expect(screen.getByText('3 of 3 cantrips chosen.')).toBeTruthy()
+		// Cantrip cap reached; the ritual slot is untouched by it.
+		expect(checkbox('Minor Illusion').disabled).toBe(true)
+		expect(checkbox('Alarm').disabled).toBe(false)
+
+		await user.click(checkbox('Alarm'))
+		await user.click(checkbox('Comprehend Languages'))
+		expect(screen.getByText('2 of 2 spells chosen.')).toBeTruthy()
+		expect(checkbox('Detect Magic').disabled).toBe(true)
+		expect(screen.getByText('3 of 3 cantrips chosen.')).toBeTruthy()
+	})
+
+	/*
+	 * The d5b-1 bug, guarded: there, a picker's OTHER callback rebuilt the stored
+	 * choice from a subset of its fields and silently dropped spell picks already
+	 * recorded. Spells are picked FIRST here, then the other control is used.
+	 */
+	it('picking the spells FIRST and then toggling another option keeps the spells', async () => {
+		const user = userEvent.setup()
+		let latest: CharacterOptionalFeatureChoice[] = []
+		render(<ControlledPicker initial={[{ featureType: 'EI', choices: ['Pact of the Tome'] }]} onValue={(v) => (latest = v)} />)
+		await screen.findByText('0 of 3 cantrips chosen.')
+
+		await user.click(checkbox('Eldritch Blast'))
+		await user.click(checkbox('Alarm'))
+		expect(tomePicks(latest)?.cantrips.map((c) => c.name)).toEqual(['Eldritch Blast'])
+		expect(tomePicks(latest)?.spells.map((s) => s.name)).toEqual(['Alarm'])
+
+		// Now the OTHER control — taking a second, unrelated invocation.
+		await user.click(checkbox('Pact of the Blade'))
+		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual(['Pact of the Tome', 'Pact of the Blade'])
+		expect(tomePicks(latest)?.cantrips.map((c) => c.name)).toEqual(['Eldritch Blast'])
+		expect(tomePicks(latest)?.spells.map((s) => s.name)).toEqual(['Alarm'])
+
+		// And the reverse order within the sub-picker: writing one slot must not clear the other.
+		await user.click(checkbox('Prestidigitation'))
+		expect(tomePicks(latest)?.spells.map((s) => s.name)).toEqual(['Alarm'])
+		expect(tomePicks(latest)?.cantrips.map((c) => c.name)).toEqual(['Eldritch Blast', 'Prestidigitation'])
+	})
+
+	it('deselecting Pact of the Tome drops its picks but leaves another option’s entry intact', async () => {
+		const user = userEvent.setup()
+		let latest: CharacterOptionalFeatureChoice[] = []
+		render(
+			<ControlledPicker
+				initial={[
+					{
+						featureType: 'EI',
+						choices: ['Pact of the Tome', 'Pact of the Blade'],
+						spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Eldritch Blast', source: 'XPHB' }], spells: [] }],
+					},
+				]}
+				onValue={(v) => (latest = v)}
+			/>,
+		)
+		await screen.findByText('Pact of the Tome')
+
+		await user.click(checkbox('Pact of the Tome'))
+		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual(['Pact of the Blade'])
+		expect(latest.find((e) => e.featureType === 'EI')?.spellChoices).toBeUndefined()
 	})
 })

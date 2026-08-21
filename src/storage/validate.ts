@@ -5,6 +5,7 @@ import type {
 	Character,
 	CharacterBackground,
 	CharacterClass,
+	CharacterClassFeatureChoice,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
@@ -299,6 +300,29 @@ export function describeOptionalFeatureChoicesError(value: unknown): string | nu
 		if (!Array.isArray(choices) || !choices.every((choice) => isNonEmptyString(choice))) {
 			return `optionalFeatureChoices[${i}].choices must be an array of strings`
 		}
+		const spellChoicesError = describeOptionalFeatureSpellChoicesError(entry['spellChoices'], i)
+		if (spellChoicesError) return spellChoicesError
+	}
+	return null
+}
+
+/** Validates an optional `spellChoices` field on one optional-feature choice (Pact of the Tome, step 6a). Returns null if absent. */
+function describeOptionalFeatureSpellChoicesError(value: unknown, index: number): string | null {
+	if (value === undefined) return null
+	const label = `optionalFeatureChoices[${index}].spellChoices`
+	if (!Array.isArray(value)) return `${label} must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `${label}[${i}] is not an object`
+		if (!isNonEmptyString(entry['optionName'])) return `${label}[${i}].optionName is missing or not a string`
+		for (const key of ['cantrips', 'spells'] as const) {
+			const picks = entry[key]
+			if (!Array.isArray(picks)) return `${label}[${i}].${key} must be an array`
+			for (let j = 0; j < picks.length; j++) {
+				const error = describeSpellRefError(picks[j], `${label}[${i}].${key}[${j}]`)
+				if (error) return error
+			}
+		}
 	}
 	return null
 }
@@ -306,9 +330,11 @@ export function describeOptionalFeatureChoicesError(value: unknown): string | nu
 function toCharacterOptionalFeatureChoices(value: unknown[]): CharacterOptionalFeatureChoice[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
+		const spellChoices = record['spellChoices'] as CharacterOptionalFeatureChoice['spellChoices']
 		return {
 			featureType: record['featureType'] as string,
 			choices: record['choices'] as string[],
+			...(spellChoices === undefined ? {} : { spellChoices }),
 		}
 	})
 }
@@ -491,6 +517,42 @@ export function describeSubclassSpellChoicesError(value: unknown): string | null
 	return null
 }
 
+/** Validates an optional `classFeatureChoices` field (D21 class-feature choices). Returns null if the field is absent (it's optional). */
+export function describeClassFeatureChoicesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `classFeatureChoices must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `classFeatureChoices[${i}] is not an object`
+		if (!isNonEmptyString(entry['className'])) return `classFeatureChoices[${i}].className is missing or not a string`
+		if (!isNonEmptyString(entry['classSource'])) return `classFeatureChoices[${i}].classSource is missing or not a string`
+		if (!isNonEmptyString(entry['featureName'])) return `classFeatureChoices[${i}].featureName is missing or not a string`
+		if (
+			typeof entry['grantedAtLevel'] !== 'number' ||
+			!Number.isInteger(entry['grantedAtLevel']) ||
+			entry['grantedAtLevel'] < 1 ||
+			entry['grantedAtLevel'] > 20
+		) {
+			return `classFeatureChoices[${i}].grantedAtLevel must be a whole number from 1 to 20`
+		}
+		if (!isNonEmptyString(entry['optionName'])) return `classFeatureChoices[${i}].optionName is missing or not a string`
+	}
+	return null
+}
+
+function toCharacterClassFeatureChoices(value: unknown[]): CharacterClassFeatureChoice[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return {
+			className: record['className'] as string,
+			classSource: record['classSource'] as string,
+			featureName: record['featureName'] as string,
+			grantedAtLevel: record['grantedAtLevel'] as number,
+			optionName: record['optionName'] as string,
+		}
+	})
+}
+
 function toCharacterSubclassSpellChoices(value: unknown[]): CharacterSubclassSpellChoice[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
@@ -583,6 +645,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (spellChoicesError) return `[${index}].${spellChoicesError}`
 	const subclassSpellChoicesError = describeSubclassSpellChoicesError(value['subclassSpellChoices'])
 	if (subclassSpellChoicesError) return `[${index}].${subclassSpellChoicesError}`
+	const classFeatureChoicesError = describeClassFeatureChoicesError(value['classFeatureChoices'])
+	if (classFeatureChoicesError) return `[${index}].${classFeatureChoicesError}`
 	return null
 }
 
@@ -610,6 +674,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const featAsiChoices = value['featAsiChoices']
 	const spellChoices = value['spellChoices']
 	const subclassSpellChoices = value['subclassSpellChoices']
+	const classFeatureChoices = value['classFeatureChoices']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -630,6 +695,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(featAsiChoices) ? { featAsiChoices: toCharacterFeatAsiChoices(featAsiChoices) } : {}),
 		...(Array.isArray(spellChoices) ? { spellChoices: toCharacterSpellChoices(spellChoices) } : {}),
 		...(Array.isArray(subclassSpellChoices) ? { subclassSpellChoices: toCharacterSubclassSpellChoices(subclassSpellChoices) } : {}),
+		...(Array.isArray(classFeatureChoices) ? { classFeatureChoices: toCharacterClassFeatureChoices(classFeatureChoices) } : {}),
 	}
 }
 

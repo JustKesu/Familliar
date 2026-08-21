@@ -37,6 +37,7 @@ function completeData(): WizardData {
 		featAsiChoices: [],
 		spellChoices: [],
 		subclassSpellChoices: [],
+		classFeatureChoices: [],
 	}
 }
 
@@ -54,6 +55,12 @@ describe('isStepComplete', () => {
 	it('allows the class step once both name and class are set', () => {
 		const data = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Fighter', classSource: 'XPHB', level: 1 } }
 		expect(isStepComplete('class', data)).toBe(true)
+	})
+
+	it('blocks the class step while a granted D21 class-feature choice is unmade', () => {
+		const data = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Cleric', classSource: 'XPHB', level: 1 } }
+		expect(isStepComplete('class', data, null, 0, undefined, null, 0, true, false)).toBe(false)
+		expect(isStepComplete('class', data, null, 0, undefined, null, 0, true, true)).toBe(true)
 	})
 
 	it('blocks species, background, languages and abilities until their own picker reports a choice', () => {
@@ -232,7 +239,15 @@ describe('saveCharacter', () => {
 			[],
 			undefined,
 			undefined,
+			undefined,
 		)
+	})
+
+	it('passes the D21 class-feature choices straight through to the store', () => {
+		const store = fakeStore()
+		const choice = { className: 'Fighter', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' }
+		saveCharacter(store, { ...completeData(), classFeatureChoices: [choice] }, ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[0].at(-1)).toEqual([choice])
 	})
 
 	it('omits background when the background skill proficiencies were not supplied', () => {
@@ -258,6 +273,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 			undefined,
 			undefined,
 		)
@@ -290,6 +306,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 			undefined,
 			undefined,
 		)
@@ -325,6 +342,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			['stealth', 'perception'],
 			[],
+			undefined,
 			undefined,
 			undefined,
 		)

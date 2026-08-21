@@ -18,7 +18,10 @@ import {
 	loadClassOptionalFeatureGroups,
 	type ClassOptionalFeatureGroup,
 } from '../optionalFeatures/optionalFeatureData'
-import { damagingCantripsAmong, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { ClassFeatureChoicePicker } from '../classFeatureChoices/ClassFeatureChoicePicker'
+import { areClassFeatureChoicesComplete, loadClassFeatureChoices, type ClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
+import { damagingAttackCantripsAmong, damagingCantripsAmong, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { loadOptionalFeatureSpellChoiceShape, offersSpellChoice, requiredSpellChoiceCounts } from '../spells/optionalFeatureSpellChoiceData'
 import { ExpertisePicker } from '../expertise/ExpertisePicker'
 import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertise/expertiseData'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
@@ -65,6 +68,14 @@ import {
  * wizardState.ts.
  */
 
+/** One chosen option's required spell-pick counts, resolved from optional-features.json (step 6a). */
+interface OptionalFeatureSpellRequirement {
+	featureType: string
+	optionName: string
+	cantrips: number
+	spells: number
+}
+
 const STEP_LABELS: Record<WizardStep, string> = {
 	class: 'Class and level',
 	species: 'Species',
@@ -73,8 +84,23 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	languages: 'Languages',
 	abilities: 'Ability scores',
 	spells: 'Spells',
+	classOptionalFeatures: 'Class options',
 	featAsi: 'Ability Score Improvement / Feat',
 	review: 'Review and save',
+}
+
+/**
+ * The classOptionalFeatures step is named after what the class actually
+ * grants — the progression's own `name` from classes.json, already carried on
+ * ClassOptionalFeatureGrant ("Eldritch Invocations", "Metamagic"). Never a
+ * featureType-code-to-label map. A class granting more than one progression
+ * joins them; a future one whose progression omits the name falls back to the
+ * generic STEP_LABELS entry.
+ */
+function stepLabel(step: WizardStep, classOptionalFeatureGroups: ClassOptionalFeatureGroup[]): string {
+	if (step !== 'classOptionalFeatures') return STEP_LABELS[step]
+	const names = classOptionalFeatureGroups.map((group) => group.name).filter((name): name is string => name !== null)
+	return names.length > 0 ? names.join(' / ') : STEP_LABELS.classOptionalFeatures
 }
 
 export function CharacterWizard({
@@ -97,6 +123,9 @@ export function CharacterWizard({
 	const [spellCountClassData, setSpellCountClassData] = useState<ClassSpellCountData[]>([])
 	const [subclassSpellChoiceSlotCount, setSubclassSpellChoiceSlotCount] = useState(0)
 	const [classOptionalFeatureGroups, setClassOptionalFeatureGroups] = useState<ClassOptionalFeatureGroup[]>([])
+	const [classFeatureChoices, setClassFeatureChoices] = useState<ClassFeatureChoice[]>([])
+	/** How many spells each chosen option still needs picked (step 6a — Pact of the Tome). Read from the data by the effect below, never a hardcoded table. */
+	const [optionalFeatureSpellRequirements, setOptionalFeatureSpellRequirements] = useState<OptionalFeatureSpellRequirement[]>([])
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[]>([])
 
 	useEffect(() => {
@@ -212,6 +241,58 @@ export function CharacterWizard({
 		}
 	}, [state.data.classChoice])
 
+	/**
+	 * The D21 class-feature choices granted by this level (Divine Order, Primal
+	 * Order, Elemental Fury) — loaded here as well as in the picker for the same
+	 * reason the class-optional-feature groups above are: the class step's
+	 * completion gate needs them, and the picker's panel is not what gates the
+	 * step. Class and level only; these never wait for a subclass.
+	 */
+	useEffect(() => {
+		let cancelled = false
+		if (!state.data.classChoice) {
+			setClassFeatureChoices([])
+			return
+		}
+		loadClassFeatureChoices(state.data.classChoice.className, state.data.classChoice.classSource, state.data.classChoice.level)
+			.then((choices) => {
+				if (!cancelled) setClassFeatureChoices(choices)
+			})
+			.catch(() => {
+				/* ClassFeatureChoicePicker itself surfaces load errors; this lookup (for step completion) is best-effort. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.classChoice])
+
+	/** The pick counts each CHOSEN option requires, for the step-completion gate below. Empty for every option that grants literal spells or none. */
+	useEffect(() => {
+		let cancelled = false
+		const chosen = state.data.classOptionalFeatureChoices.flatMap((entry) =>
+			entry.choices.map((optionName) => ({ featureType: entry.featureType, optionName })),
+		)
+		if (chosen.length === 0) {
+			setOptionalFeatureSpellRequirements([])
+			return
+		}
+		Promise.all(
+			chosen.map(async (option) => {
+				const shape = await loadOptionalFeatureSpellChoiceShape(option.optionName, option.featureType)
+				return offersSpellChoice(shape) ? { ...option, ...requiredSpellChoiceCounts(shape) } : null
+			}),
+		)
+			.then((requirements) => {
+				if (!cancelled) setOptionalFeatureSpellRequirements(requirements.filter((r): r is OptionalFeatureSpellRequirement => r !== null))
+			})
+			.catch(() => {
+				/* Best-effort, same as the groups lookup above — the picker itself still renders. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.classOptionalFeatureChoices])
+
 	/** spells.json details, for the one thing the class step needs from them: which of the character's cantrips deal damage (D21, Agonizing Blast). Loaded once, independent of class/level. */
 	useEffect(() => {
 		let cancelled = false
@@ -220,7 +301,7 @@ export function CharacterWizard({
 				if (!cancelled) setSpellDetails(details)
 			})
 			.catch(() => {
-				/* Leaves damagingCantripNames null below, which keeps the `choose` prerequisites reporting unmet with their own text rather than guessing. */
+				/* Leaves damagingCantripNames/damagingAttackCantripNames null below, which keeps the `choose` prerequisites reporting unmet with their own text rather than guessing. */
 			})
 		return () => {
 			cancelled = true
@@ -418,34 +499,58 @@ export function CharacterWizard({
 
 	/**
 	 * The inputs the class-level optional-feature prerequisites read
-	 * (optionalFeatureData.ts). Both come from CURRENT wizard state, not from a
-	 * saved character, and the 'spells' step runs AFTER 'class' — the same
-	 * revisitable-steps reasoning as markFeatChoices above: picking Eldritch
-	 * Blast on the spells step and stepping back unlocks Agonizing Blast.
-	 * `damagingCantripNames` stays null until spells.json is in, so a
-	 * `choose` prerequisite reports unmet with its own text instead of a
-	 * premature "none of your cantrips qualifies".
+	 * (optionalFeatureData.ts). All come from CURRENT wizard state, not from a
+	 * saved character, so a later edit to the spell picks re-evaluates the
+	 * invocations immediately. Since D64 the picker's own step runs AFTER
+	 * 'spells', so these are already populated on a first forward pass — no
+	 * back-navigation needed to unlock Agonizing Blast.
+	 * `damagingCantripNames`/`damagingAttackCantripNames` stay null until
+	 * spells.json is in, so a `choose` prerequisite reports unmet with its
+	 * own text instead of a premature "none of your cantrips qualifies".
 	 */
 	const knownSpellNames = state.data.spellChoices.map((pick) => pick.name)
 	const damagingCantripNames = spellDetails.length > 0 ? damagingCantripsAmong(spellDetails, state.data.spellChoices) : null
+	const damagingAttackCantripNames = spellDetails.length > 0 ? damagingAttackCantripsAmong(spellDetails, state.data.spellChoices) : null
+
+	/**
+	 * An option that lets the player pick spells (step 6a — Pact of the Tome)
+	 * must have those picks filled before the step completes, mirroring how
+	 * `isCompleteFeatAsiChoice` gates a spell-granting feat. The required
+	 * counts come from the data itself rather than a second hardcoded table:
+	 * `loadOptionalFeatureSpellChoiceShape` goes through the shared cache, so
+	 * re-running this as the player toggles options costs nothing.
+	 */
+	const classOptionalFeatureSpellsComplete = optionalFeatureSpellRequirements.every((requirement) => {
+		const pick = state.data.classOptionalFeatureChoices
+			.find((entry) => entry.featureType === requirement.featureType)
+			?.spellChoices?.find((candidate) => candidate.optionName === requirement.optionName)
+		return (pick?.cantrips.length ?? 0) === requirement.cantrips && (pick?.spells.length ?? 0) === requirement.spells
+	})
 
 	/** D19 + the removal case: every granted count filled and no chosen option left unqualified. Evaluated with the same pure function the picker renders from, so the gate and the UI can never disagree. */
 	const classOptionalFeaturesComplete =
-		state.data.classChoice === null ||
-		areClassOptionalFeaturesComplete(
-			evaluateClassOptionalFeatureGroups(classOptionalFeatureGroups, state.data.classOptionalFeatureChoices, {
-				classLevels: [
-					{
-						className: state.data.classChoice.className,
-						level: state.data.classChoice.level,
-						subclassName: state.data.subclass?.name ?? null,
-					},
-				],
-				knownSpellNames,
-				hasFightingStyleFeature: state.data.fightingStyle !== null,
-				...(damagingCantripNames === null ? {} : { damagingCantripsByClass: { [state.data.classChoice.className]: damagingCantripNames } }),
-			}),
-		)
+		classOptionalFeatureSpellsComplete &&
+		(state.data.classChoice === null ||
+			areClassOptionalFeaturesComplete(
+				evaluateClassOptionalFeatureGroups(classOptionalFeatureGroups, state.data.classOptionalFeatureChoices, {
+					classLevels: [
+						{
+							className: state.data.classChoice.className,
+							level: state.data.classChoice.level,
+							subclassName: state.data.subclass?.name ?? null,
+						},
+					],
+					knownSpellNames,
+					hasFightingStyleFeature: state.data.fightingStyle !== null,
+					...(damagingCantripNames === null ? {} : { damagingCantripsByClass: { [state.data.classChoice.className]: damagingCantripNames } }),
+					...(damagingAttackCantripNames === null
+						? {}
+						: { damagingAttackCantripsByClass: { [state.data.classChoice.className]: damagingAttackCantripNames } }),
+				}),
+			))
+
+	/** Evaluated with the same pure function the picker renders from, so the gate and the UI can never disagree. */
+	const classFeatureChoicesComplete = areClassFeatureChoicesComplete(classFeatureChoices, state.data.classFeatureChoices)
 
 	function handleSave(): void {
 		try {
@@ -459,6 +564,8 @@ export function CharacterWizard({
 				spellRequirement,
 				subclassSpellChoiceSlotCount,
 				classOptionalFeaturesComplete,
+				classOptionalFeatureGroups.length,
+				classFeatureChoicesComplete,
 			)
 			setSaveError(null)
 			onSaved(character)
@@ -476,17 +583,18 @@ export function CharacterWizard({
 		spellRequirement,
 		subclassSpellChoiceSlotCount,
 		classOptionalFeaturesComplete,
+		classFeatureChoicesComplete,
 	)
 
 	return (
 		<div className="wizard">
 			<ol className="wizard__steps">
-				{visibleSteps(expertiseRequiredCount, featAsiGrantCount, spellRequirement).map((step, index) => (
+				{visibleSteps(expertiseRequiredCount, featAsiGrantCount, spellRequirement, classOptionalFeatureGroups.length).map((step, index) => (
 					<li
 						key={step}
 						className={step === state.step ? 'wizard__step wizard__step--active' : 'wizard__step'}
 					>
-						{index + 1}. {STEP_LABELS[step]}
+						{index + 1}. {stepLabel(step, classOptionalFeatureGroups)}
 					</li>
 				))}
 			</ol>
@@ -528,17 +636,13 @@ export function CharacterWizard({
 								value={state.data.fightingStyle}
 								onChange={(style) => dispatch({ type: 'setFightingStyle', style })}
 							/>
-							{/* D13: a class-level grant is the class's own, so it sits next to the subclass pickers but never waits for a subclass. */}
-							<ClassOptionalFeaturePicker
+							{/* D13 — a class feature's own "pick one version" choice belongs to the class step; none of the three depends on spells, so D64's exception does not apply. */}
+							<ClassFeatureChoicePicker
 								className={state.data.classChoice.className}
 								classSource={state.data.classChoice.classSource}
-								subclassName={state.data.subclass?.name ?? null}
 								level={state.data.classChoice.level}
-								knownSpellNames={knownSpellNames}
-								damagingCantripNames={damagingCantripNames}
-								hasFightingStyleFeature={state.data.fightingStyle !== null}
-								value={state.data.classOptionalFeatureChoices}
-								onChange={(choices) => dispatch({ type: 'setClassOptionalFeatureChoices', choices })}
+								value={state.data.classFeatureChoices}
+								onChange={(choices) => dispatch({ type: 'setClassFeatureChoices', choices })}
 							/>
 							<SubclassPicker
 								className={state.data.classChoice.className}
@@ -673,6 +777,24 @@ export function CharacterWizard({
 				</div>
 			)}
 
+			{/* D64: the class's OWN optionalfeatureProgression, moved off the class step to run after 'spells' — several invocations require an already-known damaging cantrip. Subclass-level optional features stay on the class step. */}
+			{state.step === 'classOptionalFeatures' && state.data.classChoice && (
+				<div className="wizard__panel">
+					<ClassOptionalFeaturePicker
+						className={state.data.classChoice.className}
+						classSource={state.data.classChoice.classSource}
+						subclassName={state.data.subclass?.name ?? null}
+						level={state.data.classChoice.level}
+						knownSpellNames={knownSpellNames}
+						damagingCantripNames={damagingCantripNames}
+						damagingAttackCantripNames={damagingAttackCantripNames}
+						hasFightingStyleFeature={state.data.fightingStyle !== null}
+						value={state.data.classOptionalFeatureChoices}
+						onChange={(choices) => dispatch({ type: 'setClassOptionalFeatureChoices', choices })}
+					/>
+				</div>
+			)}
+
 			{state.step === 'featAsi' && state.data.classChoice && (
 				<div className="wizard__panel">
 					<FeatAsiPicker
@@ -735,9 +857,15 @@ export function CharacterWizard({
 				<button
 					type="button"
 					onClick={() =>
-						dispatch({ type: 'back', expertiseRequiredCount, featAsiEligibleLevelCount: featAsiGrantCount, spellRequirement })
+						dispatch({
+							type: 'back',
+							expertiseRequiredCount,
+							featAsiEligibleLevelCount: featAsiGrantCount,
+							spellRequirement,
+							classOptionalFeatureGroupCount: classOptionalFeatureGroups.length,
+						})
 					}
-					disabled={stepIndex(state.step, expertiseRequiredCount, featAsiGrantCount, spellRequirement) === 0}
+					disabled={stepIndex(state.step, expertiseRequiredCount, featAsiGrantCount, spellRequirement, classOptionalFeatureGroups.length) === 0}
 				>
 					Back
 				</button>
@@ -754,6 +882,8 @@ export function CharacterWizard({
 								spellRequirement,
 								subclassSpellChoiceSlotCount,
 								classOptionalFeaturesComplete,
+								classOptionalFeatureGroups.length,
+								classFeatureChoicesComplete,
 							)
 						}
 					>
@@ -771,6 +901,8 @@ export function CharacterWizard({
 								spellRequirement,
 								subclassSpellChoiceSlotCount,
 								classOptionalFeaturesComplete,
+								classOptionalFeatureGroupCount: classOptionalFeatureGroups.length,
+								classFeatureChoicesComplete,
 							})
 						}
 						disabled={!canGoNext}

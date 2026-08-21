@@ -357,6 +357,36 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		expect(character.optionalFeatureChoices).toBeUndefined()
 	})
 
+	/** The D21 class-feature choices are their own field, validated alongside the rest. */
+	it('reloads a classFeatureChoices entry intact and rejects a malformed one', () => {
+		const classFeatureChoices = [
+			{ className: 'Cleric', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' },
+		]
+		const good = new MemoryStorage()
+		good.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], classFeatureChoices }]))
+		expect(new CharacterStore(good).list()[0].classFeatureChoices).toEqual(classFeatureChoices)
+
+		const bad = new MemoryStorage()
+		bad.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					// grantedAtLevel out of the 1-20 range — D22's level must be a real one.
+					classFeatureChoices: [{ className: 'Cleric', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 0, optionName: 'Thaumaturge' }],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(bad).list()).toThrow(CorruptDataError)
+	})
+
+	it('leaves classFeatureChoices undefined when none were provided (old-save compatibility)', () => {
+		expect(new CharacterStore(new MemoryStorage()).create('Cato').classFeatureChoices).toBeUndefined()
+	})
+
 	it('rejects a saved optionalFeatureChoices entry missing featureType', () => {
 		const backing = new MemoryStorage()
 		backing.setItem(
@@ -368,6 +398,66 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 					name: 'Aria',
 					classes: [],
 					optionalFeatureChoices: [{ choices: ['Trip Attack'] }],
+				},
+			]),
+		)
+		const store = new CharacterStore(backing)
+		expect(() => store.list()).toThrow(CorruptDataError)
+	})
+
+	/** Pact of the Tome's picks (build order step 6a) ride on the same entry, so they validate with it. */
+	it('reloads an optionalFeatureChoices entry carrying spellChoices intact', () => {
+		const backing = new MemoryStorage()
+		const optionalFeatureChoices = [
+			{
+				featureType: 'EI',
+				choices: ['Pact of the Tome'],
+				spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Mage Hand', source: 'XPHB' }], spells: [{ name: 'Alarm', source: 'XPHB' }] }],
+			},
+		]
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], optionalFeatureChoices }]),
+		)
+		const store = new CharacterStore(backing)
+		expect(store.list()[0].optionalFeatureChoices).toEqual(optionalFeatureChoices)
+	})
+
+	it('rejects a spellChoices entry whose spell ref is missing a source', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					optionalFeatureChoices: [
+						{
+							featureType: 'EI',
+							choices: ['Pact of the Tome'],
+							spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Mage Hand' }], spells: [] }],
+						},
+					],
+				},
+			]),
+		)
+		const store = new CharacterStore(backing)
+		expect(() => store.list()).toThrow(CorruptDataError)
+	})
+
+	it('rejects a spellChoices entry missing optionName', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Tome'], spellChoices: [{ cantrips: [], spells: [] }] }],
 				},
 			]),
 		)

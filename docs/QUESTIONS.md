@@ -205,3 +205,39 @@ Two spells referenced but absent from the data. Two spells granted by other cont
 ### Missing subclass feature descriptions
 
 Missing subclass feature descriptions. Some subclasses render a named feature with "text not found" instead of its description — e.g. Sorcerer Divine Soul's "Divine Magic" and "Favored by the Gods". The feature resolver (src/featureResolver/) correctly shows a D43-style "not found" note rather than crashing, but it is not yet established whether the target text is genuinely absent from this app's extracted data (a source-filtering gap needing re-extraction) or present but not matched by the resolver's join (fixable like the 26/94 classSource fallback, D27). To investigate and resolve separately from step 6 — likely alongside step 6a (class feature choices) or as a standalone data-quality fix. Not blocking: the character is still creatable.
+
+### wizardState.ts — poziční parametry se blíží limitu
+
+Každý podmíněný krok wizardu (expertise, featAsi, spells,
+classOptionalFeatures) přidal další poziční parametr do `visibleSteps`,
+`isStepComplete`, `isReadyToSave`, `saveCharacter` a obou akcí `next`/`back`.
+Dnes jich je 4 až 8 podle funkce. Zatím to drží, ale každý další podmíněný
+krok to zhorší a poziční argumenty se snadno prohodí, aniž by to typová
+kontrola chytila (několik z nich jsou čísla).
+
+Možnosti: nechat být, dokud nepřibude další krok; nebo převést na jeden
+objekt s pojmenovanými poli. Refaktor je mechanický, ale sáhne do všech
+volajících a do testů, takže patří do vlastního tasku, ne přilepený k funkční
+změně.
+
+Nahlásil agent sám na konci build order kroku 6a (přesun invokací za krok
+Kouzla, D64).
+STATUS: nerozhodnuto, nízká priorita, revidovat až přibude další podmíněný
+krok wizardu.
+
+### Storm Herald — volba prostředí je jen v próze
+
+Barbarian/Storm Herald si na 3. úrovni volí Desert, Sea nebo Tundra a ta
+volba pak určuje chování features na 6. a 14. úrovni. V datech ale není
+strukturovaná — `options` uzel u Storm Aura nenese `count`, volba je
+popsaná jen v textu. Podle D21 se tedy zobrazí jako text a appka ji
+neřídí, takže si hráč musí prostředí pamatovat sám a sheet o něm neví.
+
+Zjištěno při stavbě pickerů pro Divine Order / Primal Order / Elemental
+Fury. Souvisí: `count` je spolehlivý pozitivní signál (kde je, je volba),
+ale jeho absence volbu nevylučuje — u Storm Heralda dává falešně
+negativní výsledek.
+
+Rozhodnout, jestli ručně namapovat tři prostředí (výjimka proti D21),
+nebo nechat na hráči.
+STATUS: nerozhodnuto.

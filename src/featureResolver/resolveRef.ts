@@ -11,6 +11,14 @@ import { asArray, asString, isRecord, type RefOccurrence, type ResolvedFeature, 
  * already in `cf|...` order, a refSubclassFeature uid's are already in
  * `scf|...` order.
  *
+ * A uid may however OMIT its trailing source segment when that source
+ * equals the segment the feature already defaults to (classSource for a
+ * class feature, subclassSource for a subclass feature) — Druid's Primal
+ * Order points at "Magician|Druid|XPHB|1", whose target's real id is
+ * `cf|magician|druid|xphb|1|xphb`. Appending uid verbatim therefore misses
+ * the target; the short form is expanded before lookup (see
+ * scripts/investigate-class-feature-options.js, which found it).
+ *
  * optionalfeature/feat uids only carry name|source (2 parts) and neither
  * optional-features.json nor feats.json has an `id` field, so those match
  * by name+source instead. A refOptionalfeature uid resolves against
@@ -40,17 +48,30 @@ function findById(list: unknown[], id: string): ResolvedFeature | null {
 	return { name: entryName, entries: asArray(match['entries']) ?? [] }
 }
 
+/**
+ * Restores the trailing source segment a uid is allowed to omit. `full` is
+ * the segment count of the complete form; `defaultIndex` points at the
+ * segment the omitted source repeats. A uid of any other length is returned
+ * untouched so a genuinely malformed one still fails the lookup rather than
+ * being silently reshaped into a wrong match.
+ */
+function withImpliedSource(uid: string, full: number, defaultIndex: number): string {
+	const parts = uid.split('|')
+	if (parts.length !== full - 1) return uid
+	return [...parts, parts[defaultIndex]].join('|')
+}
+
 function resolveClassFeature(uid: string, classFeatures: unknown): ResolvedFeature | null {
 	const list = asArray(classFeatures)
 	if (!list) return null
-	const id = `cf|${uid.toLowerCase()}`
+	const id = `cf|${withImpliedSource(uid, 5, 2).toLowerCase()}`
 	return findById(list, id)
 }
 
 function resolveSubclassFeature(uid: string, subclassFeatures: unknown): ResolvedFeature | null {
 	const list = asArray(subclassFeatures)
 	if (!list) return null
-	const id = `scf|${uid.toLowerCase()}`
+	const id = `scf|${withImpliedSource(uid, 7, 4).toLowerCase()}`
 	return findById(list, id)
 }
 

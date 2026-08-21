@@ -17,7 +17,10 @@ import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
+import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import type { Character } from '../storage/character'
+import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
+import { loadResolverData } from '../featureResolver'
 
 /*
  * Data loaders are stubbed rather than hitting fetch/data on disk — this
@@ -79,6 +82,16 @@ vi.mock('../spells/subclassSpellChoiceData', async (importOriginal) => {
 vi.mock('../spells/featSpells', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../spells/featSpells')>()
 	return { ...actual, loadFeatGrantedSpells: vi.fn(async () => []) }
+})
+
+vi.mock('../spells/optionalFeatureSpells', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/optionalFeatureSpells')>()
+	return { ...actual, loadOptionalFeatureGrantedSpells: vi.fn(async () => []) }
+})
+
+vi.mock('./grantedSenses', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./grantedSenses')>()
+	return { ...actual, loadGrantedSenses: vi.fn(async () => []) }
 })
 
 vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
@@ -383,6 +396,225 @@ describe('CharacterSheet', () => {
 		})
 	})
 
+	/*
+	 * Build order step 6a, final piece (closes 6a): senses granted by a chosen
+	 * optional feature (an invocation) and by a chosen feat. Asserted end to
+	 * end for the same reason the invocation-spell tests above are — a stored
+	 * pick that never reaches the sheet has happened more than once in this
+	 * project.
+	 */
+	describe('granted senses (step 6a, final piece)', () => {
+		afterEach(() => {
+			vi.mocked(loadGrantedSenses).mockReset().mockResolvedValue([])
+		})
+
+		it('a sense granted by a chosen invocation renders under a "Senses" section, named "from invocation (...)"', async () => {
+			const granted: GrantedSense[] = [{ senseType: 'truesight', range: 30, origin: 'optionalFeature', name: 'Devil’s Sight' }]
+			vi.mocked(loadGrantedSenses).mockResolvedValue(granted)
+
+			const warlock: Character = {
+				id: 'w2',
+				name: 'Sighted Warlock',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Devil’s Sight'] }],
+			}
+
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Sighted Warlock' })
+
+			const sensesSection = container.querySelector('.sheet__senses')!
+			expect(sensesSection).toBeTruthy()
+			await waitFor(() => expect(sensesSection.textContent).toContain('Truesight'))
+			expect(sensesSection.textContent).toContain('30 ft.')
+			expect(sensesSection.textContent).toContain('from invocation (Devil’s Sight)')
+
+			// The loader is stubbed above, so assert the sheet actually hands it the character (and thus its
+			// stored picks) — otherwise a mis-wired argument would still render green here.
+			expect(vi.mocked(loadGrantedSenses)).toHaveBeenCalledWith(expect.objectContaining({ optionalFeatureChoices: warlock.optionalFeatureChoices }))
+		})
+
+		it('a sense granted by a chosen feat renders "from feat (...)"', async () => {
+			const granted: GrantedSense[] = [{ senseType: 'blindsight', range: 10, origin: 'feat', name: 'Skulker' }]
+			vi.mocked(loadGrantedSenses).mockResolvedValue(granted)
+
+			const rogue: Character = {
+				id: 'r1',
+				name: 'Sneaky Rogue',
+				classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 4 }],
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Skulker', source: 'XPHB' }],
+			}
+
+			const { container } = render(<CharacterSheet character={rogue} />)
+			await screen.findByRole('heading', { name: 'Sneaky Rogue' })
+
+			const sensesSection = container.querySelector('.sheet__senses')!
+			await waitFor(() => expect(sensesSection.textContent).toContain('Blindsight'))
+			expect(sensesSection.textContent).toContain('from feat (Skulker)')
+		})
+
+		it('a character with no granted senses shows no "Senses" section at all — no empty heading', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			expect(container.querySelector('.sheet__senses')).toBeNull()
+		})
+
+		/*
+		 * A granted darkvision reconciles with the species value instead of
+		 * standing alone as its own Senses row (this task) — senses of the same
+		 * type don't stack, and showing two separate darkvision figures left the
+		 * player to work out which one applies.
+		 */
+		it('a granted darkvision larger than the species value updates the traits row and drops out of Senses', async () => {
+			const granted: GrantedSense[] = [{ senseType: 'darkvision', range: 120, origin: 'optionalFeature', name: 'Stone Rune' }]
+			vi.mocked(loadGrantedSenses).mockResolvedValue(granted)
+
+			// `character` (Aria) is an Elf, species darkvision 60 (SPECIES_DATA above).
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const traitsSection = container.querySelector('.sheet__traits')!
+			const darkvisionItem = await waitFor(() => {
+				const item = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
+				expect(item?.textContent).toContain('120 ft.')
+				return item!
+			})
+			expect(darkvisionItem.textContent).not.toContain('60 ft.')
+
+			await userEvent.setup().click(darkvisionItem.querySelector('summary')!)
+			expect(darkvisionItem.textContent).toContain('Elf')
+			expect(darkvisionItem.textContent).toContain('from invocation (Stone Rune)')
+
+			// Darkvision never gets its own row in Senses — it belongs to the traits value now.
+			expect(container.querySelector('.sheet__senses')).toBeNull()
+		})
+
+		it('a granted darkvision smaller than the species value leaves the traits row at the species figure', async () => {
+			const granted: GrantedSense[] = [{ senseType: 'darkvision', range: 30, origin: 'feat', name: 'Some Feat' }]
+			vi.mocked(loadGrantedSenses).mockResolvedValue(granted)
+
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const traitsSection = container.querySelector('.sheet__traits')!
+			await waitFor(() => {
+				const item = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
+				expect(item?.textContent).toContain('60 ft.')
+			})
+		})
+
+		it('a granted truesight/blindsight still renders in Senses and never touches the darkvision traits row', async () => {
+			const granted: GrantedSense[] = [{ senseType: 'truesight', range: 30, origin: 'optionalFeature', name: 'Witch Sight' }]
+			vi.mocked(loadGrantedSenses).mockResolvedValue(granted)
+
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const sensesSection = await waitFor(() => {
+				const section = container.querySelector('.sheet__senses')
+				expect(section).toBeTruthy()
+				return section!
+			})
+			expect(sensesSection.textContent).toContain('Truesight')
+			expect(sensesSection.textContent).not.toContain('Darkvision')
+
+			const traitsSection = container.querySelector('.sheet__traits')!
+			const darkvisionItem = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
+			expect(darkvisionItem?.textContent).toContain('60 ft.')
+		})
+	})
+
+	/*
+	 * D21 class-feature choices. Only loadResolverData is stubbed — the join
+	 * (chosenClassFeatureChoicesFrom) and the ref resolution underneath both run
+	 * for real, so a mis-wired lookup fails here rather than passing on a stub.
+	 * Asserted end to end for the same reason the sections above are: a stored
+	 * pick that never reaches the sheet has shipped twice in this project.
+	 */
+	describe('class feature choices (D21)', () => {
+		const CLERIC_FEATURES = [
+			{
+				name: 'Divine Order',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				level: 1,
+				source: 'XPHB',
+				id: 'cf|divine order|cleric|xphb|1|xphb',
+				entries: [
+					{
+						type: 'options',
+						count: 1,
+						entries: [
+							{ type: 'refClassFeature', classFeature: 'Protector|Cleric|XPHB|1|XPHB' },
+							{ type: 'refClassFeature', classFeature: 'Thaumaturge|Cleric|XPHB|1|XPHB' },
+						],
+					},
+				],
+			},
+			{
+				name: 'Protector',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				level: 1,
+				source: 'XPHB',
+				id: 'cf|protector|cleric|xphb|1|xphb',
+				entries: ['You gain Heavy armor training.'],
+			},
+			{
+				name: 'Thaumaturge',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				level: 1,
+				source: 'XPHB',
+				id: 'cf|thaumaturge|cleric|xphb|1|xphb',
+				entries: ['You know one extra cantrip from the Cleric spell list.'],
+			},
+		]
+
+		afterEach(() => {
+			vi.mocked(loadResolverData).mockReset().mockResolvedValue({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })
+		})
+
+		it('a Cleric with Thaumaturge chosen renders it, naming the feature and its level', async () => {
+			vi.mocked(loadResolverData).mockResolvedValue({
+				classFeatures: CLERIC_FEATURES,
+				subclassFeatures: [],
+				optionalFeatures: [],
+				feats: [],
+			})
+
+			const cleric: Character = {
+				id: 'cl1',
+				name: 'Ordered Cleric',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 1 }],
+				classFeatureChoices: [
+					{ className: 'Cleric', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' },
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={cleric} />)
+			await screen.findByRole('heading', { name: 'Ordered Cleric' })
+
+			const section = await waitFor(() => {
+				const found = container.querySelector('.sheet__class-feature-choices')
+				expect(found).toBeTruthy()
+				return found!
+			})
+			expect(section.textContent).toContain('Thaumaturge')
+			expect(section.textContent).toContain('Divine Order')
+			expect(section.textContent).toContain('level 1')
+			// The chosen option's own text, resolved through the ref — not just its name.
+			expect(section.textContent).toContain('You know one extra cantrip from the Cleric spell list.')
+			// The option NOT chosen must not appear.
+			expect(section.textContent).not.toContain('Heavy armor training')
+		})
+
+		it('renders no section at all for a character that made no such choice', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			expect(container.querySelector('.sheet__class-feature-choices')).toBeNull()
+		})
+	})
+
 	describe('spellcasting sections (build order step 6 slice d4)', () => {
 		afterEach(() => {
 			vi.mocked(loadSpellcastingAbilityClassData).mockReset().mockResolvedValue([])
@@ -391,6 +623,7 @@ describe('CharacterSheet', () => {
 			vi.mocked(loadSubclassSource).mockReset().mockResolvedValue(null)
 			vi.mocked(loadSubclassAlwaysPreparedSpells).mockReset().mockResolvedValue([])
 			vi.mocked(loadFeatGrantedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockReset().mockResolvedValue([])
 		})
 
 		it('a full caster (Wizard) shows spell attack/DC with a breakdown, slots per level, and chosen spells grouped by level with detail on expand', async () => {
@@ -946,6 +1179,165 @@ describe('CharacterSheet', () => {
 
 			const fireBoltSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
 			expect(fireBoltSummary.textContent).toContain('always prepared (Evoker)')
+		})
+
+		/*
+		 * Build order step 6a final slice. The picker has stored these choices since
+		 * slice 2 and the sheet has shown their TEXT since then, but the spells they
+		 * grant reached nothing — the same "stored but never displayed" gap the
+		 * d5b-1 and d6b sheet fixes closed, so the display path is asserted here
+		 * rather than assumed to work once the extractor exists.
+		 */
+		it('a spell granted by a chosen invocation shows on the sheet marked "from invocation (...)"', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Warlock', classSource: 'XPHB', casterProgression: 'pact', spellSlotsByLevel: null, pactSlotsByLevel: [{ count: 1, slotLevel: 1 }] },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Disguise Self', source: 'XPHB', level: 1, entries: ['You change your appearance.'] })]
+			const granted: OptionalFeatureGrantedSpell[] = [
+				{
+					name: 'Disguise Self',
+					source: 'XPHB',
+					level: 1,
+					ritual: false,
+					concentration: false,
+					origin: 'optionalFeature',
+					optionName: 'Mask of Many Faces',
+				},
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue(granted)
+
+			const warlock: Character = {
+				id: 'wl1',
+				name: 'Invocation Warlock',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 2 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Mask of Many Faces'] }],
+			}
+
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Invocation Warlock' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Disguise Self'))
+
+			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Disguise Self'))!
+			expect(summary.textContent).toContain('from invocation (Mask of Many Faces)')
+			// The grant is ADDITIONAL: it must never read as one of the player's own picks, which are what the spell picker counts.
+			expect(summary.textContent).not.toContain('player pick')
+			// The loader is stubbed above, so assert the sheet actually hands it the stored picks — otherwise a
+			// mis-wired argument would still render green here.
+			expect(vi.mocked(loadOptionalFeatureGrantedSpells)).toHaveBeenCalledWith(
+				expect.objectContaining({ optionalFeatureChoices: [{ featureType: 'EI', choices: ['Mask of Many Faces'] }] }),
+			)
+		})
+
+		/*
+		 * Pact of the Tome (step 6a): the player picked the individual spells, so
+		 * the sheet reads the stored picks rather than deriving anything. Asserted
+		 * end to end because a picker whose choice never renders has happened
+		 * twice in this project (the d5b-1 and d6b sheet fixes).
+		 */
+		it('spells picked for Pact of the Tome render, named as coming from that invocation', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Warlock', classSource: 'XPHB', casterProgression: 'pact', spellSlotsByLevel: null, pactSlotsByLevel: [{ count: 1, slotLevel: 1 }] },
+			]
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0, entries: ['A spectral hand appears.'] }),
+				spellDetail({ name: 'Alarm', source: 'XPHB', level: 1, entries: ['You set an alarm.'] }),
+			]
+			const granted: OptionalFeatureGrantedSpell[] = [
+				{ name: 'Mage Hand', source: 'XPHB', level: 0, ritual: false, concentration: false, origin: 'optionalFeature', optionName: 'Pact of the Tome' },
+				{ name: 'Alarm', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'optionalFeature', optionName: 'Pact of the Tome' },
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue(granted)
+
+			const tomePicks = [
+				{
+					optionName: 'Pact of the Tome',
+					cantrips: [{ name: 'Mage Hand', source: 'XPHB' }],
+					spells: [{ name: 'Alarm', source: 'XPHB' }],
+				},
+			]
+			const warlock: Character = {
+				id: 'wl3',
+				name: 'Tome Warlock',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Tome'], spellChoices: tomePicks }],
+			}
+
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Tome Warlock' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Mage Hand'))
+
+			const summaries = Array.from(spellsSection.querySelectorAll('summary'))
+			const mageHand = summaries.find((s) => s.textContent?.includes('Mage Hand'))!
+			const alarm = summaries.find((s) => s.textContent?.includes('Alarm'))!
+			expect(mageHand.textContent).toContain('from invocation (Pact of the Tome)')
+			expect(alarm.textContent).toContain('from invocation (Pact of the Tome)')
+			// A picked spell is still a GRANT, never one of the player's own counted picks.
+			expect(mageHand.textContent).not.toContain('player pick')
+			// The stored picks must actually reach the loader, or the stub would hide a mis-wiring.
+			expect(vi.mocked(loadOptionalFeatureGrantedSpells)).toHaveBeenCalledWith(
+				expect.objectContaining({
+					optionalFeatureChoices: expect.arrayContaining([expect.objectContaining({ spellChoices: tomePicks })]),
+				}),
+			)
+		})
+
+		it('a spell granted by TWO invocations shows once, with both options named', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Warlock', classSource: 'XPHB', casterProgression: 'pact', spellSlotsByLevel: null, pactSlotsByLevel: [{ count: 2, slotLevel: 2 }] },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Invisibility', source: 'XPHB', level: 2, entries: ['You vanish.'] })]
+			// The real pair: One with Shadows and Shroud of Shadow both grant Invisibility.
+			const granted: OptionalFeatureGrantedSpell[] = [
+				{ name: 'Invisibility', source: 'XPHB', level: 2, ritual: false, concentration: true, origin: 'optionalFeature', optionName: 'One with Shadows' },
+				{ name: 'Invisibility', source: 'XPHB', level: 2, ritual: false, concentration: true, origin: 'optionalFeature', optionName: 'Shroud of Shadow' },
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue(granted)
+
+			const warlock: Character = {
+				id: 'wl2',
+				name: 'Shadow Warlock',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+				optionalFeatureChoices: [{ featureType: 'EI', choices: ['One with Shadows', 'Shroud of Shadow'] }],
+			}
+
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Shadow Warlock' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Invisibility'))
+
+			const rows = Array.from(spellsSection.querySelectorAll('summary')).filter((s) => s.textContent?.includes('Invisibility'))
+			expect(rows).toHaveLength(1)
+			expect(rows[0].textContent).toContain('from invocation (One with Shadows)')
+			expect(rows[0].textContent).toContain('from invocation (Shroud of Shadow)')
 		})
 
 		it('a base Magic Initiate pick shows on the sheet marked "from feat (Magic Initiate)" (slice d5b-2)', async () => {

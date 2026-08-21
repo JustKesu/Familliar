@@ -174,6 +174,34 @@ export interface Character {
 	 * reasoning as spellChoices.
 	 */
 	subclassSpellChoices?: CharacterSubclassSpellChoice[]
+	/**
+	 * Optional for the same reason as abilityScores above. The "pick one
+	 * version of this feature" choices a class feature's own text offers
+	 * (D21) — Cleric's Divine Order, Druid's Primal Order and Elemental Fury.
+	 * Distinct from optionalFeatureChoices: those come from an
+	 * optionalfeatureProgression and grow a list with level, these replace a
+	 * feature with one of its named alternatives exactly once.
+	 *
+	 * What a chosen option GRANTS is not applied anywhere yet — Thaumaturge's
+	 * extra cantrip and Protector/Warden's armour and weapon proficiencies
+	 * both wait on later build order steps. This records and displays the
+	 * choice only.
+	 */
+	classFeatureChoices?: CharacterClassFeatureChoice[]
+}
+
+/**
+ * One class-feature choice (D21), tagged with the class it belongs to (D11,
+ * same reasoning as spellChoices/optionalFeatureChoices) and with the level
+ * the feature is granted at (D22). `optionName` is the chosen alternative's
+ * resolved feature name, matching ClassFeatureChoiceOption.name.
+ */
+export interface CharacterClassFeatureChoice {
+	className: string
+	classSource: string
+	featureName: string
+	grantedAtLevel: number
+	optionName: string
 }
 
 /** One class's spell picks. `spells` names each pick (name + source) only — level, ritual, concentration etc. are re-derived from spells.json when needed (sheet display, slice d4), not duplicated here. */
@@ -207,10 +235,28 @@ export interface CharacterSubclassSpellChoice {
 	picks: CharacterSubclassSpellChoicePick[]
 }
 
+/**
+ * The spells a single CHOSEN optional feature let the player pick (build
+ * order step 6a — Pact of the Tome, the only such option in the data:
+ * 3 cantrips from any class's list plus 2 level-1 ritual spells). Keyed by
+ * the option's own NAME rather than by position, so a pick stays
+ * self-describing if the surrounding `choices` array is reordered. Same
+ * `{cantrips, spells}` split as a feat's FilterChoiceSpellsChoice (slice
+ * d5b-1), for the same reason: the two slots have independent counts and
+ * filters.
+ */
+export interface OptionalFeatureSpellChoice {
+	optionName: string
+	cantrips: { name: string; source: string }[]
+	spells: { name: string; source: string }[]
+}
+
 /** One subclass optionalfeatureProgression's picks, tagged with which progression (featureType code) they belong to. */
 export interface CharacterOptionalFeatureChoice {
 	featureType: string
 	choices: string[]
+	/** Present only for options that let the player pick spells (step 6a). One entry per such option chosen; absent entirely for every other progression. */
+	spellChoices?: OptionalFeatureSpellChoice[]
 }
 
 /**
@@ -285,12 +331,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 13 to add Character.subclassSpellChoices —
- * the subclass filter-choice spell picker (build order step 6 slice d6b, the
- * LAST picker of step 6). Per PHASE1.md section D, and per docs/QUESTIONS.md
+ * (see wireFormat.ts). Bumped to 15 to add Character.classFeatureChoices —
+ * the class-feature choice picker (D21: Divine Order, Primal Order,
+ * Elemental Fury). Per PHASE1.md section D, and per docs/QUESTIONS.md
  * "Migrace uložených postav", a version bump this app does not understand is
  * rejected outright (UnknownSchemaVersionError) rather than guessed at — no
- * migration from version 12 is written, so a character saved before this
+ * migration from version 14 is written, so a character saved before this
  * change will no longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 13
+export const CURRENT_SCHEMA_VERSION = 15

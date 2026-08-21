@@ -109,13 +109,66 @@ export function computeSize(character: Character, speciesData: SpeciesTraitsData
 	return known(size, [{ source: resolved.source, amount: 0 }])
 }
 
-export function computeDarkvision(character: Character, speciesData: SpeciesTraitsData[]): Calculated<number> {
+/** A darkvision grant from a chosen optional feature or feat (grantedSenses.ts), passed in per D38 — this file fetches nothing. */
+export interface GrantedDarkvision {
+	range: number
+	origin: 'optionalFeature' | 'feat'
+	name: string
+}
+
+interface DarkvisionCandidate {
+	label: string
+	value: number
+}
+
+/**
+ * Senses of the same type don't stack: darkvision is the LARGEST of the
+ * species value and any granted darkvision, never their sum. Every
+ * candidate still gets its own breakdown row (every source named, same
+ * wording used elsewhere: the species name, `from invocation (Name)`,
+ * `from feat (Name)`), but only the winning row carries its real amount —
+ * every other row carries 0 plus a note explaining why it didn't apply
+ * (D60's mechanism, generalized past its original D55/D58 scope; see
+ * docs/REPORT.md). That keeps the breakdown's summed amount equal to the
+ * displayed value, the same invariant abilityScores.ts's D42 breakdown
+ * relies on, even though this value isn't itself a sum of its sources.
+ */
+function combineDarkvision(species: { source: string; value: number } | null, granted: GrantedDarkvision[], unresolvedSpeciesReason?: string): Calculated<number> {
+	const candidates: DarkvisionCandidate[] = []
+	if (species) candidates.push({ label: species.source, value: species.value })
+	for (const grant of granted) {
+		candidates.push({ label: grant.origin === 'feat' ? `from feat (${grant.name})` : `from invocation (${grant.name})`, value: grant.range })
+	}
+
+	if (candidates.length === 0) return known(0, [])
+
+	let winnerIndex = 0
+	for (let i = 1; i < candidates.length; i++) {
+		if (candidates[i].value > candidates[winnerIndex].value) winnerIndex = i
+	}
+	const winner = candidates[winnerIndex]
+
+	const breakdown: Contribution[] = candidates.map((candidate, index) =>
+		index === winnerIndex
+			? { source: candidate.label, amount: candidate.value }
+			: { source: candidate.label, amount: 0, note: `does not exceed ${winner.label} (${winner.value} ft.)` },
+	)
+	// D43: the species figure itself couldn't be resolved — say so plainly rather than presenting the grant as though it were the whole, confirmed answer.
+	if (unresolvedSpeciesReason) breakdown.unshift({ source: 'species', amount: 0, note: `unresolved — ${unresolvedSpeciesReason}` })
+
+	return known(winner.value, breakdown)
+}
+
+export function computeDarkvision(character: Character, speciesData: SpeciesTraitsData[], grantedDarkvision: GrantedDarkvision[] = []): Calculated<number> {
 	const lookup = findCharacterSpeciesEntry(character, speciesData)
-	if (!lookup) return unknown('Species has not been chosen for this character yet.')
-	if (lookup.status === 'unknown') return unknown(lookup.reason)
 
-	const resolved = resolveField(lookup.value, speciesData, 'darkvision')
-	if (!resolved) return known(0, [])
+	if (lookup && lookup.status === 'known') {
+		const resolved = resolveField(lookup.value, speciesData, 'darkvision')
+		return combineDarkvision(resolved ? { source: resolved.source, value: resolved.value } : null, grantedDarkvision)
+	}
 
-	return known(resolved.value, [{ source: resolved.source, amount: resolved.value }])
+	if (grantedDarkvision.length === 0) {
+		return lookup ? unknown(lookup.reason) : unknown('Species has not been chosen for this character yet.')
+	}
+	return combineDarkvision(null, grantedDarkvision, lookup ? lookup.reason : 'Species has not been chosen for this character yet.')
 }

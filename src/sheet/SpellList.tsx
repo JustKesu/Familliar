@@ -23,6 +23,12 @@ import { UnresolvedValue } from './ValueBreakdown'
  * same way — `featOrigins` names the granting feat(s), distinct from
  * `subclassOrigins`'s "always prepared (subclass)" label per the user's
  * explicit "from feat (Feat Name)" wording.
+ *
+ * Step 6a's final slice adds chosen optional features (optionalFeatureSpells.ts)
+ * as a fourth source — `optionalFeatureOrigins` names the granting option
+ * (an Eldritch Invocation today). Two options CAN grant the same spell
+ * (Invisibility, via One with Shadows and Shroud of Shadow), which is exactly
+ * the overlap this merge already handles for the other three sources.
  */
 
 export interface SheetSpellEntry {
@@ -33,6 +39,8 @@ export interface SheetSpellEntry {
 	subclassOrigins: string[]
 	/** Feat name(s) that grant this spell (featSpells.ts, d5a). Almost always 0 or 1 entry. */
 	featOrigins: string[]
+	/** Optional-feature name(s) that grant this spell (optionalFeatureSpells.ts, step 6a). More than one is real — see the module comment. */
+	optionalFeatureOrigins: string[]
 }
 
 function provenanceLabel(entry: SheetSpellEntry): string {
@@ -40,6 +48,7 @@ function provenanceLabel(entry: SheetSpellEntry): string {
 	if (entry.chosen) parts.push('player pick')
 	for (const subclassName of entry.subclassOrigins) parts.push(`always prepared (${subclassName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
+	for (const optionName of entry.optionalFeatureOrigins) parts.push(`from invocation (${optionName})`)
 	return parts.join('; ')
 }
 
@@ -47,11 +56,12 @@ function keyOf(name: string, source: string): string {
 	return `${name.toLowerCase()}|${source.toUpperCase()}`
 }
 
-/** Merges the player's chosen spells, every class's subclass always-prepared spells, and fixed feat-granted spells (d5a) into one list, counting an overlap once (D44 spirit). */
+/** Merges the player's chosen spells, every class's subclass always-prepared spells, fixed feat-granted spells (d5a) and chosen-optional-feature grants (step 6a) into one list, counting an overlap once (D44 spirit). */
 export function combineSpellEntries(
 	spellChoices: { spells: { name: string; source: string }[] }[],
 	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string }[] }[],
 	featGrantedSpells: { featName: string; name: string; source: string }[] = [],
+	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string }[] = [],
 ): SheetSpellEntry[] {
 	const map = new Map<string, SheetSpellEntry>()
 
@@ -60,7 +70,7 @@ export function combineSpellEntries(
 			const key = keyOf(spell.name, spell.source)
 			const existing = map.get(key)
 			if (existing) existing.chosen = true
-			else map.set(key, { name: spell.name, source: spell.source, chosen: true, subclassOrigins: [], featOrigins: [] })
+			else map.set(key, { name: spell.name, source: spell.source, chosen: true, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [] })
 		}
 	}
 
@@ -71,7 +81,14 @@ export function combineSpellEntries(
 			if (existing) {
 				if (!existing.subclassOrigins.includes(group.subclassName)) existing.subclassOrigins.push(group.subclassName)
 			} else {
-				map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [group.subclassName], featOrigins: [] })
+				map.set(key, {
+					name: spell.name,
+					source: spell.source,
+					chosen: false,
+					subclassOrigins: [group.subclassName],
+					featOrigins: [],
+					optionalFeatureOrigins: [],
+				})
 			}
 		}
 	}
@@ -82,7 +99,17 @@ export function combineSpellEntries(
 		if (existing) {
 			if (!existing.featOrigins.includes(spell.featName)) existing.featOrigins.push(spell.featName)
 		} else {
-			map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [], featOrigins: [spell.featName] })
+			map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [], featOrigins: [spell.featName], optionalFeatureOrigins: [] })
+		}
+	}
+
+	for (const spell of optionalFeatureGrantedSpells) {
+		const key = keyOf(spell.name, spell.source)
+		const existing = map.get(key)
+		if (existing) {
+			if (!existing.optionalFeatureOrigins.includes(spell.optionName)) existing.optionalFeatureOrigins.push(spell.optionName)
+		} else {
+			map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [spell.optionName] })
 		}
 	}
 

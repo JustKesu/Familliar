@@ -24,12 +24,16 @@ import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThr
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
-import { computeDarkvision, computeSize, computeSpeed, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
+import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 import { loadChosenClassOptionalFeatures, type ChosenClassOptionalFeatureGroup } from '../optionalFeatures/optionalFeatureData'
+import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
+import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
+import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { dedupeAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
@@ -140,6 +144,12 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const [featSpells, setFeatSpells] = useState<FeatGrantedSpell[]>([])
 	/** The CLASS's own optionalfeatureProgression picks (step 6a slice 2) — Metamagic, Eldritch Invocations. Depends on `character`, fetched separately same as featSpells. */
 	const [classOptionalFeatures, setClassOptionalFeatures] = useState<ChosenClassOptionalFeatureGroup[]>([])
+	/** Spells granted BY those picks (step 6a final slice) — separate from the option text above, which classOptionalFeatures already renders. */
+	const [optionalFeatureSpells, setOptionalFeatureSpells] = useState<OptionalFeatureGrantedSpell[]>([])
+	/** Senses granted by a chosen optional feature or a chosen feat (step 6a, final piece — closes 6a). Depends on `character`, fetched separately same as featSpells/optionalFeatureSpells above. */
+	const [grantedSenses, setGrantedSenses] = useState<GrantedSense[]>([])
+	/** The D21 class-feature choices (Divine Order, Primal Order, Elemental Fury) joined to their chosen option's text. Depends on `character`, fetched separately same as the effects above. */
+	const [classFeatureChoices, setClassFeatureChoices] = useState<ChosenClassFeatureChoice[]>([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -229,6 +239,48 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		}
 	}, [character])
 
+	useEffect(() => {
+		let cancelled = false
+		loadOptionalFeatureGrantedSpells(character)
+			.then((spells) => {
+				if (!cancelled) setOptionalFeatureSpells(spells)
+			})
+			.catch(() => {
+				/* Best-effort, same as the two effects above. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
+	useEffect(() => {
+		let cancelled = false
+		loadGrantedSenses(character)
+			.then((senses) => {
+				if (!cancelled) setGrantedSenses(senses)
+			})
+			.catch(() => {
+				/* Best-effort, same as the effects above. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
+	useEffect(() => {
+		let cancelled = false
+		loadChosenClassFeatureChoices(character)
+			.then((choices) => {
+				if (!cancelled) setClassFeatureChoices(choices)
+			})
+			.catch(() => {
+				/* Best-effort, same as the effects above. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
 	if (loadError) {
 		return (
 			<article className="sheet">
@@ -265,7 +317,12 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const passiveInsight = computePassiveInsight(character, feats)
 	const speed = computeSpeed(character, speciesTraitsData)
 	const size = computeSize(character, speciesTraitsData)
-	const darkvision = computeDarkvision(character, speciesTraitsData)
+	// Darkvision is the one granted sense that reconciles with the species value (D40/D53) rather than
+	// standing alone in the Senses section below — split out here, before combineSenseEntries sees the rest.
+	const darkvisionGrants: GrantedDarkvision[] = grantedSenses
+		.filter((sense) => sense.senseType.toLowerCase() === 'darkvision')
+		.map((sense) => ({ range: sense.range, origin: sense.origin, name: sense.name }))
+	const darkvision = computeDarkvision(character, speciesTraitsData, darkvisionGrants)
 	const hitDice = computeHitDicePool(character.classes, hitDiceClassData)
 	const chosenFeats = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
 
@@ -281,7 +338,10 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		character.spellChoices ?? [],
 		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, spells: info.alwaysPrepared })),
 		featSpells,
+		optionalFeatureSpells,
 	)
+	// Darkvision grants are folded into the traits row above, not shown again here.
+	const combinedSenses = combineSenseEntries(grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'))
 
 	return (
 		<article className="sheet">
@@ -441,6 +501,8 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 				</ul>
 			</section>
 
+			<SensesList entries={combinedSenses} />
+
 			<section className="sheet__hit-dice">
 				<h2>Hit dice</h2>
 				{hitDice.status === 'unknown' ? (
@@ -485,6 +547,29 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 					</ul>
 				)}
 			</section>
+
+			{/* The D21 class-feature choices, one row per chosen alternative naming the feature it replaces. Nothing renders at all when the character made none — no empty heading, same rule the sections around it follow. */}
+			{classFeatureChoices.length > 0 && (
+				<section className="sheet__class-feature-choices">
+					<h2>Class feature choices</h2>
+					<ul>
+						{classFeatureChoices.map((choice) => (
+							<li key={`${choice.featureName}|${choice.optionName}`}>
+								<details>
+									<summary>
+										{choice.optionName} — {choice.featureName} (level {choice.grantedAtLevel})
+									</summary>
+									{choice.found ? (
+										<ResolvedEntries entries={choice.entries} data={resolverData} />
+									) : (
+										<UnresolvedValue reason={`No text found for "${choice.optionName}" (${choice.featureName}).`} />
+									)}
+								</details>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
 
 			{/* One section per granted featureType, headed by the progression's own name ("Eldritch Invocations", "Metamagic"). A character with no class-level picks renders nothing at all — no empty heading. */}
 			{classOptionalFeatures.map((group) => (

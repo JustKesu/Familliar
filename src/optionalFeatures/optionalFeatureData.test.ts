@@ -412,10 +412,33 @@ describe('evaluateOptionalFeaturePrerequisites — shape [spell] in the `choose`
 		expect(result.reasons).toEqual(['Requires Warlock Cantrip That Deals Damage (this app cannot check that automatically).'])
 	})
 
-	it('falls back for a filter clause nothing supplied can test (Repelling Blast’s attack-roll narrowing)', () => {
+	it('Repelling Blast falls back when only the coarser damage field is supplied, not the attack-roll one', () => {
 		const result = evaluateOptionalFeaturePrerequisites(REPELLING_BLAST, ctx({ damagingCantripsByClass: { Warlock: ['Eldritch Blast'] } }))
 		expect(result.eligible).toBe(false)
 		expect(result.reasons).toEqual(['Requires Warlock Cantrip That Deals Damage via an Attack Roll (this app cannot check that automatically).'])
+	})
+
+	it('Repelling Blast qualifies when the context names a damaging-attack-roll cantrip for that class', () => {
+		const result = evaluateOptionalFeaturePrerequisites(REPELLING_BLAST, ctx({ damagingAttackCantripsByClass: { Warlock: ['Eldritch Blast'] } }))
+		expect(result).toEqual({ eligible: true, reasons: [] })
+	})
+
+	it('Repelling Blast does not qualify when the attack-roll field can answer and the answer is none', () => {
+		const result = evaluateOptionalFeaturePrerequisites(REPELLING_BLAST, ctx({ damagingAttackCantripsByClass: { Warlock: [] } }))
+		expect(result.eligible).toBe(false)
+		expect(result.reasons).toEqual(['Requires Warlock Cantrip That Deals Damage via an Attack Roll — none of your known cantrips qualifies.'])
+	})
+
+	it('a clause the parser does not recognise still falls back, even when both fields are supplied', () => {
+		const unrecognisedClause = option('Unrecognised Clause', [
+			{ spell: [{ choose: 'level=0|class=Warlock|foo=bar', entry: 'an unrecognised filter', entrySummary: 'an unrecognised filter' }] },
+		])
+		const result = evaluateOptionalFeaturePrerequisites(
+			unrecognisedClause,
+			ctx({ damagingCantripsByClass: { Warlock: ['Eldritch Blast'] }, damagingAttackCantripsByClass: { Warlock: ['Eldritch Blast'] } }),
+		)
+		expect(result.eligible).toBe(false)
+		expect(result.reasons).toEqual(['Requires an unrecognised filter (this app cannot check that automatically).'])
 	})
 
 	it('a class name the context does not cover falls back rather than reading another class’s cantrips', () => {

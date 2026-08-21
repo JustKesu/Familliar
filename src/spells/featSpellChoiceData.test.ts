@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterChoiceFeatShape, filterChoiceRequiredCounts, offeredSpellsForSlot, ritualCasterSpellCount } from './featSpellChoiceData'
+import { filterChoiceFeatShape, filterChoiceRequiredCounts, offeredSpellsForSlot, parseChooseString, ritualCasterSpellCount } from './featSpellChoiceData'
 
 /*
  * Pure-logic tests for the generic filter-choice feat picker's data layer
@@ -122,6 +122,39 @@ describe('offeredSpellsForSlot', () => {
 	it('a ritual slot offers only that level\'s ritual-tagged spells', () => {
 		const offered = offeredSpellsForSlot(spells, { levels: [1], filter: { kind: 'ritual' } })
 		expect(offered.map((s) => s.name)).toEqual(['Comprehend Languages'])
+	})
+
+	// Step 6a: Pact of the Tome's bare "level=0" node — no class clause at all.
+	it('an unfiltered slot offers every spell at that level, whatever class list it sits on', () => {
+		const offered = offeredSpellsForSlot(spells, { levels: [0], filter: { kind: 'any' } })
+		expect(offered.map((s) => s.name).sort()).toEqual(['Fire Bolt', 'Guidance', 'Sacred Flame'])
+	})
+})
+
+describe('parseChooseString', () => {
+	it('parses the filtered forms the feats and subclasses use', () => {
+		expect(parseChooseString('level=0|class=cleric')).toEqual({
+			levels: [0],
+			filter: { kind: 'class', classes: [{ className: 'Cleric', classSource: 'XPHB' }] },
+		})
+		expect(parseChooseString('level=1|components & miscellaneous=ritual')).toEqual({ levels: [1], filter: { kind: 'ritual' } })
+	})
+
+	/*
+	 * Step 6a generalized the parser: the filter clause is now optional, because
+	 * Pact of the Tome's cantrip node is a bare "level=0". It is the only such
+	 * node in the whole dataset (scripts/investigate-pact-of-the-tome.js), so the
+	 * filtered forms above must keep parsing exactly as they did.
+	 */
+	it('parses a bare level= string as the unfiltered "any" filter', () => {
+		expect(parseChooseString('level=0')).toEqual({ levels: [0], filter: { kind: 'any' } })
+		expect(parseChooseString('level=0;1')).toEqual({ levels: [0, 1], filter: { kind: 'any' } })
+	})
+
+	it('still rejects a string whose first clause is not level=, or whose filter clause is unknown', () => {
+		expect(parseChooseString('class=cleric')).toBeNull()
+		expect(parseChooseString('')).toBeNull()
+		expect(parseChooseString('level=0|nonsense=1')).toBeNull()
 	})
 })
 

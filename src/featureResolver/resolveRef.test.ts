@@ -40,6 +40,27 @@ describe('resolveRef', () => {
 		).toEqual({ name: 'Tools of the Trade', entries: ['Tool text.'] })
 	})
 
+	// Druid's Primal Order/Elemental Fury point at the short form; without this
+	// the class-feature choice picker resolves neither of its options.
+	it('resolves a classFeature ref whose uid omits the source segment repeating classSource', () => {
+		expect(resolveRef({ kind: 'classFeature', uid: 'Rage|Barbarian|XPHB|1' }, data)).toEqual({
+			name: 'Rage',
+			entries: ['Rage text.'],
+		})
+	})
+
+	it('resolves a subclassFeature ref whose uid omits the source segment repeating subclassSource', () => {
+		expect(resolveRef({ kind: 'subclassFeature', uid: 'Tools of the Trade|Artificer|EFA|Alchemist|EFA|3' }, data)).toEqual({
+			name: 'Tools of the Trade',
+			entries: ['Tool text.'],
+		})
+	})
+
+	it('does not reshape a uid of any other length into a wrong match', () => {
+		expect(resolveRef({ kind: 'classFeature', uid: 'Rage|Barbarian|XPHB' }, data)).toBeNull()
+		expect(resolveRef({ kind: 'subclassFeature', uid: 'Tools of the Trade|Artificer|EFA' }, data)).toBeNull()
+	})
+
 	it('resolves an optionalfeature ref against optional-features.json', () => {
 		expect(resolveRef({ kind: 'optionalfeature', uid: 'Careful Spell|XPHB' }, data)).toEqual({
 			name: 'Careful Spell',

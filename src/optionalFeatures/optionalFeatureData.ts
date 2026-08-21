@@ -309,6 +309,15 @@ export interface OptionalFeaturePrerequisiteContext {
 	 * `choose` prerequisite then falls back to reporting unmet with its own text.
 	 */
 	damagingCantripsByClass?: Record<string, string[]>
+	/**
+	 * The same idea as damagingCantripsByClass, narrowed further to cantrips
+	 * that deal that damage via an attack roll (spellDetailData.ts's
+	 * `damagingAttackCantripsAmong`). Answers Repelling Blast's
+	 * `choose: "level=0|class=Warlock|spell attack=m;r;o"` — the one filter in
+	 * the data that adds a `spell attack` clause. Omit the key/field the same
+	 * way as damagingCantripsByClass when the caller cannot answer.
+	 */
+	damagingAttackCantripsByClass?: Record<string, string[]>
 }
 
 export interface OptionalFeaturePrerequisiteResult {
@@ -361,10 +370,17 @@ function levelFailure(entry: OptionalFeaturePrerequisiteEntry, ctx: OptionalFeat
 /**
  * The `choose` form of a `spell` prerequisite. Only 3 options carry one
  * (scripts/investigate-damage-cantrip-prereq.js): Agonizing Blast and
- * Eldritch Spear share `"level=0|class=Warlock"`, Repelling Blast adds
- * `"spell attack=m;r;o"`. The filter names the level and class; the "deals
- * damage" half lives only in the prose, so the context supplies a list
- * already narrowed to damaging cantrips (damagingCantripsByClass).
+ * Eldritch Spear share `"level=0|class=Warlock"`; Repelling Blast adds a
+ * third clause, `"spell attack=m;r;o"` (scripts/investigate-spell-attack-values.js
+ * confirms this verbatim, and that its own `entry` text reads "a Warlock
+ * Cantrip That Deals Damage via an Attack Roll"). The filter names the
+ * level and class; the "deals damage [via an attack roll]" half lives only
+ * in the prose, so the context supplies a list already narrowed to
+ * damaging cantrips (damagingCantripsByClass), or — when a `spell attack`
+ * clause is present — narrowed further to damaging cantrips with an attack
+ * roll (damagingAttackCantripsByClass). The clause's own value (which of
+ * m/r/o) is not parsed further: the only instance in the data requests all
+ * three, and this app's data never carries a fourth spellAttack value.
  *
  * Returns true (satisfied), false (answerable and unmet), or null — the
  * filter asks something no supplied input can answer, which stays slice 1's
@@ -376,6 +392,7 @@ function chooseFilterSatisfied(req: Record<string, unknown>, ctx: OptionalFeatur
 
 	let level: string | null = null
 	let className: string | null = null
+	let requiresAttackRoll = false
 	for (const part of filter.split('|')) {
 		const separator = part.indexOf('=')
 		if (separator === -1) return null
@@ -383,12 +400,13 @@ function chooseFilterSatisfied(req: Record<string, unknown>, ctx: OptionalFeatur
 		const value = part.slice(separator + 1).trim()
 		if (key === 'level') level = value
 		else if (key === 'class') className = value
-		// Any further clause ("spell attack") narrows the set in a way nothing supplied can test.
+		else if (key === 'spell attack') requiresAttackRoll = true
+		// Any further clause narrows the set in a way nothing supplied can test.
 		else return null
 	}
 	if (level !== '0' || className === null) return null
 
-	const byClass = ctx.damagingCantripsByClass ?? {}
+	const byClass = (requiresAttackRoll ? ctx.damagingAttackCantripsByClass : ctx.damagingCantripsByClass) ?? {}
 	const key = Object.keys(byClass).find((candidate) => normalizeName(candidate) === normalizeName(className))
 	if (key === undefined) return null
 	return byClass[key].length > 0
@@ -409,8 +427,8 @@ function spellFailures(entry: OptionalFeaturePrerequisiteEntry, ctx: OptionalFea
 			const verdict = chooseFilterSatisfied(req, ctx)
 			if (verdict === true) continue
 			const text = typeof req['entrySummary'] === 'string' ? req['entrySummary'] : typeof req['entry'] === 'string' ? req['entry'] : 'an unnamed spell'
-			// verdict === null: the filter asks something the context cannot answer (Repelling Blast's
-			// "spell attack=m;r;o") — slice 1's behaviour, unmet with the prerequisite's own text.
+			// verdict === null: the caller didn't supply the field this filter needs (e.g.
+			// damagingAttackCantripsByClass omitted) — unmet with the prerequisite's own text.
 			failures.push(verdict === null ? `${text} (this app cannot check that automatically)` : `${text} — none of your known cantrips qualifies`)
 		}
 	}

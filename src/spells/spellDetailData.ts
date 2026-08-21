@@ -184,3 +184,22 @@ export function damagingCantripsAmong(details: SpellDetail[], known: { name: str
 export function findSpellDetail(details: SpellDetail[], name: string, source: string): SpellDetail | undefined {
 	return details.find((d) => d.name.toLowerCase() === name.toLowerCase() && d.source.toUpperCase() === source.toUpperCase())
 }
+
+/**
+ * Of the spells named, the ones that are damaging cantrips (as
+ * damagingCantripsAmong above) that ALSO deal that damage via an attack roll
+ * (`spellAttack` non-empty) rather than a saving throw — the input Repelling
+ * Blast's `choose: "level=0|class=Warlock|spell attack=m;r;o"` prerequisite
+ * needs (optionalFeatureData.ts). scripts/investigate-spell-attack-values.js
+ * confirms every damaging cantrip's `spellAttack`, when present, is `["M"]`
+ * or `["R"]` — never a third value — so this checks only for presence, not
+ * which letter. Pure (D38).
+ */
+export function damagingAttackCantripsAmong(details: SpellDetail[], known: { name: string; source: string }[]): string[] {
+	return known
+		.filter((pick) => {
+			const detail = findSpellDetail(details, pick.name, pick.source)
+			return detail !== undefined && detail.level === 0 && detail.damageInflict.length > 0 && (detail.spellAttack?.length ?? 0) > 0
+		})
+		.map((pick) => pick.name)
+}

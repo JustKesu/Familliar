@@ -58,6 +58,8 @@ export type SpellChoiceFilter =
 	| { kind: 'class'; classes: { className: string; classSource: string }[]; schools?: string[] }
 	| { kind: 'school'; schools: string[] }
 	| { kind: 'ritual' }
+	/** No filter clause at all — every spell at the slot's level, from any class's list. Pact of the Tome's `"level=0"` is the only such node in the data (scripts/investigate-pact-of-the-tome.js checked all three files). */
+	| { kind: 'any' }
 
 export interface SpellChoiceSlot {
 	/** 0 = cantrip, 1 = level-1 spell for every feat this module covers (both always a single-element array) — a subclass's own choose string can list several (module comment, d6b). */
@@ -132,20 +134,26 @@ function parseFilterClauses(clauses: string[]): SpellChoiceFilter | null {
 }
 
 /**
- * Parses a `"level=N[;N...]|filter[|filter...]"` string into its levels and
+ * Parses a `"level=N[;N...][|filter[|filter...]]"` string into its levels and
  * filter, or null if the mini-language doesn't parse (unexpected shape —
  * skip cleanly, D43). Exported for reuse by subclassSpellChoiceData.ts
  * (d6b) — a subclass's own choose string uses the same mini-language, just
  * with more than one `level=` value, (for College of Lore) more than one
  * class, and (for the 4 Wizard subclasses) a class clause AND a school
  * clause together.
+ *
+ * Step 6a generalized it once more: the filter clause is now OPTIONAL. Pact
+ * of the Tome's cantrip node is the bare string `"level=0"` — any cantrip
+ * from any class's list — which previously failed to parse and so granted
+ * nothing. It is the only bare `level=` node in feats.json, classes.json or
+ * optional-features.json (scripts/investigate-pact-of-the-tome.js), so
+ * accepting one cannot change how any existing feat or subclass parses.
  */
 export function parseChooseString(value: string): { levels: number[]; filter: SpellChoiceFilter } | null {
 	const parts = value.split('|')
-	if (parts.length < 2) return null
 	const levelMatch = /^level=([\d;]+)$/.exec(parts[0])
 	if (!levelMatch) return null
-	const filter = parseFilterClauses(parts.slice(1))
+	const filter: SpellChoiceFilter | null = parts.length === 1 ? { kind: 'any' } : parseFilterClauses(parts.slice(1))
 	if (!filter) return null
 	return { levels: levelMatch[1].split(';').map(Number), filter }
 }
@@ -309,6 +317,9 @@ export function offeredSpellsForSlot(parsedSpells: unknown, slot: { levels: numb
 		const schools = slot.filter.schools
 		return atLevel.filter((s) => s.school !== undefined && schools.includes(s.school)).map((s) => ({ name: s.name, source: s.source }))
 	}
+
+	// No filter clause: every spell at the slot's level, whatever class list it sits on (Pact of the Tome's cantrips).
+	if (slot.filter.kind === 'any') return atLevel.map((s) => ({ name: s.name, source: s.source }))
 
 	return atLevel.filter((s) => s.meta?.ritual === true).map((s) => ({ name: s.name, source: s.source }))
 }

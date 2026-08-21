@@ -1018,3 +1018,33 @@ Scope boundaries. IN: the selection of these features, their persistence, their 
 Rationale. These selectable features were absent from the original build order. They are creation-time choices like spells and feats, so they belong near those steps (hence 6a, after spells). They are distinct from usage tracking, which is inherently a play-time concern already scoped to step 9. Separating the two keeps each step bounded.
 
 Existing coverage. Some selectable features are already partially handled — the optional-feature picker (src/optionalFeatures/) covers Battle Master Maneuvers, Rune Knight Runes, Arcane Shot, and College of Swords Fighting Style. Step 6a's first task is to assess this existing coverage and extend it (Warlock Invocations being the main known gap) rather than rebuild it.
+
+## D64 — Volby, jejichž podmínky závisí na kouzlech, mají krok až za kouzly
+
+D13 říká, že všechny class volby patří do class kroku. Platí to dál
+s jednou výjimkou: class-level optional features (Sorcerer Metamagic,
+Warlock Eldritch Invocations) dostávají vlastní krok wizardu až ZA
+krokem Kouzla.
+
+Rationale: několik invokací má prerekvizitu na už známý cantrip
+s poškozením — Agonizing Blast, nejčastěji braná invokace ve hře, je
+jednou z nich. V class kroku, který běží před výběrem kouzel, jsou
+takové volby při prvním průchodu nedostupné a hráč se k nim musí
+vracet. Přesunutí kroku ten problém odstraní místo toho, aby ho
+vysvětlovalo.
+
+Subclass-level optional features (Battle Master Maneuvers, Rune Knight
+Runes, Arcane Shot, College of Swords Fighting Style) zůstávají v class
+kroku beze změny — žádná z nich na kouzlech nezávisí.
+
+## D65 — Poznámka v rozkladu platí i pro hodnoty, které nejsou součtem
+
+D60 zavedl položku rozkladu bez čísla pro dva případy z D55 a D58.
+Rozšiřuje se na každou hodnotu, která vzniká výběrem maxima místo
+součtem — dnes darkvision ze species a z feature.
+
+Vítězný zdroj nese svou hodnotu, ostatní nulu a poznámku, proč neplatí.
+
+Rationale: součet položek rozkladu se musí rovnat výsledku, jinak by
+rozklad u stolu nedával smysl. Kdyby každý zdroj nesl svou skutečnou
+hodnotu, darkvision 60 od species a 120 od feature by se sečetly na 180.
