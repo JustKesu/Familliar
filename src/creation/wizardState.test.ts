@@ -59,8 +59,8 @@ describe('isStepComplete', () => {
 
 	it('blocks the class step while a granted D21 class-feature choice is unmade', () => {
 		const data = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Cleric', classSource: 'XPHB', level: 1 } }
-		expect(isStepComplete('class', data, null, 0, undefined, null, 0, true, false)).toBe(false)
-		expect(isStepComplete('class', data, null, 0, undefined, null, 0, true, true)).toBe(true)
+		expect(isStepComplete('class', data, { classFeatureChoicesComplete: false })).toBe(false)
+		expect(isStepComplete('class', data, { classFeatureChoicesComplete: true })).toBe(true)
 	})
 
 	it('blocks species, background, languages and abilities until their own picker reports a choice', () => {
@@ -103,26 +103,26 @@ describe('isStepComplete', () => {
 	it('blocks the featAsi step when a chosen feat needs an ability choice but has none yet', () => {
 		const data = { ...emptyWizardData(), featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Athlete', source: 'XPHB' }] }
 		const requiring = new Set(['Athlete|XPHB'])
-		expect(isStepComplete('featAsi', data, null, 1, requiring)).toBe(false)
+		expect(isStepComplete('featAsi', data, { featAsiEligibleLevelCount: 1, featsRequiringAbilityChoice: requiring })).toBe(false)
 		expect(
 			isStepComplete(
 				'featAsi',
 				{ ...data, featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' as const }] },
-				null,
-				1,
-				requiring,
+				{ featAsiEligibleLevelCount: 1, featsRequiringAbilityChoice: requiring },
 			),
 		).toBe(true)
 	})
 
 	it('does not require an ability choice for a fixed-bonus feat (not in featsRequiringAbilityChoice)', () => {
 		const data = { ...emptyWizardData(), featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Tough', source: 'XPHB' }] }
-		expect(isStepComplete('featAsi', data, null, 1, new Set(['Athlete|XPHB']))).toBe(true)
+		expect(
+			isStepComplete('featAsi', data, { featAsiEligibleLevelCount: 1, featsRequiringAbilityChoice: new Set(['Athlete|XPHB']) }),
+		).toBe(true)
 	})
 
 	it('blocks the featAsi step for a filter-choice feat (slice d5b-1) until its cantrip picks reach the feat\'s own required count', () => {
 		const data = { ...emptyWizardData(), featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Blessed Warrior', source: 'XPHB' }] }
-		expect(isStepComplete('featAsi', data, null, 1)).toBe(false)
+		expect(isStepComplete('featAsi', data, { featAsiEligibleLevelCount: 1 })).toBe(false)
 
 		const complete = {
 			...data,
@@ -142,7 +142,7 @@ describe('isStepComplete', () => {
 				},
 			],
 		}
-		expect(isStepComplete('featAsi', complete, null, 1)).toBe(true)
+		expect(isStepComplete('featAsi', complete, { featAsiEligibleLevelCount: 1 })).toBe(true)
 	})
 })
 
@@ -314,13 +314,13 @@ describe('saveCharacter', () => {
 
 	it('forwards the chosen expertise skills and validates readiness against expertiseRequiredCount', () => {
 		const store = fakeStore()
-		expect(() => saveCharacter(store, completeData(), ['athletics', 'intimidation'], 2)).toThrow()
+		expect(() => saveCharacter(store, completeData(), ['athletics', 'intimidation'], { expertiseRequiredCount: 2 })).toThrow()
 
 		saveCharacter(
 			store,
 			{ ...completeData(), expertiseSkills: ['stealth', 'perception'] },
 			['athletics', 'intimidation'],
-			2,
+			{ expertiseRequiredCount: 2 },
 		)
 
 		expect(store.create).toHaveBeenLastCalledWith(

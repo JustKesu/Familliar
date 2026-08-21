@@ -53,6 +53,7 @@ import {
 	wizardReducer,
 	type SpellRequirement,
 	type WizardStep,
+	type WizardStepConditions,
 } from './wizardState'
 
 /*
@@ -552,21 +553,21 @@ export function CharacterWizard({
 	/** Evaluated with the same pure function the picker renders from, so the gate and the UI can never disagree. */
 	const classFeatureChoicesComplete = areClassFeatureChoicesComplete(classFeatureChoices, state.data.classFeatureChoices)
 
+	/** Assembled once so navigation, the Next gate and the save gate cannot drift apart. */
+	const stepConditions: WizardStepConditions = {
+		expertiseRequiredCount,
+		featAsiEligibleLevelCount: featAsiGrantCount,
+		featsRequiringAbilityChoice: featsNeedingAbilityChoice,
+		spellRequirement,
+		subclassSpellChoiceSlotCount,
+		classOptionalFeaturesComplete,
+		classOptionalFeatureGroupCount: classOptionalFeatureGroups.length,
+		classFeatureChoicesComplete,
+	}
+
 	function handleSave(): void {
 		try {
-			const character = saveCharacter(
-				store,
-				state.data,
-				selectedBackground?.skillProficiencies,
-				expertiseRequiredCount,
-				featAsiGrantCount,
-				featsNeedingAbilityChoice,
-				spellRequirement,
-				subclassSpellChoiceSlotCount,
-				classOptionalFeaturesComplete,
-				classOptionalFeatureGroups.length,
-				classFeatureChoicesComplete,
-			)
+			const character = saveCharacter(store, state.data, selectedBackground?.skillProficiencies, stepConditions)
 			setSaveError(null)
 			onSaved(character)
 		} catch (error) {
@@ -574,22 +575,12 @@ export function CharacterWizard({
 		}
 	}
 
-	const canGoNext = isStepComplete(
-		state.step,
-		state.data,
-		expertiseRequiredCount,
-		featAsiGrantCount,
-		featsNeedingAbilityChoice,
-		spellRequirement,
-		subclassSpellChoiceSlotCount,
-		classOptionalFeaturesComplete,
-		classFeatureChoicesComplete,
-	)
+	const canGoNext = isStepComplete(state.step, state.data, stepConditions)
 
 	return (
 		<div className="wizard">
 			<ol className="wizard__steps">
-				{visibleSteps(expertiseRequiredCount, featAsiGrantCount, spellRequirement, classOptionalFeatureGroups.length).map((step, index) => (
+				{visibleSteps(stepConditions).map((step, index) => (
 					<li
 						key={step}
 						className={step === state.step ? 'wizard__step wizard__step--active' : 'wizard__step'}
@@ -856,16 +847,8 @@ export function CharacterWizard({
 				</button>
 				<button
 					type="button"
-					onClick={() =>
-						dispatch({
-							type: 'back',
-							expertiseRequiredCount,
-							featAsiEligibleLevelCount: featAsiGrantCount,
-							spellRequirement,
-							classOptionalFeatureGroupCount: classOptionalFeatureGroups.length,
-						})
-					}
-					disabled={stepIndex(state.step, expertiseRequiredCount, featAsiGrantCount, spellRequirement, classOptionalFeatureGroups.length) === 0}
+					onClick={() => dispatch({ type: 'back', conditions: stepConditions })}
+					disabled={stepIndex(state.step, stepConditions) === 0}
 				>
 					Back
 				</button>
@@ -873,38 +856,14 @@ export function CharacterWizard({
 					<button
 						type="button"
 						onClick={handleSave}
-						disabled={
-							!isReadyToSave(
-								state.data,
-								expertiseRequiredCount,
-								featAsiGrantCount,
-								featsNeedingAbilityChoice,
-								spellRequirement,
-								subclassSpellChoiceSlotCount,
-								classOptionalFeaturesComplete,
-								classOptionalFeatureGroups.length,
-								classFeatureChoicesComplete,
-							)
-						}
+						disabled={!isReadyToSave(state.data, stepConditions)}
 					>
 						Create character
 					</button>
 				) : (
 					<button
 						type="button"
-						onClick={() =>
-							dispatch({
-								type: 'next',
-								expertiseRequiredCount,
-								featAsiEligibleLevelCount: featAsiGrantCount,
-								featsRequiringAbilityChoice: featsNeedingAbilityChoice,
-								spellRequirement,
-								subclassSpellChoiceSlotCount,
-								classOptionalFeaturesComplete,
-								classOptionalFeatureGroupCount: classOptionalFeatureGroups.length,
-								classFeatureChoicesComplete,
-							})
-						}
+						onClick={() => dispatch({ type: 'next', conditions: stepConditions })}
 						disabled={!canGoNext}
 					>
 						Next
