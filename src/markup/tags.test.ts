@@ -60,6 +60,14 @@ const TAG_CASES: ReadonlyArray<[tag: string, markup: string, display: string]> =
 	['language', '{@language Sylvan}', 'Sylvan'],
 	['class', '{@class fighter|phb|Battle Master|Battle Master|phb|2-0}', 'Battle Master'],
 	['subclassFeature', '{@subclassFeature Arcane Jolt|Artificer|EFA|Battle Smith|EFA|9|EFA}', 'Arcane Jolt'],
+	['atkr', '{@atkr m}', 'Melee Attack Roll:'],
+	['h', '{@h}', 'Hit: '],
+	['actSave', '{@actSave str}', 'Strength Saving Throw:'],
+	['actSaveFail', '{@actSaveFail}', 'Failure:'],
+	['actSaveSuccess', '{@actSaveSuccess}', 'Success:'],
+	['actTrigger', '{@actTrigger}', 'Trigger:'],
+	['actResponse', '{@actResponse}', 'Response:'],
+	['recharge', '{@recharge 5}', '(Recharge 5–6)'],
 ]
 
 describe('resolveTag — every tag found in data/', () => {
@@ -72,8 +80,8 @@ describe('resolveTag — every tag found in data/', () => {
 		expect(resolved.isUnknown).toBe(false)
 	})
 
-	it('covers all 38 tags the inventory found', () => {
-		expect(TAG_CASES).toHaveLength(38)
+	it('covers all 46 tags the inventory found', () => {
+		expect(TAG_CASES).toHaveLength(46)
 	})
 
 	it('exercises every tag the module claims to handle', () => {

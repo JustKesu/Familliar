@@ -1546,6 +1546,155 @@ function extractLanguages() {
 	return warnings;
 }
 
+/*
+ * BEASTS
+ *
+ * D67: XMM (Monster Manual 2024) is an allowed source for creatures of type
+ * Beast up to CR 6 ONLY — the Wild Shape / Find Familiar pool. It is
+ * deliberately NOT added to ALLOWED_SOURCES, which would let the rest of the
+ * book into every other category.
+ */
+
+const BEAST_SOURCE = "XMM";
+const BEAST_MAX_CR = 6;
+
+/*
+ * The stat-block fields a beast form is played from. Everything else in a
+ * bestiary entry is 5etools' own bookkeeping (page/soundClip/hasToken/
+ * srd52/basicRules2024/otherSources/referenceSources) or the tag arrays that
+ * drive its filter UI (traitTags, damageTags, senseTags, miscTags,
+ * actionTags, conditionInflict, savingThrowForced, environment, group), and
+ * is dropped.
+ *
+ * `familiar` is a real rules flag (5etools marks the creatures Find Familiar
+ * can be cast as), not a filter tag, so it stays.
+ */
+const BEAST_KEPT_FIELDS = [
+	"name",
+	"source",
+	"size",
+	"type",
+	"cr",
+	"ac",
+	"hp",
+	"speed",
+	"str",
+	"dex",
+	"con",
+	"int",
+	"wis",
+	"cha",
+	"save",
+	"skill",
+	"senses",
+	"passive",
+	"resist",
+	"immune",
+	"vulnerable",
+	"conditionImmune",
+	"alignment",
+	"initiative",
+	"familiar",
+	"trait",
+	"action",
+	"bonus",
+	"reaction",
+	"legendary",
+];
+
+// A monster's `type` is either a bare string or an object carrying `type`
+// (plus `tags` or `swarmSize`). Both shapes occur among XMM's own beasts.
+function isBeastType(entry) {
+	return asArray(entry.type).some((value) =>
+		typeof value === "string" ? value === "beast" : Boolean(value) && value.type === "beast",
+	);
+}
+
+/*
+ * CR is a display string ("1/4") or a number, and can arrive wrapped in
+ * `{ cr, xp }`. Returns the sortable number; undefined when there is no CR.
+ */
+function crToNumber(cr) {
+	const raw = typeof cr === "object" && cr !== null ? cr.cr : cr;
+	if (raw === undefined || raw === null) return undefined;
+	if (typeof raw === "number") return raw;
+	const slash = String(raw).indexOf("/");
+	if (slash !== -1) {
+		const numerator = Number(String(raw).slice(0, slash));
+		const denominator = Number(String(raw).slice(slash + 1));
+		if (!Number.isNaN(numerator) && denominator) return numerator / denominator;
+		return undefined;
+	}
+	const value = Number(raw);
+	return Number.isNaN(value) ? undefined : value;
+}
+
+// The display half of the same field, so the sheet never has to unwrap `{cr, xp}`.
+function crToDisplay(cr) {
+	const raw = typeof cr === "object" && cr !== null ? cr.cr : cr;
+	return raw === undefined || raw === null ? undefined : String(raw);
+}
+
+function extractBeasts() {
+	console.log("\n--- BEASTS ---");
+
+	const bestiaryDir = path.join(SOURCE_DATA_DIR, "bestiary");
+	const files = fs
+		.readdirSync(bestiaryDir)
+		.filter((name) => name.startsWith("bestiary-") && name.endsWith(".json"));
+
+	// D25: the whole bestiary is loaded so `_copy` can resolve across files,
+	// and the source filter runs last. No beast uses `_copy` today; the order
+	// is kept anyway so a source-data change cannot silently break it.
+	const pool = [];
+	for (const file of files) {
+		pool.push(...(readJson(path.join(bestiaryDir, file)).monster || []));
+	}
+
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(pool, "beasts");
+
+	console.log(`Bestiary files read:          ${files.length}`);
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
+
+	const kept = [];
+	const byCr = {};
+	for (const entry of resolved) {
+		if (entry.source !== BEAST_SOURCE) continue;
+		if (!isBeastType(entry)) continue;
+
+		const crNumber = crToNumber(entry.cr);
+		if (crNumber === undefined || crNumber > BEAST_MAX_CR) continue;
+
+		const beast = {};
+		for (const field of BEAST_KEPT_FIELDS) {
+			if (entry[field] !== undefined) beast[field] = entry[field];
+		}
+		beast.cr = crToDisplay(entry.cr);
+		beast.crNumber = crNumber;
+
+		kept.push(beast);
+		byCr[beast.cr] = (byCr[beast.cr] || 0) + 1;
+	}
+
+	kept.sort((a, b) => (a.crNumber - b.crNumber) || a.name.localeCompare(b.name));
+
+	console.log(`Passed the beast filter:      ${kept.length} (source ${BEAST_SOURCE}, type beast, CR <= ${BEAST_MAX_CR})`);
+	console.log(
+		`By CR: ${Object.keys(byCr)
+			.sort((a, b) => crToNumber(a) - crToNumber(b))
+			.map((cr) => `${cr}=${byCr[cr]}`)
+			.join(", ")}`,
+	);
+	console.log(`Marked as familiars by 5etools: ${kept.filter((beast) => beast.familiar).length}`);
+
+	const outputFile = path.join(OUTPUT_DIR, "beasts.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
+
+	return warnings;
+}
+
 /* ============================================================================
  * SECTION 4b — CLASS FEATURE REFERENCES ("uids")
  * ----------------------------------------------------------------------------
@@ -2146,6 +2295,7 @@ function main() {
 	allWarnings.push(...extractClasses());
 	allWarnings.push(...extractItems());
 	allWarnings.push(...extractLanguages());
+	allWarnings.push(...extractBeasts());
 	// ---------------------------------------------------------------
 
 	console.log(`\n${"=".repeat(64)}`);

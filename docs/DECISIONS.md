@@ -1048,3 +1048,32 @@ Vítězný zdroj nese svou hodnotu, ostatní nulu a poznámku, proč neplatí.
 Rationale: součet položek rozkladu se musí rovnat výsledku, jinak by
 rozklad u stolu nedával smysl. Kdyby každý zdroj nesl svou skutečnou
 hodnotu, darkvision 60 od species a 120 od feature by se sečetly na 180.
+
+## D66 — Podmínky kroků wizardu cestují jako pojmenovaný objekt
+
+Funkce ve `wizardState.ts`, které rozhodují o viditelnosti a
+dokončitelnosti kroků, neberou podmínky jako poziční parametry, ale jako
+jeden objekt `WizardStepConditions` s pojmenovanými poli. Výchozí hodnoty
+se dosazují na jednom místě, ne v každé funkci zvlášť.
+
+Rationale: každý nový podmíněný krok přidával další poziční parametr;
+došlo se na devět, většinou čísel a booleanů, kde prohození dvou projde
+typovou kontrolou a projeví se až jako přeskočený nebo zablokovaný krok
+u hráče. Další podmíněný krok proto přidává POLE do objektu, ne parametr
+do funkce.
+
+Nahrazuje otevřenou otázku "wizardState.ts — poziční parametry se blíží
+limitu" (QUESTIONS.md), která tímto z toho souboru odchází.
+
+## D67 — XMM je povolený zdroj, ale jen pro beasty
+
+Monster Manual 2024 (XMM) se přidává do extrakce výhradně pro tvory typu
+beast do CR 6, kvůli Wild Shape a Find Familiar. Ostatní monstra z něj se
+neextrahují.
+
+Rationale: projekt jinde důsledně drží edici 2024 (XPHB) a Find Familiar
+ve svém vlastním textu odkazuje přímo na XMM záznamy. Brát beasty ze
+starého Monster Manualu by znamenalo mít na sheetu statblok z jiné edice,
+než jaká se hraje — a u zvířat se hodnoty mezi edicemi liší. Jediný zdroj
+zároveň znamená, že nemůže vzniknout dvojí verze téhož zvířete, takže
+odpadá deduplikace, kterou si u species vyžádal D31.

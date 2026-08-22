@@ -22,8 +22,9 @@ A web app running in the browser where the user can:
 - Export a character to a file and import it back
 
 NOT in phase 1: PDF export, homebrew, mobile layout, visual design,
-AI character generation, magic item variants (+1 weapons), monsters,
-character sharing between players.
+AI character generation, magic item variants (+1 weapons), monsters
+(except the Beast stat blocks Wild Shape and Find Familiar need — see
+build order 6b), character sharing between players.
 
 ---
 
@@ -160,6 +161,9 @@ Each step is finished and tested before the next begins.
 5. **Sheet display** — the read-only view of a finished character.
 6. **Spells** — spell list, preparation, slots.
 6a. **Class feature choices** — selectable class/subclass features (Warlock Invocations, Fighter Maneuvers, and similar "choose from a list" features): their wizard picker, storage, sheet display, and the subset whose choice changes a calculated value. Usage trackers and rest replenishment for these features are step 9.
+6b. **Beasts for Wild Shape and Find Familiar** — extraction of Beast
+   stat blocks, the Wild Shape known-forms picker, and the Find Familiar
+   form list.
 7. **Inventory and equipment** — items, attunement, equipped state.
 8. **Level up** — including the per-level HP choice.
 9. **Play tracking and rests.**

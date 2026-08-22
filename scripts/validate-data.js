@@ -135,7 +135,58 @@ const EXPECTED_COUNTS = {
 	languages: {
 		XPHB: 19,
 	},
+	// D67: XMM beasts up to CR 6 and nothing else, so this is the total.
+	beasts: {
+		XMM: 89,
+	},
 };
+
+/*
+ * Beasts come from XMM only (D67), which is deliberately NOT in
+ * ALLOWED_SOURCES — the rest of that book stays out of every category.
+ */
+const BEAST_SOURCE = "XMM";
+const BEAST_MAX_CR = 6;
+
+// Must match BEAST_KEPT_FIELDS' mandatory half in extract-data.js: the fields
+// no beast stat block can be played without.
+const REQUIRED_BEAST_FIELDS = [
+	"name",
+	"source",
+	"size",
+	"type",
+	"cr",
+	"crNumber",
+	"ac",
+	"hp",
+	"speed",
+	"str",
+	"dex",
+	"con",
+	"int",
+	"wis",
+	"cha",
+	"action",
+];
+
+/*
+ * The beasts Find Familiar names in its own spell text. If a filter change
+ * ever drops one of these the spell becomes uncastable as written, so they
+ * are asserted by name rather than by count.
+ */
+const FIND_FAMILIAR_BEASTS = [
+	"Bat",
+	"Cat",
+	"Frog",
+	"Hawk",
+	"Lizard",
+	"Octopus",
+	"Owl",
+	"Rat",
+	"Raven",
+	"Spider",
+	"Weasel",
+];
 
 // Valid values for a language's `type` field.
 const VALID_LANGUAGE_TYPES = ["standard", "rare"];
@@ -719,6 +770,78 @@ function validateLanguages() {
 	checkExpectedCounts(entries, "languages");
 }
 
+function validateBeasts() {
+	console.log("\n--- beasts.json ---");
+
+	const entries = loadOutputFile("beasts.json");
+	if (!entries) return;
+
+	console.log(`  (${entries.length} entries loaded)`);
+
+	recordSimpleCheck("beasts: file is not empty", entries.length > 0, `${entries.length} entries`);
+
+	// Beasts carry no `entries` array — their text lives in trait/action — so
+	// the shared checkNameAndEntries does not apply.
+	checkNoLeftoverCopyKeys(entries, "beasts");
+	checkNoDuplicates(entries, "beasts");
+
+	const fieldFailures = [];
+	entries.forEach((entry, index) => {
+		for (const field of REQUIRED_BEAST_FIELDS) {
+			const value = entry[field];
+			const isMissing = value === undefined || value === null || (Array.isArray(value) && value.length === 0);
+			if (isMissing) {
+				fieldFailures.push({
+					label: describeEntry(entry, index),
+					detail: `missing or empty "${field}" — a playable stat block must have it`,
+				});
+			}
+		}
+	});
+	recordCheck(`beasts: every entry has all ${REQUIRED_BEAST_FIELDS.length} stat-block fields`, fieldFailures);
+
+	// CHECK — the CR cap from D67. `crNumber` is the sortable form; a fraction
+	// CR arrives as a display string ("1/4") and must not be compared raw.
+	const crFailures = [];
+	entries.forEach((entry, index) => {
+		if (typeof entry.crNumber !== "number" || Number.isNaN(entry.crNumber)) {
+			crFailures.push({ label: describeEntry(entry, index), detail: `crNumber is not a number (got ${JSON.stringify(entry.crNumber)})` });
+			return;
+		}
+		if (entry.crNumber > BEAST_MAX_CR) {
+			crFailures.push({ label: describeEntry(entry, index), detail: `CR ${entry.cr} exceeds the cap of ${BEAST_MAX_CR}` });
+		}
+	});
+	recordCheck(`beasts: no entry above CR ${BEAST_MAX_CR}`, crFailures);
+
+	const sourceFailures = [];
+	entries.forEach((entry, index) => {
+		if (entry.source !== BEAST_SOURCE) {
+			sourceFailures.push({ label: describeEntry(entry, index), detail: `source "${entry.source}" is not ${BEAST_SOURCE}` });
+		}
+	});
+	recordCheck(`beasts: every entry comes from ${BEAST_SOURCE}`, sourceFailures);
+
+	const typeFailures = [];
+	entries.forEach((entry, index) => {
+		const types = [].concat(entry.type);
+		const isBeast = types.some((value) => (typeof value === "string" ? value === "beast" : Boolean(value) && value.type === "beast"));
+		if (!isBeast) {
+			typeFailures.push({ label: describeEntry(entry, index), detail: `type ${JSON.stringify(entry.type)} is not beast` });
+		}
+	});
+	recordCheck("beasts: every entry is of type beast", typeFailures);
+
+	const names = new Set(entries.map((entry) => entry.name));
+	const familiarFailures = FIND_FAMILIAR_BEASTS.filter((name) => !names.has(name)).map((name) => ({
+		label: `"${name}"`,
+		detail: "named in the Find Familiar spell text but absent from the beast pool",
+	}));
+	recordCheck(`beasts: all ${FIND_FAMILIAR_BEASTS.length} Find Familiar beasts are present`, familiarFailures);
+
+	checkExpectedCounts(entries, "beasts");
+}
+
 /* ============================================================================
  * SECTION 5b — CLASS VALIDATORS
  * ==========================================================================*/
@@ -1024,6 +1147,7 @@ function main() {
 	validateOptionalFeatures();
 	validateItems();
 	validateLanguages();
+	validateBeasts();
 	validateDanglingRefs();
 	// ---------------------------------------------------------------
 
