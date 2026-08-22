@@ -15,6 +15,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterClassFeatureChoice,
+	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
 	CharacterSpellChoice,
@@ -95,6 +96,8 @@ export interface WizardStepConditions {
 	classOptionalFeatureGroupCount?: number
 	/** Whether every granted D21 class-feature choice (Divine Order, Primal Order, Elemental Fury) is made. */
 	classFeatureChoicesComplete?: boolean
+	/** Wild Shape forms the class step must collect (wildShapeData.ts's Beast Shapes table); 0 for a character without Wild Shape. */
+	wildShapeFormCount?: number
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
@@ -108,6 +111,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		classOptionalFeaturesComplete: conditions.classOptionalFeaturesComplete ?? true,
 		classOptionalFeatureGroupCount: conditions.classOptionalFeatureGroupCount ?? 0,
 		classFeatureChoicesComplete: conditions.classFeatureChoicesComplete ?? true,
+		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
 	}
 }
 
@@ -200,6 +204,13 @@ export interface WizardData {
 	 * alone and never wait for a subclass.
 	 */
 	classFeatureChoices: CharacterClassFeatureChoice[]
+	/**
+	 * The Druid's known Wild Shape forms (step 6b slice 3) — picks only; the
+	 * class they belong to (D11) is attached at save. Clears whenever class,
+	 * level OR subclass changes: Circle of the Moon raises the CR cap, so the
+	 * legal pool depends on all three.
+	 */
+	wildShapeForms: { name: string; source: string }[]
 }
 
 export function emptyWizardData(): WizardData {
@@ -223,6 +234,7 @@ export function emptyWizardData(): WizardData {
 		spellChoices: [],
 		subclassSpellChoices: [],
 		classFeatureChoices: [],
+		wildShapeForms: [],
 	}
 }
 
@@ -283,6 +295,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		subclassSpellChoiceSlotCount,
 		classOptionalFeaturesComplete,
 		classFeatureChoicesComplete,
+		wildShapeFormCount,
 	} = resolveConditions(conditions)
 	switch (step) {
 		case 'class':
@@ -290,7 +303,14 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			// left unmade blocks the step, the same way classOptionalFeatures gates its own —
 			// computed by areClassFeatureChoicesComplete against the loaded choices, since the
 			// count of granted choices isn't derivable from WizardData alone.
-			return data.name.trim() !== '' && data.classChoice !== null && classFeatureChoicesComplete
+			// A Druid's known Wild Shape forms are an exact count, like the spells step's:
+			// the feature says the character KNOWS that many, not up to that many.
+			return (
+				data.name.trim() !== '' &&
+				data.classChoice !== null &&
+				classFeatureChoicesComplete &&
+				data.wildShapeForms.length === wildShapeFormCount
+			)
 		case 'species':
 			return data.speciesChoice !== null
 		case 'background':
@@ -401,6 +421,7 @@ export type WizardAction =
 	| { type: 'setSpellChoices'; choices: SpellPick[] }
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
 	| { type: 'setClassFeatureChoices'; choices: CharacterClassFeatureChoice[] }
+	| { type: 'setWildShapeForms'; forms: { name: string; source: string }[] }
 
 /**
  * Pure navigation + edit reducer. `next` is a no-op unless the current step
@@ -438,6 +459,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					spellChoices: [],
 					subclassSpellChoices: [],
 					classFeatureChoices: [],
+					wildShapeForms: [],
 				},
 			}
 		case 'setSpeciesChoice':
@@ -474,7 +496,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setSubclass':
 			return {
 				...state,
-				data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [], spellChoices: [], subclassSpellChoices: [] },
+				// wildShapeForms clears here too: Circle of the Moon's Circle Forms raises the CR cap, so the legal pool is subclass-dependent.
+				data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [], spellChoices: [], subclassSpellChoices: [], wildShapeForms: [] },
 			}
 		case 'setOptionalFeatureChoices':
 			return { ...state, data: { ...state.data, optionalFeatureChoices: action.choices } }
@@ -488,6 +511,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, subclassSpellChoices: action.picks } }
 		case 'setClassFeatureChoices':
 			return { ...state, data: { ...state.data, classFeatureChoices: action.choices } }
+		case 'setWildShapeForms':
+			return { ...state, data: { ...state.data, wildShapeForms: action.forms } }
 	}
 }
 
@@ -605,6 +630,18 @@ export function saveCharacter(
 	const classFeatureChoices: CharacterClassFeatureChoice[] | undefined =
 		data.classFeatureChoices.length > 0 ? data.classFeatureChoices : undefined
 
+	/** Tagged with the class the forms belong to (D11), same reasoning as spellChoices. No level is recorded — see CharacterWildShapeForms. */
+	const wildShapeForms: CharacterWildShapeForms[] | undefined =
+		data.wildShapeForms.length > 0 && data.classChoice
+			? [
+					{
+						className: data.classChoice.className,
+						classSource: data.classChoice.classSource,
+						forms: data.wildShapeForms.map(({ name, source }) => ({ name, source })),
+					},
+				]
+			: undefined
+
 	return store.create(
 		data.name,
 		classes,
@@ -623,5 +660,6 @@ export function saveCharacter(
 		spellChoices,
 		subclassSpellChoices,
 		classFeatureChoices,
+		wildShapeForms,
 	)
 }

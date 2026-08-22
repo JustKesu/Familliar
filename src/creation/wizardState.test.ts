@@ -38,6 +38,7 @@ function completeData(): WizardData {
 		spellChoices: [],
 		subclassSpellChoices: [],
 		classFeatureChoices: [],
+		wildShapeForms: [],
 	}
 }
 
@@ -61,6 +62,31 @@ describe('isStepComplete', () => {
 		const data = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Cleric', classSource: 'XPHB', level: 1 } }
 		expect(isStepComplete('class', data, { classFeatureChoicesComplete: false })).toBe(false)
 		expect(isStepComplete('class', data, { classFeatureChoicesComplete: true })).toBe(true)
+	})
+
+	/* Step 6b slice 3 — the Beast Shapes table says the Druid KNOWS four forms at level 2, so the count is exact. */
+	it('blocks the class step until the Druid has exactly the granted number of Wild Shape forms', () => {
+		const data = { ...emptyWizardData(), name: 'Rowan', classChoice: { className: 'Druid', classSource: 'XPHB', level: 2 } }
+		expect(isStepComplete('class', data, { wildShapeFormCount: 4 })).toBe(false)
+
+		const two = { ...data, wildShapeForms: [{ name: 'Wolf', source: 'XMM' }, { name: 'Rat', source: 'XMM' }] }
+		expect(isStepComplete('class', two, { wildShapeFormCount: 4 })).toBe(false)
+
+		const four = {
+			...data,
+			wildShapeForms: [
+				{ name: 'Wolf', source: 'XMM' },
+				{ name: 'Rat', source: 'XMM' },
+				{ name: 'Spider', source: 'XMM' },
+				{ name: 'Riding Horse', source: 'XMM' },
+			],
+		}
+		expect(isStepComplete('class', four, { wildShapeFormCount: 4 })).toBe(true)
+	})
+
+	it('does not ask a non-Druid for Wild Shape forms', () => {
+		const data = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Fighter', classSource: 'XPHB', level: 8 } }
+		expect(isStepComplete('class', data)).toBe(true)
 	})
 
 	it('blocks species, background, languages and abilities until their own picker reports a choice', () => {
@@ -172,6 +198,26 @@ describe('wizardReducer navigation', () => {
 		expect(state.step).toBe('species')
 	})
 
+	/* The legal pool depends on class, level AND subclass — Circle of the Moon raises the CR cap. */
+	it('clears the Wild Shape forms when the class or the subclass changes', () => {
+		const picked: WizardControllerState = {
+			step: 'class',
+			data: { ...emptyWizardData(), wildShapeForms: [{ name: 'Wolf', source: 'XMM' }] },
+		}
+
+		const afterClass = wizardReducer(picked, {
+			type: 'setClassChoice',
+			choice: { className: 'Druid', classSource: 'XPHB', level: 4 },
+		})
+		expect(afterClass.data.wildShapeForms).toEqual([])
+
+		const afterSubclass = wizardReducer(picked, {
+			type: 'setSubclass',
+			subclass: { name: 'Circle of the Moon', source: 'XPHB', featureType: null },
+		})
+		expect(afterSubclass.data.wildShapeForms).toEqual([])
+	})
+
 	it('back preserves everything already chosen on earlier steps', () => {
 		let state: WizardControllerState = initialControllerState()
 		state = wizardReducer(state, { type: 'setName', name: 'Aria' })
@@ -240,6 +286,7 @@ describe('saveCharacter', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		)
 	})
 
@@ -247,7 +294,42 @@ describe('saveCharacter', () => {
 		const store = fakeStore()
 		const choice = { className: 'Fighter', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' }
 		saveCharacter(store, { ...completeData(), classFeatureChoices: [choice] }, ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-1)).toEqual([choice])
+		expect(vi.mocked(store.create).mock.calls[0].at(-2)).toEqual([choice])
+	})
+
+	/*
+	 * Step 6b slice 3. Tagged with the class (D11) and deliberately WITHOUT a
+	 * level: the forms are swappable on a Long Rest, so D22's "record the level
+	 * it was chosen at" would claim a provenance the rules do not give.
+	 */
+	it('tags the Wild Shape forms with their class and stores no level', () => {
+		const store = fakeStore()
+		const forms = [
+			{ name: 'Wolf', source: 'XMM' },
+			{ name: 'Rat', source: 'XMM' },
+			{ name: 'Spider', source: 'XMM' },
+			{ name: 'Riding Horse', source: 'XMM' },
+		]
+		const druid = {
+			...completeData(),
+			classChoice: { className: 'Druid', classSource: 'XPHB', level: 2 },
+			subclass: null,
+			optionalFeatureChoices: [],
+			wildShapeForms: forms,
+		}
+		saveCharacter(store, druid, ['athletics', 'intimidation'], { wildShapeFormCount: 4 })
+
+		const stored = vi.mocked(store.create).mock.calls[0].at(-1)
+		expect(stored).toEqual([{ className: 'Druid', classSource: 'XPHB', forms }])
+		for (const entry of stored as { forms: Record<string, unknown>[] }[]) {
+			for (const form of entry.forms) expect(Object.keys(form).sort()).toEqual(['name', 'source'])
+		}
+	})
+
+	it('omits Wild Shape forms entirely when none were chosen', () => {
+		const store = fakeStore()
+		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[0].at(-1)).toBeUndefined()
 	})
 
 	it('omits background when the background skill proficiencies were not supplied', () => {
@@ -273,6 +355,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -309,6 +392,7 @@ describe('saveCharacter', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		)
 	})
 
@@ -342,6 +426,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			['stealth', 'perception'],
 			[],
+			undefined,
 			undefined,
 			undefined,
 			undefined,

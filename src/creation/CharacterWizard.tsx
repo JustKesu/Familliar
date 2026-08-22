@@ -20,6 +20,8 @@ import {
 } from '../optionalFeatures/optionalFeatureData'
 import { ClassFeatureChoicePicker } from '../classFeatureChoices/ClassFeatureChoicePicker'
 import { areClassFeatureChoicesComplete, loadClassFeatureChoices, type ClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
+import { WildShapeFormPicker } from '../beasts/WildShapeFormPicker'
+import { wildShapeLimits } from '../beasts/wildShapeData'
 import { damagingAttackCantripsAmong, damagingCantripsAmong, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadOptionalFeatureSpellChoiceShape, offersSpellChoice, requiredSpellChoiceCounts } from '../spells/optionalFeatureSpellChoiceData'
 import { ExpertisePicker } from '../expertise/ExpertisePicker'
@@ -555,6 +557,12 @@ export function CharacterWizard({
 	/** Evaluated with the same pure function the picker renders from, so the gate and the UI can never disagree. */
 	const classFeatureChoicesComplete = areClassFeatureChoicesComplete(classFeatureChoices, state.data.classFeatureChoices)
 
+	/** Read from the same rules table the picker offers from, for the same reason. 0 for anyone without Wild Shape. */
+	const wildShapeFormCount = state.data.classChoice
+		? (wildShapeLimits(state.data.classChoice.className, state.data.classChoice.level, state.data.subclass?.name ?? null)
+				?.knownForms ?? 0)
+		: 0
+
 	/** Assembled once so navigation, the Next gate and the save gate cannot drift apart. */
 	const stepConditions: WizardStepConditions = {
 		expertiseRequiredCount,
@@ -565,6 +573,7 @@ export function CharacterWizard({
 		classOptionalFeaturesComplete,
 		classOptionalFeatureGroupCount: classOptionalFeatureGroups.length,
 		classFeatureChoicesComplete,
+		wildShapeFormCount,
 	}
 
 	function handleSave(): void {
@@ -661,6 +670,15 @@ export function CharacterWizard({
 									onChange={(choices) => dispatch({ type: 'setOptionalFeatureChoices', choices })}
 								/>
 							)}
+							{/* After the subclass picker on purpose: Circle of the Moon raises the CR cap, so the legal pool is not known until the subclass is. */}
+							<WildShapeFormPicker
+								className={state.data.classChoice.className}
+								classSource={state.data.classChoice.classSource}
+								level={state.data.classChoice.level}
+								subclassName={state.data.subclass?.name ?? null}
+								value={state.data.wildShapeForms}
+								onChange={(forms) => dispatch({ type: 'setWildShapeForms', forms })}
+							/>
 						</>
 					)}
 				</div>

@@ -188,6 +188,34 @@ export interface Character {
 	 * choice only.
 	 */
 	classFeatureChoices?: CharacterClassFeatureChoice[]
+	/**
+	 * Optional for the same reason as abilityScores above. The Beast forms a
+	 * Druid knows for Wild Shape (build order step 6b slice 3). One entry per
+	 * class (D11), same reasoning as spellChoices.
+	 *
+	 * Deliberately carries NO level, unlike every other stored choice under
+	 * D22: these are not a permanent record of a level-time decision. The
+	 * feature's own text — "Whenever you finish a Long Rest, you can replace
+	 * one of your known forms with another eligible form" — makes the set
+	 * swappable at any point, so a recorded level would claim a provenance the
+	 * rules do not give it.
+	 *
+	 * Uses per rest, transforming, and the temporary hit points / stat
+	 * replacement that happen while transformed are play tracking (build order
+	 * step 9) and are not represented here.
+	 */
+	wildShapeForms?: CharacterWildShapeForms[]
+}
+
+/**
+ * One class's known Wild Shape forms. `forms` names each pick (name + source)
+ * only — the stat block itself is re-derived from beasts.json when needed,
+ * never duplicated into storage, same as CharacterSpellChoice.
+ */
+export interface CharacterWildShapeForms {
+	className: string
+	classSource: string
+	forms: { name: string; source: string }[]
 }
 
 /**
@@ -331,12 +359,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 15 to add Character.classFeatureChoices —
- * the class-feature choice picker (D21: Divine Order, Primal Order,
- * Elemental Fury). Per PHASE1.md section D, and per docs/QUESTIONS.md
- * "Migrace uložených postav", a version bump this app does not understand is
- * rejected outright (UnknownSchemaVersionError) rather than guessed at — no
- * migration from version 14 is written, so a character saved before this
- * change will no longer load and must be recreated.
+ * (see wireFormat.ts). Bumped to 16 to add Character.wildShapeForms — the
+ * Druid's known Wild Shape forms (build order step 6b slice 3). Per
+ * PHASE1.md section D, and per docs/QUESTIONS.md "Migrace uložených postav",
+ * a version bump this app does not understand is rejected outright
+ * (UnknownSchemaVersionError) rather than guessed at — no migration from
+ * version 15 is written, so a character saved before this change will no
+ * longer load and must be recreated.
  */
-export const CURRENT_SCHEMA_VERSION = 15
+export const CURRENT_SCHEMA_VERSION = 16

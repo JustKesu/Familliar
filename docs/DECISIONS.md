@@ -1077,3 +1077,19 @@ starého Monster Manualu by znamenalo mít na sheetu statblok z jiné edice,
 než jaká se hraje — a u zvířat se hodnoty mezi edicemi liší. Jediný zdroj
 zároveň znamená, že nemůže vzniknout dvojí verze téhož zvířete, takže
 odpadá deduplikace, kterou si u species vyžádal D31.
+
+## D68 — Když si data a pravidla 2024 odporují, platí pravidla
+
+5etools nese u některých záznamů příznaky a seznamy zděděné z edice 2014.
+Kde takový příznak nesouhlasí s textem pravidla 2024, appka se řídí
+pravidlem a příznak ignoruje. Nemaže se z dat — jen se nepoužije.
+
+První případ: `familiar: true` označuje 25 tvorů, ale Find Familiar
+v edici 2024 dovoluje beasta s CR 0, kterých je 24. Navíc je označený
+Venomous Snake (CR 1/8), kterého jmenovitě dovolovala pravidla 2014.
+Seznam forem pro familiara se proto odvozuje z CR, ne z příznaku.
+
+Rationale: SPEC říká, že appka nabízí jen platné možnosti. Příznak od
+dodavatele dat není pravidlo a nikdo ho neudržuje kvůli téhle appce.
+Odvození z pravidla je zároveň odolnější — když přibude nový beast s CR 0,
+objeví se v nabídce sám, i kdyby ho nikdo neoznačil.

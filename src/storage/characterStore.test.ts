@@ -387,6 +387,43 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		expect(new CharacterStore(new MemoryStorage()).create('Cato').classFeatureChoices).toBeUndefined()
 	})
 
+	/** The Druid's known Wild Shape forms (step 6b slice 3) — no level is stored, so none is validated. */
+	it('reloads a wildShapeForms entry intact and rejects a malformed one', () => {
+		const wildShapeForms = [
+			{
+				className: 'Druid',
+				classSource: 'XPHB',
+				forms: [
+					{ name: 'Wolf', source: 'XMM' },
+					{ name: 'Rat', source: 'XMM' },
+				],
+			},
+		]
+		const good = new MemoryStorage()
+		good.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Rowan', classes: [], wildShapeForms }]))
+		expect(new CharacterStore(good).list()[0].wildShapeForms).toEqual(wildShapeForms)
+
+		const bad = new MemoryStorage()
+		bad.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Rowan',
+					classes: [],
+					// A form with no source — name alone cannot identify a stat block.
+					wildShapeForms: [{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Wolf' }] }],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(bad).list()).toThrow(CorruptDataError)
+	})
+
+	it('leaves wildShapeForms undefined when none were provided (old-save compatibility)', () => {
+		expect(new CharacterStore(new MemoryStorage()).create('Cato').wildShapeForms).toBeUndefined()
+	})
+
 	it('rejects a saved optionalFeatureChoices entry missing featureType', () => {
 		const backing = new MemoryStorage()
 		backing.setItem(

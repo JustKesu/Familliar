@@ -102,8 +102,18 @@ export function extractBeasts(parsed: unknown): Beast[] {
 const FIND_FAMILIAR_NAME = 'find familiar'
 
 /** True when a beast is a swarm — the `type` object's `swarmSize` is the only marker. */
-function isSwarm(beast: Beast): boolean {
+export function isSwarmBeast(beast: Beast): boolean {
 	return typeof beast.type === 'object' && beast.type !== null && typeof beast.type.swarmSize === 'string'
+}
+
+/**
+ * True when the beast can fly. A speed value is a number or an object, and
+ * either can be zero, so presence of the key alone is not the test.
+ */
+export function hasFlySpeed(beast: Beast): boolean {
+	const fly = beast.speed.fly
+	if (fly === undefined) return false
+	return typeof fly === 'number' ? fly > 0 : (fly.amount ?? 0) > 0
 }
 
 /**
@@ -119,7 +129,7 @@ function isSwarm(beast: Beast): boolean {
  * separately would add nothing.
  */
 export function findFamiliarBeasts(beasts: Beast[]): Beast[] {
-	return beasts.filter((beast) => beast.crNumber === 0 && !isSwarm(beast))
+	return beasts.filter((beast) => beast.crNumber === 0 && !isSwarmBeast(beast))
 }
 
 /** True when the character's combined spell list contains Find Familiar, whatever granted it. */

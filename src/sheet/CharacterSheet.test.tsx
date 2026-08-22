@@ -1803,7 +1803,7 @@ describe('CharacterSheet', () => {
 
 		it('shows the section when the spell arrives from a feat rather than a class pick', async () => {
 			const featGranted: FeatGrantedSpell[] = [
-				{ featName: 'Magic Initiate (Wizard)', name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false },
+				{ featName: 'Magic Initiate (Wizard)', name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'feat' },
 			]
 			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGranted)
 
@@ -1831,6 +1831,54 @@ describe('CharacterSheet', () => {
 			expect(container.querySelector('.sheet__familiar-forms')).toBeNull()
 			expect(screen.queryByRole('heading', { name: 'Familiar forms' })).toBeNull()
 			expect(vi.mocked(loadBeasts)).not.toHaveBeenCalled()
+		})
+
+		it('renders the Druid\'s known Wild Shape forms, and nothing for a character with none', async () => {
+			const druid: Character = {
+				id: 'ws1',
+				name: 'Shifter',
+				classes: [{ className: 'Druid', classSource: 'XPHB', subclass: 'Circle of the Moon', level: 6 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 15, charisma: 8 },
+				},
+				wildShapeForms: [{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Wolf', source: 'XMM' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={druid} />)
+			await screen.findByRole('heading', { name: 'Shifter' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__wild-shape-forms')).toBeTruthy())
+			const section = container.querySelector('.sheet__wild-shape-forms')!
+			expect(screen.getByRole('heading', { name: 'Wild Shape forms' })).toBeTruthy()
+			expect(section.textContent).toContain('Wolf')
+			expect(section.textContent).toContain('11 (2d8 + 2)') // the form's own hit points
+			expect(section.textContent).toContain('13') // its AC
+			expect(section.textContent).not.toContain('{@')
+
+			cleanup()
+			const { container: without } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			expect(without.querySelector('.sheet__wild-shape-forms')).toBeNull()
+		})
+
+		it('states the gap when a stored form has no stat block (D43)', async () => {
+			const druid: Character = {
+				id: 'ws2',
+				name: 'Lost Shifter',
+				classes: [{ className: 'Druid', classSource: 'XPHB', subclass: null, level: 2 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 15, charisma: 8 },
+				},
+				wildShapeForms: [{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Dire Corgi', source: 'XMM' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={druid} />)
+			await screen.findByRole('heading', { name: 'Lost Shifter' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__wild-shape-forms')).toBeTruthy())
+			expect(container.querySelector('.sheet__wild-shape-forms')!.textContent).toContain('Dire Corgi')
 		})
 
 		it('renders each form as a collapsed stat block with its markup resolved', async () => {

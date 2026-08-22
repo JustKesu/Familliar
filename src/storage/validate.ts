@@ -6,6 +6,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterClassFeatureChoice,
+	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
@@ -540,6 +541,45 @@ export function describeClassFeatureChoicesError(value: unknown): string | null 
 	return null
 }
 
+/**
+ * Validates an optional `wildShapeForms` field (step 6b slice 3). Returns
+ * null if the field is absent (it's optional). No level is checked because
+ * none is stored — see CharacterWildShapeForms for why.
+ */
+export function describeWildShapeFormsError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `wildShapeForms must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `wildShapeForms[${i}] is not an object`
+		if (!isNonEmptyString(entry['className'])) return `wildShapeForms[${i}].className is missing or not a string`
+		if (!isNonEmptyString(entry['classSource'])) return `wildShapeForms[${i}].classSource is missing or not a string`
+		const forms: unknown = entry['forms']
+		if (!Array.isArray(forms)) return `wildShapeForms[${i}].forms must be an array`
+		for (let j = 0; j < forms.length; j++) {
+			const form: unknown = forms[j]
+			if (!isRecord(form)) return `wildShapeForms[${i}].forms[${j}] is not an object`
+			if (!isNonEmptyString(form['name'])) return `wildShapeForms[${i}].forms[${j}].name is missing or not a string`
+			if (!isNonEmptyString(form['source'])) return `wildShapeForms[${i}].forms[${j}].source is missing or not a string`
+		}
+	}
+	return null
+}
+
+function toCharacterWildShapeForms(value: unknown[]): CharacterWildShapeForms[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return {
+			className: record['className'] as string,
+			classSource: record['classSource'] as string,
+			forms: (record['forms'] as Record<string, unknown>[]).map((form) => ({
+				name: form['name'] as string,
+				source: form['source'] as string,
+			})),
+		}
+	})
+}
+
 function toCharacterClassFeatureChoices(value: unknown[]): CharacterClassFeatureChoice[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
@@ -647,6 +687,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (subclassSpellChoicesError) return `[${index}].${subclassSpellChoicesError}`
 	const classFeatureChoicesError = describeClassFeatureChoicesError(value['classFeatureChoices'])
 	if (classFeatureChoicesError) return `[${index}].${classFeatureChoicesError}`
+	const wildShapeFormsError = describeWildShapeFormsError(value['wildShapeForms'])
+	if (wildShapeFormsError) return `[${index}].${wildShapeFormsError}`
 	return null
 }
 
@@ -675,6 +717,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const spellChoices = value['spellChoices']
 	const subclassSpellChoices = value['subclassSpellChoices']
 	const classFeatureChoices = value['classFeatureChoices']
+	const wildShapeForms = value['wildShapeForms']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -696,6 +739,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(spellChoices) ? { spellChoices: toCharacterSpellChoices(spellChoices) } : {}),
 		...(Array.isArray(subclassSpellChoices) ? { subclassSpellChoices: toCharacterSubclassSpellChoices(subclassSpellChoices) } : {}),
 		...(Array.isArray(classFeatureChoices) ? { classFeatureChoices: toCharacterClassFeatureChoices(classFeatureChoices) } : {}),
+		...(Array.isArray(wildShapeForms) ? { wildShapeForms: toCharacterWildShapeForms(wildShapeForms) } : {}),
 	}
 }
 

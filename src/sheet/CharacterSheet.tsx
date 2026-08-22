@@ -298,11 +298,13 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		optionalFeatureSpells,
 	)
 	const knowsFindFamiliar = hasFindFamiliar(combinedSpells)
+	const storedWildShapeForms = character.wildShapeForms ?? []
+	const needsBeasts = knowsFindFamiliar || storedWildShapeForms.length > 0
 
-	// beasts.json is 80 KB and only Find Familiar reads it today, so a character
-	// without the spell never fetches it.
+	// beasts.json is 80 KB, so a character with neither Find Familiar nor a
+	// known Wild Shape form never fetches it.
 	useEffect(() => {
-		if (!knowsFindFamiliar) return
+		if (!needsBeasts) return
 		let cancelled = false
 		loadBeasts()
 			.then((loaded) => {
@@ -314,7 +316,7 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		return () => {
 			cancelled = true
 		}
-	}, [knowsFindFamiliar])
+	}, [needsBeasts])
 
 	if (loadError) {
 		return (
@@ -370,6 +372,14 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
 	const familiarBeasts = knowsFindFamiliar ? findFamiliarBeasts(beasts) : []
+	/* The stat block is re-derived from beasts.json, never stored — storage carries name+source only. */
+	const wildShapeForms = storedWildShapeForms.flatMap((entry) =>
+		entry.forms.map((form) => ({
+			form,
+			className: entry.className,
+			beast: beasts.find((beast) => beast.name === form.name && beast.source === form.source) ?? null,
+		})),
+	)
 	// Darkvision grants are folded into the traits row above, not shown again here.
 	const combinedSenses = combineSenseEntries(grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'))
 
@@ -691,6 +701,25 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 				<section className="sheet__spells">
 					<h2>Spells</h2>
 					<SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />
+				</section>
+			)}
+
+			{/* The Beast forms a Druid knows for Wild Shape. Nothing renders for a character with none — no empty heading. Uses per rest and transforming are play tracking (step 9), not shown. */}
+			{wildShapeForms.length > 0 && (
+				<section className="sheet__wild-shape-forms">
+					<h2>Wild Shape forms</h2>
+					<ul>
+						{wildShapeForms.map(({ form, beast }) => (
+							<li key={`${form.name}|${form.source}`}>
+								{beast ? (
+									<BeastStatBlock beast={beast} />
+								) : (
+									// D43: a stored form whose stat block is missing is still listed, with the gap stated.
+									<UnresolvedValue reason={`No stat block found for "${form.name}" (${form.source}).`} />
+								)}
+							</li>
+						))}
+					</ul>
 				</section>
 			)}
 
