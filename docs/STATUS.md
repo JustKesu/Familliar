@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-08-21 (Thaumaturge/Magician extra cantrip now applied; the 2 source-less refOptionalfeature uids now resolve)
+Last updated: 2026-08-23 (bestiary scoping investigation for a possible Wild Shape / Find Familiar step — no extraction or src/ change)
 
 ## Build order
 
@@ -233,6 +233,8 @@ their own pass over the same 15 prose feats plus the weapon/armor/tool
 proficiency structured fields this task left untouched (docs/REPORT.md has
 the feat list). The 5 skill-choice feats with no stored pick (docs/REPORT.md)
 are a standing gap for whenever the wizard adds that field.
+
+- Investigation script — scripts/investigate-bestiary-scope.js, ahead of a possible future build order step for Wild Shape / Find Familiar (no data or src/ change made). Confirms 107 bestiary-*.json source files exist, none carries an `edition` field on any monster (unlike species' `edition:"one"`, D29); the nearest 2024-line marker is `basicRules2024`/`srd52`, present on 333/331 of XMM's 503 monsters. XMM (Monster Manual 2025, 503 monsters) IS present in data-source despite being excluded from ALLOWED_SOURCES per DATA.md. 281 beast-type monsters at CR<=6 across all sources (89 XMM, 98 MM, the rest scattered across ~30 adventure/sourcebook files); full CR breakdown in docs/REPORT.md. See docs/REPORT.md for the field-shape and rule-text findings.
 
 ## Temporary scaffolding
 
