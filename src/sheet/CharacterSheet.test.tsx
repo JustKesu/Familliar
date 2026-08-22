@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterSheet } from './CharacterSheet'
@@ -21,6 +21,7 @@ import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } fr
 import type { Character } from '../storage/character'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { loadResolverData } from '../featureResolver'
+import { loadBeasts, type Beast } from '../beasts/beastData'
 
 /*
  * Data loaders are stubbed rather than hitting fetch/data on disk — this
@@ -92,6 +93,12 @@ vi.mock('../spells/optionalFeatureSpells', async (importOriginal) => {
 vi.mock('./grantedSenses', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./grantedSenses')>()
 	return { ...actual, loadGrantedSenses: vi.fn(async () => []) }
+})
+
+/* Only the fetch is stubbed — findFamiliarBeasts and hasFindFamiliar stay real, so the section is proved against the actual filter. */
+vi.mock('../beasts/beastData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../beasts/beastData')>()
+	return { ...actual, loadBeasts: vi.fn(async () => []) }
 })
 
 vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
@@ -1716,6 +1723,127 @@ describe('CharacterSheet', () => {
 			expect(attackSection.textContent).toContain('Wizard (Intelligence)')
 			expect(attackSection.textContent).toContain('Cleric (Wisdom)')
 			expect(attackSection.querySelectorAll(':scope > ul > li')).toHaveLength(2)
+		})
+	})
+
+	// Build order step 6b slice 2 — the familiar's possible forms. The spell can
+	// reach a character down several paths the sheet already merges, so the
+	// section keys off the COMBINED list, not off Character.spellChoices.
+	describe('Find Familiar beast forms (step 6b slice 2)', () => {
+		const FAMILIAR_POOL: Beast[] = [
+			{
+				name: 'Owl',
+				source: 'XMM',
+				size: ['T'],
+				type: 'beast',
+				cr: '0',
+				crNumber: 0,
+				ac: [11],
+				hp: { average: 1, formula: '1d4 - 1' },
+				speed: { walk: 5, fly: 60 },
+				str: 3,
+				dex: 13,
+				con: 8,
+				int: 2,
+				wis: 12,
+				cha: 7,
+				action: [{ name: 'Talons', entries: ['{@atkr m} {@hit 3}, reach 5 ft. {@h} 1 Slashing damage.'] }],
+			},
+			{
+				name: 'Wolf',
+				source: 'XMM',
+				size: ['M'],
+				type: 'beast',
+				cr: '1/2',
+				crNumber: 0.5,
+				ac: [13],
+				hp: { average: 11, formula: '2d8 + 2' },
+				speed: { walk: 40 },
+				str: 14,
+				dex: 15,
+				con: 12,
+				int: 3,
+				wis: 12,
+				cha: 6,
+				action: [{ name: 'Bite', entries: ['{@atkr m} {@hit 4}, reach 5 ft. {@h} 7 Piercing damage.'] }],
+			},
+		]
+
+		beforeEach(() => {
+			vi.mocked(loadBeasts).mockReset().mockResolvedValue(FAMILIAR_POOL)
+			vi.mocked(loadSpellDetails).mockReset().mockResolvedValue([])
+			vi.mocked(loadSubclassSource).mockReset().mockResolvedValue(null)
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadFeatGrantedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadSubclassChosenSpells).mockReset().mockResolvedValue([])
+		})
+
+		const wizard: Character = {
+			id: 'ff1',
+			name: 'Conjurer',
+			classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 3 }],
+			abilityScores: {
+				method: 'standardArray',
+				scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 15, wisdom: 12, charisma: 10 },
+			},
+			spellChoices: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Find Familiar', source: 'XPHB' }] }],
+		}
+
+		it('lists the CR 0 forms for a character who has the spell', async () => {
+			const { container } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__familiar-forms')).toBeTruthy())
+			const section = container.querySelector('.sheet__familiar-forms')!
+			expect(section.textContent).toContain('Owl')
+			// The pool is capped at CR 0 by the spell's own text — Wolf is CR 1/2.
+			expect(section.textContent).not.toContain('Wolf')
+		})
+
+		it('shows the section when the spell arrives from a feat rather than a class pick', async () => {
+			const featGranted: FeatGrantedSpell[] = [
+				{ featName: 'Magic Initiate (Wizard)', name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false },
+			]
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGranted)
+
+			const fighter: Character = {
+				id: 'ff2',
+				name: 'Dabbler',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Dabbler' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__familiar-forms')).toBeTruthy())
+			expect(container.querySelector('.sheet__familiar-forms')!.textContent).toContain('Owl')
+		})
+
+		it('renders no section at all — and fetches nothing — for a character without the spell', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			expect(container.querySelector('.sheet__familiar-forms')).toBeNull()
+			expect(screen.queryByRole('heading', { name: 'Familiar forms' })).toBeNull()
+			expect(vi.mocked(loadBeasts)).not.toHaveBeenCalled()
+		})
+
+		it('renders each form as a collapsed stat block with its markup resolved', async () => {
+			const { container } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+			await waitFor(() => expect(container.querySelector('.sheet__familiar-forms')).toBeTruthy())
+
+			const section = container.querySelector('.sheet__familiar-forms')!
+			const details = section.querySelector('details')!
+			expect(details.hasAttribute('open')).toBe(false)
+			expect(details.querySelector('summary')!.textContent).toContain('Owl — Tiny Beast, CR 0')
+			expect(section.textContent).toContain('Melee Attack Roll:')
+			expect(section.textContent).not.toContain('{@')
 		})
 	})
 })

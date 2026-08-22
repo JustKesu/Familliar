@@ -15,6 +15,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
+import { findFamiliarBeasts, hasFindFamiliar, loadBeasts, type Beast } from '../beasts/beastData'
 import { computeAbilityScores } from '../calculation/abilityScores'
 import type { FeatEffectEntry } from '../calculation/featEffects'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
@@ -32,6 +33,7 @@ import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '..
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { BeastStatBlock } from './BeastStatBlock'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -150,6 +152,8 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const [grantedSenses, setGrantedSenses] = useState<GrantedSense[]>([])
 	/** The D21 class-feature choices (Divine Order, Primal Order, Elemental Fury) joined to their chosen option's text. Depends on `character`, fetched separately same as the effects above. */
 	const [classFeatureChoices, setClassFeatureChoices] = useState<ChosenClassFeatureChoice[]>([])
+	/** The Find Familiar beast pool (step 6b slice 2). Fetched only for a character that actually has the spell — see the effect below. */
+	const [beasts, setBeasts] = useState<Beast[]>([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -281,6 +285,37 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 		}
 	}, [character])
 
+	/*
+	 * The character's whole spell list, however each spell was come by. Computed
+	 * here rather than further down because the Find Familiar section keys off
+	 * it: a spell reaching the character through a subclass, a feat or an
+	 * invocation counts exactly as much as a player pick.
+	 */
+	const combinedSpells = combineSpellEntries(
+		character.spellChoices ?? [],
+		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, spells: info.alwaysPrepared })),
+		featSpells,
+		optionalFeatureSpells,
+	)
+	const knowsFindFamiliar = hasFindFamiliar(combinedSpells)
+
+	// beasts.json is 80 KB and only Find Familiar reads it today, so a character
+	// without the spell never fetches it.
+	useEffect(() => {
+		if (!knowsFindFamiliar) return
+		let cancelled = false
+		loadBeasts()
+			.then((loaded) => {
+				if (!cancelled) setBeasts(loaded)
+			})
+			.catch(() => {
+				/* Best-effort, same as the effects above. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [knowsFindFamiliar])
+
 	if (loadError) {
 		return (
 			<article className="sheet">
@@ -334,12 +369,7 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
-	const combinedSpells = combineSpellEntries(
-		character.spellChoices ?? [],
-		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, spells: info.alwaysPrepared })),
-		featSpells,
-		optionalFeatureSpells,
-	)
+	const familiarBeasts = knowsFindFamiliar ? findFamiliarBeasts(beasts) : []
 	// Darkvision grants are folded into the traits row above, not shown again here.
 	const combinedSenses = combineSenseEntries(grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'))
 
@@ -661,6 +691,20 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 				<section className="sheet__spells">
 					<h2>Spells</h2>
 					<SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />
+				</section>
+			)}
+
+			{/* The forms this character's familiar could take. Nothing renders for a character without the spell — no empty heading, same rule the sections above follow. */}
+			{familiarBeasts.length > 0 && (
+				<section className="sheet__familiar-forms">
+					<h2>Familiar forms</h2>
+					<ul>
+						{familiarBeasts.map((beast) => (
+							<li key={`${beast.name}|${beast.source}`}>
+								<BeastStatBlock beast={beast} />
+							</li>
+						))}
+					</ul>
 				</section>
 			)}
 		</article>
