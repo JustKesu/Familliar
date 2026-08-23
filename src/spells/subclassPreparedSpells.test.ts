@@ -411,8 +411,33 @@ describe('extractSubclassAlwaysPreparedSpells', () => {
 		expect(result.map((s) => s.name)).toEqual(['Heat Metal'])
 	})
 
-	it('a non-numeric level key (Warlock Archfey Patron\'s "_") is skipped cleanly, not granted at every level (d6a)', () => {
+	it('a "_"-keyed grant (Warlock Archfey Patron) is skipped cleanly when no subclassGrantLevel is supplied, not granted at every level (this task)', () => {
 		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Archfey Patron', 'XPHB', 'Warlock', 'XPHB', 20)
+		expect(result).toEqual([])
+	})
+
+	it('a "_"-keyed grant (Archfey Patron) resolves at the subclass\'s own grant level once subclassGrantLevel is supplied, and unwraps the daily/cha resource wrapper via the same extractRefs path (this task)', () => {
+		const belowGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Archfey Patron', 'XPHB', 'Warlock', 'XPHB', 2, undefined, 3)
+		expect(belowGrant).toEqual([])
+
+		const atGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Archfey Patron', 'XPHB', 'Warlock', 'XPHB', 3, undefined, 3)
+		expect(atGrant.map((s) => s.name)).toEqual(['Identify'])
+		expect(atGrant[0].grantedAtLevel).toBe(3)
+
+		const aboveGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Archfey Patron', 'XPHB', 'Warlock', 'XPHB', 20, undefined, 3)
+		expect(aboveGrant.map((s) => s.name)).toEqual(['Identify'])
+	})
+
+	it('a key that is neither numeric nor "_" is skipped cleanly even when subclassGrantLevel is supplied (D43 — not "unparseable means always")', () => {
+		const weird = {
+			entryType: 'subclass',
+			name: 'Weird Key Subclass',
+			source: 'XPHB',
+			className: 'Warlock',
+			classSource: 'XPHB',
+			additionalSpells: [{ innate: { weirdKey: ['identify'] } }],
+		}
+		const result = extractSubclassAlwaysPreparedSpells([...classes, weird], spells, 'Weird Key Subclass', 'XPHB', 'Warlock', 'XPHB', 20, undefined, 3)
 		expect(result).toEqual([])
 	})
 

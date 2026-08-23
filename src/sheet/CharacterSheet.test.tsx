@@ -1145,6 +1145,38 @@ describe('CharacterSheet', () => {
 			expect(loadSubclassAlwaysPreparedSpells).toHaveBeenCalledWith('The Hexblade', 'XGE', 'Warlock', 'XPHB', 3, spellSlots[0].pactSlotsByLevel)
 		})
 
+		it('an Archfey Warlock at level 3 shows its "_"-keyed patron spell (Misty Step) on the sheet, named for the subclass (this task)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
+			const alwaysPrepared: AlwaysPreparedSpell[] = [
+				{ name: 'Misty Step', source: 'XPHB', level: 2, grantedAtLevel: 3, ritual: false, concentration: false, origin: 'subclass' },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2, entries: ['Briefly surrounded by silver mist, you teleport up to 30 feet.'] })]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue([])
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadSubclassSource).mockResolvedValue('XPHB')
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockResolvedValue(alwaysPrepared)
+
+			const warlock: Character = {
+				id: 'wl3',
+				name: 'Fey Pact',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: 'Archfey Patron', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+			}
+
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Fey Pact' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__spells')?.textContent).toContain('Misty Step'))
+			const spellsSection = container.querySelector('.sheet__spells')!
+
+			const mistyStepSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
+			expect(mistyStepSummary.textContent).toContain('always prepared (Archfey Patron)')
+		})
+
 		it('a subclass spell-choice pick (Evoker, slice d6b) shows on the sheet marked "always prepared (Evoker)"', async () => {
 			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
 			const spellSlots: ClassSpellSlotsData[] = [

@@ -44,7 +44,24 @@
  *   grant, same as a flat array.
  * - d6a: Warlock Archfey Patron keys its one innate grant `"_"` instead of
  *   a class level — `Number("_")` is not finite, so the existing level-gate
- *   check already used for `prepared` skips it cleanly with no special case.
+ *   check dropped it (recorded here as intentional, then found to be a bug —
+ *   see the follow-up entry below).
+ * - Follow-up (this task): `"_"` is featSpells.ts's OWN convention for "always
+ *   granted", read on the identical `additionalSpells` field (Drow High
+ *   Magic, Fey Teleportation). A subclass has no "always" — it only exists
+ *   from the level the character took it — so `"_"` here means "granted from
+ *   the level the subclass itself is granted", read via subclassData.ts's
+ *   `subclassLevelFor` (the same class-features.json lookup the subclass
+ *   picker already uses, not a hardcoded 3 — Warlock happens to land on 3
+ *   too, like all 13 classes, but nothing here assumes that). Scope checked
+ *   (scripts/investigate-underscore-key-subclasses.js): of 302 numeric-keyed
+ *   grants across every subclass's `prepared`/`known`/`innate`, exactly ONE
+ *   `"_"` key exists in the whole data set — Archfey Patron's — and zero
+ *   other unparseable keys, so the fix affects only Archfey today; it is
+ *   still written generically (any subclass using `"_"` gets the same
+ *   treatment), not name-guarded. A key that is neither numeric nor `"_"`
+ *   still skips cleanly (D43) — this is not "anything unparseable means
+ *   always granted".
  * - d6a: `expanded` is NOT read for the generic prepared/known/innate loop,
  *   on purpose — it hides several different things: (1) EK/Arcane
  *   Trickster/Divine Soul/the 12 Eberron marks use it to WIDEN a class
@@ -98,6 +115,7 @@
 
 import type { PactSlots } from '../calculation/spellSlots'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { subclassLevelFor } from '../subclass/subclassData'
 
 export interface AlwaysPreparedSpell {
 	name: string
@@ -242,6 +260,10 @@ export function extractRefs(value: unknown): string[] {
  * yields nothing (see module comment). `pactSlotsByLevel` (optional —
  * absent for a non-Warlock class) is the Warlock's own Pact Magic slot
  * table (spellSlots.ts), needed only to translate a rank grant's level.
+ * `subclassGrantLevel` (optional) is the level `className`/`classSource`
+ * grants a subclass choice (subclassData.ts's `subclassLevelFor`), needed
+ * only to resolve a `"_"`-keyed grant (module comment) — absent or null
+ * means a `"_"` key is skipped cleanly rather than guessed (D43).
  */
 export function extractSubclassAlwaysPreparedSpells(
 	parsedClasses: unknown,
@@ -252,6 +274,7 @@ export function extractSubclassAlwaysPreparedSpells(
 	classSource: string,
 	classLevel: number,
 	pactSlotsByLevel?: PactSlots[],
+	subclassGrantLevel?: number | null,
 ): AlwaysPreparedSpell[] {
 	if (!Array.isArray(parsedClasses)) {
 		throw new Error('classes.json: expected a top-level array.')
@@ -282,9 +305,17 @@ export function extractSubclassAlwaysPreparedSpells(
 			if (!isRecord(levelMap)) continue // unexpected variant of the key itself — skip cleanly, don't invent handling.
 
 			for (const [levelKey, value] of Object.entries(levelMap)) {
-				const grantedAtLevel = Number(levelKey)
-				// Not finite also covers Warlock Archfey Patron's "_" level key — deferred cleanly, no special case needed.
-				if (!Number.isFinite(grantedAtLevel) || grantedAtLevel > classLevel) continue
+				let grantedAtLevel: number
+				if (levelKey === '_') {
+					// "_" means always granted (featSpells.ts reads the same key the same way) — for a subclass that's "from the level the subclass itself was granted", not every level.
+					if (subclassGrantLevel === undefined || subclassGrantLevel === null) continue // can't resolve the grant level — skip cleanly (D43), don't guess.
+					grantedAtLevel = subclassGrantLevel
+				} else {
+					const parsed = Number(levelKey)
+					if (!Number.isFinite(parsed)) continue // neither a class-level key nor "_" (e.g. a pact-slot-rank key belongs to `expanded`, not this shape) — skip cleanly, not "unparseable means always".
+					grantedAtLevel = parsed
+				}
+				if (grantedAtLevel > classLevel) continue
 
 				for (const ref of extractRefs(value)) {
 					const spell = findSpell(spells, parseSpellRef(ref))
@@ -338,7 +369,15 @@ export function extractSubclassAlwaysPreparedSpells(
 	return dedupeAlwaysPreparedSpells(result)
 }
 
-/** Fetches classes.json and spells.json and returns the subclass's always-prepared spells at or below `classLevel`. `pactSlotsByLevel` (optional) is the Warlock's own Pact Magic slot table, needed only to resolve a rank-keyed `expanded` grant. */
+/**
+ * Fetches classes.json, spells.json and class-features.json and returns the
+ * subclass's always-prepared spells at or below `classLevel`. `pactSlotsByLevel`
+ * (optional) is the Warlock's own Pact Magic slot table, needed only to
+ * resolve a rank-keyed `expanded` grant. class-features.json is fetched here
+ * (through the shared cache, D39 — free if the subclass picker already loaded
+ * it this session) only to resolve a `"_"`-keyed grant via subclassLevelFor;
+ * every other shape ignores it.
+ */
 export async function loadSubclassAlwaysPreparedSpells(
 	subclassName: string,
 	subclassSource: string,
@@ -347,6 +386,21 @@ export async function loadSubclassAlwaysPreparedSpells(
 	classLevel: number,
 	pactSlotsByLevel?: PactSlots[],
 ): Promise<AlwaysPreparedSpell[]> {
-	const [parsedClasses, parsedSpells] = await Promise.all([loadDataFile('data/classes.json'), loadDataFile('data/spells.json')])
-	return extractSubclassAlwaysPreparedSpells(parsedClasses, parsedSpells, subclassName, subclassSource, className, classSource, classLevel, pactSlotsByLevel)
+	const [parsedClasses, parsedSpells, parsedClassFeatures] = await Promise.all([
+		loadDataFile('data/classes.json'),
+		loadDataFile('data/spells.json'),
+		loadDataFile('data/class-features.json'),
+	])
+	const subclassGrantLevel = subclassLevelFor(parsedClasses, parsedClassFeatures, className, classSource)
+	return extractSubclassAlwaysPreparedSpells(
+		parsedClasses,
+		parsedSpells,
+		subclassName,
+		subclassSource,
+		className,
+		classSource,
+		classLevel,
+		pactSlotsByLevel,
+		subclassGrantLevel,
+	)
 }
