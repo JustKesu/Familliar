@@ -191,6 +191,22 @@ Stejný tvar u všech 13 základních tříd.
 ### Warlock patron spells keyed by pact slot rank
 Warlock patron spells keyed by pact slot rank. Celestial, Hexblade, and Fathomless keep their always-prepared patron spells under `additionalSpells.expanded` keyed by PACT SLOT RANK ("s1".."s5") rather than by character level, unlike every other always-prepared source. Rank R unlocks at the character level where the Warlock's Pact Magic slot level first reaches R (1st→s1, 3rd→s2, 5th→s3, 7th→s4, 9th→s5). Code resolving these must translate rank to character level via the Pact Magic slot progression (src/calculation/spellSlots.ts) rather than treating the key as a character level. The Genie uses a different, per-genie-kind shape and is not covered by this.
 
+### Limit uvnitř feature nemusí být v próze — může být v tabulce
+
+Wild Shape nese svoje limity (počet známých forem, maximální CR, od které
+úrovně je povolená forma s Fly Speed) jako `table` uzel uvnitř `entries`
+feature, ne jako prózu a ne jako strukturované pole na feature samotné.
+
+Skript, který prochází jen `entries` a `items`, ten uzel nevidí a dojde
+k závěru, že limit v datech není. U Wild Shape se to jednou stalo a vedlo
+to k závěru, že se musí všechno natvrdo opsat z knihy. Než se limit
+prohlásí za neexistující, musí se projít i tabulkové uzly.
+
+Buňky takové tabulky navíc můžou nést `{@filter}` řetězce, které samy
+o sobě nesou podmínky — u Wild Shape `miscellaneous=!swarm` (roje nejsou
+legální forma) a `speed type=!fly` na řádcích pod 8. úrovní. Tyhle
+podmínky nejsou nikde jinde v textu feature napsané.
+
 ### `damageInflict` and the `choose` spell-prerequisite filter grammar
 
 A spell's `damageInflict` (array of damage types, absent when the spell deals none) is how "deals damage" is read structurally — never from a hand-written list of spell names (D21).
