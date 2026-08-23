@@ -73,14 +73,6 @@ Rangera (a College of Swords barda, viz D12) a ověřit, že se volba
 nabídne přesně tam, kde má, a nikde jinde.
 STATUS: k ověření po dokončení kroku 3.
 
-### Weapon Mastery — Paladin, Ranger, Rogue nepodporovaní
-
-Pět tříd má feature "Weapon Mastery", ale jen Barbarian a Fighter
-mají počet v tabulce. U Paladina, Rangera a Roguea je počet jen v
-próze feature, takže picker jim nic nenabídne. Rozhodnout, jestli
-prózu parsovat, nebo počty ručně namapovat.
-STATUS: nerozhodnuto.
-
 ### Mastery rule text je hardcodovaný
 
 masteryData.ts obsahuje ručně opsaných 8 popisů (Cleave, Sap, Topple…),
@@ -97,17 +89,6 @@ ani subclass úroveň nenesou. Formát se rozhodne jednou pro všechny
 volby naráz, až začne level-up (build order krok 8), ne po jedné.
 STATUS: odloženo do kroku 8.
 
-### Migrace uložených postav — zatím se neřeší, odmítá se
-
-Schema se od začátku verzuje (D1) právě proto, aby šla stará uložená
-postava převést na nový tvar místo zahození. Zatím se to tak ale
-nedělá: bumpy v1 -> v2 i v2 -> v3 starou postavu odmítly. Bylo to
-vědomé — nikdo ještě nehraje, žádná postava k záchraně neexistuje.
-Jakmile se s appkou začne opravdu hrát, tohle přestane platit a další
-bump už migraci napsat MUSÍ. Rozhodnout nejpozději před prvním
-skutečným použitím u stolu.
-STATUS: nerozhodnuto, blokuje reálné použití.
-
 ### College of Swords — FS:B nabízí všech 10 stylů
 
 D12 říká, že sufix :B v kódu FS:B omezuje volbu na podmnožinu stylů
@@ -117,23 +98,6 @@ fighting stylů a omezení neřeší; ruční mapování jmen z prózy je přesn
 ten rostoucí seznam výjimek, kterému se D21 vyhýbá. Rozhodnout, jestli
 to stačí, až se s appkou začne hrát.
 STATUS: nerozhodnuto, nízká priorita.
-
-### Extra Attack — počet je ve jméně feature, ne v datech
-
-Fighter má v tabulce sloupce Second Wind a Weapon Mastery s čísly, ale
-Extra Attack tam sloupec NEMÁ. Počet útoků je schovaný ve jméně
-feature: "Extra Attack" (lvl 5), "Two Extra Attacks" (11),
-"Three Extra Attacks" (20). Jak se ta feature jmenuje u ostatních tříd
-(Barbarian, Paladin, Ranger, Monk) nikdo neověřil.
-
-Před implementací jde ověřovací skript: projít všechny třídy, najít
-každou feature se jménem obsahujícím "Extra Attack", vypsat přesná
-jména a úrovně. Teprve pak se rozhodne, jestli mapovat jména na čísla
-(krátká tabulka) nebo parsovat text (křehké).
-
-Patří ke kroku 7 (útoky) — bez zbraní není co počítat.
-STATUS: nerozhodnuto, ověřit před krokem 7.
-
 
 ### Koncentrace — výhoda na CON save
 
@@ -173,10 +137,6 @@ Po uložení a znovunačtení je to v pořádku — problém je jen uvnitř
 jednoho průchodu. Rozhodnout, jestli to řešit hned, nebo až s level-upem
 (krok 8).
 STATUS: nerozhodnuto.
-
-### Class feature choices (step 6a) — open scope
-
-Which selectable "choose N from a list" class/subclass features step 6a covers beyond Warlock Invocations and Fighter Maneuvers is not yet inventoried (a full pass over class/subclass features is needed). It is also undecided how far to model the subset that changes a calculated value — which invocations/maneuvers actually alter a computed number, and whether all are feasible to model — versus showing them as text only. To be resolved when step 6a is scoped, after step 6 is complete.
 
 ### Výběr dovednosti u featu se nemá kam uložit
 

@@ -1093,3 +1093,37 @@ Rationale: SPEC říká, že appka nabízí jen platné možnosti. Příznak od
 dodavatele dat není pravidlo a nikdo ho neudržuje kvůli téhle appce.
 Odvození z pravidla je zároveň odolnější — když přibude nový beast s CR 0,
 objeví se v nabídce sám, i kdyby ho nikdo neoznačil.
+
+## D69 — Od příštího bumpu schématu se píše migrace
+
+Dosud každá změna verze schématu uloženou postavu odmítla (D1 verzování
+zavedl právě proto, aby to jednou nemuselo platit). Od příští změny to
+končí: každý další bump MUSÍ umět načíst postavu z bezprostředně
+předchozí verze a převést ji.
+
+Zpětně se nic nedohání — postavy ve verzích 1 až 16 nikdo nemá.
+
+Rationale: migrace fungují jako řetěz kroků, kde každý umí jen o jednu
+verzi zpět. Začít až v okamžiku, kdy existuje postava, o kterou nechceš
+přijít, znamená mít v řetězu díru přesně tam, kde na ní záleží. Cena
+jednoho kroku je malá, cena chybějícího kroku je ztracená postava.
+
+Import souboru se řídí týmž pravidlem: exportovaná postava o verzi starší
+se převede, ne odmítne. D1 dál platí v tom, že nerozpoznaný nebo poškozený
+soubor se odmítá a nic nemění.
+
+## D70 — Počty, které data nesou jen v próze nebo ve jméně feature, se opisují do krátké tabulky
+
+Weapon Mastery u Paladina, Rangera a Roguea (počet zbraní je jen v próze
+feature) a Extra Attack (počet útoků je ve jméně feature — "Extra Attack",
+"Two Extra Attacks", "Three Extra Attacks") se řeší ručně opsanou tabulkou
+s komentářem citujícím PHB 2024, ne parsováním textu.
+
+Stejný precedens jako CHOSEN_LANGUAGE_COUNT (D24), počty skillů
+v expertiseData.ts (D49) a EXTRA_CANTRIP_OPTIONS. Jde o jednotky položek,
+ne o rostoucí seznam výjimek, kterému se vyhýbá D21.
+
+Rationale: parsování prózy je křehké vůči formulaci a špatně se testuje;
+u tří tříd a čtyř úrovní je ruční tabulka menší, čitelnější a poznatelně
+špatná, když se splete. Obojí se dodělá až těsně před krokem 7, kde se to
+poprvé použije.
