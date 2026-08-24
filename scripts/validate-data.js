@@ -135,9 +135,10 @@ const EXPECTED_COUNTS = {
 	languages: {
 		XPHB: 19,
 	},
-	// D67: XMM beasts up to CR 6 and nothing else, so this is the total.
+	// D67: XMM beasts up to CR 6, plus the 8 forms Pact of the Chain names
+	// (7 of which are not Beasts), and nothing else — so this is the total.
 	beasts: {
-		XMM: 89,
+		XMM: 96,
 	},
 };
 
@@ -186,6 +187,24 @@ const FIND_FAMILIAR_BEASTS = [
 	"Raven",
 	"Spider",
 	"Weasel",
+];
+
+/*
+ * The special familiar forms Pact of the Chain names in its own text. Seven of
+ * the eight are not Beasts, so they are in the file only because the extractor
+ * names them — a type-filter change would drop them silently, and the
+ * invocation would be hollow. Kept in step with PACT_OF_THE_CHAIN_FORMS in
+ * scripts/extract-data.js.
+ */
+const PACT_OF_THE_CHAIN_FORMS = [
+	"Imp",
+	"Pseudodragon",
+	"Quasit",
+	"Skeleton",
+	"Slaad Tadpole",
+	"Sphinx of Wonder",
+	"Sprite",
+	"Venomous Snake",
 ];
 
 // Valid values for a language's `type` field.
@@ -822,15 +841,17 @@ function validateBeasts() {
 	});
 	recordCheck(`beasts: every entry comes from ${BEAST_SOURCE}`, sourceFailures);
 
+	// Every entry is a Beast EXCEPT the forms a feature names — nothing else
+	// gets in on type alone (D67).
 	const typeFailures = [];
 	entries.forEach((entry, index) => {
 		const types = [].concat(entry.type);
 		const isBeast = types.some((value) => (typeof value === "string" ? value === "beast" : Boolean(value) && value.type === "beast"));
-		if (!isBeast) {
-			typeFailures.push({ label: describeEntry(entry, index), detail: `type ${JSON.stringify(entry.type)} is not beast` });
+		if (!isBeast && !entry.pactOfTheChain) {
+			typeFailures.push({ label: describeEntry(entry, index), detail: `type ${JSON.stringify(entry.type)} is not beast, and no feature names it` });
 		}
 	});
-	recordCheck("beasts: every entry is of type beast", typeFailures);
+	recordCheck("beasts: every entry is of type beast or a named familiar form", typeFailures);
 
 	const names = new Set(entries.map((entry) => entry.name));
 	const familiarFailures = FIND_FAMILIAR_BEASTS.filter((name) => !names.has(name)).map((name) => ({
@@ -838,6 +859,27 @@ function validateBeasts() {
 		detail: "named in the Find Familiar spell text but absent from the beast pool",
 	}));
 	recordCheck(`beasts: all ${FIND_FAMILIAR_BEASTS.length} Find Familiar beasts are present`, familiarFailures);
+
+	const chainFailures = PACT_OF_THE_CHAIN_FORMS.filter((name) => !names.has(name)).map((name) => ({
+		label: `"${name}"`,
+		detail: "named in the Pact of the Chain invocation text but absent from the beast pool",
+	}));
+	recordCheck(`beasts: all ${PACT_OF_THE_CHAIN_FORMS.length} Pact of the Chain forms are present`, chainFailures);
+
+	// The flag is what the app filters on, so it has to mark exactly the named
+	// forms — no more (a stray flag would offer a form the invocation does not
+	// grant) and no fewer (an unflagged one is invisible to the picker).
+	const flagFailures = [];
+	entries.forEach((entry, index) => {
+		const named = PACT_OF_THE_CHAIN_FORMS.includes(entry.name);
+		if (named && entry.pactOfTheChain !== true) {
+			flagFailures.push({ label: describeEntry(entry, index), detail: "named by Pact of the Chain but not flagged pactOfTheChain" });
+		}
+		if (!named && entry.pactOfTheChain !== undefined) {
+			flagFailures.push({ label: describeEntry(entry, index), detail: "flagged pactOfTheChain but the invocation does not name it" });
+		}
+	});
+	recordCheck("beasts: the pactOfTheChain flag marks exactly the named forms", flagFailures);
 
 	checkExpectedCounts(entries, "beasts");
 }

@@ -1559,6 +1559,35 @@ const BEAST_SOURCE = "XMM";
 const BEAST_MAX_CR = 6;
 
 /*
+ * D67's second intake, by NAME rather than by type: Pact of the Chain names
+ * eight familiar forms in its own text, and seven of them are not Beasts, so
+ * the type filter above would drop the whole point of the invocation.
+ *
+ * Verbatim from optional-features.json, "Pact of the Chain" (XPHB): "you
+ * choose one of the normal forms for your familiar or one of the following
+ * special forms: {@creature Imp|XMM}, {@creature Pseudodragon|XMM},
+ * {@creature Quasit|XMM}, {@creature Skeleton|XMM},
+ * {@creature Slaad Tadpole|XMM}, {@creature Sphinx of Wonder|XMM},
+ * {@creature Sprite|XMM}, or {@creature Venomous Snake|XMM}".
+ *
+ * Venomous Snake is a Beast at CR 1/8, so the type filter already keeps it;
+ * it is listed here because the invocation names it, and the entry is flagged
+ * either way. Only creatures a feature names get in — this is not a CR band
+ * and not a widened type filter. scripts/investigate-pact-of-the-chain.js
+ * reads the list back out of the data.
+ */
+const PACT_OF_THE_CHAIN_FORMS = [
+	"Imp",
+	"Pseudodragon",
+	"Quasit",
+	"Skeleton",
+	"Slaad Tadpole",
+	"Sphinx of Wonder",
+	"Sprite",
+	"Venomous Snake",
+];
+
+/*
  * The stat-block fields a beast form is played from. Everything else in a
  * bestiary entry is 5etools' own bookkeeping (page/soundClip/hasToken/
  * srd52/basicRules2024/otherSources/referenceSources) or the tag arrays that
@@ -1595,6 +1624,12 @@ const BEAST_KEPT_FIELDS = [
 	"alignment",
 	"initiative",
 	"familiar",
+	// No Beast carries any of these three; they arrive with the Pact of the
+	// Chain forms, whose stat blocks are incomplete without them (Imp's
+	// Invisibility, Sprite's languages, Skeleton's gear).
+	"languages",
+	"spellcasting",
+	"gear",
 	"trait",
 	"action",
 	"bonus",
@@ -1658,14 +1693,19 @@ function extractBeasts() {
 	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
 	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
 
+	const namedForms = new Set(PACT_OF_THE_CHAIN_FORMS);
 	const kept = [];
 	const byCr = {};
 	for (const entry of resolved) {
 		if (entry.source !== BEAST_SOURCE) continue;
-		if (!isBeastType(entry)) continue;
 
 		const crNumber = crToNumber(entry.cr);
-		if (crNumber === undefined || crNumber > BEAST_MAX_CR) continue;
+		if (crNumber === undefined) continue;
+
+		const isNamedForm = namedForms.has(entry.name);
+		// The CR cap is the Beast pool's rule; a creature a feature names by
+		// itself is in whatever its CR.
+		if (!isNamedForm && (!isBeastType(entry) || crNumber > BEAST_MAX_CR)) continue;
 
 		const beast = {};
 		for (const field of BEAST_KEPT_FIELDS) {
@@ -1673,6 +1713,7 @@ function extractBeasts() {
 		}
 		beast.cr = crToDisplay(entry.cr);
 		beast.crNumber = crNumber;
+		if (isNamedForm) beast.pactOfTheChain = true;
 
 		kept.push(beast);
 		byCr[beast.cr] = (byCr[beast.cr] || 0) + 1;
@@ -1688,6 +1729,13 @@ function extractBeasts() {
 			.join(", ")}`,
 	);
 	console.log(`Marked as familiars by 5etools: ${kept.filter((beast) => beast.familiar).length}`);
+
+	const foundForms = kept.filter((beast) => beast.pactOfTheChain).map((beast) => beast.name);
+	console.log(`Pact of the Chain forms kept: ${foundForms.length} of ${PACT_OF_THE_CHAIN_FORMS.length}`);
+	const missingForms = PACT_OF_THE_CHAIN_FORMS.filter((name) => !foundForms.includes(name));
+	if (missingForms.length > 0) {
+		warnings.push(`beasts: Pact of the Chain names ${missingForms.join(", ")}, absent from ${BEAST_SOURCE}`);
+	}
 
 	const outputFile = path.join(OUTPUT_DIR, "beasts.json");
 	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);

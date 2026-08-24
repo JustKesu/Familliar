@@ -205,6 +205,27 @@ export interface Character {
 	 * step 9) and are not represented here.
 	 */
 	wildShapeForms?: CharacterWildShapeForms[]
+	/**
+	 * Optional for the same reason as abilityScores above. The form the
+	 * character's familiar currently has — absent means no familiar is
+	 * summoned, which is the state a sheet starts in.
+	 *
+	 * Not a creation choice and not in the wizard: the form is chosen when
+	 * Find Familiar is cast and can be a different one next time, so it is
+	 * edited from the sheet. Carries no level for the same reason
+	 * CharacterWildShapeForms does not.
+	 */
+	familiar?: CharacterFamiliar
+}
+
+/**
+ * The familiar's current form. Names the creature (name + source) only — the
+ * stat block is re-derived from beasts.json, same as CharacterWildShapeForms
+ * and CharacterSpellChoice.
+ */
+export interface CharacterFamiliar {
+	name: string
+	source: string
 }
 
 /**
@@ -359,12 +380,11 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 16 to add Character.wildShapeForms — the
- * Druid's known Wild Shape forms (build order step 6b slice 3). Per
- * PHASE1.md section D, and per docs/QUESTIONS.md "Migrace uložených postav",
- * a version bump this app does not understand is rejected outright
- * (UnknownSchemaVersionError) rather than guessed at — no migration from
- * version 15 is written, so a character saved before this change will no
- * longer load and must be recreated.
+ * (see wireFormat.ts). Bumped to 17 to add Character.familiar — the form the
+ * familiar currently has.
+ *
+ * The FIRST bump under D69: a version-16 character is migrated, not rejected
+ * (see migrations.ts). Versions 15 and older are still rejected outright with
+ * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 16
+export const CURRENT_SCHEMA_VERSION = 17

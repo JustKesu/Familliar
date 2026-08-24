@@ -9,9 +9,9 @@ The examples in DATA.md are illustrative only; this is exhaustive.
 ## Totals
 
 - Files scanned: **11**
-- Strings walked: **55,601**
-- Strings containing markup: **5,260**
-- Tag occurrences: **10,454**
+- Strings walked: **55,776**
+- Strings containing markup: **5,287**
+- Tag occurrences: **10,525**
 - Distinct tag names: **46**
 - Distinct nested entry types: **16**
 
@@ -19,23 +19,23 @@ The examples in DATA.md are illustrative only; this is exhaustive.
 
 | Tag | Count | Files | Arg shapes | Nested inside another tag | Contains a nested tag |
 | --- | ---: | ---: | --- | ---: | ---: |
-| `{@variantrule}` | 2548 | 8 | 2 parts ×1990, 3 parts ×558 | 0 | 0 |
-| `{@spell}` | 1483 | 7 | 1 part ×468, 2 parts ×1014, 3 parts ×1 | 0 | 0 |
+| `{@variantrule}` | 2558 | 8 | 2 parts ×2000, 3 parts ×558 | 0 | 0 |
+| `{@spell}` | 1489 | 8 | 1 part ×468, 2 parts ×1020, 3 parts ×1 | 0 | 0 |
 | `{@item}` | 909 | 9 | 1 part ×49, 2 parts ×783, 3 parts ×77 | 0 | 0 |
-| `{@condition}` | 827 | 8 | 1 part ×226, 2 parts ×600, 3 parts ×1 | 0 | 0 |
-| `{@damage}` | 791 | 8 | 1 part ×791 | 0 | 0 |
+| `{@condition}` | 833 | 8 | 1 part ×226, 2 parts ×606, 3 parts ×1 | 0 | 0 |
+| `{@damage}` | 802 | 8 | 1 part ×802 | 0 | 0 |
 | `{@dice}` | 595 | 8 | 1 part ×594, 2 parts ×1 | 0 | 0 |
 | `{@action}` | 529 | 8 | 1 part ×42, 2 parts ×466, 3 parts ×21 | 0 | 0 |
 | `{@skill}` | 403 | 9 | 1 part ×122, 2 parts ×281 | 0 | 0 |
 | `{@creature}` | 347 | 5 | 1 part ×71, 2 parts ×236, 3 parts ×40 | 0 | 0 |
-| `{@dc}` | 308 | 7 | 1 part ×308 | 0 | 0 |
+| `{@dc}` | 311 | 7 | 1 part ×311 | 0 | 0 |
 | `{@filter}` | 274 | 8 | 3 parts ×111, 4 parts ×134, 5 parts ×22, 6 parts ×3, 7 parts ×4 | 0 | 0 |
 | `{@i}` | 248 | 6 | 1 part ×248 | 0 | 0 |
+| `{@hit}` | 125 | 2 | 1 part ×125 | 0 | 0 |
 | `{@feat}` | 122 | 3 | 2 parts ×122 | 0 | 0 |
-| `{@hit}` | 116 | 2 | 1 part ×116 | 0 | 0 |
+| `{@atkr}` | 103 | 1 | 1 part ×103 | 0 | 0 |
+| `{@h}` | 103 | 1 | 1 part ×103 | 0 | 0 |
 | `{@sense}` | 97 | 7 | 1 part ×17, 2 parts ×80 | 0 | 0 |
-| `{@atkr}` | 94 | 1 | 1 part ×94 | 0 | 0 |
-| `{@h}` | 94 | 1 | 1 part ×94 | 0 | 0 |
 | `{@b}` | 93 | 3 | 1 part ×93 | 0 | 0 |
 | `{@book}` | 88 | 7 | 2 parts ×26, 3 parts ×14, 4 parts ×48 | 0 | 0 |
 | `{@status}` | 87 | 7 | 1 part ×15, 2 parts ×65, 3 parts ×7 | 0 | 0 |
@@ -47,20 +47,20 @@ The examples in DATA.md are illustrative only; this is exhaustive.
 | `{@chance}` | 20 | 2 | 1 part ×10, 5 parts ×10 | 0 | 0 |
 | `{@itemProperty}` | 18 | 3 | 3 parts ×18 | 0 | 0 |
 | `{@hazard}` | 11 | 2 | 2 parts ×11 | 0 | 0 |
+| `{@actSave}` | 10 | 1 | 1 part ×10 | 0 | 0 |
+| `{@actSaveFail}` | 10 | 1 | 1 part ×10 | 0 | 0 |
 | `{@race}` | 10 | 1 | 2 parts ×10 | 0 | 0 |
 | `{@language}` | 8 | 2 | 1 part ×4, 3 parts ×4 | 0 | 0 |
-| `{@actSave}` | 7 | 1 | 1 part ×7 | 0 | 0 |
-| `{@actSaveFail}` | 7 | 1 | 1 part ×7 | 0 | 0 |
 | `{@scaledice}` | 7 | 1 | 3 parts ×7 | 0 | 0 |
 | `{@object}` | 7 | 1 | 2 parts ×4, 3 parts ×3 | 0 | 0 |
 | `{@subclass}` | 5 | 1 | 4 parts ×5 | 0 | 0 |
 | `{@itemMastery}` | 5 | 2 | 2 parts ×5 | 0 | 0 |
+| `{@actTrigger}` | 4 | 1 | 1 part ×4 | 0 | 0 |
+| `{@actResponse}` | 4 | 1 | 1 part ×4 | 0 | 0 |
 | `{@classFeature}` | 4 | 2 | 5 parts ×4 | 0 | 0 |
 | `{@tip}` | 4 | 1 | 2 parts ×4 | 0 | 0 |
 | `{@optfeature}` | 4 | 1 | 2 parts ×4 | 0 | 0 |
 | `{@subclassFeature}` | 4 | 1 | 7 parts ×4 | 0 | 0 |
-| `{@actTrigger}` | 3 | 1 | 1 part ×3 | 0 | 0 |
-| `{@actResponse}` | 3 | 1 | 1 part ×3 | 0 | 0 |
 | `{@recharge}` | 3 | 1 | 1 part ×3 | 0 | 0 |
 | `{@deck}` | 3 | 1 | 2 parts ×2, 3 parts ×1 | 0 | 0 |
 | `{@actSaveSuccess}` | 2 | 1 | 1 part ×2 | 0 | 0 |
@@ -68,7 +68,7 @@ The examples in DATA.md are illustrative only; this is exhaustive.
 
 ## Tag examples
 
-### `{@variantrule}` — 2548
+### `{@variantrule}` — 2558
 
 Files: beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
@@ -79,15 +79,15 @@ Files: beasts.json, class-features.json, feats.json, items.json, optional-featur
 {@variantrule Bright Light|XPHB}
 ```
 
-### `{@spell}` — 1483
+### `{@spell}` — 1489
 
-Files: class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
+{@spell Invisibility|XPHB}
 {@spell Acid Splash|XPHB}
 {@spell Prestidigitation|XPHB}
 {@spell Cure Wounds|XPHB}
-{@spell Grease|XPHB}
 ```
 
 ### `{@item}` — 909
@@ -101,7 +101,7 @@ Files: backgrounds.json, class-features.json, classes.json, feats.json, items.js
 {@item Traveler's Clothes|XPHB}
 ```
 
-### `{@condition}` — 827
+### `{@condition}` — 833
 
 Files: beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
@@ -112,7 +112,7 @@ Files: beasts.json, class-features.json, feats.json, items.json, optional-featur
 {@condition Poisoned|XPHB}
 ```
 
-### `{@damage}` — 791
+### `{@damage}` — 802
 
 Files: beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
@@ -167,7 +167,7 @@ Files: class-features.json, items.json, optional-features.json, spells.json, sub
 {@creature Wolf|XMM}
 ```
 
-### `{@dc}` — 308
+### `{@dc}` — 311
 
 Files: beasts.json, class-features.json, feats.json, items.json, species.json, spells.json, subclass-features.json
 
@@ -200,6 +200,17 @@ Files: class-features.json, classes.json, items.json, species.json, spells.json,
 {@i Hit:}
 ```
 
+### `{@hit}` — 125
+
+Files: beasts.json, items.json
+
+```
+{@hit 1}
+{@hit 2}
+{@hit 4}
+{@hit 3}
+```
+
 ### `{@feat}` — 122
 
 Files: backgrounds.json, class-features.json, feats.json
@@ -211,15 +222,21 @@ Files: backgrounds.json, class-features.json, feats.json
 {@feat Crafter|XPHB}
 ```
 
-### `{@hit}` — 116
+### `{@atkr}` — 103
 
-Files: beasts.json, items.json
+Files: beasts.json
 
 ```
-{@hit 1}
-{@hit 2}
-{@hit 4}
-{@hit 3}
+{@atkr m}
+{@atkr r}
+```
+
+### `{@h}` — 103
+
+Files: beasts.json
+
+```
+{@h}
 ```
 
 ### `{@sense}` — 97
@@ -231,23 +248,6 @@ Files: class-features.json, feats.json, items.json, optional-features.json, spec
 {@sense Truesight|XPHB}
 {@sense Darkvision|XPHB}
 {@sense darkvision}
-```
-
-### `{@atkr}` — 94
-
-Files: beasts.json
-
-```
-{@atkr m}
-{@atkr r}
-```
-
-### `{@h}` — 94
-
-Files: beasts.json
-
-```
-{@h}
 ```
 
 ### `{@b}` — 93
@@ -367,6 +367,25 @@ Files: items.json, spells.json
 {@hazard Malnutrition|XPHB}
 ```
 
+### `{@actSave}` — 10
+
+Files: beasts.json
+
+```
+{@actSave str}
+{@actSave con}
+{@actSave cha}
+{@actSave wis}
+```
+
+### `{@actSaveFail}` — 10
+
+Files: beasts.json
+
+```
+{@actSaveFail}
+```
+
 ### `{@race}` — 10
 
 Files: spells.json
@@ -387,24 +406,6 @@ Files: feats.json, subclass-features.json
 {@language Giant}
 {@language Primordial}
 {@language Primordial||Aquan}
-```
-
-### `{@actSave}` — 7
-
-Files: beasts.json
-
-```
-{@actSave str}
-{@actSave wis}
-{@actSave dex}
-```
-
-### `{@actSaveFail}` — 7
-
-Files: beasts.json
-
-```
-{@actSaveFail}
 ```
 
 ### `{@scaledice}` — 7
@@ -451,6 +452,22 @@ Files: class-features.json, subclass-features.json
 {@itemMastery Topple|XPHB}
 ```
 
+### `{@actTrigger}` — 4
+
+Files: beasts.json
+
+```
+{@actTrigger}
+```
+
+### `{@actResponse}` — 4
+
+Files: beasts.json
+
+```
+{@actResponse}
+```
+
 ### `{@classFeature}` — 4
 
 Files: class-features.json, subclass-features.json
@@ -489,22 +506,6 @@ Files: subclass-features.json
 {@subclassFeature Dreadnaught|Artificer|EFA|Armorer|EFA|3|EFA}
 {@subclassFeature Guardian|Artificer|EFA|Armorer|EFA|3|EFA}
 {@subclassFeature Infiltrator|Artificer|EFA|Armorer|EFA|3|EFA}
-```
-
-### `{@actTrigger}` — 3
-
-Files: beasts.json
-
-```
-{@actTrigger}
-```
-
-### `{@actResponse}` — 3
-
-Files: beasts.json
-
-```
-{@actResponse}
 ```
 
 ### `{@recharge}` — 3

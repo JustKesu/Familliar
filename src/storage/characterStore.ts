@@ -5,6 +5,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterClassFeatureChoice,
+	CharacterFamiliar,
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
@@ -22,6 +23,7 @@ import {
 	StorageUnavailableError,
 	UnknownSchemaVersionError,
 } from './errors'
+import { migrateToCurrent } from './migrations'
 import { describeStoredCharacterError, isSupportedVersion, toStoredCharacter } from './validate'
 import type { StoredCharacter } from './wireFormat'
 
@@ -90,12 +92,16 @@ function parseStoredCharacters(raw: string): StoredCharacter[] {
 		}
 	}
 
-	for (let i = 0; i < parsed.length; i++) {
-		const error = describeStoredCharacterError(parsed[i], i)
+	// D69: an older but supported save is carried forward here, so everything
+	// below this line only ever sees the current shape.
+	const records = parsed.map(migrateToCurrent)
+
+	for (let i = 0; i < records.length; i++) {
+		const error = describeStoredCharacterError(records[i], i)
 		if (error) throw new Error(`Entry ${error} is malformed.`)
 	}
 
-	return (parsed as Record<string, unknown>[]).map(toStoredCharacter)
+	return (records as Record<string, unknown>[]).map(toStoredCharacter)
 }
 
 function isRecordWithSchemaVersion(value: unknown): value is { schemaVersion: unknown } {
@@ -209,6 +215,22 @@ export class CharacterStore {
 
 		const updated = [...characters]
 		updated[index] = { ...characters[index], name: trimmed }
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Sets (or, with null, clears) the form the character's familiar has.
+	 * A targeted write like `rename` rather than a general update: the sheet
+	 * is otherwise read-only, and this is the one value it edits.
+	 */
+	setFamiliar(id: string, familiar: CharacterFamiliar | null): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { familiar: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = familiar ? { ...rest, familiar } : rest
 		this.writeAll(updated)
 	}
 

@@ -42,10 +42,30 @@ Deliberately excluded: PHB 2014, RHW (Reanimator subclass), all adventure
 modules, UA/playtest, Plane Shift booklets, VGM/MTF (superseded by MPMM).
 
 XMM (Monster Manual 2024) is NOT in ALLOWED_SOURCES and must not be added to
-it. Per D67 it is allowed for ONE category only — creatures of type Beast up
-to CR 6, for Wild Shape and Find Familiar. `extractBeasts()` carries its own
-`BEAST_SOURCE`/`BEAST_MAX_CR` constants for exactly that reason: widening
-ALLOWED_SOURCES would let the other 414 XMM monsters into every category.
+it. Per D67 it is allowed for ONE category only — `data/beasts.json`, for Wild
+Shape and Find Familiar. `extractBeasts()` carries its own `BEAST_SOURCE`/
+`BEAST_MAX_CR` constants for exactly that reason: widening ALLOWED_SOURCES
+would let the other ~400 XMM monsters into every category.
+
+That category has TWO intakes, both XMM-only:
+
+1. by TYPE — creatures of type Beast up to CR 6 (89 entries);
+2. by NAME — `PACT_OF_THE_CHAIN_FORMS`, the eight creatures the Pact of the
+   Chain invocation names in its own text (Imp, Pseudodragon, Quasit,
+   Skeleton, Slaad Tadpole, Sphinx of Wonder, Sprite, Venomous Snake). Seven
+   are not Beasts (fiend, dragon, undead, aberration, celestial, fey) and no
+   type or CR filter would reach them; Venomous Snake is a Beast at CR 1/8 and
+   intake 1 already has it.
+
+Intake 2 is a literal list of names taken from the feature's own text, never a
+widened filter: a creature no feature names stays out. Its entries carry
+`pactOfTheChain: true` — the only marker telling them from a Beast, and what
+`pactOfTheChainForms()` in src/beasts/beastData.ts filters on. validate-data.js
+asserts the flag marks exactly those eight.
+
+Consequence for every consumer: **beasts.json is no longer all Beasts.** A pool
+that means "a Beast" must check `type` (`isBeastCreature`) — Wild Shape does,
+and so does Find Familiar's own CR 0 pool.
 
 ## Output files
 
@@ -65,8 +85,9 @@ after shown where a category changed; unchanged categories listed too):
   data/items.json               943 -> 899  (XDMG 593, XPHB 217, TCE 84->80,
                                       XGE 43->3, EFA 6)
   data/languages.json             0 -> 19   (XPHB 19) — new category
-  data/beasts.json                0 -> 89   (XMM 89) — new category, 79.8 KB
-                                      type Beast, CR <= 6, D67
+  data/beasts.json               89 -> 96   (XMM 96) — 90.3 KB; type Beast at
+                                      CR <= 6 (89) plus the 8 Pact of the
+                                      Chain forms, 7 of them not Beasts, D67
 
 The drops are entries superseded by a newer reprint we also keep (e.g. TCE
 "Chef" superseded by its XPHB reprint) — see extract-data.js's
@@ -233,8 +254,9 @@ PHB (30) and EGW (20), all 2014 Dragonborn variants, plus 196 from the
 bestiary pool: mostly `_mod: {"_": ...}` (a whole-entry mod our resolver does
 not implement) on adventure-module NPCs and on the summon-spell stat blocks
 (TCE/XPHB "Bestial Spirit" etc.), plus one failed `replaceArr`. None of them
-is an XMM beast — no XMM beast uses `_copy` at all — so none reaches output.
-If a monster category is ever widened beyond beasts, the `"_"` mod needs
+is an entry beasts.json keeps — no XMM entry it keeps uses `_copy` at all — so
+none reaches output. The count is unchanged by the Pact of the Chain intake.
+If the monster intake is ever widened much further, the `"_"` mod needs
 implementing first.
 
 ## Tool proficiencies
@@ -261,7 +283,7 @@ z nabídky featů vyřazuje.
 ### Beast stat blocks — CR, type and the markup they carry
 
 `cr` is a display string ("1/4", "2") OR an object `{ cr, xp }` — both shapes
-occur among the 89 kept beasts. `type` is a bare string OR an object carrying
+occur among the kept entries. `type` is a bare string OR an object carrying
 `type` plus `tags` or `swarmSize`; all three shapes occur. Any code touching
 either field must handle both forms.
 
@@ -269,13 +291,22 @@ Extraction normalises CR into two fields: `cr` is always the display string
 (unwrapped from `{cr, xp}`; `xp` is dropped), and `crNumber` is the sortable
 number, fractions divided out (1/8 -> 0.125). Never compare `cr` numerically.
 
-Other shapes, measured across all 89: `size` is always a 1-element array;
+Other shapes, measured across all 96: `size` is always a 1-element array;
 `ac` elements are always plain numbers; `hp` is always `{average, formula}`;
 `speed` values are numbers or `{amount, from, note}`, and the keys seen are
 walk/climb/swim/burrow/fly/`choose`.
 
-`familiar: true` (25 of 89) is 5etools' own marker for creatures Find
-Familiar can be cast as. It is a rules flag, not a filter tag, and is kept.
+`familiar: true` (31 of 96) is 5etools' own marker for creatures Find
+Familiar can be cast as. It is a rules flag, not a filter tag, and is kept in
+the file — but nothing reads it (D68: it disagrees with the 2024 spell text,
+and it is false on the Imp, which Pact of the Chain names outright).
+
+Three fields no Beast carries arrive with the Pact of the Chain forms and are
+kept for them: `languages` (7 of the 8, plain strings), `spellcasting` (Imp,
+Quasit, Sprite) and `gear` (Skeleton, item refs written `"shortsword|xphb"`).
+Each `spellcasting` block sets `displayAs: "action"` and hides its own `will`
+list, so `headerEntries` IS the printed line — that is all the stat block
+renders.
 
 Beast trait/action text uses eight markup tags that occur nowhere else in
 data/: `{@atkr}`, `{@h}`, `{@recharge}`, `{@actTrigger}`, `{@actResponse}`,

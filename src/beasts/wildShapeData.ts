@@ -28,7 +28,7 @@
  * build order step 9, and nothing here reads them.
  */
 
-import { hasFlySpeed, isSwarmBeast, type Beast } from './beastData'
+import { hasFlySpeed, isBeastCreature, isSwarmBeast, type Beast } from './beastData'
 
 export const WILD_SHAPE_CLASS_NAME = 'Druid'
 export const CIRCLE_OF_THE_MOON = 'Circle of the Moon'
@@ -121,10 +121,15 @@ export function wildShapeLimitsFor(
  * ("challenge rating=[&0;&1/4]|type=beast|speed type=!fly|miscellaneous=!swarm"),
  * the same clause Find Familiar's own filter carries. It changes the pool —
  * 3 of the 51 beasts at CR 1/4 or below are swarms.
+ *
+ * `type=beast` in that same filter string is now load-bearing too: beasts.json
+ * also carries the Pact of the Chain forms (an Imp, a Skeleton and a Sprite
+ * all sit inside the level-8 CR cap), and Wild Shape takes Beast forms only.
  */
 export function wildShapeForms(beasts: Beast[], limits: WildShapeLimits): Beast[] {
 	return beasts.filter(
-		(beast) => beast.crNumber <= limits.maxCr && !isSwarmBeast(beast) && (limits.flyAllowed || !hasFlySpeed(beast)),
+		(beast) =>
+			isBeastCreature(beast) && beast.crNumber <= limits.maxCr && !isSwarmBeast(beast) && (limits.flyAllowed || !hasFlySpeed(beast)),
 	)
 }
 

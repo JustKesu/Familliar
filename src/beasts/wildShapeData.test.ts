@@ -110,6 +110,14 @@ describe('wildShapeForms — the offered pool', () => {
 		expect(wildShapeForms(pool, wildShapeLimits('Druid', 8, null)!).map((b) => b.name)).toContain('Owl')
 	})
 
+	/* beasts.json also carries the Pact of the Chain forms, and a Skeleton at CR 1/4 sits well inside the caps. Wild Shape takes Beasts. */
+	it('never offers a non-Beast that the familiar intake put in the file', () => {
+		const withChainForm = [...pool, beast({ name: 'Skeleton', cr: '1/4', crNumber: 0.25, type: 'undead', pactOfTheChain: true })]
+		for (const level of [2, 4, 8, 20]) {
+			expect(wildShapeForms(withChainForm, wildShapeLimits('Druid', level, null)!).map((b) => b.name)).not.toContain('Skeleton')
+		}
+	})
+
 	/* Every row of the Beast Shapes table states its Max CR as a filter carrying `miscellaneous=!swarm`. */
 	it('never offers a swarm', () => {
 		for (const level of [2, 4, 8, 20]) {

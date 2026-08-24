@@ -182,3 +182,18 @@ negativní výsledek.
 Rozhodnout, jestli ručně namapovat tři prostředí (výjimka proti D21),
 nebo nechat na hráči.
 STATUS: nerozhodnuto.
+
+### Invokace a features měnící útok — zkontrolovat při krocích 7 a 8
+
+Improved Pact Weapon dává +1 k útoku i k damage, Lifedrinker přidává
+damage, Thirsting Blade dává útok navíc, Eldritch Smite je zvláštní
+útok. Nic z toho se dnes nepočítá, protože útoky zbraněmi v appce
+neexistují.
+
+Až se budou stavět, musí projít i vybrané class-level optional features,
+ne jen zbraň, feat a fighting style. Platí tu stejný princip jako
+u prózových featů (D55): co se neumí spočítat, musí se aspoň ohlásit
+v rozkladu, aby si to hráč přičetl sám a věděl proč.
+
+Nalezeno při ručním proklikání Warlocka (Hexblade, Improved Pact Weapon).
+STATUS: nerozhodnuto, řešit v kroku 7/8.

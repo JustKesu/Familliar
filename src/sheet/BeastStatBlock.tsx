@@ -6,7 +6,9 @@ import { Entries } from '../markup'
 /*
  * One beast stat block, read-only, collapsed by default (D51's <details>
  * shape, the same one the feat list and the spell list use) so a list of
- * them does not flood the sheet.
+ * them does not flood the sheet. `defaultOpen` is for the one block a sheet
+ * shows on its own — the currently summoned familiar — where a player would
+ * otherwise have to open it every visit.
  *
  * Trait and action text goes through the PLAIN markup renderer, not
  * ResolvedEntries: beasts.json carries no ref* node anywhere
@@ -115,12 +117,17 @@ function BeastBlocks({ title, blocks }: { title: string; blocks: BeastEntryBlock
 	)
 }
 
-export function BeastStatBlock({ beast }: { beast: Beast }): ReactNode {
+/** Item references arrive as "shortsword|xphb" — the source half is bookkeeping, not stat-block text. */
+function formatGear(gear: string[]): string[] {
+	return gear.map((entry) => titleCase(entry.split('|')[0]))
+}
+
+export function BeastStatBlock({ beast, defaultOpen = false }: { beast: Beast; defaultOpen?: boolean }): ReactNode {
 	const senseValues = [...(beast.senses ?? [])]
 	if (beast.passive !== undefined) senseValues.push(`Passive Perception ${beast.passive}`)
 
 	return (
-		<details className="beast">
+		<details className="beast" open={defaultOpen}>
 			<summary>
 				{beast.name} — {formatSize(beast.size)} {formatType(beast.type)}, CR {beast.cr}
 			</summary>
@@ -151,8 +158,11 @@ export function BeastStatBlock({ beast }: { beast: Beast }): ReactNode {
 			<StatLine label="Immunities" values={beast.immune ?? []} />
 			<StatLine label="Vulnerabilities" values={beast.vulnerable ?? []} />
 			<StatLine label="Condition immunities" values={beast.conditionImmune ?? []} />
+			<StatLine label="Languages" values={beast.languages ?? []} />
+			<StatLine label="Gear" values={formatGear(beast.gear ?? [])} />
 
 			<BeastBlocks title="Traits" blocks={beast.trait} />
+			<BeastBlocks title="Spellcasting" blocks={beast.spellcasting?.map((block) => ({ name: block.name, entries: block.headerEntries }))} />
 			<BeastBlocks title="Actions" blocks={beast.action} />
 			<BeastBlocks title="Bonus actions" blocks={beast.bonus} />
 			<BeastBlocks title="Reactions" blocks={beast.reaction} />

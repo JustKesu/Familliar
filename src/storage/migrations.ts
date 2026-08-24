@@ -1,0 +1,81 @@
+import { CURRENT_SCHEMA_VERSION } from './character'
+
+/*
+ * Schema migrations (D69). From version 16 on, every bump ships a step that
+ * reads the IMMEDIATELY previous version and returns the next one; a save is
+ * carried to CURRENT_SCHEMA_VERSION by walking those steps in order, so no
+ * step ever has to know about more than one version change.
+ *
+ * A step takes and returns a plain record rather than a Character: an older
+ * save is by definition not the current type. Validation runs after the walk,
+ * against the migrated record, so a step is free to produce fields the older
+ * shape did not have.
+ *
+ * Adding the next one: append `{ from: CURRENT, to: CURRENT + 1, migrate }`
+ * here in the same commit that raises CURRENT_SCHEMA_VERSION. Nothing else
+ * needs changing — isSupportedVersion and the store read this table.
+ */
+
+export interface SchemaMigration {
+	from: number
+	to: number
+	migrate: (record: Record<string, unknown>) => Record<string, unknown>
+}
+
+export const MIGRATIONS: readonly SchemaMigration[] = [
+	{
+		from: 16,
+		to: 17,
+		/*
+		 * 17 adds Character.familiar. A version-16 character has no familiar
+		 * summoned, and an absent field already means exactly that — so this
+		 * step only moves the version tag. It exists anyway because D69's chain
+		 * must have no holes: the next step needs a 16->17 to build on.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 17 }),
+	},
+]
+
+/**
+ * The steps that carry `version` to the current one, or null when no chain
+ * reaches it — an unknown older version, or a version from a future release.
+ */
+function stepsToCurrent(version: number): SchemaMigration[] | null {
+	if (version === CURRENT_SCHEMA_VERSION) return []
+	if (!Number.isInteger(version) || version > CURRENT_SCHEMA_VERSION) return null
+
+	const steps: SchemaMigration[] = []
+	let at = version
+	while (at !== CURRENT_SCHEMA_VERSION) {
+		const step = MIGRATIONS.find((migration) => migration.from === at)
+		if (!step) return null
+		steps.push(step)
+		at = step.to
+	}
+	return steps
+}
+
+/** True when a save at this version can be read — either it is current, or a chain of steps reaches current. */
+export function canMigrateToCurrent(version: number): boolean {
+	return stepsToCurrent(version) !== null
+}
+
+/**
+ * Applies every step between the record's own version and the current one.
+ * A value that is not a record, or carries no numeric version, is returned
+ * untouched — describeStoredCharacterError is what reports that, with a
+ * message about the actual problem.
+ */
+export function migrateToCurrent(value: unknown): unknown {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return value
+	const record = value as Record<string, unknown>
+	const version = record['schemaVersion']
+	if (typeof version !== 'number') return value
+
+	const steps = stepsToCurrent(version)
+	if (!steps) return value
+
+	let migrated = record
+	for (const step of steps) migrated = step.migrate(migrated)
+	return migrated
+}

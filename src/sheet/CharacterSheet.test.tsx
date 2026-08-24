@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterSheet } from './CharacterSheet'
 import { computeAbilityScore } from '../calculation/abilityScores'
@@ -95,7 +95,7 @@ vi.mock('./grantedSenses', async (importOriginal) => {
 	return { ...actual, loadGrantedSenses: vi.fn(async () => []) }
 })
 
-/* Only the fetch is stubbed — findFamiliarBeasts and hasFindFamiliar stay real, so the section is proved against the actual filter. */
+/* Only the fetch is stubbed — familiarFormOptions and hasFindFamiliar stay real, so the section is proved against the actual filters. */
 vi.mock('../beasts/beastData', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../beasts/beastData')>()
 	return { ...actual, loadBeasts: vi.fn(async () => []) }
@@ -1918,6 +1918,28 @@ describe('CharacterSheet', () => {
 				cha: 6,
 				action: [{ name: 'Bite', entries: ['{@atkr m} {@hit 4}, reach 5 ft. {@h} 7 Piercing damage.'] }],
 			},
+			// Not a Beast, and above the spell's CR 0 cap: in the file only because Pact of the Chain names it.
+			{
+				name: 'Imp',
+				source: 'XMM',
+				size: ['T'],
+				type: { type: 'fiend', tags: ['devil'] },
+				cr: '1',
+				crNumber: 1,
+				ac: [13],
+				hp: { average: 21, formula: '6d4 + 6' },
+				speed: { walk: 20, fly: 40 },
+				str: 6,
+				dex: 17,
+				con: 13,
+				int: 11,
+				wis: 12,
+				cha: 14,
+				languages: ['Common', 'Infernal'],
+				spellcasting: [{ name: 'Invisibility', headerEntries: ['The imp casts {@spell Invisibility|XPHB} on itself.'] }],
+				pactOfTheChain: true,
+				action: [{ name: 'Sting', entries: ['{@atkr m} {@hit 5}, reach 5 ft. {@h} 6 Piercing damage.'] }],
+			},
 		]
 
 		beforeEach(() => {
@@ -1945,11 +1967,104 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={wizard} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
 
-			await waitFor(() => expect(container.querySelector('.sheet__familiar-forms')).toBeTruthy())
-			const section = container.querySelector('.sheet__familiar-forms')!
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+			const section = container.querySelector('.sheet__familiar')!
 			expect(section.textContent).toContain('Owl')
 			// The pool is capped at CR 0 by the spell's own text — Wolf is CR 1/2.
 			expect(section.textContent).not.toContain('Wolf')
+		})
+
+		it('says plainly that nothing is summoned when no form is chosen', async () => {
+			const { container } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+			const section = container.querySelector('.sheet__familiar')!
+			expect(section.querySelector('.sheet__familiar-none')!.textContent).toContain('No familiar is summoned')
+			// The picker is still there, and the eligible list is reachable but collapsed.
+			expect(section.querySelector('select')).toBeTruthy()
+			expect(section.querySelector('details.sheet__familiar-all')!.hasAttribute('open')).toBe(false)
+			expect(section.querySelector('details.beast')).toBeTruthy()
+		})
+
+		it('shows the chosen form as an open stat block instead of the prompt', async () => {
+			const withFamiliar: Character = { ...wizard, familiar: { name: 'Owl', source: 'XMM' } }
+			const { container } = render(<CharacterSheet character={withFamiliar} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+			const section = container.querySelector('.sheet__familiar')!
+			expect(section.querySelector('.sheet__familiar-none')).toBeNull()
+			const chosen = section.querySelector('details.beast')!
+			expect(chosen.hasAttribute('open')).toBe(true)
+			expect(chosen.querySelector('summary')!.textContent).toContain('Owl')
+			expect((section.querySelector('select') as HTMLSelectElement).value).toBe('Owl|XMM')
+		})
+
+		it('states the gap when the stored form is not one this familiar can take (D43)', async () => {
+			const stale: Character = { ...wizard, familiar: { name: 'Imp', source: 'XMM' } }
+			const { container } = render(<CharacterSheet character={stale} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+			const section = container.querySelector('.sheet__familiar')!
+			expect(section.textContent).toContain('"Imp" (XMM) is not a form this familiar can take')
+		})
+
+		it('reports a pick to the caller, and clearing it as null', async () => {
+			const onChooseFamiliar = vi.fn()
+			const { container } = render(<CharacterSheet character={wizard} onChooseFamiliar={onChooseFamiliar} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+
+			const select = container.querySelector('.sheet__familiar select') as HTMLSelectElement
+			fireEvent.change(select, { target: { value: 'Owl|XMM' } })
+			expect(onChooseFamiliar).toHaveBeenCalledWith({ name: 'Owl', source: 'XMM' })
+
+			fireEvent.change(select, { target: { value: '' } })
+			expect(onChooseFamiliar).toHaveBeenLastCalledWith(null)
+		})
+
+		it('offers the Pact of the Chain forms only to a Warlock who took the invocation', async () => {
+			const chainWarlock: Character = {
+				id: 'ff3',
+				name: 'Chainer',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: 'Fiend Patron', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 10, wisdom: 12, charisma: 15 },
+				},
+				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Chain'] }],
+			}
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([
+				{
+					name: 'Find Familiar',
+					source: 'XPHB',
+					level: 1,
+					ritual: true,
+					concentration: false,
+					origin: 'optionalFeature',
+					optionName: 'Pact of the Chain',
+				},
+			])
+
+			const { container } = render(<CharacterSheet character={chainWarlock} />)
+			await screen.findByRole('heading', { name: 'Chainer' })
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+
+			const section = container.querySelector('.sheet__familiar')!
+			expect(section.textContent).toContain('Imp')
+			expect(section.querySelector('optgroup[label="Pact of the Chain"]')).toBeTruthy()
+			expect(section.querySelector('.sheet__familiar-origin')!.textContent).toContain('Pact of the Chain')
+
+			// A Wizard with the same spell and no invocation is offered the spell's own pool only.
+			cleanup()
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([])
+			const { container: plain } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+			await waitFor(() => expect(plain.querySelector('.sheet__familiar')).toBeTruthy())
+			expect(plain.querySelector('.sheet__familiar')!.textContent).not.toContain('Imp')
+			expect(plain.querySelector('optgroup[label="Pact of the Chain"]')).toBeNull()
 		})
 
 		it('shows the section when the spell arrives from a feat rather than a class pick', async () => {
@@ -1971,16 +2086,16 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={fighter} />)
 			await screen.findByRole('heading', { name: 'Dabbler' })
 
-			await waitFor(() => expect(container.querySelector('.sheet__familiar-forms')).toBeTruthy())
-			expect(container.querySelector('.sheet__familiar-forms')!.textContent).toContain('Owl')
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+			expect(container.querySelector('.sheet__familiar')!.textContent).toContain('Owl')
 		})
 
 		it('renders no section at all — and fetches nothing — for a character without the spell', async () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
-			expect(container.querySelector('.sheet__familiar-forms')).toBeNull()
-			expect(screen.queryByRole('heading', { name: 'Familiar forms' })).toBeNull()
+			expect(container.querySelector('.sheet__familiar')).toBeNull()
+			expect(screen.queryByRole('heading', { name: 'Familiar' })).toBeNull()
 			expect(vi.mocked(loadBeasts)).not.toHaveBeenCalled()
 		})
 
@@ -2035,10 +2150,10 @@ describe('CharacterSheet', () => {
 		it('renders each form as a collapsed stat block with its markup resolved', async () => {
 			const { container } = render(<CharacterSheet character={wizard} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
-			await waitFor(() => expect(container.querySelector('.sheet__familiar-forms')).toBeTruthy())
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
 
-			const section = container.querySelector('.sheet__familiar-forms')!
-			const details = section.querySelector('details')!
+			const section = container.querySelector('.sheet__familiar')!
+			const details = section.querySelector('details.beast')!
 			expect(details.hasAttribute('open')).toBe(false)
 			expect(details.querySelector('summary')!.textContent).toContain('Owl — Tiny Beast, CR 0')
 			expect(section.textContent).toContain('Melee Attack Roll:')

@@ -15,7 +15,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
-import { findFamiliarBeasts, hasFindFamiliar, loadBeasts, type Beast } from '../beasts/beastData'
+import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
 import { computeAbilityScores } from '../calculation/abilityScores'
 import type { FeatEffectEntry } from '../calculation/featEffects'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
@@ -50,7 +50,7 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, SpellList } from './SpellList'
-import type { Character } from '../storage/character'
+import type { Character, CharacterFamiliar } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -118,6 +118,20 @@ function formatSpeed(speed: SpeedValue): string {
 	return parts.join(', ')
 }
 
+/** One labelled group of familiar forms in the picker, or nothing when the character has no forms of that origin. */
+function FamiliarFormOptions({ label, options }: { label: string; options: FamiliarFormOption[] }): ReactNode {
+	if (options.length === 0) return null
+	return (
+		<optgroup label={label}>
+			{options.map(({ beast }) => (
+				<option key={formKey(beast)} value={formKey(beast)}>
+					{beast.name} (CR {beast.cr})
+				</option>
+			))}
+		</optgroup>
+	)
+}
+
 /** Renders any Calculated<number> as its value plus breakdown, or D43's visible "unresolved" state. */
 function CalculatedNumber({ result, format }: { result: Calculated<number>; format?: (value: number) => string }): ReactNode {
 	if (result.status === 'unknown') return <UnresolvedValue reason={result.reason} />
@@ -128,7 +142,19 @@ function CalculatedNumber({ result, format }: { result: Calculated<number>; form
 	)
 }
 
-export function CharacterSheet({ character }: { character: Character }): ReactNode {
+/**
+ * The sheet is read-only except for this one control: the familiar's form is
+ * chosen when the spell is cast, not at creation, so it belongs here and not
+ * in the wizard. The callback is optional — without it the section still
+ * renders and still shows the current form, it just cannot be changed.
+ */
+export function CharacterSheet({
+	character,
+	onChooseFamiliar,
+}: {
+	character: Character
+	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
+}): ReactNode {
 	const [savingThrowClassData, setSavingThrowClassData] = useState<ClassSavingThrowProficiencies[] | null>(null)
 	const [hitDiceClassData, setHitDiceClassData] = useState<ClassHitDie[] | null>(null)
 	const [speciesTraitsData, setSpeciesTraitsData] = useState<SpeciesTraitsData[] | null>(null)
@@ -371,7 +397,10 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
-	const familiarBeasts = knowsFindFamiliar ? findFamiliarBeasts(beasts) : []
+	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
+	const familiarForms = knowsFindFamiliar ? familiarFormOptions(beasts, hasPactOfTheChain(character.optionalFeatureChoices ?? [])) : []
+	const storedFamiliar = character.familiar ?? null
+	const chosenFamiliar = storedFamiliar ? (familiarForms.find((option) => formKey(option.beast) === formKey(storedFamiliar)) ?? null) : null
 	/* The stat block is re-derived from beasts.json, never stored — storage carries name+source only. */
 	const wildShapeForms = storedWildShapeForms.flatMap((entry) =>
 		entry.forms.map((form) => ({
@@ -723,17 +752,53 @@ export function CharacterSheet({ character }: { character: Character }): ReactNo
 				</section>
 			)}
 
-			{/* The forms this character's familiar could take. Nothing renders for a character without the spell — no empty heading, same rule the sections above follow. */}
-			{familiarBeasts.length > 0 && (
-				<section className="sheet__familiar-forms">
-					<h2>Familiar forms</h2>
-					<ul>
-						{familiarBeasts.map((beast) => (
-							<li key={`${beast.name}|${beast.source}`}>
-								<BeastStatBlock beast={beast} />
-							</li>
-						))}
-					</ul>
+			{/* The familiar. Nothing renders for a character without the spell — no empty heading, same rule the sections above follow. With the spell but nothing chosen, the section says so rather than showing an empty list. */}
+			{familiarForms.length > 0 && (
+				<section className="sheet__familiar">
+					<h2>Familiar</h2>
+
+					<label className="sheet__familiar-picker">
+						Current form{' '}
+						<select
+							value={storedFamiliar ? formKey(storedFamiliar) : ''}
+							onChange={(event) => {
+								const picked = familiarForms.find((option) => formKey(option.beast) === event.target.value)
+								onChooseFamiliar?.(picked ? { name: picked.beast.name, source: picked.beast.source } : null)
+							}}
+						>
+							<option value="">No familiar summoned</option>
+							<FamiliarFormOptions label="Find Familiar" options={familiarForms.filter((option) => option.origin === 'spell')} />
+							<FamiliarFormOptions
+								label="Pact of the Chain"
+								options={familiarForms.filter((option) => option.origin === 'pact-of-the-chain')}
+							/>
+						</select>
+					</label>
+
+					{storedFamiliar === null ? (
+						<p className="sheet__familiar-none">No familiar is summoned. Choose a form above to summon one.</p>
+					) : chosenFamiliar ? (
+						<>
+							{chosenFamiliar.origin === 'pact-of-the-chain' && <p className="sheet__familiar-origin">Special form from Pact of the Chain.</p>}
+							<BeastStatBlock beast={chosenFamiliar.beast} defaultOpen />
+						</>
+					) : (
+						// D43: a stored form that is no longer offered (the invocation was dropped, or the data changed) is named, with the gap stated.
+						<UnresolvedValue reason={`"${storedFamiliar.name}" (${storedFamiliar.source}) is not a form this familiar can take.`} />
+					)}
+
+					{/* The full pool stays reachable so a form can be compared before switching, but out of the way of the one that is actually summoned. */}
+					<details className="sheet__familiar-all">
+						<summary>All eligible forms ({familiarForms.length})</summary>
+						<ul>
+							{familiarForms.map(({ beast, origin }) => (
+								<li key={formKey(beast)}>
+									{origin === 'pact-of-the-chain' && <span className="sheet__familiar-origin">Pact of the Chain</span>}
+									<BeastStatBlock beast={beast} />
+								</li>
+							))}
+						</ul>
+					</details>
 				</section>
 			)}
 		</article>

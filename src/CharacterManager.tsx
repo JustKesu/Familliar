@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CharacterStore } from './storage/characterStore'
 import { StorageError } from './storage/errors'
-import type { Character } from './storage/character'
+import type { Character, CharacterFamiliar } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
 
@@ -154,6 +154,11 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.rename(id, name))
 	}
 
+	function handleChooseFamiliar(id: string, familiar: CharacterFamiliar | null): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setFamiliar(id, familiar))
+	}
+
 	function handleDelete(id: string): void {
 		if (!store.store) return
 		if (!confirm('Delete this character? This cannot be undone.')) return
@@ -236,7 +241,9 @@ function CharacterManager() {
 					{sheetId &&
 						(() => {
 							const sheetCharacter = characters.find((c) => c.id === sheetId)
-							return sheetCharacter ? <CharacterSheet character={sheetCharacter} /> : null
+							return sheetCharacter ? (
+								<CharacterSheet character={sheetCharacter} onChooseFamiliar={(familiar) => handleChooseFamiliar(sheetCharacter.id, familiar)} />
+							) : null
 						})()}
 				</div>
 			)}

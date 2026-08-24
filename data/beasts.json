@@ -1622,6 +1622,72 @@
 		"crNumber": 0.125
 	},
 	{
+		"name": "Slaad Tadpole",
+		"source": "XMM",
+		"size": [
+			"T"
+		],
+		"type": "aberration",
+		"cr": "1/8",
+		"ac": [
+			12
+		],
+		"hp": {
+			"average": 7,
+			"formula": "3d4"
+		},
+		"speed": {
+			"walk": 30,
+			"burrow": 10
+		},
+		"str": 7,
+		"dex": 15,
+		"con": 10,
+		"int": 3,
+		"wis": 5,
+		"cha": 3,
+		"skill": {
+			"stealth": "+4"
+		},
+		"senses": [
+			"Darkvision 60 ft."
+		],
+		"passive": 7,
+		"resist": [
+			"acid",
+			"cold",
+			"fire",
+			"lightning",
+			"thunder"
+		],
+		"alignment": [
+			"C",
+			"N"
+		],
+		"familiar": true,
+		"languages": [
+			"understands Slaad but can't speak"
+		],
+		"trait": [
+			{
+				"name": "Magic Resistance",
+				"entries": [
+					"The slaad has {@variantrule Advantage|XPHB} on saving throws against spells and other magical effects."
+				]
+			}
+		],
+		"action": [
+			{
+				"name": "Bite",
+				"entries": [
+					"{@atkr m} {@hit 4}, reach 5 ft. {@h}5 ({@damage 1d6 + 2}) Piercing damage."
+				]
+			}
+		],
+		"crNumber": 0.125,
+		"pactOfTheChain": true
+	},
+	{
 		"name": "Venomous Snake",
 		"source": "XMM",
 		"size": [
@@ -1662,7 +1728,8 @@
 				]
 			}
 		],
-		"crNumber": 0.125
+		"crNumber": 0.125,
+		"pactOfTheChain": true
 	},
 	{
 		"name": "Boar",
@@ -2251,6 +2318,79 @@
 		"crNumber": 0.25
 	},
 	{
+		"name": "Pseudodragon",
+		"source": "XMM",
+		"size": [
+			"T"
+		],
+		"type": "dragon",
+		"cr": "1/4",
+		"ac": [
+			14
+		],
+		"hp": {
+			"average": 10,
+			"formula": "3d4 + 3"
+		},
+		"speed": {
+			"walk": 15,
+			"fly": 60
+		},
+		"str": 6,
+		"dex": 15,
+		"con": 13,
+		"int": 10,
+		"wis": 12,
+		"cha": 10,
+		"skill": {
+			"perception": "+5",
+			"stealth": "+4"
+		},
+		"senses": [
+			"Blindsight 10 ft.",
+			"Darkvision 60 ft."
+		],
+		"passive": 15,
+		"alignment": [
+			"N",
+			"G"
+		],
+		"familiar": true,
+		"languages": [
+			"understands Common and Draconic but can't speak"
+		],
+		"trait": [
+			{
+				"name": "Magic Resistance",
+				"entries": [
+					"The pseudodragon has {@variantrule Advantage|XPHB} on saving throws against spells and other magical effects."
+				]
+			}
+		],
+		"action": [
+			{
+				"name": "Multiattack",
+				"entries": [
+					"The pseudodragon makes two Bite attacks."
+				]
+			},
+			{
+				"name": "Bite",
+				"entries": [
+					"{@atkr m} {@hit 4}, reach 5 ft. {@h}4 ({@damage 1d4 + 2}) Piercing damage."
+				]
+			},
+			{
+				"name": "Sting",
+				"entries": [
+					"{@actSave con} {@dc 12}, one creature the pseudodragon can see within 5 feet. {@actSaveFail} 5 ({@damage 2d4}) Poison damage, and the target has the {@condition Poisoned|XPHB} condition for 1 hour. While {@condition Poisoned|XPHB}, the target also has the {@condition Unconscious|XPHB} condition, which ends early if the target takes damage or a creature within 5 feet of it takes an action to wake it."
+				]
+			}
+		],
+		"crNumber": 0.25,
+		"pactOfTheChain": true
+	},
+	{
 		"name": "Pteranodon",
 		"source": "XMM",
 		"size": [
@@ -2342,6 +2482,153 @@
 			}
 		],
 		"crNumber": 0.25
+	},
+	{
+		"name": "Skeleton",
+		"source": "XMM",
+		"size": [
+			"M"
+		],
+		"type": "undead",
+		"cr": "1/4",
+		"ac": [
+			14
+		],
+		"hp": {
+			"average": 13,
+			"formula": "2d8 + 4"
+		},
+		"speed": {
+			"walk": 30
+		},
+		"str": 10,
+		"dex": 16,
+		"con": 15,
+		"int": 6,
+		"wis": 8,
+		"cha": 5,
+		"senses": [
+			"Darkvision 60 ft."
+		],
+		"passive": 9,
+		"immune": [
+			"poison"
+		],
+		"vulnerable": [
+			"bludgeoning"
+		],
+		"conditionImmune": [
+			"exhaustion",
+			"poisoned"
+		],
+		"alignment": [
+			"L",
+			"E"
+		],
+		"familiar": true,
+		"languages": [
+			"understands Common plus one other language but can't speak"
+		],
+		"gear": [
+			"shortbow|xphb",
+			"shortsword|xphb"
+		],
+		"action": [
+			{
+				"name": "Shortsword",
+				"entries": [
+					"{@atkr m} {@hit 5}, reach 5 ft. {@h}6 ({@damage 1d6 + 3}) Piercing damage."
+				]
+			},
+			{
+				"name": "Shortbow",
+				"entries": [
+					"{@atkr r} {@hit 5}, range 80/320 ft. {@h}6 ({@damage 1d6 + 3}) Piercing damage."
+				]
+			}
+		],
+		"crNumber": 0.25,
+		"pactOfTheChain": true
+	},
+	{
+		"name": "Sprite",
+		"source": "XMM",
+		"size": [
+			"T"
+		],
+		"type": "fey",
+		"cr": "1/4",
+		"ac": [
+			15
+		],
+		"hp": {
+			"average": 10,
+			"formula": "4d4"
+		},
+		"speed": {
+			"walk": 10,
+			"fly": 40
+		},
+		"str": 3,
+		"dex": 18,
+		"con": 10,
+		"int": 14,
+		"wis": 13,
+		"cha": 11,
+		"skill": {
+			"perception": "+3",
+			"stealth": "+8"
+		},
+		"passive": 13,
+		"alignment": [
+			"N",
+			"G"
+		],
+		"familiar": true,
+		"languages": [
+			"Common",
+			"Elvish",
+			"Sylvan"
+		],
+		"spellcasting": [
+			{
+				"name": "Invisibility",
+				"type": "spellcasting",
+				"headerEntries": [
+					"The sprite casts {@spell Invisibility|XPHB} on itself, requiring no spell components and using Charisma as the spellcasting ability."
+				],
+				"will": [
+					"{@spell Invisibility|XPHB}"
+				],
+				"ability": "cha",
+				"displayAs": "action",
+				"hidden": [
+					"will"
+				]
+			}
+		],
+		"action": [
+			{
+				"name": "Needle Sword",
+				"entries": [
+					"{@atkr m} {@hit 6}, reach 5 ft. {@h}6 ({@damage 1d4 + 4}) Piercing damage."
+				]
+			},
+			{
+				"name": "Enchanting Bow",
+				"entries": [
+					"{@atkr r} {@hit 6}, range 40/160 ft. {@h}1 Piercing damage, and the target has the {@condition Charmed|XPHB} condition until the start of the sprite's next turn."
+				]
+			},
+			{
+				"name": "Heart Sight",
+				"entries": [
+					"{@actSave cha} {@dc 10}, one creature within 5 feet the sprite can see (Celestials, Fiends, and Undead automatically fail the save). {@actSaveFail} The sprite knows the target's emotions and alignment."
+				]
+			}
+		],
+		"crNumber": 0.25,
+		"pactOfTheChain": true
 	},
 	{
 		"name": "Swarm of Bats",
@@ -3450,6 +3737,105 @@
 		"crNumber": 1
 	},
 	{
+		"name": "Imp",
+		"source": "XMM",
+		"size": [
+			"T"
+		],
+		"type": {
+			"type": "fiend",
+			"tags": [
+				"devil"
+			]
+		},
+		"cr": "1",
+		"ac": [
+			13
+		],
+		"hp": {
+			"average": 21,
+			"formula": "6d4 + 6"
+		},
+		"speed": {
+			"walk": 20,
+			"fly": 40
+		},
+		"str": 6,
+		"dex": 17,
+		"con": 13,
+		"int": 11,
+		"wis": 12,
+		"cha": 14,
+		"skill": {
+			"deception": "+4",
+			"insight": "+3",
+			"stealth": "+5"
+		},
+		"senses": [
+			"Darkvision 120 ft. (unimpeded by magical {@variantrule Darkness|XPHB})"
+		],
+		"passive": 11,
+		"resist": [
+			"cold"
+		],
+		"immune": [
+			"fire",
+			"poison"
+		],
+		"conditionImmune": [
+			"poisoned"
+		],
+		"alignment": [
+			"L",
+			"E"
+		],
+		"languages": [
+			"Common",
+			"Infernal"
+		],
+		"spellcasting": [
+			{
+				"name": "Invisibility",
+				"type": "spellcasting",
+				"headerEntries": [
+					"The imp casts {@spell Invisibility|XPHB} on itself, requiring no spell components and using Charisma as the spellcasting ability."
+				],
+				"will": [
+					"{@spell Invisibility|XPHB}"
+				],
+				"ability": "cha",
+				"displayAs": "action",
+				"hidden": [
+					"will"
+				]
+			}
+		],
+		"trait": [
+			{
+				"name": "Magic Resistance",
+				"entries": [
+					"The imp has {@variantrule Advantage|XPHB} on saving throws against spells and other magical effects."
+				]
+			}
+		],
+		"action": [
+			{
+				"name": "Sting",
+				"entries": [
+					"{@atkr m} {@hit 5}, reach 5 ft. {@h}6 ({@damage 1d6 + 3}) Piercing damage plus 7 ({@damage 2d6}) Poison damage."
+				]
+			},
+			{
+				"name": "Shape-Shift",
+				"entries": [
+					"The imp shape-shifts to resemble a rat ({@variantrule Speed|XPHB} 20 ft.), a raven (20 ft., Fly 60 ft.), or a spider (20 ft., Climb 20 ft.), or it returns to its true form. Its statistics are the same in each form, except for its {@variantrule Speed|XPHB}. Any equipment it is wearing or carrying isn't transformed."
+				]
+			}
+		],
+		"crNumber": 1,
+		"pactOfTheChain": true
+	},
+	{
 		"name": "Lion",
 		"source": "XMM",
 		"size": [
@@ -3519,6 +3905,185 @@
 			}
 		],
 		"crNumber": 1
+	},
+	{
+		"name": "Quasit",
+		"source": "XMM",
+		"size": [
+			"T"
+		],
+		"type": {
+			"type": "fiend",
+			"tags": [
+				"demon"
+			]
+		},
+		"cr": "1",
+		"ac": [
+			13
+		],
+		"hp": {
+			"average": 25,
+			"formula": "10d4"
+		},
+		"speed": {
+			"walk": 40
+		},
+		"str": 5,
+		"dex": 17,
+		"con": 10,
+		"int": 7,
+		"wis": 10,
+		"cha": 10,
+		"skill": {
+			"stealth": "+5"
+		},
+		"senses": [
+			"Darkvision 120 ft."
+		],
+		"passive": 10,
+		"resist": [
+			"cold",
+			"fire",
+			"lightning"
+		],
+		"immune": [
+			"poison"
+		],
+		"conditionImmune": [
+			"poisoned"
+		],
+		"alignment": [
+			"C",
+			"E"
+		],
+		"familiar": true,
+		"languages": [
+			"Abyssal",
+			"Common"
+		],
+		"spellcasting": [
+			{
+				"name": "Invisibility",
+				"type": "spellcasting",
+				"headerEntries": [
+					"The quasit casts {@spell Invisibility|XPHB} on itself, requiring no spell components and using Charisma as the spellcasting ability."
+				],
+				"will": [
+					"{@spell Invisibility|XPHB}"
+				],
+				"ability": "cha",
+				"displayAs": "action",
+				"hidden": [
+					"will"
+				]
+			}
+		],
+		"trait": [
+			{
+				"name": "Magic Resistance",
+				"entries": [
+					"The quasit has {@variantrule Advantage|XPHB} on saving throws against spells and other magical effects."
+				]
+			}
+		],
+		"action": [
+			{
+				"name": "Rend",
+				"entries": [
+					"{@atkr m} {@hit 5}, reach 5 ft. {@h}5 ({@damage 1d4 + 3}) Slashing damage, and the target has the {@condition Poisoned|XPHB} condition until the start of the quasit's next turn."
+				]
+			},
+			{
+				"name": "Scare (1/Day)",
+				"entries": [
+					"{@actSave wis} {@dc 10}, one creature within 20 feet. {@actSaveFail} The target has the {@condition Frightened|XPHB} condition. At the end of each of its turns, the target repeats the save, ending the effect on itself on a success. After 1 minute, it succeeds automatically."
+				]
+			},
+			{
+				"name": "Shape-Shift",
+				"entries": [
+					"The quasit shape-shifts to resemble a bat ({@variantrule Speed|XPHB} 10 ft., Fly 40 ft.), a centipede (40 ft., Climb 40 ft.), or a toad (40 ft., Swim 40 ft.), or it returns to its true form. Its game statistics are the same in each form, except for its {@variantrule Speed|XPHB}. Any equipment it is wearing or carrying isn't transformed."
+				]
+			}
+		],
+		"crNumber": 1,
+		"pactOfTheChain": true
+	},
+	{
+		"name": "Sphinx of Wonder",
+		"source": "XMM",
+		"size": [
+			"T"
+		],
+		"type": "celestial",
+		"cr": "1",
+		"ac": [
+			13
+		],
+		"hp": {
+			"average": 24,
+			"formula": "7d4 + 7"
+		},
+		"speed": {
+			"walk": 20,
+			"fly": 40
+		},
+		"str": 6,
+		"dex": 17,
+		"con": 13,
+		"int": 15,
+		"wis": 12,
+		"cha": 11,
+		"skill": {
+			"arcana": "+4",
+			"religion": "+4",
+			"stealth": "+5"
+		},
+		"senses": [
+			"Darkvision 60 ft."
+		],
+		"passive": 11,
+		"resist": [
+			"necrotic",
+			"psychic",
+			"radiant"
+		],
+		"alignment": [
+			"L",
+			"G"
+		],
+		"familiar": true,
+		"languages": [
+			"Celestial",
+			"Common"
+		],
+		"trait": [
+			{
+				"name": "Magic Resistance",
+				"entries": [
+					"The sphinx has {@variantrule Advantage|XPHB} on saving throws against spells and other magical effects."
+				]
+			}
+		],
+		"action": [
+			{
+				"name": "Rend",
+				"entries": [
+					"{@atkr m} {@hit 5}, reach 5 ft. {@h}5 ({@damage 1d4 + 3}) Slashing damage plus 7 ({@damage 2d6}) Radiant damage."
+				]
+			}
+		],
+		"reaction": [
+			{
+				"name": "Burst of Ingenuity (2/Day)",
+				"entries": [
+					"{@actTrigger} The sphinx or another creature within 30 feet makes an ability check or a saving throw. {@actResponse} The sphinx adds 2 to the roll."
+				]
+			}
+		],
+		"crNumber": 1,
+		"pactOfTheChain": true
 	},
 	{
 		"name": "Swarm of Piranhas",

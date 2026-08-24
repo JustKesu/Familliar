@@ -6,6 +6,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterClassFeatureChoice,
+	CharacterFamiliar,
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
@@ -18,6 +19,7 @@ import type {
 	MagicInitiateChoice,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
+import { canMigrateToCurrent } from './migrations'
 import type { StoredCharacter } from './wireFormat'
 
 const ABILITY_SCORE_METHODS: readonly AbilityScoreMethod[] = ['standardArray', 'pointBuy', 'roll']
@@ -566,6 +568,25 @@ export function describeWildShapeFormsError(value: unknown): string | null {
 	return null
 }
 
+/**
+ * Validates an optional `familiar` field. Returns null if the field is absent
+ * — which is not "invalid", it is the ordinary state of having no familiar
+ * summoned. Whether the named creature is a form this character may actually
+ * take is not checked here: that needs beasts.json, which the storage layer
+ * does not load (same limit as describeAbilityBonusError's).
+ */
+export function describeFamiliarError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return `familiar is not an object`
+	if (!isNonEmptyString(value['name'])) return `familiar.name is missing or not a string`
+	if (!isNonEmptyString(value['source'])) return `familiar.source is missing or not a string`
+	return null
+}
+
+function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar {
+	return { name: value['name'] as string, source: value['source'] as string }
+}
+
 function toCharacterWildShapeForms(value: unknown[]): CharacterWildShapeForms[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
@@ -689,6 +710,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (classFeatureChoicesError) return `[${index}].${classFeatureChoicesError}`
 	const wildShapeFormsError = describeWildShapeFormsError(value['wildShapeForms'])
 	if (wildShapeFormsError) return `[${index}].${wildShapeFormsError}`
+	const familiarError = describeFamiliarError(value['familiar'])
+	if (familiarError) return `[${index}].${familiarError}`
 	return null
 }
 
@@ -718,6 +741,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const subclassSpellChoices = value['subclassSpellChoices']
 	const classFeatureChoices = value['classFeatureChoices']
 	const wildShapeForms = value['wildShapeForms']
+	const familiar = value['familiar']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -740,6 +764,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(subclassSpellChoices) ? { subclassSpellChoices: toCharacterSubclassSpellChoices(subclassSpellChoices) } : {}),
 		...(Array.isArray(classFeatureChoices) ? { classFeatureChoices: toCharacterClassFeatureChoices(classFeatureChoices) } : {}),
 		...(Array.isArray(wildShapeForms) ? { wildShapeForms: toCharacterWildShapeForms(wildShapeForms) } : {}),
+		...(isRecord(familiar) ? { familiar: toCharacterFamiliar(familiar) } : {}),
 	}
 }
 
@@ -750,6 +775,11 @@ export function toStoredCharacter(value: Record<string, unknown>): StoredCharact
 	}
 }
 
+/**
+ * True for the current version and for every older one a migration chain
+ * reaches (D69). A version from a future release, or one older than the chain
+ * goes back, is still rejected outright rather than guessed at.
+ */
 export function isSupportedVersion(version: number): boolean {
-	return version === CURRENT_SCHEMA_VERSION
+	return version === CURRENT_SCHEMA_VERSION || canMigrateToCurrent(version)
 }

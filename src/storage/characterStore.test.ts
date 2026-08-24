@@ -424,6 +424,45 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		expect(new CharacterStore(new MemoryStorage()).create('Cato').wildShapeForms).toBeUndefined()
 	})
 
+	/** The familiar's current form — chosen from the sheet, not at creation. */
+	it('reloads a familiar intact and rejects a malformed one', () => {
+		const good = new MemoryStorage()
+		good.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Conjurer', classes: [], familiar: { name: 'Owl', source: 'XMM' } }]),
+		)
+		expect(new CharacterStore(good).list()[0].familiar).toEqual({ name: 'Owl', source: 'XMM' })
+
+		const bad = new MemoryStorage()
+		bad.setItem(
+			STORAGE_KEY,
+			// No source — name alone cannot identify a stat block, same rule as a Wild Shape form.
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Conjurer', classes: [], familiar: { name: 'Owl' } }]),
+		)
+		expect(() => new CharacterStore(bad).list()).toThrow(CorruptDataError)
+	})
+
+	it('sets, replaces and clears the familiar on a saved character', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create('Conjurer')
+		expect(character.familiar).toBeUndefined()
+
+		store.setFamiliar(character.id, { name: 'Owl', source: 'XMM' })
+		expect(store.list()[0].familiar).toEqual({ name: 'Owl', source: 'XMM' })
+
+		store.setFamiliar(character.id, { name: 'Imp', source: 'XMM' })
+		expect(store.list()[0].familiar).toEqual({ name: 'Imp', source: 'XMM' })
+
+		store.setFamiliar(character.id, null)
+		expect(store.list()[0].familiar).toBeUndefined()
+		expect('familiar' in store.list()[0]).toBe(false)
+	})
+
+	it('throws CharacterNotFoundError when setting a familiar on an unknown id', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		expect(() => store.setFamiliar('nope', { name: 'Owl', source: 'XMM' })).toThrow(CharacterNotFoundError)
+	})
+
 	it('rejects a saved optionalFeatureChoices entry missing featureType', () => {
 		const backing = new MemoryStorage()
 		backing.setItem(
@@ -500,6 +539,44 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		)
 		const store = new CharacterStore(backing)
 		expect(() => store.list()).toThrow(CorruptDataError)
+	})
+
+	/*
+	 * D69: from version 16 on, a save one version behind is migrated instead of
+	 * rejected. Version 16 is the last shape before Character.familiar existed.
+	 */
+	it('migrates a version-16 character forward instead of rejecting it', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: 16,
+					id: '1',
+					name: 'Rowan',
+					classes: [{ className: 'Druid', classSource: 'XPHB', subclass: 'Circle of the Moon', level: 6 }],
+					wildShapeForms: [{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Wolf', source: 'XMM' }] }],
+				},
+			]),
+		)
+		const store = new CharacterStore(backing)
+		const [migrated] = store.list()
+		expect(migrated.name).toBe('Rowan')
+		expect(migrated.wildShapeForms).toEqual([{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Wolf', source: 'XMM' }] }])
+		// No familiar was summonable at version 16, and the absent field is what "none summoned" means.
+		expect(migrated.familiar).toBeUndefined()
+
+		// The migrated shape is written back at the current version on the next write.
+		store.rename(migrated.id, 'Rowan the Green')
+		expect(JSON.parse(backing.getItem(STORAGE_KEY)!)[0].schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+	})
+
+	it('migrates a version-16 import file rather than refusing it', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const imported = store.import(JSON.stringify([{ schemaVersion: 16, id: 'old', name: 'Conjurer', classes: [] }]))
+		expect(imported).toHaveLength(1)
+		expect(imported[0].name).toBe('Conjurer')
+		expect(store.list()).toHaveLength(1)
 	})
 
 	it('rejects a version-3 character (before optionalFeatureChoices existed) and leaves the store unchanged', () => {

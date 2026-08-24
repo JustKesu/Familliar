@@ -1127,3 +1127,26 @@ Rationale: parsování prózy je křehké vůči formulaci a špatně se testuje
 u tří tříd a čtyř úrovní je ruční tabulka menší, čitelnější a poznatelně
 špatná, když se splete. Obojí se dodělá až těsně před krokem 7, kde se to
 poprvé použije.
+
+## D71 — Kolize se hlásí i u kouzel, nejen u proficiencies
+
+D18 a D44 říkají, že dovednost, kterou postava už má z jiného zdroje,
+zůstane v pickeru vidět, ale nejde vybrat a je u ní napsáno, odkud ji má.
+Totéž platí pro kouzla.
+
+Kouzlo, které postava už má — z kroku Kouzla, jako always-prepared od
+subclassy, z featu nebo z vybrané invokace — se v každém jiném pickeru
+nabízí zašedle s uvedením zdroje. Nikdy se tiše neschová a nikdy se tiše
+nezahodí.
+
+Dvě pojistky, obě nutné: picker nikdy nezakáže položku, kterou drží jeho
+vlastní výběr (jinak by ji nešlo odebrat), a už zaškrtnutá položka se
+nezakazuje nikdy — jinak by mohla uvíznout nezapočítaná a neodebratelná.
+
+Rationale: hráč v jednom kroku wizardu nevidí, co si vybral o tři kroky
+dřív ani co dostal zadarmo od subclassy. Bez tohohle pravidla utratí
+jeden ze tří cantripů Pact of the Tome za kouzlo, které už má — což se
+při ručním testu Warlocka skutečně stalo. Zákaz sám nestačí: bez uvedení
+zdroje hráč nepozná, jestli je volba zakázaná chybou, nebo právem.
+
+Platí i pro každý budoucí picker, který nabízí kouzla.

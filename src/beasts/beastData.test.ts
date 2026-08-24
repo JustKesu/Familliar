@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { extractBeasts, findFamiliarBeasts, hasFindFamiliar, type Beast } from './beastData'
+import {
+	extractBeasts,
+	familiarFormOptions,
+	findFamiliarBeasts,
+	hasFindFamiliar,
+	hasPactOfTheChain,
+	isBeastCreature,
+	pactOfTheChainForms,
+	type Beast,
+} from './beastData'
 
 function beast(overrides: Partial<Beast> = {}): Beast {
 	return {
@@ -58,6 +67,58 @@ describe('findFamiliarBeasts', () => {
 	it('keeps a beast whose type object carries tags rather than a swarm size', () => {
 		const pool = [beast({ name: 'Compsognathus', type: { type: 'beast', tags: ['dinosaur'] } })]
 		expect(findFamiliarBeasts(pool)).toHaveLength(1)
+	})
+})
+
+/* beasts.json holds non-Beasts since the Pact of the Chain forms joined it (D67's name-based intake). */
+const imp = (): Beast =>
+	beast({ name: 'Imp', type: { type: 'fiend', tags: ['devil'] }, cr: '1', crNumber: 1, pactOfTheChain: true })
+
+describe('the Pact of the Chain forms', () => {
+	it('are the only entries the flag marks, whatever their CR or type', () => {
+		const pool = [beast({ name: 'Owl' }), imp(), beast({ name: 'Venomous Snake', cr: '1/8', crNumber: 0.125, pactOfTheChain: true })]
+		expect(pactOfTheChainForms(pool).map((b) => b.name)).toEqual(['Imp', 'Venomous Snake'])
+	})
+
+	it('are kept out of the spell\'s own pool, which is Beasts at CR 0', () => {
+		expect(findFamiliarBeasts([beast({ name: 'Owl' }), imp()]).map((b) => b.name)).toEqual(['Owl'])
+	})
+
+	it('are recognised as non-Beasts by isBeastCreature', () => {
+		expect(isBeastCreature(imp())).toBe(false)
+		expect(isBeastCreature(beast())).toBe(true)
+		expect(isBeastCreature(beast({ type: { type: 'beast', swarmSize: 'T' } }))).toBe(true)
+	})
+})
+
+describe('familiarFormOptions', () => {
+	const pool = [beast({ name: 'Owl' }), imp()]
+
+	it('offers the spell pool alone without the invocation', () => {
+		expect(familiarFormOptions(pool, false)).toEqual([{ beast: pool[0], origin: 'spell' }])
+	})
+
+	it('adds the invocation forms, labelled, for a character who has it', () => {
+		expect(familiarFormOptions(pool, true).map((option) => [option.beast.name, option.origin])).toEqual([
+			['Owl', 'spell'],
+			['Imp', 'pact-of-the-chain'],
+		])
+	})
+
+	it('offers a creature in both pools once', () => {
+		const both = [beast({ name: 'Owl', pactOfTheChain: true })]
+		expect(familiarFormOptions(both, true)).toEqual([{ beast: both[0], origin: 'spell' }])
+	})
+})
+
+describe('hasPactOfTheChain', () => {
+	it('is true when an invocation pick names it, whatever case or padding', () => {
+		expect(hasPactOfTheChain([{ choices: ['Agonizing Blast', 'pact of the chain '] }])).toBe(true)
+	})
+
+	it('is false for another pact, or for no picks at all', () => {
+		expect(hasPactOfTheChain([{ choices: ['Pact of the Blade', 'Pact of the Tome'] }])).toBe(false)
+		expect(hasPactOfTheChain([])).toBe(false)
 	})
 })
 
