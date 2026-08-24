@@ -12,6 +12,7 @@ import {
 } from '../spells/featSpellChoiceData'
 import { ABILITY_ABBREVIATIONS } from '../calculation/abilityAbbreviations'
 import { loadFixedFeatSpells, type FeatGrantedSpell } from '../spells/featSpells'
+import { featSpellPickerKey, knownSpellNote, knownSpellReason, type KnownSpell } from '../spells/knownSpells'
 import {
 	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
@@ -74,6 +75,7 @@ export function FeatAsiPicker({
 	speciesSource,
 	value,
 	onChange,
+	alreadyKnown = [],
 }: {
 	className: string
 	classSource: string
@@ -84,6 +86,8 @@ export function FeatAsiPicker({
 	speciesSource: string | null
 	value: FeatAsiChoice[]
 	onChange: (choices: FeatAsiChoice[]) => void
+	/** Spells the character already has from elsewhere (knownSpells.ts) — shown but not selectable in either spell sub-picker below. A feat's own picks are excluded by key so unselecting stays possible. */
+	alreadyKnown?: readonly KnownSpell[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -228,6 +232,8 @@ export function FeatAsiPicker({
 							<MagicInitiateSubPicker
 								magicInitiate={current.magicInitiate ?? null}
 								chosenAbility={current.chosenAbility}
+								alreadyKnown={alreadyKnown}
+								ownPickerKey={featSpellPickerKey(current.name)}
 								onChangeMagicInitiate={(magicInitiate) => setChoiceAt(index, { ...current, magicInitiate })}
 								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
 							/>
@@ -239,6 +245,7 @@ export function FeatAsiPicker({
 								featSource={current.source}
 								characterLevel={level}
 								chosenAbility={current.chosenAbility}
+								alreadyKnown={alreadyKnown}
 								filterChoiceSpells={current.filterChoiceSpells ?? null}
 								onChange={(filterChoiceSpells) => setChoiceAt(index, { ...current, filterChoiceSpells })}
 							/>
@@ -428,11 +435,15 @@ type MagicInitiateLoadState =
 function MagicInitiateSubPicker({
 	magicInitiate,
 	chosenAbility,
+	alreadyKnown,
+	ownPickerKey,
 	onChangeMagicInitiate,
 	onSelectAbility,
 }: {
 	magicInitiate: MagicInitiateChoice | null
 	chosenAbility: Ability | undefined
+	alreadyKnown: readonly KnownSpell[]
+	ownPickerKey: string
 	onChangeMagicInitiate: (value: MagicInitiateChoice) => void
 	onSelectAbility: (ability: Ability) => void
 }): ReactNode {
@@ -506,11 +517,13 @@ function MagicInitiateSubPicker({
 								.map((candidate) => {
 									const checked = cantrips.some((c) => c.name === candidate.name && c.source === candidate.source)
 									const atLimit = !checked && cantrips.length >= 2
+									const known = knownSpellReason(alreadyKnown, candidate, ownPickerKey)
 									return (
 										<li key={`${candidate.name}|${candidate.source}`}>
 											<label>
-												<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggleCantrip(candidate)} />
+												<input type="checkbox" checked={checked} disabled={!checked && (atLimit || known !== null)} onChange={() => toggleCantrip(candidate)} />
 												{candidate.name}
+												{known !== null && <span className="feat-asi-picker__already-known"> {knownSpellNote(known)}</span>}
 											</label>
 										</li>
 									)
@@ -526,11 +539,13 @@ function MagicInitiateSubPicker({
 								.map((candidate) => {
 									const checked = chosenSpell !== null && chosenSpell.name === candidate.name && chosenSpell.source === candidate.source
 									const atLimit = !checked && chosenSpell !== null
+									const known = knownSpellReason(alreadyKnown, candidate, ownPickerKey)
 									return (
 										<li key={`${candidate.name}|${candidate.source}`}>
 											<label>
-												<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggleSpell(candidate)} />
+												<input type="checkbox" checked={checked} disabled={!checked && (atLimit || known !== null)} onChange={() => toggleSpell(candidate)} />
 												{candidate.name}
+												{known !== null && <span className="feat-asi-picker__already-known"> {knownSpellNote(known)}</span>}
 											</label>
 										</li>
 									)
@@ -582,6 +597,7 @@ function FilterChoiceSpellSubPicker({
 	featSource,
 	characterLevel,
 	chosenAbility,
+	alreadyKnown,
 	filterChoiceSpells,
 	onChange,
 }: {
@@ -589,6 +605,7 @@ function FilterChoiceSpellSubPicker({
 	featSource: string
 	characterLevel: number
 	chosenAbility: Ability | undefined
+	alreadyKnown: readonly KnownSpell[]
 	filterChoiceSpells: FilterChoiceSpellsChoice | null
 	onChange: (value: FilterChoiceSpellsChoice) => void
 }): ReactNode {
@@ -624,6 +641,7 @@ function FilterChoiceSpellSubPicker({
 	}
 
 	const { shape, cantripCandidates, spellCandidates, fixedCompanions } = state
+	const ownPickerKey = featSpellPickerKey(featName)
 	const cantrips = filterChoiceSpells?.cantrips ?? []
 	const spells = filterChoiceSpells?.spells ?? []
 	const cantripLimit = shape.cantripSlot?.count ?? 0
@@ -677,11 +695,13 @@ function FilterChoiceSpellSubPicker({
 						{cantripCandidates.map((candidate) => {
 							const checked = cantrips.some((c) => c.name === candidate.name && c.source === candidate.source)
 							const atLimit = !checked && cantrips.length >= cantripLimit
+							const known = knownSpellReason(alreadyKnown, candidate, ownPickerKey)
 							return (
 								<li key={`${candidate.name}|${candidate.source}`}>
 									<label>
-										<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggleCantrip(candidate)} />
+										<input type="checkbox" checked={checked} disabled={!checked && (atLimit || known !== null)} onChange={() => toggleCantrip(candidate)} />
 										{candidate.name}
+										{known !== null && <span className="feat-asi-picker__already-known"> {knownSpellNote(known)}</span>}
 									</label>
 								</li>
 							)
@@ -699,11 +719,13 @@ function FilterChoiceSpellSubPicker({
 						{spellCandidates.map((candidate) => {
 							const checked = spells.some((s) => s.name === candidate.name && s.source === candidate.source)
 							const atLimit = !checked && spells.length >= spellLimit
+							const known = knownSpellReason(alreadyKnown, candidate, ownPickerKey)
 							return (
 								<li key={`${candidate.name}|${candidate.source}`}>
 									<label>
-										<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggleSpell(candidate)} />
+										<input type="checkbox" checked={checked} disabled={!checked && (atLimit || known !== null)} onChange={() => toggleSpell(candidate)} />
 										{candidate.name}
+										{known !== null && <span className="feat-asi-picker__already-known"> {knownSpellNote(known)}</span>}
 									</label>
 								</li>
 							)

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadSubclassSpellChoiceOffers, type SubclassSpellChoiceOffer } from './subclassSpellChoiceData'
+import { knownSpellNote, knownSpellReason, SUBCLASS_SPELL_CHOICE_PICKER_KEY, type KnownSpell } from './knownSpells'
 import type { CharacterSubclassSpellChoicePick } from '../storage/character'
 
 /*
@@ -37,6 +38,7 @@ export function SubclassSpellChoicePicker({
 	classLevel,
 	value,
 	onChange,
+	alreadyKnown = [],
 }: {
 	subclassName: string
 	subclassSource: string
@@ -45,6 +47,8 @@ export function SubclassSpellChoicePicker({
 	classLevel: number
 	value: CharacterSubclassSpellChoicePick[]
 	onChange: (picks: CharacterSubclassSpellChoicePick[]) => void
+	/** Spells the character already has from elsewhere (knownSpells.ts) — offered but not selectable, with the source named. This picker's own picks are excluded by key. */
+	alreadyKnown?: readonly KnownSpell[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -109,11 +113,21 @@ export function SubclassSpellChoicePicker({
 									}}
 								>
 									<option value="">— choose a spell —</option>
-									{candidates.map((candidate) => (
-										<option key={`${candidate.name}|${candidate.source}`} value={`${candidate.name}|${candidate.source}`}>
-											{candidate.name}
-										</option>
-									))}
+									{candidates.map((candidate) => {
+										const known = knownSpellReason(alreadyKnown, candidate, SUBCLASS_SPELL_CHOICE_PICKER_KEY)
+										// This slot's OWN current pick stays selectable — the dropdown has to be able to show it.
+										const isCurrent = current?.name === candidate.name && current.source === candidate.source
+										return (
+											<option
+												key={`${candidate.name}|${candidate.source}`}
+												value={`${candidate.name}|${candidate.source}`}
+												disabled={!isCurrent && known !== null}
+											>
+												{candidate.name}
+												{known !== null ? ` ${knownSpellNote(known)}` : ''}
+											</option>
+										)
+									})}
 								</select>
 							</label>
 						</li>

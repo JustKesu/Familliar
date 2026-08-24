@@ -14,6 +14,7 @@ import {
 	type OptionalFeatureSpellChoiceShape,
 	type OptionalFeatureSpellChoiceSlot,
 } from '../spells/optionalFeatureSpellChoiceData'
+import { knownSpellNote, knownSpellReason, optionalFeatureSpellPickerKey, type KnownSpell } from '../spells/knownSpells'
 import type { FilterChoiceCandidateSpell } from '../spells/featSpellChoiceData'
 import type { CharacterOptionalFeatureChoice, OptionalFeatureSpellChoice } from '../storage/character'
 
@@ -52,6 +53,7 @@ export function ClassOptionalFeaturePicker({
 	damagingCantripNames,
 	damagingAttackCantripNames,
 	hasFightingStyleFeature,
+	alreadyKnown = [],
 	value,
 	onChange,
 }: {
@@ -63,6 +65,8 @@ export function ClassOptionalFeaturePicker({
 	damagingCantripNames: string[] | null
 	damagingAttackCantripNames: string[] | null
 	hasFightingStyleFeature: boolean
+	/** Spells the character already has from elsewhere (knownSpells.ts) — an option's spell sub-picker shows them but does not offer them. That option's own picks are excluded by key. */
+	alreadyKnown?: readonly KnownSpell[]
 	value: CharacterOptionalFeatureChoice[]
 	onChange: (selection: CharacterOptionalFeatureChoice[]) => void
 }): ReactNode {
@@ -195,6 +199,7 @@ export function ClassOptionalFeaturePicker({
 										<OptionalFeatureSpellSubPicker
 											featureType={group.featureType}
 											optionName={option.name}
+											alreadyKnown={alreadyKnown}
 											value={value.find((entry) => entry.featureType === group.featureType)?.spellChoices?.find((p) => p.optionName === option.name)}
 											onChange={(pick) => setSpellChoice(group.featureType, pick)}
 										/>
@@ -224,11 +229,13 @@ type ShapeState = { status: 'loading' } | { status: 'ready'; shape: OptionalFeat
 function OptionalFeatureSpellSubPicker({
 	featureType,
 	optionName,
+	alreadyKnown,
 	value,
 	onChange,
 }: {
 	featureType: string
 	optionName: string
+	alreadyKnown: readonly KnownSpell[]
 	value: OptionalFeatureSpellChoice | undefined
 	onChange: (pick: OptionalFeatureSpellChoice) => void
 }): ReactNode {
@@ -261,12 +268,21 @@ function OptionalFeatureSpellSubPicker({
 					slot={state.shape.cantripSlot}
 					label="cantrips"
 					picked={cantrips}
+					alreadyKnown={alreadyKnown}
+					ownPickerKey={optionalFeatureSpellPickerKey(optionName)}
 					// Spread the current pick so writing one slot never clears the other.
 					onChange={(next) => onChange({ optionName, cantrips: next, spells })}
 				/>
 			)}
 			{state.shape.spellSlot && (
-				<SlotPicker slot={state.shape.spellSlot} label="spells" picked={spells} onChange={(next) => onChange({ optionName, cantrips, spells: next })} />
+				<SlotPicker
+					slot={state.shape.spellSlot}
+					label="spells"
+					picked={spells}
+					alreadyKnown={alreadyKnown}
+					ownPickerKey={optionalFeatureSpellPickerKey(optionName)}
+					onChange={(next) => onChange({ optionName, cantrips, spells: next })}
+				/>
 			)}
 		</div>
 	)
@@ -277,11 +293,15 @@ function SlotPicker({
 	slot,
 	label,
 	picked,
+	alreadyKnown,
+	ownPickerKey,
 	onChange,
 }: {
 	slot: OptionalFeatureSpellChoiceSlot
 	label: string
 	picked: { name: string; source: string }[]
+	alreadyKnown: readonly KnownSpell[]
+	ownPickerKey: string
 	onChange: (next: { name: string; source: string }[]) => void
 }): ReactNode {
 	const [candidates, setCandidates] = useState<FilterChoiceCandidateSpell[] | null>(null)
@@ -322,11 +342,18 @@ function SlotPicker({
 			<ul className="class-optional-feature-picker__slot-list">
 				{candidates.map((spell) => {
 					const checked = isPicked(spell)
+					const known = knownSpellReason(alreadyKnown, spell, ownPickerKey)
 					return (
 						<li key={`${spell.name}|${spell.source}`}>
 							<label>
-								<input type="checkbox" checked={checked} disabled={!checked && picked.length >= slot.count} onChange={() => toggle(spell)} />
+								<input
+									type="checkbox"
+									checked={checked}
+									disabled={!checked && (picked.length >= slot.count || known !== null)}
+									onChange={() => toggle(spell)}
+								/>
 								{spell.name}
+								{known !== null && <span className="class-optional-feature-picker__already-known"> {knownSpellNote(known)}</span>}
 							</label>
 						</li>
 					)

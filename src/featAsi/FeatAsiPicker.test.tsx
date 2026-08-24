@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FeatAsiPicker } from './FeatAsiPicker'
 import { loadFeatAsiGrants } from './featAsiData'
+import { collectKnownSpells, type KnownSpellInputs } from '../spells/knownSpells'
 import type { FeatAsiChoice } from '../storage/character'
 
 /*
@@ -115,6 +116,19 @@ vi.mock('../spells/featSpells', async () => {
 afterEach(cleanup)
 
 const fullScores = { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 }
+
+/** Built through the real collector so these tests exercise the same labels/keys the wizard produces. */
+function known(overrides: Partial<KnownSpellInputs>) {
+	return collectKnownSpells({
+		classSpellPicks: [],
+		subclassName: null,
+		subclassAlwaysPrepared: [],
+		subclassSpellChoicePicks: [],
+		featGrantedSpells: [],
+		optionalFeatureGrantedSpells: [],
+		...overrides,
+	})
+}
 
 describe('FeatAsiPicker', () => {
 	it('renders nothing when the class has no grant by that level', async () => {
@@ -642,6 +656,111 @@ describe('FeatAsiPicker', () => {
 			)
 			await screen.findByRole('radio', { name: 'Tough' })
 			expect(container.querySelector('.feat-asi-picker__filter-choice')).toBeNull()
+		})
+	})
+
+	/* Spell-overlap slice: both feat spell sub-pickers consume the same shared set (knownSpells.ts). */
+	describe('spells the character already has', () => {
+		it("Magic Initiate does not offer a spell already picked on the class spell step, and names it", async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			const value: FeatAsiChoice[] = [
+				{ level: 4, kind: 'feat', name: 'Magic Initiate', source: 'XPHB', magicInitiate: { className: 'Wizard', classSource: 'XPHB', cantrips: [], spell: null } },
+			]
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={onChange}
+					alreadyKnown={known({ classSpellPicks: [{ name: 'Fire Bolt', source: 'XPHB' }] })}
+				/>,
+			)
+
+			const fireBolt = (await screen.findByLabelText(/Fire Bolt/)) as HTMLInputElement
+			expect(fireBolt.disabled).toBe(true)
+			expect(fireBolt.labels?.[0]?.textContent).toContain('the Spells step')
+			expect((screen.getByLabelText('Mage Hand') as HTMLInputElement).disabled).toBe(false)
+
+			await user.click(fireBolt)
+			expect(onChange).not.toHaveBeenCalled()
+		})
+
+		it("Magic Initiate does not disable its OWN picks, so they can still be unselected", async () => {
+			const value: FeatAsiChoice[] = [
+				{
+					level: 4,
+					kind: 'feat',
+					name: 'Magic Initiate',
+					source: 'XPHB',
+					magicInitiate: { className: 'Wizard', classSource: 'XPHB', cantrips: [{ name: 'Fire Bolt', source: 'XPHB' }], spell: null },
+				},
+			]
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={() => {}}
+					// The wizard's set carries the feat's own pick back to it; the sub-picker must ignore its own key.
+					alreadyKnown={known({ featGrantedSpells: [{ name: 'Fire Bolt', source: 'XPHB', featName: 'Magic Initiate' }] })}
+				/>,
+			)
+
+			const fireBolt = (await screen.findByLabelText('Fire Bolt')) as HTMLInputElement
+			expect(fireBolt.checked).toBe(true)
+			expect(fireBolt.disabled).toBe(false)
+		})
+
+		it("a filter-choice feat's slot does not offer a spell the subclass already grants, and names the subclass", async () => {
+			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Blessed Warrior', source: 'XPHB' }]
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={() => {}}
+					alreadyKnown={known({ subclassName: 'Life Domain', subclassAlwaysPrepared: [{ name: 'Guidance', source: 'XPHB' }] })}
+				/>,
+			)
+
+			const guidance = (await screen.findByLabelText(/Guidance/)) as HTMLInputElement
+			expect(guidance.disabled).toBe(true)
+			expect(guidance.labels?.[0]?.textContent).toContain('Life Domain')
+			expect((screen.getByLabelText('Sacred Flame') as HTMLInputElement).disabled).toBe(false)
+		})
+
+		it('a character with no overlaps sees every option enabled, exactly as before', async () => {
+			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Blessed Warrior', source: 'XPHB' }]
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={() => {}}
+					alreadyKnown={known({ classSpellPicks: [{ name: 'Ray of Sickness', source: 'XPHB' }] })}
+				/>,
+			)
+
+			for (const name of ['Guidance', 'Sacred Flame', 'Toll the Dead']) {
+				expect((await screen.findByLabelText(name)).hasAttribute('disabled')).toBe(false)
+			}
 		})
 	})
 })

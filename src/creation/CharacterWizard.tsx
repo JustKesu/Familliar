@@ -35,6 +35,10 @@ import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { SpellPicker } from '../spells/SpellPicker'
 import { spellListClassFor, expandedSpellListClassFor } from '../spells/classSpellListData'
 import { AlwaysPreparedSpellsList } from '../spells/AlwaysPreparedSpellsList'
+import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
+import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
+import { collectKnownSpells } from '../spells/knownSpells'
 import { SubclassSpellChoicePicker } from '../spells/SubclassSpellChoicePicker'
 import { isSubclassSpellChoice, loadSubclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
@@ -43,7 +47,7 @@ import { computeSpellCounts } from '../calculation/spellCounts'
 import { computeSpellSlots } from '../calculation/spellSlots'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
-import type { Character } from '../storage/character'
+import type { Character, CharacterOptionalFeatureChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
 	initialControllerState,
@@ -130,6 +134,10 @@ export function CharacterWizard({
 	/** How many spells each chosen option still needs picked (step 6a — Pact of the Tome). Read from the data by the effect below, never a hardcoded table. */
 	const [optionalFeatureSpellRequirements, setOptionalFeatureSpellRequirements] = useState<OptionalFeatureSpellRequirement[]>([])
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[]>([])
+	/** The three grant sources the shared "already has it" set needs (knownSpells.ts); the other two (class picks, subclass filter-choice picks) are wizard state already. */
+	const [subclassAlwaysPrepared, setSubclassAlwaysPrepared] = useState<AlwaysPreparedSpell[]>([])
+	const [featGrantedSpells, setFeatGrantedSpells] = useState<FeatGrantedSpell[]>([])
+	const [optionalFeatureGrantedSpells, setOptionalFeatureGrantedSpells] = useState<OptionalFeatureGrantedSpell[]>([])
 
 	useEffect(() => {
 		let cancelled = false
@@ -310,6 +318,94 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [])
+
+	/**
+	 * The subclass's always-prepared grants, for the shared "already has it"
+	 * set. Called with the same arguments AlwaysPreparedSpellsList uses on the
+	 * spells step (no pact-slot table), so what a picker refuses to offer is
+	 * exactly what that list shows the player right above it.
+	 */
+	useEffect(() => {
+		let cancelled = false
+		const classChoice = state.data.classChoice
+		const subclass = state.data.subclass
+		if (!classChoice || !subclass) {
+			setSubclassAlwaysPrepared([])
+			return
+		}
+		loadSubclassAlwaysPreparedSpells(subclass.name, subclass.source, classChoice.className, classChoice.classSource, classChoice.level)
+			.then((spells) => {
+				if (!cancelled) setSubclassAlwaysPrepared(spells)
+			})
+			.catch(() => {
+				/* Best-effort, like the other data lookups here: without it a picker simply offers what it always did. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.classChoice, state.data.subclass])
+
+	/** Feat-granted spells — fixed grants AND the player's own Magic Initiate / filter-choice picks, both keyed to the granting feat by featSpells.ts. */
+	useEffect(() => {
+		let cancelled = false
+		if (state.data.featAsiChoices.length === 0) {
+			setFeatGrantedSpells([])
+			return
+		}
+		loadFeatGrantedSpells({
+			id: '',
+			name: state.data.name,
+			classes: state.data.classChoice
+				? [
+						{
+							className: state.data.classChoice.className,
+							classSource: state.data.classChoice.classSource,
+							subclass: state.data.subclass?.name ?? null,
+							level: state.data.classChoice.level,
+						},
+					]
+				: [],
+			featAsiChoices: state.data.featAsiChoices,
+		})
+			.then((spells) => {
+				if (!cancelled) setFeatGrantedSpells(spells)
+			})
+			.catch(() => {
+				/* Best-effort, same as above. */
+			})
+		return () => {
+			cancelled = true
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- `name` only rides along on the draft Character; refetching when the player types would be pure waste.
+	}, [state.data.featAsiChoices, state.data.classChoice, state.data.subclass])
+
+	/**
+	 * Optional-feature-granted spells, from BOTH progressions at once: the
+	 * subclass's picks (class step) and the class's own (classOptionalFeatures
+	 * step), joined into the storage shape the same way saveCharacter does.
+	 */
+	useEffect(() => {
+		let cancelled = false
+		const subclassEntries: CharacterOptionalFeatureChoice[] =
+			state.data.optionalFeatureChoices.length > 0 && state.data.subclass?.featureType
+				? [{ featureType: state.data.subclass.featureType, choices: state.data.optionalFeatureChoices }]
+				: []
+		const selection = [...subclassEntries, ...state.data.classOptionalFeatureChoices]
+		if (selection.length === 0) {
+			setOptionalFeatureGrantedSpells([])
+			return
+		}
+		loadOptionalFeatureGrantedSpells({ optionalFeatureChoices: selection })
+			.then((spells) => {
+				if (!cancelled) setOptionalFeatureGrantedSpells(spells)
+			})
+			.catch(() => {
+				/* Best-effort, same as above. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.optionalFeatureChoices, state.data.classOptionalFeatureChoices, state.data.subclass])
 
 	/**
 	 * Loaded separately from ExpertisePicker's own fetch (same duplication
@@ -514,6 +610,23 @@ export function CharacterWizard({
 	 * own text instead of a premature "none of your cantrips qualifies".
 	 */
 	const knownSpellNames = state.data.spellChoices.map((pick) => pick.name)
+
+	/**
+	 * D18/D44 for spells: every spell the character already has and where from,
+	 * computed ONCE from current wizard state and handed to every spell picker
+	 * in the wizard. Each picker excludes its own key so unselecting stays
+	 * possible. Read from live state rather than step order, like the mark-feat
+	 * pool widening above — every step is reachable again via Back, so no
+	 * disabled option here names a pick the player cannot go and undo.
+	 */
+	const alreadyKnownSpells = collectKnownSpells({
+		classSpellPicks: state.data.spellChoices,
+		subclassName: state.data.subclass?.name ?? null,
+		subclassAlwaysPrepared,
+		subclassSpellChoicePicks: state.data.subclassSpellChoices,
+		featGrantedSpells,
+		optionalFeatureGrantedSpells,
+	})
 	const damagingCantripNames = spellDetails.length > 0 ? damagingCantripsAmong(spellDetails, state.data.spellChoices) : null
 	const damagingAttackCantripNames = spellDetails.length > 0 ? damagingAttackCantripsAmong(spellDetails, state.data.spellChoices) : null
 
@@ -764,6 +877,7 @@ export function CharacterWizard({
 						label={spellRequirement.label}
 						value={state.data.spellChoices}
 						onChange={(choices) => dispatch({ type: 'setSpellChoices', choices })}
+						alreadyKnown={alreadyKnownSpells}
 					/>
 					{state.data.subclass && (
 						<AlwaysPreparedSpellsList
@@ -783,6 +897,7 @@ export function CharacterWizard({
 							classLevel={state.data.classChoice.level}
 							value={state.data.subclassSpellChoices}
 							onChange={(picks) => dispatch({ type: 'setSubclassSpellChoices', picks })}
+							alreadyKnown={alreadyKnownSpells}
 						/>
 					)}
 				</div>
@@ -800,6 +915,7 @@ export function CharacterWizard({
 						damagingCantripNames={damagingCantripNames}
 						damagingAttackCantripNames={damagingAttackCantripNames}
 						hasFightingStyleFeature={state.data.fightingStyle !== null}
+						alreadyKnown={alreadyKnownSpells}
 						value={state.data.classOptionalFeatureChoices}
 						onChange={(choices) => dispatch({ type: 'setClassOptionalFeatureChoices', choices })}
 					/>
@@ -815,6 +931,7 @@ export function CharacterWizard({
 						finalAbilityScores={finalAbilityScores}
 						speciesName={state.data.speciesChoice?.name ?? null}
 						speciesSource={state.data.speciesChoice?.source ?? null}
+						alreadyKnown={alreadyKnownSpells}
 						value={state.data.featAsiChoices}
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
 					/>

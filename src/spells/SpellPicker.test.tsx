@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SpellPicker } from './SpellPicker'
+import { collectKnownSpells, type KnownSpellInputs } from './knownSpells'
 import type { ClassSpellListSpell } from './classSpellListData'
 import type { SpellSlotsEntry } from '../calculation/spellSlots'
 
@@ -250,6 +251,91 @@ describe('SpellPicker', () => {
 
 			await user.click(await screen.findByLabelText(/Detect Evil and Good/))
 			expect(onChange).toHaveBeenCalledWith([{ name: 'Detect Evil and Good', source: 'XPHB', level: 1 }])
+		})
+	})
+
+	/* Spell-overlap slice: the class picker consumes the same shared set (knownSpells.ts) as every other picker. */
+	describe('spells the character already has', () => {
+		function known(overrides: Partial<KnownSpellInputs>) {
+			return collectKnownSpells({
+				classSpellPicks: [],
+				subclassName: null,
+				subclassAlwaysPrepared: [],
+				subclassSpellChoicePicks: [],
+				featGrantedSpells: [],
+				optionalFeatureGrantedSpells: [],
+				...overrides,
+			})
+		}
+
+		it('a subclass always-prepared spell is still listed, but cannot be spent a pick on', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			render(
+				<SpellPicker
+					className="Wizard"
+					classSource="XPHB"
+					spellSlots={fullSlots}
+					cantripCount={2}
+					leveledSpellCount={3}
+					label="prepared"
+					value={[]}
+					onChange={onChange}
+					alreadyKnown={known({ subclassName: 'Archfey Patron', subclassAlwaysPrepared: [{ name: 'Misty Step', source: 'XPHB' }] })}
+				/>,
+			)
+
+			const mistyStep = (await screen.findByLabelText(/Misty Step/)) as HTMLInputElement
+			expect(mistyStep.disabled).toBe(true)
+			expect(mistyStep.labels?.[0]?.textContent).toContain('Archfey Patron')
+			await user.click(mistyStep)
+			expect(onChange).not.toHaveBeenCalled()
+
+			expect((screen.getByLabelText(/Magic Missile/) as HTMLInputElement).disabled).toBe(false)
+		})
+
+		it('a pick already made here stays toggleable even once another source also grants it', async () => {
+			const user = userEvent.setup()
+			const onChange = vi.fn()
+			render(
+				<SpellPicker
+					className="Wizard"
+					classSource="XPHB"
+					spellSlots={fullSlots}
+					cantripCount={2}
+					leveledSpellCount={3}
+					label="prepared"
+					value={[{ name: 'Misty Step', source: 'XPHB', level: 2 }]}
+					onChange={onChange}
+					// The subclass was chosen AFTER this pick — disabling it would strand the pick forever.
+					alreadyKnown={known({ subclassName: 'Archfey Patron', subclassAlwaysPrepared: [{ name: 'Misty Step', source: 'XPHB' }] })}
+				/>,
+			)
+
+			const mistyStep = (await screen.findByLabelText(/Misty Step/)) as HTMLInputElement
+			expect(mistyStep.disabled).toBe(false)
+			await user.click(mistyStep)
+			expect(onChange).toHaveBeenCalledWith([])
+		})
+
+		it('a character with no overlaps sees every option enabled', async () => {
+			render(
+				<SpellPicker
+					className="Wizard"
+					classSource="XPHB"
+					spellSlots={fullSlots}
+					cantripCount={2}
+					leveledSpellCount={3}
+					label="prepared"
+					value={[]}
+					onChange={() => {}}
+					alreadyKnown={known({ subclassName: 'Archfey Patron', subclassAlwaysPrepared: [{ name: 'Hold Person', source: 'XPHB' }] })}
+				/>,
+			)
+
+			for (const name of ['Prestidigitation', 'Fire Bolt', 'Magic Missile', 'Misty Step']) {
+				expect(((await screen.findByLabelText(new RegExp(name))) as HTMLInputElement).disabled).toBe(false)
+			}
 		})
 	})
 })

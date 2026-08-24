@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadClassSpellList, loadFeatExpandedSpellList, type ClassSpellListSpell } from './classSpellListData'
 import { filterSpellsByLevel } from './spellLevelFilter'
+import { CLASS_SPELL_PICKER_KEY, knownSpellNote, knownSpellReason, type KnownSpell } from './knownSpells'
 import type { SpellSlotsEntry } from '../calculation/spellSlots'
 import type { SpellCountLabel } from '../calculation/spellCounts'
 
@@ -46,6 +47,7 @@ export function SpellPicker({
 	label,
 	value,
 	onChange,
+	alreadyKnown = [],
 }: {
 	className: string
 	classSource: string
@@ -60,6 +62,8 @@ export function SpellPicker({
 	label: SpellCountLabel
 	value: SpellPick[]
 	onChange: (spells: SpellPick[]) => void
+	/** Spells the character already has from elsewhere (knownSpells.ts) — shown, not hidden, but not selectable here. This picker's own picks are excluded by key, so unselecting stays possible. */
+	alreadyKnown?: readonly KnownSpell[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -127,14 +131,17 @@ export function SpellPicker({
 	function renderSpell(spell: ClassSpellListSpell): ReactNode {
 		const checked = isChosen(spell)
 		const atLimit = !checked && (spell.level === 0 ? cantripsChosen >= cantripCount : leveledChosen >= leveledSpellCount)
+		const known = knownSpellReason(alreadyKnown, spell, CLASS_SPELL_PICKER_KEY)
 		return (
 			<li key={`${spell.name}|${spell.source}`} className="spell-picker__item">
 				<label>
-					<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggle(spell)} />
+					{/* An already-checked pick stays toggleable even once another source grants it too — otherwise a pick made before the subclass was chosen could never be undone. */}
+					<input type="checkbox" checked={checked} disabled={!checked && (atLimit || known !== null)} onChange={() => toggle(spell)} />
 					{spell.name}
 					{spell.ritual && <span className="spell-picker__flag"> (ritual)</span>}
 					{spell.concentration && <span className="spell-picker__flag"> (concentration)</span>}
 					{spell.viaVariant && <span className="spell-picker__flag spell-picker__flag--variant"> (variant)</span>}
+					{known !== null && <span className="spell-picker__already-known"> {knownSpellNote(known)}</span>}
 				</label>
 			</li>
 		)

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SubclassSpellChoicePicker } from './SubclassSpellChoicePicker'
+import { collectKnownSpells } from './knownSpells'
 import type { SubclassSpellChoiceOffer } from './subclassSpellChoiceData'
 import type { CharacterSubclassSpellChoicePick } from '../storage/character'
 
@@ -165,6 +166,60 @@ describe('SubclassSpellChoicePicker', () => {
 		await user.selectOptions(selects[0], 'Burning Hands|XPHB')
 		expect(await screen.findByText('1 of 2 Evoker spells chosen.')).toBeTruthy()
 		expect((selects[0] as HTMLSelectElement).value).toBe('Burning Hands|XPHB')
+	})
+
+	it('a spell the character already has is offered but not selectable, with the source named', async () => {
+		render(
+			<SubclassSpellChoicePicker
+				subclassName="Evoker"
+				subclassSource="XPHB"
+				className="Wizard"
+				classSource="XPHB"
+				classLevel={3}
+				value={[]}
+				onChange={() => {}}
+				alreadyKnown={collectKnownSpells({
+					classSpellPicks: [{ name: 'Fire Bolt', source: 'XPHB' }],
+					subclassName: 'Evoker',
+					subclassAlwaysPrepared: [],
+					subclassSpellChoicePicks: [],
+					featGrantedSpells: [],
+					optionalFeatureGrantedSpells: [],
+				})}
+			/>,
+		)
+
+		const fireBolt = (await screen.findAllByRole('option', { name: /Fire Bolt/ }))[0] as HTMLOptionElement
+		expect(fireBolt.disabled).toBe(true)
+		expect(fireBolt.textContent).toContain('the Spells step')
+		expect((screen.getAllByRole('option', { name: /Burning Hands/ })[0] as HTMLOptionElement).disabled).toBe(false)
+	})
+
+	it("does not disable a slot's own current pick", async () => {
+		const picks: CharacterSubclassSpellChoicePick[] = [{ grantedAtLevel: 3, slotIndex: 0, name: 'Fire Bolt', source: 'XPHB' }]
+		render(
+			<SubclassSpellChoicePicker
+				subclassName="Evoker"
+				subclassSource="XPHB"
+				className="Wizard"
+				classSource="XPHB"
+				classLevel={3}
+				value={picks}
+				onChange={() => {}}
+				alreadyKnown={collectKnownSpells({
+					classSpellPicks: [],
+					subclassName: 'Evoker',
+					subclassAlwaysPrepared: [],
+					subclassSpellChoicePicks: picks,
+					featGrantedSpells: [],
+					optionalFeatureGrantedSpells: [],
+				})}
+			/>,
+		)
+
+		for (const option of await screen.findAllByRole('option', { name: /Fire Bolt/ })) {
+			expect((option as HTMLOptionElement).disabled).toBe(false)
+		}
 	})
 
 	it('College of Lore below level 6: renders nothing (not shown yet)', async () => {

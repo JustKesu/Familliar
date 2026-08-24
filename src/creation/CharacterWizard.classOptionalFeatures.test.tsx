@@ -9,6 +9,7 @@ import type { ClassSpellCountData } from '../calculation/spellCounts'
 import type { ClassSpellListSpell } from '../spells/classSpellListData'
 import type { ClassOptionalFeatureGroup } from '../optionalFeatures/optionalFeatureData'
 import type { SpellDetail } from '../spells/spellDetailData'
+import type { CharacterOptionalFeatureChoice } from '../storage/character'
 
 /*
  * D64: the class-level optional-feature picker runs as its own wizard step
@@ -74,8 +75,47 @@ vi.mock('../fightingStyle/fightingStyleData', () => ({
 
 vi.mock('../subclass/subclassData', () => ({
 	loadSubclassLevelFor: vi.fn(async () => 3),
-	loadSubclassesFor: vi.fn(async () => []),
+	loadSubclassesFor: vi.fn(async (className: string) =>
+		className === 'Warlock' ? [{ name: 'Archfey Patron', source: 'XPHB', entries: ['Fey magic.'], featureType: null }] : [],
+	),
 }))
+
+/** The Archfey's real level-3 grant, the case that started the spell-overlap slice. Only name/source are read by the overlap set. */
+vi.mock('../spells/subclassPreparedSpells', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/subclassPreparedSpells')>()
+	return {
+		...actual,
+		loadSubclassAlwaysPreparedSpells: vi.fn(async (subclassName: string) =>
+			subclassName === 'Archfey Patron'
+				? [{ name: 'Misty Step', source: 'XPHB', level: 2, grantedAtLevel: 3, ritual: false, concentration: false, origin: 'subclass' as const }]
+				: [],
+		),
+	}
+})
+
+/** Stands in for the real spells.json lookup: echoes each stored pick back as a grant from its own option, which is all the overlap set reads. */
+vi.mock('../spells/optionalFeatureSpells', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/optionalFeatureSpells')>()
+	return {
+		...actual,
+		loadOptionalFeatureGrantedSpells: vi.fn(async (character: { optionalFeatureChoices?: CharacterOptionalFeatureChoice[] }) =>
+			(character.optionalFeatureChoices ?? []).flatMap((entry) =>
+				(entry.spellChoices ?? [])
+					.filter((pick) => entry.choices.some((name) => name.toLowerCase() === pick.optionName.toLowerCase()))
+					.flatMap((pick) =>
+						[...pick.cantrips, ...pick.spells].map((ref) => ({
+							...ref,
+							level: 0,
+							ritual: false,
+							concentration: false,
+							origin: 'optionalFeature' as const,
+							optionName: pick.optionName,
+						})),
+					),
+			),
+		),
+	}
+})
 
 vi.mock('../expertise/expertiseData', () => ({
 	loadExpertiseEligibility: vi.fn(async () => null),
@@ -116,16 +156,21 @@ vi.mock('../spells/optionalFeatureSpellChoiceData', async (importOriginal) => {
 				? { cantripSlot: { levels: [0], filter: { kind: 'any' as const }, count: 3 }, spellSlot: { levels: [1], filter: { kind: 'ritual' as const }, count: 2 } }
 				: { cantripSlot: null, spellSlot: null },
 		),
+		// Dancing Lights and Misty Step are added to the real slot lists so the
+		// overlap cases (a class cantrip pick, a subclass grant) are reachable
+		// from inside this picker at all.
 		loadOptionalFeatureSlotCandidates: vi.fn(async (slot: { levels: number[] }) =>
 			slot.levels.includes(0)
 				? [
 						{ name: 'Mage Hand', source: 'XPHB' },
 						{ name: 'Minor Illusion', source: 'XPHB' },
 						{ name: 'Prestidigitation', source: 'XPHB' },
+						{ name: 'Dancing Lights', source: 'XPHB' },
 					]
 				: [
 						{ name: 'Alarm', source: 'XPHB' },
 						{ name: 'Detect Magic', source: 'XPHB' },
+						{ name: 'Misty Step', source: 'XPHB' },
 					],
 		),
 	}
@@ -259,7 +304,8 @@ function spell(name: string, level: number): ClassSpellListSpell {
 	return { name, source: 'XPHB', level, ritual: false, concentration: false, viaVariant: false }
 }
 
-const warlockSpellList: ClassSpellListSpell[] = [spell('Eldritch Blast', 0), spell('Prestidigitation', 0), spell('Hex', 1)]
+/** Chill Touch is on no optional-feature slot list — the one cantrip a Warlock can take without overlapping the Tome's own offers. */
+const warlockSpellList: ClassSpellListSpell[] = [spell('Eldritch Blast', 0), spell('Prestidigitation', 0), spell('Chill Touch', 0), spell('Hex', 1)]
 const sorcererSpellList: ClassSpellListSpell[] = [spell('Fire Bolt', 0), spell('Prestidigitation', 0), spell('Magic Missile', 1)]
 
 vi.mock('../spells/classSpellListData', async (importOriginal) => {
@@ -301,10 +347,11 @@ function stepLabels(): string[] {
 }
 
 /** Walks class → species → background → languages → abilities, stopping on the spells step. No back-navigation anywhere. */
-async function walkToSpells(user: ReturnType<typeof userEvent.setup>, className: string, level: string) {
+async function walkToSpells(user: ReturnType<typeof userEvent.setup>, className: string, level: string, subclassName?: string) {
 	await user.type(screen.getByLabelText('Character name'), 'Aria')
 	await user.selectOptions(await screen.findByLabelText('Class'), className)
 	await user.selectOptions(screen.getByLabelText('Level'), level)
+	if (subclassName) await user.click(await screen.findByRole('radio', { name: new RegExp(subclassName) }))
 	await goNext(user)
 	await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 	await goNext(user)
@@ -378,9 +425,10 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
 		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
+		// Dancing Lights, not Prestidigitation: that one is already a class cantrip pick and is no longer offered here.
 		await user.click(checkbox('Mage Hand'))
 		await user.click(checkbox('Minor Illusion'))
-		await user.click(checkbox('Prestidigitation'))
+		await user.click(checkbox('Dancing Lights'))
 		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		await user.click(checkbox('Alarm'))
@@ -477,6 +525,88 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await goNext(user)
 		const save = (await screen.findByRole('button', { name: 'Create character' })) as HTMLButtonElement
 		expect(save.disabled).toBe(false)
+	})
+
+	/*
+	 * The spell-overlap slice (D18/D44 applied to spells). The Archfey Warlock
+	 * below is the hand-tested bug: the subclass grants Misty Step for free
+	 * several screens earlier, and the Tome's picker used to offer it again.
+	 */
+	it("an Archfey Warlock cannot spend a Tome pick on Misty Step, and the reason names the subclass", async () => {
+		const user = userEvent.setup()
+		renderWizard()
+		await walkToSpells(user, 'Warlock', '3', 'Archfey Patron')
+
+		await user.click(await screen.findByLabelText(/Eldritch Blast/))
+		await user.click(screen.getByLabelText(/Prestidigitation/))
+		await user.click(screen.getByLabelText(/Hex/))
+		await goNext(user)
+
+		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
+
+		const mistyStep = (await screen.findByRole('checkbox', { name: /Misty Step/ })) as HTMLInputElement
+		// Still offered, never hidden (D18) — but not selectable, and it says where it comes from.
+		expect(mistyStep.disabled).toBe(true)
+		expect(mistyStep.labels?.[0]?.textContent).toContain('Archfey Patron')
+
+		await user.click(mistyStep)
+		expect(mistyStep.checked).toBe(false)
+	})
+
+	it('a spell picked on the class spell step is not selectable in a later picker, and the reason names that step', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+		await walkToSpells(user, 'Warlock', '3')
+
+		await user.click(await screen.findByLabelText(/Eldritch Blast/))
+		await user.click(screen.getByLabelText(/Prestidigitation/))
+		await user.click(screen.getByLabelText(/Hex/))
+		await goNext(user)
+
+		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
+
+		const prestidigitation = (await screen.findByRole('checkbox', { name: /Prestidigitation/ })) as HTMLInputElement
+		expect(prestidigitation.disabled).toBe(true)
+		expect(prestidigitation.labels?.[0]?.textContent).toContain('the Spells step')
+	})
+
+	it("a picker never disables its own picks — unselecting inside the Tome's own slots still works", async () => {
+		const user = userEvent.setup()
+		renderWizard()
+		await walkToSpells(user, 'Warlock', '3')
+
+		await user.click(await screen.findByLabelText(/Eldritch Blast/))
+		await user.click(screen.getByLabelText(/Prestidigitation/))
+		await user.click(screen.getByLabelText(/Hex/))
+		await goNext(user)
+
+		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
+		await user.click(await screen.findByRole('checkbox', { name: 'Mage Hand' }))
+		expect(checkbox('Mage Hand').checked).toBe(true)
+
+		// The pick is now a known spell of this very option; it must stay toggleable.
+		await waitFor(() => expect(checkbox('Mage Hand').disabled).toBe(false))
+		await user.click(checkbox('Mage Hand'))
+		expect(checkbox('Mage Hand').checked).toBe(false)
+	})
+
+	it('a character with no overlaps sees every option enabled', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+		await walkToSpells(user, 'Warlock', '3')
+
+		// Eldritch Blast, Chill Touch and Hex — nothing the Tome's own lists offer.
+		await user.click(await screen.findByLabelText(/Eldritch Blast/))
+		await user.click(screen.getByLabelText(/Chill Touch/))
+		await user.click(screen.getByLabelText(/Hex/))
+		await goNext(user)
+
+		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
+		await screen.findByText('0 of 3 cantrips chosen.')
+
+		for (const name of ['Mage Hand', 'Minor Illusion', 'Prestidigitation', 'Dancing Lights', 'Alarm', 'Detect Magic', 'Misty Step']) {
+			expect(checkbox(name).disabled).toBe(false)
+		}
 	})
 
 	it('a class granting nothing at class level never sees the step, and the numbering stays contiguous', async () => {
