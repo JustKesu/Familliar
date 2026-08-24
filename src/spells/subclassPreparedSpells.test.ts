@@ -108,6 +108,40 @@ const nonNumericLevelKeySubclass = {
 	],
 }
 
+/** Real Path of the Wild Heart shape (this task): a `ritual`-wrapped innate grant — cast as a ritual instead of a slot. */
+const ritualWrappedSubclass = {
+	entryType: 'subclass',
+	name: 'Path of the Wild Heart',
+	source: 'XPHB',
+	className: 'Barbarian',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			innate: {
+				'3': { ritual: ['identify'] },
+			},
+		},
+	],
+}
+
+/** Real Way of the Sun Soul shape (this task): a `resource`-wrapped innate grant costing the entry's own named resource. */
+const resourceWrappedSubclass = {
+	entryType: 'subclass',
+	name: 'Way of the Sun Soul',
+	source: 'XGE',
+	className: 'Monk',
+	classSource: 'XPHB',
+	additionalSpells: [
+		{
+			ability: 'wis',
+			resourceName: 'Ki',
+			innate: {
+				'6': { resource: { '2': ['identify'] } },
+			},
+		},
+	],
+}
+
 const expandedPoolOnlySubclass = {
 	entryType: 'subclass',
 	name: 'Eldritch Knight',
@@ -274,6 +308,8 @@ const classes = [
 	mixedPreparedKnownSubclass,
 	wrappedInnateSubclass,
 	nonNumericLevelKeySubclass,
+	ritualWrappedSubclass,
+	resourceWrappedSubclass,
 	expandedPoolOnlySubclass,
 	expandedPlusKnownSubclass,
 	hexblade,
@@ -406,9 +442,10 @@ describe('extractSubclassAlwaysPreparedSpells', () => {
 		expect(result.map((s) => s.name).sort()).toEqual(['Burning Hands', 'Identify'])
 	})
 
-	it('unwraps a `resource`/`daily`/`ritual`-nested grant one level deep and returns it as a plain grant (d6a)', () => {
+	it('unwraps a `resource`/`daily`/`ritual`-nested grant one level deep and returns it as a plain grant (d6a), carrying a `daily` usage (this task)', () => {
 		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Psi Warrior', 'XPHB', 'Fighter', 'XPHB', 18)
 		expect(result.map((s) => s.name)).toEqual(['Heat Metal'])
+		expect(result[0].usage).toEqual({ kind: 'daily', count: 1 })
 	})
 
 	it('a "_"-keyed grant (Warlock Archfey Patron) is skipped cleanly when no subclassGrantLevel is supplied, not granted at every level (this task)', () => {
@@ -423,9 +460,28 @@ describe('extractSubclassAlwaysPreparedSpells', () => {
 		const atGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Archfey Patron', 'XPHB', 'Warlock', 'XPHB', 3, undefined, 3)
 		expect(atGrant.map((s) => s.name)).toEqual(['Identify'])
 		expect(atGrant[0].grantedAtLevel).toBe(3)
+		// the daily sub-key here is an ABILITY code ("cha"), not a count — X/day where X is the Charisma modifier (this task).
+		expect(atGrant[0].usage).toEqual({ kind: 'dailyByAbility', ability: 'cha' })
 
 		const aboveGrant = extractSubclassAlwaysPreparedSpells(classes, spells, 'Archfey Patron', 'XPHB', 'Warlock', 'XPHB', 20, undefined, 3)
 		expect(aboveGrant.map((s) => s.name)).toEqual(['Identify'])
+	})
+
+	it('a `ritual`-wrapped grant (Path of the Wild Heart) carries a `ritual` usage (this task)', () => {
+		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Path of the Wild Heart', 'XPHB', 'Barbarian', 'XPHB', 3)
+		expect(result.map((s) => s.name)).toEqual(['Identify'])
+		expect(result[0].usage).toEqual({ kind: 'ritual' })
+	})
+
+	it('a `resource`-wrapped grant (Way of the Sun Soul) carries a `resource` usage naming the entry\'s own resourceName (this task)', () => {
+		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Way of the Sun Soul', 'XGE', 'Monk', 'XPHB', 6)
+		expect(result.map((s) => s.name)).toEqual(['Identify'])
+		expect(result[0].usage).toEqual({ kind: 'resource', cost: 2, resourceName: 'Ki' })
+	})
+
+	it('an ordinary bare grant (Forge Domain) carries no usage at all — silence is correct for the normal case (this task)', () => {
+		const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'Forge Domain', 'XPHB', 'Cleric', 'XPHB', 3)
+		expect(result.every((s) => !s.usage)).toBe(true)
 	})
 
 	it('a key that is neither numeric nor "_" is skipped cleanly even when subclassGrantLevel is supplied (D43 — not "unparseable means always")', () => {

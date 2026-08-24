@@ -109,6 +109,15 @@ describe('extractFeatGrantedSpells', () => {
 		expect(result.every((s) => s.ability === 'cha')).toBe(true)
 	})
 
+	it("Drow High Magic's `will` wrapper is labeled `atWill`, and its `daily` \"1e\" wrapper is labeled `dailyEach` (this task)", () => {
+		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
+		const result = extractFeatGrantedSpells(feats, spells, character)
+
+		expect(result.find((s) => s.name === 'Detect Magic')?.usage).toEqual({ kind: 'atWill' })
+		expect(result.find((s) => s.name === 'Levitate')?.usage).toEqual({ kind: 'dailyEach', count: 1 })
+		expect(result.find((s) => s.name === 'Dispel Magic')?.usage).toEqual({ kind: 'dailyEach', count: 1 })
+	})
+
 	it('returns Fey Teleportation\'s fixed spell, INT carried as the ability', () => {
 		const character = characterWithFeats([{ name: 'Fey Teleportation', source: 'XGE' }])
 		const result = extractFeatGrantedSpells(feats, spells, character)
@@ -157,6 +166,10 @@ describe('extractFeatGrantedSpells', () => {
 		expect(result.map((s) => s.name).sort()).toEqual(['Gust of Wind', 'Thunderclap'])
 		expect(result.every((s) => s.featName === 'Mark of Storm')).toBe(true)
 		expect(result.every((s) => s.ability === 'wis')).toBe(true)
+		// Thunderclap is the mark's bare base cantrip (known._) — no usage label needed, it's already slot-free as a cantrip (this task).
+		expect(result.find((s) => s.name === 'Thunderclap')?.usage).toBeFalsy()
+		// Gust of Wind is wrapped `daily: {"1": [...]}` — a genuine limited-use grant.
+		expect(result.find((s) => s.name === 'Gust of Wind')?.usage).toEqual({ kind: 'daily', count: 1 })
 	})
 
 	it("a mark's level-3 spell is withheld below character level 3, but its always-on spell is not", () => {

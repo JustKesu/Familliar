@@ -3,7 +3,8 @@ import type { ResolverData } from '../featureResolver'
 import { ResolvedEntries } from '../featureResolver'
 import type { SpellDetail } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
-import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration, formatRange, formatScalingLevelDice, spellLevelLabel } from './spellFormatting'
+import type { SpellUsage } from '../spells/subclassPreparedSpells'
+import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration, formatRange, formatScalingLevelDice, formatSpellUsage, spellLevelLabel, spellUsageKey } from './spellFormatting'
 import { UnresolvedValue } from './ValueBreakdown'
 
 /*
@@ -29,6 +30,16 @@ import { UnresolvedValue } from './ValueBreakdown'
  * (an Eldritch Invocation today). Two options CAN grant the same spell
  * (Invisibility, via One with Shadows and Shroud of Shadow), which is exactly
  * the overlap this merge already handles for the other three sources.
+ *
+ * This task adds `usages` — HOW a granted spell is cast (subclassPreparedSpells.ts's
+ * `SpellUsage`), shown next to the provenance rather than replacing it. A list,
+ * not a single value, for the same reason origins are lists: if two sources
+ * grant the same spell with DIFFERENT usage terms, both survive rather than
+ * one being picked arbitrarily (the D44 "counted once, sources joined" spirit
+ * applied to usage instead of provenance) — deduped by `spellUsageKey` so the
+ * SAME term from two sources doesn't print twice. No real case in the data
+ * has two sources disagree on a spell's usage (docs/REPORT.md); the merge
+ * still handles it rather than assuming it can't happen.
  */
 
 export interface SheetSpellEntry {
@@ -41,6 +52,8 @@ export interface SheetSpellEntry {
 	featOrigins: string[]
 	/** Optional-feature name(s) that grant this spell (optionalFeatureSpells.ts, step 6a). More than one is real — see the module comment. */
 	optionalFeatureOrigins: string[]
+	/** How this spell is cast, from every contributing source (this task) — empty for an ordinary, silently-slot-cast spell. */
+	usages: SpellUsage[]
 }
 
 function provenanceLabel(entry: SheetSpellEntry): string {
@@ -49,19 +62,32 @@ function provenanceLabel(entry: SheetSpellEntry): string {
 	for (const subclassName of entry.subclassOrigins) parts.push(`always prepared (${subclassName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
 	for (const optionName of entry.optionalFeatureOrigins) parts.push(`from invocation (${optionName})`)
-	return parts.join('; ')
+	let label = parts.join('; ')
+	if (entry.usages.length > 0) label += ` — ${entry.usages.map(formatSpellUsage).join('; ')}`
+	return label
 }
 
 function keyOf(name: string, source: string): string {
 	return `${name.toLowerCase()}|${source.toUpperCase()}`
 }
 
+function emptyEntry(name: string, source: string, chosen: boolean): SheetSpellEntry {
+	return { name, source, chosen, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], usages: [] }
+}
+
+/** Adds `usage` to `entry.usages` unless it's absent or already present (by `spellUsageKey`) — an ordinary grant (undefined/null) leaves the list untouched. */
+function mergeUsage(entry: SheetSpellEntry, usage: SpellUsage | null | undefined): void {
+	if (!usage) return
+	const key = spellUsageKey(usage)
+	if (!entry.usages.some((u) => spellUsageKey(u) === key)) entry.usages.push(usage)
+}
+
 /** Merges the player's chosen spells, every class's subclass always-prepared spells, fixed feat-granted spells (d5a) and chosen-optional-feature grants (step 6a) into one list, counting an overlap once (D44 spirit). */
 export function combineSpellEntries(
 	spellChoices: { spells: { name: string; source: string }[] }[],
-	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string }[] }[],
-	featGrantedSpells: { featName: string; name: string; source: string }[] = [],
-	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string }[] = [],
+	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[],
+	featGrantedSpells: { featName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
+	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
 ): SheetSpellEntry[] {
 	const map = new Map<string, SheetSpellEntry>()
 
@@ -70,47 +96,34 @@ export function combineSpellEntries(
 			const key = keyOf(spell.name, spell.source)
 			const existing = map.get(key)
 			if (existing) existing.chosen = true
-			else map.set(key, { name: spell.name, source: spell.source, chosen: true, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [] })
+			else map.set(key, emptyEntry(spell.name, spell.source, true))
 		}
 	}
 
 	for (const group of subclassAlwaysPrepared) {
 		for (const spell of group.spells) {
 			const key = keyOf(spell.name, spell.source)
-			const existing = map.get(key)
-			if (existing) {
-				if (!existing.subclassOrigins.includes(group.subclassName)) existing.subclassOrigins.push(group.subclassName)
-			} else {
-				map.set(key, {
-					name: spell.name,
-					source: spell.source,
-					chosen: false,
-					subclassOrigins: [group.subclassName],
-					featOrigins: [],
-					optionalFeatureOrigins: [],
-				})
-			}
+			const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+			if (!entry.subclassOrigins.includes(group.subclassName)) entry.subclassOrigins.push(group.subclassName)
+			mergeUsage(entry, spell.usage)
+			map.set(key, entry)
 		}
 	}
 
 	for (const spell of featGrantedSpells) {
 		const key = keyOf(spell.name, spell.source)
-		const existing = map.get(key)
-		if (existing) {
-			if (!existing.featOrigins.includes(spell.featName)) existing.featOrigins.push(spell.featName)
-		} else {
-			map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [], featOrigins: [spell.featName], optionalFeatureOrigins: [] })
-		}
+		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+		if (!entry.featOrigins.includes(spell.featName)) entry.featOrigins.push(spell.featName)
+		mergeUsage(entry, spell.usage)
+		map.set(key, entry)
 	}
 
 	for (const spell of optionalFeatureGrantedSpells) {
 		const key = keyOf(spell.name, spell.source)
-		const existing = map.get(key)
-		if (existing) {
-			if (!existing.optionalFeatureOrigins.includes(spell.optionName)) existing.optionalFeatureOrigins.push(spell.optionName)
-		} else {
-			map.set(key, { name: spell.name, source: spell.source, chosen: false, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [spell.optionName] })
-		}
+		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+		if (!entry.optionalFeatureOrigins.includes(spell.optionName)) entry.optionalFeatureOrigins.push(spell.optionName)
+		mergeUsage(entry, spell.usage)
+		map.set(key, entry)
 	}
 
 	return [...map.values()]

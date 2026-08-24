@@ -39,7 +39,7 @@
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { CharacterOptionalFeatureChoice } from '../storage/character'
 import {
-	extractRefs,
+	extractRefsWithUsage,
 	findSpell,
 	hasConcentration,
 	isRawSpell,
@@ -47,6 +47,7 @@ import {
 	parseSpellRef,
 	spellIdentityKey,
 	type RawSpell,
+	type SpellUsage,
 } from './subclassPreparedSpells'
 
 export interface OptionalFeatureGrantedSpell {
@@ -60,6 +61,24 @@ export interface OptionalFeatureGrantedSpell {
 	origin: 'optionalFeature'
 	/** Which option granted this spell — the name the "from invocation (...)" label needs. */
 	optionName: string
+	/**
+	 * How this spell is cast (this task, subclassPreparedSpells.ts's `SpellUsage`
+	 * doc). Unlike the other two grant modules, a BARE grant here (no wrapper at
+	 * all) is `{kind:'noSlot'}`, not silence: every one of this data's 12 bare
+	 * `innate` Eldritch Invocation grants (Mask of Many Faces among them) says
+	 * "without expending/using a spell slot" in its own prose — confirmed
+	 * individually, not inferred from the JSON shape (docs/REPORT.md lists the
+	 * phrase for each). The exact frequency (e.g. "once per long rest") is
+	 * deliberately NOT parsed out of that prose — a wrong frequency on the sheet
+	 * is worse than none, per the decision recorded in docs/REPORT.md. A
+	 * WRAPPED bare grant (will/daily/ritual/resource) still gets its normal,
+	 * more specific label instead. Undefined only for a player-CHOSEN spell
+	 * (extractOptionalFeatureChosenSpells, e.g. Pact of the Tome) — those are
+	 * read from the character's own stored pick, not from additionalSpells, so
+	 * there is no wrapper to read at all; left unlabeled rather than assumed
+	 * (out of this task's scope, see docs/REPORT.md).
+	 */
+	usage?: SpellUsage | null
 }
 
 /** The same fixed-grant keys the other two consumers read. `expanded` is absent from this data entirely (module comment). */
@@ -146,21 +165,27 @@ export function extractOptionalFeatureGrantedSpells(
 
 					// Every grant in this data sits under "_" (always granted), so no level gate
 					// applies; a numeric key would need the character's level threading through and
-					// none exists here (module comment). extractRefs drops Pact of the Tome's
-					// `choose` objects, which need a picker rather than a derived grant.
-					for (const ref of extractRefs(levelMap)) {
-						const spell = findSpell(spells, parseSpellRef(ref))
-						if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+					// none exists here (module comment). Still unwrapped per level key (rather than
+					// handed to extractRefsWithUsage as a whole) so a bare "_" value is recognised as
+					// bare rather than as an unrecognised wrapper key named "_".
+					for (const value of Object.values(levelMap)) {
+						// A BARE grant is labeled `noSlot`, not silence — see OptionalFeatureGrantedSpell's
+						// `usage` doc for why this consumer's default differs from the other two.
+						for (const { ref, usage } of extractRefsWithUsage(value, undefined, { kind: 'noSlot' })) {
+							const spell = findSpell(spells, parseSpellRef(ref))
+							if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
 
-						granted.push({
-							name: spell.name,
-							source: spell.source,
-							level: spell.level,
-							ritual: spell.meta?.ritual === true,
-							concentration: hasConcentration(spell.duration),
-							origin: 'optionalFeature',
-							optionName: option.name,
-						})
+							granted.push({
+								name: spell.name,
+								source: spell.source,
+								level: spell.level,
+								ritual: spell.meta?.ritual === true,
+								concentration: hasConcentration(spell.duration),
+								origin: 'optionalFeature',
+								optionName: option.name,
+								usage,
+							})
+						}
 					}
 				}
 			}

@@ -1278,6 +1278,125 @@ describe('CharacterSheet', () => {
 		})
 
 		/*
+		 * This task: Mask of Many Faces grants Disguise Self with NO wrapper key
+		 * in the data at all — its "without expending a spell slot" fact lives
+		 * only in prose (docs/REPORT.md). Per Daniel's decision, a bare grant
+		 * from a chosen optional feature is labeled "no spell slot", not "at
+		 * will" — the data never says HOW OFTEN, only that no slot is spent.
+		 */
+		it('a spell granted by a chosen invocation with NO wrapper (Mask of Many Faces) shows both the invocation name AND "no spell slot" (this task)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }]
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Warlock', classSource: 'XPHB', casterProgression: 'pact', spellSlotsByLevel: null, pactSlotsByLevel: [{ count: 1, slotLevel: 1 }] },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Disguise Self', source: 'XPHB', level: 1, entries: ['You change your appearance.'] })]
+			const granted: OptionalFeatureGrantedSpell[] = [
+				{
+					name: 'Disguise Self',
+					source: 'XPHB',
+					level: 1,
+					ritual: false,
+					concentration: false,
+					origin: 'optionalFeature',
+					optionName: 'Mask of Many Faces',
+					usage: { kind: 'noSlot' },
+				},
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue(granted)
+
+			const warlock: Character = {
+				id: 'wl4',
+				name: 'Many Faces Warlock',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 2 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Mask of Many Faces'] }],
+			}
+
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Many Faces Warlock' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Disguise Self'))
+
+			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Disguise Self'))!
+			expect(summary.textContent).toContain('from invocation (Mask of Many Faces)')
+			expect(summary.textContent).toContain('no spell slot')
+			expect(summary.textContent).not.toContain('at will')
+		})
+
+		it('a daily-limited feat-granted spell (Fey Teleportation, real shape `daily: {"1": [...]}`) shows "1/day" (this task)', async () => {
+			const details: SpellDetail[] = [spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2, entries: ['Briefly surrounded by silvery mist.'] })]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Misty Step', source: 'XPHB', level: 2, ritual: false, concentration: false, origin: 'feat', featName: 'Fey Teleportation', ability: 'int', usage: { kind: 'daily', count: 1 } },
+			]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const fighter: Character = {
+				id: 'f5',
+				name: 'Daily Teleporter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 16, dexterity: 12, constitution: 14, intelligence: 12, wisdom: 10, charisma: 8 },
+				},
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Fey Teleportation', source: 'XPHB' }],
+			}
+
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('heading', { name: 'Daily Teleporter' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Misty Step'))
+
+			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
+			expect(summary.textContent).toContain('from feat (Fey Teleportation)')
+			expect(summary.textContent).toContain('1/day')
+		})
+
+		it('an ordinary always-prepared spell (no usage wrapper in the data) shows its provenance with NO usage label at all (this task)', async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Cleric', classSource: 'XPHB', ability: 'wis' }]
+			const spellSlots: ClassSpellSlotsData[] = [{ className: 'Cleric', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3]], pactSlotsByLevel: null }]
+			const alwaysPrepared: AlwaysPreparedSpell[] = [
+				{ name: 'Cure Wounds', source: 'XPHB', level: 1, grantedAtLevel: 3, ritual: false, concentration: false, origin: 'subclass' },
+			]
+			const details: SpellDetail[] = [spellDetail({ name: 'Cure Wounds', source: 'XPHB', level: 1, entries: ['A creature you touch regains hit points.'] })]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadSubclassSource).mockResolvedValue('XPHB')
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockResolvedValue(alwaysPrepared)
+
+			const cleric: Character = {
+				id: 'cl9',
+				name: 'Ordinary Domain Priest',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: 'Life Domain', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 16, charisma: 10 },
+				},
+			}
+
+			const { container } = render(<CharacterSheet character={cleric} />)
+			await screen.findByRole('heading', { name: 'Ordinary Domain Priest' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Cure Wounds'))
+
+			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Cure Wounds'))!
+			expect(summary.textContent).toContain('always prepared (Life Domain)')
+			for (const term of ['at will', '/day', 'no spell slot', 'ritual (no slot)']) {
+				expect(summary.textContent).not.toContain(term)
+			}
+		})
+
+		/*
 		 * Pact of the Tome (step 6a): the player picked the individual spells, so
 		 * the sheet reads the stored picks rather than deriving anything. Asserted
 		 * end to end because a picker whose choice never renders has happened

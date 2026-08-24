@@ -7,6 +7,7 @@
  */
 
 import type { SpellComponents, SpellDuration, SpellRange, SpellScalingLevelDiceEntry, SpellTime } from '../spells/spellDetailData'
+import type { SpellUsage } from '../spells/subclassPreparedSpells'
 
 const TIME_UNIT_LABELS: Record<string, string> = {
 	action: 'action',
@@ -109,6 +110,49 @@ export function formatAttackOrSave(spellAttack: string[] | undefined, savingThro
 		parts.push(`${savingThrow.map((a) => ABILITY_LABELS[a] ?? a).join('/')} save`)
 	}
 	return parts.length > 0 ? parts.join('; ') : undefined
+}
+
+/**
+ * The wording a player would use for a granted spell's usage (this task).
+ * `dailyByAbility` shows which ability, not a number — no ability score is
+ * threaded through the grant modules to compute the actual modifier.
+ * `noSlot` (optionalFeatureSpells.ts's bare-invocation default) deliberately
+ * carries no frequency, since the data only confirms the spell is slot-free,
+ * never how often (docs/REPORT.md).
+ */
+export function formatSpellUsage(usage: SpellUsage): string {
+	switch (usage.kind) {
+		case 'atWill':
+			return 'at will'
+		case 'daily':
+			return `${usage.count}/day`
+		case 'dailyEach':
+			return `${usage.count}/day each`
+		case 'dailyByAbility':
+			return `${usage.ability.toUpperCase()} mod/day`
+		case 'ritual':
+			return 'ritual (no slot)'
+		case 'resource':
+			return `${usage.cost} ${usage.resourceName}`
+		case 'noSlot':
+			return 'no spell slot'
+	}
+}
+
+/** Identity for deduping a spell's usage terms across sources (SpellList.tsx's `combineSpellEntries`) — two sources granting the SAME usage collapse to one label; different terms both survive. */
+export function spellUsageKey(usage: SpellUsage): string {
+	switch (usage.kind) {
+		case 'daily':
+			return `daily:${usage.count}`
+		case 'dailyEach':
+			return `dailyEach:${usage.count}`
+		case 'dailyByAbility':
+			return `dailyByAbility:${usage.ability}`
+		case 'resource':
+			return `resource:${usage.cost}:${usage.resourceName}`
+		default:
+			return usage.kind
+	}
 }
 
 export function spellLevelLabel(level: number): string {

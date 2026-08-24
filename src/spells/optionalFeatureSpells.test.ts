@@ -75,8 +75,36 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 				concentration: false,
 				origin: 'optionalFeature',
 				optionName: 'Mask of Many Faces',
+				usage: { kind: 'noSlot' },
 			},
 		])
+	})
+
+	it('a bare grant (no will/daily/ritual/resource wrapper) is labeled `noSlot`, not silence — this consumer\'s only default (this task)', () => {
+		const [disguiseSelf] = extract([{ featureType: 'EI', choices: ['Mask of Many Faces'] }])
+		expect(disguiseSelf.usage).toEqual({ kind: 'noSlot' })
+	})
+
+	it('a `will`-wrapped grant is labeled `atWill`, overriding the bare default', () => {
+		const willWrapped = {
+			name: 'Will Wrapped Option',
+			source: 'XPHB',
+			featureType: ['EI'],
+			additionalSpells: [{ innate: { _: { will: ['disguise self|xphb'] } } }],
+		}
+		const [result] = extractOptionalFeatureGrantedSpells([willWrapped], spells, [{ featureType: 'EI', choices: ['Will Wrapped Option'] }])
+		expect(result.usage).toEqual({ kind: 'atWill' })
+	})
+
+	it('a `daily`-wrapped grant is labeled with its count', () => {
+		const dailyWrapped = {
+			name: 'Daily Wrapped Option',
+			source: 'XPHB',
+			featureType: ['EI'],
+			additionalSpells: [{ innate: { _: { daily: { '1e': ['disguise self|xphb'] } } } }],
+		}
+		const [result] = extractOptionalFeatureGrantedSpells([dailyWrapped], spells, [{ featureType: 'EI', choices: ['Daily Wrapped Option'] }])
+		expect(result.usage).toEqual({ kind: 'dailyEach', count: 1 })
 	})
 
 	it('carries the spell’s own ritual and concentration flags rather than defaulting them', () => {

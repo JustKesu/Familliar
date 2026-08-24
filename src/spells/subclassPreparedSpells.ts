@@ -113,9 +113,56 @@
  * ANY path grants it) rather than picking a path arbitrarily.
  */
 
+import type { AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import type { PactSlots } from '../calculation/spellSlots'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { subclassLevelFor } from '../subclass/subclassData'
+
+/**
+ * How a granted spell is actually cast, read from the `will`/`daily`/`ritual`/
+ * `resource` wrapper keys additionalSpells nests around some grants (this
+ * task, D46 — scripts/investigate-spell-usage-wrappers.js). Formatting is the
+ * sheet's job (spellFormatting.ts); this is the structured fact only.
+ *
+ * - `atWill`: the `will` key. Only real occurrence: Drow High Magic's detect
+ *   magic (feat).
+ * - `daily`/`dailyEach`: the `daily` key's sub-key is a plain count ("2" — N
+ *   times per day total) or a count+"e" ("2e" — N times per day EACH spell in
+ *   the list separately, confirmed against Drow High Magic's "once each per
+ *   day" phrasing).
+ * - `dailyByAbility`: the `daily` key's sub-key names an ability code
+ *   ("cha", "int") instead of a count — N/day where N is that ability's
+ *   modifier (Archfey Patron's Misty Step, Artificer Alchemist's Lesser
+ *   Restoration). The modifier itself is not computed here (no ability
+ *   score is threaded through this module) — the sheet shows which ability,
+ *   not a number.
+ * - `ritual`: the `ritual` key — cast as a ritual instead of spending a slot
+ *   (Pact of the Chain, Path of the Wild Heart).
+ * - `resource`: the `resource` key — costs `cost` points of the
+ *   additionalSpells entry's own `resourceName` field (Monk's "Ki"/"Focus
+ *   Point"), not a per-day count.
+ * - `noSlot`: NOT read from a wrapper at all. Warlock Eldritch Invocations
+ *   (optionalFeatureSpells.ts's only caller) grant every one of their spells
+ *   without a slot, but 12 of 17 encode this only in prose, as a BARE grant
+ *   with no wrapper at all — confirmed individually against each one's own
+ *   text (docs/REPORT.md lists the phrase for each) rather than inferred from
+ *   the JSON shape, since a bare grant from a SUBCLASS is not reliably
+ *   slot-free the same way (College of Glamour's bare `innate` Command is an
+ *   ordinary, slot-cast duplicate of its own `prepared` grant). The frequency
+ *   ("once per long rest", etc.) is deliberately NOT parsed out of the prose —
+ *   only the yes/no "no slot" fact was verified, since a wrong frequency
+ *   printed on the sheet is worse than none (Daniel's decision, this task).
+ *   `extractRefsWithUsage`'s bare-array branch never produces this on its
+ *   own — a caller opts in via its `bareUsage` argument.
+ */
+export type SpellUsage =
+	| { kind: 'atWill' }
+	| { kind: 'daily'; count: number }
+	| { kind: 'dailyEach'; count: number }
+	| { kind: 'dailyByAbility'; ability: AbilityAbbreviation }
+	| { kind: 'ritual' }
+	| { kind: 'resource'; cost: number; resourceName: string }
+	| { kind: 'noSlot' }
 
 export interface AlwaysPreparedSpell {
 	name: string
@@ -128,6 +175,8 @@ export interface AlwaysPreparedSpell {
 	concentration: boolean
 	/** Provenance (per the sheet's planned "always prepared (subclass)" label, slice d4): always the subclass, never a player pick. */
 	origin: 'subclass'
+	/** How this spell is cast (this task) — undefined/null for an ordinary grant, cast with a slot like any other prepared/known spell (no wrapper found). */
+	usage?: SpellUsage | null
 }
 
 /** Exported for reuse by featSpells.ts (d5a) — feat-granted spells use the same additionalSpells shape as subclasses. */
@@ -249,6 +298,66 @@ export function extractRefs(value: unknown): string[] {
 	return Object.values(value).flatMap(extractRefs)
 }
 
+/** A daily sub-key's usage, or null for a shape not recognised (D43-style — the ref is still extracted by the caller, just with no usage label). */
+function parseDailySubkey(subkey: string): SpellUsage | null {
+	const eachMatch = /^(\d+)e$/.exec(subkey)
+	if (eachMatch) return { kind: 'dailyEach', count: Number(eachMatch[1]) }
+	if (/^\d+$/.test(subkey)) return { kind: 'daily', count: Number(subkey) }
+	if ((['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).includes(subkey as AbilityAbbreviation)) {
+		return { kind: 'dailyByAbility', ability: subkey as AbilityAbbreviation }
+	}
+	return null
+}
+
+export interface RefWithUsage {
+	ref: string
+	usage: SpellUsage | null
+}
+
+/**
+ * Same traversal as `extractRefs`, but also captures the usage wrapper
+ * immediately around each literal ref (module comment on `SpellUsage` above).
+ * `resourceName` is the additionalSpells entry's own field, needed only to
+ * label a `resource` grant — undefined elsewhere. `bareUsage` is the usage
+ * attached to a ref with NO wrapper at all: null for subclasses/feats
+ * (today's silent "ordinary, cast with a slot" meaning), or `{kind:'noSlot'}`
+ * for optionalFeatureSpells.ts's chosen-optional-feature grants (see
+ * `SpellUsage`'s `noSlot` doc). A wrapper key this function doesn't
+ * recognise (e.g. `rest`, which in the real data only ever wraps a
+ * player-choice node with no literal ref inside it) still yields any literal
+ * refs found beneath it, with no usage attached, rather than dropping the
+ * spell (D43).
+ */
+export function extractRefsWithUsage(value: unknown, resourceName: string | undefined, bareUsage: SpellUsage | null): RefWithUsage[] {
+	if (Array.isArray(value)) {
+		return value.filter((item): item is string => typeof item === 'string').map((ref) => ({ ref, usage: bareUsage }))
+	}
+	if (!isRecord(value)) return []
+
+	const result: RefWithUsage[] = []
+	for (const [wrapperKey, wrapperValue] of Object.entries(value)) {
+		if (wrapperKey === 'will') {
+			for (const ref of extractRefs(wrapperValue)) result.push({ ref, usage: { kind: 'atWill' } })
+		} else if (wrapperKey === 'daily' && isRecord(wrapperValue)) {
+			for (const [subkey, subvalue] of Object.entries(wrapperValue)) {
+				const usage = parseDailySubkey(subkey)
+				for (const ref of extractRefs(subvalue)) result.push({ ref, usage })
+			}
+		} else if (wrapperKey === 'ritual') {
+			for (const ref of extractRefs(wrapperValue)) result.push({ ref, usage: { kind: 'ritual' } })
+		} else if (wrapperKey === 'resource' && isRecord(wrapperValue)) {
+			for (const [subkey, subvalue] of Object.entries(wrapperValue)) {
+				const cost = Number(subkey)
+				const usage: SpellUsage | null = Number.isFinite(cost) && resourceName ? { kind: 'resource', cost, resourceName } : null
+				for (const ref of extractRefs(subvalue)) result.push({ ref, usage })
+			}
+		} else {
+			for (const ref of extractRefs(wrapperValue)) result.push({ ref, usage: null })
+		}
+	}
+	return result
+}
+
 /**
  * Pure filter (D38). Takes ONE subclass identity plus the character's level
  * in that class (D11 — a multiclass caller unions per class, not built
@@ -317,7 +426,8 @@ export function extractSubclassAlwaysPreparedSpells(
 				}
 				if (grantedAtLevel > classLevel) continue
 
-				for (const ref of extractRefs(value)) {
+				const resourceName = typeof entry['resourceName'] === 'string' ? entry['resourceName'] : undefined
+				for (const { ref, usage } of extractRefsWithUsage(value, resourceName, null)) {
 					const spell = findSpell(spells, parseSpellRef(ref))
 					if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
 
@@ -329,6 +439,7 @@ export function extractSubclassAlwaysPreparedSpells(
 						ritual: spell.meta?.ritual === true,
 						concentration: hasConcentration(spell.duration),
 						origin: 'subclass',
+						usage,
 					})
 				}
 			}
@@ -347,6 +458,8 @@ export function extractSubclassAlwaysPreparedSpells(
 					const grantedAtLevel = levelForPactSlotRank(rank, pactSlotsByLevel)
 					if (grantedAtLevel === null || grantedAtLevel > classLevel) continue
 
+					// Confirmed (scripts/investigate-expanded-wrapper-shape.js, this task): Hexblade/Fathomless's rank-keyed
+					// expanded grant is always a bare array — no will/daily/ritual/resource wrapper ever wraps it.
 					for (const ref of extractRefs(value)) {
 						const spell = findSpell(spells, parseSpellRef(ref))
 						if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
@@ -359,6 +472,7 @@ export function extractSubclassAlwaysPreparedSpells(
 							ritual: spell.meta?.ritual === true,
 							concentration: hasConcentration(spell.duration),
 							origin: 'subclass',
+							usage: null,
 						})
 					}
 				}

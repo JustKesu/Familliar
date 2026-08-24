@@ -71,7 +71,7 @@ import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character, FeatAsiChoice } from '../storage/character'
 import { isFilterChoiceFeat } from './featSpellChoiceData'
-import { extractRefs, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, spellIdentityKey, type RawSpell } from './subclassPreparedSpells'
+import { extractRefsWithUsage, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, spellIdentityKey, type RawSpell, type SpellUsage } from './subclassPreparedSpells'
 
 export interface FeatGrantedSpell {
 	name: string
@@ -86,6 +86,17 @@ export interface FeatGrantedSpell {
 	featName: string
 	/** The spellcasting ability for this grant — carried through for a later attack/DC consumer; not computed here. Fixed feats (Drow High Magic, Fey Teleportation) always have one. A Mark feat has one only once the character's D57 `chosenAbility` is on record; absent until then (the spell itself is still granted — the mark's ability choice does not gate whether the spell is granted, only what it's cast with). */
 	ability?: AbilityAbbreviation
+	/**
+	 * How this spell is cast (this task, subclassPreparedSpells.ts's `SpellUsage`
+	 * doc) — undefined/null for an ordinary grant, cast with a slot like any
+	 * other prepared/known spell (no wrapper found). Unlike
+	 * optionalFeatureSpells.ts, a feat's BARE grant is never relabeled
+	 * "no spell slot": the only bare fixed-feat grants in the data are the
+	 * Eberron marks' base cantrips (e.g. Mark of Making's `known._`), and a
+	 * cantrip needs no such label — it's already castable with no slot by the
+	 * ordinary cantrip rule, regardless of source.
+	 */
+	usage?: SpellUsage | null
 }
 
 interface RawFeatEntry {
@@ -207,7 +218,8 @@ export function extractFixedFeatSpells(
 				// Not finite covers the "_" (always granted) key shared by every d5a feat and each mark's base spell.
 				if (Number.isFinite(grantedAtLevel) && grantedAtLevel > characterLevel) continue
 
-				for (const ref of extractRefs(value)) {
+				const resourceName = typeof entry['resourceName'] === 'string' ? entry['resourceName'] : undefined
+				for (const { ref, usage } of extractRefsWithUsage(value, resourceName, null)) {
 					const spell = findSpell(spells, parseSpellRef(ref))
 					if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
 
@@ -220,6 +232,7 @@ export function extractFixedFeatSpells(
 						origin: 'feat',
 						featName: feat.name,
 						ability,
+						usage,
 					})
 				}
 			}
