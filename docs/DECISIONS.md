@@ -1150,3 +1150,30 @@ při ručním testu Warlocka skutečně stalo. Zákaz sám nestačí: bez uveden
 zdroje hráč nepozná, jestli je volba zakázaná chybou, nebo právem.
 
 Platí i pro každý budoucí picker, který nabízí kouzla.
+
+## D72 — XMM má druhý, jmenný vstup: tvory, které nějaká feature vyjmenuje
+
+Doplňuje D67, které říkalo, že z XMM se berou výhradně beasti do CR 6. To
+už doslova neplatí a tenhle záznam to opravuje, D67 se nepřepisuje.
+
+Extrakce má nově dva vstupy z XMM:
+
+1. tvorové typu beast do CR 6 (D67, beze změny), a
+2. krátký JMENNÝ seznam tvorů, které nějaká feature v appce výslovně
+   uvádí. Dnes je to osm forem, které jmenuje Pact of the Chain: Imp,
+   Pseudodragon, Quasit, Skeleton, Slaad Tadpole, Sphinx of Wonder,
+   Sprite a Venomous Snake. Sedm z nich není zvíře.
+
+Jména se čtou z textu té feature, ne z paměti, a rozšířit seznam smí jen
+další feature, která nějakého tvora jmenuje — ne úvaha, že by se něco
+hodilo. Cokoli, co žádná feature nejmenuje, zůstává venku.
+
+Důsledek, na který se musí myslet: `beasts.json` už neobsahuje jen
+zvířata. Každý filtr, který předpokládal opak, musí typ ověřovat sám —
+jinak by Wild Shape nabídl podobu kostlivce. Na to se přišlo hned při
+zavedení tohohle druhého vstupu.
+
+Rationale: bez těch forem je Pact of the Chain prázdná invokace, protože
+právě ony jsou důvod, proč si ji hráč bere. Jmenný seznam je zároveň
+nejužší možné rozšíření — nepouští dovnitř celý bestiář ani celou
+kategorii, a validátor hlídá, že v datech opravdu jsou.

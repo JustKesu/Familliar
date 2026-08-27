@@ -5,8 +5,20 @@ import type { ResolverData } from './refTypes'
 const data: ResolverData = {
 	classFeatures: [
 		{ name: 'Rage', className: 'Barbarian', classSource: 'XPHB', level: 1, source: 'XPHB', id: 'cf|rage|barbarian|xphb|1|xphb', entries: ['Rage text.'] },
+		{ name: 'Second Wind', className: 'Fighter', classSource: 'PHB', level: 1, source: 'PHB', id: 'cf|second wind|fighter|phb|1|phb', entries: ['Second Wind text.'] },
 	],
 	subclassFeatures: [
+		{
+			name: 'Wails from the Grave',
+			className: 'Rogue',
+			classSource: 'PHB',
+			subclassShortName: 'Phantom',
+			subclassSource: 'TCE',
+			level: 3,
+			source: 'TCE',
+			id: 'scf|wails from the grave|rogue|phb|phantom|tce|3|tce',
+			entries: ['Wails text.'],
+		},
 		{
 			name: 'Tools of the Trade',
 			className: 'Artificer',
@@ -53,6 +65,30 @@ describe('resolveRef', () => {
 		expect(resolveRef({ kind: 'subclassFeature', uid: 'Tools of the Trade|Artificer|EFA|Alchemist|EFA|3' }, data)).toEqual({
 			name: 'Tools of the Trade',
 			entries: ['Tool text.'],
+		})
+	})
+
+	// 134 of the 420 ref* nodes in data/ are this shape — every XGE/TCE
+	// subclass's own features, filed under classSource PHB (D27) and referenced
+	// with that segment left empty. They resolved against nothing before.
+	it('resolves a subclassFeature ref whose classSource segment is empty (means PHB)', () => {
+		expect(resolveRef({ kind: 'subclassFeature', uid: 'Wails from the Grave|Rogue||Phantom|TCE|3' }, data)).toEqual({
+			name: 'Wails from the Grave',
+			entries: ['Wails text.'],
+		})
+	})
+
+	it('resolves a subclassFeature ref whose trailing source segment is present but empty', () => {
+		expect(resolveRef({ kind: 'subclassFeature', uid: 'Wails from the Grave|Rogue||Phantom|TCE|3|' }, data)).toEqual({
+			name: 'Wails from the Grave',
+			entries: ['Wails text.'],
+		})
+	})
+
+	it('resolves a classFeature ref whose classSource segment is empty (means PHB)', () => {
+		expect(resolveRef({ kind: 'classFeature', uid: 'Second Wind|Fighter||1' }, data)).toEqual({
+			name: 'Second Wind',
+			entries: ['Second Wind text.'],
 		})
 	})
 

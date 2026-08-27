@@ -11,13 +11,17 @@ import { asArray, asString, isRecord, type RefOccurrence, type ResolvedFeature, 
  * already in `cf|...` order, a refSubclassFeature uid's are already in
  * `scf|...` order.
  *
- * A uid may however OMIT its trailing source segment when that source
- * equals the segment the feature already defaults to (classSource for a
- * class feature, subclassSource for a subclass feature) — Druid's Primal
- * Order points at "Magician|Druid|XPHB|1", whose target's real id is
- * `cf|magician|druid|xphb|1|xphb`. Appending uid verbatim therefore misses
- * the target; the short form is expanded before lookup (see
- * scripts/investigate-class-feature-options.js, which found it).
+ * A uid may however leave segments EMPTY or omit them from the end, and the
+ * id is built from the defaulted form, exactly as
+ * scripts/extract-data.js's makeClassFeatureIdFromRef /
+ * makeSubclassFeatureIdFromRef build the `id` these lookups match against.
+ * An empty classSource or subclassSource means PHB (5etools' default for a
+ * 2014 reference); an empty trailing source repeats the source the feature
+ * already carries. Both short forms occur: Druid's Primal Order points at
+ * "Magician|Druid|XPHB|1" (omitted source), and 134 of the 420 ref* nodes
+ * in data/ look like "Wails from the Grave|Rogue||Phantom|TCE|3" (empty
+ * classSource AND omitted source) — the second form resolved against
+ * nothing until the defaulting below was added.
  *
  * optionalfeature/feat uids only carry name|source (2 parts) and neither
  * optional-features.json nor feats.json has an `id` field, so those match
@@ -68,31 +72,45 @@ function findById(list: unknown[], id: string): ResolvedFeature | null {
 	return { name: entryName, entries: asArray(match['entries']) ?? [] }
 }
 
-/**
- * Restores the trailing source segment a uid is allowed to omit. `full` is
- * the segment count of the complete form; `defaultIndex` points at the
- * segment the omitted source repeats. A uid of any other length is returned
- * untouched so a genuinely malformed one still fails the lookup rather than
- * being silently reshaped into a wrong match.
- */
-function withImpliedSource(uid: string, full: number, defaultIndex: number): string {
+/** One uid segment, defaulted to "" when empty or absent, in the id's own casing. */
+function segment(parts: string[], index: number): string {
+	return (parts[index] ?? '').trim().toLowerCase()
+}
+
+function classFeatureId(uid: string): string {
 	const parts = uid.split('|')
-	if (parts.length !== full - 1) return uid
-	return [...parts, parts[defaultIndex]].join('|')
+	const classSource = segment(parts, 2) || 'phb'
+	const source = segment(parts, 4) || classSource
+	return ['cf', segment(parts, 0), segment(parts, 1), classSource, segment(parts, 3), source].join('|')
+}
+
+function subclassFeatureId(uid: string): string {
+	const parts = uid.split('|')
+	const classSource = segment(parts, 2) || 'phb'
+	const subclassSource = segment(parts, 4) || 'phb'
+	const source = segment(parts, 6) || subclassSource
+	return [
+		'scf',
+		segment(parts, 0),
+		segment(parts, 1),
+		classSource,
+		segment(parts, 3),
+		subclassSource,
+		segment(parts, 5),
+		source,
+	].join('|')
 }
 
 function resolveClassFeature(uid: string, classFeatures: unknown): ResolvedFeature | null {
 	const list = asArray(classFeatures)
 	if (!list) return null
-	const id = `cf|${withImpliedSource(uid, 5, 2).toLowerCase()}`
-	return findById(list, id)
+	return findById(list, classFeatureId(uid))
 }
 
 function resolveSubclassFeature(uid: string, subclassFeatures: unknown): ResolvedFeature | null {
 	const list = asArray(subclassFeatures)
 	if (!list) return null
-	const id = `scf|${withImpliedSource(uid, 7, 4).toLowerCase()}`
-	return findById(list, id)
+	return findById(list, subclassFeatureId(uid))
 }
 
 function resolveOptionalFeature(uid: string, optionalFeatures: unknown, feats: unknown): ResolvedFeature | null {

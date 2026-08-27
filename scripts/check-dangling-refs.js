@@ -196,26 +196,44 @@ console.log("=".repeat(64));
 	// stop — a `{@optionalfeature Dueling}` style reference (bare name, no
 	// source, from a 2014-era feature like "Fighting Style" (XGE)) resolves
 	// there, not against optional-features.json.
-	const fightingStyleNames = new Set(feats.filter((entry) => entry.category === "FS").map((entry) => entry.name.toLowerCase()));
+	const fightingStyles = feats.filter((entry) => entry.category === "FS");
 
+	/*
+	 * These rules MIRROR src/featureResolver/resolveRef.ts, which is what the
+	 * running app uses; anything this function calls resolved and the resolver
+	 * does not is a feature the player sees as "text not found" while the
+	 * validator reports a clean run. Two rules used to be looser here and hid
+	 * exactly that: a uid's parts are read positionally (parts[0], parts[1]),
+	 * not by splitting at the LAST "|", and the Fighting Style fallback only
+	 * accepts a bare-name uid when the name matches exactly one FS feat.
+	 * The resolver's side of the parity is asserted against this same data by
+	 * src/featureResolver/resolveRefAgainstData.test.ts.
+	 */
 	function refResolves(type, uid) {
 		if (type === "refClassFeature") return classFeatureIds.has(makeClassFeatureIdFromRef(uid));
 		if (type === "refSubclassFeature") return subclassFeatureIds.has(makeSubclassFeatureIdFromRef(uid));
-		if (type === "refFeat") {
-			const { name, source } = splitUid(uid);
-			return featKeys.has(lcKey(name, source));
-		}
+		const [name, source] = String(uid).split("|");
+		if (!name) return false;
+		if (type === "refFeat") return Boolean(source) && featKeys.has(lcKey(name, source));
 		if (type === "refOptionalfeature") {
-			const { name, source } = splitUid(uid);
+			if (!source) return fightingStyles.filter((entry) => entry.name.toLowerCase() === name.toLowerCase()).length === 1;
 			if (optionalFeatureKeys.has(lcKey(name, source))) return true;
-			return fightingStyleNames.has(name.toLowerCase());
+			return fightingStyles.some((entry) => lcKey(entry.name, entry.source) === lcKey(name, source));
 		}
 		return false;
 	}
 
 	let checked = 0;
 	const dangling = [];
-	for (const [label, arr] of [["class-features", classFeatures], ["subclass-features", subclassFeatures]]) {
+	// All four files the app expands ref* nodes out of, not just the two
+	// feature files — optional-features and feats carry none today, but a
+	// ref* appearing in one of them would otherwise go unchecked.
+	for (const [label, arr] of [
+		["class-features", classFeatures],
+		["subclass-features", subclassFeatures],
+		["optional-features", optionalFeatures],
+		["feats", feats],
+	]) {
 		for (const entry of arr) {
 			for (const ref of collectTypedRefs(entry.entries)) {
 				checked++;
@@ -225,7 +243,7 @@ console.log("=".repeat(64));
 			}
 		}
 	}
-	report("class-features/subclass-features -> any ref* target in their text", checked, dangling);
+	report("feature files -> any ref* target in their text", checked, dangling);
 }
 
 // --- 5. optional-features.json -> optional-features.json (self-refs) ------
