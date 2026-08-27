@@ -20,6 +20,23 @@ afterEach(() => {
 
 beforeEach(() => {
 	window.localStorage.clear()
+
+	// The "Sheet" button mounts the real CharacterSheet, which fetches app data
+	// files through dataLoader.ts. In jsdom there is no origin for a
+	// root-relative URL and nothing serving it, so the real fetch rejects with
+	// "Failed to parse URL from /data/…". These tests only exercise the
+	// manager's list/rename/delete/sheet-toggle UI, never the sheet's contents,
+	// so a stub that answers every data file with an empty array is enough — the
+	// sheet mounts with its data-driven sections empty. Local to this file: the
+	// other jsdom component tests mock their loader modules directly and never
+	// reach fetch.
+	vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+		const url = typeof input === 'string' ? input : String(input)
+		if (url.includes('/data/')) {
+			return new Response('[]', { headers: { 'Content-Type': 'application/json' } })
+		}
+		throw new Error(`unexpected fetch in CharacterManager test: ${url}`)
+	})
 })
 
 describe('CharacterManager delete', () => {

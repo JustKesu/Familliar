@@ -320,10 +320,13 @@ export function CharacterWizard({
 	}, [])
 
 	/**
-	 * The subclass's always-prepared grants, for the shared "already has it"
-	 * set. Called with the same arguments AlwaysPreparedSpellsList uses on the
-	 * spells step (no pact-slot table), so what a picker refuses to offer is
-	 * exactly what that list shows the player right above it.
+	 * The subclass's always-prepared grants — the single computation behind
+	 * both AlwaysPreparedSpellsList (rendered from this state) and the D71
+	 * "already has it" set, so the two can never disagree. The Warlock's own
+	 * Pact Magic slot table is read straight off `spellSlotsClassData` (already
+	 * loaded for this step — never a second slot computation) and passed
+	 * through, so a pact-slot-RANK-keyed grant (Hexblade/Fathomless, D62) is
+	 * resolved here exactly as the sheet resolves it.
 	 */
 	useEffect(() => {
 		let cancelled = false
@@ -333,7 +336,10 @@ export function CharacterWizard({
 			setSubclassAlwaysPrepared([])
 			return
 		}
-		loadSubclassAlwaysPreparedSpells(subclass.name, subclass.source, classChoice.className, classChoice.classSource, classChoice.level)
+		const pactSlotsByLevel =
+			spellSlotsClassData.find((entry) => entry.className === classChoice.className && entry.classSource === classChoice.classSource)?.pactSlotsByLevel ??
+			undefined
+		loadSubclassAlwaysPreparedSpells(subclass.name, subclass.source, classChoice.className, classChoice.classSource, classChoice.level, pactSlotsByLevel)
 			.then((spells) => {
 				if (!cancelled) setSubclassAlwaysPrepared(spells)
 			})
@@ -343,7 +349,7 @@ export function CharacterWizard({
 		return () => {
 			cancelled = true
 		}
-	}, [state.data.classChoice, state.data.subclass])
+	}, [state.data.classChoice, state.data.subclass, spellSlotsClassData])
 
 	/** Feat-granted spells — fixed grants AND the player's own Magic Initiate / filter-choice picks, both keyed to the granting feat by featSpells.ts. */
 	useEffect(() => {
@@ -879,15 +885,7 @@ export function CharacterWizard({
 						onChange={(choices) => dispatch({ type: 'setSpellChoices', choices })}
 						alreadyKnown={alreadyKnownSpells}
 					/>
-					{state.data.subclass && (
-						<AlwaysPreparedSpellsList
-							subclassName={state.data.subclass.name}
-							subclassSource={state.data.subclass.source}
-							className={state.data.classChoice.className}
-							classSource={state.data.classChoice.classSource}
-							classLevel={state.data.classChoice.level}
-						/>
-					)}
+					{state.data.subclass && <AlwaysPreparedSpellsList subclassName={state.data.subclass.name} spells={subclassAlwaysPrepared} />}
 					{state.data.subclass && isSubclassSpellChoice(state.data.subclass) && (
 						<SubclassSpellChoicePicker
 							subclassName={state.data.subclass.name}

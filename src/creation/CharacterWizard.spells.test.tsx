@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
 import type { ClassSpellListSpell } from '../spells/classSpellListData'
+import { loadSubclassAlwaysPreparedSpells } from '../spells/subclassPreparedSpells'
 
 /*
  * Component tests for the class spell picker wired into the wizard (build
@@ -22,6 +23,7 @@ vi.mock('../classes/classData', () => ({
 		{ name: 'Cleric', source: 'XPHB', hd: { number: 1, faces: 8 } },
 		{ name: 'Rogue', source: 'XPHB', hd: { number: 1, faces: 8 } },
 		{ name: 'Sorcerer', source: 'XPHB', hd: { number: 1, faces: 6 } },
+		{ name: 'Warlock', source: 'XPHB', hd: { number: 1, faces: 8 } },
 	]),
 }))
 
@@ -86,6 +88,12 @@ vi.mock('../subclass/subclassData', () => ({
 			return [
 				{ name: 'Draconic Bloodline', source: 'XPHB', entries: ['Draconic power.'], featureType: null },
 				{ name: 'Divine Soul', source: 'XGE', entries: ['A sliver of divinity.'], featureType: null },
+			]
+		}
+		if (className === 'Warlock') {
+			return [
+				{ name: 'The Hexblade', source: 'XGE', entries: ['A weapon-bound patron; grants spells keyed by Pact Magic slot rank.'], featureType: null },
+				{ name: 'Fiend', source: 'XPHB', entries: ['A fiendish patron with ordinary level-keyed grants.'], featureType: null },
 			]
 		}
 		return [
@@ -193,6 +201,20 @@ const spellSlotsData: ClassSpellSlotsData[] = [
 		],
 		pactSlotsByLevel: null,
 	},
+	{
+		className: 'Warlock',
+		classSource: 'XPHB',
+		casterProgression: 'pact',
+		spellSlotsByLevel: null,
+		// slotLevel by character level 1..5: 1,1,2,2,3 — pact-slot rank 2 first reached at level 3, rank 3 at level 5.
+		pactSlotsByLevel: [
+			{ count: 1, slotLevel: 1 },
+			{ count: 2, slotLevel: 1 },
+			{ count: 2, slotLevel: 2 },
+			{ count: 2, slotLevel: 2 },
+			{ count: 2, slotLevel: 3 },
+		],
+	},
 ]
 
 const spellCountData: ClassSpellCountData[] = [
@@ -215,6 +237,7 @@ const spellCountData: ClassSpellCountData[] = [
 		subclasses: [{ subclassName: 'Arcane Trickster', cantripProgression: [0, 0, 2], leveledSpellProgression: [0, 0, 3], label: 'known' }],
 	},
 	{ className: 'Sorcerer', classSource: 'XPHB', cantripProgression: [3, 3, 3], leveledSpellProgression: [2, 3, 3], label: 'known' },
+	{ className: 'Warlock', classSource: 'XPHB', cantripProgression: [2, 2, 2, 2, 2], leveledSpellProgression: [1, 2, 2, 2, 3], label: 'known' },
 ]
 
 vi.mock('../spells/spellSlotsClassData', () => ({
@@ -247,6 +270,16 @@ const clericSpellList: ClassSpellListSpell[] = [spell('Guidance', 0), spell('Cur
 
 const sorcererSpellList: ClassSpellListSpell[] = [spell('Fire Bolt', 0), spell('Prestidigitation', 0), spell('Magic Missile', 1), spell('Shield', 1)]
 
+/** Blur and Command are also on this list so a patron grant of either shows as a DISABLED offer in the picker (D71), not just in the always-prepared list. */
+const warlockSpellList: ClassSpellListSpell[] = [
+	spell('Eldritch Blast', 0),
+	spell('Chill Touch', 0),
+	spell('Hex', 1),
+	spell('Command', 1),
+	spell('Blur', 2),
+	spell('Fear', 3),
+]
+
 vi.mock('../spells/classSpellListData', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../spells/classSpellListData')>()
 	return {
@@ -256,8 +289,47 @@ vi.mock('../spells/classSpellListData', async (importOriginal) => {
 			if (className === 'Cleric') return clericSpellList
 			if (className === 'Fighter') return fighterSpellList
 			if (className === 'Sorcerer') return sorcererSpellList
+			if (className === 'Warlock') return warlockSpellList
 			return []
 		}),
+	}
+})
+
+/*
+ * The Hexblade's grant is keyed by Pact Magic slot RANK ("s1".."s5"), so it
+ * only resolves when the wizard hands the loader the Warlock's pact-slot
+ * table — the wiring under test. Fiend's grant is ordinary class-level-keyed
+ * and is the control (unaffected by the table). Everything else returns [],
+ * matching what the real loader does in jsdom (its fetch fails, the effect
+ * swallows it) for the EK/AT/Divine Soul cases in this file.
+ */
+vi.mock('../spells/subclassPreparedSpells', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/subclassPreparedSpells')>()
+	return {
+		...actual,
+		loadSubclassAlwaysPreparedSpells: vi.fn(
+			async (
+				subclassName: string,
+				_subclassSource: string,
+				_className: string,
+				_classSource: string,
+				classLevel: number,
+				pactSlotsByLevel?: { count: number; slotLevel: number }[],
+			) => {
+				if (subclassName === 'The Hexblade') {
+					if (!pactSlotsByLevel) return []
+					const rank2Level = pactSlotsByLevel.findIndex((row) => row.slotLevel >= 2) + 1
+					if (rank2Level === 0 || classLevel < rank2Level) return []
+					return [{ name: 'Blur', source: 'XPHB', level: 2, grantedAtLevel: rank2Level, ritual: false, concentration: false, origin: 'subclass' as const }]
+				}
+				if (subclassName === 'Fiend') {
+					return classLevel >= 1
+						? [{ name: 'Command', source: 'XPHB', level: 1, grantedAtLevel: 1, ritual: false, concentration: false, origin: 'subclass' as const }]
+						: []
+				}
+				return []
+			},
+		),
 	}
 })
 
@@ -566,5 +638,76 @@ describe('CharacterWizard — spells step', () => {
 		// No Cleric addition — Guidance and Cure Wounds are not offered.
 		expect(screen.queryByLabelText(/Guidance/)).toBeNull()
 		expect(screen.queryByLabelText(/Cure Wounds/)).toBeNull()
+	})
+
+	/** Warlock reaches its subclass on the class step (level >= 3), then the standard walk to the spells step. */
+	async function fillWarlockThroughSpells(user: ReturnType<typeof userEvent.setup>, subclassPattern: RegExp, level: string) {
+		await fillClassStep(user, 'Warlock', level)
+		await user.click(await screen.findByRole('radio', { name: subclassPattern }))
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await user.click(await screen.findByLabelText('Draconic (XPHB)'))
+		await user.click(screen.getByLabelText('Dwarvish (XPHB)'))
+		await goNext(user)
+		await user.selectOptions(screen.getByLabelText('Strength'), '15')
+		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
+		await user.selectOptions(screen.getByLabelText('Constitution'), '13')
+		await user.selectOptions(screen.getByLabelText('Intelligence'), '12')
+		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
+		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
+		await goNext(user)
+	}
+
+	it('a Hexblade Warlock past the pact-slot rank sees the rank-keyed grant in the wizard\'s always-prepared list', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillWarlockThroughSpells(user, /The Hexblade/, '5')
+
+		const heading = await screen.findByText('Always prepared from The Hexblade (free, not counted against the choices above):')
+		const list = heading.closest('.spell-picker__section--always-prepared') as HTMLElement
+		expect(within(list).getByText('Blur')).toBeTruthy()
+
+		// The rank grant only resolves because the wizard now passes the Warlock's own pact-slot table (never a second slot computation).
+		expect(vi.mocked(loadSubclassAlwaysPreparedSpells)).toHaveBeenCalledWith(
+			'The Hexblade',
+			'XGE',
+			'Warlock',
+			'XPHB',
+			5,
+			spellSlotsData.find((entry) => entry.className === 'Warlock')!.pactSlotsByLevel,
+		)
+	})
+
+	it('the Hexblade rank grant is offered disabled in the class spell picker, naming the subclass (D71)', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillWarlockThroughSpells(user, /The Hexblade/, '5')
+
+		const blur = (await screen.findByLabelText(/^Blur/)) as HTMLInputElement
+		expect(blur.disabled).toBe(true)
+		expect(blur.checked).toBe(false)
+		expect(screen.getByText(/already have it from The Hexblade, always prepared/)).toBeTruthy()
+	})
+
+	it('a Warlock patron with ordinary level-keyed grants (Fiend) is unaffected — grant still shown and blocked', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillWarlockThroughSpells(user, /Fiend/, '5')
+
+		const heading = await screen.findByText('Always prepared from Fiend (free, not counted against the choices above):')
+		const list = heading.closest('.spell-picker__section--always-prepared') as HTMLElement
+		expect(within(list).getByText('Command')).toBeTruthy()
+
+		const command = (await screen.findByLabelText(/^Command/)) as HTMLInputElement
+		expect(command.disabled).toBe(true)
+		expect(screen.getByText(/already have it from Fiend, always prepared/)).toBeTruthy()
 	})
 })
