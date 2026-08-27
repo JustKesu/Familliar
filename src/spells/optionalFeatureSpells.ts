@@ -38,6 +38,7 @@
 
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { CharacterOptionalFeatureChoice } from '../storage/character'
+import { chosenSpellUsageFor } from './chosenSpellUsage'
 import {
 	extractRefsWithUsage,
 	findSpell,
@@ -72,11 +73,10 @@ export interface OptionalFeatureGrantedSpell {
 	 * deliberately NOT parsed out of that prose — a wrong frequency on the sheet
 	 * is worse than none, per the decision recorded in docs/REPORT.md. A
 	 * WRAPPED bare grant (will/daily/ritual/resource) still gets its normal,
-	 * more specific label instead. Undefined only for a player-CHOSEN spell
-	 * (extractOptionalFeatureChosenSpells, e.g. Pact of the Tome) — those are
-	 * read from the character's own stored pick, not from additionalSpells, so
-	 * there is no wrapper to read at all; left unlabeled rather than assumed
-	 * (out of this task's scope, see docs/REPORT.md).
+	 * more specific label instead. A player-CHOSEN spell
+	 * (extractOptionalFeatureChosenSpells) has no wrapper to read, so its term
+	 * comes from chosenSpellUsage.ts's hand table by option name — null (no
+	 * label) for Pact of the Tome, whose picks "function as Warlock spells".
 	 */
 	usage?: SpellUsage | null
 }
@@ -234,6 +234,8 @@ export function extractOptionalFeatureChosenSpells(parsedSpells: unknown, select
 					concentration: hasConcentration(spell.duration),
 					origin: 'optionalFeature',
 					optionName: pick.optionName,
+					// D21/D70: Pact of the Tome's picks "function as Warlock spells for you" — ordinary prepared, no term. chosenSpellUsageFor returns null for it; a future choice-offering option could differ.
+					usage: spell.level >= 1 ? chosenSpellUsageFor(pick.optionName) : undefined,
 				})
 			}
 			result.push(...dedupeWithinOption(granted))

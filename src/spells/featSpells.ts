@@ -70,6 +70,7 @@
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character, FeatAsiChoice } from '../storage/character'
+import { chosenSpellUsageFor } from './chosenSpellUsage'
 import { isFilterChoiceFeat } from './featSpellChoiceData'
 import { extractRefsWithUsage, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, spellIdentityKey, type RawSpell, type SpellUsage } from './subclassPreparedSpells'
 
@@ -95,6 +96,11 @@ export interface FeatGrantedSpell {
 	 * Eberron marks' base cantrips (e.g. Mark of Making's `known._`), and a
 	 * cantrip needs no such label — it's already castable with no slot by the
 	 * ordinary cantrip rule, regardless of source.
+	 *
+	 * A player-CHOSEN feat spell (extractMagicInitiateSpells,
+	 * extractFilterChoiceSpells, and Fey-/Shadow-Touched's fixed companion)
+	 * has no wrapper to read: its term comes from chosenSpellUsage.ts's hand
+	 * table by feat name, and only for a LEVELED pick (D21/D70).
 	 */
 	usage?: SpellUsage | null
 }
@@ -197,6 +203,11 @@ export function extractFixedFeatSpells(
 		if (!isRecord(entry)) continue
 
 		const abilityField = entry['ability']
+		// Fey-Touched / Shadow-Touched's fixed companion (Misty Step / Invisibility) is wrapped `daily:{"1e":…}` in the
+		// data — "1/day each", the 2014 wording. Its own 2024 text says "once … until you finish a Long Rest" (D68: rules
+		// win). Take the term from the same hand table its chosen spell uses so the two rows agree.
+		const inheritCompanion = filterChoice && abilityField === 'inherit'
+		const companionUsage = inheritCompanion ? chosenSpellUsageFor(feat.name) : undefined
 		let ability: AbilityAbbreviation | undefined
 		if (isFixedAbility(abilityField)) {
 			ability = abilityField
@@ -232,7 +243,7 @@ export function extractFixedFeatSpells(
 						origin: 'feat',
 						featName: feat.name,
 						ability,
-						usage,
+						usage: inheritCompanion && spell.level >= 1 ? companionUsage : usage,
 					})
 				}
 			}
@@ -284,6 +295,8 @@ function extractMagicInitiateSpells(parsedSpells: unknown, choice: FeatChoice): 
 			origin: 'feat',
 			featName: choice.name,
 			ability,
+			// D21/D70: the level-1 pick is "cast once without a slot, regain on a Long Rest"; the cantrips carry no term.
+			usage: spell.level >= 1 ? chosenSpellUsageFor(choice.name) : undefined,
 		})
 	}
 	return result
@@ -338,6 +351,8 @@ function extractFilterChoiceSpells(parsedFeats: unknown, parsedSpells: unknown, 
 			origin: 'feat',
 			featName: choice.name,
 			ability,
+			// D21/D70: Artificer Initiate / Fey-Touched / Shadow-Touched give their leveled pick a "1/long rest, no slot" term; cantrip-only feats (Blessed/Druidic Warrior, Wood Elf Magic) and the cantrip picks carry none.
+			usage: spell.level >= 1 ? chosenSpellUsageFor(choice.name) : undefined,
 		})
 	}
 	return result

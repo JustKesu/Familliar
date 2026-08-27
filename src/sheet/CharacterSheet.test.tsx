@@ -1544,6 +1544,48 @@ describe('CharacterSheet', () => {
 			expect(fireBoltSummary.textContent).toContain('from feat (Magic Initiate)')
 		})
 
+		it("a Magic Initiate level-1 pick shows the \"1/long rest (no slot)\" usage term next to its provenance (chosen-spell usage terms)", async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Cleric', classSource: 'XPHB', ability: 'wis' }]
+			const spellSlots: ClassSpellSlotsData[] = [{ className: 'Cleric', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null }]
+			const details: SpellDetail[] = [spellDetail({ name: 'Ray of Sickness', source: 'XPHB', level: 1, entries: ['A ray of sickening greenish energy.'] })]
+			const featGrantedSpells: FeatGrantedSpell[] = [
+				{ name: 'Ray of Sickness', source: 'XPHB', level: 1, ritual: false, concentration: false, origin: 'feat', featName: 'Magic Initiate', ability: 'int', usage: { kind: 'onceFreePerLongRest' } },
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
+
+			const cleric: Character = {
+				id: 'cl3',
+				name: 'Magic Initiate Cleric 2',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 14, wisdom: 16, charisma: 10 },
+				},
+				featAsiChoices: [
+					{
+						level: 4,
+						kind: 'feat',
+						name: 'Magic Initiate',
+						source: 'XPHB',
+						chosenAbility: 'intelligence',
+						magicInitiate: { className: 'Wizard', classSource: 'XPHB', cantrips: [], spell: { name: 'Ray of Sickness', source: 'XPHB' } },
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={cleric} />)
+			await screen.findByRole('heading', { name: 'Magic Initiate Cleric 2' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Ray of Sickness'))
+			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Ray of Sickness'))!
+			expect(summary.textContent).toContain('from feat (Magic Initiate)')
+			expect(summary.textContent).toContain('1/long rest (no slot)')
+		})
+
 		it('a non-caster (Fighter) shows no spellcasting sections at all', async () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })

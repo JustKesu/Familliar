@@ -141,6 +141,13 @@ import { subclassLevelFor } from '../subclass/subclassData'
  * - `resource`: the `resource` key — costs `cost` points of the
  *   additionalSpells entry's own `resourceName` field (Monk's "Ki"/"Focus
  *   Point"), not a per-day count.
+ * - `onceFreePerLongRest`: NOT read from a wrapper either. The term for a
+ *   LEVELED spell the player picked for Magic Initiate / Artificer Initiate /
+ *   Fey-Touched / Shadow-Touched (chosenSpellUsage.ts, D21/D70) — "cast it
+ *   once without a spell slot, regain when you finish a Long Rest, may also
+ *   cast it with a slot". Distinct from `noSlot` (which carries no frequency)
+ *   and from `daily` (per day, not per long rest); `noSlot`/`atWill` here
+ *   would overstate what the player may do.
  * - `noSlot`: NOT read from a wrapper at all. Warlock Eldritch Invocations
  *   (optionalFeatureSpells.ts's only caller) grant every one of their spells
  *   without a slot, but 12 of 17 encode this only in prose, as a BARE grant
@@ -163,6 +170,7 @@ export type SpellUsage =
 	| { kind: 'ritual' }
 	| { kind: 'resource'; cost: number; resourceName: string }
 	| { kind: 'noSlot' }
+	| { kind: 'onceFreePerLongRest' }
 
 export interface AlwaysPreparedSpell {
 	name: string

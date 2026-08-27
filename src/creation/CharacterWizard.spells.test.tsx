@@ -94,6 +94,7 @@ vi.mock('../subclass/subclassData', () => ({
 			return [
 				{ name: 'The Hexblade', source: 'XGE', entries: ['A weapon-bound patron; grants spells keyed by Pact Magic slot rank.'], featureType: null },
 				{ name: 'Fiend', source: 'XPHB', entries: ['A fiendish patron with ordinary level-keyed grants.'], featureType: null },
+				{ name: 'The Undying', source: 'XGE', entries: ['A patron whose always-prepared load fails, for the D43 test.'], featureType: null },
 			]
 		}
 		return [
@@ -326,6 +327,10 @@ vi.mock('../spells/subclassPreparedSpells', async (importOriginal) => {
 					return classLevel >= 1
 						? [{ name: 'Command', source: 'XPHB', level: 1, grantedAtLevel: 1, ritual: false, concentration: false, origin: 'subclass' as const }]
 						: []
+				}
+				// The Undying's load always fails — the D43 case: the wizard must show the failure, not an empty list.
+				if (subclassName === 'The Undying') {
+					throw new Error('data/classes.json — HTTP 500')
 				}
 				return []
 			},
@@ -709,5 +714,19 @@ describe('CharacterWizard — spells step', () => {
 		const command = (await screen.findByLabelText(/^Command/)) as HTMLInputElement
 		expect(command.disabled).toBe(true)
 		expect(screen.getByText(/already have it from Fiend, always prepared/)).toBeTruthy()
+	})
+
+	it('a failed always-prepared load is shown, not rendered as an empty list (D43)', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillWarlockThroughSpells(user, /The Undying/, '5')
+
+		// The list's own failure message...
+		expect(await screen.findByText(/Could not load The Undying.+always-prepared spells: data\/classes\.json — HTTP 500/)).toBeTruthy()
+		// ...and the spells step warns that the D71 "already have it" set is incomplete.
+		expect(screen.getByText(/Couldn.t load everything you already have from your other choices/)).toBeTruthy()
+		// It must NOT look like the subclass simply grants nothing.
+		expect(screen.queryByText(/Always prepared from The Undying/)).toBeNull()
 	})
 })

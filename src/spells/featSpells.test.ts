@@ -251,6 +251,23 @@ describe('extractFeatGrantedSpells — base Magic Initiate (slice d5b-2)', () =>
 		const character = characterWithMagicInitiate(undefined, undefined)
 		expect(extractFeatGrantedSpells(feats, magicInitiateSpells, character)).toEqual([])
 	})
+
+	it('the level-1 pick carries the "1/long rest, no slot" term; the cantrip picks carry none (D21/D70)', () => {
+		const character = characterWithMagicInitiate('intelligence', {
+			className: 'Wizard',
+			classSource: 'XPHB',
+			cantrips: [
+				{ name: 'Fire Bolt', source: 'XPHB' },
+				{ name: 'Mage Hand', source: 'XPHB' },
+			],
+			spell: { name: 'Ray of Sickness', source: 'XPHB' },
+		})
+		const result = extractFeatGrantedSpells(feats, magicInitiateSpells, character)
+
+		expect(result.find((s) => s.name === 'Ray of Sickness')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
+		expect(result.find((s) => s.name === 'Fire Bolt')?.usage).toBeFalsy()
+		expect(result.find((s) => s.name === 'Mage Hand')?.usage).toBeFalsy()
+	})
 })
 
 describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice d5b-1)', () => {
@@ -266,7 +283,12 @@ describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice 
 			{ ability: 'wis', innate: { _: { daily: { '1e': ['longstrider', 'pass without trace'] } } }, known: { _: [{ choose: 'level=0|class=Druid' }] } },
 		],
 	}
-	const filterChoiceFeats = [...feats, feyTouched, woodElfMagic]
+	const ritualCaster = {
+		name: 'Ritual Caster',
+		source: 'XPHB',
+		additionalSpells: [{ prepared: { 1: [{ choose: 'level=1|components & miscellaneous=ritual' }] } }],
+	}
+	const filterChoiceFeats = [...feats, feyTouched, woodElfMagic, ritualCaster]
 
 	const identify = { name: 'Identify', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
 	const longstrider = { name: 'Longstrider', source: 'XPHB', level: 1, duration: [{ type: 'timed', duration: { type: 'hour', amount: 1 } }], meta: {} }
@@ -300,6 +322,14 @@ describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice 
 		expect(result.every((s) => s.featName === 'Fey-Touched')).toBe(true)
 	})
 
+	it("Fey-Touched: the chosen spell AND the fixed Misty Step companion both show \"once per long rest, no slot\" — not the data's stale daily:'1e' (D21/D70, D68)", () => {
+		const character = characterWithFilterChoice('Fey-Touched', 'XPHB', 'charisma', { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] })
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+
+		expect(result.find((s) => s.name === 'Misty Step')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
+		expect(result.find((s) => s.name === 'Identify')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
+	})
+
 	it('Wood Elf Magic: fixed innate spells AND the chosen cantrip are granted, ability is the FIXED wis (chosenAbility ignored)', () => {
 		const character = characterWithFilterChoice('Wood Elf Magic', 'XGE', undefined, { cantrips: [{ name: 'Druidcraft', source: 'XPHB' }], spells: [] })
 		const druidcraft = { name: 'Druidcraft', source: 'XPHB', level: 0, duration: [{ type: 'instant' }], meta: {} }
@@ -313,5 +343,13 @@ describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice 
 		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
 		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
 		expect(result.map((s) => s.name).sort()).toEqual(['Detect Magic', 'Dispel Magic', 'Levitate'])
+	})
+
+	it('Ritual Caster: its picked ritual spells carry NO usage label — the feat text ("cast them with any spell slots you have") establishes no special term (D21/D70)', () => {
+		const character = characterWithFilterChoice('Ritual Caster', 'XPHB', 'intelligence', { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] })
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+
+		expect(result.map((s) => s.name)).toEqual(['Identify'])
+		expect(result[0].usage).toBeFalsy()
 	})
 })

@@ -118,7 +118,8 @@ export function formatAttackOrSave(spellAttack: string[] | undefined, savingThro
  * threaded through the grant modules to compute the actual modifier.
  * `noSlot` (optionalFeatureSpells.ts's bare-invocation default) deliberately
  * carries no frequency, since the data only confirms the spell is slot-free,
- * never how often (docs/REPORT.md).
+ * never how often (docs/REPORT.md). `onceFreePerLongRest` (chosenSpellUsage.ts)
+ * DOES carry the frequency — the source's rules text states it.
  */
 export function formatSpellUsage(usage: SpellUsage): string {
 	switch (usage.kind) {
@@ -136,6 +137,8 @@ export function formatSpellUsage(usage: SpellUsage): string {
 			return `${usage.cost} ${usage.resourceName}`
 		case 'noSlot':
 			return 'no spell slot'
+		case 'onceFreePerLongRest':
+			return '1/long rest (no slot)'
 	}
 }
 

@@ -206,6 +206,12 @@ describe('extractOptionalFeatureChosenSpells', () => {
 		expect(result[1]).toMatchObject({ level: 1, ritual: true, origin: 'optionalFeature' })
 	})
 
+	it('Pact of the Tome picks carry NO usage label — "they function as Warlock spells for you" establishes no special term (D21/D70)', () => {
+		const result = extractOptionalFeatureChosenSpells(spells, [tomePick])
+		expect(result.find((s) => s.name === 'Find Familiar')?.usage).toBeFalsy() // level-1 pick
+		expect(result.find((s) => s.name === 'Disguise Self')?.usage).toBeFalsy() // cantrip pick
+	})
+
 	it('a stored pick whose option is no longer chosen is ignored', () => {
 		const orphaned = { ...tomePick, choices: ['Mask of Many Faces'] }
 		expect(extractOptionalFeatureChosenSpells(spells, [orphaned])).toEqual([])

@@ -138,6 +138,16 @@ export function CharacterWizard({
 	const [subclassAlwaysPrepared, setSubclassAlwaysPrepared] = useState<AlwaysPreparedSpell[]>([])
 	const [featGrantedSpells, setFeatGrantedSpells] = useState<FeatGrantedSpell[]>([])
 	const [optionalFeatureGrantedSpells, setOptionalFeatureGrantedSpells] = useState<OptionalFeatureGrantedSpell[]>([])
+	/**
+	 * D43: these three loads are best-effort, but a failure must not read as
+	 * "the character has no such spells". `subclassAlwaysPreparedError` is
+	 * shown by AlwaysPreparedSpellsList itself; any of the three failing also
+	 * raises the spells-step note that the "already have it" set (D71) is
+	 * incomplete.
+	 */
+	const [subclassAlwaysPreparedError, setSubclassAlwaysPreparedError] = useState<string | null>(null)
+	const [featGrantedSpellsError, setFeatGrantedSpellsError] = useState<string | null>(null)
+	const [optionalFeatureGrantedSpellsError, setOptionalFeatureGrantedSpellsError] = useState<string | null>(null)
 
 	useEffect(() => {
 		let cancelled = false
@@ -334,6 +344,7 @@ export function CharacterWizard({
 		const subclass = state.data.subclass
 		if (!classChoice || !subclass) {
 			setSubclassAlwaysPrepared([])
+			setSubclassAlwaysPreparedError(null)
 			return
 		}
 		const pactSlotsByLevel =
@@ -341,10 +352,13 @@ export function CharacterWizard({
 			undefined
 		loadSubclassAlwaysPreparedSpells(subclass.name, subclass.source, classChoice.className, classChoice.classSource, classChoice.level, pactSlotsByLevel)
 			.then((spells) => {
-				if (!cancelled) setSubclassAlwaysPrepared(spells)
+				if (cancelled) return
+				setSubclassAlwaysPrepared(spells)
+				setSubclassAlwaysPreparedError(null)
 			})
-			.catch(() => {
-				/* Best-effort, like the other data lookups here: without it a picker simply offers what it always did. */
+			.catch((error: unknown) => {
+				// D43: keep the failure visible — AlwaysPreparedSpellsList shows this instead of an empty list.
+				if (!cancelled) setSubclassAlwaysPreparedError(error instanceof Error ? error.message : String(error))
 			})
 		return () => {
 			cancelled = true
@@ -356,6 +370,7 @@ export function CharacterWizard({
 		let cancelled = false
 		if (state.data.featAsiChoices.length === 0) {
 			setFeatGrantedSpells([])
+			setFeatGrantedSpellsError(null)
 			return
 		}
 		loadFeatGrantedSpells({
@@ -374,10 +389,13 @@ export function CharacterWizard({
 			featAsiChoices: state.data.featAsiChoices,
 		})
 			.then((spells) => {
-				if (!cancelled) setFeatGrantedSpells(spells)
+				if (cancelled) return
+				setFeatGrantedSpells(spells)
+				setFeatGrantedSpellsError(null)
 			})
-			.catch(() => {
-				/* Best-effort, same as above. */
+			.catch((error: unknown) => {
+				// D43: a failed load must not silently shrink the D71 "already have it" set — raise the spells-step note.
+				if (!cancelled) setFeatGrantedSpellsError(error instanceof Error ? error.message : String(error))
 			})
 		return () => {
 			cancelled = true
@@ -399,14 +417,18 @@ export function CharacterWizard({
 		const selection = [...subclassEntries, ...state.data.classOptionalFeatureChoices]
 		if (selection.length === 0) {
 			setOptionalFeatureGrantedSpells([])
+			setOptionalFeatureGrantedSpellsError(null)
 			return
 		}
 		loadOptionalFeatureGrantedSpells({ optionalFeatureChoices: selection })
 			.then((spells) => {
-				if (!cancelled) setOptionalFeatureGrantedSpells(spells)
+				if (cancelled) return
+				setOptionalFeatureGrantedSpells(spells)
+				setOptionalFeatureGrantedSpellsError(null)
 			})
-			.catch(() => {
-				/* Best-effort, same as above. */
+			.catch((error: unknown) => {
+				// D43: same as the feat-granted load above — the D71 set must not silently lose entries.
+				if (!cancelled) setOptionalFeatureGrantedSpellsError(error instanceof Error ? error.message : String(error))
 			})
 		return () => {
 			cancelled = true
@@ -633,6 +655,11 @@ export function CharacterWizard({
 		featGrantedSpells,
 		optionalFeatureGrantedSpells,
 	})
+	/** D43: if any of the three grant loads failed, `alreadyKnownSpells` is missing entries — say so on every step whose picker consumes it, rather than letting an already-had option quietly look pickable. */
+	const knownSpellsLoadFailed = subclassAlwaysPreparedError !== null || featGrantedSpellsError !== null || optionalFeatureGrantedSpellsError !== null
+	const knownSpellsIncompleteNotice = knownSpellsLoadFailed ? (
+		<p className="error">Couldn&rsquo;t load everything you already have from your other choices — a spell you already have may still look selectable here.</p>
+	) : null
 	const damagingCantripNames = spellDetails.length > 0 ? damagingCantripsAmong(spellDetails, state.data.spellChoices) : null
 	const damagingAttackCantripNames = spellDetails.length > 0 ? damagingAttackCantripsAmong(spellDetails, state.data.spellChoices) : null
 
@@ -871,6 +898,7 @@ export function CharacterWizard({
 
 			{state.step === 'spells' && state.data.classChoice && spellRequirement && spellListClass && (
 				<div className="wizard__panel">
+					{knownSpellsIncompleteNotice}
 					<SpellPicker
 						className={spellListClass.className}
 						classSource={spellListClass.classSource}
@@ -885,7 +913,9 @@ export function CharacterWizard({
 						onChange={(choices) => dispatch({ type: 'setSpellChoices', choices })}
 						alreadyKnown={alreadyKnownSpells}
 					/>
-					{state.data.subclass && <AlwaysPreparedSpellsList subclassName={state.data.subclass.name} spells={subclassAlwaysPrepared} />}
+					{state.data.subclass && (
+						<AlwaysPreparedSpellsList subclassName={state.data.subclass.name} spells={subclassAlwaysPrepared} error={subclassAlwaysPreparedError} />
+					)}
 					{state.data.subclass && isSubclassSpellChoice(state.data.subclass) && (
 						<SubclassSpellChoicePicker
 							subclassName={state.data.subclass.name}
@@ -904,6 +934,7 @@ export function CharacterWizard({
 			{/* D64: the class's OWN optionalfeatureProgression, moved off the class step to run after 'spells' — several invocations require an already-known damaging cantrip. Subclass-level optional features stay on the class step. */}
 			{state.step === 'classOptionalFeatures' && state.data.classChoice && (
 				<div className="wizard__panel">
+					{knownSpellsIncompleteNotice}
 					<ClassOptionalFeaturePicker
 						className={state.data.classChoice.className}
 						classSource={state.data.classChoice.classSource}
@@ -922,6 +953,7 @@ export function CharacterWizard({
 
 			{state.step === 'featAsi' && state.data.classChoice && (
 				<div className="wizard__panel">
+					{knownSpellsIncompleteNotice}
 					<FeatAsiPicker
 						className={state.data.classChoice.className}
 						classSource={state.data.classChoice.classSource}
