@@ -5,11 +5,12 @@
     "",
     "  allow - Things Claude Code will do WITHOUT asking. Reserved for routine, low-risk,",
     "          reversible actions (installing packages, running project scripts, git commands",
-    "          that don't destroy history, read-only file/folder inspection).",
+    "          that don't destroy history, read-only file/folder inspection, deleting throwaway",
+    "          files inside the scripts/ folder).",
     "",
     "  ask   - Things Claude Code will always pause and ask you about first, even in modes that",
     "          would otherwise auto-approve. Used for commands that can permanently discard work",
-    "          (deleting files, resetting or discarding git changes).",
+    "          (deleting files outside scripts/, resetting or discarding git changes).",
     "",
     "  deny  - Things Claude Code is never allowed to do, no matter what. Used to protect secrets",
     "          (.env files, which often hold passwords/API keys) and to keep it out of core",
@@ -43,6 +44,8 @@
       "Bash(git commit *)",
       "Bash(git push)",
       "Bash(git push *)",
+      "Bash(rm scripts/*)",
+      "Bash(rmdir scripts/*)",
       "PowerShell(npm run *)",
       "PowerShell(npm install)",
       "PowerShell(npm install *)",
@@ -67,7 +70,8 @@
       "PowerShell(Get-ChildItem *)",
       "PowerShell(Get-Content *)",
       "PowerShell(Select-String *)",
-      "PowerShell(Test-Path *)"
+      "PowerShell(Test-Path *)",
+      "PowerShell(Remove-Item scripts/*)"
     ],
     "ask": [
       "Bash(rm *)",
