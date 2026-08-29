@@ -249,7 +249,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await screen.findByLabelText('Background')
+		await screen.findByLabelText('Search Background')
 		await goBack(user)
 
 		expect(value(await screen.findByLabelText('Species'))).toBe('Elf|XPHB')
@@ -265,7 +265,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await user.click(await screen.findByLabelText('Perception'))
 
 		await goNext(user)
-		await screen.findByLabelText('Background')
+		await screen.findByLabelText('Search Background')
 		await goBack(user)
 
 		expect((await screen.findByLabelText('Perception') as HTMLInputElement).checked).toBe(true)
@@ -303,14 +303,16 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await goNext(user)
 		await screen.findByLabelText('Draconic (XPHB)')
 		await goBack(user)
 
-		expect(value(await screen.findByLabelText('Background'))).toBe('Soldier|XPHB')
+		// The list collapses once a background is chosen; open it to read the pick back.
+		await user.click(await screen.findByRole('button', { name: /^Background/ }))
+		expect((screen.getByRole('radio', { name: 'Soldier (XPHB)' }) as HTMLInputElement).checked).toBe(true)
 		expect(value(screen.getByLabelText('+2'))).toBe('strength')
 		expect(value(screen.getByLabelText('+1'))).toBe('dexterity')
 	})
@@ -323,7 +325,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 
 		expect(screen.queryByLabelText('Gaming Set')).toBeNull()
 
@@ -345,7 +347,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Artisan (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Artisan (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await user.click(await screen.findByLabelText("Smith's Tools"))
@@ -365,7 +367,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await goNext(user)
@@ -386,7 +388,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await goNext(user)
@@ -428,6 +430,8 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await screen.findByLabelText('Species')
 		await goBack(user)
 
+		// The mastery list auto-collapses once its one pick is made; reopen it.
+		await user.click(await screen.findByRole('button', { name: /Weapon masteries/ }))
 		expect((screen.getByLabelText('Athletics') as HTMLInputElement).checked).toBe(true)
 		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(true)
 		expect((screen.getByLabelText('Archery') as HTMLInputElement).checked).toBe(true)
@@ -528,7 +532,7 @@ describe('CharacterWizard — storage', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await goNext(user)
@@ -561,7 +565,7 @@ describe('CharacterWizard — storage', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await goNext(user)
@@ -614,7 +618,7 @@ describe('CharacterWizard — feat/ASI step', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await goNext(user)
@@ -698,7 +702,7 @@ describe('CharacterWizard — expertise step', () => {
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 	}
@@ -753,9 +757,10 @@ describe('CharacterWizard — expertise step', () => {
 		await goNext(user) // class -> species
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user) // species -> background
-		await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
-		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
-		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		// Background is not class-dependent, so the Soldier pick (and its ability
+		// bonus) survived the class change; the list is collapsed on return.
+		await user.click(await screen.findByRole('button', { name: /^Background/ }))
+		expect((screen.getByRole('radio', { name: 'Soldier (XPHB)' }) as HTMLInputElement).checked).toBe(true)
 		await goNext(user) // background -> expertise
 
 		expect((await screen.findByLabelText(/Athletics/) as HTMLInputElement).checked).toBe(false)

@@ -1,5 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadMasteryCountFor, loadMasteryWeaponsFor, MASTERY_DESCRIPTIONS, type MasteryWeapon } from './masteryData'
+import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
+import type { FeatAsiChoice } from '../storage/character'
+
+/** Stable empty default so an omitted `featAsiChoices` prop doesn't re-trigger the load effect. */
+const NO_FEAT_CHOICES: FeatAsiChoice[] = []
 
 /*
  * Weapon mastery picker. Not wired into the character creation wizard —
@@ -12,7 +17,7 @@ type LoadState =
 	| { status: 'error'; message: string }
 
 function weaponKey(weapon: MasteryWeapon): string {
-	return `${weapon.name}|${weapon.source}`
+	return `${weapon.name}|${weapon.source}|${weapon.masteryFull}`
 }
 
 /**
@@ -20,11 +25,16 @@ function weaponKey(weapon: MasteryWeapon): string {
  * feature, for classes that grant one. CONTROLLED COMPONENT (see D8): it
  * displays `value` — the selection as the caller currently has it — and
  * reports every change upward via `onChange` rather than owning the
- * selection itself.
+ * selection itself. The long weapon list is shown through
+ * SearchableOptionList (collapsing + search + count).
  *
  * Renders nothing if the class grants no weapon mastery choice at this
  * level (masteryCountFor returned null — see masteryData.ts for which
  * classes that covers).
+ *
+ * `featAsiChoices` is the character's stored feat/ASI picks; a feat that
+ * grants weapon proficiency (Martial Weapon Training, Gunner) widens the
+ * offered pool. It flows through the shared weaponProficiency.ts functions.
  */
 export function MasteryPicker({
 	className,
@@ -32,19 +42,24 @@ export function MasteryPicker({
 	level,
 	value,
 	onChange,
+	featAsiChoices = NO_FEAT_CHOICES,
 }: {
 	className: string
 	classSource: string
 	level: number
 	value: string[]
 	onChange: (weapons: string[]) => void
+	featAsiChoices?: FeatAsiChoice[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
 	useEffect(() => {
 		let cancelled = false
 		setState({ status: 'loading' })
-		Promise.all([loadMasteryCountFor(className, classSource, level), loadMasteryWeaponsFor(className, classSource)])
+		Promise.all([
+			loadMasteryCountFor(className, classSource, level),
+			loadMasteryWeaponsFor(className, classSource, featAsiChoices),
+		])
 			.then(([count, weapons]) => {
 				if (!cancelled) setState({ status: 'ready', count, weapons })
 			})
@@ -59,7 +74,7 @@ export function MasteryPicker({
 		return () => {
 			cancelled = true
 		}
-	}, [className, classSource, level])
+	}, [className, classSource, level, featAsiChoices])
 
 	if (state.status === 'loading') return <p>Loading weapon masteries…</p>
 	if (state.status === 'error') {
@@ -79,29 +94,39 @@ export function MasteryPicker({
 		}
 	}
 
+	const options: SearchableOption[] = weapons.map((weapon) => {
+		const selected = value.includes(weapon.name)
+		return {
+			key: weaponKey(weapon),
+			name: weapon.name,
+			label: (
+				<>
+					<strong>{weapon.name}</strong> — {weapon.masteryFull}
+				</>
+			),
+			detail: MASTERY_DESCRIPTIONS[weapon.masteryFull] ?? weapon.masteryFull,
+			selected,
+			disabled: !selected && remaining <= 0,
+		}
+	})
+
 	return (
-		<div className="mastery-picker">
-			<p className="mastery-picker__hint">
-				{remaining > 0 ? `Choose ${remaining} more weapon mastery${remaining === 1 ? '' : 'ies'}.` : 'All weapon masteries chosen.'}
-			</p>
-			<ul className="mastery-picker__list">
-				{weapons.map((weapon) => {
-					const key = weaponKey(weapon)
-					const checked = value.includes(weapon.name)
-					const disabled = !checked && remaining <= 0
-					return (
-						<li key={key} className="mastery-picker__item">
-							<label>
-								<input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggle(weapon.name)} />
-								<strong>{weapon.name}</strong> — {weapon.masteryFull}
-							</label>
-							<div className="mastery-picker__description">
-								{MASTERY_DESCRIPTIONS[weapon.masteryFull] ?? weapon.masteryFull}
-							</div>
-						</li>
-					)
-				})}
-			</ul>
-		</div>
+		<SearchableOptionList
+			legend="Weapon masteries"
+			name="weapon-mastery"
+			inputType="checkbox"
+			options={options}
+			required={count}
+			renderCount={({ chosen, required }) => {
+				const left = required - chosen
+				return left > 0
+					? `Choose ${left} more weapon master${left === 1 ? 'y' : 'ies'} (${chosen} of ${required}).`
+					: `All ${required} weapon masteries chosen.`
+			}}
+			onToggle={(key) => {
+				const weapon = weapons.find((candidate) => weaponKey(candidate) === key)
+				if (weapon) toggle(weapon.name)
+			}}
+		/>
 	)
 }

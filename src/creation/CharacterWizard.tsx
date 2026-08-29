@@ -776,6 +776,7 @@ export function CharacterWizard({
 								level={state.data.classChoice.level}
 								value={state.data.masteries}
 								onChange={(weapons) => dispatch({ type: 'setMasteries', weapons })}
+								featAsiChoices={state.data.featAsiChoices}
 							/>
 							<FightingStylePicker
 								className={state.data.classChoice.className}

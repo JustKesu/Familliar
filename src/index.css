@@ -307,3 +307,78 @@ h1 {
 .text-right {
   text-align: right;
 }
+
+/* Shared searchable/collapsible option list (src/pickers/SearchableOptionList.tsx). */
+.option-list {
+  border: 1px solid var(--rule);
+  border-radius: 0.4rem;
+  margin: 0.75rem 0;
+}
+
+.option-list__toggle {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: var(--panel-bg);
+  border: 0;
+  border-radius: 0.4rem;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.option-list__legend {
+  font-weight: 600;
+}
+
+.option-list__count {
+  opacity: 0.75;
+}
+
+.option-list__body {
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.option-list__search {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.5rem;
+  font: inherit;
+}
+
+.option-list__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.option-list__item {
+  padding: 0.25rem 0;
+  border-top: 1px solid var(--rule);
+}
+
+.option-list__label--disabled {
+  opacity: 0.55;
+}
+
+.option-list__reason,
+.option-list__detail {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0.15rem 0 0 1.5rem;
+}
+
+.option-list__pinned-label {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+}
+
+.option-list__empty {
+  opacity: 0.7;
+  margin: 0.25rem 0 0;
+}

@@ -4,6 +4,7 @@ import { abilityBonusChoiceToMap, isValidAbilityBonusChoice, type AbilityBonusCh
 import type { Ability } from '../abilities/abilityScores'
 import { Markup } from '../markup'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
+import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 
 /*
  * Character creation, background slice (PHASE1.md build order step 3).
@@ -306,22 +307,24 @@ export function BackgroundPicker({
 		})
 	}
 
+	const options: SearchableOption[] = state.backgrounds.map((entry) => ({
+		key: backgroundKey(entry),
+		name: entry.name,
+		label: `${entry.name} (${entry.source})`,
+		selected: backgroundKey(entry) === selectedKey,
+	}))
+
 	return (
 		<div className="background-picker">
-			<label className="background-picker__field">
-				Background
-				<select
-					value={selectedKey}
-					onChange={(event) => handleSelect(event.target.value)}
-				>
-					<option value="">Choose a background…</option>
-					{state.backgrounds.map((entry) => (
-						<option key={backgroundKey(entry)} value={backgroundKey(entry)}>
-							{entry.name} ({entry.source})
-						</option>
-					))}
-				</select>
-			</label>
+			<SearchableOptionList
+				legend="Background"
+				name="background"
+				inputType="radio"
+				options={options}
+				required={1}
+				renderCount={({ chosen }) => (chosen === 0 ? 'Choose a background.' : 'Background chosen.')}
+				onToggle={(key) => handleSelect(key)}
+			/>
 
 			{!selected && <p className="background-picker__hint">Pick a background to continue.</p>}
 

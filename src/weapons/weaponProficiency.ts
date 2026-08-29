@@ -43,6 +43,26 @@ export interface FeatWeaponProficiencyEntry {
 	weaponProficiencies?: Record<string, boolean>[]
 }
 
+/**
+ * Shapes parsed feats.json into the slice above. Pure (D38 — the fetch stays
+ * with the caller); `weaponProficiencies` is already a top-level feats.json key
+ * in this exact shape, so it is carried straight through.
+ */
+export function extractFeatWeaponProficiencyEntries(parsedFeats: unknown): FeatWeaponProficiencyEntry[] {
+	if (!Array.isArray(parsedFeats)) return []
+	return parsedFeats.filter(isRecord).flatMap((feat) => {
+		if (typeof feat['name'] !== 'string' || typeof feat['source'] !== 'string') return []
+		const raw = feat['weaponProficiencies']
+		return [
+			{
+				name: feat['name'],
+				source: feat['source'],
+				weaponProficiencies: Array.isArray(raw) ? (raw.filter(isRecord) as Record<string, boolean>[]) : undefined,
+			},
+		]
+	})
+}
+
 /*
  * D70 hand table. Monk and Rogue state part of their weapon proficiency in
  * a sentence rather than in a token, quoted here from classes.json
@@ -118,10 +138,17 @@ export function weaponProficiencyGrantsForClass(parsedClasses: unknown, classNam
  * Martial Weapon Training ("martial"), Gunner ("firearms" — items.json's
  * `firearm` flag, 10 items) and Tavern Brawler ("improvised"), which is
  * skipped: improvised weapons are not items, so there is nothing to match.
+ *
+ * Takes the feat/ASI choice list directly (all this function reads of a
+ * character), so callers that hold only the wizard's in-progress choices —
+ * MasteryPicker — can use it without assembling a whole Character.
  */
-export function weaponProficiencyGrantsForFeats(character: Character, feats: FeatWeaponProficiencyEntry[]): WeaponProficiencyGrant[] {
+export function weaponProficiencyGrantsForFeats(
+	featAsiChoices: Character['featAsiChoices'],
+	feats: FeatWeaponProficiencyEntry[],
+): WeaponProficiencyGrant[] {
 	const grants: WeaponProficiencyGrant[] = []
-	for (const choice of character.featAsiChoices ?? []) {
+	for (const choice of featAsiChoices ?? []) {
 		if (choice.kind !== 'feat') continue
 		const feat = feats.find((candidate) => candidate.name === choice.name && candidate.source === choice.source)
 		for (const entry of feat?.weaponProficiencies ?? []) {
@@ -142,7 +169,7 @@ export function weaponProficiencyGrantsForFeats(character: Character, feats: Fea
  */
 export function weaponProficiencyGrantsFor(character: Character, parsedClasses: unknown, feats: FeatWeaponProficiencyEntry[]): WeaponProficiencyGrant[] {
 	const grants = character.classes.flatMap((cls) => weaponProficiencyGrantsForClass(parsedClasses, cls.className, cls.classSource))
-	return [...grants, ...weaponProficiencyGrantsForFeats(character, feats)]
+	return [...grants, ...weaponProficiencyGrantsForFeats(character.featAsiChoices, feats)]
 }
 
 /** Whether an items.json entry is covered by any of the grants. */

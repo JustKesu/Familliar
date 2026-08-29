@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MasteryPicker } from './MasteryPicker'
+import { loadMasteryWeaponsFor } from './masteryData'
 
 /*
  * Component test for the weapon mastery picker, following the jsdom/testing-
@@ -67,6 +68,8 @@ describe('MasteryPicker', () => {
 			/>,
 		)
 
+		// The list collapses once the required count is met; open it to reach the options.
+		await user.click(await screen.findByRole('button', { name: /weapon master/i }))
 		const rapier = (await screen.findByRole('checkbox', { name: /Rapier/ })) as HTMLInputElement
 		expect(rapier.disabled).toBe(true)
 		await user.click(rapier)
@@ -90,5 +93,43 @@ describe('MasteryPicker', () => {
 		})
 		const greatsword = screen.getByRole('checkbox', { name: /Greatsword/ }) as HTMLInputElement
 		expect(greatsword.checked).toBe(false)
+	})
+
+	it('forwards the character’s feat/ASI choices to the weapon loader (Part 3)', async () => {
+		const featAsiChoices = [{ level: 4, kind: 'feat' as const, name: 'Martial Weapon Training', source: 'XPHB' }]
+		render(
+			<MasteryPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={1}
+				value={[]}
+				onChange={() => {}}
+				featAsiChoices={featAsiChoices}
+			/>,
+		)
+
+		await screen.findByText('Battleaxe', { exact: false })
+		expect(loadMasteryWeaponsFor).toHaveBeenCalledWith('Fighter', 'XPHB', featAsiChoices)
+	})
+
+	it('search filters the weapon list, but never hides a weapon already picked', async () => {
+		const user = userEvent.setup()
+		render(
+			<MasteryPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={1}
+				value={['Battleaxe']}
+				onChange={() => {}}
+			/>,
+		)
+
+		await user.type(await screen.findByLabelText('Search Weapon masteries'), 'rapier')
+
+		expect(screen.getByRole('checkbox', { name: /Rapier/ })).toBeTruthy()
+		expect(screen.queryByRole('checkbox', { name: /Greatsword/ })).toBeNull()
+		// Battleaxe is picked and does not match "rapier" — still shown, pinned.
+		const battleaxe = screen.getByRole('checkbox', { name: /Battleaxe/ }) as HTMLInputElement
+		expect(battleaxe.checked).toBe(true)
 	})
 })

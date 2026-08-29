@@ -355,7 +355,7 @@ async function walkToSpells(user: ReturnType<typeof userEvent.setup>, className:
 	await goNext(user)
 	await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 	await goNext(user)
-	await user.selectOptions(await screen.findByLabelText('Background'), 'Soldier (XPHB)')
+	await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 	await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 	await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 	await goNext(user)
