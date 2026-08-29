@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { masteryCountFor } from './masteryData'
+import { masteryCountFor, masteryWeaponsFor } from './masteryData'
 
 /*
  * The D70 hand table for Paladin/Ranger/Rogue, and the guarantee that it did
@@ -9,12 +9,27 @@ import { masteryCountFor } from './masteryData'
  * stubs the loader, so this is the seam where the count is actually decided.
  */
 
+/** classes.json's prose weapon-proficiency sentences, verbatim (XPHB). */
+const MONK_PROSE = 'Martial weapons that have the {@filter Light|items|type=martial weapon|property=light} property'
+const ROGUE_PROSE = 'Martial weapons that have the {@filter Finesse or Light|items|type=martial weapon|property=finesse;light} property'
+
+const CLASS_WEAPONS: Record<string, unknown[]> = {
+	Barbarian: ['simple', 'martial'],
+	Fighter: ['simple', 'martial'],
+	Paladin: ['simple', 'martial'],
+	Ranger: ['simple', 'martial'],
+	Monk: ['simple', MONK_PROSE],
+	Rogue: ['simple', ROGUE_PROSE],
+	Wizard: ['simple'],
+}
+
 /** classes.json's real shape for the column: one row per level, values as strings. */
 function classEntry(name: string, masteryColumn?: number[]): unknown {
 	return {
 		entryType: 'class',
 		name,
 		source: 'XPHB',
+		...(CLASS_WEAPONS[name] ? { startingProficiencies: { weapons: CLASS_WEAPONS[name] } } : {}),
 		...(masteryColumn ? { classTableGroups: [{ colLabels: ['Weapon Mastery'], rows: masteryColumn.map((count) => [String(count)]) }] } : {}),
 	}
 }
@@ -27,9 +42,23 @@ const CLASSES = [
 	classEntry('Fighter', FIGHTER_COLUMN),
 	classEntry('Paladin'),
 	classEntry('Ranger'),
+	classEntry('Monk'),
 	classEntry('Rogue'),
 	classEntry('Wizard'),
 ]
+
+/** items.json's shape for a mastery-bearing weapon — the fields the proficiency test reads, plus the mastery itself. */
+const ITEMS = [
+	{ name: 'Dagger', source: 'XPHB', weaponCategory: 'simple', propertyFull: ['Finesse', 'Light', 'Thrown'], masteryFull: ['Nick'] },
+	{ name: 'Shortsword', source: 'XPHB', weaponCategory: 'martial', propertyFull: ['Finesse', 'Light'], masteryFull: ['Vex'] },
+	{ name: 'Rapier', source: 'XPHB', weaponCategory: 'martial', propertyFull: ['Finesse'], masteryFull: ['Vex'] },
+	{ name: 'Greataxe', source: 'XPHB', weaponCategory: 'martial', propertyFull: ['Heavy', 'Two-Handed'], masteryFull: ['Cleave'] },
+	{ name: 'Potion of Healing', source: 'XPHB' },
+]
+
+function offeredNames(className: string): string[] {
+	return masteryWeaponsFor(ITEMS, CLASSES, className, 'XPHB').map((weapon) => weapon.name)
+}
 
 describe('masteryCountFor', () => {
 	/*
@@ -67,5 +96,35 @@ describe('masteryCountFor', () => {
 	it('a class absent from the supplied data, or from another source, gets null rather than the hand table', () => {
 		expect(masteryCountFor(CLASSES, 'Paladin', 'PHB', 5)).toBeNull()
 		expect(masteryCountFor(CLASSES, 'Blood Hunter', 'XPHB', 5)).toBeNull()
+	})
+})
+
+describe('masteryWeaponsFor', () => {
+	it('a Rogue is offered Dagger and Shortsword, never a Greataxe', () => {
+		const offered = offeredNames('Rogue')
+		expect(offered).toContain('Dagger')
+		expect(offered).toContain('Shortsword')
+		expect(offered).not.toContain('Greataxe')
+	})
+
+	/* Monk is the second prose class; it grants no mastery, so the picker renders nothing for it (masteryCountFor is null) — the pool is still filtered by its own sentence, which is narrower than the Rogue's. */
+	it('a Monk pool holds the Light Martial weapons only — Rapier is Finesse without Light', () => {
+		expect(offeredNames('Monk')).toEqual(['Dagger', 'Shortsword'])
+	})
+
+	it('a Fighter is unchanged: every mastery weapon, since Simple and Martial cover them all', () => {
+		expect(offeredNames('Fighter')).toEqual(['Dagger', 'Shortsword', 'Rapier', 'Greataxe'])
+	})
+
+	it('the structured path still narrows: a Wizard is proficient with Simple weapons only', () => {
+		expect(offeredNames('Wizard')).toEqual(['Dagger'])
+	})
+
+	it('one entry per mastery property a weapon carries, and non-weapons are never offered', () => {
+		expect(masteryWeaponsFor(ITEMS, CLASSES, 'Rogue', 'XPHB')).toEqual([
+			{ name: 'Dagger', source: 'XPHB', masteryFull: 'Nick' },
+			{ name: 'Shortsword', source: 'XPHB', masteryFull: 'Vex' },
+			{ name: 'Rapier', source: 'XPHB', masteryFull: 'Vex' },
+		])
 	})
 })

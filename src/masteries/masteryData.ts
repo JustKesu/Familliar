@@ -20,6 +20,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { isProficientWithWeapon, weaponProficiencyGrantsForClass } from '../weapons/weaponProficiency'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -45,7 +46,6 @@ interface RawClass {
 	name: string
 	source: string
 	classTableGroups?: { colLabels?: unknown[]; rows?: unknown[][] }[]
-	startingProficiencies?: { weapons?: unknown[] }
 }
 
 function isRawClass(value: unknown): value is RawClass {
@@ -119,16 +119,6 @@ export function masteryCountFor(parsedClasses: unknown, className: string, class
 	return prose && level >= prose.fromLevel ? prose.count : null
 }
 
-/**
- * True when every element of a startingProficiencies.weapons array is a
- * plain category token ("simple", "martial", or an item uid) rather than a
- * prose sentence. Prose entries (Monk, Rogue) contain markup ("{@filter")
- * or spaces; structured entries don't.
- */
-function isStructuredWeaponProficiency(weapons: unknown[]): boolean {
-	return weapons.every((entry) => typeof entry === 'string' && !entry.includes('{@') && !entry.includes(' '))
-}
-
 export interface MasteryWeapon {
 	name: string
 	source: string
@@ -155,9 +145,14 @@ function isRawItemWithMastery(value: unknown): value is RawItem & { name: string
 
 /**
  * The weapons a class may pick weapon masteries from: every mastery-bearing
- * item, filtered to the class's weapon-proficiency categories when that
- * field is a structured list. When it's prose, every mastery weapon is
- * returned unfiltered rather than attempting to parse the sentence.
+ * item the class is actually proficient with. The feature grants mastery
+ * only in weapons "with which you have proficiency" (quoted in
+ * PROSE_MASTERY_COUNTS above), so the pool is the shared weapon-proficiency
+ * answer, not every mastery weapon in the data.
+ *
+ * Class proficiency only — feat-granted proficiency (Martial Weapon
+ * Training) does not reach here, since the picker is given a class, not a
+ * character.
  */
 export function masteryWeaponsFor(parsedItems: unknown, parsedClasses: unknown, className: string, classSource: string): MasteryWeapon[] {
 	if (!Array.isArray(parsedItems)) {
@@ -165,13 +160,8 @@ export function masteryWeaponsFor(parsedItems: unknown, parsedClasses: unknown, 
 	}
 	const masteryItems = parsedItems.filter(isRawItemWithMastery)
 
-	const cls = findClass(parsedClasses, className, classSource)
-	const weaponsField = cls?.startingProficiencies?.weapons
-
-	const filtered =
-		Array.isArray(weaponsField) && isStructuredWeaponProficiency(weaponsField)
-			? masteryItems.filter((item) => weaponsField.includes(item.weaponCategory))
-			: masteryItems
+	const grants = weaponProficiencyGrantsForClass(parsedClasses, className, classSource)
+	const filtered = masteryItems.filter((item) => isProficientWithWeapon(item, grants))
 
 	const result: MasteryWeapon[] = []
 	for (const item of filtered) {
