@@ -197,6 +197,8 @@ export function CharacterSheet({
 	const [grantedSensesError, setGrantedSensesError] = useState<string | null>(null)
 	const [classOptionalFeaturesError, setClassOptionalFeaturesError] = useState<string | null>(null)
 	const [classFeatureChoicesError, setClassFeatureChoicesError] = useState<string | null>(null)
+	/** Same rule as the six above, for the one load that was still swallowing: without it a failed beasts.json fetch removed the whole Familiar section (docs/REPORT.md). */
+	const [beastsError, setBeastsError] = useState<string | null>(null)
 
 	useEffect(() => {
 		let cancelled = false
@@ -380,14 +382,21 @@ export function CharacterSheet({
 	// beasts.json is 80 KB, so a character with neither Find Familiar nor a
 	// known Wild Shape form never fetches it.
 	useEffect(() => {
-		if (!needsBeasts) return
+		if (!needsBeasts) {
+			setBeastsError(null)
+			return
+		}
 		let cancelled = false
 		loadBeasts()
 			.then((loaded) => {
-				if (!cancelled) setBeasts(loaded)
+				if (cancelled) return
+				setBeasts(loaded)
+				setBeastsError(null)
 			})
-			.catch(() => {
-				/* Best-effort, same as the effects above. */
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setBeasts([])
+				setBeastsError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -809,6 +818,8 @@ export function CharacterSheet({
 			{wildShapeForms.length > 0 && (
 				<section className="sheet__wild-shape-forms">
 					<h2>Wild Shape forms</h2>
+					{/* The forms are listed from storage, so this section never vanished — but without this line every one of them reads "no stat block found", blaming the form for a failure of the whole fetch. */}
+					{beastsError && <p className="error">Could not load Beast stat blocks: {beastsError}</p>}
 					<ul>
 						{wildShapeForms.map(({ form, beast }) => (
 							<li key={`${form.name}|${form.source}`}>
@@ -821,6 +832,24 @@ export function CharacterSheet({
 							</li>
 						))}
 					</ul>
+				</section>
+			)}
+
+			{/*
+			 * A failed beast load empties familiarForms, which would silently remove the section below — a character who
+			 * knows the spell would look like one who doesn't (D43). This states the failure instead; it and the section
+			 * below are mutually exclusive, since familiarForms is non-empty only when the load succeeded.
+			 */}
+			{knowsFindFamiliar && beastsError !== null && (
+				<section className="sheet__familiar">
+					<h2>Familiar</h2>
+					<p className="error">Could not load the Beast forms a familiar can take: {beastsError}</p>
+					{/* Named from storage rather than dropped — no form can be offered, but the player still sees what is on record. */}
+					{storedFamiliar && (
+						<p>
+							Summoned form on record: {storedFamiliar.name} ({storedFamiliar.source}).
+						</p>
+					)}
 				</section>
 			)}
 

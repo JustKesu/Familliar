@@ -1177,3 +1177,26 @@ Rationale: bez těch forem je Pact of the Chain prázdná invokace, protože
 právě ony jsou důvod, proč si ji hráč bere. Jmenný seznam je zároveň
 nejužší možné rozšíření — nepouští dovnitř celý bestiář ani celou
 kategorii, a validátor hlídá, že v datech opravdu jsou.
+
+## D73 — Popisek použití říká, co říká text zdroje, ne co je v datech
+
+Kouzlo udělené nějakou feature nese na sheetu popisek toho, jak se sesílá
+(„bez slotu", „1/dlouhý odpočinek"), jen tehdy, když to text té feature sám
+určuje. Obal v datech je vodítko, ne pravda.
+
+Konkrétně: klíč `daily` znamená v edici 2024 téměř vždy „jednou za dlouhý
+odpočinek", ne „jednou denně". Ověřeno na všech 51 zdrojích, které ho nesou —
+49 z nich mluví o dlouhém odpočinku, dva o krátkém nebo dlouhém a ani jeden
+o dni nebo o úsvitu. Popisek „1/day" se proto nepoužívá vůbec.
+
+Kde se text vymyká, je to ručně zapsaná výjimka s citací té věty, ne
+odvozování z tvaru dat (stejný precedens jako D70). Kde text neříká nic,
+popisek se nezobrazuje — nikdy se nedomýšlí frekvence.
+
+Rationale: špatný popisek je horší než žádný. Hráč, který u kouzla čte
+„1/day", ho použije podruhé po půlnoci; hráč, který nečte nic, si to dohledá
+v knize. Chybějící informace se pozná, vymyšlená ne.
+
+Platí i na frekvenci, kterou by šlo vyčíst z prózy: parsovat text na počty
+se nedělá (D21). Buď je to strukturované, nebo v ručním seznamu, nebo se
+mlčí.

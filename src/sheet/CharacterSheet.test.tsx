@@ -2247,6 +2247,7 @@ describe('CharacterSheet', () => {
 			vi.mocked(loadFeatGrantedSpells).mockReset().mockResolvedValue([])
 			vi.mocked(loadOptionalFeatureGrantedSpells).mockReset().mockResolvedValue([])
 			vi.mocked(loadGrantedSenses).mockReset().mockResolvedValue([])
+			vi.mocked(loadBeasts).mockReset().mockResolvedValue([])
 		})
 
 		/** Every one of these renders the whole sheet, so each test asserts the failure is stated AND the sheet around it is intact. */
@@ -2313,6 +2314,57 @@ describe('CharacterSheet', () => {
 			)
 		})
 
+		it('a failed beast load keeps the Familiar section, states the cause, and still names the stored form', async () => {
+			vi.mocked(loadBeasts).mockRejectedValue(new Error('data/beasts.json — HTTP 500'))
+			const conjurer: Character = {
+				id: 'ff9',
+				name: 'Unlucky Conjurer',
+				classes: [{ className: 'Bard', classSource: 'XPHB', subclass: null, level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 15 },
+				},
+				spellChoices: [{ className: 'Bard', classSource: 'XPHB', spells: [{ name: 'Find Familiar', source: 'XPHB' }] }],
+				familiar: { name: 'Owl', source: 'XMM' },
+			}
+
+			const { container } = render(<CharacterSheet character={conjurer} />)
+			await screen.findByRole('heading', { name: 'Unlucky Conjurer' })
+			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+
+			const section = container.querySelector('.sheet__familiar')!
+			expect(section.textContent).toContain('Could not load the Beast forms a familiar can take: data/beasts.json — HTTP 500')
+			expect(section.textContent).toContain('Summoned form on record: Owl (XMM)')
+			// Never the misattributed message the empty pool would otherwise produce.
+			expect(section.textContent).not.toContain('is not a form this familiar can take')
+			expect(container.querySelector('.sheet__abilities')!.textContent).toContain('Charisma')
+			expect(container.querySelector('.sheet__skills')).toBeTruthy()
+		})
+
+		it('a failed beast load names itself in the Wild Shape section instead of blaming each form', async () => {
+			vi.mocked(loadBeasts).mockRejectedValue(new Error('data/beasts.json — HTTP 500'))
+			const druid: Character = {
+				id: 'ws9',
+				name: 'Unlucky Shifter',
+				classes: [{ className: 'Druid', classSource: 'XPHB', subclass: null, level: 4 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 15, charisma: 8 },
+				},
+				wildShapeForms: [{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Wolf', source: 'XMM' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={druid} />)
+			await screen.findByRole('heading', { name: 'Unlucky Shifter' })
+			await waitFor(() => expect(container.querySelector('.error')).toBeTruthy())
+
+			const section = container.querySelector('.sheet__wild-shape-forms')!
+			expect(section.textContent).toContain('Could not load Beast stat blocks: data/beasts.json — HTTP 500')
+			// The form is still listed by name — the section never depended on the fetch to know what the character stored.
+			expect(section.textContent).toContain('Wolf')
+			expect(container.querySelector('.sheet__skills')).toBeTruthy()
+		})
+
 		it('a character with nothing granted shows no error and no empty grant sections at all', async () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
@@ -2323,6 +2375,10 @@ describe('CharacterSheet', () => {
 			expect(container.querySelector('.sheet__class-feature-choices')).toBeNull()
 			expect(container.querySelector('.sheet__class-optional-features')).toBeNull()
 			expect(container.querySelector('.sheet__spells')).toBeNull()
+			// No Find Familiar and no stored form, so beasts.json is never fetched and no beast error can exist.
+			expect(container.querySelector('.sheet__familiar')).toBeNull()
+			expect(container.querySelector('.sheet__wild-shape-forms')).toBeNull()
+			expect(vi.mocked(loadBeasts)).not.toHaveBeenCalled()
 		})
 	})
 })

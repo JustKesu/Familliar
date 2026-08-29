@@ -5,11 +5,9 @@
  * Per docs/REPORT2.md's investigation, "Weapon Mastery" is a class feature
  * on five classes (Barbarian, Fighter, Paladin, Ranger, Rogue), but only
  * Barbarian and Fighter have a classTableGroups column giving the count per
- * level — the other three state it only in feature prose. Parsing prose is
- * out of scope here (see CLAUDE.md's "Undecided questions"), so
- * masteryCountFor reads the table column only and returns null for classes
- * without one, which covers those three classes automatically without a
- * hardcoded list.
+ * level — the other three state it only in feature prose. Those three now
+ * come from PROSE_MASTERY_COUNTS below (D70), consulted only when the class
+ * has no table column; the column still wins wherever it exists.
  *
  * The mastery property descriptions (Cleave, Graze, Nick, Push, Sap, Slow,
  * Topple, Vex) are not present in data/items.json — only the resolved name
@@ -68,12 +66,38 @@ function findClass(parsedClasses: unknown, className: string, classSource: strin
 	) as RawClass | undefined
 }
 
+/*
+ * D70 hand table. Paladin, Ranger and Rogue grant Weapon Mastery at level 1
+ * but carry no "Weapon Mastery" table column, so the number is only in the
+ * feature's own sentence — quoted here, PHB 2024 (XPHB) via
+ * scripts/investigate-d70-prose-counts.js:
+ *
+ *  Paladin: "Your training with weapons allows you to use the weapon mastery
+ *    properties of two kinds of weapons of your choice with which you have
+ *    proficiency, such as Longsword and Javelin."
+ *  Ranger:  "…of two kinds of weapons of your choice with which you have
+ *    proficiency, such as Longbow and Shortsword."
+ *  Rogue:   "…of two kinds of weapons of your choice with which you have
+ *    proficiency, such as Dagger and Shortbow."
+ *
+ * The count never rises for these three — unlike Barbarian's and Fighter's
+ * table columns, no later class or subclass feature changes the NUMBER of
+ * mastery weapons (the same script checked all of them; the two that mention
+ * mastery, Fighter's Tactical Master and Barbarian's Battering Roots, change
+ * WHICH property applies). Hence one count per class, not a per-level row.
+ */
+const PROSE_MASTERY_COUNTS: Record<string, { fromLevel: number; count: number }> = {
+	'Paladin|XPHB': { fromLevel: 1, count: 2 },
+	'Ranger|XPHB': { fromLevel: 1, count: 2 },
+	'Rogue|XPHB': { fromLevel: 1, count: 2 },
+}
+
 /**
- * Reads the class's classTableGroups for a column labelled exactly
- * "Weapon Mastery" and returns the count at `level` (1-indexed rows).
- * Returns null when the class has no such column — meaning it offers no
- * mastery choice, or (Paladin/Ranger/Rogue) states the count only in prose,
- * which this does not parse.
+ * How many weapon masteries the class may choose at `level`: the class's own
+ * "Weapon Mastery" classTableGroups column where it has one (Barbarian,
+ * Fighter), otherwise PROSE_MASTERY_COUNTS. Null when the class grants no
+ * mastery choice at all, when it isn't in the supplied data, or when the level
+ * is below the one that grants the feature.
  */
 export function masteryCountFor(parsedClasses: unknown, className: string, classSource: string, level: number): number | null {
 	const cls = findClass(parsedClasses, className, classSource)
@@ -90,7 +114,9 @@ export function masteryCountFor(parsedClasses: unknown, className: string, class
 		const count = typeof raw === 'string' ? Number.parseInt(raw, 10) : NaN
 		return Number.isNaN(count) ? null : count
 	}
-	return null
+
+	const prose = PROSE_MASTERY_COUNTS[`${className}|${classSource}`]
+	return prose && level >= prose.fromLevel ? prose.count : null
 }
 
 /**
