@@ -126,28 +126,32 @@ import { subclassLevelFor } from '../subclass/subclassData'
  *
  * - `atWill`: the `will` key. Only real occurrence: Drow High Magic's detect
  *   magic (feat).
- * - `daily`/`dailyEach`: the `daily` key's sub-key is a plain count ("2" — N
- *   times per day total) or a count+"e" ("2e" — N times per day EACH spell in
- *   the list separately, confirmed against Drow High Magic's "once each per
- *   day" phrasing).
- * - `dailyByAbility`: the `daily` key's sub-key names an ability code
- *   ("cha", "int") instead of a count — N/day where N is that ability's
- *   modifier (Archfey Patron's Misty Step, Artificer Alchemist's Lesser
- *   Restoration). The modifier itself is not computed here (no ability
- *   score is threaded through this module) — the sheet shows which ability,
- *   not a number.
+ * - `onceFreePerLongRest`: the `daily` key with a count sub-key ("1" or "1e").
+ *   The wrapper is 2014 vocabulary; all 51 sources carrying it say in their own
+ *   text that the free cast comes back on a LONG REST, none at dawn or per day
+ *   (scripts/investigate-daily-recharge-text.js), so it is read as the rules
+ *   read it (D68). Two details the data gets wrong and the text settles: the
+ *   count is 1 everywhere (a sub-key with any other count is not recognised and
+ *   carries no label rather than a guessed frequency), and "1" vs "1e" is not a
+ *   real distinction — 9 sources key an explicitly per-spell grant "1", and the
+ *   sheet lists one row per spell regardless, so both collapse to this one term.
+ *   The same term reaches a player-PICKED spell from chosenSpellUsage.ts, whose
+ *   sources' texts say exactly the same thing.
+ * - `onceFreePerShortOrLongRest`: NOT read from a wrapper. Two feats (Fey
+ *   Teleportation, Boon of Siberys) carry a `daily` key indistinguishable from
+ *   the rest but say a SHORT rest also restores the cast — a hand table by feat
+ *   name in featSpells.ts, same D21/D70 shape as chosenSpellUsage.ts.
+ * - `freePerLongRestByAbility`: the `daily` key's sub-key names an ability code
+ *   ("cha", "int") instead of a count — that ability's modifier in free casts,
+ *   all of them regained on a Long Rest (Archfey Patron's Misty Step,
+ *   Artificer Alchemist's Lesser Restoration; both texts say Long Rest). The
+ *   modifier itself is not computed here (no ability score is threaded through
+ *   this module) — the sheet shows which ability, not a number.
  * - `ritual`: the `ritual` key — cast as a ritual instead of spending a slot
  *   (Pact of the Chain, Path of the Wild Heart).
  * - `resource`: the `resource` key — costs `cost` points of the
  *   additionalSpells entry's own `resourceName` field (Monk's "Ki"/"Focus
  *   Point"), not a per-day count.
- * - `onceFreePerLongRest`: NOT read from a wrapper either. The term for a
- *   LEVELED spell the player picked for Magic Initiate / Artificer Initiate /
- *   Fey-Touched / Shadow-Touched (chosenSpellUsage.ts, D21/D70) — "cast it
- *   once without a spell slot, regain when you finish a Long Rest, may also
- *   cast it with a slot". Distinct from `noSlot` (which carries no frequency)
- *   and from `daily` (per day, not per long rest); `noSlot`/`atWill` here
- *   would overstate what the player may do.
  * - `noSlot`: NOT read from a wrapper at all. Warlock Eldritch Invocations
  *   (optionalFeatureSpells.ts's only caller) grant every one of their spells
  *   without a slot, but 12 of 17 encode this only in prose, as a BARE grant
@@ -164,13 +168,12 @@ import { subclassLevelFor } from '../subclass/subclassData'
  */
 export type SpellUsage =
 	| { kind: 'atWill' }
-	| { kind: 'daily'; count: number }
-	| { kind: 'dailyEach'; count: number }
-	| { kind: 'dailyByAbility'; ability: AbilityAbbreviation }
+	| { kind: 'onceFreePerLongRest' }
+	| { kind: 'onceFreePerShortOrLongRest' }
+	| { kind: 'freePerLongRestByAbility'; ability: AbilityAbbreviation }
 	| { kind: 'ritual' }
 	| { kind: 'resource'; cost: number; resourceName: string }
 	| { kind: 'noSlot' }
-	| { kind: 'onceFreePerLongRest' }
 
 export interface AlwaysPreparedSpell {
 	name: string
@@ -306,13 +309,16 @@ export function extractRefs(value: unknown): string[] {
 	return Object.values(value).flatMap(extractRefs)
 }
 
-/** A daily sub-key's usage, or null for a shape not recognised (D43-style — the ref is still extracted by the caller, just with no usage label). */
+/**
+ * A daily sub-key's usage, or null for a shape not recognised (D43-style — the
+ * ref is still extracted by the caller, just with no usage label). Only "1" and
+ * "1e" occur in this data; a count above 1 would be a frequency no source's text
+ * supports, so it gets no label rather than a made-up one (`SpellUsage` doc).
+ */
 function parseDailySubkey(subkey: string): SpellUsage | null {
-	const eachMatch = /^(\d+)e$/.exec(subkey)
-	if (eachMatch) return { kind: 'dailyEach', count: Number(eachMatch[1]) }
-	if (/^\d+$/.test(subkey)) return { kind: 'daily', count: Number(subkey) }
+	if (subkey === '1' || subkey === '1e') return { kind: 'onceFreePerLongRest' }
 	if ((['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).includes(subkey as AbilityAbbreviation)) {
-		return { kind: 'dailyByAbility', ability: subkey as AbilityAbbreviation }
+		return { kind: 'freePerLongRestByAbility', ability: subkey as AbilityAbbreviation }
 	}
 	return null
 }

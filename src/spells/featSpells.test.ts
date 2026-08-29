@@ -109,13 +109,13 @@ describe('extractFeatGrantedSpells', () => {
 		expect(result.every((s) => s.ability === 'cha')).toBe(true)
 	})
 
-	it("Drow High Magic's `will` wrapper is labeled `atWill`, and its `daily` \"1e\" wrapper is labeled `dailyEach` (this task)", () => {
+	it("Drow High Magic's `will` wrapper is labeled `atWill`, and its `daily` \"1e\" wrapper reads as its own text does — a free cast back on a Long Rest", () => {
 		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
 		const result = extractFeatGrantedSpells(feats, spells, character)
 
 		expect(result.find((s) => s.name === 'Detect Magic')?.usage).toEqual({ kind: 'atWill' })
-		expect(result.find((s) => s.name === 'Levitate')?.usage).toEqual({ kind: 'dailyEach', count: 1 })
-		expect(result.find((s) => s.name === 'Dispel Magic')?.usage).toEqual({ kind: 'dailyEach', count: 1 })
+		expect(result.find((s) => s.name === 'Levitate')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
+		expect(result.find((s) => s.name === 'Dispel Magic')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
 	})
 
 	it('returns Fey Teleportation\'s fixed spell, INT carried as the ability', () => {
@@ -125,6 +125,13 @@ describe('extractFeatGrantedSpells', () => {
 		expect(result.map((s) => s.name)).toEqual(['Misty Step'])
 		expect(result[0].featName).toBe('Fey Teleportation')
 		expect(result[0].ability).toBe('int')
+	})
+
+	it("Fey Teleportation's daily wrapper is identical to every other one, but its own text says a SHORT rest restores the cast too", () => {
+		const character = characterWithFeats([{ name: 'Fey Teleportation', source: 'XGE' }])
+		const result = extractFeatGrantedSpells(feats, spells, character)
+
+		expect(result[0].usage).toEqual({ kind: 'onceFreePerShortOrLongRest' })
 	})
 
 	it('a spell listed under two grant keys of the same feat (this task, same class of bug as College of Glamour) is returned once, not twice', () => {
@@ -168,8 +175,8 @@ describe('extractFeatGrantedSpells', () => {
 		expect(result.every((s) => s.ability === 'wis')).toBe(true)
 		// Thunderclap is the mark's bare base cantrip (known._) — no usage label needed, it's already slot-free as a cantrip (this task).
 		expect(result.find((s) => s.name === 'Thunderclap')?.usage).toBeFalsy()
-		// Gust of Wind is wrapped `daily: {"1": [...]}` — a genuine limited-use grant.
-		expect(result.find((s) => s.name === 'Gust of Wind')?.usage).toEqual({ kind: 'daily', count: 1 })
+		// Gust of Wind is wrapped `daily: {"1": [...]}`; the mark's own text says the free cast returns on a Long Rest.
+		expect(result.find((s) => s.name === 'Gust of Wind')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
 	})
 
 	it("a mark's level-3 spell is withheld below character level 3, but its always-on spell is not", () => {

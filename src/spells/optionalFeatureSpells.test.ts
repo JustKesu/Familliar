@@ -96,7 +96,7 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 		expect(result.usage).toEqual({ kind: 'atWill' })
 	})
 
-	it('a `daily`-wrapped grant is labeled with its count', () => {
+	it('a `daily`-wrapped grant is labeled as one free cast per Long Rest, which is what every such source’s text says', () => {
 		const dailyWrapped = {
 			name: 'Daily Wrapped Option',
 			source: 'XPHB',
@@ -104,7 +104,7 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 			additionalSpells: [{ innate: { _: { daily: { '1e': ['disguise self|xphb'] } } } }],
 		}
 		const [result] = extractOptionalFeatureGrantedSpells([dailyWrapped], spells, [{ featureType: 'EI', choices: ['Daily Wrapped Option'] }])
-		expect(result.usage).toEqual({ kind: 'dailyEach', count: 1 })
+		expect(result.usage).toEqual({ kind: 'onceFreePerLongRest' })
 	})
 
 	it('carries the spell’s own ritual and concentration flags rather than defaulting them', () => {

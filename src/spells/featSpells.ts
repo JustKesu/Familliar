@@ -127,6 +127,30 @@ function isChoiceAbility(value: unknown): boolean {
 	return isRecord(value) && Array.isArray(value['choose'])
 }
 
+/*
+ * D21/D70 hand table, same shape as chosenSpellUsage.ts. 49 of the 51 sources
+ * carrying a `daily` wrapper say the free cast returns on a Long Rest, which is
+ * what parseDailySubkey now reads it as; these two say a SHORT rest restores it
+ * too, and the wrapper is identical (`daily: {"1": [...]}`), so only the text
+ * tells them apart (scripts/investigate-daily-recharge-text.js).
+ *
+ * Fey Teleportation: "You regain the ability to cast it in this way when you
+ * finish a short or long rest."
+ * Boon of Siberys: "…you regain the ability to cast it in that way when you
+ * finish a Short Rest or Long Rest." Listed for the record — the feat is hidden
+ * from the picker (featAsiData.ts HIDDEN_FEAT_KEYS), so nothing reaches it.
+ */
+const FEAT_RECHARGE_OVERRIDES: Record<string, SpellUsage> = {
+	'Fey Teleportation': { kind: 'onceFreePerShortOrLongRest' },
+	'Boon of Siberys': { kind: 'onceFreePerShortOrLongRest' },
+}
+
+/** The feat's own text overriding what its `daily` wrapper would otherwise say (FEAT_RECHARGE_OVERRIDES); anything else keeps the wrapper's term. */
+function applyFeatRechargeOverride(featName: string, usage: SpellUsage | null): SpellUsage | null {
+	if (usage?.kind !== 'onceFreePerLongRest') return usage
+	return FEAT_RECHARGE_OVERRIDES[featName] ?? usage
+}
+
 /** Only the Eberron "Mark of ..." feats get the choice-ability + fixed-grant treatment (see module comment for why this is name-guarded rather than applied to every choice-ability feat). */
 function isMarkFeat(featName: string): boolean {
 	return featName.startsWith('Mark of ')
@@ -204,8 +228,8 @@ export function extractFixedFeatSpells(
 
 		const abilityField = entry['ability']
 		// Fey-Touched / Shadow-Touched's fixed companion (Misty Step / Invisibility) is wrapped `daily:{"1e":…}` in the
-		// data — "1/day each", the 2014 wording. Its own 2024 text says "once … until you finish a Long Rest" (D68: rules
-		// win). Take the term from the same hand table its chosen spell uses so the two rows agree.
+		// data. Its term still comes from the same hand table its CHOSEN spell uses, so the two rows are guaranteed to
+		// agree even if the two paths ever diverge (D68 keeps them equal today — both say Long Rest).
 		const inheritCompanion = filterChoice && abilityField === 'inherit'
 		const companionUsage = inheritCompanion ? chosenSpellUsageFor(feat.name) : undefined
 		let ability: AbilityAbbreviation | undefined
@@ -243,7 +267,7 @@ export function extractFixedFeatSpells(
 						origin: 'feat',
 						featName: feat.name,
 						ability,
-						usage: inheritCompanion && spell.level >= 1 ? companionUsage : usage,
+						usage: inheritCompanion && spell.level >= 1 ? companionUsage : applyFeatRechargeOverride(feat.name, usage),
 					})
 				}
 			}

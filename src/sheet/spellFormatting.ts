@@ -114,43 +114,37 @@ export function formatAttackOrSave(spellAttack: string[] | undefined, savingThro
 
 /**
  * The wording a player would use for a granted spell's usage (this task).
- * `dailyByAbility` shows which ability, not a number — no ability score is
- * threaded through the grant modules to compute the actual modifier.
+ * `freePerLongRestByAbility` shows which ability, not a number — no ability
+ * score is threaded through the grant modules to compute the actual modifier.
  * `noSlot` (optionalFeatureSpells.ts's bare-invocation default) deliberately
  * carries no frequency, since the data only confirms the spell is slot-free,
- * never how often (docs/REPORT.md). `onceFreePerLongRest` (chosenSpellUsage.ts)
- * DOES carry the frequency — the source's rules text states it.
+ * never how often (docs/REPORT.md). The rest-based terms DO carry the
+ * frequency — every source's own rules text states it (`SpellUsage` doc).
  */
 export function formatSpellUsage(usage: SpellUsage): string {
 	switch (usage.kind) {
 		case 'atWill':
 			return 'at will'
-		case 'daily':
-			return `${usage.count}/day`
-		case 'dailyEach':
-			return `${usage.count}/day each`
-		case 'dailyByAbility':
-			return `${usage.ability.toUpperCase()} mod/day`
+		case 'onceFreePerLongRest':
+			return '1/long rest (no slot)'
+		case 'onceFreePerShortOrLongRest':
+			return '1/short or long rest (no slot)'
+		case 'freePerLongRestByAbility':
+			return `${usage.ability.toUpperCase()} mod/long rest (no slot)`
 		case 'ritual':
 			return 'ritual (no slot)'
 		case 'resource':
 			return `${usage.cost} ${usage.resourceName}`
 		case 'noSlot':
 			return 'no spell slot'
-		case 'onceFreePerLongRest':
-			return '1/long rest (no slot)'
 	}
 }
 
 /** Identity for deduping a spell's usage terms across sources (SpellList.tsx's `combineSpellEntries`) — two sources granting the SAME usage collapse to one label; different terms both survive. */
 export function spellUsageKey(usage: SpellUsage): string {
 	switch (usage.kind) {
-		case 'daily':
-			return `daily:${usage.count}`
-		case 'dailyEach':
-			return `dailyEach:${usage.count}`
-		case 'dailyByAbility':
-			return `dailyByAbility:${usage.ability}`
+		case 'freePerLongRestByAbility':
+			return `freePerLongRestByAbility:${usage.ability}`
 		case 'resource':
 			return `resource:${usage.cost}:${usage.resourceName}`
 		default:

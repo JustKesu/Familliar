@@ -22,6 +22,8 @@ import type { Character } from '../storage/character'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
+import { loadChosenClassFeatureChoices } from '../classFeatureChoices/classFeatureChoiceData'
+import { loadChosenClassOptionalFeatures } from '../optionalFeatures/optionalFeatureData'
 
 /*
  * Data loaders are stubbed rather than hitting fetch/data on disk — this
@@ -119,6 +121,12 @@ vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
 			},
 		),
 	}
+})
+
+/* Wrapping the real function rather than replacing it — the D21 tests below deliberately run the real join over stubbed resolver data. */
+vi.mock('../classFeatureChoices/classFeatureChoiceData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../classFeatureChoices/classFeatureChoiceData')>()
+	return { ...actual, loadChosenClassFeatureChoices: vi.fn(actual.loadChosenClassFeatureChoices) }
 })
 
 vi.mock('../featureResolver', async (importOriginal) => {
@@ -1330,10 +1338,20 @@ describe('CharacterSheet', () => {
 			expect(summary.textContent).not.toContain('at will')
 		})
 
-		it('a daily-limited feat-granted spell (Fey Teleportation, real shape `daily: {"1": [...]}`) shows "1/day" (this task)', async () => {
+		it('a rest-limited feat-granted spell (Fey Teleportation, real shape `daily: {"1": [...]}`) shows the rest its own text names, never "1/day"', async () => {
 			const details: SpellDetail[] = [spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2, entries: ['Briefly surrounded by silvery mist.'] })]
 			const featGrantedSpells: FeatGrantedSpell[] = [
-				{ name: 'Misty Step', source: 'XPHB', level: 2, ritual: false, concentration: false, origin: 'feat', featName: 'Fey Teleportation', ability: 'int', usage: { kind: 'daily', count: 1 } },
+				{
+					name: 'Misty Step',
+					source: 'XPHB',
+					level: 2,
+					ritual: false,
+					concentration: false,
+					origin: 'feat',
+					featName: 'Fey Teleportation',
+					ability: 'int',
+					usage: { kind: 'onceFreePerShortOrLongRest' },
+				},
 			]
 			vi.mocked(loadSpellDetails).mockResolvedValue(details)
 			vi.mocked(loadFeatGrantedSpells).mockResolvedValue(featGrantedSpells)
@@ -1357,7 +1375,8 @@ describe('CharacterSheet', () => {
 
 			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
 			expect(summary.textContent).toContain('from feat (Fey Teleportation)')
-			expect(summary.textContent).toContain('1/day')
+			expect(summary.textContent).toContain('1/short or long rest (no slot)')
+			expect(summary.textContent).not.toContain('/day')
 		})
 
 		it('an ordinary always-prepared spell (no usage wrapper in the data) shows its provenance with NO usage label at all (this task)', async () => {
@@ -2200,6 +2219,110 @@ describe('CharacterSheet', () => {
 			expect(details.querySelector('summary')!.textContent).toContain('Owl — Tiny Beast, CR 0')
 			expect(section.textContent).toContain('Melee Attack Roll:')
 			expect(section.textContent).not.toContain('{@')
+		})
+	})
+
+	/*
+	 * D43, both halves: a per-character grant load that fails says so in the
+	 * section it feeds (an empty section and a section that could not be built
+	 * must never look alike), and one failed load never takes the sheet down.
+	 */
+	describe('a failed grant load is visible, and the rest of the sheet survives it', () => {
+		const warlock: Character = {
+			id: 'w9',
+			name: 'Unlucky Warlock',
+			classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: 'Fiend Patron', level: 5 }],
+			species: { name: 'Elf', source: 'XPHB' },
+			abilityScores: {
+				method: 'standardArray',
+				scores: { strength: 10, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 8, charisma: 15 },
+			},
+			optionalFeatureChoices: [{ featureType: 'EI', choices: ['Devil’s Sight'] }],
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Fey-Touched', source: 'XPHB' }],
+		}
+
+		afterEach(() => {
+			vi.mocked(loadSubclassSource).mockReset().mockResolvedValue(null)
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadFeatGrantedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadGrantedSenses).mockReset().mockResolvedValue([])
+		})
+
+		/** Every one of these renders the whole sheet, so each test asserts the failure is stated AND the sheet around it is intact. */
+		async function renderAfterFailure(): Promise<HTMLElement> {
+			const { container } = render(<CharacterSheet character={warlock} />)
+			await screen.findByRole('heading', { name: 'Unlucky Warlock' })
+			await waitFor(() => expect(container.querySelector('.error')).toBeTruthy())
+			expect(container.querySelector('.sheet__abilities')!.textContent).toContain('Charisma')
+			expect(container.querySelector('.sheet__skills')).toBeTruthy()
+			return container
+		}
+
+		it('a failed subclass always-prepared load says so in the Spells section', async () => {
+			vi.mocked(loadSubclassSource).mockResolvedValue('XPHB')
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockRejectedValue(new Error('data/classes.json — HTTP 500'))
+
+			const container = await renderAfterFailure()
+			const spells = container.querySelector('.sheet__spells')!
+			expect(spells.textContent).toContain('Could not load always-prepared subclass spells: data/classes.json — HTTP 500')
+		})
+
+		it('a failed feat-spell load says so in the Spells section', async () => {
+			vi.mocked(loadFeatGrantedSpells).mockRejectedValue(new Error('data/feats.json — HTTP 500'))
+
+			const container = await renderAfterFailure()
+			expect(container.querySelector('.sheet__spells')!.textContent).toContain('Could not load feat-granted spells: data/feats.json — HTTP 500')
+		})
+
+		it('a failed invocation-spell load says so in the Spells section', async () => {
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockRejectedValue(new Error('data/optional-features.json — HTTP 500'))
+
+			const container = await renderAfterFailure()
+			expect(container.querySelector('.sheet__spells')!.textContent).toContain(
+				'Could not load spells granted by your chosen options: data/optional-features.json — HTTP 500',
+			)
+		})
+
+		it('a failed granted-senses load says so under Senses, naming Darkvision as possibly short too', async () => {
+			vi.mocked(loadGrantedSenses).mockRejectedValue(new Error('data/feats.json — HTTP 500'))
+
+			const container = await renderAfterFailure()
+			const senses = container.querySelector('.sheet__senses')!
+			expect(senses.textContent).toContain('Could not load senses granted by feats and invocations: data/feats.json — HTTP 500')
+			expect(senses.textContent).toContain('Darkvision')
+			// The traits row still renders its own species-derived value rather than disappearing.
+			expect(container.querySelector('.sheet__traits')!.textContent).toContain('Darkvision:')
+		})
+
+		it('a failed class-optional-feature load says so under its own heading', async () => {
+			vi.mocked(loadChosenClassOptionalFeatures).mockRejectedValueOnce(new Error('data/optional-features.json — HTTP 500'))
+
+			const container = await renderAfterFailure()
+			expect(container.querySelector('.sheet__class-optional-features')!.textContent).toContain(
+				'Could not load the options chosen for your class: data/optional-features.json — HTTP 500',
+			)
+		})
+
+		it('a failed class-feature-choice load says so under its own heading', async () => {
+			vi.mocked(loadChosenClassFeatureChoices).mockRejectedValueOnce(new Error('data/class-features.json — HTTP 500'))
+
+			const container = await renderAfterFailure()
+			expect(container.querySelector('.sheet__class-feature-choices')!.textContent).toContain(
+				'Could not load class feature choices: data/class-features.json — HTTP 500',
+			)
+		})
+
+		it('a character with nothing granted shows no error and no empty grant sections at all', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(container.querySelector('.sheet__feats')).toBeTruthy())
+
+			expect(container.querySelector('.error')).toBeNull()
+			expect(container.querySelector('.sheet__senses')).toBeNull()
+			expect(container.querySelector('.sheet__class-feature-choices')).toBeNull()
+			expect(container.querySelector('.sheet__class-optional-features')).toBeNull()
+			expect(container.querySelector('.sheet__spells')).toBeNull()
 		})
 	})
 })

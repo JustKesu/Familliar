@@ -106,6 +106,10 @@ const ABILITY_LABELS: Record<Ability, string> = {
 	charisma: 'Charisma',
 }
 
+function messageOf(error: unknown): string {
+	return error instanceof Error ? error.message : String(error)
+}
+
 function formatModifier(modifier: number): string {
 	return modifier >= 0 ? `+${modifier}` : `${modifier}`
 }
@@ -181,6 +185,19 @@ export function CharacterSheet({
 	/** The Find Familiar beast pool (step 6b slice 2). Fetched only for a character that actually has the spell — see the effect below. */
 	const [beasts, setBeasts] = useState<Beast[]>([])
 
+	/*
+	 * D43: each per-`character` effect above starts empty and stays empty when its
+	 * fetch fails, which on its own is indistinguishable from "this character has
+	 * none". One error state per effect, rendered by the section that effect feeds,
+	 * so an incomplete sheet never reads as a complete one.
+	 */
+	const [subclassSpellsError, setSubclassSpellsError] = useState<string | null>(null)
+	const [featSpellsError, setFeatSpellsError] = useState<string | null>(null)
+	const [optionalFeatureSpellsError, setOptionalFeatureSpellsError] = useState<string | null>(null)
+	const [grantedSensesError, setGrantedSensesError] = useState<string | null>(null)
+	const [classOptionalFeaturesError, setClassOptionalFeaturesError] = useState<string | null>(null)
+	const [classFeatureChoicesError, setClassFeatureChoicesError] = useState<string | null>(null)
+
 	useEffect(() => {
 		let cancelled = false
 		Promise.all([
@@ -208,7 +225,7 @@ export function CharacterSheet({
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
-				setLoadError(error instanceof Error ? error.message : String(error))
+				setLoadError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -220,6 +237,7 @@ export function CharacterSheet({
 		const classesWithSubclass = character.classes.filter((c): c is typeof c & { subclass: string } => c.subclass !== null)
 		if (classesWithSubclass.length === 0) {
 			setSubclassSpellInfo([])
+			setSubclassSpellsError(null)
 			return
 		}
 		Promise.all(
@@ -237,9 +255,17 @@ export function CharacterSheet({
 				// dedupeAlwaysPreparedSpells: a d6b picked spell could in principle coincide with the subclass's own fixed grant — same "spell reachable via two paths" reasoning as subclassPreparedSpells.ts's own dedup, applied again here since this concatenation happens outside that module.
 				return { subclassName: c.subclass, alwaysPrepared: dedupeAlwaysPreparedSpells([...alwaysPrepared, ...chosen]) }
 			}),
-		).then((infos) => {
-			if (!cancelled) setSubclassSpellInfo(infos)
-		})
+		)
+			.then((infos) => {
+				if (cancelled) return
+				setSubclassSpellInfo(infos)
+				setSubclassSpellsError(null)
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setSubclassSpellInfo([])
+				setSubclassSpellsError(messageOf(error))
+			})
 		return () => {
 			cancelled = true
 		}
@@ -247,9 +273,17 @@ export function CharacterSheet({
 
 	useEffect(() => {
 		let cancelled = false
-		loadFeatGrantedSpells(character).then((spells) => {
-			if (!cancelled) setFeatSpells(spells)
-		})
+		loadFeatGrantedSpells(character)
+			.then((spells) => {
+				if (cancelled) return
+				setFeatSpells(spells)
+				setFeatSpellsError(null)
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setFeatSpells([])
+				setFeatSpellsError(messageOf(error))
+			})
 		return () => {
 			cancelled = true
 		}
@@ -259,10 +293,14 @@ export function CharacterSheet({
 		let cancelled = false
 		loadChosenClassOptionalFeatures(character.classes, character.optionalFeatureChoices ?? [])
 			.then((groups) => {
-				if (!cancelled) setClassOptionalFeatures(groups)
+				if (cancelled) return
+				setClassOptionalFeatures(groups)
+				setClassOptionalFeaturesError(null)
 			})
-			.catch(() => {
-				/* Best-effort like featSpells above — the rest of the sheet still renders. */
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setClassOptionalFeatures([])
+				setClassOptionalFeaturesError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -273,10 +311,14 @@ export function CharacterSheet({
 		let cancelled = false
 		loadOptionalFeatureGrantedSpells(character)
 			.then((spells) => {
-				if (!cancelled) setOptionalFeatureSpells(spells)
+				if (cancelled) return
+				setOptionalFeatureSpells(spells)
+				setOptionalFeatureSpellsError(null)
 			})
-			.catch(() => {
-				/* Best-effort, same as the two effects above. */
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setOptionalFeatureSpells([])
+				setOptionalFeatureSpellsError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -287,10 +329,14 @@ export function CharacterSheet({
 		let cancelled = false
 		loadGrantedSenses(character)
 			.then((senses) => {
-				if (!cancelled) setGrantedSenses(senses)
+				if (cancelled) return
+				setGrantedSenses(senses)
+				setGrantedSensesError(null)
 			})
-			.catch(() => {
-				/* Best-effort, same as the effects above. */
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setGrantedSenses([])
+				setGrantedSensesError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -301,10 +347,14 @@ export function CharacterSheet({
 		let cancelled = false
 		loadChosenClassFeatureChoices(character)
 			.then((choices) => {
-				if (!cancelled) setClassFeatureChoices(choices)
+				if (cancelled) return
+				setClassFeatureChoices(choices)
+				setClassFeatureChoicesError(null)
 			})
-			.catch(() => {
-				/* Best-effort, same as the effects above. */
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setClassFeatureChoices([])
+				setClassFeatureChoicesError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -411,6 +461,13 @@ export function CharacterSheet({
 	)
 	// Darkvision grants are folded into the traits row above, not shown again here.
 	const combinedSenses = combineSenseEntries(grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'))
+
+	/* D43: the three grants feeding the spell list each name themselves, so the player can tell which part of the list is short rather than just that something is. */
+	const spellLoadErrors: { what: string; message: string }[] = [
+		{ what: 'always-prepared subclass spells', message: subclassSpellsError },
+		{ what: 'feat-granted spells', message: featSpellsError },
+		{ what: 'spells granted by your chosen options', message: optionalFeatureSpellsError },
+	].filter((entry): entry is { what: string; message: string } => entry.message !== null)
 
 	return (
 		<article className="sheet">
@@ -570,7 +627,7 @@ export function CharacterSheet({
 				</ul>
 			</section>
 
-			<SensesList entries={combinedSenses} />
+			<SensesList entries={combinedSenses} error={grantedSensesError} />
 
 			<section className="sheet__hit-dice">
 				<h2>Hit dice</h2>
@@ -617,10 +674,11 @@ export function CharacterSheet({
 				)}
 			</section>
 
-			{/* The D21 class-feature choices, one row per chosen alternative naming the feature it replaces. Nothing renders at all when the character made none — no empty heading, same rule the sections around it follow. */}
-			{classFeatureChoices.length > 0 && (
+			{/* The D21 class-feature choices, one row per chosen alternative naming the feature it replaces. Nothing renders at all when the character made none — no empty heading, same rule the sections around it follow, except when the load itself failed (D43). */}
+			{(classFeatureChoices.length > 0 || classFeatureChoicesError) && (
 				<section className="sheet__class-feature-choices">
 					<h2>Class feature choices</h2>
+					{classFeatureChoicesError && <p className="error">Could not load class feature choices: {classFeatureChoicesError}</p>}
 					<ul>
 						{classFeatureChoices.map((choice) => (
 							<li key={`${choice.featureName}|${choice.optionName}`}>
@@ -637,6 +695,14 @@ export function CharacterSheet({
 							</li>
 						))}
 					</ul>
+				</section>
+			)}
+
+			{/* Headed generically: the progression's own name comes with the data that failed to load, so it isn't known here. */}
+			{classOptionalFeaturesError && (
+				<section className="sheet__class-optional-features">
+					<h2>Class options</h2>
+					<p className="error">Could not load the options chosen for your class: {classOptionalFeaturesError}</p>
 				</section>
 			)}
 
@@ -726,10 +792,16 @@ export function CharacterSheet({
 				</>
 			)}
 
-			{combinedSpells.length > 0 && (
+			{/* The section appears for a failed grant load even with nothing to list — an empty spell list and a spell list that could not be built must not look alike (D43). */}
+			{(combinedSpells.length > 0 || spellLoadErrors.length > 0) && (
 				<section className="sheet__spells">
 					<h2>Spells</h2>
-					<SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />
+					{spellLoadErrors.map((error) => (
+						<p key={error.what} className="error">
+							Could not load {error.what}: {error.message}
+						</p>
+					))}
+					{combinedSpells.length > 0 && <SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />}
 				</section>
 			)}
 

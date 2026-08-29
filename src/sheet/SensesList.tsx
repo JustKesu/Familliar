@@ -66,13 +66,20 @@ export function combineSenseEntries(grantedSenses: GrantedSense[]): SheetSenseEn
 	return [...map.values()]
 }
 
-/** Renders nothing (not even the heading) when there are no granted senses — same "no empty heading" rule the class-optional-features sections above it already follow. */
-export function SensesList({ entries }: { entries: SheetSenseEntry[] }): ReactNode {
-	if (entries.length === 0) return null
+/**
+ * Renders nothing (not even the heading) when there are no granted senses —
+ * same "no empty heading" rule the class-optional-features sections above it
+ * already follow. `error` overrides that: a grant load that failed must not
+ * look like a character with no granted senses (D43). The same load feeds the
+ * Darkvision row in the traits section above, so the message covers both.
+ */
+export function SensesList({ entries, error }: { entries: SheetSenseEntry[]; error?: string | null }): ReactNode {
+	if (entries.length === 0 && !error) return null
 
 	return (
 		<section className="sheet__senses">
 			<h2>Senses</h2>
+			{error && <p className="error">Could not load senses granted by feats and invocations: {error}. Darkvision above may be short for the same reason.</p>}
 			<ul>
 				{entries.map((entry) => (
 					<li key={entry.senseType.toLowerCase()}>
