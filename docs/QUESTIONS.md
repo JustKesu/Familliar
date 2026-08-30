@@ -37,33 +37,6 @@ STATUS: deferred.
 EFA contributes 17 backgrounds, more than XPHB's 16. Surprising for a
 single-class book. Not blocking; sanity-check against the book sometime.
 
-### Browser verification by the agent — deferred, revisit at build order step 9
-
-The app is currently verified by hand: the user runs `npm run dev` and
-clicks through the UI. Automated tests cover pure logic and, since the
-wizard was built, component behaviour through a simulated DOM (see D8,
-"Tests — static HTML for the renderer, a real DOM for interactive
-components"). Nothing verifies the app as it actually renders in a real
-browser.
-
-The option considered was connecting Claude Code to a real browser
-through the Playwright MCP server, letting it navigate to the dev
-server, click through a flow and assert on what it finds. Deliberately
-NOT set up, for cost reasons: each look at a page returns the full
-accessibility tree, which is expensive in context, and a session that
-clicks through the whole creation wizard would spend a large share of
-its budget on that alone.
-
-Decision for now: manual verification by the user continues. Revisited
-at build order step 5 as planned and deferred again — the sheet is
-mostly a display of numbers the calculation layer already has tests
-for, so a browser check would cost context without catching much.
-Revisit at build order step 9 (play tracking and rests), where state
-changes through clicking and a wrong click is not visible in a unit
-test. If adopted, it should be used for narrow, named checks ("spend a
-spell slot, take a long rest, assert the slot is back"), not
-open-ended "click around and tell me if it looks right".
-
 ### Fighting Style — ověřit detekci v reálné hře
 
 Slice 1 detekuje nárok na Fighting Style podle jména class feature

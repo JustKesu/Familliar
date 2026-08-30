@@ -71,6 +71,24 @@ When stopping to ask, state what the question is, what the plausible answers are
 
 At the end of every task, list in REPORT.md any decision that was needed and taken during the work, or any question that was noticed and worked around. One line each. This is a report, not an edit: decisions in DECISIONS.md and open questions in QUESTIONS.md stay the user's to settle regardless.
 
+## Verification in the browser
+
+When a task changes anything the player sees or clicks, tests are not
+enough. Start the dev server, walk through the change in the browser, and
+write in the report what you actually checked and what you did not.
+
+Tests prove the behaviour will not break next time. A walk through the
+running app proves it works at all right now — and several times in this
+project the tests passed on something the sheet did not in fact display.
+
+It does not work the other way round: a browser check never replaces a
+test. Whatever you confirm by clicking must also be covered by a test, or
+nothing catches it when the next change lands.
+
+If the server will not start, or that screen cannot be reached, say so in
+the report as unverified. Never report as verified something you did not
+see.
+
 ## Verification
 
 Do not re-run the full verification suite after every intermediate step. Run typecheck and tests once, at the end of a task.
