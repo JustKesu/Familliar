@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
@@ -126,6 +126,33 @@ vi.mock('../featAsi/featAsiData', () => ({
 	loadFeats: vi.fn(async () => []),
 	featsRequiringAbilityChoice: vi.fn(() => new Set<string>()),
 }))
+
+/** Starting equipment (step 7 slice a2) — one gear option and one coin option per side, enough to pass through the step. */
+vi.mock('../inventory/startingEquipmentData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../inventory/startingEquipmentData')>()
+	const offer = {
+		options: [
+			{
+				key: 'A',
+				label: 'Option A',
+				elements: [{ kind: 'items', label: 'Dagger', items: [{ name: 'Dagger', source: 'XPHB', quantity: 1 }] }],
+			},
+			{ key: 'B', label: 'Option B', elements: [{ kind: 'coins', copper: 5000, label: '50 gp' }] },
+		],
+	}
+	return {
+		...actual,
+		loadClassStartingEquipment: vi.fn(async () => offer),
+		loadBackgroundStartingEquipment: vi.fn(async () => offer),
+		loadEquipmentCategoryItems: vi.fn(async () => ({
+			toolArtisan: [],
+			setGaming: [],
+			instrumentMusical: [],
+			focusHoly: [],
+			focusDruidic: [],
+		})),
+	}
+})
 
 vi.mock('../languages/languageData', () => ({
 	CHOSEN_LANGUAGE_COUNT: 2,
@@ -524,6 +551,10 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 
 		// Lands on review with the save enabled: the new step satisfies isReadyToSave rather than blocking it.
+		await goNext(user)
+		const fromClass = await screen.findByRole('group', { name: /From your class/ })
+		await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
+		await user.click(within(screen.getByRole('group', { name: /From your background/ })).getByRole('radio', { name: 'Option B' }))
 		await goNext(user)
 		const save = (await screen.findByRole('button', { name: 'Create character' })) as HTMLButtonElement
 		expect(save.disabled).toBe(false)

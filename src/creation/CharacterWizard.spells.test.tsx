@@ -123,6 +123,33 @@ vi.mock('../featAsi/featAsiData', () => ({
 	featsRequiringAbilityChoice: vi.fn(() => new Set<string>()),
 }))
 
+/** Starting equipment (step 7 slice a2) — a two-option offer on each side, enough for these tests to pass through the step on their way to review. */
+vi.mock('../inventory/startingEquipmentData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../inventory/startingEquipmentData')>()
+	const offer = {
+		options: [
+			{
+				key: 'A',
+				label: 'Option A',
+				elements: [{ kind: 'items', label: 'Dagger', items: [{ name: 'Dagger', source: 'XPHB', quantity: 1 }] }],
+			},
+			{ key: 'B', label: 'Option B', elements: [{ kind: 'coins', copper: 5000, label: '50 gp' }] },
+		],
+	}
+	return {
+		...actual,
+		loadClassStartingEquipment: vi.fn(async () => offer),
+		loadBackgroundStartingEquipment: vi.fn(async () => offer),
+		loadEquipmentCategoryItems: vi.fn(async () => ({
+			toolArtisan: [],
+			setGaming: [],
+			instrumentMusical: [],
+			focusHoly: [],
+			focusDruidic: [],
+		})),
+	}
+})
+
 vi.mock('../languages/languageData', () => ({
 	CHOSEN_LANGUAGE_COUNT: 2,
 	AUTOMATIC_LANGUAGE: { name: 'Common', source: 'XPHB' },
@@ -365,6 +392,15 @@ async function goBack(user: ReturnType<typeof userEvent.setup>) {
 	await user.click(screen.getByRole('button', { name: 'Back' }))
 }
 
+/** The equipment step (step 7 slice a2) sits between the last picker step and review; these tests only need to pass through it. */
+async function passEquipmentStep(user: ReturnType<typeof userEvent.setup>) {
+	const fromClass = await screen.findByRole('group', { name: /From your class/ })
+	await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
+	const fromBackground = screen.getByRole('group', { name: /From your background/ })
+	await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+	await goNext(user)
+}
+
 /** STANDARD_ARRAY = [15, 14, 13, 12, 10, 8] — each score used exactly once, assigned in the order the picker offers them so every pick is still in that ability's own dropdown. */
 async function fillThroughAbilities(
 	user: ReturnType<typeof userEvent.setup>,
@@ -430,7 +466,9 @@ describe('CharacterWizard — spells step', () => {
 		expect(screen.getByText('3 of 3 spells prepared chosen.')).toBeTruthy()
 
 		await goNext(user)
+		await passEquipmentStep(user)
 		await screen.findByText('Name: Aria')
+		await goBack(user)
 		await goBack(user)
 
 		expect((await screen.findByLabelText(/Prestidigitation/) as HTMLInputElement).checked).toBe(true)
@@ -471,8 +509,9 @@ describe('CharacterWizard — spells step', () => {
 		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 		await goNext(user)
+		await passEquipmentStep(user)
 
-		// Straight to review — no spells panel in between, and no gap in the step numbering.
+		// Straight to equipment then review — no spells panel in between, and no gap in the step numbering.
 		expect(await screen.findByText('Name: Aria')).toBeTruthy()
 		expect(screen.queryByText('Spells', { selector: 'li' })).toBeNull()
 	})
@@ -519,7 +558,9 @@ describe('CharacterWizard — spells step', () => {
 		expect(screen.getByText('3 of 3 spells known chosen.')).toBeTruthy()
 
 		await goNext(user)
+		await passEquipmentStep(user)
 		await screen.findByText('Name: Aria')
+		await goBack(user)
 		await goBack(user)
 
 		expect((await screen.findByLabelText(/Fire Bolt/) as HTMLInputElement).checked).toBe(true)
@@ -607,7 +648,9 @@ describe('CharacterWizard — spells step', () => {
 		expect(screen.getByText('3 of 3 spells known chosen.')).toBeTruthy()
 
 		await goNext(user)
+		await passEquipmentStep(user)
 		await screen.findByText('Name: Aria')
+		await goBack(user)
 		await goBack(user)
 
 		expect((await screen.findByLabelText(/Cure Wounds/) as HTMLInputElement).checked).toBe(true)

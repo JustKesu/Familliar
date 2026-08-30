@@ -423,22 +423,38 @@ describe('CharacterSheet', () => {
 			expect(section.textContent).toContain('Item data not found for "Mystery Blade" (HOMEBREW).')
 		})
 
-		it('shows money as gp/sp/cp, and reports an edit as a new copper total', async () => {
+		it('shows money as pp/gp/sp/cp, and reports an edit as a new copper total', async () => {
 			const user = userEvent.setup()
 			const onEditCurrency = vi.fn()
 			render(<CharacterSheet character={owner} onEditCurrency={onEditCurrency} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
+			// 1234 cp is 1 pp 2 gp 3 sp 4 cp (D74: 1 pp = 10 gp).
 			const gold = (await screen.findByLabelText('Gold')) as HTMLInputElement
-			expect(gold.value).toBe('12')
+			expect((screen.getByLabelText('Platinum') as HTMLInputElement).value).toBe('1')
+			expect(gold.value).toBe('2')
 			expect((screen.getByLabelText('Silver') as HTMLInputElement).value).toBe('3')
 			expect((screen.getByLabelText('Copper') as HTMLInputElement).value).toBe('4')
 
 			await user.clear(gold)
 			await user.type(gold, '20')
 			await user.tab() // commit on blur, not per keystroke
-			// 20 gp + 3 sp + 4 cp = 2034 cp
-			expect(onEditCurrency).toHaveBeenLastCalledWith(2034)
+			// 1 pp + 20 gp + 3 sp + 4 cp = 3034 cp
+			expect(onEditCurrency).toHaveBeenLastCalledWith(3034)
+		})
+
+		it('converts a platinum edit back into the stored copper total', async () => {
+			const user = userEvent.setup()
+			const onEditCurrency = vi.fn()
+			render(<CharacterSheet character={owner} onEditCurrency={onEditCurrency} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const platinum = (await screen.findByLabelText('Platinum')) as HTMLInputElement
+			await user.clear(platinum)
+			await user.type(platinum, '3')
+			await user.tab()
+			// 3 pp + 2 gp + 3 sp + 4 cp = 3234 cp
+			expect(onEditCurrency).toHaveBeenLastCalledWith(3234)
 		})
 
 		it('adds an item from the searchable list at quantity 1', async () => {

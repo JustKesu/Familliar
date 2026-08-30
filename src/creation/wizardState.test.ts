@@ -44,6 +44,7 @@ function completeData(): WizardData {
 		subclassSpellChoices: [],
 		classFeatureChoices: [],
 		wildShapeForms: [],
+		startingEquipment: { classOptionKey: 'A', backgroundOptionKey: 'B', categoryPicks: {} },
 	}
 }
 
@@ -163,6 +164,18 @@ describe('isStepComplete', () => {
 		expect(isStepComplete('review', emptyWizardData())).toBe(true)
 	})
 
+	it('equipment step needs an option from both the class and the background, and every category pick made', () => {
+		const nothing = emptyWizardData()
+		expect(isStepComplete('equipment', nothing)).toBe(false)
+
+		const classOnly = { ...nothing, startingEquipment: { ...nothing.startingEquipment, classOptionKey: 'A' } }
+		expect(isStepComplete('equipment', classOnly)).toBe(false)
+
+		const both = { ...classOnly, startingEquipment: { ...classOnly.startingEquipment, backgroundOptionKey: 'B' } }
+		expect(isStepComplete('equipment', both)).toBe(true)
+		expect(isStepComplete('equipment', both, { startingEquipmentCategoryPicksComplete: false })).toBe(false)
+	})
+
 	it('blocks the featAsi step when a chosen feat needs an ability choice but has none yet', () => {
 		const data = { ...emptyWizardData(), featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Athlete', source: 'XPHB' }] }
 		const requiring = new Set(['Athlete|XPHB'])
@@ -253,6 +266,70 @@ describe('wizardReducer navigation', () => {
 			subclass: { name: 'Circle of the Moon', source: 'XPHB', featureType: null },
 		})
 		expect(afterSubclass.data.wildShapeForms).toEqual([])
+	})
+
+	/* Step 7 slice a2: each side's option belongs to the class or the background that offered it, and only that side is recomputed. */
+	it('clears the class half of the starting equipment when the class changes, and leaves the background half alone', () => {
+		const picked: WizardControllerState = {
+			step: 'equipment',
+			data: {
+				...emptyWizardData(),
+				startingEquipment: {
+					classOptionKey: 'A',
+					backgroundOptionKey: 'B',
+					categoryPicks: {
+						'class:A:2': { name: 'Lute', source: 'XPHB' },
+						'background:B:0': { name: 'Dice Set', source: 'XPHB' },
+					},
+				},
+			},
+		}
+
+		const afterClass = wizardReducer(picked, {
+			type: 'setClassChoice',
+			choice: { className: 'Wizard', classSource: 'XPHB', level: 1 },
+		})
+		expect(afterClass.data.startingEquipment).toEqual({
+			classOptionKey: null,
+			backgroundOptionKey: 'B',
+			categoryPicks: { 'background:B:0': { name: 'Dice Set', source: 'XPHB' } },
+		})
+	})
+
+	it('clears the background half of the starting equipment only when the background identity changes', () => {
+		const base: WizardControllerState = {
+			step: 'equipment',
+			data: {
+				...emptyWizardData(),
+				backgroundChoice: { name: 'Soldier', source: 'XPHB', abilityBonus: {}, abilityBonusDistribution: null },
+				startingEquipment: {
+					classOptionKey: 'A',
+					backgroundOptionKey: 'B',
+					categoryPicks: { 'background:B:0': { name: 'Dice Set', source: 'XPHB' } },
+				},
+			},
+		}
+
+		const sameBackground = wizardReducer(base, {
+			type: 'setBackgroundChoice',
+			choice: {
+				name: 'Soldier',
+				source: 'XPHB',
+				abilityBonus: { strength: 2, dexterity: 1 },
+				abilityBonusDistribution: { mode: 'twoOne', plusTwo: 'strength', plusOne: 'dexterity' },
+			},
+		})
+		expect(sameBackground.data.startingEquipment.backgroundOptionKey).toBe('B')
+
+		const otherBackground = wizardReducer(base, {
+			type: 'setBackgroundChoice',
+			choice: { name: 'Sage', source: 'XPHB', abilityBonus: {}, abilityBonusDistribution: null },
+		})
+		expect(otherBackground.data.startingEquipment).toEqual({
+			classOptionKey: 'A',
+			backgroundOptionKey: null,
+			categoryPicks: {},
+		})
 	})
 
 	it('setBackgroundChoice clears tool proficiency only when the background identity changes, not its distribution', () => {
@@ -355,6 +432,8 @@ describe('saveCharacter', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
+			undefined,
 		)
 	})
 
@@ -362,7 +441,7 @@ describe('saveCharacter', () => {
 		const store = fakeStore()
 		const choice = { className: 'Fighter', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' }
 		saveCharacter(store, { ...completeData(), classFeatureChoices: [choice] }, ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-2)).toEqual([choice])
+		expect(vi.mocked(store.create).mock.calls[0].at(-4)).toEqual([choice])
 	})
 
 	/*
@@ -387,7 +466,7 @@ describe('saveCharacter', () => {
 		}
 		saveCharacter(store, druid, ['athletics', 'intimidation'], { wildShapeFormCount: 4 })
 
-		const stored = vi.mocked(store.create).mock.calls[0].at(-1)
+		const stored = vi.mocked(store.create).mock.calls[0].at(-3)
 		expect(stored).toEqual([{ className: 'Druid', classSource: 'XPHB', forms }])
 		for (const entry of stored as { forms: Record<string, unknown>[] }[]) {
 			for (const form of entry.forms) expect(Object.keys(form).sort()).toEqual(['name', 'source'])
@@ -397,7 +476,7 @@ describe('saveCharacter', () => {
 	it('omits Wild Shape forms entirely when none were chosen', () => {
 		const store = fakeStore()
 		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-1)).toBeUndefined()
+		expect(vi.mocked(store.create).mock.calls[0].at(-3)).toBeUndefined()
 	})
 
 	it('omits background when the background skill proficiencies were not supplied', () => {
@@ -423,6 +502,8 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
+			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -461,6 +542,8 @@ describe('saveCharacter', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
+			undefined,
 		)
 	})
 
@@ -494,6 +577,8 @@ describe('saveCharacter', () => {
 			['perception'],
 			['stealth', 'perception'],
 			[],
+			undefined,
+			undefined,
 			undefined,
 			undefined,
 			undefined,

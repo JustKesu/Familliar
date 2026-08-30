@@ -28,6 +28,18 @@ import { ExpertisePicker } from '../expertise/ExpertisePicker'
 import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertise/expertiseData'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
 import { loadSubclassesFor, type SubclassOption } from '../subclass/subclassData'
+import { StartingEquipmentPicker } from '../inventory/StartingEquipmentPicker'
+import {
+	buildStartingInventory,
+	loadBackgroundStartingEquipment,
+	loadClassStartingEquipment,
+	loadEquipmentCategoryItems,
+	missingCategoryPicks,
+	type EquipmentCategory,
+	type StartingEquipmentOffer,
+} from '../inventory/startingEquipmentData'
+import type { ItemRef } from '../inventory/inventoryData'
+import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
 import { computeAbilityScore } from '../calculation/abilityScores'
@@ -93,6 +105,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	spells: 'Spells',
 	classOptionalFeatures: 'Class options',
 	featAsi: 'Ability Score Improvement / Feat',
+	equipment: 'Starting equipment',
 	review: 'Review and save',
 }
 
@@ -131,6 +144,12 @@ export function CharacterWizard({
 	const [subclassSpellChoiceSlotCount, setSubclassSpellChoiceSlotCount] = useState(0)
 	const [classOptionalFeatureGroups, setClassOptionalFeatureGroups] = useState<ClassOptionalFeatureGroup[]>([])
 	const [classFeatureChoices, setClassFeatureChoices] = useState<ClassFeatureChoice[]>([])
+	/** The two starting-equipment offers (step 7 slice a2) and the items every category element could be filled with. Reloaded when the class or background changes; a failure is shown on the step and blocks it, rather than saving a character with no equipment. */
+	const [classEquipmentOffer, setClassEquipmentOffer] = useState<StartingEquipmentOffer | null>(null)
+	const [classEquipmentError, setClassEquipmentError] = useState<string | null>(null)
+	const [backgroundEquipmentOffer, setBackgroundEquipmentOffer] = useState<StartingEquipmentOffer | null>(null)
+	const [backgroundEquipmentError, setBackgroundEquipmentError] = useState<string | null>(null)
+	const [equipmentCategoryItems, setEquipmentCategoryItems] = useState<Record<EquipmentCategory, ItemRef[]> | null>(null)
 	/** How many spells each chosen option still needs picked (step 6a — Pact of the Tome). Read from the data by the effect below, never a hardcoded table. */
 	const [optionalFeatureSpellRequirements, setOptionalFeatureSpellRequirements] = useState<OptionalFeatureSpellRequirement[]>([])
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[]>([])
@@ -190,6 +209,58 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		loadEquipmentCategoryItems()
+			.then((loaded) => {
+				if (!cancelled) setEquipmentCategoryItems(loaded)
+			})
+			.catch(() => {
+				/* Left null; the equipment step says so where the category pick would be, and the step cannot complete without the pick. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	const equipmentClassName = state.data.classChoice?.className ?? null
+	const equipmentClassSource = state.data.classChoice?.classSource ?? null
+	useEffect(() => {
+		let cancelled = false
+		setClassEquipmentOffer(null)
+		setClassEquipmentError(null)
+		if (equipmentClassName === null || equipmentClassSource === null) return
+		loadClassStartingEquipment(equipmentClassName, equipmentClassSource)
+			.then((offer) => {
+				if (!cancelled) setClassEquipmentOffer(offer)
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) setClassEquipmentError(error instanceof Error ? error.message : String(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [equipmentClassName, equipmentClassSource])
+
+	const equipmentBackgroundName = state.data.backgroundChoice?.name ?? null
+	const equipmentBackgroundSource = state.data.backgroundChoice?.source ?? null
+	useEffect(() => {
+		let cancelled = false
+		setBackgroundEquipmentOffer(null)
+		setBackgroundEquipmentError(null)
+		if (equipmentBackgroundName === null || equipmentBackgroundSource === null) return
+		loadBackgroundStartingEquipment(equipmentBackgroundName, equipmentBackgroundSource)
+			.then((offer) => {
+				if (!cancelled) setBackgroundEquipmentOffer(offer)
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) setBackgroundEquipmentError(error instanceof Error ? error.message : String(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [equipmentBackgroundName, equipmentBackgroundSource])
 
 	useEffect(() => {
 		let cancelled = false
@@ -711,6 +782,11 @@ export function CharacterWizard({
 				?.knownForms ?? 0)
 		: 0
 
+	/** Read from the loaded offers, the same ones the picker renders from, so the gate and the UI can never disagree. */
+	const startingEquipmentCategoryPicksComplete =
+		missingCategoryPicks(classEquipmentOffer, 'class', state.data.startingEquipment).length === 0 &&
+		missingCategoryPicks(backgroundEquipmentOffer, 'background', state.data.startingEquipment).length === 0
+
 	/** Assembled once so navigation, the Next gate and the save gate cannot drift apart. */
 	const stepConditions: WizardStepConditions = {
 		expertiseRequiredCount,
@@ -722,11 +798,18 @@ export function CharacterWizard({
 		classOptionalFeatureGroupCount: classOptionalFeatureGroups.length,
 		classFeatureChoicesComplete,
 		wildShapeFormCount,
+		startingEquipmentCategoryPicksComplete,
 	}
 
 	function handleSave(): void {
 		try {
-			const character = saveCharacter(store, state.data, selectedBackground?.skillProficiencies, stepConditions)
+			const character = saveCharacter(
+				store,
+				state.data,
+				selectedBackground?.skillProficiencies,
+				stepConditions,
+				buildStartingInventory(classEquipmentOffer, backgroundEquipmentOffer, state.data.startingEquipment),
+			)
 			setSaveError(null)
 			onSaved(character)
 		} catch (error) {
@@ -971,6 +1054,22 @@ export function CharacterWizard({
 				</div>
 			)}
 
+			{state.step === 'equipment' && (
+				<div className="wizard__panel">
+					<StartingEquipmentPicker
+						className={state.data.classChoice?.className ?? null}
+						backgroundName={state.data.backgroundChoice?.name ?? null}
+						classOffer={classEquipmentOffer}
+						backgroundOffer={backgroundEquipmentOffer}
+						classOfferError={classEquipmentError}
+						backgroundOfferError={backgroundEquipmentError}
+						categoryItems={equipmentCategoryItems}
+						value={state.data.startingEquipment}
+						onChange={(choice) => dispatch({ type: 'setStartingEquipment', choice })}
+					/>
+				</div>
+			)}
+
 			{state.step === 'review' && (
 				<div className="wizard__panel">
 					<p>Name: {state.data.name}</p>
@@ -1006,6 +1105,20 @@ export function CharacterWizard({
 									)
 									.join('; ')
 							: '—'}
+					</p>
+					<p>
+						Starting equipment:{' '}
+						{(() => {
+							const { inventory, currencyCopper } = buildStartingInventory(
+								classEquipmentOffer,
+								backgroundEquipmentOffer,
+								state.data.startingEquipment,
+							)
+							const items = inventory.map((item) => (item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name))
+							const coins = copperToCoins(currencyCopper)
+							const money = `${coins.pp} pp, ${coins.gp} gp, ${coins.sp} sp, ${coins.cp} cp`
+							return items.length > 0 ? `${items.join(', ')}; ${money}` : money
+						})()}
 					</p>
 					{saveError && <p className="error">{saveError}</p>}
 				</div>

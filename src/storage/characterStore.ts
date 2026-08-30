@@ -177,6 +177,8 @@ export class CharacterStore {
 		subclassSpellChoices?: CharacterSubclassSpellChoice[],
 		classFeatureChoices?: CharacterClassFeatureChoice[],
 		wildShapeForms?: CharacterWildShapeForms[],
+		inventory?: CharacterInventoryItem[],
+		currencyCopper?: number,
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -201,6 +203,8 @@ export class CharacterStore {
 			...(subclassSpellChoices && subclassSpellChoices.length > 0 ? { subclassSpellChoices } : {}),
 			...(classFeatureChoices && classFeatureChoices.length > 0 ? { classFeatureChoices } : {}),
 			...(wildShapeForms && wildShapeForms.length > 0 ? { wildShapeForms } : {}),
+			...(inventory && inventory.length > 0 ? { inventory } : {}),
+			...(currencyCopper ? { currencyCopper } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character

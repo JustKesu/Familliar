@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
@@ -173,6 +173,61 @@ vi.mock('../featAsi/featAsiData', async () => {
 	}
 })
 
+/*
+ * Starting equipment (step 7 slice a2). Only the three loaders are stubbed;
+ * the parsing, completeness and combining functions stay real, so what gates
+ * the step here is the code the app runs. Option C carries a category element,
+ * the one option that needs a further pick before the step can complete.
+ */
+vi.mock('../inventory/startingEquipmentData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../inventory/startingEquipmentData')>()
+	return {
+		...actual,
+		loadClassStartingEquipment: vi.fn(async () => ({
+			options: [
+				{
+					key: 'A',
+					label: 'Option A',
+					elements: [
+						{ kind: 'items', label: 'Longsword', items: [{ name: 'Longsword', source: 'XPHB', quantity: 1 }] },
+						{ kind: 'items', label: 'Dagger ×2', items: [{ name: 'Dagger', source: 'XPHB', quantity: 2 }] },
+						{ kind: 'coins', copper: 400, label: '4 gp' },
+					],
+				},
+				{ key: 'B', label: 'Option B', elements: [{ kind: 'coins', copper: 15500, label: '15 pp 5 gp' }] },
+				{
+					key: 'C',
+					label: 'Option C',
+					elements: [{ kind: 'category', categories: ['instrumentMusical'], label: 'a musical instrument (your choice)' }],
+				},
+			],
+		})),
+		loadBackgroundStartingEquipment: vi.fn(async () => ({
+			options: [
+				{
+					key: 'A',
+					label: 'Option A',
+					elements: [
+						{ kind: 'items', label: 'Dagger', items: [{ name: 'Dagger', source: 'XPHB', quantity: 1 }] },
+						{ kind: 'coins', copper: 800, label: '8 gp' },
+					],
+				},
+				{ key: 'B', label: 'Option B', elements: [{ kind: 'coins', copper: 5000, label: '5 gp' }] },
+			],
+		})),
+		loadEquipmentCategoryItems: vi.fn(async () => ({
+			toolArtisan: [],
+			setGaming: [],
+			instrumentMusical: [
+				{ name: 'Flute', source: 'XPHB' },
+				{ name: 'Lute', source: 'XPHB' },
+			],
+			focusHoly: [],
+			focusDruidic: [],
+		})),
+	}
+})
+
 vi.mock('../languages/languageData', () => ({
 	CHOSEN_LANGUAGE_COUNT: 2,
 	AUTOMATIC_LANGUAGE: { name: 'Common', source: 'XPHB' },
@@ -225,6 +280,14 @@ async function goBack(user: ReturnType<typeof userEvent.setup>) {
 async function fillLanguagesStep(user: ReturnType<typeof userEvent.setup>) {
 	await user.click(await screen.findByLabelText('Draconic (XPHB)'))
 	await user.click(screen.getByLabelText('Dwarvish (XPHB)'))
+}
+
+/** Takes the class's gear package and the background's coin option — one option from each side, which is what the step requires. */
+async function fillEquipmentStep(user: ReturnType<typeof userEvent.setup>) {
+	const fromClass = await screen.findByRole('group', { name: /From your class/ })
+	await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
+	const fromBackground = screen.getByRole('group', { name: /From your background/ })
+	await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
 }
 
 describe('CharacterWizard — selections survive back-navigation', () => {
@@ -453,7 +516,10 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 
 		await goNext(user)
+		await fillEquipmentStep(user)
+		await goNext(user)
 		await screen.findByText('Ability score method: standardArray')
+		await goBack(user)
 		await goBack(user)
 
 		// The select's value is the standard array's slot INDEX, not the score
@@ -595,6 +661,8 @@ describe('CharacterWizard — storage', () => {
 		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 		await goNext(user)
+		await fillEquipmentStep(user)
+		await goNext(user)
 
 		expect(store.create).not.toHaveBeenCalled()
 
@@ -628,6 +696,8 @@ describe('CharacterWizard — storage', () => {
 		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 		await goNext(user)
+		await fillEquipmentStep(user)
+		await goNext(user)
 
 		await user.click(screen.getByRole('button', { name: 'Create character' }))
 
@@ -657,7 +727,93 @@ describe('CharacterWizard — storage', () => {
 			undefined,
 			undefined,
 			undefined,
+			// The class's gear package and the background's coin option, combined:
+			// the package's items, and 4 gp from it plus 50 gp from the background.
+			[
+				{ name: 'Dagger', source: 'XPHB', quantity: 2 },
+				{ name: 'Longsword', source: 'XPHB', quantity: 1 },
+			],
+			5400,
 		)
+	})
+})
+
+describe('CharacterWizard — starting equipment step', () => {
+	async function fillThroughAbilities(user: ReturnType<typeof userEvent.setup>) {
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		await goNext(user)
+		await fillLanguagesStep(user)
+		await goNext(user)
+		await user.selectOptions(screen.getByLabelText('Strength'), '15')
+		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
+		await user.selectOptions(screen.getByLabelText('Constitution'), '13')
+		await user.selectOptions(screen.getByLabelText('Intelligence'), '12')
+		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
+		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
+		await goNext(user)
+	}
+
+	it('blocks Next until an option is taken from BOTH the class and the background', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughAbilities(user)
+		const fromClass = await screen.findByRole('group', { name: /From your class/ })
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+
+		await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+
+		const fromBackground = screen.getByRole('group', { name: /From your background/ })
+		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+	})
+
+	it('a coin-only option on both sides saves money and no items', async () => {
+		const user = userEvent.setup()
+		const { store } = renderWizard()
+
+		await fillThroughAbilities(user)
+		const fromClass = await screen.findByRole('group', { name: /From your class/ })
+		await user.click(within(fromClass).getByRole('radio', { name: 'Option B' }))
+		const fromBackground = screen.getByRole('group', { name: /From your background/ })
+		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+		await goNext(user)
+		await user.click(await screen.findByRole('button', { name: 'Create character' }))
+
+		const call = vi.mocked(store.create).mock.calls[0]
+		expect(call.at(-2)).toEqual([])
+		expect(call.at(-1)).toBe(20500)
+	})
+
+	it('a category element blocks the step until an item is picked, and that pick lands in the inventory', async () => {
+		const user = userEvent.setup()
+		const { store } = renderWizard()
+
+		await fillThroughAbilities(user)
+		const fromClass = await screen.findByRole('group', { name: /From your class/ })
+		await user.click(within(fromClass).getByRole('radio', { name: 'Option C' }))
+		const fromBackground = screen.getByRole('group', { name: /From your background/ })
+		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+
+		// Both options taken, but the instrument the option grants is still unnamed.
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+
+		await user.click(await screen.findByRole('radio', { name: 'Flute (XPHB)' }))
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+
+		await goNext(user)
+		await user.click(await screen.findByRole('button', { name: 'Create character' }))
+
+		const call = vi.mocked(store.create).mock.calls[0]
+		expect(call.at(-2)).toEqual([{ name: 'Flute', source: 'XPHB', quantity: 1 }])
+		expect(call.at(-1)).toBe(5000)
 	})
 })
 
@@ -695,8 +851,11 @@ describe('CharacterWizard — feat/ASI step', () => {
 		await user.selectOptions(abilitySelect, 'strength')
 
 		await goNext(user)
+		await fillEquipmentStep(user)
+		await goNext(user)
 		expect(await screen.findByText(/level 4: ASI \(strength \+2\)/)).toBeTruthy()
 
+		await goBack(user)
 		await goBack(user)
 		expect((screen.getByLabelText('Ability Score Improvement') as HTMLInputElement).checked).toBe(true)
 		expect(selectedOptionText(screen.getByRole('combobox'))).toBe('Strength')
@@ -707,8 +866,10 @@ describe('CharacterWizard — feat/ASI step', () => {
 		renderWizard()
 
 		await fillThroughAbilities(user, '3')
+		await fillEquipmentStep(user)
+		await goNext(user)
 
-		// Straight to review — no feat/ASI panel in between, and no gap in the step numbering.
+		// Straight to equipment then review — no feat/ASI panel in between, and no gap in the step numbering.
 		expect(await screen.findByText('Name: Aria')).toBeTruthy()
 		expect(screen.queryByText('Ability Score Improvement / Feat', { selector: 'li' })).toBeNull()
 	})

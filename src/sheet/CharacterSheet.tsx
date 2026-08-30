@@ -244,7 +244,7 @@ function InventorySection({
 	const known = new Set((itemRefs ?? []).map(itemKey))
 	const coins = copperToCoins(currencyCopper)
 
-	function editCoin(field: 'gp' | 'sp' | 'cp', amount: number): void {
+	function editCoin(field: 'pp' | 'gp' | 'sp' | 'cp', amount: number): void {
 		onEditCurrency?.(coinsToCopper({ ...coins, [field]: amount }))
 	}
 
@@ -283,13 +283,14 @@ function InventorySection({
 				<h3>Money</h3>
 				{onEditCurrency ? (
 					<p>
+						<CommitNumberField label="Platinum" min={0} value={coins.pp} onCommit={(amount) => editCoin('pp', amount)} />{' '}
 						<CommitNumberField label="Gold" min={0} value={coins.gp} onCommit={(amount) => editCoin('gp', amount)} />{' '}
 						<CommitNumberField label="Silver" min={0} value={coins.sp} onCommit={(amount) => editCoin('sp', amount)} />{' '}
 						<CommitNumberField label="Copper" min={0} value={coins.cp} onCommit={(amount) => editCoin('cp', amount)} />
 					</p>
 				) : (
 					<p>
-						{coins.gp} gp, {coins.sp} sp, {coins.cp} cp
+						{coins.pp} pp, {coins.gp} gp, {coins.sp} sp, {coins.cp} cp
 					</p>
 				)}
 			</div>

@@ -1200,3 +1200,20 @@ v knize. Chybějící informace se pozná, vymyšlená ne.
 Platí i na frekvenci, kterou by šlo vyčíst z prózy: parsovat text na počty
 se nedělá (D21). Buď je to strukturované, nebo v ručním seznamu, nebo se
 mlčí.
+
+## D74 — Peníze jsou jedno číslo v měďácích
+
+Uloženo je `currencyCopper`, jedno nezáporné celé číslo. Mince — platina,
+zlato, stříbro, měď — existují jen při zobrazení a zadávání; převod je
+funkce nad tím jedním číslem, ne pět uložených polí.
+
+Elektrum se nemodeluje: edice 2024 ho zrušila. Platina ano, 1 pp = 10 gp.
+
+Rationale: pět samostatných polí umí být ve sporu samo se sebou — co
+znamená uložených 15 stříbrných a zároveň 200 měďáků? — a každý výpočet by
+je musel nejdřív srovnat. `value` v items.json je navíc taky v měďácích,
+takže nakupování v pozdější slici nepotřebuje žádný převod.
+
+Cena, kterou to má: zadaná částka se při dalším vykreslení normalizuje.
+Napíšeš 25 do stříbra a uvidíš 2 zlaté a 5 stříbrných. Je to správně
+spočítané, jen se číslice přesunou mezi poli.

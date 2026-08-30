@@ -15,6 +15,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterClassFeatureChoice,
+	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
@@ -33,6 +34,7 @@ import type { CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
+import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat } from '../spells/featSpellChoiceData'
 
 /**
@@ -57,6 +59,7 @@ export const WIZARD_STEPS = [
 	'spells',
 	'classOptionalFeatures',
 	'featAsi',
+	'equipment',
 	'review',
 ] as const
 export type WizardStep = (typeof WIZARD_STEPS)[number]
@@ -98,6 +101,8 @@ export interface WizardStepConditions {
 	classFeatureChoicesComplete?: boolean
 	/** Wild Shape forms the class step must collect (wildShapeData.ts's Beast Shapes table); 0 for a character without Wild Shape. */
 	wildShapeFormCount?: number
+	/** Whether every category element inside the two chosen starting-equipment options has an item picked. Which elements those are is only known from the loaded offers, so the caller computes it (missingCategoryPicks). */
+	startingEquipmentCategoryPicksComplete?: boolean
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
@@ -112,6 +117,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		classOptionalFeatureGroupCount: conditions.classOptionalFeatureGroupCount ?? 0,
 		classFeatureChoicesComplete: conditions.classFeatureChoicesComplete ?? true,
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
+		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
 	}
 }
 
@@ -211,6 +217,18 @@ export interface WizardData {
 	 * legal pool depends on all three.
 	 */
 	wildShapeForms: { name: string; source: string }[]
+	/**
+	 * Which starting-equipment option the player took from the class and from
+	 * the background, plus an item for every category element inside them
+	 * (step 7 slice a2). The resulting inventory is not held here — it is
+	 * derived from the loaded offers at save time, so a changed offer can never
+	 * be contradicted by a stale copy.
+	 *
+	 * The class half clears whenever the class changes and the background half
+	 * whenever the background's identity does; neither clears the other, since
+	 * the two options are independent.
+	 */
+	startingEquipment: StartingEquipmentChoice
 }
 
 export function emptyWizardData(): WizardData {
@@ -235,6 +253,7 @@ export function emptyWizardData(): WizardData {
 		subclassSpellChoices: [],
 		classFeatureChoices: [],
 		wildShapeForms: [],
+		startingEquipment: emptyStartingEquipmentChoice(),
 	}
 }
 
@@ -296,6 +315,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		classOptionalFeaturesComplete,
 		classFeatureChoicesComplete,
 		wildShapeFormCount,
+		startingEquipmentCategoryPicksComplete,
 	} = resolveConditions(conditions)
 	switch (step) {
 		case 'class':
@@ -345,6 +365,16 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				data.featAsiChoices.every((choice) =>
 					isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice, data.classChoice?.level ?? 0),
 				)
+			)
+		case 'equipment':
+			// A character takes one option from the class AND one from the background;
+			// an unmade choice blocks the step. Whether a chosen option still needs a
+			// category item picked can only be told from the loaded offers, so it
+			// arrives as a condition (missingCategoryPicks computes it).
+			return (
+				data.startingEquipment.classOptionKey !== null &&
+				data.startingEquipment.backgroundOptionKey !== null &&
+				startingEquipmentCategoryPicksComplete
 			)
 		case 'review':
 			return true
@@ -430,6 +460,7 @@ export type WizardAction =
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
 	| { type: 'setClassFeatureChoices'; choices: CharacterClassFeatureChoice[] }
 	| { type: 'setWildShapeForms'; forms: { name: string; source: string }[] }
+	| { type: 'setStartingEquipment'; choice: StartingEquipmentChoice }
 
 /**
  * Pure navigation + edit reducer. `next` is a no-op unless the current step
@@ -468,6 +499,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					subclassSpellChoices: [],
 					classFeatureChoices: [],
 					wildShapeForms: [],
+					startingEquipment: clearStartingEquipmentFor(state.data.startingEquipment, 'class'),
 				},
 			}
 		case 'setSpeciesChoice':
@@ -497,6 +529,9 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					backgroundChoice: action.choice,
 					backgroundToolProficiency: sameBackground ? state.data.backgroundToolProficiency : null,
 					expertiseSkills: sameBackground ? state.data.expertiseSkills : [],
+					startingEquipment: sameBackground
+						? state.data.startingEquipment
+						: clearStartingEquipmentFor(state.data.startingEquipment, 'background'),
 				},
 			}
 		}
@@ -532,6 +567,17 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, classFeatureChoices: action.choices } }
 		case 'setWildShapeForms':
 			return { ...state, data: { ...state.data, wildShapeForms: action.forms } }
+		case 'setStartingEquipment':
+			return { ...state, data: { ...state.data, startingEquipment: action.choice } }
+	}
+}
+
+/** Drops one side's option and its category picks; the other side's are keyed by their own origin and survive. */
+function clearStartingEquipmentFor(choice: StartingEquipmentChoice, origin: 'class' | 'background'): StartingEquipmentChoice {
+	return {
+		...choice,
+		...(origin === 'class' ? { classOptionKey: null } : { backgroundOptionKey: null }),
+		categoryPicks: Object.fromEntries(Object.entries(choice.categoryPicks).filter(([key]) => !key.startsWith(`${origin}:`))),
 	}
 }
 
@@ -553,12 +599,18 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
  * readiness check agrees with them exactly. `featsRequiringAbilityChoice`
  * likewise mirrors the 'featAsi' step's own check (half-feat ability-choice
  * slice).
+ *
+ * `startingEquipment` is the inventory and copper total the equipment step's
+ * two chosen options produce (buildStartingInventory) — computed by the caller
+ * for the same reason as `backgroundSkillProficiencies`: it needs the loaded
+ * offers, which WizardData deliberately doesn't carry.
  */
 export function saveCharacter(
 	store: CharacterStore,
 	data: WizardData,
 	backgroundSkillProficiencies?: [string, string],
 	conditions: WizardStepConditions = {},
+	startingEquipment?: { inventory: CharacterInventoryItem[]; currencyCopper: number },
 ): Character {
 	if (!isReadyToSave(data, conditions)) {
 		throw new Error('Cannot save a character before every step is complete.')
@@ -680,5 +732,7 @@ export function saveCharacter(
 		subclassSpellChoices,
 		classFeatureChoices,
 		wildShapeForms,
+		startingEquipment?.inventory,
+		startingEquipment?.currencyCopper,
 	)
 }
