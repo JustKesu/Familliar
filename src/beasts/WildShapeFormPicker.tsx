@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { loadBeasts, type Beast } from './beastData'
 import { wildShapeForms, wildShapeLimits } from './wildShapeData'
 import { BeastStatBlock } from '../sheet/BeastStatBlock'
+import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 
 /*
  * Picker for the Beast forms a Druid knows for Wild Shape (step 6b slice 3).
@@ -89,35 +90,47 @@ export function WildShapeFormPicker({
 		onChange([...value, { name: beast.name, source: beast.source }])
 	}
 
+	// Each option's stat block rides in `detail` as its own BeastStatBlock, which is a
+	// <details> collapsed by default — so filtering the list never forces twenty stat
+	// blocks open, it just narrows which collapsed summaries are shown.
+	const options: SearchableOption[] = offered.map((beast) => {
+		const key = formKey(beast)
+		const isChosen = chosen.has(key)
+		return {
+			key,
+			name: beast.name,
+			label: (
+				<>
+					<strong>{beast.name}</strong> (CR {beast.cr})
+				</>
+			),
+			detail: <BeastStatBlock beast={beast} />,
+			selected: isChosen,
+			disabled: !isChosen && atLimit,
+		}
+	})
+
 	return (
 		<div className="wild-shape-form-picker">
-			<h3>Wild Shape forms</h3>
 			<p className="wild-shape-form-picker__hint">
-				Choose {limits.knownForms} Beast form{limits.knownForms === 1 ? '' : 's'} (chosen {value.length}). Maximum Challenge
-				Rating {limits.maxCrLabel}
+				Maximum Challenge Rating {limits.maxCrLabel}
 				{limits.moonCap ? ' (Circle of the Moon)' : ''};{' '}
 				{limits.flyAllowed ? 'a form with a Fly Speed is allowed' : 'no form with a Fly Speed yet'}.
 			</p>
-			<ul className="wild-shape-form-picker__list">
-				{offered.map((beast) => {
-					const key = formKey(beast)
-					const isChosen = chosen.has(key)
-					return (
-						<li key={key} className="wild-shape-form-picker__item">
-							<label>
-								<input
-									type="checkbox"
-									checked={isChosen}
-									disabled={!isChosen && atLimit}
-									onChange={(event) => toggle(beast, event.target.checked)}
-								/>
-								<strong>{beast.name}</strong> (CR {beast.cr})
-							</label>
-							<BeastStatBlock beast={beast} />
-						</li>
-					)
-				})}
-			</ul>
+			<SearchableOptionList
+				legend="Wild Shape forms"
+				name="wild-shape-form"
+				inputType="checkbox"
+				options={options}
+				required={limits.knownForms}
+				renderCount={({ chosen: picked, required }) =>
+					`Choose ${required} Beast form${required === 1 ? '' : 's'} (chosen ${picked}).`
+				}
+				onToggle={(key) => {
+					const beast = offered.find((candidate) => formKey(candidate) === key)
+					if (beast) toggle(beast, !chosen.has(key))
+				}}
+			/>
 		</div>
 	)
 }

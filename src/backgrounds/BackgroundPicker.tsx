@@ -1,6 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadBackgrounds, type BackgroundEntry, type BackgroundEquipmentEntry } from './backgroundData'
-import { abilityBonusChoiceToMap, isValidAbilityBonusChoice, type AbilityBonusChoice } from './abilityBonus'
+import {
+	abilityBonusDistributionToMap,
+	isAbilityBonusDistributionComplete,
+	type AbilityBonusDistribution,
+} from './abilityBonus'
 import type { Ability } from '../abilities/abilityScores'
 import { Markup } from '../markup'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
@@ -37,7 +41,21 @@ type LoadState =
 export interface BackgroundChoice {
 	name: string
 	source: string
+	/**
+	 * The finished +2/+1 or +1/+1/+1 wire map once the distribution is complete;
+	 * `{}` until then. Derived from `abilityBonusDistribution` (the source of
+	 * truth) by the picker and written alongside it — kept on the choice so
+	 * saveCharacter and the abilities-step preview don't need the background's
+	 * offered trio. A non-empty map is exactly "the distribution is done".
+	 */
 	abilityBonus: Partial<Record<Ability, number>>
+	/**
+	 * The distribution chooser's UI state, held by the wizard (D8) so a
+	 * partly-made choice — background picked, one or neither ability chosen —
+	 * redisplays after this step unmounts and remounts. `null` until the player
+	 * first touches the chooser.
+	 */
+	abilityBonusDistribution: AbilityBonusDistribution | null
 }
 
 function backgroundKey(entry: BackgroundEntry): string {
@@ -46,26 +64,6 @@ function backgroundKey(entry: BackgroundEntry): string {
 
 function findDisabled(skill: string, disabledSkills: DisabledSkill[]): DisabledSkill | undefined {
 	return disabledSkills.find((d) => d.skill.toLowerCase() === skill.toLowerCase())
-}
-
-/**
- * Reconstructs the ability-bonus UI choice from the stored map — the inverse
- * of `abilityBonusChoiceToMap` — so the chooser can redisplay a previously
- * made choice after this component remounts. `null` if the map doesn't match
- * either shape (e.g. nothing chosen yet).
- */
-function abilityBonusMapToChoice(map: Partial<Record<Ability, number>> | undefined): AbilityBonusChoice | null {
-	if (!map) return null
-	const entries = Object.entries(map) as [Ability, number][]
-	if (entries.length === 3 && entries.every(([, bonus]) => bonus === 1)) {
-		return { kind: 'oneEach' }
-	}
-	if (entries.length === 2) {
-		const plusTwo = entries.find(([, bonus]) => bonus === 2)?.[0]
-		const plusOne = entries.find(([, bonus]) => bonus === 1)?.[0]
-		if (plusTwo && plusOne) return { kind: 'twoOne', plusTwo, plusOne }
-	}
-	return null
 }
 
 function EquipmentList({ items }: { items: BackgroundEquipmentEntry[] }): ReactNode {
@@ -87,36 +85,24 @@ function EquipmentList({ items }: { items: BackgroundEquipmentEntry[] }): ReactN
 	)
 }
 
-/** The ability bonus distribution chooser for one background's offered trio. */
+/**
+ * The ability bonus distribution chooser for one background's offered trio.
+ * CONTROLLED (D8): it holds none of its own state — it renders `distribution`
+ * and reports every change up, so a partly-made choice lives in the wizard
+ * and survives this step unmounting.
+ */
 function AbilityBonusChooser({
 	offered,
-	initialChoice,
-	onChoose,
+	distribution,
+	onChange,
 }: {
 	offered: readonly [Ability, Ability, Ability]
-	initialChoice: AbilityBonusChoice | null
-	onChoose: (choice: AbilityBonusChoice | null) => void
+	distribution: AbilityBonusDistribution | null
+	onChange: (next: AbilityBonusDistribution) => void
 }): ReactNode {
-	const [mode, setMode] = useState<'twoOne' | 'oneEach'>(initialChoice?.kind ?? 'twoOne')
-	const [plusTwo, setPlusTwo] = useState<Ability | ''>(
-		initialChoice?.kind === 'twoOne' ? initialChoice.plusTwo : '',
-	)
-	const [plusOne, setPlusOne] = useState<Ability | ''>(
-		initialChoice?.kind === 'twoOne' ? initialChoice.plusOne : '',
-	)
-
-	function report(nextMode: 'twoOne' | 'oneEach', nextPlusTwo: Ability | '', nextPlusOne: Ability | ''): void {
-		if (nextMode === 'oneEach') {
-			onChoose({ kind: 'oneEach' })
-			return
-		}
-		if (!nextPlusTwo || !nextPlusOne) {
-			onChoose(null)
-			return
-		}
-		const choice: AbilityBonusChoice = { kind: 'twoOne', plusTwo: nextPlusTwo, plusOne: nextPlusOne }
-		onChoose(isValidAbilityBonusChoice(choice, offered) ? choice : null)
-	}
+	const mode: 'twoOne' | 'oneEach' = distribution?.mode ?? 'twoOne'
+	const plusTwo = distribution?.mode === 'twoOne' ? distribution.plusTwo : null
+	const plusOne = distribution?.mode === 'twoOne' ? distribution.plusOne : null
 
 	return (
 		<div className="background-picker__ability-bonus">
@@ -127,10 +113,7 @@ function AbilityBonusChooser({
 				<input
 					type="radio"
 					checked={mode === 'twoOne'}
-					onChange={() => {
-						setMode('twoOne')
-						report('twoOne', plusTwo, plusOne)
-					}}
+					onChange={() => onChange({ mode: 'twoOne', plusTwo, plusOne })}
 				/>
 				+2 to one, +1 to another
 			</label>
@@ -139,12 +122,10 @@ function AbilityBonusChooser({
 					<label>
 						+2
 						<select
-							value={plusTwo}
-							onChange={(event) => {
-								const next = event.target.value as Ability | ''
-								setPlusTwo(next)
-								report(mode, next, plusOne)
-							}}
+							value={plusTwo ?? ''}
+							onChange={(event) =>
+								onChange({ mode: 'twoOne', plusTwo: (event.target.value || null) as Ability | null, plusOne })
+							}
 						>
 							<option value="">Choose…</option>
 							{offered.map((a) => (
@@ -157,12 +138,10 @@ function AbilityBonusChooser({
 					<label>
 						+1
 						<select
-							value={plusOne}
-							onChange={(event) => {
-								const next = event.target.value as Ability | ''
-								setPlusOne(next)
-								report(mode, plusTwo, next)
-							}}
+							value={plusOne ?? ''}
+							onChange={(event) =>
+								onChange({ mode: 'twoOne', plusTwo, plusOne: (event.target.value || null) as Ability | null })
+							}
 						>
 							<option value="">Choose…</option>
 							{offered.map((a) => (
@@ -178,10 +157,7 @@ function AbilityBonusChooser({
 				<input
 					type="radio"
 					checked={mode === 'oneEach'}
-					onChange={() => {
-						setMode('oneEach')
-						report('oneEach', plusTwo, plusOne)
-					}}
+					onChange={() => onChange({ mode: 'oneEach' })}
 				/>
 				+1 to each of {offered.map((a) => ABILITY_LABELS[a]).join(', ')}
 			</label>
@@ -257,10 +233,6 @@ export function BackgroundPicker({
 	disabledSkills?: DisabledSkill[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
-	const [selectedKey, setSelectedKey] = useState(value ? `${value.name}|${value.source}` : '')
-	const [bonusChoice, setBonusChoice] = useState<AbilityBonusChoice | null>(
-		abilityBonusMapToChoice(value?.abilityBonus),
-	)
 
 	useEffect(() => {
 		let cancelled = false
@@ -286,28 +258,30 @@ export function BackgroundPicker({
 		return <p className="error">Could not load backgrounds: {state.message}</p>
 	}
 
-	const selected = state.backgrounds.find((b) => backgroundKey(b) === selectedKey)
+	const { backgrounds } = state
+	const selectedKey = value ? `${value.name}|${value.source}` : ''
+	const selected = backgrounds.find((b) => backgroundKey(b) === selectedKey)
 
 	function handleSelect(nextKey: string): void {
-		setSelectedKey(nextKey)
-		setBonusChoice(null)
-		onChange(null)
+		if (nextKey === selectedKey) return
+		const entry = backgrounds.find((b) => backgroundKey(b) === nextKey)
+		if (!entry) return
+		// A fresh background starts with the distribution untouched; the wizard's
+		// setBackgroundChoice keys tool proficiency / expertise off the name+source.
+		onChange({ name: entry.name, source: entry.source, abilityBonus: {}, abilityBonusDistribution: null })
 	}
 
-	function handleBonusChoice(choice: AbilityBonusChoice | null): void {
-		setBonusChoice(choice)
-		if (!selected || !choice) {
-			onChange(null)
-			return
-		}
+	function handleDistribution(next: AbilityBonusDistribution): void {
+		if (!selected || !value) return
 		onChange({
-			name: selected.name,
-			source: selected.source,
-			abilityBonus: abilityBonusChoiceToMap(choice, selected.abilityChoices),
+			name: value.name,
+			source: value.source,
+			abilityBonusDistribution: next,
+			abilityBonus: abilityBonusDistributionToMap(next, selected.abilityChoices),
 		})
 	}
 
-	const options: SearchableOption[] = state.backgrounds.map((entry) => ({
+	const options: SearchableOption[] = backgrounds.map((entry) => ({
 		key: backgroundKey(entry),
 		name: entry.name,
 		label: `${entry.name} (${entry.source})`,
@@ -333,10 +307,12 @@ export function BackgroundPicker({
 					<BackgroundGrants background={selected} disabledSkills={disabledSkills} />
 					<AbilityBonusChooser
 						offered={selected.abilityChoices}
-						initialChoice={bonusChoice}
-						onChoose={handleBonusChoice}
+						distribution={value?.abilityBonusDistribution ?? null}
+						onChange={handleDistribution}
 					/>
-					{!bonusChoice && <p className="background-picker__hint">Choose how to distribute the ability bonus.</p>}
+					{!isAbilityBonusDistributionComplete(value?.abilityBonusDistribution ?? null, selected.abilityChoices) && (
+						<p className="background-picker__hint">Choose how to distribute the ability bonus.</p>
+					)}
 				</>
 			)}
 		</div>

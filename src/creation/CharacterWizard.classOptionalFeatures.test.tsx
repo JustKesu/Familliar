@@ -482,6 +482,8 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		expect(await screen.findByLabelText(/Eldritch Blast/)).toBeTruthy()
 		await goNext(user)
 
+		// Both invocation slots are filled, so the list comes back collapsed; open it to read the picks.
+		await user.click(await screen.findByRole('button', { name: /Eldritch Invocations/ }))
 		await screen.findByRole('checkbox', { name: 'Pact of the Blade' })
 		expect(checkbox('Pact of the Blade').checked).toBe(true)
 		expect(checkbox('Agonizing Blast').checked).toBe(true)

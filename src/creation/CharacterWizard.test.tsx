@@ -317,6 +317,56 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		expect(value(screen.getByLabelText('+1'))).toBe('dexterity')
 	})
 
+	it('background step: a background picked but not yet distributed survives navigation and still blocks Next until distribution is done', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
+		// No ability-bonus distribution made.
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+
+		await goBack(user) // background -> species
+		await screen.findByLabelText('Species')
+		await goNext(user) // species -> background
+
+		await user.click(await screen.findByRole('button', { name: /^Background/ }))
+		expect((screen.getByRole('radio', { name: 'Soldier (XPHB)' }) as HTMLInputElement).checked).toBe(true)
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+
+		// Finishing the distribution now completes the step.
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		await goNext(user)
+		expect(await screen.findByLabelText('Draconic (XPHB)')).toBeTruthy()
+	})
+
+	it('background step: a partly-made ability bonus distribution survives navigation', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await goNext(user)
+		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await goNext(user)
+		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
+		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
+		// +1 deliberately left unset.
+
+		await goBack(user) // background -> species
+		await screen.findByLabelText('Species')
+		await goNext(user) // species -> background
+
+		expect(value(await screen.findByLabelText('+2'))).toBe('strength')
+		expect(value(screen.getByLabelText('+1'))).toBe('')
+		await user.click(await screen.findByRole('button', { name: /^Background/ }))
+		expect((screen.getByRole('radio', { name: 'Soldier (XPHB)' }) as HTMLInputElement).checked).toBe(true)
+	})
+
 	it('background step: a background with a named tool proficiency shows nothing to pick and auto-fills it', async () => {
 		const user = userEvent.setup()
 		renderWizard()

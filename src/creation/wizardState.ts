@@ -314,7 +314,15 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		case 'species':
 			return data.speciesChoice !== null
 		case 'background':
-			return data.backgroundChoice !== null && data.backgroundToolProficiency !== null
+			// A background is REMEMBERED the moment it is picked (D8), but the step only
+			// COMPLETES once its ability-bonus distribution is finished: the picker fills
+			// backgroundChoice.abilityBonus only for a complete, legal +2/+1 or +1/+1/+1,
+			// so a non-empty map is exactly "the distribution is done".
+			return (
+				data.backgroundChoice !== null &&
+				Object.keys(data.backgroundChoice.abilityBonus).length > 0 &&
+				data.backgroundToolProficiency !== null
+			)
 		case 'expertise':
 			return expertiseRequiredCount === null || data.expertiseSkills.length === expertiseRequiredCount
 		case 'languages':
@@ -471,16 +479,27 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, speciesSkills: action.skills, expertiseSkills: [] } }
 		case 'setExpertiseSkills':
 			return { ...state, data: { ...state.data, expertiseSkills: action.skills } }
-		case 'setBackgroundChoice':
+		case 'setBackgroundChoice': {
+			// The picker now reports through this action on every sub-step of the
+			// choice (background picked, then each ability-bonus pick), so tool
+			// proficiency and expertise — keyed to a specific background — clear only
+			// when the background's identity changes, not when its distribution does.
+			const prev = state.data.backgroundChoice
+			const sameBackground =
+				prev !== null &&
+				action.choice !== null &&
+				prev.name === action.choice.name &&
+				prev.source === action.choice.source
 			return {
 				...state,
 				data: {
 					...state.data,
 					backgroundChoice: action.choice,
-					backgroundToolProficiency: null,
-					expertiseSkills: [],
+					backgroundToolProficiency: sameBackground ? state.data.backgroundToolProficiency : null,
+					expertiseSkills: sameBackground ? state.data.expertiseSkills : [],
 				},
 			}
+		}
 		case 'setBackgroundToolProficiency':
 			return { ...state, data: { ...state.data, backgroundToolProficiency: action.tool } }
 		case 'setLanguageChoice':

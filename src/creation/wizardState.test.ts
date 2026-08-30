@@ -16,7 +16,12 @@ function completeData(): WizardData {
 		name: 'Aria',
 		classChoice: { className: 'Fighter', classSource: 'XPHB', level: 1 },
 		speciesChoice: { name: 'Elf', source: 'XPHB' },
-		backgroundChoice: { name: 'Soldier', source: 'XPHB', abilityBonus: { strength: 2, constitution: 1 } },
+		backgroundChoice: {
+			name: 'Soldier',
+			source: 'XPHB',
+			abilityBonus: { strength: 2, constitution: 1 },
+			abilityBonusDistribution: { mode: 'twoOne', plusTwo: 'strength', plusOne: 'constitution' },
+		},
 		backgroundToolProficiency: 'Dice Set',
 		languageChoice: [
 			{ name: 'Draconic', source: 'XPHB' },
@@ -114,12 +119,44 @@ describe('isStepComplete', () => {
 	})
 
 	it('blocks the background step until its tool proficiency is set, even with a background chosen', () => {
-		const data = {
+		const data: WizardData = {
 			...emptyWizardData(),
-			backgroundChoice: { name: 'Soldier', source: 'XPHB', abilityBonus: { strength: 2, constitution: 1 } },
+			backgroundChoice: {
+				name: 'Soldier',
+				source: 'XPHB',
+				abilityBonus: { strength: 2, constitution: 1 },
+				abilityBonusDistribution: { mode: 'twoOne', plusTwo: 'strength', plusOne: 'constitution' },
+			},
 		}
 		expect(isStepComplete('background', data)).toBe(false)
 		expect(isStepComplete('background', { ...data, backgroundToolProficiency: 'Dice Set' })).toBe(true)
+	})
+
+	it('remembers a background whose ability bonus is not yet distributed, without completing the step', () => {
+		// The picker stores the background (and any partial distribution) the moment it is
+		// picked; abilityBonus stays {} until the distribution is a complete +2/+1 or +1/+1/+1.
+		const partial: WizardData = {
+			...emptyWizardData(),
+			backgroundChoice: {
+				name: 'Soldier',
+				source: 'XPHB',
+				abilityBonus: {},
+				abilityBonusDistribution: { mode: 'twoOne', plusTwo: 'strength', plusOne: null },
+			},
+			backgroundToolProficiency: 'Dice Set',
+		}
+		expect(isStepComplete('background', partial)).toBe(false)
+
+		const finished: WizardData = {
+			...partial,
+			backgroundChoice: {
+				name: 'Soldier',
+				source: 'XPHB',
+				abilityBonus: { strength: 2, constitution: 1 },
+				abilityBonusDistribution: { mode: 'twoOne', plusTwo: 'strength', plusOne: 'constitution' },
+			},
+		}
+		expect(isStepComplete('background', finished)).toBe(true)
 	})
 
 	it('the review step is always complete on its own', () => {
@@ -216,6 +253,37 @@ describe('wizardReducer navigation', () => {
 			subclass: { name: 'Circle of the Moon', source: 'XPHB', featureType: null },
 		})
 		expect(afterSubclass.data.wildShapeForms).toEqual([])
+	})
+
+	it('setBackgroundChoice clears tool proficiency only when the background identity changes, not its distribution', () => {
+		const base: WizardControllerState = {
+			step: 'background',
+			data: {
+				...emptyWizardData(),
+				backgroundChoice: { name: 'Soldier', source: 'XPHB', abilityBonus: {}, abilityBonusDistribution: null },
+				backgroundToolProficiency: "Smith's Tools",
+				expertiseSkills: ['athletics'],
+			},
+		}
+
+		const sameBackground = wizardReducer(base, {
+			type: 'setBackgroundChoice',
+			choice: {
+				name: 'Soldier',
+				source: 'XPHB',
+				abilityBonus: { strength: 2, dexterity: 1 },
+				abilityBonusDistribution: { mode: 'twoOne', plusTwo: 'strength', plusOne: 'dexterity' },
+			},
+		})
+		expect(sameBackground.data.backgroundToolProficiency).toBe("Smith's Tools")
+		expect(sameBackground.data.expertiseSkills).toEqual(['athletics'])
+
+		const otherBackground = wizardReducer(base, {
+			type: 'setBackgroundChoice',
+			choice: { name: 'Sage', source: 'XPHB', abilityBonus: {}, abilityBonusDistribution: null },
+		})
+		expect(otherBackground.data.backgroundToolProficiency).toBeNull()
+		expect(otherBackground.data.expertiseSkills).toEqual([])
 	})
 
 	it('back preserves everything already chosen on earlier steps', () => {

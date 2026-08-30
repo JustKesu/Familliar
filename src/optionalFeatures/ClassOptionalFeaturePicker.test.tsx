@@ -141,16 +141,19 @@ describe('ClassOptionalFeaturePicker', () => {
 
 	it('renders one group per granted featureType, each with its own count', async () => {
 		renderPicker({ className: 'Sorlock' })
-		expect(await screen.findByRole('heading', { name: 'Eldritch Invocations' })).toBeTruthy()
-		expect(screen.getByRole('heading', { name: 'Metamagic' })).toBeTruthy()
+		expect(await screen.findByRole('button', { name: /Eldritch Invocations/ })).toBeTruthy()
+		expect(screen.getByRole('button', { name: /Metamagic/ })).toBeTruthy()
 		expect(screen.getByText('Choose 2 more options.')).toBeTruthy()
 		expect(screen.getByText('Choose 1 more option.')).toBeTruthy()
 	})
 
 	it('counts the two groups independently — filling one does not close the other', async () => {
+		const user = userEvent.setup()
 		renderPicker({ className: 'Sorlock', value: [{ featureType: 'MM', choices: ['Careful Spell'] }] })
 		expect(await screen.findByText('All options chosen.')).toBeTruthy()
 		expect(screen.getByText('Choose 2 more options.')).toBeTruthy()
+		// Metamagic auto-collapses once its one pick is made; open it to read its options back.
+		await user.click(screen.getByRole('button', { name: /Metamagic/ }))
 		expect(checkbox('Pact of the Blade').disabled).toBe(false)
 		expect(checkbox('Distant Spell').disabled).toBe(true)
 	})
@@ -227,6 +230,7 @@ describe('ClassOptionalFeaturePicker', () => {
 		// refused click here is the COUNT refusing it, not a prerequisite.
 		renderPicker({ className: 'Sorlock', value: [{ featureType: 'MM', choices: ['Careful Spell'] }] }, onChange)
 		await screen.findByText('All options chosen.')
+		await user.click(screen.getByRole('button', { name: /Metamagic/ }))
 
 		const distant = checkbox('Distant Spell')
 		expect(distant.disabled).toBe(true)
@@ -361,6 +365,8 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 			/>,
 		)
 		await screen.findByText('Pact of the Tome')
+		// Both picks made, so the list auto-collapses; open it to toggle one back off.
+		await user.click(screen.getByRole('button', { name: /Eldritch Invocations/ }))
 
 		await user.click(checkbox('Pact of the Tome'))
 		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual(['Pact of the Blade'])

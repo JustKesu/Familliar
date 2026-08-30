@@ -567,7 +567,9 @@ export function CharacterWizard({
 		name: state.data.name,
 		classes: [],
 		...(state.data.abilityScores ? { abilityScores: state.data.abilityScores } : {}),
-		...(state.data.backgroundChoice?.abilityBonus ? { abilityBonus: state.data.backgroundChoice.abilityBonus } : {}),
+		...(state.data.backgroundChoice && Object.keys(state.data.backgroundChoice.abilityBonus).length > 0
+			? { abilityBonus: state.data.backgroundChoice.abilityBonus }
+			: {}),
 	}
 	const finalAbilityScores = Object.fromEntries(
 		ABILITIES.map((ability) => {

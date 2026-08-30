@@ -6,6 +6,7 @@ import {
 	type ClassOptionalFeatureGroup,
 } from './optionalFeatureData'
 import { Entries } from '../markup'
+import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 import {
 	loadOptionalFeatureSlotCandidates,
@@ -151,65 +152,76 @@ export function ClassOptionalFeaturePicker({
 
 	return (
 		<div className="class-optional-feature-picker">
-			{groups.map((group) => (
-				<section key={group.featureType} className="class-optional-feature-picker__group">
-					<h3>{group.name ?? group.featureType}</h3>
-					<p className="class-optional-feature-picker__hint">
-						{group.remaining > 0 ? `Choose ${group.remaining} more option${group.remaining === 1 ? '' : 's'}.` : 'All options chosen.'}
-					</p>
-					{group.invalidChosen.length > 0 && (
-						<ul className="class-optional-feature-picker__warnings">
-							{group.invalidChosen.map((invalid) => (
-								<li key={invalid.name} className="warning">
-									{invalid.name} no longer qualifies: {invalid.reasons.join(' ')} It is still selected — remove it or restore what it needs.
-								</li>
-							))}
-						</ul>
-					)}
-					<ul className="class-optional-feature-picker__list">
-						{group.evaluated.map(({ option, eligible, reasons }) => {
-							const checked = group.chosen.includes(option.name)
-							// D19: an ineligible option is disabled and reasoned, never hidden — including the 3
-							// Talisman invocations, whose boon this data has no option for. An already-chosen one
-							// stays toggleable so the player can undo it themselves.
-							const disabled = !checked && (!eligible || group.remaining <= 0)
-							return (
-								<li key={`${option.name}|${option.source}`} className={eligible ? 'class-optional-feature-picker__item' : 'class-optional-feature-picker__item class-optional-feature-picker__item--ineligible'}>
-									<label>
-										<input
-											type="checkbox"
-											checked={checked}
-											disabled={disabled}
-											onChange={() => toggle(group.featureType, option.name, group.chosen, group.remaining)}
-										/>
-										<strong>{option.name}</strong>
-									</label>
-									{reasons.length > 0 && (
-										<ul className="class-optional-feature-picker__reasons">
-											{reasons.map((reason, index) => (
-												<li key={index}>{reason}</li>
-											))}
-										</ul>
-									)}
-									<div className="class-optional-feature-picker__description">
-										{resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />}
-									</div>
-									{/* Revealed once the option is taken, the same way the feat step reveals its own spell sub-picker. */}
-									{checked && (
-										<OptionalFeatureSpellSubPicker
-											featureType={group.featureType}
-											optionName={option.name}
-											alreadyKnown={alreadyKnown}
-											value={value.find((entry) => entry.featureType === group.featureType)?.spellChoices?.find((p) => p.optionName === option.name)}
-											onChange={(pick) => setSpellChoice(group.featureType, pick)}
-										/>
-									)}
-								</li>
-							)
-						})}
-					</ul>
-				</section>
-			))}
+			{groups.map((group) => {
+				const options: SearchableOption[] = group.evaluated.map(({ option, eligible, reasons }) => {
+					const checked = group.chosen.includes(option.name)
+					// D19: an ineligible option is disabled and reasoned, never hidden — including the 3
+					// Talisman invocations, whose boon this data has no option for. An already-chosen one
+					// stays toggleable so the player can undo it themselves.
+					const disabled = !checked && (!eligible || group.remaining <= 0)
+					return {
+						key: `${option.name}|${option.source}`,
+						name: option.name,
+						label: <strong>{option.name}</strong>,
+						// Reasons ride in `detail`, which SearchableOptionList always renders, so a
+						// disabled option keeps its reason whether or not a search is active (D71/D19).
+						detail: (
+							<>
+								{reasons.length > 0 && (
+									<ul className="class-optional-feature-picker__reasons">
+										{reasons.map((reason, index) => (
+											<li key={index}>{reason}</li>
+										))}
+									</ul>
+								)}
+								<div className="class-optional-feature-picker__description">
+									{resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />}
+								</div>
+								{/* Revealed once the option is taken, the same way the feat step reveals its own spell sub-picker. */}
+								{checked && (
+									<OptionalFeatureSpellSubPicker
+										featureType={group.featureType}
+										optionName={option.name}
+										alreadyKnown={alreadyKnown}
+										value={value.find((entry) => entry.featureType === group.featureType)?.spellChoices?.find((p) => p.optionName === option.name)}
+										onChange={(pick) => setSpellChoice(group.featureType, pick)}
+									/>
+								)}
+							</>
+						),
+						selected: checked,
+						disabled,
+					}
+				})
+				return (
+					<section key={group.featureType} className="class-optional-feature-picker__group">
+						{group.invalidChosen.length > 0 && (
+							<ul className="class-optional-feature-picker__warnings">
+								{group.invalidChosen.map((invalid) => (
+									<li key={invalid.name} className="warning">
+										{invalid.name} no longer qualifies: {invalid.reasons.join(' ')} It is still selected — remove it or restore what it needs.
+									</li>
+								))}
+							</ul>
+						)}
+						<SearchableOptionList
+							legend={group.name ?? group.featureType}
+							name={`class-optional-feature-${group.featureType}`}
+							inputType="checkbox"
+							options={options}
+							required={group.count}
+							renderCount={({ chosen, required }) => {
+								const left = required - chosen
+								return left > 0 ? `Choose ${left} more option${left === 1 ? '' : 's'}.` : 'All options chosen.'
+							}}
+							onToggle={(key) => {
+								const option = group.evaluated.find((entry) => `${entry.option.name}|${entry.option.source}` === key)?.option
+								if (option) toggle(group.featureType, option.name, group.chosen, group.remaining)
+							}}
+						/>
+					</section>
+				)
+			})}
 		</div>
 	)
 }

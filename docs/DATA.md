@@ -166,6 +166,23 @@ the armour type code (LA light = uncapped, MA medium = +2, HA heavy = none).
 The AC calculation must hardcode that rule.
 `strength` is a string ("13") or null; `stealth: true` means disadvantage.
 
+### Magický předmět se pozná podle `rarity`, ne podle jiných polí
+
+Obyčejná zbraň nebo výbava má `rarity: "none"`. Cokoli jiného je magické.
+
+Ověřeno na 92 předmětech nesoucích mastery: 49 z nich mělo `rarity: "none"`
+a žádný z nich zároveň nenesl `reqAttune`, `wondrous`, `tier`, `baseItem`
+ani `bonusWeapon`. Zbylých 43 magických zahrnuje i tři s rarity `"common"` —
+takže „common znamená obyčejný" NEPLATÍ.
+
+Pole jako `reqAttune` nebo `bonusWeapon` fungují jako indicie, ale ne jako
+spolehlivý test: magický předmět bez attunementu a bez bonusu k útoku je
+běžný. Test je `rarity`.
+
+Poprvé potřeba u weapon mastery pickeru, který jinak nabízel volbu mastery
+pro Sun Blade postavě na první úrovni. Inventář (krok 7) tenhle rozdíl
+potřebuje na každém kroku.
+
 ### Identifying item kinds
 Weapons and armour have boolean flags (`weapon`, `armor`).
 Shields have NO flag — identify by type abbreviation "S".

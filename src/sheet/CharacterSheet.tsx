@@ -34,6 +34,7 @@ import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpel
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBlock } from './BeastStatBlock'
+import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -122,18 +123,36 @@ function formatSpeed(speed: SpeedValue): string {
 	return parts.join(', ')
 }
 
-/** One labelled group of familiar forms in the picker, or nothing when the character has no forms of that origin. */
-function FamiliarFormOptions({ label, options }: { label: string; options: FamiliarFormOption[] }): ReactNode {
-	if (options.length === 0) return null
-	return (
-		<optgroup label={label}>
-			{options.map(({ beast }) => (
-				<option key={formKey(beast)} value={formKey(beast)}>
+const NO_FAMILIAR_KEY = ''
+
+/**
+ * The familiar-form options for the sheet's one editable control. "No familiar
+ * summoned" leads (its key is the empty string, which maps back to
+ * onChooseFamiliar(null)); then the Find Familiar pool, then any Pact of the
+ * Chain forms — the order the old <select> used its optgroups in. Each form's
+ * stat block rides in `detail` as a default-collapsed <details>, so a search
+ * result narrows the summaries shown without flinging stat blocks open.
+ */
+function familiarPickerOptions(forms: FamiliarFormOption[], storedFamiliar: CharacterFamiliar | null): SearchableOption[] {
+	const ordered = [
+		...forms.filter((option) => option.origin === 'spell'),
+		...forms.filter((option) => option.origin === 'pact-of-the-chain'),
+	]
+	return [
+		{ key: NO_FAMILIAR_KEY, name: 'No familiar summoned', selected: storedFamiliar === null },
+		...ordered.map(({ beast, origin }) => ({
+			key: formKey(beast),
+			name: beast.name,
+			label: (
+				<>
 					{beast.name} (CR {beast.cr})
-				</option>
-			))}
-		</optgroup>
-	)
+					{origin === 'pact-of-the-chain' && <span className="sheet__familiar-origin"> Pact of the Chain</span>}
+				</>
+			),
+			detail: <BeastStatBlock beast={beast} />,
+			selected: storedFamiliar !== null && formKey(beast) === formKey(storedFamiliar),
+		})),
+	]
 }
 
 /** Renders any Calculated<number> as its value plus breakdown, or D43's visible "unresolved" state. */
@@ -858,23 +877,33 @@ export function CharacterSheet({
 				<section className="sheet__familiar">
 					<h2>Familiar</h2>
 
-					<label className="sheet__familiar-picker">
-						Current form{' '}
-						<select
-							value={storedFamiliar ? formKey(storedFamiliar) : ''}
-							onChange={(event) => {
-								const picked = familiarForms.find((option) => formKey(option.beast) === event.target.value)
-								onChooseFamiliar?.(picked ? { name: picked.beast.name, source: picked.beast.source } : null)
-							}}
-						>
-							<option value="">No familiar summoned</option>
-							<FamiliarFormOptions label="Find Familiar" options={familiarForms.filter((option) => option.origin === 'spell')} />
-							<FamiliarFormOptions
-								label="Pact of the Chain"
-								options={familiarForms.filter((option) => option.origin === 'pact-of-the-chain')}
-							/>
-						</select>
-					</label>
+					{/*
+					 * The one editable control on the sheet. It carries a full stat block per
+					 * form (as the old "All eligible forms" list did) so a form can be compared
+					 * before switching; each block is a default-collapsed <details>, and the
+					 * list itself collapses once a familiar is chosen, so it stays out of the
+					 * way of the summoned form shown below. Radio, so exactly one form (or none)
+					 * is summoned — nothing about that changed with the control swap.
+					 */}
+					<SearchableOptionList
+						legend="Familiar form"
+						name="familiar-form"
+						inputType="radio"
+						options={familiarPickerOptions(familiarForms, storedFamiliar)}
+						required={1}
+						defaultOpen={storedFamiliar === null}
+						renderCount={() =>
+							storedFamiliar ? `Current form: ${storedFamiliar.name}` : 'No familiar summoned'
+						}
+						onToggle={(key) => {
+							if (key === NO_FAMILIAR_KEY) {
+								onChooseFamiliar?.(null)
+								return
+							}
+							const picked = familiarForms.find((option) => formKey(option.beast) === key)
+							if (picked) onChooseFamiliar?.({ name: picked.beast.name, source: picked.beast.source })
+						}}
+					/>
 
 					{storedFamiliar === null ? (
 						<p className="sheet__familiar-none">No familiar is summoned. Choose a form above to summon one.</p>
@@ -887,19 +916,6 @@ export function CharacterSheet({
 						// D43: a stored form that is no longer offered (the invocation was dropped, or the data changed) is named, with the gap stated.
 						<UnresolvedValue reason={`"${storedFamiliar.name}" (${storedFamiliar.source}) is not a form this familiar can take.`} />
 					)}
-
-					{/* The full pool stays reachable so a form can be compared before switching, but out of the way of the one that is actually summoned. */}
-					<details className="sheet__familiar-all">
-						<summary>All eligible forms ({familiarForms.length})</summary>
-						<ul>
-							{familiarForms.map(({ beast, origin }) => (
-								<li key={formKey(beast)}>
-									{origin === 'pact-of-the-chain' && <span className="sheet__familiar-origin">Pact of the Chain</span>}
-									<BeastStatBlock beast={beast} />
-								</li>
-							))}
-						</ul>
-					</details>
 				</section>
 			)}
 		</article>

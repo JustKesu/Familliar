@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterSheet } from './CharacterSheet'
 import { computeAbilityScore } from '../calculation/abilityScores'
@@ -18,7 +18,7 @@ import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../s
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
-import type { Character } from '../storage/character'
+import type { Character, CharacterFamiliar } from '../storage/character'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
@@ -2042,13 +2042,16 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
 			const section = container.querySelector('.sheet__familiar')!
 			expect(section.querySelector('.sheet__familiar-none')!.textContent).toContain('No familiar is summoned')
-			// The picker is still there, and the eligible list is reachable but collapsed.
-			expect(section.querySelector('select')).toBeTruthy()
-			expect(section.querySelector('details.sheet__familiar-all')!.hasAttribute('open')).toBe(false)
+			// The picker is the shared searchable control; with nothing chosen it starts open
+			// so a form can be picked, and every option carries its own collapsed stat block.
+			const toggle = section.querySelector('.option-list__toggle')!
+			expect(toggle.getAttribute('aria-expanded')).toBe('true')
+			expect((screen.getByRole('radio', { name: 'No familiar summoned' }) as HTMLInputElement).checked).toBe(true)
 			expect(section.querySelector('details.beast')).toBeTruthy()
 		})
 
 		it('shows the chosen form as an open stat block instead of the prompt', async () => {
+			const user = userEvent.setup()
 			const withFamiliar: Character = { ...wizard, familiar: { name: 'Owl', source: 'XMM' } }
 			const { container } = render(<CharacterSheet character={withFamiliar} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
@@ -2056,10 +2059,15 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
 			const section = container.querySelector('.sheet__familiar')!
 			expect(section.querySelector('.sheet__familiar-none')).toBeNull()
-			const chosen = section.querySelector('details.beast')!
-			expect(chosen.hasAttribute('open')).toBe(true)
+			// Exactly one stat block is open: the summoned form, shown below the picker.
+			const chosen = section.querySelector('details.beast[open]')!
 			expect(chosen.querySelector('summary')!.textContent).toContain('Owl')
-			expect((section.querySelector('select') as HTMLSelectElement).value).toBe('Owl|XMM')
+
+			// The control auto-collapses once a form is chosen; opening it shows Owl selected.
+			const toggle = section.querySelector('.option-list__toggle')!
+			expect(toggle.getAttribute('aria-expanded')).toBe('false')
+			await user.click(toggle)
+			expect((screen.getByRole('radio', { name: /Owl/ }) as HTMLInputElement).checked).toBe(true)
 		})
 
 		it('states the gap when the stored form is not one this familiar can take (D43)', async () => {
@@ -2073,16 +2081,23 @@ describe('CharacterSheet', () => {
 		})
 
 		it('reports a pick to the caller, and clearing it as null', async () => {
+			const user = userEvent.setup()
 			const onChooseFamiliar = vi.fn()
-			const { container } = render(<CharacterSheet character={wizard} onChooseFamiliar={onChooseFamiliar} />)
+			const { container, unmount } = render(<CharacterSheet character={wizard} onChooseFamiliar={onChooseFamiliar} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
 			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
 
-			const select = container.querySelector('.sheet__familiar select') as HTMLSelectElement
-			fireEvent.change(select, { target: { value: 'Owl|XMM' } })
+			await user.click(screen.getByRole('radio', { name: /Owl/ }))
 			expect(onChooseFamiliar).toHaveBeenCalledWith({ name: 'Owl', source: 'XMM' })
 
-			fireEvent.change(select, { target: { value: '' } })
+			// With a form on record the list starts collapsed; open it and pick "No familiar summoned".
+			unmount()
+			const withFamiliar: Character = { ...wizard, familiar: { name: 'Owl', source: 'XMM' } }
+			render(<CharacterSheet character={withFamiliar} onChooseFamiliar={onChooseFamiliar} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+			await waitFor(() => expect(document.querySelector('.sheet__familiar')).toBeTruthy())
+			await user.click(document.querySelector('.sheet__familiar .option-list__toggle') as HTMLElement)
+			await user.click(screen.getByRole('radio', { name: 'No familiar summoned' }))
 			expect(onChooseFamiliar).toHaveBeenLastCalledWith(null)
 		})
 
@@ -2115,7 +2130,6 @@ describe('CharacterSheet', () => {
 
 			const section = container.querySelector('.sheet__familiar')!
 			expect(section.textContent).toContain('Imp')
-			expect(section.querySelector('optgroup[label="Pact of the Chain"]')).toBeTruthy()
 			expect(section.querySelector('.sheet__familiar-origin')!.textContent).toContain('Pact of the Chain')
 
 			// A Wizard with the same spell and no invocation is offered the spell's own pool only.
@@ -2125,7 +2139,52 @@ describe('CharacterSheet', () => {
 			await screen.findByRole('heading', { name: 'Conjurer' })
 			await waitFor(() => expect(plain.querySelector('.sheet__familiar')).toBeTruthy())
 			expect(plain.querySelector('.sheet__familiar')!.textContent).not.toContain('Imp')
-			expect(plain.querySelector('optgroup[label="Pact of the Chain"]')).toBeNull()
+			expect(plain.querySelector('.sheet__familiar .sheet__familiar-origin')).toBeNull()
+		})
+
+		/** A chain Warlock has two forms in the pool (Owl from the spell, Imp from the pact) — enough to filter. */
+		function chainWarlock(familiar?: CharacterFamiliar): Character {
+			return {
+				id: 'ffchain',
+				name: 'Chainer',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: 'Fiend Patron', level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 10, wisdom: 12, charisma: 15 },
+				},
+				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Chain'] }],
+				...(familiar ? { familiar } : {}),
+			}
+		}
+
+		it('filters the familiar forms by name as the player types', async () => {
+			const user = userEvent.setup()
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([
+				{ name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'optionalFeature', optionName: 'Pact of the Chain' },
+			])
+			render(<CharacterSheet character={chainWarlock()} onChooseFamiliar={vi.fn()} />)
+			await screen.findByRole('heading', { name: 'Chainer' })
+			await waitFor(() => expect(document.querySelector('.sheet__familiar')).toBeTruthy())
+
+			expect(screen.getByRole('radio', { name: /Owl/ })).toBeTruthy()
+			await user.type(screen.getByLabelText('Search Familiar form'), 'imp')
+			expect(screen.getByRole('radio', { name: /Imp/ })).toBeTruthy()
+			expect(screen.queryByRole('radio', { name: /Owl/ })).toBeNull()
+		})
+
+		it('keeps the chosen familiar form visible and selected through a non-matching search', async () => {
+			const user = userEvent.setup()
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([
+				{ name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'optionalFeature', optionName: 'Pact of the Chain' },
+			])
+			render(<CharacterSheet character={chainWarlock({ name: 'Imp', source: 'XMM' })} onChooseFamiliar={vi.fn()} />)
+			await screen.findByRole('heading', { name: 'Chainer' })
+			await waitFor(() => expect(document.querySelector('.sheet__familiar')).toBeTruthy())
+
+			await user.click(document.querySelector('.sheet__familiar .option-list__toggle') as HTMLElement)
+			await user.type(screen.getByLabelText('Search Familiar form'), 'owl')
+			const imp = screen.getByRole('radio', { name: /Imp/ }) as HTMLInputElement
+			expect(imp.checked).toBe(true)
 		})
 
 		it('shows the section when the spell arrives from a feat rather than a class pick', async () => {
