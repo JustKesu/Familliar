@@ -35,7 +35,7 @@ import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } fr
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBlock } from './BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
-import { coinsToCopper, copperToCoins } from '../inventory/currency'
+import { coinsToCopper, copperToCoins, platinumToCopper } from '../inventory/currency'
 import { itemKey, loadItemRefs, type ItemRef } from '../inventory/inventoryData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
@@ -215,6 +215,38 @@ function CommitNumberField({
 	)
 }
 
+/*
+ * Platinum is entry-only: the breakdown beside this field reads in gp/sp/cp, so
+ * there is no platinum value to show back. What is typed is ADDED to the stored
+ * copper and the field clears itself — 5 typed here reappears as 50 gp.
+ */
+function AddPlatinumField({ onAdd }: { onAdd: (platinum: number) => void }): ReactNode {
+	const [draft, setDraft] = useState('')
+
+	function commit(): void {
+		const parsed = Math.floor(Number(draft))
+		setDraft('')
+		if (Number.isFinite(parsed) && parsed > 0) onAdd(parsed)
+	}
+
+	return (
+		<label>
+			Add platinum{' '}
+			<input
+				type="number"
+				min={0}
+				aria-label="Add platinum"
+				value={draft}
+				onChange={(event) => setDraft(event.target.value)}
+				onBlur={commit}
+				onKeyDown={(event) => {
+					if (event.key === 'Enter') event.currentTarget.blur()
+				}}
+			/>
+		</label>
+	)
+}
+
 /**
  * Inventory and money (build order step 7, slice a1). The second editable
  * place on an otherwise read-only sheet (the familiar is the first): editing
@@ -244,7 +276,7 @@ function InventorySection({
 	const known = new Set((itemRefs ?? []).map(itemKey))
 	const coins = copperToCoins(currencyCopper)
 
-	function editCoin(field: 'pp' | 'gp' | 'sp' | 'cp', amount: number): void {
+	function editCoin(field: 'gp' | 'sp' | 'cp', amount: number): void {
 		onEditCurrency?.(coinsToCopper({ ...coins, [field]: amount }))
 	}
 
@@ -283,14 +315,14 @@ function InventorySection({
 				<h3>Money</h3>
 				{onEditCurrency ? (
 					<p>
-						<CommitNumberField label="Platinum" min={0} value={coins.pp} onCommit={(amount) => editCoin('pp', amount)} />{' '}
 						<CommitNumberField label="Gold" min={0} value={coins.gp} onCommit={(amount) => editCoin('gp', amount)} />{' '}
 						<CommitNumberField label="Silver" min={0} value={coins.sp} onCommit={(amount) => editCoin('sp', amount)} />{' '}
-						<CommitNumberField label="Copper" min={0} value={coins.cp} onCommit={(amount) => editCoin('cp', amount)} />
+						<CommitNumberField label="Copper" min={0} value={coins.cp} onCommit={(amount) => editCoin('cp', amount)} />{' '}
+						<AddPlatinumField onAdd={(platinum) => onEditCurrency(currencyCopper + platinumToCopper(platinum))} />
 					</p>
 				) : (
 					<p>
-						{coins.pp} pp, {coins.gp} gp, {coins.sp} sp, {coins.cp} cp
+						{coins.gp} gp, {coins.sp} sp, {coins.cp} cp
 					</p>
 				)}
 			</div>

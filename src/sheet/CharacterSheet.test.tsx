@@ -423,38 +423,49 @@ describe('CharacterSheet', () => {
 			expect(section.textContent).toContain('Item data not found for "Mystery Blade" (HOMEBREW).')
 		})
 
-		it('shows money as pp/gp/sp/cp, and reports an edit as a new copper total', async () => {
+		it('shows money as gp/sp/cp, and reports an edit as a new copper total', async () => {
 			const user = userEvent.setup()
 			const onEditCurrency = vi.fn()
 			render(<CharacterSheet character={owner} onEditCurrency={onEditCurrency} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
-			// 1234 cp is 1 pp 2 gp 3 sp 4 cp (D74: 1 pp = 10 gp).
+			// 1234 cp is 12 gp 3 sp 4 cp — never 1 pp, however large the total.
 			const gold = (await screen.findByLabelText('Gold')) as HTMLInputElement
-			expect((screen.getByLabelText('Platinum') as HTMLInputElement).value).toBe('1')
-			expect(gold.value).toBe('2')
+			expect(gold.value).toBe('12')
 			expect((screen.getByLabelText('Silver') as HTMLInputElement).value).toBe('3')
 			expect((screen.getByLabelText('Copper') as HTMLInputElement).value).toBe('4')
 
 			await user.clear(gold)
 			await user.type(gold, '20')
 			await user.tab() // commit on blur, not per keystroke
-			// 1 pp + 20 gp + 3 sp + 4 cp = 3034 cp
-			expect(onEditCurrency).toHaveBeenLastCalledWith(3034)
+			// 20 gp + 3 sp + 4 cp = 2034 cp
+			expect(onEditCurrency).toHaveBeenLastCalledWith(2034)
 		})
 
-		it('converts a platinum edit back into the stored copper total', async () => {
+		it('adds typed platinum to the stored copper total and never displays platinum', async () => {
 			const user = userEvent.setup()
 			const onEditCurrency = vi.fn()
-			render(<CharacterSheet character={owner} onEditCurrency={onEditCurrency} />)
+			const { container } = render(<CharacterSheet character={owner} onEditCurrency={onEditCurrency} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
-			const platinum = (await screen.findByLabelText('Platinum')) as HTMLInputElement
-			await user.clear(platinum)
+			const platinum = (await screen.findByLabelText('Add platinum')) as HTMLInputElement
+			expect(platinum.value).toBe('') // entry only — it has no stored value to show back
 			await user.type(platinum, '3')
 			await user.tab()
-			// 3 pp + 2 gp + 3 sp + 4 cp = 3234 cp
-			expect(onEditCurrency).toHaveBeenLastCalledWith(3234)
+			// 1234 cp + 3 pp = 4234 cp, which reads as 42 gp 3 sp 4 cp
+			expect(onEditCurrency).toHaveBeenLastCalledWith(4234)
+			// There is no platinum FIELD to hold a value, only the add-box above.
+			expect(screen.queryByLabelText('Platinum')).toBeNull()
+			expect(container.querySelector('.sheet__currency')!.textContent).not.toMatch(/\d+\s*pp/)
+		})
+
+		it('reads a large pile in gold, with no platinum in the breakdown', async () => {
+			const { container } = render(<CharacterSheet character={{ ...owner, id: 'inv-rich', currencyCopper: 9000 }} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const money = container.querySelector('.sheet__currency')!.textContent
+			expect(money).toContain('90 gp')
+			expect(money).not.toMatch(/\d+\s*pp/)
 		})
 
 		it('adds an item from the searchable list at quantity 1', async () => {

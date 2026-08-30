@@ -2198,6 +2198,26 @@ function getItemCodeUid(value) {
 	return undefined;
 }
 
+/*
+ * D72's shape, applied to items: a source filter that is right in general
+ * excludes something a feature explicitly NAMES, so there is a second, name-
+ * based intake alongside the source filter.
+ *
+ * The Wizard's startingEquipment carries {special: "Spellbook"}, and the only
+ * Spellbook in the source data is the 2014 "Spellbook|PHB" — PHB is
+ * deliberately not in ALLOWED_SOURCES. Without this the class's defining item
+ * is a reference that can never resolve.
+ *
+ * A name list, not a widened filter: an entry gets in only because a class's or
+ * background's starting equipment names it. Today it is the only one —
+ * scripts/investigate-named-equipment-items.js reads the list back out of the
+ * data, and shows that the four other unresolvable codes ("holy symbol|xphb",
+ * "druidic focus|xphb", "gaming set|xphb", "musical instrument|xphb") are a
+ * different problem: they are itemGroups, i.e. categories the player picks
+ * from, and stay out by D34.
+ */
+const NAMED_STARTING_EQUIPMENT_ITEMS = [{ name: "Spellbook", source: "PHB" }];
+
 function extractItems() {
 	console.log("\n--- ITEMS ---");
 
@@ -2226,8 +2246,13 @@ function extractItems() {
 	console.log(`  ...of which had a _mod:     ${copyStats.copiesWithMod}`);
 	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
 
+	const namedKeys = new Set(
+		NAMED_STARTING_EQUIPMENT_ITEMS.map((item) => `${item.name.toLowerCase()}|${item.source.toLowerCase()}`),
+	);
 	let kept = resolved.filter(
-		(entry) => ALLOWED_SOURCES.includes(entry.source) && entry.__list !== "itemGroup",
+		(entry) =>
+			entry.__list !== "itemGroup" &&
+			(ALLOWED_SOURCES.includes(entry.source) || namedKeys.has(`${String(entry.name).toLowerCase()}|${String(entry.source).toLowerCase()}`)),
 	);
 
 	// Drop items superseded by a newer reprint we are also keeping (mostly
@@ -2288,6 +2313,11 @@ function extractItems() {
 
 	console.log(`Passed the source filter:     ${kept.length}`);
 	for (const source of Object.keys(bySource).sort()) console.log(`    ${source.padEnd(6)} ${bySource[source]}`);
+	for (const item of NAMED_STARTING_EQUIPMENT_ITEMS) {
+		const present = kept.some((entry) => entry.name === item.name && entry.source === item.source);
+		console.log(`    named by a feature: ${item.name}|${item.source} ${present ? "kept" : "MISSING"}`);
+		if (!present) warnings.push(`[items] "${item.name}|${item.source}" is named by starting equipment but was not found in the source data`);
+	}
 
 	const counts = {
 		"type -> typeFull": kept.filter((i) => i.type !== undefined).length,

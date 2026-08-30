@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { loadBackgrounds, type BackgroundEntry, type BackgroundEquipmentEntry } from './backgroundData'
+import { loadBackgrounds, type BackgroundEntry } from './backgroundData'
+import type { StartingEquipmentElement } from '../inventory/startingEquipmentData'
 import {
 	abilityBonusDistributionToMap,
 	isAbilityBonusDistributionComplete,
@@ -66,19 +67,18 @@ function findDisabled(skill: string, disabledSkills: DisabledSkill[]): DisabledS
 	return disabledSkills.find((d) => d.skill.toLowerCase() === skill.toLowerCase())
 }
 
-function EquipmentList({ items }: { items: BackgroundEquipmentEntry[] }): ReactNode {
+/*
+ * A preview only: this step shows what each option grants, and the equipment
+ * step is where one gets taken. Both read the same parsed elements, so a pack
+ * is named here exactly as it is named there — its contents are only listed at
+ * the point the player actually takes it.
+ */
+function EquipmentList({ elements }: { elements: StartingEquipmentElement[] }): ReactNode {
 	return (
 		<ul className="background-picker__equipment-list">
-			{items.map((item, index) => (
+			{elements.map((element, index) => (
 				<li key={index}>
-					{item.kind === 'coins' ? (
-						`${(item.copper / 100).toFixed(item.copper % 100 === 0 ? 0 : 2)} gp`
-					) : (
-						<>
-							<Markup text={item.label} />
-							{item.kind === 'item' && item.quantity ? ` (×${item.quantity})` : null}
-						</>
-					)}
+					<Markup text={element.label} />
 				</li>
 			))}
 		</ul>
@@ -203,14 +203,14 @@ function BackgroundGrants({
 				<strong>Origin feat:</strong> <Markup text={background.originFeat.name} /> ({background.originFeat.source})
 			</p>
 			<div className="background-picker__equipment">
-				<p>
-					<strong>Starting equipment — Option A:</strong>
-				</p>
-				<EquipmentList items={background.equipmentOptionA} />
-				<p>
-					<strong>Starting equipment — Option B:</strong>
-				</p>
-				<EquipmentList items={background.equipmentOptionB} />
+				{background.startingEquipment.options.map((option) => (
+					<div key={option.key}>
+						<p>
+							<strong>Starting equipment — {option.label}:</strong>
+						</p>
+						<EquipmentList elements={option.elements} />
+					</div>
+				))}
 			</div>
 		</div>
 	)

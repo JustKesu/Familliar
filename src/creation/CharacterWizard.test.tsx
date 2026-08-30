@@ -58,8 +58,12 @@ vi.mock('../backgrounds/backgroundData', () => ({
 			skillProficiencies: ['athletics', 'intimidation'],
 			toolProficiency: { kind: 'named', name: 'Gaming Set' },
 			originFeat: { name: 'Savage Attacker', source: 'XPHB' },
-			equipmentOptionA: [{ kind: 'item', label: 'Chain Mail' }],
-			equipmentOptionB: [{ kind: 'coins', copper: 15000 }],
+			startingEquipment: {
+				options: [
+					{ key: 'A', label: 'Option A', elements: [{ kind: 'items', label: 'Chain Mail', items: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }] }] },
+					{ key: 'B', label: 'Option B', elements: [{ kind: 'coins', copper: 15000, label: '150 gp' }] },
+				],
+			},
 		},
 		{
 			name: 'Sage',
@@ -68,8 +72,12 @@ vi.mock('../backgrounds/backgroundData', () => ({
 			skillProficiencies: ['arcana', 'history'],
 			toolProficiency: { kind: 'named', name: "Calligrapher's Supplies" },
 			originFeat: { name: 'Magic Initiate', source: 'XPHB' },
-			equipmentOptionA: [{ kind: 'item', label: 'Quarterstaff' }],
-			equipmentOptionB: [{ kind: 'coins', copper: 5000 }],
+			startingEquipment: {
+				options: [
+					{ key: 'A', label: 'Option A', elements: [{ kind: 'items', label: 'Quarterstaff', items: [{ name: 'Quarterstaff', source: 'XPHB', quantity: 1 }] }] },
+					{ key: 'B', label: 'Option B', elements: [{ kind: 'coins', copper: 5000, label: '50 gp' }] },
+				],
+			},
 		},
 		{
 			name: 'Artisan',
@@ -78,8 +86,12 @@ vi.mock('../backgrounds/backgroundData', () => ({
 			skillProficiencies: ['investigation', 'perception'],
 			toolProficiency: { kind: 'category', category: 'anyArtisansTool', label: "Artisan's tools (your choice)" },
 			originFeat: { name: 'Crafter', source: 'XPHB' },
-			equipmentOptionA: [{ kind: 'item', label: "Smith's Tools" }],
-			equipmentOptionB: [{ kind: 'coins', copper: 3200 }],
+			startingEquipment: {
+				options: [
+					{ key: 'A', label: 'Option A', elements: [{ kind: 'items', label: "Smith's Tools", items: [{ name: "Smith's Tools", source: 'XPHB', quantity: 1 }] }] },
+					{ key: 'B', label: 'Option B', elements: [{ kind: 'coins', copper: 3200, label: '32 gp' }] },
+				],
+			},
 		},
 	]),
 }))

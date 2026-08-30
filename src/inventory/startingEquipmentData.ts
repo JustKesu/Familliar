@@ -21,11 +21,12 @@
  *   "druidic focus|xphb", "gaming set|xphb" and "musical instrument|xphb" are
  *   5etools item GROUPS, which extraction excludes from items.json (D34), so
  *   they are categories the player picks from, not items.
- * - `{special: "Spellbook"}` resolves against nothing: items.json has no
- *   Spellbook at all (only the 2014 `Spellbook|PHB`, outside the extraction's
- *   allowed sources). Daniel's decision: write it as `Spellbook` from source
- *   PHB, so the wizard owns it and the sheet shows it with D43's "not found"
- *   note, rather than dropping the class's iconic item.
+ * - `{special: "Spellbook"}` carries no source, so it is resolved by NAME. It
+ *   resolves to `Spellbook|PHB`, which is in items.json only because extraction
+ *   admits, by name, the items a class's or background's starting equipment
+ *   names but the source filter would drop (see DATA.md, "Items named by a
+ *   feature" — the items counterpart of D72). If that intake ever goes, this
+ *   falls back to an unresolved grant rather than dropping the item.
  * - 13 items carry `packContents` (the 7 named packs plus 6 ammunition/spike
  *   bundles). Daniel's decision: every one of them is expanded into its
  *   contents, so nothing in the inventory is an opaque line.
@@ -44,7 +45,7 @@ export type EquipmentCategory = 'toolArtisan' | 'instrumentMusical' | 'setGaming
 
 export interface ItemGrant extends ItemRef {
 	quantity: number
-	/** Not present in items.json, so the sheet shows it with a D43 note. Only the Wizard's Spellbook reaches this today. */
+	/** Not present in items.json, so the sheet shows it with a D43 note. Nothing in today's data reaches this. */
 	unresolved?: boolean
 }
 
@@ -214,7 +215,6 @@ function expandItemCode(code: string, quantity: number, index: ItemIndex, seen: 
 function coinLabel(copper: number): string {
 	const coins = copperToCoins(copper)
 	const parts: string[] = []
-	if (coins.pp > 0) parts.push(`${coins.pp} pp`)
 	if (coins.gp > 0) parts.push(`${coins.gp} gp`)
 	if (coins.sp > 0) parts.push(`${coins.sp} sp`)
 	if (coins.cp > 0) parts.push(`${coins.cp} cp`)
@@ -266,7 +266,7 @@ function parseElement(raw: unknown, index: ItemIndex): StartingEquipmentElement 
 	throw new Error(`startingEquipment: unrecognised element ${JSON.stringify(raw)}`)
 }
 
-/** A `{special}` element names an item by prose. Only "Spellbook" occurs, and it is in no allowed source — see this file's header for the fallback and why. */
+/** A `{special}` element names an item by prose, with no source — see this file's header for how "Spellbook", the only one, reaches items.json. */
 function specialElement(special: string, index: ItemIndex): StartingEquipmentElement {
 	const entry = index.byName.get(special.toLowerCase())
 	const grant: ItemGrant = entry
@@ -343,11 +343,19 @@ export function extractBackgroundStartingEquipment(
 	if (!isRecord(entry)) {
 		throw new Error(`backgrounds.json: no background "${name}" (${source}).`)
 	}
-	const startingEquipment = entry['startingEquipment']
-	if (!Array.isArray(startingEquipment) || startingEquipment.length !== 1 || !isRecord(startingEquipment[0])) {
-		throw new Error(`backgrounds.json: "${name}" has no single-row startingEquipment.`)
+	return parseBackgroundStartingEquipment(entry['startingEquipment'], name, index)
+}
+
+/**
+ * One background's raw `startingEquipment` field: a 1-element array holding the
+ * option row. Exported because backgroundData.ts renders the same field as the
+ * background step's preview — one parser over the shape, two renderings of it.
+ */
+export function parseBackgroundStartingEquipment(raw: unknown, backgroundName: string, index: ItemIndex): StartingEquipmentOffer {
+	if (!Array.isArray(raw) || raw.length !== 1 || !isRecord(raw[0])) {
+		throw new Error(`backgrounds.json: "${backgroundName}" has no single-row startingEquipment.`)
 	}
-	return { options: parseOptionRow(startingEquipment[0], index) }
+	return { options: parseOptionRow(raw[0], index) }
 }
 
 export function findOption(offer: StartingEquipmentOffer | null, key: string | null): StartingEquipmentOption | null {

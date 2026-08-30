@@ -256,7 +256,7 @@ export function StartingEquipmentPicker({
 				<section className="starting-equipment__summary">
 					<h3>You will start with</h3>
 					<p>
-						Money: {coins.pp} pp, {coins.gp} gp, {coins.sp} sp, {coins.cp} cp
+						Money: {coins.gp} gp, {coins.sp} sp, {coins.cp} cp
 					</p>
 					{inventory.length === 0 ? (
 						<p>No items — this character starts with money only.</p>

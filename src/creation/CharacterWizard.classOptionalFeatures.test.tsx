@@ -48,8 +48,12 @@ vi.mock('../backgrounds/backgroundData', () => ({
 			skillProficiencies: ['athletics', 'intimidation'],
 			toolProficiency: { kind: 'named', name: 'Gaming Set' },
 			originFeat: { name: 'Savage Attacker', source: 'XPHB' },
-			equipmentOptionA: [{ kind: 'item', label: 'Chain Mail' }],
-			equipmentOptionB: [{ kind: 'coins', copper: 15000 }],
+			startingEquipment: {
+				options: [
+					{ key: 'A', label: 'Option A', elements: [{ kind: 'items', label: 'Chain Mail', items: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }] }] },
+					{ key: 'B', label: 'Option B', elements: [{ kind: 'coins', copper: 15000, label: '150 gp' }] },
+				],
+			},
 		},
 	]),
 }))

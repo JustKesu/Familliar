@@ -1,21 +1,21 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { buildItemNameLookup, extractBackgrounds } from './backgroundData'
+import { extractBackgrounds } from './backgroundData'
+import { buildItemIndex, type ItemIndex } from '../inventory/startingEquipmentData'
 
 function loadRealBackgrounds(): unknown {
 	const raw = readFileSync(join(__dirname, '..', '..', 'data', 'backgrounds.json'), 'utf8')
 	return JSON.parse(raw)
 }
 
-function loadRealItemLookup(): ReadonlyMap<string, string> {
+function loadRealItemIndex(): ItemIndex {
 	const raw = readFileSync(join(__dirname, '..', '..', 'data', 'items.json'), 'utf8')
-	return buildItemNameLookup(JSON.parse(raw))
+	return buildItemIndex(JSON.parse(raw))
 }
 
 describe('extractBackgrounds — real data/backgrounds.json', () => {
-	const itemNames = loadRealItemLookup()
-	const backgrounds = extractBackgrounds(loadRealBackgrounds(), itemNames)
+	const backgrounds = extractBackgrounds(loadRealBackgrounds(), loadRealItemIndex())
 
 	it('reads all 33 backgrounds (17 EFA + 16 XPHB, per NOTES.md)', () => {
 		expect(backgrounds).toHaveLength(33)
@@ -30,8 +30,8 @@ describe('extractBackgrounds — real data/backgrounds.json', () => {
 			expect(bg.toolProficiency).toBeDefined()
 			expect(bg.originFeat.name.length).toBeGreaterThan(0)
 			expect(bg.originFeat.source.length).toBeGreaterThan(0)
-			expect(bg.equipmentOptionA.length).toBeGreaterThan(0)
-			expect(bg.equipmentOptionB.length).toBeGreaterThan(0)
+			expect(bg.startingEquipment.options).toHaveLength(2)
+			for (const option of bg.startingEquipment.options) expect(option.elements.length).toBeGreaterThan(0)
 		}
 	})
 
@@ -58,33 +58,32 @@ describe('extractBackgrounds — real data/backgrounds.json', () => {
 	it('reads startingEquipment case-insensitively for both EFA (a/b) and XPHB (A/B) sources', () => {
 		const efaEntry = backgrounds.find((b) => b.source === 'EFA')
 		const xphbEntry = backgrounds.find((b) => b.source === 'XPHB')
-		expect(efaEntry?.equipmentOptionA.length).toBeGreaterThan(0)
-		expect(efaEntry?.equipmentOptionB.length).toBeGreaterThan(0)
-		expect(xphbEntry?.equipmentOptionA.length).toBeGreaterThan(0)
-		expect(xphbEntry?.equipmentOptionB.length).toBeGreaterThan(0)
+		expect(efaEntry?.startingEquipment.options.map((o) => o.key)).toEqual(['a', 'b'])
+		expect(xphbEntry?.startingEquipment.options.map((o) => o.key)).toEqual(['A', 'B'])
 	})
 
-	it('resolves item codes to display names via items.json, and coin amounts to copper', () => {
-		const acolyte = backgrounds.find((b) => b.name === 'Acolyte')
-		const optionA = acolyte?.equipmentOptionA ?? []
-		expect(optionA.some((e) => e.kind === 'item' && e.label === 'Robe')).toBe(true)
-		expect(optionA.some((e) => e.kind === 'coins' && e.copper === 800)).toBe(true)
-	})
-
-	it('falls back to a humanized label for equipment codes absent from items.json (item-group references)', () => {
-		const acolyte = backgrounds.find((b) => b.name === 'Acolyte')
-		const holySymbol = acolyte?.equipmentOptionA.find((e) => e.kind === 'item' && e.label === 'Holy Symbol')
-		expect(holySymbol).toBeDefined()
+	/*
+	 * The background step's preview and the equipment step read one parser, so
+	 * these labels are the same strings the equipment step offers.
+	 */
+	it('labels item codes from items.json, coin amounts as coins, and item groups as a category', () => {
+		const optionA = backgrounds.find((b) => b.name === 'Acolyte')?.startingEquipment.options[0]
+		expect(optionA?.label).toBe('Option A')
+		const labels = optionA?.elements.map((element) => element.label) ?? []
+		expect(labels).toContain('Robe')
+		expect(labels).toContain('8 gp')
+		expect(labels).toContain('a holy symbol (your choice)')
 	})
 
 	it('resolves equipmentType category placeholders to a readable label', () => {
 		const artisan = backgrounds.find((b) => b.name === 'Artisan')
-		const category = artisan?.equipmentOptionA.find((e) => e.kind === 'category')
-		expect(category).toEqual({ kind: 'category', label: "an artisan's tool of your choice" })
+		const category = artisan?.startingEquipment.options[0].elements.find((element) => element.kind === 'category')
+		expect(category).toEqual({ kind: 'category', categories: ['toolArtisan'], label: "artisan's tools (your choice)" })
 	})
 })
 
 describe('extractBackgrounds — synthetic shapes', () => {
+	const emptyIndex = buildItemIndex([])
 	const rawItem = {
 		name: 'Acolyte',
 		source: 'XPHB',
@@ -99,27 +98,23 @@ describe('extractBackgrounds — synthetic shapes', () => {
 	}
 
 	it('throws if ability is not the expected 2-element choose/weighted shape', () => {
-		expect(() => extractBackgrounds([{ ...rawItem, ability: [{ notChoose: true }, {}] }], new Map())).toThrow()
+		expect(() => extractBackgrounds([{ ...rawItem, ability: [{ notChoose: true }, {}] }], emptyIndex)).toThrow()
 	})
 
 	it('throws if skillProficiencies does not have exactly 2 keys', () => {
-		expect(() =>
-			extractBackgrounds([{ ...rawItem, skillProficiencies: [{ insight: true }] }], new Map()),
-		).toThrow()
+		expect(() => extractBackgrounds([{ ...rawItem, skillProficiencies: [{ insight: true }] }], emptyIndex)).toThrow()
 	})
 
-	it('throws if startingEquipment is missing an A/B key', () => {
-		expect(() =>
-			extractBackgrounds([{ ...rawItem, startingEquipment: [{ A: ['robe|xphb'] }] }], new Map()),
-		).toThrow()
+	it('throws if an option key does not hold an array of elements', () => {
+		expect(() => extractBackgrounds([{ ...rawItem, startingEquipment: [{ A: 'robe|xphb' }] }], emptyIndex)).toThrow()
 	})
 
 	it('reads lowercase a/b keys the same as uppercase A/B', () => {
 		const lowercase = extractBackgrounds(
 			[{ ...rawItem, startingEquipment: [{ a: ['robe|xphb'], b: [{ value: 100 }] }] }],
-			new Map(),
+			emptyIndex,
 		)
-		expect(lowercase[0].equipmentOptionA).toHaveLength(1)
-		expect(lowercase[0].equipmentOptionB).toEqual([{ kind: 'coins', copper: 100 }])
+		expect(lowercase[0].startingEquipment.options.map((o) => o.key)).toEqual(['a', 'b'])
+		expect(lowercase[0].startingEquipment.options[1].elements).toEqual([{ kind: 'coins', copper: 100, label: '1 gp' }])
 	})
 })

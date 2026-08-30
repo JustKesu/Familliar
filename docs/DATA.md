@@ -67,6 +67,31 @@ Consequence for every consumer: **beasts.json is no longer all Beasts.** A pool
 that means "a Beast" must check `type` (`isBeastCreature`) — Wild Shape does,
 and so does Find Familiar's own CR 0 pool.
 
+### Items named by a feature — the same second intake
+
+`data/items.json` has the same two-intake shape, for the same reason:
+
+1. by SOURCE — `ALLOWED_SOURCES`, minus `itemGroup` (D34);
+2. by NAME — `NAMED_STARTING_EQUIPMENT_ITEMS`, the items a class's or a
+   background's `startingEquipment` names that intake 1 would drop. Today that
+   is one entry, `Spellbook|PHB`.
+
+The Wizard's `startingEquipment` carries `{special: "Spellbook"}` and the only
+Spellbook in the source data is the 2014 one; PHB is deliberately excluded, so
+without intake 2 every Wizard starts holding a reference that cannot resolve and
+the sheet flags it under D43. PHB is NOT in ALLOWED_SOURCES — this one entry is
+in the file because a feature names it, and nothing else from that book follows.
+
+Not the same problem: four codes named by starting equipment resolve against
+nothing and stay that way on purpose — `holy symbol|xphb`, `druidic focus|xphb`,
+`gaming set|xphb`, `musical instrument|xphb` are `itemGroup` entries, i.e.
+categories the player picks a member of, handled by the equipment step's
+category picker rather than by extraction.
+
+`scripts/investigate-named-equipment-items.js` reads both findings back out of
+the data. validate-data.js asserts each named item is present (and exempts it
+from the source allowlist, the only exemption there).
+
 ## Output files
 
 Counts as of the `reprintedAs` deduplication + languages addition (before ->
@@ -82,8 +107,9 @@ after shown where a category changed; unchanged categories listed too):
                                       text, see "Traps" below)
   data/subclass-features.json   465 -> 786  (same cause)
   data/optional-features.json   131 -> 120  (XPHB 58, TCE 47->38, XGE 22->20, EFA 4)
-  data/items.json               943 -> 899  (XDMG 593, XPHB 217, TCE 84->80,
-                                      XGE 43->3, EFA 6)
+  data/items.json               943 -> 900  (XDMG 593, XPHB 217, TCE 84->80,
+                                      XGE 43->3, EFA 6, PHB 1 — the named
+                                      Spellbook, see "Items named by a feature")
   data/languages.json             0 -> 19   (XPHB 19) — new category
   data/beasts.json               89 -> 96   (XMM 96) — 90.3 KB; type Beast at
                                       CR <= 6 (89) plus the 8 Pact of the

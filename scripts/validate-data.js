@@ -124,12 +124,15 @@ const EXPECTED_COUNTS = {
 	// `item` + `baseitem` only — `itemGroup` is deliberately not output.
 	// TCE (84->80) and XGE (43->3) both dropped: items superseded by a newer
 	// reprint we also keep (mostly XGE -> XDMG) are now removed.
+	// PHB is one entry only: the Spellbook the Wizard's starting equipment names
+	// (NAMED_STARTING_EQUIPMENT_ITEMS), not the 2014 book joining the allowlist.
 	items: {
 		XDMG: 593,
 		XPHB: 217,
 		TCE: 80,
 		XGE: 3,
 		EFA: 6,
+		PHB: 1,
 	},
 	// Languages ship in a single book today, so this is just the total.
 	languages: {
@@ -196,6 +199,15 @@ const FIND_FAMILIAR_BEASTS = [
  * invocation would be hollow. Kept in step with PACT_OF_THE_CHAIN_FORMS in
  * scripts/extract-data.js.
  */
+/*
+ * The items a class's or background's starting equipment NAMES that the source
+ * filter would otherwise drop — extraction's second, name-based intake for
+ * items (the same shape D72 gave creatures). Kept in step with
+ * NAMED_STARTING_EQUIPMENT_ITEMS in scripts/extract-data.js. Without the
+ * Spellbook every Wizard carries an item reference that cannot resolve.
+ */
+const NAMED_STARTING_EQUIPMENT_ITEMS = [{ name: "Spellbook", source: "PHB" }];
+
 const PACT_OF_THE_CHAIN_FORMS = [
 	"Imp",
 	"Pseudodragon",
@@ -347,9 +359,13 @@ function checkNoLeftoverCopyKeys(entries, categoryName, keyNames = ["_copy", "_m
 }
 
 // CHECK 2 — every entry's source is one we allow.
-function checkSourcesAllowed(entries, categoryName) {
+// `exceptions` holds "name|source" keys that are in the file for a reason
+// other than their book — today, items a feature names (see
+// NAMED_STARTING_EQUIPMENT_ITEMS).
+function checkSourcesAllowed(entries, categoryName, exceptions = new Set()) {
 	const failures = [];
 	entries.forEach((entry, index) => {
+		if (exceptions.has(`${entry.name}|${entry.source}`)) return;
 		if (!ALLOWED_SOURCES.includes(entry.source)) {
 			failures.push({
 				label: describeEntry(entry, index),
@@ -1077,9 +1093,19 @@ function validateItems() {
 	console.log(`  (${entries.length} entries loaded)`);
 
 	checkNoLeftoverCopyKeys(entries, "items", ["_copy", "_mod", "_versions", "_abstract", "_implementations"]);
-	checkSourcesAllowed(entries, "items");
+	checkSourcesAllowed(entries, "items", new Set(NAMED_STARTING_EQUIPMENT_ITEMS.map((item) => `${item.name}|${item.source}`)));
 	checkNoDuplicates(entries, "items");
 	checkNoSupersededDuplicates(entries, "items");
+
+	// The name-based intake is the only thing keeping these in the file; an
+	// extraction change that drops one takes a class's own equipment with it.
+	const namedFailures = NAMED_STARTING_EQUIPMENT_ITEMS.filter(
+		(item) => !entries.some((entry) => entry.name === item.name && entry.source === item.source),
+	).map((item) => ({
+		label: `"${item.name}|${item.source}"`,
+		detail: "named by a class's or background's starting equipment but absent from items.json",
+	}));
+	recordCheck(`items: all ${NAMED_STARTING_EQUIPMENT_ITEMS.length} items named by starting equipment are present`, namedFailures);
 
 	// Every item needs a name and a source. Items deliberately do NOT need an
 	// `entries` array — plenty of mundane gear has no descriptive text.

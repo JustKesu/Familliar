@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
 	buildItemIndex,
@@ -40,6 +42,9 @@ const ITEMS = [
 	{ name: 'Emblem', source: 'XPHB', type: 'SCF|XPHB', scfType: 'holy', rarity: 'none' },
 	{ name: 'Yew Wand', source: 'XPHB', type: 'SCF|XPHB', scfType: 'druid', rarity: 'none' },
 	{ name: 'Tome of the Stilled Tongue', source: 'XDMG', type: 'SCF|XPHB', scfType: 'arcane', rarity: 'legendary' },
+	// Present only because the Wizard's starting equipment names it — the items
+	// counterpart of D72, see DATA.md "Items named by a feature".
+	{ name: 'Spellbook', source: 'PHB', type: 'G' },
 ]
 
 const INDEX = buildItemIndex(ITEMS)
@@ -127,9 +132,19 @@ describe('extractClassStartingEquipment', () => {
 		})
 	})
 
-	/** items.json carries no Spellbook in any allowed source — it is written from PHB and marked unresolved rather than dropped. */
-	it('writes the Wizard\'s {special} spellbook as an unresolved PHB item', () => {
+	it("resolves the Wizard's {special} spellbook by name, with no unresolved flag", () => {
 		const offer = extractClassStartingEquipment(CLASSES, 'Wizard', 'XPHB', INDEX)
+
+		expect(offer.options[0].elements[0]).toEqual({
+			kind: 'items',
+			label: 'Spellbook',
+			items: [{ name: 'Spellbook', source: 'PHB', quantity: 1 }],
+		})
+	})
+
+	/** The D43 path stays covered: if extraction ever stops admitting the named item, the grant degrades instead of vanishing. */
+	it('falls back to an unresolved grant when a {special} name is in no item index', () => {
+		const offer = extractClassStartingEquipment(CLASSES, 'Wizard', 'XPHB', buildItemIndex([]))
 
 		expect(offer.options[0].elements[0]).toEqual({
 			kind: 'items',
@@ -163,7 +178,7 @@ describe('extractBackgroundStartingEquipment', () => {
 		expect(offer.options.map((option) => option.key)).toEqual(['a', 'b'])
 		expect(offer.options[0].elements).toEqual([
 			{ kind: 'items', label: 'Dagger', items: [{ name: 'Dagger', source: 'XPHB', quantity: 1 }] },
-			{ kind: 'coins', copper: 1600, label: '1 pp, 6 gp' },
+			{ kind: 'coins', copper: 1600, label: '16 gp' },
 		])
 	})
 
@@ -285,5 +300,41 @@ describe('buildStartingInventory', () => {
 
 		expect(inventory).toEqual([])
 		expect(currencyCopper).toBe(5000)
+	})
+})
+
+/*
+ * The fixtures above prove the parsing; this proves the real files agree with
+ * it. Every item a class's starting equipment names has to be in items.json, or
+ * a character starts with a line the sheet flags as missing data (D43).
+ */
+describe('the real data resolves', () => {
+	const realIndex = buildItemIndex(JSON.parse(readFileSync(join(__dirname, '..', '..', 'data', 'items.json'), 'utf8')))
+	const realClasses = JSON.parse(readFileSync(join(__dirname, '..', '..', 'data', 'classes.json'), 'utf8'))
+
+	it("resolves the Wizard's spellbook against items.json, with no D43 note", () => {
+		const offer = extractClassStartingEquipment(realClasses, 'Wizard', 'XPHB', realIndex)
+		const spellbooks = offer.options
+			.flatMap((option) => option.elements)
+			.flatMap((element) => (element.kind === 'items' ? element.items : []))
+			.filter((item) => item.name === 'Spellbook')
+
+		expect(spellbooks).toEqual([{ name: 'Spellbook', source: 'PHB', quantity: 1 }])
+	})
+
+	it('leaves no unresolved grant in any class package', () => {
+		const unresolved: string[] = []
+		for (const entry of realClasses.filter((candidate: { entryType?: string }) => candidate.entryType === 'class')) {
+			const offer = extractClassStartingEquipment(realClasses, entry.name, entry.source, realIndex)
+			for (const option of offer.options) {
+				for (const element of option.elements) {
+					if (element.kind !== 'items') continue
+					for (const item of element.items) {
+						if (item.unresolved) unresolved.push(`${entry.name}: ${item.name}|${item.source}`)
+					}
+				}
+			}
+		}
+		expect(unresolved).toEqual([])
 	})
 })

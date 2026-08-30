@@ -1116,7 +1116,7 @@ export function CharacterWizard({
 							)
 							const items = inventory.map((item) => (item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name))
 							const coins = copperToCoins(currencyCopper)
-							const money = `${coins.pp} pp, ${coins.gp} gp, ${coins.sp} sp, ${coins.cp} cp`
+							const money = `${coins.gp} gp, ${coins.sp} sp, ${coins.cp} cp`
 							return items.length > 0 ? `${items.join(', ')}; ${money}` : money
 						})()}
 					</p>
