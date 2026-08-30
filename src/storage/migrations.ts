@@ -34,6 +34,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 17 }),
 	},
+	{
+		from: 17,
+		to: 18,
+		/*
+		 * 18 adds Character.inventory and Character.currencyCopper. A version-17
+		 * character carries neither, and an absent inventory / currency already
+		 * means "owns nothing" / "no money" — so this step only moves the
+		 * version tag, same as 16->17.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 18 }),
+	},
 ]
 
 /**

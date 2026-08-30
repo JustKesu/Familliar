@@ -216,6 +216,36 @@ export interface Character {
 	 * CharacterWildShapeForms does not.
 	 */
 	familiar?: CharacterFamiliar
+	/**
+	 * Optional for the same reason as abilityScores above. What the character
+	 * carries and how many of each (build order step 7, slice a1). Each item
+	 * is referenced by name + source only — the same convention as
+	 * CharacterSpellChoice / CharacterWildShapeForms — never by copying the
+	 * item's fields into storage. An absent or empty array is a normal state
+	 * (the character owns nothing), not a failure. Starting equipment is the
+	 * next slice; nothing here is populated by the wizard.
+	 */
+	inventory?: CharacterInventoryItem[]
+	/**
+	 * Optional for the same reason as abilityScores above. The character's
+	 * money, held as a single total in COPPER pieces — the unit items.json's
+	 * own `value` field already uses, so a later "spend money on an item"
+	 * slice needs no conversion. The sheet shows and edits it as gold /
+	 * silver / copper (1 gp = 100 cp, 1 sp = 10 cp); platinum and electrum
+	 * are not represented in phase 1. Absent means zero.
+	 */
+	currencyCopper?: number
+}
+
+/**
+ * One line of the inventory: which item (name + source, enough to look the
+ * full entry back up in items.json) and how many are carried. `quantity` has
+ * a floor of 1 — removing an item is its own action, never "set quantity to 0".
+ */
+export interface CharacterInventoryItem {
+	name: string
+	source: string
+	quantity: number
 }
 
 /**
@@ -380,11 +410,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 17 to add Character.familiar — the form the
- * familiar currently has.
+ * (see wireFormat.ts). Bumped to 18 to add Character.inventory and
+ * Character.currencyCopper — what the character owns (build order step 7).
  *
- * The FIRST bump under D69: a version-16 character is migrated, not rejected
- * (see migrations.ts). Versions 15 and older are still rejected outright with
+ * Under D69 every bump from 16 on ships a migration from the immediately
+ * previous version (see migrations.ts): a version-17 character is migrated,
+ * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 17
+export const CURRENT_SCHEMA_VERSION = 18

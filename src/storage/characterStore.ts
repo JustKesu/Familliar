@@ -6,6 +6,7 @@ import type {
 	CharacterClass,
 	CharacterClassFeatureChoice,
 	CharacterFamiliar,
+	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
@@ -231,6 +232,40 @@ export class CharacterStore {
 		const { familiar: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = familiar ? { ...rest, familiar } : rest
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Replaces the character's inventory (build order step 7, slice a1). A
+	 * targeted write like `setFamiliar`: the sheet is otherwise read-only and
+	 * the inventory section is the one place besides the familiar it edits. An
+	 * empty array clears the field — owning nothing is stored as its absence,
+	 * not as `inventory: []`.
+	 */
+	setInventory(id: string, inventory: CharacterInventoryItem[]): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { inventory: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = inventory.length > 0 ? { ...rest, inventory } : rest
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Sets the character's money, as a single total in copper pieces (build
+	 * order step 7, slice a1). Zero clears the field, matching how an absent
+	 * `currencyCopper` already reads.
+	 */
+	setCurrency(id: string, currencyCopper: number): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currencyCopper: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = currencyCopper > 0 ? { ...rest, currencyCopper } : rest
 		this.writeAll(updated)
 	}
 

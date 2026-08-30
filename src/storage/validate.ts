@@ -7,6 +7,7 @@ import type {
 	CharacterClass,
 	CharacterClassFeatureChoice,
 	CharacterFamiliar,
+	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterOptionalFeatureChoice,
@@ -587,6 +588,54 @@ function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar 
 	return { name: value['name'] as string, source: value['source'] as string }
 }
 
+/**
+ * Validates an optional `inventory` field (build order step 7, slice a1).
+ * Returns null if the field is absent — an absent or empty inventory is the
+ * ordinary state of owning nothing, not a fault. Whether the named item
+ * exists in items.json is NOT checked here: that needs the data file, which
+ * the storage layer does not load (same limit as describeFamiliarError's) —
+ * an unresolvable stored item is surfaced on the sheet instead (D43).
+ */
+export function describeInventoryError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `inventory must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `inventory[${i}] is not an object`
+		if (!isNonEmptyString(entry['name'])) return `inventory[${i}].name is missing or not a string`
+		if (!isNonEmptyString(entry['source'])) return `inventory[${i}].source is missing or not a string`
+		const quantity = entry['quantity']
+		if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1) {
+			return `inventory[${i}].quantity must be a whole number of at least 1`
+		}
+	}
+	return null
+}
+
+/**
+ * Validates an optional `currencyCopper` field (build order step 7, slice a1)
+ * — a single non-negative whole number of copper pieces. Returns null if the
+ * field is absent (absent means zero).
+ */
+export function describeCurrencyError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+		return `currencyCopper must be a non-negative whole number`
+	}
+	return null
+}
+
+function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return {
+			name: record['name'] as string,
+			source: record['source'] as string,
+			quantity: record['quantity'] as number,
+		}
+	})
+}
+
 function toCharacterWildShapeForms(value: unknown[]): CharacterWildShapeForms[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
@@ -712,6 +761,10 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (wildShapeFormsError) return `[${index}].${wildShapeFormsError}`
 	const familiarError = describeFamiliarError(value['familiar'])
 	if (familiarError) return `[${index}].${familiarError}`
+	const inventoryError = describeInventoryError(value['inventory'])
+	if (inventoryError) return `[${index}].${inventoryError}`
+	const currencyError = describeCurrencyError(value['currencyCopper'])
+	if (currencyError) return `[${index}].${currencyError}`
 	return null
 }
 
@@ -742,6 +795,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const classFeatureChoices = value['classFeatureChoices']
 	const wildShapeForms = value['wildShapeForms']
 	const familiar = value['familiar']
+	const inventory = value['inventory']
+	const currencyCopper = value['currencyCopper']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -765,6 +820,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(classFeatureChoices) ? { classFeatureChoices: toCharacterClassFeatureChoices(classFeatureChoices) } : {}),
 		...(Array.isArray(wildShapeForms) ? { wildShapeForms: toCharacterWildShapeForms(wildShapeForms) } : {}),
 		...(isRecord(familiar) ? { familiar: toCharacterFamiliar(familiar) } : {}),
+		...(Array.isArray(inventory) ? { inventory: toCharacterInventory(inventory) } : {}),
+		...(typeof currencyCopper === 'number' ? { currencyCopper } : {}),
 	}
 }
 

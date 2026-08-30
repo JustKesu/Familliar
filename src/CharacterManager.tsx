@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CharacterStore } from './storage/characterStore'
 import { StorageError } from './storage/errors'
-import type { Character, CharacterFamiliar } from './storage/character'
+import type { Character, CharacterFamiliar, CharacterInventoryItem } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
 
@@ -159,6 +159,16 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setFamiliar(id, familiar))
 	}
 
+	function handleEditInventory(id: string, inventory: CharacterInventoryItem[]): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setInventory(id, inventory))
+	}
+
+	function handleEditCurrency(id: string, copper: number): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setCurrency(id, copper))
+	}
+
 	function handleDelete(id: string): void {
 		if (!store.store) return
 		if (!confirm('Delete this character? This cannot be undone.')) return
@@ -242,7 +252,12 @@ function CharacterManager() {
 						(() => {
 							const sheetCharacter = characters.find((c) => c.id === sheetId)
 							return sheetCharacter ? (
-								<CharacterSheet character={sheetCharacter} onChooseFamiliar={(familiar) => handleChooseFamiliar(sheetCharacter.id, familiar)} />
+								<CharacterSheet
+									character={sheetCharacter}
+									onChooseFamiliar={(familiar) => handleChooseFamiliar(sheetCharacter.id, familiar)}
+									onEditInventory={(inventory) => handleEditInventory(sheetCharacter.id, inventory)}
+									onEditCurrency={(copper) => handleEditCurrency(sheetCharacter.id, copper)}
+								/>
 							) : null
 						})()}
 				</div>

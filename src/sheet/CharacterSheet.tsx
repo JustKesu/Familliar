@@ -35,6 +35,8 @@ import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } fr
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBlock } from './BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
+import { coinsToCopper, copperToCoins } from '../inventory/currency'
+import { itemKey, loadItemRefs, type ItemRef } from '../inventory/inventoryData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -51,7 +53,7 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, SpellList } from './SpellList'
-import type { Character, CharacterFamiliar } from '../storage/character'
+import type { Character, CharacterFamiliar, CharacterInventoryItem } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -166,17 +168,199 @@ function CalculatedNumber({ result, format }: { result: Calculated<number>; form
 }
 
 /**
- * The sheet is read-only except for this one control: the familiar's form is
- * chosen when the spell is cast, not at creation, so it belongs here and not
- * in the wizard. The callback is optional — without it the section still
- * renders and still shows the current form, it just cannot be changed.
+ * A number input that commits only on blur or Enter, not on every keystroke.
+ * The sheet persists each edit straight through to storage; committing
+ * mid-type would fight the player as the round-tripped value snapped the
+ * field back. `value` seeds the field and re-seeds it whenever storage
+ * changes it from elsewhere (e.g. gp/sp/cp normalising after a copper edit).
+ */
+function CommitNumberField({
+	label,
+	value,
+	min,
+	onCommit,
+}: {
+	label: string
+	value: number
+	min: number
+	onCommit: (value: number) => void
+}): ReactNode {
+	const [draft, setDraft] = useState(String(value))
+	useEffect(() => {
+		setDraft(String(value))
+	}, [value])
+
+	function commit(): void {
+		const parsed = Math.floor(Number(draft))
+		const next = Number.isFinite(parsed) ? Math.max(min, parsed) : min
+		setDraft(String(next))
+		if (next !== value) onCommit(next)
+	}
+
+	return (
+		<label>
+			{label}{' '}
+			<input
+				type="number"
+				min={min}
+				aria-label={label}
+				value={draft}
+				onChange={(event) => setDraft(event.target.value)}
+				onBlur={commit}
+				onKeyDown={(event) => {
+					if (event.key === 'Enter') event.currentTarget.blur()
+				}}
+			/>
+		</label>
+	)
+}
+
+/**
+ * Inventory and money (build order step 7, slice a1). The second editable
+ * place on an otherwise read-only sheet (the familiar is the first): editing
+ * is confined to this section and stays a plain list, not a form. Without the
+ * callbacks the section still renders read-only.
+ *
+ * An empty inventory is a normal state, shown as a plain line — never an
+ * error (contrast itemRefsError, which is the item DATA failing to load, D43).
+ * A stored item whose (name, source) isn't in the loaded list is kept and
+ * shown with a note, never dropped (D43).
+ */
+function InventorySection({
+	inventory,
+	currencyCopper,
+	itemRefs,
+	itemRefsError,
+	onEditInventory,
+	onEditCurrency,
+}: {
+	inventory: CharacterInventoryItem[]
+	currencyCopper: number
+	itemRefs: ItemRef[] | null
+	itemRefsError: string | null
+	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
+	onEditCurrency?: (copper: number) => void
+}): ReactNode {
+	const known = new Set((itemRefs ?? []).map(itemKey))
+	const coins = copperToCoins(currencyCopper)
+
+	function editCoin(field: 'gp' | 'sp' | 'cp', amount: number): void {
+		onEditCurrency?.(coinsToCopper({ ...coins, [field]: amount }))
+	}
+
+	function setQuantity(index: number, quantity: number): void {
+		// Quantity floor is 1 — removing is its own action, never "set to 0"; CommitNumberField already clamps to min={1}.
+		onEditInventory?.(inventory.map((item, i) => (i === index ? { ...item, quantity } : item)))
+	}
+
+	function removeAt(index: number): void {
+		onEditInventory?.(inventory.filter((_, i) => i !== index))
+	}
+
+	function toggleAdd(key: string): void {
+		if (!onEditInventory) return
+		const existing = inventory.findIndex((item) => itemKey(item) === key)
+		if (existing !== -1) {
+			onEditInventory(inventory.filter((_, i) => i !== existing))
+			return
+		}
+		const ref = (itemRefs ?? []).find((candidate) => itemKey(candidate) === key)
+		if (ref) onEditInventory([...inventory, { name: ref.name, source: ref.source, quantity: 1 }])
+	}
+
+	const addOptions: SearchableOption[] = (itemRefs ?? []).map((ref) => ({
+		key: itemKey(ref),
+		name: ref.name,
+		label: `${ref.name} (${ref.source})`,
+		selected: inventory.some((item) => itemKey(item) === itemKey(ref)),
+	}))
+
+	return (
+		<section className="sheet__inventory">
+			<h2>Inventory</h2>
+
+			<div className="sheet__currency">
+				<h3>Money</h3>
+				{onEditCurrency ? (
+					<p>
+						<CommitNumberField label="Gold" min={0} value={coins.gp} onCommit={(amount) => editCoin('gp', amount)} />{' '}
+						<CommitNumberField label="Silver" min={0} value={coins.sp} onCommit={(amount) => editCoin('sp', amount)} />{' '}
+						<CommitNumberField label="Copper" min={0} value={coins.cp} onCommit={(amount) => editCoin('cp', amount)} />
+					</p>
+				) : (
+					<p>
+						{coins.gp} gp, {coins.sp} sp, {coins.cp} cp
+					</p>
+				)}
+			</div>
+
+			{itemRefsError && <p className="error">Could not load the item list: {itemRefsError}</p>}
+
+			{inventory.length === 0 ? (
+				<p className="sheet__inventory-empty">Nothing carried yet.</p>
+			) : (
+				<ul className="sheet__inventory-list">
+					{inventory.map((item, index) => (
+						<li key={itemKey(item)}>
+							<span>{item.name}</span>
+							{itemRefs !== null && itemRefsError === null && !known.has(itemKey(item)) && (
+								<> <UnresolvedValue reason={`Item data not found for "${item.name}" (${item.source}).`} /></>
+							)}
+							{onEditInventory ? (
+								<>
+									{' '}
+									<CommitNumberField
+										label={`Quantity of ${item.name}`}
+										min={1}
+										value={item.quantity}
+										onCommit={(quantity) => setQuantity(index, quantity)}
+									/>{' '}
+									<button type="button" onClick={() => removeAt(index)}>
+										Remove
+									</button>
+								</>
+							) : (
+								<> ×{item.quantity}</>
+							)}
+						</li>
+					))}
+				</ul>
+			)}
+
+			{onEditInventory && itemRefs !== null && (
+				<SearchableOptionList
+					legend="Add an item"
+					name="inventory-add"
+					inputType="checkbox"
+					options={addOptions}
+					required={0}
+					defaultOpen={false}
+					renderCount={() => `${inventory.length} item${inventory.length === 1 ? '' : 's'} carried`}
+					onToggle={toggleAdd}
+					searchPlaceholder="Search items by name…"
+				/>
+			)}
+		</section>
+	)
+}
+
+/**
+ * The sheet is read-only except for two controls: the familiar's form and the
+ * inventory section (build order step 7). Both are chosen/changed in play, not
+ * at creation, so they belong here and not in the wizard. The callbacks are
+ * optional — without them each section still renders and shows its current
+ * state, it just cannot be changed.
  */
 export function CharacterSheet({
 	character,
 	onChooseFamiliar,
+	onEditInventory,
+	onEditCurrency,
 }: {
 	character: Character
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
+	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
+	onEditCurrency?: (copper: number) => void
 }): ReactNode {
 	const [savingThrowClassData, setSavingThrowClassData] = useState<ClassSavingThrowProficiencies[] | null>(null)
 	const [hitDiceClassData, setHitDiceClassData] = useState<ClassHitDie[] | null>(null)
@@ -188,6 +372,9 @@ export function CharacterSheet({
 	const [spellSlotsClassData, setSpellSlotsClassData] = useState<ClassSpellSlotsData[] | null>(null)
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[] | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
+	/** The item list backing the inventory section — its own load (large file, D43-style error state) so it never blocks the rest of the sheet. Null until it resolves. */
+	const [itemRefs, setItemRefs] = useState<ItemRef[] | null>(null)
+	const [itemRefsError, setItemRefsError] = useState<string | null>(null)
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
@@ -247,6 +434,24 @@ export function CharacterSheet({
 			.catch((error: unknown) => {
 				if (cancelled) return
 				setLoadError(messageOf(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		loadItemRefs()
+			.then((refs) => {
+				if (cancelled) return
+				setItemRefs(refs)
+				setItemRefsError(null)
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setItemRefs([])
+				setItemRefsError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -674,6 +879,15 @@ export function CharacterSheet({
 					</>
 				)}
 			</section>
+
+			<InventorySection
+				inventory={character.inventory ?? []}
+				currencyCopper={character.currencyCopper ?? 0}
+				itemRefs={itemRefs}
+				itemRefsError={itemRefsError}
+				onEditInventory={onEditInventory}
+				onEditCurrency={onEditCurrency}
+			/>
 
 			<section className="sheet__feats">
 				<h2>Feats</h2>

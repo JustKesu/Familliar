@@ -183,10 +183,22 @@ Poprvé potřeba u weapon mastery pickeru, který jinak nabízel volbu mastery
 pro Sun Blade postavě na první úrovni. Inventář (krok 7) tenhle rozdíl
 potřebuje na každém kroku.
 
-### Identifying item kinds
-Weapons and armour have boolean flags (`weapon`, `armor`).
-Shields have NO flag — identify by type abbreviation "S".
-Containers have NO flag — identify by presence of `containerCapacity`.
+### Identifying item kinds — the flags cover only MUNDANE gear
+
+Zbraň a zbroj se NEPOZNAJÍ spolehlivě podle příznaků `weapon` / `armor`.
+Ty nese jen obyčejné vybavení: 46 zbraní a 12 zbrojí.
+
+**49 magických zbraní a 12 magických zbrojí ten příznak nemá** a poznají se
+jen podle kódu v `type` — `M`/`R` u zbraní, `LA`/`MA`/`HA` u zbroje. Test na
+druh předmětu proto musí číst obojí, příznak i `type`; jinak z každé nabídky
+vypadnou všechny magické zbraně a zbroje.
+
+Štíty nemají příznak — poznají se podle kódu `S`; jejich `ac` je vždy 2, tedy
+bonus, ne výsledná hodnota.
+Kontejnery nemají příznak — poznají se podle přítomnosti `containerCapacity`
+(19 předmětů).
+
+Zjištěno při průzkumu před krokem 7; původní znění tvrdilo, že příznaky stačí.
 
 ### Artificer infusions
 AI (Artificer Infusion, 16 entries) exists in optional-features.json, but

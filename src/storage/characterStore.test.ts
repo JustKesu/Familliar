@@ -620,6 +620,114 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 	})
 })
 
+describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
+	it('leaves inventory and currencyCopper undefined on a freshly created character (owning nothing is normal)', () => {
+		const character = new CharacterStore(new MemoryStorage()).create('Cato')
+		expect(character.inventory).toBeUndefined()
+		expect(character.currencyCopper).toBeUndefined()
+	})
+
+	it('sets, updates a quantity on, and clears the inventory of a saved character', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create('Packrat')
+
+		store.setInventory(character.id, [
+			{ name: 'Longsword', source: 'XPHB', quantity: 1 },
+			{ name: 'Torch', source: 'XPHB', quantity: 5 },
+		])
+		expect(store.list()[0].inventory).toEqual([
+			{ name: 'Longsword', source: 'XPHB', quantity: 1 },
+			{ name: 'Torch', source: 'XPHB', quantity: 5 },
+		])
+
+		store.setInventory(character.id, [
+			{ name: 'Longsword', source: 'XPHB', quantity: 1 },
+			{ name: 'Torch', source: 'XPHB', quantity: 10 },
+		])
+		expect(store.list()[0].inventory?.[1].quantity).toBe(10)
+
+		store.setInventory(character.id, [])
+		expect(store.list()[0].inventory).toBeUndefined()
+		expect('inventory' in store.list()[0]).toBe(false)
+	})
+
+	it('round-trips currency through save and reload, and clears the field at zero', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Rich')
+
+		store.setCurrency(character.id, 1234)
+		// A fresh store over the same backing storage — proves it survived serialisation, not just an in-memory copy.
+		expect(new CharacterStore(backing).list()[0].currencyCopper).toBe(1234)
+
+		store.setCurrency(character.id, 0)
+		expect(new CharacterStore(backing).list()[0].currencyCopper).toBeUndefined()
+	})
+
+	it('throws CharacterNotFoundError for an unknown id', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		expect(() => store.setInventory('nope', [])).toThrow(CharacterNotFoundError)
+		expect(() => store.setCurrency('nope', 10)).toThrow(CharacterNotFoundError)
+	})
+
+	it('rejects a saved inventory entry with a non-positive quantity, and a fractional currencyCopper', () => {
+		const badQuantity = new MemoryStorage()
+		badQuantity.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], inventory: [{ name: 'Torch', source: 'XPHB', quantity: 0 }] },
+			]),
+		)
+		expect(() => new CharacterStore(badQuantity).list()).toThrow(CorruptDataError)
+
+		const badCurrency = new MemoryStorage()
+		badCurrency.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], currencyCopper: 12.5 }]),
+		)
+		expect(() => new CharacterStore(badCurrency).list()).toThrow(CorruptDataError)
+	})
+
+	it('keeps an inventory item whose data cannot be resolved — validation is structural only, never a lookup against items.json', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					inventory: [{ name: 'Longsword of a Dropped Source', source: 'HOMEBREW', quantity: 1 }],
+				},
+			]),
+		)
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([
+			{ name: 'Longsword of a Dropped Source', source: 'HOMEBREW', quantity: 1 },
+		])
+	})
+
+	/* D69: the 17 -> 18 bump ships a migration, so a version-17 save is carried forward, not rejected. */
+	it('migrates a version-17 character forward, keeping its fields and adding no inventory', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: 17, id: '1', name: 'Rowan', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }], familiar: { name: 'Owl', source: 'XMM' } },
+			]),
+		)
+		const store = new CharacterStore(backing)
+		const [migrated] = store.list()
+		expect(migrated.name).toBe('Rowan')
+		expect(migrated.familiar).toEqual({ name: 'Owl', source: 'XMM' })
+		expect(migrated.inventory).toBeUndefined()
+		expect(migrated.currencyCopper).toBeUndefined()
+
+		store.rename(migrated.id, 'Rowan the Green')
+		expect(JSON.parse(backing.getItem(STORAGE_KEY)!)[0].schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+	})
+})
+
 describe('CharacterStore.rename', () => {
 	it('renames an existing character', () => {
 		const store = new CharacterStore(new MemoryStorage())

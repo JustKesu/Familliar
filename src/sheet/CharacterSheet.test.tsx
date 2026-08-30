@@ -103,6 +103,19 @@ vi.mock('../beasts/beastData', async (importOriginal) => {
 	return { ...actual, loadBeasts: vi.fn(async () => []) }
 })
 
+/* Only the items.json fetch is stubbed — itemKey/extractItemRefs and the section's own rendering run for real. */
+vi.mock('../inventory/inventoryData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../inventory/inventoryData')>()
+	return {
+		...actual,
+		loadItemRefs: vi.fn(async () => [
+			{ name: 'Backpack', source: 'XPHB' },
+			{ name: 'Longsword', source: 'XPHB' },
+			{ name: 'Torch', source: 'XPHB' },
+		]),
+	}
+})
+
 vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../optionalFeatures/optionalFeatureData')>()
 	return {
@@ -355,6 +368,126 @@ describe('CharacterSheet', () => {
 		const sizeItem = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Size:'))
 		expect(sizeItem?.textContent).toContain('unresolved')
 		expect(sizeItem?.textContent).not.toContain('Medium')
+	})
+
+	/*
+	 * Inventory and money (build order step 7, slice a1). Asserted end to end
+	 * for the same reason the sections above are: a stored pick that never
+	 * reaches the sheet — or an edit the sheet never reports — has shipped more
+	 * than once in this project. loadItemRefs is stubbed with a 3-item list
+	 * (mock near the top of this file); the section's own rendering, resolution
+	 * note and edit callbacks all run for real.
+	 */
+	describe('inventory and money (step 7 slice a1)', () => {
+		const owner: Character = {
+			...character,
+			id: 'inv1',
+			inventory: [
+				{ name: 'Longsword', source: 'XPHB', quantity: 1 },
+				{ name: 'Torch', source: 'XPHB', quantity: 5 },
+			],
+			currencyCopper: 1234,
+		}
+
+		it('shows a plain line and no error when the character owns nothing', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = container.querySelector('.sheet__inventory')!
+			expect(section).toBeTruthy()
+			await waitFor(() => expect(section.textContent).toContain('Nothing carried yet.'))
+			expect(section.querySelector('.error')).toBeNull()
+		})
+
+		it('lists carried items with their quantities', async () => {
+			const { container } = render(<CharacterSheet character={owner} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const list = await waitFor(() => container.querySelector('.sheet__inventory-list')!)
+			const rows = Array.from(list.querySelectorAll('li')).map((li) => li.textContent)
+			expect(rows.some((text) => text?.includes('Longsword'))).toBe(true)
+			expect(rows.some((text) => text?.includes('Torch') && text.includes('5'))).toBe(true)
+		})
+
+		it('shows a stored item whose data is not in the list with its name and a visible note (D43)', async () => {
+			const stale: Character = {
+				...character,
+				id: 'inv2',
+				inventory: [{ name: 'Mystery Blade', source: 'HOMEBREW', quantity: 1 }],
+			}
+			const { container } = render(<CharacterSheet character={stale} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = container.querySelector('.sheet__inventory')!
+			await waitFor(() => expect(section.textContent).toContain('Mystery Blade'))
+			expect(section.textContent).toContain('Item data not found for "Mystery Blade" (HOMEBREW).')
+		})
+
+		it('shows money as gp/sp/cp, and reports an edit as a new copper total', async () => {
+			const user = userEvent.setup()
+			const onEditCurrency = vi.fn()
+			render(<CharacterSheet character={owner} onEditCurrency={onEditCurrency} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const gold = (await screen.findByLabelText('Gold')) as HTMLInputElement
+			expect(gold.value).toBe('12')
+			expect((screen.getByLabelText('Silver') as HTMLInputElement).value).toBe('3')
+			expect((screen.getByLabelText('Copper') as HTMLInputElement).value).toBe('4')
+
+			await user.clear(gold)
+			await user.type(gold, '20')
+			await user.tab() // commit on blur, not per keystroke
+			// 20 gp + 3 sp + 4 cp = 2034 cp
+			expect(onEditCurrency).toHaveBeenLastCalledWith(2034)
+		})
+
+		it('adds an item from the searchable list at quantity 1', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const { container } = render(<CharacterSheet character={character} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = container.querySelector('.sheet__inventory')!
+			await waitFor(() => expect(section.querySelector('.option-list__toggle')).toBeTruthy())
+			await user.click(section.querySelector('.option-list__toggle') as HTMLElement)
+			await user.click(screen.getByRole('checkbox', { name: 'Torch (XPHB)' }))
+
+			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Torch', source: 'XPHB', quantity: 1 }])
+		})
+
+		it('changes a quantity on commit, and floors it at 1', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const five: Character = { ...character, id: 'inv3', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 5 }] }
+			render(<CharacterSheet character={five} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const qty = (await screen.findByLabelText('Quantity of Longsword')) as HTMLInputElement
+			await user.clear(qty)
+			await user.type(qty, '3')
+			await user.tab()
+			expect(onEditInventory).toHaveBeenLastCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 3 }])
+
+			// Typing 0 commits as 1, never 0 — removing is the Remove button's job.
+			await user.clear(qty)
+			await user.type(qty, '0')
+			await user.tab()
+			expect(onEditInventory).toHaveBeenLastCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 1 }])
+			expect(qty.value).toBe('1')
+		})
+
+		it('removes an item as its own action', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const one: Character = { ...character, id: 'inv4', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 2 }] }
+			const { container } = render(<CharacterSheet character={one} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = container.querySelector('.sheet__inventory')!
+			await waitFor(() => expect(section.querySelector('.sheet__inventory-list')).toBeTruthy())
+			await user.click(screen.getByRole('button', { name: 'Remove' }))
+			expect(onEditInventory).toHaveBeenCalledWith([])
+		})
 	})
 
 	function spellDetail(overrides: Partial<SpellDetail> & { name: string; source: string; level: number }): SpellDetail {
