@@ -792,6 +792,53 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 		expect(migrated.inventory?.[0].equipped).toBeUndefined()
 		expect(migrated.currencyCopper).toBe(500)
 	})
+
+	it('round-trips a Finesse weapon ability pick and refuses a bad one (step 7 slice c)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Nyx')
+
+		store.setInventory(character.id, [{ name: 'Rapier', source: 'XPHB', quantity: 1, equipped: 'held', attackAbility: 'strength' }])
+		// A fresh store over the same backing storage — proves the pick survived serialisation, not just an in-memory copy.
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([
+			{ name: 'Rapier', source: 'XPHB', quantity: 1, equipped: 'held', attackAbility: 'strength' },
+		])
+
+		const badAbility = new MemoryStorage()
+		badAbility.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					inventory: [{ name: 'Rapier', source: 'XPHB', quantity: 1, attackAbility: 'charisma' }],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(badAbility).list()).toThrow(CorruptDataError)
+	})
+
+	/* D69: the 19 -> 20 bump ships a migration, so a version-19 save keeps its equipped state and picks no ability. */
+	it('migrates a version-19 character forward, keeping equipped state and choosing no attack ability', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: 19,
+					id: '1',
+					name: 'Rowan',
+					classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 3 }],
+					inventory: [{ name: 'Rapier', source: 'XPHB', quantity: 1, equipped: 'held' }],
+				},
+			]),
+		)
+		const [migrated] = new CharacterStore(backing).list()
+		expect(migrated.inventory).toEqual([{ name: 'Rapier', source: 'XPHB', quantity: 1, equipped: 'held' }])
+		expect(migrated.inventory?.[0].attackAbility).toBeUndefined()
+	})
 })
 
 describe('CharacterStore.rename', () => {

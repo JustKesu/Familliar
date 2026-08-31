@@ -28,6 +28,7 @@ import { computeFeatSpellcasting, computeSpellcasting, type ClassSpellcastingAbi
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
+import { computeAttacksPerAction, computeWeaponAttacks, type WeaponAttack } from '../calculation/weaponAttacks'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 import { loadChosenClassOptionalFeatures, type ChosenClassOptionalFeatureGroup } from '../optionalFeatures/optionalFeatureData'
 import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
@@ -39,6 +40,7 @@ import { SearchableOptionList, type SearchableOption } from '../pickers/Searchab
 import { coinsToCopper, copperToCoins, platinumToCopper } from '../inventory/currency'
 import { armourCategoryOf, equipSlotOf, isShield, itemKey, loadItemRefs, type ItemRef } from '../inventory/inventoryData'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
+import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -55,7 +57,7 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, SpellList } from './SpellList'
-import type { Character, CharacterFamiliar, CharacterInventoryItem } from '../storage/character'
+import type { Character, CharacterFamiliar, CharacterInventoryItem, WeaponAttackAbility } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -445,6 +447,86 @@ function InventorySection({
 }
 
 /**
+ * The attacks the character can actually make right now: the weapons they are
+ * HOLDING, plus the Unarmed Strike everyone has (build order step 7, slice c).
+ * Anything else stays in the inventory — the player switches by equipping.
+ *
+ * Attacks per action sits at the top of the section rather than on a weapon
+ * row: it is a property of the character's turn, not of any one weapon.
+ */
+function AttacksSection({
+	attacks,
+	attacksPerAction,
+	loading,
+	dataError,
+	onChooseAttackAbility,
+}: {
+	attacks: WeaponAttack[]
+	attacksPerAction: Calculated<number>
+	loading: boolean
+	dataError: string | null
+	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
+}): ReactNode {
+	return (
+		<section className="sheet__attacks">
+			<h2>Attacks</h2>
+			{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph — the same nesting the older sections still get wrong. */}
+			<div className="sheet__attacks-per-action">
+				Attacks per action: <CalculatedNumber result={attacksPerAction} />
+			</div>
+			{dataError && <p className="error">Could not load the weapon data this section needs: {dataError}</p>}
+			{loading ? (
+				<p>Loading…</p>
+			) : (
+				<ul className="sheet__attack-list">
+					{attacks.map((attack) => (
+						<li key={attack.key}>
+							<span className="sheet__attack-name">{attack.name}</span>
+							{/* Range is printed as the data writes it ("30/120"); a plain melee weapon carries none. */}
+							{attack.range && <span className="sheet__attack-range"> — range {attack.range} ft.</span>}
+							<> to hit: </>
+							<CalculatedNumber result={attack.toHit} format={formatModifier} />
+							<> damage: </>
+							{attack.damage.status === 'unknown' ? (
+								<UnresolvedValue reason={attack.damage.reason} />
+							) : (
+								<>
+									<span className="sheet__attack-damage">{attack.damage.value.text}</span>
+									{attack.damage.value.twoHandedText && (
+										<span className="sheet__attack-versatile"> (two-handed {attack.damage.value.twoHandedText})</span>
+									)}{' '}
+									<ValueBreakdown breakdown={attack.damage.breakdown} />
+								</>
+							)}
+							{attack.abilityChoice && onChooseAttackAbility && (
+								<>
+									{' '}
+									<label>
+										Attack with{' '}
+										<select
+											aria-label={`Attack ability for ${attack.name}`}
+											value={attack.abilityChoice.using}
+											onChange={(event) => onChooseAttackAbility(attack.key, event.target.value as WeaponAttackAbility)}
+										>
+											{attack.abilityChoice.options.map((option) => (
+												<option key={option} value={option}>
+													{ABILITY_LABELS[option]}
+												</option>
+											))}
+										</select>
+									</label>
+								</>
+							)}
+							{attack.notes.length > 0 && <span className="sheet__attack-notes"> {attack.notes.join(' · ')}</span>}
+						</li>
+					))}
+				</ul>
+			)}
+		</section>
+	)
+}
+
+/**
  * The sheet is read-only except for two controls: the familiar's form and the
  * inventory section (build order step 7). Both are chosen/changed in play, not
  * at creation, so they belong here and not in the wizard. The callbacks are
@@ -493,6 +575,9 @@ export function CharacterSheet({
 	/** Which alternative Armour Class formulas the character is eligible for (step 7 slice b). Depends on `character` and on whether Mage Armor is in the spell list, fetched separately same as the effects above. */
 	const [acFormulaKeys, setAcFormulaKeys] = useState<AcFormulaKey[]>([])
 	const [acFormulaKeysError, setAcFormulaKeysError] = useState<string | null>(null)
+	/** Weapon proficiency grants, the Monk's Martial Arts die and the feature names carrying an attack count (step 7 slice c). Depends on `character`, fetched separately same as the effects above. */
+	const [weaponAttackData, setWeaponAttackData] = useState<WeaponAttackData | null>(null)
+	const [weaponAttackDataError, setWeaponAttackDataError] = useState<string | null>(null)
 
 	/*
 	 * D43: each per-`character` effect above starts empty and stays empty when its
@@ -749,6 +834,25 @@ export function CharacterSheet({
 		}
 	}, [character, knowsMageArmor])
 
+	useEffect(() => {
+		let cancelled = false
+		loadWeaponAttackData(character)
+			.then((data) => {
+				if (cancelled) return
+				setWeaponAttackData(data)
+				setWeaponAttackDataError(null)
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return
+				// D43: no grants means "proficient with nothing", which is a real state — the error line is what keeps it from reading as one.
+				setWeaponAttackData({ grants: [], martialArtsDie: null, featureNames: [] })
+				setWeaponAttackDataError(messageOf(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
 	if (loadError) {
 		return (
 			<article className="sheet">
@@ -787,6 +891,16 @@ export function CharacterSheet({
 	const equippedGear = buildEquippedGear(character.inventory ?? [], itemRefs ?? [])
 	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats)
 	const speed = computeSpeed(character, speciesTraitsData, armourSpeedPenalty(character, equippedGear.armour, feats))
+	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
+	const heldWeapons = buildHeldWeapons(character.inventory ?? [], itemRefs ?? [])
+	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null)
+	const attacksPerAction = computeAttacksPerAction(weaponAttackData?.featureNames ?? [])
+
+	/** The Finesse pick lives on the inventory row (storage/character.ts), so switching it is an ordinary inventory edit. */
+	function chooseAttackAbility(key: string, ability: WeaponAttackAbility): void {
+		if (!onEditInventory) return
+		onEditInventory((character.inventory ?? []).map((item) => (itemKey(item) === key ? { ...item, attackAbility: ability } : item)))
+	}
 	const size = computeSize(character, speciesTraitsData)
 	// Darkvision is the one granted sense that reconciles with the species value (D40/D53) rather than
 	// standing alone in the Senses section below — split out here, before combineSenseEntries sees the rest.
@@ -937,6 +1051,14 @@ export function CharacterSheet({
 					</>
 				)}
 			</section>
+
+			<AttacksSection
+				attacks={weaponAttacks}
+				attacksPerAction={attacksPerAction}
+				loading={itemRefs === null || weaponAttackData === null}
+				dataError={weaponAttackDataError}
+				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}
+			/>
 
 			<section className="sheet__skills">
 				<h2>Skills</h2>

@@ -58,6 +58,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 19 }),
 	},
+	{
+		from: 19,
+		to: 20,
+		/*
+		 * 20 adds CharacterInventoryItem.attackAbility. A version-19 character
+		 * has never overridden a Finesse weapon's ability, and an absent field
+		 * already means exactly that — the default, whichever of Strength and
+		 * Dexterity is higher. Version tag only, same as the three before it.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 20 }),
+	},
 ]
 
 /**

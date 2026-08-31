@@ -81,8 +81,8 @@ function asFeatureArray(parsed: unknown, file: string): RawFeature[] {
 	return parsed.filter(isRawFeature)
 }
 
-/** The stored subclass NAME resolved to the shortName + source its features are filed under, or null when the data does not answer unambiguously. */
-function resolveSubclassShortName(parsedClasses: unknown, className: string, classSource: string, subclassName: string): { shortName: string; source: string } | null {
+/** The stored subclass NAME resolved to the shortName + source its features are filed under, or null when the data does not answer unambiguously. Exported because weaponAttackData.ts has to reach a subclass's features by exactly the same join. */
+export function resolveSubclassShortName(parsedClasses: unknown, className: string, classSource: string, subclassName: string): { shortName: string; source: string } | null {
 	if (!Array.isArray(parsedClasses)) throw new Error('classes.json: expected a top-level array.')
 	const candidates = parsedClasses.filter(
 		(entry) =>

@@ -1237,3 +1237,26 @@ tiše nevyhodila.
 Neplatí to na kategorie: kódy jako „hudební nástroj", „svatý symbol",
 „sada na hry" a „druidské ohnisko" nejsou chybějící předměty, ale skupiny,
 ze kterých si hráč vybírá. Ty řeší picker ve výchozí výbavě, ne extrakce.
+
+## D76 — Co appka nevidí jako aktivní, to nezapočítá
+
+Když appka pozná, že postava nějakou schopnost nebo kouzlo MÁ, ale neumí
+zjistit, jestli je právě teď v účinku, nezapočítá to do výsledné hodnoty.
+Zobrazí to jako zváženého kandidáta s poznámkou, kolik by to dělalo
+a proč se to nepoužilo.
+
+První případ: Mage Armor. Wizard, který ho má připravené, má AC 10 + Dex,
+ne 13 + Dex; v rozkladu stojí, že s ním by to bylo o tři víc a že se
+kouzlo sesílá při hraní.
+
+Rationale: chyba směrem nahoru je horší než dolů. Nízké číslo
+s vysvětlením donutí hráče se podívat; vysoké vypadá správně a pozná se,
+až ho něco trefí.
+
+Platí to i na Barkskin, Shield of Faith, Haste a každý další buff, který
+mění spočítanou hodnotu. Až krok 9 bude vědět, co je právě v účinku,
+změní se kandidát v započítanou položku — bez další změny pravidla.
+
+Nezaměňovat s D55 („efekt není započítaný", protože ho appka neumí
+spočítat vůbec) ani s D58 („čeká na volbu"). Tady appka efekt spočítat
+umí; jen neví, jestli platí.

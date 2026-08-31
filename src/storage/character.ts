@@ -246,6 +246,15 @@ export interface Character {
 export type EquippedSlot = 'worn' | 'held'
 
 /**
+ * The player's Strength-or-Dexterity pick for a Finesse weapon (build order
+ * step 7, slice c). Absent means the default — whichever of the two is higher
+ * — so the choice only ever appears in storage once the player has overridden
+ * it. Spelled out rather than reusing `Ability`: no other ability can be
+ * picked here, and storage stays free of a calculation-layer import.
+ */
+export type WeaponAttackAbility = 'strength' | 'dexterity'
+
+/**
  * One line of the inventory: which item (name + source, enough to look the
  * full entry back up in items.json) and how many are carried. `quantity` has
  * a floor of 1 — removing an item is its own action, never "set quantity to 0".
@@ -262,6 +271,13 @@ export interface CharacterInventoryItem {
 	 * about what storage can hold.
 	 */
 	equipped?: EquippedSlot
+	/**
+	 * Set only once the player has overridden a Finesse weapon's default
+	 * ability (slice c). It lives on the inventory row rather than in a list of
+	 * its own so it cannot outlive the weapon it belongs to; a row that is not
+	 * a Finesse weapon simply never gets one.
+	 */
+	attackAbility?: WeaponAttackAbility
 }
 
 /**
@@ -426,13 +442,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 19 to add CharacterInventoryItem.equipped —
- * which of the things the character owns are worn or held (build order step 7,
- * slice b).
+ * (see wireFormat.ts). Bumped to 20 to add
+ * CharacterInventoryItem.attackAbility — the player's Strength-or-Dexterity
+ * pick for a Finesse weapon (build order step 7, slice c).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
- * previous version (see migrations.ts): a version-18 character is migrated,
+ * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 19
+export const CURRENT_SCHEMA_VERSION = 20

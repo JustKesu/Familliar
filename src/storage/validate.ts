@@ -19,6 +19,7 @@ import type {
 	FilterChoiceSpellsChoice,
 	LanguageGrantSource,
 	MagicInitiateChoice,
+	WeaponAttackAbility,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import { canMigrateToCurrent } from './migrations'
@@ -601,6 +602,9 @@ function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar 
  * armour" is checked because 'worn' means armour and nothing else. The
  * matching "at most one shield" rule is NOT checkable here: 'held' covers
  * shields and weapons alike, and telling them apart needs items.json.
+ *
+ * Slice c's `attackAbility` is likewise checked for shape only — whether the
+ * row is a Finesse weapon at all is again an items.json question.
  */
 export function describeInventoryError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -617,6 +621,10 @@ export function describeInventoryError(value: unknown): string | null {
 		const equipped = entry['equipped']
 		if (equipped !== undefined && equipped !== 'worn' && equipped !== 'held') {
 			return `inventory[${i}].equipped must be "worn" or "held" when present`
+		}
+		const attackAbility = entry['attackAbility']
+		if (attackAbility !== undefined && attackAbility !== 'strength' && attackAbility !== 'dexterity') {
+			return `inventory[${i}].attackAbility must be "strength" or "dexterity" when present`
 		}
 	}
 	const worn = value.filter((entry) => (entry as Record<string, unknown>)['equipped'] === 'worn')
@@ -643,11 +651,13 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
 		const equipped = record['equipped']
+		const attackAbility = record['attackAbility']
 		return {
 			name: record['name'] as string,
 			source: record['source'] as string,
 			quantity: record['quantity'] as number,
 			...(equipped !== undefined ? { equipped: equipped as EquippedSlot } : {}),
+			...(attackAbility !== undefined ? { attackAbility: attackAbility as WeaponAttackAbility } : {}),
 		}
 	})
 }

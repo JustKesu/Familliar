@@ -2,7 +2,9 @@
  * The item file, reduced to what the inventory picker and the sheet's
  * item-resolution need: a name + source per entry (build order step 7, slice
  * a1), plus the gear fields slice b's equip control and Armour Class read
- * (type code, armour/weapon flags, ac, strength, stealth). The whole file is
+ * (type code, armour/weapon flags, ac, strength, stealth) and the weapon
+ * fields slice c's attack lines read (category, damage, properties, mastery,
+ * range). The whole file is
  * offered — magic items included (Daniel's decision) — so nothing is filtered
  * here beyond dropping malformed rows.
  *
@@ -35,6 +37,28 @@ export interface ItemRef {
 	strength?: string
 	/** True when wearing the armour gives disadvantage on Stealth checks. */
 	stealth?: boolean
+	/*
+	 * The weapon fields slice c's attack lines read. Field presence measured by
+	 * scripts/investigate-weapon-attack-fields.js over the 95 weapons: dmg1 and
+	 * dmgTypeFull on all of them, dmg2 on exactly the 42 Versatile ones, range
+	 * on 33 (every ranged weapon plus all 16 Thrown ones).
+	 */
+	/** "simple" or "martial" — what isProficientWithWeapon matches on. */
+	weaponCategory?: string
+	/** Damage dice, e.g. "1d8". */
+	dmg1?: string
+	/** Two-handed damage dice of a Versatile weapon, e.g. "1d10". */
+	dmg2?: string
+	/** Damage type in words, resolved by extraction (D34), e.g. "slashing". */
+	dmgTypeFull?: string
+	/** Weapon properties in words (D34), e.g. ["Versatile"]. */
+	propertyFull?: string[]
+	/** Weapon mastery properties in words (D34), e.g. ["Sap"]. */
+	masteryFull?: string[]
+	/** Normal/long range as the data writes it, e.g. "30/120". */
+	range?: string
+	/** items.json `firearm` — the Gunner feat's grant matches on it. */
+	firearm?: boolean
 }
 
 function isItemEntry(value: unknown): value is Record<string, unknown> & { name: string; source: string } {
@@ -85,6 +109,16 @@ export function itemKey(ref: ItemRef): string {
 	return `${ref.name}|${ref.source}`
 }
 
+function stringField<K extends string>(entry: Record<string, unknown>, key: K): Partial<Record<K, string>> {
+	const value = entry[key]
+	return typeof value === 'string' ? ({ [key]: value } as Record<K, string>) : {}
+}
+
+function stringArrayField<K extends string>(entry: Record<string, unknown>, key: K): Partial<Record<K, string[]>> {
+	const value = entry[key]
+	return Array.isArray(value) ? ({ [key]: value.filter((item): item is string => typeof item === 'string') } as Record<K, string[]>) : {}
+}
+
 export function extractItemRefs(parsed: unknown): ItemRef[] {
 	if (!Array.isArray(parsed)) {
 		throw new Error('items.json: expected a top-level array.')
@@ -104,6 +138,14 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...(typeof ac === 'number' ? { ac } : {}),
 				...(typeof strength === 'string' ? { strength } : {}),
 				...(entry['stealth'] === true ? { stealth: true } : {}),
+				...stringField(entry, 'weaponCategory'),
+				...stringField(entry, 'dmg1'),
+				...stringField(entry, 'dmg2'),
+				...stringField(entry, 'dmgTypeFull'),
+				...stringArrayField(entry, 'propertyFull'),
+				...stringArrayField(entry, 'masteryFull'),
+				...stringField(entry, 'range'),
+				...(entry['firearm'] === true ? { firearm: true } : {}),
 			}
 		})
 		.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source))

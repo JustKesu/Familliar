@@ -102,7 +102,13 @@ base value from data + Dex modifier capped by armour type
 (light = uncapped, medium = max +2, heavy = none), shield +2.
 See DATA.md — "Armour AC: the data won't tell you".
 Alternative AC formulas supported: Unarmored Defense (Barbarian CON,
-Monk WIS), Mage Armor, Draconic Sorcerer.
+Monk WIS), Draconic Sorcerer, and Bard College of Dance. They never
+stack — the best applicable one wins, and the breakdown shows which won
+and what the others would have given.
+
+Mage Armor is shown as a considered candidate but never added: the app
+can see the spell is available, not that it is currently cast (D76).
+That changes in step 9, where spells gain an active state.
 
 **Initiative** — Dex modifier, plus PB if the character has Alert.
 

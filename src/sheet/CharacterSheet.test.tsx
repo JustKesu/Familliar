@@ -113,7 +113,29 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			{ name: 'Backpack', source: 'XPHB' },
 			{ name: 'Chain Mail', source: 'XPHB', typeCode: 'HA', armor: true, ac: 16, strength: '13', stealth: true },
 			{ name: 'Leather Armor', source: 'XPHB', typeCode: 'LA', armor: true, ac: 11 },
-			{ name: 'Longsword', source: 'XPHB' },
+			{
+				name: 'Longsword',
+				source: 'XPHB',
+				typeCode: 'M',
+				weapon: true,
+				weaponCategory: 'martial',
+				dmg1: '1d8',
+				dmg2: '1d10',
+				dmgTypeFull: 'slashing',
+				propertyFull: ['Versatile'],
+				masteryFull: ['Sap'],
+			},
+			{
+				name: 'Rapier',
+				source: 'XPHB',
+				typeCode: 'M',
+				weapon: true,
+				weaponCategory: 'martial',
+				dmg1: '1d8',
+				dmgTypeFull: 'piercing',
+				propertyFull: ['Finesse'],
+				masteryFull: ['Vex'],
+			},
 			{ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 },
 			{ name: 'Torch', source: 'XPHB' },
 		]),
@@ -124,6 +146,19 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 vi.mock('./armourClassData', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./armourClassData')>()
 	return { ...actual, loadAcFormulaKeys: vi.fn(async () => []) }
+})
+
+/* Only the four data-file fetches are stubbed — buildHeldWeapons and the attack arithmetic run for real. */
+vi.mock('./weaponAttackData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./weaponAttackData')>()
+	return {
+		...actual,
+		loadWeaponAttackData: vi.fn(async () => ({
+			grants: [{ kind: 'category' as const, category: 'martial' }],
+			martialArtsDie: null,
+			featureNames: ['Extra Attack'],
+		})),
+	}
 })
 
 vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
@@ -652,6 +687,97 @@ describe('CharacterSheet', () => {
 			const speedItem = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith('Speed'))!
 			await waitFor(() => expect(speedItem.textContent).toContain('20 ft.'))
 			expect(speedItem.textContent).toContain('Chain Mail (Strength 13 required, you have 10)')
+		})
+	})
+
+	/*
+	 * Weapon attacks (build order step 7, slice c). Same end-to-end reason as
+	 * the two blocks above: an attack line is the product of the stored
+	 * equipped flag, the item data, the proficiency grants and the player's
+	 * Finesse pick, and the tests of each piece alone never caught a section
+	 * that failed to render.
+	 */
+	describe('weapon attacks (step 7 slice c)', () => {
+		function attacksSection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__attacks') as HTMLElement
+		}
+
+		function attackRow(container: HTMLElement, name: string): HTMLElement {
+			const row = Array.from(attacksSection(container).querySelectorAll('li')).find((li) => li.querySelector('.sheet__attack-name')?.textContent === name)
+			if (!row) throw new Error(`no attack row for ${name}`)
+			return row
+		}
+
+		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
+			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(attacksSection(rendered.container).querySelector('.sheet__attack-list')).toBeTruthy())
+			return rendered
+		}
+
+		const holding = (...names: string[]): Character['inventory'] => names.map((name) => ({ name, source: 'XPHB', quantity: 1, equipped: 'held' as const }))
+
+		it('lists a held longsword with its to-hit, both damage figures, mastery and properties', async () => {
+			const { container } = await renderSheet({ ...character, id: 'atk-longsword', inventory: holding('Longsword') })
+			const row = attackRow(container, 'Longsword')
+			// STR 15 (+2) + PB 3 at level 5.
+			expect(row.textContent).toContain('+5')
+			expect(row.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 2 slashing')
+			expect(row.querySelector('.sheet__attack-versatile')!.textContent).toBe(' (two-handed 1d10 + 2 slashing)')
+			expect(row.textContent).toContain('Mastery: Sap')
+			expect(row.textContent).toContain('Properties: Versatile')
+		})
+
+		it('shows the unarmed strike every character has, and the attacks-per-action count from the feature table', async () => {
+			const { container } = await renderSheet(character)
+			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__attack-damage')!.textContent).toBe('1 + 2 bludgeoning')
+			// The stub grants "Extra Attack"; the count belongs to the character's turn, not to a weapon row.
+			expect(attacksSection(container).querySelector('.sheet__attacks-per-action')!.textContent).toContain('2')
+		})
+
+		it('an item that is held but not a weapon does not become an attack', async () => {
+			const { container } = await renderSheet({ ...character, id: 'atk-shield', inventory: holding('Shield') })
+			expect(Array.from(attacksSection(container).querySelectorAll('.sheet__attack-name')).map((node) => node.textContent)).toEqual(['Unarmed Strike'])
+		})
+
+		it('switching a Finesse weapon’s ability writes the pick to the inventory row and changes the number', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const nimble: Character = {
+				...character,
+				id: 'atk-finesse',
+				abilityScores: { ...character.abilityScores!, scores: { ...character.abilityScores!.scores, strength: 10, dexterity: 18 } },
+				inventory: holding('Rapier'),
+			}
+			const { container } = await renderSheet(nimble, onEditInventory)
+
+			// DEX 18 (+4) beats STR 10 (+0): the default is Dexterity, for +7 at PB 3.
+			expect(attackRow(container, 'Rapier').textContent).toContain('+7')
+			expect((screen.getByLabelText('Attack ability for Rapier') as HTMLSelectElement).value).toBe('dexterity')
+
+			await user.selectOptions(screen.getByLabelText('Attack ability for Rapier'), 'strength')
+			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Rapier', source: 'XPHB', quantity: 1, equipped: 'held', attackAbility: 'strength' }])
+		})
+
+		it('renders a stored Finesse pick that overrides the default', async () => {
+			const stored: Character = {
+				...character,
+				id: 'atk-finesse-stored',
+				abilityScores: { ...character.abilityScores!, scores: { ...character.abilityScores!.scores, strength: 10, dexterity: 18 } },
+				inventory: [{ name: 'Rapier', source: 'XPHB', quantity: 1, equipped: 'held', attackAbility: 'strength' }],
+			}
+			const { container } = await renderSheet(stored, vi.fn())
+			// STR 10 (+0) + PB 3.
+			expect(attackRow(container, 'Rapier').textContent).toContain('+3')
+			expect((screen.getByLabelText('Attack ability for Rapier') as HTMLSelectElement).value).toBe('strength')
+		})
+
+		it('names a held weapon the item data does not know instead of dropping it (D43)', async () => {
+			const stale: Character = { ...character, id: 'atk-stale', inventory: holding('Sword of Nothing') }
+			const { container } = await renderSheet(stale)
+			const row = attackRow(container, 'Sword of Nothing')
+			expect(row.textContent).toContain('was not found in the item data')
+			expect(attackRow(container, 'Unarmed Strike')).toBeTruthy()
 		})
 	})
 
