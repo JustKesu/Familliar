@@ -22,9 +22,11 @@ A web app running in the browser where the user can:
 - Export a character to a file and import it back
 
 NOT in phase 1: PDF export, homebrew, mobile layout, visual design,
-AI character generation, magic item variants (+1 weapons), monsters
-(except the Beast stat blocks Wild Shape and Find Familiar need — see
-build order 6b), character sharing between players.
+AI character generation, magic item variants as generated items (a +1
+bonus is set on an item the character owns instead — see build order 7),
+containers and encumbrance, monsters (except the Beast stat blocks Wild
+Shape and Find Familiar need — see build order 6b), character sharing
+between players.
 
 ---
 
@@ -164,7 +166,28 @@ Each step is finished and tested before the next begins.
 6b. **Beasts for Wild Shape and Find Familiar** — extraction of Beast
    stat blocks, the Wild Shape known-forms picker, and the Find Familiar
    form list.
-7. **Inventory and equipment** — items, attunement, equipped state.
+7. **Inventory and equipment** — items, equipped state, Armour Class
+   from worn armour, weapon attacks, attunement, magic bonuses and custom
+   items, and resistances and immunities from every source.
+
+   Magic bonuses are set on an item the character already owns (+1/+2/+3),
+   not imported as separate generated variants. A custom item carries a few
+   structured fields and free text; what the app cannot compute it displays
+   and says so — D9 and D55 unchanged, no manual override of a calculated
+   value.
+
+   Conditional resistances (a Barbarian's Rage) are displayed as text here;
+   they become an active state in step 9, which is where conditions live.
+
+   Finally, once the above exists, the sheet is rearranged into a persistent
+   header plus tabs, and gains an actions table listing weapon attacks,
+   spells with an attack or a save, and usable features. Uses remaining
+   ("2 of 3") are filled in by step 9. The rearrangement comes last because
+   it moves finished sections rather than half-built ones.
+
+   NOT in this step: weight and encumbrance (D10), containers, buying and
+   selling, ammunition spent during play (step 9), and a shared library of
+   custom items.
 8. **Level up** — including the per-level HP choice.
 9. **Play tracking and rests.**
 10. **Multiclass.**

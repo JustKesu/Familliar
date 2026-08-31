@@ -45,6 +45,19 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 18 }),
 	},
+	{
+		from: 18,
+		to: 19,
+		/*
+		 * 19 adds CharacterInventoryItem.equipped. A version-18 character has
+		 * nothing equipped, and an absent field already means exactly that — so
+		 * this step only moves the version tag, same as the two before it.
+		 * Deliberately does NOT auto-equip armour the character happens to own:
+		 * changing a number the player never asked to change is worse than a
+		 * low AC with a stated reason (this slice's brief).
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 19 }),
+	},
 ]
 
 /**

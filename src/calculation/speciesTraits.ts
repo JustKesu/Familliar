@@ -72,7 +72,16 @@ export interface SpeedValue {
 	climb?: number
 }
 
-export function computeSpeed(character: Character, speciesData: SpeciesTraitsData[]): Calculated<SpeedValue> {
+/**
+ * `adjustments` are contributions from outside the species entry that change
+ * the speed itself — today only the heavy-armour Strength penalty (build order
+ * step 7 slice b, armourClass.ts's armourSpeedPenalty). Passed in rather than
+ * computed here so this file stays ignorant of equipment (D38), and applied to
+ * the walking speed before the other modes are derived from it: an
+ * object-shaped species speed means "equal to your walking speed", so a
+ * reduced walk reduces them too.
+ */
+export function computeSpeed(character: Character, speciesData: SpeciesTraitsData[], adjustments: Contribution[] = []): Calculated<SpeedValue> {
 	const lookup = findCharacterSpeciesEntry(character, speciesData)
 	if (!lookup) return unknown('Species has not been chosen for this character yet.')
 	if (lookup.status === 'unknown') return unknown(lookup.reason)
@@ -81,7 +90,13 @@ export function computeSpeed(character: Character, speciesData: SpeciesTraitsDat
 	if (!resolved) return unknown(`No speed data for species "${lookup.value.name}" (${lookup.value.source}).`)
 
 	const raw = resolved.value
-	const walk = typeof raw === 'number' ? raw : raw.walk
+	const base = typeof raw === 'number' ? raw : raw.walk
+	const breakdown: Contribution[] = [{ source: resolved.source, amount: base }, ...adjustments]
+	const walk = Math.max(
+		0,
+		breakdown.reduce((sum, contribution) => sum + contribution.amount, 0),
+	)
+
 	const value: SpeedValue = { walk }
 	if (typeof raw === 'object') {
 		if (raw.fly) value.fly = walk
@@ -89,7 +104,6 @@ export function computeSpeed(character: Character, speciesData: SpeciesTraitsDat
 		if (raw.climb) value.climb = walk
 	}
 
-	const breakdown: Contribution[] = [{ source: resolved.source, amount: walk }]
 	return known(value, breakdown)
 }
 

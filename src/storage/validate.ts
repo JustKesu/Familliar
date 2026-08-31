@@ -14,6 +14,7 @@ import type {
 	CharacterSpecies,
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
+	EquippedSlot,
 	FeatAsiChoice,
 	FilterChoiceSpellsChoice,
 	LanguageGrantSource,
@@ -595,6 +596,11 @@ function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar 
  * exists in items.json is NOT checked here: that needs the data file, which
  * the storage layer does not load (same limit as describeFamiliarError's) —
  * an unresolvable stored item is surfaced on the sheet instead (D43).
+ *
+ * Slice b's `equipped` flag is checked for shape, and "at most one suit of
+ * armour" is checked because 'worn' means armour and nothing else. The
+ * matching "at most one shield" rule is NOT checkable here: 'held' covers
+ * shields and weapons alike, and telling them apart needs items.json.
  */
 export function describeInventoryError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -608,6 +614,14 @@ export function describeInventoryError(value: unknown): string | null {
 		if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1) {
 			return `inventory[${i}].quantity must be a whole number of at least 1`
 		}
+		const equipped = entry['equipped']
+		if (equipped !== undefined && equipped !== 'worn' && equipped !== 'held') {
+			return `inventory[${i}].equipped must be "worn" or "held" when present`
+		}
+	}
+	const worn = value.filter((entry) => (entry as Record<string, unknown>)['equipped'] === 'worn')
+	if (worn.length > 1) {
+		return `inventory may not have more than one worn item (found ${worn.length})`
 	}
 	return null
 }
@@ -628,10 +642,12 @@ export function describeCurrencyError(value: unknown): string | null {
 function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
+		const equipped = record['equipped']
 		return {
 			name: record['name'] as string,
 			source: record['source'] as string,
 			quantity: record['quantity'] as number,
+			...(equipped !== undefined ? { equipped: equipped as EquippedSlot } : {}),
 		}
 	})
 }

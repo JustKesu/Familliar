@@ -238,6 +238,14 @@ export interface Character {
 }
 
 /**
+ * Which body slot an item occupies while equipped (build order step 7, slice
+ * b). Armour is worn; a shield or a weapon is held. Absent means carried but
+ * not in use — the state every item starts in, including one the wizard's
+ * starting-equipment step just granted.
+ */
+export type EquippedSlot = 'worn' | 'held'
+
+/**
  * One line of the inventory: which item (name + source, enough to look the
  * full entry back up in items.json) and how many are carried. `quantity` has
  * a floor of 1 — removing an item is its own action, never "set quantity to 0".
@@ -246,6 +254,14 @@ export interface CharacterInventoryItem {
 	name: string
 	source: string
 	quantity: number
+	/**
+	 * Set only while the item is in use (slice b). Equipping is a play-time
+	 * action taken on the sheet; nothing in the wizard sets this. At most one
+	 * suit of armour and one shield carry it at a time — the sheet enforces
+	 * that when equipping, since the rule is about what a body can wear, not
+	 * about what storage can hold.
+	 */
+	equipped?: EquippedSlot
 }
 
 /**
@@ -410,12 +426,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 18 to add Character.inventory and
- * Character.currencyCopper — what the character owns (build order step 7).
+ * (see wireFormat.ts). Bumped to 19 to add CharacterInventoryItem.equipped —
+ * which of the things the character owns are worn or held (build order step 7,
+ * slice b).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
- * previous version (see migrations.ts): a version-17 character is migrated,
+ * previous version (see migrations.ts): a version-18 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 18
+export const CURRENT_SCHEMA_VERSION = 19

@@ -33,6 +33,21 @@ describe('the migration chain (D69)', () => {
 		expect(migrated['id']).toBe('1')
 	})
 
+	it('carries a version-18 character forward with its inventory intact and nothing equipped', () => {
+		const migrated = migrateToCurrent({
+			schemaVersion: 18,
+			id: '1',
+			name: 'Rowan',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }],
+			currencyCopper: 500,
+		}) as Record<string, unknown>
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// Owning chain mail is not wearing it — the migration deliberately equips nothing.
+		expect(migrated['inventory']).toEqual([{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }])
+		expect(migrated['currencyCopper']).toBe(500)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

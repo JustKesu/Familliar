@@ -19,6 +19,7 @@ import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import type { Character, CharacterFamiliar } from '../storage/character'
+import { loadAcFormulaKeys } from './armourClassData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
@@ -110,10 +111,19 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 		...actual,
 		loadItemRefs: vi.fn(async () => [
 			{ name: 'Backpack', source: 'XPHB' },
+			{ name: 'Chain Mail', source: 'XPHB', typeCode: 'HA', armor: true, ac: 16, strength: '13', stealth: true },
+			{ name: 'Leather Armor', source: 'XPHB', typeCode: 'LA', armor: true, ac: 11 },
 			{ name: 'Longsword', source: 'XPHB' },
+			{ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 },
 			{ name: 'Torch', source: 'XPHB' },
 		]),
 	}
+})
+
+/* Only the three feature/spell fetches behind formula detection are stubbed — buildEquippedGear and hasMageArmor run for real. */
+vi.mock('./armourClassData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./armourClassData')>()
+	return { ...actual, loadAcFormulaKeys: vi.fn(async () => []) }
 })
 
 vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
@@ -514,6 +524,134 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(section.querySelector('.sheet__inventory-list')).toBeTruthy())
 			await user.click(screen.getByRole('button', { name: 'Remove' }))
 			expect(onEditInventory).toHaveBeenCalledWith([])
+		})
+	})
+
+	/*
+	 * Equipped gear and Armour Class (build order step 7, slice b). Same
+	 * end-to-end reason as the block above: the AC the player reads is the
+	 * product of the stored equipped flag, the item data and the formula
+	 * choice, and any one of the three can drop out silently.
+	 */
+	describe('equipped gear and Armour Class (step 7 slice b)', () => {
+		function acSection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__armour-class') as HTMLElement
+		}
+
+		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
+			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(acSection(rendered.container).querySelector('.sheet__armour-class-value')).toBeTruthy())
+			return rendered
+		}
+
+		it('is 10 + Dex with nothing equipped, and the breakdown says no armour is equipped', async () => {
+			const { container } = await renderSheet(character)
+			// DEX 14 = +2.
+			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
+			expect(acSection(container).textContent).toContain('no armour equipped')
+		})
+
+		it('armour the character owns but is not wearing changes nothing, and is named as the reason', async () => {
+			const owns: Character = { ...character, id: 'ac-owns', inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }] }
+			const { container } = await renderSheet(owns)
+			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
+			expect(acSection(container).textContent).toContain('Chain Mail is carried but not worn')
+		})
+
+		it('worn chain mail and a held shield give 18, with the Stealth penalty shown but not computed', async () => {
+			const armoured: Character = {
+				...character,
+				id: 'ac-armoured',
+				inventory: [
+					{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' },
+					{ name: 'Shield', source: 'XPHB', quantity: 1, equipped: 'held' },
+				],
+			}
+			const { container } = await renderSheet(armoured)
+			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('18')
+			expect(acSection(container).textContent).toContain('Disadvantage on Stealth checks (Chain Mail)')
+		})
+
+		it('equipping reports the item as worn, and equipping a second suit says what it displaced', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const twoSuits: Character = {
+				...character,
+				id: 'ac-two-suits',
+				inventory: [
+					{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' },
+					{ name: 'Leather Armor', source: 'XPHB', quantity: 1 },
+				],
+			}
+			const { container } = await renderSheet(twoSuits, onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Equip Leather Armor' }))
+			expect(onEditInventory).toHaveBeenCalledWith([
+				{ name: 'Chain Mail', source: 'XPHB', quantity: 1 },
+				{ name: 'Leather Armor', source: 'XPHB', quantity: 1, equipped: 'worn' },
+			])
+			expect(container.querySelector('.sheet__equip-notice')!.textContent).toBe(
+				'Unequipped Chain Mail — only one suit of armour can be worn at a time.',
+			)
+		})
+
+		it('offers the control only for gear that can be worn or held', async () => {
+			const mixed: Character = {
+				...character,
+				id: 'ac-mixed',
+				inventory: [
+					{ name: 'Shield', source: 'XPHB', quantity: 1 },
+					{ name: 'Torch', source: 'XPHB', quantity: 1 },
+				],
+			}
+			await renderSheet(mixed, vi.fn())
+			expect(screen.getByRole('button', { name: 'Equip Shield' })).toBeTruthy()
+			expect(screen.queryByRole('button', { name: 'Equip Torch' })).toBeNull()
+		})
+
+		it('unequipping drops the flag rather than removing the item', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const worn: Character = { ...character, id: 'ac-unequip', inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' }] }
+			await renderSheet(worn, onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Unequip Chain Mail' }))
+			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }])
+		})
+
+		it('an equipped item the item data does not know leaves the AC marked incomplete (D43)', async () => {
+			const stale: Character = { ...character, id: 'ac-stale', inventory: [{ name: 'Mystery Plate', source: 'HOMEBREW', quantity: 1, equipped: 'worn' }] }
+			const { container } = await renderSheet(stale)
+			expect(acSection(container).textContent).toContain('Incomplete')
+			expect(acSection(container).textContent).toContain('Mystery Plate (HOMEBREW)')
+		})
+
+		it("a Barbarian's Unarmored Defense wins over the plain unarmoured number, with the loser still shown", async () => {
+			vi.mocked(loadAcFormulaKeys).mockResolvedValueOnce(['barbarian-unarmored-defense'])
+			const barbarian: Character = {
+				...character,
+				id: 'ac-barbarian',
+				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 3 }],
+			}
+			const { container } = await renderSheet(barbarian)
+			// DEX 14 (+2) + CON 13 (+1) + 10 = 13, against 12 unarmoured.
+			await waitFor(() => expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('13'))
+			expect(acSection(container).textContent).toContain('Unarmored Defense (Barbarian) base')
+			expect(acSection(container).textContent).toContain('considered (10 + Dex = 12)')
+		})
+
+		it('heavy armour worn without the Strength it requires costs 10 feet of speed, with the reason in the speed breakdown', async () => {
+			const weak: Character = {
+				...character,
+				id: 'ac-weak',
+				abilityScores: { ...character.abilityScores!, scores: { ...character.abilityScores!.scores, strength: 10 } },
+				inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' }],
+			}
+			const { container } = await renderSheet(weak)
+			const speedItem = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith('Speed'))!
+			await waitFor(() => expect(speedItem.textContent).toContain('20 ft.'))
+			expect(speedItem.textContent).toContain('Chain Mail (Strength 13 required, you have 10)')
 		})
 	})
 

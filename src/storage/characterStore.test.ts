@@ -726,6 +726,72 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 		store.rename(migrated.id, 'Rowan the Green')
 		expect(JSON.parse(backing.getItem(STORAGE_KEY)!)[0].schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
 	})
+
+	it('round-trips an equipped item and refuses a bad equipped value or a second worn suit (step 7 slice b)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Rowan')
+
+		store.setInventory(character.id, [
+			{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' },
+			{ name: 'Shield', source: 'XPHB', quantity: 1, equipped: 'held' },
+			{ name: 'Leather Armor', source: 'XPHB', quantity: 1 },
+		])
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([
+			{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' },
+			{ name: 'Shield', source: 'XPHB', quantity: 1, equipped: 'held' },
+			{ name: 'Leather Armor', source: 'XPHB', quantity: 1 },
+		])
+
+		const badSlot = new MemoryStorage()
+		badSlot.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], inventory: [{ name: 'Shield', source: 'XPHB', quantity: 1, equipped: 'hand' }] },
+			]),
+		)
+		expect(() => new CharacterStore(badSlot).list()).toThrow(CorruptDataError)
+
+		const twoSuits = new MemoryStorage()
+		twoSuits.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					inventory: [
+						{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' },
+						{ name: 'Leather Armor', source: 'XPHB', quantity: 1, equipped: 'worn' },
+					],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(twoSuits).list()).toThrow(CorruptDataError)
+	})
+
+	/* D69: the 18 -> 19 bump ships a migration, so a version-18 save is carried forward with its inventory unequipped. */
+	it('migrates a version-18 character forward, keeping its inventory and equipping nothing', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: 18,
+					id: '1',
+					name: 'Rowan',
+					classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }],
+					inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }],
+					currencyCopper: 500,
+				},
+			]),
+		)
+		const [migrated] = new CharacterStore(backing).list()
+		expect(migrated.inventory).toEqual([{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }])
+		expect(migrated.inventory?.[0].equipped).toBeUndefined()
+		expect(migrated.currencyCopper).toBe(500)
+	})
 })
 
 describe('CharacterStore.rename', () => {

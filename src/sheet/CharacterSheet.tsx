@@ -17,6 +17,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
 import { computeAbilityScores } from '../calculation/abilityScores'
+import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
 import type { FeatEffectEntry } from '../calculation/featEffects'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeInitiative } from '../calculation/initiative'
@@ -36,7 +37,8 @@ import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBlock } from './BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { coinsToCopper, copperToCoins, platinumToCopper } from '../inventory/currency'
-import { itemKey, loadItemRefs, type ItemRef } from '../inventory/inventoryData'
+import { armourCategoryOf, equipSlotOf, isShield, itemKey, loadItemRefs, type ItemRef } from '../inventory/inventoryData'
+import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -273,8 +275,11 @@ function InventorySection({
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
 }): ReactNode {
-	const known = new Set((itemRefs ?? []).map(itemKey))
+	const refsByKey = new Map((itemRefs ?? []).map((ref) => [itemKey(ref), ref]))
+	const known = new Set(refsByKey.keys())
 	const coins = copperToCoins(currencyCopper)
+	/** What the last equip did to something else — the one-suit/one-shield rule is announced, never applied silently (this slice's brief). */
+	const [equipNotice, setEquipNotice] = useState<string | null>(null)
 
 	function editCoin(field: 'gp' | 'sp' | 'cp', amount: number): void {
 		onEditCurrency?.(coinsToCopper({ ...coins, [field]: amount }))
@@ -287,6 +292,50 @@ function InventorySection({
 
 	function removeAt(index: number): void {
 		onEditInventory?.(inventory.filter((_, i) => i !== index))
+	}
+
+	/**
+	 * Equipping is the one inventory edit that can change another row: the
+	 * rules allow one suit of armour and one shield at a time, so taking up a
+	 * full slot puts the previous occupant down. That is reported in
+	 * `equipNotice` rather than done quietly.
+	 */
+	function toggleEquip(index: number): void {
+		if (!onEditInventory) return
+		const item = inventory[index]
+		const ref = refsByKey.get(itemKey(item))
+		const slot = ref ? equipSlotOf(ref) : null
+		if (!slot) return
+
+		if (item.equipped) {
+			setEquipNotice(null)
+			onEditInventory(inventory.map((row, i) => (i === index ? { name: row.name, source: row.source, quantity: row.quantity } : row)))
+			return
+		}
+
+		const exclusive = slot === 'worn' ? 'armour' : isShield(ref!) ? 'shield' : null
+		const displacedIndex =
+			exclusive === null
+				? -1
+				: inventory.findIndex((row, i) => {
+						if (i === index || !row.equipped) return false
+						const otherRef = refsByKey.get(itemKey(row))
+						if (!otherRef) return false
+						return exclusive === 'armour' ? armourCategoryOf(otherRef) !== null : isShield(otherRef)
+					})
+
+		setEquipNotice(
+			displacedIndex === -1
+				? null
+				: `Unequipped ${inventory[displacedIndex].name} — only one ${exclusive === 'armour' ? 'suit of armour can be worn' : 'shield can be held'} at a time.`,
+		)
+		onEditInventory(
+			inventory.map((row, i) => {
+				if (i === index) return { ...row, equipped: slot }
+				if (i === displacedIndex) return { name: row.name, source: row.source, quantity: row.quantity }
+				return row
+			}),
+		)
 	}
 
 	function toggleAdd(key: string): void {
@@ -328,35 +377,53 @@ function InventorySection({
 			</div>
 
 			{itemRefsError && <p className="error">Could not load the item list: {itemRefsError}</p>}
+			{equipNotice && <p className="sheet__equip-notice">{equipNotice}</p>}
 
 			{inventory.length === 0 ? (
 				<p className="sheet__inventory-empty">Nothing carried yet.</p>
 			) : (
 				<ul className="sheet__inventory-list">
-					{inventory.map((item, index) => (
-						<li key={itemKey(item)}>
-							<span>{item.name}</span>
-							{itemRefs !== null && itemRefsError === null && !known.has(itemKey(item)) && (
-								<> <UnresolvedValue reason={`Item data not found for "${item.name}" (${item.source}).`} /></>
-							)}
-							{onEditInventory ? (
-								<>
-									{' '}
-									<CommitNumberField
-										label={`Quantity of ${item.name}`}
-										min={1}
-										value={item.quantity}
-										onCommit={(quantity) => setQuantity(index, quantity)}
-									/>{' '}
-									<button type="button" onClick={() => removeAt(index)}>
-										Remove
-									</button>
-								</>
-							) : (
-								<> ×{item.quantity}</>
-							)}
-						</li>
-					))}
+					{inventory.map((item, index) => {
+						const ref = refsByKey.get(itemKey(item))
+						const slot = ref ? equipSlotOf(ref) : null
+						return (
+							<li key={itemKey(item)}>
+								<span>{item.name}</span>
+								{item.equipped && <span className="sheet__inventory-equipped"> ({item.equipped})</span>}
+								{itemRefs !== null && itemRefsError === null && !known.has(itemKey(item)) && (
+									<> <UnresolvedValue reason={`Item data not found for "${item.name}" (${item.source}).`} /></>
+								)}
+								{onEditInventory ? (
+									<>
+										{' '}
+										<CommitNumberField
+											label={`Quantity of ${item.name}`}
+											min={1}
+											value={item.quantity}
+											onCommit={(quantity) => setQuantity(index, quantity)}
+										/>{' '}
+										{/* Only gear that can actually be worn or held offers the control at all. */}
+										{slot !== null && (
+											<>
+												<button
+													type="button"
+													aria-label={`${item.equipped ? 'Unequip' : 'Equip'} ${item.name}`}
+													onClick={() => toggleEquip(index)}
+												>
+													{item.equipped ? 'Unequip' : 'Equip'}
+												</button>{' '}
+											</>
+										)}
+										<button type="button" onClick={() => removeAt(index)}>
+											Remove
+										</button>
+									</>
+								) : (
+									<> ×{item.quantity}</>
+								)}
+							</li>
+						)
+					})}
 				</ul>
 			)}
 
@@ -423,6 +490,9 @@ export function CharacterSheet({
 	const [classFeatureChoices, setClassFeatureChoices] = useState<ChosenClassFeatureChoice[]>([])
 	/** The Find Familiar beast pool (step 6b slice 2). Fetched only for a character that actually has the spell — see the effect below. */
 	const [beasts, setBeasts] = useState<Beast[]>([])
+	/** Which alternative Armour Class formulas the character is eligible for (step 7 slice b). Depends on `character` and on whether Mage Armor is in the spell list, fetched separately same as the effects above. */
+	const [acFormulaKeys, setAcFormulaKeys] = useState<AcFormulaKey[]>([])
+	const [acFormulaKeysError, setAcFormulaKeysError] = useState<string | null>(null)
 
 	/*
 	 * D43: each per-`character` effect above starts empty and stays empty when its
@@ -633,6 +703,7 @@ export function CharacterSheet({
 		optionalFeatureSpells,
 	)
 	const knowsFindFamiliar = hasFindFamiliar(combinedSpells)
+	const knowsMageArmor = hasMageArmor(combinedSpells)
 	const storedWildShapeForms = character.wildShapeForms ?? []
 	const needsBeasts = knowsFindFamiliar || storedWildShapeForms.length > 0
 
@@ -659,6 +730,24 @@ export function CharacterSheet({
 			cancelled = true
 		}
 	}, [needsBeasts])
+
+	useEffect(() => {
+		let cancelled = false
+		loadAcFormulaKeys(character, knowsMageArmor)
+			.then((keys) => {
+				if (cancelled) return
+				setAcFormulaKeys(keys)
+				setAcFormulaKeysError(null)
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setAcFormulaKeys([])
+				setAcFormulaKeysError(messageOf(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character, knowsMageArmor])
 
 	if (loadError) {
 		return (
@@ -694,7 +783,10 @@ export function CharacterSheet({
 	const passivePerception = computePassivePerception(character, feats)
 	const passiveInvestigation = computePassiveInvestigation(character, feats)
 	const passiveInsight = computePassiveInsight(character, feats)
-	const speed = computeSpeed(character, speciesTraitsData)
+	/* Step 7 slice b: what the character has in use. itemRefs is null only while the item list is still loading — the AC section says so rather than reporting an unarmoured number it would then have to correct. */
+	const equippedGear = buildEquippedGear(character.inventory ?? [], itemRefs ?? [])
+	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats)
+	const speed = computeSpeed(character, speciesTraitsData, armourSpeedPenalty(character, equippedGear.armour, feats))
 	const size = computeSize(character, speciesTraitsData)
 	// Darkvision is the one granted sense that reconciles with the species value (D40/D53) rather than
 	// standing alone in the Senses section below — split out here, before combineSenseEntries sees the rest.
@@ -818,6 +910,32 @@ export function CharacterSheet({
 				<p>
 					<CalculatedNumber result={initiative} format={formatModifier} />
 				</p>
+			</section>
+
+			<section className="sheet__armour-class">
+				<h2>Armour Class</h2>
+				{itemRefs === null ? (
+					<p>Loading…</p>
+				) : armourClass.status === 'unknown' ? (
+					<UnresolvedValue reason={armourClass.reason} />
+				) : (
+					<>
+						<p className="sheet__armour-class-value">{armourClass.value.value}</p>
+						<ValueBreakdown breakdown={armourClass.breakdown} />
+						{armourClass.value.incomplete.length > 0 && (
+							<p className="error">
+								Incomplete — equipped but not found in the item data: {armourClass.value.incomplete.join(', ')}.
+							</p>
+						)}
+						{/* A Stealth penalty is shown, never computed into anything (this slice's brief). */}
+						{armourClass.value.stealthDisadvantage.length > 0 && (
+							<p className="sheet__stealth-note">
+								Disadvantage on Stealth checks ({armourClass.value.stealthDisadvantage.join(', ')}).
+							</p>
+						)}
+						{acFormulaKeysError && <p className="error">Could not check for alternative AC formulas: {acFormulaKeysError}</p>}
+					</>
+				)}
 			</section>
 
 			<section className="sheet__skills">

@@ -1217,3 +1217,23 @@ takže nakupování v pozdější slici nepotřebuje žádný převod.
 Cena, kterou to má: zadaná částka se při dalším vykreslení normalizuje.
 Napíšeš 25 do stříbra a uvidíš 2 zlaté a 5 stříbrných. Je to správně
 spočítané, jen se číslice přesunou mezi poli.
+
+## D75 — Předmět smí do dat mimo povolené zdroje, jen když ho nějaká feature jmenuje
+
+Extrakce items.json má druhý, JMENNÝ vstup vedle filtru zdrojů: předmět,
+který výslovně jmenuje výchozí výbava nějaké třídy nebo backgroundu, se
+vezme i z knihy, která jinak povolená není.
+
+Dnes je to jediná položka — Spellbook z PHB. Edice 2024 vlastní záznam
+nemá a Wizard bez knihy kouzel nedává smysl; bez tohohle vstupu by ho
+appka zapsala jako odkaz, který se nikdy nedohledá.
+
+Je to přímá obdoba D72, které totéž zavedlo pro tvory (formy, které
+jmenuje Pact of the Chain). Rozšířit seznam smí jen další feature, která
+něco jmenuje — ne úvaha, že by se předmět hodil. Validátor kontroluje, že
+jmenované položky v datech opravdu jsou, aby je příští změna extrakce
+tiše nevyhodila.
+
+Neplatí to na kategorie: kódy jako „hudební nástroj", „svatý symbol",
+„sada na hry" a „druidské ohnisko" nejsou chybějící předměty, ale skupiny,
+ze kterých si hráč vybírá. Ty řeší picker ve výchozí výbavě, ne extrakce.
