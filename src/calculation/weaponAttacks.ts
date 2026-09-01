@@ -13,13 +13,17 @@
  * and `dmgTypeFull`; `dmg2` on exactly the 42 Versatile ones; `range` on 33
  * (every type-R weapon and all 16 Thrown ones) as a plain "30/120" string.
  *
- * Two rules are written here rather than read, because no data field states
+ * Three rules are written here rather than read, because no data field states
  * them (same situation as the Dex cap in armourClass.ts):
  *  - a ranged weapon attacks with Dexterity, a melee weapon with Strength,
  *    and a Finesse weapon with whichever the player prefers (PHB 2024,
  *    "Weapon Properties" / "Attack Rolls").
  *  - every character is proficient with their Unarmed Strike, whose damage is
  *    1 + Strength modifier, bludgeoning (PHB 2024, "Unarmed Strike").
+ *  - a Monk (>= 1 level, signalled by a non-null Martial Arts die) may use
+ *    Dexterity instead of Strength for the attack and damage rolls of Unarmed
+ *    Strikes and Monk weapons when it is higher; a Monk weapon is Simple Melee
+ *    or Light Martial Melee, read structurally, not from prose (D21/D77).
  */
 
 import type { Ability } from '../abilities/abilityScores'
@@ -95,11 +99,16 @@ export interface WeaponAttack {
 export const UNARMED_STRIKE_KEY = 'unarmed-strike'
 
 const FINESSE = 'Finesse'
+const LIGHT = 'Light'
 const VERSATILE = 'Versatile'
 const RANGED_TYPE_CODE = 'R'
+const MELEE_TYPE_CODE = 'M'
 
-function abilityLabel(ability: Ability): string {
-	return `${ability} modifier`
+/** Named in the breakdown when Dexterity is used because of the Monk's Martial Arts, not because of Finesse or a ranged weapon (D77). */
+const MARTIAL_ARTS_REASON = 'Martial Arts'
+
+function abilityLabel(ability: Ability, reason?: string): string {
+	return reason ? `${ability} modifier (${reason})` : `${ability} modifier`
 }
 
 function signed(amount: number): string {
@@ -117,21 +126,51 @@ function hasProperty(weapon: ResolvedWeapon, property: string): boolean {
 }
 
 /**
- * Which ability the attack uses. A Finesse weapon defaults to whichever of
- * Strength and Dexterity is higher and can be switched by the player; every
- * other weapon has no choice at all.
+ * A Monk weapon, read structurally per D21/D77: a Simple Melee weapon, or a
+ * Martial Melee weapon with the Light property. Melee is the type code "M"
+ * (docs/DATA.md). Never taken from the feature's prose.
+ */
+function isMonkWeapon(weapon: ResolvedWeapon): boolean {
+	if (weapon.typeCode !== MELEE_TYPE_CODE) return false
+	if (weapon.weaponCategory === 'simple') return true
+	if (weapon.weaponCategory === 'martial') return hasProperty(weapon, LIGHT)
+	return false
+}
+
+/**
+ * Which ability the attack uses, and why.
+ *
+ *  - A Finesse weapon defaults to whichever of Strength and Dexterity is
+ *    higher and keeps its player-switchable selector — a Finesse Monk weapon
+ *    (Dagger, Shortsword) is still a Finesse weapon.
+ *  - Otherwise, when the character has Martial Arts and the weapon is a Monk
+ *    weapon, the rules (not the player) pick the higher of Strength and
+ *    Dexterity: no selector, because there is no choice to make (D77). An
+ *    explicit stored pick still wins over that default.
+ *  - Every other weapon has no choice at all: melee Strength, ranged Dexterity.
+ *
+ * `reason` is set only when Dexterity is used because of Martial Arts, so the
+ * breakdown can say why a non-Finesse weapon is not using Strength (D40).
  */
 function abilityFor(
 	weapon: ResolvedWeapon,
 	modifiers: Record<Ability, number>,
 	chosen: Ability | null,
-): { using: Ability; choice: WeaponAttack['abilityChoice'] } {
+	hasMartialArts: boolean,
+): { using: Ability; choice: WeaponAttack['abilityChoice']; reason: string | null } {
+	const higher: Ability = modifiers.dexterity > modifiers.strength ? 'dexterity' : 'strength'
+
 	if (hasProperty(weapon, FINESSE)) {
-		const preferred: Ability = modifiers.dexterity > modifiers.strength ? 'dexterity' : 'strength'
-		const using = chosen ?? preferred
-		return { using, choice: { using, options: ['strength', 'dexterity'], isDefault: chosen === null } }
+		const using = chosen ?? higher
+		return { using, choice: { using, options: ['strength', 'dexterity'], isDefault: chosen === null }, reason: null }
 	}
-	return { using: weapon.typeCode === RANGED_TYPE_CODE ? 'dexterity' : 'strength', choice: null }
+
+	if (hasMartialArts && isMonkWeapon(weapon)) {
+		const using = chosen ?? higher
+		return { using, choice: null, reason: using === 'dexterity' ? MARTIAL_ARTS_REASON : null }
+	}
+
+	return { using: weapon.typeCode === RANGED_TYPE_CODE ? 'dexterity' : 'strength', choice: null, reason: null }
 }
 
 function notesFor(weapon: ResolvedWeapon, proficient: boolean): string[] {
@@ -144,9 +183,16 @@ function notesFor(weapon: ResolvedWeapon, proficient: boolean): string[] {
 	return notes
 }
 
-function toHitFor(weapon: ResolvedWeapon, using: Ability, modifiers: Record<Ability, number>, proficiencyBonus: Calculated<number>, proficient: boolean): Calculated<number> {
+function toHitFor(
+	weapon: ResolvedWeapon,
+	using: Ability,
+	modifiers: Record<Ability, number>,
+	proficiencyBonus: Calculated<number>,
+	proficient: boolean,
+	abilityReason: string | null,
+): Calculated<number> {
 	if (proficiencyBonus.status === 'unknown') return unknown(proficiencyBonus.reason)
-	const breakdown: Contribution[] = [{ source: abilityLabel(using), amount: modifiers[using] }]
+	const breakdown: Contribution[] = [{ source: abilityLabel(using, abilityReason ?? undefined), amount: modifiers[using] }]
 	breakdown.push(
 		proficient
 			? { source: 'proficiency bonus', amount: proficiencyBonus.value }
@@ -158,12 +204,12 @@ function toHitFor(weapon: ResolvedWeapon, using: Ability, modifiers: Record<Abil
 	)
 }
 
-function damageFor(weapon: ResolvedWeapon, using: Ability, modifiers: Record<Ability, number>): AttackDamage {
+function damageFor(weapon: ResolvedWeapon, using: Ability, modifiers: Record<Ability, number>, abilityReason: string | null): AttackDamage {
 	const dice = weapon.dmg1 ?? null
 	const modifier = modifiers[using]
 	const damageType = weapon.dmgTypeFull ?? ''
 	const breakdown: Contribution[] = [{ source: `${weapon.name} damage dice`, amount: 0, note: dice ?? '1' }]
-	breakdown.push({ source: abilityLabel(using), amount: modifier })
+	breakdown.push({ source: abilityLabel(using, abilityReason ?? undefined), amount: modifier })
 	// SPEC section B: damage takes the ability modifier and no proficiency bonus.
 	const versatileDice = hasProperty(weapon, VERSATILE) ? (weapon.dmg2 ?? null) : null
 	const twoHanded = versatileDice === null ? null : damageText(versatileDice, modifier, damageType)
@@ -200,6 +246,8 @@ export function computeWeaponAttacks(
 		}
 	}
 	const proficiencyBonus = computeProficiencyBonus(character.classes)
+	// Same signal slice c reads for the die: a non-null die means at least one Monk level, so the ability clause and the die never disagree (D77).
+	const hasMartialArts = martialArtsDie !== null
 
 	const attacks: WeaponAttack[] = held.map((row) => {
 		const key = `${row.name}|${row.source}`
@@ -210,13 +258,13 @@ export function computeWeaponAttacks(
 
 		const weapon = row.weapon
 		const proficient = isProficientWithWeapon(weapon, grants)
-		const { using, choice } = abilityFor(weapon, modifiers, row.chosenAbility)
-		const damage = damageFor(weapon, using, modifiers)
+		const { using, choice, reason } = abilityFor(weapon, modifiers, row.chosenAbility, hasMartialArts)
+		const damage = damageFor(weapon, using, modifiers, reason)
 		return {
 			key,
 			name: weapon.name,
 			range: weapon.range ?? null,
-			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient),
+			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason),
 			damage: scoresUnknown ? unknown(scoresUnknown) : known(damage, damage.breakdown),
 			notes: notesFor(weapon, proficient),
 			abilityChoice: choice,
@@ -232,6 +280,10 @@ export function computeWeaponAttacks(
  * with it; its damage is 1 + Strength modifier, bludgeoning. A Monk's Martial
  * Arts die replaces that 1 — the die is a real column of the Monk class table
  * (scripts/investigate-weapon-attack-fields.js), so it is read, not tabled.
+ *
+ * Martial Arts also lets a Monk use Dexterity for the Unarmed Strike's attack
+ * and damage rolls when it is higher (D77). A non-null die is the same signal
+ * slice c uses, so the die and the ability clause never disagree.
  */
 function unarmedStrike(modifiers: Record<Ability, number>, proficiencyBonus: Calculated<number>, martialArtsDie: string | null, scoresUnknown: string | null): WeaponAttack {
 	const name = 'Unarmed Strike'
@@ -241,19 +293,23 @@ function unarmedStrike(modifiers: Record<Ability, number>, proficiencyBonus: Cal
 		return { key: UNARMED_STRIKE_KEY, name, range: null, toHit: unknown(proficiencyBonus.reason), damage: unknown(proficiencyBonus.reason), notes, abilityChoice: null }
 	}
 
+	const hasMartialArts = martialArtsDie !== null
+	const using: Ability = hasMartialArts && modifiers.dexterity > modifiers.strength ? 'dexterity' : 'strength'
+	const reason = using === 'dexterity' ? MARTIAL_ARTS_REASON : undefined
+
 	const toHitBreakdown: Contribution[] = [
-		{ source: abilityLabel('strength'), amount: modifiers.strength },
+		{ source: abilityLabel(using, reason), amount: modifiers[using] },
 		{ source: 'proficiency bonus', amount: proficiencyBonus.value },
 	]
 	const damageBreakdown: Contribution[] = [
 		{ source: martialArtsDie ? 'Martial Arts die' : 'unarmed strike base', amount: 0, note: martialArtsDie ?? '1' },
-		{ source: abilityLabel('strength'), amount: modifiers.strength },
+		{ source: abilityLabel(using, reason), amount: modifiers[using] },
 	]
 	const damage: AttackDamage = {
 		dice: martialArtsDie,
-		modifier: modifiers.strength,
+		modifier: modifiers[using],
 		damageType: 'bludgeoning',
-		text: damageText(martialArtsDie, modifiers.strength, 'bludgeoning'),
+		text: damageText(martialArtsDie, modifiers[using], 'bludgeoning'),
 		twoHandedText: null,
 		breakdown: damageBreakdown,
 	}

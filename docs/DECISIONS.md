@@ -1260,3 +1260,18 @@ změní se kandidát v započítanou položku — bez další změny pravidla.
 Nezaměňovat s D55 („efekt není započítaný", protože ho appka neumí
 spočítat vůbec) ani s D58 („čeká na volbu"). Tady appka efekt spočítat
 umí; jen neví, jestli platí.
+
+## D77 — Kterou vlastností se útočí, rozhoduje zbraň, ne hráč
+
+Melee zbraň používá Sílu, ranged (type R) Dexteritu. Výjimku dělá jen
+Finesse: tam appka vezme vyšší z obou a hráč to smí přepsat volbou
+uloženou na řádku inventáře — volba tak zanikne spolu se zbraní a nemůže
+ji přežít.
+
+Monk je druhá výjimka a jiného druhu: Martial Arts nedává volbu, ale
+nahrazuje pravidlo. U Unarmed Strike a monk zbraní se počítá Dexterita,
+pokud je vyšší. Monk zbraň se pozná strukturálně — simple melee, nebo
+martial melee s vlastností Light — ne z textu feature (D21).
+
+Ostatní zbraně volbu nemají a picker ji nenabízí. Kdo chce útočit Silou
+s lukem, nedělá chybu v appce, ale v pravidlech.

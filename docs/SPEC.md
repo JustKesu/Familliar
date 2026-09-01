@@ -112,11 +112,13 @@ That changes in step 9, where spells gain an active state.
 
 **Initiative** — Dex modifier, plus PB if the character has Alert.
 
-**Weapon attacks** — per weapon in inventory:
+**Weapon attacks** — per weapon held (equipped), plus Unarmed Strike:
 to-hit = ability modifier + PB (only if proficient with that weapon
 type) + magic bonus.
 damage = weapon dice + ability modifier, no PB.
-Finesse weapons let the player choose STR or DEX.
+Finesse weapons let the player choose STR or DEX; other weapons do not
+(melee STR, ranged DEX). A Monk uses DEX for Unarmed Strikes and Monk
+weapons when it is higher — D77.
 Weapon mastery property shown.
 
 **Spellcasting** — spell attack = ability mod + PB.

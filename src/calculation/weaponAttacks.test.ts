@@ -72,6 +72,32 @@ const shortbow: ResolvedWeapon = {
 	range: '80/320',
 }
 
+/** Simple Melee, not Finesse — a Monk weapon with no choice to make. */
+const quarterstaff: ResolvedWeapon = {
+	name: 'Quarterstaff',
+	source: 'XPHB',
+	typeCode: 'M',
+	weaponCategory: 'simple',
+	dmg1: '1d6',
+	dmg2: '1d8',
+	dmgTypeFull: 'bludgeoning',
+	propertyFull: ['Versatile'],
+	masteryFull: ['Topple'],
+}
+
+/** Simple Melee AND Finesse — a Monk weapon that keeps its selector. */
+const dagger: ResolvedWeapon = {
+	name: 'Dagger',
+	source: 'XPHB',
+	typeCode: 'M',
+	weaponCategory: 'simple',
+	dmg1: '1d4',
+	dmgTypeFull: 'piercing',
+	propertyFull: ['Finesse', 'Light', 'Thrown'],
+	masteryFull: ['Nick'],
+	range: '20/60',
+}
+
 const martialGrants: WeaponProficiencyGrant[] = [
 	{ kind: 'category', category: 'simple' },
 	{ kind: 'category', category: 'martial' },
@@ -197,6 +223,74 @@ describe('computeWeaponAttacks — unarmed strike', () => {
 	it('comes last, after the weapons in hand', () => {
 		const attacks = computeWeaponAttacks(character('Fighter', 1), [held(longsword)], martialGrants)
 		expect(attacks.map((attack) => attack.name)).toEqual(['Longsword', 'Unarmed Strike'])
+	})
+})
+
+describe('computeWeaponAttacks — Martial Arts ability (D77)', () => {
+	/** A level-1 Monk: PB +2, and DEX 18 (+4) over STR 12 (+1) with nimbleScores. */
+	const monkDie = '1d6'
+
+	it('a Monk with Dexterity higher uses it for the Unarmed Strike, and the breakdown says why', () => {
+		const unarmed = attackNamed(computeWeaponAttacks(character('Monk', 1, nimbleScores), [], martialGrants, [], monkDie), 'Unarmed Strike')
+		expect(toHitOf(unarmed)).toBe(6)
+		expect(damageTextOf(unarmed)).toBe('1d6 + 4 bludgeoning')
+		expect(unarmed.abilityChoice).toBeNull()
+		expect(unarmed.toHit.status === 'known' && unarmed.toHit.breakdown[0]).toEqual({ source: 'dexterity modifier (Martial Arts)', amount: 4 })
+		expect(unarmed.damage.status === 'known' && unarmed.damage.breakdown[1]).toEqual({ source: 'dexterity modifier (Martial Arts)', amount: 4 })
+	})
+
+	it('uses Dexterity for a non-Finesse Monk weapon with no selector', () => {
+		const qs = attackNamed(computeWeaponAttacks(character('Monk', 1, nimbleScores), [held(quarterstaff)], martialGrants, [], monkDie), 'Quarterstaff')
+		expect(qs.abilityChoice).toBeNull()
+		expect(toHitOf(qs)).toBe(6)
+		expect(damageTextOf(qs)).toBe('1d6 + 4 bludgeoning')
+		expect(qs.toHit.status === 'known' && qs.toHit.breakdown[0]).toEqual({ source: 'dexterity modifier (Martial Arts)', amount: 4 })
+	})
+
+	it('keeps the selector on a Finesse Monk weapon, defaulting to the higher ability', () => {
+		const dg = attackNamed(computeWeaponAttacks(character('Monk', 1, nimbleScores), [held(dagger)], martialGrants, [], monkDie), 'Dagger')
+		expect(dg.abilityChoice).toEqual({ using: 'dexterity', options: ['strength', 'dexterity'], isDefault: true })
+		expect(toHitOf(dg)).toBe(6)
+		// Finesse framing — the selector explains the choice, so the contribution is bare.
+		expect(dg.damage.status === 'known' && dg.damage.breakdown[1]).toEqual({ source: 'dexterity modifier', amount: 4 })
+	})
+
+	it('falls back to Strength when the Monk’s Strength is higher', () => {
+		const attacks = computeWeaponAttacks(character('Monk', 1, scores), [held(quarterstaff)], martialGrants, [], monkDie)
+		const unarmed = attackNamed(attacks, 'Unarmed Strike')
+		expect(toHitOf(unarmed)).toBe(5)
+		expect(damageTextOf(unarmed)).toBe('1d6 + 3 bludgeoning')
+		expect(unarmed.toHit.status === 'known' && unarmed.toHit.breakdown[0]).toEqual({ source: 'strength modifier', amount: 3 })
+		const qs = attackNamed(attacks, 'Quarterstaff')
+		expect(toHitOf(qs)).toBe(5)
+		expect(qs.toHit.status === 'known' && qs.toHit.breakdown[0]).toEqual({ source: 'strength modifier', amount: 3 })
+	})
+
+	it('leaves a Martial Melee weapon without Light on Strength in a Monk’s hands', () => {
+		const ls = attackNamed(computeWeaponAttacks(character('Monk', 1, nimbleScores), [held(longsword)], martialGrants, [], monkDie), 'Longsword')
+		expect(ls.abilityChoice).toBeNull()
+		expect(toHitOf(ls)).toBe(3)
+		expect(ls.toHit.status === 'known' && ls.toHit.breakdown[0]).toEqual({ source: 'strength modifier', amount: 1 })
+	})
+
+	it('leaves a non-Monk holding a Quarterstaff on Strength', () => {
+		const qs = attackNamed(computeWeaponAttacks(character('Fighter', 1, nimbleScores), [held(quarterstaff)], martialGrants), 'Quarterstaff')
+		expect(qs.abilityChoice).toBeNull()
+		expect(toHitOf(qs)).toBe(3)
+		expect(qs.toHit.status === 'known' && qs.toHit.breakdown[0]).toEqual({ source: 'strength modifier', amount: 1 })
+	})
+
+	it('lets an explicit stored pick beat the Martial Arts default on a Finesse Monk weapon', () => {
+		const dg = attackNamed(computeWeaponAttacks(character('Monk', 1, nimbleScores), [held(dagger, 'strength')], martialGrants, [], monkDie), 'Dagger')
+		expect(dg.abilityChoice).toEqual({ using: 'strength', options: ['strength', 'dexterity'], isDefault: false })
+		expect(toHitOf(dg)).toBe(3)
+		expect(damageTextOf(dg)).toBe('1d4 + 1 piercing')
+	})
+
+	it('honours a stored pick on a non-Finesse Monk weapon even though no selector is shown', () => {
+		const qs = attackNamed(computeWeaponAttacks(character('Monk', 1, nimbleScores), [held(quarterstaff, 'strength')], martialGrants, [], monkDie), 'Quarterstaff')
+		expect(qs.abilityChoice).toBeNull()
+		expect(toHitOf(qs)).toBe(3)
 	})
 })
 
