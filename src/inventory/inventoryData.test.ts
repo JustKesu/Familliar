@@ -28,6 +28,20 @@ describe('extractItemRefs', () => {
 		expect(extractItemRefs(parsed).map(itemKey)).toEqual(['Club|XPHB', 'Holy Avenger|XDMG'])
 	})
 
+	/* items.json states the requirement two ways and nowhere else: a bare `true` (174 items), or the restriction as a sentence (98). */
+	it('carries the attunement requirement, keeping a restriction string verbatim', () => {
+		const parsed = [
+			{ name: 'Amulet of Health', source: 'XDMG', reqAttune: true },
+			{ name: 'Wand of the War Mage, +1', source: 'XDMG', reqAttune: 'by a spellcaster', reqAttuneTags: [{ spellcasting: true }] },
+			{ name: 'Backpack', source: 'XPHB' },
+		]
+		expect(extractItemRefs(parsed)).toEqual([
+			{ name: 'Amulet of Health', source: 'XDMG', requiresAttunement: true },
+			{ name: 'Backpack', source: 'XPHB' },
+			{ name: 'Wand of the War Mage, +1', source: 'XDMG', requiresAttunement: true, attunementCondition: 'by a spellcaster' },
+		])
+	})
+
 	it('throws when the parsed value is not an array', () => {
 		expect(() => extractItemRefs({ items: [] })).toThrow('items.json')
 	})

@@ -69,6 +69,18 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 20 }),
 	},
+	{
+		from: 20,
+		to: 21,
+		/*
+		 * 21 adds CharacterInventoryItem.attuned. A version-20 character is
+		 * attuned to nothing, and an absent flag already means exactly that —
+		 * version tag only, same as the four before it. Deliberately does NOT
+		 * attune anything the character owns: attuning is the player's action,
+		 * and the limit is theirs to spend (this slice's brief).
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 21 }),
+	},
 ]
 
 /**

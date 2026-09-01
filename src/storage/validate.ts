@@ -605,6 +605,12 @@ function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar 
  *
  * Slice c's `attackAbility` is likewise checked for shape only — whether the
  * row is a Finesse weapon at all is again an items.json question.
+ *
+ * Slice d's `attuned` flag: shape only, for the same reason — whether the item
+ * requires attunement lives in items.json's `reqAttune`. The three-item limit
+ * is NOT checked here either: it depends on the character's Artificer levels
+ * (src/calculation/attunement.ts), which is a rules question, not a wire-format
+ * one, and a stored file that breaks it must still load so the player can fix it.
  */
 export function describeInventoryError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -625,6 +631,10 @@ export function describeInventoryError(value: unknown): string | null {
 		const attackAbility = entry['attackAbility']
 		if (attackAbility !== undefined && attackAbility !== 'strength' && attackAbility !== 'dexterity') {
 			return `inventory[${i}].attackAbility must be "strength" or "dexterity" when present`
+		}
+		const attuned = entry['attuned']
+		if (attuned !== undefined && attuned !== true) {
+			return `inventory[${i}].attuned must be true when present`
 		}
 	}
 	const worn = value.filter((entry) => (entry as Record<string, unknown>)['equipped'] === 'worn')
@@ -658,6 +668,7 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 			quantity: record['quantity'] as number,
 			...(equipped !== undefined ? { equipped: equipped as EquippedSlot } : {}),
 			...(attackAbility !== undefined ? { attackAbility: attackAbility as WeaponAttackAbility } : {}),
+			...(record['attuned'] === true ? { attuned: true as const } : {}),
 		}
 	})
 }

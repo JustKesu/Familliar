@@ -138,6 +138,12 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			},
 			{ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 },
 			{ name: 'Torch', source: 'XPHB' },
+			/* Four attunement items, one of them with a restriction sentence — enough to reach the limit of three (slice d). */
+			{ name: 'Amulet of Health', source: 'XDMG', requiresAttunement: true },
+			{ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true },
+			{ name: 'Ring of Protection', source: 'XDMG', requiresAttunement: true },
+			{ name: 'Ring of Spell Storing', source: 'XDMG', requiresAttunement: true },
+			{ name: 'Wand of the War Mage, +1', source: 'XDMG', requiresAttunement: true, attunementCondition: 'by a spellcaster' },
 		]),
 	}
 })
@@ -778,6 +784,167 @@ describe('CharacterSheet', () => {
 			const row = attackRow(container, 'Sword of Nothing')
 			expect(row.textContent).toContain('was not found in the item data')
 			expect(attackRow(container, 'Unarmed Strike')).toBeTruthy()
+		})
+	})
+
+	/*
+	 * Attunement (build order step 7, slice d). Same end-to-end reason as the
+	 * blocks above: the count, the requirement text and the refusal are three
+	 * separate paths from stored state to the screen.
+	 */
+	describe('attunement (step 7 slice d)', () => {
+		function inventorySection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__inventory') as HTMLElement
+		}
+
+		function inventoryRow(container: HTMLElement, name: string): HTMLElement {
+			const row = Array.from(inventorySection(container).querySelectorAll('li')).find((li) => li.textContent?.includes(name))
+			if (!row) throw new Error(`no inventory row for ${name}`)
+			return row
+		}
+
+		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
+			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(inventorySection(rendered.container).querySelector('.sheet__attunement-count')).toBeTruthy())
+			return rendered
+		}
+
+		const carrying = (...names: string[]): NonNullable<Character['inventory']> => names.map((name) => ({ name, source: 'XDMG', quantity: 1 }))
+
+		it('shows the count without opening anything, and the breakdown says where the limit came from', async () => {
+			const owner: Character = {
+				...character,
+				id: 'att-count',
+				inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }, ...carrying('Ring of Protection')],
+			}
+			const { container } = await renderSheet(owner)
+			expect(inventorySection(container).querySelector('.sheet__attunement-count')!.textContent).toContain('1 of 3 attuned')
+			expect(inventorySection(container).querySelector('.sheet__attunement details')!.textContent).toContain('the attunement rule (three magic items)')
+		})
+
+		it('marks an attuned row so it is recognisable at a glance', async () => {
+			const owner: Character = { ...character, id: 'att-mark', inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }] }
+			const { container } = await renderSheet(owner)
+			expect(inventoryRow(container, 'Cloak of Protection').querySelector('.sheet__inventory-attuned')!.textContent).toContain('attuned')
+		})
+
+		it('shows the requirement, with a restriction sentence reaching the row unchanged (D21)', async () => {
+			const owner: Character = { ...character, id: 'att-text', inventory: carrying('Wand of the War Mage, +1', 'Amulet of Health') }
+			const { container } = await renderSheet(owner)
+			expect(inventoryRow(container, 'Wand of the War Mage, +1').querySelector('.sheet__attunement-requirement')!.textContent).toContain(
+				'Requires attunement by a spellcaster',
+			)
+			// A requirement with no condition says only that there is one — nothing is invented to fill the gap.
+			expect(inventoryRow(container, 'Amulet of Health').querySelector('.sheet__attunement-requirement')!.textContent!.trim()).toBe('Requires attunement')
+		})
+
+		it('attunes and un-attunes, writing the flag to the row', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const owner: Character = { ...character, id: 'att-toggle', inventory: carrying('Cloak of Protection') }
+			await renderSheet(owner, onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Attune to Cloak of Protection' }))
+			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }])
+
+			const attuned: Character = { ...owner, id: 'att-toggle-2', inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }] }
+			const second = vi.fn()
+			cleanup()
+			await renderSheet(attuned, second)
+			await user.click(screen.getByRole('button', { name: 'End attunement to Cloak of Protection' }))
+			expect(second).toHaveBeenCalledWith([{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 }])
+		})
+
+		it('offers no control at all for an item that does not require attunement', async () => {
+			const owner: Character = { ...character, id: 'att-none', inventory: [{ name: 'Torch', source: 'XPHB', quantity: 1 }] }
+			await renderSheet(owner, vi.fn())
+			expect(screen.queryByRole('button', { name: 'Attune to Torch' })).toBeNull()
+		})
+
+		it('refuses a fourth attunement with a message naming the limit, and changes nothing', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const full: Character = {
+				...character,
+				id: 'att-limit',
+				inventory: [
+					{ name: 'Amulet of Health', source: 'XDMG', quantity: 1, attuned: true },
+					{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true },
+					{ name: 'Ring of Protection', source: 'XDMG', quantity: 1, attuned: true },
+					{ name: 'Wand of the War Mage, +1', source: 'XDMG', quantity: 1 },
+				],
+			}
+			const { container } = await renderSheet(full, onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Attune to Wand of the War Mage, +1' }))
+			expect(onEditInventory).not.toHaveBeenCalled()
+			expect(inventorySection(container).querySelector('.sheet__attune-notice')!.textContent).toBe(
+				'Cannot attune to Wand of the War Mage, +1: you can be attuned to at most 3 magic items at once, and 3 already are.',
+			)
+		})
+
+		it('an Artificer 10 is allowed a fourth, and refused a fifth', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const artificer: Character = {
+				...character,
+				id: 'att-artificer',
+				classes: [{ className: 'Artificer', classSource: 'EFA', subclass: null, level: 10 }],
+				inventory: [
+					{ name: 'Amulet of Health', source: 'XDMG', quantity: 1, attuned: true },
+					{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true },
+					{ name: 'Ring of Protection', source: 'XDMG', quantity: 1, attuned: true },
+					{ name: 'Wand of the War Mage, +1', source: 'XDMG', quantity: 1 },
+				],
+			}
+			const { container } = await renderSheet(artificer, onEditInventory)
+			expect(inventorySection(container).querySelector('.sheet__attunement-count')!.textContent).toContain('3 of 4 attuned')
+
+			await user.click(screen.getByRole('button', { name: 'Attune to Wand of the War Mage, +1' }))
+			expect(onEditInventory).toHaveBeenLastCalledWith([
+				{ name: 'Amulet of Health', source: 'XDMG', quantity: 1, attuned: true },
+				{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true },
+				{ name: 'Ring of Protection', source: 'XDMG', quantity: 1, attuned: true },
+				{ name: 'Wand of the War Mage, +1', source: 'XDMG', quantity: 1, attuned: true },
+			])
+
+			// The same character with the fourth already attuned: a fifth is refused, naming the raised limit.
+			cleanup()
+			const fifth: Character = {
+				...artificer,
+				id: 'att-artificer-2',
+				inventory: [
+					...artificer.inventory!.slice(0, 3),
+					{ name: 'Wand of the War Mage, +1', source: 'XDMG', quantity: 1, attuned: true },
+					{ name: 'Ring of Spell Storing', source: 'XDMG', quantity: 1 },
+				],
+			}
+			const { container: second } = await renderSheet(fifth, vi.fn())
+			expect(inventorySection(second).querySelector('.sheet__attunement-count')!.textContent).toContain('4 of 4 attuned')
+
+			await user.click(screen.getByRole('button', { name: 'Attune to Ring of Spell Storing' }))
+			expect(inventorySection(second).querySelector('.sheet__attune-notice')!.textContent).toContain('at most 4 magic items at once')
+		})
+
+		it('keeps the control on an attuned row whose item data is missing, so the attunement can be ended (D43)', async () => {
+			const stale: Character = { ...character, id: 'att-stale', inventory: [{ name: 'Mystery Ring', source: 'HOMEBREW', quantity: 1, attuned: true }] }
+			const { container } = await renderSheet(stale, vi.fn())
+			expect(inventoryRow(container, 'Mystery Ring').textContent).toContain('Item data not found for "Mystery Ring" (HOMEBREW).')
+			expect(screen.getByRole('button', { name: 'End attunement to Mystery Ring' })).toBeTruthy()
+		})
+
+		it('putting an attuned item down leaves it attuned', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const worn: Character = {
+				...character,
+				id: 'att-unequip',
+				inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn', attuned: true }],
+			}
+			await renderSheet(worn, onEditInventory)
+			await user.click(screen.getByRole('button', { name: 'Unequip Chain Mail' }))
+			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Chain Mail', source: 'XPHB', quantity: 1, attuned: true }])
 		})
 	})
 

@@ -18,6 +18,7 @@ import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
 import { computeAbilityScores } from '../calculation/abilityScores'
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
+import { BASE_ATTUNEMENT_LIMIT, computeAttunementLimit, countAttuned, describeAttunementRefusal } from '../calculation/attunement'
 import type { FeatEffectEntry } from '../calculation/featEffects'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeInitiative } from '../calculation/initiative'
@@ -252,6 +253,22 @@ function AddPlatinumField({ onAdd }: { onAdd: (platinum: number) => void }): Rea
 }
 
 /**
+ * A row put down. Slice b lets the Finesse ability pick go with the weapon it
+ * belongs to; the attunement flag survives, since attunement is independent of
+ * whether the item is worn or held (slice d).
+ */
+function putDown(row: CharacterInventoryItem): CharacterInventoryItem {
+	return { name: row.name, source: row.source, quantity: row.quantity, ...(row.attuned ? { attuned: true as const } : {}) }
+}
+
+/** The row with its attunement ended — the key is removed, since absent is what "not attuned" means in storage. */
+function unattuned(row: CharacterInventoryItem): CharacterInventoryItem {
+	const rest = { ...row }
+	delete rest.attuned
+	return rest
+}
+
+/**
  * Inventory and money (build order step 7, slice a1). The second editable
  * place on an otherwise read-only sheet (the familiar is the first): editing
  * is confined to this section and stays a plain list, not a form. Without the
@@ -267,6 +284,7 @@ function InventorySection({
 	currencyCopper,
 	itemRefs,
 	itemRefsError,
+	attunementLimit,
 	onEditInventory,
 	onEditCurrency,
 }: {
@@ -274,6 +292,7 @@ function InventorySection({
 	currencyCopper: number
 	itemRefs: ItemRef[] | null
 	itemRefsError: string | null
+	attunementLimit: Calculated<number>
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
 }): ReactNode {
@@ -282,6 +301,10 @@ function InventorySection({
 	const coins = copperToCoins(currencyCopper)
 	/** What the last equip did to something else — the one-suit/one-shield rule is announced, never applied silently (this slice's brief). */
 	const [equipNotice, setEquipNotice] = useState<string | null>(null)
+	/** Why the last attunement was refused. The limit is a flat rule, so a refusal is stated, never a warning beside an applied change. */
+	const [attuneNotice, setAttuneNotice] = useState<string | null>(null)
+	const attunedCount = countAttuned(inventory)
+	const limit = attunementLimit.status === 'known' ? attunementLimit.value : BASE_ATTUNEMENT_LIMIT
 
 	function editCoin(field: 'gp' | 'sp' | 'cp', amount: number): void {
 		onEditCurrency?.(coinsToCopper({ ...coins, [field]: amount }))
@@ -311,7 +334,7 @@ function InventorySection({
 
 		if (item.equipped) {
 			setEquipNotice(null)
-			onEditInventory(inventory.map((row, i) => (i === index ? { name: row.name, source: row.source, quantity: row.quantity } : row)))
+			onEditInventory(inventory.map((row, i) => (i === index ? putDown(row) : row)))
 			return
 		}
 
@@ -334,10 +357,34 @@ function InventorySection({
 		onEditInventory(
 			inventory.map((row, i) => {
 				if (i === index) return { ...row, equipped: slot }
-				if (i === displacedIndex) return { name: row.name, source: row.source, quantity: row.quantity }
+				if (i === displacedIndex) return putDown(row)
 				return row
 			}),
 		)
+	}
+
+	/**
+	 * Attuning and un-attuning. Attunement is independent of equipped state, so
+	 * this touches nothing else on the row; the refusal at the limit is the one
+	 * place the app acts on the requirement (D21 — the CONDITION is only shown).
+	 */
+	function toggleAttune(index: number): void {
+		if (!onEditInventory) return
+		const item = inventory[index]
+
+		if (item.attuned) {
+			setAttuneNotice(null)
+			onEditInventory(inventory.map((row, i) => (i === index ? unattuned(row) : row)))
+			return
+		}
+
+		const refusal = describeAttunementRefusal(inventory, limit)
+		if (refusal) {
+			setAttuneNotice(`Cannot attune to ${item.name}: ${refusal}.`)
+			return
+		}
+		setAttuneNotice(null)
+		onEditInventory(inventory.map((row, i) => (i === index ? { ...row, attuned: true } : row)))
 	}
 
 	function toggleAdd(key: string): void {
@@ -378,8 +425,20 @@ function InventorySection({
 				)}
 			</div>
 
+			{/* The count is plain text, not behind the breakdown: how many slots are spent has to be readable without opening anything (this slice's brief). */}
+			<div className="sheet__attunement">
+				<h3>Attunement</h3>
+				<div className="sheet__attunement-count">
+					<span>
+						{attunedCount} of {limit} attuned
+					</span>{' '}
+					{attunementLimit.status === 'known' && <ValueBreakdown breakdown={attunementLimit.breakdown} />}
+				</div>
+			</div>
+
 			{itemRefsError && <p className="error">Could not load the item list: {itemRefsError}</p>}
 			{equipNotice && <p className="sheet__equip-notice">{equipNotice}</p>}
+			{attuneNotice && <p className="sheet__attune-notice">{attuneNotice}</p>}
 
 			{inventory.length === 0 ? (
 				<p className="sheet__inventory-empty">Nothing carried yet.</p>
@@ -388,10 +447,24 @@ function InventorySection({
 					{inventory.map((item, index) => {
 						const ref = refsByKey.get(itemKey(item))
 						const slot = ref ? equipSlotOf(ref) : null
+						/*
+						 * An item that does not require attunement has no control at all.
+						 * An attuned row keeps one even when its item data is missing (D43),
+						 * or the player could never end an attunement they can still see.
+						 */
+						const attunable = ref?.requiresAttunement === true || item.attuned === true
 						return (
 							<li key={itemKey(item)}>
 								<span>{item.name}</span>
 								{item.equipped && <span className="sheet__inventory-equipped"> ({item.equipped})</span>}
+								{item.attuned && <span className="sheet__inventory-attuned"> (attuned)</span>}
+								{ref?.requiresAttunement && (
+									<span className="sheet__attunement-requirement">
+										{' '}
+										{/* The condition is printed verbatim as items.json writes it — the app never reads it (D21). */}
+										Requires attunement{ref.attunementCondition ? ` ${ref.attunementCondition}` : ''}
+									</span>
+								)}
 								{itemRefs !== null && itemRefsError === null && !known.has(itemKey(item)) && (
 									<> <UnresolvedValue reason={`Item data not found for "${item.name}" (${item.source}).`} /></>
 								)}
@@ -413,6 +486,17 @@ function InventorySection({
 													onClick={() => toggleEquip(index)}
 												>
 													{item.equipped ? 'Unequip' : 'Equip'}
+												</button>{' '}
+											</>
+										)}
+										{attunable && (
+											<>
+												<button
+													type="button"
+													aria-label={`${item.attuned ? 'End attunement to' : 'Attune to'} ${item.name}`}
+													onClick={() => toggleAttune(index)}
+												>
+													{item.attuned ? 'End attunement' : 'Attune'}
 												</button>{' '}
 											</>
 										)}
@@ -895,6 +979,8 @@ export function CharacterSheet({
 	const heldWeapons = buildHeldWeapons(character.inventory ?? [], itemRefs ?? [])
 	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null)
 	const attacksPerAction = computeAttacksPerAction(weaponAttackData?.featureNames ?? [])
+	/* Step 7 slice d: the limit needs the character's own levels only, so it is not waiting on any fetch. */
+	const attunementLimit = computeAttunementLimit(character)
 
 	/** The Finesse pick lives on the inventory row (storage/character.ts), so switching it is an ordinary inventory edit. */
 	function chooseAttackAbility(key: string, ability: WeaponAttackAbility): void {
@@ -1158,6 +1244,7 @@ export function CharacterSheet({
 				currencyCopper={character.currencyCopper ?? 0}
 				itemRefs={itemRefs}
 				itemRefsError={itemRefsError}
+				attunementLimit={attunementLimit}
 				onEditInventory={onEditInventory}
 				onEditCurrency={onEditCurrency}
 			/>

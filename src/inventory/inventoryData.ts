@@ -59,6 +59,20 @@ export interface ItemRef {
 	range?: string
 	/** items.json `firearm` — the Gunner feat's grant matches on it. */
 	firearm?: boolean
+	/**
+	 * True when items.json `reqAttune` says the item is attuned to before it
+	 * works (slice d). 272 items carry the field: 174 as boolean `true`, 98 as a
+	 * restriction sentence — and nothing states the requirement anywhere else
+	 * (counted over data/items.json for slice d, docs/REPORT.md).
+	 */
+	requiresAttunement?: boolean
+	/**
+	 * The restriction sentence, verbatim as the data writes it ("by a
+	 * spellcaster"), when `reqAttune` is a string. Shown to the player and never
+	 * evaluated: deciding "by a creature of good alignment" means reading prose,
+	 * which D21 keeps out of the app.
+	 */
+	attunementCondition?: string
 }
 
 function isItemEntry(value: unknown): value is Record<string, unknown> & { name: string; source: string } {
@@ -129,6 +143,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 			const type = entry['type']
 			const ac = entry['ac']
 			const strength = entry['strength']
+			const reqAttune = entry['reqAttune']
 			return {
 				name: entry.name,
 				source: entry.source,
@@ -146,6 +161,8 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...stringArrayField(entry, 'masteryFull'),
 				...stringField(entry, 'range'),
 				...(entry['firearm'] === true ? { firearm: true } : {}),
+				...(reqAttune === true || typeof reqAttune === 'string' ? { requiresAttunement: true } : {}),
+				...(typeof reqAttune === 'string' ? { attunementCondition: reqAttune } : {}),
 			}
 		})
 		.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source))

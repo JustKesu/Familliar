@@ -839,6 +839,50 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 		expect(migrated.inventory).toEqual([{ name: 'Rapier', source: 'XPHB', quantity: 1, equipped: 'held' }])
 		expect(migrated.inventory?.[0].attackAbility).toBeUndefined()
 	})
+
+	it('round-trips an attunement flag and refuses any value but true (step 7 slice d)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Nyx')
+
+		store.setInventory(character.id, [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }])
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }])
+
+		const badFlag = new MemoryStorage()
+		badFlag.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: false }],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(badFlag).list()).toThrow(CorruptDataError)
+	})
+
+	/* D69: the 20 -> 21 bump ships a migration, so a version-20 save keeps its inventory and is attuned to nothing. */
+	it('migrates a version-20 character forward, attuning nothing it owns', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: 20,
+					id: '1',
+					name: 'Rowan',
+					classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 3 }],
+					inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 }],
+				},
+			]),
+		)
+		const [migrated] = new CharacterStore(backing).list()
+		expect(migrated.inventory).toEqual([{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 }])
+		expect(migrated.inventory?.[0].attuned).toBeUndefined()
+	})
 })
 
 describe('CharacterStore.rename', () => {

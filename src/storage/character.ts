@@ -278,6 +278,18 @@ export interface CharacterInventoryItem {
 	 * a Finesse weapon simply never gets one.
 	 */
 	attackAbility?: WeaponAttackAbility
+	/**
+	 * Set while the character is attuned to this item (slice d), never `false`
+	 * — an absent flag is "not attuned". On the row for the same reason
+	 * `attackAbility` is: attunement dies with the item, and cannot outlive it
+	 * in a list of its own. Independent of `equipped`: a worn cloak and a
+	 * carried rod are attuned the same way.
+	 *
+	 * Whether the item REQUIRES attunement is not stored — that is an
+	 * items.json fact (`reqAttune`), re-read whenever the row is shown, so it
+	 * cannot go stale against the data.
+	 */
+	attuned?: true
 }
 
 /**
@@ -442,13 +454,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 20 to add
- * CharacterInventoryItem.attackAbility — the player's Strength-or-Dexterity
- * pick for a Finesse weapon (build order step 7, slice c).
+ * (see wireFormat.ts). Bumped to 21 to add CharacterInventoryItem.attuned —
+ * whether the character is attuned to that item (build order step 7, slice d).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 20
+export const CURRENT_SCHEMA_VERSION = 21
