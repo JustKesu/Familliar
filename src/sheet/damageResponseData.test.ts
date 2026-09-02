@@ -9,6 +9,7 @@ function character(overrides: Partial<Character> = {}): Character {
 
 const ring: ItemRef = { name: 'Ring of Fire Resistance', source: 'XDMG', requiresAttunement: true, resist: ['fire'] }
 const tattoo: ItemRef = { name: 'Acid Absorbing Tattoo', source: 'XDMG', resist: ['acid'] }
+const potion: ItemRef = { name: 'Potion of Fire Resistance', source: 'XPHB', typeCode: 'P', resist: ['fire'] }
 const periapt: ItemRef = { name: 'Periapt of Proof against Poison', source: 'XDMG', requiresAttunement: true, immune: ['poison'] }
 const longsword: ItemRef = { name: 'Longsword', source: 'XPHB', weapon: true, typeCode: 'M' }
 
@@ -35,6 +36,25 @@ describe('buildItemGrants', () => {
 		const grants = buildItemGrants([row('Acid Absorbing Tattoo', 'XDMG')], [tattoo])
 
 		expect(grants).toEqual([{ kind: 'resistance', sourceName: 'Acid Absorbing Tattoo', damageTypes: ['acid'] }])
+	})
+
+	it('withholds a carried consumable’s resistance, with a reason pointing at step 9 (slice f-fix)', () => {
+		const grants = buildItemGrants([row('Potion of Fire Resistance', 'XPHB')], [potion])
+
+		expect(grants).toHaveLength(1)
+		expect(grants[0].damageTypes).toEqual([])
+		expect(grants[0].withheldReason).toBe('applies only while the item is used, and using items arrives in step 9')
+	})
+
+	// A consumable that requires attunement would prove the two gates are
+	// independent, but scripts/investigate-consumable-resist.js found none in the
+	// data (0 of 81 P/SC/FD items carry reqAttune), so there is no fixture for it.
+
+	it('gates a consumable out even where its type code is the only signal, never the name (D21)', () => {
+		const oddlyNamed: ItemRef = { name: 'Draught of the Salamander', source: 'HB', typeCode: 'P', resist: ['fire'] }
+		const grants = buildItemGrants([row('Draught of the Salamander', 'HB')], [oddlyNamed])
+
+		expect(grants[0].withheldReason).toContain('using items arrives in step 9')
 	})
 
 	it('reads the immune field as an immunity', () => {

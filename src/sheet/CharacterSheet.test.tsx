@@ -170,6 +170,8 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			{ name: 'Ring of Fire Resistance', source: 'XDMG', requiresAttunement: true, resist: ['fire'] },
 			{ name: 'Acid Absorbing Tattoo', source: 'XDMG', resist: ['acid'] },
 			{ name: 'Periapt of Proof against Poison', source: 'XDMG', requiresAttunement: true, immune: ['poison'] },
+			/* Slice f-fix. A consumable's resistance never applies from being carried. */
+			{ name: 'Potion of Fire Resistance', source: 'XPHB', typeCode: 'P', resist: ['fire'] },
 		]),
 	}
 })
@@ -1195,6 +1197,15 @@ describe('CharacterSheet', () => {
 			const second = await renderSheet(attuned)
 
 			expect(lines(second.container).some((text) => text.includes('Fire') && text.includes('Ring of Fire Resistance'))).toBe(true)
+		})
+
+		it('reads a carried Potion of Fire Resistance as a candidate, never as a resistance (slice f-fix)', async () => {
+			const carrying: Character = { ...character, id: 'dr-potion', inventory: [{ name: 'Potion of Fire Resistance', source: 'XPHB', quantity: 1 }] }
+			const { container } = await renderSheet(carrying)
+
+			expect(lines(container).some((text) => text.includes('Fire'))).toBe(false)
+			expect(section(container).textContent).toContain('Potion of Fire Resistance')
+			expect(section(container).textContent).toContain('using items arrives in step 9')
 		})
 
 		it('shows a conditional resistance with its condition and never in the unconditional list', async () => {

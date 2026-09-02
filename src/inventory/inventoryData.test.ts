@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { armourCategoryOf, equipSlotOf, extractItemRefs, inventoryRowKey, isShield, isWeapon, itemKey, itemMagicBonusOf } from './inventoryData'
+import { armourCategoryOf, equipSlotOf, extractItemRefs, inventoryRowKey, isConsumable, isShield, isWeapon, itemKey, itemMagicBonusOf } from './inventoryData'
 
 describe('extractItemRefs', () => {
 	it('keeps every entry with a string name and source, sorted by name then source', () => {
@@ -113,6 +113,14 @@ describe('item kinds', () => {
 		expect(armourCategoryOf({ name: 'Shield', source: 'XPHB', typeCode: 'S' })).toBeNull()
 		expect(equipSlotOf({ name: 'Torch', source: 'XPHB', typeCode: 'G' })).toBeNull()
 		expect(equipSlotOf({ name: 'Rations', source: 'XPHB' })).toBeNull()
+	})
+
+	it('identifies a consumable by type code alone, never by name (slice f-fix, D21)', () => {
+		expect(isConsumable({ name: 'Potion of Fire Resistance', source: 'XPHB', typeCode: 'P' })).toBe(true)
+		expect(isConsumable({ name: 'Spell Scroll (Fireball)', source: 'XDMG', typeCode: 'SC' })).toBe(true)
+		expect(isConsumable({ name: 'Draught of the Salamander', source: 'HB', typeCode: 'P' })).toBe(true)
+		expect(isConsumable({ name: 'Ring of Fire Resistance', source: 'XDMG', typeCode: 'RG' })).toBe(false)
+		expect(isConsumable({ name: 'Acid Absorbing Tattoo', source: 'XDMG' })).toBe(false)
 	})
 })
 

@@ -119,6 +119,19 @@ const SHIELD_CODE = 'S'
 /** 2014 melee/ranged weapon codes; a bare "M" is the 2014 entry and "M|XPHB" the 2024 one, but the first segment is the same either way (DATA.md, "Blank source means PHB"). */
 const WEAPON_CODES = ['M', 'R']
 
+/**
+ * items.json `type` codes for things spent on use — a potion, a scroll, food or
+ * drink. Read structurally, not from the name (D21): the survey for slice f-fix
+ * found the 11 ungated resist/immune items that are consumables are all `P`, and
+ * a homebrew "Scroll of Fire Resistance" should be caught the same way.
+ */
+const CONSUMABLE_CODES = ['P', 'SC', 'FD']
+
+/** True when the item is used up on use, so any resistance it carries applies only while it is being used, not while it sits in the pack. */
+export function isConsumable(ref: ItemRef): boolean {
+	return ref.typeCode !== undefined && CONSUMABLE_CODES.includes(ref.typeCode)
+}
+
 /** The armour category of a suit of armour, read from the type code first (the `armor` flag misses every magic piece). Null for anything that isn't a suit of armour. */
 export function armourCategoryOf(ref: ItemRef): ArmourCategory | null {
 	return ref.typeCode === undefined ? null : (ARMOUR_CATEGORY_BY_CODE[ref.typeCode] ?? null)

@@ -27,7 +27,7 @@ import { isAttuned } from '../calculation/attunement'
 import type { DamageResponseGrant } from '../calculation/damageResponses'
 import { featureDamageResponsesAmong } from '../damageResponses/featureDamageResponses'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { itemKey, type ItemRef } from '../inventory/inventoryData'
+import { isConsumable, itemKey, type ItemRef } from '../inventory/inventoryData'
 import { magicItemLabel } from '../calculation/magicBonus'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 import { featureNamesFor } from './weaponAttackData'
@@ -76,10 +76,17 @@ function grantsFromEntry(entry: Record<string, unknown>, sourceName: string): Da
 }
 
 /**
- * The carried items' grants. An item requiring attunement contributes only
- * while attuned (D76: shown as a considered candidate with the reason). A row
- * absent from items.json cannot be known to grant anything, so it is named with
- * the problem stated rather than silently skipped (D43).
+ * The carried items' grants. A consumable's resistance never enters the applied
+ * set from being carried — it applies only while the item is used, and using
+ * items is step 9 (D76: shown as a considered candidate with the reason). An
+ * item requiring attunement contributes only while attuned (same D76 treatment).
+ * A row absent from items.json cannot be known to grant anything, so it is named
+ * with the problem stated rather than silently skipped (D43).
+ *
+ * The consumable check runs before the attunement one because it is the primary
+ * reason a potion grants nothing; no consumable in the data requires attunement
+ * anyway (scripts/investigate-consumable-resist.js), so the order never decides
+ * an outcome.
  */
 export function buildItemGrants(inventory: readonly CharacterInventoryItem[], itemRefs: readonly ItemRef[]): DamageResponseGrant[] {
 	const byKey = new Map(itemRefs.map((ref) => [itemKey(ref), ref]))
@@ -99,6 +106,15 @@ export function buildItemGrants(inventory: readonly CharacterInventoryItem[], it
 		if (ref.resist === undefined && ref.immune === undefined) continue
 
 		const label = magicItemLabel(ref.name, item.magicBonus ?? 0)
+		if (isConsumable(ref)) {
+			grants.push({
+				kind: 'resistance',
+				sourceName: label,
+				damageTypes: [],
+				withheldReason: 'applies only while the item is used, and using items arrives in step 9',
+			})
+			continue
+		}
 		if (ref.requiresAttunement === true && !isAttuned(item)) {
 			grants.push({
 				kind: 'resistance',
