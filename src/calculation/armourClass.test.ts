@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
 import { armourSpeedPenalty, computeArmourClass, type EquippedArmour, type EquippedGear, type EquippedShield } from './armourClass'
+import { noMagicBonus, resolveMagicBonus } from './magicBonus'
 import { computeSpeed, type SpeciesTraitsData } from './speciesTraits'
 
 /** DEX 14 (+2), CON 13 (+1), WIS 10 (+0), CHA 8 (-1), STR 15 (+2). */
@@ -20,10 +21,31 @@ const nimble: Character['abilityScores'] = {
 	scores: { strength: 10, dexterity: 16, constitution: 16, intelligence: 8, wisdom: 14, charisma: 14 },
 }
 
-const chainMail: EquippedArmour = { name: 'Chain Mail', category: 'heavy', ac: 16, strengthRequirement: 13, stealthDisadvantage: true }
-const leather: EquippedArmour = { name: 'Leather Armor', category: 'light', ac: 11, strengthRequirement: null, stealthDisadvantage: false }
-const halfPlate: EquippedArmour = { name: 'Half Plate Armor', category: 'medium', ac: 15, strengthRequirement: null, stealthDisadvantage: true }
-const shield: EquippedShield = { name: 'Shield', acBonus: 2 }
+const chainMail: EquippedArmour = {
+	name: 'Chain Mail',
+	category: 'heavy',
+	ac: 16,
+	strengthRequirement: 13,
+	stealthDisadvantage: true,
+	magicBonus: noMagicBonus('Chain Mail'),
+}
+const leather: EquippedArmour = {
+	name: 'Leather Armor',
+	category: 'light',
+	ac: 11,
+	strengthRequirement: null,
+	stealthDisadvantage: false,
+	magicBonus: noMagicBonus('Leather Armor'),
+}
+const halfPlate: EquippedArmour = {
+	name: 'Half Plate Armor',
+	category: 'medium',
+	ac: 15,
+	strengthRequirement: null,
+	stealthDisadvantage: true,
+	magicBonus: noMagicBonus('Half Plate Armor'),
+}
+const shield: EquippedShield = { name: 'Shield', acBonus: 2, magicBonus: noMagicBonus('Shield') }
 
 function gear(overrides: Partial<EquippedGear> = {}): EquippedGear {
 	return { armour: null, shield: null, unresolved: [], carriedArmourNotWorn: [], ...overrides }
@@ -69,6 +91,72 @@ describe('computeArmourClass — worn armour', () => {
 
 	it('returns unknown when ability scores have not been set (D43)', () => {
 		expect(computeArmourClass({ id: '2', name: 'Blank', classes: [] }, gear()).status).toBe('unknown')
+	})
+})
+
+describe('computeArmourClass — magic bonuses (slice e)', () => {
+	/** Dragon Scale Mail: items.json `ac` 14 with a SEPARATE `bonusAc` "+1" — the bonus is not already in the base. */
+	const dragonScale: EquippedArmour = {
+		name: 'Dragon Scale Mail +1',
+		category: 'medium',
+		ac: 14,
+		strengthRequirement: null,
+		stealthDisadvantage: false,
+		magicBonus: resolveMagicBonus({ name: 'Dragon Scale Mail', itemBonus: 1, playerBonus: null, requiresAttunement: false, attuned: false }),
+	}
+
+	it('an armour bonus from the data reaches the total as its own line', () => {
+		const result = computeArmourClass(fighter5, gear({ armour: dragonScale }))
+		// 14 + Dex 2 + 1
+		expect(result).toMatchObject({ status: 'known', value: { value: 17 } })
+		expect(result.status === 'known' && result.breakdown).toEqual([
+			{ source: 'Dragon Scale Mail +1 (medium armour)', amount: 14 },
+			{ source: 'dexterity modifier', amount: 2 },
+			{ source: "magic bonus (Dragon Scale Mail's own)", amount: 1 },
+		])
+	})
+
+	it('a shield’s bonus is a line of its own beside the 2 every shield gives', () => {
+		const arrowCatching: EquippedShield = {
+			name: 'Arrow-Catching Shield +2',
+			acBonus: 2,
+			magicBonus: resolveMagicBonus({ name: 'Arrow-Catching Shield', itemBonus: 2, playerBonus: null, requiresAttunement: true, attuned: true }),
+		}
+		const result = computeArmourClass(fighter5, gear({ armour: chainMail, shield: arrowCatching }))
+		// 16 + 0 Dex + 2 shield + 2 magic
+		expect(result).toMatchObject({ status: 'known', value: { value: 20 } })
+		expect(sources(result)).toContain("magic bonus (Arrow-Catching Shield's own)")
+	})
+
+	it('a player-set bonus applies and the item’s own is named as replaced', () => {
+		const set: EquippedArmour = {
+			...dragonScale,
+			name: 'Dragon Scale Mail +3',
+			magicBonus: resolveMagicBonus({ name: 'Dragon Scale Mail', itemBonus: 1, playerBonus: 3, requiresAttunement: false, attuned: false }),
+		}
+		const result = computeArmourClass(fighter5, gear({ armour: set }))
+		expect(result).toMatchObject({ status: 'known', value: { value: 19 } })
+		expect(noteFor(result, "magic bonus (Dragon Scale Mail's own)")).toBe('considered (+1) — not applied: replaced by the +3 set on this item')
+	})
+
+	it('withholds the bonus while the armour is not attuned, and applies it once it is (D76)', () => {
+		const context = { name: 'Elven Chain', itemBonus: 1, playerBonus: null, requiresAttunement: true }
+		const suit = (attuned: boolean): EquippedArmour => ({
+			name: 'Elven Chain +1',
+			category: 'medium',
+			ac: 13,
+			strengthRequirement: null,
+			stealthDisadvantage: false,
+			magicBonus: resolveMagicBonus({ ...context, attuned }),
+		})
+
+		const withheld = computeArmourClass(fighter5, gear({ armour: suit(false) }))
+		expect(withheld).toMatchObject({ status: 'known', value: { value: 15 } })
+		expect(noteFor(withheld, "magic bonus (Elven Chain's own)")).toBe(
+			'considered (+1) — not applied: Elven Chain requires attunement and you are not attuned to it',
+		)
+
+		expect(computeArmourClass(fighter5, gear({ armour: suit(true) }))).toMatchObject({ status: 'known', value: { value: 16 } })
 	})
 })
 

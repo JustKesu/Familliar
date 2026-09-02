@@ -20,6 +20,7 @@ import type { Character } from '../storage/character'
 import { ABILITY_ABBREVIATIONS } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
+import type { MagicBonus } from './magicBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 export type ArmourCategory = 'light' | 'medium' | 'heavy'
@@ -31,19 +32,24 @@ const CATEGORY_LABELS: Record<ArmourCategory, string> = { light: 'light armour',
 
 /** One equipped suit of armour, already resolved against items.json by the caller. */
 export interface EquippedArmour {
+	/** The suit as it is displayed — the magic bonus is part of the name ("Chain Mail +1"), computed once in magicBonus.ts. */
 	name: string
 	category: ArmourCategory
-	/** The suit's base AC (items.json `ac`). */
+	/** The suit's base AC (items.json `ac`). The magic bonus is NOT in it — Dragon Scale Mail is `ac: 14` plus a separate `bonusAc` (slice e's survey). */
 	ac: number
 	/** items.json `strength`, parsed from its string form; null when the suit has no requirement. */
 	strengthRequirement: number | null
 	stealthDisadvantage: boolean
+	/** The magic bonus, already reconciled against the player's own setting and attunement (slice e). Its own line in the breakdown, never folded into `ac`. */
+	magicBonus: MagicBonus
 }
 
 /** An equipped shield. DATA.md: a shield's items.json `ac` is the BONUS it adds (always 2), never a finished Armour Class. */
 export interface EquippedShield {
 	name: string
 	acBonus: number
+	/** As EquippedArmour.magicBonus — an Arrow-Catching Shield's +2 is separate from the 2 every shield gives. */
+	magicBonus: MagicBonus
 }
 
 /** What the character has in use, plus what could not be resolved or is owned but not worn. */
@@ -146,9 +152,12 @@ function armourCandidate(armour: EquippedArmour, dexterity: number): Candidate {
 	} else {
 		rows.push({ source: 'dexterity modifier', amount: dexterity })
 	}
+	// Slice e: the magic bonus is its own named line, never added into the suit's base AC.
+	rows.push(...armour.magicBonus.contributions)
 
 	const total = rows.reduce((sum, row) => sum + row.amount, 0)
-	return { label: armour.name, total, rows, formula: `${armour.ac} + Dex = ${total}` }
+	const magic = armour.magicBonus.applied === 0 ? '' : ` + ${armour.magicBonus.applied}`
+	return { label: armour.name, total, rows, formula: `${armour.ac} + Dex${magic} = ${total}` }
 }
 
 function unarmouredCandidate(dexterity: number, carriedArmourNotWorn: string[]): Candidate {
@@ -227,7 +236,10 @@ export function computeArmourClass(character: Character, gear: EquippedGear, for
 		const reason = candidate.notAppliedReason ?? `${winner.label} gives ${winner.total}`
 		breakdown.push({ source: candidate.label, amount: 0, note: `considered (${candidate.formula}) — not applied: ${reason}` })
 	}
-	if (gear.shield) breakdown.push({ source: gear.shield.name, amount: gear.shield.acBonus })
+	if (gear.shield) {
+		breakdown.push({ source: gear.shield.name, amount: gear.shield.acBonus })
+		breakdown.push(...gear.shield.magicBonus.contributions)
+	}
 
 	const value = breakdown.reduce((sum, row) => sum + row.amount, 0)
 	return known(

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { noMagicBonus } from '../calculation/magicBonus'
 import type { ItemRef } from '../inventory/inventoryData'
 import type { Character } from '../storage/character'
 import { acFormulaKeysFrom, buildEquippedGear, hasMageArmor } from './armourClassData'
@@ -75,6 +76,7 @@ const ITEMS: ItemRef[] = [
 	{ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 },
 	{ name: 'Longsword', source: 'XPHB', typeCode: 'M', weapon: true },
 	{ name: 'Torch', source: 'XPHB', typeCode: 'G' },
+	{ name: 'Dragon Scale Mail', source: 'XDMG', typeCode: 'MA', ac: 14, bonusAc: 1 },
 ]
 
 describe('buildEquippedGear', () => {
@@ -87,8 +89,15 @@ describe('buildEquippedGear', () => {
 			],
 			ITEMS,
 		)
-		expect(gear.armour).toEqual({ name: 'Chain Mail', category: 'heavy', ac: 16, strengthRequirement: 13, stealthDisadvantage: true })
-		expect(gear.shield).toEqual({ name: 'Shield', acBonus: 2 })
+		expect(gear.armour).toEqual({
+			name: 'Chain Mail',
+			category: 'heavy',
+			ac: 16,
+			strengthRequirement: 13,
+			stealthDisadvantage: true,
+			magicBonus: noMagicBonus('Chain Mail'),
+		})
+		expect(gear.shield).toEqual({ name: 'Shield', acBonus: 2, magicBonus: noMagicBonus('Shield') })
 		expect(gear.unresolved).toEqual([])
 	})
 
@@ -114,6 +123,23 @@ describe('buildEquippedGear', () => {
 		)
 		expect(gear.unresolved).toEqual([{ name: 'Mystery Plate', source: 'HOMEBREW' }])
 		expect(gear.armour).toBeNull()
-		expect(gear.shield).toEqual({ name: 'Shield', acBonus: 2 })
+		expect(gear.shield).toEqual({ name: 'Shield', acBonus: 2, magicBonus: noMagicBonus('Shield') })
+	})
+
+	/* Slice e: the bonus is resolved here, where items.json is in hand, and handed to the pure calculation. */
+	it('resolves an armour bonus off the item data and a player-set one off the row, naming the suit with it', () => {
+		const own = buildEquippedGear([{ name: 'Dragon Scale Mail', source: 'XDMG', quantity: 1, equipped: 'worn' }], ITEMS)
+		expect(own.armour).toMatchObject({ name: 'Dragon Scale Mail +1', ac: 14, magicBonus: { applied: 1, origin: 'item' } })
+
+		const set = buildEquippedGear([{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn', magicBonus: 2 }], ITEMS)
+		expect(set.armour).toMatchObject({ name: 'Chain Mail +2', ac: 16, magicBonus: { applied: 2, origin: 'player' } })
+	})
+
+	it('names a carried-but-not-worn suit and an unresolvable equipped row with the bonus they carry (D43)', () => {
+		const carried = buildEquippedGear([{ name: 'Dragon Scale Mail', source: 'XDMG', quantity: 1 }], ITEMS)
+		expect(carried.carriedArmourNotWorn).toEqual(['Dragon Scale Mail +1'])
+
+		const stale = buildEquippedGear([{ name: 'Mystery Plate', source: 'HOMEBREW', quantity: 1, equipped: 'worn', magicBonus: 3 }], ITEMS)
+		expect(stale.unresolved).toEqual([{ name: 'Mystery Plate +3', source: 'HOMEBREW' }])
 	})
 })

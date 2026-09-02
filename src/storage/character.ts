@@ -290,7 +290,22 @@ export interface CharacterInventoryItem {
 	 * cannot go stale against the data.
 	 */
 	attuned?: true
+	/**
+	 * The magic bonus the player set on this item (slice e) — a plain Longsword
+	 * declared to be a +1 Longsword. Absent means none was set, which is not the
+	 * same as "no bonus": the ITEM's own bonus (items.json `bonusWeapon` /
+	 * `bonusAc`) is re-read from the data and never stored, for the same reason
+	 * `attuned` does not store the requirement.
+	 *
+	 * The two never sum — a bonus set here REPLACES the item's own
+	 * (src/calculation/magicBonus.ts). Capped at 3 because that is where the
+	 * rules stop; the data's own bonuses are not capped by this type and reach 5.
+	 */
+	magicBonus?: MagicItemBonus
 }
+
+/** A player-set magic bonus. +1 to +3 is the whole range the rules give a magic weapon or suit of armour. */
+export type MagicItemBonus = 1 | 2 | 3
 
 /**
  * The familiar's current form. Names the creature (name + source) only — the
@@ -454,12 +469,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 21 to add CharacterInventoryItem.attuned —
- * whether the character is attuned to that item (build order step 7, slice d).
+ * (see wireFormat.ts). Bumped to 22 to add CharacterInventoryItem.magicBonus —
+ * the magic bonus the player set on that item (build order step 7, slice e).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 21
+export const CURRENT_SCHEMA_VERSION = 22

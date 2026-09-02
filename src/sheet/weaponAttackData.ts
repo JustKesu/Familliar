@@ -20,9 +20,11 @@
  * not apply here.
  */
 
+import { isAttuned } from '../calculation/attunement'
+import { resolveMagicBonus } from '../calculation/magicBonus'
 import type { HeldWeapon, ResolvedWeapon } from '../calculation/weaponAttacks'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { isWeapon, itemKey, type ItemRef } from '../inventory/inventoryData'
+import { inventoryRowKey, isWeapon, itemKey, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 import {
 	extractFeatWeaponProficiencyEntries,
@@ -50,10 +52,19 @@ export function buildHeldWeapons(inventory: CharacterInventoryItem[], itemRefs: 
 		const ref = byKey.get(itemKey(item))
 		if (ref && !isWeapon(ref)) continue
 		held.push({
+			key: inventoryRowKey(item),
 			name: item.name,
 			source: item.source,
 			weapon: ref ? toResolvedWeapon(ref) : null,
 			chosenAbility: item.attackAbility ?? null,
+			/* Slice e. An unresolved row keeps whatever the player set on it (D43); nothing else about it can be known. */
+			magicBonus: resolveMagicBonus({
+				name: item.name,
+				itemBonus: ref ? itemMagicBonusOf(ref) : null,
+				playerBonus: item.magicBonus ?? null,
+				requiresAttunement: ref?.requiresAttunement === true,
+				attuned: isAttuned(item),
+			}),
 		})
 	}
 	return held

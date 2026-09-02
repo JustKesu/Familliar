@@ -32,6 +32,7 @@ import type { Character } from '../storage/character'
 import { isProficientWithWeapon, type WeaponProficiencyGrant } from '../weapons/weaponProficiency'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
+import type { MagicBonus } from './magicBonus'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -56,12 +57,16 @@ export interface ResolvedWeapon {
 
 /** A weapon the character is holding, already looked up in the item data by the caller. */
 export interface HeldWeapon {
+	/** The INVENTORY ROW's key, not the item's: a +1 Longsword and a plain one are two rows and two attack lines (slice e). */
+	key: string
 	name: string
 	source: string
 	/** Null when the item data has no entry under this (name, source) — D43: the attack is still listed, with a note. */
 	weapon: ResolvedWeapon | null
 	/** The player's stored Strength/Dexterity pick for a Finesse weapon; null means the default (the higher of the two). */
 	chosenAbility: Ability | null
+	/** The magic bonus, already reconciled against the item's own and against attunement by the caller (slice e). */
+	magicBonus: MagicBonus
 }
 
 export interface AttackDamage {
@@ -190,6 +195,7 @@ function toHitFor(
 	proficiencyBonus: Calculated<number>,
 	proficient: boolean,
 	abilityReason: string | null,
+	magicBonus: MagicBonus,
 ): Calculated<number> {
 	if (proficiencyBonus.status === 'unknown') return unknown(proficiencyBonus.reason)
 	const breakdown: Contribution[] = [{ source: abilityLabel(using, abilityReason ?? undefined), amount: modifiers[using] }]
@@ -198,18 +204,21 @@ function toHitFor(
 			? { source: 'proficiency bonus', amount: proficiencyBonus.value }
 			: { source: 'proficiency bonus', amount: 0, note: `not proficient with ${weapon.name}` },
 	)
+	// Slice e: the magic bonus reaches the attack roll AND the damage roll, as its own line in each.
+	breakdown.push(...magicBonus.contributions)
 	return known(
 		breakdown.reduce((sum, row) => sum + row.amount, 0),
 		breakdown,
 	)
 }
 
-function damageFor(weapon: ResolvedWeapon, using: Ability, modifiers: Record<Ability, number>, abilityReason: string | null): AttackDamage {
+function damageFor(weapon: ResolvedWeapon, using: Ability, modifiers: Record<Ability, number>, abilityReason: string | null, magicBonus: MagicBonus): AttackDamage {
 	const dice = weapon.dmg1 ?? null
-	const modifier = modifiers[using]
+	const modifier = modifiers[using] + magicBonus.applied
 	const damageType = weapon.dmgTypeFull ?? ''
 	const breakdown: Contribution[] = [{ source: `${weapon.name} damage dice`, amount: 0, note: dice ?? '1' }]
-	breakdown.push({ source: abilityLabel(using, abilityReason ?? undefined), amount: modifier })
+	breakdown.push({ source: abilityLabel(using, abilityReason ?? undefined), amount: modifiers[using] })
+	breakdown.push(...magicBonus.contributions)
 	// SPEC section B: damage takes the ability modifier and no proficiency bonus.
 	const versatileDice = hasProperty(weapon, VERSATILE) ? (weapon.dmg2 ?? null) : null
 	const twoHanded = versatileDice === null ? null : damageText(versatileDice, modifier, damageType)
@@ -250,21 +259,22 @@ export function computeWeaponAttacks(
 	const hasMartialArts = martialArtsDie !== null
 
 	const attacks: WeaponAttack[] = held.map((row) => {
-		const key = `${row.name}|${row.source}`
+		const key = row.key
 		if (!row.weapon) {
-			const reason = `"${row.name}" (${row.source}) is held but was not found in the item data.`
-			return { key, name: row.name, range: null, toHit: unknown(reason), damage: unknown(reason), notes: [reason], abilityChoice: null }
+			// D43: a row the item data does not know still renders, named with the bonus it carries and with the problem stated.
+			const reason = `"${row.magicBonus.label}" (${row.source}) is held but was not found in the item data.`
+			return { key, name: row.magicBonus.label, range: null, toHit: unknown(reason), damage: unknown(reason), notes: [reason], abilityChoice: null }
 		}
 
 		const weapon = row.weapon
 		const proficient = isProficientWithWeapon(weapon, grants)
 		const { using, choice, reason } = abilityFor(weapon, modifiers, row.chosenAbility, hasMartialArts)
-		const damage = damageFor(weapon, using, modifiers, reason)
+		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus)
 		return {
 			key,
-			name: weapon.name,
+			name: row.magicBonus.label,
 			range: weapon.range ?? null,
-			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason),
+			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus),
 			damage: scoresUnknown ? unknown(scoresUnknown) : known(damage, damage.breakdown),
 			notes: notesFor(weapon, proficient),
 			abilityChoice: choice,

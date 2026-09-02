@@ -26,8 +26,10 @@
  */
 
 import type { AcFormulaKey, EquippedGear } from '../calculation/armourClass'
+import { isAttuned } from '../calculation/attunement'
+import { magicItemLabel, resolveMagicBonus } from '../calculation/magicBonus'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { armourCategoryOf, isShield, itemKey, type ItemRef } from '../inventory/inventoryData'
+import { armourCategoryOf, isShield, itemKey, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 
 interface FeatureSource {
@@ -171,13 +173,21 @@ export function buildEquippedGear(inventory: CharacterInventoryItem[], itemRefs:
 	for (const item of inventory) {
 		const ref = byKey.get(itemKey(item))
 		if (!ref) {
-			if (item.equipped) gear.unresolved.push({ name: item.name, source: item.source })
+			// D43: named with the bonus the row carries, even though nothing can be computed from it.
+			if (item.equipped) gear.unresolved.push({ name: magicItemLabel(item.name, item.magicBonus ?? 0), source: item.source })
 			continue
 		}
 
 		const category = armourCategoryOf(ref)
+		const magicBonus = resolveMagicBonus({
+			name: ref.name,
+			itemBonus: itemMagicBonusOf(ref),
+			playerBonus: item.magicBonus ?? null,
+			requiresAttunement: ref.requiresAttunement === true,
+			attuned: isAttuned(item),
+		})
 		if (category !== null && item.equipped !== 'worn') {
-			gear.carriedArmourNotWorn.push(ref.name)
+			gear.carriedArmourNotWorn.push(magicBonus.label)
 			continue
 		}
 		if (!item.equipped) continue
@@ -185,15 +195,16 @@ export function buildEquippedGear(inventory: CharacterInventoryItem[], itemRefs:
 		if (category !== null && gear.armour === null) {
 			const strength = ref.strength === undefined ? Number.NaN : Number.parseInt(ref.strength, 10)
 			gear.armour = {
-				name: ref.name,
+				name: magicBonus.label,
 				category,
 				ac: ref.ac ?? 0,
 				strengthRequirement: Number.isFinite(strength) ? strength : null,
 				stealthDisadvantage: ref.stealth === true,
+				magicBonus,
 			}
 		} else if (isShield(ref) && gear.shield === null) {
 			// DATA.md: a shield's `ac` is the bonus it adds (always 2), never a total.
-			gear.shield = { name: ref.name, acBonus: ref.ac ?? 0 }
+			gear.shield = { name: magicBonus.label, acBonus: ref.ac ?? 0, magicBonus }
 		}
 	}
 	return gear

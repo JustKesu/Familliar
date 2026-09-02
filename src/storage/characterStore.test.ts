@@ -883,6 +883,50 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 		expect(migrated.inventory).toEqual([{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 }])
 		expect(migrated.inventory?.[0].attuned).toBeUndefined()
 	})
+
+	it('round-trips a player-set magic bonus and refuses a value outside +1..+3 (step 7 slice e)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Nyx')
+
+		store.setInventory(character.id, [{ name: 'Longsword', source: 'XPHB', quantity: 1, magicBonus: 3 }])
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([{ name: 'Longsword', source: 'XPHB', quantity: 1, magicBonus: 3 }])
+
+		const badBonus = new MemoryStorage()
+		badBonus.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1, magicBonus: 4 }],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(badBonus).list()).toThrow(CorruptDataError)
+	})
+
+	/* D69: the 21 -> 22 bump ships a migration, so a version-21 save keeps its inventory and carries no player-set bonus. */
+	it('migrates a version-21 character forward, setting no bonus on anything it owns', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: 21,
+					id: '1',
+					name: 'Rowan',
+					classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 3 }],
+					inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1 }],
+				},
+			]),
+		)
+		const [migrated] = new CharacterStore(backing).list()
+		expect(migrated.inventory).toEqual([{ name: 'Longsword', source: 'XPHB', quantity: 1 }])
+		expect(migrated.inventory?.[0].magicBonus).toBeUndefined()
+	})
 })
 
 describe('CharacterStore.rename', () => {

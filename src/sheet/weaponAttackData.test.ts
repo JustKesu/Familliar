@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { ItemRef } from '../inventory/inventoryData'
+import { noMagicBonus } from '../calculation/magicBonus'
+import { inventoryRowKey, type ItemRef } from '../inventory/inventoryData'
 import type { Character } from '../storage/character'
 import { buildHeldWeapons, featureNamesFor, formatTableDice, martialArtsDieFrom } from './weaponAttackData'
 
@@ -8,6 +9,7 @@ const itemRefs: ItemRef[] = [
 	{ name: 'Rapier', source: 'XPHB', typeCode: 'M', weapon: true, weaponCategory: 'martial', dmg1: '1d8', dmgTypeFull: 'piercing', propertyFull: ['Finesse'], masteryFull: ['Vex'] },
 	{ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 },
 	{ name: 'Chain Mail', source: 'XPHB', typeCode: 'HA', armor: true, ac: 16, strength: '13', stealth: true },
+	{ name: 'Moon Sickle', source: 'TCE', typeCode: 'M', weaponCategory: 'martial', dmg1: '1d4', dmgTypeFull: 'slashing', bonusWeapon: 1, requiresAttunement: true },
 ]
 
 describe('buildHeldWeapons', () => {
@@ -32,7 +34,33 @@ describe('buildHeldWeapons', () => {
 
 	it('keeps a held row the item data does not know, with no weapon (D43)', () => {
 		const held = buildHeldWeapons([{ name: 'Sword of Nothing', source: 'HOMEBREW', quantity: 1, equipped: 'held' }], itemRefs)
-		expect(held).toEqual([{ name: 'Sword of Nothing', source: 'HOMEBREW', weapon: null, chosenAbility: null }])
+		expect(held).toEqual([
+			{
+				key: inventoryRowKey({ name: 'Sword of Nothing', source: 'HOMEBREW', quantity: 1, equipped: 'held' }),
+				name: 'Sword of Nothing',
+				source: 'HOMEBREW',
+				weapon: null,
+				chosenAbility: null,
+				magicBonus: noMagicBonus('Sword of Nothing'),
+			},
+		])
+	})
+
+	/* Slice e: two rows of the same weapon are two attack lines, so the key has to come off the ROW. */
+	it('gives each row its own key and resolves the item’s bonus against the player’s and attunement', () => {
+		const held = buildHeldWeapons(
+			[
+				{ name: 'Moon Sickle', source: 'TCE', quantity: 1, equipped: 'held' },
+				{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held', magicBonus: 2 },
+				{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' },
+			],
+			itemRefs,
+		)
+		expect(new Set(held.map((row) => row.key)).size).toBe(3)
+		// Moon Sickle requires attunement and is not attuned: carried but withheld (D76).
+		expect(held[0].magicBonus).toMatchObject({ carried: 1, applied: 0, label: 'Moon Sickle +1' })
+		expect(held[1].magicBonus).toMatchObject({ carried: 2, applied: 2, origin: 'player' })
+		expect(held[2].magicBonus).toMatchObject({ carried: 0, applied: 0 })
 	})
 })
 

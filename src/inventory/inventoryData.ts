@@ -15,6 +15,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import type { CharacterInventoryItem } from '../storage/character'
 
 export interface ItemRef {
 	name: string
@@ -73,6 +74,21 @@ export interface ItemRef {
 	 * which D21 keeps out of the app.
 	 */
 	attunementCondition?: string
+	/**
+	 * items.json `bonusWeapon`, parsed from its "+1" STRING form (slice e). One
+	 * key covers both the attack roll and the damage roll: the survey found no
+	 * item whose two differ, and `bonusWeaponAttack` does not occur at all
+	 * (scripts/investigate-magic-bonuses.js). On 21 weapons and, deliberately
+	 * unused here, on 8 items that are not weapons (Wraps of Unarmed Power).
+	 */
+	bonusWeapon?: number
+	/**
+	 * items.json `bonusAc`, parsed from its "+1" string form (slice e). NOT
+	 * already included in `ac`: Dragon Scale Mail is `ac: 14` plus `bonusAc:
+	 * "+1"`. Present on 11 suits, 3 shields and — deliberately unused here — 8
+	 * wondrous items and 2 weapons.
+	 */
+	bonusAc?: number
 }
 
 function isItemEntry(value: unknown): value is Record<string, unknown> & { name: string; source: string } {
@@ -123,6 +139,40 @@ export function itemKey(ref: ItemRef): string {
 	return `${ref.name}|${ref.source}`
 }
 
+/**
+ * The item's own numeric bonus in the role slice e applies it: a weapon's
+ * attack/damage bonus, or a suit's or shield's Armour Class bonus. Null for
+ * everything else — including the wondrous items that carry `bonusAc`
+ * (Cloak of Protection, Bracers of Defense) and `bonusWeapon` (Wraps of
+ * Unarmed Power), which are not gear this slice puts a number on, and the two
+ * weapons carrying `bonusAc` (Staff of Power, Quarterstaff of the Acrobat).
+ */
+export function itemMagicBonusOf(ref: ItemRef): number | null {
+	if (isWeapon(ref)) return ref.bonusWeapon ?? null
+	if (armourCategoryOf(ref) !== null || ref.armor === true || isShield(ref)) return ref.bonusAc ?? null
+	return null
+}
+
+/**
+ * What makes two inventory lines the SAME line. Rows merge — quantities add —
+ * only when every per-row fact matches, so a +1 Longsword and a plain
+ * Longsword stay two rows and neither of them silently loses its state.
+ *
+ * The set is every field the row carries beyond its identity and count:
+ * `magicBonus` (slice e), `equipped` (b), `attackAbility` (c) and `attuned`
+ * (d). Merging on identity alone would drop three of them.
+ */
+export function inventoryRowKey(item: CharacterInventoryItem): string {
+	return [item.name, item.source, item.magicBonus ?? '', item.equipped ?? '', item.attackAbility ?? '', item.attuned ? 'attuned' : ''].join('|')
+}
+
+/** items.json writes every bonus as a "+1"/"+2" string, never a number (this slice's survey). Anything else is dropped rather than guessed at. */
+function bonusField<K extends string>(entry: Record<string, unknown>, key: K): Partial<Record<K, number>> {
+	const value = entry[key]
+	if (typeof value !== 'string' || !/^[+-]\d+$/.test(value)) return {}
+	return { [key]: Number.parseInt(value, 10) } as Record<K, number>
+}
+
 function stringField<K extends string>(entry: Record<string, unknown>, key: K): Partial<Record<K, string>> {
 	const value = entry[key]
 	return typeof value === 'string' ? ({ [key]: value } as Record<K, string>) : {}
@@ -161,6 +211,8 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...stringArrayField(entry, 'masteryFull'),
 				...stringField(entry, 'range'),
 				...(entry['firearm'] === true ? { firearm: true } : {}),
+				...bonusField(entry, 'bonusWeapon'),
+				...bonusField(entry, 'bonusAc'),
 				...(reqAttune === true || typeof reqAttune === 'string' ? { requiresAttunement: true } : {}),
 				...(typeof reqAttune === 'string' ? { attunementCondition: reqAttune } : {}),
 			}

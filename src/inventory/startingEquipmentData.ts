@@ -34,7 +34,7 @@
 
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { copperToCoins } from './currency'
-import type { ItemRef } from './inventoryData'
+import { inventoryRowKey, type ItemRef } from './inventoryData'
 import type { CharacterInventoryItem } from '../storage/character'
 
 /** Which side of the wizard's equipment step an option belongs to. */
@@ -402,7 +402,8 @@ export function buildStartingInventory(
 	let currencyCopper = 0
 
 	function add(grant: { name: string; source: string; quantity: number }): void {
-		const key = `${grant.name}|${grant.source}`
+		// The row key, not the item key (slice e): rows merge only when every per-row fact matches.
+		const key = inventoryRowKey(grant)
 		const existing = merged.get(key)
 		merged.set(key, existing ? { ...existing, quantity: existing.quantity + grant.quantity } : { ...grant })
 	}

@@ -48,6 +48,19 @@ describe('the migration chain (D69)', () => {
 		expect(migrated['currencyCopper']).toBe(500)
 	})
 
+	it('carries a version-21 character forward without setting a magic bonus on anything', () => {
+		const migrated = migrateToCurrent({
+			schemaVersion: 21,
+			id: '1',
+			name: 'Rowan',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' }],
+		}) as Record<string, unknown>
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// The ITEM's own bonus is read from items.json; only a player-set one would be stored, and none was.
+		expect(migrated['inventory']).toEqual([{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' }])
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { armourCategoryOf, equipSlotOf, extractItemRefs, isShield, isWeapon, itemKey } from './inventoryData'
+import { armourCategoryOf, equipSlotOf, extractItemRefs, inventoryRowKey, isShield, isWeapon, itemKey, itemMagicBonusOf } from './inventoryData'
 
 describe('extractItemRefs', () => {
 	it('keeps every entry with a string name and source, sorted by name then source', () => {
@@ -65,11 +65,53 @@ describe('item kinds', () => {
 		expect(equipSlotOf({ name: 'Sun Blade', source: 'XDMG', typeCode: 'M' })).toBe('held')
 	})
 
+	/* Slice e's survey: every bonus is a "+1" STRING, and the AC bonus is NOT already inside `ac`. */
+	it('parses the magic bonus fields from their string form', () => {
+		const parsed = [
+			{ name: 'Dragon Scale Mail', source: 'XDMG', type: 'MA', ac: 14, bonusAc: '+1' },
+			{ name: 'Moon Sickle', source: 'TCE', type: 'M', bonusWeapon: '+2' },
+			{ name: 'Odd Item', source: 'HOMEBREW', bonusAc: 1 },
+		]
+		expect(extractItemRefs(parsed)).toEqual([
+			{ name: 'Dragon Scale Mail', source: 'XDMG', typeCode: 'MA', ac: 14, bonusAc: 1 },
+			{ name: 'Moon Sickle', source: 'TCE', typeCode: 'M', bonusWeapon: 2 },
+			// A shape the survey did not find is dropped rather than guessed at.
+			{ name: 'Odd Item', source: 'HOMEBREW' },
+		])
+	})
+
+	it('reads the bonus in the role the item plays, and nothing for a wondrous item that carries one', () => {
+		expect(itemMagicBonusOf({ name: 'Moon Sickle', source: 'TCE', typeCode: 'M', bonusWeapon: 2 })).toBe(2)
+		expect(itemMagicBonusOf({ name: 'Dragon Scale Mail', source: 'XDMG', typeCode: 'MA', ac: 14, bonusAc: 1 })).toBe(1)
+		expect(itemMagicBonusOf({ name: 'Arrow-Catching Shield', source: 'XDMG', typeCode: 'S', ac: 2, bonusAc: 2 })).toBe(2)
+		// Cloak of Protection carries bonusAc but is not armour — this slice puts no number on it.
+		expect(itemMagicBonusOf({ name: 'Cloak of Protection', source: 'XDMG', bonusAc: 1 })).toBeNull()
+		// Staff of Power is a weapon carrying bonusAc; only its weapon bonus would count, and it has none.
+		expect(itemMagicBonusOf({ name: 'Staff of Power', source: 'XDMG', typeCode: 'M', bonusAc: 2 })).toBeNull()
+	})
+
 	it('reports the three armour categories and refuses everything that is not gear', () => {
 		expect(armourCategoryOf({ name: 'Leather Armor', source: 'XPHB', typeCode: 'LA', armor: true })).toBe('light')
 		expect(armourCategoryOf({ name: 'Chain Mail', source: 'XPHB', typeCode: 'HA', armor: true })).toBe('heavy')
 		expect(armourCategoryOf({ name: 'Shield', source: 'XPHB', typeCode: 'S' })).toBeNull()
 		expect(equipSlotOf({ name: 'Torch', source: 'XPHB', typeCode: 'G' })).toBeNull()
 		expect(equipSlotOf({ name: 'Rations', source: 'XPHB' })).toBeNull()
+	})
+})
+
+describe('inventoryRowKey', () => {
+	const longsword = { name: 'Longsword', source: 'XPHB', quantity: 1 }
+
+	it('separates two otherwise-identical items that carry different bonuses', () => {
+		expect(inventoryRowKey({ ...longsword, magicBonus: 1 })).not.toBe(inventoryRowKey(longsword))
+		expect(inventoryRowKey({ ...longsword, magicBonus: 1 })).not.toBe(inventoryRowKey({ ...longsword, magicBonus: 2 }))
+	})
+
+	it('separates rows on every other per-row fact too, and merges rows that match on all of them', () => {
+		expect(inventoryRowKey({ ...longsword, equipped: 'held' })).not.toBe(inventoryRowKey(longsword))
+		expect(inventoryRowKey({ ...longsword, attuned: true })).not.toBe(inventoryRowKey(longsword))
+		expect(inventoryRowKey({ ...longsword, attackAbility: 'strength' })).not.toBe(inventoryRowKey(longsword))
+		// Quantity is not part of it — that is what merging ADDS.
+		expect(inventoryRowKey({ ...longsword, quantity: 7 })).toBe(inventoryRowKey(longsword))
 	})
 })

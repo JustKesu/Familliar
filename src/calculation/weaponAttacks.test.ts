@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
 import type { WeaponProficiencyGrant } from '../weapons/weaponProficiency'
+import { noMagicBonus, resolveMagicBonus, type MagicBonus } from './magicBonus'
 import { computeAttacksPerAction, computeWeaponAttacks, UNARMED_STRIKE_KEY, type HeldWeapon, type ResolvedWeapon, type WeaponAttack } from './weaponAttacks'
 
 /** STR 16 (+3), DEX 14 (+2), PB +2 at level 1. */
@@ -103,8 +104,8 @@ const martialGrants: WeaponProficiencyGrant[] = [
 	{ kind: 'category', category: 'martial' },
 ]
 
-function held(weapon: ResolvedWeapon, chosenAbility: HeldWeapon['chosenAbility'] = null): HeldWeapon {
-	return { name: weapon.name, source: weapon.source, weapon, chosenAbility }
+function held(weapon: ResolvedWeapon, chosenAbility: HeldWeapon['chosenAbility'] = null, magicBonus: MagicBonus = noMagicBonus(weapon.name)): HeldWeapon {
+	return { key: `${weapon.name}|${weapon.source}`, name: weapon.name, source: weapon.source, weapon, chosenAbility, magicBonus }
 }
 
 function attackNamed(attacks: WeaponAttack[], name: string): WeaponAttack {
@@ -146,6 +147,55 @@ describe('computeWeaponAttacks — proficiency', () => {
 		expect(attack.notes).toContain('Not proficient — no proficiency bonus on the attack roll')
 		// Damage never takes the proficiency bonus either way (SPEC section B).
 		expect(damageTextOf(attack)).toBe('1d8 + 3 slashing')
+	})
+})
+
+describe('computeWeaponAttacks — magic bonuses (slice e)', () => {
+	const own = (name: string, bonus: number, requiresAttunement = false, attuned = false) =>
+		resolveMagicBonus({ name, itemBonus: bonus, playerBonus: null, requiresAttunement, attuned })
+
+	it('a weapon bonus from the data reaches BOTH the attack roll and the damage roll', () => {
+		const attacks = computeWeaponAttacks(character('Fighter', 1), [held(longsword, null, own('Longsword', 1))], martialGrants)
+		const attack = attackNamed(attacks, 'Longsword +1')
+		expect(toHitOf(attack)).toBe(6)
+		expect(attack.toHit.status === 'known' && attack.toHit.breakdown).toEqual([
+			{ source: 'strength modifier', amount: 3 },
+			{ source: 'proficiency bonus', amount: 2 },
+			{ source: "magic bonus (Longsword's own)", amount: 1 },
+		])
+		expect(damageTextOf(attack)).toBe('1d8 + 4 slashing')
+	})
+
+	it('a bonus the player set applies to a plain weapon', () => {
+		const bonus = resolveMagicBonus({ name: 'Longsword', itemBonus: null, playerBonus: 2, requiresAttunement: false, attuned: false })
+		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(longsword, null, bonus)], martialGrants), 'Longsword +2')
+		expect(toHitOf(attack)).toBe(7)
+		expect(damageTextOf(attack)).toBe('1d8 + 5 slashing')
+	})
+
+	it('a player-set bonus replaces the weapon’s own instead of adding to it, and the breakdown says so', () => {
+		const bonus = resolveMagicBonus({ name: 'Longsword', itemBonus: 1, playerBonus: 1, requiresAttunement: false, attuned: false })
+		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(longsword, null, bonus)], martialGrants), 'Longsword +1')
+		expect(toHitOf(attack)).toBe(6)
+		expect(
+			attack.toHit.status === 'known' && attack.toHit.breakdown.find((row) => row.source === "magic bonus (Longsword's own)")?.note,
+		).toBe('considered (+1) — not applied: replaced by the +1 set on this item')
+	})
+
+	it('withholds the bonus while the weapon is not attuned and applies it once it is (D76)', () => {
+		const withheld = attackNamed(
+			computeWeaponAttacks(character('Fighter', 1), [held(longsword, null, own('Longsword', 3, true, false))], martialGrants),
+			'Longsword +3',
+		)
+		expect(toHitOf(withheld)).toBe(5)
+		expect(damageTextOf(withheld)).toBe('1d8 + 3 slashing')
+
+		const applied = attackNamed(
+			computeWeaponAttacks(character('Fighter', 1), [held(longsword, null, own('Longsword', 3, true, true))], martialGrants),
+			'Longsword +3',
+		)
+		expect(toHitOf(applied)).toBe(8)
+		expect(damageTextOf(applied)).toBe('1d8 + 6 slashing')
 	})
 })
 
@@ -296,7 +346,11 @@ describe('computeWeaponAttacks — Martial Arts ability (D77)', () => {
 
 describe('computeWeaponAttacks — missing data (D43)', () => {
 	it('names a held weapon the item data does not know instead of dropping it or crashing', () => {
-		const attacks = computeWeaponAttacks(character('Fighter', 1), [{ name: 'Sword of Nothing', source: 'HOMEBREW', weapon: null, chosenAbility: null }], martialGrants)
+		const attacks = computeWeaponAttacks(
+			character('Fighter', 1),
+			[{ key: 'Sword of Nothing|HOMEBREW', name: 'Sword of Nothing', source: 'HOMEBREW', weapon: null, chosenAbility: null, magicBonus: noMagicBonus('Sword of Nothing') }],
+			martialGrants,
+		)
 		const attack = attacks[0]
 		expect(attack.name).toBe('Sword of Nothing')
 		expect(attack.toHit.status).toBe('unknown')

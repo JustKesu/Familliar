@@ -138,6 +138,27 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			},
 			{ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 },
 			{ name: 'Torch', source: 'XPHB' },
+			/* Slice e. Two carry a bonus of their own without attunement, one carries a bonus behind attunement. */
+			{ name: 'Glamoured Studded Leather', source: 'XDMG', typeCode: 'LA', ac: 12, bonusAc: 1 },
+			{
+				name: 'Dagger of Venom',
+				source: 'XDMG',
+				typeCode: 'M',
+				weaponCategory: 'martial',
+				dmg1: '1d4',
+				dmgTypeFull: 'piercing',
+				bonusWeapon: 1,
+			},
+			{
+				name: 'Sword of Sharpness',
+				source: 'XDMG',
+				typeCode: 'M',
+				weaponCategory: 'martial',
+				dmg1: '1d8',
+				dmgTypeFull: 'slashing',
+				bonusWeapon: 3,
+				requiresAttunement: true,
+			},
 			/* Four attunement items, one of them with a restriction sentence — enough to reach the limit of three (slice d). */
 			{ name: 'Amulet of Health', source: 'XDMG', requiresAttunement: true },
 			{ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true },
@@ -945,6 +966,158 @@ describe('CharacterSheet', () => {
 			await renderSheet(worn, onEditInventory)
 			await user.click(screen.getByRole('button', { name: 'Unequip Chain Mail' }))
 			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Chain Mail', source: 'XPHB', quantity: 1, attuned: true }])
+		})
+	})
+
+	/*
+	 * Magic bonuses on items (build order step 7, slice e). End to end for the
+	 * same reason as the three blocks above: the number the player reads is the
+	 * product of the item data, the stored bonus and the attunement flag, and
+	 * the name has to come out the same in all three sections.
+	 */
+	describe('magic bonuses on items (step 7 slice e)', () => {
+		function acSection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__armour-class') as HTMLElement
+		}
+
+		function inventorySection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__inventory') as HTMLElement
+		}
+
+		function inventoryRow(container: HTMLElement, name: string): HTMLElement {
+			const row = Array.from(inventorySection(container).querySelectorAll('li')).find((li) => li.textContent?.includes(name))
+			if (!row) throw new Error(`no inventory row for ${name}`)
+			return row
+		}
+
+		function attackNamed(container: HTMLElement, name: string): HTMLElement {
+			const row = Array.from(container.querySelectorAll('.sheet__attack-list li')).find(
+				(li) => li.querySelector('.sheet__attack-name')?.textContent === name,
+			)
+			if (!row) throw new Error(`no attack line named ${name}`)
+			return row as HTMLElement
+		}
+
+		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
+			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(acSection(rendered.container).querySelector('.sheet__armour-class-value')).toBeTruthy())
+			return rendered
+		}
+
+		it('an armour bonus carried by the data reaches Armour Class as its own line', async () => {
+			const worn: Character = {
+				...character,
+				id: 'mb-armour',
+				inventory: [{ name: 'Glamoured Studded Leather', source: 'XDMG', quantity: 1, equipped: 'worn' }],
+			}
+			const { container } = await renderSheet(worn)
+			// 12 base + Dex 2 + 1 magic.
+			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('15')
+			expect(acSection(container).textContent).toContain("magic bonus (Glamoured Studded Leather's own)")
+			expect(acSection(container).textContent).toContain('Glamoured Studded Leather +1')
+		})
+
+		it('a weapon bonus carried by the data reaches both the attack roll and the damage roll', async () => {
+			const held: Character = { ...character, id: 'mb-weapon', inventory: [{ name: 'Dagger of Venom', source: 'XDMG', quantity: 1, equipped: 'held' }] }
+			const { container } = await renderSheet(held)
+			const row = attackNamed(container, 'Dagger of Venom +1')
+			// STR +2, PB +3, magic +1.
+			expect(row.textContent).toContain('+6')
+			expect(row.querySelector('.sheet__attack-damage')!.textContent).toBe('1d4 + 3 piercing')
+		})
+
+		it('a bonus the player sets applies to a plain weapon and shows in its name everywhere', async () => {
+			const held: Character = {
+				...character,
+				id: 'mb-player',
+				inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held', magicBonus: 2 }],
+			}
+			const { container } = await renderSheet(held)
+			const row = attackNamed(container, 'Longsword +2')
+			// STR +2, PB +3, magic +2.
+			expect(row.textContent).toContain('+7')
+			expect(row.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 4 slashing')
+			expect(inventoryRow(container, 'Longsword +2')).toBeTruthy()
+		})
+
+		it('a bonus the player sets replaces the item’s own instead of adding to it', async () => {
+			const held: Character = {
+				...character,
+				id: 'mb-replace',
+				inventory: [{ name: 'Dagger of Venom', source: 'XDMG', quantity: 1, equipped: 'held', magicBonus: 1 }],
+			}
+			const { container } = await renderSheet(held)
+			const row = attackNamed(container, 'Dagger of Venom +1')
+			expect(row.textContent).toContain('+6')
+			expect(row.textContent).toContain("considered (+1) — not applied: replaced by the +1 set on this item")
+		})
+
+		it('withholds an unattuned item’s bonus and applies it once attuned (D76)', async () => {
+			const unattuned: Character = {
+				...character,
+				id: 'mb-unattuned',
+				inventory: [{ name: 'Sword of Sharpness', source: 'XDMG', quantity: 1, equipped: 'held' }],
+			}
+			const { container } = await renderSheet(unattuned)
+			const withheld = attackNamed(container, 'Sword of Sharpness +3')
+			expect(withheld.textContent).toContain('+5')
+			expect(withheld.textContent).toContain('requires attunement and you are not attuned to it')
+			expect(withheld.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 2 slashing')
+
+			cleanup()
+			const attuned: Character = { ...unattuned, id: 'mb-attuned', inventory: [{ ...unattuned.inventory![0], attuned: true }] }
+			const { container: second } = await renderSheet(attuned)
+			const applied = attackNamed(second, 'Sword of Sharpness +3')
+			expect(applied.textContent).toContain('+8')
+			expect(applied.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 5 slashing')
+		})
+
+		it('keeps two otherwise-identical items on separate rows and separate attack lines', async () => {
+			const both: Character = {
+				...character,
+				id: 'mb-two-rows',
+				inventory: [
+					{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held', magicBonus: 1 },
+					{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' },
+				],
+			}
+			const { container } = await renderSheet(both)
+			expect(inventorySection(container).querySelectorAll('.sheet__inventory-list li').length).toBe(2)
+			expect(attackNamed(container, 'Longsword +1').textContent).toContain('+6')
+			expect(attackNamed(container, 'Longsword').textContent).toContain('+5')
+		})
+
+		it('offers the control only on gear, and writes the pick to the inventory row', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const mixed: Character = {
+				...character,
+				id: 'mb-control',
+				inventory: [
+					{ name: 'Longsword', source: 'XPHB', quantity: 1 },
+					{ name: 'Backpack', source: 'XPHB', quantity: 1 },
+				],
+			}
+			await renderSheet(mixed, onEditInventory)
+			expect(screen.queryByLabelText('Magic bonus for Backpack')).toBeNull()
+
+			await user.selectOptions(screen.getByLabelText('Magic bonus for Longsword'), '3')
+			expect(onEditInventory).toHaveBeenCalledWith([
+				{ name: 'Longsword', source: 'XPHB', quantity: 1, magicBonus: 3 },
+				{ name: 'Backpack', source: 'XPHB', quantity: 1 },
+			])
+		})
+
+		it('renders an unresolvable row that carries a bonus, named, with the problem stated (D43)', async () => {
+			const stale: Character = {
+				...character,
+				id: 'mb-stale',
+				inventory: [{ name: 'Mystery Blade', source: 'HOMEBREW', quantity: 1, equipped: 'held', magicBonus: 2 }],
+			}
+			const { container } = await renderSheet(stale, vi.fn())
+			expect(inventoryRow(container, 'Mystery Blade +2').textContent).toContain('Item data not found for "Mystery Blade" (HOMEBREW).')
+			expect(attackNamed(container, 'Mystery Blade +2').textContent).toContain('was not found in the item data')
 		})
 	})
 

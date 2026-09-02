@@ -1275,3 +1275,23 @@ martial melee s vlastností Light — ne z textu feature (D21).
 
 Ostatní zbraně volbu nemají a picker ji nenabízí. Kdo chce útočit Silou
 s lukem, nedělá chybu v appce, ale v pravidlech.
+
+## D78 — Attunement se zobrazuje celý, vynucuje se jen to, co je jisté
+
+Naladění je stav na řádku inventáře, ne samostatný seznam. Vynucuje se
+počet — tři předměty, u Artificera 4/5/6 od úrovně 10/14/18 — protože to
+je ploché pravidlo.
+
+Podmínka vyjádřená slovy („by a spellcaster", „by a creature of good
+alignment") se ukáže hráči tak, jak ji píšou data, a appka ji nekontroluje:
+půlku z nich zjistit neumí a číst je by znamenalo rozebírat prózu (D21).
+Strukturální je jen „vyžaduje / nevyžaduje", a podle toho se řídí, jestli
+se u předmětu vůbec objeví přepínač.
+
+Naladění samo o sobě nic nepočítá. Je to brána, kterou si přečtou slice e
+(magic bonusy) a f (resistance) — prsten s resistancí nenaladěný nefunguje.
+
+Překročený limit, který přišel zvenčí — z importu nebo z ručně upraveného
+úložiště — se zobrazí, jak je („5 ze 4"), a neořezává se potichu. Odmítá se
+jen nové naladění, ne existující stav; jinak by appka mazala data, kterým
+nerozumí.

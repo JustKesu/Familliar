@@ -20,6 +20,7 @@ import { computeAbilityScores } from '../calculation/abilityScores'
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
 import { BASE_ATTUNEMENT_LIMIT, computeAttunementLimit, countAttuned, describeAttunementRefusal } from '../calculation/attunement'
 import type { FeatEffectEntry } from '../calculation/featEffects'
+import { resolveMagicBonus } from '../calculation/magicBonus'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeInitiative } from '../calculation/initiative'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
@@ -39,7 +40,16 @@ import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBlock } from './BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { coinsToCopper, copperToCoins, platinumToCopper } from '../inventory/currency'
-import { armourCategoryOf, equipSlotOf, isShield, itemKey, loadItemRefs, type ItemRef } from '../inventory/inventoryData'
+import {
+	armourCategoryOf,
+	equipSlotOf,
+	inventoryRowKey,
+	isShield,
+	itemKey,
+	itemMagicBonusOf,
+	loadItemRefs,
+	type ItemRef,
+} from '../inventory/inventoryData'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
@@ -58,7 +68,7 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, SpellList } from './SpellList'
-import type { Character, CharacterFamiliar, CharacterInventoryItem, WeaponAttackAbility } from '../storage/character'
+import type { Character, CharacterFamiliar, CharacterInventoryItem, MagicItemBonus, WeaponAttackAbility } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -268,6 +278,19 @@ function unattuned(row: CharacterInventoryItem): CharacterInventoryItem {
 	return rest
 }
 
+/** The row with a player-set magic bonus, or with the field removed — absent is what "none set" means in storage (slice e). */
+function withMagicBonus(row: CharacterInventoryItem, bonus: MagicItemBonus | null): CharacterInventoryItem {
+	if (bonus === null) {
+		const rest = { ...row }
+		delete rest.magicBonus
+		return rest
+	}
+	return { ...row, magicBonus: bonus }
+}
+
+const MAGIC_BONUS_NONE = ''
+const MAGIC_BONUS_OPTIONS: MagicItemBonus[] = [1, 2, 3]
+
 /**
  * Inventory and money (build order step 7, slice a1). The second editable
  * place on an otherwise read-only sheet (the familiar is the first): editing
@@ -317,6 +340,15 @@ function InventorySection({
 
 	function removeAt(index: number): void {
 		onEditInventory?.(inventory.filter((_, i) => i !== index))
+	}
+
+	/**
+	 * The player's own magic bonus (slice e). It REPLACES the item's own rather
+	 * than adding to it — that reconciliation lives in resolveMagicBonus, so
+	 * nothing here has to know the item carries one.
+	 */
+	function setMagicBonus(index: number, bonus: MagicItemBonus | null): void {
+		onEditInventory?.(inventory.map((row, i) => (i === index ? withMagicBonus(row, bonus) : row)))
 	}
 
 	/**
@@ -387,22 +419,35 @@ function InventorySection({
 		onEditInventory(inventory.map((row, i) => (i === index ? { ...row, attuned: true } : row)))
 	}
 
+	/**
+	 * The checkbox adds and removes ONE plain row — a row carrying no equipped
+	 * state, attunement, ability pick or magic bonus. That is what makes a +1
+	 * Longsword and a plain Longsword reachable at once (slice e): the plain row
+	 * is what this control owns, and a row the player has since changed is left
+	 * alone rather than being the one it deletes.
+	 */
+	function plainRowOf(ref: { name: string; source: string }): CharacterInventoryItem {
+		return { name: ref.name, source: ref.source, quantity: 1 }
+	}
+
 	function toggleAdd(key: string): void {
 		if (!onEditInventory) return
-		const existing = inventory.findIndex((item) => itemKey(item) === key)
+		const ref = (itemRefs ?? []).find((candidate) => itemKey(candidate) === key)
+		if (!ref) return
+		const plainKey = inventoryRowKey(plainRowOf(ref))
+		const existing = inventory.findIndex((item) => inventoryRowKey(item) === plainKey)
 		if (existing !== -1) {
 			onEditInventory(inventory.filter((_, i) => i !== existing))
 			return
 		}
-		const ref = (itemRefs ?? []).find((candidate) => itemKey(candidate) === key)
-		if (ref) onEditInventory([...inventory, { name: ref.name, source: ref.source, quantity: 1 }])
+		onEditInventory([...inventory, plainRowOf(ref)])
 	}
 
 	const addOptions: SearchableOption[] = (itemRefs ?? []).map((ref) => ({
 		key: itemKey(ref),
 		name: ref.name,
 		label: `${ref.name} (${ref.source})`,
-		selected: inventory.some((item) => itemKey(item) === itemKey(ref)),
+		selected: inventory.some((item) => inventoryRowKey(item) === inventoryRowKey(plainRowOf(ref))),
 	}))
 
 	return (
@@ -453,9 +498,18 @@ function InventorySection({
 						 * or the player could never end an attunement they can still see.
 						 */
 						const attunable = ref?.requiresAttunement === true || item.attuned === true
+						/* Slice e: one place computes the displayed name, so the AC breakdown and the attacks section call this sword the same thing. */
+						const bonus = resolveMagicBonus({
+							name: item.name,
+							itemBonus: ref ? itemMagicBonusOf(ref) : null,
+							playerBonus: item.magicBonus ?? null,
+							requiresAttunement: ref?.requiresAttunement === true,
+							attuned: item.attuned === true,
+						})
+						// Two rows can legitimately end up identical (the same item set to the same bonus twice), so the position keeps the key unique.
 						return (
-							<li key={itemKey(item)}>
-								<span>{item.name}</span>
+							<li key={`${inventoryRowKey(item)}#${index}`}>
+								<span>{bonus.label}</span>
 								{item.equipped && <span className="sheet__inventory-equipped"> ({item.equipped})</span>}
 								{item.attuned && <span className="sheet__inventory-attuned"> (attuned)</span>}
 								{ref?.requiresAttunement && (
@@ -472,7 +526,7 @@ function InventorySection({
 									<>
 										{' '}
 										<CommitNumberField
-											label={`Quantity of ${item.name}`}
+											label={`Quantity of ${bonus.label}`}
 											min={1}
 											value={item.quantity}
 											onCommit={(quantity) => setQuantity(index, quantity)}
@@ -482,18 +536,40 @@ function InventorySection({
 											<>
 												<button
 													type="button"
-													aria-label={`${item.equipped ? 'Unequip' : 'Equip'} ${item.name}`}
+													aria-label={`${item.equipped ? 'Unequip' : 'Equip'} ${bonus.label}`}
 													onClick={() => toggleEquip(index)}
 												>
 													{item.equipped ? 'Unequip' : 'Equip'}
 												</button>{' '}
 											</>
 										)}
+										{/* Slice e: the same test the Equip control uses — a +2 backpack means nothing, so only weapons, armour and shields are offered a bonus. */}
+										{slot !== null && (
+											<>
+												<label>
+													Magic bonus{' '}
+													<select
+														aria-label={`Magic bonus for ${item.name}`}
+														value={item.magicBonus ?? MAGIC_BONUS_NONE}
+														onChange={(event) =>
+															setMagicBonus(index, event.target.value === MAGIC_BONUS_NONE ? null : (Number(event.target.value) as MagicItemBonus))
+														}
+													>
+														<option value={MAGIC_BONUS_NONE}>none</option>
+														{MAGIC_BONUS_OPTIONS.map((option) => (
+															<option key={option} value={option}>
+																+{option}
+															</option>
+														))}
+													</select>
+												</label>{' '}
+											</>
+										)}
 										{attunable && (
 											<>
 												<button
 													type="button"
-													aria-label={`${item.attuned ? 'End attunement to' : 'Attune to'} ${item.name}`}
+													aria-label={`${item.attuned ? 'End attunement to' : 'Attune to'} ${bonus.label}`}
 													onClick={() => toggleAttune(index)}
 												>
 													{item.attuned ? 'End attunement' : 'Attune'}
@@ -982,10 +1058,10 @@ export function CharacterSheet({
 	/* Step 7 slice d: the limit needs the character's own levels only, so it is not waiting on any fetch. */
 	const attunementLimit = computeAttunementLimit(character)
 
-	/** The Finesse pick lives on the inventory row (storage/character.ts), so switching it is an ordinary inventory edit. */
+	/** The Finesse pick lives on the inventory row (storage/character.ts), so switching it is an ordinary inventory edit. Keyed by ROW, not by item: two Longswords with different bonuses are two attack lines (slice e). */
 	function chooseAttackAbility(key: string, ability: WeaponAttackAbility): void {
 		if (!onEditInventory) return
-		onEditInventory((character.inventory ?? []).map((item) => (itemKey(item) === key ? { ...item, attackAbility: ability } : item)))
+		onEditInventory((character.inventory ?? []).map((item) => (inventoryRowKey(item) === key ? { ...item, attackAbility: ability } : item)))
 	}
 	const size = computeSize(character, speciesTraitsData)
 	// Darkvision is the one granted sense that reconciles with the species value (D40/D53) rather than

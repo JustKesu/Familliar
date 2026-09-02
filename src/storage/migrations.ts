@@ -81,6 +81,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 21 }),
 	},
+	{
+		from: 21,
+		to: 22,
+		/*
+		 * 22 adds CharacterInventoryItem.magicBonus. A version-21 character has
+		 * set no bonus on anything, and an absent field already means exactly that
+		 * — the item's OWN bonus is read from items.json and was never stored, so
+		 * nothing has to be backfilled. Version tag only, same as the five before it.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 22 }),
+	},
 ]
 
 /**

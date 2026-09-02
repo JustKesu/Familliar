@@ -19,6 +19,7 @@ import type {
 	FilterChoiceSpellsChoice,
 	LanguageGrantSource,
 	MagicInitiateChoice,
+	MagicItemBonus,
 	WeaponAttackAbility,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
@@ -611,6 +612,10 @@ function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar 
  * is NOT checked here either: it depends on the character's Artificer levels
  * (src/calculation/attunement.ts), which is a rules question, not a wire-format
  * one, and a stored file that breaks it must still load so the player can fix it.
+ *
+ * Slice e's `magicBonus`: shape only again. Whether the row is a weapon or a
+ * suit of armour, and whether the item already carries a bonus of its own, are
+ * both items.json questions.
  */
 export function describeInventoryError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -635,6 +640,10 @@ export function describeInventoryError(value: unknown): string | null {
 		const attuned = entry['attuned']
 		if (attuned !== undefined && attuned !== true) {
 			return `inventory[${i}].attuned must be true when present`
+		}
+		const magicBonus = entry['magicBonus']
+		if (magicBonus !== undefined && magicBonus !== 1 && magicBonus !== 2 && magicBonus !== 3) {
+			return `inventory[${i}].magicBonus must be 1, 2 or 3 when present`
 		}
 	}
 	const worn = value.filter((entry) => (entry as Record<string, unknown>)['equipped'] === 'worn')
@@ -662,6 +671,7 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 		const record = entry as Record<string, unknown>
 		const equipped = record['equipped']
 		const attackAbility = record['attackAbility']
+		const magicBonus = record['magicBonus']
 		return {
 			name: record['name'] as string,
 			source: record['source'] as string,
@@ -669,6 +679,7 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 			...(equipped !== undefined ? { equipped: equipped as EquippedSlot } : {}),
 			...(attackAbility !== undefined ? { attackAbility: attackAbility as WeaponAttackAbility } : {}),
 			...(record['attuned'] === true ? { attuned: true as const } : {}),
+			...(magicBonus !== undefined ? { magicBonus: magicBonus as MagicItemBonus } : {}),
 		}
 	})
 }
