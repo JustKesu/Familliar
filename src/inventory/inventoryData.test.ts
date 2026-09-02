@@ -80,6 +80,23 @@ describe('item kinds', () => {
 		])
 	})
 
+	/* Slice f's survey: items carry only plain lowercase damage-type strings, never the {choose} shape the 2 species and 1 feat use. */
+	it('parses the damage resistance and immunity fields, dropping shapes it cannot represent', () => {
+		const parsed = [
+			{ name: 'Ring of Fire Resistance', source: 'XDMG', resist: ['fire'] },
+			{ name: 'Axe of the Dwarvish Lords', source: 'XDMG', resist: ['fire'], immune: ['poison'] },
+			{ name: 'Ghost Step Tattoo', source: 'XDMG', conditionImmune: ['grappled'] },
+			{ name: 'Odd Item', source: 'HOMEBREW', resist: [{ choose: { from: ['fire'] } }] },
+		]
+		expect(extractItemRefs(parsed)).toEqual([
+			{ name: 'Axe of the Dwarvish Lords', source: 'XDMG', resist: ['fire'], immune: ['poison'] },
+			// conditionImmune is conditions, not damage types — deliberately not read.
+			{ name: 'Ghost Step Tattoo', source: 'XDMG' },
+			{ name: 'Odd Item', source: 'HOMEBREW' },
+			{ name: 'Ring of Fire Resistance', source: 'XDMG', resist: ['fire'] },
+		])
+	})
+
 	it('reads the bonus in the role the item plays, and nothing for a wondrous item that carries one', () => {
 		expect(itemMagicBonusOf({ name: 'Moon Sickle', source: 'TCE', typeCode: 'M', bonusWeapon: 2 })).toBe(2)
 		expect(itemMagicBonusOf({ name: 'Dragon Scale Mail', source: 'XDMG', typeCode: 'MA', ac: 14, bonusAc: 1 })).toBe(1)

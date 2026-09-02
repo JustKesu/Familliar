@@ -31,6 +31,14 @@ import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spel
 import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { computeAttacksPerAction, computeWeaponAttacks, type WeaponAttack } from '../calculation/weaponAttacks'
+import {
+	computeDamageResponses,
+	damageResponseBreakdown,
+	damageResponseKindLabel,
+	damageTypeLabel,
+	type DamageResponse,
+	type DamageResponses,
+} from '../calculation/damageResponses'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 import { loadChosenClassOptionalFeatures, type ChosenClassOptionalFeatureGroup } from '../optionalFeatures/optionalFeatureData'
 import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
@@ -52,6 +60,7 @@ import {
 } from '../inventory/inventoryData'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
+import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -686,6 +695,77 @@ function AttacksSection({
 	)
 }
 
+/** One collapsed line: "Fire — resistance (Dwarf, Ring of Fire Resistance)", with the reason when it is shown but does not apply. */
+function DamageResponseLine({ response }: { response: DamageResponse }): ReactNode {
+	return (
+		<li data-superseded={response.supersededBy !== null ? 'true' : undefined}>
+			<span className="sheet__damage-response-type">{damageTypeLabel(response.damageType)}</span> — {damageResponseKindLabel(response.kind)}{' '}
+			<span className="sheet__damage-response-sources">({response.sources.join(', ')})</span>
+			{response.condition && <span className="sheet__damage-response-condition"> — only {response.condition}</span>}
+			{response.supersededBy && <span className="sheet__damage-response-superseded"> — not applied: superseded by {response.supersededBy}</span>}
+		</li>
+	)
+}
+
+/**
+ * What damage the character resists, is immune to, or is vulnerable to, from
+ * every source at once (build order step 7, slice f).
+ *
+ * The conditional ones are their OWN list, never mixed into the set that always
+ * applies: the app cannot see whether a Rage is running until step 9, so it
+ * states the condition instead of counting the resistance (D76, the same
+ * treatment Mage Armor gets in the Armour Class section).
+ */
+function DamageResponsesSection({ responses, loading, dataError }: { responses: DamageResponses; loading: boolean; dataError: string | null }): ReactNode {
+	const applying = responses.unconditional.filter((response) => response.supersededBy === null)
+	return (
+		<section className="sheet__damage-responses">
+			<h2>Damage resistances and immunities</h2>
+			{dataError && <p className="error">Could not load the data this section needs: {dataError}</p>}
+			{loading ? (
+				<p>Loading…</p>
+			) : (
+				<>
+					{responses.unconditional.length === 0 ? (
+						<p>No damage resistances, immunities or vulnerabilities.</p>
+					) : (
+						<ul className="sheet__damage-response-list">
+							{responses.unconditional.map((response) => (
+								<DamageResponseLine key={response.key} response={response} />
+							))}
+						</ul>
+					)}
+					{responses.conditional.length > 0 && (
+						<>
+							<h3>Only in certain conditions</h3>
+							{/* Kept visually and structurally apart from the list above — these are never part of the set that applies. */}
+							<ul className="sheet__damage-response-conditional">
+								{responses.conditional.map((response) => (
+									<DamageResponseLine key={response.key} response={response} />
+								))}
+							</ul>
+						</>
+					)}
+					{responses.notes.length > 0 && (
+						<ul className="sheet__damage-response-notes">
+							{responses.notes.map((note, index) => (
+								<li key={`${note.sourceName}-${index}`}>
+									{note.sourceName}: {note.reason}
+								</li>
+							))}
+						</ul>
+					)}
+					{/* A div, not a p: ValueBreakdown renders a <details>, which is not valid inside a paragraph. */}
+					<div className="sheet__damage-response-summary">
+						{applying.length} applying now
+						<ValueBreakdown breakdown={damageResponseBreakdown(responses)} />
+					</div>
+				</>
+			)}
+		</section>
+	)
+}
+
 /**
  * The sheet is read-only except for two controls: the familiar's form and the
  * inventory section (build order step 7). Both are chosen/changed in play, not
@@ -738,6 +818,9 @@ export function CharacterSheet({
 	/** Weapon proficiency grants, the Monk's Martial Arts die and the feature names carrying an attack count (step 7 slice c). Depends on `character`, fetched separately same as the effects above. */
 	const [weaponAttackData, setWeaponAttackData] = useState<WeaponAttackData | null>(null)
 	const [weaponAttackDataError, setWeaponAttackDataError] = useState<string | null>(null)
+	/** The species, feat and D70 feature damage responses (step 7 slice f). The item half needs only itemRefs, which the inventory section already holds. */
+	const [damageResponseData, setDamageResponseData] = useState<DamageResponseData | null>(null)
+	const [damageResponseDataError, setDamageResponseDataError] = useState<string | null>(null)
 
 	/*
 	 * D43: each per-`character` effect above starts empty and stays empty when its
@@ -1013,6 +1096,25 @@ export function CharacterSheet({
 		}
 	}, [character])
 
+	useEffect(() => {
+		let cancelled = false
+		loadDamageResponseData(character)
+			.then((data) => {
+				if (cancelled) return
+				setDamageResponseData(data)
+				setDamageResponseDataError(null)
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return
+				// D43: empty grants is indistinguishable from "this character has none" — the error line is what keeps it from reading as one.
+				setDamageResponseData({ speciesGrants: [], featGrants: [], featureGrants: [] })
+				setDamageResponseDataError(messageOf(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
 	if (loadError) {
 		return (
 			<article className="sheet">
@@ -1057,6 +1159,13 @@ export function CharacterSheet({
 	const attacksPerAction = computeAttacksPerAction(weaponAttackData?.featureNames ?? [])
 	/* Step 7 slice d: the limit needs the character's own levels only, so it is not waiting on any fetch. */
 	const attunementLimit = computeAttunementLimit(character)
+	/* Step 7 slice f: every source in one list. Items are gated on attunement inside buildItemGrants; species/feats/features arrive from the effect above. */
+	const damageResponses = computeDamageResponses([
+		...buildItemGrants(character.inventory ?? [], itemRefs ?? []),
+		...(damageResponseData?.speciesGrants ?? []),
+		...(damageResponseData?.featGrants ?? []),
+		...(damageResponseData?.featureGrants ?? []),
+	])
 
 	/** The Finesse pick lives on the inventory row (storage/character.ts), so switching it is an ordinary inventory edit. Keyed by ROW, not by item: two Longswords with different bonuses are two attack lines (slice e). */
 	function chooseAttackAbility(key: string, ability: WeaponAttackAbility): void {
@@ -1213,6 +1322,12 @@ export function CharacterSheet({
 					</>
 				)}
 			</section>
+
+			<DamageResponsesSection
+				responses={damageResponses}
+				loading={itemRefs === null || damageResponseData === null}
+				dataError={damageResponseDataError}
+			/>
 
 			<AttacksSection
 				attacks={weaponAttacks}

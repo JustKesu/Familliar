@@ -20,6 +20,7 @@ import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpel
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import type { Character, CharacterFamiliar } from '../storage/character'
 import { loadAcFormulaKeys } from './armourClassData'
+import { loadDamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
@@ -165,8 +166,18 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			{ name: 'Ring of Protection', source: 'XDMG', requiresAttunement: true },
 			{ name: 'Ring of Spell Storing', source: 'XDMG', requiresAttunement: true },
 			{ name: 'Wand of the War Mage, +1', source: 'XDMG', requiresAttunement: true, attunementCondition: 'by a spellcaster' },
+			/* Slice f. One resistance behind attunement, one that needs none, and one immunity. */
+			{ name: 'Ring of Fire Resistance', source: 'XDMG', requiresAttunement: true, resist: ['fire'] },
+			{ name: 'Acid Absorbing Tattoo', source: 'XDMG', resist: ['acid'] },
+			{ name: 'Periapt of Proof against Poison', source: 'XDMG', requiresAttunement: true, immune: ['poison'] },
 		]),
 	}
+})
+
+/* Only the four data-file fetches are stubbed — buildItemGrants and the collapsing/precedence rules run for real. */
+vi.mock('./damageResponseData', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./damageResponseData')>()
+	return { ...actual, loadDamageResponseData: vi.fn(async () => ({ speciesGrants: [], featGrants: [], featureGrants: [] })) }
 })
 
 /* Only the three feature/spell fetches behind formula detection are stubbed — buildEquippedGear and hasMageArmor run for real. */
@@ -1136,6 +1147,126 @@ describe('CharacterSheet', () => {
 			...overrides,
 		}
 	}
+
+	describe('damage resistances and immunities (step 7 slice f)', () => {
+		function section(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__damage-responses') as HTMLElement
+		}
+
+		function lines(container: HTMLElement): string[] {
+			return Array.from(section(container).querySelectorAll('.sheet__damage-response-list li')).map((li) => li.textContent ?? '')
+		}
+
+		function conditionalLines(container: HTMLElement): string[] {
+			return Array.from(section(container).querySelectorAll('.sheet__damage-response-conditional li')).map((li) => li.textContent ?? '')
+		}
+
+		async function renderSheet(subject: Character) {
+			const rendered = render(<CharacterSheet character={subject} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(section(rendered.container).querySelector('.sheet__damage-response-summary')).toBeTruthy())
+			return rendered
+		}
+
+		beforeEach(() => {
+			vi.mocked(loadDamageResponseData).mockReset().mockResolvedValue({ speciesGrants: [], featGrants: [], featureGrants: [] })
+		})
+
+		it('shows a species-granted resistance with its source', async () => {
+			vi.mocked(loadDamageResponseData).mockResolvedValue({
+				speciesGrants: [{ kind: 'resistance', sourceName: 'Dwarf', damageTypes: ['poison'] }],
+				featGrants: [],
+				featureGrants: [],
+			})
+			const { container } = await renderSheet(character)
+
+			expect(lines(container).some((text) => text.includes('Poison') && text.includes('resistance') && text.includes('Dwarf'))).toBe(true)
+		})
+
+		it('withholds an item resistance while unattuned and grants it once attuned', async () => {
+			const carrying: Character = { ...character, id: 'dr-ring', inventory: [{ name: 'Ring of Fire Resistance', source: 'XDMG', quantity: 1 }] }
+			const { container, unmount } = await renderSheet(carrying)
+
+			expect(lines(container).some((text) => text.includes('Fire'))).toBe(false)
+			expect(section(container).textContent).toContain('requires attunement and you are not attuned to it')
+			unmount()
+
+			const attuned: Character = { ...carrying, id: 'dr-ring-attuned', inventory: [{ name: 'Ring of Fire Resistance', source: 'XDMG', quantity: 1, attuned: true }] }
+			const second = await renderSheet(attuned)
+
+			expect(lines(second.container).some((text) => text.includes('Fire') && text.includes('Ring of Fire Resistance'))).toBe(true)
+		})
+
+		it('shows a conditional resistance with its condition and never in the unconditional list', async () => {
+			vi.mocked(loadDamageResponseData).mockResolvedValue({
+				speciesGrants: [],
+				featGrants: [],
+				featureGrants: [
+					{ kind: 'resistance', sourceName: 'Rage (Barbarian)', damageTypes: ['slashing'], condition: 'while your Rage is active' },
+				],
+			})
+			const { container } = await renderSheet(character)
+
+			expect(lines(container).some((text) => text.includes('Slashing'))).toBe(false)
+			expect(conditionalLines(container).some((text) => text.includes('Slashing') && text.includes('while your Rage is active'))).toBe(true)
+			expect(section(container).textContent).toContain('0 applying now')
+		})
+
+		it('collapses two sources of the same resistance into one line naming both', async () => {
+			const carrying: Character = { ...character, id: 'dr-two', inventory: [{ name: 'Acid Absorbing Tattoo', source: 'XDMG', quantity: 1 }] }
+			vi.mocked(loadDamageResponseData).mockResolvedValue({
+				speciesGrants: [{ kind: 'resistance', sourceName: 'Copper Dragonborn', damageTypes: ['acid'] }],
+				featGrants: [],
+				featureGrants: [],
+			})
+			const { container } = await renderSheet(carrying)
+
+			const acid = lines(container).filter((text) => text.includes('Acid'))
+			expect(acid).toHaveLength(1)
+			expect(acid[0]).toContain('Acid Absorbing Tattoo')
+			expect(acid[0]).toContain('Copper Dragonborn')
+		})
+
+		it('shows an immunity superseding a resistance to the same damage type, both named', async () => {
+			vi.mocked(loadDamageResponseData).mockResolvedValue({
+				speciesGrants: [],
+				featGrants: [],
+				featureGrants: [
+					{ kind: 'resistance', sourceName: 'Soul of the Forge (Cleric)', damageTypes: ['fire'] },
+					{ kind: 'immunity', sourceName: 'Saint of Forge and Fire (Cleric)', damageTypes: ['fire'] },
+				],
+			})
+			const { container } = await renderSheet(character)
+
+			const fire = lines(container).filter((text) => text.includes('Fire'))
+			expect(fire).toHaveLength(2)
+			expect(fire.some((text) => text.includes('immunity') && !text.includes('superseded'))).toBe(true)
+			expect(fire.some((text) => text.includes('resistance') && text.includes('superseded by immunity to Fire'))).toBe(true)
+			// Only the immunity counts towards what actually applies.
+			expect(section(container).textContent).toContain('1 applying now')
+		})
+
+		it('renders a source it cannot resolve, named, with the problem stated (D43)', async () => {
+			const carrying: Character = { ...character, id: 'dr-missing', inventory: [{ name: 'Homebrew Cloak', source: 'HB', quantity: 1 }] }
+			const { container } = await renderSheet(carrying)
+
+			expect(section(container).textContent).toContain('Homebrew Cloak')
+			expect(section(container).textContent).toContain('not found in the item data')
+		})
+
+		it('says plainly when there is nothing at all', async () => {
+			const { container } = await renderSheet(character)
+
+			expect(section(container).textContent).toContain('No damage resistances, immunities or vulnerabilities.')
+		})
+
+		it('keeps the breakdown details outside a paragraph, so the section adds no invalid nesting', async () => {
+			const { container } = await renderSheet(character)
+
+			expect(section(container).querySelector('p details')).toBeNull()
+			expect(section(container).querySelector('.sheet__damage-response-summary details')).toBeTruthy()
+		})
+	})
 
 	// Build order step 6a slice 2 — the display half. A picker that stores a
 	// choice the sheet never renders has happened repeatedly here (d5b-1, d6b).

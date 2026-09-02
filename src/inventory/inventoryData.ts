@@ -89,6 +89,16 @@ export interface ItemRef {
 	 * wondrous items and 2 weapons.
 	 */
 	bonusAc?: number
+	/**
+	 * items.json `resist` / `immune` (slice f), each an array of lowercase
+	 * damage-type strings. 54 items carry `resist` and 3 carry `immune`; no item
+	 * carries the choice shape the 2 species and 1 feat use, and `vulnerable`
+	 * occurs nowhere in the data at all
+	 * (scripts/investigate-damage-responses.js). `conditionImmune` (1 item) is
+	 * conditions, not damage, and is deliberately not read.
+	 */
+	resist?: string[]
+	immune?: string[]
 }
 
 function isItemEntry(value: unknown): value is Record<string, unknown> & { name: string; source: string } {
@@ -178,6 +188,14 @@ function stringField<K extends string>(entry: Record<string, unknown>, key: K): 
 	return typeof value === 'string' ? ({ [key]: value } as Record<K, string>) : {}
 }
 
+/** Keeps only the plain damage-type strings: an object element is the `{choose:{from}}` shape, which no ITEM uses and which this field cannot represent. */
+function damageTypeArrayField<K extends string>(entry: Record<string, unknown>, key: K): Partial<Record<K, string[]>> {
+	const value = entry[key]
+	if (!Array.isArray(value)) return {}
+	const types = value.filter((item): item is string => typeof item === 'string')
+	return types.length > 0 ? ({ [key]: types } as Record<K, string[]>) : {}
+}
+
 function stringArrayField<K extends string>(entry: Record<string, unknown>, key: K): Partial<Record<K, string[]>> {
 	const value = entry[key]
 	return Array.isArray(value) ? ({ [key]: value.filter((item): item is string => typeof item === 'string') } as Record<K, string[]>) : {}
@@ -213,6 +231,8 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...(entry['firearm'] === true ? { firearm: true } : {}),
 				...bonusField(entry, 'bonusWeapon'),
 				...bonusField(entry, 'bonusAc'),
+				...damageTypeArrayField(entry, 'resist'),
+				...damageTypeArrayField(entry, 'immune'),
 				...(reqAttune === true || typeof reqAttune === 'string' ? { requiresAttunement: true } : {}),
 				...(typeof reqAttune === 'string' ? { attunementCondition: reqAttune } : {}),
 			}
