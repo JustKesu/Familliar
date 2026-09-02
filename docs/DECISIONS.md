@@ -1295,3 +1295,21 @@ Překročený limit, který přišel zvenčí — z importu nebo z ručně uprav
 úložiště — se zobrazí, jak je („5 ze 4"), a neořezává se potichu. Odmítá se
 jen nové naladění, ne existující stav; jinak by appka mazala data, kterým
 nerozumí.
+
+## D79 — Magický bonus: datový a ruční se nikdy nesčítají
+
+Předmět může mít bonus ze dvou stran: z dat (`bonusWeapon`, `bonusAc`) nebo
+ručně nastavený hráčem (+1/+2/+3). Použije se vždy jen jeden — ruční nahrazuje
+datový — a v rozkladu je vidět, který vyhrál a co by dal ten druhý. Sčítat je
+by z „+1 Longswordu" nastaveného na +1 udělalo +2.
+
+Ruční bonus se nabízí na každé zbrani, zbroji a štítu, které postava vlastní,
+a nevyžaduje naladění: je to způsob, jak si hráč nebo DM udělá magickou verzi
+běžného předmětu, ne skutečný magický předmět z knihy. Naladění se vynucuje jen
+tehdy, když ho vyžaduje sám předmět v datech — pak se bonus nezapočítá a ukáže
+se jako zvážený kandidát s důvodem (D76, D78).
+
+Bonus je vidět v názvu („Longsword +1"), protože v inventáři vedle sebe stojí
+dva jinak stejné předměty. Název skládá jedno místo, takže se stejná zbraň
+nikde nejmenuje jinak. Barevné odlišení sem nepatří — to je vizuální průchod,
+mimo fázi 1.

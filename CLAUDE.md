@@ -119,6 +119,15 @@ If the task wrote an investigation script, run `git clean -fd scripts`
 after the push — see "Investigation output does not go into the
 repository".
 
+An uncommitted change to a `.md` file in `docs/` or to CLAUDE.md that
+the task did not make was written by the user between sessions. Include
+it in the commit exactly as it stands, and say in the report that you
+did. Do not edit it, do not unstage it, and do not ask — it is a
+decision or a correction the user has already made, and leaving it
+behind means the next session works from documentation that does not
+match the repository. This applies only to those documentation files;
+an uncommitted change anywhere else is a surprise worth stopping for.
+
 ## Running commands
 
 Use the npm scripts defined in `package.json` (`typecheck`, `test`, `build`, `validate-data`, `survey-markup`) rather than invoking tools directly via `npx`. The npm scripts are pre-approved in `.claude/settings.json`; `npx` is not, so every `npx` call costs a permission prompt.
