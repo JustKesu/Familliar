@@ -46,6 +46,7 @@
       "Bash(git push *)",
       "Bash(rm scripts/*)",
       "Bash(rmdir scripts/*)",
+      "Bash(git clean -fd scripts)",
       "PowerShell(npm run *)",
       "PowerShell(npm install)",
       "PowerShell(npm install *)",
