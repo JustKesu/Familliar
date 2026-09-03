@@ -41,6 +41,7 @@ import {
 	type DamageResponses,
 } from '../calculation/damageResponses'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
+import { Entries } from '../markup'
 import { loadChosenClassOptionalFeatures, type ChosenClassOptionalFeatureGroup } from '../optionalFeatures/optionalFeatureData'
 import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
@@ -301,6 +302,30 @@ function withMagicBonus(row: CharacterInventoryItem, bonus: MagicItemBonus | nul
 
 const MAGIC_BONUS_NONE = ''
 const MAGIC_BONUS_OPTIONS: MagicItemBonus[] = [1, 2, 3]
+
+/**
+ * The item's own text (build order step 7, slice g), rendered through the
+ * shared markup renderer — none of it is plain English (D35) and a second
+ * renderer, or a regex stripping the tags, would drift from the first.
+ *
+ * The text is passed through unchanged: not summarised, not reordered, and the
+ * parts the app cannot compute are left in, because those are exactly the ones
+ * the player has to read for himself (D21).
+ *
+ * Collapsed regardless of length. The slice's survey
+ * (scripts/investigate-item-descriptions.js) measured a median of 330
+ * characters, 262 items over 500 and 108 over a thousand, the longest 9,971 —
+ * so expanding by length would leave the ordinary row long enough to push its
+ * own controls off the screen, and the threshold itself would be arbitrary.
+ */
+function ItemDescription({ entries, label }: { entries: unknown[]; label: string }): ReactNode {
+	return (
+		<details className="sheet__item-description">
+			<summary>Description of {label}</summary>
+			<Entries entries={entries} />
+		</details>
+	)
+}
 
 /**
  * Inventory and money (build order step 7, slice a1). The second editable
@@ -594,6 +619,8 @@ function InventorySection({
 								) : (
 									<> ×{item.quantity}</>
 								)}
+								{/* Absent text is not an error: an item with no description gets no section at all, and an unresolvable row already carries its own note (D43). */}
+								{ref?.entries && <ItemDescription entries={ref.entries} label={bonus.label} />}
 							</li>
 						)
 					})}
@@ -1273,9 +1300,10 @@ export function CharacterSheet({
 
 			<section className="sheet__proficiency-bonus">
 				<h2>Proficiency bonus</h2>
-				<p>
+				{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
+				<div>
 					<CalculatedNumber result={proficiencyBonus} format={formatModifier} />
-				</p>
+				</div>
 			</section>
 
 			<section className="sheet__saving-throws">
@@ -1301,9 +1329,10 @@ export function CharacterSheet({
 
 			<section className="sheet__initiative">
 				<h2>Initiative</h2>
-				<p>
+				{/* A div, not a p, for the same reason as the proficiency bonus above — it is the other half of the same console warning. */}
+				<div>
 					<CalculatedNumber result={initiative} format={formatModifier} />
-				</p>
+				</div>
 			</section>
 
 			<section className="sheet__armour-class">

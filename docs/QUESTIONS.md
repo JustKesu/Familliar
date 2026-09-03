@@ -230,3 +230,35 @@ Až se ten dočasný seznam postav bude nahrazovat pořádným, potvrzení má b
 prvek uvnitř appky, ne `confirm()`.
 
 STATUS: nerozhodnuto, spolu s náhradou dočasného seznamu.
+
+### Bonus ke kouzlům se přičítá všem kouzlům, i když ho předmět váže na jednu třídu
+
+Rod of the Pact Keeper mluví o warlockových kouzlech, Arcane Grimoire o svých,
+Moon Sickle o druidských. To omezení je ale jen v próze (D21), takže appka
+`bonusSpellAttack` a `bonusSpellSaveDc` přičte ke každému sesílání, které
+postava má — třídnímu i z featu.
+
+Dnes to skoro nevadí: takový předmět si postava jiné třídy obvykle nevezme,
+a i kdyby, naladění se podle podmínky ve slovech nevynucuje (D78). Vadit to
+začne u multiclass postavy v kroku 10, kde Warlock/Wizard dostane warlockův
+bonus i na wizardí kouzla.
+
+Bonus je vlastní pojmenovaný řádek v rozkladu, takže hráč aspoň vidí, co si má
+odmyslet. Rozhodnout, až se bude řešit multiclass.
+
+Nalezeno ve slice 7h.
+STATUS: nerozhodnuto, spolu s krokem 10.
+
+### `bonusWeaponDamage` nečte nikdo
+
+Nese ho jediný předmět — Bracers of Archery (+2) — a nezapadá nikam: do cesty
+pro zbraně ze slice 7e ne, protože je to nošený předmět bez `bonusWeapon`, a
+mezi šest polí ze slice 7h taky ne, protože je to poškození zbraně.
+
+Přičíst ho naplocho by bylo špatně: platí jen pro luky a kuše, a to omezení je
+v próze. Chce to podmíněné bonusy, které v appce zatím neexistují.
+
+Pro lučištníka je to běžný předmět, takže to není akademická díra.
+
+Nalezeno ve slice 7h.
+STATUS: nerozhodnuto, čeká na podmíněné bonusy.

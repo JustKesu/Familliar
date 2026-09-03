@@ -138,7 +138,8 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 				masteryFull: ['Vex'],
 			},
 			{ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 },
-			{ name: 'Torch', source: 'XPHB' },
+			/* Slice g: plain description text, no markup in it at all. */
+			{ name: 'Torch', source: 'XPHB', entries: ['A torch sheds bright light in a 20-foot radius while it burns.'] },
 			/* Slice e. Two carry a bonus of their own without attunement, one carries a bonus behind attunement. */
 			{ name: 'Glamoured Studded Leather', source: 'XDMG', typeCode: 'LA', ac: 12, bonusAc: 1 },
 			{
@@ -163,7 +164,15 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			/* Four attunement items, one of them with a restriction sentence — enough to reach the limit of three (slice d). */
 			{ name: 'Amulet of Health', source: 'XDMG', requiresAttunement: true },
 			/* Slice h: the flat bonuses these three carry in the real data. */
-			{ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true, bonusAc: 1, bonusSavingThrow: 1 },
+			{
+				name: 'Cloak of Protection',
+				source: 'XDMG',
+				requiresAttunement: true,
+				bonusAc: 1,
+				bonusSavingThrow: 1,
+				/* Slice g: description text carrying a markup tag, as the real entry does. */
+				entries: ['You gain a +1 bonus to {@variantrule Armor Class|XPHB} and saving throws while you wear this cloak.'],
+			},
 			{ name: 'Ring of Protection', source: 'XDMG', typeCode: 'RG', requiresAttunement: true, bonusAc: 1, bonusSavingThrow: 1 },
 			{ name: 'Ring of Spell Storing', source: 'XDMG', requiresAttunement: true },
 			{ name: 'Wand of the War Mage, +1', source: 'XDMG', requiresAttunement: true, attunementCondition: 'by a spellcaster', bonusSpellAttack: 1 },
@@ -1383,6 +1392,113 @@ describe('CharacterSheet', () => {
 			expect(saveNamed(container, 'Wisdom').textContent).toContain('attuned but not found in the item data (HB)')
 			// The numbers still stand on everything that did resolve (D43).
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
+		})
+	})
+
+	/*
+	 * Item descriptions (build order step 7, slice g). The point of the slice is
+	 * that the player can READ what an item does, so every test here asserts on
+	 * the text that reaches the DOM, not on a prop being passed along.
+	 */
+	describe('item descriptions (step 7 slice g)', () => {
+		async function renderSheet(subject: Character) {
+			const rendered = render(<CharacterSheet character={subject} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(rendered.container.querySelector('.sheet__inventory-list')).toBeTruthy())
+			return rendered
+		}
+
+		function descriptions(container: HTMLElement): HTMLElement[] {
+			return Array.from(container.querySelectorAll<HTMLElement>('.sheet__item-description'))
+		}
+
+		it('renders an item’s plain description text on its row', async () => {
+			const owner: Character = { ...character, id: 'desc-plain', inventory: [{ name: 'Torch', source: 'XPHB', quantity: 1 }] }
+			const { container } = await renderSheet(owner)
+
+			const shown = descriptions(container)
+			expect(shown).toHaveLength(1)
+			expect(shown[0].textContent).toContain('A torch sheds bright light in a 20-foot radius while it burns.')
+			// Collapsed by default: the survey found a median description of 330 characters.
+			expect(shown[0].tagName).toBe('DETAILS')
+			expect((shown[0] as HTMLDetailsElement).open).toBe(false)
+			expect(shown[0].querySelector('summary')!.textContent).toContain('Torch')
+		})
+
+		it('renders a description’s markup through the shared renderer, not as raw braces', async () => {
+			const owner: Character = { ...character, id: 'desc-markup', inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 }] }
+			const { container } = await renderSheet(owner)
+
+			const shown = descriptions(container)
+			expect(shown).toHaveLength(1)
+			const text = shown[0].textContent!
+			expect(text).toContain('You gain a +1 bonus to Armor Class and saving throws while you wear this cloak.')
+			expect(text).not.toContain('{@')
+			expect(text).not.toContain('|XPHB')
+			// The renderer's own element, carrying the reference it kept (D4) — proof the shared layer ran.
+			expect(shown[0].querySelector('[data-ref-category="variantrule"]')!.textContent).toBe('Armor Class')
+		})
+
+		it('shows no description section for an item that has none', async () => {
+			const owner: Character = { ...character, id: 'desc-none', inventory: [{ name: 'Backpack', source: 'XPHB', quantity: 1 }] }
+			const { container } = await renderSheet(owner)
+
+			// Absent text is not an error (D43) — the row is there, the section is not.
+			expect(container.querySelector('.sheet__inventory-list')!.textContent).toContain('Backpack')
+			expect(descriptions(container)).toHaveLength(0)
+			expect(container.querySelector('.sheet__inventory')!.textContent).not.toContain('Description of')
+		})
+
+		it('an unresolvable row still renders, named, with the problem stated and no description (D43)', async () => {
+			const owner: Character = { ...character, id: 'desc-missing', inventory: [{ name: 'Mystery Blade', source: 'HOMEBREW', quantity: 1 }] }
+			const { container } = await renderSheet(owner)
+
+			const section = container.querySelector('.sheet__inventory')!
+			expect(section.textContent).toContain('Mystery Blade')
+			expect(section.textContent).toContain('Item data not found for "Mystery Blade" (HOMEBREW).')
+			expect(descriptions(container)).toHaveLength(0)
+		})
+
+		it('gives the description of each row separately, naming the item it belongs to', async () => {
+			const owner: Character = {
+				...character,
+				id: 'desc-two',
+				inventory: [
+					{ name: 'Torch', source: 'XPHB', quantity: 1 },
+					{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 },
+				],
+			}
+			const { container } = await renderSheet(owner)
+
+			const summaries = descriptions(container).map((details) => details.querySelector('summary')!.textContent)
+			expect(summaries).toEqual(['Description of Torch', 'Description of Cloak of Protection'])
+		})
+	})
+
+	/*
+	 * The proficiency bonus block used to put ValueBreakdown's <details> inside a
+	 * <p>, which is invalid nesting and warned on every render. Guarded here so
+	 * the console noise four reports listed cannot come back.
+	 */
+	describe('the proficiency bonus breakdown nests validly', () => {
+		it('does not put a <details> inside a <p>', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = container.querySelector('.sheet__proficiency-bonus')!
+			expect(section.querySelector('details')).toBeTruthy()
+			expect(section.querySelector('p details')).toBeNull()
+			expect(section.querySelector('p')).toBeNull()
+		})
+
+		/* The other half of the same warning: initiative renders the same CalculatedNumber the same way. */
+		it('does not put a <details> inside a <p> in the initiative block either', async () => {
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = container.querySelector('.sheet__initiative')!
+			expect(section.querySelector('details')).toBeTruthy()
+			expect(section.querySelector('p')).toBeNull()
 		})
 	})
 

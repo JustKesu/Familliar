@@ -117,6 +117,18 @@ export interface ItemRef {
 	 */
 	resist?: string[]
 	immune?: string[]
+	/**
+	 * The item's own description, exactly as items.json writes it (slice g).
+	 * `entries` is the ONLY prose key on an item — no `fluff`, no
+	 * `additionalEntries` (scripts/investigate-item-descriptions.js) — and 729
+	 * of the 900 items carry one; the other 171 have no description at all,
+	 * which is why this is optional rather than an empty array.
+	 *
+	 * Left as `unknown[]`: the array mixes strings with nested `entries`,
+	 * `item`, `list`, `table` and `inset` objects, which is precisely the shape
+	 * src/markup's <Entries> walks. Nothing here reads INTO it (D21).
+	 */
+	entries?: unknown[]
 }
 
 function isItemEntry(value: unknown): value is Record<string, unknown> & { name: string; source: string } {
@@ -255,6 +267,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 			const ac = entry['ac']
 			const strength = entry['strength']
 			const reqAttune = entry['reqAttune']
+			const entries = entry['entries']
 			return {
 				name: entry.name,
 				source: entry.source,
@@ -283,6 +296,8 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...damageTypeArrayField(entry, 'immune'),
 				...(reqAttune === true || typeof reqAttune === 'string' ? { requiresAttunement: true } : {}),
 				...(typeof reqAttune === 'string' ? { attunementCondition: reqAttune } : {}),
+				// An empty array is the same thing as no description, so it is not carried through as one.
+				...(Array.isArray(entries) && entries.length > 0 ? { entries } : {}),
 			}
 		})
 		.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source))

@@ -42,6 +42,21 @@ describe('extractItemRefs', () => {
 		])
 	})
 
+	/* Slice g. The array is carried through untouched — nothing here reads into it, and an empty one is the same as no description. */
+	it('carries the description entries verbatim, and omits the field when there is nothing to show', () => {
+		const entries = ['You gain a +1 bonus to {@variantrule Armor Class|XPHB}.', { type: 'list', items: ['One', 'Two'] }]
+		const parsed = [
+			{ name: 'Cloak of Protection', source: 'XDMG', entries },
+			{ name: 'Empty', source: 'XPHB', entries: [] },
+			{ name: 'Longsword', source: 'XPHB' },
+		]
+		expect(extractItemRefs(parsed)).toEqual([
+			{ name: 'Cloak of Protection', source: 'XDMG', entries },
+			{ name: 'Empty', source: 'XPHB' },
+			{ name: 'Longsword', source: 'XPHB' },
+		])
+	})
+
 	it('throws when the parsed value is not an array', () => {
 		expect(() => extractItemRefs({ items: [] })).toThrow('items.json')
 	})
