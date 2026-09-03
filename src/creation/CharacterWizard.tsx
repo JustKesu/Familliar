@@ -1,11 +1,13 @@
 import { useEffect, useReducer, useState, type ReactNode } from 'react'
 import { ClassPicker } from '../classes/ClassPicker'
 import { SpeciesPicker } from '../species/SpeciesPicker'
+import { findSpeciesSelection, loadSpeciesOptions, type SpeciesOption } from '../species/speciesData'
 import { BackgroundPicker } from '../backgrounds/BackgroundPicker'
 import { AbilityScorePicker } from '../abilities/AbilityScorePicker'
 import { LanguagePicker } from '../languages/LanguagePicker'
 import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { SpeciesSkillPicker } from '../speciesSkills/SpeciesSkillPicker'
+import { loadSpeciesSkillProficiencies, type SpeciesSkillProficiencies } from '../speciesSkills/speciesSkillData'
 import { ToolProficiencyPicker } from '../toolProficiencies/ToolProficiencyPicker'
 import { MasteryPicker } from '../masteries/MasteryPicker'
 import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
@@ -137,6 +139,10 @@ export function CharacterWizard({
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
 	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
+	/** The species list, grouped into species + their own choice (D81) — loaded here as well as in the picker, since the species step's completion check needs to know whether a choice is outstanding before that panel would ever mount. */
+	const [speciesOptions, setSpeciesOptions] = useState<SpeciesOption[]>([])
+	/** The chosen species' skill proficiencies, tagged with the species they were loaded for, so a step is never judged complete against a previous species' count. */
+	const [speciesSkillShape, setSpeciesSkillShape] = useState<{ key: string; shape: SpeciesSkillProficiencies | null } | null>(null)
 	const [featAsiGrantCount, setFeatAsiGrantCount] = useState(0)
 	const [featsNeedingAbilityChoice, setFeatsNeedingAbilityChoice] = useState<ReadonlySet<string>>(new Set())
 	const [spellSlotsClassData, setSpellSlotsClassData] = useState<ClassSpellSlotsData[]>([])
@@ -209,6 +215,38 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		loadSpeciesOptions()
+			.then((loaded) => {
+				if (!cancelled) setSpeciesOptions(loaded)
+			})
+			.catch(() => {
+				/* SpeciesPicker surfaces the same load's failure; with no list here an outstanding species choice cannot be judged, and the step is left to its own picker. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	const speciesName = state.data.speciesChoice?.name ?? null
+	const speciesSource = state.data.speciesChoice?.source ?? null
+	useEffect(() => {
+		let cancelled = false
+		setSpeciesSkillShape(null)
+		if (speciesName === null || speciesSource === null) return
+		loadSpeciesSkillProficiencies(speciesName, speciesSource)
+			.then((shape) => {
+				if (!cancelled) setSpeciesSkillShape({ key: `${speciesName}|${speciesSource}`, shape })
+			})
+			.catch(() => {
+				/* SpeciesSkillPicker shows the error; left unset, the step stays incomplete rather than passing with no skill chosen. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [speciesName, speciesSource])
 
 	useEffect(() => {
 		let cancelled = false
@@ -776,6 +814,31 @@ export function CharacterWizard({
 	/** Evaluated with the same pure function the picker renders from, so the gate and the UI can never disagree. */
 	const classFeatureChoicesComplete = areClassFeatureChoicesComplete(classFeatureChoices, state.data.classFeatureChoices)
 
+	/**
+	 * D81/D82: a species that heads a family of variants is not a finished
+	 * choice — "Elf" still owes an Elven Lineage. Read from the same grouped
+	 * list the picker renders, so the gate and the UI cannot disagree. A stored
+	 * species that isn't in the list at all is not blocked on here: the picker
+	 * says so itself, and there is no choice to enforce against data we don't have.
+	 */
+	const speciesSelection = findSpeciesSelection(speciesOptions, state.data.speciesChoice)
+	const speciesVariantChoiceComplete =
+		speciesSelection === null || speciesSelection.option.variants.length === 0 || speciesSelection.variant !== null
+
+	/**
+	 * The species' skill proficiencies, which the panel has always offered but
+	 * nothing ever gated on. An exact-count check like the expertise step's: a
+	 * fixed grant is reported upward by the picker itself, so both shapes come
+	 * out as "this many skills". Until the load lands for the CURRENT species
+	 * the step stays incomplete, rather than passing against a count of zero.
+	 */
+	const speciesSkillRequiredCount =
+		speciesSkillShape?.shape == null ? 0 : speciesSkillShape.shape.kind === 'fixed' ? speciesSkillShape.shape.skills.length : speciesSkillShape.shape.count
+	const speciesSkillsComplete =
+		state.data.speciesChoice === null ||
+		(speciesSkillShape?.key === `${state.data.speciesChoice.name}|${state.data.speciesChoice.source}` &&
+			state.data.speciesSkills.length === speciesSkillRequiredCount)
+
 	/** Read from the same rules table the picker offers from, for the same reason. 0 for anyone without Wild Shape. */
 	const wildShapeFormCount = state.data.classChoice
 		? (wildShapeLimits(state.data.classChoice.className, state.data.classChoice.level, state.data.subclass?.name ?? null)
@@ -797,6 +860,8 @@ export function CharacterWizard({
 		classOptionalFeaturesComplete,
 		classOptionalFeatureGroupCount: classOptionalFeatureGroups.length,
 		classFeatureChoicesComplete,
+		speciesVariantChoiceComplete,
+		speciesSkillsComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
 	}
@@ -922,7 +987,8 @@ export function CharacterWizard({
 						value={state.data.speciesChoice}
 						onChange={(choice) => dispatch({ type: 'setSpeciesChoice', choice })}
 					/>
-					{state.data.speciesChoice && (
+					{/* Held back until the species' own choice is made (D81): the variant carries its own skillProficiencies, and picking a lineage afterwards would clear a skill already chosen against the parent. */}
+					{state.data.speciesChoice && speciesVariantChoiceComplete && (
 						<SpeciesSkillPicker
 							speciesName={state.data.speciesChoice.name}
 							speciesSource={state.data.speciesChoice.source}
@@ -1076,7 +1142,13 @@ export function CharacterWizard({
 					<p>
 						Class: {state.data.classChoice ? `${state.data.classChoice.className} (level ${state.data.classChoice.level})` : '—'}
 					</p>
-					<p>Species: {state.data.speciesChoice?.name ?? '—'}</p>
+					{/* Storage holds the variant's own name ("Air"), which alone doesn't say what species it is — so the review names the species and the choice separately. */}
+					<p>
+						Species:{' '}
+						{speciesSelection
+							? `${speciesSelection.option.displayName}${speciesSelection.variant ? ` — ${speciesSelection.variant.optionName}` : ''}`
+							: (state.data.speciesChoice?.name ?? '—')}
+					</p>
 					<p>Background: {state.data.backgroundChoice?.name ?? '—'}</p>
 					<p>Tool proficiency: {state.data.backgroundToolProficiency ?? '—'}</p>
 					<p>

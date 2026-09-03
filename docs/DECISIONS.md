@@ -1313,3 +1313,95 @@ Bonus je vidět v názvu („Longsword +1"), protože v inventáři vedle sebe s
 dva jinak stejné předměty. Název skládá jedno místo, takže se stejná zbraň
 nikde nejmenuje jinak. Barevné odlišení sem nepatří — to je vizuální průchod,
 mimo fázi 1.
+
+## D80 — Deset prstenů odolnosti dostává naladění zpátky
+
+`Ring of Fire Resistance` a jeho devět sourozenců v datech XDMG postrádají pole
+o naladění, které kniha z roku 2024 vyžaduje. Extrakce jim ho vrací. Není to
+nové pravidlo, jen použití D68: když se data a pravidla rozcházejí, platí
+pravidla.
+
+Rozšířit ten seznam smí jen další doložený rozpor s knihou, ne dojem, že by se
+něco hodilo jinak. `Eyes of the Eagle` v něm schválně není — tam edice 2024
+naladění zrušila doopravdy, takže data mají pravdu a kniha z roku 2014 je
+zastaralá.
+
+Validátor kontroluje, že těch deset v datech je a nese příznak, aby je příští
+změna extrakce tiše nevyhodila (stejná ochrana jako u D75).
+
+Co tím ale nevíme: že jinde problém není. Porovnání proběhlo jen na jednom poli
+a jen mezi předměty, které v obou edicích existují pod stejným názvem. Rozpor,
+který 5etools nikdy nezapsal, se takhle najít nedá — není co s čím porovnat.
+Je to oprava jednoho doloženého případu, ne důkaz, že data jsou jinak správně.
+
+## D81 — Rasa s neprovedenou volbou neprojde wizardem
+
+Když rasa nese volbu, kterou kniha vyžaduje při tvorbě postavy — elfí linie,
+dračí předky, tieflingovo dědictví, gnómí linie, obří předky — wizard nepustí
+dál, dokud ji hráč neudělá. Nezobrazí se nedodělaná postava s poznámkou; prostě
+to nejde odklikat.
+
+Data nabízejí obojí: holý záznam („Elf") i předrozbalené varianty
+(„Elf (Drow)"). Varianty čísla nesou správně, holý záznam má na jejich místě
+nevyřešenou strukturu — a hráč, který klikne na něj, dostane postavu
+s darkvision 60 místo 120 a nemá jak poznat, že je to špatně. Dvoje dveře,
+jedny nikam.
+
+Platí to jen na volby, které kniha váže k tvorbě postavy. Aasimarova Celestial
+Revelation se vybírá při každé proměně, ne jednou — ta sem nepatří a řeší ji
+krok 9.
+
+Tohle je zúžení D58: „čeká na volbu" je správné zobrazení pro volbu, kterou
+hráč udělat teprve může. Volbu, kterou udělat musel, appka nemá vykreslovat
+jako čekající, ale vynutit.
+
+## D82 — Vynucení volby u rasy má dvě podmínky, ne jednu
+
+Doplňuje D81. Tam stálo, že wizard nepustí dál rasu s nevyřešenou volbou.
+To je správně, ale nepokrývá to všechno.
+
+Průzkum dat našel osm rodin variant: Dragonborn (10), Goliath (6), Shifter (4),
+Genasi (4), Elf (3), Kobold (3), Tiefling (3), Gnome (2). U části z nich se
+varianty od základního záznamu liší v polích, která appka počítá — Genasi
+v devíti polích včetně `resist`, `speed` a `darkvision`. Ale u Goliatha
+a Shiftera se liší **jen v próze**. Základní záznam u nich nenese nevyřešenou
+volbu, protože není co nechat nevyřešené, a přesto kniha volbu vyžaduje.
+
+Volba se tedy vynutí, když je splněna kterákoli z těchto podmínek:
+
+1. záznam nese nevyřešenou volbu (`choose`) — sem patří Genasi, Elf,
+   Dragonborn, Tiefling;
+2. záznam je základem rodiny variant — sem navíc patří Goliath a Shifter.
+
+Druhá podmínka je ta důležitá, protože ji nejde odvodit z jednoho záznamu:
+poznává se tím, že vedle něj v datech stojí sourozenci. Kdo by hledal jen
+nevyřešené volby, dvě rasy by minul a nepoznal by to.
+
+Vedlejší zjištění: hypotéza, že rasy z MPMM přidávají atributy jako edice 2014,
+je vyvrácená. MPMM je právě ta kniha, která rasové bonusy zrušila — `ability`
+nenese ani jeden z 78 záznamů v `data/species.json` a `computeAbilityScore`
+sčítá jen základ, povolání a featy. Rasa do atributů nemluví vůbec.
+
+## D83 — O tom, kam volba patří, rozhoduje kniha, ne to, jak vypadá
+
+Volby vypadají zvenčí stejně — vybíráš jednu možnost z několika a něco na tom
+závisí. Rozdíl je v tom, kdy ji kniha nechá udělat, a podle toho se liší, kam
+v appce patří.
+
+Volba, kterou hráč udělá jednou při tvorbě postavy nebo při postupu na úroveň,
+se ukládá a vynucuje ve wizardu: druh džina u Warlocka, božská spřízněnost
+u Divine Soula, prostředí u Storm Heralda, linie u ras.
+
+Volba, kterou pravidla nechají změnit po odpočinku nebo při každém použití, se
+neukládá jako součást postavy a do wizardu nepatří vůbec. Je to stav při hraní
+a řeší ji krok 9: krajina u Circle of the Land (po dlouhém odpočinku),
+souhvězdí u Circle of the Stars (při každé proměně), model zbroje u Armorera
+(po odpočinku), Celestial Revelation u Aasimara (při každé proměně).
+
+Rozpoznat to podle dat nejde — obojí vypadá v JSON stejně. Pozná se to jen
+z věty v knize, která říká „whenever you finish a Long Rest" nebo „when you
+select this species". Proto se každý nový případ ověřuje proti knize, ne proti
+datům.
+
+Do kroku 9 to nepadá tiše: dokud tam ten stav není, sheet hodnotu nezobrazí
+jako správnou, ale jako nedostupnou s důvodem (D76).

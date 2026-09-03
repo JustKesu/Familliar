@@ -27,13 +27,14 @@ vi.mock('../classes/classData', () => ({
 	]),
 }))
 
-vi.mock('../species/speciesData', () => ({
-	loadSpecies: vi.fn(async () => [
-		{ name: 'Elf', source: 'XPHB' },
-		{ name: 'Dwarf', source: 'XPHB' },
-		{ name: 'Bugbear', source: 'XPHB' },
+/** Three species with no choice inside them; the family cases have their own file (CharacterWizard.species.test.tsx). */
+vi.mock('../species/speciesData', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../species/speciesData')>()),
+	loadSpeciesOptions: vi.fn(async () => [
+		{ name: 'Elf', source: 'XPHB', displayName: 'Elf', choiceLabel: null, variants: [] },
+		{ name: 'Dwarf', source: 'XPHB', displayName: 'Dwarf', choiceLabel: null, variants: [] },
+		{ name: 'Bugbear', source: 'XPHB', displayName: 'Bugbear', choiceLabel: null, variants: [] },
 	]),
-	speciesDisplayName: (entry: { name: string }) => entry.name,
 }))
 
 /** Elf offers a choice, Bugbear grants a fixed skill, Dwarf grants none — covers all three picker states. */
@@ -281,6 +282,11 @@ async function fillClassStep(user: ReturnType<typeof userEvent.setup>) {
 	await user.selectOptions(await screen.findByLabelText('Class'), 'Fighter')
 }
 
+/** Dwarf grants no species skill, so the step completes on the species alone — the species step's own gates (D81) have their own file, CharacterWizard.species.test.tsx. */
+async function fillSpeciesStep(user: ReturnType<typeof userEvent.setup>) {
+	await user.selectOptions(await screen.findByLabelText('Species'), 'Dwarf (XPHB)')
+}
+
 async function goNext(user: ReturnType<typeof userEvent.setup>) {
 	await user.click(screen.getByRole('button', { name: 'Next' }))
 }
@@ -322,12 +328,12 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await screen.findByLabelText('Search Background')
 		await goBack(user)
 
-		expect(value(await screen.findByLabelText('Species'))).toBe('Elf|XPHB')
+		expect(value(await screen.findByLabelText('Species'))).toBe('Dwarf|XPHB')
 	})
 
 	it('species step: a chosen species skill is still shown after navigating away and back', async () => {
@@ -376,7 +382,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -398,7 +404,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		// No ability-bonus distribution made.
@@ -426,7 +432,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -448,7 +454,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 
@@ -470,7 +476,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Artisan (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -490,7 +496,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -511,7 +517,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -658,7 +664,7 @@ describe('CharacterWizard — storage', () => {
 
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -693,7 +699,7 @@ describe('CharacterWizard — storage', () => {
 		await user.click(await screen.findByRole('radio', { name: /Battle Master/ }))
 		await user.click(await screen.findByLabelText('Trip Attack'))
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -720,7 +726,7 @@ describe('CharacterWizard — storage', () => {
 				method: 'standardArray',
 				scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
 			},
-			{ name: 'Elf', source: 'XPHB' },
+			{ name: 'Dwarf', source: 'XPHB' },
 			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Gaming Set' },
 			{ strength: 2, dexterity: 1 },
 			[
@@ -754,7 +760,7 @@ describe('CharacterWizard — starting equipment step', () => {
 	async function fillThroughAbilities(user: ReturnType<typeof userEvent.setup>) {
 		await fillClassStep(user)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -834,7 +840,7 @@ describe('CharacterWizard — feat/ASI step', () => {
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), level)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -923,7 +929,7 @@ describe('CharacterWizard — expertise step', () => {
 		await user.type(screen.getByLabelText('Character name'), 'Aria')
 		await user.selectOptions(await screen.findByLabelText('Class'), cls)
 		await goNext(user)
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
@@ -978,7 +984,7 @@ describe('CharacterWizard — expertise step', () => {
 		await user.selectOptions(screen.getByLabelText('Class'), 'Rogue')
 
 		await goNext(user) // class -> species
-		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
+		await fillSpeciesStep(user)
 		await goNext(user) // species -> background
 		// Background is not class-dependent, so the Soldier pick (and its ability
 		// bonus) survived the class change; the list is collapsed on return.

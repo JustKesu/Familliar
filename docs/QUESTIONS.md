@@ -166,3 +166,35 @@ v rozkladu, aby si to hráč přičetl sám a věděl proč.
 
 Nalezeno při ručním proklikání Warlocka (Hexblade, Improved Pact Weapon).
 STATUS: nerozhodnuto, řešit v kroku 7/8.
+
+### Armor of Vulnerability nemá v datech 2024 AC
+
+V edici 2024 přišel o `ac`, `baseItem`, `strength`, `stealth` i `weight` —
+z jedenácti polí zbylo šest. Bez `baseItem` je nemá odkud zdědit.
+
+Vypadá to, že v edici 2024 to není samostatný předmět, ale obecná varianta
+z `magicvariants.json`, a ten soubor extrakce schválně nerozbaluje (fáze 2).
+Dopsat mu AC ručně by znamenalo hádat, jaká zbroj to vlastně je — a to je
+přesně to, co D80 zakazuje.
+
+Zatím to drží D43: zbroj bez AC se vykreslí viditelně jako nekompletní, ne
+tiše špatně. Rozhodnout, až se bude řešit rozbalování variant.
+
+Nalezeno při porovnání předmětů edic 2014 a 2024 (Cowork, průzkum).
+STATUS: nerozhodnuto, čeká na fázi 2.
+
+### Osm magických hudebních nástrojů přišlo o `type: "INS"`
+
+`Instrument of Illusions`, `Instrument of Scribing`, `Instrument of the Bards`
+a jeho tři varianty, `Pipes of Haunting`, `Pipes of the Sewers`.
+
+Picker nástrojových zdatností filtruje strukturálně přes `type === "INS"`
+a zároveň přes `rarity === "none"`. Ta druhá podmínka je právě teď jediné, co
+těch osm drží mimo seznam — funguje to, ale náhodou, ne záměrem. Kdyby filtr
+podle vzácnosti někdy odpadl, propadne osm magických nástrojů mezi obyčejné.
+
+Není to chyba, kterou by dnes hráč viděl. Je to ztracená druhá vrstva ochrany,
+na kterou jsme nespoléhali schválně.
+
+Nalezeno při porovnání předmětů edic 2014 a 2024 (Cowork, průzkum).
+STATUS: nerozhodnuto, nespěchá.

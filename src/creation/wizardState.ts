@@ -99,6 +99,10 @@ export interface WizardStepConditions {
 	classOptionalFeatureGroupCount?: number
 	/** Whether every granted D21 class-feature choice (Divine Order, Primal Order, Elemental Fury) is made. */
 	classFeatureChoicesComplete?: boolean
+	/** D81/D82: whether the choice the book puts inside the chosen species (Elven Lineage, Draconic Ancestry, ...) has been made. True for a species that has none. */
+	speciesVariantChoiceComplete?: boolean
+	/** Whether the species' own skill proficiencies are settled — the count comes from species.json, not from WizardData. */
+	speciesSkillsComplete?: boolean
 	/** Wild Shape forms the class step must collect (wildShapeData.ts's Beast Shapes table); 0 for a character without Wild Shape. */
 	wildShapeFormCount?: number
 	/** Whether every category element inside the two chosen starting-equipment options has an item picked. Which elements those are is only known from the loaded offers, so the caller computes it (missingCategoryPicks). */
@@ -116,6 +120,8 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		classOptionalFeaturesComplete: conditions.classOptionalFeaturesComplete ?? true,
 		classOptionalFeatureGroupCount: conditions.classOptionalFeatureGroupCount ?? 0,
 		classFeatureChoicesComplete: conditions.classFeatureChoicesComplete ?? true,
+		speciesVariantChoiceComplete: conditions.speciesVariantChoiceComplete ?? true,
+		speciesSkillsComplete: conditions.speciesSkillsComplete ?? true,
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
 	}
@@ -314,6 +320,8 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		subclassSpellChoiceSlotCount,
 		classOptionalFeaturesComplete,
 		classFeatureChoicesComplete,
+		speciesVariantChoiceComplete,
+		speciesSkillsComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
 	} = resolveConditions(conditions)
@@ -332,7 +340,12 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				data.wildShapeForms.length === wildShapeFormCount
 			)
 		case 'species':
-			return data.speciesChoice !== null
+			// A species is REMEMBERED the moment it is picked, like a background, but the
+			// step only COMPLETES once every choice the species itself carries is made
+			// (D81/D82): the variant the book puts inside it, and its skill proficiencies.
+			// Both counts come from species.json rather than from WizardData, so they
+			// arrive as conditions — the same case as classFeatureChoicesComplete.
+			return data.speciesChoice !== null && speciesVariantChoiceComplete && speciesSkillsComplete
 		case 'background':
 			// A background is REMEMBERED the moment it is picked (D8), but the step only
 			// COMPLETES once its ability-bonus distribution is finished: the picker fills

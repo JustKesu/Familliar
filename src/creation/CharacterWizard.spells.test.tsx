@@ -27,9 +27,9 @@ vi.mock('../classes/classData', () => ({
 	]),
 }))
 
-vi.mock('../species/speciesData', () => ({
-	loadSpecies: vi.fn(async () => [{ name: 'Elf', source: 'XPHB' }]),
-	speciesDisplayName: (entry: { name: string }) => entry.name,
+vi.mock('../species/speciesData', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../species/speciesData')>()),
+	loadSpeciesOptions: vi.fn(async () => [{ name: 'Elf', source: 'XPHB', displayName: 'Elf', choiceLabel: null, variants: [] }]),
 }))
 
 vi.mock('../speciesSkills/speciesSkillData', () => ({
