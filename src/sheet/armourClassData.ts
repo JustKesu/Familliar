@@ -29,7 +29,7 @@ import type { AcFormulaKey, EquippedGear } from '../calculation/armourClass'
 import { isAttuned } from '../calculation/attunement'
 import { magicItemLabel, resolveMagicBonus } from '../calculation/magicBonus'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { armourCategoryOf, isShield, itemKey, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
+import { armourCategoryOf, buildInventoryResolver, isShield, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 
 interface FeatureSource {
@@ -167,11 +167,11 @@ export async function loadAcFormulaKeys(character: Character, knowsMageArmor: bo
  * better than an Armour Class that adds both.
  */
 export function buildEquippedGear(inventory: CharacterInventoryItem[], itemRefs: ItemRef[]): EquippedGear {
-	const byKey = new Map(itemRefs.map((ref) => [itemKey(ref), ref]))
+	const resolve = buildInventoryResolver(itemRefs)
 
 	const gear: EquippedGear = { armour: null, shield: null, unresolved: [], carriedArmourNotWorn: [] }
 	for (const item of inventory) {
-		const ref = byKey.get(itemKey(item))
+		const { ref } = resolve(item)
 		if (!ref) {
 			// D43: named with the bonus the row carries, even though nothing can be computed from it.
 			if (item.equipped) gear.unresolved.push({ name: magicItemLabel(item.name, item.magicBonus ?? 0), source: item.source })

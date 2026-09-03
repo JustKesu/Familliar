@@ -302,10 +302,77 @@ export interface CharacterInventoryItem {
 	 * rules stop; the data's own bonuses are not capped by this type and reach 5.
 	 */
 	magicBonus?: MagicItemBonus
+	/**
+	 * The item's own definition, present only on a custom item (slice e2a).
+	 * A row carrying one never resolves against items.json — this IS the item.
+	 *
+	 * Its contents are deliberately not validated by the storage layer: D43
+	 * requires a malformed definition to render with the problem stated, which
+	 * it cannot do if the whole character is refused. describeCustomItemProblem
+	 * (src/inventory/inventoryData.ts) is what checks it, at resolution time.
+	 */
+	custom?: CustomItemDefinition
 }
 
 /** A player-set magic bonus. +1 to +3 is the whole range the rules give a magic weapon or suit of armour. */
 export type MagicItemBonus = 1 | 2 | 3
+
+/**
+ * What a custom item IS (build order step 7, slice e2a). Not a category from
+ * the data: it is the smallest thing the app has to know to treat the row like
+ * any other — whether it can be worn, held, or neither.
+ */
+export type CustomItemKind = 'weapon' | 'armour' | 'shield' | 'worn' | 'other'
+
+/**
+ * A DM's homebrew item, or an ordinary one the player altered, defined ON the
+ * inventory row that holds it (slice e2a). There is deliberately no shared
+ * library: one kept in this browser could never reach another player, and what
+ * would actually serve a DM handing items out is export to a file — its own
+ * slice.
+ *
+ * The shape is therefore a complete item on its own — name included, so
+ * `JSON.stringify(row.custom)` is already the whole thing and an exporter has
+ * nothing to inject. The row's own `name` mirrors this one; `source` is always
+ * CUSTOM_ITEM_SOURCE.
+ *
+ * It may set exactly the fields the app already reads from a real item, and
+ * only the ones that need no calculation code. The computed ones — armour
+ * class, damage dice, resistances, speed, darkvision, the flat bonuses — are
+ * slice e2b's and are deliberately absent here.
+ *
+ * The +1/+2/+3 magic bonus is NOT here either: `CharacterInventoryItem.magicBonus`
+ * already holds exactly that (D79's player-set bonus) and works on a custom row
+ * unchanged.
+ */
+export interface CustomItemDefinition {
+	name: string
+	kind: CustomItemKind
+	/** Cost in COPPER, the unit items.json's own `value` uses. Absent means no price was recorded. */
+	valueCopper?: number
+	/** Present only when the item requires attunement, never `false` — same convention as the row's `attuned`. */
+	requiresAttunement?: true
+	/**
+	 * The restriction sentence, in the player's own words ("by a druid"). Shown
+	 * and never evaluated, exactly like items.json's own `reqAttune` string (D78).
+	 */
+	attunementCondition?: string
+	/**
+	 * Free text. What the app cannot compute goes here and is SHOWN, never
+	 * silently applied (D9/D55) — a custom chain mail that does not hamper
+	 * Stealth still shows the disadvantage; the sentence lives in this field.
+	 * Blank lines separate paragraphs; each one is rendered through the step-1
+	 * markup renderer, the same way a real item's `entries` are.
+	 */
+	description?: string
+}
+
+/**
+ * The `source` every custom item's row carries. A custom item comes from no
+ * book, and claiming the source of the item it was copied from would make the
+ * row lie about which entry in items.json it is.
+ */
+export const CUSTOM_ITEM_SOURCE = 'Custom'
 
 /**
  * The familiar's current form. Names the creature (name + source) only — the
@@ -469,12 +536,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 22 to add CharacterInventoryItem.magicBonus —
- * the magic bonus the player set on that item (build order step 7, slice e).
+ * (see wireFormat.ts). Bumped to 23 to add CharacterInventoryItem.custom — a
+ * custom item's whole definition, carried on the row (build order step 7,
+ * slice e2a).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 22
+export const CURRENT_SCHEMA_VERSION = 23

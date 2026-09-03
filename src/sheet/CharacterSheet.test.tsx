@@ -18,7 +18,7 @@ import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../s
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
-import type { Character, CharacterFamiliar } from '../storage/character'
+import { CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition } from '../storage/character'
 import { loadAcFormulaKeys } from './armourClassData'
 import { loadDamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
@@ -1472,6 +1472,223 @@ describe('CharacterSheet', () => {
 
 			const summaries = descriptions(container).map((details) => details.querySelector('summary')!.textContent)
 			expect(summaries).toEqual(['Description of Torch', 'Description of Cloak of Protection'])
+		})
+	})
+
+	/*
+	 * Custom items (build order step 7, slice e2a). End to end for the same
+	 * reason the slices before it are: the row the player ends up with is the
+	 * product of the form, the stored definition and the resolver, and a bug in
+	 * any one of the three is invisible from the other two.
+	 */
+	describe('custom items (step 7 slice e2a)', () => {
+		function inventorySection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__inventory') as HTMLElement
+		}
+
+		function inventoryRow(container: HTMLElement, name: string): HTMLElement {
+			const row = Array.from(inventorySection(container).querySelectorAll('li')).find((li) => li.textContent?.includes(name))
+			if (!row) throw new Error(`no inventory row for ${name}`)
+			return row
+		}
+
+		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
+			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(inventorySection(rendered.container).querySelector('.sheet__attunement-count')).toBeTruthy())
+			return rendered
+		}
+
+		const scarf = {
+			name: 'Scarf of Warmth',
+			source: CUSTOM_ITEM_SOURCE,
+			quantity: 1,
+			custom: { name: 'Scarf of Warmth', kind: 'worn' as const, valueCopper: 5000, description: 'You are comfortable in cold weather.' },
+		}
+
+		it('creates one from nothing, carrying every field the form offers onto the new row', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			await renderSheet(character, onEditInventory)
+
+			await user.type(screen.getByLabelText('Custom item name'), 'Scarf of Warmth')
+			await user.selectOptions(screen.getByLabelText('Custom item kind'), 'worn')
+			await user.clear(screen.getByLabelText('Value in copper'))
+			await user.type(screen.getByLabelText('Value in copper'), '5000')
+			await user.tab()
+			await user.click(screen.getByLabelText('Custom item requires attunement'))
+			await user.type(screen.getByLabelText('Custom item attunement condition'), 'by a bard')
+			await user.type(screen.getByLabelText('Custom item description'), 'You are comfortable in cold weather.')
+			await user.click(screen.getByRole('button', { name: 'Add custom item' }))
+
+			expect(onEditInventory).toHaveBeenCalledWith([
+				{
+					name: 'Scarf of Warmth',
+					source: CUSTOM_ITEM_SOURCE,
+					quantity: 1,
+					custom: {
+						name: 'Scarf of Warmth',
+						kind: 'worn',
+						valueCopper: 5000,
+						requiresAttunement: true,
+						attunementCondition: 'by a bard',
+						description: 'You are comfortable in cold weather.',
+					},
+				},
+			])
+		})
+
+		it('creates one by copying an existing item, with the copy seeding the form', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const { container } = await renderSheet(character, onEditInventory)
+
+			const copyList = container.querySelector('.sheet__custom-item .option-list__toggle') as HTMLElement
+			await user.click(copyList)
+			await user.click(screen.getByRole('radio', { name: 'Chain Mail (XPHB)' }))
+
+			// The form is seeded from the item, so only the change has to be typed.
+			expect((screen.getByLabelText('Custom item name') as HTMLInputElement).value).toBe('Chain Mail')
+			expect((screen.getByLabelText('Custom item kind') as HTMLSelectElement).value).toBe('armour')
+
+			await user.type(screen.getByLabelText('Custom item description'), 'This suit does not impose disadvantage on Stealth checks.')
+			await user.click(screen.getByRole('button', { name: 'Add custom item' }))
+
+			expect(onEditInventory).toHaveBeenCalledWith([
+				{
+					name: 'Chain Mail',
+					source: CUSTOM_ITEM_SOURCE,
+					quantity: 1,
+					custom: { name: 'Chain Mail', kind: 'armour', description: 'This suit does not impose disadvantage on Stealth checks.' },
+				},
+			])
+		})
+
+		it('shows the row with its description, its value and a custom marker', async () => {
+			const owner: Character = { ...character, id: 'ci-row', inventory: [scarf] }
+			const { container } = await renderSheet(owner)
+
+			const row = inventoryRow(container, 'Scarf of Warmth')
+			expect(row.textContent).toContain('(custom)')
+			expect(row.textContent).toContain('50 gp')
+			expect(row.querySelector('.sheet__item-description')!.textContent).toContain('You are comfortable in cold weather.')
+			// It resolves against its own definition, so nothing reports it missing from items.json (D43).
+			expect(row.textContent).not.toContain('Item data not found')
+		})
+
+		/* D9/D55: what the app cannot compute is SHOWN, never quietly applied — a sentence about Stealth changes no number. */
+		it('applies nothing from the description text', async () => {
+			const owner: Character = {
+				...character,
+				id: 'ci-prose',
+				inventory: [
+					{
+						name: 'Comfortable Chain Mail',
+						source: CUSTOM_ITEM_SOURCE,
+						quantity: 1,
+						equipped: 'worn',
+						custom: { name: 'Comfortable Chain Mail', kind: 'armour', description: 'This suit does not impose disadvantage on Stealth checks.' },
+					},
+				],
+			}
+			const { container } = await renderSheet(owner)
+
+			expect(inventoryRow(container, 'Comfortable Chain Mail').textContent).toContain('does not impose disadvantage on Stealth')
+			// Armour Class is 10 + Dex 2: a custom suit declares no AC in this slice, and prose is never read for one (D21).
+			await waitFor(() => expect(container.querySelector('.sheet__armour-class-value')).toBeTruthy())
+			expect(container.querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
+		})
+
+		it('equips, attunes and takes a magic bonus like any other row', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const blade = {
+				name: 'Bone Blade',
+				source: CUSTOM_ITEM_SOURCE,
+				quantity: 1,
+				custom: { name: 'Bone Blade', kind: 'weapon' as const, requiresAttunement: true as const, attunementCondition: 'by a druid' },
+			}
+			const owner: Character = { ...character, id: 'ci-equip', inventory: [blade] }
+			const { container } = await renderSheet(owner, onEditInventory)
+
+			// The requirement is printed exactly as the definition writes it and never evaluated (D78).
+			expect(inventoryRow(container, 'Bone Blade').textContent).toContain('Requires attunement by a druid')
+
+			await user.click(screen.getByRole('button', { name: 'Equip Bone Blade' }))
+			expect(onEditInventory).toHaveBeenLastCalledWith([{ ...blade, equipped: 'held' }])
+
+			await user.click(screen.getByRole('button', { name: 'Attune to Bone Blade' }))
+			expect(onEditInventory).toHaveBeenLastCalledWith([{ ...blade, attuned: true }])
+
+			await user.selectOptions(screen.getByLabelText('Magic bonus for Bone Blade'), '1')
+			expect(onEditInventory).toHaveBeenLastCalledWith([{ ...blade, magicBonus: 1 }])
+		})
+
+		it('shows a player-set bonus in the custom item’s own name (D79)', async () => {
+			const owner: Character = {
+				...character,
+				id: 'ci-bonus',
+				inventory: [{ name: 'Bone Blade', source: CUSTOM_ITEM_SOURCE, quantity: 1, magicBonus: 1, custom: { name: 'Bone Blade', kind: 'weapon' } }],
+			}
+			const { container } = await renderSheet(owner)
+			expect(inventorySection(container).textContent).toContain('Bone Blade +1')
+		})
+
+		/* Storage refuses a character wearing two suits, so the displacement rule has to see a custom one too. */
+		it('wearing a custom suit puts down the real one it displaces', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const owner: Character = {
+				...character,
+				id: 'ci-displace',
+				inventory: [
+					{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' },
+					{ name: 'Bark Plate', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Bark Plate', kind: 'armour' } },
+				],
+			}
+			const { container } = await renderSheet(owner, onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Equip Bark Plate' }))
+			expect(onEditInventory).toHaveBeenLastCalledWith([
+				{ name: 'Chain Mail', source: 'XPHB', quantity: 1 },
+				{ name: 'Bark Plate', source: CUSTOM_ITEM_SOURCE, quantity: 1, equipped: 'worn', custom: { name: 'Bark Plate', kind: 'armour' } },
+			])
+			expect(container.querySelector('.sheet__equip-notice')!.textContent).toContain('Unequipped Chain Mail')
+		})
+
+		it('keeps two custom items that differ in one field on separate rows', async () => {
+			const owner: Character = {
+				...character,
+				id: 'ci-two',
+				inventory: [
+					{ name: 'Scarf', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Scarf', kind: 'worn' } },
+					{ name: 'Scarf', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Scarf', kind: 'worn', description: 'It glows.' } },
+				],
+			}
+			const { container } = await renderSheet(owner)
+
+			const rows = Array.from(inventorySection(container).querySelectorAll('.sheet__inventory-list > li'))
+			expect(rows).toHaveLength(2)
+			expect(rows.filter((row) => row.textContent?.includes('It glows.'))).toHaveLength(1)
+		})
+
+		it('renders a malformed definition, named, with the problem stated and the section intact (D43)', async () => {
+			const owner: Character = {
+				...character,
+				id: 'ci-broken',
+				inventory: [
+					{ name: 'Bad Thing', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Bad Thing', kind: 'banana' } as unknown as CustomItemDefinition },
+					{ name: 'Torch', source: 'XPHB', quantity: 1 },
+				],
+			}
+			const { container } = await renderSheet(owner)
+
+			const row = inventoryRow(container, 'Bad Thing')
+			expect(row.textContent).toContain('Custom item "Bad Thing" cannot be read')
+			expect(row.textContent).toContain('banana')
+			// Neither the rest of the list nor the sections that read the inventory fall over.
+			expect(inventoryRow(container, 'Torch').textContent).toContain('A torch sheds bright light')
+			expect(container.querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
 		})
 	})
 

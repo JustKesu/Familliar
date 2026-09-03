@@ -27,7 +27,7 @@ import { isAttuned } from '../calculation/attunement'
 import type { DamageResponseGrant } from '../calculation/damageResponses'
 import { featureDamageResponsesAmong } from '../damageResponses/featureDamageResponses'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { isConsumable, itemKey, type ItemRef } from '../inventory/inventoryData'
+import { buildInventoryResolver, isConsumable, type ItemRef } from '../inventory/inventoryData'
 import { magicItemLabel } from '../calculation/magicBonus'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 import { featureNamesFor } from './weaponAttackData'
@@ -80,7 +80,8 @@ function grantsFromEntry(entry: Record<string, unknown>, sourceName: string): Da
  * set from being carried — it applies only while the item is used, and using
  * items is step 9 (D76: shown as a considered candidate with the reason). An
  * item requiring attunement contributes only while attuned (same D76 treatment).
- * A row absent from items.json cannot be known to grant anything, so it is named
+ * A row that does not resolve — absent from items.json, or a custom definition
+ * too broken to read — cannot be known to grant anything, so it is named
  * with the problem stated rather than silently skipped (D43).
  *
  * The consumable check runs before the attunement one because it is the primary
@@ -89,17 +90,18 @@ function grantsFromEntry(entry: Record<string, unknown>, sourceName: string): Da
  * an outcome.
  */
 export function buildItemGrants(inventory: readonly CharacterInventoryItem[], itemRefs: readonly ItemRef[]): DamageResponseGrant[] {
-	const byKey = new Map(itemRefs.map((ref) => [itemKey(ref), ref]))
+	const resolve = buildInventoryResolver(itemRefs)
 	const grants: DamageResponseGrant[] = []
 
 	for (const item of inventory) {
-		const ref = byKey.get(itemKey(item))
+		const { ref, problem } = resolve(item)
 		if (!ref) {
+			const reason = problem?.kind === 'malformed-custom' ? 'its custom definition cannot be read' : `not found in the item data (${item.source})`
 			grants.push({
 				kind: 'resistance',
 				sourceName: magicItemLabel(item.name, item.magicBonus ?? 0),
 				damageTypes: [],
-				unresolvedReason: `not found in the item data (${item.source}) — any resistance it grants is not counted`,
+				unresolvedReason: `${reason} — any resistance it grants is not counted`,
 			})
 			continue
 		}

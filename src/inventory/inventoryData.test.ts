@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { armourCategoryOf, equipSlotOf, extractItemRefs, inventoryRowKey, isConsumable, isShield, isWeapon, itemKey, itemMagicBonusOf, wornAcBonusOf } from './inventoryData'
+import {
+	armourCategoryOf,
+	buildInventoryResolver,
+	customItemFromRef,
+	customItemRef,
+	describeCustomItemProblem,
+	equipSlotOf,
+	exclusiveSlotOf,
+	extractItemRefs,
+	inventoryRowKey,
+	isConsumable,
+	isShield,
+	isWeapon,
+	itemKey,
+	itemMagicBonusOf,
+	wornAcBonusOf,
+	type ItemRef,
+} from './inventoryData'
+import { CUSTOM_ITEM_SOURCE, type CustomItemDefinition, type CustomItemKind } from '../storage/character'
 
 describe('extractItemRefs', () => {
 	it('keeps every entry with a string name and source, sorted by name then source', () => {
@@ -11,7 +29,7 @@ describe('extractItemRefs', () => {
 		expect(extractItemRefs(parsed)).toEqual([
 			{ name: 'Longsword', source: 'XDMG' },
 			{ name: 'Longsword', source: 'XPHB', weapon: true },
-			{ name: 'Torch', source: 'XPHB', typeCode: 'G' },
+			{ name: 'Torch', source: 'XPHB', typeCode: 'G', value: 1 },
 		])
 	})
 
@@ -178,5 +196,154 @@ describe('inventoryRowKey', () => {
 		expect(inventoryRowKey({ ...longsword, attackAbility: 'strength' })).not.toBe(inventoryRowKey(longsword))
 		// Quantity is not part of it — that is what merging ADDS.
 		expect(inventoryRowKey({ ...longsword, quantity: 7 })).toBe(inventoryRowKey(longsword))
+	})
+
+	/* Two custom items share the same (name, "Custom") pair, so the definition itself has to be in the key or they collapse (slice e2a). */
+	it('separates two custom items that differ in a single field', () => {
+		const scarf: CustomItemDefinition = { name: 'Scarf', kind: 'worn' }
+		const row = { name: 'Scarf', source: CUSTOM_ITEM_SOURCE, quantity: 1 }
+
+		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey(row))
+		expect(inventoryRowKey({ ...row, custom: scarf })).toBe(inventoryRowKey({ ...row, custom: { name: 'Scarf', kind: 'worn' } }))
+		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey({ ...row, custom: { ...scarf, kind: 'other' } }))
+		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey({ ...row, custom: { ...scarf, valueCopper: 5 } }))
+		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey({ ...row, custom: { ...scarf, requiresAttunement: true } }))
+		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey({ ...row, custom: { ...scarf, attunementCondition: 'by a bard' } }))
+		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey({ ...row, custom: { ...scarf, description: 'It is warm.' } }))
+	})
+})
+
+/*
+ * Custom items (build order step 7, slice e2a). The resolver is the single
+ * point every consumer goes through, so these prove the two branches (own
+ * definition vs items.json) and the malformed one D43 covers.
+ */
+describe('custom items', () => {
+	const magicScarf: CustomItemDefinition = {
+		name: 'Scarf of Warmth',
+		kind: 'worn',
+		valueCopper: 5000,
+		requiresAttunement: true,
+		attunementCondition: 'by a bard',
+		description: 'You are comfortable in cold weather.\n\nIt is a nice scarf.',
+	}
+
+	it('resolves a row against its own definition, never against items.json', () => {
+		const resolve = buildInventoryResolver([{ name: 'Scarf of Warmth', source: 'XPHB', typeCode: 'HA', ac: 18 }])
+		const { ref, problem } = resolve({ name: 'Scarf of Warmth', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: magicScarf })
+
+		expect(problem).toBeNull()
+		expect(ref).toEqual({
+			name: 'Scarf of Warmth',
+			source: CUSTOM_ITEM_SOURCE,
+			customKind: 'worn',
+			value: 5000,
+			requiresAttunement: true,
+			attunementCondition: 'by a bard',
+			entries: ['You are comfortable in cold weather.', 'It is a nice scarf.'],
+		})
+		// The same-named real item's armour class is not borrowed: a custom item is only what it declares.
+		expect(ref?.ac).toBeUndefined()
+	})
+
+	it('still resolves ordinary rows, and reports one the item data does not know (D43)', () => {
+		const resolve = buildInventoryResolver([{ name: 'Torch', source: 'XPHB', typeCode: 'G' }])
+		expect(resolve({ name: 'Torch', source: 'XPHB', quantity: 1 }).ref?.typeCode).toBe('G')
+
+		const missing = resolve({ name: 'Mystery Plate', source: 'HB', quantity: 1 })
+		expect(missing.ref).toBeNull()
+		expect(missing.problem).toEqual({ kind: 'not-in-item-data', message: 'Item data not found for "Mystery Plate" (HB).' })
+	})
+
+	it('reports a malformed definition with the problem stated instead of resolving it (D43)', () => {
+		const resolve = buildInventoryResolver([])
+		const broken = resolve({ name: 'Bad Thing', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Bad Thing', kind: 'banana' } as unknown as CustomItemDefinition })
+
+		expect(broken.ref).toBeNull()
+		expect(broken.problem?.kind).toBe('malformed-custom')
+		expect(broken.problem?.message).toContain('Bad Thing')
+		expect(broken.problem?.message).toContain('banana')
+	})
+
+	it('names what is wrong with each malformed shape, and passes a sound one', () => {
+		expect(describeCustomItemProblem(magicScarf)).toBeNull()
+		expect(describeCustomItemProblem({ name: 'Plain', kind: 'other' })).toBeNull()
+		expect(describeCustomItemProblem('a string')).toBe('the definition is not an object')
+		expect(describeCustomItemProblem({ kind: 'other' })).toBe('it has no name')
+		expect(describeCustomItemProblem({ name: '  ', kind: 'other' })).toBe('it has no name')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'armor' })).toContain('is not one of')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'other', valueCopper: -1 })).toContain('whole number of copper')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'other', valueCopper: 1.5 })).toContain('whole number of copper')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'other', requiresAttunement: false })).toContain('attunement requirement')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'other', attunementCondition: 3 })).toContain('attunement condition')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'other', description: [] })).toContain('description must be text')
+	})
+
+	it('gives the equip control to the kinds a body can wear or hold, and to no other', () => {
+		const ref = (kind: CustomItemKind): ItemRef => customItemRef({ name: 'Thing', kind }, CUSTOM_ITEM_SOURCE)
+		expect(equipSlotOf(ref('weapon'))).toBe('held')
+		expect(equipSlotOf(ref('shield'))).toBe('held')
+		expect(equipSlotOf(ref('armour'))).toBe('worn')
+		// A worn wondrous item is gated on attunement alone — the real ones get no equip control either (slice h).
+		expect(equipSlotOf(ref('worn'))).toBeNull()
+		expect(equipSlotOf(ref('other'))).toBeNull()
+
+		expect(exclusiveSlotOf(ref('armour'))).toBe('armour')
+		expect(exclusiveSlotOf(ref('shield'))).toBe('shield')
+		// Two weapons can be held at once, so a weapon displaces nothing.
+		expect(exclusiveSlotOf(ref('weapon'))).toBeNull()
+		expect(exclusiveSlotOf({ name: 'Chain Mail', source: 'XPHB', typeCode: 'HA', armor: true })).toBe('armour')
+		expect(exclusiveSlotOf({ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 })).toBe('shield')
+	})
+
+	/* Slice e2b's fields are deliberately absent, so nothing computes a number the definition cannot back up. */
+	it('carries no computed field, so it reaches no calculation', () => {
+		const armour = customItemRef({ name: 'Bark Plate', kind: 'armour' }, CUSTOM_ITEM_SOURCE)
+		expect(armourCategoryOf(armour)).toBeNull()
+		expect(armour.ac).toBeUndefined()
+		expect(itemMagicBonusOf(armour)).toBeNull()
+		expect(wornAcBonusOf(armour)).toBeNull()
+
+		const weapon = customItemRef({ name: 'Bone Club', kind: 'weapon' }, CUSTOM_ITEM_SOURCE)
+		expect(isWeapon(weapon)).toBe(false)
+		expect(weapon.dmg1).toBeUndefined()
+	})
+
+	it('seeds a definition from an existing item, copying only what this slice holds', () => {
+		expect(
+			customItemFromRef({
+				name: 'Chain Mail',
+				source: 'XPHB',
+				typeCode: 'HA',
+				armor: true,
+				ac: 16,
+				strength: '13',
+				stealth: true,
+				value: 7500,
+			}),
+		).toEqual({ name: 'Chain Mail', kind: 'armour', valueCopper: 7500 })
+
+		expect(customItemFromRef({ name: 'Longsword', source: 'XPHB', typeCode: 'M', weapon: true, dmg1: '1d8' }).kind).toBe('weapon')
+		expect(customItemFromRef({ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 }).kind).toBe('shield')
+		// Nothing in the data separates a cloak from a coil of rope, so a wondrous item copies as 'other'.
+		expect(customItemFromRef({ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true, bonusAc: 1 })).toEqual({
+			name: 'Cloak of Protection',
+			kind: 'other',
+			requiresAttunement: true,
+		})
+	})
+
+	it('copies the plain paragraphs of an item’s text and leaves its structure behind', () => {
+		const copied = customItemFromRef({
+			name: 'Torch',
+			source: 'XPHB',
+			entries: ['It burns for an hour.', { type: 'list', items: ['bright light', 'dim light'] }, 'It can be used as a weapon.'],
+		})
+		expect(copied.description).toBe('It burns for an hour.\n\nIt can be used as a weapon.')
+		// And the copy round-trips back into the same two paragraphs the sheet renders.
+		expect(customItemRef({ name: 'Torch', kind: 'other', description: copied.description }, CUSTOM_ITEM_SOURCE).entries).toEqual([
+			'It burns for an hour.',
+			'It can be used as a weapon.',
+		])
 	})
 })

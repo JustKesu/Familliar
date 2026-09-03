@@ -51,10 +51,12 @@ import { BeastStatBlock } from './BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { coinsToCopper, copperToCoins, platinumToCopper } from '../inventory/currency'
 import {
-	armourCategoryOf,
+	buildInventoryResolver,
+	customItemFromRef,
+	CUSTOM_ITEM_KINDS,
 	equipSlotOf,
+	exclusiveSlotOf,
 	inventoryRowKey,
-	isShield,
 	itemKey,
 	itemMagicBonusOf,
 	loadItemRefs,
@@ -80,7 +82,16 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, SpellList } from './SpellList'
-import type { Character, CharacterFamiliar, CharacterInventoryItem, MagicItemBonus, WeaponAttackAbility } from '../storage/character'
+import {
+	CUSTOM_ITEM_SOURCE,
+	type Character,
+	type CharacterFamiliar,
+	type CharacterInventoryItem,
+	type CustomItemDefinition,
+	type CustomItemKind,
+	type MagicItemBonus,
+	type WeaponAttackAbility,
+} from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -275,12 +286,16 @@ function AddPlatinumField({ onAdd }: { onAdd: (platinum: number) => void }): Rea
 }
 
 /**
- * A row put down. Slice b lets the Finesse ability pick go with the weapon it
- * belongs to; the attunement flag survives, since attunement is independent of
- * whether the item is worn or held (slice d).
+ * A row put down. Only the equipped flag goes: everything else the row carries
+ * — attunement, the Finesse ability pick, the magic bonus, a custom item's own
+ * definition — is a fact about the item, not about whether it is in hand, and a
+ * sheathed sword that stopped being a +1 (or stopped being a custom item at
+ * all) would be data loss.
  */
 function putDown(row: CharacterInventoryItem): CharacterInventoryItem {
-	return { name: row.name, source: row.source, quantity: row.quantity, ...(row.attuned ? { attuned: true as const } : {}) }
+	const rest = { ...row }
+	delete rest.equipped
+	return rest
 }
 
 /** The row with its attunement ended — the key is removed, since absent is what "not attuned" means in storage. */
@@ -327,6 +342,165 @@ function ItemDescription({ entries, label }: { entries: unknown[]; label: string
 	)
 }
 
+/** An item's price in the coins the sheet reads money in (D74 — gold, silver, copper, never platinum). Zero denominations are left out; a free item still reads "0 cp". */
+function itemValueText(copper: number): string {
+	const coins = copperToCoins(copper)
+	const parts: string[] = []
+	if (coins.gp > 0) parts.push(`${coins.gp} gp`)
+	if (coins.sp > 0) parts.push(`${coins.sp} sp`)
+	if (coins.cp > 0) parts.push(`${coins.cp} cp`)
+	return parts.length > 0 ? parts.join(' ') : '0 cp'
+}
+
+/** An empty definition — the "start from nothing" route's opening state. */
+function blankCustomItem(): CustomItemDefinition {
+	return { name: '', kind: 'other' }
+}
+
+/**
+ * Creating a custom item (build order step 7, slice e2a). Two routes into the
+ * same form: copy an existing item and change what you want, or start from
+ * nothing. The copy route is the one that matters — a DM turning a scarf into a
+ * magic item, or a player writing chain mail that does not hamper Stealth,
+ * should not retype every field.
+ *
+ * D9/D55: the form offers only what the app can act on structurally. Anything
+ * else the item does goes in the description and is SHOWN — never applied
+ * behind a value's back, or every breakdown on the sheet becomes untrustworthy.
+ */
+function CustomItemForm({ itemRefs, onCreate }: { itemRefs: ItemRef[]; onCreate: (custom: CustomItemDefinition) => void }): ReactNode {
+	const [draft, setDraft] = useState<CustomItemDefinition>(blankCustomItem)
+	const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+	function update(change: Partial<CustomItemDefinition>): void {
+		setDraft((current) => ({ ...current, ...change }))
+	}
+
+	/** An absent field is what "not set" means in storage, so a blank input removes the key rather than storing "". */
+	function updateOptional(key: 'attunementCondition' | 'description', text: string): void {
+		setDraft((current) => {
+			const next = { ...current }
+			if (text === '') delete next[key]
+			else next[key] = text
+			return next
+		})
+	}
+
+	function copyFrom(key: string): void {
+		const ref = itemRefs.find((candidate) => itemKey(candidate) === key)
+		if (!ref) return
+		setCopiedKey(key)
+		setDraft(customItemFromRef(ref))
+	}
+
+	function create(): void {
+		if (draft.name.trim() === '') return
+		onCreate({ ...draft, name: draft.name.trim() })
+		setDraft(blankCustomItem())
+		setCopiedKey(null)
+	}
+
+	const copyOptions: SearchableOption[] = itemRefs.map((ref) => ({
+		key: itemKey(ref),
+		name: ref.name,
+		label: `${ref.name} (${ref.source})`,
+		selected: copiedKey === itemKey(ref),
+	}))
+
+	return (
+		<details className="sheet__custom-item">
+			<summary>Create a custom item</summary>
+
+			<SearchableOptionList
+				legend="Copy an existing item"
+				name="custom-item-copy"
+				inputType="radio"
+				options={copyOptions}
+				required={0}
+				defaultOpen={false}
+				renderCount={() => (copiedKey === null ? 'starting from nothing' : `copied from ${copiedKey.split('|')[0]}`)}
+				onToggle={copyFrom}
+				searchPlaceholder="Search items by name…"
+			/>
+
+			<p>
+				<label>
+					Name <input type="text" aria-label="Custom item name" value={draft.name} onChange={(event) => update({ name: event.target.value })} />
+				</label>{' '}
+				<label>
+					Kind{' '}
+					<select aria-label="Custom item kind" value={draft.kind} onChange={(event) => update({ kind: event.target.value as CustomItemKind })}>
+						{CUSTOM_ITEM_KINDS.map((kind) => (
+							<option key={kind} value={kind}>
+								{kind}
+							</option>
+						))}
+					</select>
+				</label>{' '}
+				<CommitNumberField
+					label="Value in copper"
+					min={0}
+					value={draft.valueCopper ?? 0}
+					onCommit={(copper) => update({ valueCopper: copper })}
+				/>
+			</p>
+
+			<p>
+				<label>
+					<input
+						type="checkbox"
+						aria-label="Custom item requires attunement"
+						checked={draft.requiresAttunement === true}
+						onChange={(event) =>
+							setDraft((current) => {
+								const next = { ...current }
+								if (event.target.checked) next.requiresAttunement = true
+								else {
+									delete next.requiresAttunement
+									delete next.attunementCondition
+								}
+								return next
+							})
+						}
+					/>{' '}
+					Requires attunement
+				</label>{' '}
+				{draft.requiresAttunement === true && (
+					<label>
+						Condition{' '}
+						{/* Shown to the player and never evaluated, exactly as items.json's own restriction sentence is (D78). */}
+						<input
+							type="text"
+							aria-label="Custom item attunement condition"
+							placeholder="by a spellcaster"
+							value={draft.attunementCondition ?? ''}
+							onChange={(event) => updateOptional('attunementCondition', event.target.value)}
+						/>
+					</label>
+				)}
+			</p>
+
+			<p>
+				<label>
+					Description{' '}
+					<textarea
+						aria-label="Custom item description"
+						rows={3}
+						value={draft.description ?? ''}
+						onChange={(event) => updateOptional('description', event.target.value)}
+					/>
+				</label>
+			</p>
+
+			<p>
+				<button type="button" onClick={create} disabled={draft.name.trim() === ''}>
+					Add custom item
+				</button>
+			</p>
+		</details>
+	)
+}
+
 /**
  * Inventory and money (build order step 7, slice a1). The second editable
  * place on an otherwise read-only sheet (the familiar is the first): editing
@@ -337,6 +511,11 @@ function ItemDescription({ entries, label }: { entries: unknown[]; label: string
  * error (contrast itemRefsError, which is the item DATA failing to load, D43).
  * A stored item whose (name, source) isn't in the loaded list is kept and
  * shown with a note, never dropped (D43).
+ *
+ * Slice e2a: a row carrying its own definition resolves against that instead of
+ * items.json, through the same resolver every other consumer uses, so it takes
+ * part in quantity, equipping, attunement, the magic bonus and the name label
+ * without a second code path.
  */
 function InventorySection({
 	inventory,
@@ -355,8 +534,7 @@ function InventorySection({
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
 }): ReactNode {
-	const refsByKey = new Map((itemRefs ?? []).map((ref) => [itemKey(ref), ref]))
-	const known = new Set(refsByKey.keys())
+	const resolve = buildInventoryResolver(itemRefs ?? [])
 	const coins = copperToCoins(currencyCopper)
 	/** What the last equip did to something else — the one-suit/one-shield rule is announced, never applied silently (this slice's brief). */
 	const [equipNotice, setEquipNotice] = useState<string | null>(null)
@@ -396,7 +574,7 @@ function InventorySection({
 	function toggleEquip(index: number): void {
 		if (!onEditInventory) return
 		const item = inventory[index]
-		const ref = refsByKey.get(itemKey(item))
+		const ref = resolve(item).ref
 		const slot = ref ? equipSlotOf(ref) : null
 		if (!slot) return
 
@@ -406,15 +584,15 @@ function InventorySection({
 			return
 		}
 
-		const exclusive = slot === 'worn' ? 'armour' : isShield(ref!) ? 'shield' : null
+		const exclusive = exclusiveSlotOf(ref!)
 		const displacedIndex =
 			exclusive === null
 				? -1
 				: inventory.findIndex((row, i) => {
 						if (i === index || !row.equipped) return false
-						const otherRef = refsByKey.get(itemKey(row))
+						const otherRef = resolve(row).ref
 						if (!otherRef) return false
-						return exclusive === 'armour' ? armourCategoryOf(otherRef) !== null : isShield(otherRef)
+						return exclusiveSlotOf(otherRef) === exclusive
 					})
 
 		setEquipNotice(
@@ -479,6 +657,16 @@ function InventorySection({
 		onEditInventory([...inventory, plainRowOf(ref)])
 	}
 
+	/**
+	 * A custom item joins the inventory as an ordinary row that happens to carry
+	 * its own definition (slice e2a). It is always added, never merged into an
+	 * existing row: two custom items are what the player made them, and
+	 * inventoryRowKey keeps them apart if they differ by so much as one field.
+	 */
+	function addCustom(custom: CustomItemDefinition): void {
+		onEditInventory?.([...inventory, { name: custom.name, source: CUSTOM_ITEM_SOURCE, quantity: 1, custom }])
+	}
+
 	const addOptions: SearchableOption[] = (itemRefs ?? []).map((ref) => ({
 		key: itemKey(ref),
 		name: ref.name,
@@ -526,8 +714,14 @@ function InventorySection({
 			) : (
 				<ul className="sheet__inventory-list">
 					{inventory.map((item, index) => {
-						const ref = refsByKey.get(itemKey(item))
+						const { ref, problem } = resolve(item)
 						const slot = ref ? equipSlotOf(ref) : null
+						/*
+						 * A missing items.json entry is only a problem once the file has
+						 * loaded; a broken custom definition is one either way, since
+						 * nothing about it depends on that file (slice e2a).
+						 */
+						const showProblem = problem !== null && (problem.kind === 'malformed-custom' || (itemRefs !== null && itemRefsError === null))
 						/*
 						 * An item that does not require attunement has no control at all.
 						 * An attuned row keeps one even when its item data is missing (D43),
@@ -546,6 +740,8 @@ function InventorySection({
 						return (
 							<li key={`${inventoryRowKey(item)}#${index}`}>
 								<span>{bonus.label}</span>
+								{item.custom !== undefined && <span className="sheet__inventory-custom"> (custom)</span>}
+								{ref?.value !== undefined && <span className="sheet__inventory-value"> {itemValueText(ref.value)}</span>}
 								{item.equipped && <span className="sheet__inventory-equipped"> ({item.equipped})</span>}
 								{item.attuned && <span className="sheet__inventory-attuned"> (attuned)</span>}
 								{ref?.requiresAttunement && (
@@ -555,8 +751,11 @@ function InventorySection({
 										Requires attunement{ref.attunementCondition ? ` ${ref.attunementCondition}` : ''}
 									</span>
 								)}
-								{itemRefs !== null && itemRefsError === null && !known.has(itemKey(item)) && (
-									<> <UnresolvedValue reason={`Item data not found for "${item.name}" (${item.source}).`} /></>
+								{showProblem && (
+									<>
+										{' '}
+										<UnresolvedValue reason={problem!.message} />
+									</>
 								)}
 								{onEditInventory ? (
 									<>
@@ -640,6 +839,8 @@ function InventorySection({
 					searchPlaceholder="Search items by name…"
 				/>
 			)}
+
+			{onEditInventory && itemRefs !== null && <CustomItemForm itemRefs={itemRefs} onCreate={addCustom} />}
 		</section>
 	)
 }

@@ -61,6 +61,25 @@ describe('the migration chain (D69)', () => {
 		expect(migrated['inventory']).toEqual([{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' }])
 	})
 
+	it('carries a version-22 character forward unchanged — an existing character gains no custom item', () => {
+		const before = {
+			schemaVersion: 22,
+			id: '1',
+			name: 'Rowan',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			inventory: [
+				{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' },
+				{ name: 'Longsword', source: 'XPHB', quantity: 2, magicBonus: 1, attuned: true },
+			],
+			currencyCopper: 500,
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// Every row is exactly what it was: `custom` is what a row lacks unless the player made one (slice e2a).
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

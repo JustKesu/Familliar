@@ -15,7 +15,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
-import type { CharacterInventoryItem } from '../storage/character'
+import type { CharacterInventoryItem, CustomItemDefinition, CustomItemKind } from '../storage/character'
 
 export interface ItemRef {
 	name: string
@@ -129,6 +129,19 @@ export interface ItemRef {
 	 * src/markup's <Entries> walks. Nothing here reads INTO it (D21).
 	 */
 	entries?: unknown[]
+	/**
+	 * items.json `value`, always a number in COPPER (on 364 of the 900 items —
+	 * the survey in scripts/investigate-inventory-shapes.js). Shown on the row
+	 * and read by nothing: spending money on an item is a later slice.
+	 */
+	value?: number
+	/**
+	 * Set only on a ref built from a row's OWN definition (slice e2a) — the kind
+	 * the player declared. It is what makes a custom item equippable, since a
+	 * custom item carries none of the structural fields (`type`, `armor`,
+	 * `weapon`) the real predicates read.
+	 */
+	customKind?: CustomItemKind
 }
 
 function isItemEntry(value: unknown): value is Record<string, unknown> & { name: string; source: string } {
@@ -157,6 +170,23 @@ const WEAPON_CODES = ['M', 'R']
  */
 const CONSUMABLE_CODES = ['P', 'SC', 'FD']
 
+/** The five kinds a custom item can declare, in the order the create form offers them. */
+export const CUSTOM_ITEM_KINDS: readonly CustomItemKind[] = ['weapon', 'armour', 'shield', 'worn', 'other']
+
+/**
+ * Where each kind goes when equipped. 'worn' (a cloak, a ring) and 'other' get
+ * no slot at all, matching the real items they stand for: equipSlotOf offers no
+ * control on a Cloak of Protection either, because a worn wondrous item is
+ * gated on attunement and nothing else (slice h).
+ */
+const CUSTOM_KIND_SLOT: Record<CustomItemKind, 'worn' | 'held' | null> = {
+	weapon: 'held',
+	armour: 'worn',
+	shield: 'held',
+	worn: null,
+	other: null,
+}
+
 /** True when the item is used up on use, so any resistance it carries applies only while it is being used, not while it sits in the pack. */
 export function isConsumable(ref: ItemRef): boolean {
 	return ref.typeCode !== undefined && CONSUMABLE_CODES.includes(ref.typeCode)
@@ -182,8 +212,26 @@ export function isWeapon(ref: ItemRef): boolean {
  * magic bonuses are later slices of step 7.
  */
 export function equipSlotOf(ref: ItemRef): 'worn' | 'held' | null {
+	// A custom item declares its kind instead of carrying the structural fields the predicates below read (slice e2a).
+	if (ref.customKind !== undefined) return CUSTOM_KIND_SLOT[ref.customKind]
 	if (armourCategoryOf(ref) !== null || ref.armor === true) return 'worn'
 	if (isShield(ref) || isWeapon(ref)) return 'held'
+	return null
+}
+
+/**
+ * Which SINGLE-occupancy slot the item claims when equipped — a body wears one
+ * suit and holds one shield, but may hold two weapons. Null when it claims
+ * none.
+ *
+ * Custom items are why this exists as its own function: a custom suit of
+ * armour has no armour category (that is slice e2b's), so the displacement rule
+ * cannot be written in terms of armourCategoryOf without letting a player wear
+ * two suits at once — which storage then refuses to load.
+ */
+export function exclusiveSlotOf(ref: ItemRef): 'armour' | 'shield' | null {
+	if (equipSlotOf(ref) === 'worn') return 'armour'
+	if (isShield(ref) || ref.customKind === 'shield') return 'shield'
 	return null
 }
 
@@ -224,11 +272,28 @@ export function wornAcBonusOf(ref: ItemRef): number | null {
  * Longsword stay two rows and neither of them silently loses its state.
  *
  * The set is every field the row carries beyond its identity and count:
- * `magicBonus` (slice e), `equipped` (b), `attackAbility` (c) and `attuned`
- * (d). Merging on identity alone would drop three of them.
+ * `magicBonus` (slice e), `equipped` (b), `attackAbility` (c), `attuned` (d)
+ * and the whole custom definition (e2a). Merging on identity alone would drop
+ * five of them — and two custom items are BOTH named by the same (name,
+ * "Custom") pair, so without the definition itself in the key a scarf and a
+ * magic scarf of the same name would collapse into one row.
  */
 export function inventoryRowKey(item: CharacterInventoryItem): string {
-	return [item.name, item.source, item.magicBonus ?? '', item.equipped ?? '', item.attackAbility ?? '', item.attuned ? 'attuned' : ''].join('|')
+	return [
+		item.name,
+		item.source,
+		item.magicBonus ?? '',
+		item.equipped ?? '',
+		item.attackAbility ?? '',
+		item.attuned ? 'attuned' : '',
+		customDefinitionKey(item.custom),
+	].join('|')
+}
+
+/** A custom definition reduced to one comparable string. Field order is fixed here so two equal definitions cannot differ by key order alone. */
+function customDefinitionKey(custom: CustomItemDefinition | undefined): string {
+	if (custom === undefined) return ''
+	return JSON.stringify([custom.name, custom.kind, custom.valueCopper ?? null, custom.requiresAttunement ?? null, custom.attunementCondition ?? null, custom.description ?? null])
 }
 
 /** items.json writes every bonus as a "+1"/"+2" string, never a number (this slice's survey). Anything else is dropped rather than guessed at. */
@@ -268,6 +333,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 			const strength = entry['strength']
 			const reqAttune = entry['reqAttune']
 			const entries = entry['entries']
+			const value = entry['value']
 			return {
 				name: entry.name,
 				source: entry.source,
@@ -276,6 +342,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...(entry['weapon'] === true ? { weapon: true } : {}),
 				...(typeof ac === 'number' ? { ac } : {}),
 				...(typeof strength === 'string' ? { strength } : {}),
+				...(typeof value === 'number' ? { value } : {}),
 				...(entry['stealth'] === true ? { stealth: true } : {}),
 				...stringField(entry, 'weaponCategory'),
 				...stringField(entry, 'dmg1'),
@@ -305,4 +372,120 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 
 export async function loadItemRefs(): Promise<ItemRef[]> {
 	return extractItemRefs(await loadDataFile('data/items.json'))
+}
+
+/*
+ * Custom items (build order step 7, slice e2a).
+ *
+ * A custom item is defined on its own inventory row and resolves to an ItemRef
+ * exactly like a real one, so every consumer below this line — Armour Class,
+ * the attacks section, damage responses, the flat bonuses, the sheet's own
+ * rows — needs no knowledge that the item is homebrew. The ref carries ONLY
+ * the fields this slice defines: nothing that would make a calculation produce
+ * a number the definition cannot back up (slice e2b adds those).
+ */
+
+/** Blank lines separate paragraphs. Each one becomes its own entry, so free text renders like a real item's `entries` rather than as one wall. */
+function descriptionEntries(description: string): string[] {
+	return description
+		.split(/\r?\n\s*\r?\n/)
+		.map((paragraph) => paragraph.trim())
+		.filter((paragraph) => paragraph.length > 0)
+}
+
+/** The ref a custom definition resolves to. `source` comes from the row so the ref and the row agree on what to call the thing (D43 messages read both). */
+export function customItemRef(custom: CustomItemDefinition, source: string): ItemRef {
+	const entries = custom.description === undefined ? [] : descriptionEntries(custom.description)
+	return {
+		name: custom.name,
+		source,
+		customKind: custom.kind,
+		...(typeof custom.valueCopper === 'number' ? { value: custom.valueCopper } : {}),
+		...(custom.requiresAttunement === true ? { requiresAttunement: true } : {}),
+		...(custom.attunementCondition !== undefined && custom.attunementCondition !== '' ? { attunementCondition: custom.attunementCondition } : {}),
+		...(entries.length > 0 ? { entries } : {}),
+	}
+}
+
+/**
+ * What is wrong with a stored custom definition, or null when it is usable.
+ * Takes `unknown` on purpose: the storage layer lets the field through
+ * unchecked so a broken definition can be SHOWN rather than take the character
+ * down with it (D43), which makes this the only place its shape is proved.
+ */
+export function describeCustomItemProblem(custom: unknown): string | null {
+	if (typeof custom !== 'object' || custom === null || Array.isArray(custom)) return 'the definition is not an object'
+	const record = custom as Record<string, unknown>
+	if (typeof record['name'] !== 'string' || record['name'].trim() === '') return 'it has no name'
+	if (typeof record['kind'] !== 'string' || !CUSTOM_ITEM_KINDS.includes(record['kind'] as CustomItemKind)) {
+		return `its kind "${String(record['kind'])}" is not one of ${CUSTOM_ITEM_KINDS.join(', ')}`
+	}
+	const value = record['valueCopper']
+	if (value !== undefined && (typeof value !== 'number' || !Number.isInteger(value) || value < 0)) {
+		return 'its value must be a whole number of copper pieces, not below zero'
+	}
+	if (record['requiresAttunement'] !== undefined && record['requiresAttunement'] !== true) return 'its attunement requirement must be true when present'
+	if (record['attunementCondition'] !== undefined && typeof record['attunementCondition'] !== 'string') return 'its attunement condition must be text'
+	if (record['description'] !== undefined && typeof record['description'] !== 'string') return 'its description must be text'
+	return null
+}
+
+/** Why a row could not be resolved. The two kinds are separated because only the first is independent of whether items.json has loaded yet. */
+export interface InventoryRowProblem {
+	kind: 'malformed-custom' | 'not-in-item-data'
+	message: string
+}
+
+export interface ResolvedInventoryRow {
+	ref: ItemRef | null
+	/** Null when the row resolved; otherwise the D43 note to show beside it. */
+	problem: InventoryRowProblem | null
+}
+
+export type InventoryResolver = (item: CharacterInventoryItem) => ResolvedInventoryRow
+
+/**
+ * The ONE place an inventory row becomes an item. Every consumer builds one of
+ * these instead of indexing items.json itself, so a custom row cannot be
+ * missed by a call site that predates it.
+ */
+export function buildInventoryResolver(itemRefs: readonly ItemRef[]): InventoryResolver {
+	const byKey = new Map(itemRefs.map((ref) => [itemKey(ref), ref]))
+	return (item) => {
+		if (item.custom !== undefined) {
+			const problem = describeCustomItemProblem(item.custom)
+			if (problem !== null) {
+				return { ref: null, problem: { kind: 'malformed-custom', message: `Custom item "${item.name}" cannot be read: ${problem}.` } }
+			}
+			return { ref: customItemRef(item.custom, item.source), problem: null }
+		}
+		const ref = byKey.get(itemKey(item))
+		if (ref) return { ref, problem: null }
+		return { ref: null, problem: { kind: 'not-in-item-data', message: `Item data not found for "${item.name}" (${item.source}).` } }
+	}
+}
+
+/**
+ * A definition seeded from an existing item — the copy route, which is how a
+ * player makes "chain mail that does not hamper stealth" without retyping
+ * every field.
+ *
+ * The kind is derived from the same structural predicates the equip control
+ * reads. 'worn' is never derived: nothing in items.json separates a cloak from
+ * a coil of rope, so a wondrous item copies as 'other' and the player changes
+ * it if they mean to wear it. The description copies the PLAIN paragraphs of
+ * the item's text; its nested lists and tables are structure this field cannot
+ * hold, and are left behind rather than flattened into something the player
+ * would have to repair.
+ */
+export function customItemFromRef(ref: ItemRef): CustomItemDefinition {
+	const paragraphs = (ref.entries ?? []).filter((entry): entry is string => typeof entry === 'string')
+	return {
+		name: ref.name,
+		kind: isWeapon(ref) ? 'weapon' : isShield(ref) ? 'shield' : armourCategoryOf(ref) !== null || ref.armor === true ? 'armour' : 'other',
+		...(typeof ref.value === 'number' ? { valueCopper: ref.value } : {}),
+		...(ref.requiresAttunement === true ? { requiresAttunement: true as const } : {}),
+		...(ref.attunementCondition !== undefined ? { attunementCondition: ref.attunementCondition } : {}),
+		...(paragraphs.length > 0 ? { description: paragraphs.join('\n\n') } : {}),
+	}
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
-import { CURRENT_SCHEMA_VERSION } from './character'
+import { CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE } from './character'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
 import {
 	CharacterNotFoundError,
@@ -926,6 +926,69 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 		const [migrated] = new CharacterStore(backing).list()
 		expect(migrated.inventory).toEqual([{ name: 'Longsword', source: 'XPHB', quantity: 1 }])
 		expect(migrated.inventory?.[0].magicBonus).toBeUndefined()
+	})
+
+	/* Slice e2a: a custom item lives on its row, so surviving a save is the whole of "it exists". */
+	it('round-trips a custom item’s whole definition, alongside the row state it carries (step 7 slice e2a)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Nyx')
+		const row = {
+			name: 'Scarf of Warmth',
+			source: CUSTOM_ITEM_SOURCE,
+			quantity: 1,
+			equipped: 'held' as const,
+			attuned: true as const,
+			magicBonus: 1 as const,
+			custom: {
+				name: 'Scarf of Warmth',
+				kind: 'weapon' as const,
+				valueCopper: 5000,
+				requiresAttunement: true as const,
+				attunementCondition: 'by a bard',
+				description: 'You are comfortable in cold weather.',
+			},
+		}
+
+		store.setInventory(character.id, [row])
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([row])
+	})
+
+	/*
+	 * D43: a definition the app cannot read must still LOAD, or the row that
+	 * needs fixing is the one the player can never see. The storage layer
+	 * therefore checks that `custom` is an object and stops there.
+	 */
+	it('loads a row whose custom definition is malformed, and refuses one that is not an object at all', () => {
+		const broken = new MemoryStorage()
+		broken.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					inventory: [{ name: 'Bad Thing', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Bad Thing', kind: 'banana' } }],
+				},
+			]),
+		)
+		expect(new CharacterStore(broken).list()[0].inventory?.[0].custom).toEqual({ name: 'Bad Thing', kind: 'banana' })
+
+		const notAnObject = new MemoryStorage()
+		notAnObject.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					inventory: [{ name: 'Bad Thing', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: 'a string' }],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(notAnObject).list()).toThrow(CorruptDataError)
 	})
 })
 

@@ -14,6 +14,7 @@ import type {
 	CharacterSpecies,
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
+	CustomItemDefinition,
 	EquippedSlot,
 	FeatAsiChoice,
 	FilterChoiceSpellsChoice,
@@ -616,6 +617,12 @@ function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar 
  * Slice e's `magicBonus`: shape only again. Whether the row is a weapon or a
  * suit of armour, and whether the item already carries a bonus of its own, are
  * both items.json questions.
+ *
+ * Slice e2a's `custom` is checked to be an object and NOTHING MORE. D43
+ * requires a malformed definition to reach the sheet and be shown with its
+ * problem stated; refusing the whole character here would mean the player
+ * could never see, let alone fix, the row that broke. describeCustomItemProblem
+ * does the real check at resolution time.
  */
 export function describeInventoryError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -645,6 +652,10 @@ export function describeInventoryError(value: unknown): string | null {
 		if (magicBonus !== undefined && magicBonus !== 1 && magicBonus !== 2 && magicBonus !== 3) {
 			return `inventory[${i}].magicBonus must be 1, 2 or 3 when present`
 		}
+		const custom = entry['custom']
+		if (custom !== undefined && !isRecord(custom)) {
+			return `inventory[${i}].custom must be an object when present`
+		}
 	}
 	const worn = value.filter((entry) => (entry as Record<string, unknown>)['equipped'] === 'worn')
 	if (worn.length > 1) {
@@ -672,6 +683,7 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 		const equipped = record['equipped']
 		const attackAbility = record['attackAbility']
 		const magicBonus = record['magicBonus']
+		const custom = record['custom']
 		return {
 			name: record['name'] as string,
 			source: record['source'] as string,
@@ -680,6 +692,8 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 			...(attackAbility !== undefined ? { attackAbility: attackAbility as WeaponAttackAbility } : {}),
 			...(record['attuned'] === true ? { attuned: true as const } : {}),
 			...(magicBonus !== undefined ? { magicBonus: magicBonus as MagicItemBonus } : {}),
+			// Carried through as-is: its fields are the resolver's to check, not this layer's (see describeInventoryError).
+			...(custom !== undefined ? { custom: custom as CustomItemDefinition } : {}),
 		}
 	})
 }

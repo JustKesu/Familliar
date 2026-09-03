@@ -92,6 +92,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 22 }),
 	},
+	{
+		from: 22,
+		to: 23,
+		/*
+		 * 23 adds CharacterInventoryItem.custom. A version-22 character owns no
+		 * custom items — every row it carries is a reference into items.json, and
+		 * an absent definition already means exactly that. Version tag only, same
+		 * as the six before it: nothing an existing character holds gains a field.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 23 }),
+	},
 ]
 
 /**

@@ -24,7 +24,7 @@ import { isAttuned } from '../calculation/attunement'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import type { HeldWeapon, ResolvedWeapon } from '../calculation/weaponAttacks'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { inventoryRowKey, isWeapon, itemKey, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
+import { buildInventoryResolver, inventoryRowKey, isWeapon, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 import {
 	extractFeatWeaponProficiencyEntries,
@@ -42,14 +42,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * held row that resolves to something which is not a weapon (a Shield) is not
  * an attack and is skipped; a held row that resolves to nothing at all is kept
  * with `weapon: null` so the attack list names it (D43) rather than dropping it.
+ *
+ * A CUSTOM weapon (slice e2a) is skipped by that same not-a-weapon test: it
+ * carries no damage dice, and dice are slice e2b's. An attack line built from
+ * a definition that has none would print a to-hit and a damage figure the item
+ * cannot back up, which is the one thing D76 rules out.
  */
 export function buildHeldWeapons(inventory: CharacterInventoryItem[], itemRefs: ItemRef[]): HeldWeapon[] {
-	const byKey = new Map(itemRefs.map((ref) => [itemKey(ref), ref]))
+	const resolve = buildInventoryResolver(itemRefs)
 
 	const held: HeldWeapon[] = []
 	for (const item of inventory) {
 		if (item.equipped !== 'held') continue
-		const ref = byKey.get(itemKey(item))
+		const { ref } = resolve(item)
 		if (ref && !isWeapon(ref)) continue
 		held.push({
 			key: inventoryRowKey(item),
