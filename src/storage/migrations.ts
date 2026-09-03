@@ -103,6 +103,18 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 23 }),
 	},
+	{
+		from: 23,
+		to: 24,
+		/*
+		 * 24 grows CustomItemDefinition with the computed fields (armour class,
+		 * damage dice, resistances, speed, darkvision, the flat bonuses). Every
+		 * one is optional and an absent one means "this item declares nothing
+		 * there" — which is exactly what a version-23 custom item is. Version tag
+		 * only, same as the seven before it.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 24 }),
+	},
 ]
 
 /**

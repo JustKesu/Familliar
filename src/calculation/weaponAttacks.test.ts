@@ -365,6 +365,60 @@ describe('computeWeaponAttacks — missing data (D43)', () => {
 		const attacks = computeWeaponAttacks(noScores, [held(longsword)], martialGrants)
 		expect(attacks.map((attack) => attack.toHit.status)).toEqual(['unknown', 'unknown'])
 	})
+
+	/*
+	 * Slice e2b: every weapon in items.json carries dmg1, so only a custom one can
+	 * reach here without dice. The to-hit is real and is kept; the damage says it
+	 * is not set rather than printing the flat 1 the formatter would fall back to.
+	 */
+	it('keeps the attack line of a weapon with no damage dice, and says the damage is not set', () => {
+		const undeclared: ResolvedWeapon = { name: 'Bone Blade', source: 'Custom', typeCode: 'M', weaponCategory: 'martial' }
+		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(undeclared)], martialGrants), 'Bone Blade')
+		expect(toHitOf(attack)).toBe(5)
+		expect(attack.damage.status).toBe('unknown')
+		expect(attack.notes).toContain('Bone Blade has no damage dice set, so its damage cannot be worked out.')
+	})
+})
+
+/*
+ * A custom weapon (slice e2b) reaches this file as an ordinary ResolvedWeapon —
+ * its definition synthesised the same fields items.json carries — so what is
+ * tested here is that the three rules it depends on land on one: proficiency
+ * from weaponCategory, D77's ability from the type code, and D79's bonus once.
+ */
+describe('computeWeaponAttacks — a custom weapon (slice e2b)', () => {
+	const boneBlade: ResolvedWeapon = { name: 'Bone Blade', source: 'Custom', typeCode: 'M', weaponCategory: 'martial', dmg1: '1d8', dmgTypeFull: 'slashing' }
+	const boneBow: ResolvedWeapon = { name: 'Bone Bow', source: 'Custom', typeCode: 'R', weaponCategory: 'simple', dmg1: '1d6', dmgTypeFull: 'piercing' }
+
+	it('produces an attack line with proficiency and the melee Strength rule', () => {
+		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(boneBlade)], martialGrants), 'Bone Blade')
+		// STR +3 and PB +2, exactly as a Longsword would give.
+		expect(toHitOf(attack)).toBe(5)
+		expect(damageTextOf(attack)).toBe('1d8 + 3 slashing')
+		expect(attack.abilityChoice).toBeNull()
+	})
+
+	it('uses Dexterity when its declared range is ranged (D77)', () => {
+		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(boneBow)], martialGrants), 'Bone Bow')
+		expect(toHitOf(attack)).toBe(4)
+		expect(damageTextOf(attack)).toBe('1d6 + 2 piercing')
+	})
+
+	it('withholds the proficiency bonus when it declares no weapon category', () => {
+		const uncategorised: ResolvedWeapon = { ...boneBlade, weaponCategory: undefined }
+		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(uncategorised)], martialGrants), 'Bone Blade')
+		expect(toHitOf(attack)).toBe(3)
+		expect(attack.notes).toContain('Not proficient — no proficiency bonus on the attack roll')
+	})
+
+	/* D79: the player-set bonus is the only bonus a custom weapon can have, and it reaches each roll exactly once. */
+	it('applies a player-set magic bonus once to the attack roll and once to the damage', () => {
+		const bonus = resolveMagicBonus({ name: 'Bone Blade', itemBonus: null, playerBonus: 1, requiresAttunement: false, attuned: false })
+		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(boneBlade, null, bonus)], martialGrants), 'Bone Blade +1')
+		expect(toHitOf(attack)).toBe(6)
+		expect(damageTextOf(attack)).toBe('1d8 + 4 slashing')
+		expect(attack.toHit.status === 'known' && attack.toHit.breakdown.filter((row) => row.source.startsWith('magic bonus'))).toHaveLength(1)
+	})
 })
 
 describe('computeAttacksPerAction', () => {

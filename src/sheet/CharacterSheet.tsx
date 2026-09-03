@@ -37,6 +37,7 @@ import {
 	damageResponseBreakdown,
 	damageResponseKindLabel,
 	damageTypeLabel,
+	DAMAGE_TYPES,
 	type DamageResponse,
 	type DamageResponses,
 } from '../calculation/damageResponses'
@@ -53,7 +54,11 @@ import { coinsToCopper, copperToCoins, platinumToCopper } from '../inventory/cur
 import {
 	buildInventoryResolver,
 	customItemFromRef,
+	customItemRef,
+	CUSTOM_ARMOUR_CATEGORIES,
 	CUSTOM_ITEM_KINDS,
+	CUSTOM_WEAPON_CATEGORIES,
+	CUSTOM_WEAPON_RANGES,
 	equipSlotOf,
 	exclusiveSlotOf,
 	inventoryRowKey,
@@ -64,6 +69,7 @@ import {
 } from '../inventory/inventoryData'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
+import { buildItemDarkvisionGrants, buildItemSpeedAdjustments } from './itemEffectData'
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
 import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
@@ -87,8 +93,11 @@ import {
 	type Character,
 	type CharacterFamiliar,
 	type CharacterInventoryItem,
+	type CustomArmourCategory,
 	type CustomItemDefinition,
 	type CustomItemKind,
+	type CustomWeaponCategory,
+	type CustomWeaponRange,
 	type MagicItemBonus,
 	type WeaponAttackAbility,
 } from '../storage/character'
@@ -358,30 +367,107 @@ function blankCustomItem(): CustomItemDefinition {
 }
 
 /**
- * Creating a custom item (build order step 7, slice e2a). Two routes into the
- * same form: copy an existing item and change what you want, or start from
- * nothing. The copy route is the one that matters — a DM turning a scarf into a
- * magic item, or a player writing chain mail that does not hamper Stealth,
- * should not retype every field.
+ * A number the definition may simply not have (slice e2b). Blank means the field
+ * is absent, which is not the same as zero: an armour-kind item with no Armour
+ * Class is announced as unfinished, while one declaring 0 is a suit that really
+ * gives nothing. The draft is local to the form, so this commits per keystroke —
+ * unlike CommitNumberField, nothing round-trips through storage while typing.
+ */
+function OptionalNumberField({ label, value, onChange }: { label: string; value: number | undefined; onChange: (value: number | undefined) => void }): ReactNode {
+	return (
+		<label>
+			{label}{' '}
+			<input
+				type="number"
+				aria-label={label}
+				value={value === undefined ? '' : String(value)}
+				onChange={(event) => {
+					const text = event.target.value.trim()
+					const parsed = Number(text)
+					onChange(text === '' || !Number.isFinite(parsed) ? undefined : Math.trunc(parsed))
+				}}
+			/>
+		</label>
+	)
+}
+
+/** The damage types a custom item resists or is immune to, picked from the 13 the data uses so two spellings can never become two lines. */
+function DamageTypeChoice({ label, selected, onChange }: { label: string; selected: string[] | undefined; onChange: (types: string[] | undefined) => void }): ReactNode {
+	return (
+		<label>
+			{label}{' '}
+			<select
+				multiple
+				size={4}
+				aria-label={label}
+				value={selected ?? []}
+				onChange={(event) => {
+					const chosen = Array.from(event.target.selectedOptions, (option) => option.value)
+					onChange(chosen.length === 0 ? undefined : chosen)
+				}}
+			>
+				{DAMAGE_TYPES.map((type) => (
+					<option key={type} value={type}>
+						{damageTypeLabel(type)}
+					</option>
+				))}
+			</select>
+		</label>
+	)
+}
+
+/** The five flat bonuses a custom item may declare, and what each is called on the form. The sixth target, the proficiency bonus, is deliberately not offered — slice h leaves it unapplied, so a field for it would be a number nothing counts. */
+const CUSTOM_FLAT_BONUS_FIELDS: readonly { key: 'bonusArmourClass' | 'bonusSavingThrow' | 'bonusSpellAttack' | 'bonusSpellSaveDc' | 'bonusAbilityCheck'; label: string }[] = [
+	{ key: 'bonusArmourClass', label: 'Custom item bonus to armour class' },
+	{ key: 'bonusSavingThrow', label: 'Custom item bonus to saving throws' },
+	{ key: 'bonusSpellAttack', label: 'Custom item bonus to spell attack' },
+	{ key: 'bonusSpellSaveDc', label: 'Custom item bonus to spell save DC' },
+	{ key: 'bonusAbilityCheck', label: 'Custom item bonus to ability checks' },
+]
+
+/**
+ * Creating and editing a custom item (build order step 7, slices e2a and e2b).
+ * Two routes into the same form: copy an existing item and change what you
+ * want, or start from nothing. The copy route is the one that matters — a DM
+ * turning a scarf into a magic item, or a player writing chain mail that does
+ * not hamper Stealth, should not retype every field.
+ *
+ * EDITING is the same form seeded from the definition already stored (slice
+ * e2b). It exists because the only alternative was remove-and-recreate, which
+ * makes one typo in a name cost the whole item — and with it the row's quantity,
+ * attunement and magic bonus.
  *
  * D9/D55: the form offers only what the app can act on structurally. Anything
  * else the item does goes in the description and is SHOWN — never applied
  * behind a value's back, or every breakdown on the sheet becomes untrustworthy.
+ * That is why there is no field for "does not hamper Stealth" or "+1d8 against
+ * undead": the app would have to read prose to honour either (D21).
  */
-function CustomItemForm({ itemRefs, onCreate }: { itemRefs: ItemRef[]; onCreate: (custom: CustomItemDefinition) => void }): ReactNode {
-	const [draft, setDraft] = useState<CustomItemDefinition>(blankCustomItem)
+function CustomItemForm({
+	itemRefs,
+	editing,
+	onSubmit,
+	onCancel,
+}: {
+	itemRefs: ItemRef[]
+	/** The definition being changed, or null when a new item is being made. */
+	editing: CustomItemDefinition | null
+	onSubmit: (custom: CustomItemDefinition) => void
+	onCancel: () => void
+}): ReactNode {
+	const [draft, setDraft] = useState<CustomItemDefinition>(() => editing ?? blankCustomItem())
 	const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
 	function update(change: Partial<CustomItemDefinition>): void {
 		setDraft((current) => ({ ...current, ...change }))
 	}
 
-	/** An absent field is what "not set" means in storage, so a blank input removes the key rather than storing "". */
-	function updateOptional(key: 'attunementCondition' | 'description', text: string): void {
+	/** An absent field is what "not set" means in storage, so a blank input removes the key rather than storing "" or 0. */
+	function updateOptional<K extends keyof CustomItemDefinition>(key: K, value: CustomItemDefinition[K] | undefined): void {
 		setDraft((current) => {
 			const next = { ...current }
-			if (text === '') delete next[key]
-			else next[key] = text
+			if (value === undefined || (typeof value === 'string' && value === '')) delete next[key]
+			else next[key] = value
 			return next
 		})
 	}
@@ -393,11 +479,13 @@ function CustomItemForm({ itemRefs, onCreate }: { itemRefs: ItemRef[]; onCreate:
 		setDraft(customItemFromRef(ref))
 	}
 
-	function create(): void {
+	function submit(): void {
 		if (draft.name.trim() === '') return
-		onCreate({ ...draft, name: draft.name.trim() })
-		setDraft(blankCustomItem())
-		setCopiedKey(null)
+		onSubmit({ ...draft, name: draft.name.trim() })
+		if (editing === null) {
+			setDraft(blankCustomItem())
+			setCopiedKey(null)
+		}
 	}
 
 	const copyOptions: SearchableOption[] = itemRefs.map((ref) => ({
@@ -408,20 +496,23 @@ function CustomItemForm({ itemRefs, onCreate }: { itemRefs: ItemRef[]; onCreate:
 	}))
 
 	return (
-		<details className="sheet__custom-item">
-			<summary>Create a custom item</summary>
+		<details className="sheet__custom-item" open={editing !== null}>
+			<summary>{editing === null ? 'Create a custom item' : `Edit ${editing.name}`}</summary>
 
-			<SearchableOptionList
-				legend="Copy an existing item"
-				name="custom-item-copy"
-				inputType="radio"
-				options={copyOptions}
-				required={0}
-				defaultOpen={false}
-				renderCount={() => (copiedKey === null ? 'starting from nothing' : `copied from ${copiedKey.split('|')[0]}`)}
-				onToggle={copyFrom}
-				searchPlaceholder="Search items by name…"
-			/>
+			{/* Copying replaces the whole draft, so it is offered only while making a new item — not as a way to overwrite one that exists. */}
+			{editing === null && (
+				<SearchableOptionList
+					legend="Copy an existing item"
+					name="custom-item-copy"
+					inputType="radio"
+					options={copyOptions}
+					required={0}
+					defaultOpen={false}
+					renderCount={() => (copiedKey === null ? 'starting from nothing' : `copied from ${copiedKey.split('|')[0]}`)}
+					onToggle={copyFrom}
+					searchPlaceholder="Search items by name…"
+				/>
+			)}
 
 			<p>
 				<label>
@@ -480,6 +571,109 @@ function CustomItemForm({ itemRefs, onCreate }: { itemRefs: ItemRef[]; onCreate:
 				)}
 			</p>
 
+			{/* The armour fields feed computeArmourClass exactly as a real suit's do — the category is what picks the Dexterity cap. */}
+			{(draft.kind === 'armour' || draft.kind === 'shield') && (
+				<p className="sheet__custom-item-armour">
+					<OptionalNumberField
+						label="Custom item armour class"
+						value={draft.armourClass}
+						onChange={(value) => updateOptional('armourClass', value)}
+					/>{' '}
+					{draft.kind === 'shield' ? (
+						<span className="sheet__custom-item-hint">the bonus the shield adds</span>
+					) : (
+						<label>
+							Armour category{' '}
+							<select
+								aria-label="Custom item armour category"
+								value={draft.armourCategory ?? ''}
+								onChange={(event) => updateOptional('armourCategory', (event.target.value || undefined) as CustomArmourCategory | undefined)}
+							>
+								<option value="">not set</option>
+								{CUSTOM_ARMOUR_CATEGORIES.map((category) => (
+									<option key={category} value={category}>
+										{category}
+									</option>
+								))}
+							</select>
+						</label>
+					)}
+				</p>
+			)}
+
+			{draft.kind === 'weapon' && (
+				<p className="sheet__custom-item-weapon">
+					<label>
+						Damage dice{' '}
+						<input
+							type="text"
+							aria-label="Custom item damage dice"
+							placeholder="1d8"
+							value={draft.damageDice ?? ''}
+							onChange={(event) => updateOptional('damageDice', event.target.value)}
+						/>
+					</label>{' '}
+					<label>
+						Damage type{' '}
+						<select aria-label="Custom item damage type" value={draft.damageType ?? ''} onChange={(event) => updateOptional('damageType', event.target.value)}>
+							<option value="">not set</option>
+							{DAMAGE_TYPES.map((type) => (
+								<option key={type} value={type}>
+									{damageTypeLabel(type)}
+								</option>
+							))}
+						</select>
+					</label>{' '}
+					{/* D77: melee attacks with Strength, ranged with Dexterity. The player does not choose the ability — the weapon does. */}
+					<label>
+						Range{' '}
+						<select
+							aria-label="Custom item weapon range"
+							value={draft.weaponRange ?? 'melee'}
+							onChange={(event) => update({ weaponRange: event.target.value as CustomWeaponRange })}
+						>
+							{CUSTOM_WEAPON_RANGES.map((range) => (
+								<option key={range} value={range}>
+									{range}
+								</option>
+							))}
+						</select>
+					</label>{' '}
+					{/* Proficiency is decided by this and nothing else (isProficientWithWeapon), so a weapon with no category is one nobody is proficient with. */}
+					<label>
+						Weapon category{' '}
+						<select
+							aria-label="Custom item weapon category"
+							value={draft.weaponCategory ?? ''}
+							onChange={(event) => updateOptional('weaponCategory', (event.target.value || undefined) as CustomWeaponCategory | undefined)}
+						>
+							<option value="">not set</option>
+							{CUSTOM_WEAPON_CATEGORIES.map((category) => (
+								<option key={category} value={category}>
+									{category}
+								</option>
+							))}
+						</select>
+					</label>
+				</p>
+			)}
+
+			<p className="sheet__custom-item-effects">
+				<DamageTypeChoice label="Custom item resistances" selected={draft.resist} onChange={(types) => updateOptional('resist', types)} />{' '}
+				<DamageTypeChoice label="Custom item immunities" selected={draft.immune} onChange={(types) => updateOptional('immune', types)} />{' '}
+				<OptionalNumberField label="Custom item speed bonus" value={draft.speedBonus} onChange={(value) => updateOptional('speedBonus', value)} />{' '}
+				<OptionalNumberField label="Custom item darkvision" value={draft.darkvision} onChange={(value) => updateOptional('darkvision', value)} />
+			</p>
+
+			<p className="sheet__custom-item-bonuses">
+				{CUSTOM_FLAT_BONUS_FIELDS.map(({ key, label }) => (
+					<span key={key}>
+						<OptionalNumberField label={label} value={draft[key]} onChange={(value) => updateOptional(key, value)} />{' '}
+					</span>
+				))}
+			</p>
+
+			{/* Last, because it is where everything the structured fields above cannot express ends up — and it is shown, never read (D9/D55/D21). */}
 			<p>
 				<label>
 					Description{' '}
@@ -493,9 +687,14 @@ function CustomItemForm({ itemRefs, onCreate }: { itemRefs: ItemRef[]; onCreate:
 			</p>
 
 			<p>
-				<button type="button" onClick={create} disabled={draft.name.trim() === ''}>
-					Add custom item
-				</button>
+				<button type="button" onClick={submit} disabled={draft.name.trim() === ''}>
+					{editing === null ? 'Add custom item' : 'Save changes'}
+				</button>{' '}
+				{editing !== null && (
+					<button type="button" onClick={onCancel}>
+						Cancel
+					</button>
+				)}
 			</p>
 		</details>
 	)
@@ -540,6 +739,8 @@ function InventorySection({
 	const [equipNotice, setEquipNotice] = useState<string | null>(null)
 	/** Why the last attunement was refused. The limit is a flat rule, so a refusal is stated, never a warning beside an applied change. */
 	const [attuneNotice, setAttuneNotice] = useState<string | null>(null)
+	/** Which custom row the form is currently editing (slice e2b). Null while it is making a new item. */
+	const [editingIndex, setEditingIndex] = useState<number | null>(null)
 	const attunedCount = countAttuned(inventory)
 	const limit = attunementLimit.status === 'known' ? attunementLimit.value : BASE_ATTUNEMENT_LIMIT
 
@@ -553,6 +754,8 @@ function InventorySection({
 	}
 
 	function removeAt(index: number): void {
+		// Positions shift when a row goes, so an open edit would follow the wrong row.
+		setEditingIndex(null)
 		onEditInventory?.(inventory.filter((_, i) => i !== index))
 	}
 
@@ -665,6 +868,29 @@ function InventorySection({
 	 */
 	function addCustom(custom: CustomItemDefinition): void {
 		onEditInventory?.([...inventory, { name: custom.name, source: CUSTOM_ITEM_SOURCE, quantity: 1, custom }])
+	}
+
+	/**
+	 * A changed definition replaces the one on the row, keeping everything the
+	 * row itself carries — quantity, attunement, the magic bonus, the Finesse
+	 * pick. That is the whole reason editing exists rather than
+	 * remove-and-recreate: none of that survives a delete.
+	 *
+	 * The one thing that cannot survive is an equipped slot the new kind does not
+	 * have: a sword edited into a cloak is not still in hand. It is put down
+	 * rather than left in a slot nothing can take it out of.
+	 */
+	function saveCustom(index: number, custom: CustomItemDefinition): void {
+		setEditingIndex(null)
+		if (!onEditInventory) return
+		onEditInventory(
+			inventory.map((row, i) => {
+				if (i !== index) return row
+				const next: CharacterInventoryItem = { ...row, name: custom.name, custom }
+				if (next.equipped !== undefined && equipSlotOf(customItemRef(custom, row.source)) !== next.equipped) return putDown(next)
+				return next
+			}),
+		)
 	}
 
 	const addOptions: SearchableOption[] = (itemRefs ?? []).map((ref) => ({
@@ -811,6 +1037,14 @@ function InventorySection({
 												</button>{' '}
 											</>
 										)}
+										{/* Editing is offered on a custom row and nowhere else — a book item's fields are the book's (slice e2b). */}
+										{item.custom !== undefined && (
+											<>
+												<button type="button" aria-label={`Edit ${bonus.label}`} onClick={() => setEditingIndex(index)}>
+													Edit
+												</button>{' '}
+											</>
+										)}
 										<button type="button" onClick={() => removeAt(index)}>
 											Remove
 										</button>
@@ -840,7 +1074,20 @@ function InventorySection({
 				/>
 			)}
 
-			{onEditInventory && itemRefs !== null && <CustomItemForm itemRefs={itemRefs} onCreate={addCustom} />}
+			{onEditInventory && itemRefs !== null && (
+				/*
+				 * The key remounts the form when the target changes, so the draft is
+				 * re-seeded from whichever definition is being worked on rather than
+				 * keeping the previous one's half-typed state.
+				 */
+				<CustomItemForm
+					key={editingIndex === null ? 'new' : `edit-${editingIndex}`}
+					itemRefs={itemRefs}
+					editing={editingIndex === null ? null : (inventory[editingIndex]?.custom ?? null)}
+					onSubmit={(custom) => (editingIndex === null ? addCustom(custom) : saveCustom(editingIndex, custom))}
+					onCancel={() => setEditingIndex(null)}
+				/>
+			)}
 		</section>
 	)
 }
@@ -1389,7 +1636,11 @@ export function CharacterSheet({
 	/* Step 7 slice b: what the character has in use. itemRefs is null only while the item list is still loading — the AC section says so rather than reporting an unarmoured number it would then have to correct. */
 	const equippedGear = buildEquippedGear(character.inventory ?? [], itemRefs ?? [])
 	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats, itemFlatBonuses.armourClass)
-	const speed = computeSpeed(character, speciesTraitsData, armourSpeedPenalty(character, equippedGear.armour, feats))
+	/* Step 7 slice e2b: an item's own speed adjustment arrives through the same `adjustments` parameter slice b's heavy-armour penalty does. */
+	const speed = computeSpeed(character, speciesTraitsData, [
+		...armourSpeedPenalty(character, equippedGear.armour, feats),
+		...buildItemSpeedAdjustments(character.inventory ?? [], itemRefs ?? []),
+	])
 	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
 	const heldWeapons = buildHeldWeapons(character.inventory ?? [], itemRefs ?? [])
 	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null)
@@ -1412,9 +1663,11 @@ export function CharacterSheet({
 	const size = computeSize(character, speciesTraitsData)
 	// Darkvision is the one granted sense that reconciles with the species value (D40/D53) rather than
 	// standing alone in the Senses section below — split out here, before combineSenseEntries sees the rest.
-	const darkvisionGrants: GrantedDarkvision[] = grantedSenses
-		.filter((sense) => sense.senseType.toLowerCase() === 'darkvision')
-		.map((sense) => ({ range: sense.range, origin: sense.origin, name: sense.name }))
+	const darkvisionGrants: GrantedDarkvision[] = [
+		...grantedSenses.filter((sense) => sense.senseType.toLowerCase() === 'darkvision').map((sense) => ({ range: sense.range, origin: sense.origin, name: sense.name })),
+		/* Step 7 slice e2b: an item's darkvision is another candidate for the same reconciliation, never an addition to it. */
+		...buildItemDarkvisionGrants(character.inventory ?? [], itemRefs ?? []),
+	]
 	const darkvision = computeDarkvision(character, speciesTraitsData, darkvisionGrants)
 	const hitDice = computeHitDicePool(character.classes, hitDiceClassData)
 	const chosenFeats = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
@@ -1550,6 +1803,10 @@ export function CharacterSheet({
 							<p className="error">
 								Incomplete — equipped but not found in the item data: {armourClass.value.incomplete.join(', ')}.
 							</p>
+						)}
+						{/* A worn custom suit with no Armour Class on it. Named rather than left to read as "no armour equipped" (slice e2b). */}
+						{armourClass.value.armourNotSet.length > 0 && (
+							<p className="error sheet__armour-not-set">Incomplete — {armourClass.value.armourNotSet.join('; ')}.</p>
 						)}
 						{/* A Stealth penalty is shown, never computed into anything (this slice's brief). */}
 						{armourClass.value.stealthDisadvantage.length > 0 && (
@@ -1761,18 +2018,19 @@ export function CharacterSheet({
 						<section className="sheet__spell-attacks">
 							<h2>Spellcasting</h2>
 							<ul>
+								{/* Divs, not paragraphs: ValueBreakdown renders a <details>, which is not valid inside a <p> — the last of the four blocks the console warned about (slices g and e2b). */}
 								{spellcastingEntries.map((entry) => (
 									<li key={`${entry.className}|${entry.classSource}`}>
 										<h3>
 											{entry.className} ({ABILITY_LABELS[entry.ability]})
 										</h3>
-										<p>
+										<div>
 											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
 											<ValueBreakdown breakdown={entry.spellAttackBreakdown} />
-										</p>
-										<p>
+										</div>
+										<div>
 											Spell save DC: <span>{entry.spellSaveDC}</span> <ValueBreakdown breakdown={entry.spellSaveDCBreakdown} />
-										</p>
+										</div>
 									</li>
 								))}
 								{featSpellcastingEntries.map((entry) => (
@@ -1780,13 +2038,13 @@ export function CharacterSheet({
 										<h3>
 											{entry.featName} ({ABILITY_LABELS[entry.ability]})
 										</h3>
-										<p>
+										<div>
 											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
 											<ValueBreakdown breakdown={entry.spellAttackBreakdown} />
-										</p>
-										<p>
+										</div>
+										<div>
 											Spell save DC: <span>{entry.spellSaveDC}</span> <ValueBreakdown breakdown={entry.spellSaveDCBreakdown} />
-										</p>
+										</div>
 									</li>
 								))}
 							</ul>
@@ -1811,10 +2069,10 @@ export function CharacterSheet({
 											</>
 										)}
 										{entry.pactSlots && (
-											<p>
+											<div>
 												Pact Magic: {entry.pactSlots.count} slot{entry.pactSlots.count === 1 ? '' : 's'} (level {entry.pactSlots.slotLevel})
 												<ValueBreakdown breakdown={entry.pactSlotsBreakdown ?? []} />
-											</p>
+											</div>
 										)}
 									</li>
 								))}

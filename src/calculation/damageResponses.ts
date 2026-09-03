@@ -97,6 +97,29 @@ export function damageResponseKindLabel(kind: DamageResponseKind): string {
 	return KIND_LABELS[kind]
 }
 
+/**
+ * The 13 damage types of the 2024 rules, lowercase as the data writes them —
+ * slice f's survey (scripts/investigate-damage-responses.js, docs/REPORT.md)
+ * found the strings in data/ to be exactly these 13. Listed here because a
+ * custom item declares its resistances by picking from them (slice e2b), and a
+ * free-text field would let "Fire" and "fire" collapse into two separate lines.
+ */
+export const DAMAGE_TYPES: readonly string[] = [
+	'acid',
+	'bludgeoning',
+	'cold',
+	'fire',
+	'force',
+	'lightning',
+	'necrotic',
+	'piercing',
+	'poison',
+	'psychic',
+	'radiant',
+	'slashing',
+	'thunder',
+]
+
 /** The one place a damage type is spelled for display; the data stores them lowercase. */
 export function damageTypeLabel(damageType: string): string {
 	return damageType.charAt(0).toUpperCase() + damageType.slice(1)

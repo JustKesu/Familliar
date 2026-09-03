@@ -60,6 +60,14 @@ export interface EquippedGear {
 	unresolved: { name: string; source: string }[]
 	/** Names of armour the character owns but is not wearing — so a low AC has a stated reason rather than looking like a bug. */
 	carriedArmourNotWorn: string[]
+	/**
+	 * Worn armour or a held shield that resolved fine but declares no Armour
+	 * Class — a custom item whose player has not filled that field in yet (slice
+	 * e2b). Without this the section reads "no armour equipped" while a suit is
+	 * plainly on the character, which is literally true and reads as a bug: the
+	 * item is named and the missing field stated instead (same principle as D43).
+	 */
+	incompleteArmour: { name: string; reason: string }[]
 }
 
 export type AcFormulaKey = 'barbarian-unarmored-defense' | 'monk-unarmored-defense' | 'draconic-resilience' | 'dance-unarmored-defense' | 'mage-armor'
@@ -123,6 +131,8 @@ export interface ArmourClassValue {
 	incomplete: string[]
 	/** Equipped armour that imposes disadvantage on Stealth checks. Displayed only; nothing computes with it. */
 	stealthDisadvantage: string[]
+	/** One sentence per worn item that declares no Armour Class — see EquippedGear.incompleteArmour. */
+	armourNotSet: string[]
 }
 
 /** One way of arriving at an Armour Class, before the shield is added. */
@@ -160,11 +170,23 @@ function armourCandidate(armour: EquippedArmour, dexterity: number): Candidate {
 	return { label: armour.name, total, rows, formula: `${armour.ac} + Dex${magic} = ${total}` }
 }
 
-function unarmouredCandidate(dexterity: number, carriedArmourNotWorn: string[]): Candidate {
+/** "Bone Plate is equipped, but its Armour Class is not set" — the one wording, used by the breakdown note and by the section's own line. */
+export function describeIncompleteArmour(entry: { name: string; reason: string }): string {
+	return `${entry.name} is equipped, but ${entry.reason}`
+}
+
+function unarmouredCandidate(dexterity: number, carriedArmourNotWorn: string[], incompleteArmour: EquippedGear['incompleteArmour']): Candidate {
+	/*
+	 * A worn suit that contributes nothing is NOT "no armour equipped": it is an
+	 * unfinished custom item, and saying so is the difference between a number a
+	 * player can fix and one that reads as a bug (slice e2b).
+	 */
 	const note =
-		carriedArmourNotWorn.length > 0
-			? `no armour equipped — ${carriedArmourNotWorn.join(', ')} ${carriedArmourNotWorn.length === 1 ? 'is' : 'are'} carried but not worn`
-			: 'no armour equipped'
+		incompleteArmour.length > 0
+			? incompleteArmour.map(describeIncompleteArmour).join('; ')
+			: carriedArmourNotWorn.length > 0
+				? `no armour equipped — ${carriedArmourNotWorn.join(', ')} ${carriedArmourNotWorn.length === 1 ? 'is' : 'are'} carried but not worn`
+				: 'no armour equipped'
 	return {
 		label: 'unarmoured',
 		total: 10 + dexterity,
@@ -217,7 +239,7 @@ export function computeArmourClass(
 	}
 
 	const candidates: Candidate[] = [
-		gear.armour ? armourCandidate(gear.armour, modifiers.dexterity) : unarmouredCandidate(modifiers.dexterity, gear.carriedArmourNotWorn),
+		gear.armour ? armourCandidate(gear.armour, modifiers.dexterity) : unarmouredCandidate(modifiers.dexterity, gear.carriedArmourNotWorn, gear.incompleteArmour),
 	]
 	// Every alternative formula in the data requires that no armour be worn; a Shield is ruled out by some of them only.
 	// An ineligible formula is still listed, so a Barbarian in chain mail can see why Unarmored Defense did not apply.
@@ -255,6 +277,7 @@ export function computeArmourClass(
 			value,
 			incomplete: gear.unresolved.map((item) => `${item.name} (${item.source})`),
 			stealthDisadvantage: gear.armour && gear.armour.stealthDisadvantage ? [gear.armour.name] : [],
+			armourNotSet: gear.incompleteArmour.map(describeIncompleteArmour),
 		},
 		breakdown,
 	)

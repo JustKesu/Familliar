@@ -123,16 +123,35 @@ export function computeSize(character: Character, speciesData: SpeciesTraitsData
 	return known(size, [{ source: resolved.source, amount: 0 }])
 }
 
-/** A darkvision grant from a chosen optional feature or feat (grantedSenses.ts), passed in per D38 — this file fetches nothing. */
+/**
+ * A darkvision grant from a chosen optional feature or feat (grantedSenses.ts),
+ * or from a carried item (slice e2b's custom items — itemEffectData.ts), passed
+ * in per D38: this file fetches nothing.
+ */
 export interface GrantedDarkvision {
 	range: number
-	origin: 'optionalFeature' | 'feat'
+	origin: 'optionalFeature' | 'feat' | 'item'
 	name: string
+	/**
+	 * Set when the app can see the character HAS the grant but not that it is in
+	 * effect — an item that requires attunement and is not attuned. Such a grant
+	 * never wins and appears as a zero-amount note saying what it would have
+	 * given (D76, the same treatment its owner's flat bonuses get).
+	 */
+	withheldReason?: string
 }
 
 interface DarkvisionCandidate {
 	label: string
 	value: number
+	/** Set on a grant the app cannot see as active (D76). It is listed, never chosen. */
+	withheldReason?: string
+}
+
+const DARKVISION_ORIGIN_LABELS: Record<GrantedDarkvision['origin'], (name: string) => string> = {
+	feat: (name) => `from feat (${name})`,
+	optionalFeature: (name) => `from invocation (${name})`,
+	item: (name) => `from item (${name})`,
 }
 
 /**
@@ -151,26 +170,34 @@ function combineDarkvision(species: { source: string; value: number } | null, gr
 	const candidates: DarkvisionCandidate[] = []
 	if (species) candidates.push({ label: species.source, value: species.value })
 	for (const grant of granted) {
-		candidates.push({ label: grant.origin === 'feat' ? `from feat (${grant.name})` : `from invocation (${grant.name})`, value: grant.range })
+		candidates.push({
+			label: DARKVISION_ORIGIN_LABELS[grant.origin](grant.name),
+			value: grant.range,
+			...(grant.withheldReason !== undefined ? { withheldReason: grant.withheldReason } : {}),
+		})
 	}
 
 	if (candidates.length === 0) return known(0, [])
 
-	let winnerIndex = 0
-	for (let i = 1; i < candidates.length; i++) {
-		if (candidates[i].value > candidates[winnerIndex].value) winnerIndex = i
+	let winnerIndex = -1
+	for (let i = 0; i < candidates.length; i++) {
+		if (candidates[i].withheldReason !== undefined) continue
+		if (winnerIndex === -1 || candidates[i].value > candidates[winnerIndex].value) winnerIndex = i
 	}
-	const winner = candidates[winnerIndex]
+	// Every candidate withheld: nothing applies, but each is still listed with its reason rather than the section going blank.
+	const winner = winnerIndex === -1 ? null : candidates[winnerIndex]
 
-	const breakdown: Contribution[] = candidates.map((candidate, index) =>
-		index === winnerIndex
-			? { source: candidate.label, amount: candidate.value }
-			: { source: candidate.label, amount: 0, note: `does not exceed ${winner.label} (${winner.value} ft.)` },
-	)
+	const breakdown: Contribution[] = candidates.map((candidate, index) => {
+		if (candidate.withheldReason !== undefined) {
+			return { source: candidate.label, amount: 0, note: `considered (${candidate.value} ft.) — not applied: ${candidate.withheldReason}` }
+		}
+		if (index === winnerIndex) return { source: candidate.label, amount: candidate.value }
+		return { source: candidate.label, amount: 0, note: `does not exceed ${winner!.label} (${winner!.value} ft.)` }
+	})
 	// D43: the species figure itself couldn't be resolved — say so plainly rather than presenting the grant as though it were the whole, confirmed answer.
 	if (unresolvedSpeciesReason) breakdown.unshift({ source: 'species', amount: 0, note: `unresolved — ${unresolvedSpeciesReason}` })
 
-	return known(winner.value, breakdown)
+	return known(winner === null ? 0 : winner.value, breakdown)
 }
 
 export function computeDarkvision(character: Character, speciesData: SpeciesTraitsData[], grantedDarkvision: GrantedDarkvision[] = []): Calculated<number> {

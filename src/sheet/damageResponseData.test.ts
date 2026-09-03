@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildFeatGrants, buildFeatureGrants, buildItemGrants, buildSpeciesGrants } from './damageResponseData'
 import type { ItemRef } from '../inventory/inventoryData'
-import type { Character, CharacterInventoryItem } from '../storage/character'
+import { CUSTOM_ITEM_SOURCE, type Character, type CharacterInventoryItem } from '../storage/character'
 
 function character(overrides: Partial<Character> = {}): Character {
 	return { id: 'c1', name: 'Test', classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 1 }], ...overrides }
@@ -65,6 +65,35 @@ describe('buildItemGrants', () => {
 
 	it('ignores an item that grants nothing', () => {
 		expect(buildItemGrants([row('Longsword', 'XPHB')], [longsword])).toEqual([])
+	})
+
+	/* Slice e2b: a custom item declares resist/immune in the same shape, so the attunement gate applies to it unchanged. */
+	describe('a custom item', () => {
+		const bandOfAsh: CharacterInventoryItem = {
+			name: 'Band of Ash',
+			source: CUSTOM_ITEM_SOURCE,
+			quantity: 1,
+			custom: { name: 'Band of Ash', kind: 'worn', requiresAttunement: true, resist: ['fire'], immune: ['poison'] },
+		}
+
+		it('withholds its resistance while it is not attuned', () => {
+			const grants = buildItemGrants([bandOfAsh], [])
+			expect(grants).toHaveLength(1)
+			expect(grants[0].damageTypes).toEqual([])
+			expect(grants[0].withheldReason).toBe('requires attunement and you are not attuned to it')
+		})
+
+		it('grants it once attuned, resistance and immunity alike', () => {
+			expect(buildItemGrants([{ ...bandOfAsh, attuned: true }], [])).toEqual([
+				{ kind: 'resistance', sourceName: 'Band of Ash', damageTypes: ['fire'] },
+				{ kind: 'immunity', sourceName: 'Band of Ash', damageTypes: ['poison'] },
+			])
+		})
+
+		it('grants it while merely carried when it requires no attunement', () => {
+			const ungated: CharacterInventoryItem = { ...bandOfAsh, custom: { name: 'Band of Ash', kind: 'worn', resist: ['fire'] } }
+			expect(buildItemGrants([ungated], [])).toEqual([{ kind: 'resistance', sourceName: 'Band of Ash', damageTypes: ['fire'] }])
+		})
 	})
 
 	it('names an unresolvable row with the problem stated (D43)', () => {

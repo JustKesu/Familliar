@@ -156,6 +156,22 @@ export async function loadAcFormulaKeys(character: Character, knowsMageArmor: bo
 }
 
 /**
+ * What a custom armour or shield is missing before it can produce a number, or
+ * null when it is complete or is not armour at all (slice e2b). Only custom
+ * items can be in this state: every suit and shield in items.json carries an
+ * `ac`, and its category comes from a type code that is always present.
+ */
+function missingArmourFields(ref: ItemRef): string | null {
+	if (ref.customKind !== 'armour' && ref.customKind !== 'shield') return null
+
+	const missing: string[] = []
+	if (ref.ac === undefined) missing.push(ref.customKind === 'shield' ? 'its Armour Class bonus is not set' : 'its Armour Class is not set')
+	// The Dexterity cap is read from the category, so a suit without one cannot be scored at all — and guessing the loosest cap would err upward (D76).
+	if (ref.customKind === 'armour' && armourCategoryOf(ref) === null) missing.push('its armour category is not set')
+	return missing.length === 0 ? null : missing.join(' and ')
+}
+
+/**
  * The equipped rows of an inventory, resolved against the loaded item list
  * into the shape computeArmourClass takes. A row whose (name, source) is not
  * in the item list is reported as unresolved rather than dropped (D43); armour
@@ -169,7 +185,7 @@ export async function loadAcFormulaKeys(character: Character, knowsMageArmor: bo
 export function buildEquippedGear(inventory: CharacterInventoryItem[], itemRefs: ItemRef[]): EquippedGear {
 	const resolve = buildInventoryResolver(itemRefs)
 
-	const gear: EquippedGear = { armour: null, shield: null, unresolved: [], carriedArmourNotWorn: [] }
+	const gear: EquippedGear = { armour: null, shield: null, unresolved: [], carriedArmourNotWorn: [], incompleteArmour: [] }
 	for (const item of inventory) {
 		const { ref } = resolve(item)
 		if (!ref) {
@@ -186,6 +202,20 @@ export function buildEquippedGear(inventory: CharacterInventoryItem[], itemRefs:
 			requiresAttunement: ref.requiresAttunement === true,
 			attuned: isAttuned(item),
 		})
+
+		/*
+		 * Slice e2b: a custom item that says it is armour or a shield but has not
+		 * been given the numbers to be one. It cannot be counted, and it must not
+		 * leave the section saying "no armour equipped" while it is plainly worn —
+		 * so it is named with the field that is missing.
+		 */
+		const missing = missingArmourFields(ref)
+		if (missing !== null) {
+			if (item.equipped) gear.incompleteArmour.push({ name: magicBonus.label, reason: missing })
+			else if (ref.customKind === 'armour') gear.carriedArmourNotWorn.push(magicBonus.label)
+			continue
+		}
+
 		if (category !== null && item.equipped !== 'worn') {
 			gear.carriedArmourNotWorn.push(magicBonus.label)
 			continue

@@ -954,6 +954,40 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 		expect(new CharacterStore(backing).list()[0].inventory).toEqual([row])
 	})
 
+	/* Slice e2b: the definition grew eleven fields, and the storage layer still carries `custom` whole rather than field by field. */
+	it('round-trips every computed field a custom item can declare (step 7 slice e2b)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Nyx')
+		const row = {
+			name: 'Everything Plate',
+			source: CUSTOM_ITEM_SOURCE,
+			quantity: 1,
+			custom: {
+				name: 'Everything Plate',
+				kind: 'armour' as const,
+				armourClass: 14,
+				armourCategory: 'medium' as const,
+				damageDice: '1d8',
+				damageType: 'slashing',
+				weaponRange: 'melee' as const,
+				weaponCategory: 'martial' as const,
+				resist: ['fire'],
+				immune: ['poison'],
+				speedBonus: 10,
+				darkvision: 60,
+				bonusArmourClass: 1,
+				bonusSavingThrow: 2,
+				bonusSpellAttack: 1,
+				bonusSpellSaveDc: 1,
+				bonusAbilityCheck: 1,
+			},
+		}
+
+		store.setInventory(character.id, [row])
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([row])
+	})
+
 	/*
 	 * D43: a definition the app cannot read must still LOAD, or the row that
 	 * needs fixing is the one the player can never see. The storage layer

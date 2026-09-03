@@ -296,20 +296,57 @@ describe('custom items', () => {
 		expect(exclusiveSlotOf({ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 })).toBe('shield')
 	})
 
-	/* Slice e2b's fields are deliberately absent, so nothing computes a number the definition cannot back up. */
-	it('carries no computed field, so it reaches no calculation', () => {
-		const armour = customItemRef({ name: 'Bark Plate', kind: 'armour' }, CUSTOM_ITEM_SOURCE)
-		expect(armourCategoryOf(armour)).toBeNull()
-		expect(armour.ac).toBeUndefined()
-		expect(itemMagicBonusOf(armour)).toBeNull()
-		expect(wornAcBonusOf(armour)).toBeNull()
+	/*
+	 * Slice e2b: the kind stands in for the structural fields a real item carries,
+	 * so the predicates every consumer reads answer for a custom item too.
+	 */
+	it('synthesises the structural fields its kind stands for', () => {
+		const armour = customItemRef({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium' }, CUSTOM_ITEM_SOURCE)
+		expect(armourCategoryOf(armour)).toBe('medium')
+		expect(armour.ac).toBe(14)
+		// bonusArmourClass on a SUIT is that suit's magic bonus, exactly as Dragon Scale Mail's bonusAc is — not a second, worn one.
+		const magicArmour = customItemRef({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium', bonusArmourClass: 1 }, CUSTOM_ITEM_SOURCE)
+		expect(itemMagicBonusOf(magicArmour)).toBe(1)
+		expect(wornAcBonusOf(magicArmour)).toBeNull()
+		// On a worn wondrous item the same field lands on the character instead.
+		expect(wornAcBonusOf(customItemRef({ name: 'Cloak', kind: 'worn', bonusArmourClass: 1 }, CUSTOM_ITEM_SOURCE))).toBe(1)
 
-		const weapon = customItemRef({ name: 'Bone Club', kind: 'weapon' }, CUSTOM_ITEM_SOURCE)
-		expect(isWeapon(weapon)).toBe(false)
-		expect(weapon.dmg1).toBeUndefined()
+		const weapon = customItemRef({ name: 'Bone Club', kind: 'weapon', damageDice: '1d6', damageType: 'bludgeoning', weaponCategory: 'simple' }, CUSTOM_ITEM_SOURCE)
+		expect(isWeapon(weapon)).toBe(true)
+		expect(weapon).toMatchObject({ typeCode: 'M', dmg1: '1d6', dmgTypeFull: 'bludgeoning', weaponCategory: 'simple' })
+		expect(customItemRef({ name: 'Bone Bow', kind: 'weapon', weaponRange: 'ranged' }, CUSTOM_ITEM_SOURCE).typeCode).toBe('R')
 	})
 
-	it('seeds a definition from an existing item, copying only what this slice holds', () => {
+	/* An armour category is never guessed: 'light' would hand the character an uncapped Dexterity bonus, and erring upward is what D76 rules out. */
+	it('leaves an unfinished armour without a category rather than guessing one', () => {
+		const unfinished = customItemRef({ name: 'Bark Plate', kind: 'armour' }, CUSTOM_ITEM_SOURCE)
+		expect(unfinished.typeCode).toBeUndefined()
+		expect(armourCategoryOf(unfinished)).toBeNull()
+		expect(unfinished.ac).toBeUndefined()
+		// A weapon has no such problem: melee is D77's default, and the alternative is a weapon that is not a weapon.
+		expect(isWeapon(customItemRef({ name: 'Bone Club', kind: 'weapon' }, CUSTOM_ITEM_SOURCE))).toBe(true)
+	})
+
+	it('carries the effects that need no armour or weapon role, gated by nothing here', () => {
+		const ring = customItemRef(
+			{ name: 'Ring of Ash', kind: 'worn', resist: ['fire'], immune: ['poison'], speedBonus: 10, darkvision: 60, bonusSavingThrow: 2, bonusSpellAttack: 1, bonusSpellSaveDc: 1, bonusAbilityCheck: 1 },
+			CUSTOM_ITEM_SOURCE,
+		)
+		expect(ring).toMatchObject({
+			resist: ['fire'],
+			immune: ['poison'],
+			speedBonus: 10,
+			darkvision: 60,
+			bonusSavingThrow: 2,
+			bonusSpellAttack: 1,
+			bonusSpellSaveDc: 1,
+			bonusAbilityCheck: 1,
+		})
+		// A declared zero says nothing a blank field does not, so it is not carried through as a contribution of 0.
+		expect(customItemRef({ name: 'Ring of Ash', kind: 'worn', speedBonus: 0 }, CUSTOM_ITEM_SOURCE).speedBonus).toBeUndefined()
+	})
+
+	it('seeds a definition from an existing item, computed fields included', () => {
 		expect(
 			customItemFromRef({
 				name: 'Chain Mail',
@@ -321,15 +358,24 @@ describe('custom items', () => {
 				stealth: true,
 				value: 7500,
 			}),
-		).toEqual({ name: 'Chain Mail', kind: 'armour', valueCopper: 7500 })
+			// The Strength requirement and the Stealth disadvantage are not fields the definition has, so they cannot copy (docs/REPORT.md).
+		).toEqual({ name: 'Chain Mail', kind: 'armour', valueCopper: 7500, armourClass: 16, armourCategory: 'heavy' })
 
-		expect(customItemFromRef({ name: 'Longsword', source: 'XPHB', typeCode: 'M', weapon: true, dmg1: '1d8' }).kind).toBe('weapon')
-		expect(customItemFromRef({ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 }).kind).toBe('shield')
-		// Nothing in the data separates a cloak from a coil of rope, so a wondrous item copies as 'other'.
+		expect(customItemFromRef({ name: 'Longsword', source: 'XPHB', typeCode: 'M', weapon: true, weaponCategory: 'martial', dmg1: '1d8', dmgTypeFull: 'slashing' })).toEqual({
+			name: 'Longsword',
+			kind: 'weapon',
+			damageDice: '1d8',
+			damageType: 'slashing',
+			weaponRange: 'melee',
+			weaponCategory: 'martial',
+		})
+		expect(customItemFromRef({ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 })).toEqual({ name: 'Shield', kind: 'shield', armourClass: 2 })
+		// Nothing in the data separates a cloak from a coil of rope, so a wondrous item copies as 'other' — and its bonusAc copies as the flat one it already was.
 		expect(customItemFromRef({ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true, bonusAc: 1 })).toEqual({
 			name: 'Cloak of Protection',
 			kind: 'other',
 			requiresAttunement: true,
+			bonusArmourClass: 1,
 		})
 	})
 

@@ -80,6 +80,30 @@ describe('the migration chain (D69)', () => {
 		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 	})
 
+	it('carries a version-23 custom item forward with its computed fields simply absent', () => {
+		const before = {
+			schemaVersion: 23,
+			id: '1',
+			name: 'Rowan',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			inventory: [
+				{
+					name: 'Bark Plate',
+					source: 'Custom',
+					quantity: 1,
+					equipped: 'worn',
+					// The whole definition a version-23 character could hold: no armour class, no category, no bonus of any kind.
+					custom: { name: 'Bark Plate', kind: 'armour', valueCopper: 5000, description: 'Bark, mostly.' },
+				},
+			],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// Nothing is backfilled: an absent computed field means the item declares nothing there, which is exactly what it declared before.
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

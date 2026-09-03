@@ -43,10 +43,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * an attack and is skipped; a held row that resolves to nothing at all is kept
  * with `weapon: null` so the attack list names it (D43) rather than dropping it.
  *
- * A CUSTOM weapon (slice e2a) is skipped by that same not-a-weapon test: it
- * carries no damage dice, and dice are slice e2b's. An attack line built from
- * a definition that has none would print a to-hit and a damage figure the item
- * cannot back up, which is the one thing D76 rules out.
+ * A CUSTOM weapon (slice e2b) passes that test like any other: its definition
+ * synthesises the same `typeCode`/`weaponCategory`/`dmg1`/`dmgTypeFull` fields a
+ * real weapon carries (customItemRef), so proficiency, D77's ability rule and
+ * D79's magic bonus all apply to it without a second code path here.
  */
 export function buildHeldWeapons(inventory: CharacterInventoryItem[], itemRefs: ItemRef[]): HeldWeapon[] {
 	const resolve = buildInventoryResolver(itemRefs)

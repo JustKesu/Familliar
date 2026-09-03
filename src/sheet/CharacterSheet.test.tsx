@@ -1547,9 +1547,11 @@ describe('CharacterSheet', () => {
 			await user.click(copyList)
 			await user.click(screen.getByRole('radio', { name: 'Chain Mail (XPHB)' }))
 
-			// The form is seeded from the item, so only the change has to be typed.
+			// The form is seeded from the item, computed fields included, so only the change has to be typed (slice e2b).
 			expect((screen.getByLabelText('Custom item name') as HTMLInputElement).value).toBe('Chain Mail')
 			expect((screen.getByLabelText('Custom item kind') as HTMLSelectElement).value).toBe('armour')
+			expect((screen.getByLabelText('Custom item armour class') as HTMLInputElement).value).toBe('16')
+			expect((screen.getByLabelText('Custom item armour category') as HTMLSelectElement).value).toBe('heavy')
 
 			await user.type(screen.getByLabelText('Custom item description'), 'This suit does not impose disadvantage on Stealth checks.')
 			await user.click(screen.getByRole('button', { name: 'Add custom item' }))
@@ -1559,7 +1561,13 @@ describe('CharacterSheet', () => {
 					name: 'Chain Mail',
 					source: CUSTOM_ITEM_SOURCE,
 					quantity: 1,
-					custom: { name: 'Chain Mail', kind: 'armour', description: 'This suit does not impose disadvantage on Stealth checks.' },
+					custom: {
+						name: 'Chain Mail',
+						kind: 'armour',
+						armourClass: 16,
+						armourCategory: 'heavy',
+						description: 'This suit does not impose disadvantage on Stealth checks.',
+					},
 				},
 			])
 		})
@@ -1689,6 +1697,217 @@ describe('CharacterSheet', () => {
 			// Neither the rest of the list nor the sections that read the inventory fall over.
 			expect(inventoryRow(container, 'Torch').textContent).toContain('A torch sheds bright light')
 			expect(container.querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
+		})
+	})
+
+	/*
+	 * What a custom item COUNTS FOR (build order step 7, slice e2b). End to end
+	 * for the same reason e2a is: the number a player sees is the product of the
+	 * stored definition, the resolver and the value's own module, and a test of
+	 * any one of the three has twice now passed on a sheet that showed nothing.
+	 *
+	 * The character is the file's Fighter 5: STR 15 (+2), DEX 14 (+2), PB +3,
+	 * Elf (30 ft. walk, 60 ft. darkvision), proficient with martial weapons.
+	 */
+	describe('custom items that count (step 7 slice e2b)', () => {
+		function inventorySection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__inventory') as HTMLElement
+		}
+
+		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
+			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(inventorySection(rendered.container).querySelector('.sheet__attunement-count')).toBeTruthy())
+			return rendered
+		}
+
+		function owning(id: string, ...inventory: NonNullable<Character['inventory']>): Character {
+			return { ...character, id, inventory }
+		}
+
+		function customRow(custom: CustomItemDefinition, extra: Partial<NonNullable<Character['inventory']>[number]> = {}) {
+			return { name: custom.name, source: CUSTOM_ITEM_SOURCE, quantity: 1, custom, ...extra }
+		}
+
+		async function armourClassOf(container: HTMLElement): Promise<string> {
+			await waitFor(() => expect(container.querySelector('.sheet__armour-class-value')).toBeTruthy())
+			return container.querySelector('.sheet__armour-class-value')!.textContent ?? ''
+		}
+
+		function traitLine(container: HTMLElement, label: string): HTMLElement {
+			const line = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith(label))
+			if (!line) throw new Error(`no trait line for ${label}`)
+			return line as HTMLElement
+		}
+
+		it('a worn custom suit reaches Armour Class with the Dexterity cap its category calls for', async () => {
+			const medium = await renderSheet(
+				owning('e2b-medium', customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium' }, { equipped: 'worn' })),
+			)
+			// 14 + Dex 2 (uncapped at +2 by medium armour).
+			expect(await armourClassOf(medium.container)).toBe('16')
+			cleanup()
+
+			const heavy = await renderSheet(
+				owning('e2b-heavy', customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'heavy' }, { equipped: 'worn' })),
+			)
+			// Heavy armour allows no Dexterity bonus at all — the same rule a real suit follows.
+			expect(await armourClassOf(heavy.container)).toBe('14')
+			expect(heavy.container.querySelector('.sheet__armour-class')!.textContent).toContain('heavy armour allows no Dexterity bonus')
+		})
+
+		it('a custom shield adds its bonus on top of the suit', async () => {
+			const { container } = await renderSheet(
+				owning(
+					'e2b-shield',
+					customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium' }, { equipped: 'worn' }),
+					customRow({ name: 'Bark Shield', kind: 'shield', armourClass: 2 }, { equipped: 'held' }),
+				),
+			)
+			expect(await armourClassOf(container)).toBe('18')
+		})
+
+		/* Requirement of this slice: "no armour equipped" while a suit is plainly worn reads as a bug, however true it is. */
+		it('names a worn custom suit that has no Armour Class instead of reporting no armour', async () => {
+			const { container } = await renderSheet(owning('e2b-unset', customRow({ name: 'Bark Plate', kind: 'armour' }, { equipped: 'worn' })))
+
+			expect(await armourClassOf(container)).toBe('12')
+			const section = container.querySelector('.sheet__armour-class')!
+			expect(section.textContent).toContain('Bark Plate is equipped, but its Armour Class is not set')
+			expect(section.textContent).not.toContain('no armour equipped')
+			expect(container.querySelector('.sheet__armour-not-set')).toBeTruthy()
+		})
+
+		it('a held custom weapon produces an attack line with the right to-hit and damage', async () => {
+			const { container } = await renderSheet(
+				owning(
+					'e2b-weapon',
+					customRow(
+						{ name: 'Bone Blade', kind: 'weapon', damageDice: '1d8', damageType: 'slashing', weaponCategory: 'martial', weaponRange: 'melee' },
+						{ equipped: 'held' },
+					),
+				),
+			)
+			const line = Array.from(container.querySelectorAll('.sheet__attack-list li')).find((li) => li.textContent?.includes('Bone Blade'))!
+			// STR +2 and the martial proficiency bonus +3.
+			expect(line.textContent).toContain('+5')
+			expect(line.textContent).toContain('1d8 + 2 slashing')
+		})
+
+		it('applies a player-set magic bonus to that line once, in each roll (D79)', async () => {
+			const { container } = await renderSheet(
+				owning(
+					'e2b-weapon-bonus',
+					customRow(
+						{ name: 'Bone Blade', kind: 'weapon', damageDice: '1d8', damageType: 'slashing', weaponCategory: 'martial' },
+						{ equipped: 'held', magicBonus: 1 },
+					),
+				),
+			)
+			const line = Array.from(container.querySelectorAll('.sheet__attack-list li')).find((li) => li.textContent?.includes('Bone Blade'))!
+			expect(line.textContent).toContain('Bone Blade +1')
+			expect(line.textContent).toContain('+6')
+			expect(line.textContent).toContain('1d8 + 3 slashing')
+		})
+
+		it('withholds a custom item’s resistance until it is attuned, then grants it', async () => {
+			const ring: CustomItemDefinition = { name: 'Band of Ash', kind: 'worn', requiresAttunement: true, resist: ['fire'] }
+
+			const unattuned = await renderSheet(owning('e2b-resist-off', customRow(ring)))
+			const before = unattuned.container.querySelector('.sheet__damage-responses')!
+			await waitFor(() => expect(before.textContent).toContain('Band of Ash'))
+			expect(before.textContent).toContain('requires attunement and you are not attuned to it')
+			expect(before.querySelector('.sheet__damage-response-list')).toBeNull()
+			cleanup()
+
+			const attuned = await renderSheet(owning('e2b-resist-on', customRow(ring, { attuned: true })))
+			const after = attuned.container.querySelector('.sheet__damage-responses')!
+			await waitFor(() => expect(after.textContent).toContain('Fire'))
+			expect(after.querySelector('.sheet__damage-response-list')!.textContent).toContain('Fire — resistance (Band of Ash)')
+		})
+
+		it('a custom item’s speed adjustment reaches the walking speed', async () => {
+			const { container } = await renderSheet(owning('e2b-speed', customRow({ name: 'Bounding Boots', kind: 'worn', speedBonus: 10 })))
+			const speed = traitLine(container, 'Speed')
+			await waitFor(() => expect(speed.textContent).toContain('40 ft.'))
+			expect(speed.textContent).toContain('Bounding Boots')
+		})
+
+		it('a custom item’s darkvision reaches the value, beating the species figure rather than adding to it', async () => {
+			const { container } = await renderSheet(owning('e2b-dark', customRow({ name: 'Night Goggles', kind: 'worn', darkvision: 120 })))
+			const darkvision = traitLine(container, 'Darkvision')
+			await waitFor(() => expect(darkvision.textContent).toContain('120 ft.'))
+			// The Elf's own 60 is listed and beaten, never summed with the item's.
+			expect(darkvision.textContent).toContain('does not exceed from item (Night Goggles)')
+		})
+
+		it('a custom item’s flat bonus reaches its target once attuned', async () => {
+			const charm: CustomItemDefinition = { name: 'Charm of the Sage', kind: 'worn', requiresAttunement: true, bonusArmourClass: 1, bonusSavingThrow: 2 }
+			const { container } = await renderSheet(owning('e2b-flat', customRow(charm, { attuned: true })))
+
+			// Nothing is worn, so 10 + Dex 2 + the charm's 1.
+			expect(await armourClassOf(container)).toBe('13')
+			const constitution = Array.from(container.querySelectorAll('.sheet__saving-throws li')).find((li) => li.textContent?.includes('Constitution'))!
+			// CON +1, proficient +3, charm +2.
+			expect(constitution.textContent).toContain('+6')
+		})
+
+		/* Editing exists so a change costs the field, not the item: the row's quantity, attunement and bonus all survive it. */
+		it('editing a custom item changes what it contributes, keeping the rest of the row', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const unfinished = owning('e2b-edit', customRow({ name: 'Bark Plate', kind: 'armour' }, { equipped: 'worn', quantity: 2, magicBonus: 1 }))
+			const first = await renderSheet(unfinished, onEditInventory)
+
+			expect(await armourClassOf(first.container)).toBe('12')
+
+			await user.click(screen.getByRole('button', { name: 'Edit Bark Plate +1' }))
+			await user.type(screen.getByLabelText('Custom item armour class'), '14')
+			await user.selectOptions(screen.getByLabelText('Custom item armour category'), 'medium')
+			await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+			const edited = onEditInventory.mock.calls.at(-1)![0]
+			expect(edited).toEqual([
+				{
+					name: 'Bark Plate',
+					source: CUSTOM_ITEM_SOURCE,
+					quantity: 2,
+					equipped: 'worn',
+					magicBonus: 1,
+					custom: { name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium' },
+				},
+			])
+			cleanup()
+
+			// 14 + Dex 2 + the +1 set on the row, and the "not set" line is gone.
+			const second = await renderSheet({ ...unfinished, id: 'e2b-edited', inventory: edited })
+			expect(await armourClassOf(second.container)).toBe('17')
+			expect(second.container.querySelector('.sheet__armour-not-set')).toBeNull()
+		})
+
+		it('puts an edited item down when its new kind cannot hold the slot it was in', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			await renderSheet(owning('e2b-edit-kind', customRow({ name: 'Bone Blade', kind: 'weapon', damageDice: '1d8' }, { equipped: 'held' })), onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Edit Bone Blade' }))
+			await user.selectOptions(screen.getByLabelText('Custom item kind'), 'worn')
+			await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+			// A sword edited into a cloak is not still in hand, and a slot nothing can empty is worse than an empty slot.
+			expect(onEditInventory.mock.calls.at(-1)![0]).toEqual([
+				{ name: 'Bone Blade', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Bone Blade', kind: 'worn', damageDice: '1d8' } },
+			])
+		})
+
+		it('offers the Edit control on a custom row and on no other', async () => {
+			const { container } = await renderSheet(
+				owning('e2b-edit-only', customRow({ name: 'Bone Blade', kind: 'weapon' }), { name: 'Torch', source: 'XPHB', quantity: 1 }),
+				vi.fn(),
+			)
+			const buttons = Array.from(inventorySection(container).querySelectorAll('button')).map((button) => button.getAttribute('aria-label'))
+			expect(buttons).toContain('Edit Bone Blade')
+			expect(buttons).not.toContain('Edit Torch')
 		})
 	})
 

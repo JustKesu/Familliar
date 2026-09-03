@@ -15,7 +15,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
-import type { CharacterInventoryItem, CustomItemDefinition, CustomItemKind } from '../storage/character'
+import type { CharacterInventoryItem, CustomArmourCategory, CustomItemDefinition, CustomItemKind, CustomWeaponCategory, CustomWeaponRange } from '../storage/character'
 
 export interface ItemRef {
 	name: string
@@ -136,10 +136,20 @@ export interface ItemRef {
 	 */
 	value?: number
 	/**
+	 * Feet added to (or taken off) the walking speed, reaching computeSpeed
+	 * through its `adjustments` parameter (slice e2b). extractItemRefs sets it
+	 * for no item in items.json — nothing there is read into it — so today only
+	 * a custom definition fills it; the reader is written against the field
+	 * rather than against "is this custom" so extraction could feed it later.
+	 */
+	speedBonus?: number
+	/** Darkvision in feet, reaching computeDarkvision through the same senses path a feat's grant uses (slice e2b). Set by a custom definition only, as speedBonus is. */
+	darkvision?: number
+	/**
 	 * Set only on a ref built from a row's OWN definition (slice e2a) — the kind
-	 * the player declared. It is what makes a custom item equippable, since a
-	 * custom item carries none of the structural fields (`type`, `armor`,
-	 * `weapon`) the real predicates read.
+	 * the player declared. It is what makes a custom item equippable, since the
+	 * structural fields above are synthesised from the kind rather than read
+	 * from a `type` string.
 	 */
 	customKind?: CustomItemKind
 }
@@ -172,6 +182,15 @@ const CONSUMABLE_CODES = ['P', 'SC', 'FD']
 
 /** The five kinds a custom item can declare, in the order the create form offers them. */
 export const CUSTOM_ITEM_KINDS: readonly CustomItemKind[] = ['weapon', 'armour', 'shield', 'worn', 'other']
+
+/** The armour categories a custom suit can declare, in the order the Dexterity cap tightens (slice e2b). */
+export const CUSTOM_ARMOUR_CATEGORIES: readonly CustomArmourCategory[] = ['light', 'medium', 'heavy']
+
+/** D77's two rules, as a custom weapon declares them. */
+export const CUSTOM_WEAPON_RANGES: readonly CustomWeaponRange[] = ['melee', 'ranged']
+
+/** The two `weaponCategory` values a weapon proficiency grant can match. */
+export const CUSTOM_WEAPON_CATEGORIES: readonly CustomWeaponCategory[] = ['simple', 'martial']
 
 /**
  * Where each kind goes when equipped. 'worn' (a cloak, a ring) and 'other' get
@@ -290,10 +309,15 @@ export function inventoryRowKey(item: CharacterInventoryItem): string {
 	].join('|')
 }
 
-/** A custom definition reduced to one comparable string. Field order is fixed here so two equal definitions cannot differ by key order alone. */
+/**
+ * A custom definition reduced to one comparable string. The keys are SORTED so
+ * two equal definitions cannot differ by key order alone — which also means the
+ * key covers every field the definition grows, rather than a list that has to
+ * be extended each time (slice e2b added eleven).
+ */
 function customDefinitionKey(custom: CustomItemDefinition | undefined): string {
 	if (custom === undefined) return ''
-	return JSON.stringify([custom.name, custom.kind, custom.valueCopper ?? null, custom.requiresAttunement ?? null, custom.attunementCondition ?? null, custom.description ?? null])
+	return JSON.stringify(custom, Object.keys(custom).sort())
 }
 
 /** items.json writes every bonus as a "+1"/"+2" string, never a number (this slice's survey). Anything else is dropped rather than guessed at. */
@@ -393,6 +417,55 @@ function descriptionEntries(description: string): string[] {
 		.filter((paragraph) => paragraph.length > 0)
 }
 
+/** The type code each armour category is filed under in items.json, so a custom suit reads through armourCategoryOf like any other. */
+const ARMOUR_CODE_BY_CATEGORY: Record<CustomArmourCategory, string> = { light: 'LA', medium: 'MA', heavy: 'HA' }
+
+/**
+ * The structural fields a custom item's KIND stands in for (slice e2b). A real
+ * item says what it is with a `type` code; a custom one says it with `kind`
+ * plus the two fields that refine it, and this is where the two meet — so
+ * isWeapon, armourCategoryOf, isShield, itemMagicBonusOf and wornAcBonusOf all
+ * work on a custom ref without knowing it is one.
+ *
+ * A weapon with no declared range is melee: D77's default, and the alternative
+ * is a weapon that is not a weapon at all. Armour is the opposite case — an
+ * absent category is left absent, because guessing 'light' would silently
+ * hand the character an uncapped Dexterity bonus, and an error upward is the
+ * one D76 rules out. The sheet names such a suit instead (armourClass.ts).
+ */
+function customStructuralFields(custom: CustomItemDefinition): Partial<ItemRef> {
+	switch (custom.kind) {
+		case 'weapon':
+			return {
+				typeCode: custom.weaponRange === 'ranged' ? 'R' : 'M',
+				...(custom.weaponCategory !== undefined ? { weaponCategory: custom.weaponCategory } : {}),
+				...(custom.damageDice !== undefined && custom.damageDice !== '' ? { dmg1: custom.damageDice } : {}),
+				...(custom.damageType !== undefined && custom.damageType !== '' ? { dmgTypeFull: custom.damageType } : {}),
+			}
+		case 'armour':
+			return {
+				...(custom.armourCategory !== undefined ? { typeCode: ARMOUR_CODE_BY_CATEGORY[custom.armourCategory] } : {}),
+				...(typeof custom.armourClass === 'number' ? { ac: custom.armourClass } : {}),
+			}
+		case 'shield':
+			// DATA.md: a shield's `ac` is the bonus it adds, never a finished Armour Class.
+			return { typeCode: SHIELD_CODE, ...(typeof custom.armourClass === 'number' ? { ac: custom.armourClass } : {}) }
+		default:
+			return {}
+	}
+}
+
+/** A numeric field carried through only when it is a number that changes something — a declared 0 is the same as declaring nothing. */
+function customNumber<K extends string>(value: number | undefined, key: K): Partial<Record<K, number>> {
+	return typeof value === 'number' && value !== 0 ? ({ [key]: value } as Record<K, number>) : {}
+}
+
+function customDamageTypes<K extends string>(value: string[] | undefined, key: K): Partial<Record<K, string[]>> {
+	if (!Array.isArray(value)) return {}
+	const types = value.filter((entry): entry is string => typeof entry === 'string' && entry !== '')
+	return types.length > 0 ? ({ [key]: types } as Record<K, string[]>) : {}
+}
+
 /** The ref a custom definition resolves to. `source` comes from the row so the ref and the row agree on what to call the thing (D43 messages read both). */
 export function customItemRef(custom: CustomItemDefinition, source: string): ItemRef {
 	const entries = custom.description === undefined ? [] : descriptionEntries(custom.description)
@@ -400,9 +473,26 @@ export function customItemRef(custom: CustomItemDefinition, source: string): Ite
 		name: custom.name,
 		source,
 		customKind: custom.kind,
+		...customStructuralFields(custom),
 		...(typeof custom.valueCopper === 'number' ? { value: custom.valueCopper } : {}),
 		...(custom.requiresAttunement === true ? { requiresAttunement: true } : {}),
 		...(custom.attunementCondition !== undefined && custom.attunementCondition !== '' ? { attunementCondition: custom.attunementCondition } : {}),
+		...customDamageTypes(custom.resist, 'resist'),
+		...customDamageTypes(custom.immune, 'immune'),
+		...customNumber(custom.speedBonus, 'speedBonus'),
+		...customNumber(custom.darkvision, 'darkvision'),
+		/*
+		 * The five flat-bonus fields land on the same ItemRef keys items.json's
+		 * own bonuses use, so itemFlatBonusData.ts reads them with no second
+		 * branch. `bonusAc` on an armour- or shield-kind item is that suit's
+		 * magic bonus rather than a worn bonus, exactly as Dragon Scale Mail's is
+		 * (itemMagicBonusOf / wornAcBonusOf make that split, not this function).
+		 */
+		...customNumber(custom.bonusArmourClass, 'bonusAc'),
+		...customNumber(custom.bonusSavingThrow, 'bonusSavingThrow'),
+		...customNumber(custom.bonusSpellAttack, 'bonusSpellAttack'),
+		...customNumber(custom.bonusSpellSaveDc, 'bonusSpellSaveDc'),
+		...customNumber(custom.bonusAbilityCheck, 'bonusAbilityCheck'),
 		...(entries.length > 0 ? { entries } : {}),
 	}
 }
@@ -427,8 +517,40 @@ export function describeCustomItemProblem(custom: unknown): string | null {
 	if (record['requiresAttunement'] !== undefined && record['requiresAttunement'] !== true) return 'its attunement requirement must be true when present'
 	if (record['attunementCondition'] !== undefined && typeof record['attunementCondition'] !== 'string') return 'its attunement condition must be text'
 	if (record['description'] !== undefined && typeof record['description'] !== 'string') return 'its description must be text'
+
+	/* Slice e2b's computed fields. Each one feeds a number, so a wrong shape here would reach a breakdown rather than a paragraph. */
+	for (const key of NUMERIC_CUSTOM_FIELDS) {
+		const value = record[key]
+		if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) return `its ${key} must be a number`
+	}
+	const armourClass = record['armourClass']
+	if (armourClass !== undefined && (typeof armourClass !== 'number' || !Number.isInteger(armourClass) || armourClass < 0)) {
+		return 'its armour class must be a whole number, not below zero'
+	}
+	const category = record['armourCategory']
+	if (category !== undefined && !CUSTOM_ARMOUR_CATEGORIES.includes(category as CustomArmourCategory)) {
+		return `its armour category "${String(category)}" is not one of ${CUSTOM_ARMOUR_CATEGORIES.join(', ')}`
+	}
+	const range = record['weaponRange']
+	if (range !== undefined && !CUSTOM_WEAPON_RANGES.includes(range as CustomWeaponRange)) {
+		return `its weapon range "${String(range)}" is not one of ${CUSTOM_WEAPON_RANGES.join(', ')}`
+	}
+	const weaponCategory = record['weaponCategory']
+	if (weaponCategory !== undefined && !CUSTOM_WEAPON_CATEGORIES.includes(weaponCategory as CustomWeaponCategory)) {
+		return `its weapon category "${String(weaponCategory)}" is not one of ${CUSTOM_WEAPON_CATEGORIES.join(', ')}`
+	}
+	if (record['damageDice'] !== undefined && typeof record['damageDice'] !== 'string') return 'its damage dice must be text'
+	if (record['damageType'] !== undefined && typeof record['damageType'] !== 'string') return 'its damage type must be text'
+	for (const key of ['resist', 'immune'] as const) {
+		const value = record[key]
+		if (value === undefined) continue
+		if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) return `its ${key} must be a list of damage types`
+	}
 	return null
 }
+
+/** Every field of the definition that must be a number when present. Listed once so the check cannot fall behind the type. */
+const NUMERIC_CUSTOM_FIELDS = ['speedBonus', 'darkvision', 'bonusArmourClass', 'bonusSavingThrow', 'bonusSpellAttack', 'bonusSpellSaveDc', 'bonusAbilityCheck'] as const
 
 /** Why a row could not be resolved. The two kinds are separated because only the first is independent of whether items.json has loaded yet. */
 export interface InventoryRowProblem {
@@ -477,15 +599,41 @@ export function buildInventoryResolver(itemRefs: readonly ItemRef[]): InventoryR
  * the item's text; its nested lists and tables are structure this field cannot
  * hold, and are left behind rather than flattened into something the player
  * would have to repair.
+ *
+ * Slice e2b: the computed fields copy too, so a suit copied from Chain Mail
+ * really is 16 heavy and a sword copied from a Longsword really does 1d8
+ * slashing. Two fields of the original are deliberately NOT in the definition
+ * and so cannot copy — the Strength requirement and the Stealth disadvantage —
+ * which is why a copied heavy suit imposes neither (docs/REPORT.md).
  */
 export function customItemFromRef(ref: ItemRef): CustomItemDefinition {
 	const paragraphs = (ref.entries ?? []).filter((entry): entry is string => typeof entry === 'string')
+	const category = armourCategoryOf(ref)
+	const kind: CustomItemKind = isWeapon(ref) ? 'weapon' : isShield(ref) ? 'shield' : category !== null || ref.armor === true ? 'armour' : 'other'
 	return {
 		name: ref.name,
-		kind: isWeapon(ref) ? 'weapon' : isShield(ref) ? 'shield' : armourCategoryOf(ref) !== null || ref.armor === true ? 'armour' : 'other',
+		kind,
 		...(typeof ref.value === 'number' ? { valueCopper: ref.value } : {}),
 		...(ref.requiresAttunement === true ? { requiresAttunement: true as const } : {}),
 		...(ref.attunementCondition !== undefined ? { attunementCondition: ref.attunementCondition } : {}),
+		...(kind === 'weapon'
+			? {
+					...(ref.dmg1 !== undefined ? { damageDice: ref.dmg1 } : {}),
+					...(ref.dmgTypeFull !== undefined ? { damageType: ref.dmgTypeFull } : {}),
+					weaponRange: ref.typeCode === 'R' ? ('ranged' as const) : ('melee' as const),
+					...(ref.weaponCategory === 'simple' || ref.weaponCategory === 'martial' ? { weaponCategory: ref.weaponCategory } : {}),
+				}
+			: {}),
+		...((kind === 'armour' || kind === 'shield') && typeof ref.ac === 'number' ? { armourClass: ref.ac } : {}),
+		...(kind === 'armour' && category !== null ? { armourCategory: category } : {}),
+		...(ref.resist !== undefined ? { resist: [...ref.resist] } : {}),
+		...(ref.immune !== undefined ? { immune: [...ref.immune] } : {}),
+		/* The AC bonus copies into the field that lands where the ORIGINAL's did — a cloak's on the character, a suit's on the suit. */
+		...(ref.bonusAc !== undefined ? { bonusArmourClass: ref.bonusAc } : {}),
+		...(ref.bonusSavingThrow !== undefined ? { bonusSavingThrow: ref.bonusSavingThrow } : {}),
+		...(ref.bonusSpellAttack !== undefined ? { bonusSpellAttack: ref.bonusSpellAttack } : {}),
+		...(ref.bonusSpellSaveDc !== undefined ? { bonusSpellSaveDc: ref.bonusSpellSaveDc } : {}),
+		...(ref.bonusAbilityCheck !== undefined ? { bonusAbilityCheck: ref.bonusAbilityCheck } : {}),
 		...(paragraphs.length > 0 ? { description: paragraphs.join('\n\n') } : {}),
 	}
 }

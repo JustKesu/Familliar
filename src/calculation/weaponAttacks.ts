@@ -269,14 +269,21 @@ export function computeWeaponAttacks(
 		const weapon = row.weapon
 		const proficient = isProficientWithWeapon(weapon, grants)
 		const { using, choice, reason } = abilityFor(weapon, modifiers, row.chosenAbility, hasMartialArts)
+		/*
+		 * Every weapon in items.json carries `dmg1`; only a custom one can be a
+		 * weapon with no dice on it (slice e2b). The attack line is still worth
+		 * having — the to-hit is real — but the damage says it is not set rather
+		 * than printing the "1" damageText would fall back to.
+		 */
+		const noDice = weapon.dmg1 === undefined ? `${row.magicBonus.label} has no damage dice set, so its damage cannot be worked out.` : null
 		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus)
 		return {
 			key,
 			name: row.magicBonus.label,
 			range: weapon.range ?? null,
 			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus),
-			damage: scoresUnknown ? unknown(scoresUnknown) : known(damage, damage.breakdown),
-			notes: notesFor(weapon, proficient),
+			damage: scoresUnknown ? unknown(scoresUnknown) : noDice ? unknown(noDice) : known(damage, damage.breakdown),
+			notes: noDice ? [...notesFor(weapon, proficient), noDice] : notesFor(weapon, proficient),
 			abilityChoice: choice,
 		}
 	})

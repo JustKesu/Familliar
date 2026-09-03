@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { noMagicBonus } from '../calculation/magicBonus'
 import type { ItemRef } from '../inventory/inventoryData'
-import type { Character } from '../storage/character'
+import { CUSTOM_ITEM_SOURCE, type Character, type CharacterInventoryItem, type CustomItemDefinition } from '../storage/character'
 import { acFormulaKeysFrom, buildEquippedGear, hasMageArmor } from './armourClassData'
 
 /* Mirrors the real rows scripts/investigate-armour-class.js printed. */
@@ -110,7 +110,7 @@ describe('buildEquippedGear', () => {
 			],
 			ITEMS,
 		)
-		expect(gear).toEqual({ armour: null, shield: null, unresolved: [], carriedArmourNotWorn: ['Chain Mail'] })
+		expect(gear).toEqual({ armour: null, shield: null, unresolved: [], carriedArmourNotWorn: ['Chain Mail'], incompleteArmour: [] })
 	})
 
 	it('reports an equipped item the item data does not know rather than dropping it (D43)', () => {
@@ -141,5 +141,53 @@ describe('buildEquippedGear', () => {
 
 		const stale = buildEquippedGear([{ name: 'Mystery Plate', source: 'HOMEBREW', quantity: 1, equipped: 'worn', magicBonus: 3 }], ITEMS)
 		expect(stale.unresolved).toEqual([{ name: 'Mystery Plate +3', source: 'HOMEBREW' }])
+	})
+
+	/* Slice e2b: a custom suit reaches the same shape a real one does, so the Dex cap and everything after it apply unchanged. */
+	describe('a custom suit of armour', () => {
+		function customRow(custom: CustomItemDefinition, equipped: 'worn' | null = 'worn'): CharacterInventoryItem {
+			return { name: custom.name, source: CUSTOM_ITEM_SOURCE, quantity: 1, ...(equipped !== null ? { equipped } : {}), custom }
+		}
+
+		it('resolves into the same EquippedArmour a book suit does, category and all', () => {
+			const gear = buildEquippedGear([customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium' })], ITEMS)
+			expect(gear.armour).toEqual({
+				name: 'Bark Plate',
+				category: 'medium',
+				ac: 14,
+				// Neither field is part of the definition, so a custom suit never requires Strength and never hampers Stealth.
+				strengthRequirement: null,
+				stealthDisadvantage: false,
+				magicBonus: noMagicBonus('Bark Plate'),
+			})
+			expect(gear.incompleteArmour).toEqual([])
+		})
+
+		it('resolves a custom shield into the bonus it adds', () => {
+			const gear = buildEquippedGear([{ name: 'Bark Shield', source: CUSTOM_ITEM_SOURCE, quantity: 1, equipped: 'held', custom: { name: 'Bark Shield', kind: 'shield', armourClass: 2 } }], ITEMS)
+			expect(gear.shield).toEqual({ name: 'Bark Shield', acBonus: 2, magicBonus: noMagicBonus('Bark Shield') })
+		})
+
+		it('is named as unfinished rather than counted when it declares no Armour Class', () => {
+			const gear = buildEquippedGear([customRow({ name: 'Bark Plate', kind: 'armour' })], ITEMS)
+			expect(gear.armour).toBeNull()
+			expect(gear.incompleteArmour).toEqual([{ name: 'Bark Plate', reason: 'its Armour Class is not set and its armour category is not set' }])
+		})
+
+		it('names the one field that is missing when the other is set', () => {
+			expect(buildEquippedGear([customRow({ name: 'Bark Plate', kind: 'armour', armourCategory: 'light' })], ITEMS).incompleteArmour).toEqual([
+				{ name: 'Bark Plate', reason: 'its Armour Class is not set' },
+			])
+			expect(buildEquippedGear([customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 12 })], ITEMS).incompleteArmour).toEqual([
+				{ name: 'Bark Plate', reason: 'its armour category is not set' },
+			])
+		})
+
+		/* Unfinished and not worn is still armour the character owns, so it belongs in the line that explains a low number. */
+		it('lists an unfinished suit that is only carried among the carried armour', () => {
+			const gear = buildEquippedGear([customRow({ name: 'Bark Plate', kind: 'armour' }, null)], ITEMS)
+			expect(gear.incompleteArmour).toEqual([])
+			expect(gear.carriedArmourNotWorn).toEqual(['Bark Plate'])
+		})
 	})
 })

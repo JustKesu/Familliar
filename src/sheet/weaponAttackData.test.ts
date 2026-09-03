@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { noMagicBonus } from '../calculation/magicBonus'
 import { inventoryRowKey, type ItemRef } from '../inventory/inventoryData'
-import type { Character } from '../storage/character'
+import { CUSTOM_ITEM_SOURCE, type Character } from '../storage/character'
 import { buildHeldWeapons, featureNamesFor, formatTableDice, martialArtsDieFrom } from './weaponAttackData'
 
 const itemRefs: ItemRef[] = [
@@ -61,6 +61,26 @@ describe('buildHeldWeapons', () => {
 		expect(held[0].magicBonus).toMatchObject({ carried: 1, applied: 0, label: 'Moon Sickle +1' })
 		expect(held[1].magicBonus).toMatchObject({ carried: 2, applied: 2, origin: 'player' })
 		expect(held[2].magicBonus).toMatchObject({ carried: 0, applied: 0 })
+	})
+
+	/* Slice e2b: a custom weapon is a weapon, resolved through the same predicates — nothing here knows it is homebrew. */
+	it('resolves a held custom weapon into the same shape a book weapon takes', () => {
+		const held = buildHeldWeapons(
+			[
+				{
+					name: 'Bone Blade',
+					source: CUSTOM_ITEM_SOURCE,
+					quantity: 1,
+					equipped: 'held',
+					custom: { name: 'Bone Blade', kind: 'weapon', damageDice: '1d8', damageType: 'slashing', weaponCategory: 'martial', weaponRange: 'melee' },
+				},
+				// A custom item that is not a weapon is skipped, exactly as a shield is.
+				{ name: 'Bone Shield', source: CUSTOM_ITEM_SOURCE, quantity: 1, equipped: 'held', custom: { name: 'Bone Shield', kind: 'shield', armourClass: 2 } },
+			],
+			itemRefs,
+		)
+		expect(held.map((row) => row.name)).toEqual(['Bone Blade'])
+		expect(held[0].weapon).toMatchObject({ typeCode: 'M', weaponCategory: 'martial', dmg1: '1d8', dmgTypeFull: 'slashing' })
 	})
 })
 

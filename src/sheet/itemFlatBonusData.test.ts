@@ -5,7 +5,7 @@ import { computeSavingThrow, type ClassSavingThrowProficiencies } from '../calcu
 import { computeSkill } from '../calculation/skills'
 import { computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import type { ItemRef } from '../inventory/inventoryData'
-import type { Character, CharacterInventoryItem } from '../storage/character'
+import { CUSTOM_ITEM_SOURCE, type Character, type CharacterInventoryItem } from '../storage/character'
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
 
 /** The real fields, as scripts/investigate-worn-bonuses.js found them: every carrier requires attunement, and the values are "+N" strings parsed to numbers. */
@@ -65,7 +65,7 @@ const fighterSaves: ClassSavingThrowProficiencies[] = [{ className: 'Fighter', c
 const wizardAbility: ClassSpellcastingAbility = { className: 'Wizard', classSource: 'XPHB', ability: 'int' }
 
 function emptyGear(overrides: Partial<EquippedGear> = {}): EquippedGear {
-	return { armour: null, shield: null, unresolved: [], carriedArmourNotWorn: [], ...overrides }
+	return { armour: null, shield: null, unresolved: [], carriedArmourNotWorn: [], incompleteArmour: [], ...overrides }
 }
 
 describe('a Cloak of Protection', () => {
@@ -172,5 +172,58 @@ describe('buildItemFlatBonusGrants', () => {
 		const grants = buildItemFlatBonusGrants([row('Ioun Stone, Mastery', 'XDMG', { attuned: true })], itemRefs)
 
 		expect(grants).toEqual([{ sourceName: 'Ioun Stone, Mastery', target: 'proficiencyBonus', amount: 1 }])
+	})
+
+	/* Slice e2b: a custom item's five bonus fields land on the same ItemRef keys, so this file reads them with no second branch. */
+	describe('a custom item', () => {
+		const charm: CharacterInventoryItem = {
+			name: 'Charm of the Sage',
+			source: CUSTOM_ITEM_SOURCE,
+			quantity: 1,
+			custom: {
+				name: 'Charm of the Sage',
+				kind: 'worn',
+				requiresAttunement: true,
+				bonusArmourClass: 1,
+				bonusSavingThrow: 2,
+				bonusSpellAttack: 1,
+				bonusSpellSaveDc: 1,
+				bonusAbilityCheck: 1,
+			},
+		}
+
+		it('reaches all five targets once attuned, and none of them before', () => {
+			expect(buildItemFlatBonusGrants([charm], itemRefs).every((grant) => grant.withheldReason !== undefined)).toBe(true)
+
+			const applied = buildItemFlatBonusGrants([{ ...charm, attuned: true }], itemRefs)
+			expect(applied).toEqual([
+				{ sourceName: 'Charm of the Sage', target: 'armourClass', amount: 1 },
+				{ sourceName: 'Charm of the Sage', target: 'savingThrow', amount: 2 },
+				{ sourceName: 'Charm of the Sage', target: 'spellAttack', amount: 1 },
+				{ sourceName: 'Charm of the Sage', target: 'spellSaveDc', amount: 1 },
+				{ sourceName: 'Charm of the Sage', target: 'abilityCheck', amount: 1 },
+			])
+		})
+
+		it('reaches a real saving throw with its own named line', () => {
+			const grants = flatBonusesByTarget(buildItemFlatBonusGrants([{ ...charm, attuned: true }], itemRefs))
+			const save = computeSavingThrow('constitution', fighter5, fighterSaves, [], grants.savingThrow)
+
+			// CON +1, proficient +3, charm +2.
+			expect(save).toMatchObject({ status: 'known', value: { modifier: 6 } })
+			expect(save.status === 'known' && save.breakdown).toContainEqual({ source: 'Charm of the Sage', amount: 2 })
+		})
+
+		/* A custom SUIT's bonusArmourClass is that suit's magic bonus, applied by slice e — reading it here too would count it twice. */
+		it('leaves a custom suit’s own AC bonus to the armour role', () => {
+			const suit: CharacterInventoryItem = {
+				name: 'Bark Plate',
+				source: CUSTOM_ITEM_SOURCE,
+				quantity: 1,
+				equipped: 'worn',
+				custom: { name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium', bonusArmourClass: 1 },
+			}
+			expect(buildItemFlatBonusGrants([suit], itemRefs)).toEqual([])
+		})
 	})
 })

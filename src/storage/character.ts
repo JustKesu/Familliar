@@ -336,10 +336,11 @@ export type CustomItemKind = 'weapon' | 'armour' | 'shield' | 'worn' | 'other'
  * nothing to inject. The row's own `name` mirrors this one; `source` is always
  * CUSTOM_ITEM_SOURCE.
  *
- * It may set exactly the fields the app already reads from a real item, and
- * only the ones that need no calculation code. The computed ones — armour
- * class, damage dice, resistances, speed, darkvision, the flat bonuses — are
- * slice e2b's and are deliberately absent here.
+ * It may set exactly the fields the app already reads from a real item, and no
+ * others. Slice e2b added the COMPUTED half of that set: every field below the
+ * description already had a reader before this slice, so a custom item gives
+ * those readers a second source and no arithmetic was added for it. A field
+ * that would need new calculation is not here.
  *
  * The +1/+2/+3 magic bonus is NOT here either: `CharacterInventoryItem.magicBonus`
  * already holds exactly that (D79's player-set bonus) and works on a custom row
@@ -365,7 +366,52 @@ export interface CustomItemDefinition {
 	 * markup renderer, the same way a real item's `entries` are.
 	 */
 	description?: string
+	/**
+	 * kind 'armour': the suit's base Armour Class, items.json's `ac`.
+	 * kind 'shield': the BONUS it adds, which is what a shield's `ac` means in
+	 * the data (DATA.md, "Identifying item kinds"). Absent on an armour-kind
+	 * item is a visible unfinished state, not a zero — the sheet names the item
+	 * and says the value is not set (D43).
+	 */
+	armourClass?: number
+	/** kind 'armour': which Dexterity cap applies. Spelled out rather than imported, for the same reason WeaponAttackAbility is. */
+	armourCategory?: CustomArmourCategory
+	/** kind 'weapon': items.json's `dmg1`, e.g. "1d8". */
+	damageDice?: string
+	/** kind 'weapon': items.json's `dmgTypeFull`, e.g. "slashing". */
+	damageType?: string
+	/** kind 'weapon': melee attacks with Strength, ranged with Dexterity (D77) — items.json's "M"/"R" type code. */
+	weaponRange?: CustomWeaponRange
+	/** kind 'weapon': items.json's `weaponCategory`, which is what decides proficiency (isProficientWithWeapon). */
+	weaponCategory?: CustomWeaponCategory
+	/** Damage types resisted, lowercase, the shape items.json's own `resist` uses. Gated on attunement exactly as a real item's is. */
+	resist?: string[]
+	/** As `resist`, for items.json's `immune`. */
+	immune?: string[]
+	/** Feet added to (or, negative, taken off) the walking speed. */
+	speedBonus?: number
+	/** Darkvision in feet. Reconciled against every other source, never summed with them (speciesTraits.ts). */
+	darkvision?: number
+	/*
+	 * The flat bonuses slice h wired, one field each. `bonusProficiencyBonus` is
+	 * deliberately absent: slice h leaves that one unapplied, so a field for it
+	 * would be a number the sheet shows and never counts.
+	 */
+	bonusArmourClass?: number
+	bonusSavingThrow?: number
+	bonusSpellAttack?: number
+	bonusSpellSaveDc?: number
+	bonusAbilityCheck?: number
 }
+
+/** The three Dexterity-cap categories, as items.json's LA/MA/HA type codes name them. */
+export type CustomArmourCategory = 'light' | 'medium' | 'heavy'
+
+/** Which of D77's two rules a custom weapon follows. */
+export type CustomWeaponRange = 'melee' | 'ranged'
+
+/** The two `weaponCategory` values the data uses; a weapon proficiency grant matches on nothing else. */
+export type CustomWeaponCategory = 'simple' | 'martial'
 
 /**
  * The `source` every custom item's row carries. A custom item comes from no
@@ -536,13 +582,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 23 to add CharacterInventoryItem.custom — a
- * custom item's whole definition, carried on the row (build order step 7,
- * slice e2a).
+ * (see wireFormat.ts). Bumped to 24 for the computed half of
+ * CustomItemDefinition — armour class, damage dice, resistances, speed,
+ * darkvision and the flat bonuses (build order step 7, slice e2b).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 23
+export const CURRENT_SCHEMA_VERSION = 24

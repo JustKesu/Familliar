@@ -48,7 +48,7 @@ const halfPlate: EquippedArmour = {
 const shield: EquippedShield = { name: 'Shield', acBonus: 2, magicBonus: noMagicBonus('Shield') }
 
 function gear(overrides: Partial<EquippedGear> = {}): EquippedGear {
-	return { armour: null, shield: null, unresolved: [], carriedArmourNotWorn: [], ...overrides }
+	return { armour: null, shield: null, unresolved: [], carriedArmourNotWorn: [], incompleteArmour: [], ...overrides }
 }
 
 function sources(result: ReturnType<typeof computeArmourClass>): string[] {
@@ -91,6 +91,21 @@ describe('computeArmourClass — worn armour', () => {
 
 	it('returns unknown when ability scores have not been set (D43)', () => {
 		expect(computeArmourClass({ id: '2', name: 'Blank', classes: [] }, gear()).status).toBe('unknown')
+	})
+
+	/*
+	 * Slice e2b. A worn suit that declares no Armour Class used to leave the
+	 * section saying "no armour equipped", which is literally true and reads as a
+	 * bug. The item is named and the missing field stated instead.
+	 */
+	it('names a worn item that declares no Armour Class instead of reporting no armour', () => {
+		const result = computeArmourClass(fighter5, gear({ incompleteArmour: [{ name: 'Bark Plate', reason: 'its Armour Class is not set' }] }))
+		expect(result).toMatchObject({ status: 'known', value: { value: 12, armourNotSet: ['Bark Plate is equipped, but its Armour Class is not set'] } })
+		expect(noteFor(result, 'armour')).toBe('Bark Plate is equipped, but its Armour Class is not set')
+	})
+
+	it('still says "no armour equipped" when nothing is worn at all', () => {
+		expect(noteFor(computeArmourClass(fighter5, gear()), 'armour')).toBe('no armour equipped')
 	})
 })
 
