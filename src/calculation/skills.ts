@@ -82,7 +82,12 @@ function proficiencySources(skill: Skill, character: Character, feats: FeatEffec
 	return sources
 }
 
-export function computeSkill(skill: Skill, character: Character, feats: FeatEffectEntry[] = []): Calculated<SkillValue> {
+/**
+ * Slice h: `bonusAbilityCheck` from a worn magic item (Stone of Good Luck). A
+ * skill check IS an ability check, so it lands on all 18 alike — and, through
+ * computePassiveValue below, on the passive scores built from them.
+ */
+export function computeSkill(skill: Skill, character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<SkillValue> {
 	const ability = SKILL_ABILITIES[skill]
 	const abilityResult = computeAbilityScore(ability, character, feats)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
@@ -108,18 +113,19 @@ export function computeSkill(skill: Skill, character: Character, feats: FeatEffe
 	}
 
 	breakdown.push(...featSkillChoiceAwaitingNotes(skill, character, feats, isProficient))
+	breakdown.push(...itemBonuses)
 
 	const modifier = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known({ status, modifier }, breakdown)
 }
 
-export function computeSkills(character: Character, feats: FeatEffectEntry[] = []): Record<Skill, Calculated<SkillValue>> {
-	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character, feats)])) as Record<Skill, Calculated<SkillValue>>
+export function computeSkills(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Record<Skill, Calculated<SkillValue>> {
+	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character, feats, itemBonuses)])) as Record<Skill, Calculated<SkillValue>>
 }
 
 /** D48 — 10 + the named skill's bonus. Not a real skill check, so it has no proficiency status of its own. */
-function computePassiveValue(skill: Skill, character: Character, feats: FeatEffectEntry[]): Calculated<number> {
-	const skillResult = computeSkill(skill, character, feats)
+function computePassiveValue(skill: Skill, character: Character, feats: FeatEffectEntry[], itemBonuses: Contribution[]): Calculated<number> {
+	const skillResult = computeSkill(skill, character, feats, itemBonuses)
 	if (skillResult.status === 'unknown') return unknown(skillResult.reason)
 
 	const breakdown: Contribution[] = [{ source: 'base', amount: 10 }, ...skillResult.breakdown]
@@ -127,14 +133,14 @@ function computePassiveValue(skill: Skill, character: Character, feats: FeatEffe
 	return known(total, breakdown)
 }
 
-export function computePassivePerception(character: Character, feats: FeatEffectEntry[] = []): Calculated<number> {
-	return computePassiveValue('perception', character, feats)
+export function computePassivePerception(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<number> {
+	return computePassiveValue('perception', character, feats, itemBonuses)
 }
 
-export function computePassiveInvestigation(character: Character, feats: FeatEffectEntry[] = []): Calculated<number> {
-	return computePassiveValue('investigation', character, feats)
+export function computePassiveInvestigation(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<number> {
+	return computePassiveValue('investigation', character, feats, itemBonuses)
 }
 
-export function computePassiveInsight(character: Character, feats: FeatEffectEntry[] = []): Calculated<number> {
-	return computePassiveValue('insight', character, feats)
+export function computePassiveInsight(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<number> {
+	return computePassiveValue('insight', character, feats, itemBonuses)
 }

@@ -47,6 +47,8 @@ export function computeSavingThrow(
 	character: Character,
 	classData: ClassSavingThrowProficiencies[],
 	feats: FeatEffectEntry[] = [],
+	/** Slice h: `bonusSavingThrow` from a worn magic item (Cloak of Protection). Applies to every save alike — no item in the data limits it to some of them. */
+	itemBonuses: Contribution[] = [],
 ): Calculated<SavingThrowValue> {
 	const abilityResult = computeAbilityScore(ability, character, feats)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
@@ -76,6 +78,7 @@ export function computeSavingThrow(
 		if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
 		breakdown.push({ source: `proficiency (${grantingSources.join(', ')})`, amount: bonusResult.value })
 	}
+	breakdown.push(...itemBonuses)
 
 	const modifier = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known({ status, modifier }, breakdown)
@@ -85,8 +88,9 @@ export function computeSavingThrows(
 	character: Character,
 	classData: ClassSavingThrowProficiencies[],
 	feats: FeatEffectEntry[] = [],
+	itemBonuses: Contribution[] = [],
 ): Record<Ability, Calculated<SavingThrowValue>> {
-	return Object.fromEntries(ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats)])) as Record<
+	return Object.fromEntries(ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats, itemBonuses)])) as Record<
 		Ability,
 		Calculated<SavingThrowValue>
 	>

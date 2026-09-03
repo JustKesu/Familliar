@@ -71,10 +71,20 @@ function findSubclassSpellcastingAbility(
 	return classEntry.subclasses?.find((s) => s.subclassName === characterClass.subclass)
 }
 
+/*
+ * Slice h: `bonusSpellAttack` and `bonusSpellSaveDc` from a worn magic item.
+ * They apply to EVERY entry alike. Many of the 30 carriers word the bonus for
+ * one class's spells ("your artificer spells"), but that restriction lives in
+ * the item's prose and nowhere in a field, so reading it would mean parsing
+ * prose (D21). The bonus is shown as its own named line, so a player whose item
+ * is class-specific can see exactly what to ignore.
+ */
 export function computeSpellcasting(
 	character: Character,
 	classData: ClassSpellcastingAbility[],
 	feats: FeatEffectEntry[] = [],
+	spellAttackItemBonuses: Contribution[] = [],
+	spellSaveDcItemBonuses: Contribution[] = [],
 ): Calculated<SpellcastingEntry[]> {
 	if (character.classes.length === 0) {
 		return unknown('Character has no classes yet.')
@@ -107,6 +117,7 @@ export function computeSpellcasting(
 		const spellAttackBreakdown: Contribution[] = [
 			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
 			{ source: 'proficiency bonus', amount: bonusResult.value },
+			...spellAttackItemBonuses,
 		]
 		const spellAttackBonus = spellAttackBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 
@@ -114,6 +125,7 @@ export function computeSpellcasting(
 			{ source: 'base', amount: 8 },
 			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
 			{ source: 'proficiency bonus', amount: bonusResult.value },
+			...spellSaveDcItemBonuses,
 		]
 		const spellSaveDC = spellSaveDCBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 
@@ -155,6 +167,8 @@ export function computeFeatSpellcasting(
 	character: Character,
 	featGrantedSpells: FeatGrantedSpell[],
 	feats: FeatEffectEntry[] = [],
+	spellAttackItemBonuses: Contribution[] = [],
+	spellSaveDcItemBonuses: Contribution[] = [],
 ): Calculated<FeatSpellcastingEntry[]> {
 	if (featGrantedSpells.length === 0) {
 		return known([], [])
@@ -180,6 +194,7 @@ export function computeFeatSpellcasting(
 		const spellAttackBreakdown: Contribution[] = [
 			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
 			{ source: 'proficiency bonus', amount: bonusResult.value },
+			...spellAttackItemBonuses,
 		]
 		const spellAttackBonus = spellAttackBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 
@@ -187,6 +202,7 @@ export function computeFeatSpellcasting(
 			{ source: 'base', amount: 8 },
 			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
 			{ source: 'proficiency bonus', amount: bonusResult.value },
+			...spellSaveDcItemBonuses,
 		]
 		const spellSaveDC = spellSaveDCBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 

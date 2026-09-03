@@ -200,7 +200,14 @@ function formulaCandidate(key: AcFormulaKey, modifiers: Record<Ability, number>)
  * loser as a zero-amount note saying what it would have given and why it did
  * not apply (D60's mechanism, the same way darkvision reconciles its sources).
  */
-export function computeArmourClass(character: Character, gear: EquippedGear, formulaKeys: AcFormulaKey[] = [], feats: FeatEffectEntry[] = []): Calculated<ArmourClassValue> {
+export function computeArmourClass(
+	character: Character,
+	gear: EquippedGear,
+	formulaKeys: AcFormulaKey[] = [],
+	feats: FeatEffectEntry[] = [],
+	/** Slice h: `bonusAc` from a worn magic item (Cloak of Protection, Ring of Protection). It adds to whichever candidate won, an Unarmored Defense included — not to the armour. */
+	wornItemBonuses: Contribution[] = [],
+): Calculated<ArmourClassValue> {
 	const abilities: Ability[] = ['dexterity', 'constitution', 'wisdom', 'charisma']
 	const modifiers = {} as Record<Ability, number>
 	for (const ability of abilities) {
@@ -240,6 +247,7 @@ export function computeArmourClass(character: Character, gear: EquippedGear, for
 		breakdown.push({ source: gear.shield.name, amount: gear.shield.acBonus })
 		breakdown.push(...gear.shield.magicBonus.contributions)
 	}
+	breakdown.push(...wornItemBonuses)
 
 	const value = breakdown.reduce((sum, row) => sum + row.amount, 0)
 	return known(

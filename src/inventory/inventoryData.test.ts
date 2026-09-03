@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { armourCategoryOf, equipSlotOf, extractItemRefs, inventoryRowKey, isConsumable, isShield, isWeapon, itemKey, itemMagicBonusOf } from './inventoryData'
+import { armourCategoryOf, equipSlotOf, extractItemRefs, inventoryRowKey, isConsumable, isShield, isWeapon, itemKey, itemMagicBonusOf, wornAcBonusOf } from './inventoryData'
 
 describe('extractItemRefs', () => {
 	it('keeps every entry with a string name and source, sorted by name then source', () => {
@@ -105,6 +105,31 @@ describe('item kinds', () => {
 		expect(itemMagicBonusOf({ name: 'Cloak of Protection', source: 'XDMG', bonusAc: 1 })).toBeNull()
 		// Staff of Power is a weapon carrying bonusAc; only its weapon bonus would count, and it has none.
 		expect(itemMagicBonusOf({ name: 'Staff of Power', source: 'XDMG', typeCode: 'M', bonusAc: 2 })).toBeNull()
+	})
+
+	/* Slice h's survey: the five worn-item bonus fields, all "+N" strings like slice e's two. */
+	it('parses the five worn-item bonus fields', () => {
+		const parsed = [
+			{ name: 'Cloak of Protection', source: 'XDMG', reqAttune: true, bonusAc: '+1', bonusSavingThrow: '+1' },
+			{ name: 'Ioun Stone, Mastery', source: 'XDMG', reqAttune: true, bonusProficiencyBonus: '+1' },
+			{ name: 'Rod of the Pact Keeper', source: 'XDMG', type: 'RD', reqAttune: true, bonusSpellAttack: '+2', bonusSpellSaveDc: '+2' },
+			{ name: 'Stone of Good Luck', source: 'XDMG', reqAttune: true, bonusSavingThrow: '+1', bonusAbilityCheck: '+1' },
+		]
+		expect(extractItemRefs(parsed)).toEqual([
+			{ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true, bonusAc: 1, bonusSavingThrow: 1 },
+			{ name: 'Ioun Stone, Mastery', source: 'XDMG', requiresAttunement: true, bonusProficiencyBonus: 1 },
+			{ name: 'Rod of the Pact Keeper', source: 'XDMG', typeCode: 'RD', requiresAttunement: true, bonusSpellAttack: 2, bonusSpellSaveDc: 2 },
+			{ name: 'Stone of Good Luck', source: 'XDMG', requiresAttunement: true, bonusSavingThrow: 1, bonusAbilityCheck: 1 },
+		])
+	})
+
+	it('reads bonusAc as a WORN bonus only where no armour role already claims it', () => {
+		expect(wornAcBonusOf({ name: 'Cloak of Protection', source: 'XDMG', bonusAc: 1 })).toBe(1)
+		// A staff is a weapon, so its own bonus is bonusWeapon; the bonusAc it also carries lands on the character.
+		expect(wornAcBonusOf({ name: 'Staff of Power', source: 'XDMG', typeCode: 'M', bonusAc: 2 })).toBe(2)
+		// itemMagicBonusOf already applies these two through the armour and shield roles (slice e).
+		expect(wornAcBonusOf({ name: 'Glamoured Studded Leather', source: 'XDMG', typeCode: 'LA', ac: 12, bonusAc: 1 })).toBeNull()
+		expect(wornAcBonusOf({ name: 'Repulsion Shield', source: 'EFA', typeCode: 'S', ac: 2, bonusAc: 1 })).toBeNull()
 	})
 
 	it('reports the three armour categories and refuses everything that is not gear', () => {

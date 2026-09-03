@@ -1405,3 +1405,30 @@ datům.
 
 Do kroku 9 to nepadá tiše: dokud tam ten stav není, sheet hodnotu nezobrazí
 jako správnou, ale jako nedostupnou s důvodem (D76).
+
+## D84 — Rodinu pozná jen sourozenectví, ne nevyřešená volba
+
+D82 uvádělo dvě podmínky, za kterých wizard vynutí volbu u rasy. Při
+implementaci se ukázalo, že první z nich — „záznam nese nevyřešenou volbu" —
+vzatá doslova blokuje 33 ras, které volbu mají, ale žádnou variantu, kterou by
+ji šlo vyřešit: jsou to volby dovedností a kouzel, ne linií. Zúženo na pole,
+která appka počítá, splňují první podmínku jen Dragonborn a Tiefling, a ti jsou
+rodiny tak jako tak.
+
+Operativní test je tedy jediný: **je ten záznam základem rodiny variant?**
+Druhá podmínka z D82 je nadmnožinou první a stačí sama.
+
+Rodinu přitom poznáš třemi tvary, ne dvěma:
+
+1. `"Elf; Drow Lineage"` — středník;
+2. `"Dragonborn (Black)"` — závorky;
+3. `raceName` / `raceSource` — Genasi, jehož varianty se jmenují jen „Air",
+   „Earth", „Fire", „Water".
+
+Kontrola postavená na jednom z těch tvarů propustí deset Dragonbornů.
+
+Popisek volby se bere z nadpisu, kterým ji pojmenovává rodičovský záznam —
+„Elven Lineage", „Draconic Ancestry", „Giant Ancestry", „Fiendish Legacy",
+„Gnomish Lineage", „Kobold Legacy", „Shifting". Genasi žádný takový nadpis
+nemá, a proto se u něj používá „Element": hráč tam hledá vzduch, zemi, oheň
+a vodu, ne rodokmen.

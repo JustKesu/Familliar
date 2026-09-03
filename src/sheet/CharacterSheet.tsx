@@ -23,6 +23,7 @@ import type { FeatEffectEntry } from '../calculation/featEffects'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeInitiative } from '../calculation/initiative'
+import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
@@ -59,6 +60,7 @@ import {
 	type ItemRef,
 } from '../inventory/inventoryData'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
+import { buildItemFlatBonusGrants } from './itemFlatBonusData'
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
 import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
@@ -1142,16 +1144,23 @@ export function CharacterSheet({
 	}
 
 	const abilityScores = computeAbilityScores(character, feats)
-	const proficiencyBonus = computeProficiencyBonus(character.classes)
-	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats)
+	/* Step 7 slice h: a worn magic item's flat bonuses, gated on attunement, each landing on the value that owns it. */
+	const itemFlatBonuses = flatBonusesByTarget(buildItemFlatBonusGrants(character.inventory ?? [], itemRefs ?? []))
+	const proficiencyBonusResult = computeProficiencyBonus(character.classes)
+	/* The proficiency bonus item bonus is a note only — itemFlatBonuses.ts says why the number is left alone. Every amount is 0, so the total does not move. */
+	const proficiencyBonus =
+		proficiencyBonusResult.status === 'known' && itemFlatBonuses.proficiencyBonus.length > 0
+			? { ...proficiencyBonusResult, breakdown: [...proficiencyBonusResult.breakdown, ...itemFlatBonuses.proficiencyBonus] }
+			: proficiencyBonusResult
+	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow)
 	const initiative = computeInitiative(character, feats)
-	const skills = computeSkills(character, feats)
-	const passivePerception = computePassivePerception(character, feats)
-	const passiveInvestigation = computePassiveInvestigation(character, feats)
-	const passiveInsight = computePassiveInsight(character, feats)
+	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck)
+	const passivePerception = computePassivePerception(character, feats, itemFlatBonuses.abilityCheck)
+	const passiveInvestigation = computePassiveInvestigation(character, feats, itemFlatBonuses.abilityCheck)
+	const passiveInsight = computePassiveInsight(character, feats, itemFlatBonuses.abilityCheck)
 	/* Step 7 slice b: what the character has in use. itemRefs is null only while the item list is still loading — the AC section says so rather than reporting an unarmoured number it would then have to correct. */
 	const equippedGear = buildEquippedGear(character.inventory ?? [], itemRefs ?? [])
-	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats)
+	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats, itemFlatBonuses.armourClass)
 	const speed = computeSpeed(character, speciesTraitsData, armourSpeedPenalty(character, equippedGear.armour, feats))
 	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
 	const heldWeapons = buildHeldWeapons(character.inventory ?? [], itemRefs ?? [])
@@ -1182,11 +1191,11 @@ export function CharacterSheet({
 	const hitDice = computeHitDicePool(character.classes, hitDiceClassData)
 	const chosenFeats = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
 
-	const spellcasting = computeSpellcasting(character, spellcastingAbilityData, feats)
+	const spellcasting = computeSpellcasting(character, spellcastingAbilityData, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
 	const spellcastingEntries = spellcasting.status === 'known' ? spellcasting.value : []
 	const spellSlots = computeSpellSlots(character, spellSlotsClassData)
 	const spellSlotsEntries = spellSlots.status === 'known' ? spellSlots.value : []
-	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats)
+	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0

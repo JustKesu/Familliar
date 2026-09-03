@@ -89,6 +89,24 @@ export interface ItemRef {
 	 * wondrous items and 2 weapons.
 	 */
 	bonusAc?: number
+	/*
+	 * The five flat bonuses a WORN magic item carries (slice h), each parsed
+	 * from the same "+N" string form. Every carrier of these five requires
+	 * attunement — the slice's survey (scripts/investigate-worn-bonuses.js)
+	 * found the only two unattunable carriers of any of the six bonus fields
+	 * are a suit of armour and a shield carrying `bonusAc`, which reach Armour
+	 * Class through the armour role instead (see wornAcBonusOf).
+	 */
+	/** On 6 items (Cloak of Protection, Ring of Protection, Robe of Stars, Rod of Alertness, Staff of Power, Stone of Good Luck). */
+	bonusSavingThrow?: number
+	/** On 30 items; 22 of them carry bonusSpellSaveDc with the same number. */
+	bonusSpellAttack?: number
+	/** On 23 items. */
+	bonusSpellSaveDc?: number
+	/** On 1 item (Stone of Good Luck). */
+	bonusAbilityCheck?: number
+	/** On 1 item (Ioun Stone of Mastery). Parsed but deliberately not applied — see src/calculation/itemFlatBonuses.ts. */
+	bonusProficiencyBonus?: number
 	/**
 	 * items.json `resist` / `immune` (slice f), each an array of lowercase
 	 * damage-type strings. 54 items carry `resist` and 3 carry `immune`; no item
@@ -177,6 +195,18 @@ export function itemMagicBonusOf(ref: ItemRef): number | null {
 }
 
 /**
+ * The `bonusAc` that lands on the CHARACTER rather than on a suit of armour or
+ * a shield (slice h): the 8 wondrous items (Cloak of Protection, Bracers of
+ * Defense, Ioun Stone of Protection…) and the 2 staves slice e left out. Null
+ * for armour and shields, whose `bonusAc` armourClass.ts already applies
+ * through itemMagicBonusOf — reading it here too would count it twice.
+ */
+export function wornAcBonusOf(ref: ItemRef): number | null {
+	if (armourCategoryOf(ref) !== null || ref.armor === true || isShield(ref)) return null
+	return ref.bonusAc ?? null
+}
+
+/**
  * What makes two inventory lines the SAME line. Rows merge — quantities add —
  * only when every per-row fact matches, so a +1 Longsword and a plain
  * Longsword stay two rows and neither of them silently loses its state.
@@ -244,6 +274,11 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...(entry['firearm'] === true ? { firearm: true } : {}),
 				...bonusField(entry, 'bonusWeapon'),
 				...bonusField(entry, 'bonusAc'),
+				...bonusField(entry, 'bonusSavingThrow'),
+				...bonusField(entry, 'bonusSpellAttack'),
+				...bonusField(entry, 'bonusSpellSaveDc'),
+				...bonusField(entry, 'bonusAbilityCheck'),
+				...bonusField(entry, 'bonusProficiencyBonus'),
 				...damageTypeArrayField(entry, 'resist'),
 				...damageTypeArrayField(entry, 'immune'),
 				...(reqAttune === true || typeof reqAttune === 'string' ? { requiresAttunement: true } : {}),

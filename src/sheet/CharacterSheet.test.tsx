@@ -162,10 +162,12 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			},
 			/* Four attunement items, one of them with a restriction sentence — enough to reach the limit of three (slice d). */
 			{ name: 'Amulet of Health', source: 'XDMG', requiresAttunement: true },
-			{ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true },
-			{ name: 'Ring of Protection', source: 'XDMG', requiresAttunement: true },
+			/* Slice h: the flat bonuses these three carry in the real data. */
+			{ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true, bonusAc: 1, bonusSavingThrow: 1 },
+			{ name: 'Ring of Protection', source: 'XDMG', typeCode: 'RG', requiresAttunement: true, bonusAc: 1, bonusSavingThrow: 1 },
 			{ name: 'Ring of Spell Storing', source: 'XDMG', requiresAttunement: true },
-			{ name: 'Wand of the War Mage, +1', source: 'XDMG', requiresAttunement: true, attunementCondition: 'by a spellcaster' },
+			{ name: 'Wand of the War Mage, +1', source: 'XDMG', requiresAttunement: true, attunementCondition: 'by a spellcaster', bonusSpellAttack: 1 },
+			{ name: 'Ioun Stone, Mastery', source: 'XDMG', requiresAttunement: true, bonusProficiencyBonus: 1 },
 			/* Slice f. One resistance behind attunement, one that needs none, and one immunity. */
 			{ name: 'Ring of Fire Resistance', source: 'XDMG', requiresAttunement: true, resist: ['fire'] },
 			{ name: 'Acid Absorbing Tattoo', source: 'XDMG', resist: ['acid'] },
@@ -1276,6 +1278,111 @@ describe('CharacterSheet', () => {
 
 			expect(section(container).querySelector('p details')).toBeNull()
 			expect(section(container).querySelector('.sheet__damage-response-summary details')).toBeTruthy()
+		})
+	})
+
+	describe('flat bonuses from worn magic items (step 7 slice h)', () => {
+		function acSection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__armour-class') as HTMLElement
+		}
+
+		function saveNamed(container: HTMLElement, ability: string): HTMLElement {
+			const row = Array.from(container.querySelectorAll('.sheet__saving-throws li')).find((li) => li.textContent?.includes(`${ability}:`))
+			if (!row) throw new Error(`no saving throw row for ${ability}`)
+			return row as HTMLElement
+		}
+
+		async function renderSheet(subject: Character) {
+			const rendered = render(<CharacterSheet character={subject} />)
+			await screen.findByRole('heading', { name: subject.name })
+			await waitFor(() => expect(acSection(rendered.container).querySelector('.sheet__armour-class-value')).toBeTruthy())
+			return rendered
+		}
+
+		afterEach(() => {
+			vi.mocked(loadSpellcastingAbilityClassData).mockReset().mockResolvedValue([])
+		})
+
+		it('an attuned Cloak of Protection reaches Armour Class AND every saving throw, each as its own line', async () => {
+			const owner: Character = { ...character, id: 'fb-cloak', inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }] }
+			const { container } = await renderSheet(owner)
+
+			// Unarmoured 10 + Dex 2, plus the cloak.
+			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('13')
+			expect(acSection(container).textContent).toContain('Cloak of Protection')
+			// DEX save: +2 modifier, no proficiency, plus the cloak.
+			expect(saveNamed(container, 'Dexterity').textContent).toContain('+3')
+			expect(saveNamed(container, 'Dexterity').textContent).toContain('Cloak of Protection')
+		})
+
+		it('the same cloak carried unattuned reaches neither, and both places say why (D76)', async () => {
+			const owner: Character = { ...character, id: 'fb-carried', inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 }] }
+			const { container } = await renderSheet(owner)
+
+			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
+			expect(acSection(container).textContent).toContain('considered (+1) — not applied: requires attunement and you are not attuned to it')
+			expect(saveNamed(container, 'Dexterity').textContent).toContain('+2')
+			expect(saveNamed(container, 'Dexterity').textContent).toContain('considered (+1) — not applied:')
+		})
+
+		it('two attuned bonus-carrying items each get their own breakdown line', async () => {
+			const owner: Character = {
+				...character,
+				id: 'fb-two',
+				inventory: [
+					{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true },
+					{ name: 'Ring of Protection', source: 'XDMG', quantity: 1, attuned: true },
+				],
+			}
+			const { container } = await renderSheet(owner)
+
+			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('14')
+			const dexSave = saveNamed(container, 'Dexterity')
+			expect(dexSave.textContent).toContain('+4')
+			expect(dexSave.textContent).toContain('Cloak of Protection')
+			expect(dexSave.textContent).toContain('Ring of Protection')
+		})
+
+		it('a spell attack bonus and a spell save DC bonus each reach their own value', async () => {
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue([{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }])
+			const wizard: Character = {
+				id: 'fb-wizard',
+				name: 'Elminster',
+				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 5 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 16, wisdom: 12, charisma: 10 },
+				},
+				inventory: [{ name: 'Wand of the War Mage, +1', source: 'XDMG', quantity: 1, attuned: true }],
+			}
+			const { container } = await renderSheet(wizard)
+
+			// INT +3, PB +3, wand +1. The wand carries bonusSpellAttack only, so the DC keeps 8 + 3 + 3.
+			const attackSection = container.querySelector('.sheet__spell-attacks')!
+			expect(attackSection.textContent).toContain('+7')
+			expect(attackSection.textContent).toContain('14')
+			expect(attackSection.textContent).toContain('Wand of the War Mage, +1')
+		})
+
+		it('an attuned Ioun Stone of Mastery is shown against the proficiency bonus but never changes it', async () => {
+			const owner: Character = { ...character, id: 'fb-ioun', inventory: [{ name: 'Ioun Stone, Mastery', source: 'XDMG', quantity: 1, attuned: true }] }
+			const { container } = await renderSheet(owner)
+
+			const section = container.querySelector('.sheet__proficiency-bonus')!
+			expect(section.textContent).toContain('+3')
+			expect(section.textContent).toContain('Ioun Stone, Mastery')
+			expect(section.textContent).toContain('would have to be re-routed')
+		})
+
+		it('an attuned row the item data does not know is named against the values it might have touched (D43)', async () => {
+			const owner: Character = { ...character, id: 'fb-missing', inventory: [{ name: 'Amulet of Nothing', source: 'HB', quantity: 1, attuned: true }] }
+			const { container } = await renderSheet(owner)
+
+			expect(acSection(container).textContent).toContain('Amulet of Nothing')
+			expect(acSection(container).textContent).toContain('attuned but not found in the item data (HB)')
+			expect(saveNamed(container, 'Wisdom').textContent).toContain('attuned but not found in the item data (HB)')
+			// The numbers still stand on everything that did resolve (D43).
+			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
 		})
 	})
 
