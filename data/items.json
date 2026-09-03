@@ -18360,6 +18360,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -18415,6 +18416,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -18849,6 +18851,7 @@
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
 		"hasFluffImages": true,
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -18867,6 +18870,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -18958,6 +18962,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -19002,6 +19007,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -19020,6 +19026,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -19064,6 +19071,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -19082,6 +19090,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{
@@ -19346,6 +19355,7 @@
 		"entries": [
 			"{#itemEntry Ring of Resistance|XDMG}"
 		],
+		"reqAttune": true,
 		"typeFull": "Ring"
 	},
 	{

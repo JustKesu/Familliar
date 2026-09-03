@@ -2218,6 +2218,25 @@ function getItemCodeUid(value) {
  */
 const NAMED_STARTING_EQUIPMENT_ITEMS = [{ name: "Spellbook", source: "PHB" }];
 
+/*
+ * D80, an application of D68: the 2024 book requires attunement for these ten
+ * rings and the XDMG data omits `reqAttune`, so extraction puts the flag back.
+ * A closed list — the other three items that lost the field really did lose it
+ * in the 2024 edition, and the "Ring of Resistance" itemGroup stays out by D34.
+ */
+const ATTUNEMENT_RESTORED_ITEMS = [
+	{ name: "Ring of Acid Resistance", source: "XDMG" },
+	{ name: "Ring of Cold Resistance", source: "XDMG" },
+	{ name: "Ring of Fire Resistance", source: "XDMG" },
+	{ name: "Ring of Force Resistance", source: "XDMG" },
+	{ name: "Ring of Lightning Resistance", source: "XDMG" },
+	{ name: "Ring of Necrotic Resistance", source: "XDMG" },
+	{ name: "Ring of Poison Resistance", source: "XDMG" },
+	{ name: "Ring of Psychic Resistance", source: "XDMG" },
+	{ name: "Ring of Radiant Resistance", source: "XDMG" },
+	{ name: "Ring of Thunder Resistance", source: "XDMG" },
+];
+
 function extractItems() {
 	console.log("\n--- ITEMS ---");
 
@@ -2258,6 +2277,12 @@ function extractItems() {
 	// Drop items superseded by a newer reprint we are also keeping (mostly
 	// XGE items reprinted in the 2024 XDMG).
 	kept = removeSuperseded(kept, "items", warnings);
+
+	for (const correction of ATTUNEMENT_RESTORED_ITEMS) {
+		const item = kept.find((entry) => entry.name === correction.name && entry.source === correction.source);
+		if (item) item.reqAttune = true;
+		else warnings.push(`[items] "${correction.name}|${correction.source}" needs its attunement restored (D80) but was not found in the source data`);
+	}
 
 	// --- resolve the codes ---------------------------------------------------
 	const legends = buildItemLegends(baseData);
@@ -2318,6 +2343,7 @@ function extractItems() {
 		console.log(`    named by a feature: ${item.name}|${item.source} ${present ? "kept" : "MISSING"}`);
 		if (!present) warnings.push(`[items] "${item.name}|${item.source}" is named by starting equipment but was not found in the source data`);
 	}
+	console.log(`    attunement restored (D80):  ${kept.filter((entry) => ATTUNEMENT_RESTORED_ITEMS.some((c) => c.name === entry.name && c.source === entry.source)).length} of ${ATTUNEMENT_RESTORED_ITEMS.length}`);
 
 	const counts = {
 		"type -> typeFull": kept.filter((i) => i.type !== undefined).length,

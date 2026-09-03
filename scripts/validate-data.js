@@ -208,6 +208,26 @@ const FIND_FAMILIAR_BEASTS = [
  */
 const NAMED_STARTING_EQUIPMENT_ITEMS = [{ name: "Spellbook", source: "PHB" }];
 
+/*
+ * The ten rings whose attunement the extraction restores (D80/D68) — the XDMG
+ * data omits it and the 2024 book requires it. Kept in step with
+ * ATTUNEMENT_RESTORED_ITEMS in scripts/extract-data.js. Without this check an
+ * extraction change could drop the correction and every ring would silently
+ * start granting its resistance unattuned.
+ */
+const ATTUNEMENT_RESTORED_ITEMS = [
+	{ name: "Ring of Acid Resistance", source: "XDMG" },
+	{ name: "Ring of Cold Resistance", source: "XDMG" },
+	{ name: "Ring of Fire Resistance", source: "XDMG" },
+	{ name: "Ring of Force Resistance", source: "XDMG" },
+	{ name: "Ring of Lightning Resistance", source: "XDMG" },
+	{ name: "Ring of Necrotic Resistance", source: "XDMG" },
+	{ name: "Ring of Poison Resistance", source: "XDMG" },
+	{ name: "Ring of Psychic Resistance", source: "XDMG" },
+	{ name: "Ring of Radiant Resistance", source: "XDMG" },
+	{ name: "Ring of Thunder Resistance", source: "XDMG" },
+];
+
 const PACT_OF_THE_CHAIN_FORMS = [
 	"Imp",
 	"Pseudodragon",
@@ -1106,6 +1126,17 @@ function validateItems() {
 		detail: "named by a class's or background's starting equipment but absent from items.json",
 	}));
 	recordCheck(`items: all ${NAMED_STARTING_EQUIPMENT_ITEMS.length} items named by starting equipment are present`, namedFailures);
+
+	// Each ring must be present AND carry the flag: an extraction that keeps the
+	// item but loses the correction is the failure this guards against (D80).
+	const attunementFailures = ATTUNEMENT_RESTORED_ITEMS.map((item) => {
+		const entry = entries.find((candidate) => candidate.name === item.name && candidate.source === item.source);
+		const label = `"${item.name}|${item.source}"`;
+		if (!entry) return { label, detail: "absent from items.json" };
+		if (entry.reqAttune !== true) return { label, detail: `reqAttune is ${JSON.stringify(entry.reqAttune)}, expected true (D80)` };
+		return null;
+	}).filter(Boolean);
+	recordCheck(`items: all ${ATTUNEMENT_RESTORED_ITEMS.length} rings with restored attunement carry reqAttune`, attunementFailures);
 
 	// Every item needs a name and a source. Items deliberately do NOT need an
 	// `entries` array — plenty of mundane gear has no descriptive text.

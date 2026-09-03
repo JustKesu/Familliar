@@ -92,6 +92,23 @@ category picker rather than by extraction.
 the data. validate-data.js asserts each named item is present (and exempts it
 from the source allowlist, the only exemption there).
 
+### One field the extraction writes rather than reads
+
+`ATTUNEMENT_RESTORED_ITEMS` sets `reqAttune: true` on the ten elemental Rings of
+Resistance (`Ring of Acid/Cold/Fire/Force/Lightning/Necrotic/Poison/Psychic/
+Radiant/Thunder Resistance`, all XDMG). The 2024 book requires attunement for
+them and the source data omits the field; D80 applies D68 (rules over data) in
+the extraction because there is no field to ignore, only a missing one to add.
+It runs after the source filter and the superseded-reprint pass, and warns if a
+named ring is not found. This is the ONLY place extraction changes a value
+rather than selecting, resolving or dropping one.
+
+Closed list. The three other items that lost `reqAttune` between the 2014 and
+2024 data (`Eyes of the Eagle`, `Instrument of Illusions`, `Instrument of
+Scribing`) really did lose it in the 2024 edition, and the `Ring of Resistance`
+itemGroup stays out by D34. validate-data.js asserts all ten are present and
+carry the flag.
+
 ## Output files
 
 Counts as of the `reprintedAs` deduplication + languages addition (before ->
