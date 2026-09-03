@@ -198,3 +198,35 @@ na kterou jsme nespoléhali schválně.
 
 Nalezeno při porovnání předmětů edic 2014 a 2024 (Cowork, průzkum).
 STATUS: nerozhodnuto, nespěchá.
+
+### Kouzla z rasy nikam nevedou
+
+V `src/spells/` je modul pro kouzla ze třídy, z podtřídy, z featu i z optional
+feature. **Pro rasu žádný není.** Dvacet devět ras nese v `additionalSpells`
+kouzla a na sheet nedoručí nic — ani je nezobrazí, ani neřekne, že něco chybí.
+
+Prakticky: Elf přichází o cantrip z linie a o kouzla na 3. a 5. úrovni, stejně
+tak Tiefling; Gnome o cantripy a o Speak with Animals u Forest Gnoma.
+
+Není to únik ani spolknutá volba, je to chybějící cesta — na rozdíl od
+odolností a velikosti, které nevyřešenou volbu hlásí nahlas. Chce to vlastní
+slici, postavenou podle vzoru těch čtyř modulů, které už existují.
+
+Nalezeno při průzkumu kódu wizardu (Cowork, 3. 9.), potvrzeno v reportu ze
+slice na rasové volby.
+STATUS: rozhodnuto že se udělá, čeká na zadání.
+
+### Tlačítko Delete v dočasném seznamu postav jde přes `confirm()`
+
+`confirm()` je vyskakovací okno prohlížeče „opravdu to chceš smazat?". Když
+appku ovládá skript místo člověka — což dělá každý úkol, který si ověřuje
+změny v prohlížeči — prohlížeč takové okno sám zavře jako by se kliklo na Ne.
+Smazání se tedy nikdy neprovede.
+
+Důsledek: každý úkol, který si vyrobí testovací postavu, ji musí uklízet
+zápisem přímo do úložiště prohlížeče, ne tlačítkem. Stalo se to už čtyřikrát.
+
+Až se ten dočasný seznam postav bude nahrazovat pořádným, potvrzení má být
+prvek uvnitř appky, ne `confirm()`.
+
+STATUS: nerozhodnuto, spolu s náhradou dočasného seznamu.

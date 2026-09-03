@@ -79,11 +79,9 @@
       "Bash(rmdir *)",
       "Bash(git reset *)",
       "Bash(git checkout *)",
-      "Bash(git clean *)",
       "PowerShell(Remove-Item *)",
       "PowerShell(git reset *)",
-      "PowerShell(git checkout *)",
-      "PowerShell(git clean *)"
+      "PowerShell(git checkout *)"
     ],
     "deny": [
       "Read(**/.env)",
