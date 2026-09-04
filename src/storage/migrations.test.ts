@@ -128,6 +128,21 @@ describe('the migration chain (D69)', () => {
 		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 	})
 
+	it('carries a version-25 held weapon forward in one hand', () => {
+		const before = {
+			schemaVersion: 25,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' }],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// An absent grip is one-handed, which is the die (dmg1) such a row was already being given.
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

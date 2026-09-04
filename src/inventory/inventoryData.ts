@@ -15,7 +15,15 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
-import type { CharacterInventoryItem, CustomArmourCategory, CustomItemDefinition, CustomItemKind, CustomWeaponCategory, CustomWeaponRange } from '../storage/character'
+import type {
+	CharacterInventoryItem,
+	CustomArmourCategory,
+	CustomItemDefinition,
+	CustomItemKind,
+	CustomWeaponCategory,
+	CustomWeaponRange,
+	WeaponGrip,
+} from '../storage/character'
 
 export interface ItemRef {
 	name: string
@@ -238,20 +246,36 @@ export function equipSlotOf(ref: ItemRef): 'worn' | 'held' | null {
 	return null
 }
 
+/** propertyFull's own spelling for the two properties that decide hand occupancy; nothing in the data carries both (this slice's survey). */
+const TWO_HANDED_PROPERTY = 'Two-Handed'
+const VERSATILE_PROPERTY = 'Versatile'
+
+function hasWeaponProperty(ref: ItemRef, property: string): boolean {
+	return (ref.propertyFull ?? []).includes(property)
+}
+
+/** A weapon that can be held in one hand or two, for a bigger damage die (`dmg2`). 42 of the 95 weapons. */
+export function isVersatileWeapon(ref: ItemRef): boolean {
+	return isWeapon(ref) && hasWeaponProperty(ref, VERSATILE_PROPERTY)
+}
+
 /**
- * Which SINGLE-occupancy slot the item claims when equipped — a body wears one
- * suit and holds one shield, but may hold two weapons. Null when it claims
- * none.
+ * How many of the two hands this item occupies while held, or null when it is
+ * not held-slot gear at all. PHB 2024's weapon properties, in the only place
+ * the app needs them as a number: a shield or an ordinary weapon takes one
+ * hand, a Two-Handed weapon takes both, and a Versatile weapon takes whichever
+ * the player chose.
  *
- * Custom items are why this exists as its own function: a custom suit of
- * armour has no armour category (that is slice e2b's), so the displacement rule
- * cannot be written in terms of armourCategoryOf without letting a player wear
- * two suits at once — which storage then refuses to load.
+ * A CUSTOM weapon carries no properties, so it takes one hand — the definition
+ * has no field to say otherwise, and one hand is the state a player can reach
+ * by simply holding it.
  */
-export function exclusiveSlotOf(ref: ItemRef): 'armour' | 'shield' | null {
-	if (equipSlotOf(ref) === 'worn') return 'armour'
-	if (isShield(ref) || ref.customKind === 'shield') return 'shield'
-	return null
+export function handsRequiredOf(ref: ItemRef, grip: WeaponGrip | undefined): number | null {
+	if (equipSlotOf(ref) !== 'held') return null
+	if (isShield(ref)) return 1
+	if (hasWeaponProperty(ref, TWO_HANDED_PROPERTY)) return 2
+	if (isVersatileWeapon(ref) && grip === 'two-handed') return 2
+	return 1
 }
 
 /** Stable key for an item reference — also the SearchableOptionList option key. */
@@ -291,11 +315,11 @@ export function wornAcBonusOf(ref: ItemRef): number | null {
  * Longsword stay two rows and neither of them silently loses its state.
  *
  * The set is every field the row carries beyond its identity and count:
- * `magicBonus` (slice e), `equipped` (b), `attackAbility` (c), `attuned` (d)
- * and the whole custom definition (e2a). Merging on identity alone would drop
- * five of them — and two custom items are BOTH named by the same (name,
- * "Custom") pair, so without the definition itself in the key a scarf and a
- * magic scarf of the same name would collapse into one row.
+ * `magicBonus` (slice e), `equipped` (b), `grip` (b-fix), `attackAbility` (c),
+ * `attuned` (d) and the whole custom definition (e2a). Merging on identity
+ * alone would drop six of them — and two custom items are BOTH named by the
+ * same (name, "Custom") pair, so without the definition itself in the key a
+ * scarf and a magic scarf of the same name would collapse into one row.
  */
 export function inventoryRowKey(item: CharacterInventoryItem): string {
 	return [
@@ -303,6 +327,7 @@ export function inventoryRowKey(item: CharacterInventoryItem): string {
 		item.source,
 		item.magicBonus ?? '',
 		item.equipped ?? '',
+		item.grip ?? '',
 		item.attackAbility ?? '',
 		item.attuned ? 'attuned' : '',
 		customDefinitionKey(item.custom),

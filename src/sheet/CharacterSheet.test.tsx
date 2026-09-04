@@ -138,6 +138,40 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 				masteryFull: ['Vex'],
 			},
 			{ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 },
+			/* Slice b-fix: two two-handed weapons and a one-handed one, so the hands rule has something to displace. */
+			{
+				name: 'Greatsword',
+				source: 'XPHB',
+				typeCode: 'M',
+				weapon: true,
+				weaponCategory: 'martial',
+				dmg1: '2d6',
+				dmgTypeFull: 'slashing',
+				propertyFull: ['Heavy', 'Two-Handed'],
+				masteryFull: ['Graze'],
+			},
+			{
+				name: 'Greataxe',
+				source: 'XPHB',
+				typeCode: 'M',
+				weapon: true,
+				weaponCategory: 'martial',
+				dmg1: '1d12',
+				dmgTypeFull: 'slashing',
+				propertyFull: ['Heavy', 'Two-Handed'],
+				masteryFull: ['Cleave'],
+			},
+			{
+				name: 'Shortsword',
+				source: 'XPHB',
+				typeCode: 'M',
+				weapon: true,
+				weaponCategory: 'martial',
+				dmg1: '1d6',
+				dmgTypeFull: 'piercing',
+				propertyFull: ['Finesse', 'Light'],
+				masteryFull: ['Vex'],
+			},
 			/* Slice g: plain description text, no markup in it at all. */
 			{ name: 'Torch', source: 'XPHB', entries: ['A torch sheds bright light in a 20-foot radius while it burns.'] },
 			/* Slice e. Two carry a bonus of their own without attunement, one carries a bonus behind attunement. */
@@ -677,7 +711,7 @@ describe('CharacterSheet', () => {
 				{ name: 'Chain Mail', source: 'XPHB', quantity: 1 },
 				{ name: 'Leather Armor', source: 'XPHB', quantity: 1, equipped: 'worn' },
 			])
-			expect(container.querySelector('.sheet__equip-notice')!.textContent).toBe(
+			expect(container.querySelector('.sheet__inventory-notice')!.textContent).toBe(
 				'Unequipped Chain Mail — only one suit of armour can be worn at a time.',
 			)
 		})
@@ -742,6 +776,122 @@ describe('CharacterSheet', () => {
 	})
 
 	/*
+	 * Hands (build order step 7, slice b-fix). Slice b let a character hold a
+	 * greatsword and a greataxe at once and left a shield on under a two-handed
+	 * weapon; the fix is the two hands the rules actually give, so these are the
+	 * cases a count of weapons would get wrong.
+	 */
+	describe('hands and grip (step 7 slice b-fix)', () => {
+		function inventorySection(container: HTMLElement): HTMLElement {
+			return container.querySelector('.sheet__inventory') as HTMLElement
+		}
+
+		function notice(container: HTMLElement): string {
+			return inventorySection(container).querySelector('.sheet__inventory-notice')?.textContent ?? ''
+		}
+
+		function attackDamage(container: HTMLElement, name: string): string {
+			const row = Array.from(container.querySelectorAll('.sheet__attacks li')).find((li) => li.querySelector('.sheet__attack-name')?.textContent === name)
+			if (!row) throw new Error(`no attack row for ${name}`)
+			return row.querySelector('.sheet__attack-damage')!.textContent ?? ''
+		}
+
+		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
+			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await waitFor(() => expect(rendered.container.querySelector('.sheet__attack-list')).toBeTruthy())
+			return rendered
+		}
+
+		const owning = (id: string, ...inventory: NonNullable<Character['inventory']>): Character => ({ ...character, id, inventory })
+		const row = (name: string, equipped?: 'held'): NonNullable<Character['inventory']>[number] => ({
+			name,
+			source: 'XPHB',
+			quantity: 1,
+			...(equipped ? { equipped } : {}),
+		})
+
+		it('lets two one-handed weapons be held at once — dual wielding stays legal', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const { container } = await renderSheet(owning('hands-dual', row('Shortsword', 'held'), row('Rapier')), onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Equip Rapier' }))
+			expect(onEditInventory).toHaveBeenCalledWith([row('Shortsword', 'held'), row('Rapier', 'held')])
+			expect(notice(container)).toBe('')
+		})
+
+		it('a two-handed weapon puts the shield down, and says so', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const { container } = await renderSheet(owning('hands-greatsword', row('Shield', 'held'), row('Greatsword')), onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Equip Greatsword' }))
+			expect(onEditInventory).toHaveBeenCalledWith([row('Shield'), row('Greatsword', 'held')])
+			expect(notice(container)).toBe('Unequipped Shield — Greatsword needs both hands.')
+		})
+
+		it('a shield puts a held two-handed weapon down, and says so', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const { container } = await renderSheet(owning('hands-shield', row('Greatsword', 'held'), row('Shield')), onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Equip Shield' }))
+			expect(onEditInventory).toHaveBeenCalledWith([row('Greatsword'), row('Shield', 'held')])
+			expect(notice(container)).toBe('Unequipped Greatsword — Shield needs a free hand.')
+		})
+
+		it('a two-handed weapon displaces another two-handed weapon', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const { container } = await renderSheet(owning('hands-both', row('Greatsword', 'held'), row('Greataxe')), onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Equip Greataxe' }))
+			expect(onEditInventory).toHaveBeenCalledWith([row('Greatsword'), row('Greataxe', 'held')])
+			expect(notice(container)).toBe('Unequipped Greatsword — Greataxe needs both hands.')
+		})
+
+		it("a Versatile weapon's damage follows its grip, and the stored grip survives a reload", async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const { container } = await renderSheet(owning('hands-grip', row('Longsword', 'held')), onEditInventory)
+			// STR 15 (+2).
+			expect(attackDamage(container, 'Longsword')).toBe('1d8 + 2 slashing')
+
+			await user.selectOptions(screen.getByLabelText('Grip for Longsword'), 'two-handed')
+			expect(onEditInventory).toHaveBeenCalledWith([{ ...row('Longsword', 'held'), grip: 'two-handed' }])
+
+			// The reload: the same sheet rendered from what was stored reads the bigger die.
+			cleanup()
+			const stored = await renderSheet(owning('hands-grip-2', { ...row('Longsword', 'held'), grip: 'two-handed' }), vi.fn())
+			expect(attackDamage(stored.container, 'Longsword')).toBe('1d10 + 2 slashing')
+			expect((screen.getByLabelText('Grip for Longsword') as HTMLSelectElement).value).toBe('two-handed')
+		})
+
+		it('two-handing a Versatile weapon puts a held shield down, since the second hand is a real hand', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const { container } = await renderSheet(owning('hands-grip-shield', row('Shield', 'held'), row('Longsword', 'held')), onEditInventory)
+
+			await user.selectOptions(screen.getByLabelText('Grip for Longsword'), 'two-handed')
+			expect(onEditInventory).toHaveBeenCalledWith([row('Shield'), { ...row('Longsword', 'held'), grip: 'two-handed' }])
+			expect(notice(container)).toBe('Unequipped Shield — Longsword needs both hands.')
+		})
+
+		it('offers the grip control only on a Versatile weapon, and only while it is held', async () => {
+			await renderSheet(owning('hands-grip-absent', row('Longsword', 'held'), row('Rapier', 'held'), row('Shield', 'held')), vi.fn())
+			expect(screen.getByLabelText('Grip for Longsword')).toBeTruthy()
+			// Rapier is Finesse, not Versatile; a shield has no grip to choose at all.
+			expect(screen.queryByLabelText('Grip for Rapier')).toBeNull()
+			expect(screen.queryByLabelText('Grip for Shield')).toBeNull()
+
+			cleanup()
+			await renderSheet(owning('hands-grip-carried', row('Longsword')), vi.fn())
+			expect(screen.queryByLabelText('Grip for Longsword')).toBeNull()
+		})
+	})
+
+	/*
 	 * Weapon attacks (build order step 7, slice c). Same end-to-end reason as
 	 * the two blocks above: an attack line is the product of the stored
 	 * equipped flag, the item data, the proficiency grants and the player's
@@ -768,13 +918,13 @@ describe('CharacterSheet', () => {
 
 		const holding = (...names: string[]): Character['inventory'] => names.map((name) => ({ name, source: 'XPHB', quantity: 1, equipped: 'held' as const }))
 
-		it('lists a held longsword with its to-hit, both damage figures, mastery and properties', async () => {
+		it('lists a held longsword with its to-hit, its one-handed damage, mastery and properties', async () => {
 			const { container } = await renderSheet({ ...character, id: 'atk-longsword', inventory: holding('Longsword') })
 			const row = attackRow(container, 'Longsword')
 			// STR 15 (+2) + PB 3 at level 5.
 			expect(row.textContent).toContain('+5')
 			expect(row.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 2 slashing')
-			expect(row.querySelector('.sheet__attack-versatile')!.textContent).toBe(' (two-handed 1d10 + 2 slashing)')
+			expect(row.querySelector('.sheet__attack-versatile')!.textContent).toContain('held in one hand')
 			expect(row.textContent).toContain('Mastery: Sap')
 			expect(row.textContent).toContain('Properties: Versatile')
 		})
@@ -924,9 +1074,10 @@ describe('CharacterSheet', () => {
 
 			await user.click(screen.getByRole('button', { name: 'Attune to Wand of the War Mage, +1' }))
 			expect(onEditInventory).not.toHaveBeenCalled()
-			expect(inventorySection(container).querySelector('.sheet__attune-notice')!.textContent).toBe(
-				'Cannot attune to Wand of the War Mage, +1: you can be attuned to at most 3 magic items at once, and 3 already are.',
-			)
+			// Slice b-fix: the refusal now uses the SAME notice the equip displacement does, and is announced (role="status") rather than only drawn.
+			const refusal = inventorySection(container).querySelector('.sheet__inventory-notice')!
+			expect(refusal.getAttribute('role')).toBe('status')
+			expect(refusal.textContent).toBe('Cannot attune to Wand of the War Mage, +1: you can be attuned to at most 3 magic items at once, and 3 already are.')
 		})
 
 		it('an Artificer 10 is allowed a fourth, and refused a fifth', async () => {
@@ -969,7 +1120,7 @@ describe('CharacterSheet', () => {
 			expect(inventorySection(second).querySelector('.sheet__attunement-count')!.textContent).toContain('4 of 4 attuned')
 
 			await user.click(screen.getByRole('button', { name: 'Attune to Ring of Spell Storing' }))
-			expect(inventorySection(second).querySelector('.sheet__attune-notice')!.textContent).toContain('at most 4 magic items at once')
+			expect(inventorySection(second).querySelector('.sheet__inventory-notice')!.textContent).toContain('at most 4 magic items at once')
 		})
 
 		it('keeps the control on an attuned row whose item data is missing, so the attunement can be ended (D43)', async () => {
@@ -1706,7 +1857,7 @@ describe('CharacterSheet', () => {
 				{ name: 'Chain Mail', source: 'XPHB', quantity: 1 },
 				{ name: 'Bark Plate', source: CUSTOM_ITEM_SOURCE, quantity: 1, equipped: 'worn', custom: { name: 'Bark Plate', kind: 'armour' } },
 			])
-			expect(container.querySelector('.sheet__equip-notice')!.textContent).toContain('Unequipped Chain Mail')
+			expect(container.querySelector('.sheet__inventory-notice')!.textContent).toContain('Unequipped Chain Mail')
 		})
 
 		it('keeps two custom items that differ in one field on separate rows', async () => {

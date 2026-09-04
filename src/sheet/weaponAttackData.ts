@@ -62,6 +62,8 @@ export function buildHeldWeapons(inventory: CharacterInventoryItem[], itemRefs: 
 			source: item.source,
 			weapon: ref ? toResolvedWeapon(ref) : null,
 			chosenAbility: item.attackAbility ?? null,
+			/* An absent grip is one-handed — the default the rules give, so nothing stored before slice b-fix changes die. */
+			grip: item.grip ?? 'one-handed',
 			/* Slice e. An unresolved row keeps whatever the player set on it (D43); nothing else about it can be known. */
 			magicBonus: resolveMagicBonus({
 				name: item.name,

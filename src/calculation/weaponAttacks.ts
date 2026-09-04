@@ -28,7 +28,7 @@
 
 import type { Ability } from '../abilities/abilityScores'
 import { TOTAL_ATTACKS_BY_FEATURE_NAME, totalAttacksAmong } from '../attacks/extraAttackData'
-import type { Character } from '../storage/character'
+import type { Character, WeaponGrip } from '../storage/character'
 import { isProficientWithWeapon, type WeaponProficiencyGrant } from '../weapons/weaponProficiency'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
@@ -65,6 +65,8 @@ export interface HeldWeapon {
 	weapon: ResolvedWeapon | null
 	/** The player's stored Strength/Dexterity pick for a Finesse weapon; null means the default (the higher of the two). */
 	chosenAbility: Ability | null
+	/** How the weapon is being held (slice b-fix). Only a Versatile weapon does anything with it; the caller defaults an absent grip to one-handed. */
+	grip: WeaponGrip
 	/** The magic bonus, already reconciled against the item's own and against attunement by the caller (slice e). */
 	magicBonus: MagicBonus
 }
@@ -76,8 +78,8 @@ export interface AttackDamage {
 	damageType: string
 	/** Ready to print: "1d8 + 3 slashing". */
 	text: string
-	/** Versatile — the same weapon used in two hands. Null when the weapon has no Versatile property. */
-	twoHandedText: string | null
+	/** The grip the dice above came from, or null when the weapon is not Versatile and has no grip to choose. */
+	grip: WeaponGrip | null
 	breakdown: Contribution[]
 }
 
@@ -212,18 +214,29 @@ function toHitFor(
 	)
 }
 
-function damageFor(weapon: ResolvedWeapon, using: Ability, modifiers: Record<Ability, number>, abilityReason: string | null, magicBonus: MagicBonus): AttackDamage {
-	const dice = weapon.dmg1 ?? null
+function damageFor(
+	weapon: ResolvedWeapon,
+	using: Ability,
+	modifiers: Record<Ability, number>,
+	abilityReason: string | null,
+	magicBonus: MagicBonus,
+	grip: WeaponGrip,
+): AttackDamage {
+	/*
+	 * PHB 2024, "Versatile": the weapon's damage die follows the hand it is held
+	 * in — dmg1 in one, dmg2 in two. A weapon without the property has one die
+	 * whatever the row happens to store.
+	 */
+	const versatile = hasProperty(weapon, VERSATILE)
+	const dice = (versatile && grip === 'two-handed' ? weapon.dmg2 : undefined) ?? weapon.dmg1 ?? null
 	const modifier = modifiers[using] + magicBonus.applied
 	const damageType = weapon.dmgTypeFull ?? ''
 	const breakdown: Contribution[] = [{ source: `${weapon.name} damage dice`, amount: 0, note: dice ?? '1' }]
 	breakdown.push({ source: abilityLabel(using, abilityReason ?? undefined), amount: modifiers[using] })
 	breakdown.push(...magicBonus.contributions)
 	// SPEC section B: damage takes the ability modifier and no proficiency bonus.
-	const versatileDice = hasProperty(weapon, VERSATILE) ? (weapon.dmg2 ?? null) : null
-	const twoHanded = versatileDice === null ? null : damageText(versatileDice, modifier, damageType)
-	if (versatileDice !== null) breakdown.push({ source: 'two-handed (Versatile)', amount: 0, note: versatileDice })
-	return { dice, modifier, damageType, text: damageText(dice, modifier, damageType), twoHandedText: twoHanded, breakdown }
+	if (versatile) breakdown.push({ source: 'Versatile', amount: 0, note: grip === 'two-handed' ? 'held in two hands' : 'held in one hand' })
+	return { dice, modifier, damageType, text: damageText(dice, modifier, damageType), grip: versatile ? grip : null, breakdown }
 }
 
 /**
@@ -276,7 +289,7 @@ export function computeWeaponAttacks(
 		 * than printing the "1" damageText would fall back to.
 		 */
 		const noDice = weapon.dmg1 === undefined ? `${row.magicBonus.label} has no damage dice set, so its damage cannot be worked out.` : null
-		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus)
+		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip)
 		return {
 			key,
 			name: row.magicBonus.label,
@@ -327,7 +340,7 @@ function unarmedStrike(modifiers: Record<Ability, number>, proficiencyBonus: Cal
 		modifier: modifiers[using],
 		damageType: 'bludgeoning',
 		text: damageText(martialArtsDie, modifiers[using], 'bludgeoning'),
-		twoHandedText: null,
+		grip: null,
 		breakdown: damageBreakdown,
 	}
 	return {

@@ -255,6 +255,15 @@ export type EquippedSlot = 'worn' | 'held'
 export type WeaponAttackAbility = 'strength' | 'dexterity'
 
 /**
+ * How a Versatile weapon is being held (build order step 7, slice b-fix).
+ * Absent means one-handed, the default the rules give — so the field only
+ * reaches storage once the player has two-handed the weapon deliberately.
+ * The grip decides both the hand it occupies and the damage die (`dmg1` one-
+ * handed, `dmg2` two-handed), which is why it is one field and not two.
+ */
+export type WeaponGrip = 'one-handed' | 'two-handed'
+
+/**
  * One line of the inventory: which item (name + source, enough to look the
  * full entry back up in items.json) and how many are carried. `quantity` has
  * a floor of 1 — removing an item is its own action, never "set quantity to 0".
@@ -266,11 +275,18 @@ export interface CharacterInventoryItem {
 	/**
 	 * Set only while the item is in use (slice b). Equipping is a play-time
 	 * action taken on the sheet; nothing in the wizard sets this. At most one
-	 * suit of armour and one shield carry it at a time — the sheet enforces
-	 * that when equipping, since the rule is about what a body can wear, not
-	 * about what storage can hold.
+	 * suit of armour is worn, and what is held has to fit in two hands — the
+	 * sheet enforces both when equipping, since they are rules about what a body
+	 * can carry, not about what storage can hold.
 	 */
 	equipped?: EquippedSlot
+	/**
+	 * Set only once the player has two-handed a Versatile weapon (slice b-fix).
+	 * On the row for the same reason `attackAbility` is: a grip cannot outlive
+	 * the weapon it is a grip on. Absent is one-handed, so no existing row has
+	 * to be backfilled.
+	 */
+	grip?: WeaponGrip
 	/**
 	 * Set only once the player has overridden a Finesse weapon's default
 	 * ability (slice c). It lives on the inventory row rather than in a list of
@@ -598,13 +614,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 25 for CustomItemDefinition's two armour
- * penalties — the Stealth disadvantage and the minimum Strength (build order
- * step 7, slice e2c).
+ * (see wireFormat.ts). Bumped to 26 for CharacterInventoryItem.grip — how a
+ * Versatile weapon is held (build order step 7, slice b-fix).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 25
+export const CURRENT_SCHEMA_VERSION = 26

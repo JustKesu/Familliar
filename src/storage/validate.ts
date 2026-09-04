@@ -22,6 +22,7 @@ import type {
 	MagicInitiateChoice,
 	MagicItemBonus,
 	WeaponAttackAbility,
+	WeaponGrip,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import { canMigrateToCurrent } from './migrations'
@@ -602,8 +603,11 @@ function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar 
  *
  * Slice b's `equipped` flag is checked for shape, and "at most one suit of
  * armour" is checked because 'worn' means armour and nothing else. The
- * matching "at most one shield" rule is NOT checkable here: 'held' covers
- * shields and weapons alike, and telling them apart needs items.json.
+ * matching two-hands rule is NOT checkable here: 'held' covers shields and
+ * weapons alike, and how many hands each takes needs items.json.
+ *
+ * Slice b-fix's `grip` is shape only for the same reason — whether the row is a
+ * Versatile weapon at all is an items.json question.
  *
  * Slice c's `attackAbility` is likewise checked for shape only — whether the
  * row is a Finesse weapon at all is again an items.json question.
@@ -639,6 +643,10 @@ export function describeInventoryError(value: unknown): string | null {
 		const equipped = entry['equipped']
 		if (equipped !== undefined && equipped !== 'worn' && equipped !== 'held') {
 			return `inventory[${i}].equipped must be "worn" or "held" when present`
+		}
+		const grip = entry['grip']
+		if (grip !== undefined && grip !== 'one-handed' && grip !== 'two-handed') {
+			return `inventory[${i}].grip must be "one-handed" or "two-handed" when present`
 		}
 		const attackAbility = entry['attackAbility']
 		if (attackAbility !== undefined && attackAbility !== 'strength' && attackAbility !== 'dexterity') {
@@ -681,6 +689,7 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
 		const equipped = record['equipped']
+		const grip = record['grip']
 		const attackAbility = record['attackAbility']
 		const magicBonus = record['magicBonus']
 		const custom = record['custom']
@@ -689,6 +698,7 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 			source: record['source'] as string,
 			quantity: record['quantity'] as number,
 			...(equipped !== undefined ? { equipped: equipped as EquippedSlot } : {}),
+			...(grip !== undefined ? { grip: grip as WeaponGrip } : {}),
 			...(attackAbility !== undefined ? { attackAbility: attackAbility as WeaponAttackAbility } : {}),
 			...(record['attuned'] === true ? { attuned: true as const } : {}),
 			...(magicBonus !== undefined ? { magicBonus: magicBonus as MagicItemBonus } : {}),

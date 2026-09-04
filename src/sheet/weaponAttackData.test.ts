@@ -41,9 +41,18 @@ describe('buildHeldWeapons', () => {
 				source: 'HOMEBREW',
 				weapon: null,
 				chosenAbility: null,
+				grip: 'one-handed',
 				magicBonus: noMagicBonus('Sword of Nothing'),
 			},
 		])
+	})
+
+	/* Slice b-fix: the grip is a stored fact about the row, and an absent one is the one-handed default. */
+	it('carries the stored grip through, defaulting an absent one to one-handed', () => {
+		const [oneHanded] = buildHeldWeapons([{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' }], itemRefs)
+		expect(oneHanded.grip).toBe('one-handed')
+		const [twoHanded] = buildHeldWeapons([{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held', grip: 'two-handed' }], itemRefs)
+		expect(twoHanded.grip).toBe('two-handed')
 	})
 
 	/* Slice e: two rows of the same weapon are two attack lines, so the key has to come off the ROW. */

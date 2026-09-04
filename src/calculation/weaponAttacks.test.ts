@@ -104,8 +104,13 @@ const martialGrants: WeaponProficiencyGrant[] = [
 	{ kind: 'category', category: 'martial' },
 ]
 
-function held(weapon: ResolvedWeapon, chosenAbility: HeldWeapon['chosenAbility'] = null, magicBonus: MagicBonus = noMagicBonus(weapon.name)): HeldWeapon {
-	return { key: `${weapon.name}|${weapon.source}`, name: weapon.name, source: weapon.source, weapon, chosenAbility, magicBonus }
+function held(
+	weapon: ResolvedWeapon,
+	chosenAbility: HeldWeapon['chosenAbility'] = null,
+	magicBonus: MagicBonus = noMagicBonus(weapon.name),
+	grip: HeldWeapon['grip'] = 'one-handed',
+): HeldWeapon {
+	return { key: `${weapon.name}|${weapon.source}`, name: weapon.name, source: weapon.source, weapon, chosenAbility, magicBonus, grip }
 }
 
 function attackNamed(attacks: WeaponAttack[], name: string): WeaponAttack {
@@ -224,15 +229,33 @@ describe('computeWeaponAttacks — finesse', () => {
 })
 
 describe('computeWeaponAttacks — weapon properties', () => {
-	it('shows a versatile weapon’s two-handed damage as a second figure', () => {
-		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(longsword)], martialGrants), 'Longsword')
-		expect(damageTextOf(attack)).toBe('1d8 + 3 slashing')
-		expect(attack.damage.status === 'known' && attack.damage.value.twoHandedText).toBe('1d10 + 3 slashing')
-		expect(attack.damage.status === 'known' && attack.damage.breakdown).toEqual([
+	/* Slice b-fix: the die follows the grip, rather than both being printed and neither being the weapon's damage. */
+	it('a versatile weapon rolls dmg1 in one hand and dmg2 in two, and says which', () => {
+		const oneHanded = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(longsword)], martialGrants), 'Longsword')
+		expect(damageTextOf(oneHanded)).toBe('1d8 + 3 slashing')
+		expect(oneHanded.damage.status === 'known' && oneHanded.damage.value.grip).toBe('one-handed')
+		expect(oneHanded.damage.status === 'known' && oneHanded.damage.breakdown).toEqual([
 			{ source: 'Longsword damage dice', amount: 0, note: '1d8' },
 			{ source: 'strength modifier', amount: 3 },
-			{ source: 'two-handed (Versatile)', amount: 0, note: '1d10' },
+			{ source: 'Versatile', amount: 0, note: 'held in one hand' },
 		])
+
+		const twoHanded = attackNamed(
+			computeWeaponAttacks(character('Fighter', 1), [held(longsword, null, noMagicBonus('Longsword'), 'two-handed')], martialGrants),
+			'Longsword',
+		)
+		expect(damageTextOf(twoHanded)).toBe('1d10 + 3 slashing')
+		expect(twoHanded.damage.status === 'known' && twoHanded.damage.value.grip).toBe('two-handed')
+		expect(twoHanded.damage.status === 'known' && twoHanded.damage.breakdown).toContainEqual({ source: 'Versatile', amount: 0, note: 'held in two hands' })
+	})
+
+	it('a weapon without Versatile has no grip and ignores one stored on the row', () => {
+		const attack = attackNamed(
+			computeWeaponAttacks(character('Fighter', 1), [held(javelin, null, noMagicBonus('Javelin'), 'two-handed')], martialGrants),
+			'Javelin',
+		)
+		expect(attack.damage.status === 'known' && attack.damage.value.grip).toBeNull()
+		expect(damageTextOf(attack)).toBe('1d6 + 3 piercing')
 	})
 
 	it('shows a thrown weapon’s range as the data writes it, and a plain melee weapon none', () => {
@@ -348,7 +371,17 @@ describe('computeWeaponAttacks — missing data (D43)', () => {
 	it('names a held weapon the item data does not know instead of dropping it or crashing', () => {
 		const attacks = computeWeaponAttacks(
 			character('Fighter', 1),
-			[{ key: 'Sword of Nothing|HOMEBREW', name: 'Sword of Nothing', source: 'HOMEBREW', weapon: null, chosenAbility: null, magicBonus: noMagicBonus('Sword of Nothing') }],
+			[
+				{
+					key: 'Sword of Nothing|HOMEBREW',
+					name: 'Sword of Nothing',
+					source: 'HOMEBREW',
+					weapon: null,
+					chosenAbility: null,
+					grip: 'one-handed',
+					magicBonus: noMagicBonus('Sword of Nothing'),
+				},
+			],
 			martialGrants,
 		)
 		const attack = attacks[0]

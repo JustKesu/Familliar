@@ -127,6 +127,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 25 }),
 	},
+	{
+		from: 25,
+		to: 26,
+		/*
+		 * 26 adds CharacterInventoryItem.grip. A version-25 character has
+		 * two-handed nothing, and an absent grip already means one-handed — the
+		 * default the rules give and the damage die (`dmg1`) the sheet was already
+		 * printing first. Version tag only, same as the nine before it.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 26 }),
+	},
 ]
 
 /**

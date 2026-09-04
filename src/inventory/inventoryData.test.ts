@@ -6,11 +6,12 @@ import {
 	customItemRef,
 	describeCustomItemProblem,
 	equipSlotOf,
-	exclusiveSlotOf,
 	extractItemRefs,
+	handsRequiredOf,
 	inventoryRowKey,
 	isConsumable,
 	isShield,
+	isVersatileWeapon,
 	isWeapon,
 	itemKey,
 	itemMagicBonusOf,
@@ -292,12 +293,33 @@ describe('custom items', () => {
 		expect(equipSlotOf(ref('worn'))).toBeNull()
 		expect(equipSlotOf(ref('other'))).toBeNull()
 
-		expect(exclusiveSlotOf(ref('armour'))).toBe('armour')
-		expect(exclusiveSlotOf(ref('shield'))).toBe('shield')
-		// Two weapons can be held at once, so a weapon displaces nothing.
-		expect(exclusiveSlotOf(ref('weapon'))).toBeNull()
-		expect(exclusiveSlotOf({ name: 'Chain Mail', source: 'XPHB', typeCode: 'HA', armor: true })).toBe('armour')
-		expect(exclusiveSlotOf({ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 })).toBe('shield')
+		// A custom weapon declares no properties, so it takes one hand and nothing about it is two-handed.
+		expect(handsRequiredOf(ref('weapon'), undefined)).toBe(1)
+		expect(handsRequiredOf(ref('shield'), undefined)).toBe(1)
+		expect(handsRequiredOf(ref('armour'), undefined)).toBeNull()
+	})
+
+	/* Slice b-fix: two hands is the whole rule, so what each thing takes has to be a number. */
+	it('counts the hands each held thing takes', () => {
+		const shield: ItemRef = { name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 }
+		const greatsword: ItemRef = { name: 'Greatsword', source: 'XPHB', typeCode: 'M', weapon: true, propertyFull: ['Heavy', 'Two-Handed'] }
+		const shortsword: ItemRef = { name: 'Shortsword', source: 'XPHB', typeCode: 'M', weapon: true, propertyFull: ['Finesse', 'Light'] }
+		const longsword: ItemRef = { name: 'Longsword', source: 'XPHB', typeCode: 'M', weapon: true, propertyFull: ['Versatile'] }
+		const chainMail: ItemRef = { name: 'Chain Mail', source: 'XPHB', typeCode: 'HA', armor: true }
+
+		expect(handsRequiredOf(shield, undefined)).toBe(1)
+		expect(handsRequiredOf(greatsword, undefined)).toBe(2)
+		expect(handsRequiredOf(shortsword, undefined)).toBe(1)
+		expect(handsRequiredOf(longsword, undefined)).toBe(1)
+		expect(handsRequiredOf(longsword, 'two-handed')).toBe(2)
+		// A grip stored on a weapon that has no Versatile property changes nothing.
+		expect(handsRequiredOf(shortsword, 'two-handed')).toBe(1)
+		// Armour is worn, not held, so it occupies no hand at all.
+		expect(handsRequiredOf(chainMail, undefined)).toBeNull()
+
+		expect(isVersatileWeapon(longsword)).toBe(true)
+		expect(isVersatileWeapon(shortsword)).toBe(false)
+		expect(isVersatileWeapon(shield)).toBe(false)
 	})
 
 	/*

@@ -840,6 +840,32 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 		expect(migrated.inventory?.[0].attackAbility).toBeUndefined()
 	})
 
+	it('round-trips a Versatile weapon’s grip and refuses a bad one (step 7 slice b-fix)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Nyx')
+
+		store.setInventory(character.id, [{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held', grip: 'two-handed' }])
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([
+			{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held', grip: 'two-handed' },
+		])
+
+		const badGrip = new MemoryStorage()
+		badGrip.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1, grip: 'both-hands' }],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(badGrip).list()).toThrow(CorruptDataError)
+	})
+
 	it('round-trips an attunement flag and refuses any value but true (step 7 slice d)', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)

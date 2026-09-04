@@ -20,6 +20,7 @@ import { computeAbilityScores } from '../calculation/abilityScores'
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
 import { BASE_ATTUNEMENT_LIMIT, computeAttunementLimit, countAttuned, describeAttunementRefusal } from '../calculation/attunement'
 import type { FeatEffectEntry } from '../calculation/featEffects'
+import { makeRoomForHands, type HeldThing } from '../calculation/hands'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeInitiative } from '../calculation/initiative'
@@ -60,8 +61,9 @@ import {
 	CUSTOM_WEAPON_CATEGORIES,
 	CUSTOM_WEAPON_RANGES,
 	equipSlotOf,
-	exclusiveSlotOf,
+	handsRequiredOf,
 	inventoryRowKey,
+	isVersatileWeapon,
 	itemKey,
 	itemMagicBonusOf,
 	loadItemRefs,
@@ -100,6 +102,7 @@ import {
 	type CustomWeaponRange,
 	type MagicItemBonus,
 	type WeaponAttackAbility,
+	type WeaponGrip,
 } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
@@ -304,6 +307,13 @@ function AddPlatinumField({ onAdd }: { onAdd: (platinum: number) => void }): Rea
 function putDown(row: CharacterInventoryItem): CharacterInventoryItem {
 	const rest = { ...row }
 	delete rest.equipped
+	return rest
+}
+
+/** The row back in one hand — the key is removed, since absent is what "one-handed" means in storage (slice b-fix). */
+function oneHanded(row: CharacterInventoryItem): CharacterInventoryItem {
+	const rest = { ...row }
+	delete rest.grip
 	return rest
 }
 
@@ -753,10 +763,13 @@ function InventorySection({
 }): ReactNode {
 	const resolve = buildInventoryResolver(itemRefs ?? [])
 	const coins = copperToCoins(currencyCopper)
-	/** What the last equip did to something else — the one-suit/one-shield rule is announced, never applied silently (this slice's brief). */
-	const [equipNotice, setEquipNotice] = useState<string | null>(null)
-	/** Why the last attunement was refused. The limit is a flat rule, so a refusal is stated, never a warning beside an applied change. */
-	const [attuneNotice, setAttuneNotice] = useState<string | null>(null)
+	/**
+	 * The ONE thing this section says back to the player: what an equip put down,
+	 * or why an attunement was refused. Slice b-fix merged the two — a refusal
+	 * nobody notices is the same failure as a silent displacement, and two
+	 * mechanisms meant only one of them was ever styled to be seen.
+	 */
+	const [notice, setNotice] = useState<string | null>(null)
 	/** Which custom row the form is currently editing (slice e2b). Null while it is making a new item. */
 	const [editingIndex, setEditingIndex] = useState<number | null>(null)
 	const attunedCount = countAttuned(inventory)
@@ -787,47 +800,74 @@ function InventorySection({
 	}
 
 	/**
-	 * Equipping is the one inventory edit that can change another row: the
-	 * rules allow one suit of armour and one shield at a time, so taking up a
-	 * full slot puts the previous occupant down. That is reported in
-	 * `equipNotice` rather than done quietly.
+	 * Equipping is the one inventory edit that can change another row: a body
+	 * wears one suit of armour and has two hands, so taking something up puts
+	 * down whatever it has to. That is reported in `notice` rather than done
+	 * quietly.
 	 */
 	function toggleEquip(index: number): void {
 		if (!onEditInventory) return
 		const item = inventory[index]
 		const ref = resolve(item).ref
 		const slot = ref ? equipSlotOf(ref) : null
-		if (!slot) return
+		if (!slot || !ref) return
 
 		if (item.equipped) {
-			setEquipNotice(null)
+			setNotice(null)
 			onEditInventory(inventory.map((row, i) => (i === index ? putDown(row) : row)))
 			return
 		}
 
-		const exclusive = exclusiveSlotOf(ref!)
-		const displacedIndex =
-			exclusive === null
-				? -1
-				: inventory.findIndex((row, i) => {
-						if (i === index || !row.equipped) return false
-						const otherRef = resolve(row).ref
-						if (!otherRef) return false
-						return exclusiveSlotOf(otherRef) === exclusive
-					})
+		if (slot === 'worn') {
+			// 'worn' is armour and nothing else, so the previous suit is simply the other worn row (storage allows at most one).
+			const displacedIndex = inventory.findIndex((row, i) => i !== index && row.equipped === 'worn')
+			setNotice(displacedIndex === -1 ? null : `Unequipped ${inventory[displacedIndex].name} — only one suit of armour can be worn at a time.`)
+			onEditInventory(inventory.map((row, i) => (i === index ? { ...row, equipped: 'worn' } : i === displacedIndex ? putDown(row) : row)))
+			return
+		}
 
-		setEquipNotice(
-			displacedIndex === -1
-				? null
-				: `Unequipped ${inventory[displacedIndex].name} — only one ${exclusive === 'armour' ? 'suit of armour can be worn' : 'shield can be held'} at a time.`,
-		)
-		onEditInventory(
-			inventory.map((row, i) => {
-				if (i === index) return { ...row, equipped: slot }
-				if (i === displacedIndex) return putDown(row)
-				return row
-			}),
-		)
+		takeInHand(index, ref, { ...item, equipped: 'held' })
+	}
+
+	/**
+	 * Taking a row into the hands, in the shape `next` describes. Everything
+	 * already held that no longer fits alongside it is put down, oldest first,
+	 * and named (src/calculation/hands.ts).
+	 *
+	 * A held row the item data does not know still counts as one hand: the
+	 * alternative is a character quietly holding three things because one of them
+	 * could not be resolved (D43).
+	 */
+	function takeInHand(index: number, ref: ItemRef, next: CharacterInventoryItem): void {
+		const held: HeldThing[] = []
+		inventory.forEach((row, i) => {
+			if (i === index || row.equipped !== 'held') return
+			const otherRef = resolve(row).ref
+			held.push({ index: i, name: row.name, hands: (otherRef ? handsRequiredOf(otherRef, row.grip) : null) ?? 1 })
+		})
+
+		const { displaced, message } = makeRoomForHands(held, { index, name: next.name, hands: handsRequiredOf(ref, next.grip) ?? 1 })
+		const putting = new Set(displaced.map((thing) => thing.index))
+		setNotice(message)
+		onEditInventory?.(inventory.map((row, i) => (i === index ? next : putting.has(i) ? putDown(row) : row)))
+	}
+
+	/**
+	 * A Versatile weapon's grip. Two-handing one is a real claim on a hand, not
+	 * just a bigger damage die, so it goes through the same rule equipping does
+	 * and can put a shield down; going back to one hand only frees one.
+	 */
+	function setGrip(index: number, grip: WeaponGrip): void {
+		if (!onEditInventory) return
+		const item = inventory[index]
+		const ref = resolve(item).ref
+		if (!ref) return
+		if (grip === 'one-handed') {
+			setNotice(null)
+			onEditInventory(inventory.map((row, i) => (i === index ? oneHanded(row) : row)))
+			return
+		}
+		takeInHand(index, ref, { ...item, equipped: 'held', grip })
 	}
 
 	/**
@@ -840,17 +880,17 @@ function InventorySection({
 		const item = inventory[index]
 
 		if (item.attuned) {
-			setAttuneNotice(null)
+			setNotice(null)
 			onEditInventory(inventory.map((row, i) => (i === index ? unattuned(row) : row)))
 			return
 		}
 
 		const refusal = describeAttunementRefusal(inventory, limit)
 		if (refusal) {
-			setAttuneNotice(`Cannot attune to ${item.name}: ${refusal}.`)
+			setNotice(`Cannot attune to ${item.name}: ${refusal}.`)
 			return
 		}
-		setAttuneNotice(null)
+		setNotice(null)
 		onEditInventory(inventory.map((row, i) => (i === index ? { ...row, attuned: true } : row)))
 	}
 
@@ -950,8 +990,12 @@ function InventorySection({
 			</div>
 
 			{itemRefsError && <p className="error">Could not load the item list: {itemRefsError}</p>}
-			{equipNotice && <p className="sheet__equip-notice">{equipNotice}</p>}
-			{attuneNotice && <p className="sheet__attune-notice">{attuneNotice}</p>}
+			{/* role="status" so a refusal further down the list is announced, not just drawn — the whole point of merging the two notices (slice b-fix). */}
+			{notice && (
+				<p className="sheet__inventory-notice" role="status">
+					{notice}
+				</p>
+			)}
 
 			{inventory.length === 0 ? (
 				<p className="sheet__inventory-empty">Nothing carried yet.</p>
@@ -972,6 +1016,8 @@ function InventorySection({
 						 * or the player could never end an attunement they can still see.
 						 */
 						const attunable = ref?.requiresAttunement === true || item.attuned === true
+						/* The grip is a choice about hands, so it is offered where equipping is, and only on a Versatile weapon actually in hand (slice b-fix). */
+						const grippable = ref !== null && isVersatileWeapon(ref) && item.equipped === 'held'
 						/* Slice e: one place computes the displayed name, so the AC breakdown and the attacks section call this sword the same thing. */
 						const bonus = resolveMagicBonus({
 							name: item.name,
@@ -1020,6 +1066,21 @@ function InventorySection({
 												>
 													{item.equipped ? 'Unequip' : 'Equip'}
 												</button>{' '}
+											</>
+										)}
+										{grippable && (
+											<>
+												<label>
+													Grip{' '}
+													<select
+														aria-label={`Grip for ${bonus.label}`}
+														value={item.grip ?? 'one-handed'}
+														onChange={(event) => setGrip(index, event.target.value as WeaponGrip)}
+													>
+														<option value="one-handed">one-handed</option>
+														<option value="two-handed">two-handed</option>
+													</select>
+												</label>{' '}
 											</>
 										)}
 										{/* Slice e: the same test the Equip control uses — a +2 backpack means nothing, so only weapons, armour and shields are offered a bonus. */}
@@ -1156,8 +1217,12 @@ function AttacksSection({
 							) : (
 								<>
 									<span className="sheet__attack-damage">{attack.damage.value.text}</span>
-									{attack.damage.value.twoHandedText && (
-										<span className="sheet__attack-versatile"> (two-handed {attack.damage.value.twoHandedText})</span>
+									{/* The die above already follows the grip; this says which grip that was, rather than printing both figures and knowing neither (slice b-fix). */}
+									{attack.damage.value.grip && (
+										<span className="sheet__attack-versatile">
+											{' '}
+											(Versatile — held in {attack.damage.value.grip === 'two-handed' ? 'two hands' : 'one hand'})
+										</span>
 									)}{' '}
 									<ValueBreakdown breakdown={attack.damage.breakdown} />
 								</>

@@ -49,6 +49,17 @@ h1 {
   }
 }
 
+/* The inventory's one answer back to the player — what an equip put down, or
+ * why an attunement was refused. Drawn as a panel because the earlier plain
+ * paragraph sat above a long list and was routinely missed. */
+.sheet__inventory-notice {
+  border: 1px solid var(--rule);
+  border-left: 4px solid #c68400;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  background: var(--panel-bg);
+}
+
 /* ---- demo panels ---- */
 
 .panel {
