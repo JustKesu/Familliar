@@ -1552,8 +1552,10 @@ describe('CharacterSheet', () => {
 			expect((screen.getByLabelText('Custom item kind') as HTMLSelectElement).value).toBe('armour')
 			expect((screen.getByLabelText('Custom item armour class') as HTMLInputElement).value).toBe('16')
 			expect((screen.getByLabelText('Custom item armour category') as HTMLSelectElement).value).toBe('heavy')
+			// Slice e2c: both penalties come with the copy, so a quiet chain mail is a change the player makes rather than one the copy makes for them.
+			expect((screen.getByLabelText('Custom item stealth disadvantage') as HTMLInputElement).checked).toBe(true)
+			expect((screen.getByLabelText('Custom item Strength requirement') as HTMLInputElement).value).toBe('13')
 
-			await user.type(screen.getByLabelText('Custom item description'), 'This suit does not impose disadvantage on Stealth checks.')
 			await user.click(screen.getByRole('button', { name: 'Add custom item' }))
 
 			expect(onEditInventory).toHaveBeenCalledWith([
@@ -1566,10 +1568,53 @@ describe('CharacterSheet', () => {
 						kind: 'armour',
 						armourClass: 16,
 						armourCategory: 'heavy',
-						description: 'This suit does not impose disadvantage on Stealth checks.',
+						stealthDisadvantage: true,
+						strengthRequirement: 13,
 					},
 				},
 			])
+		})
+
+		/* Slice e2c: the whole point of the two fields is that switching one off is a decision, and the sheet has to show the decision landing. */
+		it('a custom suit imposes the Stealth disadvantage it declares, and none when it declares none', async () => {
+			const suit = (stealthDisadvantage: true | undefined) => ({
+				name: 'Bark Plate',
+				source: CUSTOM_ITEM_SOURCE,
+				quantity: 1,
+				equipped: 'worn' as const,
+				custom: { name: 'Bark Plate', kind: 'armour' as const, armourClass: 16, armourCategory: 'heavy' as const, ...(stealthDisadvantage ? { stealthDisadvantage } : {}) },
+			})
+
+			const hampering = await renderSheet({ ...character, id: 'ci-stealth-on', inventory: [suit(true)] })
+			await waitFor(() => expect(hampering.container.querySelector('.sheet__armour-class-value')!.textContent).toBe('16'))
+			expect(hampering.container.querySelector('.sheet__stealth-note')!.textContent).toContain('Disadvantage on Stealth checks (Bark Plate)')
+			cleanup()
+
+			const quiet = await renderSheet({ ...character, id: 'ci-stealth-off', inventory: [suit(undefined)] })
+			// The armour is unchanged — only the note goes.
+			await waitFor(() => expect(quiet.container.querySelector('.sheet__armour-class-value')!.textContent).toBe('16'))
+			expect(quiet.container.querySelector('.sheet__stealth-note')).toBeNull()
+		})
+
+		it('a custom suit costs 10 feet of speed to a character below the Strength it asks for', async () => {
+			const weak: Character = {
+				...character,
+				id: 'ci-strength',
+				abilityScores: { ...character.abilityScores!, scores: { ...character.abilityScores!.scores, strength: 10 } },
+				inventory: [
+					{
+						name: 'Bark Plate',
+						source: CUSTOM_ITEM_SOURCE,
+						quantity: 1,
+						equipped: 'worn',
+						custom: { name: 'Bark Plate', kind: 'armour', armourClass: 16, armourCategory: 'heavy', strengthRequirement: 13 },
+					},
+				],
+			}
+			const { container } = await renderSheet(weak)
+			const speedItem = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith('Speed'))!
+			await waitFor(() => expect(speedItem.textContent).toContain('20 ft.'))
+			expect(speedItem.textContent).toContain('Bark Plate (Strength 13 required, you have 10)')
 		})
 
 		it('shows the row with its description, its value and a custom marker', async () => {

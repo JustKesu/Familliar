@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { armourSpeedPenalty } from '../calculation/armourClass'
 import { noMagicBonus } from '../calculation/magicBonus'
 import type { ItemRef } from '../inventory/inventoryData'
 import { CUSTOM_ITEM_SOURCE, type Character, type CharacterInventoryItem, type CustomItemDefinition } from '../storage/character'
@@ -149,18 +150,52 @@ describe('buildEquippedGear', () => {
 			return { name: custom.name, source: CUSTOM_ITEM_SOURCE, quantity: 1, ...(equipped !== null ? { equipped } : {}), custom }
 		}
 
+		function withStrength(score: number): Character {
+			return {
+				...character([{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }]),
+				abilityScores: { method: 'standardArray', scores: { strength: score, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 } },
+			}
+		}
+
 		it('resolves into the same EquippedArmour a book suit does, category and all', () => {
 			const gear = buildEquippedGear([customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium' })], ITEMS)
 			expect(gear.armour).toEqual({
 				name: 'Bark Plate',
 				category: 'medium',
 				ac: 14,
-				// Neither field is part of the definition, so a custom suit never requires Strength and never hampers Stealth.
+				// A definition that declares neither penalty imposes neither — the behaviour every custom suit had before slice e2c.
 				strengthRequirement: null,
 				stealthDisadvantage: false,
 				magicBonus: noMagicBonus('Bark Plate'),
 			})
 			expect(gear.incompleteArmour).toEqual([])
+		})
+
+		/* Slice e2c: the two penalties reach the same EquippedArmour fields Chain Mail's do, through items.json's own spelling. */
+		it('carries the Stealth disadvantage and the Strength requirement it declares', () => {
+			const gear = buildEquippedGear(
+				[customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 16, armourCategory: 'heavy', stealthDisadvantage: true, strengthRequirement: 13 })],
+				ITEMS,
+			)
+			expect(gear.armour).toMatchObject({ category: 'heavy', ac: 16, stealthDisadvantage: true, strengthRequirement: 13 })
+		})
+
+		it('costs 10 feet of speed to a character below the Strength it asks for, and nothing to one above it', () => {
+			const gear = buildEquippedGear(
+				[customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 16, armourCategory: 'heavy', strengthRequirement: 13 })],
+				ITEMS,
+			)
+			expect(armourSpeedPenalty(withStrength(10), gear.armour)).toEqual([{ source: 'Bark Plate (Strength 13 required, you have 10)', amount: -10 }])
+			expect(armourSpeedPenalty(withStrength(15), gear.armour)).toEqual([])
+		})
+
+		/* Only heavy armour is measured against the score, exactly as in the data — nothing but an HA entry carries `strength` there. */
+		it('leaves the Strength requirement of a medium suit costing nothing', () => {
+			const gear = buildEquippedGear(
+				[customRow({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium', strengthRequirement: 13 })],
+				ITEMS,
+			)
+			expect(armourSpeedPenalty(withStrength(10), gear.armour)).toEqual([])
 		})
 
 		it('resolves a custom shield into the bonus it adds', () => {

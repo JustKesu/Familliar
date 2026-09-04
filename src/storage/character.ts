@@ -376,6 +376,22 @@ export interface CustomItemDefinition {
 	armourClass?: number
 	/** kind 'armour': which Dexterity cap applies. Spelled out rather than imported, for the same reason WeaponAttackAbility is. */
 	armourCategory?: CustomArmourCategory
+	/**
+	 * kind 'armour'/'shield': wearing it gives disadvantage on Stealth checks —
+	 * items.json's `stealth` (slice e2c). Present only when it does, never
+	 * `false`, the same convention `requiresAttunement` uses; absent is what
+	 * every custom item made before this slice carries, and it means no
+	 * disadvantage.
+	 */
+	stealthDisadvantage?: true
+	/**
+	 * kind 'armour'/'shield': the minimum Strength score below which the suit
+	 * costs 10 feet of speed — items.json's `strength`, which is a STRING there
+	 * (DATA.md, "Armour AC") and a number here. Absent means no requirement.
+	 * Only HEAVY armour is measured against it (armourSpeedPenalty), exactly as
+	 * in the data, where nothing but an HA entry carries the field.
+	 */
+	strengthRequirement?: number
 	/** kind 'weapon': items.json's `dmg1`, e.g. "1d8". */
 	damageDice?: string
 	/** kind 'weapon': items.json's `dmgTypeFull`, e.g. "slashing". */
@@ -582,13 +598,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 24 for the computed half of
- * CustomItemDefinition — armour class, damage dice, resistances, speed,
- * darkvision and the flat bonuses (build order step 7, slice e2b).
+ * (see wireFormat.ts). Bumped to 25 for CustomItemDefinition's two armour
+ * penalties — the Stealth disadvantage and the minimum Strength (build order
+ * step 7, slice e2c).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 24
+export const CURRENT_SCHEMA_VERSION = 25

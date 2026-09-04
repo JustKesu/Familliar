@@ -277,6 +277,10 @@ describe('custom items', () => {
 		expect(describeCustomItemProblem({ name: 'X', kind: 'other', requiresAttunement: false })).toContain('attunement requirement')
 		expect(describeCustomItemProblem({ name: 'X', kind: 'other', attunementCondition: 3 })).toContain('attunement condition')
 		expect(describeCustomItemProblem({ name: 'X', kind: 'other', description: [] })).toContain('description must be text')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'armour', stealthDisadvantage: false })).toContain('Stealth disadvantage')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'armour', strengthRequirement: -1 })).toContain('Strength requirement')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'armour', strengthRequirement: 13.5 })).toContain('Strength requirement')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'armour', stealthDisadvantage: true, strengthRequirement: 13 })).toBeNull()
 	})
 
 	it('gives the equip control to the kinds a body can wear or hold, and to no other', () => {
@@ -315,6 +319,23 @@ describe('custom items', () => {
 		expect(isWeapon(weapon)).toBe(true)
 		expect(weapon).toMatchObject({ typeCode: 'M', dmg1: '1d6', dmgTypeFull: 'bludgeoning', weaponCategory: 'simple' })
 		expect(customItemRef({ name: 'Bone Bow', kind: 'weapon', weaponRange: 'ranged' }, CUSTOM_ITEM_SOURCE).typeCode).toBe('R')
+	})
+
+	/* Slice e2c: written in items.json's own spelling, so armourClassData.ts reads them with no custom branch — `strength` is a string there. */
+	it('writes the two armour penalties the way the item data writes them', () => {
+		const hampering = customItemRef(
+			{ name: 'Bark Plate', kind: 'armour', armourClass: 16, armourCategory: 'heavy', stealthDisadvantage: true, strengthRequirement: 13 },
+			CUSTOM_ITEM_SOURCE,
+		)
+		expect(hampering).toMatchObject({ stealth: true, strength: '13' })
+
+		const quiet = customItemRef({ name: 'Bark Plate', kind: 'armour', armourClass: 16, armourCategory: 'heavy' }, CUSTOM_ITEM_SOURCE)
+		expect(quiet.stealth).toBeUndefined()
+		expect(quiet.strength).toBeUndefined()
+
+		expect(customItemRef({ name: 'Bark Shield', kind: 'shield', armourClass: 2, stealthDisadvantage: true }, CUSTOM_ITEM_SOURCE).stealth).toBe(true)
+		// A weapon has neither, whatever the definition happens to hold.
+		expect(customItemRef({ name: 'Bone Club', kind: 'weapon', stealthDisadvantage: true, strengthRequirement: 13 }, CUSTOM_ITEM_SOURCE).stealth).toBeUndefined()
 	})
 
 	/* An armour category is never guessed: 'light' would hand the character an uncapped Dexterity bonus, and erring upward is what D76 rules out. */
@@ -358,8 +379,24 @@ describe('custom items', () => {
 				stealth: true,
 				value: 7500,
 			}),
-			// The Strength requirement and the Stealth disadvantage are not fields the definition has, so they cannot copy (docs/REPORT.md).
-		).toEqual({ name: 'Chain Mail', kind: 'armour', valueCopper: 7500, armourClass: 16, armourCategory: 'heavy' })
+			// Slice e2c: both penalties come with the copy, so switching either off is a decision rather than an accident.
+		).toEqual({
+			name: 'Chain Mail',
+			kind: 'armour',
+			valueCopper: 7500,
+			armourClass: 16,
+			armourCategory: 'heavy',
+			stealthDisadvantage: true,
+			strengthRequirement: 13,
+		})
+
+		// Light armour carries neither field in the data, and the copy carries neither either.
+		expect(customItemFromRef({ name: 'Leather Armor', source: 'XPHB', typeCode: 'LA', armor: true, ac: 11 })).toEqual({
+			name: 'Leather Armor',
+			kind: 'armour',
+			armourClass: 11,
+			armourCategory: 'light',
+		})
 
 		expect(customItemFromRef({ name: 'Longsword', source: 'XPHB', typeCode: 'M', weapon: true, weaponCategory: 'martial', dmg1: '1d8', dmgTypeFull: 'slashing' })).toEqual({
 			name: 'Longsword',

@@ -440,8 +440,11 @@ const CUSTOM_FLAT_BONUS_FIELDS: readonly { key: 'bonusArmourClass' | 'bonusSavin
  * D9/D55: the form offers only what the app can act on structurally. Anything
  * else the item does goes in the description and is SHOWN — never applied
  * behind a value's back, or every breakdown on the sheet becomes untrustworthy.
- * That is why there is no field for "does not hamper Stealth" or "+1d8 against
- * undead": the app would have to read prose to honour either (D21).
+ * That is why there is no field for "+1d8 against undead": the app would have
+ * to read prose to honour it (D21). The Stealth disadvantage is the opposite
+ * case and is a checkbox (slice e2c) — armourClass.ts already reads a boolean
+ * for it, so leaving it out made a copied chain mail lose the disadvantage
+ * silently instead of the player switching it off.
  */
 function CustomItemForm({
 	itemRefs,
@@ -597,7 +600,22 @@ function CustomItemForm({
 								))}
 							</select>
 						</label>
-					)}
+					)}{' '}
+					{/* Both are read from the suit exactly as items.json's own `stealth`/`strength` are; only heavy armour is measured against the Strength score (armourSpeedPenalty). */}
+					<label>
+						<input
+							type="checkbox"
+							aria-label="Custom item stealth disadvantage"
+							checked={draft.stealthDisadvantage === true}
+							onChange={(event) => updateOptional('stealthDisadvantage', event.target.checked ? true : undefined)}
+						/>{' '}
+						Disadvantage on Stealth
+					</label>{' '}
+					<OptionalNumberField
+						label="Custom item Strength requirement"
+						value={draft.strengthRequirement}
+						onChange={(value) => updateOptional('strengthRequirement', value)}
+					/>
 				</p>
 			)}
 

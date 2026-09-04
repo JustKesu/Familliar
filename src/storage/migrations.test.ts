@@ -104,6 +104,30 @@ describe('the migration chain (D69)', () => {
 		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 	})
 
+	it('carries a version-24 custom suit forward imposing neither penalty it never declared', () => {
+		const before = {
+			schemaVersion: 24,
+			id: '1',
+			name: 'Rowan',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			inventory: [
+				{
+					name: 'Bark Plate',
+					source: 'Custom',
+					quantity: 1,
+					equipped: 'worn',
+					// The most a version-24 suit could say about itself: no Stealth flag and no Strength requirement existed to set.
+					custom: { name: 'Bark Plate', kind: 'armour', armourClass: 16, armourCategory: 'heavy' },
+				},
+			],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// Backfilling either would change a number the player never set — the suit keeps hampering nothing and demanding nothing.
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

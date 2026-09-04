@@ -151,6 +151,45 @@ Everything below persists across browser restarts.
 - Free-text notes
 - Short rest / long rest buttons that restore the correct resources
 
+**Hit points change by hand.** Nothing tells the app that a cleric healed you
+or that an arrow hit you, so the player types the number: click the hit points,
+enter an amount, say whether it is damage or healing. Healing never exceeds the
+maximum.
+
+Temporary hit points are a second pool, never added to the maximum. They are
+spent first, healing does not restore them, and a new lot does not stack with
+an old one — the higher of the two applies. The header reads "44/44 + 8
+temporary", never "52/52".
+
+**Death saving throws appear only at 0 hit points** and go when the character
+has at least one again. Three successes and three failures, by the rules and
+not simplified: three successes leave the character *stable* — still at 0 and
+unconscious, not on 1 hit point; a natural 20 restores 1 hit point outright; a
+natural 1 counts as two failures; damage taken while down is a failure, and a
+critical hit two. After three failures the panel stays and says what happened
+rather than vanishing — a panel that disappears reads as a bug, not as a death.
+
+**Rolling dice.** Every number the sheet shows can be rolled by clicking it —
+attacks, damage, saving throws, ability checks, initiative, hit dice. The app
+rolls, adds the bonuses it already computes, and shows both the total and the
+parts it came from.
+
+The app does not adjudicate. It shows the total and stops: whether the attack
+hit is for the player and the DM to say, so damage may be rolled separately
+after a hit or together with the attack and ignored on a miss. Critical hits on
+attacks are for the same reason not detected.
+
+Advantage and disadvantage are a control beside the button, because the app
+cannot know when a character has them. The roll history is a panel switched on
+in the settings, off by default.
+
+Rolling never replaces the displayed number: a player using real dice at the
+table still reads +7 and ignores the buttons.
+
+**The rest buttons live in the persistent header, beside the hit points** — the
+one place visible from every tab, and next to what they change. A short rest
+offers hit dice to spend, rolled through the same panel as any other roll.
+
 ---
 
 ## D. Build order

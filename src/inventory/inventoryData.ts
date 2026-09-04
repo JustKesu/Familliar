@@ -446,12 +446,26 @@ function customStructuralFields(custom: CustomItemDefinition): Partial<ItemRef> 
 			return {
 				...(custom.armourCategory !== undefined ? { typeCode: ARMOUR_CODE_BY_CATEGORY[custom.armourCategory] } : {}),
 				...(typeof custom.armourClass === 'number' ? { ac: custom.armourClass } : {}),
+				...customArmourPenalties(custom),
 			}
 		case 'shield':
 			// DATA.md: a shield's `ac` is the bonus it adds, never a finished Armour Class.
-			return { typeCode: SHIELD_CODE, ...(typeof custom.armourClass === 'number' ? { ac: custom.armourClass } : {}) }
+			return { typeCode: SHIELD_CODE, ...(typeof custom.armourClass === 'number' ? { ac: custom.armourClass } : {}), ...customArmourPenalties(custom) }
 		default:
 			return {}
+	}
+}
+
+/**
+ * The two penalties a suit or shield can carry (slice e2c), written in
+ * items.json's own spelling so armourClassData.ts reads them with no custom
+ * branch: `strength` is a STRING in the data (DATA.md, "Armour AC"), so the
+ * definition's number becomes one here.
+ */
+function customArmourPenalties(custom: CustomItemDefinition): Partial<ItemRef> {
+	return {
+		...(custom.stealthDisadvantage === true ? { stealth: true } : {}),
+		...(typeof custom.strengthRequirement === 'number' ? { strength: String(custom.strengthRequirement) } : {}),
 	}
 }
 
@@ -531,6 +545,11 @@ export function describeCustomItemProblem(custom: unknown): string | null {
 	if (category !== undefined && !CUSTOM_ARMOUR_CATEGORIES.includes(category as CustomArmourCategory)) {
 		return `its armour category "${String(category)}" is not one of ${CUSTOM_ARMOUR_CATEGORIES.join(', ')}`
 	}
+	if (record['stealthDisadvantage'] !== undefined && record['stealthDisadvantage'] !== true) return 'its Stealth disadvantage must be true when present'
+	const strengthRequirement = record['strengthRequirement']
+	if (strengthRequirement !== undefined && (typeof strengthRequirement !== 'number' || !Number.isInteger(strengthRequirement) || strengthRequirement < 0)) {
+		return 'its Strength requirement must be a whole number, not below zero'
+	}
 	const range = record['weaponRange']
 	if (range !== undefined && !CUSTOM_WEAPON_RANGES.includes(range as CustomWeaponRange)) {
 		return `its weapon range "${String(range)}" is not one of ${CUSTOM_WEAPON_RANGES.join(', ')}`
@@ -602,13 +621,15 @@ export function buildInventoryResolver(itemRefs: readonly ItemRef[]): InventoryR
  *
  * Slice e2b: the computed fields copy too, so a suit copied from Chain Mail
  * really is 16 heavy and a sword copied from a Longsword really does 1d8
- * slashing. Two fields of the original are deliberately NOT in the definition
- * and so cannot copy — the Strength requirement and the Stealth disadvantage —
- * which is why a copied heavy suit imposes neither (docs/REPORT.md).
+ * slashing. Slice e2c added the last two — the Stealth disadvantage and the
+ * Strength requirement — so a copy of Chain Mail starts out hampering Stealth
+ * and demanding Strength 13, and the player switches either off deliberately
+ * rather than losing it by accident.
  */
 export function customItemFromRef(ref: ItemRef): CustomItemDefinition {
 	const paragraphs = (ref.entries ?? []).filter((entry): entry is string => typeof entry === 'string')
 	const category = armourCategoryOf(ref)
+	const strengthRequirement = ref.strength === undefined ? Number.NaN : Number.parseInt(ref.strength, 10)
 	const kind: CustomItemKind = isWeapon(ref) ? 'weapon' : isShield(ref) ? 'shield' : category !== null || ref.armor === true ? 'armour' : 'other'
 	return {
 		name: ref.name,
@@ -626,6 +647,12 @@ export function customItemFromRef(ref: ItemRef): CustomItemDefinition {
 			: {}),
 		...((kind === 'armour' || kind === 'shield') && typeof ref.ac === 'number' ? { armourClass: ref.ac } : {}),
 		...(kind === 'armour' && category !== null ? { armourCategory: category } : {}),
+		...(kind === 'armour' || kind === 'shield'
+			? {
+					...(ref.stealth === true ? { stealthDisadvantage: true as const } : {}),
+					...(Number.isFinite(strengthRequirement) ? { strengthRequirement } : {}),
+				}
+			: {}),
 		...(ref.resist !== undefined ? { resist: [...ref.resist] } : {}),
 		...(ref.immune !== undefined ? { immune: [...ref.immune] } : {}),
 		/* The AC bonus copies into the field that lands where the ORIGINAL's did — a cloak's on the character, a suit's on the suit. */

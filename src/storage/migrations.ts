@@ -115,6 +115,18 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 24 }),
 	},
+	{
+		from: 24,
+		to: 25,
+		/*
+		 * 25 adds CustomItemDefinition.stealthDisadvantage and .strengthRequirement.
+		 * A version-24 custom suit declares neither, and an absent field already
+		 * means "no disadvantage" / "no requirement" — which is the behaviour such
+		 * a suit has today. Version tag only, same as the eight before it:
+		 * backfilling either would change a number the player never set.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 25 }),
+	},
 ]
 
 /**
