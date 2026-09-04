@@ -266,9 +266,9 @@ export function isVersatileWeapon(ref: ItemRef): boolean {
  * hand, a Two-Handed weapon takes both, and a Versatile weapon takes whichever
  * the player chose.
  *
- * A CUSTOM weapon carries no properties, so it takes one hand — the definition
- * has no field to say otherwise, and one hand is the state a player can reach
- * by simply holding it.
+ * A CUSTOM weapon reaches the same rule through `propertyFull`, built from the
+ * definition's own `twoHanded`/`versatile` flags (customWeaponHandProperties)
+ * — one hand unless the player declared otherwise, same as a real item.
  */
 export function handsRequiredOf(ref: ItemRef, grip: WeaponGrip | undefined): number | null {
 	if (equipSlotOf(ref) !== 'held') return null
@@ -466,6 +466,7 @@ function customStructuralFields(custom: CustomItemDefinition): Partial<ItemRef> 
 				...(custom.weaponCategory !== undefined ? { weaponCategory: custom.weaponCategory } : {}),
 				...(custom.damageDice !== undefined && custom.damageDice !== '' ? { dmg1: custom.damageDice } : {}),
 				...(custom.damageType !== undefined && custom.damageType !== '' ? { dmgTypeFull: custom.damageType } : {}),
+				...customWeaponHandProperties(custom),
 			}
 		case 'armour':
 			return {
@@ -478,6 +479,25 @@ function customStructuralFields(custom: CustomItemDefinition): Partial<ItemRef> 
 			return { typeCode: SHIELD_CODE, ...(typeof custom.armourClass === 'number' ? { ac: custom.armourClass } : {}), ...customArmourPenalties(custom) }
 		default:
 			return {}
+	}
+}
+
+/**
+ * The two weapon properties that decide hand cost (fix slice, see hands.ts):
+ * a real weapon carries them in `propertyFull`, handsRequiredOf's only source,
+ * so a custom weapon has to land in the same array or it always costs one
+ * hand regardless of what the player declared. A Versatile weapon's second
+ * die (`dmg2`) rides along — without it the grip control has nothing to
+ * switch to (isVersatileWeapon reads `propertyFull` alone to decide whether
+ * to offer the control at all).
+ */
+function customWeaponHandProperties(custom: CustomItemDefinition): Partial<ItemRef> {
+	const propertyFull: string[] = []
+	if (custom.twoHanded === true) propertyFull.push(TWO_HANDED_PROPERTY)
+	if (custom.versatile === true) propertyFull.push(VERSATILE_PROPERTY)
+	return {
+		...(propertyFull.length > 0 ? { propertyFull } : {}),
+		...(custom.versatile === true && custom.damageDice2 !== undefined && custom.damageDice2 !== '' ? { dmg2: custom.damageDice2 } : {}),
 	}
 }
 
@@ -585,6 +605,9 @@ export function describeCustomItemProblem(custom: unknown): string | null {
 	}
 	if (record['damageDice'] !== undefined && typeof record['damageDice'] !== 'string') return 'its damage dice must be text'
 	if (record['damageType'] !== undefined && typeof record['damageType'] !== 'string') return 'its damage type must be text'
+	if (record['twoHanded'] !== undefined && record['twoHanded'] !== true) return 'its two-handed flag must be true when present'
+	if (record['versatile'] !== undefined && record['versatile'] !== true) return 'its versatile flag must be true when present'
+	if (record['damageDice2'] !== undefined && typeof record['damageDice2'] !== 'string') return 'its second damage dice must be text'
 	for (const key of ['resist', 'immune'] as const) {
 		const value = record[key]
 		if (value === undefined) continue
@@ -646,10 +669,12 @@ export function buildInventoryResolver(itemRefs: readonly ItemRef[]): InventoryR
  *
  * Slice e2b: the computed fields copy too, so a suit copied from Chain Mail
  * really is 16 heavy and a sword copied from a Longsword really does 1d8
- * slashing. Slice e2c added the last two — the Stealth disadvantage and the
- * Strength requirement — so a copy of Chain Mail starts out hampering Stealth
- * and demanding Strength 13, and the player switches either off deliberately
- * rather than losing it by accident.
+ * slashing. Slice e2c added the Stealth disadvantage and the Strength
+ * requirement, so a copy of Chain Mail starts out hampering Stealth and
+ * demanding Strength 13. The fix slice added the two hand properties and the
+ * Versatile second die, so a Greatsword copies in as Two-Handed and a Longsword
+ * copies in Versatile with its 1d10 intact — each switched off deliberately
+ * rather than lost by accident.
  */
 export function customItemFromRef(ref: ItemRef): CustomItemDefinition {
 	const paragraphs = (ref.entries ?? []).filter((entry): entry is string => typeof entry === 'string')
@@ -668,6 +693,9 @@ export function customItemFromRef(ref: ItemRef): CustomItemDefinition {
 					...(ref.dmgTypeFull !== undefined ? { damageType: ref.dmgTypeFull } : {}),
 					weaponRange: ref.typeCode === 'R' ? ('ranged' as const) : ('melee' as const),
 					...(ref.weaponCategory === 'simple' || ref.weaponCategory === 'martial' ? { weaponCategory: ref.weaponCategory } : {}),
+					...(hasWeaponProperty(ref, TWO_HANDED_PROPERTY) ? { twoHanded: true as const } : {}),
+					...(hasWeaponProperty(ref, VERSATILE_PROPERTY) ? { versatile: true as const } : {}),
+					...(ref.dmg2 !== undefined ? { damageDice2: ref.dmg2 } : {}),
 				}
 			: {}),
 		...((kind === 'armour' || kind === 'shield') && typeof ref.ac === 'number' ? { armourClass: ref.ac } : {}),

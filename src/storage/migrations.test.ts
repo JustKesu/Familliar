@@ -143,6 +143,29 @@ describe('the migration chain (D69)', () => {
 		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 	})
 
+	it('carries a version-26 custom weapon forward taking one hand, exactly as it did before', () => {
+		const before = {
+			schemaVersion: 26,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			inventory: [
+				{
+					name: 'Bone Blade',
+					source: 'Custom',
+					quantity: 1,
+					// The most a version-26 definition could say: no propertyFull-driving flag existed to set.
+					custom: { name: 'Bone Blade', kind: 'weapon', damageDice: '1d8', damageType: 'slashing' },
+				},
+			],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// Backfilling twoHanded/versatile would change what the weapon costs to hold — the player never declared either.
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

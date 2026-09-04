@@ -282,6 +282,10 @@ describe('custom items', () => {
 		expect(describeCustomItemProblem({ name: 'X', kind: 'armour', strengthRequirement: -1 })).toContain('Strength requirement')
 		expect(describeCustomItemProblem({ name: 'X', kind: 'armour', strengthRequirement: 13.5 })).toContain('Strength requirement')
 		expect(describeCustomItemProblem({ name: 'X', kind: 'armour', stealthDisadvantage: true, strengthRequirement: 13 })).toBeNull()
+		expect(describeCustomItemProblem({ name: 'X', kind: 'weapon', twoHanded: false })).toContain('two-handed flag')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'weapon', versatile: false })).toContain('versatile flag')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'weapon', damageDice2: 5 })).toContain('second damage dice')
+		expect(describeCustomItemProblem({ name: 'X', kind: 'weapon', versatile: true, damageDice2: '1d10' })).toBeNull()
 	})
 
 	it('gives the equip control to the kinds a body can wear or hold, and to no other', () => {
@@ -360,6 +364,37 @@ describe('custom items', () => {
 		expect(customItemRef({ name: 'Bone Club', kind: 'weapon', stealthDisadvantage: true, strengthRequirement: 13 }, CUSTOM_ITEM_SOURCE).stealth).toBeUndefined()
 	})
 
+	/*
+	 * Fix slice: a custom weapon used to carry no properties at all, so
+	 * handsRequiredOf always fell through to one hand regardless of what the
+	 * player declared. Two-Handed and Versatile now reach `propertyFull`, the
+	 * only place handsRequiredOf and isVersatileWeapon read them from.
+	 */
+	it('writes the two hand properties a weapon can carry, and the second die Versatile needs', () => {
+		const twoHanded = customItemRef({ name: 'Bone Greatclub', kind: 'weapon', twoHanded: true }, CUSTOM_ITEM_SOURCE)
+		expect(twoHanded.propertyFull).toEqual(['Two-Handed'])
+		expect(handsRequiredOf(twoHanded, undefined)).toBe(2)
+
+		const versatile = customItemRef({ name: 'Bone Glaive', kind: 'weapon', versatile: true, damageDice: '1d8', damageDice2: '1d10' }, CUSTOM_ITEM_SOURCE)
+		expect(versatile.propertyFull).toEqual(['Versatile'])
+		expect(versatile.dmg2).toBe('1d10')
+		expect(isVersatileWeapon(versatile)).toBe(true)
+		expect(handsRequiredOf(versatile, undefined)).toBe(1)
+		expect(handsRequiredOf(versatile, 'two-handed')).toBe(2)
+
+		// Neither flag: propertyFull is absent, same as before this slice.
+		const plain = customItemRef({ name: 'Bone Club', kind: 'weapon' }, CUSTOM_ITEM_SOURCE)
+		expect(plain.propertyFull).toBeUndefined()
+		expect(handsRequiredOf(plain, undefined)).toBe(1)
+
+		// Versatile without its second die: the property is declared but there is nothing to switch TO.
+		const noSecondDie = customItemRef({ name: 'Bone Glaive', kind: 'weapon', versatile: true, damageDice: '1d8' }, CUSTOM_ITEM_SOURCE)
+		expect(noSecondDie.dmg2).toBeUndefined()
+
+		// A non-weapon kind never carries either property, whatever the definition holds.
+		expect(customItemRef({ name: 'Cloak', kind: 'worn', twoHanded: true, versatile: true }, CUSTOM_ITEM_SOURCE).propertyFull).toBeUndefined()
+	})
+
 	/* An armour category is never guessed: 'light' would hand the character an uncapped Dexterity bonus, and erring upward is what D76 rules out. */
 	it('leaves an unfinished armour without a category rather than guessing one', () => {
 		const unfinished = customItemRef({ name: 'Bark Plate', kind: 'armour' }, CUSTOM_ITEM_SOURCE)
@@ -428,6 +463,15 @@ describe('custom items', () => {
 			weaponRange: 'melee',
 			weaponCategory: 'martial',
 		})
+
+		// Fix slice: the two hand properties and the Versatile second die copy in too, so a Longsword copies in Versatile with its 1d10 intact.
+		expect(
+			customItemFromRef({ name: 'Longsword', source: 'XPHB', typeCode: 'M', weapon: true, dmg1: '1d8', dmg2: '1d10', dmgTypeFull: 'slashing', propertyFull: ['Versatile'] }),
+		).toMatchObject({ versatile: true, damageDice2: '1d10' })
+		expect(customItemFromRef({ name: 'Greatsword', source: 'XPHB', typeCode: 'M', weapon: true, dmg1: '2d6', dmgTypeFull: 'slashing', propertyFull: ['Heavy', 'Two-Handed'] })).toMatchObject({
+			twoHanded: true,
+		})
+		expect(customItemFromRef({ name: 'Shortsword', source: 'XPHB', typeCode: 'M', weapon: true, propertyFull: ['Finesse', 'Light'] })).not.toHaveProperty('twoHanded')
 		expect(customItemFromRef({ name: 'Shield', source: 'XPHB', typeCode: 'S', ac: 2 })).toEqual({ name: 'Shield', kind: 'shield', armourClass: 2 })
 		// Nothing in the data separates a cloak from a coil of rope, so a wondrous item copies as 'other' — and its bonusAc copies as the flat one it already was.
 		expect(customItemFromRef({ name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true, bonusAc: 1 })).toEqual({

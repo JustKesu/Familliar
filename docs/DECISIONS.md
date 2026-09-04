@@ -1432,3 +1432,24 @@ Popisek volby se bere z nadpisu, kterým ji pojmenovává rodičovský záznam �
 „Gnomish Lineage", „Kobold Legacy", „Shifting". Genasi žádný takový nadpis
 nemá, a proto se u něj používá „Element": hráč tam hledá vzduch, zemi, oheň
 a vodu, ne rodokmen.
+
+## D85 — Co postava drží, se počítá na ruce, ne na kusy
+
+Slice b určila, že zbraň se drží bez omezení a pravidlo jednoho kusu platí jen
+na zbroj a štít. Při proklikání se ukázalo, že to pouští greatsword a greataxe
+naráz, a že obouruční zbraň nesundá štít.
+
+Správný model není limit na počet zbraní, ale **dvě ruce**: štít zabere jednu,
+obouruční zbraň obě, ostatní zbraně jednu. Co se nevejde, vytlačí to nejstarší
+drženou věc a řekne se to. Dva shortswordy tím zůstávají legální — jsou to dvě
+jednoruční zbraně, ne výjimka z pravidla.
+
+Versatile zbraň drží hráč jednou nebo obouruč, volba se ukládá na řádku
+inventáře a mění kostku poškození, místo aby se obě jen vypsaly. Přepnutí do
+obou rukou tedy taky vytlačuje — je to obsazení ruky, ne jen větší kostka.
+
+Nerozlišený případ: řádek, který se nepodaří dohledat v datech, obsadí jednu
+ruku (D43). Jinak by rozbitý záznam nechal postavu držet tři věci.
+
+Kolik stojí zbraň tasit nebo schovat uprostřed boje appka neřeší — to je
+pravidlo u stolu, ne stav postavy.

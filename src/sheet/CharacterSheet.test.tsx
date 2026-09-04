@@ -889,6 +889,60 @@ describe('CharacterSheet', () => {
 			await renderSheet(owning('hands-grip-carried', row('Longsword')), vi.fn())
 			expect(screen.queryByLabelText('Grip for Longsword')).toBeNull()
 		})
+
+		/*
+		 * Fix slice: a custom weapon used to carry no properties at all, so it
+		 * always took one hand — a homebrew greatsword could be held alongside a
+		 * shield. Two-Handed now reaches the same `propertyFull` handsRequiredOf
+		 * reads for a real weapon, so it displaces exactly as Greatsword does above.
+		 */
+		it('a custom Two-Handed weapon puts a held shield down, the same as a real one', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const greatclub = {
+				name: 'Bone Greatclub',
+				source: CUSTOM_ITEM_SOURCE,
+				quantity: 1,
+				custom: { name: 'Bone Greatclub', kind: 'weapon' as const, damageDice: '1d10', damageType: 'bludgeoning', twoHanded: true as const },
+			}
+			const { container } = await renderSheet(owning('hands-custom-two-handed', row('Shield', 'held'), greatclub), onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Equip Bone Greatclub' }))
+			expect(onEditInventory).toHaveBeenCalledWith([row('Shield'), { ...greatclub, equipped: 'held' }])
+			expect(notice(container)).toBe('Unequipped Shield — Bone Greatclub needs both hands.')
+		})
+
+		/* Versatile needs BOTH the property (to offer the grip control at all) and the second die (`damageDice2`) — without either the control has nothing to switch to. */
+		it('a custom Versatile weapon offers the grip control and follows it for damage', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const glaive = {
+				name: 'Bone Glaive',
+				source: CUSTOM_ITEM_SOURCE,
+				quantity: 1,
+				equipped: 'held' as const,
+				custom: {
+					name: 'Bone Glaive',
+					kind: 'weapon' as const,
+					damageDice: '1d8',
+					damageDice2: '1d10',
+					damageType: 'slashing',
+					versatile: true as const,
+					weaponCategory: 'martial' as const,
+				},
+			}
+			const { container } = await renderSheet(owning('hands-custom-versatile', glaive), onEditInventory)
+			// STR 15 (+2), one-handed die.
+			expect(attackDamage(container, 'Bone Glaive')).toBe('1d8 + 2 slashing')
+
+			await user.selectOptions(screen.getByLabelText('Grip for Bone Glaive'), 'two-handed')
+			expect(onEditInventory).toHaveBeenCalledWith([{ ...glaive, grip: 'two-handed' }])
+
+			// The reload: the same sheet rendered from what was stored reads the bigger die.
+			cleanup()
+			const stored = await renderSheet(owning('hands-custom-versatile-2', { ...glaive, grip: 'two-handed' }), vi.fn())
+			expect(attackDamage(stored.container, 'Bone Glaive')).toBe('1d10 + 2 slashing')
+		})
 	})
 
 	/*
@@ -1664,8 +1718,8 @@ describe('CharacterSheet', () => {
 
 			await user.type(screen.getByLabelText('Custom item name'), 'Scarf of Warmth')
 			await user.selectOptions(screen.getByLabelText('Custom item kind'), 'worn')
-			await user.clear(screen.getByLabelText('Value in copper'))
-			await user.type(screen.getByLabelText('Value in copper'), '5000')
+			await user.clear(screen.getByLabelText('Value in gold'))
+			await user.type(screen.getByLabelText('Value in gold'), '50')
 			await user.tab()
 			await user.click(screen.getByLabelText('Custom item requires attunement'))
 			await user.type(screen.getByLabelText('Custom item attunement condition'), 'by a bard')
@@ -1686,6 +1740,63 @@ describe('CharacterSheet', () => {
 						description: 'You are comfortable in cold weather.',
 					},
 				},
+			])
+		})
+
+		/*
+		 * Fix slice: the resistances/immunities controls used to be native
+		 * multi-selects, which need ctrl-click for more than one pick and cannot be
+		 * driven from a touch screen — walking the app landed a resistance and an
+		 * immunity that were never chosen. Checkboxes fix that; this proves several
+		 * of each survive a save and a reload, not just the form's own state.
+		 */
+		it('several resistances and immunities chosen through the checkboxes survive a save and reload', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			await renderSheet(character, onEditInventory)
+
+			await user.type(screen.getByLabelText('Custom item name'), 'Ashen Cloak')
+			await user.selectOptions(screen.getByLabelText('Custom item kind'), 'worn')
+			await user.click(screen.getByLabelText('Custom item resistances: Fire'))
+			await user.click(screen.getByLabelText('Custom item resistances: Cold'))
+			await user.click(screen.getByLabelText('Custom item immunities: Poison'))
+			await user.click(screen.getByRole('button', { name: 'Add custom item' }))
+
+			const saved = onEditInventory.mock.calls.at(-1)![0]
+			expect(saved).toEqual([
+				{
+					name: 'Ashen Cloak',
+					source: CUSTOM_ITEM_SOURCE,
+					quantity: 1,
+					custom: { name: 'Ashen Cloak', kind: 'worn', resist: ['fire', 'cold'], immune: ['poison'] },
+				},
+			])
+			cleanup()
+
+			// Reloaded from storage, editing shows the same three boxes ticked and no others.
+			await renderSheet({ ...character, id: 'ci-reload-resist', inventory: saved }, vi.fn())
+			await user.click(screen.getByRole('button', { name: 'Edit Ashen Cloak' }))
+			expect((screen.getByLabelText('Custom item resistances: Fire') as HTMLInputElement).checked).toBe(true)
+			expect((screen.getByLabelText('Custom item resistances: Cold') as HTMLInputElement).checked).toBe(true)
+			expect((screen.getByLabelText('Custom item resistances: Acid') as HTMLInputElement).checked).toBe(false)
+			expect((screen.getByLabelText('Custom item immunities: Poison') as HTMLInputElement).checked).toBe(true)
+			expect((screen.getByLabelText('Custom item immunities: Fire') as HTMLInputElement).checked).toBe(false)
+		})
+
+		/* D74: a value typed in gold, including a fraction (a torch is 1 copper, 0.01 gp), arrives in storage as whole copper. */
+		it('a fractional value in gold arrives in storage as the right number of copper', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			await renderSheet(character, onEditInventory)
+
+			await user.type(screen.getByLabelText('Custom item name'), 'Tiny Whistle')
+			await user.clear(screen.getByLabelText('Value in gold'))
+			await user.type(screen.getByLabelText('Value in gold'), '0.01')
+			await user.tab()
+			await user.click(screen.getByRole('button', { name: 'Add custom item' }))
+
+			expect(onEditInventory).toHaveBeenCalledWith([
+				expect.objectContaining({ custom: expect.objectContaining({ valueCopper: 1 }) }),
 			])
 		})
 
@@ -1724,6 +1835,43 @@ describe('CharacterSheet', () => {
 					},
 				},
 			])
+		})
+
+		/*
+		 * Fix slice: slice e2c put both controls on armour AND shield, and on a
+		 * shield neither does anything — the shield path carries neither field, so
+		 * ticking the box or typing a number was silently thrown away. A control
+		 * that does nothing is worse than no control, and no book shield carries
+		 * either property.
+		 */
+		it('shows neither the Stealth nor the Strength control on the shield kind', async () => {
+			const user = userEvent.setup()
+			await renderSheet(character, vi.fn())
+
+			await user.selectOptions(screen.getByLabelText('Custom item kind'), 'armour')
+			expect(screen.getByLabelText('Custom item stealth disadvantage')).toBeTruthy()
+			expect(screen.getByLabelText('Custom item Strength requirement')).toBeTruthy()
+
+			await user.selectOptions(screen.getByLabelText('Custom item kind'), 'shield')
+			expect(screen.queryByLabelText('Custom item stealth disadvantage')).toBeNull()
+			expect(screen.queryByLabelText('Custom item Strength requirement')).toBeNull()
+			// The AC field stays — a shield still declares the bonus it adds.
+			expect(screen.getByLabelText('Custom item armour class')).toBeTruthy()
+		})
+
+		/* The rule is correct — only heavy armour has a Strength requirement — but the form used to let it be set on light/medium with nothing saying it would do nothing. */
+		it('notes beside the Strength requirement that only heavy armour is affected by it', async () => {
+			const user = userEvent.setup()
+			const { container } = await renderSheet(character, vi.fn())
+
+			await user.selectOptions(screen.getByLabelText('Custom item kind'), 'armour')
+			expect(container.querySelector('.sheet__custom-item-armour')!.textContent).toContain('only heavy armour is slowed by an unmet Strength requirement')
+
+			await user.selectOptions(screen.getByLabelText('Custom item armour category'), 'heavy')
+			expect(container.querySelector('.sheet__custom-item-armour')!.textContent).not.toContain('only heavy armour is slowed by an unmet Strength requirement')
+
+			await user.selectOptions(screen.getByLabelText('Custom item armour category'), 'medium')
+			expect(container.querySelector('.sheet__custom-item-armour')!.textContent).toContain('only heavy armour is slowed by an unmet Strength requirement')
 		})
 
 		/* Slice e2c: the whole point of the two fields is that switching one off is a decision, and the sheet has to show the decision landing. */

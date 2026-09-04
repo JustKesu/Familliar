@@ -138,6 +138,18 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 26 }),
 	},
+	{
+		from: 26,
+		to: 27,
+		/*
+		 * 27 adds CustomItemDefinition.twoHanded, .versatile and .damageDice2. A
+		 * version-26 custom weapon declares none of the three, and absent already
+		 * means "takes one hand" — the behaviour such a weapon has today, since
+		 * handsRequiredOf falls through to 1 when propertyFull carries neither
+		 * property. Version tag only, same as the ten before it.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 27 }),
+	},
 ]
 
 /**

@@ -265,6 +265,47 @@ function CommitNumberField({
 	)
 }
 
+/**
+ * A price entered in GOLD, committed to storage as whole copper (D74: coins
+ * exist only at display and entry, and the stored number is copper). Gold can
+ * carry a fraction — a torch costs one copper, which is 0.01 gp — so this
+ * commits on `Number(draft)` rather than flooring it the way CommitNumberField
+ * does; only the copper result is rounded, never the gold the player typed.
+ */
+function CommitGoldField({ label, copperValue, onCommit }: { label: string; copperValue: number; onCommit: (copper: number) => void }): ReactNode {
+	const asGold = (copper: number) => String(copper / 100)
+	const [draft, setDraft] = useState(asGold(copperValue))
+	useEffect(() => {
+		setDraft(asGold(copperValue))
+	}, [copperValue])
+
+	function commit(): void {
+		const parsed = Number(draft)
+		const gold = Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+		const copper = Math.round(gold * 100)
+		setDraft(asGold(copper))
+		if (copper !== copperValue) onCommit(copper)
+	}
+
+	return (
+		<label>
+			{label}{' '}
+			<input
+				type="number"
+				min={0}
+				step={0.01}
+				aria-label={label}
+				value={draft}
+				onChange={(event) => setDraft(event.target.value)}
+				onBlur={commit}
+				onKeyDown={(event) => {
+					if (event.key === 'Enter') event.currentTarget.blur()
+				}}
+			/>
+		</label>
+	)
+}
+
 /*
  * Platinum is entry-only: the breakdown beside this field reads in gp/sp/cp, so
  * there is no platinum value to show back. What is typed is ADDED to the stored
@@ -401,28 +442,38 @@ function OptionalNumberField({ label, value, onChange }: { label: string; value:
 	)
 }
 
-/** The damage types a custom item resists or is immune to, picked from the 13 the data uses so two spellings can never become two lines. */
+/**
+ * The damage types a custom item resists or is immune to, picked from the 13
+ * the data uses so two spellings can never become two lines.
+ *
+ * Fix slice: this was a native multi-select, which needs ctrl-click to pick
+ * more than one and cannot be driven from a touch screen at all — walking the
+ * app turned up a resistance and an immunity picked by accident. Checkboxes,
+ * one per damage type, all visible at once: nothing to select except what is
+ * clicked.
+ */
 function DamageTypeChoice({ label, selected, onChange }: { label: string; selected: string[] | undefined; onChange: (types: string[] | undefined) => void }): ReactNode {
+	const chosen = selected ?? []
+	function toggle(type: string, checked: boolean): void {
+		const next = checked ? [...chosen, type] : chosen.filter((entry) => entry !== type)
+		onChange(next.length === 0 ? undefined : next)
+	}
 	return (
-		<label>
-			{label}{' '}
-			<select
-				multiple
-				size={4}
-				aria-label={label}
-				value={selected ?? []}
-				onChange={(event) => {
-					const chosen = Array.from(event.target.selectedOptions, (option) => option.value)
-					onChange(chosen.length === 0 ? undefined : chosen)
-				}}
-			>
-				{DAMAGE_TYPES.map((type) => (
-					<option key={type} value={type}>
-						{damageTypeLabel(type)}
-					</option>
-				))}
-			</select>
-		</label>
+		// A <fieldset> is a block element and this sits inside the form's <p>s (D8's <details>-in-<p> regression is the same class of bug), so a <span> carries the group instead.
+		<span className="sheet__damage-type-choice" role="group" aria-label={label}>
+			{label}:{' '}
+			{DAMAGE_TYPES.map((type) => (
+				<label key={type}>
+					<input
+						type="checkbox"
+						aria-label={`${label}: ${damageTypeLabel(type)}`}
+						checked={chosen.includes(type)}
+						onChange={(event) => toggle(type, event.target.checked)}
+					/>{' '}
+					{damageTypeLabel(type)}
+				</label>
+			))}
+		</span>
 	)
 }
 
@@ -541,10 +592,9 @@ function CustomItemForm({
 						))}
 					</select>
 				</label>{' '}
-				<CommitNumberField
-					label="Value in copper"
-					min={0}
-					value={draft.valueCopper ?? 0}
+				<CommitGoldField
+					label="Value in gold"
+					copperValue={draft.valueCopper ?? 0}
 					onCommit={(copper) => update({ valueCopper: copper })}
 				/>
 			</p>
@@ -610,22 +660,36 @@ function CustomItemForm({
 								))}
 							</select>
 						</label>
-					)}{' '}
-					{/* Both are read from the suit exactly as items.json's own `stealth`/`strength` are; only heavy armour is measured against the Strength score (armourSpeedPenalty). */}
-					<label>
-						<input
-							type="checkbox"
-							aria-label="Custom item stealth disadvantage"
-							checked={draft.stealthDisadvantage === true}
-							onChange={(event) => updateOptional('stealthDisadvantage', event.target.checked ? true : undefined)}
-						/>{' '}
-						Disadvantage on Stealth
-					</label>{' '}
-					<OptionalNumberField
-						label="Custom item Strength requirement"
-						value={draft.strengthRequirement}
-						onChange={(value) => updateOptional('strengthRequirement', value)}
-					/>
+					)}
+					{/*
+					 * A shield carries neither field in the data — no book shield has
+					 * Stealth disadvantage or a Strength requirement (fix slice) — so
+					 * both controls are offered on armour only. A control that does
+					 * nothing is worse than no control.
+					 */}
+					{draft.kind === 'armour' && (
+						<>
+							{' '}
+							<label>
+								<input
+									type="checkbox"
+									aria-label="Custom item stealth disadvantage"
+									checked={draft.stealthDisadvantage === true}
+									onChange={(event) => updateOptional('stealthDisadvantage', event.target.checked ? true : undefined)}
+								/>{' '}
+								Disadvantage on Stealth
+							</label>{' '}
+							<OptionalNumberField
+								label="Custom item Strength requirement"
+								value={draft.strengthRequirement}
+								onChange={(value) => updateOptional('strengthRequirement', value)}
+							/>{' '}
+							{/* Only heavy armour is measured against it at all (armourSpeedPenalty) — light and medium accept a value that then does nothing. */}
+							{draft.armourCategory !== 'heavy' && (
+								<span className="sheet__custom-item-hint">only heavy armour is slowed by an unmet Strength requirement</span>
+							)}
+						</>
+					)}
 				</p>
 			)}
 
@@ -682,7 +746,68 @@ function CustomItemForm({
 								</option>
 							))}
 						</select>
-					</label>
+					</label>{' '}
+					{/*
+					 * D85: a character has two hands, and these are the two properties
+					 * that decide what a weapon costs (handsRequiredOf). Real data never
+					 * carries both on one weapon, so picking one clears the other rather
+					 * than leaving a state handsRequiredOf would have to arbitrate.
+					 */}
+					<label>
+						<input
+							type="checkbox"
+							aria-label="Custom item two-handed"
+							checked={draft.twoHanded === true}
+							onChange={(event) =>
+								setDraft((current) => {
+									const next = { ...current }
+									if (event.target.checked) {
+										next.twoHanded = true
+										delete next.versatile
+										delete next.damageDice2
+									} else {
+										delete next.twoHanded
+									}
+									return next
+								})
+							}
+						/>{' '}
+						Two-Handed
+					</label>{' '}
+					<label>
+						<input
+							type="checkbox"
+							aria-label="Custom item versatile"
+							checked={draft.versatile === true}
+							onChange={(event) =>
+								setDraft((current) => {
+									const next = { ...current }
+									if (event.target.checked) {
+										next.versatile = true
+										delete next.twoHanded
+									} else {
+										delete next.versatile
+										delete next.damageDice2
+									}
+									return next
+								})
+							}
+						/>{' '}
+						Versatile
+					</label>{' '}
+					{/* Without this the grip control (isVersatileWeapon) has a switch with nothing on the other side of it. */}
+					{draft.versatile === true && (
+						<label>
+							Two-handed damage dice{' '}
+							<input
+								type="text"
+								aria-label="Custom item two-handed damage dice"
+								placeholder="1d10"
+								value={draft.damageDice2 ?? ''}
+								onChange={(event) => updateOptional('damageDice2', event.target.value)}
+							/>
+						</label>
+					)}
 				</p>
 			)}
 

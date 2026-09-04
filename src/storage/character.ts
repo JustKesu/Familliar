@@ -416,6 +416,25 @@ export interface CustomItemDefinition {
 	weaponRange?: CustomWeaponRange
 	/** kind 'weapon': items.json's `weaponCategory`, which is what decides proficiency (isProficientWithWeapon). */
 	weaponCategory?: CustomWeaponCategory
+	/**
+	 * kind 'weapon': the Two-Handed property (fix slice) — items.json's
+	 * `propertyFull` carrying "Two-Handed", which handsRequiredOf reads to cost
+	 * both hands. Present only when it does, never `false`, the same convention
+	 * `requiresAttunement` uses.
+	 */
+	twoHanded?: true
+	/**
+	 * kind 'weapon': the Versatile property (fix slice) — items.json's
+	 * `propertyFull` carrying "Versatile". Only this flag makes the grip control
+	 * appear at all (isVersatileWeapon); without it `damageDice2` is inert.
+	 */
+	versatile?: true
+	/**
+	 * kind 'weapon', versatile only: the two-handed damage die — items.json's
+	 * `dmg2`, e.g. "1d10". Meaningless without `versatile`, same as
+	 * `strengthRequirement` is without heavy armour.
+	 */
+	damageDice2?: string
 	/** Damage types resisted, lowercase, the shape items.json's own `resist` uses. Gated on attunement exactly as a real item's is. */
 	resist?: string[]
 	/** As `resist`, for items.json's `immune`. */
@@ -622,4 +641,4 @@ export type FeatAsiChoice =
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 26
+export const CURRENT_SCHEMA_VERSION = 27
