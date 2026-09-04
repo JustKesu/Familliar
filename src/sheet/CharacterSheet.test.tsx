@@ -612,6 +612,49 @@ describe('CharacterSheet', () => {
 			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Torch', source: 'XPHB', quantity: 1 }])
 		})
 
+		it('the search filters carried items too, not just the ones left to add', async () => {
+			const user = userEvent.setup()
+			const carrying: Character = {
+				...character,
+				id: 'inv-search-carried',
+				inventory: [
+					{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 },
+					{ name: 'Longsword', source: 'XPHB', quantity: 1 },
+				],
+			}
+			const { container } = render(<CharacterSheet character={carrying} onEditInventory={vi.fn()} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = container.querySelector('.sheet__inventory')!
+			await waitFor(() => expect(section.querySelector('.option-list__toggle')).toBeTruthy())
+			await user.click(section.querySelector('.option-list__toggle') as HTMLElement)
+			await user.type(screen.getByRole('searchbox', { name: 'Search Add an item' }), 'cloak of prote')
+
+			expect(screen.getByRole('checkbox', { name: 'Cloak of Protection (XDMG)' })).toBeTruthy()
+			// Longsword is carried too, but it doesn't match the search, so it must not still be listed.
+			expect(screen.queryByRole('checkbox', { name: 'Longsword (XPHB)' })).toBeNull()
+		})
+
+		it('clears the search text when the panel is closed and reopened', async () => {
+			const user = userEvent.setup()
+			const { container } = render(<CharacterSheet character={character} onEditInventory={vi.fn()} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = container.querySelector('.sheet__inventory')!
+			await waitFor(() => expect(section.querySelector('.option-list__toggle')).toBeTruthy())
+			const toggle = section.querySelector('.option-list__toggle') as HTMLElement
+			await user.click(toggle)
+			await user.type(screen.getByRole('searchbox', { name: 'Search Add an item' }), 'torch')
+			expect(screen.queryByRole('checkbox', { name: 'Longsword (XPHB)' })).toBeNull()
+
+			await user.click(toggle) // close
+			await user.click(toggle) // reopen
+
+			const search = screen.getByRole('searchbox', { name: 'Search Add an item' }) as HTMLInputElement
+			expect(search.value).toBe('')
+			expect(screen.getByRole('checkbox', { name: 'Longsword (XPHB)' })).toBeTruthy()
+		})
+
 		it('changes a quantity on commit, and floors it at 1', async () => {
 			const user = userEvent.setup()
 			const onEditInventory = vi.fn()
@@ -625,7 +668,7 @@ describe('CharacterSheet', () => {
 			await user.tab()
 			expect(onEditInventory).toHaveBeenLastCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 3 }])
 
-			// Typing 0 commits as 1, never 0 — removing is the Remove button's job.
+			// Typing 0 commits as 1, never 0 — removing is Discard's job.
 			await user.clear(qty)
 			await user.type(qty, '0')
 			await user.tab()
@@ -633,7 +676,7 @@ describe('CharacterSheet', () => {
 			expect(qty.value).toBe('1')
 		})
 
-		it('removes an item as its own action', async () => {
+		it('discarding an item takes it out of the inventory entirely', async () => {
 			const user = userEvent.setup()
 			const onEditInventory = vi.fn()
 			const one: Character = { ...character, id: 'inv4', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 2 }] }
@@ -642,8 +685,39 @@ describe('CharacterSheet', () => {
 
 			const section = container.querySelector('.sheet__inventory')!
 			await waitFor(() => expect(section.querySelector('.sheet__inventory-list')).toBeTruthy())
-			await user.click(screen.getByRole('button', { name: 'Remove' }))
+			await user.click(screen.getByRole('button', { name: 'Discard Longsword from inventory' }))
 			expect(onEditInventory).toHaveBeenCalledWith([])
+		})
+
+		it('putting a held weapon down leaves it in the inventory, unequipped', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const holding: Character = {
+				...character,
+				id: 'inv-put-down',
+				inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' }],
+			}
+			render(<CharacterSheet character={holding} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			await user.click(screen.getByRole('button', { name: 'Put down Longsword' }))
+			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 1 }])
+		})
+
+		it('names Put down and Discard distinguishably, so a slip between them is not a silent loss', async () => {
+			const held: Character = {
+				...character,
+				id: 'inv-control-names',
+				inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' }],
+			}
+			render(<CharacterSheet character={held} onEditInventory={vi.fn()} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			expect(screen.getByRole('button', { name: 'Put down Longsword' })).toBeTruthy()
+			expect(screen.getByRole('button', { name: 'Discard Longsword from inventory' })).toBeTruthy()
+			// Neither name is a substring of the other, so a screen reader or a fuzzy match can't confuse them.
+			expect('Put down Longsword'.includes('Discard')).toBe(false)
+			expect('Discard Longsword from inventory'.includes('Put down')).toBe(false)
 		})
 	})
 
@@ -736,7 +810,7 @@ describe('CharacterSheet', () => {
 			const worn: Character = { ...character, id: 'ac-unequip', inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' }] }
 			await renderSheet(worn, onEditInventory)
 
-			await user.click(screen.getByRole('button', { name: 'Unequip Chain Mail' }))
+			await user.click(screen.getByRole('button', { name: 'Put down Chain Mail' }))
 			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }])
 		})
 
@@ -1193,7 +1267,7 @@ describe('CharacterSheet', () => {
 				inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn', attuned: true }],
 			}
 			await renderSheet(worn, onEditInventory)
-			await user.click(screen.getByRole('button', { name: 'Unequip Chain Mail' }))
+			await user.click(screen.getByRole('button', { name: 'Put down Chain Mail' }))
 			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Chain Mail', source: 'XPHB', quantity: 1, attuned: true }])
 		})
 	})

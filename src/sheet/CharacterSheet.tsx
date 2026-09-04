@@ -1186,10 +1186,10 @@ function InventorySection({
 											<>
 												<button
 													type="button"
-													aria-label={`${item.equipped ? 'Unequip' : 'Equip'} ${bonus.label}`}
+													aria-label={`${item.equipped ? 'Put down' : 'Equip'} ${bonus.label}`}
 													onClick={() => toggleEquip(index)}
 												>
-													{item.equipped ? 'Unequip' : 'Equip'}
+													{item.equipped ? 'Put down' : 'Equip'}
 												</button>{' '}
 											</>
 										)}
@@ -1249,8 +1249,14 @@ function InventorySection({
 												</button>{' '}
 											</>
 										)}
-										<button type="button" onClick={() => removeAt(index)}>
-											Remove
+										{/* Separated and named for what it does to the item (gone for good), so it cannot be mistaken for Put down (out of hand, still carried). */}
+										<button
+											type="button"
+											className="sheet__inventory-discard"
+											aria-label={`Discard ${bonus.label} from inventory`}
+											onClick={() => removeAt(index)}
+										>
+											Discard
 										</button>
 									</>
 								) : (
@@ -1272,6 +1278,10 @@ function InventorySection({
 					options={addOptions}
 					required={0}
 					defaultOpen={false}
+					/* This list is a browse-and-add catalogue, not a fixed set of picks to keep
+					   in view (D8's usual case) — a carried item already has its own row above,
+					   so pinning it here would just hide the search from half the list. */
+					pinSelected={false}
 					renderCount={() => `${inventory.length} item${inventory.length === 1 ? '' : 's'} carried`}
 					onToggle={toggleAdd}
 					searchPlaceholder="Search items by name…"

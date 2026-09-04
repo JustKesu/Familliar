@@ -60,6 +60,25 @@ h1 {
   background: var(--panel-bg);
 }
 
+/* Discard is destructive (gone from the inventory, not just out of hand) and
+ * sits beside harmless controls like Put down — it needs its own weight and
+ * distance so it is never the one a misclick lands on. */
+.sheet__inventory-discard {
+  margin-left: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid #c62828;
+  border-radius: 4px;
+  color: #c62828;
+  background: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sheet__inventory-discard {
+    border-color: #ff8a80;
+    color: #ff8a80;
+  }
+}
+
 /* ---- demo panels ---- */
 
 .panel {

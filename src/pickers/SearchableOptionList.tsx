@@ -48,6 +48,7 @@ export function SearchableOptionList({
 	searchPlaceholder = 'Search by name…',
 	defaultOpen,
 	emptyLabel,
+	pinSelected = true,
 }: {
 	/** Group heading, also the basis of the search field's accessible name. */
 	legend: string
@@ -66,6 +67,15 @@ export function SearchableOptionList({
 	defaultOpen?: boolean
 	/** Shown when a search matches nothing. */
 	emptyLabel?: ReactNode
+	/**
+	 * Whether a selected option stays visible when the search text would
+	 * otherwise hide it. Default true, for a picker with a `required` count the
+	 * player must keep track of while still browsing for more (masteries,
+	 * background). A plain browse-and-toggle catalogue (the inventory's "Add an
+	 * item" list, where `selected` just means "already carried") sets this
+	 * false, so the filter applies to everything the list shows.
+	 */
+	pinSelected?: boolean
 }): ReactNode {
 	const chosen = options.filter((option) => option.selected).length
 	const [open, setOpen] = useState(defaultOpen ?? chosen < required)
@@ -79,8 +89,18 @@ export function SearchableOptionList({
 	// to see a pick to remove it. While searching, selected options that don't
 	// match the query are pinned above the results rather than left in place
 	// where a long result list could push them off screen.
-	const pinned = searching ? options.filter((option) => option.selected && !matches(option)) : []
-	const listed = options.filter((option) => matches(option) || (!searching && option.selected))
+	const pinned = pinSelected && searching ? options.filter((option) => option.selected && !matches(option)) : []
+	const listed = options.filter((option) => matches(option) || (pinSelected && !searching && option.selected))
+
+	// The panel is reopened fresh, not mid-search — otherwise the box shows a
+	// filter for a query the player can no longer see they typed.
+	function toggleOpen(): void {
+		setOpen((wasOpen) => {
+			if (!wasOpen) return true
+			setQuery('')
+			return false
+		})
+	}
 
 	function item(option: SearchableOption): ReactNode {
 		return (
@@ -112,7 +132,7 @@ export function SearchableOptionList({
 				type="button"
 				className="option-list__toggle"
 				aria-expanded={open}
-				onClick={() => setOpen((wasOpen) => !wasOpen)}
+				onClick={toggleOpen}
 			>
 				<span className="option-list__legend">{legend}</span>
 				<span className="option-list__count">{renderCount({ chosen, required })}</span>

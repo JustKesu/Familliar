@@ -30,11 +30,13 @@ function Harness({
 	initial = [],
 	disabledKeys = {},
 	mountKey = 0,
+	pinSelected,
 }: {
 	required?: number
 	initial?: string[]
 	disabledKeys?: Record<string, string>
 	mountKey?: number
+	pinSelected?: boolean
 }) {
 	const [picked, setPicked] = useState<string[]>(initial)
 	const options: SearchableOption[] = WEAPONS.map((weapon) => ({
@@ -60,6 +62,7 @@ function Harness({
 					current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
 				)
 			}
+			pinSelected={pinSelected}
 		/>
 	)
 }
@@ -113,6 +116,32 @@ describe('SearchableOptionList', () => {
 		await user.click(club)
 		expect(screen.queryByRole('checkbox', { name: /Club/ })).toBeNull()
 		expect(screen.queryByText('Selected')).toBeNull()
+	})
+
+	it('pinSelected=false hides a selected option once it no longer matches the search (a browse-and-toggle list, not a fixed set of picks)', async () => {
+		const user = userEvent.setup()
+		render(<Harness initial={['club']} pinSelected={false} />)
+		await openList(user)
+
+		await user.type(screen.getByLabelText('Search Weapons'), 'rapier')
+
+		expect(screen.queryByRole('checkbox', { name: /Club/ })).toBeNull()
+		expect(screen.queryByText('Selected')).toBeNull()
+	})
+
+	it('clears the search text when the panel is closed and reopened', async () => {
+		const user = userEvent.setup()
+		render(<Harness />)
+		await openList(user)
+
+		await user.type(screen.getByLabelText('Search Weapons'), 'rapier')
+		expect(screen.queryByRole('checkbox', { name: /Greatsword/ })).toBeNull()
+
+		await user.click(screen.getByRole('button', { name: /Weapons/ })) // close
+		await user.click(screen.getByRole('button', { name: /Weapons/ })) // reopen
+
+		expect((screen.getByLabelText('Search Weapons') as HTMLInputElement).value).toBe('')
+		expect(screen.getByRole('checkbox', { name: /Greatsword/ })).toBeTruthy()
 	})
 
 	it('keeps a disabled option’s reason visible, including while a search is active (D71)', async () => {
