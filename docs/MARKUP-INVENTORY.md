@@ -6,31 +6,36 @@ Do not edit by hand — re-run the script instead.
 This is the authoritative list of what the renderer must handle.
 The examples in DATA.md are illustrative only; this is exhaustive.
 
+Three sigils occur: `{@tag}` markup (src/markup/tags.ts handles every one),
+`{#tag}` entry-template references (`{#itemEntry}` — resolved before rendering
+by src/inventory/itemEntryResolver.ts) and `{{token}}` template fill-ins
+(`{{spellcasting_mod}}` in Green-Flame Blade's scaling — not yet consumed).
+
 ## Totals
 
-- Files scanned: **11**
-- Strings walked: **55,776**
-- Strings containing markup: **5,287**
-- Tag occurrences: **10,525**
-- Distinct tag names: **46**
+- Files scanned: **12**
+- Strings walked: **55,828**
+- Strings containing markup: **5,377**
+- Tag occurrences: **10,635**
+- Distinct tag names: **52**
 - Distinct nested entry types: **16**
 
 ## Tags by frequency
 
 | Tag | Count | Files | Arg shapes | Nested inside another tag | Contains a nested tag |
 | --- | ---: | ---: | --- | ---: | ---: |
-| `{@variantrule}` | 2558 | 8 | 2 parts ×2000, 3 parts ×558 | 0 | 0 |
+| `{@variantrule}` | 2569 | 9 | 2 parts ×2007, 3 parts ×562 | 0 | 0 |
 | `{@spell}` | 1489 | 8 | 1 part ×468, 2 parts ×1020, 3 parts ×1 | 0 | 0 |
 | `{@item}` | 909 | 9 | 1 part ×49, 2 parts ×783, 3 parts ×77 | 0 | 0 |
 | `{@condition}` | 833 | 8 | 1 part ×226, 2 parts ×606, 3 parts ×1 | 0 | 0 |
 | `{@damage}` | 802 | 8 | 1 part ×802 | 0 | 0 |
-| `{@dice}` | 595 | 8 | 1 part ×594, 2 parts ×1 | 0 | 0 |
-| `{@action}` | 529 | 8 | 1 part ×42, 2 parts ×466, 3 parts ×21 | 0 | 0 |
+| `{@dice}` | 596 | 9 | 1 part ×595, 2 parts ×1 | 0 | 0 |
+| `{@action}` | 534 | 9 | 1 part ×42, 2 parts ×471, 3 parts ×21 | 0 | 0 |
 | `{@skill}` | 403 | 9 | 1 part ×122, 2 parts ×281 | 0 | 0 |
 | `{@creature}` | 347 | 5 | 1 part ×71, 2 parts ×236, 3 parts ×40 | 0 | 0 |
-| `{@dc}` | 311 | 7 | 1 part ×311 | 0 | 0 |
+| `{@dc}` | 312 | 8 | 1 part ×312 | 0 | 0 |
 | `{@filter}` | 274 | 8 | 3 parts ×111, 4 parts ×134, 5 parts ×22, 6 parts ×3, 7 parts ×4 | 0 | 0 |
-| `{@i}` | 248 | 6 | 1 part ×248 | 0 | 0 |
+| `{@i}` | 254 | 7 | 1 part ×254 | 0 | 0 |
 | `{@hit}` | 125 | 2 | 1 part ×125 | 0 | 0 |
 | `{@feat}` | 122 | 3 | 2 parts ×122 | 0 | 0 |
 | `{@atkr}` | 103 | 1 | 1 part ×103 | 0 | 0 |
@@ -40,6 +45,7 @@ The examples in DATA.md are illustrative only; this is exhaustive.
 | `{@book}` | 88 | 7 | 2 parts ×26, 3 parts ×14, 4 parts ×48 | 0 | 0 |
 | `{@status}` | 87 | 7 | 1 part ×15, 2 parts ×65, 3 parts ×7 | 0 | 0 |
 | `{@scaledamage}` | 79 | 1 | 3 parts ×79 | 0 | 0 |
+| `{#itemEntry}` | 71 | 1 | 2 parts ×71 | 0 | 0 |
 | `{@5etools}` | 63 | 1 | 2 parts ×63 | 0 | 0 |
 | `{@table}` | 43 | 3 | 2 parts ×4, 3 parts ×39 | 0 | 0 |
 | `{@deity}` | 41 | 1 | 1 part ×8, 2 parts ×27, 3 parts ×6 | 0 | 0 |
@@ -59,18 +65,23 @@ The examples in DATA.md are illustrative only; this is exhaustive.
 | `{@actResponse}` | 4 | 1 | 1 part ×4 | 0 | 0 |
 | `{@classFeature}` | 4 | 2 | 5 parts ×4 | 0 | 0 |
 | `{@tip}` | 4 | 1 | 2 parts ×4 | 0 | 0 |
+| `{{item.detail1}}` | 4 | 1 | 1 part ×4 | 0 | 0 |
+| `{{getFullImmRes item.resist}}` | 4 | 1 | 1 part ×4 | 0 | 0 |
 | `{@optfeature}` | 4 | 1 | 2 parts ×4 | 0 | 0 |
+| `{{spellcasting_mod}}` | 4 | 1 | 1 part ×4 | 0 | 0 |
 | `{@subclassFeature}` | 4 | 1 | 7 parts ×4 | 0 | 0 |
 | `{@recharge}` | 3 | 1 | 1 part ×3 | 0 | 0 |
 | `{@deck}` | 3 | 1 | 2 parts ×2, 3 parts ×1 | 0 | 0 |
 | `{@actSaveSuccess}` | 2 | 1 | 1 part ×2 | 0 | 0 |
+| `{{item.resist}}` | 2 | 1 | 1 part ×2 | 0 | 0 |
+| `{{item.detail2}}` | 1 | 1 | 1 part ×1 | 0 | 0 |
 | `{@class}` | 1 | 1 | 6 parts ×1 | 0 | 0 |
 
 ## Tag examples
 
-### `{@variantrule}` — 2558
+### `{@variantrule}` — 2569
 
-Files: beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: beasts.json, class-features.json, feats.json, item-entries.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
 {@variantrule Advantage|XPHB}
@@ -123,9 +134,9 @@ Files: beasts.json, class-features.json, feats.json, items.json, optional-featur
 {@damage 1d6}
 ```
 
-### `{@dice}` — 595
+### `{@dice}` — 596
 
-Files: class-features.json, classes.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: class-features.json, classes.json, feats.json, item-entries.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
 {@dice 1d4}
@@ -134,9 +145,9 @@ Files: class-features.json, classes.json, feats.json, items.json, optional-featu
 {@dice d8}
 ```
 
-### `{@action}` — 529
+### `{@action}` — 534
 
-Files: beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: beasts.json, class-features.json, feats.json, item-entries.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
 {@action Opportunity Attack|XPHB}
@@ -167,9 +178,9 @@ Files: class-features.json, items.json, optional-features.json, spells.json, sub
 {@creature Wolf|XMM}
 ```
 
-### `{@dc}` — 311
+### `{@dc}` — 312
 
-Files: beasts.json, class-features.json, feats.json, items.json, species.json, spells.json, subclass-features.json
+Files: beasts.json, class-features.json, feats.json, item-entries.json, items.json, species.json, spells.json, subclass-features.json
 
 ```
 {@dc 10}
@@ -189,15 +200,15 @@ Files: class-features.json, classes.json, feats.json, items.json, optional-featu
 {@filter Artificer spells|spells|class=Artificer}
 ```
 
-### `{@i}` — 248
+### `{@i}` — 254
 
-Files: class-features.json, classes.json, items.json, species.json, spells.json, subclass-features.json
+Files: class-features.json, classes.json, item-entries.json, items.json, species.json, spells.json, subclass-features.json
 
 ```
 {@i M}
 {@i Choose A or B:}
 {@i Choose A, B, or C:}
-{@i Hit:}
+{@i Ioun Stones}
 ```
 
 ### `{@hit}` — 125
@@ -292,6 +303,17 @@ Files: spells.json
 {@scaledamage 2d4|1-9|2d4}
 {@scaledamage 1d6|1-9|1d6}
 {@scaledamage 3d8|2-9|1d8}
+```
+
+### `{#itemEntry}` — 71
+
+Files: items.json
+
+```
+{#itemEntry Absorbing Tattoo|TCE}
+{#itemEntry Dragon Scale Mail|XDMG}
+{#itemEntry Grenade|XDMG}
+{#itemEntry Ioun Stone|XDMG}
 ```
 
 ### `{@5etools}` — 63
@@ -488,6 +510,22 @@ Files: classes.json
 {@tip Number|Soulknife Energy Die Number}
 ```
 
+### `{{item.detail1}}` — 4
+
+Files: item-entries.json
+
+```
+{{item.detail1}}
+```
+
+### `{{getFullImmRes item.resist}}` — 4
+
+Files: item-entries.json
+
+```
+{{getFullImmRes item.resist}}
+```
+
 ### `{@optfeature}` — 4
 
 Files: optional-features.json
@@ -495,6 +533,14 @@ Files: optional-features.json
 ```
 {@optfeature Favored in House|EFA}
 {@optfeature Thirsting Blade|XPHB}
+```
+
+### `{{spellcasting_mod}}` — 4
+
+Files: spells.json
+
+```
+{{spellcasting_mod}}
 ```
 
 ### `{@subclassFeature}` — 4
@@ -532,6 +578,22 @@ Files: beasts.json
 
 ```
 {@actSaveSuccess}
+```
+
+### `{{item.resist}}` — 2
+
+Files: item-entries.json
+
+```
+{{item.resist}}
+```
+
+### `{{item.detail2}}` — 1
+
+Files: item-entries.json
+
+```
+{{item.detail2}}
 ```
 
 ### `{@class}` — 1

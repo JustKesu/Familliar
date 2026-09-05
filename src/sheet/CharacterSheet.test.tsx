@@ -26,6 +26,7 @@ import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
 import { loadChosenClassFeatureChoices } from '../classFeatureChoices/classFeatureChoiceData'
 import { loadChosenClassOptionalFeatures } from '../optionalFeatures/optionalFeatureData'
+import { loadItemEntryTemplates } from '../inventory/itemEntryResolver'
 
 /*
  * Data loaders are stubbed rather than hitting fetch/data on disk — this
@@ -212,11 +213,36 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			{ name: 'Wand of the War Mage, +1', source: 'XDMG', requiresAttunement: true, attunementCondition: 'by a spellcaster', bonusSpellAttack: 1 },
 			{ name: 'Ioun Stone, Mastery', source: 'XDMG', requiresAttunement: true, bonusProficiencyBonus: 1 },
 			/* Slice f. One resistance behind attunement, one that needs none, and one immunity. */
-			{ name: 'Ring of Fire Resistance', source: 'XDMG', requiresAttunement: true, resist: ['fire'] },
+			/* Slice "the markup form the renderer does not know": carries a {#itemEntry} reference plus the fields its template reads. */
+			{
+				name: 'Ring of Fire Resistance',
+				source: 'XDMG',
+				requiresAttunement: true,
+				resist: ['fire'],
+				detail1: 'a pearl',
+				entries: ['{#itemEntry Ring of Resistance|XDMG}'],
+			},
 			{ name: 'Acid Absorbing Tattoo', source: 'XDMG', resist: ['acid'] },
 			{ name: 'Periapt of Proof against Poison', source: 'XDMG', requiresAttunement: true, immune: ['poison'] },
 			/* Slice f-fix. A consumable's resistance never applies from being carried. */
 			{ name: 'Potion of Fire Resistance', source: 'XPHB', typeCode: 'P', resist: ['fire'] },
+		]),
+	}
+})
+
+/* resolveItemEntryRefs / extractItemEntryTemplates run for real — only the {#itemEntry} template fetch is stubbed. */
+vi.mock('../inventory/itemEntryResolver', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../inventory/itemEntryResolver')>()
+	return {
+		...actual,
+		loadItemEntryTemplates: vi.fn(async () => [
+			{
+				name: 'Ring of Resistance',
+				source: 'XDMG',
+				entriesTemplate: [
+					'You have {@variantrule Resistance|XPHB} to {{getFullImmRes item.resist}} damage while wearing this ring. The ring is set with {{item.detail1}}.',
+				],
+			},
 		]),
 	}
 })
@@ -1751,6 +1777,50 @@ describe('CharacterSheet', () => {
 
 			const summaries = descriptions(container).map((details) => details.querySelector('summary')!.textContent)
 			expect(summaries).toEqual(['Description of Torch', 'Description of Cloak of Protection'])
+		})
+
+		/*
+		 * The markup form the renderer does not know: {#itemEntry Name|Source} is
+		 * a reference to a SHARED description template, filled from the item's own
+		 * fields (resist, detail1) before <Entries> ever sees it.
+		 */
+		it('fills a {#itemEntry} reference from the shared template — text, not source', async () => {
+			const owner: Character = {
+				...character,
+				id: 'desc-itementry',
+				inventory: [{ name: 'Ring of Fire Resistance', source: 'XDMG', quantity: 1 }],
+			}
+			const { container } = await renderSheet(owner)
+
+			const shown = descriptions(container)
+			expect(shown).toHaveLength(1)
+			const text = shown[0].textContent!
+			expect(text).toContain('Resistance to fire damage while wearing this ring')
+			expect(text).toContain('The ring is set with a pearl.')
+			// None of the three brace sigils survives to the DOM.
+			expect(text).not.toContain('{#')
+			expect(text).not.toContain('{{')
+			expect(text).not.toContain('{@')
+			expect(text).not.toContain('|XPHB')
+			// The shared markup renderer ran on the resolved text (D4 — it keeps the reference).
+			expect(shown[0].querySelector('[data-ref-category="variantrule"]')!.textContent).toBe('Resistance')
+		})
+
+		it('shows a visible, named note when the {#itemEntry} template is missing (D43)', async () => {
+			vi.mocked(loadItemEntryTemplates).mockResolvedValueOnce([])
+			const owner: Character = {
+				...character,
+				id: 'desc-itementry-missing',
+				inventory: [{ name: 'Ring of Fire Resistance', source: 'XDMG', quantity: 1 }],
+			}
+			const { container } = await renderSheet(owner)
+
+			const shown = descriptions(container)
+			expect(shown).toHaveLength(1)
+			const text = shown[0].textContent!
+			expect(text).toContain('"Ring of Resistance|XDMG" is not in the data')
+			expect(text).not.toContain('{#')
+			expect(text).not.toContain('{{')
 		})
 	})
 

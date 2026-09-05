@@ -80,7 +80,11 @@ describe('resolveTag — every tag found in data/', () => {
 		expect(resolved.isUnknown).toBe(false)
 	})
 
-	it('covers all 46 tags the inventory found', () => {
+	// The inventory also lists {#itemEntry} and {{…}} shapes, which are NOT
+	// {@…} tags: {#itemEntry} is resolved before rendering by
+	// src/inventory/itemEntryResolver.ts, and {{spellcasting_mod}} is not
+	// consumed by this layer at all. Only the {@…} tags belong here.
+	it('covers all 46 {@…} tags the inventory found', () => {
 		expect(TAG_CASES).toHaveLength(46)
 	})
 

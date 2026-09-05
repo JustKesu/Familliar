@@ -80,6 +80,20 @@ describe('extractItemRefs', () => {
 		expect(() => extractItemRefs({ items: [] })).toThrow('items.json')
 	})
 
+	/* The {{item.detail1}} / {{item.detail2}} fill-ins a {#itemEntry} template reads. */
+	it('carries detail1 and detail2 when present', () => {
+		const parsed = [
+			{ name: 'Ring of Fire Resistance', source: 'XDMG', resist: ['fire'], detail1: 'a pearl' },
+			{ name: 'Scroll of Protection (Aberrations)', source: 'XDMG', detail1: 'Aberration', detail2: 'Aberrations' },
+			{ name: 'Longsword', source: 'XPHB' },
+		]
+		expect(extractItemRefs(parsed)).toEqual([
+			{ name: 'Longsword', source: 'XPHB' },
+			{ name: 'Ring of Fire Resistance', source: 'XDMG', resist: ['fire'], detail1: 'a pearl' },
+			{ name: 'Scroll of Protection (Aberrations)', source: 'XDMG', detail1: 'Aberration', detail2: 'Aberrations' },
+		])
+	})
+
 	it('carries the gear fields slice b reads, taking only the first segment of the type code', () => {
 		const parsed = [{ name: 'Chain Mail', source: 'XPHB', type: 'HA|XPHB', armor: true, ac: 16, strength: '13', stealth: true }]
 		expect(extractItemRefs(parsed)).toEqual([

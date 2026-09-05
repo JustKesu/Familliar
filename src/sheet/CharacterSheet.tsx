@@ -69,6 +69,7 @@ import {
 	loadItemRefs,
 	type ItemRef,
 } from '../inventory/inventoryData'
+import { loadItemEntryTemplates, resolveItemEntryRefs, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
 import { buildItemDarkvisionGrants, buildItemSpeedAdjustments } from './itemEffectData'
@@ -874,6 +875,7 @@ function InventorySection({
 	currencyCopper,
 	itemRefs,
 	itemRefsError,
+	itemEntryTemplates,
 	attunementLimit,
 	onEditInventory,
 	onEditCurrency,
@@ -882,6 +884,7 @@ function InventorySection({
 	currencyCopper: number
 	itemRefs: ItemRef[] | null
 	itemRefsError: string | null
+	itemEntryTemplates: ItemEntryTemplate[]
 	attunementLimit: Calculated<number>
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
@@ -1262,8 +1265,11 @@ function InventorySection({
 								) : (
 									<> ×{item.quantity}</>
 								)}
-								{/* Absent text is not an error: an item with no description gets no section at all, and an unresolvable row already carries its own note (D43). */}
-								{ref?.entries && <ItemDescription entries={ref.entries} label={bonus.label} />}
+								{/* Absent text is not an error: an item with no description gets no section at all, and an unresolvable row already carries its own note (D43).
+								    resolveItemEntryRefs fills any {#itemEntry ...} reference from the shared templates before <Entries> — the one brace shape the markup renderer does not know. */}
+								{ref?.entries && (
+									<ItemDescription entries={resolveItemEntryRefs(ref.entries, ref, itemEntryTemplates)} label={bonus.label} />
+								)}
 							</li>
 						)
 					})}
@@ -1492,6 +1498,8 @@ export function CharacterSheet({
 	/** The item list backing the inventory section — its own load (large file, D43-style error state) so it never blocks the rest of the sheet. Null until it resolves. */
 	const [itemRefs, setItemRefs] = useState<ItemRef[] | null>(null)
 	const [itemRefsError, setItemRefsError] = useState<string | null>(null)
+	/** Shared `{#itemEntry}` description templates. Starts empty rather than null: an item description is inside a collapsed <details>, and until this resolves an unresolved reference just shows the D43 note (itemEntryResolver.ts) — it is never a blocking dependency. */
+	const [itemEntryTemplates, setItemEntryTemplates] = useState<ItemEntryTemplate[]>([])
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
@@ -1579,6 +1587,20 @@ export function CharacterSheet({
 				setItemRefs([])
 				setItemRefsError(messageOf(error))
 			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		// Best-effort: a failed load leaves the array empty, so a {#itemEntry}
+		// reference shows itemEntryResolver's D43 note rather than raw braces.
+		loadItemEntryTemplates()
+			.then((templates) => {
+				if (!cancelled) setItemEntryTemplates(templates)
+			})
+			.catch(() => {})
 		return () => {
 			cancelled = true
 		}
@@ -2149,6 +2171,7 @@ export function CharacterSheet({
 				currencyCopper={character.currencyCopper ?? 0}
 				itemRefs={itemRefs}
 				itemRefsError={itemRefsError}
+				itemEntryTemplates={itemEntryTemplates}
 				attunementLimit={attunementLimit}
 				onEditInventory={onEditInventory}
 				onEditCurrency={onEditCurrency}

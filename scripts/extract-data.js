@@ -2284,6 +2284,45 @@ function extractItems() {
 		else warnings.push(`[items] "${correction.name}|${correction.source}" needs its attunement restored (D80) but was not found in the source data`);
 	}
 
+	// --- item entry templates ({#itemEntry}) -------------------------------
+	// An item's `entries` can carry "{#itemEntry Ring of Resistance|XDMG}" — a
+	// reference to a SHARED description template kept in items-base.json's
+	// `itemEntry` list, not on the item. The renderer only knows {@...} tags, so
+	// without the template the sheet prints the reference verbatim. We ship the
+	// templates as their own file; src/inventory/itemEntryResolver.ts fills the
+	// {{item.*}} tokens from the referencing item at render time — D7 keeps the
+	// markup renderer itself free of cross-file lookup, the same split as
+	// src/featureResolver/. See docs/DATA.md, "Item entry templates".
+	const itemEntryTemplates = (baseData.itemEntry || [])
+		.filter((entry) => ALLOWED_SOURCES.includes(entry.source))
+		.map((entry) => ({
+			name: entry.name,
+			source: entry.source,
+			entriesTemplate: entry.entriesTemplate || entry.entries || [],
+		}))
+		.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source));
+
+	const templateKeys = new Set(
+		itemEntryTemplates.map((entry) => `${entry.name.toLowerCase()}|${entry.source.toLowerCase()}`),
+	);
+	const danglingItemEntryRefs = new Set();
+	for (const item of kept) {
+		const text = JSON.stringify(item.entries || []);
+		for (const match of text.matchAll(/\{#itemEntry\s+([^}"]+)\}/g)) {
+			const [name, src] = match[1].split("|").map((part) => part.trim());
+			const key = `${String(name).toLowerCase()}|${(src || "XDMG").toLowerCase()}`;
+			if (!templateKeys.has(key)) danglingItemEntryRefs.add(match[1]);
+		}
+	}
+	for (const ref of danglingItemEntryRefs) {
+		warnings.push(`[items] "{#itemEntry ${ref}}" has no matching template in items-base.json's itemEntry list`);
+	}
+
+	const itemEntriesFile = path.join(OUTPUT_DIR, "item-entries.json");
+	console.log(
+		`Wrote: ${itemEntriesFile} (${formatBytes(writeJson(itemEntriesFile, itemEntryTemplates))}) — ${itemEntryTemplates.length} templates`,
+	);
+
 	// --- resolve the codes ---------------------------------------------------
 	const legends = buildItemLegends(baseData);
 	const unknown = { type: new Set(), property: new Set(), mastery: new Set(), dmgType: new Set() };

@@ -58,19 +58,30 @@ const ENTRY_KEYS = new Set([
  * ==========================================================================*/
 
 /*
- * Pulls out every {@tag ...} in a string, including nested ones.
+ * Pulls out every brace-delimited construct in a string, including nested ones.
  *
- * A regex cannot do this alone: tags nest, e.g.
+ * THREE sigils occur in this data, not one:
+ *   {@tag ...}   5etools markup tags (the overwhelming majority)
+ *   {#tag ...}   entry-template references — {#itemEntry Ring of Resistance|XDMG}
+ *   {{ ... }}    template fill-ins — {{spellcasting_mod}}
+ * Slice g's markup survey looked for {@ alone and so missed {#itemEntry},
+ * which then reached the sheet verbatim. This scan covers all three so a new
+ * shape lands in MARKUP-INVENTORY.md instead of on a player's screen.
+ *
+ * A regex cannot do this alone: constructs nest, e.g.
  *   {@item Wand of Magic Missiles|XDMG|a {@spell magic missile} wand}
  * so we scan character by character and track brace depth.
  *
- * Returns [{ name, raw, body, depth }], where `body` is everything after
- * the tag name and `depth` is 0 for a top-level tag, 1 for one nested
- * inside it, and so on.
+ * Returns [{ name, label, sigil, raw, body, depth }], where `body` is
+ * everything after the tag name, `label` is how the construct is written
+ * (`{@spell}`, `{#itemEntry}`, `{{spellcasting_mod}}`) and `depth` is 0 for a
+ * top-level construct, 1 for one nested inside it, and so on.
  */
 function findTags(text, depth = 0, out = []) {
 	for (let i = 0; i < text.length; i++) {
-		if (text[i] !== "{" || text[i + 1] !== "@") continue;
+		if (text[i] !== "{") continue;
+		const next = text[i + 1];
+		if (next !== "@" && next !== "#" && next !== "{") continue;
 
 		// Walk forward to the matching close brace.
 		let braceDepth = 0;
@@ -88,14 +99,36 @@ function findTags(text, depth = 0, out = []) {
 		if (end === -1) continue; // unbalanced; ignore
 
 		const raw = text.slice(i, end + 1);
-		const inner = raw.slice(2, -1); // strip "{@" and "}"
-		const spaceAt = inner.search(/\s/);
-		const name = spaceAt === -1 ? inner : inner.slice(0, spaceAt);
-		const body = spaceAt === -1 ? "" : inner.slice(spaceAt + 1);
 
-		out.push({ name, raw, body, depth });
+		let sigil;
+		let inner;
+		if (next === "{") {
+			// {{ ... }} — two braces each side. Not a named tag: the whole
+			// content IS the token.
+			if (!raw.endsWith("}}")) continue;
+			sigil = "{{";
+			inner = raw.slice(2, -2);
+		} else {
+			sigil = next; // "@" or "#"
+			inner = raw.slice(2, -1); // strip "{@" / "{#" and "}"
+		}
 
-		// Recurse into the body to catch nested tags.
+		let name;
+		let body;
+		if (sigil === "{{") {
+			name = inner.trim();
+			body = inner.trim();
+		} else {
+			const spaceAt = inner.search(/\s/);
+			name = spaceAt === -1 ? inner : inner.slice(0, spaceAt);
+			body = spaceAt === -1 ? "" : inner.slice(spaceAt + 1);
+		}
+
+		const label = sigil === "{{" ? `{{${name}}}` : `{${sigil}${name}}`;
+
+		out.push({ name, label, sigil, raw, body, depth });
+
+		// Recurse into the body to catch nested constructs.
 		findTags(body, depth + 1, out);
 
 		i = end; // continue scanning after this tag
@@ -130,15 +163,16 @@ function splitTopLevelPipes(body) {
  * SECTION 2 — WALKING THE DATA
  * ==========================================================================*/
 
-const tagStats = new Map(); // name -> { count, files:Set, arities:Map, examples:[], nestedIn:Set, containsNested:count }
+const tagStats = new Map(); // label -> { label, count, files:Set, arities:Map, examples:[], nestedCount, hasNestedChild }
 const typeStats = new Map(); // type -> { count, files:Set, keys:Map, examples:[] }
 let stringCount = 0;
 let taggedStringCount = 0;
 
 function recordTag(tag, file) {
-	let stat = tagStats.get(tag.name);
+	let stat = tagStats.get(tag.label);
 	if (!stat) {
 		stat = {
+			label: tag.label,
 			count: 0,
 			files: new Set(),
 			arities: new Map(),
@@ -146,12 +180,12 @@ function recordTag(tag, file) {
 			nestedCount: 0,
 			hasNestedChild: 0,
 		};
-		tagStats.set(tag.name, stat);
+		tagStats.set(tag.label, stat);
 	}
 	stat.count++;
 	stat.files.add(file);
 	if (tag.depth > 0) stat.nestedCount++;
-	if (tag.body.includes("{@")) stat.hasNestedChild++;
+	if (/\{[@#{]/.test(tag.body)) stat.hasNestedChild++;
 
 	const arity = splitTopLevelPipes(tag.body).length;
 	stat.arities.set(arity, (stat.arities.get(arity) ?? 0) + 1);
@@ -247,6 +281,11 @@ function main() {
 		"This is the authoritative list of what the renderer must handle.",
 		"The examples in DATA.md are illustrative only; this is exhaustive.",
 		"",
+		"Three sigils occur: `{@tag}` markup (src/markup/tags.ts handles every one),",
+		"`{#tag}` entry-template references (`{#itemEntry}` — resolved before rendering",
+		"by src/inventory/itemEntryResolver.ts) and `{{token}}` template fill-ins",
+		"(`{{spellcasting_mod}}` in Green-Flame Blade's scaling — not yet consumed).",
+		"",
 	);
 	md.push("## Totals");
 	md.push("");
@@ -264,17 +303,17 @@ function main() {
 	md.push("");
 	md.push("| Tag | Count | Files | Arg shapes | Nested inside another tag | Contains a nested tag |");
 	md.push("| --- | ---: | ---: | --- | ---: | ---: |");
-	for (const [name, stat] of tags) {
+	for (const [label, stat] of tags) {
 		md.push(
-			`| \`{@${name}}\` | ${stat.count} | ${stat.files.size} | ${formatArities(stat.arities)} | ${stat.nestedCount} | ${stat.hasNestedChild} |`,
+			`| \`${label}\` | ${stat.count} | ${stat.files.size} | ${formatArities(stat.arities)} | ${stat.nestedCount} | ${stat.hasNestedChild} |`,
 		);
 	}
 	md.push("");
 
 	md.push("## Tag examples");
 	md.push("");
-	for (const [name, stat] of tags) {
-		md.push(`### \`{@${name}}\` — ${stat.count}`);
+	for (const [label, stat] of tags) {
+		md.push(`### \`${label}\` — ${stat.count}`);
 		md.push("");
 		md.push(`Files: ${[...stat.files].sort().join(", ")}`);
 		md.push("");

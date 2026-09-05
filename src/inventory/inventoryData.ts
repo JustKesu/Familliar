@@ -138,6 +138,14 @@ export interface ItemRef {
 	 */
 	entries?: unknown[]
 	/**
+	 * The `{{item.detail1}}` / `{{item.detail2}}` fill-ins a shared `{#itemEntry}`
+	 * description template reads (src/inventory/itemEntryResolver.ts) — the ring's
+	 * gem ("pearl"), the dragon's colour ("black"), the scroll's creature type.
+	 * Plain strings; carried only so the resolver can substitute them.
+	 */
+	detail1?: string
+	detail2?: string
+	/**
 	 * items.json `value`, always a number in COPPER (on 364 of the 900 items —
 	 * the survey in scripts/investigate-inventory-shapes.js). Shown on the row
 	 * and read by nothing: spending money on an item is a later slice.
@@ -410,6 +418,8 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...bonusField(entry, 'bonusProficiencyBonus'),
 				...damageTypeArrayField(entry, 'resist'),
 				...damageTypeArrayField(entry, 'immune'),
+				...stringField(entry, 'detail1'),
+				...stringField(entry, 'detail2'),
 				...(reqAttune === true || typeof reqAttune === 'string' ? { requiresAttunement: true } : {}),
 				...(typeof reqAttune === 'string' ? { attunementCondition: reqAttune } : {}),
 				// An empty array is the same thing as no description, so it is not carried through as one.

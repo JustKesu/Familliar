@@ -19,7 +19,7 @@ Generated output (tracked in git): data/
 
 Run:
   node scripts/extract-data.js     # regenerates data/
-  node scripts/validate-data.js    # 129 checks, exit code 1 on failure
+  node scripts/validate-data.js    # 140 checks, exit code 1 on failure
 
   scripts/package.json             # not a script — a 2-line config file.
     The root package.json sets "type": "module" for the Vite app, but the
@@ -109,6 +109,42 @@ Scribing`) really did lose it in the 2024 edition, and the `Ring of Resistance`
 itemGroup stays out by D34. validate-data.js asserts all ten are present and
 carry the flag.
 
+### Item entry templates (`{#itemEntry ...}`)
+
+An item's `entries` can carry a string like `{#itemEntry Ring of Resistance|XDMG}`.
+This is NOT a `{@...}` markup tag — it is a reference to a SHARED description
+template. 71 items use it (7 distinct targets): the ten elemental Rings of
+Resistance, the ten Potions of Resistance, ten Dragon Scale Mails, the Ioun
+Stones, the Absorbing Tattoos, the Scrolls of Protection and three Grenades.
+Slice g's markup survey scanned for `{@` alone and missed this shape entirely,
+so it reached the sheet verbatim.
+
+The templates live in 5etools' `items-base.json` `itemEntry` list. Extraction
+filters that list to `ALLOWED_SOURCES` (dropping the 2014 `|DMG` and `|WBtW`
+duplicates) and writes `data/item-entries.json` — 8 templates, `{name, source,
+entriesTemplate}`. A template's text carries `{{item.PROP}}` fill-ins read from
+the REFERENCING item: `{{item.detail1}}` / `{{item.detail2}}` (the ring's gem,
+the dragon's colour, the scroll's creature type) and `{{item.resist}}` /
+`{{getFullImmRes item.resist}}` (the damage type, joined into an English list).
+
+Resolution is at RENDER time, in `src/inventory/itemEntryResolver.ts` — not in
+the markup renderer (D7 keeps that free of cross-file lookup, the same split as
+`src/featureResolver/`). `resolveItemEntryRefs` replaces the reference with the
+filled template before `<Entries>` sees it. A reference with no matching
+template renders as a visible, named note (D43), never braces.
+
+`extract-data.js` warns on any `{#itemEntry}` in items.json with no template;
+`validate-data.js` fails on it. `survey-markup.js` now scans all three sigils
+(`{@}`, `{#}`, `{{}}`) so a new shape lands in MARKUP-INVENTORY.md, not on a
+player's screen.
+
+The same survey turned up ONE other non-`{@` shape: `{{spellcasting_mod}}`, in
+`spells.json` Green-Flame Blade's `scalingLevelDice` (4 occurrences, keys
+1/5/11/17). `SpellList.tsx` renders that scaling line as plain text, so the
+token reaches the DOM verbatim for a character who has that one cantrip. It is a
+different mechanism (a per-character computed modifier, not a data lookup) and is
+NOT fixed by the itemEntry work — left as a known gap.
+
 ## Output files
 
 Counts as of the `reprintedAs` deduplication + languages addition (before ->
@@ -128,6 +164,9 @@ after shown where a category changed; unchanged categories listed too):
                                       XGE 43->3, EFA 6, PHB 1 — the named
                                       Spellbook, see "Items named by a feature")
   data/languages.json             0 -> 19   (XPHB 19) — new category
+  data/item-entries.json          0 -> 8    (XDMG 7, TCE 1) — new category;
+                                      the {#itemEntry} description templates,
+                                      see "Item entry templates" below
   data/beasts.json               89 -> 96   (XMM 96) — 90.3 KB; type Beast at
                                       CR <= 6 (89) plus the 8 Pact of the
                                       Chain forms, 7 of them not Beasts, D67

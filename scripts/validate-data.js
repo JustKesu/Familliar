@@ -138,6 +138,12 @@ const EXPECTED_COUNTS = {
 	languages: {
 		XPHB: 19,
 	},
+	// The {#itemEntry} description templates from items-base.json, filtered to
+	// ALLOWED_SOURCES (DMG 2014 and WBtW dropped). 7 XDMG + 1 TCE.
+	"item-entries": {
+		XDMG: 7,
+		TCE: 1,
+	},
 	// D67: XMM beasts up to CR 6, plus the 8 forms Pact of the Chain names
 	// (7 of which are not Beasts), and nothing else — so this is the total.
 	beasts: {
@@ -1209,6 +1215,60 @@ function validateItems() {
 }
 
 /*
+ * item-entries.json holds the shared `{#itemEntry}` description templates. The
+ * guard that matters: every `{#itemEntry Name|Source}` reference in items.json
+ * must resolve to one here, or the sheet prints the reference verbatim — the
+ * bug this file exists to fix (slice g's {@-only markup survey missed it).
+ */
+function validateItemEntries() {
+	console.log("\n--- item-entries.json ---");
+
+	const entries = loadOutputFile("item-entries.json");
+	if (!entries) return;
+
+	console.log(`  (${entries.length} entries loaded)`);
+
+	checkSourcesAllowed(entries, "item-entries");
+	checkNoDuplicates(entries, "item-entries");
+
+	const shapeFailures = [];
+	entries.forEach((entry, index) => {
+		const label = describeEntry(entry, index);
+		if (typeof entry.name !== "string" || entry.name.trim() === "") {
+			shapeFailures.push({ label, detail: `name is missing or empty (got ${JSON.stringify(entry.name)})` });
+		}
+		if (typeof entry.source !== "string" || entry.source.trim() === "") {
+			shapeFailures.push({ label, detail: `source is missing or empty (got ${JSON.stringify(entry.source)})` });
+		}
+		if (!Array.isArray(entry.entriesTemplate) || entry.entriesTemplate.length === 0) {
+			shapeFailures.push({ label, detail: `entriesTemplate is missing or empty (got ${JSON.stringify(entry.entriesTemplate)})` });
+		}
+	});
+	recordCheck("item-entries: name, source and non-empty entriesTemplate present", shapeFailures);
+
+	const items = loadOutputFile("items.json") || [];
+	const templateKeys = new Set(entries.map((e) => `${String(e.name).toLowerCase()}|${String(e.source).toLowerCase()}`));
+	const danglingFailures = [];
+	const seen = new Set();
+	for (const item of items) {
+		const text = JSON.stringify(item.entries || []);
+		for (const match of text.matchAll(/\{#itemEntry\s+([^}"]+)\}/g)) {
+			const raw = match[1];
+			if (seen.has(raw)) continue;
+			seen.add(raw);
+			const [name, src] = raw.split("|").map((part) => part.trim());
+			const key = `${String(name).toLowerCase()}|${(src || "XDMG").toLowerCase()}`;
+			if (!templateKeys.has(key)) {
+				danglingFailures.push({ label: `"{#itemEntry ${raw}}"`, detail: `e.g. on ${item.name}|${item.source} — no matching template` });
+			}
+		}
+	}
+	recordCheck(`item-entries: every {#itemEntry} reference in items.json resolves (${seen.size} distinct)`, danglingFailures);
+
+	checkExpectedCounts(entries, "item-entries");
+}
+
+/*
  * Runs check-dangling-refs.js (cross-file reference integrity — prerequisites,
  * granted features, class progressions, etc.) and folds its result into this
  * script's pass/fail totals.
@@ -1245,6 +1305,7 @@ function main() {
 	validateClasses();
 	validateOptionalFeatures();
 	validateItems();
+	validateItemEntries();
 	validateLanguages();
 	validateBeasts();
 	validateDanglingRefs();
