@@ -1,11 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadFightingStyleGrantLevel, fightingStyleOptions, type FightingStyleOption } from './fightingStyleData'
 import { Entries } from '../markup'
+import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 
 /*
- * Fighting style picker. Not wired into the character creation wizard —
- * that is a separate task.
+ * Fighting style picker. Its 10 options are the same feats.json category-FS
+ * pool College of Swords offers through OptionalFeaturePicker — kept on
+ * SearchableOptionList too, so the same 10 options don't render as a plain
+ * checkbox wall via one path and a searchable list via the other.
  */
 
 type LoadState =
@@ -86,37 +89,28 @@ export function FightingStylePicker({
 	const { grantLevel, options } = state.grantLevel !== null ? state : { grantLevel: null, options: [] }
 	if (grantLevel === null || level < grantLevel) return null
 
+	const searchableOptions: SearchableOption[] = options.map((option) => ({
+		key: optionKey(option),
+		name: option.name,
+		label: <strong>{option.name}</strong>,
+		detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
+		selected: value === option.name,
+	}))
+
 	return (
 		<div className="fighting-style-picker">
-			<p className="fighting-style-picker__hint">
-				{value ? 'Fighting style chosen.' : 'Choose a fighting style.'}
-			</p>
-			<ul className="fighting-style-picker__list">
-				{options.map((option) => {
-					const key = optionKey(option)
-					const checked = value === option.name
-					return (
-						<li key={key} className="fighting-style-picker__item">
-							<label>
-								<input
-									type="radio"
-									name="fighting-style"
-									checked={checked}
-									onChange={() => onChange(option.name)}
-								/>
-								<strong>{option.name}</strong>
-							</label>
-							<div className="fighting-style-picker__description">
-								{resolverData ? (
-									<ResolvedEntries entries={option.entries} data={resolverData} />
-								) : (
-									<Entries entries={option.entries} />
-								)}
-							</div>
-						</li>
-					)
-				})}
-			</ul>
+			<SearchableOptionList
+				legend="Fighting style"
+				name="fighting-style"
+				inputType="radio"
+				options={searchableOptions}
+				required={1}
+				renderCount={({ chosen }) => (chosen === 0 ? 'Choose a fighting style.' : 'Fighting style chosen.')}
+				onToggle={(key) => {
+					const option = options.find((candidate) => optionKey(candidate) === key)
+					if (option) onChange(option.name)
+				}}
+			/>
 		</div>
 	)
 }

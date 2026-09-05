@@ -2,10 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { loadSubclassLevelFor, loadSubclassesFor, type SubclassOption } from './subclassData'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 import { Entries } from '../markup'
+import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 
 /*
- * Subclass picker. Not wired into the character creation wizard — that is a
- * separate task.
+ * Subclass picker. A class offers 5-10 subclasses, each carrying its whole
+ * level-3(+) feature text (up to ~2200 chars of entries JSON, longer per
+ * option on average than a Battle Master maneuver) — SearchableOptionList
+ * (collapsing + search), same as BackgroundPicker's single-choice usage.
  */
 
 type LoadState =
@@ -86,30 +89,28 @@ export function SubclassPicker({
 	const { grantLevel, options } = state
 	if (grantLevel === null || level < grantLevel) return null
 
+	const searchableOptions: SearchableOption[] = options.map((option) => ({
+		key: optionKey(option),
+		name: option.name,
+		label: <strong>{option.name}</strong>,
+		detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
+		selected: value === option.name,
+	}))
+
 	return (
 		<div className="subclass-picker">
-			<p className="subclass-picker__hint">{value ? 'Subclass chosen.' : 'Choose a subclass.'}</p>
-			<ul className="subclass-picker__list">
-				{options.map((option) => {
-					const key = optionKey(option)
-					const checked = value === option.name
-					return (
-						<li key={key} className="subclass-picker__item">
-							<label>
-								<input type="radio" name="subclass" checked={checked} onChange={() => onChange(option.name)} />
-								<strong>{option.name}</strong>
-							</label>
-							<div className="subclass-picker__description">
-								{resolverData ? (
-									<ResolvedEntries entries={option.entries} data={resolverData} />
-								) : (
-									<Entries entries={option.entries} />
-								)}
-							</div>
-						</li>
-					)
-				})}
-			</ul>
+			<SearchableOptionList
+				legend="Subclass"
+				name="subclass"
+				inputType="radio"
+				options={searchableOptions}
+				required={1}
+				renderCount={({ chosen }) => (chosen === 0 ? 'Choose a subclass.' : 'Subclass chosen.')}
+				onToggle={(key) => {
+					const option = options.find((candidate) => optionKey(candidate) === key)
+					if (option) onChange(option.name)
+				}}
+			/>
 		</div>
 	)
 }

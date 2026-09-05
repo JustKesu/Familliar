@@ -79,6 +79,8 @@ describe('FightingStylePicker', () => {
 			/>,
 		)
 
+		// A style is already chosen, so the list starts collapsed; open it to reach the options.
+		await user.click(await screen.findByRole('button', { name: /fighting style/i }))
 		const archery = await screen.findByRole('radio', { name: /Archery/ })
 		await user.click(archery)
 
@@ -87,6 +89,7 @@ describe('FightingStylePicker', () => {
 	})
 
 	it('renders whatever value it is given', async () => {
+		const user = userEvent.setup()
 		render(
 			<FightingStylePicker
 				className="Fighter"
@@ -97,11 +100,33 @@ describe('FightingStylePicker', () => {
 			/>,
 		)
 
+		await user.click(await screen.findByRole('button', { name: /fighting style/i }))
 		await waitFor(() => {
 			const archery = screen.getByRole('radio', { name: /Archery/ }) as HTMLInputElement
 			expect(archery.checked).toBe(true)
 		})
 		const dueling = screen.getByRole('radio', { name: /Dueling/ }) as HTMLInputElement
 		expect(dueling.checked).toBe(false)
+	})
+
+	it('search filters the fighting style list, but never hides the one already chosen', async () => {
+		const user = userEvent.setup()
+		render(
+			<FightingStylePicker
+				className="Fighter"
+				classSource="XPHB"
+				level={1}
+				value="Dueling"
+				onChange={() => {}}
+			/>,
+		)
+
+		await user.click(await screen.findByRole('button', { name: /fighting style/i }))
+		await user.type(screen.getByLabelText('Search Fighting style'), 'Archery')
+
+		expect(screen.getByRole('radio', { name: /Archery/ })).toBeTruthy()
+		// Dueling is chosen and does not match "Archery" — still shown, pinned.
+		const dueling = screen.getByRole('radio', { name: /Dueling/ }) as HTMLInputElement
+		expect(dueling.checked).toBe(true)
 	})
 })

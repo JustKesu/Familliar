@@ -139,7 +139,8 @@ describe('OptionalFeaturePicker', () => {
 			/>,
 		)
 
-		await screen.findByText('All options chosen.')
+		// The list collapses once the required count is met; open it to reach the options.
+		await user.click(await screen.findByRole('button', { name: /options/i }))
 		const fourth = screen.getByRole('checkbox', { name: 'Maneuver 4' }) as HTMLInputElement
 		expect(fourth.disabled).toBe(true)
 		await user.click(fourth)
@@ -167,5 +168,28 @@ describe('OptionalFeaturePicker', () => {
 		const one = screen.getByRole('checkbox', { name: 'Maneuver 1' }) as HTMLInputElement
 		expect(nine.checked).toBe(true)
 		expect(one.checked).toBe(false)
+	})
+
+	it('search filters the maneuver list, but never hides a maneuver already picked', async () => {
+		const user = userEvent.setup()
+		render(
+			<OptionalFeaturePicker
+				className="Fighter"
+				classSource="XPHB"
+				subclassName="Battle Master"
+				subclassSource="XPHB"
+				level={3}
+				value={['Maneuver 1']}
+				onChange={() => {}}
+			/>,
+		)
+
+		await user.type(await screen.findByLabelText('Search Options'), 'Maneuver 20')
+
+		expect(screen.getByRole('checkbox', { name: 'Maneuver 20' })).toBeTruthy()
+		expect(screen.queryByRole('checkbox', { name: 'Maneuver 2' })).toBeNull()
+		// Maneuver 1 is picked and does not match "Maneuver 20" — still shown, pinned.
+		const one = screen.getByRole('checkbox', { name: 'Maneuver 1' }) as HTMLInputElement
+		expect(one.checked).toBe(true)
 	})
 })

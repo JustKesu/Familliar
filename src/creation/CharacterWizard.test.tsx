@@ -564,8 +564,9 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await screen.findByLabelText('Species')
 		await goBack(user)
 
-		// The mastery list auto-collapses once its one pick is made; reopen it.
+		// The mastery and fighting-style lists auto-collapse once their one pick is made; reopen them.
 		await user.click(await screen.findByRole('button', { name: /Weapon masteries/ }))
+		await user.click(screen.getByRole('button', { name: /Fighting style/ }))
 		expect((screen.getByLabelText('Athletics') as HTMLInputElement).checked).toBe(true)
 		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(true)
 		expect((screen.getByLabelText('Archery') as HTMLInputElement).checked).toBe(true)
@@ -605,6 +606,8 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await screen.findByLabelText('Species')
 		await goBack(user)
 
+		// The subclass list auto-collapses once its one pick is made; reopen it.
+		await user.click(await screen.findByRole('button', { name: /Subclass/ }))
 		expect((screen.getByRole('radio', { name: /Champion/ }) as HTMLInputElement).checked).toBe(true)
 	})
 

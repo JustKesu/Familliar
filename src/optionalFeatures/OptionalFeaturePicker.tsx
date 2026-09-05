@@ -1,13 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadOptionalFeatureChoicesFor, type OptionalFeatureOption } from './optionalFeatureData'
 import { Entries } from '../markup'
+import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 
 /*
  * General picker for subclass optionalfeatureProgression choices (D21) — one
  * component for all four in-scope subclasses (Battle Master, Rune Knight,
  * Arcane Archer, College of Swords), since all four share the same shape:
- * a count that grows with level, and a fixed pool of named options.
+ * a count that grows with level, and a fixed pool of named options. Battle
+ * Master alone offers 23 maneuvers with full rules text each — long enough
+ * that the shared SearchableOptionList (collapsing + search + count, same
+ * as ClassOptionalFeaturePicker, this component's own fork) replaces the
+ * plain checkbox list every one of the four subclasses used to get.
  */
 
 type LoadState =
@@ -101,33 +106,35 @@ export function OptionalFeaturePicker({
 		}
 	}
 
+	const searchableOptions: SearchableOption[] = options.map((option) => {
+		const checked = value.includes(option.name)
+		return {
+			key: optionKey(option),
+			name: option.name,
+			label: <strong>{option.name}</strong>,
+			detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
+			selected: checked,
+			disabled: !checked && remaining <= 0,
+		}
+	})
+
 	return (
 		<div className="optional-feature-picker">
-			<p className="optional-feature-picker__hint">
-				{remaining > 0 ? `Choose ${remaining} more option${remaining === 1 ? '' : 's'}.` : 'All options chosen.'}
-			</p>
-			<ul className="optional-feature-picker__list">
-				{options.map((option) => {
-					const key = optionKey(option)
-					const checked = value.includes(option.name)
-					const disabled = !checked && remaining <= 0
-					return (
-						<li key={key} className="optional-feature-picker__item">
-							<label>
-								<input type="checkbox" checked={checked} disabled={disabled} onChange={() => toggle(option.name)} />
-								<strong>{option.name}</strong>
-							</label>
-							<div className="optional-feature-picker__description">
-								{resolverData ? (
-									<ResolvedEntries entries={option.entries} data={resolverData} />
-								) : (
-									<Entries entries={option.entries} />
-								)}
-							</div>
-						</li>
-					)
-				})}
-			</ul>
+			<SearchableOptionList
+				legend="Options"
+				name="optional-feature"
+				inputType="checkbox"
+				options={searchableOptions}
+				required={count}
+				renderCount={({ chosen, required }) => {
+					const left = required - chosen
+					return left > 0 ? `Choose ${left} more option${left === 1 ? '' : 's'}.` : 'All options chosen.'
+				}}
+				onToggle={(key) => {
+					const option = options.find((candidate) => optionKey(candidate) === key)
+					if (option) toggle(option.name)
+				}}
+			/>
 		</div>
 	)
 }
