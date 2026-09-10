@@ -66,6 +66,13 @@ export interface GrantedFeature {
 	level: number
 	entries: unknown[]
 	kind: 'class' | 'subclass'
+	/*
+	 * Carried through unread by this module, for D86's actions-table test: 72 of
+	 * the 215 qualifying class/subclass features (Stunning Strike, Deflect
+	 * Attacks…) carry `consumes` and NO rest tag, so a shape keeping only
+	 * `entries` loses them (scripts/investigate-choice-option-usability.js).
+	 */
+	consumes?: unknown
 }
 
 interface FeatureRecord {
@@ -77,6 +84,7 @@ interface FeatureRecord {
 	classSource: string
 	subclassShortName?: string
 	subclassSource?: string
+	consumes?: unknown
 }
 
 /** class-features.json / subclass-features.json filtered to the entries this resolver can key on (a string `id`, and the fields buildFeatureReachTest needs). */
@@ -98,6 +106,7 @@ function featureRecords(parsed: unknown): FeatureRecord[] {
 			classSource: entry['classSource'],
 			...(typeof entry['subclassShortName'] === 'string' ? { subclassShortName: entry['subclassShortName'] } : {}),
 			...(typeof entry['subclassSource'] === 'string' ? { subclassSource: entry['subclassSource'] } : {}),
+			...(entry['consumes'] !== undefined ? { consumes: entry['consumes'] } : {}),
 		})
 	}
 	return out
@@ -227,7 +236,14 @@ export function grantedClassFeaturesFrom(character: Character, parsedClasses: un
 		visited.add(record.id)
 		if (gainSubclassIds.has(record.id.toLowerCase())) return // rule 4
 		if (isChoiceContainer(record.entries)) return // rule 3
-		result.set(record.id, { id: record.id, name: record.name, level: record.level, entries: record.entries, kind })
+		result.set(record.id, {
+			id: record.id,
+			name: record.name,
+			level: record.level,
+			entries: record.entries,
+			kind,
+			...(record.consumes !== undefined ? { consumes: record.consumes } : {}),
+		})
 		frontier.push(record.entries)
 	}
 

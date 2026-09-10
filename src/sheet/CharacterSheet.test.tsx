@@ -11,7 +11,7 @@ import { computeSkill } from '../calculation/skills'
 import type { ClassSpellcastingAbility } from '../calculation/spellcasting'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
 import type { SpeciesTraitsData } from '../calculation/speciesTraits'
-import { loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetData'
+import { loadFeatTextEntries, loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
@@ -2925,6 +2925,145 @@ describe('CharacterSheet', () => {
 			expect(section.textContent).not.toContain('damage of your Druid cantrips')
 			// Rule 4: the subclass placeholder is not a row.
 			expect(section.textContent).not.toContain('Cleric Subclass')
+		})
+	})
+
+	/*
+	 * Usable-feature rows in the actions table (sheet rebuild slice 5 part A,
+	 * D86). End-to-end for the same reason the D87 block above is: the row is the
+	 * product of the resolver's output, D86's test and the table's own rendering,
+	 * and a feature that qualifies in a unit test but never reaches the table has
+	 * shipped in this project before. grantedClassFeaturesFrom runs for real over
+	 * the fixtures here; only the fetch is stubbed.
+	 *
+	 * The D86 headline cases, one per class: Second Wind and Action Surge
+	 * (Fighter, and Action Surge is the restated-at-17 case), Rage (Barbarian),
+	 * Channel Divinity (Cleric). The fourth is a FEAT rather than a Sorcerer's
+	 * Metamagic: Step 1 found Metamagic options qualify only through `consumes`,
+	 * which the stored option shape drops, so that source is deferred and feats
+	 * are the other source actually wired (see docs/REPORT.md).
+	 */
+	describe('usable-feature rows in the actions table (slice 5 part A, D86)', () => {
+		const REST = 'You regain the expended use when you finish a {@variantrule Short Rest|XPHB}.'
+
+		const CLASSES = [
+			{
+				entryType: 'class',
+				name: 'Fighter',
+				source: 'XPHB',
+				classFeatureIds: ['cf|second wind|fighter|xphb|1|xphb', 'cf|action surge|fighter|xphb|2|xphb', 'cf|action surge|fighter|xphb|17|xphb', 'cf|improved fighter|fighter|xphb|5|xphb'],
+				classFeatures: ['Second Wind|Fighter|XPHB|1', 'Action Surge|Fighter|XPHB|2', 'Action Surge|Fighter|XPHB|17', 'Improved Fighter|Fighter|XPHB|5'],
+			},
+			{
+				entryType: 'class',
+				name: 'Barbarian',
+				source: 'XPHB',
+				classFeatureIds: ['cf|rage|barbarian|xphb|1|xphb', 'cf|unarmored defense|barbarian|xphb|1|xphb'],
+				classFeatures: ['Rage|Barbarian|XPHB|1', 'Unarmored Defense|Barbarian|XPHB|1'],
+			},
+			{
+				entryType: 'class',
+				name: 'Cleric',
+				source: 'XPHB',
+				classFeatureIds: ['cf|channel divinity|cleric|xphb|2|xphb'],
+				classFeatures: ['Channel Divinity|Cleric|XPHB|2'],
+			},
+		]
+
+		const CF = [
+			{ id: 'cf|second wind|fighter|xphb|1|xphb', name: 'Second Wind', className: 'Fighter', classSource: 'XPHB', level: 1, source: 'XPHB', entries: [`You have a limited well of physical stamina. ${REST}`] },
+			// Restated at 17 (a second use) — the data holds two records for the one feature.
+			{ id: 'cf|action surge|fighter|xphb|2|xphb', name: 'Action Surge', className: 'Fighter', classSource: 'XPHB', level: 2, source: 'XPHB', entries: [`You can push yourself beyond your normal limits. ${REST}`] },
+			{ id: 'cf|action surge|fighter|xphb|17|xphb', name: 'Action Surge', className: 'Fighter', classSource: 'XPHB', level: 17, source: 'XPHB', entries: [`You can use it twice before a rest. ${REST}`] },
+			// Qualifies under neither test — a passive the table must leave out.
+			{ id: 'cf|improved fighter|fighter|xphb|5|xphb', name: 'Improved Fighter', className: 'Fighter', classSource: 'XPHB', level: 5, source: 'XPHB', entries: ['Your attack rolls improve.'] },
+			// The `consumes`-only shape: 72 real features qualify this way and no rest tag appears in their text.
+			{ id: 'cf|rage|barbarian|xphb|1|xphb', name: 'Rage', className: 'Barbarian', classSource: 'XPHB', level: 1, source: 'XPHB', consumes: { name: 'Rage' }, entries: ['You can enter a Rage as a Bonus Action.'] },
+			{ id: 'cf|unarmored defense|barbarian|xphb|1|xphb', name: 'Unarmored Defense', className: 'Barbarian', classSource: 'XPHB', level: 1, source: 'XPHB', entries: ['Your base AC equals 10 plus your Dexterity and Constitution modifiers.'] },
+			{ id: 'cf|channel divinity|cleric|xphb|2|xphb', name: 'Channel Divinity', className: 'Cleric', classSource: 'XPHB', level: 2, source: 'XPHB', entries: [`You can channel divine energy directly from the Outer Planes. ${REST}`] },
+		]
+
+		const RESOLVER = { classFeatures: CF, subclassFeatures: [], optionalFeatures: [], feats: [] }
+
+		function rowNames(container: HTMLElement): (string | null)[] {
+			const table = container.querySelector('.sheet__actions table.sheet__actions-table')!
+			return Array.from(table.querySelectorAll('tbody .sheet__action-row .sheet__action-name')).map((node) => node.textContent)
+		}
+
+		async function renderFor(subject: Character): Promise<HTMLElement> {
+			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(subject, CLASSES, RESOLVER))
+			const { container } = render(<CharacterSheet character={subject} />)
+			await screen.findByRole('heading', { name: subject.name })
+			await waitFor(() => expect(container.querySelector('.sheet__actions-table')).toBeTruthy())
+			return container
+		}
+
+		afterEach(() => {
+			vi.mocked(loadGrantedClassFeatures).mockReset().mockResolvedValue([])
+			vi.mocked(loadResolverData).mockReset().mockResolvedValue({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })
+			vi.mocked(loadFeatTextEntries).mockReset().mockResolvedValue([])
+		})
+
+		it('a Fighter 17 gets Second Wind and ONE Action Surge row, after the weapon rows, and no row for a passive', async () => {
+			const fighter: Character = { ...character, id: 'act-fighter', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 17 }] }
+			const container = await renderFor(fighter)
+
+			await waitFor(() => expect(rowNames(container)).toContain('Second Wind'))
+			// The weapon row still comes first; features are appended to the same table.
+			expect(rowNames(container)).toEqual(['Unarmed Strike', 'Second Wind', 'Action Surge'])
+			expect(rowNames(container)).not.toContain('Improved Fighter')
+		})
+
+		it('a feature row fills the Name cell only — Range, To Hit / DC and Damage stay empty', async () => {
+			const fighter: Character = { ...character, id: 'act-fighter-cells', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] }
+			const container = await renderFor(fighter)
+
+			const row = await waitFor(() => {
+				const found = Array.from(container.querySelectorAll('.sheet__action-row')).find((tr) => tr.querySelector('.sheet__action-name')?.textContent === 'Second Wind')
+				expect(found).toBeTruthy()
+				return found as HTMLElement
+			})
+			expect(row.closest('table.sheet__actions-table')).toBeTruthy()
+			expect(row.querySelector('.sheet__action-range')!.textContent).toBe('')
+			expect(row.querySelector('.sheet__action-to-hit')!.textContent).toBe('')
+			expect(row.querySelector('.sheet__action-damage-cell')!.textContent).toBe('')
+			expect(row.querySelector('.sheet__action-notes')!.textContent).toBe('')
+		})
+
+		it('a Barbarian gets a Rage row from `consumes` alone, with no rest tag anywhere in its text', async () => {
+			const barbarian: Character = { ...character, id: 'act-barb', name: 'Grog', classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 5 }] }
+			const container = await renderFor(barbarian)
+
+			await waitFor(() => expect(rowNames(container)).toContain('Rage'))
+			expect(rowNames(container)).not.toContain('Unarmored Defense')
+		})
+
+		it('a Cleric gets a Channel Divinity row', async () => {
+			const cleric: Character = { ...character, id: 'act-cleric', name: 'Pike', classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 5 }] }
+			const container = await renderFor(cleric)
+
+			await waitFor(() => expect(rowNames(container)).toContain('Channel Divinity'))
+		})
+
+		it('a rest-tagged FEAT gets a row too, and a feat that is neither does not', async () => {
+			vi.mocked(loadFeatTextEntries).mockResolvedValue([
+				{ name: 'Lucky', source: 'XPHB', entries: [REST] },
+				{ name: 'Alert', source: 'XPHB', entries: ['You gain a bonus to Initiative equal to your Proficiency Bonus.'] },
+			])
+			const feated: Character = {
+				...character,
+				id: 'act-feats',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+				featAsiChoices: [
+					{ level: 4, kind: 'feat', name: 'Lucky', source: 'XPHB' },
+					{ level: 8, kind: 'feat', name: 'Alert', source: 'XPHB' },
+				],
+			}
+			const container = await renderFor(feated)
+
+			await waitFor(() => expect(rowNames(container)).toContain('Lucky'))
+			expect(rowNames(container)).not.toContain('Alert')
 		})
 	})
 

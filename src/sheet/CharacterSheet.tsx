@@ -92,6 +92,7 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, SpellList } from './SpellList'
+import { featureActionRows, type FeatureActionData } from './featureActionRowData'
 import { spellActionRows, type SpellActionData } from './spellActionRowData'
 import { spellLevelLabel } from './spellFormatting'
 import {
@@ -1439,11 +1440,32 @@ function spellActionRow(spell: SpellActionData): ActionTableRow {
 }
 
 /**
+ * A usable class/subclass feature or feat as an actions-table row (sheet
+ * rebuild slice 5 part A). Presentation only; which features qualify is
+ * featureActionRowData.ts over D86's test.
+ *
+ * Every cell but the name is empty, and deliberately: a feature's uses and the
+ * pool it spends are not structured as numbers anywhere in the data (D86,
+ * featureActionRowData.ts). The row says the character HAS this action; the
+ * Features tab holds its text.
+ */
+function featureActionRow(feature: FeatureActionData): ActionTableRow {
+	return {
+		key: `feature-action|${feature.key}`,
+		name: <span className="sheet__action-name">{feature.name}</span>,
+		range: null,
+		toHit: null,
+		damage: null,
+		notes: null,
+	}
+}
+
+/**
  * The actions table (sheet rebuild slice 3). One row per thing the character
  * can do on their turn: the weapons they are HOLDING plus the Unarmed Strike
- * everyone has (build order step 7 slice c), and — slice 4 — every spell they
- * have access to that carries an attack roll or a saving throw. Slice 5 adds
- * usable-feature rows to the same table.
+ * everyone has (build order step 7 slice c), — slice 4 — every spell they
+ * have access to that carries an attack roll or a saving throw, and — slice 5
+ * part A — every feature they can use.
  *
  * Attacks per action (Extra Attack) is a property of the character's turn, not
  * of any one row, so it stays a summary line above the table.
@@ -1452,6 +1474,7 @@ function ActionsSection({
 	attacks,
 	attacksPerAction,
 	spellActions,
+	featureActions,
 	loading,
 	dataError,
 	onChooseAttackAbility,
@@ -1459,11 +1482,16 @@ function ActionsSection({
 	attacks: WeaponAttack[]
 	attacksPerAction: Calculated<number>
 	spellActions: SpellActionData[]
+	featureActions: FeatureActionData[]
 	loading: boolean
 	dataError: string | null
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
 }): ReactNode {
-	const rows = [...attacks.map((attack) => weaponAttackRow(attack, onChooseAttackAbility)), ...spellActions.map(spellActionRow)]
+	const rows = [
+		...attacks.map((attack) => weaponAttackRow(attack, onChooseAttackAbility)),
+		...spellActions.map(spellActionRow),
+		...featureActions.map(featureActionRow),
+	]
 	return (
 		<section className="sheet__actions">
 			<h2>Actions</h2>
@@ -2060,6 +2088,8 @@ export function CharacterSheet({
 		spellcastingEntries,
 		featSpellcastingEntries,
 	)
+	/* Sheet rebuild slice 5 part A: the D87 feature list and the character's feats, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
+	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries)
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
@@ -2604,6 +2634,7 @@ export function CharacterSheet({
 				attacks={weaponAttacks}
 				attacksPerAction={attacksPerAction}
 				spellActions={spellActions}
+				featureActions={featureActions}
 				loading={itemRefs === null || weaponAttackData === null}
 				dataError={weaponAttackDataError}
 				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}

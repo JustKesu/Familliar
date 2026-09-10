@@ -1,7 +1,7 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (resolver plné množiny class/subclass featur
-+ jeho výpis na záložce "Schopnosti a rysy" — D87; schéma 28 beze změny)
+Poslední aktualizace: 2026-09-10 (řádky použitelných schopností v tabulce akcí
+— přestavba sheetu, slice 5 část A; schéma 28 beze změny)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
@@ -59,15 +59,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | fix | Custom item form (5 oprav), inventářové ovládání, dlouhé seznamy přes SearchableOptionList | 26→27 |
    | hlavička | Trvalá hlavička sheetu (jméno, AC, iniciativa, rychlost, PB, životy); ruční životy `currentHp`/`maxHp` (D9) | 27→28 |
 
-   Aktuální schéma: 28. Zbývá z **přestavby sheetu**: řádky použitelných
-   schopností (slice 5 část A) do tabulky akcí — blokované návrhovou otázkou,
-   viz Next step. Slice 5 část B (oprava `formatRange`) je hotová, samostatná.
+   Aktuální schéma: 28. **Přestavba sheetu je hotová** — všech 5 slice
+   (poslední: slice 5 část A, řádky použitelných schopností v tabulce akcí).
 
    Přestavba sheetu (poslední kus kroku 7 — trvalá hlavička + záložky + jedna
-   tabulka akcí místo plochého výpisu sekcí). Rozdělena na 5 slice; slice 1
-   (trvalá hlavička), slice 2 (záložky), slice 3 (tabulka akcí, útoky
-   zbraněmi) a slice 4 (řádky kouzel) hotové — viz níž. Groundwork k tabulce
-   akcí:
+   tabulka akcí místo plochého výpisu sekcí). Rozdělena na 5 slice; všechny
+   hotové — viz níž. Groundwork k tabulce akcí:
 
    - Průzkum (bez kódu): co znamená "použitelná akce" pro tuhle tabulku. Žádné
      jedno pole to neoznačuje; `consumes` označuje jen ~125 SPENDERŮ
@@ -131,17 +128,23 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      zůstává prázdná, protože kostky jsou jen v próze (D21). Notes u kouzel
      vždy prázdné — "half on a save" žádné pole neoznačuje.
 
-   Zatím ne: řádky použitelných schopností v tabulce akcí (slice 5 část A).
-   Odblokováno — záložka "Schopnosti a rysy" teď renderuje plnou množinu
-   class/subclass featur (D87, `src/sheet/grantedClassFeatures.ts`), takže
-   `isActionTableFeature` má nad čím běžet pro featury, na kterých D86 vzniklo
-   (Second Wind, Rage, Channel Divinity, Lay on Hands, Wild Shape…). Část A
-   sama je pořád nenapsaná: musí vzít výstup `grantedClassFeaturesFrom`,
-   profiltrovat ho `isActionTableFeature` a přidat řádky do `ActionsSection`
-   bez Range/Damage/To Hit/Notes (D86). Nesmí sahat do `src/actions/` — to je
-   ta část. A — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool
-   definitions (max použití, obnova) pro `consumes` cíle, které v těchto
-   čtyřech souborech strukturovaně vůbec nejsou.
+   - Slice 5 část A (řádky schopností): `src/sheet/featureActionRowData.ts` +
+     `featureActionRow` v `CharacterSheet.tsx`. Řádek (jen jméno, ostatní
+     buňky prázdné) dostane každá udělená class/subclass featura z D87
+     resolveru a každý vzatý feat, kterou `isActionTableFeature` (D86) označí.
+     `GrantedFeature` nově nese i `consumes` — 72 z 215 kvalifikujících featur
+     (Stunning Strike, Deflect Attacks…) nemá rest tag vůbec a tvar jen s
+     `entries` by je ztratil. Deduplikace podle jména: data mají záznam na
+     každou úroveň, kde se featura opakuje (Action Surge na 2 i 17), a dva
+     stejně pojmenované řádky neřeknou nic navíc.
+     **Nezapojeno (odloženo):** volby optional feature (Metamagic, Eldritch
+     Invocations, Maneuvers, Arcane Shot) — 38 ze 41 kvalifikujících options
+     kvalifikuje jen přes `consumes`, které `OptionalFeatureOption` zahazuje;
+     viz REPORT.md. Volby D21 (Divine Order/Primal Order/Elemental Fury)
+     zapojovat netřeba — žádná ze 6 jejich options nekvalifikuje.
+   - Zatím ne (otázka pro krok 9, zaznamenaná v D86): pool definitions (max
+     použití, obnova) pro `consumes` cíle, které v těchto čtyřech souborech
+     strukturovaně vůbec nejsou.
 8. [not started] Level up
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
@@ -208,6 +211,21 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   `scalingLevelDice`, jinak prázdná (D21); Notes u kouzel vždy prázdné. Testy:
   `spellActionRowData.test.ts` + blok `spell rows in the actions table
   (rebuild slice 4)` v `CharacterSheet.test.tsx`.
+- Řádky použitelných schopností v tabulce akcí (přestavba sheetu, slice 5
+  část A) — `src/sheet/featureActionRowData.ts` (výběr, čistá funkce) a
+  `featureActionRow` v `CharacterSheet.tsx` (jen vykreslení). Zdroje: plná
+  množina class/subclass featur z D87 resolveru a featy, které postava vzala
+  (`featAsiChoices` + `FeatTextEntry`). Kvalifikaci rozhoduje výhradně
+  `isActionTableFeature` (D86), nezměněné. Řádek nese JEN jméno — Range, To
+  Hit / DC, Damage i Notes zůstávají prázdné, protože počet použití ani pool
+  nejsou v datech čísla (`consumes` pojmenovává pool, ne počet). Pořadí:
+  featury v pořadí resolveru (úroveň, pak jméno), pak featy; deduplikace podle
+  jména. `GrantedFeature` nově nese `consumes` (jinak by vypadlo 72 z 215
+  kvalifikujících featur, které nemají rest tag). Feat bez nalezeného textu
+  řádek nedostane (D43 — chybějící text hlásí sekce Feats). Testy:
+  `featureActionRowData.test.ts` (9 případů) + blok `usable-feature rows in the
+  actions table (slice 5 part A, D86)` v `CharacterSheet.test.tsx` (Fighter,
+  Barbarian, Cleric, feat).
 - Oprava množného čísla ve `formatRange` (přestavba sheetu, slice 5 část B) —
   `src/sheet/spellFormatting.ts`. `pluralize()` teď hledá nepravidelné tvary
   přes mapu `IRREGULAR_PLURALS` (`{ foot: 'feet' }`) dřív, než spadne na naivní
@@ -249,17 +267,18 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-Krok 7 zbývá dokončit přestavbou sheetu. Trvalá hlavička (slice 1), záložky
-(slice 2), tabulka akcí s útoky zbraněmi (slice 3), řádky kouzel (slice 4)
-a slice 5 část B (oprava množného čísla ve `formatRange`) jsou hotové.
+Přestavba sheetu je hotová — všech pět slice (trvalá hlavička, záložky,
+tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností + oprava
+`formatRange`). Tím je hotový i celý krok 7; další v build orderu je krok 8
+(level up), pokud se dřív nesáhne na odložené body níž.
 
-Zbývá slice 5 část A — řádky použitelných schopností v tabulce akcí,
-identifikace přes `isActionTableFeature` (D86), bez Range/Damage/To Hit/Notes.
-Řádkový model `ActionTableRow` na to čeká připravený. Odblokováno: resolver
-plné množiny class/subclass featur je hotový (D87, `grantedClassFeatures.ts`),
-takže "Schopnosti a rysy" tu množinu renderuje a část A ji může profiltrovat
-`isActionTableFeature` a přidat řádky do `ActionsSection`. Je to vlastní
-budoucí task; nesmí sahat do `src/actions/` ani do `isActionTableFeature`.
+Odložené z přestavby sheetu, čeká na tvoje rozhodnutí (viz REPORT.md):
+volby optional feature (Metamagic, Eldritch Invocations, Battle Master
+Maneuvers, Arcane Shot) nemají v tabulce akcí řádek, protože uložený tvar
+`OptionalFeatureOption` zahazuje `consumes` — a 38 ze 41 kvalifikujících
+options kvalifikuje právě jen jím. Oprava je jednořádková (protáhnout
+`consumes` skrz `optionalFeaturesByType`/`fightingStyleFeats`), ale je to
+změna cizího datového tvaru, ne tohohle slice.
 
 Otevřený kosmetický bod (vědomě odložený, D87 bod 5): wrapper featura (Life
 Domain) se ve výpisu ukazuje jako běžný řádek vedle featur, které uvádí. Není
