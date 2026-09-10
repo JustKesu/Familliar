@@ -44,7 +44,12 @@ import {
 } from '../calculation/damageResponses'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 import { Entries } from '../markup'
-import { loadChosenClassOptionalFeatures, type ChosenClassOptionalFeatureGroup } from '../optionalFeatures/optionalFeatureData'
+import {
+	loadChosenClassOptionalFeatures,
+	loadChosenOptionalFeatureOptions,
+	type ChosenClassOptionalFeatureGroup,
+	type OptionalFeatureOption,
+} from '../optionalFeatures/optionalFeatureData'
 import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
@@ -1648,6 +1653,14 @@ export function CharacterSheet({
 	const [featSpells, setFeatSpells] = useState<FeatGrantedSpell[]>([])
 	/** The CLASS's own optionalfeatureProgression picks (step 6a slice 2) — Metamagic, Eldritch Invocations. Depends on `character`, fetched separately same as featSpells. */
 	const [classOptionalFeatures, setClassOptionalFeatures] = useState<ChosenClassOptionalFeatureGroup[]>([])
+	/**
+	 * EVERY chosen optional-feature option, class-level and subclass-level alike,
+	 * plus the class fighting style — the actions table's third source.
+	 * Deliberately not derived from classOptionalFeatures
+	 * above: that one is scoped to the CLASS's own progressions, so a Battle
+	 * Master's maneuvers and an Arcane Archer's shots are absent from it.
+	 */
+	const [chosenOptionalFeatures, setChosenOptionalFeatures] = useState<OptionalFeatureOption[]>([])
 	/** Spells granted BY those picks (step 6a final slice) — separate from the option text above, which classOptionalFeatures already renders. */
 	const [optionalFeatureSpells, setOptionalFeatureSpells] = useState<OptionalFeatureGrantedSpell[]>([])
 	/** Senses granted by a chosen optional feature or a chosen feat (step 6a, final piece — closes 6a). Depends on `character`, fetched separately same as featSpells/optionalFeatureSpells above. */
@@ -1819,6 +1832,22 @@ export function CharacterSheet({
 				if (cancelled) return
 				setClassOptionalFeatures([])
 				setClassOptionalFeaturesError(messageOf(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
+	useEffect(() => {
+		let cancelled = false
+		// D43: an empty result on failure, same as the granted-feature source the
+		// actions table already has — a missing row never claims the feature is passive.
+		loadChosenOptionalFeatureOptions(character.optionalFeatureChoices ?? [], character.fightingStyle ?? null)
+			.then((options) => {
+				if (!cancelled) setChosenOptionalFeatures(options)
+			})
+			.catch(() => {
+				if (!cancelled) setChosenOptionalFeatures([])
 			})
 		return () => {
 			cancelled = true
@@ -2088,8 +2117,8 @@ export function CharacterSheet({
 		spellcastingEntries,
 		featSpellcastingEntries,
 	)
-	/* Sheet rebuild slice 5 part A: the D87 feature list and the character's feats, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
-	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries)
+	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
+	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures)
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).

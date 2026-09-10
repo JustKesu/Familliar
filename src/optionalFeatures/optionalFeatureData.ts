@@ -105,6 +105,14 @@ export interface OptionalFeatureOption {
 	source: string
 	entries: unknown[]
 	prerequisite?: OptionalFeaturePrerequisiteEntry[]
+	/*
+	 * Carried through unread by this module, for D86's actions-table test — the
+	 * same reason GrantedFeature carries it. All 38 usable Metamagic / Maneuver /
+	 * Arcane Shot options qualify ONLY via `consumes`, never a rest tag
+	 * (scripts/investigate-choice-option-usability.js), so a shape keeping only
+	 * `entries` loses every one of them.
+	 */
+	consumes?: unknown
 }
 
 export interface OptionalFeatureChoice {
@@ -125,6 +133,7 @@ interface RawOptionalFeature {
 	source?: unknown
 	featureType?: unknown
 	entries?: unknown
+	consumes?: unknown
 }
 
 function isRawOptionalFeature(value: unknown): value is RawOptionalFeature & { name: string; source: string; entries: unknown[] } {
@@ -140,7 +149,13 @@ function optionalFeaturesByType(parsedOptionalFeatures: unknown, code: string): 
 	return parsedOptionalFeatures
 		.filter(isRawOptionalFeature)
 		.filter((entry) => Array.isArray(entry.featureType) && entry.featureType.includes(code))
-		.map((entry) => ({ name: entry.name, source: entry.source, entries: entry.entries, prerequisite: readPrerequisite(entry) }))
+		.map((entry) => ({
+			name: entry.name,
+			source: entry.source,
+			entries: entry.entries,
+			prerequisite: readPrerequisite(entry),
+			...(entry.consumes !== undefined ? { consumes: entry.consumes } : {}),
+		}))
 }
 
 interface RawFeat {
@@ -148,6 +163,7 @@ interface RawFeat {
 	source?: unknown
 	category?: unknown
 	entries?: unknown
+	consumes?: unknown
 }
 
 function isRawFeat(value: unknown): value is RawFeat & { name: string; source: string; entries: unknown[] } {
@@ -163,7 +179,13 @@ function fightingStyleFeats(parsedFeats: unknown): OptionalFeatureOption[] {
 	return parsedFeats
 		.filter(isRawFeat)
 		.filter((entry) => entry.category === 'FS')
-		.map((entry) => ({ name: entry.name, source: entry.source, entries: entry.entries, prerequisite: readPrerequisite(entry) }))
+		.map((entry) => ({
+			name: entry.name,
+			source: entry.source,
+			entries: entry.entries,
+			prerequisite: readPrerequisite(entry),
+			...(entry.consumes !== undefined ? { consumes: entry.consumes } : {}),
+		}))
 }
 
 /**
@@ -613,6 +635,50 @@ export function chosenClassOptionalFeatures(
 		}
 	}
 	return groups
+}
+
+/**
+ * Every option the character actually took, across EVERY stored featureType —
+ * the class's own progressions (Metamagic, Eldritch Invocations) and a
+ * subclass's alike (Maneuvers, Arcane Shot, Runes, College of Swords fighting
+ * styles) — plus the class-level fighting style, which is stored as a bare name
+ * outside `optionalFeatureChoices` but resolves against the same D12 FS list.
+ *
+ * Distinct from chosenClassOptionalFeatures above, which asks which progression
+ * granted a featureType so it can head a group with the progression's name. A
+ * caller that wants the option RECORDS (the actions table) does not care, and
+ * that question is exactly what drops a subclass's picks on the floor.
+ */
+export function chosenOptionalFeatureOptions(
+	parsedOptionalFeatures: unknown,
+	parsedFeats: unknown,
+	selection: OptionalFeatureSelection[],
+	fightingStyle?: string | null,
+): OptionalFeatureOption[] {
+	const out: OptionalFeatureOption[] = []
+	for (const entry of selection) {
+		const all = optionsForFeatureType(parsedOptionalFeatures, parsedFeats, entry.featureType)
+		for (const name of entry.choices) {
+			// D43: a stored pick the data no longer offers is skipped, not faked.
+			const option = all.find((candidate) => normalizeName(candidate.name) === normalizeName(name))
+			if (option) out.push(option)
+		}
+	}
+	if (fightingStyle) {
+		const style = fightingStyleFeats(parsedFeats).find((candidate) => normalizeName(candidate.name) === normalizeName(fightingStyle))
+		if (style) out.push(style)
+	}
+	return out
+}
+
+/** Fetches optional-features.json and feats.json and returns chosenOptionalFeatureOptions' result. */
+export async function loadChosenOptionalFeatureOptions(
+	selection: OptionalFeatureSelection[],
+	fightingStyle?: string | null,
+): Promise<OptionalFeatureOption[]> {
+	if (selection.length === 0 && !fightingStyle) return []
+	const [optionalFeatures, feats] = await Promise.all([loadDataFile('data/optional-features.json'), loadDataFile('data/feats.json')])
+	return chosenOptionalFeatureOptions(optionalFeatures, feats, selection, fightingStyle)
 }
 
 /** Fetches classes.json, optional-features.json and feats.json and returns classOptionalFeatureGroupsFor's result. */

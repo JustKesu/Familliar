@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (řádky použitelných schopností v tabulce akcí
-— přestavba sheetu, slice 5 část A; schéma 28 beze změny)
+Poslední aktualizace: 2026-09-11 (volby optional feature v tabulce akcí —
+`consumes` protažené skrz `OptionalFeatureOption`; schéma 28 beze změny)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D87) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -137,11 +137,13 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `entries` by je ztratil. Deduplikace podle jména: data mají záznam na
      každou úroveň, kde se featura opakuje (Action Surge na 2 i 17), a dva
      stejně pojmenované řádky neřeknou nic navíc.
-     **Nezapojeno (odloženo):** volby optional feature (Metamagic, Eldritch
-     Invocations, Maneuvers, Arcane Shot) — 38 ze 41 kvalifikujících options
-     kvalifikuje jen přes `consumes`, které `OptionalFeatureOption` zahazuje;
-     viz REPORT.md. Volby D21 (Divine Order/Primal Order/Elemental Fury)
-     zapojovat netřeba — žádná ze 6 jejich options nekvalifikuje.
+     Volby D21 (Divine Order/Primal Order/Elemental Fury) zapojovat netřeba —
+     žádná ze 6 jejich options nekvalifikuje.
+   - Slice 5, doplnění (volby optional feature): `OptionalFeatureOption` nově
+     nese `consumes` a `featureActionRows` má třetí zdroj — vzaté volby optional
+     feature. Tím mají řádek i Metamagic, Maneuvers a Arcane Shot (38 ze 41
+     kvalifikujících options kvalifikuje jen přes `consumes`). Detaily níž v
+     "Co appka umí navíc".
    - Zatím ne (otázka pro krok 9, zaznamenaná v D86): pool definitions (max
      použití, obnova) pro `consumes` cíle, které v těchto čtyřech souborech
      strukturovaně vůbec nejsou.
@@ -223,9 +225,26 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   jména. `GrantedFeature` nově nese `consumes` (jinak by vypadlo 72 z 215
   kvalifikujících featur, které nemají rest tag). Feat bez nalezeného textu
   řádek nedostane (D43 — chybějící text hlásí sekce Feats). Testy:
-  `featureActionRowData.test.ts` (9 případů) + blok `usable-feature rows in the
+  `featureActionRowData.test.ts` (12 případů) + blok `usable-feature rows in the
   actions table (slice 5 part A, D86)` v `CharacterSheet.test.tsx` (Fighter,
-  Barbarian, Cleric, feat).
+  Barbarian, Cleric, feat, Metamagic, Maneuvers, fighting style).
+- Volby optional feature v tabulce akcí (dokončení slice 5) —
+  `OptionalFeatureOption` nově nese `consumes` (plní ho `optionalFeaturesByType`
+  i `fightingStyleFeats`), takže tvar sdílený s wizardem a pickery už ho
+  nezahazuje. `featureActionRows` má třetí zdroj: vzaté volby optional feature,
+  testované týmž `isActionTableFeature` jako featury a featy, se stejnou
+  deduplikací podle jména. Nová čistá funkce
+  `chosenOptionalFeatureOptions(optionalFeatures, feats, selection, fightingStyle)`
+  + `loadChosenOptionalFeatureOptions` v `src/optionalFeatures/optionalFeatureData.ts`
+  vrací plné záznamy VŠECH vzatých options — class-level (Metamagic, Eldritch
+  Invocations) i subclass-level (Maneuvers, Arcane Shot, Runes, FS:B) plus
+  class-level fighting style. Záměrně nejde přes `chosenClassOptionalFeatures`:
+  ta se ptá, která progression featureType udělila, a tou otázkou vypadnou
+  právě subclassové volby. **Schéma se nemění** — úložiště drží jen jména
+  (`optionalFeatureChoices` / `fightingStyle`) a plný záznam se dohledává až
+  při čtení, přesně tam, kde `consumes` teď přežije. Fighting style nekvalifikuje
+  (nemá `consumes` ani rest tag) a řádek nedostane. D43: uložená volba, kterou
+  data už nenabízejí, se přeskočí.
 - Oprava množného čísla ve `formatRange` (přestavba sheetu, slice 5 část B) —
   `src/sheet/spellFormatting.ts`. `pluralize()` teď hledá nepravidelné tvary
   přes mapu `IRREGULAR_PLURALS` (`{ foot: 'feet' }`) dřív, než spadne na naivní
@@ -272,13 +291,8 @@ tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností + oprava
 `formatRange`). Tím je hotový i celý krok 7; další v build orderu je krok 8
 (level up), pokud se dřív nesáhne na odložené body níž.
 
-Odložené z přestavby sheetu, čeká na tvoje rozhodnutí (viz REPORT.md):
-volby optional feature (Metamagic, Eldritch Invocations, Battle Master
-Maneuvers, Arcane Shot) nemají v tabulce akcí řádek, protože uložený tvar
-`OptionalFeatureOption` zahazuje `consumes` — a 38 ze 41 kvalifikujících
-options kvalifikuje právě jen jím. Oprava je jednořádková (protáhnout
-`consumes` skrz `optionalFeaturesByType`/`fightingStyleFeats`), ale je to
-změna cizího datového tvaru, ne tohohle slice.
+Poslední odložený bod přestavby (volby optional feature v tabulce akcí) je
+hotový — viz REPORT.md; čeká jen na zápis D88.
 
 Otevřený kosmetický bod (vědomě odložený, D87 bod 5): wrapper featura (Life
 Domain) se ve výpisu ukazuje jako běžný řádek vedle featur, které uvádí. Není

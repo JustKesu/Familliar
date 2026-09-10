@@ -26,7 +26,7 @@ import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
 import { loadChosenClassFeatureChoices } from '../classFeatureChoices/classFeatureChoiceData'
 import { grantedClassFeaturesFrom, loadGrantedClassFeatures } from './grantedClassFeatures'
-import { loadChosenClassOptionalFeatures } from '../optionalFeatures/optionalFeatureData'
+import { chosenOptionalFeatureOptions, loadChosenClassOptionalFeatures, loadChosenOptionalFeatureOptions } from '../optionalFeatures/optionalFeatureData'
 import { loadItemEntryTemplates } from '../inventory/itemEntryResolver'
 
 /*
@@ -302,6 +302,8 @@ vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
 				]
 			},
 		),
+		/* Only the fetch is stubbed — the actions-table tests below run the real chosenOptionalFeatureOptions over inline fixtures. */
+		loadChosenOptionalFeatureOptions: vi.fn(async () => []),
 	}
 })
 
@@ -2938,10 +2940,11 @@ describe('CharacterSheet', () => {
 	 *
 	 * The D86 headline cases, one per class: Second Wind and Action Surge
 	 * (Fighter, and Action Surge is the restated-at-17 case), Rage (Barbarian),
-	 * Channel Divinity (Cleric). The fourth is a FEAT rather than a Sorcerer's
-	 * Metamagic: Step 1 found Metamagic options qualify only through `consumes`,
-	 * which the stored option shape drops, so that source is deferred and feats
-	 * are the other source actually wired (see docs/REPORT.md).
+	 * Channel Divinity (Cleric), a feat (Lucky), and — now that
+	 * OptionalFeatureOption carries `consumes` — the chosen optional features a
+	 * Sorcerer's Metamagic and a Battle Master's Maneuvers stand for. Those last
+	 * run the real chosenOptionalFeatureOptions over inline fixtures; only the
+	 * fetch is stubbed, same as the resolver above.
 	 */
 	describe('usable-feature rows in the actions table (slice 5 part A, D86)', () => {
 		const REST = 'You regain the expended use when you finish a {@variantrule Short Rest|XPHB}.'
@@ -3064,6 +3067,75 @@ describe('CharacterSheet', () => {
 
 			await waitFor(() => expect(rowNames(container)).toContain('Lucky'))
 			expect(rowNames(container)).not.toContain('Alert')
+		})
+
+		/*
+		 * Chosen optional features, the third source. MM is a CLASS progression and
+		 * MV:B a SUBCLASS one — both are asserted because the sheet's other
+		 * optional-feature path (chosenClassOptionalFeatures) resolves only the
+		 * former, and the actions table deliberately does not go through it.
+		 */
+		const OPTIONAL_FEATURES = [
+			// Every real Metamagic/Maneuver/Arcane Shot option qualifies this way and no other: `consumes`, no rest tag.
+			{ name: 'Twinned Spell', source: 'XPHB', featureType: ['MM'], consumes: { name: 'Sorcery Points', amount: 1 }, entries: ['When you cast a spell that targets only one creature…'] },
+			{ name: 'Trip Attack', source: 'XPHB', featureType: ['MV:B'], consumes: { name: 'Combat Superiority Die' }, entries: ['When you hit a creature with an attack roll…'] },
+			// Qualifies under neither test — a chosen option the table must leave out.
+			{ name: 'Ambush', source: 'XPHB', featureType: ['MV:B'], entries: ['You add the die to your Stealth check or Initiative roll.'] },
+		]
+		// Per D12 a fighting style is a feats.json entry of category FS, not an optional feature.
+		const FS_FEATS = [{ name: 'Defense', source: 'XPHB', category: 'FS', entries: ['While you are wearing armor, you gain a +1 bonus to AC.'] }]
+
+		function withRealOptionResolution(): void {
+			vi.mocked(loadChosenOptionalFeatureOptions).mockImplementation(async (selection, fightingStyle) =>
+				chosenOptionalFeatureOptions(OPTIONAL_FEATURES, FS_FEATS, selection, fightingStyle),
+			)
+		}
+
+		afterEach(() => {
+			vi.mocked(loadChosenOptionalFeatureOptions).mockReset().mockResolvedValue([])
+		})
+
+		it('a Sorcerer gets a row for the Metamagic option they chose, from `consumes` alone', async () => {
+			withRealOptionResolution()
+			const sorcerer: Character = {
+				...character,
+				id: 'act-sorcerer',
+				name: 'Nott',
+				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 }],
+				optionalFeatureChoices: [{ featureType: 'MM', choices: ['Twinned Spell'] }],
+			}
+			const container = await renderFor(sorcerer)
+
+			await waitFor(() => expect(rowNames(container)).toContain('Twinned Spell'))
+		})
+
+		it("a Battle Master gets rows for the maneuvers they chose — a SUBCLASS progression's picks, and not the one qualifying under neither test", async () => {
+			withRealOptionResolution()
+			const battleMaster: Character = {
+				...character,
+				id: 'act-battlemaster',
+				name: 'Yasha',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 5 }],
+				optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Trip Attack', 'Ambush'] }],
+			}
+			const container = await renderFor(battleMaster)
+
+			await waitFor(() => expect(rowNames(container)).toContain('Trip Attack'))
+			expect(rowNames(container)).not.toContain('Ambush')
+		})
+
+		it('gives no row to the chosen fighting style, which carries neither `consumes` nor a rest tag', async () => {
+			withRealOptionResolution()
+			const fighter: Character = {
+				...character,
+				id: 'act-style',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+				fightingStyle: 'Defense',
+			}
+			const container = await renderFor(fighter)
+
+			await waitFor(() => expect(rowNames(container)).toContain('Second Wind'))
+			expect(rowNames(container)).not.toContain('Defense')
 		})
 	})
 
