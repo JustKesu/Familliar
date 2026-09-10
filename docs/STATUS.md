@@ -1,9 +1,9 @@
 # Status
 
-Poslední aktualizace: 2026-09-05.
+Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 2 — isActionTableFeature podle D86)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D85) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -59,6 +59,25 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
    Aktuální schéma: 27. Zbývá: **přestavba sheetu** (trvalá hlavička + záložky
    + jedna tabulka akcí) — poslední kus kroku 7, viz Next step.
+
+   Přestavba sheetu (poslední kus kroku 7 — trvalá hlavička + záložky + jedna
+   tabulka akcí místo plochého výpisu sekcí). Slice 1 hotovo — jen průzkum,
+   bez kódu: co znamená "použitelná akce" pro tuhle tabulku. Žádné jedno pole
+   to neoznačuje; `consumes` označuje jen ~125 SPENDERŮ pojmenovaného poolu
+   (Ki, Channel Divinity, Sorcery Point...), nikdy featuru, která pool
+   GRANTUJE (Second Wind, Rage, Font of Magic...). Viz docs/DECISIONS.md D86
+   pro celé zjištění a docs/REPORT.md pro report té slice. Slice 2 hotovo —
+   `src/actions/actionTableFeatureData.ts`, `isActionTableFeature(feature)`
+   podle D86: true, když featura nese `consumes`, NEBO její `entries`
+   (rekurzivně) obsahují tag `{@variantrule Long Rest` / `{@variantrule Short
+   Rest`. Ověřeno na 9 jmenovaných případech (Second Wind, Action Surge, Rage,
+   Bardic Inspiration, Channel Divinity, Font of Magic, Innate Sorcery, Wild
+   Shape, Lay on Hands) — všechny true; Draconic Resilience (passivní) —
+   false. `npm run typecheck` čisté, `npm test` 1450/1450, `npm run
+   validate-data` PASSED. Zatím ne: samotná tabulka akcí (UI/rozvržení
+   záložek), a — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool
+   definitions (max použití, obnova) pro `consumes` cíle, které v těchto
+   čtyřech souborech strukturovaně vůbec nejsou.
 8. [not started] Level up
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
@@ -76,6 +95,20 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
 - Uložení — localStorage, verzované schéma (teď 27), migrace fungují od
   verze 16 výš (D69); starší uložená postava se odmítne, ne převede.
+- Přestavba sheetu, slice 2 — `src/actions/actionTableFeatureData.ts`
+  (D86). `isActionTableFeature(feature)` je identifikační pravidlo pro
+  budoucí tabulku akcí: true, když featura (class feature, subclass
+  feature, feat nebo optional feature — cokoli s `entries`) nese pole
+  `consumes`, NEBO její `entries` obsahují kdekoli v libovolné hloubce tag
+  `{@variantrule Long Rest` nebo `{@variantrule Short Rest`. Ověřeno na 9
+  featurách z průzkumu k D86 (Second Wind, Action Surge, Rage, Bardic
+  Inspiration, Channel Divinity, Font of Magic, Innate Sorcery, Wild
+  Shape, Lay on Hands — všechny true) plus Draconic Resilience (passivní,
+  false). Vědomě přijaté false negatives podle D86: featura limitovaná
+  jinak (např. "jednou za kolo") bez `consumes` a bez rest tagu se
+  nezachytí a nedohledává se ručním seznamem — zůstává zobrazená jako
+  běžný text ve Schopnostech a rysech. UI/tabulka zatím nepostavená. Test:
+  `actionTableFeatureData.test.ts`.
 
 ## Dočasné scaffolding
 

@@ -1453,3 +1453,44 @@ ruku (D43). Jinak by rozbitý záznam nechal postavu držet tři věci.
 
 Kolik stojí zbraň tasit nebo schovat uprostřed boje appka neřeší — to je
 pravidlo u stolu, ne stav postavy.
+
+## D86 — Řádek do tabulky akcí pozná appka podle `consumes` nebo tagu {@variantrule Long/Short Rest}
+
+Navazuje na REPORT.md ze session "sheet rebuild slice 1", které zjistilo, že
+žádné strukturované pole neoznačuje featuru jako "usable action" napřímo, a
+že `consumes` označuje jen ~125 SPENDERŮ pojmenovaného poolu (Ki, Channel
+Divinity, Sorcery Point...), ne featury, které pool GRANTUJÍ (Second Wind,
+Action Surge, Bardic Inspiration, Font of Magic...).
+
+**Pravidlo:** featura patří do tabulky akcí, pokud nese pole `consumes`,
+NEBO její `entries` (rekurzivně, kdekoli v textu) obsahují tag
+`{@variantrule Long Rest|...}` nebo `{@variantrule Short Rest|...}`.
+
+Ověřeno na datech (class-features, subclass-features, feats,
+optional-features): tag samotný pokrývá 168 distinct featur a zasahuje
+všech 13 dříve ručně vyjmenovaných "jistě usable" featur (Second Wind,
+Action Surge, Indomitable, Rage, Bardic Inspiration, Lay on Hands, Font of
+Magic, Channel Divinity, Monk Ki/Focus features, Innate Sorcery, Magical
+Cunning) — 100 %. Ze 168 jich 157 nenese `consumes` vůbec, takže tag je
+právě ta chybějící vrstva, kterou `consumes` sám neviděl.
+
+**Vědomě přijaté false negatives.** Existují featury s limitovaným použitím
+(fráze "X times", pojmenovaný zdroj), které tag ani `consumes` nenesou —
+buď mají jiný limit než rest (např. "jednou za kolo"), nebo je to starší/
+reprintovaný záznam s volným textem místo tagu. Nedohledávají se ručně a
+nedoplňují se do žádného seznamu výjimek. Featura, která tímhle pravidlem
+propadne, zůstane zobrazená jako text ve Schopnostech a rysech — stejné
+chování jako u prózových featů (D55), ne pád ani tichá chyba.
+
+Rationale: dvousignálové pravidlo (`consumes` + explicitní 5etools tag) je
+strukturální test, ne parsování volné prózy — narozdíl od širší heuristiky
+navržené v REPORT.md (fráze typu "as a bonus action"), která by měla vysokou
+míru falešných zásahů. Cena je několik desítek featur bez limitu poznaného
+appkou; cena alternativy (a) — ručně vyjmenovaný seznam 150–300 featur — je
+seznam, který se musí ručně udržovat při každé nové knize dat, což D21
+zásadně nechce.
+
+Zůstává otevřené (REPORT.md, bod "Pool definitions"): kolik použití pool
+má a kdy se obnovuje (Rage 2×/long rest na 1. úrovni, Ki = úroveň Mnicha...)
+není v těchto čtyřech souborech strukturovaně vůbec — to je samostatná
+otázka pro krok 9 (Play tracking), ne pro tenhle řádek identifikace.
