@@ -31,7 +31,7 @@ import {
 	weaponProficiencyGrantsFor,
 	type WeaponProficiencyGrant,
 } from '../weapons/weaponProficiency'
-import { resolveSubclassShortName } from './armourClassData'
+import { buildFeatureReachTest } from './featureReach'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -164,22 +164,11 @@ function asFeatureArray(parsed: unknown, file: string): RawFeature[] {
 export function featureNamesFor(character: Character, parsedClassFeatures: unknown, parsedSubclassFeatures: unknown, parsedClasses: unknown): string[] {
 	const classFeatures = asFeatureArray(parsedClassFeatures, 'class-features.json')
 	const subclassFeatures = asFeatureArray(parsedSubclassFeatures, 'subclass-features.json')
+	const reached = buildFeatureReachTest(character, parsedClasses)
 
 	const names = new Set<string>()
-	for (const characterClass of character.classes) {
-		for (const feature of classFeatures) {
-			if (feature.className !== characterClass.className || feature.classSource !== characterClass.classSource) continue
-			if (feature.level <= characterClass.level) names.add(feature.name)
-		}
-
-		if (!characterClass.subclass) continue
-		const subclass = resolveSubclassShortName(parsedClasses, characterClass.className, characterClass.classSource, characterClass.subclass)
-		if (!subclass) continue
-		for (const feature of subclassFeatures) {
-			if (feature.className !== characterClass.className || feature.classSource !== characterClass.classSource) continue
-			if (feature.subclassShortName !== subclass.shortName || feature.subclassSource !== subclass.source) continue
-			if (feature.level <= characterClass.level) names.add(feature.name)
-		}
+	for (const feature of [...classFeatures, ...subclassFeatures]) {
+		if (reached(feature)) names.add(feature.name)
 	}
 	return [...names]
 }

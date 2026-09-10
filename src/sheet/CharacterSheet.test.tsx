@@ -25,6 +25,7 @@ import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
 import { loadChosenClassFeatureChoices } from '../classFeatureChoices/classFeatureChoiceData'
+import { grantedClassFeaturesFrom, loadGrantedClassFeatures } from './grantedClassFeatures'
 import { loadChosenClassOptionalFeatures } from '../optionalFeatures/optionalFeatureData'
 import { loadItemEntryTemplates } from '../inventory/itemEntryResolver'
 
@@ -308,6 +309,12 @@ vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
 vi.mock('../classFeatureChoices/classFeatureChoiceData', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../classFeatureChoices/classFeatureChoiceData')>()
 	return { ...actual, loadChosenClassFeatureChoices: vi.fn(actual.loadChosenClassFeatureChoices) }
+})
+
+/* Only the fetch is stubbed — grantedClassFeaturesFrom (the whole D87 resolver) runs for real in the tests below, fed inline fixtures. */
+vi.mock('./grantedClassFeatures', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./grantedClassFeatures')>()
+	return { ...actual, loadGrantedClassFeatures: vi.fn(async () => []) }
 })
 
 vi.mock('../featureResolver', async (importOriginal) => {
@@ -2725,6 +2732,199 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			expect(container.querySelector('.sheet__class-feature-choices')).toBeNull()
+		})
+	})
+
+	/*
+	 * The full class + subclass feature list (D87). loadGrantedClassFeatures is
+	 * stubbed, but grantedClassFeaturesFrom — the whole resolver — runs for real
+	 * over the fixtures here, and loadResolverData feeds the same records so the
+	 * <details> expansions resolve too. End-to-end for the same reason the
+	 * sections above are: a resolved feature that never reaches the tab has
+	 * shipped twice in this project.
+	 */
+	describe('full class and subclass feature list (D87)', () => {
+		const CLASSES = [
+			{
+				entryType: 'class',
+				name: 'Fighter',
+				source: 'XPHB',
+				classFeatureIds: [
+					'cf|second wind|fighter|xphb|1|xphb',
+					'cf|fighting style|fighter|xphb|1|xphb', // choice container — ClassOptionalFeaturePicker owns it
+					'cf|fighter subclass|fighter|xphb|3|xphb', // gainSubclassFeature placeholder
+				],
+				classFeatures: [
+					'Second Wind|Fighter|XPHB|1',
+					'Fighting Style|Fighter|XPHB|1',
+					{ gainSubclassFeature: true, classFeature: 'Fighter Subclass|Fighter|XPHB|3' },
+				],
+			},
+			{
+				entryType: 'subclass',
+				name: 'Champion',
+				className: 'Fighter',
+				classSource: 'XPHB',
+				shortName: 'Champion',
+				source: 'XPHB',
+				subclassFeatureIds: ['scf|improved critical|fighter|xphb|champion|xphb|3|xphb'],
+			},
+			{
+				entryType: 'class',
+				name: 'Cleric',
+				source: 'XPHB',
+				classFeatureIds: [
+					'cf|channel divinity|cleric|xphb|2|xphb',
+					'cf|divine conduit|cleric|xphb|7|xphb',
+					'cf|cleric subclass|cleric|xphb|3|xphb', // gainSubclassFeature placeholder
+				],
+				classFeatures: [
+					'Channel Divinity|Cleric|XPHB|2',
+					'Divine Conduit|Cleric|XPHB|7',
+					{ gainSubclassFeature: true, classFeature: 'Cleric Subclass|Cleric|XPHB|3' },
+				],
+			},
+			{
+				entryType: 'subclass',
+				name: 'Life Domain',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				shortName: 'Life',
+				source: 'XPHB',
+				// Only the wrapper is in the id list; its three parts are reached by ref alone.
+				subclassFeatureIds: ['scf|life domain|cleric|xphb|life|xphb|3|xphb'],
+			},
+		]
+
+		const CF = [
+			{ id: 'cf|second wind|fighter|xphb|1|xphb', name: 'Second Wind', className: 'Fighter', classSource: 'XPHB', level: 1, source: 'XPHB', entries: ['You have a limited well of physical stamina.'] },
+			{
+				id: 'cf|fighting style|fighter|xphb|1|xphb',
+				name: 'Fighting Style',
+				className: 'Fighter',
+				classSource: 'XPHB',
+				level: 1,
+				source: 'XPHB',
+				entries: [
+					'You gain a Fighting Style feat of your choice.',
+					{
+						type: 'options',
+						count: 1,
+						entries: [
+							{ type: 'refOptionalfeature', optionalfeature: 'Defense|XPHB' },
+							{ type: 'refOptionalfeature', optionalfeature: 'Dueling|XPHB' },
+						],
+					},
+				],
+			},
+			{ id: 'cf|fighter subclass|fighter|xphb|3|xphb', name: 'Fighter Subclass', className: 'Fighter', classSource: 'XPHB', level: 3, source: 'XPHB', entries: ['You gain a Fighter subclass of your choice.'] },
+			{
+				id: 'cf|channel divinity|cleric|xphb|2|xphb',
+				name: 'Channel Divinity',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				level: 2,
+				source: 'XPHB',
+				entries: [{ type: 'entries', name: 'Channel Divinity', entries: ['You can channel divine energy directly from the Outer Planes.'] }],
+			},
+			{ id: 'cf|cleric subclass|cleric|xphb|3|xphb', name: 'Cleric Subclass', className: 'Cleric', classSource: 'XPHB', level: 3, source: 'XPHB', entries: ['You gain a Cleric subclass of your choice.'] },
+			// A plain feature whose text refs ONE specific "Potent Spellcasting" by uid — the id/uid-not-name case (D87 rule 2).
+			{
+				id: 'cf|divine conduit|cleric|xphb|7|xphb',
+				name: 'Divine Conduit',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				level: 7,
+				source: 'XPHB',
+				entries: ['Your faith sharpens your magic.', { type: 'refClassFeature', classFeature: 'Potent Spellcasting|Cleric|XPHB|17|XPHB' }],
+			},
+			{ id: 'cf|potent spellcasting|cleric|xphb|17|xphb', name: 'Potent Spellcasting', className: 'Cleric', classSource: 'XPHB', level: 17, source: 'XPHB', entries: ['Add your Wisdom modifier to the damage of your Cleric cantrips.'] },
+			{ id: 'cf|potent spellcasting|druid|xphb|18|xphb', name: 'Potent Spellcasting', className: 'Druid', classSource: 'XPHB', level: 18, source: 'XPHB', entries: ['Add your Wisdom modifier to the damage of your Druid cantrips.'] },
+		]
+
+		const SF = [
+			{
+				id: 'scf|improved critical|fighter|xphb|champion|xphb|3|xphb',
+				name: 'Improved Critical',
+				className: 'Fighter',
+				classSource: 'XPHB',
+				subclassShortName: 'Champion',
+				subclassSource: 'XPHB',
+				level: 3,
+				source: 'XPHB',
+				entries: ['Your attack rolls can score a critical hit on a roll of 19 or 20.'],
+			},
+			{
+				id: 'scf|life domain|cleric|xphb|life|xphb|3|xphb',
+				name: 'Life Domain',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				subclassShortName: 'Life',
+				subclassSource: 'XPHB',
+				level: 3,
+				source: 'XPHB',
+				entries: [
+					'The life force that suffuses the multiverse blesses you.',
+					{ type: 'refSubclassFeature', subclassFeature: 'Disciple of Life|Cleric|XPHB|Life|XPHB|3|XPHB' },
+					{ type: 'refSubclassFeature', subclassFeature: 'Preserve Life|Cleric|XPHB|Life|XPHB|3|XPHB' },
+				],
+			},
+			{ id: 'scf|disciple of life|cleric|xphb|life|xphb|3|xphb', name: 'Disciple of Life', className: 'Cleric', classSource: 'XPHB', subclassShortName: 'Life', subclassSource: 'XPHB', level: 3, source: 'XPHB', entries: ['Your healing spells mend more grievous wounds.'] },
+			{ id: 'scf|preserve life|cleric|xphb|life|xphb|3|xphb', name: 'Preserve Life', className: 'Cleric', classSource: 'XPHB', subclassShortName: 'Life', subclassSource: 'XPHB', level: 3, source: 'XPHB', entries: ['As a Channel Divinity option, you present your holy symbol and restore hit points.'] },
+		]
+
+		const RESOLVER = { classFeatures: CF, subclassFeatures: SF, optionalFeatures: [], feats: [] }
+
+		afterEach(() => {
+			vi.mocked(loadGrantedClassFeatures).mockReset().mockResolvedValue([])
+			vi.mocked(loadResolverData).mockReset().mockResolvedValue({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })
+		})
+
+		it('a Fighter (Champion) 5 lists the granted features and drops the choice container and the subclass placeholder', async () => {
+			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(character, CLASSES, RESOLVER))
+
+			const { container } = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+
+			const section = await waitFor(() => {
+				const found = container.querySelector('.sheet__granted-features')
+				expect(found?.textContent).toContain('Second Wind')
+				return found!
+			})
+			expect(section.textContent).toContain('Improved Critical')
+			// Rule 3 / rule 4: neither the counted-options container nor the placeholder is listed.
+			expect(section.textContent).not.toContain('Fighting Style')
+			expect(section.textContent).not.toContain('Fighter Subclass')
+		})
+
+		it('a Cleric (Life) 17 keeps the wrapper AND its ref-introduced parts, and resolves the Cleric "Potent Spellcasting" — not the Druid one', async () => {
+			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
+			const cleric: Character = {
+				id: 'cl-life',
+				name: 'Living Cleric',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: 'Life Domain', level: 17 }],
+			}
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(cleric, CLASSES, RESOLVER))
+
+			const { container } = render(<CharacterSheet character={cleric} />)
+			await screen.findByRole('heading', { name: 'Living Cleric' })
+
+			const section = await waitFor(() => {
+				const found = container.querySelector('.sheet__granted-features')
+				expect(found?.textContent).toContain('Disciple of Life')
+				return found!
+			})
+			// Rule 5: the wrapper is an ordinary entry, alongside the features it introduces by ref.
+			expect(section.textContent).toContain('Life Domain')
+			expect(section.textContent).toContain('Disciple of Life')
+			expect(section.textContent).toContain('Preserve Life')
+			expect(section.textContent).toContain('Channel Divinity')
+			// Rule 2: the closure matched the ref by id, so only the Cleric feature's text appears.
+			expect(section.textContent).toContain('damage of your Cleric cantrips')
+			expect(section.textContent).not.toContain('damage of your Druid cantrips')
+			// Rule 4: the subclass placeholder is not a row.
+			expect(section.textContent).not.toContain('Cleric Subclass')
 		})
 	})
 

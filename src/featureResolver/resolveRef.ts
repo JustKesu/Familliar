@@ -142,6 +142,22 @@ function resolveFeat(uid: string, feats: unknown): ResolvedFeature | null {
 	return findByName(list, name, source)
 }
 
+/**
+ * The `id` a class/subclass ref* occurrence points at, built with the same
+ * empty-segment defaulting resolveRef uses (DATA.md: a ref* uid is the target's
+ * `id`, but may leave segments empty or drop them off the end). Null for
+ * optionalfeature/feat kinds, which have no `id` to match on.
+ *
+ * Exported so a caller that needs the target RECORD (its level, its own id for
+ * de-duplication) can look it up by id rather than by name — two features can
+ * share a name (Cleric's and Druid's "Potent Spellcasting").
+ */
+export function featureIdForRef(occurrence: RefOccurrence): string | null {
+	if (occurrence.kind === 'classFeature') return classFeatureId(occurrence.uid)
+	if (occurrence.kind === 'subclassFeature') return subclassFeatureId(occurrence.uid)
+	return null
+}
+
 export function resolveRef(occurrence: RefOccurrence, data: ResolverData): ResolvedFeature | null {
 	switch (occurrence.kind) {
 		case 'classFeature':

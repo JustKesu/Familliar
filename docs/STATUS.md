@@ -1,7 +1,7 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (průzkum k resolveru plné množiny class/subclass
-featur — D46, bez zásahu do `src/`; schéma 28 beze změny)
+Poslední aktualizace: 2026-09-10 (resolver plné množiny class/subclass featur
++ jeho výpis na záložce "Schopnosti a rysy" — D87; schéma 28 beze změny)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
@@ -131,15 +131,17 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      zůstává prázdná, protože kostky jsou jen v próze (D21). Notes u kouzel
      vždy prázdné — "half on a save" žádné pole neoznačuje.
 
-   Zatím ne: řádky použitelných schopností v tabulce akcí (slice 5 část A) —
-   blokované: záložka "Schopnosti a rysy" nerenderuje žádnou obecnou množinu
-   class/subclass featur (jen featy, tři D21 volby class featur a class
-   optional features), takže `isActionTableFeature` nemá nad čím běžet pro
-   featury, na kterých D86 vzniklo (Second Wind, Rage, Channel Divinity, Lay
-   on Hands, Wild Shape…). Potřebuje rozhodnutí — viz Next step / REPORT.md.
-   A — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool definitions
-   (max použití, obnova) pro `consumes` cíle, které v těchto čtyřech
-   souborech strukturovaně vůbec nejsou.
+   Zatím ne: řádky použitelných schopností v tabulce akcí (slice 5 část A).
+   Odblokováno — záložka "Schopnosti a rysy" teď renderuje plnou množinu
+   class/subclass featur (D87, `src/sheet/grantedClassFeatures.ts`), takže
+   `isActionTableFeature` má nad čím běžet pro featury, na kterých D86 vzniklo
+   (Second Wind, Rage, Channel Divinity, Lay on Hands, Wild Shape…). Část A
+   sama je pořád nenapsaná: musí vzít výstup `grantedClassFeaturesFrom`,
+   profiltrovat ho `isActionTableFeature` a přidat řádky do `ActionsSection`
+   bez Range/Damage/To Hit/Notes (D86). Nesmí sahat do `src/actions/` — to je
+   ta část. A — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool
+   definitions (max použití, obnova) pro `consumes` cíle, které v těchto
+   čtyřech souborech strukturovaně vůbec nejsou.
 8. [not started] Level up
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
@@ -152,6 +154,20 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Feature-reference resolver — text schopnosti, která odkazuje na jinou
   (subclass, feat, optional feature), se rozbalí přímo na místě, sbaleno
   v `<details>`.
+- Resolver plné množiny class/subclass featur (D87) —
+  `src/sheet/grantedClassFeatures.ts`. `grantedClassFeaturesFrom` vezme seed
+  z `classFeatureIds`/`subclassFeatureIds` do úrovně postavy (match sdílený
+  s `featureNamesFor` přes nový `src/sheet/featureReach.ts`), pak tranzitivní
+  uzávěru přes `ref*` uzly v prostém textu (ne uvnitř counted `options`),
+  párováno přes id/uid. Vynechává choice kontejnery (counted `options` plný
+  `refClassFeature`/`refOptionalfeature`) a `gainSubclassFeature` placeholdery
+  — ty už řeší sekce `classFeatureChoices` / `classOptionalFeatures` /
+  hlavička. Wrapper featura (Life Domain) zůstává jako běžný řádek vedle svých
+  částí. Výpis je nová sekce "Class and subclass features" na záložce
+  "Schopnosti a rysy", stejný `<details>` + `ResolvedEntries` pattern jako
+  featy (D51); nenahrazuje ani neslučuje stávající sekce. Read-only.
+  `featureIdForRef` nově exportován z `src/featureResolver`. Testy:
+  `grantedClassFeatures.test.ts` + blok v `CharacterSheet.test.tsx`.
 - Weapon proficiency/mastery a Extra Attack — jeden sdílený modul,
   strukturálně (podle dat zbraně), ne podle jména třídy.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
@@ -221,11 +237,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   ruční smazání (nástroj pro delete to v tomhle repu opakovaně odmítl).
 - `src/MarkupDemo.tsx` — ukázka rendereru; nahradí ho tvorba postavy a sheet.
 - Investigation skripty čekající na ruční smazání (`git clean` je
-  nesmazal, protože jsou to soubory ze session před zavedením toho
-  postupu): `scripts/summarize-xmm-beasts.js`,
+  nesmazal, protože jsou trackované): `scripts/summarize-xmm-beasts.js`,
   `scripts/summarize-beast-display-shapes.js`,
   `scripts/investigate-wild-shape-rules.js`,
-  `scripts/investigate-pact-of-the-chain.js`.
+  `scripts/investigate-pact-of-the-chain.js`,
+  `scripts/investigate-full-feature-resolution.js` (jeho zjištění jsou teď
+  zapracovaná v D87 — spotřebovaný).
 - Netrackované (nikdy commitnuté) soubory čekající na smazání:
   `src/featureResolver/surveyRefResolution.test.ts`,
   `scripts/survey-ref-resolution.txt`.
@@ -238,33 +255,16 @@ a slice 5 část B (oprava množného čísla ve `formatRange`) jsou hotové.
 
 Zbývá slice 5 část A — řádky použitelných schopností v tabulce akcí,
 identifikace přes `isActionTableFeature` (D86), bez Range/Damage/To Hit/Notes.
-Řádkový model `ActionTableRow` na to čeká připravený, ale zadání předpokládá,
-že "Schopnosti a rysy" renderuje class/subclass featury; nerenderuje (jen
-featy, tři D21 volby class featur a class optional features jako Metamagic).
-Než část A půjde dál, potřebuje rozhodnutí: běžet `isActionTableFeature` jen
-nad těmi třemi existujícími zdroji (skoro prázdný výsledek), nebo přidat
-resolver plné množiny class/subclass featur. Je to vlastní budoucí task.
+Řádkový model `ActionTableRow` na to čeká připravený. Odblokováno: resolver
+plné množiny class/subclass featur je hotový (D87, `grantedClassFeatures.ts`),
+takže "Schopnosti a rysy" tu množinu renderuje a část A ji může profiltrovat
+`isActionTableFeature` a přidat řádky do `ActionsSection`. Je to vlastní
+budoucí task; nesmí sahat do `src/actions/` ani do `isActionTableFeature`.
 
-Průzkum k tomu resolveru je hotový (`scripts/investigate-full-feature-resolution.js`,
-D46, bez zásahu do `src/`) — plné odpovědi v REPORT.md, shrnutí:
-
-- Průchod už existuje: `featureNamesFor` (`src/sheet/weaponAttackData.ts:164`)
-  filtruje oba soubory na `level <= level` postavy včetně subclass matchingu,
-  ale vrací jen jména. Tvorba postavy per-level procházku featur nemá.
-- Naivní `level <= N` je špatně. Členství v `classes.json` `classFeatureIds` /
-  `subclassFeatureIds` neznamená "uděleno": subclass má v id-seznamu wrapper
-  ("Life Domain" L3), jehož text se rozbaluje na tři skutečné featury, které
-  v seznamu nejsou. Rozlišovač je, ODKUD odkaz vede — z 344 ref-collected
-  featur je 337 odkazováno z prostého textu rodiče (udělené) a 5 jen zevnitř
-  counted `options` uzlu (alternativy jedné volby: Protector, Thaumaturge,
-  Magician, Warden, Primal Strike). Párovat se musí přes uid/id, ne přes
-  jméno ("Potent Spellcasting" existuje pro Cleric i Druid a chová se různě).
-- Navržené pravidlo (ověřeno na 4 postavách): seed = id-seznam do úrovně, pak
-  tranzitivní uzávěra přes `ref*` uzly mimo counted `options`.
-- Tři zdroje sheetu nenesou odkaz zpět do class-features.json; spoj by se
-  musel stavět přes jméno + úroveň. Kolize k rozhodnutí (wrapper vedle svých
-  částí, "Metamagic Options"/"Fighting Style" jako kontejnery všech voleb,
-  placeholdery `gainSubclassFeature`) jsou vypsané v REPORT.md.
+Otevřený kosmetický bod (vědomě odložený, D87 bod 5): wrapper featura (Life
+Domain) se ve výpisu ukazuje jako běžný řádek vedle featur, které uvádí. Není
+strukturální způsob, jak wrapper poznat, a jmenný seznam výjimek je přesně to,
+čemu se projekt vyhýbá (D21). Znovu zvážit až po revizi skutečného sheetu.
 
 Než se začne krok 7a (kouzla z rasy) nebo pickery tří podtříd (Storm
 Herald, The Genie, Divine Soul), potřebují rozhodnutí — viz QUESTIONS.md.

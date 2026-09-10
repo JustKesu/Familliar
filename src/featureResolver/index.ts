@@ -1,6 +1,6 @@
 export { ResolvedEntries } from './ResolvedEntries'
 export { loadResolverData } from './loadResolverData'
-export { resolveRef } from './resolveRef'
+export { resolveRef, featureIdForRef } from './resolveRef'
 export { scanRefs, distinctRefs } from './scanRefs'
 export { buildExpansions } from './expandRefs'
 export type { RefKind, RefOccurrence, ResolvedFeature, ResolverData } from './refTypes'

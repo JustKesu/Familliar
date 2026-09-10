@@ -74,6 +74,7 @@ import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClas
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
 import { buildItemDarkvisionGrants, buildItemSpeedAdjustments } from './itemEffectData'
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
+import { loadGrantedClassFeatures, type GrantedFeature } from './grantedClassFeatures'
 import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
@@ -1625,6 +1626,9 @@ export function CharacterSheet({
 	const [grantedSenses, setGrantedSenses] = useState<GrantedSense[]>([])
 	/** The D21 class-feature choices (Divine Order, Primal Order, Elemental Fury) joined to their chosen option's text. Depends on `character`, fetched separately same as the effects above. */
 	const [classFeatureChoices, setClassFeatureChoices] = useState<ChosenClassFeatureChoice[]>([])
+	/** The full class/subclass feature list (D87), its own fetch (classes.json + the resolver files); starts empty and stays empty on failure, same D43 rule as the effects above. */
+	const [grantedFeatures, setGrantedFeatures] = useState<GrantedFeature[]>([])
+	const [grantedFeaturesError, setGrantedFeaturesError] = useState<string | null>(null)
 	/** The Find Familiar beast pool (step 6b slice 2). Fetched only for a character that actually has the spell — see the effect below. */
 	const [beasts, setBeasts] = useState<Beast[]>([])
 	/** Which alternative Armour Class formulas the character is eligible for (step 7 slice b). Depends on `character` and on whether Mage Armor is in the spell list, fetched separately same as the effects above. */
@@ -1841,6 +1845,24 @@ export function CharacterSheet({
 				if (cancelled) return
 				setClassFeatureChoices([])
 				setClassFeatureChoicesError(messageOf(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
+	useEffect(() => {
+		let cancelled = false
+		loadGrantedClassFeatures(character)
+			.then((features) => {
+				if (cancelled) return
+				setGrantedFeatures(features)
+				setGrantedFeaturesError(null)
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setGrantedFeatures([])
+				setGrantedFeaturesError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -2403,6 +2425,35 @@ export function CharacterSheet({
 								</li>
 							)
 						})}
+					</ul>
+				)}
+			</section>
+
+			{/*
+			 * The full class + subclass feature list (D87). A NEW section — it does
+			 * not replace or merge into Feats / Class feature choices / Class options
+			 * below, which keep their own rows. The resolver excludes the choice
+			 * containers and the gainSubclassFeature placeholders those other
+			 * sections / the header already cover. Same collapsed-<details> +
+			 * ResolvedEntries pattern the Feats list uses (D51).
+			 */}
+			<section className="sheet__granted-features">
+				<h2>Class and subclass features</h2>
+				{grantedFeaturesError && <p className="error">Could not load class and subclass features: {grantedFeaturesError}</p>}
+				{grantedFeatures.length === 0 ? (
+					<p>No class or subclass features found.</p>
+				) : (
+					<ul>
+						{grantedFeatures.map((feature) => (
+							<li key={feature.id}>
+								<details>
+									<summary>
+										{feature.name} (level {feature.level})
+									</summary>
+									<ResolvedEntries entries={feature.entries} data={resolverData} />
+								</details>
+							</li>
+						))}
 					</ul>
 				)}
 			</section>

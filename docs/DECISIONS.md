@@ -1494,3 +1494,48 @@ Zůstává otevřené (REPORT.md, bod "Pool definitions"): kolik použití pool
 má a kdy se obnovuje (Rage 2×/long rest na 1. úrovni, Ki = úroveň Mnicha...)
 není v těchto čtyřech souborech strukturovaně vůbec — to je samostatná
 otázka pro krok 9 (Play tracking), ne pro tenhle řádek identifikace.
+
+## D87 — Plná množina udělených class/subclass featur: seed z id-seznamu + tranzitivní uzávěra přes ref* v prostém textu
+
+<!-- POZOR: přesné znění tohoto rozhodnutí se v zadání tasku utnulo (system
+     reminder). Text níže je koncept vytvořený implementujícím agentem podle
+     pravidel v zadání — uživatel ho má nahradit svým zněním (viz REPORT.md). -->
+
+Navazuje na `scripts/investigate-full-feature-resolution.js`. Resolver
+(`src/sheet/grantedClassFeatures.ts`) vrací celou množinu class a subclass
+featur, které postava má, a `CharacterSheet.tsx` ji vypisuje jako novou sekci
+na záložce "Schopnosti a rysy". Nevstupuje do tabulky akcí ani do
+`src/actions/` — to je slice 5 část A.
+
+**Pravidlo:**
+
+1. **Seed.** Pro třídu (a podtřídu, jakmile je udělená) vezmi záznamy z
+   `class-features.json`/`subclass-features.json`, jejichž `id` je v
+   `classFeatureIds`/`subclassFeatureIds` té třídy/podtřídy A jejichž `level`
+   je ≤ úroveň postavy. Match třídy/podtřídy sdílí `featureNamesFor` přes
+   `src/sheet/featureReach.ts` (`buildFeatureReachTest`) — nepíše se podruhé.
+2. **Tranzitivní uzávěra.** Rozšiř seed sledováním `ref*` uzlů
+   (refClassFeature/refSubclassFeature/refOptionalfeature/refFeat) v prostém
+   textu `entries` každé posbírané featury, dokud množina neroste. Páruje se
+   přes `id`/uid, nikdy přes jméno (Cleric i Druid mají vlastní „Potent
+   Spellcasting" a chovají se různě). `ref*` uzly uvnitř counted `options`
+   uzlu se NESLEDUJÍ — to jsou alternativy volby, ne grant.
+3. **Choice kontejnery se do výsledku nedávají.** Featura, jejíž vlastní
+   counted `options` uzel je plný `refOptionalfeature` nebo `refClassFeature`
+   (dnes 6 + 3), je z výstupu vynechaná celá — její vybraná varianta se už
+   ukazuje jinde (`classFeatureChoices`, `classOptionalFeatures`/fighting
+   style). Strukturální test, ne jmenný seznam.
+4. **Placeholder refy `gainSubclassFeature: true`** ("Cleric Subclass" apod.,
+   ~51 v `classes.json`) se vynechávají — strukturální příznak, ne jméno.
+   Skutečná podtřída je v hlavičce sheetu.
+5. **Wrapper featury se nijak zvlášť neskrývají.** "Life Domain" (Cleric),
+   která hlavně uvádí další featury přes ref, je ve výsledku jako běžný
+   záznam vedle featur, které uvádí. Strukturální způsob, jak wrapper poznat,
+   nebyl nalezen a jmenný seznam výjimek je přesně to, čemu se projekt vyhýbá
+   (D21). Kosmeticky k přehodnocení po revizi skutečného sheetu.
+6. Co projde (1079 „plain" class/subclass featur, párováno přes id/uid), je
+   nový seznam. Je to NOVÁ, samostatná sekce — nenahrazuje ani neslučuje
+   stávající sekce feats / `classFeatureChoices` / `classOptionalFeatures`.
+
+Nový export `featureIdForRef` v `src/featureResolver` (id cíle classFeature/
+subclassFeature refu, s defaultováním prázdných segmentů jako `resolveRef`).
