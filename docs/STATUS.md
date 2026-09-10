@@ -1,7 +1,7 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 5 část B — oprava
-množného čísla stop ve `formatRange` ("60 foots"→"60 feet"); schéma 28 beze změny)
+Poslední aktualizace: 2026-09-10 (průzkum k resolveru plné množiny class/subclass
+featur — D46, bez zásahu do `src/`; schéma 28 beze změny)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
@@ -243,8 +243,28 @@ identifikace přes `isActionTableFeature` (D86), bez Range/Damage/To Hit/Notes.
 featy, tři D21 volby class featur a class optional features jako Metamagic).
 Než část A půjde dál, potřebuje rozhodnutí: běžet `isActionTableFeature` jen
 nad těmi třemi existujícími zdroji (skoro prázdný výsledek), nebo přidat
-resolver plné množiny class/subclass featur (širší slice, "re-derivace"
-zdroje, který sheet nemá). Je to vlastní budoucí task.
+resolver plné množiny class/subclass featur. Je to vlastní budoucí task.
+
+Průzkum k tomu resolveru je hotový (`scripts/investigate-full-feature-resolution.js`,
+D46, bez zásahu do `src/`) — plné odpovědi v REPORT.md, shrnutí:
+
+- Průchod už existuje: `featureNamesFor` (`src/sheet/weaponAttackData.ts:164`)
+  filtruje oba soubory na `level <= level` postavy včetně subclass matchingu,
+  ale vrací jen jména. Tvorba postavy per-level procházku featur nemá.
+- Naivní `level <= N` je špatně. Členství v `classes.json` `classFeatureIds` /
+  `subclassFeatureIds` neznamená "uděleno": subclass má v id-seznamu wrapper
+  ("Life Domain" L3), jehož text se rozbaluje na tři skutečné featury, které
+  v seznamu nejsou. Rozlišovač je, ODKUD odkaz vede — z 344 ref-collected
+  featur je 337 odkazováno z prostého textu rodiče (udělené) a 5 jen zevnitř
+  counted `options` uzlu (alternativy jedné volby: Protector, Thaumaturge,
+  Magician, Warden, Primal Strike). Párovat se musí přes uid/id, ne přes
+  jméno ("Potent Spellcasting" existuje pro Cleric i Druid a chová se různě).
+- Navržené pravidlo (ověřeno na 4 postavách): seed = id-seznam do úrovně, pak
+  tranzitivní uzávěra přes `ref*` uzly mimo counted `options`.
+- Tři zdroje sheetu nenesou odkaz zpět do class-features.json; spoj by se
+  musel stavět přes jméno + úroveň. Kolize k rozhodnutí (wrapper vedle svých
+  částí, "Metamagic Options"/"Fighting Style" jako kontejnery všech voleb,
+  placeholdery `gainSubclassFeature`) jsou vypsané v REPORT.md.
 
 Než se začne krok 7a (kouzla z rasy) nebo pickery tří podtříd (Storm
 Herald, The Genie, Divine Soul), potřebují rozhodnutí — viz QUESTIONS.md.
