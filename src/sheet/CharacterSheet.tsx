@@ -91,6 +91,8 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, SpellList } from './SpellList'
+import { spellActionRows, type SpellActionData } from './spellActionRowData'
+import { spellLevelLabel } from './spellFormatting'
 import {
 	CUSTOM_ITEM_SOURCE,
 	type Character,
@@ -1378,11 +1380,69 @@ function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: str
 	}
 }
 
+const SAVE_ABILITY_LABELS: Record<string, string> = {
+	strength: 'Strength',
+	dexterity: 'Dexterity',
+	constitution: 'Constitution',
+	intelligence: 'Intelligence',
+	wisdom: 'Wisdom',
+	charisma: 'Charisma',
+}
+
+/**
+ * A spell with an attack roll or a saving throw as an actions-table row (sheet
+ * rebuild slice 4). Presentation only: which spells qualify and what their
+ * cells hold is spellActionRowData.ts, and the numbers are the same ones the
+ * Kouzla tab's Spellcasting section prints.
+ *
+ * The Damage cell is empty for most spells on purpose — outside cantrip
+ * `scalingLevelDice` the dice live only in prose, which D21 does not parse.
+ * Notes is empty for every spell row for the same reason ("half on a save" is
+ * prose, not a flag).
+ */
+function spellActionRow(spell: SpellActionData): ActionTableRow {
+	return {
+		key: `spell|${spell.key}`,
+		name: (
+			<>
+				<span className="sheet__action-name">{spell.name}</span>
+				{/* The same flags and level wording the Kouzla tab uses (SpellList.tsx) — the table has no level grouping to carry it instead. */}
+				<span className="sheet__action-spell-level"> ({spellLevelLabel(spell.level)})</span>
+				{spell.ritual && <span className="sheet__action-spell-flag"> (ritual)</span>}
+				{spell.concentration && <span className="sheet__action-spell-flag"> (concentration)</span>}
+			</>
+		),
+		range: spell.range,
+		toHit: spell.unresolved ? (
+			<UnresolvedValue reason={spell.unresolved} />
+		) : (
+			<>
+				{spell.attack && (
+					<span className="sheet__action-spell-attack">
+						{formatModifier(spell.attack.bonus)} <ValueBreakdown breakdown={spell.attack.breakdown} />
+					</span>
+				)}
+				{/* 5 spells carry an attack roll AND a save (spellActionRowData.ts) — both are shown, neither replaces the other. */}
+				{spell.attack && spell.save && ' · '}
+				{spell.save && (
+					<span className="sheet__action-spell-save">
+						DC {spell.save.dc} {spell.save.abilities.map((ability) => SAVE_ABILITY_LABELS[ability] ?? ability).join('/')}{' '}
+						<ValueBreakdown breakdown={spell.save.breakdown} />
+					</span>
+				)}
+			</>
+		),
+		damage: spell.damage.length > 0 ? <span className="sheet__action-damage">{spell.damage.join(' · ')}</span> : null,
+		notes: null,
+	}
+}
+
 /**
  * The actions table (sheet rebuild slice 3). One row per thing the character
- * can do on their turn — for now the weapons they are HOLDING plus the Unarmed
- * Strike everyone has (build order step 7 slice c); slices 4 and 5 add spell
- * rows and usable-feature rows to the same table.
+ * can do on their turn: the weapons they are HOLDING plus the Unarmed Strike
+ * everyone has (build order step 7 slice c), and — slice 4 — every spell they
+ * have access to that carries an attack roll or a saving throw. Slice 5 adds
+ * usable-feature rows to the same table.
  *
  * Attacks per action (Extra Attack) is a property of the character's turn, not
  * of any one row, so it stays a summary line above the table.
@@ -1390,17 +1450,19 @@ function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: str
 function ActionsSection({
 	attacks,
 	attacksPerAction,
+	spellActions,
 	loading,
 	dataError,
 	onChooseAttackAbility,
 }: {
 	attacks: WeaponAttack[]
 	attacksPerAction: Calculated<number>
+	spellActions: SpellActionData[]
 	loading: boolean
 	dataError: string | null
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
 }): ReactNode {
-	const rows = attacks.map((attack) => weaponAttackRow(attack, onChooseAttackAbility))
+	const rows = [...attacks.map((attack) => weaponAttackRow(attack, onChooseAttackAbility)), ...spellActions.map(spellActionRow)]
 	return (
 		<section className="sheet__actions">
 			<h2>Actions</h2>
@@ -1417,8 +1479,8 @@ function ActionsSection({
 						<tr>
 							<th scope="col">Name</th>
 							<th scope="col">Range</th>
-							{/* Slice 4 widens this to carry a spell save DC alongside a to-hit. */}
-							<th scope="col">To Hit</th>
+							{/* Widened by slice 4: a weapon puts a to-hit here, a save spell a DC, and 5 spells put both. */}
+							<th scope="col">To Hit / DC</th>
 							<th scope="col">Damage</th>
 							<th scope="col">Notes</th>
 						</tr>
@@ -1968,6 +2030,14 @@ export function CharacterSheet({
 	const spellSlotsEntries = spellSlots.status === 'known' ? spellSlots.value : []
 	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
+	/* Sheet rebuild slice 4: the SAME combined spell list the Kouzla tab shows, filtered to the spells that carry an attack roll or a save — never re-derived from the grants. */
+	const spellActions = spellActionRows(
+		combinedSpells,
+		spellDetails,
+		character.classes.reduce((sum, c) => sum + c.level, 0),
+		spellcastingEntries,
+		featSpellcastingEntries,
+	)
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
@@ -2482,6 +2552,7 @@ export function CharacterSheet({
 			<ActionsSection
 				attacks={weaponAttacks}
 				attacksPerAction={attacksPerAction}
+				spellActions={spellActions}
 				loading={itemRefs === null || weaponAttackData === null}
 				dataError={weaponAttackDataError}
 				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}

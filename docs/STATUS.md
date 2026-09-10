@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 3 — tabulka akcí, zatím jen útoky zbraněmi, schéma 28)
+Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 4 — řádky kouzel v tabulce akcí, schéma 28)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
@@ -58,13 +58,14 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | fix | Custom item form (5 oprav), inventářové ovládání, dlouhé seznamy přes SearchableOptionList | 26→27 |
    | hlavička | Trvalá hlavička sheetu (jméno, AC, iniciativa, rychlost, PB, životy); ruční životy `currentHp`/`maxHp` (D9) | 27→28 |
 
-   Aktuální schéma: 28. Zbývá z **přestavby sheetu**: řádky kouzel (slice 4) a
-   použitelných schopností (slice 5) do tabulky akcí — viz Next step.
+   Aktuální schéma: 28. Zbývá z **přestavby sheetu**: řádky použitelných
+   schopností (slice 5) do tabulky akcí — viz Next step.
 
    Přestavba sheetu (poslední kus kroku 7 — trvalá hlavička + záložky + jedna
    tabulka akcí místo plochého výpisu sekcí). Rozdělena na 5 slice; slice 1
-   (trvalá hlavička), slice 2 (záložky) a slice 3 (tabulka akcí, útoky
-   zbraněmi) hotové — viz níž. Groundwork k tabulce akcí:
+   (trvalá hlavička), slice 2 (záložky), slice 3 (tabulka akcí, útoky
+   zbraněmi) a slice 4 (řádky kouzel) hotové — viz níž. Groundwork k tabulce
+   akcí:
 
    - Průzkum (bez kódu): co znamená "použitelná akce" pro tuhle tabulku. Žádné
      jedno pole to neoznačuje; `consumes` označuje jen ~125 SPENDERŮ
@@ -113,9 +114,23 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      souhrnný řádek nad tabulkou. D43: nerozpoznaná držená zbraň má řádek v
      tabulce s pojmenováním a důvodem. Sekce/třída přejmenována
      `sheet__attacks`→`sheet__actions`, nadpis "Attacks"→"Actions".
+   - Slice 4 (řádky kouzel): `src/sheet/spellActionRowData.ts` +
+     `spellActionRow` v `CharacterSheet.tsx`. Řádek dostane každé kouzlo z
+     TÉŽE složené množiny, kterou ukazuje záložka Kouzla (`combineSpellEntries`),
+     které nese `spellAttack` nebo `savingThrow`; kouzlo bez obojího (Mage
+     Armor, Detect Magic) řádek nemá a zůstává jen v Kouzlech. Sloupec "To
+     Hit" přejmenován na "To Hit / DC" — útočné kouzlo tam dá bonus, savové
+     "DC <n> <vlastnost>", 5 kouzel v datech nese obojí a ukáže obojí. Čísla
+     se nepočítají znovu: berou se z `computeSpellcasting` /
+     `computeFeatSpellcasting` (kouzlo z featu bere entry featu, jinak entry
+     jediné kouzlící třídy; víc tříd = D43 nevyřešeno, multiclass je krok 10).
+     Damage jen ze strukturovaného `scalingLevelDice` (24 cantripů, jeho
+     `label` sám nese typ poškození) podle celkové úrovně postavy; u ostatních
+     zůstává prázdná, protože kostky jsou jen v próze (D21). Notes u kouzel
+     vždy prázdné — "half on a save" žádné pole neoznačuje.
 
-   Zatím ne: řádky kouzel a použitelných schopností v tabulce akcí (slice
-   4–5), a — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool
+   Zatím ne: řádky použitelných schopností v tabulce akcí (slice 5),
+   a — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool
    definitions (max použití, obnova) pro `consumes` cíle, které v těchto
    čtyřech souborech strukturovaně vůbec nejsou.
 8. [not started] Level up
@@ -159,6 +174,17 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   změny. Řádkový model `ActionTableRow` (ReactNode na sloupec) je připravený
   na řádky kouzel (slice 4) a schopností (slice 5). "Attacks per action"
   souhrnný řádek nad tabulkou. Selektory `.sheet__action-*`.
+- Řádky kouzel v tabulce akcí (přestavba sheetu, slice 4) —
+  `src/sheet/spellActionRowData.ts` (výběr a formát, čisté funkce) a
+  `spellActionRow` v `CharacterSheet.tsx` (jen vykreslení). Řádek má každé
+  kouzlo se `spellAttack` nebo `savingThrow`, řazeno podle úrovně a jména;
+  jméno nese stejné popisky jako záložka Kouzla (`(Cantrip)` / `(Level 3)`,
+  ritual, concentration), Range jde přes `formatRange`. Sloupec "To Hit / DC"
+  ukazuje útočný bonus a/nebo "DC <n> <vlastnost>" — obojí s rozkladem
+  (D40/D41) a obojí z už existujících výpočtů. Damage jen u cantripů se
+  `scalingLevelDice`, jinak prázdná (D21); Notes u kouzel vždy prázdné. Testy:
+  `spellActionRowData.test.ts` + blok `spell rows in the actions table
+  (rebuild slice 4)` v `CharacterSheet.test.tsx`.
 - Přestavba sheetu, actionTableFeatureData — `src/actions/actionTableFeatureData.ts`
   (D86). `isActionTableFeature(feature)` je identifikační pravidlo pro
   budoucí tabulku akcí: true, když featura (class feature, subclass
@@ -194,11 +220,10 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 ## Next step
 
 Krok 7 zbývá dokončit přestavbou sheetu. Trvalá hlavička (slice 1), záložky
-(slice 2) a tabulka akcí s útoky zbraněmi (slice 3) jsou hotové. Zbývá
-slice 4 (řádky kouzel s hodem/savem — DC do sloupce To Hit) a slice 5
-(řádky použitelných schopností, identifikace přes `isActionTableFeature`,
-D86 — bez Range/Damage). Řádkový model `ActionTableRow` na to čeká
-připravený. Zadání dalších slice se teprve píše.
+(slice 2), tabulka akcí s útoky zbraněmi (slice 3) a řádky kouzel (slice 4)
+jsou hotové. Zbývá slice 5 (řádky použitelných schopností, identifikace přes
+`isActionTableFeature`, D86 — bez Range/Damage). Řádkový model
+`ActionTableRow` na to čeká připravený. Zadání poslední slice se teprve píše.
 
 Než se začne krok 7a (kouzla z rasy) nebo pickery tří podtříd (Storm
 Herald, The Genie, Divine Soul), potřebují rozhodnutí — viz QUESTIONS.md.

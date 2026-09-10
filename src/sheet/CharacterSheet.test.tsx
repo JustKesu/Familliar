@@ -1155,7 +1155,7 @@ describe('CharacterSheet', () => {
 			const table = attacksSection(container).querySelector('table.sheet__actions-table')!
 			expect(table).toBeTruthy()
 			const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent)
-			expect(headers).toEqual(['Name', 'Range', 'To Hit', 'Damage', 'Notes'])
+			expect(headers).toEqual(['Name', 'Range', 'To Hit / DC', 'Damage', 'Notes'])
 			// One row per held weapon plus the Unarmed Strike, in the tbody.
 			const names = Array.from(table.querySelectorAll('tbody .sheet__action-row .sheet__action-name')).map((n) => n.textContent)
 			expect(names).toEqual(['Longsword', 'Unarmed Strike'])
@@ -3115,6 +3115,90 @@ describe('CharacterSheet', () => {
 
 			const spellsSection = container.querySelector('.sheet__spells')!
 			expect(spellsSection.textContent).toContain('Detect Evil and Good')
+		})
+
+		/*
+		 * Sheet rebuild slice 4: the spells that carry an attack roll or a save
+		 * also appear as rows in the ACTIONS table, with the same numbers the
+		 * Spellcasting section prints. End-to-end because the row's numbers travel
+		 * from spellChoices through computeSpellcasting to a table cell; the
+		 * selection rules themselves are spellActionRowData.test.ts.
+		 */
+		describe('spell rows in the actions table (rebuild slice 4)', () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Wizard', classSource: 'XPHB', ability: 'int' }]
+			const details: SpellDetail[] = [
+				spellDetail({
+					name: 'Fire Bolt',
+					source: 'XPHB',
+					level: 0,
+					spellAttack: ['R'],
+					scalingLevelDice: [{ label: 'fire damage', scaling: { '1': '1d10', '5': '2d10', '11': '3d10', '17': '4d10' } }],
+				}),
+				spellDetail({ name: 'Fireball', source: 'XPHB', level: 3, savingThrow: ['dexterity'] }),
+				spellDetail({ name: 'Mage Armor', source: 'XPHB', level: 1 }),
+			]
+
+			const wizard: Character = {
+				id: 'slice4',
+				name: 'Elminster',
+				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 5 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 16, wisdom: 12, charisma: 10 },
+				},
+				spellChoices: [
+					{
+						className: 'Wizard',
+						classSource: 'XPHB',
+						spells: [
+							{ name: 'Fire Bolt', source: 'XPHB' },
+							{ name: 'Fireball', source: 'XPHB' },
+							{ name: 'Mage Armor', source: 'XPHB' },
+						],
+					},
+				],
+			}
+
+			function actionRow(container: HTMLElement, name: string): HTMLElement {
+				const row = Array.from(container.querySelectorAll('.sheet__actions-table .sheet__action-row')).find(
+					(tr) => tr.querySelector('.sheet__action-name')?.textContent === name,
+				)
+				if (!row) throw new Error(`no action row for ${name}`)
+				return row as HTMLElement
+			}
+
+			async function renderWizard() {
+				vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+				vi.mocked(loadSpellDetails).mockResolvedValue(details)
+				const rendered = render(<CharacterSheet character={wizard} />)
+				await screen.findByRole('heading', { name: 'Elminster' })
+				await waitFor(() => expect(rendered.container.querySelector('.sheet__actions-table')).toBeTruthy())
+				return rendered
+			}
+
+			it('gives an attack spell a to-hit and a save spell a DC, and leaves a spell with neither out of the table', async () => {
+				const { container } = await renderWizard()
+				// INT 16 (+3) + PB 3 at level 5 — the same numbers the Spellcasting section shows.
+				expect(actionRow(container, 'Fire Bolt').querySelector('.sheet__action-to-hit')!.textContent).toContain('+6')
+				expect(actionRow(container, 'Fireball').querySelector('.sheet__action-to-hit')!.textContent).toContain('DC 14 Dexterity')
+				expect(() => actionRow(container, 'Mage Armor')).toThrow()
+				// Mage Armor is not duplicated away either — it stays in the Kouzla tab.
+				expect(container.querySelector('.sheet__spells')!.textContent).toContain('Mage Armor')
+			})
+
+			it('fills Damage from structured cantrip scaling only, and never invents a Notes value (D21)', async () => {
+				const { container } = await renderWizard()
+				expect(actionRow(container, 'Fire Bolt').querySelector('.sheet__action-damage-cell')!.textContent).toBe('2d10 fire damage')
+				expect(actionRow(container, 'Fireball').querySelector('.sheet__action-damage-cell')!.textContent).toBe('')
+				expect(actionRow(container, 'Fireball').querySelector('.sheet__action-notes')!.textContent).toBe('')
+			})
+
+			it('labels a spell row with the level wording the spell list uses, and keeps the weapon rows alongside it', async () => {
+				const { container } = await renderWizard()
+				expect(actionRow(container, 'Fire Bolt').textContent).toContain('(Cantrip)')
+				expect(actionRow(container, 'Fireball').textContent).toContain('(Level 3)')
+				expect(actionRow(container, 'Unarmed Strike')).toBeTruthy()
+			})
 		})
 
 		it('a Warlock shows Pact Magic slots separately from any ordinary slot list', async () => {
