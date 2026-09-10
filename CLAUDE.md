@@ -1,5 +1,21 @@
 # CLAUDE.md
 
+## What this costs — read this first
+
+This project runs on a personal token budget and it is now the binding
+constraint. Three rules matter more than anything else below, because
+each of them is where the budget actually goes:
+
+1. **Never open a data file directly** — see "Data files". One careless
+   read of `items.json` costs more than a whole task.
+2. **Open the browser only when a control's behaviour changed, and never
+   take screenshots** — see "Verification in the browser".
+3. **Two failures of the same command end the task** — see "Running
+   commands". A wall does not yield on the fifth try.
+
+Everything else in this file is about doing the work well. These three
+are about being able to afford to do it at all.
+
 ## Scope
 
 One task per session. Do not expand scope beyond what was asked. If a prompt appears to contain several separate tasks, do the first one and tell the user the rest need their own session.
@@ -85,21 +101,29 @@ At the end of every task, list in REPORT.md any decision that was needed and tak
 
 ## Verification in the browser
 
-When a task changes anything the player sees or clicks, tests are not
-enough. Start the dev server, walk through the change in the browser, and
-write in the report what you actually checked and what you did not.
+The browser is the most expensive thing a task here does — by a wide
+margin, and the user pays for it. So it is used deliberately, not by
+habit.
 
-Tests prove the behaviour will not break next time. A walk through the
-running app proves it works at all right now — and several times in this
-project the tests passed on something the sheet did not in fact display.
+**Open the browser when the task changes what a control DOES**: a button
+that now displaces something else, a picker that now enforces a count, a
+state that has to survive a reload. Those are the cases where the tests
+have passed on something the app did not in fact do, and where a walk
+through the running app is the only proof.
 
-It does not work the other way round: a browser check never replaces a
-test. Whatever you confirm by clicking must also be covered by a test, or
-nothing catches it when the next change lands.
+**Do not open it when the task changes a number.** A calculation, a
+breakdown line, a new contribution — the tests cover those, and a browser
+walk adds cost without adding certainty.
 
-If the server will not start, or that screen cannot be reached, say so in
-the report as unverified. Never report as verified something you did not
-see.
+**Never take screenshots.** They are the single largest cost and in this
+project they have repeatedly come back blank. Read the page's text and its
+DOM instead; that is what the assertions are made of anyway.
+
+A browser check never replaces a test. Whatever you confirm by clicking
+must also be covered by a test, or nothing catches it when the next change
+lands. If the server will not start or a screen cannot be reached, say so
+in the report as unverified — never report as verified something you did
+not see.
 
 ## Verification
 
@@ -133,6 +157,18 @@ an uncommitted change anywhere else is a surprise worth stopping for.
 Use the npm scripts defined in `package.json` (`typecheck`, `test`, `build`, `validate-data`, `survey-markup`) rather than invoking tools directly via `npx`. The npm scripts are pre-approved in `.claude/settings.json`; `npx` is not, so every `npx` call costs a permission prompt.
 
 Prefer one command that answers the question over several exploratory ones. If you find yourself running more than about 10 commands to answer one question, stop and tell the user what you are stuck on instead.
+
+**Two failures of the same command end the attempt.** If a command fails,
+you may fix an obvious mistake in it and run it once more. If that fails
+too, STOP — do not vary it a third time, do not reach for another tool to
+do the same thing, do not work around it. Write in the report what you
+were trying to achieve, the exact command, and the exact error, and end
+the task there.
+
+This is not caution, it is arithmetic: a tool that has refused twice is
+not going to yield on the fifth try, and every further attempt spends the
+user's tokens on a wall. A task that stops early with a clear error is
+cheap to resume; one that spends its context flailing is not.
 
 Run exactly ONE PLAIN shell command per tool call. Plain means a
 single command and its arguments, nothing else: no `&&`, no `||`,
