@@ -1497,10 +1497,6 @@ otázka pro krok 9 (Play tracking), ne pro tenhle řádek identifikace.
 
 ## D87 — Plná množina udělených class/subclass featur: seed z id-seznamu + tranzitivní uzávěra přes ref* v prostém textu
 
-<!-- POZOR: přesné znění tohoto rozhodnutí se v zadání tasku utnulo (system
-     reminder). Text níže je koncept vytvořený implementujícím agentem podle
-     pravidel v zadání — uživatel ho má nahradit svým zněním (viz REPORT.md). -->
-
 Navazuje na `scripts/investigate-full-feature-resolution.js`. Resolver
 (`src/sheet/grantedClassFeatures.ts`) vrací celou množinu class a subclass
 featur, které postava má, a `CharacterSheet.tsx` ji vypisuje jako novou sekci
