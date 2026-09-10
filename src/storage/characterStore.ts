@@ -273,6 +273,28 @@ export class CharacterStore {
 		this.writeAll(updated)
 	}
 
+	/**
+	 * Sets the character's manual hit points (persistent-header slice 1). A
+	 * targeted write like `setCurrency`: the header edits current and max by
+	 * hand and nothing derives them (D9). Both fields are replaced from the
+	 * given pair; `undefined` for either clears it, matching how an absent
+	 * field reads as "not set". 0 is a real value and is kept.
+	 */
+	setHitPoints(id: string, currentHp: number | undefined, maxHp: number | undefined): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currentHp: _currentHp, maxHp: _maxHp, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = {
+			...rest,
+			...(currentHp !== undefined ? { currentHp } : {}),
+			...(maxHp !== undefined ? { maxHp } : {}),
+		}
+		this.writeAll(updated)
+	}
+
 	delete(id: string): void {
 		const characters = this.list()
 		const index = characters.findIndex((character) => character.id === id)

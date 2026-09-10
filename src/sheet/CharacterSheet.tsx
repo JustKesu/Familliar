@@ -30,7 +30,7 @@ import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThr
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
-import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData, type SpeedValue } from '../calculation/speciesTraits'
+import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { computeAttacksPerAction, computeWeaponAttacks, type WeaponAttack } from '../calculation/weaponAttacks'
 import {
@@ -106,6 +106,8 @@ import {
 	type WeaponGrip,
 } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
+import { CalculatedNumber, formatModifier } from './calculatedValue'
+import { SheetHeader } from './SheetHeader'
 
 const SKILL_LABELS: Record<Skill, string> = {
 	acrobatics: 'Acrobatics',
@@ -164,18 +166,6 @@ function messageOf(error: unknown): string {
 	return error instanceof Error ? error.message : String(error)
 }
 
-function formatModifier(modifier: number): string {
-	return modifier >= 0 ? `+${modifier}` : `${modifier}`
-}
-
-function formatSpeed(speed: SpeedValue): string {
-	const parts = [`${speed.walk} ft.`]
-	if (speed.fly) parts.push(`fly ${speed.fly} ft.`)
-	if (speed.swim) parts.push(`swim ${speed.swim} ft.`)
-	if (speed.climb) parts.push(`climb ${speed.climb} ft.`)
-	return parts.join(', ')
-}
-
 const NO_FAMILIAR_KEY = ''
 
 /**
@@ -206,16 +196,6 @@ function familiarPickerOptions(forms: FamiliarFormOption[], storedFamiliar: Char
 			selected: storedFamiliar !== null && formKey(beast) === formKey(storedFamiliar),
 		})),
 	]
-}
-
-/** Renders any Calculated<number> as its value plus breakdown, or D43's visible "unresolved" state. */
-function CalculatedNumber({ result, format }: { result: Calculated<number>; format?: (value: number) => string }): ReactNode {
-	if (result.status === 'unknown') return <UnresolvedValue reason={result.reason} />
-	return (
-		<>
-			<span>{format ? format(result.value) : result.value}</span> <ValueBreakdown breakdown={result.breakdown} />
-		</>
-	)
 }
 
 /**
@@ -1468,22 +1448,24 @@ function DamageResponsesSection({ responses, loading, dataError }: { responses: 
 }
 
 /**
- * The sheet is read-only except for two controls: the familiar's form and the
- * inventory section (build order step 7). Both are chosen/changed in play, not
- * at creation, so they belong here and not in the wizard. The callbacks are
- * optional — without them each section still renders and shows its current
- * state, it just cannot be changed.
+ * The sheet is read-only except for three controls: the familiar's form, the
+ * inventory section (build order step 7) and the persistent header's hit
+ * points (D9). All are changed in play, not at creation, so they belong here
+ * and not in the wizard. The callbacks are optional — without them each
+ * section still renders and shows its current state, it just cannot be changed.
  */
 export function CharacterSheet({
 	character,
 	onChooseFamiliar,
 	onEditInventory,
 	onEditCurrency,
+	onEditHitPoints,
 }: {
 	character: Character
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
+	onEditHitPoints?: (currentHp: number | undefined, maxHp: number | undefined) => void
 }): ReactNode {
 	const [savingThrowClassData, setSavingThrowClassData] = useState<ClassSavingThrowProficiencies[] | null>(null)
 	const [hitDiceClassData, setHitDiceClassData] = useState<ClassHitDie[] | null>(null)
@@ -1944,9 +1926,20 @@ export function CharacterSheet({
 
 	return (
 		<article className="sheet">
-			<header className="sheet__header">
-				<h1>{character.name}</h1>
+			<SheetHeader
+				name={character.name}
+				armourClass={armourClass}
+				armourClassLoading={itemRefs === null}
+				acFormulaKeysError={acFormulaKeysError}
+				initiative={initiative}
+				speed={speed}
+				proficiencyBonus={proficiencyBonus}
+				currentHp={character.currentHp}
+				maxHp={character.maxHp}
+				onEditHitPoints={onEditHitPoints}
+			/>
 
+			<header className="sheet__header">
 				<p className="sheet__classes">
 					{character.classes.length === 0 ? (
 						<UnresolvedValue reason="No class chosen yet." />
@@ -1992,14 +1985,6 @@ export function CharacterSheet({
 				</ul>
 			</section>
 
-			<section className="sheet__proficiency-bonus">
-				<h2>Proficiency bonus</h2>
-				{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
-				<div>
-					<CalculatedNumber result={proficiencyBonus} format={formatModifier} />
-				</div>
-			</section>
-
 			<section className="sheet__saving-throws">
 				<h2>Saving throws</h2>
 				<ul>
@@ -2019,44 +2004,6 @@ export function CharacterSheet({
 						)
 					})}
 				</ul>
-			</section>
-
-			<section className="sheet__initiative">
-				<h2>Initiative</h2>
-				{/* A div, not a p, for the same reason as the proficiency bonus above — it is the other half of the same console warning. */}
-				<div>
-					<CalculatedNumber result={initiative} format={formatModifier} />
-				</div>
-			</section>
-
-			<section className="sheet__armour-class">
-				<h2>Armour Class</h2>
-				{itemRefs === null ? (
-					<p>Loading…</p>
-				) : armourClass.status === 'unknown' ? (
-					<UnresolvedValue reason={armourClass.reason} />
-				) : (
-					<>
-						<p className="sheet__armour-class-value">{armourClass.value.value}</p>
-						<ValueBreakdown breakdown={armourClass.breakdown} />
-						{armourClass.value.incomplete.length > 0 && (
-							<p className="error">
-								Incomplete — equipped but not found in the item data: {armourClass.value.incomplete.join(', ')}.
-							</p>
-						)}
-						{/* A worn custom suit with no Armour Class on it. Named rather than left to read as "no armour equipped" (slice e2b). */}
-						{armourClass.value.armourNotSet.length > 0 && (
-							<p className="error sheet__armour-not-set">Incomplete — {armourClass.value.armourNotSet.join('; ')}.</p>
-						)}
-						{/* A Stealth penalty is shown, never computed into anything (this slice's brief). */}
-						{armourClass.value.stealthDisadvantage.length > 0 && (
-							<p className="sheet__stealth-note">
-								Disadvantage on Stealth checks ({armourClass.value.stealthDisadvantage.join(', ')}).
-							</p>
-						)}
-						{acFormulaKeysError && <p className="error">Could not check for alternative AC formulas: {acFormulaKeysError}</p>}
-					</>
-				)}
 			</section>
 
 			<DamageResponsesSection
@@ -2109,19 +2056,10 @@ export function CharacterSheet({
 				</ul>
 			</section>
 
+			{/* Speed moved to the persistent header (slice 1); size and darkvision stay here. */}
 			<section className="sheet__traits">
-				<h2>Speed, size, darkvision</h2>
+				<h2>Size and darkvision</h2>
 				<ul>
-					<li>
-						Speed:{' '}
-						{speed.status === 'unknown' ? (
-							<UnresolvedValue reason={speed.reason} />
-						) : (
-							<>
-								<span>{formatSpeed(speed.value)}</span> <ValueBreakdown breakdown={speed.breakdown} />
-							</>
-						)}
-					</li>
 					<li>
 						Size:{' '}
 						{size.status === 'unknown' ? (

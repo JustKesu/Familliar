@@ -169,6 +169,11 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setCurrency(id, copper))
 	}
 
+	function handleEditHitPoints(id: string, currentHp: number | undefined, maxHp: number | undefined): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setHitPoints(id, currentHp, maxHp))
+	}
+
 	function handleDelete(id: string): void {
 		if (!store.store) return
 		if (!confirm('Delete this character? This cannot be undone.')) return
@@ -257,6 +262,7 @@ function CharacterManager() {
 									onChooseFamiliar={(familiar) => handleChooseFamiliar(sheetCharacter.id, familiar)}
 									onEditInventory={(inventory) => handleEditInventory(sheetCharacter.id, inventory)}
 									onEditCurrency={(copper) => handleEditCurrency(sheetCharacter.id, copper)}
+									onEditHitPoints={(currentHp, maxHp) => handleEditHitPoints(sheetCharacter.id, currentHp, maxHp)}
 								/>
 							) : null
 						})()}

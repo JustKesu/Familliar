@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 2 — isActionTableFeature podle D86)
+Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 1 — trvalá hlavička + ruční životy, schéma 28)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
@@ -56,28 +56,43 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 7e2a–c | Custom předměty — existují, počítají, nesou stealth a min. Sílu | 22→25 |
    | b-fix | Ruce místo počtu zbraní — dvě ruce, versatile grip, displacement | 25→26 |
    | fix | Custom item form (5 oprav), inventářové ovládání, dlouhé seznamy přes SearchableOptionList | 26→27 |
+   | hlavička | Trvalá hlavička sheetu (jméno, AC, iniciativa, rychlost, PB, životy); ruční životy `currentHp`/`maxHp` (D9) | 27→28 |
 
-   Aktuální schéma: 27. Zbývá: **přestavba sheetu** (trvalá hlavička + záložky
-   + jedna tabulka akcí) — poslední kus kroku 7, viz Next step.
+   Aktuální schéma: 28. Zbývá z **přestavby sheetu**: záložky + jedna tabulka
+   akcí — viz Next step.
 
    Přestavba sheetu (poslední kus kroku 7 — trvalá hlavička + záložky + jedna
-   tabulka akcí místo plochého výpisu sekcí). Slice 1 hotovo — jen průzkum,
-   bez kódu: co znamená "použitelná akce" pro tuhle tabulku. Žádné jedno pole
-   to neoznačuje; `consumes` označuje jen ~125 SPENDERŮ pojmenovaného poolu
-   (Ki, Channel Divinity, Sorcery Point...), nikdy featuru, která pool
-   GRANTUJE (Second Wind, Rage, Font of Magic...). Viz docs/DECISIONS.md D86
-   pro celé zjištění a docs/REPORT.md pro report té slice. Slice 2 hotovo —
-   `src/actions/actionTableFeatureData.ts`, `isActionTableFeature(feature)`
-   podle D86: true, když featura nese `consumes`, NEBO její `entries`
-   (rekurzivně) obsahují tag `{@variantrule Long Rest` / `{@variantrule Short
-   Rest`. Ověřeno na 9 jmenovaných případech (Second Wind, Action Surge, Rage,
-   Bardic Inspiration, Channel Divinity, Font of Magic, Innate Sorcery, Wild
-   Shape, Lay on Hands) — všechny true; Draconic Resilience (passivní) —
-   false. `npm run typecheck` čisté, `npm test` 1450/1450, `npm run
-   validate-data` PASSED. Zatím ne: samotná tabulka akcí (UI/rozvržení
-   záložek), a — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool
-   definitions (max použití, obnova) pro `consumes` cíle, které v těchto
-   čtyřech souborech strukturovaně vůbec nejsou.
+   tabulka akcí místo plochého výpisu sekcí). Rozdělena na 5 slice; slice 1
+   (trvalá hlavička) hotová — viz níž. Groundwork k tabulce akcí:
+
+   - Průzkum (bez kódu): co znamená "použitelná akce" pro tuhle tabulku. Žádné
+     jedno pole to neoznačuje; `consumes` označuje jen ~125 SPENDERŮ
+     pojmenovaného poolu (Ki, Channel Divinity, Sorcery Point...), nikdy
+     featuru, která pool GRANTUJE (Second Wind, Rage, Font of Magic...). Viz
+     docs/DECISIONS.md D86 pro celé zjištění.
+   - `src/actions/actionTableFeatureData.ts`, `isActionTableFeature(feature)`
+     podle D86: true, když featura nese `consumes`, NEBO její `entries`
+     (rekurzivně) obsahují tag `{@variantrule Long Rest` / `{@variantrule Short
+     Rest`. Ověřeno na 9 jmenovaných případech (Second Wind, Action Surge,
+     Rage, Bardic Inspiration, Channel Divinity, Font of Magic, Innate
+     Sorcery, Wild Shape, Lay on Hands) — všechny true; Draconic Resilience
+     (passivní) — false.
+   - Slice 1 (trvalá hlavička): `src/sheet/SheetHeader.tsx` +
+     `src/sheet/calculatedValue.tsx` (sdílený `CalculatedNumber`/
+     `formatModifier`). Šest hodnot v bloku nad obsahem sheetu, každá si drží
+     rozklad na vyžádání (D40/D41). Pět odvozených (jméno, AC, iniciativa,
+     rychlost, PB) přesunuto beze změny výpočtu z plochého výpisu; sekce
+     `sheet__traits` přejmenována na "Size and darkvision" (rychlost je pryč).
+     Životy jsou nové: ruční `currentHp`/`maxHp` na `Character` (schéma 27→28,
+     migrace jen tag), nic je nepočítá (D9); prázdné pole = "nenastaveno"
+     (hlavička ukazuje "—"), 0 je platná hodnota; `CharacterStore.setHitPoints`.
+     Bez clampu current vůči max a bez odvození max z voleb po úrovních — to
+     jsou kroky 8 a 9.
+
+   Zatím ne: samotná tabulka akcí (UI/rozvržení záložek), a — samostatně,
+   otázka pro krok 9 zaznamenaná v D86 — pool definitions (max použití,
+   obnova) pro `consumes` cíle, které v těchto čtyřech souborech strukturovaně
+   vůbec nejsou.
 8. [not started] Level up
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
@@ -93,9 +108,17 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Weapon proficiency/mastery a Extra Attack — jeden sdílený modul,
   strukturálně (podle dat zbraně), ne podle jména třídy.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
-- Uložení — localStorage, verzované schéma (teď 27), migrace fungují od
+- Uložení — localStorage, verzované schéma (teď 28), migrace fungují od
   verze 16 výš (D69); starší uložená postava se odmítne, ne převede.
-- Přestavba sheetu, slice 2 — `src/actions/actionTableFeatureData.ts`
+- Trvalá hlavička sheetu (přestavba sheetu, slice 1) —
+  `src/sheet/SheetHeader.tsx`. Blok nad obsahem sheetu se šesti hodnotami:
+  jméno, AC, iniciativa, rychlost, proficiency bonus, životy. Pět odvozených
+  se přesunulo z plochého výpisu beze změny výpočtu a drží si rozklad na
+  vyžádání (D40/D41). Životy jsou ruční `currentHp`/`maxHp` na `Character`
+  (D9) — nic je nepočítá, prázdné = "nenastaveno" ("—"), 0 platná;
+  `CharacterStore.setHitPoints`. Není sticky (může se řešit později). Testy:
+  `SheetHeader.test.tsx` a nová sekce v `CharacterSheet.test.tsx`.
+- Přestavba sheetu, actionTableFeatureData — `src/actions/actionTableFeatureData.ts`
   (D86). `isActionTableFeature(feature)` je identifikační pravidlo pro
   budoucí tabulku akcí: true, když featura (class feature, subclass
   feature, feat nebo optional feature — cokoli s `entries`) nese pole
@@ -129,11 +152,13 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-Krok 7 zbývá dokončit přestavbou sheetu: trvalá hlavička (jméno, AC,
-iniciativa, rychlost, proficiency bonus, životy), pět záložek (Akce ·
-Vlastnosti a hody · Kouzla · Inventář · Schopnosti a rysy), a jedna
-tabulka akcí pro útoky, kouzla s hodem/savem i použitelné schopnosti.
-Rozvržení je hotové rozhodnutí (Danielův mockup), zadání se teprve píše.
+Krok 7 zbývá dokončit přestavbou sheetu. Trvalá hlavička (jméno, AC,
+iniciativa, rychlost, proficiency bonus, životy) je hotová (slice 1).
+Zbývá: pět záložek (Akce · Vlastnosti a hody · Kouzla · Inventář ·
+Schopnosti a rysy) a jedna tabulka akcí pro útoky, kouzla s hodem/savem
+i použitelné schopnosti (identifikace přes `isActionTableFeature`, D86).
+Rozvržení je hotové rozhodnutí (Danielův mockup), zadání dalších slice se
+teprve píše.
 
 Než se začne krok 7a (kouzla z rasy) nebo pickery tří podtříd (Storm
 Herald, The Genie, Divine Soul), potřebují rozhodnutí — viz QUESTIONS.md.

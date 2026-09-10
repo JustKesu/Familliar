@@ -166,6 +166,22 @@ describe('the migration chain (D69)', () => {
 		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 	})
 
+	it('carries a version-27 character forward without inventing any hit points', () => {
+		const before = {
+			schemaVersion: 27,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// currentHp/maxHp are manual (D9) — an existing character has neither, and absent means "not set".
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('currentHp' in migrated).toBe(false)
+		expect('maxHp' in migrated).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

@@ -235,6 +235,16 @@ export interface Character {
 	 * are not represented in phase 1. Absent means zero.
 	 */
 	currencyCopper?: number
+	/**
+	 * Current and maximum hit points (persistent-header rebuild, slice 1). D9:
+	 * HP is the one calculated-looking value the player edits by hand — nothing
+	 * derives it here. Both optional and independent: absent means "not set yet"
+	 * (the header shows "—"), which is distinct from 0. No clamp of current
+	 * against max, and no per-level derivation of max — the per-level HP choice
+	 * (SPEC section 5) and damage/healing clamping are build order steps 8 and 9.
+	 */
+	currentHp?: number
+	maxHp?: number
 }
 
 /**
@@ -633,12 +643,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 26 for CharacterInventoryItem.grip — how a
- * Versatile weapon is held (build order step 7, slice b-fix).
+ * (see wireFormat.ts). Bumped to 28 for Character.currentHp / maxHp — the
+ * manual hit-point fields the persistent header edits (slice 1).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 27
+export const CURRENT_SCHEMA_VERSION = 28

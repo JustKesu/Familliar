@@ -1052,6 +1052,53 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	})
 })
 
+describe('CharacterStore manual hit points (persistent-header slice 1)', () => {
+	it('leaves currentHp and maxHp undefined on a freshly created character', () => {
+		const character = new CharacterStore(new MemoryStorage()).create('Cato')
+		expect(character.currentHp).toBeUndefined()
+		expect(character.maxHp).toBeUndefined()
+	})
+
+	it('round-trips both fields through save and reload, and clears one back to undefined', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create('Bruiser')
+
+		store.setHitPoints(character.id, 31, 44)
+		const reloaded = new CharacterStore(backing).list()[0]
+		expect(reloaded.currentHp).toBe(31)
+		expect(reloaded.maxHp).toBe(44)
+
+		// 0 is a real value (a downed character) and is kept; undefined clears the max.
+		store.setHitPoints(character.id, 0, undefined)
+		const after = new CharacterStore(backing).list()[0]
+		expect(after.currentHp).toBe(0)
+		expect(after.maxHp).toBeUndefined()
+		expect('maxHp' in after).toBe(false)
+	})
+
+	it('throws CharacterNotFoundError for an unknown id', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		expect(() => store.setHitPoints('nope', 10, 10)).toThrow(CharacterNotFoundError)
+	})
+
+	it('rejects a saved character whose hit points are negative or fractional', () => {
+		const negative = new MemoryStorage()
+		negative.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], currentHp: -1 }]),
+		)
+		expect(() => new CharacterStore(negative).list()).toThrow(CorruptDataError)
+
+		const fractional = new MemoryStorage()
+		fractional.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], maxHp: 12.5 }]),
+		)
+		expect(() => new CharacterStore(fractional).list()).toThrow(CorruptDataError)
+	})
+})
+
 describe('CharacterStore.rename', () => {
 	it('renames an existing character', () => {
 		const store = new CharacterStore(new MemoryStorage())

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterSheet } from './CharacterSheet'
 import { computeAbilityScore } from '../calculation/abilityScores'
@@ -869,7 +869,8 @@ describe('CharacterSheet', () => {
 				inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' }],
 			}
 			const { container } = await renderSheet(weak)
-			const speedItem = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith('Speed'))!
+			// Speed lives in the persistent header (slice 1), no longer in the traits section.
+			const speedItem = container.querySelector('.sheet__speed')!
 			await waitFor(() => expect(speedItem.textContent).toContain('20 ft.'))
 			expect(speedItem.textContent).toContain('Chain Mail (Strength 13 required, you have 10)')
 		})
@@ -2055,7 +2056,7 @@ describe('CharacterSheet', () => {
 				],
 			}
 			const { container } = await renderSheet(weak)
-			const speedItem = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith('Speed'))!
+			const speedItem = container.querySelector('.sheet__speed')!
 			await waitFor(() => expect(speedItem.textContent).toContain('20 ft.'))
 			expect(speedItem.textContent).toContain('Bark Plate (Strength 13 required, you have 10)')
 		})
@@ -2223,6 +2224,8 @@ describe('CharacterSheet', () => {
 		}
 
 		function traitLine(container: HTMLElement, label: string): HTMLElement {
+			// Speed moved to the persistent header (slice 1); size and darkvision stay in the traits section.
+			if (label === 'Speed') return container.querySelector('.sheet__speed') as HTMLElement
 			const line = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith(label))
 			if (!line) throw new Error(`no trait line for ${label}`)
 			return line as HTMLElement
@@ -4492,5 +4495,55 @@ describe('CharacterSheet', () => {
 			expect(container.querySelector('.sheet__wild-shape-forms')).toBeNull()
 			expect(vi.mocked(loadBeasts)).not.toHaveBeenCalled()
 		})
+	})
+})
+
+describe('the persistent header (rebuild slice 1)', () => {
+	async function renderSheet(subject: Character, onEditHitPoints?: (currentHp: number | undefined, maxHp: number | undefined) => void) {
+		const result = render(<CharacterSheet character={subject} onEditHitPoints={onEditHitPoints} />)
+		await screen.findByRole('heading', { level: 1, name: subject.name })
+		return result
+	}
+
+	it('shows the six values once, in the header, and not again in the flat section list', async () => {
+		const { container } = await renderSheet(character)
+		await waitFor(() => expect(container.querySelector('.sheet__armour-class-value')).toBeTruthy())
+
+		const header = container.querySelector('.sheet__persistent-header')!
+		expect(header.querySelector('h1')!.textContent).toBe('Aria')
+		expect(header.querySelector('.sheet__armour-class')).toBeTruthy()
+		expect(header.querySelector('.sheet__initiative')).toBeTruthy()
+		expect(header.querySelector('.sheet__speed')).toBeTruthy()
+		expect(header.querySelector('.sheet__proficiency-bonus')).toBeTruthy()
+		expect(header.querySelector('.sheet__hit-points')).toBeTruthy()
+
+		// Exactly one of each on the whole sheet — nothing left behind in the body.
+		expect(container.querySelectorAll('.sheet__armour-class')).toHaveLength(1)
+		expect(container.querySelectorAll('.sheet__initiative')).toHaveLength(1)
+		expect(container.querySelectorAll('.sheet__proficiency-bonus')).toHaveLength(1)
+		expect(container.querySelectorAll('.sheet__speed')).toHaveLength(1)
+		// The traits section keeps size and darkvision but no longer speed.
+		const traits = container.querySelector('.sheet__traits')!
+		expect(traits.textContent).not.toContain('Speed')
+		expect(traits.textContent).toContain('Size')
+		expect(traits.textContent).toContain('Darkvision')
+	})
+
+	it('shows "— / —" for a character with no hit points stored, and is read-only without the callback', async () => {
+		const { container } = await renderSheet(character)
+		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / —')
+		expect(screen.queryByLabelText('Current HP')).toBeNull()
+	})
+
+	it('renders stored hit points and edits them through the callback', async () => {
+		const onEditHitPoints = vi.fn()
+		const withHp: Character = { ...character, currentHp: 18, maxHp: 40 }
+		const { container } = await renderSheet(withHp, onEditHitPoints)
+		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('18 / 40')
+
+		const field = screen.getByLabelText('Current HP')
+		fireEvent.change(field, { target: { value: '11' } })
+		fireEvent.blur(field)
+		expect(onEditHitPoints).toHaveBeenLastCalledWith(11, 40)
 	})
 })

@@ -150,6 +150,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 27 }),
 	},
+	{
+		from: 27,
+		to: 28,
+		/*
+		 * 28 adds Character.currentHp and .maxHp — manual fields, no derivation.
+		 * A version-27 character has neither, and an absent field already means
+		 * "not set" (the header shows "—"). Version tag only, same as the eleven
+		 * before it: no HP is invented for an existing character.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 28 }),
+	},
 ]
 
 /**

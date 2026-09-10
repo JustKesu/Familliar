@@ -685,6 +685,23 @@ export function describeCurrencyError(value: unknown): string | null {
 	return null
 }
 
+/**
+ * Validates the optional manual hit-point fields (persistent-header slice 1).
+ * Each is a non-negative whole number when present; absent means "not set".
+ * Deliberately does not check currentHp against maxHp — clamping is play
+ * tracking (build order step 9), and either field may legitimately be absent.
+ */
+export function describeHitPointsError(value: Record<string, unknown>): string | null {
+	for (const key of ['currentHp', 'maxHp'] as const) {
+		const hp = value[key]
+		if (hp === undefined) continue
+		if (typeof hp !== 'number' || !Number.isInteger(hp) || hp < 0) {
+			return `${key} must be a non-negative whole number`
+		}
+	}
+	return null
+}
+
 function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
@@ -837,6 +854,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (inventoryError) return `[${index}].${inventoryError}`
 	const currencyError = describeCurrencyError(value['currencyCopper'])
 	if (currencyError) return `[${index}].${currencyError}`
+	const hitPointsError = describeHitPointsError(value)
+	if (hitPointsError) return `[${index}].${hitPointsError}`
 	return null
 }
 
@@ -869,6 +888,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const familiar = value['familiar']
 	const inventory = value['inventory']
 	const currencyCopper = value['currencyCopper']
+	const currentHp = value['currentHp']
+	const maxHp = value['maxHp']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -894,6 +915,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(isRecord(familiar) ? { familiar: toCharacterFamiliar(familiar) } : {}),
 		...(Array.isArray(inventory) ? { inventory: toCharacterInventory(inventory) } : {}),
 		...(typeof currencyCopper === 'number' ? { currencyCopper } : {}),
+		...(typeof currentHp === 'number' ? { currentHp } : {}),
+		...(typeof maxHp === 'number' ? { maxHp } : {}),
 	}
 }
 
