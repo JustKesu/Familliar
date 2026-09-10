@@ -17,8 +17,12 @@ const TIME_UNIT_LABELS: Record<string, string> = {
 	hour: 'hour',
 }
 
+// "foot" is the one distance unit in the spell data whose plural is not a bare -s.
+const IRREGULAR_PLURALS: Record<string, string> = { foot: 'feet' }
+
 function pluralize(label: string, count: number): string {
-	return count === 1 ? label : `${label}s`
+	if (count === 1) return label
+	return IRREGULAR_PLURALS[label] ?? `${label}s`
 }
 
 export function formatCastingTime(time: SpellTime[]): string {

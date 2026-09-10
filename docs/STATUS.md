@@ -1,6 +1,7 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 4 — řádky kouzel v tabulce akcí, schéma 28)
+Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 5 část B — oprava
+množného čísla stop ve `formatRange` ("60 foots"→"60 feet"); schéma 28 beze změny)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
@@ -59,7 +60,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | hlavička | Trvalá hlavička sheetu (jméno, AC, iniciativa, rychlost, PB, životy); ruční životy `currentHp`/`maxHp` (D9) | 27→28 |
 
    Aktuální schéma: 28. Zbývá z **přestavby sheetu**: řádky použitelných
-   schopností (slice 5) do tabulky akcí — viz Next step.
+   schopností (slice 5 část A) do tabulky akcí — blokované návrhovou otázkou,
+   viz Next step. Slice 5 část B (oprava `formatRange`) je hotová, samostatná.
 
    Přestavba sheetu (poslední kus kroku 7 — trvalá hlavička + záložky + jedna
    tabulka akcí místo plochého výpisu sekcí). Rozdělena na 5 slice; slice 1
@@ -129,10 +131,15 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      zůstává prázdná, protože kostky jsou jen v próze (D21). Notes u kouzel
      vždy prázdné — "half on a save" žádné pole neoznačuje.
 
-   Zatím ne: řádky použitelných schopností v tabulce akcí (slice 5),
-   a — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool
-   definitions (max použití, obnova) pro `consumes` cíle, které v těchto
-   čtyřech souborech strukturovaně vůbec nejsou.
+   Zatím ne: řádky použitelných schopností v tabulce akcí (slice 5 část A) —
+   blokované: záložka "Schopnosti a rysy" nerenderuje žádnou obecnou množinu
+   class/subclass featur (jen featy, tři D21 volby class featur a class
+   optional features), takže `isActionTableFeature` nemá nad čím běžet pro
+   featury, na kterých D86 vzniklo (Second Wind, Rage, Channel Divinity, Lay
+   on Hands, Wild Shape…). Potřebuje rozhodnutí — viz Next step / REPORT.md.
+   A — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool definitions
+   (max použití, obnova) pro `consumes` cíle, které v těchto čtyřech
+   souborech strukturovaně vůbec nejsou.
 8. [not started] Level up
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
@@ -185,6 +192,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   `scalingLevelDice`, jinak prázdná (D21); Notes u kouzel vždy prázdné. Testy:
   `spellActionRowData.test.ts` + blok `spell rows in the actions table
   (rebuild slice 4)` v `CharacterSheet.test.tsx`.
+- Oprava množného čísla ve `formatRange` (přestavba sheetu, slice 5 část B) —
+  `src/sheet/spellFormatting.ts`. `pluralize()` teď hledá nepravidelné tvary
+  přes mapu `IRREGULAR_PLURALS` (`{ foot: 'feet' }`) dřív, než spadne na naivní
+  `${label}s`; 60stopý dosah renderoval "60 foots", teď "60 feet". `miles` beze
+  změny; atributivní větev pro plochu ("30-foot cone") `pluralize` nevolá a je
+  nedotčená. Nový test `src/sheet/spellFormatting.test.ts` (6 případů `formatRange`).
 - Přestavba sheetu, actionTableFeatureData — `src/actions/actionTableFeatureData.ts`
   (D86). `isActionTableFeature(feature)` je identifikační pravidlo pro
   budoucí tabulku akcí: true, když featura (class feature, subclass
@@ -220,10 +233,18 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 ## Next step
 
 Krok 7 zbývá dokončit přestavbou sheetu. Trvalá hlavička (slice 1), záložky
-(slice 2), tabulka akcí s útoky zbraněmi (slice 3) a řádky kouzel (slice 4)
-jsou hotové. Zbývá slice 5 (řádky použitelných schopností, identifikace přes
-`isActionTableFeature`, D86 — bez Range/Damage). Řádkový model
-`ActionTableRow` na to čeká připravený. Zadání poslední slice se teprve píše.
+(slice 2), tabulka akcí s útoky zbraněmi (slice 3), řádky kouzel (slice 4)
+a slice 5 část B (oprava množného čísla ve `formatRange`) jsou hotové.
+
+Zbývá slice 5 část A — řádky použitelných schopností v tabulce akcí,
+identifikace přes `isActionTableFeature` (D86), bez Range/Damage/To Hit/Notes.
+Řádkový model `ActionTableRow` na to čeká připravený, ale zadání předpokládá,
+že "Schopnosti a rysy" renderuje class/subclass featury; nerenderuje (jen
+featy, tři D21 volby class featur a class optional features jako Metamagic).
+Než část A půjde dál, potřebuje rozhodnutí: běžet `isActionTableFeature` jen
+nad těmi třemi existujícími zdroji (skoro prázdný výsledek), nebo přidat
+resolver plné množiny class/subclass featur (širší slice, "re-derivace"
+zdroje, který sheet nemá). Je to vlastní budoucí task.
 
 Než se začne krok 7a (kouzla z rasy) nebo pickery tří podtříd (Storm
 Herald, The Genie, Divine Soul), potřebují rozhodnutí — viz QUESTIONS.md.
