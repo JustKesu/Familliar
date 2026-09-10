@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 2 — pět záložek na sheetu, jen rozvržení, schéma 28)
+Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 3 — tabulka akcí, zatím jen útoky zbraněmi, schéma 28)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
@@ -58,13 +58,13 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | fix | Custom item form (5 oprav), inventářové ovládání, dlouhé seznamy přes SearchableOptionList | 26→27 |
    | hlavička | Trvalá hlavička sheetu (jméno, AC, iniciativa, rychlost, PB, životy); ruční životy `currentHp`/`maxHp` (D9) | 27→28 |
 
-   Aktuální schéma: 28. Zbývá z **přestavby sheetu**: jedna tabulka akcí
-   (slice 3–5) — viz Next step.
+   Aktuální schéma: 28. Zbývá z **přestavby sheetu**: řádky kouzel (slice 4) a
+   použitelných schopností (slice 5) do tabulky akcí — viz Next step.
 
    Přestavba sheetu (poslední kus kroku 7 — trvalá hlavička + záložky + jedna
    tabulka akcí místo plochého výpisu sekcí). Rozdělena na 5 slice; slice 1
-   (trvalá hlavička) a slice 2 (záložky) hotové — viz níž. Groundwork k tabulce
-   akcí:
+   (trvalá hlavička), slice 2 (záložky) a slice 3 (tabulka akcí, útoky
+   zbraněmi) hotové — viz níž. Groundwork k tabulce akcí:
 
    - Průzkum (bez kódu): co znamená "použitelná akce" pro tuhle tabulku. Žádné
      jedno pole to neoznačuje; `consumes` označuje jen ~125 SPENDERŮ
@@ -101,11 +101,23 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      z accessibility stromu a testy sahají na sekce podle role bez ohledu na
      otevřenou záložku; jsdom CSS nenačítá, takže tam jsou všechny panely
      dosažitelné).
+   - Slice 3 (tabulka akcí): `src/sheet/CharacterSheet.tsx` — `AttacksSection`
+     nahrazena `ActionsSection`: reálná `<table class="sheet__actions-table">`
+     se sloupci Name · Range · To Hit · Damage · Notes, jeden `<tr>` na
+     drženou zbraň + Unarmed Strike (stejná množina jako dřív). Data beze
+     změny z `computeWeaponAttacks` (jen prezentace). Řádkový model
+     `ActionTableRow` = ReactNode na sloupec; `weaponAttackRow` je jeden
+     builder, slice 4/5 přidají `spellRow`/`featureRow` + další `.map` bez
+     zásahu do tabulky (save kouzlo dá DC do buňky To Hit, schopnost nechá
+     Range/Damage prázdné). "Attacks per action" (Extra Attack) zůstává
+     souhrnný řádek nad tabulkou. D43: nerozpoznaná držená zbraň má řádek v
+     tabulce s pojmenováním a důvodem. Sekce/třída přejmenována
+     `sheet__attacks`→`sheet__actions`, nadpis "Attacks"→"Actions".
 
-   Zatím ne: samotná tabulka akcí (obsah záložky `Akce`), a — samostatně,
-   otázka pro krok 9 zaznamenaná v D86 — pool definitions (max použití,
-   obnova) pro `consumes` cíle, které v těchto čtyřech souborech strukturovaně
-   vůbec nejsou.
+   Zatím ne: řádky kouzel a použitelných schopností v tabulce akcí (slice
+   4–5), a — samostatně, otázka pro krok 9 zaznamenaná v D86 — pool
+   definitions (max použití, obnova) pro `consumes` cíle, které v těchto
+   čtyřech souborech strukturovaně vůbec nejsou.
 8. [not started] Level up
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
@@ -136,10 +148,17 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   pasivní hodnoty, Size and darkvision, Senses, hit dice), `Kouzla`
   (spellcasting attack/DC, sloty, seznam kouzel), `Inventář` (předměty +
   odolnosti/imunity/zranitelnosti), `Schopnosti a rysy` (featy, class feature
-  choices, class options, Wild Shape, familiar), `Akce` (útoky zbraněmi;
-  kouzla a použitelné schopnosti přibudou ve slice 3–5). Klientský stav,
-  výchozí `stats`, bez URL routingu. Panely zůstávají mountnuté, neaktivní
-  skrývá `.sheet__panel` CSS. Nový blok testů `sheet tabs (rebuild slice 2)`.
+  choices, class options, Wild Shape, familiar), `Akce` (tabulka akcí).
+  Klientský stav, výchozí `stats`, bez URL routingu. Panely zůstávají
+  mountnuté, neaktivní skrývá `.sheet__panel` CSS. Nový blok testů `sheet
+  tabs (rebuild slice 2)`.
+- Tabulka akcí (přestavba sheetu, slice 3) — `ActionsSection` v
+  `src/sheet/CharacterSheet.tsx`. `<table class="sheet__actions-table">`,
+  sloupce Name · Range · To Hit · Damage · Notes, řádek na drženou zbraň +
+  Unarmed Strike. Prezentace jen — čísla z `computeWeaponAttacks` beze
+  změny. Řádkový model `ActionTableRow` (ReactNode na sloupec) je připravený
+  na řádky kouzel (slice 4) a schopností (slice 5). "Attacks per action"
+  souhrnný řádek nad tabulkou. Selektory `.sheet__action-*`.
 - Přestavba sheetu, actionTableFeatureData — `src/actions/actionTableFeatureData.ts`
   (D86). `isActionTableFeature(feature)` je identifikační pravidlo pro
   budoucí tabulku akcí: true, když featura (class feature, subclass
@@ -174,11 +193,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-Krok 7 zbývá dokončit přestavbou sheetu. Trvalá hlavička (slice 1) a pět
-záložek (slice 2) jsou hotové. Zbývá slice 3–5: jedna tabulka akcí v
-záložce `Akce` pro útoky, kouzla s hodem/savem i použitelné schopnosti
-(identifikace přes `isActionTableFeature`, D86). Rozvržení je hotové
-rozhodnutí (Danielův mockup), zadání dalších slice se teprve píše.
+Krok 7 zbývá dokončit přestavbou sheetu. Trvalá hlavička (slice 1), záložky
+(slice 2) a tabulka akcí s útoky zbraněmi (slice 3) jsou hotové. Zbývá
+slice 4 (řádky kouzel s hodem/savem — DC do sloupce To Hit) a slice 5
+(řádky použitelných schopností, identifikace přes `isActionTableFeature`,
+D86 — bez Range/Damage). Řádkový model `ActionTableRow` na to čeká
+připravený. Zadání dalších slice se teprve píše.
 
 Než se začne krok 7a (kouzla z rasy) nebo pickery tří podtříd (Storm
 Herald, The Genie, Divine Soul), potřebují rozhodnutí — viz QUESTIONS.md.

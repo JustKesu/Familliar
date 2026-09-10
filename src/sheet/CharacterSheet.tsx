@@ -1308,14 +1308,86 @@ function InventorySection({
 }
 
 /**
- * The attacks the character can actually make right now: the weapons they are
- * HOLDING, plus the Unarmed Strike everyone has (build order step 7, slice c).
- * Anything else stays in the inventory — the player switches by equipping.
- *
- * Attacks per action sits at the top of the section rather than on a weapon
- * row: it is a property of the character's turn, not of any one weapon.
+ * One row of the actions table (sheet rebuild slice 3). The five cells ARE the
+ * columns — Name, Range, To Hit, Damage, Notes — each an arbitrary node so a
+ * later row type fills only what it has: slice 4's save spell puts a DC where a
+ * weapon shows a to-hit, slice 5's usable feature leaves Range and Damage null.
+ * `null` renders an empty cell. Adding those row types is a new builder like
+ * `weaponAttackRow` below plus more `.map`s in `ActionsSection` — never a change
+ * to this shape or the table.
  */
-function AttacksSection({
+interface ActionTableRow {
+	key: string
+	name: ReactNode
+	range: ReactNode
+	toHit: ReactNode
+	damage: ReactNode
+	notes: ReactNode
+}
+
+/**
+ * A held weapon (or the Unarmed Strike) as an actions-table row. Presentation
+ * only — every value comes straight from computeWeaponAttacks (build order step
+ * 7 slice c), unchanged by this slice.
+ */
+function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void): ActionTableRow {
+	return {
+		key: attack.key,
+		name: (
+			<>
+				<span className="sheet__action-name">{attack.name}</span>
+				{attack.abilityChoice && onChooseAttackAbility && (
+					<label className="sheet__action-ability">
+						{' '}
+						Attack with{' '}
+						<select
+							aria-label={`Attack ability for ${attack.name}`}
+							value={attack.abilityChoice.using}
+							onChange={(event) => onChooseAttackAbility(attack.key, event.target.value as WeaponAttackAbility)}
+						>
+							{attack.abilityChoice.options.map((option) => (
+								<option key={option} value={option}>
+									{ABILITY_LABELS[option]}
+								</option>
+							))}
+						</select>
+					</label>
+				)}
+			</>
+		),
+		/* Range is printed as the data writes it ("30/120"); a plain melee weapon carries none. */
+		range: attack.range ? `${attack.range} ft.` : null,
+		toHit: <CalculatedNumber result={attack.toHit} format={formatModifier} />,
+		damage:
+			attack.damage.status === 'unknown' ? (
+				<UnresolvedValue reason={attack.damage.reason} />
+			) : (
+				<>
+					<span className="sheet__action-damage">{attack.damage.value.text}</span>
+					{/* The die above already follows the grip; this says which grip that was (slice b-fix). */}
+					{attack.damage.value.grip && (
+						<span className="sheet__action-versatile">
+							{' '}
+							(Versatile — held in {attack.damage.value.grip === 'two-handed' ? 'two hands' : 'one hand'})
+						</span>
+					)}{' '}
+					<ValueBreakdown breakdown={attack.damage.breakdown} />
+				</>
+			),
+		notes: attack.notes.length > 0 ? attack.notes.join(' · ') : null,
+	}
+}
+
+/**
+ * The actions table (sheet rebuild slice 3). One row per thing the character
+ * can do on their turn — for now the weapons they are HOLDING plus the Unarmed
+ * Strike everyone has (build order step 7 slice c); slices 4 and 5 add spell
+ * rows and usable-feature rows to the same table.
+ *
+ * Attacks per action (Extra Attack) is a property of the character's turn, not
+ * of any one row, so it stays a summary line above the table.
+ */
+function ActionsSection({
 	attacks,
 	attacksPerAction,
 	loading,
@@ -1328,64 +1400,43 @@ function AttacksSection({
 	dataError: string | null
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
 }): ReactNode {
+	const rows = attacks.map((attack) => weaponAttackRow(attack, onChooseAttackAbility))
 	return (
-		<section className="sheet__attacks">
-			<h2>Attacks</h2>
-			{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph — the same nesting the older sections still get wrong. */}
-			<div className="sheet__attacks-per-action">
+		<section className="sheet__actions">
+			<h2>Actions</h2>
+			{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
+			<div className="sheet__actions-per-action">
 				Attacks per action: <CalculatedNumber result={attacksPerAction} />
 			</div>
 			{dataError && <p className="error">Could not load the weapon data this section needs: {dataError}</p>}
 			{loading ? (
 				<p>Loading…</p>
 			) : (
-				<ul className="sheet__attack-list">
-					{attacks.map((attack) => (
-						<li key={attack.key}>
-							<span className="sheet__attack-name">{attack.name}</span>
-							{/* Range is printed as the data writes it ("30/120"); a plain melee weapon carries none. */}
-							{attack.range && <span className="sheet__attack-range"> — range {attack.range} ft.</span>}
-							<> to hit: </>
-							<CalculatedNumber result={attack.toHit} format={formatModifier} />
-							<> damage: </>
-							{attack.damage.status === 'unknown' ? (
-								<UnresolvedValue reason={attack.damage.reason} />
-							) : (
-								<>
-									<span className="sheet__attack-damage">{attack.damage.value.text}</span>
-									{/* The die above already follows the grip; this says which grip that was, rather than printing both figures and knowing neither (slice b-fix). */}
-									{attack.damage.value.grip && (
-										<span className="sheet__attack-versatile">
-											{' '}
-											(Versatile — held in {attack.damage.value.grip === 'two-handed' ? 'two hands' : 'one hand'})
-										</span>
-									)}{' '}
-									<ValueBreakdown breakdown={attack.damage.breakdown} />
-								</>
-							)}
-							{attack.abilityChoice && onChooseAttackAbility && (
-								<>
-									{' '}
-									<label>
-										Attack with{' '}
-										<select
-											aria-label={`Attack ability for ${attack.name}`}
-											value={attack.abilityChoice.using}
-											onChange={(event) => onChooseAttackAbility(attack.key, event.target.value as WeaponAttackAbility)}
-										>
-											{attack.abilityChoice.options.map((option) => (
-												<option key={option} value={option}>
-													{ABILITY_LABELS[option]}
-												</option>
-											))}
-										</select>
-									</label>
-								</>
-							)}
-							{attack.notes.length > 0 && <span className="sheet__attack-notes"> {attack.notes.join(' · ')}</span>}
-						</li>
-					))}
-				</ul>
+				<table className="sheet__actions-table">
+					<thead>
+						<tr>
+							<th scope="col">Name</th>
+							<th scope="col">Range</th>
+							{/* Slice 4 widens this to carry a spell save DC alongside a to-hit. */}
+							<th scope="col">To Hit</th>
+							<th scope="col">Damage</th>
+							<th scope="col">Notes</th>
+						</tr>
+					</thead>
+					<tbody>
+						{rows.map((row, index) => (
+							<tr key={`${row.key}#${index}`} className="sheet__action-row">
+								<th scope="row" className="sheet__action-name-cell">
+									{row.name}
+								</th>
+								<td className="sheet__action-range">{row.range}</td>
+								<td className="sheet__action-to-hit">{row.toHit}</td>
+								<td className="sheet__action-damage-cell">{row.damage}</td>
+								<td className="sheet__action-notes">{row.notes}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
 			)}
 		</section>
 	)
@@ -2428,7 +2479,7 @@ export function CharacterSheet({
 				aria-labelledby="sheet-tab-actions"
 				className={activeTab === 'actions' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
 			>
-			<AttacksSection
+			<ActionsSection
 				attacks={weaponAttacks}
 				attacksPerAction={attacksPerAction}
 				loading={itemRefs === null || weaponAttackData === null}

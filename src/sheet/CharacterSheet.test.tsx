@@ -226,6 +226,18 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 			{ name: 'Periapt of Proof against Poison', source: 'XDMG', requiresAttunement: true, immune: ['poison'] },
 			/* Slice f-fix. A consumable's resistance never applies from being carried. */
 			{ name: 'Potion of Fire Resistance', source: 'XPHB', typeCode: 'P', resist: ['fire'] },
+			/* Actions table (slice 3): a Thrown weapon carries a `range` string, so the Range column has something to show. */
+			{
+				name: 'Handaxe',
+				source: 'XPHB',
+				typeCode: 'M',
+				weapon: true,
+				weaponCategory: 'simple',
+				dmg1: '1d6',
+				dmgTypeFull: 'slashing',
+				propertyFull: ['Light', 'Thrown'],
+				range: '20/60',
+			},
 		]),
 	}
 })
@@ -892,15 +904,15 @@ describe('CharacterSheet', () => {
 		}
 
 		function attackDamage(container: HTMLElement, name: string): string {
-			const row = Array.from(container.querySelectorAll('.sheet__attacks li')).find((li) => li.querySelector('.sheet__attack-name')?.textContent === name)
+			const row = Array.from(container.querySelectorAll('.sheet__action-row')).find((tr) => tr.querySelector('.sheet__action-name')?.textContent === name)
 			if (!row) throw new Error(`no attack row for ${name}`)
-			return row.querySelector('.sheet__attack-damage')!.textContent ?? ''
+			return row.querySelector('.sheet__action-damage')!.textContent ?? ''
 		}
 
 		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
-			await waitFor(() => expect(rendered.container.querySelector('.sheet__attack-list')).toBeTruthy())
+			await waitFor(() => expect(rendered.container.querySelector('.sheet__actions-table')).toBeTruthy())
 			return rendered
 		}
 
@@ -1055,19 +1067,21 @@ describe('CharacterSheet', () => {
 	 */
 	describe('weapon attacks (step 7 slice c)', () => {
 		function attacksSection(container: HTMLElement): HTMLElement {
-			return container.querySelector('.sheet__attacks') as HTMLElement
+			return container.querySelector('.sheet__actions') as HTMLElement
 		}
 
 		function attackRow(container: HTMLElement, name: string): HTMLElement {
-			const row = Array.from(attacksSection(container).querySelectorAll('li')).find((li) => li.querySelector('.sheet__attack-name')?.textContent === name)
+			const row = Array.from(attacksSection(container).querySelectorAll('.sheet__action-row')).find(
+				(tr) => tr.querySelector('.sheet__action-name')?.textContent === name,
+			)
 			if (!row) throw new Error(`no attack row for ${name}`)
-			return row
+			return row as HTMLElement
 		}
 
 		async function renderSheet(subject: Character, onEditInventory?: (inventory: Character['inventory'] & object) => void) {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
-			await waitFor(() => expect(attacksSection(rendered.container).querySelector('.sheet__attack-list')).toBeTruthy())
+			await waitFor(() => expect(attacksSection(rendered.container).querySelector('.sheet__actions-table')).toBeTruthy())
 			return rendered
 		}
 
@@ -1078,22 +1092,22 @@ describe('CharacterSheet', () => {
 			const row = attackRow(container, 'Longsword')
 			// STR 15 (+2) + PB 3 at level 5.
 			expect(row.textContent).toContain('+5')
-			expect(row.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 2 slashing')
-			expect(row.querySelector('.sheet__attack-versatile')!.textContent).toContain('held in one hand')
+			expect(row.querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 2 slashing')
+			expect(row.querySelector('.sheet__action-versatile')!.textContent).toContain('held in one hand')
 			expect(row.textContent).toContain('Mastery: Sap')
 			expect(row.textContent).toContain('Properties: Versatile')
 		})
 
 		it('shows the unarmed strike every character has, and the attacks-per-action count from the feature table', async () => {
 			const { container } = await renderSheet(character)
-			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__attack-damage')!.textContent).toBe('1 + 2 bludgeoning')
+			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-damage')!.textContent).toBe('1 + 2 bludgeoning')
 			// The stub grants "Extra Attack"; the count belongs to the character's turn, not to a weapon row.
-			expect(attacksSection(container).querySelector('.sheet__attacks-per-action')!.textContent).toContain('2')
+			expect(attacksSection(container).querySelector('.sheet__actions-per-action')!.textContent).toContain('2')
 		})
 
 		it('an item that is held but not a weapon does not become an attack', async () => {
 			const { container } = await renderSheet({ ...character, id: 'atk-shield', inventory: holding('Shield') })
-			expect(Array.from(attacksSection(container).querySelectorAll('.sheet__attack-name')).map((node) => node.textContent)).toEqual(['Unarmed Strike'])
+			expect(Array.from(attacksSection(container).querySelectorAll('.sheet__action-name')).map((node) => node.textContent)).toEqual(['Unarmed Strike'])
 		})
 
 		it('switching a Finesse weapon’s ability writes the pick to the inventory row and changes the number', async () => {
@@ -1134,6 +1148,34 @@ describe('CharacterSheet', () => {
 			const row = attackRow(container, 'Sword of Nothing')
 			expect(row.textContent).toContain('was not found in the item data')
 			expect(attackRow(container, 'Unarmed Strike')).toBeTruthy()
+		})
+
+		it('renders a real table with the five action columns (slice 3)', async () => {
+			const { container } = await renderSheet({ ...character, id: 'atk-table', inventory: holding('Longsword') })
+			const table = attacksSection(container).querySelector('table.sheet__actions-table')!
+			expect(table).toBeTruthy()
+			const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent)
+			expect(headers).toEqual(['Name', 'Range', 'To Hit', 'Damage', 'Notes'])
+			// One row per held weapon plus the Unarmed Strike, in the tbody.
+			const names = Array.from(table.querySelectorAll('tbody .sheet__action-row .sheet__action-name')).map((n) => n.textContent)
+			expect(names).toEqual(['Longsword', 'Unarmed Strike'])
+			// Attacks per action stays a summary line above the table, never a row.
+			expect(attacksSection(container).querySelector('.sheet__actions-per-action')!.textContent).toContain('Attacks per action')
+			expect(table.querySelector('tbody')!.textContent).not.toContain('Attacks per action')
+		})
+
+		it('fills the Range cell for a Thrown weapon and leaves it blank for a plain melee weapon', async () => {
+			const { container } = await renderSheet({ ...character, id: 'atk-range', inventory: holding('Handaxe', 'Longsword') })
+			expect(attackRow(container, 'Handaxe').querySelector('.sheet__action-range')!.textContent).toBe('20/60 ft.')
+			expect(attackRow(container, 'Longsword').querySelector('.sheet__action-range')!.textContent).toBe('')
+		})
+
+		it('keeps a D43 unresolved weapon inside the table, named, with the problem stated', async () => {
+			const { container } = await renderSheet({ ...character, id: 'atk-d43-table', inventory: holding('Sword of Nothing') })
+			const row = attackRow(container, 'Sword of Nothing')
+			expect(row.closest('table.sheet__actions-table')).toBeTruthy()
+			expect(row.querySelector('.sheet__action-to-hit')!.textContent).toContain('unresolved')
+			expect(row.querySelector('.sheet__action-notes')!.textContent).toContain('was not found in the item data')
 		})
 	})
 
@@ -1321,8 +1363,8 @@ describe('CharacterSheet', () => {
 		}
 
 		function attackNamed(container: HTMLElement, name: string): HTMLElement {
-			const row = Array.from(container.querySelectorAll('.sheet__attack-list li')).find(
-				(li) => li.querySelector('.sheet__attack-name')?.textContent === name,
+			const row = Array.from(container.querySelectorAll('.sheet__action-row')).find(
+				(tr) => tr.querySelector('.sheet__action-name')?.textContent === name,
 			)
 			if (!row) throw new Error(`no attack line named ${name}`)
 			return row as HTMLElement
@@ -1354,7 +1396,7 @@ describe('CharacterSheet', () => {
 			const row = attackNamed(container, 'Dagger of Venom +1')
 			// STR +2, PB +3, magic +1.
 			expect(row.textContent).toContain('+6')
-			expect(row.querySelector('.sheet__attack-damage')!.textContent).toBe('1d4 + 3 piercing')
+			expect(row.querySelector('.sheet__action-damage')!.textContent).toBe('1d4 + 3 piercing')
 		})
 
 		it('a bonus the player sets applies to a plain weapon and shows in its name everywhere', async () => {
@@ -1367,7 +1409,7 @@ describe('CharacterSheet', () => {
 			const row = attackNamed(container, 'Longsword +2')
 			// STR +2, PB +3, magic +2.
 			expect(row.textContent).toContain('+7')
-			expect(row.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 4 slashing')
+			expect(row.querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 4 slashing')
 			expect(inventoryRow(container, 'Longsword +2')).toBeTruthy()
 		})
 
@@ -1393,14 +1435,14 @@ describe('CharacterSheet', () => {
 			const withheld = attackNamed(container, 'Sword of Sharpness +3')
 			expect(withheld.textContent).toContain('+5')
 			expect(withheld.textContent).toContain('requires attunement and you are not attuned to it')
-			expect(withheld.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 2 slashing')
+			expect(withheld.querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 2 slashing')
 
 			cleanup()
 			const attuned: Character = { ...unattuned, id: 'mb-attuned', inventory: [{ ...unattuned.inventory![0], attuned: true }] }
 			const { container: second } = await renderSheet(attuned)
 			const applied = attackNamed(second, 'Sword of Sharpness +3')
 			expect(applied.textContent).toContain('+8')
-			expect(applied.querySelector('.sheet__attack-damage')!.textContent).toBe('1d8 + 5 slashing')
+			expect(applied.querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 5 slashing')
 		})
 
 		it('keeps two otherwise-identical items on separate rows and separate attack lines', async () => {
@@ -2279,7 +2321,7 @@ describe('CharacterSheet', () => {
 					),
 				),
 			)
-			const line = Array.from(container.querySelectorAll('.sheet__attack-list li')).find((li) => li.textContent?.includes('Bone Blade'))!
+			const line = Array.from(container.querySelectorAll('.sheet__action-row')).find((tr) => tr.textContent?.includes('Bone Blade'))!
 			// STR +2 and the martial proficiency bonus +3.
 			expect(line.textContent).toContain('+5')
 			expect(line.textContent).toContain('1d8 + 2 slashing')
@@ -2295,7 +2337,7 @@ describe('CharacterSheet', () => {
 					),
 				),
 			)
-			const line = Array.from(container.querySelectorAll('.sheet__attack-list li')).find((li) => li.textContent?.includes('Bone Blade'))!
+			const line = Array.from(container.querySelectorAll('.sheet__action-row')).find((tr) => tr.textContent?.includes('Bone Blade'))!
 			expect(line.textContent).toContain('Bone Blade +1')
 			expect(line.textContent).toContain('+6')
 			expect(line.textContent).toContain('1d8 + 3 slashing')
@@ -4625,9 +4667,9 @@ describe('sheet tabs (rebuild slice 2)', () => {
 		expect(inventory.querySelector('.sheet__damage-responses')).toBeTruthy()
 
 		const actions = container.querySelector('#sheet-panel-actions')!
-		expect(actions.querySelector('.sheet__attacks')).toBeTruthy()
+		expect(actions.querySelector('.sheet__actions')).toBeTruthy()
 
-		expect(container.querySelectorAll('.sheet__attacks')).toHaveLength(1)
+		expect(container.querySelectorAll('.sheet__actions')).toHaveLength(1)
 		expect(container.querySelector('#sheet-panel-stats')!.querySelector('.sheet__damage-responses')).toBeNull()
 	})
 

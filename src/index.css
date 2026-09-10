@@ -203,6 +203,29 @@ h1 {
   display: block;
 }
 
+/* ---- actions table (sheet rebuild slice 3) ---- */
+
+.sheet__actions-per-action {
+  margin: 0.5rem 0 0.75rem;
+}
+
+.sheet__actions-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.sheet__actions-table th,
+.sheet__actions-table td {
+  border: 1px solid var(--rule);
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.sheet__actions-table thead th {
+  background: var(--panel-bg);
+}
+
 /* ---- character manager ---- */
 
 .char-list {
