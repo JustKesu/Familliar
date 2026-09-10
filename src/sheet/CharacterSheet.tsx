@@ -162,6 +162,21 @@ const ABILITY_LABELS: Record<Ability, string> = {
 	charisma: 'Charisma',
 }
 
+/*
+ * Sheet rebuild slice 2: the flat section list is grouped into five tabs. This
+ * slice only relocates sections — no section's content, calculation or markup
+ * changes. Landing tab is 'stats'.
+ */
+type SheetTabId = 'stats' | 'spells' | 'inventory' | 'features' | 'actions'
+
+const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
+	{ id: 'stats', label: 'Vlastnosti a hody' },
+	{ id: 'spells', label: 'Kouzla' },
+	{ id: 'inventory', label: 'Inventář' },
+	{ id: 'features', label: 'Schopnosti a rysy' },
+	{ id: 'actions', label: 'Akce' },
+]
+
 function messageOf(error: unknown): string {
 	return error instanceof Error ? error.message : String(error)
 }
@@ -1467,6 +1482,8 @@ export function CharacterSheet({
 	onEditCurrency?: (copper: number) => void
 	onEditHitPoints?: (currentHp: number | undefined, maxHp: number | undefined) => void
 }): ReactNode {
+	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
+	const [activeTab, setActiveTab] = useState<SheetTabId>('stats')
 	const [savingThrowClassData, setSavingThrowClassData] = useState<ClassSavingThrowProficiencies[] | null>(null)
 	const [hitDiceClassData, setHitDiceClassData] = useState<ClassHitDie[] | null>(null)
 	const [speciesTraitsData, setSpeciesTraitsData] = useState<SpeciesTraitsData[] | null>(null)
@@ -1961,6 +1978,37 @@ export function CharacterSheet({
 				</p>
 			</header>
 
+			{/*
+			 * Sheet rebuild slice 2 — the sections below are split across five tabs.
+			 * Panels stay mounted and are hidden by the `.sheet__panel` stylesheet
+			 * rule, not the `hidden` attribute or an inline display:none: those drop
+			 * a panel out of the accessibility tree, and the sheet's tests query
+			 * sections by role no matter which tab is open (jsdom loads no
+			 * stylesheet, so every panel stays reachable there).
+			 */}
+			<nav className="sheet__tabs" role="tablist" aria-label="Sekce listu postavy">
+				{SHEET_TABS.map((tab) => (
+					<button
+						key={tab.id}
+						type="button"
+						role="tab"
+						id={`sheet-tab-${tab.id}`}
+						aria-controls={`sheet-panel-${tab.id}`}
+						aria-selected={activeTab === tab.id}
+						className={activeTab === tab.id ? 'sheet__tab sheet__tab--active' : 'sheet__tab'}
+						onClick={() => setActiveTab(tab.id)}
+					>
+						{tab.label}
+					</button>
+				))}
+			</nav>
+
+			<div
+				role="tabpanel"
+				id="sheet-panel-stats"
+				aria-labelledby="sheet-tab-stats"
+				className={activeTab === 'stats' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
+			>
 			<section className="sheet__abilities">
 				<h2>Ability scores</h2>
 				<ul>
@@ -2005,20 +2053,6 @@ export function CharacterSheet({
 					})}
 				</ul>
 			</section>
-
-			<DamageResponsesSection
-				responses={damageResponses}
-				loading={itemRefs === null || damageResponseData === null}
-				dataError={damageResponseDataError}
-			/>
-
-			<AttacksSection
-				attacks={weaponAttacks}
-				attacksPerAction={attacksPerAction}
-				loading={itemRefs === null || weaponAttackData === null}
-				dataError={weaponAttackDataError}
-				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}
-			/>
 
 			<section className="sheet__skills">
 				<h2>Skills</h2>
@@ -2103,94 +2137,14 @@ export function CharacterSheet({
 					</>
 				)}
 			</section>
+			</div>
 
-			<InventorySection
-				inventory={character.inventory ?? []}
-				currencyCopper={character.currencyCopper ?? 0}
-				itemRefs={itemRefs}
-				itemRefsError={itemRefsError}
-				itemEntryTemplates={itemEntryTemplates}
-				attunementLimit={attunementLimit}
-				onEditInventory={onEditInventory}
-				onEditCurrency={onEditCurrency}
-			/>
-
-			<section className="sheet__feats">
-				<h2>Feats</h2>
-				{chosenFeats.length === 0 ? (
-					<p>No feats chosen yet.</p>
-				) : (
-					<ul>
-						{chosenFeats.map((choice, index) => {
-							const featText = featTextEntries.find((f) => f.name === choice.name && f.source === choice.source)
-							return (
-								<li key={index}>
-									<details>
-										<summary>
-											{choice.name} (level {choice.level})
-										</summary>
-										{featText ? (
-											<ResolvedEntries entries={featText.entries} data={resolverData} />
-										) : (
-											<UnresolvedValue reason={`No text found for feat "${choice.name}" (${choice.source}).`} />
-										)}
-									</details>
-								</li>
-							)
-						})}
-					</ul>
-				)}
-			</section>
-
-			{/* The D21 class-feature choices, one row per chosen alternative naming the feature it replaces. Nothing renders at all when the character made none — no empty heading, same rule the sections around it follow, except when the load itself failed (D43). */}
-			{(classFeatureChoices.length > 0 || classFeatureChoicesError) && (
-				<section className="sheet__class-feature-choices">
-					<h2>Class feature choices</h2>
-					{classFeatureChoicesError && <p className="error">Could not load class feature choices: {classFeatureChoicesError}</p>}
-					<ul>
-						{classFeatureChoices.map((choice) => (
-							<li key={`${choice.featureName}|${choice.optionName}`}>
-								<details>
-									<summary>
-										{choice.optionName} — {choice.featureName} (level {choice.grantedAtLevel})
-									</summary>
-									{choice.found ? (
-										<ResolvedEntries entries={choice.entries} data={resolverData} />
-									) : (
-										<UnresolvedValue reason={`No text found for "${choice.optionName}" (${choice.featureName}).`} />
-									)}
-								</details>
-							</li>
-						))}
-					</ul>
-				</section>
-			)}
-
-			{/* Headed generically: the progression's own name comes with the data that failed to load, so it isn't known here. */}
-			{classOptionalFeaturesError && (
-				<section className="sheet__class-optional-features">
-					<h2>Class options</h2>
-					<p className="error">Could not load the options chosen for your class: {classOptionalFeaturesError}</p>
-				</section>
-			)}
-
-			{/* One section per granted featureType, headed by the progression's own name ("Eldritch Invocations", "Metamagic"). A character with no class-level picks renders nothing at all — no empty heading. */}
-			{classOptionalFeatures.map((group) => (
-				<section key={group.featureType} className="sheet__class-optional-features">
-					<h2>{group.name ?? group.featureType}</h2>
-					<ul>
-						{group.options.map((option) => (
-							<li key={`${option.name}|${option.source}`}>
-								<details>
-									<summary>{option.name}</summary>
-									<ResolvedEntries entries={option.entries} data={resolverData} />
-								</details>
-							</li>
-						))}
-					</ul>
-				</section>
-			))}
-
+			<div
+				role="tabpanel"
+				id="sheet-panel-spells"
+				aria-labelledby="sheet-tab-spells"
+				className={activeTab === 'spells' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
+			>
 			{isCaster && (
 				<>
 					{(spellcastingEntries.length > 0 || featSpellcastingEntries.length > 0) && (
@@ -2273,6 +2227,113 @@ export function CharacterSheet({
 					{combinedSpells.length > 0 && <SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />}
 				</section>
 			)}
+			</div>
+
+			<div
+				role="tabpanel"
+				id="sheet-panel-inventory"
+				aria-labelledby="sheet-tab-inventory"
+				className={activeTab === 'inventory' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
+			>
+			<DamageResponsesSection
+				responses={damageResponses}
+				loading={itemRefs === null || damageResponseData === null}
+				dataError={damageResponseDataError}
+			/>
+
+			<InventorySection
+				inventory={character.inventory ?? []}
+				currencyCopper={character.currencyCopper ?? 0}
+				itemRefs={itemRefs}
+				itemRefsError={itemRefsError}
+				itemEntryTemplates={itemEntryTemplates}
+				attunementLimit={attunementLimit}
+				onEditInventory={onEditInventory}
+				onEditCurrency={onEditCurrency}
+			/>
+			</div>
+
+			<div
+				role="tabpanel"
+				id="sheet-panel-features"
+				aria-labelledby="sheet-tab-features"
+				className={activeTab === 'features' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
+			>
+			<section className="sheet__feats">
+				<h2>Feats</h2>
+				{chosenFeats.length === 0 ? (
+					<p>No feats chosen yet.</p>
+				) : (
+					<ul>
+						{chosenFeats.map((choice, index) => {
+							const featText = featTextEntries.find((f) => f.name === choice.name && f.source === choice.source)
+							return (
+								<li key={index}>
+									<details>
+										<summary>
+											{choice.name} (level {choice.level})
+										</summary>
+										{featText ? (
+											<ResolvedEntries entries={featText.entries} data={resolverData} />
+										) : (
+											<UnresolvedValue reason={`No text found for feat "${choice.name}" (${choice.source}).`} />
+										)}
+									</details>
+								</li>
+							)
+						})}
+					</ul>
+				)}
+			</section>
+
+			{/* The D21 class-feature choices, one row per chosen alternative naming the feature it replaces. Nothing renders at all when the character made none — no empty heading, same rule the sections around it follow, except when the load itself failed (D43). */}
+			{(classFeatureChoices.length > 0 || classFeatureChoicesError) && (
+				<section className="sheet__class-feature-choices">
+					<h2>Class feature choices</h2>
+					{classFeatureChoicesError && <p className="error">Could not load class feature choices: {classFeatureChoicesError}</p>}
+					<ul>
+						{classFeatureChoices.map((choice) => (
+							<li key={`${choice.featureName}|${choice.optionName}`}>
+								<details>
+									<summary>
+										{choice.optionName} — {choice.featureName} (level {choice.grantedAtLevel})
+									</summary>
+									{choice.found ? (
+										<ResolvedEntries entries={choice.entries} data={resolverData} />
+									) : (
+										<UnresolvedValue reason={`No text found for "${choice.optionName}" (${choice.featureName}).`} />
+									)}
+								</details>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
+
+			{/* Headed generically: the progression's own name comes with the data that failed to load, so it isn't known here. */}
+			{classOptionalFeaturesError && (
+				<section className="sheet__class-optional-features">
+					<h2>Class options</h2>
+					<p className="error">Could not load the options chosen for your class: {classOptionalFeaturesError}</p>
+				</section>
+			)}
+
+			{/* One section per granted featureType, headed by the progression's own name ("Eldritch Invocations", "Metamagic"). A character with no class-level picks renders nothing at all — no empty heading. */}
+			{classOptionalFeatures.map((group) => (
+				<section key={group.featureType} className="sheet__class-optional-features">
+					<h2>{group.name ?? group.featureType}</h2>
+					<ul>
+						{group.options.map((option) => (
+							<li key={`${option.name}|${option.source}`}>
+								<details>
+									<summary>{option.name}</summary>
+									<ResolvedEntries entries={option.entries} data={resolverData} />
+								</details>
+							</li>
+						))}
+					</ul>
+				</section>
+			))}
 
 			{/* The Beast forms a Druid knows for Wild Shape. Nothing renders for a character with none — no empty heading. Uses per rest and transforming are play tracking (step 9), not shown. */}
 			{wildShapeForms.length > 0 && (
@@ -2359,6 +2420,22 @@ export function CharacterSheet({
 					)}
 				</section>
 			)}
+			</div>
+
+			<div
+				role="tabpanel"
+				id="sheet-panel-actions"
+				aria-labelledby="sheet-tab-actions"
+				className={activeTab === 'actions' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
+			>
+			<AttacksSection
+				attacks={weaponAttacks}
+				attacksPerAction={attacksPerAction}
+				loading={itemRefs === null || weaponAttackData === null}
+				dataError={weaponAttackDataError}
+				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}
+			/>
+			</div>
 		</article>
 	)
 }

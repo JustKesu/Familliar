@@ -4547,3 +4547,107 @@ describe('the persistent header (rebuild slice 1)', () => {
 		expect(onEditHitPoints).toHaveBeenLastCalledWith(11, 40)
 	})
 })
+
+describe('sheet tabs (rebuild slice 2)', () => {
+	const TAB_LABELS = ['Vlastnosti a hody', 'Kouzla', 'Inventář', 'Schopnosti a rysy', 'Akce']
+	const TAB_IDS = ['stats', 'spells', 'inventory', 'features', 'actions']
+
+	afterEach(() => {
+		vi.mocked(loadGrantedSenses).mockReset().mockResolvedValue([])
+	})
+
+	it('renders the five section tabs with the stats tab selected by default', async () => {
+		render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		const tabs = screen.getAllByRole('tab')
+		expect(tabs.map((tab) => tab.textContent)).toEqual(TAB_LABELS)
+		expect(tabs[0].getAttribute('aria-selected')).toBe('true')
+		expect(tabs.slice(1).every((tab) => tab.getAttribute('aria-selected') === 'false')).toBe(true)
+	})
+
+	it('wires each tab to its panel and marks only the stats panel active on first render', async () => {
+		const { container } = render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		for (const id of TAB_IDS) {
+			expect(container.querySelector(`#sheet-tab-${id}`)!.getAttribute('aria-controls')).toBe(`sheet-panel-${id}`)
+			expect(container.querySelector(`#sheet-panel-${id}`)!.getAttribute('aria-labelledby')).toBe(`sheet-tab-${id}`)
+		}
+		expect(container.querySelector('#sheet-panel-stats')!.className).toContain('sheet__panel--active')
+		for (const id of ['spells', 'inventory', 'features', 'actions']) {
+			expect(container.querySelector(`#sheet-panel-${id}`)!.className).not.toContain('sheet__panel--active')
+		}
+	})
+
+	it('moves the active tab and panel on click', async () => {
+		const user = userEvent.setup()
+		const { container } = render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		await user.click(screen.getByRole('tab', { name: 'Inventář' }))
+
+		expect(screen.getByRole('tab', { name: 'Inventář' }).getAttribute('aria-selected')).toBe('true')
+		expect(screen.getByRole('tab', { name: 'Vlastnosti a hody' }).getAttribute('aria-selected')).toBe('false')
+		expect(container.querySelector('#sheet-panel-inventory')!.className).toContain('sheet__panel--active')
+		expect(container.querySelector('#sheet-panel-stats')!.className).not.toContain('sheet__panel--active')
+	})
+
+	it('groups the stats/rolls sections, senses included, under the first tab', async () => {
+		vi.mocked(loadGrantedSenses).mockResolvedValue([{ senseType: 'blindsight', range: 10, origin: 'feat', name: 'Skulker' }])
+		const withSense: Character = { ...character, id: 'tabs-stats', featAsiChoices: [{ level: 4, kind: 'feat', name: 'Skulker', source: 'XPHB' }] }
+
+		const { container } = render(<CharacterSheet character={withSense} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+		await waitFor(() => expect(container.querySelector('.sheet__senses')).toBeTruthy())
+
+		const panel = container.querySelector('#sheet-panel-stats')!
+		for (const cls of [
+			'.sheet__abilities',
+			'.sheet__saving-throws',
+			'.sheet__skills',
+			'.sheet__passive-values',
+			'.sheet__traits',
+			'.sheet__senses',
+			'.sheet__hit-dice',
+		]) {
+			expect(panel.querySelector(cls)).toBeTruthy()
+		}
+	})
+
+	it('puts inventory and damage responses under the Inventář tab, and weapon attacks under Akce', async () => {
+		const { container } = render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+		await waitFor(() => expect(container.querySelector('.sheet__inventory')).toBeTruthy())
+
+		const inventory = container.querySelector('#sheet-panel-inventory')!
+		expect(inventory.querySelector('.sheet__inventory')).toBeTruthy()
+		expect(inventory.querySelector('.sheet__damage-responses')).toBeTruthy()
+
+		const actions = container.querySelector('#sheet-panel-actions')!
+		expect(actions.querySelector('.sheet__attacks')).toBeTruthy()
+
+		expect(container.querySelectorAll('.sheet__attacks')).toHaveLength(1)
+		expect(container.querySelector('#sheet-panel-stats')!.querySelector('.sheet__damage-responses')).toBeNull()
+	})
+
+	it('puts spells under Kouzla and features/class options under Schopnosti a rysy', async () => {
+		const warlock: Character = {
+			id: 'tabs-caster',
+			name: 'Aria',
+			classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
+			optionalFeatureChoices: [{ featureType: 'EI', choices: ['Agonizing Blast'] }],
+			spellChoices: [{ className: 'Warlock', classSource: 'XPHB', spells: [{ name: 'Eldritch Blast', source: 'XPHB' }] }],
+		}
+
+		const { container } = render(<CharacterSheet character={warlock} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+		await waitFor(() => expect(container.querySelector('.sheet__class-optional-features')).toBeTruthy())
+
+		expect(container.querySelector('#sheet-panel-spells')!.querySelector('.sheet__spells')).toBeTruthy()
+
+		const features = container.querySelector('#sheet-panel-features')!
+		expect(features.querySelector('.sheet__feats')).toBeTruthy()
+		expect(features.querySelector('.sheet__class-optional-features')).toBeTruthy()
+	})
+})

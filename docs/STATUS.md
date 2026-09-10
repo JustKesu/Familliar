@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 1 — trvalá hlavička + ruční životy, schéma 28)
+Poslední aktualizace: 2026-09-10 (přestavba sheetu slice 2 — pět záložek na sheetu, jen rozvržení, schéma 28)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D86) a v REPORT.md (poslední session).
@@ -58,12 +58,13 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | fix | Custom item form (5 oprav), inventářové ovládání, dlouhé seznamy přes SearchableOptionList | 26→27 |
    | hlavička | Trvalá hlavička sheetu (jméno, AC, iniciativa, rychlost, PB, životy); ruční životy `currentHp`/`maxHp` (D9) | 27→28 |
 
-   Aktuální schéma: 28. Zbývá z **přestavby sheetu**: záložky + jedna tabulka
-   akcí — viz Next step.
+   Aktuální schéma: 28. Zbývá z **přestavby sheetu**: jedna tabulka akcí
+   (slice 3–5) — viz Next step.
 
    Přestavba sheetu (poslední kus kroku 7 — trvalá hlavička + záložky + jedna
    tabulka akcí místo plochého výpisu sekcí). Rozdělena na 5 slice; slice 1
-   (trvalá hlavička) hotová — viz níž. Groundwork k tabulce akcí:
+   (trvalá hlavička) a slice 2 (záložky) hotové — viz níž. Groundwork k tabulce
+   akcí:
 
    - Průzkum (bez kódu): co znamená "použitelná akce" pro tuhle tabulku. Žádné
      jedno pole to neoznačuje; `consumes` označuje jen ~125 SPENDERŮ
@@ -88,8 +89,20 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      (hlavička ukazuje "—"), 0 je platná hodnota; `CharacterStore.setHitPoints`.
      Bez clampu current vůči max a bez odvození max z voleb po úrovních — to
      jsou kroky 8 a 9.
+   - Slice 2 (záložky): `src/sheet/CharacterSheet.tsx` — plochý výpis sekcí
+     rozdělen do pěti záložek (`Vlastnosti a hody` · `Kouzla` · `Inventář` ·
+     `Schopnosti a rysy` · `Akce`), výchozí `stats`. Klientský stav
+     (`activeTab`), bez URL routingu. Žádná sekce nezměnila obsah, výpočet ani
+     markup — jen kam se renderuje. Sekce `Senses` (SensesList) šla do
+     `Vlastnosti a hody` vedle Size and darkvision (rozhodnutí uživatele).
+     `<header class="sheet__header">` (třída/rasa/background) zůstal nad
+     záložkami, viditelný pořád. Neaktivní panely skrývá `.sheet__panel` v
+     `index.css` (ne atribut `hidden`/inline `display:none` — ty by je vyřadily
+     z accessibility stromu a testy sahají na sekce podle role bez ohledu na
+     otevřenou záložku; jsdom CSS nenačítá, takže tam jsou všechny panely
+     dosažitelné).
 
-   Zatím ne: samotná tabulka akcí (UI/rozvržení záložek), a — samostatně,
+   Zatím ne: samotná tabulka akcí (obsah záložky `Akce`), a — samostatně,
    otázka pro krok 9 zaznamenaná v D86 — pool definitions (max použití,
    obnova) pro `consumes` cíle, které v těchto čtyřech souborech strukturovaně
    vůbec nejsou.
@@ -118,6 +131,15 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   (D9) — nic je nepočítá, prázdné = "nenastaveno" ("—"), 0 platná;
   `CharacterStore.setHitPoints`. Není sticky (může se řešit později). Testy:
   `SheetHeader.test.tsx` a nová sekce v `CharacterSheet.test.tsx`.
+- Záložky sheetu (přestavba sheetu, slice 2) — `src/sheet/CharacterSheet.tsx`.
+  Pět záložek pod hlavičkou: `Vlastnosti a hody` (vlastnosti, savy, skilly,
+  pasivní hodnoty, Size and darkvision, Senses, hit dice), `Kouzla`
+  (spellcasting attack/DC, sloty, seznam kouzel), `Inventář` (předměty +
+  odolnosti/imunity/zranitelnosti), `Schopnosti a rysy` (featy, class feature
+  choices, class options, Wild Shape, familiar), `Akce` (útoky zbraněmi;
+  kouzla a použitelné schopnosti přibudou ve slice 3–5). Klientský stav,
+  výchozí `stats`, bez URL routingu. Panely zůstávají mountnuté, neaktivní
+  skrývá `.sheet__panel` CSS. Nový blok testů `sheet tabs (rebuild slice 2)`.
 - Přestavba sheetu, actionTableFeatureData — `src/actions/actionTableFeatureData.ts`
   (D86). `isActionTableFeature(feature)` je identifikační pravidlo pro
   budoucí tabulku akcí: true, když featura (class feature, subclass
@@ -152,13 +174,11 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-Krok 7 zbývá dokončit přestavbou sheetu. Trvalá hlavička (jméno, AC,
-iniciativa, rychlost, proficiency bonus, životy) je hotová (slice 1).
-Zbývá: pět záložek (Akce · Vlastnosti a hody · Kouzla · Inventář ·
-Schopnosti a rysy) a jedna tabulka akcí pro útoky, kouzla s hodem/savem
-i použitelné schopnosti (identifikace přes `isActionTableFeature`, D86).
-Rozvržení je hotové rozhodnutí (Danielův mockup), zadání dalších slice se
-teprve píše.
+Krok 7 zbývá dokončit přestavbou sheetu. Trvalá hlavička (slice 1) a pět
+záložek (slice 2) jsou hotové. Zbývá slice 3–5: jedna tabulka akcí v
+záložce `Akce` pro útoky, kouzla s hodem/savem i použitelné schopnosti
+(identifikace přes `isActionTableFeature`, D86). Rozvržení je hotové
+rozhodnutí (Danielův mockup), zadání dalších slice se teprve píše.
 
 Než se začne krok 7a (kouzla z rasy) nebo pickery tří podtříd (Storm
 Herald, The Genie, Divine Soul), potřebují rozhodnutí — viz QUESTIONS.md.

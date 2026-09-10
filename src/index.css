@@ -162,6 +162,47 @@ h1 {
   font-weight: 600;
 }
 
+/* ---- character sheet tabs (sheet rebuild slice 2) ---- */
+
+.sheet__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1rem 0 1.25rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.sheet__tab {
+  border: 1px solid var(--rule);
+  border-bottom: none;
+  background: transparent;
+  color: inherit;
+  border-radius: 6px 6px 0 0;
+  padding: 0.4rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.sheet__tab--active {
+  opacity: 1;
+  background: var(--panel-bg);
+  font-weight: 600;
+}
+
+/* Inactive panels are hidden in the browser only — deliberately via a class,
+   not the `hidden` attribute or an inline display:none. Those remove a panel
+   from the accessibility tree; the sheet's tests query sections by role
+   whichever tab is open, and jsdom loads no stylesheet so all panels stay
+   reachable there. */
+.sheet__panel {
+  display: none;
+}
+
+.sheet__panel--active {
+  display: block;
+}
+
 /* ---- character manager ---- */
 
 .char-list {
