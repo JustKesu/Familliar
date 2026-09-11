@@ -431,3 +431,17 @@ more of that family with it (`{@m}`, `{@hom}`, `{@actSaveFailBy}`,
 Žádný ze 128 featů nemá pole `speed`. Pole `senses` má jen 3 featy
 a vždy jde o blindsight nebo truesight, nikdy darkvision — jediný
 smysl, který appka počítá. Ani jedno tedy nemá kam se promítnout.
+
+### Frázové vyhledávání v `entries` musí nejdřív stripnout 5etools markup
+
+5etools tagy rozdělují frázi na dvě části, které nikdy neleží vedle sebe v
+syrovém textu: `{@variantrule Hit Points|XPHB} maximum` je v datech
+`"{@variantrule Hit Points|XPHB} maximum"`, ne `"Hit Points maximum"`.
+Hledání fráze "hit point maximum" v syrovém textu (bez odstranění tagů) tak
+najde jen 2 z 10 skutečných výskytů ve feats.json, species.json,
+class-features.json, subclass-features.json a optional-features.json
+(ověřeno na hledání, které stojí za D93/D95 — viz
+`stripEtoolsTags`/`plainTextOfEntry` ve `scripts/validate-data.js`). Jakýkoli
+budoucí frázový scan přes `entries` musí nejdřív tagy stripnout na jejich
+zobrazovaný text (`{@tag text|zdroj}` -> `text`), jinak potichu minimalizuje
+výsledky na zlomek skutečného počtu.

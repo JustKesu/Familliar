@@ -1737,3 +1737,17 @@ jedné konkrétní třídě.
 Dnes je appka single-class a obě čísla jsou stejná, takže osa nic nemění.
 Zaznamenává se přesto: multiclass je krok 10 a osu, kterou tabulka nikdy
 nezapsala, by tam už nešlo dohledat.
+
+## D95 — Tabulka bonusů k maximu životů je hlídaná validací dat
+
+D93 slíbilo, že ručně psanou tabulku tří bonusů (Tough, Dwarven Toughness,
+Draconic Resilience) bude hlídat `npm run validate-data`. Slice 8a-guard tenhle
+slib plní: jména z tabulky se ověřují proti datům a množina kandidátů z
+frázového vyhledávání je připnutá na deset známých položek.
+
+Jména se ověřují proti datům — každé musí odpovídat právě jednomu featu,
+rysu rasy, class featuře nebo subclass featuře, jinak validace selže a řekne
+proč. Množina kandidátů je připnutá — nový zdroj životů z budoucí knihy by se
+projevil jako jedenáctý kandidát a shodí validaci místo aby zůstal
+nepovšimnut; zmizelý známý kandidát (přejmenování, zrušený zdroj) shodí
+validaci stejně.

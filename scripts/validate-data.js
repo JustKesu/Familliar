@@ -245,6 +245,53 @@ const PACT_OF_THE_CHAIN_FORMS = [
 	"Venomous Snake",
 ];
 
+/*
+ * D93/D95 — the hand-written per-level hit-point bonus table in
+ * src/calculation/maxHitPoints.ts (HIT_POINT_BONUS_RULES). Kept here as a
+ * plain name list, not imported, so this script stays independent of the
+ * TypeScript build; if a name changes there without changing here, the
+ * "resolves to exactly one entry" check below catches it.
+ */
+const HIT_POINT_BONUS_TABLE_NAMES = ["Tough", "Dwarven Toughness", "Draconic Resilience"];
+
+/*
+ * The full set of entries a phrase scan for "hit point maximum" (in any of its
+ * three phrasings) finds across feats.json, species.json, class-features.json,
+ * subclass-features.json and optional-features.json (scripts/investigate-hp-bonus-guard.js,
+ * consumed — see docs/REPORT.md for the session that ran it). Ten total: the
+ * three real per-level bonuses above, plus seven that use the phrase without
+ * raising the maximum by a fixed or per-level amount —
+ *
+ *   Arcane Ward          the maximum belongs to the ward, not the character
+ *   Preserve Life        a healing cap expressed as a share of the maximum
+ *   Boon of Recovery     healing computed from the maximum
+ *   Unearthly Recovery   healing computed from the maximum
+ *   Searing Vengeance     healing computed from the maximum — kept from BOTH
+ *                         XGE and XPHB (not superseded — both editions ship)
+ *   Boon of Fortitude    a real but ONE-OFF +40 at level 19, out of scope
+ *                        (docs/QUESTIONS.md)
+ *
+ * A candidate outside this set is a hit point source nobody has classified
+ * yet; a known one that vanishes means a name or a book changed underneath
+ * the table. Either way the bonus table in maxHitPoints.ts needs a human look,
+ * not a silent update here.
+ */
+const KNOWN_HIT_POINT_MAXIMUM_CANDIDATES = [
+	"feats.json: Tough|XPHB",
+	"feats.json: Boon of Fortitude|XPHB",
+	"feats.json: Boon of Recovery|XPHB",
+	"subclass-features.json: Unearthly Recovery|XGE",
+	"subclass-features.json: Searing Vengeance|XGE",
+	"subclass-features.json: Searing Vengeance|XPHB",
+	"subclass-features.json: Preserve Life|XPHB",
+	"subclass-features.json: Draconic Resilience|XPHB",
+	"subclass-features.json: Arcane Ward|XPHB",
+	"species.json (trait): Dwarven Toughness (Dwarf|XPHB)",
+];
+
+// The three phrasings a hit-point-maximum rule is written in, tried case-insensitively.
+const HIT_POINT_MAXIMUM_PHRASES = [/hit points? maximum/i, /maximum hit points?/i, /hp max/i];
+
 // Valid values for a language's `type` field.
 const VALID_LANGUAGE_TYPES = ["standard", "rare"];
 
@@ -1268,6 +1315,144 @@ function validateItemEntries() {
 	checkExpectedCounts(entries, "item-entries");
 }
 
+/* ============================================================================
+ * SECTION 5c — HIT POINT BONUS TABLE GUARD (D93/D95)
+ * ----------------------------------------------------------------------------
+ * Guards the hand-written HIT_POINT_BONUS_RULES table in
+ * src/calculation/maxHitPoints.ts, per docs/DECISIONS.md D93: the table's
+ * NAMES are checked against the data, and the phrase scan that originally
+ * found them is re-run and pinned against a known set, so a future book
+ * cannot add a fourth hit-point source without this failing.
+ * ==========================================================================*/
+
+// Collects every string found anywhere inside a value, however deeply nested.
+function collectStringsDeep(value, out) {
+	if (typeof value === "string") {
+		out.push(value);
+	} else if (Array.isArray(value)) {
+		for (const item of value) collectStringsDeep(item, out);
+	} else if (value !== null && typeof value === "object") {
+		for (const v of Object.values(value)) collectStringsDeep(v, out);
+	}
+}
+
+/*
+ * 5etools markup splits a phrase apart — e.g. `{@variantrule Hit Points|XPHB}
+ * maximum` reads as "Hit Points maximum" only once the tag is stripped to its
+ * display text. Searching the raw text finds 2 of the 10 real hits
+ * (scripts/investigate-hp-bonus-guard.js; also recorded in docs/DATA.md) —
+ * stripping first is not optional polish, it is the difference between a
+ * check that works and one that silently misses 80% of its targets.
+ */
+function stripEtoolsTags(text) {
+	return text.replace(/\{@\w+\s+([^}|]+)(?:\|[^}]*)?\}/g, "$1");
+}
+
+function plainTextOfEntry(entry) {
+	const strings = [];
+	collectStringsDeep(entry.entries, strings);
+	return stripEtoolsTags(strings.join(" \n "));
+}
+
+function mentionsHitPointMaximum(text) {
+	return HIT_POINT_MAXIMUM_PHRASES.some((phrase) => phrase.test(text));
+}
+
+/*
+ * A species trait's name lives on a child of the species entry's own
+ * top-level `entries`, not on the species entry itself — mirrors
+ * src/sheet/speciesTraitNames.ts exactly, so the two stay in step.
+ */
+function collectSpeciesTraits(speciesEntries) {
+	const traits = [];
+	for (const species of speciesEntries) {
+		if (!Array.isArray(species.entries)) continue;
+		for (const child of species.entries) {
+			if (child && typeof child === "object" && !Array.isArray(child) && typeof child.name === "string") {
+				traits.push({ name: child.name, parentName: species.name, parentSource: species.source, entry: child });
+			}
+		}
+	}
+	return traits;
+}
+
+function validateHitPointBonusTable() {
+	console.log("\n--- hit point bonus table guard (D93/D95) ---");
+
+	const feats = loadOutputFile("feats.json");
+	const species = loadOutputFile("species.json");
+	const classFeatures = loadOutputFile("class-features.json");
+	const subclassFeatures = loadOutputFile("subclass-features.json");
+	const optionalFeatures = loadOutputFile("optional-features.json");
+	if (!feats || !species || !classFeatures || !subclassFeatures || !optionalFeatures) return;
+
+	const speciesTraits = collectSpeciesTraits(species);
+
+	// --- CHECK 1: every table name resolves to exactly one entry ------------
+	// The bonus table only ever reads feature names from these four pools —
+	// granted class/subclass features, taken feats, species traits — never from
+	// optional-features.json (see maxHitPoints.ts's own doc comment).
+	const resolveFailures = [];
+	for (const name of HIT_POINT_BONUS_TABLE_NAMES) {
+		const matches = [
+			...feats.filter((e) => e.name === name).map((e) => `feats.json: ${e.name}|${e.source}`),
+			...speciesTraits.filter((t) => t.name === name).map((t) => `species.json (trait): ${t.name} (on ${t.parentName}|${t.parentSource})`),
+			...classFeatures.filter((e) => e.name === name).map((e) => `class-features.json: ${e.name}|${e.source} (id ${e.id})`),
+			...subclassFeatures.filter((e) => e.name === name).map((e) => `subclass-features.json: ${e.name}|${e.source} (id ${e.id})`),
+		];
+		if (matches.length === 0) {
+			resolveFailures.push({
+				label: `"${name}"`,
+				detail: "matches no feat, species trait, class feature or subclass feature — HIT_POINT_BONUS_RULES in src/calculation/maxHitPoints.ts is now silently losing this bonus and needs a human look",
+			});
+		} else if (matches.length > 1) {
+			resolveFailures.push({
+				label: `"${name}"`,
+				detail: `matches ${matches.length} entries, expected exactly 1 — HIT_POINT_BONUS_RULES in src/calculation/maxHitPoints.ts cannot tell which one it means: ${matches.join("; ")}`,
+			});
+		}
+	}
+	recordCheck(`hit point bonus table: all ${HIT_POINT_BONUS_TABLE_NAMES.length} names resolve to exactly one entry`, resolveFailures);
+
+	// --- CHECK 2: the phrase-scan candidate set is still the known ten ------
+	const candidates = new Set();
+	for (const entry of feats) {
+		if (mentionsHitPointMaximum(plainTextOfEntry(entry))) candidates.add(`feats.json: ${entry.name}|${entry.source}`);
+	}
+	for (const entry of classFeatures) {
+		if (mentionsHitPointMaximum(plainTextOfEntry(entry))) candidates.add(`class-features.json: ${entry.name}|${entry.source}`);
+	}
+	for (const entry of subclassFeatures) {
+		if (mentionsHitPointMaximum(plainTextOfEntry(entry))) candidates.add(`subclass-features.json: ${entry.name}|${entry.source}`);
+	}
+	for (const entry of optionalFeatures) {
+		if (mentionsHitPointMaximum(plainTextOfEntry(entry))) candidates.add(`optional-features.json: ${entry.name}|${entry.source}`);
+	}
+	for (const trait of speciesTraits) {
+		if (mentionsHitPointMaximum(plainTextOfEntry(trait.entry))) candidates.add(`species.json (trait): ${trait.name} (${trait.parentName}|${trait.parentSource})`);
+	}
+
+	const known = new Set(KNOWN_HIT_POINT_MAXIMUM_CANDIDATES);
+	const candidateFailures = [];
+	for (const candidate of candidates) {
+		if (!known.has(candidate)) {
+			candidateFailures.push({
+				label: candidate,
+				detail: "mentions a hit point maximum but is not one of the 10 known candidates — a new hit point source may have appeared; HIT_POINT_BONUS_RULES in src/calculation/maxHitPoints.ts needs a human decision on whether it belongs in the table",
+			});
+		}
+	}
+	for (const expected of known) {
+		if (!candidates.has(expected)) {
+			candidateFailures.push({
+				label: expected,
+				detail: "was a known hit-point-maximum candidate and no longer matches the phrase scan — its name, source or text may have changed; re-check HIT_POINT_BONUS_RULES in src/calculation/maxHitPoints.ts and the known set in scripts/validate-data.js",
+			});
+		}
+	}
+	recordCheck(`hit point bonus table: phrase-scan candidates still match the known ${known.size}`, candidateFailures);
+}
+
 /*
  * Runs check-dangling-refs.js (cross-file reference integrity — prerequisites,
  * granted features, class progressions, etc.) and folds its result into this
@@ -1308,6 +1493,7 @@ function main() {
 	validateItemEntries();
 	validateLanguages();
 	validateBeasts();
+	validateHitPointBonusTable();
 	validateDanglingRefs();
 	// ---------------------------------------------------------------
 

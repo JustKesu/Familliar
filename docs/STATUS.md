@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8a: počítané maximum HP —
-příspěvek za úroveň místo jednoho čísla, D91–D94; schéma 29→30)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8a-guard: validace dat hlídá
+tabulku bonusů k maximu HP, D95)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D94) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D95) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -165,6 +165,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | Slice | Co | Schéma |
    |---|---|---|
    | 8a | Počítané maximum HP — příspěvek za úroveň, Constitution zpětně, tabulka tří bonusů, ruční přebití | 29→30 |
+   | 8a-guard | Validace dat hlídá tabulku tří bonusů proti datům (D95) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -186,7 +187,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      vlastní řádek v rozkladu. Hlavička (`SheetHeader.tsx`) bere maximum jako
      obyčejné `Calculated<number>` s rozkladem (D40/D41), druhé pole je teď
      "Max HP override". **Není postavené:** výběr hod/průměr po úrovních
-     (slice 8b) a validace tabulky bonusů proti datům.
+     (slice 8b).
+   - Slice 8a-guard (D95): `scripts/validate-data.js`, nová sekce
+     `validateHitPointBonusTable`. Dvě kontroly — (1) všechna tři jména z
+     `HIT_POINT_BONUS_RULES` odpovídají právě jednomu featu/rysu
+     rasy/class featuře/subclass featuře napříč feats.json, species.json
+     (rysy), class-features.json a subclass-features.json; (2) frázový scan
+     "hit point maximum" (3 tvary, case-insensitive, PO stripnutí 5etools
+     tagů — bez stripování najde jen 2 z 10, docs/DATA.md) přes těch pět
+     souborů pořád vrací přesně těch 10 známých kandidátů
+     (`KNOWN_HIT_POINT_MAXIMUM_CANDIDATES`). Selhání obou kontrol jmenuje
+     přesně to, co je špatně, a odkazuje na `maxHitPoints.ts`. Investigace
+     (`scripts/investigate-hp-bonus-guard.js`) potvrdila počty před zápisem
+     kontroly a je spotřebovaná — smazána `git clean -fd scripts`.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -342,11 +355,11 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-Krok 8 běží. Slice 8a (počítané maximum HP) je hotová; další je **slice 8b** —
-krok wizardu / ovládání na sheetu, kde se pro každou úroveň nad první vybírá
-hod nebo průměr a zapisuje se do `Character.hitPointLevels`. Model, migrace i
-výpočet na to už čekají; chybí jen ta volba a validace tabulky tří bonusů
-proti datům (D93 ji slibuje následující slice).
+Krok 8 běží. Slice 8a (počítané maximum HP) a 8a-guard (validace tabulky
+bonusů, D95) jsou hotové; další je **slice 8b** — krok wizardu / ovládání na
+sheetu, kde se pro každou úroveň nad první vybírá hod nebo průměr a zapisuje
+se do `Character.hitPointLevels`. Model, migrace i výpočet na to už čekají;
+chybí jen ta volba.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +
