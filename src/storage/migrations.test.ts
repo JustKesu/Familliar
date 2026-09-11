@@ -198,6 +198,38 @@ describe('the migration chain (D69)', () => {
 		expect('speciesSpellcastingAbility' in migrated).toBe(false)
 	})
 
+	it('moves a version-29 character’s typed maxHp into the override, so its displayed maximum does not change', () => {
+		const before = {
+			schemaVersion: 29,
+			id: '1',
+			name: 'Bruiser',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+			currentHp: 18,
+			maxHp: 44,
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		expect(migrated['maxHpOverride']).toBe(44)
+		expect('maxHp' in migrated).toBe(false)
+		// currentHp is untouched, and no per-level contributions are invented.
+		expect(migrated['currentHp']).toBe(18)
+		expect('hitPointLevels' in migrated).toBe(false)
+	})
+
+	it('carries a version-29 character with no typed maxHp forward with no override at all', () => {
+		const before = {
+			schemaVersion: 29,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('maxHpOverride' in migrated).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

@@ -23,6 +23,7 @@ import type { FeatEffectEntry } from '../calculation/featEffects'
 import { makeRoomForHands, type HeldThing } from '../calculation/hands'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
+import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
@@ -118,6 +119,7 @@ import {
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
 import { SheetHeader } from './SheetHeader'
+import { loadSpeciesTraitNames } from './speciesTraitNames'
 
 const SKILL_LABELS: Record<Skill, string> = {
 	acrobatics: 'Acrobatics',
@@ -1628,7 +1630,7 @@ export function CharacterSheet({
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
-	onEditHitPoints?: (currentHp: number | undefined, maxHp: number | undefined) => void
+	onEditHitPoints?: (currentHp: number | undefined, maxHpOverride: number | undefined) => void
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
 	const [activeTab, setActiveTab] = useState<SheetTabId>('stats')
@@ -1673,6 +1675,8 @@ export function CharacterSheet({
 	/** The full class/subclass feature list (D87), its own fetch (classes.json + the resolver files); starts empty and stays empty on failure, same D43 rule as the effects above. */
 	const [grantedFeatures, setGrantedFeatures] = useState<GrantedFeature[]>([])
 	const [grantedFeaturesError, setGrantedFeaturesError] = useState<string | null>(null)
+	/** The species' own trait names (slice 8a) — the third name source the max-HP bonus table matches against, beside the D87 features and the taken feats. Empty on failure: a missing name only means a bonus is not applied, which computeMaxHitPoints' breakdown shows by omission. */
+	const [speciesTraitNames, setSpeciesTraitNames] = useState<string[]>([])
 	/** The Find Familiar beast pool (step 6b slice 2). Fetched only for a character that actually has the spell — see the effect below. */
 	const [beasts, setBeasts] = useState<Beast[]>([])
 	/** Which alternative Armour Class formulas the character is eligible for (step 7 slice b). Depends on `character` and on whether Mage Armor is in the spell list, fetched separately same as the effects above. */
@@ -1948,6 +1952,22 @@ export function CharacterSheet({
 		}
 	}, [character])
 
+	useEffect(() => {
+		let cancelled = false
+		loadSpeciesTraitNames(character)
+			.then((names) => {
+				if (cancelled) return
+				setSpeciesTraitNames(names)
+			})
+			.catch(() => {
+				if (cancelled) return
+				setSpeciesTraitNames([])
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
 	/*
 	 * The character's whole spell list, however each spell was come by. Computed
 	 * here rather than further down because the Find Familiar section keys off
@@ -2125,6 +2145,13 @@ export function CharacterSheet({
 	const darkvision = computeDarkvision(character, speciesTraitsData, darkvisionGrants)
 	const hitDice = computeHitDicePool(character.classes, hitDiceClassData)
 	const chosenFeats = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
+	/* Slice 8a: every feature name the character has, from the three sources that can carry a max-HP bonus. computeMaxHitPoints reads only the three names its table knows, so no filtering is needed here. */
+	const maxHitPoints = computeMaxHitPoints(
+		character,
+		hitDiceClassData,
+		[...grantedFeatures.map((feature) => feature.name), ...chosenFeats.map((choice) => choice.name), ...speciesTraitNames],
+		feats,
+	)
 
 	const spellcasting = computeSpellcasting(character, spellcastingAbilityData, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
 	const spellcastingEntries = spellcasting.status === 'known' ? spellcasting.value : []
@@ -2184,7 +2211,8 @@ export function CharacterSheet({
 				speed={speed}
 				proficiencyBonus={proficiencyBonus}
 				currentHp={character.currentHp}
-				maxHp={character.maxHp}
+				maxHitPoints={maxHitPoints}
+				maxHpOverride={character.maxHpOverride}
 				onEditHitPoints={onEditHitPoints}
 			/>
 

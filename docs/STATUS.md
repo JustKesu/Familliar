@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-11 (D90 zapsáno; uložená volba sesílací
-vlastnosti pro kouzla z rasy — nové pole + krok wizardu; schéma 28→29)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8a: počítané maximum HP —
+příspěvek za úroveň místo jednoho čísla, D91–D94; schéma 29→30)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D90) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D94) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -160,7 +160,33 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    - Zatím ne (otázka pro krok 9, zaznamenaná v D86): pool definitions (max
      použití, obnova) pro `consumes` cíle, které v těchto čtyřech souborech
      strukturovaně vůbec nejsou.
-8. [not started] Level up
+8. [in progress] Level up
+
+   | Slice | Co | Schéma |
+   |---|---|---|
+   | 8a | Počítané maximum HP — příspěvek za úroveň, Constitution zpětně, tabulka tří bonusů, ruční přebití | 29→30 |
+
+   - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
+     kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
+     Constitution × celková úroveň + bonusy z tabulky. Úložiště drží
+     `Character.hitPointLevels` (úroveň, výsledek kostky BEZ Constitution, jak
+     vznikl: maximum/average/roll/manual) a nepovinné `maxHpOverride`, které
+     vyhrává nad vším spočítaným; `maxHp` z verze 29 se do něj při migraci
+     přesouvá, `currentHp` zůstává ruční a nedotčené (D9). Úroveň 1 je vždy
+     maximum kostky (D92); postava bez uložených příspěvků (dnes každá) spadne
+     na maximum + pevný průměr a rozklad to označí za výchozí hodnoty, ne volbu.
+     Tabulka tří bonusů (Tough, Dwarven Toughness, Draconic Resilience) je
+     ručně psaná jen v ČÁSTCE (D93); zda je postava má, se rozhoduje
+     strukturálně z D87 featur, vzatých featů a pojmenovaných rysů rasy — ty
+     dodává nový `src/sheet/speciesTraitNames.ts`. Každá položka si pamatuje
+     úrovňovou osu kvůli kroku 10 (D94). Kostka se bere z kroku 4
+     (`computeHitDicePool`), neduplikuje se. D43: víc tříd, neznámá třída ani
+     nenastavené vlastnosti sheet nezhodí — hlásí se jako unresolved; uložená
+     úroveň nad úrovní postavy nebo výsledek, který kostka neumí hodit, mají
+     vlastní řádek v rozkladu. Hlavička (`SheetHeader.tsx`) bere maximum jako
+     obyčejné `Calculated<number>` s rozkladem (D40/D41), druhé pole je teď
+     "Max HP override". **Není postavené:** výběr hod/průměr po úrovních
+     (slice 8b) a validace tabulky bonusů proti datům.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -189,16 +215,21 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Weapon proficiency/mastery a Extra Attack — jeden sdílený modul,
   strukturálně (podle dat zbraně), ne podle jména třídy.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
-- Uložení — localStorage, verzované schéma (teď 29), migrace fungují od
-  verze 16 výš (D69); starší uložená postava se odmítne, ne převede.
+- Uložení — localStorage, verzované schéma (teď 30), migrace fungují od
+  verze 16 výš (D69); starší uložená postava se odmítne, ne převede. Migrace
+  29→30 je první, která DATA PŘESOUVÁ, ne jen přepisuje tag: ručně napsané
+  `maxHp` jde do `maxHpOverride` (D91).
 - Trvalá hlavička sheetu (přestavba sheetu, slice 1) —
   `src/sheet/SheetHeader.tsx`. Blok nad obsahem sheetu se šesti hodnotami:
   jméno, AC, iniciativa, rychlost, proficiency bonus, životy. Pět odvozených
   se přesunulo z plochého výpisu beze změny výpočtu a drží si rozklad na
-  vyžádání (D40/D41). Životy jsou ruční `currentHp`/`maxHp` na `Character`
-  (D9) — nic je nepočítá, prázdné = "nenastaveno" ("—"), 0 platná;
-  `CharacterStore.setHitPoints`. Není sticky (může se řešit později). Testy:
-  `SheetHeader.test.tsx` a nová sekce v `CharacterSheet.test.tsx`.
+  vyžádání (D40/D41). Životy jsou od slice 8a napůl počítané: MAXIMUM je
+  šesté `Calculated<number>` s vlastním rozkladem (`.sheet__max-hit-points`),
+  CURRENT zůstává ruční `currentHp` (D9) — prázdné = "nenastaveno" ("—"), 0
+  platná. Druhé vstupní pole je "Max HP override" (`maxHpOverride`), ne
+  maximum samo; `CharacterStore.setHitPoints` píše obě. Není sticky (může se
+  řešit později). Testy: `SheetHeader.test.tsx` a sekce v
+  `CharacterSheet.test.tsx`.
 - Záložky sheetu (přestavba sheetu, slice 2) — `src/sheet/CharacterSheet.tsx`.
   Pět záložek pod hlavičkou: `Vlastnosti a hody` (vlastnosti, savy, skilly,
   pasivní hodnoty, Size and darkvision, Senses, hit dice), `Kouzla`
@@ -311,14 +342,16 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-Přestavba sheetu je hotová — všech pět slice (trvalá hlavička, záložky,
-tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností + oprava
-`formatRange`). Tím je hotový i celý krok 7; další v build orderu je krok 8
-(level up), pokud se dřív nesáhne na odložené body níž.
+Krok 8 běží. Slice 8a (počítané maximum HP) je hotová; další je **slice 8b** —
+krok wizardu / ovládání na sheetu, kde se pro každou úroveň nad první vybírá
+hod nebo průměr a zapisuje se do `Character.hitPointLevels`. Model, migrace i
+výpočet na to už čekají; chybí jen ta volba a validace tabulky tří bonusů
+proti datům (D93 ji slibuje následující slice).
 
-Poslední odložený bod přestavby (volby optional feature v tabulce akcí) je
-hotový, D88 zapsáno a jeho mezera (subclassové volby nikde na sheetu) zavřena
-sekcí "Subclass options" — viz REPORT.md.
+Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
+záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +
+oprava `formatRange`), včetně posledního odloženého bodu (volby optional
+feature v tabulce akcí, D88) a sekce "Subclass options".
 
 Otevřený kosmetický bod (vědomě odložený, D87 bod 5): wrapper featura (Life
 Domain) se ve výpisu ukazuje jako běžný řádek vedle featur, které uvádí. Není

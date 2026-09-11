@@ -173,6 +173,24 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 29 }),
 	},
+	{
+		from: 29,
+		to: 30,
+		/*
+		 * 30 replaces the manual `maxHp` with a computed maximum (hitPointLevels
+		 * plus Constitution plus the bonus table) and an optional override. The
+		 * first step in this chain that MOVES data rather than only tagging: a
+		 * number the player typed is exactly what the override means, so it goes
+		 * there and the character's displayed maximum does not change. No
+		 * hitPointLevels are invented — an absent list already means "no per-level
+		 * choices recorded", which computeMaxHitPoints reports as defaults.
+		 * `currentHp` is untouched.
+		 */
+		migrate: (record) => {
+			const { maxHp, ...rest } = record
+			return { ...rest, ...(typeof maxHp === 'number' ? { maxHpOverride: maxHp } : {}), schemaVersion: 30 }
+		},
+	},
 ]
 
 /**

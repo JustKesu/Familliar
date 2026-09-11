@@ -23,6 +23,7 @@ import { CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type Custom
 import { loadAcFormulaKeys } from './armourClassData'
 import { loadDamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
+import { loadSpeciesTraitNames } from './speciesTraitNames'
 import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
 import { loadChosenClassFeatureChoices } from '../classFeatureChoices/classFeatureChoiceData'
@@ -105,6 +106,12 @@ vi.mock('../spells/raceSpells', async (importOriginal) => {
 vi.mock('./grantedSenses', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./grantedSenses')>()
 	return { ...actual, loadGrantedSenses: vi.fn(async () => []) }
+})
+
+/* Slice 8a: only the species.json fetch is stubbed — speciesTraitNamesFrom itself stays real. */
+vi.mock('./speciesTraitNames', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./speciesTraitNames')>()
+	return { ...actual, loadSpeciesTraitNames: vi.fn(async () => []) }
 })
 
 /* Only the fetch is stubbed — familiarFormOptions and hasFindFamiliar stay real, so the section is proved against the actual filters. */
@@ -5249,7 +5256,7 @@ describe('CharacterSheet', () => {
 })
 
 describe('the persistent header (rebuild slice 1)', () => {
-	async function renderSheet(subject: Character, onEditHitPoints?: (currentHp: number | undefined, maxHp: number | undefined) => void) {
+	async function renderSheet(subject: Character, onEditHitPoints?: (currentHp: number | undefined, maxHpOverride: number | undefined) => void) {
 		const result = render(<CharacterSheet character={subject} onEditHitPoints={onEditHitPoints} />)
 		await screen.findByRole('heading', { level: 1, name: subject.name })
 		return result
@@ -5279,22 +5286,42 @@ describe('the persistent header (rebuild slice 1)', () => {
 		expect(traits.textContent).toContain('Darkvision')
 	})
 
-	it('shows "— / —" for a character with no hit points stored, and is read-only without the callback', async () => {
+	it('shows an unset current HP as "—" beside the computed maximum, and is read-only without the callback', async () => {
+		// Fighter 5, d10, CON 13 (+1), no recorded per-level choices: 10 + 4x6 + 5x1 = 39 (slice 8a).
 		const { container } = await renderSheet(character)
-		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / —')
+		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 39'))
 		expect(screen.queryByLabelText('Current HP')).toBeNull()
 	})
 
-	it('renders stored hit points and edits them through the callback', async () => {
+	it('carries the computed maximum’s breakdown, naming every level and Constitution (slice 8a)', async () => {
+		const { container } = await renderSheet(character)
+		await waitFor(() => expect(container.querySelector('.sheet__max-hit-points details')).toBeTruthy())
+		const breakdown = container.querySelector('.sheet__max-hit-points details')!.textContent!
+		expect(breakdown).toContain('level 1 (d10 maximum): +10')
+		expect(breakdown).toContain('level 5 (d10 average): +6')
+		expect(breakdown).toContain('constitution modifier (+1) × 5 levels: +5')
+		expect(breakdown).toContain('no choices recorded')
+	})
+
+	it('a stored max override replaces the computed maximum, and current HP still edits through the callback', async () => {
 		const onEditHitPoints = vi.fn()
-		const withHp: Character = { ...character, currentHp: 18, maxHp: 40 }
+		const withHp: Character = { ...character, currentHp: 18, maxHpOverride: 40 }
 		const { container } = await renderSheet(withHp, onEditHitPoints)
-		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('18 / 40')
+		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('18 / 40'))
+		expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('manual maximum')
 
 		const field = screen.getByLabelText('Current HP')
 		fireEvent.change(field, { target: { value: '11' } })
 		fireEvent.blur(field)
 		expect(onEditHitPoints).toHaveBeenLastCalledWith(11, 40)
+	})
+
+	it('a species trait in the bonus table raises the computed maximum (slice 8a)', async () => {
+		vi.mocked(loadSpeciesTraitNames).mockResolvedValueOnce(['Darkvision', 'Dwarven Resilience', 'Dwarven Toughness', 'Stonecunning'])
+		const { container } = await renderSheet({ ...character, id: 'hp-dwarf' })
+		// +1 per character level on top of the 39 above.
+		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 44'))
+		expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('Dwarven Toughness (+1 per character level)')
 	})
 })
 

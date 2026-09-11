@@ -1052,11 +1052,12 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	})
 })
 
-describe('CharacterStore manual hit points (persistent-header slice 1)', () => {
-	it('leaves currentHp and maxHp undefined on a freshly created character', () => {
+describe('CharacterStore hand-set hit points (persistent-header slice 1; the max is an override as of 8a)', () => {
+	it('leaves currentHp, maxHpOverride and hitPointLevels undefined on a freshly created character', () => {
 		const character = new CharacterStore(new MemoryStorage()).create('Cato')
 		expect(character.currentHp).toBeUndefined()
-		expect(character.maxHp).toBeUndefined()
+		expect(character.maxHpOverride).toBeUndefined()
+		expect(character.hitPointLevels).toBeUndefined()
 	})
 
 	it('round-trips both fields through save and reload, and clears one back to undefined', () => {
@@ -1067,14 +1068,14 @@ describe('CharacterStore manual hit points (persistent-header slice 1)', () => {
 		store.setHitPoints(character.id, 31, 44)
 		const reloaded = new CharacterStore(backing).list()[0]
 		expect(reloaded.currentHp).toBe(31)
-		expect(reloaded.maxHp).toBe(44)
+		expect(reloaded.maxHpOverride).toBe(44)
 
-		// 0 is a real value (a downed character) and is kept; undefined clears the max.
+		// 0 is a real value (a downed character) and is kept; undefined clears the override so the computed maximum stands again.
 		store.setHitPoints(character.id, 0, undefined)
 		const after = new CharacterStore(backing).list()[0]
 		expect(after.currentHp).toBe(0)
-		expect(after.maxHp).toBeUndefined()
-		expect('maxHp' in after).toBe(false)
+		expect(after.maxHpOverride).toBeUndefined()
+		expect('maxHpOverride' in after).toBe(false)
 	})
 
 	it('throws CharacterNotFoundError for an unknown id', () => {
@@ -1093,9 +1094,50 @@ describe('CharacterStore manual hit points (persistent-header slice 1)', () => {
 		const fractional = new MemoryStorage()
 		fractional.setItem(
 			STORAGE_KEY,
-			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], maxHp: 12.5 }]),
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], maxHpOverride: 12.5 }]),
 		)
 		expect(() => new CharacterStore(fractional).list()).toThrow(CorruptDataError)
+	})
+
+	it('round-trips hitPointLevels and rejects a malformed one (slice 8a)', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					hitPointLevels: [
+						{ level: 1, dieResult: 10, kind: 'maximum' },
+						{ level: 2, dieResult: 7, kind: 'roll' },
+					],
+				},
+			]),
+		)
+		expect(new CharacterStore(backing).list()[0].hitPointLevels).toEqual([
+			{ level: 1, dieResult: 10, kind: 'maximum' },
+			{ level: 2, dieResult: 7, kind: 'roll' },
+		])
+
+		const badKind = new MemoryStorage()
+		badKind.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], hitPointLevels: [{ level: 1, dieResult: 10, kind: 'guess' }] },
+			]),
+		)
+		expect(() => new CharacterStore(badKind).list()).toThrow(CorruptDataError)
+
+		const badLevel = new MemoryStorage()
+		badLevel.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], hitPointLevels: [{ level: 0, dieResult: 10, kind: 'maximum' }] },
+			]),
+		)
+		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
 	})
 })
 

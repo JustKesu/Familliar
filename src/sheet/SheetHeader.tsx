@@ -5,10 +5,13 @@
  * Speed, Proficiency bonus, and Hit points. Every one but Hit points is moved
  * verbatim from the flat section list, keeping its class name and its
  * breakdown-on-demand behaviour (D40/D41) so the sheet's own tests still reach
- * it. Hit points is the sole hand-edited value (D9): nothing derives it, and
- * the two fields round-trip straight through storage.
+ * it.
  *
- * Tabs and the actions table are later slices and are not built here.
+ * Hit points is now half computed (build order step 8, slice 8a): the MAXIMUM
+ * arrives as an ordinary Calculated<number> with its own breakdown, like the
+ * five values above it, while CURRENT stays hand-edited and derived from
+ * nothing (D9). The second input is no longer the maximum itself but an
+ * override that replaces it.
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
@@ -78,7 +81,8 @@ export function SheetHeader({
 	speed,
 	proficiencyBonus,
 	currentHp,
-	maxHp,
+	maxHitPoints,
+	maxHpOverride,
 	onEditHitPoints,
 }: {
 	name: string
@@ -90,9 +94,11 @@ export function SheetHeader({
 	speed: Calculated<SpeedValue>
 	proficiencyBonus: Calculated<number>
 	currentHp: number | undefined
-	maxHp: number | undefined
+	/** Computed (slice 8a). Already carries the override when one is set — the breakdown is what says so. */
+	maxHitPoints: Calculated<number>
+	maxHpOverride: number | undefined
 	/** Absent on a read-only sheet — the HP block then shows the pair without the fields. */
-	onEditHitPoints?: (currentHp: number | undefined, maxHp: number | undefined) => void
+	onEditHitPoints?: (currentHp: number | undefined, maxHpOverride: number | undefined) => void
 }): ReactNode {
 	return (
 		<header className="sheet__persistent-header">
@@ -158,14 +164,17 @@ export function SheetHeader({
 
 			<section className="sheet__hit-points">
 				<h2>Hit points</h2>
-				{/* D9: manually editable, never derived. "—" is "not set", distinct from 0. */}
+				{/* Current is hand-edited (D9) and "—" is "not set", distinct from 0; the maximum is computed and shows "—" only when it cannot be. */}
 				<p className="sheet__hit-points-value">
-					{hpText(currentHp)} / {hpText(maxHp)}
+					{hpText(currentHp)} / {hpText(maxHitPoints.status === 'known' ? maxHitPoints.value : undefined)}
 				</p>
+				<div className="sheet__max-hit-points">
+					{maxHitPoints.status === 'unknown' ? <UnresolvedValue reason={maxHitPoints.reason} /> : <ValueBreakdown breakdown={maxHitPoints.breakdown} />}
+				</div>
 				{onEditHitPoints && (
 					<p>
-						<HitPointField label="Current HP" value={currentHp} onCommit={(value) => onEditHitPoints(value, maxHp)} />{' '}
-						<HitPointField label="Max HP" value={maxHp} onCommit={(value) => onEditHitPoints(currentHp, value)} />
+						<HitPointField label="Current HP" value={currentHp} onCommit={(value) => onEditHitPoints(value, maxHpOverride)} />{' '}
+						<HitPointField label="Max HP override" value={maxHpOverride} onCommit={(value) => onEditHitPoints(currentHp, value)} />
 					</p>
 				)}
 			</section>

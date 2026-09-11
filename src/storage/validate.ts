@@ -7,6 +7,7 @@ import type {
 	CharacterClass,
 	CharacterClassFeatureChoice,
 	CharacterFamiliar,
+	CharacterHitPointLevel,
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
@@ -18,6 +19,7 @@ import type {
 	EquippedSlot,
 	FeatAsiChoice,
 	FilterChoiceSpellsChoice,
+	HitPointLevelKind,
 	LanguageGrantSource,
 	MagicInitiateChoice,
 	MagicItemBonus,
@@ -686,17 +688,48 @@ export function describeCurrencyError(value: unknown): string | null {
 }
 
 /**
- * Validates the optional manual hit-point fields (persistent-header slice 1).
- * Each is a non-negative whole number when present; absent means "not set".
- * Deliberately does not check currentHp against maxHp — clamping is play
- * tracking (build order step 9), and either field may legitimately be absent.
+ * Validates the optional hand-set hit-point fields — `currentHp` (D9) and, as
+ * of slice 8a, `maxHpOverride`. Each is a non-negative whole number when
+ * present; absent means "not set". Deliberately does not check currentHp
+ * against the maximum — clamping is play tracking (build order step 9), and
+ * either field may legitimately be absent.
  */
 export function describeHitPointsError(value: Record<string, unknown>): string | null {
-	for (const key of ['currentHp', 'maxHp'] as const) {
+	for (const key of ['currentHp', 'maxHpOverride'] as const) {
 		const hp = value[key]
 		if (hp === undefined) continue
 		if (typeof hp !== 'number' || !Number.isInteger(hp) || hp < 0) {
 			return `${key} must be a non-negative whole number`
+		}
+	}
+	return null
+}
+
+/**
+ * Validates an optional `hitPointLevels` field (slice 8a). Returns null if the
+ * field is absent — the state of every character until the per-level picker
+ * (slice 8b) exists. The level is bounded at 20 the same way
+ * classFeatureChoices' grantedAtLevel is; `dieResult` is bounded below only,
+ * since the storage layer has no class data to learn a die's size from and a
+ * result too large for the die is computeMaxHitPoints' to report (D43).
+ */
+export function describeHitPointLevelsError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `hitPointLevels must be an array`
+	const kinds = ['maximum', 'average', 'roll', 'manual']
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `hitPointLevels[${i}] is not an object`
+		const level = entry['level']
+		if (typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > 20) {
+			return `hitPointLevels[${i}].level must be a whole number from 1 to 20`
+		}
+		const dieResult = entry['dieResult']
+		if (typeof dieResult !== 'number' || !Number.isInteger(dieResult) || dieResult < 0) {
+			return `hitPointLevels[${i}].dieResult must be a non-negative whole number`
+		}
+		if (typeof entry['kind'] !== 'string' || !kinds.includes(entry['kind'])) {
+			return `hitPointLevels[${i}].kind must be one of ${kinds.join(', ')}`
 		}
 	}
 	return null
@@ -751,6 +784,17 @@ function toCharacterWildShapeForms(value: unknown[]): CharacterWildShapeForms[] 
 				name: form['name'] as string,
 				source: form['source'] as string,
 			})),
+		}
+	})
+}
+
+function toCharacterHitPointLevels(value: unknown[]): CharacterHitPointLevel[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return {
+			level: record['level'] as number,
+			dieResult: record['dieResult'] as number,
+			kind: record['kind'] as HitPointLevelKind,
 		}
 	})
 }
@@ -872,6 +916,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (currencyError) return `[${index}].${currencyError}`
 	const hitPointsError = describeHitPointsError(value)
 	if (hitPointsError) return `[${index}].${hitPointsError}`
+	const hitPointLevelsError = describeHitPointLevelsError(value['hitPointLevels'])
+	if (hitPointLevelsError) return `[${index}].${hitPointLevelsError}`
 	const speciesSpellcastingAbilityError = describeSpeciesSpellcastingAbilityError(value['speciesSpellcastingAbility'])
 	if (speciesSpellcastingAbilityError) return `[${index}].${speciesSpellcastingAbilityError}`
 	return null
@@ -907,7 +953,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const inventory = value['inventory']
 	const currencyCopper = value['currencyCopper']
 	const currentHp = value['currentHp']
-	const maxHp = value['maxHp']
+	const maxHpOverride = value['maxHpOverride']
+	const hitPointLevels = value['hitPointLevels']
 	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
 	return {
 		id: value['id'] as string,
@@ -935,7 +982,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(inventory) ? { inventory: toCharacterInventory(inventory) } : {}),
 		...(typeof currencyCopper === 'number' ? { currencyCopper } : {}),
 		...(typeof currentHp === 'number' ? { currentHp } : {}),
-		...(typeof maxHp === 'number' ? { maxHp } : {}),
+		...(typeof maxHpOverride === 'number' ? { maxHpOverride } : {}),
+		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
 	}
 }

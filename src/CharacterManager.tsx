@@ -169,9 +169,9 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setCurrency(id, copper))
 	}
 
-	function handleEditHitPoints(id: string, currentHp: number | undefined, maxHp: number | undefined): void {
+	function handleEditHitPoints(id: string, currentHp: number | undefined, maxHpOverride: number | undefined): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.setHitPoints(id, currentHp, maxHp))
+		withErrorHandling(() => store.store?.setHitPoints(id, currentHp, maxHpOverride))
 	}
 
 	function handleDelete(id: string): void {
@@ -262,7 +262,7 @@ function CharacterManager() {
 									onChooseFamiliar={(familiar) => handleChooseFamiliar(sheetCharacter.id, familiar)}
 									onEditInventory={(inventory) => handleEditInventory(sheetCharacter.id, inventory)}
 									onEditCurrency={(copper) => handleEditCurrency(sheetCharacter.id, copper)}
-									onEditHitPoints={(currentHp, maxHp) => handleEditHitPoints(sheetCharacter.id, currentHp, maxHp)}
+									onEditHitPoints={(currentHp, maxHpOverride) => handleEditHitPoints(sheetCharacter.id, currentHp, maxHpOverride)}
 								/>
 							) : null
 						})()}

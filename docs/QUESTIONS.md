@@ -278,3 +278,20 @@ Pro lučištníka je to běžný předmět, takže to není akademická díra.
 
 Nalezeno ve slice 7h.
 STATUS: nerozhodnuto, čeká na podmíněné bonusy.
+
+### Boon of Fortitude — jednorázových +40 na úrovni 19
+
+Tenhle epic boon maximum hit pointů skutečně zvyšuje: o 40, jednou. Není to
+falešný zásah jako Arcane Ward nebo Preserve Life (viz investigaci v D93) —
+je to reálný bonus a appka ho nepočítá.
+
+Ze slice 8a je vynechaný vědomě, ze dvou důvodů: je JEDNORÁZOVÝ, takže do
+tabulky tří položek za úroveň nepatří tvarem, a sedí na úrovni 19, kterou
+appka jinak nedotahuje — stejný důvod, pro který je schovaný Boon of Siberys
+(krok 6).
+
+Kdyby se měl doplnit, je to čtvrtá položka tabulky s `perLevel: 0` a
+`flat: 40`, plus rozhodnutí, jestli se epic boony vůbec nabízejí.
+
+Nalezeno ve slice 8a.
+STATUS: nerozhodnuto, nízká priorita.

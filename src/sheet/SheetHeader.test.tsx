@@ -16,6 +16,13 @@ const ac: Calculated<ArmourClassValue> = known({ value: 16, incomplete: [], stea
 const speed: Calculated<SpeedValue> = known<SpeedValue>({ walk: 30 }, [{ source: 'Elf', amount: 30 }])
 const initiative: Calculated<number> = known(2, [{ source: 'Dexterity', amount: 2 }])
 const proficiencyBonus: Calculated<number> = known(3, [{ source: 'level 5', amount: 3 }])
+/** Slice 8a: the maximum arrives computed, like the five values above it. */
+function maxOf(value: number): Calculated<number> {
+	return known(value, [
+		{ source: 'level 1 (d10 maximum)', amount: 10 },
+		{ source: 'constitution modifier (+2) × 1 level', amount: 2 },
+	])
+}
 
 function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}) {
 	return render(
@@ -28,7 +35,8 @@ function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}
 			speed={speed}
 			proficiencyBonus={proficiencyBonus}
 			currentHp={undefined}
-			maxHp={undefined}
+			maxHitPoints={maxOf(12)}
+			maxHpOverride={undefined}
 			{...overrides}
 		/>,
 	)
@@ -36,7 +44,7 @@ function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}
 
 describe('SheetHeader', () => {
 	it('shows the six values with their labels', () => {
-		const { container } = renderHeader({ currentHp: 15, maxHp: 22 })
+		const { container } = renderHeader({ currentHp: 15, maxHitPoints: maxOf(22) })
 		expect(screen.getByRole('heading', { level: 1, name: 'Aria' })).toBeTruthy()
 		expect(container.querySelector('.sheet__armour-class-value')!.textContent).toBe('16')
 		expect(container.querySelector('.sheet__initiative')!.textContent).toContain('+2')
@@ -65,30 +73,44 @@ describe('SheetHeader', () => {
 		expect(container.querySelector('.sheet__initiative')!.textContent).toContain('unresolved — No Dexterity modifier.')
 	})
 
-	it('shows "—" for a hit-point field that is not set, distinct from 0', () => {
-		const { container } = renderHeader({ currentHp: 0, maxHp: undefined })
-		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('0 / —')
+	it('shows "—" for a current HP that is not set, distinct from 0', () => {
+		const { container } = renderHeader({ currentHp: 0 })
+		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('0 / 12')
 	})
 
 	it('has no hit-point inputs on a read-only sheet', () => {
-		renderHeader({ currentHp: 10, maxHp: 10 })
+		renderHeader({ currentHp: 10 })
 		expect(screen.queryByLabelText('Current HP')).toBeNull()
-		expect(screen.queryByLabelText('Max HP')).toBeNull()
+		expect(screen.queryByLabelText('Max HP override')).toBeNull()
 	})
 
-	it('commits an edited current HP on blur, carrying the unchanged max through', () => {
+	it('carries the computed maximum’s own breakdown, collapsed by default (slice 8a)', async () => {
+		const { container } = renderHeader({ currentHp: 12 })
+		const breakdown = container.querySelector('.sheet__max-hit-points details')!
+		expect(breakdown.hasAttribute('open')).toBe(false)
+		await userEvent.setup().click(within(breakdown as HTMLElement).getByText('Breakdown'))
+		expect(breakdown.textContent).toContain('level 1 (d10 maximum): +10')
+	})
+
+	it('shows an unresolvable maximum as "—" with the reason, never as a number', () => {
+		const { container } = renderHeader({ currentHp: 4, maxHitPoints: unknown('Character has no classes yet.') })
+		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('4 / —')
+		expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('unresolved — Character has no classes yet.')
+	})
+
+	it('commits an edited current HP on blur, carrying the unchanged override through', () => {
 		const onEditHitPoints = vi.fn()
-		renderHeader({ currentHp: 12, maxHp: 20, onEditHitPoints })
+		renderHeader({ currentHp: 12, maxHpOverride: 20, onEditHitPoints })
 		const field = screen.getByLabelText('Current HP')
 		fireEvent.change(field, { target: { value: '7' } })
 		fireEvent.blur(field)
 		expect(onEditHitPoints).toHaveBeenLastCalledWith(7, 20)
 	})
 
-	it('clears a hit-point field back to unset when emptied', () => {
+	it('clears the max override back to unset when emptied, so the computed maximum stands again', () => {
 		const onEditHitPoints = vi.fn()
-		renderHeader({ currentHp: 12, maxHp: 20, onEditHitPoints })
-		const field = screen.getByLabelText('Max HP')
+		renderHeader({ currentHp: 12, maxHpOverride: 20, onEditHitPoints })
+		const field = screen.getByLabelText('Max HP override')
 		fireEvent.change(field, { target: { value: '' } })
 		fireEvent.blur(field)
 		expect(onEditHitPoints).toHaveBeenLastCalledWith(12, undefined)
@@ -96,7 +118,7 @@ describe('SheetHeader', () => {
 
 	it('never commits a negative hit-point value', () => {
 		const onEditHitPoints = vi.fn()
-		renderHeader({ currentHp: 5, maxHp: 20, onEditHitPoints })
+		renderHeader({ currentHp: 5, maxHpOverride: 20, onEditHitPoints })
 		const field = screen.getByLabelText('Current HP')
 		fireEvent.change(field, { target: { value: '-3' } })
 		fireEvent.blur(field)

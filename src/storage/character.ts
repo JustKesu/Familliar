@@ -236,15 +236,36 @@ export interface Character {
 	 */
 	currencyCopper?: number
 	/**
-	 * Current and maximum hit points (persistent-header rebuild, slice 1). D9:
-	 * HP is the one calculated-looking value the player edits by hand — nothing
-	 * derives it here. Both optional and independent: absent means "not set yet"
-	 * (the header shows "—"), which is distinct from 0. No clamp of current
-	 * against max, and no per-level derivation of max — the per-level HP choice
-	 * (SPEC section 5) and damage/healing clamping are build order steps 8 and 9.
+	 * Current hit points (persistent-header rebuild, slice 1). D9: this one IS
+	 * the value the player edits by hand — nothing derives it. Absent means "not
+	 * set yet" (the header shows "—"), which is distinct from 0. No clamp against
+	 * the maximum: damage/healing clamping is build order step 9.
+	 *
+	 * The MAXIMUM is no longer stored beside it — see hitPointLevels.
 	 */
 	currentHp?: number
-	maxHp?: number
+	/**
+	 * One contribution per character level, WITHOUT Constitution (build order
+	 * step 8, slice 8a). The maximum is never stored as a single finished number:
+	 * a later Constitution increase raises hit points retroactively for every
+	 * level already gained, and a stored total would quietly stay low.
+	 * computeMaxHitPoints sums these, adds the Constitution modifier times the
+	 * total level, and adds the per-level bonuses.
+	 *
+	 * Absent or empty is the state every character is in today — the picker that
+	 * fills it is slice 8b. computeMaxHitPoints then falls back to level 1 =
+	 * the die maximum and the fixed average thereafter, and says in the
+	 * breakdown that those are defaults rather than recorded choices.
+	 */
+	hitPointLevels?: CharacterHitPointLevel[]
+	/**
+	 * A hand-typed maximum that REPLACES the computed one outright (slice 8a) —
+	 * the escape hatch for a DM-granted maximum or a rule the app cannot
+	 * compute. Absent means the computed value stands. A version-29 character's
+	 * manually typed `maxHp` migrates into this field, so a character that
+	 * already had a number keeps showing it.
+	 */
+	maxHpOverride?: number
 	/**
 	 * Which ability the character's species-granted spells (raceSpells.ts)
 	 * are cast with — set only when the STORED species record's
@@ -256,6 +277,28 @@ export interface Character {
 	 * keeps today's "not chosen yet" placeholder in both cases, never a guess.
 	 */
 	speciesSpellcastingAbility?: Ability
+}
+
+/**
+ * How one level's hit die result came about (build order step 8, slice 8a).
+ * 'maximum' is level 1, which the rules never roll and never average;
+ * 'average' is the PHB fixed value (half the die rounded down, plus one);
+ * 'roll' is a die the player actually rolled; 'manual' is a number typed in
+ * because the table did something the app has no way to reproduce.
+ */
+export type HitPointLevelKind = 'maximum' | 'average' | 'roll' | 'manual'
+
+/**
+ * One level's contribution to the maximum, WITHOUT Constitution — see
+ * Character.hitPointLevels for why Constitution is left out. `level` is the
+ * CHARACTER level this belongs to, not a level within a class: multiclass is
+ * build order step 10 and nothing here anticipates it.
+ */
+export interface CharacterHitPointLevel {
+	level: number
+	/** The hit die result alone. Level 1's is always the die maximum, whatever is stored. */
+	dieResult: number
+	kind: HitPointLevelKind
 }
 
 /**
@@ -654,12 +697,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 29 for Character.speciesSpellcastingAbility
- * — the D89 follow-up's stored species-spellcasting-ability choice.
+ * (see wireFormat.ts). Bumped to 30 for Character.hitPointLevels and
+ * .maxHpOverride, which replace the manual `maxHp` of version 29.
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 29
+export const CURRENT_SCHEMA_VERSION = 30

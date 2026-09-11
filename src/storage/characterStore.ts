@@ -276,23 +276,26 @@ export class CharacterStore {
 	}
 
 	/**
-	 * Sets the character's manual hit points (persistent-header slice 1). A
-	 * targeted write like `setCurrency`: the header edits current and max by
-	 * hand and nothing derives them (D9). Both fields are replaced from the
-	 * given pair; `undefined` for either clears it, matching how an absent
-	 * field reads as "not set". 0 is a real value and is kept.
+	 * Sets the character's hand-set hit-point fields (persistent-header slice 1;
+	 * the max became an OVERRIDE in slice 8a). A targeted write like
+	 * `setCurrency`: `currentHp` is still edited by hand and derived from nothing
+	 * (D9), while `maxHpOverride` replaces the computed maximum only when the
+	 * player sets it. Both are replaced from the given pair; `undefined` for
+	 * either clears it, matching how an absent field reads — "not set" for the
+	 * current, "use the computed maximum" for the override. 0 is a real value
+	 * and is kept.
 	 */
-	setHitPoints(id: string, currentHp: number | undefined, maxHp: number | undefined): void {
+	setHitPoints(id: string, currentHp: number | undefined, maxHpOverride: number | undefined): void {
 		const characters = this.list()
 		const index = characters.findIndex((character) => character.id === id)
 		if (index === -1) throw new CharacterNotFoundError(id)
 
-		const { currentHp: _currentHp, maxHp: _maxHp, ...rest } = characters[index]
+		const { currentHp: _currentHp, maxHpOverride: _maxHpOverride, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = {
 			...rest,
 			...(currentHp !== undefined ? { currentHp } : {}),
-			...(maxHp !== undefined ? { maxHp } : {}),
+			...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
 		}
 		this.writeAll(updated)
 	}

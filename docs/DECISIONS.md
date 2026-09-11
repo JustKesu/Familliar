@@ -1675,3 +1675,65 @@ REPORT.md, ne rozhodnuto zde.
 Elf (základ) + Elf; High Elf Lineage, Khoravar, Kobold (základ) + Kobold;
 Draconic Sorcery mají pod `known` `choose`-FILTR, ne volbu vlastnosti —
 jiný tvar dat, jiný picker, viz QUESTIONS.md.
+
+## D91 — Maximum HP se neukládá jako číslo, ale jako příspěvek za každou úroveň
+
+Maximum hit points se NIKDY neukládá jako jedno hotové číslo. Ukládá se
+příspěvek za každou úroveň zvlášť (`Character.hitPointLevels`), a to BEZ
+Constitution: každý záznam nese úroveň, samotný výsledek kostky a to, jak
+vznikl (maximum / průměr / hod / ručně zadané).
+
+Constitution se přičítá až při výpočtu (`src/calculation/maxHitPoints.ts`),
+násobená celkovou úrovní postavy.
+
+Důvod: zvýšení Constitution (ASI) zvyšuje životy ZPĚTNĚ za všechny dosavadní
+úrovně. Uložené hotové číslo by tiše zůstalo nízko — a nikdo by si toho
+nevšiml, protože by nic nehlásilo chybu.
+
+Vedle toho existuje jedno nepovinné ruční přebití výsledku
+(`Character.maxHpOverride`). Když je nastavené, vyhrává nad vším spočítaným a
+rozklad to říká výslovně. Migrace 29→30 do něj přesouvá dosavadní ručně
+napsané `maxHp` (D9), takže postavě, která číslo měla, se zobrazené maximum
+nezmění. `currentHp` zůstává ruční a nedotčené.
+
+## D92 — Úroveň 1 je vždy maximum kostky
+
+Úroveň 1 je vždy maximum třídní kostky, nikdy hod ani průměr. Platí i tehdy,
+když je pro úroveň 1 uložený jiný záznam — výpočet ho pro tuhle jednu úroveň
+ignoruje. Pevný průměr pro ostatní úrovně je hodnota z PHB: polovina kostky
+zaokrouhlená dolů plus jedna (d6 → 4, d8 → 5, d10 → 6, d12 → 7).
+
+Postava bez jediného uloženého příspěvku (dnes každá) spadne na úroveň 1 =
+maximum a všechny další = pevný průměr, a rozklad řekne, že jde o výchozí
+hodnoty, ne o volby hráče. Výběr hod/průměr po úrovních je slice 8b.
+
+## D93 — Ručně psaná tabulka tří bonusů k maximu životů: vědomá výjimka proti D21
+
+Bonusy k maximu životů za úroveň mají ručně psanou tabulku tří položek
+(Tough, Dwarven Toughness, Draconic Resilience) v
+`src/calculation/maxHitPoints.ts`.
+
+Je to vědomá výjimka proti D21: v datech nejsou čísla vůbec, jen próza, a
+textový vzorec kandidáty najde, ale neumí je roztřídit — 7 z 10 zásahů
+maximum životů vůbec nemění (Arcane Ward je maximum WARDU, Preserve Life je
+strop léčení, …). Viz investigaci v REPORT.md předchozí session.
+
+Výjimka je omezená na ČÁSTKU. Zda postava schopnost má, se rozhoduje
+strukturálně: z udělených class/subclass featur (D87), ze vzatých featů a z
+pojmenovaných rysů uložené rasy (`src/sheet/speciesTraitNames.ts`) — nikdy
+podle jména třídy, rasy nebo podtřídy. Klíčem tabulky je jméno FEATURY, a
+všechna tři jsou napříč feats.json, subclass-features.json i rysy ras
+jedinečná.
+
+Tabulku bude hlídat validace dat v následující slice.
+
+## D94 — Tabulka bonusů si u každé položky pamatuje úrovňovou osu
+
+Draconic Resilience se odvíjí od úrovně SORCERERA, ne od úrovně postavy.
+Každá položka tabulky proto nese tři věci: plochou část, část za úroveň, a
+osu, kterou ta část za úroveň násobí — buď úroveň postavy, nebo úroveň v
+jedné konkrétní třídě.
+
+Dnes je appka single-class a obě čísla jsou stejná, takže osa nic nemění.
+Zaznamenává se přesto: multiclass je krok 10 a osu, kterou tabulka nikdy
+nezapsala, by tam už nešlo dohledat.
