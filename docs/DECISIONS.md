@@ -1535,3 +1535,29 @@ na záložce "Schopnosti a rysy". Nevstupuje do tabulky akcí ani do
 
 Nový export `featureIdForRef` v `src/featureResolver` (id cíle classFeature/
 subclassFeature refu, s defaultováním prázdných segmentů jako `resolveRef`).
+
+## D88 — Tabulka akcí: `consumes` u optional feature voleb, a proč se nepoužil `chosenClassOptionalFeatures`
+
+Navazuje na D86/D87 a na scripts/investigate-choice-option-usability.js
+(slice 5 část A).
+
+**`OptionalFeatureOption` nese `consumes` nečtený.** Stejné jednořádkové
+protažení jako u `GrantedFeature` (D87) — `optionalFeaturesByType` a
+`fightingStyleFeats` v `src/optionalFeatures/optionalFeatureData.ts` teď
+mapují i tohle pole. Nic v pickerech ho nečte, je to čistě přídavek pro
+tabulku akcí.
+
+**Třetí zdroj tabulky akcí je `chosenOptionalFeatureOptions`, ne
+`chosenClassOptionalFeatures`.** `chosenClassOptionalFeatures` se ptá, která
+PROGRESE featuru udělila (aby sekce "Class options" měla nadpis), a ta
+otázka nemá odpověď pro podtřídové volby — Maneuvers, Arcane Shot, Runes,
+College of Swords styly. Nový resolver čte každou uloženou volbu
+(`Character.optionalFeatureChoices`, `Character.fightingStyle`) napřímo
+a znovu ji dohledá v datech při čtení — žádná změna uložení, schéma
+zůstává 28.
+
+**Zjištěná mezera, mimo rozsah tady:** podtřídové optional feature volby
+(Maneuvers, Arcane Shot, Runes, College of Swords) se nikde na sheetu
+nezobrazují — sekce "Class options" ukazuje jen ty class-level. Battle
+Master teď v tabulce akcí uvidí řádek "Trip Attack", ale nikde si
+nepřečte, co dělá.

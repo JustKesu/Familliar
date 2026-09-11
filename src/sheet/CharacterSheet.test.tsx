@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CharacterSheet } from './CharacterSheet'
 import { computeAbilityScore } from '../calculation/abilityScores'
@@ -3124,6 +3124,53 @@ describe('CharacterSheet', () => {
 			expect(rowNames(container)).not.toContain('Ambush')
 		})
 
+		/*
+		 * D88's gap: the actions table shows a Battle Master's maneuver by name,
+		 * but nothing on the sheet showed its full text — the "Class options"
+		 * section only resolves class-level picks, and a Maneuver is granted by
+		 * the SUBCLASS. The new "Subclass options" section (below the existing
+		 * "Class options" one) closes it, using the same resolved records the
+		 * actions table already gets.
+		 */
+		it("shows a Battle Master's chosen maneuver as full text on the sheet, not just its name in the actions table", async () => {
+			withRealOptionResolution()
+			const battleMaster: Character = {
+				...character,
+				id: 'act-battlemaster-text',
+				name: 'Yasha',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 5 }],
+				optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Trip Attack'] }],
+			}
+			const container = await renderFor(battleMaster)
+			await waitFor(() => expect(rowNames(container)).toContain('Trip Attack'))
+
+			const section = container.querySelector('.sheet__subclass-optional-features') as HTMLElement
+			expect(section).toBeTruthy()
+			expect(within(section).getAllByText('Trip Attack')).toHaveLength(1)
+			expect(within(section).getByText(/When you hit a creature with an attack roll/)).toBeTruthy()
+		})
+
+		it('does not repeat an option in Subclass options when Class options already shows it', async () => {
+			withRealOptionResolution()
+			vi.mocked(loadChosenClassOptionalFeatures).mockResolvedValueOnce([
+				{ featureType: 'MM', name: 'Metamagic', options: [{ name: 'Twinned Spell', source: 'XPHB', entries: OPTIONAL_FEATURES[0]!.entries }] },
+			])
+			const sorcerer: Character = {
+				...character,
+				id: 'act-sorcerer-dedupe',
+				name: 'Nott',
+				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 }],
+				optionalFeatureChoices: [{ featureType: 'MM', choices: ['Twinned Spell'] }],
+			}
+			const container = await renderFor(sorcerer)
+			await screen.findByRole('heading', { name: 'Metamagic' })
+
+			// Shown once, by Class options — Subclass options renders no section at all once its one pick is deduped away.
+			const classOptions = container.querySelector('.sheet__class-optional-features') as HTMLElement
+			expect(within(classOptions).getAllByText('Twinned Spell')).toHaveLength(1)
+			expect(container.querySelector('.sheet__subclass-optional-features')).toBeNull()
+		})
+
 		it('gives no row to the chosen fighting style, which carries neither `consumes` nor a rest tag', async () => {
 			withRealOptionResolution()
 			const fighter: Character = {
@@ -3136,6 +3183,24 @@ describe('CharacterSheet', () => {
 
 			await waitFor(() => expect(rowNames(container)).toContain('Second Wind'))
 			expect(rowNames(container)).not.toContain('Defense')
+		})
+
+		/* D88: no actions-table row for a fighting style (above), but nothing else on the sheet showed it either — Subclass options now does. */
+		it('shows the chosen fighting style as full text in Subclass options, even though it never gets an actions-table row', async () => {
+			withRealOptionResolution()
+			const fighter: Character = {
+				...character,
+				id: 'act-style-text',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+				fightingStyle: 'Defense',
+			}
+			const container = await renderFor(fighter)
+			await waitFor(() => expect(rowNames(container)).toContain('Second Wind'))
+
+			const section = container.querySelector('.sheet__subclass-optional-features') as HTMLElement
+			expect(section).toBeTruthy()
+			expect(within(section).getByText('Defense')).toBeTruthy()
+			expect(within(section).getByText(/While you are wearing armor/)).toBeTruthy()
 		})
 	})
 

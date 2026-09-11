@@ -1,10 +1,11 @@
 # Status
 
-Poslední aktualizace: 2026-09-11 (volby optional feature v tabulce akcí —
-`consumes` protažené skrz `OptionalFeatureOption`; schéma 28 beze změny)
+Poslední aktualizace: 2026-09-11 (D88 zapsáno; nová sekce "Subclass options"
+na "Schopnosti a rysy" — subclassové optional feature volby + fighting style,
+dřív nikde na sheetu; schéma 28 beze změny)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D87) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D88) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -244,7 +245,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   (`optionalFeatureChoices` / `fightingStyle`) a plný záznam se dohledává až
   při čtení, přesně tam, kde `consumes` teď přežije. Fighting style nekvalifikuje
   (nemá `consumes` ani rest tag) a řádek nedostane. D43: uložená volba, kterou
-  data už nenabízejí, se přeskočí.
+  data už nenabízejí, se přeskočí. Zapsáno jako D88.
+- Sekce "Subclass options" na "Schopnosti a rysy" (D88, zavírá mezeru,
+  kterou D88 zaznamenalo) — `src/sheet/CharacterSheet.tsx`. Bere stejný
+  `chosenOptionalFeatures` výsledek (`loadChosenOptionalFeatureOptions`) jako
+  tabulka akcí, odečte od něj jména, která už ukazuje "Class options"
+  (`classOptionalFeatures`), a zbytek vypíše stejným `<details>` +
+  `ResolvedEntries` patternem jako featy (D51). Nic se nerenderuje, když po
+  odečtení nezbyde nic. Zahrnuje i `character.fightingStyle` — nebyl zobrazen
+  nikde jinde na sheetu. Testy: rozšířený blok `usable-feature rows in the
+  actions table (slice 5 part A, D86)` v `CharacterSheet.test.tsx` — Battle
+  Master maneuver jako plný text, fighting style jako plný text, a jedna
+  dedup varianta (Class options už option ukazuje → Subclass options ji
+  nezopakuje).
 - Oprava množného čísla ve `formatRange` (přestavba sheetu, slice 5 část B) —
   `src/sheet/spellFormatting.ts`. `pluralize()` teď hledá nepravidelné tvary
   přes mapu `IRREGULAR_PLURALS` (`{ foot: 'feet' }`) dřív, než spadne na naivní
@@ -292,7 +305,8 @@ tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností + oprava
 (level up), pokud se dřív nesáhne na odložené body níž.
 
 Poslední odložený bod přestavby (volby optional feature v tabulce akcí) je
-hotový — viz REPORT.md; čeká jen na zápis D88.
+hotový, D88 zapsáno a jeho mezera (subclassové volby nikde na sheetu) zavřena
+sekcí "Subclass options" — viz REPORT.md.
 
 Otevřený kosmetický bod (vědomě odložený, D87 bod 5): wrapper featura (Life
 Domain) se ve výpisu ukazuje jako běžný řádek vedle featur, které uvádí. Není

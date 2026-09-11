@@ -2119,6 +2119,9 @@ export function CharacterSheet({
 	)
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
 	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures)
+	/* D88's gap: chosenOptionalFeatures resolves every stored pick (class- and subclass-level, plus fighting style); classOptionalFeatures only resolves class-level ones. Subtracting its names leaves exactly the subclass-level picks Class options does not already show. */
+	const classOptionalFeatureNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name)))
+	const subclassOptionalFeatures = chosenOptionalFeatures.filter((option) => !classOptionalFeatureNames.has(option.name))
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
@@ -2565,6 +2568,29 @@ export function CharacterSheet({
 					</ul>
 				</section>
 			))}
+
+			{/*
+			 * D88: subclass-level optional-feature picks (Battle Master Maneuvers, Arcane Shot,
+			 * Runes, College of Swords fighting styles) plus the class-level fighting style —
+			 * neither shown anywhere else on the sheet, even though the actions table already
+			 * lists the usable ones by name. Deduped against Class options above by name, so a
+			 * class-level pick never appears twice. Nothing renders when there are none.
+			 */}
+			{subclassOptionalFeatures.length > 0 && (
+				<section className="sheet__subclass-optional-features">
+					<h2>Subclass options</h2>
+					<ul>
+						{subclassOptionalFeatures.map((option) => (
+							<li key={`${option.name}|${option.source}`}>
+								<details>
+									<summary>{option.name}</summary>
+									<ResolvedEntries entries={option.entries} data={resolverData} />
+								</details>
+							</li>
+						))}
+					</ul>
+				</section>
+			)}
 
 			{/* The Beast forms a Druid knows for Wild Shape. Nothing renders for a character with none — no empty heading. Uses per rest and transforming are play tracking (step 9), not shown. */}
 			{wildShapeForms.length > 0 && (
