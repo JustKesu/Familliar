@@ -50,6 +50,10 @@ vi.mock('../speciesSkills/speciesSkillData', () => ({
 	}),
 }))
 
+vi.mock('../spells/speciesSpellcastingAbilityData', () => ({
+	loadSpeciesSpellcastingAbilityChoice: vi.fn(async () => null),
+}))
+
 vi.mock('../backgrounds/backgroundData', () => ({
 	loadBackgrounds: vi.fn(async () => [
 		{
@@ -755,6 +759,7 @@ describe('CharacterWizard — storage', () => {
 				{ name: 'Longsword', source: 'XPHB', quantity: 1 },
 			],
 			5400,
+			undefined,
 		)
 	})
 })
@@ -809,8 +814,8 @@ describe('CharacterWizard — starting equipment step', () => {
 		await user.click(await screen.findByRole('button', { name: 'Create character' }))
 
 		const call = vi.mocked(store.create).mock.calls[0]
-		expect(call.at(-2)).toEqual([])
-		expect(call.at(-1)).toBe(20500)
+		expect(call.at(-3)).toEqual([])
+		expect(call.at(-2)).toBe(20500)
 	})
 
 	it('a category element blocks the step until an item is picked, and that pick lands in the inventory', async () => {
@@ -833,8 +838,8 @@ describe('CharacterWizard — starting equipment step', () => {
 		await user.click(await screen.findByRole('button', { name: 'Create character' }))
 
 		const call = vi.mocked(store.create).mock.calls[0]
-		expect(call.at(-2)).toEqual([{ name: 'Flute', source: 'XPHB', quantity: 1 }])
-		expect(call.at(-1)).toBe(5000)
+		expect(call.at(-3)).toEqual([{ name: 'Flute', source: 'XPHB', quantity: 1 }])
+		expect(call.at(-2)).toBe(5000)
 	})
 })
 

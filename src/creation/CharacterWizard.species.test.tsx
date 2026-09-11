@@ -43,6 +43,7 @@ vi.mock('../species/speciesData', async (importOriginal) => {
 		{ name: 'Goliath; Cloud Giant Ancestry', source: 'XPHB' },
 		{ name: 'Goliath; Fire Giant Ancestry', source: 'XPHB' },
 		{ name: 'Dwarf', source: 'XPHB' },
+		{ name: 'Aarakocra', source: 'XPHB' },
 	]
 	return { ...actual, loadSpeciesOptions: vi.fn(async () => actual.extractSpeciesOptions(raw)) }
 })
@@ -51,6 +52,14 @@ vi.mock('../species/speciesData', async (importOriginal) => {
 vi.mock('../speciesSkills/speciesSkillData', () => ({
 	loadSpeciesSkillProficiencies: vi.fn(async (speciesName: string) => {
 		if (speciesName.startsWith('Elf')) return { kind: 'choice', count: 1, options: ['insight', 'perception', 'survival'] }
+		return null
+	}),
+}))
+
+/** Only Aarakocra offers a spellcasting-ability choice here (D89 follow-up) — every other fixture species has no additionalSpells at all. */
+vi.mock('../spells/speciesSpellcastingAbilityData', () => ({
+	loadSpeciesSpellcastingAbilityChoice: vi.fn(async (speciesName: string) => {
+		if (speciesName === 'Aarakocra') return ['int', 'wis', 'cha']
 		return null
 	}),
 }))
@@ -227,5 +236,30 @@ describe('CharacterWizard — the species step waits for every species choice', 
 
 		expect((screen.getByLabelText('Species') as HTMLSelectElement).value).toBe('Genasi|MPMM')
 		expect(nextButton().disabled).toBe(true)
+	})
+})
+
+describe('CharacterWizard — the species step waits for the spellcasting-ability choice (D89 follow-up)', () => {
+	it('refuses to advance until the species spellcasting ability is chosen, naming what is missing', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+		await reachSpeciesStep(user)
+
+		await user.selectOptions(screen.getByLabelText('Species'), 'Aarakocra (XPHB)')
+		expect(nextButton().disabled).toBe(true)
+		expect(screen.getByText('Choose your species spellcasting ability to continue.')).toBeTruthy()
+
+		await user.selectOptions(await screen.findByLabelText('Spellcasting ability'), 'Wisdom')
+		expect(nextButton().disabled).toBe(false)
+	})
+
+	it('shows no ability picker for a species with no additionalSpells at all', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+		await reachSpeciesStep(user)
+
+		await user.selectOptions(screen.getByLabelText('Species'), 'Dwarf (XPHB)')
+		expect(screen.queryByLabelText('Spellcasting ability')).toBeNull()
+		expect(nextButton().disabled).toBe(false)
 	})
 })

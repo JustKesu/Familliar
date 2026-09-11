@@ -23,9 +23,10 @@
  *   convention on the identical field.
  * - `ability` is present on every entry: 33 of 34 carry the CHOICE shape
  *   `{"choose":["int","wis","cha"]}`, and only Aasimar (XPHB) is fixed
- *   ("cha"). See `unresolvedAbilityReason` below for what the choice case
- *   does — it is deliberately visible, not silent, and closing it is a named
- *   follow-up task (a stored ability pick plus its picker), not this slice.
+ *   ("cha"). The D89 follow-up task closed the choice case: when the
+ *   character has recorded a pick (`Character.speciesSpellcastingAbility`),
+ *   it resolves the same as a fixed ability; otherwise `unresolvedAbilityReason`
+ *   below still applies — visible, not silent (D58).
  * - The ["ability","innate","known","name"] shape is the UNRESOLVED
  *   multi-option form (`[{"name":"Drow",…},{"name":"High Elf",…},…]`) and
  *   occurs only on the three family-BASE records (Elf, Kobold, Tiefling) that
@@ -56,7 +57,7 @@
  * space.
  */
 
-import type { AbilityAbbreviation } from '../calculation/abilityAbbreviations'
+import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { proficiencyBonusForLevel } from '../calculation/proficiencyBonus'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character } from '../storage/character'
@@ -113,6 +114,11 @@ const FIXED_ABILITIES: readonly AbilityAbbreviation[] = ['str', 'dex', 'con', 'i
 /** True only for a plain named ability code — excludes the `{choose:[…]}` shape 33 of the 34 entries carry. */
 function isFixedAbility(value: unknown): value is AbilityAbbreviation {
 	return typeof value === 'string' && (FIXED_ABILITIES as readonly string[]).includes(value)
+}
+
+/** True for the `{choose: ["int","wis","cha"]}` shape — an ability CHOICE, not a fixed one (same shape featSpells.ts's isChoiceAbility checks). */
+function isChoiceAbility(value: unknown): boolean {
+	return isRecord(value) && Array.isArray(value['choose'])
 }
 
 /** D11: total level across every class, the same sum featSpells.ts and proficiencyBonus.ts use — a species' numeric grant keys gate on this, not on any one class's level. */
@@ -212,7 +218,9 @@ export function raceSpellsFor(character: Character, parsedSpecies: unknown, pars
 		if (typeof entry['name'] === 'string') continue
 
 		const abilityField = entry['ability']
-		const ability = isFixedAbility(abilityField) ? abilityField : undefined
+		// D89 follow-up: a choice ability resolves through the character's own stored pick, same as featSpells.ts's mark-feat resolution.
+		const chosenAbility = character.speciesSpellcastingAbility ? ABILITY_ABBREVIATIONS[character.speciesSpellcastingAbility] : undefined
+		const ability = isFixedAbility(abilityField) ? abilityField : isChoiceAbility(abilityField) ? chosenAbility : undefined
 
 		for (const key of FIXED_GRANT_KEYS) {
 			const levelMap = entry[key]

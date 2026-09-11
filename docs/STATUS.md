@@ -1,11 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-11 (D88 zapsáno; nová sekce "Subclass options"
-na "Schopnosti a rysy" — subclassové optional feature volby + fighting style,
-dřív nikde na sheetu; schéma 28 beze změny)
+Poslední aktualizace: 2026-09-11 (D90 zapsáno; uložená volba sesílací
+vlastnosti pro kouzla z rasy — nové pole + krok wizardu; schéma 28→29)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D88) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D90) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -34,16 +33,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    Trvalé odklady: Warlock The Genie (chybí uložená volba džina), Boon of
    Siberys (schovaný), Eberron marks (nedosažitelné bez trackingu kampaně),
    2 kouzla chybí v datech — viz QUESTIONS.md.
-6c. [half done] Kouzla z rasy (D89) — `src/spells/raceSpells.ts`, pátý
+6c. [done] Kouzla z rasy (D89, D90) — `src/spells/raceSpells.ts`, pátý
     konzument `additionalSpells`. Granty se dohledávají přímo na uložené
     (už vyřešené) variantě rasy, řadí se do téže složené množiny jako
-    ostatní čtyři zdroje a ukazují se v záložce Kouzla; Aasimar (jediná
-    rasa s pevnou vlastností) dostává i útočný bonus/DC a řádek v tabulce
-    akcí. **Nedodělané:** 33 ze 34 záznamů má `ability: {choose}` — kouzlo
-    se zobrazí, ale s viditelnou poznámkou "spellcasting ability not chosen
-    yet" místo čísla; 5 záznamů nabízí volbu cantripu ze seznamu třídy a
-    zatím jen hlásí jednu řádku, že to appka neumí. Obojí zavírá
-    navazující úkol (picker + uložená volba vlastnosti).
+    ostatní čtyři zdroje a ukazují se v záložce Kouzla. Sesílací vlastnost
+    (int/wis/cha na 33 ze 34 záznamů) se ukládá na `Character.speciesSpellcastingAbility`
+    (schéma 29, D90) a vybírá se v kroku SPECIES wizardu
+    (`SpeciesSpellcastingAbilityPicker`) hned po vyřešení varianty rasy;
+    Aasimar (pevná vlastnost) i každá rasa s uloženou volbou dostávají
+    útočný bonus/DC a řádek v tabulce akcí, zbytek beze změny ukazuje
+    "spellcasting ability not chosen yet". **Zbývá:** 5 záznamů nabízí
+    volbu cantripu ze seznamu třídy (jiný tvar `choose` — filtr, ne
+    vlastnost) a zatím jen hlásí jednu řádku, že to appka neumí —
+    QUESTIONS.md.
 6a. [done] Class-level volby schopností — Metamagic, Eldritch Invocations,
     Divine Order/Primal Order/Elemental Fury, vlastní krok wizardu za
     Kouzly. Aplikováno, kde je co počítat (Thaumaturge/Magician cantrip
@@ -187,7 +189,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Weapon proficiency/mastery a Extra Attack — jeden sdílený modul,
   strukturálně (podle dat zbraně), ne podle jména třídy.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
-- Uložení — localStorage, verzované schéma (teď 28), migrace fungují od
+- Uložení — localStorage, verzované schéma (teď 29), migrace fungují od
   verze 16 výš (D69); starší uložená postava se odmítne, ne převede.
 - Trvalá hlavička sheetu (přestavba sheetu, slice 1) —
   `src/sheet/SheetHeader.tsx`. Blok nad obsahem sheetu se šesti hodnotami:
@@ -323,10 +325,9 @@ Domain) se ve výpisu ukazuje jako běžný řádek vedle featur, které uvádí
 strukturální způsob, jak wrapper poznat, a jmenný seznam výjimek je přesně to,
 čemu se projekt vyhýbá (D21). Znovu zvážit až po revizi skutečného sheetu.
 
-Kouzla z rasy jsou z poloviny hotová (6c výš, D89). Navazující úkol: uložená
-volba sesílací vlastnosti pro 33 ras s `ability: {choose}` (picker + pole ve
-schématu) a picker cantripu ze seznamu třídy pro 5 záznamů, které dnes jen
-hlásí mezeru.
+Kouzla z rasy jsou hotová až na jednu mezeru (6c výš, D89/D90): picker
+cantripu ze seznamu třídy pro 5 záznamů, které dnes jen hlásí, že appka to
+neumí (QUESTIONS.md).
 
 Pickery tří podtříd (Storm Herald, The Genie, Divine Soul) potřebují
 rozhodnutí — viz QUESTIONS.md.

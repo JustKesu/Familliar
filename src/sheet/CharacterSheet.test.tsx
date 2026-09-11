@@ -4002,6 +4002,50 @@ describe('CharacterSheet', () => {
 			expect(actionsTable.textContent).toContain('Sacred Flame')
 		})
 
+		/*
+		 * D89 follow-up: a `choose`-ability species with a STORED pick resolves
+		 * exactly like Aasimar's fixed one. raceSpells.ts is what actually reads
+		 * `Character.speciesSpellcastingAbility` (raceSpells.test.ts covers that);
+		 * this test only confirms the sheet renders real numbers, not the
+		 * placeholder, once `loadRaceSpells` hands back a resolved `ability`.
+		 */
+		it('a species spell with a stored spellcasting-ability choice gets a real attack bonus/DC, not the placeholder note (Aarakocra)', async () => {
+			const details: SpellDetail[] = [spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0, entries: ['A spectral hand appears.'] })]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadRaceSpells).mockResolvedValue({
+				spells: [
+					{ name: 'Mage Hand', source: 'XPHB', level: 0, ritual: false, concentration: false, origin: 'species', speciesName: 'Aarakocra', grantedAtLevel: null, ability: 'wis' },
+				],
+				notes: [],
+			})
+
+			const aarakocra: Character = {
+				id: 'ar1',
+				name: 'Aarakocra Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 15, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 16, charisma: 10 },
+				},
+				species: { name: 'Aarakocra', source: 'XPHB' },
+				speciesSpellcastingAbility: 'wisdom',
+			}
+
+			const { container } = render(<CharacterSheet character={aarakocra} />)
+			await screen.findByRole('heading', { name: 'Aarakocra Fighter' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Mage Hand'))
+			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Mage Hand'))!
+			expect(summary.textContent).not.toContain('spellcasting ability not chosen yet')
+
+			// WIS 16 -> +3, PB 2 at level 3.
+			const attacks = container.querySelector('.sheet__spell-attacks')!
+			expect(attacks.textContent).toContain('Aarakocra')
+			expect(attacks.textContent).toContain('+5')
+			expect(attacks.textContent).toContain('13')
+		})
+
 		/* The other 33 species leave the ability unchosen — the spell still appears, saying plainly why it has no numbers (D58), and the deferred cantrip-choice entries say so too. */
 		it('a species spell with no chosen ability still appears, marked unresolved, alongside the deferred cantrip-choice note', async () => {
 			const details: SpellDetail[] = [spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0, entries: ['A spectral hand appears.'] })]

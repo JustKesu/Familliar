@@ -39,6 +39,10 @@ vi.mock('../speciesSkills/speciesSkillData', () => ({
 	loadSpeciesSkillProficiencies: vi.fn(async () => null),
 }))
 
+vi.mock('../spells/speciesSpellcastingAbilityData', () => ({
+	loadSpeciesSpellcastingAbilityChoice: vi.fn(async () => null),
+}))
+
 vi.mock('../backgrounds/backgroundData', () => ({
 	loadBackgrounds: vi.fn(async () => [
 		{

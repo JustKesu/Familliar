@@ -1626,3 +1626,52 @@ podle vzoru `computeFeatSpellcasting`. Jeden vědomý rozdíl proti němu:
 rasa s nevyřešenou vlastností se přeskočí, místo aby celý výsledek přepnula
 na `unknown` — jinak by 33 ze 34 ras zhaslo sekci Spellcasting i pro
 třídu.
+
+## D90 — Uložená volba sesílací vlastnosti u rasy: pole, krok wizardu, migrace beze změny dat
+
+Zavírá druhou polovinu D89 ("kouzlo se udělí a zobrazí, ale místo útočného
+bonusu a DC nese text 'spellcasting ability not chosen yet'"). 33 ze 34
+záznamů `additionalSpells` nese `ability: {"choose":["int","wis","cha"]}` —
+tenhle úkol dodává, kam si appka tu volbu uloží a kde ji hráč udělá.
+
+**Nové pole kopíruje D57, ne se od něj liší.** `Character.speciesSpellcastingAbility?: Ability`
+je nepovinné přesně jako `FeatAsiChoice.chosenAbility` — chybí, dokud
+uložená rasa nenabízí volbu (pevná vlastnost jako Aasimar, žádné
+`additionalSpells` vůbec), i když nabízí a hráč ji ještě neudělal (starý
+save, nebo wizard nějak obejitý). `WizardData.speciesSpellcastingAbility`
+je naproti tomu `Ability | null` jako zbytek rozpracovaného stavu wizardu
+(`speciesChoice`, `fightingStyle`) — `null` = "zatím nevybráno", na rozdíl
+od uloženého pole, kde nic neznamená totéž jako "nebylo co vybírat".
+
+**Krok SPECIES dostává třetí podmínku, ne nový krok.** D81/D82 už krok
+species blokují na nevyřešené linii a na dokončených species skillech;
+`speciesSpellcastingAbilityComplete` je stejná podmínka potřetí —
+`true`, když uložená rasa (jednou vyřešená varianta, D81/D82/D84) nemá
+co vybírat, jinak jen když je `speciesSpellcastingAbility` vyplněné.
+Picker (`SpeciesSpellcastingAbilityPicker`, vzor `SpeciesSkillPicker`) se
+načítá vlastní kopií dat stejně jako `speciesSkillShape` — wizard
+potřebuje vědět, jestli volba visí, dřív než by se panel vůbec vykreslil.
+Nabízené možnosti jsou přesně ty, co `additionalSpells.ability.choose`
+v datech vyjmenuje (typicky int/wis/cha), ne napevno tři možnosti.
+
+**Volba se čte přímo v `raceSpellsFor`, výpočet zůstává v kalkulační
+vrstvě.** `raceSpells.ts` teď při `ability: {choose}` zkusí
+`character.speciesSpellcastingAbility` — pokud je vyplněné, kouzlo dostane
+`ability` stejně jako Aasimarovo pevné `"cha"`; pokud ne, zůstává
+`unresolvedAbilityReason` beze změny. `computeSpeciesSpellcasting` se
+NEMĚNIL VŮBEC — bere `ability`, ať přišlo z pevné hodnoty nebo z uložené
+volby, přesně jak D89 popisuje.
+
+**Migrace 28→29 je jen tag, žádná data se nedopočítávají.** Stará
+postava nemá volbu uloženou nikdy, a chybějící pole už dnes znamená
+přesně "not chosen yet" — stejná úvaha jako u každé aditivní migrace od
+D69 (naposledy D9 pro `currentHp`/`maxHp`). Otevřená otázka, kterou tenhle
+úkol neřeší: appka nemá editaci uložené postavy ani žádné znovuspuštění
+species kroku wizardu na existující postavě — taková postava tedy zůstane
+u "not chosen yet" navždy, dokud nevznikne editační cesta. Zapsáno do
+REPORT.md, ne rozhodnuto zde.
+
+**Volba cantripu ze seznamu třídy (5 záznamů) zůstává mimo tenhle úkol.**
+Elf (základ) + Elf; High Elf Lineage, Khoravar, Kobold (základ) + Kobold;
+Draconic Sorcery mají pod `known` `choose`-FILTR, ne volbu vlastnosti —
+jiný tvar dat, jiný picker, viz QUESTIONS.md.

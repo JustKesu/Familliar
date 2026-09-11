@@ -74,12 +74,13 @@ const elfBase = {
 
 const species = [aasimar, aarakocra, rockGnome, kobold, highElf, elfBase]
 
-function character(speciesName: string, level: number, source = 'XPHB'): Character {
+function character(speciesName: string, level: number, source = 'XPHB', speciesSpellcastingAbility?: Character['speciesSpellcastingAbility']): Character {
 	return {
 		id: 'test',
 		name: 'Test',
 		classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level }],
 		species: { name: speciesName, source },
+		...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
 	}
 }
 
@@ -95,7 +96,7 @@ describe('raceSpellsFor', () => {
 		expect(atFive.spells[1]).toMatchObject({ grantedAtLevel: 3, usage: { kind: 'onceFreePerLongRest' } })
 	})
 
-	it('leaves the spell granted but marks the ability unresolved for a `choose` ability (Aarakocra)', () => {
+	it('leaves the spell granted but marks the ability unresolved for a `choose` ability with no stored pick (Aarakocra)', () => {
 		const result = raceSpellsFor(character('Aarakocra', 3), species, spells)
 		expect(result.spells.map((s) => s.name)).toEqual(['Mage Hand', 'Gust of Wind'])
 		for (const spell of result.spells) {
@@ -103,6 +104,16 @@ describe('raceSpellsFor', () => {
 			expect(spell.unresolvedAbilityReason).toBe('spellcasting ability not chosen yet')
 		}
 		expect(result.spells[1].concentration).toBe(true)
+	})
+
+	/* D89 follow-up: a stored speciesSpellcastingAbility resolves a `choose` ability exactly like Aasimar's fixed one. */
+	it('resolves a `choose` ability from the character’s stored pick (Aarakocra)', () => {
+		const result = raceSpellsFor(character('Aarakocra', 3, 'XPHB', 'wisdom'), species, spells)
+		expect(result.spells.map((s) => s.name)).toEqual(['Mage Hand', 'Gust of Wind'])
+		for (const spell of result.spells) {
+			expect(spell.ability).toBe('wis')
+			expect(spell.unresolvedAbilityReason).toBeUndefined()
+		}
 	})
 
 	it('resolves a `daily: {pb: …}` grant to the character’s own proficiency bonus (Rock Gnome)', () => {

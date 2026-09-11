@@ -245,6 +245,17 @@ export interface Character {
 	 */
 	currentHp?: number
 	maxHp?: number
+	/**
+	 * Which ability the character's species-granted spells (raceSpells.ts)
+	 * are cast with — set only when the STORED species record's
+	 * `additionalSpells.ability` is the `{choose:[...]}` shape (33 of the 34
+	 * carriers; only Aasimar is fixed). Same D57 convention as
+	 * FeatAsiChoice.chosenAbility: absent means either the species has
+	 * nothing to choose (no additionalSpells, or a fixed ability), or an
+	 * older save/wizard run hasn't recorded a pick yet — computeSpeciesSpellcasting
+	 * keeps today's "not chosen yet" placeholder in both cases, never a guess.
+	 */
+	speciesSpellcastingAbility?: Ability
 }
 
 /**
@@ -643,12 +654,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 28 for Character.currentHp / maxHp — the
- * manual hit-point fields the persistent header edits (slice 1).
+ * (see wireFormat.ts). Bumped to 29 for Character.speciesSpellcastingAbility
+ * — the D89 follow-up's stored species-spellcasting-ability choice.
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 28
+export const CURRENT_SCHEMA_VERSION = 29

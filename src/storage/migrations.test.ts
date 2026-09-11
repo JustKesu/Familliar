@@ -182,6 +182,22 @@ describe('the migration chain (D69)', () => {
 		expect('maxHp' in migrated).toBe(false)
 	})
 
+	it('carries a version-28 character forward with no species spellcasting ability recorded', () => {
+		const before = {
+			schemaVersion: 28,
+			id: '1',
+			name: 'Vex',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			species: { name: 'Aarakocra', source: 'XPHB' },
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// speciesSpellcastingAbility is D57-style optional — absent already means "not chosen yet" (computeSpeciesSpellcasting's existing placeholder).
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('speciesSpellcastingAbility' in migrated).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

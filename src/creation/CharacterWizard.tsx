@@ -8,6 +8,9 @@ import { LanguagePicker } from '../languages/LanguagePicker'
 import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { SpeciesSkillPicker } from '../speciesSkills/SpeciesSkillPicker'
 import { loadSpeciesSkillProficiencies, type SpeciesSkillProficiencies } from '../speciesSkills/speciesSkillData'
+import { SpeciesSpellcastingAbilityPicker } from '../spells/SpeciesSpellcastingAbilityPicker'
+import { loadSpeciesSpellcastingAbilityChoice } from '../spells/speciesSpellcastingAbilityData'
+import type { AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { ToolProficiencyPicker } from '../toolProficiencies/ToolProficiencyPicker'
 import { MasteryPicker } from '../masteries/MasteryPicker'
 import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
@@ -143,6 +146,14 @@ export function CharacterWizard({
 	const [speciesOptions, setSpeciesOptions] = useState<SpeciesOption[]>([])
 	/** The chosen species' skill proficiencies, tagged with the species they were loaded for, so a step is never judged complete against a previous species' count. */
 	const [speciesSkillShape, setSpeciesSkillShape] = useState<{ key: string; shape: SpeciesSkillProficiencies | null } | null>(null)
+	/**
+	 * D89 follow-up: the chosen species' spellcasting-ability choices (or null
+	 * for a species with nothing to choose), tagged the same way as
+	 * speciesSkillShape — SpeciesSpellcastingAbilityPicker's own panel loads
+	 * this data too, but the species step's completion check needs to know
+	 * whether a choice is outstanding before that panel would ever mount.
+	 */
+	const [speciesSpellcastingAbilityChoices, setSpeciesSpellcastingAbilityChoices] = useState<{ key: string; choices: AbilityAbbreviation[] | null } | null>(null)
 	const [featAsiGrantCount, setFeatAsiGrantCount] = useState(0)
 	const [featsNeedingAbilityChoice, setFeatsNeedingAbilityChoice] = useState<ReadonlySet<string>>(new Set())
 	const [spellSlotsClassData, setSpellSlotsClassData] = useState<ClassSpellSlotsData[]>([])
@@ -242,6 +253,22 @@ export function CharacterWizard({
 			})
 			.catch(() => {
 				/* SpeciesSkillPicker shows the error; left unset, the step stays incomplete rather than passing with no skill chosen. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [speciesName, speciesSource])
+
+	useEffect(() => {
+		let cancelled = false
+		setSpeciesSpellcastingAbilityChoices(null)
+		if (speciesName === null || speciesSource === null) return
+		loadSpeciesSpellcastingAbilityChoice(speciesName, speciesSource)
+			.then((choices) => {
+				if (!cancelled) setSpeciesSpellcastingAbilityChoices({ key: `${speciesName}|${speciesSource}`, choices })
+			})
+			.catch(() => {
+				/* SpeciesSpellcastingAbilityPicker shows the error; left unset, the step stays incomplete rather than passing with no ability chosen. */
 			})
 		return () => {
 			cancelled = true
@@ -839,6 +866,16 @@ export function CharacterWizard({
 		(speciesSkillShape?.key === `${state.data.speciesChoice.name}|${state.data.speciesChoice.source}` &&
 			state.data.speciesSkills.length === speciesSkillRequiredCount)
 
+	/**
+	 * D89 follow-up: same shape as speciesSkillsComplete above. A species with
+	 * no choice (`choices === null` once loaded) is complete with nothing
+	 * picked; one that offers a choice needs `speciesSpellcastingAbility` set.
+	 */
+	const speciesSpellcastingAbilityComplete =
+		state.data.speciesChoice === null ||
+		(speciesSpellcastingAbilityChoices?.key === `${state.data.speciesChoice.name}|${state.data.speciesChoice.source}` &&
+			(speciesSpellcastingAbilityChoices.choices === null || state.data.speciesSpellcastingAbility !== null))
+
 	/** Read from the same rules table the picker offers from, for the same reason. 0 for anyone without Wild Shape. */
 	const wildShapeFormCount = state.data.classChoice
 		? (wildShapeLimits(state.data.classChoice.className, state.data.classChoice.level, state.data.subclass?.name ?? null)
@@ -862,6 +899,7 @@ export function CharacterWizard({
 		classFeatureChoicesComplete,
 		speciesVariantChoiceComplete,
 		speciesSkillsComplete,
+		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
 	}
@@ -995,6 +1033,15 @@ export function CharacterWizard({
 							value={state.data.speciesSkills}
 							onChange={(skills) => dispatch({ type: 'setSpeciesSkills', skills })}
 							disabledSkills={[...classSkillsAsDisabled, ...backgroundSkillsAsDisabled]}
+						/>
+					)}
+					{/* D89 follow-up: held back the same way as SpeciesSkillPicker above — the choice (and whether there is one at all) is keyed to the resolved variant. */}
+					{state.data.speciesChoice && speciesVariantChoiceComplete && (
+						<SpeciesSpellcastingAbilityPicker
+							speciesName={state.data.speciesChoice.name}
+							speciesSource={state.data.speciesChoice.source}
+							value={state.data.speciesSpellcastingAbility}
+							onChange={(ability) => dispatch({ type: 'setSpeciesSpellcastingAbility', ability })}
 						/>
 					)}
 				</div>

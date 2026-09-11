@@ -233,9 +233,11 @@ export interface SpeciesSpellcastingEntry {
  * — see raceSpells.ts) is SKIPPED rather than turning the whole result
  * 'unknown'. The spell itself still reaches the sheet carrying
  * `unresolvedAbilityReason`, so the gap is stated where the player sees the
- * spell (D58) instead of blanking the Spellcasting section for everyone. Today
- * only Aasimar (XPHB) produces an entry at all; the choice case closes with the
- * follow-up task that stores a chosen ability.
+ * spell (D58) instead of blanking the Spellcasting section for everyone. This
+ * only matters for a choose-ability species with no recorded pick yet (an old
+ * save, or the wizard's gate somehow bypassed) — raceSpells.ts now resolves
+ * `ability` from `Character.speciesSpellcastingAbility` (D89 follow-up) the
+ * same way it always resolved Aasimar's fixed "cha".
  */
 export function computeSpeciesSpellcasting(
 	character: Character,

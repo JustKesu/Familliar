@@ -33,6 +33,7 @@ function completeData(): WizardData {
 		},
 		classSkills: ['athletics', 'intimidation'],
 		speciesSkills: ['perception'],
+		speciesSpellcastingAbility: null,
 		expertiseSkills: [],
 		masteries: ['Longsword'],
 		fightingStyle: 'Archery',
@@ -101,6 +102,13 @@ describe('isStepComplete', () => {
 		expect(isStepComplete('background', data)).toBe(false)
 		expect(isStepComplete('languages', data)).toBe(false)
 		expect(isStepComplete('abilities', data)).toBe(false)
+	})
+
+	/* D89 follow-up: gated the same way as speciesVariantChoiceComplete/speciesSkillsComplete — a condition, not a WizardData field, since the choice/list itself comes from species.json. */
+	it('blocks the species step on speciesSpellcastingAbilityComplete alone, once a species is picked', () => {
+		const data = { ...emptyWizardData(), speciesChoice: { name: 'Aarakocra', source: 'XPHB' }, speciesSkills: ['perception'] }
+		expect(isStepComplete('species', data, { speciesSkillsComplete: true, speciesSpellcastingAbilityComplete: false })).toBe(false)
+		expect(isStepComplete('species', data, { speciesSkillsComplete: true, speciesSpellcastingAbilityComplete: true })).toBe(true)
 	})
 
 	it('blocks the languages step until exactly two are chosen, allows it at exactly two', () => {
@@ -434,6 +442,7 @@ describe('saveCharacter', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		)
 	})
 
@@ -441,7 +450,7 @@ describe('saveCharacter', () => {
 		const store = fakeStore()
 		const choice = { className: 'Fighter', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' }
 		saveCharacter(store, { ...completeData(), classFeatureChoices: [choice] }, ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-4)).toEqual([choice])
+		expect(vi.mocked(store.create).mock.calls[0].at(-5)).toEqual([choice])
 	})
 
 	/*
@@ -466,7 +475,7 @@ describe('saveCharacter', () => {
 		}
 		saveCharacter(store, druid, ['athletics', 'intimidation'], { wildShapeFormCount: 4 })
 
-		const stored = vi.mocked(store.create).mock.calls[0].at(-3)
+		const stored = vi.mocked(store.create).mock.calls[0].at(-4)
 		expect(stored).toEqual([{ className: 'Druid', classSource: 'XPHB', forms }])
 		for (const entry of stored as { forms: Record<string, unknown>[] }[]) {
 			for (const form of entry.forms) expect(Object.keys(form).sort()).toEqual(['name', 'source'])
@@ -476,7 +485,7 @@ describe('saveCharacter', () => {
 	it('omits Wild Shape forms entirely when none were chosen', () => {
 		const store = fakeStore()
 		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-3)).toBeUndefined()
+		expect(vi.mocked(store.create).mock.calls[0].at(-4)).toBeUndefined()
 	})
 
 	it('omits background when the background skill proficiencies were not supplied', () => {
@@ -502,6 +511,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -544,6 +554,7 @@ describe('saveCharacter', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		)
 	})
 
@@ -577,6 +588,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			['stealth', 'perception'],
 			[],
+			undefined,
 			undefined,
 			undefined,
 			undefined,

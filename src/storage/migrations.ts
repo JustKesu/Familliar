@@ -161,6 +161,18 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 28 }),
 	},
+	{
+		from: 28,
+		to: 29,
+		/*
+		 * 29 adds Character.speciesSpellcastingAbility (D89 follow-up). A
+		 * version-28 character has never recorded one, and an absent field
+		 * already means "not chosen yet" — the placeholder computeSpeciesSpellcasting
+		 * already showed for every choose-ability species before this field
+		 * existed. Version tag only, same as the twelve before it.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 29 }),
+	},
 ]
 
 /**

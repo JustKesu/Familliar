@@ -702,6 +702,22 @@ export function describeHitPointsError(value: Record<string, unknown>): string |
 	return null
 }
 
+/**
+ * Validates an optional `speciesSpellcastingAbility` field (D89 follow-up).
+ * Returns null if the field is absent — the ordinary state for a species
+ * with no choice to make, or one whose choice hasn't been recorded yet.
+ * Whether the character's actual stored species offers this choice at all is
+ * NOT checked here: that needs species.json, which the storage layer does not
+ * load (same limit as describeFamiliarError's).
+ */
+export function describeSpeciesSpellcastingAbilityError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (typeof value !== 'string' || !ABILITIES.includes(value as (typeof ABILITIES)[number])) {
+		return `speciesSpellcastingAbility must be a valid ability`
+	}
+	return null
+}
+
 function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
@@ -856,6 +872,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (currencyError) return `[${index}].${currencyError}`
 	const hitPointsError = describeHitPointsError(value)
 	if (hitPointsError) return `[${index}].${hitPointsError}`
+	const speciesSpellcastingAbilityError = describeSpeciesSpellcastingAbilityError(value['speciesSpellcastingAbility'])
+	if (speciesSpellcastingAbilityError) return `[${index}].${speciesSpellcastingAbilityError}`
 	return null
 }
 
@@ -890,6 +908,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const currencyCopper = value['currencyCopper']
 	const currentHp = value['currentHp']
 	const maxHp = value['maxHp']
+	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -917,6 +936,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(typeof currencyCopper === 'number' ? { currencyCopper } : {}),
 		...(typeof currentHp === 'number' ? { currentHp } : {}),
 		...(typeof maxHp === 'number' ? { maxHp } : {}),
+		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
 	}
 }
 

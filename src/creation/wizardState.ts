@@ -30,7 +30,7 @@ import type { SpeciesChoice } from '../species/SpeciesPicker'
 import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
-import type { CharacterAbilityScores } from '../abilities/abilityScores'
+import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
@@ -103,6 +103,8 @@ export interface WizardStepConditions {
 	speciesVariantChoiceComplete?: boolean
 	/** Whether the species' own skill proficiencies are settled — the count comes from species.json, not from WizardData. */
 	speciesSkillsComplete?: boolean
+	/** D89 follow-up: whether the species' own spellcasting-ability choice (`additionalSpells.ability: {choose:[...]}`) is settled. True for a species with a fixed ability or none at all — the count/list comes from species.json, not from WizardData. */
+	speciesSpellcastingAbilityComplete?: boolean
 	/** Wild Shape forms the class step must collect (wildShapeData.ts's Beast Shapes table); 0 for a character without Wild Shape. */
 	wildShapeFormCount?: number
 	/** Whether every category element inside the two chosen starting-equipment options has an item picked. Which elements those are is only known from the loaded offers, so the caller computes it (missingCategoryPicks). */
@@ -122,6 +124,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		classFeatureChoicesComplete: conditions.classFeatureChoicesComplete ?? true,
 		speciesVariantChoiceComplete: conditions.speciesVariantChoiceComplete ?? true,
 		speciesSkillsComplete: conditions.speciesSkillsComplete ?? true,
+		speciesSpellcastingAbilityComplete: conditions.speciesSpellcastingAbilityComplete ?? true,
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
 	}
@@ -186,6 +189,14 @@ export interface WizardData {
 	classSkills: string[]
 	/** The species' skill proficiencies (fixed and/or chosen) — clears whenever speciesChoice does, since the options are keyed to a specific species. */
 	speciesSkills: string[]
+	/**
+	 * D89 follow-up: which ability the species' own granted spells are cast
+	 * with, when `additionalSpells.ability` is the `{choose:[...]}` shape —
+	 * clears whenever speciesChoice does, same reasoning as speciesSkills: a
+	 * different species (or a different lineage of the same family) may offer
+	 * a different choice, or none at all.
+	 */
+	speciesSpellcastingAbility: Ability | null
 	/** Which already-proficient skills the player named as Expertise (D8) — clears whenever class, level, class skills, species, species skills or background change, since all of those affect the offer or the count (task instructions, point 4). */
 	expertiseSkills: string[]
 	masteries: string[]
@@ -248,6 +259,7 @@ export function emptyWizardData(): WizardData {
 		abilityScores: null,
 		classSkills: [],
 		speciesSkills: [],
+		speciesSpellcastingAbility: null,
 		expertiseSkills: [],
 		masteries: [],
 		fightingStyle: null,
@@ -322,6 +334,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		classFeatureChoicesComplete,
 		speciesVariantChoiceComplete,
 		speciesSkillsComplete,
+		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
 	} = resolveConditions(conditions)
@@ -342,10 +355,17 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		case 'species':
 			// A species is REMEMBERED the moment it is picked, like a background, but the
 			// step only COMPLETES once every choice the species itself carries is made
-			// (D81/D82): the variant the book puts inside it, and its skill proficiencies.
-			// Both counts come from species.json rather than from WizardData, so they
-			// arrive as conditions — the same case as classFeatureChoicesComplete.
-			return data.speciesChoice !== null && speciesVariantChoiceComplete && speciesSkillsComplete
+			// (D81/D82, D89 follow-up): the variant the book puts inside it, its skill
+			// proficiencies, and (once a variant is resolved) its spellcasting-ability
+			// choice. All three counts/lists come from species.json rather than from
+			// WizardData, so they arrive as conditions — the same case as
+			// classFeatureChoicesComplete.
+			return (
+				data.speciesChoice !== null &&
+				speciesVariantChoiceComplete &&
+				speciesSkillsComplete &&
+				speciesSpellcastingAbilityComplete
+			)
 		case 'background':
 			// A background is REMEMBERED the moment it is picked (D8), but the step only
 			// COMPLETES once its ability-bonus distribution is finished: the picker fills
@@ -457,6 +477,7 @@ export type WizardAction =
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
 	| { type: 'setSpeciesSkills'; skills: string[] }
+	| { type: 'setSpeciesSpellcastingAbility'; ability: Ability | null }
 	| { type: 'setExpertiseSkills'; skills: string[] }
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
 	| { type: 'setBackgroundToolProficiency'; tool: string | null }
@@ -518,10 +539,12 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setSpeciesChoice':
 			return {
 				...state,
-				data: { ...state.data, speciesChoice: action.choice, speciesSkills: [], expertiseSkills: [] },
+				data: { ...state.data, speciesChoice: action.choice, speciesSkills: [], speciesSpellcastingAbility: null, expertiseSkills: [] },
 			}
 		case 'setSpeciesSkills':
 			return { ...state, data: { ...state.data, speciesSkills: action.skills, expertiseSkills: [] } }
+		case 'setSpeciesSpellcastingAbility':
+			return { ...state, data: { ...state.data, speciesSpellcastingAbility: action.ability } }
 		case 'setExpertiseSkills':
 			return { ...state, data: { ...state.data, expertiseSkills: action.skills } }
 		case 'setBackgroundChoice': {
@@ -747,5 +770,6 @@ export function saveCharacter(
 		wildShapeForms,
 		startingEquipment?.inventory,
 		startingEquipment?.currencyCopper,
+		data.speciesSpellcastingAbility ?? undefined,
 	)
 }

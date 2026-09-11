@@ -214,7 +214,23 @@ slici, postavenou podle vzoru těch čtyř modulů, které už existují.
 
 Nalezeno při průzkumu kódu wizardu (Cowork, 3. 9.), potvrzeno v reportu ze
 slice na rasové volby.
-STATUS: rozhodnuto že se udělá, čeká na zadání.
+STATUS: hotovo z většiny — granty a zobrazení (D89) i uložená volba sesílací
+vlastnosti (D90) jsou hotové. Zbývá jen volba cantripu ze seznamu třídy u 5
+záznamů, viz níže.
+
+### Pět rasových záznamů nabízí volbu cantripu ze seznamu třídy — bez pickeru
+
+Elf (základ) + Elf; High Elf Lineage, Khoravar, Kobold (základ) + Kobold;
+Draconic Sorcery nesou pod `additionalSpells.known` `choose`-FILTR
+("level=0|class=Wizard") místo jmenovaného kouzla — hráč si má vybrat
+cantrip ze seznamu dané třídy, a appka na to nemá ani uložené pole, ani
+picker. Na rozdíl od volby sesílací vlastnosti (D90), pro kterou už teď
+existuje D57/D82 vzor, tenhle tvar volby appka zatím nikde jinde neřeší.
+Dnes se u kouzel jen ukáže jedna viditelná řádka, že appka tohle zatím
+neumí (raceSpells.ts, `deferredChoiceNote`).
+
+Není bojově relevantní — je to bonusový cantrip, ne útok/DC.
+STATUS: nerozhodnuto, odloženo (nízká priorita).
 
 ### Tlačítko Delete v dočasném seznamu postav jde přes `confirm()`
 

@@ -1,4 +1,4 @@
-import type { CharacterAbilityScores } from '../abilities/abilityScores'
+import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type {
 	AbilityBonusMap,
 	Character,
@@ -179,6 +179,7 @@ export class CharacterStore {
 		wildShapeForms?: CharacterWildShapeForms[],
 		inventory?: CharacterInventoryItem[],
 		currencyCopper?: number,
+		speciesSpellcastingAbility?: Ability,
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -205,6 +206,7 @@ export class CharacterStore {
 			...(wildShapeForms && wildShapeForms.length > 0 ? { wildShapeForms } : {}),
 			...(inventory && inventory.length > 0 ? { inventory } : {}),
 			...(currencyCopper ? { currencyCopper } : {}),
+			...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character
