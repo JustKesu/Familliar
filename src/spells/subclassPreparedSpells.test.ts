@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { dedupeAlwaysPreparedSpells, extractSubclassAlwaysPreparedSpells, levelForPactSlotRank, type AlwaysPreparedSpell } from './subclassPreparedSpells'
+import {
+	dedupeAlwaysPreparedSpells,
+	extractSubclassAlwaysPreparedSpells,
+	levelForPactSlotRank,
+	parseDailySubkey,
+	parseSpellRef,
+	type AlwaysPreparedSpell,
+} from './subclassPreparedSpells'
 
 /** Real Warlock Pact Magic slotLevel-by-character-level progression (spellSlots.ts's PactSlots.slotLevel), levels 1-9: rank rises at 1st/3rd/5th/7th/9th. */
 const warlockPactSlotsByLevel = [
@@ -618,5 +625,38 @@ describe('dedupeAlwaysPreparedSpells (this task)', () => {
 	it('leaves non-overlapping spells untouched, none lost', () => {
 		const result = dedupeAlwaysPreparedSpells([entry({ name: 'Cure Wounds', grantedAtLevel: 1 }), entry({ name: 'Bless', grantedAtLevel: 1 }), entry({ name: 'Bane', grantedAtLevel: 1 })])
 		expect(result.map((s) => s.name).sort()).toEqual(['Bane', 'Bless', 'Cure Wounds'])
+	})
+})
+
+/*
+ * Regression guard for the race slice's parseSpellRef fix. The first three
+ * cases are the shapes that already worked across 70 subclass/feat/invocation
+ * refs and must keep working; the last two are the source-less `#c` shape that
+ * did not (11 species refs).
+ */
+describe('parseSpellRef', () => {
+	it('parses a bare name, a name|source, and a #-tagged source', () => {
+		expect(parseSpellRef('healing word')).toEqual({ name: 'healing word', source: null })
+		expect(parseSpellRef('healing word|XPHB')).toEqual({ name: 'healing word', source: 'XPHB' })
+		expect(parseSpellRef('mind sliver|xphb#c')).toEqual({ name: 'mind sliver', source: 'XPHB' })
+	})
+
+	it('strips a trailing #-tag from a SOURCE-LESS ref too, so the name still matches', () => {
+		expect(parseSpellRef('light#c')).toEqual({ name: 'light', source: null })
+		expect(parseSpellRef('mage hand#c')).toEqual({ name: 'mage hand', source: null })
+	})
+})
+
+describe('parseDailySubkey', () => {
+	it('keeps the shapes the subclass/feat data already used', () => {
+		expect(parseDailySubkey('1')).toEqual({ kind: 'onceFreePerLongRest' })
+		expect(parseDailySubkey('1e')).toEqual({ kind: 'onceFreePerLongRest' })
+		expect(parseDailySubkey('cha')).toEqual({ kind: 'freePerLongRestByAbility', ability: 'cha' })
+		expect(parseDailySubkey('7')).toBeNull()
+	})
+
+	it('reads "pb" as proficiency-bonus-many casts, and carries no count when no bonus was supplied', () => {
+		expect(parseDailySubkey('pb', 3)).toEqual({ kind: 'freePerLongRestByProficiencyBonus', casts: 3 })
+		expect(parseDailySubkey('pb')).toBeNull()
 	})
 })

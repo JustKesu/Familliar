@@ -24,7 +24,7 @@
  *   it — so the Notes cell stays empty rather than being parsed out of text.
  */
 
-import type { FeatSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
+import type { FeatSpellcastingEntry, SpeciesSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
 import type { Contribution } from '../calculation/types'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
@@ -64,30 +64,44 @@ function keyOf(name: string, source: string): string {
 }
 
 /**
- * Which caster the spell's numbers come from. A feat-granted spell uses its
- * feat's entry (a Fighter with Magic Initiate has no casting class at all —
- * computeFeatSpellcasting exists for exactly that); anything else uses the
+ * Which caster the spell's numbers come from. A feat- or species-granted spell
+ * uses its own source's entry (a Fighter with Magic Initiate, or an Aasimar
+ * Fighter, has no casting class at all — computeFeatSpellcasting and
+ * computeSpeciesSpellcasting exist for exactly that); anything else uses the
  * character's casting class. More than one casting class is a multiclass
  * question (build order step 10) and the entry carries no class attribution,
  * so it resolves to nothing rather than to an arbitrary pick.
+ *
+ * The race slice adds one case the others don't have: a spell granted ONLY by
+ * a species whose spellcasting ability has not been chosen yet (33 of the 34
+ * species entries). It must not silently borrow the character's class numbers
+ * — that ability is not what the species casts with — so it resolves to the
+ * stated reason instead, and the row appears saying so (D43/D58).
  */
 function casterFor(
 	entry: SheetSpellEntry,
 	classEntries: SpellcastingEntry[],
 	featEntries: FeatSpellcastingEntry[],
+	speciesEntries: SpeciesSpellcastingEntry[],
 ): { attack: SpellActionAttack; save: SpellActionSave } | { reason: string } {
 	const featEntry = featEntries.find((f) => entry.featOrigins.includes(f.featName))
+	const speciesEntry = speciesEntries.find((s) => entry.speciesOrigins.includes(s.speciesName))
 	const grantedByClass = entry.chosen || entry.subclassOrigins.length > 0 || entry.optionalFeatureOrigins.length > 0
 	if (featEntry && !grantedByClass) return toCaster(featEntry)
+	if (speciesEntry && !grantedByClass) return toCaster(speciesEntry)
+	if (!grantedByClass && !featEntry && entry.unresolvedAbilityReasons.length > 0) {
+		return { reason: `"${entry.name}" is granted by your species, and its ${entry.unresolvedAbilityReasons.join('; ')} — no spell attack bonus or save DC yet.` }
+	}
 	if (classEntries.length === 1) return toCaster(classEntries[0]!)
 	if (featEntry) return toCaster(featEntry)
+	if (speciesEntry) return toCaster(speciesEntry)
 	if (classEntries.length === 0) {
 		return { reason: `No spellcasting ability is known for "${entry.name}" — nothing grants this character a spell attack bonus or save DC.` }
 	}
 	return { reason: `"${entry.name}" could belong to more than one casting class, and the spell list does not record which — multiclass is build order step 10.` }
 }
 
-function toCaster(source: SpellcastingEntry | FeatSpellcastingEntry): { attack: SpellActionAttack; save: SpellActionSave } {
+function toCaster(source: SpellcastingEntry | FeatSpellcastingEntry | SpeciesSpellcastingEntry): { attack: SpellActionAttack; save: SpellActionSave } {
 	return {
 		attack: { bonus: source.spellAttackBonus, breakdown: source.spellAttackBreakdown },
 		save: { dc: source.spellSaveDC, breakdown: source.spellSaveDCBreakdown, abilities: [] },
@@ -128,6 +142,7 @@ export function spellActionRows(
 	characterLevel: number,
 	classEntries: SpellcastingEntry[],
 	featEntries: FeatSpellcastingEntry[],
+	speciesEntries: SpeciesSpellcastingEntry[] = [],
 ): SpellActionData[] {
 	const rows: SpellActionData[] = []
 
@@ -138,7 +153,7 @@ export function spellActionRows(
 		const saveAbilities = detail.savingThrow ?? []
 		if (!hasAttack && saveAbilities.length === 0) continue
 
-		const caster = casterFor(entry, classEntries, featEntries)
+		const caster = casterFor(entry, classEntries, featEntries, speciesEntries)
 		const resolved = 'reason' in caster ? null : caster
 
 		rows.push({

@@ -31,7 +31,13 @@ import { UnresolvedValue } from './ValueBreakdown'
  * (Invisibility, via One with Shadows and Shroud of Shadow), which is exactly
  * the overlap this merge already handles for the other three sources.
  *
- * This task adds `usages` — HOW a granted spell is cast (subclassPreparedSpells.ts's
+ * The race slice adds species grants (raceSpells.ts) as a fifth source —
+ * `speciesOrigins` names the species, and `unresolvedAbilityReasons` carries
+ * the one thing no other source has: a grant whose spellcasting ability the
+ * character has not chosen yet (33 of the 34 species entries), which is stated
+ * on the spell rather than left as a missing actions-table row (D58).
+ *
+ * Slice d4 added `usages` — HOW a granted spell is cast (subclassPreparedSpells.ts's
  * `SpellUsage`), shown next to the provenance rather than replacing it. A list,
  * not a single value, for the same reason origins are lists: if two sources
  * grant the same spell with DIFFERENT usage terms, both survive rather than
@@ -52,6 +58,15 @@ export interface SheetSpellEntry {
 	featOrigins: string[]
 	/** Optional-feature name(s) that grant this spell (optionalFeatureSpells.ts, step 6a). More than one is real — see the module comment. */
 	optionalFeatureOrigins: string[]
+	/** Species name(s) that grant this spell (raceSpells.ts). A character has one species, so 0 or 1 — a list only to keep the five sources one shape. */
+	speciesOrigins: string[]
+	/**
+	 * Why this spell has no attack bonus / save DC yet, when a source granted it
+	 * without a resolved spellcasting ability (raceSpells.ts's 33 choice-ability
+	 * species). Shown next to the provenance so the gap is visible where the
+	 * spell is, not only missing from the actions table (D58).
+	 */
+	unresolvedAbilityReasons: string[]
 	/** How this spell is cast, from every contributing source (this task) — empty for an ordinary, silently-slot-cast spell. */
 	usages: SpellUsage[]
 }
@@ -62,8 +77,10 @@ function provenanceLabel(entry: SheetSpellEntry): string {
 	for (const subclassName of entry.subclassOrigins) parts.push(`always prepared (${subclassName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
 	for (const optionName of entry.optionalFeatureOrigins) parts.push(`from invocation (${optionName})`)
+	for (const speciesName of entry.speciesOrigins) parts.push(`from species (${speciesName})`)
 	let label = parts.join('; ')
 	if (entry.usages.length > 0) label += ` — ${entry.usages.map(formatSpellUsage).join('; ')}`
+	for (const reason of entry.unresolvedAbilityReasons) label += ` — ${reason}`
 	return label
 }
 
@@ -72,7 +89,7 @@ function keyOf(name: string, source: string): string {
 }
 
 function emptyEntry(name: string, source: string, chosen: boolean): SheetSpellEntry {
-	return { name, source, chosen, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], usages: [] }
+	return { name, source, chosen, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [] }
 }
 
 /** Adds `usage` to `entry.usages` unless it's absent or already present (by `spellUsageKey`) — an ordinary grant (undefined/null) leaves the list untouched. */
@@ -82,12 +99,13 @@ function mergeUsage(entry: SheetSpellEntry, usage: SpellUsage | null | undefined
 	if (!entry.usages.some((u) => spellUsageKey(u) === key)) entry.usages.push(usage)
 }
 
-/** Merges the player's chosen spells, every class's subclass always-prepared spells, fixed feat-granted spells (d5a) and chosen-optional-feature grants (step 6a) into one list, counting an overlap once (D44 spirit). */
+/** Merges the player's chosen spells, every class's subclass always-prepared spells, fixed feat-granted spells (d5a), chosen-optional-feature grants (step 6a) and species grants (raceSpells.ts) into one list, counting an overlap once (D44 spirit). */
 export function combineSpellEntries(
 	spellChoices: { spells: { name: string; source: string }[] }[],
 	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[],
 	featGrantedSpells: { featName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
 	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
+	raceGrantedSpells: { speciesName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
 ): SheetSpellEntry[] {
 	const map = new Map<string, SheetSpellEntry>()
 
@@ -123,6 +141,18 @@ export function combineSpellEntries(
 		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
 		if (!entry.optionalFeatureOrigins.includes(spell.optionName)) entry.optionalFeatureOrigins.push(spell.optionName)
 		mergeUsage(entry, spell.usage)
+		map.set(key, entry)
+	}
+
+	for (const spell of raceGrantedSpells) {
+		const key = keyOf(spell.name, spell.source)
+		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+		if (!entry.speciesOrigins.includes(spell.speciesName)) entry.speciesOrigins.push(spell.speciesName)
+		mergeUsage(entry, spell.usage)
+		// A spell the player ALSO picked, or that a class source grants, already has numbers — the species' unmade ability choice is not a gap there.
+		if (spell.unresolvedAbilityReason && !entry.unresolvedAbilityReasons.includes(spell.unresolvedAbilityReason)) {
+			entry.unresolvedAbilityReasons.push(spell.unresolvedAbilityReason)
+		}
 		map.set(key, entry)
 	}
 

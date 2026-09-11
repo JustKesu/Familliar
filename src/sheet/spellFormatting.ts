@@ -135,6 +135,9 @@ export function formatSpellUsage(usage: SpellUsage): string {
 			return '1/short or long rest (no slot)'
 		case 'freePerLongRestByAbility':
 			return `${usage.ability.toUpperCase()} mod/long rest (no slot)`
+		case 'freePerLongRestByProficiencyBonus':
+			// Unlike the ability case, the count is resolved (proficiency bonus needs only the character's levels), so the player sees the number and where it came from.
+			return `${usage.casts}/long rest (proficiency bonus, no slot)`
 		case 'ritual':
 			return 'ritual (no slot)'
 		case 'resource':
@@ -149,6 +152,8 @@ export function spellUsageKey(usage: SpellUsage): string {
 	switch (usage.kind) {
 		case 'freePerLongRestByAbility':
 			return `freePerLongRestByAbility:${usage.ability}`
+		case 'freePerLongRestByProficiencyBonus':
+			return `freePerLongRestByProficiencyBonus:${usage.casts}`
 		case 'resource':
 			return `resource:${usage.cost}:${usage.resourceName}`
 		default:

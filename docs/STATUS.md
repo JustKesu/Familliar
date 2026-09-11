@@ -28,12 +28,22 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 5. [done] Sheet — zobrazuje všechno z kroku 4 s rozklady na vyžádání.
 6. [done] Kouzla — útočný bonus/DC, sloty (včetně třetinových casterů a Pact
    Magic), přístup ke class spell listu s filtrem podle úrovně, class spell
-   picker, kouzla udělená subclassou/featem/optional feature (všechny pevné
-   tvary grantu), popisky použití (bez slotu / na den / rituál / zdroj),
-   hlídání kolizí napříč všemi pickery kouzel. Trvalé odklady: Warlock The
-   Genie (chybí uložená volba džina), Boon of Siberys (schovaný), Eberron
-   marks (nedosažitelné bez trackingu kampaně), 2 kouzla chybí v datech —
-   viz QUESTIONS.md.
+   picker, kouzla udělená subclassou/featem/optional feature/rasou (všechny
+   pevné tvary grantu), popisky použití (bez slotu / na den / rituál / zdroj
+   / PB za dlouhý odpočinek), hlídání kolizí napříč všemi pickery kouzel.
+   Trvalé odklady: Warlock The Genie (chybí uložená volba džina), Boon of
+   Siberys (schovaný), Eberron marks (nedosažitelné bez trackingu kampaně),
+   2 kouzla chybí v datech — viz QUESTIONS.md.
+6c. [half done] Kouzla z rasy (D89) — `src/spells/raceSpells.ts`, pátý
+    konzument `additionalSpells`. Granty se dohledávají přímo na uložené
+    (už vyřešené) variantě rasy, řadí se do téže složené množiny jako
+    ostatní čtyři zdroje a ukazují se v záložce Kouzla; Aasimar (jediná
+    rasa s pevnou vlastností) dostává i útočný bonus/DC a řádek v tabulce
+    akcí. **Nedodělané:** 33 ze 34 záznamů má `ability: {choose}` — kouzlo
+    se zobrazí, ale s viditelnou poznámkou "spellcasting ability not chosen
+    yet" místo čísla; 5 záznamů nabízí volbu cantripu ze seznamu třídy a
+    zatím jen hlásí jednu řádku, že to appka neumí. Obojí zavírá
+    navazující úkol (picker + uložená volba vlastnosti).
 6a. [done] Class-level volby schopností — Metamagic, Eldritch Invocations,
     Divine Order/Primal Order/Elemental Fury, vlastní krok wizardu za
     Kouzly. Aplikováno, kde je co počítat (Thaumaturge/Magician cantrip
@@ -313,5 +323,10 @@ Domain) se ve výpisu ukazuje jako běžný řádek vedle featur, které uvádí
 strukturální způsob, jak wrapper poznat, a jmenný seznam výjimek je přesně to,
 čemu se projekt vyhýbá (D21). Znovu zvážit až po revizi skutečného sheetu.
 
-Než se začne krok 7a (kouzla z rasy) nebo pickery tří podtříd (Storm
-Herald, The Genie, Divine Soul), potřebují rozhodnutí — viz QUESTIONS.md.
+Kouzla z rasy jsou z poloviny hotová (6c výš, D89). Navazující úkol: uložená
+volba sesílací vlastnosti pro 33 ras s `ability: {choose}` (picker + pole ve
+schématu) a picker cantripu ze seznamu třídy pro 5 záznamů, které dnes jen
+hlásí mezeru.
+
+Pickery tří podtříd (Storm Herald, The Genie, Divine Soul) potřebují
+rozhodnutí — viz QUESTIONS.md.

@@ -28,7 +28,7 @@ import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
-import { computeFeatSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
+import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
@@ -53,6 +53,7 @@ import {
 import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
+import { loadRaceSpells, type RaceSpellGrants } from '../spells/raceSpells'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBlock } from './BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
@@ -1663,6 +1664,8 @@ export function CharacterSheet({
 	const [chosenOptionalFeatures, setChosenOptionalFeatures] = useState<OptionalFeatureOption[]>([])
 	/** Spells granted BY those picks (step 6a final slice) — separate from the option text above, which classOptionalFeatures already renders. */
 	const [optionalFeatureSpells, setOptionalFeatureSpells] = useState<OptionalFeatureGrantedSpell[]>([])
+	/** Species-granted spells plus the notes for the deferred cantrip-choice entries (race slice). Depends on `character.species`, fetched separately same as featSpells. */
+	const [raceSpells, setRaceSpells] = useState<RaceSpellGrants>({ spells: [], notes: [] })
 	/** Senses granted by a chosen optional feature or a chosen feat (step 6a, final piece — closes 6a). Depends on `character`, fetched separately same as featSpells/optionalFeatureSpells above. */
 	const [grantedSenses, setGrantedSenses] = useState<GrantedSense[]>([])
 	/** The D21 class-feature choices (Divine Order, Primal Order, Elemental Fury) joined to their chosen option's text. Depends on `character`, fetched separately same as the effects above. */
@@ -1691,6 +1694,7 @@ export function CharacterSheet({
 	const [subclassSpellsError, setSubclassSpellsError] = useState<string | null>(null)
 	const [featSpellsError, setFeatSpellsError] = useState<string | null>(null)
 	const [optionalFeatureSpellsError, setOptionalFeatureSpellsError] = useState<string | null>(null)
+	const [raceSpellsError, setRaceSpellsError] = useState<string | null>(null)
 	const [grantedSensesError, setGrantedSensesError] = useState<string | null>(null)
 	const [classOptionalFeaturesError, setClassOptionalFeaturesError] = useState<string | null>(null)
 	const [classFeatureChoicesError, setClassFeatureChoicesError] = useState<string | null>(null)
@@ -1874,6 +1878,24 @@ export function CharacterSheet({
 
 	useEffect(() => {
 		let cancelled = false
+		loadRaceSpells(character)
+			.then((grants) => {
+				if (cancelled) return
+				setRaceSpells(grants)
+				setRaceSpellsError(null)
+			})
+			.catch((error: unknown) => {
+				if (cancelled) return
+				setRaceSpells({ spells: [], notes: [] })
+				setRaceSpellsError(messageOf(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character])
+
+	useEffect(() => {
+		let cancelled = false
 		loadGrantedSenses(character)
 			.then((senses) => {
 				if (cancelled) return
@@ -1937,6 +1959,7 @@ export function CharacterSheet({
 		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, spells: info.alwaysPrepared })),
 		featSpells,
 		optionalFeatureSpells,
+		raceSpells.spells,
 	)
 	const knowsFindFamiliar = hasFindFamiliar(combinedSpells)
 	const knowsMageArmor = hasMageArmor(combinedSpells)
@@ -2109,6 +2132,8 @@ export function CharacterSheet({
 	const spellSlotsEntries = spellSlots.status === 'known' ? spellSlots.value : []
 	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
+	const speciesSpellcasting = computeSpeciesSpellcasting(character, raceSpells.spells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
+	const speciesSpellcastingEntries = speciesSpellcasting.status === 'known' ? speciesSpellcasting.value : []
 	/* Sheet rebuild slice 4: the SAME combined spell list the Kouzla tab shows, filtered to the spells that carry an attack roll or a save — never re-derived from the grants. */
 	const spellActions = spellActionRows(
 		combinedSpells,
@@ -2116,6 +2141,7 @@ export function CharacterSheet({
 		character.classes.reduce((sum, c) => sum + c.level, 0),
 		spellcastingEntries,
 		featSpellcastingEntries,
+		speciesSpellcastingEntries,
 	)
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
 	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures)
@@ -2123,7 +2149,7 @@ export function CharacterSheet({
 	const classOptionalFeatureNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name)))
 	const subclassOptionalFeatures = chosenOptionalFeatures.filter((option) => !classOptionalFeatureNames.has(option.name))
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
-	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0
+	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0 || speciesSpellcastingEntries.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
 	const familiarForms = knowsFindFamiliar ? familiarFormOptions(beasts, hasPactOfTheChain(character.optionalFeatureChoices ?? [])) : []
 	const storedFamiliar = character.familiar ?? null
@@ -2144,6 +2170,7 @@ export function CharacterSheet({
 		{ what: 'always-prepared subclass spells', message: subclassSpellsError },
 		{ what: 'feat-granted spells', message: featSpellsError },
 		{ what: 'spells granted by your chosen options', message: optionalFeatureSpellsError },
+		{ what: 'species-granted spells', message: raceSpellsError },
 	].filter((entry): entry is { what: string; message: string } => entry.message !== null)
 
 	return (
@@ -2352,7 +2379,7 @@ export function CharacterSheet({
 			>
 			{isCaster && (
 				<>
-					{(spellcastingEntries.length > 0 || featSpellcastingEntries.length > 0) && (
+					{(spellcastingEntries.length > 0 || featSpellcastingEntries.length > 0 || speciesSpellcastingEntries.length > 0) && (
 						<section className="sheet__spell-attacks">
 							<h2>Spellcasting</h2>
 							<ul>
@@ -2375,6 +2402,20 @@ export function CharacterSheet({
 									<li key={`feat|${entry.featName}`}>
 										<h3>
 											{entry.featName} ({ABILITY_LABELS[entry.ability]})
+										</h3>
+										<div>
+											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
+											<ValueBreakdown breakdown={entry.spellAttackBreakdown} />
+										</div>
+										<div>
+											Spell save DC: <span>{entry.spellSaveDC}</span> <ValueBreakdown breakdown={entry.spellSaveDCBreakdown} />
+										</div>
+									</li>
+								))}
+								{speciesSpellcastingEntries.map((entry) => (
+									<li key={`species|${entry.speciesName}`}>
+										<h3>
+											{entry.speciesName} ({ABILITY_LABELS[entry.ability]})
 										</h3>
 										<div>
 											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
@@ -2421,12 +2462,18 @@ export function CharacterSheet({
 			)}
 
 			{/* The section appears for a failed grant load even with nothing to list — an empty spell list and a spell list that could not be built must not look alike (D43). */}
-			{(combinedSpells.length > 0 || spellLoadErrors.length > 0) && (
+			{(combinedSpells.length > 0 || spellLoadErrors.length > 0 || raceSpells.notes.length > 0) && (
 				<section className="sheet__spells">
 					<h2>Spells</h2>
 					{spellLoadErrors.map((error) => (
 						<p key={error.what} className="error">
 							Could not load {error.what}: {error.message}
+						</p>
+					))}
+					{/* The 5 species whose grant is a "pick a cantrip from a class list" filter (raceSpells.ts): no picker exists yet, so the gap is stated rather than left blank (D43/D58). */}
+					{raceSpells.notes.map((note) => (
+						<p key={note.text} className="sheet__spells-note">
+							<UnresolvedValue reason={note.text} />
 						</p>
 					))}
 					{combinedSpells.length > 0 && <SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />}

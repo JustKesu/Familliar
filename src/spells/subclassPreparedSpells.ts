@@ -147,6 +147,15 @@ import { subclassLevelFor } from '../subclass/subclassData'
  *   Artificer Alchemist's Lesser Restoration; both texts say Long Rest). The
  *   modifier itself is not computed here (no ability score is threaded through
  *   this module) — the sheet shows which ability, not a number.
+ * - `freePerLongRestByProficiencyBonus`: the `daily` key's sub-key is the
+ *   literal "pb" — proficiency-bonus-many free casts per Long Rest. The only
+ *   carrier in the whole data set is a SPECIES (Gnome; Rock Gnome Lineage,
+ *   raceSpells.ts); unlike `freePerLongRestByAbility` the number IS computable
+ *   from what the caller already has (proficiency bonus needs only
+ *   character.classes), so this one carries the resolved count rather than the
+ *   name of a value the sheet can't reach. Read as a Long Rest for the same
+ *   reason every other `daily` sub-key is (D68). A caller that passes no
+ *   proficiency bonus gets no label rather than a guessed count.
  * - `ritual`: the `ritual` key — cast as a ritual instead of spending a slot
  *   (Pact of the Chain, Path of the Wild Heart).
  * - `resource`: the `resource` key — costs `cost` points of the
@@ -171,6 +180,7 @@ export type SpellUsage =
 	| { kind: 'onceFreePerLongRest' }
 	| { kind: 'onceFreePerShortOrLongRest' }
 	| { kind: 'freePerLongRestByAbility'; ability: AbilityAbbreviation }
+	| { kind: 'freePerLongRestByProficiencyBonus'; casts: number }
 	| { kind: 'ritual' }
 	| { kind: 'resource'; cost: number; resourceName: string }
 	| { kind: 'noSlot' }
@@ -233,11 +243,22 @@ export function hasConcentration(duration: unknown): boolean {
 	return duration.some((entry) => isRecord(entry) && entry['concentration'] === true)
 }
 
-/** Parses a `prepared` list item ("healing word", "healing word|xphb", "mind sliver|xphb#c") into a lowercase name and optional uppercase source. */
+/**
+ * Parses a `prepared` list item ("healing word", "healing word|xphb", "mind
+ * sliver|xphb#c") into a lowercase name and optional uppercase source.
+ *
+ * The `#...` tag is stripped from BOTH halves, not just the source. A
+ * source-less ref can carry it too — 11 of the 81 species refs are written
+ * "light#c" / "mage hand#c" with no `|source` at all (raceSpells.ts's
+ * investigation), and leaving `#c` inside the NAME made every one of them fail
+ * to resolve. The tag is never part of a spell's name or source code, so
+ * stripping it on both sides is the same rule applied twice rather than a new
+ * one.
+ */
 export function parseSpellRef(ref: string): { name: string; source: string | null } {
 	const [namePart, sourcePart] = ref.split('|')
 	const source = sourcePart ? sourcePart.split('#')[0].toUpperCase() : null
-	return { name: namePart.toLowerCase(), source }
+	return { name: namePart.split('#')[0].toLowerCase(), source }
 }
 
 export function findSpell(spells: RawSpell[], ref: { name: string; source: string | null }): RawSpell | undefined {
@@ -311,12 +332,20 @@ export function extractRefs(value: unknown): string[] {
 
 /**
  * A daily sub-key's usage, or null for a shape not recognised (D43-style — the
- * ref is still extracted by the caller, just with no usage label). Only "1" and
- * "1e" occur in this data; a count above 1 would be a frequency no source's text
- * supports, so it gets no label rather than a made-up one (`SpellUsage` doc).
+ * ref is still extracted by the caller, just with no usage label). "1", "1e",
+ * an ability code and (species only) the literal "pb" are the shapes that
+ * occur; a count above 1 would be a frequency no source's text supports, so it
+ * gets no label rather than a made-up one (`SpellUsage` doc).
+ *
+ * `proficiencyBonus` is supplied only by raceSpells.ts, the one caller whose
+ * data carries a "pb" sub-key — without it that sub-key gets no label rather
+ * than a guessed count.
  */
-function parseDailySubkey(subkey: string): SpellUsage | null {
+export function parseDailySubkey(subkey: string, proficiencyBonus?: number): SpellUsage | null {
 	if (subkey === '1' || subkey === '1e') return { kind: 'onceFreePerLongRest' }
+	if (subkey === 'pb') {
+		return proficiencyBonus === undefined ? null : { kind: 'freePerLongRestByProficiencyBonus', casts: proficiencyBonus }
+	}
 	if ((['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).includes(subkey as AbilityAbbreviation)) {
 		return { kind: 'freePerLongRestByAbility', ability: subkey as AbilityAbbreviation }
 	}
@@ -341,8 +370,11 @@ export interface RefWithUsage {
  * player-choice node with no literal ref inside it) still yields any literal
  * refs found beneath it, with no usage attached, rather than dropping the
  * spell (D43).
+ *
+ * `proficiencyBonus` is passed only by raceSpells.ts, for the one "pb" daily
+ * sub-key in the data (parseDailySubkey).
  */
-export function extractRefsWithUsage(value: unknown, resourceName: string | undefined, bareUsage: SpellUsage | null): RefWithUsage[] {
+export function extractRefsWithUsage(value: unknown, resourceName: string | undefined, bareUsage: SpellUsage | null, proficiencyBonus?: number): RefWithUsage[] {
 	if (Array.isArray(value)) {
 		return value.filter((item): item is string => typeof item === 'string').map((ref) => ({ ref, usage: bareUsage }))
 	}
@@ -354,7 +386,7 @@ export function extractRefsWithUsage(value: unknown, resourceName: string | unde
 			for (const ref of extractRefs(wrapperValue)) result.push({ ref, usage: { kind: 'atWill' } })
 		} else if (wrapperKey === 'daily' && isRecord(wrapperValue)) {
 			for (const [subkey, subvalue] of Object.entries(wrapperValue)) {
-				const usage = parseDailySubkey(subkey)
+				const usage = parseDailySubkey(subkey, proficiencyBonus)
 				for (const ref of extractRefs(subvalue)) result.push({ ref, usage })
 			}
 		} else if (wrapperKey === 'ritual') {

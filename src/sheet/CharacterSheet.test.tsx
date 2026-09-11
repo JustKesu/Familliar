@@ -18,6 +18,7 @@ import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../s
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
+import { loadRaceSpells } from '../spells/raceSpells'
 import { CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition } from '../storage/character'
 import { loadAcFormulaKeys } from './armourClassData'
 import { loadDamageResponseData } from './damageResponseData'
@@ -94,6 +95,11 @@ vi.mock('../spells/featSpells', async (importOriginal) => {
 vi.mock('../spells/optionalFeatureSpells', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../spells/optionalFeatureSpells')>()
 	return { ...actual, loadOptionalFeatureGrantedSpells: vi.fn(async () => []) }
+})
+
+vi.mock('../spells/raceSpells', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../spells/raceSpells')>()
+	return { ...actual, loadRaceSpells: vi.fn(async () => ({ spells: [], notes: [] })) }
 })
 
 vi.mock('./grantedSenses', async (importOriginal) => {
@@ -3213,6 +3219,7 @@ describe('CharacterSheet', () => {
 			vi.mocked(loadSubclassAlwaysPreparedSpells).mockReset().mockResolvedValue([])
 			vi.mocked(loadFeatGrantedSpells).mockReset().mockResolvedValue([])
 			vi.mocked(loadOptionalFeatureGrantedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadRaceSpells).mockReset().mockResolvedValue({ spells: [], notes: [] })
 		})
 
 		it('a full caster (Wizard) shows spell attack/DC with a breakdown, slots per level, and chosen spells grouped by level with detail on expand', async () => {
@@ -3941,6 +3948,103 @@ describe('CharacterSheet', () => {
 			expect(vi.mocked(loadOptionalFeatureGrantedSpells)).toHaveBeenCalledWith(
 				expect.objectContaining({ optionalFeatureChoices: [{ featureType: 'EI', choices: ['Mask of Many Faces'] }] }),
 			)
+		})
+
+		/*
+		 * Race slice: a species grant reaches the Kouzla tab and the actions table
+		 * through the SAME pipeline the other four sources use — no parallel
+		 * display path. Aasimar is the one species with a FIXED spellcasting
+		 * ability, so it is also the one that produces real numbers today.
+		 */
+		it('a spell granted by the species shows "from species (...)" and, for a fixed ability, its own attack/DC entry and actions row', async () => {
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Healing Word', source: 'XPHB', level: 1, entries: ['A creature regains hit points.'] }),
+				spellDetail({ name: 'Sacred Flame', source: 'XPHB', level: 0, savingThrow: ['dexterity'], entries: ['Flame-like radiance descends.'] }),
+			]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadRaceSpells).mockResolvedValue({
+				spells: [
+					{ name: 'Healing Word', source: 'XPHB', level: 1, ritual: false, concentration: false, origin: 'species', speciesName: 'Aasimar', grantedAtLevel: 3, ability: 'cha', usage: { kind: 'onceFreePerLongRest' } },
+					{ name: 'Sacred Flame', source: 'XPHB', level: 0, ritual: false, concentration: false, origin: 'species', speciesName: 'Aasimar', grantedAtLevel: null, ability: 'cha' },
+				],
+				notes: [],
+			})
+
+			const aasimar: Character = {
+				id: 'aa1',
+				name: 'Aasimar Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 15, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
+				},
+				species: { name: 'Aasimar', source: 'XPHB' },
+			}
+
+			const { container } = render(<CharacterSheet character={aasimar} />)
+			await screen.findByRole('heading', { name: 'Aasimar Fighter' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Healing Word'))
+			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Healing Word'))!
+			expect(summary.textContent).toContain('from species (Aasimar)')
+			expect(summary.textContent).toContain('1/long rest (no slot)')
+			expect(summary.textContent).not.toContain('player pick')
+
+			// A Fighter has no casting class at all, so these numbers can only come from the species entry (CHA 16 -> +3, PB 2).
+			const attacks = container.querySelector('.sheet__spell-attacks')!
+			expect(attacks.textContent).toContain('Aasimar')
+			expect(attacks.textContent).toContain('+5')
+			expect(attacks.textContent).toContain('13')
+
+			// Sacred Flame carries a save, so it earns an ordinary actions-table row rather than a second display path.
+			const actionsTable = container.querySelector('.sheet__actions-table')!
+			expect(actionsTable.textContent).toContain('Sacred Flame')
+		})
+
+		/* The other 33 species leave the ability unchosen — the spell still appears, saying plainly why it has no numbers (D58), and the deferred cantrip-choice entries say so too. */
+		it('a species spell with no chosen ability still appears, marked unresolved, alongside the deferred cantrip-choice note', async () => {
+			const details: SpellDetail[] = [spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0, entries: ['A spectral hand appears.'] })]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+			vi.mocked(loadRaceSpells).mockResolvedValue({
+				spells: [
+					{
+						name: 'Mage Hand',
+						source: 'XPHB',
+						level: 0,
+						ritual: false,
+						concentration: false,
+						origin: 'species',
+						speciesName: 'Elf; High Elf Lineage',
+						grantedAtLevel: null,
+						unresolvedAbilityReason: 'spellcasting ability not chosen yet',
+					},
+				],
+				notes: [{ speciesName: 'Elf; High Elf Lineage', text: 'Elf; High Elf Lineage lets you pick a cantrip from the Wizard spell list — not yet supported.' }],
+			})
+
+			const elf: Character = {
+				id: 'el1',
+				name: 'High Elf Fighter',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 15, dexterity: 10, constitution: 13, intelligence: 14, wisdom: 10, charisma: 10 },
+				},
+				species: { name: 'Elf; High Elf Lineage', source: 'XPHB' },
+			}
+
+			const { container } = render(<CharacterSheet character={elf} />)
+			await screen.findByRole('heading', { name: 'High Elf Fighter' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Mage Hand'))
+			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Mage Hand'))!
+			expect(summary.textContent).toContain('from species (Elf; High Elf Lineage)')
+			expect(summary.textContent).toContain('spellcasting ability not chosen yet')
+			// No ability means no attack/DC entry to show — nothing is invented from the character's class.
+			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
+			expect(spellsSection.textContent).toContain('pick a cantrip from the Wizard spell list — not yet supported.')
 		})
 
 		/*

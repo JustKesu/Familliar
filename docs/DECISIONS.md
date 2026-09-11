@@ -1561,3 +1561,68 @@ zůstává 28.
 nezobrazují — sekce "Class options" ukazuje jen ty class-level. Battle
 Master teď v tabulce akcí uvidí řádek "Trip Attack", ale nikde si
 nepřečte, co dělá.
+
+## D89 — Kouzla z rasy: pátý konzument `additionalSpells`, bez nové volby
+
+Uzavírá první polovinu bodu "Kouzla z rasy nikam nevedou" z QUESTIONS.md.
+Modul je `src/spells/raceSpells.ts`.
+
+**Data mají jen 4 tvary, a `prepared`/`expanded` mezi nimi nejsou.** Z 78
+záznamů `data/species.json` nese `additionalSpells` 30, v klíčových tvarech
+`["ability","innate","known"]` (15), `["ability","known"]` (8),
+`["ability","innate","known","name"]` (6) a `["ability","innate"]` (5). Na
+rase se nikdy nevyskytne `prepared` ani `expanded` — celá mašinérie kolem
+`expanded` (pact-slot ranky, rozšiřování nabídky pickeru) sem tedy nemá co
+aplikovat. Úrovně jsou klíčované prostou ÚROVNÍ POSTAVY (ne úrovní ve třídě
+— rasa není vázaná na třídu, stejná úvaha jako D11 u featů), plus
+nečíselný klíč `"_"` ve významu "vždy".
+
+**Dohledává se přímo na uložené variantě, disambiguace se neřeší.**
+`Character.species` je díky D81/D82/D84 vždy vyřešená varianta ("Elf; Drow
+Lineage"), nikdy nejednoznačný rodinný základ. Modul proto dělá jediné
+přímé dohledání podle name+source (stejné, jaké už dělá
+`buildSpeciesGrants` v `damageResponseData.ts`) a nikdy nemusí rozhodovat
+mezi variantami. Tvar `["ability","innate","known","name"]` je právě ta
+nevyřešená vícevariantní forma a sedí jen na třech rodinných záznamech
+(Elf, Kobold, Tiefling) — postava ho nemůže mít uložený, takže se nečte a
+nic se pro něj nestavělo.
+
+**Dvě opravy ve sdílených parserech, obě kvůli rase.**
+`parseSpellRef` utínalo `#...` jen ze zdrojové poloviny reference. 11 z 81
+rasových referencí je psaných jako `"light#c"` / `"mage hand#c"` — bez
+`|source` — takže `#c` zůstávalo ve JMÉNĚ a dohledání selhalo. Utíná se
+teď z obou polovin; je to totéž pravidlo aplikované dvakrát, ne nové.
+`parseDailySubkey` umí nově podklíč `"pb"` (Gnome; Rock Gnome Lineage,
+jediný výskyt v datech) — počet seslání rovný proficiency bonusu za dlouhý
+odpočinek. Na rozdíl od `freePerLongRestByAbility`, kde se ukazuje jen
+jméno vlastnosti, se tady ukazuje ČÍSLO: proficiency bonus se dá spočítat
+jen z úrovní postavy, které volající už má. Odpočinek se čte jako dlouhý,
+stejně jako u všech ostatních podklíčů `daily` (D68).
+
+**`ability: {choose}` zůstává v tomhle úkolu viditelně nerozhodnuté.**
+33 ze 34 záznamů nese volbu vlastnosti (`{"choose":["int","wis","cha"]}`),
+pevnou má jen Aasimar (XPHB). Žádné nové ukládané pole se tady nezavádí:
+kouzlo se udělí a zobrazí, ale místo útočného bonusu a DC nese text
+"spellcasting ability not chosen yet" — stejná konvence viditelné mezery
+jako D58. Řádek v tabulce akcí se přitom NESMÍ tiše spočítat z vlastnosti
+třídy, kterou postava má; taková čísla by byla nepravdivá, proto se
+i tam vypíše důvod. Zavírá to navazující úkol (picker + uložená volba
+vlastnosti), ne tenhle.
+
+**5 záznamů s volbou cantripu dostává jednu řádku, ne picker.** Elf
+(základ) + Elf; High Elf Lineage, Khoravar, Kobold (základ) + Kobold;
+Draconic Sorcery mají pod `known` `choose`-filtr ("vyber si cantrip ze
+seznamu kouzelníka"), ne jmenované kouzlo. Picker ani úložiště se pro ně
+nestavělo; místo toho se u kouzel vypíše jedna označená řádka, že to appka
+zatím neumí — aby to byla přiznaná mezera, ne tichý výpadek (D43/D58).
+
+**Výpočet útoku/DC zůstává v kalkulační vrstvě.** Zadání říkalo spočítat
+rozklad přímo v `raceSpellsFor`; to nejde udělat správně — modifikátor
+vlastnosti potřebuje i efekty featů, které podpis `(character,
+parsedSpecies, parsedSpells)` nenese. Modul proto nese jen vyřešenou
+vlastnost (nebo důvod, proč ji nemá) a čísla počítá
+`computeSpeciesSpellcasting` v `src/calculation/spellcasting.ts`, přesně
+podle vzoru `computeFeatSpellcasting`. Jeden vědomý rozdíl proti němu:
+rasa s nevyřešenou vlastností se přeskočí, místo aby celý výsledek přepnula
+na `unknown` — jinak by 33 ze 34 ras zhaslo sekci Spellcasting i pro
+třídu.

@@ -212,3 +212,74 @@ export function computeFeatSpellcasting(
 
 	return known(value, breakdown)
 }
+
+export interface SpeciesSpellcastingEntry {
+	speciesName: string
+	ability: Ability
+	spellAttackBonus: number
+	spellAttackBreakdown: Contribution[]
+	spellSaveDC: number
+	spellSaveDCBreakdown: Contribution[]
+}
+
+/**
+ * The same attack bonus/DC computation again, per SPECIES (raceSpells.ts) —
+ * D11's "one entry per source" pattern applied to a third kind of source, for
+ * the same reason the feat one exists: a species grant is cast with the
+ * species' own ability, which need not be any casting class's.
+ *
+ * One deliberate difference from computeFeatSpellcasting: a species whose
+ * `ability` is still the unresolved `{choose:[…]}` shape (33 of the 34 entries
+ * — see raceSpells.ts) is SKIPPED rather than turning the whole result
+ * 'unknown'. The spell itself still reaches the sheet carrying
+ * `unresolvedAbilityReason`, so the gap is stated where the player sees the
+ * spell (D58) instead of blanking the Spellcasting section for everyone. Today
+ * only Aasimar (XPHB) produces an entry at all; the choice case closes with the
+ * follow-up task that stores a chosen ability.
+ */
+export function computeSpeciesSpellcasting(
+	character: Character,
+	raceGrantedSpells: { speciesName: string; ability?: AbilityAbbreviation }[],
+	feats: FeatEffectEntry[] = [],
+	spellAttackItemBonuses: Contribution[] = [],
+	spellSaveDcItemBonuses: Contribution[] = [],
+): Calculated<SpeciesSpellcastingEntry[]> {
+	const resolved = raceGrantedSpells.filter((spell) => spell.ability !== undefined)
+	if (resolved.length === 0) {
+		return known([], [])
+	}
+
+	const bonusResult = computeProficiencyBonus(character.classes)
+	if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
+
+	const speciesNames = [...new Set(resolved.map((spell) => spell.speciesName))]
+	const value: SpeciesSpellcastingEntry[] = []
+	const breakdown: Contribution[] = []
+
+	for (const speciesName of speciesNames) {
+		const abilityAbbreviation = resolved.find((spell) => spell.speciesName === speciesName)!.ability!
+		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
+		const abilityResult = computeAbilityScore(ability, character, feats)
+		if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
+
+		const spellAttackBreakdown: Contribution[] = [
+			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
+			{ source: 'proficiency bonus', amount: bonusResult.value },
+			...spellAttackItemBonuses,
+		]
+		const spellAttackBonus = spellAttackBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
+
+		const spellSaveDCBreakdown: Contribution[] = [
+			{ source: 'base', amount: 8 },
+			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
+			{ source: 'proficiency bonus', amount: bonusResult.value },
+			...spellSaveDcItemBonuses,
+		]
+		const spellSaveDC = spellSaveDCBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
+
+		value.push({ speciesName, ability, spellAttackBonus, spellAttackBreakdown, spellSaveDC, spellSaveDCBreakdown })
+		breakdown.push({ source: speciesName, amount: spellAttackBonus })
+	}
+
+	return known(value, breakdown)
+}
