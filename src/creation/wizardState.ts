@@ -798,28 +798,28 @@ export function saveCharacter(
 				]
 			: undefined
 
-	return store.create(
-		data.name,
+	return store.create({
+		name: data.name,
 		classes,
-		data.abilityScores ?? undefined,
-		data.speciesChoice ?? undefined,
+		abilityScores: data.abilityScores ?? undefined,
+		species: data.speciesChoice ?? undefined,
 		background,
 		abilityBonus,
 		languages,
-		data.classSkills,
-		data.masteries,
-		data.fightingStyle,
+		classSkills: data.classSkills,
+		masteries: data.masteries,
+		fightingStyle: data.fightingStyle,
 		optionalFeatureChoices,
-		data.speciesSkills,
-		data.expertiseSkills,
-		data.featAsiChoices,
+		speciesSkills: data.speciesSkills,
+		expertiseSkills: data.expertiseSkills,
+		featAsiChoices: data.featAsiChoices,
 		spellChoices,
 		subclassSpellChoices,
 		classFeatureChoices,
 		wildShapeForms,
-		startingEquipment?.inventory,
-		startingEquipment?.currencyCopper,
-		data.speciesSpellcastingAbility ?? undefined,
+		inventory: startingEquipment?.inventory,
+		currencyCopper: startingEquipment?.currencyCopper,
+		speciesSpellcastingAbility: data.speciesSpellcastingAbility ?? undefined,
 		hitPointLevels,
-	)
+	})
 }

@@ -488,41 +488,41 @@ describe('saveCharacter', () => {
 		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
 
 		expect(store.create).toHaveBeenCalledTimes(1)
-		expect(store.create).toHaveBeenCalledWith(
-			'Aria',
-			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
-			completeData().abilityScores,
-			{ name: 'Elf', source: 'XPHB' },
-			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
-			{ strength: 2, constitution: 1 },
-			[
+		expect(store.create).toHaveBeenCalledWith({
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
+			abilityScores: completeData().abilityScores,
+			species: { name: 'Elf', source: 'XPHB' },
+			background: { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+			abilityBonus: { strength: 2, constitution: 1 },
+			languages: [
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
 				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
-			['athletics', 'intimidation'],
-			['Longsword'],
-			'Archery',
-			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
-			['perception'],
-			[],
-			[],
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-		)
+			classSkills: ['athletics', 'intimidation'],
+			masteries: ['Longsword'],
+			fightingStyle: 'Archery',
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Precision Attack'] }],
+			speciesSkills: ['perception'],
+			expertiseSkills: [],
+			featAsiChoices: [],
+			spellChoices: undefined,
+			subclassSpellChoices: undefined,
+			classFeatureChoices: undefined,
+			wildShapeForms: undefined,
+			inventory: undefined,
+			currencyCopper: undefined,
+			speciesSpellcastingAbility: undefined,
+			hitPointLevels: undefined,
+		})
 	})
 
 	it('passes the D21 class-feature choices straight through to the store', () => {
 		const store = fakeStore()
 		const choice = { className: 'Fighter', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' }
 		saveCharacter(store, { ...completeData(), classFeatureChoices: [choice] }, ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-6)).toEqual([choice])
+		expect(vi.mocked(store.create).mock.calls[0][0].classFeatureChoices).toEqual([choice])
 	})
 
 	/*
@@ -547,7 +547,7 @@ describe('saveCharacter', () => {
 		}
 		saveCharacter(store, druid, ['athletics', 'intimidation'], { wildShapeFormCount: 4 })
 
-		const stored = vi.mocked(store.create).mock.calls[0].at(-5)
+		const stored = vi.mocked(store.create).mock.calls[0][0].wildShapeForms
 		expect(stored).toEqual([{ className: 'Druid', classSource: 'XPHB', forms }])
 		for (const entry of stored as { forms: Record<string, unknown>[] }[]) {
 			for (const form of entry.forms) expect(Object.keys(form).sort()).toEqual(['name', 'source'])
@@ -557,41 +557,41 @@ describe('saveCharacter', () => {
 	it('omits Wild Shape forms entirely when none were chosen', () => {
 		const store = fakeStore()
 		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-5)).toBeUndefined()
+		expect(vi.mocked(store.create).mock.calls[0][0].wildShapeForms).toBeUndefined()
 	})
 
 	it('omits background when the background skill proficiencies were not supplied', () => {
 		const store = fakeStore()
 		saveCharacter(store, completeData())
 
-		expect(store.create).toHaveBeenCalledWith(
-			'Aria',
-			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
-			completeData().abilityScores,
-			{ name: 'Elf', source: 'XPHB' },
-			undefined,
-			{ strength: 2, constitution: 1 },
-			[
+		expect(store.create).toHaveBeenCalledWith({
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
+			abilityScores: completeData().abilityScores,
+			species: { name: 'Elf', source: 'XPHB' },
+			background: undefined,
+			abilityBonus: { strength: 2, constitution: 1 },
+			languages: [
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
 				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
-			['athletics', 'intimidation'],
-			['Longsword'],
-			'Archery',
-			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
-			['perception'],
-			[],
-			[],
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-		)
+			classSkills: ['athletics', 'intimidation'],
+			masteries: ['Longsword'],
+			fightingStyle: 'Archery',
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Precision Attack'] }],
+			speciesSkills: ['perception'],
+			expertiseSkills: [],
+			featAsiChoices: [],
+			spellChoices: undefined,
+			subclassSpellChoices: undefined,
+			classFeatureChoices: undefined,
+			wildShapeForms: undefined,
+			inventory: undefined,
+			currencyCopper: undefined,
+			speciesSpellcastingAbility: undefined,
+			hitPointLevels: undefined,
+		})
 	})
 
 	it('omits optionalFeatureChoices when the subclass has no optionalfeatureProgression', () => {
@@ -602,34 +602,34 @@ describe('saveCharacter', () => {
 			['athletics', 'intimidation'],
 		)
 
-		expect(store.create).toHaveBeenCalledWith(
-			'Aria',
-			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }],
-			completeData().abilityScores,
-			{ name: 'Elf', source: 'XPHB' },
-			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
-			{ strength: 2, constitution: 1 },
-			[
+		expect(store.create).toHaveBeenCalledWith({
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 1 }],
+			abilityScores: completeData().abilityScores,
+			species: { name: 'Elf', source: 'XPHB' },
+			background: { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+			abilityBonus: { strength: 2, constitution: 1 },
+			languages: [
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
 				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
-			['athletics', 'intimidation'],
-			['Longsword'],
-			'Archery',
-			undefined,
-			['perception'],
-			[],
-			[],
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-		)
+			classSkills: ['athletics', 'intimidation'],
+			masteries: ['Longsword'],
+			fightingStyle: 'Archery',
+			optionalFeatureChoices: undefined,
+			speciesSkills: ['perception'],
+			expertiseSkills: [],
+			featAsiChoices: [],
+			spellChoices: undefined,
+			subclassSpellChoices: undefined,
+			classFeatureChoices: undefined,
+			wildShapeForms: undefined,
+			inventory: undefined,
+			currencyCopper: undefined,
+			speciesSpellcastingAbility: undefined,
+			hitPointLevels: undefined,
+		})
 	})
 
 	it('forwards the chosen expertise skills and validates readiness against expertiseRequiredCount', () => {
@@ -643,34 +643,34 @@ describe('saveCharacter', () => {
 			{ expertiseRequiredCount: 2 },
 		)
 
-		expect(store.create).toHaveBeenLastCalledWith(
-			'Aria',
-			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
-			completeData().abilityScores,
-			{ name: 'Elf', source: 'XPHB' },
-			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
-			{ strength: 2, constitution: 1 },
-			[
+		expect(store.create).toHaveBeenLastCalledWith({
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }],
+			abilityScores: completeData().abilityScores,
+			species: { name: 'Elf', source: 'XPHB' },
+			background: { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+			abilityBonus: { strength: 2, constitution: 1 },
+			languages: [
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
 				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
-			['athletics', 'intimidation'],
-			['Longsword'],
-			'Archery',
-			[{ featureType: 'MV:B', choices: ['Precision Attack'] }],
-			['perception'],
-			['stealth', 'perception'],
-			[],
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-		)
+			classSkills: ['athletics', 'intimidation'],
+			masteries: ['Longsword'],
+			fightingStyle: 'Archery',
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Precision Attack'] }],
+			speciesSkills: ['perception'],
+			expertiseSkills: ['stealth', 'perception'],
+			featAsiChoices: [],
+			spellChoices: undefined,
+			subclassSpellChoices: undefined,
+			classFeatureChoices: undefined,
+			wildShapeForms: undefined,
+			inventory: undefined,
+			currencyCopper: undefined,
+			speciesSpellcastingAbility: undefined,
+			hitPointLevels: undefined,
+		})
 	})
 
 	/* Build order step 8, slice 8b — already exactly Character.hitPointLevels' own shape, so it passes straight through. */
@@ -678,10 +678,10 @@ describe('saveCharacter', () => {
 		const store = fakeStore()
 		const levels = [{ level: 2, kind: 'average' as const, dieResult: 6 }]
 		saveCharacter(store, { ...completeData(), hitPointLevels: levels }, ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-1)).toEqual(levels)
+		expect(vi.mocked(store.create).mock.calls[0][0].hitPointLevels).toEqual(levels)
 
 		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[1].at(-1)).toBeUndefined()
+		expect(vi.mocked(store.create).mock.calls[1][0].hitPointLevels).toBeUndefined()
 	})
 
 	it('never touches storage while merely navigating steps and editing choices', () => {

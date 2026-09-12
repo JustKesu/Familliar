@@ -749,45 +749,45 @@ describe('CharacterWizard — storage', () => {
 
 		await user.click(screen.getByRole('button', { name: 'Create character' }))
 
-		expect(store.create).toHaveBeenCalledWith(
-			'Aria',
-			[{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 }],
-			{
+		expect(store.create).toHaveBeenCalledWith({
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 }],
+			abilityScores: {
 				method: 'standardArray',
 				scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
 			},
-			{ name: 'Dwarf', source: 'XPHB' },
-			{ name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Gaming Set' },
-			{ strength: 2, dexterity: 1 },
-			[
+			species: { name: 'Dwarf', source: 'XPHB' },
+			background: { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Gaming Set' },
+			abilityBonus: { strength: 2, dexterity: 1 },
+			languages: [
 				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
 				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
-			[],
-			[],
-			null,
-			[{ featureType: 'MV:B', choices: ['Trip Attack'] }],
-			[],
-			[],
-			[],
-			undefined,
-			undefined,
-			undefined,
-			undefined,
+			classSkills: [],
+			masteries: [],
+			fightingStyle: null,
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Trip Attack'] }],
+			speciesSkills: [],
+			expertiseSkills: [],
+			featAsiChoices: [],
+			spellChoices: undefined,
+			subclassSpellChoices: undefined,
+			classFeatureChoices: undefined,
+			wildShapeForms: undefined,
 			// The class's gear package and the background's coin option, combined:
 			// the package's items, and 4 gp from it plus 50 gp from the background.
-			[
+			inventory: [
 				{ name: 'Dagger', source: 'XPHB', quantity: 2 },
 				{ name: 'Longsword', source: 'XPHB', quantity: 1 },
 			],
-			5400,
-			undefined,
-			[
+			currencyCopper: 5400,
+			speciesSpellcastingAbility: undefined,
+			hitPointLevels: [
 				{ level: 2, kind: 'average', dieResult: 6 },
 				{ level: 3, kind: 'average', dieResult: 6 },
 			],
-		)
+		})
 	})
 })
 
@@ -840,9 +840,9 @@ describe('CharacterWizard — starting equipment step', () => {
 		await goNext(user)
 		await user.click(await screen.findByRole('button', { name: 'Create character' }))
 
-		const call = vi.mocked(store.create).mock.calls[0]
-		expect(call.at(-4)).toEqual([])
-		expect(call.at(-3)).toBe(20500)
+		const call = vi.mocked(store.create).mock.calls[0][0]
+		expect(call.inventory).toEqual([])
+		expect(call.currencyCopper).toBe(20500)
 	})
 
 	it('a category element blocks the step until an item is picked, and that pick lands in the inventory', async () => {
@@ -864,9 +864,9 @@ describe('CharacterWizard — starting equipment step', () => {
 		await goNext(user)
 		await user.click(await screen.findByRole('button', { name: 'Create character' }))
 
-		const call = vi.mocked(store.create).mock.calls[0]
-		expect(call.at(-4)).toEqual([{ name: 'Flute', source: 'XPHB', quantity: 1 }])
-		expect(call.at(-3)).toBe(5000)
+		const call = vi.mocked(store.create).mock.calls[0][0]
+		expect(call.inventory).toEqual([{ name: 'Flute', source: 'XPHB', quantity: 1 }])
+		expect(call.currencyCopper).toBe(5000)
 	})
 })
 

@@ -122,6 +122,37 @@ function newId(): string {
 	return crypto.randomUUID()
 }
 
+/**
+ * Input to `CharacterStore.create`, one property per `Character` field it
+ * populates (minus `id`, which `create` generates). Named fields instead of
+ * positional arguments so callers and tests can match values up without
+ * counting positions — see build order step 8, slice 8c0.
+ */
+export interface CharacterCreateInput {
+	name: string
+	classes?: CharacterClass[]
+	abilityScores?: CharacterAbilityScores
+	species?: CharacterSpecies
+	background?: CharacterBackground
+	abilityBonus?: AbilityBonusMap
+	languages?: CharacterLanguage[]
+	classSkills?: string[]
+	masteries?: string[]
+	fightingStyle?: string | null
+	optionalFeatureChoices?: CharacterOptionalFeatureChoice[]
+	speciesSkills?: string[]
+	expertiseSkills?: string[]
+	featAsiChoices?: FeatAsiChoice[]
+	spellChoices?: CharacterSpellChoice[]
+	subclassSpellChoices?: CharacterSubclassSpellChoice[]
+	classFeatureChoices?: CharacterClassFeatureChoice[]
+	wildShapeForms?: CharacterWildShapeForms[]
+	inventory?: CharacterInventoryItem[]
+	currencyCopper?: number
+	speciesSpellcastingAbility?: Ability
+	hitPointLevels?: CharacterHitPointLevel[]
+}
+
 export class CharacterStore {
 	private readonly storage: KeyValueStorage
 
@@ -159,32 +190,33 @@ export class CharacterStore {
 		}
 	}
 
-	create(
-		name: string,
-		classes: CharacterClass[] = [],
-		abilityScores?: CharacterAbilityScores,
-		species?: CharacterSpecies,
-		background?: CharacterBackground,
-		abilityBonus?: AbilityBonusMap,
-		languages?: CharacterLanguage[],
-		classSkills?: string[],
-		masteries?: string[],
-		fightingStyle?: string | null,
-		optionalFeatureChoices?: CharacterOptionalFeatureChoice[],
-		speciesSkills?: string[],
-		expertiseSkills?: string[],
-		featAsiChoices?: FeatAsiChoice[],
-		spellChoices?: CharacterSpellChoice[],
-		subclassSpellChoices?: CharacterSubclassSpellChoice[],
-		classFeatureChoices?: CharacterClassFeatureChoice[],
-		wildShapeForms?: CharacterWildShapeForms[],
-		inventory?: CharacterInventoryItem[],
-		currencyCopper?: number,
-		speciesSpellcastingAbility?: Ability,
-		hitPointLevels?: CharacterHitPointLevel[],
-	): Character {
-		const trimmed = name.trim()
+	create(input: CharacterCreateInput): Character {
+		const trimmed = input.name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
+
+		const {
+			classes = [],
+			abilityScores,
+			species,
+			background,
+			abilityBonus,
+			languages,
+			classSkills,
+			masteries,
+			fightingStyle,
+			optionalFeatureChoices,
+			speciesSkills,
+			expertiseSkills,
+			featAsiChoices,
+			spellChoices,
+			subclassSpellChoices,
+			classFeatureChoices,
+			wildShapeForms,
+			inventory,
+			currencyCopper,
+			speciesSpellcastingAbility,
+			hitPointLevels,
+		} = input
 
 		const character: Character = {
 			id: newId(),

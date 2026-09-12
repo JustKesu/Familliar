@@ -156,7 +156,7 @@ describe('CharacterStore.list', () => {
 describe('CharacterStore.create', () => {
 	it('adds a character with a generated id', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Aria')
+		const character = store.create({ name: 'Aria' })
 		expect(character.id).toBeTruthy()
 		expect(character.name).toBe('Aria')
 		expect(character.classes).toEqual([])
@@ -165,19 +165,19 @@ describe('CharacterStore.create', () => {
 
 	it('trims the name', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('  Aria  ')
+		const character = store.create({ name: '  Aria  ' })
 		expect(character.name).toBe('Aria')
 	})
 
 	it('rejects an empty name and does not save anything', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		expect(() => store.create('   ')).toThrow(ImportValidationError)
+		expect(() => store.create({ name: '   ' })).toThrow(ImportValidationError)
 		expect(store.list()).toEqual([])
 	})
 
 	it('throws StorageFullError when the backing storage is full', () => {
 		const store = new CharacterStore(new FullStorage())
-		expect(() => store.create('Aria')).toThrow(StorageFullError)
+		expect(() => store.create({ name: 'Aria' })).toThrow(StorageFullError)
 	})
 })
 
@@ -188,7 +188,7 @@ describe('CharacterStore.create with ability scores', () => {
 			method: 'pointBuy',
 			scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
 		}
-		const character = store.create('Aria', [], abilityScores)
+		const character = store.create({ name: 'Aria', abilityScores })
 		expect(character.abilityScores).toEqual(abilityScores)
 
 		const reloaded = store.list().find((c) => c.id === character.id)
@@ -209,7 +209,7 @@ describe('CharacterStore.create with ability scores', () => {
 				{ dice: [4, 3, 3, 2], total: 10 },
 			],
 		}
-		const character = store.create('Bram', [], abilityScores)
+		const character = store.create({ name: 'Bram', abilityScores })
 
 		const reloaded = store.list().find((c) => c.id === character.id)
 		expect(reloaded?.abilityScores).toEqual(abilityScores)
@@ -217,7 +217,7 @@ describe('CharacterStore.create with ability scores', () => {
 
 	it('leaves abilityScores undefined when none were provided (old-save compatibility)', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Cato')
+		const character = store.create({ name: 'Cato' })
 		expect(character.abilityScores).toBeUndefined()
 		expect(store.list()[0]?.abilityScores).toBeUndefined()
 	})
@@ -247,11 +247,14 @@ describe('CharacterStore.create with ability scores', () => {
 describe('CharacterStore.create with languages', () => {
 	it('saves and reloads Common with the automatic source and picks with the creation source', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Aria', [], undefined, undefined, undefined, undefined, [
-			{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
-			{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
-			{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
-		])
+		const character = store.create({
+			name: 'Aria',
+			languages: [
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+			],
+		})
 
 		expect(character.languages).toEqual([
 			{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
@@ -293,18 +296,14 @@ describe('CharacterStore.create with class choices', () => {
 			toolProficiency: 'Dice Set',
 		}
 
-		const character = store.create(
-			'Aria',
+		const character = store.create({
+			name: 'Aria',
 			classes,
-			undefined,
-			undefined,
 			background,
-			undefined,
-			undefined,
-			['acrobatics', 'perception'],
-			['longsword', 'shortbow'],
-			'Dueling',
-		)
+			classSkills: ['acrobatics', 'perception'],
+			masteries: ['longsword', 'shortbow'],
+			fightingStyle: 'Dueling',
+		})
 
 		expect(character.classes[0]?.subclass).toBe('Champion')
 		expect(character.background).toEqual(background)
@@ -318,7 +317,7 @@ describe('CharacterStore.create with class choices', () => {
 
 	it('leaves classSkills, masteries and fightingStyle undefined when none were provided (old-save compatibility)', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Cato')
+		const character = store.create({ name: 'Cato' })
 		expect(character.classSkills).toBeUndefined()
 		expect(character.masteries).toBeUndefined()
 		expect(character.fightingStyle).toBeUndefined()
@@ -331,19 +330,11 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		const classes = [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 }]
 		const optionalFeatureChoices = [{ featureType: 'MV:B', choices: ['Trip Attack', 'Riposte'] }]
 
-		const character = store.create(
-			'Aria',
+		const character = store.create({
+			name: 'Aria',
 			classes,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
 			optionalFeatureChoices,
-		)
+		})
 
 		expect(character.optionalFeatureChoices).toEqual(optionalFeatureChoices)
 
@@ -353,7 +344,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 
 	it('leaves optionalFeatureChoices undefined when none were provided (old-save compatibility)', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Cato')
+		const character = store.create({ name: 'Cato' })
 		expect(character.optionalFeatureChoices).toBeUndefined()
 	})
 
@@ -384,7 +375,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 	})
 
 	it('leaves classFeatureChoices undefined when none were provided (old-save compatibility)', () => {
-		expect(new CharacterStore(new MemoryStorage()).create('Cato').classFeatureChoices).toBeUndefined()
+		expect(new CharacterStore(new MemoryStorage()).create({ name: 'Cato' }).classFeatureChoices).toBeUndefined()
 	})
 
 	/** The Druid's known Wild Shape forms (step 6b slice 3) — no level is stored, so none is validated. */
@@ -421,7 +412,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 	})
 
 	it('leaves wildShapeForms undefined when none were provided (old-save compatibility)', () => {
-		expect(new CharacterStore(new MemoryStorage()).create('Cato').wildShapeForms).toBeUndefined()
+		expect(new CharacterStore(new MemoryStorage()).create({ name: 'Cato' }).wildShapeForms).toBeUndefined()
 	})
 
 	/** The familiar's current form — chosen from the sheet, not at creation. */
@@ -444,7 +435,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 
 	it('sets, replaces and clears the familiar on a saved character', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Conjurer')
+		const character = store.create({ name: 'Conjurer' })
 		expect(character.familiar).toBeUndefined()
 
 		store.setFamiliar(character.id, { name: 'Owl', source: 'XMM' })
@@ -599,7 +590,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 
 	it('rejects a version-3 import file, naming the version found and the version expected, and leaves the store unchanged', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		store.create('Existing')
+		store.create({ name: 'Existing' })
 		const v3File = JSON.stringify([
 			{
 				schemaVersion: 3,
@@ -622,14 +613,14 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 
 describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('leaves inventory and currencyCopper undefined on a freshly created character (owning nothing is normal)', () => {
-		const character = new CharacterStore(new MemoryStorage()).create('Cato')
+		const character = new CharacterStore(new MemoryStorage()).create({ name: 'Cato' })
 		expect(character.inventory).toBeUndefined()
 		expect(character.currencyCopper).toBeUndefined()
 	})
 
 	it('sets, updates a quantity on, and clears the inventory of a saved character', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Packrat')
+		const character = store.create({ name: 'Packrat' })
 
 		store.setInventory(character.id, [
 			{ name: 'Longsword', source: 'XPHB', quantity: 1 },
@@ -654,7 +645,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('round-trips currency through save and reload, and clears the field at zero', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Rich')
+		const character = store.create({ name: 'Rich' })
 
 		store.setCurrency(character.id, 1234)
 		// A fresh store over the same backing storage — proves it survived serialisation, not just an in-memory copy.
@@ -730,7 +721,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('round-trips an equipped item and refuses a bad equipped value or a second worn suit (step 7 slice b)', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Rowan')
+		const character = store.create({ name: 'Rowan' })
 
 		store.setInventory(character.id, [
 			{ name: 'Chain Mail', source: 'XPHB', quantity: 1, equipped: 'worn' },
@@ -796,7 +787,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('round-trips a Finesse weapon ability pick and refuses a bad one (step 7 slice c)', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Nyx')
+		const character = store.create({ name: 'Nyx' })
 
 		store.setInventory(character.id, [{ name: 'Rapier', source: 'XPHB', quantity: 1, equipped: 'held', attackAbility: 'strength' }])
 		// A fresh store over the same backing storage — proves the pick survived serialisation, not just an in-memory copy.
@@ -843,7 +834,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('round-trips a Versatile weapon’s grip and refuses a bad one (step 7 slice b-fix)', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Nyx')
+		const character = store.create({ name: 'Nyx' })
 
 		store.setInventory(character.id, [{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held', grip: 'two-handed' }])
 		expect(new CharacterStore(backing).list()[0].inventory).toEqual([
@@ -869,7 +860,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('round-trips an attunement flag and refuses any value but true (step 7 slice d)', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Nyx')
+		const character = store.create({ name: 'Nyx' })
 
 		store.setInventory(character.id, [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }])
 		expect(new CharacterStore(backing).list()[0].inventory).toEqual([{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }])
@@ -913,7 +904,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('round-trips a player-set magic bonus and refuses a value outside +1..+3 (step 7 slice e)', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Nyx')
+		const character = store.create({ name: 'Nyx' })
 
 		store.setInventory(character.id, [{ name: 'Longsword', source: 'XPHB', quantity: 1, magicBonus: 3 }])
 		expect(new CharacterStore(backing).list()[0].inventory).toEqual([{ name: 'Longsword', source: 'XPHB', quantity: 1, magicBonus: 3 }])
@@ -958,7 +949,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('round-trips a custom item’s whole definition, alongside the row state it carries (step 7 slice e2a)', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Nyx')
+		const character = store.create({ name: 'Nyx' })
 		const row = {
 			name: 'Scarf of Warmth',
 			source: CUSTOM_ITEM_SOURCE,
@@ -984,7 +975,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 	it('round-trips every computed field a custom item can declare (step 7 slice e2b)', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Nyx')
+		const character = store.create({ name: 'Nyx' })
 		const row = {
 			name: 'Everything Plate',
 			source: CUSTOM_ITEM_SOURCE,
@@ -1054,7 +1045,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 
 describe('CharacterStore hand-set hit points (persistent-header slice 1; the max is an override as of 8a)', () => {
 	it('leaves currentHp, maxHpOverride and hitPointLevels undefined on a freshly created character', () => {
-		const character = new CharacterStore(new MemoryStorage()).create('Cato')
+		const character = new CharacterStore(new MemoryStorage()).create({ name: 'Cato' })
 		expect(character.currentHp).toBeUndefined()
 		expect(character.maxHpOverride).toBeUndefined()
 		expect(character.hitPointLevels).toBeUndefined()
@@ -1063,7 +1054,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 	it('round-trips both fields through save and reload, and clears one back to undefined', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create('Bruiser')
+		const character = store.create({ name: 'Bruiser' })
 
 		store.setHitPoints(character.id, 31, 44)
 		const reloaded = new CharacterStore(backing).list()[0]
@@ -1144,7 +1135,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 describe('CharacterStore.rename', () => {
 	it('renames an existing character', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Aria')
+		const character = store.create({ name: 'Aria' })
 		store.rename(character.id, 'Bree')
 		expect(store.list()[0]?.name).toBe('Bree')
 	})
@@ -1158,14 +1149,14 @@ describe('CharacterStore.rename', () => {
 describe('CharacterStore.delete', () => {
 	it('removes a character', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Aria')
+		const character = store.create({ name: 'Aria' })
 		store.delete(character.id)
 		expect(store.list()).toEqual([])
 	})
 
 	it('throws CharacterNotFoundError for an unknown id and leaves the store unchanged', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		store.create('Aria')
+		store.create({ name: 'Aria' })
 		expect(() => store.delete('missing')).toThrow(CharacterNotFoundError)
 		expect(store.list()).toHaveLength(1)
 	})
@@ -1174,7 +1165,7 @@ describe('CharacterStore.delete', () => {
 describe('CharacterStore.exportCharacter / import', () => {
 	it('exports a character as a top-level array with a schema version', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const character = store.create('Aria')
+		const character = store.create({ name: 'Aria' })
 		const exported: unknown = JSON.parse(store.exportCharacter(character.id))
 		expect(Array.isArray(exported)).toBe(true)
 		expect(exported).toEqual([{ ...character, schemaVersion: CURRENT_SCHEMA_VERSION }])
@@ -1187,11 +1178,11 @@ describe('CharacterStore.exportCharacter / import', () => {
 
 	it('imports a character as a new one with a fresh id, never overwriting', () => {
 		const source = new CharacterStore(new MemoryStorage())
-		const original = source.create('Aria')
+		const original = source.create({ name: 'Aria' })
 		const file = source.exportCharacter(original.id)
 
 		const destination = new CharacterStore(new MemoryStorage())
-		destination.create('Existing Character')
+		destination.create({ name: 'Existing Character' })
 		const [imported] = destination.import(file)
 
 		expect(imported?.id).not.toBe(original.id)
@@ -1201,7 +1192,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 
 	it('re-importing the same file twice creates two separate characters', () => {
 		const source = new CharacterStore(new MemoryStorage())
-		const original = source.create('Aria')
+		const original = source.create({ name: 'Aria' })
 		const file = source.exportCharacter(original.id)
 
 		const destination = new CharacterStore(new MemoryStorage())
@@ -1215,7 +1206,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 
 	it('rejects invalid JSON and leaves the store unchanged', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		store.create('Existing')
+		store.create({ name: 'Existing' })
 		expect(() => store.import('{not json')).toThrow(ImportValidationError)
 		expect(store.list()).toHaveLength(1)
 	})
@@ -1234,7 +1225,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 
 	it('rejects a malformed character and leaves the store unchanged', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		store.create('Existing')
+		store.create({ name: 'Existing' })
 		const badFile = JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', classes: [] }]) // missing name
 		expect(() => store.import(badFile)).toThrow(ImportValidationError)
 		expect(store.list()).toHaveLength(1)
@@ -1242,7 +1233,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 
 	it('rejects an unsupported schema version and leaves the store unchanged', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		store.create('Existing')
+		store.create({ name: 'Existing' })
 		const futureFile = JSON.stringify([{ schemaVersion: 999, id: '1', name: 'Aria', classes: [] }])
 		expect(() => store.import(futureFile)).toThrow(UnknownSchemaVersionError)
 		expect(store.list()).toHaveLength(1)
@@ -1250,7 +1241,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 
 	it('rejects a version-2 import file, naming the version found and the version expected, and leaves the store unchanged', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		store.create('Existing')
+		store.create({ name: 'Existing' })
 		const v2File = JSON.stringify([
 			{
 				schemaVersion: 2,
@@ -1286,7 +1277,7 @@ describe('CharacterStore.exportCharacter / import', () => {
 
 	it('throws StorageFullError when the destination storage is full', () => {
 		const source = new CharacterStore(new MemoryStorage())
-		const original = source.create('Aria')
+		const original = source.create({ name: 'Aria' })
 		const file = source.exportCharacter(original.id)
 
 		const store = new CharacterStore(new FullStorage())

@@ -42,7 +42,7 @@ beforeEach(() => {
 describe('CharacterManager delete', () => {
 	it('removes the character from the rendered list when delete is clicked', async () => {
 		const store = new CharacterStore()
-		store.create('Aria')
+		store.create({ name: 'Aria' })
 		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
@@ -57,8 +57,8 @@ describe('CharacterManager delete', () => {
 
 	it('removes the correct row when multiple characters are present', async () => {
 		const store = new CharacterStore()
-		store.create('Aria')
-		store.create('Bree')
+		store.create({ name: 'Aria' })
+		store.create({ name: 'Bree' })
 		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
@@ -76,7 +76,7 @@ describe('CharacterManager delete', () => {
 
 	it('surfaces an error instead of silently doing nothing when the row is stale', async () => {
 		const store = new CharacterStore()
-		const character = store.create('Aria')
+		const character = store.create({ name: 'Aria' })
 		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
@@ -98,7 +98,7 @@ describe('CharacterManager delete', () => {
 describe('CharacterManager sheet toggle', () => {
 	it('hides the sheet when the same row\'s button is clicked again', async () => {
 		const store = new CharacterStore()
-		store.create('Aria')
+		store.create({ name: 'Aria' })
 
 		const user = userEvent.setup()
 		render(<CharacterManager />)
@@ -115,8 +115,8 @@ describe('CharacterManager sheet toggle', () => {
 
 	it('switches to a different row\'s sheet, showing only one at a time', async () => {
 		const store = new CharacterStore()
-		store.create('Aria')
-		store.create('Bree')
+		store.create({ name: 'Aria' })
+		store.create({ name: 'Bree' })
 
 		const user = userEvent.setup()
 		render(<CharacterManager />)

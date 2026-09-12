@@ -1,7 +1,7 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8b: krok wizardu pro volbu
-hod/průměr/ručně za úroveň, D96)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8c0: `CharacterStore.create`
+přes jeden objekt místo ~20 pozičních argumentů)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D96) a v REPORT.md (poslední session).
@@ -167,6 +167,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8a | Počítané maximum HP — příspěvek za úroveň, Constitution zpětně, tabulka tří bonusů, ruční přebití | 29→30 |
    | 8a-guard | Validace dat hlídá tabulku tří bonusů proti datům (D95) | — |
    | 8b | Krok wizardu "Hit points" — hod/průměr/ručně za úroveň 2+ | — |
+   | 8c0 | `CharacterStore.create` přes jeden objekt místo pozičních argumentů | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -188,6 +189,14 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      vlastní řádek v rozkladu. Hlavička (`SheetHeader.tsx`) bere maximum jako
      obyčejné `Calculated<number>` s rozkladem (D40/D41), druhé pole je teď
      "Max HP override".
+   - Slice 8c0: `CharacterStore.create(input: CharacterCreateInput)` — jeden
+     objekt s jednou vlastností na pole `Character`, žádná pozice. Čistý
+     refaktor, žádná změna chování/schématu; jediný produkční caller
+     (`saveCharacter` ve `wizardState.ts`) sestaví objekt místo dvaadvaceti
+     argumentů. Test asertace (`toHaveBeenCalledWith`, `.at(-N)` na
+     `mock.calls[0]`) přepsané na named properties
+     (`mock.calls[0][0].hitPointLevels` apod.) — pozice v testech je přesně
+     to, co slice odstraňuje.
    - Slice 8a-guard (D95): `scripts/validate-data.js`, nová sekce
      `validateHitPointBonusTable`. Dvě kontroly — (1) všechna tři jména z
      `HIT_POINT_BONUS_RULES` odpovídají právě jednomu featu/rysu
@@ -377,9 +386,10 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 ## Next step
 
 Krok 8 běží. Slice 8a (počítané maximum HP), 8a-guard (validace tabulky
-bonusů, D95) a 8b (krok wizardu pro volbu hod/průměr/ručně za úroveň, D96)
-jsou hotové; další je **slice 8d** — tlačítko level-upu a opětovný vstup do
-kroku 8b při zvýšení úrovně existující postavy.
+bonusů, D95), 8b (krok wizardu pro volbu hod/průměr/ručně za úroveň, D96) a
+8c0 (`CharacterStore.create` přes jeden objekt) jsou hotové; další je
+**slice 8d** — tlačítko level-upu a opětovný vstup do kroku 8b při zvýšení
+úrovně existující postavy.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +
