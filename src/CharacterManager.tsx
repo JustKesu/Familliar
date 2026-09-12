@@ -5,6 +5,7 @@ import type { Character, CharacterFamiliar, CharacterInventoryItem } from './sto
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
 import type { LevelGains } from './levelUp/levelGains'
+import { characterUpdateInput } from './levelUp/levelRemoval'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
@@ -276,6 +277,11 @@ function CharacterManager() {
 										setCreating(false)
 										setLevelUpGains(null)
 										setEditingId(sheetCharacter.id)
+									}}
+									onRemoveLevel={(result) => {
+										setEditingId((current) => (current === sheetCharacter.id ? null : current))
+										setLevelUpGains(null)
+										withErrorHandling(() => store.store?.update(result.id, characterUpdateInput(result)))
 									}}
 									onLevelUp={(gains) => {
 										setCreating(false)

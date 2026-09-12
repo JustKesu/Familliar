@@ -787,6 +787,7 @@ describe('CharacterWizard — storage', () => {
 				{ level: 2, kind: 'average', dieResult: 6 },
 				{ level: 3, kind: 'average', dieResult: 6 },
 			],
+			createdAtLevel: 3,
 		})
 	})
 })

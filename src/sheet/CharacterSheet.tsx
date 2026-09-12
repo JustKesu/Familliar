@@ -15,6 +15,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
+import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
 import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
@@ -1629,6 +1630,7 @@ export function CharacterSheet({
 	onEditHitPoints,
 	onEditCharacter,
 	onLevelUp,
+	onRemoveLevel,
 }: {
 	character: Character
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
@@ -1639,6 +1641,8 @@ export function CharacterSheet({
 	onEditCharacter?: () => void
 	/** Opens the one-level walk (slice 8d3) with what the next level adds. Absent leaves the sheet without the button. */
 	onLevelUp?: (gains: LevelGains) => void
+	/** Writes the character with its top level removed (slice 8e). Absent leaves the sheet without the control. */
+	onRemoveLevel?: (result: Character) => void
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
 	const [activeTab, setActiveTab] = useState<SheetTabId>('stats')
@@ -2251,6 +2255,7 @@ export function CharacterSheet({
 					</button>
 				)}
 				{onLevelUp && <LevelUpButton character={character} onLevelUp={onLevelUp} />}
+				{onRemoveLevel && <RemoveLevelButton character={character} onRemoveLevel={onRemoveLevel} />}
 			</header>
 
 			{/*

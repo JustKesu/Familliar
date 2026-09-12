@@ -162,6 +162,7 @@ export interface CharacterCreateInput {
 	currentHp?: number
 	maxHpOverride?: number
 	familiar?: CharacterFamiliar
+	createdAtLevel?: number
 }
 
 /** The one place a Character is assembled from an input — shared by `create` and `update` so the two can never diverge on which fields an absent value omits. */
@@ -191,6 +192,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		currentHp,
 		maxHpOverride,
 		familiar,
+		createdAtLevel,
 	} = input
 
 	return {
@@ -220,6 +222,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(currentHp !== undefined ? { currentHp } : {}),
 		...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
 		...(familiar ? { familiar } : {}),
+		...(createdAtLevel !== undefined ? { createdAtLevel } : {}),
 	}
 }
 

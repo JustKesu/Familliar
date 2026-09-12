@@ -1049,6 +1049,8 @@ export function saveCharacter(
 		currentHp: existing?.currentHp,
 		maxHpOverride: existing?.maxHpOverride,
 		familiar: existing?.familiar,
+		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".
+		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,
 	}
 
 	return existing ? store.update(existing.id, input) : store.create(input)

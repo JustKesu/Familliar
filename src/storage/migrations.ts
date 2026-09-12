@@ -260,6 +260,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			}
 		},
 	},
+	{
+		from: 33,
+		to: 34,
+		/*
+		 * 34 adds Character.createdAtLevel (slice 8e). An older character's
+		 * creation level is not known — its current level may already include
+		 * levels gained afterwards — so nothing is added (D43, as D97).
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 34 }),
+	},
 ]
 
 /**

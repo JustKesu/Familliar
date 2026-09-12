@@ -15,6 +15,13 @@ vi.mock('./levelUp/levelGains', async (importOriginal) => {
 			actual.levelGainsFor(character, level, CLASSES, RESOLVER),
 	}
 })
+vi.mock('./levelUp/levelRemoval', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./levelUp/levelRemoval')>()
+	return {
+		...actual,
+		loadLevelRemovalPlan: async (character: Parameters<typeof actual.levelRemovalPlan>[0]) => actual.levelRemovalPlan(character, CLASSES, RESOLVER),
+	}
+})
 
 /*
  * Component test for the temporary character manager UI (PHASE1.md build
@@ -126,6 +133,54 @@ describe('CharacterManager level up (slice 8d3)', () => {
 		expect(screen.queryByText('1. Hit points')).toBeNull()
 		expect(store.exportCharacter(created.id)).toBe(before)
 		expect(screen.getByText('Fighter 4')).not.toBeNull()
+	})
+})
+
+describe('CharacterManager remove level (slice 8e)', () => {
+	function createFighter(store: CharacterStore) {
+		return store.create({
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 5 }],
+			createdAtLevel: 4,
+			hitPointLevels: [{ level: 5, kind: 'roll', dieResult: 7 }],
+		})
+	}
+
+	it('writes nothing when the confirmation is cancelled', async () => {
+		const store = new CharacterStore()
+		const created = createFighter(store)
+		const before = store.exportCharacter(created.id)
+		const confirmSpy = vi.spyOn(window, 'confirm')
+
+		const user = userEvent.setup()
+		render(<CharacterManager />)
+		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
+
+		const dialog = screen.getByRole('alertdialog', { name: 'Remove level 5?' })
+		expect(dialog.textContent).toContain('Hit points for level 5')
+		await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+		expect(screen.queryByRole('alertdialog')).toBeNull()
+		expect(store.exportCharacter(created.id)).toBe(before)
+		expect(confirmSpy).not.toHaveBeenCalled()
+	})
+
+	it('writes the character one level down once confirmed', async () => {
+		const store = new CharacterStore()
+		const created = createFighter(store)
+
+		const user = userEvent.setup()
+		render(<CharacterManager />)
+		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
+		await user.click(screen.getByRole('button', { name: 'Confirm removing level 5' }))
+
+		const stored = store.list().find((character) => character.id === created.id)
+		expect(stored?.classes[0].level).toBe(4)
+		expect(stored?.hitPointLevels).toBeUndefined()
+		expect(await screen.findByText('Fighter 4')).not.toBeNull()
+		expect(await screen.findByRole('button', { name: /Remove level unavailable: This character was created at level 4/ })).not.toBeNull()
 	})
 })
 

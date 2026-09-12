@@ -1992,3 +1992,46 @@ rozklad na sheetu už tohle hlásí jako výchozí hodnoty, ne jako hráčovu vo
 Editační průchod dál ukazuje každou úroveň od 2 nahoru beze změny — míchat
 „doplň si minulost" do „postoupil jsi o úroveň" by bylo matoucí a level up by
 zase žádal o víc, než kolik ta jedna nová úroveň skutečně dává.
+
+## D104 — Odebrání úrovně: spodní hranice je úroveň, na které postava vznikla; maže se jen to, co nese odebíranou úroveň
+
+Slice 8e. `Character.createdAtLevel` (schéma 34), `src/levelUp/levelRemoval.ts`,
+`RemoveLevelButton`.
+
+**Nové pole `createdAtLevel`** — úroveň, na které wizard postavu vytvořil.
+Nastaví ho jen tvorba, úprava ani level up ho nemění. Je to spodní hranice
+odebírání: volby z tvorby úroveň nenesou (D97), takže postava vytvořená rovnou
+na úrovni 5 by po odebrání úrovně nic neztratila a zůstala by postavou úrovně 4
+s volbami úrovně 5. Migrace 33→34 nepřidává nic — u starší postavy úroveň vzniku
+známá není (mohla mezitím postoupit) a chybějící hodnota je platný stav
+„neznámo" (jako D97). Odebrání je pak odmítnuto s důvodem.
+
+**Ovládací prvek odebere přesně jednu úroveň.** Nedostupný (důvod přímo na
+prvku, D43) na úrovni 1, na úrovni vzniku, bez známé úrovně vzniku a u
+multiclassu (krok 10 — nic neříká, které třídě úroveň vzít).
+
+**Co se maže při odebrání úrovně N:** každá uložená volba s `level === N`
+(masteries, expertise, volby optional features, feat/ASI) nebo
+`grantedAtLevel === N` (class feature choices, picky subclass spell choices),
+záznam `hitPointLevels` pro N a úroveň třídy o jedna. **Volba bez úrovně se nikdy
+nesahá** — je z tvorby, tedy na hranici nebo pod ní. Záznam optional features /
+subclass spell choices, kterému nezbyde žádná volba, zmizí celý (tvorba prázdné
+záznamy neukládá, takže level up + odebrání vrátí postavu bajtově stejnou).
+
+**Podtřída a fighting style se odvozují z dat, neukládá se jim úroveň.**
+Podtřída se maže, když ji třída volí právě na N (`subclassLevelFor`), fighting
+style, když ho třída dává na N (`grantsFightingStyleAt`, stejná funkce jako v
+`levelGainsFor`). Když úroveň podtřídy z dat vyčíst nejde, odebrání se odmítne.
+
+**Kouzla zůstávají.** Známá a připravená kouzla úroveň nenesou záměrně — appka
+dovoluje kouzla kdykoli vyměnit, takže nic neříká, která patřila k odebírané
+úrovni. Postava tak může znát kouzlo, které už nesešle, nebo víc kouzel, než
+nová úroveň dovoluje. To je známá mez, ne chyba: smazaný pick by se opětovným
+level upem nevrátil. Označení na sheetu je další slice. Sloty se ukládat
+nemusí, počítají se z třídy a úrovně. Totéž platí pro Wild Shape formy (bez
+úrovně podle D22).
+
+**Potvrzení je prvek uvnitř appky, ne `confirm()`.** Skript, který appku ovládá,
+zavře prohlížečový dialog jako „ne" (QUESTIONS.md), takže akce za ním by nešla
+nikdy vyzkoušet. Zrušení nic nezapisuje; potvrzení zapíše jednou přes
+`CharacterStore.update` (D100).

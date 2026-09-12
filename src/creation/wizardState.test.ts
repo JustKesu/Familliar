@@ -533,6 +533,7 @@ describe('saveCharacter', () => {
 			currencyCopper: undefined,
 			speciesSpellcastingAbility: undefined,
 			hitPointLevels: undefined,
+			createdAtLevel: 1,
 		})
 	})
 
@@ -609,6 +610,7 @@ describe('saveCharacter', () => {
 			currencyCopper: undefined,
 			speciesSpellcastingAbility: undefined,
 			hitPointLevels: undefined,
+			createdAtLevel: 1,
 		})
 	})
 
@@ -647,6 +649,7 @@ describe('saveCharacter', () => {
 			currencyCopper: undefined,
 			speciesSpellcastingAbility: undefined,
 			hitPointLevels: undefined,
+			createdAtLevel: 1,
 		})
 	})
 
@@ -689,6 +692,7 @@ describe('saveCharacter', () => {
 			currencyCopper: undefined,
 			speciesSpellcastingAbility: undefined,
 			hitPointLevels: undefined,
+			createdAtLevel: 1,
 		})
 	})
 
@@ -701,6 +705,20 @@ describe('saveCharacter', () => {
 
 		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
 		expect(vi.mocked(store.create).mock.calls[1][0].hitPointLevels).toBeUndefined()
+	})
+
+	/* Build order step 8, slice 8e: the floor for removing a level. */
+	it('records the created-at level on creation, and an update keeps the character’s own, including none', () => {
+		const store = { ...fakeStore(), update: vi.fn(() => ({ id: 'e1', name: 'Aria', classes: [] })) } as unknown as CharacterStore
+		const data = completeData()
+		saveCharacter(store, data, ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[0][0].createdAtLevel).toBe(data.classChoice?.level)
+
+		const existing = { id: 'e1', name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 1 }] }
+		saveCharacter(store, data, ['athletics', 'intimidation'], {}, undefined, { ...existing, createdAtLevel: 1 })
+		expect(vi.mocked(store.update).mock.calls[0][1].createdAtLevel).toBe(1)
+		saveCharacter(store, data, ['athletics', 'intimidation'], {}, undefined, existing)
+		expect(vi.mocked(store.update).mock.calls[1][1].createdAtLevel).toBeUndefined()
 	})
 
 	it('never touches storage while merely navigating steps and editing choices', () => {

@@ -279,6 +279,14 @@ export interface Character {
 	 * keeps today's "not chosen yet" placeholder in both cases, never a guess.
 	 */
 	speciesSpellcastingAbility?: Ability
+	/**
+	 * The character level the creation wizard made this character at (slice 8e).
+	 * Set once, never changed afterwards. It is the floor for removing a level:
+	 * creation picks carry no level (D97), so nothing at or below it can be told
+	 * apart by level. Absent means "not known" — every character saved before
+	 * schema version 34 — and removal is then refused rather than guessed.
+	 */
+	createdAtLevel?: number
 }
 
 /**
@@ -745,14 +753,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 33 for the `choices` inside each
- * Character.optionalFeatureChoices entry, which becomes an array of
- * LeveledChoice objects instead of bare option names (D99, the same change
- * versions 31 and 32 made to masteries and expertiseSkills under D97/D98).
+ * (see wireFormat.ts). Bumped to 34 for Character.createdAtLevel (slice 8e),
+ * which the migration leaves absent on every older character — its creation
+ * level is not known.
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 33
+export const CURRENT_SCHEMA_VERSION = 34

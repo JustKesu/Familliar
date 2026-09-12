@@ -356,6 +356,20 @@ describe('the migration chain (D69)', () => {
 		expect('optionalFeatureChoices' in migrated).toBe(false)
 	})
 
+	/* Slice 8e: an older character's creation level is not known, so nothing is invented. */
+	it('carries a version-33 character forward with no created-at level', () => {
+		const before = {
+			schemaVersion: 33,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 5 }],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: 34 })
+		expect('createdAtLevel' in migrated).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

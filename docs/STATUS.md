@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8d5: level-up krok Hit points
-se ptá jen na novou úroveň)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8e: odebrání úrovně — krok 8
+hotový)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D103) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D104) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -160,7 +160,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    - Zatím ne (otázka pro krok 9, zaznamenaná v D86): pool definitions (max
      použití, obnova) pro `consumes` cíle, které v těchto čtyřech souborech
      strukturovaně vůbec nejsou.
-8. [in progress] Level up
+8. [done] Level up
 
    | Slice | Co | Schéma |
    |---|---|---|
@@ -175,6 +175,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8d2 | `levelGainsFor` — co přibývá na úrovni N, krok po kroku (D101) | — |
    | 8d3 | Tlačítko "Level up" a zkrácený wizard (D102) | — |
    | 8d5 | Level up žádá krok "Hit points" jen o nově získanou úroveň (D103) | — |
+   | 8e | Odebrání úrovně, `Character.createdAtLevel` jako spodní hranice (D104) | 33→34 |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -369,6 +370,37 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      krok se dokončí jedním novým záznamem na postavě bez historie).
      Neověřováno v prohlížeči — task instrukce: 8d3 tenhle tok už prošla, a
      které řádky se vykreslí je přesně to, co testy assertují.
+   - Slice 8e (D104): odebrání úrovně. `Character.createdAtLevel` (schéma 34,
+     migrace 33→34 jen tag, starší postava pole nedostane) — nastaví ho jen
+     tvorba (`saveCharacter` bez `existing`), úprava i level up drží hodnotu
+     postavy včetně "neznámo"; `CharacterCreateInput`/`buildCharacter`/validace
+     (1–20) ho nesou. `src/levelUp/levelRemoval.ts`: `levelRemovalTarget`
+     (důvody: bez třídy, multiclass, úroveň 1, neznámá úroveň vzniku, úroveň =
+     úroveň vzniku), `levelRemovalPlan(character, classes, resolverData)` vrací
+     `{ level, dropped, result }` nebo `{ reason }` (podtřída s nečitelnou
+     úrovní volby), `characterUpdateInput`, `loadLevelRemovalPlan`. Maže volby
+     s `level`/`grantedAtLevel` === N, `hitPointLevels` N, podtřídu podle
+     `subclassLevelFor`, fighting style podle `grantsFightingStyleAt`, úroveň
+     třídy −1; prázdný záznam optional features / subclass spell choices
+     vypadne celý (optional features jen bez vnořených `spellChoices`). Volby
+     bez úrovně, `spellChoices`, `wildShapeForms` nedotčené.
+     `src/levelUp/RemoveLevelButton.tsx` v hlavičce sheetu vedle "Level up"
+     (`CharacterSheet` `onRemoveLevel`): "Remove level N" → potvrzení uvnitř
+     stránky (`role="alertdialog"`, výpis mazaných položek, Confirm/Cancel),
+     nedostupný stav nese důvod v textu. `CharacterManager` zapíše jednou přes
+     `store.update`. Testy: `levelRemoval.test.tsx` (Fighter 4→5→4 a 3→4→4
+     bajtově shodné s úložištěm před level upem, mazání podle úrovně, spelly
+     zůstávají, podtřída jen na úrovni volby, fighting style jen na úrovni
+     grantu, sloty následují úroveň, čtyři odmítnutí, prvek bez použitelného
+     ovládání a zrušení bez zápisu), `CharacterManager.test.tsx` (zrušení
+     nezapíše nic, potvrzení zapíše úroveň 4), `wizardState.test.ts`
+     (`createdAtLevel` při tvorbě / zachování při update), `migrations.test.ts`.
+     Ověřeno v prohlížeči: Fighter vytvořený na 5 → level up na 6 (ASI + HP) →
+     Remove level 6 (Cancel nic nezapsal, Confirm) → reload → uložená postava
+     shodná se stavem před level upem (porovnání se seřazenými klíči).
+     **Známá mez:** po odebrání může postava znát kouzla nad svou úrovní nebo
+     víc kouzel / Wild Shape forem, než úroveň dovoluje — označení na sheetu je
+     další slice.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -397,7 +429,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Weapon proficiency/mastery a Extra Attack — jeden sdílený modul,
   strukturálně (podle dat zbraně), ne podle jména třídy.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
-- Uložení — localStorage, verzované schéma (teď 33), migrace fungují od
+- Uložení — localStorage, verzované schéma (teď 34), migrace fungují od
   verze 16 výš (D69); starší uložená postava se odmítne, ne převede. Migrace
   29→30 je první, která DATA PŘESOUVÁ, ne jen přepisuje tag: ručně napsané
   `maxHp` jde do `maxHpOverride` (D91). Migrace 30→31 je první, která hodnotu
@@ -527,7 +559,11 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-Krok 8 běží. Slice 8a (počítané maximum HP), 8a-guard (validace tabulky
+**Krok 8 je hotový** — poslední slice 8e (D104) přidala odebrání úrovně.
+Další je navazující slice: označit na sheetu kouzla (a Wild Shape formy) nad
+rámec toho, co postava po odebrání úrovně smí mít. Pak krok 9.
+
+Historie kroku 8: slice 8a (počítané maximum HP), 8a-guard (validace tabulky
 bonusů, D95), 8b (krok wizardu pro volbu hod/průměr/ručně za úroveň, D96) a
 8c0 (`CharacterStore.create` přes jeden objekt), 8c1 (`masteries` nese úroveň
 volby, D97), 8c2 (`expertiseSkills` totéž, D98) a 8c3 (`optionalFeatureChoices`,
@@ -539,7 +575,7 @@ volby si nechávají svou úroveň. Hotová je i **8d2** (D101): modul
 bez UI. Hotová je i **8d3** (D102): tlačítko "Level up" a zkrácený wizard,
 první zápis `level` u nových voleb. Hotová je i **8d5** (D103): krok Hit
 points v level-upu se ptá jen na nově získanou úroveň, ne na celou historii.
-Další je **8e** — odebrání úrovně.
+Hotová je i **8e** (D104): odebrání úrovně.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +

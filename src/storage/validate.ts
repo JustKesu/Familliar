@@ -944,6 +944,10 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (hitPointLevelsError) return `[${index}].${hitPointLevelsError}`
 	const speciesSpellcastingAbilityError = describeSpeciesSpellcastingAbilityError(value['speciesSpellcastingAbility'])
 	if (speciesSpellcastingAbilityError) return `[${index}].${speciesSpellcastingAbilityError}`
+	const createdAtLevel = value['createdAtLevel']
+	if (createdAtLevel !== undefined && (typeof createdAtLevel !== 'number' || !Number.isInteger(createdAtLevel) || createdAtLevel < 1 || createdAtLevel > 20)) {
+		return `[${index}].createdAtLevel must be a whole number from 1 to 20`
+	}
 	return null
 }
 
@@ -980,6 +984,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const maxHpOverride = value['maxHpOverride']
 	const hitPointLevels = value['hitPointLevels']
 	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
+	const createdAtLevel = value['createdAtLevel']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -1009,6 +1014,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(typeof maxHpOverride === 'number' ? { maxHpOverride } : {}),
 		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
+		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),
 	}
 }
 
