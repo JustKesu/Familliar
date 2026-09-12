@@ -107,6 +107,30 @@ describe('HitPointsPicker', () => {
 		])
 	})
 
+	/* Build order step 8, slice 8d5: a level-up walk asks about only the level being gained. */
+	it('shows only the level being gained during a level-up walk, and hides the apply-to-every-level control', async () => {
+		render(<HitPointsPicker character={fighter(5)} value={[]} onChange={() => {}} levelUpLevel={5} />)
+
+		expect(await screen.findByText('Level 1')).toBeTruthy()
+		expect(screen.getByText('Level 5')).toBeTruthy()
+		expect(screen.queryByText('Level 2')).toBeNull()
+		expect(screen.queryByText('Level 3')).toBeNull()
+		expect(screen.queryByText('Level 4')).toBeNull()
+		expect(screen.queryByRole('button', { name: /Use the average .* for every level/ })).toBeNull()
+	})
+
+	it('still lets the level-up row be set the same three ways', async () => {
+		const user = userEvent.setup()
+		const onChange = vi.fn()
+		render(<HitPointsPicker character={fighter(5)} value={[{ level: 2, kind: 'average', dieResult: 6 }]} onChange={onChange} levelUpLevel={5} />)
+
+		await user.click(await screen.findByLabelText('Average (6)'))
+		expect(onChange).toHaveBeenCalledWith([
+			{ level: 2, kind: 'average', dieResult: 6 },
+			{ level: 5, kind: 'average', dieResult: 6 },
+		])
+	})
+
 	/* Task instructions: the running total must come from computeMaxHitPoints itself, never a second sum written here. */
 	it('shows the same running total computeMaxHitPoints would compute for the same character and choices', async () => {
 		const classData = [{ className: 'Fighter', classSource: 'XPHB', faces: 10 }]

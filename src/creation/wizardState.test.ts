@@ -265,6 +265,22 @@ describe('isStepComplete', () => {
 			}
 			expect(isStepComplete('hitPoints', data)).toBe(false)
 		})
+
+		/* Build order step 8, slice 8d5: a level-up walk asks about only the level being gained. */
+		it('during a level-up walk, needs only the level being gained, not every level below it', () => {
+			const data = {
+				...emptyWizardData(),
+				classChoice: { className: 'Fighter', classSource: 'XPHB', level: 10 },
+				hitPointLevels: [],
+			}
+			expect(isStepComplete('hitPoints', data, { levelUpTargetLevel: 10 })).toBe(false)
+
+			const withLowerLevelsOnly = { ...data, hitPointLevels: [{ level: 9, kind: 'average' as const, dieResult: 6 }] }
+			expect(isStepComplete('hitPoints', withLowerLevelsOnly, { levelUpTargetLevel: 10 })).toBe(false)
+
+			const withTargetLevel = { ...data, hitPointLevels: [{ level: 10, kind: 'roll' as const, dieResult: 8 }] }
+			expect(isStepComplete('hitPoints', withTargetLevel, { levelUpTargetLevel: 10 })).toBe(true)
+		})
 	})
 })
 

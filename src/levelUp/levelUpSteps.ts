@@ -32,11 +32,11 @@ const ALWAYS_WALKED: readonly WizardStep[] = ['hitPoints', 'review']
  * the app cannot answer for (hiding one would silently skip a choice the
  * character may be owed), plus hit points and review.
  */
-export function levelUpStepConditions(gains: LevelGains): Pick<WizardStepConditions, 'levelUpSteps'> {
+export function levelUpStepConditions(gains: LevelGains): Pick<WizardStepConditions, 'levelUpSteps' | 'levelUpTargetLevel'> {
 	const walked = WIZARD_STEPS.filter(
 		(step) => ALWAYS_WALKED.includes(step) || gains.steps[step].status === 'adds' || gains.steps[step].status === 'unknown',
 	)
-	return { levelUpSteps: new Set(walked) }
+	return { levelUpSteps: new Set(walked), levelUpTargetLevel: gains.level }
 }
 
 /** Why each walked `unknown` step could not be answered — shown on that step so the player checks it by hand. */

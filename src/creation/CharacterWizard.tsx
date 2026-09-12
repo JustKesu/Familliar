@@ -1287,6 +1287,7 @@ export function CharacterWizard({
 						character={draftCharacterForHitPoints}
 						value={state.data.hitPointLevels}
 						onChange={(levels) => dispatch({ type: 'setHitPointLevels', levels })}
+						levelUpLevel={levelUp?.level}
 					/>
 				</div>
 			)}

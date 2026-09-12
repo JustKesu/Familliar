@@ -36,11 +36,21 @@ export function HitPointsPicker({
 	character,
 	value,
 	onChange,
+	levelUpLevel,
 }: {
 	/** A draft Character carrying classes (single class, D11), species and featAsiChoices — everything computeMaxHitPoints and its bonus-feature lookup need. */
 	character: Character
 	value: CharacterHitPointLevel[]
 	onChange: (levels: CharacterHitPointLevel[]) => void
+	/**
+	 * Slice 8d5: set during a LEVEL-UP walk to the level being gained. The step
+	 * then shows and asks about that one level only — every level below it is
+	 * left exactly as stored, D92 defaults included (D103) — and the
+	 * apply-to-every-level control is hidden, since it has nothing to apply to
+	 * beyond the one row shown. `undefined` in creation and edit walks, which
+	 * still show every level from 2 up.
+	 */
+	levelUpLevel?: number
 }): ReactNode {
 	const [loaded, setLoaded] = useState<LoadedData | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
@@ -95,9 +105,11 @@ export function HitPointsPicker({
 			<div className="hit-points-picker__running-total">
 				Maximum hit points: <CalculatedNumber result={maxHitPoints} />
 			</div>
-			<button type="button" onClick={applyAverageToAll}>
-				Use the average ({fixedAverage(faces)}) for every level
-			</button>
+			{levelUpLevel === undefined && (
+				<button type="button" onClick={applyAverageToAll}>
+					Use the average ({fixedAverage(faces)}) for every level
+				</button>
+			)}
 			<table className="hit-points-picker__table">
 				<thead>
 					<tr>
@@ -110,7 +122,10 @@ export function HitPointsPicker({
 						<td>Level 1</td>
 						<td>{faces} (maximum)</td>
 					</tr>
-					{Array.from({ length: Math.max(0, totalLevel - 1) }, (_, index) => index + 2).map((level) => {
+					{(levelUpLevel !== undefined
+						? [levelUpLevel]
+						: Array.from({ length: Math.max(0, totalLevel - 1) }, (_, index) => index + 2)
+					).map((level) => {
 						const entry = value.find((candidate) => candidate.level === level)
 						const groupName = `hit-points-picker__level-${level}`
 						return (

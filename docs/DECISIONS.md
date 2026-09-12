@@ -1971,3 +1971,24 @@ volbami z průchodu. Zavřené nebo zrušené okno nechá postavu na původní �
 žádný rozpracovaný stav ani koncept se neukládá. Volby přidané během průchodu
 nesou NOVOU úroveň (D97/D98/D99); volby z tvorby postavy dál žádnou — 8e na tom
 rozlišení staví.
+
+## D103 — Krok životů se při level upu ptá jen na nově získanou úroveň
+
+Slice 8d5. `HitPointsPicker` a `WizardStepConditions.levelUpTargetLevel`.
+
+**Level up ukazuje a vyžaduje jen jeden řádek** — úroveň, na kterou postava
+právě postupuje — místo všech úrovní od 2 nahoru (D92/8b). Postava založená
+před 8b nemá `hitPointLevels` vůbec, a bez tohohle by první level up žádal o
+kostku za každou dosavadní úroveň, než by se dostal k té skutečně nové.
+Tlačítko "Průměr pro každou úroveň" (D92) v level-upu nemá smysl s jediným
+řádkem, a proto se v tomto průchodu nezobrazuje.
+
+**Starší úrovně bez uloženého příspěvku zůstávají na výchozích hodnotách.**
+Level up jim žádný záznam nedoplňuje ani nemaže ty, co tam jsou — úroveň 1 je
+podle D92 vždy maximum kostky, každá další bez záznamu je pevný průměr, a
+rozklad na sheetu už tohle hlásí jako výchozí hodnoty, ne jako hráčovu volbu.
+
+**Doplnit si historii jde přes úpravu postavy (D100/8d1), ne přes level up.**
+Editační průchod dál ukazuje každou úroveň od 2 nahoru beze změny — míchat
+„doplň si minulost" do „postoupil jsi o úroveň" by bylo matoucí a level up by
+zase žádal o víc, než kolik ta jedna nová úroveň skutečně dává.

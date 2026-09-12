@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8d3: tlačítko Level up a
-zkrácený wizard)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8d5: level-up krok Hit points
+se ptá jen na novou úroveň)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D102) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D103) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -174,6 +174,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8d1 | Wizard běží i nad existující postavou — "Edit character" ze sheetu (D100) | — |
    | 8d2 | `levelGainsFor` — co přibývá na úrovni N, krok po kroku (D101) | — |
    | 8d3 | Tlačítko "Level up" a zkrácený wizard (D102) | — |
+   | 8d5 | Level up žádá krok "Hit points" jen o nově získanou úroveň (D103) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -351,6 +352,23 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      Ověřeno v prohlížeči: Fighter 4 → 5, průchod Hit points → Review (Extra
      Attack, Tactical Shift), po reloadu úroveň 5, staré volby s úrovněmi
      beze změny, nový hod na úrovni 5 uložený.
+   - Slice 8d5 (D103): krok "Hit points" v level-upu ukazuje a vyžaduje jen
+     nově získanou úroveň. `HitPointsPicker` nový nepovinný prop `levelUpLevel`
+     — když je nastaven, tabulka místo rozsahu 2..N vykreslí jediný řádek za
+     tuto úroveň a tlačítko "Použít průměr pro každou úroveň" se schová;
+     `CharacterWizard` ho plní `levelUp?.level`. `WizardStepConditions` nové
+     pole `levelUpTargetLevel` (plní ho `levelUpStepConditions` vedle
+     `levelUpSteps`) — `isStepComplete('hitPoints', …)` s ním vyžaduje záznam
+     jen pro tuhle jednu úroveň místo `isCompleteHitPointLevels` na celém
+     rozsahu. Tvorba postavy a editace (8d1) beze změny — obě dál nemají
+     `levelUpTargetLevel` nastavené, takže žádají celý rozsah od 2 nahoru.
+     Testy: `HitPointsPicker.test.tsx` (jediný řádek + skryté tlačítko v
+     level-upu, řádek se pořád dá nastavit všemi třemi způsoby),
+     `wizardState.test.ts` (kompletnost kroku podle `levelUpTargetLevel`),
+     `levelUp.test.tsx` (`levelUpStepConditions` nese `levelUpTargetLevel`,
+     krok se dokončí jedním novým záznamem na postavě bez historie).
+     Neověřováno v prohlížeči — task instrukce: 8d3 tenhle tok už prošla, a
+     které řádky se vykreslí je přesně to, co testy assertují.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -519,7 +537,9 @@ existující postavou, uložení ji přepíše, úroveň smí jen nahoru a už z
 volby si nechávají svou úroveň. Hotová je i **8d2** (D101): modul
 `src/levelUp/levelGains.ts` odpoví, co na úrovni N přibývá, krok po kroku,
 bez UI. Hotová je i **8d3** (D102): tlačítko "Level up" a zkrácený wizard,
-první zápis `level` u nových voleb. Další je **8e** — odebrání úrovně.
+první zápis `level` u nových voleb. Hotová je i **8d5** (D103): krok Hit
+points v level-upu se ptá jen na nově získanou úroveň, ne na celou historii.
+Další je **8e** — odebrání úrovně.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +

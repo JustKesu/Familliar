@@ -6,7 +6,7 @@ import { levelGainsFor, type LevelGains } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
 import { levelUpStepConditions, unknownLevelUpSteps } from './levelUpSteps'
 import { LevelUpButton } from './LevelUpButton'
-import { saveCharacter, visibleSteps, wizardDataFromCharacter } from '../creation/wizardState'
+import { isStepComplete, saveCharacter, visibleSteps, wizardDataFromCharacter } from '../creation/wizardState'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 
@@ -83,6 +83,22 @@ describe('LevelUpButton', () => {
 
 		await userEvent.setup().click(await screen.findByRole('button', { name: 'Level up to 5' }))
 		expect(onLevelUp).toHaveBeenCalledWith(expect.objectContaining({ level: 5, unresolved: null }))
+	})
+})
+
+describe('the hit points step during a level up', () => {
+	/* Build order step 8, slice 8d5: a level-up walk asks about only the new level, leaving older levels without a stored entry on their D92 defaults. */
+	it('completes once the single new-level entry is recorded, for a character with no stored hit point history', () => {
+		const character = single('Fighter', 'Champion', 9)
+		const gains = levelGainsFor(character, 10, CLASSES, RESOLVER)
+		const conditions = { ...levelUpStepConditions(gains), characterLevel: 10 }
+		expect(conditions.levelUpTargetLevel).toBe(10)
+
+		const seed = wizardDataFromCharacter(character, { subclasses: [], spellLevels: [] })
+		expect(isStepComplete('hitPoints', seed, conditions)).toBe(false)
+
+		const withNewLevel = { ...seed, hitPointLevels: [...seed.hitPointLevels, { level: 10, kind: 'average' as const, dieResult: 6 }] }
+		expect(isStepComplete('hitPoints', withNewLevel, conditions)).toBe(true)
 	})
 })
 

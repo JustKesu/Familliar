@@ -141,6 +141,14 @@ export interface WizardStepConditions {
 	 * `null` is an ordinary creation or edit run.
 	 */
 	levelUpSteps?: ReadonlySet<WizardStep> | null
+	/**
+	 * Slice 8d5: set alongside `levelUpSteps` to the level being gained. The
+	 * 'hitPoints' step's completion then asks for only that one level's entry,
+	 * rather than every level from 2 up to the character's own — the levels
+	 * below it are left on whatever they already had (D92 defaults included)
+	 * instead of being demanded here. `null` is an ordinary creation or edit run.
+	 */
+	levelUpTargetLevel?: number | null
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
@@ -162,6 +170,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		characterLevel: conditions.characterLevel ?? 1,
 		editingExistingCharacter: conditions.editingExistingCharacter ?? false,
 		levelUpSteps: conditions.levelUpSteps ?? null,
+		levelUpTargetLevel: conditions.levelUpTargetLevel ?? null,
 	}
 }
 
@@ -494,6 +503,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
+		levelUpTargetLevel,
 	} = resolveConditions(conditions)
 	switch (step) {
 		case 'class':
@@ -560,7 +570,11 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			// Every level from 2 up to the character's own needs a recorded choice (D92/D57: "not
 			// chosen" and "chose the average" must not look the same in storage). Level 1 is never
 			// asked for — it is always the die maximum, not a choice.
-			return isCompleteHitPointLevels(data.hitPointLevels, data.classChoice?.level ?? 1)
+			// A level-up walk (D103) narrows that to the single level being gained — the levels
+			// below it are left on whatever they already had, not demanded here.
+			return levelUpTargetLevel !== null
+				? data.hitPointLevels.some((entry) => entry.level === levelUpTargetLevel)
+				: isCompleteHitPointLevels(data.hitPointLevels, data.classChoice?.level ?? 1)
 		case 'equipment':
 			// A character takes one option from the class AND one from the background;
 			// an unmade choice blocks the step. Whether a chosen option still needs a
