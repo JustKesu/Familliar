@@ -34,6 +34,10 @@ import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThr
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
+import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
+import { loadSpellCountClassData } from '../spells/spellCountClassData'
+import { highestSlotLevel } from '../spells/spellLevelFilter'
+import { wildShapeLimits } from '../beasts/wildShapeData'
 import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { computeAttacksPerAction, computeWeaponAttacks, type WeaponAttack } from '../calculation/weaponAttacks'
@@ -58,7 +62,7 @@ import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '..
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells, type RaceSpellGrants } from '../spells/raceSpells'
-import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { findSpellDetail, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBlock } from './BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { coinsToCopper, copperToCoins, platinumToCopper } from '../inventory/currency'
@@ -1654,6 +1658,8 @@ export function CharacterSheet({
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
 	const [spellcastingAbilityData, setSpellcastingAbilityData] = useState<ClassSpellcastingAbility[] | null>(null)
 	const [spellSlotsClassData, setSpellSlotsClassData] = useState<ClassSpellSlotsData[] | null>(null)
+	/** Slice 8e2: computeSpellCounts' own class data (known/prepared allowances), loaded the same way spellSlotsClassData is. */
+	const [spellCountClassData, setSpellCountClassData] = useState<ClassSpellCountData[] | null>(null)
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[] | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
 	/** The item list backing the inventory section — its own load (large file, D43-style error state) so it never blocks the rest of the sheet. Null until it resolves. */
@@ -1728,9 +1734,10 @@ export function CharacterSheet({
 			loadResolverData(),
 			loadSpellcastingAbilityClassData(),
 			loadSpellSlotsClassData(),
+			loadSpellCountClassData(),
 			loadSpellDetails(),
 		])
-			.then(([classData, hitDiceData, speciesData, featData, featTexts, resolver, spellcastingData, spellSlotsData, spellDetailData]) => {
+			.then(([classData, hitDiceData, speciesData, featData, featTexts, resolver, spellcastingData, spellSlotsData, spellCountData, spellDetailData]) => {
 				if (cancelled) return
 				setSavingThrowClassData(classData)
 				setHitDiceClassData(hitDiceData)
@@ -1740,6 +1747,7 @@ export function CharacterSheet({
 				setResolverData(resolver)
 				setSpellcastingAbilityData(spellcastingData)
 				setSpellSlotsClassData(spellSlotsData)
+				setSpellCountClassData(spellCountData)
 				setSpellDetails(spellDetailData)
 			})
 			.catch((error: unknown) => {
@@ -2095,6 +2103,7 @@ export function CharacterSheet({
 		!resolverData ||
 		!spellcastingAbilityData ||
 		!spellSlotsClassData ||
+		!spellCountClassData ||
 		!spellDetails
 	) {
 		return (
@@ -2169,6 +2178,42 @@ export function CharacterSheet({
 	const spellcastingEntries = spellcasting.status === 'known' ? spellcasting.value : []
 	const spellSlots = computeSpellSlots(character, spellSlotsClassData)
 	const spellSlotsEntries = spellSlots.status === 'known' ? spellSlots.value : []
+	const spellCounts = computeSpellCounts(character, spellCountClassData)
+	const spellCountEntries = spellCounts.status === 'known' ? spellCounts.value : []
+	/*
+	 * Slice 8e2 (D106): what this character stores against what its level
+	 * allows, for the two things that carry no level of their own (D104) —
+	 * known/prepared spells and Wild Shape forms. D11's phase-1 single-class
+	 * assumption runs through spellSlots.ts/spellCounts.ts/spellLevelFilter.ts
+	 * already; a multiclass character (more than one class) is the same gap
+	 * those modules already name, so it reads as "cannot tell" (D43) rather
+	 * than silently showing nothing or, worse, a number computed off just one
+	 * of its classes.
+	 */
+	const singleCastingClass = character.classes.length === 1 ? character.classes[0] : null
+	const spellLimitReason: string | null =
+		character.classes.length > 1
+			? 'Cannot tell this character’s spell limits: combining more than one class’s spellcasting is build order step 10.'
+			: spellSlots.status === 'unknown'
+				? spellSlots.reason
+				: spellCounts.status === 'unknown'
+					? spellCounts.reason
+					: null
+	const castableSlotsEntry = singleCastingClass
+		? spellSlotsEntries.find((entry) => entry.className === singleCastingClass.className && entry.classSource === singleCastingClass.classSource)
+		: undefined
+	const highestCastableLevel = spellLimitReason === null ? highestSlotLevel(castableSlotsEntry) : null
+	const spellCountEntry = singleCastingClass
+		? spellCountEntries.find((entry) => entry.className === singleCastingClass.className && entry.classSource === singleCastingClass.classSource)
+		: undefined
+	/* Only CHOSEN spells (spellChoices) are the freely-swapped known/prepared pool D104 leaves untouched by level removal — a subclass/feat/species grant is always legal by construction and isn't counted here. */
+	const chosenSpellLevels = combinedSpells
+		.filter((entry) => entry.chosen)
+		.map((entry) => findSpellDetail(spellDetails, entry.name, entry.source)?.level)
+		.filter((level): level is number => level !== undefined)
+	const cantripsStored = chosenSpellLevels.filter((level) => level === 0).length
+	const leveledSpellsStored = chosenSpellLevels.filter((level) => level > 0).length
+	const hasChosenSpells = combinedSpells.some((entry) => entry.chosen)
 	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
 	const speciesSpellcasting = computeSpeciesSpellcasting(character, raceSpells.spells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
@@ -2201,6 +2246,33 @@ export function CharacterSheet({
 			beast: beasts.find((beast) => beast.name === form.name && beast.source === form.source) ?? null,
 		})),
 	)
+	/*
+	 * Slice 8e2 (D106): storage keeps every Wild Shape pick regardless of level
+	 * (D104) — this is the count-only half of that gap, one entry per class
+	 * that has ANY stored forms. Unlike the spell limits above, Wild Shape's
+	 * allowance is read off that one class's own level (wildShapeLimits), so
+	 * multiclassing elsewhere on the sheet doesn't make it undeterminable —
+	 * only a class the character no longer has does.
+	 */
+	const wildShapeOverages = storedWildShapeForms.map((entry) => {
+		const classEntry = character.classes.find((c) => c.className === entry.className && c.classSource === entry.classSource)
+		if (!classEntry) {
+			return {
+				key: `${entry.className}|${entry.classSource}`,
+				className: entry.className,
+				status: 'unknown' as const,
+				reason: `Cannot tell the Wild Shape limit for "${entry.className}": that class is no longer on this character.`,
+			}
+		}
+		const limits = wildShapeLimits(entry.className, classEntry.level, classEntry.subclass)
+		return {
+			key: `${entry.className}|${entry.classSource}`,
+			className: entry.className,
+			status: 'known' as const,
+			stored: entry.forms.length,
+			allowed: limits?.knownForms ?? 0,
+		}
+	})
 	// Darkvision grants are folded into the traits row above, not shown again here.
 	const combinedSenses = combineSenseEntries(grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'))
 
@@ -2524,7 +2596,31 @@ export function CharacterSheet({
 							<UnresolvedValue reason={note.text} />
 						</p>
 					))}
-					{combinedSpells.length > 0 && <SpellList entries={combinedSpells} spellDetails={spellDetails} resolverData={resolverData} />}
+					{/* Slice 8e2 (D106): the "cannot tell" case (D43) — multiclassing, or a class this app's data has nothing for — replaces both notices below rather than showing a count that would silently ignore the gap. */}
+					{spellLimitReason !== null && hasChosenSpells && (
+						<p className="sheet__spell-limit-unknown">
+							<UnresolvedValue reason={spellLimitReason} />
+						</p>
+					)}
+					{/* The count-only notice (D106): which spell is over the limit is unknowable (freely swapped, D104), so only how many is shown — never a guess at which one. */}
+					{spellLimitReason === null && spellCountEntry && cantripsStored > spellCountEntry.cantripCount && (
+						<p className="sheet__spell-count-over">
+							Cantrips: {cantripsStored} known, {spellCountEntry.cantripCount} allowed.
+						</p>
+					)}
+					{spellLimitReason === null && spellCountEntry && leveledSpellsStored > spellCountEntry.leveledSpellCount && (
+						<p className="sheet__spell-count-over">
+							Spells {spellCountEntry.label}: {leveledSpellsStored} {spellCountEntry.label}, {spellCountEntry.leveledSpellCount} allowed.
+						</p>
+					)}
+					{combinedSpells.length > 0 && (
+						<SpellList
+							entries={combinedSpells}
+							spellDetails={spellDetails}
+							resolverData={resolverData}
+							unavailableAboveLevel={spellLimitReason === null ? (highestCastableLevel ?? undefined) : undefined}
+						/>
+					)}
 				</section>
 			)}
 			</div>
@@ -2693,6 +2789,20 @@ export function CharacterSheet({
 					<h2>Wild Shape forms</h2>
 					{/* The forms are listed from storage, so this section never vanished — but without this line every one of them reads "no stat block found", blaming the form for a failure of the whole fetch. */}
 					{beastsError && <p className="error">Could not load Beast stat blocks: {beastsError}</p>}
+					{/* Slice 8e2 (D106): the count-only notice — which form is surplus is unknowable (D104), so only how many is shown, same spirit as the spell counts above. */}
+					{wildShapeOverages.map((overage) =>
+						overage.status === 'unknown' ? (
+							<p key={overage.key} className="sheet__wild-shape-count-unknown">
+								<UnresolvedValue reason={overage.reason} />
+							</p>
+						) : (
+							overage.stored > overage.allowed && (
+								<p key={overage.key} className="sheet__wild-shape-count-over">
+									{overage.className} Wild Shape forms: {overage.stored} known, {overage.allowed} allowed.
+								</p>
+							)
+						),
+					)}
 					<ul>
 						{wildShapeForms.map(({ form, beast }) => (
 							<li key={`${form.name}|${form.source}`}>

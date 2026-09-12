@@ -2060,3 +2060,41 @@ jinou nikdy nezvolí. `saveCharacter` navíc odmítne zápis, kde se úroveň p�
 úpravě (bez `levelUpTo`) liší od uložené — kdyby frontend přece jen poslal
 jinou. Snížení úrovně zůstává odmítnuté (D100) a odebrání úrovně má dál svůj
 vlastní krok (D104); tahle změna se týká jen zvyšování.
+
+## D106 — Přebytek nad úroveň (kouzla, Wild Shape) se hlásí, ne maže
+
+Slice 8e2. `src/sheet/CharacterSheet.tsx`, `src/sheet/SpellList.tsx`,
+`src/spells/spellLevelFilter.ts` (`highestSlotLevel` exportovaná).
+
+**Kouzla ani Wild Shape formy nenesou úroveň záměrně** (D104) — appka dovoluje
+kouzla i formy měnit kdykoli, takže po odebrání úrovně appka neví, která volba
+patřila k té úrovni. Smazaná volba by se navíc opětovným level upem nevrátila.
+Řešení je proto zobrazit přebytek, nikdy nic smazat.
+
+**Jednotlivě se označuje jen to, na co appka umí ukázat.** Kouzlo ze
+`spellChoices` (hráčova volba — jediná věc, co appka volně mění) nad
+nejvyšší sesílatelnou úrovní (`highestSlotLevel`, teď exportovaná ze
+`spellLevelFilter.ts` — jedno místo, ne druhý výpočet) dostane na sheetu v
+záložce Kouzla text "(unavailable at this level)" u svého jména; zůstává v
+seznamu i v úložišti. Kouzlo z podtřídy/featu/optional feature/rasy se nikdy
+neoznačuje — to jsou pevné granty, vždy platné.
+
+**Zbytek se hlásí jako počet, ne jako konkrétní položka** — appka neví, KTERÉ
+kouzlo nebo forma je navíc: "Cantrips: N known, M allowed", "Spells
+known/prepared: N, M allowed" (z `computeSpellCounts`, beze změny), a
+"<Class> Wild Shape forms: N known, M allowed" (z `wildShapeLimits`, beze
+změny) — každý jen když N > M, jinak nic.
+
+**Multiclass (víc než jedna třída) hlásí "nejde zjistit", ne ticho ani číslo
+z jedné třídy.** Stejná mez, kterou `spellSlots.ts`/`spellCounts.ts`/
+`spellLevelFilter.ts` už pojmenovávají (D11 — kombinování napříč třídami je
+krok 10): `combineSpellEntries` navíc ztrácí, KTERÁ třída si které kouzlo
+vybrala, takže „nejvyšší sesílatelná úroveň" pro sloučený seznam nejde určit
+ani principiálně, dokud krok 10 tabulky nespojí. Ukazuje se jedna věta místo
+obou notic výše — nikdy číslo spočtené jen z jedné z tříd. Wild Shape touhle
+mezí netrpí (jeho limit čte jen tu jednu Druid třídu), takže zůstává určený i
+u multiclassu; neurčený je jen tehdy, když postava tu třídu z
+`wildShapeForms` záznamu už vůbec nemá (D43).
+
+**Postava v mezích neukazuje nic.** Žádná ze tří notic se nerenderuje, dokud
+není co hlásit — přebytek nikdy neukazuje nulu ani prázdný řádek.

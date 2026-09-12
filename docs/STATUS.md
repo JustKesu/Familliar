@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8e3: úprava postavy úroveň
-vůbec nemění)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8e2: přebytek nad úroveň —
+kouzla a Wild Shape formy — se na sheetu hlásí, ne maže)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D105) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D106) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -177,6 +177,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8d5 | Level up žádá krok "Hit points" jen o nově získanou úroveň (D103) | — |
    | 8e | Odebrání úrovně, `Character.createdAtLevel` jako spodní hranice (D104) | 33→34 |
    | 8e3 | Úprava postavy úroveň vůbec nemění (D105) | — |
+   | 8e2 | Přebytek nad úroveň (kouzla, Wild Shape formy) se na sheetu hlásí (D106) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -416,6 +417,32 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      volbách zapisuje. Testy: `wizardState.test.ts` (odmítnutí zvýšení i
      snížení úrovně při úpravě). Neověřováno v prohlížeči — jde o zúžení
      existující kontroly, které testy pokrývají přesně.
+   - Slice 8e2 (D106): sheet ukazuje přebytek nad to, co úroveň dovoluje, pro
+     kouzla a Wild Shape formy — obojí D104 vědomě nemaže při odebrání úrovně.
+     `src/spells/spellLevelFilter.ts` nově exportuje `highestSlotLevel` (jedno
+     místo pro "nejvyšší sesílatelná úroveň", žádný druhý výpočet).
+     `CharacterSheet.tsx`: kouzlo ze `spellChoices` (hráčova volba, jediná bez
+     úrovně podle D104 — subclass/feat/optional feature/race granty se
+     neoznačují, jsou vždy platné) nad touhle úrovní jde do `SpellList` s
+     propem `unavailableAboveLevel`; `SpellRow` ho ukáže jako text
+     "(unavailable at this level)" u jména, kouzlo zůstává v seznamu i
+     úložišti. Počet kouzel navíc (`computeSpellCounts` proti storovaným
+     cantripům/leveled kouzlům podle `spellDetails`) a Wild Shape forem navíc
+     (`wildShapeLimits` proti `character.wildShapeForms`) hlásí jen ČÍSLO ("N
+     known, M allowed"), nikdy které jméno — appka to neumí ukázat. Multiclass
+     (víc než jedna třída) hlásí jednu větu "nejde zjistit" místo obojí notice
+     u kouzel (D11 — `combineSpellEntries` ztrácí, které třídě kouzlo patří,
+     takže nejvyšší sesílatelná úroveň sloučeného seznamu není spočitatelná
+     bez kroku 10); Wild Shape zůstává určený i u multiclassu (limit čte jen
+     tu jednu Druid třídu), neurčený jen když ta třída na postavě už není.
+     Postava v mezích neukazuje žádnou z těchto notic. Nová
+     `ClassSpellCountData` třídní data se načítají stejně jako
+     `spellSlotsClassData` (`loadSpellCountClassData`). Testy: nová sekce
+     `spell limits against level (slice 8e2, D106)` v `CharacterSheet.test.tsx`
+     (označení nad úrovní, počet kouzel navíc, žádná notice v mezích,
+     multiclass "nejde zjistit") a dva nové Wild Shape testy (počet forem
+     navíc, žádná notice v mezích). Neověřováno v prohlížeči — jde o notice
+     nad existujícími výpočty a testy assertují přesně, co se vykreslí.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -574,9 +601,9 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-**Krok 8 je hotový** — poslední slice 8e (D104) přidala odebrání úrovně.
-Další je navazující slice: označit na sheetu kouzla (a Wild Shape formy) nad
-rámec toho, co postava po odebrání úrovně smí mít. Pak krok 9.
+**Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
+Wild Shape formy nad rámec toho, co postava smí mít. Další je krok 9 (play
+tracking a odpočinky).
 
 Historie kroku 8: slice 8a (počítané maximum HP), 8a-guard (validace tabulky
 bonusů, D95), 8b (krok wizardu pro volbu hod/průměr/ručně za úroveň, D96) a

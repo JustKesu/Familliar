@@ -161,7 +161,18 @@ export function combineSpellEntries(
 
 const UNRESOLVED_LEVEL = -1
 
-export function SpellList({ entries, spellDetails, resolverData }: { entries: SheetSpellEntry[]; spellDetails: SpellDetail[]; resolverData: ResolverData }): ReactNode {
+export function SpellList({
+	entries,
+	spellDetails,
+	resolverData,
+	unavailableAboveLevel,
+}: {
+	entries: SheetSpellEntry[]
+	spellDetails: SpellDetail[]
+	resolverData: ResolverData
+	/** Slice 8e2: the highest level this character can currently cast, when known — a CHOSEN spell above it is marked unavailable rather than dropped (D106). Undefined leaves every spell unmarked, the multiclass/unknown case the sheet already states elsewhere. */
+	unavailableAboveLevel?: number
+}): ReactNode {
 	if (entries.length === 0) return <p>No spells chosen yet.</p>
 
 	const withDetail = entries.map((entry) => ({ entry, detail: findSpellDetail(spellDetails, entry.name, entry.source) }))
@@ -187,7 +198,13 @@ export function SpellList({ entries, spellDetails, resolverData }: { entries: Sh
 					<h3>{level === UNRESOLVED_LEVEL ? 'Unresolved' : spellLevelLabel(level)}</h3>
 					<ul>
 						{byLevel.get(level)!.map(({ entry, detail }) => (
-							<SpellRow key={keyOf(entry.name, entry.source)} entry={entry} detail={detail} resolverData={resolverData} />
+							<SpellRow
+								key={keyOf(entry.name, entry.source)}
+								entry={entry}
+								detail={detail}
+								resolverData={resolverData}
+								unavailableAboveLevel={unavailableAboveLevel}
+							/>
 						))}
 					</ul>
 				</div>
@@ -196,7 +213,20 @@ export function SpellList({ entries, spellDetails, resolverData }: { entries: Sh
 	)
 }
 
-function SpellRow({ entry, detail, resolverData }: { entry: SheetSpellEntry; detail: SpellDetail | undefined; resolverData: ResolverData }): ReactNode {
+function SpellRow({
+	entry,
+	detail,
+	resolverData,
+	unavailableAboveLevel,
+}: {
+	entry: SheetSpellEntry
+	detail: SpellDetail | undefined
+	resolverData: ResolverData
+	unavailableAboveLevel?: number
+}): ReactNode {
+	/* Only a CHOSEN spell is marked (slice 8e2/D106) — known/prepared spells are the ones a player swaps freely (D104), so they're the ones that can end up above what the character can currently cast. A subclass/feat/species grant stays tied to its own fixed source and is never marked here. */
+	const unavailable = entry.chosen && detail !== undefined && unavailableAboveLevel !== undefined && detail.level > unavailableAboveLevel
+
 	if (!detail) {
 		return (
 			<li>
@@ -217,6 +247,7 @@ function SpellRow({ entry, detail, resolverData }: { entry: SheetSpellEntry; det
 					{entry.name}
 					{detail.ritual && <span className="spell-list__flag"> (ritual)</span>}
 					{detail.concentration && <span className="spell-list__flag"> (concentration)</span>}
+					{unavailable && <span className="spell-list__flag spell-list__unavailable"> (unavailable at this level)</span>}
 					{' — '}
 					{provenanceLabel(entry)}
 				</summary>

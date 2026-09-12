@@ -24,7 +24,8 @@
 import type { SpellSlotsEntry } from '../calculation/spellSlots'
 import type { ClassSpellListSpell } from './classSpellListData'
 
-function highestSlotLevel(spellSlots: SpellSlotsEntry | undefined): number {
+/** The highest spell level a class's own slots reach — exported for the sheet's D106 "unavailable at this level" notice, so it stays the one place this is worked out. */
+export function highestSlotLevel(spellSlots: SpellSlotsEntry | undefined): number {
 	if (!spellSlots) return 0
 	if (spellSlots.pactSlots) return spellSlots.pactSlots.slotLevel
 	if (spellSlots.ordinarySlots) {

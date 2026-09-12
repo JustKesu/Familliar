@@ -13,6 +13,8 @@ import type { ClassSpellSlotsData } from '../calculation/spellSlots'
 import type { SpeciesTraitsData } from '../calculation/speciesTraits'
 import { loadFeatTextEntries, loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetData'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
+import { loadSpellCountClassData } from '../spells/spellCountClassData'
+import type { ClassSpellCountData } from '../calculation/spellCounts'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
@@ -76,6 +78,10 @@ vi.mock('./sheetData', () => ({
 
 vi.mock('../spells/spellSlotsClassData', () => ({
 	loadSpellSlotsClassData: vi.fn(async () => []),
+}))
+
+vi.mock('../spells/spellCountClassData', () => ({
+	loadSpellCountClassData: vi.fn(async () => []),
 }))
 
 vi.mock('../spells/spellDetailData', async (importOriginal) => {
@@ -3244,6 +3250,7 @@ describe('CharacterSheet', () => {
 		afterEach(() => {
 			vi.mocked(loadSpellcastingAbilityClassData).mockReset().mockResolvedValue([])
 			vi.mocked(loadSpellSlotsClassData).mockReset().mockResolvedValue([])
+			vi.mocked(loadSpellCountClassData).mockReset().mockResolvedValue([])
 			vi.mocked(loadSpellDetails).mockReset().mockResolvedValue([])
 			vi.mocked(loadSubclassSource).mockReset().mockResolvedValue(null)
 			vi.mocked(loadSubclassAlwaysPreparedSpells).mockReset().mockResolvedValue([])
@@ -4774,6 +4781,208 @@ describe('CharacterSheet', () => {
 		})
 	})
 
+	/*
+	 * Slice 8e2 (D106): what the sheet says about a chosen spell above what
+	 * this character can currently cast, and about knowing/preparing more
+	 * spells than its level allows — the gap D104 left when a level is
+	 * removed (spells carry no level, so nothing was dropped with it).
+	 */
+	describe('spell limits against level (slice 8e2, D106)', () => {
+		afterEach(() => {
+			vi.mocked(loadSpellcastingAbilityClassData).mockReset().mockResolvedValue([])
+			vi.mocked(loadSpellSlotsClassData).mockReset().mockResolvedValue([])
+			vi.mocked(loadSpellCountClassData).mockReset().mockResolvedValue([])
+			vi.mocked(loadSpellDetails).mockReset().mockResolvedValue([])
+		})
+
+		it('marks a chosen spell above the highest castable level as unavailable, and leaves an in-range one unmarked (e.g. after levelling up then back down, D104)', async () => {
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null },
+			]
+			const spellCounts: ClassSpellCountData[] = [
+				{ className: 'Wizard', classSource: 'XPHB', cantripProgression: [4], leveledSpellProgression: [6], label: 'prepared' },
+			]
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Prestidigitation', source: 'XPHB', level: 0 }),
+				spellDetail({ name: 'Mage Armor', source: 'XPHB', level: 1 }),
+				spellDetail({ name: 'Fireball', source: 'XPHB', level: 3 }),
+			]
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellCountClassData).mockResolvedValue(spellCounts)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const wizard: Character = {
+				id: 'lim1',
+				name: 'Overreacher',
+				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 1 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 16, wisdom: 12, charisma: 10 },
+				},
+				spellChoices: [
+					{
+						className: 'Wizard',
+						classSource: 'XPHB',
+						spells: [
+							{ name: 'Prestidigitation', source: 'XPHB' },
+							{ name: 'Mage Armor', source: 'XPHB' },
+							{ name: 'Fireball', source: 'XPHB' },
+						],
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Overreacher' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Fireball'))
+
+			const fireballSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fireball'))!
+			expect(fireballSummary.textContent).toContain('unavailable at this level')
+			const mageArmorSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Mage Armor'))!
+			expect(mageArmorSummary.textContent).not.toContain('unavailable at this level')
+			const cantripSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Prestidigitation'))!
+			expect(cantripSummary.textContent).not.toContain('unavailable at this level')
+			expect(spellsSection.querySelector('.sheet__spell-count-over')).toBeNull()
+			expect(spellsSection.querySelector('.sheet__spell-limit-unknown')).toBeNull()
+		})
+
+		it('shows a count, not a guess at which spell, when more are known/prepared than the level allows', async () => {
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Sorcerer', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null },
+			]
+			const spellCounts: ClassSpellCountData[] = [
+				{ className: 'Sorcerer', classSource: 'XPHB', cantripProgression: [4], leveledSpellProgression: [2], label: 'known' },
+			]
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Fire Bolt', source: 'XPHB', level: 0 }),
+				spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0 }),
+				spellDetail({ name: 'Prestidigitation', source: 'XPHB', level: 0 }),
+				spellDetail({ name: 'Light', source: 'XPHB', level: 0 }),
+				spellDetail({ name: 'Ray of Frost', source: 'XPHB', level: 0 }),
+				spellDetail({ name: 'Magic Missile', source: 'XPHB', level: 1 }),
+				spellDetail({ name: 'Shield', source: 'XPHB', level: 1 }),
+				spellDetail({ name: 'Chromatic Orb', source: 'XPHB', level: 1 }),
+			]
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellCountClassData).mockResolvedValue(spellCounts)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const sorcerer: Character = {
+				id: 'lim2',
+				name: 'Overprepared',
+				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 1 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 10, wisdom: 12, charisma: 16 },
+				},
+				spellChoices: [
+					{
+						className: 'Sorcerer',
+						classSource: 'XPHB',
+						spells: [
+							{ name: 'Fire Bolt', source: 'XPHB' },
+							{ name: 'Mage Hand', source: 'XPHB' },
+							{ name: 'Prestidigitation', source: 'XPHB' },
+							{ name: 'Light', source: 'XPHB' },
+							{ name: 'Ray of Frost', source: 'XPHB' },
+							{ name: 'Magic Missile', source: 'XPHB' },
+							{ name: 'Shield', source: 'XPHB' },
+							{ name: 'Chromatic Orb', source: 'XPHB' },
+						],
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={sorcerer} />)
+			await screen.findByRole('heading', { name: 'Overprepared' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Chromatic Orb'))
+
+			expect(spellsSection.textContent).toContain('Cantrips: 5 known, 4 allowed.')
+			expect(spellsSection.textContent).toContain('Spells known: 3 known, 2 allowed.')
+			expect(spellsSection.querySelector('.spell-list__unavailable')).toBeNull()
+		})
+
+		it('shows no limit notice anywhere for a character within its limits', async () => {
+			const spellSlots: ClassSpellSlotsData[] = [
+				{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null },
+			]
+			const spellCounts: ClassSpellCountData[] = [
+				{ className: 'Wizard', classSource: 'XPHB', cantripProgression: [4], leveledSpellProgression: [6], label: 'prepared' },
+			]
+			const details: SpellDetail[] = [
+				spellDetail({ name: 'Prestidigitation', source: 'XPHB', level: 0 }),
+				spellDetail({ name: 'Mage Armor', source: 'XPHB', level: 1 }),
+			]
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellCountClassData).mockResolvedValue(spellCounts)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const wizard: Character = {
+				id: 'lim3',
+				name: 'Well Within Limits',
+				classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 1 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 16, wisdom: 12, charisma: 10 },
+				},
+				spellChoices: [
+					{
+						className: 'Wizard',
+						classSource: 'XPHB',
+						spells: [
+							{ name: 'Prestidigitation', source: 'XPHB' },
+							{ name: 'Mage Armor', source: 'XPHB' },
+						],
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Well Within Limits' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Mage Armor'))
+
+			expect(spellsSection.querySelector('.spell-list__unavailable')).toBeNull()
+			expect(spellsSection.querySelector('.sheet__spell-count-over')).toBeNull()
+			expect(spellsSection.querySelector('.sheet__spell-limit-unknown')).toBeNull()
+		})
+
+		it('says the limit cannot be determined for a multiclass character, rather than showing nothing', async () => {
+			const details: SpellDetail[] = [spellDetail({ name: 'Fireball', source: 'XPHB', level: 3 })]
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const multiclass: Character = {
+				id: 'lim4',
+				name: 'Theurge Overreacher',
+				classes: [
+					{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 3 },
+					{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 2 },
+				],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 12, constitution: 13, intelligence: 16, wisdom: 12, charisma: 10 },
+				},
+				spellChoices: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Fireball', source: 'XPHB' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={multiclass} />)
+			await screen.findByRole('heading', { name: 'Theurge Overreacher' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			await waitFor(() => expect(spellsSection.textContent).toContain('Fireball'))
+
+			expect(container.querySelector('.sheet__spell-limit-unknown')).toBeTruthy()
+			expect(spellsSection.textContent).toContain('combining more than one class')
+			expect(spellsSection.querySelector('.spell-list__unavailable')).toBeNull()
+			expect(spellsSection.querySelector('.sheet__spell-count-over')).toBeNull()
+		})
+	})
+
 	// Build order step 6b slice 2 — the familiar's possible forms. The spell can
 	// reach a character down several paths the sheet already merges, so the
 	// section keys off the COMBINED list, not off Character.spellChoices.
@@ -5078,6 +5287,9 @@ describe('CharacterSheet', () => {
 			expect(section.textContent).toContain('11 (2d8 + 2)') // the form's own hit points
 			expect(section.textContent).toContain('13') // its AC
 			expect(section.textContent).not.toContain('{@')
+			// Slice 8e2 (D106): one known form against an allowance of 8 (level 6) — well within limits, no count notice.
+			expect(section.querySelector('.sheet__wild-shape-count-over')).toBeNull()
+			expect(section.querySelector('.sheet__wild-shape-count-unknown')).toBeNull()
 
 			cleanup()
 			const { container: without } = render(<CharacterSheet character={character} />)
@@ -5102,6 +5314,39 @@ describe('CharacterSheet', () => {
 
 			await waitFor(() => expect(container.querySelector('.sheet__wild-shape-forms')).toBeTruthy())
 			expect(container.querySelector('.sheet__wild-shape-forms')!.textContent).toContain('Dire Corgi')
+		})
+
+		it('shows a count, not a guess at which form, when more Wild Shape forms are known than the level allows (slice 8e2, D106)', async () => {
+			const druid: Character = {
+				id: 'ws3',
+				name: 'Overstuffed Shifter',
+				classes: [{ className: 'Druid', classSource: 'XPHB', subclass: null, level: 2 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 15, charisma: 8 },
+				},
+				// Level 2 allows 4 known forms (Beast Shapes table) — 5 stored is one over.
+				wildShapeForms: [
+					{
+						className: 'Druid',
+						classSource: 'XPHB',
+						forms: [
+							{ name: 'Form1', source: 'XMM' },
+							{ name: 'Form2', source: 'XMM' },
+							{ name: 'Form3', source: 'XMM' },
+							{ name: 'Form4', source: 'XMM' },
+							{ name: 'Form5', source: 'XMM' },
+						],
+					},
+				],
+			}
+
+			const { container } = render(<CharacterSheet character={druid} />)
+			await screen.findByRole('heading', { name: 'Overstuffed Shifter' })
+
+			await waitFor(() => expect(container.querySelector('.sheet__wild-shape-forms')).toBeTruthy())
+			const section = container.querySelector('.sheet__wild-shape-forms')!
+			expect(section.textContent).toContain('Druid Wild Shape forms: 5 known, 4 allowed.')
 		})
 
 		it('renders each form as a collapsed stat block with its markup resolved', async () => {
