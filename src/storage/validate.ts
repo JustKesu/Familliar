@@ -320,10 +320,10 @@ export function describeOptionalFeatureChoicesError(value: unknown): string | nu
 		if (!isNonEmptyString(entry['featureType'])) {
 			return `optionalFeatureChoices[${i}].featureType is missing or not a string`
 		}
-		const choices = entry['choices']
-		if (!Array.isArray(choices) || !choices.every((choice) => isNonEmptyString(choice))) {
-			return `optionalFeatureChoices[${i}].choices must be an array of strings`
-		}
+		// `choices` is required on an entry, unlike the top-level LeveledChoice fields the helper was written for.
+		if (entry['choices'] === undefined) return `optionalFeatureChoices[${i}].choices must be an array`
+		const choicesError = describeLeveledChoicesError(entry['choices'], `optionalFeatureChoices[${i}].choices`)
+		if (choicesError) return choicesError
 		const spellChoicesError = describeOptionalFeatureSpellChoicesError(entry['spellChoices'], i)
 		if (spellChoicesError) return spellChoicesError
 	}
@@ -357,7 +357,7 @@ function toCharacterOptionalFeatureChoices(value: unknown[]): CharacterOptionalF
 		const spellChoices = record['spellChoices'] as CharacterOptionalFeatureChoice['spellChoices']
 		return {
 			featureType: record['featureType'] as string,
-			choices: record['choices'] as string[],
+			choices: toLeveledChoices(record['choices'] as unknown[]),
 			...(spellChoices === undefined ? {} : { spellChoices }),
 		}
 	})

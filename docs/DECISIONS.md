@@ -1825,3 +1825,30 @@ místo, jedna změna `includes(skill)` na `choiceNames(...).includes(skill)`.
 rozklad (D40/D41) i stejný stav proficiency (D45). Tohle je zároveň rozdíl, kvůli
 kterému má slice 8c3 vlastní odhad rozsahu — počet čtenářů, ne tvar, je to, co
 tuhle změnu prodražuje.
+
+## D99 — `optionalFeatureChoices`: úroveň nese jednotlivá volba, ne záznam `featureType`; vnořené `spellChoices` jsou z D22 venku
+
+Od schématu 33 je `choices` v každém záznamu
+`CharacterOptionalFeatureChoice` pole `LeveledChoice` místo `string[]`, migrace
+32→33 dělá z každého jména `{ name }` bez úrovně a volby z tvorby postavy úroveň
+nemají. Tvar, helper `choiceNames()`, validátor i konverze jsou ty z D97/D98 a
+neopakují se. Tímhle je D22 splněné pro všechna pole, která ho potřebují.
+
+**Úroveň sedí na JEDNOTLIVÉ volbě, ne na záznamu.** Jeden `featureType` sbírá
+volby z několika úrovní: sorcerer bere Metamagic na 3., 10. i 17. úrovni, a
+všechny tři sedí pod `MM`. Jedna úroveň na záznamu by tedy byla nepravdivá u dvou
+ze tří voleb — a `featureType` se rozdělit nedá, protože ho určují data
+(`optionalfeatureProgression`), ne appka.
+
+**Vnořené `spellChoices` se z D22 vynechávají.** Ze stejného důvodu jako
+`wildShapeForms` a `familiar`: kouzla se dají kdykoli vyměnit, takže zapsaná
+úroveň by tvrdila provenienci, kterou pravidla nedávají. Migrace se jich proto
+nedotýká vůbec.
+
+**Rozdíl proti D97/D98: osm produkčních čtenářů, ne jeden.** Všichni matchují na
+jméno a jdou teď přes `choiceNames()` — invocations (Pact of the Chain → formy
+familiara), udělené smysly, udělená i vybraná kouzla z options, tři čtenáři v
+`optionalFeatureData.ts` (prerekvizity a počty v pickeru, sekce sheetu, tabulka
+akcí) a počítání požadavků na kouzla ve wizardu. Žádnému z nich se výsledek
+nemění, ať volba úroveň nese nebo ne; testy to u každého ověřují dvojicí
+„s úrovní / bez úrovně".

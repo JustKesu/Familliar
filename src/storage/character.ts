@@ -648,11 +648,28 @@ export interface OptionalFeatureSpellChoice {
 	spells: { name: string; source: string }[]
 }
 
-/** One subclass optionalfeatureProgression's picks, tagged with which progression (featureType code) they belong to. */
+/**
+ * One optionalfeatureProgression's picks, tagged with which progression
+ * (featureType code) they belong to.
+ *
+ * The level sits on each individual pick, not on this entry (D99): one
+ * featureType collects picks made at several different levels — a Sorcerer
+ * takes Metamagic at 3, 10 and 17, all under `MM` — so an entry-level field
+ * would be wrong for all but one of them.
+ */
 export interface CharacterOptionalFeatureChoice {
 	featureType: string
-	choices: string[]
-	/** Present only for options that let the player pick spells (step 6a). One entry per such option chosen; absent entirely for every other progression. */
+	/** Objects rather than bare option names since schema version 33 — see LeveledChoice (D99, following D97/D98). */
+	choices: LeveledChoice[]
+	/**
+	 * Present only for options that let the player pick spells (step 6a). One
+	 * entry per such option chosen; absent entirely for every other progression.
+	 *
+	 * Deliberately carries NO level, unlike the `choices` beside it — D99 leaves
+	 * nested spell picks out of D22 for the reason CharacterWildShapeForms and
+	 * Character.familiar are out: a spell can be swapped at any time, so a
+	 * recorded level would be false provenance.
+	 */
 	spellChoices?: OptionalFeatureSpellChoice[]
 }
 
@@ -728,13 +745,14 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 32 for Character.expertiseSkills, which becomes
- * an array of LeveledChoice objects instead of bare skill names (D98, the same
- * change version 31 made to Character.masteries under D97).
+ * (see wireFormat.ts). Bumped to 33 for the `choices` inside each
+ * Character.optionalFeatureChoices entry, which becomes an array of
+ * LeveledChoice objects instead of bare option names (D99, the same change
+ * versions 31 and 32 made to masteries and expertiseSkills under D97/D98).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 32
+export const CURRENT_SCHEMA_VERSION = 33

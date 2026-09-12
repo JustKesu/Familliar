@@ -767,7 +767,7 @@ describe('CharacterWizard — storage', () => {
 			classSkills: [],
 			masteries: [],
 			fightingStyle: null,
-			optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Trip Attack'] }],
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }] }],
 			speciesSkills: [],
 			expertiseSkills: [],
 			featAsiChoices: [],

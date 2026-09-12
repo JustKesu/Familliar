@@ -65,7 +65,7 @@ import { computeSpellCounts } from '../calculation/spellCounts'
 import { computeSpellSlots } from '../calculation/spellSlots'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
-import type { Character, CharacterOptionalFeatureChoice } from '../storage/character'
+import { choiceNames, type Character, type CharacterOptionalFeatureChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
 	initialControllerState,
@@ -429,7 +429,7 @@ export function CharacterWizard({
 	useEffect(() => {
 		let cancelled = false
 		const chosen = state.data.classOptionalFeatureChoices.flatMap((entry) =>
-			entry.choices.map((optionName) => ({ featureType: entry.featureType, optionName })),
+			choiceNames(entry.choices).map((optionName) => ({ featureType: entry.featureType, optionName })),
 		)
 		if (chosen.length === 0) {
 			setOptionalFeatureSpellRequirements([])
@@ -550,7 +550,7 @@ export function CharacterWizard({
 		let cancelled = false
 		const subclassEntries: CharacterOptionalFeatureChoice[] =
 			state.data.optionalFeatureChoices.length > 0 && state.data.subclass?.featureType
-				? [{ featureType: state.data.subclass.featureType, choices: state.data.optionalFeatureChoices }]
+				? [{ featureType: state.data.subclass.featureType, choices: state.data.optionalFeatureChoices.map((name) => ({ name })) }]
 				: []
 		const selection = [...subclassEntries, ...state.data.classOptionalFeatureChoices]
 		if (selection.length === 0) {

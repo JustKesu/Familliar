@@ -125,7 +125,7 @@ vi.mock('../spells/optionalFeatureSpells', async (importOriginal) => {
 		loadOptionalFeatureGrantedSpells: vi.fn(async (character: { optionalFeatureChoices?: CharacterOptionalFeatureChoice[] }) =>
 			(character.optionalFeatureChoices ?? []).flatMap((entry) =>
 				(entry.spellChoices ?? [])
-					.filter((pick) => entry.choices.some((name) => name.toLowerCase() === pick.optionName.toLowerCase()))
+					.filter((pick) => entry.choices.some((choice) => choice.name.toLowerCase() === pick.optionName.toLowerCase()))
 					.flatMap((pick) =>
 						[...pick.cantrips, ...pick.spells].map((ref) => ({
 							...ref,

@@ -747,7 +747,8 @@ export function saveCharacter(
 	 */
 	const subclassOptionalFeatureChoices: CharacterOptionalFeatureChoice[] =
 		data.optionalFeatureChoices.length > 0 && data.subclass?.featureType
-			? [{ featureType: data.subclass.featureType, choices: data.optionalFeatureChoices }]
+			? // D99, as D97: a creation pick records no level — the wizard makes every pick in one step.
+				[{ featureType: data.subclass.featureType, choices: data.optionalFeatureChoices.map((name) => ({ name })) }]
 			: []
 	const classOptionalFeatureChoices = data.classOptionalFeatureChoices.filter((entry) => entry.choices.length > 0)
 	const optionalFeatureChoices: CharacterOptionalFeatureChoice[] | undefined =

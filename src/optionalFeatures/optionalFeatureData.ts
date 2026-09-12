@@ -15,6 +15,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { choiceNames, type LeveledChoice } from '../storage/character'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -552,7 +553,8 @@ export function classOptionalFeatureGroupsFor(
 /** One featureType's picks, the shape Character.optionalFeatureChoices stores — no schema change was needed for class-level picks. */
 export interface OptionalFeatureSelection {
 	featureType: string
-	choices: string[]
+	/** Each pick carries the level it was made at (D99); every reader below matches on the name alone. */
+	choices: readonly LeveledChoice[]
 }
 
 /** Everything about a prerequisite EXCEPT the two fields that depend on which group is being evaluated. */
@@ -583,7 +585,7 @@ export function evaluateClassOptionalFeatureGroups(
 	base: ClassOptionalFeatureContextBase,
 ): EvaluatedClassOptionalFeatureGroup[] {
 	return groups.map((group) => {
-		const chosen = selection.find((entry) => entry.featureType === group.featureType)?.choices ?? []
+		const chosen = choiceNames(selection.find((entry) => entry.featureType === group.featureType)?.choices)
 		const ctx: OptionalFeaturePrerequisiteContext = {
 			...base,
 			chosenOptions: group.options.filter((option) => chosen.includes(option.name)).map(({ name, source }) => ({ name, source })),
@@ -625,7 +627,7 @@ export function chosenClassOptionalFeatures(
 	const groups: ChosenClassOptionalFeatureGroup[] = []
 	for (const characterClass of classes) {
 		for (const grant of classOptionalFeatureGrantsFor(parsedClasses, characterClass.className, characterClass.classSource, characterClass.level)) {
-			const chosen = selection.find((entry) => entry.featureType === grant.featureType)?.choices ?? []
+			const chosen = choiceNames(selection.find((entry) => entry.featureType === grant.featureType)?.choices)
 			if (chosen.length === 0) continue
 			const all = optionsForFeatureType(parsedOptionalFeatures, parsedFeats, grant.featureType)
 			const options = chosen
@@ -658,7 +660,7 @@ export function chosenOptionalFeatureOptions(
 	const out: OptionalFeatureOption[] = []
 	for (const entry of selection) {
 		const all = optionsForFeatureType(parsedOptionalFeatures, parsedFeats, entry.featureType)
-		for (const name of entry.choices) {
+		for (const name of choiceNames(entry.choices)) {
 			// D43: a stored pick the data no longer offers is skipped, not faked.
 			const option = all.find((candidate) => normalizeName(candidate.name) === normalizeName(name))
 			if (option) out.push(option)

@@ -287,7 +287,7 @@ describe('the migration chain (D69)', () => {
 		expect('expertiseSkills' in migrated).toBe(false)
 	})
 
-	it('carries a version-30 character through both shape changes in one chain', () => {
+	it('carries a version-30 character through every shape change in one chain', () => {
 		const migrated = migrateToCurrent({
 			schemaVersion: 30,
 			id: '1',
@@ -295,10 +295,65 @@ describe('the migration chain (D69)', () => {
 			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
 			masteries: ['Longsword'],
 			expertiseSkills: ['athletics'],
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Trip Attack'] }],
 		}) as Record<string, unknown>
 
 		expect(migrated['masteries']).toEqual([{ name: 'Longsword' }])
 		expect(migrated['expertiseSkills']).toEqual([{ name: 'athletics' }])
+		expect(migrated['optionalFeatureChoices']).toEqual([{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }] }])
+	})
+
+	it('turns every bare option name in every optionalFeatureChoices entry into an object with no level recorded', () => {
+		const migrated = migrateToCurrent({
+			schemaVersion: 32,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: 'Draconic Sorcery', level: 10 }],
+			optionalFeatureChoices: [
+				// One featureType holding picks from several levels is exactly why the level sits on the pick (D99).
+				{ featureType: 'MM', choices: ['Careful Spell', 'Distant Spell', 'Twinned Spell', 'Quickened Spell'] },
+				{ featureType: 'EI', choices: ['Agonizing Blast'] },
+			],
+		}) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		expect(migrated['optionalFeatureChoices']).toEqual([
+			{
+				featureType: 'MM',
+				choices: [{ name: 'Careful Spell' }, { name: 'Distant Spell' }, { name: 'Twinned Spell' }, { name: 'Quickened Spell' }],
+			},
+			{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] },
+		])
+	})
+
+	it('leaves an optionalFeatureChoices entry’s spellChoices untouched and adds nothing to an entry without choices', () => {
+		const tomePicks = [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Guidance', source: 'XPHB' }], spells: [] }]
+		const migrated = migrateToCurrent({
+			schemaVersion: 32,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
+			optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Tome'], spellChoices: tomePicks }, { featureType: 'MM' }],
+		}) as Record<string, unknown>
+
+		// D99 keeps nested spell picks out of D22, so the migration must not reshape them either.
+		expect(migrated['optionalFeatureChoices']).toEqual([
+			{ featureType: 'EI', choices: [{ name: 'Pact of the Tome' }], spellChoices: tomePicks },
+			{ featureType: 'MM' },
+		])
+	})
+
+	it('carries a version-32 character with no optionalFeatureChoices forward without inventing the field', () => {
+		const before = {
+			schemaVersion: 32,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 1 }],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('optionalFeatureChoices' in migrated).toBe(false)
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

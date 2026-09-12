@@ -47,7 +47,7 @@
  *   with the already-built spell-grant path.
  */
 
-import type { Character, CharacterOptionalFeatureChoice, FeatAsiChoice } from '../storage/character'
+import { choiceNames, type Character, type CharacterOptionalFeatureChoice, type FeatAsiChoice } from '../storage/character'
 import { isRecord } from '../spells/subclassPreparedSpells'
 import { loadDataFile } from '../dataLoader/dataLoader'
 
@@ -112,7 +112,7 @@ export function extractOptionalFeatureGrantedSenses(parsedOptionalFeatures: unkn
 	const result: GrantedSense[] = []
 
 	for (const stored of selection) {
-		for (const chosenName of stored.choices) {
+		for (const chosenName of choiceNames(stored.choices)) {
 			const option = entries.find(
 				(candidate) =>
 					candidate.name.toLowerCase() === chosenName.toLowerCase() &&

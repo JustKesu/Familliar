@@ -19,7 +19,7 @@ import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells } from '../spells/raceSpells'
-import { CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition } from '../storage/character'
+import { choiceNames, CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition } from '../storage/character'
 import { loadAcFormulaKeys } from './armourClassData'
 import { loadDamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
@@ -28,7 +28,12 @@ import { loadResolverData } from '../featureResolver'
 import { loadBeasts, type Beast } from '../beasts/beastData'
 import { loadChosenClassFeatureChoices } from '../classFeatureChoices/classFeatureChoiceData'
 import { grantedClassFeaturesFrom, loadGrantedClassFeatures } from './grantedClassFeatures'
-import { chosenOptionalFeatureOptions, loadChosenClassOptionalFeatures, loadChosenOptionalFeatureOptions } from '../optionalFeatures/optionalFeatureData'
+import {
+	chosenOptionalFeatureOptions,
+	loadChosenClassOptionalFeatures,
+	loadChosenOptionalFeatureOptions,
+	type OptionalFeatureSelection,
+} from '../optionalFeatures/optionalFeatureData'
 import { loadItemEntryTemplates } from '../inventory/itemEntryResolver'
 
 /*
@@ -303,8 +308,8 @@ vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
 	return {
 		...actual,
 		loadChosenClassOptionalFeatures: vi.fn(
-			async (classes: { className: string }[], selection: { featureType: string; choices: string[] }[]) => {
-				const chosen = classes.some((c) => c.className === 'Warlock') ? (selection.find((s) => s.featureType === 'EI')?.choices ?? []) : []
+			async (classes: { className: string }[], selection: OptionalFeatureSelection[]) => {
+				const chosen = classes.some((c) => c.className === 'Warlock') ? choiceNames(selection.find((s) => s.featureType === 'EI')?.choices) : []
 				if (chosen.length === 0) return []
 				return [
 					{
@@ -2500,7 +2505,7 @@ describe('CharacterSheet', () => {
 			id: 'w1',
 			name: 'Kesu',
 			classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
-			optionalFeatureChoices: [{ featureType: 'EI', choices: ['Agonizing Blast', 'Devil’s Sight'] }],
+			optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Devil’s Sight' }] }],
 		}
 
 		it('renders each chosen invocation by name, under the progression’s own heading', async () => {
@@ -2551,7 +2556,7 @@ describe('CharacterSheet', () => {
 				id: 'w2',
 				name: 'Sighted Warlock',
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
-				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Devil’s Sight'] }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Devil’s Sight' }] }],
 			}
 
 			const { container } = render(<CharacterSheet character={warlock} />)
@@ -3115,7 +3120,25 @@ describe('CharacterSheet', () => {
 				id: 'act-sorcerer',
 				name: 'Nott',
 				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 }],
-				optionalFeatureChoices: [{ featureType: 'MM', choices: ['Twinned Spell'] }],
+				optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Twinned Spell' }] }],
+			}
+			const container = await renderFor(sorcerer)
+
+			await waitFor(() => expect(rowNames(container)).toContain('Twinned Spell'))
+		})
+
+		/*
+		 * D99: one featureType collects picks from several levels, which is why the
+		 * level sits on the pick. The actions table must read straight past it.
+		 */
+		it('a Metamagic pick that records the level it was taken at still gets its row', async () => {
+			withRealOptionResolution()
+			const sorcerer: Character = {
+				...character,
+				id: 'act-sorcerer-leveled',
+				name: 'Nott',
+				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 10 }],
+				optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Twinned Spell', level: 10 }] }],
 			}
 			const container = await renderFor(sorcerer)
 
@@ -3129,7 +3152,7 @@ describe('CharacterSheet', () => {
 				id: 'act-battlemaster',
 				name: 'Yasha',
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 5 }],
-				optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Trip Attack', 'Ambush'] }],
+				optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Ambush' }] }],
 			}
 			const container = await renderFor(battleMaster)
 
@@ -3152,7 +3175,7 @@ describe('CharacterSheet', () => {
 				id: 'act-battlemaster-text',
 				name: 'Yasha',
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 5 }],
-				optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Trip Attack'] }],
+				optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }] }],
 			}
 			const container = await renderFor(battleMaster)
 			await waitFor(() => expect(rowNames(container)).toContain('Trip Attack'))
@@ -3173,7 +3196,7 @@ describe('CharacterSheet', () => {
 				id: 'act-sorcerer-dedupe',
 				name: 'Nott',
 				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 }],
-				optionalFeatureChoices: [{ featureType: 'MM', choices: ['Twinned Spell'] }],
+				optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Twinned Spell' }] }],
 			}
 			const container = await renderFor(sorcerer)
 			await screen.findByRole('heading', { name: 'Metamagic' })
@@ -3937,7 +3960,7 @@ describe('CharacterSheet', () => {
 					method: 'standardArray',
 					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
 				},
-				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Mask of Many Faces'] }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Mask of Many Faces' }] }],
 			}
 
 			const { container } = render(<CharacterSheet character={warlock} />)
@@ -3953,7 +3976,7 @@ describe('CharacterSheet', () => {
 			// The loader is stubbed above, so assert the sheet actually hands it the stored picks — otherwise a
 			// mis-wired argument would still render green here.
 			expect(vi.mocked(loadOptionalFeatureGrantedSpells)).toHaveBeenCalledWith(
-				expect.objectContaining({ optionalFeatureChoices: [{ featureType: 'EI', choices: ['Mask of Many Faces'] }] }),
+				expect.objectContaining({ optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Mask of Many Faces' }] }] }),
 			)
 		})
 
@@ -4136,7 +4159,7 @@ describe('CharacterSheet', () => {
 					method: 'standardArray',
 					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
 				},
-				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Mask of Many Faces'] }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Mask of Many Faces' }] }],
 			}
 
 			const { container } = render(<CharacterSheet character={warlock} />)
@@ -4267,7 +4290,7 @@ describe('CharacterSheet', () => {
 					method: 'standardArray',
 					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
 				},
-				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Tome'], spellChoices: tomePicks }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Pact of the Tome' }], spellChoices: tomePicks }],
 			}
 
 			const { container } = render(<CharacterSheet character={warlock} />)
@@ -4315,7 +4338,7 @@ describe('CharacterSheet', () => {
 					method: 'standardArray',
 					scores: { strength: 10, dexterity: 10, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 },
 				},
-				optionalFeatureChoices: [{ featureType: 'EI', choices: ['One with Shadows', 'Shroud of Shadow'] }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'One with Shadows' }, { name: 'Shroud of Shadow' }] }],
 			}
 
 			const { container } = render(<CharacterSheet character={warlock} />)
@@ -4923,7 +4946,7 @@ describe('CharacterSheet', () => {
 					method: 'standardArray',
 					scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 10, wisdom: 12, charisma: 15 },
 				},
-				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Chain'] }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Pact of the Chain' }] }],
 			}
 			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([
 				{
@@ -4965,7 +4988,8 @@ describe('CharacterSheet', () => {
 					method: 'standardArray',
 					scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 10, wisdom: 12, charisma: 15 },
 				},
-				optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Chain'] }],
+				// D99: this one records the level it was taken at, the sibling test above does not — the forms offered are the same.
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Pact of the Chain', level: 2 }] }],
 				...(familiar ? { familiar } : {}),
 			}
 		}
@@ -5109,7 +5133,7 @@ describe('CharacterSheet', () => {
 				method: 'standardArray',
 				scores: { strength: 10, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 8, charisma: 15 },
 			},
-			optionalFeatureChoices: [{ featureType: 'EI', choices: ['Devil’s Sight'] }],
+			optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Devil’s Sight' }] }],
 			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Fey-Touched', source: 'XPHB' }],
 		}
 
@@ -5413,7 +5437,7 @@ describe('sheet tabs (rebuild slice 2)', () => {
 			id: 'tabs-caster',
 			name: 'Aria',
 			classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
-			optionalFeatureChoices: [{ featureType: 'EI', choices: ['Agonizing Blast'] }],
+			optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }],
 			spellChoices: [{ className: 'Warlock', classSource: 'XPHB', spells: [{ name: 'Eldritch Blast', source: 'XPHB' }] }],
 		}
 

@@ -113,11 +113,17 @@ describe('familiarFormOptions', () => {
 
 describe('hasPactOfTheChain', () => {
 	it('is true when an invocation pick names it, whatever case or padding', () => {
-		expect(hasPactOfTheChain([{ choices: ['Agonizing Blast', 'pact of the chain '] }])).toBe(true)
+		expect(hasPactOfTheChain([{ choices: [{ name: 'Agonizing Blast' }, { name: 'pact of the chain ' }] }])).toBe(true)
+	})
+
+	/* D99: the level a pick was made at is provenance only — the Warlock has the invocation either way. */
+	it('is true whether or not the pick records the level it was made at', () => {
+		expect(hasPactOfTheChain([{ choices: [{ name: 'Pact of the Chain', level: 5 }] }])).toBe(true)
+		expect(hasPactOfTheChain([{ choices: [{ name: 'Pact of the Chain' }] }])).toBe(true)
 	})
 
 	it('is false for another pact, or for no picks at all', () => {
-		expect(hasPactOfTheChain([{ choices: ['Pact of the Blade', 'Pact of the Tome'] }])).toBe(false)
+		expect(hasPactOfTheChain([{ choices: [{ name: 'Pact of the Blade' }, { name: 'Pact of the Tome' }] }])).toBe(false)
 		expect(hasPactOfTheChain([])).toBe(false)
 	})
 })

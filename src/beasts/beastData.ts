@@ -11,6 +11,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { choiceNames, type LeveledChoice } from '../storage/character'
 
 /** One named block of stat-block prose: a trait, action, bonus action or reaction. */
 export interface BeastEntryBlock {
@@ -186,9 +187,9 @@ export function pactOfTheChainForms(beasts: Beast[]): Beast[] {
  * Invocations are stored as an optionalFeatureChoices entry naming the option
  * (optionalFeatureData.ts), so no data file has to be read to answer this.
  */
-export function hasPactOfTheChain(optionalFeatureChoices: { choices: string[] }[]): boolean {
+export function hasPactOfTheChain(optionalFeatureChoices: { choices: readonly LeveledChoice[] }[]): boolean {
 	return optionalFeatureChoices.some((entry) =>
-		entry.choices.some((name) => name.trim().toLowerCase() === PACT_OF_THE_CHAIN_NAME),
+		choiceNames(entry.choices).some((name) => name.trim().toLowerCase() === PACT_OF_THE_CHAIN_NAME),
 	)
 }
 

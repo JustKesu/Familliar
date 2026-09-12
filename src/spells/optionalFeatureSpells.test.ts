@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { extractOptionalFeatureChosenSpells, extractOptionalFeatureGrantedSpells } from './optionalFeatureSpells'
+import type { CharacterOptionalFeatureChoice } from '../storage/character'
 
 /*
  * Fixtures mirror the real shapes scripts/investigate-optional-feature-spells.js
@@ -60,13 +61,13 @@ const pactOfTheChain = {
 
 const optionalFeatures = [maskOfManyFaces, oneWithShadows, shroudOfShadow, pactOfTheTome, pactOfTheChain]
 
-function extract(selection: { featureType: string; choices: string[] }[]) {
+function extract(selection: CharacterOptionalFeatureChoice[]) {
 	return extractOptionalFeatureGrantedSpells(optionalFeatures, spells, selection)
 }
 
 describe('extractOptionalFeatureGrantedSpells', () => {
 	it('resolves an `innate._` grant, carrying the option name as provenance', () => {
-		expect(extract([{ featureType: 'EI', choices: ['Mask of Many Faces'] }])).toEqual([
+		expect(extract([{ featureType: 'EI', choices: [{ name: 'Mask of Many Faces' }] }])).toEqual([
 			{
 				name: 'Disguise Self',
 				source: 'XPHB',
@@ -80,8 +81,15 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 		])
 	})
 
+	/* D99: the fixed grants an option carries are the option's, not the level's. */
+	it('resolves the same grants whether or not the pick records the level it was made at', () => {
+		expect(extract([{ featureType: 'EI', choices: [{ name: 'Mask of Many Faces', level: 9 }] }])).toEqual(
+			extract([{ featureType: 'EI', choices: [{ name: 'Mask of Many Faces' }] }]),
+		)
+	})
+
 	it('a bare grant (no will/daily/ritual/resource wrapper) is labeled `noSlot`, not silence — this consumer\'s only default (this task)', () => {
-		const [disguiseSelf] = extract([{ featureType: 'EI', choices: ['Mask of Many Faces'] }])
+		const [disguiseSelf] = extract([{ featureType: 'EI', choices: [{ name: 'Mask of Many Faces' }] }])
 		expect(disguiseSelf.usage).toEqual({ kind: 'noSlot' })
 	})
 
@@ -92,7 +100,7 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 			featureType: ['EI'],
 			additionalSpells: [{ innate: { _: { will: ['disguise self|xphb'] } } }],
 		}
-		const [result] = extractOptionalFeatureGrantedSpells([willWrapped], spells, [{ featureType: 'EI', choices: ['Will Wrapped Option'] }])
+		const [result] = extractOptionalFeatureGrantedSpells([willWrapped], spells, [{ featureType: 'EI', choices: [{ name: 'Will Wrapped Option' }] }])
 		expect(result.usage).toEqual({ kind: 'atWill' })
 	})
 
@@ -103,20 +111,20 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 			featureType: ['EI'],
 			additionalSpells: [{ innate: { _: { daily: { '1e': ['disguise self|xphb'] } } } }],
 		}
-		const [result] = extractOptionalFeatureGrantedSpells([dailyWrapped], spells, [{ featureType: 'EI', choices: ['Daily Wrapped Option'] }])
+		const [result] = extractOptionalFeatureGrantedSpells([dailyWrapped], spells, [{ featureType: 'EI', choices: [{ name: 'Daily Wrapped Option' }] }])
 		expect(result.usage).toEqual({ kind: 'onceFreePerLongRest' })
 	})
 
 	it('carries the spell’s own ritual and concentration flags rather than defaulting them', () => {
-		const [familiar] = extract([{ featureType: 'EI', choices: ['Pact of the Chain'] }])
+		const [familiar] = extract([{ featureType: 'EI', choices: [{ name: 'Pact of the Chain' }] }])
 		expect(familiar.ritual).toBe(true)
 		expect(familiar.concentration).toBe(false)
-		const [invisibility] = extract([{ featureType: 'EI', choices: ['One with Shadows'] }])
+		const [invisibility] = extract([{ featureType: 'EI', choices: [{ name: 'One with Shadows' }] }])
 		expect(invisibility.concentration).toBe(true)
 	})
 
 	it('two options granting the same spell BOTH come back, so the sheet can join their provenance', () => {
-		const result = extract([{ featureType: 'EI', choices: ['One with Shadows', 'Shroud of Shadow'] }])
+		const result = extract([{ featureType: 'EI', choices: [{ name: 'One with Shadows' }, { name: 'Shroud of Shadow' }] }])
 		expect(result).toHaveLength(2)
 		expect(result.map((s) => s.name)).toEqual(['Invisibility', 'Invisibility'])
 		expect(result.map((s) => s.optionName)).toEqual(['One with Shadows', 'Shroud of Shadow'])
@@ -131,7 +139,7 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 			featureType: ['EI'],
 			additionalSpells: [{ prepared: { _: ['invisibility|xphb'] }, innate: { _: ['invisibility|xphb'] } }],
 		}
-		const result = extractOptionalFeatureGrantedSpells([twice], spells, [{ featureType: 'EI', choices: ['Doubled Option'] }])
+		const result = extractOptionalFeatureGrantedSpells([twice], spells, [{ featureType: 'EI', choices: [{ name: 'Doubled Option' }] }])
 		expect(result).toHaveLength(1)
 		expect(result[0].optionName).toBe('Doubled Option')
 	})
@@ -143,17 +151,17 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 			featureType: ['EI'],
 			additionalSpells: [{ known: { _: ['disguise self|xphb'] }, prepared: { _: ['speak with dead|xphb'] } }],
 		}
-		const result = extractOptionalFeatureGrantedSpells([mixed], spells, [{ featureType: 'EI', choices: ['Mixed Keys'] }])
+		const result = extractOptionalFeatureGrantedSpells([mixed], spells, [{ featureType: 'EI', choices: [{ name: 'Mixed Keys' }] }])
 		expect(result.map((s) => s.name).sort()).toEqual(['Disguise Self', 'Speak with Dead'])
 	})
 
 	it('a `choose` filter grant yields nothing rather than being half-applied (Pact of the Tome)', () => {
-		expect(extract([{ featureType: 'EI', choices: ['Pact of the Tome'] }])).toEqual([])
+		expect(extract([{ featureType: 'EI', choices: [{ name: 'Pact of the Tome' }] }])).toEqual([])
 	})
 
 	it('an option chosen under a DIFFERENT featureType is not matched', () => {
 		// A subclass-level pick (e.g. a Maneuver under MV:B) must never pick up an EI option's grants.
-		expect(extract([{ featureType: 'MV:B', choices: ['Mask of Many Faces'] }])).toEqual([])
+		expect(extract([{ featureType: 'MV:B', choices: [{ name: 'Mask of Many Faces' }] }])).toEqual([])
 	})
 
 	it('a ref that does not resolve against spells.json is skipped cleanly (D43)', () => {
@@ -163,14 +171,14 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 			featureType: ['EI'],
 			additionalSpells: [{ innate: { _: ['no such spell|xphb', 'disguise self|xphb'] } }],
 		}
-		const result = extractOptionalFeatureGrantedSpells([dangling], spells, [{ featureType: 'EI', choices: ['Dangling Option'] }])
+		const result = extractOptionalFeatureGrantedSpells([dangling], spells, [{ featureType: 'EI', choices: [{ name: 'Dangling Option' }] }])
 		expect(result.map((s) => s.name)).toEqual(['Disguise Self'])
 	})
 
 	it('an option with no additionalSpells, an unknown option, and an empty selection all yield nothing', () => {
 		const plain = { name: 'Agonizing Blast', source: 'XPHB', featureType: ['EI'] }
-		expect(extractOptionalFeatureGrantedSpells([plain], spells, [{ featureType: 'EI', choices: ['Agonizing Blast'] }])).toEqual([])
-		expect(extract([{ featureType: 'EI', choices: ['Not An Option'] }])).toEqual([])
+		expect(extractOptionalFeatureGrantedSpells([plain], spells, [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }])).toEqual([])
+		expect(extract([{ featureType: 'EI', choices: [{ name: 'Not An Option' }] }])).toEqual([])
 		expect(extract([])).toEqual([])
 	})
 
@@ -187,7 +195,7 @@ describe('extractOptionalFeatureGrantedSpells', () => {
 describe('extractOptionalFeatureChosenSpells', () => {
 	const tomePick = {
 		featureType: 'EI',
-		choices: ['Pact of the Tome'],
+		choices: [{ name: 'Pact of the Tome' }],
 		spellChoices: [
 			{
 				optionName: 'Pact of the Tome',
@@ -212,20 +220,26 @@ describe('extractOptionalFeatureChosenSpells', () => {
 		expect(result.find((s) => s.name === 'Disguise Self')?.usage).toBeFalsy() // cantrip pick
 	})
 
+	/* D99: the option's own level does not reach its spells, and the nested picks never carry one. */
+	it('resolves the same picks whether or not the option records the level it was chosen at', () => {
+		const leveled = { ...tomePick, choices: [{ name: 'Pact of the Tome', level: 12 }] }
+		expect(extractOptionalFeatureChosenSpells(spells, [leveled])).toEqual(extractOptionalFeatureChosenSpells(spells, [tomePick]))
+	})
+
 	it('a stored pick whose option is no longer chosen is ignored', () => {
-		const orphaned = { ...tomePick, choices: ['Mask of Many Faces'] }
+		const orphaned = { ...tomePick, choices: [{ name: 'Mask of Many Faces' }] }
 		expect(extractOptionalFeatureChosenSpells(spells, [orphaned])).toEqual([])
 	})
 
 	it('matches the option name case-insensitively against the chosen list', () => {
-		const oddCase = { ...tomePick, choices: ['pact of the tome'] }
+		const oddCase = { ...tomePick, choices: [{ name: 'pact of the tome' }] }
 		expect(extractOptionalFeatureChosenSpells(spells, [oddCase])).toHaveLength(2)
 	})
 
 	it('a spell picked in both slots of one option counts once', () => {
 		const doubled = {
 			featureType: 'EI',
-			choices: ['Pact of the Tome'],
+			choices: [{ name: 'Pact of the Tome' }],
 			spellChoices: [
 				{
 					optionName: 'Pact of the Tome',
@@ -240,7 +254,7 @@ describe('extractOptionalFeatureChosenSpells', () => {
 	it('a stored pick that no longer resolves against spells.json is skipped cleanly (D43)', () => {
 		const stale = {
 			featureType: 'EI',
-			choices: ['Pact of the Tome'],
+			choices: [{ name: 'Pact of the Tome' }],
 			spellChoices: [
 				{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Deleted Spell', source: 'XPHB' }], spells: [{ name: 'Find Familiar', source: 'XPHB' }] },
 			],
@@ -249,7 +263,7 @@ describe('extractOptionalFeatureChosenSpells', () => {
 	})
 
 	it('a selection with no spellChoices at all yields nothing', () => {
-		expect(extractOptionalFeatureChosenSpells(spells, [{ featureType: 'EI', choices: ['Mask of Many Faces'] }])).toEqual([])
+		expect(extractOptionalFeatureChosenSpells(spells, [{ featureType: 'EI', choices: [{ name: 'Mask of Many Faces' }] }])).toEqual([])
 		expect(extractOptionalFeatureChosenSpells(spells, [])).toEqual([])
 	})
 

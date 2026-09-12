@@ -231,6 +231,35 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			}
 		},
 	},
+	{
+		from: 32,
+		to: 33,
+		/*
+		 * 33 does to the `choices` INSIDE each optionalFeatureChoices entry what
+		 * 31 and 32 did to masteries and expertiseSkills (D99 following D97/D98):
+		 * each bare option name becomes `{ name }`, no level is invented (D43).
+		 * Everything else on the entry — featureType and the nested spellChoices,
+		 * which D99 leaves out of D22 — is carried through untouched, and an entry
+		 * or a record without the key gains nothing.
+		 */
+		migrate: (record) => {
+			const optionalFeatureChoices = record['optionalFeatureChoices']
+			return {
+				...record,
+				...(Array.isArray(optionalFeatureChoices)
+					? {
+							optionalFeatureChoices: optionalFeatureChoices.map((entry) => {
+								if (entry === null || typeof entry !== 'object') return entry
+								const choices = (entry as Record<string, unknown>)['choices']
+								if (!Array.isArray(choices)) return entry
+								return { ...entry, choices: choices.map((name) => ({ name })) }
+							}),
+						}
+					: {}),
+				schemaVersion: 33,
+			}
+		},
+	},
 ]
 
 /**

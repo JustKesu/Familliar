@@ -497,7 +497,7 @@ describe('classOptionalFeatureGroupsFor', () => {
 
 describe('evaluateClassOptionalFeatureGroups', () => {
 	it('counts each group separately and never lets one group’s picks satisfy another’s', () => {
-		const groups = evaluateClassOptionalFeatureGroups(groupsAt(5), [{ featureType: 'MM', choices: ['Careful Spell'] }], groupContext())
+		const groups = evaluateClassOptionalFeatureGroups(groupsAt(5), [{ featureType: 'MM', choices: [{ name: 'Careful Spell' }] }], groupContext())
 		expect(groups.map((g) => g.remaining)).toEqual([5, 1])
 	})
 
@@ -505,7 +505,7 @@ describe('evaluateClassOptionalFeatureGroups', () => {
 		const before = evaluateClassOptionalFeatureGroups(groupsAt(5), [], groupContext())
 		expect(before[0].evaluated.find((e) => e.option.name === 'Eldritch Smite')!.eligible).toBe(false)
 
-		const after = evaluateClassOptionalFeatureGroups(groupsAt(5), [{ featureType: 'EI', choices: ['Pact of the Blade'] }], groupContext())
+		const after = evaluateClassOptionalFeatureGroups(groupsAt(5), [{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] }], groupContext())
 		expect(after[0].evaluated.find((e) => e.option.name === 'Eldritch Smite')!.eligible).toBe(true)
 	})
 
@@ -517,15 +517,24 @@ describe('evaluateClassOptionalFeatureGroups', () => {
 		expect(talisman.reasons[0]).toContain("this app's data does not offer")
 	})
 
+	/* D99: `chosen` is a list of NAMES derived from the picks, so a recorded level changes no count and no prerequisite. */
+	it('derives the same chosen names, counts and prerequisite results from picks that record a level', () => {
+		const leveled = evaluateClassOptionalFeatureGroups(groupsAt(5), [{ featureType: 'EI', choices: [{ name: 'Pact of the Blade', level: 3 }] }], groupContext())
+		const bare = evaluateClassOptionalFeatureGroups(groupsAt(5), [{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] }], groupContext())
+		expect(leveled).toEqual(bare)
+		expect(leveled[0].chosen).toEqual(['Pact of the Blade'])
+		expect(leveled[0].evaluated.find((e) => e.option.name === 'Eldritch Smite')!.eligible).toBe(true)
+	})
+
 	it('the removal case: a chosen option that stopped qualifying stays chosen and is reported', () => {
-		const groups = evaluateClassOptionalFeatureGroups(groupsAt(5), [{ featureType: 'EI', choices: ['Eldritch Smite'] }], groupContext())
+		const groups = evaluateClassOptionalFeatureGroups(groupsAt(5), [{ featureType: 'EI', choices: [{ name: 'Eldritch Smite' }] }], groupContext())
 		expect(groups[0].chosen).toEqual(['Eldritch Smite'])
 		expect(groups[0].invalidChosen).toEqual([{ name: 'Eldritch Smite', reasons: ['Requires the pact of the blade option.'] }])
 	})
 })
 
 describe('areClassOptionalFeaturesComplete', () => {
-	const fill = (count: number) => Array.from({ length: count }, (_, i) => `x${i}`)
+	const fill = (count: number) => Array.from({ length: count }, (_, i) => ({ name: `x${i}` }))
 
 	it('is false while any group still has picks left', () => {
 		expect(areClassOptionalFeaturesComplete(evaluateClassOptionalFeatureGroups(groupsAt(5), [], groupContext()))).toBe(false)
@@ -533,7 +542,7 @@ describe('areClassOptionalFeaturesComplete', () => {
 
 	it('is false when every count is filled but a pick is in the warning state', () => {
 		const selection = [
-			{ featureType: 'EI', choices: ['Eldritch Smite', ...fill(4)] },
+			{ featureType: 'EI', choices: [{ name: 'Eldritch Smite' }, ...fill(4)] },
 			{ featureType: 'MM', choices: fill(2) },
 		]
 		expect(areClassOptionalFeaturesComplete(evaluateClassOptionalFeatureGroups(groupsAt(5), selection, groupContext()))).toBe(false)
@@ -541,8 +550,8 @@ describe('areClassOptionalFeaturesComplete', () => {
 
 	it('is true once every count is filled and nothing is unqualified', () => {
 		const selection = [
-			{ featureType: 'EI', choices: ['Pact of the Blade', 'Eldritch Smite', ...fill(3)] },
-			{ featureType: 'MM', choices: ['Careful Spell', 'Distant Spell'] },
+			{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }, { name: 'Eldritch Smite' }, ...fill(3)] },
+			{ featureType: 'MM', choices: [{ name: 'Careful Spell' }, { name: 'Distant Spell' }] },
 		]
 		expect(areClassOptionalFeaturesComplete(evaluateClassOptionalFeatureGroups(groupsAt(5), selection, groupContext()))).toBe(true)
 	})
@@ -553,16 +562,28 @@ describe('chosenClassOptionalFeatures', () => {
 
 	it('resolves a stored pick back to its full option entry, under the progression’s own name', () => {
 		const groups = chosenClassOptionalFeatures([twoProgressionClass], optionalFeaturesForGroups, [], classes,[
-			{ featureType: 'EI', choices: ['Pact of the Blade'] },
+			{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] },
 		])
 		expect(groups).toHaveLength(1)
 		expect(groups[0].name).toBe('Eldritch Invocations')
 		expect(groups[0].options.map((o) => o.name)).toEqual(['Pact of the Blade'])
 	})
 
+	/* D99: the group heading and the resolved options are the same whether or not a pick records its level. */
+	it('resolves a pick that records its level exactly as one that does not', () => {
+		const leveled = chosenClassOptionalFeatures([twoProgressionClass], optionalFeaturesForGroups, [], classes, [
+			{ featureType: 'EI', choices: [{ name: 'Pact of the Blade', level: 5 }] },
+		])
+		const bare = chosenClassOptionalFeatures([twoProgressionClass], optionalFeaturesForGroups, [], classes, [
+			{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] },
+		])
+		expect(leveled).toEqual(bare)
+		expect(leveled).toHaveLength(1)
+	})
+
 	it('ignores a featureType the CLASS does not grant — that is a subclass-level pick', () => {
 		const groups = chosenClassOptionalFeatures([twoProgressionClass], optionalFeaturesForGroups, [], classes,[
-			{ featureType: 'MV:B', choices: ['Precision Attack'] },
+			{ featureType: 'MV:B', choices: [{ name: 'Precision Attack' }] },
 		])
 		expect(groups).toEqual([])
 	})

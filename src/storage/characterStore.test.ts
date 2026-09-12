@@ -330,7 +330,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 	it('saves and reloads a v4 character with the optional-feature picks intact, tagged with their featureType', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const classes = [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 }]
-		const optionalFeatureChoices = [{ featureType: 'MV:B', choices: ['Trip Attack', 'Riposte'] }]
+		const optionalFeatureChoices = [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte' }] }]
 
 		const character = store.create({
 			name: 'Aria',
@@ -466,7 +466,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 					id: '1',
 					name: 'Aria',
 					classes: [],
-					optionalFeatureChoices: [{ choices: ['Trip Attack'] }],
+					optionalFeatureChoices: [{ choices: [{ name: 'Trip Attack' }] }],
 				},
 			]),
 		)
@@ -480,7 +480,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		const optionalFeatureChoices = [
 			{
 				featureType: 'EI',
-				choices: ['Pact of the Tome'],
+				choices: [{ name: 'Pact of the Tome' }],
 				spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Mage Hand', source: 'XPHB' }], spells: [{ name: 'Alarm', source: 'XPHB' }] }],
 			},
 		]
@@ -505,7 +505,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 					optionalFeatureChoices: [
 						{
 							featureType: 'EI',
-							choices: ['Pact of the Tome'],
+							choices: [{ name: 'Pact of the Tome' }],
 							spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Mage Hand' }], spells: [] }],
 						},
 					],
@@ -526,7 +526,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 					id: '1',
 					name: 'Aria',
 					classes: [],
-					optionalFeatureChoices: [{ featureType: 'EI', choices: ['Pact of the Tome'], spellChoices: [{ cantrips: [], spells: [] }] }],
+					optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Pact of the Tome' }], spellChoices: [{ cantrips: [], spells: [] }] }],
 				},
 			]),
 		)
@@ -1211,6 +1211,56 @@ describe('stored expertise skills (D98)', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const character = store.create({ name: 'Aria', expertiseSkills: [{ name: 'stealth' }] })
 		expect(character.expertiseSkills).toEqual([{ name: 'stealth' }])
+		expect(store.list().find((c) => c.id === character.id)).toEqual(character)
+	})
+})
+
+describe('stored optional-feature picks (D99)', () => {
+	/** One featureType holding picks from three levels — the case a level on the ENTRY would get wrong. */
+	const metamagic = [
+		{
+			featureType: 'MM',
+			choices: [{ name: 'Careful Spell' }, { name: 'Twinned Spell', level: 10 }, { name: 'Quickened Spell', level: 17 }],
+		},
+	]
+
+	it('reads picks with and without a level side by side, and rejects a bare name or an out-of-range level', () => {
+		const good = new MemoryStorage()
+		good.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], optionalFeatureChoices: metamagic }]),
+		)
+		expect(new CharacterStore(good).list()[0].optionalFeatureChoices).toEqual(metamagic)
+
+		const bareName = new MemoryStorage()
+		bareName.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], optionalFeatureChoices: [{ featureType: 'MM', choices: ['Careful Spell'] }] },
+			]),
+		)
+		expect(() => new CharacterStore(bareName).list()).toThrow(CorruptDataError)
+
+		const badLevel = new MemoryStorage()
+		badLevel.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Careful Spell', level: 0 }] }],
+				},
+			]),
+		)
+		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
+	})
+
+	it('saves a creation pick with no level and reloads it unchanged', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create({ name: 'Aria', optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }] })
+		expect(character.optionalFeatureChoices).toEqual([{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }])
 		expect(store.list().find((c) => c.id === character.id)).toEqual(character)
 	})
 })

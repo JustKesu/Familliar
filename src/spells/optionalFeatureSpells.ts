@@ -37,7 +37,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
-import type { CharacterOptionalFeatureChoice } from '../storage/character'
+import { choiceNames, type CharacterOptionalFeatureChoice } from '../storage/character'
 import { chosenSpellUsageFor } from './chosenSpellUsage'
 import {
 	extractRefsWithUsage,
@@ -146,7 +146,7 @@ export function extractOptionalFeatureGrantedSpells(
 	const result: OptionalFeatureGrantedSpell[] = []
 
 	for (const stored of selection) {
-		for (const chosenName of stored.choices) {
+		for (const chosenName of choiceNames(stored.choices)) {
 			const option = entries.find(
 				(candidate) =>
 					candidate.name.toLowerCase() === chosenName.toLowerCase() &&
@@ -220,7 +220,7 @@ export function extractOptionalFeatureChosenSpells(parsedSpells: unknown, select
 		for (const pick of stored.spellChoices ?? []) {
 			// Only picks for an option the character actually still has chosen count — clearing the
 			// option must not leave its spells on the sheet.
-			if (!stored.choices.some((name) => name.toLowerCase() === pick.optionName.toLowerCase())) continue
+			if (!choiceNames(stored.choices).some((name) => name.toLowerCase() === pick.optionName.toLowerCase())) continue
 
 			const granted: OptionalFeatureGrantedSpell[] = []
 			for (const ref of [...pick.cantrips, ...pick.spells]) {

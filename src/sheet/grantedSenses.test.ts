@@ -18,24 +18,32 @@ const optionalFeatures = [stoneRune, witchSight, blindFightingOption, noSenses]
 
 describe('extractOptionalFeatureGrantedSenses', () => {
 	it('resolves a granted sense, carrying the option name as provenance', () => {
-		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'RN', choices: ['Stone Rune'] }])).toEqual([
+		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'RN', choices: [{ name: 'Stone Rune' }] }])).toEqual([
 			{ senseType: 'darkvision', range: 120, origin: 'optionalFeature', name: 'Stone Rune' },
 		])
 	})
 
 	it('a chosen invocation resolves the same way as a chosen rune', () => {
-		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: ['Witch Sight'] }])).toEqual([
+		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: [{ name: 'Witch Sight' }] }])).toEqual([
 			{ senseType: 'truesight', range: 30, origin: 'optionalFeature', name: 'Witch Sight' },
 		])
 	})
 
+	/* D99: a level on the pick is provenance the sense calculation must ignore entirely. */
+	it('an invocation grants the same sense whether or not the pick records a level', () => {
+		const withoutLevel = extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: [{ name: 'Witch Sight' }] }])
+		const withLevel = extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: [{ name: 'Witch Sight', level: 7 }] }])
+		expect(withLevel).toEqual(withoutLevel)
+		expect(withLevel).toHaveLength(1)
+	})
+
 	it('an option chosen under a DIFFERENT featureType is not matched', () => {
-		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'MV:B', choices: ['Stone Rune'] }])).toEqual([])
+		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'MV:B', choices: [{ name: 'Stone Rune' }] }])).toEqual([])
 	})
 
 	it('an option with no `senses` field, an unknown option, and an empty selection all yield nothing', () => {
-		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: ['Agonizing Blast'] }])).toEqual([])
-		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: ['Not An Option'] }])).toEqual([])
+		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }])).toEqual([])
+		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [{ featureType: 'EI', choices: [{ name: 'Not An Option' }] }])).toEqual([])
 		expect(extractOptionalFeatureGrantedSenses(optionalFeatures, [])).toEqual([])
 	})
 

@@ -132,7 +132,10 @@ export function ClassOptionalFeaturePicker({
 			return
 		}
 		const current = value.find((entry) => entry.featureType === featureType)
-		const updated: CharacterOptionalFeatureChoice = { ...(current ?? { featureType, choices: [] }), featureType, choices: next }
+		// D99, as D97: a creation pick records no level, so a kept pick keeps whatever it carries and a new one carries nothing.
+		const kept = (current?.choices ?? []).filter((choice) => next.includes(choice.name))
+		const added = next.filter((name) => !kept.some((choice) => choice.name === name)).map((name) => ({ name }))
+		const updated: CharacterOptionalFeatureChoice = { ...(current ?? { featureType, choices: [] }), featureType, choices: [...kept, ...added] }
 		// Deselecting an option deliberately drops that option's own spell picks — they describe a
 		// choice the character no longer has. Every OTHER option's picks survive untouched.
 		const keptPicks = (current?.spellChoices ?? []).filter((pick) => next.some((name) => name.toLowerCase() === pick.optionName.toLowerCase()))

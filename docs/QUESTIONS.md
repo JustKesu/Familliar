@@ -295,3 +295,22 @@ Kdyby se měl doplnit, je to čtvrtá položka tabulky s `perLevel: 0` a
 
 Nalezeno ve slice 8a.
 STATUS: nerozhodnuto, nízká priorita.
+
+### Sheet ukazuje mistrovství zbraně i tomu, kdo ho nemá vybrané
+
+V pravidlech 2024 platí vlastnost mistrovství (mastery) jen u zbraní, které si
+postava mistrovství vybrala. Appka ale `Character.masteries` nikde v produkčním
+kódu nečte — zjištěno ve slice 8c1, kdy se u toho pole měnil tvar a hledali se
+jeho čtenáři. Nenašel se ani jeden. Text „Mastery: Slow" v tabulce akcí i v
+poznámkách u útoku se bere z vlastnosti zbraně v `items.json`, ne z volby
+postavy.
+
+Prakticky: bojovník, který si Slow vybral, a bojovník, který si vybral něco
+jiného, mají na sheetu totéž. Volba ve wizardu se uloží a nemá žádný účinek.
+
+Je to jiný problém než už zapsaný bod „Mastery property text se nezobrazuje
+u útoku na sheetu". Tam jde o to, že hráč nevidí, co vlastnost dělá; tady o to,
+že se vlastnost zobrazuje i tam, kam nepatří.
+
+Nalezeno při slice 8c1 (Cowork, 12. 9.).
+STATUS: nerozhodnuto.

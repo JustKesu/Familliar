@@ -149,7 +149,7 @@ describe('ClassOptionalFeaturePicker', () => {
 
 	it('counts the two groups independently — filling one does not close the other', async () => {
 		const user = userEvent.setup()
-		renderPicker({ className: 'Sorlock', value: [{ featureType: 'MM', choices: ['Careful Spell'] }] })
+		renderPicker({ className: 'Sorlock', value: [{ featureType: 'MM', choices: [{ name: 'Careful Spell' }] }] })
 		expect(await screen.findByText('All options chosen.')).toBeTruthy()
 		expect(screen.getByText('Choose 2 more options.')).toBeTruthy()
 		// Metamagic auto-collapses once its one pick is made; open it to read its options back.
@@ -182,7 +182,7 @@ describe('ClassOptionalFeaturePicker', () => {
 		expect(checkbox('Eldritch Smite').disabled).toBe(true)
 
 		await user.click(checkbox('Pact of the Blade'))
-		expect(onChange).toHaveBeenCalledWith([{ featureType: 'EI', choices: ['Pact of the Blade'] }])
+		expect(onChange).toHaveBeenCalledWith([{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] }])
 
 		// The caller owns the value (D8), so the unlock is verified by feeding its report back in.
 		rerender(
@@ -195,7 +195,7 @@ describe('ClassOptionalFeaturePicker', () => {
 				damagingCantripNames={null}
 				damagingAttackCantripNames={null}
 				hasFightingStyleFeature={false}
-				value={[{ featureType: 'EI', choices: ['Pact of the Blade'] }]}
+				value={[{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] }]}
 				onChange={onChange}
 			/>,
 		)
@@ -214,7 +214,7 @@ describe('ClassOptionalFeaturePicker', () => {
 	})
 
 	it('the removal case: a chosen option that stops qualifying stays checked and is warned about, not dropped', async () => {
-		renderPicker({ value: [{ featureType: 'EI', choices: ['Eldritch Smite'] }] })
+		renderPicker({ value: [{ featureType: 'EI', choices: [{ name: 'Eldritch Smite' }] }] })
 		await screen.findByText('Eldritch Smite')
 
 		const smite = checkbox('Eldritch Smite')
@@ -228,7 +228,7 @@ describe('ClassOptionalFeaturePicker', () => {
 		const onChange = vi.fn()
 		// Metamagic's count is 1 and both its options are unconditionally eligible, so a
 		// refused click here is the COUNT refusing it, not a prerequisite.
-		renderPicker({ className: 'Sorlock', value: [{ featureType: 'MM', choices: ['Careful Spell'] }] }, onChange)
+		renderPicker({ className: 'Sorlock', value: [{ featureType: 'MM', choices: [{ name: 'Careful Spell' }] }] }, onChange)
 		await screen.findByText('All options chosen.')
 		await user.click(screen.getByRole('button', { name: /Metamagic/ }))
 
@@ -241,7 +241,7 @@ describe('ClassOptionalFeaturePicker', () => {
 	it('deselecting the last pick of a group drops that group’s entry entirely', async () => {
 		const user = userEvent.setup()
 		const onChange = vi.fn()
-		renderPicker({ value: [{ featureType: 'EI', choices: ['Pact of the Blade'] }] }, onChange)
+		renderPicker({ value: [{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] }] }, onChange)
 		await screen.findByText('Pact of the Blade')
 
 		await user.click(checkbox('Pact of the Blade'))
@@ -287,7 +287,7 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 		expect(screen.queryByText('0 of 3 cantrips chosen.')).toBeNull()
 
 		cleanup()
-		render(<ControlledPicker initial={[{ featureType: 'EI', choices: ['Pact of the Tome'] }]} onValue={() => {}} />)
+		render(<ControlledPicker initial={[{ featureType: 'EI', choices: [{ name: 'Pact of the Tome' }] }]} onValue={() => {}} />)
 		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
 		expect(screen.getByText('0 of 2 spells chosen.')).toBeTruthy()
 		// The cantrip slot is unfiltered and the ritual slot is not — different candidate lists.
@@ -296,14 +296,14 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 	})
 
 	it('an option that grants literal spells gets no sub-picker', async () => {
-		render(<ControlledPicker initial={[{ featureType: 'EI', choices: ['Pact of the Blade'] }]} onValue={() => {}} />)
+		render(<ControlledPicker initial={[{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] }]} onValue={() => {}} />)
 		await screen.findByText('Pact of the Blade')
 		await waitFor(() => expect(screen.queryByText(/cantrips chosen\./)).toBeNull())
 	})
 
 	it('enforces each slot’s count independently', async () => {
 		const user = userEvent.setup()
-		render(<ControlledPicker initial={[{ featureType: 'EI', choices: ['Pact of the Tome'] }]} onValue={() => {}} />)
+		render(<ControlledPicker initial={[{ featureType: 'EI', choices: [{ name: 'Pact of the Tome' }] }]} onValue={() => {}} />)
 		await screen.findByText('0 of 3 cantrips chosen.')
 
 		await user.click(checkbox('Eldritch Blast'))
@@ -329,7 +329,7 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 	it('picking the spells FIRST and then toggling another option keeps the spells', async () => {
 		const user = userEvent.setup()
 		let latest: CharacterOptionalFeatureChoice[] = []
-		render(<ControlledPicker initial={[{ featureType: 'EI', choices: ['Pact of the Tome'] }]} onValue={(v) => (latest = v)} />)
+		render(<ControlledPicker initial={[{ featureType: 'EI', choices: [{ name: 'Pact of the Tome' }] }]} onValue={(v) => (latest = v)} />)
 		await screen.findByText('0 of 3 cantrips chosen.')
 
 		await user.click(checkbox('Eldritch Blast'))
@@ -339,7 +339,8 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 
 		// Now the OTHER control — taking a second, unrelated invocation.
 		await user.click(checkbox('Pact of the Blade'))
-		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual(['Pact of the Tome', 'Pact of the Blade'])
+		// D99: a pick made during creation carries no level, and taking a second one leaves the first untouched.
+		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual([{ name: 'Pact of the Tome' }, { name: 'Pact of the Blade' }])
 		expect(tomePicks(latest)?.cantrips.map((c) => c.name)).toEqual(['Eldritch Blast'])
 		expect(tomePicks(latest)?.spells.map((s) => s.name)).toEqual(['Alarm'])
 
@@ -357,7 +358,7 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 				initial={[
 					{
 						featureType: 'EI',
-						choices: ['Pact of the Tome', 'Pact of the Blade'],
+						choices: [{ name: 'Pact of the Tome' }, { name: 'Pact of the Blade' }],
 						spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Eldritch Blast', source: 'XPHB' }], spells: [] }],
 					},
 				]}
@@ -369,7 +370,7 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 		await user.click(screen.getByRole('button', { name: /Eldritch Invocations/ }))
 
 		await user.click(checkbox('Pact of the Tome'))
-		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual(['Pact of the Blade'])
+		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual([{ name: 'Pact of the Blade' }])
 		expect(latest.find((e) => e.featureType === 'EI')?.spellChoices).toBeUndefined()
 	})
 })
