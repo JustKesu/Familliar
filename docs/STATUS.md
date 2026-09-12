@@ -306,7 +306,26 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      změny včetně všech úrovní, zvýšení úrovně drží volby, změna třídy je maže,
      snížená úroveň se odmítne, `update` místo `create`, plus `update` ve
      `characterStore.test.ts`. Ověřeno i v prohlížeči na postavě úrovně 5.
-     Tlačítko level-upu (8d2) a zkrácený wizard (8d3) nepostaveny.
+     Tlačítko level-upu a zkrácený wizard (8d3) nepostaveny.
+   - Slice 8d2 (D101): `src/levelUp/levelGains.ts` — `levelGainsFor(character,
+     level, parsedClasses, resolverData)` odpoví, co na úrovni N přibývá, pro
+     KAŽDÝ krok `WIZARD_STEPS`. Žádné UI, žádné `WizardStepConditions`: vrací
+     `status` (`adds` / `none` / `never` / `unknown`), `count` a `parts`
+     (jméno + počet za každého přispěvatele), k tomu `newFeatures` (featury,
+     které úroveň udělí sama od sebe — ty nesbírá žádný krok wizardu) a
+     `unresolved` pro multiclass, neznámou třídu nebo neplatnou úroveň.
+     Všechno je rozdíl dvou kumulativních dotazů (N a N-1) nad existujícími
+     funkcemi — `featAsiGrantsFor`, `expertiseEligibilityFor`, `masteryCountFor`,
+     `classOptionalFeatureGrantsFor`, `optionalFeatureChoicesFor`,
+     `computeSpellCounts`, `unlockedSubclassSpellChoiceSlots`, `wildShapeLimits`,
+     `classFeatureChoicesFrom`, `subclassLevelFor`, `grantsFightingStyleAt`,
+     `grantedClassFeaturesFrom` — žádná ručně psaná tabulka úrovní.
+     `loadLevelGainsFor` je fetchující obal. Testy (13) na případech, kde
+     odpověď plyne z pravidel: Fighter na 4 (ASI + mastery), Fighter na 5
+     (žádné ASI, ale Extra Attack), Fighter na 7 (nic než HP), Rogue na 6
+     (další expertise), Sorcerer na 10 (třetí metamagie + kouzla), Cleric na 3
+     (podtřída i její featura psaná na úrovni 1), Cleric na 2 (nic), multiclass
+     a neznámá třída/podtřída jako `unknown`.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -472,9 +491,11 @@ volby, D97), 8c2 (`expertiseSkills` totéž, D98) a 8c3 (`optionalFeatureChoices
 úroveň na jednotlivé volbě, D99) jsou hotové — **D22 je tím splněné pro všechna
 pole, která ho potřebují**. Hotová je i **8d1** (D100): wizard běží nad
 existující postavou, uložení ji přepíše, úroveň smí jen nahoru a už zapsané
-volby si nechávají svou úroveň. Další je **8d2** (tlačítko level-upu) a **8d3**
-(zkrácený wizard, který se ptá jen na to, co je na nové úrovni nové) — teprve
-ony zapíšou `level` u nových voleb. Odebrání úrovně je 8e.
+volby si nechávají svou úroveň. Hotová je i **8d2** (D101): modul
+`src/levelUp/levelGains.ts` odpoví, co na úrovni N přibývá, krok po kroku,
+bez UI. Další je **8d3** (zkrácený wizard, který se ptá jen na to, co je na
+nové úrovni nové, a tlačítko level-upu) — teprve on zapíše `level` u nových
+voleb. Odebrání úrovně je 8e.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +

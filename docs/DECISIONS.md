@@ -1892,3 +1892,49 @@ tvorbě vzaly, se neukládá, takže se nedá ani předvyplnit; odvodit inventá
 znovu z nabídek by přepsalo to, co hráč mezitím měnil na sheetu, a ptát se
 znovu by blokovalo uložení na volbě, která je už utracená. Inventář, peníze,
 aktuální HP a familiar tedy projdou úpravou beze změny.
+
+## D101 — „Co přibylo na úrovni N" je rozdíl dvou kumulativních dotazů, ne tabulka úrovní
+
+Slice 8d2. Modul `src/levelUp/levelGains.ts` odpovídá, co na úrovni N přibývá,
+pro každý krok `WIZARD_STEPS`. Nepotřebuje k tomu nic nového z dat.
+
+**Odvozuje se, nepíše se.** Každá existující funkce odpovídá kumulativně —
+„co má postava DO úrovně N" (`featAsiGrantsFor` filtruje `level <= N`,
+`countAtLevel` bere nejvyšší klíč `<= N`, `expertiseEligibilityFor` a
+`masteryCountFor` sčítají stejně, `cantripProgression` je pole indexované
+úrovní). Odpověď na jednu úroveň je tedy rozdíl dvou takových volání, N a N-1.
+Ručně psaná tabulka „na 4 je ASI, na 6 expertise" by byla druhý zdroj pravdy
+vedle dat a při každé změně dat by tiše zestárla; navíc už dnes neplatí ani ta
+zdánlivě univerzální (Fighter má ASI i na 6 a 14, Rogue na 10 — D16).
+
+**Co zjistil ověřovací skript.** `scripts/investigate-closure-level-drift.js`
+se ptal, jestli tranzitivní uzávěr v `grantedClassFeaturesFrom` (D87, bod 2)
+umí přitáhnout featuru, jejíž vlastní `level` je jiný než úroveň té, která ji
+přitáhla. Umí: z 338 ref hran v prostém textu jich 45 kříží úrovně, a všech 45
+**dolů** (Cleric Order Domain na úrovni 3 táhne své vlastní featury psané na
+úrovni 1); nahoru ani jedna. „Featury nové na úrovni N" tedy NEJDE udělat jako
+uzávěr filtrovaný na `level === N` — přišlo by se právě o těch 45. Bere se
+rozdíl dvou celých uzávěrů podle `id` featury.
+
+**Podtřída se na straně N-1 odebírá.** Postava má podtřídu uloženou, ale
+vzala si ji až na úrovni, kterou dává `subclassLevelFor`. Kdyby se dotaz na
+N-1 ptal i s podtřídou, featura podtřídy psaná na úrovni 1 by se počítala jako
+už držená a všechny volby, které podtřída přináší, by z odpovědi na úrovni 3
+tiše zmizely.
+
+**Kroky, které po tvorbě postavy nikdy nic nepřidají** (v odpovědi mají status
+`never` i s důvodem, ne prázdnou nulu): `species` (rasa, její varianta,
+dovednosti i sesílací vlastnost se volí při tvorbě, nic v `species.json` není
+vázané na úroveň), `background` (pozadí, rozdělení bonusů, nástroj),
+`languages` (dvě volené řeči jsou pevný grant při tvorbě), `abilities`
+(hodnoty se zapisují při tvorbě; pozdější zvýšení jde výhradně krokem
+`featAsi`), `equipment` (startovní výbava je jednorázový grant, D100) a
+`review` (nesbírá nic nikdy, je to obrazovka uložení). Krok `hitPoints` naopak
+přidává právě jednu položku na KAŽDÉ úrovni od 2 výš (D92), takže „úroveň,
+která nepřidá vůbec nic" v praxi znamená „nic než hit pointy".
+
+**„Nepřidává nic" a „nedá se zjistit" nesmí splynout** (D43). Multiclass
+postava, třída, která ve `classes.json` není, uložená podtřída, která tam
+není, a neplatná úroveň vracejí `unknown` s důvodem — u multiclassu proto, že
+nic nezaznamenává, do které třídy nová úroveň patří, a hádat by znamenalo
+odpovědět na otázku jiné třídy (multiclass je krok 10).
