@@ -1059,7 +1059,11 @@ export function CharacterWizard({
 							<ClassPicker
 								value={state.data.classChoice}
 								onChange={(choice) => dispatch({ type: 'setClassChoice', choice })}
-								minLevel={character?.classes.reduce((total, entry) => total + entry.level, 0) ?? 1}
+								fixedLevel={
+									character
+										? character.classes.reduce((total, entry) => total + entry.level, 0)
+										: undefined
+								}
 							/>
 						</>
 					)}

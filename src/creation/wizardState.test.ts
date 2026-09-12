@@ -873,7 +873,24 @@ describe('editing an existing character', () => {
 		const lowered = { ...data, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 4 } }
 
 		expect(() => saveCharacter(store, lowered, ['athletics', 'intimidation'], { ...editConditions, characterLevel: 4 }, undefined, character)).toThrow(
-			/cannot be lowered/i,
+			/cannot change its level/i,
+		)
+		expect(store.update).not.toHaveBeenCalled()
+	})
+
+	/* D105: editing is not how a character gains a level — that is Level up's job, and only Level up records the level on new picks. */
+	it('refuses a level above the character’s own', () => {
+		const store = editStore()
+		const character = storedCharacter()
+		const data = wizardDataFromCharacter(character, lookups)
+		const raised = {
+			...data,
+			classChoice: { className: 'Fighter', classSource: 'XPHB', level: 6 },
+			hitPointLevels: [...data.hitPointLevels, { level: 6, kind: 'average' as const, dieResult: 6 }],
+		}
+
+		expect(() => saveCharacter(store, raised, ['athletics', 'intimidation'], { ...editConditions, characterLevel: 6 }, undefined, character)).toThrow(
+			/cannot change its level/i,
 		)
 		expect(store.update).not.toHaveBeenCalled()
 	})

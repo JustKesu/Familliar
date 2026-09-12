@@ -853,9 +853,10 @@ function clearStartingEquipmentFor(choice: StartingEquipmentChoice, origin: 'cla
  *
  * `existing` is the character this run was seeded from (slice 8d1). With it the
  * write UPDATES that character instead of creating a second one, the level is
- * refused if it went down (D100 — removing a level is slice 8e's job), every
- * pick that was already on the character keeps the level it was taken at, and
- * the play-time fields the wizard never collects are carried through.
+ * refused if it changed at all (D105 — raising is Level up's job, lowering is
+ * Remove level's job, slice 8e), every pick that was already on the character
+ * keeps the level it was taken at, and the play-time fields the wizard never
+ * collects are carried through.
  *
  * `levelUpTo` (slice 8d3) marks the write that ends a level-up walk: it must
  * raise `existing` by exactly one level in the class it already has, and every
@@ -875,8 +876,8 @@ export function saveCharacter(
 	}
 
 	const existingLevel = existing ? existing.classes.reduce((total, entry) => total + entry.level, 0) : 0
-	if (existing && (data.classChoice?.level ?? 0) < existingLevel) {
-		throw new Error(`A character's level cannot be lowered: this character is level ${existingLevel}.`)
+	if (existing && levelUpTo === undefined && (data.classChoice?.level ?? 0) !== existingLevel) {
+		throw new Error(`Editing a character cannot change its level: this character is level ${existingLevel}.`)
 	}
 	if (levelUpTo !== undefined) {
 		const existingClass = existing?.classes.length === 1 ? existing.classes[0] : undefined

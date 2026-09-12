@@ -2035,3 +2035,28 @@ nemusí, počítají se z třídy a úrovně. Totéž platí pro Wild Shape form
 zavře prohlížečový dialog jako „ne" (QUESTIONS.md), takže akce za ním by nešla
 nikdy vyzkoušet. Zrušení nic nezapisuje; potvrzení zapíše jednou přes
 `CharacterStore.update` (D100).
+
+## D105 — Úprava postavy úroveň vůbec nemění
+
+Slice 8e3. Ruší tu část D100, která při úpravě dovolovala úroveň zvýšit.
+
+**Zvyšování úrovně v úpravě byla díra.** Volby sebrané při úpravě nenesou
+žádnou úroveň (D97/D100 — jen level up ji zapisuje), takže postava zvýšená
+úpravou ze 4 na 6 měla neoznačené volby nad svou spodní hranicí (`createdAtLevel`,
+D104) a odebrání úrovně 6 by je nechalo stát — přesně to, čemu D104 měla
+zabránit.
+
+**Oprava nic nestojí, protože level up už existuje.** Zvednutí úrovně má svůj
+vlastní ovládací prvek (tlačítko Level up), který na každou sebranou volbu
+úroveň zapisuje (D102). Postava založená na špatné úrovni se opraví tlačítkem
+Level up, což je pro appku míň rozhodování a pro data správnější výsledek, než
+jaký by dala úprava. Úprava se tím vrací k tomu, k čemu je: opravě jména,
+dovednosti, špatně zvolené volby.
+
+**Nabídka úrovní v `ClassPicker` má při úpravě jedinou hodnotu.** Prop
+`minLevel` (spodní hranice, D100) je nahrazen propem `fixedLevel`: když je
+zadaný, `<select>` je disabled a nabízí jen tu jednu úroveň, takže uživatel
+jinou nikdy nezvolí. `saveCharacter` navíc odmítne zápis, kde se úroveň při
+úpravě (bez `levelUpTo`) liší od uložené — kdyby frontend přece jen poslal
+jinou. Snížení úrovně zůstává odmítnuté (D100) a odebrání úrovně má dál svůj
+vlastní krok (D104); tahle změna se týká jen zvyšování.

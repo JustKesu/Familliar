@@ -31,16 +31,16 @@ export interface ClassLevelChoice {
 export function ClassPicker({
 	value,
 	onChange,
-	minLevel = 1,
+	fixedLevel,
 }: {
 	value: ClassLevelChoice | null
 	onChange: (choice: ClassLevelChoice | null) => void
-	/** The lowest level that may be chosen (slice 8d1) — an edited character's own level, since lowering one is really removing a level and that is slice 8e's job (D100). */
-	minLevel?: number
+	/** Editing an existing character locks the level at its current total (D105): raising or lowering it is a level-up or level-removal, not an edit. */
+	fixedLevel?: number
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [selectedKey, setSelectedKey] = useState(value ? `${value.className}|${value.classSource}` : '')
-	const [level, setLevel] = useState(value?.level ?? 1)
+	const [level, setLevel] = useState(fixedLevel ?? value?.level ?? 1)
 
 	useEffect(() => {
 		let cancelled = false
@@ -97,13 +97,14 @@ export function ClassPicker({
 				Level
 				<select
 					value={level}
+					disabled={fixedLevel !== undefined}
 					onChange={(event) => {
 						const nextLevel = Number(event.target.value)
 						setLevel(nextLevel)
 						report(selectedKey, nextLevel)
 					}}
 				>
-					{LEVELS.filter((l) => l >= minLevel).map((l) => (
+					{(fixedLevel !== undefined ? [fixedLevel] : LEVELS).map((l) => (
 						<option key={l} value={l}>
 							{l}
 						</option>

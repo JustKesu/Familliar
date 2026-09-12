@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8e: odebrání úrovně — krok 8
-hotový)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8e3: úprava postavy úroveň
+vůbec nemění)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D104) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D105) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -176,6 +176,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8d3 | Tlačítko "Level up" a zkrácený wizard (D102) | — |
    | 8d5 | Level up žádá krok "Hit points" jen o nově získanou úroveň (D103) | — |
    | 8e | Odebrání úrovně, `Character.createdAtLevel` jako spodní hranice (D104) | 33→34 |
+   | 8e3 | Úprava postavy úroveň vůbec nemění (D105) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -299,7 +300,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      (3) `setClassChoice` maže jen při změně TŘÍDY (`className`+`classSource`),
      ne při změně úrovně. Úroveň smí jen nahoru: `ClassPicker` má nové
      `minLevel`, `saveCharacter` nižší úroveň odmítne (snížení = odebrání
-     úrovně, to je 8e). Krok "Starting equipment" je při úpravě skrytý
+     úrovně, to je 8e). **Zvyšování úrovně v úpravě zrušila slice 8e3 (D105) —
+     viz níž.** Krok "Starting equipment" je při úpravě skrytý
      (`WizardStepConditions.editingExistingCharacter`) a inventář, peníze,
      `currentHp` i familiar projdou beze změny. Vstup: tlačítko "Edit character"
      v hlavičce sheetu (`CharacterSheet` `onEditCharacter`), `CharacterManager`
@@ -401,6 +403,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      **Známá mez:** po odebrání může postava znát kouzla nad svou úrovní nebo
      víc kouzel / Wild Shape forem, než úroveň dovoluje — označení na sheetu je
      další slice.
+   - Slice 8e3 (D105): úprava postavy úroveň vůbec nemění. Zvyšování úrovně
+     v úpravě (8d1/D100) byla díra — volby sebrané při úpravě nenesou úroveň
+     (D97/D100), takže postava zvýšená úpravou měla neoznačené volby nad svou
+     `createdAtLevel` a odebrání úrovně (8e/D104) by je nechalo stát.
+     `ClassPicker` prop `minLevel` nahrazen `fixedLevel`: při úpravě je
+     `<select>` Level disabled a nabízí jedinou hodnotu (aktuální celková
+     úroveň postavy), takže jinou nejde zvolit vůbec. `saveCharacter` odmítne
+     zápis mimo `levelUpTo`, kde se úroveň liší od uložené (dřív jen `<`, teď
+     `!==`) — zpráva "Editing a character cannot change its level". Zvýšení
+     úrovně jde jen přes tlačítko Level up (D102), které úroveň na nových
+     volbách zapisuje. Testy: `wizardState.test.ts` (odmítnutí zvýšení i
+     snížení úrovně při úpravě). Neověřováno v prohlížeči — jde o zúžení
+     existující kontroly, které testy pokrývají přesně.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
