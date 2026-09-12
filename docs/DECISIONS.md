@@ -1779,3 +1779,29 @@ nedokončenou volbu (D57, D81). Důvod: záznam pro postavu BEZ voleb (výchozí
 maximum + průměr, D92) musí zůstat rozeznatelný od záznamu, kde hráč vědomě
 zvolil průměr — jinak by "nevybráno" a "vybral průměr" v úložišti vypadaly
 stejně.
+
+## D97 — `Character.masteries` nese úroveň volby: pole `level`, volby z tvorby postavy ji nemají
+
+D22 chce, aby si každá uložená volba hráče pamatovala úroveň, na které padla.
+`masteries` byla holá pole jmen, takže to nešlo doplnit polem — musel se změnit
+TVAR. Od schématu 31 je to pole objektů `{ name, level? }`; `name` je přesně ten
+řetězec, který tam byl dřív. Tímhle je D22 pro `masteries` splněné.
+`expertiseSkills` a `optionalFeatureChoices` jsou stejný případ a přijdou ve
+slice 8c2 podle tohohle vzoru.
+
+**Pole se jmenuje `level`, ne `grantedAtLevel`.** Shoduje se s `featAsiChoices`
+a `hitPointLevels`. `grantedAtLevel` u `CharacterClassFeatureChoice` a
+`subclassSpellChoices[].picks` odpovídá na jinou otázku — kdy schopnost tu volbu
+NABÍDLA, ne kdy si hráč vybral. U masteries se ptáme na to druhé.
+
+**Volby z tvorby postavy úroveň NEMAJÍ.** Wizard vybírá všechny masteries v
+jednom kroku, i když se postava tvoří rovnou na 5. úrovni — přiřazení konkrétní
+úrovně by bylo vymyšlené. Kdyby se zapsala aktuální úroveň postavy, pozdější
+"odeber tuhle úroveň" by sebralo i volby, které k ní nepatřily. Úroveň zapisuje
+jen level-up (slice 8d).
+
+**Chybějící úroveň je platný stav „nevíme", ne chyba.** Validace ji nevyžaduje a
+čtenáři se kvůli ní nechovají jinak. Migrace 30→31 je první krok v řetězu, který
+hodnotu nechává NEZNÁMOU místo aby ji přesunul nebo zachoval: postava uložená
+před touhle slice nemá záznam o tom, kdy se co vybralo, a hádat by znamenalo
+tiše lhát (D43).

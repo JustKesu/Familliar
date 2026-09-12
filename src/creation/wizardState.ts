@@ -19,6 +19,7 @@ import type {
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
+	CharacterMastery,
 	CharacterOptionalFeatureChoice,
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
@@ -783,6 +784,14 @@ export function saveCharacter(
 	const classFeatureChoices: CharacterClassFeatureChoice[] | undefined =
 		data.classFeatureChoices.length > 0 ? data.classFeatureChoices : undefined
 
+	/**
+	 * No level is recorded (D97): the wizard picks every mastery in one step,
+	 * so a character created directly at level 5 could not say which pick
+	 * belonged to which level. WizardData keeps bare names because the picker
+	 * is a name-based control; the shape is put on here, at the storage edge.
+	 */
+	const masteries: CharacterMastery[] = data.masteries.map((name) => ({ name }))
+
 	/** Passes straight through to storage (build order step 8, slice 8b) — already exactly Character.hitPointLevels' own shape, one entry per level from 2 up. */
 	const hitPointLevels: CharacterHitPointLevel[] | undefined = data.hitPointLevels.length > 0 ? data.hitPointLevels : undefined
 
@@ -807,7 +816,7 @@ export function saveCharacter(
 		abilityBonus,
 		languages,
 		classSkills: data.classSkills,
-		masteries: data.masteries,
+		masteries,
 		fightingStyle: data.fightingStyle,
 		optionalFeatureChoices,
 		speciesSkills: data.speciesSkills,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
-import { CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE } from './character'
+import { CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE, masteryNames } from './character'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
 import {
 	CharacterNotFoundError,
@@ -301,14 +301,16 @@ describe('CharacterStore.create with class choices', () => {
 			classes,
 			background,
 			classSkills: ['acrobatics', 'perception'],
-			masteries: ['longsword', 'shortbow'],
+			masteries: [{ name: 'longsword' }, { name: 'shortbow' }],
 			fightingStyle: 'Dueling',
 		})
 
 		expect(character.classes[0]?.subclass).toBe('Champion')
 		expect(character.background).toEqual(background)
 		expect(character.classSkills).toEqual(['acrobatics', 'perception'])
-		expect(character.masteries).toEqual(['longsword', 'shortbow'])
+		// A creation pick carries no level (D97) — the wizard chooses all of them in one step.
+		expect(character.masteries).toEqual([{ name: 'longsword' }, { name: 'shortbow' }])
+		expect(masteryNames(character.masteries)).toEqual(['longsword', 'shortbow'])
 		expect(character.fightingStyle).toBe('Dueling')
 
 		const reloaded = store.list().find((c) => c.id === character.id)
@@ -1129,6 +1131,45 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 			]),
 		)
 		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
+	})
+})
+
+describe('stored weapon masteries (D97)', () => {
+	it('reads a mastery with a level and one without, and rejects a bare name or an out-of-range level', () => {
+		const good = new MemoryStorage()
+		good.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					masteries: [{ name: 'Longsword' }, { name: 'Shortbow', level: 4 }],
+				},
+			]),
+		)
+		// An absent level is "not known", not an error — it is what every creation pick carries.
+		expect(new CharacterStore(good).list()[0].masteries).toEqual([{ name: 'Longsword' }, { name: 'Shortbow', level: 4 }])
+
+		const bareName = new MemoryStorage()
+		bareName.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], masteries: ['Longsword'] }]),
+		)
+		expect(() => new CharacterStore(bareName).list()).toThrow(CorruptDataError)
+
+		const badLevel = new MemoryStorage()
+		badLevel.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], masteries: [{ name: 'Longsword', level: 0 }] }]),
+		)
+		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
+	})
+
+	it('returns the plain names from the stored shape', () => {
+		expect(masteryNames([{ name: 'Longsword' }, { name: 'Shortbow', level: 4 }])).toEqual(['Longsword', 'Shortbow'])
+		expect(masteryNames(undefined)).toEqual([])
 	})
 })
 

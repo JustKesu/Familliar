@@ -191,6 +191,28 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			return { ...rest, ...(typeof maxHp === 'number' ? { maxHpOverride: maxHp } : {}), schemaVersion: 30 }
 		},
 	},
+	{
+		from: 30,
+		to: 31,
+		/*
+		 * 31 turns Character.masteries from bare weapon names into objects
+		 * carrying that name and, once slice 8d writes them, the level the pick
+		 * was made at (D97's application of D22). The first step in this chain
+		 * that leaves a value UNKNOWN rather than moving or preserving one: a
+		 * version-30 character has no record of when any mastery was chosen, and
+		 * a guessed level would later let "remove this level" strip a pick that
+		 * never belonged to it — so each name becomes `{ name }` and no level is
+		 * invented (D43). A character without the field gains nothing.
+		 */
+		migrate: (record) => {
+			const masteries = record['masteries']
+			return {
+				...record,
+				...(Array.isArray(masteries) ? { masteries: masteries.map((name) => ({ name })) } : {}),
+				schemaVersion: 31,
+			}
+		},
+	},
 ]
 
 /**

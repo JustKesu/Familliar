@@ -129,9 +129,10 @@ export interface Character {
 	 */
 	expertiseSkills?: string[]
 	/**
-	 * Optional for the same reason as abilityScores above.
+	 * Optional for the same reason as abilityScores above. Objects rather than
+	 * bare weapon names since schema version 31 — see CharacterMastery (D97).
 	 */
-	masteries?: string[]
+	masteries?: CharacterMastery[]
 	/**
 	 * Optional for the same reason as abilityScores above.
 	 */
@@ -277,6 +278,29 @@ export interface Character {
 	 * keeps today's "not chosen yet" placeholder in both cases, never a guess.
 	 */
 	speciesSpellcastingAbility?: Ability
+}
+
+/**
+ * One weapon mastery the character has (build order step 8, slice 8c1 — D97's
+ * application of D22 to this field). `name` is the weapon's name, the same
+ * string the bare array held before schema version 31.
+ *
+ * `level` is the character level the player PICKED this mastery at, and it is
+ * absent whenever that is not known: a character created by the wizard chooses
+ * every mastery in one step, even when created directly at level 5, so no level
+ * is recorded for a creation pick rather than inventing one (D43). Only the
+ * level-up writer (slice 8d) sets it. Deliberately not named `grantedAtLevel`
+ * like CharacterClassFeatureChoice's field — that one answers when the FEATURE
+ * offered the choice, this one when the player made it.
+ */
+export interface CharacterMastery {
+	name: string
+	level?: number
+}
+
+/** The weapon names alone, for readers that only match on names. Derived — the names are never stored twice. */
+export function masteryNames(masteries: CharacterMastery[] | undefined): string[] {
+	return (masteries ?? []).map((mastery) => mastery.name)
 }
 
 /**
@@ -697,12 +721,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 30 for Character.hitPointLevels and
- * .maxHpOverride, which replace the manual `maxHp` of version 29.
+ * (see wireFormat.ts). Bumped to 31 for Character.masteries, which becomes an
+ * array of CharacterMastery objects instead of bare weapon names (D97).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 30
+export const CURRENT_SCHEMA_VERSION = 31

@@ -230,6 +230,34 @@ describe('the migration chain (D69)', () => {
 		expect('maxHpOverride' in migrated).toBe(false)
 	})
 
+	it('turns a version-30 character’s bare mastery names into objects with no level recorded', () => {
+		const migrated = migrateToCurrent({
+			schemaVersion: 30,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+			masteries: ['Longsword', 'Shortbow'],
+		}) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// No level is guessed (D97): the save has no record of when either pick was made, and a
+		// made-up one would let a later "remove level 5" strip a mastery that was never taken there.
+		expect(migrated['masteries']).toEqual([{ name: 'Longsword' }, { name: 'Shortbow' }])
+	})
+
+	it('carries a version-30 character with no masteries forward without inventing the field', () => {
+		const before = {
+			schemaVersion: 30,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 1 }],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('masteries' in migrated).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

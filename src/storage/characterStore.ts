@@ -10,6 +10,7 @@ import type {
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
+	CharacterMastery,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
 	CharacterSpellChoice,
@@ -137,7 +138,7 @@ export interface CharacterCreateInput {
 	abilityBonus?: AbilityBonusMap
 	languages?: CharacterLanguage[]
 	classSkills?: string[]
-	masteries?: string[]
+	masteries?: CharacterMastery[]
 	fightingStyle?: string | null
 	optionalFeatureChoices?: CharacterOptionalFeatureChoice[]
 	speciesSkills?: string[]
