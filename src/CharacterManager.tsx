@@ -118,6 +118,8 @@ function CharacterManager() {
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [actionError, setActionError] = useState<string | null>(null)
 	const [creating, setCreating] = useState(false)
+	/** The character the wizard is currently open over (slice 8d1) — null while creating or while nothing is being edited. */
+	const [editingId, setEditingId] = useState<string | null>(null)
 	const [sheetId, setSheetId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -145,6 +147,7 @@ function CharacterManager() {
 
 	function handleWizardSaved(): void {
 		setCreating(false)
+		setEditingId(null)
 		setActionError(null)
 		refresh()
 	}
@@ -179,6 +182,7 @@ function CharacterManager() {
 		if (!confirm('Delete this character? This cannot be undone.')) return
 		withErrorHandling(() => store.store?.delete(id))
 		setSheetId((current) => (current === id ? null : current))
+		setEditingId((current) => (current === id ? null : current))
 	}
 
 	function handleExport(id: string): void {
@@ -215,6 +219,7 @@ function CharacterManager() {
 		)
 	}
 	const characterStore = store.store
+	const editingCharacter = editingId === null ? undefined : characters.find((c) => c.id === editingId)
 
 	return (
 		<main>
@@ -263,6 +268,10 @@ function CharacterManager() {
 									onEditInventory={(inventory) => handleEditInventory(sheetCharacter.id, inventory)}
 									onEditCurrency={(copper) => handleEditCurrency(sheetCharacter.id, copper)}
 									onEditHitPoints={(currentHp, maxHpOverride) => handleEditHitPoints(sheetCharacter.id, currentHp, maxHpOverride)}
+									onEditCharacter={() => {
+										setCreating(false)
+										setEditingId(sheetCharacter.id)
+									}}
 								/>
 							) : null
 						})()}
@@ -270,7 +279,15 @@ function CharacterManager() {
 			)}
 
 			<div className="char-create">
-				{creating ? (
+				{editingCharacter ? (
+					<CharacterWizard
+						store={characterStore}
+						character={editingCharacter}
+						onSaved={handleWizardSaved}
+						/* Nothing has been written at this point — the stored character is untouched. */
+						onCancel={() => setEditingId(null)}
+					/>
+				) : creating ? (
 					<CharacterWizard
 						store={characterStore}
 						onSaved={handleWizardSaved}

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
 	emptyWizardData,
@@ -7,6 +8,7 @@ import {
 	isStepComplete,
 	saveCharacter,
 	visibleSteps,
+	wizardDataFromCharacter,
 	wizardReducer,
 	type WizardControllerState,
 	type WizardData,
@@ -702,5 +704,202 @@ describe('saveCharacter', () => {
 		expect(store.create).not.toHaveBeenCalled()
 		// only calling saveCharacter explicitly writes anything
 		void state
+	})
+})
+
+/*
+ * Build order step 8, slice 8d1 — the wizard run over an existing character.
+ * The one thing every test here is really guarding is D97/D98/D99's recorded
+ * levels: a round trip through name-based pickers must not quietly drop them.
+ */
+describe('editing an existing character', () => {
+	function editStore(): CharacterStore {
+		return {
+			create: vi.fn(() => ({ id: 'x', name: 'Aria', classes: [] })),
+			update: vi.fn((id: string) => ({ id, name: 'Aria', classes: [] })),
+		} as unknown as CharacterStore
+	}
+
+	/** A level-5 Fighter carrying a recorded level on every choice that has one. */
+	function storedCharacter(): Character {
+		return {
+			id: 'char-1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 5 }],
+			abilityScores: {
+				method: 'standardArray',
+				scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
+			},
+			species: { name: 'Elf', source: 'XPHB' },
+			background: { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+			abilityBonus: { strength: 2, constitution: 1 },
+			languages: [
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
+			],
+			classSkills: ['acrobatics', 'survival'],
+			masteries: [{ name: 'Longsword', level: 4 }, { name: 'Greataxe' }],
+			expertiseSkills: [{ name: 'acrobatics', level: 3 }],
+			fightingStyle: 'Archery',
+			optionalFeatureChoices: [
+				{ featureType: 'MV:B', choices: [{ name: 'Precision Attack', level: 3 }, { name: 'Riposte' }] },
+				{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', level: 2 }] },
+			],
+			speciesSkills: ['perception'],
+			featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
+			spellChoices: [{ className: 'Fighter', classSource: 'XPHB', spells: [{ name: 'Fire Bolt', source: 'XPHB' }] }],
+			hitPointLevels: [
+				{ level: 2, kind: 'average', dieResult: 6 },
+				{ level: 3, kind: 'roll', dieResult: 4 },
+				{ level: 4, kind: 'average', dieResult: 6 },
+				{ level: 5, kind: 'manual', dieResult: 10 },
+			],
+			inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1 }],
+			currencyCopper: 500,
+			currentHp: 30,
+			familiar: { name: 'Owl', source: 'XMM' },
+		}
+	}
+
+	const lookups = {
+		subclasses: [{ name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' }],
+		spellLevels: [{ name: 'Fire Bolt', source: 'XPHB', level: 0 }],
+	}
+
+	/** What the round trip needs so every visible step counts as complete: one ASI grant at level 4, and a level-5 character (so the hit-points step appears). */
+	const editConditions = { featAsiEligibleLevelCount: 1, characterLevel: 5, editingExistingCharacter: true }
+
+	it('seeds the wizard from a stored character', () => {
+		const data = wizardDataFromCharacter(storedCharacter(), lookups)
+
+		expect(data.classChoice).toEqual({ className: 'Fighter', classSource: 'XPHB', level: 5 })
+		expect(data.subclass).toEqual({ name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' })
+		// Bare names in the wizard; Common is left out, since saveCharacter adds it back.
+		expect(data.masteries).toEqual(['Longsword', 'Greataxe'])
+		expect(data.expertiseSkills).toEqual(['acrobatics'])
+		expect(data.optionalFeatureChoices).toEqual(['Precision Attack', 'Riposte'])
+		expect(data.classOptionalFeatureChoices).toEqual([{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', level: 2 }] }])
+		expect(data.languageChoice).toEqual([
+			{ name: 'Draconic', source: 'XPHB' },
+			{ name: 'Dwarvish', source: 'XPHB' },
+		])
+		// The level is not stored on a spell pick; the wizard's own counts need it, so it is read back from the spell data.
+		expect(data.spellChoices).toEqual([{ name: 'Fire Bolt', source: 'XPHB', level: 0 }])
+		expect(data.backgroundChoice).toEqual({
+			name: 'Soldier',
+			source: 'XPHB',
+			abilityBonus: { strength: 2, constitution: 1 },
+			abilityBonusDistribution: { mode: 'twoOne', plusTwo: 'strength', plusOne: 'constitution' },
+		})
+		expect(data.hitPointLevels).toEqual(storedCharacter().hitPointLevels)
+	})
+
+	it('round-trips a character through seed and save unchanged, keeping every recorded level', () => {
+		const store = editStore()
+		const character = storedCharacter()
+		const data = wizardDataFromCharacter(character, lookups)
+
+		saveCharacter(store, data, ['athletics', 'intimidation'], editConditions, undefined, character)
+
+		expect(store.create).not.toHaveBeenCalled()
+		expect(store.update).toHaveBeenCalledTimes(1)
+		const [id, input] = vi.mocked(store.update).mock.calls[0]
+		expect(id).toBe('char-1')
+		const { id: _id, ...expected } = character
+		expect(input).toEqual(expected)
+	})
+
+	it('keeps the level of a pick that was already there and records none for one added during the edit', () => {
+		const store = editStore()
+		const character = storedCharacter()
+		const data = wizardDataFromCharacter(character, lookups)
+
+		saveCharacter(
+			store,
+			{ ...data, masteries: [...data.masteries, 'Rapier'], optionalFeatureChoices: [...data.optionalFeatureChoices, 'Trip Attack'] },
+			['athletics', 'intimidation'],
+			editConditions,
+			undefined,
+			character,
+		)
+
+		const input = vi.mocked(store.update).mock.calls[0][1]
+		expect(input.masteries).toEqual([{ name: 'Longsword', level: 4 }, { name: 'Greataxe' }, { name: 'Rapier' }])
+		expect(input.optionalFeatureChoices).toContainEqual({
+			featureType: 'MV:B',
+			choices: [{ name: 'Precision Attack', level: 3 }, { name: 'Riposte' }, { name: 'Trip Attack' }],
+		})
+	})
+
+	it('refuses a level below the character’s own', () => {
+		const store = editStore()
+		const character = storedCharacter()
+		const data = wizardDataFromCharacter(character, lookups)
+		const lowered = { ...data, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 4 } }
+
+		expect(() => saveCharacter(store, lowered, ['athletics', 'intimidation'], { ...editConditions, characterLevel: 4 }, undefined, character)).toThrow(
+			/cannot be lowered/i,
+		)
+		expect(store.update).not.toHaveBeenCalled()
+	})
+
+	/* The equipment step is not part of an edit, so the character keeps what it carries and its play state survives the replacement write. */
+	it('carries the inventory, money and play state through an edit', () => {
+		const store = editStore()
+		const character = storedCharacter()
+		const data = wizardDataFromCharacter(character, lookups)
+
+		saveCharacter(store, data, ['athletics', 'intimidation'], editConditions, { inventory: [], currencyCopper: 0 }, character)
+
+		const input = vi.mocked(store.update).mock.calls[0][1]
+		expect(input.inventory).toEqual([{ name: 'Longsword', source: 'XPHB', quantity: 1 }])
+		expect(input.currencyCopper).toBe(500)
+		expect(input.currentHp).toBe(30)
+		expect(input.familiar).toEqual({ name: 'Owl', source: 'XMM' })
+	})
+
+	it('hides the equipment step while editing and keeps it while creating', () => {
+		expect(visibleSteps({ editingExistingCharacter: true })).not.toContain('equipment')
+		expect(visibleSteps({})).toContain('equipment')
+	})
+})
+
+describe('wizardReducer setClassChoice', () => {
+	function fighterState(): WizardControllerState {
+		return {
+			step: 'class',
+			data: {
+				...completeData(),
+				classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 },
+				hitPointLevels: [{ level: 2, kind: 'average', dieResult: 6 }],
+			},
+		}
+	}
+
+	/* D100: raising the level keeps everything — wiping here would destroy the levels recorded on each choice. */
+	it('keeps every choice when only the level changed', () => {
+		const state = fighterState()
+		const next = wizardReducer(state, { type: 'setClassChoice', choice: { className: 'Fighter', classSource: 'XPHB', level: 6 } })
+
+		expect(next.data.classChoice?.level).toBe(6)
+		expect(next.data.classSkills).toEqual(state.data.classSkills)
+		expect(next.data.masteries).toEqual(state.data.masteries)
+		expect(next.data.subclass).toEqual(state.data.subclass)
+		expect(next.data.optionalFeatureChoices).toEqual(state.data.optionalFeatureChoices)
+		expect(next.data.hitPointLevels).toEqual(state.data.hitPointLevels)
+		expect(next.data.startingEquipment).toEqual(state.data.startingEquipment)
+	})
+
+	it('clears the class’s own choices when the class itself changed', () => {
+		const next = wizardReducer(fighterState(), { type: 'setClassChoice', choice: { className: 'Wizard', classSource: 'XPHB', level: 5 } })
+
+		expect(next.data.classChoice?.className).toBe('Wizard')
+		expect(next.data.classSkills).toEqual([])
+		expect(next.data.masteries).toEqual([])
+		expect(next.data.subclass).toBeNull()
+		expect(next.data.optionalFeatureChoices).toEqual([])
+		expect(next.data.hitPointLevels).toEqual([])
+		expect(next.data.startingEquipment.classOptionKey).toBeNull()
 	})
 })

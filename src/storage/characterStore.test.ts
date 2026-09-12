@@ -181,6 +181,41 @@ describe('CharacterStore.create', () => {
 	})
 })
 
+/* Build order step 8, slice 8d1 — the write behind an edited character. */
+describe('CharacterStore.update', () => {
+	it('replaces the character in place, keeping its id and leaving the others alone', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const first = store.create({ name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] })
+		const second = store.create({ name: 'Cato' })
+
+		const updated = store.update(first.id, { name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 6 }] })
+
+		expect(updated.id).toBe(first.id)
+		expect(updated.classes[0].level).toBe(6)
+		expect(store.list()).toEqual([updated, second])
+	})
+
+	/* Everything but the id comes from the input, so a field left out is genuinely removed. */
+	it('drops a field the input does not carry', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria', fightingStyle: 'Archery', currentHp: 12 })
+
+		const updated = store.update(created.id, { name: 'Aria', currentHp: 12 })
+
+		expect(updated.fightingStyle).toBeUndefined()
+		expect(updated.currentHp).toBe(12)
+	})
+
+	it('rejects an unknown id and an empty name without writing anything', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria' })
+
+		expect(() => store.update('nope', { name: 'Aria' })).toThrow(CharacterNotFoundError)
+		expect(() => store.update(created.id, { name: '  ' })).toThrow(ImportValidationError)
+		expect(store.list()).toEqual([created])
+	})
+})
+
 describe('CharacterStore.create with ability scores', () => {
 	it('saves and reloads ability scores from the point buy method', () => {
 		const store = new CharacterStore(new MemoryStorage())

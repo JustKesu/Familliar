@@ -1852,3 +1852,43 @@ familiara), udělené smysly, udělená i vybraná kouzla z options, tři čten�
 akcí) a počítání požadavků na kouzla ve wizardu. Žádnému z nich se výsledek
 nemění, ať volba úroveň nese nebo ne; testy to u každého ověřují dvojicí
 „s úrovní / bez úrovně".
+
+## D100 — Wizard umí běžet nad existující postavou: uložení ji přepíše, úroveň jen nahoru, a už zapsané volby si nechávají svou úroveň
+
+Slice 8d1. Doteď wizard běžel jen dopředu z prázdné postavy; level up (8d3)
+i obyčejná oprava po vytvoření potřebují totéž.
+
+**Uložení přepíše, nezdvojí.** `CharacterStore.update(id, input)` bere stejný
+objekt jako `create` a nechává jen `id` a verzi schématu; všechno ostatní je
+z `input`, takže pole, které se nepředá, opravdu zmizí. `saveCharacter`
+dostane postavu, ze které se wizard naseedoval, a volá `update` místo
+`create`. Dokud se nezmáčkne uložení, ve storage se nemění nic — zrušení
+úpravy nechá postavu přesně tak, jak byla.
+
+**Maže se při změně TŘÍDY, ne při změně úrovně.** `setClassChoice` čistil
+tucet polí při každé změně. To je správně, když se změnila třída — jiná třída
+má jiné dovednosti, jiné mastery, jinou kostku života. Při změně samotné
+úrovně je to špatně: smazalo by to všechny už zapsané volby včetně úrovní, na
+kterých byly vzaté (D97/D98/D99), tedy přesně tu historii, kterou 8e potřebuje.
+Rozlišuje se podle `className` + `classSource`.
+
+**Úroveň smí při úpravě jen nahoru.** Snížení úrovně je ve skutečnosti
+ODEBRÁNÍ úrovně: musí spadnout přesně ty volby, které byly vzaté na rušených
+úrovních, a nic víc. To je slice 8e a používá k tomu právě ty úrovně uložené
+u jednotlivých voleb. Kdyby to směla udělat úprava, udělá se totéž potichu a
+špatně. Nabídka úrovní tedy pod úrovní postavy nezačíná (`ClassPicker`
+`minLevel`) a `saveCharacter` nižší úroveň odmítne. Zvýšení úrovně nepotřebuje
+nic navíc — viditelné kroky se přepočítají a krok, který nově něco vyžaduje,
+blokuje uložení stejně jako při tvorbě.
+
+**Volba, která na postavě už byla, si nechá svou úroveň; nově přidaná žádnou
+nedostane.** `WizardData` drží u masteries, expertise a optional features holá
+jména, storage `LeveledChoice`. Při uložení se tedy každé jméno porovná s tím,
+co na postavě bylo: co tam už bylo, si nese svou úroveň dál, co přibylo teď,
+je bez úrovně — stejné rozdělení, jaké už dělá `ClassOptionalFeaturePicker.toggle`.
+
+**Krok „Starting equipment" se při úpravě nezobrazuje.** Které možnosti se při
+tvorbě vzaly, se neukládá, takže se nedá ani předvyplnit; odvodit inventář
+znovu z nabídek by přepsalo to, co hráč mezitím měnil na sheetu, a ptát se
+znovu by blokovalo uložení na volbě, která je už utracená. Inventář, peníze,
+aktuální HP a familiar tedy projdou úpravou beze změny.

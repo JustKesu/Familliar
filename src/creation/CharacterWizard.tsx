@@ -74,6 +74,7 @@ import {
 	saveCharacter,
 	stepIndex,
 	visibleSteps,
+	wizardDataFromCharacter,
 	wizardReducer,
 	type SpellRequirement,
 	type WizardStep,
@@ -132,15 +133,26 @@ function stepLabel(step: WizardStep, classOptionalFeatureGroups: ClassOptionalFe
 
 export function CharacterWizard({
 	store,
+	character,
 	onSaved,
 	onCancel,
 }: {
 	store: CharacterStore
+	/**
+	 * The character being EDITED (build order step 8, slice 8d1). Absent means
+	 * the ordinary creation run. Saving updates this character rather than
+	 * creating a second one, and nothing is written until that save — cancelling
+	 * leaves it exactly as it was.
+	 */
+	character?: Character
 	onSaved: (character: Character) => void
 	onCancel: () => void
 }): ReactNode {
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
 	const [saveError, setSaveError] = useState<string | null>(null)
+	/** Editing only: false until the seed's own data (subclass sources/featureTypes, spell levels) has loaded and been dispatched. */
+	const [seeded, setSeeded] = useState(character === undefined)
+	const [seedError, setSeedError] = useState<string | null>(null)
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
 	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
@@ -186,6 +198,35 @@ export function CharacterWizard({
 	const [subclassAlwaysPreparedError, setSubclassAlwaysPreparedError] = useState<string | null>(null)
 	const [featGrantedSpellsError, setFeatGrantedSpellsError] = useState<string | null>(null)
 	const [optionalFeatureGrantedSpellsError, setOptionalFeatureGrantedSpellsError] = useState<string | null>(null)
+
+	/**
+	 * Slice 8d1: the seed needs two things storage deliberately doesn't hold —
+	 * the subclass's source and featureType, and each stored spell's level — so
+	 * it is built after those loads rather than at reducer-init time. A failed
+	 * load stops the flow instead of seeding a half-character that would then be
+	 * saved over the real one (D43). Runs once: a later re-render with an equal
+	 * but not identical `character` must not throw away what has been edited.
+	 */
+	useEffect(() => {
+		if (character === undefined || seeded) return
+		let cancelled = false
+		const characterClass = character.classes[0]
+		Promise.all([
+			characterClass ? loadSubclassesFor(characterClass.className, characterClass.classSource) : Promise.resolve([]),
+			loadSpellDetails(),
+		])
+			.then(([subclassOptions, details]) => {
+				if (cancelled) return
+				dispatch({ type: 'seed', data: wizardDataFromCharacter(character, { subclasses: subclassOptions, spellLevels: details }) })
+				setSeeded(true)
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) setSeedError(error instanceof Error ? error.message : String(error))
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character, seeded])
 
 	useEffect(() => {
 		let cancelled = false
@@ -927,25 +968,41 @@ export function CharacterWizard({
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
 		characterLevel: state.data.classChoice?.level ?? null,
+		editingExistingCharacter: character !== undefined,
 	}
 
 	function handleSave(): void {
 		try {
-			const character = saveCharacter(
+			const saved = saveCharacter(
 				store,
 				state.data,
 				selectedBackground?.skillProficiencies,
 				stepConditions,
 				buildStartingInventory(classEquipmentOffer, backgroundEquipmentOffer, state.data.startingEquipment),
+				character,
 			)
 			setSaveError(null)
-			onSaved(character)
+			onSaved(saved)
 		} catch (error) {
 			setSaveError(error instanceof Error ? error.message : String(error))
 		}
 	}
 
 	const canGoNext = isStepComplete(state.step, state.data, stepConditions)
+
+	if (seedError !== null) {
+		return (
+			<div className="wizard">
+				<p className="error">Could not open this character for editing: {seedError}</p>
+				<div className="wizard__nav">
+					<button type="button" onClick={onCancel}>
+						Cancel
+					</button>
+				</div>
+			</div>
+		)
+	}
+	if (!seeded) return <p>Loading this character…</p>
 
 	return (
 		<div className="wizard">
@@ -973,6 +1030,7 @@ export function CharacterWizard({
 					<ClassPicker
 						value={state.data.classChoice}
 						onChange={(choice) => dispatch({ type: 'setClassChoice', choice })}
+						minLevel={character?.classes.reduce((total, entry) => total + entry.level, 0) ?? 1}
 					/>
 					{state.data.classChoice && (
 						<>
@@ -1260,7 +1318,8 @@ export function CharacterWizard({
 									.join('; ')
 							: '—'}
 					</p>
-					<p>
+					{/* Not part of an edit: starting equipment is a one-time creation grant and the character's inventory is left as it is. */}
+					<p hidden={character !== undefined}>
 						Starting equipment:{' '}
 						{(() => {
 							const { inventory, currencyCopper } = buildStartingInventory(
@@ -1295,7 +1354,7 @@ export function CharacterWizard({
 						onClick={handleSave}
 						disabled={!isReadyToSave(state.data, stepConditions)}
 					>
-						Create character
+						{character ? 'Save changes' : 'Create character'}
 					</button>
 				) : (
 					<button

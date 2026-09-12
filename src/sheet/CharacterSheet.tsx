@@ -1625,12 +1625,15 @@ export function CharacterSheet({
 	onEditInventory,
 	onEditCurrency,
 	onEditHitPoints,
+	onEditCharacter,
 }: {
 	character: Character
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
 	onEditHitPoints?: (currentHp: number | undefined, maxHpOverride: number | undefined) => void
+	/** Reopens the creation wizard over this character (slice 8d1). Absent leaves the sheet without the button. */
+	onEditCharacter?: () => void
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
 	const [activeTab, setActiveTab] = useState<SheetTabId>('stats')
@@ -2236,6 +2239,12 @@ export function CharacterSheet({
 				<p className="sheet__background">
 					{character.background ? character.background.name : <UnresolvedValue reason="No background chosen yet." />}
 				</p>
+
+				{onEditCharacter && (
+					<button type="button" className="sheet__edit-character" onClick={onEditCharacter}>
+						Edit character
+					</button>
+				)}
 			</header>
 
 			{/*

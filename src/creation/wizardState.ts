@@ -26,7 +26,10 @@ import type {
 	CharacterSubclassSpellChoice,
 	CharacterSubclassSpellChoicePick,
 	FeatAsiChoice,
+	LeveledChoice,
 } from '../storage/character'
+import { choiceNames } from '../storage/character'
+import type { AbilityBonusDistribution } from '../backgrounds/abilityBonus'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassLevelChoice } from '../classes/ClassPicker'
 import type { SpeciesChoice } from '../species/SpeciesPicker'
@@ -121,6 +124,15 @@ export interface WizardStepConditions {
 	 * above. `null` (no class chosen yet) behaves the same as level 1.
 	 */
 	characterLevel?: number | null
+	/**
+	 * Slice 8d1: the wizard is running over an EXISTING character rather than
+	 * creating one. Hides the 'equipment' step — starting equipment is a
+	 * one-time grant taken at creation, nothing records which option was taken,
+	 * and the inventory itself is live play state the sheet edits. Re-deriving it
+	 * from the offers on every edit would overwrite that; asking for the option
+	 * again would block the save on a choice already spent.
+	 */
+	editingExistingCharacter?: boolean
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
@@ -140,6 +152,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
 		characterLevel: conditions.characterLevel ?? 1,
+		editingExistingCharacter: conditions.editingExistingCharacter ?? false,
 	}
 }
 
@@ -187,6 +200,7 @@ export function visibleSteps(conditions: WizardStepConditions = {}): readonly Wi
 		if (step === 'spells') return resolved.spellRequirement !== null
 		if (step === 'classOptionalFeatures') return resolved.classOptionalFeatureGroupCount > 0
 		if (step === 'hitPoints') return (resolved.characterLevel ?? 1) > 1
+		if (step === 'equipment') return !resolved.editingExistingCharacter
 		return true
 	})
 }
@@ -302,6 +316,108 @@ export function emptyWizardData(): WizardData {
 		classFeatureChoices: [],
 		wildShapeForms: [],
 		hitPointLevels: [],
+		startingEquipment: emptyStartingEquipmentChoice(),
+	}
+}
+
+/**
+ * The two things storage deliberately does NOT hold that WizardData needs, so
+ * seeding an existing character has to be handed them (build order step 8,
+ * slice 8d1). Both are already loaded by CharacterWizard for its own panels;
+ * minimally typed here so a test can supply two literals instead of a full
+ * SubclassOption / SpellDetail.
+ */
+export interface WizardSeedLookups {
+	/** The chosen class's subclasses — `Character.classes[].subclass` is a bare NAME, while SubclassChoice also needs the source and the featureType its optional-feature picks are tagged with (D21). */
+	subclasses: readonly { name: string; source: string; featureType: string | null }[]
+	/** Every spell's level — SpellPick carries it for the step's own cantrip/leveled counts, and saveCharacter drops it on the way to storage. */
+	spellLevels: readonly { name: string; source: string; level: number }[]
+}
+
+/** A stored +2/+1 or +1/+1/+1 map read back as the chooser's own state, so an edited background reopens showing which mode was taken rather than an empty chooser beside a filled bonus. */
+function distributionFromBonusMap(abilityBonus: AbilityBonusMap | undefined): AbilityBonusDistribution | null {
+	const entries = Object.entries(abilityBonus ?? {}) as [Ability, number][]
+	if (entries.length === 0) return null
+	const plusTwo = entries.find(([, amount]) => amount === 2)
+	if (!plusTwo) return { mode: 'oneEach' }
+	const plusOne = entries.find(([, amount]) => amount === 1)
+	return { mode: 'twoOne', plusTwo: plusTwo[0], plusOne: plusOne ? plusOne[0] : null }
+}
+
+/**
+ * The inverse of saveCharacter: builds the wizard's in-progress shape from a
+ * stored character (build order step 8, slice 8d1), so the whole flow can run
+ * over one that already exists.
+ *
+ * The LEVELS recorded on each mastery, expertise skill and optional-feature
+ * pick (D97/D98/D99) are not represented in WizardData — the pickers are
+ * name-based controls. They are not lost: saveCharacter is given the same
+ * character back and re-attaches the level of every pick that was already on it.
+ *
+ * `startingEquipment` comes back empty and the equipment step is hidden while
+ * editing (WizardStepConditions.editingExistingCharacter) — the character's
+ * inventory is carried through untouched instead.
+ */
+export function wizardDataFromCharacter(character: Character, lookups: WizardSeedLookups): WizardData {
+	const characterClass = character.classes[0]
+	const storedSubclassName = characterClass?.subclass ?? null
+	// A subclass missing from the loaded list keeps its name but carries no featureType,
+	// which sends its optional-feature picks through classOptionalFeatureChoices below —
+	// where they pass through save unchanged rather than being dropped.
+	const subclassOption = storedSubclassName
+		? (lookups.subclasses.find((option) => option.name.toLowerCase() === storedSubclassName.toLowerCase()) ?? null)
+		: null
+	const subclass: SubclassChoice | null = storedSubclassName
+		? { name: storedSubclassName, source: subclassOption?.source ?? '', featureType: subclassOption?.featureType ?? null }
+		: null
+
+	const subclassFeatureType = subclass?.featureType ?? null
+	const storedOptionalFeatures = character.optionalFeatureChoices ?? []
+
+	const spellLevelOf = (spell: { name: string; source: string }): number =>
+		lookups.spellLevels.find(
+			(detail) => detail.name.toLowerCase() === spell.name.toLowerCase() && detail.source.toUpperCase() === spell.source.toUpperCase(),
+		)?.level ?? -1
+
+	return {
+		name: character.name,
+		classChoice: characterClass
+			? { className: characterClass.className, classSource: characterClass.classSource, level: characterClass.level }
+			: null,
+		speciesChoice: character.species ?? null,
+		backgroundChoice: character.background
+			? {
+					name: character.background.name,
+					source: character.background.source,
+					abilityBonus: character.abilityBonus ?? {},
+					abilityBonusDistribution: distributionFromBonusMap(character.abilityBonus),
+				}
+			: null,
+		backgroundToolProficiency: character.background?.toolProficiency ?? null,
+		// Common is added back by saveCharacter, exactly as it is on a first run.
+		languageChoice: (character.languages ?? [])
+			.filter((language) => language.grantedBy === 'creation')
+			.map(({ name, source }) => ({ name, source })),
+		abilityScores: character.abilityScores ?? null,
+		classSkills: character.classSkills ?? [],
+		speciesSkills: character.speciesSkills ?? [],
+		speciesSpellcastingAbility: character.speciesSpellcastingAbility ?? null,
+		expertiseSkills: choiceNames(character.expertiseSkills),
+		masteries: choiceNames(character.masteries),
+		fightingStyle: character.fightingStyle ?? null,
+		subclass,
+		optionalFeatureChoices: subclassFeatureType
+			? choiceNames(storedOptionalFeatures.find((entry) => entry.featureType === subclassFeatureType)?.choices)
+			: [],
+		classOptionalFeatureChoices: storedOptionalFeatures.filter((entry) => entry.featureType !== subclassFeatureType),
+		featAsiChoices: character.featAsiChoices ?? [],
+		spellChoices: (character.spellChoices ?? []).flatMap((entry) =>
+			entry.spells.map((spell) => ({ name: spell.name, source: spell.source, level: spellLevelOf(spell) })),
+		),
+		subclassSpellChoices: (character.subclassSpellChoices ?? []).flatMap((entry) => entry.picks),
+		classFeatureChoices: character.classFeatureChoices ?? [],
+		wildShapeForms: (character.wildShapeForms ?? []).flatMap((entry) => entry.forms),
+		hitPointLevels: character.hitPointLevels ?? [],
 		startingEquipment: emptyStartingEquipmentChoice(),
 	}
 }
@@ -515,6 +631,8 @@ export function isReadyToSave(data: WizardData, conditions: WizardStepConditions
 }
 
 export type WizardAction =
+	/** Replaces the whole in-progress character and returns to the first step — how the wizard opens over an existing one (slice 8d1), since the seed needs data loaded asynchronously and cannot be built at reducer-init time. */
+	| { type: 'seed'; data: WizardData }
 	| { type: 'next'; conditions?: WizardStepConditions }
 	| { type: 'back'; conditions?: WizardStepConditions }
 	| { type: 'setName'; name: string }
@@ -548,6 +666,8 @@ export type WizardAction =
  */
 export function wizardReducer(state: WizardControllerState, action: WizardAction): WizardControllerState {
 	switch (action.type) {
+		case 'seed':
+			return { step: WIZARD_STEPS[0], data: action.data }
 		case 'next': {
 			const conditions = action.conditions ?? {}
 			if (!isStepComplete(state.step, state.data, conditions)) return state
@@ -560,7 +680,22 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		}
 		case 'setName':
 			return { ...state, data: { ...state.data, name: action.name } }
-		case 'setClassChoice':
+		case 'setClassChoice': {
+			/*
+			 * D100: everything below is keyed to the CLASS — its skill list, its
+			 * masteries, its subclasses, its hit die — so a different class must
+			 * clear all of it. A different LEVEL on the same class must not: level
+			 * up (slice 8d3) and editing an existing character both change only the
+			 * level, and wiping there would throw away every choice already
+			 * recorded, including the levels they were taken at (D97/D98/D99).
+			 */
+			const previous = state.data.classChoice
+			const sameClass =
+				previous !== null &&
+				action.choice !== null &&
+				previous.className === action.choice.className &&
+				previous.classSource === action.choice.classSource
+			if (sameClass) return { ...state, data: { ...state.data, classChoice: action.choice } }
 			return {
 				...state,
 				data: {
@@ -582,6 +717,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					startingEquipment: clearStartingEquipmentFor(state.data.startingEquipment, 'class'),
 				},
 			}
+		}
 		case 'setSpeciesChoice':
 			return {
 				...state,
@@ -687,7 +823,14 @@ function clearStartingEquipmentFor(choice: StartingEquipmentChoice, origin: 'cla
  * `startingEquipment` is the inventory and copper total the equipment step's
  * two chosen options produce (buildStartingInventory) — computed by the caller
  * for the same reason as `backgroundSkillProficiencies`: it needs the loaded
- * offers, which WizardData deliberately doesn't carry.
+ * offers, which WizardData deliberately doesn't carry. Ignored when `existing`
+ * is given: that character's inventory is live play state, not a creation grant.
+ *
+ * `existing` is the character this run was seeded from (slice 8d1). With it the
+ * write UPDATES that character instead of creating a second one, the level is
+ * refused if it went down (D100 — removing a level is slice 8e's job), every
+ * pick that was already on the character keeps the level it was taken at, and
+ * the play-time fields the wizard never collects are carried through.
  */
 export function saveCharacter(
 	store: CharacterStore,
@@ -695,9 +838,15 @@ export function saveCharacter(
 	backgroundSkillProficiencies?: [string, string],
 	conditions: WizardStepConditions = {},
 	startingEquipment?: { inventory: CharacterInventoryItem[]; currencyCopper: number },
+	existing?: Character,
 ): Character {
 	if (!isReadyToSave(data, conditions)) {
 		throw new Error('Cannot save a character before every step is complete.')
+	}
+
+	const existingLevel = existing ? existing.classes.reduce((total, entry) => total + entry.level, 0) : 0
+	if (existing && (data.classChoice?.level ?? 0) < existingLevel) {
+		throw new Error(`A character's level cannot be lowered: this character is level ${existingLevel}.`)
 	}
 
 	const classes: CharacterClass[] = data.classChoice
@@ -748,7 +897,15 @@ export function saveCharacter(
 	const subclassOptionalFeatureChoices: CharacterOptionalFeatureChoice[] =
 		data.optionalFeatureChoices.length > 0 && data.subclass?.featureType
 			? // D99, as D97: a creation pick records no level — the wizard makes every pick in one step.
-				[{ featureType: data.subclass.featureType, choices: data.optionalFeatureChoices.map((name) => ({ name })) }]
+				[
+					{
+						featureType: data.subclass.featureType,
+						choices: keepRecordedLevels(
+							data.optionalFeatureChoices,
+							existing?.optionalFeatureChoices?.find((entry) => entry.featureType === data.subclass!.featureType)?.choices,
+						),
+					},
+				]
 			: []
 	const classOptionalFeatureChoices = data.classOptionalFeatureChoices.filter((entry) => entry.choices.length > 0)
 	const optionalFeatureChoices: CharacterOptionalFeatureChoice[] | undefined =
@@ -792,10 +949,10 @@ export function saveCharacter(
 	 * belonged to which level. WizardData keeps bare names because the picker
 	 * is a name-based control; the shape is put on here, at the storage edge.
 	 */
-	const masteries: CharacterMastery[] = data.masteries.map((name) => ({ name }))
+	const masteries: CharacterMastery[] = keepRecordedLevels(data.masteries, existing?.masteries)
 
 	/** No level is recorded, for exactly the reason masteries records none (D98 following D97). */
-	const expertiseSkills: CharacterExpertiseSkill[] = data.expertiseSkills.map((name) => ({ name }))
+	const expertiseSkills: CharacterExpertiseSkill[] = keepRecordedLevels(data.expertiseSkills, existing?.expertiseSkills)
 
 	/** Passes straight through to storage (build order step 8, slice 8b) — already exactly Character.hitPointLevels' own shape, one entry per level from 2 up. */
 	const hitPointLevels: CharacterHitPointLevel[] | undefined = data.hitPointLevels.length > 0 ? data.hitPointLevels : undefined
@@ -812,7 +969,7 @@ export function saveCharacter(
 				]
 			: undefined
 
-	return store.create({
+	const input = {
 		name: data.name,
 		classes,
 		abilityScores: data.abilityScores ?? undefined,
@@ -831,9 +988,29 @@ export function saveCharacter(
 		subclassSpellChoices,
 		classFeatureChoices,
 		wildShapeForms,
-		inventory: startingEquipment?.inventory,
-		currencyCopper: startingEquipment?.currencyCopper,
+		// Editing keeps what the character carries: the equipment step is not part of an edit.
+		inventory: existing ? existing.inventory : startingEquipment?.inventory,
+		currencyCopper: existing ? existing.currencyCopper : startingEquipment?.currencyCopper,
 		speciesSpellcastingAbility: data.speciesSpellcastingAbility ?? undefined,
 		hitPointLevels,
+		// Play state the wizard has no control over, carried across an update that replaces every field.
+		currentHp: existing?.currentHp,
+		maxHpOverride: existing?.maxHpOverride,
+		familiar: existing?.familiar,
+	}
+
+	return existing ? store.update(existing.id, input) : store.create(input)
+}
+
+/**
+ * The name-based pickers' output turned back into stored choices, keeping the
+ * level (D97/D98/D99) of every pick the character already had. A name that was
+ * not there before was added during this run and records no level — the same
+ * split ClassOptionalFeaturePicker.toggle already makes for its own field.
+ */
+function keepRecordedLevels(names: readonly string[], previous: readonly LeveledChoice[] | undefined): LeveledChoice[] {
+	return names.map((name) => {
+		const recorded = (previous ?? []).find((choice) => choice.name === name)
+		return recorded ? { ...recorded } : { name }
 	})
 }

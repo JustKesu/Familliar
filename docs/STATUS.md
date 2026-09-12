@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8c1: `Character.masteries` nese
-úroveň volby, schéma 31)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8d1: wizard umí běžet nad
+existující postavou, "Edit character" ze sheetu)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D99) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D100) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -171,6 +171,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8c1 | `Character.masteries` je pole objektů `{ name, level? }` (D22 → D97) | 30→31 |
    | 8c2 | `Character.expertiseSkills` je pole objektů `{ name, level? }` (D22 → D98) | 31→32 |
    | 8c3 | `choices` v každém záznamu `optionalFeatureChoices` je pole objektů `{ name, level? }` (D22 → D99) | 32→33 |
+   | 8d1 | Wizard běží i nad existující postavou — "Edit character" ze sheetu (D100) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -279,6 +280,33 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      a `HitPointsPicker.test.tsx` (všechny tři způsoby volby, tlačítko na
      průměr, součet shodný s `computeMaxHitPoints`). Level-up tlačítko a
      opětovný vstup do kroku při zvýšení úrovně je slice 8d — tady nepostaveno.
+   - Slice 8d1 (D100): wizard umí běžet nad existující postavou. Tři části —
+     (1) `CharacterStore.update(id, input)` bere stejný `CharacterCreateInput`
+     jako `create` (sestavení postavy je teď jeden sdílený `buildCharacter`),
+     drží `id` a verzi schématu a všechno ostatní nahradí; `CharacterCreateInput`
+     kvůli tomu umí i `currentHp`/`maxHpOverride`/`familiar`, které wizard sám
+     nesbírá a jen je protahuje. (2) `wizardDataFromCharacter(character, lookups)`
+     ve `wizardState.ts` je inverze `saveCharacter`; `lookups` dodává dvě věci,
+     které úložiště nedrží — zdroj + `featureType` podtřídy a úroveň každého
+     uloženého kouzla (`SpellPick.level`). Úrovně u voleb se seedem ztratí
+     (pickery jedou na jménech), ale ne natrvalo: `saveCharacter` dostane šestým
+     argumentem původní postavu a každé volbě, která na ní už byla, úroveň vrátí
+     — nová jde bez úrovně, stejné rozdělení jako `ClassOptionalFeaturePicker.toggle`.
+     (3) `setClassChoice` maže jen při změně TŘÍDY (`className`+`classSource`),
+     ne při změně úrovně. Úroveň smí jen nahoru: `ClassPicker` má nové
+     `minLevel`, `saveCharacter` nižší úroveň odmítne (snížení = odebrání
+     úrovně, to je 8e). Krok "Starting equipment" je při úpravě skrytý
+     (`WizardStepConditions.editingExistingCharacter`) a inventář, peníze,
+     `currentHp` i familiar projdou beze změny. Vstup: tlačítko "Edit character"
+     v hlavičce sheetu (`CharacterSheet` `onEditCharacter`), `CharacterManager`
+     drží `editingId` a předá postavu wizardu; do uložení se nezapisuje nic, což
+     ze zrušení dělá no-op. Seed je asynchronní (načítá podtřídy a kouzla),
+     takže wizard do té doby píše "Loading this character…"; selhání načtení
+     flow zastaví (D43), nenaseeduje půlku. Testy: round trip seed→save beze
+     změny včetně všech úrovní, zvýšení úrovně drží volby, změna třídy je maže,
+     snížená úroveň se odmítne, `update` místo `create`, plus `update` ve
+     `characterStore.test.ts`. Ověřeno i v prohlížeči na postavě úrovně 5.
+     Tlačítko level-upu (8d2) a zkrácený wizard (8d3) nepostaveny.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -442,9 +470,11 @@ bonusů, D95), 8b (krok wizardu pro volbu hod/průměr/ručně za úroveň, D96)
 8c0 (`CharacterStore.create` přes jeden objekt), 8c1 (`masteries` nese úroveň
 volby, D97), 8c2 (`expertiseSkills` totéž, D98) a 8c3 (`optionalFeatureChoices`,
 úroveň na jednotlivé volbě, D99) jsou hotové — **D22 je tím splněné pro všechna
-pole, která ho potřebují**. Další je **slice 8d** — tlačítko level-upu, opětovný
-vstup do kroku 8b při zvýšení úrovně existující postavy a první zápis `level` u
-voleb z level-upu (jediný zapisovatel úrovně ve všech třech polích).
+pole, která ho potřebují**. Hotová je i **8d1** (D100): wizard běží nad
+existující postavou, uložení ji přepíše, úroveň smí jen nahoru a už zapsané
+volby si nechávají svou úroveň. Další je **8d2** (tlačítko level-upu) a **8d3**
+(zkrácený wizard, který se ptá jen na to, co je na nové úrovni nové) — teprve
+ony zapíšou `level` u nových voleb. Odebrání úrovně je 8e.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +

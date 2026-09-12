@@ -153,6 +153,74 @@ export interface CharacterCreateInput {
 	currencyCopper?: number
 	speciesSpellcastingAbility?: Ability
 	hitPointLevels?: CharacterHitPointLevel[]
+	/*
+	 * Play-time state the wizard never collects: the hand-set current hit points
+	 * and max override (D9) and the summoned familiar. `create` is never given
+	 * them; `update` (slice 8d1) replaces every field from this input, so the
+	 * edit path passes the character's own back in rather than losing them.
+	 */
+	currentHp?: number
+	maxHpOverride?: number
+	familiar?: CharacterFamiliar
+}
+
+/** The one place a Character is assembled from an input — shared by `create` and `update` so the two can never diverge on which fields an absent value omits. */
+function buildCharacter(id: string, input: CharacterCreateInput): Character {
+	const {
+		classes = [],
+		abilityScores,
+		species,
+		background,
+		abilityBonus,
+		languages,
+		classSkills,
+		masteries,
+		fightingStyle,
+		optionalFeatureChoices,
+		speciesSkills,
+		expertiseSkills,
+		featAsiChoices,
+		spellChoices,
+		subclassSpellChoices,
+		classFeatureChoices,
+		wildShapeForms,
+		inventory,
+		currencyCopper,
+		speciesSpellcastingAbility,
+		hitPointLevels,
+		currentHp,
+		maxHpOverride,
+		familiar,
+	} = input
+
+	return {
+		id,
+		name: input.name.trim(),
+		classes,
+		...(abilityScores ? { abilityScores } : {}),
+		...(species ? { species } : {}),
+		...(background ? { background } : {}),
+		...(abilityBonus ? { abilityBonus } : {}),
+		...(languages ? { languages } : {}),
+		...(classSkills && classSkills.length > 0 ? { classSkills } : {}),
+		...(masteries && masteries.length > 0 ? { masteries } : {}),
+		...(fightingStyle ? { fightingStyle } : {}),
+		...(optionalFeatureChoices && optionalFeatureChoices.length > 0 ? { optionalFeatureChoices } : {}),
+		...(speciesSkills && speciesSkills.length > 0 ? { speciesSkills } : {}),
+		...(expertiseSkills && expertiseSkills.length > 0 ? { expertiseSkills } : {}),
+		...(featAsiChoices && featAsiChoices.length > 0 ? { featAsiChoices } : {}),
+		...(spellChoices && spellChoices.length > 0 ? { spellChoices } : {}),
+		...(subclassSpellChoices && subclassSpellChoices.length > 0 ? { subclassSpellChoices } : {}),
+		...(classFeatureChoices && classFeatureChoices.length > 0 ? { classFeatureChoices } : {}),
+		...(wildShapeForms && wildShapeForms.length > 0 ? { wildShapeForms } : {}),
+		...(inventory && inventory.length > 0 ? { inventory } : {}),
+		...(currencyCopper ? { currencyCopper } : {}),
+		...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
+		...(hitPointLevels && hitPointLevels.length > 0 ? { hitPointLevels } : {}),
+		...(currentHp !== undefined ? { currentHp } : {}),
+		...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
+		...(familiar ? { familiar } : {}),
+	}
 }
 
 export class CharacterStore {
@@ -193,59 +261,31 @@ export class CharacterStore {
 	}
 
 	create(input: CharacterCreateInput): Character {
-		const trimmed = input.name.trim()
-		if (!trimmed) throw new ImportValidationError('A character needs a name.')
+		if (!input.name.trim()) throw new ImportValidationError('A character needs a name.')
 
-		const {
-			classes = [],
-			abilityScores,
-			species,
-			background,
-			abilityBonus,
-			languages,
-			classSkills,
-			masteries,
-			fightingStyle,
-			optionalFeatureChoices,
-			speciesSkills,
-			expertiseSkills,
-			featAsiChoices,
-			spellChoices,
-			subclassSpellChoices,
-			classFeatureChoices,
-			wildShapeForms,
-			inventory,
-			currencyCopper,
-			speciesSpellcastingAbility,
-			hitPointLevels,
-		} = input
-
-		const character: Character = {
-			id: newId(),
-			name: trimmed,
-			classes,
-			...(abilityScores ? { abilityScores } : {}),
-			...(species ? { species } : {}),
-			...(background ? { background } : {}),
-			...(abilityBonus ? { abilityBonus } : {}),
-			...(languages ? { languages } : {}),
-			...(classSkills && classSkills.length > 0 ? { classSkills } : {}),
-			...(masteries && masteries.length > 0 ? { masteries } : {}),
-			...(fightingStyle ? { fightingStyle } : {}),
-			...(optionalFeatureChoices && optionalFeatureChoices.length > 0 ? { optionalFeatureChoices } : {}),
-			...(speciesSkills && speciesSkills.length > 0 ? { speciesSkills } : {}),
-			...(expertiseSkills && expertiseSkills.length > 0 ? { expertiseSkills } : {}),
-			...(featAsiChoices && featAsiChoices.length > 0 ? { featAsiChoices } : {}),
-			...(spellChoices && spellChoices.length > 0 ? { spellChoices } : {}),
-			...(subclassSpellChoices && subclassSpellChoices.length > 0 ? { subclassSpellChoices } : {}),
-			...(classFeatureChoices && classFeatureChoices.length > 0 ? { classFeatureChoices } : {}),
-			...(wildShapeForms && wildShapeForms.length > 0 ? { wildShapeForms } : {}),
-			...(inventory && inventory.length > 0 ? { inventory } : {}),
-			...(currencyCopper ? { currencyCopper } : {}),
-			...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
-			...(hitPointLevels && hitPointLevels.length > 0 ? { hitPointLevels } : {}),
-		}
+		const character = buildCharacter(newId(), input)
 		this.writeAll([...this.list(), character])
+		return character
+	}
+
+	/**
+	 * Replaces the character with this id by what `input` describes (build order
+	 * step 8, slice 8d1 — the wizard run over an existing character). Its id and
+	 * schema version survive; every other field comes from `input`, so a value
+	 * the caller leaves out is genuinely removed rather than quietly kept. The
+	 * narrow setters above stay the way to change a single field.
+	 */
+	update(id: string, input: CharacterCreateInput): Character {
+		if (!input.name.trim()) throw new ImportValidationError('A character needs a name.')
+
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const character = buildCharacter(id, input)
+		const updated = [...characters]
+		updated[index] = character
+		this.writeAll(updated)
 		return character
 	}
 

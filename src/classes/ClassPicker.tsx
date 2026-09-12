@@ -31,9 +31,12 @@ export interface ClassLevelChoice {
 export function ClassPicker({
 	value,
 	onChange,
+	minLevel = 1,
 }: {
 	value: ClassLevelChoice | null
 	onChange: (choice: ClassLevelChoice | null) => void
+	/** The lowest level that may be chosen (slice 8d1) — an edited character's own level, since lowering one is really removing a level and that is slice 8e's job (D100). */
+	minLevel?: number
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [selectedKey, setSelectedKey] = useState(value ? `${value.className}|${value.classSource}` : '')
@@ -100,7 +103,7 @@ export function ClassPicker({
 						report(selectedKey, nextLevel)
 					}}
 				>
-					{LEVELS.map((l) => (
+					{LEVELS.filter((l) => l >= minLevel).map((l) => (
 						<option key={l} value={l}>
 							{l}
 						</option>
