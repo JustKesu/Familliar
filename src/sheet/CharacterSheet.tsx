@@ -14,6 +14,8 @@
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
+import { LevelUpButton } from '../levelUp/LevelUpButton'
+import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
 import { computeAbilityScores } from '../calculation/abilityScores'
@@ -1626,6 +1628,7 @@ export function CharacterSheet({
 	onEditCurrency,
 	onEditHitPoints,
 	onEditCharacter,
+	onLevelUp,
 }: {
 	character: Character
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
@@ -1634,6 +1637,8 @@ export function CharacterSheet({
 	onEditHitPoints?: (currentHp: number | undefined, maxHpOverride: number | undefined) => void
 	/** Reopens the creation wizard over this character (slice 8d1). Absent leaves the sheet without the button. */
 	onEditCharacter?: () => void
+	/** Opens the one-level walk (slice 8d3) with what the next level adds. Absent leaves the sheet without the button. */
+	onLevelUp?: (gains: LevelGains) => void
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
 	const [activeTab, setActiveTab] = useState<SheetTabId>('stats')
@@ -2245,6 +2250,7 @@ export function CharacterSheet({
 						Edit character
 					</button>
 				)}
+				{onLevelUp && <LevelUpButton character={character} onLevelUp={onLevelUp} />}
 			</header>
 
 			{/*

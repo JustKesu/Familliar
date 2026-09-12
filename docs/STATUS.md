@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8d1: wizard umí běžet nad
-existující postavou, "Edit character" ze sheetu)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8d3: tlačítko Level up a
+zkrácený wizard)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D100) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D102) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -172,6 +172,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8c2 | `Character.expertiseSkills` je pole objektů `{ name, level? }` (D22 → D98) | 31→32 |
    | 8c3 | `choices` v každém záznamu `optionalFeatureChoices` je pole objektů `{ name, level? }` (D22 → D99) | 32→33 |
    | 8d1 | Wizard běží i nad existující postavou — "Edit character" ze sheetu (D100) | — |
+   | 8d2 | `levelGainsFor` — co přibývá na úrovni N, krok po kroku (D101) | — |
+   | 8d3 | Tlačítko "Level up" a zkrácený wizard (D102) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -306,7 +308,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      změny včetně všech úrovní, zvýšení úrovně drží volby, změna třídy je maže,
      snížená úroveň se odmítne, `update` místo `create`, plus `update` ve
      `characterStore.test.ts`. Ověřeno i v prohlížeči na postavě úrovně 5.
-     Tlačítko level-upu a zkrácený wizard (8d3) nepostaveny.
+     Tlačítko level-upu a zkrácený wizard jsou slice 8d3.
    - Slice 8d2 (D101): `src/levelUp/levelGains.ts` — `levelGainsFor(character,
      level, parsedClasses, resolverData)` odpoví, co na úrovni N přibývá, pro
      KAŽDÝ krok `WIZARD_STEPS`. Žádné UI, žádné `WizardStepConditions`: vrací
@@ -326,6 +328,29 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      (další expertise), Sorcerer na 10 (třetí metamagie + kouzla), Cleric na 3
      (podtřída i její featura psaná na úrovni 1), Cleric na 2 (nic), multiclass
      a neznámá třída/podtřída jako `unknown`.
+   - Slice 8d3 (D102): tlačítko a zkrácený průchod. `src/levelUp/LevelUpButton.tsx`
+     (v hlavičce sheetu vedle "Edit character", `CharacterSheet` `onLevelUp`)
+     načte `loadLevelGainsFor` pro úroveň +1 a ukáže "Level up to N"; na úrovni
+     20 a při `unresolved` je disabled a důvod nese v textu. `src/levelUp/levelUpSteps.ts`:
+     `levelUpTarget`, `levelUpStepConditions` (`adds` + `unknown` + vždy
+     `hitPoints`/`review` → nová `WizardStepConditions.levelUpSteps`, která ve
+     `visibleSteps` rozhoduje sama) a `unknownLevelUpSteps` (důvody pro poznámku
+     na kroku). `CharacterWizard` prop `levelUp`: seed zvedne `classChoice.level`,
+     akce `seed` nově bere `conditions` a začne na prvním viditelném kroku; krok
+     `class` v průchodu místo jména a `ClassPicker` vypíše "Fighter 4 → 5";
+     review vypíše `newFeatures` jménem z dat; tlačítko "Save level N".
+     `saveCharacter` sedmý argument `levelUpTo`: odmítne cokoli jiného než +1 v
+     téže jediné třídě a nové volby (masteries, expertise, obě skupiny
+     optional features) označí touto úrovní, uložené si nechávají svou.
+     `CharacterManager` drží `levelUpGains`, wizard dostává `key` podle režimu.
+     Fixtures z `levelGains.test.ts` přesunuty do `levelGains.fixtures.ts`.
+     Testy: `levelUp.test.tsx` (Fighter 3→4 featAsi, 4→5 jen HP+review a
+     Extra Attack, Cleric 2→3 class krok, `unknown` krok zůstává, tlačítko na
+     20 a u multiclassu, zápis nové úrovně u voleb, odmítnutí skoku o 2) a
+     `CharacterManager.test.tsx` (zrušení nechá uloženou postavu beze změny).
+     Ověřeno v prohlížeči: Fighter 4 → 5, průchod Hit points → Review (Extra
+     Attack, Tactical Shift), po reloadu úroveň 5, staré volby s úrovněmi
+     beze změny, nový hod na úrovni 5 uložený.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -493,9 +518,8 @@ pole, která ho potřebují**. Hotová je i **8d1** (D100): wizard běží nad
 existující postavou, uložení ji přepíše, úroveň smí jen nahoru a už zapsané
 volby si nechávají svou úroveň. Hotová je i **8d2** (D101): modul
 `src/levelUp/levelGains.ts` odpoví, co na úrovni N přibývá, krok po kroku,
-bez UI. Další je **8d3** (zkrácený wizard, který se ptá jen na to, co je na
-nové úrovni nové, a tlačítko level-upu) — teprve on zapíše `level` u nových
-voleb. Odebrání úrovně je 8e.
+bez UI. Hotová je i **8d3** (D102): tlačítko "Level up" a zkrácený wizard,
+první zápis `level` u nových voleb. Další je **8e** — odebrání úrovně.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +

@@ -1938,3 +1938,36 @@ postava, třída, která ve `classes.json` není, uložená podtřída, která t
 není, a neplatná úroveň vracejí `unknown` s důvodem — u multiclassu proto, že
 nic nezaznamenává, do které třídy nová úroveň patří, a hádat by znamenalo
 odpovědět na otázku jiné třídy (multiclass je krok 10).
+
+## D102 — Level up přidá přesně jednu úroveň ve stávající třídě a projde jen kroky, které ta úroveň nabízí
+
+Slice 8d3. Tlačítko "Level up" na sheetu a zkrácený průchod wizardem.
+
+**Vždy přesně jedna úroveň, vždy ve stávající třídě, na třídu se neptá.**
+Multiclass je krok 10. Tlačítko je nedostupné na úrovni 20 a tehdy, když
+`levelGainsFor` vrátí `unresolved` (víc tříd, třída chybějící v datech); v obou
+případech nese důvod přímo na sobě (D43), ne jen zašedlé. Krok `class`, pokud
+se v průchodu ukáže, místo pole pro jméno a `ClassPicker` jen vypíše
+"Fighter 4 → 5". `saveCharacter` odmítne zápis, který nezvedá jednu uloženou
+třídu právě o jednu úroveň.
+
+**Které kroky se ukazují.** Podle stavů z `levelGainsFor` pro NOVOU úroveň:
+každý krok se stavem `adds`; každý krok se stavem `unknown`, s poznámkou, že
+appka neumí říct, jestli tahle úroveň do kroku něco přidává, i s důvodem, aby to
+hráč zkontroloval ručně — schovat ho by potichu přeskočilo volbu, na kterou může
+mít postava nárok; a vždy `hitPoints` (D92, kostka na každé úrovni od 2) a
+`review`. Kroky `none` a `never` se neukazují. Jde to přes stávající
+`visibleSteps`: nová podmínka `WizardStepConditions.levelUpSteps`, kterou plní
+`levelUpStepConditions` (`src/levelUp/levelUpSteps.ts`); když je nastavená,
+rozhoduje o viditelnosti sama.
+
+**`newFeatures` se vypisují na review jako text ke čtení.** Žádný krok je
+nesbírá, a přitom jsou to právě ony, kvůli kterým se leveluje — bez nich hráč
+proklikne pickery a nedozví se, co mu úroveň dala. Jména přesně tak, jak je
+nesou data.
+
+**Úroveň se zapisuje atomicky až na konci.** Jedno `update` (D100) se všemi
+volbami z průchodu. Zavřené nebo zrušené okno nechá postavu na původní úrovni;
+žádný rozpracovaný stav ani koncept se neukládá. Volby přidané během průchodu
+nesou NOVOU úroveň (D97/D98/D99); volby z tvorby postavy dál žádnou — 8e na tom
+rozlišení staví.

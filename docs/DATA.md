@@ -445,3 +445,23 @@ class-features.json, subclass-features.json a optional-features.json
 budoucí frázový scan přes `entries` musí nejdřív tagy stripnout na jejich
 zobrazovaný text (`{@tag text|zdroj}` -> `text`), jinak potichu minimalizuje
 výsledky na zlomek skutečného počtu.
+### Odkazy mezi featurami přeskakují úrovně — vždy dolů, nikdy nahoru
+
+Tranzitivní uzávěr v `grantedClassFeaturesFrom` (D87) chodí po `ref*` uzlech
+v prostém textu. Z 338 takových odkazů (`refClassFeature` /
+`refSubclassFeature`, 0 nevyřešených) jich **293 míří na featuru téže úrovně
+a 45 přeskakuje na jinou — všech 45 dolů, ani jeden nahoru.** Příklad:
+`Cleric Order Domain (úroveň 3)` odkazuje na `Cleric Bonus Proficiencies
+(úroveň 1)`; stejný tvar mají Peace Domain a další starší doménové wrappery.
+
+Praktický důsledek: **„featury nové na úrovni N" NENÍ uzávěr filtrovaný na
+`level === N`** — takový filtr těch 45 zahodí. Musí to být rozdíl dvou celých
+uzávěrů, porovnaný podle `id` featury.
+
+Past, která z toho plyne podruhé: strana N-1 musí odříznout podtřídu, kterou
+si třída volí až nad N-1. Bez toho se subclassová featura zapsaná na úrovni 1
+(Disciple of Life) počítá jako už držená na úrovni 2 a všechno, co podtřída
+přináší, z odpovědi pro úroveň 3 zmizí. Hranici dodává `subclassLevelFor`.
+
+Zjištěno průzkumem ve slice 8d2 (`scripts/investigate-closure-level-drift.js`,
+spotřebovaný a smazaný). Souvisí s D101.

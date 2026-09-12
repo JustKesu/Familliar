@@ -4,6 +4,17 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import CharacterManager from './CharacterManager'
 import { CharacterStore } from './storage/characterStore'
+import { CLASSES, RESOLVER } from './levelUp/levelGains.fixtures'
+
+// The fetch stub below answers every data file with [], where no class exists; the Level up tests need a Fighter to be found.
+vi.mock('./levelUp/levelGains', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./levelUp/levelGains')>()
+	return {
+		...actual,
+		loadLevelGainsFor: async (character: Parameters<typeof actual.levelGainsFor>[0], level: number) =>
+			actual.levelGainsFor(character, level, CLASSES, RESOLVER),
+	}
+})
 
 /*
  * Component test for the temporary character manager UI (PHASE1.md build
@@ -92,6 +103,29 @@ describe('CharacterManager delete', () => {
 		await user.click(screen.getByRole('button', { name: 'Delete' }))
 
 		expect(await screen.findByText(/No character with id/)).not.toBeNull()
+	})
+})
+
+describe('CharacterManager level up (slice 8d3)', () => {
+	it('leaves the stored character untouched when the walk is cancelled part-way', async () => {
+		const store = new CharacterStore()
+		const created = store.create({ name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 4 }] })
+		const before = store.exportCharacter(created.id)
+
+		const user = userEvent.setup()
+		render(<CharacterManager />)
+		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
+
+		// Fighter 4 → 5 walks only hit points and review; the walk opens on hit points.
+		expect(await screen.findByText('1. Hit points')).not.toBeNull()
+		expect(screen.getByText('2. Review and save')).not.toBeNull()
+
+		await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+		expect(screen.queryByText('1. Hit points')).toBeNull()
+		expect(store.exportCharacter(created.id)).toBe(before)
+		expect(screen.getByText('Fighter 4')).not.toBeNull()
 	})
 })
 

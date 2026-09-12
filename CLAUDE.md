@@ -128,8 +128,13 @@ Those are the user's. If a task's findings make one of them stale or wrong, say
 so in REPORT.md and leave the file alone — unless the prompt for that task
 explicitly asks for the edit.
 
-DATA.md changes only when the extraction scripts or the shape of `data/` change,
-and only in the same task that changed them.
+DATA.md is where everything learned about how the 5etools data behaves is
+recorded — not only changes to the extraction scripts or the shape of `data/`,
+but any finding from an investigation, INCLUDING one that changed no code. If a
+task discovers how the data actually behaves, that belongs in DATA.md in the
+same task, as well as wherever else it is cited. A finding recorded only in
+REPORT.md is lost at the next task, and one recorded only as the rationale of a
+decision is not findable by someone asking about the data.
 
 Decisions are added to DECISIONS.md, never rewritten in place; a reversed
 decision gets a new entry recording the reversal. Documentation edits stay

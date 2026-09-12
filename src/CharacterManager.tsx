@@ -4,6 +4,7 @@ import { StorageError } from './storage/errors'
 import type { Character, CharacterFamiliar, CharacterInventoryItem } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
+import type { LevelGains } from './levelUp/levelGains'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
@@ -120,6 +121,8 @@ function CharacterManager() {
 	const [creating, setCreating] = useState(false)
 	/** The character the wizard is currently open over (slice 8d1) — null while creating or while nothing is being edited. */
 	const [editingId, setEditingId] = useState<string | null>(null)
+	/** Set when that wizard run is a one-level walk (slice 8d3) rather than a whole-character edit. */
+	const [levelUpGains, setLevelUpGains] = useState<LevelGains | null>(null)
 	const [sheetId, setSheetId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -148,6 +151,7 @@ function CharacterManager() {
 	function handleWizardSaved(): void {
 		setCreating(false)
 		setEditingId(null)
+		setLevelUpGains(null)
 		setActionError(null)
 		refresh()
 	}
@@ -270,6 +274,12 @@ function CharacterManager() {
 									onEditHitPoints={(currentHp, maxHpOverride) => handleEditHitPoints(sheetCharacter.id, currentHp, maxHpOverride)}
 									onEditCharacter={() => {
 										setCreating(false)
+										setLevelUpGains(null)
+										setEditingId(sheetCharacter.id)
+									}}
+									onLevelUp={(gains) => {
+										setCreating(false)
+										setLevelUpGains(gains)
 										setEditingId(sheetCharacter.id)
 									}}
 								/>
@@ -281,11 +291,17 @@ function CharacterManager() {
 			<div className="char-create">
 				{editingCharacter ? (
 					<CharacterWizard
+						/* A fresh run per mode and character: the wizard seeds itself once, on mount. */
+						key={`${editingCharacter.id}|${levelUpGains ? `up${levelUpGains.level}` : 'edit'}`}
 						store={characterStore}
 						character={editingCharacter}
+						levelUp={levelUpGains ?? undefined}
 						onSaved={handleWizardSaved}
 						/* Nothing has been written at this point — the stored character is untouched. */
-						onCancel={() => setEditingId(null)}
+						onCancel={() => {
+							setEditingId(null)
+							setLevelUpGains(null)
+						}}
 					/>
 				) : creating ? (
 					<CharacterWizard

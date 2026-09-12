@@ -67,6 +67,8 @@ import type { ClassSpellCountData } from '../calculation/spellCounts'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
 import { choiceNames, type Character, type CharacterOptionalFeatureChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
+import type { LevelGains } from '../levelUp/levelGains'
+import { levelUpStepConditions, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
 import {
 	initialControllerState,
 	isReadyToSave,
@@ -134,6 +136,7 @@ function stepLabel(step: WizardStep, classOptionalFeatureGroups: ClassOptionalFe
 export function CharacterWizard({
 	store,
 	character,
+	levelUp,
 	onSaved,
 	onCancel,
 }: {
@@ -145,10 +148,17 @@ export function CharacterWizard({
 	 * leaves it exactly as it was.
 	 */
 	character?: Character
+	/**
+	 * Slice 8d3: this run raises `character` by one level, to `levelUp.level`,
+	 * and walks only the steps that level offers. Requires `character`.
+	 */
+	levelUp?: LevelGains
 	onSaved: (character: Character) => void
 	onCancel: () => void
 }): ReactNode {
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
+	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp) : {}
+	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp) : {}
 	const [saveError, setSaveError] = useState<string | null>(null)
 	/** Editing only: false until the seed's own data (subclass sources/featureTypes, spell levels) has loaded and been dispatched. */
 	const [seeded, setSeeded] = useState(character === undefined)
@@ -217,7 +227,10 @@ export function CharacterWizard({
 		])
 			.then(([subclassOptions, details]) => {
 				if (cancelled) return
-				dispatch({ type: 'seed', data: wizardDataFromCharacter(character, { subclasses: subclassOptions, spellLevels: details }) })
+				const seed = wizardDataFromCharacter(character, { subclasses: subclassOptions, spellLevels: details })
+				// Nothing is stored until the save at the end, so the raised level lives only in this run's state.
+				const data = levelUp && seed.classChoice ? { ...seed, classChoice: { ...seed.classChoice, level: levelUp.level } } : seed
+				dispatch({ type: 'seed', data, conditions: levelUp ? levelUpStepConditions(levelUp) : {} })
 				setSeeded(true)
 			})
 			.catch((error: unknown) => {
@@ -226,7 +239,7 @@ export function CharacterWizard({
 		return () => {
 			cancelled = true
 		}
-	}, [character, seeded])
+	}, [character, seeded, levelUp])
 
 	useEffect(() => {
 		let cancelled = false
@@ -969,6 +982,7 @@ export function CharacterWizard({
 		startingEquipmentCategoryPicksComplete,
 		characterLevel: state.data.classChoice?.level ?? null,
 		editingExistingCharacter: character !== undefined,
+		...levelUpConditions,
 	}
 
 	function handleSave(): void {
@@ -980,6 +994,7 @@ export function CharacterWizard({
 				stepConditions,
 				buildStartingInventory(classEquipmentOffer, backgroundEquipmentOffer, state.data.startingEquipment),
 				character,
+				levelUp?.level,
 			)
 			setSaveError(null)
 			onSaved(saved)
@@ -1017,21 +1032,37 @@ export function CharacterWizard({
 				))}
 			</ol>
 
+			{levelUp && unknownStepReasons[state.step] !== undefined && (
+				<p className="wizard__level-up-unknown">
+					This app cannot tell whether level {levelUp.level} adds anything to this step, so check it by hand:{' '}
+					{unknownStepReasons[state.step]}
+				</p>
+			)}
+
 			{state.step === 'class' && (
 				<div className="wizard__panel">
-					<label className="wizard__field">
-						Character name
-						<input
-							type="text"
-							value={state.data.name}
-							onChange={(event) => dispatch({ type: 'setName', name: event.target.value })}
-						/>
-					</label>
-					<ClassPicker
-						value={state.data.classChoice}
-						onChange={(choice) => dispatch({ type: 'setClassChoice', choice })}
-						minLevel={character?.classes.reduce((total, entry) => total + entry.level, 0) ?? 1}
-					/>
+					{/* A level up never asks for a name or a class: it raises the class the character has by exactly one level. */}
+					{levelUp && state.data.classChoice ? (
+						<p className="wizard__level-up-class">
+							Level up: {state.data.classChoice.className} {levelUp.level - 1} → {levelUp.level}
+						</p>
+					) : (
+						<>
+							<label className="wizard__field">
+								Character name
+								<input
+									type="text"
+									value={state.data.name}
+									onChange={(event) => dispatch({ type: 'setName', name: event.target.value })}
+								/>
+							</label>
+							<ClassPicker
+								value={state.data.classChoice}
+								onChange={(choice) => dispatch({ type: 'setClassChoice', choice })}
+								minLevel={character?.classes.reduce((total, entry) => total + entry.level, 0) ?? 1}
+							/>
+						</>
+					)}
 					{state.data.classChoice && (
 						<>
 							<ClassSkillPicker
@@ -1278,6 +1309,21 @@ export function CharacterWizard({
 
 			{state.step === 'review' && (
 				<div className="wizard__panel">
+					{/* No step collects these; they are what the level grants outright, named as the data names them. */}
+					{levelUp && (
+						<section className="wizard__level-up-features" aria-label={`Features gained at level ${levelUp.level}`}>
+							<h3>Features gained at level {levelUp.level}</h3>
+							{levelUp.newFeatures.length > 0 ? (
+								<ul>
+									{levelUp.newFeatures.map((feature) => (
+										<li key={feature.id}>{feature.name}</li>
+									))}
+								</ul>
+							) : (
+								<p>None.</p>
+							)}
+						</section>
+					)}
 					<p>Name: {state.data.name}</p>
 					<p>
 						Class: {state.data.classChoice ? `${state.data.classChoice.className} (level ${state.data.classChoice.level})` : '—'}
@@ -1354,7 +1400,7 @@ export function CharacterWizard({
 						onClick={handleSave}
 						disabled={!isReadyToSave(state.data, stepConditions)}
 					>
-						{character ? 'Save changes' : 'Create character'}
+						{levelUp ? `Save level ${levelUp.level}` : character ? 'Save changes' : 'Create character'}
 					</button>
 				) : (
 					<button

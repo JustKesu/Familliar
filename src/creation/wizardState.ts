@@ -133,6 +133,14 @@ export interface WizardStepConditions {
 	 * again would block the save on a choice already spent.
 	 */
 	editingExistingCharacter?: boolean
+	/**
+	 * Slice 8d3: the wizard is walking one level up, and these are the only steps
+	 * that level offers (levelUpStepConditions in src/levelUp/levelUpSteps.ts).
+	 * When set it decides visibility on its own — every step it leaves out has
+	 * nothing new at this level, so its per-step rule above has nothing to add.
+	 * `null` is an ordinary creation or edit run.
+	 */
+	levelUpSteps?: ReadonlySet<WizardStep> | null
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
@@ -153,6 +161,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
 		characterLevel: conditions.characterLevel ?? 1,
 		editingExistingCharacter: conditions.editingExistingCharacter ?? false,
+		levelUpSteps: conditions.levelUpSteps ?? null,
 	}
 }
 
@@ -195,6 +204,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 export function visibleSteps(conditions: WizardStepConditions = {}): readonly WizardStep[] {
 	const resolved = resolveConditions(conditions)
 	return WIZARD_STEPS.filter((step) => {
+		if (resolved.levelUpSteps !== null) return resolved.levelUpSteps.has(step)
 		if (step === 'expertise') return resolved.expertiseRequiredCount !== null
 		if (step === 'featAsi') return resolved.featAsiEligibleLevelCount > 0
 		if (step === 'spells') return resolved.spellRequirement !== null
@@ -632,7 +642,7 @@ export function isReadyToSave(data: WizardData, conditions: WizardStepConditions
 
 export type WizardAction =
 	/** Replaces the whole in-progress character and returns to the first step — how the wizard opens over an existing one (slice 8d1), since the seed needs data loaded asynchronously and cannot be built at reducer-init time. */
-	| { type: 'seed'; data: WizardData }
+	| { type: 'seed'; data: WizardData; conditions?: WizardStepConditions }
 	| { type: 'next'; conditions?: WizardStepConditions }
 	| { type: 'back'; conditions?: WizardStepConditions }
 	| { type: 'setName'; name: string }
@@ -667,7 +677,8 @@ export type WizardAction =
 export function wizardReducer(state: WizardControllerState, action: WizardAction): WizardControllerState {
 	switch (action.type) {
 		case 'seed':
-			return { step: WIZARD_STEPS[0], data: action.data }
+			// A level-up walk may leave out the class step, so it starts on the first step that level actually offers.
+			return { step: visibleSteps(action.conditions ?? {})[0], data: action.data }
 		case 'next': {
 			const conditions = action.conditions ?? {}
 			if (!isStepComplete(state.step, state.data, conditions)) return state
@@ -831,6 +842,10 @@ function clearStartingEquipmentFor(choice: StartingEquipmentChoice, origin: 'cla
  * refused if it went down (D100 — removing a level is slice 8e's job), every
  * pick that was already on the character keeps the level it was taken at, and
  * the play-time fields the wizard never collects are carried through.
+ *
+ * `levelUpTo` (slice 8d3) marks the write that ends a level-up walk: it must
+ * raise `existing` by exactly one level in the class it already has, and every
+ * pick that was not on `existing` records that new level (D97/D98/D99).
  */
 export function saveCharacter(
 	store: CharacterStore,
@@ -839,6 +854,7 @@ export function saveCharacter(
 	conditions: WizardStepConditions = {},
 	startingEquipment?: { inventory: CharacterInventoryItem[]; currencyCopper: number },
 	existing?: Character,
+	levelUpTo?: number,
 ): Character {
 	if (!isReadyToSave(data, conditions)) {
 		throw new Error('Cannot save a character before every step is complete.')
@@ -847,6 +863,17 @@ export function saveCharacter(
 	const existingLevel = existing ? existing.classes.reduce((total, entry) => total + entry.level, 0) : 0
 	if (existing && (data.classChoice?.level ?? 0) < existingLevel) {
 		throw new Error(`A character's level cannot be lowered: this character is level ${existingLevel}.`)
+	}
+	if (levelUpTo !== undefined) {
+		const existingClass = existing?.classes.length === 1 ? existing.classes[0] : undefined
+		const sameClass =
+			existingClass !== undefined &&
+			data.classChoice !== null &&
+			existingClass.className === data.classChoice.className &&
+			existingClass.classSource === data.classChoice.classSource
+		if (!sameClass || existingLevel !== levelUpTo - 1 || data.classChoice?.level !== levelUpTo) {
+			throw new Error(`A level up raises one existing class by exactly one level, to level ${levelUpTo}.`)
+		}
 	}
 
 	const classes: CharacterClass[] = data.classChoice
@@ -903,11 +930,22 @@ export function saveCharacter(
 						choices: keepRecordedLevels(
 							data.optionalFeatureChoices,
 							existing?.optionalFeatureChoices?.find((entry) => entry.featureType === data.subclass!.featureType)?.choices,
+							levelUpTo,
 						),
 					},
 				]
 			: []
-	const classOptionalFeatureChoices = data.classOptionalFeatureChoices.filter((entry) => entry.choices.length > 0)
+	// The class picker already keeps each existing pick's own level; only a pick new to this walk is stamped.
+	const classOptionalFeatureChoices = data.classOptionalFeatureChoices
+		.filter((entry) => entry.choices.length > 0)
+		.map((entry) => {
+			if (levelUpTo === undefined) return entry
+			const held = new Set(choiceNames(existing?.optionalFeatureChoices?.find((stored) => stored.featureType === entry.featureType)?.choices))
+			return {
+				...entry,
+				choices: entry.choices.map((choice) => (choice.level !== undefined || held.has(choice.name) ? choice : { ...choice, level: levelUpTo })),
+			}
+		})
 	const optionalFeatureChoices: CharacterOptionalFeatureChoice[] | undefined =
 		subclassOptionalFeatureChoices.length + classOptionalFeatureChoices.length > 0
 			? [...subclassOptionalFeatureChoices, ...classOptionalFeatureChoices]
@@ -949,10 +987,10 @@ export function saveCharacter(
 	 * belonged to which level. WizardData keeps bare names because the picker
 	 * is a name-based control; the shape is put on here, at the storage edge.
 	 */
-	const masteries: CharacterMastery[] = keepRecordedLevels(data.masteries, existing?.masteries)
+	const masteries: CharacterMastery[] = keepRecordedLevels(data.masteries, existing?.masteries, levelUpTo)
 
 	/** No level is recorded, for exactly the reason masteries records none (D98 following D97). */
-	const expertiseSkills: CharacterExpertiseSkill[] = keepRecordedLevels(data.expertiseSkills, existing?.expertiseSkills)
+	const expertiseSkills: CharacterExpertiseSkill[] = keepRecordedLevels(data.expertiseSkills, existing?.expertiseSkills, levelUpTo)
 
 	/** Passes straight through to storage (build order step 8, slice 8b) — already exactly Character.hitPointLevels' own shape, one entry per level from 2 up. */
 	const hitPointLevels: CharacterHitPointLevel[] | undefined = data.hitPointLevels.length > 0 ? data.hitPointLevels : undefined
@@ -1006,11 +1044,13 @@ export function saveCharacter(
  * The name-based pickers' output turned back into stored choices, keeping the
  * level (D97/D98/D99) of every pick the character already had. A name that was
  * not there before was added during this run and records no level — the same
- * split ClassOptionalFeaturePicker.toggle already makes for its own field.
+ * split ClassOptionalFeaturePicker.toggle already makes for its own field —
+ * unless the run is a level up, where it records the level it was taken at.
  */
-function keepRecordedLevels(names: readonly string[], previous: readonly LeveledChoice[] | undefined): LeveledChoice[] {
+function keepRecordedLevels(names: readonly string[], previous: readonly LeveledChoice[] | undefined, newPickLevel?: number): LeveledChoice[] {
 	return names.map((name) => {
 		const recorded = (previous ?? []).find((choice) => choice.name === name)
-		return recorded ? { ...recorded } : { name }
+		if (recorded) return { ...recorded }
+		return newPickLevel === undefined ? { name } : { name, level: newPickLevel }
 	})
 }
