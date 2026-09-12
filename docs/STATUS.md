@@ -4,7 +4,7 @@ Poslední aktualizace: 2026-09-12 (krok 8 slice 8c1: `Character.masteries` nese
 úroveň volby, schéma 31)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D97) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D98) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -169,6 +169,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8b | Krok wizardu "Hit points" — hod/průměr/ručně za úroveň 2+ | — |
    | 8c0 | `CharacterStore.create` přes jeden objekt místo pozičních argumentů | — |
    | 8c1 | `Character.masteries` je pole objektů `{ name, level? }` (D22 → D97) | 30→31 |
+   | 8c2 | `Character.expertiseSkills` je pole objektů `{ name, level? }` (D22 → D98) | 31→32 |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -207,6 +208,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      neukládá podruhé. Validace: `masteries[i].name` povinné, `level` nepovinné
      a jen 1–20. Produkčních čtenářů `Character.masteries` je zatím NULA —
      pole se dnes jen ukládá (picker wizardu jede na jménech ve `WizardData`).
+     (Helper se ve slice 8c2 zobecnil na `choiceNames()`.)
+   - Slice 8c2 (D98): `Character.expertiseSkills` je `CharacterExpertiseSkill[]`
+     (`{ name, level? }`) místo `string[]`; schéma 32, migrace 31→32 dělá z
+     každého jména `{ name }` BEZ úrovně, záznam bez toho pole ho nedostane.
+     Volby z wizardu úroveň nemají (`saveCharacter` mapuje jména na objekty na
+     hranici úložiště, stejně jako u masteries); `WizardData.expertiseSkills`
+     zůstává `string[]`. Tvar je sdílený: `LeveledChoice` v
+     `storage/character.ts`, `CharacterMastery` i `CharacterExpertiseSkill` jsou
+     jeho aliasy, helper `masteryNames()` se přejmenoval na `choiceNames()` a
+     slouží oběma, validátor je jeden (`describeLeveledChoicesError(value, field)`)
+     a konverze taky (`toLeveledChoices`). Produkční čtenář je jediný —
+     `computeSkill` ve `src/calculation/skills.ts` (zdvojení proficiency bonusu);
+     čte přes `choiceNames()`, výsledky se nemění.
    - Slice 8a-guard (D95): `scripts/validate-data.js`, nová sekce
      `validateHitPointBonusTable`. Dvě kontroly — (1) všechna tři jména z
      `HIT_POINT_BONUS_RULES` odpovídají právě jednomu featu/rysu
@@ -268,11 +282,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Weapon proficiency/mastery a Extra Attack — jeden sdílený modul,
   strukturálně (podle dat zbraně), ne podle jména třídy.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
-- Uložení — localStorage, verzované schéma (teď 31), migrace fungují od
+- Uložení — localStorage, verzované schéma (teď 32), migrace fungují od
   verze 16 výš (D69); starší uložená postava se odmítne, ne převede. Migrace
   29→30 je první, která DATA PŘESOUVÁ, ne jen přepisuje tag: ručně napsané
   `maxHp` jde do `maxHpOverride` (D91). Migrace 30→31 je první, která hodnotu
-  nechává NEZNÁMOU: z jmen v `masteries` dělá objekty bez úrovně (D97).
+  nechává NEZNÁMOU: z jmen v `masteries` dělá objekty bez úrovně (D97); 31→32
+  dělá totéž s `expertiseSkills` (D98).
 - Trvalá hlavička sheetu (přestavba sheetu, slice 1) —
   `src/sheet/SheetHeader.tsx`. Blok nad obsahem sheetu se šesti hodnotami:
   jméno, AC, iniciativa, rychlost, proficiency bonus, životy. Pět odvozených
@@ -398,11 +413,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 Krok 8 běží. Slice 8a (počítané maximum HP), 8a-guard (validace tabulky
 bonusů, D95), 8b (krok wizardu pro volbu hod/průměr/ručně za úroveň, D96) a
-8c0 (`CharacterStore.create` přes jeden objekt) a 8c1 (`masteries` nese
-úroveň volby, D97) jsou hotové; další je **slice 8c2** — stejná změna tvaru
-pro `expertiseSkills` a `optionalFeatureChoices` podle vzoru 8c1, a pak
-**slice 8d** — tlačítko level-upu, opětovný vstup do kroku 8b při zvýšení
-úrovně existující postavy a první zápis `level` u voleb z level-upu.
+8c0 (`CharacterStore.create` přes jeden objekt), 8c1 (`masteries` nese úroveň
+volby, D97) a 8c2 (`expertiseSkills` totéž, D98) jsou hotové; další je
+**slice 8c3** — stejná změna tvaru pro `optionalFeatureChoices`, jehož holá
+jména sedí o úroveň hlouběji uvnitř objektu, a pak **slice 8d** — tlačítko
+level-upu, opětovný vstup do kroku 8b při zvýšení úrovně existující postavy a
+první zápis `level` u voleb z level-upu.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +

@@ -10,6 +10,7 @@ import type {
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
+	CharacterExpertiseSkill,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
@@ -142,7 +143,7 @@ export interface CharacterCreateInput {
 	fightingStyle?: string | null
 	optionalFeatureChoices?: CharacterOptionalFeatureChoice[]
 	speciesSkills?: string[]
-	expertiseSkills?: string[]
+	expertiseSkills?: CharacterExpertiseSkill[]
 	featAsiChoices?: FeatAsiChoice[]
 	spellChoices?: CharacterSpellChoice[]
 	subclassSpellChoices?: CharacterSubclassSpellChoice[]

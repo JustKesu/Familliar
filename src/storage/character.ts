@@ -125,9 +125,10 @@ export interface Character {
 	 * Optional for the same reason as abilityScores above. The skills named
 	 * as Expertise (doubled proficiency bonus) — a subset of classSkills,
 	 * speciesSkills or background.skillProficiencies, never a skill the
-	 * character isn't otherwise proficient in.
+	 * character isn't otherwise proficient in. Objects rather than bare skill
+	 * names since schema version 32 — see LeveledChoice (D98, following D97).
 	 */
-	expertiseSkills?: string[]
+	expertiseSkills?: CharacterExpertiseSkill[]
 	/**
 	 * Optional for the same reason as abilityScores above. Objects rather than
 	 * bare weapon names since schema version 31 — see CharacterMastery (D97).
@@ -281,26 +282,32 @@ export interface Character {
 }
 
 /**
- * One weapon mastery the character has (build order step 8, slice 8c1 — D97's
- * application of D22 to this field). `name` is the weapon's name, the same
- * string the bare array held before schema version 31.
+ * A stored choice that used to be a bare name and now records the level it was
+ * made at (D22, as D97 shapes it). `name` is exactly the string the bare array
+ * held before the shape changed.
  *
- * `level` is the character level the player PICKED this mastery at, and it is
- * absent whenever that is not known: a character created by the wizard chooses
- * every mastery in one step, even when created directly at level 5, so no level
- * is recorded for a creation pick rather than inventing one (D43). Only the
+ * `level` is the character level the player PICKED this at, and it is absent
+ * whenever that is not known: a character created by the wizard makes every
+ * such pick in one step, even when created directly at level 5, so no level is
+ * recorded for a creation pick rather than inventing one (D43). Only the
  * level-up writer (slice 8d) sets it. Deliberately not named `grantedAtLevel`
  * like CharacterClassFeatureChoice's field — that one answers when the FEATURE
  * offered the choice, this one when the player made it.
  */
-export interface CharacterMastery {
+export interface LeveledChoice {
 	name: string
 	level?: number
 }
 
-/** The weapon names alone, for readers that only match on names. Derived — the names are never stored twice. */
-export function masteryNames(masteries: CharacterMastery[] | undefined): string[] {
-	return (masteries ?? []).map((mastery) => mastery.name)
+/** One weapon mastery the character has (slice 8c1, D97). `name` is the weapon's name. */
+export type CharacterMastery = LeveledChoice
+
+/** One skill named as Expertise (slice 8c2, D98). `name` is the skill key skills.ts matches on. */
+export type CharacterExpertiseSkill = LeveledChoice
+
+/** The names alone, for readers that only match on names. Derived — a name is never stored twice. */
+export function choiceNames(choices: readonly LeveledChoice[] | undefined): string[] {
+	return (choices ?? []).map((choice) => choice.name)
 }
 
 /**
@@ -721,12 +728,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 31 for Character.masteries, which becomes an
- * array of CharacterMastery objects instead of bare weapon names (D97).
+ * (see wireFormat.ts). Bumped to 32 for Character.expertiseSkills, which becomes
+ * an array of LeveledChoice objects instead of bare skill names (D98, the same
+ * change version 31 made to Character.masteries under D97).
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 31
+export const CURRENT_SCHEMA_VERSION = 32

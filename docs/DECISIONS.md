@@ -1805,3 +1805,23 @@ jen level-up (slice 8d).
 hodnotu nechává NEZNÁMOU místo aby ji přesunul nebo zachoval: postava uložená
 před touhle slice nemá záznam o tom, kdy se co vybralo, a hádat by znamenalo
 tiše lhát (D43).
+
+## D98 — `Character.expertiseSkills` nese úroveň volby podle vzoru D97; tvar i helper jsou sdílené
+
+Od schématu 32 je `expertiseSkills` pole objektů `{ name, level? }`, migrace
+31→32 dělá z každého jména `{ name }` bez úrovně a volby z tvorby postavy úroveň
+nemají. Důvody jsou D97, neopakují se. Tímhle je D22 splněné pro druhé ze tří
+polí; třetí je `optionalFeatureChoices`.
+
+**Tvar se nekopíroval, zobecnil se.** `LeveledChoice` je jedno rozhraní,
+`CharacterMastery` i `CharacterExpertiseSkill` jsou jeho aliasy; `masteryNames()`
+se přejmenoval na `choiceNames()`, validátor i konverze jsou parametrizované
+jménem pole. Druhá kopie stejného tvaru by znamenala, že slice 8c3 píše třetí.
+
+**Rozdíl proti `masteries`: tohle pole má produkčního čtenáře.** `computeSkill`
+(`src/calculation/skills.ts`) podle něj zdvojuje proficiency bonus — jediné
+místo, jedna změna `includes(skill)` na `choiceNames(...).includes(skill)`.
+Úroveň u volby se čtenáře netýká: s ní i bez ní vychází stejné číslo, stejný
+rozklad (D40/D41) i stejný stav proficiency (D45). Tohle je zároveň rozdíl, kvůli
+kterému má slice 8c3 vlastní odhad rozsahu — počet čtenářů, ne tvar, je to, co
+tuhle změnu prodražuje.

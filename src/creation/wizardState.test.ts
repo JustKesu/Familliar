@@ -660,7 +660,8 @@ describe('saveCharacter', () => {
 			fightingStyle: 'Archery',
 			optionalFeatureChoices: [{ featureType: 'MV:B', choices: ['Precision Attack'] }],
 			speciesSkills: ['perception'],
-			expertiseSkills: ['stealth', 'perception'],
+			// A creation pick carries no level, exactly as masteries does (D98 following D97).
+			expertiseSkills: [{ name: 'stealth' }, { name: 'perception' }],
 			featAsiChoices: [],
 			spellChoices: undefined,
 			subclassSpellChoices: undefined,

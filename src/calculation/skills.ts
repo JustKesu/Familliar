@@ -18,6 +18,7 @@
 import type { Ability } from '../abilities/abilityScores'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { Character } from '../storage/character'
+import { choiceNames } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
 import { featFixedSkillProficiencyNames, featSkillChoiceAwaitingNotes, type FeatEffectEntry } from './featEffects'
 import { computeProficiencyBonus } from './proficiencyBonus'
@@ -95,7 +96,13 @@ export function computeSkill(skill: Skill, character: Character, feats: FeatEffe
 	const sources = proficiencySources(skill, character, feats)
 	const isProficient = sources.length > 0
 	const status: SkillProficiencyStatus =
-		isProficient ? (character.expertiseSkills?.includes(skill) ? 'expertise' : 'proficient') : hasJackOfAllTrades(character) ? 'half' : 'none'
+		isProficient
+			? choiceNames(character.expertiseSkills).includes(skill)
+				? 'expertise'
+				: 'proficient'
+			: hasJackOfAllTrades(character)
+				? 'half'
+				: 'none'
 
 	const breakdown: Contribution[] = [{ source: `${ability} modifier`, amount: abilityResult.value.modifier }]
 

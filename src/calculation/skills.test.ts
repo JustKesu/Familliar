@@ -23,8 +23,11 @@ const rogue5: Character = {
 		scores: { strength: 10, dexterity: 18, constitution: 12, intelligence: 12, wisdom: 10, charisma: 10 },
 	},
 	classSkills: ['stealth'],
-	expertiseSkills: ['stealth'],
+	expertiseSkills: [{ name: 'stealth' }],
 }
+
+/** The same character whose expertise pick carries a level (D98) — nothing computed may differ. */
+const rogue5WithLevel: Character = { ...rogue5, expertiseSkills: [{ name: 'stealth', level: 5 }] }
 
 const fighter5: Character = {
 	id: '3',
@@ -92,6 +95,11 @@ describe('computeSkill', () => {
 				{ source: 'expertise (class)', amount: 6 },
 			],
 		})
+	})
+
+	it('Rogue 5: an expertise pick that records a level computes exactly what one without a level does (D98)', () => {
+		expect(computeSkill('stealth', rogue5WithLevel)).toEqual(computeSkill('stealth', rogue5))
+		expect(computeSkills(rogue5WithLevel)).toEqual(computeSkills(rogue5))
 	})
 
 	it('Rogue 5: a skill with no proficiency source is just the ability modifier', () => {

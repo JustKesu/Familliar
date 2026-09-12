@@ -451,7 +451,7 @@ describe('CharacterSheet', () => {
 			name: 'Vex',
 			classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 5 }],
 			classSkills: ['stealth', 'deception'],
-			expertiseSkills: ['stealth'],
+			expertiseSkills: [{ name: 'stealth' }],
 			abilityScores: {
 				method: 'standardArray',
 				scores: { strength: 8, dexterity: 16, constitution: 12, intelligence: 13, wisdom: 10, charisma: 14 },

@@ -213,6 +213,24 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			}
 		},
 	},
+	{
+		from: 31,
+		to: 32,
+		/*
+		 * 32 does to Character.expertiseSkills exactly what 31 did to masteries
+		 * (D98 following D97): each bare skill name becomes `{ name }`, with no
+		 * level invented, for the same reason 31 invented none (D43). A character
+		 * without the field gains nothing.
+		 */
+		migrate: (record) => {
+			const expertiseSkills = record['expertiseSkills']
+			return {
+				...record,
+				...(Array.isArray(expertiseSkills) ? { expertiseSkills: expertiseSkills.map((name) => ({ name })) } : {}),
+				schemaVersion: 32,
+			}
+		},
+	},
 ]
 
 /**

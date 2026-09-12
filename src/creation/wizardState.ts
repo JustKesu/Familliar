@@ -19,6 +19,7 @@ import type {
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
+	CharacterExpertiseSkill,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
 	CharacterSpellChoice,
@@ -792,6 +793,9 @@ export function saveCharacter(
 	 */
 	const masteries: CharacterMastery[] = data.masteries.map((name) => ({ name }))
 
+	/** No level is recorded, for exactly the reason masteries records none (D98 following D97). */
+	const expertiseSkills: CharacterExpertiseSkill[] = data.expertiseSkills.map((name) => ({ name }))
+
 	/** Passes straight through to storage (build order step 8, slice 8b) — already exactly Character.hitPointLevels' own shape, one entry per level from 2 up. */
 	const hitPointLevels: CharacterHitPointLevel[] | undefined = data.hitPointLevels.length > 0 ? data.hitPointLevels : undefined
 
@@ -820,7 +824,7 @@ export function saveCharacter(
 		fightingStyle: data.fightingStyle,
 		optionalFeatureChoices,
 		speciesSkills: data.speciesSkills,
-		expertiseSkills: data.expertiseSkills,
+		expertiseSkills,
 		featAsiChoices: data.featAsiChoices,
 		spellChoices,
 		subclassSpellChoices,

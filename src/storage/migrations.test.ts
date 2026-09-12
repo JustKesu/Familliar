@@ -258,6 +258,49 @@ describe('the migration chain (D69)', () => {
 		expect('masteries' in migrated).toBe(false)
 	})
 
+	it('turns a version-31 character’s bare expertise skill names into objects with no level recorded', () => {
+		const migrated = migrateToCurrent({
+			schemaVersion: 31,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 5 }],
+			classSkills: ['stealth', 'perception'],
+			expertiseSkills: ['stealth', 'perception'],
+		}) as Record<string, unknown>
+
+		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
+		// Same reason version 31 guessed no mastery level (D98 following D97/D43).
+		expect(migrated['expertiseSkills']).toEqual([{ name: 'stealth' }, { name: 'perception' }])
+		expect(migrated['classSkills']).toEqual(['stealth', 'perception'])
+	})
+
+	it('carries a version-31 character with no expertiseSkills forward without inventing the field', () => {
+		const before = {
+			schemaVersion: 31,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 1 }],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('expertiseSkills' in migrated).toBe(false)
+	})
+
+	it('carries a version-30 character through both shape changes in one chain', () => {
+		const migrated = migrateToCurrent({
+			schemaVersion: 30,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+			masteries: ['Longsword'],
+			expertiseSkills: ['athletics'],
+		}) as Record<string, unknown>
+
+		expect(migrated['masteries']).toEqual([{ name: 'Longsword' }])
+		expect(migrated['expertiseSkills']).toEqual([{ name: 'athletics' }])
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

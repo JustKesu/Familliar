@@ -11,7 +11,6 @@ import type {
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
-	CharacterMastery,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
 	CharacterSpellChoice,
@@ -22,6 +21,7 @@ import type {
 	FilterChoiceSpellsChoice,
 	HitPointLevelKind,
 	LanguageGrantSource,
+	LeveledChoice,
 	MagicInitiateChoice,
 	MagicItemBonus,
 	WeaponAttackAbility,
@@ -271,30 +271,34 @@ export function describeSpeciesSkillsError(value: unknown): string | null {
 	return null
 }
 
-/** Validates an optional `expertiseSkills` field. Returns null if the field is absent (it's optional). */
-export function describeExpertiseSkillsError(value: unknown): string | null {
+/**
+ * Validates an optional LeveledChoice array (D97/D98), naming itself `field` in
+ * every message. Returns null if the field is absent (it's optional).
+ */
+function describeLeveledChoicesError(value: unknown, field: string): string | null {
 	if (value === undefined) return null
-	if (!Array.isArray(value) || !value.every((skill) => isNonEmptyString(skill))) {
-		return `expertiseSkills must be an array of strings`
+	if (!Array.isArray(value)) return `${field} must be an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `${field}[${i}] is not an object`
+		if (!isNonEmptyString(entry['name'])) return `${field}[${i}].name is missing or not a string`
+		const level = entry['level']
+		// Absent is the normal state for a creation pick — D97 says "not known", not "invalid".
+		if (level !== undefined && (typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > 20)) {
+			return `${field}[${i}].level must be a whole number from 1 to 20`
+		}
 	}
 	return null
 }
 
+/** Validates an optional `expertiseSkills` field. Returns null if the field is absent (it's optional). */
+export function describeExpertiseSkillsError(value: unknown): string | null {
+	return describeLeveledChoicesError(value, 'expertiseSkills')
+}
+
 /** Validates an optional `masteries` field. Returns null if the field is absent (it's optional). */
 export function describeMasteriesError(value: unknown): string | null {
-	if (value === undefined) return null
-	if (!Array.isArray(value)) return `masteries must be an array`
-	for (let i = 0; i < value.length; i++) {
-		const entry: unknown = value[i]
-		if (!isRecord(entry)) return `masteries[${i}] is not an object`
-		if (!isNonEmptyString(entry['name'])) return `masteries[${i}].name is missing or not a string`
-		const level = entry['level']
-		// Absent is the normal state for a creation pick — D97 says "not known", not "invalid".
-		if (level !== undefined && (typeof level !== 'number' || !Number.isInteger(level) || level < 1 || level > 20)) {
-			return `masteries[${i}].level must be a whole number from 1 to 20`
-		}
-	}
-	return null
+	return describeLeveledChoicesError(value, 'masteries')
 }
 
 /** Validates an optional `fightingStyle` field. Returns null if the field is absent (it's optional). */
@@ -797,7 +801,7 @@ function toCharacterWildShapeForms(value: unknown[]): CharacterWildShapeForms[] 
 	})
 }
 
-function toCharacterMasteries(value: unknown[]): CharacterMastery[] {
+function toLeveledChoices(value: unknown[]): LeveledChoice[] {
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
 		const level = record['level']
@@ -987,8 +991,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(languages) ? { languages: toCharacterLanguages(languages) } : {}),
 		...(Array.isArray(classSkills) ? { classSkills: classSkills as string[] } : {}),
 		...(Array.isArray(speciesSkills) ? { speciesSkills: speciesSkills as string[] } : {}),
-		...(Array.isArray(expertiseSkills) ? { expertiseSkills: expertiseSkills as string[] } : {}),
-		...(Array.isArray(masteries) ? { masteries: toCharacterMasteries(masteries) } : {}),
+		...(Array.isArray(expertiseSkills) ? { expertiseSkills: toLeveledChoices(expertiseSkills) } : {}),
+		...(Array.isArray(masteries) ? { masteries: toLeveledChoices(masteries) } : {}),
 		...(fightingStyle !== undefined ? { fightingStyle: fightingStyle as string | null } : {}),
 		...(Array.isArray(optionalFeatureChoices)
 			? { optionalFeatureChoices: toCharacterOptionalFeatureChoices(optionalFeatureChoices) }

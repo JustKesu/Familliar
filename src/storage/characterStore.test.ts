@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
-import { CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE, masteryNames } from './character'
+import { choiceNames, CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE } from './character'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
 import {
 	CharacterNotFoundError,
@@ -310,7 +310,7 @@ describe('CharacterStore.create with class choices', () => {
 		expect(character.classSkills).toEqual(['acrobatics', 'perception'])
 		// A creation pick carries no level (D97) — the wizard chooses all of them in one step.
 		expect(character.masteries).toEqual([{ name: 'longsword' }, { name: 'shortbow' }])
-		expect(masteryNames(character.masteries)).toEqual(['longsword', 'shortbow'])
+		expect(choiceNames(character.masteries)).toEqual(['longsword', 'shortbow'])
 		expect(character.fightingStyle).toBe('Dueling')
 
 		const reloaded = store.list().find((c) => c.id === character.id)
@@ -1168,8 +1168,50 @@ describe('stored weapon masteries (D97)', () => {
 	})
 
 	it('returns the plain names from the stored shape', () => {
-		expect(masteryNames([{ name: 'Longsword' }, { name: 'Shortbow', level: 4 }])).toEqual(['Longsword', 'Shortbow'])
-		expect(masteryNames(undefined)).toEqual([])
+		expect(choiceNames([{ name: 'Longsword' }, { name: 'Shortbow', level: 4 }])).toEqual(['Longsword', 'Shortbow'])
+		expect(choiceNames(undefined)).toEqual([])
+	})
+})
+
+describe('stored expertise skills (D98)', () => {
+	it('reads an expertise skill with a level and one without, and rejects a bare name or an out-of-range level', () => {
+		const good = new MemoryStorage()
+		good.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{
+					schemaVersion: CURRENT_SCHEMA_VERSION,
+					id: '1',
+					name: 'Aria',
+					classes: [],
+					expertiseSkills: [{ name: 'stealth' }, { name: 'perception', level: 6 }],
+				},
+			]),
+		)
+		expect(new CharacterStore(good).list()[0].expertiseSkills).toEqual([{ name: 'stealth' }, { name: 'perception', level: 6 }])
+
+		const bareName = new MemoryStorage()
+		bareName.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], expertiseSkills: ['stealth'] }]),
+		)
+		expect(() => new CharacterStore(bareName).list()).toThrow(CorruptDataError)
+
+		const badLevel = new MemoryStorage()
+		badLevel.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], expertiseSkills: [{ name: 'stealth', level: 21 }] },
+			]),
+		)
+		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
+	})
+
+	it('saves a creation pick with no level and reloads it unchanged', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create({ name: 'Aria', expertiseSkills: [{ name: 'stealth' }] })
+		expect(character.expertiseSkills).toEqual([{ name: 'stealth' }])
+		expect(store.list().find((c) => c.id === character.id)).toEqual(character)
 	})
 })
 
