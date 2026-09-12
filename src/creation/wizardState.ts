@@ -15,6 +15,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterClassFeatureChoice,
+	CharacterHitPointLevel,
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
@@ -59,6 +60,7 @@ export const WIZARD_STEPS = [
 	'spells',
 	'classOptionalFeatures',
 	'featAsi',
+	'hitPoints',
 	'equipment',
 	'review',
 ] as const
@@ -109,6 +111,14 @@ export interface WizardStepConditions {
 	wildShapeFormCount?: number
 	/** Whether every category element inside the two chosen starting-equipment options has an item picked. Which elements those are is only known from the loaded offers, so the caller computes it (missingCategoryPicks). */
 	startingEquipmentCategoryPicksComplete?: boolean
+	/**
+	 * Total character level (single class, D11) — decides only whether the
+	 * 'hitPoints' step has anything to show. Level 1 is always the die maximum
+	 * (never rolled, never averaged), so a level-1 character has nothing to
+	 * choose and the step is skipped entirely, like 'expertise' or 'featAsi'
+	 * above. `null` (no class chosen yet) behaves the same as level 1.
+	 */
+	characterLevel?: number | null
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
@@ -127,6 +137,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		speciesSpellcastingAbilityComplete: conditions.speciesSpellcastingAbilityComplete ?? true,
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
+		characterLevel: conditions.characterLevel ?? 1,
 	}
 }
 
@@ -158,6 +169,13 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
  * already-known damaging cantrip, so running it before the spells step left
  * Agonizing Blast permanently greyed out on a first forward pass. Subclass
  * optional features are unaffected and stay on the class step.
+ *
+ * `hitPoints` (build order step 8, slice 8b) appears once the character is
+ * above level 1 — level 1 is always the die maximum by rule (D92) and there
+ * is nothing to choose. It comes AFTER `featAsi`, not next to `abilities`: a
+ * feat or an ASI can raise Constitution, and Tough adds per-level hit points,
+ * so a step placed earlier would show a running total that changes one step
+ * later.
  */
 export function visibleSteps(conditions: WizardStepConditions = {}): readonly WizardStep[] {
 	const resolved = resolveConditions(conditions)
@@ -166,6 +184,7 @@ export function visibleSteps(conditions: WizardStepConditions = {}): readonly Wi
 		if (step === 'featAsi') return resolved.featAsiEligibleLevelCount > 0
 		if (step === 'spells') return resolved.spellRequirement !== null
 		if (step === 'classOptionalFeatures') return resolved.classOptionalFeatureGroupCount > 0
+		if (step === 'hitPoints') return (resolved.characterLevel ?? 1) > 1
 		return true
 	})
 }
@@ -235,6 +254,15 @@ export interface WizardData {
 	 */
 	wildShapeForms: { name: string; source: string }[]
 	/**
+	 * One entry per character level from 2 upward (build order step 8, slice
+	 * 8b) — level 1 is never stored (D92: always the die maximum). Clears
+	 * whenever the class changes, since a recorded die result belongs to that
+	 * class's own hit die (D11); a level change on the SAME class does not
+	 * clear it — a lowered level just leaves the extra entries uncounted
+	 * (maxHitPoints.ts, D43) and a raised level asks for the new levels too.
+	 */
+	hitPointLevels: CharacterHitPointLevel[]
+	/**
 	 * Which starting-equipment option the player took from the class and from
 	 * the background, plus an item for every category element inside them
 	 * (step 7 slice a2). The resulting inventory is not held here — it is
@@ -271,6 +299,7 @@ export function emptyWizardData(): WizardData {
 		subclassSpellChoices: [],
 		classFeatureChoices: [],
 		wildShapeForms: [],
+		hitPointLevels: [],
 		startingEquipment: emptyStartingEquipmentChoice(),
 	}
 }
@@ -399,6 +428,11 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 					isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice, data.classChoice?.level ?? 0),
 				)
 			)
+		case 'hitPoints':
+			// Every level from 2 up to the character's own needs a recorded choice (D92/D57: "not
+			// chosen" and "chose the average" must not look the same in storage). Level 1 is never
+			// asked for — it is always the die maximum, not a choice.
+			return isCompleteHitPointLevels(data.hitPointLevels, data.classChoice?.level ?? 1)
 		case 'equipment':
 			// A character takes one option from the class AND one from the background;
 			// an unmade choice blocks the step. Whether a chosen option still needs a
@@ -412,6 +446,14 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		case 'review':
 			return true
 	}
+}
+
+/** Every level from 2 up to `characterLevel` must have its own recorded entry — an exact set, not just a count, so a duplicate or a level above the character's own cannot stand in for a missing one. */
+function isCompleteHitPointLevels(hitPointLevels: CharacterHitPointLevel[], characterLevel: number): boolean {
+	for (let level = 2; level <= characterLevel; level++) {
+		if (!hitPointLevels.some((entry) => entry.level === level)) return false
+	}
+	return true
 }
 
 /** Cantrips and leveled spells are counted separately (a cantrip is not a leveled-spell pick) — both totals must match exactly. */
@@ -494,6 +536,7 @@ export type WizardAction =
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
 	| { type: 'setClassFeatureChoices'; choices: CharacterClassFeatureChoice[] }
 	| { type: 'setWildShapeForms'; forms: { name: string; source: string }[] }
+	| { type: 'setHitPointLevels'; levels: CharacterHitPointLevel[] }
 	| { type: 'setStartingEquipment'; choice: StartingEquipmentChoice }
 
 /**
@@ -533,6 +576,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					subclassSpellChoices: [],
 					classFeatureChoices: [],
 					wildShapeForms: [],
+					hitPointLevels: [],
 					startingEquipment: clearStartingEquipmentFor(state.data.startingEquipment, 'class'),
 				},
 			}
@@ -603,6 +647,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, classFeatureChoices: action.choices } }
 		case 'setWildShapeForms':
 			return { ...state, data: { ...state.data, wildShapeForms: action.forms } }
+		case 'setHitPointLevels':
+			return { ...state, data: { ...state.data, hitPointLevels: action.levels } }
 		case 'setStartingEquipment':
 			return { ...state, data: { ...state.data, startingEquipment: action.choice } }
 	}
@@ -737,6 +783,9 @@ export function saveCharacter(
 	const classFeatureChoices: CharacterClassFeatureChoice[] | undefined =
 		data.classFeatureChoices.length > 0 ? data.classFeatureChoices : undefined
 
+	/** Passes straight through to storage (build order step 8, slice 8b) — already exactly Character.hitPointLevels' own shape, one entry per level from 2 up. */
+	const hitPointLevels: CharacterHitPointLevel[] | undefined = data.hitPointLevels.length > 0 ? data.hitPointLevels : undefined
+
 	/** Tagged with the class the forms belong to (D11), same reasoning as spellChoices. No level is recorded — see CharacterWildShapeForms. */
 	const wildShapeForms: CharacterWildShapeForms[] | undefined =
 		data.wildShapeForms.length > 0 && data.classChoice
@@ -771,5 +820,6 @@ export function saveCharacter(
 		startingEquipment?.inventory,
 		startingEquipment?.currencyCopper,
 		data.speciesSpellcastingAbility ?? undefined,
+		hitPointLevels,
 	)
 }

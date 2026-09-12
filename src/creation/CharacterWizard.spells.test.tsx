@@ -27,6 +27,25 @@ vi.mock('../classes/classData', () => ({
 	]),
 }))
 
+/** Slice 8b (hit points step): its own data loads, same faces as the class mock above. */
+vi.mock('../sheet/sheetData', () => ({
+	loadHitDiceClassData: vi.fn(async () => [
+		{ className: 'Fighter', classSource: 'XPHB', faces: 10 },
+		{ className: 'Wizard', classSource: 'XPHB', faces: 6 },
+		{ className: 'Cleric', classSource: 'XPHB', faces: 8 },
+		{ className: 'Rogue', classSource: 'XPHB', faces: 8 },
+		{ className: 'Sorcerer', classSource: 'XPHB', faces: 6 },
+		{ className: 'Warlock', classSource: 'XPHB', faces: 8 },
+	]),
+	loadFeatEffectEntries: vi.fn(async () => []),
+}))
+vi.mock('../sheet/grantedClassFeatures', () => ({
+	loadGrantedClassFeatures: vi.fn(async () => []),
+}))
+vi.mock('../sheet/speciesTraitNames', () => ({
+	loadSpeciesTraitNames: vi.fn(async () => []),
+}))
+
 vi.mock('../species/speciesData', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../species/speciesData')>()),
 	loadSpeciesOptions: vi.fn(async () => [{ name: 'Elf', source: 'XPHB', displayName: 'Elf', choiceLabel: null, variants: [] }]),
@@ -401,6 +420,12 @@ async function goBack(user: ReturnType<typeof userEvent.setup>) {
 	await user.click(screen.getByRole('button', { name: 'Back' }))
 }
 
+/** The hit points step (build order step 8, slice 8b) sits between featAsi and equipment for any level above 1; the apply-average-to-all control clears its gate in one click. */
+async function passHitPointsStep(user: ReturnType<typeof userEvent.setup>) {
+	await user.click(await screen.findByRole('button', { name: /Use the average/ }))
+	await goNext(user)
+}
+
 /** The equipment step (step 7 slice a2) sits between the last picker step and review; these tests only need to pass through it. */
 async function passEquipmentStep(user: ReturnType<typeof userEvent.setup>) {
 	const fromClass = await screen.findByRole('group', { name: /From your class/ })
@@ -475,8 +500,10 @@ describe('CharacterWizard — spells step', () => {
 		expect(screen.getByText('3 of 3 spells prepared chosen.')).toBeTruthy()
 
 		await goNext(user)
+		await passHitPointsStep(user)
 		await passEquipmentStep(user)
 		await screen.findByText('Name: Aria')
+		await goBack(user)
 		await goBack(user)
 		await goBack(user)
 
@@ -518,9 +545,10 @@ describe('CharacterWizard — spells step', () => {
 		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 		await goNext(user)
+		await passHitPointsStep(user)
 		await passEquipmentStep(user)
 
-		// Straight to equipment then review — no spells panel in between, and no gap in the step numbering.
+		// Straight to hit points then equipment then review — no spells panel in between, and no gap in the step numbering.
 		expect(await screen.findByText('Name: Aria')).toBeTruthy()
 		expect(screen.queryByText('Spells', { selector: 'li' })).toBeNull()
 	})
@@ -567,8 +595,10 @@ describe('CharacterWizard — spells step', () => {
 		expect(screen.getByText('3 of 3 spells known chosen.')).toBeTruthy()
 
 		await goNext(user)
+		await passHitPointsStep(user)
 		await passEquipmentStep(user)
 		await screen.findByText('Name: Aria')
+		await goBack(user)
 		await goBack(user)
 		await goBack(user)
 
@@ -657,8 +687,10 @@ describe('CharacterWizard — spells step', () => {
 		expect(screen.getByText('3 of 3 spells known chosen.')).toBeTruthy()
 
 		await goNext(user)
+		await passHitPointsStep(user)
 		await passEquipmentStep(user)
 		await screen.findByText('Name: Aria')
+		await goBack(user)
 		await goBack(user)
 		await goBack(user)
 

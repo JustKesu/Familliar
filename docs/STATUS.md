@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8a-guard: validace dat hlídá
-tabulku bonusů k maximu HP, D95)
+Poslední aktualizace: 2026-09-12 (krok 8 slice 8b: krok wizardu pro volbu
+hod/průměr/ručně za úroveň, D96)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D95) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D96) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -166,6 +166,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    |---|---|---|
    | 8a | Počítané maximum HP — příspěvek za úroveň, Constitution zpětně, tabulka tří bonusů, ruční přebití | 29→30 |
    | 8a-guard | Validace dat hlídá tabulku tří bonusů proti datům (D95) | — |
+   | 8b | Krok wizardu "Hit points" — hod/průměr/ručně za úroveň 2+ | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -186,8 +187,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      úroveň nad úrovní postavy nebo výsledek, který kostka neumí hodit, mají
      vlastní řádek v rozkladu. Hlavička (`SheetHeader.tsx`) bere maximum jako
      obyčejné `Calculated<number>` s rozkladem (D40/D41), druhé pole je teď
-     "Max HP override". **Není postavené:** výběr hod/průměr po úrovních
-     (slice 8b).
+     "Max HP override".
    - Slice 8a-guard (D95): `scripts/validate-data.js`, nová sekce
      `validateHitPointBonusTable`. Dvě kontroly — (1) všechna tři jména z
      `HIT_POINT_BONUS_RULES` odpovídají právě jednomu featu/rysu
@@ -200,6 +200,27 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      přesně to, co je špatně, a odkazuje na `maxHitPoints.ts`. Investigace
      (`scripts/investigate-hp-bonus-guard.js`) potvrdila počty před zápisem
      kontroly a je spotřebovaná — smazána `git clean -fd scripts`.
+   - Slice 8b (D96): nový krok wizardu "Hit points",
+     `src/hitPoints/HitPointsPicker.tsx` + zapojení ve `wizardState.ts`/
+     `CharacterWizard.tsx`. Pozice AŽ ZA featem/ASI a PŘED výbavou (D96) —
+     feat i ASI mění Constitution a Tough přidává životy za úroveň. Krok se
+     schová na úrovni 1 (D92, stejný mechanismus jako `expertise`/`languages`,
+     D49/D37) — nové pole `WizardStepConditions.characterLevel`, protože
+     `visibleSteps` nemá přístup k `WizardData`. Úroveň 1 je řádek jen ke
+     čtení (maximum kostky); od úrovně 2 volba hod (appka hodí, opakování bez
+     omezení, D96) / pevný průměr / ruční zadání, plus tlačítko, které
+     nastaví průměr na všechny úrovně najednou. Průběžný součet je PŘÍMO
+     `computeMaxHitPoints` nad konceptem postavy s rozpracovanými volbami —
+     appka ho nepočítá podruhé. Ukládá se do `Character.hitPointLevels`
+     (schéma se nemění, pole existuje od 8a) jedna položka na úroveň od 2 výš;
+     úroveň 1 se neukládá. Krok nepustí dál, dokud každá úroveň od 2 do
+     úrovně postavy nemá vlastní záznam (D96) — "nevybráno" a "vybral průměr"
+     musí zůstat rozlišitelné. Ruční přebití (`maxHpOverride`) do kroku
+     záměrně nejde — zůstává jen v hlavičce sheetu (D96). Testy:
+     `wizardState.test.ts` (viditelnost, dokončenost, reducer, saveCharacter)
+     a `HitPointsPicker.test.tsx` (všechny tři způsoby volby, tlačítko na
+     průměr, součet shodný s `computeMaxHitPoints`). Level-up tlačítko a
+     opětovný vstup do kroku při zvýšení úrovně je slice 8d — tady nepostaveno.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 
@@ -355,11 +376,10 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-Krok 8 běží. Slice 8a (počítané maximum HP) a 8a-guard (validace tabulky
-bonusů, D95) jsou hotové; další je **slice 8b** — krok wizardu / ovládání na
-sheetu, kde se pro každou úroveň nad první vybírá hod nebo průměr a zapisuje
-se do `Character.hitPointLevels`. Model, migrace i výpočet na to už čekají;
-chybí jen ta volba.
+Krok 8 běží. Slice 8a (počítané maximum HP), 8a-guard (validace tabulky
+bonusů, D95) a 8b (krok wizardu pro volbu hod/průměr/ručně za úroveň, D96)
+jsou hotové; další je **slice 8d** — tlačítko level-upu a opětovný vstup do
+kroku 8b při zvýšení úrovně existující postavy.
 
 Krok 7 je hotový celý — přestavba sheetu, všech pět slice (trvalá hlavička,
 záložky, tabulka akcí s útoky zbraněmi, řádky kouzel, řádky schopností +

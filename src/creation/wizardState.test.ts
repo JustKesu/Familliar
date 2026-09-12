@@ -6,6 +6,7 @@ import {
 	isReadyToSave,
 	isStepComplete,
 	saveCharacter,
+	visibleSteps,
 	wizardReducer,
 	type WizardControllerState,
 	type WizardData,
@@ -45,6 +46,7 @@ function completeData(): WizardData {
 		subclassSpellChoices: [],
 		classFeatureChoices: [],
 		wildShapeForms: [],
+		hitPointLevels: [],
 		startingEquipment: { classOptionKey: 'A', backgroundOptionKey: 'B', categoryPicks: {} },
 	}
 }
@@ -228,6 +230,55 @@ describe('isStepComplete', () => {
 		}
 		expect(isStepComplete('featAsi', complete, { featAsiEligibleLevelCount: 1 })).toBe(true)
 	})
+
+	/* Build order step 8, slice 8b. Level 1 is never asked for (D92); every level from 2 up needs its own recorded entry. */
+	describe('hitPoints', () => {
+		it('is complete for a level-1 character with no recorded levels', () => {
+			const data = { ...emptyWizardData(), classChoice: { className: 'Fighter', classSource: 'XPHB', level: 1 } }
+			expect(isStepComplete('hitPoints', data)).toBe(true)
+		})
+
+		it('blocks the step until every level from 2 up has a recorded choice', () => {
+			const data = { ...emptyWizardData(), classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 } }
+			expect(isStepComplete('hitPoints', data)).toBe(false)
+
+			const partial = { ...data, hitPointLevels: [{ level: 2, kind: 'average' as const, dieResult: 6 }] }
+			expect(isStepComplete('hitPoints', partial)).toBe(false)
+
+			const complete = {
+				...data,
+				hitPointLevels: [
+					{ level: 2, kind: 'average' as const, dieResult: 6 },
+					{ level: 3, kind: 'roll' as const, dieResult: 8 },
+				],
+			}
+			expect(isStepComplete('hitPoints', complete)).toBe(true)
+		})
+
+		it('does not let a level above the character\'s own stand in for a missing one', () => {
+			const data = {
+				...emptyWizardData(),
+				classChoice: { className: 'Fighter', classSource: 'XPHB', level: 2 },
+				hitPointLevels: [{ level: 5, kind: 'manual' as const, dieResult: 10 }],
+			}
+			expect(isStepComplete('hitPoints', data)).toBe(false)
+		})
+	})
+})
+
+describe('visibleSteps — hitPoints', () => {
+	it('hides the step at level 1 or with no class chosen yet', () => {
+		expect(visibleSteps({ characterLevel: 1 })).not.toContain('hitPoints')
+		expect(visibleSteps({ characterLevel: null })).not.toContain('hitPoints')
+		expect(visibleSteps({})).not.toContain('hitPoints')
+	})
+
+	it('shows the step from level 2 up, directly after featAsi', () => {
+		const steps = visibleSteps({ characterLevel: 5, featAsiEligibleLevelCount: 1 })
+		expect(steps).toContain('hitPoints')
+		expect(steps.indexOf('hitPoints')).toBe(steps.indexOf('featAsi') + 1)
+		expect(steps.indexOf('hitPoints')).toBe(steps.indexOf('equipment') - 1)
+	})
 })
 
 describe('isReadyToSave', () => {
@@ -274,6 +325,26 @@ describe('wizardReducer navigation', () => {
 			subclass: { name: 'Circle of the Moon', source: 'XPHB', featureType: null },
 		})
 		expect(afterSubclass.data.wildShapeForms).toEqual([])
+	})
+
+	/* Build order step 8, slice 8b. */
+	it('setHitPointLevels records the picks', () => {
+		const state: WizardControllerState = { step: 'hitPoints', data: emptyWizardData() }
+		const recorded = wizardReducer(state, { type: 'setHitPointLevels', levels: [{ level: 2, kind: 'roll', dieResult: 5 }] })
+		expect(recorded.data.hitPointLevels).toEqual([{ level: 2, kind: 'roll', dieResult: 5 }])
+	})
+
+	/* A stored die result belongs to that class's own hit die (D11) — a different class invalidates it. */
+	it('setClassChoice clears previously recorded hit point levels', () => {
+		const picked: WizardControllerState = {
+			step: 'hitPoints',
+			data: { ...emptyWizardData(), hitPointLevels: [{ level: 2, kind: 'average', dieResult: 6 }] },
+		}
+		const afterClass = wizardReducer(picked, {
+			type: 'setClassChoice',
+			choice: { className: 'Wizard', classSource: 'XPHB', level: 4 },
+		})
+		expect(afterClass.data.hitPointLevels).toEqual([])
 	})
 
 	/* Step 7 slice a2: each side's option belongs to the class or the background that offered it, and only that side is recomputed. */
@@ -443,6 +514,7 @@ describe('saveCharacter', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		)
 	})
 
@@ -450,7 +522,7 @@ describe('saveCharacter', () => {
 		const store = fakeStore()
 		const choice = { className: 'Fighter', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' }
 		saveCharacter(store, { ...completeData(), classFeatureChoices: [choice] }, ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-5)).toEqual([choice])
+		expect(vi.mocked(store.create).mock.calls[0].at(-6)).toEqual([choice])
 	})
 
 	/*
@@ -475,7 +547,7 @@ describe('saveCharacter', () => {
 		}
 		saveCharacter(store, druid, ['athletics', 'intimidation'], { wildShapeFormCount: 4 })
 
-		const stored = vi.mocked(store.create).mock.calls[0].at(-4)
+		const stored = vi.mocked(store.create).mock.calls[0].at(-5)
 		expect(stored).toEqual([{ className: 'Druid', classSource: 'XPHB', forms }])
 		for (const entry of stored as { forms: Record<string, unknown>[] }[]) {
 			for (const form of entry.forms) expect(Object.keys(form).sort()).toEqual(['name', 'source'])
@@ -485,7 +557,7 @@ describe('saveCharacter', () => {
 	it('omits Wild Shape forms entirely when none were chosen', () => {
 		const store = fakeStore()
 		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
-		expect(vi.mocked(store.create).mock.calls[0].at(-4)).toBeUndefined()
+		expect(vi.mocked(store.create).mock.calls[0].at(-5)).toBeUndefined()
 	})
 
 	it('omits background when the background skill proficiencies were not supplied', () => {
@@ -511,6 +583,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -548,6 +621,7 @@ describe('saveCharacter', () => {
 			['perception'],
 			[],
 			[],
+			undefined,
 			undefined,
 			undefined,
 			undefined,
@@ -595,7 +669,19 @@ describe('saveCharacter', () => {
 			undefined,
 			undefined,
 			undefined,
+			undefined,
 		)
+	})
+
+	/* Build order step 8, slice 8b — already exactly Character.hitPointLevels' own shape, so it passes straight through. */
+	it('passes recorded hit point levels through to the store, and omits them entirely when none were recorded', () => {
+		const store = fakeStore()
+		const levels = [{ level: 2, kind: 'average' as const, dieResult: 6 }]
+		saveCharacter(store, { ...completeData(), hitPointLevels: levels }, ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[0].at(-1)).toEqual(levels)
+
+		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[1].at(-1)).toBeUndefined()
 	})
 
 	it('never touches storage while merely navigating steps and editing choices', () => {

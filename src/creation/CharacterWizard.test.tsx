@@ -27,6 +27,22 @@ vi.mock('../classes/classData', () => ({
 	]),
 }))
 
+/** Slice 8b (hit points step): its own data loads, same faces as the class mock above. No feats/species/class-feature bonuses in these tests — that combination is exercised by HitPointsPicker.test.tsx directly. */
+vi.mock('../sheet/sheetData', () => ({
+	loadHitDiceClassData: vi.fn(async () => [
+		{ className: 'Fighter', classSource: 'XPHB', faces: 10 },
+		{ className: 'Wizard', classSource: 'XPHB', faces: 6 },
+		{ className: 'Rogue', classSource: 'XPHB', faces: 8 },
+	]),
+	loadFeatEffectEntries: vi.fn(async () => []),
+}))
+vi.mock('../sheet/grantedClassFeatures', () => ({
+	loadGrantedClassFeatures: vi.fn(async () => []),
+}))
+vi.mock('../sheet/speciesTraitNames', () => ({
+	loadSpeciesTraitNames: vi.fn(async () => []),
+}))
+
 /** Three species with no choice inside them; the family cases have their own file (CharacterWizard.species.test.tsx). */
 vi.mock('../species/speciesData', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../species/speciesData')>()),
@@ -302,6 +318,11 @@ async function goBack(user: ReturnType<typeof userEvent.setup>) {
 async function fillLanguagesStep(user: ReturnType<typeof userEvent.setup>) {
 	await user.click(await screen.findByLabelText('Draconic (XPHB)'))
 	await user.click(screen.getByLabelText('Dwarvish (XPHB)'))
+}
+
+/** The apply-average-to-all control fills every level in one click — enough to clear the step's gate for tests that don't care about the specific hit point choices. */
+async function fillHitPointsStep(user: ReturnType<typeof userEvent.setup>) {
+	await user.click(await screen.findByRole('button', { name: /Use the average/ }))
 }
 
 /** Takes the class's gear package and the background's coin option — one option from each side, which is what the step requires. */
@@ -721,6 +742,8 @@ describe('CharacterWizard — storage', () => {
 		await user.selectOptions(screen.getByLabelText('Wisdom'), '10')
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 		await goNext(user)
+		await fillHitPointsStep(user)
+		await goNext(user)
 		await fillEquipmentStep(user)
 		await goNext(user)
 
@@ -760,6 +783,10 @@ describe('CharacterWizard — storage', () => {
 			],
 			5400,
 			undefined,
+			[
+				{ level: 2, kind: 'average', dieResult: 6 },
+				{ level: 3, kind: 'average', dieResult: 6 },
+			],
 		)
 	})
 })
@@ -814,8 +841,8 @@ describe('CharacterWizard — starting equipment step', () => {
 		await user.click(await screen.findByRole('button', { name: 'Create character' }))
 
 		const call = vi.mocked(store.create).mock.calls[0]
-		expect(call.at(-3)).toEqual([])
-		expect(call.at(-2)).toBe(20500)
+		expect(call.at(-4)).toEqual([])
+		expect(call.at(-3)).toBe(20500)
 	})
 
 	it('a category element blocks the step until an item is picked, and that pick lands in the inventory', async () => {
@@ -838,8 +865,8 @@ describe('CharacterWizard — starting equipment step', () => {
 		await user.click(await screen.findByRole('button', { name: 'Create character' }))
 
 		const call = vi.mocked(store.create).mock.calls[0]
-		expect(call.at(-3)).toEqual([{ name: 'Flute', source: 'XPHB', quantity: 1 }])
-		expect(call.at(-2)).toBe(5000)
+		expect(call.at(-4)).toEqual([{ name: 'Flute', source: 'XPHB', quantity: 1 }])
+		expect(call.at(-3)).toBe(5000)
 	})
 })
 
@@ -877,10 +904,13 @@ describe('CharacterWizard — feat/ASI step', () => {
 		await user.selectOptions(abilitySelect, 'strength')
 
 		await goNext(user)
+		await fillHitPointsStep(user)
+		await goNext(user)
 		await fillEquipmentStep(user)
 		await goNext(user)
 		expect(await screen.findByText(/level 4: ASI \(strength \+2\)/)).toBeTruthy()
 
+		await goBack(user)
 		await goBack(user)
 		await goBack(user)
 		expect((screen.getByLabelText('Ability Score Improvement') as HTMLInputElement).checked).toBe(true)
@@ -892,10 +922,12 @@ describe('CharacterWizard — feat/ASI step', () => {
 		renderWizard()
 
 		await fillThroughAbilities(user, '3')
+		await fillHitPointsStep(user)
+		await goNext(user)
 		await fillEquipmentStep(user)
 		await goNext(user)
 
-		// Straight to equipment then review — no feat/ASI panel in between, and no gap in the step numbering.
+		// Straight to hit points, then equipment then review — no feat/ASI panel in between, and no gap in the step numbering.
 		expect(await screen.findByText('Name: Aria')).toBeTruthy()
 		expect(screen.queryByText('Ability Score Improvement / Feat', { selector: 'li' })).toBeNull()
 	})

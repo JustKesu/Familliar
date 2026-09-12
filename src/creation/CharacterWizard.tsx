@@ -47,6 +47,7 @@ import type { ItemRef } from '../inventory/inventoryData'
 import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
+import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { SpellPicker } from '../spells/SpellPicker'
@@ -110,6 +111,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	spells: 'Spells',
 	classOptionalFeatures: 'Class options',
 	featAsi: 'Ability Score Improvement / Feat',
+	hitPoints: 'Hit points',
 	equipment: 'Starting equipment',
 	review: 'Review and save',
 }
@@ -739,6 +741,28 @@ export function CharacterWizard({
 		// The class step (D13) runs before 'spells', so a Thaumaturge/Magician pick is already stored here.
 		classFeatureChoices: state.data.classFeatureChoices,
 	}
+	/**
+	 * Slice 8b: the same shape computeMaxHitPoints and its bonus-feature
+	 * lookups need (classes, species, ability scores, feats) — built from
+	 * current wizard state rather than a saved Character, same reasoning as
+	 * the two drafts above. Ability scores/bonus are needed for the
+	 * Constitution modifier in the running total (D91); this step runs after
+	 * both are set (D96), so they are always available by the time it shows.
+	 * `hitPointLevels` itself is added by HitPointsPicker, not here, since
+	 * it's what the picker's onChange writes.
+	 */
+	const draftCharacterForHitPoints: Character = {
+		id: '',
+		name: state.data.name,
+		classes: draftCharacterForSpells.classes,
+		...(state.data.speciesChoice ? { species: state.data.speciesChoice } : {}),
+		...(state.data.abilityScores ? { abilityScores: state.data.abilityScores } : {}),
+		...(state.data.backgroundChoice && Object.keys(state.data.backgroundChoice.abilityBonus).length > 0
+			? { abilityBonus: state.data.backgroundChoice.abilityBonus }
+			: {}),
+		...(state.data.featAsiChoices.length > 0 ? { featAsiChoices: state.data.featAsiChoices } : {}),
+	}
+
 	const spellSlotsResult = computeSpellSlots(draftCharacterForSpells, spellSlotsClassData)
 	const spellCountsResult = computeSpellCounts(draftCharacterForSpells, spellCountClassData)
 	const spellSlotsEntry = spellSlotsResult.status === 'known' ? spellSlotsResult.value[0] : undefined
@@ -902,6 +926,7 @@ export function CharacterWizard({
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
+		characterLevel: state.data.classChoice?.level ?? null,
 	}
 
 	function handleSave(): void {
@@ -1163,6 +1188,16 @@ export function CharacterWizard({
 						alreadyKnown={alreadyKnownSpells}
 						value={state.data.featAsiChoices}
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
+					/>
+				</div>
+			)}
+
+			{state.step === 'hitPoints' && state.data.classChoice && (
+				<div className="wizard__panel">
+					<HitPointsPicker
+						character={draftCharacterForHitPoints}
+						value={state.data.hitPointLevels}
+						onChange={(levels) => dispatch({ type: 'setHitPointLevels', levels })}
 					/>
 				</div>
 			)}

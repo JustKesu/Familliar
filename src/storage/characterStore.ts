@@ -6,6 +6,7 @@ import type {
 	CharacterClass,
 	CharacterClassFeatureChoice,
 	CharacterFamiliar,
+	CharacterHitPointLevel,
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
@@ -180,6 +181,7 @@ export class CharacterStore {
 		inventory?: CharacterInventoryItem[],
 		currencyCopper?: number,
 		speciesSpellcastingAbility?: Ability,
+		hitPointLevels?: CharacterHitPointLevel[],
 	): Character {
 		const trimmed = name.trim()
 		if (!trimmed) throw new ImportValidationError('A character needs a name.')
@@ -207,6 +209,7 @@ export class CharacterStore {
 			...(inventory && inventory.length > 0 ? { inventory } : {}),
 			...(currencyCopper ? { currencyCopper } : {}),
 			...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
+			...(hitPointLevels && hitPointLevels.length > 0 ? { hitPointLevels } : {}),
 		}
 		this.writeAll([...this.list(), character])
 		return character

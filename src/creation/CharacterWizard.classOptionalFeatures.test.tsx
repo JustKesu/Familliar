@@ -30,6 +30,22 @@ vi.mock('../classes/classData', () => ({
 	]),
 }))
 
+/** Slice 8b (hit points step): its own data loads, same faces as the class mock above. */
+vi.mock('../sheet/sheetData', () => ({
+	loadHitDiceClassData: vi.fn(async () => [
+		{ className: 'Warlock', classSource: 'XPHB', faces: 8 },
+		{ className: 'Sorcerer', classSource: 'XPHB', faces: 6 },
+		{ className: 'Fighter', classSource: 'XPHB', faces: 10 },
+	]),
+	loadFeatEffectEntries: vi.fn(async () => []),
+}))
+vi.mock('../sheet/grantedClassFeatures', () => ({
+	loadGrantedClassFeatures: vi.fn(async () => []),
+}))
+vi.mock('../sheet/speciesTraitNames', () => ({
+	loadSpeciesTraitNames: vi.fn(async () => []),
+}))
+
 vi.mock('../species/speciesData', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../species/speciesData')>()),
 	loadSpeciesOptions: vi.fn(async () => [{ name: 'Elf', source: 'XPHB', displayName: 'Elf', choiceLabel: null, variants: [] }]),
@@ -373,6 +389,11 @@ function goBack(user: ReturnType<typeof userEvent.setup>) {
 	return user.click(screen.getByRole('button', { name: 'Back' }))
 }
 
+/** The apply-average-to-all control fills every level in one click — enough to clear the step's gate for tests that don't care about the specific hit point choices. */
+async function fillHitPointsStep(user: ReturnType<typeof userEvent.setup>) {
+	await user.click(await screen.findByRole('button', { name: /Use the average/ }))
+}
+
 function checkbox(name: string): HTMLInputElement {
 	return screen.getByRole('checkbox', { name }) as HTMLInputElement
 }
@@ -557,6 +578,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		expect(stepLabels().some((label) => label.includes('Metamagic'))).toBe(true)
 		await user.click(await screen.findByRole('checkbox', { name: 'Careful Spell' }))
 		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+
+		await goNext(user)
+		await fillHitPointsStep(user)
 
 		// Lands on review with the save enabled: the new step satisfies isReadyToSave rather than blocking it.
 		await goNext(user)

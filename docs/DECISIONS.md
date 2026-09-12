@@ -1751,3 +1751,31 @@ proč. Množina kandidátů je připnutá — nový zdroj životů z budoucí kn
 projevil jako jedenáctý kandidát a shodí validaci místo aby zůstal
 nepovšimnut; zmizelý známý kandidát (přejmenování, zrušený zdroj) shodí
 validaci stejně.
+
+## D96 — Krok wizardu pro životy: pozice, skrývání, opakovaný hod, přebití, blokace
+
+Slice 8b přidává krok wizardu "Hit points", který plní `Character.hitPointLevels`
+za úrovně 2 a výš (úroveň 1 se neukládá vůbec — D92).
+
+**Pozice: až za featem/ASI, ne dřív.** Feat i ASI můžou zvýšit Constitution a
+Tough přidává životy za úroveň; krok umístěný dřív by ukázal průběžný součet,
+který by se o krok později změnil, aniž by hráč cokoliv na TOMHLE kroku udělal.
+
+**Skrývání na úrovni 1.** Na úrovni 1 není co vybírat — je to vždy maximum
+kostky (D92) — takže krok se schová úplně, stejně jako `expertise` (D49) nebo
+`featAsi`, a číslování kroků zůstává souvislé.
+
+**Hod lze opakovat bez omezení.** Appka nezamyká hozenou hodnotu a nelimituje
+počet opakování. Je to hráčův vlastní sheet; hlídání poctivosti hodu není
+úkol appky.
+
+**Ruční přebití zůstává jen v hlavičce sheetu.** `Character.maxHpOverride`
+(D91) se do tohoto kroku nedává — žije jen v hlavičce, jinak by stejné pole
+mělo dvě místa k úpravě a ta by se časem rozešla.
+
+**Nevybraná úroveň nepustí dál.** Krok se nedá dokončit, dokud každá úroveň od
+2 výš nemá vlastní záznam — stejně jako ostatní kroky wizardu blokují
+nedokončenou volbu (D57, D81). Důvod: záznam pro postavu BEZ voleb (výchozí
+maximum + průměr, D92) musí zůstat rozeznatelný od záznamu, kde hráč vědomě
+zvolil průměr — jinak by "nevybráno" a "vybral průměr" v úložišti vypadaly
+stejně.
