@@ -180,7 +180,13 @@ describe('saving a level up', () => {
 	/* D108: a level that grants no subclass or fighting style (Fighter 4) must not let a walk overwrite either, nor drop any other earlier pick. */
 	describe('refuses a walk that changes a pick made at an earlier level', () => {
 		function heldFighter(): Character {
-			return { ...storedFighter(), fightingStyle: 'Defense', expertiseSkills: [{ name: 'athletics' }] }
+			return {
+				...storedFighter(),
+				fightingStyle: 'Defense',
+				expertiseSkills: [{ name: 'athletics' }],
+				featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Repelling Blast' }] }],
+			}
 		}
 
 		const overwrites: [string, (data: ReturnType<typeof levelledData>) => ReturnType<typeof levelledData>][] = [
@@ -189,6 +195,11 @@ describe('saving a level up', () => {
 			['a class skill', (data) => ({ ...data, classSkills: ['athletics', 'intimidation'] })],
 			['a weapon mastery', (data) => ({ ...data, masteries: ['Longsword', 'Greataxe', 'Rapier'] })],
 			['an expertise', (data) => ({ ...data, expertiseSkills: ['perception'] })],
+			['a feat/ASI pick', (data) => ({ ...data, featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Alert', source: 'XPHB' }] })],
+			[
+				'a class optional-feature pick',
+				(data) => ({ ...data, classOptionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }] }),
+			],
 		]
 
 		it.each(overwrites)('%s', (_label, change) => {
@@ -215,6 +226,30 @@ describe('saving a level up', () => {
 			expect(
 				overwrittenHeldPicks(character, { ...data, classFeatureChoices: [{ ...character.classFeatureChoices![0], optionName: 'Second' }] }),
 			).toEqual(['Test Order First'])
+		})
+
+		it('a feat/ASI pick or a class optional-feature pick', () => {
+			const character: Character = {
+				...single('Warlock', null, 4),
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }],
+				featAsiChoices: [{ level: 4, kind: 'asi', increases: { charisma: 2 } }],
+			}
+			const seed = wizardDataFromCharacter(character, { subclasses: [], spellLevels: [] })
+			const data = { ...seed, classChoice: { className: 'Warlock', classSource: 'XPHB', level: 5 } }
+
+			expect(overwrittenHeldPicks(character, data)).toEqual([])
+			expect(
+				overwrittenHeldPicks(character, {
+					...data,
+					classOptionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Repelling Blast' }] }],
+				}),
+			).toEqual(['class option Agonizing Blast'])
+			expect(
+				overwrittenHeldPicks(character, {
+					...data,
+					featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }],
+				}),
+			).toEqual(['feat/ASI level 4 ASI'])
 		})
 
 		it('still saves a walk that only adds to what the character had', () => {

@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-13 (oprava 8d3: level up nezmění volby z
-dřívějších úrovní, D108)
+Poslední aktualizace: 2026-09-13 (oprava 8d3-fix2: zámek dřívějších voleb
+z D108 rozšířen na feat/ASI a class optional features, D109)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D108) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -179,6 +179,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8e3 | Úprava postavy úroveň vůbec nemění (D105) | — |
    | 8e2 | Přebytek nad úroveň (kouzla, Wild Shape formy) se na sheetu hlásí (D106) | — |
    | 8d3-fix | Level up nezmění volby z dřívějších úrovní (D108) | — |
+   | 8d3-fix2 | Zámek rozšířen na feat/ASI a class optional features (D109) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -456,6 +457,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      Master 3 → 4), odmítnutí v `levelUp.test.tsx`, zamčení v testech
      `MasteryPicker`, `ExpertisePicker`, `ClassFeatureChoicePicker`.
      Neověřováno v prohlížeči.
+   - Oprava 8d3-fix2 (D109): stejný zámek jako D108, rozšířený na krok
+     `featAsi` a `classOptionalFeatures` (D64). `FeatAsiPicker` dostal
+     `lockedLevels` — fieldset dřívějšího grantu je celý `disabled` a
+     legenda říká „chosen at an earlier level". `ClassOptionalFeaturePicker`
+     dostal `lockedChoices` (uložené `optionalFeatureChoices` bez podtřídiny
+     progrese) a zamyká podle `featureType` stejným `SearchableOption.locked`
+     vzorem jako subclass optional features. `heldPicks.ts` přibyly
+     `featAsiChoices` (srovnání podle `level`, pak `kind`+`name`/`source`
+     nebo `increases`) a `classOptionalFeatureChoices` (srovnání podle
+     `featureType`+jméno); `overwrittenHeldPicks` odmítá stejně jako u D108.
+     Wild Shape formy a kouzla se pořád nezamykají (D104/D106). Testy:
+     rozšířené `it.each` odmítnutí a nový přímý test `overwrittenHeldPicks`
+     v `levelUp.test.tsx`. Neověřováno v prohlížeči.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 

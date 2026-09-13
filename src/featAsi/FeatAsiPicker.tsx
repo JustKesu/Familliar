@@ -66,6 +66,8 @@ type LoadState =
 			speciesSize: string | null
 	  }
 
+const NO_LOCKED_LEVELS: readonly number[] = []
+
 export function FeatAsiPicker({
 	className,
 	classSource,
@@ -76,6 +78,7 @@ export function FeatAsiPicker({
 	value,
 	onChange,
 	alreadyKnown = [],
+	lockedLevels = NO_LOCKED_LEVELS,
 }: {
 	className: string
 	classSource: string
@@ -88,6 +91,8 @@ export function FeatAsiPicker({
 	onChange: (choices: FeatAsiChoice[]) => void
 	/** Spells the character already has from elsewhere (knownSpells.ts) — shown but not selectable in either spell sub-picker below. A feat's own picks are excluded by key so unselecting stays possible. */
 	alreadyKnown?: readonly KnownSpell[]
+	/** D110: during a level up, the grant levels the character already made a choice for — shown, not changeable. */
+	lockedLevels?: readonly number[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -158,6 +163,7 @@ export function FeatAsiPicker({
 	}
 
 	function setChoiceAt(index: number, choice: FeatAsiChoice): void {
+		if (lockedLevels.includes(grants[index].level)) return
 		const next = [...value]
 		next[index] = choice
 		onChange(next.slice(0, grants.length))
@@ -167,6 +173,7 @@ export function FeatAsiPicker({
 		<div className="feat-asi-picker">
 			{grants.map((grant, index) => {
 				const current = value[index]
+				const locked = lockedLevels.includes(grant.level)
 				const runningScores = runningAbilityScoresForCap(index)
 				const ctx: PrerequisiteContext = {
 					characterLevel: level,
@@ -182,10 +189,11 @@ export function FeatAsiPicker({
 				}
 
 				return (
-					<fieldset key={grant.level} className="feat-asi-picker__level">
+					<fieldset key={grant.level} className="feat-asi-picker__level" disabled={locked}>
 						<legend>
 							Level {grant.level}
 							{grant.kind === 'epicBoon' ? ' — Epic Boon' : ''}
+							{locked && ' (chosen at an earlier level)'}
 						</legend>
 
 						<label>
@@ -193,6 +201,7 @@ export function FeatAsiPicker({
 								type="radio"
 								name={`feat-asi-kind-${grant.level}`}
 								checked={current?.kind === 'asi'}
+								disabled={locked}
 								onChange={() => setChoiceAt(index, { level: grant.level, kind: 'asi', increases: {} })}
 							/>
 							Ability Score Improvement
@@ -202,6 +211,7 @@ export function FeatAsiPicker({
 								type="radio"
 								name={`feat-asi-kind-${grant.level}`}
 								checked={current?.kind === 'feat'}
+								disabled={locked}
 								onChange={() => setChoiceAt(index, { level: grant.level, kind: 'feat', name: '', source: '' })}
 							/>
 							Feat

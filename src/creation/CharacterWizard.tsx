@@ -1277,6 +1277,7 @@ export function CharacterWizard({
 						alreadyKnown={alreadyKnownSpells}
 						value={state.data.classOptionalFeatureChoices}
 						onChange={(choices) => dispatch({ type: 'setClassOptionalFeatureChoices', choices })}
+						lockedChoices={held?.classOptionalFeatureChoices}
 					/>
 				</div>
 			)}
@@ -1294,6 +1295,7 @@ export function CharacterWizard({
 						alreadyKnown={alreadyKnownSpells}
 						value={state.data.featAsiChoices}
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
+						lockedLevels={held?.featAsiChoices.map((choice) => choice.level)}
 					/>
 				</div>
 			)}

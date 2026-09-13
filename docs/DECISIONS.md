@@ -2145,3 +2145,36 @@ poslalo jinou hodnotu, stejně jako D105.
 **Wild Shape formy, kouzla a class optional features (invocations, metamagic)
 se nezamykají.** Formy a kouzla jde podle D104/D106 měnit kdykoli; class optional
 features a feat/ASI nejsou v kroku `class` a touhle opravou se neřešily.
+
+## D109 — D108 platí i pro feat/ASI a class optional features (D64 krok)
+
+Rozšíření D108. `src/levelUp/heldPicks.ts`, `FeatAsiPicker.tsx`,
+`ClassOptionalFeaturePicker.tsx`.
+
+**Chyba.** D108 zamklo podtřídu, fighting style, class skills, masteries,
+manévry, expertise a class feature choices — všechno v kroku `class`. Feat/ASI
+(krok `featAsi`) a class-level optionalfeatureProgression (krok
+`classOptionalFeatures`, D64) žijí mimo krok `class` a D108 je vědomě
+nechalo otevřené (viz jeho poslední odstavec). Level up tak mohl přepsat
+feat vzatý na dřívější úrovni nebo odebrat dřívější Metamagic/invocation.
+
+**Stejný vzor jako D108, aplikovaný na tyhle dva kroky.** `HeldPicks` nese
+navíc `featAsiChoices` (celé uložené `FeatAsiChoice[]`, srovnávané podle
+`level`) a `classOptionalFeatureChoices` (uložené `optionalFeatureChoices`
+bez podtřídiny vlastní progrese, srovnávané podle `featureType`). Shoda se
+u feat/ASI kontroluje na `kind` + `name`/`source` (feat) nebo `increases`
+(ASI) — vnořené `chosenAbility`, `magicInitiate` a `filterChoiceSpells` se
+nekontrolují, stejně jako se u subclass optional features nekontrolují
+vnořené `spellChoices`.
+
+**`FeatAsiPicker` dostal `lockedLevels`**: fieldset dřívějšího grantu je
+`disabled` (nativní chování vypne i vnořené radio/select prvky) a legenda
+říká „chosen at an earlier level". **`ClassOptionalFeaturePicker` dostal
+`lockedChoices`**: každá skupina (`featureType`) počítá vlastní zamčená
+jména a `SearchableOptionList` je vykreslí stejně jako u subclass optional
+features (D108) — `locked`, ne `disabled`, aby zůstala vidět jako vybraná.
+
+**`overwrittenHeldPicks` odmítá stejně jako u D108** — změnu i zahození
+dřívějšího feat/ASI pick nebo class-option pick.
+
+**Wild Shape formy a kouzla se pořád nezamykají** — D104/D106 beze změny.

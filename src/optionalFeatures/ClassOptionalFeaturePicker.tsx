@@ -17,7 +17,7 @@ import {
 } from '../spells/optionalFeatureSpellChoiceData'
 import { knownSpellNote, knownSpellReason, optionalFeatureSpellPickerKey, type KnownSpell } from '../spells/knownSpells'
 import type { FilterChoiceCandidateSpell } from '../spells/featSpellChoiceData'
-import type { CharacterOptionalFeatureChoice, OptionalFeatureSpellChoice } from '../storage/character'
+import { choiceNames, type CharacterOptionalFeatureChoice, type OptionalFeatureSpellChoice } from '../storage/character'
 
 /*
  * Picker for a CLASS's own optionalfeatureProgression (Sorcerer Metamagic,
@@ -34,6 +34,8 @@ type LoadState =
 	| { status: 'loading' }
 	| { status: 'ready'; groups: ClassOptionalFeatureGroup[] }
 	| { status: 'error'; message: string }
+
+const NO_LOCKED_CHOICES: readonly CharacterOptionalFeatureChoice[] = []
 
 /**
  * CONTROLLED COMPONENT (D8): displays `value` and reports every change
@@ -57,6 +59,7 @@ export function ClassOptionalFeaturePicker({
 	alreadyKnown = [],
 	value,
 	onChange,
+	lockedChoices = NO_LOCKED_CHOICES,
 }: {
 	className: string
 	classSource: string
@@ -70,6 +73,8 @@ export function ClassOptionalFeaturePicker({
 	alreadyKnown?: readonly KnownSpell[]
 	value: CharacterOptionalFeatureChoice[]
 	onChange: (selection: CharacterOptionalFeatureChoice[]) => void
+	/** D110: during a level up, the picks the character already had, one entry per featureType — shown selected and not removable. */
+	lockedChoices?: readonly CharacterOptionalFeatureChoice[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
@@ -123,7 +128,12 @@ export function ClassOptionalFeaturePicker({
 	 * already-recorded spell picks whenever the player used the two controls in
 	 * the "wrong" order) — see docs/STATUS.md's sheet-fix entry.
 	 */
+	function lockedNamesFor(featureType: string): readonly string[] {
+		return choiceNames(lockedChoices.find((entry) => entry.featureType === featureType)?.choices)
+	}
+
 	function toggle(featureType: string, optionName: string, chosen: string[], remaining: number): void {
+		if (lockedNamesFor(featureType).includes(optionName)) return
 		const next = chosen.includes(optionName) ? chosen.filter((name) => name !== optionName) : remaining > 0 ? [...chosen, optionName] : chosen
 		if (next === chosen) return
 		const others = value.filter((entry) => entry.featureType !== featureType)
@@ -156,11 +166,12 @@ export function ClassOptionalFeaturePicker({
 	return (
 		<div className="class-optional-feature-picker">
 			{groups.map((group) => {
+				const lockedNames = lockedNamesFor(group.featureType)
 				const options: SearchableOption[] = group.evaluated.map(({ option, eligible, reasons }) => {
 					const checked = group.chosen.includes(option.name)
 					// D19: an ineligible option is disabled and reasoned, never hidden — including the 3
 					// Talisman invocations, whose boon this data has no option for. An already-chosen one
-					// stays toggleable so the player can undo it themselves.
+					// stays toggleable so the player can undo it themselves — unless D110 locked it.
 					const disabled = !checked && (!eligible || group.remaining <= 0)
 					return {
 						key: `${option.name}|${option.source}`,
@@ -194,6 +205,7 @@ export function ClassOptionalFeaturePicker({
 						),
 						selected: checked,
 						disabled,
+						locked: checked && lockedNames.includes(option.name),
 					}
 				})
 				return (
