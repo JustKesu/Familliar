@@ -5,6 +5,7 @@ import type { FeatAsiChoice } from '../storage/character'
 
 /** Stable empty default so an omitted `featAsiChoices` prop doesn't re-trigger the load effect. */
 const NO_FEAT_CHOICES: FeatAsiChoice[] = []
+const NO_LOCKED_VALUES: readonly string[] = []
 
 /*
  * Weapon mastery picker. Not wired into the character creation wizard —
@@ -43,6 +44,7 @@ export function MasteryPicker({
 	value,
 	onChange,
 	featAsiChoices = NO_FEAT_CHOICES,
+	lockedValues = NO_LOCKED_VALUES,
 }: {
 	className: string
 	classSource: string
@@ -50,6 +52,8 @@ export function MasteryPicker({
 	value: string[]
 	onChange: (weapons: string[]) => void
 	featAsiChoices?: FeatAsiChoice[]
+	/** D108: during a level up, the picks the character already had — shown selected and not removable. */
+	lockedValues?: readonly string[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -87,6 +91,7 @@ export function MasteryPicker({
 	const remaining = count - value.length
 
 	function toggle(weaponName: string): void {
+		if (lockedValues.includes(weaponName)) return
 		if (value.includes(weaponName)) {
 			onChange(value.filter((name) => name !== weaponName))
 		} else if (remaining > 0) {
@@ -107,6 +112,7 @@ export function MasteryPicker({
 			detail: MASTERY_DESCRIPTIONS[weapon.masteryFull] ?? weapon.masteryFull,
 			selected,
 			disabled: !selected && remaining <= 0,
+			locked: selected && lockedValues.includes(weapon.name),
 		}
 	})
 

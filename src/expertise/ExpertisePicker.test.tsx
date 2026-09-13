@@ -158,4 +158,28 @@ describe('ExpertisePicker', () => {
 			await screen.findByText('No skill proficiencies to grant Expertise in yet — choose class, background or species skills first.'),
 		).toBeTruthy()
 	})
+
+	it('keeps an expertise from an earlier level checked and unremovable during a level up (D108)', async () => {
+		const onChange = vi.fn()
+		render(
+			<ExpertisePicker
+				className="Rogue"
+				classSource="XPHB"
+				level={6}
+				proficientSkills={rogueProficientSkills}
+				value={['stealth']}
+				onChange={onChange}
+				lockedValues={['stealth']}
+			/>,
+		)
+
+		const stealth = (await screen.findByRole('checkbox', { name: /Stealth/ })) as HTMLInputElement
+		expect(stealth.checked).toBe(true)
+		expect(stealth.disabled).toBe(true)
+		await userEvent.click(stealth)
+		expect(onChange).not.toHaveBeenCalled()
+
+		await userEvent.click(screen.getByRole('checkbox', { name: /Perception/ }))
+		expect(onChange).toHaveBeenCalledWith(['stealth', 'perception'])
+	})
 })

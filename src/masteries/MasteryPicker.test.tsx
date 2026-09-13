@@ -132,4 +132,22 @@ describe('MasteryPicker', () => {
 		const battleaxe = screen.getByRole('checkbox', { name: /Battleaxe/ }) as HTMLInputElement
 		expect(battleaxe.checked).toBe(true)
 	})
+
+	it('keeps a pick from an earlier level checked and unremovable during a level up (D108), while the new slot stays open', async () => {
+		const user = userEvent.setup()
+		const onChange = vi.fn()
+		render(
+			<MasteryPicker className="Fighter" classSource="XPHB" level={4} value={['Battleaxe']} onChange={onChange} lockedValues={['Battleaxe']} />,
+		)
+
+		const battleaxe = (await screen.findByRole('checkbox', { name: /Battleaxe/ })) as HTMLInputElement
+		expect(battleaxe.checked).toBe(true)
+		expect(battleaxe.disabled).toBe(true)
+		expect(screen.getByText('(chosen at an earlier level)')).toBeTruthy()
+		await user.click(battleaxe)
+		expect(onChange).not.toHaveBeenCalled()
+
+		await user.click(screen.getByRole('checkbox', { name: /Rapier/ }))
+		expect(onChange).toHaveBeenCalledWith(['Battleaxe', 'Rapier'])
+	})
 })

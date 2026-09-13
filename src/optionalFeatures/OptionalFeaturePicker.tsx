@@ -20,6 +20,8 @@ type LoadState =
 	| { status: 'ready'; count: number | null; options: OptionalFeatureOption[] }
 	| { status: 'error'; message: string }
 
+const NO_LOCKED_VALUES: readonly string[] = []
+
 function optionKey(option: OptionalFeatureOption): string {
 	return `${option.name}|${option.source}`
 }
@@ -42,6 +44,7 @@ export function OptionalFeaturePicker({
 	level,
 	value,
 	onChange,
+	lockedValues = NO_LOCKED_VALUES,
 }: {
 	className: string
 	classSource: string
@@ -50,6 +53,8 @@ export function OptionalFeaturePicker({
 	level: number
 	value: string[]
 	onChange: (choices: string[]) => void
+	/** D108: during a level up, the picks the character already had — shown selected and not removable. */
+	lockedValues?: readonly string[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
@@ -99,6 +104,7 @@ export function OptionalFeaturePicker({
 	const remaining = count - value.length
 
 	function toggle(optionName: string): void {
+		if (lockedValues.includes(optionName)) return
 		if (value.includes(optionName)) {
 			onChange(value.filter((name) => name !== optionName))
 		} else if (remaining > 0) {
@@ -115,6 +121,7 @@ export function OptionalFeaturePicker({
 			detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
 			selected: checked,
 			disabled: !checked && remaining <= 0,
+			locked: checked && lockedValues.includes(option.name),
 		}
 	})
 

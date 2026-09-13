@@ -69,6 +69,7 @@ import { choiceNames, type Character, type CharacterOptionalFeatureChoice } from
 import type { CharacterStore } from '../storage/characterStore'
 import type { LevelGains } from '../levelUp/levelGains'
 import { levelUpStepConditions, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
+import { heldPicksFrom } from '../levelUp/heldPicks'
 import {
 	initialControllerState,
 	isReadyToSave,
@@ -159,6 +160,7 @@ export function CharacterWizard({
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
 	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp) : {}
 	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp) : {}
+	const held = levelUp && character ? heldPicksFrom(character, state.data.subclass?.featureType ?? null) : null
 	const [saveError, setSaveError] = useState<string | null>(null)
 	/** Editing only: false until the seed's own data (subclass sources/featureTypes, spell levels) has loaded and been dispatched. */
 	const [seeded, setSeeded] = useState(character === undefined)
@@ -1069,13 +1071,16 @@ export function CharacterWizard({
 					)}
 					{state.data.classChoice && (
 						<>
-							<ClassSkillPicker
-								className={state.data.classChoice.className}
-								classSource={state.data.classChoice.classSource}
-								value={state.data.classSkills}
-								onChange={(skills) => dispatch({ type: 'setClassSkills', skills })}
-								disabledSkills={backgroundSkillsAsDisabled}
-							/>
+							{/* D108: a level up never reopens a single-value pick the character already has — it is hidden, not shown editable. */}
+							{(held === null || held.classSkills.length === 0) && (
+								<ClassSkillPicker
+									className={state.data.classChoice.className}
+									classSource={state.data.classChoice.classSource}
+									value={state.data.classSkills}
+									onChange={(skills) => dispatch({ type: 'setClassSkills', skills })}
+									disabledSkills={backgroundSkillsAsDisabled}
+								/>
+							)}
 							<MasteryPicker
 								className={state.data.classChoice.className}
 								classSource={state.data.classChoice.classSource}
@@ -1083,14 +1088,17 @@ export function CharacterWizard({
 								value={state.data.masteries}
 								onChange={(weapons) => dispatch({ type: 'setMasteries', weapons })}
 								featAsiChoices={state.data.featAsiChoices}
+								lockedValues={held?.masteries}
 							/>
-							<FightingStylePicker
-								className={state.data.classChoice.className}
-								classSource={state.data.classChoice.classSource}
-								level={state.data.classChoice.level}
-								value={state.data.fightingStyle}
-								onChange={(style) => dispatch({ type: 'setFightingStyle', style })}
-							/>
+							{(held === null || held.fightingStyle === null) && (
+								<FightingStylePicker
+									className={state.data.classChoice.className}
+									classSource={state.data.classChoice.classSource}
+									level={state.data.classChoice.level}
+									value={state.data.fightingStyle}
+									onChange={(style) => dispatch({ type: 'setFightingStyle', style })}
+								/>
+							)}
 							{/* D13 — a class feature's own "pick one version" choice belongs to the class step; none of the three depends on spells, so D64's exception does not apply. */}
 							<ClassFeatureChoicePicker
 								className={state.data.classChoice.className}
@@ -1098,20 +1106,23 @@ export function CharacterWizard({
 								level={state.data.classChoice.level}
 								value={state.data.classFeatureChoices}
 								onChange={(choices) => dispatch({ type: 'setClassFeatureChoices', choices })}
+								lockedFeatureNames={held?.classFeatureChoices}
 							/>
-							<SubclassPicker
-								className={state.data.classChoice.className}
-								classSource={state.data.classChoice.classSource}
-								level={state.data.classChoice.level}
-								value={state.data.subclass?.name ?? null}
-								onChange={(subclassName) => {
-									const found = subclassName ? subclasses.find((sc) => sc.name === subclassName) : undefined
-									dispatch({
-										type: 'setSubclass',
-										subclass: found ? { name: found.name, source: found.source, featureType: found.featureType } : null,
-									})
-								}}
-							/>
+							{(held === null || held.subclass === null) && (
+								<SubclassPicker
+									className={state.data.classChoice.className}
+									classSource={state.data.classChoice.classSource}
+									level={state.data.classChoice.level}
+									value={state.data.subclass?.name ?? null}
+									onChange={(subclassName) => {
+										const found = subclassName ? subclasses.find((sc) => sc.name === subclassName) : undefined
+										dispatch({
+											type: 'setSubclass',
+											subclass: found ? { name: found.name, source: found.source, featureType: found.featureType } : null,
+										})
+									}}
+								/>
+							)}
 							{state.data.subclass && (
 								<OptionalFeaturePicker
 									className={state.data.classChoice.className}
@@ -1121,6 +1132,7 @@ export function CharacterWizard({
 									level={state.data.classChoice.level}
 									value={state.data.optionalFeatureChoices}
 									onChange={(choices) => dispatch({ type: 'setOptionalFeatureChoices', choices })}
+									lockedValues={held?.subclassOptionalFeatures}
 								/>
 							)}
 							{/* After the subclass picker on purpose: Circle of the Moon raises the CR cap, so the legal pool is not known until the subclass is. */}
@@ -1191,6 +1203,7 @@ export function CharacterWizard({
 						proficientSkills={proficientSkills}
 						value={state.data.expertiseSkills}
 						onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
+						lockedValues={held?.expertiseSkills}
 					/>
 				</div>
 			)}

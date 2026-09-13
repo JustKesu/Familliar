@@ -151,6 +151,31 @@ describe('ClassFeatureChoicePicker', () => {
 		// Still offered — a missing description never removes the option itself.
 		expect(screen.getByRole('radio', { name: /Nowhere/ })).toBeTruthy()
 	})
+
+	it('does not let a level up change a version chosen at an earlier level, while a newly granted one stays open (D108)', async () => {
+		const onChange = vi.fn()
+		const held: CharacterClassFeatureChoice = { className: 'Druid', classSource: 'XPHB', featureName: 'Primal Order', grantedAtLevel: 1, optionName: 'Magician' }
+		render(
+			<ClassFeatureChoicePicker
+				className="Druid"
+				classSource="XPHB"
+				level={7}
+				value={[held]}
+				onChange={onChange}
+				lockedFeatureNames={['Primal Order']}
+			/>,
+		)
+		await screen.findByText('Potent Spellcasting')
+
+		const warden = screen.getByRole('radio', { name: /Warden/ }) as HTMLInputElement
+		expect(warden.disabled).toBe(true)
+		expect(screen.getByText('Magician chosen at an earlier level.')).toBeTruthy()
+		await userEvent.click(warden)
+		expect(onChange).not.toHaveBeenCalled()
+
+		await userEvent.click(screen.getByRole('radio', { name: /Primal Strike/ }))
+		expect(onChange).toHaveBeenCalledWith([held, expect.objectContaining({ featureName: 'Elemental Fury', optionName: 'Primal Strike' })])
+	})
 })
 
 describe('areClassFeatureChoicesComplete', () => {

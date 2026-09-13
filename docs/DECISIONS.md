@@ -2098,3 +2098,50 @@ u multiclassu; neurčený je jen tehdy, když postava tu třídu z
 
 **Postava v mezích neukazuje nic.** Žádná ze tří notic se nerenderuje, dokud
 není co hlásit — přebytek nikdy neukazuje nulu ani prázdný řádek.
+
+## D107 — Current HP se automaticky vyplní: na plno při tvorbě, o rozdíl při level upu
+
+Zatím neimplementováno — rozhodnutí zapsané dopředu, nalezeno při proklikání
+po kroku 8 (Cowork, 12.–13. 9.).
+
+Při TVORBĚ postavy se `currentHp` nastaví rovnou na vypočtené `maxHp` —
+postava začíná nezraněná. Při LEVEL UPU se `currentHp` zvýší o stejné číslo,
+o kolik vzrostlo `maxHp` — ne na plno. Odpovídá pravidlu 2024: úroveň zvedne
+current HP o stejnou částku jako max HP, není to léčení jako long rest.
+
+Manuální přepsání (D9) zůstává možné kdykoliv v obou případech — tohle jen
+mění výchozí hodnotu, kterou pole dostane, než do něj hráč sáhne.
+
+## D108 — Level up volby z dřívějších úrovní jen ukazuje, nikdy je znovu neotevře
+
+Oprava 8d3 (D102). `src/levelUp/heldPicks.ts`, `CharacterWizard.tsx`, pickery
+masteries / manévrů / expertise / class feature choices.
+
+**Chyba.** D102 v kroku `class` nahradila při level upu jen jméno a
+`ClassPicker`; všechny ostatní pickery kroku se vykreslovaly jako při tvorbě.
+Fighter Battle Master 3 → 4 (krok `class` se ukáže kvůli další weapon mastery)
+tak mohl přepnout podtřídu, fighting style, class skills i odškrtnout starší
+mastery a manévry — a uložení to přijalo.
+
+**Volba s jednou hodnotou, kterou postava už má, se při level upu nevykreslí.**
+Podtřída, fighting style a class skills: picker je jen tehdy, když postava tu
+volbu ještě nemá (podtřída na úrovni volby, starší postava bez fighting stylu).
+Chybějící volba, na kterou má postava nárok, se tím doplnit dá; hotová se
+přepsat nedá.
+
+**Seznamové volby ukazují starší picky zaškrtnuté a zamčené**, nové sloty
+zůstávají otevřené: weapon masteries, manévry podtřídy (optionalfeatureProgression),
+expertise, a u class feature choices (Divine Order apod.) celá skupina, která
+už má vybranou verzi. `SearchableOptionList` dostal `locked` — jedinou výjimku
+z pravidla D71, že vybraná položka nikdy není disabled.
+
+**Co drží, se čte z uložené postavy, ne z `levelGainsFor`.** Tak to platí i pro
+krok se stavem `unknown` (D102), kde appka neví, co úroveň přidává.
+
+**`saveCharacter` s `levelUpTo` odmítne zápis, který drženou volbu změní nebo
+vypustí** (`overwrittenHeldPicks`) — pojistka pro případ, že by UI přece jen
+poslalo jinou hodnotu, stejně jako D105.
+
+**Wild Shape formy, kouzla a class optional features (invocations, metamagic)
+se nezamykají.** Formy a kouzla jde podle D104/D106 měnit kdykoli; class optional
+features a feat/ASI nejsou v kroku `class` a touhle opravou se neřešily.

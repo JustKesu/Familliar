@@ -42,6 +42,7 @@ import type { SpellCountLabel } from '../calculation/spellCounts'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat } from '../spells/featSpellChoiceData'
+import { overwrittenHeldPicks } from '../levelUp/heldPicks'
 
 /**
  * The chosen subclass, name and source together — carrying `featureType`
@@ -888,6 +889,10 @@ export function saveCharacter(
 			existingClass.classSource === data.classChoice.classSource
 		if (!sameClass || existingLevel !== levelUpTo - 1 || data.classChoice?.level !== levelUpTo) {
 			throw new Error(`A level up raises one existing class by exactly one level, to level ${levelUpTo}.`)
+		}
+		const overwritten = overwrittenHeldPicks(existing!, data)
+		if (overwritten.length > 0) {
+			throw new Error(`A level up only adds picks; it cannot change one made at an earlier level: ${overwritten.join(', ')}.`)
 		}
 	}
 

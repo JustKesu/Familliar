@@ -1,10 +1,10 @@
 # Status
 
-Poslední aktualizace: 2026-09-12 (krok 8 slice 8e2: přebytek nad úroveň —
-kouzla a Wild Shape formy — se na sheetu hlásí, ne maže)
+Poslední aktualizace: 2026-09-13 (oprava 8d3: level up nezmění volby z
+dřívějších úrovní, D108)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
-vzniklo je v DECISIONS.md (čísla D1–D106) a v REPORT.md (poslední session).
+vzniklo je v DECISIONS.md (čísla D1–D108) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Build order
@@ -178,6 +178,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8e | Odebrání úrovně, `Character.createdAtLevel` jako spodní hranice (D104) | 33→34 |
    | 8e3 | Úprava postavy úroveň vůbec nemění (D105) | — |
    | 8e2 | Přebytek nad úroveň (kouzla, Wild Shape formy) se na sheetu hlásí (D106) | — |
+   | 8d3-fix | Level up nezmění volby z dřívějších úrovní (D108) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -443,6 +444,18 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      multiclass "nejde zjistit") a dva nové Wild Shape testy (počet forem
      navíc, žádná notice v mezích). Neověřováno v prohlížeči — jde o notice
      nad existujícími výpočty a testy assertují přesně, co se vykreslí.
+   - Oprava 8d3 (D108): krok `class` při level upu nevykreslí picker podtřídy,
+     fighting stylu ani class skills, pokud je postava už má; weapon masteries,
+     manévry podtřídy, expertise a class feature choices ukazují starší picky
+     zaškrtnuté a zamčené (`lockedValues` / `lockedFeatureNames`,
+     `SearchableOption.locked`). Co postava drží, počítá
+     `src/levelUp/heldPicks.ts` z uložené postavy; `saveCharacter` s
+     `levelUpTo` odmítne zápis, který drženou volbu změní nebo vypustí.
+     Wild Shape formy, kouzla, class optional features a feat/ASI se
+     nezamykají. Testy: `levelUpClassStep.test.tsx` (wizard Fighter Battle
+     Master 3 → 4), odmítnutí v `levelUp.test.tsx`, zamčení v testech
+     `MasteryPicker`, `ExpertisePicker`, `ClassFeatureChoicePicker`.
+     Neověřováno v prohlížeči.
 9. [not started] Play tracking a odpočinky
 10. [not started] Multiclass
 

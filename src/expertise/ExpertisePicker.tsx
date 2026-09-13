@@ -15,6 +15,8 @@ type LoadState =
 	| { status: 'none' }
 	| { status: 'error'; message: string }
 
+const NO_LOCKED_VALUES: readonly string[] = []
+
 function capitalize(word: string): string {
 	return word.charAt(0).toUpperCase() + word.slice(1)
 }
@@ -39,6 +41,7 @@ export function ExpertisePicker({
 	proficientSkills,
 	value,
 	onChange,
+	lockedValues = NO_LOCKED_VALUES,
 }: {
 	className: string
 	classSource: string
@@ -46,6 +49,8 @@ export function ExpertisePicker({
 	proficientSkills: DisabledSkill[]
 	value: string[]
 	onChange: (skills: string[]) => void
+	/** D108: during a level up, the picks the character already had — shown checked and not removable. */
+	lockedValues?: readonly string[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -90,6 +95,7 @@ export function ExpertisePicker({
 	const remaining = effectiveCount - value.length
 
 	function toggle(skill: string): void {
+		if (lockedValues.includes(skill)) return
 		if (value.includes(skill)) {
 			onChange(value.filter((s) => s !== skill))
 			return
@@ -115,12 +121,14 @@ export function ExpertisePicker({
 				{pool.map(({ skill, source }) => {
 					const checked = value.includes(skill)
 					const atLimit = !checked && remaining <= 0
+					const locked = checked && lockedValues.includes(skill)
 					return (
 						<li key={skill} className="expertise-picker__item">
 							<label>
-								<input type="checkbox" checked={checked} disabled={atLimit} onChange={() => toggle(skill)} />
+								<input type="checkbox" checked={checked} disabled={atLimit || locked} onChange={() => toggle(skill)} />
 								{capitalize(skill)}
 								<span className="expertise-picker__source"> (from {source})</span>
+								{locked && <span className="expertise-picker__locked"> (chosen at an earlier level)</span>}
 							</label>
 						</li>
 					)

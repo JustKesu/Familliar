@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { levelGainsFor, type LevelGains } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
 import { levelUpStepConditions, unknownLevelUpSteps } from './levelUpSteps'
+import { overwrittenHeldPicks } from './heldPicks'
 import { LevelUpButton } from './LevelUpButton'
 import { isStepComplete, saveCharacter, visibleSteps, wizardDataFromCharacter } from '../creation/wizardState'
 import type { Character } from '../storage/character'
@@ -174,5 +175,55 @@ describe('saving a level up', () => {
 			saveCharacter(characterStore, data, undefined, { ...conditions(character), characterLevel: 5 }, undefined, character, 4),
 		).toThrow(/exactly one level/)
 		expect(characterStore.update).not.toHaveBeenCalled()
+	})
+
+	/* D108: a level that grants no subclass or fighting style (Fighter 4) must not let a walk overwrite either, nor drop any other earlier pick. */
+	describe('refuses a walk that changes a pick made at an earlier level', () => {
+		function heldFighter(): Character {
+			return { ...storedFighter(), fightingStyle: 'Defense', expertiseSkills: [{ name: 'athletics' }] }
+		}
+
+		const overwrites: [string, (data: ReturnType<typeof levelledData>) => ReturnType<typeof levelledData>][] = [
+			['the subclass', (data) => ({ ...data, subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' } })],
+			['the fighting style', (data) => ({ ...data, fightingStyle: 'Archery' })],
+			['a class skill', (data) => ({ ...data, classSkills: ['athletics', 'intimidation'] })],
+			['a weapon mastery', (data) => ({ ...data, masteries: ['Longsword', 'Greataxe', 'Rapier'] })],
+			['an expertise', (data) => ({ ...data, expertiseSkills: ['perception'] })],
+		]
+
+		it.each(overwrites)('%s', (_label, change) => {
+			const characterStore = store()
+			const character = heldFighter()
+
+			expect(() =>
+				saveCharacter(characterStore, change(levelledData(character)), undefined, conditions(character), undefined, character, 4),
+			).toThrow(/cannot change one made at an earlier level/)
+			expect(characterStore.update).not.toHaveBeenCalled()
+		})
+
+		it('a subclass optional-feature pick or a class feature choice', () => {
+			const character: Character = {
+				...single('Fighter', 'Battle Master', 3),
+				optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte' }] }],
+				classFeatureChoices: [{ className: 'Fighter', classSource: 'XPHB', featureName: 'Test Order', grantedAtLevel: 1, optionName: 'First' }],
+			}
+			const seed = wizardDataFromCharacter(character, { subclasses: [{ name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' }], spellLevels: [] })
+			const data = { ...seed, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 4 } }
+
+			expect(overwrittenHeldPicks(character, data)).toEqual([])
+			expect(overwrittenHeldPicks(character, { ...data, optionalFeatureChoices: ['Trip Attack', 'Parry'] })).toEqual(['option Riposte'])
+			expect(
+				overwrittenHeldPicks(character, { ...data, classFeatureChoices: [{ ...character.classFeatureChoices![0], optionName: 'Second' }] }),
+			).toEqual(['Test Order First'])
+		})
+
+		it('still saves a walk that only adds to what the character had', () => {
+			const characterStore = store()
+			const character = heldFighter()
+			const data = levelledData(character)
+
+			saveCharacter(characterStore, { ...data, expertiseSkills: ['athletics', 'perception'] }, undefined, conditions(character), undefined, character, 4)
+			expect(characterStore.update).toHaveBeenCalledTimes(1)
+		})
 	})
 })

@@ -30,6 +30,8 @@ export interface SearchableOption {
 	disabled?: boolean
 	/** D71: why the option is unavailable. Shown whenever set, including while a search is active. */
 	disabledReason?: ReactNode
+	/** D108: a pick an earlier level already made, shown selected and never removable here — the one exception to D71's rule below. */
+	locked?: boolean
 }
 
 /** Lowercase and strip diacritics, so "à" matches "a". */
@@ -113,10 +115,11 @@ export function SearchableOptionList({
 						name={name}
 						checked={option.selected}
 						/* D71: a selected option is never disabled, or it could get stuck picked and unremovable. */
-						disabled={Boolean(option.disabled) && !option.selected}
+						disabled={Boolean(option.locked) || (Boolean(option.disabled) && !option.selected)}
 						onChange={() => onToggle(option.key)}
 					/>
 					<span>{option.label ?? option.name}</span>
+					{option.locked && <span className="option-list__locked"> (chosen at an earlier level)</span>}
 				</label>
 				{option.disabled && option.disabledReason != null && (
 					<div className="option-list__reason">{option.disabledReason}</div>

@@ -18,6 +18,8 @@ import type { CharacterClassFeatureChoice } from '../storage/character'
 
 type LoadState = { status: 'loading' } | { status: 'ready'; choices: ClassFeatureChoice[] } | { status: 'error'; message: string }
 
+const NO_LOCKED_FEATURES: readonly string[] = []
+
 /**
  * CONTROLLED COMPONENT (D8): displays `value` and reports every change
  * upward. Renders nothing when the class grants no such choice by this level.
@@ -28,12 +30,15 @@ export function ClassFeatureChoicePicker({
 	level,
 	value,
 	onChange,
+	lockedFeatureNames = NO_LOCKED_FEATURES,
 }: {
 	className: string
 	classSource: string
 	level: number
 	value: CharacterClassFeatureChoice[]
 	onChange: (selection: CharacterClassFeatureChoice[]) => void
+	/** D108: during a level up, the features whose version the character already chose — shown, not changeable. */
+	lockedFeatureNames?: readonly string[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
@@ -80,6 +85,7 @@ export function ClassFeatureChoicePicker({
 	 * through untouched.
 	 */
 	function select(choice: ClassFeatureChoice, optionName: string): void {
+		if (lockedFeatureNames.includes(choice.featureName)) return
 		const others = value.filter((entry) => entry.featureName !== choice.featureName)
 		const current = value.find((entry) => entry.featureName === choice.featureName)
 		onChange([
@@ -104,12 +110,15 @@ export function ClassFeatureChoicePicker({
 		<div className="class-feature-choice-picker">
 			{state.choices.map((choice) => {
 				const chosen = value.find((entry) => entry.featureName === choice.featureName)?.optionName ?? null
+				const locked = chosen !== null && lockedFeatureNames.includes(choice.featureName)
 				return (
 					<section key={`${choice.featureName}|${choice.grantedAtLevel}`} className="class-feature-choice-picker__group">
 						<h3>
 							{choice.featureName} (level {choice.grantedAtLevel})
 						</h3>
-						<p className="class-feature-choice-picker__hint">{chosen === null ? 'Choose one.' : `${chosen} chosen.`}</p>
+						<p className="class-feature-choice-picker__hint">
+							{chosen === null ? 'Choose one.' : locked ? `${chosen} chosen at an earlier level.` : `${chosen} chosen.`}
+						</p>
 						<ul className="class-feature-choice-picker__list">
 							{choice.options.map((option) => (
 								<li key={option.uid} className="class-feature-choice-picker__item">
@@ -118,6 +127,7 @@ export function ClassFeatureChoicePicker({
 											type="radio"
 											name={`class-feature-choice:${choice.featureName}`}
 											checked={chosen === option.name}
+											disabled={locked}
 											onChange={() => select(choice, option.name)}
 										/>
 										<strong>{option.name}</strong>
