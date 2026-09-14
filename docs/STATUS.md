@@ -1,7 +1,7 @@
 # Status
 
-Poslední aktualizace: 2026-09-13 (oprava 8d3-fix2: zámek dřívějších voleb
-z D108 rozšířen na feat/ASI a class optional features, D109)
+Poslední aktualizace: 2026-09-14 (8d3-fix3: `currentHp` dostane výchozí
+hodnotu při tvorbě/level upu/odebrání úrovně, D107)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -180,6 +180,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 8e2 | Přebytek nad úroveň (kouzla, Wild Shape formy) se na sheetu hlásí (D106) | — |
    | 8d3-fix | Level up nezmění volby z dřívějších úrovní (D108) | — |
    | 8d3-fix2 | Zámek rozšířen na feat/ASI a class optional features (D109) | — |
+   | 8d3-fix3 | `currentHp` dostane výchozí hodnotu při tvorbě a posune se o rozdíl `maxHp` při level upu i odebrání úrovně (D107) | — |
 
    - Slice 8a (D91–D94): `src/calculation/maxHitPoints.ts` (nový soubor, D47 —
      kroky 4 se nepřepisovaly) počítá součet příspěvků za úrovně + modifikátor
@@ -511,9 +512,11 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   se přesunulo z plochého výpisu beze změny výpočtu a drží si rozklad na
   vyžádání (D40/D41). Životy jsou od slice 8a napůl počítané: MAXIMUM je
   šesté `Calculated<number>` s vlastním rozkladem (`.sheet__max-hit-points`),
-  CURRENT zůstává ruční `currentHp` (D9) — prázdné = "nenastaveno" ("—"), 0
-  platná. Druhé vstupní pole je "Max HP override" (`maxHpOverride`), ne
-  maximum samo; `CharacterStore.setHitPoints` píše obě. Není sticky (může se
+  CURRENT zůstává ruční `currentHp` (D9) — 0 platná — ale od 8d3-fix3 (D107)
+  dostane výchozí hodnotu samo: na plno při tvorbě, o rozdíl `maxHp` při level
+  upu i odebrání úrovně; ruční přepsání kdykoli pak vyhrává. Druhé vstupní
+  pole je "Max HP override" (`maxHpOverride`), ne maximum samo;
+  `CharacterStore.setHitPoints` píše obě. Není sticky (může se
   řešit později). Testy: `SheetHeader.test.tsx` a sekce v
   `CharacterSheet.test.tsx`.
 - Záložky sheetu (přestavba sheetu, slice 2) — `src/sheet/CharacterSheet.tsx`.

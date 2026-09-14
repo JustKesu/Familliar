@@ -501,6 +501,23 @@ describe('saveCharacter', () => {
 		expect(store.create).not.toHaveBeenCalled()
 	})
 
+	/* D107: currentHp defaults to the caller-resolved maximum on creation, and stays absent when none is given. */
+	describe('currentHp (D107)', () => {
+		it('defaults currentHp to the given maximum for a freshly created character', () => {
+			const store = fakeStore()
+			saveCharacter(store, completeData(), ['athletics', 'intimidation'], {}, undefined, undefined, undefined, 25)
+
+			expect(vi.mocked(store.create).mock.calls[0][0].currentHp).toBe(25)
+		})
+
+		it('leaves currentHp absent when no default is given (caller could not resolve maxHp)', () => {
+			const store = fakeStore()
+			saveCharacter(store, completeData(), ['athletics', 'intimidation'])
+
+			expect(vi.mocked(store.create).mock.calls[0][0].currentHp).toBeUndefined()
+		})
+	})
+
 	it('writes exactly once, with the assembled character, once every step is complete', () => {
 		const store = fakeStore()
 		saveCharacter(store, completeData(), ['athletics', 'intimidation'])

@@ -6,6 +6,8 @@ import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
 import type { LevelGains } from './levelUp/levelGains'
 import { characterUpdateInput } from './levelUp/levelRemoval'
+import { currentHpAfterMaxHpChange } from './calculation/maxHitPoints'
+import { loadCharacterMaxHp } from './hitPoints/hpDefault'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
@@ -281,7 +283,18 @@ function CharacterManager() {
 									onRemoveLevel={(result) => {
 										setEditingId((current) => (current === sheetCharacter.id ? null : current))
 										setLevelUpGains(null)
-										withErrorHandling(() => store.store?.update(result.id, characterUpdateInput(result)))
+										/* D107 (this task's own extension, for symmetry with the level-up side): currentHp drops by the same amount maxHp drops, only when it was already set. */
+										if (sheetCharacter.currentHp === undefined) {
+											withErrorHandling(() => store.store?.update(result.id, characterUpdateInput(result)))
+											return
+										}
+										Promise.all([loadCharacterMaxHp(sheetCharacter), loadCharacterMaxHp(result)])
+											.then(([before, after]) => {
+												const currentHp = currentHpAfterMaxHpChange(sheetCharacter.currentHp, before, after)
+												const adjusted = currentHp !== undefined ? { ...result, currentHp } : result
+												withErrorHandling(() => store.store?.update(adjusted.id, characterUpdateInput(adjusted)))
+											})
+											.catch(() => withErrorHandling(() => store.store?.update(result.id, characterUpdateInput(result))))
 									}}
 									onLevelUp={(gains) => {
 										setCreating(false)

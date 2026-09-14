@@ -862,6 +862,14 @@ function clearStartingEquipmentFor(choice: StartingEquipmentChoice, origin: 'cla
  * `levelUpTo` (slice 8d3) marks the write that ends a level-up walk: it must
  * raise `existing` by exactly one level in the class it already has, and every
  * pick that was not on `existing` records that new level (D97/D98/D99).
+ *
+ * `computedCurrentHp` (D107) is the `currentHp` this save should write,
+ * already resolved by the caller — computing it needs classes.json/feats.json/
+ * species.json, which this module has no access to (same reason
+ * `backgroundSkillProficiencies`/`startingEquipment` are precomputed args).
+ * `undefined` (the default) keeps today's behaviour: `existing`'s own
+ * `currentHp` carried through unchanged, which is also correct for a plain
+ * edit (D105) and for a character `maxHp` couldn't be resolved for.
  */
 export function saveCharacter(
 	store: CharacterStore,
@@ -871,6 +879,7 @@ export function saveCharacter(
 	startingEquipment?: { inventory: CharacterInventoryItem[]; currencyCopper: number },
 	existing?: Character,
 	levelUpTo?: number,
+	computedCurrentHp?: number,
 ): Character {
 	if (!isReadyToSave(data, conditions)) {
 		throw new Error('Cannot save a character before every step is complete.')
@@ -1052,7 +1061,8 @@ export function saveCharacter(
 		speciesSpellcastingAbility: data.speciesSpellcastingAbility ?? undefined,
 		hitPointLevels,
 		// Play state the wizard has no control over, carried across an update that replaces every field.
-		currentHp: existing?.currentHp,
+		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.
+		currentHp: computedCurrentHp !== undefined ? computedCurrentHp : existing?.currentHp,
 		maxHpOverride: existing?.maxHpOverride,
 		familiar: existing?.familiar,
 		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".

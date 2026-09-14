@@ -2101,8 +2101,10 @@ není co hlásit — přebytek nikdy neukazuje nulu ani prázdný řádek.
 
 ## D107 — Current HP se automaticky vyplní: na plno při tvorbě, o rozdíl při level upu
 
-Zatím neimplementováno — rozhodnutí zapsané dopředu, nalezeno při proklikání
-po kroku 8 (Cowork, 12.–13. 9.).
+Implementováno. `src/calculation/maxHitPoints.ts` (`currentHpAfterMaxHpChange`,
+`maxHitPointsDelta`), `src/hitPoints/hpDefault.ts`, `src/creation/wizardState.ts`
+(`saveCharacter`'s `computedCurrentHp`), `src/creation/CharacterWizard.tsx`,
+`src/CharacterManager.tsx` (odebrání úrovně).
 
 Při TVORBĚ postavy se `currentHp` nastaví rovnou na vypočtené `maxHp` —
 postava začíná nezraněná. Při LEVEL UPU se `currentHp` zvýší o stejné číslo,
@@ -2111,6 +2113,21 @@ current HP o stejnou částku jako max HP, není to léčení jako long rest.
 
 Manuální přepsání (D9) zůstává možné kdykoliv v obou případech — tohle jen
 mění výchozí hodnotu, kterou pole dostane, než do něj hráč sáhne.
+
+**`maxHp` se počítá stejnou cestou jako na sheetu** (`computeMaxHitPoints` nad
+classes.json/feats.json/species.json daty), ale `CharacterStore`/`saveCharacter`
+k datům přístup nemají (D38) — volající (`CharacterWizard.tsx`) hodnotu spočítá
+předem a předá ji přes nový parametr `computedCurrentHp`, stejně jako už dělá
+u `backgroundSkillProficiencies`/`startingEquipment`. Necháno `undefined`
+(výchozí, žádná změna chování) při obyčejné úpravě (D105) i když `maxHp` ještě
+není spočtené.
+
+**Odebrání úrovně (D104) — vlastní rozšíření tohoto úkolu, D107 to výslovně
+nepokrývalo.** Ze symetrie: `currentHp` se sníží o stejné číslo, o kolik
+kleslo `maxHp`, opět jen když už bylo nastavené. Bez toho by po odebrání
+úrovně mohlo zůstat nad novým, nižším maximem. Řešeno v
+`CharacterManager.tsx`'s `onRemoveLevel` (ne v `levelRemovalPlan` samotném,
+aby zůstal čistý a testovatelný bez načítání dat).
 
 ## D108 — Level up volby z dřívějších úrovní jen ukazuje, nikdy je znovu neotevře
 

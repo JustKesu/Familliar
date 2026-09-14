@@ -158,3 +158,27 @@ export function computeMaxHitPoints(
 	const total = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known(total, breakdown)
 }
+
+/**
+ * D107: how much `currentHp` should move when maximum hit points goes from
+ * `before` to `after` — a level up's exact gain, or a level removal's exact
+ * loss. `undefined` when either side is unresolved, so the caller leaves
+ * `currentHp` exactly as it was rather than guess.
+ */
+export function maxHitPointsDelta(before: Calculated<number>, after: Calculated<number>): number | undefined {
+	return before.status === 'known' && after.status === 'known' ? after.value - before.value : undefined
+}
+
+/**
+ * D107: the `currentHp` a level up or a level removal should write — `currentHp`
+ * moved by exactly the amount maximum hit points moved from `before` to
+ * `after`. `undefined` when `currentHp` was never set (an older character, or
+ * one whose player never touched the field) or when the delta can't be
+ * resolved — the caller's own "leave it as it was" default already means
+ * that, matching manual editing (D9) staying possible at every other moment.
+ */
+export function currentHpAfterMaxHpChange(currentHp: number | undefined, before: Calculated<number>, after: Calculated<number>): number | undefined {
+	if (currentHp === undefined) return undefined
+	const delta = maxHitPointsDelta(before, after)
+	return delta === undefined ? undefined : currentHp + delta
+}

@@ -49,6 +49,9 @@ import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeAbilityScore } from '../calculation/abilityScores'
+import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
+import type { Calculated } from '../calculation/types'
+import { loadCharacterMaxHp } from '../hitPoints/hpDefault'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { SpellPicker } from '../spells/SpellPicker'
 import { spellListClassFor, expandedSpellListClassFor } from '../spells/classSpellListData'
@@ -210,6 +213,15 @@ export function CharacterWizard({
 	const [subclassAlwaysPreparedError, setSubclassAlwaysPreparedError] = useState<string | null>(null)
 	const [featGrantedSpellsError, setFeatGrantedSpellsError] = useState<string | null>(null)
 	const [optionalFeatureGrantedSpellsError, setOptionalFeatureGrantedSpellsError] = useState<string | null>(null)
+	/**
+	 * D107: the running max HP this save would end with, and — only when
+	 * `character` (the level-up/edit seed) is given — what it was before this
+	 * run. `handleSave` reads both, already resolved, to set `currentHp`'s new
+	 * default without making the save itself async: create defaults `currentHp`
+	 * to the current value, a level up raises `currentHp` by exactly the
+	 * increase between the two.
+	 */
+	const [maxHp, setMaxHp] = useState<{ current: Calculated<number>; previous: Calculated<number> | null } | null>(null)
 
 	/**
 	 * Slice 8d1: the seed needs two things storage deliberately doesn't hold —
@@ -819,6 +831,43 @@ export function CharacterWizard({
 		...(state.data.featAsiChoices.length > 0 ? { featAsiChoices: state.data.featAsiChoices } : {}),
 	}
 
+	/** As draftCharacterForHitPoints, plus the picks the hit points step itself owns (D107 needs the running total, not just its inputs) and the manual override (D9), so a character with one keeps it. */
+	const draftCharacterForMaxHp: Character = {
+		...draftCharacterForHitPoints,
+		...(state.data.hitPointLevels.length > 0 ? { hitPointLevels: state.data.hitPointLevels } : {}),
+		...(character?.maxHpOverride !== undefined ? { maxHpOverride: character.maxHpOverride } : {}),
+	}
+
+	/**
+	 * D107: loads the maximum this save would end with, and — while
+	 * editing/levelling up — what `character` had before it. Not gated on the
+	 * hit points step being visited: a level-1 creation never shows that step
+	 * (D92) but still needs a maximum to default `currentHp` to.
+	 */
+	useEffect(() => {
+		let cancelled = false
+		Promise.all([loadCharacterMaxHp(draftCharacterForMaxHp), character ? loadCharacterMaxHp(character) : Promise.resolve(null)])
+			.then(([current, previous]) => {
+				if (!cancelled) setMaxHp({ current, previous })
+			})
+			.catch(() => {
+				if (!cancelled) setMaxHp(null)
+			})
+		return () => {
+			cancelled = true
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the same class/species/feat/level-pick identity HitPointsPicker uses, plus `character` itself for the "before" side.
+	}, [
+		draftCharacterForMaxHp.classes[0]?.className,
+		draftCharacterForMaxHp.classes[0]?.classSource,
+		draftCharacterForMaxHp.classes[0]?.level,
+		draftCharacterForMaxHp.species?.name,
+		draftCharacterForMaxHp.featAsiChoices,
+		draftCharacterForMaxHp.hitPointLevels,
+		draftCharacterForMaxHp.maxHpOverride,
+		character,
+	])
+
 	const spellSlotsResult = computeSpellSlots(draftCharacterForSpells, spellSlotsClassData)
 	const spellCountsResult = computeSpellCounts(draftCharacterForSpells, spellCountClassData)
 	const spellSlotsEntry = spellSlotsResult.status === 'known' ? spellSlotsResult.value[0] : undefined
@@ -987,6 +1036,25 @@ export function CharacterWizard({
 		...levelUpConditions,
 	}
 
+	/**
+	 * D107: the default `currentHp` this save should write, already resolved
+	 * from `maxHp` state so the save itself stays synchronous. Creation (no
+	 * `character`) defaults to the fresh maximum; a level up raises whatever
+	 * `currentHp` already holds by the increase; anything else (a plain edit,
+	 * or `maxHp` not resolved yet) changes nothing, matching what leaving this
+	 * `undefined` already does in saveCharacter.
+	 */
+	function computedCurrentHp(): number | undefined {
+		if (!maxHp) return undefined
+		if (character === undefined) {
+			return maxHp.current.status === 'known' ? maxHp.current.value : undefined
+		}
+		if (levelUp !== undefined && maxHp.previous) {
+			return currentHpAfterMaxHpChange(character.currentHp, maxHp.previous, maxHp.current)
+		}
+		return undefined
+	}
+
 	function handleSave(): void {
 		try {
 			const saved = saveCharacter(
@@ -997,6 +1065,7 @@ export function CharacterWizard({
 				buildStartingInventory(classEquipmentOffer, backgroundEquipmentOffer, state.data.startingEquipment),
 				character,
 				levelUp?.level,
+				computedCurrentHp(),
 			)
 			setSaveError(null)
 			onSaved(saved)

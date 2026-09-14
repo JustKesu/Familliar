@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Character, CharacterHitPointLevel } from '../storage/character'
 import { type ClassHitDie } from './hitDice'
-import { computeMaxHitPoints, fixedAverage, HIT_POINT_BONUS_RULES } from './maxHitPoints'
+import { computeMaxHitPoints, currentHpAfterMaxHpChange, fixedAverage, HIT_POINT_BONUS_RULES, maxHitPointsDelta } from './maxHitPoints'
+import { known, unknown } from './types'
 
 const classData: ClassHitDie[] = [
 	{ className: 'Fighter', classSource: 'XPHB', faces: 10 },
@@ -257,5 +258,36 @@ describe('computeMaxHitPoints — D43 unresolved states', () => {
 		const result = computeMaxHitPoints(multi, classData)
 		expect(result.status).toBe('unknown')
 		if (result.status === 'unknown') expect(result.reason).toContain('multiclass')
+	})
+})
+
+describe('maxHitPointsDelta (D107)', () => {
+	it('is the difference between two known maximums', () => {
+		expect(maxHitPointsDelta(known(20, []), known(28, []))).toBe(8)
+		expect(maxHitPointsDelta(known(28, []), known(20, []))).toBe(-8)
+	})
+
+	it('is undefined when either side is unknown', () => {
+		expect(maxHitPointsDelta(unknown('no classes'), known(28, []))).toBeUndefined()
+		expect(maxHitPointsDelta(known(20, []), unknown('no classes'))).toBeUndefined()
+	})
+})
+
+describe('currentHpAfterMaxHpChange (D107)', () => {
+	it('a level up raises currentHp by exactly the maxHp increase, not up to the new max', () => {
+		// Below max before (20 of 20) and stays below max after (28 of 28 - 8... ): the amount added is the delta, never the new max.
+		expect(currentHpAfterMaxHpChange(12, known(20, []), known(28, []))).toBe(20)
+	})
+
+	it('a level removal lowers currentHp by exactly the maxHp decrease', () => {
+		expect(currentHpAfterMaxHpChange(20, known(28, []), known(20, []))).toBe(12)
+	})
+
+	it('leaves currentHp unset when it was never set, even with a known delta', () => {
+		expect(currentHpAfterMaxHpChange(undefined, known(20, []), known(28, []))).toBeUndefined()
+	})
+
+	it('leaves currentHp as it was when the delta cannot be resolved', () => {
+		expect(currentHpAfterMaxHpChange(12, known(20, []), unknown('no classes'))).toBeUndefined()
 	})
 })

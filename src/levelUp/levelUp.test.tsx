@@ -161,6 +161,40 @@ describe('saving a level up', () => {
 		expect(input.hitPointLevels).toContainEqual({ level: 4, kind: 'roll', dieResult: 7 })
 	})
 
+	/* D107: currentHp raises by exactly the caller-resolved maxHp delta, never up to the new max. */
+	describe('currentHp (D107)', () => {
+		it('raises currentHp by exactly the given delta when the character already has one below max', () => {
+			const characterStore = store()
+			const character = { ...storedFighter(), currentHp: 20 }
+
+			saveCharacter(characterStore, levelledData(character), undefined, conditions(character), undefined, character, 4, 28)
+
+			const input = vi.mocked(characterStore.update).mock.calls[0][1]
+			expect(input.currentHp).toBe(28)
+		})
+
+		it('leaves currentHp unset for a character that never had one, even when a default is given', () => {
+			const characterStore = store()
+			const character = storedFighter()
+			expect(character.currentHp).toBeUndefined()
+
+			saveCharacter(characterStore, levelledData(character), undefined, conditions(character), undefined, character, 4)
+
+			const input = vi.mocked(characterStore.update).mock.calls[0][1]
+			expect(input.currentHp).toBeUndefined()
+		})
+
+		it('leaves currentHp as it was when no default is given (caller could not resolve maxHp)', () => {
+			const characterStore = store()
+			const character = { ...storedFighter(), currentHp: 20 }
+
+			saveCharacter(characterStore, levelledData(character), undefined, conditions(character), undefined, character, 4)
+
+			const input = vi.mocked(characterStore.update).mock.calls[0][1]
+			expect(input.currentHp).toBe(20)
+		})
+	})
+
 	it('refuses a walk that does not raise the character by exactly one level', () => {
 		const characterStore = store()
 		const character = storedFighter()

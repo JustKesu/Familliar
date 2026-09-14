@@ -788,6 +788,8 @@ describe('CharacterWizard — storage', () => {
 				{ level: 3, kind: 'average', dieResult: 6 },
 			],
 			createdAtLevel: 3,
+			// D107: a freshly created character starts unhurt — 10 (level 1 max) + 6 + 6 (stored average) + 1 (CON mod) × 3 levels.
+			currentHp: 25,
 		})
 	})
 })
