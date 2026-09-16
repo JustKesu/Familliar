@@ -176,9 +176,12 @@ export function maxHitPointsDelta(before: Calculated<number>, after: Calculated<
  * one whose player never touched the field) or when the delta can't be
  * resolved — the caller's own "leave it as it was" default already means
  * that, matching manual editing (D9) staying possible at every other moment.
+ *
+ * D110: clamped at 0 — a level removal can otherwise push a nearly-dead
+ * character's current below zero, which means nothing under the 2024 rules.
  */
 export function currentHpAfterMaxHpChange(currentHp: number | undefined, before: Calculated<number>, after: Calculated<number>): number | undefined {
 	if (currentHp === undefined) return undefined
 	const delta = maxHitPointsDelta(before, after)
-	return delta === undefined ? undefined : currentHp + delta
+	return delta === undefined ? undefined : Math.max(0, currentHp + delta)
 }

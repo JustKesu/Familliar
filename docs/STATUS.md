@@ -1,7 +1,7 @@
 # Status
 
-Poslední aktualizace: 2026-09-14 (8d3-fix3: `currentHp` dostane výchozí
-hodnotu při tvorbě/level upu/odebrání úrovně, D107)
+Poslední aktualizace: 2026-09-16 (9a1: dočasné životy, panel poškození/léčení
+v hlavičce, clamp current HP na 0, D110)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -471,7 +471,42 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      Wild Shape formy a kouzla se pořád nezamykají (D104/D106). Testy:
      rozšířené `it.each` odmítnutí a nový přímý test `overwrittenHeldPicks`
      v `levelUp.test.tsx`. Neověřováno v prohlížeči.
-9. [not started] Play tracking a odpočinky
+9. [in progress] Play tracking a odpočinky
+
+   | Slice | Co | Schéma |
+   |---|---|---|
+   | 9a1 | Dočasné životy, panel poškození/léčení v hlavičce, clamp current HP na 0 (D110) | 34→35 |
+
+   - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
+     kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
+     migrace 34→35 jen tag — nepřítomnost je správná hodnota pro každou
+     existující postavu); 0 se ukládá jako nepřítomnost pole, na rozdíl od
+     `currentHp`, kde 0 je platný stav. Dočasné životy jsou DRUHÁ hromádka:
+     hlavička je ukazuje jako „30 / 39 + 8 temporary", nikdy je nepřičítá.
+     Nový `src/hitPoints/damageHealing.ts` (čisté funkce `applyDamage`,
+     `applyHealing`, `grantTemporaryHitPoints`): poškození jde nejdřív z
+     dočasných a teprve zbytek z current, léčení clampuje na
+     `computeMaxHitPoints` (ne na uložené číslo — `maxHpOverride` existuje) a
+     dočasné neobnovuje, nový grant se nesčítá (vyhrává vyšší). Panel
+     `DamageHealingPanel` v `SheetHeader.tsx`: pole Amount + Damage / Heal /
+     Gain temporary HP, jeden zápis obou hromádek. D43: bez nastaveného
+     `currentHp` jsou tlačítka nedostupná s důvodem, při neznámém maximu
+     odpadá jen Heal. Přímé zadání zůstává a přibylo třetí pole „Temporary
+     HP". Current HP nikdy pod 0 — clamp v `buildCharacter`, `setHitPoints`,
+     `HitPointField` i `currentHpAfterMaxHpChange` (zavírá otevřenou otázku z
+     kroku 8, odebrání úrovně mohlo poslat current do minusu); clamp SHORA se
+     dál nedělá. `CharacterStore.setHitPoints` bere objekt
+     (`HitPointFields`) místo pozičních argumentů. Testy:
+     `damageHealing.test.ts`, nový blok v `SheetHeader.test.tsx`, temp/clamp
+     testy v `characterStore.test.ts`, migrace 34→35 v `migrations.test.ts`,
+     jeden blok v `CharacterSheet.test.tsx`. Ověřeno v prohlížeči (Fighter 5,
+     max 39): grant 8 → nižší grant 5 nezvýšil, poškození 12 sežralo 8
+     dočasných a 4 z current, léčení 50 zastavilo na 39, poškození 99 na 0,
+     přímé zadání dál funguje.
+   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): spent spell slots,
+     spent hit dice, death saves, pool uses, odpočinky, tabulka akcí s počty
+     použití. Otevřené otázky k nim jsou v posledním REPORT.md ze session
+     průzkumu a nejsou tímhle slice rozhodnuté.
 10. [not started] Multiclass
 
 ## Co appka umí navíc k build orderu
@@ -499,7 +534,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Weapon proficiency/mastery a Extra Attack — jeden sdílený modul,
   strukturálně (podle dat zbraně), ne podle jména třídy.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
-- Uložení — localStorage, verzované schéma (teď 34), migrace fungují od
+- Uložení — localStorage, verzované schéma (teď 35), migrace fungují od
   verze 16 výš (D69); starší uložená postava se odmítne, ne převede. Migrace
   29→30 je první, která DATA PŘESOUVÁ, ne jen přepisuje tag: ručně napsané
   `maxHp` jde do `maxHpOverride` (D91). Migrace 30→31 je první, která hodnotu
@@ -515,8 +550,10 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   CURRENT zůstává ruční `currentHp` (D9) — 0 platná — ale od 8d3-fix3 (D107)
   dostane výchozí hodnotu samo: na plno při tvorbě, o rozdíl `maxHp` při level
   upu i odebrání úrovně; ruční přepsání kdykoli pak vyhrává. Druhé vstupní
-  pole je "Max HP override" (`maxHpOverride`), ne maximum samo;
-  `CharacterStore.setHitPoints` píše obě. Není sticky (může se
+  pole je "Max HP override" (`maxHpOverride`), ne maximum samo, třetí je od
+  9a1 "Temporary HP" (D110) a pod nimi je panel poškození/léčení;
+  `CharacterStore.setHitPoints` píše všechna tři pole jedním objektem.
+  Není sticky (může se
   řešit později). Testy: `SheetHeader.test.tsx` a sekce v
   `CharacterSheet.test.tsx`.
 - Záložky sheetu (přestavba sheetu, slice 2) — `src/sheet/CharacterSheet.tsx`.
@@ -631,9 +668,15 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
+**Krok 9 začal.** Slice 9a1 (D110) zavedla dočasné životy, panel
+poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
+slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic
+nespotřebováno, migrace jen tag. Další na řadě jsou spent spell slots, spent
+hit dice, death saves, pool uses a odpočinky — každé s vlastními rozhodnutími,
+která REPORT.md ze session průzkumu vyjmenovává a která zatím nejsou padlá.
+
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
-Wild Shape formy nad rámec toho, co postava smí mít. Další je krok 9 (play
-tracking a odpočinky).
+Wild Shape formy nad rámec toho, co postava smí mít.
 
 Historie kroku 8: slice 8a (počítané maximum HP), 8a-guard (validace tabulky
 bonusů, D95), 8b (krok wizardu pro volbu hod/průměr/ručně za úroveň, D96) a

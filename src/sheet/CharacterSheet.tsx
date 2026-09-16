@@ -123,6 +123,7 @@ import {
 	type WeaponAttackAbility,
 	type WeaponGrip,
 } from '../storage/character'
+import type { HitPointFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
 import { SheetHeader } from './SheetHeader'
@@ -1640,7 +1641,7 @@ export function CharacterSheet({
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
-	onEditHitPoints?: (currentHp: number | undefined, maxHpOverride: number | undefined) => void
+	onEditHitPoints?: (hitPoints: HitPointFields) => void
 	/** Reopens the creation wizard over this character (slice 8d1). Absent leaves the sheet without the button. */
 	onEditCharacter?: () => void
 	/** Opens the one-level walk (slice 8d3) with what the next level adds. Absent leaves the sheet without the button. */
@@ -2297,6 +2298,7 @@ export function CharacterSheet({
 				currentHp={character.currentHp}
 				maxHitPoints={maxHitPoints}
 				maxHpOverride={character.maxHpOverride}
+				temporaryHitPoints={character.temporaryHitPoints}
 				onEditHitPoints={onEditHitPoints}
 			/>
 

@@ -37,6 +37,7 @@ function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}
 			currentHp={undefined}
 			maxHitPoints={maxOf(12)}
 			maxHpOverride={undefined}
+			temporaryHitPoints={undefined}
 			{...overrides}
 		/>,
 	)
@@ -78,10 +79,12 @@ describe('SheetHeader', () => {
 		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('0 / 12')
 	})
 
-	it('has no hit-point inputs on a read-only sheet', () => {
+	it('has no hit-point inputs and no damage panel on a read-only sheet', () => {
 		renderHeader({ currentHp: 10 })
 		expect(screen.queryByLabelText('Current HP')).toBeNull()
 		expect(screen.queryByLabelText('Max HP override')).toBeNull()
+		expect(screen.queryByLabelText('Temporary HP')).toBeNull()
+		expect(screen.queryByRole('group', { name: 'Damage and healing' })).toBeNull()
 	})
 
 	it('carries the computed maximum’s own breakdown, collapsed by default (slice 8a)', async () => {
@@ -104,7 +107,7 @@ describe('SheetHeader', () => {
 		const field = screen.getByLabelText('Current HP')
 		fireEvent.change(field, { target: { value: '7' } })
 		fireEvent.blur(field)
-		expect(onEditHitPoints).toHaveBeenLastCalledWith(7, 20)
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 7, maxHpOverride: 20, temporaryHitPoints: undefined })
 	})
 
 	it('clears the max override back to unset when emptied, so the computed maximum stands again', () => {
@@ -113,7 +116,7 @@ describe('SheetHeader', () => {
 		const field = screen.getByLabelText('Max HP override')
 		fireEvent.change(field, { target: { value: '' } })
 		fireEvent.blur(field)
-		expect(onEditHitPoints).toHaveBeenLastCalledWith(12, undefined)
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 12, maxHpOverride: undefined, temporaryHitPoints: undefined })
 	})
 
 	it('never commits a negative hit-point value', () => {
@@ -122,6 +125,92 @@ describe('SheetHeader', () => {
 		const field = screen.getByLabelText('Current HP')
 		fireEvent.change(field, { target: { value: '-3' } })
 		fireEvent.blur(field)
-		expect(onEditHitPoints).toHaveBeenLastCalledWith(0, 20)
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 0, maxHpOverride: 20, temporaryHitPoints: undefined })
+	})
+})
+
+/* Slice 9a1 (D110). */
+describe('SheetHeader temporary hit points and the damage/healing panel', () => {
+	/** The panel's amount field plus one of its three buttons, as a player uses them. */
+	function act(label: string, amount: string): void {
+		fireEvent.change(screen.getByLabelText('Amount'), { target: { value: amount } })
+		fireEvent.click(screen.getByRole('button', { name: label }))
+	}
+
+	it('shows temporary hit points as a separate figure, never folded into the pair', () => {
+		const { container } = renderHeader({ currentHp: 44, maxHitPoints: maxOf(44), temporaryHitPoints: 8 })
+		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('44 / 44 + 8 temporary')
+	})
+
+	it('says nothing about temporary hit points when there are none', () => {
+		const { container } = renderHeader({ currentHp: 44, maxHitPoints: maxOf(44), temporaryHitPoints: 0 })
+		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('44 / 44')
+		expect(container.querySelector('.sheet__temporary-hit-points')).toBeNull()
+	})
+
+	it('takes damage off temporary hit points first, then off current', () => {
+		const onEditHitPoints = vi.fn()
+		renderHeader({ currentHp: 30, maxHitPoints: maxOf(44), temporaryHitPoints: 8, onEditHitPoints })
+		act('Damage', '12')
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 26, maxHpOverride: undefined, temporaryHitPoints: 0 })
+	})
+
+	it('stops damage at 0 current hit points', () => {
+		const onEditHitPoints = vi.fn()
+		renderHeader({ currentHp: 4, maxHitPoints: maxOf(44), onEditHitPoints })
+		act('Damage', '20')
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 0, maxHpOverride: undefined, temporaryHitPoints: 0 })
+	})
+
+	it('clamps healing at the computed maximum, which carries any override', () => {
+		const onEditHitPoints = vi.fn()
+		renderHeader({ currentHp: 40, maxHitPoints: maxOf(44), maxHpOverride: 44, onEditHitPoints })
+		act('Heal', '20')
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 44, maxHpOverride: 44, temporaryHitPoints: 0 })
+	})
+
+	it('leaves temporary hit points alone when healing', () => {
+		const onEditHitPoints = vi.fn()
+		renderHeader({ currentHp: 10, maxHitPoints: maxOf(44), temporaryHitPoints: 6, onEditHitPoints })
+		act('Heal', '5')
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 15, maxHpOverride: undefined, temporaryHitPoints: 6 })
+	})
+
+	it('replaces temporary hit points with a higher grant and keeps the higher one against a lower grant', () => {
+		const onEditHitPoints = vi.fn()
+		renderHeader({ currentHp: 30, maxHitPoints: maxOf(44), temporaryHitPoints: 5, onEditHitPoints })
+		act('Gain temporary HP', '8')
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 30, maxHpOverride: undefined, temporaryHitPoints: 8 })
+
+		cleanup()
+		renderHeader({ currentHp: 30, maxHitPoints: maxOf(44), temporaryHitPoints: 8, onEditHitPoints })
+		act('Gain temporary HP', '5')
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 30, maxHpOverride: undefined, temporaryHitPoints: 8 })
+	})
+
+	it('keeps direct entry alongside the panel, including for the temporary pile', () => {
+		const onEditHitPoints = vi.fn()
+		renderHeader({ currentHp: 30, maxHitPoints: maxOf(44), temporaryHitPoints: 8, onEditHitPoints })
+		const field = screen.getByLabelText('Temporary HP')
+		fireEvent.change(field, { target: { value: '3' } })
+		fireEvent.blur(field)
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 30, maxHpOverride: undefined, temporaryHitPoints: 3 })
+	})
+
+	it('offers no action at all while current HP is not set, and says why (D43)', () => {
+		renderHeader({ currentHp: undefined, maxHitPoints: maxOf(44), onEditHitPoints: vi.fn() })
+		fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5' } })
+		for (const name of ['Damage', 'Heal', 'Gain temporary HP']) {
+			expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
+		}
+		expect(screen.getByRole('group', { name: 'Damage and healing' }).textContent).toContain('Set current HP first')
+	})
+
+	it('withholds healing, and says why, when the maximum cannot be computed (D43)', () => {
+		renderHeader({ currentHp: 10, maxHitPoints: unknown('Character has no classes yet.'), onEditHitPoints: vi.fn() })
+		fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5' } })
+		expect((screen.getByRole('button', { name: 'Heal' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((screen.getByRole('button', { name: 'Damage' }) as HTMLButtonElement).disabled).toBe(false)
+		expect(screen.getByRole('group', { name: 'Damage and healing' }).textContent).toContain('Character has no classes yet.')
 	})
 })

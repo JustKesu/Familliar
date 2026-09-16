@@ -366,8 +366,23 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: 34 })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		expect('createdAtLevel' in migrated).toBe(false)
+	})
+
+	/* Slice 9a1 (D110): nobody had temporary hit points before this version, so absent is already right. */
+	it('carries a version-34 character forward with no temporary hit points', () => {
+		const before = {
+			schemaVersion: 34,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 5 }],
+			currentHp: 12,
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('temporaryHitPoints' in migrated).toBe(false)
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

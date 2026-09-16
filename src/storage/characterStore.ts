@@ -161,8 +161,21 @@ export interface CharacterCreateInput {
 	 */
 	currentHp?: number
 	maxHpOverride?: number
+	temporaryHitPoints?: number
 	familiar?: CharacterFamiliar
 	createdAtLevel?: number
+}
+
+/**
+ * The three hit-point fields `setHitPoints` writes together (slice 9a1). One
+ * object rather than three positional arguments, for the reason `create` took
+ * one in 8c0: damage and healing move two of them in a single write, and a
+ * caller that forgets a position would silently clear a pile.
+ */
+export interface HitPointFields {
+	currentHp?: number
+	maxHpOverride?: number
+	temporaryHitPoints?: number
 }
 
 /** The one place a Character is assembled from an input — shared by `create` and `update` so the two can never diverge on which fields an absent value omits. */
@@ -191,6 +204,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		hitPointLevels,
 		currentHp,
 		maxHpOverride,
+		temporaryHitPoints,
 		familiar,
 		createdAtLevel,
 	} = input
@@ -219,8 +233,10 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(currencyCopper ? { currencyCopper } : {}),
 		...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
 		...(hitPointLevels && hitPointLevels.length > 0 ? { hitPointLevels } : {}),
-		...(currentHp !== undefined ? { currentHp } : {}),
+		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
+		...(currentHp !== undefined ? { currentHp: Math.max(0, currentHp) } : {}),
 		...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
+		...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
 		...(familiar ? { familiar } : {}),
 		...(createdAtLevel !== undefined ? { createdAtLevel } : {}),
 	}
@@ -356,26 +372,30 @@ export class CharacterStore {
 	}
 
 	/**
-	 * Sets the character's hand-set hit-point fields (persistent-header slice 1;
-	 * the max became an OVERRIDE in slice 8a). A targeted write like
-	 * `setCurrency`: `currentHp` is still edited by hand and derived from nothing
-	 * (D9), while `maxHpOverride` replaces the computed maximum only when the
-	 * player sets it. Both are replaced from the given pair; `undefined` for
-	 * either clears it, matching how an absent field reads — "not set" for the
-	 * current, "use the computed maximum" for the override. 0 is a real value
-	 * and is kept.
+	 * Sets the character's hit-point fields (persistent-header slice 1; the max
+	 * became an OVERRIDE in slice 8a, temporary hit points arrived in 9a1). A
+	 * targeted write like `setCurrency`: `currentHp` is still edited by hand and
+	 * derived from nothing (D9), `maxHpOverride` replaces the computed maximum
+	 * only when the player sets it, and `temporaryHitPoints` is the second pile
+	 * damage spends first (D110). All three are replaced from the given object;
+	 * `undefined` clears one, matching how an absent field reads — "not set" for
+	 * the current, "use the computed maximum" for the override, "none" for the
+	 * temporary. `currentHp` keeps 0 as a real value; temporary 0 IS none.
 	 */
-	setHitPoints(id: string, currentHp: number | undefined, maxHpOverride: number | undefined): void {
+	setHitPoints(id: string, hitPoints: HitPointFields): void {
 		const characters = this.list()
 		const index = characters.findIndex((character) => character.id === id)
 		if (index === -1) throw new CharacterNotFoundError(id)
 
-		const { currentHp: _currentHp, maxHpOverride: _maxHpOverride, ...rest } = characters[index]
+		const { currentHp: _currentHp, maxHpOverride: _maxHpOverride, temporaryHitPoints: _temporaryHitPoints, ...rest } = characters[index]
+		const { currentHp, maxHpOverride, temporaryHitPoints } = hitPoints
 		const updated = [...characters]
 		updated[index] = {
 			...rest,
-			...(currentHp !== undefined ? { currentHp } : {}),
+			// D110: clamped here too, so no writer of currentHp can leave a negative behind.
+			...(currentHp !== undefined ? { currentHp: Math.max(0, currentHp) } : {}),
 			...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
+			...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
 		}
 		this.writeAll(updated)
 	}

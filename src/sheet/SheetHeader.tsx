@@ -12,12 +12,18 @@
  * five values above it, while CURRENT stays hand-edited and derived from
  * nothing (D9). The second input is no longer the maximum itself but an
  * override that replaces it.
+ *
+ * Slice 9a1 (D110) adds the second pile — temporary hit points, shown beside
+ * the pair and never added into it — and the damage/healing panel that moves
+ * both. Direct entry stays: it is how a mistake is corrected.
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { type ArmourClassValue } from '../calculation/armourClass'
 import { type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
+import { applyDamage, applyHealing, grantTemporaryHitPoints, type HitPointPools } from '../hitPoints/damageHealing'
+import type { HitPointFields } from '../storage/characterStore'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
@@ -72,6 +78,75 @@ function hpText(value: number | undefined): string {
 	return value === undefined ? '—' : String(value)
 }
 
+/**
+ * Damage and healing (D110). One amount and three things to do with it, each
+ * writing both piles in a single commit so the sheet never shows a half-applied
+ * hit. All three need a current value to act on, and healing also needs a
+ * maximum to stop at — when either is missing the panel says so rather than
+ * treating "not set" as 0 (D43). Direct entry stays available meanwhile.
+ */
+function DamageHealingPanel({
+	currentHp,
+	temporaryHitPoints,
+	maxHitPoints,
+	onApply,
+}: {
+	currentHp: number | undefined
+	temporaryHitPoints: number | undefined
+	maxHitPoints: Calculated<number>
+	onApply: (pools: HitPointPools) => void
+}): ReactNode {
+	const [draft, setDraft] = useState('')
+
+	const parsed = Math.floor(Number(draft.trim()))
+	const amount = draft.trim() !== '' && Number.isFinite(parsed) && parsed > 0 ? parsed : null
+	const maximum = maxHitPoints.status === 'known' ? maxHitPoints.value : null
+	const pools: HitPointPools = { currentHp: currentHp ?? 0, temporaryHitPoints: temporaryHitPoints ?? 0 }
+
+	function apply(next: HitPointPools): void {
+		onApply(next)
+		setDraft('')
+	}
+
+	return (
+		<div className="sheet__damage-healing" role="group" aria-label="Damage and healing">
+			<label>
+				Amount{' '}
+				<input
+					type="number"
+					min={1}
+					inputMode="numeric"
+					aria-label="Amount"
+					value={draft}
+					onChange={(event) => setDraft(event.target.value)}
+				/>
+			</label>{' '}
+			<button type="button" disabled={amount === null || currentHp === undefined} onClick={() => amount !== null && apply(applyDamage(pools, amount))}>
+				Damage
+			</button>{' '}
+			<button
+				type="button"
+				disabled={amount === null || currentHp === undefined || maximum === null}
+				onClick={() => amount !== null && maximum !== null && apply(applyHealing(pools, amount, maximum))}
+			>
+				Heal
+			</button>{' '}
+			<button
+				type="button"
+				disabled={amount === null || currentHp === undefined}
+				onClick={() => amount !== null && apply(grantTemporaryHitPoints(pools, amount))}
+			>
+				Gain temporary HP
+			</button>
+			{currentHp === undefined ? (
+				<p className="sheet__damage-healing-note">Set current HP first — damage and healing have nothing to act on.</p>
+			) : (
+				maximum === null && <p className="sheet__damage-healing-note">Healing is unavailable: {maxHitPoints.status === 'unknown' ? maxHitPoints.reason : ''}</p>
+			)}
+		</div>
+	)
+}
+
 export function SheetHeader({
 	name,
 	armourClass,
@@ -83,6 +158,7 @@ export function SheetHeader({
 	currentHp,
 	maxHitPoints,
 	maxHpOverride,
+	temporaryHitPoints,
 	onEditHitPoints,
 }: {
 	name: string
@@ -97,8 +173,10 @@ export function SheetHeader({
 	/** Computed (slice 8a). Already carries the override when one is set — the breakdown is what says so. */
 	maxHitPoints: Calculated<number>
 	maxHpOverride: number | undefined
-	/** Absent on a read-only sheet — the HP block then shows the pair without the fields. */
-	onEditHitPoints?: (currentHp: number | undefined, maxHpOverride: number | undefined) => void
+	/** A second pile, never added into the pair above it (D110). Absent or 0 is none. */
+	temporaryHitPoints: number | undefined
+	/** Absent on a read-only sheet — the HP block then shows the values without the fields or the panel. */
+	onEditHitPoints?: (hitPoints: HitPointFields) => void
 }): ReactNode {
 	return (
 		<header className="sheet__persistent-header">
@@ -165,17 +243,34 @@ export function SheetHeader({
 			<section className="sheet__hit-points">
 				<h2>Hit points</h2>
 				{/* Current is hand-edited (D9) and "—" is "not set", distinct from 0; the maximum is computed and shows "—" only when it cannot be. */}
+				{/* D110: temporary hit points are a SEPARATE figure — "44 / 44 + 8 temporary", never folded into either number. */}
 				<p className="sheet__hit-points-value">
 					{hpText(currentHp)} / {hpText(maxHitPoints.status === 'known' ? maxHitPoints.value : undefined)}
+					{temporaryHitPoints !== undefined && temporaryHitPoints > 0 && (
+						<span className="sheet__temporary-hit-points"> + {temporaryHitPoints} temporary</span>
+					)}
 				</p>
 				<div className="sheet__max-hit-points">
 					{maxHitPoints.status === 'unknown' ? <UnresolvedValue reason={maxHitPoints.reason} /> : <ValueBreakdown breakdown={maxHitPoints.breakdown} />}
 				</div>
 				{onEditHitPoints && (
-					<p>
-						<HitPointField label="Current HP" value={currentHp} onCommit={(value) => onEditHitPoints(value, maxHpOverride)} />{' '}
-						<HitPointField label="Max HP override" value={maxHpOverride} onCommit={(value) => onEditHitPoints(currentHp, value)} />
-					</p>
+					<>
+						<p>
+							<HitPointField label="Current HP" value={currentHp} onCommit={(value) => onEditHitPoints({ currentHp: value, maxHpOverride, temporaryHitPoints })} />{' '}
+							<HitPointField label="Max HP override" value={maxHpOverride} onCommit={(value) => onEditHitPoints({ currentHp, maxHpOverride: value, temporaryHitPoints })} />{' '}
+							<HitPointField
+								label="Temporary HP"
+								value={temporaryHitPoints}
+								onCommit={(value) => onEditHitPoints({ currentHp, maxHpOverride, temporaryHitPoints: value })}
+							/>
+						</p>
+						<DamageHealingPanel
+							currentHp={currentHp}
+							temporaryHitPoints={temporaryHitPoints}
+							maxHitPoints={maxHitPoints}
+							onApply={(pools) => onEditHitPoints({ currentHp: pools.currentHp, maxHpOverride, temporaryHitPoints: pools.temporaryHitPoints })}
+						/>
+					</>
 				)}
 			</section>
 		</header>

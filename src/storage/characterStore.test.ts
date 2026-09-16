@@ -1093,22 +1093,50 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		const store = new CharacterStore(backing)
 		const character = store.create({ name: 'Bruiser' })
 
-		store.setHitPoints(character.id, 31, 44)
+		store.setHitPoints(character.id, { currentHp: 31, maxHpOverride: 44 })
 		const reloaded = new CharacterStore(backing).list()[0]
 		expect(reloaded.currentHp).toBe(31)
 		expect(reloaded.maxHpOverride).toBe(44)
 
 		// 0 is a real value (a downed character) and is kept; undefined clears the override so the computed maximum stands again.
-		store.setHitPoints(character.id, 0, undefined)
+		store.setHitPoints(character.id, { currentHp: 0 })
 		const after = new CharacterStore(backing).list()[0]
 		expect(after.currentHp).toBe(0)
 		expect(after.maxHpOverride).toBeUndefined()
 		expect('maxHpOverride' in after).toBe(false)
 	})
 
+	/* Slice 9a1 (D110): the third field, stored only while there are any. */
+	it('round-trips temporary hit points and stores none as the field’s absence', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Bruiser' })
+
+		store.setHitPoints(character.id, { currentHp: 20, temporaryHitPoints: 8 })
+		expect(new CharacterStore(backing).list()[0].temporaryHitPoints).toBe(8)
+
+		store.setHitPoints(character.id, { currentHp: 20, temporaryHitPoints: 0 })
+		const after = new CharacterStore(backing).list()[0]
+		expect(after.temporaryHitPoints).toBeUndefined()
+		expect('temporaryHitPoints' in after).toBe(false)
+	})
+
+	/* D110: negative current hit points mean nothing under the 2024 rules; no write path may leave one behind. */
+	it('clamps a negative current HP at 0, whether it arrives through create, update or setHitPoints', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Bruiser', currentHp: -4 })
+		expect(character.currentHp).toBe(0)
+
+		store.setHitPoints(character.id, { currentHp: -9 })
+		expect(new CharacterStore(backing).list()[0].currentHp).toBe(0)
+
+		expect(store.update(character.id, { name: 'Bruiser', currentHp: -1 }).currentHp).toBe(0)
+	})
+
 	it('throws CharacterNotFoundError for an unknown id', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		expect(() => store.setHitPoints('nope', 10, 10)).toThrow(CharacterNotFoundError)
+		expect(() => store.setHitPoints('nope', { currentHp: 10, maxHpOverride: 10 })).toThrow(CharacterNotFoundError)
 	})
 
 	it('rejects a saved character whose hit points are negative or fractional', () => {

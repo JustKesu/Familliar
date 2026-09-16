@@ -701,14 +701,14 @@ export function describeCurrencyError(value: unknown): string | null {
 }
 
 /**
- * Validates the optional hand-set hit-point fields — `currentHp` (D9) and, as
- * of slice 8a, `maxHpOverride`. Each is a non-negative whole number when
- * present; absent means "not set". Deliberately does not check currentHp
- * against the maximum — clamping is play tracking (build order step 9), and
- * either field may legitimately be absent.
+ * Validates the optional hit-point fields — `currentHp` (D9), `maxHpOverride`
+ * (slice 8a) and `temporaryHitPoints` (slice 9a1, D110). Each is a non-negative
+ * whole number when present; absent means "not set" / "none". Deliberately does
+ * not check currentHp against the maximum: the maximum is computed, not stored,
+ * and a lowered maximum leaves a legitimately higher current behind.
  */
 export function describeHitPointsError(value: Record<string, unknown>): string | null {
-	for (const key of ['currentHp', 'maxHpOverride'] as const) {
+	for (const key of ['currentHp', 'maxHpOverride', 'temporaryHitPoints'] as const) {
 		const hp = value[key]
 		if (hp === undefined) continue
 		if (typeof hp !== 'number' || !Number.isInteger(hp) || hp < 0) {
@@ -982,6 +982,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const currencyCopper = value['currencyCopper']
 	const currentHp = value['currentHp']
 	const maxHpOverride = value['maxHpOverride']
+	const temporaryHitPoints = value['temporaryHitPoints']
 	const hitPointLevels = value['hitPointLevels']
 	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
 	const createdAtLevel = value['createdAtLevel']
@@ -1012,6 +1013,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(typeof currencyCopper === 'number' ? { currencyCopper } : {}),
 		...(typeof currentHp === 'number' ? { currentHp } : {}),
 		...(typeof maxHpOverride === 'number' ? { maxHpOverride } : {}),
+		...(typeof temporaryHitPoints === 'number' ? { temporaryHitPoints } : {}),
 		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),

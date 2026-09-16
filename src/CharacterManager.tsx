@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { CharacterStore } from './storage/characterStore'
+import { CharacterStore, type HitPointFields } from './storage/characterStore'
 import { StorageError } from './storage/errors'
 import type { Character, CharacterFamiliar, CharacterInventoryItem } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
@@ -179,9 +179,9 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setCurrency(id, copper))
 	}
 
-	function handleEditHitPoints(id: string, currentHp: number | undefined, maxHpOverride: number | undefined): void {
+	function handleEditHitPoints(id: string, hitPoints: HitPointFields): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.setHitPoints(id, currentHp, maxHpOverride))
+		withErrorHandling(() => store.store?.setHitPoints(id, hitPoints))
 	}
 
 	function handleDelete(id: string): void {
@@ -274,7 +274,7 @@ function CharacterManager() {
 									onChooseFamiliar={(familiar) => handleChooseFamiliar(sheetCharacter.id, familiar)}
 									onEditInventory={(inventory) => handleEditInventory(sheetCharacter.id, inventory)}
 									onEditCurrency={(copper) => handleEditCurrency(sheetCharacter.id, copper)}
-									onEditHitPoints={(currentHp, maxHpOverride) => handleEditHitPoints(sheetCharacter.id, currentHp, maxHpOverride)}
+									onEditHitPoints={(hitPoints) => handleEditHitPoints(sheetCharacter.id, hitPoints)}
 									onEditCharacter={() => {
 										setCreating(false)
 										setLevelUpGains(null)

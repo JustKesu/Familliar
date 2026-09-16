@@ -270,6 +270,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 34 }),
 	},
+	{
+		from: 34,
+		to: 35,
+		/*
+		 * 35 adds Character.temporaryHitPoints (slice 9a1, D110). Absent is the
+		 * right value for every existing character — temporary hit points are
+		 * gained in play and nothing before this version could grant any — so the
+		 * step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 35 }),
+	},
 ]
 
 /**

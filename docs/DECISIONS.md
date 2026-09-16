@@ -2195,3 +2195,55 @@ features (D108) — `locked`, ne `disabled`, aby zůstala vidět jako vybraná.
 dřívějšího feat/ASI pick nebo class-option pick.
 
 **Wild Shape formy a kouzla se pořád nezamykají** — D104/D106 beze změny.
+
+## D110 — Dočasné životy jsou druhá hromádka; poškození a léčení je panel v hlavičce; current HP nikdy neklesne pod 0
+
+Slice 9a1, první stavební slice kroku 9 a **pilot pro ukládání play state**.
+`src/storage/character.ts` (`temporaryHitPoints`, schéma 35),
+`src/hitPoints/damageHealing.ts`, `src/sheet/SheetHeader.tsx`,
+`CharacterStore.setHitPoints`.
+
+**Úložiště.** `Character.temporaryHitPoints?: number` — nepovinné pole, jehož
+NEPŘÍTOMNOST znamená „žádné". Schéma 34→35, migrace jen tag: nepřítomnost je
+správná hodnota pro každou existující postavu, protože dočasné životy vznikají
+až ve hře. 0 se ukládá jako nepřítomnost pole (na rozdíl od `currentHp`, kde 0
+je platný stav — postava v bezvědomí); „žádné dočasné životy" má jen jeden
+význam. Tenhle tvar (nepovinné pole, absence = nic nespotřebováno, migrace jen
+tag) je vzor, který kopírují další slice kroku 9 — sloty, hit dice, death saves,
+pool uses.
+
+**Dočasné životy jsou DRUHÁ hromádka, nikdy se nepřičítají k current.**
+Hlavička je ukazuje jako samostatnou položku — „30 / 39 + 8 temporary", nikdy
+„38 / 47". Poškození jde nejdřív z nich a teprve zbytek z current. Léčení je
+neobnovuje (nejsou to utržená zranění). Nový grant se NESČÍTÁ — vyhrává vyšší
+hodnota, nižší grant nechá stávající hromádku být.
+
+**Panel poškození/léčení v hlavičce.** Jedno pole „Amount" a tři tlačítka
+(Damage / Heal / Gain temporary HP); každé zapíše obě hromádky JEDNÍM zápisem,
+takže sheet nikdy neukáže půlku zásahu. Cíl clampu léčení je
+`computeMaxHitPoints`, ne uložené číslo — `maxHpOverride` existuje a uložené
+maximum neexistuje vůbec. Léčení nikdy nesnižuje current, které už sedí NAD
+maximem (to nechá po sobě snížené maximum).
+
+**D43 na obou vstupech panelu.** Bez nastaveného `currentHp` jsou všechna tři
+tlačítka nedostupná a panel řekne proč — „not set" se nesmí tiše číst jako 0.
+Když `computeMaxHitPoints` vrátí `unknown`, je nedostupné jen Heal a nese
+důvod; Damage zůstává, protože maximum k němu není potřeba.
+
+**Přímé zadání zůstává (D9).** Pole Current HP i nové Temporary HP se dál dají
+vyplnit ručně vedle panelu — tak hráč opraví chybu nebo zapíše postavu, která
+je už zraněná. Panel je pohodlí, ne jediná cesta.
+
+**Current HP nikdy nejde pod 0.** Záporné životy podle pravidel 2024 nic
+neznamenají. Clamp je na každé cestě zápisu: `buildCharacter` a `setHitPoints`
+v `CharacterStore` (takže úložiště zápornou hodnotu nepobere bez ohledu na
+volajícího), `HitPointField` a `currentHpAfterMaxHpChange` (D107) — ta mohla
+při odebrání úrovně těžce zraněnou postavu poslat do minusu. Tím se zavírá
+otevřená otázka z kroku 8. Clamp SHORA se pořád nedělá: maximum se neukládá a
+čerstvě snížené maximum legitimně nechá current výš.
+
+**`setHitPoints` bere objekt, ne poziční argumenty** — `setHitPoints(id, {
+currentHp, maxHpOverride, temporaryHitPoints })`. Stejný důvod jako u 8c0:
+poškození i léčení hýbou dvěma poli v jednom zápisu a zapomenutá pozice by
+tiše vymazala hromádku. Vzor „jeden setter na starost" zůstává — hit pointy
+jsou jedna starost.

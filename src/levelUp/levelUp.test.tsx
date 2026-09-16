@@ -8,7 +8,7 @@ import { levelUpStepConditions, unknownLevelUpSteps } from './levelUpSteps'
 import { overwrittenHeldPicks } from './heldPicks'
 import { LevelUpButton } from './LevelUpButton'
 import { isStepComplete, saveCharacter, visibleSteps, wizardDataFromCharacter } from '../creation/wizardState'
-import type { Character } from '../storage/character'
+import type { Character, FeatAsiChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 
 /* Build order step 8, slice 8d3: the Level up button and the walk it opens. */
@@ -135,7 +135,8 @@ describe('saving a level up', () => {
 			classChoice: { className: 'Fighter', classSource: 'XPHB', level: 4 },
 			masteries: [...seed.masteries, 'Rapier'],
 			classOptionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Repelling Blast' }] }],
-			featAsiChoices: [{ level: 4, kind: 'asi' as const, increases: { strength: 2 } }],
+			// Annotated, not inferred: the overwrite cases below replace this with a `feat` pick, which a literal 'asi' type would refuse.
+			featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] as FeatAsiChoice[],
 			hitPointLevels: [...seed.hitPointLevels, { level: 4, kind: 'roll' as const, dieResult: 7 }],
 		}
 	}

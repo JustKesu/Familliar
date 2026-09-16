@@ -22,6 +22,7 @@ import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpel
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells } from '../spells/raceSpells'
 import { choiceNames, CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition } from '../storage/character'
+import type { HitPointFields } from '../storage/characterStore'
 import { loadAcFormulaKeys } from './armourClassData'
 import { loadDamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
@@ -5525,7 +5526,7 @@ describe('CharacterSheet', () => {
 })
 
 describe('the persistent header (rebuild slice 1)', () => {
-	async function renderSheet(subject: Character, onEditHitPoints?: (currentHp: number | undefined, maxHpOverride: number | undefined) => void) {
+	async function renderSheet(subject: Character, onEditHitPoints?: (hitPoints: HitPointFields) => void) {
 		const result = render(<CharacterSheet character={subject} onEditHitPoints={onEditHitPoints} />)
 		await screen.findByRole('heading', { level: 1, name: subject.name })
 		return result
@@ -5582,7 +5583,19 @@ describe('the persistent header (rebuild slice 1)', () => {
 		const field = screen.getByLabelText('Current HP')
 		fireEvent.change(field, { target: { value: '11' } })
 		fireEvent.blur(field)
-		expect(onEditHitPoints).toHaveBeenLastCalledWith(11, 40)
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 11, maxHpOverride: 40, temporaryHitPoints: undefined })
+	})
+
+	/* Slice 9a1 (D110): the header reads the stored pile, and healing clamps to the maximum the sheet itself computed. */
+	it('shows stored temporary hit points beside the pair and heals no further than the computed maximum', async () => {
+		const onEditHitPoints = vi.fn()
+		const withHp: Character = { ...character, currentHp: 30, temporaryHitPoints: 8 }
+		const { container } = await renderSheet(withHp, onEditHitPoints)
+		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('30 / 39 + 8 temporary'))
+
+		fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '50' } })
+		fireEvent.click(screen.getByRole('button', { name: 'Heal' }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 39, maxHpOverride: undefined, temporaryHitPoints: 8 })
 	})
 
 	it('a species trait in the bonus table raises the computed maximum (slice 8a)', async () => {

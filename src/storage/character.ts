@@ -240,12 +240,22 @@ export interface Character {
 	/**
 	 * Current hit points (persistent-header rebuild, slice 1). D9: this one IS
 	 * the value the player edits by hand — nothing derives it. Absent means "not
-	 * set yet" (the header shows "—"), which is distinct from 0. No clamp against
-	 * the maximum: damage/healing clamping is build order step 9.
+	 * set yet" (the header shows "—"), which is distinct from 0. Never negative
+	 * (slice 9a1, D110): every writer clamps at 0.
 	 *
-	 * The MAXIMUM is no longer stored beside it — see hitPointLevels.
+	 * Still not clamped against the MAXIMUM — the maximum is not stored (see
+	 * hitPointLevels) and a character may legitimately sit above a maximum that
+	 * has just been lowered. Healing is what clamps upwards (D110).
 	 */
 	currentHp?: number
+	/**
+	 * Temporary hit points (slice 9a1, D110) — the first play-state field. A
+	 * SECOND pile, never folded into currentHp: damage spends it first, healing
+	 * never restores it, and a new grant replaces it only when it is higher.
+	 * Absent means none; 0 is stored as absence, since "no temporary hit points"
+	 * has one meaning here, unlike currentHp's 0.
+	 */
+	temporaryHitPoints?: number
 	/**
 	 * One contribution per character level, WITHOUT Constitution (build order
 	 * step 8, slice 8a). The maximum is never stored as a single finished number:
@@ -753,13 +763,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 34 for Character.createdAtLevel (slice 8e),
- * which the migration leaves absent on every older character — its creation
- * level is not known.
+ * (see wireFormat.ts). Bumped to 35 for Character.temporaryHitPoints (slice
+ * 9a1), which absent already describes correctly on every older character —
+ * nobody has any.
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 34
+export const CURRENT_SCHEMA_VERSION = 35
