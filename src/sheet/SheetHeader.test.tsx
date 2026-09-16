@@ -38,6 +38,7 @@ function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}
 			maxHitPoints={maxOf(12)}
 			maxHpOverride={undefined}
 			temporaryHitPoints={undefined}
+			deathSaves={undefined}
 			{...overrides}
 		/>,
 	)
@@ -79,12 +80,13 @@ describe('SheetHeader', () => {
 		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('0 / 12')
 	})
 
-	it('has no hit-point inputs and no damage panel on a read-only sheet', () => {
-		renderHeader({ currentHp: 10 })
+	it('has no hit-point inputs and no damage or death-save panel on a read-only sheet', () => {
+		renderHeader({ currentHp: 0 })
 		expect(screen.queryByLabelText('Current HP')).toBeNull()
 		expect(screen.queryByLabelText('Max HP override')).toBeNull()
 		expect(screen.queryByLabelText('Temporary HP')).toBeNull()
 		expect(screen.queryByRole('group', { name: 'Damage and healing' })).toBeNull()
+		expect(screen.queryByRole('group', { name: 'Death saving throws' })).toBeNull()
 	})
 
 	it('carries the computed maximum’s own breakdown, collapsed by default (slice 8a)', async () => {
@@ -212,5 +214,124 @@ describe('SheetHeader temporary hit points and the damage/healing panel', () => 
 		expect((screen.getByRole('button', { name: 'Heal' }) as HTMLButtonElement).disabled).toBe(true)
 		expect((screen.getByRole('button', { name: 'Damage' }) as HTMLButtonElement).disabled).toBe(false)
 		expect(screen.getByRole('group', { name: 'Damage and healing' }).textContent).toContain('Character has no classes yet.')
+	})
+})
+
+/* Slice 9a2 (D111). */
+describe('SheetHeader death saving throws', () => {
+	/** A death save panel on a dying character, with the app's d20 pinned to `roll`. */
+	function renderDying(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}, roll?: number) {
+		if (roll !== undefined) vi.spyOn(Math, 'random').mockReturnValue((roll - 1) / 20)
+		const onEditHitPoints = vi.fn()
+		renderHeader({ currentHp: 0, maxHitPoints: maxOf(44), onEditHitPoints, ...overrides })
+		return onEditHitPoints
+	}
+
+	function panel(): HTMLElement {
+		return screen.getByRole('group', { name: 'Death saving throws' })
+	}
+
+	afterEach(() => vi.restoreAllMocks())
+
+	it('is hidden above 0 hit points and shown at exactly 0', () => {
+		renderHeader({ currentHp: 1, maxHitPoints: maxOf(44), onEditHitPoints: vi.fn() })
+		expect(screen.queryByRole('group', { name: 'Death saving throws' })).toBeNull()
+
+		cleanup()
+		renderDying()
+		expect(panel().textContent).toContain('Successes: 0 / 3')
+		expect(panel().textContent).toContain('Failures: 0 / 3')
+	})
+
+	/* "Not set" is not 0 (D43): there is nothing to be dying from. */
+	it('is hidden while current HP is not set', () => {
+		renderHeader({ currentHp: undefined, maxHitPoints: maxOf(44), onEditHitPoints: vi.fn() })
+		expect(screen.queryByRole('group', { name: 'Death saving throws' })).toBeNull()
+	})
+
+	it('adds one success or one failure per manual click', () => {
+		const onEditHitPoints = renderDying({ deathSaves: { successes: 1, failures: 1 } })
+
+		fireEvent.click(screen.getByRole('button', { name: 'Success' }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({
+			currentHp: 0,
+			maxHpOverride: undefined,
+			temporaryHitPoints: undefined,
+			deathSaves: { successes: 2, failures: 1 },
+		})
+
+		fireEvent.click(screen.getByRole('button', { name: 'Failure' }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({
+			currentHp: 0,
+			maxHpOverride: undefined,
+			temporaryHitPoints: undefined,
+			deathSaves: { successes: 1, failures: 2 },
+		})
+	})
+
+	it('never takes a manual count past three', () => {
+		const onEditHitPoints = renderDying({ deathSaves: { successes: 2, failures: 2 } })
+		fireEvent.click(screen.getByRole('button', { name: 'Failure' }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith(expect.objectContaining({ deathSaves: { successes: 2, failures: 3 } }))
+	})
+
+	it.each([
+		[14, { successes: 1, failures: 0 }, 'a success'],
+		[10, { successes: 1, failures: 0 }, 'a success'],
+		[9, { successes: 0, failures: 1 }, 'a failure'],
+		[2, { successes: 0, failures: 1 }, 'a failure'],
+		[1, { successes: 0, failures: 2 }, 'two failures'],
+	])('applies the outcome for a rolled %i and shows the number', (roll, expected, message) => {
+		const onEditHitPoints = renderDying({}, roll)
+		fireEvent.click(screen.getByRole('button', { name: 'Roll death save' }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith(expect.objectContaining({ currentHp: 0, deathSaves: expected }))
+		expect(panel().textContent).toContain(`Rolled ${roll} — ${message}`)
+	})
+
+	it('hands back one hit point and drops the progress on a natural 20', () => {
+		const onEditHitPoints = renderDying({ deathSaves: { successes: 1, failures: 2 } }, 20)
+		fireEvent.click(screen.getByRole('button', { name: 'Roll death save' }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({
+			currentHp: 1,
+			maxHpOverride: undefined,
+			temporaryHitPoints: undefined,
+			deathSaves: undefined,
+		})
+	})
+
+	it('stops at three successes, saying the character is stabilized', () => {
+		renderDying({ deathSaves: { successes: 3, failures: 1 } })
+		expect(panel().textContent).toContain('Stabilized')
+		for (const name of ['Roll death save', 'Success', 'Failure']) {
+			expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
+		}
+	})
+
+	/* The panel stays visible: a vanished panel would read as a bug rather than as the character's death. */
+	it('stops at three failures, saying the character died, and stays on screen', () => {
+		renderDying({ deathSaves: { successes: 1, failures: 3 } })
+		expect(panel().textContent).toContain('This character has died.')
+		for (const name of ['Roll death save', 'Success', 'Failure']) {
+			expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
+		}
+	})
+
+	it('drops the progress when the damage panel heals the character above 0', () => {
+		const onEditHitPoints = renderDying({ deathSaves: { successes: 2, failures: 1 } })
+		fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '7' } })
+		fireEvent.click(screen.getByRole('button', { name: 'Heal' }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith({
+			currentHp: 7,
+			maxHpOverride: undefined,
+			temporaryHitPoints: 0,
+			deathSaves: undefined,
+		})
+	})
+
+	it('keeps the progress through a write that leaves the character at 0', () => {
+		const onEditHitPoints = renderDying({ deathSaves: { successes: 2, failures: 1 }, temporaryHitPoints: undefined })
+		fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5' } })
+		fireEvent.click(screen.getByRole('button', { name: 'Damage' }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith(expect.objectContaining({ currentHp: 0, deathSaves: { successes: 2, failures: 1 } }))
 	})
 })

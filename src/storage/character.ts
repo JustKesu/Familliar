@@ -257,6 +257,14 @@ export interface Character {
 	 */
 	temporaryHitPoints?: number
 	/**
+	 * Death saving throw progress (slice 9a2, D111). Present ONLY while
+	 * `currentHp` is exactly 0 — the store drops it on any write that leaves the
+	 * current above 0, so there is no leftover progress to come back to. Absent
+	 * means no death save is in progress, and all-zero counts are stored as that
+	 * absence, the same way temporary 0 is (D110).
+	 */
+	deathSaves?: CharacterDeathSaves
+	/**
 	 * One contribution per character level, WITHOUT Constitution (build order
 	 * step 8, slice 8a). The maximum is never stored as a single finished number:
 	 * a later Constitution increase raises hit points retroactively for every
@@ -297,6 +305,12 @@ export interface Character {
 	 * schema version 34 — and removal is then refused rather than guessed.
 	 */
 	createdAtLevel?: number
+}
+
+/** Three boxes each, counted 0–3 (D111). Which individual box was ticked carries no meaning, so only the counts are stored. */
+export interface CharacterDeathSaves {
+	successes: number
+	failures: number
 }
 
 /**
@@ -772,4 +786,4 @@ export type FeatAsiChoice =
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 35
+export const CURRENT_SCHEMA_VERSION = 36

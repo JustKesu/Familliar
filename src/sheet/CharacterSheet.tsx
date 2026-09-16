@@ -2299,6 +2299,7 @@ export function CharacterSheet({
 				maxHitPoints={maxHitPoints}
 				maxHpOverride={character.maxHpOverride}
 				temporaryHitPoints={character.temporaryHitPoints}
+				deathSaves={character.deathSaves}
 				onEditHitPoints={onEditHitPoints}
 			/>
 

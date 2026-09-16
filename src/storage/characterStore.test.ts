@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
+import { applyHealing } from '../hitPoints/damageHealing'
 import { choiceNames, CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE } from './character'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
 import {
@@ -1153,6 +1154,51 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], maxHpOverride: 12.5 }]),
 		)
 		expect(() => new CharacterStore(fractional).list()).toThrow(CorruptDataError)
+	})
+
+	/* Slice 9a2 (D111): the progress is bound to the current, so the store is where the pair can never go wrong. */
+	it('keeps death saves only while current HP is exactly 0, on every write path', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Bruiser', currentHp: 0, deathSaves: { successes: 2, failures: 1 } })
+		expect(character.deathSaves).toEqual({ successes: 2, failures: 1 })
+
+		// The heal a player applies through the damage panel — the progress goes with the dying.
+		const healed = applyHealing({ currentHp: 0, temporaryHitPoints: 0 }, 7, 39)
+		store.setHitPoints(character.id, { currentHp: healed.currentHp, deathSaves: { successes: 2, failures: 1 } })
+		const after = new CharacterStore(backing).list()[0]
+		expect(after.currentHp).toBe(7)
+		expect(after.deathSaves).toBeUndefined()
+		expect('deathSaves' in after).toBe(false)
+
+		// Direct entry back to 0 starts a fresh death save; nothing survived to come back to.
+		store.setHitPoints(character.id, { currentHp: 0 })
+		expect(new CharacterStore(backing).list()[0].deathSaves).toBeUndefined()
+
+		// All-zero counts are "none", written as the field's absence, like temporary 0 (D110).
+		store.setHitPoints(character.id, { currentHp: 0, deathSaves: { successes: 0, failures: 0 } })
+		expect('deathSaves' in new CharacterStore(backing).list()[0]).toBe(false)
+
+		// An update that leaves the character conscious drops them too, whatever the caller passed.
+		expect(store.update(character.id, { name: 'Bruiser', currentHp: 12, deathSaves: { successes: 1, failures: 1 } }).deathSaves).toBeUndefined()
+	})
+
+	it('rejects a saved character whose death saves are out of range', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], currentHp: 0, deathSaves: { successes: 4, failures: 0 } }]),
+		)
+		expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+	})
+
+	it('round-trips death saves at 0 hit points', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], currentHp: 0, deathSaves: { successes: 1, failures: 2 } }]),
+		)
+		expect(new CharacterStore(backing).list()[0].deathSaves).toEqual({ successes: 1, failures: 2 })
 	})
 
 	it('round-trips hitPointLevels and rejects a malformed one (slice 8a)', () => {

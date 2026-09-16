@@ -1066,6 +1066,8 @@ export function saveCharacter(
 		maxHpOverride: existing?.maxHpOverride,
 		// D110: play state, not a level-time choice — an edit or a level up carries it across unchanged.
 		temporaryHitPoints: existing?.temporaryHitPoints,
+		// D111: the store keeps this only while the resulting current is 0, so a level up that raises it clears it by itself.
+		deathSaves: existing?.deathSaves,
 		familiar: existing?.familiar,
 		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".
 		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,

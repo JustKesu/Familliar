@@ -5,6 +5,7 @@ import type {
 	CharacterBackground,
 	CharacterClass,
 	CharacterClassFeatureChoice,
+	CharacterDeathSaves,
 	CharacterFamiliar,
 	CharacterHitPointLevel,
 	CharacterInventoryItem,
@@ -19,6 +20,7 @@ import type {
 	FeatAsiChoice,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
+import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
 import {
 	CharacterNotFoundError,
 	CorruptDataError,
@@ -162,20 +164,22 @@ export interface CharacterCreateInput {
 	currentHp?: number
 	maxHpOverride?: number
 	temporaryHitPoints?: number
+	deathSaves?: CharacterDeathSaves
 	familiar?: CharacterFamiliar
 	createdAtLevel?: number
 }
 
 /**
- * The three hit-point fields `setHitPoints` writes together (slice 9a1). One
- * object rather than three positional arguments, for the reason `create` took
- * one in 8c0: damage and healing move two of them in a single write, and a
- * caller that forgets a position would silently clear a pile.
+ * The hit-point fields `setHitPoints` writes together (slice 9a1; death saves
+ * joined them in 9a2). One object rather than positional arguments, for the
+ * reason `create` took one in 8c0: damage and healing move several of them in a
+ * single write, and a caller that forgets a position would silently clear a pile.
  */
 export interface HitPointFields {
 	currentHp?: number
 	maxHpOverride?: number
 	temporaryHitPoints?: number
+	deathSaves?: CharacterDeathSaves
 }
 
 /** The one place a Character is assembled from an input — shared by `create` and `update` so the two can never diverge on which fields an absent value omits. */
@@ -205,9 +209,13 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		currentHp,
 		maxHpOverride,
 		temporaryHitPoints,
+		deathSaves,
 		familiar,
 		createdAtLevel,
 	} = input
+
+	const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
+	const storedDeathSaves = deathSavesAfterHitPointChange(storedCurrentHp, deathSaves)
 
 	return {
 		id,
@@ -234,9 +242,11 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
 		...(hitPointLevels && hitPointLevels.length > 0 ? { hitPointLevels } : {}),
 		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
-		...(currentHp !== undefined ? { currentHp: Math.max(0, currentHp) } : {}),
+		...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),
 		...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
 		...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
+		// D111: death-save progress only survives a write that leaves the character at exactly 0.
+		...(storedDeathSaves ? { deathSaves: storedDeathSaves } : {}),
 		...(familiar ? { familiar } : {}),
 		...(createdAtLevel !== undefined ? { createdAtLevel } : {}),
 	}
@@ -381,21 +391,34 @@ export class CharacterStore {
 	 * `undefined` clears one, matching how an absent field reads — "not set" for
 	 * the current, "use the computed maximum" for the override, "none" for the
 	 * temporary. `currentHp` keeps 0 as a real value; temporary 0 IS none.
+	 *
+	 * `deathSaves` (9a2, D111) rides along because it is bound to `currentHp`:
+	 * progress is kept only when this write leaves the character at exactly 0,
+	 * so a heal — or a hand-typed current — clears it without the caller asking.
 	 */
 	setHitPoints(id: string, hitPoints: HitPointFields): void {
 		const characters = this.list()
 		const index = characters.findIndex((character) => character.id === id)
 		if (index === -1) throw new CharacterNotFoundError(id)
 
-		const { currentHp: _currentHp, maxHpOverride: _maxHpOverride, temporaryHitPoints: _temporaryHitPoints, ...rest } = characters[index]
-		const { currentHp, maxHpOverride, temporaryHitPoints } = hitPoints
+		const {
+			currentHp: _currentHp,
+			maxHpOverride: _maxHpOverride,
+			temporaryHitPoints: _temporaryHitPoints,
+			deathSaves: _deathSaves,
+			...rest
+		} = characters[index]
+		const { currentHp, maxHpOverride, temporaryHitPoints, deathSaves } = hitPoints
+		// D110: clamped here too, so no writer of currentHp can leave a negative behind.
+		const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
+		const storedDeathSaves = deathSavesAfterHitPointChange(storedCurrentHp, deathSaves)
 		const updated = [...characters]
 		updated[index] = {
 			...rest,
-			// D110: clamped here too, so no writer of currentHp can leave a negative behind.
-			...(currentHp !== undefined ? { currentHp: Math.max(0, currentHp) } : {}),
+			...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),
 			...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
 			...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
+			...(storedDeathSaves ? { deathSaves: storedDeathSaves } : {}),
 		}
 		this.writeAll(updated)
 	}

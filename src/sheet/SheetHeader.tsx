@@ -16,6 +16,9 @@
  * Slice 9a1 (D110) adds the second pile — temporary hit points, shown beside
  * the pair and never added into it — and the damage/healing panel that moves
  * both. Direct entry stays: it is how a mistake is corrected.
+ *
+ * Slice 9a2 (D111) adds the death saving throws beside it, rendered only while
+ * the current is exactly 0 and gone the moment anything lifts it above 0.
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
@@ -23,6 +26,19 @@ import { type ArmourClassValue } from '../calculation/armourClass'
 import { type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { applyDamage, applyHealing, grantTemporaryHitPoints, type HitPointPools } from '../hitPoints/damageHealing'
+import {
+	applyDeathSaveRoll,
+	DEATH_SAVE_BOXES,
+	deathSavesAfterHitPointChange,
+	deathSaveState,
+	describeDeathSaveRoll,
+	NO_DEATH_SAVES,
+	recordFailures,
+	recordSuccesses,
+	rollDeathSaveDie,
+	type DeathSaveProgress,
+} from '../hitPoints/deathSaves'
+import type { CharacterDeathSaves } from '../storage/character'
 import type { HitPointFields } from '../storage/characterStore'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
@@ -147,6 +163,62 @@ function DamageHealingPanel({
 	)
 }
 
+/**
+ * Death saving throws (D111). Rendered only at exactly 0 current hit points; the
+ * caller mounts and unmounts it, so there is no state to clear when the
+ * character comes back up. Two ways to record a result side by side, with no
+ * toggle between them: the app rolls its own plain d20, or the player who rolled
+ * a physical die clicks the box themselves. Both stop once the third box on
+ * either row is ticked — the character is stabilized or dead, and the panel
+ * stays put saying which until the hit points change.
+ */
+function DeathSavePanel({
+	deathSaves,
+	onApply,
+}: {
+	deathSaves: DeathSaveProgress
+	onApply: (next: { currentHp: number; deathSaves: DeathSaveProgress | undefined }) => void
+}): ReactNode {
+	const [lastRoll, setLastRoll] = useState<string | null>(null)
+	const state = deathSaveState(deathSaves)
+	const finished = state !== 'rolling'
+
+	function roll(): void {
+		const result = applyDeathSaveRoll(deathSaves, rollDeathSaveDie())
+		setLastRoll(describeDeathSaveRoll(result))
+		// A natural 20 is a heal like any other: 1 hit point back, and the progress goes with the dying.
+		onApply({ currentHp: result.regainsHitPoint ? 1 : 0, deathSaves: result.regainsHitPoint ? undefined : result.progress })
+	}
+
+	return (
+		<div className="sheet__death-saves" role="group" aria-label="Death saving throws">
+			<h3>Death saving throws</h3>
+			<p className="sheet__death-save-counts">
+				<span className="sheet__death-save-successes">
+					Successes: {deathSaves.successes} / {DEATH_SAVE_BOXES}
+				</span>{' '}
+				<span className="sheet__death-save-failures">
+					Failures: {deathSaves.failures} / {DEATH_SAVE_BOXES}
+				</span>
+			</p>
+			<button type="button" disabled={finished} onClick={roll}>
+				Roll death save
+			</button>{' '}
+			<button type="button" disabled={finished} onClick={() => onApply({ currentHp: 0, deathSaves: recordSuccesses(deathSaves) })}>
+				Success
+			</button>{' '}
+			<button type="button" disabled={finished} onClick={() => onApply({ currentHp: 0, deathSaves: recordFailures(deathSaves) })}>
+				Failure
+			</button>
+			{lastRoll && <p className="sheet__death-save-roll">{lastRoll}</p>}
+			{state === 'stabilized' && (
+				<p className="sheet__death-save-state">Stabilized — still at 0 hit points and unconscious. Only healing brings this character back up.</p>
+			)}
+			{state === 'dead' && <p className="sheet__death-save-state">This character has died.</p>}
+		</div>
+	)
+}
+
 export function SheetHeader({
 	name,
 	armourClass,
@@ -159,6 +231,7 @@ export function SheetHeader({
 	maxHitPoints,
 	maxHpOverride,
 	temporaryHitPoints,
+	deathSaves,
 	onEditHitPoints,
 }: {
 	name: string
@@ -175,9 +248,14 @@ export function SheetHeader({
 	maxHpOverride: number | undefined
 	/** A second pile, never added into the pair above it (D110). Absent or 0 is none. */
 	temporaryHitPoints: number | undefined
+	/** Absent means no death save is in progress (D111) — which is the only possible state above 0 hit points. */
+	deathSaves: CharacterDeathSaves | undefined
 	/** Absent on a read-only sheet — the HP block then shows the values without the fields or the panel. */
 	onEditHitPoints?: (hitPoints: HitPointFields) => void
 }): ReactNode {
+	/** What the death saves are worth on a write that does not touch the current hit points (D111). */
+	const carriedDeathSaves = deathSavesAfterHitPointChange(currentHp, deathSaves)
+
 	return (
 		<header className="sheet__persistent-header">
 			<h1>{name}</h1>
@@ -255,21 +333,48 @@ export function SheetHeader({
 				</div>
 				{onEditHitPoints && (
 					<>
-						<p>
-							<HitPointField label="Current HP" value={currentHp} onCommit={(value) => onEditHitPoints({ currentHp: value, maxHpOverride, temporaryHitPoints })} />{' '}
-							<HitPointField label="Max HP override" value={maxHpOverride} onCommit={(value) => onEditHitPoints({ currentHp, maxHpOverride: value, temporaryHitPoints })} />{' '}
+					<p>
+							{/* D111: a hand-typed current clears the death saves exactly like a heal does — the rule is the same one function either way. */}
+							<HitPointField
+								label="Current HP"
+								value={currentHp}
+								onCommit={(value) =>
+									onEditHitPoints({ currentHp: value, maxHpOverride, temporaryHitPoints, deathSaves: deathSavesAfterHitPointChange(value, deathSaves) })
+								}
+							/>{' '}
+							<HitPointField
+								label="Max HP override"
+								value={maxHpOverride}
+								onCommit={(value) => onEditHitPoints({ currentHp, maxHpOverride: value, temporaryHitPoints, deathSaves: carriedDeathSaves })}
+							/>{' '}
 							<HitPointField
 								label="Temporary HP"
 								value={temporaryHitPoints}
-								onCommit={(value) => onEditHitPoints({ currentHp, maxHpOverride, temporaryHitPoints: value })}
+								onCommit={(value) => onEditHitPoints({ currentHp, maxHpOverride, temporaryHitPoints: value, deathSaves: carriedDeathSaves })}
 							/>
 						</p>
 						<DamageHealingPanel
 							currentHp={currentHp}
 							temporaryHitPoints={temporaryHitPoints}
 							maxHitPoints={maxHitPoints}
-							onApply={(pools) => onEditHitPoints({ currentHp: pools.currentHp, maxHpOverride, temporaryHitPoints: pools.temporaryHitPoints })}
+							onApply={(pools) =>
+								onEditHitPoints({
+									currentHp: pools.currentHp,
+									maxHpOverride,
+									temporaryHitPoints: pools.temporaryHitPoints,
+									deathSaves: deathSavesAfterHitPointChange(pools.currentHp, deathSaves),
+								})
+							}
 						/>
+						{/* D111: only while the character is dying. Healing or a typed-in number unmounts it, and the progress is gone with it. */}
+						{currentHp === 0 && (
+							<DeathSavePanel
+								deathSaves={deathSaves ?? NO_DEATH_SAVES}
+								onApply={(next) =>
+									onEditHitPoints({ currentHp: next.currentHp, maxHpOverride, temporaryHitPoints, deathSaves: next.deathSaves })
+								}
+							/>
+						)}
 					</>
 				)}
 			</section>

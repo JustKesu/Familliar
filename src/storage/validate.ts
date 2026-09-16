@@ -719,6 +719,25 @@ export function describeHitPointsError(value: Record<string, unknown>): string |
 }
 
 /**
+ * Validates the optional `deathSaves` field (slice 9a2, D111) — two whole
+ * numbers from 0 to 3. Absent means no death save is in progress. Deliberately
+ * does not check the pair against `currentHp`: keeping progress only while the
+ * current is 0 is the store's invariant, and a record that breaks it is dropped
+ * on the next write rather than refused on load (D43).
+ */
+export function describeDeathSavesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return 'deathSaves must be an object'
+	for (const key of ['successes', 'failures'] as const) {
+		const count = value[key]
+		if (typeof count !== 'number' || !Number.isInteger(count) || count < 0 || count > 3) {
+			return `deathSaves.${key} must be a whole number from 0 to 3`
+		}
+	}
+	return null
+}
+
+/**
  * Validates an optional `hitPointLevels` field (slice 8a). Returns null if the
  * field is absent — the state of every character until the per-level picker
  * (slice 8b) exists. The level is bounded at 20 the same way
@@ -940,6 +959,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (currencyError) return `[${index}].${currencyError}`
 	const hitPointsError = describeHitPointsError(value)
 	if (hitPointsError) return `[${index}].${hitPointsError}`
+	const deathSavesError = describeDeathSavesError(value['deathSaves'])
+	if (deathSavesError) return `[${index}].${deathSavesError}`
 	const hitPointLevelsError = describeHitPointLevelsError(value['hitPointLevels'])
 	if (hitPointLevelsError) return `[${index}].${hitPointLevelsError}`
 	const speciesSpellcastingAbilityError = describeSpeciesSpellcastingAbilityError(value['speciesSpellcastingAbility'])
@@ -983,6 +1004,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const currentHp = value['currentHp']
 	const maxHpOverride = value['maxHpOverride']
 	const temporaryHitPoints = value['temporaryHitPoints']
+	const deathSaves = value['deathSaves']
 	const hitPointLevels = value['hitPointLevels']
 	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
 	const createdAtLevel = value['createdAtLevel']
@@ -1014,6 +1036,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(typeof currentHp === 'number' ? { currentHp } : {}),
 		...(typeof maxHpOverride === 'number' ? { maxHpOverride } : {}),
 		...(typeof temporaryHitPoints === 'number' ? { temporaryHitPoints } : {}),
+		...(isRecord(deathSaves)
+			? { deathSaves: { successes: deathSaves['successes'] as number, failures: deathSaves['failures'] as number } }
+			: {}),
 		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),

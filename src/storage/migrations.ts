@@ -281,6 +281,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 35 }),
 	},
+	{
+		from: 35,
+		to: 36,
+		/*
+		 * 36 adds Character.deathSaves (slice 9a2, D111). Absent is the right
+		 * value for every existing character — a death save is in progress only
+		 * while play has a character at 0 hit points, and nothing before this
+		 * version could record one — so the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 36 }),
+	},
 ]
 
 /**

@@ -1,7 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-16 (9a1: dočasné životy, panel poškození/léčení
-v hlavičce, clamp current HP na 0, D110)
+Poslední aktualizace: 2026-09-16 (9a2: death saving throws v hlavičce, D111)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -476,6 +475,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | Slice | Co | Schéma |
    |---|---|---|
    | 9a1 | Dočasné životy, panel poškození/léčení v hlavičce, clamp current HP na 0 (D110) | 34→35 |
+   | 9a2 | Death saves — panel v hlavičce při 0 HP, hod appky i ruční klik, stabilizace/smrt (D111) | 35→36 |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -503,10 +503,35 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      max 39): grant 8 → nižší grant 5 nezvýšil, poškození 12 sežralo 8
      dočasných a 4 z current, léčení 50 zastavilo na 39, poškození 99 na 0,
      přímé zadání dál funguje.
+   - Slice 9a2 (D111) — death saving throws. `Character.deathSaves?: {
+     successes, failures }` (schéma 36, migrace 35→36 jen tag), počty 0–3,
+     nepřítomnost = neběží žádný. Pole existuje VÝHRADNĚ při `currentHp === 0`
+     a je to invariant úložiště, ne jen podmínka zobrazení: jediná
+     implementace pravidla `deathSavesAfterHitPointChange` běží v
+     `buildCharacter`, `setHitPoints` i v hlavičce, takže léčení panelem,
+     přímé zadání, level up i odebrání úrovně postup smažou samy a nezbyde
+     nic, k čemu se vrátit. Nový `src/hitPoints/deathSaves.ts` (čisté funkce
+     `classifyDeathSaveRoll`, `applyDeathSaveRoll`, `recordSuccesses`,
+     `recordFailures`, `deathSaveState`, `describeDeathSaveRoll`,
+     `rollDeathSaveDie`). `DeathSavePanel` v `SheetHeader.tsx` (jen při 0 HP):
+     počty, tlačítko „Roll death save" (vlastní d20 bez bonusů, hozené číslo se
+     ukáže — nat 20 = 1 HP zpátky a konec, nat 1 = dva neúspěchy se stropem 3,
+     10–19 úspěch, 2–9 neúspěch) a tlačítka „Success" / „Failure" pro fyzickou
+     kostku, obojí dostupné vedle sebe bez přepínače. Tři úspěchy = stabilizace,
+     tři neúspěchy = smrt; v obou případech jsou všechna tři tlačítka disabled
+     a panel zůstává viditelný — zmizelý panel by se četl jako chyba appky.
+     `HitPointFields` nese čtvrté pole, aby hit pointy a death saves šly jedním
+     zápisem. Testy: `deathSaves.test.ts`, blok v `SheetHeader.test.tsx`,
+     invariant + round trip + odmítnutí mimo rozsah v `characterStore.test.ts`,
+     migrace 35→36 v `migrations.test.ts`. Ověřeno v prohlížeči (Fighter 5,
+     max 44): panel jen na 0 HP, hody 7/19/1/20 daly přesně své výsledky,
+     ruční klikání se zastropovalo na 3, stabilizace i smrt zamkly tlačítka
+     (smrt s panelem dál na obrazovce), léčení i přímé zadání panel i uložený
+     postup smazaly.
    - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): spent spell slots,
-     spent hit dice, death saves, pool uses, odpočinky, tabulka akcí s počty
-     použití. Otevřené otázky k nim jsou v posledním REPORT.md ze session
-     průzkumu a nejsou tímhle slice rozhodnuté.
+     spent hit dice, pool uses, odpočinky, tabulka akcí s počty použití.
+     Otevřené otázky k nim jsou v posledním REPORT.md ze session průzkumu a
+     nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
 
 ## Co appka umí navíc k build orderu
@@ -534,7 +559,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Weapon proficiency/mastery a Extra Attack — jeden sdílený modul,
   strukturálně (podle dat zbraně), ne podle jména třídy.
 - Sdílený data loader — každý soubor z `data/` se stáhne nejvýš jednou.
-- Uložení — localStorage, verzované schéma (teď 35), migrace fungují od
+- Uložení — localStorage, verzované schéma (teď 36), migrace fungují od
   verze 16 výš (D69); starší uložená postava se odmítne, ne převede. Migrace
   29→30 je první, která DATA PŘESOUVÁ, ne jen přepisuje tag: ručně napsané
   `maxHp` jde do `maxHpOverride` (D91). Migrace 30→31 je první, která hodnotu
@@ -551,8 +576,9 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   dostane výchozí hodnotu samo: na plno při tvorbě, o rozdíl `maxHp` při level
   upu i odebrání úrovně; ruční přepsání kdykoli pak vyhrává. Druhé vstupní
   pole je "Max HP override" (`maxHpOverride`), ne maximum samo, třetí je od
-  9a1 "Temporary HP" (D110) a pod nimi je panel poškození/léčení;
-  `CharacterStore.setHitPoints` píše všechna tři pole jedním objektem.
+  9a1 "Temporary HP" (D110) a pod nimi je panel poškození/léčení a — jen při
+  0 current HP — panel death saves (9a2, D111);
+  `CharacterStore.setHitPoints` píše všechna čtyři pole jedním objektem.
   Není sticky (může se
   řešit později). Testy: `SheetHeader.test.tsx` a sekce v
   `CharacterSheet.test.tsx`.
@@ -668,12 +694,17 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-**Krok 9 začal.** Slice 9a1 (D110) zavedla dočasné životy, panel
+**Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic
-nespotřebováno, migrace jen tag. Další na řadě jsou spent spell slots, spent
-hit dice, death saves, pool uses a odpočinky — každé s vlastními rozhodnutími,
-která REPORT.md ze session průzkumu vyjmenovává a která zatím nejsou padlá.
+nespotřebováno, migrace jen tag. Slice 9a2 (D111) přidala death saves ve stejném
+tvaru, navíc s invariantem vázaným na `currentHp === 0`.
+
+Další na řadě je zbytek 9b — **hit dice** (spotřebované kostky), **spell slots**
+(spotřebované sloty), **pool uses** (počty použití u `consumes` cílů, viz
+otevřená otázka v D86) a **odpočinky** (co krátký a dlouhý odpočinek obnovuje).
+Každé má vlastní rozhodnutí, která REPORT.md ze session průzkumu vyjmenovává a
+která zatím nejsou padlá.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.

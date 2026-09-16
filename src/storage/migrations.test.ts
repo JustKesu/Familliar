@@ -385,6 +385,22 @@ describe('the migration chain (D69)', () => {
 		expect('temporaryHitPoints' in migrated).toBe(false)
 	})
 
+	/* Slice 9a2 (D111): a death save is in progress only during play, so no stored character has one. */
+	it('carries a version-35 character forward with no death saves in progress', () => {
+		const before = {
+			schemaVersion: 35,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 5 }],
+			currentHp: 0,
+			temporaryHitPoints: 4,
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('deathSaves' in migrated).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

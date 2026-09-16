@@ -314,3 +314,23 @@ u útoku na sheetu". Tam jde o to, že hráč nevidí, co vlastnost dělá; tady
 
 Nalezeno při slice 8c1 (Cowork, 12. 9.).
 STATUS: nerozhodnuto.
+
+### Play state jako plochá pole na `Character`, nebo jeden pod-objekt?
+
+`temporaryHitPoints` (9a1) a `deathSaves` (9a2) jsou první dvě pole play state
+a obě sedí přímo na `Character`. Zbytek kroku 9 jich přidá nejmíň další čtyři
+(spotřebované hit dice, spotřebované sloty, počty použití poolů, stav
+odpočinků).
+
+Otázka: nechat je plochá vedle voleb z tvorby postavy, nebo je od páté položky
+sloučit do jednoho `Character.play?: { … }`? Pod-objekt by oddělil „co postava
+JE" od „co má právě teď spotřebované" a dal by odpočinkům jedno místo, kde
+mažou; stál by ale migraci, která data PŘESOUVÁ (zatím jich je jen jedna,
+29→30), a všechny dnešní čtenáře.
+
+`deathSaves` je navíc první pole vázané na hodnotu jiného pole (`currentHp === 0`,
+D111) — invariant dnes drží `deathSavesAfterHitPointChange` v úložišti. Jestli
+takových vazeb přibude víc, patří to rozhodnutí sem taky.
+
+Nalezeno při slice 9a2.
+STATUS: nerozhodnuto.

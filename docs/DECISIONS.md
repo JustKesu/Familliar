@@ -2247,3 +2247,51 @@ currentHp, maxHpOverride, temporaryHitPoints })`. Stejný důvod jako u 8c0:
 poškození i léčení hýbou dvěma poli v jednom zápisu a zapomenutá pozice by
 tiše vymazala hromádku. Vzor „jeden setter na starost" zůstává — hit pointy
 jsou jedna starost.
+
+## D111 — Death saves jsou nepovinné pole vázané na `currentHp === 0`; hod appky a ruční klik vedle sebe; stabilizace a smrt zastaví hody, ale panel nezmizí
+
+Slice 9a2, druhá stavební slice kroku 9. Kopíruje tvar z D110.
+`src/storage/character.ts` (`deathSaves`, schéma 36),
+`src/hitPoints/deathSaves.ts`, `src/sheet/SheetHeader.tsx`,
+`CharacterStore.setHitPoints` / `buildCharacter`.
+
+**Úložiště.** `Character.deathSaves?: { successes: number; failures: number }`
+— jedno nepovinné pole se dvěma počty 0–3. NEPŘÍTOMNOST znamená „žádný death
+save neběží"; nula-nula se ukládá jako ta nepřítomnost, stejně jako dočasná 0
+v D110. Které konkrétní políčko je zaškrtnuté nenese žádný význam, takže se
+ukládají jen počty, ne pole boolů. Schéma 35→36, migrace jen tag: death save
+běží jen ve hře a nic před touhle verzí ho nemohlo zaznamenat.
+
+**Death saves existují VÝHRADNĚ při `currentHp === 0`.** Není to jen podmínka
+zobrazení — je to invariant úložiště. `deathSavesAfterHitPointChange(currentHp,
+deathSaves)` je jediná implementace toho pravidla a volá ji jak `buildCharacter`
+a `setHitPoints` (takže žádný zapisovatel — léčení, přímé zadání, level up,
+odebrání úrovně — nemůže nechat nemožnou dvojici), tak hlavička (aby hodnota,
+kterou předává, už četla pravdivě). Jakmile je current nad 0, postup je pryč;
+žádný „zbytek", ke kterému by se šlo vrátit. „Nenastaveno" není 0 (D43) —
+postava bez `currentHp` neumírá a panel nemá.
+
+**Dvě cesty vedle sebe, bez přepínače.** Tlačítko „Roll death save" hodí
+appka vlastní d20 — hod bez jakéhokoli bonusu, takže není co sdílet s obecným
+hodítkem kostek, které staví pozdější krok; hozené číslo se hráči VŽDY ukáže,
+protože kostku neviděl. Tlačítka „Success" / „Failure" jsou pro hráče, který
+hodil fyzickou kostkou: přičtou jedno políčko a nic neinterpretují — hráč už
+ví, co padlo. Obě cesty jsou dostupné pořád.
+
+**Přirozená 20 a přirozená 1 platí jen pro hod appky.** Nat 20 = postava má
+hned 1 current HP, postup se maže a panel zmizí — je to léčení jako každé
+jiné (zavírá se tím i přes obecné pravidlo výš). Nat 1 = DVA neúspěchy naráz,
+zastropované na 3 (nat 1 při dvou neúspěších dá tři, ne čtyři). 10–19 úspěch,
+2–9 neúspěch.
+
+**Tři úspěchy = stabilizováno, tři neúspěchy = smrt; obojí zastaví všechna tři
+tlačítka.** Stabilizovaná postava zůstává na 0 a v bezvědomí; „za 1k4 hodin"
+appka neumí, protože nesleduje čas, takže ji zpátky dostane jen léčení —
+což je už pokryté obecným pravidlem. **Panel po smrti NEZMIZÍ a nevynuluje
+se**: prázdný nebo zmizelý panel by se četl jako chyba appky, ne jako smrt
+postavy. Zmizí až se změnou `currentHp` (typicky přímé zadání, kterým hráč
+opravuje omyl).
+
+**`HitPointFields` nese čtvrté pole.** `setHitPoints` zapisuje death saves
+spolu s hit pointy jedním zápisem — jsou na `currentHp` vázané a dva zápisy by
+mezi sebou nechaly nemožný mezistav.
