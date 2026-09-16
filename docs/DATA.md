@@ -242,6 +242,30 @@ Paladin, Ranger), "1/3" (Eldritch Knight, Arcane Trickster — carried on
 the subclass entry, see "Third-caster spell slots" above). Non-casters
 (Barbarian, Fighter, Monk, Rogue) have no `casterProgression` field at all.
 
+### Pool maxima live in table groups, not on any feature record
+No feature record (class-features.json, subclass-features.json, feats.json,
+optional-features.json) carries a maximum for the pool it spends — confirmed
+by enumerating every top-level key across all 1336 records in the four files;
+no uses/max/recharge field is among them. Where a maximum exists, it lives in
+`classTableGroups` in classes.json, one row per character level 1 to 20 — so
+every such maximum scales with level. Psi Warrior and Soulknife are the two
+exceptions: their pool's table sits in `subclassTableGroups` on the subclass
+entry instead, the same split as "Third-caster spell slots" above. A cell in
+one of these rows can be a plain number, a numeric string, a
+`{type:"dice",toRoll:[{number,faces}]}` object, a `{type:"bonus",value}`
+object, a `{type:"bonusSpeed",value}` object, or the literal `"—"`.
+
+Psi Warrior's and Soulknife's own columns are `{@tip}` tags whose DISPLAYED
+label differs from the pool name: `{@tip Die Size|Psionic Energy Die Size}`
+renders as "Die Size" while the pool name sits in the tag's SECOND segment.
+This is the first place in this project where a column's label and its key
+differ — a lookup that reads the label finds nothing; it must read the tag's
+second segment instead.
+
+Separately, `consumes.name` on a feature is singular while the matching table
+column label is plural ("Sorcery Point" against "Sorcery Points"), so any
+lookup between the two needs normalisation.
+
 ### Armour AC — the data won't tell you
 `ac` is the base number. There is NO Dex cap field; the cap is implied by
 the armour type code (LA light = uncapped, MA medium = +2, HA heavy = none).
@@ -281,6 +305,14 @@ Kontejnery nemají příznak — poznají se podle přítomnosti `containerCapac
 (19 předmětů).
 
 Zjištěno při průzkumu před krokem 7; původní znění tvrdilo, že příznaky stačí.
+
+### Ammunition and charges — the only structured spend-and-refresh fields
+`ammoType` on a weapon names the exact ammunition item code that weapon
+consumes — a direct item-to-item link, no name matching needed.
+
+Separately, `charges` / `recharge` / `rechargeAmount` on items are the only
+fully structured spend-and-refresh fields anywhere in the data set;
+`recharge`'s only value is `"dawn"`.
 
 ### Artificer infusions
 AI (Artificer Infusion, 16 entries) exists in optional-features.json, but
