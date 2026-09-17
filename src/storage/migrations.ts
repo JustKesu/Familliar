@@ -292,6 +292,26 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 36 }),
 	},
+	{
+		from: 36,
+		to: 37,
+		/*
+		 * 37 groups play state under Character.play (slice 9b1). A MOVING step,
+		 * like 30: the two fields 35 and 36 added keep their meaning and shape and
+		 * only change address, so a character carrying either shows the same thing
+		 * afterwards. `resourceUses` starts absent — nothing has been spent, which
+		 * is what absence already means — and `play` itself is left off a character
+		 * that had neither field, so an untouched save gains no empty object.
+		 */
+		migrate: (record) => {
+			const { temporaryHitPoints, deathSaves, ...rest } = record
+			const play = {
+				...(temporaryHitPoints !== undefined ? { temporaryHitPoints } : {}),
+				...(deathSaves !== undefined ? { deathSaves } : {}),
+			}
+			return { ...rest, ...(Object.keys(play).length > 0 ? { play } : {}), schemaVersion: 37 }
+		},
+	},
 ]
 
 /**

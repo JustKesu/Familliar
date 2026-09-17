@@ -249,21 +249,16 @@ export interface Character {
 	 */
 	currentHp?: number
 	/**
-	 * Temporary hit points (slice 9a1, D110) — the first play-state field. A
-	 * SECOND pile, never folded into currentHp: damage spends it first, healing
-	 * never restores it, and a new grant replaces it only when it is higher.
-	 * Absent means none; 0 is stored as absence, since "no temporary hit points"
-	 * has one meaning here, unlike currentHp's 0.
+	 * Everything that changes BETWEEN levels rather than at one (slice 9b1).
+	 * Temporary hit points and death saves lived at the top level in 9a1/9a2 and
+	 * moved here when resource uses joined them: all three are spent and refilled
+	 * in play, none is a record of a decision, and grouping them keeps a rest —
+	 * which resets several at once — a write to one field.
+	 *
+	 * Absent means nothing is in play, which is the state every character starts
+	 * and ends a rest in.
 	 */
-	temporaryHitPoints?: number
-	/**
-	 * Death saving throw progress (slice 9a2, D111). Present ONLY while
-	 * `currentHp` is exactly 0 — the store drops it on any write that leaves the
-	 * current above 0, so there is no leftover progress to come back to. Absent
-	 * means no death save is in progress, and all-zero counts are stored as that
-	 * absence, the same way temporary 0 is (D110).
-	 */
-	deathSaves?: CharacterDeathSaves
+	play?: CharacterPlayState
 	/**
 	 * One contribution per character level, WITHOUT Constitution (build order
 	 * step 8, slice 8a). The maximum is never stored as a single finished number:
@@ -305,6 +300,41 @@ export interface Character {
 	 * schema version 34 — and removal is then refused rather than guessed.
 	 */
 	createdAtLevel?: number
+}
+
+/** What the character has spent and gained since the last rest (slice 9b1) — see Character.play. */
+export interface CharacterPlayState {
+	/**
+	 * Temporary hit points (slice 9a1, D110). A SECOND pile, never folded into
+	 * currentHp: damage spends it first, healing never restores it, and a new
+	 * grant replaces it only when it is higher. Absent means none; 0 is stored as
+	 * absence, since "no temporary hit points" has one meaning here, unlike
+	 * currentHp's 0.
+	 */
+	temporaryHitPoints?: number
+	/**
+	 * Death saving throw progress (slice 9a2, D111). Present ONLY while
+	 * `currentHp` is exactly 0 — the store drops it on any write that leaves the
+	 * current above 0, so there is no leftover progress to come back to. Absent
+	 * means no death save is in progress, and all-zero counts are stored as that
+	 * absence, the same way temporary 0 is (D110).
+	 */
+	deathSaves?: CharacterDeathSaves
+	/**
+	 * How many uses of each limited resource have been SPENT (slice 9b1), keyed
+	 * by the resolved resource name computeCharacterResources returns — so the
+	 * data's two names for the Monk pool ("Ki" on the TCE subclasses, "Focus
+	 * Point" on the 2024 Monk) share the single entry "Focus Point".
+	 *
+	 * Spent, not remaining: the maximum is computed and changes with level, and a
+	 * remaining count would silently mean something different after every level
+	 * up. An absent key is nothing spent, the same convention the two fields above
+	 * use; the whole record is absent until something is spent.
+	 *
+	 * Never above the resource's current maximum — resourceUsesWithinMaxima
+	 * (src/calculation/resources.ts) enforces that wherever the level changes.
+	 */
+	resourceUses?: Record<string, number>
 }
 
 /** Three boxes each, counted 0–3 (D111). Which individual box was ticked carries no meaning, so only the counts are stored. */
@@ -777,13 +807,12 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 35 for Character.temporaryHitPoints (slice
- * 9a1), which absent already describes correctly on every older character —
- * nobody has any.
+ * (see wireFormat.ts). Bumped to 37 for Character.play (slice 9b1), which
+ * absorbs the two play fields 35 and 36 added at the top level.
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 36
+export const CURRENT_SCHEMA_VERSION = 37

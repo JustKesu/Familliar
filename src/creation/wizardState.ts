@@ -1064,10 +1064,11 @@ export function saveCharacter(
 		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.
 		currentHp: computedCurrentHp !== undefined ? computedCurrentHp : existing?.currentHp,
 		maxHpOverride: existing?.maxHpOverride,
-		// D110: play state, not a level-time choice — an edit or a level up carries it across unchanged.
-		temporaryHitPoints: existing?.temporaryHitPoints,
-		// D111: the store keeps this only while the resulting current is 0, so a level up that raises it clears it by itself.
-		deathSaves: existing?.deathSaves,
+		/*
+		 * D110: play state, not a level-time choice — an edit or a level up carries it across unchanged.
+		 * D111: the store keeps the death saves only while the resulting current is 0, so a level up that raises it clears them by itself.
+		 */
+		play: existing?.play,
 		familiar: existing?.familiar,
 		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".
 		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,

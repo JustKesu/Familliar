@@ -1,6 +1,10 @@
+import { computeCharacterResources, resourceUsesWithinMaxima, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
+import { chosenOptionalFeatureOptions } from '../optionalFeatures/optionalFeatureData'
+import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
+import { extractFeatTextEntries } from '../sheet/sheetData'
 import type { Character, LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
 import { subclassLevelFor } from '../subclass/subclassData'
@@ -25,6 +29,24 @@ export function levelRemovalTarget(character: Character): { level: number } | { 
 		return { reason: `This character was created at level ${character.createdAtLevel}; there is no level above that to remove.` }
 	}
 	return { level }
+}
+
+/**
+ * The three feature sources a resource can come from (slice 9b1) — the same set
+ * featureActionRowData.ts feeds the actions table, assembled from the files this
+ * module already holds. A Battle Master's Superiority Die is named only by the
+ * maneuvers they chose, so the optional-feature picks are not optional here.
+ */
+function resourceFeaturesFor(character: Character, parsedClasses: unknown, resolverData: ResolverData): ResourceFeature[] {
+	const featTexts = extractFeatTextEntries(resolverData.feats)
+	const feats = (character.featAsiChoices ?? [])
+		.filter((choice) => choice.kind === 'feat')
+		.flatMap((choice) => featTexts.filter((text) => text.name === choice.name && text.source === choice.source))
+	return [
+		...grantedClassFeaturesFrom(character, parsedClasses, resolverData),
+		...feats,
+		...chosenOptionalFeatureOptions(resolverData.optionalFeatures, resolverData.feats, character.optionalFeatureChoices ?? [], character.fightingStyle ?? null),
+	]
 }
 
 export interface LevelRemovalPlan {
@@ -114,8 +136,10 @@ export function levelRemovalPlan(character: Character, parsedClasses: unknown, r
 		return false
 	})
 
+	const { play: _play, ...withoutPlay } = character
 	const result: Character = {
-		...character,
+		...withoutPlay,
+		...(character.play ? { play: character.play } : {}),
 		classes: [{ ...characterClass, subclass, level: characterClass.level - 1 }],
 		fightingStyle,
 		masteries: masteries.kept,
@@ -126,6 +150,26 @@ export function levelRemovalPlan(character: Character, parsedClasses: unknown, r
 		subclassSpellChoices,
 		hitPointLevels,
 	}
+
+	/*
+	 * Slice 9b1: a lower level means smaller pools, so a spent count recorded
+	 * against the old maximum can now exceed the new one. Computed against the
+	 * REDUCED character — the point is the maximum it has after this removal.
+	 */
+	const storedUses = character.play?.resourceUses
+	if (storedUses !== undefined) {
+		const resources = computeCharacterResources(result, parsedClasses, resourceFeaturesFor(result, parsedClasses, resolverData))
+		const clamped = resourceUsesWithinMaxima(storedUses, resources)
+		for (const [name, spent] of Object.entries(storedUses)) {
+			const now = clamped?.[name] ?? 0
+			if (now < spent) dropped.push(`${name}: ${spent} spent, now ${now}`)
+		}
+		const { resourceUses: _uses, ...restOfPlay } = character.play ?? {}
+		const play = { ...restOfPlay, ...(clamped ? { resourceUses: clamped } : {}) }
+		delete result.play
+		if (Object.keys(play).length > 0) result.play = play
+	}
+
 	return { level, dropped, result }
 }
 

@@ -8,6 +8,7 @@ import type {
 	CharacterClassFeatureChoice,
 	CharacterFamiliar,
 	CharacterHitPointLevel,
+	CharacterPlayState,
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
@@ -701,14 +702,15 @@ export function describeCurrencyError(value: unknown): string | null {
 }
 
 /**
- * Validates the optional hit-point fields — `currentHp` (D9), `maxHpOverride`
- * (slice 8a) and `temporaryHitPoints` (slice 9a1, D110). Each is a non-negative
- * whole number when present; absent means "not set" / "none". Deliberately does
- * not check currentHp against the maximum: the maximum is computed, not stored,
- * and a lowered maximum leaves a legitimately higher current behind.
+ * Validates the optional hit-point fields — `currentHp` (D9) and `maxHpOverride`
+ * (slice 8a). Each is a non-negative whole number when present; absent means
+ * "not set". Deliberately does not check currentHp against the maximum: the
+ * maximum is computed, not stored, and a lowered maximum leaves a legitimately
+ * higher current behind. `temporaryHitPoints` moved under `play` in 9b1 and is
+ * checked by describePlayError.
  */
 export function describeHitPointsError(value: Record<string, unknown>): string | null {
-	for (const key of ['currentHp', 'maxHpOverride', 'temporaryHitPoints'] as const) {
+	for (const key of ['currentHp', 'maxHpOverride'] as const) {
 		const hp = value[key]
 		if (hp === undefined) continue
 		if (typeof hp !== 'number' || !Number.isInteger(hp) || hp < 0) {
@@ -732,6 +734,38 @@ export function describeDeathSavesError(value: unknown): string | null {
 		const count = value[key]
 		if (typeof count !== 'number' || !Number.isInteger(count) || count < 0 || count > 3) {
 			return `deathSaves.${key} must be a whole number from 0 to 3`
+		}
+	}
+	return null
+}
+
+/**
+ * Validates the optional `play` field (slice 9b1) — the three play-state fields
+ * that used to sit at the top level, plus `resourceUses`. Deliberately does not
+ * check a spent count against its resource's maximum: the maximum is computed
+ * from data/ this layer does not have, and a stored count above it is clamped on
+ * the next level change rather than refused on load (D43), the same way an
+ * impossible deathSaves pair is.
+ */
+export function describePlayError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return 'play must be an object'
+
+	const temporaryHitPoints = value['temporaryHitPoints']
+	if (temporaryHitPoints !== undefined && (typeof temporaryHitPoints !== 'number' || !Number.isInteger(temporaryHitPoints) || temporaryHitPoints < 0)) {
+		return 'play.temporaryHitPoints must be a non-negative whole number'
+	}
+
+	const deathSavesError = describeDeathSavesError(value['deathSaves'])
+	if (deathSavesError) return `play.${deathSavesError}`
+
+	const resourceUses = value['resourceUses']
+	if (resourceUses !== undefined) {
+		if (!isRecord(resourceUses)) return 'play.resourceUses must be an object'
+		for (const [name, spent] of Object.entries(resourceUses)) {
+			if (typeof spent !== 'number' || !Number.isInteger(spent) || spent < 0) {
+				return `play.resourceUses["${name}"] must be a non-negative whole number`
+			}
 		}
 	}
 	return null
@@ -840,6 +874,19 @@ function toCharacterHitPointLevels(value: unknown[]): CharacterHitPointLevel[] {
 			kind: record['kind'] as HitPointLevelKind,
 		}
 	})
+}
+
+function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayState {
+	const temporaryHitPoints = value['temporaryHitPoints']
+	const deathSaves = value['deathSaves']
+	const resourceUses = value['resourceUses']
+	return {
+		...(typeof temporaryHitPoints === 'number' ? { temporaryHitPoints } : {}),
+		...(isRecord(deathSaves)
+			? { deathSaves: { successes: deathSaves['successes'] as number, failures: deathSaves['failures'] as number } }
+			: {}),
+		...(isRecord(resourceUses) ? { resourceUses: { ...(resourceUses as Record<string, number>) } } : {}),
+	}
 }
 
 function toCharacterClassFeatureChoices(value: unknown[]): CharacterClassFeatureChoice[] {
@@ -959,8 +1006,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (currencyError) return `[${index}].${currencyError}`
 	const hitPointsError = describeHitPointsError(value)
 	if (hitPointsError) return `[${index}].${hitPointsError}`
-	const deathSavesError = describeDeathSavesError(value['deathSaves'])
-	if (deathSavesError) return `[${index}].${deathSavesError}`
+	const playError = describePlayError(value['play'])
+	if (playError) return `[${index}].${playError}`
 	const hitPointLevelsError = describeHitPointLevelsError(value['hitPointLevels'])
 	if (hitPointLevelsError) return `[${index}].${hitPointLevelsError}`
 	const speciesSpellcastingAbilityError = describeSpeciesSpellcastingAbilityError(value['speciesSpellcastingAbility'])
@@ -1003,8 +1050,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const currencyCopper = value['currencyCopper']
 	const currentHp = value['currentHp']
 	const maxHpOverride = value['maxHpOverride']
-	const temporaryHitPoints = value['temporaryHitPoints']
-	const deathSaves = value['deathSaves']
+	const play = value['play']
 	const hitPointLevels = value['hitPointLevels']
 	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
 	const createdAtLevel = value['createdAtLevel']
@@ -1035,10 +1081,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(typeof currencyCopper === 'number' ? { currencyCopper } : {}),
 		...(typeof currentHp === 'number' ? { currentHp } : {}),
 		...(typeof maxHpOverride === 'number' ? { maxHpOverride } : {}),
-		...(typeof temporaryHitPoints === 'number' ? { temporaryHitPoints } : {}),
-		...(isRecord(deathSaves)
-			? { deathSaves: { successes: deathSaves['successes'] as number, failures: deathSaves['failures'] as number } }
-			: {}),
+		...(isRecord(play) ? { play: toCharacterPlayState(play) } : {}),
 		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),

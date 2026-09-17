@@ -5589,7 +5589,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 	/* Slice 9a1 (D110): the header reads the stored pile, and healing clamps to the maximum the sheet itself computed. */
 	it('shows stored temporary hit points beside the pair and heals no further than the computed maximum', async () => {
 		const onEditHitPoints = vi.fn()
-		const withHp: Character = { ...character, currentHp: 30, temporaryHitPoints: 8 }
+		const withHp: Character = { ...character, currentHp: 30, play: { temporaryHitPoints: 8 } }
 		const { container } = await renderSheet(withHp, onEditHitPoints)
 		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('30 / 39 + 8 temporary'))
 

@@ -14,6 +14,7 @@ import type {
 	CharacterExpertiseSkill,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
+	CharacterPlayState,
 	CharacterSpecies,
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
@@ -163,8 +164,8 @@ export interface CharacterCreateInput {
 	 */
 	currentHp?: number
 	maxHpOverride?: number
-	temporaryHitPoints?: number
-	deathSaves?: CharacterDeathSaves
+	/** Slice 9b1: the three play fields arrive as one object, the shape they are stored in. */
+	play?: CharacterPlayState
 	familiar?: CharacterFamiliar
 	createdAtLevel?: number
 }
@@ -180,6 +181,25 @@ export interface HitPointFields {
 	maxHpOverride?: number
 	temporaryHitPoints?: number
 	deathSaves?: CharacterDeathSaves
+}
+
+/**
+ * The one place `play` is normalised (slice 9b1), so `create`, `update` and
+ * `setHitPoints` cannot disagree on what an empty play state is. Each field's own
+ * "none is absence" rule is applied here — temporary 0 (D110), death saves that
+ * do not go with this current (D111), a spent count of 0 — and a play object left
+ * with nothing in it is itself dropped.
+ */
+function storedPlayState(currentHp: number | undefined, play: CharacterPlayState | undefined): CharacterPlayState | undefined {
+	const temporaryHitPoints = play?.temporaryHitPoints
+	const deathSaves = deathSavesAfterHitPointChange(currentHp, play?.deathSaves)
+	const resourceUses = Object.fromEntries(Object.entries(play?.resourceUses ?? {}).filter(([, spent]) => spent > 0))
+	const stored: CharacterPlayState = {
+		...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
+		...(deathSaves ? { deathSaves } : {}),
+		...(Object.keys(resourceUses).length > 0 ? { resourceUses } : {}),
+	}
+	return Object.keys(stored).length > 0 ? stored : undefined
 }
 
 /** The one place a Character is assembled from an input — shared by `create` and `update` so the two can never diverge on which fields an absent value omits. */
@@ -208,14 +228,13 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		hitPointLevels,
 		currentHp,
 		maxHpOverride,
-		temporaryHitPoints,
-		deathSaves,
+		play,
 		familiar,
 		createdAtLevel,
 	} = input
 
 	const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
-	const storedDeathSaves = deathSavesAfterHitPointChange(storedCurrentHp, deathSaves)
+	const storedPlay = storedPlayState(storedCurrentHp, play)
 
 	return {
 		id,
@@ -244,9 +263,8 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
 		...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),
 		...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
-		...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
-		// D111: death-save progress only survives a write that leaves the character at exactly 0.
-		...(storedDeathSaves ? { deathSaves: storedDeathSaves } : {}),
+		// D110/D111: temporary 0 is none, and death-save progress only survives a write that leaves the character at exactly 0.
+		...(storedPlay ? { play: storedPlay } : {}),
 		...(familiar ? { familiar } : {}),
 		...(createdAtLevel !== undefined ? { createdAtLevel } : {}),
 	}
@@ -401,24 +419,18 @@ export class CharacterStore {
 		const index = characters.findIndex((character) => character.id === id)
 		if (index === -1) throw new CharacterNotFoundError(id)
 
-		const {
-			currentHp: _currentHp,
-			maxHpOverride: _maxHpOverride,
-			temporaryHitPoints: _temporaryHitPoints,
-			deathSaves: _deathSaves,
-			...rest
-		} = characters[index]
+		const { currentHp: _currentHp, maxHpOverride: _maxHpOverride, play, ...rest } = characters[index]
 		const { currentHp, maxHpOverride, temporaryHitPoints, deathSaves } = hitPoints
 		// D110: clamped here too, so no writer of currentHp can leave a negative behind.
 		const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
-		const storedDeathSaves = deathSavesAfterHitPointChange(storedCurrentHp, deathSaves)
+		// Slice 9b1: only the two hit-point piles are replaced from the input — resourceUses is nobody's business here and rides through.
+		const storedPlay = storedPlayState(storedCurrentHp, { ...play, temporaryHitPoints, deathSaves })
 		const updated = [...characters]
 		updated[index] = {
 			...rest,
 			...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),
 			...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
-			...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
-			...(storedDeathSaves ? { deathSaves: storedDeathSaves } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
 		}
 		this.writeAll(updated)
 	}

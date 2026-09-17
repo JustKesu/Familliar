@@ -31,7 +31,8 @@ function nodeBody(node: Record<string, unknown>): unknown[] {
 	return []
 }
 
-function hasRestTag(node: unknown): boolean {
+/** Exported for src/calculation/resources.ts, whose own narrower test (slice 9b1) starts from the same tag and adds to it. */
+export function hasRestTag(node: unknown): boolean {
 	if (typeof node === 'string') return REST_TAG.test(node)
 	if (Array.isArray(node)) return node.some(hasRestTag)
 	if (!isRecord(node)) return false

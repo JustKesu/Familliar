@@ -395,10 +395,39 @@ describe('the migration chain (D69)', () => {
 			currentHp: 0,
 			temporaryHitPoints: 4,
 		}
+		const { temporaryHitPoints: _temporary, ...withoutTemporary } = before
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		// 36->37 moved it under `play`; the value is the same one a version-35 save carried.
+		expect(migrated).toEqual({ ...withoutTemporary, play: { temporaryHitPoints: 4 }, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('deathSaves' in migrated).toBe(false)
+	})
+
+	/* Slice 9b1: the step that MOVES the two play fields rather than only tagging. */
+	it('moves a version-36 character’s temporary hit points and death saves under `play`, with nothing spent', () => {
+		const before = {
+			schemaVersion: 36,
+			id: '1',
+			name: 'Aria',
+			classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: 'Berserker', level: 5 }],
+			currentHp: 0,
+			temporaryHitPoints: 4,
+			deathSaves: { successes: 1, failures: 2 },
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated['play']).toEqual({ temporaryHitPoints: 4, deathSaves: { successes: 1, failures: 2 } })
+		expect('temporaryHitPoints' in migrated).toBe(false)
+		expect('deathSaves' in migrated).toBe(false)
+		expect((migrated['play'] as Record<string, unknown>)['resourceUses']).toBeUndefined()
+	})
+
+	it('gives a version-36 character with neither play field no `play` at all', () => {
+		const before = { schemaVersion: 36, id: '1', name: 'Aria', classes: [], currentHp: 12 }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
 		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
-		expect('deathSaves' in migrated).toBe(false)
+		expect('play' in migrated).toBe(false)
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

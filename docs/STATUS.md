@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-16 (9a2: death saving throws v hlavičce, D111)
+Poslední aktualizace: 2026-09-17 (9b1: model zdrojů + `Character.play`)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -476,6 +476,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    |---|---|---|
    | 9a1 | Dočasné životy, panel poškození/léčení v hlavičce, clamp current HP na 0 (D110) | 34→35 |
    | 9a2 | Death saves — panel v hlavičce při 0 HP, hod appky i ruční klik, stabilizace/smrt (D111) | 35→36 |
+   | 9b1 | Model zdrojů (výpočet + úložiště, BEZ UI), `Character.play`, clamp spotřeby při odebrání úrovně | 36→37 |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -532,6 +533,29 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      ruční klikání se zastropovalo na 3, stabilizace i smrt zamkly tlačítka
      (smrt s panelem dál na obrazovce), léčení i přímé zadání panel i uložený
      postup smazaly.
+   - Slice 9b1 — model limitovaných zdrojů. ŽÁDNÉ UI: výpočet, úložiště,
+     migrace a jeden invariant. `Character.play?: { temporaryHitPoints?,
+     deathSaves?, resourceUses? }` (schéma 37, migrace 36→37 PŘESOUVÁ obě
+     stará pole pod `play`, `resourceUses` začíná nepřítomné). `resourceUses`
+     je `Record<string, number>` SPOTŘEBOVANÝCH použití, klíčem je rozlišené
+     jméno zdroje — data mají pro mnichův pool dvě jména („Ki" u TCE
+     podtříd, „Focus Point" u Monka 2024) a obě padají do jednoho záznamu
+     „Focus Point". Nový `src/calculation/resources.ts` (čisté funkce,
+     `computeCharacterResources`, `resourceUsesWithinMaxima`,
+     `resolveResourceName`): vrací každý zdroj s `Calculated<number>`
+     maximem z per-level tabulky včetně rozkladu („Barbarian level 5:
+     Rages"), nebo `unknown` s důvodem (D43) tam, kde je limit jen v próze.
+     Test, co je zdroj, je ÚMYSLNĚ užší než D86 `isActionTableFeature`:
+     `consumes.name` (8 poolů v datech) NEBO rest tag plus fráze o
+     spotřebovaných použitích — samotný rest tag bere i Weapon Mastery, které
+     se nespotřebovává. Podrobnosti a čísla v DATA.md. Invariant: spotřeba
+     nikdy nepřeleze aktuální maximum — `levelRemovalPlan` ji po odebrání
+     úrovně stáhne dolů (stejný nápad jako `deathSavesAfterHitPointChange`,
+     jen navázaný na úroveň) a řádek o tom přidá do `dropped`; zdroj bez
+     maxima v datech se neclampuje nikdy. Testy: `resources.test.ts`, blok v
+     `levelRemoval.test.tsx`, migrace 36→37 a play/resourceUses v
+     `migrations.test.ts` a `characterStore.test.ts`. Prohlížeč nebyl potřeba
+     — slice nepřidává žádný ovládací prvek.
    - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): spent spell slots,
      spent hit dice, pool uses, odpočinky, tabulka akcí s počty použití.
      Otevřené otázky k nim jsou v posledním REPORT.md ze session průzkumu a
@@ -702,11 +726,13 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic
 nespotřebováno, migrace jen tag. Slice 9a2 (D111) přidala death saves ve stejném
-tvaru, navíc s invariantem vázaným na `currentHp === 0`.
+tvaru, navíc s invariantem vázaným na `currentHp === 0`. Slice 9b1 ta dvě pole
+sloučila pod `Character.play` a přidala k nim `resourceUses` — od teď je play
+state jeden objekt, ne rostoucí řada polí na `Character`.
 
-Další na řadě je zbytek 9b — **hit dice** (spotřebované kostky), **spell slots**
-(spotřebované sloty), **pool uses** (počty použití u `consumes` cílů, viz
-otevřená otázka v D86) a **odpočinky** (co krátký a dlouhý odpočinek obnovuje).
+Další na řadě je zbytek 9b — **UI zdrojů** (sloupec Uses, tlačítka spend/reset
+nad modelem z 9b1), **hit dice** (spotřebované kostky), **spell slots**
+(spotřebované sloty) a **odpočinky** (co krátký a dlouhý odpočinek obnovuje).
 Každé má vlastní rozhodnutí, která REPORT.md ze session průzkumu vyjmenovává a
 která zatím nejsou padlá.
 

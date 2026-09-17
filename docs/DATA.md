@@ -266,6 +266,49 @@ Separately, `consumes.name` on a feature is singular while the matching table
 column label is plural ("Sorcery Point" against "Sorcery Points"), so any
 lookup between the two needs normalisation.
 
+The `{@tip}` split above is only half a match. Psi Warrior's pool is consumed
+as "Psionic Energy Die" and tabled as "Psionic Energy Die Number" beside a
+"Psionic Energy Die Size" column that holds a die, not a count — so a lookup
+must also try the name plus a " Number" suffix, and must not settle for the
+"Size" column. Soulknife consumes the SAME pool name ("Psionic Energy Die")
+but tables it as "Soulknife Energy Die Number": the column carries the
+subclass's name, not the pool's, so no normalisation reaches it and a
+Soulknife's maximum reads as not in the data. Two subclasses, two conventions,
+one pool name.
+
+Only the `{@tip}` tag puts its key in the SECOND segment. Every resource
+column outside those two subclasses is a bare string ("Rages", "Focus Points",
+"Second Wind", "Channel Divinity", "Wild Shape", "Favored Enemy", "Sorcery
+Points"); `{@filter Cantrips|spells|…}` columns, which are spell counts and not
+resources, are keyed by their FIRST segment. A reader that takes the second
+segment of every tag gets "spells" for all of them.
+
+### Which features are limited-use resources — `consumes` plus a phrase test
+Two structural signals, neither sufficient alone (step 9b1 investigation):
+
+1. `consumes.name` names a pool something spends. Exactly 8 exist across the
+   four feature files: Arcane Shot, Channel Divinity, Focus Point, Ki, Psionic
+   Energy Die, Sorcery Point, Superiority Die, Wild Shape. This finds the
+   spenders' pool but never a feature that limits only itself.
+2. A rest tag plus an expended-uses phrase in the feature's own text
+   (`expended use(s)`, `regain … uses`, `number of times equal to`, or "you
+   can't do so again until you finish"). 92 class/subclass/optional/feat
+   records match.
+
+The rest tag ALONE is far too broad, which is why D86's `isActionTableFeature`
+cannot be reused: Weapon Mastery carries it ("you can change your choices
+whenever you finish a Long Rest") and is not a resource. The phrase test is
+what separates it from Rage, Second Wind, Favored Enemy and Action Surge.
+
+The union is 97 distinct resource names after merging Ki into Focus Point —
+an order of magnitude more than the "roughly 8" the step 9 planning assumed,
+because most rest-limited features are subclass-level and were never counted.
+Only 8 of the 97 have a maximum in a per-level table (Channel Divinity,
+Favored Enemy, Focus Point, Psionic Energy Die on Psi Warrior only, Rage,
+Second Wind, Sorcery Point, Wild Shape). Every other maximum is stated in
+prose alone ("equal to your Charisma modifier", "twice"), so a structured
+reader must report it as not in the data (D43) rather than parse it.
+
 ### Armour AC — the data won't tell you
 `ac` is the base number. There is NO Dex cap field; the cap is implied by
 the armour type code (LA light = uncapped, MA medium = +2, HA heavy = none).

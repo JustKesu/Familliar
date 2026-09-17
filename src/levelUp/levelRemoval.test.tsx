@@ -211,6 +211,55 @@ describe('when a level cannot be removed', () => {
 	})
 })
 
+/* Slice 9b1: a lower level means smaller pools, so the spent counts come down with them. */
+describe('resource uses on a level removal', () => {
+	/* The shared fixture has no resource table; Fighter's real Second Wind column (2 uses to level 3, 3 from 4) is added for these two tests alone. */
+	const SECOND_WIND_ID = 'cf|second wind|fighter|xphb|1|xphb'
+	const RESOURCE_CLASSES = CLASSES.map((entry) =>
+		entry.entryType === 'class' && entry.name === 'Fighter'
+			? {
+					...entry,
+					classTableGroups: [...(entry.classTableGroups ?? []), { colLabels: ['Second Wind'], rows: [[2], [2], [2], [3], [3], [3], [3], [3], [3], [4]] }],
+					classFeatureIds: [...(entry.classFeatureIds ?? []), SECOND_WIND_ID],
+				}
+			: entry,
+	)
+	const RESOURCE_RESOLVER: ResolverData = {
+		...RESOLVER,
+		classFeatures: [
+			...(RESOLVER.classFeatures as unknown[]),
+			{
+				id: SECOND_WIND_ID,
+				name: 'Second Wind',
+				className: 'Fighter',
+				classSource: 'XPHB',
+				level: 1,
+				entries: ['You regain one expended use when you finish a {@variantrule Short Rest|XPHB}.'],
+			},
+		],
+	}
+
+	function fighterWithUses(level: number, resourceUses: Record<string, number>): Character {
+		return { ...single('Fighter', 'Champion', level, 1), play: { temporaryHitPoints: 5, resourceUses } }
+	}
+
+	it('brings a count above the new maximum down to it, and says so', () => {
+		const result = levelRemovalPlan(fighterWithUses(4, { 'Second Wind': 3 }), RESOURCE_CLASSES, RESOURCE_RESOLVER)
+		if ('reason' in result) throw new Error(result.reason)
+
+		expect(result.result.play).toEqual({ temporaryHitPoints: 5, resourceUses: { 'Second Wind': 2 } })
+		expect(result.dropped).toContain('Second Wind: 3 spent, now 2')
+	})
+
+	it('leaves a count that still fits, and one whose maximum is not in the data, alone', () => {
+		const result = levelRemovalPlan(fighterWithUses(4, { 'Second Wind': 1, 'Superiority Die': 9 }), RESOURCE_CLASSES, RESOURCE_RESOLVER)
+		if ('reason' in result) throw new Error(result.reason)
+
+		expect(result.result.play?.resourceUses).toEqual({ 'Second Wind': 1, 'Superiority Die': 9 })
+		expect(result.dropped.some((line) => line.includes('spent'))).toBe(false)
+	})
+})
+
 describe('RemoveLevelButton', () => {
 	const fixturePlan = async (character: Character) => levelRemovalPlan(character, CLASSES, RESOLVER)
 
