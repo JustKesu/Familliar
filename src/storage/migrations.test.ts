@@ -430,6 +430,15 @@ describe('the migration chain (D69)', () => {
 		expect('play' in migrated).toBe(false)
 	})
 
+	/* Slice 9b4: a purely additive field, so the step only tags — nothing spent is what absence already means. */
+	it('tags a version-38 character without inventing spent hit dice', () => {
+		const before = { schemaVersion: 38, id: '1', name: 'Aria', classes: [], play: { temporaryHitPoints: 4 } }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect((migrated['play'] as Record<string, unknown>)['spentHitDice']).toBeUndefined()
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

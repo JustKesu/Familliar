@@ -329,6 +329,34 @@ describe('spent spell slots on a level removal', () => {
 	})
 })
 
+/* Slice 9b4: the same invariant again, against a maximum that is the class's own level rather than a data table. */
+describe('spent hit dice on a level removal', () => {
+	function withSpentHitDice(level: number, spentHitDice: Record<string, number>): Character {
+		return { ...single('Fighter', 'Champion', level, 1), play: { temporaryHitPoints: 5, spentHitDice } }
+	}
+
+	it('brings a count above the new level down to it, and says so', () => {
+		const result = plan(withSpentHitDice(4, { 'Fighter|XPHB': 4 }))
+
+		expect(result.result.play).toEqual({ temporaryHitPoints: 5, spentHitDice: { 'Fighter|XPHB': 3 } })
+		expect(result.dropped).toContain('Fighter hit dice: 4 spent, now 3')
+	})
+
+	it('leaves a count that still fits alone', () => {
+		const result = plan(withSpentHitDice(4, { 'Fighter|XPHB': 2 }))
+
+		expect(result.result.play?.spentHitDice).toEqual({ 'Fighter|XPHB': 2 })
+		expect(result.dropped.some((line) => line.includes('hit dice'))).toBe(false)
+	})
+
+	it('drops a count for a class the character does not have, and leaves the field off once nothing survives', () => {
+		const result = plan(withSpentHitDice(2, { 'Wizard|XPHB': 1 }))
+
+		expect(result.result.play).toEqual({ temporaryHitPoints: 5 })
+		expect(result.dropped).toContain('Wizard hit dice: 1 spent, now 0')
+	})
+})
+
 describe('RemoveLevelButton', () => {
 	const fixturePlan = async (character: Character) => levelRemovalPlan(character, CLASSES, RESOLVER)
 

@@ -196,11 +196,13 @@ function storedPlayState(currentHp: number | undefined, play: CharacterPlayState
 	const deathSaves = deathSavesAfterHitPointChange(currentHp, play?.deathSaves)
 	const resourceUses = Object.fromEntries(Object.entries(play?.resourceUses ?? {}).filter(([, spent]) => spent > 0))
 	const spentSpellSlots = storedSpentSpellSlots(play?.spentSpellSlots)
+	const spentHitDice = Object.fromEntries(Object.entries(play?.spentHitDice ?? {}).filter(([, spent]) => spent > 0))
 	const stored: CharacterPlayState = {
 		...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
 		...(deathSaves ? { deathSaves } : {}),
 		...(Object.keys(resourceUses).length > 0 ? { resourceUses } : {}),
 		...(spentSpellSlots ? { spentSpellSlots } : {}),
+		...(Object.keys(spentHitDice).length > 0 ? { spentHitDice } : {}),
 	}
 	return Object.keys(stored).length > 0 ? stored : undefined
 }

@@ -333,4 +333,28 @@ D111) — invariant dnes drží `deathSavesAfterHitPointChange` v úložišti. J
 takových vazeb přibude víc, patří to rozhodnutí sem taky.
 
 Nalezeno při slice 9a2.
-STATUS: nerozhodnuto.
+STATUS: vyřešeno v plánovací konverzaci 17. 9. 2026 — sloučeno do
+`Character.play` počínaje slicí 9b1 (schéma 36→37). Tahle otázka by měla být
+přesunuta do DECISIONS.md, ne zůstávat tady jako nerozhodnutá — ponecháno na
+příští úklid, ať teď nejde o dvě různé věci naráz.
+
+### Utracené spell sloty (9b3) sdílí klíč jen podle úrovně kouzla, ne podle třídy
+
+`Character.play.spentSpellSlots.ordinary` je klíčovaný jen úrovní kouzla
+(1–9), ne dvojicí třída+úroveň — v jedné castovací třídě to stačí, a 9b3
+řešil jen tenhle případ (build order krok 9). Až bude mít postava dvě
+castovací třídy najednou (multiclass, krok 10) se sloty na stejné úrovni,
+budou si dělit jedno pole: odškrtnutí slotu u jedné třídy se neodlišitelně
+projeví i u druhé.
+
+Související zjištění ze stejné slice: `spellSlotMaxima` bere ze všech
+castovacích záznamů postavy vždy ten VYŠŠÍ počet slotů na dané úrovni, nikdy
+součet. Je to jen horní mez pro ořezání po odebrání úrovně, nikdy zobrazovaná
+hodnota — takže radši nechá utracený počet neořezaný, než aby tiše "doplnil"
+slot, který multiclass součet ve skutečnosti nedává.
+
+Řešení (oddělit klíč podle třídy, případně sečíst sloty správně přes
+`casterProgression` tabulky, viz D11) patří do kroku 10 multiclass, ne dřív.
+
+Nalezeno při stavbě 9b3 (Cowork, 17. 9. 2026).
+STATUS: nerozhodnuto, čeká na krok 10.

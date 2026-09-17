@@ -323,6 +323,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 38 }),
 	},
+	{
+		from: 38,
+		to: 39,
+		/*
+		 * 39 adds Character.play.spentHitDice (slice 9b4). Purely additive, like 38:
+		 * no hit die could be spent before this version, and absence is already what
+		 * "nothing spent" means, so the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 39 }),
+	},
 ]
 
 /**

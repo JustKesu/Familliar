@@ -345,6 +345,17 @@ export interface CharacterPlayState {
 	 * (src/calculation/spellSlots.ts) enforces that wherever the level changes.
 	 */
 	spentSpellSlots?: SpentSpellSlots
+	/**
+	 * How many hit dice have been SPENT (slice 9b4), keyed `className|classSource`
+	 * — the composite key the rest of the app already identifies a class by, and
+	 * the only one that survives D11's classes array once multiclass lands. Counts
+	 * spent rather than remaining, for the reason the two fields above do.
+	 *
+	 * A class's maximum is its level, so no data file is needed to clamp it —
+	 * spentHitDiceWithinMaxima (src/calculation/hitDice.ts) enforces that wherever
+	 * the level changes. Absent means nothing is spent; a zero count is absence.
+	 */
+	spentHitDice?: Record<string, number>
 }
 
 /**
@@ -829,13 +840,14 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 38 for Character.play.spentSpellSlots
- * (slice 9b3); 37 grouped play state under Character.play (slice 9b1),
- * absorbing the two play fields 35 and 36 added at the top level.
+ * (see wireFormat.ts). Bumped to 39 for Character.play.spentHitDice
+ * (slice 9b4); 38 added Character.play.spentSpellSlots (slice 9b3); 37
+ * grouped play state under Character.play (slice 9b1), absorbing the two
+ * play fields 35 and 36 added at the top level.
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 38
+export const CURRENT_SCHEMA_VERSION = 39

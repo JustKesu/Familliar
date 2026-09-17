@@ -1,3 +1,4 @@
+import { spentHitDiceWithinMaxima } from '../calculation/hitDice'
 import { computeCharacterResources, resourceUsesWithinMaxima, type ResourceFeature } from '../calculation/resources'
 import { computeSpellSlots, spellSlotMaxima, spentSpellSlotsWithinMaxima } from '../calculation/spellSlots'
 import { extractSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -197,6 +198,25 @@ export function levelRemovalPlan(character: Character, parsedClasses: unknown, r
 			delete result.play
 			if (Object.keys(play).length > 0) result.play = play
 		}
+	}
+
+	/*
+	 * Slice 9b4: one hit die per class level, so a removed level takes a die with
+	 * it and a spent count recorded against the old pool can exceed the new one.
+	 * Clamped against the REDUCED character's own classes — unlike the two blocks
+	 * above this needs no data file, since the maximum is the level itself.
+	 */
+	const storedHitDice = result.play?.spentHitDice
+	if (storedHitDice !== undefined) {
+		const clamped = spentHitDiceWithinMaxima(storedHitDice, result.classes)
+		for (const [key, spent] of Object.entries(storedHitDice)) {
+			const now = clamped?.[key] ?? 0
+			if (now < spent) dropped.push(`${key.split('|')[0]} hit dice: ${spent} spent, now ${now}`)
+		}
+		const { spentHitDice: _hitDice, ...restOfPlay } = result.play ?? {}
+		const play = { ...restOfPlay, ...(clamped ? { spentHitDice: clamped } : {}) }
+		delete result.play
+		if (Object.keys(play).length > 0) result.play = play
 	}
 
 	return { level, dropped, result }

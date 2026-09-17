@@ -43,3 +43,35 @@ export function computeHitDicePool(classes: CharacterClass[], classData: ClassHi
 
 	return known(value, breakdown)
 }
+
+/** The key Character.play.spentHitDice uses (slice 9b4) — the composite this app already identifies a class by everywhere else. */
+export function hitDiceKey(className: string, classSource: string): string {
+	return `${className}|${classSource}`
+}
+
+/**
+ * The stored spent hit dice, with each count brought down to the maximum the
+ * character has now (slice 9b4) — the same invariant spentSpellSlotsWithinMaxima
+ * applies one pool over, for the same reason.
+ *
+ * Needs no data file: a class's hit dice maximum is its level (see this module's
+ * header — `hd.number` is 1 per level), so `classes` alone decides it. A key for
+ * a class the character no longer has has a maximum of 0 and is dropped.
+ *
+ * Counts of 0 and an emptied record become absence, the convention every play
+ * field uses.
+ */
+export function spentHitDiceWithinMaxima(
+	spent: Record<string, number> | undefined,
+	classes: readonly CharacterClass[],
+): Record<string, number> | undefined {
+	if (spent === undefined) return undefined
+
+	const maxima = new Map(classes.map((c) => [hitDiceKey(c.className, c.classSource), c.level]))
+	const clamped: Record<string, number> = {}
+	for (const [key, count] of Object.entries(spent)) {
+		const value = Math.min(count, maxima.get(key) ?? 0)
+		if (value > 0) clamped[key] = value
+	}
+	return Object.keys(clamped).length > 0 ? clamped : undefined
+}

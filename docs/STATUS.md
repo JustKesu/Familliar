@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-17 (9b3: spotřebované sloty kouzel)
+Poslední aktualizace: 2026-09-17 (9b4: spotřebované hit dice — úložiště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -479,6 +479,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9b1 | Model zdrojů (výpočet + úložiště, BEZ UI), `Character.play`, clamp spotřeby při odebrání úrovně | 36→37 |
    | 9b2 | Uses v tabulce akcí pro 8 zdrojů s maximem (`UsesTracker`) | — |
    | 9b3 | Spotřebované sloty kouzel — zvlášť běžné a Pact Magic (D11) | 37→38 |
+   | 9b4 | Spotřebované hit dice — jen úložiště a clamp, bez UI | 38→39 |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -602,9 +603,22 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      blok v `levelRemoval.test.tsx`, `characterStore.test.ts`, nový blok v
      `CharacterSheet.test.tsx`. Ověřeno v prohlížeči (Wizard 5, Warlock 3,
      odebrání úrovně 5→4).
-   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): spent hit dice,
-     odpočinky. Otevřené otázky k nim jsou v posledním
-     REPORT.md ze session průzkumu a nejsou těmihle slice rozhodnuté.
+   - Slice 9b4 — spotřebované hit dice, POUZE úložiště a clamp, BEZ UI.
+     `Character.play.spentHitDice?: Record<'className|classSource', number>`
+     (schéma 39, migrace 38→39 jen tag), klíč je stejný kompozit, jakým appka
+     třídu identifikuje všude jinde. `storedPlayState` normalizuje stejně jako
+     `resourceUses` (nula = nepřítomnost). Maximum je úroveň té třídy, takže
+     `spentHitDiceWithinMaxima` v `calculation/hitDice.ts` nepotřebuje žádný
+     datový soubor; `computeHitDicePool` se NEMĚNIL. `levelRemovalPlan` clampuje
+     po odebrání úrovně a přidává řádky do `dropped` („Fighter hit dice: 4
+     spent, now 3"); klíč třídy, kterou postava nemá, se zahodí. Ovládací prvek
+     pro utracení kostky přijde až s krátkým odpočinkem (9b5) a hodem v panelu
+     kostek (9c). Testy: `hitDice.test.ts`, blok v `levelRemoval.test.tsx`,
+     `characterStore.test.ts`, `migrations.test.ts`. Bez kontroly v prohlížeči —
+     slice nepřidává žádný ovládací prvek.
+   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): odpočinky. Otevřené
+     otázky k nim jsou v posledním REPORT.md ze session průzkumu a nejsou
+     těmihle slice rozhodnuté.
 10. [not started] Multiclass
 
 ## Co appka umí navíc k build orderu
@@ -778,8 +792,11 @@ state jeden objekt, ne rostoucí řada polí na `Character`.
 Slice 9b2 postavila nad modelem UI (`UsesTracker` v tabulce akcí) a 9b3 ho
 použila i pro sloty kouzel, ve dvou oddělených poolech podle D11.
 
-Další na řadě je zbytek 9b — **hit dice** (spotřebované kostky, 9b4) a
-**odpočinky** (co krátký a dlouhý odpočinek obnovuje, 9b5).
+Slice 9b4 přidala ke stejnému objektu spotřebované **hit dice** — jen úložiště
+a clamp; ovládání přijde s 9b5 a 9c.
+
+Další na řadě je zbytek 9b — **odpočinky** (co krátký a dlouhý odpočinek
+obnovuje, 9b5), včetně prvku, kterým se hit die utratí.
 Každé má vlastní rozhodnutí, která REPORT.md ze session průzkumu vyjmenovává a
 která zatím nejsou padlá.
 

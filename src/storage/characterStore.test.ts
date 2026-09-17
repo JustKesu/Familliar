@@ -1150,6 +1150,19 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect(new CharacterStore(backing).list()[0].play).toEqual({ resourceUses: { Rage: 1 } })
 	})
 
+	/* Slice 9b4: the sixth play field, normalised by storedPlayState's own zero-drop rule and riding through a write that does not mention it. */
+	it('stores spent hit dice keyed per class, drops a 0 count, and carries them through a hit-point write', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria', play: { spentHitDice: { 'Fighter|XPHB': 2, 'Bard|XPHB': 0 } } })
+		expect(character.play).toEqual({ spentHitDice: { 'Fighter|XPHB': 2 } })
+
+		store.setHitPoints(character.id, { currentHp: 20, temporaryHitPoints: 5 })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ temporaryHitPoints: 5, spentHitDice: { 'Fighter|XPHB': 2 } })
+
+		expect(store.update(character.id, { name: 'Aria', play: { spentHitDice: { 'Fighter|XPHB': 0 } } }).play).toBeUndefined()
+	})
+
 	/* D110: negative current hit points mean nothing under the 2024 rules; no write path may leave one behind. */
 	it('clamps a negative current HP at 0, whether it arrives through create, update or setHitPoints', () => {
 		const backing = new MemoryStorage()

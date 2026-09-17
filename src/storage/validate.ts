@@ -742,8 +742,8 @@ export function describeDeathSavesError(value: unknown): string | null {
 
 /**
  * Validates the optional `play` field (slice 9b1) — the three play-state fields
- * that used to sit at the top level, plus `resourceUses` and (slice 9b3)
- * `spentSpellSlots`. Deliberately does not
+ * that used to sit at the top level, plus `resourceUses`, (slice 9b3)
+ * `spentSpellSlots` and (slice 9b4) `spentHitDice`. Deliberately does not
  * check a spent count against its resource's maximum: the maximum is computed
  * from data/ this layer does not have, and a stored count above it is clamped on
  * the next level change rather than refused on load (D43), the same way an
@@ -788,6 +788,18 @@ export function describePlayError(value: unknown): string | null {
 		const pact = spentSpellSlots['pact']
 		if (pact !== undefined && (typeof pact !== 'number' || !Number.isInteger(pact) || pact < 0)) {
 			return 'play.spentSpellSlots.pact must be a non-negative whole number'
+		}
+	}
+
+	const spentHitDice = value['spentHitDice']
+	if (spentHitDice !== undefined) {
+		if (!isRecord(spentHitDice)) return 'play.spentHitDice must be an object'
+		for (const [key, spent] of Object.entries(spentHitDice)) {
+			// Slice 9b4: unlike a resource name the key has a shape — className|classSource — and one without it could only come from a corrupted file.
+			if (!/^[^|]+\|[^|]+$/.test(key)) return `play.spentHitDice["${key}"] must be keyed "className|classSource"`
+			if (typeof spent !== 'number' || !Number.isInteger(spent) || spent < 0) {
+				return `play.spentHitDice["${key}"] must be a non-negative whole number`
+			}
 		}
 	}
 	return null
@@ -903,6 +915,7 @@ function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayStat
 	const deathSaves = value['deathSaves']
 	const resourceUses = value['resourceUses']
 	const spentSpellSlots = value['spentSpellSlots']
+	const spentHitDice = value['spentHitDice']
 	return {
 		...(typeof temporaryHitPoints === 'number' ? { temporaryHitPoints } : {}),
 		...(isRecord(deathSaves)
@@ -910,6 +923,7 @@ function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayStat
 			: {}),
 		...(isRecord(resourceUses) ? { resourceUses: { ...(resourceUses as Record<string, number>) } } : {}),
 		...(isRecord(spentSpellSlots) ? { spentSpellSlots: toSpentSpellSlots(spentSpellSlots) } : {}),
+		...(isRecord(spentHitDice) ? { spentHitDice: { ...(spentHitDice as Record<string, number>) } } : {}),
 	}
 }
 
