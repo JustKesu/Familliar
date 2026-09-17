@@ -185,6 +185,27 @@ export interface HitPointFields {
 }
 
 /**
+ * Everything a rest moves, written in one go (slice 9b5). A rest changes four
+ * things at once and a half-applied one is a character with its slots back and
+ * its resources still spent, so this is one write rather than four: the reason
+ * HitPointFields is one object, applied to a bigger set of fields.
+ *
+ * Every field is the value AFTER the rest, and an absent one means the field
+ * becomes absent — nothing spent, or a current that was never set. A Short Rest
+ * therefore passes the hit points and hit dice it does not touch back in
+ * unchanged; `afterShortRest` (src/rest/rest.ts) is what assembles that.
+ *
+ * Temporary hit points and death saves are deliberately absent: they are not a
+ * rest's business (D110), and riding through `play` untouched is what says so.
+ */
+export interface RestFields {
+	currentHp?: number
+	resourceUses?: Record<string, number>
+	spentSpellSlots?: SpentSpellSlots
+	spentHitDice?: Record<string, number>
+}
+
+/**
  * The one place `play` is normalised (slice 9b1), so `create`, `update` and
  * `setHitPoints` cannot disagree on what an empty play state is. Each field's own
  * "none is absence" rule is applied here — temporary 0 (D110), death saves that
@@ -493,6 +514,33 @@ export class CharacterStore {
 		updated[index] = {
 			...rest,
 			...(currentHp !== undefined ? { currentHp } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
+		}
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Applies a finished rest (slice 9b5) — the first writer of `spentHitDice`, and
+	 * the only one that replaces all four spent piles together. Temporary hit points
+	 * ride through; death saves ride through storedPlayState, which drops them when
+	 * the heal this write carries lifts the character off 0 (D111).
+	 */
+	applyRest(id: string, rest: RestFields): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currentHp: _currentHp, play, ...unchanged } = characters[index]
+		const storedPlay = storedPlayState(rest.currentHp, {
+			...play,
+			resourceUses: rest.resourceUses,
+			spentSpellSlots: rest.spentSpellSlots,
+			spentHitDice: rest.spentHitDice,
+		})
+		const updated = [...characters]
+		updated[index] = {
+			...unchanged,
+			...(rest.currentHp !== undefined ? { currentHp: rest.currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}
 		this.writeAll(updated)

@@ -1163,6 +1163,50 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect(store.update(character.id, { name: 'Aria', play: { spentHitDice: { 'Fighter|XPHB': 0 } } }).play).toBeUndefined()
 	})
 
+	/* Slice 9b5: one write for all four spent piles, with temporary hit points riding through both rests. */
+	it('applies a rest as a single write, keeping temporary hit points and clearing death saves the heal ends', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({
+			name: 'Kessa',
+			currentHp: 0,
+			play: {
+				temporaryHitPoints: 6,
+				deathSaves: { successes: 1, failures: 2 },
+				resourceUses: { Rage: 3 },
+				spentSpellSlots: { ordinary: { 1: 2 }, pact: 1 },
+				spentHitDice: { 'Barbarian|XPHB': 2 },
+			},
+		})
+
+		// A Short Rest: one Rage back and the Pact slot, everything else passed through as it stands.
+		store.applyRest(character.id, {
+			currentHp: character.currentHp,
+			resourceUses: { Rage: 2 },
+			spentSpellSlots: { ordinary: { 1: 2 }, pact: 0 },
+			spentHitDice: character.play?.spentHitDice,
+		})
+		const short = new CharacterStore(backing).list()[0]
+		expect(short.currentHp).toBe(0)
+		expect(short.play).toEqual({
+			temporaryHitPoints: 6,
+			deathSaves: { successes: 1, failures: 2 },
+			resourceUses: { Rage: 2 },
+			spentSpellSlots: { ordinary: { 1: 2 } },
+			spentHitDice: { 'Barbarian|XPHB': 2 },
+		})
+
+		// A Long Rest: everything spent is gone, the heal lifts the character off 0 and takes the death saves with it (D111).
+		store.applyRest(character.id, { currentHp: 39, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} })
+		const long = new CharacterStore(backing).list()[0]
+		expect(long.currentHp).toBe(39)
+		expect(long.play).toEqual({ temporaryHitPoints: 6 })
+	})
+
+	it('throws CharacterNotFoundError for an unknown id on a rest', () => {
+		expect(() => new CharacterStore(new MemoryStorage()).applyRest('nope', { resourceUses: {} })).toThrow(CharacterNotFoundError)
+	})
+
 	/* D110: negative current hit points mean nothing under the 2024 rules; no write path may leave one behind. */
 	it('clamps a negative current HP at 0, whether it arrives through create, update or setHitPoints', () => {
 		const backing = new MemoryStorage()

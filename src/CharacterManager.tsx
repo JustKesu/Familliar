@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { CharacterStore, type HitPointFields } from './storage/characterStore'
+import { CharacterStore, type HitPointFields, type RestFields } from './storage/characterStore'
 import { StorageError } from './storage/errors'
 import type { Character, CharacterFamiliar, CharacterInventoryItem, SpentSpellSlots } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
@@ -194,6 +194,11 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setSpentSpellSlots(id, spentSpellSlots))
 	}
 
+	function handleRest(id: string, rest: RestFields): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.applyRest(id, rest))
+	}
+
 	function handleDelete(id: string): void {
 		if (!store.store) return
 		if (!confirm('Delete this character? This cannot be undone.')) return
@@ -287,6 +292,7 @@ function CharacterManager() {
 									onEditHitPoints={(hitPoints) => handleEditHitPoints(sheetCharacter.id, hitPoints)}
 									onEditResourceUses={(resourceUses) => handleEditResourceUses(sheetCharacter.id, resourceUses)}
 								onEditSpentSpellSlots={(spentSpellSlots) => handleEditSpentSpellSlots(sheetCharacter.id, spentSpellSlots)}
+									onRest={(rest) => handleRest(sheetCharacter.id, rest)}
 									onEditCharacter={() => {
 										setCreating(false)
 										setLevelUpGains(null)

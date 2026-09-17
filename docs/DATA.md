@@ -309,6 +309,53 @@ Second Wind, Sorcery Point, Wild Shape). Every other maximum is stated in
 prose alone ("equal to your Charisma modifier", "twice"), so a structured
 reader must report it as not in the data (D43) rather than parse it.
 
+### What a rest gives back is only in the prose, and it is not "all"
+The rest TAG says a feature cares about rests, never how much one returns
+(step 9b5 investigation). Every short-rest-recoverable pool carries BOTH tags,
+because one sentence names both rests. The amount is in the sentence only, in
+two orderings:
+
+```
+"You regain one expended use when you finish a {@variantrule Short Rest|XPHB},
+ and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}."   (Rage)
+"…unavailable until you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB},
+ at the end of which you regain all your expended points."                            (Monk's Focus)
+```
+
+For the 8 resources with a computed maximum, what a Short Rest returns:
+
+| Resource | Short Rest | Where the sentence is |
+| --- | --- | --- |
+| Channel Divinity | one use | Channel Divinity (Cleric and Paladin) |
+| Favored Enemy | nothing | Favored Enemy (Long Rest only) |
+| Focus Point / Ki | ALL | Monk's Focus |
+| Psionic Energy Die | one die | Psionic Power (XPHB Psi Warrior and Soulknife) |
+| Rage | one use | Rage |
+| Second Wind | one use | Second Wind |
+| Sorcery Point | nothing | Font of Magic (Long Rest only) |
+| Wild Shape | one use | Wild Shape |
+
+Warlock Pact Magic recovers ALL slots on a Short Rest ("You regain all expended
+Pact Magic spell slots when you finish a Short Rest or Long Rest"); Wizard-style
+Spellcasting says Long Rest only, which is D11's split confirmed in the text.
+
+Three traps in reading it:
+
+1. The defining feature is often NOT named after the pool — Monk's Focus,
+   Psionic Power, Font of Magic. Matching by feature name alone finds nothing
+   for three of the eight.
+2. The pool is recovered in the PLURAL the consumer does not use: "Psionic
+   Energy Dice" against `consumes.name` "Psionic Energy Die". Stripping a
+   trailing `s` is not enough; `dice` → `die` is needed.
+3. A loose "rest … regain" window swallows the `, and you regain all … Long
+   Rest` half of the first ordering and reports every one-use pool as fully
+   restored. The reversed ordering must be matched by its exact phrase
+   ("at the end of which you regain").
+
+TCE's Psionic Power reads as no short-rest recovery, correctly: its short-rest
+sentence is the once-per-rest bonus action, not the pool refill, and it uses
+lowercase "short or long rest" with no variantrule tag.
+
 ### Armour AC — the data won't tell you
 `ac` is the base number. There is NO Dex cap field; the cap is implied by
 the armour type code (LA light = uncapped, MA medium = +2, HA heavy = none).

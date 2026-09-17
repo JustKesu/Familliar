@@ -19,6 +19,10 @@
  *
  * Slice 9a2 (D111) adds the death saving throws beside it, rendered only while
  * the current is exactly 0 and gone the moment anything lifts it above 0.
+ *
+ * Slice 9b5 adds the two rest buttons here, beside the hit points (SPEC section
+ * on the persistent header), because a rest is taken from every tab and moves
+ * the hit points among other things. What each one restores is not decided here.
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
@@ -243,6 +247,8 @@ export function SheetHeader({
 	temporaryHitPoints,
 	deathSaves,
 	onEditHitPoints,
+	onShortRest,
+	onLongRest,
 }: {
 	name: string
 	armourClass: Calculated<ArmourClassValue>
@@ -262,6 +268,13 @@ export function SheetHeader({
 	deathSaves: CharacterDeathSaves | undefined
 	/** Absent on a read-only sheet — the HP block then shows the values without the fields or the panel. */
 	onEditHitPoints?: (hitPoints: HitPointFields) => void
+	/**
+	 * Slice 9b5. What a rest restores is decided by the caller, which is the one
+	 * that holds the resource list and the hit-point maximum; the header only says
+	 * that a rest was taken. Absent on a read-only sheet, like the HP editors.
+	 */
+	onShortRest?: () => void
+	onLongRest?: () => void
 }): ReactNode {
 	/** What the death saves are worth on a write that does not touch the current hit points (D111). */
 	const carriedDeathSaves = deathSavesAfterHitPointChange(currentHp, deathSaves)
@@ -386,6 +399,21 @@ export function SheetHeader({
 							/>
 						)}
 					</>
+				)}
+				{/* Both apply on the click, like every other control in this header — a rest is undone by the same buttons that spend, not by a dialog. */}
+				{(onShortRest || onLongRest) && (
+					<div className="sheet__rest" role="group" aria-label="Rest">
+						{onShortRest && (
+							<button type="button" onClick={onShortRest}>
+								Short Rest
+							</button>
+						)}{' '}
+						{onLongRest && (
+							<button type="button" onClick={onLongRest}>
+								Long Rest
+							</button>
+						)}
+					</div>
 				)}
 			</section>
 		</header>

@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-17 (9b4: spotřebované hit dice — úložiště)
+Poslední aktualizace: 2026-09-17 (9b5: tlačítka Short Rest a Long Rest)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -480,6 +480,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9b2 | Uses v tabulce akcí pro 8 zdrojů s maximem (`UsesTracker`) | — |
    | 9b3 | Spotřebované sloty kouzel — zvlášť běžné a Pact Magic (D11) | 37→38 |
    | 9b4 | Spotřebované hit dice — jen úložiště a clamp, bez UI | 38→39 |
+   | 9b5 | Tlačítka Short Rest a Long Rest v hlavičce, jeden atomický zápis | — |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -616,9 +617,28 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      kostek (9c). Testy: `hitDice.test.ts`, blok v `levelRemoval.test.tsx`,
      `characterStore.test.ts`, `migrations.test.ts`. Bez kontroly v prohlížeči —
      slice nepřidává žádný ovládací prvek.
-   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): odpočinky. Otevřené
-     otázky k nim jsou v posledním REPORT.md ze session průzkumu a nejsou
-     těmihle slice rozhodnuté.
+   - Slice 9b5 — tlačítka **Short Rest** a **Long Rest** v hlavičce sheetu vedle
+     životů (`.sheet__rest`), obě se aplikují hned na klik, bez potvrzení. Co
+     krátký odpočinek vrací, se čte z textu featury, ne z tagu: `shortRestRecovery`
+     v `calculation/resources.ts` a nové pole `CharacterResource.shortRest`
+     (`'all' | 'one' | null`). Z 8 zdrojů s maximem vrací krátký odpočinek JEDNO
+     použití u Channel Divinity, Rage, Second Wind, Wild Shape a Psionic Energy
+     Die, VŠECHNO u Focus Pointů, a NIC u Favored Enemy a Sorcery Pointů; Pact
+     Magic sloty se ptají stejnou funkcí a vrací se celé (běžné sloty podle D11
+     až po dlouhém odpočinku). Podrobná tabulka a pasti při čtení jsou v DATA.md.
+     Dlouhý odpočinek maže `resourceUses`, oba pooly `spentSpellSlots` i celé
+     `spentHitDice` a léčí na maximum přes `applyHealing` z 9a1. Dočasné životy
+     se neruší ani jedním odpočinkem (D110), death saves zhasne až léčení
+     dlouhého odpočinku (D111). Čistý výpočet je v `src/rest/rest.ts`
+     (`afterShortRest`, `afterLongRest`), zápis jde jedním atomickým
+     `CharacterStore.applyRest` přes prop `onRest` — čtyři hromádky se mění
+     najednou, ne čtyřmi zápisy. Utracení hit die při krátkém odpočinku tady
+     NENÍ, čeká na panel kostek (9c). Testy: nový blok v `resources.test.ts`,
+     nový `rest/rest.test.ts`, bloky v `characterStore.test.ts` a
+     `SheetHeader.test.tsx`. Ověřeno v prohlížeči (Barbarian 5 / Warlock 3).
+   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): panel kostek a utracení
+     hit die (9c). Otevřené otázky k nim jsou v posledním REPORT.md ze session
+     průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
 
 ## Co appka umí navíc k build orderu
@@ -793,12 +813,14 @@ Slice 9b2 postavila nad modelem UI (`UsesTracker` v tabulce akcí) a 9b3 ho
 použila i pro sloty kouzel, ve dvou oddělených poolech podle D11.
 
 Slice 9b4 přidala ke stejnému objektu spotřebované **hit dice** — jen úložiště
-a clamp; ovládání přijde s 9b5 a 9c.
+a clamp; ovládání přijde s 9c.
 
-Další na řadě je zbytek 9b — **odpočinky** (co krátký a dlouhý odpočinek
-obnovuje, 9b5), včetně prvku, kterým se hit die utratí.
-Každé má vlastní rozhodnutí, která REPORT.md ze session průzkumu vyjmenovává a
-která zatím nejsou padlá.
+Slice 9b5 uzavřela 9b **odpočinky**: obě tlačítka v hlavičce a jeden atomický
+zápis `applyRest` přes všechny čtyři hromádky.
+
+Další na řadě je **9c** — panel pro hody kostkou, a s ním prvek, kterým se hit
+die utratí při krátkém odpočinku. Má vlastní rozhodnutí, která REPORT.md ze
+session průzkumu vyjmenovává a která zatím nejsou padlá.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.

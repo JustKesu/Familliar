@@ -30,7 +30,7 @@ import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
-import { computeCharacterResources, type ResourceFeature } from '../calculation/resources'
+import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
@@ -126,7 +126,8 @@ import {
 	type WeaponAttackAbility,
 	type WeaponGrip,
 } from '../storage/character'
-import type { HitPointFields } from '../storage/characterStore'
+import { afterLongRest, afterShortRest } from '../rest/rest'
+import type { HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
 import { SheetHeader } from './SheetHeader'
@@ -1686,6 +1687,7 @@ export function CharacterSheet({
 	onEditHitPoints,
 	onEditResourceUses,
 	onEditSpentSpellSlots,
+	onRest,
 	onEditCharacter,
 	onLevelUp,
 	onRemoveLevel,
@@ -1699,6 +1701,8 @@ export function CharacterSheet({
 	onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void
 	/** Marks or undoes one spent spell slot on the Spells tab (slice 9b3). Absent leaves the slot counts showing with no buttons to change them. */
 	onEditSpentSpellSlots?: (spentSpellSlots: SpentSpellSlots | undefined) => void
+	/** Applies a finished rest in one write (slice 9b5). Absent leaves the header without the two rest buttons. */
+	onRest?: (rest: RestFields) => void
 	/** Reopens the creation wizard over this character (slice 8d1). Absent leaves the sheet without the button. */
 	onEditCharacter?: () => void
 	/** Opens the one-level walk (slice 8d3) with what the next level adds. Absent leaves the sheet without the button. */
@@ -2314,6 +2318,20 @@ export function CharacterSheet({
 		onEditResourceUses({ ...resourceUses, [name]: next })
 	}
 	/*
+	 * Slice 9b5: what a rest gives back is decided here, where the resource list and
+	 * the hit-point maximum already are. Pact Magic is asked the same question as
+	 * the resources instead of being assumed short-rest recoverable — its own
+	 * feature text is what separates it from the ordinary slots D11 keeps apart,
+	 * which come back only on a Long Rest.
+	 */
+	const pactShortRest = shortRestRecovery(['Pact Magic'], resourceFeatures)
+	function takeShortRest(): void {
+		onRest?.(afterShortRest(character.currentHp, character.play, characterResources, pactShortRest))
+	}
+	function takeLongRest(): void {
+		onRest?.(afterLongRest(character.currentHp, character.play, maxHitPoints.status === 'known' ? maxHitPoints.value : null))
+	}
+	/*
 	 * Slice 9b3: the same spend/undo shape one pool over, kept as two functions
 	 * rather than one with a pool argument — D11's two pools are keyed differently
 	 * (ordinary by spell level, Pact Magic by nothing), so a shared writer would
@@ -2401,6 +2419,8 @@ export function CharacterSheet({
 				temporaryHitPoints={character.play?.temporaryHitPoints}
 				deathSaves={character.play?.deathSaves}
 				onEditHitPoints={onEditHitPoints}
+				onShortRest={onRest ? takeShortRest : undefined}
+				onLongRest={onRest ? takeLongRest : undefined}
 			/>
 
 			<header className="sheet__header">

@@ -335,3 +335,23 @@ describe('SheetHeader death saving throws', () => {
 		expect(onEditHitPoints).toHaveBeenLastCalledWith(expect.objectContaining({ currentHp: 0, deathSaves: { successes: 2, failures: 1 } }))
 	})
 })
+
+describe('SheetHeader rest buttons (slice 9b5)', () => {
+	it('applies each rest on the click, with no dialog in between', () => {
+		const onShortRest = vi.fn()
+		const onLongRest = vi.fn()
+		renderHeader({ currentHp: 12, maxHitPoints: maxOf(22), onShortRest, onLongRest })
+
+		fireEvent.click(screen.getByRole('button', { name: 'Short Rest' }))
+		expect(onShortRest).toHaveBeenCalledTimes(1)
+
+		fireEvent.click(screen.getByRole('button', { name: 'Long Rest' }))
+		expect(onLongRest).toHaveBeenCalledTimes(1)
+	})
+
+	it('leaves the buttons out of a read-only sheet', () => {
+		renderHeader({ currentHp: 12, maxHitPoints: maxOf(22) })
+		expect(screen.queryByRole('button', { name: 'Short Rest' })).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Long Rest' })).toBeNull()
+	})
+})

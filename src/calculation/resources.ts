@@ -50,7 +50,12 @@ export interface CharacterResource {
 	dataNames: string[]
 	/** Uses per rest, or why the data does not say (D43). Never a guess. */
 	max: Calculated<number>
+	/** What a Short Rest gives back (slice 9b5), from the feature text; null is "nothing until a Long Rest". */
+	shortRest: RestRecovery | null
 }
+
+/** How much of a pool one rest returns — the two amounts the 2024 feature text uses, never a fraction. */
+export type RestRecovery = 'all' | 'one'
 
 /*
  * The data calls the Monk pool "Ki" on the TCE subclasses this app still offers
@@ -186,6 +191,75 @@ function computeResourceMax(name: string, character: Character, parsedClasses: u
 	return unknown(`"${name}" has no column in ${where}, so its number of uses is not in the data.`)
 }
 
+// --- what a rest gives back ----------------------------------------------
+
+/*
+ * The rest tag alone says a feature CARES about rests, not what a rest returns:
+ * every short-rest-recoverable pool in the data carries both tags, because the
+ * same sentence names the Long Rest that returns the rest of it. The amount is
+ * only in the prose, in two orderings (scripts/investigate-rest-recovery*.js):
+ *
+ *   "You regain one expended use when you finish a Short Rest, and you regain
+ *    all expended uses when you finish a Long Rest."            (Rage)
+ *   "…unavailable until you finish a Short Rest or Long Rest, at the end of
+ *    which you regain all your expended points."                (Monk's Focus)
+ *
+ * The second ordering is matched by its exact connecting phrase rather than by
+ * a window: a loose one swallows the "and you regain all … Long Rest" half of
+ * the first ordering and reports every one-use pool as fully restored.
+ */
+const REGAIN_THEN_REST = /\bregain\s+(all|one)\b[^.]{0,120}?\bfinish\s+an?\s+((?:Short|Long) Rest(?:\s+or\s+(?:Short|Long) Rest)?)/gi
+const REST_THEN_REGAIN = /\bfinish\s+an?\s+((?:Short|Long) Rest(?:\s+or\s+(?:Short|Long) Rest)?),?\s+at the end of which you regain\s+(all|one)\b/gi
+
+/** Letters only, with the data's Dice/Die plural folded together — Psi Warrior's pool is consumed as "Psionic Energy Die" and recovered as "Psionic Energy Dice" (DATA.md). */
+function comparableText(text: string): string {
+	return text.toLowerCase().replace(/[^a-z]/g, '').replace(/dice/g, 'die')
+}
+
+/**
+ * What one feature's text says a Short Rest returns of `name`, or null if it
+ * says nothing about it. A clause counts for a resource when the feature is the
+ * resource's OWN feature (Rage's sentence never repeats the word "Rage") or when
+ * the sentence names it (Monk's Focus and Psionic Power define pools they are
+ * not named after).
+ */
+function shortRestRecoveryFrom(feature: ResourceFeature, names: readonly string[]): RestRecovery | null {
+	const ownFeature = names.some((name) => normalizeResourceName(resolveResourceName(feature.name)) === normalizeResourceName(name))
+	const wanted = names.map(comparableText)
+	let found: RestRecovery | null = null
+	for (const sentence of plainText(feature.entries).join(' ').split(/(?<=\.)\s+/)) {
+		if (!ownFeature && !wanted.some((name) => comparableText(sentence).includes(name))) continue
+		for (const [amount, rests] of [
+			...[...sentence.matchAll(REGAIN_THEN_REST)].map((match) => [match[1], match[2]] as const),
+			...[...sentence.matchAll(REST_THEN_REGAIN)].map((match) => [match[2], match[1]] as const),
+		]) {
+			if (!/Short Rest/i.test(rests)) continue
+			// The smaller amount wins where a resource has two claims: giving back a use the rules withhold is the worse error.
+			if (amount.toLowerCase() === 'one') return 'one'
+			found = 'all'
+		}
+	}
+	return found
+}
+
+/**
+ * What a Short Rest returns of the resource `names` identify (slice 9b5), across
+ * everything the character holds. Exported for the Warlock's Pact Magic slots,
+ * which are not a CharacterResource — their feature says "regain all expended
+ * Pact Magic spell slots when you finish a Short Rest or Long Rest", so D11's two
+ * slot pools are asked the same question in the same way rather than one of them
+ * being hardcoded as short-rest recoverable.
+ */
+export function shortRestRecovery(names: readonly string[], features: readonly ResourceFeature[]): RestRecovery | null {
+	let found: RestRecovery | null = null
+	for (const feature of features) {
+		const recovery = shortRestRecoveryFrom(feature, names)
+		if (recovery === 'one') return 'one'
+		if (recovery === 'all') found = 'all'
+	}
+	return found
+}
+
 // --- the resource list ---------------------------------------------------
 
 /**
@@ -220,7 +294,12 @@ export function computeCharacterResources(character: Character, parsedClasses: u
 	}
 
 	return [...found.entries()]
-		.map(([name, dataNames]) => ({ name, dataNames, max: computeResourceMax(name, character, parsedClasses) }))
+		.map(([name, dataNames]) => ({
+			name,
+			dataNames,
+			max: computeResourceMax(name, character, parsedClasses),
+			shortRest: shortRestRecovery([name, ...dataNames], features),
+		}))
 		.sort((a, b) => a.name.localeCompare(b.name))
 }
 

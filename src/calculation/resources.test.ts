@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, type CharacterResource, type ResourceFeature } from './resources'
+import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, type CharacterResource, type ResourceFeature } from './resources'
 import type { Character } from '../storage/character'
 
 /** classes.json is only read for its table groups, so the fixtures carry nothing else. */
@@ -124,10 +124,76 @@ describe('the maximum, from the per-level tables (slice 9b1)', () => {
 	})
 })
 
+/* Slice 9b5: the sentences are the data's own, markup and all — the amount is only in the prose, so a paraphrase would test nothing. */
+const RAGE_BOTH_RESTS: ResourceFeature = {
+	name: 'Rage',
+	entries: [
+		'You regain one expended use when you finish a {@variantrule Short Rest|XPHB}, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.',
+	],
+}
+const MONKS_FOCUS: ResourceFeature = {
+	name: "Monk's Focus",
+	entries: [
+		'When you expend a Focus Point, it is unavailable until you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}, at the end of which you regain all your expended points.',
+	],
+}
+const PSIONIC_POWER: ResourceFeature = {
+	name: 'Psionic Power',
+	entries: [
+		'You regain one of your expended Psionic Energy Dice when you finish a {@variantrule Short Rest|XPHB}, and you regain all of them when you finish a {@variantrule Long Rest|XPHB}.',
+	],
+}
+const FAVORED_ENEMY: ResourceFeature = {
+	name: 'Favored Enemy',
+	entries: ['You regain all expended uses of this ability when you finish a {@variantrule Long Rest|XPHB}.'],
+}
+const FONT_OF_MAGIC: ResourceFeature = {
+	name: 'Font of Magic',
+	entries: ['You regain all expended Sorcery Points when you finish a {@variantrule Long Rest|XPHB}.'],
+}
+const METAMAGIC: ResourceFeature = { name: 'Quickened Spell', consumes: { name: 'Sorcery Point' }, entries: [] }
+const PACT_MAGIC: ResourceFeature = {
+	name: 'Pact Magic',
+	entries: ['You regain all expended Pact Magic spell slots when you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}.'],
+}
+
+describe('what a Short Rest gives back (slice 9b5)', () => {
+	it('reads one use back from the feature’s own sentence, which never repeats the resource name', () => {
+		const [rage] = computeCharacterResources(character('Barbarian', 5), CLASSES, [RAGE_BOTH_RESTS])
+		expect(rage.shortRest).toBe('one')
+	})
+
+	it('does not read the Long Rest half of that same sentence as a full short-rest restore', () => {
+		expect(shortRestRecovery(['Rage'], [RAGE_BOTH_RESTS])).not.toBe('all')
+	})
+
+	it('reads the whole pool back from a feature not named after it, in the reversed "at the end of which" phrasing', () => {
+		const [focus] = computeCharacterResources(character('Monk', 5), CLASSES, [STUNNING_STRIKE, MONKS_FOCUS])
+		expect(focus.shortRest).toBe('all')
+	})
+
+	it('matches the data’s plural Dice against the singular Die the pool is consumed as', () => {
+		const [psi] = computeCharacterResources(character('Fighter', 5, 'Psi Warrior'), CLASSES, [GUARDED_MIND, PSIONIC_POWER])
+		expect(psi.shortRest).toBe('one')
+	})
+
+	it('gives back nothing where the text names only a Long Rest', () => {
+		const [favored] = computeCharacterResources(character('Fighter', 5), CLASSES, [FAVORED_ENEMY])
+		expect(favored.shortRest).toBeNull()
+		const [sorcery] = computeCharacterResources(character('Fighter', 5), CLASSES, [METAMAGIC, FONT_OF_MAGIC])
+		expect(sorcery.shortRest).toBeNull()
+	})
+
+	it('answers the same question for Pact Magic, which is not a resource (D11)', () => {
+		expect(shortRestRecovery(['Pact Magic'], [PACT_MAGIC])).toBe('all')
+		expect(shortRestRecovery(['Pact Magic'], [RAGE_BOTH_RESTS])).toBeNull()
+	})
+})
+
 describe('clamping spent counts to the current maximum (slice 9b1)', () => {
 	const resources: CharacterResource[] = [
-		{ name: 'Rage', dataNames: ['Rage'], max: { status: 'known', value: 3, breakdown: [] } },
-		{ name: 'Superiority Die', dataNames: ['Superiority Die'], max: { status: 'unknown', reason: 'not in the data' } },
+		{ name: 'Rage', dataNames: ['Rage'], max: { status: 'known', value: 3, breakdown: [] }, shortRest: 'one' },
+		{ name: 'Superiority Die', dataNames: ['Superiority Die'], max: { status: 'unknown', reason: 'not in the data' }, shortRest: null },
 	]
 
 	it('brings a count above the maximum down to it', () => {
