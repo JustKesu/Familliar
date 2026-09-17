@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
-import { type ClassSpellSlotsData, computeSpellSlots } from './spellSlots'
+import { type ClassSpellSlotsData, computeSpellSlots, spellSlotMaxima, spentSpellSlotsWithinMaxima } from './spellSlots'
 
 // Rows confirmed against data/classes.json by scripts/investigate-spell-slots.js.
 const wizardSlots: ClassSpellSlotsData = {
@@ -170,5 +170,26 @@ describe('computeSpellSlots', () => {
 	it('returns unknown when the character has no classes', () => {
 		const result = computeSpellSlots({ id: '2', name: 'Blank', classes: [] }, classData)
 		expect(result.status).toBe('unknown')
+	})
+})
+
+/* Slice 9b3: the clamp the level-removal plan applies to a stored spent count. */
+describe('spellSlotMaxima / spentSpellSlotsWithinMaxima', () => {
+	const ordinaryEntry = { className: 'Wizard', classSource: 'XPHB', ordinarySlots: [4, 3, 2, 0, 0, 0, 0, 0, 0] }
+	const pactEntry = { className: 'Warlock', classSource: 'XPHB', pactSlots: { count: 2, slotLevel: 3 } }
+
+	it('reads the two pools separately, each staying 0 when the character has none of it', () => {
+		expect(spellSlotMaxima([ordinaryEntry])).toEqual({ ordinary: [4, 3, 2, 0, 0, 0, 0, 0, 0], pact: 0 })
+		expect(spellSlotMaxima([pactEntry])).toEqual({ ordinary: [0, 0, 0, 0, 0, 0, 0, 0, 0], pact: 2 })
+	})
+
+	it('brings each count down to its own pool max and drops the ones left at 0', () => {
+		const clamped = spentSpellSlotsWithinMaxima({ ordinary: { 1: 9, 2: 1, 4: 2 }, pact: 5 }, spellSlotMaxima([ordinaryEntry, pactEntry]))
+		expect(clamped).toEqual({ ordinary: { 1: 4, 2: 1 }, pact: 2 })
+	})
+
+	it('returns absence for nothing stored, and for a record nothing survives', () => {
+		expect(spentSpellSlotsWithinMaxima(undefined, spellSlotMaxima([ordinaryEntry]))).toBeUndefined()
+		expect(spentSpellSlotsWithinMaxima({ ordinary: { 4: 2 }, pact: 1 }, spellSlotMaxima([ordinaryEntry]))).toBeUndefined()
 	})
 })

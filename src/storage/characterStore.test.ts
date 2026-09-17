@@ -1135,6 +1135,21 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect(store.update(character.id, { name: 'Rager', play: { resourceUses: { Rage: 0 } } }).play).toBeUndefined()
 	})
 
+	/* Slice 9b3: the fifth play field, written on its own and normalised by the same rule as the four before it. */
+	it('writes spent spell slots per pool, leaves the other play fields alone, and stores 0 as absence', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Bindra', currentHp: 12, play: { resourceUses: { Rage: 1 } } })
+
+		store.setSpentSpellSlots(character.id, { ordinary: { 1: 2, 3: 0 }, pact: 1 })
+		const after = new CharacterStore(backing).list()[0]
+		expect(after.play).toEqual({ resourceUses: { Rage: 1 }, spentSpellSlots: { ordinary: { 1: 2 }, pact: 1 } })
+		expect(after.currentHp).toBe(12)
+
+		store.setSpentSpellSlots(character.id, { ordinary: { 1: 0 }, pact: 0 })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ resourceUses: { Rage: 1 } })
+	})
+
 	/* D110: negative current hit points mean nothing under the 2024 rules; no write path may leave one behind. */
 	it('clamps a negative current HP at 0, whether it arrives through create, update or setHitPoints', () => {
 		const backing = new MemoryStorage()

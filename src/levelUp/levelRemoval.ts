@@ -1,4 +1,6 @@
 import { computeCharacterResources, resourceUsesWithinMaxima, type ResourceFeature } from '../calculation/resources'
+import { computeSpellSlots, spellSlotMaxima, spentSpellSlotsWithinMaxima } from '../calculation/spellSlots'
+import { extractSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
@@ -168,6 +170,33 @@ export function levelRemovalPlan(character: Character, parsedClasses: unknown, r
 		const play = { ...restOfPlay, ...(clamped ? { resourceUses: clamped } : {}) }
 		delete result.play
 		if (Object.keys(play).length > 0) result.play = play
+	}
+
+	/*
+	 * Slice 9b3: the same invariant one pool over — a level's worth of spell slots
+	 * can disappear, and a spent count recorded against the old table would outlive
+	 * it. Computed against the REDUCED character, like the resource maxima above.
+	 * computeSpellSlots returning `unknown` is not "no slots", so nothing is
+	 * clamped then and the stored counts stand.
+	 */
+	const storedSlots = result.play?.spentSpellSlots
+	if (storedSlots !== undefined) {
+		const slots = computeSpellSlots(result, extractSpellSlotsClassData(parsedClasses))
+		if (slots.status === 'known') {
+			const clamped = spentSpellSlotsWithinMaxima(storedSlots, spellSlotMaxima(slots.value))
+			for (const [slotLevel, spent] of Object.entries(storedSlots.ordinary ?? {})) {
+				const now = clamped?.ordinary?.[Number(slotLevel)] ?? 0
+				if (now < spent) dropped.push(`Level ${slotLevel} spell slots: ${spent} spent, now ${now}`)
+			}
+			const pactNow = clamped?.pact ?? 0
+			if (storedSlots.pact !== undefined && pactNow < storedSlots.pact) {
+				dropped.push(`Pact Magic slots: ${storedSlots.pact} spent, now ${pactNow}`)
+			}
+			const { spentSpellSlots: _slots, ...restOfPlay } = result.play ?? {}
+			const play = { ...restOfPlay, ...(clamped ? { spentSpellSlots: clamped } : {}) }
+			delete result.play
+			if (Object.keys(play).length > 0) result.play = play
+		}
 	}
 
 	return { level, dropped, result }

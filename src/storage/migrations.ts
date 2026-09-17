@@ -312,6 +312,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			return { ...rest, ...(Object.keys(play).length > 0 ? { play } : {}), schemaVersion: 37 }
 		},
 	},
+	{
+		from: 37,
+		to: 38,
+		/*
+		 * 38 adds Character.play.spentSpellSlots (slice 9b3). Absent is the right
+		 * value for every existing character — no slot could be spent before this
+		 * version — so the step only tags, and a character with no `play` gains no
+		 * empty object.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 38 }),
+	},
 ]
 
 /**

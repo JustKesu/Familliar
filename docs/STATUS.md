@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-17 (9b1: model zdrojů + `Character.play`)
+Poslední aktualizace: 2026-09-17 (9b3: spotřebované sloty kouzel)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -477,6 +477,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9a1 | Dočasné životy, panel poškození/léčení v hlavičce, clamp current HP na 0 (D110) | 34→35 |
    | 9a2 | Death saves — panel v hlavičce při 0 HP, hod appky i ruční klik, stabilizace/smrt (D111) | 35→36 |
    | 9b1 | Model zdrojů (výpočet + úložiště, BEZ UI), `Character.play`, clamp spotřeby při odebrání úrovně | 36→37 |
+   | 9b2 | Uses v tabulce akcí pro 8 zdrojů s maximem (`UsesTracker`) | — |
+   | 9b3 | Spotřebované sloty kouzel — zvlášť běžné a Pact Magic (D11) | 37→38 |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -582,8 +584,26 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      prohlížeči: Fighter 1 (Second Wind 0/2 → mark → 2/2 → reload zachoval →
      undo → 0/2), tlačítka disabled na obou okrajích, `localStorage` ukládá
      `resourceUses` jen pro nenulové položky.
-   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): spent spell slots,
-     spent hit dice, odpočinky. Otevřené otázky k nim jsou v posledním
+   - Slice 9b3 — spotřebované sloty kouzel, ve dvou oddělených poolech (D11).
+     `Character.play.spentSpellSlots?: { ordinary?: Record<číslo slotu, počet>;
+     pact?: number }` (schéma 38, migrace 37→38 jen tag). Pact Magic je jedno
+     číslo bez klíče úrovně — postava má v jednu chvíli všechny pact sloty na
+     jedné úrovni. `storedPlayState` normalizuje stejně jako u `resourceUses`
+     (nula = nepřítomnost, prázdný záznam se nezapíše), zápis jde novým cíleným
+     `CharacterStore.setSpentSpellSlots` přes prop `onEditSpentSpellSlots`.
+     Výpočet slotů se NEMĚNIL — `computeSpellSlots` zůstává zdrojem maxim;
+     přibyly k němu jen `spellSlotMaxima` (bound pro clamp; u víc tříd bere
+     maximum z nich, protože slučování multiclass tabulek je krok 10) a
+     `spentSpellSlotsWithinMaxima`. `levelRemovalPlan` clampuje po odebrání
+     úrovně oba pooly a přidává řádky do `dropped` („Level 3 spell slots: 2
+     spent, now 0"); když `computeSpellSlots` vrátí `unknown`, neclampuje se nic.
+     UI: `UsesTracker` z 9b2 u každé úrovně s aspoň 1 slotem plus samostatný
+     blok `.sheet__pact-slots` s vlastním nadpisem. Testy: `spellSlots.test.ts`,
+     blok v `levelRemoval.test.tsx`, `characterStore.test.ts`, nový blok v
+     `CharacterSheet.test.tsx`. Ověřeno v prohlížeči (Wizard 5, Warlock 3,
+     odebrání úrovně 5→4).
+   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): spent hit dice,
+     odpočinky. Otevřené otázky k nim jsou v posledním
      REPORT.md ze session průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
 
@@ -755,9 +775,11 @@ tvaru, navíc s invariantem vázaným na `currentHp === 0`. Slice 9b1 ta dvě po
 sloučila pod `Character.play` a přidala k nim `resourceUses` — od teď je play
 state jeden objekt, ne rostoucí řada polí na `Character`.
 
-Další na řadě je zbytek 9b — **UI zdrojů** (sloupec Uses, tlačítka spend/reset
-nad modelem z 9b1), **hit dice** (spotřebované kostky), **spell slots**
-(spotřebované sloty) a **odpočinky** (co krátký a dlouhý odpočinek obnovuje).
+Slice 9b2 postavila nad modelem UI (`UsesTracker` v tabulce akcí) a 9b3 ho
+použila i pro sloty kouzel, ve dvou oddělených poolech podle D11.
+
+Další na řadě je zbytek 9b — **hit dice** (spotřebované kostky, 9b4) a
+**odpočinky** (co krátký a dlouhý odpočinek obnovuje, 9b5).
 Každé má vlastní rozhodnutí, která REPORT.md ze session průzkumu vyjmenovává a
 která zatím nejsou padlá.
 

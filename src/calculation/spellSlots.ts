@@ -24,7 +24,7 @@
  * pact), just from a narrower table (max spell level 4).
  */
 
-import type { Character, CharacterClass } from '../storage/character'
+import type { Character, CharacterClass, SpentSpellSlots } from '../storage/character'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 export type CasterProgression = 'full' | 'artificer' | 'pact' | '1/3'
@@ -150,4 +150,62 @@ export function computeSpellSlots(character: Character, classData: ClassSpellSlo
 	}
 
 	return known(value, breakdown)
+}
+
+/**
+ * The most slots a character has at each spell level, and in their Pact Magic
+ * pool (slice 9b3) — the bound a spent count is measured against, in the two
+ * pools D11 keeps apart.
+ *
+ * Multiclass slot combining is build order step 10, so nothing here adds two
+ * classes' tables together: with more than one ordinary caster entry this takes
+ * the largest of them per level, which is a bound and not a combined table. It
+ * is only ever used to clamp, so overstating it leaves a player's count alone
+ * rather than silently refilling a slot.
+ */
+export function spellSlotMaxima(entries: readonly SpellSlotsEntry[]): { ordinary: number[]; pact: number } {
+	const ordinary = Array.from({ length: SPELL_LEVELS }, () => 0)
+	let pact = 0
+	for (const entry of entries) {
+		entry.ordinarySlots?.forEach((count, i) => {
+			ordinary[i] = Math.max(ordinary[i], count)
+		})
+		if (entry.pactSlots) pact = Math.max(pact, entry.pactSlots.count)
+	}
+	return { ordinary, pact }
+}
+
+/**
+ * The stored spent slots, with each count brought down to the maximum the
+ * character has now (slice 9b3) — the same invariant resourceUsesWithinMaxima
+ * (calculation/resources.ts) applies to limited-use pools, for the same reason: a
+ * level change shrinks the pool, and a count recorded against the old maximum
+ * would otherwise outlive it.
+ *
+ * Unlike a resource, a slot's maximum is never "not in the data": a level with no
+ * slots has zero of them, so a count there is dropped rather than left alone. The
+ * caller passes maxima it actually computed — computeSpellSlots returning
+ * `unknown` is not zeroes, and nothing is clamped against it.
+ *
+ * Counts of 0 and an emptied record become absence, the convention every play
+ * field uses.
+ */
+export function spentSpellSlotsWithinMaxima(
+	spent: SpentSpellSlots | undefined,
+	maxima: { ordinary: number[]; pact: number },
+): SpentSpellSlots | undefined {
+	if (spent === undefined) return undefined
+
+	const ordinary: Record<number, number> = {}
+	for (const [level, count] of Object.entries(spent.ordinary ?? {})) {
+		const value = Math.min(count, maxima.ordinary[Number(level) - 1] ?? 0)
+		if (value > 0) ordinary[Number(level)] = value
+	}
+	const pact = Math.min(spent.pact ?? 0, maxima.pact)
+
+	const clamped: SpentSpellSlots = {
+		...(Object.keys(ordinary).length > 0 ? { ordinary } : {}),
+		...(pact > 0 ? { pact } : {}),
+	}
+	return Object.keys(clamped).length > 0 ? clamped : undefined
 }

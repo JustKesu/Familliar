@@ -21,7 +21,7 @@ import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells } from '../spells/raceSpells'
-import { choiceNames, CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition } from '../storage/character'
+import { choiceNames, CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition, type SpentSpellSlots } from '../storage/character'
 import type { HitPointFields } from '../storage/characterStore'
 import { loadAcFormulaKeys } from './armourClassData'
 import { loadDamageResponseData } from './damageResponseData'
@@ -3933,6 +3933,87 @@ describe('CharacterSheet', () => {
 			expect(slotsSection.textContent).toContain('Pact Magic')
 			expect(slotsSection.textContent).toContain('2 slots (level 2)')
 			expect(slotsSection.textContent).not.toMatch(/Level \d+: \d+/) // no ordinary 1-9 list alongside it
+		})
+
+		/* Slice 9b3: spending a slot, in each of D11's two pools. */
+		describe('spent spell slots', () => {
+			const WIZARD_SLOTS: ClassSpellSlotsData[] = [
+				{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3], [4, 2]], pactSlotsByLevel: null },
+			]
+			const WARLOCK_SLOTS: ClassSpellSlotsData[] = [
+				{
+					className: 'Warlock',
+					classSource: 'XPHB',
+					casterProgression: 'pact',
+					spellSlotsByLevel: null,
+					pactSlotsByLevel: [{ count: 1, slotLevel: 1 }, { count: 2, slotLevel: 1 }],
+				},
+			]
+
+			async function renderCaster(
+				className: string,
+				level: number,
+				slots: ClassSpellSlotsData[],
+				play: Character['play'],
+				onEditSpentSpellSlots?: (spentSpellSlots: SpentSpellSlots | undefined) => void,
+			) {
+				vi.mocked(loadSpellSlotsClassData).mockResolvedValue(slots)
+				const subject: Character = {
+					id: `slots-${className}-${level}`,
+					name: 'Slotter',
+					classes: [{ className, classSource: 'XPHB', subclass: null, level }],
+					...(play ? { play } : {}),
+				}
+				const { container } = render(<CharacterSheet character={subject} onEditSpentSpellSlots={onEditSpentSpellSlots} />)
+				await screen.findByRole('heading', { name: 'Slotter' })
+				await waitFor(() => expect(container.querySelector('.sheet__spell-slots')).toBeTruthy())
+				return container
+			}
+
+			it('shows one tracker per level that has slots, reading the stored spent count', async () => {
+				const container = await renderCaster('Wizard', 3, WIZARD_SLOTS, { spentSpellSlots: { ordinary: { 1: 3 } } })
+				const trackers = Array.from(container.querySelectorAll('.sheet__spell-slots .sheet__action-uses')).map((node) => node.textContent)
+				expect(trackers).toHaveLength(2) // levels 1 and 2 only — level 3 has no slots at Wizard 3
+				expect(trackers[0]).toContain('3 / 4')
+				expect(trackers[1]).toContain('0 / 2')
+			})
+
+			it('marking and undoing a slot reports the new count for that level alone', async () => {
+				const onEdit = vi.fn()
+				await renderCaster('Wizard', 3, WIZARD_SLOTS, { spentSpellSlots: { ordinary: { 1: 1, 2: 2 } } }, onEdit)
+
+				fireEvent.click(screen.getByRole('button', { name: 'Use level 1 spell slots' }))
+				expect(onEdit).toHaveBeenCalledWith({ ordinary: { 1: 2, 2: 2 } })
+
+				fireEvent.click(screen.getByRole('button', { name: 'Undo a use of level 2 spell slots' }))
+				expect(onEdit).toHaveBeenLastCalledWith({ ordinary: { 1: 1, 2: 1 } })
+			})
+
+			it('bounds each level at its own maximum and at 0', async () => {
+				await renderCaster('Wizard', 3, WIZARD_SLOTS, { spentSpellSlots: { ordinary: { 1: 4 } } }, vi.fn())
+				expect((screen.getByRole('button', { name: 'Use level 1 spell slots' }) as HTMLButtonElement).disabled).toBe(true)
+				expect((screen.getByRole('button', { name: 'Undo a use of level 1 spell slots' }) as HTMLButtonElement).disabled).toBe(false)
+				// Level 2 is untouched: its own bound is the other way round.
+				expect((screen.getByRole('button', { name: 'Use level 2 spell slots' }) as HTMLButtonElement).disabled).toBe(false)
+				expect((screen.getByRole('button', { name: 'Undo a use of level 2 spell slots' }) as HTMLButtonElement).disabled).toBe(true)
+			})
+
+			it('D11: a Warlock gets a Pact Magic tracker of its own, written under its own key', async () => {
+				const onEdit = vi.fn()
+				const container = await renderCaster('Warlock', 2, WARLOCK_SLOTS, { spentSpellSlots: { pact: 1 } }, onEdit)
+
+				const pact = container.querySelector('.sheet__pact-slots')!
+				expect(pact.querySelector('.sheet__action-uses')!.textContent).toContain('1 / 2')
+				expect(container.querySelectorAll('.sheet__spell-slots .sheet__action-uses')).toHaveLength(1)
+
+				fireEvent.click(screen.getByRole('button', { name: 'Use Pact Magic slots' }))
+				expect(onEdit).toHaveBeenCalledWith({ pact: 2 })
+			})
+
+			it('leaves the counts unchangeable without the callback', async () => {
+				const container = await renderCaster('Wizard', 3, WIZARD_SLOTS, undefined)
+				expect(container.querySelector('.sheet__spell-slots button')).toBeNull()
+			})
 		})
 
 		it('a subclass caster (Cleric domain) shows the always-prepared subclass spells marked with their source, alongside any chosen spells', async () => {

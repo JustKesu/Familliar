@@ -19,6 +19,7 @@ import type {
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
 	FeatAsiChoice,
+	SpentSpellSlots,
 } from './character'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
@@ -194,10 +195,26 @@ function storedPlayState(currentHp: number | undefined, play: CharacterPlayState
 	const temporaryHitPoints = play?.temporaryHitPoints
 	const deathSaves = deathSavesAfterHitPointChange(currentHp, play?.deathSaves)
 	const resourceUses = Object.fromEntries(Object.entries(play?.resourceUses ?? {}).filter(([, spent]) => spent > 0))
+	const spentSpellSlots = storedSpentSpellSlots(play?.spentSpellSlots)
 	const stored: CharacterPlayState = {
 		...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
 		...(deathSaves ? { deathSaves } : {}),
 		...(Object.keys(resourceUses).length > 0 ? { resourceUses } : {}),
+		...(spentSpellSlots ? { spentSpellSlots } : {}),
+	}
+	return Object.keys(stored).length > 0 ? stored : undefined
+}
+
+/** Slice 9b3, under storedPlayState's own rule: a spent count of 0 is stored as absence, in each of D11's two pools separately, and an empty pair is no field at all. */
+function storedSpentSpellSlots(spent: SpentSpellSlots | undefined): SpentSpellSlots | undefined {
+	if (spent === undefined) return undefined
+	const ordinary: Record<number, number> = {}
+	for (const [level, count] of Object.entries(spent.ordinary ?? {})) {
+		if (count > 0) ordinary[Number(level)] = count
+	}
+	const stored: SpentSpellSlots = {
+		...(Object.keys(ordinary).length > 0 ? { ordinary } : {}),
+		...(spent.pact !== undefined && spent.pact > 0 ? { pact: spent.pact } : {}),
 	}
 	return Object.keys(stored).length > 0 ? stored : undefined
 }
@@ -449,6 +466,27 @@ export class CharacterStore {
 
 		const { currentHp, play, ...rest } = characters[index]
 		const storedPlay = storedPlayState(currentHp, { ...play, resourceUses })
+		const updated = [...characters]
+		updated[index] = {
+			...rest,
+			...(currentHp !== undefined ? { currentHp } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
+		}
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Sets the character's spent spell slots (slice 9b3) — a targeted write on the
+	 * setResourceUses precedent, replacing only `spentSpellSlots` and letting the
+	 * hit-point piles, death saves and resource uses ride through.
+	 */
+	setSpentSpellSlots(id: string, spentSpellSlots: SpentSpellSlots | undefined): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currentHp, play, ...rest } = characters[index]
+		const storedPlay = storedPlayState(currentHp, { ...play, spentSpellSlots })
 		const updated = [...characters]
 		updated[index] = {
 			...rest,

@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { saveCharacter, wizardDataFromCharacter } from '../creation/wizardState'
 import type { ResolverData } from '../featureResolver'
-import type { Character } from '../storage/character'
+import type { Character, SpentSpellSlots } from '../storage/character'
 import { CharacterStore, type KeyValueStorage } from '../storage/characterStore'
 import { levelGainsFor } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
@@ -257,6 +257,75 @@ describe('resource uses on a level removal', () => {
 
 		expect(result.result.play?.resourceUses).toEqual({ 'Second Wind': 1, 'Superiority Die': 9 })
 		expect(result.dropped.some((line) => line.includes('spent'))).toBe(false)
+	})
+})
+
+/* Slice 9b3: the same invariant as the block above, one pool over — and D11's two pools clamp separately. */
+describe('spent spell slots on a level removal', () => {
+	/* Sorcerer's real level 1-5 rows, plus a Warlock carrying Pact Magic's own two columns (1 slot to level 1, 2 from 2). */
+	const SLOT_CLASSES = [
+		...CLASSES.map((entry) =>
+			entry.entryType === 'class' && entry.name === 'Sorcerer'
+				? {
+						...entry,
+						casterProgression: 'full',
+						classTableGroups: [
+							{
+								colLabels: ['1st', '2nd', '3rd'],
+								rowsSpellProgression: [
+									[2, 0, 0],
+									[3, 0, 0],
+									[4, 2, 0],
+									[4, 3, 0],
+									[4, 3, 2],
+								],
+							},
+						],
+					}
+				: entry,
+		),
+		{
+			entryType: 'class',
+			name: 'Warlock',
+			source: 'XPHB',
+			subclassTitle: 'Warlock Subclass',
+			hd: { number: 1, faces: 8 },
+			casterProgression: 'pact',
+			classTableGroups: [{ colLabels: ['Spell Slots', 'Slot Level'], rows: [[1, 1], [2, 1], [2, 2], [2, 2], [2, 3]] }],
+			classFeatureIds: [],
+		},
+	]
+
+	function withSpent(className: string, level: number, spentSpellSlots: SpentSpellSlots): Character {
+		return { ...single(className, null, level, 1), play: { temporaryHitPoints: 5, spentSpellSlots } }
+	}
+
+	function removalPlan(character: Character): LevelRemovalPlan {
+		const result = levelRemovalPlan(character, SLOT_CLASSES, RESOLVER)
+		if ('reason' in result) throw new Error(result.reason)
+		return result
+	}
+
+	it('brings an ordinary count above the new maximum down to it, and says so', () => {
+		// Sorcerer 5 -> 4 loses its only level 3 slots entirely and keeps 3 at level 2.
+		const result = removalPlan(withSpent('Sorcerer', 5, { ordinary: { 2: 3, 3: 2 } }))
+
+		expect(result.result.play).toEqual({ temporaryHitPoints: 5, spentSpellSlots: { ordinary: { 2: 3 } } })
+		expect(result.dropped).toContain('Level 3 spell slots: 2 spent, now 0')
+		expect(result.dropped.some((line) => line.startsWith('Level 2 spell slots'))).toBe(false)
+	})
+
+	it('clamps the Pact Magic pool on its own', () => {
+		const result = removalPlan(withSpent('Warlock', 2, { pact: 2 }))
+
+		expect(result.result.play?.spentSpellSlots).toEqual({ pact: 1 })
+		expect(result.dropped).toContain('Pact Magic slots: 2 spent, now 1')
+	})
+
+	it('leaves the field off entirely once nothing survives the clamp', () => {
+		const result = removalPlan(withSpent('Sorcerer', 3, { ordinary: { 2: 2 } }))
+
+		expect(result.result.play).toEqual({ temporaryHitPoints: 5 })
 	})
 })
 

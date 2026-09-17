@@ -335,6 +335,28 @@ export interface CharacterPlayState {
 	 * (src/calculation/resources.ts) enforces that wherever the level changes.
 	 */
 	resourceUses?: Record<string, number>
+	/**
+	 * How many spell slots have been SPENT (slice 9b3), for the same reason
+	 * resourceUses counts spent rather than remaining: the maximum is computed and
+	 * changes with level. Absent means nothing is spent, and an emptied record is
+	 * stored as that absence, the convention every field above uses.
+	 *
+	 * Never above the current maximum — spentSpellSlotsWithinMaxima
+	 * (src/calculation/spellSlots.ts) enforces that wherever the level changes.
+	 */
+	spentSpellSlots?: SpentSpellSlots
+}
+
+/**
+ * The two pools D11 keeps apart, kept apart in storage too: a Warlock's Pact
+ * Magic slots are never merged with ordinary ones, so a single count would be
+ * unable to say which pool was spent.
+ */
+export interface SpentSpellSlots {
+	/** Keyed by SPELL level (1-9), not character level. An absent level is nothing spent there. */
+	ordinary?: Record<number, number>
+	/** One count, no level key: all of a character's Pact Magic slots sit at the same spell level at any one time. */
+	pact?: number
 }
 
 /** Three boxes each, counted 0–3 (D111). Which individual box was ticked carries no meaning, so only the counts are stored. */
@@ -807,12 +829,13 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 37 for Character.play (slice 9b1), which
- * absorbs the two play fields 35 and 36 added at the top level.
+ * (see wireFormat.ts). Bumped to 38 for Character.play.spentSpellSlots
+ * (slice 9b3); 37 grouped play state under Character.play (slice 9b1),
+ * absorbing the two play fields 35 and 36 added at the top level.
  *
  * Under D69 every bump from 16 on ships a migration from the immediately
  * previous version (see migrations.ts): a version-19 character is migrated,
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 37
+export const CURRENT_SCHEMA_VERSION = 38

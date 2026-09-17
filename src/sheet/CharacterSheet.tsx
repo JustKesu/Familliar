@@ -122,6 +122,7 @@ import {
 	type CustomWeaponCategory,
 	type CustomWeaponRange,
 	type MagicItemBonus,
+	type SpentSpellSlots,
 	type WeaponAttackAbility,
 	type WeaponGrip,
 } from '../storage/character'
@@ -1684,6 +1685,7 @@ export function CharacterSheet({
 	onEditCurrency,
 	onEditHitPoints,
 	onEditResourceUses,
+	onEditSpentSpellSlots,
 	onEditCharacter,
 	onLevelUp,
 	onRemoveLevel,
@@ -1695,6 +1697,8 @@ export function CharacterSheet({
 	onEditHitPoints?: (hitPoints: HitPointFields) => void
 	/** Marks or undoes one use of a limited resource in the actions table (slice 9b2). Absent leaves the row showing the count with no buttons to change it. */
 	onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void
+	/** Marks or undoes one spent spell slot on the Spells tab (slice 9b3). Absent leaves the slot counts showing with no buttons to change them. */
+	onEditSpentSpellSlots?: (spentSpellSlots: SpentSpellSlots | undefined) => void
 	/** Reopens the creation wizard over this character (slice 8d1). Absent leaves the sheet without the button. */
 	onEditCharacter?: () => void
 	/** Opens the one-level walk (slice 8d3) with what the next level adds. Absent leaves the sheet without the button. */
@@ -2309,6 +2313,23 @@ export function CharacterSheet({
 		const next = Math.max(0, max !== undefined ? Math.min(spent + delta, max) : spent + delta)
 		onEditResourceUses({ ...resourceUses, [name]: next })
 	}
+	/*
+	 * Slice 9b3: the same spend/undo shape one pool over, kept as two functions
+	 * rather than one with a pool argument — D11's two pools are keyed differently
+	 * (ordinary by spell level, Pact Magic by nothing), so a shared writer would
+	 * spend its body telling them apart again.
+	 */
+	const spentSpellSlots = character.play?.spentSpellSlots ?? {}
+	function spendOrdinarySlot(slotLevel: number, max: number, delta: 1 | -1): void {
+		if (!onEditSpentSpellSlots) return
+		const next = Math.min(Math.max(0, (spentSpellSlots.ordinary?.[slotLevel] ?? 0) + delta), max)
+		onEditSpentSpellSlots({ ...spentSpellSlots, ordinary: { ...spentSpellSlots.ordinary, [slotLevel]: next } })
+	}
+	function spendPactSlot(max: number, delta: 1 | -1): void {
+		if (!onEditSpentSpellSlots) return
+		const next = Math.min(Math.max(0, (spentSpellSlots.pact ?? 0) + delta), max)
+		onEditSpentSpellSlots({ ...spentSpellSlots, pact: next })
+	}
 	/* D88's gap: chosenOptionalFeatures resolves every stored pick (class- and subclass-level, plus fighting style); classOptionalFeatures only resolves class-level ones. Subtracting its names leaves exactly the subclass-level picks Class options does not already show. */
 	const classOptionalFeatureNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name)))
 	const subclassOptionalFeatures = chosenOptionalFeatures.filter((option) => !classOptionalFeatureNames.has(option.name))
@@ -2643,15 +2664,34 @@ export function CharacterSheet({
 											<>
 												<ul>
 													{entry.ordinarySlots.map(
-														(count, index) => count > 0 && <li key={index}>Level {index + 1}: {count}</li>,
+														(count, index) =>
+															count > 0 && (
+																<li key={index}>
+																	Level {index + 1}: {count}{' '}
+																	<UsesTracker
+																		name={`level ${index + 1} spell slots`}
+																		spent={spentSpellSlots.ordinary?.[index + 1] ?? 0}
+																		max={count}
+																		onChange={onEditSpentSpellSlots ? (delta) => spendOrdinarySlot(index + 1, count, delta) : undefined}
+																	/>
+																</li>
+															),
 													)}
 												</ul>
 												<ValueBreakdown breakdown={entry.ordinarySlotsBreakdown ?? []} />
 											</>
 										)}
+										{/* D11: its own block with its own heading, never a line in the list above — Pact Magic is a separate pool and two numbers side by side would read as one. */}
 										{entry.pactSlots && (
-											<div>
-												Pact Magic: {entry.pactSlots.count} slot{entry.pactSlots.count === 1 ? '' : 's'} (level {entry.pactSlots.slotLevel})
+											<div className="sheet__pact-slots">
+												<h4>Pact Magic</h4>
+												{entry.pactSlots.count} slot{entry.pactSlots.count === 1 ? '' : 's'} (level {entry.pactSlots.slotLevel}){' '}
+												<UsesTracker
+													name="Pact Magic slots"
+													spent={spentSpellSlots.pact ?? 0}
+													max={entry.pactSlots.count}
+													onChange={onEditSpentSpellSlots ? (delta) => spendPactSlot(entry.pactSlots?.count ?? 0, delta) : undefined}
+												/>
 												<ValueBreakdown breakdown={entry.pactSlotsBreakdown ?? []} />
 											</div>
 										)}

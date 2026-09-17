@@ -9,6 +9,7 @@ import type {
 	CharacterFamiliar,
 	CharacterHitPointLevel,
 	CharacterPlayState,
+	SpentSpellSlots,
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
@@ -741,7 +742,8 @@ export function describeDeathSavesError(value: unknown): string | null {
 
 /**
  * Validates the optional `play` field (slice 9b1) — the three play-state fields
- * that used to sit at the top level, plus `resourceUses`. Deliberately does not
+ * that used to sit at the top level, plus `resourceUses` and (slice 9b3)
+ * `spentSpellSlots`. Deliberately does not
  * check a spent count against its resource's maximum: the maximum is computed
  * from data/ this layer does not have, and a stored count above it is clamped on
  * the next level change rather than refused on load (D43), the same way an
@@ -766,6 +768,26 @@ export function describePlayError(value: unknown): string | null {
 			if (typeof spent !== 'number' || !Number.isInteger(spent) || spent < 0) {
 				return `play.resourceUses["${name}"] must be a non-negative whole number`
 			}
+		}
+	}
+
+	const spentSpellSlots = value['spentSpellSlots']
+	if (spentSpellSlots !== undefined) {
+		if (!isRecord(spentSpellSlots)) return 'play.spentSpellSlots must be an object'
+		const ordinary = spentSpellSlots['ordinary']
+		if (ordinary !== undefined) {
+			if (!isRecord(ordinary)) return 'play.spentSpellSlots.ordinary must be an object'
+			for (const [level, spent] of Object.entries(ordinary)) {
+				// Spell levels 1-9: unlike a resource name, the key itself has a range, and a key outside it could only come from a corrupted file.
+				if (!/^[1-9]$/.test(level)) return `play.spentSpellSlots.ordinary["${level}"] must be keyed by a spell level from 1 to 9`
+				if (typeof spent !== 'number' || !Number.isInteger(spent) || spent < 0) {
+					return `play.spentSpellSlots.ordinary["${level}"] must be a non-negative whole number`
+				}
+			}
+		}
+		const pact = spentSpellSlots['pact']
+		if (pact !== undefined && (typeof pact !== 'number' || !Number.isInteger(pact) || pact < 0)) {
+			return 'play.spentSpellSlots.pact must be a non-negative whole number'
 		}
 	}
 	return null
@@ -880,12 +902,23 @@ function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayStat
 	const temporaryHitPoints = value['temporaryHitPoints']
 	const deathSaves = value['deathSaves']
 	const resourceUses = value['resourceUses']
+	const spentSpellSlots = value['spentSpellSlots']
 	return {
 		...(typeof temporaryHitPoints === 'number' ? { temporaryHitPoints } : {}),
 		...(isRecord(deathSaves)
 			? { deathSaves: { successes: deathSaves['successes'] as number, failures: deathSaves['failures'] as number } }
 			: {}),
 		...(isRecord(resourceUses) ? { resourceUses: { ...(resourceUses as Record<string, number>) } } : {}),
+		...(isRecord(spentSpellSlots) ? { spentSpellSlots: toSpentSpellSlots(spentSpellSlots) } : {}),
+	}
+}
+
+function toSpentSpellSlots(value: Record<string, unknown>): SpentSpellSlots {
+	const ordinary = value['ordinary']
+	const pact = value['pact']
+	return {
+		...(isRecord(ordinary) ? { ordinary: { ...(ordinary as Record<number, number>) } } : {}),
+		...(typeof pact === 'number' ? { pact } : {}),
 	}
 }
 
