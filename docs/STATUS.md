@@ -516,8 +516,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `rollDeathSaveDie`). `DeathSavePanel` v `SheetHeader.tsx` (jen při 0 HP):
      počty, tlačítko „Roll death save" (vlastní d20 bez bonusů, hozené číslo se
      ukáže — nat 20 = 1 HP zpátky a konec, nat 1 = dva neúspěchy se stropem 3,
-     10–19 úspěch, 2–9 neúspěch) a tlačítka „Success" / „Failure" pro fyzickou
-     kostku, obojí dostupné vedle sebe bez přepínače. Tři úspěchy = stabilizace,
+     10–19 úspěch, 2–9 neúspěch) a čtyři tlačítka pro fyzickou kostku —
+     „Success" / „Failure" (přímý zápis jednoho počtu) a „Natural 20" /
+     „Natural 1" (jdou stejnou cestou `applyDeathSaveRoll` jako appkin hod,
+     takže hráč s fyzickou k20 nahlásí i tyto dva okraje — doplněno po 9a2
+     click-through 2026-09-17), vše dostupné vedle sebe bez přepínače. Tři
+     úspěchy = stabilizace,
      tři neúspěchy = smrt; v obou případech jsou všechna tři tlačítka disabled
      a panel zůstává viditelný — zmizelý panel by se četl jako chyba appky.
      `HitPointFields` nese čtvrté pole, aby hit pointy a death saves šly jedním

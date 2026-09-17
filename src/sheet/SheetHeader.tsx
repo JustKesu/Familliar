@@ -183,11 +183,15 @@ function DeathSavePanel({
 	const state = deathSaveState(deathSaves)
 	const finished = state !== 'rolling'
 
-	function roll(): void {
-		const result = applyDeathSaveRoll(deathSaves, rollDeathSaveDie())
+	function applyRoll(rolled: number): void {
+		const result = applyDeathSaveRoll(deathSaves, rolled)
 		setLastRoll(describeDeathSaveRoll(result))
 		// A natural 20 is a heal like any other: 1 hit point back, and the progress goes with the dying.
 		onApply({ currentHp: result.regainsHitPoint ? 1 : 0, deathSaves: result.regainsHitPoint ? undefined : result.progress })
+	}
+
+	function roll(): void {
+		applyRoll(rollDeathSaveDie())
 	}
 
 	return (
@@ -209,6 +213,12 @@ function DeathSavePanel({
 			</button>{' '}
 			<button type="button" disabled={finished} onClick={() => onApply({ currentHp: 0, deathSaves: recordFailures(deathSaves) })}>
 				Failure
+			</button>{' '}
+			<button type="button" disabled={finished} onClick={() => applyRoll(20)}>
+				Natural 20
+			</button>{' '}
+			<button type="button" disabled={finished} onClick={() => applyRoll(1)}>
+				Natural 1
 			</button>
 			{lastRoll && <p className="sheet__death-save-roll">{lastRoll}</p>}
 			{state === 'stabilized' && (
