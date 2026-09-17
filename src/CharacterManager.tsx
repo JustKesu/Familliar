@@ -184,6 +184,11 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setHitPoints(id, hitPoints))
 	}
 
+	function handleEditResourceUses(id: string, resourceUses: Record<string, number> | undefined): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setResourceUses(id, resourceUses))
+	}
+
 	function handleDelete(id: string): void {
 		if (!store.store) return
 		if (!confirm('Delete this character? This cannot be undone.')) return
@@ -275,6 +280,7 @@ function CharacterManager() {
 									onEditInventory={(inventory) => handleEditInventory(sheetCharacter.id, inventory)}
 									onEditCurrency={(copper) => handleEditCurrency(sheetCharacter.id, copper)}
 									onEditHitPoints={(hitPoints) => handleEditHitPoints(sheetCharacter.id, hitPoints)}
+									onEditResourceUses={(resourceUses) => handleEditResourceUses(sheetCharacter.id, resourceUses)}
 									onEditCharacter={() => {
 										setCreating(false)
 										setLevelUpGains(null)

@@ -28,6 +28,7 @@ import { loadDamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { loadSpeciesTraitNames } from './speciesTraitNames'
 import { loadResolverData } from '../featureResolver'
+import { loadDataFile } from '../dataLoader/dataLoader'
 import { loadBeasts, type Beast } from '../beasts/beastData'
 import { loadChosenClassFeatureChoices } from '../classFeatureChoices/classFeatureChoiceData'
 import { grantedClassFeaturesFrom, loadGrantedClassFeatures } from './grantedClassFeatures'
@@ -350,6 +351,12 @@ vi.mock('../featureResolver', async (importOriginal) => {
 		...actual,
 		loadResolverData: vi.fn(async () => ({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })),
 	}
+})
+
+/* Slice 9b2: CharacterSheet now fetches classes.json directly for computeCharacterResources' parsedClasses — same fetch stub reasoning as grantedClassFeatures above, an empty array being a legal classes.json that resolves every resource to "not in data". */
+vi.mock('../dataLoader/dataLoader', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../dataLoader/dataLoader')>()
+	return { ...actual, loadDataFile: vi.fn(async () => []) }
 })
 
 afterEach(cleanup)
@@ -3043,6 +3050,27 @@ describe('CharacterSheet', () => {
 			expect(rowNames(container)).not.toContain('Improved Fighter')
 		})
 
+		/*
+		 * Slice 9b2: this describe block's CLASSES fixture carries no classTableGroups
+		 * at all (only classFeatureIds/classFeatures), so computeCharacterResources
+		 * resolves every one of Second Wind/Rage/Channel Divinity here to "not in
+		 * data" — same as the ~90 real subclass-level resources the data never tables.
+		 * A row for one of those must render exactly as it did before this slice: a
+		 * name only, no "Uses" text anywhere in the row.
+		 */
+		it('gives no Uses text to a resource row whose maximum is not in the data (the ~90 case, unaffected by slice 9b2)', async () => {
+			const cleric: Character = { ...character, id: 'act-cleric-no-uses', classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 5 }] }
+			const container = await renderFor(cleric)
+
+			const row = await waitFor(() => {
+				const found = Array.from(container.querySelectorAll('.sheet__action-row')).find((tr) => tr.querySelector('.sheet__action-name')?.textContent === 'Channel Divinity')
+				expect(found).toBeTruthy()
+				return found as HTMLElement
+			})
+			expect(row.textContent).not.toContain('Uses')
+			expect(row.querySelector('.sheet__action-uses')).toBeNull()
+		})
+
 		it('a feature row fills the Name cell only — Range, To Hit / DC and Damage stay empty', async () => {
 			const fighter: Character = { ...character, id: 'act-fighter-cells', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] }
 			const container = await renderFor(fighter)
@@ -3244,6 +3272,154 @@ describe('CharacterSheet', () => {
 			expect(section).toBeTruthy()
 			expect(within(section).getByText('Defense')).toBeTruthy()
 			expect(within(section).getByText(/While you are wearing armor/)).toBeTruthy()
+		})
+	})
+
+	/*
+	 * Uses tracking for the 8 resources with a computed maximum (slice 9b2).
+	 * classes.json now carries real classTableGroups, unlike the "not in data"
+	 * fixture above — computeCharacterResources resolves a real number here, so
+	 * the actions table gets something to key a tracker off.
+	 */
+	describe('Uses tracking for a resource with a computed maximum (slice 9b2)', () => {
+		const REST = 'You regain the expended use when you finish a {@variantrule Short Rest|XPHB}.'
+
+		// Same table shape resources.test.ts's own fixture uses (Fighter's "Second Wind" column, 2 uses at level 1), plus the classFeatureIds/classFeatures grantedClassFeaturesFrom needs to grant the row at all.
+		const CLASSES = [
+			{
+				entryType: 'class',
+				name: 'Fighter',
+				source: 'XPHB',
+				classFeatureIds: ['cf|second wind|fighter|xphb|1|xphb'],
+				classFeatures: ['Second Wind|Fighter|XPHB|1'],
+				classTableGroups: [{ colLabels: ['Second Wind'], rows: [[2], [2], [2], [3], [3]] }],
+			},
+			{
+				entryType: 'class',
+				name: 'Cleric',
+				source: 'XPHB',
+				classFeatureIds: ['cf|preserve life|cleric|xphb|2|xphb', 'cf|turn undead|cleric|xphb|2|xphb'],
+				classFeatures: ['Preserve Life|Cleric|XPHB|2', 'Turn Undead|Cleric|XPHB|2'],
+				classTableGroups: [{ colLabels: ['Channel Divinity'], rows: [[1], [1], [2], [2], [2]] }],
+			},
+		]
+
+		const CF = [
+			{ id: 'cf|second wind|fighter|xphb|1|xphb', name: 'Second Wind', className: 'Fighter', classSource: 'XPHB', level: 1, source: 'XPHB', entries: [`You have a limited well of physical stamina. ${REST}`] },
+			// Two different Channel-Divinity options — a Cleric build carries both, and both must key the same shared counter.
+			{
+				id: 'cf|preserve life|cleric|xphb|2|xphb',
+				name: 'Preserve Life',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				level: 2,
+				source: 'XPHB',
+				consumes: { name: 'Channel Divinity' },
+				entries: ['You can use your Channel Divinity to heal the badly injured.'],
+			},
+			{
+				id: 'cf|turn undead|cleric|xphb|2|xphb',
+				name: 'Turn Undead',
+				className: 'Cleric',
+				classSource: 'XPHB',
+				level: 2,
+				source: 'XPHB',
+				consumes: { name: 'Channel Divinity' },
+				entries: ['You can use your Channel Divinity to turn undead.'],
+			},
+		]
+
+		const RESOLVER = { classFeatures: CF, subclassFeatures: [], optionalFeatures: [], feats: [] }
+
+		async function renderFor(subject: Character, onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void) {
+			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(subject, CLASSES, RESOLVER))
+			vi.mocked(loadDataFile).mockImplementation(async (path: string) => (path === 'data/classes.json' ? CLASSES : []))
+			const { container } = render(<CharacterSheet character={subject} onEditResourceUses={onEditResourceUses} />)
+			await screen.findByRole('heading', { name: subject.name })
+			await waitFor(() => expect(container.querySelector('.sheet__actions-table')).toBeTruthy())
+			return container
+		}
+
+		function usesTextFor(container: HTMLElement, featureName: string): string | null {
+			const row = Array.from(container.querySelectorAll('.sheet__action-row')).find((tr) => tr.querySelector('.sheet__action-name')?.textContent === featureName)
+			return row?.querySelector('.sheet__action-uses')?.textContent ?? null
+		}
+
+		afterEach(() => {
+			vi.mocked(loadGrantedClassFeatures).mockReset().mockResolvedValue([])
+			vi.mocked(loadResolverData).mockReset().mockResolvedValue({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })
+			vi.mocked(loadDataFile).mockReset().mockResolvedValue([])
+		})
+
+		it('shows spent 0 of the computed maximum for a character who has spent nothing', async () => {
+			const fighter: Character = { ...character, id: 'uses-fighter', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] }
+			const container = await renderFor(fighter)
+			expect(usesTextFor(container, 'Second Wind')).toContain('0 / 2')
+		})
+
+		it('reads the stored spent count from Character.play.resourceUses, keyed by the resolved name', async () => {
+			const fighter: Character = { ...character, id: 'uses-fighter-spent', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 1 } } }
+			const container = await renderFor(fighter)
+			expect(usesTextFor(container, 'Second Wind')).toContain('1 / 2')
+		})
+
+		it('marking a use reports the incremented count through onEditResourceUses', async () => {
+			const onEditResourceUses = vi.fn()
+			const fighter: Character = { ...character, id: 'uses-fighter-mark', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 1 } } }
+			await renderFor(fighter, onEditResourceUses)
+
+			fireEvent.click(screen.getByRole('button', { name: 'Use Second Wind' }))
+			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 2 })
+		})
+
+		it('the mark-a-use button is disabled once spent reaches the maximum, so it cannot grow past it', async () => {
+			const fighter: Character = { ...character, id: 'uses-fighter-capped', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 2 } } }
+			const container = await renderFor(fighter, vi.fn())
+			expect((screen.getByRole('button', { name: 'Use Second Wind' }) as HTMLButtonElement).disabled).toBe(true)
+			expect(container.querySelector('.sheet__action-uses')!.textContent).toContain('2 / 2')
+		})
+
+		it('undoing a use reports the decremented count through onEditResourceUses', async () => {
+			const onEditResourceUses = vi.fn()
+			const fighter: Character = { ...character, id: 'uses-fighter-undo', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 1 } } }
+			await renderFor(fighter, onEditResourceUses)
+
+			fireEvent.click(screen.getByRole('button', { name: 'Undo a use of Second Wind' }))
+			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 0 })
+		})
+
+		it('the undo button is disabled once spent reaches 0, so it cannot go below it', async () => {
+			const fighter: Character = { ...character, id: 'uses-fighter-floored', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] }
+			await renderFor(fighter, vi.fn())
+			expect((screen.getByRole('button', { name: 'Undo a use of Second Wind' }) as HTMLButtonElement).disabled).toBe(true)
+		})
+
+		it('two rows that consume the same resolved resource show the same shared count, and marking either moves both', async () => {
+			const cleric: Character = {
+				...character,
+				id: 'uses-cleric-shared',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 5 }],
+				play: { resourceUses: { 'Channel Divinity': 1 } },
+			}
+			const container = await renderFor(cleric)
+
+			expect(usesTextFor(container, 'Preserve Life')).toContain('1 / 2')
+			expect(usesTextFor(container, 'Turn Undead')).toContain('1 / 2')
+		})
+
+		it('marking a use on one Channel-Divinity row would move the OTHER row too — the write is keyed by resource, not by row', async () => {
+			const onEditResourceUses = vi.fn()
+			const cleric: Character = {
+				...character,
+				id: 'uses-cleric-shared-write',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 5 }],
+				play: { resourceUses: { 'Channel Divinity': 1 } },
+			}
+			await renderFor(cleric, onEditResourceUses)
+
+			fireEvent.click(screen.getAllByRole('button', { name: 'Use Channel Divinity' })[0]!)
+			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Channel Divinity': 2 })
 		})
 	})
 

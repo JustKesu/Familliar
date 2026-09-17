@@ -30,9 +30,10 @@ describe('featureActionRows', () => {
 		expect(rows.map((row) => row.name)).toEqual(['Stunning Strike'])
 	})
 
-	it('leaves every cell but the name to the caller — a row carries a key and a name only', () => {
+	it('leaves every cell but the name to the caller — a row carries a key, a name and its resource candidate only', () => {
 		const [row] = featureActionRows([granted('Rage', { entries: [REST] })], [], [], [])
-		expect(row).toEqual({ key: 'feature|rage', name: 'Rage' })
+		// No `consumes`, so the candidate falls back to the feature's own resolved name (Rage is one of the 8 self-limited resources).
+		expect(row).toEqual({ key: 'feature|rage', name: 'Rage', resourceName: 'Rage' })
 	})
 
 	it('collapses a feature the data restates at a later level into one row (Action Surge at 2 and 17)', () => {
@@ -92,7 +93,7 @@ describe('featureActionRows', () => {
 	 */
 	it('gives a chosen Metamagic option a row from `consumes` alone, with no rest tag in its text', () => {
 		const rows = featureActionRows([], [], [], [option('Twinned Spell', { consumes: { name: 'Sorcery Points', amount: 1 }, entries: ['When you cast a spell…'] })])
-		expect(rows).toEqual([{ key: 'option|twinned spell', name: 'Twinned Spell' }])
+		expect(rows).toEqual([{ key: 'option|twinned spell', name: 'Twinned Spell', resourceName: 'Sorcery Points' }])
 	})
 
 	it('gives no row to a chosen fighting style, which carries neither `consumes` nor a rest tag', () => {
@@ -101,10 +102,20 @@ describe('featureActionRows', () => {
 
 	it('collapses an option that shares its name with a granted feature into the one row', () => {
 		const rows = featureActionRows([granted('Eldritch Smite', { entries: [REST] })], [], [], [option('Eldritch Smite', { consumes: { name: 'Pact Slot' } })])
-		expect(rows).toEqual([{ key: 'feature|eldritch smite', name: 'Eldritch Smite' }])
+		expect(rows).toEqual([{ key: 'feature|eldritch smite', name: 'Eldritch Smite', resourceName: 'Eldritch Smite' }])
 	})
 
 	it('returns nothing for a character with no features, feats or chosen options', () => {
 		expect(featureActionRows([], [], [], [])).toEqual([])
+	})
+
+	it('resolves a `consumes` name through resources.ts\'s own alias, same as computeCharacterResources (slice 9b2)', () => {
+		const rows = featureActionRows([granted('Stunning Strike', { consumes: { name: 'Ki' }, entries: ['When you hit with an attack…'] })], [], [], [])
+		expect(rows).toEqual([{ key: 'feature|stunning strike', name: 'Stunning Strike', resourceName: 'Focus Point' }])
+	})
+
+	it('reads a bare-string `consumes` the same as a `{ name }` record', () => {
+		const rows = featureActionRows([granted('Wild Shape', { consumes: 'Wild Shape', entries: ['When you finish a rest…'] })], [], [], [])
+		expect(rows[0].resourceName).toBe('Wild Shape')
 	})
 })

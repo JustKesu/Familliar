@@ -26,6 +26,7 @@
  */
 
 import { isActionTableFeature } from '../actions/actionTableFeatureData'
+import { resolveResourceName } from '../calculation/resources'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import type { GrantedFeature } from './grantedClassFeatures'
 import type { FeatTextEntry } from './sheetData'
@@ -33,6 +34,40 @@ import type { FeatTextEntry } from './sheetData'
 export interface FeatureActionData {
 	key: string
 	name: string
+	/**
+	 * The resolved name computeCharacterResources would file this feature's
+	 * resource under — its `consumes` pool if it has one, or (a Rage, a Second
+	 * Wind) its own name resolved the same way (slice 9b2). Never a re-decision
+	 * of WHICH features are resources: it names a candidate, and the caller
+	 * decides whether that name is one of the 8 with a computed maximum by
+	 * looking it up in computeCharacterResources' own list.
+	 */
+	resourceName: string
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/** `consumes` is either a `{ name, amount? }` record or a bare string across the four feature files — the same read resources.ts's consumedPoolName does, not exported from there (D-scope: this task does not touch resources.ts). */
+function consumedResourceName(feature: { name: string; consumes?: unknown }): string | null {
+	const consumes = feature.consumes
+	if (typeof consumes === 'string') return resolveResourceName(consumes)
+	if (isRecord(consumes) && typeof consumes['name'] === 'string') return resolveResourceName(consumes['name'])
+	return null
+}
+
+/**
+ * The resolved name to test a feature against the character's resource list
+ * under. A pool-spender (Stunning Strike, a Metamagic) is filed under its
+ * `consumes` name; a SELF-limited feature (Rage, Second Wind, Favored Enemy)
+ * carries no `consumes` at all and is its own resource, named after itself
+ * (resources.ts's isSelfLimitedFeature, not re-run here — a passive feature's
+ * own name only ever matches something in computeCharacterResources' list by
+ * coincidence, which the data does not do).
+ */
+function resourceCandidateName(feature: { name: string; consumes?: unknown }): string {
+	return consumedResourceName(feature) ?? resolveResourceName(feature.name)
 }
 
 /** A feat the character took, as `character.featAsiChoices` records it. */
@@ -61,29 +96,29 @@ export function featureActionRows(
 	const rows: FeatureActionData[] = []
 	const seen = new Set<string>()
 
-	function add(kind: 'feature' | 'feat' | 'option', name: string): void {
+	function add(kind: 'feature' | 'feat' | 'option', name: string, resourceName: string): void {
 		const key = name.toLowerCase()
 		if (seen.has(key)) return
 		seen.add(key)
-		rows.push({ key: `${kind}|${key}`, name })
+		rows.push({ key: `${kind}|${key}`, name, resourceName })
 	}
 
 	for (const feature of granted) {
-		if (isActionTableFeature(feature)) add('feature', feature.name)
+		if (isActionTableFeature(feature)) add('feature', feature.name, resourceCandidateName(feature))
 	}
 
 	for (const choice of chosenFeats) {
 		// D43: a feat whose text is missing cannot be tested, so it gets no row —
 		// the Feats list already says the text was not found.
 		const text = featTexts.find((entry) => entry.name === choice.name && entry.source === choice.source)
-		if (text && isActionTableFeature(text)) add('feat', choice.name)
+		if (text && isActionTableFeature(text)) add('feat', choice.name, resourceCandidateName(text))
 	}
 
 	// Already resolved to the full option record by the caller, so — unlike a feat —
 	// there is no second lookup to do: D43's no-text-no-row is applied when the pick
 	// is resolved, and an unresolvable pick never reaches here.
 	for (const option of chosenOptions) {
-		if (isActionTableFeature(option)) add('option', option.name)
+		if (isActionTableFeature(option)) add('option', option.name, resourceCandidateName(option))
 	}
 
 	return rows

@@ -556,10 +556,35 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `levelRemoval.test.tsx`, migrace 36→37 a play/resourceUses v
      `migrations.test.ts` a `characterStore.test.ts`. Prohlížeč nebyl potřeba
      — slice nepřidává žádný ovládací prvek.
+   - Slice 9b2 — Uses v tabulce akcí, jen pro 8 zdrojů se skutečným maximem.
+     `FeatureActionData` (`featureActionRowData.ts`) nese nové pole
+     `resourceName: string` — `consumes.name` řádku, resolvnuté stejným
+     `resolveResourceName`, nebo (bez `consumes`) jméno samotné funkce (Rage,
+     Second Wind — sebe-limitované zdroje nemají `consumes`, takže jejich
+     vlastní jméno JE kandidátní jméno zdroje). Kandidát, ne rozhodnutí: teprve
+     `CharacterSheet.tsx` ho hledá v `computeCharacterResources`' seznamu, a jen
+     nalezené (8 zdrojů) dostanou `<UsesTracker>` v buňce Notes — zbylých ~90
+     řádků zůstává beze změny (ověřeno testem s fixture bez `classTableGroups`).
+     `UsesTracker` je stejná konvence jako death-save panel v `SheetHeader.tsx`:
+     prostý počet plus dvě tlačítka disabled na okraji (0 a max), žádný nový
+     styl komponenty. Zápis jde přes nový `onEditResourceUses` prop (vedle
+     `onEditHitPoints`) do `CharacterStore.setResourceUses` — cílený zápis jako
+     `setCurrency`/`setHitPoints`, mění jen `play.resourceUses`, `storedPlayState`
+     (z 9b1) zůstal beze změny a dál filtruje nulové položky pryč. Sdílený zdroj
+     (dva řádky se stejným rozlišeným jménem) čte i zapisuje jeden a týž klíč, což
+     plyne přímo z toho, že klíč JE rozlišené jméno, ne řádek. `resources.ts`
+     nezměněn (mimo rozsah slice). Testy: `featureActionRowData.test.ts` (nová
+     pole, alias, bare-string `consumes`), nový blok `CharacterSheet.test.tsx`
+     „Uses tracking…" (mark/undo/clamp/sdílený zdroj/not-in-data beze změny),
+     `characterStore.test.ts` (nechybí — `setResourceUses` nemá vlastní
+     testovací blok, pokryto integrací přes sheet testy a existující
+     `storedPlayState`/`resourceUsesWithinMaxima` testy z 9b1). Ověřeno v
+     prohlížeči: Fighter 1 (Second Wind 0/2 → mark → 2/2 → reload zachoval →
+     undo → 0/2), tlačítka disabled na obou okrajích, `localStorage` ukládá
+     `resourceUses` jen pro nenulové položky.
    - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): spent spell slots,
-     spent hit dice, pool uses, odpočinky, tabulka akcí s počty použití.
-     Otevřené otázky k nim jsou v posledním REPORT.md ze session průzkumu a
-     nejsou těmihle slice rozhodnuté.
+     spent hit dice, odpočinky. Otevřené otázky k nim jsou v posledním
+     REPORT.md ze session průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
 
 ## Co appka umí navíc k build orderu

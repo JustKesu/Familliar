@@ -30,6 +30,8 @@ import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
+import { computeCharacterResources, type ResourceFeature } from '../calculation/resources'
+import { loadDataFile } from '../dataLoader/dataLoader'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
@@ -1456,23 +1458,63 @@ function spellActionRow(spell: SpellActionData): ActionTableRow {
 }
 
 /**
+ * Spent / max for one of the 8 resources with a computed maximum (slice 9b2),
+ * with a button to mark and one to undo a use. Same convention as
+ * SheetHeader.tsx's death-save panel — plain counts plus disabled-at-the-bound
+ * buttons, not a new counter widget.
+ */
+function UsesTracker({ name, spent, max, onChange }: { name: string; spent: number; max: number; onChange?: (delta: 1 | -1) => void }): ReactNode {
+	return (
+		<span className="sheet__action-uses" role="group" aria-label={`${name} uses`}>
+			Uses: {spent} / {max}
+			{onChange && (
+				<>
+					{' '}
+					<button type="button" disabled={spent <= 0} onClick={() => onChange(-1)} aria-label={`Undo a use of ${name}`}>
+						−
+					</button>{' '}
+					<button type="button" disabled={spent >= max} onClick={() => onChange(1)} aria-label={`Use ${name}`}>
+						+
+					</button>
+				</>
+			)}
+		</span>
+	)
+}
+
+/**
  * A usable class/subclass feature or feat as an actions-table row (sheet
  * rebuild slice 5 part A). Presentation only; which features qualify is
  * featureActionRowData.ts over D86's test.
  *
- * Every cell but the name is empty, and deliberately: a feature's uses and the
- * pool it spends are not structured as numbers anywhere in the data (D86,
- * featureActionRowData.ts). The row says the character HAS this action; the
- * Features tab holds its text.
+ * Every cell but the name (and, since slice 9b2, Notes for the 8 resources
+ * with a computed maximum) is empty, and deliberately: a feature's uses and
+ * the pool it spends are otherwise not structured as numbers anywhere in the
+ * data (D86, featureActionRowData.ts). The row says the character HAS this
+ * action; the Features tab holds its text.
  */
-function featureActionRow(feature: FeatureActionData): ActionTableRow {
+function featureActionRow(
+	feature: FeatureActionData,
+	resourceMaxima: ReadonlyMap<string, number>,
+	resourceUses: Record<string, number>,
+	onSpendResource?: (name: string, delta: 1 | -1) => void,
+): ActionTableRow {
+	const max = resourceMaxima.get(feature.resourceName)
 	return {
 		key: `feature-action|${feature.key}`,
 		name: <span className="sheet__action-name">{feature.name}</span>,
 		range: null,
 		toHit: null,
 		damage: null,
-		notes: null,
+		notes:
+			max !== undefined ? (
+				<UsesTracker
+					name={feature.resourceName}
+					spent={resourceUses[feature.resourceName] ?? 0}
+					max={max}
+					onChange={onSpendResource ? (delta) => onSpendResource(feature.resourceName, delta) : undefined}
+				/>
+			) : null,
 	}
 }
 
@@ -1491,22 +1533,30 @@ function ActionsSection({
 	attacksPerAction,
 	spellActions,
 	featureActions,
+	resourceMaxima,
+	resourceUses,
 	loading,
 	dataError,
 	onChooseAttackAbility,
+	onSpendResource,
 }: {
 	attacks: WeaponAttack[]
 	attacksPerAction: Calculated<number>
 	spellActions: SpellActionData[]
 	featureActions: FeatureActionData[]
+	/** The 8 resources with a computed maximum, resolved name to that maximum (slice 9b2) — the ~90 "not in data" resources are absent, so their rows below never look them up successfully. */
+	resourceMaxima: ReadonlyMap<string, number>
+	/** Character.play.resourceUses, or {} for a character who has spent nothing yet. */
+	resourceUses: Record<string, number>
 	loading: boolean
 	dataError: string | null
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
+	onSpendResource?: (name: string, delta: 1 | -1) => void
 }): ReactNode {
 	const rows = [
 		...attacks.map((attack) => weaponAttackRow(attack, onChooseAttackAbility)),
 		...spellActions.map(spellActionRow),
-		...featureActions.map(featureActionRow),
+		...featureActions.map((feature) => featureActionRow(feature, resourceMaxima, resourceUses, onSpendResource)),
 	]
 	return (
 		<section className="sheet__actions">
@@ -1633,6 +1683,7 @@ export function CharacterSheet({
 	onEditInventory,
 	onEditCurrency,
 	onEditHitPoints,
+	onEditResourceUses,
 	onEditCharacter,
 	onLevelUp,
 	onRemoveLevel,
@@ -1642,6 +1693,8 @@ export function CharacterSheet({
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
 	onEditHitPoints?: (hitPoints: HitPointFields) => void
+	/** Marks or undoes one use of a limited resource in the actions table (slice 9b2). Absent leaves the row showing the count with no buttons to change it. */
+	onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void
 	/** Reopens the creation wizard over this character (slice 8d1). Absent leaves the sheet without the button. */
 	onEditCharacter?: () => void
 	/** Opens the one-level walk (slice 8d3) with what the next level adds. Absent leaves the sheet without the button. */
@@ -1662,6 +1715,8 @@ export function CharacterSheet({
 	/** Slice 8e2: computeSpellCounts' own class data (known/prepared allowances), loaded the same way spellSlotsClassData is. */
 	const [spellCountClassData, setSpellCountClassData] = useState<ClassSpellCountData[] | null>(null)
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[] | null>(null)
+	/** Slice 9b2: classes.json's own top-level array, raw — the shape computeCharacterResources' `parsedClasses` wants, unlike the transformed savingThrowClassData/hitDiceClassData above. loadDataFile caches the fetch (D39), so this is free. */
+	const [resourceClassData, setResourceClassData] = useState<unknown>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
 	/** The item list backing the inventory section — its own load (large file, D43-style error state) so it never blocks the rest of the sheet. Null until it resolves. */
 	const [itemRefs, setItemRefs] = useState<ItemRef[] | null>(null)
@@ -1737,8 +1792,9 @@ export function CharacterSheet({
 			loadSpellSlotsClassData(),
 			loadSpellCountClassData(),
 			loadSpellDetails(),
+			loadDataFile('data/classes.json'),
 		])
-			.then(([classData, hitDiceData, speciesData, featData, featTexts, resolver, spellcastingData, spellSlotsData, spellCountData, spellDetailData]) => {
+			.then(([classData, hitDiceData, speciesData, featData, featTexts, resolver, spellcastingData, spellSlotsData, spellCountData, spellDetailData, rawClassesData]) => {
 				if (cancelled) return
 				setSavingThrowClassData(classData)
 				setHitDiceClassData(hitDiceData)
@@ -1750,6 +1806,7 @@ export function CharacterSheet({
 				setSpellSlotsClassData(spellSlotsData)
 				setSpellCountClassData(spellCountData)
 				setSpellDetails(spellDetailData)
+				setResourceClassData(rawClassesData)
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
@@ -2105,7 +2162,8 @@ export function CharacterSheet({
 		!spellcastingAbilityData ||
 		!spellSlotsClassData ||
 		!spellCountClassData ||
-		!spellDetails
+		!spellDetails ||
+		!resourceClassData
 	) {
 		return (
 			<article className="sheet">
@@ -2230,6 +2288,27 @@ export function CharacterSheet({
 	)
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
 	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures)
+	/*
+	 * Slice 9b2: the same three feature sources computeCharacterResources asks for
+	 * (its own doc comment) — granted features, the chosen feats' own text, and the
+	 * chosen optional-feature options — assembled exactly as featureActionRows'
+	 * inputs above and levelRemoval.ts's resourceFeaturesFor already do, not a new
+	 * selection. Only the 8 resources whose maximum resolves get a Map entry; the
+	 * ~90 "not in data" resources are left out on purpose, so featureActionRow below
+	 * has no maximum to key a Uses tracker off and renders those rows unchanged.
+	 */
+	const chosenFeatTexts = chosenFeats.flatMap((choice) => featTextEntries.filter((text) => text.name === choice.name && text.source === choice.source))
+	const resourceFeatures: ResourceFeature[] = [...grantedFeatures, ...chosenFeatTexts, ...chosenOptionalFeatures]
+	const characterResources = computeCharacterResources(character, resourceClassData, resourceFeatures)
+	const resourceMaxima = new Map(characterResources.filter((resource) => resource.max.status === 'known').map((resource) => [resource.name, resource.max.status === 'known' ? resource.max.value : 0]))
+	const resourceUses = character.play?.resourceUses ?? {}
+	function spendResource(name: string, delta: 1 | -1): void {
+		if (!onEditResourceUses) return
+		const max = resourceMaxima.get(name)
+		const spent = resourceUses[name] ?? 0
+		const next = Math.max(0, max !== undefined ? Math.min(spent + delta, max) : spent + delta)
+		onEditResourceUses({ ...resourceUses, [name]: next })
+	}
 	/* D88's gap: chosenOptionalFeatures resolves every stored pick (class- and subclass-level, plus fighting style); classOptionalFeatures only resolves class-level ones. Subtracting its names leaves exactly the subclass-level picks Class options does not already show. */
 	const classOptionalFeatureNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name)))
 	const subclassOptionalFeatures = chosenOptionalFeatures.filter((option) => !classOptionalFeatureNames.has(option.name))
@@ -2898,9 +2977,12 @@ export function CharacterSheet({
 				attacksPerAction={attacksPerAction}
 				spellActions={spellActions}
 				featureActions={featureActions}
+				resourceMaxima={resourceMaxima}
+				resourceUses={resourceUses}
 				loading={itemRefs === null || weaponAttackData === null}
 				dataError={weaponAttackDataError}
 				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}
+				onSpendResource={onEditResourceUses ? spendResource : undefined}
 			/>
 			</div>
 		</article>

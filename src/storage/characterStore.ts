@@ -435,6 +435,29 @@ export class CharacterStore {
 		this.writeAll(updated)
 	}
 
+	/**
+	 * Sets the character's spent counts for limited-use resources (slice 9b2),
+	 * keyed by computeCharacterResources' resolved name — a targeted write like
+	 * setCurrency and setHitPoints. Only resourceUses is replaced; the hit-point
+	 * piles and death saves ride through unchanged, same reasoning as the
+	 * comment on setHitPoints' own storedPlayState call.
+	 */
+	setResourceUses(id: string, resourceUses: Record<string, number> | undefined): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currentHp, play, ...rest } = characters[index]
+		const storedPlay = storedPlayState(currentHp, { ...play, resourceUses })
+		const updated = [...characters]
+		updated[index] = {
+			...rest,
+			...(currentHp !== undefined ? { currentHp } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
+		}
+		this.writeAll(updated)
+	}
+
 	delete(id: string): void {
 		const characters = this.list()
 		const index = characters.findIndex((character) => character.id === id)
