@@ -194,6 +194,11 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setSpentSpellSlots(id, spentSpellSlots))
 	}
 
+	function handleEditConcentration(id: string, spellName: string | null): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setConcentration(id, spellName))
+	}
+
 	function handleRest(id: string, rest: RestFields): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.applyRest(id, rest))
@@ -292,6 +297,7 @@ function CharacterManager() {
 									onEditHitPoints={(hitPoints) => handleEditHitPoints(sheetCharacter.id, hitPoints)}
 									onEditResourceUses={(resourceUses) => handleEditResourceUses(sheetCharacter.id, resourceUses)}
 								onEditSpentSpellSlots={(spentSpellSlots) => handleEditSpentSpellSlots(sheetCharacter.id, spentSpellSlots)}
+									onEditConcentration={(spellName) => handleEditConcentration(sheetCharacter.id, spellName)}
 									onRest={(rest) => handleRest(sheetCharacter.id, rest)}
 									onEditCharacter={() => {
 										setCreating(false)

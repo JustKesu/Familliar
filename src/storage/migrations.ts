@@ -333,6 +333,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 39 }),
 	},
+	{
+		from: 39,
+		to: 40,
+		/*
+		 * 40 adds Character.play.concentratingOn (slice 9d1). Purely additive, like
+		 * 38 and 39: no concentration could be recorded before this version, and
+		 * absence already means "none", so the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 40 }),
+	},
 ]
 
 /**

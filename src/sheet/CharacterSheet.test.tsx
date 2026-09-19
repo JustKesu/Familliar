@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -4372,6 +4373,144 @@ describe('CharacterSheet', () => {
 			it('leaves the counts unchangeable without the callback', async () => {
 				const container = await renderCaster('Wizard', 3, WIZARD_SLOTS, undefined)
 				expect(container.querySelector('.sheet__spell-slots button')).toBeNull()
+			})
+		})
+
+		/* Slice 9d1: which spell is being concentrated on — tracked and persisted, nothing more. */
+		describe('concentration', () => {
+			const DETAILS: SpellDetail[] = [
+				spellDetail({ name: 'Bless', source: 'XPHB', level: 1, concentration: true }),
+				spellDetail({ name: 'Shield of Faith', source: 'XPHB', level: 1, concentration: true }),
+				spellDetail({ name: 'Fireball', source: 'XPHB', level: 3 }),
+			]
+			const caster: Character = {
+				id: 'conc1',
+				name: 'Focused',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 5 }],
+				spellChoices: [
+					{
+						className: 'Cleric',
+						classSource: 'XPHB',
+						spells: [
+							{ name: 'Bless', source: 'XPHB' },
+							{ name: 'Shield of Faith', source: 'XPHB' },
+							{ name: 'Fireball', source: 'XPHB' },
+						],
+					},
+				],
+			}
+
+			/* Holds the character in state the way CharacterManager does, so a click is followed by the sheet re-reading what it wrote. */
+			function Harness({ initial, onEdit }: { initial: Character; onEdit: (spellName: string | null) => void }) {
+				const [current, setCurrent] = useState(initial)
+				return (
+					<CharacterSheet
+						character={current}
+						onEditConcentration={(spellName) => {
+							onEdit(spellName)
+							setCurrent({ ...current, play: spellName === null ? undefined : { ...current.play, concentratingOn: spellName } })
+						}}
+					/>
+				)
+			}
+
+			async function renderCaster(play?: Character['play']) {
+				vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
+				const onEdit = vi.fn()
+				const subject = play ? { ...caster, play } : caster
+				const { container } = render(<Harness initial={subject} onEdit={onEdit} />)
+				await screen.findByRole('button', { name: 'Concentrate on Bless' })
+				return { container, onEdit }
+			}
+
+			function headerLine(container: HTMLElement): string | undefined {
+				return container.querySelector('.sheet__persistent-header .sheet__concentration')?.textContent ?? undefined
+			}
+
+			function pressed(name: string): string | null {
+				return screen.getByRole('button', { name }).getAttribute('aria-pressed')
+			}
+
+			it('offers the button on a spell that needs concentration and on no other', async () => {
+				const { container } = await renderCaster()
+				expect(screen.getByRole('button', { name: 'Concentrate on Shield of Faith' })).toBeTruthy()
+				expect(screen.queryByRole('button', { name: 'Concentrate on Fireball' })).toBeNull()
+				expect(container.querySelectorAll('.spell-list__concentrate')).toHaveLength(2)
+			})
+
+			it('sets the spell, marks its button pressed and names it in the header', async () => {
+				const { container, onEdit } = await renderCaster()
+				expect(headerLine(container)).toBeUndefined()
+				expect(pressed('Concentrate on Bless')).toBe('false')
+
+				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Bless' }))
+
+				expect(onEdit).toHaveBeenLastCalledWith('Bless')
+				expect(pressed('Concentrate on Bless')).toBe('true')
+				expect(pressed('Concentrate on Shield of Faith')).toBe('false')
+				expect(headerLine(container)).toContain('Concentrating: Bless')
+			})
+
+			it('replaces the spell already being concentrated on, without asking', async () => {
+				const confirm = vi.spyOn(window, 'confirm')
+				const { container, onEdit } = await renderCaster({ concentratingOn: 'Bless' })
+				expect(headerLine(container)).toContain('Concentrating: Bless')
+
+				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Shield of Faith' }))
+
+				expect(onEdit).toHaveBeenCalledTimes(1)
+				expect(onEdit).toHaveBeenLastCalledWith('Shield of Faith')
+				expect(pressed('Concentrate on Bless')).toBe('false')
+				expect(pressed('Concentrate on Shield of Faith')).toBe('true')
+				expect(headerLine(container)).toContain('Concentrating: Shield of Faith')
+				expect(headerLine(container)).not.toContain('Bless')
+				expect(confirm).not.toHaveBeenCalled()
+				confirm.mockRestore()
+			})
+
+			it('drops it when the pressed button is clicked again', async () => {
+				const { container, onEdit } = await renderCaster({ concentratingOn: 'Bless' })
+				expect(pressed('Concentrate on Bless')).toBe('true')
+
+				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Bless' }))
+
+				expect(onEdit).toHaveBeenLastCalledWith(null)
+				expect(pressed('Concentrate on Bless')).toBe('false')
+				expect(headerLine(container)).toBeUndefined()
+			})
+
+			it('drops it from the header control, and the spell’s own button follows', async () => {
+				const { container, onEdit } = await renderCaster({ concentratingOn: 'Shield of Faith' })
+				expect(pressed('Concentrate on Shield of Faith')).toBe('true')
+
+				fireEvent.click(within(container.querySelector<HTMLElement>('.sheet__persistent-header')!).getByRole('button', { name: 'Drop concentration' }))
+
+				expect(onEdit).toHaveBeenLastCalledWith(null)
+				expect(pressed('Concentrate on Shield of Faith')).toBe('false')
+				expect(headerLine(container)).toBeUndefined()
+			})
+
+			it('shows the header line only while a spell is set', async () => {
+				const { container } = await renderCaster()
+				expect(container.querySelector('.sheet__concentration')).toBeNull()
+				expect(screen.queryByRole('button', { name: 'Drop concentration' })).toBeNull()
+
+				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Bless' }))
+				expect(container.querySelectorAll('.sheet__concentration')).toHaveLength(1)
+
+				fireEvent.click(screen.getByRole('button', { name: 'Drop concentration' }))
+				expect(container.querySelector('.sheet__concentration')).toBeNull()
+			})
+
+			it('on a read-only sheet still shows a stored concentration, with nothing to change it', async () => {
+				vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
+				const { container } = render(<CharacterSheet character={{ ...caster, play: { concentratingOn: 'Bless' } }} />)
+				await screen.findByRole('heading', { name: 'Focused' })
+				await waitFor(() => expect(container.querySelector('.sheet__spells summary')).toBeTruthy())
+
+				expect(headerLine(container)).toContain('Concentrating: Bless')
+				expect(screen.queryByRole('button', { name: 'Drop concentration' })).toBeNull()
+				expect(container.querySelector('.spell-list__concentrate')).toBeNull()
 			})
 		})
 

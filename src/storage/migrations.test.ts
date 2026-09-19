@@ -439,6 +439,15 @@ describe('the migration chain (D69)', () => {
 		expect((migrated['play'] as Record<string, unknown>)['spentHitDice']).toBeUndefined()
 	})
 
+	/* Slice 9d1: a purely additive field, so the step only tags — no concentration is what absence already means. */
+	it('tags a version-39 character without inventing a concentration spell', () => {
+		const before = { schemaVersion: 39, id: '1', name: 'Aria', classes: [], play: { temporaryHitPoints: 4 } }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect((migrated['play'] as Record<string, unknown>)['concentratingOn']).toBeUndefined()
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

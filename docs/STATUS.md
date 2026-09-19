@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-19 (9c3b: historie hodů)
+Poslední aktualizace: 2026-09-19 (9d1: sledování koncentrace)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -485,6 +485,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9c2 | Roll u vlastností, záchran, dovedností, iniciativy a poškození zbraně (víc kostek) | — |
    | 9c3a | Výhoda/nevýhoda u každého d20 Roll (ruční přepínač u tlačítka) | — |
    | 9c3b | Historie hodů v hlavičce (max 50, jen v paměti); režim přežije změnu modifikátoru | — |
+   | 9d1 | Koncentrace: které kouzlo postava drží, tlačítko u kouzla + řádek v hlavičce | 39→40 |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -695,6 +696,24 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      při renderu při změně modifikátoru (u poškození count/sides/modifikátor),
      zvolený režim zůstává. Ověřeno v prohlížeči (záchrana, poškození,
      iniciativa; historie otevřená z tabu Inventář).
+   - Slice 9d1 — sledování koncentrace, jen play tracking. `Character.play.
+     concentratingOn?: string | null` (název kouzla; schéma 40, migrace 39→40 jen
+     tag). Uložení píše „žádné" jako nepřítomnost pole, načtený `null` se čte
+     jako žádné (`storedPlayState`, `toCharacterPlayState`). Nový
+     `CharacterStore.setConcentration(id, name | null)` (cílený zápis jako
+     `setSpentSpellSlots`); zápis HP i odpočinek ho nechávají být, protože
+     `play` protékají přes `storedPlayState`. Tab Kouzla: u každého kouzla s
+     `concentration: true` (z `spells.json`, ne z uložených dat) je v `<summary>`
+     tlačítko „Concentrate on <název>" s `aria-pressed`; klik na jiné kouzlo
+     přepíše bez dotazu, klik na aktivní ho zruší. Bez detailu kouzla (řádek
+     „Unresolved") tlačítko není. Hlavička: `<p class="sheet__concentration">`
+     „Concentrating: <název>" s tlačítkem „Drop concentration", jen když je
+     kouzlo nastavené. Bez `onEditConcentration` (read-only sheet) hlavička
+     řádek ukáže a tlačítka chybí. Nic dalšího: žádná detekce sesílání, žádné CON
+     save, žádná vazba na odpočinek ani panel poškození. Testy: bloky v
+     `CharacterSheet.test.tsx`, `characterStore.test.ts`, `migrations.test.ts`.
+     Neověřováno v prohlížeči (zapojení `CharacterManager` → store kryjí jen
+     testy store a sheetu zvlášť).
    - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
      průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
@@ -881,7 +900,8 @@ zapojené jen u to-hit zbraňových útoků. Slice 9c2 ho zapojila i u vlastnost
 záchran, dovedností, iniciativy a poškození zbraně (víc kostek, `rollDice`).
 Slice 9c3a přidala k d20 hodům ruční výhodu/nevýhodu (`rollKeepOne`, obě kostky
 ve výsledku). Slice 9c3b přidala historii hodů v hlavičce (max 50, jen v
-paměti). Další na řadě je utracení hit die při krátkém odpočinku.
+paměti). Slice 9d1 přidala sledování koncentrace (`play.concentratingOn`, schéma
+40). Další na řadě je utracení hit die při krátkém odpočinku.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.

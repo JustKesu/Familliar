@@ -743,7 +743,7 @@ export function describeDeathSavesError(value: unknown): string | null {
 /**
  * Validates the optional `play` field (slice 9b1) — the three play-state fields
  * that used to sit at the top level, plus `resourceUses`, (slice 9b3)
- * `spentSpellSlots` and (slice 9b4) `spentHitDice`. Deliberately does not
+ * `spentSpellSlots`, (slice 9b4) `spentHitDice` and (slice 9d1) `concentratingOn`. Deliberately does not
  * check a spent count against its resource's maximum: the maximum is computed
  * from data/ this layer does not have, and a stored count above it is clamped on
  * the next level change rather than refused on load (D43), the same way an
@@ -801,6 +801,11 @@ export function describePlayError(value: unknown): string | null {
 				return `play.spentHitDice["${key}"] must be a non-negative whole number`
 			}
 		}
+	}
+
+	const concentratingOn = value['concentratingOn']
+	if (concentratingOn !== undefined && concentratingOn !== null && (typeof concentratingOn !== 'string' || concentratingOn.length === 0)) {
+		return 'play.concentratingOn must be a spell name or null'
 	}
 	return null
 }
@@ -916,6 +921,7 @@ function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayStat
 	const resourceUses = value['resourceUses']
 	const spentSpellSlots = value['spentSpellSlots']
 	const spentHitDice = value['spentHitDice']
+	const concentratingOn = value['concentratingOn']
 	return {
 		...(typeof temporaryHitPoints === 'number' ? { temporaryHitPoints } : {}),
 		...(isRecord(deathSaves)
@@ -924,6 +930,7 @@ function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayStat
 		...(isRecord(resourceUses) ? { resourceUses: { ...(resourceUses as Record<string, number>) } } : {}),
 		...(isRecord(spentSpellSlots) ? { spentSpellSlots: toSpentSpellSlots(spentSpellSlots) } : {}),
 		...(isRecord(spentHitDice) ? { spentHitDice: { ...(spentHitDice as Record<string, number>) } } : {}),
+		...(typeof concentratingOn === 'string' ? { concentratingOn } : {}),
 	}
 }
 

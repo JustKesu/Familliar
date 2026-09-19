@@ -203,6 +203,13 @@ h1 {
   display: block;
 }
 
+/* Slice 9d1: the concentration toggle on a spell row. */
+.spell-list__concentrate[aria-pressed='true'] {
+  font-weight: 600;
+  background: var(--panel-bg);
+  border: 2px solid currentColor;
+}
+
 /* ---- actions table (sheet rebuild slice 3) ---- */
 
 .sheet__actions-per-action {

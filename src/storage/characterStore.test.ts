@@ -1163,6 +1163,52 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect(store.update(character.id, { name: 'Aria', play: { spentHitDice: { 'Fighter|XPHB': 0 } } }).play).toBeUndefined()
 	})
 
+	/* Slice 9d1: the seventh play field, written on its own, replaced outright, and stored as absence when cleared. */
+	it('sets, replaces and clears the concentration spell, and no other write disturbs it', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria', currentHp: 20, play: { resourceUses: { Rage: 1 } } })
+
+		store.setConcentration(character.id, 'Bless')
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ resourceUses: { Rage: 1 }, concentratingOn: 'Bless' })
+
+		store.setConcentration(character.id, 'Hex')
+		expect(new CharacterStore(backing).list()[0].play?.concentratingOn).toBe('Hex')
+
+		// Neither a hit-point write nor a rest is a reason to stop concentrating.
+		store.setHitPoints(character.id, { currentHp: 12, temporaryHitPoints: 3 })
+		store.applyRest(character.id, { currentHp: 39, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} })
+		const afterWrites = new CharacterStore(backing).list()[0]
+		expect(afterWrites.currentHp).toBe(39)
+		expect(afterWrites.play).toEqual({ temporaryHitPoints: 3, concentratingOn: 'Hex' })
+
+		store.setConcentration(character.id, null)
+		store.setHitPoints(character.id, { currentHp: 39 })
+		const cleared = new CharacterStore(backing).list()[0]
+		expect(cleared.play).toBeUndefined()
+		expect('play' in cleared).toBe(false)
+	})
+
+	it('throws CharacterNotFoundError for an unknown id on a concentration write', () => {
+		expect(() => new CharacterStore(new MemoryStorage()).setConcentration('nope', 'Bless')).toThrow(CharacterNotFoundError)
+	})
+
+	it('reads a stored null concentration as none and rejects a non-name value', () => {
+		const withNull = new MemoryStorage()
+		withNull.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], play: { concentratingOn: null } }]),
+		)
+		expect(new CharacterStore(withNull).list()[0].play?.concentratingOn).toBeUndefined()
+
+		const wrongType = new MemoryStorage()
+		wrongType.setItem(
+			STORAGE_KEY,
+			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 7 } }]),
+		)
+		expect(() => new CharacterStore(wrongType).list()).toThrow(CorruptDataError)
+	})
+
 	/* Slice 9b5: one write for all four spent piles, with temporary hit points riding through both rests. */
 	it('applies a rest as a single write, keeping temporary hit points and clearing death saves the heal ends', () => {
 		const backing = new MemoryStorage()

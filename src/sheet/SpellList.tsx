@@ -166,12 +166,18 @@ export function SpellList({
 	spellDetails,
 	resolverData,
 	unavailableAboveLevel,
+	concentratingOn = null,
+	onToggleConcentration,
 }: {
 	entries: SheetSpellEntry[]
 	spellDetails: SpellDetail[]
 	resolverData: ResolverData
 	/** Slice 8e2: the highest level this character can currently cast, when known — a CHOSEN spell above it is marked unavailable rather than dropped (D106). Undefined leaves every spell unmarked, the multiclass/unknown case the sheet already states elsewhere. */
 	unavailableAboveLevel?: number
+	/** Slice 9d1: the spell currently concentrated on, by name — the one row whose button shows as pressed. */
+	concentratingOn?: string | null
+	/** Absent on a read-only sheet — the concentration spells then show no button. */
+	onToggleConcentration?: (spellName: string) => void
 }): ReactNode {
 	if (entries.length === 0) return <p>No spells chosen yet.</p>
 
@@ -204,6 +210,8 @@ export function SpellList({
 								detail={detail}
 								resolverData={resolverData}
 								unavailableAboveLevel={unavailableAboveLevel}
+								concentrating={concentratingOn === entry.name}
+								onToggleConcentration={onToggleConcentration}
 							/>
 						))}
 					</ul>
@@ -218,11 +226,15 @@ function SpellRow({
 	detail,
 	resolverData,
 	unavailableAboveLevel,
+	concentrating,
+	onToggleConcentration,
 }: {
 	entry: SheetSpellEntry
 	detail: SpellDetail | undefined
 	resolverData: ResolverData
 	unavailableAboveLevel?: number
+	concentrating: boolean
+	onToggleConcentration?: (spellName: string) => void
 }): ReactNode {
 	/* Only a CHOSEN spell is marked (slice 8e2/D106) — known/prepared spells are the ones a player swaps freely (D104), so they're the ones that can end up above what the character can currently cast. A subclass/feat/species grant stays tied to its own fixed source and is never marked here. */
 	const unavailable = entry.chosen && detail !== undefined && unavailableAboveLevel !== undefined && detail.level > unavailableAboveLevel
@@ -250,6 +262,21 @@ function SpellRow({
 					{unavailable && <span className="spell-list__flag spell-list__unavailable"> (unavailable at this level)</span>}
 					{' — '}
 					{provenanceLabel(entry)}
+					{/* A button inside <summary> does not toggle the <details>. Only a spell whose data says it needs concentration gets one — an unresolved row has no such flag to read. */}
+					{detail.concentration && onToggleConcentration && (
+						<>
+							{' '}
+							<button
+								type="button"
+								className="spell-list__concentrate"
+								aria-label={`Concentrate on ${entry.name}`}
+								aria-pressed={concentrating}
+								onClick={() => onToggleConcentration(entry.name)}
+							>
+								{concentrating ? 'Concentrating' : 'Concentrate'}
+							</button>
+						</>
+					)}
 				</summary>
 				<dl className="spell-list__detail">
 					<dt>Casting Time</dt>

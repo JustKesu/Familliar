@@ -1720,6 +1720,7 @@ export function CharacterSheet({
 	onEditHitPoints,
 	onEditResourceUses,
 	onEditSpentSpellSlots,
+	onEditConcentration,
 	onRest,
 	onEditCharacter,
 	onLevelUp,
@@ -1734,6 +1735,8 @@ export function CharacterSheet({
 	onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void
 	/** Marks or undoes one spent spell slot on the Spells tab (slice 9b3). Absent leaves the slot counts showing with no buttons to change them. */
 	onEditSpentSpellSlots?: (spentSpellSlots: SpentSpellSlots | undefined) => void
+	/** Sets or, with null, drops the spell being concentrated on (slice 9d1). Absent leaves the buttons and the header control off; the header line still shows a stored one. */
+	onEditConcentration?: (spellName: string | null) => void
 	/** Applies a finished rest in one write (slice 9b5). Absent leaves the header without the two rest buttons. */
 	onRest?: (rest: RestFields) => void
 	/** Reopens the creation wizard over this character (slice 8d1). Absent leaves the sheet without the button. */
@@ -2388,6 +2391,11 @@ export function CharacterSheet({
 		const next = Math.min(Math.max(0, (spentSpellSlots.pact ?? 0) + delta), max)
 		onEditSpentSpellSlots({ ...spentSpellSlots, pact: next })
 	}
+	/* Slice 9d1: absent and null are both "none" (Character.play.concentratingOn). Clicking the active spell again drops it; any other replaces it without asking. */
+	const concentratingOn = character.play?.concentratingOn ?? null
+	function toggleConcentration(spellName: string): void {
+		onEditConcentration?.(concentratingOn === spellName ? null : spellName)
+	}
 	/* D88's gap: chosenOptionalFeatures resolves every stored pick (class- and subclass-level, plus fighting style); classOptionalFeatures only resolves class-level ones. Subtracting its names leaves exactly the subclass-level picks Class options does not already show. */
 	const classOptionalFeatureNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name)))
 	const subclassOptionalFeatures = chosenOptionalFeatures.filter((option) => !classOptionalFeatureNames.has(option.name))
@@ -2458,6 +2466,8 @@ export function CharacterSheet({
 				maxHpOverride={character.maxHpOverride}
 				temporaryHitPoints={character.play?.temporaryHitPoints}
 				deathSaves={character.play?.deathSaves}
+				concentratingOn={concentratingOn}
+				onDropConcentration={onEditConcentration ? () => onEditConcentration(null) : undefined}
 				onEditHitPoints={onEditHitPoints}
 				onShortRest={onRest ? takeShortRest : undefined}
 				onLongRest={onRest ? takeLongRest : undefined}
@@ -2806,6 +2816,8 @@ export function CharacterSheet({
 							spellDetails={spellDetails}
 							resolverData={resolverData}
 							unavailableAboveLevel={spellLimitReason === null ? (highestCastableLevel ?? undefined) : undefined}
+							concentratingOn={concentratingOn}
+							onToggleConcentration={onEditConcentration ? toggleConcentration : undefined}
 						/>
 					)}
 				</section>

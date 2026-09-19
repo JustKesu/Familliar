@@ -39,6 +39,7 @@ function headerElement(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {
 			maxHpOverride={undefined}
 			temporaryHitPoints={undefined}
 			deathSaves={undefined}
+			concentratingOn={null}
 			{...overrides}
 		/>
 	)

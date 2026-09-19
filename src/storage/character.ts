@@ -356,6 +356,14 @@ export interface CharacterPlayState {
 	 * the level changes. Absent means nothing is spent; a zero count is absence.
 	 */
 	spentHitDice?: Record<string, number>
+	/**
+	 * The name of the spell the character is concentrating on (slice 9d1) — play
+	 * tracking only, nothing detects a cast or prompts a save. One name because a
+	 * character concentrates on one spell at a time; setting another replaces it.
+	 * Absent and null both mean none, and the store writes none as absence, the
+	 * convention every field above uses.
+	 */
+	concentratingOn?: string | null
 }
 
 /**
@@ -840,7 +848,8 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 39 for Character.play.spentHitDice
+ * (see wireFormat.ts). Bumped to 40 for Character.play.concentratingOn
+ * (slice 9d1); 39 added Character.play.spentHitDice
  * (slice 9b4); 38 added Character.play.spentSpellSlots (slice 9b3); 37
  * grouped play state under Character.play (slice 9b1), absorbing the two
  * play fields 35 and 36 added at the top level.
@@ -850,4 +859,4 @@ export type FeatAsiChoice =
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 39
+export const CURRENT_SCHEMA_VERSION = 40

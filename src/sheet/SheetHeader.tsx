@@ -248,6 +248,8 @@ export function SheetHeader({
 	maxHpOverride,
 	temporaryHitPoints,
 	deathSaves,
+	concentratingOn,
+	onDropConcentration,
 	onEditHitPoints,
 	onShortRest,
 	onLongRest,
@@ -270,6 +272,10 @@ export function SheetHeader({
 	temporaryHitPoints: number | undefined
 	/** Absent means no death save is in progress (D111) — which is the only possible state above 0 hit points. */
 	deathSaves: CharacterDeathSaves | undefined
+	/** Slice 9d1: the spell being concentrated on. Null means none, and the header then shows nothing for it. */
+	concentratingOn: string | null
+	/** Absent on a read-only sheet — the line shows without its drop control. */
+	onDropConcentration?: () => void
 	/** Absent on a read-only sheet — the HP block then shows the values without the fields or the panel. */
 	onEditHitPoints?: (hitPoints: HitPointFields) => void
 	/**
@@ -429,6 +435,20 @@ export function SheetHeader({
 					</div>
 				)}
 			</section>
+
+			{concentratingOn !== null && (
+				<p className="sheet__concentration">
+					Concentrating: {concentratingOn}
+					{onDropConcentration && (
+						<>
+							{' '}
+							<button type="button" aria-label="Drop concentration" onClick={onDropConcentration}>
+								Drop
+							</button>
+						</>
+					)}
+				</p>
+			)}
 
 			<RollHistory entries={rollHistory} />
 		</header>

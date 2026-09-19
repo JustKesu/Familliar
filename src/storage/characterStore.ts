@@ -224,6 +224,7 @@ function storedPlayState(currentHp: number | undefined, play: CharacterPlayState
 		...(Object.keys(resourceUses).length > 0 ? { resourceUses } : {}),
 		...(spentSpellSlots ? { spentSpellSlots } : {}),
 		...(Object.keys(spentHitDice).length > 0 ? { spentHitDice } : {}),
+		...(play?.concentratingOn ? { concentratingOn: play.concentratingOn } : {}),
 	}
 	return Object.keys(stored).length > 0 ? stored : undefined
 }
@@ -510,6 +511,28 @@ export class CharacterStore {
 
 		const { currentHp, play, ...rest } = characters[index]
 		const storedPlay = storedPlayState(currentHp, { ...play, spentSpellSlots })
+		const updated = [...characters]
+		updated[index] = {
+			...rest,
+			...(currentHp !== undefined ? { currentHp } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
+		}
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Sets (or, with null, clears) the spell the character is concentrating on
+	 * (slice 9d1) — a targeted write on the setSpentSpellSlots precedent that
+	 * replaces only `concentratingOn`. A rest or a hit-point write never touches
+	 * it: each spreads `play` through storedPlayState, which carries it along.
+	 */
+	setConcentration(id: string, spellName: string | null): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currentHp, play, ...rest } = characters[index]
+		const storedPlay = storedPlayState(currentHp, { ...play, concentratingOn: spellName })
 		const updated = [...characters]
 		updated[index] = {
 			...rest,
