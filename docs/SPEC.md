@@ -148,7 +148,6 @@ Everything below persists across browser restarts.
 - Heroic Inspiration
 - Currency
 - Inventory with attunement tracking
-- Free-text notes
 - Short rest / long rest buttons that restore the correct resources
 
 **Hit points change by hand.** Nothing tells the app that a cleric healed you
@@ -189,6 +188,15 @@ table still reads +7 and ignores the buttons.
 **The rest buttons live in the persistent header, beside the hit points** — the
 one place visible from every tab, and next to what they change. A short rest
 offers hit dice to spend, rolled through the same panel as any other roll.
+
+**Appearance and notes are not play tracking.** They describe the character
+rather than a play session, so a rest never touches them. They have their own
+sheet tab, "Vzhled a poznámky", and no other part of the sheet reads them. The
+tab holds three independently collapsible sections — "Vzhled" (appearance),
+"Příběh" (backstory) and "Poznámky" (notes) — each with one plain text box.
+The text is stored and shown exactly as typed, line breaks included: no
+markdown, no rich text, no character limit, nothing parsed. An empty section is
+valid and is the default.
 
 ---
 

@@ -1070,6 +1070,10 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (createdAtLevel !== undefined && (typeof createdAtLevel !== 'number' || !Number.isInteger(createdAtLevel) || createdAtLevel < 1 || createdAtLevel > 20)) {
 		return `[${index}].createdAtLevel must be a whole number from 1 to 20`
 	}
+	for (const key of ['appearance', 'backstory', 'notes'] as const) {
+		const text = value[key]
+		if (text !== undefined && typeof text !== 'string') return `[${index}].${key} must be a string`
+	}
 	return null
 }
 
@@ -1108,6 +1112,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const hitPointLevels = value['hitPointLevels']
 	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
 	const createdAtLevel = value['createdAtLevel']
+	const appearance = value['appearance']
+	const backstory = value['backstory']
+	const notes = value['notes']
 	return {
 		id: value['id'] as string,
 		name: value['name'] as string,
@@ -1139,6 +1146,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),
+		...(typeof appearance === 'string' && appearance.length > 0 ? { appearance } : {}),
+		...(typeof backstory === 'string' && backstory.length > 0 ? { backstory } : {}),
+		...(typeof notes === 'string' && notes.length > 0 ? { notes } : {}),
 	}
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { CharacterStore, type HitPointFields, type RestFields } from './storage/characterStore'
+import { CharacterStore, type CharacterTextField, type HitPointFields, type RestFields } from './storage/characterStore'
 import { StorageError } from './storage/errors'
 import type { Character, CharacterFamiliar, CharacterInventoryItem, SpentSpellSlots } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
@@ -199,6 +199,11 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setConcentration(id, spellName))
 	}
 
+	function handleEditText(id: string, field: CharacterTextField, text: string): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setText(id, field, text))
+	}
+
 	function handleRest(id: string, rest: RestFields): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.applyRest(id, rest))
@@ -298,6 +303,7 @@ function CharacterManager() {
 									onEditResourceUses={(resourceUses) => handleEditResourceUses(sheetCharacter.id, resourceUses)}
 								onEditSpentSpellSlots={(spentSpellSlots) => handleEditSpentSpellSlots(sheetCharacter.id, spentSpellSlots)}
 									onEditConcentration={(spellName) => handleEditConcentration(sheetCharacter.id, spellName)}
+									onEditText={(field, text) => handleEditText(sheetCharacter.id, field, text)}
 									onRest={(rest) => handleRest(sheetCharacter.id, rest)}
 									onEditCharacter={() => {
 										setCreating(false)

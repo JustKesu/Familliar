@@ -203,6 +203,20 @@ h1 {
   display: block;
 }
 
+/* Slice 9d2: the free-text fields of the "Vzhled a poznámky" tab. */
+.sheet__text-section {
+  margin-bottom: 0.75rem;
+}
+
+.sheet__text-section textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 0.4rem;
+  font: inherit;
+  resize: vertical;
+}
+
 /* Slice 9d1: the concentration toggle on a spell row. */
 .spell-list__concentrate[aria-pressed='true'] {
   font-weight: 600;

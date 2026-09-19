@@ -184,6 +184,50 @@ describe('CharacterManager remove level (slice 8e)', () => {
 	})
 })
 
+/* Slice 9d2: the sheet's textareas through the real manager and store — the write-through round trip must not eat keystrokes, and must land on the right character. */
+describe('CharacterManager appearance and notes (slice 9d2)', () => {
+	it('persists what is typed to the character\'s own field, exactly, and reads it back on a fresh mount', async () => {
+		const store = new CharacterStore()
+		const created = store.create({ name: 'Aria' })
+
+		const user = userEvent.setup()
+		const { unmount } = render(<CharacterManager />)
+		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('tab', { name: 'Vzhled a poznámky' }))
+
+		await user.type(screen.getByRole('textbox', { name: 'Příběh' }), '- Raised by owls{Enter}  - Left at dawn  ')
+		await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato 5 gp')
+
+		const stored = store.list().find((character) => character.id === created.id)
+		expect(stored?.backstory).toBe('- Raised by owls\n  - Left at dawn  ')
+		expect(stored?.notes).toBe('Owes Cato 5 gp')
+		expect(stored?.appearance).toBeUndefined()
+
+		unmount()
+		render(<CharacterManager />)
+		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		expect((screen.getByRole('textbox', { name: 'Příběh' }) as HTMLTextAreaElement).value).toBe('- Raised by owls\n  - Left at dawn  ')
+		expect((screen.getByRole('textbox', { name: 'Vzhled' }) as HTMLTextAreaElement).value).toBe('')
+	})
+
+	it('does not carry one character\'s text over to another when the sheet is switched', async () => {
+		const store = new CharacterStore()
+		store.create({ name: 'Aria' })
+		store.create({ name: 'Bree' })
+
+		const user = userEvent.setup()
+		render(<CharacterManager />)
+		const [ariaSheet] = await screen.findAllByRole('button', { name: 'Sheet' })
+		await user.click(ariaSheet)
+		await user.type(await screen.findByRole('textbox', { name: 'Poznámky' }), 'Aria only')
+
+		await user.click(screen.getByRole('button', { name: 'Sheet' }))
+
+		expect((screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement).value).toBe('')
+		expect(store.list().find((character) => character.name === 'Bree')?.notes).toBeUndefined()
+	})
+})
+
 describe('CharacterManager sheet toggle', () => {
 	it('hides the sheet when the same row\'s button is clicked again', async () => {
 		const store = new CharacterStore()

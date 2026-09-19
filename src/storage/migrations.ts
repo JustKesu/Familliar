@@ -343,6 +343,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 40 }),
 	},
+	{
+		from: 40,
+		to: 41,
+		/*
+		 * 41 adds Character.appearance, .backstory and .notes (slice 9d2). Purely
+		 * additive: nothing could be written before this version, and absence
+		 * already means "empty", so the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 41 }),
+	},
 ]
 
 /**

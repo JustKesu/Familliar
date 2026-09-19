@@ -169,7 +169,14 @@ export interface CharacterCreateInput {
 	play?: CharacterPlayState
 	familiar?: CharacterFamiliar
 	createdAtLevel?: number
+	/** Slice 9d2: the sheet's free-text fields. `update` replaces every field, so the edit path passes the character's own back in. */
+	appearance?: string
+	backstory?: string
+	notes?: string
 }
+
+/** The three free-text fields `setText` writes (slice 9d2). */
+export type CharacterTextField = 'appearance' | 'backstory' | 'notes'
 
 /**
  * The hit-point fields `setHitPoints` writes together (slice 9a1; death saves
@@ -272,6 +279,9 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		play,
 		familiar,
 		createdAtLevel,
+		appearance,
+		backstory,
+		notes,
 	} = input
 
 	const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
@@ -308,6 +318,10 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(storedPlay ? { play: storedPlay } : {}),
 		...(familiar ? { familiar } : {}),
 		...(createdAtLevel !== undefined ? { createdAtLevel } : {}),
+		// Slice 9d2: kept verbatim — never trimmed — and only the empty string is absence.
+		...(appearance ? { appearance } : {}),
+		...(backstory ? { backstory } : {}),
+		...(notes ? { notes } : {}),
 	}
 }
 
@@ -421,6 +435,22 @@ export class CharacterStore {
 		const { inventory: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = inventory.length > 0 ? { ...rest, inventory } : rest
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Sets one of the three free-text fields (slice 9d2) to exactly `text` — no
+	 * trimming, since the player's line breaks and spacing are the whole point. The
+	 * empty string clears the field, matching how an absent one already reads.
+	 */
+	setText(id: string, field: CharacterTextField, text: string): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { [field]: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = text.length > 0 ? { ...rest, [field]: text } : rest
 		this.writeAll(updated)
 	}
 

@@ -1072,6 +1072,10 @@ export function saveCharacter(
 		familiar: existing?.familiar,
 		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".
 		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,
+		// Slice 9d2: sheet-only text the wizard never shows, carried across so an edit or a level up does not erase it.
+		appearance: existing?.appearance,
+		backstory: existing?.backstory,
+		notes: existing?.notes,
 	}
 
 	return existing ? store.update(existing.id, input) : store.create(input)

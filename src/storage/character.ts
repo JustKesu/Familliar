@@ -300,6 +300,17 @@ export interface Character {
 	 * schema version 34 — and removal is then refused rather than guessed.
 	 */
 	createdAtLevel?: number
+	/**
+	 * The three free-text fields of the "Vzhled a poznámky" tab (slice 9d2), each
+	 * exactly what the player typed — line breaks and spacing included, nothing
+	 * parsed or trimmed. They describe the character rather than a play session,
+	 * so they live here and not under `play`: a rest never touches them. Absent
+	 * and the empty string both mean nothing written, and the store writes none
+	 * as absence, the convention every optional field above uses.
+	 */
+	appearance?: string
+	backstory?: string
+	notes?: string
 }
 
 /** What the character has spent and gained since the last rest (slice 9b1) — see Character.play. */
@@ -848,7 +859,8 @@ export type FeatAsiChoice =
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 40 for Character.play.concentratingOn
+ * (see wireFormat.ts). Bumped to 41 for Character.appearance, .backstory and
+ * .notes (slice 9d2); 40 added Character.play.concentratingOn
  * (slice 9d1); 39 added Character.play.spentHitDice
  * (slice 9b4); 38 added Character.play.spentSpellSlots (slice 9b3); 37
  * grouped play state under Character.play (slice 9b1), absorbing the two
@@ -859,4 +871,4 @@ export type FeatAsiChoice =
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 40
+export const CURRENT_SCHEMA_VERSION = 41

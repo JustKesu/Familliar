@@ -6363,14 +6363,14 @@ describe('the persistent header (rebuild slice 1)', () => {
 })
 
 describe('sheet tabs (rebuild slice 2)', () => {
-	const TAB_LABELS = ['Vlastnosti a hody', 'Kouzla', 'Inventář', 'Schopnosti a rysy', 'Akce']
-	const TAB_IDS = ['stats', 'spells', 'inventory', 'features', 'actions']
+	const TAB_LABELS = ['Vlastnosti a hody', 'Kouzla', 'Inventář', 'Schopnosti a rysy', 'Akce', 'Vzhled a poznámky']
+	const TAB_IDS = ['stats', 'spells', 'inventory', 'features', 'actions', 'notes']
 
 	afterEach(() => {
 		vi.mocked(loadGrantedSenses).mockReset().mockResolvedValue([])
 	})
 
-	it('renders the five section tabs with the stats tab selected by default', async () => {
+	it('renders the six section tabs with the stats tab selected by default', async () => {
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
@@ -6389,7 +6389,7 @@ describe('sheet tabs (rebuild slice 2)', () => {
 			expect(container.querySelector(`#sheet-panel-${id}`)!.getAttribute('aria-labelledby')).toBe(`sheet-tab-${id}`)
 		}
 		expect(container.querySelector('#sheet-panel-stats')!.className).toContain('sheet__panel--active')
-		for (const id of ['spells', 'inventory', 'features', 'actions']) {
+		for (const id of ['spells', 'inventory', 'features', 'actions', 'notes']) {
 			expect(container.querySelector(`#sheet-panel-${id}`)!.className).not.toContain('sheet__panel--active')
 		}
 	})
@@ -6463,5 +6463,120 @@ describe('sheet tabs (rebuild slice 2)', () => {
 		const features = container.querySelector('#sheet-panel-features')!
 		expect(features.querySelector('.sheet__feats')).toBeTruthy()
 		expect(features.querySelector('.sheet__class-optional-features')).toBeTruthy()
+	})
+})
+
+/* Slice 9d2: three plain textareas, each in its own independently collapsible <details>, each written to its own Character field. */
+describe('the Vzhled a poznámky tab (slice 9d2)', () => {
+	const MULTI_LINE = '- first\n\n  indented   \n* second\n'
+
+	/* Holds the character in state the way CharacterManager does, so the sheet re-reads what it wrote. */
+	function Harness({ initial, onEdit }: { initial: Character; onEdit: (field: string, text: string) => void }) {
+		const [current, setCurrent] = useState(initial)
+		return (
+			<CharacterSheet
+				character={current}
+				onEditText={(field, text) => {
+					onEdit(field, text)
+					setCurrent((previous) => ({ ...previous, [field]: text }))
+				}}
+			/>
+		)
+	}
+
+	async function openNotesTab(subject: Character = character, onEdit = vi.fn()) {
+		const user = userEvent.setup()
+		const { container } = render(<Harness initial={subject} onEdit={onEdit} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+		await user.click(screen.getByRole('tab', { name: 'Vzhled a poznámky' }))
+		return { user, container, onEdit }
+	}
+
+	function sectionDetails(container: HTMLElement): HTMLDetailsElement[] {
+		return Array.from(container.querySelectorAll<HTMLDetailsElement>('#sheet-panel-notes details'))
+	}
+
+	it('is the last tab and is reached like the other five', async () => {
+		const { container } = await openNotesTab()
+
+		const tabs = screen.getAllByRole('tab')
+		expect(tabs[tabs.length - 1].textContent).toBe('Vzhled a poznámky')
+		expect(screen.getByRole('tab', { name: 'Vzhled a poznámky' }).getAttribute('aria-selected')).toBe('true')
+		expect(container.querySelector('#sheet-panel-notes')!.className).toContain('sheet__panel--active')
+		expect(container.querySelector('#sheet-panel-stats')!.className).not.toContain('sheet__panel--active')
+	})
+
+	it('holds Vzhled, Příběh and Poznámky in that order, each with exactly one textarea', async () => {
+		const { container } = await openNotesTab()
+
+		const sections = sectionDetails(container)
+		expect(sections.map((section) => section.querySelector('summary')!.textContent)).toEqual(['Vzhled', 'Příběh', 'Poznámky'])
+		for (const section of sections) expect(section.querySelectorAll('textarea')).toHaveLength(1)
+		expect(container.querySelectorAll('#sheet-panel-notes textarea')).toHaveLength(3)
+	})
+
+	it('opens and closes each section without moving the other two', async () => {
+		const { user, container } = await openNotesTab()
+		const [appearance, backstory, notes] = sectionDetails(container)
+		const openStates = () => [appearance.open, backstory.open, notes.open]
+
+		expect(openStates()).toEqual([false, false, false])
+
+		await user.click(screen.getByText('Příběh', { selector: 'summary' }))
+		expect(openStates()).toEqual([false, true, false])
+
+		await user.click(screen.getByText('Vzhled', { selector: 'summary' }))
+		expect(openStates()).toEqual([true, true, false])
+
+		await user.click(screen.getByText('Příběh', { selector: 'summary' }))
+		expect(openStates()).toEqual([true, false, false])
+
+		await user.click(screen.getByText('Poznámky', { selector: 'summary' }))
+		expect(openStates()).toEqual([true, false, true])
+	})
+
+	it('writes each textarea to its own field, exactly as typed, line breaks included', async () => {
+		const { user, onEdit } = await openNotesTab()
+
+		await user.type(screen.getByRole('textbox', { name: 'Vzhled' }), 'Tall{Enter}Green eyes')
+		expect(onEdit).toHaveBeenLastCalledWith('appearance', 'Tall\nGreen eyes')
+
+		await user.type(screen.getByRole('textbox', { name: 'Příběh' }), '- Raised by owls{Enter}  - Left at dawn  ')
+		expect(onEdit).toHaveBeenLastCalledWith('backstory', '- Raised by owls\n  - Left at dawn  ')
+
+		await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato 5 gp')
+		expect(onEdit).toHaveBeenLastCalledWith('notes', 'Owes Cato 5 gp')
+
+		// Each textarea shows its own text and nothing of the other two.
+		expect((screen.getByRole('textbox', { name: 'Vzhled' }) as HTMLTextAreaElement).value).toBe('Tall\nGreen eyes')
+		expect((screen.getByRole('textbox', { name: 'Příběh' }) as HTMLTextAreaElement).value).toBe('- Raised by owls\n  - Left at dawn  ')
+		expect((screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement).value).toBe('Owes Cato 5 gp')
+		const fields = new Set(onEdit.mock.calls.map(([field]) => field))
+		expect(fields).toEqual(new Set(['appearance', 'backstory', 'notes']))
+	})
+
+	it('shows stored text back in the matching textarea, multi-line text intact', async () => {
+		await openNotesTab({ ...character, appearance: MULTI_LINE, notes: 'Only a note' })
+
+		expect((screen.getByRole('textbox', { name: 'Vzhled' }) as HTMLTextAreaElement).value).toBe(MULTI_LINE)
+		expect((screen.getByRole('textbox', { name: 'Příběh' }) as HTMLTextAreaElement).value).toBe('')
+		expect((screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement).value).toBe('Only a note')
+	})
+
+	it('reports an emptied textarea as the empty string, which the store reads as none', async () => {
+		const { user, onEdit } = await openNotesTab({ ...character, notes: 'x' })
+
+		await user.clear(screen.getByRole('textbox', { name: 'Poznámky' }))
+
+		expect(onEdit).toHaveBeenLastCalledWith('notes', '')
+	})
+
+	it('leaves the textareas read-only when the sheet is given no way to write them', async () => {
+		render(<CharacterSheet character={{ ...character, notes: 'Stored' }} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		const field = screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement
+		expect(field.readOnly).toBe(true)
+		expect(field.value).toBe('Stored')
 	})
 })

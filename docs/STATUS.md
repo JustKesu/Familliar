@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-19 (9d1: sledování koncentrace)
+Poslední aktualizace: 2026-09-19 (9d2: záložka Vzhled a poznámky)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -486,6 +486,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9c3a | Výhoda/nevýhoda u každého d20 Roll (ruční přepínač u tlačítka) | — |
    | 9c3b | Historie hodů v hlavičce (max 50, jen v paměti); režim přežije změnu modifikátoru | — |
    | 9d1 | Koncentrace: které kouzlo postava drží, tlačítko u kouzla + řádek v hlavičce | 39→40 |
+   | 9d2 | Záložka „Vzhled a poznámky": tři volné textové pole na `Character` | 40→41 |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -714,6 +715,26 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `CharacterSheet.test.tsx`, `characterStore.test.ts`, `migrations.test.ts`.
      Neověřováno v prohlížeči (zapojení `CharacterManager` → store kryjí jen
      testy store a sheetu zvlášť).
+   - Slice 9d2 — šestá záložka `Vzhled a poznámky` (poslední v pořadí, za
+     `Akce`). Tři sekce `<details>` (`Vzhled`, `Příběh`, `Poznámky`), každá s
+     jedním prostým `<textarea>`; výchozí stav sbalené, sekce se otevírají
+     nezávisle (prohlížeč drží stav, jako jinde na sheetu). Pole
+     `Character.appearance`, `.backstory`, `.notes` (`string`, přímo na
+     `Character`, ne pod `play` — popisují postavu, odpočinek se jich netýká;
+     schéma 41, migrace 40→41 jen tag). Text se ukládá doslova: bez trim,
+     bez parsování, prázdný řetězec = nepřítomnost pole (`buildCharacter`,
+     `toCharacter`); import odmítne neřetězec. Nový
+     `CharacterStore.setText(id, field, text)`, `CharacterSheet` prop
+     `onEditText`. Zápis běží při každé změně (ne na blur), textarea drží
+     lokální draft a je klíčovaná `character.id`, takže se text nepřenese na
+     jinou postavu. Bez `onEditText` jsou textarey `readOnly`. Pozor:
+     `wizardState.saveCharacter` skládá vstup pro `store.update` po polích, proto
+     tři pole přenáší z `existing` — bez toho by je úprava/level up smazala.
+     Žádné limity, markdown ani vazba na zbytek sheetu. Testy: bloky v
+     `CharacterSheet.test.tsx`, `characterStore.test.ts`, `migrations.test.ts`,
+     `wizardState.test.ts`, `CharacterManager.test.tsx` (skutečný store +
+     sheet v jsdom). Neověřováno ve skutečném prohlížeči (CSS textarey,
+     plynulost psaní při přerenderu celého sheetu na každý znak).
    - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
      průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
@@ -774,7 +795,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   choices, class options, Wild Shape, familiar), `Akce` (tabulka akcí).
   Klientský stav, výchozí `stats`, bez URL routingu. Panely zůstávají
   mountnuté, neaktivní skrývá `.sheet__panel` CSS. Nový blok testů `sheet
-  tabs (rebuild slice 2)`.
+  tabs (rebuild slice 2)`. Od slice 9d2 je záložek šest: za `Akce` přibyla
+  `Vzhled a poznámky` (tři volná textová pole).
 - Tabulka akcí (přestavba sheetu, slice 3) — `ActionsSection` v
   `src/sheet/CharacterSheet.tsx`. `<table class="sheet__actions-table">`,
   sloupce Name · Range · To Hit · Damage · Notes, řádek na drženou zbraň +
@@ -901,7 +923,9 @@ záchran, dovedností, iniciativy a poškození zbraně (víc kostek, `rollDice`
 Slice 9c3a přidala k d20 hodům ruční výhodu/nevýhodu (`rollKeepOne`, obě kostky
 ve výsledku). Slice 9c3b přidala historii hodů v hlavičce (max 50, jen v
 paměti). Slice 9d1 přidala sledování koncentrace (`play.concentratingOn`, schéma
-40). Další na řadě je utracení hit die při krátkém odpočinku.
+40). Slice 9d2 přidala záložku `Vzhled a poznámky` (`Character.appearance`,
+`.backstory`, `.notes`, schéma 41). Další na řadě je utracení hit die při
+krátkém odpočinku.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.

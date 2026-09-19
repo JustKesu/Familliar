@@ -448,6 +448,15 @@ describe('the migration chain (D69)', () => {
 		expect((migrated['play'] as Record<string, unknown>)['concentratingOn']).toBeUndefined()
 	})
 
+	/* Slice 9d2: three purely additive fields, so the step only tags — nothing written is what absence already means. */
+	it('tags a version-40 character without inventing any free text', () => {
+		const before = { schemaVersion: 40, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		for (const field of ['appearance', 'backstory', 'notes']) expect(field in migrated).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

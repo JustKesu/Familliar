@@ -927,6 +927,20 @@ describe('editing an existing character', () => {
 		expect(input.familiar).toEqual({ name: 'Owl', source: 'XMM' })
 	})
 
+	/* Slice 9d2: `update` replaces every field, and the wizard never shows the sheet's free text, so an edit must hand it back or silently erase it. */
+	it('carries the sheet\'s appearance, backstory and notes through an edit', () => {
+		const store = editStore()
+		const character = { ...storedCharacter(), appearance: 'Tall\nGreen eyes', backstory: '- Orphan', notes: 'Owes Cato 5 gp' }
+		const data = wizardDataFromCharacter(character, lookups)
+
+		saveCharacter(store, data, ['athletics', 'intimidation'], editConditions, { inventory: [], currencyCopper: 0 }, character)
+
+		const input = vi.mocked(store.update).mock.calls[0][1]
+		expect(input.appearance).toBe('Tall\nGreen eyes')
+		expect(input.backstory).toBe('- Orphan')
+		expect(input.notes).toBe('Owes Cato 5 gp')
+	})
+
 	it('hides the equipment step while editing and keeps it while creating', () => {
 		expect(visibleSteps({ editingExistingCharacter: true })).not.toContain('equipment')
 		expect(visibleSteps({})).toContain('equipment')

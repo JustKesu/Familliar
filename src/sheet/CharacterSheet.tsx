@@ -130,7 +130,7 @@ import { afterLongRest, afterShortRest } from '../rest/rest'
 import { DamageRollButton, RollButton } from '../dice/RollButton'
 import { addRollHistoryEntry, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
 import { parseDiceExpression } from '../dice/roll'
-import type { HitPointFields, RestFields } from '../storage/characterStore'
+import type { CharacterTextField, HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
 import { SheetHeader } from './SheetHeader'
@@ -194,7 +194,7 @@ const ABILITY_LABELS: Record<Ability, string> = {
  * slice only relocates sections — no section's content, calculation or markup
  * changes. Landing tab is 'stats'.
  */
-type SheetTabId = 'stats' | 'spells' | 'inventory' | 'features' | 'actions'
+type SheetTabId = 'stats' | 'spells' | 'inventory' | 'features' | 'actions' | 'notes'
 
 const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
 	{ id: 'stats', label: 'Vlastnosti a hody' },
@@ -202,6 +202,14 @@ const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
 	{ id: 'inventory', label: 'Inventář' },
 	{ id: 'features', label: 'Schopnosti a rysy' },
 	{ id: 'actions', label: 'Akce' },
+	{ id: 'notes', label: 'Vzhled a poznámky' },
+]
+
+/** The "Vzhled a poznámky" tab's sections (slice 9d2), in display order — each one Character field. */
+const TEXT_SECTIONS: readonly { field: CharacterTextField; label: string }[] = [
+	{ field: 'appearance', label: 'Vzhled' },
+	{ field: 'backstory', label: 'Příběh' },
+	{ field: 'notes', label: 'Poznámky' },
 ]
 
 function messageOf(error: unknown): string {
@@ -1706,6 +1714,39 @@ function DamageResponsesSection({ responses, loading, dataError }: { responses: 
 }
 
 /**
+ * One collapsible free-text field (slice 9d2). The <details> is uncontrolled like
+ * every other on the sheet, so each section opens and closes on its own. The
+ * draft is local because the text is written through on every change and the
+ * value must not wait on that round trip; the parent keys this by character id.
+ */
+function TextSection({
+	label,
+	stored,
+	onEdit,
+}: {
+	label: string
+	stored: string | undefined
+	onEdit: ((text: string) => void) | undefined
+}): ReactNode {
+	const [draft, setDraft] = useState(stored ?? '')
+	return (
+		<details className="sheet__text-section">
+			<summary>{label}</summary>
+			<textarea
+				aria-label={label}
+				rows={10}
+				value={draft}
+				readOnly={onEdit === undefined}
+				onChange={(event) => {
+					setDraft(event.target.value)
+					onEdit?.(event.target.value)
+				}}
+			/>
+		</details>
+	)
+}
+
+/**
  * The sheet is read-only except for three controls: the familiar's form, the
  * inventory section (build order step 7) and the persistent header's hit
  * points (D9). All are changed in play, not at creation, so they belong here
@@ -1721,6 +1762,7 @@ export function CharacterSheet({
 	onEditResourceUses,
 	onEditSpentSpellSlots,
 	onEditConcentration,
+	onEditText,
 	onRest,
 	onEditCharacter,
 	onLevelUp,
@@ -1737,6 +1779,8 @@ export function CharacterSheet({
 	onEditSpentSpellSlots?: (spentSpellSlots: SpentSpellSlots | undefined) => void
 	/** Sets or, with null, drops the spell being concentrated on (slice 9d1). Absent leaves the buttons and the header control off; the header line still shows a stored one. */
 	onEditConcentration?: (spellName: string | null) => void
+	/** Writes one of the three free-text fields, exactly as typed (slice 9d2). Absent leaves the textareas showing the stored text, read-only. */
+	onEditText?: (field: CharacterTextField, text: string) => void
 	/** Applies a finished rest in one write (slice 9b5). Absent leaves the header without the two rest buttons. */
 	onRest?: (rest: RestFields) => void
 	/** Reopens the creation wizard over this character (slice 8d1). Absent leaves the sheet without the button. */
@@ -3102,6 +3146,22 @@ export function CharacterSheet({
 				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}
 				onSpendResource={onEditResourceUses ? spendResource : undefined}
 			/>
+			</div>
+
+			<div
+				role="tabpanel"
+				id="sheet-panel-notes"
+				aria-labelledby="sheet-tab-notes"
+				className={activeTab === 'notes' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
+			>
+				{TEXT_SECTIONS.map(({ field, label }) => (
+					<TextSection
+						key={`${character.id}|${field}`}
+						label={label}
+						stored={character[field]}
+						onEdit={onEditText ? (text) => onEditText(field, text) : undefined}
+					/>
+				))}
 			</div>
 		</article>
 	)

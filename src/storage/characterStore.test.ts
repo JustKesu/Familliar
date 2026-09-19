@@ -1505,6 +1505,102 @@ describe('stored optional-feature picks (D99)', () => {
 	})
 })
 
+/* Slice 9d2: three plain strings on Character itself, verbatim, each written on its own. */
+describe('CharacterStore free-text fields (slice 9d2)', () => {
+	const MULTI_LINE = '- first line\n\n  indented, with trailing spaces   \n* second line\n'
+
+	it('stores each field under its own name, exactly as typed, and reads it back', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria' })
+
+		store.setText(character.id, 'appearance', MULTI_LINE)
+		store.setText(character.id, 'backstory', 'Raised by owls.\nLeft at dawn.')
+		store.setText(character.id, 'notes', ' ')
+
+		const stored = new CharacterStore(backing).list()[0]
+		expect(stored.appearance).toBe(MULTI_LINE)
+		expect(stored.backstory).toBe('Raised by owls.\nLeft at dawn.')
+		// A whitespace-only note is what the player typed, so it stays; only the empty string is none.
+		expect(stored.notes).toBe(' ')
+	})
+
+	it('replaces one field without touching the other two or the play state', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria', currentHp: 9, play: { concentratingOn: 'Bless' } })
+		store.setText(character.id, 'appearance', 'Tall')
+		store.setText(character.id, 'notes', 'Owes Cato 5 gp')
+
+		store.setText(character.id, 'backstory', 'Orphan')
+		store.setText(character.id, 'appearance', 'Short')
+
+		const stored = new CharacterStore(backing).list()[0]
+		expect(stored).toMatchObject({ appearance: 'Short', backstory: 'Orphan', notes: 'Owes Cato 5 gp', currentHp: 9, play: { concentratingOn: 'Bless' } })
+	})
+
+	it('stores the empty string as absence', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria' })
+		store.setText(character.id, 'notes', 'something')
+
+		store.setText(character.id, 'notes', '')
+
+		const stored = new CharacterStore(backing).list()[0]
+		expect('notes' in stored).toBe(false)
+		expect(store.create({ name: 'Cato', appearance: '' }).appearance).toBeUndefined()
+	})
+
+	it('is not disturbed by a rest or a hit-point write', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria', currentHp: 10 })
+		store.setText(character.id, 'backstory', MULTI_LINE)
+
+		store.setHitPoints(character.id, { currentHp: 4 })
+		store.applyRest(character.id, { currentHp: 30, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} })
+
+		expect(new CharacterStore(backing).list()[0].backstory).toBe(MULTI_LINE)
+	})
+
+	it('keeps the text through update when the input carries it, and drops it when it does not', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria', appearance: 'Tall', backstory: 'Orphan', notes: 'Note' })
+
+		const kept = store.update(created.id, { name: 'Aria', appearance: 'Tall', backstory: 'Orphan', notes: 'Note' })
+		expect(kept).toMatchObject({ appearance: 'Tall', backstory: 'Orphan', notes: 'Note' })
+
+		const dropped = store.update(created.id, { name: 'Aria' })
+		expect(dropped.appearance).toBeUndefined()
+	})
+
+	it('throws CharacterNotFoundError for an unknown id', () => {
+		expect(() => new CharacterStore(new MemoryStorage()).setText('nope', 'notes', 'x')).toThrow(CharacterNotFoundError)
+	})
+
+	it('survives an export and an import unchanged', () => {
+		const source = new CharacterStore(new MemoryStorage())
+		const original = source.create({ name: 'Aria' })
+		source.setText(original.id, 'appearance', MULTI_LINE)
+		source.setText(original.id, 'notes', 'a\r\nb')
+
+		const [imported] = new CharacterStore(new MemoryStorage()).import(source.exportCharacter(original.id))
+
+		expect(imported.appearance).toBe(MULTI_LINE)
+		expect(imported.notes).toBe('a\r\nb')
+		expect(imported.backstory).toBeUndefined()
+	})
+
+	it('rejects a stored field that is not a string', () => {
+		for (const field of ['appearance', 'backstory', 'notes']) {
+			const backing = new MemoryStorage()
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], [field]: 7 }]))
+			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+		}
+	})
+})
+
 describe('CharacterStore.rename', () => {
 	it('renames an existing character', () => {
 		const store = new CharacterStore(new MemoryStorage())
