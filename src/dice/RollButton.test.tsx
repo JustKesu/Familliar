@@ -77,6 +77,27 @@ describe('RollButton (d20 check with advantage and disadvantage, step 9 slice 9c
 		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
 		expect(result(container)).toBe('14, 9 (kept 14) + 0 = 14')
 	})
+
+	it('clears the shown result but keeps the mode when the modifier changes', async () => {
+		const user = userEvent.setup()
+		const { container, rerender } = render(<RollButton modifier={5} label="Athletics check" random={sequence([0.4, 0.65])} />)
+		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
+		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+		expect(result(container)).toBe('9, 14 (kept 14) + 5 = 19')
+
+		rerender(<RollButton modifier={6} label="Athletics check" random={sequence([0.4, 0.65])} />)
+		expect(result(container)).toBeUndefined()
+		expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('advantage')
+	})
+
+	it('reports each roll with its label and the same text it shows', async () => {
+		const user = userEvent.setup()
+		const reports: unknown[] = []
+		render(<RollButton modifier={5} label="Athletics check" random={sequence([0.4, 0.65])} onRoll={(report) => reports.push(report)} />)
+		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
+		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+		expect(reports).toEqual([{ label: 'Athletics check', text: '9, 14 (kept 14) + 5 = 19' }])
+	})
 })
 
 describe('DamageRollButton', () => {
@@ -87,5 +108,13 @@ describe('DamageRollButton', () => {
 		expect(container.querySelector('select')).toBeNull()
 		await user.click(screen.getByRole('button', { name: 'Roll Greatsword damage' }))
 		expect(result(container)).toBe('4, 2 + 2 = 8')
+	})
+
+	it('reports each roll with its label and the same text it shows', async () => {
+		const user = userEvent.setup()
+		const reports: unknown[] = []
+		render(<DamageRollButton count={2} sides={6} modifier={2} label="Greatsword damage" random={sequence([0.6, 0.2])} onRoll={(report) => reports.push(report)} />)
+		await user.click(screen.getByRole('button', { name: 'Roll Greatsword damage' }))
+		expect(reports).toEqual([{ label: 'Greatsword damage', text: '4, 2 + 2 = 8' }])
 	})
 })

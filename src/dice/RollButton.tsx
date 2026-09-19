@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { rollDice, rollKeepOne, type DiceRoll, type KeepOneRoll, type RandomSource, type RollMode } from './roll'
+import type { RollReport } from './RollHistory'
 
 const MODE_LABELS: Record<RollMode, string> = { normal: 'Normal', advantage: 'Advantage', disadvantage: 'Disadvantage' }
 
@@ -33,9 +34,30 @@ function RollResult({ text }: { text: string | null }): ReactNode {
  * changes the printed value it was made from (step 9c1). So is the mode — it is
  * a choice about the next roll, not part of the character.
  */
-export function RollButton({ modifier, label, random }: { modifier: number; label: string; random?: RandomSource }): ReactNode {
+export function RollButton({
+	modifier,
+	label,
+	random,
+	onRoll,
+}: {
+	modifier: number
+	label: string
+	random?: RandomSource
+	onRoll?: (report: RollReport) => void
+}): ReactNode {
 	const [roll, setRoll] = useState<KeepOneRoll | null>(null)
 	const [mode, setMode] = useState<RollMode>('normal')
+	const [shownFor, setShownFor] = useState(modifier)
+	// A result made from an older number must not sit beside the new one; the mode is a choice about the next roll and stays.
+	if (shownFor !== modifier) {
+		setShownFor(modifier)
+		setRoll(null)
+	}
+	function makeRoll(): void {
+		const next = rollKeepOne(20, modifier, mode, random)
+		setRoll(next)
+		onRoll?.({ label, text: formatKeepOneRoll(next) })
+	}
 	return (
 		<span className="dice-roll">
 			<select className="dice-roll__mode" aria-label={`Roll mode for ${label}`} value={mode} onChange={(event) => setMode(event.target.value as RollMode)}>
@@ -45,7 +67,7 @@ export function RollButton({ modifier, label, random }: { modifier: number; labe
 					</option>
 				))}
 			</select>{' '}
-			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} onClick={() => setRoll(rollKeepOne(20, modifier, mode, random))}>
+			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} onClick={makeRoll}>
 				Roll
 			</button>
 			<RollResult text={roll && formatKeepOneRoll(roll)} />
@@ -60,17 +82,30 @@ export function DamageRollButton({
 	modifier,
 	label,
 	random,
+	onRoll,
 }: {
 	count: number
 	sides: number
 	modifier: number
 	label: string
 	random?: RandomSource
+	onRoll?: (report: RollReport) => void
 }): ReactNode {
 	const [roll, setRoll] = useState<DiceRoll | null>(null)
+	const rollInputs = `${count}d${sides}|${modifier}`
+	const [shownFor, setShownFor] = useState(rollInputs)
+	if (shownFor !== rollInputs) {
+		setShownFor(rollInputs)
+		setRoll(null)
+	}
+	function makeRoll(): void {
+		const next = rollDice(count, sides, modifier, random)
+		setRoll(next)
+		onRoll?.({ label, text: formatRoll(next) })
+	}
 	return (
 		<span className="dice-roll">
-			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} onClick={() => setRoll(rollDice(count, sides, modifier, random))}>
+			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} onClick={makeRoll}>
 				Roll
 			</button>
 			<RollResult text={roll && formatRoll(roll)} />

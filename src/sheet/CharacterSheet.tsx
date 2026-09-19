@@ -13,7 +13,7 @@
  * itself). Data acquisition goes through the shared loader (D39).
  */
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
 import type { LevelGains } from '../levelUp/levelGains'
@@ -128,6 +128,7 @@ import {
 } from '../storage/character'
 import { afterLongRest, afterShortRest } from '../rest/rest'
 import { DamageRollButton, RollButton } from '../dice/RollButton'
+import { addRollHistoryEntry, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
 import { parseDiceExpression } from '../dice/roll'
 import type { HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
@@ -1356,7 +1357,11 @@ interface ActionTableRow {
  * only — every value comes straight from computeWeaponAttacks (build order step
  * 7 slice c), unchanged by this slice.
  */
-function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void): ActionTableRow {
+function weaponAttackRow(
+	attack: WeaponAttack,
+	onRoll: (report: RollReport) => void,
+	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void,
+): ActionTableRow {
 	const damageDice = attack.damage.status === 'known' && attack.damage.value.dice ? parseDiceExpression(attack.damage.value.dice) : null
 	return {
 		key: attack.key,
@@ -1387,11 +1392,10 @@ function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: str
 		toHit: (
 			<>
 				<CalculatedNumber result={attack.toHit} format={formatModifier} />
-				{/* Keyed on the modifier so a roll made before the number changed does not linger beside the new one. */}
 				{attack.toHit.status === 'known' && (
 					<>
 						{' '}
-						<RollButton key={attack.toHit.value} modifier={attack.toHit.value} label={`${attack.name} to hit`} />
+						<RollButton modifier={attack.toHit.value} label={`${attack.name} to hit`} onRoll={onRoll} />
 					</>
 				)}
 			</>
@@ -1415,11 +1419,11 @@ function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: str
 							<>
 								{' '}
 								<DamageRollButton
-									key={`${attack.damage.value.dice}${attack.damage.value.modifier}`}
 									count={damageDice.count}
 									sides={damageDice.sides}
 									modifier={attack.damage.value.modifier}
 									label={`${attack.name} damage`}
+									onRoll={onRoll}
 								/>
 							</>
 						)}
@@ -1566,6 +1570,7 @@ function ActionsSection({
 	resourceUses,
 	loading,
 	dataError,
+	onRoll,
 	onChooseAttackAbility,
 	onSpendResource,
 }: {
@@ -1579,11 +1584,12 @@ function ActionsSection({
 	resourceUses: Record<string, number>
 	loading: boolean
 	dataError: string | null
+	onRoll: (report: RollReport) => void
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
 	onSpendResource?: (name: string, delta: 1 | -1) => void
 }): ReactNode {
 	const rows = [
-		...attacks.map((attack) => weaponAttackRow(attack, onChooseAttackAbility)),
+		...attacks.map((attack) => weaponAttackRow(attack, onRoll, onChooseAttackAbility)),
 		...spellActions.map(spellActionRow),
 		...featureActions.map((feature) => featureActionRow(feature, resourceMaxima, resourceUses, onSpendResource)),
 	]
@@ -1739,6 +1745,13 @@ export function CharacterSheet({
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
 	const [activeTab, setActiveTab] = useState<SheetTabId>('stats')
+	/* Slice 9c3b: in memory only, like each button's own result — never written to Character.play. */
+	const [rollHistory, setRollHistory] = useState<RollHistoryEntry[]>([])
+	const nextRollId = useRef(0)
+	function recordRoll(report: RollReport): void {
+		const entry = { ...report, id: nextRollId.current++ }
+		setRollHistory((history) => addRollHistoryEntry(history, entry))
+	}
 	const [savingThrowClassData, setSavingThrowClassData] = useState<ClassSavingThrowProficiencies[] | null>(null)
 	const [hitDiceClassData, setHitDiceClassData] = useState<ClassHitDie[] | null>(null)
 	const [speciesTraitsData, setSpeciesTraitsData] = useState<SpeciesTraitsData[] | null>(null)
@@ -2448,6 +2461,8 @@ export function CharacterSheet({
 				onEditHitPoints={onEditHitPoints}
 				onShortRest={onRest ? takeShortRest : undefined}
 				onLongRest={onRest ? takeLongRest : undefined}
+				rollHistory={rollHistory}
+				onRoll={recordRoll}
 			/>
 
 			<header className="sheet__header">
@@ -2527,7 +2542,7 @@ export function CharacterSheet({
 											{result.value.score} ({formatModifier(result.value.modifier)})
 										</span>{' '}
 										<ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton key={result.value.modifier} modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} check`} />
+										<RollButton modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} check`} onRoll={recordRoll} />
 									</>
 								)}
 							</li>
@@ -2549,7 +2564,7 @@ export function CharacterSheet({
 								) : (
 									<>
 										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton key={result.value.modifier} modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} />
+										<RollButton modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} onRoll={recordRoll} />
 									</>
 								)}
 							</li>
@@ -2571,7 +2586,7 @@ export function CharacterSheet({
 								) : (
 									<>
 										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton key={result.value.modifier} modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} />
+										<RollButton modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} onRoll={recordRoll} />
 									</>
 								)}
 							</li>
@@ -3071,6 +3086,7 @@ export function CharacterSheet({
 				resourceUses={resourceUses}
 				loading={itemRefs === null || weaponAttackData === null}
 				dataError={weaponAttackDataError}
+				onRoll={recordRoll}
 				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}
 				onSpendResource={onEditResourceUses ? spendResource : undefined}
 			/>

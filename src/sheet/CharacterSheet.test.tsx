@@ -422,6 +422,26 @@ describe('CharacterSheet', () => {
 		describe('advantage and disadvantage (step 9 slice 9c3a)', () => {
 			const KEEP_TEXT = /^(\d+), (\d+) \(kept (\d+)\) ([+−]) (\d+) = (\d+)$/
 
+			it('keeps the chosen mode when the modifier changes, clearing only the shown result (9c3b fix)', async () => {
+				const user = userEvent.setup()
+				const { container, rerender } = await renderKnown()
+				const printed = printedModifier(listItem(container, '.sheet__saving-throws', 'Strength:'))
+				await user.selectOptions(screen.getByRole('combobox', { name: 'Roll mode for Strength saving throw' }), 'disadvantage')
+				await user.click(screen.getByRole('button', { name: 'Roll Strength saving throw' }))
+				expect(listItem(container, '.sheet__saving-throws', 'Strength:').querySelector('.dice-roll__result')).not.toBeNull()
+
+				// Strength 15 → 17 lifts the modifier by one.
+				rerender(
+					<CharacterSheet
+						character={{ ...character, abilityScores: { ...character.abilityScores!, scores: { ...character.abilityScores!.scores, strength: 17 } } }}
+					/>,
+				)
+				await waitFor(() => expect(printedModifier(listItem(container, '.sheet__saving-throws', 'Strength:'))).toBe(printed + 1))
+				const item = listItem(container, '.sheet__saving-throws', 'Strength:')
+				expect(item.querySelector('.dice-roll__result')).toBeNull()
+				expect((screen.getByRole('combobox', { name: 'Roll mode for Strength saving throw' }) as HTMLSelectElement).value).toBe('disadvantage')
+			})
+
 			it.each([
 				['advantage', Math.max],
 				['disadvantage', Math.min],
@@ -1492,6 +1512,69 @@ describe('CharacterSheet', () => {
 				)
 				await waitFor(() => expect(attackRow(container, 'Longsword').querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 3 slashing'))
 				expect(attackRow(container, 'Longsword').querySelector('.dice-roll__result')).toBeNull()
+			})
+		})
+
+		describe('roll history (step 9 slice 9c3b)', () => {
+			function history(container: HTMLElement): HTMLDetailsElement {
+				return container.querySelector('.sheet__persistent-header .sheet__roll-history') as HTMLDetailsElement
+			}
+
+			function historyLines(container: HTMLElement): string[] {
+				return Array.from(history(container).querySelectorAll('li')).map((li) => li.textContent!)
+			}
+
+			function shownResult(scope: Element): string {
+				return scope.querySelector('.dice-roll__result')!.textContent!.trim()
+			}
+
+			function rowOf(container: HTMLElement, section: string, text: string): HTMLElement {
+				return Array.from(container.querySelectorAll(`${section} li`)).find((li) => li.textContent?.includes(text)) as HTMLElement
+			}
+
+			it('starts closed and empty', async () => {
+				const { container } = await renderSheet({ ...character, id: 'history-empty', inventory: holding('Longsword') })
+				expect(history(container).open).toBe(false)
+				expect(history(container).querySelector('summary')!.textContent).toBe('Roll history')
+				expect(historyLines(container)).toEqual([])
+			})
+
+			it('adds one entry per roll from every kind of button, newest first, matching each inline result', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderSheet({ ...character, id: 'history-mixed', inventory: holding('Longsword') })
+
+				await user.click(screen.getByRole('button', { name: 'Roll Strength saving throw' }))
+				const save = shownResult(rowOf(container, '.sheet__saving-throws', 'Strength:'))
+				await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+				const skill = shownResult(rowOf(container, '.sheet__skills', 'Athletics:'))
+				await user.click(screen.getByRole('button', { name: 'Roll Longsword to hit' }))
+				const toHit = shownResult(attackRow(container, 'Longsword').querySelector('.sheet__action-to-hit')!)
+				await user.click(screen.getByRole('button', { name: 'Roll Longsword damage' }))
+				const damage = shownResult(attackRow(container, 'Longsword').querySelector('.sheet__action-damage')!.parentElement!)
+				await user.click(screen.getByRole('button', { name: 'Roll initiative' }))
+				const initiative = shownResult(container.querySelector('.sheet__initiative')!)
+
+				expect(historyLines(container)).toEqual([
+					`Initiative: ${initiative}`,
+					`Longsword damage: ${damage}`,
+					`Longsword to hit: ${toHit}`,
+					`Athletics check: ${skill}`,
+					`Strength saving throw: ${save}`,
+				])
+				expect(history(container).open).toBe(false)
+			})
+
+			it('keeps the newest 50 and drops the oldest on the 51st roll', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderSheet({ ...character, id: 'history-cap', inventory: holding('Longsword') })
+				await user.click(screen.getByRole('button', { name: 'Roll Strength saving throw' }))
+				for (let i = 0; i < 49; i++) await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+				expect(historyLines(container)).toHaveLength(50)
+				expect(historyLines(container)[49]).toMatch(/^Strength saving throw: /)
+
+				await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+				expect(historyLines(container)).toHaveLength(50)
+				expect(historyLines(container).every((line) => line.startsWith('Athletics check: '))).toBe(true)
 			})
 		})
 	})

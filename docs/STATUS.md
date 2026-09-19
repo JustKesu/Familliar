@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-19 (9c3a: výhoda/nevýhoda u d20 hodů)
+Poslední aktualizace: 2026-09-19 (9c3b: historie hodů)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -484,6 +484,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9c1 | Pilot hodů kostkou: tlačítko Roll u to-hit zbraňových útoků | — |
    | 9c2 | Roll u vlastností, záchran, dovedností, iniciativy a poškození zbraně (víc kostek) | — |
    | 9c3a | Výhoda/nevýhoda u každého d20 Roll (ruční přepínač u tlačítka) | — |
+   | 9c3b | Historie hodů v hlavičce (max 50, jen v paměti); režim přežije změnu modifikátoru | — |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -679,8 +680,22 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `CharacterSheet.test.tsx` a `SheetHeader.test.tsx`. Ověřeno v prohlížeči
      (Fighter 5, záchrana Strength: normal/advantage/disadvantage, Longsword
      damage bez přepínače).
-   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): historie hodů (9c3b),
-     utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
+   - Slice 9c3b — historie hodů pro celý sheet. Stav `rollHistory` v
+     `CharacterSheet` (jen v paměti, ne v `Character.play`, po reloadu prázdná),
+     nejnovější první, max 50 (`ROLL_HISTORY_LIMIT`, starší odpadá).
+     `RollButton` i `DamageRollButton` mají `onRoll({ label, text })` — label =
+     prop `label` (ten z aria-label), text = `formatKeepOneRoll`/`formatRoll`;
+     vlastní inline výsledek zůstává. Všech 6 míst volání zapojeno (to-hit,
+     poškození, vlastnosti, záchrany, dovednosti; iniciativa přes nové props
+     `SheetHeader.rollHistory`/`onRoll`). Zobrazení: `<details
+     class="sheet__roll-history">` „Roll history" na konci `SheetHeader`,
+     výchozí zavřené (D41), položka „Label: výsledek" s velkým prvním písmenem
+     (iniciativa má label „initiative"). Nový `src/dice/RollHistory.tsx`. Oprava
+     z 9c3a: tlačítka už nemají `key` = modifikátor; výsledek maže reset stavu
+     při renderu při změně modifikátoru (u poškození count/sides/modifikátor),
+     zvolený režim zůstává. Ověřeno v prohlížeči (záchrana, poškození,
+     iniciativa; historie otevřená z tabu Inventář).
+   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
      průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
 
@@ -865,8 +880,8 @@ Slice 9c1 přidala pilot hodů kostkou: `rollDie` a `RollButton` v `src/dice/`,
 zapojené jen u to-hit zbraňových útoků. Slice 9c2 ho zapojila i u vlastností,
 záchran, dovedností, iniciativy a poškození zbraně (víc kostek, `rollDice`).
 Slice 9c3a přidala k d20 hodům ruční výhodu/nevýhodu (`rollKeepOne`, obě kostky
-ve výsledku). Další na řadě je 9c3b (historie hodů) a utracení hit die při
-krátkém odpočinku.
+ve výsledku). Slice 9c3b přidala historii hodů v hlavičce (max 50, jen v
+paměti). Další na řadě je utracení hit die při krátkém odpočinku.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.

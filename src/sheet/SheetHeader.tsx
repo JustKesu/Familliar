@@ -27,6 +27,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { RollButton } from '../dice/RollButton'
+import { RollHistory, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
 import { type ArmourClassValue } from '../calculation/armourClass'
 import { type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
@@ -250,6 +251,8 @@ export function SheetHeader({
 	onEditHitPoints,
 	onShortRest,
 	onLongRest,
+	rollHistory = [],
+	onRoll,
 }: {
 	name: string
 	armourClass: Calculated<ArmourClassValue>
@@ -276,6 +279,9 @@ export function SheetHeader({
 	 */
 	onShortRest?: () => void
 	onLongRest?: () => void
+	/** Slice 9c3b: the sheet-wide history, held by CharacterSheet so every tab's buttons feed one list; shown here because the header is on every tab. */
+	rollHistory?: RollHistoryEntry[]
+	onRoll?: (report: RollReport) => void
 }): ReactNode {
 	/** What the death saves are worth on a write that does not touch the current hit points (D111). */
 	const carriedDeathSaves = deathSavesAfterHitPointChange(currentHp, deathSaves)
@@ -322,7 +328,7 @@ export function SheetHeader({
 					{initiative.status === 'known' && (
 						<>
 							{' '}
-							<RollButton key={initiative.value} modifier={initiative.value} label="initiative" />
+							<RollButton modifier={initiative.value} label="initiative" onRoll={onRoll} />
 						</>
 					)}
 				</div>
@@ -423,6 +429,8 @@ export function SheetHeader({
 					</div>
 				)}
 			</section>
+
+			<RollHistory entries={rollHistory} />
 		</header>
 	)
 }
