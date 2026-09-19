@@ -1218,6 +1218,40 @@ describe('CharacterSheet', () => {
 			expect(row.querySelector('.sheet__action-to-hit')!.textContent).toContain('unresolved')
 			expect(row.querySelector('.sheet__action-notes')!.textContent).toContain('was not found in the item data')
 		})
+
+		describe('to-hit roll (step 9 slice 9c1)', () => {
+			function rollResult(row: HTMLElement): { die: number; modifier: number; total: number } {
+				const results = row.querySelectorAll('.dice-roll__result')
+				expect(results).toHaveLength(1)
+				const match = results[0]!.textContent!.trim().match(/^(\d+) \+ (\d+) = (\d+)$/)
+				if (!match) throw new Error(`unexpected roll text ${results[0]!.textContent}`)
+				return { die: Number(match[1]), modifier: Number(match[2]), total: Number(match[3]) }
+			}
+
+			it('rolls a d20 plus the printed modifier beside the to-hit, and a second roll replaces the first', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderSheet({ ...character, id: 'atk-roll', inventory: holding('Longsword') })
+				const row = attackRow(container, 'Longsword')
+				expect(row.querySelector('.dice-roll__result')).toBeNull()
+
+				await user.click(screen.getByRole('button', { name: 'Roll Longsword to hit' }))
+				const first = rollResult(row)
+				expect(first.modifier).toBe(5)
+				expect(first.die).toBeGreaterThanOrEqual(1)
+				expect(first.die).toBeLessThanOrEqual(20)
+				expect(first.total).toBe(first.die + 5)
+				expect(row.querySelector('.sheet__action-to-hit')!.textContent).toContain('+5')
+
+				await user.click(screen.getByRole('button', { name: 'Roll Longsword to hit' }))
+				expect(rollResult(row).modifier).toBe(5)
+			})
+
+			it('offers no roll on an unresolved to-hit, and does on the Unarmed Strike', async () => {
+				const { container } = await renderSheet({ ...character, id: 'atk-roll-d43', inventory: holding('Sword of Nothing') })
+				expect(attackRow(container, 'Sword of Nothing').querySelector('.dice-roll__button')).toBeNull()
+				expect(attackRow(container, 'Unarmed Strike').querySelector('.dice-roll__button')).toBeTruthy()
+			})
+		})
 	})
 
 	/*

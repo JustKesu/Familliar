@@ -127,6 +127,7 @@ import {
 	type WeaponGrip,
 } from '../storage/character'
 import { afterLongRest, afterShortRest } from '../rest/rest'
+import { RollButton } from '../dice/RollButton'
 import type { HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
@@ -1381,7 +1382,18 @@ function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: str
 		),
 		/* Range is printed as the data writes it ("30/120"); a plain melee weapon carries none. */
 		range: attack.range ? `${attack.range} ft.` : null,
-		toHit: <CalculatedNumber result={attack.toHit} format={formatModifier} />,
+		toHit: (
+			<>
+				<CalculatedNumber result={attack.toHit} format={formatModifier} />
+				{/* Keyed on the modifier so a roll made before the number changed does not linger beside the new one. */}
+				{attack.toHit.status === 'known' && (
+					<>
+						{' '}
+						<RollButton key={attack.toHit.value} sides={20} modifier={attack.toHit.value} label={`${attack.name} to hit`} />
+					</>
+				)}
+			</>
+		),
 		damage:
 			attack.damage.status === 'unknown' ? (
 				<UnresolvedValue reason={attack.damage.reason} />

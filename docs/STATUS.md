@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-17 (9b5: tlačítka Short Rest a Long Rest)
+Poslední aktualizace: 2026-09-19 (9c1: pilot hodů kostkou u to-hit útoků)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -481,6 +481,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9b3 | Spotřebované sloty kouzel — zvlášť běžné a Pact Magic (D11) | 37→38 |
    | 9b4 | Spotřebované hit dice — jen úložiště a clamp, bez UI | 38→39 |
    | 9b5 | Tlačítka Short Rest a Long Rest v hlavičce, jeden atomický zápis | — |
+   | 9c1 | Pilot hodů kostkou: tlačítko Roll u to-hit zbraňových útoků | — |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -636,8 +637,20 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      NENÍ, čeká na panel kostek (9c). Testy: nový blok v `resources.test.ts`,
      nový `rest/rest.test.ts`, bloky v `characterStore.test.ts` a
      `SheetHeader.test.tsx`. Ověřeno v prohlížeči (Barbarian 5 / Warlock 3).
-   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): panel kostek a utracení
-     hit die (9c). Otevřené otázky k nim jsou v posledním REPORT.md ze session
+   - Slice 9c1 — PILOT hodů kostkou, jeden spotřebitel: tlačítko **Roll** v buňce
+     To Hit každého řádku zbraňového útoku (včetně Unarmed Strike) se známým
+     to-hit; neznámý to-hit tlačítko nemá. Hod = 1d20 + vypsaný modifikátor,
+     výsledek „13 + 5 = 18" vedle čísla, které se nemění. Appka nerozhoduje
+     zásah ani kritický zásah. Výsledek je jen stav komponenty — neukládá se,
+     zmizí po reloadu; komponenta je klíčovaná modifikátorem, takže změna čísla
+     starý výsledek zahodí. Nový `src/dice/roll.ts` (`rollDie(sides, modifier,
+     random = Math.random)` → `{ die, modifier, total }`) a
+     `src/dice/RollButton.tsx` (obecné `sides`/`modifier`/`label`) pro 9c2 a
+     utracení hit die. Testy: `dice/roll.test.ts`, blok v
+     `CharacterSheet.test.tsx`. Ověřeno v prohlížeči (Fighter 5, Longsword).
+   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): hody pro záchrany,
+     ověření, iniciativu a poškození (9c2), výhoda/nevýhoda a historie (9c3),
+     utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
      průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
 
@@ -818,9 +831,10 @@ a clamp; ovládání přijde s 9c.
 Slice 9b5 uzavřela 9b **odpočinky**: obě tlačítka v hlavičce a jeden atomický
 zápis `applyRest` přes všechny čtyři hromádky.
 
-Další na řadě je **9c** — panel pro hody kostkou, a s ním prvek, kterým se hit
-die utratí při krátkém odpočinku. Má vlastní rozhodnutí, která REPORT.md ze
-session průzkumu vyjmenovává a která zatím nejsou padlá.
+Slice 9c1 přidala pilot hodů kostkou: `rollDie` a `RollButton` v `src/dice/`,
+zapojené jen u to-hit zbraňových útoků. Další na řadě je **9c2** — stejné
+tlačítko pro záchrany, ověření, iniciativu a poškození; pak 9c3
+(výhoda/nevýhoda, historie) a utracení hit die při krátkém odpočinku.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.
