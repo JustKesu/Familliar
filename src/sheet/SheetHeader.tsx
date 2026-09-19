@@ -26,6 +26,7 @@
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
+import { RollButton } from '../dice/RollButton'
 import { type ArmourClassValue } from '../calculation/armourClass'
 import { type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
@@ -318,6 +319,12 @@ export function SheetHeader({
 				{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
 				<div>
 					<CalculatedNumber result={initiative} format={formatModifier} />
+					{initiative.status === 'known' && (
+						<>
+							{' '}
+							<RollButton key={initiative.value} sides={20} modifier={initiative.value} label="initiative" />
+						</>
+					)}
 				</div>
 			</section>
 

@@ -128,6 +128,7 @@ import {
 } from '../storage/character'
 import { afterLongRest, afterShortRest } from '../rest/rest'
 import { RollButton } from '../dice/RollButton'
+import { parseDiceExpression } from '../dice/roll'
 import type { HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
@@ -1356,6 +1357,7 @@ interface ActionTableRow {
  * 7 slice c), unchanged by this slice.
  */
 function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void): ActionTableRow {
+	const damageDice = attack.damage.status === 'known' && attack.damage.value.dice ? parseDiceExpression(attack.damage.value.dice) : null
 	return {
 		key: attack.key,
 		name: (
@@ -1408,6 +1410,19 @@ function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: str
 						</span>
 					)}{' '}
 					<ValueBreakdown breakdown={attack.damage.breakdown} />
+						{/* A null dice is a flat amount (Unarmed Strike without a Martial Arts die): nothing random to roll. */}
+						{damageDice && (
+							<>
+								{' '}
+								<RollButton
+									key={`${attack.damage.value.dice}${attack.damage.value.modifier}`}
+									count={damageDice.count}
+									sides={damageDice.sides}
+									modifier={attack.damage.value.modifier}
+									label={`${attack.name} damage`}
+								/>
+							</>
+						)}
 				</>
 			),
 		notes: attack.notes.length > 0 ? attack.notes.join(' · ') : null,
@@ -2511,7 +2526,8 @@ export function CharacterSheet({
 										<span>
 											{result.value.score} ({formatModifier(result.value.modifier)})
 										</span>{' '}
-										<ValueBreakdown breakdown={result.breakdown} />
+										<ValueBreakdown breakdown={result.breakdown} />{' '}
+										<RollButton key={result.value.modifier} sides={20} modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} check`} />
 									</>
 								)}
 							</li>
@@ -2532,7 +2548,8 @@ export function CharacterSheet({
 									<UnresolvedValue reason={result.reason} />
 								) : (
 									<>
-										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />
+										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
+										<RollButton key={result.value.modifier} sides={20} modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} />
 									</>
 								)}
 							</li>
@@ -2553,7 +2570,8 @@ export function CharacterSheet({
 									<UnresolvedValue reason={result.reason} />
 								) : (
 									<>
-										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />
+										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
+										<RollButton key={result.value.modifier} sides={20} modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} />
 									</>
 								)}
 							</li>

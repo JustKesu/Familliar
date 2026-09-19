@@ -24,8 +24,8 @@ function maxOf(value: number): Calculated<number> {
 	])
 }
 
-function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}) {
-	return render(
+function headerElement(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}) {
+	return (
 		<SheetHeader
 			name="Aria"
 			armourClass={ac}
@@ -40,9 +40,49 @@ function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}
 			temporaryHitPoints={undefined}
 			deathSaves={undefined}
 			{...overrides}
-		/>,
+		/>
 	)
 }
+
+function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}) {
+	return render(headerElement(overrides))
+}
+
+describe('SheetHeader initiative roll (step 9 slice 9c2)', () => {
+	function rollText(container: HTMLElement): string | undefined {
+		return container.querySelector('.sheet__initiative .dice-roll__result')?.textContent?.trim()
+	}
+
+	it('rolls a d20 plus the printed initiative without changing it', async () => {
+		const user = userEvent.setup()
+		const { container } = renderHeader()
+		expect(rollText(container)).toBeUndefined()
+
+		await user.click(screen.getByRole('button', { name: 'Roll initiative' }))
+		const match = rollText(container)!.match(/^(\d+) \+ 2 = (\d+)$/)
+		expect(match).not.toBeNull()
+		const die = Number(match![1])
+		expect(die).toBeGreaterThanOrEqual(1)
+		expect(die).toBeLessThanOrEqual(20)
+		expect(Number(match![2])).toBe(die + 2)
+		expect(container.querySelector('.sheet__initiative')!.textContent).toContain('+2')
+	})
+
+	it('drops a stale result when the initiative changes', async () => {
+		const user = userEvent.setup()
+		const { container, rerender } = renderHeader()
+		await user.click(screen.getByRole('button', { name: 'Roll initiative' }))
+		expect(rollText(container)).toBeDefined()
+
+		rerender(headerElement({ initiative: known(3, [{ source: 'Dexterity', amount: 3 }]) }))
+		expect(rollText(container)).toBeUndefined()
+	})
+
+	it('offers no roll on an unresolved initiative', () => {
+		const { container } = renderHeader({ initiative: unknown('No Dexterity modifier.') })
+		expect(container.querySelector('.sheet__initiative .dice-roll__button')).toBeNull()
+	})
+})
 
 describe('SheetHeader', () => {
 	it('shows the six values with their labels', () => {

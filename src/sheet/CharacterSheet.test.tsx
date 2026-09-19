@@ -374,6 +374,107 @@ const character: Character = {
 }
 
 describe('CharacterSheet', () => {
+	describe('rolls beside ability scores, saves and skills (step 9 slice 9c2)', () => {
+		const ROLL_TEXT = /^(\d+(?:, \d+)*) ([+−]) (\d+) = (\d+)$/
+
+		function parseRoll(el: Element): { dice: number[]; modifier: number; total: number } {
+			const match = el.textContent!.trim().match(ROLL_TEXT)
+			if (!match) throw new Error(`unexpected roll text ${el.textContent}`)
+			const modifier = match[2] === '−' ? -Number(match[3]) : Number(match[3])
+			return { dice: match[1]!.split(', ').map(Number), modifier, total: Number(match[4]) }
+		}
+
+		function listItem(container: HTMLElement, section: string, text: string): HTMLElement {
+			const item = Array.from(container.querySelectorAll(`${section} li`)).find((li) => li.textContent?.includes(text))
+			if (!item) throw new Error(`no ${section} row containing ${text}`)
+			return item as HTMLElement
+		}
+
+		/** The number printed in the row, read from the value span so a roll's own "+ 5" is never mistaken for it. */
+		function printedModifier(item: HTMLElement): number {
+			const text = item.querySelector(':scope > span')!.textContent!.trim()
+			return Number(text.replace('−', '-').replace('+', ''))
+		}
+
+		async function renderKnown(subject: Character = character) {
+			const rendered = render(<CharacterSheet character={subject} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			return rendered
+		}
+
+		it('rolls a d20 plus the printed modifier for a saving throw, leaving the printed number alone', async () => {
+			const user = userEvent.setup()
+			const { container } = await renderKnown()
+			const item = listItem(container, '.sheet__saving-throws', 'Strength:')
+			const printed = printedModifier(item)
+			expect(item.querySelector('.dice-roll__result')).toBeNull()
+
+			await user.click(screen.getByRole('button', { name: 'Roll Strength saving throw' }))
+			const roll = parseRoll(item.querySelector('.dice-roll__result')!)
+			expect(roll.dice).toHaveLength(1)
+			expect(roll.dice[0]).toBeGreaterThanOrEqual(1)
+			expect(roll.dice[0]).toBeLessThanOrEqual(20)
+			expect(roll.modifier).toBe(printed)
+			expect(roll.total).toBe(roll.dice[0]! + printed)
+			expect(printedModifier(item)).toBe(printed)
+		})
+
+		it('rolls a skill, and an ability check, the same way', async () => {
+			const user = userEvent.setup()
+			const { container } = await renderKnown()
+
+			const skill = listItem(container, '.sheet__skills', 'Athletics:')
+			await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+			const skillRoll = parseRoll(skill.querySelector('.dice-roll__result')!)
+			expect(skillRoll.modifier).toBe(printedModifier(skill))
+
+			// Strength 15 → +2; the ability row prints "15 (+2)".
+			const ability = listItem(container, '.sheet__abilities', 'Strength:')
+			await user.click(screen.getByRole('button', { name: 'Roll Strength check' }))
+			const abilityRoll = parseRoll(ability.querySelector('.dice-roll__result')!)
+			expect(abilityRoll.modifier).toBe(2)
+			expect(abilityRoll.total).toBe(abilityRoll.dice[0]! + 2)
+		})
+
+		it('gives every roll button its own name, and puts none on the passive values', async () => {
+			const { container } = await renderKnown()
+			const labels = (section: string) => Array.from(container.querySelectorAll(`${section} .dice-roll__button`)).map((b) => b.getAttribute('aria-label'))
+			const all = [...labels('.sheet__abilities'), ...labels('.sheet__saving-throws'), ...labels('.sheet__skills')]
+			expect(labels('.sheet__abilities')).toHaveLength(6)
+			expect(labels('.sheet__saving-throws')).toHaveLength(6)
+			expect(labels('.sheet__skills')).toHaveLength(18)
+			expect(new Set(all).size).toBe(30)
+			expect(container.querySelectorAll('.sheet__passive-values .dice-roll__button')).toHaveLength(0)
+		})
+
+		it('drops a stale skill result when the modifier behind it changes', async () => {
+			const user = userEvent.setup()
+			const { container, rerender } = await renderKnown()
+			const skill = listItem(container, '.sheet__skills', 'Athletics:')
+			const before = printedModifier(skill)
+			await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+			expect(skill.querySelector('.dice-roll__result')).not.toBeNull()
+
+			// Strength 15 → 17 lifts the modifier from +2 to +3.
+			rerender(
+				<CharacterSheet
+					character={{ ...character, abilityScores: { ...character.abilityScores!, scores: { ...character.abilityScores!.scores, strength: 17 } } }}
+				/>,
+			)
+			await waitFor(() => expect(printedModifier(listItem(container, '.sheet__skills', 'Athletics:'))).toBe(before + 1))
+			expect(listItem(container, '.sheet__skills', 'Athletics:').querySelector('.dice-roll__result')).toBeNull()
+		})
+
+		it('offers no roll where the modifier is unresolved', async () => {
+			const incomplete: Character = { id: 'c2', name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }] }
+			const { container } = await renderKnown(incomplete)
+			for (const section of ['.sheet__abilities', '.sheet__saving-throws', '.sheet__skills']) {
+				expect(container.querySelector(section)!.textContent).toContain('unresolved')
+				expect(container.querySelectorAll(`${section} .dice-roll__button`)).toHaveLength(0)
+			}
+		})
+	})
+
 	it('renders the header from the stored character', async () => {
 		render(<CharacterSheet character={character} />)
 		expect(await screen.findByRole('heading', { name: 'Aria' })).toBeTruthy()
@@ -1250,6 +1351,74 @@ describe('CharacterSheet', () => {
 				const { container } = await renderSheet({ ...character, id: 'atk-roll-d43', inventory: holding('Sword of Nothing') })
 				expect(attackRow(container, 'Sword of Nothing').querySelector('.dice-roll__button')).toBeNull()
 				expect(attackRow(container, 'Unarmed Strike').querySelector('.dice-roll__button')).toBeTruthy()
+			})
+		})
+
+		describe('damage roll (step 9 slice 9c2)', () => {
+			function damageRoll(row: HTMLElement): { dice: number[]; modifier: number; total: number } {
+				const results = row.querySelectorAll('.dice-roll__result')
+				expect(results).toHaveLength(1)
+				const match = results[0]!.textContent!.trim().match(/^(\d+(?:, \d+)*) \+ (\d+) = (\d+)$/)
+				if (!match) throw new Error(`unexpected roll text ${results[0]!.textContent}`)
+				return { dice: match[1]!.split(', ').map(Number), modifier: Number(match[2]), total: Number(match[3]) }
+			}
+
+			it('rolls one die per die of a one-dice weapon and lists it', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderSheet({ ...character, id: 'dmg-longsword', inventory: holding('Longsword') })
+				const row = attackRow(container, 'Longsword')
+				expect(row.querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 2 slashing')
+
+				await user.click(screen.getByRole('button', { name: 'Roll Longsword damage' }))
+				const roll = damageRoll(row)
+				expect(roll.dice).toHaveLength(1)
+				expect(roll.dice[0]).toBeGreaterThanOrEqual(1)
+				expect(roll.dice[0]).toBeLessThanOrEqual(8)
+				expect(roll.modifier).toBe(2)
+				expect(roll.total).toBe(roll.dice[0]! + 2)
+				expect(row.querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 2 slashing')
+			})
+
+			it('rolls both dice of a 2d6 weapon and lists each, summed with the modifier', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderSheet({ ...character, id: 'dmg-greatsword', inventory: holding('Greatsword') })
+				const row = attackRow(container, 'Greatsword')
+				expect(row.querySelector('.sheet__action-damage')!.textContent).toBe('2d6 + 2 slashing')
+
+				await user.click(screen.getByRole('button', { name: 'Roll Greatsword damage' }))
+				const roll = damageRoll(row)
+				expect(roll.dice).toHaveLength(2)
+				for (const die of roll.dice) {
+					expect(die).toBeGreaterThanOrEqual(1)
+					expect(die).toBeLessThanOrEqual(6)
+				}
+				expect(roll.modifier).toBe(2)
+				expect(roll.total).toBe(roll.dice[0]! + roll.dice[1]! + 2)
+			})
+
+			it('offers no damage roll for the flat Unarmed Strike, though its to-hit still rolls', async () => {
+				const { container } = await renderSheet({ ...character, id: 'dmg-unarmed', inventory: holding('Longsword') })
+				expect(screen.queryByRole('button', { name: 'Roll Unarmed Strike damage' })).toBeNull()
+				expect(screen.getByRole('button', { name: 'Roll Unarmed Strike to hit' })).toBeTruthy()
+				expect(screen.getByRole('button', { name: 'Roll Longsword damage' })).toBeTruthy()
+				expect(attackRow(container, 'Unarmed Strike').querySelectorAll('.dice-roll__button')).toHaveLength(1)
+			})
+
+			it('drops a stale damage result when the modifier behind it changes', async () => {
+				const user = userEvent.setup()
+				const subject: Character = { ...character, id: 'dmg-stale', inventory: holding('Longsword') }
+				const { container, rerender } = await renderSheet(subject)
+				await user.click(screen.getByRole('button', { name: 'Roll Longsword damage' }))
+				expect(attackRow(container, 'Longsword').querySelector('.dice-roll__result')).not.toBeNull()
+
+				// Strength 15 → 17 lifts the damage modifier from +2 to +3.
+				rerender(
+					<CharacterSheet
+						character={{ ...subject, abilityScores: { ...subject.abilityScores!, scores: { ...subject.abilityScores!.scores, strength: 17 } } }}
+					/>,
+				)
+				await waitFor(() => expect(attackRow(container, 'Longsword').querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 3 slashing'))
+				expect(attackRow(container, 'Longsword').querySelector('.dice-roll__result')).toBeNull()
 			})
 		})
 	})
