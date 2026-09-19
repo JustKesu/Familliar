@@ -127,7 +127,7 @@ import {
 	type WeaponGrip,
 } from '../storage/character'
 import { afterLongRest, afterShortRest } from '../rest/rest'
-import { RollButton } from '../dice/RollButton'
+import { DamageRollButton, RollButton } from '../dice/RollButton'
 import { parseDiceExpression } from '../dice/roll'
 import type { HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
@@ -1391,7 +1391,7 @@ function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: str
 				{attack.toHit.status === 'known' && (
 					<>
 						{' '}
-						<RollButton key={attack.toHit.value} sides={20} modifier={attack.toHit.value} label={`${attack.name} to hit`} />
+						<RollButton key={attack.toHit.value} modifier={attack.toHit.value} label={`${attack.name} to hit`} />
 					</>
 				)}
 			</>
@@ -1414,7 +1414,7 @@ function weaponAttackRow(attack: WeaponAttack, onChooseAttackAbility?: (key: str
 						{damageDice && (
 							<>
 								{' '}
-								<RollButton
+								<DamageRollButton
 									key={`${attack.damage.value.dice}${attack.damage.value.modifier}`}
 									count={damageDice.count}
 									sides={damageDice.sides}
@@ -2527,7 +2527,7 @@ export function CharacterSheet({
 											{result.value.score} ({formatModifier(result.value.modifier)})
 										</span>{' '}
 										<ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton key={result.value.modifier} sides={20} modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} check`} />
+										<RollButton key={result.value.modifier} modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} check`} />
 									</>
 								)}
 							</li>
@@ -2549,7 +2549,7 @@ export function CharacterSheet({
 								) : (
 									<>
 										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton key={result.value.modifier} sides={20} modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} />
+										<RollButton key={result.value.modifier} modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} />
 									</>
 								)}
 							</li>
@@ -2571,7 +2571,7 @@ export function CharacterSheet({
 								) : (
 									<>
 										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton key={result.value.modifier} sides={20} modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} />
+										<RollButton key={result.value.modifier} modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} />
 									</>
 								)}
 							</li>

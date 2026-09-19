@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { parseDiceExpression, rollDice } from './roll'
+import { describe, expect, it, vi } from 'vitest'
+import { parseDiceExpression, rollDice, rollKeepOne } from './roll'
 
 function sequence(values: number[]): () => number {
 	let i = 0
@@ -31,6 +31,42 @@ describe('rollDice', () => {
 
 	it('draws one random value per die', () => {
 		expect(rollDice(4, 6, 0, sequence([0, 0.2, 0.5, 0.999999])).dice).toEqual([1, 2, 4, 6])
+	})
+})
+
+describe('rollKeepOne', () => {
+	// 0.65 → 14 and 0.4 → 9 on a d20.
+	it('rolls a single die in normal mode, as rollDice does', () => {
+		expect(rollKeepOne(20, 5, 'normal', () => 0.65)).toEqual({ mode: 'normal', dice: [14], kept: 14, modifier: 5, total: 19 })
+	})
+
+	it('draws one random value in normal mode', () => {
+		const random = vi.fn(() => 0.65)
+		rollKeepOne(20, 0, 'normal', random)
+		expect(random).toHaveBeenCalledTimes(1)
+	})
+
+	it('keeps the higher of two dice with advantage, and returns both', () => {
+		expect(rollKeepOne(20, 5, 'advantage', sequence([0.4, 0.65]))).toEqual({ mode: 'advantage', dice: [9, 14], kept: 14, modifier: 5, total: 19 })
+		expect(rollKeepOne(20, 5, 'advantage', sequence([0.65, 0.4]))).toEqual({ mode: 'advantage', dice: [14, 9], kept: 14, modifier: 5, total: 19 })
+	})
+
+	it('keeps the lower of two dice with disadvantage, and returns both', () => {
+		expect(rollKeepOne(20, 5, 'disadvantage', sequence([0.65, 0.4]))).toEqual({ mode: 'disadvantage', dice: [14, 9], kept: 9, modifier: 5, total: 14 })
+		expect(rollKeepOne(20, 5, 'disadvantage', sequence([0.4, 0.65]))).toEqual({ mode: 'disadvantage', dice: [9, 14], kept: 9, modifier: 5, total: 14 })
+	})
+
+	it('keeps the shared value on a tie', () => {
+		expect(rollKeepOne(20, 0, 'advantage', sequence([0.5, 0.5])).kept).toBe(11)
+		expect(rollKeepOne(20, 0, 'disadvantage', sequence([0.5, 0.5])).kept).toBe(11)
+	})
+
+	it('adds a negative modifier to the kept die only', () => {
+		expect(rollKeepOne(20, -2, 'advantage', sequence([0.4, 0.65])).total).toBe(12)
+	})
+
+	it('leaves rollDice summing every die, whatever the keep-one modes do', () => {
+		expect(rollDice(2, 20, 5, sequence([0.4, 0.65]))).toEqual({ dice: [9, 14], modifier: 5, total: 28 })
 	})
 })
 

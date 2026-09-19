@@ -322,7 +322,7 @@ export function SheetHeader({
 					{initiative.status === 'known' && (
 						<>
 							{' '}
-							<RollButton key={initiative.value} sides={20} modifier={initiative.value} label="initiative" />
+							<RollButton key={initiative.value} modifier={initiative.value} label="initiative" />
 						</>
 					)}
 				</div>

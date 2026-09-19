@@ -68,6 +68,20 @@ describe('SheetHeader initiative roll (step 9 slice 9c2)', () => {
 		expect(container.querySelector('.sheet__initiative')!.textContent).toContain('+2')
 	})
 
+	it('rolls two d20s with disadvantage and keeps the lower, without changing the initiative', async () => {
+		const user = userEvent.setup()
+		const { container } = renderHeader()
+		await user.selectOptions(screen.getByRole('combobox', { name: 'Roll mode for initiative' }), 'disadvantage')
+		expect(rollText(container)).toBeUndefined()
+
+		await user.click(screen.getByRole('button', { name: 'Roll initiative' }))
+		const match = rollText(container)!.match(/^(\d+), (\d+) \(kept (\d+)\) \+ 2 = (\d+)$/)
+		expect(match).not.toBeNull()
+		expect(Number(match![3])).toBe(Math.min(Number(match![1]), Number(match![2])))
+		expect(Number(match![4])).toBe(Number(match![3]) + 2)
+		expect(container.querySelector('.sheet__initiative')!.textContent).toContain('+2')
+	})
+
 	it('drops a stale result when the initiative changes', async () => {
 		const user = userEvent.setup()
 		const { container, rerender } = renderHeader()

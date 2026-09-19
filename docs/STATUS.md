@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-19 (9c2: hody pro vlastnosti, záchrany, dovednosti, iniciativu a poškození zbraně)
+Poslední aktualizace: 2026-09-19 (9c3a: výhoda/nevýhoda u d20 hodů)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -483,6 +483,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9b5 | Tlačítka Short Rest a Long Rest v hlavičce, jeden atomický zápis | — |
    | 9c1 | Pilot hodů kostkou: tlačítko Roll u to-hit zbraňových útoků | — |
    | 9c2 | Roll u vlastností, záchran, dovedností, iniciativy a poškození zbraně (víc kostek) | — |
+   | 9c3a | Výhoda/nevýhoda u každého d20 Roll (ruční přepínač u tlačítka) | — |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -661,8 +662,25 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      ze kterého se hází. Mimo rozsah: poškození kouzel, útoky kouzly a save DC.
      Testy: `dice/roll.test.ts`, bloky v `CharacterSheet.test.tsx` a
      `SheetHeader.test.tsx`. Ověřeno v prohlížeči (Fighter 5, Greatsword).
-   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): výhoda/nevýhoda a
-     historie (9c3), utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
+   - Slice 9c3a — výhoda/nevýhoda u každého d20 Roll (to-hit, vlastnosti,
+     záchrany, dovednosti, iniciativa; 33 přepínačů na sheetu Fighter 5).
+     Ruční přepínač Normal/Advantage/Disadvantage (`<select
+     class="dice-roll__mode">`, „Roll mode for …") stojí před tlačítkem Roll,
+     výchozí Normal; jeho změna nehází a starý výsledek nemaže (maže ho jen změna
+     modifikátoru přes klíč). Advantage hodí 2d20 a počítá vyšší, disadvantage
+     nižší; výsledek vypíše obě kostky a tu započtenou: „9, 14 (kept 14) + 5 =
+     19", normální hod zůstává „14 + 5 = 19". `roll.ts`: nové `rollKeepOne(sides,
+     modifier, mode, random)` → `{ mode, dice, kept, modifier, total }`
+     (vyber jednu) vedle `rollDice` (součet všech, poškození). `RollButton` je
+     teď jen d20 (`modifier`/`label`, bez `sides`/`count`); poškození zbraně
+     používá samostatné `DamageRollButton` bez přepínače. Režim je stejně jako
+     výsledek jen stav komponenty, takže změna modifikátoru (klíč) ho vrátí na
+     Normal. Testy: `dice/roll.test.ts`, nový `dice/RollButton.test.tsx`, bloky v
+     `CharacterSheet.test.tsx` a `SheetHeader.test.tsx`. Ověřeno v prohlížeči
+     (Fighter 5, záchrana Strength: normal/advantage/disadvantage, Longsword
+     damage bez přepínače).
+   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): historie hodů (9c3b),
+     utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
      průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
 
@@ -846,7 +864,8 @@ zápis `applyRest` přes všechny čtyři hromádky.
 Slice 9c1 přidala pilot hodů kostkou: `rollDie` a `RollButton` v `src/dice/`,
 zapojené jen u to-hit zbraňových útoků. Slice 9c2 ho zapojila i u vlastností,
 záchran, dovedností, iniciativy a poškození zbraně (víc kostek, `rollDice`).
-Další na řadě je 9c3 (výhoda/nevýhoda, historie) a utracení hit die při
+Slice 9c3a přidala k d20 hodům ruční výhodu/nevýhodu (`rollKeepOne`, obě kostky
+ve výsledku). Další na řadě je 9c3b (historie hodů) a utracení hit die při
 krátkém odpočinku.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a

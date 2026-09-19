@@ -419,6 +419,56 @@ describe('CharacterSheet', () => {
 			expect(printedModifier(item)).toBe(printed)
 		})
 
+		describe('advantage and disadvantage (step 9 slice 9c3a)', () => {
+			const KEEP_TEXT = /^(\d+), (\d+) \(kept (\d+)\) ([+−]) (\d+) = (\d+)$/
+
+			it.each([
+				['advantage', Math.max],
+				['disadvantage', Math.min],
+			] as const)('rolls two d20s with %s, names the kept one and leaves the printed modifier alone', async (mode, pick) => {
+				const user = userEvent.setup()
+				const { container } = await renderKnown()
+				const item = listItem(container, '.sheet__saving-throws', 'Strength:')
+				const printed = printedModifier(item)
+
+				await user.selectOptions(screen.getByRole('combobox', { name: 'Roll mode for Strength saving throw' }), mode)
+				expect(item.querySelector('.dice-roll__result')).toBeNull()
+
+				for (let i = 0; i < 5; i++) {
+					await user.click(screen.getByRole('button', { name: 'Roll Strength saving throw' }))
+					const match = item.querySelector('.dice-roll__result')!.textContent!.trim().match(KEEP_TEXT)
+					if (!match) throw new Error(`unexpected roll text ${item.querySelector('.dice-roll__result')!.textContent}`)
+					const [first, second, kept, total] = [Number(match[1]), Number(match[2]), Number(match[3]), Number(match[6])]
+					expect(kept).toBe(pick(first, second))
+					expect(total).toBe(kept + printed)
+					expect(match[4] === '−' ? -Number(match[5]) : Number(match[5])).toBe(printed)
+					expect(printedModifier(item)).toBe(printed)
+				}
+			})
+
+			it('goes back to a single die when the mode returns to normal', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderKnown()
+				const item = listItem(container, '.sheet__skills', 'Athletics:')
+				const mode = screen.getByRole('combobox', { name: 'Roll mode for Athletics check' })
+
+				await user.selectOptions(mode, 'advantage')
+				await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+				expect(item.querySelector('.dice-roll__result')!.textContent).toMatch(/kept/)
+
+				await user.selectOptions(mode, 'normal')
+				await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+				expect(parseRoll(item.querySelector('.dice-roll__result')!).dice).toHaveLength(1)
+			})
+
+			it('puts one mode control beside every ability, saving throw and skill roll button', async () => {
+				const { container } = await renderKnown()
+				for (const [section, count] of [['.sheet__abilities', 6], ['.sheet__saving-throws', 6], ['.sheet__skills', 18]] as const) {
+					expect(container.querySelectorAll(`${section} .dice-roll__mode`)).toHaveLength(count)
+				}
+			})
+		})
+
 		it('rolls a skill, and an ability check, the same way', async () => {
 			const user = userEvent.setup()
 			const { container } = await renderKnown()
@@ -1347,6 +1397,20 @@ describe('CharacterSheet', () => {
 				expect(rollResult(row).modifier).toBe(5)
 			})
 
+			it('rolls two d20s with advantage on the to-hit, and keeps the higher', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderSheet({ ...character, id: 'atk-roll-adv', inventory: holding('Longsword') })
+				const row = attackRow(container, 'Longsword')
+
+				await user.selectOptions(screen.getByRole('combobox', { name: 'Roll mode for Longsword to hit' }), 'advantage')
+				await user.click(screen.getByRole('button', { name: 'Roll Longsword to hit' }))
+				const match = row.querySelector('.dice-roll__result')!.textContent!.trim().match(/^(\d+), (\d+) \(kept (\d+)\) \+ 5 = (\d+)$/)
+				expect(match).not.toBeNull()
+				expect(Number(match![3])).toBe(Math.max(Number(match![1]), Number(match![2])))
+				expect(Number(match![4])).toBe(Number(match![3]) + 5)
+				expect(row.querySelector('.sheet__action-to-hit')!.textContent).toContain('+5')
+			})
+
 			it('offers no roll on an unresolved to-hit, and does on the Unarmed Strike', async () => {
 				const { container } = await renderSheet({ ...character, id: 'atk-roll-d43', inventory: holding('Sword of Nothing') })
 				expect(attackRow(container, 'Sword of Nothing').querySelector('.dice-roll__button')).toBeNull()
@@ -1394,6 +1458,15 @@ describe('CharacterSheet', () => {
 				}
 				expect(roll.modifier).toBe(2)
 				expect(roll.total).toBe(roll.dice[0]! + roll.dice[1]! + 2)
+			})
+
+			it('has no advantage or disadvantage control on a damage roll, only on the to-hit beside it', async () => {
+				const { container } = await renderSheet({ ...character, id: 'dmg-no-mode', inventory: holding('Longsword') })
+				const row = attackRow(container, 'Longsword')
+				expect(row.querySelector('.sheet__action-damage')!.querySelector('select')).toBeNull()
+				expect(row.querySelectorAll('.dice-roll__mode')).toHaveLength(1)
+				expect(screen.queryByRole('combobox', { name: 'Roll mode for Longsword damage' })).toBeNull()
+				expect(screen.getByRole('combobox', { name: 'Roll mode for Longsword to hit' })).toBeTruthy()
 			})
 
 			it('offers no damage roll for the flat Unarmed Strike, though its to-hit still rolls', async () => {
