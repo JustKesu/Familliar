@@ -21,17 +21,6 @@ generic one is probably not a valid pick. Decide whether to hide parents
 that have variants.
 STATUS: undecided.
 
-### Where data lives at deployment
-
-Currently data/ is tracked in git and would deploy with the app.
-Options if that becomes a licensing concern:
-1. Public repo (current default) — simplest, works for everyone.
-   MIT covers 5etools' code, not the content itself (WotC).
-2. Private repo + Vercel/Netlify — data not publicly downloadable.
-3. Each user uploads their own JSON files, stored in the browser.
-Revisit before first deployment to a URL.
-STATUS: deferred.
-
 ### EFA background count — worth verifying
 
 EFA contributes 17 backgrounds, more than XPHB's 16. Surprising for a

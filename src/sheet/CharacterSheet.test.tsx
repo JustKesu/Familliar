@@ -266,6 +266,34 @@ vi.mock('../inventory/inventoryData', async (importOriginal) => {
 				propertyFull: ['Light', 'Thrown'],
 				range: '20/60',
 			},
+			/* Slice 9d3: two ammunition weapons and what feeds them — the loose item and the pack, linked the way items.json links them (ammoType / packContents). */
+			{
+				name: 'Shortbow',
+				source: 'XPHB',
+				typeCode: 'R',
+				weapon: true,
+				weaponCategory: 'simple',
+				dmg1: '1d6',
+				dmgTypeFull: 'piercing',
+				propertyFull: ['Ammunition', 'Two-Handed'],
+				range: '80/320',
+				ammoType: 'arrow|xphb',
+			},
+			{
+				name: 'Light Crossbow',
+				source: 'XPHB',
+				typeCode: 'R',
+				weapon: true,
+				weaponCategory: 'simple',
+				dmg1: '1d8',
+				dmgTypeFull: 'piercing',
+				propertyFull: ['Ammunition', 'Loading', 'Two-Handed'],
+				range: '80/320',
+				ammoType: 'bolt|xphb',
+			},
+			{ name: 'Arrow', source: 'XPHB', typeCode: 'A' },
+			{ name: 'Arrows (20)', source: 'XPHB', typeCode: 'A', packContents: [{ item: 'arrow|xphb', quantity: 20 }] },
+			{ name: 'Bolt', source: 'XPHB', typeCode: 'A' },
 		]),
 	}
 })
@@ -906,7 +934,7 @@ describe('CharacterSheet', () => {
 			expect(screen.getByRole('checkbox', { name: 'Longsword (XPHB)' })).toBeTruthy()
 		})
 
-		it('changes a quantity on commit, and floors it at 1', async () => {
+		it('changes a quantity on commit, and floors it at 0 (slice 9d3)', async () => {
 			const user = userEvent.setup()
 			const onEditInventory = vi.fn()
 			const five: Character = { ...character, id: 'inv3', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 5 }] }
@@ -919,12 +947,17 @@ describe('CharacterSheet', () => {
 			await user.tab()
 			expect(onEditInventory).toHaveBeenLastCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 3 }])
 
-			// Typing 0 commits as 1, never 0 — removing is Discard's job.
+			// 0 is a real quantity now (a spent stack stays to be restocked); below it the field stops, and removing is Discard's job.
 			await user.clear(qty)
 			await user.type(qty, '0')
 			await user.tab()
-			expect(onEditInventory).toHaveBeenLastCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 1 }])
-			expect(qty.value).toBe('1')
+			expect(onEditInventory).toHaveBeenLastCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 0 }])
+			expect(qty.value).toBe('0')
+
+			await user.clear(qty)
+			await user.type(qty, '-4')
+			await user.tab()
+			expect(qty.value).toBe('0')
 		})
 
 		it('discarding an item takes it out of the inventory entirely', async () => {
@@ -1389,6 +1422,143 @@ describe('CharacterSheet', () => {
 			expect(row.closest('table.sheet__actions-table')).toBeTruthy()
 			expect(row.querySelector('.sheet__action-to-hit')!.textContent).toContain('unresolved')
 			expect(row.querySelector('.sheet__action-notes')!.textContent).toContain('was not found in the item data')
+		})
+
+		describe('ammunition beside a held weapon (step 9 slice 9d3)', () => {
+			const SHORTBOW = { name: 'Shortbow', source: 'XPHB', quantity: 1, equipped: 'held' as const }
+			const arrows = (quantity: number, extra: Partial<NonNullable<Character['inventory']>[number]> = {}) => ({ name: 'Arrow', source: 'XPHB', quantity, ...extra })
+
+			/* Holds the character in state the way CharacterManager does, so a click is followed by the sheet re-reading what it wrote. */
+			function Harness({ initial, onEdit }: { initial: Character; onEdit: (inventory: NonNullable<Character['inventory']>) => void }) {
+				const [current, setCurrent] = useState(initial)
+				return (
+					<CharacterSheet
+						character={current}
+						onEditInventory={(inventory) => {
+							onEdit(inventory)
+							setCurrent((previous) => ({ ...previous, inventory }))
+						}}
+					/>
+				)
+			}
+
+			async function renderStateful(inventory: Character['inventory'], onEdit = vi.fn()) {
+				const rendered = render(<Harness initial={{ ...character, id: `ammo-${Math.random()}`, inventory }} onEdit={onEdit} />)
+				await screen.findByRole('heading', { name: 'Aria' })
+				await waitFor(() => expect(attacksSection(rendered.container).querySelector('.sheet__actions-table')).toBeTruthy())
+				return { ...rendered, onEdit }
+			}
+
+			const ammoText = (container: HTMLElement, weapon: string) => attackRow(container, weapon).querySelector('.sheet__action-ammo')!.textContent
+
+			it('spends one from the matching item, and stops at 0 with the button disabled', async () => {
+				const user = userEvent.setup()
+				const { container, onEdit } = await renderStateful([SHORTBOW, arrows(2)])
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 2')
+
+				const spend = screen.getByRole('button', { name: 'Spend one Arrow' })
+				await user.click(spend)
+				expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(1)])
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 1')
+
+				await user.click(spend)
+				expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(0)])
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 0')
+				expect((spend as HTMLButtonElement).disabled).toBe(true)
+
+				// Disabled means no third write: nothing goes negative.
+				await user.click(spend)
+				expect(onEdit).toHaveBeenCalledTimes(2)
+			})
+
+			it('shows each matching item separately with its own count, and spends only the one clicked', async () => {
+				const user = userEvent.setup()
+				const { container, onEdit } = await renderStateful([SHORTBOW, arrows(12), arrows(3, { magicBonus: 1 })])
+				const groups = Array.from(attackRow(container, 'Shortbow').querySelectorAll('.sheet__action-ammo-item')).map((node) => node.textContent!.replace(/\s+/g, ' ').trim())
+				expect(groups).toEqual(['Arrow: 12 −1', 'Arrow +1: 3 −1'])
+
+				await user.click(screen.getByRole('button', { name: 'Spend one Arrow +1' }))
+				expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(12), arrows(2, { magicBonus: 1 })])
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 12')
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow +1: 2')
+			})
+
+			it('shows 0 with a disabled button when the inventory has nothing that fits, rather than hiding the line (D43)', async () => {
+				const { container } = await renderStateful([{ ...SHORTBOW }, { name: 'Bolt', source: 'XPHB', quantity: 9 }])
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 0')
+				expect((screen.getByRole('button', { name: 'Spend one Arrow' }) as HTMLButtonElement).disabled).toBe(true)
+			})
+
+			it('pairs each weapon with its own ammunition', async () => {
+				const { container } = await renderStateful([
+					{ name: 'Light Crossbow', source: 'XPHB', quantity: 1, equipped: 'held' as const },
+					arrows(12),
+					{ name: 'Bolt', source: 'XPHB', quantity: 7 },
+				])
+				expect(ammoText(container, 'Light Crossbow')).toContain('Bolt: 7')
+				expect(ammoText(container, 'Light Crossbow')).not.toContain('Arrow')
+			})
+
+			it('adds nothing to a weapon that fires no ammunition', async () => {
+				const { container } = await renderStateful([
+					{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' as const },
+					{ name: 'Handaxe', source: 'XPHB', quantity: 3 },
+					arrows(12),
+				])
+				expect(attackRow(container, 'Longsword').querySelector('.sheet__action-ammo')).toBeNull()
+				expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-ammo')).toBeNull()
+				expect(attackRow(container, 'Longsword').querySelector('.sheet__action-notes')!.textContent).toBe('Mastery: Sap · Properties: Versatile')
+				expect(screen.queryByRole('button', { name: /^Spend one/ })).toBeNull()
+			})
+
+			it('does not put an ammunition line on a weapon that is not held', async () => {
+				const { container } = await renderStateful([{ name: 'Shortbow', source: 'XPHB', quantity: 1 }, arrows(12)])
+				expect(container.querySelector('.sheet__action-ammo')).toBeNull()
+			})
+
+			it('is the same number the Inventář tab shows, in both directions', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderStateful([SHORTBOW, arrows(5)])
+				const field = screen.getByLabelText('Quantity of Arrow') as HTMLInputElement
+				expect(field.value).toBe('5')
+
+				await user.click(screen.getByRole('button', { name: 'Spend one Arrow' }))
+				expect(field.value).toBe('4')
+
+				await user.clear(field)
+				await user.type(field, '9')
+				await user.tab()
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 9')
+
+				// Restocking from 0 is the Inventář field's job, and the button comes back with it.
+				await user.clear(field)
+				await user.type(field, '0')
+				await user.tab()
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 0')
+				expect((screen.getByRole('button', { name: 'Spend one Arrow' }) as HTMLButtonElement).disabled).toBe(true)
+				await user.clear(field)
+				await user.type(field, '3')
+				await user.tab()
+				expect((screen.getByRole('button', { name: 'Spend one Arrow' }) as HTMLButtonElement).disabled).toBe(false)
+			})
+
+			it('opens a pack on the first spend: the pack is gone and the rest are loose arrows in the Inventář', async () => {
+				const user = userEvent.setup()
+				const { container, onEdit } = await renderStateful([SHORTBOW, { name: 'Arrows (20)', source: 'XPHB', quantity: 1 }])
+				expect(ammoText(container, 'Shortbow')).toContain('Arrows (20): 1 pack')
+
+				await user.click(screen.getByRole('button', { name: 'Spend one Arrow from Arrows (20)' }))
+				expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(19)])
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 19')
+				expect(screen.queryByLabelText('Quantity of Arrows (20)')).toBeNull()
+				expect((screen.getByLabelText('Quantity of Arrow') as HTMLInputElement).value).toBe('19')
+			})
+
+			it('still shows the counts, with no buttons, when the sheet cannot edit', async () => {
+				const { container } = await renderSheet({ ...character, id: 'ammo-readonly', inventory: [SHORTBOW, arrows(4)] })
+				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 4')
+				expect(screen.queryByRole('button', { name: /^Spend one/ })).toBeNull()
+			})
 		})
 
 		describe('to-hit roll (step 9 slice 9c1)', () => {

@@ -100,6 +100,20 @@ describe('extractItemRefs', () => {
 			{ name: 'Chain Mail', source: 'XPHB', typeCode: 'HA', armor: true, ac: 16, strength: '13', stealth: true },
 		])
 	})
+
+	/* Slice 9d3: the two fields that link a weapon to its ammunition, shaped as scripts/investigate-ammo-pairing.js found them. */
+	it('carries a weapon’s ammoType and a pack’s packContents, dropping malformed pack entries', () => {
+		const parsed = [
+			{ name: 'Shortbow', source: 'XPHB', type: 'R|XPHB', weapon: true, ammoType: 'arrow|xphb' },
+			{ name: 'Arrows (20)', source: 'XPHB', type: 'A|XPHB', packContents: [{ item: 'arrow|xphb', quantity: 20 }, { special: 'a quiver' }, 'string'] },
+			{ name: 'Empty Pack', source: 'XPHB', packContents: [{ special: 'nothing usable' }] },
+		]
+		expect(extractItemRefs(parsed)).toEqual([
+			{ name: 'Arrows (20)', source: 'XPHB', typeCode: 'A', packContents: [{ item: 'arrow|xphb', quantity: 20 }] },
+			{ name: 'Empty Pack', source: 'XPHB' },
+			{ name: 'Shortbow', source: 'XPHB', typeCode: 'R', weapon: true, ammoType: 'arrow|xphb' },
+		])
+	})
 })
 
 describe('item kinds', () => {

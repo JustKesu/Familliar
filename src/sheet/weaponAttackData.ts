@@ -90,6 +90,7 @@ function toResolvedWeapon(ref: ItemRef): ResolvedWeapon {
 		...(ref.masteryFull !== undefined ? { masteryFull: ref.masteryFull } : {}),
 		...(ref.range !== undefined ? { range: ref.range } : {}),
 		...(ref.firearm !== undefined ? { firearm: ref.firearm } : {}),
+		...(ref.ammoType !== undefined ? { ammoType: ref.ammoType } : {}),
 	}
 }
 

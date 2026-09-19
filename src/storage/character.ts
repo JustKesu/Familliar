@@ -474,8 +474,9 @@ export type WeaponGrip = 'one-handed' | 'two-handed'
 
 /**
  * One line of the inventory: which item (name + source, enough to look the
- * full entry back up in items.json) and how many are carried. `quantity` has
- * a floor of 1 — removing an item is its own action, never "set quantity to 0".
+ * full entry back up in items.json) and how many are carried. `quantity` may
+ * be 0 (slice 9d3: the last arrow is spent, the row stays so it can be
+ * restocked); removing an item is still its own action, Discard.
  */
 export interface CharacterInventoryItem {
 	name: string

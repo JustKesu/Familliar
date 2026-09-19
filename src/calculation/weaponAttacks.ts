@@ -53,6 +53,8 @@ export interface ResolvedWeapon {
 	/** Verbatim from the data ("30/120") — thrown and ranged weapons only. */
 	range?: string
 	firearm?: boolean
+	/** The "name|source" key of the ammunition item this weapon fires (items.json `ammoType`); absent on melee and Thrown weapons. */
+	ammoType?: string
 }
 
 /** A weapon the character is holding, already looked up in the item data by the caller. */
@@ -101,6 +103,8 @@ export interface WeaponAttack {
 	notes: string[]
 	/** Non-null only for a Finesse weapon: which ability is being used and what the player may switch to. */
 	abilityChoice: { using: Ability; options: Ability[]; isDefault: boolean } | null
+	/** Copied from the weapon so the sheet can pair it with ammunition; absent for every weapon that fires none. */
+	ammoType?: string
 }
 
 export const UNARMED_STRIKE_KEY = 'unarmed-strike'
@@ -298,6 +302,7 @@ export function computeWeaponAttacks(
 			damage: scoresUnknown ? unknown(scoresUnknown) : noDice ? unknown(noDice) : known(damage, damage.breakdown),
 			notes: noDice ? [...notesFor(weapon, proficient), noDice] : notesFor(weapon, proficient),
 			abilityChoice: choice,
+			...(weapon.ammoType !== undefined ? { ammoType: weapon.ammoType } : {}),
 		}
 	})
 

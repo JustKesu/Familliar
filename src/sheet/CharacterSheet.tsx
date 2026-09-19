@@ -83,8 +83,10 @@ import {
 	itemKey,
 	itemMagicBonusOf,
 	loadItemRefs,
+	withQuantity,
 	type ItemRef,
 } from '../inventory/inventoryData'
+import { ammoEntriesFor, canSpendAmmo, spendAmmo, type AmmoEntry } from '../inventory/ammunition'
 import { loadItemEntryTemplates, resolveItemEntryRefs, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
@@ -938,8 +940,8 @@ function InventorySection({
 	}
 
 	function setQuantity(index: number, quantity: number): void {
-		// Quantity floor is 1 — removing is its own action, never "set to 0"; CommitNumberField already clamps to min={1}.
-		onEditInventory?.(inventory.map((item, i) => (i === index ? { ...item, quantity } : item)))
+		// Floor is 0 (slice 9d3): a spent stack stays as a row to restock, so a 0 must not be committed back up to 1. Removing is still Discard.
+		onEditInventory?.(withQuantity(inventory, index, quantity))
 	}
 
 	function removeAt(index: number): void {
@@ -1210,7 +1212,7 @@ function InventorySection({
 										{' '}
 										<CommitNumberField
 											label={`Quantity of ${bonus.label}`}
-											min={1}
+											min={0}
 											value={item.quantity}
 											onCommit={(quantity) => setQuantity(index, quantity)}
 										/>{' '}
@@ -1369,6 +1371,7 @@ function weaponAttackRow(
 	attack: WeaponAttack,
 	onRoll: (report: RollReport) => void,
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void,
+	ammo?: { entries: AmmoEntry[]; onSpend?: (entry: AmmoEntry) => void },
 ): ActionTableRow {
 	const damageDice = attack.damage.status === 'known' && attack.damage.value.dice ? parseDiceExpression(attack.damage.value.dice) : null
 	return {
@@ -1437,8 +1440,48 @@ function weaponAttackRow(
 						)}
 				</>
 			),
-		notes: attack.notes.length > 0 ? attack.notes.join(' · ') : null,
+		notes: ammo ? (
+			<>
+				{attack.notes.length > 0 && <>{attack.notes.join(' · ')} </>}
+				<AmmoTracker weapon={attack.name} entries={ammo.entries} onSpend={ammo.onSpend} />
+			</>
+		) : attack.notes.length > 0 ? (
+			attack.notes.join(' · ')
+		) : null,
 	}
+}
+
+/**
+ * The ammunition a held weapon fires (slice 9d3): one line per matching
+ * inventory row, each with its own count and a quick "spend one". Nothing is
+ * stored here — the count IS the inventory row's quantity, so the Inventář tab
+ * reads the same number. Without an edit callback the counts still show.
+ */
+function AmmoTracker({ weapon, entries, onSpend }: { weapon: string; entries: AmmoEntry[]; onSpend?: (entry: AmmoEntry) => void }): ReactNode {
+	return (
+		<span className="sheet__action-ammo">
+			{entries.map((entry) => (
+				<span key={`${entry.kind}#${entry.index}`} className="sheet__action-ammo-item" role="group" aria-label={`${entry.name} ammunition for ${weapon}`}>
+					{entry.name}: {entry.quantity}
+					{/* A pack's number counts packs, not pieces — "1" beside "Arrows (20)" would otherwise read as one arrow. */}
+					{entry.kind === 'pack' && (entry.quantity === 1 ? ' pack' : ' packs')}
+					{onSpend && (
+						<>
+							{' '}
+							<button
+								type="button"
+								disabled={!canSpendAmmo(entry)}
+								onClick={() => onSpend(entry)}
+								aria-label={entry.kind === 'pack' && entry.looseItem ? `Spend one ${entry.looseItem.name} from ${entry.name}` : `Spend one ${entry.name}`}
+							>
+								−1
+							</button>
+						</>
+					)}{' '}
+				</span>
+			))}
+		</span>
+	)
 }
 
 const SAVE_ABILITY_LABELS: Record<string, string> = {
@@ -1581,6 +1624,8 @@ function ActionsSection({
 	onRoll,
 	onChooseAttackAbility,
 	onSpendResource,
+	ammoFor,
+	onSpendAmmo,
 }: {
 	attacks: WeaponAttack[]
 	attacksPerAction: Calculated<number>
@@ -1595,9 +1640,19 @@ function ActionsSection({
 	onRoll: (report: RollReport) => void
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
 	onSpendResource?: (name: string, delta: 1 | -1) => void
+	/** The inventory rows that feed a weapon firing this ammoType (slice 9d3). */
+	ammoFor: (ammoType: string) => AmmoEntry[]
+	onSpendAmmo?: (entry: AmmoEntry) => void
 }): ReactNode {
 	const rows = [
-		...attacks.map((attack) => weaponAttackRow(attack, onRoll, onChooseAttackAbility)),
+		...attacks.map((attack) =>
+			weaponAttackRow(
+				attack,
+				onRoll,
+				onChooseAttackAbility,
+				attack.ammoType !== undefined ? { entries: ammoFor(attack.ammoType), onSpend: onSpendAmmo } : undefined,
+			),
+		),
 		...spellActions.map(spellActionRow),
 		...featureActions.map((feature) => featureActionRow(feature, resourceMaxima, resourceUses, onSpendResource)),
 	]
@@ -2308,6 +2363,11 @@ export function CharacterSheet({
 	function chooseAttackAbility(key: string, ability: WeaponAttackAbility): void {
 		if (!onEditInventory) return
 		onEditInventory((character.inventory ?? []).map((item) => (inventoryRowKey(item) === key ? { ...item, attackAbility: ability } : item)))
+	}
+	/** Goes through the same onEditInventory as every quantity change in the Inventář tab (slice 7a-1), so the two tabs read one number. */
+	function spendAmmoEntry(entry: AmmoEntry): void {
+		if (!onEditInventory) return
+		onEditInventory(spendAmmo(character.inventory ?? [], entry))
 	}
 	const size = computeSize(character, speciesTraitsData)
 	// Darkvision is the one granted sense that reconciles with the species value (D40/D53) rather than
@@ -3145,6 +3205,8 @@ export function CharacterSheet({
 				onRoll={recordRoll}
 				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}
 				onSpendResource={onEditResourceUses ? spendResource : undefined}
+				ammoFor={(ammoType) => ammoEntriesFor(ammoType, character.inventory ?? [], itemRefs ?? [])}
+				onSpendAmmo={onEditInventory ? spendAmmoEntry : undefined}
 			/>
 			</div>
 

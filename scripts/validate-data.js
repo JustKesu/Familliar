@@ -1258,6 +1258,27 @@ function validateItems() {
 	});
 	recordCheck("items: no unknown codes left unresolved", unresolvedFailures);
 
+	// The sheet pairs a weapon with its ammunition only through these two links
+	// (src/inventory/ammunition.ts, DATA.md "Ammunition"). One that names no item
+	// would show 0 ammunition forever with nothing to say why.
+	const itemKeys = new Set(entries.map((entry) => `${entry.name}|${entry.source}`.toLowerCase()));
+	const ammoLinkFailures = [];
+	entries.forEach((entry, index) => {
+		const label = describeEntry(entry, index);
+		if (entry.ammoType !== undefined && !itemKeys.has(String(entry.ammoType).toLowerCase())) {
+			ammoLinkFailures.push({ label, detail: `ammoType "${entry.ammoType}" names no item` });
+		}
+		const typeCode = typeof entry.type === "string" ? entry.type.split("|")[0] : undefined;
+		if ((typeCode === "A" || typeCode === "AF") && Array.isArray(entry.packContents)) {
+			for (const part of entry.packContents) {
+				if (!part || typeof part.item !== "string" || !itemKeys.has(part.item.toLowerCase())) {
+					ammoLinkFailures.push({ label, detail: `packContents entry ${JSON.stringify(part)} names no item` });
+				}
+			}
+		}
+	});
+	recordCheck("items: every ammoType and ammunition packContents entry names an existing item", ammoLinkFailures);
+
 	checkExpectedCounts(entries, "items");
 }
 

@@ -654,8 +654,8 @@ export function describeInventoryError(value: unknown): string | null {
 		if (!isNonEmptyString(entry['name'])) return `inventory[${i}].name is missing or not a string`
 		if (!isNonEmptyString(entry['source'])) return `inventory[${i}].source is missing or not a string`
 		const quantity = entry['quantity']
-		if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1) {
-			return `inventory[${i}].quantity must be a whole number of at least 1`
+		if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 0) {
+			return `inventory[${i}].quantity must be a whole number of at least 0`
 		}
 		const equipped = entry['equipped']
 		if (equipped !== undefined && equipped !== 'worn' && equipped !== 'held') {

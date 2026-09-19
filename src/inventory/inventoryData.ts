@@ -69,6 +69,19 @@ export interface ItemRef {
 	/** items.json `firearm` — the Gunner feat's grant matches on it. */
 	firearm?: boolean
 	/**
+	 * items.json `ammoType` on a weapon: the lowercase "name|source" key of the ONE
+	 * ammunition item it fires ("arrow|xphb"). On 17 ranged weapons; the ammunition
+	 * items carry no reciprocal field (scripts/investigate-ammo-pairing.js, DATA.md).
+	 */
+	ammoType?: string
+	/**
+	 * items.json `packContents` on an ammunition pack: `[{ item: "arrow|xphb",
+	 * quantity: 20 }]` — `item` is the same key a weapon's `ammoType` names, so a
+	 * pack links to what it holds structurally. Only well-formed entries are kept.
+	 * 13 items carry it, 5 of them ammunition (Arrows (20), Bolts (20), …).
+	 */
+	packContents?: { item: string; quantity: number }[]
+	/**
 	 * True when items.json `reqAttune` says the item is attuned to before it
 	 * works (slice d). 272 items carry the field: 174 as boolean `true`, 98 as a
 	 * restriction sentence — and nothing states the requirement anywhere else
@@ -378,6 +391,22 @@ function stringArrayField<K extends string>(entry: Record<string, unknown>, key:
 	return Array.isArray(value) ? ({ [key]: value.filter((item): item is string => typeof item === 'string') } as Record<K, string[]>) : {}
 }
 
+function packContentsField(entry: Record<string, unknown>): Pick<ItemRef, 'packContents'> {
+	const value = entry['packContents']
+	if (!Array.isArray(value)) return {}
+	const contents = value.flatMap((part) => {
+		if (typeof part !== 'object' || part === null) return []
+		const { item, quantity } = part as { item?: unknown; quantity?: unknown }
+		return typeof item === 'string' && typeof quantity === 'number' ? [{ item, quantity }] : []
+	})
+	return contents.length > 0 ? { packContents: contents } : {}
+}
+
+/** The inventory with one row's quantity replaced — the single edit behind both the Inventář field and the Akce ammo button. */
+export function withQuantity(inventory: readonly CharacterInventoryItem[], index: number, quantity: number): CharacterInventoryItem[] {
+	return inventory.map((item, i) => (i === index ? { ...item, quantity } : item))
+}
+
 export function extractItemRefs(parsed: unknown): ItemRef[] {
 	if (!Array.isArray(parsed)) {
 		throw new Error('items.json: expected a top-level array.')
@@ -409,6 +438,8 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...stringArrayField(entry, 'masteryFull'),
 				...stringField(entry, 'range'),
 				...(entry['firearm'] === true ? { firearm: true } : {}),
+				...stringField(entry, 'ammoType'),
+				...packContentsField(entry),
 				...bonusField(entry, 'bonusWeapon'),
 				...bonusField(entry, 'bonusAc'),
 				...bonusField(entry, 'bonusSavingThrow'),

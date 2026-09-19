@@ -699,15 +699,26 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 		expect(() => store.setCurrency('nope', 10)).toThrow(CharacterNotFoundError)
 	})
 
-	it('rejects a saved inventory entry with a non-positive quantity, and a fractional currencyCopper', () => {
-		const badQuantity = new MemoryStorage()
-		badQuantity.setItem(
-			STORAGE_KEY,
-			JSON.stringify([
-				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], inventory: [{ name: 'Torch', source: 'XPHB', quantity: 0 }] },
-			]),
-		)
-		expect(() => new CharacterStore(badQuantity).list()).toThrow(CorruptDataError)
+	it('keeps an inventory row whose quantity is 0 — the last arrow was spent (slice 9d3)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria' })
+		store.setInventory(character.id, [{ name: 'Arrow', source: 'XPHB', quantity: 0 }])
+		// A fresh store over the same backing storage — the validator has to accept what was written.
+		expect(new CharacterStore(backing).list()[0].inventory).toEqual([{ name: 'Arrow', source: 'XPHB', quantity: 0 }])
+	})
+
+	it('rejects a saved inventory entry with a negative or fractional quantity, and a fractional currencyCopper', () => {
+		for (const quantity of [-1, 1.5]) {
+			const badQuantity = new MemoryStorage()
+			badQuantity.setItem(
+				STORAGE_KEY,
+				JSON.stringify([
+					{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], inventory: [{ name: 'Torch', source: 'XPHB', quantity }] },
+				]),
+			)
+			expect(() => new CharacterStore(badQuantity).list()).toThrow(CorruptDataError)
+		}
 
 		const badCurrency = new MemoryStorage()
 		badCurrency.setItem(

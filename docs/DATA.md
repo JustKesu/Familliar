@@ -400,6 +400,31 @@ Zjištěno při průzkumu před krokem 7; původní znění tvrdilo, že přízn
 `ammoType` on a weapon names the exact ammunition item code that weapon
 consumes — a direct item-to-item link, no name matching needed.
 
+Confirmed for slice 9d3 (`scripts/investigate-ammo-pairing.js`, over
+data/items.json):
+- `ammoType` is a lowercase `"name|source"` string ("arrow|xphb") on 17 items,
+  all type `R` (9 XPHB, 8 XDMG). 6 distinct values, and every one equals the
+  key of exactly one item: Arrow, Bolt, Sling Bullet, Needle, Firearm Bullet
+  (type `A`) and Energy Cell (XDMG, type `AF`).
+- The link is ONE-WAY. The 12 ammunition items (`A`/`AF`) carry no `ammoType`,
+  no `baseItem`, no `bonusWeapon` and no `quantity`; there are no "+1 arrow"
+  items at all (0 names with a +N and ammunition). A "+1 arrows" row can only
+  be a player-set `magicBonus` on the plain item.
+- **The starting equipment does not hand out `Arrow`.** Every class and
+  background that starts with arrows gets the PACK "Arrows (20)" x1, likewise
+  "Bolts (20)" — a separate item with its own key. Matching a weapon on
+  `ammoType` alone finds nothing in a fresh character's inventory.
+- Ammunition packs carry `packContents`: `[{ "item": "arrow|xphb",
+  "quantity": 20 }]` — `item` is exactly the weapon's `ammoType` key. 5 packs
+  (Arrows 20, Bolts 20, Firearm Bullets 10, Needles 50, Sling Bullets 20), each
+  with one entry. 13 items carry the field, the other 8 are type `G` gear
+  packs that list ordinary equipment — those are not ammunition and must not be
+  read as a source of it (hence the `A`/`AF` type gate). The count in the pack
+  name ("(20)") is prose; read `quantity` instead.
+- Thrown weapons carry no `ammoType` — the weapon itself is the thing thrown.
+- `validate-data` guards both links (every `ammoType` and every ammunition
+  `packContents.item` names an existing item).
+
 Separately, `charges` / `recharge` / `rechargeAmount` on items are the only
 fully structured spend-and-refresh fields anywhere in the data set;
 `recharge`'s only value is `"dawn"`.

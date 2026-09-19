@@ -2295,3 +2295,15 @@ opravuje omyl).
 **`HitPointFields` nese čtvrté pole.** `setHitPoints` zapisuje death saves
 spolu s hit pointy jedním zápisem — jsou na `currentHp` vázané a dva zápisy by
 mezi sebou nechaly nemožný mezistav.
+
+## D112 — Deployment data: public repo, revisit only if usage grows
+
+Data (5etools content) deploys with the app as a public repository — option
+1 from the now-closed QUESTIONS.md question "Where data lives at
+deployment". No change from today's default.
+
+Rationale: the app is for the author and a handful of friends, not a paying
+product or public release. The licensing risk of an unpaid, small hobby
+deployment is low enough not to justify a private repo or per-user uploads
+now. Revisit if usage grows beyond a private circle or the project is
+monetised.

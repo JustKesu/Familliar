@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-19 (9d2: záložka Vzhled a poznámky)
+Poslední aktualizace: 2026-09-19 (9d3: střelivo u držené zbraně v tabulce akcí)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -487,6 +487,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9c3b | Historie hodů v hlavičce (max 50, jen v paměti); režim přežije změnu modifikátoru | — |
    | 9d1 | Koncentrace: které kouzlo postava drží, tlačítko u kouzla + řádek v hlavičce | 39→40 |
    | 9d2 | Záložka „Vzhled a poznámky": tři volné textové pole na `Character` | 40→41 |
+   | 9d3 | Střelivo u držené zbraně v tabulce akcí, „−1"; `quantity` smí být 0 | — |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -735,6 +736,29 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `wizardState.test.ts`, `CharacterManager.test.tsx` (skutečný store +
      sheet v jsdom). Neověřováno ve skutečném prohlížeči (CSS textarey,
      plynulost psaní při přerenderu celého sheetu na každý znak).
+   - Slice 9d3 — střelivo v tabulce akcí. Držená zbraň s `ammoType` (17 v
+     datech, všechny ranged) dostane v buňce Notes řádek za každý inventářový
+     řádek, který ji živí, s počtem a tlačítkem „−1"; zbraň bez `ammoType`
+     (včetně Thrown) beze změny. Vazba je čistě strukturální (DATA.md,
+     „Ammunition"): `ammoType` je klíč `name|source` právě jednoho střeliva a
+     balíček („Arrows (20)") ho drží v `packContents` — startovní výbava dává
+     balíček, ne `Arrow`, takže párování jen podle `ammoType` by nováčkovi
+     ukázalo 0. Nový `src/inventory/ammunition.ts` (čisté `ammoEntriesFor`,
+     `canSpendAmmo`, `spendAmmo`): volný řádek jde o 1 dolů a na 0 se zastaví;
+     balíček se při prvním utracení otevře (−1 balíček, zbylé kusy se přičtou
+     k čistému řádku téže položky nebo z nich vznikne nový na místě balíčku);
+     nic vhodného v inventáři = řádek „Arrow: 0" s vypnutým tlačítkem (D43).
+     Zápis jde přes týž `onEditInventory` → `CharacterStore.setInventory` jako
+     každá změna počtu v Inventáři; sdílený je i `withQuantity`. **Změna
+     invariantu:** `quantity` smí být 0 (validátor `< 1` → `< 0`, pole v
+     Inventáři `min` 1 → 0) — řádek se spotřebovaným střelivem zůstává k
+     doplnění, Discard zůstává jediné odebrání. Schéma ani migrace beze změny
+     (starší uložené postavy jsou platné dál). `ItemRef` nese `ammoType` a
+     `packContents`, `WeaponAttack` nese `ammoType`. Guard v `validate-data`:
+     každý `ammoType` a `packContents` střeliva míří na existující položku.
+     Testy: `ammunition.test.ts`, blok v `CharacterSheet.test.tsx`,
+     `inventoryData.test.ts`, `characterStore.test.ts`. Neověřováno v prohlížeči
+     (testy assertují přesně, co se vykreslí).
    - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
      průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
@@ -924,7 +948,8 @@ Slice 9c3a přidala k d20 hodům ruční výhodu/nevýhodu (`rollKeepOne`, obě 
 ve výsledku). Slice 9c3b přidala historii hodů v hlavičce (max 50, jen v
 paměti). Slice 9d1 přidala sledování koncentrace (`play.concentratingOn`, schéma
 40). Slice 9d2 přidala záložku `Vzhled a poznámky` (`Character.appearance`,
-`.backstory`, `.notes`, schéma 41). Další na řadě je utracení hit die při
+`.backstory`, `.notes`, schéma 41). Slice 9d3 přidala střelivo u držené zbraně
+(bez schématu; `quantity` smí být 0). Další na řadě je utracení hit die při
 krátkém odpočinku.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
