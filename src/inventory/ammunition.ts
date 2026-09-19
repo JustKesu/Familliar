@@ -78,6 +78,19 @@ export function canSpendAmmo(entry: AmmoEntry): boolean {
 }
 
 /**
+ * The entry a to-hit roll spends from automatically (slice 9d4), or null when
+ * the roll should not spend. Only an unambiguous match qualifies: with two
+ * entries (plain and +1 arrows, or arrows and a pack) picking one would be a
+ * guess, so those weapons keep the manual buttons only. An entry that cannot be
+ * spent (0 left, nothing matching) is null too — the roll goes through and the
+ * count stays put.
+ */
+export function autoSpendEntry(entries: readonly AmmoEntry[]): AmmoEntry | null {
+	const [only] = entries
+	return entries.length === 1 && only && canSpendAmmo(only) ? only : null
+}
+
+/**
  * The inventory after one piece of `entry` is used. A loose row goes down by one
  * and stops at 0 — the row stays, so restocking is the Inventář field. A pack
  * loses one pack (its row goes when the last one is opened) and its remaining

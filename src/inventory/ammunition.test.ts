@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterInventoryItem } from '../storage/character'
-import { ammoEntriesFor, canSpendAmmo, spendAmmo } from './ammunition'
+import { ammoEntriesFor, autoSpendEntry, canSpendAmmo, spendAmmo } from './ammunition'
 import type { ItemRef } from './inventoryData'
 
 const ARROW: ItemRef = { name: 'Arrow', source: 'XPHB', typeCode: 'A' }
@@ -55,6 +55,25 @@ describe('canSpendAmmo', () => {
 		expect(canSpendAmmo({ kind: 'loose', index: 0, name: 'Arrow', quantity: 0 })).toBe(false)
 		expect(canSpendAmmo({ kind: 'pack', index: 0, name: 'Arrows (20)', quantity: 1, pieces: 20, looseItem: null })).toBe(false)
 		expect(canSpendAmmo({ kind: 'loose', index: 0, name: 'Arrow', quantity: 1 })).toBe(true)
+	})
+})
+
+describe('autoSpendEntry', () => {
+	const entriesFor = (inventory: CharacterInventoryItem[]) => ammoEntriesFor('arrow|xphb', inventory, REFS)
+
+	it('picks the one entry when the match is unambiguous', () => {
+		expect(autoSpendEntry(entriesFor([row('Arrow', 5)]))).toEqual({ kind: 'loose', index: 0, name: 'Arrow', quantity: 5 })
+		expect(autoSpendEntry(entriesFor([row('Arrows (20)', 1)]))?.kind).toBe('pack')
+	})
+
+	it('is null for two entries — plain and +1, or loose and pack — never a guess', () => {
+		expect(autoSpendEntry(entriesFor([row('Arrow', 12), row('Arrow', 3, { magicBonus: 1 })]))).toBeNull()
+		expect(autoSpendEntry(entriesFor([row('Arrow', 12), row('Arrows (20)', 1)]))).toBeNull()
+	})
+
+	it('is null when the one entry cannot be spent: at 0, or nothing matching', () => {
+		expect(autoSpendEntry(entriesFor([row('Arrow', 0)]))).toBeNull()
+		expect(autoSpendEntry(entriesFor([row('Bolt', 9)]))).toBeNull()
 	})
 })
 

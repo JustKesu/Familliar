@@ -1559,6 +1559,114 @@ describe('CharacterSheet', () => {
 				expect(ammoText(container, 'Shortbow')).toContain('Arrow: 4')
 				expect(screen.queryByRole('button', { name: /^Spend one/ })).toBeNull()
 			})
+
+			describe('the to-hit roll spends ammunition (slice 9d4)', () => {
+				const rolledResults = (container: HTMLElement, weapon: string) => attackRow(container, weapon).querySelectorAll('.dice-roll__result')
+
+				it('spends one matching item per to-hit roll, and a damage roll spends nothing', async () => {
+					const user = userEvent.setup()
+					const { container, onEdit } = await renderStateful([SHORTBOW, arrows(5)])
+
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow damage' }))
+					expect(rolledResults(container, 'Shortbow')).toHaveLength(1)
+					expect(onEdit).not.toHaveBeenCalled()
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 5')
+
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(onEdit).toHaveBeenCalledTimes(1)
+					expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(4)])
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 4')
+
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(3)])
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 3')
+				})
+
+				it('rolls another weapon or a check without touching the ammunition', async () => {
+					const user = userEvent.setup()
+					const { container, onEdit } = await renderStateful([SHORTBOW, { name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' as const }, arrows(5)])
+					await user.click(screen.getByRole('button', { name: 'Roll Longsword to hit' }))
+					await user.click(screen.getByRole('button', { name: 'Roll Strength check' }))
+					expect(onEdit).not.toHaveBeenCalled()
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 5')
+				})
+
+				it('still rolls at 0 ammunition, and the count stays at 0 with no write', async () => {
+					const user = userEvent.setup()
+					const { container, onEdit } = await renderStateful([SHORTBOW, arrows(0)])
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(rolledResults(container, 'Shortbow')).toHaveLength(1)
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 0')
+					expect(onEdit).not.toHaveBeenCalled()
+				})
+
+				it('still rolls when nothing in the inventory feeds the weapon', async () => {
+					const user = userEvent.setup()
+					const { container, onEdit } = await renderStateful([SHORTBOW, { name: 'Bolt', source: 'XPHB', quantity: 9 }])
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(rolledResults(container, 'Shortbow')).toHaveLength(1)
+					expect(onEdit).not.toHaveBeenCalled()
+				})
+
+				it('does not guess between two matching items: the roll spends nothing and the manual buttons still do', async () => {
+					const user = userEvent.setup()
+					const { container, onEdit } = await renderStateful([SHORTBOW, arrows(12), arrows(3, { magicBonus: 1 })])
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(rolledResults(container, 'Shortbow')).toHaveLength(1)
+					expect(onEdit).not.toHaveBeenCalled()
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 12')
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow +1: 3')
+
+					await user.click(screen.getByRole('button', { name: 'Spend one Arrow +1' }))
+					expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(12), arrows(2, { magicBonus: 1 })])
+				})
+
+				it('does not guess between a loose item and a pack either', async () => {
+					const user = userEvent.setup()
+					const { onEdit } = await renderStateful([SHORTBOW, arrows(12), { name: 'Arrows (20)', source: 'XPHB', quantity: 1 }])
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(onEdit).not.toHaveBeenCalled()
+				})
+
+				it('leaves a weapon without ammoType exactly as it was', async () => {
+					const user = userEvent.setup()
+					const { container, onEdit } = await renderStateful([{ name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' as const }, arrows(5)])
+					await user.click(screen.getByRole('button', { name: 'Roll Longsword to hit' }))
+					expect(rolledResults(container, 'Longsword')).toHaveLength(1)
+					expect(onEdit).not.toHaveBeenCalled()
+				})
+
+				it('is the same state as the manual −1 and the Inventář tab, whichever one spent', async () => {
+					const user = userEvent.setup()
+					const { container, onEdit } = await renderStateful([SHORTBOW, arrows(5)])
+					const field = screen.getByLabelText('Quantity of Arrow') as HTMLInputElement
+
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(field.value).toBe('4')
+					await user.click(screen.getByRole('button', { name: 'Spend one Arrow' }))
+					expect(field.value).toBe('3')
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(field.value).toBe('2')
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 2')
+					expect(onEdit).toHaveBeenCalledTimes(3)
+					expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(2)])
+				})
+
+				it('opens a lone pack on the first roll, as the manual −1 does', async () => {
+					const user = userEvent.setup()
+					const { onEdit } = await renderStateful([SHORTBOW, { name: 'Arrows (20)', source: 'XPHB', quantity: 1 }])
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(onEdit).toHaveBeenLastCalledWith([SHORTBOW, arrows(19)])
+				})
+
+				it('rolls without spending when the sheet cannot edit', async () => {
+					const user = userEvent.setup()
+					const { container } = await renderSheet({ ...character, id: 'ammo-roll-readonly', inventory: [SHORTBOW, arrows(4)] })
+					await user.click(screen.getByRole('button', { name: 'Roll Shortbow to hit' }))
+					expect(rolledResults(container, 'Shortbow')).toHaveLength(1)
+					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 4')
+				})
+			})
 		})
 
 		describe('to-hit roll (step 9 slice 9c1)', () => {

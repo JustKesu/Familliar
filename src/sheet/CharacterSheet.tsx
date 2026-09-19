@@ -86,7 +86,7 @@ import {
 	withQuantity,
 	type ItemRef,
 } from '../inventory/inventoryData'
-import { ammoEntriesFor, canSpendAmmo, spendAmmo, type AmmoEntry } from '../inventory/ammunition'
+import { ammoEntriesFor, autoSpendEntry, canSpendAmmo, spendAmmo, type AmmoEntry } from '../inventory/ammunition'
 import { loadItemEntryTemplates, resolveItemEntryRefs, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
@@ -1374,6 +1374,13 @@ function weaponAttackRow(
 	ammo?: { entries: AmmoEntry[]; onSpend?: (entry: AmmoEntry) => void },
 ): ActionTableRow {
 	const damageDice = attack.damage.status === 'known' && attack.damage.value.dice ? parseDiceExpression(attack.damage.value.dice) : null
+	/* Slice 9d4: the to-hit roll (and only it) spends the weapon's one unambiguous ammunition, through the same onSpend as the manual −1. */
+	const onSpend = ammo?.onSpend
+	const autoSpend = ammo && onSpend ? autoSpendEntry(ammo.entries) : null
+	const onToHitRoll = (report: RollReport): void => {
+		onRoll(report)
+		if (autoSpend && onSpend) onSpend(autoSpend)
+	}
 	return {
 		key: attack.key,
 		name: (
@@ -1406,7 +1413,7 @@ function weaponAttackRow(
 				{attack.toHit.status === 'known' && (
 					<>
 						{' '}
-						<RollButton modifier={attack.toHit.value} label={`${attack.name} to hit`} onRoll={onRoll} />
+						<RollButton modifier={attack.toHit.value} label={`${attack.name} to hit`} onRoll={onToHitRoll} />
 					</>
 				)}
 			</>

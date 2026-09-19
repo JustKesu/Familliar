@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-19 (9d3: střelivo u držené zbraně v tabulce akcí)
+Poslední aktualizace: 2026-09-19 (9d4: to-hit hod utrácí střelivo automaticky)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -488,6 +488,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9d1 | Koncentrace: které kouzlo postava drží, tlačítko u kouzla + řádek v hlavičce | 39→40 |
    | 9d2 | Záložka „Vzhled a poznámky": tři volné textové pole na `Character` | 40→41 |
    | 9d3 | Střelivo u držené zbraně v tabulce akcí, „−1"; `quantity` smí být 0 | — |
+   | 9d4 | To-hit hod držené zbraně se střelivem utratí 1 kus automaticky (jen při jednoznačné shodě) | — |
 
    - Slice 9a1 (D110) — PILOT pro ukládání play state, další slice kroku 9
      kopírují jeho tvar. `Character.temporaryHitPoints?: number` (schéma 35,
@@ -759,6 +760,17 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      Testy: `ammunition.test.ts`, blok v `CharacterSheet.test.tsx`,
      `inventoryData.test.ts`, `characterStore.test.ts`. Neověřováno v prohlížeči
      (testy assertují přesně, co se vykreslí).
+   - Slice 9d4 — automatické utracení střeliva. Tlačítko Roll u to-hit držené
+     zbraně s `ammoType` po hodu zavolá stejný `onSpend` → `spendAmmo` jako
+     ruční „−1" z 9d3, takže Inventář vidí stejné číslo. Utrácí jen to-hit hod
+     té zbraně (ne damage, ne jiný hod). Nová čistá `autoSpendEntry` v
+     `ammunition.ts`: utrácí jen když je právě jeden řádek střeliva a jde
+     utratit. Na 0, bez odpovídající položky, nebo bez `onEditInventory` hod
+     proběhne a nic se nezapíše. Při víc řádcích (Arrow + Arrow +1, volné +
+     balíček) se nic neutrácí a zbývají jen ruční „−1" — appka nehádá, které
+     střelivo hráč vystřelil. Testy: `autoSpendEntry` v `ammunition.test.ts`,
+     blok „the to-hit roll spends ammunition" v `CharacterSheet.test.tsx`.
+     Neověřováno v prohlížeči. Tím je 9d hotové.
    - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
      průzkumu a nejsou těmihle slice rozhodnuté.
 10. [not started] Multiclass
@@ -949,8 +961,9 @@ ve výsledku). Slice 9c3b přidala historii hodů v hlavičce (max 50, jen v
 paměti). Slice 9d1 přidala sledování koncentrace (`play.concentratingOn`, schéma
 40). Slice 9d2 přidala záložku `Vzhled a poznámky` (`Character.appearance`,
 `.backstory`, `.notes`, schéma 41). Slice 9d3 přidala střelivo u držené zbraně
-(bez schématu; `quantity` smí být 0). Další na řadě je utracení hit die při
-krátkém odpočinku.
+(bez schématu; `quantity` smí být 0). Slice 9d4 zapojila střelivo do to-hit
+hodu (automatické −1 při jednoznačné shodě). Další na řadě je utracení hit die
+při krátkém odpočinku.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.
