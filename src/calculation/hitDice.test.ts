@@ -12,7 +12,7 @@ describe('computeHitDicePool', () => {
 		const classes: CharacterClass[] = [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }]
 		expect(computeHitDicePool(classes, classData)).toEqual({
 			status: 'known',
-			value: [{ className: 'Fighter', faces: 10, count: 5 }],
+			value: [{ className: 'Fighter', classSource: 'XPHB', faces: 10, count: 5 }],
 			breakdown: [{ source: 'Fighter', amount: 5 }],
 		})
 	})
@@ -25,8 +25,8 @@ describe('computeHitDicePool', () => {
 		expect(computeHitDicePool(classes, classData)).toEqual({
 			status: 'known',
 			value: [
-				{ className: 'Fighter', faces: 10, count: 3 },
-				{ className: 'Bard', faces: 8, count: 2 },
+				{ className: 'Fighter', classSource: 'XPHB', faces: 10, count: 3 },
+				{ className: 'Bard', classSource: 'XPHB', faces: 8, count: 2 },
 			],
 			breakdown: [
 				{ source: 'Fighter', amount: 3 },

@@ -194,6 +194,11 @@ function CharacterManager() {
 		withErrorHandling(() => store.store?.setSpentSpellSlots(id, spentSpellSlots))
 	}
 
+	function handleEditSpentHitDice(id: string, spentHitDice: Record<string, number> | undefined): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setSpentHitDice(id, spentHitDice))
+	}
+
 	function handleEditConcentration(id: string, spellName: string | null): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setConcentration(id, spellName))
@@ -302,6 +307,7 @@ function CharacterManager() {
 									onEditHitPoints={(hitPoints) => handleEditHitPoints(sheetCharacter.id, hitPoints)}
 									onEditResourceUses={(resourceUses) => handleEditResourceUses(sheetCharacter.id, resourceUses)}
 								onEditSpentSpellSlots={(spentSpellSlots) => handleEditSpentSpellSlots(sheetCharacter.id, spentSpellSlots)}
+									onEditSpentHitDice={(spentHitDice) => handleEditSpentHitDice(sheetCharacter.id, spentHitDice)}
 									onEditConcentration={(spellName) => handleEditConcentration(sheetCharacter.id, spellName)}
 									onEditText={(field, text) => handleEditText(sheetCharacter.id, field, text)}
 									onRest={(rest) => handleRest(sheetCharacter.id, rest)}

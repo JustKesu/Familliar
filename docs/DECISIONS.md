@@ -2307,3 +2307,12 @@ product or public release. The licensing risk of an unpaid, small hobby
 deployment is low enough not to justify a private repo or per-user uploads
 now. Revisit if usage grows beyond a private circle or the project is
 monetised.
+
+## D115 — Hod na zásah stojí munici bez ohledu na to, jestli zasáhne
+
+Slice 9d4. `CharacterSheet.tsx` `weaponAttackRow`, to-hit `RollButton` → `onSpend`.
+
+Appka neadjudikuje zásah/minutí (SPEC.md) — hod na zásah proto odečte munici
+hned při kliknutí na Roll, ne až po vyhodnocení výsledku. Odpovídá tomu, jak
+hráč skutečně střílí: šíp je vystřelený, ať trefí nebo ne. Poškození munici
+neodečítá — odečet už proběhl u to-hit hodu ve stejném útoku.

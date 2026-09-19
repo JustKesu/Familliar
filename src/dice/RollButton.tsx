@@ -83,13 +83,17 @@ export function DamageRollButton({
 	label,
 	random,
 	onRoll,
+	disabled,
 }: {
 	count: number
 	sides: number
 	modifier: number
 	label: string
 	random?: RandomSource
-	onRoll?: (report: RollReport) => void
+	/** Slice 9b6: a hit die with none left to spend. The last result stays shown — it was made before the count ran out. */
+	disabled?: boolean
+	/** The roll itself rides along as a second argument for a caller that needs the total (slice 9b6: a hit die heals by it); every other caller ignores it. */
+	onRoll?: (report: RollReport, roll: DiceRoll) => void
 }): ReactNode {
 	const [roll, setRoll] = useState<DiceRoll | null>(null)
 	const rollInputs = `${count}d${sides}|${modifier}`
@@ -101,11 +105,11 @@ export function DamageRollButton({
 	function makeRoll(): void {
 		const next = rollDice(count, sides, modifier, random)
 		setRoll(next)
-		onRoll?.({ label, text: formatRoll(next) })
+		onRoll?.({ label, text: formatRoll(next) }, next)
 	}
 	return (
 		<span className="dice-roll">
-			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} onClick={makeRoll}>
+			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} disabled={disabled} onClick={makeRoll}>
 				Roll
 			</button>
 			<RollResult text={roll && formatRoll(roll)} />

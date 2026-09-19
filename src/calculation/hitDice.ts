@@ -17,6 +17,8 @@ export interface ClassHitDie {
 
 export interface HitDiceEntry {
 	className: string
+	/** With className, the key Character.play.spentHitDice stores this class's spend under (hitDiceKey), added in slice 9b6. */
+	classSource: string
 	faces: number
 	count: number
 }
@@ -37,7 +39,7 @@ export function computeHitDicePool(classes: CharacterClass[], classData: ClassHi
 		if (!hitDie) {
 			return unknown(`No hit die data for class "${characterClass.className}" (${characterClass.classSource}).`)
 		}
-		value.push({ className: characterClass.className, faces: hitDie.faces, count: characterClass.level })
+		value.push({ className: characterClass.className, classSource: characterClass.classSource, faces: hitDie.faces, count: characterClass.level })
 		breakdown.push({ source: characterClass.className, amount: characterClass.level })
 	}
 

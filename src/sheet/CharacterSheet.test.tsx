@@ -6857,4 +6857,178 @@ describe('the Vzhled a poznámky tab (slice 9d2)', () => {
 		expect(field.readOnly).toBe(true)
 		expect(field.value).toBe('Stored')
 	})
+
+	/* Slice 9b6: one click on a hit die rolls it, heals by the total (plus Constitution) and marks it spent. */
+	describe('spending a hit die', () => {
+		const FIGHTER_KEY = 'Fighter|XPHB'
+		// maxHpOverride pins a known maximum without a hit-point method; Constitution 13 is +1, so a d10 rolled as 6 heals 7.
+		const fighter: Character = { ...character, id: 'hit-die', maxHpOverride: 50, currentHp: 20 }
+		let randomSpy: { mockRestore: () => void }
+
+		beforeEach(() => {
+			randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5)
+		})
+		afterEach(() => {
+			randomSpy.mockRestore()
+		})
+
+		function Harness({
+			initial,
+			onHitPoints,
+			onSpent,
+			onRest,
+		}: {
+			initial: Character
+			onHitPoints: (hitPoints: HitPointFields) => void
+			onSpent: (spentHitDice: Record<string, number> | undefined) => void
+			onRest?: (rest: unknown) => void
+		}) {
+			const [current, setCurrent] = useState(initial)
+			return (
+				<CharacterSheet
+					character={current}
+					onEditHitPoints={(hitPoints) => {
+						onHitPoints(hitPoints)
+						setCurrent((c) => ({ ...c, currentHp: hitPoints.currentHp }))
+					}}
+					onEditSpentHitDice={(spentHitDice) => {
+						onSpent(spentHitDice)
+						setCurrent((c) => ({ ...c, play: { ...c.play, spentHitDice } }))
+					}}
+					onRest={onRest}
+				/>
+			)
+		}
+
+		async function renderHarness(subject: Character, onRest?: (rest: unknown) => void) {
+			const onHitPoints = vi.fn()
+			const onSpent = vi.fn()
+			const { container } = render(<Harness initial={subject} onHitPoints={onHitPoints} onSpent={onSpent} onRest={onRest} />)
+			await screen.findAllByRole('button', { name: /^Roll .* hit die$/ })
+			return { container, onHitPoints, onSpent }
+		}
+
+		function hitDiceRows(container: HTMLElement): string[] {
+			return Array.from(container.querySelectorAll('.sheet__hit-dice > ul > li')).map((li) => li.textContent ?? '')
+		}
+
+		function rollButton(className: string): HTMLButtonElement {
+			return screen.getByRole('button', { name: `Roll ${className} hit die` }) as HTMLButtonElement
+		}
+
+		it('shows remaining against the maximum, reading the stored spend', async () => {
+			const { container } = await renderHarness({ ...fighter, play: { spentHitDice: { [FIGHTER_KEY]: 2 } } })
+			expect(hitDiceRows(container)[0]).toContain('d10 (Fighter): 3 / 5 remaining')
+		})
+
+		it('one click heals by the roll plus Constitution and marks one die spent', async () => {
+			const { container, onHitPoints, onSpent } = await renderHarness(fighter)
+			expect(hitDiceRows(container)[0]).toContain('5 / 5 remaining')
+
+			fireEvent.click(rollButton('Fighter'))
+
+			// Math.random 0.5 on a d10 is a 6; Constitution 13 adds 1.
+			expect(container.querySelector('.sheet__hit-dice .dice-roll__result')!.textContent).toContain('6 + 1 = 7')
+			expect(onHitPoints).toHaveBeenCalledTimes(1)
+			expect(onHitPoints).toHaveBeenCalledWith({ currentHp: 27, maxHpOverride: 50, temporaryHitPoints: 0, deathSaves: undefined })
+			expect(onSpent).toHaveBeenCalledTimes(1)
+			expect(onSpent).toHaveBeenCalledWith({ [FIGHTER_KEY]: 1 })
+			expect(hitDiceRows(container)[0]).toContain('4 / 5 remaining')
+			expect(container.querySelector('.sheet__hit-points-value')!.textContent).toContain('27 / 50')
+		})
+
+		it('stops the healing at the maximum but still spends the die', async () => {
+			const { onHitPoints, onSpent } = await renderHarness({ ...fighter, currentHp: 47 })
+
+			fireEvent.click(rollButton('Fighter'))
+
+			expect(onHitPoints).toHaveBeenCalledWith(expect.objectContaining({ currentHp: 50 }))
+			expect(onSpent).toHaveBeenCalledWith({ [FIGHTER_KEY]: 1 })
+		})
+
+		it('keeps the other spent counts when one more is added', async () => {
+			const { onSpent } = await renderHarness({ ...fighter, play: { spentHitDice: { [FIGHTER_KEY]: 2 } } })
+
+			fireEvent.click(rollButton('Fighter'))
+
+			expect(onSpent).toHaveBeenCalledWith({ [FIGHTER_KEY]: 3 })
+		})
+
+		it('spends only the rolled class in a multiclass character', async () => {
+			const multiclass: Character = {
+				...fighter,
+				classes: [
+					{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 },
+					{ className: 'Bard', classSource: 'XPHB', subclass: null, level: 2 },
+				],
+			}
+			const { container, onSpent } = await renderHarness(multiclass)
+			expect(hitDiceRows(container)).toEqual([expect.stringContaining('d10 (Fighter): 3 / 3 remaining'), expect.stringContaining('d8 (Bard): 2 / 2 remaining')])
+
+			fireEvent.click(rollButton('Bard'))
+
+			expect(onSpent).toHaveBeenCalledWith({ 'Bard|XPHB': 1 })
+			expect(hitDiceRows(container)[0]).toContain('3 / 3 remaining')
+			expect(hitDiceRows(container)[1]).toContain('1 / 2 remaining')
+		})
+
+		it('disables the roll at 0 remaining, so nothing rolls and nothing heals', async () => {
+			const { container, onHitPoints, onSpent } = await renderHarness({ ...fighter, play: { spentHitDice: { [FIGHTER_KEY]: 4 } } })
+
+			fireEvent.click(rollButton('Fighter'))
+			expect(hitDiceRows(container)[0]).toContain('0 / 5 remaining')
+			expect(rollButton('Fighter').disabled).toBe(true)
+
+			fireEvent.click(rollButton('Fighter'))
+			expect(onHitPoints).toHaveBeenCalledTimes(1)
+			expect(onSpent).toHaveBeenCalledTimes(1)
+			expect(onSpent).toHaveBeenLastCalledWith({ [FIGHTER_KEY]: 5 })
+			// The one result made before the count ran out is still on show.
+			expect(container.querySelector('.sheet__hit-dice .dice-roll__result')).toBeTruthy()
+		})
+
+		it('is disabled from the start when every die is already spent', async () => {
+			const { onHitPoints, onSpent } = await renderHarness({ ...fighter, play: { spentHitDice: { [FIGHTER_KEY]: 5 } } })
+
+			expect(rollButton('Fighter').disabled).toBe(true)
+			fireEvent.click(rollButton('Fighter'))
+			expect(onHitPoints).not.toHaveBeenCalled()
+			expect(onSpent).not.toHaveBeenCalled()
+		})
+
+		it('offers no roll to a writable sheet with no current HP to heal, and says why', async () => {
+			const notSet: Character = { ...fighter }
+			delete notSet.currentHp
+			const { container, onHitPoints, onSpent } = await renderHarness(notSet)
+
+			expect(rollButton('Fighter').disabled).toBe(true)
+			expect(container.querySelector('.sheet__hit-dice-note')!.textContent).toContain('current HP')
+			fireEvent.click(rollButton('Fighter'))
+			expect(onHitPoints).not.toHaveBeenCalled()
+			expect(onSpent).not.toHaveBeenCalled()
+		})
+
+		it('a read-only sheet still rolls, and writes nothing', async () => {
+			const { container } = render(<CharacterSheet character={fighter} />)
+			await screen.findByRole('button', { name: 'Roll Fighter hit die' })
+
+			expect(rollButton('Fighter').disabled).toBe(false)
+			fireEvent.click(rollButton('Fighter'))
+
+			expect(container.querySelector('.sheet__hit-dice .dice-roll__result')!.textContent).toContain('6 + 1 = 7')
+			expect(hitDiceRows(container)[0]).toContain('5 / 5 remaining')
+			expect(container.querySelector('.sheet__hit-dice-note')).toBeNull()
+		})
+
+		it('a Short Rest passes the spent hit dice through untouched, a Long Rest returns them all', async () => {
+			const onRest = vi.fn()
+			await renderHarness({ ...fighter, play: { spentHitDice: { [FIGHTER_KEY]: 2 } } }, onRest)
+
+			fireEvent.click(screen.getByRole('button', { name: 'Short Rest' }))
+			expect(onRest).toHaveBeenLastCalledWith(expect.objectContaining({ spentHitDice: { [FIGHTER_KEY]: 2 } }))
+
+			fireEvent.click(screen.getByRole('button', { name: 'Long Rest' }))
+			expect(onRest).toHaveBeenLastCalledWith(expect.objectContaining({ spentHitDice: {} }))
+		})
+	})
 })

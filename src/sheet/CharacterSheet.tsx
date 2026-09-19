@@ -25,7 +25,9 @@ import { BASE_ATTUNEMENT_LIMIT, computeAttunementLimit, countAttuned, describeAt
 import type { FeatEffectEntry } from '../calculation/featEffects'
 import { makeRoomForHands, type HeldThing } from '../calculation/hands'
 import { resolveMagicBonus } from '../calculation/magicBonus'
-import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
+import { computeHitDicePool, hitDiceKey, type ClassHitDie, type HitDiceEntry } from '../calculation/hitDice'
+import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
+import { applyHealing } from '../hitPoints/damageHealing'
 import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
@@ -131,7 +133,7 @@ import {
 import { afterLongRest, afterShortRest } from '../rest/rest'
 import { DamageRollButton, RollButton } from '../dice/RollButton'
 import { addRollHistoryEntry, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
-import { parseDiceExpression } from '../dice/roll'
+import { parseDiceExpression, type DiceRoll } from '../dice/roll'
 import type { CharacterTextField, HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
@@ -1823,6 +1825,7 @@ export function CharacterSheet({
 	onEditHitPoints,
 	onEditResourceUses,
 	onEditSpentSpellSlots,
+	onEditSpentHitDice,
 	onEditConcentration,
 	onEditText,
 	onRest,
@@ -1839,6 +1842,8 @@ export function CharacterSheet({
 	onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void
 	/** Marks or undoes one spent spell slot on the Spells tab (slice 9b3). Absent leaves the slot counts showing with no buttons to change them. */
 	onEditSpentSpellSlots?: (spentSpellSlots: SpentSpellSlots | undefined) => void
+	/** Marks one spent hit die per class from the Hit dice section (slice 9b6), keyed by hitDiceKey. Absent leaves the roll working but writing nothing — the remaining count then never changes. */
+	onEditSpentHitDice?: (spentHitDice: Record<string, number> | undefined) => void
 	/** Sets or, with null, drops the spell being concentrated on (slice 9d1). Absent leaves the buttons and the header control off; the header line still shows a stored one. */
 	onEditConcentration?: (spellName: string | null) => void
 	/** Writes one of the three free-text fields, exactly as typed (slice 9d2). Absent leaves the textareas showing the stored text, read-only. */
@@ -2502,6 +2507,35 @@ export function CharacterSheet({
 		const next = Math.min(Math.max(0, (spentSpellSlots.pact ?? 0) + delta), max)
 		onEditSpentSpellSlots({ ...spentSpellSlots, pact: next })
 	}
+	/*
+	 * Slice 9b6: spending one hit die, in the same shape as the two pools above but
+	 * one-directional — a die comes back only on a Long Rest, never by an undo.
+	 * The roll's click does all of it: heal by the total (applyHealing, so the
+	 * maximum and temporary hit points behave exactly as in the damage panel, D110)
+	 * and mark the die. They are two writes because no store method updates both
+	 * currentHp and spentHitDice; both read fresh storage, so neither undoes the other.
+	 */
+	const spentHitDice = character.play?.spentHitDice ?? {}
+	function spendHitDie(key: string, max: number): void {
+		if (!onEditSpentHitDice) return
+		const next = Math.min(Math.max(0, (spentHitDice[key] ?? 0) + 1), max)
+		onEditSpentHitDice({ ...spentHitDice, [key]: next })
+	}
+	const currentHp = character.currentHp
+	/* D43/D110: healing needs a current value to act on and a maximum to stop at; neither is guessed. */
+	const hitDiceCanHeal = currentHp !== undefined && maxHitPoints.status === 'known'
+	function rollHitDie(entry: HitDiceEntry, roll: DiceRoll): void {
+		if (onEditHitPoints && currentHp !== undefined && maxHitPoints.status === 'known') {
+			const healed = applyHealing({ currentHp, temporaryHitPoints: character.play?.temporaryHitPoints ?? 0 }, roll.total, maxHitPoints.value)
+			onEditHitPoints({
+				currentHp: healed.currentHp,
+				maxHpOverride: character.maxHpOverride,
+				temporaryHitPoints: healed.temporaryHitPoints,
+				deathSaves: deathSavesAfterHitPointChange(healed.currentHp, character.play?.deathSaves),
+			})
+		}
+		spendHitDie(hitDiceKey(entry.className, entry.classSource), entry.count)
+	}
 	/* Slice 9d1: absent and null are both "none" (Character.play.concentratingOn). Clicking the active spell again drops it; any other replaces it without asking. */
 	const concentratingOn = character.play?.concentratingOn ?? null
 	function toggleConcentration(spellName: string): void {
@@ -2768,12 +2802,36 @@ export function CharacterSheet({
 				) : (
 					<>
 						<ul>
-							{hitDice.value.map((entry, index) => (
-								<li key={index}>
-									{entry.count}d{entry.faces} ({entry.className})
-								</li>
-							))}
+							{hitDice.value.map((entry) => {
+								const remaining = entry.count - Math.min(spentHitDice[hitDiceKey(entry.className, entry.classSource)] ?? 0, entry.count)
+								const constitution = abilityScores.constitution
+								return (
+									<li key={hitDiceKey(entry.className, entry.classSource)}>
+										d{entry.faces} ({entry.className}): {remaining} / {entry.count} remaining
+										{/* A hit die adds the Constitution modifier, so an unresolved one leaves nothing to roll (D43). */}
+										{constitution.status === 'known' && (
+											<>
+												{' '}
+												<DamageRollButton
+													count={1}
+													sides={entry.faces}
+													modifier={constitution.value.modifier}
+													label={`${entry.className} hit die`}
+													disabled={remaining === 0 || (onEditHitPoints !== undefined && !hitDiceCanHeal)}
+													onRoll={(report, roll) => {
+														recordRoll(report)
+														rollHitDie(entry, roll)
+													}}
+												/>
+											</>
+										)}
+									</li>
+								)
+							})}
 						</ul>
+						{onEditHitPoints && !hitDiceCanHeal && (
+							<p className="sheet__hit-dice-note">Hit dice cannot be rolled: healing needs a current HP and a computable maximum.</p>
+						)}
 						<ValueBreakdown breakdown={hitDice.breakdown} />
 					</>
 				)}

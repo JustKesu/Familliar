@@ -1174,6 +1174,22 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect(store.update(character.id, { name: 'Aria', play: { spentHitDice: { 'Fighter|XPHB': 0 } } }).play).toBeUndefined()
 	})
 
+	/* Slice 9b6: the targeted writer for spent hit dice, replacing only that field. */
+	it('sets spent hit dice on their own, drops a 0 count, and leaves every other play field and the hit points alone', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria', currentHp: 12, play: { resourceUses: { Rage: 1 } } })
+
+		store.setSpentHitDice(character.id, { 'Fighter|XPHB': 2, 'Bard|XPHB': 0 })
+		const after = new CharacterStore(backing).list()[0]
+		expect(after.play).toEqual({ resourceUses: { Rage: 1 }, spentHitDice: { 'Fighter|XPHB': 2 } })
+		expect(after.currentHp).toBe(12)
+
+		store.setSpentHitDice(character.id, undefined)
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ resourceUses: { Rage: 1 } })
+		expect(() => store.setSpentHitDice('missing', {})).toThrow()
+	})
+
 	/* Slice 9d1: the seventh play field, written on its own, replaced outright, and stored as absence when cleared. */
 	it('sets, replaces and clears the concentration spell, and no other write disturbs it', () => {
 		const backing = new MemoryStorage()

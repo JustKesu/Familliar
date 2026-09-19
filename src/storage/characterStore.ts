@@ -551,6 +551,27 @@ export class CharacterStore {
 	}
 
 	/**
+	 * Sets the character's spent hit dice (slice 9b6) — the same targeted write one
+	 * pool over, replacing only `spentHitDice`. Before this the only writer was
+	 * applyRest, which replaces all four spent piles at once.
+	 */
+	setSpentHitDice(id: string, spentHitDice: Record<string, number> | undefined): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currentHp, play, ...rest } = characters[index]
+		const storedPlay = storedPlayState(currentHp, { ...play, spentHitDice })
+		const updated = [...characters]
+		updated[index] = {
+			...rest,
+			...(currentHp !== undefined ? { currentHp } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
+		}
+		this.writeAll(updated)
+	}
+
+	/**
 	 * Sets (or, with null, clears) the spell the character is concentrating on
 	 * (slice 9d1) — a targeted write on the setSpentSpellSlots precedent that
 	 * replaces only `concentratingOn`. A rest or a hit-point write never touches

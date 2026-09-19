@@ -481,6 +481,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    | 9b3 | Spotřebované sloty kouzel — zvlášť běžné a Pact Magic (D11) | 37→38 |
    | 9b4 | Spotřebované hit dice — jen úložiště a clamp, bez UI | 38→39 |
    | 9b5 | Tlačítka Short Rest a Long Rest v hlavičce, jeden atomický zápis | — |
+   | 9b6 | Utracení hit die: hod v sekci Hit dice léčí a odečte kostku jedním kliknutím | — |
    | 9c1 | Pilot hodů kostkou: tlačítko Roll u to-hit zbraňových útoků | — |
    | 9c2 | Roll u vlastností, záchran, dovedností, iniciativy a poškození zbraně (víc kostek) | — |
    | 9c3a | Výhoda/nevýhoda u každého d20 Roll (ruční přepínač u tlačítka) | — |
@@ -771,8 +772,24 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      střelivo hráč vystřelil. Testy: `autoSpendEntry` v `ammunition.test.ts`,
      blok „the to-hit roll spends ammunition" v `CharacterSheet.test.tsx`.
      Neověřováno v prohlížeči. Tím je 9d hotové.
-   - Zbytek kroku 9 (vlastní slice, vlastní rozhodnutí): utracení hit die. Otevřené otázky k nim jsou v posledním REPORT.md ze session
-     průzkumu a nejsou těmihle slice rozhodnuté.
+   - Slice 9b6 — utracení hit die z UI. Sekce „Hit dice" ukazuje u každé
+     třídy `zbývá / maximum` (`count − spent`) a `DamageRollButton` (1 kostka
+     třídy + modifikátor Constitution, ten, který list už počítá). Jedno
+     kliknutí: hodí, vyléčí o výsledek přes `applyHealing` (strop = maximum HP,
+     dočasné HP se nemění, death saves podle `deathSavesAfterHitPointChange`) a
+     přidá jednu spotřebovanou kostku té třídy. Nejsou to jedna, ale dvě
+     volání (`onEditHitPoints`, pak nový `onEditSpentHitDice`), protože žádná
+     store metoda nepíše `currentHp` i `spentHitDice` společně; obě čtou
+     čerstvé úložiště. Nová `CharacterStore.setSpentHitDice` (cílený zápis jako
+     `setSpentSpellSlots`), `handleEditSpentHitDice` v `CharacterManager`,
+     `HitDiceEntry.classSource`. Na 0 zbývajících je tlačítko `disabled`.
+     Není za tlačítkem Short Rest — utratit jde kdykoli. Bez `onEditHitPoints`
+     / `onEditSpentHitDice` hod proběhne a nic se nezapíše. `DamageRollButton`
+     dostal `disabled` a předává `DiceRoll` jako druhý argument `onRoll`
+     (součet je potřeba k léčení). Short Rest hit dice nechává, Long Rest je
+     vrací všechny (beze změny, přidán test). Neověřováno v prohlížeči.
+     Zbylé kolo testů: viz docs/REPORT.md.
+   - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
 10. [not started] Multiclass
 
 ## Co appka umí navíc k build orderu
@@ -962,8 +979,8 @@ paměti). Slice 9d1 přidala sledování koncentrace (`play.concentratingOn`, sc
 40). Slice 9d2 přidala záložku `Vzhled a poznámky` (`Character.appearance`,
 `.backstory`, `.notes`, schéma 41). Slice 9d3 přidala střelivo u držené zbraně
 (bez schématu; `quantity` smí být 0). Slice 9d4 zapojila střelivo do to-hit
-hodu (automatické −1 při jednoznačné shodě). Další na řadě je utracení hit die
-při krátkém odpočinku.
+hodu (automatické −1 při jednoznačné shodě). Slice 9b6 dodala chybějící UI pro
+hit dice: hod v sekci Hit dice léčí a utrácí kostku (`setSpentHitDice`).
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.
