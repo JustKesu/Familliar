@@ -27,6 +27,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { RollButton } from '../dice/RollButton'
+import { rollKeepOne } from '../dice/roll'
 import { RollHistory, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
 import { type ArmourClassValue } from '../calculation/armourClass'
 import { type SpeedValue } from '../calculation/speciesTraits'
@@ -41,8 +42,8 @@ import {
 	NO_DEATH_SAVES,
 	recordFailures,
 	recordSuccesses,
-	rollDeathSaveDie,
 	type DeathSaveProgress,
+	type DeathSaveRollResult,
 } from '../hitPoints/deathSaves'
 import type { CharacterDeathSaves } from '../storage/character'
 import type { HitPointFields } from '../storage/characterStore'
@@ -177,27 +178,33 @@ function DamageHealingPanel({
  * a physical die clicks the box themselves. Both stop once the third box on
  * either row is ticked — the character is stabilized or dead, and the panel
  * stays put saying which until the hit points change.
+ *
+ * The rolled number is not shown here (D117): it is reported up to the header,
+ * which outlives this panel.
  */
 function DeathSavePanel({
 	deathSaves,
 	onApply,
+	onRolled,
 }: {
 	deathSaves: DeathSaveProgress
 	onApply: (next: { currentHp: number; deathSaves: DeathSaveProgress | undefined }) => void
+	/** D117: the result goes to the header, which shows it and logs it — a natural 20 unmounts this panel, and the number must not go with it. */
+	onRolled: (result: DeathSaveRollResult) => void
 }): ReactNode {
-	const [lastRoll, setLastRoll] = useState<string | null>(null)
 	const state = deathSaveState(deathSaves)
 	const finished = state !== 'rolling'
 
 	function applyRoll(rolled: number): void {
 		const result = applyDeathSaveRoll(deathSaves, rolled)
-		setLastRoll(describeDeathSaveRoll(result))
+		onRolled(result)
 		// A natural 20 is a heal like any other: 1 hit point back, and the progress goes with the dying.
 		onApply({ currentHp: result.regainsHitPoint ? 1 : 0, deathSaves: result.regainsHitPoint ? undefined : result.progress })
 	}
 
 	function roll(): void {
-		applyRoll(rollDeathSaveDie())
+		// D117: the same d20 RollButton makes, with no modifier and no advantage — a death save takes neither.
+		applyRoll(rollKeepOne(20, 0, 'normal').kept)
 	}
 
 	return (
@@ -226,7 +233,6 @@ function DeathSavePanel({
 			<button type="button" disabled={finished} onClick={() => applyRoll(1)}>
 				Natural 1
 			</button>
-			{lastRoll && <p className="sheet__death-save-roll">{lastRoll}</p>}
 			{state === 'stabilized' && (
 				<p className="sheet__death-save-state">Stabilized — still at 0 hit points and unconscious. Only healing brings this character back up.</p>
 			)}
@@ -291,6 +297,14 @@ export function SheetHeader({
 }): ReactNode {
 	/** What the death saves are worth on a write that does not touch the current hit points (D111). */
 	const carriedDeathSaves = deathSavesAfterHitPointChange(currentHp, deathSaves)
+	/* D117: held here, not in the panel, because a natural 20 unmounts the panel. It stays until the next death save roll. */
+	const [deathSaveRoll, setDeathSaveRoll] = useState<string | null>(null)
+
+	function recordDeathSaveRoll(result: DeathSaveRollResult): void {
+		const text = describeDeathSaveRoll(result)
+		setDeathSaveRoll(text)
+		onRoll?.({ label: 'death save', text })
+	}
 
 	return (
 		<header className="sheet__persistent-header">
@@ -415,7 +429,14 @@ export function SheetHeader({
 								onApply={(next) =>
 									onEditHitPoints({ currentHp: next.currentHp, maxHpOverride, temporaryHitPoints, deathSaves: next.deathSaves })
 								}
+								onRolled={recordDeathSaveRoll}
 							/>
+						)}
+						{/* Outside the panel: on a natural 20 the panel is gone by the time this renders, and the number rolled must still be readable (D117). */}
+						{deathSaveRoll !== null && (
+							<p className="sheet__death-save-roll" role="status">
+								{deathSaveRoll}
+							</p>
 						)}
 					</>
 				)}

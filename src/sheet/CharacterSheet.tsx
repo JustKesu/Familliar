@@ -1783,7 +1783,8 @@ const TEXT_COMMIT_IDLE_MS = 500
  * One collapsible free-text field (slice 9d2). The <details> is uncontrolled like
  * every other on the sheet, so each section opens and closes on its own. The
  * displayed value is the local draft alone; the write to storage is debounced
- * and flushed on blur and on unmount (D116). The parent keys this by character id.
+ * and flushed on blur, on unmount and when the page goes away (D116). The parent
+ * keys this by character id.
  */
 function TextSection({
 	label,
@@ -1812,6 +1813,18 @@ function TextSection({
 
 	// Closing the sheet or switching character unmounts this without a blur event.
 	useEffect(() => flush, [])
+
+	// Closing the tab or window fires neither blur nor unmount, so text typed within
+	// the idle window would be lost; pagehide covers the cases beforeunload misses (D116).
+	useEffect(() => {
+		const onLeave = (): void => flush()
+		window.addEventListener('beforeunload', onLeave)
+		window.addEventListener('pagehide', onLeave)
+		return () => {
+			window.removeEventListener('beforeunload', onLeave)
+			window.removeEventListener('pagehide', onLeave)
+		}
+	}, [])
 
 	return (
 		<details className="sheet__text-section">

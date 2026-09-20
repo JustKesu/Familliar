@@ -1843,6 +1843,23 @@ describe('CharacterSheet', () => {
 				expect(history(container).open).toBe(false)
 			})
 
+			/* D117: a death save is a roll like the others and lands in the same list, outcome included. */
+			it('records a death save roll, and shows the number in the header', async () => {
+				const user = userEvent.setup()
+				const random = vi.spyOn(Math, 'random').mockReturnValue(0)
+				try {
+					const { container } = render(<CharacterSheet character={{ ...character, id: 'history-death', currentHp: 0 }} onEditHitPoints={vi.fn()} />)
+					await screen.findByRole('heading', { name: 'Aria' })
+
+					await user.click(screen.getByRole('button', { name: 'Roll death save' }))
+
+					expect(historyLines(container)).toEqual(['Death save: Rolled 1 — two failures.'])
+					expect(container.querySelector('.sheet__death-save-roll')!.textContent).toBe('Rolled 1 — two failures.')
+				} finally {
+					random.mockRestore()
+				}
+			})
+
 			it('keeps the newest 50 and drops the oldest on the 51st roll', async () => {
 				const user = userEvent.setup()
 				const { container } = await renderSheet({ ...character, id: 'history-cap', inventory: holding('Longsword') })
@@ -6905,6 +6922,30 @@ describe('the Vzhled a poznámky tab (slice 9d2)', () => {
 
 			expect(onEdit).toHaveBeenCalledTimes(1)
 			expect(onEdit).toHaveBeenLastCalledWith('backstory', 'Left at dawn')
+		})
+
+		it.each(['beforeunload', 'pagehide'])('flushes pending text when the page goes away (%s) without a blur', async (event) => {
+			const { user, onEdit } = await openNotesTab()
+
+			await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato')
+			expect(onEdit).not.toHaveBeenCalled()
+
+			fireEvent(window, new Event(event))
+
+			expect(onEdit).toHaveBeenCalledTimes(1)
+			expect(onEdit).toHaveBeenLastCalledWith('notes', 'Owes Cato')
+
+			// The flush cleared the timer, so the idle write does not repeat it.
+			await wait(800)
+			expect(onEdit).toHaveBeenCalledTimes(1)
+		})
+
+		it('does nothing when the page goes away with no pending text', async () => {
+			const { onEdit } = await openNotesTab({ ...character, notes: 'Stored' })
+
+			fireEvent(window, new Event('beforeunload'))
+
+			expect(onEdit).not.toHaveBeenCalled()
 		})
 	})
 

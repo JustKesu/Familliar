@@ -4,9 +4,9 @@
  * is arithmetic over the two counts — the caller owns the hit points and asks
  * this module what a roll or a click does to the boxes.
  *
- * The d20 is deliberately local to this feature: a death save takes no bonuses
- * at all, so there is nothing to share with the general dice roller a later step
- * builds.
+ * The die itself is not here: D117 reversed D111's separate d20 and the panel now
+ * rolls through the shared dice module, so a death save lands in the roll history
+ * like every other roll.
  */
 
 export interface DeathSaveProgress {
@@ -84,11 +84,6 @@ export function describeDeathSaveRoll(result: DeathSaveRollResult): string {
 		case 'failure':
 			return `Rolled ${result.roll} — a failure.`
 	}
-}
-
-/** A plain, unmodified d20. `random` is injected the same way `randomDie` is, so tests get a fixed die. */
-export function rollDeathSaveDie(random: () => number = Math.random): number {
-	return Math.floor(random() * 20) + 1
 }
 
 /**

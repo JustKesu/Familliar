@@ -286,6 +286,11 @@ describe('SheetHeader death saving throws', () => {
 		return screen.getByRole('group', { name: 'Death saving throws' })
 	}
 
+	/** D117: the rolled number lives in the header, outside the panel, so a natural 20 does not take it away. */
+	function rolledText(): string {
+		return document.querySelector('.sheet__death-save-roll')?.textContent ?? ''
+	}
+
 	afterEach(() => vi.restoreAllMocks())
 
 	it('is hidden above 0 hit points and shown at exactly 0', () => {
@@ -340,7 +345,7 @@ describe('SheetHeader death saving throws', () => {
 		const onEditHitPoints = renderDying({}, roll)
 		fireEvent.click(screen.getByRole('button', { name: 'Roll death save' }))
 		expect(onEditHitPoints).toHaveBeenLastCalledWith(expect.objectContaining({ currentHp: 0, deathSaves: expected }))
-		expect(panel().textContent).toContain(`Rolled ${roll} — ${message}`)
+		expect(rolledText()).toContain(`Rolled ${roll} — ${message}`)
 	})
 
 	it('hands back one hit point and drops the progress on a natural 20', () => {
@@ -351,6 +356,54 @@ describe('SheetHeader death saving throws', () => {
 			maxHpOverride: undefined,
 			temporaryHitPoints: undefined,
 			deathSaves: undefined,
+		})
+	})
+
+	/* D117: the roll joins the sheet-wide history and is shown outside the panel, which a natural 20 unmounts. */
+	describe('the rolled number (D117)', () => {
+		it('reports every rolled death save to the roll history, outcome included', () => {
+			const onRoll = vi.fn()
+			renderDying({ onRoll }, 14)
+			fireEvent.click(screen.getByRole('button', { name: 'Roll death save' }))
+			expect(onRoll).toHaveBeenCalledTimes(1)
+			expect(onRoll).toHaveBeenLastCalledWith({ label: 'death save', text: 'Rolled 14 — a success.' })
+		})
+
+		it('logs a natural 1 as one entry that says it counted as two failures', () => {
+			const onRoll = vi.fn()
+			renderDying({ onRoll }, 1)
+			fireEvent.click(screen.getByRole('button', { name: 'Roll death save' }))
+			expect(onRoll).toHaveBeenLastCalledWith({ label: 'death save', text: 'Rolled 1 — two failures.' })
+			expect(rolledText()).toContain('Rolled 1 — two failures.')
+		})
+
+		it('logs a natural 20 and keeps the number on screen after the panel is gone', () => {
+			const onRoll = vi.fn()
+			vi.spyOn(Math, 'random').mockReturnValue(0.99)
+			const { rerender } = renderHeader({ currentHp: 0, maxHitPoints: maxOf(44), onEditHitPoints: vi.fn(), onRoll })
+			fireEvent.click(screen.getByRole('button', { name: 'Roll death save' }))
+			expect(onRoll).toHaveBeenLastCalledWith({ label: 'death save', text: 'Rolled 20 — back up on 1 hit point.' })
+
+			// The store's write comes back as 1 current HP, which unmounts the panel.
+			rerender(headerElement({ currentHp: 1, maxHitPoints: maxOf(44), onEditHitPoints: vi.fn(), onRoll }))
+			expect(screen.queryByRole('group', { name: 'Death saving throws' })).toBeNull()
+			expect(rolledText()).toContain('Rolled 20 — back up on 1 hit point.')
+		})
+
+		it('reports a hand-clicked natural 20 or natural 1 the same way, and a plain Success not at all', () => {
+			const onRoll = vi.fn()
+			renderDying({ onRoll })
+
+			fireEvent.click(screen.getByRole('button', { name: 'Natural 1' }))
+			expect(onRoll).toHaveBeenLastCalledWith({ label: 'death save', text: 'Rolled 1 — two failures.' })
+
+			fireEvent.click(screen.getByRole('button', { name: 'Success' }))
+			expect(onRoll).toHaveBeenCalledTimes(1)
+		})
+
+		it('shows nothing before the first roll', () => {
+			renderDying()
+			expect(document.querySelector('.sheet__death-save-roll')).toBeNull()
 		})
 	})
 

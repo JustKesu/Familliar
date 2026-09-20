@@ -526,9 +526,9 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      přímé zadání, level up i odebrání úrovně postup smažou samy a nezbyde
      nic, k čemu se vrátit. Nový `src/hitPoints/deathSaves.ts` (čisté funkce
      `classifyDeathSaveRoll`, `applyDeathSaveRoll`, `recordSuccesses`,
-     `recordFailures`, `deathSaveState`, `describeDeathSaveRoll`,
-     `rollDeathSaveDie`). `DeathSavePanel` v `SheetHeader.tsx` (jen při 0 HP):
-     počty, tlačítko „Roll death save" (vlastní d20 bez bonusů, hozené číslo se
+     `recordFailures`, `deathSaveState`, `describeDeathSaveRoll`).
+     `DeathSavePanel` v `SheetHeader.tsx` (jen při 0 HP):
+     počty, tlačítko „Roll death save" (d20 bez bonusů, hozené číslo se
      ukáže — nat 20 = 1 HP zpátky a konec, nat 1 = dva neúspěchy se stropem 3,
      10–19 úspěch, 2–9 neúspěch) a čtyři tlačítka pro fyzickou kostku —
      „Success" / „Failure" (přímý zápis jednoho počtu) a „Natural 20" /
@@ -700,6 +700,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      při renderu při změně modifikátoru (u poškození count/sides/modifikátor),
      zvolený režim zůstává. Ověřeno v prohlížeči (záchrana, poškození,
      iniciativa; historie otevřená z tabu Inventář).
+   - Sloučení 9a2 s 9c3b (D117) — death save je hod jako každý jiný.
+     `DeathSavePanel` hází `rollKeepOne(20, 0, 'normal')` ze sdíleného
+     `src/dice/roll.ts` (vlastní `rollDeathSaveDie` v `deathSaves.ts` zrušen) a
+     výsledek hlásí hlavičce: ta ho pošle do `onRoll` jako
+     `{ label: 'death save', text: describeDeathSaveRoll(result) }`, takže v
+     historii stojí jeden záznam „Death save: Rolled 1 — two failures." i pro
+     přirozenou 1. Ruční „Natural 20"/„Natural 1" jdou toutéž cestou a taky se
+     logují; „Success"/„Failure" ne (nejsou hod). Hozené číslo se zobrazuje v
+     `<p class="sheet__death-save-roll" role="status">` v hlavičce, mimo panel —
+     přirozená 20 panel odpojí a uvnitř by hláška zmizela s ním; drží se do
+     dalšího hodu. Pravidla (`deathSaves.ts`) beze změny. Ověřeno v prohlížeči
+     (13 → úspěch, ruční nat 1 → dva neúspěchy, ruční nat 20 → 1 HP, panel pryč,
+     číslo i tři záznamy v historii dál vidět).
    - Slice 9d1 — sledování koncentrace, jen play tracking. `Character.play.
      concentratingOn?: string | null` (název kouzla; schéma 40, migrace 39→40 jen
      tag). Uložení píše „žádné" jako nepřítomnost pole, načtený `null` se čte
@@ -729,8 +742,9 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `toCharacter`); import odmítne neřetězec. Nový
      `CharacterStore.setText(id, field, text)`, `CharacterSheet` prop
      `onEditText`. Zápis je odložený (D116): textarea zobrazuje jen lokální
-     draft a `onEdit` se volá po 500 ms nečinnosti, na blur a při unmountu;
-     je klíčovaná `character.id`, takže se text nepřenese na jinou postavu. Bez `onEditText` jsou textarey `readOnly`. Pozor:
+     draft a `onEdit` se volá po 500 ms nečinnosti, na blur, při unmountu a na
+     `beforeunload`/`pagehide` okna (D118 — zavřená karta jinak poslední text
+     ztratila); je klíčovaná `character.id`, takže se text nepřenese na jinou postavu. Bez `onEditText` jsou textarey `readOnly`. Pozor:
      `wizardState.saveCharacter` skládá vstup pro `store.update` po polích, proto
      tři pole přenáší z `existing` — bez toho by je úprava/level up smazala.
      Žádné limity, markdown ani vazba na zbytek sheetu. Testy: bloky v
@@ -835,7 +849,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   upu i odebrání úrovně; ruční přepsání kdykoli pak vyhrává. Druhé vstupní
   pole je "Max HP override" (`maxHpOverride`), ne maximum samo, třetí je od
   9a1 "Temporary HP" (D110) a pod nimi je panel poškození/léčení a — jen při
-  0 current HP — panel death saves (9a2, D111);
+  0 current HP — panel death saves (9a2, D111), pod ním poslední hozené číslo
+  death save (D117, zůstává i po zmizení panelu);
   `CharacterStore.setHitPoints` píše všechna čtyři pole jedním objektem.
   Není sticky (může se
   řešit později). Testy: `SheetHeader.test.tsx` a sekce v

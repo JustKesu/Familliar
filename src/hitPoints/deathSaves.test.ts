@@ -7,7 +7,6 @@ import {
 	describeDeathSaveRoll,
 	recordFailures,
 	recordSuccesses,
-	rollDeathSaveDie,
 } from './deathSaves'
 
 describe('classifying a death save roll (D111)', () => {
@@ -98,14 +97,4 @@ describe('death saves against the hit points (D111)', () => {
 	})
 })
 
-describe('the death save die (D111)', () => {
-	it('is a plain d20 — no bonus, both ends reachable', () => {
-		expect(rollDeathSaveDie(() => 0)).toBe(1)
-		expect(rollDeathSaveDie(() => 0.999)).toBe(20)
-		for (let trial = 0; trial < 50; trial++) {
-			const roll = rollDeathSaveDie()
-			expect(roll).toBeGreaterThanOrEqual(1)
-			expect(roll).toBeLessThanOrEqual(20)
-		}
-	})
-})
+/* D117: the die moved to the shared roller (rollKeepOne), so it is covered by the dice tests and by SheetHeader's. */

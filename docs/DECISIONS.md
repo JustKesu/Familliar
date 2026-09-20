@@ -2342,3 +2342,37 @@ se necachují (cachují se jen fetche, D39); `ResolvedEntries` volá `buildExpan
 každém renderu a `resolveRef` → `findById` je lineární průchod polem featur na každý
 výskyt odkazu; `Markup` znovu parsuje každý řetězec. Pořadí příspěvků je odhad ze čtení
 kódu, neměřený.
+
+## D117 — Záchranné hody proti smrti se hází stejným kostkovým mechanismem jako ostatní hody a zapisují se do historie hodů
+
+Slice 9a2 + 9c3b. Ruší část D111, která dala death save vlastní lokální d20
+(`rollDeathSaveDie`) mimo sdílený roller.
+
+`DeathSavePanel` teď hází `rollKeepOne(20, 0, 'normal')` z `src/dice/roll.ts` — tutéž
+funkci, kterou používá `RollButton` — bez modifikátoru a bez výhody/nevýhody, protože
+death save ani jedno nemá. Každý hod (i ruční tlačítka Natural 20 / Natural 1) se hlásí
+sheetu přes `onRoll` a objeví se v historii hodů jako jeden záznam
+`Death save: Rolled N — …`. Tlačítka Success / Failure zůstávají mimo historii: nejsou
+hod, jen zatržení políčka.
+
+Text záznamu je `describeDeathSaveRoll` ("Rolled 1 — two failures."), ne obvyklý rozpis
+`N + 0 = N`. Death save nemá modifikátor, takže by rozpis nic nepřidal, a u přirozené 1
+je podstatné, že se počítá za dvě neúspěchy — to se vejde do jednoho záznamu a nemusí
+se to štěpit na dva.
+
+Hozené číslo se zobrazuje v hlavičce (`.sheet__death-save-roll`, `role="status"`), ne
+uvnitř panelu: přirozená 20 panel odpojí (postava je na 1 HP), a s ním by zmizelo i to,
+co padlo — hráč by neviděl vůbec nic. Hláška zůstává až do dalšího death save hodu nebo
+do zavření sheetu; je to poslední věc, která se s HP stala, a mizet sama nemá proč.
+
+Pravidla samotná se nemění: prahy, přirozená 20 / 1 i stabilizace zůstávají v
+`deathSaves.ts` beze změny.
+
+## D118 — Volná textová pole se zapisují i při zavření karty (`beforeunload`, `pagehide`)
+
+Doplňuje D116, jehož poslední odstavec uváděl ztrátu textu při pádu nebo zavření karty
+v okně 500 ms po posledním stisku jako přijatou cenu. `TextSection` nově registruje
+tentýž `flush()` na `beforeunload` a `pagehide` okna. `flush()` je idempotentní (zruší
+čekající timer, bez čekajícího zápisu nedělá nic), takže se nic nezapíše dvakrát.
+`pagehide` pokrývá případy, kdy `beforeunload` neproběhne (mobilní prohlížeče, bfcache).
+Zbytek D116 — 500 ms prodleva, blur, unmount — beze změny.
