@@ -2316,3 +2316,29 @@ Appka neadjudikuje zásah/minutí (SPEC.md) — hod na zásah proto odečte muni
 hned při kliknutí na Roll, ne až po vyhodnocení výsledku. Odpovídá tomu, jak
 hráč skutečně střílí: šíp je vystřelený, ať trefí nebo ne. Poškození munici
 neodečítá — odečet už proběhl u to-hit hodu ve stejném útoku.
+
+## D116 — Volná textová pole na sheetu se zapisují odloženě (500 ms nečinnosti, nebo blur), ne při každém stisku
+
+Slice 9d2, oprava zpoždění psaní. `CharacterSheet.tsx` `TextSection`.
+
+Zobrazená hodnota `<textarea>` je jen lokální draft. `onEdit` (→ `store.setText` →
+`refresh()`) se volá až po 500 ms bez psaní, okamžitě při blur a při unmountu
+(zavření sheetu / přepnutí postavy nevyvolá blur). Čekající zápis, který blur
+předběhne, se zruší, takže se stejný text nezapíše dvakrát; blur bez změny nezapíše
+nic. Dřívější zápis při každém stisku znovu naparsoval všechny uložené postavy,
+dal `character` novou identitu a tím přerenderoval celý sheet po každém znaku.
+
+Cena: při pádu karty v okně 500 ms po posledním stisku se poslední úsek textu ztratí;
+blur a unmount to pokrývají v běžném použití.
+
+**Širší problém zůstává a je vědomě odložený:** v celé kódové bázi není žádná
+memoizace (`useMemo`/`useCallback`/`React.memo`), 13 `useEffect`ů je klíčovaných na
+identitu celého `character` a všech šest panelů záložek je stále připojených. Každý
+jiný zápis (inventář, HP, spotřeba zdrojů) tak dál platí plný přerender. Tady se řeší
+jen příznak u tří textových polí; oprava příčin je samostatná práce. Z vyšetřování:
+`refresh()` po každé mutaci vrací `store.list()`, tedy nově naparsované objekty, takže
+`character` mění identitu při každém zápisu; efekty přepočítávají extraktory, které
+se necachují (cachují se jen fetche, D39); `ResolvedEntries` volá `buildExpansions` při
+každém renderu a `resolveRef` → `findById` je lineární průchod polem featur na každý
+výskyt odkazu; `Markup` znovu parsuje každý řetězec. Pořadí příspěvků je odhad ze čtení
+kódu, neměřený.

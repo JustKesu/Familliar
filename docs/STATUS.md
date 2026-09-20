@@ -728,9 +728,9 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      bez parsování, prázdný řetězec = nepřítomnost pole (`buildCharacter`,
      `toCharacter`); import odmítne neřetězec. Nový
      `CharacterStore.setText(id, field, text)`, `CharacterSheet` prop
-     `onEditText`. Zápis běží při každé změně (ne na blur), textarea drží
-     lokální draft a je klíčovaná `character.id`, takže se text nepřenese na
-     jinou postavu. Bez `onEditText` jsou textarey `readOnly`. Pozor:
+     `onEditText`. Zápis je odložený (D116): textarea zobrazuje jen lokální
+     draft a `onEdit` se volá po 500 ms nečinnosti, na blur a při unmountu;
+     je klíčovaná `character.id`, takže se text nepřenese na jinou postavu. Bez `onEditText` jsou textarey `readOnly`. Pozor:
      `wizardState.saveCharacter` skládá vstup pro `store.update` po polích, proto
      tři pole přenáší z `existing` — bez toho by je úprava/level up smazala.
      Žádné limity, markdown ani vazba na zbytek sheetu. Testy: bloky v

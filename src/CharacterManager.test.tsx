@@ -197,6 +197,7 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 
 		await user.type(screen.getByRole('textbox', { name: 'Příběh' }), '- Raised by owls{Enter}  - Left at dawn  ')
 		await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato 5 gp')
+		await user.tab()
 
 		const stored = store.list().find((character) => character.id === created.id)
 		expect(stored?.backstory).toBe('- Raised by owls\n  - Left at dawn  ')
@@ -225,6 +226,8 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 
 		expect((screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement).value).toBe('')
 		expect(store.list().find((character) => character.name === 'Bree')?.notes).toBeUndefined()
+		// Clicking the other row's button blurred the textarea, which committed to Aria (D116).
+		expect(store.list().find((character) => character.name === 'Aria')?.notes).toBe('Aria only')
 	})
 })
 

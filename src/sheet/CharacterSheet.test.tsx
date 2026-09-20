@@ -6816,13 +6816,17 @@ describe('the Vzhled a poznámky tab (slice 9d2)', () => {
 	it('writes each textarea to its own field, exactly as typed, line breaks included', async () => {
 		const { user, onEdit } = await openNotesTab()
 
+		// Tab leaves the field, which is what commits (D116).
 		await user.type(screen.getByRole('textbox', { name: 'Vzhled' }), 'Tall{Enter}Green eyes')
+		await user.tab()
 		expect(onEdit).toHaveBeenLastCalledWith('appearance', 'Tall\nGreen eyes')
 
 		await user.type(screen.getByRole('textbox', { name: 'Příběh' }), '- Raised by owls{Enter}  - Left at dawn  ')
+		await user.tab()
 		expect(onEdit).toHaveBeenLastCalledWith('backstory', '- Raised by owls\n  - Left at dawn  ')
 
 		await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato 5 gp')
+		await user.tab()
 		expect(onEdit).toHaveBeenLastCalledWith('notes', 'Owes Cato 5 gp')
 
 		// Each textarea shows its own text and nothing of the other two.
@@ -6845,8 +6849,63 @@ describe('the Vzhled a poznámky tab (slice 9d2)', () => {
 		const { user, onEdit } = await openNotesTab({ ...character, notes: 'x' })
 
 		await user.clear(screen.getByRole('textbox', { name: 'Poznámky' }))
+		await user.tab()
 
 		expect(onEdit).toHaveBeenLastCalledWith('notes', '')
+	})
+
+	/* D116: the displayed text is the local draft; storage is written on idle or blur, never per keystroke. */
+	describe('commit timing (D116)', () => {
+		const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+		it('keeps typing local and writes once, with the final text, after the idle delay', async () => {
+			const { user, onEdit } = await openNotesTab()
+			const field = screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement
+
+			await user.type(field, 'Owes Cato')
+
+			expect(field.value).toBe('Owes Cato')
+			expect(onEdit).not.toHaveBeenCalled()
+			await waitFor(() => expect(onEdit).toHaveBeenCalledTimes(1), { timeout: 2000 })
+			expect(onEdit).toHaveBeenLastCalledWith('notes', 'Owes Cato')
+		})
+
+		it('commits on blur at once, and the pending idle write does not repeat it', async () => {
+			const { user, onEdit } = await openNotesTab()
+
+			await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato')
+			expect(onEdit).not.toHaveBeenCalled()
+			await user.tab()
+			expect(onEdit).toHaveBeenCalledTimes(1)
+			expect(onEdit).toHaveBeenLastCalledWith('notes', 'Owes Cato')
+
+			await wait(800)
+			expect(onEdit).toHaveBeenCalledTimes(1)
+		})
+
+		it('does not write on blur when nothing was typed', async () => {
+			const { user, onEdit } = await openNotesTab({ ...character, notes: 'Stored' })
+
+			await user.click(screen.getByRole('textbox', { name: 'Poznámky' }))
+			await user.tab()
+
+			expect(onEdit).not.toHaveBeenCalled()
+		})
+
+		it('flushes pending text when the sheet unmounts without a blur', async () => {
+			const onEdit = vi.fn()
+			const user = userEvent.setup()
+			const { unmount } = render(<Harness initial={character} onEdit={onEdit} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await user.click(screen.getByRole('tab', { name: 'Vzhled a poznámky' }))
+			await user.type(screen.getByRole('textbox', { name: 'Příběh' }), 'Left at dawn')
+			expect(onEdit).not.toHaveBeenCalled()
+
+			unmount()
+
+			expect(onEdit).toHaveBeenCalledTimes(1)
+			expect(onEdit).toHaveBeenLastCalledWith('backstory', 'Left at dawn')
+		})
 	})
 
 	it('leaves the textareas read-only when the sheet is given no way to write them', async () => {

@@ -1777,11 +1777,13 @@ function DamageResponsesSection({ responses, loading, dataError }: { responses: 
 	)
 }
 
+const TEXT_COMMIT_IDLE_MS = 500
+
 /**
  * One collapsible free-text field (slice 9d2). The <details> is uncontrolled like
  * every other on the sheet, so each section opens and closes on its own. The
- * draft is local because the text is written through on every change and the
- * value must not wait on that round trip; the parent keys this by character id.
+ * displayed value is the local draft alone; the write to storage is debounced
+ * and flushed on blur and on unmount (D116). The parent keys this by character id.
  */
 function TextSection({
 	label,
@@ -1793,6 +1795,24 @@ function TextSection({
 	onEdit: ((text: string) => void) | undefined
 }): ReactNode {
 	const [draft, setDraft] = useState(stored ?? '')
+	const pending = useRef<{ timer: ReturnType<typeof setTimeout>; text: string } | null>(null)
+	// onEdit is a fresh closure every render; the timer and the unmount flush must call the latest one.
+	const latestOnEdit = useRef(onEdit)
+	useEffect(() => {
+		latestOnEdit.current = onEdit
+	})
+
+	function flush(): void {
+		const scheduled = pending.current
+		if (scheduled === null) return
+		clearTimeout(scheduled.timer)
+		pending.current = null
+		latestOnEdit.current?.(scheduled.text)
+	}
+
+	// Closing the sheet or switching character unmounts this without a blur event.
+	useEffect(() => flush, [])
+
 	return (
 		<details className="sheet__text-section">
 			<summary>{label}</summary>
@@ -1802,9 +1822,12 @@ function TextSection({
 				value={draft}
 				readOnly={onEdit === undefined}
 				onChange={(event) => {
-					setDraft(event.target.value)
-					onEdit?.(event.target.value)
+					const text = event.target.value
+					setDraft(text)
+					if (pending.current !== null) clearTimeout(pending.current.timer)
+					pending.current = { timer: setTimeout(flush, TEXT_COMMIT_IDLE_MS), text }
 				}}
+				onBlur={flush}
 			/>
 		</details>
 	)
