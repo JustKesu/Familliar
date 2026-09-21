@@ -392,7 +392,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `src/levelUp/RemoveLevelButton.tsx` v hlavičce sheetu vedle "Level up"
      (`CharacterSheet` `onRemoveLevel`): "Remove level N" → potvrzení uvnitř
      stránky (`role="alertdialog"`, výpis mazaných položek, Confirm/Cancel),
-     nedostupný stav nese důvod v textu. `CharacterManager` zapíše jednou přes
+     nedostupný stav má pevný popisek "Remove level" a důvod v atributu `title`.
+     `CharacterManager` zapíše jednou přes
      `store.update`. Testy: `levelRemoval.test.tsx` (Fighter 4→5→4 a 3→4→4
      bajtově shodné s úložištěm před level upem, mazání podle úrovně, spelly
      zůstávají, podtřída jen na úrovni volby, fighting style jen na úrovni

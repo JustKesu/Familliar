@@ -180,7 +180,8 @@ describe('CharacterManager remove level (slice 8e)', () => {
 		expect(stored?.classes[0].level).toBe(4)
 		expect(stored?.hitPointLevels).toBeUndefined()
 		expect(await screen.findByText('Fighter 4')).not.toBeNull()
-		expect(await screen.findByRole('button', { name: /Remove level unavailable: This character was created at level 4/ })).not.toBeNull()
+		const unavailable = (await screen.findByRole('button', { name: 'Remove level' })) as HTMLButtonElement
+		expect(unavailable.title).toMatch(/Remove level unavailable: This character was created at level 4/)
 	})
 })
 

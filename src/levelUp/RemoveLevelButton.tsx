@@ -79,8 +79,13 @@ export function RemoveLevelButton({
 		)
 	}
 	return (
-		<button type="button" className="sheet__remove-level" disabled>
-			{current.kind === 'checking' ? 'Remove level (checking what the level holds…)' : `Remove level unavailable: ${current.reason}`}
+		<button
+			type="button"
+			className="sheet__remove-level"
+			disabled
+			title={current.kind === 'checking' ? 'Checking what the level holds…' : `Remove level unavailable: ${current.reason}`}
+		>
+			Remove level
 		</button>
 	)
 }

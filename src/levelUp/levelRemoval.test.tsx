@@ -366,7 +366,8 @@ describe('RemoveLevelButton', () => {
 
 		const button = screen.getByRole('button', { name: /remove level/i }) as HTMLButtonElement
 		expect(button.disabled).toBe(true)
-		expect(button.textContent).toContain('created at level 5')
+		expect(button.textContent).toBe('Remove level')
+		expect(button.title).toContain('created at level 5')
 		expect(loadPlan).not.toHaveBeenCalled()
 	})
 
@@ -375,7 +376,8 @@ describe('RemoveLevelButton', () => {
 
 		const button = screen.getByRole('button', { name: /remove level/i }) as HTMLButtonElement
 		expect(button.disabled).toBe(true)
-		expect(button.textContent).toContain('not known')
+		expect(button.textContent).toBe('Remove level')
+		expect(button.title).toContain('not known')
 	})
 
 	it('refuses a multiclass character on the control', () => {
@@ -390,7 +392,8 @@ describe('RemoveLevelButton', () => {
 
 		const button = screen.getByRole('button', { name: /remove level/i }) as HTMLButtonElement
 		expect(button.disabled).toBe(true)
-		expect(button.textContent).toContain('Multiclass')
+		expect(button.textContent).toBe('Remove level')
+		expect(button.title).toContain('Multiclass')
 	})
 
 	it('asks inside the page first, and cancelling hands nothing to the writer', async () => {

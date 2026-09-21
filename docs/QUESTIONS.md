@@ -347,3 +347,15 @@ slot, který multiclass součet ve skutečnosti nedává.
 
 Nalezeno při stavbě 9b3 (Cowork, 17. 9. 2026).
 STATUS: nerozhodnuto, čeká na krok 10.
+
+### Aberrant Dragonmark, Natural Recovery, Magic Item Tinker — dva nezávislé limity v jedné featuře
+
+D119/D120: tyhle tři featury nesou v jednom datovém záznamu dva nezávislé
+rest limity (např. Natural Recovery: bezplatné seslání kouzla Kruhu na
+Long Rest + zvlášť obnova slotů). Jeden max-1 tracker by je tiše slil,
+takže zůstávají v `TWO_INDEPENDENT_LIMITS` bez trackeru vůbec. Řešení
+by znamenalo umět modelovat víc než jeden Uses zdroj na jednu featuru —
+appka to dnes neumí nikde. Rozhodnout, až se na to dojde (možná víc
+featur má stejný tvar, mezi zbylými ~48 se to nekontrolovalo).
+STATUS: nerozhodnuto, nízká priorita — appka dnes tyhle featury jen
+neukazuje s trackerem, nic nefunguje špatně.
