@@ -355,6 +355,33 @@ Recovery, is 40:
   one resource. The exclusion is by name (`TWO_INDEPENDENT_LIMITS`), since nothing
   in the text tells them apart from a genuine single use.
 
+The 9 "count" features, re-examined (D120). Only 2 state a real count of their
+own uses: Action Surge ("twice before a rest" from 17) and Indomitable ("twice
+before a Long Rest starting at level 13 and three times … starting at level
+17"); every record of each (2 and 3 records) carries the full text. The other 7
+matched on something else:
+
+- A multiplier, not a count: Superior Atlas ("twice your Artificer level"),
+  Undying Sentinel ("three times your Paladin level"), Psi-Powered Leap ("twice
+  your walking speed" / "twice your Speed").
+- "uses" of a different pool: Persistent Rage ("regain all expended uses of
+  Rage"), Wild Resurgence and Archdruid ("uses of Wild Shape"). In both of the
+  last two only one clause is rest-limited; the rest is unlimited or once per
+  turn.
+- A verb: Magic Item Tinker ("that uses charges") — and it has two
+  independent Long-Rest limits (Drain, Transmute) plus an unlimited Charge.
+
+`STATES_A_COUNT` now matches only "number of times|uses", "twice|thrice|N
+times" not followed by "your", and "N uses" not followed by "of". The 6 of
+the first two bullets are single-use (46 in all); Magic Item Tinker joins
+`TWO_INDEPENDENT_LIMITS`. Action Surge and Indomitable read a hand-written
+Fighter-level table, `LEVEL_SCALED_USES` (D120): 1/2 at 2/17 and 1/2/3 at
+9/13/17.
+
+9 recharge on a Short Rest: the 7 below plus Action Surge and Psi-Powered
+Leap ("… until you finish a Short Rest or Long Rest"), for which the whole pool
+comes back. Indomitable's recharge is Long Rest only.
+
 7 of the 40 recharge on a Short Rest — Stroke of Luck, The Third Eye, Illusory
 Self and Telekinetic Movement ("can't use it again until you finish a Short
 Rest or Long Rest"; Telekinetic Movement adds "unless you expend a Psionic

@@ -828,6 +828,15 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      recharges on a Short Rest too" v `resources.test.ts` + jeden v
      `rest.test.ts`. Ověřeno v prohlížeči (Rogue 20: Stroke of Luck utracen
      `1 / 1` → Short Rest → `0 / 1`).
+   - D120: `STATES_A_COUNT` chytá jen počet vlastních použití (ne „twice your
+     X", ne „uses of Rage/Wild Shape") → Superior Atlas, Undying Sentinel,
+     Psi-Powered Leap, Persistent Rage, Wild Resurgence, Archdruid mají max 1
+     (46 jednoduchých použití). Magic Item Tinker v `TWO_INDEPENDENT_LIMITS`,
+     bez trackeru. Action Surge (1, od Fighter 17 → 2) a Indomitable (1, od 13
+     → 2, od 17 → 3) z ručně psané `LEVEL_SCALED_USES`. Short Rest vrací celý
+     pool i Action Surge a Psi-Powered Leap (9 jmen celkem); Indomitable jen
+     Long Rest. 48 známých maxim bez tabulky. Testy v `resources.test.ts`
+     (fixtures + hlídač proti reálným datům).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
 10. [not started] Multiclass
 

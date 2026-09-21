@@ -26,8 +26,9 @@
  * name. Nothing is parsed out of prose, so a maximum stated only in a sentence
  * ("equal to your Charisma modifier") is reported as not in the data (D43) rather
  * than guessed. Data-wide that is 8 resources with a table and ~90 without.
- * The one exception: a feature whose text states only a recharge, with no count,
- * has one use (D119; isImplicitSingleUse).
+ * The exceptions: a feature whose text states only a recharge, with no count,
+ * has one use (D119; isImplicitSingleUse), and Action Surge and Indomitable read
+ * a hand-written level table (D120; LEVEL_SCALED_USES).
  */
 
 import { hasRestTag } from '../actions/actionTableFeatureData'
@@ -112,16 +113,46 @@ function isSelfLimitedFeature(feature: ResourceFeature): boolean {
  * an attack bonus or a damage formula, never the number of uses (D119).
  */
 const SINGLE_USE_RECHARGE = /can't (?:do so|use it|use this feature) again until you finish an? (?:Short|Long) Rest/i
-const STATES_A_COUNT = /\b(?:twice|thrice|uses|number of times|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+) (?:more |additional )?times)\b/i
+/*
+ * Only a count of this feature's own uses. "twice your Speed" / "three times your
+ * Paladin level" is a multiplier, and "uses of Rage" / "uses of Wild Shape" counts
+ * another pool — neither is a use count (D120).
+ */
+const NUMBER_WORD = '(?:one|two|three|four|five|six|seven|eight|nine|ten|\\d+)'
+const STATES_A_COUNT = new RegExp(
+	`\\bnumber of (?:times|uses)\\b|\\b(?:twice|thrice|${NUMBER_WORD} (?:more |additional )?times)\\b(?! your\\b)|\\b${NUMBER_WORD} uses\\b(?! of\\b)`,
+	'i',
+)
 
 /*
  * One record, two independent limits: a single max-1 tracker would conflate
  * them. Aberrant Dragonmark is a Long-Rest-only ability plus a separate
  * Short-or-Long-Rest spell use; Natural Recovery is a free Circle-spell cast
- * plus a separate slot-recovery recharge. Left unknown until a resource can be
- * modelled twice per feature (D119).
+ * plus a separate slot-recovery recharge; Magic Item Tinker's Drain and Transmute
+ * are each once per Long Rest. Left unknown until a resource can be modelled
+ * twice per feature (D119, D120).
  */
-const TWO_INDEPENDENT_LIMITS = new Set(['Aberrant Dragonmark', 'Natural Recovery'])
+const TWO_INDEPENDENT_LIMITS = new Set(['Aberrant Dragonmark', 'Natural Recovery', 'Magic Item Tinker'])
+
+/*
+ * Level breakpoints read off the feature text, which states them in prose only
+ * (Action Surge: "twice before a rest" at 17; Indomitable: twice at 13, three
+ * times at 17). A named exception, not a prose parser (D120).
+ */
+const LEVEL_SCALED_USES: Record<string, { className: string; steps: [level: number, uses: number][] }> = {
+	'Action Surge': { className: 'Fighter', steps: [[2, 1], [17, 2]] },
+	Indomitable: { className: 'Fighter', steps: [[9, 1], [13, 2], [17, 3]] },
+}
+
+function levelScaledMax(name: string, character: Character): Calculated<number> | null {
+	const scaled = LEVEL_SCALED_USES[name]
+	if (!scaled) return null
+	const characterClass = character.classes.find((c) => c.className === scaled.className)
+	if (!characterClass) return null
+	const step = scaled.steps.filter(([level]) => level <= characterClass.level).pop()
+	if (!step) return null
+	return known(step[1], [{ source: `${scaled.className} level ${characterClass.level}: ${name}`, amount: step[1] }])
+}
 
 function isImplicitSingleUse(name: string, text: string): boolean {
 	return !TWO_INDEPENDENT_LIMITS.has(name) && SINGLE_USE_RECHARGE.test(text) && !STATES_A_COUNT.test(text)
@@ -225,6 +256,8 @@ function computeResourceMax(name: string, character: Character, parsedClasses: u
 			return known(count, breakdown)
 		}
 	}
+	const scaled = levelScaledMax(name, character)
+	if (scaled) return scaled
 	if (impliedSingleUse) return known(1, [{ source: `${name}: can't be used again until a rest, no count stated`, amount: 1 }])
 	const where = looked.length > 0 ? `${looked.join(', ')}'s per-level table${looked.length > 1 ? 's' : ''}` : 'any class table'
 	return unknown(`"${name}" has no column in ${where}, so its number of uses is not in the data.`)
@@ -346,11 +379,13 @@ export function computeCharacterResources(character: Character, parsedClasses: u
 		.map(([name, dataNames]) => {
 			const text = (ownText.get(name) ?? []).join(' ')
 			const impliedSingleUse = !pools.has(name) && isImplicitSingleUse(name, text)
+			// A recharge-sentence feature's uses are its whole pool, whether one or level-scaled (D120).
+			const rechargesAsWhole = impliedSingleUse || name in LEVEL_SCALED_USES
 			return {
 				name,
 				dataNames,
 				max: computeResourceMax(name, character, parsedClasses, impliedSingleUse),
-				shortRest: shortRestRecovery([name, ...dataNames], features) ?? (impliedSingleUse && singleUseRechargesOnShortRest(text) ? 'all' : null),
+				shortRest: shortRestRecovery([name, ...dataNames], features) ?? (rechargesAsWhole && singleUseRechargesOnShortRest(text) ? 'all' : null),
 			}
 		})
 		.sort((a, b) => a.name.localeCompare(b.name))

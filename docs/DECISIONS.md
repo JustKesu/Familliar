@@ -2407,3 +2407,34 @@ patřila mezi původních 24 a před tímto rozhodnutím ukazovala jeden tracker
 Nemodeluje se nic nového; víc limitů na feature je samostatný úkol. Celkem je teď
 40 implicitních jednoduchých použití (24 − Natural Recovery + 17), hlídaných testem
 proti reálným datům v `resources.test.ts`.
+
+## D120 — Action Surge a Indomitable mají ručně psanou tabulku úrovní: vědomá výjimka proti D21/D43; `STATES_A_COUNT` zúžen; Magic Item Tinker bez trackeru
+
+Step 9. Navazuje na D119.
+
+**Ručně psaná tabulka dvou features.** Action Surge a Indomitable (Fighter) mají skutečný,
+úrovní odstupňovaný počet použití, který data nesou jen v próze — žádný sloupec v
+`classTableGroups`, žádné pole. Action Surge: 1 na úrovních 2–16, 2 od 17 ("use it twice
+before a rest"). Indomitable: 1 na 9–12, 2 na 13–16, 3 od 17 ("twice … starting at level
+13 and three times … starting at level 17"). Každý záznam obou features nese celý text,
+takže stačí úroveň třídy Fighter z `character.classes`. `LEVEL_SCALED_USES` v
+`calculation/resources.ts` je tabulka klíčovaná jménem (className + zlomy úrovní),
+opsaná z textu features. Je to vědomá výjimka proti D21 a D43 („nečíst číslo z volné
+prózy") ve stejném duchu jako D93: číslo v datech existuje, je vázané na úroveň a
+potřebují ho jen 2 features. Záměrně to NENÍ obecný parser počtů z prózy — další
+feature se přidává jen novým rozhodnutím. Action Surge se obnovuje i na Short Rest
+("Short Rest or Long Rest"), celý pool; Indomitable jen na Long Rest.
+
+**`STATES_A_COUNT` zúžen na počet vlastních použití.** Nechytá už násobitel ("twice your
+Artificer level", "three times your Paladin level", "twice your Speed") ani "uses"
+jiného poolu ("uses of Rage", "uses of Wild Shape"). Superior Atlas, Undying Sentinel,
+Psi-Powered Leap, Persistent Rage, Wild Resurgence a Archdruid tak dostávají max 1;
+Psi-Powered Leap se obnovuje i na Short Rest. U Wild Resurgence a Archdruid se sleduje
+jen ta část textu, která má limit na odpočinek, pod jménem feature.
+
+**Magic Item Tinker** (Artificer) má stejný tvar jako Aberrant Dragonmark a Natural
+Recovery: Drain Magic Item a Transmute Magic Item jsou každý zvlášť jednou za Long Rest,
+Charge Magic Item bez limitu. Přidán do `TWO_INDEPENDENT_LIMITS`, tracker nemá.
+
+Celkem 48 známých maxim bez tabulky: 46 jednoduchých použití (40 z D119 + 6) a 2 z
+ručně psané tabulky. 9 z nich se obnovuje na Short Rest.

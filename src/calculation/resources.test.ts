@@ -183,6 +183,57 @@ const MAGE_SLAYER: ResourceFeature = {
 	],
 }
 
+const STATED_COUNT: ResourceFeature = {
+	name: 'Stated Count',
+	entries: ["You can use this feature twice. Once you do so, you can't use it again until you finish a {@variantrule Long Rest|XPHB}."],
+}
+/* Built around the data's own count-shaped phrases (scripts, STATES_A_COUNT investigation); none of them counts the feature's own uses. */
+const SUPERIOR_ATLAS: ResourceFeature = {
+	name: 'Superior Atlas',
+	entries: ["The creature's Hit Points instead change to a number equal to twice your Artificer level. Once you use this feature, you can't do so again until you finish a {@variantrule Long Rest|XPHB}."],
+}
+const UNDYING_SENTINEL: ResourceFeature = {
+	name: 'Undying Sentinel',
+	entries: ["You regain a number of Hit Points equal to three times your Paladin level. Once you use this feature, you can't do so again until you finish a {@variantrule Long Rest|XPHB}."],
+}
+const PSI_POWERED_LEAP: ResourceFeature = {
+	name: 'Psi-Powered Leap',
+	entries: [
+		"As a Bonus Action, you gain a Fly Speed equal to twice your Speed until the end of the current turn. Once you take this Bonus Action, you can't do so again until you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB} unless you expend a Psionic Energy Die (no action required) to restore your use of it.",
+	],
+}
+const PERSISTENT_RAGE: ResourceFeature = {
+	name: 'Persistent Rage',
+	entries: ["When you roll Initiative, you can regain all expended uses of Rage. After you regain uses of Rage in this way, you can't do so again until you finish a {@variantrule Long Rest|XPHB}."],
+}
+const WILD_RESURGENCE: ResourceFeature = {
+	name: 'Wild Resurgence',
+	entries: [
+		'Once on each of your turns, if you have no uses of Wild Shape left, you can give yourself one use by expending a spell slot.',
+		"You can also expend one use of Wild Shape to give yourself a level 1 spell slot, but you can't do so again until you finish a {@variantrule Long Rest|XPHB}.",
+	],
+}
+const ARCHDRUID: ResourceFeature = {
+	name: 'Archdruid',
+	entries: [
+		"Whenever you roll Initiative and have no uses of Wild Shape left, you regain one expended use of it. You can convert uses of Wild Shape into a spell slot. If you convert two uses of Wild Shape, you produce a level 2 spell slot. Once you do so, you can't do so again until you finish a {@variantrule Long Rest|XPHB}.",
+	],
+}
+const MAGIC_ITEM_TINKER: ResourceFeature = {
+	name: 'Magic Item Tinker',
+	entries: [
+		'Charge Magic Item. Touch a magic item that you created with Replicate Magic Item and that uses charges.',
+		"Drain Magic Item. Once you do so, you can't do so again until you finish a {@variantrule Long Rest|XPHB}.",
+		"Transmute Magic Item. Once you do so, you can't do so again until you finish a {@variantrule Long Rest|XPHB}.",
+	],
+}
+const INDOMITABLE: ResourceFeature = {
+	name: 'Indomitable',
+	entries: [
+		"Once you use this feature, you can't do so again until you finish a {@variantrule Long Rest|XPHB}. You can use this feature twice before a Long Rest starting at level 13 and three times before a Long Rest starting at level 17.",
+	],
+}
+
 describe('one use where the text states only a recharge', () => {
 	it('gives 1 to a feature that says only it can’t be used again until a rest', () => {
 		for (const feature of [UNCANNY_METABOLISM, DIVINE_INTERVENTION]) {
@@ -213,8 +264,22 @@ describe('one use where the text states only a recharge', () => {
 	})
 
 	it('stays unknown where the text states a count', () => {
-		const [surge] = computeCharacterResources(character('Fighter', 5), CLASSES, [ACTION_SURGE_XPHB])
-		expect(surge.max.status).toBe('unknown')
+		const [counted] = computeCharacterResources(character('Fighter', 5), CLASSES, [STATED_COUNT])
+		expect(counted.max.status).toBe('unknown')
+	})
+
+	it.each([SUPERIOR_ATLAS, UNDYING_SENTINEL, PSI_POWERED_LEAP, PERSISTENT_RAGE, WILD_RESURGENCE, ARCHDRUID])(
+		'gives 1 where "twice"/"N times"/"uses" is a multiplier or another pool, not a count (D120): $name',
+		(feature) => {
+			const [resource] = computeCharacterResources(character('Druid', 20), CLASSES, [feature])
+			expect(resource.max.status === 'known' && resource.max.value).toBe(1)
+		},
+	)
+
+	it('leaves Magic Item Tinker untracked — two independent limits in one record (D120)', () => {
+		const [tinker] = computeCharacterResources(character('Artificer', 20), CLASSES, [MAGIC_ITEM_TINKER])
+		expect(tinker.max.status).toBe('unknown')
+		expect(tinker.shortRest).toBeNull()
 	})
 
 	it('makes no resource of a feature with no rest tag', () => {
@@ -346,9 +411,47 @@ describe('a single use that recharges on a Short Rest too', () => {
 		expect(resource.shortRest).toBeNull()
 	})
 
-	it('leaves a resource with a stated count unchanged, Action Surge included', () => {
-		const [surge] = computeCharacterResources(character('Fighter', 5), CLASSES, [ACTION_SURGE_XPHB])
-		expect(surge.shortRest).toBeNull()
+	it('leaves a resource with a stated count unchanged', () => {
+		const [counted] = computeCharacterResources(character('Fighter', 5), CLASSES, [STATED_COUNT])
+		expect(counted.shortRest).toBeNull()
+	})
+
+	it('gives back Psi-Powered Leap’s one use, whose recharge sentence names a Short Rest', () => {
+		const [leap] = computeCharacterResources(character('Fighter', 20), CLASSES, [PSI_POWERED_LEAP])
+		expect(leap.shortRest).toBe('all')
+	})
+})
+
+describe('Action Surge and Indomitable — a hand-written level table (D120)', () => {
+	function maxAt(feature: ResourceFeature, className: string, level: number) {
+		const [resource] = computeCharacterResources(character(className, level), CLASSES, [feature])
+		return resource.max.status === 'known' ? resource.max.value : resource.max.status
+	}
+
+	it.each([[2, 1], [16, 1], [17, 2], [20, 2]])('Action Surge at Fighter level %i: %i', (level, uses) => {
+		expect(maxAt(ACTION_SURGE_XPHB, 'Fighter', level)).toBe(uses)
+	})
+
+	it.each([[9, 1], [12, 1], [13, 2], [16, 2], [17, 3], [20, 3]])('Indomitable at Fighter level %i: %i', (level, uses) => {
+		expect(maxAt(INDOMITABLE, 'Fighter', level)).toBe(uses)
+	})
+
+	it('names the class level in the breakdown', () => {
+		const [surge] = computeCharacterResources(character('Fighter', 17), CLASSES, [ACTION_SURGE_XPHB])
+		expect(surge.max).toEqual({ status: 'known', value: 2, breakdown: [{ source: 'Fighter level 17: Action Surge', amount: 2 }] })
+	})
+
+	it('reads the Fighter level, not another class', () => {
+		expect(maxAt(ACTION_SURGE_XPHB, 'Rogue', 17)).toBe('unknown')
+	})
+
+	it('gives back every Action Surge use on a Short Rest, and no Indomitable use', () => {
+		for (const level of [5, 17]) {
+			const [surge] = computeCharacterResources(character('Fighter', level), CLASSES, [ACTION_SURGE_XPHB])
+			expect(surge.shortRest).toBe('all')
+		}
+		const [indomitable] = computeCharacterResources(character('Fighter', 17), CLASSES, [INDOMITABLE])
+		expect(indomitable.shortRest).toBeNull()
 	})
 })
 
@@ -379,18 +482,36 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 		expect(max?.status === 'known' && max.value).toBe(1)
 	})
 
-	it.each(['Aberrant Dragonmark', 'Natural Recovery'])('%s: no tracker', (name) => {
+	const FORMERLY_EXCLUDED_BY_A_COUNT = ['Archdruid', 'Persistent Rage', 'Psi-Powered Leap', 'Superior Atlas', 'Undying Sentinel', 'Wild Resurgence']
+
+	it.each(FORMERLY_EXCLUDED_BY_A_COUNT)('%s: one use (D120)', (name) => {
+		const max = byName.get(name)?.max
+		expect(max?.status === 'known' && max.value).toBe(1)
+	})
+
+	it.each(['Aberrant Dragonmark', 'Natural Recovery', 'Magic Item Tinker'])('%s: no tracker', (name) => {
 		expect(byName.get(name)?.max.status).toBe('unknown')
 	})
 
-	it('holds 40 single-use resources: the 24 of the first pass, less Natural Recovery, plus the 17', () => {
-		expect(singleUse).toHaveLength(40)
+	it('reads Action Surge and Indomitable at Fighter 20 from the level table (D120)', () => {
+		const surge = byName.get('Action Surge')?.max
+		const indomitable = byName.get('Indomitable')?.max
+		expect(surge?.status === 'known' && surge.value).toBe(2)
+		expect(indomitable?.status === 'known' && indomitable.value).toBe(3)
 	})
 
-	it('returns the single use on a Short Rest for exactly the ones whose recharge sentence names one', () => {
+	it('holds 48 known maxima: 46 single uses (the 40 of D119 plus the 6 of D120) and the 2 level-table ones', () => {
+		expect(singleUse).toHaveLength(48)
+		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(46)
+	})
+
+	it('returns the whole pool on a Short Rest for exactly the ones whose recharge sentence names one', () => {
 		const onShortRest = singleUse.filter((resource) => resource.shortRest === 'all').map((resource) => resource.name).sort()
 		expect(onShortRest).toEqual(
-			['Clairvoyant Combatant', 'Illusory Self', 'Mage Slayer', 'Stroke of Luck', 'Telekinetic Movement', 'The Third Eye', 'Unbreakable Majesty'].sort(),
+			[
+				'Action Surge', 'Clairvoyant Combatant', 'Illusory Self', 'Mage Slayer', 'Psi-Powered Leap', 'Stroke of Luck', 'Telekinetic Movement', 'The Third Eye',
+				'Unbreakable Majesty',
+			].sort(),
 		)
 	})
 })
