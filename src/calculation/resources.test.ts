@@ -261,6 +261,52 @@ describe('what a Short Rest gives back (slice 9b5)', () => {
 	})
 })
 
+const STROKE_OF_LUCK: ResourceFeature = {
+	name: 'Stroke of Luck',
+	entries: ["Once you use this feature, you can't use it again until you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}."],
+}
+const TELEKINETIC_MOVEMENT: ResourceFeature = {
+	name: 'Telekinetic Movement',
+	entries: [
+		"Once you take this action, you can't do so again until you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB} unless you expend a Psionic Energy Die (no action required) to restore your use of it.",
+	],
+}
+const ARCANE_RECOVERY: ResourceFeature = {
+	name: 'Arcane Recovery',
+	entries: [
+		'When you finish a {@variantrule Short Rest|XPHB}, you can choose expended spell slots to recover.',
+		"Once you use this feature, you can't do so again until you finish a {@variantrule Long Rest|XPHB}.",
+	],
+}
+
+describe('a single use that recharges on a Short Rest too', () => {
+	it('gives back the one use of a feature whose recharge sentence names a Short Rest', () => {
+		for (const feature of [STROKE_OF_LUCK, TELEKINETIC_MOVEMENT]) {
+			const [resource] = computeCharacterResources(character('Rogue', 20), CLASSES, [feature])
+			expect(resource.max.status === 'known' && resource.max.value).toBe(1)
+			expect(resource.shortRest).toBe('all')
+		}
+	})
+
+	it('leaves a Long-Rest-only single use unchanged', () => {
+		for (const feature of [UNCANNY_METABOLISM, DIVINE_INTERVENTION]) {
+			const [resource] = computeCharacterResources(character('Monk', 5), CLASSES, [feature])
+			expect(resource.shortRest).toBeNull()
+		}
+	})
+
+	it('does not read a Short Rest mentioned outside the recharge sentence as a recharge', () => {
+		const [resource] = computeCharacterResources(character('Wizard', 5), CLASSES, [ARCANE_RECOVERY])
+		expect(resource.max.status === 'known' && resource.max.value).toBe(1)
+		expect(resource.shortRest).toBeNull()
+	})
+
+	it('leaves a resource with a stated count unchanged, Action Surge included', () => {
+		const [surge] = computeCharacterResources(character('Fighter', 5), CLASSES, [ACTION_SURGE_XPHB])
+		expect(surge.shortRest).toBeNull()
+	})
+})
+
 describe('clamping spent counts to the current maximum (slice 9b1)', () => {
 	const resources: CharacterResource[] = [
 		{ name: 'Rage', dataNames: ['Rage'], max: { status: 'known', value: 3, breakdown: [] }, shortRest: 'one' },

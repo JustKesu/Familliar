@@ -814,6 +814,16 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      Testy: blok „one use where the text states only a recharge" v
      `resources.test.ts`. Ověřeno v prohlížeči (Monk 2: Uncanny Metabolism
      `Uses: 0 / 1`).
+   - Implicitní jedno použití obnovuje i Short Rest, když to říká věta o
+     dobití: „can't do so / use it / use this feature again until you finish a
+     Short Rest or Long Rest". `singleUseRechargesOnShortRest` v
+     `calculation/resources.ts`, platí jen pro zdroje s `isImplicitSingleUse`
+     a jen tehdy, když `shortRestRecovery` nenašel nic — vrací `'all'`. 4 jména
+     v datech: Stroke of Luck, The Third Eye, Illusory Self, Telekinetic
+     Movement. Long-Rest-only zdroje beze změny. Testy: blok „a single use that
+     recharges on a Short Rest too" v `resources.test.ts` + jeden v
+     `rest.test.ts`. Ověřeno v prohlížeči (Rogue 20: Stroke of Luck utracen
+     `1 / 1` → Short Rest → `0 / 1`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
 10. [not started] Multiclass
 

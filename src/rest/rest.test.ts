@@ -21,6 +21,12 @@ describe('a Short Rest (slice 9b5)', () => {
 		expect(rest.resourceUses).toEqual({ Rage: 2, 'Sorcery Point': 5 })
 	})
 
+	it('empties a single-use resource whose recharge sentence names a Short Rest, and only that one', () => {
+		const resources: RestingResource[] = [...RESOURCES, { name: 'Stroke of Luck', shortRest: 'all' }, { name: 'Divine Intervention', shortRest: null }]
+		const rest = afterShortRest(11, { resourceUses: { 'Stroke of Luck': 1, 'Divine Intervention': 1 } }, resources, null)
+		expect(rest.resourceUses).toEqual({ 'Divine Intervention': 1 })
+	})
+
 	it('leaves a spent count no resource in the list claims alone', () => {
 		const rest = afterShortRest(11, { resourceUses: { 'Superiority Die': 3 } }, RESOURCES, null)
 		expect(rest.resourceUses).toEqual({ 'Superiority Die': 3 })

@@ -120,6 +120,20 @@ function isImplicitSingleUse(text: string): boolean {
 	return SINGLE_USE_RECHARGE.test(text) && !NAMES_A_STAT.test(text) && !STATES_A_COUNT.test(text)
 }
 
+/*
+ * Stroke of Luck, The Third Eye, Illusory Self and Telekinetic Movement say
+ * "can't use it again until you finish a Short Rest or Long Rest" — neither
+ * shortRestRecovery ordering, since no "regain" is spoken. The single use IS the
+ * whole pool, so a Short Rest returns all of it. Only the recharge sentence
+ * counts: Arcane Recovery and Natural Recovery mention a Short Rest as the time
+ * you can act, and their own use still comes back on a Long Rest (DATA.md).
+ */
+const SINGLE_USE_RECHARGE_RESTS = /can't (?:do so|use it|use this feature) again until you finish\s+an?\s+((?:Short|Long) Rest(?:\s+or\s+(?:Short|Long) Rest)?)/gi
+
+function singleUseRechargesOnShortRest(text: string): boolean {
+	return [...text.matchAll(SINGLE_USE_RECHARGE_RESTS)].some((match) => /Short Rest/i.test(match[1]))
+}
+
 // --- the per-level tables ------------------------------------------------
 
 /** A `{@tip Die Size|Psionic Energy Die Size}` column renders its FIRST segment and is keyed by its SECOND (DATA.md); every other tag is keyed by its first. */
@@ -322,12 +336,16 @@ export function computeCharacterResources(character: Character, parsedClasses: u
 	}
 
 	return [...found.entries()]
-		.map(([name, dataNames]) => ({
-			name,
-			dataNames,
-			max: computeResourceMax(name, character, parsedClasses, !pools.has(name) && isImplicitSingleUse((ownText.get(name) ?? []).join(' '))),
-			shortRest: shortRestRecovery([name, ...dataNames], features),
-		}))
+		.map(([name, dataNames]) => {
+			const text = (ownText.get(name) ?? []).join(' ')
+			const impliedSingleUse = !pools.has(name) && isImplicitSingleUse(text)
+			return {
+				name,
+				dataNames,
+				max: computeResourceMax(name, character, parsedClasses, impliedSingleUse),
+				shortRest: shortRestRecovery([name, ...dataNames], features) ?? (impliedSingleUse && singleUseRechargesOnShortRest(text) ? 'all' : null),
+			}
+		})
 		.sort((a, b) => a.name.localeCompare(b.name))
 }
 

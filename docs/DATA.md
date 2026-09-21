@@ -334,9 +334,16 @@ that are single-use but name a stat only as a save DC (Intimidating Presence:
 "Wisdom saving throw (DC 8 plus your Strength modifier…)"). A Proficiency
 Bonus reference is `{@variantrule Proficiency|XPHB|Proficiency Bonus}`, which
 strips to "Proficiency" — a search for "proficiency bonus" in stripped text
-misses it. 4 of the 24 recharge on a Short Rest (Stroke of Luck, The Third
-Eye, Illusory Self and one more); their sentence is not one of the two
-`regain all|one` orderings, so `shortRestRecovery` reads them as null.
+misses it. 4 of the 24 recharge on a Short Rest — Stroke of Luck, The Third
+Eye, Illusory Self and Telekinetic Movement ("can't use it again until you
+finish a Short Rest or Long Rest"; Telekinetic Movement adds "unless you
+expend a Psionic Energy Die"). Their sentence is neither `regain all|one`
+ordering, so `shortRestRecovery` reads them as null; the recovery for these
+comes from `singleUseRechargesOnShortRest` instead (a Short Rest returns the
+one use). Three others of the 24 (Sorcerous Restoration, Arcane Recovery,
+Natural Recovery) name a Short Rest only as when you may act ("When you
+finish a Short Rest, you can…"); their recharge sentence is Long Rest only,
+so they are not among the 4. The other 17 name no Short Rest at all.
 
 ### What a rest gives back is only in the prose, and it is not "all"
 The rest TAG says a feature cares about rests, never how much one returns
