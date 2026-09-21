@@ -316,6 +316,28 @@ feature beside Second Wind: XPHB Fighter's only table group is
 count field. The count lives in two sentences: "can't do so again until you
 finish a Short Rest or Long Rest" and, at 17, "use it twice before a rest".
 
+Of the 92 self-limited names (rule 2 above, grouped by feature name across
+the four files), 5 have a table column, 36 lack the single-use sentence
+("can't do so / use it / use this feature again until you finish a Short/Long
+Rest"), 18 have it but name a stat, "modifier" or "proficiency" somewhere in
+their text, 9 have it but state a count ("twice", "uses", "N times", "number
+of times"), and 24 have it with none of those — the implicit single-use set:
+Divine Intervention, Uncanny Metabolism, Stroke of Luck, Sorcerous
+Restoration, Magical Cunning, Arcane Recovery, Chemical Mastery, Zealous
+Presence, Rage of the Gods, Mantle of Majesty, Natural Recovery, Know Your
+Enemy, Elder Champion, Psychic Veil, Trance of Order, Clockwork Cavalcade,
+Dragon Wings, Tamed Surge, The Third Eye, Illusory Self, Eldritch Cannon,
+Telekinetic Movement, Boon of Recovery, Greater Mark of Scribing. Action
+Surge sits in the "count" group because the level-2 record already
+carries the level-17 "twice" sentence. The "stat" group includes features
+that are single-use but name a stat only as a save DC (Intimidating Presence:
+"Wisdom saving throw (DC 8 plus your Strength modifier…)"). A Proficiency
+Bonus reference is `{@variantrule Proficiency|XPHB|Proficiency Bonus}`, which
+strips to "Proficiency" — a search for "proficiency bonus" in stripped text
+misses it. 4 of the 24 recharge on a Short Rest (Stroke of Luck, The Third
+Eye, Illusory Self and one more); their sentence is not one of the two
+`regain all|one` orderings, so `shortRestRecovery` reads them as null.
+
 ### What a rest gives back is only in the prose, and it is not "all"
 The rest TAG says a feature cares about rests, never how much one returns
 (step 9b5 investigation). Every short-rest-recoverable pool carries BOTH tags,

@@ -26,6 +26,8 @@
  * name. Nothing is parsed out of prose, so a maximum stated only in a sentence
  * ("equal to your Charisma modifier") is reported as not in the data (D43) rather
  * than guessed. Data-wide that is 8 resources with a table and ~90 without.
+ * The one exception: a feature whose text states only a recharge, with no count
+ * and no stat, has one use (24 of the ~90 data-wide; isImplicitSingleUse).
  */
 
 import { hasRestTag } from '../actions/actionTableFeatureData'
@@ -103,6 +105,21 @@ function isSelfLimitedFeature(feature: ResourceFeature): boolean {
 	return EXPENDED_USES.test(plainText(feature.entries).join(' '))
 }
 
+/*
+ * A feature that only says it "can't be used again until you finish a rest"
+ * has one use. Any stat, proficiency or count word anywhere in its text keeps
+ * it unknown, even where that word is a save DC (Intimidating Presence) — a
+ * missed 1 renders blank, a wrong 1 misstates the rules. "Proficiency" alone
+ * because {@variantrule Proficiency|XPHB|Proficiency Bonus} strips to its first segment.
+ */
+const SINGLE_USE_RECHARGE = /can't (?:do so|use it|use this feature) again until you finish an? (?:Short|Long) Rest/i
+const NAMES_A_STAT = /\b(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma|modifier|proficiency)\b/i
+const STATES_A_COUNT = /\b(?:twice|thrice|uses|number of times|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+) (?:more |additional )?times)\b/i
+
+function isImplicitSingleUse(text: string): boolean {
+	return SINGLE_USE_RECHARGE.test(text) && !NAMES_A_STAT.test(text) && !STATES_A_COUNT.test(text)
+}
+
 // --- the per-level tables ------------------------------------------------
 
 /** A `{@tip Die Size|Psionic Energy Die Size}` column renders its FIRST segment and is keyed by its SECOND (DATA.md); every other tag is keyed by its first. */
@@ -165,7 +182,7 @@ function isSubclassEntry(entry: unknown, characterClass: CharacterClass): entry 
 }
 
 /** The maximum for one resource, from the first of the character's class/subclass tables that names it. */
-function computeResourceMax(name: string, character: Character, parsedClasses: unknown[]): Calculated<number> {
+function computeResourceMax(name: string, character: Character, parsedClasses: unknown[], impliedSingleUse: boolean): Calculated<number> {
 	const looked: string[] = []
 	for (const characterClass of character.classes) {
 		looked.push(characterClass.className)
@@ -187,6 +204,7 @@ function computeResourceMax(name: string, character: Character, parsedClasses: u
 			return known(count, breakdown)
 		}
 	}
+	if (impliedSingleUse) return known(1, [{ source: `${name}: can't be used again until a rest, no count stated`, amount: 1 }])
 	const where = looked.length > 0 ? `${looked.join(', ')}'s per-level table${looked.length > 1 ? 's' : ''}` : 'any class table'
 	return unknown(`"${name}" has no column in ${where}, so its number of uses is not in the data.`)
 }
@@ -287,17 +305,27 @@ export function computeCharacterResources(character: Character, parsedClasses: u
 		found.set(resolved, names)
 	}
 
+	// A pool's count is set by whatever grants it, not by one spender's text, so only a resource nothing consumes can default to one use.
+	const pools = new Set<string>()
+	const ownText = new Map<string, string[]>()
 	for (const feature of features) {
 		const pool = consumedPoolName(feature)
-		if (pool !== null) add(pool)
-		if (isSelfLimitedFeature(feature)) add(feature.name)
+		if (pool !== null) {
+			add(pool)
+			pools.add(resolveResourceName(pool))
+		}
+		if (isSelfLimitedFeature(feature)) {
+			add(feature.name)
+			const resolved = resolveResourceName(feature.name)
+			ownText.set(resolved, [...(ownText.get(resolved) ?? []), ...plainText(feature.entries)])
+		}
 	}
 
 	return [...found.entries()]
 		.map(([name, dataNames]) => ({
 			name,
 			dataNames,
-			max: computeResourceMax(name, character, parsedClasses),
+			max: computeResourceMax(name, character, parsedClasses, !pools.has(name) && isImplicitSingleUse((ownText.get(name) ?? []).join(' '))),
 			shortRest: shortRestRecovery([name, ...dataNames], features),
 		}))
 		.sort((a, b) => a.name.localeCompare(b.name))

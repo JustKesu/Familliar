@@ -124,6 +124,77 @@ describe('the maximum, from the per-level tables (slice 9b1)', () => {
 	})
 })
 
+/* The data's own XPHB sentences, markup and all (scripts, implicit-single-use investigation). */
+const UNCANNY_METABOLISM: ResourceFeature = {
+	name: 'Uncanny Metabolism',
+	entries: ["Once you use this feature, you can't use it again until you finish a {@variantrule Long Rest|XPHB}."],
+}
+const DIVINE_INTERVENTION: ResourceFeature = {
+	name: 'Divine Intervention',
+	entries: ["You can't use this feature again until you finish a {@variantrule Long Rest|XPHB}."],
+}
+const INTIMIDATING_PRESENCE: ResourceFeature = {
+	name: 'Intimidating Presence',
+	entries: [
+		'When you do so, each creature of your choice in a 30-foot {@variantrule Emanation [Area of Effect]|XPHB|Emanation} originating from you must make a Wisdom saving throw ({@dc 8} plus your Strength modifier and {@variantrule Proficiency|XPHB|Proficiency Bonus}).',
+		"Once you use this feature, you can't use it again until you finish a {@variantrule Long Rest|XPHB} unless you expend a use of your Rage (no action required) to restore your use of it.",
+	],
+}
+const ACTION_SURGE_XPHB: ResourceFeature = {
+	name: 'Action Surge',
+	entries: [
+		"Once you use this feature, you can't do so again until you finish a {@variantrule Short Rest|XPHB|Short} or {@variantrule Long Rest|XPHB}. Starting at level 17, you can use it twice before a rest but only once on a turn.",
+	],
+}
+const EXTRA_ATTACK: ResourceFeature = {
+	name: 'Extra Attack',
+	entries: ['You can attack twice instead of once whenever you take the {@action Attack|XPHB} action on your turn.'],
+}
+const PROFICIENCY_ONLY: ResourceFeature = {
+	name: 'Proficiency Only',
+	entries: ["You add your {@variantrule Proficiency|XPHB|Proficiency Bonus}. You can't use it again until you finish a {@variantrule Long Rest|XPHB}."],
+}
+
+describe('one use where the text states only a recharge', () => {
+	it('gives 1 to a feature that says only it can’t be used again until a rest', () => {
+		for (const feature of [UNCANNY_METABOLISM, DIVINE_INTERVENTION]) {
+			const [resource] = computeCharacterResources(character('Monk', 5), CLASSES, [feature])
+			expect(resource.max.status === 'known' && resource.max.value).toBe(1)
+		}
+	})
+
+	it('stays unknown where the text names a stat, even as a save DC', () => {
+		const [presence] = computeCharacterResources(character('Barbarian', 5), CLASSES, [INTIMIDATING_PRESENCE])
+		expect(presence.max.status).toBe('unknown')
+	})
+
+	it('reads a Proficiency Bonus tag by its first segment and stays unknown', () => {
+		const [resource] = computeCharacterResources(character('Fighter', 5), CLASSES, [PROFICIENCY_ONLY])
+		expect(resource.max.status).toBe('unknown')
+	})
+
+	it('stays unknown where the text states a count', () => {
+		const [surge] = computeCharacterResources(character('Fighter', 5), CLASSES, [ACTION_SURGE_XPHB])
+		expect(surge.max.status).toBe('unknown')
+	})
+
+	it('makes no resource of a feature with no rest tag', () => {
+		expect(computeCharacterResources(character('Fighter', 5), CLASSES, [EXTRA_ATTACK])).toEqual([])
+	})
+
+	it('leaves a table maximum alone', () => {
+		const rage: ResourceFeature = { name: 'Rage', entries: ["You can't use it again until you finish a {@variantrule Long Rest|XPHB}."] }
+		const [resource] = computeCharacterResources(character('Barbarian', 5), CLASSES, [rage])
+		expect(resource.max.status === 'known' && resource.max.value).toBe(4)
+	})
+
+	it('does not give a pool something else spends a single use from one feature’s wording', () => {
+		const spender: ResourceFeature = { name: 'Trick', consumes: { name: 'Uncanny Metabolism' }, entries: [] }
+		const [resource] = computeCharacterResources(character('Fighter', 5), CLASSES, [UNCANNY_METABOLISM, spender])
+		expect(resource.max.status).toBe('unknown')
+	})
+})
+
 /* Slice 9b5: the sentences are the data's own, markup and all — the amount is only in the prose, so a paraphrase would test nothing. */
 const RAGE_BOTH_RESTS: ResourceFeature = {
 	name: 'Rage',

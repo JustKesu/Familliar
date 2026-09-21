@@ -803,6 +803,17 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      (součet je potřeba k léčení). Short Rest hit dice nechává, Long Rest je
      vrací všechny (beze změny, přidán test). Neověřováno v prohlížeči.
      Zbylé kolo testů: viz docs/REPORT.md.
+   - Implicitní jedno použití — sebe-limitovaný zdroj bez sloupce v tabulce,
+     který NENÍ pool (nic ho nespotřebovává přes `consumes`), dostane maximum 1,
+     když jeho vlastní text říká jen „can't do so / use it / use this feature
+     again until you finish a Short/Long Rest" a nikde nejmenuje vlastnost,
+     `modifier`, `proficiency` ani počet (`twice`, `uses`, `N times`, `number
+     of times`). `isImplicitSingleUse` v `calculation/resources.ts`, rozklad
+     „X: can't be used again until a rest, no count stated". 24 z 92 jmen v
+     datech (seznam v DATA.md), UI beze změny — `UsesTracker` se ukáže sám.
+     Testy: blok „one use where the text states only a recharge" v
+     `resources.test.ts`. Ověřeno v prohlížeči (Monk 2: Uncanny Metabolism
+     `Uses: 0 / 1`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
 10. [not started] Multiclass
 
