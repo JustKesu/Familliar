@@ -838,6 +838,14 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      pool i Action Surge a Psi-Powered Leap (9 jmen celkem); Indomitable jen
      Long Rest. 48 známých maxim bez tabulky. Testy v `resources.test.ts`
      (fixtures + hlídač proti reálným datům).
+   - Oprava 9d1 (click-through 2026-09-20): koncentrace na kouzlo, které už
+     postava nemá (úprava ve wizardu, ztracený grant podtřídy/featu/rasy),
+     se na sheetu neukazuje — hlavička ani tlačítko. Rozhoduje se při
+     renderu v `CharacterSheet.tsx` proti `combinedSpells`, ne při zápisu:
+     úplnou množinu kouzel skládá jen sheet. Platí jen když všechny čtyři
+     načtené granty doběhly pro TUTÉŽ postavu a žádný neselhal (D43) — do té
+     doby se uložená hodnota ukazuje. `play.concentratingOn` v úložišti
+     zůstává, dokud hráč neklikne jinam. Testy: 3 nové v bloku `concentration`.
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
 10. [not started] Multiclass
 

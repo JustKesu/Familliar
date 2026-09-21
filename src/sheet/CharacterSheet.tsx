@@ -1976,6 +1976,16 @@ export function CharacterSheet({
 	const [classFeatureChoicesError, setClassFeatureChoicesError] = useState<string | null>(null)
 	/** Same rule as the six above, for the one load that was still swallowing: without it a failed beasts.json fetch removed the whole Familiar section (docs/REPORT.md). */
 	const [beastsError, setBeastsError] = useState<string | null>(null)
+	/* Which character object each granted-spell load last settled for. Until all four match the one on screen, the spell list may be short a grant, and the concentration guard below must not act on it. */
+	const [spellGrantsSettledFor, setSpellGrantsSettledFor] = useState<Record<'subclass' | 'feat' | 'optionalFeature' | 'race', Character | null>>({
+		subclass: null,
+		feat: null,
+		optionalFeature: null,
+		race: null,
+	})
+	function spellGrantsSettled(grant: keyof typeof spellGrantsSettledFor, settledFor: Character): void {
+		setSpellGrantsSettledFor((previous) => ({ ...previous, [grant]: settledFor }))
+	}
 
 	useEffect(() => {
 		let cancelled = false
@@ -2053,6 +2063,7 @@ export function CharacterSheet({
 		if (classesWithSubclass.length === 0) {
 			setSubclassSpellInfo([])
 			setSubclassSpellsError(null)
+			spellGrantsSettled('subclass', character)
 			return
 		}
 		Promise.all(
@@ -2075,11 +2086,14 @@ export function CharacterSheet({
 				if (cancelled) return
 				setSubclassSpellInfo(infos)
 				setSubclassSpellsError(null)
+				// The run before the slot tables arrive has no rank-keyed patron grants yet; only the re-run after them is the full list.
+				if (spellSlotsClassData !== null) spellGrantsSettled('subclass', character)
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
 				setSubclassSpellInfo([])
 				setSubclassSpellsError(messageOf(error))
+				spellGrantsSettled('subclass', character)
 			})
 		return () => {
 			cancelled = true
@@ -2093,11 +2107,13 @@ export function CharacterSheet({
 				if (cancelled) return
 				setFeatSpells(spells)
 				setFeatSpellsError(null)
+				spellGrantsSettled('feat', character)
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
 				setFeatSpells([])
 				setFeatSpellsError(messageOf(error))
+				spellGrantsSettled('feat', character)
 			})
 		return () => {
 			cancelled = true
@@ -2145,11 +2161,13 @@ export function CharacterSheet({
 				if (cancelled) return
 				setOptionalFeatureSpells(spells)
 				setOptionalFeatureSpellsError(null)
+				spellGrantsSettled('optionalFeature', character)
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
 				setOptionalFeatureSpells([])
 				setOptionalFeatureSpellsError(messageOf(error))
+				spellGrantsSettled('optionalFeature', character)
 			})
 		return () => {
 			cancelled = true
@@ -2163,11 +2181,13 @@ export function CharacterSheet({
 				if (cancelled) return
 				setRaceSpells(grants)
 				setRaceSpellsError(null)
+				spellGrantsSettled('race', character)
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
 				setRaceSpells({ spells: [], notes: [] })
 				setRaceSpellsError(messageOf(error))
+				spellGrantsSettled('race', character)
 			})
 		return () => {
 			cancelled = true
@@ -2573,7 +2593,17 @@ export function CharacterSheet({
 		spendHitDie(hitDiceKey(entry.className, entry.classSource), entry.count)
 	}
 	/* Slice 9d1: absent and null are both "none" (Character.play.concentratingOn). Clicking the active spell again drops it; any other replaces it without asking. */
-	const concentratingOn = character.play?.concentratingOn ?? null
+	const storedConcentration = character.play?.concentratingOn ?? null
+	/*
+	 * A spell that has left the character (an edit, a lost subclass or feat grant) is not concentrated on. Decided here, not at
+	 * the write, because only the sheet assembles all five spell sources; and only once the list is complete (D43) — a grant still
+	 * loading or failed to load would otherwise drop a concentration that is still valid.
+	 */
+	const spellListComplete =
+		Object.values(spellGrantsSettledFor).every((settledFor) => settledFor === character) &&
+		[subclassSpellsError, featSpellsError, optionalFeatureSpellsError, raceSpellsError].every((error) => error === null)
+	const concentratingOn =
+		storedConcentration !== null && spellListComplete && !combinedSpells.some((entry) => entry.name === storedConcentration) ? null : storedConcentration
 	function toggleConcentration(spellName: string): void {
 		onEditConcentration?.(concentratingOn === spellName ? null : spellName)
 	}

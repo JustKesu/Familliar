@@ -4807,6 +4807,59 @@ describe('CharacterSheet', () => {
 				expect(screen.queryByRole('button', { name: 'Drop concentration' })).toBeNull()
 				expect(container.querySelector('.spell-list__concentrate')).toBeNull()
 			})
+
+			describe('a concentration spell that leaves the character', () => {
+				const HEX: FeatGrantedSpell = { name: 'Hex', source: 'XPHB', level: 1, ritual: false, concentration: true, origin: 'feat', featName: 'Hexed', ability: 'cha' }
+				const HEXED_FEAT = { level: 4, kind: 'feat' as const, name: 'Hexed', source: 'XPHB' }
+
+				afterEach(() => {
+					vi.mocked(loadFeatGrantedSpells).mockReset().mockResolvedValue([])
+				})
+
+				it('an edit that drops the spell from the chosen list clears it from the header and the spell list', async () => {
+					vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
+					const concentrating: Character = { ...caster, play: { concentratingOn: 'Bless' } }
+					const { container, rerender } = render(<CharacterSheet character={concentrating} onEditConcentration={() => {}} />)
+					await screen.findByRole('button', { name: 'Concentrate on Bless' })
+					expect(headerLine(container)).toContain('Concentrating: Bless')
+
+					// What the wizard's store.update hands back: a new spell list, play state carried across unchanged.
+					const edited: Character = {
+						...concentrating,
+						spellChoices: [{ className: 'Cleric', classSource: 'XPHB', spells: [{ name: 'Shield of Faith', source: 'XPHB' }] }],
+					}
+					rerender(<CharacterSheet character={edited} onEditConcentration={() => {}} />)
+
+					await waitFor(() => expect(headerLine(container)).toBeUndefined())
+					expect(screen.queryByRole('button', { name: 'Drop concentration' })).toBeNull()
+					expect(pressed('Concentrate on Shield of Faith')).toBe('false')
+					expect(screen.queryByRole('button', { name: 'Concentrate on Bless' })).toBeNull()
+				})
+
+				it('a spell granted by a feat shows while the feat is taken and clears once it is not', async () => {
+					vi.mocked(loadSpellDetails).mockResolvedValue([...DETAILS, spellDetail({ name: 'Hex', source: 'XPHB', level: 1, concentration: true })])
+					vi.mocked(loadFeatGrantedSpells).mockImplementation(async (subject) => ((subject.featAsiChoices ?? []).length > 0 ? [HEX] : []))
+					const withFeat: Character = { ...caster, featAsiChoices: [HEXED_FEAT], play: { concentratingOn: 'Hex' } }
+					const { container, rerender } = render(<CharacterSheet character={withFeat} onEditConcentration={() => {}} />)
+					await screen.findByRole('button', { name: 'Concentrate on Hex' })
+					expect(pressed('Concentrate on Hex')).toBe('true')
+					expect(headerLine(container)).toContain('Concentrating: Hex')
+
+					rerender(<CharacterSheet character={{ ...withFeat, featAsiChoices: [] }} onEditConcentration={() => {}} />)
+
+					await waitFor(() => expect(headerLine(container)).toBeUndefined())
+					expect(screen.queryByRole('button', { name: 'Concentrate on Hex' })).toBeNull()
+				})
+
+				it('keeps showing it while a spell grant failed to load, since the list is then known to be short (D43)', async () => {
+					vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
+					vi.mocked(loadFeatGrantedSpells).mockRejectedValue(new Error('feats.json unavailable'))
+					const { container } = render(<CharacterSheet character={{ ...caster, featAsiChoices: [HEXED_FEAT], play: { concentratingOn: 'Hex' } }} />)
+					await waitFor(() => expect(container.textContent).toContain('feats.json unavailable'))
+
+					expect(headerLine(container)).toContain('Concentrating: Hex')
+				})
+			})
 		})
 
 		it('a subclass caster (Cleric domain) shows the always-prepared subclass spells marked with their source, alongside any chosen spells', async () => {
