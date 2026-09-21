@@ -224,6 +224,12 @@ h1 {
   border: 2px solid currentColor;
 }
 
+/* Where a feature came from, beside its name on the Features and Actions tabs. */
+.sheet__feature-origin {
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
 /* ---- actions table (sheet rebuild slice 3) ---- */
 
 .sheet__actions-per-action {

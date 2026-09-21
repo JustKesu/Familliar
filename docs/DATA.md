@@ -176,6 +176,13 @@ The drops are entries superseded by a newer reprint we also keep (e.g. TCE
 `removeSuperseded()` and "Nine species names occur twice" below. `validate-data.js`
 now asserts these counts and checks that no superseded duplicate survives.
 
+Feature origin (2026-09-21, one-off survey): all 302 class-features records
+carry `className` and a numeric `level`; all 786 subclass-features records
+also carry `subclassShortName`. The sheet's origin label ("Fighter 2",
+"Champion, Fighter 3") reads these, so every granted class/subclass feature
+has one. Optional-feature picks have no such level (D99 — a wizard pick
+records none), and species traits are not listed on the sheet at all.
+
 ## Traps — things that silently break
 
 ### Blank source means PHB, not "same as this"

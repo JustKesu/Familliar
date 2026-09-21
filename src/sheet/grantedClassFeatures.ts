@@ -66,6 +66,9 @@ export interface GrantedFeature {
 	level: number
 	entries: unknown[]
 	kind: 'class' | 'subclass'
+	/** The record's own class, and for a subclass feature its subclass short name — what the sheet labels a feature's origin with. */
+	className: string
+	subclassShortName?: string
 	/*
 	 * Carried through unread by this module, for D86's actions-table test: 72 of
 	 * the 215 qualifying class/subclass features (Stunning Strike, Deflect
@@ -242,6 +245,8 @@ export function grantedClassFeaturesFrom(character: Character, parsedClasses: un
 			level: record.level,
 			entries: record.entries,
 			kind,
+			className: record.className,
+			...(record.subclassShortName !== undefined ? { subclassShortName: record.subclassShortName } : {}),
 			...(record.consumes !== undefined ? { consumes: record.consumes } : {}),
 		})
 		frontier.push(record.entries)

@@ -112,7 +112,7 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, SpellList } from './SpellList'
-import { featureActionRows, type FeatureActionData } from './featureActionRowData'
+import { featureActionRows, grantedFeatureOrigin, type FeatureActionData } from './featureActionRowData'
 import { spellActionRows, type SpellActionData } from './spellActionRowData'
 import { spellLevelLabel } from './spellFormatting'
 import {
@@ -1595,7 +1595,12 @@ function featureActionRow(
 	const max = resourceMaxima.get(feature.resourceName)
 	return {
 		key: `feature-action|${feature.key}`,
-		name: <span className="sheet__action-name">{feature.name}</span>,
+		name: (
+			<>
+				<span className="sheet__action-name">{feature.name}</span>
+				{feature.origin && <span className="sheet__feature-origin"> ({feature.origin})</span>}
+			</>
+		),
 		range: null,
 		toHit: null,
 		damage: null,
@@ -2510,7 +2515,19 @@ export function CharacterSheet({
 		speciesSpellcastingEntries,
 	)
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
-	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures)
+	/*
+	 * An option is the class's when the class's own progression resolved it (Class options) or it is the class-level fighting
+	 * style, otherwise the subclass's (D88's split). One class only: which class a pick belongs to under multiclassing is step 10.
+	 */
+	const singleClass = character.classes.length === 1 ? character.classes[0] : null
+	const classOptionNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name.toLowerCase())))
+	function optionOrigin(option: OptionalFeatureOption): string | null {
+		if (!singleClass || classOptionalFeaturesError) return null
+		const name = option.name.toLowerCase()
+		if (classOptionNames.has(name) || name === character.fightingStyle?.toLowerCase()) return singleClass.className
+		return singleClass.subclass
+	}
+	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures, optionOrigin)
 	/*
 	 * Slice 9b2: the same three feature sources computeCharacterResources asks for
 	 * (its own doc comment) — granted features, the chosen feats' own text, and the
@@ -3135,7 +3152,8 @@ export function CharacterSheet({
 							<li key={feature.id}>
 								<details>
 									<summary>
-										{feature.name} (level {feature.level})
+										{feature.name}
+										<span className="sheet__feature-origin"> ({grantedFeatureOrigin(feature)})</span>
 									</summary>
 									<ResolvedEntries entries={feature.entries} data={resolverData} />
 								</details>

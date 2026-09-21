@@ -43,6 +43,14 @@ export interface FeatureActionData {
 	 * looking it up in computeCharacterResources' own list.
 	 */
 	resourceName: string
+	/** Where the feature came from, as the row labels it ("Fighter 2", "Champion, Fighter 3", "Feat, level 4", "Sorcerer"); null when that is not known. */
+	origin: string | null
+}
+
+/** A granted class/subclass feature's origin: its class and the class level it is gained at, plus the subclass for a subclass feature. */
+export function grantedFeatureOrigin(feature: Pick<GrantedFeature, 'className' | 'subclassShortName' | 'level'>): string {
+	const classLevel = `${feature.className} ${feature.level}`
+	return feature.subclassShortName ? `${feature.subclassShortName}, ${classLevel}` : classLevel
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -74,6 +82,7 @@ function resourceCandidateName(feature: { name: string; consumes?: unknown }): s
 export interface ChosenFeatRef {
 	name: string
 	source: string
+	level: number
 }
 
 /**
@@ -85,40 +94,44 @@ export interface ChosenFeatRef {
  * Deduplicated by name, because the row IS the name: the data holds one record
  * per level a feature is restated at (Fighter's Action Surge at 2 and again at
  * 17), and two rows reading "Action Surge" tell the player nothing the one row
- * does not.
+ * does not. The row keeps the first record's origin, the level it was first gained at.
+ *
+ * `optionOrigin` names the class or subclass an option was chosen through. It
+ * carries no level: a pick made in the wizard records none (D99).
  */
 export function featureActionRows(
 	granted: GrantedFeature[],
 	chosenFeats: ChosenFeatRef[],
 	featTexts: FeatTextEntry[],
 	chosenOptions: OptionalFeatureOption[],
+	optionOrigin: (option: OptionalFeatureOption) => string | null = () => null,
 ): FeatureActionData[] {
 	const rows: FeatureActionData[] = []
 	const seen = new Set<string>()
 
-	function add(kind: 'feature' | 'feat' | 'option', name: string, resourceName: string): void {
+	function add(kind: 'feature' | 'feat' | 'option', name: string, resourceName: string, origin: string | null): void {
 		const key = name.toLowerCase()
 		if (seen.has(key)) return
 		seen.add(key)
-		rows.push({ key: `${kind}|${key}`, name, resourceName })
+		rows.push({ key: `${kind}|${key}`, name, resourceName, origin })
 	}
 
 	for (const feature of granted) {
-		if (isActionTableFeature(feature)) add('feature', feature.name, resourceCandidateName(feature))
+		if (isActionTableFeature(feature)) add('feature', feature.name, resourceCandidateName(feature), grantedFeatureOrigin(feature))
 	}
 
 	for (const choice of chosenFeats) {
 		// D43: a feat whose text is missing cannot be tested, so it gets no row —
 		// the Feats list already says the text was not found.
 		const text = featTexts.find((entry) => entry.name === choice.name && entry.source === choice.source)
-		if (text && isActionTableFeature(text)) add('feat', choice.name, resourceCandidateName(text))
+		if (text && isActionTableFeature(text)) add('feat', choice.name, resourceCandidateName(text), `Feat, level ${choice.level}`)
 	}
 
 	// Already resolved to the full option record by the caller, so — unlike a feat —
 	// there is no second lookup to do: D43's no-text-no-row is applied when the pick
 	// is resolved, and an unresolvable pick never reaches here.
 	for (const option of chosenOptions) {
-		if (isActionTableFeature(option)) add('option', option.name, resourceCandidateName(option))
+		if (isActionTableFeature(option)) add('option', option.name, resourceCandidateName(option), optionOrigin(option))
 	}
 
 	return rows

@@ -846,6 +846,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      načtené granty doběhly pro TUTÉŽ postavu a žádný neselhal (D43) — do té
      doby se uložená hodnota ukazuje. `play.concentratingOn` v úložišti
      zůstává, dokud hráč neklikne jinam. Testy: 3 nové v bloku `concentration`.
+     Ověřeno v prohlížeči (Cleric Life 3, Bless z domény → Remove level 3 →
+     hlavička i tlačítko pryč).
+   - Původ featury (click-through 2026-09-20): za jménem je šedý štítek
+     `.sheet__feature-origin` — v sekci „Class and subclass features" (místo
+     „(level N)") a u řádků schopností v tabulce akcí. Class featura
+     „(Fighter 2)", subclass „(Battle Master, Fighter 3)", feat „(Feat, level
+     4)", volba optional feature jen třída/podtřída bez úrovně (D99) —
+     „(Sorcerer)", „(Battle Master)"; u multiclassu nebo selhaného načtení
+     Class options bez štítku. `GrantedFeature` nese `className` a
+     `subclassShortName` z dat (resolver je dřív zahazoval),
+     `FeatureActionData.origin`, `grantedFeatureOrigin`. Rasové rysy sheet
+     nevypisuje, štítek nemají. Testy: `featureActionRowData.test.ts`, 3 v
+     `CharacterSheet.test.tsx`.
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
 10. [not started] Multiclass
 

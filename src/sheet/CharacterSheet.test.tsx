@@ -3587,6 +3587,21 @@ describe('CharacterSheet', () => {
 			expect(section.textContent).not.toContain('Fighter Subclass')
 		})
 
+		it('labels each feature with its class and level, and a subclass feature with its subclass too', async () => {
+			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(character, CLASSES, RESOLVER))
+
+			const { container } = render(<CharacterSheet character={character} />)
+			const section = await waitFor(() => {
+				const found = container.querySelector('.sheet__granted-features')
+				expect(found?.textContent).toContain('Improved Critical')
+				return found!
+			})
+			const summaries = Array.from(section.querySelectorAll('summary')).map((summary) => summary.textContent)
+			expect(summaries).toContain('Second Wind (Fighter 1)')
+			expect(summaries).toContain('Improved Critical (Champion, Fighter 3)')
+		})
+
 		it('a Cleric (Life) 17 keeps the wrapper AND its ref-introduced parts, and resolves the Cleric "Potent Spellcasting" — not the Druid one', async () => {
 			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
 			const cleric: Character = {
@@ -3909,6 +3924,54 @@ describe('CharacterSheet', () => {
 
 			await waitFor(() => expect(rowNames(container)).toContain('Second Wind'))
 			expect(rowNames(container)).not.toContain('Defense')
+		})
+
+		function nameCell(container: HTMLElement, name: string): string | null | undefined {
+			const cells = Array.from(container.querySelectorAll('.sheet__actions-table tbody .sheet__action-name-cell'))
+			return cells.find((cell) => cell.querySelector('.sheet__action-name')?.textContent === name)?.textContent
+		}
+
+		it('labels each feature row with where it came from: class and level, feat and level, the subclass for a maneuver', async () => {
+			withRealOptionResolution()
+			vi.mocked(loadFeatTextEntries).mockResolvedValue([{ name: 'Lucky', source: 'XPHB', entries: [REST] }])
+			const battleMaster: Character = {
+				...character,
+				id: 'act-origins',
+				name: 'Yasha',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 17 }],
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Lucky', source: 'XPHB' }],
+				optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }] }],
+			}
+			const container = await renderFor(battleMaster)
+			await waitFor(() => expect(rowNames(container)).toContain('Trip Attack'))
+			await waitFor(() => expect(rowNames(container)).toContain('Lucky'))
+
+			expect(nameCell(container, 'Second Wind')).toBe('Second Wind (Fighter 1)')
+			// The one row for Action Surge keeps the level it was first gained at, not the restatement at 17.
+			expect(nameCell(container, 'Action Surge')).toBe('Action Surge (Fighter 2)')
+			expect(nameCell(container, 'Lucky')).toBe('Lucky (Feat, level 4)')
+			// A wizard pick records no level (D99), so an option names only the subclass it came through.
+			expect(nameCell(container, 'Trip Attack')).toBe('Trip Attack (Battle Master)')
+			// Weapon rows carry no origin label.
+			expect(nameCell(container, 'Unarmed Strike')).toBe('Unarmed Strike')
+		})
+
+		it('names the class for an option its own progression granted (Metamagic)', async () => {
+			withRealOptionResolution()
+			vi.mocked(loadChosenClassOptionalFeatures).mockResolvedValueOnce([
+				{ featureType: 'MM', name: 'Metamagic', options: [{ name: 'Twinned Spell', source: 'XPHB', entries: OPTIONAL_FEATURES[0]!.entries }] },
+			])
+			const sorcerer: Character = {
+				...character,
+				id: 'act-origin-class-option',
+				name: 'Nott',
+				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 }],
+				optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Twinned Spell' }] }],
+			}
+			const container = await renderFor(sorcerer)
+			await screen.findByRole('heading', { name: 'Metamagic' })
+
+			await waitFor(() => expect(nameCell(container, 'Twinned Spell')).toBe('Twinned Spell (Sorcerer)'))
 		})
 
 		/* D88: no actions-table row for a fighting style (above), but nothing else on the sheet showed it either — Subclass options now does. */
