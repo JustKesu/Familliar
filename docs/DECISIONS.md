@@ -2376,3 +2376,34 @@ tentýž `flush()` na `beforeunload` a `pagehide` okna. `flush()` je idempotentn
 čekající timer, bez čekajícího zápisu nedělá nic), takže se nic nezapíše dvakrát.
 `pagehide` pokrývá případy, kdy `beforeunload` neproběhne (mobilní prohlížeče, bfcache).
 Zbytek D116 — 500 ms prodleva, blur, unmount — beze změny.
+
+## D119 — Implicitní jedno použití: zmínka o vlastnosti/modifikátoru ho neblokuje; Aberrant Dragonmark a Natural Recovery zůstávají bez trackeru
+
+Step 9. Mění pravidlo `isImplicitSingleUse` z commitů 0e657a2 a 15eee36: feature, jejíž
+text říká jen "can't … again until you finish a Short/Long Rest" a neuvádí počet, má
+jedno použití (max 1).
+
+**Vypuštěna výjimka `NAMES_A_STAT`.** Přeskakovala každou feature, která kdekoli v textu
+jmenuje vlastnost, "modifier" nebo "Proficiency", z obavy, že jde o počet spočítaný ze
+statu. Prošlo se všech 18 takto přeskočených features: v 17 je zmínka záchranný DC, bonus
+k útoku nebo vzorec zranění, nikdy počet použití. Těch 17 (Avenging Angel, Beguiling
+Defenses, Beguiling Magic, Bulwark of Force, Clairvoyant Combatant, Greater Mark of
+Hospitality, Hand of Ultimate Mercy, Holy Nimbus, Hurl Through Hell, Intimidating
+Presence, Living Legend, Mage Slayer, Rend Mind, Searing Vengeance, Spell Thief,
+Unbreakable Majesty, Warping Implosion) tedy dostává Uses tracker s max 1. Počet
+použití vyjádřený statem by pořád chytil `STATES_A_COUNT` ("number of times", "uses").
+Tři z nich (Clairvoyant Combatant, Mage Slayer, Unbreakable Majesty) se nabíjejí i na
+Short Rest ("Short Rest or Long Rest"); `singleUseRechargesOnShortRest` je vrací beze
+změny.
+
+**Osmnáctá feature, Aberrant Dragonmark, a Natural Recovery jsou jiný problém.** Každá
+nese v jednom záznamu DVA nezávislé limity (Aberrant Dragonmark: schopnost jen na Long
+Rest a zvlášť použití kouzla na Short nebo Long Rest; Natural Recovery: bezplatné
+seslání kouzla Kruhu na Long Rest a zvlášť obnova slotů). Jeden max-1 tracker by je
+tiše slil. Obě jsou v `TWO_INDEPENDENT_LIMITS` a zůstávají "not in the data" (D43), dokud
+nepůjde modelovat víc zdrojů na jednu feature. Natural Recovery tím z trackeru vypadává:
+patřila mezi původních 24 a před tímto rozhodnutím ukazovala jeden tracker s max 1.
+
+Nemodeluje se nic nového; víc limitů na feature je samostatný úkol. Celkem je teď
+40 implicitních jednoduchých použití (24 − Natural Recovery + 17), hlídaných testem
+proti reálným datům v `resources.test.ts`.

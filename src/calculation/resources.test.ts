@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, type CharacterResource, type ResourceFeature } from './resources'
 import type { Character } from '../storage/character'
@@ -154,6 +155,33 @@ const PROFICIENCY_ONLY: ResourceFeature = {
 	name: 'Proficiency Only',
 	entries: ["You add your {@variantrule Proficiency|XPHB|Proficiency Bonus}. You can't use it again until you finish a {@variantrule Long Rest|XPHB}."],
 }
+const SPELL_THIEF: ResourceFeature = {
+	name: 'Spell Thief',
+	entries: [
+		"The target makes a saving throw using your spellcasting ability modifier and {@variantrule Proficiency|XPHB|Proficiency Bonus}. Once you use this feature, you can't use it again until you finish a {@variantrule Long Rest|XPHB}.",
+	],
+}
+// Both carry two recharge sentences, one per limit; a max-1 tracker would fold them together (D119).
+const ABERRANT_DRAGONMARK: ResourceFeature = {
+	name: 'Aberrant Dragonmark',
+	entries: [
+		"Once you use this feature, you can't do so again until you finish a {@variantrule Long Rest|XPHB}.",
+		"You can also cast the spell once without a spell slot, and you can't do so again until you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}.",
+	],
+}
+const NATURAL_RECOVERY: ResourceFeature = {
+	name: 'Natural Recovery',
+	entries: [
+		"You can cast one of your Circle spells without a spell slot, and you can't do so again until you finish a {@variantrule Long Rest|XPHB}.",
+		"When you finish a {@variantrule Short Rest|XPHB}, you can choose expended spell slots to recover. Once you do so, you can't do so again until you finish a {@variantrule Long Rest|XPHB}.",
+	],
+}
+const MAGE_SLAYER: ResourceFeature = {
+	name: 'Mage Slayer',
+	entries: [
+		"Once you use this feature, you can't use it again until you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}. The target makes a Strength saving throw.",
+	],
+}
 
 describe('one use where the text states only a recharge', () => {
 	it('gives 1 to a feature that says only it can’t be used again until a rest', () => {
@@ -163,14 +191,25 @@ describe('one use where the text states only a recharge', () => {
 		}
 	})
 
-	it('stays unknown where the text names a stat, even as a save DC', () => {
+	it('gives 1 where the text names a stat only as a save DC (D119)', () => {
 		const [presence] = computeCharacterResources(character('Barbarian', 5), CLASSES, [INTIMIDATING_PRESENCE])
-		expect(presence.max.status).toBe('unknown')
+		expect(presence.max.status === 'known' && presence.max.value).toBe(1)
+		expect(presence.shortRest).toBeNull()
 	})
 
-	it('reads a Proficiency Bonus tag by its first segment and stays unknown', () => {
-		const [resource] = computeCharacterResources(character('Fighter', 5), CLASSES, [PROFICIENCY_ONLY])
-		expect(resource.max.status).toBe('unknown')
+	it('gives 1 where the text names a Proficiency Bonus or a modifier as an attack or damage formula (D119)', () => {
+		for (const feature of [PROFICIENCY_ONLY, SPELL_THIEF]) {
+			const [resource] = computeCharacterResources(character('Fighter', 5), CLASSES, [feature])
+			expect(resource.max.status === 'known' && resource.max.value).toBe(1)
+		}
+	})
+
+	it('leaves Aberrant Dragonmark and Natural Recovery untracked — two independent limits in one record (D119)', () => {
+		for (const feature of [ABERRANT_DRAGONMARK, NATURAL_RECOVERY]) {
+			const [resource] = computeCharacterResources(character('Druid', 5), CLASSES, [feature])
+			expect(resource.max.status).toBe('unknown')
+			expect(resource.shortRest).toBeNull()
+		}
 	})
 
 	it('stays unknown where the text states a count', () => {
@@ -288,8 +327,14 @@ describe('a single use that recharges on a Short Rest too', () => {
 		}
 	})
 
+	it('gives back the one use of a feature that also names a stat, when its recharge sentence names a Short Rest (D119)', () => {
+		const [mageSlayer] = computeCharacterResources(character('Fighter', 5), CLASSES, [MAGE_SLAYER])
+		expect(mageSlayer.max.status === 'known' && mageSlayer.max.value).toBe(1)
+		expect(mageSlayer.shortRest).toBe('all')
+	})
+
 	it('leaves a Long-Rest-only single use unchanged', () => {
-		for (const feature of [UNCANNY_METABOLISM, DIVINE_INTERVENTION]) {
+		for (const feature of [UNCANNY_METABOLISM, DIVINE_INTERVENTION, INTIMIDATING_PRESENCE]) {
 			const [resource] = computeCharacterResources(character('Monk', 5), CLASSES, [feature])
 			expect(resource.shortRest).toBeNull()
 		}
@@ -304,6 +349,49 @@ describe('a single use that recharges on a Short Rest too', () => {
 	it('leaves a resource with a stated count unchanged, Action Surge included', () => {
 		const [surge] = computeCharacterResources(character('Fighter', 5), CLASSES, [ACTION_SURGE_XPHB])
 		expect(surge.shortRest).toBeNull()
+	})
+})
+
+/*
+ * D119 was verified against the real data before it was written; this guard keeps
+ * that verification running. No class table is passed, so every known maximum here
+ * is an implicit single use.
+ */
+describe('the implicit single-use set — against the generated data (D119)', () => {
+	function read(name: string): ResourceFeature[] {
+		const parsed = JSON.parse(readFileSync(`data/${name}`, 'utf8'))
+		if (!Array.isArray(parsed)) throw new Error(`data/${name}: expected a top-level array.`)
+		return parsed as ResourceFeature[]
+	}
+	const features = ['class-features.json', 'subclass-features.json', 'optional-features.json', 'feats.json'].flatMap(read)
+	const resources = computeCharacterResources(character('Fighter', 20), [], features)
+	const byName = new Map(resources.map((resource) => [resource.name, resource]))
+	const singleUse = resources.filter((resource) => resource.max.status === 'known')
+
+	const FORMERLY_EXCLUDED_BY_A_STAT = [
+		'Avenging Angel', 'Beguiling Defenses', 'Beguiling Magic', 'Bulwark of Force', 'Clairvoyant Combatant', 'Greater Mark of Hospitality',
+		'Hand of Ultimate Mercy', 'Holy Nimbus', 'Hurl Through Hell', 'Intimidating Presence', 'Living Legend', 'Mage Slayer', 'Rend Mind',
+		'Searing Vengeance', 'Spell Thief', 'Unbreakable Majesty', 'Warping Implosion',
+	]
+
+	it.each(FORMERLY_EXCLUDED_BY_A_STAT)('%s: one use', (name) => {
+		const max = byName.get(name)?.max
+		expect(max?.status === 'known' && max.value).toBe(1)
+	})
+
+	it.each(['Aberrant Dragonmark', 'Natural Recovery'])('%s: no tracker', (name) => {
+		expect(byName.get(name)?.max.status).toBe('unknown')
+	})
+
+	it('holds 40 single-use resources: the 24 of the first pass, less Natural Recovery, plus the 17', () => {
+		expect(singleUse).toHaveLength(40)
+	})
+
+	it('returns the single use on a Short Rest for exactly the ones whose recharge sentence names one', () => {
+		const onShortRest = singleUse.filter((resource) => resource.shortRest === 'all').map((resource) => resource.name).sort()
+		expect(onShortRest).toEqual(
+			['Clairvoyant Combatant', 'Illusory Self', 'Mage Slayer', 'Stroke of Luck', 'Telekinetic Movement', 'The Third Eye', 'Unbreakable Majesty'].sort(),
+		)
 	})
 })
 

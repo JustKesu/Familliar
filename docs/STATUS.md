@@ -806,21 +806,25 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    - Implicitní jedno použití — sebe-limitovaný zdroj bez sloupce v tabulce,
      který NENÍ pool (nic ho nespotřebovává přes `consumes`), dostane maximum 1,
      když jeho vlastní text říká jen „can't do so / use it / use this feature
-     again until you finish a Short/Long Rest" a nikde nejmenuje vlastnost,
-     `modifier`, `proficiency` ani počet (`twice`, `uses`, `N times`, `number
-     of times`). `isImplicitSingleUse` v `calculation/resources.ts`, rozklad
-     „X: can't be used again until a rest, no count stated". 24 z 92 jmen v
-     datech (seznam v DATA.md), UI beze změny — `UsesTracker` se ukáže sám.
-     Testy: blok „one use where the text states only a recharge" v
+     again until you finish a Short/Long Rest" a nejmenuje počet (`twice`,
+     `uses`, `N times`, `number of times`). Zmínka o vlastnosti, `modifier` či
+     `proficiency` ho neblokuje (D119 — byl to vždy DC nebo vzorec, ne počet).
+     `isImplicitSingleUse` v `calculation/resources.ts`, rozklad „X: can't be
+     used again until a rest, no count stated". 40 z 92 jmen v datech (seznam
+     v DATA.md), UI beze změny — `UsesTracker` se ukáže sám. Aberrant Dragonmark
+     a Natural Recovery jsou vyňaté jménem (`TWO_INDEPENDENT_LIMITS`, D119): dva
+     nezávislé limity v jednom záznamu, tracker nemají. Testy: blok „one use
+     where the text states only a recharge" a hlídač proti reálným datům v
      `resources.test.ts`. Ověřeno v prohlížeči (Monk 2: Uncanny Metabolism
      `Uses: 0 / 1`).
    - Implicitní jedno použití obnovuje i Short Rest, když to říká věta o
      dobití: „can't do so / use it / use this feature again until you finish a
      Short Rest or Long Rest". `singleUseRechargesOnShortRest` v
      `calculation/resources.ts`, platí jen pro zdroje s `isImplicitSingleUse`
-     a jen tehdy, když `shortRestRecovery` nenašel nic — vrací `'all'`. 4 jména
+     a jen tehdy, když `shortRestRecovery` nenašel nic — vrací `'all'`. 7 jmen
      v datech: Stroke of Luck, The Third Eye, Illusory Self, Telekinetic
-     Movement. Long-Rest-only zdroje beze změny. Testy: blok „a single use that
+     Movement, Clairvoyant Combatant, Mage Slayer, Unbreakable Majesty (poslední
+     tři od D119). Long-Rest-only zdroje beze změny. Testy: blok „a single use that
      recharges on a Short Rest too" v `resources.test.ts` + jeden v
      `rest.test.ts`. Ověřeno v prohlížeči (Rogue 20: Stroke of Luck utracen
      `1 / 1` → Short Rest → `0 / 1`).

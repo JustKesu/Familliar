@@ -26,8 +26,8 @@
  * name. Nothing is parsed out of prose, so a maximum stated only in a sentence
  * ("equal to your Charisma modifier") is reported as not in the data (D43) rather
  * than guessed. Data-wide that is 8 resources with a table and ~90 without.
- * The one exception: a feature whose text states only a recharge, with no count
- * and no stat, has one use (24 of the ~90 data-wide; isImplicitSingleUse).
+ * The one exception: a feature whose text states only a recharge, with no count,
+ * has one use (D119; isImplicitSingleUse).
  */
 
 import { hasRestTag } from '../actions/actionTableFeatureData'
@@ -107,17 +107,24 @@ function isSelfLimitedFeature(feature: ResourceFeature): boolean {
 
 /*
  * A feature that only says it "can't be used again until you finish a rest"
- * has one use. Any stat, proficiency or count word anywhere in its text keeps
- * it unknown, even where that word is a save DC (Intimidating Presence) — a
- * missed 1 renders blank, a wrong 1 misstates the rules. "Proficiency" alone
- * because {@variantrule Proficiency|XPHB|Proficiency Bonus} strips to its first segment.
+ * has one use, unless its text states a count. A stat, modifier or Proficiency
+ * Bonus in the text does NOT block it: in every such feature it is a save DC,
+ * an attack bonus or a damage formula, never the number of uses (D119).
  */
 const SINGLE_USE_RECHARGE = /can't (?:do so|use it|use this feature) again until you finish an? (?:Short|Long) Rest/i
-const NAMES_A_STAT = /\b(?:Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma|modifier|proficiency)\b/i
 const STATES_A_COUNT = /\b(?:twice|thrice|uses|number of times|(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+) (?:more |additional )?times)\b/i
 
-function isImplicitSingleUse(text: string): boolean {
-	return SINGLE_USE_RECHARGE.test(text) && !NAMES_A_STAT.test(text) && !STATES_A_COUNT.test(text)
+/*
+ * One record, two independent limits: a single max-1 tracker would conflate
+ * them. Aberrant Dragonmark is a Long-Rest-only ability plus a separate
+ * Short-or-Long-Rest spell use; Natural Recovery is a free Circle-spell cast
+ * plus a separate slot-recovery recharge. Left unknown until a resource can be
+ * modelled twice per feature (D119).
+ */
+const TWO_INDEPENDENT_LIMITS = new Set(['Aberrant Dragonmark', 'Natural Recovery'])
+
+function isImplicitSingleUse(name: string, text: string): boolean {
+	return !TWO_INDEPENDENT_LIMITS.has(name) && SINGLE_USE_RECHARGE.test(text) && !STATES_A_COUNT.test(text)
 }
 
 /*
@@ -125,7 +132,7 @@ function isImplicitSingleUse(text: string): boolean {
  * "can't use it again until you finish a Short Rest or Long Rest" — neither
  * shortRestRecovery ordering, since no "regain" is spoken. The single use IS the
  * whole pool, so a Short Rest returns all of it. Only the recharge sentence
- * counts: Arcane Recovery and Natural Recovery mention a Short Rest as the time
+ * counts: Arcane Recovery and Sorcerous Restoration mention a Short Rest as the time
  * you can act, and their own use still comes back on a Long Rest (DATA.md).
  */
 const SINGLE_USE_RECHARGE_RESTS = /can't (?:do so|use it|use this feature) again until you finish\s+an?\s+((?:Short|Long) Rest(?:\s+or\s+(?:Short|Long) Rest)?)/gi
@@ -338,7 +345,7 @@ export function computeCharacterResources(character: Character, parsedClasses: u
 	return [...found.entries()]
 		.map(([name, dataNames]) => {
 			const text = (ownText.get(name) ?? []).join(' ')
-			const impliedSingleUse = !pools.has(name) && isImplicitSingleUse(text)
+			const impliedSingleUse = !pools.has(name) && isImplicitSingleUse(name, text)
 			return {
 				name,
 				dataNames,

@@ -321,29 +321,51 @@ the four files), 5 have a table column, 36 lack the single-use sentence
 ("can't do so / use it / use this feature again until you finish a Short/Long
 Rest"), 18 have it but name a stat, "modifier" or "proficiency" somewhere in
 their text, 9 have it but state a count ("twice", "uses", "N times", "number
-of times"), and 24 have it with none of those — the implicit single-use set:
-Divine Intervention, Uncanny Metabolism, Stroke of Luck, Sorcerous
-Restoration, Magical Cunning, Arcane Recovery, Chemical Mastery, Zealous
-Presence, Rage of the Gods, Mantle of Majesty, Natural Recovery, Know Your
-Enemy, Elder Champion, Psychic Veil, Trance of Order, Clockwork Cavalcade,
-Dragon Wings, Tamed Surge, The Third Eye, Illusory Self, Eldritch Cannon,
-Telekinetic Movement, Boon of Recovery, Greater Mark of Scribing. Action
+of times"), and 24 have it with none of those. Of the 18 "stat" features, 17 name
+the stat only as a save DC, an attack bonus or a damage formula, never as the
+number of uses (D119), so they count as single-use too; the remaining one,
+Aberrant Dragonmark, is excluded for another reason (below). Action
 Surge sits in the "count" group because the level-2 record already
-carries the level-17 "twice" sentence. The "stat" group includes features
-that are single-use but name a stat only as a save DC (Intimidating Presence:
-"Wisdom saving throw (DC 8 plus your Strength modifier…)"). A Proficiency
+carries the level-17 "twice" sentence. A Proficiency
 Bonus reference is `{@variantrule Proficiency|XPHB|Proficiency Bonus}`, which
 strips to "Proficiency" — a search for "proficiency bonus" in stripped text
-misses it. 4 of the 24 recharge on a Short Rest — Stroke of Luck, The Third
-Eye, Illusory Self and Telekinetic Movement ("can't use it again until you
-finish a Short Rest or Long Rest"; Telekinetic Movement adds "unless you
-expend a Psionic Energy Die"). Their sentence is neither `regain all|one`
-ordering, so `shortRestRecovery` reads them as null; the recovery for these
-comes from `singleUseRechargesOnShortRest` instead (a Short Rest returns the
-one use). Three others of the 24 (Sorcerous Restoration, Arcane Recovery,
-Natural Recovery) name a Short Rest only as when you may act ("When you
-finish a Short Rest, you can…"); their recharge sentence is Long Rest only,
-so they are not among the 4. The other 17 name no Short Rest at all.
+misses it.
+
+The implicit single-use set, as classified (D119) — 24 + 17, minus Natural
+Recovery, is 40:
+
+- The 23 of the 24 that remain: Divine Intervention, Uncanny Metabolism, Stroke
+  of Luck, Sorcerous Restoration, Magical Cunning, Arcane Recovery, Chemical
+  Mastery, Zealous Presence, Rage of the Gods, Mantle of Majesty, Know Your Enemy,
+  Elder Champion, Psychic Veil, Trance of Order, Clockwork Cavalcade, Dragon
+  Wings, Tamed Surge, The Third Eye, Illusory Self, Eldritch Cannon, Telekinetic
+  Movement, Boon of Recovery, Greater Mark of Scribing.
+- The 17 once excluded by a stat mention: Avenging Angel, Beguiling Defenses,
+  Beguiling Magic, Bulwark of Force, Clairvoyant Combatant, Greater Mark of
+  Hospitality, Hand of Ultimate Mercy, Holy Nimbus, Hurl Through Hell,
+  Intimidating Presence ("Wisdom saving throw (DC 8 plus your Strength
+  modifier…)"), Living Legend, Mage Slayer, Rend Mind, Searing Vengeance, Spell
+  Thief, Unbreakable Majesty, Warping Implosion.
+- Excluded on purpose, no tracker: Aberrant Dragonmark and Natural Recovery. A
+  single record carries TWO independent recharge limits — Aberrant Dragonmark
+  a Long-Rest-only ability and a separate Short-or-Long-Rest spell use, Natural
+  Recovery a free Circle-spell cast and a separate slot-recovery recharge — so a
+  max-1 tracker would conflate them. Natural Recovery was in the first 24 and is
+  now removed. Both stay "not in the data" until a feature can carry more than
+  one resource. The exclusion is by name (`TWO_INDEPENDENT_LIMITS`), since nothing
+  in the text tells them apart from a genuine single use.
+
+7 of the 40 recharge on a Short Rest — Stroke of Luck, The Third Eye, Illusory
+Self and Telekinetic Movement ("can't use it again until you finish a Short
+Rest or Long Rest"; Telekinetic Movement adds "unless you expend a Psionic
+Energy Die"), plus Clairvoyant Combatant, Mage Slayer and Unbreakable Majesty
+(D119). Their sentence is neither `regain all|one` ordering, so
+`shortRestRecovery` reads them as null; the recovery for these comes from
+`singleUseRechargesOnShortRest` instead (a Short Rest returns the one use).
+Sorcerous Restoration and Arcane Recovery name a Short Rest only as when you
+may act ("When you finish a Short Rest, you can…"); their recharge sentence is
+Long Rest only, so they are not among the 7. The other 33 name no Short Rest
+in the recharge. `resources.test.ts` guards all of this against the real data.
 
 ### What a rest gives back is only in the prose, and it is not "all"
 The rest TAG says a feature cares about rests, never how much one returns
