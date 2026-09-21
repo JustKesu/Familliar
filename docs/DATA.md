@@ -309,6 +309,13 @@ Second Wind, Sorcery Point, Wild Shape). Every other maximum is stated in
 prose alone ("equal to your Charisma modifier", "twice"), so a structured
 reader must report it as not in the data (D43) rather than parse it.
 
+Action Surge is one of those prose-only ones, despite being a Fighter core
+feature beside Second Wind: XPHB Fighter's only table group is
+`["Second Wind", "Weapon Mastery"]`, no column in classes.json mentions
+"surge", and neither Action Surge record (XPHB 2, 17) has `consumes` or any
+count field. The count lives in two sentences: "can't do so again until you
+finish a Short Rest or Long Rest" and, at 17, "use it twice before a rest".
+
 ### What a rest gives back is only in the prose, and it is not "all"
 The rest TAG says a feature cares about rests, never how much one returns
 (step 9b5 investigation). Every short-rest-recoverable pool carries BOTH tags,
