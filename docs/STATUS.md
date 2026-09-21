@@ -859,6 +859,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `FeatureActionData.origin`, `grantedFeatureOrigin`. Rasové rysy sheet
      nevypisuje, štítek nemají. Testy: `featureActionRowData.test.ts`, 3 v
      `CharacterSheet.test.tsx`.
+   - Scroll na wizard (click-through 2026-09-21): „Level up" a „Edit character"
+     po otevření wizardu odscrollují stránku na `.char-create` (wizard se dál
+     vykresluje pod sheetem, `CharacterManager.tsx`). Wizard se připojí skoro
+     prázdný a plní se po načtení dat, proto se `scrollIntoView` opakuje přes
+     `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
+     (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
 10. [not started] Multiclass
 

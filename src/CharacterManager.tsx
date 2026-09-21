@@ -128,6 +128,25 @@ function CharacterManager() {
 	const [levelUpGains, setLevelUpGains] = useState<LevelGains | null>(null)
 	const [sheetId, setSheetId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
+	const wizardRef = useRef<HTMLDivElement>(null)
+	/** Bumped each time Level up / Edit character opens the wizard, so opening it again while it is already open still scrolls. */
+	const [scrollToWizard, setScrollToWizard] = useState(0)
+
+	/* The wizard renders below the sheet, far off screen on a long sheet. It mounts nearly empty and fills in as its data loads, so the scroll is repeated as it grows — scrolling once lands it half below the fold. jsdom has neither scrollIntoView nor ResizeObserver. */
+	useEffect(() => {
+		const wizard = wizardRef.current
+		if (scrollToWizard === 0 || !wizard?.scrollIntoView) return
+		const scroll = () => wizard.scrollIntoView({ block: 'start' })
+		scroll()
+		if (typeof ResizeObserver === 'undefined') return
+		const observer = new ResizeObserver(scroll)
+		observer.observe(wizard)
+		const stop = setTimeout(() => observer.disconnect(), 2000)
+		return () => {
+			observer.disconnect()
+			clearTimeout(stop)
+		}
+	}, [scrollToWizard])
 
 	function refresh(): void {
 		if (!store.store) return
@@ -315,6 +334,7 @@ function CharacterManager() {
 										setCreating(false)
 										setLevelUpGains(null)
 										setEditingId(sheetCharacter.id)
+										setScrollToWizard((n) => n + 1)
 									}}
 									onRemoveLevel={(result) => {
 										setEditingId((current) => (current === sheetCharacter.id ? null : current))
@@ -336,6 +356,7 @@ function CharacterManager() {
 										setCreating(false)
 										setLevelUpGains(gains)
 										setEditingId(sheetCharacter.id)
+										setScrollToWizard((n) => n + 1)
 									}}
 								/>
 							) : null
@@ -343,7 +364,7 @@ function CharacterManager() {
 				</div>
 			)}
 
-			<div className="char-create">
+			<div className="char-create" ref={wizardRef}>
 				{editingCharacter ? (
 					<CharacterWizard
 						/* A fresh run per mode and character: the wizard seeds itself once, on mount. */

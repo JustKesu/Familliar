@@ -134,6 +134,30 @@ describe('CharacterManager level up (slice 8d3)', () => {
 		expect(store.exportCharacter(created.id)).toBe(before)
 		expect(screen.getByText('Fighter 4')).not.toBeNull()
 	})
+
+	it('scrolls the wizard container into view when Level up opens the walk', async () => {
+		const store = new CharacterStore()
+		store.create({ name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 4 }] })
+		// jsdom has no scrollIntoView; the spy also records which element it was called on.
+		const scrolled: Element[] = []
+		Element.prototype.scrollIntoView = function (this: Element) {
+			scrolled.push(this)
+		}
+
+		try {
+			const user = userEvent.setup()
+			const { container } = render(<CharacterManager />)
+			await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+			expect(scrolled).toHaveLength(0)
+			await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
+			await screen.findByText('1. Hit points')
+
+			expect(scrolled).toEqual([container.querySelector('.char-create')])
+		} finally {
+			// @ts-expect-error restoring jsdom's state: the method does not exist there by default
+			delete Element.prototype.scrollIntoView
+		}
+	})
 })
 
 describe('CharacterManager remove level (slice 8e)', () => {
