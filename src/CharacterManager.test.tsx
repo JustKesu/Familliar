@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event'
 import CharacterManager from './CharacterManager'
 import { CharacterStore } from './storage/characterStore'
 import { CLASSES, RESOLVER } from './levelUp/levelGains.fixtures'
+import { useRoute } from './navigation/useRoute'
+import type { CharacterRoute } from './navigation/route'
 
 // The fetch stub below answers every data file with [], where no class exists; the Level up tests need a Fighter to be found.
 vi.mock('./levelUp/levelGains', async (importOriginal) => {
@@ -28,16 +30,35 @@ vi.mock('./levelUp/levelRemoval', async (importOriginal) => {
  * order step 2). Renders through a real DOM so it can catch a bug where the
  * store's own delete works (see characterStore.test.ts) but the UI never
  * reflects it — a gap the store's unit tests alone cannot see.
+ *
+ * Rework R1b: CharacterManager takes `route`/`navigate` as props (owned by
+ * App's single `useRoute`, D151) rather than owning list/sheet/wizard
+ * visibility itself. `Harness` stands in for App here — it is the same hook,
+ * just without App's nav tabs — so these tests exercise real hash navigation.
  */
+
+function Harness() {
+	const [route, navigate] = useRoute()
+	const characterRoute: CharacterRoute = route.view === 'markup-demo' ? { view: 'list' } : route
+	return <CharacterManager route={characterRoute} navigate={navigate} />
+}
+
+/** Simulates the browser's own Back/Forward, or a nav tab landing on the same hash — nothing here calls `navigate`. */
+function goTo(hash: string): void {
+	window.location.hash = hash
+	window.dispatchEvent(new Event('hashchange'))
+}
 
 afterEach(() => {
 	cleanup()
 	window.localStorage.clear()
+	window.location.hash = ''
 	vi.restoreAllMocks()
 })
 
 beforeEach(() => {
 	window.localStorage.clear()
+	window.location.hash = ''
 
 	// The "Sheet" button mounts the real CharacterSheet, which fetches app data
 	// files through dataLoader.ts. In jsdom there is no origin for a
@@ -64,7 +85,7 @@ describe('CharacterManager delete', () => {
 		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
-		render(<CharacterManager />)
+		render(<Harness />)
 
 		expect(await screen.findByText('Aria')).not.toBeNull()
 
@@ -80,7 +101,7 @@ describe('CharacterManager delete', () => {
 		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
-		render(<CharacterManager />)
+		render(<Harness />)
 
 		expect(await screen.findByText('Aria')).not.toBeNull()
 		expect(screen.getByText('Bree')).not.toBeNull()
@@ -98,7 +119,7 @@ describe('CharacterManager delete', () => {
 		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
-		render(<CharacterManager />)
+		render(<Harness />)
 
 		expect(await screen.findByText('Aria')).not.toBeNull()
 
@@ -113,14 +134,14 @@ describe('CharacterManager delete', () => {
 	})
 })
 
-describe('CharacterManager level up (slice 8d3)', () => {
+describe('CharacterManager level up (slice 8d3, rework R1b)', () => {
 	it('leaves the stored character untouched when the walk is cancelled part-way', async () => {
 		const store = new CharacterStore()
 		const created = store.create({ name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 4 }] })
 		const before = store.exportCharacter(created.id)
 
 		const user = userEvent.setup()
-		render(<CharacterManager />)
+		render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
 		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
 
@@ -132,31 +153,21 @@ describe('CharacterManager level up (slice 8d3)', () => {
 
 		expect(screen.queryByText('1. Hit points')).toBeNull()
 		expect(store.exportCharacter(created.id)).toBe(before)
-		expect(screen.getByText('Fighter 4')).not.toBeNull()
+		// The list (whose row read just "Fighter 4") is gone on this route (R1b) — only the sheet's own header remains, subclass included.
+		expect(await screen.findByText('Fighter 4 (Champion)')).not.toBeNull()
 	})
 
-	it('scrolls the wizard container into view when Level up opens the walk', async () => {
+	it('shows only the wizard, not the sheet, while the level-up walk is open', async () => {
 		const store = new CharacterStore()
 		store.create({ name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 4 }] })
-		// jsdom has no scrollIntoView; the spy also records which element it was called on.
-		const scrolled: Element[] = []
-		Element.prototype.scrollIntoView = function (this: Element) {
-			scrolled.push(this)
-		}
 
-		try {
-			const user = userEvent.setup()
-			const { container } = render(<CharacterManager />)
-			await user.click(await screen.findByRole('button', { name: 'Sheet' }))
-			expect(scrolled).toHaveLength(0)
-			await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
-			await screen.findByText('1. Hit points')
+		const user = userEvent.setup()
+		render(<Harness />)
+		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
 
-			expect(scrolled).toEqual([container.querySelector('.char-create')])
-		} finally {
-			// @ts-expect-error restoring jsdom's state: the method does not exist there by default
-			delete Element.prototype.scrollIntoView
-		}
+		expect(await screen.findByText('1. Hit points')).not.toBeNull()
+		expect(screen.queryByRole('button', { name: 'Edit character' })).toBeNull()
 	})
 })
 
@@ -177,7 +188,7 @@ describe('CharacterManager remove level (slice 8e)', () => {
 		const confirmSpy = vi.spyOn(window, 'confirm')
 
 		const user = userEvent.setup()
-		render(<CharacterManager />)
+		render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
 		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
 
@@ -195,7 +206,7 @@ describe('CharacterManager remove level (slice 8e)', () => {
 		const created = createFighter(store)
 
 		const user = userEvent.setup()
-		render(<CharacterManager />)
+		render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
 		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
 		await user.click(screen.getByRole('button', { name: 'Confirm removing level 5' }))
@@ -203,7 +214,8 @@ describe('CharacterManager remove level (slice 8e)', () => {
 		const stored = store.list().find((character) => character.id === created.id)
 		expect(stored?.classes[0].level).toBe(4)
 		expect(stored?.hitPointLevels).toBeUndefined()
-		expect(await screen.findByText('Fighter 4')).not.toBeNull()
+		// No list on this route (R1b) to show the shorter "Fighter 4" — the sheet's own header carries the subclass too.
+		expect(await screen.findByText('Fighter 4 (Champion)')).not.toBeNull()
 		const unavailable = (await screen.findByRole('button', { name: 'Remove level' })) as HTMLButtonElement
 		expect(unavailable.title).toMatch(/Remove level unavailable: This character was created at level 4/)
 	})
@@ -216,7 +228,7 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 		const created = store.create({ name: 'Aria' })
 
 		const user = userEvent.setup()
-		const { unmount } = render(<CharacterManager />)
+		const { unmount } = render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
 		await user.click(await screen.findByRole('tab', { name: 'Vzhled a poznámky' }))
 
@@ -230,68 +242,79 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 		expect(stored?.appearance).toBeUndefined()
 
 		unmount()
-		render(<CharacterManager />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
-		expect((screen.getByRole('textbox', { name: 'Příběh' }) as HTMLTextAreaElement).value).toBe('- Raised by owls\n  - Left at dawn  ')
+		window.location.hash = `#/character/${created.id}`
+		render(<Harness />)
+		expect((await screen.findByRole('textbox', { name: 'Příběh' })) as HTMLTextAreaElement).toHaveProperty(
+			'value',
+			'- Raised by owls\n  - Left at dawn  ',
+		)
 		expect((screen.getByRole('textbox', { name: 'Vzhled' }) as HTMLTextAreaElement).value).toBe('')
 	})
 
-	it('does not carry one character\'s text over to another when the sheet is switched', async () => {
+	it('does not carry one character\'s text over to another when navigating back through the list', async () => {
 		const store = new CharacterStore()
 		store.create({ name: 'Aria' })
 		store.create({ name: 'Bree' })
 
 		const user = userEvent.setup()
-		render(<CharacterManager />)
-		const [ariaSheet] = await screen.findAllByRole('button', { name: 'Sheet' })
-		await user.click(ariaSheet)
+		render(<Harness />)
+		const [ariaSheetButton] = await screen.findAllByRole('button', { name: 'Sheet' })
+		await user.click(ariaSheetButton)
 		await user.type(await screen.findByRole('textbox', { name: 'Poznámky' }), 'Aria only')
+		await user.tab()
 
-		await user.click(screen.getByRole('button', { name: 'Sheet' }))
+		goTo('#/')
+		const breeRow = (await screen.findByText('Bree')).closest('.char-row')
+		const breeSheetButton = breeRow?.querySelector('button')
+		expect(breeSheetButton?.textContent).toBe('Sheet')
+		await user.click(breeSheetButton!)
 
-		expect((screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement).value).toBe('')
+		// A fresh CharacterSheet mount for Bree — no sheet state, tab included, survives from Aria's.
+		await user.click(await screen.findByRole('tab', { name: 'Vzhled a poznámky' }))
+		expect((await screen.findByRole('textbox', { name: 'Poznámky' })) as HTMLTextAreaElement).toHaveProperty('value', '')
 		expect(store.list().find((character) => character.name === 'Bree')?.notes).toBeUndefined()
-		// Clicking the other row's button blurred the textarea, which committed to Aria (D116).
 		expect(store.list().find((character) => character.name === 'Aria')?.notes).toBe('Aria only')
 	})
 })
 
-describe('CharacterManager sheet toggle', () => {
-	it('hides the sheet when the same row\'s button is clicked again', async () => {
+describe('CharacterManager routing (rework R1b)', () => {
+	it('shows only the sheet, not the list, after opening a character', async () => {
 		const store = new CharacterStore()
 		store.create({ name: 'Aria' })
 
 		const user = userEvent.setup()
-		render(<CharacterManager />)
+		render(<Harness />)
+		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
 
-		expect(await screen.findByText('Aria')).not.toBeNull()
-
-		await user.click(screen.getByRole('button', { name: 'Sheet' }))
-		expect(await screen.findByRole('button', { name: 'Hide' })).not.toBeNull()
-
-		await user.click(screen.getByRole('button', { name: 'Hide' }))
-		expect(screen.queryByRole('button', { name: 'Hide' })).toBeNull()
-		expect(screen.getByRole('button', { name: 'Sheet' })).not.toBeNull()
+		expect(await screen.findByRole('button', { name: 'Edit character' })).not.toBeNull()
+		expect(screen.queryByText('No characters saved yet.')).toBeNull()
+		expect(screen.queryByRole('button', { name: 'New character' })).toBeNull()
 	})
 
-	it('switches to a different row\'s sheet, showing only one at a time', async () => {
+	it('falls back to the list for an id that does not exist', async () => {
+		window.location.hash = '#/character/does-not-exist'
 		const store = new CharacterStore()
 		store.create({ name: 'Aria' })
-		store.create({ name: 'Bree' })
 
-		const user = userEvent.setup()
-		render(<CharacterManager />)
+		render(<Harness />)
 
 		expect(await screen.findByText('Aria')).not.toBeNull()
-		expect(screen.getByText('Bree')).not.toBeNull()
+		expect(window.location.hash).toBe('#/')
+	})
 
-		const [ariaSheet, breeSheet] = screen.getAllByRole('button', { name: 'Sheet' })
-		await user.click(ariaSheet)
-		expect(await screen.findByRole('button', { name: 'Hide' })).not.toBeNull()
+	it('cancelling Edit character returns to the sheet', async () => {
+		const store = new CharacterStore()
+		store.create({ name: 'Aria' })
 
-		await user.click(breeSheet)
+		const user = userEvent.setup()
+		render(<Harness />)
+		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Edit character' }))
 
-		expect(screen.getAllByRole('button', { name: 'Hide' })).toHaveLength(1)
-		expect(screen.getAllByRole('button', { name: 'Sheet' })).toHaveLength(1)
+		expect(await screen.findByText('1. Class and level')).not.toBeNull()
+		await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+		expect(await screen.findByRole('button', { name: 'Edit character' })).not.toBeNull()
+		expect(screen.queryByText('1. Class and level')).toBeNull()
 	})
 })

@@ -2558,3 +2558,11 @@ Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Appka musí fungovat offline.
 ## D150 — Nastavení appky v samostatném úložišti (`familliar:settings`), ne v postavě
 
 Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Bez zvýšení verze schématu.
+
+## D151 — Aktuální pohled appky žije v URL hash; Back prochází pohledy; žádná routovací knihovna
+
+Zdroj: task R1b (rework sheetu, D145), 22. 9. 2026. Seznam, sheet a wizard (`#/`, `#/new`, `#/character/<id>`, `#/character/<id>/edit`, `#/character/<id>/level-up`, `#/markup-demo`) jsou jeden `parse`/`format` pár v `src/navigation/route.ts` plus jeden `useRoute` hook na úrovni `App`, který poslouchá `hashchange`; pohledy dostávají route/navigate jako props, nevolají hook samy. F5 zůstává na stejném pohledu. Otevření postavy, New, Edit, Level up a horní záložky PUSHují novou položku historie; dokončení nebo zrušení wizardu ji REPLACE, takže Back wizard znovu neotevře. Neznámý hash nebo neexistující id postavy REPLACE na seznam — týž efekt řeší i smazání postavy, jejíž sheet byl otevřený. Level-up route nese jen id, ne spočtený `LevelGains` (ten se ztrácí při F5) — `src/levelUp/LevelUpWizardGate.tsx` ho dopočítá znovu z postavy stejně jako `LevelUpButton`, protože `levelUpTarget`+`loadLevelGainsFor` jsou čisté/deterministické (D101).
+
+## D152 — Auto-scroll na wizard (část opravy 4e67cad) je zrušený — wizard má vlastní pohled
+
+Zdroj: task R1b, 22. 9. 2026. D145 oddělil sheet a wizard na samostatné pohledy (D151 je zapojil do hash routingu); wizard už nesdílí stránku se sheetem, takže `wizardRef`/`scrollToWizard`/`ResizeObserver` z opravy 4e67cad (scroll na wizard po Level up / Edit character) i jejich test v `CharacterManager.test.tsx` odpadají jako mrtvý kód. Zbytek 4e67cad (proč k scrollování vůbec docházelo) zůstává platný jako historický záznam — tento zápis ruší jen samotný scroll efekt, ne důvod, proč vznikl.

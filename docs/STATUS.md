@@ -1030,14 +1030,37 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-**Rework sheetu (D121–D150) běží.** R1 hotový: `src/theme.css` (tokeny tmavé/světlé
+**Rework sheetu (D121–D152) běží.** R1 hotový: `src/theme.css` (tokeny tmavé/světlé
 téma na `html[data-theme]`, font stacky, @fontsource Bricolage Grotesque 500/600 a
 Source Sans 3 400/600/700), `index.css` bez barevných literálů (hlídá
 `theme.test.ts`), `src/storage/settingsStore.ts` (`familliar:settings`, `{ theme }`),
 přepínač `ThemeToggle` v horní navigaci (do hlavičky sheetu v R2), globální styly
 button/input/select/checkbox a třídy `.btn--accent-outline` (Short/Long Rest),
 `.btn--accent`, `.btn--heal`/`.btn--damage` (panel poškození/léčení), `.pill`,
-`.pill--active`. Kontrola v prohlížeči po R1 neproběhla. Další: R2 (layout).
+`.pill--active`. Kontrola v prohlížeči po R1 neproběhla.
+
+R1b hotový (D145, D151): seznam postav, sheet a wizard jsou tři oddělené pohledy
+místo toho, aby seznam a sheet žily v jednom `<main>` a wizard se vykresloval pod
+sheetem. Aktuální pohled nese URL hash (`src/navigation/route.ts` —
+`parseRoute`/`formatRoute`, čistý pár funkcí, plus `useRoute` — jeden hashchange
+listener na úrovni `App`; `CharacterManager` dostává `route`/`navigate` jako
+props, hook nevolá sám). Tabulka hashů: `#/` seznam, `#/new` wizard nové postavy,
+`#/character/<id>` sheet, `#/character/<id>/edit` a `.../level-up` wizard nad
+existující postavou, `#/markup-demo` beze změny. F5 zůstává na pohledu; otevření
+postavy / New / Edit / Level up / horní záložky PUSHují; dokončení nebo zrušení
+wizardu REPLACE (Back ho znovu neotevře); neznámý hash nebo zmizelé id REPLACE na
+seznam (`CharacterManager`'s route-validation effect, čeká na `charactersLoaded`
+aby nekopla dřív, než se postavy načtou). `src/levelUp/LevelUpWizardGate.tsx`
+dopočítá `LevelGains` z postavy při vstupu na level-up route (nejde v URL, ztratil
+by se při F5) stejným `levelUpTarget`+`loadLevelGainsFor` jako `LevelUpButton`
+(D101 — čisté/deterministické). Zrušen scroll-to-wizard z 4e67cad (D152) — wizard
+už nesdílí stránku se sheetem. `CharacterManager.tsx` je teď per-view `if`/`return`
+místo jednoho velkého návratu; `CharacterRow` ztratil "Hide" (sheet už nekoexistuje
+vedle seznamu). Nové testy: `src/navigation/route.test.ts` (parse/format round
+trip, neplatný hash, koncové lomítko), `src/App.test.tsx` (routing skrz opravdové
+top-nav záložky a hashchange), `CharacterManager.test.tsx` přepsán na `Harness`
+(vlastní `useRoute`) místo holého `<CharacterManager />`. Kontrola v prohlížeči
+podle uživatele, viz REPORT.md. Další: R2 (layout).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

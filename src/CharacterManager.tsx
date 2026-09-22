@@ -4,10 +4,12 @@ import { StorageError } from './storage/errors'
 import type { Character, CharacterFamiliar, CharacterInventoryItem, SpentSpellSlots } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
-import type { LevelGains } from './levelUp/levelGains'
+import { LevelUpWizardGate } from './levelUp/LevelUpWizardGate'
 import { characterUpdateInput } from './levelUp/levelRemoval'
 import { currentHpAfterMaxHpChange } from './calculation/maxHitPoints'
 import { loadCharacterMaxHp } from './hitPoints/hpDefault'
+import type { CharacterRoute } from './navigation/route'
+import type { Navigate } from './navigation/useRoute'
 
 /*
  * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
@@ -18,6 +20,10 @@ import { loadCharacterMaxHp } from './hitPoints/hpDefault'
  * proving the storage layer works by hand. The read-only inspect view
  * (CharacterInspector.tsx, D14) is gone now that the real sheet (step 5)
  * covers everything it used to show.
+ *
+ * Rework R1b (D145, D151): the list, the sheet and the wizard are separate
+ * views selected by `route`, never rendered together. `route` and `navigate`
+ * come from the one `useRoute` hook at App level.
  */
 
 function describeError(error: unknown): string {
@@ -37,14 +43,12 @@ function download(filename: string, contents: string): void {
 
 function CharacterRow({
 	character,
-	sheetSelected,
 	onRename,
 	onDelete,
 	onExport,
 	onViewSheet,
 }: {
 	character: Character
-	sheetSelected: boolean
 	onRename: (id: string, name: string) => void
 	onDelete: (id: string) => void
 	onExport: (id: string) => void
@@ -63,7 +67,7 @@ function CharacterRow({
 	}
 
 	return (
-		<li className={sheetSelected ? 'char-row char-row--selected' : 'char-row'}>
+		<li className="char-row">
 			{editing ? (
 				<input
 					className="char-row__name-input"
@@ -93,7 +97,7 @@ function CharacterRow({
 
 			<span className="char-row__actions">
 				<button type="button" onClick={() => onViewSheet(character.id)}>
-					{sheetSelected ? 'Hide' : 'Sheet'}
+					Sheet
 				</button>
 				<button type="button" onClick={() => setEditing(true)}>
 					Rename
@@ -109,7 +113,7 @@ function CharacterRow({
 	)
 }
 
-function CharacterManager() {
+function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate: Navigate }) {
 	const [store] = useState(() => {
 		try {
 			return { store: new CharacterStore(), error: null as string | null }
@@ -119,34 +123,11 @@ function CharacterManager() {
 	})
 
 	const [characters, setCharacters] = useState<Character[]>([])
+	/** Set once `refresh` has run at least once — guards the route-validation effect below against the initial render, where `characters` is still `[]` and a valid id would otherwise look unknown (see R1b report). */
+	const [charactersLoaded, setCharactersLoaded] = useState(false)
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [actionError, setActionError] = useState<string | null>(null)
-	const [creating, setCreating] = useState(false)
-	/** The character the wizard is currently open over (slice 8d1) — null while creating or while nothing is being edited. */
-	const [editingId, setEditingId] = useState<string | null>(null)
-	/** Set when that wizard run is a one-level walk (slice 8d3) rather than a whole-character edit. */
-	const [levelUpGains, setLevelUpGains] = useState<LevelGains | null>(null)
-	const [sheetId, setSheetId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
-	const wizardRef = useRef<HTMLDivElement>(null)
-	/** Bumped each time Level up / Edit character opens the wizard, so opening it again while it is already open still scrolls. */
-	const [scrollToWizard, setScrollToWizard] = useState(0)
-
-	/* The wizard renders below the sheet, far off screen on a long sheet. It mounts nearly empty and fills in as its data loads, so the scroll is repeated as it grows — scrolling once lands it half below the fold. jsdom has neither scrollIntoView nor ResizeObserver. */
-	useEffect(() => {
-		const wizard = wizardRef.current
-		if (scrollToWizard === 0 || !wizard?.scrollIntoView) return
-		const scroll = () => wizard.scrollIntoView({ block: 'start' })
-		scroll()
-		if (typeof ResizeObserver === 'undefined') return
-		const observer = new ResizeObserver(scroll)
-		observer.observe(wizard)
-		const stop = setTimeout(() => observer.disconnect(), 2000)
-		return () => {
-			observer.disconnect()
-			clearTimeout(stop)
-		}
-	}, [scrollToWizard])
 
 	function refresh(): void {
 		if (!store.store) return
@@ -155,10 +136,20 @@ function CharacterManager() {
 			setLoadError(null)
 		} catch (error) {
 			setLoadError(describeError(error))
+		} finally {
+			setCharactersLoaded(true)
 		}
 	}
 
 	useEffect(refresh, [store])
+
+	/* Unknown/invalid id, or one that stopped existing (the character whose sheet/wizard was open got deleted) — back to the list, replacing rather than pushing (build order brief, R1b table). */
+	useEffect(() => {
+		if (!charactersLoaded) return
+		if (route.view !== 'sheet' && route.view !== 'edit' && route.view !== 'level-up') return
+		if (characters.some((character) => character.id === route.id)) return
+		navigate({ view: 'list' }, { replace: true })
+	}, [charactersLoaded, route, characters, navigate])
 
 	function withErrorHandling(action: () => void): void {
 		try {
@@ -170,12 +161,9 @@ function CharacterManager() {
 		}
 	}
 
-	function handleWizardSaved(): void {
-		setCreating(false)
-		setEditingId(null)
-		setLevelUpGains(null)
-		setActionError(null)
+	function handleWizardSaved(character: Character): void {
 		refresh()
+		navigate({ view: 'sheet', id: character.id }, { replace: true })
 	}
 
 	function handleRename(id: string, name: string): void {
@@ -237,8 +225,6 @@ function CharacterManager() {
 		if (!store.store) return
 		if (!confirm('Delete this character? This cannot be undone.')) return
 		withErrorHandling(() => store.store?.delete(id))
-		setSheetId((current) => (current === id ? null : current))
-		setEditingId((current) => (current === id ? null : current))
 	}
 
 	function handleExport(id: string): void {
@@ -275,135 +261,151 @@ function CharacterManager() {
 		)
 	}
 	const characterStore = store.store
-	const editingCharacter = editingId === null ? undefined : characters.find((c) => c.id === editingId)
 
-	return (
-		<main>
-			<h1>Familliar</h1>
-			<p className="subtitle">
-				Characters. Creation below is the real wizard (build order step 3). Listing, renaming,
-				deleting and export/import are still temporary UI; the "Sheet" button opens the real
-				character sheet (step 5).
-			</p>
-
-			{loadError && (
-				<p className="error">
-					Could not read saved characters: {loadError}
-					<br />
-					Delete or fix the saved data in this browser&apos;s storage, or import a character
-					file below once the underlying problem is resolved.
+	if (route.view === 'list') {
+		return (
+			<main>
+				<h1>Familliar</h1>
+				<p className="subtitle">
+					Characters. Creation opens the real wizard (build order step 3). Listing, renaming,
+					deleting and export/import are still temporary UI; "Sheet" opens the real character
+					sheet (step 5).
 				</p>
-			)}
 
-			{actionError && <p className="error">{actionError}</p>}
+				{loadError && (
+					<p className="error">
+						Could not read saved characters: {loadError}
+						<br />
+						Delete or fix the saved data in this browser&apos;s storage, or import a character
+						file below once the underlying problem is resolved.
+					</p>
+				)}
 
-			{!loadError && (
-				<div className="char-layout">
+				{actionError && <p className="error">{actionError}</p>}
+
+				{!loadError && (
 					<ul className="char-list">
 						{characters.length === 0 && <li className="char-row char-row--empty">No characters saved yet.</li>}
 						{characters.map((character) => (
 							<CharacterRow
 								key={character.id}
 								character={character}
-								sheetSelected={character.id === sheetId}
 								onRename={handleRename}
 								onDelete={handleDelete}
 								onExport={handleExport}
-								onViewSheet={(id) => setSheetId((current) => (current === id ? null : id))}
+								onViewSheet={(id) => navigate({ view: 'sheet', id })}
 							/>
 						))}
 					</ul>
+				)}
 
-					{sheetId &&
-						(() => {
-							const sheetCharacter = characters.find((c) => c.id === sheetId)
-							return sheetCharacter ? (
-								<CharacterSheet
-									character={sheetCharacter}
-									onChooseFamiliar={(familiar) => handleChooseFamiliar(sheetCharacter.id, familiar)}
-									onEditInventory={(inventory) => handleEditInventory(sheetCharacter.id, inventory)}
-									onEditCurrency={(copper) => handleEditCurrency(sheetCharacter.id, copper)}
-									onEditHitPoints={(hitPoints) => handleEditHitPoints(sheetCharacter.id, hitPoints)}
-									onEditResourceUses={(resourceUses) => handleEditResourceUses(sheetCharacter.id, resourceUses)}
-								onEditSpentSpellSlots={(spentSpellSlots) => handleEditSpentSpellSlots(sheetCharacter.id, spentSpellSlots)}
-									onEditSpentHitDice={(spentHitDice) => handleEditSpentHitDice(sheetCharacter.id, spentHitDice)}
-									onEditConcentration={(spellName) => handleEditConcentration(sheetCharacter.id, spellName)}
-									onEditText={(field, text) => handleEditText(sheetCharacter.id, field, text)}
-									onRest={(rest) => handleRest(sheetCharacter.id, rest)}
-									onEditCharacter={() => {
-										setCreating(false)
-										setLevelUpGains(null)
-										setEditingId(sheetCharacter.id)
-										setScrollToWizard((n) => n + 1)
-									}}
-									onRemoveLevel={(result) => {
-										setEditingId((current) => (current === sheetCharacter.id ? null : current))
-										setLevelUpGains(null)
-										/* D107 (this task's own extension, for symmetry with the level-up side): currentHp drops by the same amount maxHp drops, only when it was already set. */
-										if (sheetCharacter.currentHp === undefined) {
-											withErrorHandling(() => store.store?.update(result.id, characterUpdateInput(result)))
-											return
-										}
-										Promise.all([loadCharacterMaxHp(sheetCharacter), loadCharacterMaxHp(result)])
-											.then(([before, after]) => {
-												const currentHp = currentHpAfterMaxHpChange(sheetCharacter.currentHp, before, after)
-												const adjusted = currentHp !== undefined ? { ...result, currentHp } : result
-												withErrorHandling(() => store.store?.update(adjusted.id, characterUpdateInput(adjusted)))
-											})
-											.catch(() => withErrorHandling(() => store.store?.update(result.id, characterUpdateInput(result))))
-									}}
-									onLevelUp={(gains) => {
-										setCreating(false)
-										setLevelUpGains(gains)
-										setEditingId(sheetCharacter.id)
-										setScrollToWizard((n) => n + 1)
-									}}
-								/>
-							) : null
-						})()}
-				</div>
-			)}
-
-			<div className="char-create" ref={wizardRef}>
-				{editingCharacter ? (
-					<CharacterWizard
-						/* A fresh run per mode and character: the wizard seeds itself once, on mount. */
-						key={`${editingCharacter.id}|${levelUpGains ? `up${levelUpGains.level}` : 'edit'}`}
-						store={characterStore}
-						character={editingCharacter}
-						levelUp={levelUpGains ?? undefined}
-						onSaved={handleWizardSaved}
-						/* Nothing has been written at this point — the stored character is untouched. */
-						onCancel={() => {
-							setEditingId(null)
-							setLevelUpGains(null)
-						}}
-					/>
-				) : creating ? (
-					<CharacterWizard
-						store={characterStore}
-						onSaved={handleWizardSaved}
-						onCancel={() => setCreating(false)}
-					/>
-				) : (
-					<button type="button" onClick={() => setCreating(true)}>
+				<div className="char-create">
+					<button type="button" onClick={() => navigate({ view: 'new' })}>
 						New character
 					</button>
-				)}
-			</div>
+				</div>
 
-			<div className="char-import">
-				<input
-					ref={fileInputRef}
-					type="file"
-					accept="application/json"
-					onChange={(event) => {
-						const file = event.target.files?.[0]
-						if (file) handleImportFile(file)
-						event.target.value = ''
+				<div className="char-import">
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept="application/json"
+						onChange={(event) => {
+							const file = event.target.files?.[0]
+							if (file) handleImportFile(file)
+							event.target.value = ''
+						}}
+					/>
+					<span className="char-import__hint">Import a character file exported from this app.</span>
+				</div>
+			</main>
+		)
+	}
+
+	if (route.view === 'new') {
+		return (
+			<main>
+				<h1>Familliar</h1>
+				{actionError && <p className="error">{actionError}</p>}
+				<div className="char-create">
+					<CharacterWizard store={characterStore} onSaved={handleWizardSaved} onCancel={() => navigate({ view: 'list' }, { replace: true })} />
+				</div>
+			</main>
+		)
+	}
+
+	/* sheet / edit / level-up all need the character; while it is missing (route just arrived or is about to be redirected by the effect above), render nothing rather than a view for a character that is not there. */
+	const character = characters.find((c) => c.id === route.id)
+	if (!character) return null
+
+	if (route.view === 'sheet') {
+		return (
+			<main>
+				<h1>Familliar</h1>
+				{actionError && <p className="error">{actionError}</p>}
+				<CharacterSheet
+					character={character}
+					onChooseFamiliar={(familiar) => handleChooseFamiliar(character.id, familiar)}
+					onEditInventory={(inventory) => handleEditInventory(character.id, inventory)}
+					onEditCurrency={(copper) => handleEditCurrency(character.id, copper)}
+					onEditHitPoints={(hitPoints) => handleEditHitPoints(character.id, hitPoints)}
+					onEditResourceUses={(resourceUses) => handleEditResourceUses(character.id, resourceUses)}
+					onEditSpentSpellSlots={(spentSpellSlots) => handleEditSpentSpellSlots(character.id, spentSpellSlots)}
+					onEditSpentHitDice={(spentHitDice) => handleEditSpentHitDice(character.id, spentHitDice)}
+					onEditConcentration={(spellName) => handleEditConcentration(character.id, spellName)}
+					onEditText={(field, text) => handleEditText(character.id, field, text)}
+					onRest={(rest) => handleRest(character.id, rest)}
+					onEditCharacter={() => navigate({ view: 'edit', id: character.id })}
+					onLevelUp={() => navigate({ view: 'level-up', id: character.id })}
+					onRemoveLevel={(result) => {
+						/* D107: currentHp drops by the same amount maxHp drops, only when it was already set. */
+						if (character.currentHp === undefined) {
+							withErrorHandling(() => store.store?.update(result.id, characterUpdateInput(result)))
+							return
+						}
+						Promise.all([loadCharacterMaxHp(character), loadCharacterMaxHp(result)])
+							.then(([before, after]) => {
+								const currentHp = currentHpAfterMaxHpChange(character.currentHp, before, after)
+								const adjusted = currentHp !== undefined ? { ...result, currentHp } : result
+								withErrorHandling(() => store.store?.update(adjusted.id, characterUpdateInput(adjusted)))
+							})
+							.catch(() => withErrorHandling(() => store.store?.update(result.id, characterUpdateInput(result))))
 					}}
 				/>
-				<span className="char-import__hint">Import a character file exported from this app.</span>
+			</main>
+		)
+	}
+
+	if (route.view === 'edit') {
+		return (
+			<main>
+				<h1>Familliar</h1>
+				{actionError && <p className="error">{actionError}</p>}
+				<div className="char-create">
+					<CharacterWizard
+						store={characterStore}
+						character={character}
+						onSaved={handleWizardSaved}
+						/* Nothing has been written at this point — the stored character is untouched. */
+						onCancel={() => navigate({ view: 'sheet', id: character.id }, { replace: true })}
+					/>
+				</div>
+			</main>
+		)
+	}
+
+	return (
+		<main>
+			<h1>Familliar</h1>
+			{actionError && <p className="error">{actionError}</p>}
+			<div className="char-create">
+				<LevelUpWizardGate
+					store={characterStore}
+					character={character}
+					onSaved={handleWizardSaved}
+					onCancel={() => navigate({ view: 'sheet', id: character.id }, { replace: true })}
+					onUnavailable={() => navigate({ view: 'sheet', id: character.id }, { replace: true })}
+				/>
 			</div>
 		</main>
 	)
