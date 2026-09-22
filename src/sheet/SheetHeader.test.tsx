@@ -444,6 +444,49 @@ describe('SheetHeader death saving throws', () => {
 	})
 })
 
+/* Rework R2: header, number strip and status row as three sibling blocks. */
+describe('SheetHeader layout blocks', () => {
+	it('puts name, identity and roll history in the header, the five values in the strip, and defenses and concentration in the status row', () => {
+		const { container } = renderHeader({
+			identity: <p className="test-identity">Elf · Fighter 5 · Level 5</p>,
+			abilities: <ul className="test-abilities" />,
+			defenses: <section className="test-defenses" />,
+			concentratingOn: 'Bless',
+			onDropConcentration: vi.fn(),
+			onEditHitPoints: vi.fn(),
+			currentHp: 0,
+		})
+		const header = container.querySelector('.sheet__persistent-header')!
+		const strip = container.querySelector('.sheet__strip')!
+		const status = container.querySelector('.sheet__status-row')!
+		expect([header.parentElement, strip.parentElement, status.parentElement]).toEqual([container, container, container])
+		expect(header.nextElementSibling).toBe(strip)
+		expect(strip.nextElementSibling).toBe(status)
+
+		expect(header.querySelector('.sheet__header-main h1')!.textContent).toBe('Aria')
+		expect(header.querySelector('.sheet__header-main .test-identity')).toBeTruthy()
+		expect(header.querySelector(':scope > .sheet__roll-history')).toBeTruthy()
+
+		expect(strip.firstElementChild!.matches('.test-abilities')).toBe(true)
+		for (const cls of ['.sheet__proficiency-bonus', '.sheet__speed', '.sheet__initiative', '.sheet__armour-class', '.sheet__hit-points']) {
+			expect(strip.querySelector(`:scope > ${cls}`)).toBeTruthy()
+		}
+		// The HP block keeps its fields, the damage panel and, at 0, the death saves.
+		const hitPoints = strip.querySelector('.sheet__hit-points')!
+		expect(within(hitPoints as HTMLElement).getByRole('group', { name: 'Damage and healing' })).toBeTruthy()
+		expect(within(hitPoints as HTMLElement).getByRole('group', { name: 'Death saving throws' })).toBeTruthy()
+
+		expect(status.querySelector(':scope > .test-defenses')).toBeTruthy()
+		expect(status.querySelector(':scope > .sheet__concentration')!.textContent).toContain('Concentrating: Bless')
+		expect(status.querySelector(':scope > .sheet__status-conditions')!.childElementCount).toBe(0)
+	})
+
+	it('shows the first letter of the name in the portrait frame', () => {
+		const { container } = renderHeader({ name: 'aria' })
+		expect(container.querySelector('.sheet__portrait')!.textContent).toBe('A')
+	})
+})
+
 describe('SheetHeader rest buttons (slice 9b5)', () => {
 	it('applies each rest on the click, with no dialog in between', () => {
 		const onShortRest = vi.fn()
@@ -455,6 +498,15 @@ describe('SheetHeader rest buttons (slice 9b5)', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Long Rest' }))
 		expect(onLongRest).toHaveBeenCalledTimes(1)
+	})
+
+	/* Rework R2: moved from the hit-point block to the right of the header row. */
+	it('sits in the header row, not in the hit-point block', () => {
+		const { container } = renderHeader({ currentHp: 12, maxHitPoints: maxOf(22), onShortRest: vi.fn(), onLongRest: vi.fn(), onEditHitPoints: vi.fn() })
+		const rest = container.querySelector('.sheet__rest')!
+		expect(rest.parentElement!.matches('.sheet__persistent-header > .sheet__header-row')).toBe(true)
+		expect(container.querySelector('.sheet__hit-points .sheet__rest')).toBeNull()
+		expect(container.querySelector('.sheet__strip .sheet__rest')).toBeNull()
 	})
 
 	it('leaves the buttons out of a read-only sheet', () => {

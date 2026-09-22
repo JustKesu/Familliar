@@ -645,11 +645,13 @@ describe('CharacterSheet', () => {
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
-		const details = screen.getAllByText('Breakdown')[0].closest('details')
+		// Rework R2: the number strip now precedes the stats tab, so the ability breakdown is found by its section.
+		const abilities = document.querySelector<HTMLElement>('.sheet__abilities')!
+		const details = within(abilities).getAllByText('Breakdown')[0].closest('details')
 		expect(details).not.toBeNull()
 		expect(details?.hasAttribute('open')).toBe(false)
 
-		await user.click(screen.getAllByText('Breakdown')[0])
+		await user.click(within(abilities).getAllByText('Breakdown')[0])
 		expect(details?.hasAttribute('open')).toBe(true)
 		expect(details?.textContent).toContain('base')
 	})
@@ -4782,7 +4784,9 @@ describe('CharacterSheet', () => {
 			}
 
 			function headerLine(container: HTMLElement): string | undefined {
-				return container.querySelector('.sheet__persistent-header .sheet__concentration')?.textContent ?? undefined
+				/* Rework R2: the line lives in the status row, no longer in the header. */
+				expect(container.querySelector('.sheet__persistent-header .sheet__concentration')).toBeNull()
+				return container.querySelector('.sheet__status-row .sheet__concentration')?.textContent ?? undefined
 			}
 
 			function pressed(name: string): string | null {
@@ -4841,7 +4845,7 @@ describe('CharacterSheet', () => {
 				const { container, onEdit } = await renderCaster({ concentratingOn: 'Shield of Faith' })
 				expect(pressed('Concentrate on Shield of Faith')).toBe('true')
 
-				fireEvent.click(within(container.querySelector<HTMLElement>('.sheet__persistent-header')!).getByRole('button', { name: 'Drop concentration' }))
+				fireEvent.click(within(container.querySelector<HTMLElement>('.sheet__status-row')!).getByRole('button', { name: 'Drop concentration' }))
 
 				expect(onEdit).toHaveBeenLastCalledWith(null)
 				expect(pressed('Concentrate on Shield of Faith')).toBe('false')
@@ -6704,11 +6708,13 @@ describe('the persistent header (rebuild slice 1)', () => {
 
 		const header = container.querySelector('.sheet__persistent-header')!
 		expect(header.querySelector('h1')!.textContent).toBe('Aria')
-		expect(header.querySelector('.sheet__armour-class')).toBeTruthy()
-		expect(header.querySelector('.sheet__initiative')).toBeTruthy()
-		expect(header.querySelector('.sheet__speed')).toBeTruthy()
-		expect(header.querySelector('.sheet__proficiency-bonus')).toBeTruthy()
-		expect(header.querySelector('.sheet__hit-points')).toBeTruthy()
+		/* Rework R2: the five values sit in the number strip below the header, in this order. */
+		const strip = container.querySelector('.sheet__strip')!
+		expect(header.contains(strip)).toBe(false)
+		const order = ['.sheet__proficiency-bonus', '.sheet__speed', '.sheet__initiative', '.sheet__armour-class', '.sheet__hit-points']
+		expect(order.map((cls) => [...strip.children].findIndex((child) => child.matches(cls)))).toEqual([1, 2, 3, 4, 5])
+		expect(strip.children[0].matches('.ability-cards')).toBe(true)
+		for (const cls of order) expect(header.querySelector(cls)).toBeNull()
 
 		// Exactly one of each on the whole sheet — nothing left behind in the body.
 		expect(container.querySelectorAll('.sheet__armour-class')).toHaveLength(1)
@@ -6840,20 +6846,55 @@ describe('sheet tabs (rebuild slice 2)', () => {
 		}
 	})
 
-	it('puts inventory and damage responses under the Inventář tab, and weapon attacks under Akce', async () => {
+	it('puts inventory under the Inventář tab, damage responses in the status row, and weapon attacks under Akce', async () => {
 		const { container } = render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 		await waitFor(() => expect(container.querySelector('.sheet__inventory')).toBeTruthy())
 
 		const inventory = container.querySelector('#sheet-panel-inventory')!
 		expect(inventory.querySelector('.sheet__inventory')).toBeTruthy()
-		expect(inventory.querySelector('.sheet__damage-responses')).toBeTruthy()
+		/* Rework R2: damage responses moved out of the tab into the status row, once on the sheet. */
+		expect(inventory.querySelector('.sheet__damage-responses')).toBeNull()
+		expect(container.querySelector('.sheet__status-row .sheet__damage-responses')).toBeTruthy()
+		expect(container.querySelectorAll('.sheet__damage-responses')).toHaveLength(1)
 
 		const actions = container.querySelector('#sheet-panel-actions')!
 		expect(actions.querySelector('.sheet__actions')).toBeTruthy()
 
 		expect(container.querySelectorAll('.sheet__actions')).toHaveLength(1)
 		expect(container.querySelector('#sheet-panel-stats')!.querySelector('.sheet__damage-responses')).toBeNull()
+	})
+
+	/* Rework R2 (D153): the outer structure. Real overflow needs a layout engine jsdom lacks; sheetLayout.test.ts guards the CSS that makes these containers scroll. */
+	it('stacks header, number strip, status row and body, with the tabs and panels on the right of the body', async () => {
+		const { container } = render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		const sheet = container.querySelector('article.sheet')!
+		expect([...sheet.children].map((child) => child.className)).toEqual(['sheet__persistent-header', 'sheet__strip', 'sheet__status-row', 'sheet__body'])
+
+		const body = sheet.querySelector(':scope > .sheet__body')!
+		expect([...body.children].map((child) => child.className)).toEqual(['sheet__left-column', 'sheet__right-panel'])
+		const right = body.querySelector(':scope > .sheet__right-panel')!
+		expect([...right.children].map((child) => child.className)).toEqual(['sheet__tabs', 'sheet__panels'])
+		const panels = right.querySelector(':scope > .sheet__panels')!
+		expect([...panels.children].map((child) => child.id)).toEqual(TAB_IDS.map((id) => `sheet-panel-${id}`))
+		// The left column ships empty until R3 fills it.
+		expect(body.querySelector('.sheet__left-column')!.childElementCount).toBe(0)
+	})
+
+	/* Transitional (rework R2): the strip repeats the stats tab's ability values until R3 removes the tab's copy. */
+	it('shows the same ability scores and modifiers in the number strip as in the stats tab', async () => {
+		const { container } = render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		const cards = [...container.querySelectorAll('.sheet__strip .ability-card')]
+		expect(cards).toHaveLength(6)
+		const fromStrip = cards.map((card) => `${card.querySelector('.ability-card__score')!.textContent} (${card.querySelector('.ability-card__modifier')!.textContent})`)
+		const fromTab = [...container.querySelectorAll('#sheet-panel-stats .sheet__abilities > ul > li')].map((item) => item.querySelector('span')!.textContent)
+		expect(fromTab).toHaveLength(6)
+		expect(fromStrip).toEqual(fromTab)
+		expect(cards.map((card) => card.querySelector('.ability-card__name')!.textContent)).toEqual(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'])
 	})
 
 	it('puts spells under Kouzla and features/class options under Schopnosti a rysy', async () => {

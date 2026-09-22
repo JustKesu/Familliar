@@ -309,6 +309,222 @@ button:disabled {
   display: block;
 }
 
+/* ---- sheet page skeleton (rework R2) ---- */
+
+/* D153: the sheet view is one viewport tall; only the left column and the tab
+   panels scroll. sheetLayout.test.ts guards these rules — jsdom has no layout. */
+#root:has(> .sheet-view) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.sheet-view {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sheet-view > .sheet {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sheet__header-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sheet__portrait {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent);
+  font: 600 28px/1 var(--font-heading);
+}
+
+.sheet__header-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 0.2rem;
+}
+
+.sheet__identity {
+  margin: 0;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.sheet__header-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sheet__header-button:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.sheet__header-button svg {
+  flex: none;
+}
+
+.sheet__rest {
+  flex: none;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sheet__strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.sheet__strip > section {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.sheet__strip h2 {
+  margin: 0 0 0.2rem;
+  white-space: nowrap;
+}
+
+.sheet__strip > .sheet__hit-points {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.ability-cards {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ability-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 3.5rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.ability-card__name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.ability-card__modifier {
+  font: 600 22px/1.1 var(--font-heading);
+  white-space: nowrap;
+}
+
+.ability-card__score {
+  margin-top: 0.15rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.sheet__status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 1.5rem;
+}
+
+.sheet__status-row > * {
+  margin: 0;
+}
+
+.sheet__status-row h2 {
+  margin: 0 0 0.2rem;
+}
+
+.sheet__status-conditions {
+  flex: 1 1 12rem;
+  min-height: 1.5rem;
+}
+
+.sheet__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 1rem;
+}
+
+/* D153: on a short screen this column scrolls; the strip above never shrinks for it. */
+.sheet__left-column {
+  flex: 0 0 580px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sheet__right-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet__right-panel > .sheet__tabs {
+  flex: none;
+  margin-top: 0;
+}
+
+.sheet__panels {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* Slice 9d2: the free-text fields of the "Vzhled a poznámky" tab. */
 .sheet__text-section {
   margin-bottom: 0.75rem;

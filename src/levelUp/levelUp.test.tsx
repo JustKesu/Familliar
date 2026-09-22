@@ -60,7 +60,19 @@ describe('LevelUpButton', () => {
 		const button = screen.getByRole('button', { name: /level up/i })
 		expect((button as HTMLButtonElement).disabled).toBe(true)
 		expect(button.textContent).toContain('Level 20 is the highest character level')
+		expect(button.title).toBe('Maximum level')
 		expect(loadGains).not.toHaveBeenCalled()
+	})
+
+	it('keeps the maximum-level tooltip off a button that is only unavailable for another reason', async () => {
+		const unavailable = vi.fn(async () => {
+			throw new Error('offline')
+		})
+		render(<LevelUpButton character={single('Fighter', 'Champion', 4)} onLevelUp={() => {}} loadGains={unavailable} />)
+
+		const button = await screen.findByRole('button', { name: /could not read/i })
+		expect((button as HTMLButtonElement).disabled).toBe(true)
+		expect(button.hasAttribute('title')).toBe(false)
 	})
 
 	it('offers no usable button for a multiclass character and says why', async () => {

@@ -340,7 +340,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 
 	if (route.view === 'sheet') {
 		return (
-			<main>
+			<main className="sheet-view">
 				<h1>Familliar</h1>
 				{actionError && <p className="error">{actionError}</p>}
 				<CharacterSheet

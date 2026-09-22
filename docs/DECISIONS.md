@@ -2566,3 +2566,7 @@ Zdroj: task R1b (rework sheetu, D145), 22. 9. 2026. Seznam, sheet a wizard (`#/`
 ## D152 — Auto-scroll na wizard (část opravy 4e67cad) je zrušený — wizard má vlastní pohled
 
 Zdroj: task R1b, 22. 9. 2026. D145 oddělil sheet a wizard na samostatné pohledy (D151 je zapojil do hash routingu); wizard už nesdílí stránku se sheetem, takže `wizardRef`/`scrollToWizard`/`ResizeObserver` z opravy 4e67cad (scroll na wizard po Level up / Edit character) i jejich test v `CharacterManager.test.tsx` odpadají jako mrtvý kód. Zbytek 4e67cad (proč k scrollování vůbec docházelo) zůstává platný jako historický záznam — tento zápis ruší jen samotný scroll efekt, ne důvod, proč vznikl.
+
+## D153 — Sheet je layout na jeden viewport; scrolluje jen levý sloupec a pravý panel
+
+Zdroj: task R2 (rework sheetu), 22. 9. 2026. Pohled sheetu má výšku viewportu (100dvh): hlavička, pás čísel a stavový řádek mají přirozenou výšku, zbytek vyplní řádek těla. Stránka sama nescrolluje; vlastní vertikální scroll mají jen levý sloupec (pevná šířka ~580px) a pravý panel se záložkami (tab bar zůstává stát, scrollují panely pod ním). Na nízké obrazovce levý sloupec scrolluje uvnitř, pás čísel nad ním se kvůli němu nezmenšuje.

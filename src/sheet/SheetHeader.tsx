@@ -20,9 +20,13 @@
  * Slice 9a2 (D111) adds the death saving throws beside it, rendered only while
  * the current is exactly 0 and gone the moment anything lifts it above 0.
  *
- * Slice 9b5 adds the two rest buttons here, beside the hit points (SPEC section
- * on the persistent header), because a rest is taken from every tab and moves
- * the hit points among other things. What each one restores is not decided here.
+ * Slice 9b5 adds the two rest buttons here (SPEC section on the persistent
+ * header), because a rest is taken from every tab and moves the hit points among
+ * other things. What each one restores is not decided here.
+ *
+ * Rework R2 splits the output into three stacked blocks: the header row (name,
+ * identity, rest buttons, roll history), the number strip (abilities and the
+ * five values) and the status row (defenses, concentration).
  */
 
 import { useEffect, useState, type ReactNode } from 'react'
@@ -262,8 +266,17 @@ export function SheetHeader({
 	onLongRest,
 	rollHistory = [],
 	onRoll,
+	identity,
+	abilities,
+	defenses,
 }: {
 	name: string
+	/** Rework R2: the species/class/level line and the Edit/Level up controls beside it, built by the caller that holds the character. */
+	identity?: ReactNode
+	/** Rework R2: the ability modifiers leading the number strip. */
+	abilities?: ReactNode
+	/** Rework R2: the damage responses, shown in the status row. */
+	defenses?: ReactNode
 	armourClass: Calculated<ArmourClassValue>
 	/** True only while the item list is still loading — the AC block says so rather than showing an unarmoured number it would then correct. */
 	armourClassLoading: boolean
@@ -307,9 +320,75 @@ export function SheetHeader({
 		onRoll?.({ label: 'death save', text })
 	}
 
+	const initial = name.trim().charAt(0).toUpperCase()
+
 	return (
+		<>
 		<header className="sheet__persistent-header">
-			<h1>{name}</h1>
+			<div className="sheet__header-row">
+				<div className="sheet__portrait" aria-hidden="true">
+					{initial}
+				</div>
+				<div className="sheet__header-main">
+					<h1>{name}</h1>
+					{identity}
+				</div>
+				{/* Both apply on the click, like every other control in this header — a rest is undone by the same buttons that spend, not by a dialog. */}
+				{(onShortRest || onLongRest) && (
+					<div className="sheet__rest" role="group" aria-label="Rest">
+						{onShortRest && (
+							<button type="button" className="btn--accent-outline" onClick={onShortRest}>
+								Short Rest
+							</button>
+						)}{' '}
+						{onLongRest && (
+							<button type="button" className="btn--accent-outline" onClick={onLongRest}>
+								Long Rest
+							</button>
+						)}
+					</div>
+				)}
+			</div>
+
+			<RollHistory entries={rollHistory} />
+		</header>
+
+		<div className="sheet__strip">
+			{abilities}
+
+			<section className="sheet__proficiency-bonus">
+				<h2>Proficiency bonus</h2>
+				<div>
+					<CalculatedNumber result={proficiencyBonus} format={formatModifier} />
+				</div>
+			</section>
+
+			<section className="sheet__speed">
+				<h2>Speed</h2>
+				<div>
+					{speed.status === 'unknown' ? (
+						<UnresolvedValue reason={speed.reason} />
+					) : (
+						<>
+							<span>{formatSpeed(speed.value)}</span> <ValueBreakdown breakdown={speed.breakdown} />
+						</>
+					)}
+				</div>
+			</section>
+
+			<section className="sheet__initiative">
+				<h2>Initiative</h2>
+				{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
+				<div>
+					<CalculatedNumber result={initiative} format={formatModifier} />
+					{initiative.status === 'known' && (
+						<>
+							{' '}
+							<RollButton modifier={initiative.value} label="initiative" onRoll={onRoll} />
+						</>
+					)}
+				</div>
+			</section>
 
 			<section className="sheet__armour-class">
 				<h2>Armour Class</h2>
@@ -339,40 +418,6 @@ export function SheetHeader({
 						{acFormulaKeysError && <p className="error">Could not check for alternative AC formulas: {acFormulaKeysError}</p>}
 					</>
 				)}
-			</section>
-
-			<section className="sheet__initiative">
-				<h2>Initiative</h2>
-				{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
-				<div>
-					<CalculatedNumber result={initiative} format={formatModifier} />
-					{initiative.status === 'known' && (
-						<>
-							{' '}
-							<RollButton modifier={initiative.value} label="initiative" onRoll={onRoll} />
-						</>
-					)}
-				</div>
-			</section>
-
-			<section className="sheet__speed">
-				<h2>Speed</h2>
-				<div>
-					{speed.status === 'unknown' ? (
-						<UnresolvedValue reason={speed.reason} />
-					) : (
-						<>
-							<span>{formatSpeed(speed.value)}</span> <ValueBreakdown breakdown={speed.breakdown} />
-						</>
-					)}
-				</div>
-			</section>
-
-			<section className="sheet__proficiency-bonus">
-				<h2>Proficiency bonus</h2>
-				<div>
-					<CalculatedNumber result={proficiencyBonus} format={formatModifier} />
-				</div>
 			</section>
 
 			<section className="sheet__hit-points">
@@ -441,22 +486,11 @@ export function SheetHeader({
 						)}
 					</>
 				)}
-				{/* Both apply on the click, like every other control in this header — a rest is undone by the same buttons that spend, not by a dialog. */}
-				{(onShortRest || onLongRest) && (
-					<div className="sheet__rest" role="group" aria-label="Rest">
-						{onShortRest && (
-							<button type="button" className="btn--accent-outline" onClick={onShortRest}>
-								Short Rest
-							</button>
-						)}{' '}
-						{onLongRest && (
-							<button type="button" className="btn--accent-outline" onClick={onLongRest}>
-								Long Rest
-							</button>
-						)}
-					</div>
-				)}
 			</section>
+		</div>
+
+		<div className="sheet__status-row">
+			{defenses}
 
 			{concentratingOn !== null && (
 				<p className="sheet__concentration">
@@ -472,7 +506,9 @@ export function SheetHeader({
 				</p>
 			)}
 
-			<RollHistory entries={rollHistory} />
-		</header>
+			{/* Room held for Conditions, which have no stored field yet (rework R12). */}
+			<div className="sheet__status-conditions" aria-hidden="true" />
+		</div>
+		</>
 	)
 }

@@ -1030,11 +1030,11 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Next step
 
-**Rework sheetu (D121–D152) běží.** R1 hotový: `src/theme.css` (tokeny tmavé/světlé
+**Rework sheetu (D121–D153) běží.** R1 hotový: `src/theme.css` (tokeny tmavé/světlé
 téma na `html[data-theme]`, font stacky, @fontsource Bricolage Grotesque 500/600 a
 Source Sans 3 400/600/700), `index.css` bez barevných literálů (hlídá
 `theme.test.ts`), `src/storage/settingsStore.ts` (`familliar:settings`, `{ theme }`),
-přepínač `ThemeToggle` v horní navigaci (do hlavičky sheetu v R2), globální styly
+přepínač `ThemeToggle` v horní navigaci (zadání R2 ho tam nechalo), globální styly
 button/input/select/checkbox a třídy `.btn--accent-outline` (Short/Long Rest),
 `.btn--accent`, `.btn--heal`/`.btn--damage` (panel poškození/léčení), `.pill`,
 `.pill--active`. Kontrola v prohlížeči po R1 neproběhla.
@@ -1060,7 +1060,23 @@ vedle seznamu). Nové testy: `src/navigation/route.test.ts` (parse/format round
 trip, neplatný hash, koncové lomítko), `src/App.test.tsx` (routing skrz opravdové
 top-nav záložky a hashchange), `CharacterManager.test.tsx` přepsán na `Harness`
 (vlastní `useRoute`) místo holého `<CharacterManager />`. Kontrola v prohlížeči
-podle uživatele, viz REPORT.md. Další: R2 (layout).
+podle uživatele, viz REPORT.md.
+
+R2 hotový (D153): kostra stránky sheetu. `SheetHeader` vrací tři sourozenecké bloky
+— `.sheet__persistent-header` (portrét = první písmeno jména, jméno, řádek
+`Species · Classes · Level N · Background` s Edit character / Level up / Remove
+level, vpravo Short/Long Rest, pod tím historie hodů), `.sheet__strip` (šest
+`AbilityModifierCards` z `src/sheet/AbilityModifierCards.tsx`, pak Proficiency,
+Speed, Initiative, AC a HP blok beze změny chování) a `.sheet__status-row`
+(`DamageResponsesSection` přesunutá z Inventáře, řádek koncentrace, prázdné místo
+`.sheet__status-conditions` pro R12). Pod nimi `.sheet__body`: prázdný
+`.sheet__left-column` (580px, vlastní scroll, plní R3) a `.sheet__right-panel`
+(tab bar + `.sheet__panels` s vlastním scrollem). Pohled sheetu je
+`main.sheet-view`, `#root:has(> .sheet-view)` má výšku 100dvh. Obsah záložek beze
+změny; hodnoty vlastností jsou dočasně dvakrát (pás + záložka stats) do R3.
+`LevelUpButton` má ikonu šipky a na úrovni 20 `title="Maximum level"`. CSS
+kontejnmentu hlídá `src/sheet/sheetLayout.test.ts`. Kontrola v prohlížeči neproběhla
+(viz REPORT.md). Další: R3 (levý sloupec).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

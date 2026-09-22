@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
+import { totalCharacterLevel } from '../levelUp/levelUpSteps'
 import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
@@ -138,6 +139,7 @@ import type { CharacterTextField, HitPointFields, RestFields } from '../storage/
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, formatModifier } from './calculatedValue'
 import { SheetHeader } from './SheetHeader'
+import { AbilityModifierCards } from './AbilityModifierCards'
 import { loadSpeciesTraitNames } from './speciesTraitNames'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -2701,37 +2703,54 @@ export function CharacterSheet({
 				onLongRest={onRest ? takeLongRest : undefined}
 				rollHistory={rollHistory}
 				onRoll={recordRoll}
+				identity={
+					<div className="sheet__header">
+						<p className="sheet__identity">
+							<span className="sheet__species">{character.species ? character.species.name : <UnresolvedValue reason="No species chosen yet." />}</span>
+							{' · '}
+							<span className="sheet__classes">
+								{character.classes.length === 0 ? (
+									<UnresolvedValue reason="No class chosen yet." />
+								) : (
+									character.classes.map((c, index) => (
+										<span key={index}>
+											{index > 0 ? ' / ' : ''}
+											{c.className} {c.level}
+											{c.subclass ? ` (${c.subclass})` : ''}
+										</span>
+									))
+								)}
+							</span>
+							{character.classes.length > 0 && ` · Level ${totalCharacterLevel(character)}`}
+							{' · '}
+							<span className="sheet__background">
+								{character.background ? character.background.name : <UnresolvedValue reason="No background chosen yet." />}
+							</span>
+						</p>
+
+						{onEditCharacter && (
+							<button type="button" className="sheet__edit-character sheet__header-button" onClick={onEditCharacter}>
+								Edit character
+							</button>
+						)}
+						{onLevelUp && <LevelUpButton character={character} onLevelUp={onLevelUp} />}
+						{onRemoveLevel && <RemoveLevelButton character={character} onRemoveLevel={onRemoveLevel} />}
+					</div>
+				}
+				abilities={<AbilityModifierCards abilityScores={abilityScores} labels={ABILITY_LABELS} />}
+				defenses={
+					<DamageResponsesSection
+						responses={damageResponses}
+						loading={itemRefs === null || damageResponseData === null}
+						dataError={damageResponseDataError}
+					/>
+				}
 			/>
 
-			<header className="sheet__header">
-				<p className="sheet__classes">
-					{character.classes.length === 0 ? (
-						<UnresolvedValue reason="No class chosen yet." />
-					) : (
-						character.classes.map((c, index) => (
-							<span key={index}>
-								{index > 0 ? ', ' : ''}
-								{c.className} {c.level}
-								{c.subclass ? ` (${c.subclass})` : ''}
-							</span>
-						))
-					)}
-				</p>
-
-				<p className="sheet__species">{character.species ? character.species.name : <UnresolvedValue reason="No species chosen yet." />}</p>
-
-				<p className="sheet__background">
-					{character.background ? character.background.name : <UnresolvedValue reason="No background chosen yet." />}
-				</p>
-
-				{onEditCharacter && (
-					<button type="button" className="sheet__edit-character" onClick={onEditCharacter}>
-						Edit character
-					</button>
-				)}
-				{onLevelUp && <LevelUpButton character={character} onLevelUp={onLevelUp} />}
-				{onRemoveLevel && <RemoveLevelButton character={character} onRemoveLevel={onRemoveLevel} />}
-			</header>
+			<div className="sheet__body">
+			{/* Rework R2: empty until R3 fills it; it scrolls on its own once it holds more than fits (D153). */}
+			<div className="sheet__left-column" />
+			<div className="sheet__right-panel">
 
 			{/*
 			 * Sheet rebuild slice 2 — the sections below are split across five tabs.
@@ -2758,6 +2777,7 @@ export function CharacterSheet({
 				))}
 			</nav>
 
+			<div className="sheet__panels">
 			<div
 				role="tabpanel"
 				id="sheet-panel-stats"
@@ -3082,12 +3102,6 @@ export function CharacterSheet({
 				aria-labelledby="sheet-tab-inventory"
 				className={activeTab === 'inventory' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
 			>
-			<DamageResponsesSection
-				responses={damageResponses}
-				loading={itemRefs === null || damageResponseData === null}
-				dataError={damageResponseDataError}
-			/>
-
 			<InventorySection
 				inventory={character.inventory ?? []}
 				currencyCopper={character.currencyCopper ?? 0}
@@ -3373,6 +3387,9 @@ export function CharacterSheet({
 						onEdit={onEditText ? (text) => onEditText(field, text) : undefined}
 					/>
 				))}
+			</div>
+			</div>
+			</div>
 			</div>
 		</article>
 	)
