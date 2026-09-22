@@ -473,6 +473,22 @@ describe('the migration chain (D69)', () => {
 		expect('grantedFeats' in migrated).toBe(false)
 	})
 
+	/* Task A2: a purely additive field, so the step only tags — no stored pick is what absence already means. */
+	it('tags a version-42 character without inventing any proficiency pick', () => {
+		const before = {
+			schemaVersion: 42,
+			id: '1',
+			name: 'Aria',
+			classes: [],
+			grantedFeats: [{ origin: 'background', name: 'Skilled', source: 'XPHB' }],
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		const [grantedFeat] = migrated['grantedFeats'] as Record<string, unknown>[]
+		expect('proficiencies' in grantedFeat).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

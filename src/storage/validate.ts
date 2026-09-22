@@ -22,6 +22,7 @@ import type {
 	EquippedSlot,
 	FeatAsiChoice,
 	FeatChoiceDetails,
+	FeatChoiceProficiencies,
 	FilterChoiceSpellsChoice,
 	GrantedFeatOrigin,
 	HitPointLevelKind,
@@ -431,7 +432,39 @@ function describeFeatChoiceDetailsError(entry: Record<string, unknown>): string 
 	}
 	const magicInitiateError = describeMagicInitiateError(entry['magicInitiate'])
 	if (magicInitiateError) return magicInitiateError
-	return describeFilterChoiceSpellsError(entry['filterChoiceSpells'])
+	const filterChoiceSpellsError = describeFilterChoiceSpellsError(entry['filterChoiceSpells'])
+	if (filterChoiceSpellsError) return filterChoiceSpellsError
+	return describeFeatProficienciesError(entry['proficiencies'])
+}
+
+/** Validates an optional `proficiencies` field on a feat choice (skill/tool/language/expertise picks, build order task A2). Returns null if absent. */
+function describeFeatProficienciesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!isRecord(value)) return `proficiencies is not an object`
+
+	const skills = value['skills']
+	if (skills !== undefined && !isStringArray(skills)) return `proficiencies.skills must be an array of strings`
+
+	const tools = value['tools']
+	if (tools !== undefined && !isStringArray(tools)) return `proficiencies.tools must be an array of strings`
+
+	const expertise = value['expertise']
+	if (expertise !== undefined && !isStringArray(expertise)) return `proficiencies.expertise must be an array of strings`
+
+	const languages = value['languages']
+	if (languages !== undefined) {
+		if (!Array.isArray(languages)) return `proficiencies.languages must be an array`
+		for (let i = 0; i < languages.length; i++) {
+			const error = describeSpellRefError(languages[i], `proficiencies.languages[${i}]`)
+			if (error) return error
+		}
+	}
+
+	return null
+}
+
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
 
 const GRANTED_FEAT_ORIGINS: readonly GrantedFeatOrigin[] = ['background', 'species']
@@ -1037,10 +1070,25 @@ function toFeatChoiceDetails(record: Record<string, unknown>): FeatChoiceDetails
 	const chosenAbility = record['chosenAbility']
 	const magicInitiate = record['magicInitiate']
 	const filterChoiceSpells = record['filterChoiceSpells']
+	const proficiencies = record['proficiencies']
 	return {
 		...(typeof chosenAbility === 'string' ? { chosenAbility: chosenAbility as Ability } : {}),
 		...(isRecord(magicInitiate) ? { magicInitiate: toMagicInitiateChoice(magicInitiate) } : {}),
 		...(isRecord(filterChoiceSpells) ? { filterChoiceSpells: toFilterChoiceSpellsChoice(filterChoiceSpells) } : {}),
+		...(isRecord(proficiencies) ? { proficiencies: toFeatProficiencies(proficiencies) } : {}),
+	}
+}
+
+function toFeatProficiencies(value: Record<string, unknown>): FeatChoiceProficiencies {
+	const skills = value['skills']
+	const tools = value['tools']
+	const expertise = value['expertise']
+	const languages = value['languages'] as Record<string, unknown>[] | undefined
+	return {
+		...(Array.isArray(skills) ? { skills: skills as string[] } : {}),
+		...(Array.isArray(tools) ? { tools: tools as string[] } : {}),
+		...(Array.isArray(expertise) ? { expertise: expertise as string[] } : {}),
+		...(Array.isArray(languages) ? { languages: languages.map((l) => ({ name: l['name'] as string, source: l['source'] as string })) } : {}),
 	}
 }
 

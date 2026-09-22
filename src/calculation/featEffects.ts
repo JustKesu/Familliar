@@ -69,6 +69,23 @@ export interface RawFeatExpertiseEntry {
 	anyProficientSkill: number
 }
 
+/** feats.json's `toolProficiencies` array entry — four spellings across the 4 feats that carry it (DATA.md). */
+export type RawFeatToolProficienciesEntry =
+	| { choose: { from: string[]; count: number } }
+	| { anyArtisansTool: number }
+	| { anyMusicalInstrument: number }
+	| { any: number }
+
+/** feats.json's `languageProficiencies` array entry — Prodigy is the only feat that carries this. */
+export interface RawFeatLanguageProficienciesEntry {
+	any: number
+}
+
+/** feats.json's `skillToolLanguageProficiencies` array entry — Skilled only: a mixed skill-or-tool choice, `choose` an ARRAY of groups (DATA.md TRAP), never a language despite the field's name. */
+export interface RawFeatSkillToolLanguageProficienciesEntry {
+	choose: { from: ('anySkill' | 'anyTool')[]; count: number }[]
+}
+
 /** The slice of a feats.json entry the calculation layer reads — a caller-supplied parameter (D38), never fetched here. */
 export interface FeatEffectEntry {
 	name: string
@@ -77,6 +94,12 @@ export interface FeatEffectEntry {
 	savingThrowProficiencies?: RawFeatSavingThrowProficienciesEntry[]
 	skillProficiencies?: RawFeatSkillProficienciesEntry[]
 	expertise?: RawFeatExpertiseEntry[]
+	/** Stored only (task A2) — no computed value reads this yet. */
+	toolProficiencies?: RawFeatToolProficienciesEntry[]
+	/** Stored only (task A2) — no computed value reads this yet. */
+	languageProficiencies?: RawFeatLanguageProficienciesEntry[]
+	/** Stored only (task A2) — no computed value reads this yet. */
+	skillToolLanguageProficiencies?: RawFeatSkillToolLanguageProficienciesEntry[]
 	/** The backgrounds naming this feat as their origin feat — how the feat list tells featInstances the background's feat (D156). */
 	grantedByBackgrounds?: FeatRef[]
 }
@@ -115,6 +138,19 @@ function isChooseSkillEntry(entry: RawFeatSkillProficienciesEntry): entry is { c
 
 function isAnySkillEntry(entry: RawFeatSkillProficienciesEntry): entry is { any: number } {
 	return typeof (entry as { any?: unknown }).any === 'number'
+}
+
+/** Which of the 4 proficiency kinds (task A2) a feat could ask for, structurally — ignores Boon of Skill's FIXED skillProficiencies (not a choice) but not any of its `expertise` (always a choice, see module doc). */
+export function featRequestedProficiencyKinds(feat: FeatEffectEntry): { skills: boolean; tools: boolean; languages: boolean; expertise: boolean } {
+	const skillEntry = feat.skillProficiencies?.[0]
+	const hasSkillChoice = !!skillEntry && (isAnySkillEntry(skillEntry) || isChooseSkillEntry(skillEntry))
+	const hasMixedSkillOrTool = feat.skillToolLanguageProficiencies !== undefined
+	return {
+		skills: hasSkillChoice || hasMixedSkillOrTool,
+		tools: feat.toolProficiencies !== undefined || hasMixedSkillOrTool,
+		languages: feat.languageProficiencies !== undefined,
+		expertise: feat.expertise !== undefined,
+	}
 }
 
 /**
@@ -189,6 +225,24 @@ export function featFixedSkillProficiencyNames(skill: Skill, character: Characte
 	return names
 }
 
+/** Feats granting `skill` via a STORED player pick (task A2) — same join-into-existing-source-list contract as featFixedSkillProficiencyNames, but reads FeatChoiceDetails.proficiencies.skills instead of feats.json (the picker enforces the pool; this only applies what got stored). */
+export function featStoredSkillProficiencyNames(skill: Skill, character: Character, feats: FeatEffectEntry[]): string[] {
+	const names: string[] = []
+	for (const choice of characterFeats(character, feats)) {
+		if (choice.proficiencies?.skills?.includes(skill)) names.push(choice.name)
+	}
+	return names
+}
+
+/** Feats granting expertise in `skill` via a STORED player pick (task A2, D159: may target a skill the same feat instance granted). */
+export function featStoredExpertiseSkillNames(skill: Skill, character: Character, feats: FeatEffectEntry[]): string[] {
+	const names: string[] = []
+	for (const choice of characterFeats(character, feats)) {
+		if (choice.proficiencies?.expertise?.includes(skill)) names.push(choice.name)
+	}
+	return names
+}
+
 /**
  * A note (D40 Contribution with `amount: 0` and a `note`) for every feat
  * whose skillProficiencies/expertise field offers `skill` as a candidate
@@ -206,11 +260,13 @@ export function featSkillChoiceAwaitingNotes(skill: Skill, character: Character,
 		if (!feat) continue
 
 		const skillEntry = feat.skillProficiencies?.[0]
-		if (skillEntry && (isAnySkillEntry(skillEntry) || (isChooseSkillEntry(skillEntry) && skillEntry.choose.from.includes(skill)))) {
+		const hasStoredSkillPick = (choice.proficiencies?.skills?.length ?? 0) > 0
+		if (!hasStoredSkillPick && skillEntry && (isAnySkillEntry(skillEntry) || (isChooseSkillEntry(skillEntry) && skillEntry.choose.from.includes(skill)))) {
 			notes.push(skillChoiceAwaitingNote(feat.name))
 		}
 
-		if (feat.expertise?.[0] && isProficient) {
+		const hasStoredExpertisePick = (choice.proficiencies?.expertise?.length ?? 0) > 0
+		if (!hasStoredExpertisePick && feat.expertise?.[0] && isProficient) {
 			notes.push(skillChoiceAwaitingNote(feat.name))
 		}
 	}

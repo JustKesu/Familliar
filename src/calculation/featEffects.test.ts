@@ -5,8 +5,11 @@ import {
 	characterFeats,
 	featAbilityScoreContributions,
 	featFixedSkillProficiencyNames,
+	featRequestedProficiencyKinds,
 	featSavingThrowProficiencyNames,
 	featSkillChoiceAwaitingNotes,
+	featStoredExpertiseSkillNames,
+	featStoredSkillProficiencyNames,
 	proseFeatEffectNotes,
 	type FeatEffectEntry,
 } from './featEffects'
@@ -120,6 +123,65 @@ describe('featSkillChoiceAwaitingNotes', () => {
 		const [note] = featSkillChoiceAwaitingNotes('arcana', character, [keenMind], false)
 		expect(note.amount).toBe(0)
 		expect(note.note).toBeTruthy()
+	})
+})
+
+describe('stored feat proficiency picks (task A2)', () => {
+	const prodigy: FeatEffectEntry = {
+		name: 'Prodigy',
+		source: 'XPHB',
+		skillProficiencies: [{ choose: { from: ['acrobatics', 'animal handling', 'arcana', 'athletics'] } }],
+		toolProficiencies: [{ any: 1 }],
+		languageProficiencies: [{ any: 1 }],
+		expertise: [{ anyProficientSkill: 1 }],
+	}
+	const skilled: FeatEffectEntry = {
+		name: 'Skilled',
+		source: 'XPHB',
+		skillToolLanguageProficiencies: [{ choose: [{ from: ['anySkill', 'anyTool'], count: 3 }] }],
+	}
+
+	it('featStoredSkillProficiencyNames finds a stored skill pick, and only for the skill it names', () => {
+		const character = withChoices(base, [{ level: 4, kind: 'feat', name: 'Keen Mind', source: 'XPHB', proficiencies: { skills: ['history'] } }])
+		expect(featStoredSkillProficiencyNames('history', character, [keenMind])).toEqual(['Keen Mind'])
+		expect(featStoredSkillProficiencyNames('arcana', character, [keenMind])).toEqual([])
+	})
+
+	it('featStoredExpertiseSkillNames finds a stored expertise pick, including one targeting a skill the same feat granted (D159)', () => {
+		const character = withChoices(base, [
+			{ level: 19, kind: 'feat', name: 'Skill Expert', source: 'XPHB', proficiencies: { skills: ['religion'], expertise: ['religion'] } },
+		])
+		expect(featStoredExpertiseSkillNames('religion', character, [skillExpert])).toEqual(['Skill Expert'])
+		expect(featStoredExpertiseSkillNames('arcana', character, [skillExpert])).toEqual([])
+	})
+
+	it('featSkillChoiceAwaitingNotes stops once the instance has a stored pick for the field concerned (D58/D161)', () => {
+		const withPick = withChoices(base, [{ level: 4, kind: 'feat', name: 'Keen Mind', source: 'XPHB', proficiencies: { skills: ['history'] } }])
+		expect(featSkillChoiceAwaitingNotes('history', withPick, [keenMind], false)).toEqual([])
+
+		const withoutPick = withChoices(base, [{ level: 4, kind: 'feat', name: 'Keen Mind', source: 'XPHB' }])
+		expect(featSkillChoiceAwaitingNotes('history', withoutPick, [keenMind], false)).toHaveLength(1)
+
+		const expertisePicked = withChoices(base, [
+			{ level: 19, kind: 'feat', name: 'Boon of Skill', source: 'XPHB', proficiencies: { expertise: ['athletics'] } },
+		])
+		expect(featSkillChoiceAwaitingNotes('athletics', expertisePicked, [boonOfSkill], true)).toEqual([])
+	})
+
+	it('featRequestedProficiencyKinds: Prodigy asks for all 4 kinds', () => {
+		expect(featRequestedProficiencyKinds(prodigy)).toEqual({ skills: true, tools: true, languages: true, expertise: true })
+	})
+
+	it('featRequestedProficiencyKinds: Keen Mind asks for skills only', () => {
+		expect(featRequestedProficiencyKinds(keenMind)).toEqual({ skills: true, tools: false, languages: false, expertise: false })
+	})
+
+	it('featRequestedProficiencyKinds: Skilled’s mixed skillToolLanguageProficiencies counts as both skills and tools, never languages', () => {
+		expect(featRequestedProficiencyKinds(skilled)).toEqual({ skills: true, tools: true, languages: false, expertise: false })
+	})
+
+	it("featRequestedProficiencyKinds: Boon of Skill's FIXED skillProficiencies is not a skills choice, but its expertise is", () => {
+		expect(featRequestedProficiencyKinds(boonOfSkill)).toEqual({ skills: false, tools: false, languages: false, expertise: true })
 	})
 })
 

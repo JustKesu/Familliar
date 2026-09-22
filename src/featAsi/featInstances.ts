@@ -43,6 +43,7 @@ function choiceDetails(details: FeatChoiceDetails): FeatChoiceDetails {
 		...(details.chosenAbility !== undefined ? { chosenAbility: details.chosenAbility } : {}),
 		...(details.magicInitiate !== undefined ? { magicInitiate: details.magicInitiate } : {}),
 		...(details.filterChoiceSpells !== undefined ? { filterChoiceSpells: details.filterChoiceSpells } : {}),
+		...(details.proficiencies !== undefined ? { proficiencies: details.proficiencies } : {}),
 	}
 }
 

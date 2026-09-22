@@ -865,6 +865,26 @@ export interface FeatChoiceDetails {
 	magicInitiate?: MagicInitiateChoice
 	/** The 8 generic filter-choice feats only (slice d5b-1) — see FilterChoiceSpellsChoice. */
 	filterChoiceSpells?: FilterChoiceSpellsChoice
+	/**
+	 * Skill/tool/language/expertise picks from the 10 feats that offer one
+	 * (DATA.md "Feat proficiency / expertise / language choices"; build order
+	 * task A2). Flat per kind rather than per feats.json field, since a feat
+	 * like Skilled can mix skills and tools in one choice. Tools and languages
+	 * are stored only — nothing computed reads them yet (a later task). No
+	 * picker enforces the count or the allowed pool here; that is also a
+	 * later task's job.
+	 */
+	proficiencies?: FeatChoiceProficiencies
+}
+
+/** See FeatChoiceDetails.proficiencies. */
+export interface FeatChoiceProficiencies {
+	skills?: string[]
+	tools?: string[]
+	/** D158: a feat's own language pick lives only on the feat instance, never merged into Character.languages. */
+	languages?: { name: string; source: string }[]
+	/** D159: may name a skill the SAME feat instance also granted. */
+	expertise?: string[]
 }
 
 /** Where a feat that no ASI level paid for came from (D156). 'species' is shape only until the wizard rebuild (D157). */
@@ -884,7 +904,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 42 for Character.grantedFeats (D156); 41
+ * (see wireFormat.ts). Bumped to 43 for FeatChoiceDetails.proficiencies
+ * (build order task A2); 42 for Character.grantedFeats (D156); 41
  * added Character.appearance, .backstory and .notes (slice 9d2); 40 added Character.play.concentratingOn
  * (slice 9d1); 39 added Character.play.spentHitDice
  * (slice 9b4); 38 added Character.play.spentSpellSlots (slice 9b3); 37
@@ -896,4 +917,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 42
+export const CURRENT_SCHEMA_VERSION = 43

@@ -363,6 +363,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 42 }),
 	},
+	{
+		from: 42,
+		to: 43,
+		/*
+		 * 43 adds FeatChoiceDetails.proficiencies (build order task A2). A
+		 * version-42 character has stored no skill/tool/language/expertise pick
+		 * for any feat, and absence already means exactly that — the step only
+		 * tags, same as 42's own step.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 43 }),
+	},
 ]
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
 import type { FeatEffectEntry } from './featEffects'
-import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkill, computeSkills } from './skills'
+import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkill, computeSkills, SKILLS } from './skills'
 
 const bard5: Character = {
 	id: '1',
@@ -172,6 +172,68 @@ describe('computeSkill', () => {
 		// A skill Keen Mind never offers stays untouched.
 		const unrelated = computeSkill('athletics', withKeenMind, [keenMind])
 		expect(unrelated.status === 'known' && unrelated.breakdown.some((c) => c.source.includes('Keen Mind'))).toBe(false)
+	})
+})
+
+describe('stored feat proficiency picks (task A2)', () => {
+	it('Keen Mind: a stored skill pick applies as proficiency, sourced "feat (Keen Mind)", and clears the awaiting note', () => {
+		const keenMind: FeatEffectEntry = {
+			name: 'Keen Mind',
+			source: 'XPHB',
+			skillProficiencies: [{ choose: { from: ['arcana', 'history', 'investigation', 'nature', 'religion'] } }],
+		}
+		const character: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'feat', name: 'Keen Mind', source: 'XPHB', proficiencies: { skills: ['history'] } }] }
+		expect(computeSkill('history', character, [keenMind])).toEqual({
+			status: 'known',
+			value: { status: 'proficient', modifier: 3 },
+			breakdown: [
+				{ source: 'intelligence modifier', amount: 0 },
+				{ source: 'proficiency (background, feat (Keen Mind))', amount: 3 },
+			],
+		})
+	})
+
+	it('Skilled granted by a background (Noble): 2 stored skills apply as proficiency, the stored tool is not applied anywhere', () => {
+		const skilled: FeatEffectEntry = {
+			name: 'Skilled',
+			source: 'XPHB',
+			grantedByBackgrounds: [{ name: 'Noble', source: 'XPHB' }],
+			skillToolLanguageProficiencies: [{ choose: [{ from: ['anySkill', 'anyTool'], count: 3 }] }],
+		}
+		const character: Character = {
+			...fighter5,
+			background: { name: 'Noble', source: 'XPHB', skillProficiencies: ['persuasion', 'history'], toolProficiency: 'one game of your choice' },
+			grantedFeats: [{ origin: 'background', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['persuasion', 'insight'], tools: ['Gaming Set (Dice)'] } }],
+		}
+		const persuasion = computeSkill('persuasion', character, [skilled])
+		expect(persuasion.status === 'known' && persuasion.value.status).toBe('proficient')
+		expect(persuasion.status === 'known' && persuasion.breakdown).toContainEqual({ source: 'proficiency (background, feat (Skilled))', amount: 3 })
+
+		const insight = computeSkill('insight', character, [skilled])
+		expect(insight.status === 'known' && insight.value.status).toBe('proficient')
+		expect(insight.status === 'known' && insight.breakdown).toContainEqual({ source: 'proficiency (feat (Skilled))', amount: 3 })
+
+		// The stored tool pick has nowhere to apply yet (task A2 scope) — no skill's breakdown mentions it.
+		for (const skill of SKILLS) {
+			const result = computeSkill(skill, character, [skilled])
+			expect(result.status === 'known' && JSON.stringify(result.breakdown).includes('Gaming Set')).toBe(false)
+		}
+	})
+
+	it('Skill Expert: a stored skill pick plus expertise on that same skill applies expertise (D159)', () => {
+		const skillExpert: FeatEffectEntry = { name: 'Skill Expert', source: 'XPHB', skillProficiencies: [{ any: 1 }], expertise: [{ anyProficientSkill: 1 }] }
+		const character: Character = {
+			...fighter5,
+			featAsiChoices: [{ level: 19, kind: 'feat', name: 'Skill Expert', source: 'XPHB', proficiencies: { skills: ['religion'], expertise: ['religion'] } }],
+		}
+		expect(computeSkill('religion', character, [skillExpert])).toEqual({
+			status: 'known',
+			value: { status: 'expertise', modifier: 6 },
+			breakdown: [
+				{ source: 'intelligence modifier', amount: 0 },
+				{ source: 'expertise (feat (Skill Expert))', amount: 6 },
+			],
+		})
 	})
 })
 

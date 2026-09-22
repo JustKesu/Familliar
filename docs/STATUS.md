@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-22 (task A1: origin featy — feat z backgroundu se aplikuje, `grantedFeats`, schéma 42)
+Poslední aktualizace: 2026-09-22 (task A2: uložené skill/expertise volby featů se počítají, schéma 43)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -21,8 +21,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    chybějící data sheet nikdy nezhodí, jen se to viditelně ohlásí (D43).
 4a. [done] Feat/ASI — výběr, uložení, efekty tam, kde je appka umí spočítat
     (vlastnosti, saving throws, skilly, poznámka u iniciativy). Neaplikováno:
-    featy mířící na útoky/AC (kroky 7/8), featy s volbou dovednosti/nástroje/
-    jazyka, kterou nemá appka kam uložit (QUESTIONS.md; úložiště tasky A2–A3).
+    featy mířící na útoky/AC (kroky 7/8), nástroje a jazyky z featů (uloženy,
+    nikam nepromítnuty — picker je další task).
     Task A1 (D156, schéma 42): origin feat backgroundu se odvozuje z
     backgroundu a aplikuje všude, kde feat z ASI (HP, vlastnosti, savy,
     skilly, iniciativa, kouzla, smysly, odolnosti, zdatnost se zbraněmi,
@@ -32,6 +32,19 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
     další task). ASI picker nenabídne neopakovatelný feat z backgroundu.
     `origin: 'species'` (Human Versatile) je jen v typu/validátoru (D157).
     Všechny čtení featů jdou přes `featInstances` (`src/featAsi/featInstances.ts`).
+    Task A2 (schéma 43): `FeatChoiceDetails.proficiencies` (skills/tools/
+    languages/expertise, flat po druhu — DATA.md "Feat proficiency /
+    expertise / language choices", 10 featů). Uložený skill pick se počítá
+    jako proficiency se zdrojem „feat (\<jméno\>)" (`skills.ts`); uložená
+    expertise se počítá vedle `expertiseSkills`, smí mířit i na skill, který
+    dal tentýž feat (D159). Nástroje a jazyky jsou jen uloženy (D158) — nic
+    je nečte. D58 poznámka „čeká na volbu" zmizí pro danou instanci featu,
+    jakmile má uložený pick pro dané pole (skills/expertise); na nástroje a
+    jazyky se nerozšiřuje (D161). Sheet (`missingFeatSubChoices`) hlásí i
+    chybějící skills/tools/languages/expertise podle toho, co feat v datech
+    nabízí (`featRequestedProficiencyKinds`, `featEffects.ts`). Enforcement
+    počtu a nabízeného poolu je pickerova práce (další task) — tady se
+    aplikuje cokoli uloženého, pokud je to platné jméno dovednosti.
 5. [done] Sheet — zobrazuje všechno z kroku 4 s rozklady na vyžádání.
 6. [done] Kouzla — útočný bonus/DC, sloty (včetně třetinových casterů a Pact
    Magic), přístup ke class spell listu s filtrem podle úrovně, class spell
@@ -1153,6 +1166,11 @@ hit dice: hod v sekci Hit dice léčí a utrácí kostku (`setSpentHitDice`).
 Task A1 (D156) přidal `Character.grantedFeats` (schéma 42, migrace 41→42
 jen tag): origin feat backgroundu se odvozuje, takže u starých postav začne
 platit sám.
+
+Task A2 přidal `FeatChoiceDetails.proficiencies` (schéma 43, migrace 42→43
+jen tag): uložené skill/expertise picky se počítají v `skills.ts`, tools/
+languages jen leží v úložišti. `featInstances`/`choiceDetails` je nese dál,
+`featSkillChoiceAwaitingNotes` je zohledňuje při mazání D58 poznámky.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.

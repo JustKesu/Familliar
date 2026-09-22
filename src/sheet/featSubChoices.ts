@@ -1,4 +1,4 @@
-import type { FeatEffectEntry } from '../calculation/featEffects'
+import { featRequestedProficiencyKinds, type FeatEffectEntry } from '../calculation/featEffects'
 import type { FeatInstance } from '../featAsi/featInstances'
 import { MAGIC_INITIATE_FEAT_SOURCE, MAGIC_INITIATE_FEAT_NAME } from '../featAsi/featAsiData'
 import { isFilterChoiceFeat } from '../spells/featSpellChoiceData'
@@ -21,5 +21,14 @@ export function missingFeatSubChoices(instance: FeatInstance, feats: readonly Fe
 	if (asksForAbility && instance.chosenAbility === undefined) missing.push('ability')
 	if (isMagicInitiateFamily(instance) && instance.magicInitiate === undefined) missing.push('spells')
 	if (isFilterChoiceFeat(instance) && instance.filterChoiceSpells === undefined) missing.push('spells')
+
+	if (entry) {
+		const kinds = featRequestedProficiencyKinds(entry)
+		if (kinds.skills && (instance.proficiencies?.skills?.length ?? 0) === 0) missing.push('skills')
+		if (kinds.tools && (instance.proficiencies?.tools?.length ?? 0) === 0) missing.push('tools')
+		if (kinds.languages && (instance.proficiencies?.languages?.length ?? 0) === 0) missing.push('languages')
+		if (kinds.expertise && (instance.proficiencies?.expertise?.length ?? 0) === 0) missing.push('expertise')
+	}
+
 	return missing
 }

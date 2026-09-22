@@ -9,10 +9,11 @@
  * feat) grants the same skill, proficiency is counted once but every
  * source is named in the breakdown, mirroring how savingThrows.ts already
  * joins multiple granting classes into one contribution. A feat offering a
- * skill CHOICE this app has nowhere to store (Keen Mind, Observant,
- * Prodigy, Squat Nimbleness, Skill Expert, and every feat's `expertise`
- * field — see featEffects.ts) adds an "awaiting a choice" note instead of a
- * number, on every skill that choice could plausibly land on.
+ * skill or expertise CHOICE (Keen Mind, Observant, Prodigy, Squat
+ * Nimbleness, Skill Expert, and every feat's `expertise` field — see
+ * featEffects.ts) applies once the player's pick is stored (task A2); until
+ * then it adds an "awaiting a choice" note instead of a number, on every
+ * skill that choice could plausibly land on.
  */
 
 import type { Ability } from '../abilities/abilityScores'
@@ -20,7 +21,7 @@ import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { Character } from '../storage/character'
 import { choiceNames } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
-import { featFixedSkillProficiencyNames, featSkillChoiceAwaitingNotes, type FeatEffectEntry } from './featEffects'
+import { featFixedSkillProficiencyNames, featSkillChoiceAwaitingNotes, featStoredExpertiseSkillNames, featStoredSkillProficiencyNames, type FeatEffectEntry } from './featEffects'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -80,6 +81,7 @@ function proficiencySources(skill: Skill, character: Character, feats: FeatEffec
 	if (character.background?.skillProficiencies.includes(skill)) sources.push('background')
 	if (character.speciesSkills?.includes(skill)) sources.push('species')
 	sources.push(...featFixedSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
+	sources.push(...featStoredSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
 	return sources
 }
 
@@ -95,9 +97,10 @@ export function computeSkill(skill: Skill, character: Character, feats: FeatEffe
 
 	const sources = proficiencySources(skill, character, feats)
 	const isProficient = sources.length > 0
+	const hasExpertise = choiceNames(character.expertiseSkills).includes(skill) || featStoredExpertiseSkillNames(skill, character, feats).length > 0
 	const status: SkillProficiencyStatus =
 		isProficient
-			? choiceNames(character.expertiseSkills).includes(skill)
+			? hasExpertise
 				? 'expertise'
 				: 'proficient'
 			: hasJackOfAllTrades(character)

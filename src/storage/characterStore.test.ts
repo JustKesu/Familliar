@@ -1685,6 +1685,61 @@ describe('stored granted feats (D156)', () => {
 	})
 })
 
+describe('stored feat proficiency picks (task A2)', () => {
+	it('round-trips proficiencies through save, reload, export and import, and migrates a version-42 save', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const created = store.create({
+			name: 'Aria',
+			featAsiChoices: [
+				{
+					level: 4,
+					kind: 'feat',
+					name: 'Keen Mind',
+					source: 'XPHB',
+					proficiencies: { skills: ['history'] },
+				},
+			],
+			grantedFeats: [
+				{
+					origin: 'background',
+					name: 'Skilled',
+					source: 'XPHB',
+					proficiencies: { skills: ['persuasion', 'insight'], tools: ['Gaming Set (Dice)'], languages: [{ name: 'Elvish', source: 'XPHB' }], expertise: ['persuasion'] },
+				},
+			],
+		})
+
+		const reloaded = new CharacterStore(backing).list()[0]
+		expect(reloaded.grantedFeats).toEqual(created.grantedFeats)
+		expect(reloaded.featAsiChoices).toEqual(created.featAsiChoices)
+
+		const [imported] = new CharacterStore(new MemoryStorage()).import(store.exportCharacter(created.id))
+		expect(imported.grantedFeats).toEqual(created.grantedFeats)
+
+		const v42 = { schemaVersion: 42, id: '2', name: 'Bram', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] }
+		const migratedBacking = new MemoryStorage()
+		migratedBacking.setItem(STORAGE_KEY, JSON.stringify([v42]))
+		const [migrated] = new CharacterStore(migratedBacking).list()
+		expect(migrated).toEqual({ id: '2', name: 'Bram', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] })
+	})
+
+	it('rejects a malformed proficiencies field', () => {
+		const bad = [
+			{ skills: 'history' },
+			{ tools: [1] },
+			{ expertise: [true] },
+			{ languages: [{ name: 'Elvish' }] },
+		]
+		for (const proficiencies of bad) {
+			const backing = new MemoryStorage()
+			const featAsiChoices = [{ level: 4, kind: 'feat', name: 'Keen Mind', source: 'XPHB', proficiencies }]
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], featAsiChoices }]))
+			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+		}
+	})
+})
+
 describe('CharacterStore.rename', () => {
 	it('renames an existing character', () => {
 		const store = new CharacterStore(new MemoryStorage())
