@@ -376,6 +376,11 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* Rework R3 (D147): size beside the species name, not its own section. */
+.sheet__size {
+  white-space: nowrap;
+}
+
 .sheet__header-button {
   display: inline-flex;
   align-items: center;
@@ -428,6 +433,22 @@ button:disabled {
 .sheet__strip > .sheet__hit-points {
   flex: 1 1 20rem;
   min-width: 0;
+}
+
+/* Rework R3 (D147): hit dice as a small line under HP, not its own section. */
+.sheet__hit-points .sheet__hit-dice {
+  margin-top: 0.3rem;
+  font-size: 0.85em;
+}
+
+.sheet__hit-points .sheet__hit-dice h2 {
+  font-size: 1em;
+}
+
+.sheet__hit-points .sheet__hit-dice ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .ability-cards {
@@ -499,11 +520,69 @@ button:disabled {
   gap: 1rem;
 }
 
-/* D153: on a short screen this column scrolls; the strip above never shrinks for it. */
+/* D153: on a short screen this column scrolls; the strip above never shrinks for it.
+   Rework R3: two sub-columns (saves/senses, skills) scroll together as one unit. */
 .sheet__left-column {
   flex: 0 0 580px;
   min-height: 0;
   overflow-y: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.sheet__left-a {
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet__left-b {
+  flex: 0 0 252px;
+  min-width: 0;
+}
+
+.sheet__left-a > section,
+.sheet__left-b > section {
+  margin-bottom: 0.75rem;
+}
+
+.sheet__left-column ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet__left-column li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.1rem 0;
+  white-space: nowrap;
+}
+
+/* Two sub-sub-columns of three (STR/DEX/CON, INT/WIS/CHA — ABILITIES' own order). */
+.sheet__saving-throws ul {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(3, auto);
+  grid-auto-flow: column;
+  column-gap: 1rem;
+}
+
+.sheet__prof-mark {
+  color: var(--accent);
+}
+
+.sheet__stat-value {
+  display: inline-block;
+  min-width: 2.2rem;
+  padding: 0 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  text-align: center;
+  font-weight: 600;
 }
 
 .sheet__right-panel {

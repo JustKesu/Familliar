@@ -257,6 +257,7 @@ export function SheetHeader({
 	currentHp,
 	maxHitPoints,
 	maxHpOverride,
+	hitDice,
 	temporaryHitPoints,
 	deathSaves,
 	concentratingOn,
@@ -288,6 +289,8 @@ export function SheetHeader({
 	/** Computed (slice 8a). Already carries the override when one is set — the breakdown is what says so. */
 	maxHitPoints: Calculated<number>
 	maxHpOverride: number | undefined
+	/** Rework R3 (D147): the hit dice line, built by the caller (which holds spend/roll state) and placed under HP. Absent renders nothing. */
+	hitDice?: ReactNode
 	/** A second pile, never added into the pair above it (D110). Absent or 0 is none. */
 	temporaryHitPoints: number | undefined
 	/** Absent means no death save is in progress (D111) — which is the only possible state above 0 hit points. */
@@ -433,6 +436,7 @@ export function SheetHeader({
 				<div className="sheet__max-hit-points">
 					{maxHitPoints.status === 'unknown' ? <UnresolvedValue reason={maxHitPoints.reason} /> : <ValueBreakdown breakdown={maxHitPoints.breakdown} />}
 				</div>
+				{hitDice}
 				{onEditHitPoints && (
 					<>
 					<p>

@@ -348,6 +348,29 @@ slot, který multiclass součet ve skutečnosti nedává.
 Nalezeno při stavbě 9b3 (Cowork, 17. 9. 2026).
 STATUS: nerozhodnuto, čeká na krok 10.
 
+### Sheet nikdy nezobrazoval Proficiencies (Armor / Weapons / Tools / Languages)
+
+Task R3 (levý sloupec, D123) počítal s tím, že "Proficiencies" jde do
+levého sloupce jako straight move existujícího zobrazení. Průzkum před
+implementací ukázal, že žádné takové zobrazení nikdy neexistovalo:
+`CharacterSheet.tsx` nikde nečte `character.masteries` ani
+`character.languages`, a pro zbrojní/zbraňové kategorie proficiency
+(Light Armor, Martial Weapons apod.) neexistuje žádný výpočetní modul —
+`weaponProficiency.ts` počítá jen to, jestli je postava zdatná s
+KONKRÉTNÍ drženou zbraní (pro tabulku akcí), ne seznam kategorií k
+zobrazení.
+
+R3 proto sekci Proficiencies vynechal celý; levý sloupec nese jen
+Saving Throws, Senses a Skills. Rozhodnout:
+- postavit novou kalkulační vrstvu pro Armor/Weapon proficiency
+  kategorie (žádná dnes neexistuje), a k tomu
+- rozhodnout formát zobrazení `character.masteries` (weapon mastery
+  volby) a `character.languages` (jazyky) — obě pole se dnes ukládají,
+  ale nikde se nečtou.
+
+Zjištěno při task R3 (Cowork, 22. 9. 2026), uživatel potvrdil vynechat.
+STATUS: nerozhodnuto, blokuje dokončení D123's Proficiencies části.
+
 ### Aberrant Dragonmark, Natural Recovery, Magic Item Tinker — dva nezávislé limity v jedné featuře
 
 D119/D120: tyhle tři featury nesou v jednom datovém záznamu dva nezávislé

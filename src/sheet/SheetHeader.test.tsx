@@ -485,6 +485,16 @@ describe('SheetHeader layout blocks', () => {
 		const { container } = renderHeader({ name: 'aria' })
 		expect(container.querySelector('.sheet__portrait')!.textContent).toBe('A')
 	})
+
+	/* Rework R3 (D147): the hit dice line is a caller-built slot, placed under the max HP breakdown. Absent renders nothing. */
+	it('places the hitDice slot inside the HP block when given, and renders nothing when absent', () => {
+		const { container, rerender } = renderHeader()
+		expect(container.querySelector('.sheet__hit-points .test-hit-dice')).toBeNull()
+
+		rerender(headerElement({ hitDice: <div className="test-hit-dice">3 / 5 d10</div> }))
+		const hitPoints = container.querySelector('.sheet__hit-points')!
+		expect(hitPoints.querySelector('.test-hit-dice')!.textContent).toBe('3 / 5 d10')
+	})
 })
 
 describe('SheetHeader rest buttons (slice 9b5)', () => {

@@ -2570,3 +2570,59 @@ Zdroj: task R1b, 22. 9. 2026. D145 oddělil sheet a wizard na samostatné pohled
 ## D153 — Sheet je layout na jeden viewport; scrolluje jen levý sloupec a pravý panel
 
 Zdroj: task R2 (rework sheetu), 22. 9. 2026. Pohled sheetu má výšku viewportu (100dvh): hlavička, pás čísel a stavový řádek mají přirozenou výšku, zbytek vyplní řádek těla. Stránka sama nescrolluje; vlastní vertikální scroll mají jen levý sloupec (pevná šířka ~580px) a pravý panel se záložkami (tab bar zůstává stát, scrollují panely pod ním). Na nízké obrazovce levý sloupec scrolluje uvnitř, pás čísel nad ním se kvůli němu nezmenšuje.
+
+## D154 — Stats tab se rozpouští do levého sloupce; size a hit dice mají nové domovy; Proficiencies vynechány
+
+Zdroj: task R3 (rework sheetu), 22. 9. 2026.
+
+Záložka "Vlastnosti a hody" (dnešní `stats` v `SHEET_TABS`) přestává
+existovat. Zůstává pět záložek (Kouzla, Inventář, Schopnosti a rysy,
+Akce, Vzhled a poznámky), pořadí a české popisky beze změny — D123
+(pořadí Actions-první) a D148 (anglické popisky) na zbylých pěti
+záložkách tímto úkolem NEaplikovány, jsou mimo jeho rozsah.
+
+Levý sloupec (`.sheet__left-column`, prázdný od D153/R2) dostal obsah,
+dvě sub-sloupce: `.sheet__left-a` (Saving throws — dvě sub-sub-sloupce
+po třech, STR/DEX/CON | INT/WIS/CHA — Passive values, Darkvision,
+Senses) a `.sheet__left-b` (~252px, Skills, všech 18). Žádný výpočet se
+nemění, jen kontejner a pozice; každá hodnota si drží svůj inline
+rozklad (D40/D41) přesně jako dřív — D146 (rozklady do draweru) na tenhle
+task nedopadá, přijde s R4.
+
+**Proficiencies (Armor / Weapons / Tools / Languages) vynechány.** D123
+je počítala jako součást levého sloupce, ale sheet je nikdy nikde
+nezobrazoval — `character.masteries` a `character.languages` se ukládají
+a nikde nečtou, a pro zbrojní/zbraňové kategorie neexistuje žádný
+výpočet. Uživatel při task R3 potvrdil vynechat a založit jako otevřenou
+otázku (QUESTIONS.md), ne stavět novou kalkulační vrstvu uvnitř téhle
+layoutové úlohy.
+
+**Ability scores přestávají mít vlastní seznam.** R2 zavedla
+`AbilityModifierCards` v pásu čísel jako DOČASNOU duplikaci vedle
+textového seznamu ve stats tabu (`.sheet__abilities`, s roll tlačítky a
+rozkladem). R3 seznam maže beze zbytku — karty v pásu jsou od teď JEDINÉ
+místo, kde se vlastnosti zobrazují. Karty samy roll tlačítko ani rozklad
+nemají a tenhle task jim ho nepřidává: bylo by to nová funkcionalita nad
+rámec "dissolve stats tab", ne přesun existující. Hráč tak ztrácí
+možnost hodit si ability check a rozkliknout rozklad vlastnosti přímo na
+sheetu — zaznamenáno jako vědomý úbytek funkce, ne přehlédnutí.
+
+**Size** se přesouvá do identity řádku v hlavičce, vedle jména druhu —
+`"Tiefling (Medium) · Warlock 6 / Sorcerer 3 · Level 9 · <background>"`
+(`.sheet__size`). Bez rozkladu tady (na rozdíl od levého sloupce) — jde o
+řádek s `white-space: nowrap`, kam `<details>` nepatří, a D146 stejně
+brzy přesune rozklady jinam.
+
+**Hit dice** se přesouvá pod HP blok uvnitř `.sheet__strip`
+(`.sheet__hit-dice`, zmenšeno CSS, stejná třída i markup jako dřív —
+žádná změna chování, spend/restore přes Short/Long Rest beze změny).
+`SheetHeader` dostal nový nepovinný prop `hitDice: ReactNode` — obsah
+staví volající (`CharacterSheet`, který drží spend/roll stav), stejný
+vzor jako `identity`/`abilities`/`defenses`.
+
+`.sheet__traits` teď nese jen Darkvision (nadpis "Size and
+darkvision" → "Darkvision"); Passive values a granted Senses zůstávají
+samostatné sekce vedle sebe v `.sheet__left-a`, ne sloučené pod jeden
+nadpis — žádný test ani zadání nevyžadovaly jeden spojený nadpis a
+oddělené sekce zachovaly víc existujících testovacích selektorů beze
+změny.

@@ -13,6 +13,7 @@ import type { ClassSpellcastingAbility } from '../calculation/spellcasting'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
 import type { SpeciesTraitsData } from '../calculation/speciesTraits'
 import { loadFeatTextEntries, loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetData'
+import { formatModifier } from './calculatedValue'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
@@ -419,9 +420,9 @@ describe('CharacterSheet', () => {
 			return item as HTMLElement
 		}
 
-		/** The number printed in the row, read from the value span so a roll's own "+ 5" is never mistaken for it. */
+		/** The number printed in the row, read from the value box so a roll's own "+ 5" — or the proficiency dot (R3, D154) — is never mistaken for it. */
 		function printedModifier(item: HTMLElement): number {
-			const text = item.querySelector(':scope > span')!.textContent!.trim()
+			const text = item.querySelector('.sheet__stat-value')!.textContent!.trim()
 			return Number(text.replace('−', '-').replace('+', ''))
 		}
 
@@ -510,15 +511,15 @@ describe('CharacterSheet', () => {
 				expect(parseRoll(item.querySelector('.dice-roll__result')!).dice).toHaveLength(1)
 			})
 
-			it('puts one mode control beside every ability, saving throw and skill roll button', async () => {
+			it('puts one mode control beside every saving throw and skill roll button', async () => {
 				const { container } = await renderKnown()
-				for (const [section, count] of [['.sheet__abilities', 6], ['.sheet__saving-throws', 6], ['.sheet__skills', 18]] as const) {
+				for (const [section, count] of [['.sheet__saving-throws', 6], ['.sheet__skills', 18]] as const) {
 					expect(container.querySelectorAll(`${section} .dice-roll__mode`)).toHaveLength(count)
 				}
 			})
 		})
 
-		it('rolls a skill, and an ability check, the same way', async () => {
+		it('rolls a skill', async () => {
 			const user = userEvent.setup()
 			const { container } = await renderKnown()
 
@@ -526,23 +527,15 @@ describe('CharacterSheet', () => {
 			await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
 			const skillRoll = parseRoll(skill.querySelector('.dice-roll__result')!)
 			expect(skillRoll.modifier).toBe(printedModifier(skill))
-
-			// Strength 15 → +2; the ability row prints "15 (+2)".
-			const ability = listItem(container, '.sheet__abilities', 'Strength:')
-			await user.click(screen.getByRole('button', { name: 'Roll Strength check' }))
-			const abilityRoll = parseRoll(ability.querySelector('.dice-roll__result')!)
-			expect(abilityRoll.modifier).toBe(2)
-			expect(abilityRoll.total).toBe(abilityRoll.dice[0]! + 2)
 		})
 
 		it('gives every roll button its own name, and puts none on the passive values', async () => {
 			const { container } = await renderKnown()
 			const labels = (section: string) => Array.from(container.querySelectorAll(`${section} .dice-roll__button`)).map((b) => b.getAttribute('aria-label'))
-			const all = [...labels('.sheet__abilities'), ...labels('.sheet__saving-throws'), ...labels('.sheet__skills')]
-			expect(labels('.sheet__abilities')).toHaveLength(6)
+			const all = [...labels('.sheet__saving-throws'), ...labels('.sheet__skills')]
 			expect(labels('.sheet__saving-throws')).toHaveLength(6)
 			expect(labels('.sheet__skills')).toHaveLength(18)
-			expect(new Set(all).size).toBe(30)
+			expect(new Set(all).size).toBe(24)
 			expect(container.querySelectorAll('.sheet__passive-values .dice-roll__button')).toHaveLength(0)
 		})
 
@@ -567,7 +560,7 @@ describe('CharacterSheet', () => {
 		it('offers no roll where the modifier is unresolved', async () => {
 			const incomplete: Character = { id: 'c2', name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }] }
 			const { container } = await renderKnown(incomplete)
-			for (const section of ['.sheet__abilities', '.sheet__saving-throws', '.sheet__skills']) {
+			for (const section of ['.sheet__saving-throws', '.sheet__skills']) {
 				expect(container.querySelector(section)!.textContent).toContain('unresolved')
 				expect(container.querySelectorAll(`${section} .dice-roll__button`)).toHaveLength(0)
 			}
@@ -582,14 +575,16 @@ describe('CharacterSheet', () => {
 		expect(screen.getByText('Soldier')).toBeTruthy()
 	})
 
-	it('ability scores and modifiers match the calculation layer', async () => {
-		render(<CharacterSheet character={character} />)
+	it('ability scores and modifiers match the calculation layer, shown in the number strip cards (R3: the only place abilities render)', async () => {
+		const { container } = render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
 		const expected = computeAbilityScore('strength', character)
 		expect(expected.status).toBe('known')
 		if (expected.status === 'known') {
-			expect(screen.getByText(`${expected.value.score} (+${expected.value.modifier})`)).toBeTruthy()
+			const card = container.querySelector('.ability-card[data-ability="strength"]')!
+			expect(card.querySelector('.ability-card__score')!.textContent).toBe(String(expected.value.score))
+			expect(card.querySelector('.ability-card__modifier')!.textContent).toBe(formatModifier(expected.value.modifier))
 		}
 	})
 
@@ -645,15 +640,15 @@ describe('CharacterSheet', () => {
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
-		// Rework R2: the number strip now precedes the stats tab, so the ability breakdown is found by its section.
-		const abilities = document.querySelector<HTMLElement>('.sheet__abilities')!
-		const details = within(abilities).getAllByText('Breakdown')[0].closest('details')
+		// Rework R3: ability cards carry no breakdown (D146 territory); saving throws are the left column's own value with one.
+		const saves = document.querySelector<HTMLElement>('.sheet__saving-throws')!
+		const details = within(saves).getAllByText('Breakdown')[0].closest('details')
 		expect(details).not.toBeNull()
 		expect(details?.hasAttribute('open')).toBe(false)
 
-		await user.click(within(abilities).getAllByText('Breakdown')[0])
+		await user.click(within(saves).getAllByText('Breakdown')[0])
 		expect(details?.hasAttribute('open')).toBe(true)
-		expect(details?.textContent).toContain('base')
+		expect(details?.textContent).toContain('modifier')
 	})
 
 	it('shows a missing ability score as unresolved without crashing the rest of the sheet', async () => {
@@ -775,10 +770,10 @@ describe('CharacterSheet', () => {
 		const { container } = render(<CharacterSheet character={undecidedSize} />)
 		await screen.findByRole('heading', { name: 'Undecided' })
 
-		const traitsSection = container.querySelector('.sheet__traits')!
-		const sizeItem = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Size:'))
-		expect(sizeItem?.textContent).toContain('unresolved')
-		expect(sizeItem?.textContent).not.toContain('Medium')
+		// Rework R3 (D147): size moved into the header identity line, beside the species name.
+		const sizeSpan = container.querySelector('.sheet__size')!
+		expect(sizeSpan.textContent).toContain('unresolved')
+		expect(sizeSpan.textContent).not.toContain('Medium')
 	})
 
 	/*
@@ -1588,7 +1583,7 @@ describe('CharacterSheet', () => {
 					const user = userEvent.setup()
 					const { container, onEdit } = await renderStateful([SHORTBOW, { name: 'Longsword', source: 'XPHB', quantity: 1, equipped: 'held' as const }, arrows(5)])
 					await user.click(screen.getByRole('button', { name: 'Roll Longsword to hit' }))
-					await user.click(screen.getByRole('button', { name: 'Roll Strength check' }))
+					await user.click(screen.getByRole('button', { name: 'Roll Strength saving throw' }))
 					expect(onEdit).not.toHaveBeenCalled()
 					expect(ammoText(container, 'Shortbow')).toContain('Arrow: 5')
 				})
@@ -2964,7 +2959,7 @@ describe('CharacterSheet', () => {
 		}
 
 		function traitLine(container: HTMLElement, label: string): HTMLElement {
-			// Speed moved to the persistent header (slice 1); size and darkvision stay in the traits section.
+			// Speed moved to the persistent header (slice 1); size moved to the identity line (R3, D147) — only darkvision is left in the traits section.
 			if (label === 'Speed') return container.querySelector('.sheet__speed') as HTMLElement
 			const line = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith(label))
 			if (!line) throw new Error(`no trait line for ${label}`)
@@ -6567,7 +6562,7 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={warlock} />)
 			await screen.findByRole('heading', { name: 'Unlucky Warlock' })
 			await waitFor(() => expect(container.querySelector('.error')).toBeTruthy())
-			expect(container.querySelector('.sheet__abilities')!.textContent).toContain('Charisma')
+			expect(container.querySelector('.ability-cards [data-ability="charisma"]')).toBeTruthy()
 			expect(container.querySelector('.sheet__skills')).toBeTruthy()
 			return container
 		}
@@ -6649,7 +6644,7 @@ describe('CharacterSheet', () => {
 			expect(section.textContent).toContain('Summoned form on record: Owl (XMM)')
 			// Never the misattributed message the empty pool would otherwise produce.
 			expect(section.textContent).not.toContain('is not a form this familiar can take')
-			expect(container.querySelector('.sheet__abilities')!.textContent).toContain('Charisma')
+			expect(container.querySelector('.ability-cards [data-ability="charisma"]')).toBeTruthy()
 			expect(container.querySelector('.sheet__skills')).toBeTruthy()
 		})
 
@@ -6721,11 +6716,12 @@ describe('the persistent header (rebuild slice 1)', () => {
 		expect(container.querySelectorAll('.sheet__initiative')).toHaveLength(1)
 		expect(container.querySelectorAll('.sheet__proficiency-bonus')).toHaveLength(1)
 		expect(container.querySelectorAll('.sheet__speed')).toHaveLength(1)
-		// The traits section keeps size and darkvision but no longer speed.
+		// The traits section keeps only darkvision now — size moved to the identity line (R3, D147), speed to the header earlier.
 		const traits = container.querySelector('.sheet__traits')!
 		expect(traits.textContent).not.toContain('Speed')
-		expect(traits.textContent).toContain('Size')
+		expect(traits.textContent).not.toContain('Size')
 		expect(traits.textContent).toContain('Darkvision')
+		expect(container.querySelector('.sheet__identity .sheet__size')!.textContent).toContain('Medium')
 	})
 
 	it('shows an unset current HP as "—" beside the computed maximum, and is read-only without the callback', async () => {
@@ -6779,15 +6775,15 @@ describe('the persistent header (rebuild slice 1)', () => {
 	})
 })
 
-describe('sheet tabs (rebuild slice 2)', () => {
-	const TAB_LABELS = ['Vlastnosti a hody', 'Kouzla', 'Inventář', 'Schopnosti a rysy', 'Akce', 'Vzhled a poznámky']
-	const TAB_IDS = ['stats', 'spells', 'inventory', 'features', 'actions', 'notes']
+describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () => {
+	const TAB_LABELS = ['Kouzla', 'Inventář', 'Schopnosti a rysy', 'Akce', 'Vzhled a poznámky']
+	const TAB_IDS = ['spells', 'inventory', 'features', 'actions', 'notes']
 
 	afterEach(() => {
 		vi.mocked(loadGrantedSenses).mockReset().mockResolvedValue([])
 	})
 
-	it('renders the six section tabs with the stats tab selected by default', async () => {
+	it('renders the five section tabs with the spells tab selected by default', async () => {
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
@@ -6797,7 +6793,7 @@ describe('sheet tabs (rebuild slice 2)', () => {
 		expect(tabs.slice(1).every((tab) => tab.getAttribute('aria-selected') === 'false')).toBe(true)
 	})
 
-	it('wires each tab to its panel and marks only the stats panel active on first render', async () => {
+	it('wires each tab to its panel and marks only the spells panel active on first render', async () => {
 		const { container } = render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
@@ -6805,8 +6801,8 @@ describe('sheet tabs (rebuild slice 2)', () => {
 			expect(container.querySelector(`#sheet-tab-${id}`)!.getAttribute('aria-controls')).toBe(`sheet-panel-${id}`)
 			expect(container.querySelector(`#sheet-panel-${id}`)!.getAttribute('aria-labelledby')).toBe(`sheet-tab-${id}`)
 		}
-		expect(container.querySelector('#sheet-panel-stats')!.className).toContain('sheet__panel--active')
-		for (const id of ['spells', 'inventory', 'features', 'actions', 'notes']) {
+		expect(container.querySelector('#sheet-panel-spells')!.className).toContain('sheet__panel--active')
+		for (const id of ['inventory', 'features', 'actions', 'notes']) {
 			expect(container.querySelector(`#sheet-panel-${id}`)!.className).not.toContain('sheet__panel--active')
 		}
 	})
@@ -6819,12 +6815,18 @@ describe('sheet tabs (rebuild slice 2)', () => {
 		await user.click(screen.getByRole('tab', { name: 'Inventář' }))
 
 		expect(screen.getByRole('tab', { name: 'Inventář' }).getAttribute('aria-selected')).toBe('true')
-		expect(screen.getByRole('tab', { name: 'Vlastnosti a hody' }).getAttribute('aria-selected')).toBe('false')
+		expect(screen.getByRole('tab', { name: 'Kouzla' }).getAttribute('aria-selected')).toBe('false')
 		expect(container.querySelector('#sheet-panel-inventory')!.className).toContain('sheet__panel--active')
-		expect(container.querySelector('#sheet-panel-stats')!.className).not.toContain('sheet__panel--active')
+		expect(container.querySelector('#sheet-panel-spells')!.className).not.toContain('sheet__panel--active')
 	})
 
-	it('groups the stats/rolls sections, senses included, under the first tab', async () => {
+	it('no tab exists for the dissolved stats tab', async () => {
+		render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+		expect(screen.queryByRole('tab', { name: 'Vlastnosti a hody' })).toBeNull()
+	})
+
+	it('shows the saves/senses/skills sections, senses included, in the left column beside every tab', async () => {
 		vi.mocked(loadGrantedSenses).mockResolvedValue([{ senseType: 'blindsight', range: 10, origin: 'feat', name: 'Skulker' }])
 		const withSense: Character = { ...character, id: 'tabs-stats', featAsiChoices: [{ level: 4, kind: 'feat', name: 'Skulker', source: 'XPHB' }] }
 
@@ -6832,18 +6834,13 @@ describe('sheet tabs (rebuild slice 2)', () => {
 		await screen.findByRole('heading', { name: 'Aria' })
 		await waitFor(() => expect(container.querySelector('.sheet__senses')).toBeTruthy())
 
-		const panel = container.querySelector('#sheet-panel-stats')!
-		for (const cls of [
-			'.sheet__abilities',
-			'.sheet__saving-throws',
-			'.sheet__skills',
-			'.sheet__passive-values',
-			'.sheet__traits',
-			'.sheet__senses',
-			'.sheet__hit-dice',
-		]) {
-			expect(panel.querySelector(cls)).toBeTruthy()
+		const left = container.querySelector('.sheet__left-column')!
+		for (const cls of ['.sheet__saving-throws', '.sheet__skills', '.sheet__passive-values', '.sheet__traits', '.sheet__senses']) {
+			expect(left.querySelector(cls)).toBeTruthy()
 		}
+		// Hit dice moved into the header strip (R3, D147), not the left column.
+		expect(left.querySelector('.sheet__hit-dice')).toBeNull()
+		expect(container.querySelector('.sheet__strip .sheet__hit-dice')).toBeTruthy()
 	})
 
 	it('puts inventory under the Inventář tab, damage responses in the status row, and weapon attacks under Akce', async () => {
@@ -6862,10 +6859,9 @@ describe('sheet tabs (rebuild slice 2)', () => {
 		expect(actions.querySelector('.sheet__actions')).toBeTruthy()
 
 		expect(container.querySelectorAll('.sheet__actions')).toHaveLength(1)
-		expect(container.querySelector('#sheet-panel-stats')!.querySelector('.sheet__damage-responses')).toBeNull()
 	})
 
-	/* Rework R2 (D153): the outer structure. Real overflow needs a layout engine jsdom lacks; sheetLayout.test.ts guards the CSS that makes these containers scroll. */
+	/* Rework R2/R3 (D153): the outer structure. Real overflow needs a layout engine jsdom lacks; sheetLayout.test.ts guards the CSS that makes these containers scroll. */
 	it('stacks header, number strip, status row and body, with the tabs and panels on the right of the body', async () => {
 		const { container } = render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
@@ -6879,22 +6875,24 @@ describe('sheet tabs (rebuild slice 2)', () => {
 		expect([...right.children].map((child) => child.className)).toEqual(['sheet__tabs', 'sheet__panels'])
 		const panels = right.querySelector(':scope > .sheet__panels')!
 		expect([...panels.children].map((child) => child.id)).toEqual(TAB_IDS.map((id) => `sheet-panel-${id}`))
-		// The left column ships empty until R3 fills it.
-		expect(body.querySelector('.sheet__left-column')!.childElementCount).toBe(0)
+		// R3: the left column now holds two sub-columns instead of shipping empty.
+		expect([...body.querySelector('.sheet__left-column')!.children].map((child) => child.className)).toEqual(['sheet__left-a', 'sheet__left-b'])
 	})
 
-	/* Transitional (rework R2): the strip repeats the stats tab's ability values until R3 removes the tab's copy. */
-	it('shows the same ability scores and modifiers in the number strip as in the stats tab', async () => {
+	it('shows correct ability scores and modifiers in the number strip cards (the only place abilities render, R3)', async () => {
 		const { container } = render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
 		const cards = [...container.querySelectorAll('.sheet__strip .ability-card')]
 		expect(cards).toHaveLength(6)
-		const fromStrip = cards.map((card) => `${card.querySelector('.ability-card__score')!.textContent} (${card.querySelector('.ability-card__modifier')!.textContent})`)
-		const fromTab = [...container.querySelectorAll('#sheet-panel-stats .sheet__abilities > ul > li')].map((item) => item.querySelector('span')!.textContent)
-		expect(fromTab).toHaveLength(6)
-		expect(fromStrip).toEqual(fromTab)
 		expect(cards.map((card) => card.querySelector('.ability-card__name')!.textContent)).toEqual(['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'])
+		const strengthCard = container.querySelector('.ability-card[data-ability="strength"]')!
+		const expected = computeAbilityScore('strength', character)
+		expect(expected.status).toBe('known')
+		if (expected.status === 'known') {
+			expect(strengthCard.querySelector('.ability-card__score')!.textContent).toBe(String(expected.value.score))
+			expect(strengthCard.querySelector('.ability-card__modifier')!.textContent).toBe(formatModifier(expected.value.modifier))
+		}
 	})
 
 	it('puts spells under Kouzla and features/class options under Schopnosti a rysy', async () => {
@@ -6948,14 +6946,14 @@ describe('the Vzhled a poznámky tab (slice 9d2)', () => {
 		return Array.from(container.querySelectorAll<HTMLDetailsElement>('#sheet-panel-notes details'))
 	}
 
-	it('is the last tab and is reached like the other five', async () => {
+	it('is the last tab and is reached like the other four', async () => {
 		const { container } = await openNotesTab()
 
 		const tabs = screen.getAllByRole('tab')
 		expect(tabs[tabs.length - 1].textContent).toBe('Vzhled a poznámky')
 		expect(screen.getByRole('tab', { name: 'Vzhled a poznámky' }).getAttribute('aria-selected')).toBe('true')
 		expect(container.querySelector('#sheet-panel-notes')!.className).toContain('sheet__panel--active')
-		expect(container.querySelector('#sheet-panel-stats')!.className).not.toContain('sheet__panel--active')
+		expect(container.querySelector('#sheet-panel-spells')!.className).not.toContain('sheet__panel--active')
 	})
 
 	it('holds Vzhled, Příběh and Poznámky in that order, each with exactly one textarea', async () => {

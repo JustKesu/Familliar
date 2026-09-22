@@ -196,14 +196,12 @@ const ABILITY_LABELS: Record<Ability, string> = {
 }
 
 /*
- * Sheet rebuild slice 2: the flat section list is grouped into five tabs. This
- * slice only relocates sections — no section's content, calculation or markup
- * changes. Landing tab is 'stats'.
+ * Sheet rebuild slice 2: the flat section list is grouped into tabs. Rework
+ * R3 (D123) dissolves the 'stats' tab into the left column, leaving five.
  */
-type SheetTabId = 'stats' | 'spells' | 'inventory' | 'features' | 'actions' | 'notes'
+type SheetTabId = 'spells' | 'inventory' | 'features' | 'actions' | 'notes'
 
 const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
-	{ id: 'stats', label: 'Vlastnosti a hody' },
 	{ id: 'spells', label: 'Kouzla' },
 	{ id: 'inventory', label: 'Inventář' },
 	{ id: 'features', label: 'Schopnosti a rysy' },
@@ -1901,7 +1899,7 @@ export function CharacterSheet({
 	onRemoveLevel?: (result: Character) => void
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
-	const [activeTab, setActiveTab] = useState<SheetTabId>('stats')
+	const [activeTab, setActiveTab] = useState<SheetTabId>('spells')
 	/* Slice 9c3b: in memory only, like each button's own result — never written to Character.play. */
 	const [rollHistory, setRollHistory] = useState<RollHistoryEntry[]>([])
 	const nextRollId = useRef(0)
@@ -2681,6 +2679,51 @@ export function CharacterSheet({
 		{ what: 'species-granted spells', message: raceSpellsError },
 	].filter((entry): entry is { what: string; message: string } => entry.message !== null)
 
+	/* Rework R3 (D147): relocated from the stats tab into a small line under HP in the strip — same section class, same markup, no logic change. */
+	const hitDiceLine = (
+		<section className="sheet__hit-dice">
+			<h2>Hit dice</h2>
+			{hitDice.status === 'unknown' ? (
+				<UnresolvedValue reason={hitDice.reason} />
+			) : (
+				<>
+					<ul>
+						{hitDice.value.map((entry) => {
+							const remaining = entry.count - Math.min(spentHitDice[hitDiceKey(entry.className, entry.classSource)] ?? 0, entry.count)
+							const constitution = abilityScores.constitution
+							return (
+								<li key={hitDiceKey(entry.className, entry.classSource)}>
+									d{entry.faces} ({entry.className}): {remaining} / {entry.count} remaining
+									{/* A hit die adds the Constitution modifier, so an unresolved one leaves nothing to roll (D43). */}
+									{constitution.status === 'known' && (
+										<>
+											{' '}
+											<DamageRollButton
+												count={1}
+												sides={entry.faces}
+												modifier={constitution.value.modifier}
+												label={`${entry.className} hit die`}
+												disabled={remaining === 0 || (onEditHitPoints !== undefined && !hitDiceCanHeal)}
+												onRoll={(report, roll) => {
+													recordRoll(report)
+													rollHitDie(entry, roll)
+												}}
+											/>
+										</>
+									)}
+								</li>
+							)
+						})}
+					</ul>
+					{onEditHitPoints && !hitDiceCanHeal && (
+						<p className="sheet__hit-dice-note">Hit dice cannot be rolled: healing needs a current HP and a computable maximum.</p>
+					)}
+					<ValueBreakdown breakdown={hitDice.breakdown} />
+				</>
+			)}
+		</section>
+	)
+
 	return (
 		<article className="sheet">
 			<SheetHeader
@@ -2694,6 +2737,7 @@ export function CharacterSheet({
 				currentHp={character.currentHp}
 				maxHitPoints={maxHitPoints}
 				maxHpOverride={character.maxHpOverride}
+				hitDice={hitDiceLine}
 				temporaryHitPoints={character.play?.temporaryHitPoints}
 				deathSaves={character.play?.deathSaves}
 				concentratingOn={concentratingOn}
@@ -2706,7 +2750,16 @@ export function CharacterSheet({
 				identity={
 					<div className="sheet__header">
 						<p className="sheet__identity">
-							<span className="sheet__species">{character.species ? character.species.name : <UnresolvedValue reason="No species chosen yet." />}</span>
+							<span className="sheet__species">
+								{character.species ? character.species.name : <UnresolvedValue reason="No species chosen yet." />}
+								{character.species && (
+									<span className="sheet__size">
+										{' ('}
+										{size.status === 'unknown' ? <UnresolvedValue reason={size.reason} /> : (SIZE_LABELS[size.value] ?? size.value)}
+										{')'}
+									</span>
+								)}
+							</span>
 							{' · '}
 							<span className="sheet__classes">
 								{character.classes.length === 0 ? (
@@ -2748,12 +2801,98 @@ export function CharacterSheet({
 			/>
 
 			<div className="sheet__body">
-			{/* Rework R2: empty until R3 fills it; it scrolls on its own once it holds more than fits (D153). */}
-			<div className="sheet__left-column" />
+			{/* Rework R3 (D123/D147): saves, senses (passive values + darkvision + granted senses) and skills — the dissolved stats tab's content, now always visible beside every other tab. Proficiencies (armor/weapons/tools/languages) are not here yet: the sheet has never rendered them anywhere, so there is nothing to relocate — see QUESTIONS.md. */}
+			<div className="sheet__left-column">
+			<div className="sheet__left-a">
+
+			<section className="sheet__saving-throws">
+				<h2>Saving throws</h2>
+				<ul>
+					{ABILITIES.map((ability) => {
+						const result = savingThrows[ability]
+						return (
+							<li key={ability}>
+								<span className="sheet__prof-mark">{result.status === 'known' ? SAVE_STATUS_MARKS[result.value.status] : '?'}</span> {ABILITY_LABELS[ability]}:{' '}
+								{result.status === 'unknown' ? (
+									<UnresolvedValue reason={result.reason} />
+								) : (
+									<>
+										<span className="sheet__stat-value">{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
+										<RollButton modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} onRoll={recordRoll} />
+									</>
+								)}
+							</li>
+						)
+					})}
+				</ul>
+			</section>
+
+			<section className="sheet__passive-values">
+				<h2>Passive values</h2>
+				<ul>
+					<li>
+						Passive Perception: <CalculatedNumber result={passivePerception} />
+					</li>
+					<li>
+						Passive Investigation: <CalculatedNumber result={passiveInvestigation} />
+					</li>
+					<li>
+						Passive Insight: <CalculatedNumber result={passiveInsight} />
+					</li>
+				</ul>
+			</section>
+
+			{/* Size moved to the header identity line (D147); darkvision stays here, now the only thing this section carries. */}
+			<section className="sheet__traits">
+				<h2>Darkvision</h2>
+				<ul>
+					<li>
+						Darkvision:{' '}
+						{darkvision.status === 'unknown' ? (
+							<UnresolvedValue reason={darkvision.reason} />
+						) : (
+							<>
+								<span>{darkvision.value > 0 ? `${darkvision.value} ft.` : 'None'}</span>{' '}
+								<ValueBreakdown breakdown={darkvision.breakdown} />
+							</>
+						)}
+					</li>
+				</ul>
+			</section>
+
+			<SensesList entries={combinedSenses} error={grantedSensesError} />
+
+			</div>
+			<div className="sheet__left-b">
+
+			<section className="sheet__skills">
+				<h2>Skills</h2>
+				<ul>
+					{SKILLS.map((skill) => {
+						const result = skills[skill]
+						return (
+							<li key={skill}>
+								<span className="sheet__prof-mark">{result.status === 'known' ? SKILL_STATUS_MARKS[result.value.status] : '?'}</span> {SKILL_LABELS[skill]}:{' '}
+								{result.status === 'unknown' ? (
+									<UnresolvedValue reason={result.reason} />
+								) : (
+									<>
+										<span className="sheet__stat-value">{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
+										<RollButton modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} onRoll={recordRoll} />
+									</>
+								)}
+							</li>
+						)
+					})}
+				</ul>
+			</section>
+
+			</div>
+			</div>
 			<div className="sheet__right-panel">
 
 			{/*
-			 * Sheet rebuild slice 2 — the sections below are split across five tabs.
+			 * Sheet rebuild slice 2 — the sections below are split across tabs.
 			 * Panels stay mounted and are hidden by the `.sheet__panel` stylesheet
 			 * rule, not the `hidden` attribute or an inline display:none: those drop
 			 * a panel out of the accessibility tree, and the sheet's tests query
@@ -2778,168 +2917,6 @@ export function CharacterSheet({
 			</nav>
 
 			<div className="sheet__panels">
-			<div
-				role="tabpanel"
-				id="sheet-panel-stats"
-				aria-labelledby="sheet-tab-stats"
-				className={activeTab === 'stats' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
-			>
-			<section className="sheet__abilities">
-				<h2>Ability scores</h2>
-				<ul>
-					{ABILITIES.map((ability) => {
-						const result = abilityScores[ability]
-						return (
-							<li key={ability}>
-								{ABILITY_LABELS[ability]}:{' '}
-								{result.status === 'unknown' ? (
-									<UnresolvedValue reason={result.reason} />
-								) : (
-									<>
-										<span>
-											{result.value.score} ({formatModifier(result.value.modifier)})
-										</span>{' '}
-										<ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} check`} onRoll={recordRoll} />
-									</>
-								)}
-							</li>
-						)
-					})}
-				</ul>
-			</section>
-
-			<section className="sheet__saving-throws">
-				<h2>Saving throws</h2>
-				<ul>
-					{ABILITIES.map((ability) => {
-						const result = savingThrows[ability]
-						return (
-							<li key={ability}>
-								{result.status === 'known' ? SAVE_STATUS_MARKS[result.value.status] : '?'} {ABILITY_LABELS[ability]}:{' '}
-								{result.status === 'unknown' ? (
-									<UnresolvedValue reason={result.reason} />
-								) : (
-									<>
-										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} onRoll={recordRoll} />
-									</>
-								)}
-							</li>
-						)
-					})}
-				</ul>
-			</section>
-
-			<section className="sheet__skills">
-				<h2>Skills</h2>
-				<ul>
-					{SKILLS.map((skill) => {
-						const result = skills[skill]
-						return (
-							<li key={skill}>
-								{result.status === 'known' ? SKILL_STATUS_MARKS[result.value.status] : '?'} {SKILL_LABELS[skill]}:{' '}
-								{result.status === 'unknown' ? (
-									<UnresolvedValue reason={result.reason} />
-								) : (
-									<>
-										<span>{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} onRoll={recordRoll} />
-									</>
-								)}
-							</li>
-						)
-					})}
-				</ul>
-			</section>
-
-			<section className="sheet__passive-values">
-				<h2>Passive values</h2>
-				<ul>
-					<li>
-						Passive Perception: <CalculatedNumber result={passivePerception} />
-					</li>
-					<li>
-						Passive Investigation: <CalculatedNumber result={passiveInvestigation} />
-					</li>
-					<li>
-						Passive Insight: <CalculatedNumber result={passiveInsight} />
-					</li>
-				</ul>
-			</section>
-
-			{/* Speed moved to the persistent header (slice 1); size and darkvision stay here. */}
-			<section className="sheet__traits">
-				<h2>Size and darkvision</h2>
-				<ul>
-					<li>
-						Size:{' '}
-						{size.status === 'unknown' ? (
-							<UnresolvedValue reason={size.reason} />
-						) : (
-							<>
-								<span>{SIZE_LABELS[size.value] ?? size.value}</span> <ValueBreakdown breakdown={size.breakdown} />
-							</>
-						)}
-					</li>
-					<li>
-						Darkvision:{' '}
-						{darkvision.status === 'unknown' ? (
-							<UnresolvedValue reason={darkvision.reason} />
-						) : (
-							<>
-								<span>{darkvision.value > 0 ? `${darkvision.value} ft.` : 'None'}</span>{' '}
-								<ValueBreakdown breakdown={darkvision.breakdown} />
-							</>
-						)}
-					</li>
-				</ul>
-			</section>
-
-			<SensesList entries={combinedSenses} error={grantedSensesError} />
-
-			<section className="sheet__hit-dice">
-				<h2>Hit dice</h2>
-				{hitDice.status === 'unknown' ? (
-					<UnresolvedValue reason={hitDice.reason} />
-				) : (
-					<>
-						<ul>
-							{hitDice.value.map((entry) => {
-								const remaining = entry.count - Math.min(spentHitDice[hitDiceKey(entry.className, entry.classSource)] ?? 0, entry.count)
-								const constitution = abilityScores.constitution
-								return (
-									<li key={hitDiceKey(entry.className, entry.classSource)}>
-										d{entry.faces} ({entry.className}): {remaining} / {entry.count} remaining
-										{/* A hit die adds the Constitution modifier, so an unresolved one leaves nothing to roll (D43). */}
-										{constitution.status === 'known' && (
-											<>
-												{' '}
-												<DamageRollButton
-													count={1}
-													sides={entry.faces}
-													modifier={constitution.value.modifier}
-													label={`${entry.className} hit die`}
-													disabled={remaining === 0 || (onEditHitPoints !== undefined && !hitDiceCanHeal)}
-													onRoll={(report, roll) => {
-														recordRoll(report)
-														rollHitDie(entry, roll)
-													}}
-												/>
-											</>
-										)}
-									</li>
-								)
-							})}
-						</ul>
-						{onEditHitPoints && !hitDiceCanHeal && (
-							<p className="sheet__hit-dice-note">Hit dice cannot be rolled: healing needs a current HP and a computable maximum.</p>
-						)}
-						<ValueBreakdown breakdown={hitDice.breakdown} />
-					</>
-				)}
-			</section>
-			</div>
 
 			<div
 				role="tabpanel"

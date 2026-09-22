@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-19 (9d4: to-hit hod utrácí střelivo automaticky)
+Poslední aktualizace: 2026-09-22 (rework R3: levý sloupec, stats tab zrušen)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1076,7 +1076,28 @@ Speed, Initiative, AC a HP blok beze změny chování) a `.sheet__status-row`
 změny; hodnoty vlastností jsou dočasně dvakrát (pás + záložka stats) do R3.
 `LevelUpButton` má ikonu šipky a na úrovni 20 `title="Maximum level"`. CSS
 kontejnmentu hlídá `src/sheet/sheetLayout.test.ts`. Kontrola v prohlížeči neproběhla
-(viz REPORT.md). Další: R3 (levý sloupec).
+(viz REPORT.md).
+
+R3 hotový (D154): levý sloupec naplněn, stats tab zrušen. `SHEET_TABS` má pět
+položek (`spells`/`inventory`/`features`/`actions`/`notes`, pořadí a české
+popisky beze změny — D123/D148 na zbylých pěti záložkách tímto úkolem
+neaplikovány); výchozí `activeTab` je `'spells'`. `.sheet__left-column` (D153)
+má teď dvě sub-sloupce: `.sheet__left-a` (Saving throws — grid, dvě sub-
+sub-sloupce po třech — Passive values, Darkvision v `.sheet__traits`,
+granted Senses) a `.sheet__left-b` (~252px, Skills). Každá hodnota nese svůj
+inline rozklad (D40/D41) přesně jako ve starém stats tabu — jen kontejner a
+pozice se mění. Ability scores ztratily vlastní seznam
+(`.sheet__abilities` smazán) — karty `AbilityModifierCards` v pásu čísel
+(R2) jsou od teď JEDINÉ místo, kde se vlastnosti zobrazují; nemají roll
+tlačítko ani rozklad a task jim ho nepřidal (vědomý úbytek funkce, D154).
+Size přešla do identity řádku v hlavičce vedle druhu (`.sheet__size`, bez
+rozkladu). Hit dice přešly pod HP blok v `.sheet__strip`
+(`.sheet__hit-dice`, stejná třída/markup/chování jako dřív) přes nový
+nepovinný prop `SheetHeader`'s `hitDice: ReactNode`, obsah staví
+`CharacterSheet`. **Proficiencies (Armor/Weapons/Tools/Languages) vynechány
+— sheet je nikdy nezobrazoval, viz QUESTIONS.md.** Kontrola v prohlížeči
+neproběhla (uživatel remote, viz REPORT.md). Další: R4 (rozklady do draweru,
+D146).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
