@@ -15,9 +15,10 @@
 import type { ReactNode } from 'react'
 import type { Contribution } from '../calculation/types'
 
-export function ValueBreakdown({ breakdown }: { breakdown: Contribution[] }): ReactNode {
+/** `open`: R4-fix (D163 amended) — breakdowns inside the drawer start open; everywhere else defaults to D41's collapsed. */
+export function ValueBreakdown({ breakdown, open }: { breakdown: Contribution[]; open?: boolean }): ReactNode {
 	return (
-		<details>
+		<details open={open}>
 			<summary>Breakdown</summary>
 			<ul>
 				{breakdown.map((contribution, index) => (

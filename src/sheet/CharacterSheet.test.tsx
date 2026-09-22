@@ -698,7 +698,12 @@ describe('CharacterSheet', () => {
 			}
 			// Elf: 60 ft. of darkvision, and the perception value the left column also prints.
 			expect(open.textContent).toContain('60 ft.')
-			expect(within(open).getAllByText('Breakdown')).toHaveLength(4)
+			const breakdowns = within(open).getAllByText('Breakdown')
+			expect(breakdowns).toHaveLength(4)
+			// R4-fix (D163 amended): breakdowns inside the drawer are open on first render, not collapsed behind a click.
+			for (const breakdown of breakdowns) {
+				expect((breakdown.closest('details') as HTMLDetailsElement).open).toBe(true)
+			}
 		})
 
 		it('Esc closes the drawer, and so does the × button', async () => {
@@ -742,6 +747,8 @@ describe('CharacterSheet', () => {
 			for (const contribution of expected.breakdown) {
 				expect(open.textContent).toContain(contribution.source)
 			}
+			// R4-fix (D163 amended): open on first render, not collapsed behind a click.
+			expect((within(open).getByText('Breakdown').closest('details') as HTMLDetailsElement).open).toBe(true)
 		})
 
 		it('leaves no Senses breakdown behind in the left column — the drawer is the only way to it', async () => {

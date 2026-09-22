@@ -7,9 +7,9 @@
   --panel-bg: var(--surface-2);
   --ref: var(--accent);
   --value: var(--heal);
-  /* R3c: shared cap for the list, sheet and wizard screens — D134's 460px drawer needs room beside it. */
-  --page-max-width: 1440px;
-  /* D134/D163: the drawer's fixed width. The 1900px breakpoint below is these two added up. */
+  /* R3c/R4-fix (D162, amended): shared cap for the list, sheet and wizard screens — D134's 460px drawer needs room beside it. */
+  --page-max-width: 1400px;
+  /* D134/D163: the drawer's fixed width. The 1860px breakpoint below is these two added up. */
   --drawer-width: 460px;
 }
 
@@ -1006,10 +1006,11 @@ button:disabled {
   background: var(--surface);
 }
 
-/* 1900px = --page-max-width + --drawer-width: the widest sheet and the drawer fit side by
-   side, so the pair is centred together — the drawer sits against the sheet's right edge
-   and the sheet shifts left by half the drawer. Below it, the overlay above applies. */
-@media (min-width: 1900px) {
+/* 1860px = --page-max-width + --drawer-width (must be kept equal if either changes — cannot
+   use the variables here). Above it the widest sheet and the drawer fit side by side, so the
+   pair is centred together — the drawer sits against the sheet's right edge and the sheet
+   shifts left by half the drawer. Below it, the overlay above applies. */
+@media (min-width: 1860px) {
   .drawer {
     left: calc(50vw + var(--page-max-width) / 2 - var(--drawer-width) / 2);
     right: auto;

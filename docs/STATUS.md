@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-22 (task R4: sdílený boční drawer, karta Senses, rozpad ability score)
+Poslední aktualizace: 2026-09-22 (task R4-fix: sheet 1400px, breakpoint draweru 1860px, rozpady v draweru otevřené)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1134,8 +1134,9 @@ popisky svých tří polí (Vzhled/Příběh/Poznámky) — task se týkal jen p
 záložek samotných. Kontrola v prohlížeči neproběhla (uživatel remote, viz
 REPORT.md). Další: R4 (rozklady do draweru, D146).
 
-R3c hotový (D162): šířkové limity, čistě CSS/vizuální. `--page-max-width:
-1440px` (`src/index.css` `:root`) čte jediná deklarace na elementu `main` —
+R3c hotový (D162, hodnota šířky opravena R4-fixem/D164 na 1400px): šířkové
+limity, čistě CSS/vizuální. `--page-max-width` (`src/index.css` `:root`) čte
+jediná deklarace na elementu `main` —
 seznam postav, wizard i sheet (`.sheet-view`) do `<main>` vykreslují, takže
 je pokrývá jedna třída/proměnná místo tří kopií; `.sheet-view` ztratila svůj
 vlastní `max-width: none`. Pod stropem `main` dál vyplňuje okno jako dřív.
@@ -1154,30 +1155,34 @@ requirement, Current/Max/Temp HP, HP Amount, ruční vlastnost i ruční
 výsledek kostky ve wizardu) nebo `.input--narrow-money` (8ch: zlato/
 stříbro/měď, custom item cena, přidané platinum) — jen šířka, typ pole a
 chování beze změny. **Vědomě ponecháno:** pruh čísel v hlavičce se na
-1440px přestane vejít na řádek a HP blok spadne pod něj — čeká na R4c
+1400px přestane vejít na řádek a HP blok spadne pod něj — čeká na R4c
 (kompaktní HP blok). Kontrola v prohlížeči neproběhla (zadání ji vyloučilo
 — uživatel zkontroluje sám, viz REPORT.md).
 
-R4 hotový (D163): sdílený boční drawer existuje. `src/sheet/Drawer.tsx`
-exportuje `Drawer`, `DrawerSection` (sekce, defaultně otevřená) a `DrawerRow`
-(řádek, defaultně zavřený); sekce i řádek jsou `<details>`, značku ▾/▸ kreslí
-CSS. Drawer je `position: fixed`, 460px (`--drawer-width`), přes celou výšku
-okna, scrolluje jen `.drawer__body` — sheet se kvůli němu nezužuje. Nad
-`1900px` (1440 + 460) stojí vedle sheetu a `main:has(.drawer)` posune sheet o
-230px doleva (dvojice vycentrovaná jako celek), pod ní leží přes pravou část
-sheetu bez backdropu. Otevřený obsah drží jeden `useState<DrawerContent |
-null>` v `CharacterSheet.tsx` — UI stav, neukládá se, není v URL, jeden
-najednou; zavírá `×` a Esc. Levý sloupec: `.sheet__passive-values` a
-`.sheet__traits` zrušeny, místo nich karta `.sheet__senses-card` (nadpis
-Senses + ikona ozubeného kola, accessible name "Senses details") se čtyřmi
-hodnotami BEZ inline rozkladu (`CalculatedValueOnly` v `calculatedValue.tsx`);
-rozklady žijí jen v draweru "Senses", jedna `DrawerSection` na hodnotu, obsah
-přes `CalculatedNumber`/`ValueBreakdown` beze změny. `SensesList`
-(`.sheet__senses`) je vnořený do té karty, nadpis `<h3>Granted senses`. Jméno
-vlastnosti na kartě v pásu čísel je tlačítko, které otevře drawer s rozkladem
-SCORE (`score (modifier)` + `ValueBreakdown`, obsah zrušeného stats tabu);
-roll tlačítko a advantage select na kartě beze změny. Testy: `Drawer.test.tsx`
-(shell + oba bloky) a blok `side drawer (D146/D163)` v `CharacterSheet.test.tsx`.
+R4 hotový (D163, breakpoint opraven R4-fixem/D164 na 1860px): sdílený boční
+drawer existuje. `src/sheet/Drawer.tsx` exportuje `Drawer`, `DrawerSection`
+(sekce, defaultně otevřená) a `DrawerRow` (řádek, defaultně zavřený); sekce i
+řádek jsou `<details>`, značku ▾/▸ kreslí CSS. Drawer je `position: fixed`,
+460px (`--drawer-width`), přes celou výšku okna, scrolluje jen
+`.drawer__body` — sheet se kvůli němu nezužuje. Nad `1860px` (1400 + 460)
+stojí vedle sheetu a `main:has(.drawer)` posune sheet o 230px doleva (dvojice
+vycentrovaná jako celek), pod ní leží přes pravou část sheetu bez backdropu.
+Otevřený obsah drží jeden `useState<DrawerContent | null>` v
+`CharacterSheet.tsx` — UI stav, neukládá se, není v URL, jeden najednou;
+zavírá `×` a Esc. Levý sloupec: `.sheet__passive-values` a `.sheet__traits`
+zrušeny, místo nich karta `.sheet__senses-card` (nadpis Senses + ikona
+ozubeného kola, accessible name "Senses details") se čtyřmi hodnotami BEZ
+inline rozkladu (`CalculatedValueOnly` v `calculatedValue.tsx`); rozklady žijí
+jen v draweru "Senses", jedna `DrawerSection` na hodnotu, obsah přes
+`CalculatedNumber`/`ValueBreakdown` — od R4-fixu (D164) OTEVŘENÝ na první
+vykreslení uvnitř draweru (`open`/`breakdownOpen` prop), jinde (saves, skills,
+strip karty, HP) dál sbalený podle D41. `SensesList` (`.sheet__senses`) je
+vnořený do té karty, nadpis `<h3>Granted senses`. Jméno vlastnosti na kartě v
+pásu čísel je tlačítko, které otevře drawer s rozkladem SCORE (`score
+(modifier)` + `ValueBreakdown`, obsah zrušeného stats tabu, rozklad taky
+otevřený); roll tlačítko a advantage select na kartě beze změny. Testy:
+`Drawer.test.tsx` (shell + oba bloky) a blok `side drawer (D146/D163)` v
+`CharacterSheet.test.tsx` (rozšířený o kontrolu `open` na `<details>`).
 Kontrola v prohlížeči neproběhla (zadání ji vyloučilo — uživatel zkontroluje
 sám, viz REPORT.md). Další drawer obsahy (Manage Spells/Inventory/Feats,
 historie hodů) čekají na své slice.

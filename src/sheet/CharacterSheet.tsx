@@ -250,7 +250,7 @@ function AbilityScorePanel({ result }: { result: Calculated<AbilityScoreValue> }
 			<p className="drawer__value">
 				{result.value.score} ({formatModifier(result.value.modifier)})
 			</p>
-			<ValueBreakdown breakdown={result.breakdown} />
+			<ValueBreakdown breakdown={result.breakdown} open />
 		</>
 	)
 }
@@ -3427,20 +3427,20 @@ export function CharacterSheet({
 			{drawer?.kind === 'senses' && (
 				<Drawer title="Senses" onClose={() => setDrawer(null)}>
 					<DrawerSection title="Passive Perception">
-						<CalculatedNumber result={passivePerception} />
+						<CalculatedNumber result={passivePerception} breakdownOpen />
 					</DrawerSection>
 					<DrawerSection title="Passive Investigation">
-						<CalculatedNumber result={passiveInvestigation} />
+						<CalculatedNumber result={passiveInvestigation} breakdownOpen />
 					</DrawerSection>
 					<DrawerSection title="Passive Insight">
-						<CalculatedNumber result={passiveInsight} />
+						<CalculatedNumber result={passiveInsight} breakdownOpen />
 					</DrawerSection>
 					<DrawerSection title="Darkvision">
 						{darkvision.status === 'unknown' ? (
 							<UnresolvedValue reason={darkvision.reason} />
 						) : (
 							<>
-								<span>{darkvision.value > 0 ? `${darkvision.value} ft.` : 'None'}</span> <ValueBreakdown breakdown={darkvision.breakdown} />
+								<span>{darkvision.value > 0 ? `${darkvision.value} ft.` : 'None'}</span> <ValueBreakdown breakdown={darkvision.breakdown} open />
 							</>
 						)}
 					</DrawerSection>

@@ -2778,3 +2778,28 @@ ten, co ukazoval zrušený stats tab před 8507ed3: `score (modifier)` plus
 `ValueBreakdown` nad `result.breakdown` z `computeAbilityScores` — stejná
 hodnota, stejný seznam příspěvků, stejný renderer, mění se jen místo. Roll
 tlačítko a advantage select na kartě zůstávají beze změny (D155).
+
+## D164 — R4-fix: šířka stránky 1400px, breakpoint draweru 1860px, rozpady v draweru otevřené
+
+Zdroj: task R4-fix, 22. 9. 2026. Dodatek k D162 (šířka stránky) a D163
+(breakpoint draweru) — D162 a D163 se nepřepisují, tohle je oprava obou.
+
+**Šířka.** `--page-max-width` (`src/index.css`, `:root`) z 1440px na 1400px.
+Uživatelovo okno na 1920px monitoru je o něco užší než 1900px, takže se při
+1440+460=1900 drawer položil přes sheet místo vedle něj. Breakpoint jde s ním:
+`1900px` na `1860px` (= nová `--page-max-width` 1400 + `--drawer-width` 460),
+i s komentářem u media query, že číslo musí sedět na součet obou proměnných —
+CSS media query samo proměnné číst neumí. Obě polohovací formule
+(`.drawer { left: calc(...) }` a `main:has(.drawer) { margin-left:
+calc(...) }`) už dřív počítaly jen z `--page-max-width` a `--drawer-width`,
+žádné další pevné číslo v nich nebylo, takže je nebylo co opravovat.
+`--drawer-width` zůstává 460px.
+
+**Rozpady v draweru otevřené.** `ValueBreakdown` (`src/sheet/ValueBreakdown.tsx`,
+D41) dostal nepovinný prop `open` (`<details open={open}>`) — mimo drawer se
+nepředává, takže D41 (sbalené, dokud si o rozklad uživatel neřekne) platí dál
+beze změny. `CalculatedNumber` (`src/sheet/calculatedValue.tsx`) ho posílá dál
+jako `breakdownOpen`. V draweru ho nastavují všechna čtyři volání v Senses
+(Passive Perception/Investigation/Insight přes `CalculatedNumber`, Darkvision
+přímo) a `AbilityScorePanel` — dřív se muselo kliknout dvakrát (otevřít drawer,
+pak rozbalit Breakdown), teď stačí jednou.

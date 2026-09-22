@@ -20,11 +20,19 @@ export function CalculatedValueOnly({ result, format }: { result: Calculated<num
 }
 
 /** Renders any Calculated<number> as its value plus breakdown, or D43's visible "unresolved" state. */
-export function CalculatedNumber({ result, format }: { result: Calculated<number>; format?: (value: number) => string }): ReactNode {
+export function CalculatedNumber({
+	result,
+	format,
+	breakdownOpen,
+}: {
+	result: Calculated<number>
+	format?: (value: number) => string
+	breakdownOpen?: boolean
+}): ReactNode {
 	if (result.status === 'unknown') return <UnresolvedValue reason={result.reason} />
 	return (
 		<>
-			<span>{format ? format(result.value) : result.value}</span> <ValueBreakdown breakdown={result.breakdown} />
+			<span>{format ? format(result.value) : result.value}</span> <ValueBreakdown breakdown={result.breakdown} open={breakdownOpen} />
 		</>
 	)
 }
