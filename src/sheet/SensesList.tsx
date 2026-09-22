@@ -78,7 +78,8 @@ export function SensesList({ entries, error }: { entries: SheetSenseEntry[]; err
 
 	return (
 		<section className="sheet__senses">
-			<h2>Senses</h2>
+			{/* R4 (D163): nested in the left column's Senses card, so this is the card's sub-heading, not a second block called "Senses". */}
+			<h3>Granted senses</h3>
 			{error && <p className="error">Could not load senses granted by feats and invocations: {error}. Darkvision above may be short for the same reason.</p>}
 			<ul>
 				{entries.map((entry) => (

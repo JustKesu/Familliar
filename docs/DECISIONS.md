@@ -2731,3 +2731,50 @@ validace se nemění.
 přestane vejít na jeden řádek a HP blok spadne pod ně na vlastní řádek —
 očekávané, oprava je R4c (kompaktní HP blok), tenhle task ji záměrně
 nedělá.
+
+## D163 — R4: sdílený boční drawer (460px), karta Senses, rozpad ability score pod jménem vlastnosti
+
+Zdroj: task R4 (rework sheetu), 22. 9. 2026. Provádí D134/D146/D133.
+
+**Drawer.** `src/sheet/Drawer.tsx` — tři exporty: `Drawer` (obal),
+`DrawerSection` (rozbalovací sekce, defaultně otevřená) a `DrawerRow`
+(rozbalovací řádek, defaultně zavřený). Sekce i řádek jsou `<details>`, takže
+stav otevření i klik drží prohlížeč, stejně jako u `ValueBreakdown` (D41);
+značku ▾/▸ kreslí `::before` (sekce) a `::after` (řádek) v `src/index.css`,
+nativní marker je vypnutý.
+
+Šířka `--drawer-width: 460px`, `position: fixed` přes celou výšku okna, vlastní
+scroll má jen `.drawer__body`. Protože je fixed, sheet se kvůli němu nikdy
+nezužuje a na pořadí v DOM nezáleží. Dvě polohy, rozdělené jedinou media query
+na `1900px` (= `--page-max-width` 1440 + 460): nad ní drawer stojí vpravo
+těsně vedle sheetu (`left: calc(50vw + var(--page-max-width)/2 -
+var(--drawer-width)/2)`) a `main:has(.drawer)` posune sheet o půl draweru
+doleva, takže dvojice je vycentrovaná jako celek; pod ní leží drawer přes pravou
+část sheetu — bez tmavého pozadí, zbytek sheetu zůstává klikatelný.
+
+Který obsah je otevřený, drží jeden `useState<DrawerContent | null>` v
+`CharacterSheet.tsx`. Je to výhradně UI stav: nikam se neukládá, není v URL a
+po reloadu je pryč. Otevřít druhý obsah znamená přepsat tu jednu hodnotu, takže
+"nejvýš jeden najednou" není pravidlo navíc, ale důsledek. Zavírá `×` v hlavičce
+draweru a Esc (posluchač na `document`, odhlašovaný při unmountu).
+
+**Karta Senses.** Bloky "Passive values" a "Darkvision" v levém sloupci jsou
+jedna karta `.sheet__senses-card` s nadpisem Senses a ikonou ozubeného kola
+(accessible name "Senses details", inline stroke SVG). Hodnoty jsou stejné, jen
+bez inline rozpadu — `CalculatedValueOnly` (nový, `calculatedValue.tsx`)
+vykreslí číslo bez `<details>`. Rozpady všech čtyř hodnot (Passive Perception,
+Investigation, Insight, Darkvision) jsou teď dostupné JEDINĚ v draweru, jedna
+`DrawerSection` na hodnotu, obsah beze změny přes `CalculatedNumber` /
+`ValueBreakdown` (D40/D76). Bez textu pravidel, bez editovatelných polí a bez
+overridů — to je na pozdější slice. Seznam udělených smyslů (`SensesList`,
+`.sheet__senses`) je vnořený do téže karty a jeho nadpis se z `<h2>Senses`
+změnil na `<h3>Granted senses`, aby v levém sloupci nestály dva bloky téhož
+jména; jeho pravidlo "žádný prázdný nadpis" platí dál.
+
+**Rozpad ability score.** Jméno vlastnosti na kartě v pásu čísel (STR, DEX…) je
+tlačítko (`.ability-card__name-button`, accessible name "Strength score
+breakdown"), které otevře drawer s celým jménem vlastnosti v titulku. Obsah je
+ten, co ukazoval zrušený stats tab před 8507ed3: `score (modifier)` plus
+`ValueBreakdown` nad `result.breakdown` z `computeAbilityScores` — stejná
+hodnota, stejný seznam příspěvků, stejný renderer, mění se jen místo. Roll
+tlačítko a advantage select na kartě zůstávají beze změny (D155).

@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-22 (task R3c: sdílená šířka stránky 1440px, čitelná délka řádku 75ch, úzká číselná pole)
+Poslední aktualizace: 2026-09-22 (task R4: sdílený boční drawer, karta Senses, rozpad ability score)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1157,6 +1157,30 @@ chování beze změny. **Vědomě ponecháno:** pruh čísel v hlavičce se na
 1440px přestane vejít na řádek a HP blok spadne pod něj — čeká na R4c
 (kompaktní HP blok). Kontrola v prohlížeči neproběhla (zadání ji vyloučilo
 — uživatel zkontroluje sám, viz REPORT.md).
+
+R4 hotový (D163): sdílený boční drawer existuje. `src/sheet/Drawer.tsx`
+exportuje `Drawer`, `DrawerSection` (sekce, defaultně otevřená) a `DrawerRow`
+(řádek, defaultně zavřený); sekce i řádek jsou `<details>`, značku ▾/▸ kreslí
+CSS. Drawer je `position: fixed`, 460px (`--drawer-width`), přes celou výšku
+okna, scrolluje jen `.drawer__body` — sheet se kvůli němu nezužuje. Nad
+`1900px` (1440 + 460) stojí vedle sheetu a `main:has(.drawer)` posune sheet o
+230px doleva (dvojice vycentrovaná jako celek), pod ní leží přes pravou část
+sheetu bez backdropu. Otevřený obsah drží jeden `useState<DrawerContent |
+null>` v `CharacterSheet.tsx` — UI stav, neukládá se, není v URL, jeden
+najednou; zavírá `×` a Esc. Levý sloupec: `.sheet__passive-values` a
+`.sheet__traits` zrušeny, místo nich karta `.sheet__senses-card` (nadpis
+Senses + ikona ozubeného kola, accessible name "Senses details") se čtyřmi
+hodnotami BEZ inline rozkladu (`CalculatedValueOnly` v `calculatedValue.tsx`);
+rozklady žijí jen v draweru "Senses", jedna `DrawerSection` na hodnotu, obsah
+přes `CalculatedNumber`/`ValueBreakdown` beze změny. `SensesList`
+(`.sheet__senses`) je vnořený do té karty, nadpis `<h3>Granted senses`. Jméno
+vlastnosti na kartě v pásu čísel je tlačítko, které otevře drawer s rozkladem
+SCORE (`score (modifier)` + `ValueBreakdown`, obsah zrušeného stats tabu);
+roll tlačítko a advantage select na kartě beze změny. Testy: `Drawer.test.tsx`
+(shell + oba bloky) a blok `side drawer (D146/D163)` v `CharacterSheet.test.tsx`.
+Kontrola v prohlížeči neproběhla (zadání ji vyloučilo — uživatel zkontroluje
+sám, viz REPORT.md). Další drawer obsahy (Manage Spells/Inventory/Feats,
+historie hodů) čekají na své slice.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

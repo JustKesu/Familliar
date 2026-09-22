@@ -551,7 +551,7 @@ describe('CharacterSheet', () => {
 			expect(labels('.sheet__saving-throws')).toHaveLength(6)
 			expect(labels('.sheet__skills')).toHaveLength(18)
 			expect(new Set(all).size).toBe(30)
-			expect(container.querySelectorAll('.sheet__passive-values .dice-roll__button')).toHaveLength(0)
+			expect(container.querySelectorAll('.sheet__senses-card .dice-roll__button')).toHaveLength(0)
 		})
 
 		it('drops a stale skill result when the modifier behind it changes', async () => {
@@ -667,6 +667,93 @@ describe('CharacterSheet', () => {
 		await user.click(within(saves).getAllByText('Breakdown')[0])
 		expect(details?.hasAttribute('open')).toBe(true)
 		expect(details?.textContent).toContain('modifier')
+	})
+
+	/* Rework R4 (D163): the shared drawer, and the two panels that first live in it. */
+	describe('side drawer (D146/D163)', () => {
+		async function renderSheet() {
+			const rendered = render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			// Darkvision arrives with the species data — without this the drawer can open on a value still loading.
+			await waitFor(() => expect(rendered.container.querySelector('.sheet__senses-card')!.textContent).toContain('60 ft.'))
+			return rendered
+		}
+
+		function drawer(): HTMLElement | null {
+			return document.querySelector('.drawer')
+		}
+
+		it('the gear opens the Senses drawer, which carries all four values', async () => {
+			const user = userEvent.setup()
+			await renderSheet()
+			expect(drawer()).toBeNull()
+
+			await user.click(screen.getByRole('button', { name: 'Senses details' }))
+
+			const open = drawer()!
+			expect(open).not.toBeNull()
+			expect(open.getAttribute('aria-label')).toBe('Senses')
+			for (const value of ['Passive Perception', 'Passive Investigation', 'Passive Insight', 'Darkvision']) {
+				expect(within(open).getByText(value)).toBeTruthy()
+			}
+			// Elf: 60 ft. of darkvision, and the perception value the left column also prints.
+			expect(open.textContent).toContain('60 ft.')
+			expect(within(open).getAllByText('Breakdown')).toHaveLength(4)
+		})
+
+		it('Esc closes the drawer, and so does the × button', async () => {
+			const user = userEvent.setup()
+			await renderSheet()
+
+			await user.click(screen.getByRole('button', { name: 'Senses details' }))
+			expect(drawer()).not.toBeNull()
+			await user.keyboard('{Escape}')
+			expect(drawer()).toBeNull()
+
+			await user.click(screen.getByRole('button', { name: 'Senses details' }))
+			await user.click(screen.getByRole('button', { name: 'Close' }))
+			expect(drawer()).toBeNull()
+		})
+
+		it('opening an ability score breakdown replaces the Senses panel — one drawer at a time', async () => {
+			const user = userEvent.setup()
+			await renderSheet()
+
+			await user.click(screen.getByRole('button', { name: 'Senses details' }))
+			await user.click(screen.getByRole('button', { name: 'Strength score breakdown' }))
+
+			expect(document.querySelectorAll('.drawer')).toHaveLength(1)
+			expect(drawer()!.getAttribute('aria-label')).toBe('Strength')
+			expect(drawer()!.textContent).not.toContain('Passive Insight')
+		})
+
+		it('the ability name opens the score breakdown the retired stats tab showed, numbers and all', async () => {
+			const user = userEvent.setup()
+			await renderSheet()
+			await user.click(screen.getByRole('button', { name: 'Strength score breakdown' }))
+
+			const expected = computeAbilityScore('strength', character)
+			expect(expected.status).toBe('known')
+			if (expected.status !== 'known') return
+
+			const open = drawer()!
+			expect(open.querySelector('.drawer__value')!.textContent).toBe(`${expected.value.score} (${formatModifier(expected.value.modifier)})`)
+			// The same Contribution list, rendered by the same ValueBreakdown — every source named.
+			for (const contribution of expected.breakdown) {
+				expect(open.textContent).toContain(contribution.source)
+			}
+		})
+
+		it('leaves no Senses breakdown behind in the left column — the drawer is the only way to it', async () => {
+			const { container } = await renderSheet()
+			const card = container.querySelector('.sheet__senses-card')!
+			expect(card.querySelector('details')).toBeNull()
+			expect(container.querySelector('.sheet__passive-values')).toBeNull()
+			expect(container.querySelector('.sheet__traits')).toBeNull()
+			// The values themselves stay put.
+			expect(card.textContent).toContain('60 ft.')
+			expect(card.textContent).toContain('Passive Perception')
+		})
 	})
 
 	it('shows a missing ability score as unresolved without crashing the rest of the sheet', async () => {
@@ -2977,9 +3064,9 @@ describe('CharacterSheet', () => {
 		}
 
 		function traitLine(container: HTMLElement, label: string): HTMLElement {
-			// Speed moved to the persistent header (slice 1); size moved to the identity line (R3, D147) — only darkvision is left in the traits section.
+			// Speed moved to the persistent header (slice 1); size moved to the identity line (R3, D147); darkvision is a row of the Senses card (R4, D163).
 			if (label === 'Speed') return container.querySelector('.sheet__speed') as HTMLElement
-			const line = Array.from(container.querySelectorAll('.sheet__traits li')).find((li) => li.textContent?.startsWith(label))
+			const line = Array.from(container.querySelectorAll('.sheet__senses-card li')).find((li) => li.textContent?.startsWith(label))
 			if (!line) throw new Error(`no trait line for ${label}`)
 			return line as HTMLElement
 		}
@@ -3078,11 +3165,15 @@ describe('CharacterSheet', () => {
 		})
 
 		it('a custom item’s darkvision reaches the value, beating the species figure rather than adding to it', async () => {
+			const user = userEvent.setup()
 			const { container } = await renderSheet(owning('e2b-dark', customRow({ name: 'Night Goggles', kind: 'worn', darkvision: 120 })))
 			const darkvision = traitLine(container, 'Darkvision')
 			await waitFor(() => expect(darkvision.textContent).toContain('120 ft.'))
+
+			// R4 (D163): the reconciliation is in the breakdown, which now lives only in the Senses drawer.
+			await user.click(screen.getByRole('button', { name: 'Senses details' }))
 			// The Elf's own 60 is listed and beaten, never summed with the item's.
-			expect(darkvision.textContent).toContain('does not exceed from item (Night Goggles)')
+			expect(document.querySelector('.drawer')!.textContent).toContain('does not exceed from item (Night Goggles)')
 		})
 
 		it('a custom item’s flat bonus reaches its target once attuned', async () => {
@@ -3296,17 +3387,19 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
-			const traitsSection = container.querySelector('.sheet__traits')!
+			const sensesCard = container.querySelector('.sheet__senses-card')!
 			const darkvisionItem = await waitFor(() => {
-				const item = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
+				const item = Array.from(sensesCard.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
 				expect(item?.textContent).toContain('120 ft.')
 				return item!
 			})
 			expect(darkvisionItem.textContent).not.toContain('60 ft.')
 
-			await userEvent.setup().click(darkvisionItem.querySelector('summary')!)
-			expect(darkvisionItem.textContent).toContain('Elf')
-			expect(darkvisionItem.textContent).toContain('from invocation (Stone Rune)')
+			// R4 (D163): the reconciliation is in the breakdown, which the gear opens in the drawer.
+			await userEvent.setup().click(screen.getByRole('button', { name: 'Senses details' }))
+			const panel = document.querySelector('.drawer')!
+			expect(panel.textContent).toContain('Elf')
+			expect(panel.textContent).toContain('from invocation (Stone Rune)')
 
 			// Darkvision never gets its own row in Senses — it belongs to the traits value now.
 			expect(container.querySelector('.sheet__senses')).toBeNull()
@@ -3319,9 +3412,9 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
-			const traitsSection = container.querySelector('.sheet__traits')!
+			const sensesCard = container.querySelector('.sheet__senses-card')!
 			await waitFor(() => {
-				const item = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
+				const item = Array.from(sensesCard.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
 				expect(item?.textContent).toContain('60 ft.')
 			})
 		})
@@ -3341,8 +3434,8 @@ describe('CharacterSheet', () => {
 			expect(sensesSection.textContent).toContain('Truesight')
 			expect(sensesSection.textContent).not.toContain('Darkvision')
 
-			const traitsSection = container.querySelector('.sheet__traits')!
-			const darkvisionItem = Array.from(traitsSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
+			const sensesCard = container.querySelector('.sheet__senses-card')!
+			const darkvisionItem = Array.from(sensesCard.querySelectorAll('li')).find((li) => li.textContent?.includes('Darkvision:'))
 			expect(darkvisionItem?.textContent).toContain('60 ft.')
 		})
 	})
@@ -6617,8 +6710,8 @@ describe('CharacterSheet', () => {
 			const senses = container.querySelector('.sheet__senses')!
 			expect(senses.textContent).toContain('Could not load senses granted by feats and invocations: data/feats.json — HTTP 500')
 			expect(senses.textContent).toContain('Darkvision')
-			// The traits row still renders its own species-derived value rather than disappearing.
-			expect(container.querySelector('.sheet__traits')!.textContent).toContain('Darkvision:')
+			// The darkvision row still renders its own species-derived value rather than disappearing.
+			expect(container.querySelector('.sheet__senses-card')!.textContent).toContain('Darkvision:')
 		})
 
 		it('a failed class-optional-feature load says so under its own heading', async () => {
@@ -6734,11 +6827,11 @@ describe('the persistent header (rebuild slice 1)', () => {
 		expect(container.querySelectorAll('.sheet__initiative')).toHaveLength(1)
 		expect(container.querySelectorAll('.sheet__proficiency-bonus')).toHaveLength(1)
 		expect(container.querySelectorAll('.sheet__speed')).toHaveLength(1)
-		// The traits section keeps only darkvision now — size moved to the identity line (R3, D147), speed to the header earlier.
-		const traits = container.querySelector('.sheet__traits')!
-		expect(traits.textContent).not.toContain('Speed')
-		expect(traits.textContent).not.toContain('Size')
-		expect(traits.textContent).toContain('Darkvision')
+		// The Senses card (R4, D163) carries darkvision and the passives — size moved to the identity line (R3, D147), speed to the header earlier.
+		const senses = container.querySelector('.sheet__senses-card')!
+		expect(senses.textContent).not.toContain('Speed')
+		expect(senses.textContent).not.toContain('Size')
+		expect(senses.textContent).toContain('Darkvision')
 		expect(container.querySelector('.sheet__identity .sheet__size')!.textContent).toContain('Medium')
 	})
 
@@ -6884,7 +6977,7 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b app
 		await waitFor(() => expect(container.querySelector('.sheet__senses')).toBeTruthy())
 
 		const left = container.querySelector('.sheet__left-column')!
-		for (const cls of ['.sheet__saving-throws', '.sheet__skills', '.sheet__passive-values', '.sheet__traits', '.sheet__senses']) {
+		for (const cls of ['.sheet__saving-throws', '.sheet__skills', '.sheet__senses-card', '.sheet__senses']) {
 			expect(left.querySelector(cls)).toBeTruthy()
 		}
 		// Hit dice moved into the header strip (R3, D147), not the left column.

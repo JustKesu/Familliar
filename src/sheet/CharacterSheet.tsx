@@ -20,7 +20,7 @@ import { totalCharacterLevel } from '../levelUp/levelUpSteps'
 import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
-import { computeAbilityScores } from '../calculation/abilityScores'
+import { computeAbilityScores, type AbilityScoreValue } from '../calculation/abilityScores'
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
 import { BASE_ATTUNEMENT_LIMIT, computeAttunementLimit, countAttuned, describeAttunementRefusal } from '../calculation/attunement'
 import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
@@ -139,9 +139,10 @@ import { addRollHistoryEntry, type RollHistoryEntry, type RollReport } from '../
 import { parseDiceExpression, type DiceRoll } from '../dice/roll'
 import type { CharacterTextField, HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
-import { CalculatedNumber, formatModifier } from './calculatedValue'
+import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calculatedValue'
 import { SheetHeader } from './SheetHeader'
 import { AbilityModifierCards } from './AbilityModifierCards'
+import { Drawer, DrawerSection } from './Drawer'
 import { loadSpeciesTraitNames } from './speciesTraitNames'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -222,6 +223,36 @@ const TEXT_SECTIONS: readonly { field: CharacterTextField; label: string }[] = [
 
 function messageOf(error: unknown): string {
 	return error instanceof Error ? error.message : String(error)
+}
+
+/** What the drawer is showing, if anything (D163). UI state only — never stored, never in the URL. */
+type DrawerContent = { kind: 'senses' } | { kind: 'ability'; ability: Ability }
+
+/** D133: details hide behind a gear, not behind new controls on the sheet. Stroke only, so it takes the button's own colour. */
+function GearIcon(): ReactNode {
+	return (
+		<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+			<circle cx="8" cy="8" r="2.4" />
+			<path d="M8 1.6v1.7M8 12.7v1.7M1.6 8h1.7M12.7 8h1.7M3.5 3.5l1.2 1.2M11.3 11.3l1.2 1.2M12.5 3.5l-1.2 1.2M4.7 11.3l-1.2 1.2" />
+		</svg>
+	)
+}
+
+/**
+ * The ability SCORE breakdown the retired stats tab showed (D154), back in the
+ * drawer (D146/D163). Same Calculated value, same Contribution list, same
+ * renderer — only the place it is read in changed.
+ */
+function AbilityScorePanel({ result }: { result: Calculated<AbilityScoreValue> }): ReactNode {
+	if (result.status === 'unknown') return <UnresolvedValue reason={result.reason} />
+	return (
+		<>
+			<p className="drawer__value">
+				{result.value.score} ({formatModifier(result.value.modifier)})
+			</p>
+			<ValueBreakdown breakdown={result.breakdown} />
+		</>
+	)
 }
 
 const NO_FAMILIAR_KEY = ''
@@ -1911,6 +1942,8 @@ export function CharacterSheet({
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
 	const [activeTab, setActiveTab] = useState<SheetTabId>('actions')
+	/* D163: one drawer at a time, held here and nowhere else — opening another replaces this value. */
+	const [drawer, setDrawer] = useState<DrawerContent | null>(null)
 	/* Slice 9c3b: in memory only, like each button's own result — never written to Character.play. */
 	const [rollHistory, setRollHistory] = useState<RollHistoryEntry[]>([])
 	const nextRollId = useRef(0)
@@ -2801,7 +2834,14 @@ export function CharacterSheet({
 						{onRemoveLevel && <RemoveLevelButton character={character} onRemoveLevel={onRemoveLevel} />}
 					</div>
 				}
-				abilities={<AbilityModifierCards abilityScores={abilityScores} labels={ABILITY_LABELS} onRoll={recordRoll} />}
+				abilities={
+					<AbilityModifierCards
+						abilityScores={abilityScores}
+						labels={ABILITY_LABELS}
+						onRoll={recordRoll}
+						onOpenBreakdown={(ability) => setDrawer({ kind: 'ability', ability })}
+					/>
+				}
 				defenses={
 					<DamageResponsesSection
 						responses={damageResponses}
@@ -2838,40 +2878,41 @@ export function CharacterSheet({
 				</ul>
 			</section>
 
-			<section className="sheet__passive-values">
-				<h2>Passive values</h2>
+			{/*
+			 * R4 (D163): the passive values and darkvision are one "Senses" card, and
+			 * every breakdown they used to carry inline now lives only in the drawer the
+			 * gear opens (D133/D146). The granted-sense list keeps its own class and its
+			 * "no empty heading" rule, nested here so the left column has one Senses card
+			 * rather than two blocks under the same word.
+			 */}
+			<section className="sheet__senses-card">
+				<div className="sheet__card-heading">
+					<h2>Senses</h2>
+					<button type="button" className="sheet__icon-button" aria-label="Senses details" onClick={() => setDrawer({ kind: 'senses' })}>
+						<GearIcon />
+					</button>
+				</div>
 				<ul>
 					<li>
-						Passive Perception: <CalculatedNumber result={passivePerception} />
+						Passive Perception: <CalculatedValueOnly result={passivePerception} />
 					</li>
 					<li>
-						Passive Investigation: <CalculatedNumber result={passiveInvestigation} />
+						Passive Investigation: <CalculatedValueOnly result={passiveInvestigation} />
 					</li>
 					<li>
-						Passive Insight: <CalculatedNumber result={passiveInsight} />
+						Passive Insight: <CalculatedValueOnly result={passiveInsight} />
 					</li>
-				</ul>
-			</section>
-
-			{/* Size moved to the header identity line (D147); darkvision stays here, now the only thing this section carries. */}
-			<section className="sheet__traits">
-				<h2>Darkvision</h2>
-				<ul>
 					<li>
 						Darkvision:{' '}
 						{darkvision.status === 'unknown' ? (
 							<UnresolvedValue reason={darkvision.reason} />
 						) : (
-							<>
-								<span>{darkvision.value > 0 ? `${darkvision.value} ft.` : 'None'}</span>{' '}
-								<ValueBreakdown breakdown={darkvision.breakdown} />
-							</>
+							<span>{darkvision.value > 0 ? `${darkvision.value} ft.` : 'None'}</span>
 						)}
 					</li>
 				</ul>
+				<SensesList entries={combinedSenses} error={grantedSensesError} />
 			</section>
-
-			<SensesList entries={combinedSenses} error={grantedSensesError} />
 
 			</div>
 			<div className="sheet__left-b">
@@ -3381,6 +3422,36 @@ export function CharacterSheet({
 			</div>
 			</div>
 			</div>
+
+			{/* D163: fixed to the window, so where it sits in the markup decides nothing about the layout. */}
+			{drawer?.kind === 'senses' && (
+				<Drawer title="Senses" onClose={() => setDrawer(null)}>
+					<DrawerSection title="Passive Perception">
+						<CalculatedNumber result={passivePerception} />
+					</DrawerSection>
+					<DrawerSection title="Passive Investigation">
+						<CalculatedNumber result={passiveInvestigation} />
+					</DrawerSection>
+					<DrawerSection title="Passive Insight">
+						<CalculatedNumber result={passiveInsight} />
+					</DrawerSection>
+					<DrawerSection title="Darkvision">
+						{darkvision.status === 'unknown' ? (
+							<UnresolvedValue reason={darkvision.reason} />
+						) : (
+							<>
+								<span>{darkvision.value > 0 ? `${darkvision.value} ft.` : 'None'}</span> <ValueBreakdown breakdown={darkvision.breakdown} />
+							</>
+						)}
+					</DrawerSection>
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'ability' && (
+				<Drawer title={ABILITY_LABELS[drawer.ability]} onClose={() => setDrawer(null)}>
+					<AbilityScorePanel result={abilityScores[drawer.ability]} />
+				</Drawer>
+			)}
 		</article>
 	)
 }

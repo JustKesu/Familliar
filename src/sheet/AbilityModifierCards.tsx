@@ -7,18 +7,22 @@ import type { RollReport } from '../dice/RollHistory'
 import { formatModifier } from './calculatedValue'
 
 /**
- * R3b restores the ability-check roll R3 dropped (D155): the breakdown stays
- * out until R4 builds the shared drawer (D146), but the RollButton — same
- * wiring as the saves/skills rows use — goes back under the modifier.
+ * R3b restores the ability-check roll R3 dropped (D155): the RollButton — same
+ * wiring as the saves/skills rows use — goes back under the modifier. R4 gives
+ * the score breakdown back too (D146): the name is the button that opens it in
+ * the shared drawer.
  */
 export function AbilityModifierCards({
 	abilityScores,
 	labels,
 	onRoll,
+	onOpenBreakdown,
 }: {
 	abilityScores: Record<Ability, Calculated<AbilityScoreValue>>
 	labels: Record<Ability, string>
 	onRoll?: (report: RollReport) => void
+	/** Absent leaves the name plain text — the card renders without a drawer to open. */
+	onOpenBreakdown?: (ability: Ability) => void
 }): ReactNode {
 	return (
 		<ul className="ability-cards">
@@ -26,9 +30,21 @@ export function AbilityModifierCards({
 				const result = abilityScores[ability]
 				return (
 					<li key={ability} className="ability-card" data-ability={ability}>
-						<span className="ability-card__name" title={labels[ability]}>
-							{labels[ability].slice(0, 3).toUpperCase()}
-						</span>
+						{onOpenBreakdown ? (
+							<button
+								type="button"
+								className="ability-card__name ability-card__name-button"
+								title={labels[ability]}
+								aria-label={`${labels[ability]} score breakdown`}
+								onClick={() => onOpenBreakdown(ability)}
+							>
+								{labels[ability].slice(0, 3).toUpperCase()}
+							</button>
+						) : (
+							<span className="ability-card__name" title={labels[ability]}>
+								{labels[ability].slice(0, 3).toUpperCase()}
+							</span>
+						)}
 						{/* D43: an unresolved score is a dash with its reason on hover, never a number. */}
 						<span className="ability-card__modifier" title={result.status === 'unknown' ? result.reason : undefined}>
 							{result.status === 'known' ? formatModifier(result.value.modifier) : '—'}
