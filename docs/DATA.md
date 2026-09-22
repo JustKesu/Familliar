@@ -671,6 +671,37 @@ more of that family with it (`{@m}`, `{@hom}`, `{@actSaveFailBy}`,
 a vždy jde o blindsight nebo truesight, nikdy darkvision — jediný
 smysl, který appka počítá. Ani jedno tedy nemá kam se promítnout.
 
+### Feat proficiency / expertise / language choices — 11 feats, 7 shapes
+
+Measured across all 128 feats (the `skillProficiencies`, `toolProficiencies`,
+`languageProficiencies`, `expertise`, `skillToolLanguageProficiencies` fields;
+a stripped-prose scan of the rest found no further feat that asks for such a
+pick in text only). 11 feats carry a player choice, 4 carry only fixed grants
+(Boon of Skill's 18 skills, Chef, Poisoner, Fey Teleportation's Sylvan).
+
+- `skillProficiencies: [{choose:{from:[...]}}]` — no `count` key, meaning 1
+  (Keen Mind, Observant, Squat Nimbleness, Prodigy). Prodigy's `from` lists all
+  18 skills, i.e. "any" written as a list.
+- `skillProficiencies: [{any:1}]` — Skill Expert.
+- `toolProficiencies`: four different spellings — `{choose:{from:[8 named
+  artisan's tools],count:3}}` (Crafter, NOT `anyArtisansTool`: the 8 are its
+  Fast Crafting table), `{anyArtisansTool:1}` (Artificer Initiate),
+  `{anyMusicalInstrument:3}` (Musician), `{any:1}` (Prodigy, any tool at all).
+- `languageProficiencies: [{any:1}]` — Prodigy only.
+- `expertise: [{anyProficientSkill:1}]` — Boon of Skill, Prodigy, Skill Expert.
+- `skillToolLanguageProficiencies: [{choose:[{from:["anySkill","anyTool"],count:3}]}]`
+  — Skilled only. TRAP: here `choose` is an ARRAY of groups, unlike every other
+  `choose` above (an object). Any mix of skills and tools, 3 in total.
+
+Repeatable: only Skilled among these (and it is also an origin feat 3
+backgrounds grant). Of the 26 distinct origin feats backgrounds grant, three
+carry a proficiency choice: Skilled, Crafter, Musician. Every background's
+`feats` is a single fixed `{"name|source": true}`; the only species with a
+`feats` field is Human (XPHB): `[{anyFromCategory:{category:["O"],count:1}}]`,
+a free pick of any Origin feat. No feat carries a `feats` field.
+
+Found in the feat-choice-storage investigation (2026-09-22, script consumed).
+
 ### Frázové vyhledávání v `entries` musí nejdřív stripnout 5etools markup
 
 5etools tagy rozdělují frázi na dvě části, které nikdy neleží vedle sebe v
