@@ -86,10 +86,20 @@
     "deny": [
       "Read(**/.env)",
       "Read(**/.env.*)",
+      "Read(./data/**)",
+      "Read(./data-source/**)",
+      "Read(./public/data/**)",
+      "Read(./node_modules/**)",
+      "Read(./dist/**)",
+      "Read(./package-lock.json)",
       "Edit(C:\\Windows\\**)",
       "Edit(C:\\Program Files\\**)",
       "Edit(C:\\Program Files (x86)\\**)",
       "Edit(C:\\ProgramData\\**)"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node scripts/statusline.js"
   }
 }

@@ -10,7 +10,9 @@ the user; everything below them is about doing the work well.
    with the file tool, not with `cat` or `Get-Content`, not "just the first
    few lines", not to check one field. One read of `items.json` costs more
    than a whole task. The only route is a script that prints a summary — see
-   "Data files".
+   "Data files". These paths (plus `node_modules/`, `dist/` and
+   `package-lock.json`) are also hard-blocked by `deny` rules in
+   `.claude/settings.json`.
 
 2. **List and read files with the built-in Glob, Grep and Read tools, never
    with a shell command.** Those tools need no permission, so they never
