@@ -2626,3 +2626,25 @@ samostatné sekce vedle sebe v `.sheet__left-a`, ne sloučené pod jeden
 nadpis — žádný test ani zadání nevyžadovaly jeden spojený nadpis a
 oddělené sekce zachovaly víc existujících testovacích selektorů beze
 změny.
+
+## D155 — Ability-check roll se vrací na karty v pásu čísel; rozklad zůstává vynechaný do draweru (R4)
+
+Zdroj: task R3b (rework sheetu), 22. 9. 2026.
+
+D154 smazala roll tlačítko u ability scores jako vědomý úbytek funkce
+při rozpouštění stats tabu — v zadání R3 šlo o chybu, ne o záměr. R3b ho
+vrací: `AbilityModifierCards` dostala nepovinný `onRoll`, karta pod
+modifierem vykresluje stejný `RollButton` a stejné zapojení do
+`recordRoll`/roll historie jako saves a skills v levém sloupci, se
+stejným accessible name jako před D154 (`"Roll Strength check"` apod.).
+Nevyřešená vlastnost (karta "—") nemá roll tlačítko, jako dřív.
+
+RollButton je umístěn POD modifier span, ne jako obal/trigger čísla
+samotného — `RollButton` renderuje vlastní `<select>` + `<button>` +
+výsledek, takže by z modifieru udělal netriviální strukturu jen kvůli
+vzhledu; umístění pod ním dává stejnou funkci bez přestavby komponenty.
+
+Rozklad (`ValueBreakdown`) na kartách se NEVRACÍ — D146 ho stěhuje z
+inline `<details>` do sdíleného draweru a ability cards na něj čekají
+jako jediné místo, kde vlastnosti žijí. Do R4 tedy sheet nemá rozklad
+ability score vůbec, jen re-implementovaný roll.

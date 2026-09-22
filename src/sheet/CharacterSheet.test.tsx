@@ -420,6 +420,13 @@ describe('CharacterSheet', () => {
 			return item as HTMLElement
 		}
 
+		/** R3b: the ability-check roll lives on the strip card, not a left-column row. */
+		function abilityCard(container: HTMLElement, ability: string): HTMLElement {
+			const card = container.querySelector(`.ability-card[data-ability="${ability}"]`)
+			if (!card) throw new Error(`no ability card for ${ability}`)
+			return card as HTMLElement
+		}
+
 		/** The number printed in the row, read from the value box so a roll's own "+ 5" — or the proficiency dot (R3, D154) — is never mistaken for it. */
 		function printedModifier(item: HTMLElement): number {
 			const text = item.querySelector('.sheet__stat-value')!.textContent!.trim()
@@ -511,15 +518,15 @@ describe('CharacterSheet', () => {
 				expect(parseRoll(item.querySelector('.dice-roll__result')!).dice).toHaveLength(1)
 			})
 
-			it('puts one mode control beside every saving throw and skill roll button', async () => {
+			it('puts one mode control beside every ability, saving throw and skill roll button', async () => {
 				const { container } = await renderKnown()
-				for (const [section, count] of [['.sheet__saving-throws', 6], ['.sheet__skills', 18]] as const) {
+				for (const [section, count] of [['.ability-cards', 6], ['.sheet__saving-throws', 6], ['.sheet__skills', 18]] as const) {
 					expect(container.querySelectorAll(`${section} .dice-roll__mode`)).toHaveLength(count)
 				}
 			})
 		})
 
-		it('rolls a skill', async () => {
+		it('rolls a skill, and an ability check, the same way', async () => {
 			const user = userEvent.setup()
 			const { container } = await renderKnown()
 
@@ -527,15 +534,23 @@ describe('CharacterSheet', () => {
 			await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
 			const skillRoll = parseRoll(skill.querySelector('.dice-roll__result')!)
 			expect(skillRoll.modifier).toBe(printedModifier(skill))
+
+			// Strength 15 → +2; the ability card's roll button carries the same modifier.
+			const ability = abilityCard(container, 'strength')
+			await user.click(screen.getByRole('button', { name: 'Roll Strength check' }))
+			const abilityRoll = parseRoll(ability.querySelector('.dice-roll__result')!)
+			expect(abilityRoll.modifier).toBe(2)
+			expect(abilityRoll.total).toBe(abilityRoll.dice[0]! + 2)
 		})
 
 		it('gives every roll button its own name, and puts none on the passive values', async () => {
 			const { container } = await renderKnown()
 			const labels = (section: string) => Array.from(container.querySelectorAll(`${section} .dice-roll__button`)).map((b) => b.getAttribute('aria-label'))
-			const all = [...labels('.sheet__saving-throws'), ...labels('.sheet__skills')]
+			const all = [...labels('.ability-cards'), ...labels('.sheet__saving-throws'), ...labels('.sheet__skills')]
+			expect(labels('.ability-cards')).toHaveLength(6)
 			expect(labels('.sheet__saving-throws')).toHaveLength(6)
 			expect(labels('.sheet__skills')).toHaveLength(18)
-			expect(new Set(all).size).toBe(24)
+			expect(new Set(all).size).toBe(30)
 			expect(container.querySelectorAll('.sheet__passive-values .dice-roll__button')).toHaveLength(0)
 		})
 
@@ -560,10 +575,13 @@ describe('CharacterSheet', () => {
 		it('offers no roll where the modifier is unresolved', async () => {
 			const incomplete: Character = { id: 'c2', name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }] }
 			const { container } = await renderKnown(incomplete)
-			for (const section of ['.sheet__saving-throws', '.sheet__skills']) {
-				expect(container.querySelector(section)!.textContent).toContain('unresolved')
+			for (const section of ['.ability-cards', '.sheet__saving-throws', '.sheet__skills']) {
 				expect(container.querySelectorAll(`${section} .dice-roll__button`)).toHaveLength(0)
 			}
+			for (const section of ['.sheet__saving-throws', '.sheet__skills']) {
+				expect(container.querySelector(section)!.textContent).toContain('unresolved')
+			}
+			expect(abilityCard(container, 'strength').textContent).toContain('—')
 		})
 	})
 
@@ -6775,15 +6793,15 @@ describe('the persistent header (rebuild slice 1)', () => {
 	})
 })
 
-describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () => {
-	const TAB_LABELS = ['Kouzla', 'Inventář', 'Schopnosti a rysy', 'Akce', 'Vzhled a poznámky']
-	const TAB_IDS = ['spells', 'inventory', 'features', 'actions', 'notes']
+describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b applies D148: English labels and order)', () => {
+	const TAB_LABELS = ['Actions', 'Spells', 'Inventory', 'Features & Traits', 'Notes']
+	const TAB_IDS = ['actions', 'spells', 'inventory', 'features', 'notes']
 
 	afterEach(() => {
 		vi.mocked(loadGrantedSenses).mockReset().mockResolvedValue([])
 	})
 
-	it('renders the five section tabs with the spells tab selected by default', async () => {
+	it('renders the five section tabs with the actions tab selected by default', async () => {
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
@@ -6793,7 +6811,7 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () =>
 		expect(tabs.slice(1).every((tab) => tab.getAttribute('aria-selected') === 'false')).toBe(true)
 	})
 
-	it('wires each tab to its panel and marks only the spells panel active on first render', async () => {
+	it('wires each tab to its panel and marks only the actions panel active on first render', async () => {
 		const { container } = render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
@@ -6801,8 +6819,8 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () =>
 			expect(container.querySelector(`#sheet-tab-${id}`)!.getAttribute('aria-controls')).toBe(`sheet-panel-${id}`)
 			expect(container.querySelector(`#sheet-panel-${id}`)!.getAttribute('aria-labelledby')).toBe(`sheet-tab-${id}`)
 		}
-		expect(container.querySelector('#sheet-panel-spells')!.className).toContain('sheet__panel--active')
-		for (const id of ['inventory', 'features', 'actions', 'notes']) {
+		expect(container.querySelector('#sheet-panel-actions')!.className).toContain('sheet__panel--active')
+		for (const id of ['spells', 'inventory', 'features', 'notes']) {
 			expect(container.querySelector(`#sheet-panel-${id}`)!.className).not.toContain('sheet__panel--active')
 		}
 	})
@@ -6812,12 +6830,12 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () =>
 		const { container } = render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
-		await user.click(screen.getByRole('tab', { name: 'Inventář' }))
+		await user.click(screen.getByRole('tab', { name: 'Inventory' }))
 
-		expect(screen.getByRole('tab', { name: 'Inventář' }).getAttribute('aria-selected')).toBe('true')
-		expect(screen.getByRole('tab', { name: 'Kouzla' }).getAttribute('aria-selected')).toBe('false')
+		expect(screen.getByRole('tab', { name: 'Inventory' }).getAttribute('aria-selected')).toBe('true')
+		expect(screen.getByRole('tab', { name: 'Actions' }).getAttribute('aria-selected')).toBe('false')
 		expect(container.querySelector('#sheet-panel-inventory')!.className).toContain('sheet__panel--active')
-		expect(container.querySelector('#sheet-panel-spells')!.className).not.toContain('sheet__panel--active')
+		expect(container.querySelector('#sheet-panel-actions')!.className).not.toContain('sheet__panel--active')
 	})
 
 	it('no tab exists for the dissolved stats tab', async () => {
@@ -6843,7 +6861,7 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () =>
 		expect(container.querySelector('.sheet__strip .sheet__hit-dice')).toBeTruthy()
 	})
 
-	it('puts inventory under the Inventář tab, damage responses in the status row, and weapon attacks under Akce', async () => {
+	it('puts inventory under the Inventory tab, damage responses in the status row, and weapon attacks under Actions', async () => {
 		const { container } = render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 		await waitFor(() => expect(container.querySelector('.sheet__inventory')).toBeTruthy())
@@ -6873,8 +6891,9 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () =>
 		expect([...body.children].map((child) => child.className)).toEqual(['sheet__left-column', 'sheet__right-panel'])
 		const right = body.querySelector(':scope > .sheet__right-panel')!
 		expect([...right.children].map((child) => child.className)).toEqual(['sheet__tabs', 'sheet__panels'])
+		// R3b reorders the tab NAV (Actions first); the panel elements' own source order is unchanged (ids are test hooks, not a UI order).
 		const panels = right.querySelector(':scope > .sheet__panels')!
-		expect([...panels.children].map((child) => child.id)).toEqual(TAB_IDS.map((id) => `sheet-panel-${id}`))
+		expect([...panels.children].map((child) => child.id).sort()).toEqual(TAB_IDS.map((id) => `sheet-panel-${id}`).sort())
 		// R3: the left column now holds two sub-columns instead of shipping empty.
 		expect([...body.querySelector('.sheet__left-column')!.children].map((child) => child.className)).toEqual(['sheet__left-a', 'sheet__left-b'])
 	})
@@ -6895,7 +6914,7 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () =>
 		}
 	})
 
-	it('puts spells under Kouzla and features/class options under Schopnosti a rysy', async () => {
+	it('puts spells under Spells and features/class options under Features & Traits', async () => {
 		const warlock: Character = {
 			id: 'tabs-caster',
 			name: 'Aria',
@@ -6917,7 +6936,7 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123)', () =>
 })
 
 /* Slice 9d2: three plain textareas, each in its own independently collapsible <details>, each written to its own Character field. */
-describe('the Vzhled a poznámky tab (slice 9d2)', () => {
+describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 	const MULTI_LINE = '- first\n\n  indented   \n* second\n'
 
 	/* Holds the character in state the way CharacterManager does, so the sheet re-reads what it wrote. */
@@ -6938,7 +6957,7 @@ describe('the Vzhled a poznámky tab (slice 9d2)', () => {
 		const user = userEvent.setup()
 		const { container } = render(<Harness initial={subject} onEdit={onEdit} />)
 		await screen.findByRole('heading', { name: 'Aria' })
-		await user.click(screen.getByRole('tab', { name: 'Vzhled a poznámky' }))
+		await user.click(screen.getByRole('tab', { name: 'Notes' }))
 		return { user, container, onEdit }
 	}
 
@@ -6950,10 +6969,10 @@ describe('the Vzhled a poznámky tab (slice 9d2)', () => {
 		const { container } = await openNotesTab()
 
 		const tabs = screen.getAllByRole('tab')
-		expect(tabs[tabs.length - 1].textContent).toBe('Vzhled a poznámky')
-		expect(screen.getByRole('tab', { name: 'Vzhled a poznámky' }).getAttribute('aria-selected')).toBe('true')
+		expect(tabs[tabs.length - 1].textContent).toBe('Notes')
+		expect(screen.getByRole('tab', { name: 'Notes' }).getAttribute('aria-selected')).toBe('true')
 		expect(container.querySelector('#sheet-panel-notes')!.className).toContain('sheet__panel--active')
-		expect(container.querySelector('#sheet-panel-spells')!.className).not.toContain('sheet__panel--active')
+		expect(container.querySelector('#sheet-panel-actions')!.className).not.toContain('sheet__panel--active')
 	})
 
 	it('holds Vzhled, Příběh and Poznámky in that order, each with exactly one textarea', async () => {
@@ -7069,7 +7088,7 @@ describe('the Vzhled a poznámky tab (slice 9d2)', () => {
 			const user = userEvent.setup()
 			const { unmount } = render(<Harness initial={character} onEdit={onEdit} />)
 			await screen.findByRole('heading', { name: 'Aria' })
-			await user.click(screen.getByRole('tab', { name: 'Vzhled a poznámky' }))
+			await user.click(screen.getByRole('tab', { name: 'Notes' }))
 			await user.type(screen.getByRole('textbox', { name: 'Příběh' }), 'Left at dawn')
 			expect(onEdit).not.toHaveBeenCalled()
 

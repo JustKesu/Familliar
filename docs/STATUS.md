@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-22 (rework R3: levý sloupec, stats tab zrušen)
+Poslední aktualizace: 2026-09-22 (rework R3b: ability-check roll na kartách, anglické popisky záložek)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1098,6 +1098,19 @@ nepovinný prop `SheetHeader`'s `hitDice: ReactNode`, obsah staví
 — sheet je nikdy nezobrazoval, viz QUESTIONS.md.** Kontrola v prohlížeči
 neproběhla (uživatel remote, viz REPORT.md). Další: R4 (rozklady do draweru,
 D146).
+
+R3b hotový (D155, D148): vrácen ability-check roll a anglické popisky/pořadí
+záložek. `AbilityModifierCards` dostala nepovinný `onRoll`; karta pod
+modifierem má teď `RollButton` (stejné zapojení do `recordRoll` jako saves/
+skills, accessible name `"Roll <Ability> check"` jako před D154) — jediné,
+co kartám R3 vzala a co bylo, podle zadání, chybou toho zadání, ne úmyslem.
+Rozklad na kartách dál chybí, čeká na drawer (R4, D146). `SHEET_TABS`: pět
+položek, pořadí a anglické popisky teď podle D123/D148 — `Actions · Spells ·
+Inventory · Features & Traits · Notes`, výchozí `activeTab` je `'actions'`.
+Id položek beze změny (testovací háčky). Záložka "Notes" nese pořád české
+popisky svých tří polí (Vzhled/Příběh/Poznámky) — task se týkal jen popisků
+záložek samotných. Kontrola v prohlížeči neproběhla (uživatel remote, viz
+REPORT.md). Další: R4 (rozklady do draweru, D146).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

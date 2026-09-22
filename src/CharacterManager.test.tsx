@@ -230,7 +230,7 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 		const user = userEvent.setup()
 		const { unmount } = render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
-		await user.click(await screen.findByRole('tab', { name: 'Vzhled a poznámky' }))
+		await user.click(await screen.findByRole('tab', { name: 'Notes' }))
 
 		await user.type(screen.getByRole('textbox', { name: 'Příběh' }), '- Raised by owls{Enter}  - Left at dawn  ')
 		await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato 5 gp')
@@ -270,7 +270,7 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 		await user.click(breeSheetButton!)
 
 		// A fresh CharacterSheet mount for Bree — no sheet state, tab included, survives from Aria's.
-		await user.click(await screen.findByRole('tab', { name: 'Vzhled a poznámky' }))
+		await user.click(await screen.findByRole('tab', { name: 'Notes' }))
 		expect((await screen.findByRole('textbox', { name: 'Poznámky' })) as HTMLTextAreaElement).toHaveProperty('value', '')
 		expect(store.list().find((character) => character.name === 'Bree')?.notes).toBeUndefined()
 		expect(store.list().find((character) => character.name === 'Aria')?.notes).toBe('Aria only')

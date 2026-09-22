@@ -198,18 +198,20 @@ const ABILITY_LABELS: Record<Ability, string> = {
 /*
  * Sheet rebuild slice 2: the flat section list is grouped into tabs. Rework
  * R3 (D123) dissolves the 'stats' tab into the left column, leaving five.
+ * R3b applies D148 (English tab labels) and the planned order; ids stay as
+ * they are since tests hook them.
  */
 type SheetTabId = 'spells' | 'inventory' | 'features' | 'actions' | 'notes'
 
 const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
-	{ id: 'spells', label: 'Kouzla' },
-	{ id: 'inventory', label: 'Inventář' },
-	{ id: 'features', label: 'Schopnosti a rysy' },
-	{ id: 'actions', label: 'Akce' },
-	{ id: 'notes', label: 'Vzhled a poznámky' },
+	{ id: 'actions', label: 'Actions' },
+	{ id: 'spells', label: 'Spells' },
+	{ id: 'inventory', label: 'Inventory' },
+	{ id: 'features', label: 'Features & Traits' },
+	{ id: 'notes', label: 'Notes' },
 ]
 
-/** The "Vzhled a poznámky" tab's sections (slice 9d2), in display order — each one Character field. */
+/** The Notes tab's sections (slice 9d2), in display order — each one Character field. */
 const TEXT_SECTIONS: readonly { field: CharacterTextField; label: string }[] = [
 	{ field: 'appearance', label: 'Vzhled' },
 	{ field: 'backstory', label: 'Příběh' },
@@ -1899,7 +1901,7 @@ export function CharacterSheet({
 	onRemoveLevel?: (result: Character) => void
 }): ReactNode {
 	/* Sheet rebuild slice 2: plain client-side tab state, no URL routing (brief). */
-	const [activeTab, setActiveTab] = useState<SheetTabId>('spells')
+	const [activeTab, setActiveTab] = useState<SheetTabId>('actions')
 	/* Slice 9c3b: in memory only, like each button's own result — never written to Character.play. */
 	const [rollHistory, setRollHistory] = useState<RollHistoryEntry[]>([])
 	const nextRollId = useRef(0)
@@ -2790,7 +2792,7 @@ export function CharacterSheet({
 						{onRemoveLevel && <RemoveLevelButton character={character} onRemoveLevel={onRemoveLevel} />}
 					</div>
 				}
-				abilities={<AbilityModifierCards abilityScores={abilityScores} labels={ABILITY_LABELS} />}
+				abilities={<AbilityModifierCards abilityScores={abilityScores} labels={ABILITY_LABELS} onRoll={recordRoll} />}
 				defenses={
 					<DamageResponsesSection
 						responses={damageResponses}
