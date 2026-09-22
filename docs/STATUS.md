@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-22 (task A2: uložené skill/expertise volby featů se počítají, schéma 43)
+Poslední aktualizace: 2026-09-22 (task R3c: sdílená šířka stránky 1440px, čitelná délka řádku 75ch, úzká číselná pole)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1133,6 +1133,30 @@ Id položek beze změny (testovací háčky). Záložka "Notes" nese pořád če
 popisky svých tří polí (Vzhled/Příběh/Poznámky) — task se týkal jen popisků
 záložek samotných. Kontrola v prohlížeči neproběhla (uživatel remote, viz
 REPORT.md). Další: R4 (rozklady do draweru, D146).
+
+R3c hotový (D162): šířkové limity, čistě CSS/vizuální. `--page-max-width:
+1440px` (`src/index.css` `:root`) čte jediná deklarace na elementu `main` —
+seznam postav, wizard i sheet (`.sheet-view`) do `<main>` vykreslují, takže
+je pokrývá jedna třída/proměnná místo tří kopií; `.sheet-view` ztratila svůj
+vlastní `max-width: none`. Pod stropem `main` dál vyplňuje okno jako dřív.
+Horní `.tabs` lišta zůstala na vlastním `max-width: 48rem` (mimo rozsah
+zadání). D153 (sheet na jeden viewport) beze změny. Odstavce a seznamy z
+markup rendereru dostaly čitelnou délku řádku: `Entry()` v
+`src/markup/Markup.tsx` teď dává každému `<p>` ze stringu/čísla třídu
+`mk-p`, `.mk-p`/`.mk-list` mají `max-width: 75ch` v `index.css` — jedno
+místo, protože `Entry()`/`TypedEntry()` je jediný zdroj odstavců a seznamů
+napříč celým rendererem (feature/feat/spell/item popisy). Tabulky
+(`.mk-table-wrap`) limit nedostaly. Čtyři testy v `Markup.test.tsx`
+přepsané na `<p class="mk-p">`. Osm číselných polí (`type="number"`) v
+appce dostalo sdílenou třídu podle obsahu — `.input--narrow` (6ch:
+množství v inventáři, custom item AC/rychlost/darkvision/Strength
+requirement, Current/Max/Temp HP, HP Amount, ruční vlastnost i ruční
+výsledek kostky ve wizardu) nebo `.input--narrow-money` (8ch: zlato/
+stříbro/měď, custom item cena, přidané platinum) — jen šířka, typ pole a
+chování beze změny. **Vědomě ponecháno:** pruh čísel v hlavičce se na
+1440px přestane vejít na řádek a HP blok spadne pod něj — čeká na R4c
+(kompaktní HP blok). Kontrola v prohlížeči neproběhla (zadání ji vyloučilo
+— uživatel zkontroluje sám, viz REPORT.md).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

@@ -177,6 +177,7 @@ export function HitPointsPicker({
 									{entry?.kind === 'manual' && (
 										<input
 											type="number"
+											className="input--narrow"
 											aria-label={`Level ${level} manual result`}
 											value={entry.dieResult}
 											onChange={(event) => setLevel(level, 'manual', Number(event.target.value))}

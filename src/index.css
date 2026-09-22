@@ -7,6 +7,8 @@
   --panel-bg: var(--surface-2);
   --ref: var(--accent);
   --value: var(--heal);
+  /* R3c: shared cap for the list, sheet and wizard screens — D134's 460px drawer needs room beside it. */
+  --page-max-width: 1440px;
 }
 
 body {
@@ -15,8 +17,10 @@ body {
   color: var(--text);
 }
 
+/* R3c: the one width rule shared by the list, sheet and wizard screens (all render into a
+   <main>) — below --page-max-width it fills the window, never scrolling horizontally. */
 main {
-  max-width: 48rem;
+  max-width: var(--page-max-width);
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
 }
@@ -91,6 +95,16 @@ button:focus-visible {
 input[type='checkbox'],
 input[type='radio'] {
   accent-color: var(--accent);
+}
+
+/* R3c: numeric fields sized to their content instead of stretching to fill their
+   container — quantities/HP (6ch) and money, which runs to more digits (8ch). */
+.input--narrow {
+  width: 6ch;
+}
+
+.input--narrow-money {
+  width: 8ch;
 }
 
 label {
@@ -322,7 +336,6 @@ button:disabled {
 .sheet-view {
   flex: 1;
   min-height: 0;
-  max-width: none;
   box-sizing: border-box;
   padding: 0.75rem 1.5rem;
   display: flex;
@@ -763,6 +776,15 @@ button:disabled {
 .mk-entries p,
 .mk-inset p {
   margin: 0 0 0.6rem;
+}
+
+/* R3c: readable line length for running text — every paragraph and list the
+   renderer's Entry()/TypedEntry() produce carry .mk-p/.mk-list (Markup.tsx),
+   so this is the one place the limit needs setting. Tables (.mk-table-wrap)
+   are a different element and stay unlimited. */
+.mk-p,
+.mk-list {
+  max-width: 75ch;
 }
 
 .mk-inset {

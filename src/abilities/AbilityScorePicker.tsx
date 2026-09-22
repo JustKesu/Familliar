@@ -328,6 +328,7 @@ function RollMethod({
 								type="number"
 								min={3}
 								max={18}
+								className="input--narrow"
 								value={manualScores[ability]}
 								onChange={(event) => handleManualChange(ability, event.target.value)}
 							/>

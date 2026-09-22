@@ -92,7 +92,7 @@ describe('<Markup>', () => {
 describe('<Entries> — recursion through nested objects', () => {
 	it('renders an array of strings as paragraphs', () => {
 		const out = html(<Entries entries={['One.', 'Two.']} />)
-		expect(out).toBe('<p>One.</p><p>Two.</p>')
+		expect(out).toBe('<p class="mk-p">One.</p><p class="mk-p">Two.</p>')
 	})
 
 	it('recurses rather than joining nested entries', () => {
@@ -323,15 +323,15 @@ describe('<Entries> — graceful degradation', () => {
 	})
 
 	it('ignores null and undefined entries', () => {
-		expect(html(<Entries entries={[null, undefined, 'Kept.']} />)).toBe('<p>Kept.</p>')
+		expect(html(<Entries entries={[null, undefined, 'Kept.']} />)).toBe('<p class="mk-p">Kept.</p>')
 	})
 
 	it('accepts a bare string instead of an array', () => {
-		expect(html(<Entries entries="Alone." />)).toBe('<p>Alone.</p>')
+		expect(html(<Entries entries="Alone." />)).toBe('<p class="mk-p">Alone.</p>')
 	})
 
 	it('renders a numeric entry', () => {
-		expect(html(<Entries entries={[3]} />)).toBe('<p>3</p>')
+		expect(html(<Entries entries={[3]} />)).toBe('<p class="mk-p">3</p>')
 	})
 
 	it('renders an entries object with no name', () => {

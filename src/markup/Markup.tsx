@@ -119,13 +119,13 @@ export function Entry({ entry }: { entry: unknown }): ReactNode {
 
 	if (typeof entry === 'string') {
 		return (
-			<p>
+			<p className="mk-p">
 				<Markup text={entry} />
 			</p>
 		)
 	}
 
-	if (typeof entry === 'number') return <p>{entry}</p>
+	if (typeof entry === 'number') return <p className="mk-p">{entry}</p>
 
 	if (Array.isArray(entry)) return <Entries entries={entry} />
 

@@ -2684,3 +2684,50 @@ Stejné pravidlo jako D18 u skillů z backgroundu.
 
 Poznámka „čeká na volbu" zůstává jen u skillů; volby nástrojů a jazyků
 z featů místo ní dostanou picker.
+
+## D162 — R3c: sdílená šířka stránky 1440px, čitelná délka řádku 75ch, úzká čísla
+
+Zdroj: task R3c (rework sheetu), 22. 9. 2026.
+
+**Šířka stránky.** `--page-max-width: 1440px` (`src/index.css`, `:root`) —
+jediná proměnná, kterou čte element `main`
+(`max-width: var(--page-max-width); margin: 0 auto;`). Seznam postav, wizard
+a sheet vykreslují do `<main>` (sheet navíc nese `.sheet-view`), takže
+tahle jedna deklarace na `main` je platí všechny tři beze zbytku — R3c jí
+nahradila dřívější `max-width: 48rem` (seznam/wizard) a `max-width: none`
+(`.sheet-view`, mazáno). Pod 1440px `main` dál vyplňuje okno (`width: auto`
+se přirozeně zmenší, žádný jiný zásah netřeba). Horní `.tabs` lištu (D148)
+task záměrně nechává na vlastním `max-width: 48rem` — zadání ji z rozsahu
+vyjímá. D153 (sheet na jeden viewport) beze změny — `.sheet-view` dál nese
+`flex:1; min-height:0; box-sizing:border-box`, jen bez vlastního stropu
+šířky.
+
+**Čitelná délka řádku.** `.mk-p` (nová třída na každém `<p>`, který
+`Entry()` v `src/markup/Markup.tsx` vykreslí ze stringu/čísla — string i
+number case) a `.mk-list` (`<ul>` z entry typu `list`, třídu už nesla)
+dostaly `max-width: 75ch` v `src/index.css`. Jde o JEDINÉ místo, kam pravidlo
+patří — `Entry()`/`TypedEntry()` jsou jediný zdroj odstavců a seznamů napříč
+celým rendererem (feature/feat/spell/item popisy, `ResolvedEntries`,
+`ItemDescription`, `MarkupDemo` — všechny jdou skrz tutéž funkci), takže
+třída na volajícím místě by se musela opakovat u každého callsite. Tabulky
+(`.mk-table-wrap`/`.mk-table`) jsou jiný element a limit nedostaly — mají
+zůstat široké, jak potřebují. Čtyři testy v `Markup.test.tsx`, které
+assertovaly `<p>` bez třídy, jsou přepsané na `<p class="mk-p">`.
+
+**Úzká číselná pole.** Dvě sdílené třídy v `src/index.css`:
+`.input--narrow` (6ch — množství, životy) a `.input--narrow-money` (8ch —
+peníze). Nasazené na všech osm `type="number"` polí v appce:
+`CommitNumberField` (množství v inventáři defaultně `narrow="qty"`, zlato/
+stříbro/měď na peníze volají `narrow="money"`), `CommitGoldField` (custom
+item cena ve zlatě) a `AddPlatinumField` — obě vždy peníze — `OptionalNumberField`
+(AC/rychlost/darkvision/Strength requirement custom itemu — vždy qty),
+`HitPointField` (Current HP / Max HP override / Temporary HP —
+`SheetHeader.tsx`), pole Amount v `DamageHealingPanel`, ruční zadání
+vlastnosti (`AbilityScorePicker.tsx`) a ruční výsledek kostky
+(`HitPointsPicker.tsx`) ve wizardu. Jen šířka — typ pole, chování ani
+validace se nemění.
+
+**Vědomě ponecháno.** Pruh čísel v hlavičce (D153/D147) se při 1440px
+přestane vejít na jeden řádek a HP blok spadne pod ně na vlastní řádek —
+očekávané, oprava je R4c (kompaktní HP blok), tenhle task ji záměrně
+nedělá.

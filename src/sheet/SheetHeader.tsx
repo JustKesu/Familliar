@@ -89,6 +89,7 @@ function HitPointField({ label, value, onCommit }: { label: string; value: numbe
 				type="number"
 				min={0}
 				inputMode="numeric"
+				className="input--narrow"
 				aria-label={label}
 				value={draft}
 				onChange={(event) => setDraft(event.target.value)}
@@ -143,6 +144,7 @@ function DamageHealingPanel({
 					type="number"
 					min={1}
 					inputMode="numeric"
+					className="input--narrow"
 					aria-label="Amount"
 					value={draft}
 					onChange={(event) => setDraft(event.target.value)}

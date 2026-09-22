@@ -268,11 +268,14 @@ function CommitNumberField({
 	value,
 	min,
 	onCommit,
+	narrow = 'qty',
 }: {
 	label: string
 	value: number
 	min: number
 	onCommit: (value: number) => void
+	/** R3c: width guide (6ch for quantities, 8ch for money) — 'qty' unless the caller says otherwise. */
+	narrow?: 'qty' | 'money'
 }): ReactNode {
 	const [draft, setDraft] = useState(String(value))
 	useEffect(() => {
@@ -292,6 +295,7 @@ function CommitNumberField({
 			<input
 				type="number"
 				min={min}
+				className={narrow === 'money' ? 'input--narrow-money' : 'input--narrow'}
 				aria-label={label}
 				value={draft}
 				onChange={(event) => setDraft(event.target.value)}
@@ -333,6 +337,7 @@ function CommitGoldField({ label, copperValue, onCommit }: { label: string; copp
 				type="number"
 				min={0}
 				step={0.01}
+				className="input--narrow-money"
 				aria-label={label}
 				value={draft}
 				onChange={(event) => setDraft(event.target.value)}
@@ -365,6 +370,7 @@ function AddPlatinumField({ onAdd }: { onAdd: (platinum: number) => void }): Rea
 			<input
 				type="number"
 				min={0}
+				className="input--narrow-money"
 				aria-label="Add platinum"
 				value={draft}
 				onChange={(event) => setDraft(event.target.value)}
@@ -469,6 +475,7 @@ function OptionalNumberField({ label, value, onChange }: { label: string; value:
 			{label}{' '}
 			<input
 				type="number"
+				className="input--narrow"
 				aria-label={label}
 				value={value === undefined ? '' : String(value)}
 				onChange={(event) => {
@@ -1132,9 +1139,9 @@ function InventorySection({
 				<h3>Money</h3>
 				{onEditCurrency ? (
 					<p>
-						<CommitNumberField label="Gold" min={0} value={coins.gp} onCommit={(amount) => editCoin('gp', amount)} />{' '}
-						<CommitNumberField label="Silver" min={0} value={coins.sp} onCommit={(amount) => editCoin('sp', amount)} />{' '}
-						<CommitNumberField label="Copper" min={0} value={coins.cp} onCommit={(amount) => editCoin('cp', amount)} />{' '}
+						<CommitNumberField label="Gold" min={0} value={coins.gp} onCommit={(amount) => editCoin('gp', amount)} narrow="money" />{' '}
+						<CommitNumberField label="Silver" min={0} value={coins.sp} onCommit={(amount) => editCoin('sp', amount)} narrow="money" />{' '}
+						<CommitNumberField label="Copper" min={0} value={coins.cp} onCommit={(amount) => editCoin('cp', amount)} narrow="money" />{' '}
 						<AddPlatinumField onAdd={(platinum) => onEditCurrency(currencyCopper + platinumToCopper(platinum))} />
 					</p>
 				) : (
