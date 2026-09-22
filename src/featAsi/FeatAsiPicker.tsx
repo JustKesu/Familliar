@@ -31,6 +31,7 @@ import {
 	type FeatEntry,
 	type PrerequisiteContext,
 } from './featAsiData'
+import type { FeatRef } from './featInstances'
 
 /*
  * Feat/ASI picker (build order step 4a). One sub-panel per level that
@@ -79,6 +80,7 @@ export function FeatAsiPicker({
 	onChange,
 	alreadyKnown = [],
 	lockedLevels = NO_LOCKED_LEVELS,
+	backgroundOriginFeat = null,
 }: {
 	className: string
 	classSource: string
@@ -93,6 +95,8 @@ export function FeatAsiPicker({
 	alreadyKnown?: readonly KnownSpell[]
 	/** D110: during a level up, the grant levels the character already made a choice for — shown, not changeable. */
 	lockedLevels?: readonly number[]
+	/** The feat the background grants (D156) — counts as already taken, so a non-repeatable one is not offered again. */
+	backgroundOriginFeat?: FeatRef | null
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -150,8 +154,10 @@ export function FeatAsiPicker({
 		return scores
 	}
 
+	const backgroundFeatEntry = backgroundOriginFeat ? feats.find((f) => f.name === backgroundOriginFeat.name && f.source === backgroundOriginFeat.source) : undefined
+
 	function chosenFeatsUpto(uptoIndex: number): ChosenFeatRef[] {
-		const refs: ChosenFeatRef[] = []
+		const refs: ChosenFeatRef[] = backgroundOriginFeat ? [{ ...backgroundOriginFeat, category: backgroundFeatEntry?.category ?? '' }] : []
 		for (let i = 0; i < uptoIndex; i++) {
 			const choice = value[i]
 			if (choice?.kind === 'feat') {
@@ -232,6 +238,7 @@ export function FeatAsiPicker({
 								grantKind={grant.kind}
 								feats={feats}
 								context={ctx}
+								grantedByBackground={backgroundOriginFeat}
 								selected={current.name ? { name: current.name, source: current.source, chosenAbility: current.chosenAbility } : null}
 								onSelectFeat={(feat) => setChoiceAt(index, { level: grant.level, kind: 'feat', name: feat.name, source: feat.source })}
 								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
@@ -357,6 +364,7 @@ function FeatSubPicker({
 	grantKind,
 	feats,
 	context,
+	grantedByBackground,
 	selected,
 	onSelectFeat,
 	onSelectAbility,
@@ -365,11 +373,16 @@ function FeatSubPicker({
 	grantKind: FeatAsiGrant['kind']
 	feats: FeatEntry[]
 	context: PrerequisiteContext
+	grantedByBackground: FeatRef | null
 	selected: { name: string; source: string; chosenAbility?: Ability } | null
 	onSelectFeat: (feat: { name: string; source: string }) => void
 	onSelectAbility: (ability: Ability) => void
 }): ReactNode {
-	const evaluated = feats.map((feat) => ({ feat, result: evaluateFeatPrerequisites(feat, context) }))
+	const evaluated = feats.map((feat) => {
+		const heldFromBackground = !feat.repeatable && grantedByBackground?.name === feat.name && grantedByBackground.source === feat.source
+		const result = heldFromBackground ? { eligible: false, reasons: ['Already granted by your background.'] } : evaluateFeatPrerequisites(feat, context)
+		return { feat, result }
+	})
 	// Epic Boon levels show category-EB feats first (the feature's own suggested pool) — still just a sort, D19's "no category filter" is unaffected.
 	const sorted =
 		grantKind === 'epicBoon'

@@ -32,7 +32,7 @@ function single(className: string, subclass: string | null, level: number, creat
 }
 
 function plan(character: Character, resolver: ResolverData = RESOLVER): LevelRemovalPlan {
-	const result = levelRemovalPlan(character, CLASSES, resolver)
+	const result = levelRemovalPlan(character, CLASSES, resolver, null)
 	if ('reason' in result) throw new Error(result.reason)
 	return result
 }
@@ -244,7 +244,7 @@ describe('resource uses on a level removal', () => {
 	}
 
 	it('brings a count above the new maximum down to it, and says so', () => {
-		const result = levelRemovalPlan(fighterWithUses(4, { 'Second Wind': 3 }), RESOURCE_CLASSES, RESOURCE_RESOLVER)
+		const result = levelRemovalPlan(fighterWithUses(4, { 'Second Wind': 3 }), RESOURCE_CLASSES, RESOURCE_RESOLVER, null)
 		if ('reason' in result) throw new Error(result.reason)
 
 		expect(result.result.play).toEqual({ temporaryHitPoints: 5, resourceUses: { 'Second Wind': 2 } })
@@ -252,7 +252,7 @@ describe('resource uses on a level removal', () => {
 	})
 
 	it('leaves a count that still fits, and one whose maximum is not in the data, alone', () => {
-		const result = levelRemovalPlan(fighterWithUses(4, { 'Second Wind': 1, 'Superiority Die': 9 }), RESOURCE_CLASSES, RESOURCE_RESOLVER)
+		const result = levelRemovalPlan(fighterWithUses(4, { 'Second Wind': 1, 'Superiority Die': 9 }), RESOURCE_CLASSES, RESOURCE_RESOLVER, null)
 		if ('reason' in result) throw new Error(result.reason)
 
 		expect(result.result.play?.resourceUses).toEqual({ 'Second Wind': 1, 'Superiority Die': 9 })
@@ -301,7 +301,7 @@ describe('spent spell slots on a level removal', () => {
 	}
 
 	function removalPlan(character: Character): LevelRemovalPlan {
-		const result = levelRemovalPlan(character, SLOT_CLASSES, RESOLVER)
+		const result = levelRemovalPlan(character, SLOT_CLASSES, RESOLVER, null)
 		if ('reason' in result) throw new Error(result.reason)
 		return result
 	}
@@ -358,7 +358,7 @@ describe('spent hit dice on a level removal', () => {
 })
 
 describe('RemoveLevelButton', () => {
-	const fixturePlan = async (character: Character) => levelRemovalPlan(character, CLASSES, RESOLVER)
+	const fixturePlan = async (character: Character) => levelRemovalPlan(character, CLASSES, RESOLVER, null)
 
 	it('has no usable control at the created-at level and says why, without asking the data', () => {
 		const loadPlan = vi.fn(fixturePlan)

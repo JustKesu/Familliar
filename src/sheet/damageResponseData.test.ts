@@ -156,14 +156,14 @@ describe('buildFeatGrants', () => {
 
 	it('reads a chosen feat as an unmade choice when the data offers one', () => {
 		const chooser = character({ featAsiChoices: [{ level: 19, kind: 'feat', name: 'Boon of Energy Resistance', source: 'XPHB' }] })
-		const grants = buildFeatGrants(chooser, feats)
+		const grants = buildFeatGrants(chooser, feats, null)
 
 		expect(grants[0].choiceFrom).toEqual(['acid', 'cold'])
 	})
 
 	it('ignores an ASI pick and a character with no feats', () => {
-		expect(buildFeatGrants(character({ featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] }), feats)).toEqual([])
-		expect(buildFeatGrants(character(), feats)).toEqual([])
+		expect(buildFeatGrants(character({ featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] }), feats, null)).toEqual([])
+		expect(buildFeatGrants(character(), feats, null)).toEqual([])
 	})
 })
 

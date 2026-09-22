@@ -1628,6 +1628,63 @@ describe('CharacterStore free-text fields (slice 9d2)', () => {
 	})
 })
 
+describe('stored granted feats (D156)', () => {
+	const magicInitiate = {
+		className: 'Cleric',
+		classSource: 'XPHB',
+		cantrips: [{ name: 'Guidance', source: 'XPHB' }],
+		spell: { name: 'Bless', source: 'XPHB' },
+	}
+	const filterChoiceSpells = { cantrips: [], spells: [{ name: 'Charm Person', source: 'XPHB' }] }
+
+	it('round-trips grantedFeats and the shared sub-choice fields through save, reload, export and import', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const created = store.create({
+			name: 'Aria',
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Fey-Touched', source: 'XPHB', chosenAbility: 'wisdom', filterChoiceSpells }],
+			grantedFeats: [
+				{ origin: 'background', name: 'Magic Initiate; Cleric', source: 'XPHB', chosenAbility: 'wisdom', magicInitiate },
+				{ origin: 'species', name: 'Alert', source: 'XPHB' },
+			],
+		})
+
+		const reloaded = new CharacterStore(backing).list()[0]
+		expect(reloaded.grantedFeats).toEqual(created.grantedFeats)
+		expect(reloaded.featAsiChoices).toEqual(created.featAsiChoices)
+
+		const [imported] = new CharacterStore(new MemoryStorage()).import(store.exportCharacter(created.id))
+		expect(imported.grantedFeats).toEqual(created.grantedFeats)
+	})
+
+	it('loads a save without the field unchanged, and stores an empty list as absence', () => {
+		const backing = new MemoryStorage()
+		const saved = { schemaVersion: 41, id: '1', name: 'Aria', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] }
+		backing.setItem(STORAGE_KEY, JSON.stringify([saved]))
+		const [loaded] = new CharacterStore(backing).list()
+		expect(loaded).toEqual({ id: '1', name: 'Aria', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] })
+
+		expect('grantedFeats' in new CharacterStore(new MemoryStorage()).create({ name: 'Cato', grantedFeats: [] })).toBe(false)
+	})
+
+	it('rejects a malformed entry, and a second entry for the same origin', () => {
+		const bad = [
+			[{ origin: 'class', name: 'Alert', source: 'XPHB' }],
+			[{ origin: 'background', source: 'XPHB' }],
+			[{ origin: 'background', name: 'Alert', source: 'XPHB', chosenAbility: 'luck' }],
+			[
+				{ origin: 'background', name: 'Alert', source: 'XPHB' },
+				{ origin: 'background', name: 'Tough', source: 'XPHB' },
+			],
+		]
+		for (const grantedFeats of bad) {
+			const backing = new MemoryStorage()
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats }]))
+			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+		}
+	})
+})
+
 describe('CharacterStore.rename', () => {
 	it('renames an existing character', () => {
 		const store = new CharacterStore(new MemoryStorage())

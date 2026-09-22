@@ -21,7 +21,7 @@ vi.mock('./levelUp/levelRemoval', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./levelUp/levelRemoval')>()
 	return {
 		...actual,
-		loadLevelRemovalPlan: async (character: Parameters<typeof actual.levelRemovalPlan>[0]) => actual.levelRemovalPlan(character, CLASSES, RESOLVER),
+		loadLevelRemovalPlan: async (character: Parameters<typeof actual.levelRemovalPlan>[0]) => actual.levelRemovalPlan(character, CLASSES, RESOLVER, null),
 	}
 })
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeMaxHitPoints, fixedAverage } from '../calculation/maxHitPoints'
-import type { FeatEffectEntry } from '../calculation/featEffects'
+import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
 import { loadFeatEffectEntries, loadHitDiceClassData } from '../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../sheet/grantedClassFeatures'
 import { loadSpeciesTraitNames } from '../sheet/speciesTraitNames'
@@ -38,7 +38,7 @@ export function HitPointsPicker({
 	onChange,
 	levelUpLevel,
 }: {
-	/** A draft Character carrying classes (single class, D11), species and featAsiChoices — everything computeMaxHitPoints and its bonus-feature lookup need. */
+	/** A draft Character carrying classes (single class, D11), species, background and featAsiChoices — everything computeMaxHitPoints and its bonus-feature lookup need. */
 	character: Character
 	value: CharacterHitPointLevel[]
 	onChange: (levels: CharacterHitPointLevel[]) => void
@@ -60,11 +60,10 @@ export function HitPointsPicker({
 		Promise.all([loadHitDiceClassData(), loadFeatEffectEntries(), loadGrantedClassFeatures(character), loadSpeciesTraitNames(character)])
 			.then(([classData, feats, grantedFeatures, speciesTraitNames]) => {
 				if (cancelled) return
-				const chosenFeats = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
 				setLoaded({
 					classData,
 					feats,
-					bonusFeatureNames: [...grantedFeatures.map((feature) => feature.name), ...chosenFeats.map((choice) => choice.name), ...speciesTraitNames],
+					bonusFeatureNames: [...grantedFeatures.map((feature) => feature.name), ...characterFeats(character, feats).map((choice) => choice.name), ...speciesTraitNames],
 				})
 			})
 			.catch((error: unknown) => {
@@ -74,7 +73,15 @@ export function HitPointsPicker({
 			cancelled = true
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the class/species/feat identity via the parent's own draft-character rebuild, not on every keystroke.
-	}, [character.classes[0]?.className, character.classes[0]?.classSource, character.classes[0]?.level, character.species?.name, character.featAsiChoices])
+	}, [
+		character.classes[0]?.className,
+		character.classes[0]?.classSource,
+		character.classes[0]?.level,
+		character.species?.name,
+		character.background?.name,
+		character.background?.source,
+		character.featAsiChoices,
+	])
 
 	if (loadError) return <p className="error">Could not load hit points: {loadError}</p>
 	if (!loaded) return <p>Loading…</p>

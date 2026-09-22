@@ -7,6 +7,7 @@ import type {
 	CharacterClassFeatureChoice,
 	CharacterDeathSaves,
 	CharacterFamiliar,
+	CharacterGrantedFeat,
 	CharacterHitPointLevel,
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
@@ -149,6 +150,7 @@ export interface CharacterCreateInput {
 	speciesSkills?: string[]
 	expertiseSkills?: CharacterExpertiseSkill[]
 	featAsiChoices?: FeatAsiChoice[]
+	grantedFeats?: CharacterGrantedFeat[]
 	spellChoices?: CharacterSpellChoice[]
 	subclassSpellChoices?: CharacterSubclassSpellChoice[]
 	classFeatureChoices?: CharacterClassFeatureChoice[]
@@ -266,6 +268,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		speciesSkills,
 		expertiseSkills,
 		featAsiChoices,
+		grantedFeats,
 		spellChoices,
 		subclassSpellChoices,
 		classFeatureChoices,
@@ -303,6 +306,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(speciesSkills && speciesSkills.length > 0 ? { speciesSkills } : {}),
 		...(expertiseSkills && expertiseSkills.length > 0 ? { expertiseSkills } : {}),
 		...(featAsiChoices && featAsiChoices.length > 0 ? { featAsiChoices } : {}),
+		...(grantedFeats && grantedFeats.length > 0 ? { grantedFeats } : {}),
 		...(spellChoices && spellChoices.length > 0 ? { spellChoices } : {}),
 		...(subclassSpellChoices && subclassSpellChoices.length > 0 ? { subclassSpellChoices } : {}),
 		...(classFeatureChoices && classFeatureChoices.length > 0 ? { classFeatureChoices } : {}),

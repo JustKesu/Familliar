@@ -158,6 +158,8 @@ export interface FeatEntry {
 	category: string
 	prerequisite?: RawFeatPrerequisiteEntry[]
 	ability?: RawFeatAbilityEntry[]
+	/** feats.json's own flag; only 7 feats carry it, always `true`. */
+	repeatable?: boolean
 }
 
 function isRawFeatEntry(value: unknown): value is FeatEntry {

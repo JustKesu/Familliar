@@ -95,21 +95,12 @@ describe('MasteryPicker', () => {
 		expect(greatsword.checked).toBe(false)
 	})
 
-	it('forwards the character’s feat/ASI choices to the weapon loader (Part 3)', async () => {
-		const featAsiChoices = [{ level: 4, kind: 'feat' as const, name: 'Martial Weapon Training', source: 'XPHB' }]
-		render(
-			<MasteryPicker
-				className="Fighter"
-				classSource="XPHB"
-				level={1}
-				value={[]}
-				onChange={() => {}}
-				featAsiChoices={featAsiChoices}
-			/>,
-		)
+	it('forwards the character’s feats to the weapon loader (Part 3)', async () => {
+		const feats = [{ name: 'Martial Weapon Training', source: 'XPHB' }]
+		render(<MasteryPicker className="Fighter" classSource="XPHB" level={1} value={[]} onChange={() => {}} feats={feats} />)
 
 		await screen.findByText('Battleaxe', { exact: false })
-		expect(loadMasteryWeaponsFor).toHaveBeenCalledWith('Fighter', 'XPHB', featAsiChoices)
+		expect(loadMasteryWeaponsFor).toHaveBeenCalledWith('Fighter', 'XPHB', feats)
 	})
 
 	it('search filters the weapon list, but never hides a weapon already picked', async () => {

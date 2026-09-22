@@ -92,22 +92,17 @@ describe('weaponProficiencyGrantsForClass', () => {
 
 describe('weaponProficiencyGrantsForFeats', () => {
 	it('Martial Weapon Training gives a Wizard the Martial category', () => {
-		const grants = weaponProficiencyGrantsForFeats(
-			character([], [{ name: 'Martial Weapon Training', source: 'XPHB' }]).featAsiChoices,
-			FEATS,
-		)
+		const grants = weaponProficiencyGrantsForFeats([{ name: 'Martial Weapon Training', source: 'XPHB' }], FEATS)
 		expect(proficientNames(ALL_WEAPONS, grants)).toEqual(['Shortsword', 'Rapier', 'Greataxe', 'Pistol'])
 	})
 
 	it("Gunner matches items.json's firearm flag, not a category", () => {
-		const grants = weaponProficiencyGrantsForFeats(character([], [{ name: 'Gunner', source: 'TCE' }]).featAsiChoices, FEATS)
+		const grants = weaponProficiencyGrantsForFeats([{ name: 'Gunner', source: 'TCE' }], FEATS)
 		expect(proficientNames(ALL_WEAPONS, grants)).toEqual(['Pistol'])
 	})
 
 	it('Tavern Brawler grants nothing here — improvised weapons are not items', () => {
-		expect(
-			weaponProficiencyGrantsForFeats(character([], [{ name: 'Tavern Brawler', source: 'XPHB' }]).featAsiChoices, FEATS),
-		).toEqual([])
+		expect(weaponProficiencyGrantsForFeats([{ name: 'Tavern Brawler', source: 'XPHB' }], FEATS)).toEqual([])
 	})
 
 	it('a feat with no weaponProficiencies field, and a feat not in the supplied data, both grant nothing', () => {
@@ -115,14 +110,14 @@ describe('weaponProficiencyGrantsForFeats', () => {
 			{ name: 'Alert', source: 'XPHB' },
 			{ name: 'Not A Feat', source: 'XPHB' },
 		]
-		expect(weaponProficiencyGrantsForFeats(character([], feats).featAsiChoices, FEATS)).toEqual([])
+		expect(weaponProficiencyGrantsForFeats(feats, FEATS)).toEqual([])
 	})
 })
 
 describe('weaponProficiencyGrantsFor', () => {
 	it('combines every class the character holds with their feats', () => {
 		const rogueGunner = character([{ className: 'Rogue', classSource: 'XPHB' }], [{ name: 'Gunner', source: 'TCE' }])
-		const grants = weaponProficiencyGrantsFor(rogueGunner, CLASSES, FEATS)
+		const grants = weaponProficiencyGrantsFor(rogueGunner, CLASSES, FEATS, null)
 		expect(proficientNames(ALL_WEAPONS, grants)).toEqual(['Dagger', 'Club', 'Shortsword', 'Rapier', 'Pistol'])
 	})
 
@@ -131,7 +126,7 @@ describe('weaponProficiencyGrantsFor', () => {
 			{ className: 'Rogue', classSource: 'XPHB' },
 			{ className: 'Barbarian', classSource: 'XPHB' },
 		])
-		const grants = weaponProficiencyGrantsFor(rogueBarbarian, CLASSES, FEATS)
+		const grants = weaponProficiencyGrantsFor(rogueBarbarian, CLASSES, FEATS, null)
 		expect(proficientNames(ALL_WEAPONS, grants)).toEqual(['Dagger', 'Club', 'Shortsword', 'Rapier', 'Greataxe', 'Pistol'])
 	})
 })

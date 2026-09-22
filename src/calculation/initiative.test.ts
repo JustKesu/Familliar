@@ -40,6 +40,22 @@ describe('computeInitiative', () => {
 		})
 	})
 
+	it("Alert from the background adds the same note, with nothing stored (D156)", () => {
+		const criminal: Character = {
+			...fighter5,
+			background: { name: 'Criminal', source: 'XPHB', skillProficiencies: ['sleightOfHand', 'stealth'], toolProficiency: "Thieves' Tools" },
+		}
+		const feats = [{ name: 'Alert', source: 'XPHB', grantedByBackgrounds: [{ name: 'Criminal', source: 'XPHB' }] }]
+		expect(computeInitiative(criminal, feats)).toEqual({
+			status: 'known',
+			value: 2,
+			breakdown: [
+				{ source: 'dexterity modifier', amount: 2 },
+				{ source: 'feat (Alert)', amount: 0, note: expect.stringContaining('D55') },
+			],
+		})
+	})
+
 	it('a feat with no listed effect on initiative adds no note', () => {
 		const withActor: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'feat', name: 'Actor', source: 'XPHB' }] }
 		expect(computeInitiative(withActor)).toEqual({

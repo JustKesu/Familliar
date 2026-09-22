@@ -676,8 +676,12 @@ smysl, který appka počítá. Ani jedno tedy nemá kam se promítnout.
 Measured across all 128 feats (the `skillProficiencies`, `toolProficiencies`,
 `languageProficiencies`, `expertise`, `skillToolLanguageProficiencies` fields;
 a stripped-prose scan of the rest found no further feat that asks for such a
-pick in text only). 11 feats carry a player choice, 4 carry only fixed grants
-(Boon of Skill's 18 skills, Chef, Poisoner, Fey Teleportation's Sylvan).
+pick in text only). 13 feats carry one of these fields: 10 carry a player
+choice (Keen Mind, Observant, Squat Nimbleness, Prodigy, Skill Expert,
+Skilled, Crafter, Musician, Artificer Initiate, Boon of Skill), 3 carry only
+fixed grants (Chef, Poisoner, Fey Teleportation's Sylvan). Boon of Skill has
+both — a fixed grant of all 18 skills and an expertise choice. (An earlier
+count of "11 with a choice, 4 fixed-only" counted Boon of Skill twice.)
 
 - `skillProficiencies: [{choose:{from:[...]}}]` — no `count` key, meaning 1
   (Keen Mind, Observant, Squat Nimbleness, Prodigy). Prodigy's `from` lists all
@@ -694,13 +698,32 @@ pick in text only). 11 feats carry a player choice, 4 carry only fixed grants
   `choose` above (an object). Any mix of skills and tools, 3 in total.
 
 Repeatable: only Skilled among these (and it is also an origin feat 3
-backgrounds grant). Of the 26 distinct origin feats backgrounds grant, three
-carry a proficiency choice: Skilled, Crafter, Musician. Every background's
+backgrounds grant). Of the 25 distinct origin feats backgrounds grant, three
+carry a proficiency choice: Skilled, Crafter, Musician. (An earlier count of
+26 took Noble's capitalised "Skilled|xphb" as a second feat.) Every background's
 `feats` is a single fixed `{"name|source": true}`; the only species with a
 `feats` field is Human (XPHB): `[{anyFromCategory:{category:["O"],count:1}}]`,
 a free pick of any Origin feat. No feat carries a `feats` field.
 
 Found in the feat-choice-storage investigation (2026-09-22, script consumed).
+
+### Background origin feats — casing, and which are repeatable
+
+Title-casing a background's lowercase `feats` key does NOT always give the
+feats.json name: the 12 Eberron marks come out "Mark Of Making" where
+feats.json says "Mark of Making" (12 of the 25 distinct origin feats, 13 EFA
+backgrounds). Anything that looks an origin feat up in feats.json must match
+case-insensitively — featInstances.ts's `backgroundOriginFeatLinks` does, and
+carries feats.json's own spelling onward.
+
+`repeatable: true` is on 7 feats (always `true`, never `false`): Ability
+Score Improvement, Elemental Adept, Magic Initiate and its three
+"Magic Initiate; Cleric/Druid/Wizard" entries, Skilled. Of the origin feats,
+the three Magic Initiate variants and Skilled are repeatable. Every variant
+carries the same `additionalSpells` ability choice (int/wis/cha) as base
+Magic Initiate, and no top-level `ability` field.
+
+Found in task A1 (2026-09-22, scripts/investigate-origin-feat-repeatable.js, consumed).
 
 ### Frázové vyhledávání v `entries` musí nejdřív stripnout 5etools markup
 

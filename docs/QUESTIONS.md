@@ -102,11 +102,22 @@ STATUS: nerozhodnuto.
 
 ### Výběr dovednosti u featu se nemá kam uložit
 
-5 featů (Keen Mind, Observant, Prodigy, Squat Nimbleness, Skill
-Expert) nechává hráče vybrat dovednost; wizard umí uložit jen výběr
-vlastnosti. Zatím se hlásí jako "čeká na volbu" (D58). Rozhodnout,
-jestli přidat pole a picker, nebo to nechat.
-STATUS: nerozhodnuto.
+Featy s volbou dovednosti, nástroje, jazyka nebo expertise (DATA.md,
+„Feat proficiency / expertise / language choices"): Keen Mind, Observant,
+Squat Nimbleness, Prodigy, Skill Expert, Skilled, Crafter, Musician,
+Artificer Initiate, Boon of Skill. DATA.md dřív uváděl 11; je jich 10 —
+Boon of Skill byl započtený i mezi featy jen s pevným grantem. Wizard umí
+uložit jen výběr vlastnosti; zatím se hlásí jako "čeká na volbu" (D58).
+Úložiště se staví v taskách A1–A3 (A1: `grantedFeats` a `featInstances`,
+D156; pole pro proficiencies přijde v A2).
+STATUS: rozpracováno, otevřené.
+
+### Human Versatile — volný Origin feat se ve wizardu nevybírá
+
+Human (XPHB) má dostat jeden Origin feat podle vlastní volby. Wizard ho
+nenabízí, takže Human má o feat méně. Tvar dat existuje
+(`grantedFeats`, `origin: 'species'`, D157), picker ne.
+STATUS: odloženo na přestavbu wizardu.
 
 ### Warlock The Genie — deferred
 

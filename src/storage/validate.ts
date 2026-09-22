@@ -7,6 +7,7 @@ import type {
 	CharacterClass,
 	CharacterClassFeatureChoice,
 	CharacterFamiliar,
+	CharacterGrantedFeat,
 	CharacterHitPointLevel,
 	CharacterPlayState,
 	SpentSpellSlots,
@@ -20,7 +21,9 @@ import type {
 	CustomItemDefinition,
 	EquippedSlot,
 	FeatAsiChoice,
+	FeatChoiceDetails,
 	FilterChoiceSpellsChoice,
+	GrantedFeatOrigin,
 	HitPointLevelKind,
 	LanguageGrantSource,
 	LeveledChoice,
@@ -411,17 +414,43 @@ export function describeFeatAsiChoicesError(value: unknown): string | null {
 		} else if (kind === 'feat') {
 			if (!isNonEmptyString(entry['name'])) return `featAsiChoices[${i}].name is missing or not a string`
 			if (!isNonEmptyString(entry['source'])) return `featAsiChoices[${i}].source is missing or not a string`
-			const chosenAbility = entry['chosenAbility']
-			if (chosenAbility !== undefined && !ABILITIES.includes(chosenAbility as (typeof ABILITIES)[number])) {
-				return `featAsiChoices[${i}].chosenAbility must be a valid ability`
-			}
-			const magicInitiateError = describeMagicInitiateError(entry['magicInitiate'])
-			if (magicInitiateError) return `featAsiChoices[${i}].${magicInitiateError}`
-			const filterChoiceSpellsError = describeFilterChoiceSpellsError(entry['filterChoiceSpells'])
-			if (filterChoiceSpellsError) return `featAsiChoices[${i}].${filterChoiceSpellsError}`
+			const detailsError = describeFeatChoiceDetailsError(entry)
+			if (detailsError) return `featAsiChoices[${i}].${detailsError}`
 		} else {
 			return `featAsiChoices[${i}].kind must be "asi" or "feat"`
 		}
+	}
+	return null
+}
+
+/** The FeatChoiceDetails fields, shared by a featAsiChoices feat entry and a grantedFeats entry. */
+function describeFeatChoiceDetailsError(entry: Record<string, unknown>): string | null {
+	const chosenAbility = entry['chosenAbility']
+	if (chosenAbility !== undefined && !ABILITIES.includes(chosenAbility as (typeof ABILITIES)[number])) {
+		return `chosenAbility must be a valid ability`
+	}
+	const magicInitiateError = describeMagicInitiateError(entry['magicInitiate'])
+	if (magicInitiateError) return magicInitiateError
+	return describeFilterChoiceSpellsError(entry['filterChoiceSpells'])
+}
+
+const GRANTED_FEAT_ORIGINS: readonly GrantedFeatOrigin[] = ['background', 'species']
+
+/** Validates an optional `grantedFeats` field. Returns null if the field is absent (it's optional). */
+export function describeGrantedFeatsError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `grantedFeats must be an array`
+	const seenOrigins = new Set<unknown>()
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `grantedFeats[${i}] is not an object`
+		if (!GRANTED_FEAT_ORIGINS.includes(entry['origin'] as GrantedFeatOrigin)) return `grantedFeats[${i}].origin must be "background" or "species"`
+		if (seenOrigins.has(entry['origin'])) return `grantedFeats[${i}].origin "${String(entry['origin'])}" appears more than once`
+		seenOrigins.add(entry['origin'])
+		if (!isNonEmptyString(entry['name'])) return `grantedFeats[${i}].name is missing or not a string`
+		if (!isNonEmptyString(entry['source'])) return `grantedFeats[${i}].source is missing or not a string`
+		const detailsError = describeFeatChoiceDetailsError(entry)
+		if (detailsError) return `grantedFeats[${i}].${detailsError}`
 	}
 	return null
 }
@@ -994,17 +1023,35 @@ function toCharacterFeatAsiChoices(value: unknown[]): FeatAsiChoice[] {
 		if (record['kind'] === 'asi') {
 			return { level, kind: 'asi', increases: toAbilityIncreaseMap(record['increases'] as Record<string, unknown>) }
 		}
-		const chosenAbility = record['chosenAbility']
-		const magicInitiate = record['magicInitiate']
-		const filterChoiceSpells = record['filterChoiceSpells']
 		return {
 			level,
 			kind: 'feat',
 			name: record['name'] as string,
 			source: record['source'] as string,
-			...(typeof chosenAbility === 'string' ? { chosenAbility: chosenAbility as Ability } : {}),
-			...(isRecord(magicInitiate) ? { magicInitiate: toMagicInitiateChoice(magicInitiate) } : {}),
-			...(isRecord(filterChoiceSpells) ? { filterChoiceSpells: toFilterChoiceSpellsChoice(filterChoiceSpells) } : {}),
+			...toFeatChoiceDetails(record),
+		}
+	})
+}
+
+function toFeatChoiceDetails(record: Record<string, unknown>): FeatChoiceDetails {
+	const chosenAbility = record['chosenAbility']
+	const magicInitiate = record['magicInitiate']
+	const filterChoiceSpells = record['filterChoiceSpells']
+	return {
+		...(typeof chosenAbility === 'string' ? { chosenAbility: chosenAbility as Ability } : {}),
+		...(isRecord(magicInitiate) ? { magicInitiate: toMagicInitiateChoice(magicInitiate) } : {}),
+		...(isRecord(filterChoiceSpells) ? { filterChoiceSpells: toFilterChoiceSpellsChoice(filterChoiceSpells) } : {}),
+	}
+}
+
+function toCharacterGrantedFeats(value: unknown[]): CharacterGrantedFeat[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return {
+			origin: record['origin'] as GrantedFeatOrigin,
+			name: record['name'] as string,
+			source: record['source'] as string,
+			...toFeatChoiceDetails(record),
 		}
 	})
 }
@@ -1044,6 +1091,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (optionalFeatureChoicesError) return `[${index}].${optionalFeatureChoicesError}`
 	const featAsiChoicesError = describeFeatAsiChoicesError(value['featAsiChoices'])
 	if (featAsiChoicesError) return `[${index}].${featAsiChoicesError}`
+	const grantedFeatsError = describeGrantedFeatsError(value['grantedFeats'])
+	if (grantedFeatsError) return `[${index}].${grantedFeatsError}`
 	const spellChoicesError = describeSpellChoicesError(value['spellChoices'])
 	if (spellChoicesError) return `[${index}].${spellChoicesError}`
 	const subclassSpellChoicesError = describeSubclassSpellChoicesError(value['subclassSpellChoices'])
@@ -1099,6 +1148,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const fightingStyle = value['fightingStyle']
 	const optionalFeatureChoices = value['optionalFeatureChoices']
 	const featAsiChoices = value['featAsiChoices']
+	const grantedFeats = value['grantedFeats']
 	const spellChoices = value['spellChoices']
 	const subclassSpellChoices = value['subclassSpellChoices']
 	const classFeatureChoices = value['classFeatureChoices']
@@ -1133,6 +1183,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 			? { optionalFeatureChoices: toCharacterOptionalFeatureChoices(optionalFeatureChoices) }
 			: {}),
 		...(Array.isArray(featAsiChoices) ? { featAsiChoices: toCharacterFeatAsiChoices(featAsiChoices) } : {}),
+		...(Array.isArray(grantedFeats) && grantedFeats.length > 0 ? { grantedFeats: toCharacterGrantedFeats(grantedFeats) } : {}),
 		...(Array.isArray(spellChoices) ? { spellChoices: toCharacterSpellChoices(spellChoices) } : {}),
 		...(Array.isArray(subclassSpellChoices) ? { subclassSpellChoices: toCharacterSubclassSpellChoices(subclassSpellChoices) } : {}),
 		...(Array.isArray(classFeatureChoices) ? { classFeatureChoices: toCharacterClassFeatureChoices(classFeatureChoices) } : {}),

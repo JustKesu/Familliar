@@ -353,6 +353,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 41 }),
 	},
+	{
+		from: 41,
+		to: 42,
+		/*
+		 * 42 adds Character.grantedFeats (D156). Purely additive: the background's
+		 * origin feat is derived, not stored, so an older save starts applying it
+		 * with nothing written — the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 42 }),
+	},
 ]
 
 /**

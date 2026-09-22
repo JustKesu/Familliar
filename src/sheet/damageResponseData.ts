@@ -27,6 +27,7 @@ import { isAttuned } from '../calculation/attunement'
 import type { DamageResponseGrant } from '../calculation/damageResponses'
 import { featureDamageResponsesAmong } from '../damageResponses/featureDamageResponses'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { featInstances, loadBackgroundOriginFeat, type FeatRef } from '../featAsi/featInstances'
 import { buildInventoryResolver, isConsumable, type ItemRef } from '../inventory/inventoryData'
 import { magicItemLabel } from '../calculation/magicBonus'
 import type { Character, CharacterInventoryItem } from '../storage/character'
@@ -157,9 +158,9 @@ export function buildSpeciesGrants(character: Character, parsedSpecies: unknown)
 	return grantsFromEntry(entry, character.species.name)
 }
 
-/** The chosen feats' grants. Only Boon of Energy Resistance carries the field, and it carries the choice shape. */
-export function buildFeatGrants(character: Character, parsedFeats: unknown): DamageResponseGrant[] {
-	const chosen = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
+/** The grants of the character's feats (featInstances, D156). Only Boon of Energy Resistance carries the field, and it carries the choice shape. */
+export function buildFeatGrants(character: Character, parsedFeats: unknown, backgroundOriginFeat: FeatRef | null): DamageResponseGrant[] {
+	const chosen = featInstances(character, backgroundOriginFeat)
 	if (chosen.length === 0) return []
 	if (!Array.isArray(parsedFeats)) throw new Error('feats.json: expected a top-level array.')
 
@@ -193,16 +194,17 @@ export interface DamageResponseData {
 }
 
 export async function loadDamageResponseData(character: Character): Promise<DamageResponseData> {
-	const [species, feats, classFeatures, subclassFeatures, classes] = await Promise.all([
+	const [species, feats, classFeatures, subclassFeatures, classes, backgroundOriginFeat] = await Promise.all([
 		loadDataFile('data/species.json'),
 		loadDataFile('data/feats.json'),
 		loadDataFile('data/class-features.json'),
 		loadDataFile('data/subclass-features.json'),
 		loadDataFile('data/classes.json'),
+		loadBackgroundOriginFeat(character.background),
 	])
 	return {
 		speciesGrants: buildSpeciesGrants(character, species),
-		featGrants: buildFeatGrants(character, feats),
+		featGrants: buildFeatGrants(character, feats, backgroundOriginFeat),
 		featureGrants: buildFeatureGrants(featureNamesFor(character, classFeatures, subclassFeatures, classes)),
 	}
 }

@@ -27,6 +27,7 @@
 
 import { isActionTableFeature } from '../actions/actionTableFeatureData'
 import { resolveResourceName } from '../calculation/resources'
+import { featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import type { GrantedFeature } from './grantedClassFeatures'
 import type { FeatTextEntry } from './sheetData'
@@ -78,12 +79,6 @@ function resourceCandidateName(feature: { name: string; consumes?: unknown }): s
 	return consumedResourceName(feature) ?? resolveResourceName(feature.name)
 }
 
-/** A feat the character took, as `character.featAsiChoices` records it. */
-export interface ChosenFeatRef {
-	name: string
-	source: string
-	level: number
-}
 
 /**
  * Every usable feature as an actions-table entry: granted class and subclass
@@ -101,7 +96,7 @@ export interface ChosenFeatRef {
  */
 export function featureActionRows(
 	granted: GrantedFeature[],
-	chosenFeats: ChosenFeatRef[],
+	chosenFeats: readonly FeatInstance[],
 	featTexts: FeatTextEntry[],
 	chosenOptions: OptionalFeatureOption[],
 	optionOrigin: (option: OptionalFeatureOption) => string | null = () => null,
@@ -124,7 +119,7 @@ export function featureActionRows(
 		// D43: a feat whose text is missing cannot be tested, so it gets no row —
 		// the Feats list already says the text was not found.
 		const text = featTexts.find((entry) => entry.name === choice.name && entry.source === choice.source)
-		if (text && isActionTableFeature(text)) add('feat', choice.name, resourceCandidateName(text), `Feat, level ${choice.level}`)
+		if (text && isActionTableFeature(text)) add('feat', choice.name, resourceCandidateName(text), `Feat, ${featOriginLabel(choice)}`)
 	}
 
 	// Already resolved to the full option record by the caller, so — unlike a feat —

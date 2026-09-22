@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
 import {
+	backgroundOriginFeatAmong,
+	characterFeats,
 	featAbilityScoreContributions,
 	featFixedSkillProficiencyNames,
 	featSavingThrowProficiencyNames,
@@ -124,13 +126,47 @@ describe('featSkillChoiceAwaitingNotes', () => {
 describe('proseFeatEffectNotes', () => {
 	it('flags Alert on initiative', () => {
 		const character = withChoices(base, [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }])
-		const notes = proseFeatEffectNotes('initiative', character)
+		const notes = proseFeatEffectNotes('initiative', character, [])
 		expect(notes).toHaveLength(1)
 		expect(notes[0]).toEqual({ source: 'feat (Alert)', amount: 0, note: expect.stringContaining('D55') })
 	})
 
 	it('is empty for a character without Alert', () => {
 		const character = withChoices(base, [{ level: 4, kind: 'feat', name: 'Actor', source: 'XPHB' }])
-		expect(proseFeatEffectNotes('initiative', character)).toEqual([])
+		expect(proseFeatEffectNotes('initiative', character, [])).toEqual([])
+	})
+})
+
+describe('the background origin feat (D156)', () => {
+	const criminal = { name: 'Criminal', source: 'XPHB' }
+	const alert: FeatEffectEntry = { name: 'Alert', source: 'XPHB', grantedByBackgrounds: [criminal] }
+	const withBackground: Character = {
+		...base,
+		background: { name: 'Criminal', source: 'XPHB', skillProficiencies: ['sleightOfHand', 'stealth'], toolProficiency: "Thieves' Tools" },
+	}
+
+	it('is derived from the background alone, with nothing stored', () => {
+		expect(backgroundOriginFeatAmong([alert], withBackground)).toEqual({ name: 'Alert', source: 'XPHB' })
+		expect(characterFeats(withBackground, [alert])).toEqual([{ key: 'background', origin: 'background', name: 'Alert', source: 'XPHB' }])
+		expect(proseFeatEffectNotes('initiative', withBackground, [alert])).toEqual([{ source: 'feat (Alert)', amount: 0, note: expect.stringContaining('D55') }])
+	})
+
+	it("applies the stored entry's sub-choices when it names the background's feat", () => {
+		const athleteBackground: FeatEffectEntry = { ...athlete, grantedByBackgrounds: [criminal] }
+		const character: Character = { ...withBackground, grantedFeats: [{ origin: 'background', name: 'Athlete', source: 'XPHB', chosenAbility: 'dexterity' }] }
+		expect(featAbilityScoreContributions('dexterity', character, [athleteBackground])).toEqual([{ source: 'feat (Athlete)', amount: 1 }])
+	})
+
+	it('ignores a stored background entry naming a different feat', () => {
+		const athleteBackground: FeatEffectEntry = { ...athlete, grantedByBackgrounds: [criminal] }
+		const character: Character = { ...withBackground, grantedFeats: [{ origin: 'background', name: 'Resilient', source: 'XPHB', chosenAbility: 'dexterity' }] }
+		expect(characterFeats(character, [athleteBackground, resilient])).toEqual([{ key: 'background', origin: 'background', name: 'Athlete', source: 'XPHB' }])
+		expect(featAbilityScoreContributions('dexterity', character, [athleteBackground, resilient])).toEqual([])
+		expect(featSavingThrowProficiencyNames('dexterity', character, [athleteBackground, resilient])).toEqual([])
+	})
+
+	it('puts the background feat before the ASI levels', () => {
+		const character = withChoices(withBackground, [{ level: 4, kind: 'feat', name: 'Actor', source: 'XPHB' }])
+		expect(characterFeats(character, [alert, actor]).map((instance) => instance.key)).toEqual(['background', 'asi:4'])
 	})
 })

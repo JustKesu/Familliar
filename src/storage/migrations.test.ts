@@ -457,6 +457,22 @@ describe('the migration chain (D69)', () => {
 		for (const field of ['appearance', 'backstory', 'notes']) expect(field in migrated).toBe(false)
 	})
 
+	/* D156: the background's origin feat is derived, so the step only tags — the feat starts applying with nothing written. */
+	it('tags a version-41 character without inventing granted feats', () => {
+		const before = {
+			schemaVersion: 41,
+			id: '1',
+			name: 'Aria',
+			classes: [],
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'dexterity' }],
+			notes: 'x',
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('grantedFeats' in migrated).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

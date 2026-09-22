@@ -24,6 +24,7 @@ import { isAttuned } from '../calculation/attunement'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import type { HeldWeapon, ResolvedWeapon } from '../calculation/weaponAttacks'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { loadBackgroundOriginFeat } from '../featAsi/featInstances'
 import { buildInventoryResolver, inventoryRowKey, isWeapon, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 import {
@@ -183,14 +184,15 @@ export interface WeaponAttackData {
 
 /** One fetch of each file the attacks section needs; the loader caches per path (D39), so classes.json is shared with the rest of the sheet. */
 export async function loadWeaponAttackData(character: Character): Promise<WeaponAttackData> {
-	const [classes, feats, classFeatures, subclassFeatures] = await Promise.all([
+	const [classes, feats, classFeatures, subclassFeatures, backgroundOriginFeat] = await Promise.all([
 		loadDataFile('data/classes.json'),
 		loadDataFile('data/feats.json'),
 		loadDataFile('data/class-features.json'),
 		loadDataFile('data/subclass-features.json'),
+		loadBackgroundOriginFeat(character.background),
 	])
 	return {
-		grants: weaponProficiencyGrantsFor(character, classes, extractFeatWeaponProficiencyEntries(feats)),
+		grants: weaponProficiencyGrantsFor(character, classes, extractFeatWeaponProficiencyEntries(feats), backgroundOriginFeat),
 		martialArtsDie: martialArtsDieFrom(character, classes),
 		featureNames: featureNamesFor(character, classFeatures, subclassFeatures, classes),
 	}

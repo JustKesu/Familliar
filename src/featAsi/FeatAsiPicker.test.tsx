@@ -30,6 +30,7 @@ vi.mock('./featAsiData', async () => {
 			{ name: 'Blessed Warrior', source: 'XPHB', category: 'G' },
 			{ name: 'Fey-Touched', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['int', 'wis', 'cha'] } }] },
 			{ name: 'Ritual Caster', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['int', 'wis', 'cha'] } }] },
+			{ name: 'Skilled', source: 'XPHB', category: 'O', repeatable: true },
 		]),
 		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
 		loadHasFightingStyleFeature: vi.fn(async () => false),
@@ -192,6 +193,41 @@ describe('FeatAsiPicker', () => {
 
 		const toughRadio = (await screen.findByLabelText('Tough')) as HTMLInputElement
 		expect(toughRadio.disabled).toBe(false)
+	})
+
+	it("does not offer the background's non-repeatable origin feat again, but keeps a repeatable one (D156)", async () => {
+		const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: '', source: '' }]
+		const { rerender } = render(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={value}
+				onChange={() => {}}
+				backgroundOriginFeat={{ name: 'Tough', source: 'XPHB' }}
+			/>,
+		)
+		expect(((await screen.findByLabelText('Tough')) as HTMLInputElement).disabled).toBe(true)
+		expect(screen.getByText('Already granted by your background.')).toBeTruthy()
+
+		rerender(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={value}
+				onChange={() => {}}
+				backgroundOriginFeat={{ name: 'Skilled', source: 'XPHB' }}
+			/>,
+		)
+		expect(((await screen.findByLabelText('Skilled')) as HTMLInputElement).disabled).toBe(false)
+		expect(((screen.getByLabelText('Tough')) as HTMLInputElement).disabled).toBe(false)
 	})
 
 	it('choosing an eligible feat reports it upward', async () => {

@@ -70,26 +70,32 @@ function characterWithFeats(featChoices: { name: string; source: string }[]): Ch
 
 describe('extractFeatGrantedSenses', () => {
 	it('resolves a taken feat’s granted sense, carrying the feat name as provenance', () => {
-		const result = extractFeatGrantedSenses(feats, characterWithFeats([{ name: 'Boon of Truesight', source: 'XPHB' }]))
+		const result = extractFeatGrantedSenses(feats, characterWithFeats([{ name: 'Boon of Truesight', source: 'XPHB' }]), null)
 		expect(result).toEqual([{ senseType: 'truesight', range: 60, origin: 'feat', name: 'Boon of Truesight' }])
 	})
 
 	it('the SAME feat name matches its own feats.json entry, distinct from the (unreachable) optional-features.json entry of the same name', () => {
-		const result = extractFeatGrantedSenses(feats, characterWithFeats([{ name: 'Blind Fighting', source: 'XPHB' }]))
+		const result = extractFeatGrantedSenses(feats, characterWithFeats([{ name: 'Blind Fighting', source: 'XPHB' }]), null)
 		expect(result).toEqual([{ senseType: 'blindsight', range: 10, origin: 'feat', name: 'Blind Fighting' }])
 	})
 
 	it('a feat with no `senses` field and no feats taken both yield nothing', () => {
-		expect(extractFeatGrantedSenses(feats, characterWithFeats([{ name: 'Alert', source: 'XPHB' }]))).toEqual([])
-		expect(extractFeatGrantedSenses(feats, characterWithFeats([]))).toEqual([])
+		expect(extractFeatGrantedSenses(feats, characterWithFeats([{ name: 'Alert', source: 'XPHB' }]), null)).toEqual([])
+		expect(extractFeatGrantedSenses(feats, characterWithFeats([]), null)).toEqual([])
 	})
 
 	it('more than one taken feat with a granted sense returns both', () => {
-		const result = extractFeatGrantedSenses(feats, characterWithFeats([{ name: 'Boon of Truesight', source: 'XPHB' }, { name: 'Skulker', source: 'XPHB' }]))
+		const result = extractFeatGrantedSenses(feats, characterWithFeats([{ name: 'Boon of Truesight', source: 'XPHB' }, { name: 'Skulker', source: 'XPHB' }]), null)
 		expect(result.map((s) => s.name).sort()).toEqual(['Boon of Truesight', 'Skulker'])
 	})
 
+	it("includes the background's origin feat (D156)", () => {
+		expect(extractFeatGrantedSenses(feats, characterWithFeats([]), { name: 'Skulker', source: 'XPHB' })).toEqual([
+			expect.objectContaining({ origin: 'feat', name: 'Skulker' }),
+		])
+	})
+
 	it('throws a named error when feats.json is not the array it must be', () => {
-		expect(() => extractFeatGrantedSenses({}, characterWithFeats([]))).toThrow(/feats\.json/)
+		expect(() => extractFeatGrantedSenses({}, characterWithFeats([]), null)).toThrow(/feats\.json/)
 	})
 })

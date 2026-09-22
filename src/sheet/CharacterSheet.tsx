@@ -23,7 +23,9 @@ import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadB
 import { computeAbilityScores } from '../calculation/abilityScores'
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
 import { BASE_ATTUNEMENT_LIMIT, computeAttunementLimit, countAttuned, describeAttunementRefusal } from '../calculation/attunement'
-import type { FeatEffectEntry } from '../calculation/featEffects'
+import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
+import { featOriginLabel } from '../featAsi/featInstances'
+import { missingFeatSubChoices } from './featSubChoices'
 import { makeRoomForHands, type HeldThing } from '../calculation/hands'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import { computeHitDicePool, hitDiceKey, type ClassHitDie, type HitDiceEntry } from '../calculation/hitDice'
@@ -1931,7 +1933,7 @@ export function CharacterSheet({
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
-	/** Fixed feat-granted spells (d5a) — depends on `character.featAsiChoices`, fetched separately from the main load same as subclassSpellInfo. */
+	/** Fixed feat-granted spells (d5a) — depends on the character's feats (featInstances, D156), fetched separately from the main load same as subclassSpellInfo. */
 	const [featSpells, setFeatSpells] = useState<FeatGrantedSpell[]>([])
 	/** The CLASS's own optionalfeatureProgression picks (step 6a slice 2) — Metamagic, Eldritch Invocations. Depends on `character`, fetched separately same as featSpells. */
 	const [classOptionalFeatures, setClassOptionalFeatures] = useState<ChosenClassOptionalFeatureGroup[]>([])
@@ -2454,7 +2456,7 @@ export function CharacterSheet({
 	]
 	const darkvision = computeDarkvision(character, speciesTraitsData, darkvisionGrants)
 	const hitDice = computeHitDicePool(character.classes, hitDiceClassData)
-	const chosenFeats = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
+	const chosenFeats = characterFeats(character, feats)
 	/* Slice 8a: every feature name the character has, from the three sources that can carry a max-HP bonus. computeMaxHitPoints reads only the three names its table knows, so no filtering is needed here. */
 	const maxHitPoints = computeMaxHitPoints(
 		character,
@@ -3105,14 +3107,16 @@ export function CharacterSheet({
 					<p>No feats chosen yet.</p>
 				) : (
 					<ul>
-						{chosenFeats.map((choice, index) => {
+						{chosenFeats.map((choice) => {
 							const featText = featTextEntries.find((f) => f.name === choice.name && f.source === choice.source)
+							const missing = missingFeatSubChoices(choice, feats)
 							return (
-								<li key={index}>
+								<li key={choice.key}>
 									<details>
 										<summary>
-											{choice.name} (level {choice.level})
+											{choice.name} ({featOriginLabel(choice)})
 										</summary>
+										{missing.length > 0 && <p className="sheet__feat-pending">Choices not made yet: {missing.join(', ')}.</p>}
 										{featText ? (
 											<ResolvedEntries entries={featText.entries} data={resolverData} />
 										) : (

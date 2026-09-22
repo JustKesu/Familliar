@@ -3,6 +3,7 @@ import { computeCharacterResources, resourceUsesWithinMaxima, type ResourceFeatu
 import { computeSpellSlots, spellSlotMaxima, spentSpellSlotsWithinMaxima } from '../calculation/spellSlots'
 import { extractSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { featInstances, loadBackgroundOriginFeat, type FeatRef } from '../featAsi/featInstances'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { chosenOptionalFeatureOptions } from '../optionalFeatures/optionalFeatureData'
@@ -40,11 +41,9 @@ export function levelRemovalTarget(character: Character): { level: number } | { 
  * module already holds. A Battle Master's Superiority Die is named only by the
  * maneuvers they chose, so the optional-feature picks are not optional here.
  */
-function resourceFeaturesFor(character: Character, parsedClasses: unknown, resolverData: ResolverData): ResourceFeature[] {
+function resourceFeaturesFor(character: Character, parsedClasses: unknown, resolverData: ResolverData, backgroundOriginFeat: FeatRef | null): ResourceFeature[] {
 	const featTexts = extractFeatTextEntries(resolverData.feats)
-	const feats = (character.featAsiChoices ?? [])
-		.filter((choice) => choice.kind === 'feat')
-		.flatMap((choice) => featTexts.filter((text) => text.name === choice.name && text.source === choice.source))
+	const feats = featInstances(character, backgroundOriginFeat).flatMap((choice) => featTexts.filter((text) => text.name === choice.name && text.source === choice.source))
 	return [
 		...grantedClassFeaturesFrom(character, parsedClasses, resolverData),
 		...feats,
@@ -70,8 +69,14 @@ function withoutLevel<T extends LeveledChoice>(choices: readonly T[] | undefined
  * touched. Known and prepared spells stay: they carry no level by design.
  *
  * `parsedClasses` is classes.json; `resolverData` supplies class-features.json.
+ * The background's origin feat is never removed, but its resources still count (D156).
  */
-export function levelRemovalPlan(character: Character, parsedClasses: unknown, resolverData: ResolverData): LevelRemovalPlan | { reason: string } {
+export function levelRemovalPlan(
+	character: Character,
+	parsedClasses: unknown,
+	resolverData: ResolverData,
+	backgroundOriginFeat: FeatRef | null,
+): LevelRemovalPlan | { reason: string } {
 	const target = levelRemovalTarget(character)
 	if ('reason' in target) return target
 	const { level } = target
@@ -161,7 +166,7 @@ export function levelRemovalPlan(character: Character, parsedClasses: unknown, r
 	 */
 	const storedUses = character.play?.resourceUses
 	if (storedUses !== undefined) {
-		const resources = computeCharacterResources(result, parsedClasses, resourceFeaturesFor(result, parsedClasses, resolverData))
+		const resources = computeCharacterResources(result, parsedClasses, resourceFeaturesFor(result, parsedClasses, resolverData, backgroundOriginFeat))
 		const clamped = resourceUsesWithinMaxima(storedUses, resources)
 		for (const [name, spent] of Object.entries(storedUses)) {
 			const now = clamped?.[name] ?? 0
@@ -229,6 +234,10 @@ export function characterUpdateInput({ id: _id, ...input }: Character): Characte
 
 /** Fetches classes.json and the resolver files and returns levelRemovalPlan's result. */
 export async function loadLevelRemovalPlan(character: Character): Promise<LevelRemovalPlan | { reason: string }> {
-	const [classes, resolverData] = await Promise.all([loadDataFile('data/classes.json'), loadResolverData()])
-	return levelRemovalPlan(character, classes, resolverData)
+	const [classes, resolverData, backgroundOriginFeat] = await Promise.all([
+		loadDataFile('data/classes.json'),
+		loadResolverData(),
+		loadBackgroundOriginFeat(character.background),
+	])
+	return levelRemovalPlan(character, classes, resolverData, backgroundOriginFeat)
 }

@@ -47,7 +47,8 @@
  *   with the already-built spell-grant path.
  */
 
-import { choiceNames, type Character, type CharacterOptionalFeatureChoice, type FeatAsiChoice } from '../storage/character'
+import { featInstances, loadBackgroundOriginFeat, type FeatRef } from '../featAsi/featInstances'
+import { choiceNames, type Character, type CharacterOptionalFeatureChoice } from '../storage/character'
 import { isRecord } from '../spells/subclassPreparedSpells'
 import { loadDataFile } from '../dataLoader/dataLoader'
 
@@ -129,19 +130,15 @@ export function extractOptionalFeatureGrantedSenses(parsedOptionalFeatures: unkn
 	return result
 }
 
-function chosenFeats(character: Character): Extract<FeatAsiChoice, { kind: 'feat' }>[] {
-	return (character.featAsiChoices ?? []).filter((choice): choice is Extract<FeatAsiChoice, { kind: 'feat' }> => choice.kind === 'feat')
-}
-
-/** Pure filter (D38). The senses a character's chosen feats grant — Blind Fighting, Boon of Truesight, Skulker, matched by (name, source) the same way featSpells.ts's extractFixedFeatSpells matches a feat entry. */
-export function extractFeatGrantedSenses(parsedFeats: unknown, character: Character): GrantedSense[] {
+/** Pure filter (D38). The senses a character's feats (featInstances, D156) grant — Blind Fighting, Boon of Truesight, Skulker, matched by (name, source) the same way featSpells.ts's extractFixedFeatSpells matches a feat entry. */
+export function extractFeatGrantedSenses(parsedFeats: unknown, character: Character, backgroundOriginFeat: FeatRef | null): GrantedSense[] {
 	if (!Array.isArray(parsedFeats)) {
 		throw new Error('feats.json: expected a top-level array.')
 	}
 	const entries = parsedFeats.filter(isRawFeatSenseEntry)
 	const result: GrantedSense[] = []
 
-	for (const choice of chosenFeats(character)) {
+	for (const choice of featInstances(character, backgroundOriginFeat)) {
 		const feat = entries.find((candidate) => candidate.name === choice.name && candidate.source === choice.source)
 		if (!feat) continue
 		for (const { senseType, range } of parseSenses(feat.senses)) {
@@ -155,6 +152,10 @@ export function extractFeatGrantedSenses(parsedFeats: unknown, character: Charac
 /** Fetches optional-features.json and feats.json through the shared cache (D39) and returns both sources' granted senses, unmerged — merging same-type grants into one row is SensesList.tsx's job, the same split combineSpellEntries/SpellList.tsx already has. */
 export async function loadGrantedSenses(character: Character): Promise<GrantedSense[]> {
 	const selection = character.optionalFeatureChoices ?? []
-	const [optionalFeatures, feats] = await Promise.all([loadDataFile('data/optional-features.json'), loadDataFile('data/feats.json')])
-	return [...extractOptionalFeatureGrantedSenses(optionalFeatures, selection), ...extractFeatGrantedSenses(feats, character)]
+	const [optionalFeatures, feats, backgroundOriginFeat] = await Promise.all([
+		loadDataFile('data/optional-features.json'),
+		loadDataFile('data/feats.json'),
+		loadBackgroundOriginFeat(character.background),
+	])
+	return [...extractOptionalFeatureGrantedSenses(optionalFeatures, selection), ...extractFeatGrantedSenses(feats, character, backgroundOriginFeat)]
 }

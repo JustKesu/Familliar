@@ -101,7 +101,7 @@ function characterWithFeats(featChoices: { name: string; source: string; chosenA
 describe('extractFeatGrantedSpells', () => {
 	it('returns Drow High Magic\'s fixed spells, marked from-feat with the feat name, CHA carried as the ability', () => {
 		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name).sort()).toEqual(['Detect Magic', 'Dispel Magic', 'Levitate'])
 		expect(result.every((s) => s.origin === 'feat')).toBe(true)
@@ -111,7 +111,7 @@ describe('extractFeatGrantedSpells', () => {
 
 	it("Drow High Magic's `will` wrapper is labeled `atWill`, and its `daily` \"1e\" wrapper reads as its own text does — a free cast back on a Long Rest", () => {
 		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.find((s) => s.name === 'Detect Magic')?.usage).toEqual({ kind: 'atWill' })
 		expect(result.find((s) => s.name === 'Levitate')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
@@ -120,7 +120,7 @@ describe('extractFeatGrantedSpells', () => {
 
 	it('returns Fey Teleportation\'s fixed spell, INT carried as the ability', () => {
 		const character = characterWithFeats([{ name: 'Fey Teleportation', source: 'XGE' }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name)).toEqual(['Misty Step'])
 		expect(result[0].featName).toBe('Fey Teleportation')
@@ -129,26 +129,26 @@ describe('extractFeatGrantedSpells', () => {
 
 	it("Fey Teleportation's daily wrapper is identical to every other one, but its own text says a SHORT rest restores the cast too", () => {
 		const character = characterWithFeats([{ name: 'Fey Teleportation', source: 'XGE' }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result[0].usage).toEqual({ kind: 'onceFreePerShortOrLongRest' })
 	})
 
 	it('a spell listed under two grant keys of the same feat (this task, same class of bug as College of Glamour) is returned once, not twice', () => {
 		const character = characterWithFeats([{ name: 'Test Duplicate Grant', source: 'XGE' }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name)).toEqual(['Thunderclap'])
 	})
 
 	it('a character with neither feat returns nothing, cleanly', () => {
 		const character = characterWithFeats([])
-		expect(extractFeatGrantedSpells(feats, spells, character)).toEqual([])
+		expect(extractFeatGrantedSpells(feats, spells, character, null)).toEqual([])
 	})
 
 	it('a NON-caster (Fighter) with Fey Teleportation still gets the spell, with INT carried — the fixed ability needs no class caster', () => {
 		const character = characterWithFeats([{ name: 'Fey Teleportation', source: 'XGE' }], [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name)).toEqual(['Misty Step'])
 		expect(result[0].ability).toBe('int')
@@ -156,7 +156,7 @@ describe('extractFeatGrantedSpells', () => {
 
 	it('carries concentration flags through and does not affect the class picker (these are additional, not stored in spellChoices)', () => {
 		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.find((s) => s.name === 'Detect Magic')?.concentration).toBe(true)
 		expect(result.find((s) => s.name === 'Dispel Magic')?.concentration).toBe(false)
@@ -168,7 +168,7 @@ describe('extractFeatGrantedSpells', () => {
 			[{ name: 'Mark of Storm', source: 'EFA', chosenAbility: 'wisdom' }],
 			[{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 3 }],
 		)
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name).sort()).toEqual(['Gust of Wind', 'Thunderclap'])
 		expect(result.every((s) => s.featName === 'Mark of Storm')).toBe(true)
@@ -184,7 +184,7 @@ describe('extractFeatGrantedSpells', () => {
 			[{ name: 'Mark of Detection', source: 'EFA', chosenAbility: 'intelligence' }],
 			[{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 1 }],
 		)
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name)).toEqual(['Detect Magic'])
 		expect(result[0].ability).toBe('int')
@@ -192,7 +192,7 @@ describe('extractFeatGrantedSpells', () => {
 
 	it("a mark's fixed spell(s) are still granted even if the character hasn't recorded a chosenAbility yet — ability comes back undefined, not invented", () => {
 		const character = characterWithFeats([{ name: 'Mark of Detection', source: 'EFA' }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name)).toEqual(['Detect Magic'])
 		expect(result[0].ability).toBeUndefined()
@@ -203,7 +203,7 @@ describe('extractFeatGrantedSpells', () => {
 			[{ name: 'Mark of Storm', source: 'EFA', chosenAbility: 'charisma' }],
 			[{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 5 }],
 		)
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name)).not.toContain('Feather Fall')
 		expect(result.map((s) => s.name)).not.toContain('Fog Cloud')
@@ -211,7 +211,7 @@ describe('extractFeatGrantedSpells', () => {
 
 	it('a character with no mark returns nothing extra from that mark', () => {
 		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
-		const result = extractFeatGrantedSpells(feats, spells, character)
+		const result = extractFeatGrantedSpells(feats, spells, character, null)
 
 		expect(result.map((s) => s.name)).not.toContain('Gust of Wind')
 		expect(result.map((s) => s.name)).not.toContain('See Invisibility')
@@ -244,7 +244,7 @@ describe('extractFeatGrantedSpells — base Magic Initiate (slice d5b-2)', () =>
 			],
 			spell: { name: 'Ray of Sickness', source: 'XPHB' },
 		})
-		const result = extractFeatGrantedSpells(feats, magicInitiateSpells, character)
+		const result = extractFeatGrantedSpells(feats, magicInitiateSpells, character, null)
 
 		expect(result.map((s) => s.name).sort()).toEqual(['Fire Bolt', 'Mage Hand', 'Ray of Sickness'])
 		expect(result.every((s) => s.origin === 'feat')).toBe(true)
@@ -256,7 +256,33 @@ describe('extractFeatGrantedSpells — base Magic Initiate (slice d5b-2)', () =>
 
 	it('no pick recorded yet (feat just taken) returns nothing, cleanly', () => {
 		const character = characterWithMagicInitiate(undefined, undefined)
-		expect(extractFeatGrantedSpells(feats, magicInitiateSpells, character)).toEqual([])
+		expect(extractFeatGrantedSpells(feats, magicInitiateSpells, character, null)).toEqual([])
+	})
+
+	describe('granted by the background (D156)', () => {
+		const acolyteFeat = { name: 'Magic Initiate; Cleric', source: 'XPHB' }
+		const acolyte: Character = { id: 'a', name: 'Acolyte', classes: [] }
+
+		it('grants nothing while its picks are not stored — never a guess (D57)', () => {
+			expect(extractFeatGrantedSpells(feats, magicInitiateSpells, acolyte, acolyteFeat)).toEqual([])
+		})
+
+		it("reads the picks from the character's grantedFeats entry", () => {
+			const character: Character = {
+				...acolyte,
+				grantedFeats: [
+					{
+						origin: 'background',
+						...acolyteFeat,
+						chosenAbility: 'wisdom',
+						magicInitiate: { className: 'Cleric', classSource: 'XPHB', cantrips: [{ name: 'Fire Bolt', source: 'XPHB' }], spell: { name: 'Ray of Sickness', source: 'XPHB' } },
+					},
+				],
+			}
+			const result = extractFeatGrantedSpells(feats, magicInitiateSpells, character, acolyteFeat)
+			expect(result.map((s) => s.name).sort()).toEqual(['Fire Bolt', 'Ray of Sickness'])
+			expect(result.every((s) => s.featName === 'Magic Initiate; Cleric' && s.ability === 'wis')).toBe(true)
+		})
 	})
 
 	it('the level-1 pick carries the "1/long rest, no slot" term; the cantrip picks carry none (D21/D70)', () => {
@@ -269,7 +295,7 @@ describe('extractFeatGrantedSpells — base Magic Initiate (slice d5b-2)', () =>
 			],
 			spell: { name: 'Ray of Sickness', source: 'XPHB' },
 		})
-		const result = extractFeatGrantedSpells(feats, magicInitiateSpells, character)
+		const result = extractFeatGrantedSpells(feats, magicInitiateSpells, character, null)
 
 		expect(result.find((s) => s.name === 'Ray of Sickness')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
 		expect(result.find((s) => s.name === 'Fire Bolt')?.usage).toBeFalsy()
@@ -314,7 +340,7 @@ describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice 
 
 	it("Fey-Touched: the fixed companion spell (Misty Step) is granted even with no pick yet, ability from chosenAbility (not 'inherit')", () => {
 		const character = characterWithFilterChoice('Fey-Touched', 'XPHB', 'wisdom', undefined)
-		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character, null)
 
 		expect(result.map((s) => s.name)).toEqual(['Misty Step'])
 		expect(result[0].ability).toBe('wis')
@@ -322,7 +348,7 @@ describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice 
 
 	it('Fey-Touched: the chosen school-filtered spell is ALSO granted, alongside the fixed one, both carrying chosenAbility', () => {
 		const character = characterWithFilterChoice('Fey-Touched', 'XPHB', 'charisma', { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] })
-		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character, null)
 
 		expect(result.map((s) => s.name).sort()).toEqual(['Identify', 'Misty Step'])
 		expect(result.every((s) => s.ability === 'cha')).toBe(true)
@@ -331,7 +357,7 @@ describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice 
 
 	it("Fey-Touched: the chosen spell AND the fixed Misty Step companion both show \"once per long rest, no slot\" — not the data's stale daily:'1e' (D21/D70, D68)", () => {
 		const character = characterWithFilterChoice('Fey-Touched', 'XPHB', 'charisma', { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] })
-		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character, null)
 
 		expect(result.find((s) => s.name === 'Misty Step')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
 		expect(result.find((s) => s.name === 'Identify')?.usage).toEqual({ kind: 'onceFreePerLongRest' })
@@ -340,7 +366,7 @@ describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice 
 	it('Wood Elf Magic: fixed innate spells AND the chosen cantrip are granted, ability is the FIXED wis (chosenAbility ignored)', () => {
 		const character = characterWithFilterChoice('Wood Elf Magic', 'XGE', undefined, { cantrips: [{ name: 'Druidcraft', source: 'XPHB' }], spells: [] })
 		const druidcraft = { name: 'Druidcraft', source: 'XPHB', level: 0, duration: [{ type: 'instant' }], meta: {} }
-		const result = extractFeatGrantedSpells(filterChoiceFeats, [...filterChoiceSpells, druidcraft], character)
+		const result = extractFeatGrantedSpells(filterChoiceFeats, [...filterChoiceSpells, druidcraft], character, null)
 
 		expect(result.map((s) => s.name).sort()).toEqual(['Druidcraft', 'Longstrider', 'Pass without Trace'])
 		expect(result.every((s) => s.ability === 'wis')).toBe(true)
@@ -348,13 +374,13 @@ describe('extractFeatGrantedSpells — the 8 generic filter-choice feats (slice 
 
 	it('a character without any filter-choice feat is unaffected', () => {
 		const character = characterWithFeats([{ name: 'Drow High Magic', source: 'XGE' }])
-		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character, null)
 		expect(result.map((s) => s.name).sort()).toEqual(['Detect Magic', 'Dispel Magic', 'Levitate'])
 	})
 
 	it('Ritual Caster: its picked ritual spells carry NO usage label — the feat text ("cast them with any spell slots you have") establishes no special term (D21/D70)', () => {
 		const character = characterWithFilterChoice('Ritual Caster', 'XPHB', 'intelligence', { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] })
-		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character)
+		const result = extractFeatGrantedSpells(filterChoiceFeats, filterChoiceSpells, character, null)
 
 		expect(result.map((s) => s.name)).toEqual(['Identify'])
 		expect(result[0].usage).toBeFalsy()

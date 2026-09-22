@@ -61,7 +61,7 @@
  * the mark-name guard exists specifically to avoid that scope creep.
  *
  * A feat is a one-time yes/no grant (the character either took it or
- * didn't, via Character.featAsiChoices) — there is no "granted at level N"
+ * didn't, via featInstances) — there is no "granted at level N"
  * field on the returned spell the way a subclass grant has one, even for the
  * marks' level-gated portion: the gate only decides whether the character
  * has REACHED that spell yet, it isn't provenance the sheet displays.
@@ -69,7 +69,8 @@
 
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import type { Character, FeatAsiChoice } from '../storage/character'
+import { featInstances, loadBackgroundOriginFeat, type FeatInstance, type FeatRef } from '../featAsi/featInstances'
+import type { Character } from '../storage/character'
 import { chosenSpellUsageFor } from './chosenSpellUsage'
 import { isFilterChoiceFeat } from './featSpellChoiceData'
 import { extractRefsWithUsage, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, spellIdentityKey, type RawSpell, type SpellUsage } from './subclassPreparedSpells'
@@ -277,11 +278,7 @@ export function extractFixedFeatSpells(
 	return dedupeFeatGrantedSpells(result)
 }
 
-type FeatChoice = Extract<FeatAsiChoice, { kind: 'feat' }>
-
-function chosenFeats(character: Character): FeatChoice[] {
-	return (character.featAsiChoices ?? []).filter((choice): choice is FeatChoice => choice.kind === 'feat')
-}
+type FeatChoice = FeatInstance
 
 /** D11: total level across every class, the same sum proficiencyBonus.ts uses — a Mark feat's numeric grant keys are gated on this, not on any one class's level (a feat isn't tied to a class). */
 function totalCharacterLevel(character: Character): number {
@@ -382,11 +379,11 @@ function extractFilterChoiceSpells(parsedFeats: unknown, parsedSpells: unknown, 
 	return result
 }
 
-/** Every fully-fixed feat-granted spell the character's taken feats (Character.featAsiChoices) provide. Additional to the class picker's own counts — never subtracted from cantrip/prepared/known limits, same as subclass always-prepared spells. */
-export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unknown, character: Character): FeatGrantedSpell[] {
+/** Every fully-fixed feat-granted spell the character's feats (featInstances, D156) provide. Additional to the class picker's own counts — never subtracted from cantrip/prepared/known limits, same as subclass always-prepared spells. */
+export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unknown, character: Character, backgroundOriginFeat: FeatRef | null): FeatGrantedSpell[] {
 	const result: FeatGrantedSpell[] = []
 	const characterLevel = totalCharacterLevel(character)
-	for (const choice of chosenFeats(character)) {
+	for (const choice of featInstances(character, backgroundOriginFeat)) {
 		const chosenAbility = choice.chosenAbility ? ABILITY_ABBREVIATIONS[choice.chosenAbility] : undefined
 		result.push(...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source, characterLevel, chosenAbility))
 		result.push(...extractMagicInitiateSpells(parsedSpells, choice))
@@ -397,8 +394,12 @@ export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unk
 
 /** Fetches feats.json and spells.json and returns the character's fully-fixed feat-granted spells. */
 export async function loadFeatGrantedSpells(character: Character): Promise<FeatGrantedSpell[]> {
-	const [parsedFeats, parsedSpells] = await Promise.all([loadDataFile('data/feats.json'), loadDataFile('data/spells.json')])
-	return extractFeatGrantedSpells(parsedFeats, parsedSpells, character)
+	const [parsedFeats, parsedSpells, backgroundOriginFeat] = await Promise.all([
+		loadDataFile('data/feats.json'),
+		loadDataFile('data/spells.json'),
+		loadBackgroundOriginFeat(character.background),
+	])
+	return extractFeatGrantedSpells(parsedFeats, parsedSpells, character, backgroundOriginFeat)
 }
 
 /** Fetches feats.json and spells.json and returns one feat's fixed-grant spells — the async wrapper extractFixedFeatSpells itself lacks. Used by the filter-choice picker (FeatAsiPicker.tsx) to show a feat's fixed companion spell, if any, alongside its choice. */

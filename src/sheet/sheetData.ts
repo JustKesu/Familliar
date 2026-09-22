@@ -54,6 +54,7 @@ import type { ClassSavingThrowProficiencies } from '../calculation/savingThrows'
 import type { ClassSpellcastingAbility } from '../calculation/spellcasting'
 import type { SpeciesTraitsData } from '../calculation/speciesTraits'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink } from '../featAsi/featInstances'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -128,16 +129,20 @@ function isFeatEntry(value: unknown): value is FeatEffectEntry {
 	return isRecord(value) && typeof value.name === 'string' && typeof value.source === 'string'
 }
 
-export function extractFeatEffectEntries(parsed: unknown): FeatEffectEntry[] {
+/** `originFeatLinks` marks each background's origin feat on its entry (D156) — copied, never written into the cached parse. */
+export function extractFeatEffectEntries(parsed: unknown, originFeatLinks: readonly BackgroundOriginFeatLink[] = []): FeatEffectEntry[] {
 	if (!Array.isArray(parsed)) {
 		throw new Error('feats.json: expected a top-level array.')
 	}
-	return parsed.filter(isFeatEntry)
+	return parsed.filter(isFeatEntry).map((feat) => {
+		const backgrounds = originFeatLinks.filter((link) => link.feat.name === feat.name && link.feat.source === feat.source).map((link) => link.background)
+		return backgrounds.length > 0 ? { ...feat, grantedByBackgrounds: backgrounds } : feat
+	})
 }
 
 export async function loadFeatEffectEntries(): Promise<FeatEffectEntry[]> {
-	const parsed = await loadDataFile('data/feats.json')
-	return extractFeatEffectEntries(parsed)
+	const [parsed, originFeatLinks] = await Promise.all([loadDataFile('data/feats.json'), loadBackgroundOriginFeatLinks()])
+	return extractFeatEffectEntries(parsed, originFeatLinks)
 }
 
 export interface FeatTextEntry {

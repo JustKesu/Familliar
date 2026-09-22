@@ -17,7 +17,7 @@ export function computeInitiative(character: Character, feats: FeatEffectEntry[]
 
 	const breakdown: Contribution[] = [
 		{ source: 'dexterity modifier', amount: dexterity.value.modifier },
-		...proseFeatEffectNotes('initiative', character),
+		...proseFeatEffectNotes('initiative', character, feats),
 	]
 	const total = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known(total, breakdown)

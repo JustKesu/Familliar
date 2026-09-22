@@ -54,7 +54,7 @@ export function SpellPicker({
 	/** D46 (Divine Soul): an extra class list to UNION into the pool, e.g. Cleric alongside Sorcerer. Omitted for every other class/subclass. */
 	expandedClassName?: string
 	expandedClassSource?: string
-	/** D46 (the 12 marks): every feat the character has taken (Character.featAsiChoices) — each feat's own `expanded` pool-widening spells (classSpellListData.ts's extractFeatExpandedSpellList) are unioned in too. A feat with no `expanded` key (i.e. every feat but a mark) contributes nothing. */
+	/** D46 (the 12 marks): every feat the character has (featInstances, D156) — each feat's own `expanded` pool-widening spells (classSpellListData.ts's extractFeatExpandedSpellList) are unioned in too. A feat with no `expanded` key (i.e. every feat but a mark) contributes nothing. */
 	featChoices?: { name: string; source: string }[]
 	spellSlots: SpellSlotsEntry | undefined
 	cantripCount: number

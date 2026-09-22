@@ -12,7 +12,7 @@ import { computeSkill } from '../calculation/skills'
 import type { ClassSpellcastingAbility } from '../calculation/spellcasting'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
 import type { SpeciesTraitsData } from '../calculation/speciesTraits'
-import { loadFeatTextEntries, loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetData'
+import { loadFeatEffectEntries, loadFeatTextEntries, loadSpellcastingAbilityClassData, loadSubclassSource } from './sheetData'
 import { formatModifier } from './calculatedValue'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
@@ -6790,6 +6790,37 @@ describe('the persistent header (rebuild slice 1)', () => {
 		// +1 per character level on top of the 39 above.
 		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 44'))
 		expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('Dwarven Toughness (+1 per character level)')
+	})
+
+	describe("the background's origin feat (D156)", () => {
+		const farmer: Character = {
+			...character,
+			id: 'hp-farmer',
+			background: { name: 'Farmer', source: 'XPHB', skillProficiencies: ['animalHandling', 'nature'], toolProficiency: "Carpenter's Tools" },
+		}
+
+		it('Tough from the background raises the maximum and is listed as a Background feat, with nothing stored', async () => {
+			vi.mocked(loadFeatEffectEntries).mockResolvedValueOnce([{ name: 'Tough', source: 'XPHB', grantedByBackgrounds: [{ name: 'Farmer', source: 'XPHB' }] }])
+			const { container } = await renderSheet(farmer)
+			// +2 per character level on top of the 39 above.
+			await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 49'))
+			expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('Tough (+2 per character level)')
+			expect(container.querySelector('.sheet__feats')!.textContent).toContain('Tough (Background)')
+		})
+
+		it("shows a background Magic Initiate's unmade picks as pending (D57)", async () => {
+			vi.mocked(loadFeatEffectEntries).mockResolvedValueOnce([{ name: 'Magic Initiate; Cleric', source: 'XPHB', grantedByBackgrounds: [{ name: 'Farmer', source: 'XPHB' }] }])
+			const { container } = await renderSheet(farmer)
+			await waitFor(() => expect(container.querySelector('.sheet__feats')!.textContent).toContain('Magic Initiate; Cleric (Background)'))
+			expect(container.querySelector('.sheet__feat-pending')!.textContent).toBe('Choices not made yet: ability, spells.')
+		})
+
+		it('ignores a background feat that the feat data links to another background', async () => {
+			vi.mocked(loadFeatEffectEntries).mockResolvedValueOnce([{ name: 'Tough', source: 'XPHB', grantedByBackgrounds: [{ name: 'Guard', source: 'XPHB' }] }])
+			const { container } = await renderSheet(farmer)
+			await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 39'))
+			expect(container.querySelector('.sheet__feats')!.textContent).toContain('No feats chosen yet.')
+		})
 	})
 })
 

@@ -19,6 +19,7 @@
  * weaponProficiencies field at all; 3 of 128 feats do.
  */
 
+import { featInstances, type FeatRef } from '../featAsi/featInstances'
 import type { Character } from '../storage/character'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -139,17 +140,12 @@ export function weaponProficiencyGrantsForClass(parsedClasses: unknown, classNam
  * `firearm` flag, 10 items) and Tavern Brawler ("improvised"), which is
  * skipped: improvised weapons are not items, so there is nothing to match.
  *
- * Takes the feat/ASI choice list directly (all this function reads of a
- * character), so callers that hold only the wizard's in-progress choices —
- * MasteryPicker — can use it without assembling a whole Character.
+ * Takes the feats the character has (featInstances, D156) rather than a
+ * whole Character, so the wizard's MasteryPicker can pass its in-progress ones.
  */
-export function weaponProficiencyGrantsForFeats(
-	featAsiChoices: Character['featAsiChoices'],
-	feats: FeatWeaponProficiencyEntry[],
-): WeaponProficiencyGrant[] {
+export function weaponProficiencyGrantsForFeats(takenFeats: readonly FeatRef[], feats: FeatWeaponProficiencyEntry[]): WeaponProficiencyGrant[] {
 	const grants: WeaponProficiencyGrant[] = []
-	for (const choice of featAsiChoices ?? []) {
-		if (choice.kind !== 'feat') continue
+	for (const choice of takenFeats) {
 		const feat = feats.find((candidate) => candidate.name === choice.name && candidate.source === choice.source)
 		for (const entry of feat?.weaponProficiencies ?? []) {
 			for (const [key, granted] of Object.entries(entry)) {
@@ -167,9 +163,14 @@ export function weaponProficiencyGrantsForFeats(
  * (D11) plus their feats. Species and backgrounds are absent on purpose:
  * neither data file has a weaponProficiencies field on any entry.
  */
-export function weaponProficiencyGrantsFor(character: Character, parsedClasses: unknown, feats: FeatWeaponProficiencyEntry[]): WeaponProficiencyGrant[] {
+export function weaponProficiencyGrantsFor(
+	character: Character,
+	parsedClasses: unknown,
+	feats: FeatWeaponProficiencyEntry[],
+	backgroundOriginFeat: FeatRef | null,
+): WeaponProficiencyGrant[] {
 	const grants = character.classes.flatMap((cls) => weaponProficiencyGrantsForClass(parsedClasses, cls.className, cls.classSource))
-	return [...grants, ...weaponProficiencyGrantsForFeats(character.featAsiChoices, feats)]
+	return [...grants, ...weaponProficiencyGrantsForFeats(featInstances(character, backgroundOriginFeat), feats)]
 }
 
 /** Whether an items.json entry is covered by any of the grants. */

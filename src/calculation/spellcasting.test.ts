@@ -398,7 +398,7 @@ describe('computeFeatSpellcasting — fed the REAL featSpells.ts extraction (not
 				},
 			],
 		}
-		const extracted = extractFeatGrantedSpells([], parsedSpells, fighter)
+		const extracted = extractFeatGrantedSpells([], parsedSpells, fighter, null)
 		expect(extracted).toHaveLength(1)
 		expect(extracted[0].ability).toBe('cha') // real extraction, not a test-supplied value
 
@@ -435,7 +435,7 @@ describe('computeFeatSpellcasting — fed the REAL featSpells.ts extraction (not
 			},
 			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Drow High Magic', source: 'XGE' }],
 		}
-		const extracted = extractFeatGrantedSpells(parsedFeats, parsedSpells, character)
+		const extracted = extractFeatGrantedSpells(parsedFeats, parsedSpells, character, null)
 		expect(extracted).toHaveLength(1)
 		expect(extracted[0].ability).toBe('cha')
 

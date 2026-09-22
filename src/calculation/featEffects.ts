@@ -46,7 +46,8 @@
 
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { Ability } from '../abilities/abilityScores'
-import type { Character, FeatAsiChoice } from '../storage/character'
+import { featInstances, type FeatInstance, type FeatRef } from '../featAsi/featInstances'
+import type { Character } from '../storage/character'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import type { Contribution } from './types'
 
@@ -76,15 +77,24 @@ export interface FeatEffectEntry {
 	savingThrowProficiencies?: RawFeatSavingThrowProficienciesEntry[]
 	skillProficiencies?: RawFeatSkillProficienciesEntry[]
 	expertise?: RawFeatExpertiseEntry[]
+	/** The backgrounds naming this feat as their origin feat — how the feat list tells featInstances the background's feat (D156). */
+	grantedByBackgrounds?: FeatRef[]
 }
 
-type FeatChoice = Extract<FeatAsiChoice, { kind: 'feat' }>
-
-function chosenFeats(character: Character): FeatChoice[] {
-	return (character.featAsiChoices ?? []).filter((choice): choice is FeatChoice => choice.kind === 'feat')
+/** The background's origin feat, as the feat-effect list records it. */
+export function backgroundOriginFeatAmong(feats: readonly FeatEffectEntry[], character: Character): FeatRef | null {
+	const background = character.background
+	if (!background) return null
+	const feat = feats.find((entry) => entry.grantedByBackgrounds?.some((ref) => ref.name === background.name && ref.source === background.source))
+	return feat ? { name: feat.name, source: feat.source } : null
 }
 
-function findFeat(feats: FeatEffectEntry[], name: string, source: string): FeatEffectEntry | undefined {
+/** Every feat the character has (D156), with the background's resolved from `feats`. */
+export function characterFeats(character: Character, feats: readonly FeatEffectEntry[]): FeatInstance[] {
+	return featInstances(character, backgroundOriginFeatAmong(feats, character))
+}
+
+function findFeat(feats: readonly FeatEffectEntry[], name: string, source: string): FeatEffectEntry | undefined {
 	return feats.find((f) => f.name === name && f.source === source)
 }
 
@@ -117,8 +127,15 @@ export function featAbilityScoreContributions(ability: Ability, character: Chara
 	const abbreviation = ABILITY_ABBREVIATIONS[ability]
 	const contributions: Contribution[] = []
 
-	for (const choice of character.featAsiChoices ?? []) {
-		if (choice.kind === 'asi') {
+	const instances = new Map(characterFeats(character, feats).map((instance) => [instance.key, instance]))
+	const inLevelOrder = [
+		instances.get('background'),
+		...(character.featAsiChoices ?? []).map((choice) => (choice.kind === 'asi' ? choice : instances.get(`asi:${choice.level}`))),
+	]
+
+	for (const choice of inLevelOrder) {
+		if (!choice) continue
+		if ('kind' in choice) {
 			const amount = choice.increases[ability]
 			if (amount) contributions.push({ source: `ASI (level ${choice.level})`, amount })
 			continue
@@ -150,7 +167,7 @@ export function featAbilityScoreContributions(ability: Ability, character: Chara
  */
 export function featSavingThrowProficiencyNames(ability: Ability, character: Character, feats: FeatEffectEntry[]): string[] {
 	const names: string[] = []
-	for (const choice of chosenFeats(character)) {
+	for (const choice of characterFeats(character, feats)) {
 		const feat = findFeat(feats, choice.name, choice.source)
 		if (feat?.savingThrowProficiencies?.[0] && choice.chosenAbility === ability) {
 			names.push(feat.name)
@@ -162,7 +179,7 @@ export function featSavingThrowProficiencyNames(ability: Ability, character: Cha
 /** Feats granting FIXED skill proficiency in `skill` (D44: names only, same join-into-existing-source-list contract as featSavingThrowProficiencyNames). Only Boon of Skill qualifies — see module doc. */
 export function featFixedSkillProficiencyNames(skill: Skill, character: Character, feats: FeatEffectEntry[]): string[] {
 	const names: string[] = []
-	for (const choice of chosenFeats(character)) {
+	for (const choice of characterFeats(character, feats)) {
 		const feat = findFeat(feats, choice.name, choice.source)
 		const entry = feat?.skillProficiencies?.[0]
 		if (feat && entry && !isChooseSkillEntry(entry) && !isAnySkillEntry(entry) && (entry as Record<string, boolean>)[skill] === true) {
@@ -184,7 +201,7 @@ export function featFixedSkillProficiencyNames(skill: Skill, character: Characte
  */
 export function featSkillChoiceAwaitingNotes(skill: Skill, character: Character, feats: FeatEffectEntry[], isProficient: boolean): Contribution[] {
 	const notes: Contribution[] = []
-	for (const choice of chosenFeats(character)) {
+	for (const choice of characterFeats(character, feats)) {
 		const feat = findFeat(feats, choice.name, choice.source)
 		if (!feat) continue
 
@@ -228,9 +245,9 @@ export type ProseFeatEffectTarget = 'initiative'
  * A D55 note ("known effect, not computed") for every chosen prose feat
  * that touches `target` per PROSE_FEAT_EFFECT_TARGETS above.
  */
-export function proseFeatEffectNotes(target: ProseFeatEffectTarget, character: Character): Contribution[] {
+export function proseFeatEffectNotes(target: ProseFeatEffectTarget, character: Character, feats: readonly FeatEffectEntry[]): Contribution[] {
 	const notes: Contribution[] = []
-	for (const choice of chosenFeats(character)) {
+	for (const choice of characterFeats(character, feats)) {
 		const targets: readonly ProseFeatEffectTarget[] | undefined = (
 			PROSE_FEAT_EFFECT_TARGETS as Record<string, readonly ProseFeatEffectTarget[] | undefined>
 		)[choice.name]

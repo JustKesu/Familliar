@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadMasteryCountFor, loadMasteryWeaponsFor, MASTERY_DESCRIPTIONS, type MasteryWeapon } from './masteryData'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
-import type { FeatAsiChoice } from '../storage/character'
+import type { FeatRef } from '../featAsi/featInstances'
 
-/** Stable empty default so an omitted `featAsiChoices` prop doesn't re-trigger the load effect. */
-const NO_FEAT_CHOICES: FeatAsiChoice[] = []
+/** Stable empty default so an omitted `feats` prop doesn't re-trigger the load effect. */
+const NO_FEATS: readonly FeatRef[] = []
 const NO_LOCKED_VALUES: readonly string[] = []
 
 /*
@@ -33,9 +33,10 @@ function weaponKey(weapon: MasteryWeapon): string {
  * level (masteryCountFor returned null — see masteryData.ts for which
  * classes that covers).
  *
- * `featAsiChoices` is the character's stored feat/ASI picks; a feat that
- * grants weapon proficiency (Martial Weapon Training, Gunner) widens the
- * offered pool. It flows through the shared weaponProficiency.ts functions.
+ * `feats` is every feat the character has (featInstances, D156) — pass a
+ * stable array, it keys the load; a feat that grants weapon proficiency
+ * (Martial Weapon Training, Gunner) widens the offered pool. It flows through
+ * the shared weaponProficiency.ts functions.
  */
 export function MasteryPicker({
 	className,
@@ -43,7 +44,7 @@ export function MasteryPicker({
 	level,
 	value,
 	onChange,
-	featAsiChoices = NO_FEAT_CHOICES,
+	feats = NO_FEATS,
 	lockedValues = NO_LOCKED_VALUES,
 }: {
 	className: string
@@ -51,7 +52,7 @@ export function MasteryPicker({
 	level: number
 	value: string[]
 	onChange: (weapons: string[]) => void
-	featAsiChoices?: FeatAsiChoice[]
+	feats?: readonly FeatRef[]
 	/** D108: during a level up, the picks the character already had — shown selected and not removable. */
 	lockedValues?: readonly string[]
 }): ReactNode {
@@ -62,7 +63,7 @@ export function MasteryPicker({
 		setState({ status: 'loading' })
 		Promise.all([
 			loadMasteryCountFor(className, classSource, level),
-			loadMasteryWeaponsFor(className, classSource, featAsiChoices),
+			loadMasteryWeaponsFor(className, classSource, feats),
 		])
 			.then(([count, weapons]) => {
 				if (!cancelled) setState({ status: 'ready', count, weapons })
@@ -78,7 +79,7 @@ export function MasteryPicker({
 		return () => {
 			cancelled = true
 		}
-	}, [className, classSource, level, featAsiChoices])
+	}, [className, classSource, level, feats])
 
 	if (state.status === 'loading') return <p>Loading weapon masteries…</p>
 	if (state.status === 'error') {

@@ -20,7 +20,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
-import type { Character } from '../storage/character'
+import type { FeatRef } from '../featAsi/featInstances'
 import {
 	extractFeatWeaponProficiencyEntries,
 	isProficientWithWeapon,
@@ -162,16 +162,16 @@ function isRawItemWithMastery(
  * answer, not every mastery weapon in the data.
  *
  * Includes feat-granted proficiency (Martial Weapon Training, Gunner) when the
- * caller passes the character's feat/ASI choices plus the feats.json slice —
- * both default to empty, so a class-only call is unchanged. The grant reading
- * is the shared weaponProficiency.ts functions, not re-done here.
+ * caller passes the character's feats (featInstances, D156) plus the feats.json
+ * slice — both default to empty, so a class-only call is unchanged. The grant
+ * reading is the shared weaponProficiency.ts functions, not re-done here.
  */
 export function masteryWeaponsFor(
 	parsedItems: unknown,
 	parsedClasses: unknown,
 	className: string,
 	classSource: string,
-	featAsiChoices: Character['featAsiChoices'] = [],
+	takenFeats: readonly FeatRef[] = [],
 	feats: FeatWeaponProficiencyEntry[] = [],
 ): MasteryWeapon[] {
 	if (!Array.isArray(parsedItems)) {
@@ -192,7 +192,7 @@ export function masteryWeaponsFor(
 
 	const grants = [
 		...weaponProficiencyGrantsForClass(parsedClasses, className, classSource),
-		...weaponProficiencyGrantsForFeats(featAsiChoices, feats),
+		...weaponProficiencyGrantsForFeats(takenFeats, feats),
 	]
 	const filtered = ordinaryWeapons.filter((item) => isProficientWithWeapon(item, grants))
 
@@ -213,19 +213,15 @@ export async function loadMasteryCountFor(className: string, classSource: string
 
 /**
  * Fetches items.json, classes.json and feats.json and returns the class's
- * mastery weapon choices. `featAsiChoices` is the character's stored feat/ASI
- * picks (the wizard passes its in-progress list); a feat that grants weapon
- * proficiency (Martial Weapon Training, Gunner) widens the pool accordingly.
+ * mastery weapon choices. `takenFeats` is every feat the character has (the
+ * wizard passes its in-progress ones); a feat that grants weapon proficiency
+ * (Martial Weapon Training, Gunner) widens the pool accordingly.
  */
-export async function loadMasteryWeaponsFor(
-	className: string,
-	classSource: string,
-	featAsiChoices: Character['featAsiChoices'] = [],
-): Promise<MasteryWeapon[]> {
+export async function loadMasteryWeaponsFor(className: string, classSource: string, takenFeats: readonly FeatRef[] = []): Promise<MasteryWeapon[]> {
 	const [items, classes, feats] = await Promise.all([
 		loadDataFile('data/items.json'),
 		loadDataFile('data/classes.json'),
 		loadDataFile('data/feats.json'),
 	])
-	return masteryWeaponsFor(items, classes, className, classSource, featAsiChoices, extractFeatWeaponProficiencyEntries(feats))
+	return masteryWeaponsFor(items, classes, className, classSource, takenFeats, extractFeatWeaponProficiencyEntries(feats))
 }

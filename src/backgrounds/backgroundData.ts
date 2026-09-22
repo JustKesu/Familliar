@@ -15,8 +15,10 @@
  * - `feats` is `[{ "name|source": true }]`. The key is lowercase for 32 of
  *   33 backgrounds; Noble alone capitalizes it ("Skilled|xphb") — a known
  *   trap (NOTES.md "Feat reference casing"). Lowercasing both sides before
- *   matching, as NOTES.md prescribes, resolves it: every extracted feat
- *   name+source matches an entry in feats.json once title-cased.
+ *   matching, as NOTES.md prescribes, resolves it. Title-casing alone does
+ *   NOT reproduce feats.json's name for the 12 Eberron marks ("Mark Of
+ *   Making" vs "Mark of Making"), so anything that looks the feat up matches
+ *   case-insensitively (featInstances.ts, DATA.md).
  * - `skillProficiencies` is `[{ skillA: true, skillB: true }]` — exactly
  *   one object with exactly two keys, for every entry.
  * - `toolProficiencies` is `[{ "tool name": true }]` for a named tool, or
@@ -145,7 +147,7 @@ function parseToolProficiency(raw: unknown): BackgroundToolProficiency {
 	return { kind: 'named', name: titleCase(key) }
 }
 
-function parseOriginFeat(raw: unknown): BackgroundOriginFeat {
+export function parseOriginFeat(raw: unknown): BackgroundOriginFeat {
 	if (!Array.isArray(raw) || raw.length !== 1 || !isRecord(raw[0])) {
 		throw new Error(`background: expected a 1-element "feats" array, got ${JSON.stringify(raw)}`)
 	}

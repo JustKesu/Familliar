@@ -1051,6 +1051,8 @@ export function saveCharacter(
 		speciesSkills: data.speciesSkills,
 		expertiseSkills,
 		featAsiChoices: data.featAsiChoices,
+		// No wizard control sets these yet (D156); an edit or a level up carries them across.
+		grantedFeats: existing?.grantedFeats,
 		spellChoices,
 		subclassSpellChoices,
 		classFeatureChoices,

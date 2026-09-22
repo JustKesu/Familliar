@@ -3,6 +3,7 @@ import { featureActionRows, grantedFeatureOrigin } from './featureActionRowData'
 import type { GrantedFeature } from './grantedClassFeatures'
 import type { FeatTextEntry } from './sheetData'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
+import type { FeatInstance } from '../featAsi/featInstances'
 
 function granted(name: string, over: Partial<GrantedFeature> = {}): GrantedFeature {
 	return { id: `cf|${name.toLowerCase()}`, name, level: 1, entries: [], kind: 'class', className: 'Fighter', ...over }
@@ -10,6 +11,10 @@ function granted(name: string, over: Partial<GrantedFeature> = {}): GrantedFeatu
 
 function option(name: string, over: Partial<OptionalFeatureOption> = {}): OptionalFeatureOption {
 	return { name, source: 'XPHB', entries: [], ...over }
+}
+
+function asiFeat(name: string, source: string, level: number): FeatInstance {
+	return { key: `asi:${level}`, origin: 'asi', level, name, source }
 }
 
 const REST = 'You regain the expended use when you finish a {@variantrule Short Rest|XPHB}.'
@@ -53,7 +58,7 @@ describe('featureActionRows', () => {
 	it('keeps the resolver order — granted features by the level they were gained at, then feats, then chosen options', () => {
 		const rows = featureActionRows(
 			[granted('Rage', { level: 1, entries: [REST] }), granted('Relentless Rage', { level: 11, entries: [REST] })],
-			[{ name: 'Lucky', source: 'XPHB', level: 4 }],
+			[asiFeat('Lucky', 'XPHB', 4)],
 			[{ name: 'Lucky', source: 'XPHB', entries: [REST] }],
 			[option('Quickened Spell', { consumes: { name: 'Sorcery Points', amount: 2 } })],
 		)
@@ -68,8 +73,8 @@ describe('featureActionRows', () => {
 		const rows = featureActionRows(
 			[],
 			[
-				{ name: 'Lucky', source: 'XPHB', level: 4 },
-				{ name: 'Alert', source: 'XPHB', level: 8 },
+				asiFeat('Lucky', 'XPHB', 4),
+				asiFeat('Alert', 'XPHB', 8),
 			],
 			featTexts,
 			[],
@@ -79,12 +84,12 @@ describe('featureActionRows', () => {
 	})
 
 	it('matches a feat on name AND source, so a same-named feat from another book is not tested against the wrong text', () => {
-		const rows = featureActionRows([], [{ name: 'Lucky', source: 'XPHB', level: 4 }], [{ name: 'Lucky', source: 'PHB', entries: [REST] }], [])
+		const rows = featureActionRows([], [asiFeat('Lucky', 'XPHB', 4)], [{ name: 'Lucky', source: 'PHB', entries: [REST] }], [])
 		expect(rows).toEqual([])
 	})
 
 	it('gives no row to a feat whose text is missing entirely (D43 — the Feats list reports it)', () => {
-		expect(featureActionRows([], [{ name: 'Ghostly Gift', source: 'HOMEBREW', level: 4 }], [], [])).toEqual([])
+		expect(featureActionRows([], [asiFeat('Ghostly Gift', 'HOMEBREW', 4)], [], [])).toEqual([])
 	})
 
 	/*
@@ -104,6 +109,11 @@ describe('featureActionRows', () => {
 	it('collapses an option that shares its name with a granted feature into the one row', () => {
 		const rows = featureActionRows([granted('Eldritch Smite', { entries: [REST] })], [], [], [option('Eldritch Smite', { consumes: { name: 'Pact Slot' } })])
 		expect(rows).toEqual([{ key: 'feature|eldritch smite', name: 'Eldritch Smite', resourceName: 'Eldritch Smite', origin: 'Fighter 1' }])
+	})
+
+	it("labels the background's origin feat by its origin (D156)", () => {
+		const rows = featureActionRows([], [{ key: 'background', origin: 'background', name: 'Lucky', source: 'XPHB' }], [{ name: 'Lucky', source: 'XPHB', entries: [REST] }], [])
+		expect(rows.map((row) => row.origin)).toEqual(['Feat, Background'])
 	})
 
 	it('returns nothing for a character with no features, feats or chosen options', () => {
@@ -126,7 +136,7 @@ describe('featureActionRows', () => {
 				granted('Second Wind', { level: 1, entries: [REST] }),
 				granted('Relentless', { level: 18, kind: 'subclass', className: 'Fighter', subclassShortName: 'Battle Master', entries: [REST] }),
 			],
-			[{ name: 'Lucky', source: 'XPHB', level: 4 }],
+			[asiFeat('Lucky', 'XPHB', 4)],
 			[{ name: 'Lucky', source: 'XPHB', entries: [REST] }],
 			[option('Precision Attack', { consumes: { name: 'Superiority Die' } })],
 			(chosen) => (chosen.name === 'Precision Attack' ? 'Battle Master' : null),

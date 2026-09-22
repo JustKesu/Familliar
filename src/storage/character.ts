@@ -155,6 +155,11 @@ export interface Character {
 	 */
 	featAsiChoices?: FeatAsiChoice[]
 	/**
+	 * Sub-choices of the feats the background and species grant. At most one
+	 * entry per origin. Read only through featInstances (featInstances.ts).
+	 */
+	grantedFeats?: CharacterGrantedFeat[]
+	/**
 	 * Optional for the same reason as abilityScores above. The character's
 	 * class spell picks (build order step 6 slice d2) — cantrips and leveled
 	 * spells, prepared/known distinction is a LABEL only, not stored (there is
@@ -836,32 +841,51 @@ export interface FilterChoiceSpellsChoice {
  */
 export type FeatAsiChoice =
 	| { level: number; kind: 'asi'; increases: AbilityIncreaseMap }
-	| {
+	| ({
 			level: number
 			kind: 'feat'
 			name: string
 			source: string
-			/**
-			 * Which ability the feat's bonus applies to — required for the 68
-			 * half-feats whose feats.json `ability` field is a choice among named
-			 * abilities (featAbilityChoiceOptions), AND for base Magic Initiate's
-			 * own int/wis/cha spellcasting-ability choice (which lives in
-			 * `additionalSpells`, not the half-feat `ability` field, but reuses
-			 * this same slot per the task instructions rather than a second one).
-			 * Absent for the 13 fixed-bonus feats and every feat with no ability
-			 * choice at all. Selection only: no calculation reads this field yet.
-			 */
-			chosenAbility?: Ability
-			/** Base Magic Initiate only (slice d5b-2) — see MagicInitiateChoice. */
-			magicInitiate?: MagicInitiateChoice
-			/** The 8 generic filter-choice feats only (slice d5b-1) — see FilterChoiceSpellsChoice. */
-			filterChoiceSpells?: FilterChoiceSpellsChoice
-	  }
+	  } & FeatChoiceDetails)
+
+/** A feat's own sub-choices, wherever the feat came from — an ASI level or a grantedFeats entry. */
+export interface FeatChoiceDetails {
+	/**
+	 * Which ability the feat's bonus applies to — required for the 68
+	 * half-feats whose feats.json `ability` field is a choice among named
+	 * abilities (featAbilityChoiceOptions), AND for base Magic Initiate's
+	 * own int/wis/cha spellcasting-ability choice (which lives in
+	 * `additionalSpells`, not the half-feat `ability` field, but reuses
+	 * this same slot per the task instructions rather than a second one).
+	 * Absent for the 13 fixed-bonus feats and every feat with no ability
+	 * choice at all.
+	 */
+	chosenAbility?: Ability
+	/** Base Magic Initiate only (slice d5b-2) — see MagicInitiateChoice. */
+	magicInitiate?: MagicInitiateChoice
+	/** The 8 generic filter-choice feats only (slice d5b-1) — see FilterChoiceSpellsChoice. */
+	filterChoiceSpells?: FilterChoiceSpellsChoice
+}
+
+/** Where a feat that no ASI level paid for came from (D156). 'species' is shape only until the wizard rebuild (D157). */
+export type GrantedFeatOrigin = 'background' | 'species'
+
+/**
+ * A feat granted by the background or the species, with its sub-choices.
+ * A 'background' entry never decides WHICH feat the character has — that is
+ * derived from the background — and applies only while its name/source match
+ * the current background's origin feat (featInstances.ts).
+ */
+export type CharacterGrantedFeat = {
+	origin: GrantedFeatOrigin
+	name: string
+	source: string
+} & FeatChoiceDetails
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 41 for Character.appearance, .backstory and
- * .notes (slice 9d2); 40 added Character.play.concentratingOn
+ * (see wireFormat.ts). Bumped to 42 for Character.grantedFeats (D156); 41
+ * added Character.appearance, .backstory and .notes (slice 9d2); 40 added Character.play.concentratingOn
  * (slice 9d1); 39 added Character.play.spentHitDice
  * (slice 9b4); 38 added Character.play.spentSpellSlots (slice 9b3); 37
  * grouped play state under Character.play (slice 9b1), absorbing the two
@@ -872,4 +896,4 @@ export type FeatAsiChoice =
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 41
+export const CURRENT_SCHEMA_VERSION = 42

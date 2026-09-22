@@ -2648,3 +2648,39 @@ Rozklad (`ValueBreakdown`) na kartách se NEVRACÍ — D146 ho stěhuje z
 inline `<details>` do sdíleného draweru a ability cards na něj čekají
 jako jediné místo, kde vlastnosti žijí. Do R4 tedy sheet nemá rozklad
 ability score vůbec, jen re-implementovaný roll.
+
+## D156 — Origin featy přes `grantedFeats`; feat z backgroundu se odvozuje; všichni čtenáři přes `featInstances`
+
+Zdroj: task A1, 22. 9. 2026.
+
+Feat, který nezaplatila ASI úroveň, se ukládá do `Character.grantedFeats`
+(`origin: 'background' | 'species'`, jméno, zdroj a podvolby
+`FeatChoiceDetails`, sdílené s featem v `featAsiChoices`). Feat
+z backgroundu se NEukládá — odvozuje se z backgroundu a dat. Záznam
+s `origin: 'background'` nese jen podvolby a platí, jen když jméno a zdroj
+sedí na origin feat aktuálního backgroundu; jinak se ignoruje. Klíč
+instance: `asi:<level>` | `background` | `species`. Každý čtenář efektů
+featů jde přes `featInstances`, nikdy přímo přes `featAsiChoices`.
+
+## D157 — Human Versatile: tvar dat teď, picker až s přestavbou wizardu
+
+`origin: 'species'` existuje v typu a validátoru, ale nic ho nezapisuje
+ani nečte, dokud přestavba wizardu nepřinese picker volného Origin featu.
+
+## D158 — Jazyk z featu (Prodigy) se ukládá jen na instanci featu
+
+Ne do `Character.languages`. Zdroj jazyka tak zůstává u featu, který ho dal.
+
+## D159 — Expertise z featu smí padnout na skill, který dal tentýž feat
+
+Prodigy a Skill Expert dávají skill i expertise; expertise smí jít na
+skill vybraný tímtéž featem.
+
+## D160 — Skill nebo nástroj, který postava už má, picker featu nenabídne
+
+Stejné pravidlo jako D18 u skillů z backgroundu.
+
+## D161 — Poznámka D58 se na nástroje a jazyky nerozšiřuje
+
+Poznámka „čeká na volbu" zůstává jen u skillů; volby nástrojů a jazyků
+z featů místo ní dostanou picker.

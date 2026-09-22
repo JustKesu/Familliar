@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
 import { ClassPicker } from '../classes/ClassPicker'
 import { SpeciesPicker } from '../species/SpeciesPicker'
 import { findSpeciesSelection, loadSpeciesOptions, type SpeciesOption } from '../species/speciesData'
@@ -47,6 +47,7 @@ import type { ItemRef } from '../inventory/inventoryData'
 import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
+import { backgroundOriginFeatFrom, featInstances, loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink } from '../featAsi/featInstances'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
@@ -68,7 +69,7 @@ import { computeSpellCounts } from '../calculation/spellCounts'
 import { computeSpellSlots } from '../calculation/spellSlots'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
-import { choiceNames, type Character, type CharacterOptionalFeatureChoice } from '../storage/character'
+import { choiceNames, type Character, type CharacterBackground, type CharacterOptionalFeatureChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import type { LevelGains } from '../levelUp/levelGains'
 import { levelUpStepConditions, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
@@ -169,6 +170,7 @@ export function CharacterWizard({
 	const [seeded, setSeeded] = useState(character === undefined)
 	const [seedError, setSeedError] = useState<string | null>(null)
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
+	const [originFeatLinks, setOriginFeatLinks] = useState<BackgroundOriginFeatLink[]>([])
 	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
 	/** The species list, grouped into species + their own choice (D81) — loaded here as well as in the picker, since the species step's completion check needs to know whether a choice is outstanding before that panel would ever mount. */
@@ -268,6 +270,40 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		loadBackgroundOriginFeatLinks()
+			.then((links) => {
+				if (!cancelled) setOriginFeatLinks(links)
+			})
+			.catch(() => {
+				/* Best-effort like `backgrounds`: the sheet's own loads show the origin feat, or their failure, once saved. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	/** D156: the feat the chosen background grants, and the background as the draft Characters below need it (only its identity is read). */
+	const backgroundOriginFeat = backgroundOriginFeatFrom(originFeatLinks, state.data.backgroundChoice)
+	const draftBackgroundEntry = state.data.backgroundChoice
+		? backgrounds.find((b) => b.name === state.data.backgroundChoice!.name && b.source === state.data.backgroundChoice!.source)
+		: undefined
+	const draftBackground: CharacterBackground | undefined = draftBackgroundEntry
+		? {
+				name: draftBackgroundEntry.name,
+				source: draftBackgroundEntry.source,
+				skillProficiencies: draftBackgroundEntry.skillProficiencies,
+				toolProficiency: state.data.backgroundToolProficiency ?? '',
+			}
+		: undefined
+	const draftGrantedFeats = character?.grantedFeats
+	const draftFeatInstances = useMemo(
+		() => featInstances({ id: '', name: '', classes: [], featAsiChoices: state.data.featAsiChoices, ...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}) }, backgroundOriginFeat),
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the origin feat's identity, not the object rebuilt each render.
+		[state.data.featAsiChoices, draftGrantedFeats, backgroundOriginFeat?.name, backgroundOriginFeat?.source],
+	)
 
 	/**
 	 * The full spell-slots/spell-count class data (all classes, every
@@ -574,7 +610,7 @@ export function CharacterWizard({
 	/** Feat-granted spells — fixed grants AND the player's own Magic Initiate / filter-choice picks, both keyed to the granting feat by featSpells.ts. */
 	useEffect(() => {
 		let cancelled = false
-		if (state.data.featAsiChoices.length === 0) {
+		if (state.data.featAsiChoices.length === 0 && !draftBackground) {
 			setFeatGrantedSpells([])
 			setFeatGrantedSpellsError(null)
 			return
@@ -593,6 +629,8 @@ export function CharacterWizard({
 					]
 				: [],
 			featAsiChoices: state.data.featAsiChoices,
+			...(draftBackground ? { background: draftBackground } : {}),
+			...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}),
 		})
 			.then((spells) => {
 				if (cancelled) return
@@ -607,7 +645,7 @@ export function CharacterWizard({
 			cancelled = true
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- `name` only rides along on the draft Character; refetching when the player types would be pure waste.
-	}, [state.data.featAsiChoices, state.data.classChoice, state.data.subclass])
+	}, [state.data.featAsiChoices, state.data.classChoice, state.data.subclass, draftBackground?.name, draftBackground?.source, draftGrantedFeats])
 
 	/**
 	 * Optional-feature-granted spells, from BOTH progressions at once: the
@@ -829,6 +867,8 @@ export function CharacterWizard({
 			? { abilityBonus: state.data.backgroundChoice.abilityBonus }
 			: {}),
 		...(state.data.featAsiChoices.length > 0 ? { featAsiChoices: state.data.featAsiChoices } : {}),
+		...(draftBackground ? { background: draftBackground } : {}),
+		...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}),
 	}
 
 	/** As draftCharacterForHitPoints, plus the picks the hit points step itself owns (D107 needs the running total, not just its inputs) and the manual override (D9), so a character with one keeps it. */
@@ -862,6 +902,8 @@ export function CharacterWizard({
 		draftCharacterForMaxHp.classes[0]?.classSource,
 		draftCharacterForMaxHp.classes[0]?.level,
 		draftCharacterForMaxHp.species?.name,
+		draftCharacterForMaxHp.background?.name,
+		draftCharacterForMaxHp.background?.source,
 		draftCharacterForMaxHp.featAsiChoices,
 		draftCharacterForMaxHp.hitPointLevels,
 		draftCharacterForMaxHp.maxHpOverride,
@@ -882,7 +924,7 @@ export function CharacterWizard({
 	/** D46: Divine Soul widens its Sorcerer pool with the Cleric list — union, not replacement (classSpellListData.ts's EXPANDED_POOL_ADDITIONS). Null for every other subclass. */
 	const expandedSpellListClass = expandedSpellListClassFor(state.data.subclass?.name)
 	/**
-	 * D46 (the 12 marks): every feat taken so far (Character.featAsiChoices) —
+	 * D46 (the 12 marks): every feat taken so far (featInstances, D156) —
 	 * SpellPicker fetches each one's `expanded` pool-widening spells itself
 	 * (classSpellListData.ts's loadFeatExpandedSpellList) and unions in
 	 * whatever isn't empty. Reading current wizard state here (not a saved
@@ -891,7 +933,7 @@ export function CharacterWizard({
 	 * steps are revisitable (the Back button), so step ORDER doesn't gate
 	 * this the way it would a one-way form.
 	 */
-	const markFeatChoices = state.data.featAsiChoices.filter((choice) => choice.kind === 'feat').map((choice) => ({ name: choice.name, source: choice.source }))
+	const markFeatChoices = draftFeatInstances.map((choice) => ({ name: choice.name, source: choice.source }))
 
 	/**
 	 * The inputs the class-level optional-feature prerequisites read
@@ -1156,7 +1198,7 @@ export function CharacterWizard({
 								level={state.data.classChoice.level}
 								value={state.data.masteries}
 								onChange={(weapons) => dispatch({ type: 'setMasteries', weapons })}
-								featAsiChoices={state.data.featAsiChoices}
+								feats={draftFeatInstances}
 								lockedValues={held?.masteries}
 							/>
 							{(held === null || held.fightingStyle === null) && (
@@ -1365,6 +1407,7 @@ export function CharacterWizard({
 						value={state.data.featAsiChoices}
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
 						lockedLevels={held?.featAsiChoices.map((choice) => choice.level)}
+						backgroundOriginFeat={backgroundOriginFeat}
 					/>
 				</div>
 			)}

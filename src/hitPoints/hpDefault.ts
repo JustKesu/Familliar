@@ -8,6 +8,7 @@
  * load done the same way.
  */
 
+import { characterFeats } from '../calculation/featEffects'
 import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
 import type { Character } from '../storage/character'
@@ -23,7 +24,6 @@ export async function loadCharacterMaxHp(character: Character): Promise<Calculat
 		loadGrantedClassFeatures(character),
 		loadSpeciesTraitNames(character),
 	])
-	const chosenFeats = (character.featAsiChoices ?? []).filter((choice) => choice.kind === 'feat')
-	const bonusFeatureNames = [...grantedFeatures.map((feature) => feature.name), ...chosenFeats.map((choice) => choice.name), ...speciesTraitNames]
+	const bonusFeatureNames = [...grantedFeatures.map((feature) => feature.name), ...characterFeats(character, feats).map((choice) => choice.name), ...speciesTraitNames]
 	return computeMaxHitPoints(character, classData, bonusFeatureNames, feats)
 }
