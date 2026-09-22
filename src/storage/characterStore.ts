@@ -36,9 +36,9 @@ import { describeStoredCharacterError, isSupportedVersion, toStoredCharacter } f
 import type { StoredCharacter } from './wireFormat'
 
 /*
- * The storage layer. Nothing else in the app touches localStorage
- * directly (CLAUDE.md task instructions) — every read and write goes
- * through a CharacterStore instance.
+ * The storage layer for characters. Nothing outside src/storage/ touches
+ * localStorage (CLAUDE.md task instructions): characters go through a
+ * CharacterStore instance, app settings through settingsStore.ts.
  *
  * Storage access is behind this small interface so tests can inject an
  * in-memory fake instead of a real browser localStorage.

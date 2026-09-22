@@ -23,6 +23,8 @@
     "investigate-optional-feature-shape": "node scripts/investigate-optional-feature-shape.js"
   },
   "dependencies": {
+    "@fontsource/bricolage-grotesque": "^5.3.0",
+    "@fontsource/source-sans-3": "^5.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

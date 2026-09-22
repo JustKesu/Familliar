@@ -1,0 +1,48 @@
+/* The only file allowed to hold colour literals (guarded by theme.test.ts). */
+
+@import '@fontsource/bricolage-grotesque/500.css';
+@import '@fontsource/bricolage-grotesque/600.css';
+@import '@fontsource/source-sans-3/400.css';
+@import '@fontsource/source-sans-3/600.css';
+@import '@fontsource/source-sans-3/700.css';
+
+:root {
+  --font-body: 'Source Sans 3', system-ui, 'Segoe UI', sans-serif;
+  --font-heading: 'Bricolage Grotesque', 'Source Sans 3', system-ui, sans-serif;
+}
+
+/* Dark is the default: it also applies before main.tsx has set the attribute. */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #121214;
+  --surface: #1b1b1e;
+  --surface-2: #232327;
+  --line: #313136;
+  --text: #ececee;
+  --text-sub: #a9a9b0;
+  --text-mute: #82828a;
+  --accent: #00f4f8;
+  --accent-text: #121214;
+  --accent-soft: rgba(0, 244, 248, 0.14);
+  --heal: #6cc08a;
+  --damage: #f08a6c;
+  --chip: #27272b;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f2f2f4;
+  --surface: #ffffff;
+  --surface-2: #f7f7f8;
+  --line: #dcdce1;
+  --text: #1c1c1f;
+  --text-sub: #55555c;
+  --text-mute: #6b6b73;
+  --accent: #007c80;
+  --accent-text: #ffffff;
+  --accent-soft: rgba(0, 160, 166, 0.12);
+  --heal: #2e7d3a;
+  --damage: #b3432a;
+  --chip: #ececef;
+}

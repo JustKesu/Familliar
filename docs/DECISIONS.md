@@ -2438,3 +2438,123 @@ Charge Magic Item bez limitu. Přidán do `TWO_INDEPENDENT_LIMITS`, tracker nem�
 
 Celkem 48 známých maxim bez tabulky: 46 jednoduchých použití (40 z D119 + 6) a 2 z
 ručně psané tabulky. 9 z nich se obnovuje na Short Rest.
+
+## D121 — Nejdřív rework sheetu, wizard až po něm
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Wizard sdílí stejný vizuální základ, proto jde druhý.
+
+## D122 — Cílem je laptop/monitor (1366–1920 px); mobil mimo rozsah
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D123 — Záložky Actions, Spells, Inventory, Features & Traits, Notes, Extras; dnešní záložka statistik se rozpouští do pevného levého sloupce
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Levý sloupec nese záchranné hody, smysly, proficience a dovednosti.
+
+## D124 — Položky v Actions jsou sbalené řádky, rozbalí se kliknutím
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D125 — Výběr kouzel se stěhuje do draweru „Manage Spells" na sheetu; wizard ho použije znovu
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Povinně filtr úrovně kouzla (víc úrovní naráz) a zvýraznění už vybraných kouzel.
+
+## D126 — Žádný společný inventář družiny, žádná váha/zatížení; kontejnery mimo rozsah
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D127 — Políčka použití: jeden záznam, zobrazený v Actions i ve Features & Traits
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D128 — Manage Feats jen pro extra featy (dar od DM); featy z úrovní jsou zamčené
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D129 — Featy s volbou dovedností (Skilled apod.) jsou povinná samostatná oprava
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D130 — Záložka Extras: familiár a Wild Shape formy, statblock v draweru, HP familiára se sledují
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D131 — Heroic Inspiration, Defenses a Conditions na sheetu; Conditions jsou štítek plus text pravidel, bez automatických efektů
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D132 — Bonusy od DM/homebrew přes rozšířený custom item (pasivy, dovednosti, smysly), nikdy přes override pole
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D133 — Detaily a úpravy se schovávají za ikonu ozubeného kola, ne do nových prvků na sheetu
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D134 — Jeden sdílený boční drawer ~460 px; sheet se kvůli němu nikdy nezužuje
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Vedle sheetu, když se vejde, jinak přes jeho pravou část; otevřený jen jeden; zavírá X a Esc.
+
+## D135 — Téma „Tyrkys" (akcent #00f4f8 tmavé / #007c80 světlé), tmavé výchozí, přepínač
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D136 — Pozadí s žhavými jiskrami reagujícími na kurzor, oddělené od sheetu, vypínatelné, respektuje reduced motion
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D137 — Ověřovací postava pro rework a step 10: Mistari, Tiefling Warlock 6 / Sorcerer 3
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D138 — Inventář, attunement a custom item si nechávají dnešní ovládání, přesunuté do draweru
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D139 — CAST utratí jeden slot úrovně sekce, pod kterou řádek stojí; při 0 slotech je vypnutý
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D140 — Volby featů jsou editovatelné v Manage Feats, i u zamčených featů z úrovní
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D141 — Appka hlídá počty připravených/známých kouzel, ne to, kdy se smějí měnit
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D142 — Multiclass (step 10) přichází až po reworku sheetu a wizardu
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D143 — Tlačítko Level Up v hlavičce sheetu
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D144 — Fonty: Bricolage Grotesque (nadpisy), Source Sans 3 (text)
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D145 — Seznam postav a sheet jsou oddělené pohledy; wizard dostane vlastní plný pohled místo sheetu (ne drawer); `main` max-width 48rem padá
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D146 — Rozpady hodnot (D40/D41) se stěhují z inline `<details>` do draweru
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Otevírá je ikona ozubeného kola / popisek; klik na hodnotu dál hází. Nahrazuje část D41 o inline rozpadu (D41 se needituje).
+
+## D147 — Hit dice malým řádkem pod HP; velikost v hlavičce u druhu; pasivní hodnoty a darkvision pod Senses; defenses ve stavovém řádku
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D148 — Popisky UI záložek anglicky
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026.
+
+## D149 — Fonty self-hostované přes @fontsource; za běhu žádný požadavek na cizí origin
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Appka musí fungovat offline.
+
+## D150 — Nastavení appky v samostatném úložišti (`familliar:settings`), ne v postavě
+
+Zdroj: plán reworku sheetu, 21.-22. 9. 2026. Bez zvýšení verze schématu.

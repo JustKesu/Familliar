@@ -1,26 +1,18 @@
-/* Minimal baseline styling. Visual design is explicitly out of scope for
- * phase 1 (see PHASE1.md); this is just enough to read the output and tell
- * the markup categories apart. */
+/* Colours come only from the tokens in theme.css. */
 
 :root {
-  color-scheme: light dark;
-  font: 16px/1.55 system-ui, 'Segoe UI', Roboto, sans-serif;
+  font: 14px/1.5 var(--font-body);
 
-  --rule: color-mix(in srgb, currentColor 18%, transparent);
-  --panel-bg: color-mix(in srgb, currentColor 4%, transparent);
-  --ref: #7b4bd8;
-  --value: #0d7a5f;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ref: #c4a5ff;
-    --value: #5fd0ac;
-  }
+  --rule: var(--line);
+  --panel-bg: var(--surface-2);
+  --ref: var(--accent);
+  --value: var(--heal);
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
 }
 
 main {
@@ -31,33 +23,151 @@ main {
 
 h1 {
   margin: 0;
-  font-size: 2rem;
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+a {
+  color: var(--accent);
+}
+
+summary {
+  cursor: pointer;
+  color: var(--text-sub);
+}
+
+summary::marker {
+  color: var(--accent);
+}
+
+/* ---- shared controls ---- */
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.2rem 0.65rem;
+  min-width: max-content;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+input:not([type='checkbox']):not([type='radio']),
+textarea,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.15rem 0.4rem;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
+}
+
+label {
+  white-space: nowrap;
+}
+
+.dice-roll__mode {
+  padding: 0.1rem 0.25rem;
+}
+
+.btn--accent-outline {
+  background: transparent;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn--accent-outline:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.btn--accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.btn--heal {
+  border-color: var(--heal);
+  color: var(--heal);
+}
+
+.btn--damage {
+  border-color: var(--damage);
+  color: var(--damage);
+}
+
+/* After the variants on purpose: a disabled button of any kind reads the same, at >= 3:1. */
+button:disabled {
+  color: var(--text-mute);
+  background: var(--surface-2);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+.pill {
+  font: inherit;
+  white-space: nowrap;
+  border: 0;
+  border-radius: 14px;
+  padding: 0.15rem 0.75rem;
+  background: var(--chip);
+  color: var(--text-sub);
+}
+
+.pill--active {
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 .subtitle {
   margin: 0.25rem 0 2rem;
-  opacity: 0.7;
+  color: var(--text-sub);
 }
 
 .error {
-  color: #c62828;
-}
-
-@media (prefers-color-scheme: dark) {
-  .error {
-    color: #ff8a80;
-  }
+  color: var(--damage);
 }
 
 /* The inventory's one answer back to the player — what an equip put down, or
  * why an attunement was refused. Drawn as a panel because the earlier plain
  * paragraph sat above a long list and was routinely missed. */
 .sheet__inventory-notice {
-  border: 1px solid var(--rule);
-  border-left: 4px solid #c68400;
-  border-radius: 4px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
   padding: 0.5rem 0.75rem;
-  background: var(--panel-bg);
+  background: var(--surface);
 }
 
 /* Discard is destructive (gone from the inventory, not just out of hand) and
@@ -66,24 +176,18 @@ h1 {
 .sheet__inventory-discard {
   margin-left: 0.75rem;
   padding: 0.15rem 0.5rem;
-  border: 1px solid #c62828;
-  border-radius: 4px;
-  color: #c62828;
+  border: 1px solid var(--damage);
+  border-radius: 6px;
+  color: var(--damage);
   background: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  .sheet__inventory-discard {
-    border-color: #ff8a80;
-    color: #ff8a80;
-  }
 }
 
 /* ---- demo panels ---- */
 
 .panel {
-  border: 1px solid var(--rule);
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
 }
@@ -104,7 +208,7 @@ h1 {
 .panel__source {
   font-size: 0.75rem;
   font-weight: 400;
-  opacity: 0.6;
+  color: var(--text-mute);
   border: 1px solid var(--rule);
   border-radius: 4px;
   padding: 0.05rem 0.35rem;
@@ -113,14 +217,14 @@ h1 {
 
 .panel__toggle {
   font-size: 0.8rem;
-  opacity: 0.75;
+  color: var(--text-sub);
   user-select: none;
 }
 
 .panel__caption {
   margin: 0.35rem 0 1rem;
   font-size: 0.85rem;
-  opacity: 0.65;
+  color: var(--text-sub);
 }
 
 .panel__raw {
@@ -148,18 +252,21 @@ h1 {
 .tabs__button {
   border: 1px solid var(--rule);
   background: transparent;
-  color: inherit;
+  color: var(--text-sub);
   border-radius: 6px 6px 0 0;
   padding: 0.4rem 0.9rem;
   font: inherit;
   cursor: pointer;
-  opacity: 0.65;
 }
 
 .tabs__button--active {
-  opacity: 1;
-  background: var(--panel-bg);
+  color: var(--text);
+  background: var(--surface);
   font-weight: 600;
+}
+
+.tabs__theme {
+  margin-left: auto;
 }
 
 /* ---- character sheet tabs (sheet rebuild slice 2) ---- */
@@ -176,17 +283,16 @@ h1 {
   border: 1px solid var(--rule);
   border-bottom: none;
   background: transparent;
-  color: inherit;
+  color: var(--text-sub);
   border-radius: 6px 6px 0 0;
   padding: 0.4rem 0.9rem;
   font: inherit;
   cursor: pointer;
-  opacity: 0.6;
 }
 
 .sheet__tab--active {
-  opacity: 1;
-  background: var(--panel-bg);
+  color: var(--accent);
+  background: var(--surface);
   font-weight: 600;
 }
 
@@ -220,14 +326,15 @@ h1 {
 /* Slice 9d1: the concentration toggle on a spell row. */
 .spell-list__concentrate[aria-pressed='true'] {
   font-weight: 600;
-  background: var(--panel-bg);
-  border: 2px solid currentColor;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
 }
 
 /* Where a feature came from, beside its name on the Features and Actions tabs. */
 .sheet__feature-origin {
   font-size: 0.85em;
-  opacity: 0.7;
+  color: var(--text-mute);
 }
 
 /* ---- actions table (sheet rebuild slice 3) ---- */
@@ -266,14 +373,15 @@ h1 {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 1rem;
-  border: 1px solid var(--rule);
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
   padding: 0.6rem 0.9rem;
   margin-bottom: 0.6rem;
 }
 
 .char-row--empty {
-  opacity: 0.6;
+  color: var(--text-mute);
   justify-content: center;
 }
 
@@ -288,7 +396,7 @@ h1 {
 }
 
 .char-row__meta {
-  opacity: 0.6;
+  color: var(--text-mute);
   font-size: 0.85rem;
   flex: 1;
 }
@@ -308,7 +416,7 @@ h1 {
 
 .char-import__hint {
   font-size: 0.8rem;
-  opacity: 0.6;
+  color: var(--text-mute);
 }
 
 .counts {
@@ -316,7 +424,7 @@ h1 {
   flex-wrap: wrap;
   gap: 0.25rem 1rem;
   font-size: 0.75rem;
-  opacity: 0.6;
+  color: var(--text-mute);
   border-top: 1px solid var(--rule);
   padding-top: 0.75rem;
 }
@@ -386,7 +494,7 @@ h1 {
 .mk-options__label {
   margin: 0 0 0.3rem;
   font-style: italic;
-  opacity: 0.8;
+  color: var(--text-sub);
 }
 
 .mk-table-wrap {
@@ -416,7 +524,7 @@ h1 {
 
 .mk-table__footnotes {
   font-size: 0.8rem;
-  opacity: 0.7;
+  color: var(--text-sub);
   margin-top: 0.4rem;
 }
 
@@ -431,8 +539,9 @@ h1 {
 
 /* Shared searchable/collapsible option list (src/pickers/SearchableOptionList.tsx). */
 .option-list {
-  border: 1px solid var(--rule);
-  border-radius: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
   margin: 0.75rem 0;
 }
 
@@ -440,11 +549,14 @@ h1 {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+  box-sizing: border-box;
   width: 100%;
+  min-width: 0;
+  white-space: normal;
   padding: 0.5rem 0.75rem;
-  background: var(--panel-bg);
+  background: var(--surface-2);
   border: 0;
-  border-radius: 0.4rem;
+  border-radius: 12px;
   font: inherit;
   color: inherit;
   cursor: pointer;
@@ -455,7 +567,7 @@ h1 {
 }
 
 .option-list__count {
-  opacity: 0.75;
+  color: var(--text-sub);
 }
 
 .option-list__body {
@@ -463,6 +575,7 @@ h1 {
 }
 
 .option-list__search {
+  box-sizing: border-box;
   width: 100%;
   padding: 0.35rem 0.5rem;
   margin-bottom: 0.5rem;
@@ -480,14 +593,19 @@ h1 {
   border-top: 1px solid var(--rule);
 }
 
+/* Option labels are long prose; they wrap, unlike control labels. */
+.option-list__item label {
+  white-space: normal;
+}
+
 .option-list__label--disabled {
-  opacity: 0.55;
+  color: var(--text-mute);
 }
 
 .option-list__reason,
 .option-list__detail {
   font-size: 0.85rem;
-  opacity: 0.8;
+  color: var(--text-sub);
   margin: 0.15rem 0 0 1.5rem;
 }
 
@@ -496,10 +614,10 @@ h1 {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  opacity: 0.6;
+  color: var(--text-mute);
 }
 
 .option-list__empty {
-  opacity: 0.7;
+  color: var(--text-mute);
   margin: 0.25rem 0 0;
 }

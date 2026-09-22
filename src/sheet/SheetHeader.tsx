@@ -144,11 +144,12 @@ function DamageHealingPanel({
 					onChange={(event) => setDraft(event.target.value)}
 				/>
 			</label>{' '}
-			<button type="button" disabled={amount === null || currentHp === undefined} onClick={() => amount !== null && apply(applyDamage(pools, amount))}>
+			<button type="button" className="btn--damage" disabled={amount === null || currentHp === undefined} onClick={() => amount !== null && apply(applyDamage(pools, amount))}>
 				Damage
 			</button>{' '}
 			<button
 				type="button"
+				className="btn--heal"
 				disabled={amount === null || currentHp === undefined || maximum === null}
 				onClick={() => amount !== null && maximum !== null && apply(applyHealing(pools, amount, maximum))}
 			>
@@ -444,12 +445,12 @@ export function SheetHeader({
 				{(onShortRest || onLongRest) && (
 					<div className="sheet__rest" role="group" aria-label="Rest">
 						{onShortRest && (
-							<button type="button" onClick={onShortRest}>
+							<button type="button" className="btn--accent-outline" onClick={onShortRest}>
 								Short Rest
 							</button>
 						)}{' '}
 						{onLongRest && (
-							<button type="button" onClick={onLongRest}>
+							<button type="button" className="btn--accent-outline" onClick={onLongRest}>
 								Long Rest
 							</button>
 						)}

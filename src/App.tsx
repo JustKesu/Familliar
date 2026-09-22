@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import CharacterManager from './CharacterManager'
 import MarkupDemo from './MarkupDemo'
+import ThemeToggle from './ThemeToggle'
 
 type Tab = 'characters' | 'markup-demo'
 
@@ -24,6 +25,7 @@ function App() {
 				>
 					Markup demo
 				</button>
+				<ThemeToggle />
 			</nav>
 
 			{tab === 'characters' ? <CharacterManager /> : <MarkupDemo />}
