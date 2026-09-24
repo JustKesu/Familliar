@@ -1,8 +1,7 @@
-import { useState, type ReactNode } from 'react'
-import { rollDice, rollKeepOne, type DiceRoll, type KeepOneRoll, type RandomSource, type RollMode } from './roll'
+import { useContext, type ReactNode } from 'react'
+import { rollDice, rollKeepOne, type DiceRoll, type KeepOneRoll, type RandomSource } from './roll'
 import type { RollReport } from './RollHistory'
-
-const MODE_LABELS: Record<RollMode, string> = { normal: 'Normal', advantage: 'Advantage', disadvantage: 'Disadvantage' }
+import { RollModeContext } from './RollUi'
 
 function withModifier(dice: string, modifier: number, total: number): string {
 	const sign = modifier < 0 ? '−' : '+'
@@ -19,20 +18,10 @@ export function formatKeepOneRoll(roll: KeepOneRoll): string {
 	return withModifier(dice, roll.modifier, roll.total)
 }
 
-function RollResult({ text }: { text: string | null }): ReactNode {
-	if (text === null) return null
-	return (
-		<span className="dice-roll__result" role="status">
-			{' '}
-			{text}
-		</span>
-	)
-}
-
 /**
- * The result is component state on purpose: a roll is never stored and never
- * changes the printed value it was made from (step 9c1). So is the mode — it is
- * a choice about the next roll, not part of the character.
+ * The result is not shown here: it goes to the sheet's toast and history via
+ * onRoll (D165). The advantage mode is the sheet-wide switch, which goes back
+ * to Normal after every roll made here.
  */
 export function RollButton({
 	modifier,
@@ -45,37 +34,22 @@ export function RollButton({
 	random?: RandomSource
 	onRoll?: (report: RollReport) => void
 }): ReactNode {
-	const [roll, setRoll] = useState<KeepOneRoll | null>(null)
-	const [mode, setMode] = useState<RollMode>('normal')
-	const [shownFor, setShownFor] = useState(modifier)
-	// A result made from an older number must not sit beside the new one; the mode is a choice about the next roll and stays.
-	if (shownFor !== modifier) {
-		setShownFor(modifier)
-		setRoll(null)
-	}
+	const { mode, setMode } = useContext(RollModeContext)
 	function makeRoll(): void {
 		const next = rollKeepOne(20, modifier, mode, random)
-		setRoll(next)
-		onRoll?.({ label, text: formatKeepOneRoll(next) })
+		onRoll?.({ label, text: formatKeepOneRoll(next), detail: { dice: next.dice, keptIndex: next.dice.indexOf(next.kept), modifier, total: next.total } })
+		setMode('normal')
 	}
 	return (
 		<span className="dice-roll">
-			<select className="dice-roll__mode" aria-label={`Roll mode for ${label}`} value={mode} onChange={(event) => setMode(event.target.value as RollMode)}>
-				{(Object.keys(MODE_LABELS) as RollMode[]).map((option) => (
-					<option key={option} value={option}>
-						{MODE_LABELS[option]}
-					</option>
-				))}
-			</select>{' '}
 			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} onClick={makeRoll}>
 				Roll
 			</button>
-			<RollResult text={roll && formatKeepOneRoll(roll)} />
 		</span>
 	)
 }
 
-/** Damage sums its dice; advantage and disadvantage never apply to it, so it has no mode control. */
+/** Damage sums its dice; advantage and disadvantage never apply to it, so it ignores the switch and leaves it alone. */
 export function DamageRollButton({
 	count,
 	sides,
@@ -90,29 +64,20 @@ export function DamageRollButton({
 	modifier: number
 	label: string
 	random?: RandomSource
-	/** Slice 9b6: a hit die with none left to spend. The last result stays shown — it was made before the count ran out. */
+	/** Slice 9b6: a hit die with none left to spend. */
 	disabled?: boolean
 	/** The roll itself rides along as a second argument for a caller that needs the total (slice 9b6: a hit die heals by it); every other caller ignores it. */
 	onRoll?: (report: RollReport, roll: DiceRoll) => void
 }): ReactNode {
-	const [roll, setRoll] = useState<DiceRoll | null>(null)
-	const rollInputs = `${count}d${sides}|${modifier}`
-	const [shownFor, setShownFor] = useState(rollInputs)
-	if (shownFor !== rollInputs) {
-		setShownFor(rollInputs)
-		setRoll(null)
-	}
 	function makeRoll(): void {
 		const next = rollDice(count, sides, modifier, random)
-		setRoll(next)
-		onRoll?.({ label, text: formatRoll(next) }, next)
+		onRoll?.({ label, text: formatRoll(next), detail: { dice: next.dice, keptIndex: null, modifier, total: next.total } }, next)
 	}
 	return (
 		<span className="dice-roll">
 			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} disabled={disabled} onClick={makeRoll}>
 				Roll
 			</button>
-			<RollResult text={roll && formatRoll(roll)} />
 		</span>
 	)
 }

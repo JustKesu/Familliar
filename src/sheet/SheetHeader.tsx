@@ -29,10 +29,11 @@
  * five values) and the status row (defenses, concentration).
  */
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useState, type ReactNode } from 'react'
 import { RollButton } from '../dice/RollButton'
 import { rollKeepOne } from '../dice/roll'
-import { RollHistory, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
+import { type RollReport } from '../dice/RollHistory'
+import { RollModeContext, RollModeSwitch } from '../dice/RollUi'
 import { type ArmourClassValue } from '../calculation/armourClass'
 import { type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
@@ -267,7 +268,6 @@ export function SheetHeader({
 	onEditHitPoints,
 	onShortRest,
 	onLongRest,
-	rollHistory = [],
 	onRoll,
 	identity,
 	abilities,
@@ -310,8 +310,6 @@ export function SheetHeader({
 	 */
 	onShortRest?: () => void
 	onLongRest?: () => void
-	/** Slice 9c3b: the sheet-wide history, held by CharacterSheet so every tab's buttons feed one list; shown here because the header is on every tab. */
-	rollHistory?: RollHistoryEntry[]
 	onRoll?: (report: RollReport) => void
 }): ReactNode {
 	/** What the death saves are worth on a write that does not touch the current hit points (D111). */
@@ -325,6 +323,7 @@ export function SheetHeader({
 		onRoll?.({ label: 'death save', text })
 	}
 
+	const rollMode = useContext(RollModeContext)
 	const initial = name.trim().charAt(0).toUpperCase()
 
 	return (
@@ -338,6 +337,7 @@ export function SheetHeader({
 					<h1>{name}</h1>
 					{identity}
 				</div>
+				<RollModeSwitch mode={rollMode.mode} onChange={rollMode.setMode} />
 				{/* Both apply on the click, like every other control in this header — a rest is undone by the same buttons that spend, not by a dialog. */}
 				{(onShortRest || onLongRest) && (
 					<div className="sheet__rest" role="group" aria-label="Rest">
@@ -354,8 +354,6 @@ export function SheetHeader({
 					</div>
 				)}
 			</div>
-
-			<RollHistory entries={rollHistory} />
 		</header>
 
 		<div className="sheet__strip">

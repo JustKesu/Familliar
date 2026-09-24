@@ -255,7 +255,6 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	if (!store.store) {
 		return (
 			<main>
-				<h1>Familliar</h1>
 				<p className="error">Storage unavailable: {store.error}</p>
 			</main>
 		)
@@ -265,7 +264,6 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	if (route.view === 'list') {
 		return (
 			<main>
-				<h1>Familliar</h1>
 				<p className="subtitle">
 					Characters. Creation opens the real wizard (build order step 3). Listing, renaming,
 					deleting and export/import are still temporary UI; "Sheet" opens the real character
@@ -325,7 +323,6 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	if (route.view === 'new') {
 		return (
 			<main>
-				<h1>Familliar</h1>
 				{actionError && <p className="error">{actionError}</p>}
 				<div className="char-create">
 					<CharacterWizard store={characterStore} onSaved={handleWizardSaved} onCancel={() => navigate({ view: 'list' }, { replace: true })} />
@@ -341,7 +338,6 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	if (route.view === 'sheet') {
 		return (
 			<main className="sheet-view">
-				<h1>Familliar</h1>
 				{actionError && <p className="error">{actionError}</p>}
 				<CharacterSheet
 					character={character}
@@ -379,7 +375,6 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	if (route.view === 'edit') {
 		return (
 			<main>
-				<h1>Familliar</h1>
 				{actionError && <p className="error">{actionError}</p>}
 				<div className="char-create">
 					<CharacterWizard
@@ -396,7 +391,6 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 
 	return (
 		<main>
-			<h1>Familliar</h1>
 			{actionError && <p className="error">{actionError}</p>}
 			<div className="char-create">
 				<LevelUpWizardGate

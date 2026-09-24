@@ -64,6 +64,37 @@ describe('App routing (rework R1b, D151)', () => {
 		expect(screen.queryByText('No characters saved yet.')).toBeNull()
 	})
 
+	it('has no "Familliar" page heading on the list or on a sheet (D165)', async () => {
+		const store = new CharacterStore()
+		const created = store.create({ name: 'Aria' })
+		render(<App />)
+		await screen.findByText('Aria')
+		expect(screen.queryByRole('heading', { name: 'Familliar' })).toBeNull()
+
+		window.location.hash = `#/character/${created.id}`
+		window.dispatchEvent(new Event('hashchange'))
+		await screen.findByRole('button', { name: 'Edit character' })
+		expect(screen.queryByRole('heading', { name: 'Familliar' })).toBeNull()
+	})
+
+	it('shows "Rolls" in the top bar only while a sheet is open, and it opens the history drawer (D165)', async () => {
+		const store = new CharacterStore()
+		const created = store.create({ name: 'Aria' })
+		const user = userEvent.setup()
+		render(<App />)
+		await screen.findByText('Aria')
+		expect(screen.queryByRole('button', { name: 'Rolls' })).toBeNull()
+
+		window.location.hash = `#/character/${created.id}`
+		window.dispatchEvent(new Event('hashchange'))
+		await user.click(await screen.findByRole('button', { name: 'Rolls' }))
+		expect(screen.getByRole('dialog', { name: 'Roll history' })).not.toBeNull()
+		expect(screen.getByRole('button', { name: 'Rolls' }).closest('nav')).not.toBeNull()
+
+		await user.click(screen.getByRole('button', { name: 'Characters' }))
+		expect(screen.queryByRole('button', { name: 'Rolls' })).toBeNull()
+	})
+
 	it('pushes a history entry and shows only the sheet when a character is opened', async () => {
 		const store = new CharacterStore()
 		const created = store.create({ name: 'Aria' })

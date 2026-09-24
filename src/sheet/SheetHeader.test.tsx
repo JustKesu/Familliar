@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SheetHeader } from './SheetHeader'
+import { RollModeContext } from '../dice/RollUi'
+import type { RollMode } from '../dice/roll'
 import { known, unknown, type Calculated } from '../calculation/types'
 import type { ArmourClassValue } from '../calculation/armourClass'
 import type { SpeedValue } from '../calculation/speciesTraits'
@@ -50,17 +52,24 @@ function renderHeader(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}
 }
 
 describe('SheetHeader initiative roll (step 9 slice 9c2)', () => {
-	function rollText(container: HTMLElement): string | undefined {
-		return container.querySelector('.sheet__initiative .dice-roll__result')?.textContent?.trim()
+	/** The header only reports a roll (D165): the toast and the history live in CharacterSheet. */
+	function renderReporting(overrides: Partial<Parameters<typeof SheetHeader>[0]> = {}, mode: RollMode = 'normal') {
+		const texts: string[] = []
+		const view = render(
+			<RollModeContext.Provider value={{ mode, setMode: () => {} }}>
+				{headerElement({ onRoll: (report) => texts.push(report.text), ...overrides })}
+			</RollModeContext.Provider>,
+		)
+		return { ...view, texts }
 	}
 
 	it('rolls a d20 plus the printed initiative without changing it', async () => {
 		const user = userEvent.setup()
-		const { container } = renderHeader()
-		expect(rollText(container)).toBeUndefined()
+		const { container, texts } = renderReporting()
+		expect(container.querySelector('.sheet__initiative .dice-roll__result')).toBeNull()
 
 		await user.click(screen.getByRole('button', { name: 'Roll initiative' }))
-		const match = rollText(container)!.match(/^(\d+) \+ 2 = (\d+)$/)
+		const match = texts[0]!.match(/^(\d+) \+ 2 = (\d+)$/)
 		expect(match).not.toBeNull()
 		const die = Number(match![1])
 		expect(die).toBeGreaterThanOrEqual(1)
@@ -71,26 +80,14 @@ describe('SheetHeader initiative roll (step 9 slice 9c2)', () => {
 
 	it('rolls two d20s with disadvantage and keeps the lower, without changing the initiative', async () => {
 		const user = userEvent.setup()
-		const { container } = renderHeader()
-		await user.selectOptions(screen.getByRole('combobox', { name: 'Roll mode for initiative' }), 'disadvantage')
-		expect(rollText(container)).toBeUndefined()
+		const { container, texts } = renderReporting({}, 'disadvantage')
 
 		await user.click(screen.getByRole('button', { name: 'Roll initiative' }))
-		const match = rollText(container)!.match(/^(\d+), (\d+) \(kept (\d+)\) \+ 2 = (\d+)$/)
+		const match = texts[0]!.match(/^(\d+), (\d+) \(kept (\d+)\) \+ 2 = (\d+)$/)
 		expect(match).not.toBeNull()
 		expect(Number(match![3])).toBe(Math.min(Number(match![1]), Number(match![2])))
 		expect(Number(match![4])).toBe(Number(match![3]) + 2)
 		expect(container.querySelector('.sheet__initiative')!.textContent).toContain('+2')
-	})
-
-	it('drops a stale result when the initiative changes', async () => {
-		const user = userEvent.setup()
-		const { container, rerender } = renderHeader()
-		await user.click(screen.getByRole('button', { name: 'Roll initiative' }))
-		expect(rollText(container)).toBeDefined()
-
-		rerender(headerElement({ initiative: known(3, [{ source: 'Dexterity', amount: 3 }]) }))
-		expect(rollText(container)).toBeUndefined()
 	})
 
 	it('offers no roll on an unresolved initiative', () => {
@@ -465,7 +462,7 @@ describe('SheetHeader layout blocks', () => {
 
 		expect(header.querySelector('.sheet__header-main h1')!.textContent).toBe('Aria')
 		expect(header.querySelector('.sheet__header-main .test-identity')).toBeTruthy()
-		expect(header.querySelector(':scope > .sheet__roll-history')).toBeTruthy()
+		expect(header.querySelector('.sheet__roll-history')).toBeNull()
 
 		expect(strip.firstElementChild!.matches('.test-abilities')).toBe(true)
 		for (const cls of ['.sheet__proficiency-bonus', '.sheet__speed', '.sheet__initiative', '.sheet__armour-class', '.sheet__hit-points']) {

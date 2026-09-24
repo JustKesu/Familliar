@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-22 (task R4-fix: sheet 1400px, breakpoint draweru 1860px, rozpady v draweru otevřené)
+Poslední aktualizace: 2026-09-24 (task R4d: globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1184,8 +1184,22 @@ otevřený); roll tlačítko a advantage select na kartě beze změny. Testy:
 `Drawer.test.tsx` (shell + oba bloky) a blok `side drawer (D146/D163)` v
 `CharacterSheet.test.tsx` (rozšířený o kontrolu `open` na `<details>`).
 Kontrola v prohlížeči neproběhla (zadání ji vyloučilo — uživatel zkontroluje
-sám, viz REPORT.md). Další drawer obsahy (Manage Spells/Inventory/Feats,
-historie hodů) čekají na své slice.
+sám, viz REPORT.md). Další drawer obsahy (Manage Spells/Inventory/Feats)
+čekají na své slice.
+
+R4d hotový (D165): hody se spouštějí a zobrazují jinak. Advantage je jeden
+globální přepínač Normal/Advantage/Disadvantage v hlavičce sheetu vlevo od
+Short Rest (`RollModeContext`, UI stav v `CharacterSheet`), po každém d20 hodu
+se vrací na Normal; `RollButton` nemá `<select>` ani inline výsledek. Výsledek
+každého hodu ukáže `RollToast` (`src/dice/RollUi.tsx`, fixní vpravo dole, jeden
+najednou, 6 s, ×, `aria-live="polite"`, u advantage obě d20 s nepoužitou
+přeškrtnutou). Historie hodů je v draweru „Roll history" otevíraném tlačítkem
+„Rolls" v horní liště (portál do slotu v `App`, jen při otevřeném sheetu);
+disclosure v hlavičce zrušen. `<h1>Familliar</h1>` z `CharacterManager` zrušen.
+Historie stále přežívá přepnutí postavy (známá chyba, samostatný task).
+Testy: `RollButton.test.tsx`, bloky rolls/toast/roll history v
+`CharacterSheet.test.tsx`, `SheetHeader.test.tsx`, `App.test.tsx`. Kontrola v
+prohlížeči neproběhla (zadání ji vyloučilo).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

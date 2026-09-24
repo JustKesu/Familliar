@@ -2803,3 +2803,38 @@ jako `breakdownOpen`. V draweru ho nastavují všechna čtyři volání v Senses
 (Passive Perception/Investigation/Insight přes `CalculatedNumber`, Darkvision
 přímo) a `AbilityScorePanel` — dřív se muselo kliknout dvakrát (otevřít drawer,
 pak rozbalit Breakdown), teď stačí jednou.
+
+## D165 — R4d: globální přepínač advantage, toast s výsledkem hodu, „Rolls" v horní liště, bez nadpisu „Familliar"
+
+Zdroj: task R4d (rework sheetu), 24. 9. 2026. Mění D146/D163 v tom, kde se hody
+spouštějí a zobrazují; ničemu dřívějšímu neodporuje kromě per-tlačítkového
+`<select>` režimu (slice 9c3a) a inline výsledku (9c1), které se ruší.
+
+**Přepínač.** Segmentovaný ovladač Normal · Advantage · Disadvantage v hlavičce
+sheetu, těsně vlevo od Short Rest (`RollModeSwitch`, `src/dice/RollUi.tsx`).
+Režim drží `useState` v `CharacterSheet` a rozdává ho přes `RollModeContext` —
+čistě UI stav, neukládá se na postavu a není v URL. `RollButton` (d20) ho čte a
+po KAŽDÉM hodu ho vrací na Normal. `DamageRollButton` a death save v hlavičce
+advantage nikdy neměly, přepínač ignorují a nechávají ho být. `RollButton` už
+nemá vlastní `<select>` ani stav výsledku.
+
+**Toast.** Po každém hodu (i damage, hit die a death save) vpravo dole fixní
+toast, 300px, jeden najednou — nový hod ho nahradí, po 6 s zmizí sám, má ×
+a je v `aria-live="polite"` regionu, který je v DOM pořád. Ukazuje label
+(stejný jako v historii), kostky (u advantage obě d20, nepoužitá přeškrtnutá v
+`--text-mute`) a `kostky ± modifikátor = součet`. Data nese `RollReport.detail`
+(`dice`, `keptIndex`, `modifier`, `total`); hod bez `detail` (death save) ukáže
+jen `text`. Stav i časovač jsou uvnitř `RollToast`; `CharacterSheet` mu jen
+volá funkci přes ref, takže tik časovače nepřekresluje sheet (D116).
+
+**Rolls v horní liště.** Tlačítko „Rolls" vedle „Markup demo" a „Light" otevře
+sdílený drawer (D163) s titulkem „Roll history" a stejným seznamem jako dřív
+(pořadí, limit 50). `App` nese prázdný `<span>` slot v `<nav>` a dává ho do
+`RollsNavSlot`; `CharacterSheet` do něj tlačítko vykreslí portálem, takže existuje
+jen dokud je sheet otevřený. Disclosure „Roll history" v hlavičce sheetu je pryč.
+Historie dál přežívá přepnutí na jinou postavu — samostatná chyba, tady se
+neřeší.
+
+**Nadpis.** `<h1>Familliar</h1>` z `CharacterManager` (všechny pohledy) je pryč
+a nic ho nenahrazuje; `<title>` dokumentu zůstává. `MarkupDemo` má vlastní
+`<h1>` beze změny.

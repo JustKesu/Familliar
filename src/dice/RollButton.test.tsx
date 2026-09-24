@@ -2,7 +2,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState, type ReactNode } from 'react'
 import { DamageRollButton, RollButton } from './RollButton'
+import { RollModeContext } from './RollUi'
+import type { RollMode } from './roll'
 
 afterEach(cleanup)
 
@@ -11,110 +14,73 @@ function sequence(values: number[]): () => number {
 	return () => values[i++]!
 }
 
-function result(container: HTMLElement): string | undefined {
-	return container.querySelector('.dice-roll__result')?.textContent?.trim()
+/** Stands in for the sheet's switch: holds the mode and shows it, so a test can see it return to Normal. */
+function WithMode({ initial, children }: { initial: RollMode; children: ReactNode }): ReactNode {
+	const [mode, setMode] = useState<RollMode>(initial)
+	return (
+		<RollModeContext.Provider value={{ mode, setMode }}>
+			<output data-testid="mode">{mode}</output>
+			{children}
+		</RollModeContext.Provider>
+	)
 }
 
 // 0.4 → 9 and 0.65 → 14 on a d20.
-describe('RollButton (d20 check with advantage and disadvantage, step 9 slice 9c3a)', () => {
-	it('defaults to normal and shows one die', async () => {
+describe('RollButton (d20 check, mode from the sheet-wide switch, D165)', () => {
+	it('renders no select and no inline result', async () => {
 		const user = userEvent.setup()
 		const { container } = render(<RollButton modifier={5} label="Athletics check" random={() => 0.65} />)
-		expect((screen.getByRole('combobox', { name: 'Roll mode for Athletics check' }) as HTMLSelectElement).value).toBe('normal')
 		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(result(container)).toBe('14 + 5 = 19')
+		expect(container.querySelector('select')).toBeNull()
+		expect(container.querySelector('.dice-roll__result')).toBeNull()
 	})
 
-	it('shows both dice and the higher one kept with advantage', async () => {
-		const user = userEvent.setup()
-		const { container } = render(<RollButton modifier={5} label="Athletics check" random={sequence([0.4, 0.65])} />)
-		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
-		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(result(container)).toBe('9, 14 (kept 14) + 5 = 19')
-	})
-
-	it('shows both dice and the lower one kept with disadvantage', async () => {
-		const user = userEvent.setup()
-		const { container } = render(<RollButton modifier={5} label="Athletics check" random={sequence([0.65, 0.4])} />)
-		await user.selectOptions(screen.getByRole('combobox'), 'disadvantage')
-		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(result(container)).toBe('14, 9 (kept 9) + 5 = 14')
-	})
-
-	it('prints a negative modifier with a minus sign in every mode', async () => {
-		const user = userEvent.setup()
-		const { container } = render(<RollButton modifier={-1} label="Athletics check" random={sequence([0.4, 0.65])} />)
-		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
-		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(result(container)).toBe('9, 14 (kept 14) − 1 = 13')
-	})
-
-	it('does not roll when a mode is picked', async () => {
-		const user = userEvent.setup()
-		const { container } = render(<RollButton modifier={5} label="Athletics check" random={() => 0.65} />)
-		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
-		expect(result(container)).toBeUndefined()
-	})
-
-	it('leaves a showing result alone when the mode changes, until the next click', async () => {
-		const user = userEvent.setup()
-		const { container } = render(<RollButton modifier={5} label="Athletics check" random={sequence([0.65, 0.4, 0.65])} />)
-		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(result(container)).toBe('14 + 5 = 19')
-
-		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
-		expect(result(container)).toBe('14 + 5 = 19')
-
-		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(result(container)).toBe('9, 14 (kept 14) + 5 = 19')
-	})
-
-	it('keeps the chosen mode for the next roll', async () => {
-		const user = userEvent.setup()
-		const { container } = render(<RollButton modifier={0} label="Athletics check" random={sequence([0.4, 0.65, 0.65, 0.4])} />)
-		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
-		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(result(container)).toBe('14, 9 (kept 14) + 0 = 14')
-	})
-
-	it('clears the shown result but keeps the mode when the modifier changes', async () => {
-		const user = userEvent.setup()
-		const { container, rerender } = render(<RollButton modifier={5} label="Athletics check" random={sequence([0.4, 0.65])} />)
-		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
-		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(result(container)).toBe('9, 14 (kept 14) + 5 = 19')
-
-		rerender(<RollButton modifier={6} label="Athletics check" random={sequence([0.4, 0.65])} />)
-		expect(result(container)).toBeUndefined()
-		expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('advantage')
-	})
-
-	it('reports each roll with its label and the same text it shows', async () => {
+	it('rolls one die by default and reports it', async () => {
 		const user = userEvent.setup()
 		const reports: unknown[] = []
-		render(<RollButton modifier={5} label="Athletics check" random={sequence([0.4, 0.65])} onRoll={(report) => reports.push(report)} />)
-		await user.selectOptions(screen.getByRole('combobox'), 'advantage')
+		render(<RollButton modifier={5} label="Athletics check" random={() => 0.65} onRoll={(report) => reports.push(report)} />)
 		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
-		expect(reports).toEqual([{ label: 'Athletics check', text: '9, 14 (kept 14) + 5 = 19' }])
+		expect(reports).toEqual([{ label: 'Athletics check', text: '14 + 5 = 19', detail: { dice: [14], keptIndex: 0, modifier: 5, total: 19 } }])
+	})
+
+	it('rolls both dice and keeps the higher one with advantage, then puts the switch back to normal', async () => {
+		const user = userEvent.setup()
+		const reports: unknown[] = []
+		render(
+			<WithMode initial="advantage">
+				<RollButton modifier={5} label="Athletics check" random={sequence([0.4, 0.65])} onRoll={(report) => reports.push(report)} />
+			</WithMode>,
+		)
+		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+		expect(reports).toEqual([{ label: 'Athletics check', text: '9, 14 (kept 14) + 5 = 19', detail: { dice: [9, 14], keptIndex: 1, modifier: 5, total: 19 } }])
+		expect(screen.getByTestId('mode').textContent).toBe('normal')
+	})
+
+	it('keeps the lower one with disadvantage and prints a negative modifier with a minus sign', async () => {
+		const user = userEvent.setup()
+		const reports: { text: string }[] = []
+		render(
+			<WithMode initial="disadvantage">
+				<RollButton modifier={-1} label="Athletics check" random={sequence([0.65, 0.4])} onRoll={(report) => reports.push(report)} />
+			</WithMode>,
+		)
+		await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+		expect(reports[0]!.text).toBe('14, 9 (kept 9) − 1 = 8')
 	})
 })
 
 describe('DamageRollButton', () => {
-	it('sums every die and has no advantage or disadvantage control', async () => {
-		const user = userEvent.setup()
-		const { container } = render(<DamageRollButton count={2} sides={6} modifier={2} label="Greatsword damage" random={sequence([0.6, 0.2])} />)
-		expect(screen.queryByRole('combobox')).toBeNull()
-		expect(container.querySelector('select')).toBeNull()
-		await user.click(screen.getByRole('button', { name: 'Roll Greatsword damage' }))
-		expect(result(container)).toBe('4, 2 + 2 = 8')
-	})
-
-	it('reports each roll with its label and the same text it shows', async () => {
+	it('sums every die, ignores the switch and leaves it alone', async () => {
 		const user = userEvent.setup()
 		const reports: unknown[] = []
-		render(<DamageRollButton count={2} sides={6} modifier={2} label="Greatsword damage" random={sequence([0.6, 0.2])} onRoll={(report) => reports.push(report)} />)
+		const { container } = render(
+			<WithMode initial="advantage">
+				<DamageRollButton count={2} sides={6} modifier={2} label="Greatsword damage" random={sequence([0.6, 0.2])} onRoll={(report) => reports.push(report)} />
+			</WithMode>,
+		)
 		await user.click(screen.getByRole('button', { name: 'Roll Greatsword damage' }))
-		expect(reports).toEqual([{ label: 'Greatsword damage', text: '4, 2 + 2 = 8' }])
+		expect(container.querySelector('select')).toBeNull()
+		expect(reports).toEqual([{ label: 'Greatsword damage', text: '4, 2 + 2 = 8', detail: { dice: [4, 2], keptIndex: null, modifier: 2, total: 8 } }])
+		expect(screen.getByTestId('mode').textContent).toBe('advantage')
 	})
 })

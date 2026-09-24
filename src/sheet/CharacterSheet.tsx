@@ -13,7 +13,8 @@
  * itself). Data acquisition goes through the shared loader (D39).
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
 import { totalCharacterLevel } from '../levelUp/levelUpSteps'
@@ -135,7 +136,9 @@ import {
 } from '../storage/character'
 import { afterLongRest, afterShortRest } from '../rest/rest'
 import { DamageRollButton, RollButton } from '../dice/RollButton'
-import { addRollHistoryEntry, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
+import { addRollHistoryEntry, RollHistory, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
+import { RollModeContext, RollsNavSlot, RollToast } from '../dice/RollUi'
+import type { RollMode } from '../dice/roll'
 import { parseDiceExpression, type DiceRoll } from '../dice/roll'
 import type { CharacterTextField, HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
@@ -226,7 +229,7 @@ function messageOf(error: unknown): string {
 }
 
 /** What the drawer is showing, if anything (D163). UI state only — never stored, never in the URL. */
-type DrawerContent = { kind: 'senses' } | { kind: 'ability'; ability: Ability }
+type DrawerContent = { kind: 'senses' } | { kind: 'ability'; ability: Ability } | { kind: 'rolls' }
 
 /** D133: details hide behind a gear, not behind new controls on the sheet. Stroke only, so it takes the button's own colour. */
 function GearIcon(): ReactNode {
@@ -1947,9 +1950,14 @@ export function CharacterSheet({
 	/* Slice 9c3b: in memory only, like each button's own result — never written to Character.play. */
 	const [rollHistory, setRollHistory] = useState<RollHistoryEntry[]>([])
 	const nextRollId = useRef(0)
+	/* D165: UI state only — never saved, never in the URL; every roll that used it puts it back to Normal. */
+	const [rollMode, setRollMode] = useState<RollMode>('normal')
+	const toastRef = useRef<((report: RollReport) => void) | null>(null)
+	const rollsSlot = useContext(RollsNavSlot)
 	function recordRoll(report: RollReport): void {
 		const entry = { ...report, id: nextRollId.current++ }
 		setRollHistory((history) => addRollHistoryEntry(history, entry))
+		toastRef.current?.(report)
 	}
 	const [savingThrowClassData, setSavingThrowClassData] = useState<ClassSavingThrowProficiencies[] | null>(null)
 	const [hitDiceClassData, setHitDiceClassData] = useState<ClassHitDie[] | null>(null)
@@ -2769,7 +2777,15 @@ export function CharacterSheet({
 	)
 
 	return (
+		<RollModeContext.Provider value={{ mode: rollMode, setMode: setRollMode }}>
 		<article className="sheet">
+			{rollsSlot &&
+				createPortal(
+					<button type="button" className="tabs__button" onClick={() => setDrawer({ kind: 'rolls' })}>
+						Rolls
+					</button>,
+					rollsSlot,
+				)}
 			<SheetHeader
 				name={character.name}
 				armourClass={armourClass}
@@ -2789,7 +2805,6 @@ export function CharacterSheet({
 				onEditHitPoints={onEditHitPoints}
 				onShortRest={onRest ? takeShortRest : undefined}
 				onLongRest={onRest ? takeLongRest : undefined}
-				rollHistory={rollHistory}
 				onRoll={recordRoll}
 				identity={
 					<div className="sheet__header">
@@ -3447,12 +3462,20 @@ export function CharacterSheet({
 				</Drawer>
 			)}
 
+			{drawer?.kind === 'rolls' && (
+				<Drawer title="Roll history" onClose={() => setDrawer(null)}>
+					<RollHistory entries={rollHistory} />
+				</Drawer>
+			)}
+
 			{drawer?.kind === 'ability' && (
 				<Drawer title={ABILITY_LABELS[drawer.ability]} onClose={() => setDrawer(null)}>
 					<AbilityScorePanel result={abilityScores[drawer.ability]} />
 				</Drawer>
 			)}
 		</article>
+		<RollToast showRef={toastRef} />
+		</RollModeContext.Provider>
 	)
 }
 
