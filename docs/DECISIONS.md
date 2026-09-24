@@ -3094,3 +3094,49 @@ druhu volbu smaže; Edit Character ji ukáže.
 **Sheet.** `computeSize` bere uloženou volbu, je-li jednou z nabízených velikostí
 (zastaralá volba, kterou druh nenabízí, se ignoruje); jinak zůstává „unresolved"
 z D54. Hlavička ukáže „Small" / „Medium".
+
+## D176 — B6b: proficiency z ne-XPHB podtříd (pevné granty a volby)
+
+Zdroj: task B6b, 24. 9. 2026. Navazuje na D170 bod (1), D172–D174. Podklad:
+průzkum B6a (DATA.md, „Subclass proficiency grants (non-XPHB)").
+
+**Pevné granty.** Ruční tabulka v `proficiencies.ts` (`FEATURE_GRANTS`, dřív
+`XPHB_FEATURE_GRANTS`, nově i jazyky), vše od úrovně třídy 3 (data nesou 1/2 z
+2014). Záznam je klíčovaný jménem podtřídy A zdrojem: uložené jméno se přes
+classes.json převede na zdroj nabízené položky, takže stejnojmenná podtřída
+jiného zdroje nic nedostane. Artificer (EFA): Alchemist, Armorer, Artillerist
+(„Martial ranged weapons"), Battle Smith, Cartographer; College of Swords
+(Medium armor, Scimitar); Forge, Order, Twilight; Shepherd (Sylvan); Rune Knight
+(Smith's Tools, Giant); Drunken Master; Mastermind (Disguise + Forgery Kit);
+Storm (Primordial); Hexblade (Medium armor, Shields, Martial weapons).
+
+**Volby.** Stejný vzor slotů jako D172/D174 (wizard krok „Languages & Tools",
+level-up na úrovni grantu, drawer). Mastermind: 1 herní sada (`toolChoices`,
+`mastermind`) + 2 jazyky (`languages`, `grantedBy: mastermind`). Kensei: 1 z
+Calligrapher's / Painter's Supplies (`kensei`). Tabulky voleb
+(`classToolChoices.ts`, `classFeatureLanguages.ts`) jsou klíčované jménem —
+žádné dvě nabízené podtřídy jedné třídy jméno nesdílejí (ověřeno B6b).
+
+**Náhrada u Artificera.** Za každý pevný nástroj podtřídy, který postava už má
+z jiného zdroje, jeden slot „artisan's tool" (`artificerSubclass`), max. 2.
+Počet se neukládá, počítá se: na kartě a v draweru z nástrojů
+`computeProficiencies` s jiným zdrojem než podtřída (včetně featů), ve wizardu
+z nástroje pozadí a ostatních slotů (featy wizard nevidí, jako v D174). Zmizí-li
+duplicita, uložená volba se NEMAŽE: zůstane uložená, na kartě jako „<nástroj> —
+no longer owed, not counted" (proficiency nedává), ve slotech jako navíc slot
+„(no longer owed — not counted)", kde ji hráč může smazat; krok wizardu ji
+nevyžaduje ani neblokuje.
+
+**Odloženo.** Kensei zbraně: bez pickeru, jen řádek „Kensei weapons — not
+chosen" ve WEAPONS. Dovednosti, Cavalier/Samurai (dovednost nebo jazyk), Scout
+expertise a nástroje druhů → B6c. Proficiency pro útoky z grantů podtříd
+(`weaponProficiency.ts`) → B6d.
+
+**Úložiště.** Schéma 47, migrace 46→47 jen tag (nové hodnoty `grantedBy`).
+Stará postava bez nové povinné volby má krok zablokovaný v Edit Character, dokud
+ji nezvolí (jako D172/D174).
+
+**Level-up banner.** Krok languages u úrovně volby podtřídy je „unknown", dokud
+podtřída není zvolená; banner jmenuje podtřídy s volbou (u Artificera
+s poznámkou, že jen pro už držený nástroj). Jakmile ji class step zvolí, banner
+zmizí a sloty jsou přesné (Champion žádný, Battle Master jeden).

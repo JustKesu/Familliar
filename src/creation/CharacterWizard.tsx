@@ -89,6 +89,7 @@ import {
 	visibleSteps,
 	wizardDataFromCharacter,
 	wizardReducer,
+	wizardClass,
 	wizardToolGrants,
 	type SpellRequirement,
 	type WizardStep,
@@ -121,7 +122,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	species: 'Species',
 	background: 'Background',
 	expertise: 'Expertise',
-	languages: 'Languages',
+	languages: 'Languages & Tools',
 	abilities: 'Ability scores',
 	spells: 'Spells',
 	classOptionalFeatures: 'Class options',
@@ -170,9 +171,10 @@ export function CharacterWizard({
 }): ReactNode {
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
 	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp) : {}
-	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp) : {}
+	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp, state.data.subclass?.name ?? null) : {}
 	const held = levelUp && character ? heldPicksFrom(character, state.data.subclass?.featureType ?? null) : null
-	const featureLanguageGrants = state.data.classChoice ? classFeatureLanguageGrantsFor([state.data.classChoice]) : []
+	const wizardClassChoice = wizardClass(state.data)
+	const featureLanguageGrants = wizardClassChoice ? classFeatureLanguageGrantsFor([wizardClassChoice]) : []
 	const toolGrants = wizardToolGrants(state.data, levelUp?.level ?? null)
 	/** D175: the chosen species' sizes, tagged like speciesSkillShape — the completion check needs them before the picker's panel would mount. */
 	const [speciesSizeShape, setSpeciesSizeShape] = useState<{ key: string; sizes: string[] } | null>(null)

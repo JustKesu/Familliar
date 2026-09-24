@@ -51,16 +51,16 @@ export interface CharacterBackground {
  *
  * 'automatic' is the PHB 2024 Common rule and 'creation' the player's two
  * picks. The rest are a class feature's free picks (D172): Rogue's Thieves'
- * Cant (one) and Ranger's Deft Explorer (two). Fixed feature languages
+ * Cant (one) and Ranger's Deft Explorer (two); D176 adds Mastermind's two. Fixed feature languages
  * (Thieves' Cant itself, Druidic) are derived, never stored; a feat's pick
  * lives on the feat instance (D158).
  */
 export type LanguageGrantSource = 'automatic' | 'creation' | FeatureLanguageSource
 
-export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer'
+export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer' | 'mastermind'
 
-/** D174: which class or subclass grant a stored tool pick fills. */
-export type ToolChoiceSource = 'bard' | 'monk' | 'artificer' | 'battleMaster'
+/** D174: which class or subclass grant a stored tool pick fills; D176 adds the non-XPHB subclass picks. */
+export type ToolChoiceSource = 'bard' | 'monk' | 'artificer' | 'battleMaster' | 'mastermind' | 'kensei' | 'artificerSubclass'
 
 export interface CharacterToolChoice {
 	grantedBy: ToolChoiceSource
@@ -924,7 +924,9 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 45 for the class-feature language
+ * (see wireFormat.ts). Bumped to 47 for the non-XPHB subclass
+ * `grantedBy` values (B6b, D176); 46 for Character.toolChoices and
+ * .speciesSize (D174, D175); 45 for the class-feature language
  * `grantedBy` values (B3b, D172); 44 for Character.play.heroicInspiration
  * (R4b); 43 for FeatChoiceDetails.proficiencies
  * (build order task A2); 42 for Character.grantedFeats (D156); 41
@@ -939,4 +941,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 46
+export const CURRENT_SCHEMA_VERSION = 47

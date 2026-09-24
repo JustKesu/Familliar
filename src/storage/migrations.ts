@@ -403,6 +403,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 46 }),
 	},
+	{
+		from: 46,
+		to: 47,
+		/*
+		 * 47 adds the 'mastermind' language grantedBy and the 'mastermind',
+		 * 'kensei' and 'artificerSubclass' tool grantedBy values (B6b, D176). A
+		 * version-46 character stored none and an unchosen pick already reads as
+		 * pending — the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 47 }),
+	},
 ]
 
 /**

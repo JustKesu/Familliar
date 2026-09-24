@@ -19,7 +19,20 @@ const CLASSES = [
 	classEntry('Wizard', undefined, ['simple']),
 	classEntry('Ranger', ['light', 'medium', 'shield'], ['simple', 'martial']),
 	classEntry('Artificer', ['light'], ['simple'], [{ "thieves' tools": true, "tinker's tools": true, anyArtisansTool: 1 }], 'EFA'),
+	classEntry('Warlock', ['light'], ['simple']),
+	classEntry('Sorcerer', undefined, ['simple']),
+	subclassEntry('Warlock', 'The Hexblade', 'XGE'),
+	subclassEntry('Fighter', 'Rune Knight', 'TCE'),
+	subclassEntry('Sorcerer', 'Storm Sorcery', 'XGE'),
+	subclassEntry('Rogue', 'Mastermind', 'XGE'),
+	subclassEntry('Monk', 'Way of the Kensei', 'XGE'),
+	subclassEntry('Artificer', 'Armorer', 'EFA', 'EFA'),
+	subclassEntry('Artificer', 'Alchemist', 'EFA', 'EFA'),
 ]
+
+function subclassEntry(className: string, name: string, source: string, classSource = 'XPHB'): unknown {
+	return { entryType: 'subclass', className, classSource, name, shortName: name, source }
+}
 
 const FEATS = extractFeatProficiencyEntries([
 	{ name: 'Fey Teleportation', source: 'XGE', languageProficiencies: [{ sylvan: true }] },
@@ -281,6 +294,78 @@ describe('computeProficiencies', () => {
 			const result = tools(character('Wizard'), [{ name: 'Skilled', source: 'XPHB', proficiencies: { tools: ["Smith's Tools"] } }])
 			expect(labels(result)).toEqual(["Smith's Tools"])
 			expect(tools(character('Wizard'), [{ name: 'Skilled', source: 'XPHB' }])).toEqual([])
+		})
+	})
+
+	describe('non-XPHB subclass grants (D176)', () => {
+		const sources = (item: { sources: { name: string }[] }) => item.sources.map((s) => s.name)
+		const artificer = (subclass: string, extra: Partial<Character> = {}): Character => ({
+			id: 'a1',
+			name: 'Test',
+			classes: [{ className: 'Artificer', classSource: 'EFA', subclass, level: 3 }],
+			...extra,
+		})
+		const background = (toolProficiency: string): Partial<Character> => ({ background: { name: 'Guild Artisan', source: 'XPHB', skillProficiencies: ['Insight', 'Persuasion'], toolProficiency } })
+
+		it('The Hexblade 3: Medium armor, Shields and Martial weapons, sourced to the subclass; nothing at 2', () => {
+			expect(labels(compute(character('Warlock', { level: 2, subclass: 'The Hexblade' })).armor)).toEqual(['Light armor'])
+			const result = compute(character('Warlock', { level: 3, subclass: 'The Hexblade' }))
+			expect(labels(result.armor)).toEqual(['Light armor', 'Medium armor', 'Shields'])
+			expect(labels(result.weapons)).toEqual(['Simple weapons', 'Martial weapons'])
+			expect(sources(result.weapons[1])).toEqual(['The Hexblade'])
+		})
+
+		it("Rune Knight: Smith's Tools and Giant; Storm Sorcery: Primordial", () => {
+			const rune = compute(character('Fighter', { level: 3, subclass: 'Rune Knight' }))
+			expect(labels(rune.tools)).toEqual(["Smith's Tools"])
+			expect(labels(rune.languages)).toEqual(['Giant'])
+			expect(sources(rune.languages[0])).toEqual(['Rune Knight'])
+			expect(labels(compute(character('Sorcerer', { level: 3, subclass: 'Storm Sorcery' })).languages)).toEqual(['Primordial'])
+		})
+
+		it("Armorer: Heavy armor and Smith's Tools", () => {
+			const result = compute(artificer('Armorer'))
+			expect(labels(result.armor)).toEqual(['Light armor', 'Heavy armor'])
+			expect(labels(result.tools)).toEqual(["Smith's Tools", "Thieves' Tools", "Tinker's Tools", "1 artisan's tool (Artificer) — not chosen"])
+		})
+
+		it('a same-named subclass from another source gets nothing', () => {
+			const xphbOnly = [...CLASSES.filter((entry) => (entry as { name: string }).name !== 'The Hexblade'), subclassEntry('Warlock', 'The Hexblade', 'XPHB')]
+			const result = computeProficiencies(character('Warlock', { level: 3, subclass: 'The Hexblade' }), xphbOnly, [], FEATS)
+			expect(labels(result.armor)).toEqual(['Light armor'])
+			expect(labels(result.weapons)).toEqual(['Simple weapons'])
+		})
+
+		it('Mastermind 3: fixed kits, one gaming set and two languages pending; stored picks count down', () => {
+			const rogue = character('Rogue', { level: 3, subclass: 'Mastermind' })
+			const result = compute(rogue)
+			expect(labels(result.tools)).toEqual(['Disguise Kit', 'Forgery Kit', "Thieves' Tools", '1 gaming set (Mastermind) — not chosen'])
+			expect(labels(result.languages)).toEqual(["Thieves' Cant", "Extra language (Thieves' Cant) — not chosen", '2 extra languages (Master of Intrigue) — not chosen'])
+			const picked = compute({ ...rogue, toolChoices: [{ grantedBy: 'mastermind', name: 'Dice Set' }], languages: [{ name: 'Elvish', source: 'XPHB', grantedBy: 'mastermind' }] })
+			expect(labels(picked.tools)).toEqual(['Dice Set', 'Disguise Kit', 'Forgery Kit', "Thieves' Tools"])
+			expect(labels(picked.languages)).toContain('1 extra language (Master of Intrigue) — not chosen')
+			expect(sources(picked.languages.find((item) => item.label === 'Elvish')!)).toEqual(['Mastermind — Master of Intrigue'])
+			expect(labels(compute(character('Rogue', { level: 2, subclass: 'Mastermind' })).tools)).toEqual(["Thieves' Tools"])
+		})
+
+		it('Kensei 3: a tool pick and a pending weapons row', () => {
+			const result = compute(character('Monk', { level: 3, subclass: 'Way of the Kensei' }))
+			expect(labels(result.weapons).at(-1)).toBe('Kensei weapons — not chosen')
+			expect(labels(result.tools)).toContain("1 Calligrapher's Supplies or Painter's Supplies (Way of the Kensei) — not chosen")
+		})
+
+		it('Artificer replacement: 0, 1 or 2 extra picks for the subclass tools already held elsewhere', () => {
+			const pending = (c: Character) => labels(compute(c).tools).filter((label) => label.includes('(Armorer)') || label.includes('(Alchemist)'))
+			expect(pending(artificer('Armorer'))).toEqual([])
+			expect(pending(artificer('Armorer', background("Smith's Tools")))).toEqual(["1 artisan's tool (Armorer) — not chosen"])
+			const both = artificer('Alchemist', { ...background('Herbalism Kit'), toolChoices: [{ grantedBy: 'artificer', name: "Alchemist's Supplies" }] })
+			expect(pending(both)).toEqual(["2 artisan's tools (Alchemist) — not chosen"])
+		})
+
+		it('Artificer replacement: a stored pick whose duplicate went away is kept, flagged and not counted', () => {
+			const result = compute(artificer('Armorer', { toolChoices: [{ grantedBy: 'artificerSubclass', name: "Mason's Tools" }] }))
+			expect(labels(result.tools)).toContain("Mason's Tools — no longer owed, not counted")
+			expect(labels(result.tools)).not.toContain("Mason's Tools")
 		})
 	})
 

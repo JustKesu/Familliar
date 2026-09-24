@@ -233,9 +233,20 @@ export function visibleSteps(conditions: WizardStepConditions = {}): readonly Wi
 
 /** D174: the class/subclass tool picks the languages step collects. A level-up walk asks only for the ones that level brings (Battle Master at 3). */
 export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | null): ClassToolChoiceGrant[] {
-	if (!data.classChoice) return []
-	const grants = classToolGrantsFor([{ ...data.classChoice, subclass: data.subclass?.name ?? null }])
+	const cls = wizardClass(data)
+	if (!cls) return []
+	// D176: as D174, the wizard sees the background tool and the other slots' picks, not feat tools.
+	const heldElsewhere = [
+		...(data.backgroundToolProficiency ? [data.backgroundToolProficiency] : []),
+		...data.toolChoices.filter((choice) => choice.grantedBy !== 'artificerSubclass').map((choice) => choice.name),
+	]
+	const grants = classToolGrantsFor([cls], heldElsewhere)
 	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === levelUpTargetLevel)
+}
+
+/** The class choice with the chosen subclass, as the grant tables read it. */
+export function wizardClass(data: WizardData): (ClassLevelChoice & { subclass: string | null }) | null {
+	return data.classChoice ? { ...data.classChoice, subclass: data.subclass?.name ?? null } : null
 }
 
 /** The picker steps only — every one of these must be complete before the review step may save. */
@@ -576,11 +587,13 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		case 'languages': {
 			// A level-up walk only collects the new level's feature picks; the creation picks are not its to demand.
 			const creationComplete = levelUpTargetLevel !== null || data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
-			const grants = data.classChoice ? classFeatureLanguageGrantsFor([data.classChoice]) : []
+			const cls = wizardClass(data)
+			const grants = cls ? classFeatureLanguageGrantsFor([cls]) : []
 			return (
 				creationComplete &&
 				grants.every((grant) => !grant.choice || data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length === grant.choice.count) &&
-				wizardToolGrants(data, levelUpTargetLevel).every((grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length === grant.count)
+				// D176: at least the count — a surplus Artificer replacement pick is kept, not demanded away.
+				wizardToolGrants(data, levelUpTargetLevel).every((grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length >= grant.count)
 			)
 		}
 		case 'abilities':

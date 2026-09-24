@@ -37,7 +37,7 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { expertiseEligibilityFor } from '../expertise/expertiseData'
 import { featAsiGrantsFor } from '../featAsi/featAsiData'
 import { loadResolverData, type ResolverData } from '../featureResolver'
-import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
+import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { masteryCountFor } from '../masteries/masteryData'
@@ -246,9 +246,14 @@ function languagesStepGain(className: string, classSource: string, level: number
 	]
 	const gain = adds(parts)
 	if (gain.status === 'adds' || subclass !== null || subclassGrantLevel !== level) return gain
-	const pending = CLASS_TOOL_CHOICE_GRANTS.filter((grant) => grant.subclass && grant.className === className && grant.classSource === classSource && grant.level === level)
+	// D176: the language picks too (Mastermind); an Artificer subclass's pick is owed only for a tool already held.
+	const pending = [
+		...CLASS_TOOL_CHOICE_GRANTS.filter((grant) => grant.className === className && grant.classSource === classSource).map((grant) => ({ ...grant, conditional: grant.replaces !== undefined })),
+		...CLASS_FEATURE_LANGUAGE_GRANTS.filter((grant) => grant.choice && grant.className === className && classSource === 'XPHB').map((grant) => ({ ...grant, conditional: false })),
+	].filter((grant) => grant.subclass && grant.level === level)
 	if (pending.length === 0) return gain
-	return unknownGain(`The subclass is chosen at this level, and ${pending.map((grant) => grant.subclass).join(' / ')} grants a tool proficiency pick.`)
+	const names = [...new Set(pending.map((grant) => (grant.conditional ? `${grant.subclass} (only for a subclass tool already held)` : grant.subclass)))]
+	return unknownGain(`The subclass is chosen at this level, and ${names.join(' / ')} grants a tool or language pick.`)
 }
 
 function unresolvedReason(character: Character, level: number, parsedClasses: unknown[]): string | null {

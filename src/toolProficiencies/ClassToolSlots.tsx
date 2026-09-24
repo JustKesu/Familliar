@@ -41,7 +41,7 @@ export function ClassToolSlots({
 
 	if (grants.length === 0) return null
 	if (error) return <p className="error">Could not load tools: {error}</p>
-	if (!options) return <p>Loading tools…</p>
+	if (categoryKey !== '' && !options) return <p>Loading tools…</p>
 
 	const taken = new Set([...known, ...grants.flatMap((grant) => grant.fixedTools ?? []), ...value.map((choice) => choice.name)].map((name) => name.toLowerCase()))
 
@@ -49,18 +49,20 @@ export function ClassToolSlots({
 		<ul className="language-picker__list">
 			{grants.flatMap((grant) => {
 				const picks = value.filter((choice) => choice.grantedBy === grant.grantedBy)
-				const all = [...new Set(grant.categories.flatMap((category) => options[category] ?? []))].sort((a, b) => a.localeCompare(b))
+				const all = grant.options ?? [...new Set(grant.categories.flatMap((category) => options?.[category] ?? []))].sort((a, b) => a.localeCompare(b))
 				const choose = (slot: number, name: string): void => {
 					const next: (CharacterToolChoice | undefined)[] = [...picks]
 					next[slot] = name ? { grantedBy: grant.grantedBy, name } : undefined
 					onChange([...value.filter((choice) => choice.grantedBy !== grant.grantedBy), ...next.filter((pick) => pick !== undefined)])
 				}
-				return Array.from({ length: grant.count }, (_, slot) => {
+				// D176: a pick beyond the count (an Artificer replacement whose duplicate went away) stays visible so the player can clear it.
+				return Array.from({ length: Math.max(grant.count, picks.length) }, (_, slot) => {
 					const current = picks[slot]
 					return (
 						<li key={`${grant.grantedBy}:${slot}`}>
 							<label>
-								{grant.owner} tool{grant.count > 1 ? ` ${slot + 1}` : ''}:{' '}
+								{grant.owner} tool{grant.count > 1 ? ` ${slot + 1}` : ''}
+								{slot >= grant.count ? ' (no longer owed — not counted)' : ''}:{' '}
 								<select value={current?.name ?? ''} onChange={(event) => choose(slot, event.target.value)}>
 									<option value="">— not chosen —</option>
 									{toolChoiceOptions(all, taken, current?.name).map((name) => (

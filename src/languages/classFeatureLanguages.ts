@@ -2,6 +2,8 @@ import type { CharacterClass, CharacterLanguage, FeatureLanguageSource } from '.
 
 export interface ClassFeatureLanguageGrant {
 	className: string
+	/** Set for a subclass feature: held once the class is at `level` with this subclass. */
+	subclass?: string
 	featureName: string
 	level: number
 	fixed?: string
@@ -9,11 +11,12 @@ export interface ClassFeatureLanguageGrant {
 	choice?: { count: number; grantedBy: FeatureLanguageSource }
 }
 
-// D171: XPHB class features that grant languages — prose only (DATA.md), hence a hand table.
+// D171: XPHB class features that grant languages — prose only (DATA.md), hence a hand table. D176: Mastermind (XGE), keyed by name as in classToolChoices.ts.
 export const CLASS_FEATURE_LANGUAGE_GRANTS: readonly ClassFeatureLanguageGrant[] = [
 	{ className: 'Druid', featureName: 'Druidic', level: 1, fixed: 'Druidic' },
 	{ className: 'Rogue', featureName: "Thieves' Cant", level: 1, fixed: "Thieves' Cant", choice: { count: 1, grantedBy: 'thievesCant' } },
 	{ className: 'Ranger', featureName: 'Deft Explorer', level: 2, choice: { count: 2, grantedBy: 'deftExplorer' } },
+	{ className: 'Rogue', subclass: 'Mastermind', featureName: 'Master of Intrigue', level: 3, choice: { count: 2, grantedBy: 'mastermind' } },
 ]
 
 // D172: the picks come "from the language tables in chapter 2" — Standard AND Rare (DATA.md).
@@ -28,9 +31,9 @@ export function featureLanguageOptions<T extends { name: string }>(languages: re
 }
 
 /** The grants these classes hold at their current levels. */
-export function classFeatureLanguageGrantsFor(classes: readonly Pick<CharacterClass, 'className' | 'classSource' | 'level'>[]): ClassFeatureLanguageGrant[] {
+export function classFeatureLanguageGrantsFor(classes: readonly Pick<CharacterClass, 'className' | 'classSource' | 'level' | 'subclass'>[]): ClassFeatureLanguageGrant[] {
 	return CLASS_FEATURE_LANGUAGE_GRANTS.filter((grant) =>
-		classes.some((cls) => cls.className === grant.className && cls.classSource === 'XPHB' && cls.level >= grant.level),
+		classes.some((cls) => cls.className === grant.className && cls.classSource === 'XPHB' && cls.level >= grant.level && (!grant.subclass || cls.subclass === grant.subclass)),
 	)
 }
 

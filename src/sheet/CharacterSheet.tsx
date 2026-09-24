@@ -38,7 +38,7 @@ import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
 import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import type { ProficiencyCategory } from '../calculation/proficiencies'
+import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/proficiencies'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
@@ -3697,7 +3697,7 @@ function CharacterSheetBody({
 							)}
 							{category === 'tools' && weaponAttackData !== null && onEditToolChoices && (
 								<ClassToolSlots
-									grants={classToolGrantsFor(character.classes)}
+									grants={classToolGrantsFor(character.classes, toolsHeldElsewhere(weaponAttackData.proficiencies.tools, character.classes[0]?.subclass ?? null))}
 									value={character.toolChoices ?? []}
 									known={weaponAttackData.proficiencies.tools.filter((item) => !item.pending).map((item) => item.label)}
 									onChange={onEditToolChoices}

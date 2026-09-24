@@ -190,7 +190,7 @@ function toCharacterBackground(value: Record<string, unknown>): CharacterBackgro
 	}
 }
 
-const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer']
+const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer', 'mastermind']
 
 /** Validates an optional `languages` field. Returns null if the field is absent (it's optional). */
 export function describeLanguagesError(value: unknown): string | null {
@@ -209,7 +209,7 @@ export function describeLanguagesError(value: unknown): string | null {
 	return null
 }
 
-const TOOL_CHOICE_SOURCES: readonly ToolChoiceSource[] = ['bard', 'monk', 'artificer', 'battleMaster']
+const TOOL_CHOICE_SOURCES: readonly ToolChoiceSource[] = ['bard', 'monk', 'artificer', 'battleMaster', 'mastermind', 'kensei', 'artificerSubclass']
 
 /** Validates an optional `toolChoices` field (D174). */
 export function describeToolChoicesError(value: unknown): string | null {

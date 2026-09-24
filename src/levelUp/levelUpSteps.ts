@@ -39,10 +39,15 @@ export function levelUpStepConditions(gains: LevelGains): Pick<WizardStepConditi
 	return { levelUpSteps: new Set(walked), levelUpTargetLevel: gains.level }
 }
 
-/** Why each walked `unknown` step could not be answered — shown on that step so the player checks it by hand. */
-export function unknownLevelUpSteps(gains: LevelGains): Partial<Record<WizardStep, string>> {
+/**
+ * Why each walked `unknown` step could not be answered — shown on that step so the player checks it by hand.
+ * D176: the languages step is unknown only while the subclass chosen at this level is not; once the class
+ * step has chosen it (`chosenSubclass`), that step's slots are exact and no reason is left.
+ */
+export function unknownLevelUpSteps(gains: LevelGains, chosenSubclass: string | null = null): Partial<Record<WizardStep, string>> {
+	const answered = (step: WizardStep) => step === 'languages' && chosenSubclass !== null && gains.unresolved === null
 	return Object.fromEntries(
-		WIZARD_STEPS.filter((step) => !ALWAYS_WALKED.includes(step) && gains.steps[step].status === 'unknown').map((step) => [
+		WIZARD_STEPS.filter((step) => !ALWAYS_WALKED.includes(step) && gains.steps[step].status === 'unknown' && !answered(step)).map((step) => [
 			step,
 			gains.steps[step].reason ?? '',
 		]),

@@ -1,7 +1,7 @@
 import { classPrereqInfoFor } from '../featAsi/featAsiData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
-import { classToolGrantsFor } from '../toolProficiencies/classToolChoices'
+import { ARTIFICER_SUBCLASS_TOOLS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import type { Character, FeatChoiceDetails } from '../storage/character'
 import {
 	extractFeatWeaponProficiencyEntries,
@@ -67,15 +67,53 @@ export function extractFeatProficiencyEntries(parsedFeats: unknown): FeatProfici
 const ARMOR_LABELS: Record<string, string> = { light: 'Light armor', medium: 'Medium armor', heavy: 'Heavy armor', shield: 'Shields' }
 const ARMOR_ORDER = Object.keys(ARMOR_LABELS)
 
-// D170: XPHB class/subclass grants exist only in feature text (DATA.md), so they are a hand table.
-const XPHB_FEATURE_GRANTS: {
+interface FeatureGrant {
 	className: string
 	source: ProficiencySource
-	applies: (character: Character) => boolean
+	applies: (character: Character, parsedClasses: unknown) => boolean
 	armor: string[]
+	/** A category token (`martial`) or a key of EXTRA_WEAPON_LABELS. */
 	weapons: string[]
 	tools?: string[]
-}[] = [
+	languages?: string[]
+	/** D176: a weapon choice with no picker yet, shown as one pending row. */
+	pendingWeapons?: string
+}
+
+const EXTRA_WEAPON_LABELS: Record<string, string> = { 'martial:ranged': 'Martial ranged weapons', scimitar: 'Scimitar' }
+
+/** The stored subclass name resolved to the source of its offered classes.json entry (storage keeps no source). */
+function subclassSourceOf(parsedClasses: unknown, cls: Character['classes'][number]): string | null {
+	if (!Array.isArray(parsedClasses)) return null
+	const entry = parsedClasses.find(
+		(candidate) =>
+			isRecord(candidate) &&
+			candidate['entryType'] === 'subclass' &&
+			candidate['className'] === cls.className &&
+			candidate['classSource'] === cls.classSource &&
+			candidate['name'] === cls.subclass &&
+			!candidate['reprintedAs'],
+	)
+	return isRecord(entry) && typeof entry['source'] === 'string' ? entry['source'] : null
+}
+
+// D176: every non-XPHB grant arrives at class level 3, whatever level the 2014 feature entry carries (DATA.md).
+function subclassGrant(className: string, subclass: string, subclassSource: string, grants: Partial<FeatureGrant>, classSource = 'XPHB'): FeatureGrant {
+	return {
+		className,
+		source: { kind: 'subclass', name: subclass },
+		applies: (character, parsedClasses) =>
+			character.classes.some(
+				(cls) => cls.className === className && cls.classSource === classSource && cls.subclass === subclass && cls.level >= 3 && subclassSourceOf(parsedClasses, cls) === subclassSource,
+			),
+		armor: [],
+		weapons: [],
+		...grants,
+	}
+}
+
+// D170: XPHB class/subclass grants exist only in feature text (DATA.md), so they are a hand table. D176 adds the non-XPHB subclasses, keyed by name AND source.
+const FEATURE_GRANTS: FeatureGrant[] = [
 	{
 		className: 'Cleric',
 		source: { kind: 'classFeatureChoice', name: 'Cleric — Protector' },
@@ -105,12 +143,29 @@ const XPHB_FEATURE_GRANTS: {
 		weapons: [],
 		tools: ['herbalism kit'],
 	},
+	subclassGrant('Artificer', 'Alchemist', 'EFA', { tools: ARTIFICER_SUBCLASS_TOOLS['Alchemist'] }, 'EFA'),
+	subclassGrant('Artificer', 'Armorer', 'EFA', { armor: ['heavy'], tools: ARTIFICER_SUBCLASS_TOOLS['Armorer'] }, 'EFA'),
+	subclassGrant('Artificer', 'Artillerist', 'EFA', { weapons: ['martial:ranged'], tools: ARTIFICER_SUBCLASS_TOOLS['Artillerist'] }, 'EFA'),
+	subclassGrant('Artificer', 'Battle Smith', 'EFA', { weapons: ['martial'], tools: ARTIFICER_SUBCLASS_TOOLS['Battle Smith'] }, 'EFA'),
+	subclassGrant('Artificer', 'Cartographer', 'EFA', { tools: ARTIFICER_SUBCLASS_TOOLS['Cartographer'] }, 'EFA'),
+	subclassGrant('Bard', 'College of Swords', 'XGE', { armor: ['medium'], weapons: ['scimitar'] }),
+	subclassGrant('Cleric', 'Forge Domain', 'XGE', { armor: ['heavy'], tools: ["Smith's Tools"] }),
+	subclassGrant('Cleric', 'Order Domain', 'TCE', { armor: ['heavy'] }),
+	subclassGrant('Cleric', 'Twilight Domain', 'TCE', { armor: ['heavy'], weapons: ['martial'] }),
+	subclassGrant('Druid', 'Circle of the Shepherd', 'XGE', { languages: ['Sylvan'] }),
+	subclassGrant('Fighter', 'Rune Knight', 'TCE', { tools: ["Smith's Tools"], languages: ['Giant'] }),
+	subclassGrant('Monk', 'Way of the Drunken Master', 'XGE', { tools: ["Brewer's Supplies"] }),
+	subclassGrant('Monk', 'Way of the Kensei', 'XGE', { pendingWeapons: 'Kensei weapons' }),
+	subclassGrant('Rogue', 'Mastermind', 'XGE', { tools: ['Disguise Kit', 'Forgery Kit'] }),
+	subclassGrant('Sorcerer', 'Storm Sorcery', 'XGE', { languages: ['Primordial'] }),
+	subclassGrant('Warlock', 'The Hexblade', 'XGE', { armor: ['medium', 'shield'], weapons: ['martial'] }),
 ]
 
 // D173: the two "choose" shapes in classes.json / feats.json. `any` is Prodigy's untyped pick.
 const TOOL_CHOICE_NOUNS: Record<string, [string, string]> = {
 	anyArtisansTool: ["artisan's tool", "artisan's tools"],
 	anyMusicalInstrument: ['musical instrument', 'musical instruments'],
+	anyGamingSet: ['gaming set', 'gaming sets'],
 	choose: ["artisan's tool", "artisan's tools"],
 	any: ['tool', 'tools'],
 }
@@ -165,6 +220,11 @@ function weaponRank(key: string): number {
 	if (key === 'firearms') return 3
 	if (key === 'improvised') return 4
 	return 2
+}
+
+/** D176: the tools held from a source other than the subclass — what an Artificer subclass's replacement count reads. */
+export function toolsHeldElsewhere(tools: readonly ProficiencyItem[], subclass: string | null): string[] {
+	return tools.filter((item) => !item.pending && item.sources.some((source) => source.name !== subclass)).map((item) => item.label)
 }
 
 /**
@@ -232,26 +292,21 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 		addTool(character.background.toolProficiency, { kind: 'background', name: `${character.background.name} (background)` })
 	}
 
-	for (const grant of XPHB_FEATURE_GRANTS) {
-		if (!grant.applies(character)) continue
+	const pendingWeapons: ProficiencyItem[] = []
+	for (const grant of FEATURE_GRANTS) {
+		if (!grant.applies(character, parsedClasses)) continue
 		grant.armor.forEach((token) => addArmor(token, grant.source))
-		grant.weapons.forEach((category) => addWeapon({ kind: 'category', category }, grant.source))
+		grant.weapons.forEach((key) => (EXTRA_WEAPON_LABELS[key] ? add(weapons, key, EXTRA_WEAPON_LABELS[key], grant.source) : addWeapon({ kind: 'category', category: key }, grant.source)))
 		grant.tools?.forEach((tool) => addTool(titleCase(tool), grant.source))
+		grant.languages?.forEach((language) => addLanguage(language, grant.source))
+		if (grant.pendingWeapons) pendingWeapons.push({ key: `pending:weapons:${grant.source.name}`, label: `${grant.pendingWeapons} — not chosen`, sources: [grant.source], pending: true })
 	}
 
-	// D174: a subclass's own pick (Battle Master), pending until a slot stores it.
-	for (const grant of classToolGrantsFor(character.classes)) {
-		if (!grant.subclass) continue
-		const source: ProficiencySource = { kind: 'subclass', name: grant.owner }
-		const picks = (character.toolChoices ?? []).filter((choice) => choice.grantedBy === grant.grantedBy)
-		picks.forEach((choice) => addTool(choice.name, source))
-		const remaining = Math.max(0, grant.count - picks.length)
-		addPendingTool(remaining, nounText(TOOL_CHOICE_NOUNS['anyArtisansTool'], remaining), grant.owner, source)
-	}
+	const featureLanguageSource = (grant: (typeof CLASS_FEATURE_LANGUAGE_GRANTS)[number]) => `${grant.subclass ?? grant.className} — ${grant.featureName}`
 
 	for (const language of character.languages ?? []) {
 		const grant = CLASS_FEATURE_LANGUAGE_GRANTS.find((candidate) => candidate.choice?.grantedBy === language.grantedBy)
-		if (grant) addLanguage(language.name, { kind: 'classFeatureChoice', name: `${grant.className} — ${grant.featureName}` })
+		if (grant) addLanguage(language.name, { kind: 'classFeatureChoice', name: featureLanguageSource(grant) })
 		else addLanguage(language.name, { kind: 'creation', name: language.grantedBy === 'automatic' ? 'Every character' : 'Chosen at creation' })
 	}
 
@@ -262,7 +317,7 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 		// D172: a partial choice leaves only the remainder pending.
 		const missing = count - (character.languages ?? []).filter((language) => language.grantedBy === grantedBy).length
 		const label = count === 1 ? `Extra language (${grant.featureName})` : `${missing} extra ${missing === 1 ? 'language' : 'languages'} (${grant.featureName})`
-		addPending(missing, `${grant.className} — ${grant.featureName}`, 'class', label)
+		addPending(missing, featureLanguageSource(grant), grant.subclass ? 'subclass' : 'class', label)
 	}
 
 	for (const ref of takenFeats) {
@@ -294,12 +349,26 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 		if (feat.weaponProficiencies?.some((entry) => entry['improvised'])) add(weapons, 'improvised', 'Improvised weapons', source)
 	}
 
+	// D174: a subclass's own pick (Battle Master), pending until a slot stores it. After every other tool source,
+	// since D176's Artificer replacement count is the subclass tools the character also has from elsewhere.
+	for (const grant of classToolGrantsFor(character.classes, toolsHeldElsewhere([...tools.values()], startingClass?.subclass ?? null))) {
+		if (!grant.subclass) continue
+		const source: ProficiencySource = { kind: 'subclass', name: grant.owner }
+		const picks = (character.toolChoices ?? []).filter((choice) => choice.grantedBy === grant.grantedBy)
+		picks.slice(0, grant.count).forEach((choice) => addTool(choice.name, source))
+		// D176: a replacement whose duplicate went away stays stored and shown, but grants nothing.
+		picks.slice(grant.count).forEach((choice) => pendingTools.push({ key: `surplus:${choice.name}`, label: `${choice.name} — no longer owed, not counted`, sources: [source] }))
+		const remaining = Math.max(0, grant.count - picks.length)
+		const nouns = grant.options ? grant.options.join(' or ') : nounText(TOOL_CHOICE_NOUNS[grant.categories[0]], remaining)
+		addPendingTool(remaining, nouns, grant.owner, source)
+	}
+
 	// D170: a Monk/Rogue subset says nothing once full Martial weapons are there.
 	if (weapons.has('martial')) for (const key of [...weapons.keys()]) if (key.startsWith('martial:')) weapons.delete(key)
 
 	return {
 		armor: ARMOR_ORDER.flatMap((key) => armor.get(key) ?? []),
-		weapons: [...weapons.values()].sort((a, b) => weaponRank(a.key) - weaponRank(b.key)),
+		weapons: [...[...weapons.values()].sort((a, b) => weaponRank(a.key) - weaponRank(b.key)), ...pendingWeapons],
 		tools: [...[...tools.values()].sort((a, b) => a.label.localeCompare(b.label)), ...pendingTools],
 		languages: [
 			...[...languages.values()].sort((a, b) => Number(b.key === 'common') - Number(a.key === 'common') || a.label.localeCompare(b.label)),

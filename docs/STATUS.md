@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-24 (B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1283,6 +1283,22 @@ velikostmi (23 druhů, např. Human) v kroku species žádá Small/Medium (radio
 bez volby zůstává „unresolved" (D54). Edit Character existujícího Battle Mastera
 L3+ teď vyžaduje zvolit nástroj, jinak krok languages neprojde (stejně jako
 Rogue u Thieves' Cant).
+
+B6b (D176): schema 47 (new `grantedBy` values `mastermind` for languages and
+`mastermind`/`kensei`/`artificerSubclass` for `toolChoices`, 46→47 tag only).
+Fixed armor/weapon/tool/language grants from non-XPHB subclasses at class level
+3 (EFA Artificer ×5, College of Swords, Forge/Order/Twilight, Shepherd, Rune
+Knight, Drunken Master, Mastermind, Storm, Hexblade), keyed by subclass name +
+source resolved through classes.json (`FEATURE_GRANTS` in `proficiencies.ts`).
+New slots: Mastermind 1 gaming set + 2 languages, Kensei 1 of Calligrapher's /
+Painter's Supplies, EFA Artificer replacement artisan's tool per subclass tool
+already held elsewhere (computed, max 2; a surplus stored pick is kept and shown
+as "no longer owed, not counted"). "Kensei weapons — not chosen" is a pending
+WEAPONS row with no picker. Wizard step renamed "Languages & Tools". Level-up
+banner on that step is gone once the class step has chosen the subclass; before
+that it names the subclasses with a pick (Fighter, Rogue, Monk, Artificer 3).
+Deferred: skills, Cavalier/Samurai, Scout expertise, species tools (B6c);
+attack proficiency from subclass grants (B6d).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

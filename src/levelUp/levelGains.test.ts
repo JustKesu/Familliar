@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { levelGainsFor, type LevelGain } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
 import type { Character } from '../storage/character'
+import { unknownLevelUpSteps } from './levelUpSteps'
+import { emptyWizardData, wizardToolGrants } from '../creation/wizardState'
 
 function character(classes: Character['classes']): Character {
 	return { id: 'c1', name: 'Test', classes }
@@ -113,6 +115,42 @@ describe('levelGainsFor', () => {
 		const chosen = character([{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 2 }])
 		expect(levelGainsFor(chosen, 3, CLASSES, RESOLVER).steps.languages).toMatchObject({ status: 'adds', count: 1, parts: [{ name: 'Battle Master tool', count: 1 }] })
 		expect(levelGainsFor(fighter, 3, CLASSES, RESOLVER).steps.languages.status).toBe('none')
+	})
+
+	describe('D176: the languages step at the subclass level', () => {
+		const withClass = (name: string, source: string) => ({
+			classes: [...CLASSES, { entryType: 'class', name, source, subclassTitle: `${name} Subclass`, hd: { number: 1, faces: 8 }, classFeatureIds: [], classFeatures: [] }],
+			resolver: { ...RESOLVER, classFeatures: [...(RESOLVER.classFeatures as unknown[]), { id: `cf|${name}`, name: `${name} Subclass`, className: name, classSource: source, level: 3, entries: [] }] },
+		})
+		const unchosenAt2 = (className: string, classSource = 'XPHB') => character([{ className, classSource, subclass: null, level: 2 }])
+
+		it('Fighter 2→3: the banner names Battle Master until the class step chooses; then Champion leaves none, Battle Master a real slot', () => {
+			const gains = levelGainsFor(unchosenAt2('Fighter'), 3, CLASSES, RESOLVER)
+			expect(unknownLevelUpSteps(gains).languages).toContain('Battle Master')
+			expect(unknownLevelUpSteps(gains, 'Champion').languages).toBeUndefined()
+			expect(unknownLevelUpSteps(gains, 'Battle Master').languages).toBeUndefined()
+			const data = (subclass: string) => ({ ...emptyWizardData(), classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 }, subclass: { name: subclass, source: 'XPHB', featureType: null } })
+			expect(wizardToolGrants(data('Champion'), 3)).toEqual([])
+			expect(wizardToolGrants(data('Battle Master'), 3)).toMatchObject([{ grantedBy: 'battleMaster', count: 1 }])
+		})
+
+		it('Rogue 2→3 names Mastermind; Cleric 2→3 has nothing to pick', () => {
+			expect(levelGainsFor(unchosenAt2('Rogue'), 3, CLASSES, RESOLVER).steps.languages.reason).toContain('Mastermind')
+			expect(levelGainsFor(unchosenAt2('Cleric'), 3, CLASSES, RESOLVER).steps.languages.status).toBe('none')
+		})
+
+		it('Monk 2→3 names Kensei; Artificer 2→3 names every subclass as conditional', () => {
+			const monk = withClass('Monk', 'XPHB')
+			expect(levelGainsFor(unchosenAt2('Monk'), 3, monk.classes, monk.resolver).steps.languages.reason).toContain('Way of the Kensei')
+			const artificer = withClass('Artificer', 'EFA')
+			const reason = levelGainsFor(unchosenAt2('Artificer', 'EFA'), 3, artificer.classes, artificer.resolver).steps.languages.reason
+			expect(reason).toContain('Armorer (only for a subclass tool already held)')
+		})
+
+		it('Rogue 3 Mastermind chosen before the level: 2 languages and 1 gaming set', () => {
+			const chosen = character([{ className: 'Rogue', classSource: 'XPHB', subclass: 'Mastermind', level: 2 }])
+			expect(levelGainsFor(chosen, 3, CLASSES, RESOLVER).steps.languages).toMatchObject({ status: 'adds', count: 3 })
+		})
 	})
 
 	it('reports unknown, not zero, for a class the supplied data does not have', () => {

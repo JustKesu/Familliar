@@ -807,6 +807,36 @@ Found in investigation B1 (2026-09-24, scripts consumed); class/feat/Protector/
 Warden/Valor shapes re-checked in B2 (`scripts/verify-b2.js`, consumed). The
 species, Monk-tool and language lines are B1's and were not re-checked.
 
+### Subclass proficiency grants (non-XPHB) — prose only
+
+- No non-XPHB subclass entry and no subclass-feature entry carries a structured
+  proficiency field (`armorProficiencies`, `weaponProficiencies`,
+  `toolProficiencies`, `languageProficiencies`, …). Every grant is prose, hence
+  the hand tables (D176).
+- Wording differs by book: EFA uses the 2024 "gain training with Heavy armor";
+  XGE/TCE "gain proficiency with". A scan must match both. EFA weapon grants are
+  `{@filter}` tags (Artillerist's martial ranged weapons).
+- Feature levels: Forge, Order, Peace, Twilight, Hexblade and Storm entries
+  carry level 1, Shepherd level 2 (2014 levels); the XPHB-converted subclass
+  references them at 3, and the app grants them at 3.
+- Three condition shapes: "if you already have… choose another Artisan's Tool"
+  (EFA Artificer subclasses — a replacement pick); "if you don't already have
+  it" (no replacement: Drunken Master, Scout, Kensei); skill-or-language
+  (Cavalier, Samurai).
+- Bladesinging, Phantom, Grave and Shadow carry `reprintedAs` (FRHoF/RHW); the
+  app does not offer them.
+- Offered names (classes.json, after subclassesFor's filter), checked B6b:
+  `College of Swords`|XGE, `Forge Domain`|XGE, `Order Domain`|TCE,
+  `Twilight Domain`|TCE, `Circle of the Shepherd`|XGE, `Rune Knight`|TCE,
+  `Way of the Drunken Master`|XGE, `Way of the Kensei`|XGE, `Mastermind`|XGE,
+  `Storm Sorcery`|XGE, `The Hexblade`|XGE (all classSource XPHB); `Alchemist`,
+  `Armorer`, `Artillerist`, `Battle Smith`, `Cartographer` (EFA/EFA). No two
+  offered subclasses of one class share a name. Mastermind's language/tool
+  feature is "Master of Intrigue" (L3, filed under classSource PHB). Gaming sets
+  (`GS`): Dice Set, Dragonchess Set, Playing Cards, Three-Dragon Ante Set.
+
+Found in investigation B6a and checked in B6b (2026-09-24, scripts consumed).
+
 ### Species `size` — array of letters, a choice when it has two
 
 `species.json` `size` is an array of size letters. One element (`["M"]`) is the
