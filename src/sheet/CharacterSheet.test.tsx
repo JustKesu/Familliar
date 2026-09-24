@@ -2029,6 +2029,34 @@ describe('CharacterSheet', () => {
 				}
 			})
 
+			it('resets roll history, death save display, mode, toast and drawer when another character opens', async () => {
+				const user = userEvent.setup()
+				const slot = document.body.appendChild(document.createElement('div'))
+				const sheetFor = (subject: Character) => (
+					<RollsNavSlot.Provider value={slot}>
+						<CharacterSheet character={subject} onEditHitPoints={vi.fn()} />
+					</RollsNavSlot.Provider>
+				)
+				const { container, rerender } = render(sheetFor({ ...character, id: 'switch-a', currentHp: 0 }))
+				await screen.findByRole('button', { name: 'Roll Athletics check' })
+				await chooseMode(user, 'Advantage')
+				await user.click(screen.getByRole('button', { name: 'Roll death save' }))
+				await openHistory(user, slot)
+				expect(historyLines()).toHaveLength(1)
+				expect(container.querySelector('.sheet__death-save-roll')).toBeTruthy()
+
+				rerender(sheetFor({ ...character, id: 'switch-b', currentHp: 0 }))
+				await screen.findByRole('button', { name: 'Roll Athletics check' })
+
+				expect(document.querySelector('.drawer')).toBeNull()
+				expect(toastElement()).toBeNull()
+				expect(activeMode()).toBe('Normal')
+				expect(container.querySelector('.sheet__death-save-roll')).toBeNull()
+				await openHistory(user, slot)
+				expect(screen.getByText('No rolls yet.')).toBeTruthy()
+				slot.remove()
+			})
+
 			it('keeps the newest 50 and drops the oldest on the 51st roll', async () => {
 				const user = userEvent.setup()
 				const { slot } = await renderWithRolls({ ...character, id: 'history-cap', inventory: holding('Longsword') })

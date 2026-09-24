@@ -13,7 +13,7 @@
  * itself). Data acquisition goes through the shared loader (D39).
  */
 
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useContext, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
@@ -1903,7 +1903,12 @@ function TextSection({
  * and not in the wizard. The callbacks are optional — without them each
  * section still renders and shows its current state, it just cannot be changed.
  */
-export function CharacterSheet({
+/* Keyed by id so roll history, mode, toast and drawer state (session-only) never carry over to another character. */
+export function CharacterSheet(props: ComponentProps<typeof CharacterSheetBody>): ReactNode {
+	return <CharacterSheetBody key={props.character.id} {...props} />
+}
+
+function CharacterSheetBody({
 	character,
 	onChooseFamiliar,
 	onEditInventory,
