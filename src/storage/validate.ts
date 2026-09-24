@@ -15,6 +15,7 @@ import type {
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterToolChoice,
+	SubclassSkillSource,
 	ToolChoiceSource,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
@@ -190,7 +191,7 @@ function toCharacterBackground(value: Record<string, unknown>): CharacterBackgro
 	}
 }
 
-const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer', 'mastermind']
+const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer', 'mastermind', 'cavalier', 'samurai']
 
 /** Validates an optional `languages` field. Returns null if the field is absent (it's optional). */
 export function describeLanguagesError(value: unknown): string | null {
@@ -209,7 +210,24 @@ export function describeLanguagesError(value: unknown): string | null {
 	return null
 }
 
-const TOOL_CHOICE_SOURCES: readonly ToolChoiceSource[] = ['bard', 'monk', 'artificer', 'battleMaster', 'mastermind', 'kensei', 'artificerSubclass']
+const TOOL_CHOICE_SOURCES: readonly ToolChoiceSource[] = ['bard', 'monk', 'artificer', 'battleMaster', 'mastermind', 'kensei', 'artificerSubclass', 'warforged', 'satyr', 'khoravar']
+
+const SUBCLASS_SKILL_SOURCES: readonly SubclassSkillSource[] = ['battleMaster', 'orderDomain', 'peaceDomain', 'arcaneArcher', 'cavalier', 'samurai']
+
+/** Validates an optional `subclassSkills` field (D177). */
+export function describeSubclassSkillsError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `subclassSkills is not an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `subclassSkills[${i}] is not an object`
+		if (!isNonEmptyString(entry['name'])) return `subclassSkills[${i}].name is missing or not a string`
+		if (!SUBCLASS_SKILL_SOURCES.includes(entry['grantedBy'] as SubclassSkillSource)) {
+			return `subclassSkills[${i}].grantedBy must be one of ${SUBCLASS_SKILL_SOURCES.join(', ')}`
+		}
+	}
+	return null
+}
 
 /** Validates an optional `toolChoices` field (D174). */
 export function describeToolChoicesError(value: unknown): string | null {
@@ -1195,6 +1213,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (speciesSpellcastingAbilityError) return `[${index}].${speciesSpellcastingAbilityError}`
 	const toolChoicesError = describeToolChoicesError(value['toolChoices'])
 	if (toolChoicesError) return `[${index}].${toolChoicesError}`
+	const subclassSkillsError = describeSubclassSkillsError(value['subclassSkills'])
+	if (subclassSkillsError) return `[${index}].${subclassSkillsError}`
 	if (value['speciesSize'] !== undefined && !isNonEmptyString(value['speciesSize'])) return `[${index}].speciesSize must be a non-empty string`
 	const createdAtLevel = value['createdAtLevel']
 	if (createdAtLevel !== undefined && (typeof createdAtLevel !== 'number' || !Number.isInteger(createdAtLevel) || createdAtLevel < 1 || createdAtLevel > 20)) {
@@ -1243,6 +1263,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const hitPointLevels = value['hitPointLevels']
 	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
 	const toolChoices = value['toolChoices']
+	const subclassSkills = value['subclassSkills']
 	const speciesSize = value['speciesSize']
 	const createdAtLevel = value['createdAtLevel']
 	const appearance = value['appearance']
@@ -1280,6 +1301,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
 		...(Array.isArray(toolChoices) ? { toolChoices: toCharacterToolChoices(toolChoices) } : {}),
+		...(Array.isArray(subclassSkills)
+			? { subclassSkills: subclassSkills.map((entry) => ({ grantedBy: (entry as Record<string, unknown>)['grantedBy'] as SubclassSkillSource, name: (entry as Record<string, unknown>)['name'] as string })) }
+			: {}),
 		...(typeof speciesSize === 'string' ? { speciesSize } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),
 		...(typeof appearance === 'string' && appearance.length > 0 ? { appearance } : {}),

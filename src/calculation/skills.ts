@@ -21,7 +21,15 @@ import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { Character } from '../storage/character'
 import { choiceNames } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
-import { featFixedSkillProficiencyNames, featSkillChoiceAwaitingNotes, featStoredExpertiseSkillNames, featStoredSkillProficiencyNames, type FeatEffectEntry } from './featEffects'
+import { isSubclassSkillChoiceMade, subclassExpertiseSkills, subclassSkillGrantsFor, subclassSkillSourceNames } from '../classSkills/subclassSkillGrants'
+import {
+	featFixedSkillProficiencyNames,
+	featSkillChoiceAwaitingNotes,
+	featStoredExpertiseSkillNames,
+	featStoredSkillProficiencyNames,
+	skillChoiceAwaitingNote,
+	type FeatEffectEntry,
+} from './featEffects'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -82,7 +90,16 @@ function proficiencySources(skill: Skill, character: Character, feats: FeatEffec
 	if (character.speciesSkills?.includes(skill)) sources.push('species')
 	sources.push(...featFixedSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
 	sources.push(...featStoredSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
+	sources.push(...subclassSkillSourceNames(skill, character).map((name) => `subclass (${name})`))
 	return sources
+}
+
+/** D177: an unmade subclass skill pick notes every candidate the character does not already have. */
+function subclassSkillChoiceAwaitingNotes(skill: Skill, character: Character, isProficient: boolean): Contribution[] {
+	if (isProficient) return []
+	return subclassSkillGrantsFor(character.classes)
+		.filter((grant) => grant.choice?.from.includes(skill) && !isSubclassSkillChoiceMade(grant, character.subclassSkills ?? [], character.languages ?? []))
+		.map((grant) => skillChoiceAwaitingNote(`subclass (${grant.subclass})`))
 }
 
 /**
@@ -97,7 +114,8 @@ export function computeSkill(skill: Skill, character: Character, feats: FeatEffe
 
 	const sources = proficiencySources(skill, character, feats)
 	const isProficient = sources.length > 0
-	const hasExpertise = choiceNames(character.expertiseSkills).includes(skill) || featStoredExpertiseSkillNames(skill, character, feats).length > 0
+	const hasExpertise =
+		choiceNames(character.expertiseSkills).includes(skill) || featStoredExpertiseSkillNames(skill, character, feats).length > 0 || subclassExpertiseSkills(character.classes).includes(skill)
 	const status: SkillProficiencyStatus =
 		isProficient
 			? hasExpertise
@@ -123,6 +141,7 @@ export function computeSkill(skill: Skill, character: Character, feats: FeatEffe
 	}
 
 	breakdown.push(...featSkillChoiceAwaitingNotes(skill, character, feats, isProficient))
+	breakdown.push(...subclassSkillChoiceAwaitingNotes(skill, character, isProficient))
 	breakdown.push(...itemBonuses)
 
 	const modifier = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)

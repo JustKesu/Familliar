@@ -11,7 +11,8 @@ import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractFeatTextEntries } from '../sheet/sheetData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
-import type { Character, FeatureLanguageSource, LeveledChoice } from '../storage/character'
+import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
+import type { Character, LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
 import { subclassLevelFor } from '../subclass/subclassData'
 import { totalCharacterLevel } from './levelUpSteps'
@@ -141,13 +142,22 @@ export function levelRemovalPlan(
 	})
 
 	// D172: derived like the subclass — a feature's language picks belong to the level the feature arrives at.
-	const lostLanguageGrants = new Set(
-		CLASS_FEATURE_LANGUAGE_GRANTS.flatMap((grant) =>
+	// D177: likewise a subclass's skill picks, and Cavalier's/Samurai's language taken instead of a skill.
+	const lostSubclassSkillGrants = SUBCLASS_SKILL_GRANTS.filter((grant) => grant.choice && grant.className === className && classSource === 'XPHB' && grant.level === level)
+	const lostLanguageGrants = new Set<string>([
+		...CLASS_FEATURE_LANGUAGE_GRANTS.flatMap((grant) =>
 			grant.choice && grant.className === className && classSource === 'XPHB' && grant.level === level ? [grant.choice.grantedBy] : [],
 		),
-	)
+		...lostSubclassSkillGrants.flatMap((grant) => (grant.choice?.orLanguage ? [grant.choice.orLanguage] : [])),
+	])
+	const lostSkillSources = new Set(lostSubclassSkillGrants.map((grant) => grant.choice?.grantedBy))
+	const subclassSkills = character.subclassSkills?.filter((pick) => {
+		if (!lostSkillSources.has(pick.grantedBy)) return true
+		dropped.push(`Skill proficiency: ${pick.name}`)
+		return false
+	})
 	const languages = character.languages?.filter((language) => {
-		if (!lostLanguageGrants.has(language.grantedBy as FeatureLanguageSource)) return true
+		if (!lostLanguageGrants.has(language.grantedBy)) return true
 		dropped.push(`Language: ${language.name}`)
 		return false
 	})
@@ -183,6 +193,7 @@ export function levelRemovalPlan(
 		hitPointLevels,
 		...(languages ? { languages } : {}),
 		...(toolChoices ? { toolChoices } : {}),
+		...(subclassSkills ? { subclassSkills } : {}),
 	}
 
 	/*

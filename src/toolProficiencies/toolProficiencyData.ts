@@ -22,7 +22,8 @@
 
 import { loadDataFile } from '../dataLoader/dataLoader'
 
-export type ToolCategory = 'anyArtisansTool' | 'anyMusicalInstrument' | 'anyGamingSet'
+/** 'anyOtherTool' is not a data key: with the other three it makes up a species' `{any: 1}` tool pick (D177). */
+export type ToolCategory = 'anyArtisansTool' | 'anyMusicalInstrument' | 'anyGamingSet' | 'anyOtherTool'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -36,6 +37,8 @@ const CATEGORY_FILTERS: Record<ToolCategory, (item: Record<string, unknown>) => 
 	anyArtisansTool: (item) => typeCode(item) === 'AT',
 	anyGamingSet: (item) => typeCode(item) === 'GS',
 	anyMusicalInstrument: (item) => typeCode(item) === 'INS' && item['rarity'] === 'none',
+	// Type "T": Disguise Kit, Forgery Kit, Herbalism Kit, Navigator's Tools, Poisoner's Kit, Thieves' Tools (DATA.md).
+	anyOtherTool: (item) => typeCode(item) === 'T' && item['rarity'] === 'none',
 }
 
 function isToolCategory(value: string): value is ToolCategory {

@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-24 (B6c: dovednosti z podtříd, nástroje druhů, skrytý prázdný krok level-upu, D177; před tím B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1299,6 +1299,21 @@ banner on that step is gone once the class step has chosen the subclass; before
 that it names the subclasses with a pick (Fighter, Rogue, Monk, Artificer 3).
 Deferred: skills, Cavalier/Samurai, Scout expertise, species tools (B6c);
 attack proficiency from subclass grants (B6d).
+
+B6c (D177): schema 48 (`Character.subclassSkills`; `grantedBy` `cavalier`/
+`samurai` for languages, `warforged`/`satyr`/`khoravar` for `toolChoices`; 47→48
+tag only). Table `src/classSkills/subclassSkillGrants.ts`: fixed skills
+(Drunken Master, Scout with expertise, Warrior of Mercy) derived; picks (Battle
+Master Student of War — new, Order, Peace, Arcane Archer) and skill-or-language
+(Cavalier, Samurai) stored. Skills table names "subclass (<name>)"; an unmade
+pick notes its candidate skills. Species slots in "Languages & Tools":
+Warforged/Satyr tool (`ClassToolSlots`), Khoravar skill-or-tool (skill →
+`speciesSkills`). New slot UI `src/classSkills/SkillChoiceSlots.tsx` (wizard
+only — no drawer editing for these). Expertise step never offers Scout's two
+skills. Level-up: the "Languages & Tools" step is skipped at the subclass level
+when the chosen subclass owes nothing (Fighter 3 Champion). Level removal at 3
+drops the subclass skill picks and a Cavalier/Samurai language.
+Next: attack proficiency from subclass grants (B6d).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

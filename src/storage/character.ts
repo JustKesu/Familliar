@@ -57,10 +57,20 @@ export interface CharacterBackground {
  */
 export type LanguageGrantSource = 'automatic' | 'creation' | FeatureLanguageSource
 
-export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer' | 'mastermind'
+/** D177 adds Cavalier's and Samurai's skill-or-language pick when it is a language. */
+export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer' | 'mastermind' | 'cavalier' | 'samurai'
 
-/** D174: which class or subclass grant a stored tool pick fills; D176 adds the non-XPHB subclass picks. */
-export type ToolChoiceSource = 'bard' | 'monk' | 'artificer' | 'battleMaster' | 'mastermind' | 'kensei' | 'artificerSubclass'
+/** D174: which class or subclass grant a stored tool pick fills; D176 adds the non-XPHB subclass picks, D177 the species picks. */
+export type ToolChoiceSource = 'bard' | 'monk' | 'artificer' | 'battleMaster' | 'mastermind' | 'kensei' | 'artificerSubclass' | 'warforged' | 'satyr' | 'khoravar'
+
+/** D177: which subclass grant a stored skill pick fills. */
+export type SubclassSkillSource = 'battleMaster' | 'orderDomain' | 'peaceDomain' | 'arcaneArcher' | 'cavalier' | 'samurai'
+
+export interface CharacterSubclassSkill {
+	grantedBy: SubclassSkillSource
+	/** The skill key skills.ts matches on (lowercase). */
+	name: string
+}
 
 export interface CharacterToolChoice {
 	grantedBy: ToolChoiceSource
@@ -311,6 +321,8 @@ export interface Character {
 	speciesSize?: string
 	/** D174: the class/subclass tool picks (Bard, Monk, Artificer, Battle Master). Absent means none chosen. */
 	toolChoices?: CharacterToolChoice[]
+	/** D177: subclass skill picks (Battle Master, Order, Peace, Arcane Archer, Cavalier, Samurai). Fixed subclass skills are derived, never stored. */
+	subclassSkills?: CharacterSubclassSkill[]
 	/**
 	 * The character level the creation wizard made this character at (slice 8e).
 	 * Set once, never changed afterwards. It is the floor for removing a level:
@@ -924,7 +936,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 47 for the non-XPHB subclass
+ * (see wireFormat.ts). Bumped to 48 for Character.subclassSkills and the
+ * species/Cavalier/Samurai `grantedBy` values (B6c, D177); 47 for the non-XPHB subclass
  * `grantedBy` values (B6b, D176); 46 for Character.toolChoices and
  * .speciesSize (D174, D175); 45 for the class-feature language
  * `grantedBy` values (B3b, D172); 44 for Character.play.heroicInspiration
@@ -941,4 +954,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 47
+export const CURRENT_SCHEMA_VERSION = 48

@@ -2,6 +2,8 @@ import { classPrereqInfoFor } from '../featAsi/featAsiData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
 import { ARTIFICER_SUBCLASS_TOOLS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
+import { isKhoravar, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
+import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
 import type { Character, FeatChoiceDetails } from '../storage/character'
 import {
 	extractFeatWeaponProficiencyEntries,
@@ -14,7 +16,7 @@ import {
 export type ProficiencyCategory = 'armor' | 'weapons' | 'tools' | 'languages'
 
 export interface ProficiencySource {
-	kind: 'class' | 'subclass' | 'classFeatureChoice' | 'feat' | 'creation' | 'background'
+	kind: 'class' | 'subclass' | 'classFeatureChoice' | 'feat' | 'creation' | 'background' | 'species'
 	/** As shown: "Fighter", "Cleric — Protector", "College of Valor", "Heavily Armored (feat)". */
 	name: string
 }
@@ -292,6 +294,22 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 		addTool(character.background.toolProficiency, { kind: 'background', name: `${character.background.name} (background)` })
 	}
 
+	// D177: a species' tool pick; Khoravar's is a skill or a tool, so nothing is pending once either is stored.
+	if (character.species) {
+		const source: ProficiencySource = { kind: 'species', name: character.species.name }
+		for (const grant of speciesToolGrantsFor(character.species)) {
+			const picks = (character.toolChoices ?? []).filter((choice) => choice.grantedBy === grant.grantedBy)
+			picks.forEach((choice) => addTool(choice.name, source))
+			const remaining = Math.max(0, grant.count - picks.length)
+			addPendingTool(remaining, nounText(TOOL_CHOICE_NOUNS[grant.categories.length === 1 ? grant.categories[0] : 'any'], remaining), grant.owner, source)
+		}
+		if (isKhoravar(character.species)) {
+			const tool = (character.toolChoices ?? []).find((choice) => choice.grantedBy === 'khoravar')
+			if (tool) addTool(tool.name, source)
+			else if ((character.speciesSkills ?? []).length === 0) addPendingTool(1, 'skill or tool', character.species.name, source)
+		}
+	}
+
 	const pendingWeapons: ProficiencyItem[] = []
 	for (const grant of FEATURE_GRANTS) {
 		if (!grant.applies(character, parsedClasses)) continue
@@ -306,7 +324,9 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 
 	for (const language of character.languages ?? []) {
 		const grant = CLASS_FEATURE_LANGUAGE_GRANTS.find((candidate) => candidate.choice?.grantedBy === language.grantedBy)
+		const subclassGrant = SUBCLASS_SKILL_GRANTS.find((candidate) => candidate.choice?.orLanguage === language.grantedBy)
 		if (grant) addLanguage(language.name, { kind: 'classFeatureChoice', name: featureLanguageSource(grant) })
+		else if (subclassGrant) addLanguage(language.name, { kind: 'subclass', name: subclassGrant.subclass })
 		else addLanguage(language.name, { kind: 'creation', name: language.grantedBy === 'automatic' ? 'Every character' : 'Chosen at creation' })
 	}
 

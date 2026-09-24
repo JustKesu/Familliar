@@ -16,6 +16,9 @@ import { loadSpeciesSpellcastingAbilityChoice } from '../spells/speciesSpellcast
 import type { AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { ToolProficiencyPicker } from '../toolProficiencies/ToolProficiencyPicker'
 import { ClassToolSlots } from '../toolProficiencies/ClassToolSlots'
+import { isKhoravar } from '../toolProficiencies/speciesToolChoices'
+import { SpeciesSkillOrToolSlot, SubclassSkillSlots } from '../classSkills/SkillChoiceSlots'
+import { subclassExpertiseSkills, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
 import { SpeciesSizePicker } from '../species/SpeciesSizePicker'
 import { loadSpeciesSizeOptions } from '../species/speciesSizeData'
 import { MasteryPicker } from '../masteries/MasteryPicker'
@@ -90,6 +93,8 @@ import {
 	wizardDataFromCharacter,
 	wizardReducer,
 	wizardClass,
+	wizardSpeciesToolGrants,
+	wizardSubclassSkillGrants,
 	wizardToolGrants,
 	type SpellRequirement,
 	type WizardStep,
@@ -170,12 +175,14 @@ export function CharacterWizard({
 	onCancel: () => void
 }): ReactNode {
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
-	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp) : {}
+	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp, state.data.subclass?.name ?? null) : {}
 	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp, state.data.subclass?.name ?? null) : {}
 	const held = levelUp && character ? heldPicksFrom(character, state.data.subclass?.featureType ?? null) : null
 	const wizardClassChoice = wizardClass(state.data)
 	const featureLanguageGrants = wizardClassChoice ? classFeatureLanguageGrantsFor([wizardClassChoice]) : []
-	const toolGrants = wizardToolGrants(state.data, levelUp?.level ?? null)
+	const toolGrants = [...wizardToolGrants(state.data, levelUp?.level ?? null), ...wizardSpeciesToolGrants(state.data, levelUp?.level ?? null)]
+	const subclassSkillGrants = wizardSubclassSkillGrants(state.data, levelUp?.level ?? null)
+	const heldSubclassGrants = wizardClassChoice ? subclassSkillGrantsFor([wizardClassChoice]) : []
 	/** D175: the chosen species' sizes, tagged like speciesSkillShape — the completion check needs them before the picker's panel would mount. */
 	const [speciesSizeShape, setSpeciesSizeShape] = useState<{ key: string; sizes: string[] } | null>(null)
 	const [saveError, setSaveError] = useState<string | null>(null)
@@ -825,9 +832,11 @@ export function CharacterWizard({
 	 * has, and this is the exact number the 'expertise' step and the final
 	 * save both require.
 	 */
-	const expertisePool = expertiseEligibility?.restrictedTo
-		? proficientSkills.filter((entry) => expertiseEligibility.restrictedTo!.includes(entry.skill))
-		: proficientSkills
+	// D177: a skill a subclass already gives expertise in (Scout) is never offered again.
+	const fixedExpertise = wizardClassChoice ? subclassExpertiseSkills([wizardClassChoice]) : []
+	const expertisePool = proficientSkills.filter(
+		(entry) => !fixedExpertise.includes(entry.skill) && (!expertiseEligibility?.restrictedTo || expertiseEligibility.restrictedTo.includes(entry.skill)),
+	)
 	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count, expertisePool.length) : null
 
 	/**
@@ -1385,6 +1394,39 @@ export function CharacterWizard({
 						value={state.data.toolChoices}
 						known={state.data.backgroundToolProficiency ? [state.data.backgroundToolProficiency] : []}						onChange={(choices) => dispatch({ type: 'setToolChoices', choices })}
 					/>
+					{/* D177: subclass skill picks join this step, as the tool and language picks did. */}
+					<SubclassSkillSlots
+						grants={subclassSkillGrants}
+						skills={state.data.subclassSkills}
+						languages={state.data.featureLanguages}
+						heldSkills={[
+							...state.data.classSkills,
+							...backgroundSkillsAsDisabled.map((entry) => entry.skill),
+							...state.data.speciesSkills,
+							...(state.data.speciesExtraSkill ? [state.data.speciesExtraSkill] : []),
+							...heldSubclassGrants.flatMap((grant) => grant.fixed ?? []),
+						]}
+						knownLanguages={[AUTOMATIC_LANGUAGE.name, ...state.data.languageChoice.map((language) => language.name), ...featureLanguageGrants.flatMap((grant) => (grant.fixed ? [grant.fixed] : []))]}
+						onChange={(skills, languages) => dispatch({ type: 'setSubclassSkills', skills, languages })}
+					/>
+					{!levelUp && isKhoravar(state.data.speciesChoice) && (
+						<SpeciesSkillOrToolSlot
+							owner="Khoravar"
+							skill={state.data.speciesExtraSkill}
+							tool={state.data.toolChoices.find((choice) => choice.grantedBy === 'khoravar')?.name ?? null}
+							heldSkills={[
+								...state.data.classSkills,
+								...backgroundSkillsAsDisabled.map((entry) => entry.skill),
+								...state.data.subclassSkills.map((pick) => pick.name),
+								...heldSubclassGrants.flatMap((grant) => grant.fixed ?? []),
+							]}
+							heldTools={[
+								...(state.data.backgroundToolProficiency ? [state.data.backgroundToolProficiency] : []),
+								...state.data.toolChoices.filter((choice) => choice.grantedBy !== 'khoravar').map((choice) => choice.name),
+							]}
+							onChange={({ skill, tool }) => dispatch({ type: 'setSpeciesSkillOrTool', skill, tool })}
+						/>
+					)}
 				</div>
 			)}
 

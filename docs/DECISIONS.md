@@ -3140,3 +3140,46 @@ ji nezvolí (jako D172/D174).
 podtřída není zvolená; banner jmenuje podtřídy s volbou (u Artificera
 s poznámkou, že jen pro už držený nástroj). Jakmile ji class step zvolí, banner
 zmizí a sloty jsou přesné (Champion žádný, Battle Master jeden).
+
+## D177 — B6c: dovednosti z podtříd, volby nástrojů druhů, skrytý prázdný krok level-upu
+
+Zdroj: task B6c, 24. 9. 2026. Navazuje na D44, D172, D174, D176. Podklad:
+DATA.md, „Subclass proficiency grants (non-XPHB)".
+
+**Úložiště.** Nové volitelné pole `Character.subclassSkills?: { grantedBy:
+SubclassSkillSource; name: string }[]` (tvar jako `toolChoices`; `name` je klíč
+dovednosti ze `skills.ts`). `grantedBy`: `battleMaster`, `orderDomain`,
+`peaceDomain`, `arcaneArcher`, `cavalier`, `samurai`. Nové `grantedBy` jazyka
+`cavalier`, `samurai`; nástroje `warforged`, `satyr`, `khoravar`. Schéma 48,
+migrace 47→48 jen tag.
+
+**Pevné granty se odvozují, volby ukládají.** Ruční tabulka
+`classSkills/subclassSkillGrants.ts`, vše od úrovně třídy 3, klíč třída XPHB +
+jméno podtřídy (jména jsou v datech jedinečná). Pevné: Drunken Master
+(Performance), Scout (Nature, Survival **s expertise**), Warrior of Mercy
+(Insight, Medicine). Scoutova expertise se neukládá; expertise picker ji
+nenabízí, jako by byla už zvolená. Volby: Battle Master (Student of War, 1
+z dovedností Fightera L1 — dřív nikde uložená ani nabízená nebyla), Order
+(Intimidation/Persuasion), Peace (Insight/Performance/Persuasion), Arcane Archer
+(Arcana/Nature). Dovednost, kterou postava už má odjinud, se nenabízí. Zdroj ve
+skills: „subclass (<jméno>)", D44 platí (proficiency jednou, všechny zdroje
+jmenované). Nezvolená volba dává na kandidátních dovednostech poznámku „waiting
+on a player pick" stejným mechanismem jako featy.
+
+**Výlučnost.** Cavalier/Samurai: jeden select se dvěma skupinami — dovednost
+(`subclassSkills`) NEBO jazyk (`languages`, `grantedBy` podtřídy); volba jednoho
+smaže druhé. Khoravar stejně: dovednost NEBO nástroj, dovednost jde do
+`speciesSkills` (zdroj „species"), nástroj do `toolChoices` (`khoravar`).
+
+**Druhy.** Warforged (`{any:1}` = artisan's tools + gaming sets + hudební
+nástroje + typ `T`) a Satyr (`{anyMusicalInstrument:1}`): trvalá volba ve
+`toolChoices`, slot v kroku „Languages & Tools"; level-up je nežádá. Dočasné
+granty se nezobrazují: nástroj Githyanki, dovednost Kalashtar, volby Trance
+(Eladrin, Sea Elf, Shadar-Kai). Dovednost Githyanki (`any:1`) beze změny.
+
+**Level-up.** Volba dovednosti podtřídy patří k úrovni podtřídy (3): level-up ji
+žádá, odebrání úrovně 3 ji smaže (včetně jazyka Cavaliera/Samuraie). Krok
+„Languages & Tools" se při level-upu na úrovni volby podtřídy neprochází, pokud
+podtřída zvolená v class stepu nic nedluží (Fighter 3 Champion); dluží-li
+(Battle Master, Order Domain), krok se objeví. Stará postava bez nové volby má
+krok zablokovaný v Edit Character (D172/D174).

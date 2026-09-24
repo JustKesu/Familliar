@@ -837,6 +837,35 @@ species, Monk-tool and language lines are B1's and were not re-checked.
 
 Found in investigation B6a and checked in B6b (2026-09-24, scripts consumed).
 
+Skill grants, checked B6c (each name is one subclass entry in classes.json,
+classSource XPHB; feature entries mostly filed under classSource PHB):
+- Fixed: Way of the Drunken Master|XGE "Bonus Proficiencies" L3 (Performance);
+  Scout|XGE "Survivalist" L3 (Nature, Survival, proficiency bonus doubled);
+  Warrior of Mercy|XPHB "Implements of Mercy" L3 (Insight, Medicine + Herbalism
+  Kit).
+- Picks: Battle Master|XPHB "Student of War" L3 (1 skill "available to Fighters
+  at level 1" = XPHB Fighter `startingProficiencies.skills`: acrobatics, animal
+  handling, athletics, history, insight, intimidation, persuasion, perception,
+  survival); Order Domain|TCE "Bonus Proficiencies" L1 (Intimidation or
+  Persuasion); Peace Domain|TCE "Implement of Peace" L1 (Insight, Performance or
+  Persuasion); Arcane Archer|XGE "Arcane Archer Lore" L3 (Arcana or Nature).
+- Skill or language: Cavalier|XGE "Bonus Proficiency" L3 (Animal Handling,
+  History, Insight, Performance, Persuasion — or 1 language); Samurai|XGE "Bonus
+  Proficiency" L3 (History, Insight, Performance, Persuasion — or 1 language).
+
+Species tool grants, checked B6c: Warforged|EFA `skillProficiencies [{any:1}]`,
+`toolProficiencies [{any:1}]`; Satyr|MPMM `toolProficiencies
+[{anyMusicalInstrument:1}]`; Khoravar|EFA no structured field — prose "one skill
+or with one tool of your choice", and "Whenever you finish a Long Rest, you can
+replace it" (the app stores it as a permanent pick, D177). Githyanki|MPMM
+`toolProficiencies [{any:1}]` is the temporary grant; Kalashtar|EFA carries no
+structured skill; Eladrin/Sea Elf/Shadar-Kai carry only fixed Perception.
+items.json type `T` (rarity none) is exactly 6 items: Disguise Kit, Forgery Kit,
+Herbalism Kit, Navigator's Tools, Poisoner's Kit, Thieves' Tools — with AT, GS
+and mundane INS the pool of an untyped `{any:1}` tool pick.
+
+Found in task B6c (2026-09-24, `scripts/investigate-b6c-skill-grants.js`, consumed).
+
 ### Species `size` — array of letters, a choice when it has two
 
 `species.json` `size` is an array of size letters. One element (`["M"]`) is the

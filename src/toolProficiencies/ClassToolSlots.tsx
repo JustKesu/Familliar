@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CharacterToolChoice } from '../storage/character'
-import { toolChoiceOptions, type ClassToolChoiceGrant } from './classToolChoices'
+import { toolChoiceOptions, type ToolSlotGrant } from './classToolChoices'
 import { loadToolCategoryOptions } from './toolProficiencyData'
 
 /**
@@ -15,7 +15,7 @@ export function ClassToolSlots({
 	known,
 	onChange,
 }: {
-	grants: readonly ClassToolChoiceGrant[]
+	grants: readonly ToolSlotGrant[]
 	value: readonly CharacterToolChoice[]
 	known: readonly string[]
 	onChange: (choices: CharacterToolChoice[]) => void

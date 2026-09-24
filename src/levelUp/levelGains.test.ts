@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { levelGainsFor, type LevelGain } from './levelGains'
+import { levelGainsFor, type LevelGain, type LevelGains } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
 import type { Character } from '../storage/character'
-import { unknownLevelUpSteps } from './levelUpSteps'
+import { levelUpStepConditions, unknownLevelUpSteps } from './levelUpSteps'
 import { emptyWizardData, wizardToolGrants } from '../creation/wizardState'
 
 function character(classes: Character['classes']): Character {
@@ -113,7 +113,14 @@ describe('levelGainsFor', () => {
 		expect(languages.reason).toContain('Battle Master')
 		expect(levelGainsFor(unchosen, 2, CLASSES, RESOLVER).steps.languages.status).toBe('none')
 		const chosen = character([{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 2 }])
-		expect(levelGainsFor(chosen, 3, CLASSES, RESOLVER).steps.languages).toMatchObject({ status: 'adds', count: 1, parts: [{ name: 'Battle Master tool', count: 1 }] })
+		expect(levelGainsFor(chosen, 3, CLASSES, RESOLVER).steps.languages).toMatchObject({
+			status: 'adds',
+			count: 2,
+			parts: [
+				{ name: 'Battle Master tool', count: 1 },
+				{ name: 'Battle Master skill', count: 1 },
+			],
+		})
 		expect(levelGainsFor(fighter, 3, CLASSES, RESOLVER).steps.languages.status).toBe('none')
 	})
 
@@ -134,9 +141,26 @@ describe('levelGainsFor', () => {
 			expect(wizardToolGrants(data('Battle Master'), 3)).toMatchObject([{ grantedBy: 'battleMaster', count: 1 }])
 		})
 
-		it('Rogue 2→3 names Mastermind; Cleric 2→3 has nothing to pick', () => {
+		it('Rogue 2→3 names Mastermind; D177: Cleric 2→3 names Order Domain and Peace Domain', () => {
 			expect(levelGainsFor(unchosenAt2('Rogue'), 3, CLASSES, RESOLVER).steps.languages.reason).toContain('Mastermind')
-			expect(levelGainsFor(unchosenAt2('Cleric'), 3, CLASSES, RESOLVER).steps.languages.status).toBe('none')
+			expect(levelGainsFor(unchosenAt2('Cleric'), 3, CLASSES, RESOLVER).steps.languages).toMatchObject({ status: 'unknown', owingSubclasses: ['Order Domain', 'Peace Domain'] })
+		})
+
+		describe('D177: the languages step is walked only when the chosen subclass owes a pick', () => {
+			const walks = (gains: LevelGains, subclass: string | null) => levelUpStepConditions(gains, subclass).levelUpSteps?.has('languages')
+
+			it('Fighter 2→3: walked before the choice and for Battle Master, hidden for Champion', () => {
+				const gains = levelGainsFor(unchosenAt2('Fighter'), 3, CLASSES, RESOLVER)
+				expect(walks(gains, null)).toBe(true)
+				expect(walks(gains, 'Battle Master')).toBe(true)
+				expect(walks(gains, 'Champion')).toBe(false)
+			})
+
+			it('Cleric 2→3: walked for Order Domain, hidden for Life Domain', () => {
+				const gains = levelGainsFor(unchosenAt2('Cleric'), 3, CLASSES, RESOLVER)
+				expect(walks(gains, 'Order Domain')).toBe(true)
+				expect(walks(gains, 'Life Domain')).toBe(false)
+			})
 		})
 
 		it('Monk 2→3 names Kensei; Artificer 2→3 names every subclass as conditional', () => {

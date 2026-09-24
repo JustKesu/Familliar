@@ -414,6 +414,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 47 }),
 	},
+	{
+		from: 47,
+		to: 48,
+		/*
+		 * 48 adds Character.subclassSkills, the 'cavalier'/'samurai' language and
+		 * the 'warforged'/'satyr'/'khoravar' tool grantedBy values (B6c, D177). A
+		 * version-47 character stored none — the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 48 }),
+	},
 ]
 
 /**

@@ -262,19 +262,20 @@ export function featSkillChoiceAwaitingNotes(skill: Skill, character: Character,
 		const skillEntry = feat.skillProficiencies?.[0]
 		const hasStoredSkillPick = (choice.proficiencies?.skills?.length ?? 0) > 0
 		if (!hasStoredSkillPick && skillEntry && (isAnySkillEntry(skillEntry) || (isChooseSkillEntry(skillEntry) && skillEntry.choose.from.includes(skill)))) {
-			notes.push(skillChoiceAwaitingNote(feat.name))
+			notes.push(skillChoiceAwaitingNote(`feat (${feat.name})`))
 		}
 
 		const hasStoredExpertisePick = (choice.proficiencies?.expertise?.length ?? 0) > 0
 		if (!hasStoredExpertisePick && feat.expertise?.[0] && isProficient) {
-			notes.push(skillChoiceAwaitingNote(feat.name))
+			notes.push(skillChoiceAwaitingNote(`feat (${feat.name})`))
 		}
 	}
 	return notes
 }
 
-function skillChoiceAwaitingNote(featName: string): Contribution {
-	return { source: `feat (${featName})`, amount: 0, note: 'grants a skill choice this app has nowhere to store yet — waiting on a player pick' }
+/** D177: the subclass skill picks use the same note. */
+export function skillChoiceAwaitingNote(source: string): Contribution {
+	return { source, amount: 0, note: 'grants a skill choice — waiting on a player pick' }
 }
 
 /**

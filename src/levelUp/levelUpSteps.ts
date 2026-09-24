@@ -32,11 +32,20 @@ const ALWAYS_WALKED: readonly WizardStep[] = ['hitPoints', 'review']
  * the app cannot answer for (hiding one would silently skip a choice the
  * character may be owed), plus hit points and review.
  */
-export function levelUpStepConditions(gains: LevelGains): Pick<WizardStepConditions, 'levelUpSteps' | 'levelUpTargetLevel'> {
+export function levelUpStepConditions(gains: LevelGains, chosenSubclass: string | null = null): Pick<WizardStepConditions, 'levelUpSteps' | 'levelUpTargetLevel'> {
 	const walked = WIZARD_STEPS.filter(
-		(step) => ALWAYS_WALKED.includes(step) || gains.steps[step].status === 'adds' || gains.steps[step].status === 'unknown',
+		(step) =>
+			ALWAYS_WALKED.includes(step) ||
+			gains.steps[step].status === 'adds' ||
+			(gains.steps[step].status === 'unknown' && !answeredByChosenSubclass(gains, step, chosenSubclass)),
 	)
 	return { levelUpSteps: new Set(walked), levelUpTargetLevel: gains.level }
+}
+
+/** D177: once the class step has chosen the subclass, the languages step is walked only if that subclass owes a pick. */
+function answeredByChosenSubclass(gains: LevelGains, step: WizardStep, chosenSubclass: string | null): boolean {
+	const owing = gains.steps[step].owingSubclasses
+	return step === 'languages' && chosenSubclass !== null && gains.unresolved === null && owing !== undefined && !owing.includes(chosenSubclass)
 }
 
 /**

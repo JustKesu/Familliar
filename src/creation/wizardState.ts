@@ -20,6 +20,7 @@ import type {
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterToolChoice,
+	CharacterSubclassSkill,
 	CharacterExpertiseSkill,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
@@ -38,7 +39,16 @@ import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
 import { classFeatureLanguageGrantsFor, keepHeldFeatureLanguages } from '../languages/classFeatureLanguages'
-import { classToolGrantsFor, keepHeldToolChoices, type ClassToolChoiceGrant } from '../toolProficiencies/classToolChoices'
+import { classToolGrantsFor, keepHeldToolChoices, type ClassToolChoiceGrant, type ToolSlotGrant } from '../toolProficiencies/classToolChoices'
+import { isKhoravar, isSpeciesToolChoice, keepHeldSpeciesToolChoices, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
+import {
+	SUBCLASS_LANGUAGE_SOURCES,
+	isSubclassSkillChoiceMade,
+	keepHeldSubclassLanguages,
+	keepHeldSubclassSkills,
+	subclassSkillGrantsFor,
+	type SubclassSkillGrant,
+} from '../classSkills/subclassSkillGrants'
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
@@ -244,6 +254,18 @@ export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | 
 	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === levelUpTargetLevel)
 }
 
+/** D177: the subclass skill picks the languages step collects; a level-up walk asks only for the ones that level brings. */
+export function wizardSubclassSkillGrants(data: WizardData, levelUpTargetLevel: number | null): SubclassSkillGrant[] {
+	const cls = wizardClass(data)
+	const grants = cls ? subclassSkillGrantsFor([cls]).filter((grant) => grant.choice) : []
+	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === levelUpTargetLevel)
+}
+
+/** D177: species picks are creation picks, so a level-up walk never asks for them. */
+export function wizardSpeciesToolGrants(data: WizardData, levelUpTargetLevel: number | null): ToolSlotGrant[] {
+	return levelUpTargetLevel === null ? speciesToolGrantsFor(data.speciesChoice) : []
+}
+
 /** The class choice with the chosen subclass, as the grant tables read it. */
 export function wizardClass(data: WizardData): (ClassLevelChoice & { subclass: string | null }) | null {
 	return data.classChoice ? { ...data.classChoice, subclass: data.subclass?.name ?? null } : null
@@ -265,8 +287,12 @@ export interface WizardData {
 	languageChoice: LanguageChoice
 	/** D172: class-feature language picks (Thieves' Cant, Deft Explorer), already shaped like storage. Clears whenever the class changes. */
 	featureLanguages: CharacterLanguage[]
-	/** D174: class/subclass tool picks, already shaped like storage. Clears whenever the class changes. */
+	/** D174: class/subclass tool picks, already shaped like storage. The class ones clear whenever the class changes; D177's species ones whenever the species does. */
 	toolChoices: CharacterToolChoice[]
+	/** D177: subclass skill picks, already shaped like storage. Clears whenever the class or subclass changes. */
+	subclassSkills: CharacterSubclassSkill[]
+	/** D177: Khoravar's skill-or-tool pick when it is a skill. Saved into speciesSkills; clears whenever the species changes. */
+	speciesExtraSkill: string | null
 	abilityScores: CharacterAbilityScores | null
 	/** Class skill proficiencies, weapon masteries, fighting style and subclass are the class's own choices (D13), so they clear whenever classChoice does. */
 	classSkills: string[]
@@ -352,6 +378,8 @@ export function emptyWizardData(): WizardData {
 		languageChoice: [],
 		featureLanguages: [],
 		toolChoices: [],
+		subclassSkills: [],
+		speciesExtraSkill: null,
 		abilityScores: null,
 		classSkills: [],
 		speciesSkills: [],
@@ -453,9 +481,12 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 			.map(({ name, source }) => ({ name, source })),
 		featureLanguages: (character.languages ?? []).filter((language) => language.grantedBy !== 'automatic' && language.grantedBy !== 'creation'),
 		toolChoices: character.toolChoices ?? [],
+		subclassSkills: character.subclassSkills ?? [],
+		// D177: Khoravar has no structured species skill, so a stored one is its skill-or-tool pick.
+		speciesExtraSkill: isKhoravar(character.species) ? (character.speciesSkills?.[0] ?? null) : null,
 		abilityScores: character.abilityScores ?? null,
 		classSkills: character.classSkills ?? [],
-		speciesSkills: character.speciesSkills ?? [],
+		speciesSkills: isKhoravar(character.species) ? [] : (character.speciesSkills ?? []),
 		speciesSize: character.speciesSize ?? null,
 		speciesSpellcastingAbility: character.speciesSpellcastingAbility ?? null,
 		expertiseSkills: choiceNames(character.expertiseSkills),
@@ -593,7 +624,11 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				creationComplete &&
 				grants.every((grant) => !grant.choice || data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length === grant.choice.count) &&
 				// D176: at least the count — a surplus Artificer replacement pick is kept, not demanded away.
-				wizardToolGrants(data, levelUpTargetLevel).every((grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length >= grant.count)
+				[...wizardToolGrants(data, levelUpTargetLevel), ...wizardSpeciesToolGrants(data, levelUpTargetLevel)].every(
+					(grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length >= grant.count,
+				) &&
+				wizardSubclassSkillGrants(data, levelUpTargetLevel).every((grant) => isSubclassSkillChoiceMade(grant, data.subclassSkills, data.featureLanguages)) &&
+				(levelUpTargetLevel !== null || !isKhoravar(data.speciesChoice) || data.speciesExtraSkill !== null || data.toolChoices.some((choice) => choice.grantedBy === 'khoravar'))
 			)
 		}
 		case 'abilities':
@@ -719,6 +754,8 @@ export type WizardAction =
 	| { type: 'setLanguageChoice'; choice: LanguageChoice }
 	| { type: 'setFeatureLanguages'; languages: CharacterLanguage[] }
 	| { type: 'setToolChoices'; choices: CharacterToolChoice[] }
+	| { type: 'setSubclassSkills'; skills: CharacterSubclassSkill[]; languages: CharacterLanguage[] }
+	| { type: 'setSpeciesSkillOrTool'; skill: string | null; tool: string | null }
 	| { type: 'setSpeciesSize'; size: string | null }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
 	| { type: 'setClassSkills'; skills: string[] }
@@ -779,7 +816,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					...state.data,
 					classChoice: action.choice,
 					featureLanguages: [],
-					toolChoices: [],
+					toolChoices: state.data.toolChoices.filter(isSpeciesToolChoice),
+					subclassSkills: [],
 					classSkills: [],
 					expertiseSkills: [],
 					masteries: [],
@@ -800,7 +838,16 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setSpeciesChoice':
 			return {
 				...state,
-				data: { ...state.data, speciesChoice: action.choice, speciesSkills: [], speciesSize: null, speciesSpellcastingAbility: null, expertiseSkills: [] },
+				data: {
+					...state.data,
+					speciesChoice: action.choice,
+					speciesSkills: [],
+					speciesExtraSkill: null,
+					toolChoices: state.data.toolChoices.filter((choice) => !isSpeciesToolChoice(choice)),
+					speciesSize: null,
+					speciesSpellcastingAbility: null,
+					expertiseSkills: [],
+				},
 			}
 		case 'setSpeciesSkills':
 			return { ...state, data: { ...state.data, speciesSkills: action.skills, expertiseSkills: [] } }
@@ -840,6 +887,15 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, featureLanguages: action.languages } }
 		case 'setToolChoices':
 			return { ...state, data: { ...state.data, toolChoices: action.choices } }
+		case 'setSubclassSkills':
+			return { ...state, data: { ...state.data, subclassSkills: action.skills, featureLanguages: action.languages } }
+		case 'setSpeciesSkillOrTool': {
+			const others = state.data.toolChoices.filter((choice) => choice.grantedBy !== 'khoravar')
+			return {
+				...state,
+				data: { ...state.data, speciesExtraSkill: action.skill, toolChoices: action.tool ? [...others, { grantedBy: 'khoravar', name: action.tool }] : others },
+			}
+		}
 		case 'setSpeciesSize':
 			return { ...state, data: { ...state.data, speciesSize: action.size } }
 		case 'setAbilityScores':
@@ -854,7 +910,16 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return {
 				...state,
 				// wildShapeForms clears here too: Circle of the Moon's Circle Forms raises the CR cap, so the legal pool is subclass-dependent.
-				data: { ...state.data, subclass: action.subclass, optionalFeatureChoices: [], spellChoices: [], subclassSpellChoices: [], wildShapeForms: [] },
+				data: {
+					...state.data,
+					subclass: action.subclass,
+					optionalFeatureChoices: [],
+					spellChoices: [],
+					subclassSpellChoices: [],
+					wildShapeForms: [],
+					subclassSkills: [],
+					featureLanguages: state.data.featureLanguages.filter((language) => !SUBCLASS_LANGUAGE_SOURCES.has(language.grantedBy)),
+				},
 			}
 		case 'setOptionalFeatureChoices':
 			return { ...state, data: { ...state.data, optionalFeatureChoices: action.choices } }
@@ -998,10 +1063,14 @@ export function saveCharacter(
 			? [{ ...AUTOMATIC_LANGUAGE, grantedBy: 'automatic' as const }, ...data.languageChoice.map((entry) => ({ ...entry, grantedBy: 'creation' as const }))]
 			: []),
 		...keepHeldFeatureLanguages(data.featureLanguages, classFeatureLanguageGrantsFor(classes)),
+		...keepHeldSubclassLanguages(data.featureLanguages, subclassSkillGrantsFor(classes)),
 	]
 	const languages = allLanguages.length > 0 ? allLanguages : undefined
-	const heldToolChoices = keepHeldToolChoices(data.toolChoices, classToolGrantsFor(classes))
+	const heldToolChoices = [...keepHeldToolChoices(data.toolChoices, classToolGrantsFor(classes)), ...keepHeldSpeciesToolChoices(data.toolChoices, data.speciesChoice)]
 	const toolChoices = heldToolChoices.length > 0 ? heldToolChoices : undefined
+	const heldSubclassSkills = keepHeldSubclassSkills(data.subclassSkills, subclassSkillGrantsFor(classes))
+	const subclassSkills = heldSubclassSkills.length > 0 ? heldSubclassSkills : undefined
+	const speciesSkills = data.speciesExtraSkill !== null && isKhoravar(data.speciesChoice) ? [...data.speciesSkills, data.speciesExtraSkill] : data.speciesSkills
 
 	/**
 	 * Tagged with the subclass's own featureType (D21) so more than one
@@ -1109,7 +1178,7 @@ export function saveCharacter(
 		masteries,
 		fightingStyle: data.fightingStyle,
 		optionalFeatureChoices,
-		speciesSkills: data.speciesSkills,
+		speciesSkills,
 		expertiseSkills,
 		featAsiChoices: data.featAsiChoices,
 		// No wizard control sets these yet (D156); an edit or a level up carries them across.
@@ -1124,6 +1193,7 @@ export function saveCharacter(
 		speciesSpellcastingAbility: data.speciesSpellcastingAbility ?? undefined,
 		speciesSize: data.speciesSize ?? undefined,
 		toolChoices,
+		subclassSkills,
 		hitPointLevels,
 		// Play state the wizard has no control over, carried across an update that replaces every field.
 		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.

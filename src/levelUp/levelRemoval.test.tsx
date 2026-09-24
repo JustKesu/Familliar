@@ -228,6 +228,24 @@ describe('class tool picks on a level removal (D174)', () => {
 	})
 })
 
+describe('subclass skill picks on a level removal (D177)', () => {
+	const subclassSkills: Character['subclassSkills'] = [{ grantedBy: 'cavalier', name: 'history' }]
+	const cavalierLanguage = { name: 'Elvish', source: 'XPHB', grantedBy: 'cavalier' as const }
+
+	it('removing Fighter level 3 drops the Cavalier skill and a Cavalier language', () => {
+		const removed = plan({ ...single('Fighter', 'Cavalier', 3, 1), subclassSkills, languages: [cavalierLanguage] })
+		expect(removed.result.subclassSkills).toEqual([])
+		expect(removed.result.languages).toEqual([])
+		expect(removed.dropped).toEqual(expect.arrayContaining(['Skill proficiency: history', 'Language: Elvish']))
+	})
+
+	it('removing Fighter level 4 keeps them', () => {
+		const removed = plan({ ...single('Fighter', 'Cavalier', 4, 1), subclassSkills, languages: [cavalierLanguage] })
+		expect(removed.result.subclassSkills).toEqual(subclassSkills)
+		expect(removed.result.languages).toEqual([cavalierLanguage])
+	})
+})
+
 describe('when a level cannot be removed', () => {
 	it('refuses at level 1, at the created-at level, without a created-at level, and for a multiclass character', () => {
 		expect(levelRemovalTarget(single('Fighter', null, 1, 1))).toEqual({ reason: expect.stringContaining('Level 1') })

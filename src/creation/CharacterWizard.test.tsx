@@ -739,6 +739,9 @@ describe('CharacterWizard — storage', () => {
 		// D174: Battle Master's artisan's tool blocks the step until it is chosen.
 		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 		await user.selectOptions(await screen.findByRole('combobox', { name: /Battle Master tool/ }), "Smith's Tools")
+		// D177: so does Student of War's Fighter skill.
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		await user.selectOptions(screen.getByRole('combobox', { name: /Battle Master skill/ }), 'History')
 		await goNext(user)
 		await user.selectOptions(screen.getByLabelText('Strength'), '15')
 		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
@@ -781,6 +784,7 @@ describe('CharacterWizard — storage', () => {
 			classFeatureChoices: undefined,
 			wildShapeForms: undefined,
 			toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
+			subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }],
 			// The class's gear package and the background's coin option, combined:
 			// the package's items, and 4 gp from it plus 50 gp from the background.
 			inventory: [

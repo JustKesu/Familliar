@@ -32,6 +32,8 @@ function completeData(): WizardData {
 		],
 		featureLanguages: [],
 		toolChoices: [],
+		subclassSkills: [],
+		speciesExtraSkill: null,
 		abilityScores: {
 			method: 'standardArray',
 			scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
@@ -831,7 +833,11 @@ describe('class tool picks (D174)', () => {
 		const fighter = { ...completeData(), subclass: { name: 'Battle Master', source: 'XPHB', featureType: null } }
 		const l3 = { ...fighter, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 } }
 		expect(isStepComplete('languages', l3, { levelUpTargetLevel: 3 })).toBe(false)
-		expect(isStepComplete('languages', { ...l3, toolChoices: [pick('battleMaster', "Smith's Tools")] }, { levelUpTargetLevel: 3 })).toBe(true)
+		// D177: Student of War's skill is owed too.
+		expect(isStepComplete('languages', { ...l3, toolChoices: [pick('battleMaster', "Smith's Tools")] }, { levelUpTargetLevel: 3 })).toBe(false)
+		expect(
+			isStepComplete('languages', { ...l3, toolChoices: [pick('battleMaster', "Smith's Tools")], subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }] }, { levelUpTargetLevel: 3 }),
+		).toBe(true)
 		expect(isStepComplete('languages', { ...l3, subclass: { name: 'Champion', source: 'XPHB', featureType: null } }, { levelUpTargetLevel: 3 })).toBe(true)
 		// A Bard levelling to 2 is not owed the creation instruments again.
 		const bard2 = { ...completeData(), classChoice: { ...bard, level: 2 } }
@@ -915,6 +921,7 @@ describe('editing an existing character', () => {
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
 			toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
+			subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }],
 			classSkills: ['acrobatics', 'survival'],
 			masteries: [{ name: 'Longsword', level: 4 }, { name: 'Greataxe' }],
 			expertiseSkills: [{ name: 'acrobatics', level: 3 }],

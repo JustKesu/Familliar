@@ -13,6 +13,7 @@ import type {
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterToolChoice,
+	CharacterSubclassSkill,
 	CharacterExpertiseSkill,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
@@ -161,6 +162,7 @@ export interface CharacterCreateInput {
 	speciesSpellcastingAbility?: Ability
 	speciesSize?: string
 	toolChoices?: CharacterToolChoice[]
+	subclassSkills?: CharacterSubclassSkill[]
 	hitPointLevels?: CharacterHitPointLevel[]
 	/*
 	 * Play-time state the wizard never collects: the hand-set current hit points
@@ -282,6 +284,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		speciesSpellcastingAbility,
 		speciesSize,
 		toolChoices,
+		subclassSkills,
 		hitPointLevels,
 		currentHp,
 		maxHpOverride,
@@ -322,6 +325,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
 		...(speciesSize ? { speciesSize } : {}),
 		...(toolChoices && toolChoices.length > 0 ? { toolChoices } : {}),
+		...(subclassSkills && subclassSkills.length > 0 ? { subclassSkills } : {}),
 		...(hitPointLevels &&hitPointLevels.length > 0 ? { hitPointLevels } : {}),
 		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
 		...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),

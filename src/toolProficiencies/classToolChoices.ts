@@ -22,6 +22,9 @@ export interface ClassToolChoiceGrant {
 	replaces?: string[]
 }
 
+/** What a tool slot needs from a grant — a species grant (D177) has no class. */
+export type ToolSlotGrant = Pick<ClassToolChoiceGrant, 'owner' | 'count' | 'categories' | 'options' | 'grantedBy' | 'fixedTools'>
+
 /** D176: the EFA Artificer subclasses' fixed tools — both the proficiency and what the replacement pick replaces. */
 export const ARTIFICER_SUBCLASS_TOOLS: Readonly<Record<string, string[]>> = {
 	Alchemist: ["Alchemist's Supplies", 'Herbalism Kit'],

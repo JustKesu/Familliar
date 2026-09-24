@@ -39,6 +39,7 @@ import { featAsiGrantsFor } from '../featAsi/featAsiData'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
+import { SUBCLASS_SKILL_GRANTS, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { masteryCountFor } from '../masteries/masteryData'
 import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
@@ -70,6 +71,8 @@ export interface LevelGain {
 	parts: LevelGainPart[]
 	/** Why the answer is 'never' or 'unknown'. Absent for 'adds' and 'none'. */
 	reason?: string
+	/** D177: on the languages step's 'unknown', the subclasses whose choice at this level would owe a pick. */
+	owingSubclasses?: readonly string[]
 }
 
 /** A class or subclass feature the character gains at this level. No wizard step collects these; they are what the level grants outright. */
@@ -243,17 +246,22 @@ function languagesStepGain(className: string, classSource: string, level: number
 	const parts: LevelGainPart[] = [
 		...classFeatureLanguageGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: grant.featureName, count: grant.choice.count }] : [])),
 		...classToolGrantsFor([start]).flatMap((grant) => (grant.level === level ? [{ name: `${grant.owner} tool`, count: grant.count }] : [])),
+		...subclassSkillGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: `${grant.subclass} skill`, count: 1 }] : [])),
 	]
 	const gain = adds(parts)
 	if (gain.status === 'adds' || subclass !== null || subclassGrantLevel !== level) return gain
-	// D176: the language picks too (Mastermind); an Artificer subclass's pick is owed only for a tool already held.
+	// D176: the language picks too (Mastermind); an Artificer subclass's pick is owed only for a tool already held. D177: and the skill picks.
 	const pending = [
 		...CLASS_TOOL_CHOICE_GRANTS.filter((grant) => grant.className === className && grant.classSource === classSource).map((grant) => ({ ...grant, conditional: grant.replaces !== undefined })),
 		...CLASS_FEATURE_LANGUAGE_GRANTS.filter((grant) => grant.choice && grant.className === className && classSource === 'XPHB').map((grant) => ({ ...grant, conditional: false })),
+		...SUBCLASS_SKILL_GRANTS.filter((grant) => grant.choice && grant.className === className && classSource === 'XPHB').map((grant) => ({ ...grant, conditional: false })),
 	].filter((grant) => grant.subclass && grant.level === level)
 	if (pending.length === 0) return gain
 	const names = [...new Set(pending.map((grant) => (grant.conditional ? `${grant.subclass} (only for a subclass tool already held)` : grant.subclass)))]
-	return unknownGain(`The subclass is chosen at this level, and ${names.join(' / ')} grants a tool or language pick.`)
+	return {
+		...unknownGain(`The subclass is chosen at this level, and ${names.join(' / ')} grants a tool, language or skill pick.`),
+		owingSubclasses: [...new Set(pending.flatMap((grant) => (grant.subclass ? [grant.subclass] : [])))],
+	}
 }
 
 function unresolvedReason(character: Character, level: number, parsedClasses: unknown[]): string | null {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import { MIGRATIONS, canMigrateToCurrent, migrateToCurrent } from './migrations'
-import { describeLanguagesError, describeToolChoicesError } from './validate'
+import { describeLanguagesError, describeSubclassSkillsError, describeToolChoicesError } from './validate'
 
 describe('the migration chain (D69)', () => {
 	it('has no hole between its oldest step and the current version', () => {
@@ -482,6 +482,19 @@ describe('the migration chain (D69)', () => {
 		expect(describeToolChoicesError([{ grantedBy: 'bard', name: 'Lute' }])).toBeNull()
 		expect(describeToolChoicesError([{ grantedBy: 'wizard', name: 'Lute' }])).toContain('grantedBy')
 		expect(describeToolChoicesError([{ grantedBy: 'bard', name: '' }])).toContain('name')
+	})
+
+	/* B6c (D177): an additive field and new grantedBy values; a version-47 character loads unchanged, with no skill pick invented. */
+	it('tags a version-47 character without inventing subclass skill picks', () => {
+		const before = { schemaVersion: 47, id: '1', name: 'Aria', classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: 'Order Domain', level: 3 }] }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect('subclassSkills' in migrated).toBe(false)
+		expect(describeSubclassSkillsError([{ grantedBy: 'orderDomain', name: 'persuasion' }])).toBeNull()
+		expect(describeSubclassSkillsError([{ grantedBy: 'champion', name: 'persuasion' }])).toContain('grantedBy')
+		expect(describeToolChoicesError([{ grantedBy: 'warforged', name: 'Dice Set' }])).toBeNull()
+		expect(describeLanguagesError([{ name: 'Elvish', source: 'XPHB', grantedBy: 'samurai' }])).toBeNull()
 	})
 
 	/* Slice 9d2: three purely additive fields, so the step only tags — nothing written is what absence already means. */
