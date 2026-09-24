@@ -339,6 +339,7 @@ vi.mock('./weaponAttackData', async (importOriginal) => {
 			martialArtsDie: null,
 			featureNames: ['Extra Attack'],
 			proficiencies: {
+				tools: [{ key: 'gaming set', label: 'Gaming Set', sources: [{ kind: 'background' as const, name: 'Soldier (background)' }] }],
 				languages: [
 					{ key: 'common', label: 'Common', sources: [{ kind: 'creation' as const, name: 'Every character' }] },
 					{ key: 'sylvan', label: 'Sylvan', sources: [{ kind: 'creation' as const, name: 'Chosen at creation' }] },
@@ -760,7 +761,7 @@ describe('CharacterSheet', () => {
 		expect(within(open).getAllByText('Breakdown')).toHaveLength(18)
 	})
 
-	it('B2/B3 (D170/D171): Proficiencies shows ARMOR, WEAPONS and LANGUAGES rows; its gear lists each item with its sources', async () => {
+	it('B2/B3/B4 (D170/D171/D173): Proficiencies shows ARMOR, WEAPONS, TOOLS and LANGUAGES rows in that order; its gear lists each item with its sources', async () => {
 		const user = userEvent.setup()
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
@@ -768,10 +769,12 @@ describe('CharacterSheet', () => {
 		const card = document.querySelector<HTMLElement>('.sheet__proficiencies')!
 		await waitFor(() => expect(card.textContent).toContain('Martial weapons'))
 		const rows = Array.from(card.querySelectorAll('li')).map((li) => li.textContent)
-		expect(rows).toEqual(['ARMORNone', 'WEAPONSMartial weapons', 'LANGUAGESCommon, Sylvan'])
+		expect(rows).toEqual(['ARMORNone', 'WEAPONSMartial weapons', 'TOOLSGaming Set', 'LANGUAGESCommon, Sylvan'])
 
 		await user.click(screen.getByRole('button', { name: 'Proficiencies details' }))
 		const open = screen.getByRole('dialog', { name: 'Proficiencies' })
+		expect(within(open).getByText('Tools')).toBeTruthy()
+		expect(open.textContent).toContain('Gaming Set — Soldier (background)')
 		expect(open.textContent).toContain('Martial weapons — Fighter, Martial Weapon Training (feat)')
 		expect(within(open).getByText('Languages')).toBeTruthy()
 		expect(open.textContent).toContain('Common — Every character')
@@ -782,7 +785,7 @@ describe('CharacterSheet', () => {
 		const user = userEvent.setup()
 		vi.mocked(loadDataFile).mockImplementation(async (path: string) =>
 			path === 'data/languages.json'
-				? ['Common|standard', 'Elvish|standard', 'Sylvan|rare', 'Abyssal|rare'].map((entry) => ({ name: entry.split('|')[0], source: 'XPHB', type: entry.split('|')[1] }))
+				? ['Common|standard', 'Elvish|standard', 'Sylvan|rare', 'Abyssal|rare', 'Druidic|rare', "Thieves' Cant|rare"].map((entry) => ({ name: entry.split('|')[0], source: 'XPHB', type: entry.split('|')[1] }))
 				: [],
 		)
 		try {
@@ -797,7 +800,7 @@ describe('CharacterSheet', () => {
 			await user.click(screen.getByRole('button', { name: 'Proficiencies details' }))
 
 			const slot = await screen.findByRole('combobox', { name: /Thieves' Cant language/ })
-			// Known languages (Common, Sylvan) are never offered; a Rare one is.
+			// Known languages (Common, Sylvan) and the secret ones (D173) are never offered; a Rare one is.
 			expect(within(slot).getAllByRole('option').map((option) => option.textContent)).toEqual(['— not chosen —', 'Abyssal', 'Elvish'])
 			await user.selectOptions(slot, 'Abyssal')
 			expect(onEditLanguages).toHaveBeenLastCalledWith([...base, { name: 'Abyssal', source: 'XPHB', grantedBy: 'thievesCant' }])

@@ -1260,6 +1260,16 @@ Rare bez Common a bez už známých jazyků. Odebrání Ranger L2 maže Deft Exp
 jazyky. Tabulka grantů je `src/languages/classFeatureLanguages.ts`. Prodigy
 zůstává „not chosen" (featové pod-volby jsou samostatný task).
 
+B4 (D173): karta Proficiencies má řádek TOOLS mezi WEAPONS a LANGUAGES a sekci
+Tools v draweru. Zdroje: background (`toolProficiency`), startovní
+`toolProficiencies` první třídy (Druid, Rogue, Artificer, Bard, Monk), Warrior
+of Mercy L3 (Herbalism Kit), Battle Master L3 (nástroj nezvolen), featy Chef,
+Poisoner a uložené `proficiencies.tools` instance. Nezvolené volby (Bard 3
+nástroje, Monk artisan/instrument, Artificer 1, Battle Master 1, Crafter,
+Musician, Artificer Initiate, Prodigy) jsou „— not chosen"; Skilled nikdy.
+Picker nástrojů třídy zatím není. Druidic a Thieves' Cant se už nenabízejí ve
+slotech extra jazyků (uložená volba zůstává).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

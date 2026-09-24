@@ -19,6 +19,14 @@ export const CLASS_FEATURE_LANGUAGE_GRANTS: readonly ClassFeatureLanguageGrant[]
 // D172: the picks come "from the language tables in chapter 2" — Standard AND Rare (DATA.md).
 export const FEATURE_LANGUAGE_TYPES: readonly string[] = ['standard', 'rare']
 
+// D173: secret class languages are never a free pick; an already stored one stays.
+const SECRET_LANGUAGES: readonly string[] = ['Druidic', "Thieves' Cant"]
+
+/** What a slot offers: not taken elsewhere, not secret; the slot's own current pick always stays. */
+export function featureLanguageOptions<T extends { name: string }>(languages: readonly T[], taken: ReadonlySet<string>, current?: string): T[] {
+	return languages.filter((language) => language.name === current || (!taken.has(language.name.toLowerCase()) && !SECRET_LANGUAGES.includes(language.name)))
+}
+
 /** The grants these classes hold at their current levels. */
 export function classFeatureLanguageGrantsFor(classes: readonly Pick<CharacterClass, 'className' | 'classSource' | 'level'>[]): ClassFeatureLanguageGrant[] {
 	return CLASS_FEATURE_LANGUAGE_GRANTS.filter((grant) =>

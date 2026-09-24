@@ -3011,3 +3011,30 @@ featurou se nenabízí mezi jazyky z tvorby.
 **Znění nezvolené položky.** „Extra language (Thieves' Cant) — not chosen";
 „2 extra languages (Deft Explorer) — not chosen", po jedné volbě „1 extra
 language (Deft Explorer) — not chosen". Prodigy (feat) beze změny.
+
+## D173 — B4: řádek TOOLS na kartě Proficiencies
+
+Zdroj: task B4, 24. 9. 2026. Navazuje na D170–D172. Pořadí řádků: ARMOR /
+WEAPONS / TOOLS / LANGUAGES; stejný drawer (sekce Tools) a `computeProficiencies`
+(klíč `tools`).
+
+**Zdroje.** (1) `character.background.toolProficiency`, zdroj „<Background>
+(background)". (2) Strukturované `startingProficiencies.toolProficiencies` první
+třídy (ne prózní `tools`): Druid Herbalism Kit, Rogue Thieves' Tools, Artificer
+(EFA) Thieves' + Tinker's Tools a 1 artisan's tool, Bard 3 nástroje, Monk
+alternativa. Prvky pole jsou ALTERNATIVY, jedna položka „1 artisan's tool or
+musical instrument". (3) Ruční tabulka XPHB podtříd od L3: Warrior of Mercy
+Herbalism Kit, Battle Master 1 artisan's tool. (4) Featy: Chef, Poisoner pevně;
+Crafter, Musician, Artificer Initiate, Prodigy z uložených
+`FeatChoiceDetails.proficiencies.tools`, zbytek je nezvolená položka. Skilled:
+uložené nástroje se ukážou, nezvolená položka nikdy (volby mohou být dovednosti).
+Druhové nástroje (Githyanki, Warforged, Satyr, ne-2024) mimo rozsah.
+
+**Znění a řazení.** „3 musical instruments (Bard) — not chosen", „1 artisan's
+tool (Battle Master) — not chosen", „2 musical instruments (Musician) — not
+chosen". Popisek = jméno nástroje; stejný nástroj z více zdrojů = jedna položka
+(Thieves' Tools — Rogue, Criminal (background)). Abecedně, nezvolené nakonec,
+prázdné = „None". Bez změny úložiště; picker jen uloží volbu.
+
+**Tajné jazyky.** Sloty extra jazyků (Rogue +1, Ranger +2) nenabízejí Druidic a
+Thieves' Cant. Už uložená volba jednoho z nich zůstává a zobrazuje se.

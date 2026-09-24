@@ -385,6 +385,7 @@ tools (B3) a languages (B4) zbývají.
 B3 (24. 9. 2026, D171): řádek LANGUAGES hotový; tools zbývají.
 B3b (24. 9. 2026, D172): extra jazyky Rogue (Thieves' Cant) a Ranger (Deft
 Explorer) jdou zvolit; jazyk Prodigy zůstává nezvolený.
+B4 (24. 9. 2026, D173): řádek TOOLS hotový; pickery nástrojů třídy zbývají.
 STATUS: nerozhodnuto, blokuje dokončení D123's Proficiencies části.
 
 ### Aberrant Dragonmark, Natural Recovery, Magic Item Tinker — dva nezávislé limity v jedné featuře

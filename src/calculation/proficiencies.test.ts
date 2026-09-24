@@ -5,19 +5,20 @@ import { computeProficiencies, extractFeatProficiencyEntries, type Proficiencies
 const MONK_PROSE = 'Martial weapons that have the {@filter Light|items|type=martial weapon|property=light} property'
 const ROGUE_PROSE = 'Martial weapons that have the {@filter Finesse or Light|items|type=martial weapon|property=finesse;light} property'
 
-function classEntry(name: string, armor: string[] | undefined, weapons: string[]): unknown {
-	return { entryType: 'class', name, source: 'XPHB', classFeatures: [], startingProficiencies: { ...(armor ? { armor } : {}), weapons } }
+function classEntry(name: string, armor: string[] | undefined, weapons: string[], toolProficiencies?: unknown[], source = 'XPHB'): unknown {
+	return { entryType: 'class', name, source, classFeatures: [], startingProficiencies: { ...(armor ? { armor } : {}), weapons, ...(toolProficiencies ? { toolProficiencies } : {}) } }
 }
 
 const CLASSES = [
 	classEntry('Fighter', ['light', 'medium', 'heavy', 'shield'], ['simple', 'martial']),
-	classEntry('Rogue', ['light'], ['simple', ROGUE_PROSE]),
-	classEntry('Monk', undefined, ['simple', MONK_PROSE]),
+	classEntry('Rogue', ['light'], ['simple', ROGUE_PROSE], [{ "thieves' tools": true }]),
+	classEntry('Monk', undefined, ['simple', MONK_PROSE], [{ anyArtisansTool: 1 }, { anyMusicalInstrument: 1 }]),
 	classEntry('Cleric', ['light', 'medium', 'shield'], ['simple']),
-	classEntry('Druid', ['light', 'shield'], ['simple']),
-	classEntry('Bard', ['light'], ['simple']),
+	classEntry('Druid', ['light', 'shield'], ['simple'], [{ 'herbalism kit': true }]),
+	classEntry('Bard', ['light'], ['simple'], [{ anyMusicalInstrument: 3 }]),
 	classEntry('Wizard', undefined, ['simple']),
 	classEntry('Ranger', ['light', 'medium', 'shield'], ['simple', 'martial']),
+	classEntry('Artificer', ['light'], ['simple'], [{ "thieves' tools": true, "tinker's tools": true, anyArtisansTool: 1 }], 'EFA'),
 ]
 
 const FEATS = extractFeatProficiencyEntries([
@@ -27,6 +28,9 @@ const FEATS = extractFeatProficiencyEntries([
 	{ name: 'Moderately Armored', source: 'XPHB', armorProficiencies: [{ medium: true }] },
 	{ name: 'Martial Weapon Training', source: 'XPHB', weaponProficiencies: [{ martial: true }] },
 	{ name: 'Tavern Brawler', source: 'XPHB', weaponProficiencies: [{ improvised: true }] },
+	{ name: 'Chef', source: 'XPHB', toolProficiencies: [{ "cook's utensils": true }] },
+	{ name: 'Musician', source: 'XPHB', toolProficiencies: [{ anyMusicalInstrument: 3 }] },
+	{ name: 'Skilled', source: 'XPHB' },
 ])
 
 function character(className: string, options: { level?: number; subclass?: string; choices?: CharacterClassFeatureChoice[] } = {}): Character {
@@ -171,6 +175,77 @@ describe('computeProficiencies', () => {
 			const chosen = langs(c, [{ name: 'Prodigy', source: 'XGE', proficiencies: { languages: [{ name: 'Dwarvish', source: 'Prodigy' }] } }])
 			expect(labels(chosen)).toEqual(['Common', 'Dwarvish'])
 			expect(chosen[1].sources.map((s) => s.name)).toEqual(['Prodigy (feat)'])
+		})
+	})
+
+	describe('tools (D173)', () => {
+		const withBackground = (c: Character, name: string, toolProficiency: string): Character => ({
+			...c,
+			background: { name, source: 'XPHB', skillProficiencies: ['Insight', 'Religion'], toolProficiency },
+		})
+		const tools = (c: Character, feats: TakenFeat[] = []) => computeProficiencies(c, CLASSES, feats, FEATS).tools
+		const sources = (item: { sources: { name: string }[] }) => item.sources.map((s) => s.name)
+
+		it("Criminal Rogue: Thieves' Tools once, with both sources", () => {
+			const result = tools(withBackground(character('Rogue'), 'Criminal', "Thieves' Tools"))
+			expect(labels(result)).toEqual(["Thieves' Tools"])
+			expect(sources(result[0])).toEqual(['Rogue', 'Criminal (background)'])
+		})
+
+		it('Hermit Druid: Herbalism Kit once, with both sources', () => {
+			const result = tools(withBackground(character('Druid'), 'Hermit', 'Herbalism Kit'))
+			expect(labels(result)).toEqual(['Herbalism Kit'])
+			expect(sources(result[0])).toEqual(['Druid', 'Hermit (background)'])
+		})
+
+		it('a background tool sorts alphabetically with the class tools, pending last', () => {
+			expect(labels(tools(withBackground(character('Bard'), 'Guide', "Cartographer's Tools")))).toEqual(["Cartographer's Tools", '3 musical instruments (Bard) — not chosen'])
+		})
+
+		it('Bard: three musical instruments pending', () => {
+			const result = tools(character('Bard'))
+			expect(labels(result)).toEqual(['3 musical instruments (Bard) — not chosen'])
+			expect(result[0].pending).toBe(true)
+		})
+
+		it("Monk: one artisan's tool or musical instrument pending as a single item", () => {
+			expect(labels(tools(character('Monk')))).toEqual(["1 artisan's tool or musical instrument (Monk) — not chosen"])
+		})
+
+		it('Monk Warrior of Mercy: Herbalism Kit from level 3 only', () => {
+			expect(labels(tools(character('Monk', { level: 2, subclass: 'Warrior of Mercy' })))).toHaveLength(1)
+			const l3 = tools(character('Monk', { level: 3, subclass: 'Warrior of Mercy' }))
+			expect(labels(l3)).toEqual(['Herbalism Kit', "1 artisan's tool or musical instrument (Monk) — not chosen"])
+			expect(sources(l3[0])).toEqual(['Warrior of Mercy'])
+		})
+
+		it("Battle Master: an artisan's tool is owed from level 3, not 2", () => {
+			expect(tools(character('Fighter', { level: 2, subclass: 'Battle Master' }))).toEqual([])
+			const l3 = tools(character('Fighter', { level: 3, subclass: 'Battle Master' }))
+			expect(labels(l3)).toEqual(["1 artisan's tool (Battle Master) — not chosen"])
+			expect(sources(l3[0])).toEqual(['Battle Master'])
+		})
+
+		it("Artificer: two fixed tools and one artisan's tool pending", () => {
+			const artificer: Character = { ...character('Artificer'), classes: [{ className: 'Artificer', classSource: 'EFA', subclass: null, level: 1 }] }
+			expect(labels(tools(artificer))).toEqual(["Thieves' Tools", "Tinker's Tools", "1 artisan's tool (Artificer) — not chosen"])
+		})
+
+		it("Chef feat: Cook's Utensils", () => {
+			const result = tools(character('Wizard'), [{ name: 'Chef', source: 'XPHB' }])
+			expect(labels(result)).toEqual(["Cook's Utensils"])
+			expect(sources(result[0])).toEqual(['Chef (feat)'])
+		})
+
+		it('Musician with one stored instrument: two pending', () => {
+			const result = tools(character('Wizard'), [{ name: 'Musician', source: 'XPHB', proficiencies: { tools: ['Lute'] } }])
+			expect(labels(result)).toEqual(['Lute', '2 musical instruments (Musician) — not chosen'])
+		})
+
+		it('Skilled shows a stored tool and never owes one', () => {
+			const result = tools(character('Wizard'), [{ name: 'Skilled', source: 'XPHB', proficiencies: { tools: ["Smith's Tools"] } }])
+			expect(labels(result)).toEqual(["Smith's Tools"])
+			expect(tools(character('Wizard'), [{ name: 'Skilled', source: 'XPHB' }])).toEqual([])
 		})
 	})
 

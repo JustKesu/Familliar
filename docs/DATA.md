@@ -705,6 +705,18 @@ count of "11 with a choice, 4 fixed-only" counted Boon of Skill twice.)
 - `skillToolLanguageProficiencies: [{choose:[{from:["anySkill","anyTool"],count:3}]}]`
   — Skilled only. TRAP: here `choose` is an ARRAY of groups, unlike every other
   `choose` above (an object). Any mix of skills and tools, 3 in total.
+- Class tools (checked B4), `startingProficiencies.toolProficiencies`, only 5
+  classes: Druid `[{"herbalism kit":true}]`, Rogue `[{"thieves' tools":true}]`,
+  Artificer (EFA) `[{"thieves' tools":true,"tinker's tools":true,"anyArtisansTool":1}]`
+  (one object = all granted), Bard `[{"anyMusicalInstrument":3}]`, Monk
+  `[{"anyArtisansTool":1},{"anyMusicalInstrument":1}]` (array elements =
+  ALTERNATIVES, one or the other). The parallel `tools` field is prose. Fixed
+  keys are lowercase item names (`cook's utensils`, `poisoner's kit`).
+- XPHB subclass tool grants exist only as prose: Warrior of Mercy L3 "Implements
+  of Mercy" ("proficiency with the Herbalism Kit", plus Insight and Medicine);
+  Battle Master L3 "Student of War" ("one type of Artisan's Tools of your
+  choice" plus one Fighter skill). Species tool grants (Githyanki, Warforged,
+  Satyr, non-2024) are not covered by the tools row.
 
 Repeatable: only Skilled among these (and it is also an origin feat 3
 backgrounds grant). Of the 25 distinct origin feats backgrounds grant, three
