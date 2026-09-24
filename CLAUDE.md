@@ -86,19 +86,15 @@ a moment earlier. It cannot touch tracked code.
 Do not re-run the full suite after every intermediate step. Run typecheck,
 tests and validate-data once, at the end of a task.
 
-**The browser is the most expensive thing a task here does.** Open it only when
-the task changed what a control DOES: a button that now displaces something, a
-picker that now enforces a count, a state that has to survive a reload. Do NOT
-open it when the task changed a number — tests cover those, and a browser walk
-adds cost without adding certainty.
+**Never start the dev server and never open a browser.** No `npm run dev`, no
+`vite`, no `preview`, no browser tool, no screenshots. The user checks every
+change himself on the deployed app at https://familliar.vercel.app (it
+redeploys automatically after each push). Tests are your verification.
 
-**Never take screenshots.** They are the single largest cost and in this project
-they have repeatedly come back blank. Read the page's text and its DOM instead;
-that is what the assertions are made of anyway.
-
-A browser check never replaces a test. If the server will not start or a screen
-cannot be reached, say so in the report as unverified — never report as verified
-something you did not see.
+Instead, end REPORT.md with a section "Manual browser check for the user": a
+short numbered list of what to click and what should happen. Anything that
+only a browser could confirm (layout, overlap, widths) is listed there as
+unverified — never report as verified something you did not see.
 
 ## Reporting
 

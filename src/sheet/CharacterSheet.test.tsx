@@ -338,6 +338,19 @@ vi.mock('./weaponAttackData', async (importOriginal) => {
 			grants: [{ kind: 'category' as const, category: 'martial' }],
 			martialArtsDie: null,
 			featureNames: ['Extra Attack'],
+			proficiencies: {
+				armor: [],
+				weapons: [
+					{
+						key: 'martial',
+						label: 'Martial weapons',
+						sources: [
+							{ kind: 'class' as const, name: 'Fighter' },
+							{ kind: 'feat' as const, name: 'Martial Weapon Training (feat)' },
+						],
+					},
+				],
+			},
 		})),
 	}
 })
@@ -741,6 +754,21 @@ describe('CharacterSheet', () => {
 		open = screen.getByRole('dialog', { name: 'Skills' })
 		expect(document.querySelectorAll('.drawer')).toHaveLength(1)
 		expect(within(open).getAllByText('Breakdown')).toHaveLength(18)
+	})
+
+	it('B2 (D170): Proficiencies shows ARMOR and WEAPONS rows; its gear lists each item with its sources', async () => {
+		const user = userEvent.setup()
+		render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		const card = document.querySelector<HTMLElement>('.sheet__proficiencies')!
+		await waitFor(() => expect(card.textContent).toContain('Martial weapons'))
+		const rows = Array.from(card.querySelectorAll('li')).map((li) => li.textContent)
+		expect(rows).toEqual(['ARMORNone', 'WEAPONSMartial weapons'])
+
+		await user.click(screen.getByRole('button', { name: 'Proficiencies details' }))
+		const open = screen.getByRole('dialog', { name: 'Proficiencies' })
+		expect(open.textContent).toContain('Martial weapons — Fighter, Martial Weapon Training (feat)')
 	})
 
 	it('R4b (D166): a skill name opens that skill’s breakdown in the drawer', async () => {

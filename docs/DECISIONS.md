@@ -2923,3 +2923,33 @@ neúspěch = stav „dead" jako u ručního tlačítka. Bez změny tvaru dat.
 
 Critický zásah se nedetekuje (aplikace nerozhoduje); druhý neúspěch hráč přidá
 tlačítkem Failure v draweru Hit Points, kde je to napsáno jednou větou.
+
+## D170 — B2: karta Proficiencies, řádky ARMOR a WEAPONS
+
+Zdroj: task B2, 24. 9. 2026 (rozhodnutí uživatele 1–6). Řeší část otázky
+„Sheet nikdy nezobrazoval Proficiencies" (QUESTIONS.md); tools a languages
+přijdou v B3/B4.
+
+**Rozhodnutí.** (1) Z grantů podtříd/featur jen 2024 (XPHB): Cleric Protector,
+Druid Warden, Bard College of Valor od L3. Ne-2024 podtřídy (Hexblade, Forge,
+Twilight, Bladesinging, College of Swords, …) jsou samostatný pozdější task;
+do té doby se jejich proficiency neukazují. (2) Stejná proficiency z více zdrojů
+= jeden záznam se všemi zdroji; náhradní volba se nenabízí. (3) Zbraň Pact of
+the Blade se neuvádí. (4) Weapon masteries na kartě nejsou (patří k útokům).
+(5) Magické předměty udělující proficiency se ignorují. (6) Neudělané volby se
+budou ukazovat jako „— not chosen" (relevantní od B4).
+
+**Návrh.** `src/calculation/proficiencies.ts` (`computeProficiencies`, čistý):
+`Record<'armor' | 'weapons', ProficiencyItem[]>`, položka = `key`, anglický
+`label`, `sources` (`kind` + zobrazované jméno). Nová kategorie = nový klíč,
+tvar se nemění. Startovní proficiency jen z PRVNÍ třídy (multiclass je
+pozdější krok); třída přes `classPrereqInfoFor` (armor) a
+`weaponProficiencyGrantsForClass` (weapons, D70), featy přes
+`weaponProficiencyGrantsForFeats` + `armorProficiencies`; Tavern Brawler
+„Improvised weapons" se ukazuje, i když ho `weaponProficiency.ts` pro útoky
+zahazuje. XPHB granty podtříd/featur jsou malá ruční tabulka (jen text, DATA.md).
+Monk/Rogue podmnožina martial zmizí, má-li postava celé Martial weapons.
+Rozhodování o zdatnosti pro útoky (`weaponProficiency.ts`) se nemění.
+Karta v sub-sloupci A pod Senses, `flex-grow`; ozubené kolo → drawer
+„Proficiencies" (vzor D166 pro kolo; nadpis karty klikací není, stejně jako u
+Saving throws/Skills).

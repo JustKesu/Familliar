@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-24 (B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1233,6 +1233,15 @@ death save, stabilní postava přestane být stabilní (úspěchy na 0), třetí
 = dead; critický zásah ručně tlačítkem Failure (věta v draweru Hit Points).
 Karta CONCENTRATION má min-width 260px a roste podle názvu kouzla, název se
 zalamuje uvnitř karty a je i v `title`.
+
+B2 (D170): karta Proficiencies v levém sloupci pod Senses, řádky ARMOR a
+WEAPONS (jinak „None"); ozubené kolo otevře drawer se zdroji každé položky.
+Výpočet `src/calculation/proficiencies.ts` (`computeProficiencies`): startovní
+proficiency první třídy, XPHB Protector/Warden/College of Valor (ruční tabulka),
+featy; stejná položka z více zdrojů = jeden záznam. Data jedou s
+`loadWeaponAttackData` (pole `proficiencies`). Sub-sloupec A se natahuje do
+výšky Skills a karta vyplní zbytek. Tools (B3) a languages (B4) zbývají.
+Kontrola v prohlížeči neproběhla (zadání ji vyloučilo — viz REPORT.md).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

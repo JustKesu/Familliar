@@ -886,6 +886,33 @@ button:disabled {
   min-width: 0;
 }
 
+/* B2 (D170): sub-column A reaches the bottom of Skills so Proficiencies can fill what is left. */
+.sheet__left-a {
+  align-self: stretch;
+}
+
+.sheet__left-a > .sheet__proficiencies {
+  flex-grow: 1;
+}
+
+.sheet__proficiencies li {
+  display: block;
+  padding: 6px 0;
+  white-space: normal;
+  font-size: 13px;
+}
+
+.sheet__proficiencies li + li {
+  border-top: 1px solid var(--line);
+}
+
+.sheet__proficiency-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-mute);
+}
+
 .sheet__left-a > section,
 .sheet__left-b > section {
   box-sizing: border-box;

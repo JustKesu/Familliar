@@ -38,6 +38,7 @@ import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
 import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import type { ProficiencyCategory } from '../calculation/proficiencies'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
@@ -238,9 +239,15 @@ type DrawerContent =
 	| { kind: 'skill'; skill: Skill }
 	| { kind: 'saves' }
 	| { kind: 'skills' }
+	| { kind: 'proficiencies' }
 	| { kind: 'stat'; stat: StatCard }
 	| { kind: 'hitPoints' }
 	| { kind: 'defenses' }
+
+const PROFICIENCY_ROWS: [ProficiencyCategory, string][] = [
+	['armor', 'Armor'],
+	['weapons', 'Weapons'],
+]
 
 /** D45: the dot per proficiency status; half and expertise keep their own symbols. */
 function ProfMark({ mark, status }: { mark: string; status: string }): ReactNode {
@@ -2475,7 +2482,7 @@ function CharacterSheetBody({
 			.catch((error: unknown) => {
 				if (cancelled) return
 				// D43: no grants means "proficient with nothing", which is a real state — the error line is what keeps it from reading as one.
-				setWeaponAttackData({ grants: [], martialArtsDie: null, featureNames: [] })
+				setWeaponAttackData({ grants: [], martialArtsDie: null, featureNames: [], proficiencies: { armor: [], weapons: [] } })
 				setWeaponAttackDataError(messageOf(error))
 			})
 		return () => {
@@ -2957,7 +2964,7 @@ function CharacterSheetBody({
 			/>
 
 			<div className="sheet__body">
-			{/* Rework R3 (D123/D147): saves, senses (passive values + darkvision + granted senses) and skills — the dissolved stats tab's content, now always visible beside every other tab. Proficiencies (armor/weapons/tools/languages) are not here yet: the sheet has never rendered them anywhere, so there is nothing to relocate — see QUESTIONS.md. */}
+			{/* Rework R3 (D123/D147): saves, senses (passive values + darkvision + granted senses) and skills — the dissolved stats tab's content, now always visible beside every other tab. B2 (D170) adds Proficiencies (armor/weapons; tools/languages pending). */}
 			<div className="sheet__left-column">
 			<div className="sheet__left-a">
 
@@ -3030,6 +3037,24 @@ function CharacterSheetBody({
 					</li>
 				</ul>
 				<SensesList entries={combinedSenses} error={grantedSensesError} />
+			</section>
+
+			<section className="sheet__proficiencies">
+				<div className="sheet__card-heading">
+					<h2>Proficiencies</h2>
+					<button type="button" className="sheet__icon-button" aria-label="Proficiencies details" onClick={() => setDrawer({ kind: 'proficiencies' })}>
+						<GearIcon />
+					</button>
+				</div>
+				{weaponAttackDataError && <p role="alert">{weaponAttackDataError}</p>}
+				<ul>
+					{PROFICIENCY_ROWS.map(([category, label]) => (
+						<li key={category}>
+							<span className="sheet__proficiency-label">{label.toUpperCase()}</span>
+							<span>{weaponAttackData === null ? 'Loading…' : weaponAttackData.proficiencies[category].map((item) => item.label).join(', ') || 'None'}</span>
+						</li>
+					))}
+				</ul>
 			</section>
 
 			</div>
@@ -3635,6 +3660,28 @@ function CharacterSheetBody({
 					{SKILLS.map((skill) => (
 						<DrawerSection key={skill} title={SKILL_LABELS[skill]}>
 							<RowBreakdown result={skills[skill]} />
+						</DrawerSection>
+					))}
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'proficiencies' && (
+				<Drawer title="Proficiencies" onClose={() => setDrawer(null)}>
+					{PROFICIENCY_ROWS.map(([category, label]) => (
+						<DrawerSection key={category} title={label}>
+							{weaponAttackData === null ? (
+								<p>Loading…</p>
+							) : weaponAttackData.proficiencies[category].length === 0 ? (
+								<p>None</p>
+							) : (
+								<ul>
+									{weaponAttackData.proficiencies[category].map((item) => (
+										<li key={item.key}>
+											{item.label} — {item.sources.map((source) => source.name).join(', ')}
+										</li>
+									))}
+								</ul>
+							)}
 						</DrawerSection>
 					))}
 				</Drawer>

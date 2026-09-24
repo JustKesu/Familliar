@@ -758,3 +758,30 @@ přináší, z odpovědi pro úroveň 3 zmizí. Hranici dodává `subclassLevelF
 
 Zjištěno průzkumem ve slice 8d2 (`scripts/investigate-closure-level-drift.js`,
 spotřebovaný a smazaný). Souvisí s D101.
+
+### Armor / weapon / tool / language proficiency sources
+
+- Classes: `startingProficiencies.armor` tokens are `light`, `medium`, `heavy`,
+  `shield` (Monk, Sorcerer, Wizard have no `armor` key); `weapons` tokens are
+  `simple`, `martial`, except Monk and Rogue, which mix `simple` with one prose
+  sentence (D70). Those two ALSO carry a structured
+  `startingProficiencies.weaponProficiencies`:
+  `[{"simple":true,"all":{"fromFilter":"type=martial weapon|property=light"}}]`
+  (Rogue: `property=light;finesse`). Nothing reads it yet.
+- Feats: `armorProficiencies` on Lightly Armored `{light, shield}`, Moderately
+  Armored `{medium}`, Heavily Armored `{heavy}`; `weaponProficiencies` on
+  Martial Weapon Training `{martial}`, Gunner `{firearms}`, Tavern Brawler
+  `{improvised}`.
+- Class and subclass feature grants are TEXT ONLY — no structured field. XPHB
+  ones: Cleric Divine Order → Protector (Martial weapons, Heavy armor), Druid
+  Primal Order → Warden (Martial weapons, Medium armor), both L1 options of a
+  D21 choice; Bard College of Valor L3 Martial Training (Martial weapons,
+  Medium armor, Shields). The only Valor subclass in classes.json is XPHB.
+- 2024 (XPHB) species grant no proficiencies and no languages.
+- Monk's `toolProficiencies` array lists ALTERNATIVES (pick one), not a set of
+  grants. Background tool shapes: see "Tool proficiencies" above.
+- The 2024 "Common + 2 languages of your choice" rule is not in the data.
+
+Found in investigation B1 (2026-09-24, scripts consumed); class/feat/Protector/
+Warden/Valor shapes re-checked in B2 (`scripts/verify-b2.js`, consumed). The
+species, Monk-tool and language lines are B1's and were not re-checked.

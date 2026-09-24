@@ -22,9 +22,10 @@
 
 import { isAttuned } from '../calculation/attunement'
 import { resolveMagicBonus } from '../calculation/magicBonus'
+import { computeProficiencies, extractFeatProficiencyEntries, type Proficiencies } from '../calculation/proficiencies'
 import type { HeldWeapon, ResolvedWeapon } from '../calculation/weaponAttacks'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { loadBackgroundOriginFeat } from '../featAsi/featInstances'
+import { featInstances, loadBackgroundOriginFeat } from '../featAsi/featInstances'
 import { buildInventoryResolver, inventoryRowKey, isWeapon, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 import {
@@ -180,6 +181,8 @@ export interface WeaponAttackData {
 	martialArtsDie: string | null
 	/** Feature names, for computeAttacksPerAction. */
 	featureNames: string[]
+	/** The Proficiencies card (D170) — here because it reads the same three sources. */
+	proficiencies: Proficiencies
 }
 
 /** One fetch of each file the attacks section needs; the loader caches per path (D39), so classes.json is shared with the rest of the sheet. */
@@ -195,5 +198,6 @@ export async function loadWeaponAttackData(character: Character): Promise<Weapon
 		grants: weaponProficiencyGrantsFor(character, classes, extractFeatWeaponProficiencyEntries(feats), backgroundOriginFeat),
 		martialArtsDie: martialArtsDieFrom(character, classes),
 		featureNames: featureNamesFor(character, classFeatures, subclassFeatures, classes),
+		proficiencies: computeProficiencies(character, classes, featInstances(character, backgroundOriginFeat), extractFeatProficiencyEntries(feats)),
 	}
 }
