@@ -5,6 +5,7 @@ import { applyDamage, applyHealing, grantTemporaryHitPoints, type HitPointPools 
 import {
 	applyDeathSaveRoll,
 	DEATH_SAVE_BOXES,
+	deathSavesAfterDamageAtZero,
 	deathSavesAfterHitPointChange,
 	deathSaveState,
 	NO_DEATH_SAVES,
@@ -51,13 +52,21 @@ function pools(hp: HitPointProps): HitPointPools {
 }
 
 /** Both piles in one commit, so the sheet never shows a half-applied hit (D110); death saves follow the one rule of D111. */
-function writePools(hp: HitPointProps, next: HitPointPools): void {
+function writePools(hp: HitPointProps, next: HitPointPools, deathSaves: DeathSaveProgress | undefined = hp.deathSaves): void {
 	hp.onEditHitPoints?.({
 		currentHp: next.currentHp,
 		maxHpOverride: hp.maxHpOverride,
 		temporaryHitPoints: next.temporaryHitPoints,
-		deathSaves: deathSavesAfterHitPointChange(next.currentHp, hp.deathSaves),
+		deathSaves: deathSavesAfterHitPointChange(next.currentHp, deathSaves),
 	})
+}
+
+/** Damage: at 0 hit points, whatever gets past the temporary pile is a death save failure (D169). */
+export function damageHitPoints(hp: HitPointProps, amount: number): void {
+	const before = pools(hp)
+	const next = applyDamage(before, amount)
+	const reachedHitPoints = hp.currentHp === 0 && next.temporaryHitPoints === 0 && amount > before.temporaryHitPoints
+	writePools(hp, next, reachedHitPoints ? deathSavesAfterDamageAtZero(hp.deathSaves ?? NO_DEATH_SAVES) : hp.deathSaves)
 }
 
 function writeDeathSaves(hp: HitPointProps, next: { currentHp: number; deathSaves: DeathSaveProgress | undefined }): void {
@@ -100,6 +109,11 @@ function DamageHealingColumn(hp: HitPointProps): ReactNode {
 		setDraft('')
 	}
 
+	function damage(value: number): void {
+		damageHitPoints(hp, value)
+		setDraft('')
+	}
+
 	return (
 		<div className="sheet__damage-healing" role="group" aria-label="Damage and healing">
 			<button
@@ -124,7 +138,7 @@ function DamageHealingColumn(hp: HitPointProps): ReactNode {
 				className="btn--damage"
 				title={noCurrent}
 				disabled={amount === null || hp.currentHp === undefined}
-				onClick={() => amount !== null && apply(applyDamage(pools(hp), amount))}
+				onClick={() => amount !== null && damage(amount)}
 			>
 				Damage
 			</button>
@@ -281,6 +295,7 @@ function DeathSaveRecord(hp: HitPointProps): ReactNode {
 			<p className="sheet__death-save-counts">
 				Successes: {progress.successes} / {DEATH_SAVE_BOXES} · Failures: {progress.failures} / {DEATH_SAVE_BOXES}
 			</p>
+			<p className="sheet__death-save-state">Damage at 0 HP adds one failure automatically. Critical hit: add one more with Failure.</p>
 			<p>
 				<button type="button" disabled={finished} onClick={() => writeDeathSaves(hp, { currentHp: 0, deathSaves: recordSuccesses(progress) })}>
 					Success

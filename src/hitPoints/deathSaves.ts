@@ -55,6 +55,17 @@ export function deathSaveState(progress: DeathSaveProgress): DeathSaveState {
 	return 'rolling'
 }
 
+/**
+ * SPEC C: damage that reaches a character already at 0 hit points is one failure. A
+ * stabilized character (three successes) is dying again, so the successes go with it.
+ * Critical hits are not detected — the second failure is the manual button (D169).
+ */
+export function deathSavesAfterDamageAtZero(progress: DeathSaveProgress): DeathSaveProgress {
+	if (deathSaveState(progress) === 'dead') return progress
+	const base = deathSaveState(progress) === 'stabilized' ? NO_DEATH_SAVES : progress
+	return recordFailures(base)
+}
+
 export interface DeathSaveRollResult {
 	readonly roll: number
 	readonly outcome: DeathSaveRollOutcome

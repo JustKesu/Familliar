@@ -816,8 +816,9 @@ button:disabled {
 }
 
 .sheet__concentration {
-  flex: none;
-  width: 260px;
+  flex: 0 0 auto;
+  min-width: 260px;
+  max-width: 100%;
 }
 
 .sheet__status-card h2 {
@@ -840,6 +841,10 @@ button:disabled {
 .sheet__concentration .sheet__status-text {
   flex: 1;
   font-weight: 700;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .sheet__add-condition,

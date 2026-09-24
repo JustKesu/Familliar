@@ -344,10 +344,10 @@ describe('death saving throws', () => {
 		})
 	})
 
-	it('keeps the progress through a write that leaves the character at 0', () => {
+	it('keeps the progress and adds one failure when damage lands at 0 (D169)', () => {
 		const { onEditHitPoints } = renderDying({ deathSaves: { successes: 2, failures: 1 }, temporaryHitPoints: undefined })
 		fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '5' } })
 		fireEvent.click(screen.getByRole('button', { name: 'Damage' }))
-		expect(onEditHitPoints).toHaveBeenLastCalledWith(expect.objectContaining({ currentHp: 0, deathSaves: { successes: 2, failures: 1 } }))
+		expect(onEditHitPoints).toHaveBeenLastCalledWith(expect.objectContaining({ currentHp: 0, deathSaves: { successes: 2, failures: 2 } }))
 	})
 })

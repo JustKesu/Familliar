@@ -199,6 +199,15 @@ describe('SheetHeader status row', () => {
 		fireEvent.click(screen.getByRole('button', { name: 'Drop concentration' }))
 		expect(onDropConcentration).toHaveBeenCalledTimes(1)
 	})
+
+	it('renders a long concentration spell name in full, with the name as its title', () => {
+		const name = "Mordenkainen's Magnificent Mansion"
+		const { container } = renderHeader({ concentratingOn: name, onDropConcentration: vi.fn() })
+		const text = container.querySelector<HTMLElement>('.sheet__concentration .sheet__status-text')!
+		expect(text.textContent).toBe(name)
+		expect(text.title).toBe(name)
+		expect(text.style.textOverflow).toBe('')
+	})
 })
 
 describe('SheetHeader rest buttons (slice 9b5)', () => {

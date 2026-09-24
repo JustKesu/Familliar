@@ -1228,6 +1228,12 @@ nebo „—", Drop). Nová komponenta `src/sheet/HitPoints.tsx`, testy
 `HitPoints.test.tsx`. Kontrola v prohlížeči neproběhla (zadání ji vyloučilo —
 viz REPORT.md).
 
+R4c-fix (D169): poškození při 0 HP (přes dočasné HP) přidá jeden neúspěch
+death save, stabilní postava přestane být stabilní (úspěchy na 0), třetí neúspěch
+= dead; critický zásah ručně tlačítkem Failure (věta v draweru Hit Points).
+Karta CONCENTRATION má min-width 260px a roste podle názvu kouzla, název se
+zalamuje uvnitř karty a je i v `title`.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

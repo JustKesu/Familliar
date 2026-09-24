@@ -253,7 +253,7 @@ export function SheetHeader({
 
 			<section className="sheet__status-card sheet__concentration">
 				<h2>Concentration</h2>
-				<span className="sheet__status-text">{concentratingOn ?? '—'}</span>
+				<span className="sheet__status-text" title={concentratingOn ?? undefined}>{concentratingOn ?? '—'}</span>
 				{concentratingOn !== null && onDropConcentration && (
 					<button type="button" className="sheet__status-drop" aria-label="Drop concentration" onClick={onDropConcentration}>
 						Drop

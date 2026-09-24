@@ -2907,3 +2907,19 @@ drawer „Defenses" s původní sekcí včetně podmíněných a zdrojů), CONDI
 (jen placeholder: štítek a zakázané „+ Add condition" s titulkem „Coming
 later" — žádný stav ani schéma, dokud nepřijde slice podmínek),
 CONCENTRATION (kouzlo nebo „—", Drop; logika 9d1 beze změny).
+
+## D169 — Poškození při 0 HP přidá automaticky jeden neúspěch death save; critický zásah ručně
+
+Zdroj: task R4c-fix, 24. 9. 2026. Provádí SPEC C; doplňuje D111 a D168.
+
+Poškození, které při `currentHp === 0` projde přes dočasné HP (zbytek > 0),
+přidá jeden neúspěch (`deathSavesAfterDamageAtZero`, `damageHitPoints` v
+`HitPoints.tsx`; jediná cesta poškození je tlačítko Damage na HP kartě).
+Poškození plně pohlcené dočasnými HP nepřidá nic; pád z kladných HP na 0
+nepřidá nic; mrtvé postavě se nepřidá nic. Stabilní postava (tři úspěchy —
+samostatný příznak „stable" neexistuje, stabilita je `successes >= 3`) poškozením
+přestane být stabilní: úspěchy se vynulují a započte se jeden neúspěch. Třetí
+neúspěch = stav „dead" jako u ručního tlačítka. Bez změny tvaru dat.
+
+Critický zásah se nedetekuje (aplikace nerozhoduje); druhý neúspěch hráč přidá
+tlačítkem Failure v draweru Hit Points, kde je to napsáno jednou větou.

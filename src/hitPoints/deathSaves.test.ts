@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { known } from '../calculation/types'
+import { damageHitPoints } from '../sheet/HitPoints'
 import {
 	applyDeathSaveRoll,
 	classifyDeathSaveRoll,
+	deathSavesAfterDamageAtZero,
 	deathSavesAfterHitPointChange,
 	deathSaveState,
 	describeDeathSaveRoll,
@@ -98,3 +101,39 @@ describe('death saves against the hit points (D111)', () => {
 })
 
 /* D117: the die moved to the shared roller (rollKeepOne), so it is covered by the dice tests and by SheetHeader's. */
+
+describe('damage at 0 hit points (D169)', () => {
+	function hit(currentHp: number, amount: number, temporaryHitPoints: number, deathSaves?: { successes: number; failures: number }) {
+		const onEditHitPoints = vi.fn()
+		damageHitPoints(
+			{ currentHp, maxHitPoints: known(10, []), maxHpOverride: undefined, temporaryHitPoints, deathSaves, onEditHitPoints },
+			amount,
+		)
+		return onEditHitPoints.mock.calls[0][0]
+	}
+
+	it('adds exactly one failure', () => {
+		expect(hit(0, 3, 0, { successes: 1, failures: 0 }).deathSaves).toEqual({ successes: 1, failures: 1 })
+	})
+	it('adds none when temporary hit points absorb it all', () => {
+		expect(hit(0, 3, 5, { successes: 0, failures: 1 }).deathSaves).toEqual({ successes: 0, failures: 1 })
+	})
+	it('adds one when the damage outlasts the temporary pile', () => {
+		expect(hit(0, 6, 5).deathSaves).toEqual({ successes: 0, failures: 1 })
+	})
+	it('un-stabilizes and counts one failure', () => {
+		expect(hit(0, 1, 0, { successes: 3, failures: 0 }).deathSaves).toEqual({ successes: 0, failures: 1 })
+	})
+	it('kills on the third failure', () => {
+		expect(deathSaveState(hit(0, 1, 0, { successes: 0, failures: 2 }).deathSaves)).toBe('dead')
+	})
+	it('adds none when dropping from positive to 0', () => {
+		expect(hit(4, 9, 0).deathSaves).toBeUndefined()
+	})
+	it('adds nothing to a dead character', () => {
+		expect(hit(0, 1, 0, { successes: 0, failures: 3 }).deathSaves).toEqual({ successes: 0, failures: 3 })
+	})
+	it('deathSavesAfterDamageAtZero leaves a dead character alone', () => {
+		expect(deathSavesAfterDamageAtZero({ successes: 0, failures: 3 })).toEqual({ successes: 0, failures: 3 })
+	})
+})
