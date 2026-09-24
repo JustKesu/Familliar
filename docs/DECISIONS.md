@@ -2876,3 +2876,34 @@ Karta v pásu čísel za Armour Class: checkbox s accessible name „Heroic
 Inspiration"; bez handleru je jen ke čtení. Nic ho neuděluje ani nespotřebovává
 — ani odpočinek, ani druh, ani hod. Automatika je odložená, dokud nebude
 rozhodnuto, kdy se uděluje a co ho utratí.
+
+## D168 — R4c: kompaktní HP karta s death saves uvnitř, drawer Hit Points, status row se třemi kartami
+
+Zdroj: task R4c, 24. 9. 2026. Zpřesňuje D110/D111/D117/D147 co do umístění;
+logika hit pointů, death saves ani hit dice se nemění.
+
+**HP karta** (`src/sheet/HitPoints.tsx`, `HitPointsCard`) je poslední karta
+pásu čísel, `flex-grow 1`, výška 86px ve VŠECH stavech. Vlevo sloupec HEAL /
+Amount / DAMAGE (stejná logika jako dřívější panel: dočasné HP se utrácí
+první, léčení končí na maximu), štítek HIT POINTS (tlačítko „Hit points
+details" → drawer) nad „current / max", vpravo TEMP („—" při 0). Při
+`currentHp === 0` (a zapisovatelném sheetu) nahradí blok HIT POINTS ve stejné
+kartě blok DEATH SAVES: řádek značek úspěchů, řádek značek neúspěchů a hod d20
+(bez modifikátoru a bez přepínače advantage, D117; toast + historie). Po
+stabilizaci / smrti místo tlačítka slovo STABLE / DEAD. HEAL/DAMAGE zůstávají
+vidět. `SheetHeader` death saves nemá; kartu jen umisťuje (slot `hitPoints`).
+Poslední hozené číslo death save drží `CharacterSheet` (přežije nat 20).
+
+**Drawer „Hit Points"**: rozklad maxima (otevřený, D164), Current HP, Max HP
+override (existující pole, přesunuté beze změny), Temporary HP (přímé zadání)
+a „Gain temporary HP" s vlastním polem „Temporary HP to gain" (Amount zůstal
+na kartě jen pro heal/damage), Hit dice (zbývající, hod, rozklad), při 0 HP
+ruční záznam death saves (Success / Failure / Natural 20 / Natural 1 — D111
+„fyzická kostka") s vysvětlujícím textem, a poslední hozené číslo death save.
+
+**Status row** pod pásem čísel: DEFENSES (jednořádkový souhrn toho, co platí
+teď — „Resistant: X · Immune: Y · Vulnerable: Z", jinak „—"; štítek otevře
+drawer „Defenses" s původní sekcí včetně podmíněných a zdrojů), CONDITIONS
+(jen placeholder: štítek a zakázané „+ Add condition" s titulkem „Coming
+later" — žádný stav ani schéma, dokud nepřijde slice podmínek),
+CONCENTRATION (kouzlo nebo „—", Drop; logika 9d1 beze změny).

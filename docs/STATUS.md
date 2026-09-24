@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-24 (R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -936,6 +936,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   0 current HP — panel death saves (9a2, D111), pod ním poslední hozené číslo
   death save (D117, zůstává i po zmizení panelu);
   `CharacterStore.setHitPoints` píše všechna čtyři pole jedním objektem.
+  Od R4c (D168) je HP karta i drawer Hit Points v `src/sheet/HitPoints.tsx`
+  a `SheetHeader` ji jen umisťuje (slot `hitPoints`).
   Není sticky (může se
   řešit později). Testy: `SheetHeader.test.tsx` a sekce v
   `CharacterSheet.test.tsx`.
@@ -1155,8 +1157,8 @@ requirement, Current/Max/Temp HP, HP Amount, ruční vlastnost i ruční
 výsledek kostky ve wizardu) nebo `.input--narrow-money` (8ch: zlato/
 stříbro/měď, custom item cena, přidané platinum) — jen šířka, typ pole a
 chování beze změny. **Vědomě ponecháno:** pruh čísel v hlavičce se na
-1400px přestane vejít na řádek a HP blok spadne pod něj — čeká na R4c
-(kompaktní HP blok). Kontrola v prohlížeči neproběhla (zadání ji vyloučilo
+1400px přestane vejít na řádek a HP blok spadne pod něj — R4c HP kartu
+zkompaktnil, šířku na 1366/1920 ale ověří až prohlížeč. Kontrola v prohlížeči neproběhla (zadání ji vyloučilo
 — uživatel zkontroluje sám, viz REPORT.md).
 
 R4 hotový (D163, breakpoint opraven R4-fixem/D164 na 1860px): sdílený boční
@@ -1211,6 +1213,20 @@ Nová karta Heroic Inspiration za Armour Class: ruční checkbox,
 `CharacterStore.setHeroicInspiration`; automatické udělování odložené. Hlášky
 karty Armour Class jsou celé v draweru, na kartě jen krátká poznámka. Kontrola
 v prohlížeči neproběhla (zadání ji vyloučilo — viz REPORT.md).
+
+R4c hotový (D168): HP karta na konci pásu čísel (86px ve všech stavech) —
+HEAL / Amount / DAMAGE, štítek HIT POINTS (otevře drawer „Hit Points") nad
+„current / max", TEMP. Při 0 HP místo HIT POINTS blok DEATH SAVES (značky
+úspěchů a neúspěchů, tlačítko d20, po konci slovo STABLE / DEAD). Drawer Hit
+Points: rozklad maxima (otevřený), Current HP, Max HP override, Temporary HP,
+„Gain temporary HP" s vlastním polem, Hit dice, při 0 HP ruční záznam death
+saves (Success/Failure/Natural 20/Natural 1) s vysvětlením a poslední hozené
+číslo. `SheetHeader` už death saves nemá. Status row: karty DEFENSES
+(jednořádkový souhrn, štítek otevře drawer „Defenses" s původní sekcí),
+CONDITIONS (jen placeholder, zakázané „+ Add condition"), CONCENTRATION (kouzlo
+nebo „—", Drop). Nová komponenta `src/sheet/HitPoints.tsx`, testy
+`HitPoints.test.tsx`. Kontrola v prohlížeči neproběhla (zadání ji vyloučilo —
+viz REPORT.md).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

@@ -2040,7 +2040,7 @@ describe('CharacterSheet', () => {
 			})
 
 			/* D117: a death save is a roll like the others and lands in the same list, outcome included. */
-			it('records a death save roll, and shows the number in the header', async () => {
+			it('records a death save roll, and shows the number in the Hit Points drawer', async () => {
 				const user = userEvent.setup()
 				const random = vi.spyOn(Math, 'random').mockReturnValue(0)
 				try {
@@ -2049,9 +2049,10 @@ describe('CharacterSheet', () => {
 					await user.click(screen.getByRole('button', { name: 'Roll death save' }))
 
 					expect(toastElement()!.textContent).toContain('Rolled 1 — two failures.')
+					await user.click(screen.getByRole('button', { name: 'Hit points details' }))
+					expect(container.querySelector('.sheet__death-save-roll')!.textContent).toBe('Rolled 1 — two failures.')
 					await openHistory(user, slot)
 					expect(historyLines()).toEqual(['Death save: Rolled 1 — two failures.'])
-					expect(container.querySelector('.sheet__death-save-roll')!.textContent).toBe('Rolled 1 — two failures.')
 					slot.remove()
 				} finally {
 					random.mockRestore()
@@ -2070,9 +2071,10 @@ describe('CharacterSheet', () => {
 				await screen.findByRole('button', { name: 'Roll Athletics check' })
 				await chooseMode(user, 'Advantage')
 				await user.click(screen.getByRole('button', { name: 'Roll death save' }))
+				await user.click(screen.getByRole('button', { name: 'Hit points details' }))
+				expect(container.querySelector('.sheet__death-save-roll')).toBeTruthy()
 				await openHistory(user, slot)
 				expect(historyLines()).toHaveLength(1)
-				expect(container.querySelector('.sheet__death-save-roll')).toBeTruthy()
 
 				rerender(sheetFor({ ...character, id: 'switch-b', currentHp: 0 }))
 				await screen.findByRole('button', { name: 'Roll Athletics check' })
@@ -2446,15 +2448,40 @@ describe('CharacterSheet', () => {
 			return Array.from(section(container).querySelectorAll('.sheet__damage-response-conditional li')).map((li) => li.textContent ?? '')
 		}
 
+		/* R4c: the full section lives in the Defenses drawer, opened from the status row card. */
 		async function renderSheet(subject: Character) {
 			const rendered = render(<CharacterSheet character={subject} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			fireEvent.click(screen.getByRole('button', { name: 'Defenses details' }))
 			await waitFor(() => expect(section(rendered.container).querySelector('.sheet__damage-response-summary')).toBeTruthy())
 			return rendered
 		}
 
+		function oneLiner(container: HTMLElement): string {
+			return container.querySelector('.sheet__defenses .sheet__status-text')!.textContent ?? ''
+		}
+
 		beforeEach(() => {
 			vi.mocked(loadDamageResponseData).mockReset().mockResolvedValue({ speciesGrants: [], featGrants: [], featureGrants: [] })
+		})
+
+		it('R4c: sums up what applies now in one line, the type in bold', async () => {
+			vi.mocked(loadDamageResponseData).mockResolvedValue({
+				speciesGrants: [{ kind: 'resistance', sourceName: 'Dwarf', damageTypes: ['poison'] }],
+				featGrants: [],
+				featureGrants: [
+					{ kind: 'immunity', sourceName: 'Saint of Forge and Fire (Cleric)', damageTypes: ['fire'] },
+					{ kind: 'resistance', sourceName: 'Rage (Barbarian)', damageTypes: ['slashing'], condition: 'while your Rage is active' },
+				],
+			})
+			const { container } = await renderSheet(character)
+			expect(oneLiner(container)).toBe('Resistant: Poison · Immune: Fire')
+			expect(container.querySelector('.sheet__defenses strong')!.textContent).toBe('Poison')
+		})
+
+		it('R4c: reads "—" when nothing applies', async () => {
+			const { container } = await renderSheet(character)
+			expect(oneLiner(container)).toBe('—')
 		})
 
 		it('shows a species-granted resistance with its source', async () => {
@@ -3275,6 +3302,7 @@ describe('CharacterSheet', () => {
 			const ring: CustomItemDefinition = { name: 'Band of Ash', kind: 'worn', requiresAttunement: true, resist: ['fire'] }
 
 			const unattuned = await renderSheet(owning('e2b-resist-off', customRow(ring)))
+			fireEvent.click(screen.getByRole('button', { name: 'Defenses details' }))
 			const before = unattuned.container.querySelector('.sheet__damage-responses')!
 			await waitFor(() => expect(before.textContent).toContain('Band of Ash'))
 			expect(before.textContent).toContain('requires attunement and you are not attuned to it')
@@ -3282,6 +3310,7 @@ describe('CharacterSheet', () => {
 			cleanup()
 
 			const attuned = await renderSheet(owning('e2b-resist-on', customRow(ring, { attuned: true })))
+			fireEvent.click(screen.getByRole('button', { name: 'Defenses details' }))
 			const after = attuned.container.querySelector('.sheet__damage-responses')!
 			await waitFor(() => expect(after.textContent).toContain('Fire'))
 			expect(after.querySelector('.sheet__damage-response-list')!.textContent).toContain('Fire — resistance (Band of Ash)')
@@ -5021,9 +5050,10 @@ describe('CharacterSheet', () => {
 			}
 
 			function headerLine(container: HTMLElement): string | undefined {
-				/* Rework R2: the line lives in the status row, no longer in the header. */
+				/* Rework R2: the line lives in the status row, no longer in the header. R4c: a card that reads "—" when there is none. */
 				expect(container.querySelector('.sheet__persistent-header .sheet__concentration')).toBeNull()
-				return container.querySelector('.sheet__status-row .sheet__concentration')?.textContent ?? undefined
+				const text = container.querySelector('.sheet__status-row .sheet__concentration .sheet__status-text')!.textContent
+				return text === '—' ? undefined : (text ?? undefined)
 			}
 
 			function pressed(name: string): string | null {
@@ -5047,13 +5077,13 @@ describe('CharacterSheet', () => {
 				expect(onEdit).toHaveBeenLastCalledWith('Bless')
 				expect(pressed('Concentrate on Bless')).toBe('true')
 				expect(pressed('Concentrate on Shield of Faith')).toBe('false')
-				expect(headerLine(container)).toContain('Concentrating: Bless')
+				expect(headerLine(container)).toBe('Bless')
 			})
 
 			it('replaces the spell already being concentrated on, without asking', async () => {
 				const confirm = vi.spyOn(window, 'confirm')
 				const { container, onEdit } = await renderCaster({ concentratingOn: 'Bless' })
-				expect(headerLine(container)).toContain('Concentrating: Bless')
+				expect(headerLine(container)).toBe('Bless')
 
 				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Shield of Faith' }))
 
@@ -5061,7 +5091,7 @@ describe('CharacterSheet', () => {
 				expect(onEdit).toHaveBeenLastCalledWith('Shield of Faith')
 				expect(pressed('Concentrate on Bless')).toBe('false')
 				expect(pressed('Concentrate on Shield of Faith')).toBe('true')
-				expect(headerLine(container)).toContain('Concentrating: Shield of Faith')
+				expect(headerLine(container)).toBe('Shield of Faith')
 				expect(headerLine(container)).not.toContain('Bless')
 				expect(confirm).not.toHaveBeenCalled()
 				confirm.mockRestore()
@@ -5089,16 +5119,18 @@ describe('CharacterSheet', () => {
 				expect(headerLine(container)).toBeUndefined()
 			})
 
-			it('shows the header line only while a spell is set', async () => {
+			/* R4c: the card is always there and reads "—" without a spell; the drop control only while one is set. */
+			it('names the spell and offers the drop only while a spell is set', async () => {
 				const { container } = await renderCaster()
-				expect(container.querySelector('.sheet__concentration')).toBeNull()
+				expect(headerLine(container)).toBeUndefined()
 				expect(screen.queryByRole('button', { name: 'Drop concentration' })).toBeNull()
 
 				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Bless' }))
 				expect(container.querySelectorAll('.sheet__concentration')).toHaveLength(1)
+				expect(headerLine(container)).toBe('Bless')
 
 				fireEvent.click(screen.getByRole('button', { name: 'Drop concentration' }))
-				expect(container.querySelector('.sheet__concentration')).toBeNull()
+				expect(headerLine(container)).toBeUndefined()
 			})
 
 			it('on a read-only sheet still shows a stored concentration, with nothing to change it', async () => {
@@ -5107,7 +5139,7 @@ describe('CharacterSheet', () => {
 				await screen.findByRole('heading', { name: 'Focused' })
 				await waitFor(() => expect(container.querySelector('.sheet__spells summary')).toBeTruthy())
 
-				expect(headerLine(container)).toContain('Concentrating: Bless')
+				expect(headerLine(container)).toBe('Bless')
 				expect(screen.queryByRole('button', { name: 'Drop concentration' })).toBeNull()
 				expect(container.querySelector('.spell-list__concentrate')).toBeNull()
 			})
@@ -5125,7 +5157,7 @@ describe('CharacterSheet', () => {
 					const concentrating: Character = { ...caster, play: { concentratingOn: 'Bless' } }
 					const { container, rerender } = render(<CharacterSheet character={concentrating} onEditConcentration={() => {}} />)
 					await screen.findByRole('button', { name: 'Concentrate on Bless' })
-					expect(headerLine(container)).toContain('Concentrating: Bless')
+					expect(headerLine(container)).toBe('Bless')
 
 					// What the wizard's store.update hands back: a new spell list, play state carried across unchanged.
 					const edited: Character = {
@@ -5147,7 +5179,7 @@ describe('CharacterSheet', () => {
 					const { container, rerender } = render(<CharacterSheet character={withFeat} onEditConcentration={() => {}} />)
 					await screen.findByRole('button', { name: 'Concentrate on Hex' })
 					expect(pressed('Concentrate on Hex')).toBe('true')
-					expect(headerLine(container)).toContain('Concentrating: Hex')
+					expect(headerLine(container)).toBe('Hex')
 
 					rerender(<CharacterSheet character={{ ...withFeat, featAsiChoices: [] }} onEditConcentration={() => {}} />)
 
@@ -5161,7 +5193,7 @@ describe('CharacterSheet', () => {
 					const { container } = render(<CharacterSheet character={{ ...caster, featAsiChoices: [HEXED_FEAT], play: { concentratingOn: 'Hex' } }} />)
 					await waitFor(() => expect(container.textContent).toContain('feats.json unavailable'))
 
-					expect(headerLine(container)).toContain('Concentrating: Hex')
+					expect(headerLine(container)).toBe('Hex')
 				})
 			})
 		})
@@ -6997,6 +7029,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 
 	it('carries the computed maximum’s breakdown, naming every level and Constitution (slice 8a)', async () => {
 		const { container } = await renderSheet(character)
+		fireEvent.click(screen.getByRole('button', { name: 'Hit points details' }))
 		await waitFor(() => expect(container.querySelector('.sheet__max-hit-points details')).toBeTruthy())
 		const breakdown = container.querySelector('.sheet__max-hit-points details')!.textContent!
 		expect(breakdown).toContain('level 1 (d10 maximum): +10')
@@ -7010,6 +7043,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 		const withHp: Character = { ...character, currentHp: 18, maxHpOverride: 40 }
 		const { container } = await renderSheet(withHp, onEditHitPoints)
 		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('18 / 40'))
+		fireEvent.click(screen.getByRole('button', { name: 'Hit points details' }))
 		expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('manual maximum')
 
 		const field = screen.getByLabelText('Current HP')
@@ -7023,7 +7057,8 @@ describe('the persistent header (rebuild slice 1)', () => {
 		const onEditHitPoints = vi.fn()
 		const withHp: Character = { ...character, currentHp: 30, play: { temporaryHitPoints: 8 } }
 		const { container } = await renderSheet(withHp, onEditHitPoints)
-		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('30 / 39 + 8 temporary'))
+		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('30 / 39'))
+		expect(container.querySelector('.sheet__temporary-hit-points')!.textContent).toBe('8')
 
 		fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '50' } })
 		fireEvent.click(screen.getByRole('button', { name: 'Heal' }))
@@ -7035,6 +7070,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 		const { container } = await renderSheet({ ...character, id: 'hp-dwarf' })
 		// +1 per character level on top of the 39 above.
 		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 44'))
+		fireEvent.click(screen.getByRole('button', { name: 'Hit points details' }))
 		expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('Dwarven Toughness (+1 per character level)')
 	})
 
@@ -7050,6 +7086,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 			const { container } = await renderSheet(farmer)
 			// +2 per character level on top of the 39 above.
 			await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 49'))
+			fireEvent.click(screen.getByRole('button', { name: 'Hit points details' }))
 			expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('Tough (+2 per character level)')
 			expect(container.querySelector('.sheet__feats')!.textContent).toContain('Tough (Background)')
 		})
@@ -7133,9 +7170,10 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b app
 		for (const cls of ['.sheet__saving-throws', '.sheet__skills', '.sheet__senses-card', '.sheet__senses']) {
 			expect(left.querySelector(cls)).toBeTruthy()
 		}
-		// Hit dice moved into the header strip (R3, D147), not the left column.
+		// Hit dice moved to the Hit Points drawer (R4c), not the left column.
 		expect(left.querySelector('.sheet__hit-dice')).toBeNull()
-		expect(container.querySelector('.sheet__strip .sheet__hit-dice')).toBeTruthy()
+		fireEvent.click(screen.getByRole('button', { name: 'Hit points details' }))
+		expect(screen.getByRole('dialog', { name: 'Hit Points' }).querySelector('.sheet__hit-dice')).toBeTruthy()
 	})
 
 	it('puts inventory under the Inventory tab, damage responses in the status row, and weapon attacks under Actions', async () => {
@@ -7145,9 +7183,12 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b app
 
 		const inventory = container.querySelector('#sheet-panel-inventory')!
 		expect(inventory.querySelector('.sheet__inventory')).toBeTruthy()
-		/* Rework R2: damage responses moved out of the tab into the status row, once on the sheet. */
+		/* R4c: a Defenses card in the status row; the full section only in its drawer, once on the sheet. */
 		expect(inventory.querySelector('.sheet__damage-responses')).toBeNull()
-		expect(container.querySelector('.sheet__status-row .sheet__damage-responses')).toBeTruthy()
+		expect(container.querySelector('.sheet__status-row .sheet__defenses')).toBeTruthy()
+		expect(container.querySelector('.sheet__damage-responses')).toBeNull()
+		fireEvent.click(screen.getByRole('button', { name: 'Defenses details' }))
+		expect(screen.getByRole('dialog', { name: 'Defenses' }).querySelector('.sheet__damage-responses')).toBeTruthy()
 		expect(container.querySelectorAll('.sheet__damage-responses')).toHaveLength(1)
 
 		const actions = container.querySelector('#sheet-panel-actions')!
@@ -7455,6 +7496,8 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 			const onHitPoints = vi.fn()
 			const onSpent = vi.fn()
 			const { container } = render(<Harness initial={subject} onHitPoints={onHitPoints} onSpent={onSpent} onRest={onRest} />)
+			// R4c: hit dice live in the Hit Points drawer.
+			fireEvent.click(await screen.findByRole('button', { name: 'Hit points details' }))
 			await screen.findAllByRole('button', { name: /^Roll .* hit die$/ })
 			return { container, onHitPoints, onSpent }
 		}
@@ -7561,6 +7604,7 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 
 		it('a read-only sheet still rolls, and writes nothing', async () => {
 			const { container } = render(<CharacterSheet character={fighter} />)
+			fireEvent.click(await screen.findByRole('button', { name: 'Hit points details' }))
 			await screen.findByRole('button', { name: 'Roll Fighter hit die' })
 
 			expect(rollButton('Fighter').disabled).toBe(false)

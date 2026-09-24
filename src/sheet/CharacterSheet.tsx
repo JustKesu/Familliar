@@ -30,7 +30,7 @@ import { missingFeatSubChoices } from './featSubChoices'
 import { makeRoomForHands, type HeldThing } from '../calculation/hands'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import { computeHitDicePool, hitDiceKey, type ClassHitDie, type HitDiceEntry } from '../calculation/hitDice'
-import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
+import { deathSavesAfterHitPointChange, describeDeathSaveRoll, type DeathSaveRollResult } from '../hitPoints/deathSaves'
 import { applyHealing } from '../hitPoints/damageHealing'
 import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
@@ -146,6 +146,7 @@ import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calcula
 import { ArmourClassNotes, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
 import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
+import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
 import { loadSpeciesTraitNames } from './speciesTraitNames'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -238,6 +239,8 @@ type DrawerContent =
 	| { kind: 'saves' }
 	| { kind: 'skills' }
 	| { kind: 'stat'; stat: StatCard }
+	| { kind: 'hitPoints' }
+	| { kind: 'defenses' }
 
 /** D45: the dot per proficiency status; half and expertise keep their own symbols. */
 function ProfMark({ mark, status }: { mark: string; status: string }): ReactNode {
@@ -1855,6 +1858,43 @@ function DamageResponsesSection({ responses, loading, dataError }: { responses: 
 	)
 }
 
+const DEFENSE_PREFIXES: readonly { kind: DamageResponse['kind']; prefix: string }[] = [
+	{ kind: 'resistance', prefix: 'Resistant' },
+	{ kind: 'immunity', prefix: 'Immune' },
+	{ kind: 'vulnerability', prefix: 'Vulnerable' },
+]
+
+/** R4c: the status row's one line — only what applies now; the conditional ones and the sources are in the drawer. */
+function DefensesCard({ responses, loading, dataError, onOpen }: { responses: DamageResponses; loading: boolean; dataError: string | null; onOpen: () => void }): ReactNode {
+	const applying = responses.unconditional.filter((response) => response.supersededBy === null)
+	const parts = DEFENSE_PREFIXES.flatMap(({ kind, prefix }) => {
+		const types = applying.filter((response) => response.kind === kind).map((response) => damageTypeLabel(response.damageType))
+		return types.length === 0 ? [] : [{ prefix, types: types.join(', ') }]
+	})
+	return (
+		<section className="sheet__status-card sheet__defenses">
+			<h2>
+				<button type="button" className="sheet__card-label" aria-label="Defenses details" onClick={onOpen}>
+					Defenses
+				</button>
+			</h2>
+			<span className="sheet__status-text">
+				{loading
+					? 'Loading…'
+					: parts.length === 0
+						? '—'
+						: parts.map(({ prefix, types }, index) => (
+								<span key={prefix}>
+									{index > 0 && ' · '}
+									{prefix}: <strong>{types}</strong>
+								</span>
+							))}
+				{dataError && ' ⚠ incomplete'}
+			</span>
+		</section>
+	)
+}
+
 const TEXT_COMMIT_IDLE_MS = 500
 
 /**
@@ -1994,6 +2034,13 @@ function CharacterSheetBody({
 		const entry = { ...report, id: nextRollId.current++ }
 		setRollHistory((history) => addRollHistoryEntry(history, entry))
 		toastRef.current?.(report)
+	}
+	/* D117: kept here, not in the HP card, so the number stays readable after a natural 20 ends the dying. */
+	const [deathSaveRoll, setDeathSaveRoll] = useState<string | null>(null)
+	function recordDeathSaveRoll(result: DeathSaveRollResult): void {
+		const text = describeDeathSaveRoll(result)
+		setDeathSaveRoll(text)
+		recordRoll({ label: 'death save', text })
 	}
 	const [savingThrowClassData, setSavingThrowClassData] = useState<ClassSavingThrowProficiencies[] | null>(null)
 	const [hitDiceClassData, setHitDiceClassData] = useState<ClassHitDie[] | null>(null)
@@ -2767,10 +2814,9 @@ function CharacterSheetBody({
 		{ what: 'species-granted spells', message: raceSpellsError },
 	].filter((entry): entry is { what: string; message: string } => entry.message !== null)
 
-	/* Rework R3 (D147): relocated from the stats tab into a small line under HP in the strip — same section class, same markup, no logic change. */
+	/* R4c: in the Hit Points drawer, whose section heading names it — same section class, no logic change. */
 	const hitDiceLine = (
 		<section className="sheet__hit-dice">
-			<h2>Hit dice</h2>
 			{hitDice.status === 'unknown' ? (
 				<UnresolvedValue reason={hitDice.reason} />
 			) : (
@@ -2812,6 +2858,16 @@ function CharacterSheetBody({
 		</section>
 	)
 
+	const hitPointProps: HitPointProps = {
+		currentHp,
+		maxHitPoints,
+		maxHpOverride: character.maxHpOverride,
+		temporaryHitPoints: character.play?.temporaryHitPoints,
+		deathSaves: character.play?.deathSaves,
+		onEditHitPoints,
+		onDeathSaveRolled: recordDeathSaveRoll,
+	}
+
 	return (
 		<RollModeContext.Provider value={{ mode: rollMode, setMode: setRollMode }}>
 		<article className="sheet">
@@ -2830,15 +2886,9 @@ function CharacterSheetBody({
 				initiative={initiative}
 				speed={speed}
 				proficiencyBonus={proficiencyBonus}
-				currentHp={character.currentHp}
-				maxHitPoints={maxHitPoints}
-				maxHpOverride={character.maxHpOverride}
-				hitDice={hitDiceLine}
-				temporaryHitPoints={character.play?.temporaryHitPoints}
-				deathSaves={character.play?.deathSaves}
+				hitPoints={<HitPointsCard {...hitPointProps} onOpen={() => setDrawer({ kind: 'hitPoints' })} />}
 				concentratingOn={concentratingOn}
 				onDropConcentration={onEditConcentration ? () => onEditConcentration(null) : undefined}
-				onEditHitPoints={onEditHitPoints}
 				onShortRest={onRest ? takeShortRest : undefined}
 				onLongRest={onRest ? takeLongRest : undefined}
 				onRoll={recordRoll}
@@ -2897,10 +2947,11 @@ function CharacterSheetBody({
 					/>
 				}
 				defenses={
-					<DamageResponsesSection
+					<DefensesCard
 						responses={damageResponses}
 						loading={itemRefs === null || damageResponseData === null}
 						dataError={damageResponseDataError}
+						onOpen={() => setDrawer({ kind: 'defenses' })}
 					/>
 				}
 			/>
@@ -3526,6 +3577,22 @@ function CharacterSheetBody({
 							</>
 						)}
 					</DrawerSection>
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'hitPoints' && (
+				<Drawer title="Hit Points" onClose={() => setDrawer(null)}>
+					<HitPointsPanel {...hitPointProps} hitDice={hitDiceLine} deathSaveRoll={deathSaveRoll} />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'defenses' && (
+				<Drawer title="Defenses" onClose={() => setDrawer(null)}>
+					<DamageResponsesSection
+						responses={damageResponses}
+						loading={itemRefs === null || damageResponseData === null}
+						dataError={damageResponseDataError}
+					/>
 				</Drawer>
 			)}
 

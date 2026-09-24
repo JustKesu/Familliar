@@ -505,7 +505,7 @@ button:disabled {
   gap: 0.5rem;
 }
 
-/* R4b (D166): the cards are 86px and stay that height beside the taller HP card, so the strip aligns to the top. */
+/* R4b (D166): every card is 86px; R4c holds the HP card to it too. */
 .sheet__strip {
   display: flex;
   flex-wrap: wrap;
@@ -526,14 +526,6 @@ button:disabled {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
-}
-
-.sheet__strip > .sheet__hit-points {
-  padding: 0.4rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  align-self: stretch;
 }
 
 .sheet__strip h2 {
@@ -623,29 +615,120 @@ button:disabled {
   accent-color: var(--accent);
 }
 
+/* R4c: the HP card is 86px in every state, death saves included — overflow goes to the Hit Points drawer. */
 .sheet__strip > .sheet__hit-points {
-  flex: 1 1 20rem;
+  box-sizing: border-box;
+  flex: 1 1 auto;
   min-width: 0;
+  height: 86px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
 }
 
-.sheet__strip > .sheet__hit-points h2 {
-  margin: 0 0 0.2rem;
-}
-
-/* Rework R3 (D147): hit dice as a small line under HP, not its own section. */
-.sheet__hit-points .sheet__hit-dice {
-  margin-top: 0.3rem;
-  font-size: 0.85em;
-}
-
-.sheet__hit-points .sheet__hit-dice h2 {
-  font-size: 1em;
-}
-
-.sheet__hit-points .sheet__hit-dice ul {
+.sheet__hit-points h2 {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  font: 600 11px/1.2 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.sheet__damage-healing {
+  flex: none;
+  width: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sheet__damage-healing button {
+  padding: 3px 0;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: none;
+}
+
+.sheet__damage-healing input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 22px;
+  padding: 0 4px;
+  text-align: center;
+  background: var(--surface-2);
+}
+
+.sheet__hp-main,
+.sheet__hp-temp,
+.sheet__death-saves {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sheet__hit-points-value {
+  margin: 0;
+  font: 600 34px/1 var(--font-heading);
+  white-space: nowrap;
+}
+
+.sheet__hp-slash {
+  font-weight: 400;
+  color: var(--text-mute);
+}
+
+.sheet__temporary-hit-points {
+  margin: 0;
+  font: 600 26px/1 var(--font-heading);
+  color: var(--text-mute);
+}
+
+.sheet__death-save-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sheet__death-save-marks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.2em;
+}
+
+.sheet__death-save-successes {
+  color: var(--heal);
+}
+
+.sheet__death-save-failures {
+  color: var(--damage);
+}
+
+.sheet__death-save-roll-button {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.sheet__death-save-word {
+  font: 700 13px/1 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--heal);
+}
+
+.sheet__death-save-word[data-state='dead'] {
+  color: var(--damage);
 }
 
 .ability-cards {
@@ -709,24 +792,62 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* R4c: three one-line cards. */
 .sheet__status-row {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.5rem 1.5rem;
+  gap: 10px;
 }
 
-.sheet__status-row > * {
-  margin: 0;
+.sheet__status-card {
+  box-sizing: border-box;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
 }
 
-.sheet__status-row h2 {
-  margin: 0 0 0.2rem;
-}
-
+.sheet__defenses,
 .sheet__status-conditions {
-  flex: 1 1 12rem;
-  min-height: 1.5rem;
+  flex: 1 1 0;
+}
+
+.sheet__concentration {
+  flex: none;
+  width: 260px;
+}
+
+.sheet__status-card h2 {
+  margin: 0;
+  font: 700 11px/1.2 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  white-space: nowrap;
+}
+
+.sheet__status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.sheet__concentration .sheet__status-text {
+  flex: 1;
+  font-weight: 700;
+}
+
+.sheet__add-condition,
+.sheet__status-drop {
+  padding: 2px 8px;
+  font-size: 13px;
+  color: var(--text-sub);
+  white-space: nowrap;
 }
 
 .sheet__body {
