@@ -2838,3 +2838,41 @@ neřeší.
 **Nadpis.** `<h1>Familliar</h1>` z `CharacterManager` (všechny pohledy) je pryč
 a nic ho nenahrazuje; `<title>` dokumentu zůstává. `MarkupDemo` má vlastní
 `<h1>` beze změny.
+
+## D166 — R4b: hodnota je tlačítko hodu, jméno/štítek otevře rozklad v draweru, ozubené kolo ukáže rozklady všech řádků
+
+Zdroj: task R4b (rework sheetu), 24. 9. 2026. Zpřesňuje D146/D163/D165 pro
+levý sloupec a pás čísel; nic z nich neruší kromě inline „Roll" tlačítek a
+inline `Breakdown` v těchto oblastech.
+
+**Model.** (1) HODNOTA sama je tlačítko hodu: modifikátor vlastnosti = ability
+check, hodnota záchrany = saving throw, hodnota dovednosti = skill check,
+hodnota Initiative = initiative. Stejná logika a stejný přepínač advantage jako
+dřív (`RollButton` s `children`, třída `roll-value`, accessible name
+`Roll <label>` beze změny). Útoky/damage dál používají tlačítko „Roll".
+(2) JMÉNO řádku (save, skill) nebo ŠTÍTEK karty (Prof., Speed, Initiative,
+Armour Class) je tlačítko, které otevře rozklad v draweru — nový obsah
+`save`/`skill`/`stat` v `DrawerContent`. (3) Ozubené kolo na kartách Saving
+throws a Skills otevře drawer se VŠEMI řádky, každý jako `DrawerSection`
+s otevřeným rozkladem (obsahy `saves`/`skills`). Inline `<details>` v těchto
+oblastech už nejsou.
+
+**Co se z karet přesunulo.** Karta Armour Class je 86px, takže její hlášky
+(equipped-but-unknown, brnění bez AC, Stealth disadvantage, chyba formulí)
+žijí celé v draweru (`ArmourClassNotes`); na kartě zůstává jednořádková
+poznámka (`⚠ incomplete`, `Stealth disadv.`). Létání/plavání/lezení u Speed
+jsou malá poznámka pod hodnotou a celé v draweru.
+
+**Značky proficiency** zůstávají textové (○ ● ◐ ★, D45) — vzhled tečky řeší
+CSS (`data-status`), takže poloviční proficiency a expertise si drží vlastní
+symbol.
+
+## D167 — R4b: Heroic Inspiration je ruční boolean na postavě, automatické udělování odloženo
+
+Zdroj: task R4b, 24. 9. 2026. Pole neexistovalo. `Character.play.heroicInspiration`
+(pravda = zapnuto; vypnuto se ukládá jako absence, stejně jako ostatní pole
+`play`), schéma 44, migrace 43→44 jen tag, `CharacterStore.setHeroicInspiration`.
+Karta v pásu čísel za Armour Class: checkbox s accessible name „Heroic
+Inspiration"; bez handleru je jen ke čtení. Nic ho neuděluje ani nespotřebovává
+— ani odpočinek, ani druh, ani hod. Automatika je odložená, dokud nebude
+rozhodnuto, kdy se uděluje a co ho utratí.

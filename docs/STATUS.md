@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-24 (R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1200,6 +1200,17 @@ Historie stále přežívá přepnutí postavy (známá chyba, samostatný task)
 Testy: `RollButton.test.tsx`, bloky rolls/toast/roll history v
 `CharacterSheet.test.tsx`, `SheetHeader.test.tsx`, `App.test.tsx`. Kontrola v
 prohlížeči neproběhla (zadání ji vyloučilo).
+
+R4b hotový (D166, D167): karty v pásu čísel (86px, HP karta beze změny) a levý
+sloupec jsou kompaktní podle mockupu. Hodnota je tlačítko hodu (ability
+modifikátor, save, skill, Initiative), jméno řádku / štítek karty otevře
+rozklad v draweru, ozubené kolo na Saving throws a Skills ukáže všechny řádky
+s otevřenými rozklady; inline „Roll" a `Breakdown` v těchto oblastech zmizely.
+Nová karta Heroic Inspiration za Armour Class: ruční checkbox,
+`Character.play.heroicInspiration` (schéma 44, migrace 43→44 jen tag),
+`CharacterStore.setHeroicInspiration`; automatické udělování odložené. Hlášky
+karty Armour Class jsou celé v draweru, na kartě jen krátká poznámka. Kontrola
+v prohlížeči neproběhla (zadání ji vyloučilo — viz REPORT.md).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

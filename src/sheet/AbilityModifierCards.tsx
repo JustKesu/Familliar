@@ -7,8 +7,8 @@ import type { RollReport } from '../dice/RollHistory'
 import { formatModifier } from './calculatedValue'
 
 /**
- * R3b restores the ability-check roll R3 dropped (D155): the RollButton — same
- * wiring as the saves/skills rows use — goes back under the modifier. R4 gives
+ * R3b restores the ability-check roll R3 dropped (D155). R4b (D166): the
+ * modifier itself is that roll's button. R4 gives
  * the score breakdown back too (D146): the name is the button that opens it in
  * the shared drawer.
  */
@@ -47,12 +47,15 @@ export function AbilityModifierCards({
 						)}
 						{/* D43: an unresolved score is a dash with its reason on hover, never a number. */}
 						<span className="ability-card__modifier" title={result.status === 'unknown' ? result.reason : undefined}>
-							{result.status === 'known' ? formatModifier(result.value.modifier) : '—'}
+							{result.status === 'known' ? (
+								<RollButton modifier={result.value.modifier} label={`${labels[ability]} check`} onRoll={onRoll}>
+									{formatModifier(result.value.modifier)}
+								</RollButton>
+							) : (
+								'—'
+							)}
 						</span>
 						<span className="ability-card__score">{result.status === 'known' ? result.value.score : '—'}</span>
-						{result.status === 'known' && (
-							<RollButton modifier={result.value.modifier} label={`${labels[ability]} check`} onRoll={onRoll} />
-						)}
 					</li>
 				)
 			})}

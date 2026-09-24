@@ -234,6 +234,7 @@ function storedPlayState(currentHp: number | undefined, play: CharacterPlayState
 		...(spentSpellSlots ? { spentSpellSlots } : {}),
 		...(Object.keys(spentHitDice).length > 0 ? { spentHitDice } : {}),
 		...(play?.concentratingOn ? { concentratingOn: play.concentratingOn } : {}),
+		...(play?.heroicInspiration ? { heroicInspiration: true } : {}),
 	}
 	return Object.keys(stored).length > 0 ? stored : undefined
 }
@@ -588,6 +589,23 @@ export class CharacterStore {
 
 		const { currentHp, play, ...rest } = characters[index]
 		const storedPlay = storedPlayState(currentHp, { ...play, concentratingOn: spellName })
+		const updated = [...characters]
+		updated[index] = {
+			...rest,
+			...(currentHp !== undefined ? { currentHp } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
+		}
+		this.writeAll(updated)
+	}
+
+	/** Turns Heroic Inspiration on or off (R4b, D167) — a targeted write like setConcentration. */
+	setHeroicInspiration(id: string, on: boolean): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currentHp, play, ...rest } = characters[index]
+		const storedPlay = storedPlayState(currentHp, { ...play, heroicInspiration: on })
 		const updated = [...characters]
 		updated[index] = {
 			...rest,

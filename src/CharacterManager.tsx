@@ -211,6 +211,11 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setConcentration(id, spellName))
 	}
 
+	function handleEditHeroicInspiration(id: string, on: boolean): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setHeroicInspiration(id, on))
+	}
+
 	function handleEditText(id: string, field: CharacterTextField, text: string): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setText(id, field, text))
@@ -349,7 +354,8 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onEditSpentSpellSlots={(spentSpellSlots) => handleEditSpentSpellSlots(character.id, spentSpellSlots)}
 					onEditSpentHitDice={(spentHitDice) => handleEditSpentHitDice(character.id, spentHitDice)}
 					onEditConcentration={(spellName) => handleEditConcentration(character.id, spellName)}
-					onEditText={(field, text) => handleEditText(character.id, field, text)}
+					onEditHeroicInspiration={(on) => handleEditHeroicInspiration(character.id, on)}
+						onEditText={(field, text) => handleEditText(character.id, field, text)}
 					onRest={(rest) => handleRest(character.id, rest)}
 					onEditCharacter={() => navigate({ view: 'edit', id: character.id })}
 					onLevelUp={() => navigate({ view: 'level-up', id: character.id })}

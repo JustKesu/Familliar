@@ -92,7 +92,7 @@ describe('SheetHeader initiative roll (step 9 slice 9c2)', () => {
 
 	it('offers no roll on an unresolved initiative', () => {
 		const { container } = renderHeader({ initiative: unknown('No Dexterity modifier.') })
-		expect(container.querySelector('.sheet__initiative .dice-roll__button')).toBeNull()
+		expect(container.querySelector('.sheet__initiative .roll-value')).toBeNull()
 	})
 })
 
@@ -102,18 +102,32 @@ describe('SheetHeader', () => {
 		expect(screen.getByRole('heading', { level: 1, name: 'Aria' })).toBeTruthy()
 		expect(container.querySelector('.sheet__armour-class-value')!.textContent).toBe('16')
 		expect(container.querySelector('.sheet__initiative')!.textContent).toContain('+2')
-		expect(container.querySelector('.sheet__speed')!.textContent).toContain('30 ft.')
+		expect(container.querySelector('.sheet__speed .sheet__card-value')!.textContent).toBe('30 ft')
 		expect(container.querySelector('.sheet__proficiency-bonus')!.textContent).toContain('+3')
 		expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('15 / 22')
 	})
 
-	it('keeps each derived value’s breakdown-on-demand, collapsed by default', async () => {
-		const { container } = renderHeader()
-		const acBreakdown = container.querySelector('.sheet__armour-class details')!
-		expect(acBreakdown.hasAttribute('open')).toBe(false)
-		await userEvent.setup().click(within(acBreakdown as HTMLElement).getByText('Breakdown'))
-		expect(acBreakdown.hasAttribute('open')).toBe(true)
-		expect(acBreakdown.textContent).toContain('Dexterity: +2')
+	it('R4b (D166): each card label asks for its breakdown, and no card carries an inline one', async () => {
+		const onOpenBreakdown = vi.fn()
+		const { container } = renderHeader({ onOpenBreakdown })
+		for (const cls of ['.sheet__proficiency-bonus', '.sheet__speed', '.sheet__initiative', '.sheet__armour-class']) {
+			expect(container.querySelector(`${cls} details`)).toBeNull()
+		}
+		const user = userEvent.setup()
+		for (const [name, stat] of [
+			['Proficiency bonus breakdown', 'proficiency'],
+			['Speed breakdown', 'speed'],
+			['Initiative breakdown', 'initiative'],
+			['Armour Class breakdown', 'armour'],
+		] as const) {
+			await user.click(screen.getByRole('button', { name }))
+			expect(onOpenBreakdown).toHaveBeenLastCalledWith(stat)
+		}
+	})
+
+	it('leaves the card labels plain text when there is no drawer to open', () => {
+		renderHeader()
+		expect(screen.queryByRole('button', { name: 'Speed breakdown' })).toBeNull()
 	})
 
 	it('shows a loading state for Armour Class while the item list is still loading', () => {

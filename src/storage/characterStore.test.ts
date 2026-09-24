@@ -1216,6 +1216,33 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect('play' in cleared).toBe(false)
 	})
 
+	/* R4b (D167): a manual boolean; off is absence, so a character that never turned it on is byte-for-byte what it was. */
+	it('turns Heroic Inspiration on and off, surviving a reload and every other play write', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria', currentHp: 20 })
+		expect(new CharacterStore(backing).list()[0].play?.heroicInspiration).toBeUndefined()
+
+		store.setHeroicInspiration(character.id, true)
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ heroicInspiration: true })
+
+		store.setConcentration(character.id, 'Bless')
+		store.setHitPoints(character.id, { currentHp: 12 })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ heroicInspiration: true, concentratingOn: 'Bless' })
+
+		store.setHeroicInspiration(character.id, false)
+		store.setConcentration(character.id, null)
+		expect('play' in new CharacterStore(backing).list()[0]).toBe(false)
+	})
+
+	it('throws CharacterNotFoundError for an unknown id on a Heroic Inspiration write, and rejects a non-boolean stored value', () => {
+		expect(() => new CharacterStore(new MemoryStorage()).setHeroicInspiration('nope', true)).toThrow(CharacterNotFoundError)
+
+		const wrongType = new MemoryStorage()
+		wrongType.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], play: { heroicInspiration: 'yes' } }]))
+		expect(() => new CharacterStore(wrongType).list()).toThrow(CorruptDataError)
+	})
+
 	it('throws CharacterNotFoundError for an unknown id on a concentration write', () => {
 		expect(() => new CharacterStore(new MemoryStorage()).setConcentration('nope', 'Bless')).toThrow(CharacterNotFoundError)
 	})

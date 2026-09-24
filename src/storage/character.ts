@@ -380,6 +380,12 @@ export interface CharacterPlayState {
 	 * convention every field above uses.
 	 */
 	concentratingOn?: string | null
+	/**
+	 * Heroic Inspiration (R4b, D167) — a manual on/off the player toggles. Nothing
+	 * grants or spends it. Absent means off, and off is stored as absence, the
+	 * convention every field above uses.
+	 */
+	heroicInspiration?: boolean
 }
 
 /**
@@ -904,7 +910,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 43 for FeatChoiceDetails.proficiencies
+ * (see wireFormat.ts). Bumped to 44 for Character.play.heroicInspiration
+ * (R4b); 43 for FeatChoiceDetails.proficiencies
  * (build order task A2); 42 for Character.grantedFeats (D156); 41
  * added Character.appearance, .backstory and .notes (slice 9d2); 40 added Character.play.concentratingOn
  * (slice 9d1); 39 added Character.play.spentHitDice
@@ -917,4 +924,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 43
+export const CURRENT_SCHEMA_VERSION = 44

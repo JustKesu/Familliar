@@ -39,7 +39,7 @@ import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
 import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
-import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
+import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
@@ -143,7 +143,7 @@ import { parseDiceExpression, type DiceRoll } from '../dice/roll'
 import type { CharacterTextField, HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calculatedValue'
-import { SheetHeader } from './SheetHeader'
+import { ArmourClassNotes, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
 import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
 import { loadSpeciesTraitNames } from './speciesTraitNames'
@@ -229,7 +229,35 @@ function messageOf(error: unknown): string {
 }
 
 /** What the drawer is showing, if anything (D163). UI state only — never stored, never in the URL. */
-type DrawerContent = { kind: 'senses' } | { kind: 'ability'; ability: Ability } | { kind: 'rolls' }
+type DrawerContent =
+	| { kind: 'senses' }
+	| { kind: 'ability'; ability: Ability }
+	| { kind: 'rolls' }
+	| { kind: 'save'; ability: Ability }
+	| { kind: 'skill'; skill: Skill }
+	| { kind: 'saves' }
+	| { kind: 'skills' }
+	| { kind: 'stat'; stat: StatCard }
+
+/** D45: the dot per proficiency status; half and expertise keep their own symbols. */
+function ProfMark({ mark, status }: { mark: string; status: string }): ReactNode {
+	return (
+		<span className="sheet__prof-mark" data-status={status}>
+			{mark}
+		</span>
+	)
+}
+
+/** One row's value and its breakdown, open — the drawer's view of a save or skill (D166). */
+function RowBreakdown({ result }: { result: Calculated<{ modifier: number }> }): ReactNode {
+	if (result.status === 'unknown') return <UnresolvedValue reason={result.reason} />
+	return (
+		<>
+			<p className="drawer__value">{formatModifier(result.value.modifier)}</p>
+			<ValueBreakdown breakdown={result.breakdown} open />
+		</>
+	)
+}
 
 /** D133: details hide behind a gear, not behind new controls on the sheet. Stroke only, so it takes the button's own colour. */
 function GearIcon(): ReactNode {
@@ -1918,6 +1946,7 @@ function CharacterSheetBody({
 	onEditSpentSpellSlots,
 	onEditSpentHitDice,
 	onEditConcentration,
+	onEditHeroicInspiration,
 	onEditText,
 	onRest,
 	onEditCharacter,
@@ -1937,6 +1966,8 @@ function CharacterSheetBody({
 	onEditSpentHitDice?: (spentHitDice: Record<string, number> | undefined) => void
 	/** Sets or, with null, drops the spell being concentrated on (slice 9d1). Absent leaves the buttons and the header control off; the header line still shows a stored one. */
 	onEditConcentration?: (spellName: string | null) => void
+	/** Turns Heroic Inspiration on or off (R4b, D167). Absent leaves the checkbox showing the stored state, disabled. */
+	onEditHeroicInspiration?: (on: boolean) => void
 	/** Writes one of the three free-text fields, exactly as typed (slice 9d2). Absent leaves the textareas showing the stored text, read-only. */
 	onEditText?: (field: CharacterTextField, text: string) => void
 	/** Applies a finished rest in one write (slice 9b5). Absent leaves the header without the two rest buttons. */
@@ -2811,6 +2842,9 @@ function CharacterSheetBody({
 				onShortRest={onRest ? takeShortRest : undefined}
 				onLongRest={onRest ? takeLongRest : undefined}
 				onRoll={recordRoll}
+				onOpenBreakdown={(stat) => setDrawer({ kind: 'stat', stat })}
+				heroicInspiration={character.play?.heroicInspiration ?? false}
+				onToggleHeroicInspiration={onEditHeroicInspiration}
 				identity={
 					<div className="sheet__header">
 						<p className="sheet__identity">
@@ -2877,20 +2911,33 @@ function CharacterSheetBody({
 			<div className="sheet__left-a">
 
 			<section className="sheet__saving-throws">
-				<h2>Saving throws</h2>
+				<div className="sheet__card-heading">
+					<h2>Saving throws</h2>
+					<button type="button" className="sheet__icon-button" aria-label="Saving throws details" onClick={() => setDrawer({ kind: 'saves' })}>
+						<GearIcon />
+					</button>
+				</div>
 				<ul>
 					{ABILITIES.map((ability) => {
 						const result = savingThrows[ability]
 						return (
-							<li key={ability}>
-								<span className="sheet__prof-mark">{result.status === 'known' ? SAVE_STATUS_MARKS[result.value.status] : '?'}</span> {ABILITY_LABELS[ability]}:{' '}
+							<li key={ability} className="sheet__row">
+								<ProfMark mark={result.status === 'known' ? SAVE_STATUS_MARKS[result.value.status] : '?'} status={result.status === 'known' ? result.value.status : 'unknown'} />
+								<button
+									type="button"
+									className="sheet__row-name"
+									title={ABILITY_LABELS[ability]}
+									aria-label={`${ABILITY_LABELS[ability]} saving throw breakdown`}
+									onClick={() => setDrawer({ kind: 'save', ability })}
+								>
+									{ABILITY_LABELS[ability].slice(0, 3).toUpperCase()}
+								</button>
 								{result.status === 'unknown' ? (
 									<UnresolvedValue reason={result.reason} />
 								) : (
-									<>
-										<span className="sheet__stat-value">{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} onRoll={recordRoll} />
-									</>
+									<RollButton modifier={result.value.modifier} label={`${ABILITY_LABELS[ability]} saving throw`} onRoll={recordRoll}>
+										{formatModifier(result.value.modifier)}
+									</RollButton>
 								)}
 							</li>
 						)
@@ -2914,13 +2961,13 @@ function CharacterSheetBody({
 				</div>
 				<ul>
 					<li>
-						Passive Perception: <CalculatedValueOnly result={passivePerception} />
+						<span className="sheet__sense-number"><CalculatedValueOnly result={passivePerception} /></span> Passive Perception
 					</li>
 					<li>
-						Passive Investigation: <CalculatedValueOnly result={passiveInvestigation} />
+						<span className="sheet__sense-number"><CalculatedValueOnly result={passiveInvestigation} /></span> Passive Investigation
 					</li>
 					<li>
-						Passive Insight: <CalculatedValueOnly result={passiveInsight} />
+						<span className="sheet__sense-number"><CalculatedValueOnly result={passiveInsight} /></span> Passive Insight
 					</li>
 					<li>
 						Darkvision:{' '}
@@ -2938,20 +2985,35 @@ function CharacterSheetBody({
 			<div className="sheet__left-b">
 
 			<section className="sheet__skills">
-				<h2>Skills</h2>
+				<div className="sheet__card-heading">
+					<h2>Skills</h2>
+					<button type="button" className="sheet__icon-button" aria-label="Skills details" onClick={() => setDrawer({ kind: 'skills' })}>
+						<GearIcon />
+					</button>
+				</div>
 				<ul>
 					{SKILLS.map((skill) => {
 						const result = skills[skill]
 						return (
-							<li key={skill}>
-								<span className="sheet__prof-mark">{result.status === 'known' ? SKILL_STATUS_MARKS[result.value.status] : '?'}</span> {SKILL_LABELS[skill]}:{' '}
+							<li key={skill} className="sheet__row">
+								<ProfMark mark={result.status === 'known' ? SKILL_STATUS_MARKS[result.value.status] : '?'} status={result.status === 'known' ? result.value.status : 'unknown'} />
+								<span className="sheet__row-ability" title={ABILITY_LABELS[SKILL_ABILITIES[skill]]}>
+									{ABILITY_LABELS[SKILL_ABILITIES[skill]].slice(0, 3).toUpperCase()}
+								</span>
+								<button
+									type="button"
+									className="sheet__row-name sheet__row-name--skill"
+									aria-label={`${SKILL_LABELS[skill]} breakdown`}
+									onClick={() => setDrawer({ kind: 'skill', skill })}
+								>
+									{SKILL_LABELS[skill]}
+								</button>
 								{result.status === 'unknown' ? (
 									<UnresolvedValue reason={result.reason} />
 								) : (
-									<>
-										<span className="sheet__stat-value">{formatModifier(result.value.modifier)}</span> <ValueBreakdown breakdown={result.breakdown} />{' '}
-										<RollButton modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} onRoll={recordRoll} />
-									</>
+									<RollButton modifier={result.value.modifier} label={`${SKILL_LABELS[skill]} check`} onRoll={recordRoll}>
+										{formatModifier(result.value.modifier)}
+									</RollButton>
 								)}
 							</li>
 						)
@@ -3476,6 +3538,77 @@ function CharacterSheetBody({
 			{drawer?.kind === 'ability' && (
 				<Drawer title={ABILITY_LABELS[drawer.ability]} onClose={() => setDrawer(null)}>
 					<AbilityScorePanel result={abilityScores[drawer.ability]} />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'save' && (
+				<Drawer title={`${ABILITY_LABELS[drawer.ability]} saving throw`} onClose={() => setDrawer(null)}>
+					<RowBreakdown result={savingThrows[drawer.ability]} />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'skill' && (
+				<Drawer title={SKILL_LABELS[drawer.skill]} onClose={() => setDrawer(null)}>
+					<RowBreakdown result={skills[drawer.skill]} />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'saves' && (
+				<Drawer title="Saving throws" onClose={() => setDrawer(null)}>
+					{ABILITIES.map((ability) => (
+						<DrawerSection key={ability} title={ABILITY_LABELS[ability]}>
+							<RowBreakdown result={savingThrows[ability]} />
+						</DrawerSection>
+					))}
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'skills' && (
+				<Drawer title="Skills" onClose={() => setDrawer(null)}>
+					{SKILLS.map((skill) => (
+						<DrawerSection key={skill} title={SKILL_LABELS[skill]}>
+							<RowBreakdown result={skills[skill]} />
+						</DrawerSection>
+					))}
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'stat' && drawer.stat === 'proficiency' && (
+				<Drawer title="Proficiency bonus" onClose={() => setDrawer(null)}>
+					<CalculatedNumber result={proficiencyBonus} format={formatModifier} breakdownOpen />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'stat' && drawer.stat === 'initiative' && (
+				<Drawer title="Initiative" onClose={() => setDrawer(null)}>
+					<CalculatedNumber result={initiative} format={formatModifier} breakdownOpen />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'stat' && drawer.stat === 'speed' && (
+				<Drawer title="Speed" onClose={() => setDrawer(null)}>
+					{speed.status === 'unknown' ? (
+						<UnresolvedValue reason={speed.reason} />
+					) : (
+						<>
+							<p className="drawer__value">{formatSpeed(speed.value)}</p>
+							<ValueBreakdown breakdown={speed.breakdown} open />
+						</>
+					)}
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'stat' && drawer.stat === 'armour' && (
+				<Drawer title="Armour Class" onClose={() => setDrawer(null)}>
+					{armourClass.status === 'unknown' ? (
+						<UnresolvedValue reason={armourClass.reason} />
+					) : (
+						<>
+							<p className="drawer__value">{armourClass.value.value}</p>
+							<ValueBreakdown breakdown={armourClass.breakdown} open />
+							<ArmourClassNotes armourClass={armourClass.value} formulaError={acFormulaKeysError} />
+						</>
+					)}
 				</Drawer>
 			)}
 		</article>

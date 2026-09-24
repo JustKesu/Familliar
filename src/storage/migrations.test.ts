@@ -448,6 +448,15 @@ describe('the migration chain (D69)', () => {
 		expect((migrated['play'] as Record<string, unknown>)['concentratingOn']).toBeUndefined()
 	})
 
+	/* R4b (D167): heroicInspiration is purely additive, so a version-43 character loads as "off" with nothing written. */
+	it('tags a version-43 character without inventing Heroic Inspiration', () => {
+		const before = { schemaVersion: 43, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect((migrated['play'] as Record<string, unknown>)['heroicInspiration']).toBeUndefined()
+	})
+
 	/* Slice 9d2: three purely additive fields, so the step only tags — nothing written is what absence already means. */
 	it('tags a version-40 character without inventing any free text', () => {
 		const before = { schemaVersion: 40, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }

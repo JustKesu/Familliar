@@ -869,6 +869,9 @@ export function describePlayError(value: unknown): string | null {
 	if (concentratingOn !== undefined && concentratingOn !== null && (typeof concentratingOn !== 'string' || concentratingOn.length === 0)) {
 		return 'play.concentratingOn must be a spell name or null'
 	}
+
+	const heroicInspiration = value['heroicInspiration']
+	if (heroicInspiration !== undefined && typeof heroicInspiration !== 'boolean') return 'play.heroicInspiration must be true or false'
 	return null
 }
 
@@ -993,6 +996,7 @@ function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayStat
 		...(isRecord(spentSpellSlots) ? { spentSpellSlots: toSpentSpellSlots(spentSpellSlots) } : {}),
 		...(isRecord(spentHitDice) ? { spentHitDice: { ...(spentHitDice as Record<string, number>) } } : {}),
 		...(typeof concentratingOn === 'string' ? { concentratingOn } : {}),
+		...(value['heroicInspiration'] === true ? { heroicInspiration: true } : {}),
 	}
 }
 

@@ -52,15 +52,60 @@ import {
 } from '../hitPoints/deathSaves'
 import type { CharacterDeathSaves } from '../storage/character'
 import type { HitPointFields } from '../storage/characterStore'
-import { CalculatedNumber, formatModifier } from './calculatedValue'
+import { CalculatedValueOnly, formatModifier } from './calculatedValue'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 
-function formatSpeed(speed: SpeedValue): string {
+export type StatCard = 'proficiency' | 'speed' | 'initiative' | 'armour'
+
+export function formatSpeed(speed: SpeedValue): string {
 	const parts = [`${speed.walk} ft.`]
 	if (speed.fly) parts.push(`fly ${speed.fly} ft.`)
 	if (speed.swim) parts.push(`swim ${speed.swim} ft.`)
 	if (speed.climb) parts.push(`climb ${speed.climb} ft.`)
 	return parts.join(', ')
+}
+
+/** The non-walking speeds, for the small line under the Speed value; empty when there are none. */
+function otherSpeeds(speed: SpeedValue): string {
+	return formatSpeed(speed).split(', ').slice(1).join(' · ')
+}
+
+/** Short flags for the AC card; the full sentences are in the drawer (ArmourClassNotes). */
+function armourClassNote(ac: ArmourClassValue, formulaError: string | null): string {
+	const flags: string[] = []
+	if (ac.incomplete.length > 0 || ac.armourNotSet.length > 0 || formulaError) flags.push('⚠ incomplete')
+	if (ac.stealthDisadvantage.length > 0) flags.push('Stealth disadv.')
+	return flags.join(' · ')
+}
+
+/** The AC card's own messages, in full — moved out of the 86px card into its drawer view (D166). */
+export function ArmourClassNotes({ armourClass, formulaError }: { armourClass: ArmourClassValue; formulaError: string | null }): ReactNode {
+	return (
+		<>
+			{armourClass.incomplete.length > 0 && (
+				<p className="error">Incomplete — equipped but not found in the item data: {armourClass.incomplete.join(', ')}.</p>
+			)}
+			{/* A worn custom suit with no Armour Class on it. Named rather than left to read as "no armour equipped" (slice e2b). */}
+			{armourClass.armourNotSet.length > 0 && <p className="error sheet__armour-not-set">Incomplete — {armourClass.armourNotSet.join('; ')}.</p>}
+			{/* A Stealth penalty is shown, never computed into anything. */}
+			{armourClass.stealthDisadvantage.length > 0 && (
+				<p className="sheet__stealth-note">Disadvantage on Stealth checks ({armourClass.stealthDisadvantage.join(', ')}).</p>
+			)}
+			{formulaError && <p className="error">Could not check for alternative AC formulas: {formulaError}</p>}
+		</>
+	)
+}
+
+/** The card label is the button that opens its breakdown in the drawer; without a drawer to open it stays plain text. */
+function CardLabel({ stat, text, aria, onOpen }: { stat: StatCard; text: string; aria: string; onOpen?: (stat: StatCard) => void }): ReactNode {
+	if (!onOpen) return <h2>{text}</h2>
+	return (
+		<h2>
+			<button type="button" className="sheet__card-label" aria-label={aria} onClick={() => onOpen(stat)}>
+				{text}
+			</button>
+		</h2>
+	)
 }
 
 /** A blank field is "not set" (shown as "—"), which is not 0. Commits on blur or Enter, never per keystroke — the value round-trips through storage. */
@@ -269,10 +314,18 @@ export function SheetHeader({
 	onShortRest,
 	onLongRest,
 	onRoll,
+	onOpenBreakdown,
+	heroicInspiration,
+	onToggleHeroicInspiration,
 	identity,
 	abilities,
 	defenses,
 }: {
+	/** R4b (D166): a card label opens that card's breakdown in the drawer. Absent leaves the labels plain text. */
+	onOpenBreakdown?: (stat: StatCard) => void
+	/** R4b (D167): a manual on/off. Absent handler shows it read-only. */
+	heroicInspiration?: boolean
+	onToggleHeroicInspiration?: (on: boolean) => void
 	name: string
 	/** Rework R2: the species/class/level line and the Edit/Level up controls beside it, built by the caller that holds the character. */
 	identity?: ReactNode
@@ -360,67 +413,69 @@ export function SheetHeader({
 			{abilities}
 
 			<section className="sheet__proficiency-bonus">
-				<h2>Proficiency bonus</h2>
-				<div>
-					<CalculatedNumber result={proficiencyBonus} format={formatModifier} />
+				<CardLabel stat="proficiency" text="Prof." aria="Proficiency bonus breakdown" onOpen={onOpenBreakdown} />
+				<div className="sheet__card-value">
+					<CalculatedValueOnly result={proficiencyBonus} format={formatModifier} />
 				</div>
 			</section>
 
 			<section className="sheet__speed">
-				<h2>Speed</h2>
-				<div>
+				<CardLabel stat="speed" text="Speed" aria="Speed breakdown" onOpen={onOpenBreakdown} />
+				<div className="sheet__card-value">
 					{speed.status === 'unknown' ? (
 						<UnresolvedValue reason={speed.reason} />
 					) : (
 						<>
-							<span>{formatSpeed(speed.value)}</span> <ValueBreakdown breakdown={speed.breakdown} />
+							{speed.value.walk}
+							<span className="sheet__card-unit"> ft</span>
 						</>
 					)}
 				</div>
+				{speed.status === 'known' && otherSpeeds(speed.value) && <p className="sheet__card-note">{otherSpeeds(speed.value)}</p>}
 			</section>
 
 			<section className="sheet__initiative">
-				<h2>Initiative</h2>
-				{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
-				<div>
-					<CalculatedNumber result={initiative} format={formatModifier} />
-					{initiative.status === 'known' && (
-						<>
-							{' '}
-							<RollButton modifier={initiative.value} label="initiative" onRoll={onRoll} />
-						</>
+				<CardLabel stat="initiative" text="Initiative" aria="Initiative breakdown" onOpen={onOpenBreakdown} />
+				<div className="sheet__card-value">
+					{initiative.status === 'unknown' ? (
+						<UnresolvedValue reason={initiative.reason} />
+					) : (
+						<RollButton modifier={initiative.value} label="initiative" onRoll={onRoll}>
+							{formatModifier(initiative.value)}
+						</RollButton>
 					)}
 				</div>
 			</section>
 
 			<section className="sheet__armour-class">
-				<h2>Armour Class</h2>
+				<CardLabel stat="armour" text="Armour Class" aria="Armour Class breakdown" onOpen={onOpenBreakdown} />
 				{armourClassLoading ? (
-					<p>Loading…</p>
+					<p className="sheet__card-value">Loading…</p>
 				) : armourClass.status === 'unknown' ? (
 					<UnresolvedValue reason={armourClass.reason} />
 				) : (
 					<>
-						<p className="sheet__armour-class-value">{armourClass.value.value}</p>
-						<ValueBreakdown breakdown={armourClass.breakdown} />
-						{armourClass.value.incomplete.length > 0 && (
-							<p className="error">
-								Incomplete — equipped but not found in the item data: {armourClass.value.incomplete.join(', ')}.
-							</p>
-						)}
-						{/* A worn custom suit with no Armour Class on it. Named rather than left to read as "no armour equipped" (slice e2b). */}
-						{armourClass.value.armourNotSet.length > 0 && (
-							<p className="error sheet__armour-not-set">Incomplete — {armourClass.value.armourNotSet.join('; ')}.</p>
-						)}
-						{/* A Stealth penalty is shown, never computed into anything. */}
-						{armourClass.value.stealthDisadvantage.length > 0 && (
-							<p className="sheet__stealth-note">
-								Disadvantage on Stealth checks ({armourClass.value.stealthDisadvantage.join(', ')}).
-							</p>
-						)}
-						{acFormulaKeysError && <p className="error">Could not check for alternative AC formulas: {acFormulaKeysError}</p>}
+						<p className="sheet__card-value sheet__armour-class-value">{armourClass.value.value}</p>
+						{armourClassNote(armourClass.value, acFormulaKeysError) && <p className="sheet__card-note">{armourClassNote(armourClass.value, acFormulaKeysError)}</p>}
 					</>
 				)}
+			</section>
+
+			<section className="sheet__heroic-inspiration">
+				<label>
+					<input
+						type="checkbox"
+						aria-label="Heroic Inspiration"
+						checked={heroicInspiration ?? false}
+						disabled={!onToggleHeroicInspiration}
+						onChange={(event) => onToggleHeroicInspiration?.(event.target.checked)}
+					/>
+					<span className="sheet__card-note" aria-hidden="true">
+						HEROIC
+						<br />
+						INSPIRATION
+					</span>
+				</label>
 			</section>
 
 			<section className="sheet__hit-points">

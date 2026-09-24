@@ -374,6 +374,15 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 43 }),
 	},
+	{
+		from: 43,
+		to: 44,
+		/*
+		 * 44 adds Character.play.heroicInspiration (R4b, D167). Purely additive:
+		 * absence already means "off", so the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 44 }),
+	},
 ]
 
 /**

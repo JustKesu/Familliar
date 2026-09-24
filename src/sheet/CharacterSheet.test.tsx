@@ -425,6 +425,12 @@ function lastRoll(): { label: string; dice: number[]; kept: number[]; modifier: 
 	}
 }
 
+/** R4b (D166): a card's breakdown is only in the drawer its label opens — the button's name, e.g. 'Armour Class breakdown'. Returns the drawer's text. */
+async function drawerText(buttonName: string): Promise<string> {
+	await userEvent.setup().click(screen.getByRole('button', { name: buttonName }))
+	return screen.getByRole('dialog', { name: buttonName.replace(' breakdown', '') }).textContent ?? ''
+}
+
 function modeSwitch(): HTMLElement {
 	return screen.getByRole('group', { name: 'Roll mode' })
 }
@@ -455,7 +461,7 @@ describe('CharacterSheet', () => {
 
 		/** The number printed in the row, read from the value box so a roll's own "+ 5" — or the proficiency dot (R3, D154) — is never mistaken for it. */
 		function printedModifier(item: HTMLElement): number {
-			const text = item.querySelector('.sheet__stat-value')!.textContent!.trim()
+			const text = item.querySelector('.roll-value')!.textContent!.trim()
 			return Number(text.replace('−', '-').replace('+', ''))
 		}
 
@@ -468,7 +474,7 @@ describe('CharacterSheet', () => {
 		it('rolls a d20 plus the printed modifier for a saving throw, leaving the printed number alone', async () => {
 			const user = userEvent.setup()
 			const { container } = await renderKnown()
-			const item = listItem(container, '.sheet__saving-throws', 'Strength:')
+			const item = listItem(container, '.sheet__saving-throws', 'STR')
 			const printed = printedModifier(item)
 			expect(toastElement()).toBeNull()
 
@@ -514,7 +520,7 @@ describe('CharacterSheet', () => {
 			] as const)('rolls two d20s with %s, names the kept one and leaves the printed modifier alone', async (mode, pick) => {
 				const user = userEvent.setup()
 				const { container } = await renderKnown()
-				const item = listItem(container, '.sheet__saving-throws', 'Strength:')
+				const item = listItem(container, '.sheet__saving-throws', 'STR')
 				const printed = printedModifier(item)
 
 				for (let i = 0; i < 5; i++) {
@@ -533,7 +539,7 @@ describe('CharacterSheet', () => {
 				const { container } = await renderKnown()
 				for (const section of ['.ability-cards', '.sheet__saving-throws', '.sheet__skills']) {
 					expect(container.querySelector(`${section} select`)).toBeNull()
-					expect(container.querySelectorAll(`${section} .dice-roll__button`).length).toBeGreaterThan(0)
+					expect(container.querySelectorAll(`${section} .roll-value`).length).toBeGreaterThan(0)
 				}
 				expect(container.querySelectorAll('.sheet__persistent-header .roll-mode')).toHaveLength(1)
 			})
@@ -543,7 +549,7 @@ describe('CharacterSheet', () => {
 			const user = userEvent.setup()
 			const { container } = await renderKnown()
 
-			const skill = listItem(container, '.sheet__skills', 'Athletics:')
+			const skill = listItem(container, '.sheet__skills', 'Athletics')
 			await user.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
 			const skillRoll = lastRoll()
 			expect(skillRoll.label).toBe('Athletics check')
@@ -559,7 +565,7 @@ describe('CharacterSheet', () => {
 
 		it('gives every roll button its own name, and puts none on the passive values', async () => {
 			const { container } = await renderKnown()
-			const labels = (section: string) => Array.from(container.querySelectorAll(`${section} .dice-roll__button`)).map((b) => b.getAttribute('aria-label'))
+			const labels = (section: string) => Array.from(container.querySelectorAll(`${section} .roll-value`)).map((b) => b.getAttribute('aria-label'))
 			const all = [...labels('.ability-cards'), ...labels('.sheet__saving-throws'), ...labels('.sheet__skills')]
 			expect(labels('.ability-cards')).toHaveLength(6)
 			expect(labels('.sheet__saving-throws')).toHaveLength(6)
@@ -630,7 +636,7 @@ describe('CharacterSheet', () => {
 			const incomplete: Character = { id: 'c2', name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }] }
 			const { container } = await renderKnown(incomplete)
 			for (const section of ['.ability-cards', '.sheet__saving-throws', '.sheet__skills']) {
-				expect(container.querySelectorAll(`${section} .dice-roll__button`)).toHaveLength(0)
+				expect(container.querySelectorAll(`${section} .roll-value`)).toHaveLength(0)
 			}
 			for (const section of ['.sheet__saving-throws', '.sheet__skills']) {
 				expect(container.querySelector(section)!.textContent).toContain('unresolved')
@@ -670,13 +676,13 @@ describe('CharacterSheet', () => {
 		const strengthSave = computeSavingThrow('strength', character, CLASS_DATA)
 		expect(strengthSave.status).toBe('known')
 		if (strengthSave.status === 'known') {
-			const item = Array.from(savesSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Strength:'))
+			const item = Array.from(savesSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('STR'))
 			expect(item?.textContent).toContain('●')
 			expect(item?.textContent).toContain(`+${strengthSave.value.modifier}`)
 		}
 
 		// Dexterity: Fighter is not proficient (only str/con above).
-		const dexItem = Array.from(savesSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Dexterity:'))
+		const dexItem = Array.from(savesSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('DEX'))
 		expect(dexItem?.textContent).toContain('○')
 	})
 
@@ -702,25 +708,49 @@ describe('CharacterSheet', () => {
 		await screen.findByRole('heading', { name: 'Aria' })
 
 		const savesSection = container.querySelector('.sheet__saving-throws')!
-		const dexItem = Array.from(savesSection.querySelectorAll('li')).find((li) => li.textContent?.includes('Dexterity:'))
+		const dexItem = Array.from(savesSection.querySelectorAll('li')).find((li) => li.textContent?.includes('DEX'))
 		expect(dexItem?.textContent).toContain('○')
 		expect(dexItem?.textContent).not.toContain('●')
 	})
 
-	it('breakdown starts collapsed and shows contributions once opened', async () => {
+	it('R4b (D166): a saving throw row carries no inline breakdown; its name opens it in the drawer, open', async () => {
 		const user = userEvent.setup()
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
-		// Rework R3: ability cards carry no breakdown (D146 territory); saving throws are the left column's own value with one.
 		const saves = document.querySelector<HTMLElement>('.sheet__saving-throws')!
-		const details = within(saves).getAllByText('Breakdown')[0].closest('details')
-		expect(details).not.toBeNull()
-		expect(details?.hasAttribute('open')).toBe(false)
+		expect(saves.querySelector('details')).toBeNull()
 
-		await user.click(within(saves).getAllByText('Breakdown')[0])
-		expect(details?.hasAttribute('open')).toBe(true)
-		expect(details?.textContent).toContain('modifier')
+		await user.click(screen.getByRole('button', { name: 'Strength saving throw breakdown' }))
+		const open = screen.getByRole('dialog', { name: 'Strength saving throw' })
+		expect((within(open).getByText('Breakdown').closest('details') as HTMLDetailsElement).open).toBe(true)
+		expect(open.textContent).toContain('modifier')
+	})
+
+	it('R4b (D166): the gear on Saving throws and on Skills opens every row with its breakdown expanded', async () => {
+		const user = userEvent.setup()
+		render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		await user.click(screen.getByRole('button', { name: 'Saving throws details' }))
+		let open = screen.getByRole('dialog', { name: 'Saving throws' })
+		expect(within(open).getAllByText('Breakdown')).toHaveLength(6)
+		for (const summary of within(open).getAllByText('Breakdown')) expect((summary.closest('details') as HTMLDetailsElement).open).toBe(true)
+
+		await user.click(screen.getByRole('button', { name: 'Skills details' }))
+		open = screen.getByRole('dialog', { name: 'Skills' })
+		expect(document.querySelectorAll('.drawer')).toHaveLength(1)
+		expect(within(open).getAllByText('Breakdown')).toHaveLength(18)
+	})
+
+	it('R4b (D166): a skill name opens that skill’s breakdown in the drawer', async () => {
+		const user = userEvent.setup()
+		render(<CharacterSheet character={character} />)
+		await screen.findByRole('heading', { name: 'Aria' })
+
+		await user.click(screen.getByRole('button', { name: 'Athletics breakdown' }))
+		const open = screen.getByRole('dialog', { name: 'Athletics' })
+		expect(open.textContent).toContain('proficiency')
 	})
 
 	/* Rework R4 (D163): the shared drawer, and the two panels that first live in it. */
@@ -824,7 +854,7 @@ describe('CharacterSheet', () => {
 		expect(await screen.findByRole('heading', { name: 'Bran' })).toBeTruthy()
 		expect(screen.getAllByText(/unresolved/)[0]).toBeTruthy()
 		// The rest of the sheet still renders — proficiency bonus only needs classes.
-		expect(screen.getByText('Proficiency bonus')).toBeTruthy()
+		expect(screen.getByRole('button', { name: 'Proficiency bonus breakdown' })).toBeTruthy()
 	})
 
 	it('Rogue with expertise shows the expertise mark and doubled proficiency bonus on the chosen skill', async () => {
@@ -847,7 +877,7 @@ describe('CharacterSheet', () => {
 		if (expected.status !== 'known') return
 
 		const skillsSection = container.querySelector('.sheet__skills')
-		const item = Array.from(skillsSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Stealth:'))
+		const item = Array.from(skillsSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Stealth'))
 		expect(item?.textContent).toContain('★')
 		expect(item?.textContent).toContain(expected.value.modifier >= 0 ? `+${expected.value.modifier}` : `${expected.value.modifier}`)
 	})
@@ -866,7 +896,7 @@ describe('CharacterSheet', () => {
 		await screen.findByRole('heading', { name: 'Lyric' })
 
 		const skillsSection = container.querySelector('.sheet__skills')
-		const item = Array.from(skillsSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Arcana:'))
+		const item = Array.from(skillsSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Arcana'))
 		expect(item?.textContent).toContain('◐')
 	})
 
@@ -887,13 +917,13 @@ describe('CharacterSheet', () => {
 		await screen.findByRole('heading', { name: 'Sable' })
 
 		const skillsSection = container.querySelector('.sheet__skills')
-		const item = Array.from(skillsSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Perception:'))
+		const item = Array.from(skillsSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Perception'))
 		expect(item?.textContent).toContain('●')
 
-		const breakdownSummary = item!.querySelector('summary')!
-		await user.click(breakdownSummary)
-		expect(item!.textContent).toContain('class')
-		expect(item!.textContent).toContain('species')
+		await user.click(screen.getByRole('button', { name: 'Perception breakdown' }))
+		const open = screen.getByRole('dialog', { name: 'Perception' })
+		expect(open.textContent).toContain('class')
+		expect(open.textContent).toContain('species')
 
 		const expected = computeSkill('perception', twoSources)
 		expect(expected.status).toBe('known')
@@ -917,9 +947,9 @@ describe('CharacterSheet', () => {
 		const { container } = render(<CharacterSheet character={alertCharacter} />)
 		await screen.findByRole('heading', { name: 'Watchful' })
 
-		const initiativeSection = container.querySelector('.sheet__initiative')!
-		await user.click(initiativeSection.querySelector('summary')!)
-		expect(initiativeSection.textContent).toContain('not computed')
+		expect(container.querySelector('.sheet__initiative')!.querySelector('details')).toBeNull()
+		await user.click(screen.getByRole('button', { name: 'Initiative breakdown' }))
+		expect(screen.getByRole('dialog', { name: 'Initiative' }).textContent).toContain('not computed')
 	})
 
 	it('a species with an unresolved size choice shows "unresolved", never Medium', async () => {
@@ -1190,14 +1220,14 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(character)
 			// DEX 14 = +2.
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
-			expect(acSection(container).textContent).toContain('no armour equipped')
+			expect((await drawerText('Armour Class breakdown'))).toContain('no armour equipped')
 		})
 
 		it('armour the character owns but is not wearing changes nothing, and is named as the reason', async () => {
 			const owns: Character = { ...character, id: 'ac-owns', inventory: [{ name: 'Chain Mail', source: 'XPHB', quantity: 1 }] }
 			const { container } = await renderSheet(owns)
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
-			expect(acSection(container).textContent).toContain('Chain Mail is carried but not worn')
+			expect((await drawerText('Armour Class breakdown'))).toContain('Chain Mail is carried but not worn')
 		})
 
 		it('worn chain mail and a held shield give 18, with the Stealth penalty shown but not computed', async () => {
@@ -1211,7 +1241,7 @@ describe('CharacterSheet', () => {
 			}
 			const { container } = await renderSheet(armoured)
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('18')
-			expect(acSection(container).textContent).toContain('Disadvantage on Stealth checks (Chain Mail)')
+			expect((await drawerText('Armour Class breakdown'))).toContain('Disadvantage on Stealth checks (Chain Mail)')
 		})
 
 		it('equipping reports the item as worn, and equipping a second suit says what it displaced', async () => {
@@ -1263,9 +1293,9 @@ describe('CharacterSheet', () => {
 
 		it('an equipped item the item data does not know leaves the AC marked incomplete (D43)', async () => {
 			const stale: Character = { ...character, id: 'ac-stale', inventory: [{ name: 'Mystery Plate', source: 'HOMEBREW', quantity: 1, equipped: 'worn' }] }
-			const { container } = await renderSheet(stale)
-			expect(acSection(container).textContent).toContain('Incomplete')
-			expect(acSection(container).textContent).toContain('Mystery Plate (HOMEBREW)')
+			await renderSheet(stale)
+			expect((await drawerText('Armour Class breakdown'))).toContain('Incomplete')
+			expect((await drawerText('Armour Class breakdown'))).toContain('Mystery Plate (HOMEBREW)')
 		})
 
 		it("a Barbarian's Unarmored Defense wins over the plain unarmoured number, with the loser still shown", async () => {
@@ -1278,8 +1308,8 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(barbarian)
 			// DEX 14 (+2) + CON 13 (+1) + 10 = 13, against 12 unarmoured.
 			await waitFor(() => expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('13'))
-			expect(acSection(container).textContent).toContain('Unarmored Defense (Barbarian) base')
-			expect(acSection(container).textContent).toContain('considered (10 + Dex = 12)')
+			expect((await drawerText('Armour Class breakdown'))).toContain('Unarmored Defense (Barbarian) base')
+			expect((await drawerText('Armour Class breakdown'))).toContain('considered (10 + Dex = 12)')
 		})
 
 		it('heavy armour worn without the Strength it requires costs 10 feet of speed, with the reason in the speed breakdown', async () => {
@@ -1291,9 +1321,8 @@ describe('CharacterSheet', () => {
 			}
 			const { container } = await renderSheet(weak)
 			// Speed lives in the persistent header (slice 1), no longer in the traits section.
-			const speedItem = container.querySelector('.sheet__speed')!
-			await waitFor(() => expect(speedItem.textContent).toContain('20 ft.'))
-			expect(speedItem.textContent).toContain('Chain Mail (Strength 13 required, you have 10)')
+			await waitFor(() => expect(container.querySelector('.sheet__speed .sheet__card-value')!.textContent).toContain('20'))
+			expect(await drawerText('Speed breakdown')).toContain('Chain Mail (Strength 13 required, you have 10)')
 		})
 	})
 
@@ -2281,8 +2310,8 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(worn)
 			// 12 base + Dex 2 + 1 magic.
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('15')
-			expect(acSection(container).textContent).toContain("magic bonus (Glamoured Studded Leather's own)")
-			expect(acSection(container).textContent).toContain('Glamoured Studded Leather +1')
+			expect((await drawerText('Armour Class breakdown'))).toContain("magic bonus (Glamoured Studded Leather's own)")
+			expect((await drawerText('Armour Class breakdown'))).toContain('Glamoured Studded Leather +1')
 		})
 
 		it('a weapon bonus carried by the data reaches both the attack roll and the damage roll', async () => {
@@ -2538,10 +2567,9 @@ describe('CharacterSheet', () => {
 			return container.querySelector('.sheet__armour-class') as HTMLElement
 		}
 
-		function saveNamed(container: HTMLElement, ability: string): HTMLElement {
-			const row = Array.from(container.querySelectorAll('.sheet__saving-throws li')).find((li) => li.textContent?.includes(`${ability}:`))
-			if (!row) throw new Error(`no saving throw row for ${ability}`)
-			return row as HTMLElement
+		/** R4b: the row shows only the value; the breakdown is in the drawer its name opens. */
+		function saveNamed(ability: string): Promise<string> {
+			return drawerText(`${ability} saving throw breakdown`)
 		}
 
 		async function renderSheet(subject: Character) {
@@ -2561,10 +2589,11 @@ describe('CharacterSheet', () => {
 
 			// Unarmoured 10 + Dex 2, plus the cloak.
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('13')
-			expect(acSection(container).textContent).toContain('Cloak of Protection')
+			expect((await drawerText('Armour Class breakdown'))).toContain('Cloak of Protection')
 			// DEX save: +2 modifier, no proficiency, plus the cloak.
-			expect(saveNamed(container, 'Dexterity').textContent).toContain('+3')
-			expect(saveNamed(container, 'Dexterity').textContent).toContain('Cloak of Protection')
+			const dexSave = await saveNamed('Dexterity')
+			expect(dexSave).toContain('+3')
+			expect(dexSave).toContain('Cloak of Protection')
 		})
 
 		it('the same cloak carried unattuned reaches neither, and both places say why (D76)', async () => {
@@ -2572,9 +2601,10 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(owner)
 
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
-			expect(acSection(container).textContent).toContain('considered (+1) — not applied: requires attunement and you are not attuned to it')
-			expect(saveNamed(container, 'Dexterity').textContent).toContain('+2')
-			expect(saveNamed(container, 'Dexterity').textContent).toContain('considered (+1) — not applied:')
+			expect((await drawerText('Armour Class breakdown'))).toContain('considered (+1) — not applied: requires attunement and you are not attuned to it')
+			const dexSave = await saveNamed('Dexterity')
+			expect(dexSave).toContain('+2')
+			expect(dexSave).toContain('considered (+1) — not applied:')
 		})
 
 		it('two attuned bonus-carrying items each get their own breakdown line', async () => {
@@ -2589,10 +2619,10 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(owner)
 
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('14')
-			const dexSave = saveNamed(container, 'Dexterity')
-			expect(dexSave.textContent).toContain('+4')
-			expect(dexSave.textContent).toContain('Cloak of Protection')
-			expect(dexSave.textContent).toContain('Ring of Protection')
+			const dexSave = await saveNamed('Dexterity')
+			expect(dexSave).toContain('+4')
+			expect(dexSave).toContain('Cloak of Protection')
+			expect(dexSave).toContain('Ring of Protection')
 		})
 
 		it('a spell attack bonus and a spell save DC bonus each reach their own value', async () => {
@@ -2620,19 +2650,19 @@ describe('CharacterSheet', () => {
 			const owner: Character = { ...character, id: 'fb-ioun', inventory: [{ name: 'Ioun Stone, Mastery', source: 'XDMG', quantity: 1, attuned: true }] }
 			const { container } = await renderSheet(owner)
 
-			const section = container.querySelector('.sheet__proficiency-bonus')!
-			expect(section.textContent).toContain('+3')
-			expect(section.textContent).toContain('Ioun Stone, Mastery')
-			expect(section.textContent).toContain('would have to be re-routed')
+			expect(container.querySelector('.sheet__proficiency-bonus')!.textContent).toContain('+3')
+			const breakdown = await drawerText('Proficiency bonus breakdown')
+			expect(breakdown).toContain('Ioun Stone, Mastery')
+			expect(breakdown).toContain('would have to be re-routed')
 		})
 
 		it('an attuned row the item data does not know is named against the values it might have touched (D43)', async () => {
 			const owner: Character = { ...character, id: 'fb-missing', inventory: [{ name: 'Amulet of Nothing', source: 'HB', quantity: 1, attuned: true }] }
 			const { container } = await renderSheet(owner)
 
-			expect(acSection(container).textContent).toContain('Amulet of Nothing')
-			expect(acSection(container).textContent).toContain('attuned but not found in the item data (HB)')
-			expect(saveNamed(container, 'Wisdom').textContent).toContain('attuned but not found in the item data (HB)')
+			expect((await drawerText('Armour Class breakdown'))).toContain('Amulet of Nothing')
+			expect((await drawerText('Armour Class breakdown'))).toContain('attuned but not found in the item data (HB)')
+			expect(await saveNamed('Wisdom')).toContain('attuned but not found in the item data (HB)')
 			// The numbers still stand on everything that did resolve (D43).
 			expect(acSection(container).querySelector('.sheet__armour-class-value')!.textContent).toBe('12')
 		})
@@ -2968,13 +2998,15 @@ describe('CharacterSheet', () => {
 
 			const hampering = await renderSheet({ ...character, id: 'ci-stealth-on', inventory: [suit(true)] })
 			await waitFor(() => expect(hampering.container.querySelector('.sheet__armour-class-value')!.textContent).toBe('16'))
-			expect(hampering.container.querySelector('.sheet__stealth-note')!.textContent).toContain('Disadvantage on Stealth checks (Bark Plate)')
+			expect(await drawerText('Armour Class breakdown')).toContain('Disadvantage on Stealth checks (Bark Plate)')
+			expect(hampering.container.querySelector('.sheet__armour-class .sheet__card-note')!.textContent).toContain('Stealth disadv.')
 			cleanup()
 
 			const quiet = await renderSheet({ ...character, id: 'ci-stealth-off', inventory: [suit(undefined)] })
 			// The armour is unchanged — only the note goes.
 			await waitFor(() => expect(quiet.container.querySelector('.sheet__armour-class-value')!.textContent).toBe('16'))
-			expect(quiet.container.querySelector('.sheet__stealth-note')).toBeNull()
+			await drawerText('Armour Class breakdown')
+			expect(document.querySelector('.sheet__stealth-note')).toBeNull()
 		})
 
 		it('a custom suit costs 10 feet of speed to a character below the Strength it asks for', async () => {
@@ -2993,9 +3025,8 @@ describe('CharacterSheet', () => {
 				],
 			}
 			const { container } = await renderSheet(weak)
-			const speedItem = container.querySelector('.sheet__speed')!
-			await waitFor(() => expect(speedItem.textContent).toContain('20 ft.'))
-			expect(speedItem.textContent).toContain('Bark Plate (Strength 13 required, you have 10)')
+			await waitFor(() => expect(container.querySelector('.sheet__speed .sheet__card-value')!.textContent).toContain('20'))
+			expect(await drawerText('Speed breakdown')).toContain('Bark Plate (Strength 13 required, you have 10)')
 		})
 
 		it('shows the row with its description, its value and a custom marker', async () => {
@@ -3181,7 +3212,7 @@ describe('CharacterSheet', () => {
 			)
 			// Heavy armour allows no Dexterity bonus at all — the same rule a real suit follows.
 			expect(await armourClassOf(heavy.container)).toBe('14')
-			expect(heavy.container.querySelector('.sheet__armour-class')!.textContent).toContain('heavy armour allows no Dexterity bonus')
+			expect(await drawerText('Armour Class breakdown')).toContain('heavy armour allows no Dexterity bonus')
 		})
 
 		it('a custom shield adds its bonus on top of the suit', async () => {
@@ -3200,10 +3231,12 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(owning('e2b-unset', customRow({ name: 'Bark Plate', kind: 'armour' }, { equipped: 'worn' })))
 
 			expect(await armourClassOf(container)).toBe('12')
-			const section = container.querySelector('.sheet__armour-class')!
-			expect(section.textContent).toContain('Bark Plate is equipped, but its Armour Class is not set')
-			expect(section.textContent).not.toContain('no armour equipped')
+			const notes = await drawerText('Armour Class breakdown')
+			expect(notes).toContain('Bark Plate is equipped, but its Armour Class is not set')
+			expect(notes).not.toContain('no armour equipped')
 			expect(container.querySelector('.sheet__armour-not-set')).toBeTruthy()
+			// The 86px card keeps only the flag; the sentence is in the drawer.
+			expect(container.querySelector('.sheet__armour-class .sheet__card-note')!.textContent).toContain('incomplete')
 		})
 
 		it('a held custom weapon produces an attack line with the right to-hit and damage', async () => {
@@ -3256,9 +3289,10 @@ describe('CharacterSheet', () => {
 
 		it('a custom item’s speed adjustment reaches the walking speed', async () => {
 			const { container } = await renderSheet(owning('e2b-speed', customRow({ name: 'Bounding Boots', kind: 'worn', speedBonus: 10 })))
-			const speed = traitLine(container, 'Speed')
-			await waitFor(() => expect(speed.textContent).toContain('40 ft.'))
-			expect(speed.textContent).toContain('Bounding Boots')
+			await waitFor(() => expect(container.querySelector('.sheet__speed .sheet__card-value')!.textContent).toContain('40'))
+			const breakdown = await drawerText('Speed breakdown')
+			expect(breakdown).toContain('40 ft.')
+			expect(breakdown).toContain('Bounding Boots')
 		})
 
 		it('a custom item’s darkvision reaches the value, beating the species figure rather than adding to it', async () => {
@@ -3279,7 +3313,7 @@ describe('CharacterSheet', () => {
 
 			// Nothing is worn, so 10 + Dex 2 + the charm's 1.
 			expect(await armourClassOf(container)).toBe('13')
-			const constitution = Array.from(container.querySelectorAll('.sheet__saving-throws li')).find((li) => li.textContent?.includes('Constitution'))!
+			const constitution = Array.from(container.querySelectorAll('.sheet__saving-throws li')).find((li) => li.textContent?.includes('CON'))!
 			// CON +1, proficient +3, charm +2.
 			expect(constitution.textContent).toContain('+6')
 		})
@@ -3349,23 +3383,23 @@ describe('CharacterSheet', () => {
 	 * the console noise four reports listed cannot come back.
 	 */
 	describe('the proficiency bonus breakdown nests validly', () => {
-		it('does not put a <details> inside a <p>', async () => {
+		/* R4b (D166): the breakdown moved to the drawer, so the card holds no <details> at all — the invalid nesting cannot come back. */
+		it('keeps no <details> or <p> in the proficiency bonus card, and opens its breakdown in the drawer', async () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
 			const section = container.querySelector('.sheet__proficiency-bonus')!
-			expect(section.querySelector('details')).toBeTruthy()
-			expect(section.querySelector('p details')).toBeNull()
+			expect(section.querySelector('details')).toBeNull()
 			expect(section.querySelector('p')).toBeNull()
+			expect(await drawerText('Proficiency bonus breakdown')).toContain('Breakdown')
 		})
 
-		/* The other half of the same warning: initiative renders the same CalculatedNumber the same way. */
-		it('does not put a <details> inside a <p> in the initiative block either', async () => {
+		it('keeps no <details> or <p> in the initiative card either', async () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
 			const section = container.querySelector('.sheet__initiative')!
-			expect(section.querySelector('details')).toBeTruthy()
+			expect(section.querySelector('details')).toBeNull()
 			expect(section.querySelector('p')).toBeNull()
 		})
 	})
@@ -6905,6 +6939,28 @@ describe('the persistent header (rebuild slice 1)', () => {
 		return result
 	}
 
+	/* R4b (D167): a manual on/off, stored on the character. */
+	it('Heroic Inspiration is unchecked for a character that has never stored it, and toggling reports the new value', async () => {
+		const user = userEvent.setup()
+		const onEditHeroicInspiration = vi.fn()
+		render(<CharacterSheet character={character} onEditHeroicInspiration={onEditHeroicInspiration} />)
+		await screen.findByRole('heading', { level: 1, name: character.name })
+
+		const box = screen.getByRole('checkbox', { name: 'Heroic Inspiration' }) as HTMLInputElement
+		expect(box.checked).toBe(false)
+		await user.click(box)
+		expect(onEditHeroicInspiration).toHaveBeenCalledWith(true)
+	})
+
+	it('Heroic Inspiration shows the stored state, and is read-only without a handler', async () => {
+		render(<CharacterSheet character={{ ...character, id: 'inspired', play: { heroicInspiration: true } }} />)
+		await screen.findByRole('heading', { level: 1, name: character.name })
+
+		const box = screen.getByRole('checkbox', { name: 'Heroic Inspiration' }) as HTMLInputElement
+		expect(box.checked).toBe(true)
+		expect(box.disabled).toBe(true)
+	})
+
 	it('shows the six values once, in the header, and not again in the flat section list', async () => {
 		const { container } = await renderSheet(character)
 		await waitFor(() => expect(container.querySelector('.sheet__armour-class-value')).toBeTruthy())
@@ -6914,8 +6970,8 @@ describe('the persistent header (rebuild slice 1)', () => {
 		/* Rework R2: the five values sit in the number strip below the header, in this order. */
 		const strip = container.querySelector('.sheet__strip')!
 		expect(header.contains(strip)).toBe(false)
-		const order = ['.sheet__proficiency-bonus', '.sheet__speed', '.sheet__initiative', '.sheet__armour-class', '.sheet__hit-points']
-		expect(order.map((cls) => [...strip.children].findIndex((child) => child.matches(cls)))).toEqual([1, 2, 3, 4, 5])
+		const order = ['.sheet__proficiency-bonus', '.sheet__speed', '.sheet__initiative', '.sheet__armour-class', '.sheet__heroic-inspiration', '.sheet__hit-points']
+		expect(order.map((cls) => [...strip.children].findIndex((child) => child.matches(cls)))).toEqual([1, 2, 3, 4, 5, 6])
 		expect(strip.children[0].matches('.ability-cards')).toBe(true)
 		for (const cls of order) expect(header.querySelector(cls)).toBeNull()
 

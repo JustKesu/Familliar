@@ -28,17 +28,27 @@ export function RollButton({
 	label,
 	random,
 	onRoll,
+	children,
 }: {
 	modifier: number
 	label: string
 	random?: RandomSource
 	onRoll?: (report: RollReport) => void
+	/** R4b (D166): the value itself is the button — its text, with no "Roll" chrome around it. */
+	children?: ReactNode
 }): ReactNode {
 	const { mode, setMode } = useContext(RollModeContext)
 	function makeRoll(): void {
 		const next = rollKeepOne(20, modifier, mode, random)
 		onRoll?.({ label, text: formatKeepOneRoll(next), detail: { dice: next.dice, keptIndex: next.dice.indexOf(next.kept), modifier, total: next.total } })
 		setMode('normal')
+	}
+	if (children !== undefined) {
+		return (
+			<button type="button" className="roll-value" aria-label={`Roll ${label}`} onClick={makeRoll}>
+				{children}
+			</button>
+		)
 	}
 	return (
 		<span className="dice-roll">
