@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import { MIGRATIONS, canMigrateToCurrent, migrateToCurrent } from './migrations'
+import { describeLanguagesError } from './validate'
 
 describe('the migration chain (D69)', () => {
 	it('has no hole between its oldest step and the current version', () => {
@@ -455,6 +456,21 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		expect((migrated['play'] as Record<string, unknown>)['heroicInspiration']).toBeUndefined()
+	})
+
+	/* B3b (D172): new language grantedBy values only; an old Rogue's languages load as they were and the pick reads as pending. */
+	it('tags a version-44 character and keeps its languages unchanged', () => {
+		const languages = [
+			{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+			{ name: 'Elvish', source: 'XPHB', grantedBy: 'creation' },
+		]
+		const before = { schemaVersion: 44, id: '1', name: 'Aria', classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 1 }], languages }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(describeLanguagesError(migrated['languages'])).toBeNull()
+		expect(describeLanguagesError([...languages, { name: 'Abyssal', source: 'XPHB', grantedBy: 'thievesCant' }])).toBeNull()
+		expect(describeLanguagesError([{ name: 'Abyssal', source: 'XPHB', grantedBy: 'feat' }])).toContain('grantedBy')
 	})
 
 	/* Slice 9d2: three purely additive fields, so the step only tags — nothing written is what absence already means. */

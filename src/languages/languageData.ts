@@ -58,7 +58,7 @@ function isRawLanguageEntry(value: unknown): value is RawLanguageEntry {
  * languages.json array: standard type only, and never Common, which is
  * granted automatically rather than chosen (see CHOSEN_LANGUAGE_COUNT).
  */
-export function extractSelectableLanguages(parsed: unknown): LanguageEntry[] {
+export function extractSelectableLanguages(parsed: unknown, types: readonly string[] = ['standard']): LanguageEntry[] {
 	if (!Array.isArray(parsed)) {
 		throw new Error('languages.json: expected a top-level array.')
 	}
@@ -66,7 +66,7 @@ export function extractSelectableLanguages(parsed: unknown): LanguageEntry[] {
 	const languages: LanguageEntry[] = []
 	for (const entry of parsed) {
 		if (!isRawLanguageEntry(entry)) continue
-		if (entry.type !== 'standard') continue
+		if (!types.includes(entry.type)) continue
 		if (entry.name === COMMON_NAME) continue
 		languages.push({ name: entry.name, source: entry.source })
 	}
@@ -74,7 +74,7 @@ export function extractSelectableLanguages(parsed: unknown): LanguageEntry[] {
 }
 
 /** Fetches languages.json and returns the selectable languages, sorted by name. */
-export async function loadLanguages(): Promise<LanguageEntry[]> {
+export async function loadLanguages(types?: readonly string[]): Promise<LanguageEntry[]> {
 	const parsed = await loadDataFile('data/languages.json')
-	return extractSelectableLanguages(parsed).sort((a, b) => a.name.localeCompare(b.name))
+	return extractSelectableLanguages(parsed, types).sort((a, b) => a.name.localeCompare(b.name))
 }

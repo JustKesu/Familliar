@@ -895,10 +895,12 @@ button:disabled {
   flex-grow: 1;
 }
 
-.sheet__proficiencies li {
+/* Needs the extra class: `.sheet__left-column li` below (flex, nowrap) otherwise wins by source order. */
+.sheet__left-column .sheet__proficiencies li {
   display: block;
   padding: 6px 0;
   white-space: normal;
+  overflow-wrap: break-word;
   font-size: 13px;
 }
 

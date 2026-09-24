@@ -188,7 +188,7 @@ function toCharacterBackground(value: Record<string, unknown>): CharacterBackgro
 	}
 }
 
-const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation']
+const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer']
 
 /** Validates an optional `languages` field. Returns null if the field is absent (it's optional). */
 export function describeLanguagesError(value: unknown): string | null {

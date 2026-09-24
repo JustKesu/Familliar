@@ -184,6 +184,7 @@ vi.mock('../languages/languageData', () => ({
 	loadLanguages: vi.fn(async () => [
 		{ name: 'Draconic', source: 'XPHB' },
 		{ name: 'Dwarvish', source: 'XPHB' },
+		{ name: 'Elvish', source: 'XPHB' },
 	]),
 }))
 
@@ -621,6 +622,8 @@ describe('CharacterWizard — spells step', () => {
 		await goNext(user)
 		await user.click(await screen.findByLabelText('Draconic (XPHB)'))
 		await user.click(screen.getByLabelText('Dwarvish (XPHB)'))
+		// D172: a Rogue also picks Thieves' Cant's extra language.
+		await user.selectOptions(await screen.findByRole('combobox', { name: /Thieves' Cant language/ }), 'Elvish')
 		await goNext(user)
 		await user.selectOptions(screen.getByLabelText('Strength'), '15')
 		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')

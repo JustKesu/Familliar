@@ -16,8 +16,7 @@ import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT, loadLanguages, type Language
  * the checkbox's accessible name stays "<name> (<book source>)" — tests and
  * the wizard both look up checkboxes by that label text.
  *
- * Feature-granted languages (Thieves' Cant, Druidic, Deft Explorer) are out
- * of scope — they come from class features the wizard does not select yet.
+ * Class-feature picks (Thieves' Cant, Deft Explorer) are FeatureLanguageSlots (D172).
  */
 
 type LoadState =
@@ -41,9 +40,12 @@ function languageKey(entry: LanguageEntry): string {
 export function LanguagePicker({
 	value,
 	onChange,
+	exclude = [],
 }: {
 	value: LanguageChoice
 	onChange: (choice: LanguageChoice) => void
+	/** D172: languages already picked through a class feature, hidden here so no language is known twice. */
+	exclude?: readonly string[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -98,6 +100,7 @@ export function LanguagePicker({
 				{state.languages.map((entry) => {
 					const key = languageKey(entry)
 					const checked = selectedKeys.has(key)
+					if (!checked && exclude.includes(entry.name)) return null
 					return (
 						<li key={key}>
 							<label>

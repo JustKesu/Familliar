@@ -120,11 +120,14 @@ import { combineSpellEntries, SpellList } from './SpellList'
 import { featureActionRows, grantedFeatureOrigin, type FeatureActionData } from './featureActionRowData'
 import { spellActionRows, type SpellActionData } from './spellActionRowData'
 import { spellLevelLabel } from './spellFormatting'
+import { FeatureLanguageSlots } from '../languages/FeatureLanguageSlots'
+import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import {
 	CUSTOM_ITEM_SOURCE,
 	type Character,
 	type CharacterFamiliar,
 	type CharacterInventoryItem,
+	type CharacterLanguage,
 	type CustomArmourCategory,
 	type CustomItemDefinition,
 	type CustomItemKind,
@@ -1995,6 +1998,7 @@ function CharacterSheetBody({
 	onEditSpentHitDice,
 	onEditConcentration,
 	onEditHeroicInspiration,
+	onEditLanguages,
 	onEditText,
 	onRest,
 	onEditCharacter,
@@ -2016,6 +2020,8 @@ function CharacterSheetBody({
 	onEditConcentration?: (spellName: string | null) => void
 	/** Turns Heroic Inspiration on or off (R4b, D167). Absent leaves the checkbox showing the stored state, disabled. */
 	onEditHeroicInspiration?: (on: boolean) => void
+	/** Replaces the known languages — the Proficiencies drawer's class-feature picks (D172). Absent leaves the drawer without the selects. */
+	onEditLanguages?: (languages: CharacterLanguage[]) => void
 	/** Writes one of the three free-text fields, exactly as typed (slice 9d2). Absent leaves the textareas showing the stored text, read-only. */
 	onEditText?: (field: CharacterTextField, text: string) => void
 	/** Applies a finished rest in one write (slice 9b5). Absent leaves the header without the two rest buttons. */
@@ -3682,6 +3688,16 @@ function CharacterSheetBody({
 										</li>
 									))}
 								</ul>
+							)}
+							{category === 'languages' && weaponAttackData !== null && onEditLanguages && (
+								<FeatureLanguageSlots
+									grants={classFeatureLanguageGrantsFor(character.classes)}
+									value={(character.languages ?? []).filter((language) => language.grantedBy !== 'automatic' && language.grantedBy !== 'creation')}
+									known={weaponAttackData.proficiencies.languages.filter((item) => !item.pending).map((item) => item.label)}
+									onChange={(picks) =>
+										onEditLanguages([...(character.languages ?? []).filter((language) => language.grantedBy === 'automatic' || language.grantedBy === 'creation'), ...picks])
+									}
+								/>
 							)}
 						</DrawerSection>
 					))}

@@ -130,16 +130,30 @@ describe('computeProficiencies', () => {
 
 		it("Rogue L1: Thieves' Cant plus one language not chosen, listed last", () => {
 			const result = langs(withLanguages(character('Rogue'), 'Elvish'))
-			expect(labels(result)).toEqual(['Common', 'Elvish', "Thieves' Cant", '1 language — not chosen'])
+			expect(labels(result)).toEqual(['Common', 'Elvish', "Thieves' Cant", "Extra language (Thieves' Cant) — not chosen"])
 			expect(result[3].pending).toBe(true)
 			expect(result[3].sources.map((s) => s.name)).toEqual(["Rogue — Thieves' Cant"])
+		})
+
+		it("D172: Rogue's stored Thieves' Cant pick replaces the pending item", () => {
+			const c = withLanguages(character('Rogue'), 'Elvish')
+			const result = langs({ ...c, languages: [...c.languages!, { name: 'Abyssal', source: 'XPHB', grantedBy: 'thievesCant' }] })
+			expect(labels(result)).toEqual(['Common', 'Abyssal', 'Elvish', "Thieves' Cant"])
+			expect(result[1].sources).toEqual([{ kind: 'classFeatureChoice', name: "Rogue — Thieves' Cant" }])
 		})
 
 		it('Ranger: two languages pending from level 2, not level 1', () => {
 			expect(labels(langs(withLanguages(character('Ranger', { level: 1 }))))).toEqual(['Common'])
 			const l2 = langs(withLanguages(character('Ranger', { level: 2 })))
-			expect(labels(l2)).toEqual(['Common', '2 languages — not chosen'])
+			expect(labels(l2)).toEqual(['Common', '2 extra languages (Deft Explorer) — not chosen'])
 			expect(l2[1].sources.map((s) => s.name)).toEqual(['Ranger — Deft Explorer'])
+		})
+
+		it('D172: Ranger L2 partial choice leaves one pending, full choice none', () => {
+			const c = withLanguages(character('Ranger', { level: 2 }))
+			const pick = (name: string) => ({ name, source: 'XPHB', grantedBy: 'deftExplorer' as const })
+			expect(labels(langs({ ...c, languages: [...c.languages!, pick('Giant')] }))).toEqual(['Common', 'Giant', '1 extra language (Deft Explorer) — not chosen'])
+			expect(labels(langs({ ...c, languages: [...c.languages!, pick('Giant'), pick('Orc')] }))).toEqual(['Common', 'Giant', 'Orc'])
 		})
 
 		it('Fey Teleportation Sylvan merges with a Sylvan chosen at creation', () => {

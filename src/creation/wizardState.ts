@@ -36,6 +36,7 @@ import type { SpeciesChoice } from '../species/SpeciesPicker'
 import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
+import { classFeatureLanguageGrantsFor, keepHeldFeatureLanguages } from '../languages/classFeatureLanguages'
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
@@ -239,6 +240,8 @@ export interface WizardData {
 	/** The background's tool proficiency — the named tool (auto-filled) or the player's category pick. Clears whenever backgroundChoice does (D8), since a category choice is keyed to a specific background. */
 	backgroundToolProficiency: string | null
 	languageChoice: LanguageChoice
+	/** D172: class-feature language picks (Thieves' Cant, Deft Explorer), already shaped like storage. Clears whenever the class changes. */
+	featureLanguages: CharacterLanguage[]
 	abilityScores: CharacterAbilityScores | null
 	/** Class skill proficiencies, weapon masteries, fighting style and subclass are the class's own choices (D13), so they clear whenever classChoice does. */
 	classSkills: string[]
@@ -320,6 +323,7 @@ export function emptyWizardData(): WizardData {
 		backgroundChoice: null,
 		backgroundToolProficiency: null,
 		languageChoice: [],
+		featureLanguages: [],
 		abilityScores: null,
 		classSkills: [],
 		speciesSkills: [],
@@ -418,6 +422,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		languageChoice: (character.languages ?? [])
 			.filter((language) => language.grantedBy === 'creation')
 			.map(({ name, source }) => ({ name, source })),
+		featureLanguages: (character.languages ?? []).filter((language) => language.grantedBy !== 'automatic' && language.grantedBy !== 'creation'),
 		abilityScores: character.abilityScores ?? null,
 		classSkills: character.classSkills ?? [],
 		speciesSkills: character.speciesSkills ?? [],
@@ -546,8 +551,15 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			)
 		case 'expertise':
 			return expertiseRequiredCount === null || data.expertiseSkills.length === expertiseRequiredCount
-		case 'languages':
-			return data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
+		case 'languages': {
+			// A level-up walk only collects the new level's feature picks; the creation picks are not its to demand.
+			const creationComplete = levelUpTargetLevel !== null || data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
+			const grants = data.classChoice ? classFeatureLanguageGrantsFor([data.classChoice]) : []
+			return (
+				creationComplete &&
+				grants.every((grant) => !grant.choice || data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length === grant.choice.count)
+			)
+		}
 		case 'abilities':
 			return data.abilityScores !== null
 		case 'spells':
@@ -669,6 +681,7 @@ export type WizardAction =
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
 	| { type: 'setBackgroundToolProficiency'; tool: string | null }
 	| { type: 'setLanguageChoice'; choice: LanguageChoice }
+	| { type: 'setFeatureLanguages'; languages: CharacterLanguage[] }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
 	| { type: 'setClassSkills'; skills: string[] }
 	| { type: 'setMasteries'; weapons: string[] }
@@ -727,6 +740,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 				data: {
 					...state.data,
 					classChoice: action.choice,
+					featureLanguages: [],
 					classSkills: [],
 					expertiseSkills: [],
 					masteries: [],
@@ -783,6 +797,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, backgroundToolProficiency: action.tool } }
 		case 'setLanguageChoice':
 			return { ...state, data: { ...state.data, languageChoice: action.choice } }
+		case 'setFeatureLanguages':
+			return { ...state, data: { ...state.data, featureLanguages: action.languages } }
 		case 'setAbilityScores':
 			return { ...state, data: { ...state.data, abilityScores: action.scores } }
 		case 'setClassSkills':
@@ -934,13 +950,13 @@ export function saveCharacter(
 	 * `grantedBy` so its source survives into storage (see
 	 * CharacterLanguage in storage/character.ts).
 	 */
-	const languages: CharacterLanguage[] | undefined =
-		data.languageChoice.length > 0
-			? [
-					{ ...AUTOMATIC_LANGUAGE, grantedBy: 'automatic' },
-					...data.languageChoice.map((entry) => ({ ...entry, grantedBy: 'creation' as const })),
-				]
-			: undefined
+	const allLanguages: CharacterLanguage[] = [
+		...(data.languageChoice.length > 0
+			? [{ ...AUTOMATIC_LANGUAGE, grantedBy: 'automatic' as const }, ...data.languageChoice.map((entry) => ({ ...entry, grantedBy: 'creation' as const }))]
+			: []),
+		...keepHeldFeatureLanguages(data.featureLanguages, classFeatureLanguageGrantsFor(classes)),
+	]
+	const languages = allLanguages.length > 0 ? allLanguages : undefined
 
 	/**
 	 * Tagged with the subclass's own featureType (D21) so more than one

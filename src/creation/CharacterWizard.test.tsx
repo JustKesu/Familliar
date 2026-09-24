@@ -998,6 +998,33 @@ describe('CharacterWizard — expertise step', () => {
 		expect((screen.getByLabelText(/Intimidation/) as HTMLInputElement).checked).toBe(true)
 	})
 
+	it("D172: a Rogue's languages step has a Thieves' Cant slot that goes away with the class", async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughBackground(user, 'Rogue')
+		await goNext(user)
+		await user.click(await screen.findByLabelText(/Athletics/))
+		await user.click(screen.getByLabelText(/Intimidation/))
+		await goNext(user)
+		await fillLanguagesStep(user)
+
+		const slot = await screen.findByRole('combobox', { name: /Thieves' Cant language/ })
+		// The two creation picks are never offered again.
+		expect(within(slot).queryByRole('option', { name: 'Draconic' })).toBeNull()
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		await user.selectOptions(slot, 'Elvish')
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		// A feature pick is no longer offered as a creation pick.
+		expect(screen.queryByLabelText('Elvish (XPHB)')).toBeNull()
+
+		for (let i = 0; i < 4; i++) await goBack(user)
+		await user.selectOptions(await screen.findByLabelText('Class'), 'Fighter')
+		for (let i = 0; i < 3; i++) await goNext(user)
+		await screen.findByLabelText('Draconic (XPHB)')
+		expect(screen.queryByRole('combobox', { name: /Thieves' Cant language/ })).toBeNull()
+	})
+
 	it('a Fighter at level 1 is never offered the expertise step', async () => {
 		const user = userEvent.setup()
 		renderWizard()

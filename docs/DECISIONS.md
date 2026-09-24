@@ -2980,3 +2980,34 @@ schématu se nic nemění.
 **Řazení a slučování.** Stejný jazyk z více zdrojů = jedna položka se všemi
 zdroji (Sylvan při tvorbě + Fey Teleportation). Pořadí: Common, ostatní známé
 abecedně, nezvolené položky nakonec.
+
+## D172 — B3b: volba extra jazyků Rogue (Thieves' Cant) a Ranger (Deft Explorer)
+
+Zdroj: task B3b, 24. 9. 2026 (místa volby rozhodl uživatel). Navazuje na D171.
+
+**Úložiště.** Existující `character.languages`, nové hodnoty `grantedBy`:
+`thievesCant` (Rogue L1, 1 jazyk) a `deftExplorer` (Ranger L2, 2 jazyky). Žádné
+nové pole. Schéma 45, migrace 44→45 jen tag (vzor 43/44); staré postavy se
+načtou beze změny a volba se u nich ukáže jako nezvolená. Pevné jazyky featur
+(Thieves' Cant, Druidic) se dál neukládají, jen odvozují.
+
+**Kde se volí.** (a) Wizard, krok languages: pod dvěma jazyky z tvorby jeden
+select na každý volný jazyk featury, která na zvolené třídě a úrovni platí
+(Rogue +1; Ranger vytvořený rovnou na L2+ dostane +2 stejně). Změna třídy
+volbu smaže; při uložení se zahodí volby featury, která už neplatí. Edit
+Character volbu ukáže a nevyplněná blokuje krok. (b) Level-up: krok languages
+se prochází, když level přidá volné jazyky (Ranger 2); ukazuje jen selecty
+featury, jazyky z tvorby ne. Odebrání toho levelu jazyky featury smaže
+(odvozeno z úrovně featury, bez uložené úrovně). (c) Drawer Proficiencies:
+pod seznamem jazyků selecty všech platných featur — volba, změna i smazání,
+uloží se hned.
+
+**Nabídka.** Text obou featur: „from the language tables in chapter 2" =
+Standard i Rare (DATA.md). Nikdy Common, nikdy jazyk známý z jiného zdroje
+(ve wizardu: Common, jazyky z tvorby, pevné jazyky featur a ostatní sloty;
+v draweru: všechny známé jazyky z `computeProficiencies`). Jazyk zvolený
+featurou se nenabízí mezi jazyky z tvorby.
+
+**Znění nezvolené položky.** „Extra language (Thieves' Cant) — not chosen";
+„2 extra languages (Deft Explorer) — not chosen", po jedné volbě „1 extra
+language (Deft Explorer) — not chosen". Prodigy (feat) beze změny.

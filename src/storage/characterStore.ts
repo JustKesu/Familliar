@@ -598,6 +598,18 @@ export class CharacterStore {
 		this.writeAll(updated)
 	}
 
+	/** Replaces the known languages (D172: the drawer's class-feature picks). An empty list clears the field, like setInventory. */
+	setLanguages(id: string, languages: CharacterLanguage[]): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { languages: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = languages.length > 0 ? { ...rest, languages } : rest
+		this.writeAll(updated)
+	}
+
 	/** Turns Heroic Inspiration on or off (R4b, D167) — a targeted write like setConcentration. */
 	setHeroicInspiration(id: string, on: boolean): void {
 		const characters = this.list()

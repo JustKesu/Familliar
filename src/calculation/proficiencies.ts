@@ -1,4 +1,5 @@
 import { classPrereqInfoFor } from '../featAsi/featAsiData'
+import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
 import type { Character, FeatChoiceDetails } from '../storage/character'
 import {
@@ -92,13 +93,6 @@ const XPHB_FEATURE_GRANTS: {
 	},
 ]
 
-// D171: XPHB class features that grant languages — text only (DATA.md), same reason as above. `choose` is a free pick with no picker yet.
-const XPHB_LANGUAGE_GRANTS: { className: string; featureName: string; level: number; fixed?: string; choose?: number }[] = [
-	{ className: 'Druid', featureName: 'Druidic', level: 1, fixed: 'Druidic' },
-	{ className: 'Rogue', featureName: "Thieves' Cant", level: 1, fixed: "Thieves' Cant", choose: 1 },
-	{ className: 'Ranger', featureName: 'Deft Explorer', level: 2, choose: 2 },
-]
-
 function capitalize(text: string): string {
 	return `${text[0].toUpperCase()}${text.slice(1)}`
 }
@@ -136,8 +130,8 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 	const languages = new Map<string, ProficiencyItem>()
 	const pending: ProficiencyItem[] = []
 	const addLanguage = (name: string, source: ProficiencySource) => add(languages, name.toLowerCase(), name, source)
-	const addPending = (count: number, sourceName: string, kind: ProficiencySource['kind']) => {
-		if (count > 0) pending.push({ key: `pending:${sourceName}`, label: `${count} ${count === 1 ? 'language' : 'languages'} — not chosen`, sources: [{ kind, name: sourceName }], pending: true })
+	const addPending = (count: number, sourceName: string, kind: ProficiencySource['kind'], label = `${count} ${count === 1 ? 'language' : 'languages'}`) => {
+		if (count > 0) pending.push({ key: `pending:${sourceName}`, label: `${label} — not chosen`, sources: [{ kind, name: sourceName }], pending: true })
 	}
 	const add = (map: Map<string, ProficiencyItem>, key: string, label: string, source: ProficiencySource) => {
 		const item = map.get(key) ?? { key, label, sources: [] }
@@ -166,13 +160,19 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 	}
 
 	for (const language of character.languages ?? []) {
-		addLanguage(language.name, { kind: 'creation', name: language.grantedBy === 'automatic' ? 'Every character' : 'Chosen at creation' })
+		const grant = CLASS_FEATURE_LANGUAGE_GRANTS.find((candidate) => candidate.choice?.grantedBy === language.grantedBy)
+		if (grant) addLanguage(language.name, { kind: 'classFeatureChoice', name: `${grant.className} — ${grant.featureName}` })
+		else addLanguage(language.name, { kind: 'creation', name: language.grantedBy === 'automatic' ? 'Every character' : 'Chosen at creation' })
 	}
 
-	for (const grant of XPHB_LANGUAGE_GRANTS) {
-		if (!character.classes.some((cls) => cls.className === grant.className && cls.classSource === 'XPHB' && cls.level >= grant.level)) continue
+	for (const grant of classFeatureLanguageGrantsFor(character.classes)) {
 		if (grant.fixed) addLanguage(grant.fixed, { kind: 'class', name: grant.className })
-		addPending(grant.choose ?? 0, `${grant.className} — ${grant.featureName}`, 'class')
+		if (!grant.choice) continue
+		const { count, grantedBy } = grant.choice
+		// D172: a partial choice leaves only the remainder pending.
+		const missing = count - (character.languages ?? []).filter((language) => language.grantedBy === grantedBy).length
+		const label = count === 1 ? `Extra language (${grant.featureName})` : `${missing} extra ${missing === 1 ? 'language' : 'languages'} (${grant.featureName})`
+		addPending(missing, `${grant.className} — ${grant.featureName}`, 'class', label)
 	}
 
 	for (const ref of takenFeats) {

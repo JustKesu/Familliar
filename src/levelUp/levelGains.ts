@@ -37,6 +37,7 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { expertiseEligibilityFor } from '../expertise/expertiseData'
 import { featAsiGrantsFor } from '../featAsi/featAsiData'
 import { loadResolverData, type ResolverData } from '../featureResolver'
+import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { masteryCountFor } from '../masteries/masteryData'
 import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
@@ -212,7 +213,12 @@ export function levelGainsFor(character: Character, level: number, parsedClasses
 			species: never('A species, its variant, its skills and its spellcasting ability are all chosen at creation; nothing in species.json is keyed to character level.'),
 			background: never('A background, its ability-bonus distribution and its tool proficiency are all chosen at creation.'),
 			expertise: expertiseStepGain(resolverData, className, classSource, level, previous),
-			languages: never('The two chosen languages are a fixed creation-time grant (CHOSEN_LANGUAGE_COUNT); no class level grants further ones in this data.'),
+			// D172: the creation picks never grow; a class feature's free picks (Deft Explorer at Ranger 2) arrive with its level.
+			languages: adds(
+				classFeatureLanguageGrantsFor([{ className, classSource, level }]).flatMap((grant) =>
+					grant.choice && grant.level === level ? [{ name: grant.featureName, count: grant.choice.count }] : [],
+				),
+			),
 			abilities: never('Ability scores are set at creation. A later level raises them only through the featAsi step, never through this one.'),
 			spells: spellsStepGain(before, now, parsedClasses, level, previous, {
 				subclassGrantLevel,

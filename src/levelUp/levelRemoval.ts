@@ -9,7 +9,8 @@ import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { chosenOptionalFeatureOptions } from '../optionalFeatures/optionalFeatureData'
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractFeatTextEntries } from '../sheet/sheetData'
-import type { Character, LeveledChoice } from '../storage/character'
+import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
+import type { Character, FeatureLanguageSource, LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
 import { subclassLevelFor } from '../subclass/subclassData'
 import { totalCharacterLevel } from './levelUpSteps'
@@ -138,6 +139,18 @@ export function levelRemovalPlan(
 		return picks.length > 0 ? [{ ...entry, picks }] : []
 	})
 
+	// D172: derived like the subclass — a feature's language picks belong to the level the feature arrives at.
+	const lostLanguageGrants = new Set(
+		CLASS_FEATURE_LANGUAGE_GRANTS.flatMap((grant) =>
+			grant.choice && grant.className === className && classSource === 'XPHB' && grant.level === level ? [grant.choice.grantedBy] : [],
+		),
+	)
+	const languages = character.languages?.filter((language) => {
+		if (!lostLanguageGrants.has(language.grantedBy as FeatureLanguageSource)) return true
+		dropped.push(`Language: ${language.name}`)
+		return false
+	})
+
 	const hitPointLevels = (character.hitPointLevels ?? []).filter((entry) => {
 		if (entry.level !== level) return true
 		dropped.push(`Hit points for level ${level}`)
@@ -157,6 +170,7 @@ export function levelRemovalPlan(
 		classFeatureChoices,
 		subclassSpellChoices,
 		hitPointLevels,
+		...(languages ? { languages } : {}),
 	}
 
 	/*

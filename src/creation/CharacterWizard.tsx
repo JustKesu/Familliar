@@ -5,6 +5,9 @@ import { findSpeciesSelection, loadSpeciesOptions, type SpeciesOption } from '..
 import { BackgroundPicker } from '../backgrounds/BackgroundPicker'
 import { AbilityScorePicker } from '../abilities/AbilityScorePicker'
 import { LanguagePicker } from '../languages/LanguagePicker'
+import { FeatureLanguageSlots } from '../languages/FeatureLanguageSlots'
+import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
+import { AUTOMATIC_LANGUAGE } from '../languages/languageData'
 import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { SpeciesSkillPicker } from '../speciesSkills/SpeciesSkillPicker'
 import { loadSpeciesSkillProficiencies, type SpeciesSkillProficiencies } from '../speciesSkills/speciesSkillData'
@@ -165,6 +168,7 @@ export function CharacterWizard({
 	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp) : {}
 	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp) : {}
 	const held = levelUp && character ? heldPicksFrom(character, state.data.subclass?.featureType ?? null) : null
+	const featureLanguageGrants = state.data.classChoice ? classFeatureLanguageGrantsFor([state.data.classChoice]) : []
 	const [saveError, setSaveError] = useState<string | null>(null)
 	/** Editing only: false until the seed's own data (subclass sources/featureTypes, spell levels) has loaded and been dispatched. */
 	const [seeded, setSeeded] = useState(character === undefined)
@@ -1321,9 +1325,23 @@ export function CharacterWizard({
 
 			{state.step === 'languages' && (
 				<div className="wizard__panel">
-					<LanguagePicker
-						value={state.data.languageChoice}
-						onChange={(choice) => dispatch({ type: 'setLanguageChoice', choice })}
+					{/* D172: a level-up walk only collects the new level's class-feature picks. */}
+					{!levelUp && (
+						<LanguagePicker
+							value={state.data.languageChoice}
+							onChange={(choice) => dispatch({ type: 'setLanguageChoice', choice })}
+							exclude={state.data.featureLanguages.map((language) => language.name)}
+						/>
+					)}
+					<FeatureLanguageSlots
+						grants={featureLanguageGrants}
+						value={state.data.featureLanguages}
+						known={[
+							AUTOMATIC_LANGUAGE.name,
+							...state.data.languageChoice.map((language) => language.name),
+							...featureLanguageGrants.flatMap((grant) => (grant.fixed ? [grant.fixed] : [])),
+						]}
+						onChange={(languages) => dispatch({ type: 'setFeatureLanguages', languages })}
 					/>
 				</div>
 			)}

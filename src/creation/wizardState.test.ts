@@ -30,6 +30,7 @@ function completeData(): WizardData {
 			{ name: 'Draconic', source: 'XPHB' },
 			{ name: 'Dwarvish', source: 'XPHB' },
 		],
+		featureLanguages: [],
 		abilityScores: {
 			method: 'standardArray',
 			scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
@@ -763,6 +764,47 @@ describe('saveCharacter', () => {
  * The one thing every test here is really guarding is D97/D98/D99's recorded
  * levels: a round trip through name-based pickers must not quietly drop them.
  */
+describe('class-feature languages (D172)', () => {
+	const rogue = { className: 'Rogue', classSource: 'XPHB', level: 1 }
+	const abyssal = { name: 'Abyssal', source: 'XPHB', grantedBy: 'thievesCant' as const }
+
+	it("a Rogue's languages step needs the Thieves' Cant pick; a Fighter's does not", () => {
+		const data = { ...completeData(), classChoice: rogue }
+		expect(isStepComplete('languages', data)).toBe(false)
+		expect(isStepComplete('languages', { ...data, featureLanguages: [abyssal] })).toBe(true)
+		expect(isStepComplete('languages', completeData())).toBe(true)
+	})
+
+	it('a level-up walk asks only for the feature picks, not the creation ones', () => {
+		const pick = (name: string) => ({ name, source: 'XPHB', grantedBy: 'deftExplorer' as const })
+		const data = { ...completeData(), classChoice: { className: 'Ranger', classSource: 'XPHB', level: 2 }, languageChoice: [] }
+		expect(isStepComplete('languages', data, { levelUpTargetLevel: 2 })).toBe(false)
+		expect(isStepComplete('languages', { ...data, featureLanguages: [pick('Giant'), pick('Orc')] }, { levelUpTargetLevel: 2 })).toBe(true)
+	})
+
+	it('changing the class away from Rogue drops the pick; changing only the level keeps it', () => {
+		const state: WizardControllerState = { step: 'class', data: { ...completeData(), classChoice: rogue, featureLanguages: [abyssal] } }
+		expect(wizardReducer(state, { type: 'setClassChoice', choice: { ...rogue, level: 3 } }).data.featureLanguages).toEqual([abyssal])
+		expect(wizardReducer(state, { type: 'setClassChoice', choice: { className: 'Fighter', classSource: 'XPHB', level: 1 } }).data.featureLanguages).toEqual([])
+	})
+
+	it('saves the pick after Common and the creation picks, and reopening shows it', () => {
+		const store = { create: vi.fn(() => ({ id: 'x', name: 'Aria', classes: [] })) } as unknown as CharacterStore
+		saveCharacter(store, { ...completeData(), classChoice: rogue, featureLanguages: [abyssal] }, ['athletics', 'intimidation'])
+		const saved = vi.mocked(store.create).mock.calls[0][0]
+		expect(saved.languages?.map((language) => language.grantedBy)).toEqual(['automatic', 'creation', 'creation', 'thievesCant'])
+		const reopened = wizardDataFromCharacter({ id: 'x', ...saved } as Character, { subclasses: [], spellLevels: [] })
+		expect(reopened.featureLanguages).toEqual([abyssal])
+		expect(reopened.languageChoice.map((language) => language.name)).toEqual(['Draconic', 'Dwarvish'])
+	})
+
+	it('a pick whose feature no longer applies is not saved', () => {
+		const store = { create: vi.fn(() => ({ id: 'x', name: 'Aria', classes: [] })) } as unknown as CharacterStore
+		saveCharacter(store, { ...completeData(), featureLanguages: [abyssal] }, ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[0][0].languages?.map((language) => language.name)).toEqual(['Common', 'Draconic', 'Dwarvish'])
+	})
+})
+
 describe('editing an existing character', () => {
 	function editStore(): CharacterStore {
 		return {

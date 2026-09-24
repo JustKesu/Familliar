@@ -195,6 +195,25 @@ describe('what removing a level drops', () => {
 	})
 })
 
+describe('class-feature languages on a level removal (D172)', () => {
+	const languages: Character['languages'] = [
+		{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+		{ name: 'Elvish', source: 'XPHB', grantedBy: 'creation' },
+		{ name: 'Giant', source: 'XPHB', grantedBy: 'deftExplorer' },
+		{ name: 'Orc', source: 'XPHB', grantedBy: 'deftExplorer' },
+	]
+
+	it("removing Ranger level 2 drops Deft Explorer's two languages and nothing else", () => {
+		const removed = plan({ ...single('Ranger', null, 2, 1), languages })
+		expect(removed.result.languages?.map((language) => language.name)).toEqual(['Common', 'Elvish'])
+		expect(removed.dropped).toEqual(expect.arrayContaining(['Language: Giant', 'Language: Orc']))
+	})
+
+	it('removing Ranger level 3 keeps them', () => {
+		expect(plan({ ...single('Ranger', null, 3, 1), languages }).result.languages).toEqual(languages)
+	})
+})
+
 describe('when a level cannot be removed', () => {
 	it('refuses at level 1, at the created-at level, without a created-at level, and for a multiclass character', () => {
 		expect(levelRemovalTarget(single('Fighter', null, 1, 1))).toEqual({ reason: expect.stringContaining('Level 1') })

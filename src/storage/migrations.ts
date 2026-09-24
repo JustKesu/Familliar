@@ -383,6 +383,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 44 }),
 	},
+	{
+		from: 44,
+		to: 45,
+		/*
+		 * 45 adds the 'thievesCant' and 'deftExplorer' language grantedBy values
+		 * (B3b, D172). A version-44 character stored none, and an unchosen pick
+		 * already reads as pending — the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 45 }),
+	},
 ]
 
 /**

@@ -49,14 +49,15 @@ export interface CharacterBackground {
  * applied to languages so overlaps and automatic grants are visible
  * instead of a bare list of names.
  *
- * Only 'automatic' (the PHB 2024 Common rule) and 'creation' (the player's
- * two picks) exist yet. Class-feature grants (Rogue's Thieves' Cant plus
- * one, Druid's Druidic, Ranger's Deft Explorer) and feat grants are NOT
- * built — the wizard doesn't select class features at this slice. When
- * they arrive, add new members here (e.g. 'class-feature', 'feat') rather
- * than reworking this type.
+ * 'automatic' is the PHB 2024 Common rule and 'creation' the player's two
+ * picks. The rest are a class feature's free picks (D172): Rogue's Thieves'
+ * Cant (one) and Ranger's Deft Explorer (two). Fixed feature languages
+ * (Thieves' Cant itself, Druidic) are derived, never stored; a feat's pick
+ * lives on the feat instance (D158).
  */
-export type LanguageGrantSource = 'automatic' | 'creation'
+export type LanguageGrantSource = 'automatic' | 'creation' | FeatureLanguageSource
+
+export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer'
 
 /** Identifies a languages.json entry unambiguously, plus how the character came to know it. */
 export interface CharacterLanguage {
@@ -103,8 +104,8 @@ export interface Character {
 	 * character knows, INCLUDING Common — unlike the earlier shape, Common is
 	 * stored explicitly (with `grantedBy: 'automatic'`) rather than assumed,
 	 * since a stored language without a recorded source is exactly what this
-	 * field's `grantedBy` fixes. Feature-granted languages (Thieves' Cant,
-	 * Druidic, ...) are not represented yet — see LanguageGrantSource.
+	 * field's `grantedBy` fixes. Class-feature picks join the same list — see
+	 * LanguageGrantSource.
 	 */
 	languages?: CharacterLanguage[]
 	/**
@@ -910,7 +911,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 44 for Character.play.heroicInspiration
+ * (see wireFormat.ts). Bumped to 45 for the class-feature language
+ * `grantedBy` values (B3b, D172); 44 for Character.play.heroicInspiration
  * (R4b); 43 for FeatChoiceDetails.proficiencies
  * (build order task A2); 42 for Character.grantedFeats (D156); 41
  * added Character.appearance, .backstory and .notes (slice 9d2); 40 added Character.play.concentratingOn
@@ -924,4 +926,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 44
+export const CURRENT_SCHEMA_VERSION = 45

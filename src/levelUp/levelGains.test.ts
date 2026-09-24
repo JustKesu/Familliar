@@ -90,10 +90,18 @@ describe('levelGainsFor', () => {
 
 	it('says which steps can never add anything after creation rather than leaving them out', () => {
 		const gains = levelGainsFor(fighter, 5, CLASSES, RESOLVER)
-		for (const step of ['species', 'background', 'languages', 'abilities', 'equipment', 'review'] as const) {
+		for (const step of ['species', 'background', 'abilities', 'equipment', 'review'] as const) {
 			expect(gains.steps[step].status).toBe('never')
 			expect(gains.steps[step].reason).toBeTruthy()
 		}
+		expect(gains.steps.languages.status).toBe('none')
+	})
+
+	it("D172: Ranger level 2 adds Deft Explorer's two languages, level 3 none", () => {
+		const ranger = character([{ className: 'Ranger', classSource: 'XPHB', subclass: null, level: 1 }])
+		const classes = [...CLASSES, { entryType: 'class', name: 'Ranger', source: 'XPHB' }]
+		expect(levelGainsFor(ranger, 2, classes, RESOLVER).steps.languages).toMatchObject({ status: 'adds', count: 2, parts: [{ name: 'Deft Explorer', count: 2 }] })
+		expect(levelGainsFor(ranger, 3, classes, RESOLVER).steps.languages.status).toBe('none')
 	})
 
 	it('reports unknown, not zero, for a class the supplied data does not have', () => {

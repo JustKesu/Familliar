@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-24 (B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1248,6 +1248,17 @@ tvorby, Druidic, Thieves' Cant, Fey Teleportation, zvolený jazyk Prodigy) a
 sekci Languages v draweru. Rogue +1, Ranger L2 +2 a Prodigy bez volby se
 ukazují jako „N language(s) — not chosen" (picker zatím není, úložiště se
 nemění). Tools zbývají, přijdou mezi WEAPONS a LANGUAGES.
+
+B3b (D172): oprava zalamování karty Proficiencies (hodnota se zalamuje uvnitř
+karty, štítek vždy na vlastním řádku). Extra jazyky Rogue (Thieves' Cant, 1) a
+Ranger (Deft Explorer, 2) jdou zvolit: `character.languages` s `grantedBy`
+`thievesCant`/`deftExplorer` (schéma 45, migrace 44→45 jen tag). Volba ve
+wizardu (krok languages, `FeatureLanguageSlots` pod `LanguagePicker`), v
+level-upu (krok languages se prochází na Ranger 2) a v draweru Proficiencies
+(výběr / změna / smazání, `CharacterStore.setLanguages`). Nabídka = Standard +
+Rare bez Common a bez už známých jazyků. Odebrání Ranger L2 maže Deft Explorer
+jazyky. Tabulka grantů je `src/languages/classFeatureLanguages.ts`. Prodigy
+zůstává „not chosen" (featové pod-volby jsou samostatný task).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

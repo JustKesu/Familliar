@@ -383,6 +383,8 @@ Zjištěno při task R3 (Cowork, 22. 9. 2026), uživatel potvrdil vynechat.
 B2 (24. 9. 2026, D170): řádky ARMOR a WEAPONS hotové (karta Proficiencies);
 tools (B3) a languages (B4) zbývají.
 B3 (24. 9. 2026, D171): řádek LANGUAGES hotový; tools zbývají.
+B3b (24. 9. 2026, D172): extra jazyky Rogue (Thieves' Cant) a Ranger (Deft
+Explorer) jdou zvolit; jazyk Prodigy zůstává nezvolený.
 STATUS: nerozhodnuto, blokuje dokončení D123's Proficiencies části.
 
 ### Aberrant Dragonmark, Natural Recovery, Magic Item Tinker — dva nezávislé limity v jedné featuře

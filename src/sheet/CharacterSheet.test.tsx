@@ -778,6 +778,42 @@ describe('CharacterSheet', () => {
 		expect(open.textContent).toContain('Sylvan — Chosen at creation')
 	})
 
+	it("B3b (D172): the drawer chooses, changes and clears a Rogue's extra Thieves' Cant language", async () => {
+		const user = userEvent.setup()
+		vi.mocked(loadDataFile).mockImplementation(async (path: string) =>
+			path === 'data/languages.json'
+				? ['Common|standard', 'Elvish|standard', 'Sylvan|rare', 'Abyssal|rare'].map((entry) => ({ name: entry.split('|')[0], source: 'XPHB', type: entry.split('|')[1] }))
+				: [],
+		)
+		try {
+			const base = [
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' as const },
+				{ name: 'Sylvan', source: 'XPHB', grantedBy: 'creation' as const },
+			]
+			const rogue: Character = { ...character, classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 1 }], languages: base }
+			const onEditLanguages = vi.fn()
+			const view = render(<CharacterSheet character={rogue} onEditLanguages={onEditLanguages} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await user.click(screen.getByRole('button', { name: 'Proficiencies details' }))
+
+			const slot = await screen.findByRole('combobox', { name: /Thieves' Cant language/ })
+			// Known languages (Common, Sylvan) are never offered; a Rare one is.
+			expect(within(slot).getAllByRole('option').map((option) => option.textContent)).toEqual(['— not chosen —', 'Abyssal', 'Elvish'])
+			await user.selectOptions(slot, 'Abyssal')
+			expect(onEditLanguages).toHaveBeenLastCalledWith([...base, { name: 'Abyssal', source: 'XPHB', grantedBy: 'thievesCant' }])
+
+			view.rerender(<CharacterSheet character={{ ...rogue, languages: [...base, { name: 'Abyssal', source: 'XPHB', grantedBy: 'thievesCant' }] }} onEditLanguages={onEditLanguages} />)
+			const chosen = screen.getByRole('combobox', { name: /Thieves' Cant language/ }) as HTMLSelectElement
+			expect(chosen.value).toBe('Abyssal|XPHB')
+			await user.selectOptions(chosen, 'Elvish')
+			expect(onEditLanguages).toHaveBeenLastCalledWith([...base, { name: 'Elvish', source: 'XPHB', grantedBy: 'thievesCant' }])
+			await user.selectOptions(chosen, '— not chosen —')
+			expect(onEditLanguages).toHaveBeenLastCalledWith(base)
+		} finally {
+			vi.mocked(loadDataFile).mockImplementation(async () => [])
+		}
+	})
+
 	it('R4b (D166): a skill name opens that skill’s breakdown in the drawer', async () => {
 		const user = userEvent.setup()
 		render(<CharacterSheet character={character} />)

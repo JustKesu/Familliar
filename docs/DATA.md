@@ -694,8 +694,13 @@ count of "11 with a choice, 4 fixed-only" counted Boon of Skill twice.)
 - `languageProficiencies: [{any:1}]` — Prodigy only. Fey Teleportation has
   `[{sylvan:true}]`. XPHB class features that grant languages (Druid Druidic
   L1, Rogue Thieves' Cant L1 + one, Ranger Deft Explorer L2 + two) carry no
-  structured field, only prose (checked B3) — hence the hand table in
-  `proficiencies.ts`.
+  structured field, only prose (checked B3) — hence the hand table, now
+  `src/languages/classFeatureLanguages.ts`. Both free picks say "from the
+  language tables in chapter 2" (Thieves' Cant: "one other language of your
+  choice"; Deft Explorer, sub-entry [Languages]: "two languages of your
+  choice"), i.e. Standard AND Rare (checked B3b). languages.json: 19 entries,
+  all XPHB — 10 `standard` (incl. Common) and 9 `rare` (incl. Druidic and
+  Thieves' Cant themselves).
 - `expertise: [{anyProficientSkill:1}]` — Boon of Skill, Prodigy, Skill Expert.
 - `skillToolLanguageProficiencies: [{choose:[{from:["anySkill","anyTool"],count:3}]}]`
   — Skilled only. TRAP: here `choose` is an ARRAY of groups, unlike every other
