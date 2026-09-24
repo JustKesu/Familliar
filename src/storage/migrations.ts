@@ -393,6 +393,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 45 }),
 	},
+	{
+		from: 45,
+		to: 46,
+		/*
+		 * 46 adds Character.toolChoices (D174) and Character.speciesSize (D175).
+		 * Both purely additive: absence already reads as "not chosen", so the
+		 * step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 46 }),
+	},
 ]
 
 /**

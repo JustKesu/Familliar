@@ -107,6 +107,12 @@ export function computeSpeed(character: Character, speciesData: SpeciesTraitsDat
 	return known(value, breakdown)
 }
 
+/** The sizes a species offers — more than one means the player chooses (D175). Empty when the species is unknown. */
+export function speciesSizeOptions(data: SpeciesTraitsData[], name: string, source: string): string[] {
+	const entry = findSpeciesEntry(data, name, source)
+	return (entry && resolveField(entry, data, 'size')?.value) || []
+}
+
 export function computeSize(character: Character, speciesData: SpeciesTraitsData[]): Calculated<string> {
 	const lookup = findCharacterSpeciesEntry(character, speciesData)
 	if (!lookup) return unknown('Species has not been chosen for this character yet.')
@@ -116,6 +122,9 @@ export function computeSize(character: Character, speciesData: SpeciesTraitsData
 	if (!resolved) return unknown(`No size data for species "${lookup.value.name}" (${lookup.value.source}).`)
 
 	if (resolved.value.length !== 1) {
+		// D175: a species that offers several sizes is settled by the stored choice, if it is one of them.
+		const chosen = character.speciesSize
+		if (chosen !== undefined && resolved.value.includes(chosen)) return known(chosen, [{ source: 'chosen size', amount: 0 }])
 		return unknown(`"${lookup.value.name}" (${lookup.value.source}) offers a choice of size (${resolved.value.join('/')}) that hasn't been made yet.`)
 	}
 

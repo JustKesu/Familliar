@@ -12,6 +12,7 @@ import type {
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
+	CharacterToolChoice,
 	CharacterExpertiseSkill,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
@@ -158,6 +159,8 @@ export interface CharacterCreateInput {
 	inventory?: CharacterInventoryItem[]
 	currencyCopper?: number
 	speciesSpellcastingAbility?: Ability
+	speciesSize?: string
+	toolChoices?: CharacterToolChoice[]
 	hitPointLevels?: CharacterHitPointLevel[]
 	/*
 	 * Play-time state the wizard never collects: the hand-set current hit points
@@ -277,6 +280,8 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		inventory,
 		currencyCopper,
 		speciesSpellcastingAbility,
+		speciesSize,
+		toolChoices,
 		hitPointLevels,
 		currentHp,
 		maxHpOverride,
@@ -315,7 +320,9 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(inventory && inventory.length > 0 ? { inventory } : {}),
 		...(currencyCopper ? { currencyCopper } : {}),
 		...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
-		...(hitPointLevels && hitPointLevels.length > 0 ? { hitPointLevels } : {}),
+		...(speciesSize ? { speciesSize } : {}),
+		...(toolChoices && toolChoices.length > 0 ? { toolChoices } : {}),
+		...(hitPointLevels &&hitPointLevels.length > 0 ? { hitPointLevels } : {}),
 		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
 		...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),
 		...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
@@ -607,6 +614,18 @@ export class CharacterStore {
 		const { languages: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = languages.length > 0 ? { ...rest, languages } : rest
+		this.writeAll(updated)
+	}
+
+	/** Replaces the class/subclass tool picks (D174: the drawer's slots). An empty list clears the field. */
+	setToolChoices(id: string, toolChoices: CharacterToolChoice[]): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { toolChoices: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = toolChoices.length > 0 ? { ...rest, toolChoices } : rest
 		this.writeAll(updated)
 	}
 

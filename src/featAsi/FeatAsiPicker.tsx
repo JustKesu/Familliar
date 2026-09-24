@@ -76,6 +76,7 @@ export function FeatAsiPicker({
 	finalAbilityScores,
 	speciesName,
 	speciesSource,
+	chosenSpeciesSize = null,
 	value,
 	onChange,
 	alreadyKnown = [],
@@ -89,6 +90,8 @@ export function FeatAsiPicker({
 	finalAbilityScores: Partial<Record<Ability, number>>
 	speciesName: string | null
 	speciesSource: string | null
+	/** D175: the size the player chose for a multi-size species; species.json alone leaves a "small race" prerequisite unresolved for it. */
+	chosenSpeciesSize?: string | null
 	value: FeatAsiChoice[]
 	onChange: (choices: FeatAsiChoice[]) => void
 	/** Spells the character already has from elsewhere (knownSpells.ts) — shown but not selectable in either spell sub-picker below. A feat's own picks are excluded by key so unselecting stays possible. */
@@ -190,7 +193,7 @@ export function FeatAsiPicker({
 					weaponProficiencies: state.weaponProficiencies,
 					speciesName,
 					speciesRaceTags: state.speciesRaceTags,
-					speciesSize: state.speciesSize,
+					speciesSize: state.speciesSize ?? chosenSpeciesSize,
 					chosenFeats: chosenFeatsUpto(index),
 				}
 

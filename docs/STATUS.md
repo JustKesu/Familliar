@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-24 (B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1267,8 +1267,22 @@ of Mercy L3 (Herbalism Kit), Battle Master L3 (nástroj nezvolen), featy Chef,
 Poisoner a uložené `proficiencies.tools` instance. Nezvolené volby (Bard 3
 nástroje, Monk artisan/instrument, Artificer 1, Battle Master 1, Crafter,
 Musician, Artificer Initiate, Prodigy) jsou „— not chosen"; Skilled nikdy.
-Picker nástrojů třídy zatím není. Druidic a Thieves' Cant se už nenabízejí ve
-slotech extra jazyků (uložená volba zůstává).
+Druidic a Thieves' Cant se už nenabízejí ve slotech extra jazyků (uložená volba
+zůstává).
+
+B5 (D174, D175): schéma 46 (`toolChoices`, `speciesSize`, migrace 45→46 jen
+tag). Nástroje třídy/podtřídy jde zvolit (Bard 3, Monk 1 z artisan+instrument,
+Artificer 1, Battle Master L3 1): sloty `ClassToolSlots` ve wizardu (krok
+languages, pod sloty jazyků), v level-upu (Fighter 3 se prochází jako „unknown",
+dokud se nezvolí podtřída) a v draweru Proficiencies, sekce Tools
+(`CharacterStore.setToolChoices`, uloží se hned). Tabulka grantů
+`src/toolProficiencies/classToolChoices.ts`; odebrání L3 volbu Battle Masteru
+smaže. Featové volby nástrojů zůstávají „not chosen". Wizard u druhu s víc
+velikostmi (23 druhů, např. Human) v kroku species žádá Small/Medium (radio,
+`SpeciesSizePicker`); `computeSize` bere uloženou volbu, hlavička ukáže velikost,
+bez volby zůstává „unresolved" (D54). Edit Character existujícího Battle Mastera
+L3+ teď vyžaduje zvolit nástroj, jinak krok languages neprojde (stejně jako
+Rogue u Thieves' Cant).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

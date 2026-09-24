@@ -31,12 +31,14 @@ function completeData(): WizardData {
 			{ name: 'Dwarvish', source: 'XPHB' },
 		],
 		featureLanguages: [],
+		toolChoices: [],
 		abilityScores: {
 			method: 'standardArray',
 			scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 },
 		},
 		classSkills: ['athletics', 'intimidation'],
 		speciesSkills: ['perception'],
+		speciesSize: null,
 		speciesSpellcastingAbility: null,
 		expertiseSkills: [],
 		masteries: ['Longsword'],
@@ -805,6 +807,87 @@ describe('class-feature languages (D172)', () => {
 	})
 })
 
+describe('class tool picks (D174)', () => {
+	const bard = { className: 'Bard', classSource: 'XPHB', level: 1 }
+	const pick = (grantedBy: 'bard' | 'monk' | 'battleMaster', name: string) => ({ grantedBy, name })
+	const lute = pick('bard', 'Lute')
+
+	it('a Bard needs all three instruments; a Fighter needs none', () => {
+		const data = { ...completeData(), classChoice: bard }
+		const bardPicks = [lute, pick('bard', 'Flute'), pick('bard', 'Drum')]
+		expect(isStepComplete('languages', data)).toBe(false)
+		expect(isStepComplete('languages', { ...data, toolChoices: bardPicks.slice(0, 2) })).toBe(false)
+		expect(isStepComplete('languages', { ...data, toolChoices: bardPicks })).toBe(true)
+		expect(isStepComplete('languages', completeData())).toBe(true)
+	})
+
+	it('a Monk needs one pick', () => {
+		const data = { ...completeData(), classChoice: { className: 'Monk', classSource: 'XPHB', level: 1 } }
+		expect(isStepComplete('languages', data)).toBe(false)
+		expect(isStepComplete('languages', { ...data, toolChoices: [pick('monk', "Smith's Tools")] })).toBe(true)
+	})
+
+	it('a level-up walk asks for Battle Master at 3 only, and not for a creation grant', () => {
+		const fighter = { ...completeData(), subclass: { name: 'Battle Master', source: 'XPHB', featureType: null } }
+		const l3 = { ...fighter, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 } }
+		expect(isStepComplete('languages', l3, { levelUpTargetLevel: 3 })).toBe(false)
+		expect(isStepComplete('languages', { ...l3, toolChoices: [pick('battleMaster', "Smith's Tools")] }, { levelUpTargetLevel: 3 })).toBe(true)
+		expect(isStepComplete('languages', { ...l3, subclass: { name: 'Champion', source: 'XPHB', featureType: null } }, { levelUpTargetLevel: 3 })).toBe(true)
+		// A Bard levelling to 2 is not owed the creation instruments again.
+		const bard2 = { ...completeData(), classChoice: { ...bard, level: 2 } }
+		expect(isStepComplete('languages', bard2, { levelUpTargetLevel: 2 })).toBe(true)
+	})
+
+	it('a Battle Master grant is not owed at level 2', () => {
+		const data = { ...completeData(), classChoice: { className: 'Fighter', classSource: 'XPHB', level: 2 } }
+		expect(isStepComplete('languages', data)).toBe(true)
+	})
+
+	it('changing the class drops the picks; changing only the level keeps them', () => {
+		const state: WizardControllerState = { step: 'class', data: { ...completeData(), classChoice: bard, toolChoices: [lute] } }
+		expect(wizardReducer(state, { type: 'setClassChoice', choice: { ...bard, level: 3 } }).data.toolChoices).toEqual([lute])
+		expect(wizardReducer(state, { type: 'setClassChoice', choice: { className: 'Fighter', classSource: 'XPHB', level: 1 } }).data.toolChoices).toEqual([])
+	})
+
+	it('saves the picks of a held grant only, and reopening shows them', () => {
+		const store = { create: vi.fn(() => ({ id: 'x', name: 'Aria', classes: [] })) } as unknown as CharacterStore
+		const picks = [lute, pick('bard', 'Flute'), pick('bard', 'Drum')]
+		saveCharacter(store, { ...completeData(), classChoice: bard, toolChoices: [...picks, pick('monk', 'Viol')] }, ['athletics', 'intimidation'])
+		const saved = vi.mocked(store.create).mock.calls[0][0]
+		expect(saved.toolChoices).toEqual(picks)
+		expect(wizardDataFromCharacter({ id: 'x', ...saved } as Character, { subclasses: [], spellLevels: [] }).toolChoices).toEqual(picks)
+	})
+
+	it('a character saved before the field existed reopens with no picks', () => {
+		const old: Character = { id: 'x', name: 'Aria', classes: [{ className: 'Bard', classSource: 'XPHB', subclass: null, level: 1 }] }
+		expect(wizardDataFromCharacter(old, { subclasses: [], spellLevels: [] }).toolChoices).toEqual([])
+	})
+})
+
+describe('species size choice (D175)', () => {
+	it('blocks the species step only while the conditions say the size is unchosen', () => {
+		const data = completeData()
+		expect(isStepComplete('species', data, { speciesSizeComplete: false })).toBe(false)
+		expect(isStepComplete('species', data, { speciesSizeComplete: true })).toBe(true)
+		expect(isStepComplete('species', data)).toBe(true)
+	})
+
+	it('changing the species clears the size', () => {
+		const state: WizardControllerState = { step: 'species', data: { ...completeData(), speciesSize: 'S' } }
+		expect(wizardReducer(state, { type: 'setSpeciesSize', size: 'M' }).data.speciesSize).toBe('M')
+		expect(wizardReducer(state, { type: 'setSpeciesChoice', choice: { name: 'Human', source: 'XPHB' } }).data.speciesSize).toBeNull()
+	})
+
+	it('saves the size and reopening shows it; an old character has none', () => {
+		const store = { create: vi.fn(() => ({ id: 'x', name: 'Aria', classes: [] })) } as unknown as CharacterStore
+		saveCharacter(store, { ...completeData(), speciesSize: 'S' }, ['athletics', 'intimidation'])
+		const saved = vi.mocked(store.create).mock.calls[0][0]
+		expect(saved.speciesSize).toBe('S')
+		expect(wizardDataFromCharacter({ id: 'x', ...saved } as Character, { subclasses: [], spellLevels: [] }).speciesSize).toBe('S')
+		expect(wizardDataFromCharacter({ id: 'x', name: 'Old', classes: [] }, { subclasses: [], spellLevels: [] }).speciesSize).toBeNull()
+	})
+})
+
 describe('editing an existing character', () => {
 	function editStore(): CharacterStore {
 		return {
@@ -831,6 +914,7 @@ describe('editing an existing character', () => {
 				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
+			toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
 			classSkills: ['acrobatics', 'survival'],
 			masteries: [{ name: 'Longsword', level: 4 }, { name: 'Greataxe' }],
 			expertiseSkills: [{ name: 'acrobatics', level: 3 }],

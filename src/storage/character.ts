@@ -59,6 +59,15 @@ export type LanguageGrantSource = 'automatic' | 'creation' | FeatureLanguageSour
 
 export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer'
 
+/** D174: which class or subclass grant a stored tool pick fills. */
+export type ToolChoiceSource = 'bard' | 'monk' | 'artificer' | 'battleMaster'
+
+export interface CharacterToolChoice {
+	grantedBy: ToolChoiceSource
+	/** The item's name in items.json — the same string a background's tool pick stores. */
+	name: string
+}
+
 /** Identifies a languages.json entry unambiguously, plus how the character came to know it. */
 export interface CharacterLanguage {
 	name: string
@@ -298,6 +307,10 @@ export interface Character {
 	 * keeps today's "not chosen yet" placeholder in both cases, never a guess.
 	 */
 	speciesSpellcastingAbility?: Ability
+	/** D175: the size a species that offers more than one ('S'/'M') was played as. Absent means not chosen yet (D54). */
+	speciesSize?: string
+	/** D174: the class/subclass tool picks (Bard, Monk, Artificer, Battle Master). Absent means none chosen. */
+	toolChoices?: CharacterToolChoice[]
 	/**
 	 * The character level the creation wizard made this character at (slice 8e).
 	 * Set once, never changed afterwards. It is the floor for removing a level:
@@ -926,4 +939,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 45
+export const CURRENT_SCHEMA_VERSION = 46

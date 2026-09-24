@@ -1,6 +1,7 @@
 import { classPrereqInfoFor } from '../featAsi/featAsiData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
+import { classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import type { Character, FeatChoiceDetails } from '../storage/character'
 import {
 	extractFeatWeaponProficiencyEntries,
@@ -74,8 +75,6 @@ const XPHB_FEATURE_GRANTS: {
 	armor: string[]
 	weapons: string[]
 	tools?: string[]
-	/** D173: an artisan's tool the subclass owes but no picker stores yet. */
-	pendingArtisanTools?: number
 }[] = [
 	{
 		className: 'Cleric',
@@ -105,14 +104,6 @@ const XPHB_FEATURE_GRANTS: {
 		armor: [],
 		weapons: [],
 		tools: ['herbalism kit'],
-	},
-	{
-		className: 'Fighter',
-		source: { kind: 'subclass', name: 'Battle Master' },
-		applies: (character) => hasSubclass(character, 'Fighter', 'Battle Master', 3),
-		armor: [],
-		weapons: [],
-		pendingArtisanTools: 1,
 	},
 ]
 
@@ -216,13 +207,23 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 		for (const token of classPrereqInfoFor(parsedClasses, startingClass.className, startingClass.classSource)?.armorProficiencies ?? []) addArmor(token, source)
 		for (const grant of weaponProficiencyGrantsForClass(parsedClasses, startingClass.className, startingClass.classSource)) addWeapon(grant, source)
 		const toolEntries = classToolProficiencies(parsedClasses, startingClass.className, startingClass.classSource)
+		// D174: stored picks join the tools, and only the remainder stays pending.
+		const startGrant = classToolGrantsFor(character.classes).find((grant) => !grant.subclass)
+		const startPicks = (character.toolChoices ?? []).filter((choice) => choice.grantedBy === startGrant?.grantedBy)
+		startPicks.forEach((choice) => addTool(choice.name, source))
 		if (toolEntries.length > 1) {
 			const choices = toolEntries.flatMap(toolChoices)
-			addPendingTool(choices[0]?.count ?? 0, choices.map((choice) => nounText(choice.noun, choice.count)).join(' or '), startingClass.className, source)
+			const remaining = Math.max(0, (choices[0]?.count ?? 0) - startPicks.length)
+			addPendingTool(remaining, choices.map((choice) => nounText(choice.noun, remaining)).join(' or '), startingClass.className, source)
 		} else {
+			let unassigned = startPicks.length
 			for (const entry of toolEntries) {
 				for (const [token, granted] of Object.entries(entry)) if (granted === true) addTool(titleCase(token), source)
-				for (const { noun, count } of toolChoices(entry)) addPendingTool(count, nounText(noun, count), startingClass.className, source)
+				for (const { noun, count } of toolChoices(entry)) {
+					const remaining = Math.max(0, count - unassigned)
+					unassigned = Math.max(0, unassigned - count)
+					addPendingTool(remaining, nounText(noun, remaining), startingClass.className, source)
+				}
 			}
 		}
 	}
@@ -236,8 +237,16 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 		grant.armor.forEach((token) => addArmor(token, grant.source))
 		grant.weapons.forEach((category) => addWeapon({ kind: 'category', category }, grant.source))
 		grant.tools?.forEach((tool) => addTool(titleCase(tool), grant.source))
-		const owed = grant.pendingArtisanTools ?? 0
-		addPendingTool(owed, nounText(TOOL_CHOICE_NOUNS['anyArtisansTool'], owed), grant.source.name, grant.source)
+	}
+
+	// D174: a subclass's own pick (Battle Master), pending until a slot stores it.
+	for (const grant of classToolGrantsFor(character.classes)) {
+		if (!grant.subclass) continue
+		const source: ProficiencySource = { kind: 'subclass', name: grant.owner }
+		const picks = (character.toolChoices ?? []).filter((choice) => choice.grantedBy === grant.grantedBy)
+		picks.forEach((choice) => addTool(choice.name, source))
+		const remaining = Math.max(0, grant.count - picks.length)
+		addPendingTool(remaining, nounText(TOOL_CHOICE_NOUNS['anyArtisansTool'], remaining), grant.owner, source)
 	}
 
 	for (const language of character.languages ?? []) {

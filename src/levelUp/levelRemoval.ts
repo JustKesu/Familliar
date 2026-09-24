@@ -10,6 +10,7 @@ import { chosenOptionalFeatureOptions } from '../optionalFeatures/optionalFeatur
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractFeatTextEntries } from '../sheet/sheetData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
+import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
 import type { Character, FeatureLanguageSource, LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
 import { subclassLevelFor } from '../subclass/subclassData'
@@ -151,6 +152,16 @@ export function levelRemovalPlan(
 		return false
 	})
 
+	// D174: a tool pick belongs to the level its grant arrives at (Battle Master at 3); creation-level grants can never match a removed level.
+	const lostToolGrants = new Set(
+		CLASS_TOOL_CHOICE_GRANTS.flatMap((grant) => (grant.className === className && grant.classSource === classSource && grant.level === level ? [grant.grantedBy] : [])),
+	)
+	const toolChoices = character.toolChoices?.filter((choice) => {
+		if (!lostToolGrants.has(choice.grantedBy)) return true
+		dropped.push(`Tool proficiency: ${choice.name}`)
+		return false
+	})
+
 	const hitPointLevels = (character.hitPointLevels ?? []).filter((entry) => {
 		if (entry.level !== level) return true
 		dropped.push(`Hit points for level ${level}`)
@@ -171,6 +182,7 @@ export function levelRemovalPlan(
 		subclassSpellChoices,
 		hitPointLevels,
 		...(languages ? { languages } : {}),
+		...(toolChoices ? { toolChoices } : {}),
 	}
 
 	/*

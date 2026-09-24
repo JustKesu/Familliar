@@ -817,6 +817,40 @@ describe('CharacterSheet', () => {
 		}
 	})
 
+	it("B5 (D174): the drawer chooses, changes and clears a Bard's instruments, never offering one twice", async () => {
+		const user = userEvent.setup()
+		const item = (name: string, type: string) => ({ name, source: 'XPHB', type, rarity: 'none' })
+		vi.mocked(loadDataFile).mockImplementation(async (path: string) =>
+			path === 'data/items.json' ? [item('Lute', 'INS'), item('Flute', 'INS'), item('Drum', 'INS'), item("Smith's Tools", 'AT|XPHB')] : [],
+		)
+		try {
+			const bard: Character = { ...character, classes: [{ className: 'Bard', classSource: 'XPHB', subclass: null, level: 1 }] }
+			const onEditToolChoices = vi.fn()
+			const view = render(<CharacterSheet character={bard} onEditToolChoices={onEditToolChoices} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await user.click(screen.getByRole('button', { name: 'Proficiencies details' }))
+
+			const first = await screen.findByRole('combobox', { name: /Bard tool 1/ })
+			// Instruments only for a Bard, sorted; the artisan's tool is not on offer.
+			expect(within(first).getAllByRole('option').map((option) => option.textContent)).toEqual(['— not chosen —', 'Drum', 'Flute', 'Lute'])
+			await user.selectOptions(first, 'Lute')
+			expect(onEditToolChoices).toHaveBeenLastCalledWith([{ grantedBy: 'bard', name: 'Lute' }])
+
+			const picked = [{ grantedBy: 'bard' as const, name: 'Lute' }, { grantedBy: 'bard' as const, name: 'Flute' }]
+			view.rerender(<CharacterSheet character={{ ...bard, toolChoices: picked }} onEditToolChoices={onEditToolChoices} />)
+			// A partial choice: the third slot never offers what the other two hold.
+			const third = screen.getByRole('combobox', { name: /Bard tool 3/ })
+			expect(within(third).getAllByRole('option').map((option) => option.textContent)).toEqual(['— not chosen —', 'Drum'])
+
+			await user.selectOptions(screen.getByRole('combobox', { name: /Bard tool 2/ }), 'Drum')
+			expect(onEditToolChoices).toHaveBeenLastCalledWith([{ grantedBy: 'bard', name: 'Lute' }, { grantedBy: 'bard', name: 'Drum' }])
+			await user.selectOptions(screen.getByRole('combobox', { name: /Bard tool 2/ }), '— not chosen —')
+			expect(onEditToolChoices).toHaveBeenLastCalledWith([{ grantedBy: 'bard', name: 'Lute' }])
+		} finally {
+			vi.mocked(loadDataFile).mockImplementation(async () => [])
+		}
+	})
+
 	it('R4b (D166): a skill name opens that skill’s breakdown in the drawer', async () => {
 		const user = userEvent.setup()
 		render(<CharacterSheet character={character} />)
@@ -1044,6 +1078,22 @@ describe('CharacterSheet', () => {
 		const sizeSpan = container.querySelector('.sheet__size')!
 		expect(sizeSpan.textContent).toContain('unresolved')
 		expect(sizeSpan.textContent).not.toContain('Medium')
+	})
+
+	it('D175: the header shows the size the player chose for a multi-size species, and no "unresolved"', async () => {
+		const chosen: Character = {
+			id: 'c8',
+			name: 'Decided',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+			species: { name: 'Human', source: 'XPHB' },
+			speciesSize: 'S',
+		}
+		const { container } = render(<CharacterSheet character={chosen} />)
+		await screen.findByRole('heading', { name: 'Decided' })
+
+		const sizeSpan = container.querySelector('.sheet__size')!
+		expect(sizeSpan.textContent).toContain('Small')
+		expect(sizeSpan.textContent).not.toContain('unresolved')
 	})
 
 	/*

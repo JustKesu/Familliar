@@ -38,6 +38,7 @@ import { expertiseEligibilityFor } from '../expertise/expertiseData'
 import { featAsiGrantsFor } from '../featAsi/featAsiData'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
+import { CLASS_TOOL_CHOICE_GRANTS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { masteryCountFor } from '../masteries/masteryData'
 import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
@@ -214,11 +215,7 @@ export function levelGainsFor(character: Character, level: number, parsedClasses
 			background: never('A background, its ability-bonus distribution and its tool proficiency are all chosen at creation.'),
 			expertise: expertiseStepGain(resolverData, className, classSource, level, previous),
 			// D172: the creation picks never grow; a class feature's free picks (Deft Explorer at Ranger 2) arrive with its level.
-			languages: adds(
-				classFeatureLanguageGrantsFor([{ className, classSource, level }]).flatMap((grant) =>
-					grant.choice && grant.level === level ? [{ name: grant.featureName, count: grant.choice.count }] : [],
-				),
-			),
+			languages: languagesStepGain(className, classSource, level, subclassGrantLevel, characterClass.subclass),
 			abilities: never('Ability scores are set at creation. A later level raises them only through the featAsi step, never through this one.'),
 			spells: spellsStepGain(before, now, parsedClasses, level, previous, {
 				subclassGrantLevel,
@@ -234,6 +231,24 @@ export function levelGainsFor(character: Character, level: number, parsedClasses
 			review: never('The review step collects nothing at any level — it is where the save happens.'),
 		},
 	}
+}
+
+/**
+ * D172: the creation picks never grow; a class feature's free picks (Deft Explorer at Ranger 2) arrive with its level.
+ * D174: so do the class tool picks — and a subclass's (Battle Master at 3), which the stored character cannot show yet
+ * while the subclass is still to be chosen at this very level, so that case is walked as unknown rather than skipped.
+ */
+function languagesStepGain(className: string, classSource: string, level: number, subclassGrantLevel: number | null, subclass: string | null): LevelGain {
+	const start = { className, classSource, level, subclass }
+	const parts: LevelGainPart[] = [
+		...classFeatureLanguageGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: grant.featureName, count: grant.choice.count }] : [])),
+		...classToolGrantsFor([start]).flatMap((grant) => (grant.level === level ? [{ name: `${grant.owner} tool`, count: grant.count }] : [])),
+	]
+	const gain = adds(parts)
+	if (gain.status === 'adds' || subclass !== null || subclassGrantLevel !== level) return gain
+	const pending = CLASS_TOOL_CHOICE_GRANTS.filter((grant) => grant.subclass && grant.className === className && grant.classSource === classSource && grant.level === level)
+	if (pending.length === 0) return gain
+	return unknownGain(`The subclass is chosen at this level, and ${pending.map((grant) => grant.subclass).join(' / ')} grants a tool proficiency pick.`)
 }
 
 function unresolvedReason(character: Character, level: number, parsedClasses: unknown[]): string | null {

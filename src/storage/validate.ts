@@ -14,6 +14,8 @@ import type {
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
+	CharacterToolChoice,
+	ToolChoiceSource,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
 	CharacterSpellChoice,
@@ -205,6 +207,30 @@ export function describeLanguagesError(value: unknown): string | null {
 		}
 	}
 	return null
+}
+
+const TOOL_CHOICE_SOURCES: readonly ToolChoiceSource[] = ['bard', 'monk', 'artificer', 'battleMaster']
+
+/** Validates an optional `toolChoices` field (D174). */
+export function describeToolChoicesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `toolChoices is not an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `toolChoices[${i}] is not an object`
+		if (!isNonEmptyString(entry['name'])) return `toolChoices[${i}].name is missing or not a string`
+		if (!TOOL_CHOICE_SOURCES.includes(entry['grantedBy'] as ToolChoiceSource)) {
+			return `toolChoices[${i}].grantedBy must be one of ${TOOL_CHOICE_SOURCES.join(', ')}`
+		}
+	}
+	return null
+}
+
+function toCharacterToolChoices(value: unknown[]): CharacterToolChoice[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return { grantedBy: record['grantedBy'] as ToolChoiceSource, name: record['name'] as string }
+	})
 }
 
 function toCharacterLanguages(value: unknown[]): CharacterLanguage[] {
@@ -1167,6 +1193,9 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (hitPointLevelsError) return `[${index}].${hitPointLevelsError}`
 	const speciesSpellcastingAbilityError = describeSpeciesSpellcastingAbilityError(value['speciesSpellcastingAbility'])
 	if (speciesSpellcastingAbilityError) return `[${index}].${speciesSpellcastingAbilityError}`
+	const toolChoicesError = describeToolChoicesError(value['toolChoices'])
+	if (toolChoicesError) return `[${index}].${toolChoicesError}`
+	if (value['speciesSize'] !== undefined && !isNonEmptyString(value['speciesSize'])) return `[${index}].speciesSize must be a non-empty string`
 	const createdAtLevel = value['createdAtLevel']
 	if (createdAtLevel !== undefined && (typeof createdAtLevel !== 'number' || !Number.isInteger(createdAtLevel) || createdAtLevel < 1 || createdAtLevel > 20)) {
 		return `[${index}].createdAtLevel must be a whole number from 1 to 20`
@@ -1213,6 +1242,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const play = value['play']
 	const hitPointLevels = value['hitPointLevels']
 	const speciesSpellcastingAbility = value['speciesSpellcastingAbility']
+	const toolChoices = value['toolChoices']
+	const speciesSize = value['speciesSize']
 	const createdAtLevel = value['createdAtLevel']
 	const appearance = value['appearance']
 	const backstory = value['backstory']
@@ -1248,6 +1279,8 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(isRecord(play) ? { play: toCharacterPlayState(play) } : {}),
 		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
+		...(Array.isArray(toolChoices) ? { toolChoices: toCharacterToolChoices(toolChoices) } : {}),
+		...(typeof speciesSize === 'string' ? { speciesSize } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),
 		...(typeof appearance === 'string' && appearance.length > 0 ? { appearance } : {}),
 		...(typeof backstory === 'string' && backstory.length > 0 ? { backstory } : {}),

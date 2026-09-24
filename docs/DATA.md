@@ -806,3 +806,11 @@ spotřebovaný a smazaný). Souvisí s D101.
 Found in investigation B1 (2026-09-24, scripts consumed); class/feat/Protector/
 Warden/Valor shapes re-checked in B2 (`scripts/verify-b2.js`, consumed). The
 species, Monk-tool and language lines are B1's and were not re-checked.
+
+### Species `size` — array of letters, a choice when it has two
+
+`species.json` `size` is an array of size letters. One element (`["M"]`) is the
+size; two (`["S","M"]`) is a player choice — 23 species, XPHB Human among them.
+The four Genasi subraces carry no `size` and inherit the parent's via
+`raceName`/`raceSource` (same fallback as speed and darkvision). The choice is
+stored on the character as `speciesSize` (D175); nothing in the data records it.

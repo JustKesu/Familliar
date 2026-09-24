@@ -15,6 +15,9 @@ import { SpeciesSpellcastingAbilityPicker } from '../spells/SpeciesSpellcastingA
 import { loadSpeciesSpellcastingAbilityChoice } from '../spells/speciesSpellcastingAbilityData'
 import type { AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { ToolProficiencyPicker } from '../toolProficiencies/ToolProficiencyPicker'
+import { ClassToolSlots } from '../toolProficiencies/ClassToolSlots'
+import { SpeciesSizePicker } from '../species/SpeciesSizePicker'
+import { loadSpeciesSizeOptions } from '../species/speciesSizeData'
 import { MasteryPicker } from '../masteries/MasteryPicker'
 import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
 import { SubclassPicker } from '../subclass/SubclassPicker'
@@ -86,6 +89,7 @@ import {
 	visibleSteps,
 	wizardDataFromCharacter,
 	wizardReducer,
+	wizardToolGrants,
 	type SpellRequirement,
 	type WizardStep,
 	type WizardStepConditions,
@@ -169,6 +173,9 @@ export function CharacterWizard({
 	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp) : {}
 	const held = levelUp && character ? heldPicksFrom(character, state.data.subclass?.featureType ?? null) : null
 	const featureLanguageGrants = state.data.classChoice ? classFeatureLanguageGrantsFor([state.data.classChoice]) : []
+	const toolGrants = wizardToolGrants(state.data, levelUp?.level ?? null)
+	/** D175: the chosen species' sizes, tagged like speciesSkillShape — the completion check needs them before the picker's panel would mount. */
+	const [speciesSizeShape, setSpeciesSizeShape] = useState<{ key: string; sizes: string[] } | null>(null)
 	const [saveError, setSaveError] = useState<string | null>(null)
 	/** Editing only: false until the seed's own data (subclass sources/featureTypes, spell levels) has loaded and been dispatched. */
 	const [seeded, setSeeded] = useState(character === undefined)
@@ -353,6 +360,24 @@ export function CharacterWizard({
 
 	const speciesName = state.data.speciesChoice?.name ?? null
 	const speciesSource = state.data.speciesChoice?.source ?? null
+	const speciesKey = speciesName === null ? null : `${speciesName}|${speciesSource}`
+	const speciesSizes = speciesSizeShape?.key === speciesKey ? speciesSizeShape.sizes : []
+	useEffect(() => {
+		let cancelled = false
+		setSpeciesSizeShape(null)
+		if (speciesName === null || speciesSource === null) return
+		loadSpeciesSizeOptions(speciesName, speciesSource)
+			.then((sizes) => {
+				if (!cancelled) setSpeciesSizeShape({ key: `${speciesName}|${speciesSource}`, sizes })
+			})
+			.catch(() => {
+				/* Left unset, the species step stays incomplete rather than passing with no size chosen. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [speciesName, speciesSource])
+
 	useEffect(() => {
 		let cancelled = false
 		setSpeciesSkillShape(null)
@@ -1041,6 +1066,11 @@ export function CharacterWizard({
 		(speciesSkillShape?.key === `${state.data.speciesChoice.name}|${state.data.speciesChoice.source}` &&
 			state.data.speciesSkills.length === speciesSkillRequiredCount)
 
+	/** D175: until the sizes have loaded for the CURRENT species the step stays incomplete, like the skills above; a species with one size needs nothing. */
+	const speciesSizeComplete =
+		state.data.speciesChoice === null ||
+		(speciesSizeShape?.key === speciesKey && (speciesSizes.length < 2 || (state.data.speciesSize !== null && speciesSizes.includes(state.data.speciesSize))))
+
 	/**
 	 * D89 follow-up: same shape as speciesSkillsComplete above. A species with
 	 * no choice (`choices === null` once loaded) is complete with nothing
@@ -1074,6 +1104,7 @@ export function CharacterWizard({
 		classFeatureChoicesComplete,
 		speciesVariantChoiceComplete,
 		speciesSkillsComplete,
+		speciesSizeComplete,
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
@@ -1280,6 +1311,9 @@ export function CharacterWizard({
 							disabledSkills={[...classSkillsAsDisabled, ...backgroundSkillsAsDisabled]}
 						/>
 					)}
+					{state.data.speciesChoice && speciesVariantChoiceComplete && (
+						<SpeciesSizePicker options={speciesSizes} value={state.data.speciesSize} onChange={(size) => dispatch({ type: 'setSpeciesSize', size })} />
+					)}
 					{/* D89 follow-up: held back the same way as SpeciesSkillPicker above — the choice (and whether there is one at all) is keyed to the resolved variant. */}
 					{state.data.speciesChoice && speciesVariantChoiceComplete && (
 						<SpeciesSpellcastingAbilityPicker
@@ -1342,6 +1376,12 @@ export function CharacterWizard({
 							...featureLanguageGrants.flatMap((grant) => (grant.fixed ? [grant.fixed] : [])),
 						]}
 						onChange={(languages) => dispatch({ type: 'setFeatureLanguages', languages })}
+					/>
+					{/* D174: class tool picks sit beside the language slots — a level-up walk already stops on this step. */}
+					<ClassToolSlots
+						grants={toolGrants}
+						value={state.data.toolChoices}
+						known={state.data.backgroundToolProficiency ? [state.data.backgroundToolProficiency] : []}						onChange={(choices) => dispatch({ type: 'setToolChoices', choices })}
 					/>
 				</div>
 			)}
@@ -1421,6 +1461,7 @@ export function CharacterWizard({
 						finalAbilityScores={finalAbilityScores}
 						speciesName={state.data.speciesChoice?.name ?? null}
 						speciesSource={state.data.speciesChoice?.source ?? null}
+						chosenSpeciesSize={state.data.speciesSize}
 						alreadyKnown={alreadyKnownSpells}
 						value={state.data.featAsiChoices}
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}

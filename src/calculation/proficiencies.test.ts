@@ -231,6 +231,41 @@ describe('computeProficiencies', () => {
 			expect(labels(tools(artificer))).toEqual(["Thieves' Tools", "Tinker's Tools", "1 artisan's tool (Artificer) — not chosen"])
 		})
 
+		describe('stored class tool picks (D174)', () => {
+			const withPicks = (c: Character, toolChoices: NonNullable<Character['toolChoices']>): Character => ({ ...c, toolChoices })
+
+			it('Bard: a partial pick leaves the remainder pending, all three clear it', () => {
+				const one = withPicks(character('Bard'), [{ grantedBy: 'bard', name: 'Lute' }])
+				expect(labels(tools(one))).toEqual(['Lute', '2 musical instruments (Bard) — not chosen'])
+				const two = withPicks(character('Bard'), [{ grantedBy: 'bard', name: 'Lute' }, { grantedBy: 'bard', name: 'Flute' }])
+				expect(labels(tools(two))).toEqual(['Flute', 'Lute', '1 musical instrument (Bard) — not chosen'])
+				const three = withPicks(character('Bard'), [{ grantedBy: 'bard', name: 'Lute' }, { grantedBy: 'bard', name: 'Flute' }, { grantedBy: 'bard', name: 'Drum' }])
+				expect(labels(tools(three))).toEqual(['Drum', 'Flute', 'Lute'])
+				expect(sources(tools(three)[0])).toEqual(['Bard'])
+			})
+
+			it('Monk: one pick from the union clears the single pending item', () => {
+				expect(labels(tools(withPicks(character('Monk'), [{ grantedBy: 'monk', name: "Smith's Tools" }])))).toEqual(["Smith's Tools"])
+			})
+
+			it('Artificer: the pick joins the fixed tools', () => {
+				const artificer: Character = { ...character('Artificer'), classes: [{ className: 'Artificer', classSource: 'EFA', subclass: null, level: 1 }], toolChoices: [{ grantedBy: 'artificer', name: "Smith's Tools" }] }
+				expect(labels(tools(artificer))).toEqual(["Smith's Tools", "Thieves' Tools", "Tinker's Tools"])
+			})
+
+			it("Battle Master: L2 owes and shows nothing, L3 owes one, a stored pick clears it", () => {
+				const picked = [{ grantedBy: 'battleMaster' as const, name: "Smith's Tools" }]
+				expect(tools(withPicks(character('Fighter', { level: 2, subclass: 'Battle Master' }), picked))).toEqual([])
+				const l3 = tools(withPicks(character('Fighter', { level: 3, subclass: 'Battle Master' }), picked))
+				expect(labels(l3)).toEqual(["Smith's Tools"])
+				expect(sources(l3[0])).toEqual(['Battle Master'])
+			})
+
+			it('a pick whose class no longer holds it is ignored', () => {
+				expect(labels(tools(withPicks(character('Bard'), [{ grantedBy: 'monk', name: 'Lute' }])))).toEqual(['3 musical instruments (Bard) — not chosen'])
+			})
+		})
+
 		it("Chef feat: Cook's Utensils", () => {
 			const result = tools(character('Wizard'), [{ name: 'Chef', source: 'XPHB' }])
 			expect(labels(result)).toEqual(["Cook's Utensils"])

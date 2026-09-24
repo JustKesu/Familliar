@@ -55,6 +55,8 @@ vi.mock('../speciesSkills/speciesSkillData', () => ({
 	loadSpeciesSkillProficiencies: vi.fn(async () => null),
 }))
 
+vi.mock('../species/speciesSizeData', () => ({ loadSpeciesSizeOptions: vi.fn(async () => ['M']) }))
+
 vi.mock('../spells/speciesSpellcastingAbilityData', () => ({
 	loadSpeciesSpellcastingAbilityChoice: vi.fn(async () => null),
 }))

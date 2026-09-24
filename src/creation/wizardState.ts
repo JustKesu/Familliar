@@ -19,6 +19,7 @@ import type {
 	CharacterInventoryItem,
 	CharacterWildShapeForms,
 	CharacterLanguage,
+	CharacterToolChoice,
 	CharacterExpertiseSkill,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
@@ -37,6 +38,7 @@ import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
 import { classFeatureLanguageGrantsFor, keepHeldFeatureLanguages } from '../languages/classFeatureLanguages'
+import { classToolGrantsFor, keepHeldToolChoices, type ClassToolChoiceGrant } from '../toolProficiencies/classToolChoices'
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
@@ -112,6 +114,8 @@ export interface WizardStepConditions {
 	speciesVariantChoiceComplete?: boolean
 	/** Whether the species' own skill proficiencies are settled — the count comes from species.json, not from WizardData. */
 	speciesSkillsComplete?: boolean
+	/** D175: whether the size a multi-size species offers has been chosen. True for a species with one size. */
+	speciesSizeComplete?: boolean
 	/** D89 follow-up: whether the species' own spellcasting-ability choice (`additionalSpells.ability: {choose:[...]}`) is settled. True for a species with a fixed ability or none at all — the count/list comes from species.json, not from WizardData. */
 	speciesSpellcastingAbilityComplete?: boolean
 	/** Wild Shape forms the class step must collect (wildShapeData.ts's Beast Shapes table); 0 for a character without Wild Shape. */
@@ -166,6 +170,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		classFeatureChoicesComplete: conditions.classFeatureChoicesComplete ?? true,
 		speciesVariantChoiceComplete: conditions.speciesVariantChoiceComplete ?? true,
 		speciesSkillsComplete: conditions.speciesSkillsComplete ?? true,
+		speciesSizeComplete: conditions.speciesSizeComplete ?? true,
 		speciesSpellcastingAbilityComplete: conditions.speciesSpellcastingAbilityComplete ?? true,
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
@@ -226,6 +231,13 @@ export function visibleSteps(conditions: WizardStepConditions = {}): readonly Wi
 	})
 }
 
+/** D174: the class/subclass tool picks the languages step collects. A level-up walk asks only for the ones that level brings (Battle Master at 3). */
+export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | null): ClassToolChoiceGrant[] {
+	if (!data.classChoice) return []
+	const grants = classToolGrantsFor([{ ...data.classChoice, subclass: data.subclass?.name ?? null }])
+	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === levelUpTargetLevel)
+}
+
 /** The picker steps only — every one of these must be complete before the review step may save. */
 function pickerSteps(conditions: WizardStepConditions): readonly WizardStep[] {
 	return visibleSteps(conditions).filter((step) => step !== 'review')
@@ -242,11 +254,15 @@ export interface WizardData {
 	languageChoice: LanguageChoice
 	/** D172: class-feature language picks (Thieves' Cant, Deft Explorer), already shaped like storage. Clears whenever the class changes. */
 	featureLanguages: CharacterLanguage[]
+	/** D174: class/subclass tool picks, already shaped like storage. Clears whenever the class changes. */
+	toolChoices: CharacterToolChoice[]
 	abilityScores: CharacterAbilityScores | null
 	/** Class skill proficiencies, weapon masteries, fighting style and subclass are the class's own choices (D13), so they clear whenever classChoice does. */
 	classSkills: string[]
 	/** The species' skill proficiencies (fixed and/or chosen) — clears whenever speciesChoice does, since the options are keyed to a specific species. */
 	speciesSkills: string[]
+	/** D175: the size chosen for a species that offers several. Clears whenever speciesChoice does. */
+	speciesSize: string | null
 	/**
 	 * D89 follow-up: which ability the species' own granted spells are cast
 	 * with, when `additionalSpells.ability` is the `{choose:[...]}` shape —
@@ -324,9 +340,11 @@ export function emptyWizardData(): WizardData {
 		backgroundToolProficiency: null,
 		languageChoice: [],
 		featureLanguages: [],
+		toolChoices: [],
 		abilityScores: null,
 		classSkills: [],
 		speciesSkills: [],
+		speciesSize: null,
 		speciesSpellcastingAbility: null,
 		expertiseSkills: [],
 		masteries: [],
@@ -423,9 +441,11 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 			.filter((language) => language.grantedBy === 'creation')
 			.map(({ name, source }) => ({ name, source })),
 		featureLanguages: (character.languages ?? []).filter((language) => language.grantedBy !== 'automatic' && language.grantedBy !== 'creation'),
+		toolChoices: character.toolChoices ?? [],
 		abilityScores: character.abilityScores ?? null,
 		classSkills: character.classSkills ?? [],
 		speciesSkills: character.speciesSkills ?? [],
+		speciesSize: character.speciesSize ?? null,
 		speciesSpellcastingAbility: character.speciesSpellcastingAbility ?? null,
 		expertiseSkills: choiceNames(character.expertiseSkills),
 		masteries: choiceNames(character.masteries),
@@ -506,6 +526,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		classFeatureChoicesComplete,
 		speciesVariantChoiceComplete,
 		speciesSkillsComplete,
+		speciesSizeComplete,
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
@@ -537,6 +558,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				data.speciesChoice !== null &&
 				speciesVariantChoiceComplete &&
 				speciesSkillsComplete &&
+				speciesSizeComplete &&
 				speciesSpellcastingAbilityComplete
 			)
 		case 'background':
@@ -557,7 +579,8 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			const grants = data.classChoice ? classFeatureLanguageGrantsFor([data.classChoice]) : []
 			return (
 				creationComplete &&
-				grants.every((grant) => !grant.choice || data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length === grant.choice.count)
+				grants.every((grant) => !grant.choice || data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length === grant.choice.count) &&
+				wizardToolGrants(data, levelUpTargetLevel).every((grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length === grant.count)
 			)
 		}
 		case 'abilities':
@@ -682,6 +705,8 @@ export type WizardAction =
 	| { type: 'setBackgroundToolProficiency'; tool: string | null }
 	| { type: 'setLanguageChoice'; choice: LanguageChoice }
 	| { type: 'setFeatureLanguages'; languages: CharacterLanguage[] }
+	| { type: 'setToolChoices'; choices: CharacterToolChoice[] }
+	| { type: 'setSpeciesSize'; size: string | null }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
 	| { type: 'setClassSkills'; skills: string[] }
 	| { type: 'setMasteries'; weapons: string[] }
@@ -741,6 +766,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					...state.data,
 					classChoice: action.choice,
 					featureLanguages: [],
+					toolChoices: [],
 					classSkills: [],
 					expertiseSkills: [],
 					masteries: [],
@@ -761,7 +787,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setSpeciesChoice':
 			return {
 				...state,
-				data: { ...state.data, speciesChoice: action.choice, speciesSkills: [], speciesSpellcastingAbility: null, expertiseSkills: [] },
+				data: { ...state.data, speciesChoice: action.choice, speciesSkills: [], speciesSize: null, speciesSpellcastingAbility: null, expertiseSkills: [] },
 			}
 		case 'setSpeciesSkills':
 			return { ...state, data: { ...state.data, speciesSkills: action.skills, expertiseSkills: [] } }
@@ -799,6 +825,10 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, languageChoice: action.choice } }
 		case 'setFeatureLanguages':
 			return { ...state, data: { ...state.data, featureLanguages: action.languages } }
+		case 'setToolChoices':
+			return { ...state, data: { ...state.data, toolChoices: action.choices } }
+		case 'setSpeciesSize':
+			return { ...state, data: { ...state.data, speciesSize: action.size } }
 		case 'setAbilityScores':
 			return { ...state, data: { ...state.data, abilityScores: action.scores } }
 		case 'setClassSkills':
@@ -957,6 +987,8 @@ export function saveCharacter(
 		...keepHeldFeatureLanguages(data.featureLanguages, classFeatureLanguageGrantsFor(classes)),
 	]
 	const languages = allLanguages.length > 0 ? allLanguages : undefined
+	const heldToolChoices = keepHeldToolChoices(data.toolChoices, classToolGrantsFor(classes))
+	const toolChoices = heldToolChoices.length > 0 ? heldToolChoices : undefined
 
 	/**
 	 * Tagged with the subclass's own featureType (D21) so more than one
@@ -1077,6 +1109,8 @@ export function saveCharacter(
 		inventory: existing ? existing.inventory : startingEquipment?.inventory,
 		currencyCopper: existing ? existing.currencyCopper : startingEquipment?.currencyCopper,
 		speciesSpellcastingAbility: data.speciesSpellcastingAbility ?? undefined,
+		speciesSize: data.speciesSize ?? undefined,
+		toolChoices,
 		hitPointLevels,
 		// Play state the wizard has no control over, carried across an update that replaces every field.
 		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.

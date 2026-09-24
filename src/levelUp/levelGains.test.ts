@@ -104,6 +104,17 @@ describe('levelGainsFor', () => {
 		expect(levelGainsFor(ranger, 3, classes, RESOLVER).steps.languages.status).toBe('none')
 	})
 
+	it("D174: Battle Master's tool pick is level 3 — unknown while the subclass is still to be chosen, adds once it is, none at 2", () => {
+		const unchosen = character([{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 2 }])
+		const languages = levelGainsFor(unchosen, 3, CLASSES, RESOLVER).steps.languages
+		expect(languages.status).toBe('unknown')
+		expect(languages.reason).toContain('Battle Master')
+		expect(levelGainsFor(unchosen, 2, CLASSES, RESOLVER).steps.languages.status).toBe('none')
+		const chosen = character([{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 2 }])
+		expect(levelGainsFor(chosen, 3, CLASSES, RESOLVER).steps.languages).toMatchObject({ status: 'adds', count: 1, parts: [{ name: 'Battle Master tool', count: 1 }] })
+		expect(levelGainsFor(fighter, 3, CLASSES, RESOLVER).steps.languages.status).toBe('none')
+	})
+
 	it('reports unknown, not zero, for a class the supplied data does not have', () => {
 		const gains = levelGainsFor(character([{ className: 'Artificer', classSource: 'TCE', subclass: null, level: 4 }]), 4, CLASSES, RESOLVER)
 		expect(gains.unresolved).toContain('Artificer')

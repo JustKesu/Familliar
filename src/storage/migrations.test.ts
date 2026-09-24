@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import { MIGRATIONS, canMigrateToCurrent, migrateToCurrent } from './migrations'
-import { describeLanguagesError } from './validate'
+import { describeLanguagesError, describeToolChoicesError } from './validate'
 
 describe('the migration chain (D69)', () => {
 	it('has no hole between its oldest step and the current version', () => {
@@ -471,6 +471,17 @@ describe('the migration chain (D69)', () => {
 		expect(describeLanguagesError(migrated['languages'])).toBeNull()
 		expect(describeLanguagesError([...languages, { name: 'Abyssal', source: 'XPHB', grantedBy: 'thievesCant' }])).toBeNull()
 		expect(describeLanguagesError([{ name: 'Abyssal', source: 'XPHB', grantedBy: 'feat' }])).toContain('grantedBy')
+	})
+
+	/* B5 (D174/D175): two additive fields; a version-45 character loads unchanged, with no picks and no size chosen. */
+	it('tags a version-45 character without inventing tool picks or a size', () => {
+		const before = { schemaVersion: 45, id: '1', name: 'Aria', classes: [{ className: 'Bard', classSource: 'XPHB', subclass: null, level: 1 }] }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(describeToolChoicesError([{ grantedBy: 'bard', name: 'Lute' }])).toBeNull()
+		expect(describeToolChoicesError([{ grantedBy: 'wizard', name: 'Lute' }])).toContain('grantedBy')
+		expect(describeToolChoicesError([{ grantedBy: 'bard', name: '' }])).toContain('name')
 	})
 
 	/* Slice 9d2: three purely additive fields, so the step only tags — nothing written is what absence already means. */

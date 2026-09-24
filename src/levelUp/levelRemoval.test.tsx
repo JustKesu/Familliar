@@ -214,6 +214,20 @@ describe('class-feature languages on a level removal (D172)', () => {
 	})
 })
 
+describe('class tool picks on a level removal (D174)', () => {
+	const toolChoices: Character['toolChoices'] = [{ grantedBy: 'battleMaster', name: "Smith's Tools" }]
+
+	it('removing Fighter level 3 drops the Battle Master tool pick', () => {
+		const removed = plan({ ...single('Fighter', 'Battle Master', 3, 1), toolChoices })
+		expect(removed.result.toolChoices).toEqual([])
+		expect(removed.dropped).toContain("Tool proficiency: Smith's Tools")
+	})
+
+	it('removing Fighter level 4 keeps it', () => {
+		expect(plan({ ...single('Fighter', 'Battle Master', 4, 1), toolChoices }).result.toolChoices).toEqual(toolChoices)
+	})
+})
+
 describe('when a level cannot be removed', () => {
 	it('refuses at level 1, at the created-at level, without a created-at level, and for a multiclass character', () => {
 		expect(levelRemovalTarget(single('Fighter', null, 1, 1))).toEqual({ reason: expect.stringContaining('Level 1') })

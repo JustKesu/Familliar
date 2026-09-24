@@ -3038,3 +3038,59 @@ prázdné = „None". Bez změny úložiště; picker jen uloží volbu.
 
 **Tajné jazyky.** Sloty extra jazyků (Rogue +1, Ranger +2) nenabízejí Druidic a
 Thieves' Cant. Už uložená volba jednoho z nich zůstává a zobrazuje se.
+
+## D174 — B5: volba nástrojů třídy a podtřídy
+
+Zdroj: task B5, 24. 9. 2026. Navazuje na D172 (stejný vzor) a D173.
+
+**Úložiště.** Nové nepovinné pole `Character.toolChoices: { grantedBy, name }[]`,
+`grantedBy` = `bard` | `monk` | `artificer` | `battleMaster`, `name` = jméno
+položky z items.json. Nové pole, ne `languages`: to je typované jazyky se
+zdrojem a `background.toolProficiency` je jeden řetězec. Schéma 46 (společné s
+D175), migrace 45→46 jen tag; staré postavy se načtou beze změny a volba se u
+nich ukáže jako nezvolená.
+
+**Granty.** Ruční tabulka `src/toolProficiencies/classToolChoices.ts`: Bard XPHB
+L1 3 nástroje (instrumenty), Monk XPHB L1 1 z sjednocení artisan + instrument,
+Artificer EFA L1 1 artisan, Fighter XPHB / Battle Master L3 1 artisan. Feat
+volby (Crafter, Musician, Prodigy, Artificer Initiate) zůstávají nezvolené.
+
+**Nabídka.** Stejné seznamy jako picker nástroje pozadí
+(`loadToolCategoryOptions`: artisan `AT`, instrument `INS` jen `rarity: none`).
+Nikdy nástroj, který postava už má z jakéhokoli zdroje ani který drží jiný slot;
+vlastní volba slotu zůstává. Ve wizardu se „už má" počítá z nástroje pozadí,
+jmen z uložených slotů a pevných nástrojů grantu (Artificer: Thieves' a
+Tinker's Tools); nástroje z featů se tam nevidí. V draweru z `computeProficiencies`.
+
+**Kde se volí.** (a) Wizard, krok languages, pod sloty jazyků (krok už level-up
+prochází a je to místo, kde se volí třídní featury). Změna třídy volby smaže;
+uložení zahodí volbu grantu, který už neplatí; Edit Character volby ukáže a
+nevyplněná blokuje krok. (b) Level-up: Battle Master L3 — podtřída se volí
+právě na tom levelu, takže krok languages je u Fighter 3 bez zvolené podtřídy
+„unknown" (projde se a zůstane prázdný, když podtřída žádný nástroj nedává);
+krok žádá jen granty, které level přináší. Odebrání L3 volbu smaže (odvozeno z
+úrovně grantu). (c) Drawer Proficiencies, sekce Tools: sloty všech platných
+grantů, volba / změna / smazání se uloží hned (`CharacterStore.setToolChoices`).
+
+**Znění.** Uložená volba se ukáže jako nástroj (zdroj „Bard", „Battle Master");
+částečná volba nechá zbytek nezvolený: „2 musical instruments (Bard) — not
+chosen", „1 musical instrument (Bard) — not chosen".
+
+## D175 — B5: volba velikosti druhu (Small / Medium)
+
+Zdroj: task B5, 24. 9. 2026. Uzavírá otázku „Volba velikosti chybí ve wizardu"
+a mění D54 jen tím, že velikost už lze zvolit; bez volby zůstává „neznámo".
+
+**Úložiště.** Nové nepovinné pole `Character.speciesSize` (písmeno velikosti z
+`species.json`, např. `S`); schéma 46 společné s D174. Nic jiného velikost
+nečetlo, kromě předpokladu feta „small race" ve wizardu (`FeatAsiPicker`), který
+teď bere uloženou volbu, když ji data sama nerozhodnou.
+
+**Wizard.** Krok species: Small / Medium (radio, stejný styl jako skilly druhu)
+u druhu, jehož data nabízejí víc než jednu velikost (po rozhodnutí varianty, jako
+skilly). Bez volby krok nedokončí; nezobrazí se u druhu s jednou velikostí. Změna
+druhu volbu smaže; Edit Character ji ukáže.
+
+**Sheet.** `computeSize` bere uloženou volbu, je-li jednou z nabízených velikostí
+(zastaralá volba, kterou druh nenabízí, se ignoruje); jinak zůstává „unresolved"
+z D54. Hlavička ukáže „Small" / „Medium".

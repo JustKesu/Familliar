@@ -66,6 +66,8 @@ vi.mock('../speciesSkills/speciesSkillData', () => ({
 	}),
 }))
 
+vi.mock('../species/speciesSizeData', () => ({ loadSpeciesSizeOptions: vi.fn(async () => ['M']) }))
+
 vi.mock('../spells/speciesSpellcastingAbilityData', () => ({
 	loadSpeciesSpellcastingAbilityChoice: vi.fn(async () => null),
 }))
@@ -734,6 +736,9 @@ describe('CharacterWizard — storage', () => {
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
 		await goNext(user)
 		await fillLanguagesStep(user)
+		// D174: Battle Master's artisan's tool blocks the step until it is chosen.
+		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		await user.selectOptions(await screen.findByRole('combobox', { name: /Battle Master tool/ }), "Smith's Tools")
 		await goNext(user)
 		await user.selectOptions(screen.getByLabelText('Strength'), '15')
 		await user.selectOptions(screen.getByLabelText('Dexterity'), '14')
@@ -775,6 +780,7 @@ describe('CharacterWizard — storage', () => {
 			subclassSpellChoices: undefined,
 			classFeatureChoices: undefined,
 			wildShapeForms: undefined,
+			toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
 			// The class's gear package and the background's coin option, combined:
 			// the package's items, and 4 gp from it plus 50 gp from the background.
 			inventory: [

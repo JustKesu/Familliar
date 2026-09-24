@@ -44,6 +44,7 @@ vi.mock('../species/speciesData', async (importOriginal) => {
 		{ name: 'Goliath; Fire Giant Ancestry', source: 'XPHB' },
 		{ name: 'Dwarf', source: 'XPHB' },
 		{ name: 'Aarakocra', source: 'XPHB' },
+		{ name: 'Human', source: 'XPHB' },
 	]
 	return { ...actual, loadSpeciesOptions: vi.fn(async () => actual.extractSpeciesOptions(raw)) }
 })
@@ -62,6 +63,11 @@ vi.mock('../spells/speciesSpellcastingAbilityData', () => ({
 		if (speciesName === 'Aarakocra') return ['int', 'wis', 'cha']
 		return null
 	}),
+}))
+
+/** Only Human offers a size choice here (D175). */
+vi.mock('../species/speciesSizeData', () => ({
+	loadSpeciesSizeOptions: vi.fn(async (speciesName: string) => (speciesName === 'Human' ? ['S', 'M'] : ['M'])),
 }))
 
 vi.mock('../classSkills/classSkillData', async (importOriginal) => ({
@@ -235,6 +241,28 @@ describe('CharacterWizard — the species step waits for every species choice', 
 		await user.selectOptions(screen.getByLabelText('Lineage'), '')
 
 		expect((screen.getByLabelText('Species') as HTMLSelectElement).value).toBe('Genasi|MPMM')
+		expect(nextButton().disabled).toBe(true)
+	})
+})
+
+describe('CharacterWizard — the species step waits for the size choice (D175)', () => {
+	it('refuses to advance until a multi-size species has a size, and shows nothing for a one-size species', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+		await reachSpeciesStep(user)
+
+		await user.selectOptions(screen.getByLabelText('Species'), 'Human (XPHB)')
+		expect(await screen.findByLabelText('Small')).toBeTruthy()
+		expect(nextButton().disabled).toBe(true)
+		await user.click(screen.getByLabelText('Medium'))
+		expect(nextButton().disabled).toBe(false)
+
+		// A different species drops the choice, and a one-size species never asks.
+		await user.selectOptions(screen.getByLabelText('Species'), 'Dwarf (XPHB)')
+		expect(screen.queryByLabelText('Small')).toBeNull()
+		expect(nextButton().disabled).toBe(false)
+		await user.selectOptions(screen.getByLabelText('Species'), 'Human (XPHB)')
+		expect((await screen.findByLabelText('Medium') as HTMLInputElement).checked).toBe(false)
 		expect(nextButton().disabled).toBe(true)
 	})
 })

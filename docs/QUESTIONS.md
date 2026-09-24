@@ -86,7 +86,8 @@ STATUS: nerozhodnuto, nízká priorita.
 velikost u nich zůstává "neznámo" (D54). Krok wizardu na to zatím
 v build orderu není. Rozhodnout, kam patří — nejspíš do species
 kroku, vedle species skillů.
-STATUS: nerozhodnuto, blokuje zobrazení velikosti na sheetu.
+STATUS: vyřešeno B5 (24. 9. 2026, D175) — volba v kroku species, velikost na
+sheetu se zobrazí.
 
 ### ASI vzatý dřív v téže session se nezapočítá do prerekvizit
 
@@ -386,6 +387,8 @@ B3 (24. 9. 2026, D171): řádek LANGUAGES hotový; tools zbývají.
 B3b (24. 9. 2026, D172): extra jazyky Rogue (Thieves' Cant) a Ranger (Deft
 Explorer) jdou zvolit; jazyk Prodigy zůstává nezvolený.
 B4 (24. 9. 2026, D173): řádek TOOLS hotový; pickery nástrojů třídy zbývají.
+B5 (24. 9. 2026, D174): pickery nástrojů třídy a podtřídy hotové (Bard, Monk,
+Artificer, Battle Master); featové volby nástrojů zůstávají.
 STATUS: nerozhodnuto, blokuje dokončení D123's Proficiencies části.
 
 ### Aberrant Dragonmark, Natural Recovery, Magic Item Tinker — dva nezávislé limity v jedné featuře

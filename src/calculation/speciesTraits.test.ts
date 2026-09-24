@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
-import { computeDarkvision, computeSize, computeSpeed, type SpeciesTraitsData } from './speciesTraits'
+import { computeDarkvision, computeSize, computeSpeed, speciesSizeOptions, type SpeciesTraitsData } from './speciesTraits'
 
 /**
  * Genasi (MPMM) fixture mirrors the real data trap confirmed by
@@ -73,6 +73,20 @@ describe('computeSize', () => {
 	it('a species offering a size choice is unknown until the wizard captures it', () => {
 		const result = computeSize(withSpecies('Human', 'XPHB'), speciesData)
 		expect(result.status).toBe('unknown')
+	})
+
+	it('D175: the stored choice settles a size choice, and a stale one that the species does not offer does not', () => {
+		const chosen = computeSize({ ...withSpecies('Human', 'XPHB'), speciesSize: 'S' }, speciesData)
+		expect(chosen).toMatchObject({ status: 'known', value: 'S' })
+		expect(computeSize({ ...withSpecies('Human', 'XPHB'), speciesSize: 'L' }, speciesData).status).toBe('unknown')
+		// A fixed-size species ignores a leftover choice.
+		expect(computeSize({ ...withSpecies('Elf', 'XPHB'), speciesSize: 'S' }, speciesData)).toMatchObject({ status: 'known', value: 'M' })
+	})
+
+	it('D175: speciesSizeOptions lists what a species offers, following the parent fallback', () => {
+		expect(speciesSizeOptions(speciesData, 'Human', 'XPHB')).toEqual(['S', 'M'])
+		expect(speciesSizeOptions(speciesData, 'Air', 'MPMM')).toEqual(['M'])
+		expect(speciesSizeOptions(speciesData, 'Nobody', 'XPHB')).toEqual([])
 	})
 
 	it('a subrace entry missing size falls back to the parent entry', () => {
