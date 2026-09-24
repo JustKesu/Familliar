@@ -247,6 +247,7 @@ type DrawerContent =
 const PROFICIENCY_ROWS: [ProficiencyCategory, string][] = [
 	['armor', 'Armor'],
 	['weapons', 'Weapons'],
+	['languages', 'Languages'],
 ]
 
 /** D45: the dot per proficiency status; half and expertise keep their own symbols. */
@@ -2482,7 +2483,7 @@ function CharacterSheetBody({
 			.catch((error: unknown) => {
 				if (cancelled) return
 				// D43: no grants means "proficient with nothing", which is a real state — the error line is what keeps it from reading as one.
-				setWeaponAttackData({ grants: [], martialArtsDie: null, featureNames: [], proficiencies: { armor: [], weapons: [] } })
+				setWeaponAttackData({ grants: [], martialArtsDie: null, featureNames: [], proficiencies: { armor: [], weapons: [], languages: [] } })
 				setWeaponAttackDataError(messageOf(error))
 			})
 		return () => {

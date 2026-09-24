@@ -339,6 +339,10 @@ vi.mock('./weaponAttackData', async (importOriginal) => {
 			martialArtsDie: null,
 			featureNames: ['Extra Attack'],
 			proficiencies: {
+				languages: [
+					{ key: 'common', label: 'Common', sources: [{ kind: 'creation' as const, name: 'Every character' }] },
+					{ key: 'sylvan', label: 'Sylvan', sources: [{ kind: 'creation' as const, name: 'Chosen at creation' }] },
+				],
 				armor: [],
 				weapons: [
 					{
@@ -756,7 +760,7 @@ describe('CharacterSheet', () => {
 		expect(within(open).getAllByText('Breakdown')).toHaveLength(18)
 	})
 
-	it('B2 (D170): Proficiencies shows ARMOR and WEAPONS rows; its gear lists each item with its sources', async () => {
+	it('B2/B3 (D170/D171): Proficiencies shows ARMOR, WEAPONS and LANGUAGES rows; its gear lists each item with its sources', async () => {
 		const user = userEvent.setup()
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
@@ -764,11 +768,14 @@ describe('CharacterSheet', () => {
 		const card = document.querySelector<HTMLElement>('.sheet__proficiencies')!
 		await waitFor(() => expect(card.textContent).toContain('Martial weapons'))
 		const rows = Array.from(card.querySelectorAll('li')).map((li) => li.textContent)
-		expect(rows).toEqual(['ARMORNone', 'WEAPONSMartial weapons'])
+		expect(rows).toEqual(['ARMORNone', 'WEAPONSMartial weapons', 'LANGUAGESCommon, Sylvan'])
 
 		await user.click(screen.getByRole('button', { name: 'Proficiencies details' }))
 		const open = screen.getByRole('dialog', { name: 'Proficiencies' })
 		expect(open.textContent).toContain('Martial weapons — Fighter, Martial Weapon Training (feat)')
+		expect(within(open).getByText('Languages')).toBeTruthy()
+		expect(open.textContent).toContain('Common — Every character')
+		expect(open.textContent).toContain('Sylvan — Chosen at creation')
 	})
 
 	it('R4b (D166): a skill name opens that skill’s breakdown in the drawer', async () => {

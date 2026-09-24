@@ -2953,3 +2953,30 @@ Rozhodování o zdatnosti pro útoky (`weaponProficiency.ts`) se nemění.
 Karta v sub-sloupci A pod Senses, `flex-grow`; ozubené kolo → drawer
 „Proficiencies" (vzor D166 pro kolo; nadpis karty klikací není, stejně jako u
 Saving throws/Skills).
+
+## D171 — B3: řádek LANGUAGES na kartě Proficiencies
+
+Zdroj: task B3, 24. 9. 2026. Pořadí řádků karty: ARMOR / WEAPONS / (TOOLS,
+později) / LANGUAGES. Languages patří do stejného `computeProficiencies`
+(klíč `languages`) a do stejného draweru jako armor a weapons.
+
+**Zdroje.** (1) `character.languages`: Common (`automatic`) se ukazuje jako
+„Every character", výběr při tvorbě (`creation`) jako „Chosen at creation".
+(2) XPHB class featury v ruční tabulce vedle grantů podtříd, pro libovolnou
+třídu v `character.classes` na potřebné úrovni: Druid L1 Druidic (zdroj
+„Druid"); Rogue L1 Thieves' Cant (zdroj „Rogue") + 1 volný jazyk; Ranger L2
+Deft Explorer, 2 volné jazyky. (3) Featy z `languageProficiencies` v feats.json:
+Fey Teleportation (XGE) Sylvan pevně; Prodigy (XGE) `{any: 1}` = 1 volný. Zvolený
+jazyk Prodigy se čte z `FeatChoiceDetails.proficiencies.languages` instance
+(D158). Všech pět zdrojů ověřeno proti datům.
+
+**Nezvolené volby.** Rogue +1, Ranger +2 a Prodigy +1 nemají picker; každá se
+ukazuje jako položka „N language(s) — not chosen" (`pending: true`) se zdrojem
+„Rogue — Thieves' Cant", „Ranger — Deft Explorer", „Prodigy (feat)". Picker
+později jen uloží volbu; u Prodigy počet čekajících = `any` minus uložené
+jazyky, takže položka zmizí sama. Rogue/Ranger uložení zatím nemají — bez
+schématu se nic nemění.
+
+**Řazení a slučování.** Stejný jazyk z více zdrojů = jedna položka se všemi
+zdroji (Sylvan při tvorbě + Fey Teleportation). Pořadí: Common, ostatní známé
+abecedně, nezvolené položky nakonec.

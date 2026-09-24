@@ -691,7 +691,11 @@ count of "11 with a choice, 4 fixed-only" counted Boon of Skill twice.)
   artisan's tools],count:3}}` (Crafter, NOT `anyArtisansTool`: the 8 are its
   Fast Crafting table), `{anyArtisansTool:1}` (Artificer Initiate),
   `{anyMusicalInstrument:3}` (Musician), `{any:1}` (Prodigy, any tool at all).
-- `languageProficiencies: [{any:1}]` — Prodigy only.
+- `languageProficiencies: [{any:1}]` — Prodigy only. Fey Teleportation has
+  `[{sylvan:true}]`. XPHB class features that grant languages (Druid Druidic
+  L1, Rogue Thieves' Cant L1 + one, Ranger Deft Explorer L2 + two) carry no
+  structured field, only prose (checked B3) — hence the hand table in
+  `proficiencies.ts`.
 - `expertise: [{anyProficientSkill:1}]` — Boon of Skill, Prodigy, Skill Expert.
 - `skillToolLanguageProficiencies: [{choose:[{from:["anySkill","anyTool"],count:3}]}]`
   — Skilled only. TRAP: here `choose` is an ARRAY of groups, unlike every other

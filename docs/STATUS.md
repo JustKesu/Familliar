@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-24 (B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1242,6 +1242,12 @@ featy; stejná položka z více zdrojů = jeden záznam. Data jedou s
 `loadWeaponAttackData` (pole `proficiencies`). Sub-sloupec A se natahuje do
 výšky Skills a karta vyplní zbytek. Tools (B3) a languages (B4) zbývají.
 Kontrola v prohlížeči neproběhla (zadání ji vyloučilo — viz REPORT.md).
+
+B3 (D171): karta Proficiencies má třetí řádek LANGUAGES (Common, jazyky z
+tvorby, Druidic, Thieves' Cant, Fey Teleportation, zvolený jazyk Prodigy) a
+sekci Languages v draweru. Rogue +1, Ranger L2 +2 a Prodigy bez volby se
+ukazují jako „N language(s) — not chosen" (picker zatím není, úložiště se
+nemění). Tools zbývají, přijdou mezi WEAPONS a LANGUAGES.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

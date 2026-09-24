@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Character, CharacterClassFeatureChoice } from '../storage/character'
-import { computeProficiencies, extractFeatProficiencyEntries, type Proficiencies } from './proficiencies'
+import { computeProficiencies, extractFeatProficiencyEntries, type Proficiencies, type TakenFeat } from './proficiencies'
 
 const MONK_PROSE = 'Martial weapons that have the {@filter Light|items|type=martial weapon|property=light} property'
 const ROGUE_PROSE = 'Martial weapons that have the {@filter Finesse or Light|items|type=martial weapon|property=finesse;light} property'
@@ -17,9 +17,12 @@ const CLASSES = [
 	classEntry('Druid', ['light', 'shield'], ['simple']),
 	classEntry('Bard', ['light'], ['simple']),
 	classEntry('Wizard', undefined, ['simple']),
+	classEntry('Ranger', ['light', 'medium', 'shield'], ['simple', 'martial']),
 ]
 
 const FEATS = extractFeatProficiencyEntries([
+	{ name: 'Fey Teleportation', source: 'XGE', languageProficiencies: [{ sylvan: true }] },
+	{ name: 'Prodigy', source: 'XGE', languageProficiencies: [{ any: 1 }] },
 	{ name: 'Lightly Armored', source: 'XPHB', armorProficiencies: [{ light: true, shield: true }] },
 	{ name: 'Moderately Armored', source: 'XPHB', armorProficiencies: [{ medium: true }] },
 	{ name: 'Martial Weapon Training', source: 'XPHB', weaponProficiencies: [{ martial: true }] },
@@ -103,6 +106,58 @@ describe('computeProficiencies', () => {
 		const result = compute(character('Fighter'), ['Martial Weapon Training'])
 		expect(labels(result.weapons)).toEqual(['Simple weapons', 'Martial weapons'])
 		expect(result.weapons[1].sources.map((s) => s.name)).toEqual(['Fighter', 'Martial Weapon Training (feat)'])
+	})
+
+	describe('languages (D171)', () => {
+		const withLanguages = (c: Character, ...chosen: string[]): Character => ({
+			...c,
+			languages: [{ name: 'Common', source: 'Common', grantedBy: 'automatic' }, ...chosen.map((name) => ({ name, source: 'Elf', grantedBy: 'creation' as const }))],
+		})
+		const langs = (c: Character, feats: TakenFeat[] = []) => computeProficiencies(c, CLASSES, feats, FEATS).languages
+
+		it('default character: Common first, then the chosen ones alphabetically, with their sources', () => {
+			const result = langs(withLanguages(character('Fighter'), 'Sylvan', 'Elvish'))
+			expect(labels(result)).toEqual(['Common', 'Elvish', 'Sylvan'])
+			expect(result[0].sources).toEqual([{ kind: 'creation', name: 'Every character' }])
+			expect(result[1].sources).toEqual([{ kind: 'creation', name: 'Chosen at creation' }])
+		})
+
+		it('Druid L1 knows Druidic', () => {
+			const result = langs(withLanguages(character('Druid'), 'Elvish'))
+			expect(labels(result)).toEqual(['Common', 'Druidic', 'Elvish'])
+			expect(result[1].sources).toEqual([{ kind: 'class', name: 'Druid' }])
+		})
+
+		it("Rogue L1: Thieves' Cant plus one language not chosen, listed last", () => {
+			const result = langs(withLanguages(character('Rogue'), 'Elvish'))
+			expect(labels(result)).toEqual(['Common', 'Elvish', "Thieves' Cant", '1 language — not chosen'])
+			expect(result[3].pending).toBe(true)
+			expect(result[3].sources.map((s) => s.name)).toEqual(["Rogue — Thieves' Cant"])
+		})
+
+		it('Ranger: two languages pending from level 2, not level 1', () => {
+			expect(labels(langs(withLanguages(character('Ranger', { level: 1 }))))).toEqual(['Common'])
+			const l2 = langs(withLanguages(character('Ranger', { level: 2 })))
+			expect(labels(l2)).toEqual(['Common', '2 languages — not chosen'])
+			expect(l2[1].sources.map((s) => s.name)).toEqual(['Ranger — Deft Explorer'])
+		})
+
+		it('Fey Teleportation Sylvan merges with a Sylvan chosen at creation', () => {
+			const result = langs(withLanguages(character('Fighter'), 'Sylvan'), [{ name: 'Fey Teleportation', source: 'XGE' }])
+			expect(labels(result)).toEqual(['Common', 'Sylvan'])
+			expect(result[1].sources.map((s) => s.name)).toEqual(['Chosen at creation', 'Fey Teleportation (feat)'])
+		})
+
+		it('Prodigy: pending until a language is stored on the instance, then shown as that language', () => {
+			const c = withLanguages(character('Fighter'))
+			const unchosen = langs(c, [{ name: 'Prodigy', source: 'XGE' }])
+			expect(labels(unchosen)).toEqual(['Common', '1 language — not chosen'])
+			expect(unchosen[1].sources.map((s) => s.name)).toEqual(['Prodigy (feat)'])
+
+			const chosen = langs(c, [{ name: 'Prodigy', source: 'XGE', proficiencies: { languages: [{ name: 'Dwarvish', source: 'Prodigy' }] } }])
+			expect(labels(chosen)).toEqual(['Common', 'Dwarvish'])
+			expect(chosen[1].sources.map((s) => s.name)).toEqual(['Prodigy (feat)'])
+		})
 	})
 
 	it('Tavern Brawler lists Improvised weapons last', () => {
