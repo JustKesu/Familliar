@@ -3197,3 +3197,20 @@ grantu: `ranged` u kategorie (typ `R`; „Martial ranged weapons") a `named`
 (jediná zbraň podle jména — Scimitar). Kensei zůstává pending řádek a útokům
 nic nedává. Beze změny: Tavern Brawler, tabulka D70, rozdíl `classes[0]` vs.
 všechny třídy.
+
+## D179 — A3: podvolby featu lze nechat na později; sdílený picker
+
+Zdroj: task A3, rozhodnutí uživatele 24. 9. 2026. Navazuje na D156–D161.
+
+Volby dovedností, nástrojů, jazyků a expertise z featů a kouzla + vlastnost
+Magic Initiate z backgroundu nikdy neblokují Next ve wizardu, v level-upu
+ani v Edit Character. Záměrně jinak než pravidlo B3b/B5/B6, které pro volby
+třídy, podtřídy a druhu platí dál. Hráč se o otevřené volbě dozví: pod
+featem ve wizardu a level-upu řádek „You can make this choice later in Edit
+Character.", na sheetu „Choices not made yet: … — make them in Edit
+Character.". Magic Initiate vybraný na ASI úrovni zůstává povinný jako
+dosud (d5b-2).
+
+Picker je jedna komponenta `FeatSubChoicePicker` (D8, bez přístupu ke
+store), kterou sdílí ASI krok a krok backgroundu; znovu ji použije Manage
+Feats (R13). Změna featu nebo backgroundu podvolby dané instance maže.

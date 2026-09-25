@@ -37,8 +37,13 @@
 
 import type { Ability } from '../abilities/abilityScores'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
+import { featProficiencyChoiceShape, type FeatEffectEntry, type FeatProficiencyChoiceShape } from '../calculation/featEffects'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
+import { FEATURE_LANGUAGE_TYPES } from '../languages/classFeatureLanguages'
+import { loadLanguages, type LanguageEntry } from '../languages/languageData'
+import { ANY_TOOL_CATEGORIES } from '../toolProficiencies/speciesToolChoices'
+import { loadToolCategoryOptions } from '../toolProficiencies/toolProficiencyData'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -218,6 +223,39 @@ export const MAGIC_INITIATE_CLASS_OPTIONS: { className: string; classSource: str
 
 /** Magic Initiate's own ability choice (additionalSpells `{"ability":{"choose":["int","wis","cha"]}}`, identical across all three class lists) — narrower than the half-feat ABILITIES list. */
 export const MAGIC_INITIATE_ABILITY_OPTIONS: Ability[] = ['intelligence', 'wisdom', 'charisma']
+
+/** Base Magic Initiate and the three "Magic Initiate; <Class>" entries backgrounds grant share one pick shape. */
+export function isMagicInitiateFamily(feat: { name: string; source: string }): boolean {
+	return feat.source === MAGIC_INITIATE_FEAT_SOURCE && (feat.name === MAGIC_INITIATE_FEAT_NAME || feat.name.startsWith(`${MAGIC_INITIATE_FEAT_NAME}; `))
+}
+
+/** A "Magic Initiate; <Class>" variant's class list is fixed by the feat itself. */
+export function magicInitiateFixedClass(feat: { name: string }): { className: string; classSource: string } | null {
+	return MAGIC_INITIATE_CLASS_OPTIONS.find((option) => feat.name === `${MAGIC_INITIATE_FEAT_NAME}; ${option.className}`) ?? null
+}
+
+/** A feat's proficiency choice with its pools resolved (task A3); null for a feat missing from feats.json. */
+export interface FeatProficiencyChoice {
+	shape: FeatProficiencyChoiceShape
+	/** Every tool the feat offers, before anything the character holds is removed. */
+	toolOptions: string[]
+	languages: LanguageEntry[]
+}
+
+export async function loadFeatProficiencyChoice(name: string, source: string): Promise<FeatProficiencyChoice | null> {
+	const parsed = await loadDataFile('data/feats.json')
+	const entry = Array.isArray(parsed) ? parsed.find((feat) => isRecord(feat) && feat['name'] === name && feat['source'] === source) : undefined
+	if (!entry) return null
+	const shape = featProficiencyChoiceShape(entry as FeatEffectEntry)
+	const categories = shape.skillsOrTools > 0 ? ANY_TOOL_CATEGORIES : (shape.tools?.categories ?? [])
+	const only = shape.tools?.only?.map((tool) => tool.toLowerCase()) ?? null
+	const [toolLists, languages] = await Promise.all([Promise.all(categories.map(loadToolCategoryOptions)), shape.languages > 0 ? loadLanguages(FEATURE_LANGUAGE_TYPES) : []])
+	const toolOptions = toolLists
+		.flat()
+		.filter((tool) => !only || only.includes(tool.toLowerCase()))
+		.sort((a, b) => a.localeCompare(b))
+	return { shape, toolOptions, languages }
+}
 
 export async function loadFeats(): Promise<FeatEntry[]> {
 	const parsed = await loadDataFile('data/feats.json')

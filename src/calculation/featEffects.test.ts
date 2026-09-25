@@ -5,7 +5,7 @@ import {
 	characterFeats,
 	featAbilityScoreContributions,
 	featFixedSkillProficiencyNames,
-	featRequestedProficiencyKinds,
+	featProficiencyChoiceShape,
 	featSavingThrowProficiencyNames,
 	featSkillChoiceAwaitingNotes,
 	featStoredExpertiseSkillNames,
@@ -168,20 +168,38 @@ describe('stored feat proficiency picks (task A2)', () => {
 		expect(featSkillChoiceAwaitingNotes('athletics', expertisePicked, [boonOfSkill], true)).toEqual([])
 	})
 
-	it('featRequestedProficiencyKinds: Prodigy asks for all 4 kinds', () => {
-		expect(featRequestedProficiencyKinds(prodigy)).toEqual({ skills: true, tools: true, languages: true, expertise: true })
+	const shapeOf = featProficiencyChoiceShape
+
+	it('featProficiencyChoiceShape: Prodigy asks for 1 skill, 1 tool of any kind, 1 language and 1 expertise', () => {
+		expect(shapeOf(prodigy)).toEqual({
+			skills: { count: 1, from: ['acrobatics', 'animal handling', 'arcana', 'athletics'] },
+			tools: { count: 1, categories: ['anyArtisansTool', 'anyGamingSet', 'anyMusicalInstrument', 'anyOtherTool'], only: null },
+			skillsOrTools: 0,
+			languages: 1,
+			expertise: 1,
+			fixedSkills: [],
+		})
 	})
 
-	it('featRequestedProficiencyKinds: Keen Mind asks for skills only', () => {
-		expect(featRequestedProficiencyKinds(keenMind)).toEqual({ skills: true, tools: false, languages: false, expertise: false })
+	it('featProficiencyChoiceShape: Keen Mind asks for one skill from its list, Skill Expert for any skill', () => {
+		expect(shapeOf(keenMind)).toMatchObject({ skills: { count: 1, from: ['arcana', 'history', 'investigation', 'nature', 'religion'] }, tools: null, languages: 0, expertise: 0 })
+		expect(shapeOf(skillExpert).skills?.from).toHaveLength(18)
 	})
 
-	it('featRequestedProficiencyKinds: Skilled’s mixed skillToolLanguageProficiencies counts as both skills and tools, never languages', () => {
-		expect(featRequestedProficiencyKinds(skilled)).toEqual({ skills: true, tools: true, languages: false, expertise: false })
+	it('featProficiencyChoiceShape: Skilled is 3 picks of skills or tools, never languages', () => {
+		expect(shapeOf(skilled)).toMatchObject({ skills: null, tools: null, skillsOrTools: 3, languages: 0 })
 	})
 
-	it("featRequestedProficiencyKinds: Boon of Skill's FIXED skillProficiencies is not a skills choice, but its expertise is", () => {
-		expect(featRequestedProficiencyKinds(boonOfSkill)).toEqual({ skills: false, tools: false, languages: false, expertise: true })
+	it("featProficiencyChoiceShape: Boon of Skill's FIXED skills are no choice, but join its expertise pool", () => {
+		expect(shapeOf(boonOfSkill)).toMatchObject({ skills: null, expertise: 1, fixedSkills: ['athletics', 'stealth', 'perception'] })
+	})
+
+	it("featProficiencyChoiceShape: Crafter's 3 tools come only from its own 8 artisan's tools; a fixed tool (Chef) asks for nothing", () => {
+		const crafterFrom = ["carpenter's tools", "leatherworker's tools", "mason's tools", "potter's tools", "smith's tools", "tinker's tools", "weaver's tools", "woodcarver's tools"]
+		const crafter: FeatEffectEntry = { name: 'Crafter', source: 'XPHB', toolProficiencies: [{ choose: { from: crafterFrom, count: 3 } }] }
+		expect(shapeOf(crafter).tools).toEqual({ count: 3, categories: ['anyArtisansTool'], only: crafterFrom })
+		const chef = { name: 'Chef', source: 'XPHB', toolProficiencies: [{ "cook's utensils": true }] } as unknown as FeatEffectEntry
+		expect(shapeOf(chef).tools).toBeNull()
 	})
 })
 

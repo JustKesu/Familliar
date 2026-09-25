@@ -106,12 +106,12 @@ STATUS: nerozhodnuto.
 Featy s volbou dovednosti, nástroje, jazyka nebo expertise (DATA.md,
 „Feat proficiency / expertise / language choices"): Keen Mind, Observant,
 Squat Nimbleness, Prodigy, Skill Expert, Skilled, Crafter, Musician,
-Artificer Initiate, Boon of Skill. DATA.md dřív uváděl 11; je jich 10 —
-Boon of Skill byl započtený i mezi featy jen s pevným grantem. Wizard umí
-uložit jen výběr vlastnosti; zatím se hlásí jako "čeká na volbu" (D58).
-Úložiště se staví v taskách A1–A3 (A1: `grantedFeats` a `featInstances`,
-D156; pole pro proficiencies přijde v A2).
-STATUS: rozpracováno, otevřené.
+Artificer Initiate, Boon of Skill. Úložiště: A1 (`grantedFeats`,
+`featInstances`, D156), A2 (`FeatChoiceDetails.proficiencies`). Picker: A3
+(`FeatSubChoicePicker`, D179) — ASI krok i krok backgroundu ve wizardu,
+level-upu i Edit Character; volbu lze nechat na později. Zbývá jen origin
+feat druhu (Human Versatile, viz níže).
+STATUS: vyřešeno taskem A3 (D179).
 
 ### Human Versatile — volný Origin feat se ve wizardu nevybírá
 

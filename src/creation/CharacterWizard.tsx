@@ -55,8 +55,11 @@ import {
 import type { ItemRef } from '../inventory/inventoryData'
 import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
+import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
-import { backgroundOriginFeatFrom, featInstances, loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink } from '../featAsi/featInstances'
+import { backgroundOriginFeatFrom, featInstances, loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey } from '../featAsi/featInstances'
+import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
+import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
@@ -291,6 +294,22 @@ export function CharacterWizard({
 		}
 	}, [])
 
+	/** What computeProficiencies reads, for the tools and languages a feat's picker must not offer again (D160). */
+	const [proficiencyData, setProficiencyData] = useState<{ classes: unknown; feats: FeatProficiencyEntry[] }>({ classes: [], feats: [] })
+	useEffect(() => {
+		let cancelled = false
+		Promise.all([loadDataFile('data/classes.json'), loadDataFile('data/feats.json')])
+			.then(([classes, feats]) => {
+				if (!cancelled) setProficiencyData({ classes, feats: extractFeatProficiencyEntries(feats) })
+			})
+			.catch(() => {
+				/* Best-effort: without it a feat picker still hides what the wizard state itself holds. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
 	useEffect(() => {
 		let cancelled = false
 		loadBackgroundOriginFeatLinks()
@@ -318,7 +337,7 @@ export function CharacterWizard({
 				toolProficiency: state.data.backgroundToolProficiency ?? '',
 			}
 		: undefined
-	const draftGrantedFeats = character?.grantedFeats
+	const draftGrantedFeats = state.data.grantedFeats.length > 0 ? state.data.grantedFeats : undefined
 	const draftFeatInstances = useMemo(
 		() => featInstances({ id: '', name: '', classes: [], featAsiChoices: state.data.featAsiChoices, ...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}) }, backgroundOriginFeat),
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the origin feat's identity, not the object rebuilt each render.
@@ -918,6 +937,37 @@ export function CharacterWizard({
 		...(character?.maxHpOverride !== undefined ? { maxHpOverride: character.maxHpOverride } : {}),
 	}
 
+	const draftCharacterForProficiencies: Character = {
+		...draftCharacterForHitPoints,
+		toolChoices: state.data.toolChoices,
+		languages: [
+			{ ...AUTOMATIC_LANGUAGE, grantedBy: 'automatic' },
+			...state.data.languageChoice.map((language) => ({ ...language, grantedBy: 'creation' as const })),
+			...state.data.featureLanguages,
+		],
+	}
+
+	/** D160: everything the character has apart from the feat at `key` — the other feats' picks included. */
+	function heldForFeat(key: FeatInstanceKey): FeatChoiceHeld {
+		const others = draftFeatInstances.filter((instance) => instance.key !== key)
+		const proficiencies = computeProficiencies(draftCharacterForProficiencies, proficiencyData.classes, others, proficiencyData.feats)
+		const subclassName = state.data.subclass?.name ?? ''
+		return {
+			heldSkills: [
+				...proficientSkills,
+				...(state.data.speciesExtraSkill && state.data.speciesChoice ? [{ skill: state.data.speciesExtraSkill, source: state.data.speciesChoice.name }] : []),
+				...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: subclassName })),
+				...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
+				...others.flatMap((instance) => (instance.proficiencies?.skills ?? []).map((skill) => ({ skill, source: instance.name }))),
+			],
+			heldExpertise: [...state.data.expertiseSkills, ...fixedExpertise, ...others.flatMap((instance) => instance.proficiencies?.expertise ?? [])],
+			heldTools: toolsHeldElsewhere(proficiencies.tools, null),
+			knownLanguages: proficiencies.languages.filter((item) => !item.pending).map((item) => item.label),
+		}
+	}
+	/** D179: creation and level-up say a feat's own picks can wait; Edit Character is where they are made. */
+	const laterNote = character === undefined || levelUp !== undefined
+
 	/**
 	 * D107: loads the maximum this save would end with, and — while
 	 * editing/levelling up — what `character` had before it. Not gated on the
@@ -1351,6 +1401,19 @@ export function CharacterWizard({
 							onChange={(tool) => dispatch({ type: 'setBackgroundToolProficiency', tool })}
 						/>
 					)}
+					{backgroundOriginFeat && (
+						<FeatSubChoicePicker
+							key={`${backgroundOriginFeat.name}|${backgroundOriginFeat.source}`}
+							feat={backgroundOriginFeat}
+							value={state.data.grantedFeats.find((feat) => feat.origin === 'background' && feat.name === backgroundOriginFeat.name && feat.source === backgroundOriginFeat.source) ?? {}}
+							onChange={(details) => dispatch({ type: 'setGrantedFeat', feat: { ...details, origin: 'background', name: backgroundOriginFeat.name, source: backgroundOriginFeat.source } })}
+							held={heldForFeat('background')}
+							alreadyKnown={alreadyKnownSpells}
+							laterNote={laterNote}
+							legend={`Origin feat: ${backgroundOriginFeat.name}`}
+							idPrefix="background"
+						/>
+					)}
 				</div>
 			)}
 
@@ -1375,7 +1438,10 @@ export function CharacterWizard({
 						<LanguagePicker
 							value={state.data.languageChoice}
 							onChange={(choice) => dispatch({ type: 'setLanguageChoice', choice })}
-							exclude={state.data.featureLanguages.map((language) => language.name)}
+							exclude={[
+								...state.data.featureLanguages.map((language) => language.name),
+								...draftFeatInstances.flatMap((instance) => (instance.proficiencies?.languages ?? []).map((language) => language.name)),
+							]}
 						/>
 					)}
 					<FeatureLanguageSlots
@@ -1511,6 +1577,8 @@ export function CharacterWizard({
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
 						lockedLevels={held?.featAsiChoices.map((choice) => choice.level)}
 						backgroundOriginFeat={backgroundOriginFeat}
+						heldForFeat={heldForFeat}
+						laterNote={laterNote}
 					/>
 				</div>
 			)}

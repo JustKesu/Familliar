@@ -39,6 +39,15 @@ describe('missingFeatSubChoices — proficiency kinds (task A2)', () => {
 		expect(missingFeatSubChoices(instance({ name: 'Keen Mind', proficiencies: { skills: ['history'] } }), [keenMind])).toEqual([])
 	})
 
+	it('Skilled counts skills and tools together, and a partial pick is still missing (task A3)', () => {
+		const skilled: FeatEffectEntry = { name: 'Skilled', source: 'XPHB', skillToolLanguageProficiencies: [{ choose: [{ from: ['anySkill', 'anyTool'], count: 3 }] }] }
+		const of = (proficiencies: FeatInstance['proficiencies']) => missingFeatSubChoices(instance({ name: 'Skilled', proficiencies }), [skilled])
+		expect(of(undefined)).toEqual(['skills or tools'])
+		expect(of({ skills: ['arcana'] })).toEqual(['skills or tools'])
+		expect(of({ skills: ['arcana', 'history'], tools: ["Smith's Tools"] })).toEqual([])
+		expect(of({ skills: ['arcana', 'history', 'nature'] })).toEqual([])
+	})
+
 	it('a feat missing from the loaded list asks for nothing (no data to check against)', () => {
 		expect(missingFeatSubChoices(instance({ name: 'Nonexistent' }), [prodigy, keenMind])).toEqual([])
 	})

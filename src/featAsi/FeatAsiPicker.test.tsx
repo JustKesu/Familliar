@@ -6,6 +6,8 @@ import { FeatAsiPicker } from './FeatAsiPicker'
 import { loadFeatAsiGrants } from './featAsiData'
 import { collectKnownSpells, type KnownSpellInputs } from '../spells/knownSpells'
 import type { FeatAsiChoice } from '../storage/character'
+import { featProficiencyChoiceShape } from '../calculation/featEffects'
+import { useState } from 'react'
 
 /*
  * Component test for the feat/ASI picker, following the jsdom/testing-
@@ -35,6 +37,11 @@ vi.mock('./featAsiData', async () => {
 		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
 		loadHasFightingStyleFeature: vi.fn(async () => false),
 		loadSpeciesPrereqInfo: vi.fn(async () => null),
+		loadFeatProficiencyChoice: vi.fn(async (name: string, source: string) =>
+			name === 'Skilled'
+				? { shape: featProficiencyChoiceShape({ name, source, skillToolLanguageProficiencies: [{ choose: [{ from: ['anySkill', 'anyTool'], count: 3 }] }] }), toolOptions: ['Lute'], languages: [] }
+				: null,
+		),
 	}
 })
 
@@ -132,6 +139,41 @@ function known(overrides: Partial<KnownSpellInputs>) {
 }
 
 describe('FeatAsiPicker', () => {
+	it("task A3: a feat's proficiency picks sit under it with the 'later' line, and changing the feat clears them", async () => {
+		const user = userEvent.setup()
+		let latest: FeatAsiChoice[] = []
+		function Harness() {
+			const [value, setValue] = useState<FeatAsiChoice[]>([{ level: 4, kind: 'feat', name: '', source: '' }])
+			return (
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={(next) => {
+						latest = next
+						setValue(next)
+					}}
+					laterNote
+				/>
+			)
+		}
+		render(<Harness />)
+
+		await user.click(await screen.findByLabelText('Skilled'))
+		expect(await screen.findByText('You can make this choice later in Edit Character.')).toBeTruthy()
+		await user.selectOptions(screen.getByLabelText('Skilled skill or tool 1'), 'skill:arcana')
+		expect(latest[0]).toMatchObject({ name: 'Skilled', proficiencies: { skills: ['arcana'] } })
+
+		await user.click(screen.getByLabelText('Tough'))
+		expect(latest[0]).toEqual({ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' })
+		await user.click(screen.getByLabelText('Skilled'))
+		expect(((await screen.findByLabelText('Skilled skill or tool 1')) as HTMLSelectElement).value).toBe('')
+	})
+
 	it('renders nothing when the class has no grant by that level', async () => {
 		const { container } = render(
 			<FeatAsiPicker

@@ -1,17 +1,12 @@
-import { featRequestedProficiencyKinds, type FeatEffectEntry } from '../calculation/featEffects'
+import { featProficiencyChoiceShape, type FeatEffectEntry } from '../calculation/featEffects'
 import type { FeatInstance } from '../featAsi/featInstances'
-import { MAGIC_INITIATE_FEAT_SOURCE, MAGIC_INITIATE_FEAT_NAME } from '../featAsi/featAsiData'
+import { isMagicInitiateFamily } from '../featAsi/featAsiData'
 import { isFilterChoiceFeat } from '../spells/featSpellChoiceData'
 
-/** Base Magic Initiate and the three "Magic Initiate; <Class>" entries backgrounds grant share one pick shape. */
-function isMagicInitiateFamily(feat: { name: string; source: string }): boolean {
-	return feat.source === MAGIC_INITIATE_FEAT_SOURCE && (feat.name === MAGIC_INITIATE_FEAT_NAME || feat.name.startsWith(`${MAGIC_INITIATE_FEAT_NAME}; `))
-}
-
 /**
- * The sub-choices a feat asks for that are not stored yet (D57: shown as
- * pending, never guessed). The wizard cannot finish an ASI feat without them,
- * so in practice this names what an origin feat still waits for (D156).
+ * The sub-choices a feat asks for that are not stored yet, or not fully (D57:
+ * shown as pending, never guessed). D179: proficiency picks and an origin
+ * feat's spells may be left for Edit Character.
  */
 export function missingFeatSubChoices(instance: FeatInstance, feats: readonly FeatEffectEntry[]): string[] {
 	const missing: string[] = []
@@ -23,11 +18,14 @@ export function missingFeatSubChoices(instance: FeatInstance, feats: readonly Fe
 	if (isFilterChoiceFeat(instance) && instance.filterChoiceSpells === undefined) missing.push('spells')
 
 	if (entry) {
-		const kinds = featRequestedProficiencyKinds(entry)
-		if (kinds.skills && (instance.proficiencies?.skills?.length ?? 0) === 0) missing.push('skills')
-		if (kinds.tools && (instance.proficiencies?.tools?.length ?? 0) === 0) missing.push('tools')
-		if (kinds.languages && (instance.proficiencies?.languages?.length ?? 0) === 0) missing.push('languages')
-		if (kinds.expertise && (instance.proficiencies?.expertise?.length ?? 0) === 0) missing.push('expertise')
+		const shape = featProficiencyChoiceShape(entry)
+		const skills = instance.proficiencies?.skills?.length ?? 0
+		const tools = instance.proficiencies?.tools?.length ?? 0
+		if (shape.skills && skills < shape.skills.count) missing.push('skills')
+		if (shape.tools && tools < shape.tools.count) missing.push('tools')
+		if (skills + tools < shape.skillsOrTools) missing.push('skills or tools')
+		if ((instance.proficiencies?.languages?.length ?? 0) < shape.languages) missing.push('languages')
+		if ((instance.proficiencies?.expertise?.length ?? 0) < shape.expertise) missing.push('expertise')
 	}
 
 	return missing

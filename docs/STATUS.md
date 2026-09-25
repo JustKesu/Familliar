@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-25 (B6d: jeden zdroj zbraňové proficiency pro kartu i útoky, D178; před tím B6c: dovednosti z podtříd, nástroje druhů, skrytý prázdný krok level-upu, D177; před tím B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-25 (A3: picker podvoleb featu — wizard, level-up, Edit Character, D179; před tím B6d: jeden zdroj zbraňové proficiency pro kartu i útoky, D178; před tím B6c: dovednosti z podtříd, nástroje druhů, skrytý prázdný krok level-upu, D177; před tím B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -21,8 +21,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    chybějící data sheet nikdy nezhodí, jen se to viditelně ohlásí (D43).
 4a. [done] Feat/ASI — výběr, uložení, efekty tam, kde je appka umí spočítat
     (vlastnosti, saving throws, skilly, poznámka u iniciativy). Neaplikováno:
-    featy mířící na útoky/AC (kroky 7/8), nástroje a jazyky z featů (uloženy,
-    nikam nepromítnuty — picker je další task).
+    featy mířící na útoky/AC (kroky 7/8).
     Task A1 (D156, schéma 42): origin feat backgroundu se odvozuje z
     backgroundu a aplikuje všude, kde feat z ASI (HP, vlastnosti, savy,
     skilly, iniciativa, kouzla, smysly, odolnosti, zdatnost se zbraněmi,
@@ -42,9 +41,23 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
     jakmile má uložený pick pro dané pole (skills/expertise); na nástroje a
     jazyky se nerozšiřuje (D161). Sheet (`missingFeatSubChoices`) hlásí i
     chybějící skills/tools/languages/expertise podle toho, co feat v datech
-    nabízí (`featRequestedProficiencyKinds`, `featEffects.ts`). Enforcement
-    počtu a nabízeného poolu je pickerova práce (další task) — tady se
-    aplikuje cokoli uloženého, pokud je to platné jméno dovednosti.
+    nabízí. Enforcement počtu a nabízeného poolu dělá picker (A3).
+    Task A3 (D179): `FeatSubChoicePicker` (`src/featAsi/`) — skill/tool/
+    language/expertise picky 10 featů a kouzla + vlastnost Magic Initiate
+    z backgroundu (seznam třídy u „Magic Initiate; X" pevný). Pod featem v ASI
+    kroku (wizard, level-up, Edit Character) a pod origin featem v kroku
+    backgroundu. Nikdy neblokuje Next; wizard a level-up ukazují „You can make
+    this choice later in Edit Character.", sheet „Choices not made yet: … —
+    make them in Edit Character." (počítá počty — Skilled 3 × skill/tool,
+    Crafter/Musician 3 nástroje). Tvar volby: `featProficiencyChoiceShape`
+    (`featEffects.ts`), pooly `loadFeatProficiencyChoice` (`featAsiData.ts`):
+    Crafter jen svých 8 artisan's tools, Prodigy/Skilled jakýkoli nástroj.
+    Co postava už má, se nenabídne (skill ukázán zakázaný se zdrojem, nástroj
+    a jazyk skryté; nástroje/jazyky přes `computeProficiencies` +
+    `toolsHeldElsewhere`), i picky ostatních featů. `WizardData.grantedFeats`
+    (seed z postavy, ukládá se ze stavu); změna backgroundu maže jeho záznam.
+    Jazyk z featu je jen na instanci (D158) a karta Proficiencies ho ukazuje
+    se zdrojem „\<feat\> (feat)"; LanguagePicker ho nenabídne znovu.
 5. [done] Sheet — zobrazuje všechno z kroku 4 s rozklady na vyžádání.
 6. [done] Kouzla — útočný bonus/DC, sloty (včetně třetinových casterů a Pact
    Magic), přístup ke class spell listu s filtrem podle úrovně, class spell
@@ -1363,6 +1376,9 @@ Task A2 přidal `FeatChoiceDetails.proficiencies` (schéma 43, migrace 42→43
 jen tag): uložené skill/expertise picky se počítají v `skills.ts`, tools/
 languages jen leží v úložišti. `featInstances`/`choiceDetails` je nese dál,
 `featSkillChoiceAwaitingNotes` je zohledňuje při mazání D58 poznámky.
+
+Task A3 (D179) přidal picker těch podvoleb (`FeatSubChoicePicker`) do ASI
+kroku a kroku backgroundu; bez změny schématu.
 
 **Krok 8 je hotový** — poslední slice 8e2 (D106) označila na sheetu kouzla a
 Wild Shape formy nad rámec toho, co postava smí mít.

@@ -7248,7 +7248,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 			vi.mocked(loadFeatEffectEntries).mockResolvedValueOnce([{ name: 'Magic Initiate; Cleric', source: 'XPHB', grantedByBackgrounds: [{ name: 'Farmer', source: 'XPHB' }] }])
 			const { container } = await renderSheet(farmer)
 			await waitFor(() => expect(container.querySelector('.sheet__feats')!.textContent).toContain('Magic Initiate; Cleric (Background)'))
-			expect(container.querySelector('.sheet__feat-pending')!.textContent).toBe('Choices not made yet: ability, spells.')
+			expect(container.querySelector('.sheet__feat-pending')!.textContent).toBe('Choices not made yet: ability, spells — make them in Edit Character.')
 		})
 
 		it('ignores a background feat that the feat data links to another background', async () => {

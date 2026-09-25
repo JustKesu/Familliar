@@ -48,6 +48,8 @@ import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { Ability } from '../abilities/abilityScores'
 import { featInstances, type FeatInstance, type FeatRef } from '../featAsi/featInstances'
 import type { Character } from '../storage/character'
+import { ANY_TOOL_CATEGORIES } from '../toolProficiencies/speciesToolChoices'
+import type { ToolCategory } from '../toolProficiencies/toolProficiencyData'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import type { Contribution } from './types'
 
@@ -140,16 +142,43 @@ function isAnySkillEntry(entry: RawFeatSkillProficienciesEntry): entry is { any:
 	return typeof (entry as { any?: unknown }).any === 'number'
 }
 
-/** Which of the 4 proficiency kinds (task A2) a feat could ask for, structurally — ignores Boon of Skill's FIXED skillProficiencies (not a choice) but not any of its `expertise` (always a choice, see module doc). */
-export function featRequestedProficiencyKinds(feat: FeatEffectEntry): { skills: boolean; tools: boolean; languages: boolean; expertise: boolean } {
+/** What a feat's proficiency choice asks for (task A3) — counts and pools, never the picks themselves. */
+export interface FeatProficiencyChoiceShape {
+	skills: { count: number; from: readonly string[] } | null
+	/** `only`: Crafter's 8 named artisan's tools, lowercase as feats.json spells them (DATA.md). */
+	tools: { count: number; categories: readonly ToolCategory[]; only: readonly string[] | null } | null
+	/** Skilled: any mix of skills and tools. */
+	skillsOrTools: number
+	languages: number
+	expertise: number
+	/** Boon of Skill's fixed grant — part of its own expertise pool. */
+	fixedSkills: string[]
+}
+
+function toolChoiceShape(entry: Record<string, unknown>): FeatProficiencyChoiceShape['tools'] {
+	const choose = entry['choose'] as { from?: unknown; count?: unknown } | undefined
+	if (choose && Array.isArray(choose.from) && typeof choose.count === 'number') return { count: choose.count, categories: ['anyArtisansTool'], only: choose.from as string[] }
+	for (const category of ['anyArtisansTool', 'anyMusicalInstrument'] as const) {
+		if (typeof entry[category] === 'number') return { count: entry[category] as number, categories: [category], only: null }
+	}
+	if (typeof entry['any'] === 'number') return { count: entry['any'], categories: ANY_TOOL_CATEGORIES, only: null }
+	return null
+}
+
+/** Boon of Skill's FIXED skillProficiencies is not a skills choice; its `expertise` still is (see module doc). Fixed tool/language grants (Chef, Fey Teleportation) ask for nothing. */
+export function featProficiencyChoiceShape(feat: FeatEffectEntry): FeatProficiencyChoiceShape {
 	const skillEntry = feat.skillProficiencies?.[0]
-	const hasSkillChoice = !!skillEntry && (isAnySkillEntry(skillEntry) || isChooseSkillEntry(skillEntry))
-	const hasMixedSkillOrTool = feat.skillToolLanguageProficiencies !== undefined
+	const skills = !skillEntry ? null : isAnySkillEntry(skillEntry) ? { count: skillEntry.any, from: ALL_SKILLS } : isChooseSkillEntry(skillEntry) ? { count: 1, from: skillEntry.choose.from } : null
+	const fixedSkills = skillEntry && !skills ? Object.keys(skillEntry).filter((key) => (skillEntry as Record<string, unknown>)[key] === true) : []
+	const toolEntry = feat.toolProficiencies?.[0] as Record<string, unknown> | undefined
+	const sum = <T>(entries: readonly T[] | undefined, count: (entry: T) => unknown) => (entries ?? []).reduce((total, entry) => total + (typeof count(entry) === 'number' ? (count(entry) as number) : 0), 0)
 	return {
-		skills: hasSkillChoice || hasMixedSkillOrTool,
-		tools: feat.toolProficiencies !== undefined || hasMixedSkillOrTool,
-		languages: feat.languageProficiencies !== undefined,
-		expertise: feat.expertise !== undefined,
+		skills,
+		tools: toolEntry ? toolChoiceShape(toolEntry) : null,
+		skillsOrTools: sum(feat.skillToolLanguageProficiencies?.[0]?.choose, (group) => group.count),
+		languages: sum(feat.languageProficiencies, (entry) => entry.any),
+		expertise: sum(feat.expertise, (entry) => entry.anyProficientSkill),
+		fixedSkills,
 	}
 }
 

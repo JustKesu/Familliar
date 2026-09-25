@@ -22,6 +22,7 @@ import type {
 	CharacterToolChoice,
 	CharacterSubclassSkill,
 	CharacterExpertiseSkill,
+	CharacterGrantedFeat,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
 	CharacterSpellChoice,
@@ -326,6 +327,8 @@ export interface WizardData {
 	classOptionalFeatureChoices: CharacterOptionalFeatureChoice[]
 	/** One entry per level with an ASI-or-feat grant (task instructions, point 7) — clears whenever class or level changes (point 6), since eligibility is keyed to the class's own grant levels. */
 	featAsiChoices: FeatAsiChoice[]
+	/** D156: sub-choices of the background's (and later the species') feat. The background entry clears whenever the background's identity changes. */
+	grantedFeats: CharacterGrantedFeat[]
 	/** The class spell picks (build order step 6 slice d2) — clears whenever class, level or subclass changes, since the offered list, counts and (for a third caster) eligibility itself are all keyed to those. */
 	spellChoices: SpellPick[]
 	/** The subclass filter-choice spell picks (build order step 6 slice d6b — the 5 subclasses in subclassSpellChoiceData.ts's SUBCLASS_SPELL_CHOICE_KEYS) — clears whenever class, level or subclass changes, same reasoning as spellChoices: the offered slots and their level caps are keyed to those. */
@@ -392,6 +395,7 @@ export function emptyWizardData(): WizardData {
 		optionalFeatureChoices: [],
 		classOptionalFeatureChoices: [],
 		featAsiChoices: [],
+		grantedFeats: [],
 		spellChoices: [],
 		subclassSpellChoices: [],
 		classFeatureChoices: [],
@@ -498,6 +502,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 			: [],
 		classOptionalFeatureChoices: storedOptionalFeatures.filter((entry) => entry.featureType !== subclassFeatureType),
 		featAsiChoices: character.featAsiChoices ?? [],
+		grantedFeats: character.grantedFeats ?? [],
 		spellChoices: (character.spellChoices ?? []).flatMap((entry) =>
 			entry.spells.map((spell) => ({ name: spell.name, source: spell.source, level: spellLevelOf(spell) })),
 		),
@@ -765,6 +770,8 @@ export type WizardAction =
 	| { type: 'setOptionalFeatureChoices'; choices: string[] }
 	| { type: 'setClassOptionalFeatureChoices'; choices: CharacterOptionalFeatureChoice[] }
 	| { type: 'setFeatAsiChoices'; choices: FeatAsiChoice[] }
+	/** Replaces the one entry of `feat.origin`. */
+	| { type: 'setGrantedFeat'; feat: CharacterGrantedFeat }
 	| { type: 'setSpellChoices'; choices: SpellPick[] }
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
 	| { type: 'setClassFeatureChoices'; choices: CharacterClassFeatureChoice[] }
@@ -873,6 +880,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					backgroundChoice: action.choice,
 					backgroundToolProficiency: sameBackground ? state.data.backgroundToolProficiency : null,
 					expertiseSkills: sameBackground ? state.data.expertiseSkills : [],
+					grantedFeats: sameBackground ? state.data.grantedFeats : state.data.grantedFeats.filter((feat) => feat.origin !== 'background'),
 					startingEquipment: sameBackground
 						? state.data.startingEquipment
 						: clearStartingEquipmentFor(state.data.startingEquipment, 'background'),
@@ -927,6 +935,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, classOptionalFeatureChoices: action.choices } }
 		case 'setFeatAsiChoices':
 			return { ...state, data: { ...state.data, featAsiChoices: action.choices } }
+		case 'setGrantedFeat':
+			return { ...state, data: { ...state.data, grantedFeats: [...state.data.grantedFeats.filter((feat) => feat.origin !== action.feat.origin), action.feat] } }
 		case 'setSpellChoices':
 			return { ...state, data: { ...state.data, spellChoices: action.choices } }
 		case 'setSubclassSpellChoices':
@@ -1181,8 +1191,7 @@ export function saveCharacter(
 		speciesSkills,
 		expertiseSkills,
 		featAsiChoices: data.featAsiChoices,
-		// No wizard control sets these yet (D156); an edit or a level up carries them across.
-		grantedFeats: existing?.grantedFeats,
+		grantedFeats: data.grantedFeats.length > 0 ? data.grantedFeats : undefined,
 		spellChoices,
 		subclassSpellChoices,
 		classFeatureChoices,

@@ -49,6 +49,7 @@ function completeData(): WizardData {
 		optionalFeatureChoices: ['Precision Attack'],
 		classOptionalFeatureChoices: [],
 		featAsiChoices: [],
+		grantedFeats: [],
 		spellChoices: [],
 		subclassSpellChoices: [],
 		classFeatureChoices: [],

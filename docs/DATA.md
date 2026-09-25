@@ -728,6 +728,16 @@ a free pick of any Origin feat. No feat carries a `feats` field.
 
 Found in the feat-choice-storage investigation (2026-09-22, script consumed).
 
+Option pools (task A3, 2026-09-25, script consumed): Crafter's `choose.from`
+is exactly carpenter's, leatherworker's, mason's, potter's, smith's, tinker's,
+weaver's and woodcarver's tools, `count: 3`, lowercase — all 8 match an
+items.json `AT` item name case-insensitively (17 `AT` items exist), so the
+picker filters the `anyArtisansTool` list by that set. Prodigy's `{any:1}` tool
+means any tool at all: the same four item categories as a species' `{any:1}`
+(`ANY_TOOL_CATEGORIES`: artisan's, gaming set, musical instrument, type `T`).
+Skilled's `anyTool` uses the same pool. Every skill `choose.from` token across
+feats is a lowercase ALL_SKILLS name. Prodigy is XGE, not XPHB.
+
 ### Background origin feats — casing, and which are repeatable
 
 Title-casing a background's lowercase `feats` key does NOT always give the

@@ -3335,7 +3335,7 @@ function CharacterSheetBody({
 										<summary>
 											{choice.name} ({featOriginLabel(choice)})
 										</summary>
-										{missing.length > 0 && <p className="sheet__feat-pending">Choices not made yet: {missing.join(', ')}.</p>}
+										{missing.length > 0 && <p className="sheet__feat-pending">Choices not made yet: {missing.join(', ')} — make them in Edit Character.</p>}
 										{featText ? (
 											<ResolvedEntries entries={featText.entries} data={resolverData} />
 										) : (
