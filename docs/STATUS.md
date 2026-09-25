@@ -1367,8 +1367,23 @@ DAMAGE (dice are the `DamageRollButton`, which gained `children`; flat damage an
 unparsed spell text stay text), NOTES. Features (Second Wind, Rage…) moved out
 of the table into a temporary "Other" list under it; Attack hides it. Mastery
 note only for weapon kinds in `Character.masteries`; `WeaponAttack.kind` added.
-Next: R5b (feature classification investigation), R5c (groups, remaining
-filters). E2E `e2e/actions.spec.ts`.
+E2E `e2e/actions.spec.ts`. R5b: investigation only
+(`scripts/investigate-r5b-action-types.js`).
+
+R5c (D182): `classifyActionType` (R-phrase) in
+`src/actions/actionTableFeatureData.ts`. `featureActionRows` rows carry
+`actionType` and `entries`, and also admit D86-rejected features R-phrase puts
+in Action/Bonus Action/Reaction. `spellGroupRows` (`spellActionRowData.ts`):
+spells without attack/save whose `time[0].unit` is bonus/reaction. Actions tab:
+pills All · Attack · Action · Bonus Action · Reaction · Other; groups Action /
+Bonus Action / Reaction / Other under the table (the temporary Other list is
+gone), empty groups not rendered, "Nothing here for this character." when the
+filtered group is empty. Group rows (`ActionGroupRow`) collapse/expand by local
+state; feature text via `ResolvedEntries`, spell text via `SpellDetailBody`
+(extracted from `SpellList.tsx`). `UseBoxes`: ≤10 clickable boxes, >10 a
+spent/max counter, "/ Short Rest" or "/ Long Rest" from 9b5's `shortRest`.
+`UsesTracker` now serves spell slots only. E2E `e2e/actionGroups.spec.ts`.
+Next: species traits in Actions, Actions in Combat (needs `actions.json`).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

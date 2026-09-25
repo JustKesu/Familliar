@@ -128,6 +128,30 @@ export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntr
 	return lines
 }
 
+export interface SpellGroupData {
+	key: string
+	entry: SheetSpellEntry
+	detail: SpellDetail
+	actionType: 'bonus' | 'reaction'
+}
+
+/**
+ * The spells that go into the Bonus Action / Reaction groups (D182): no attack
+ * roll and no save (those are table rows above), cast by the structured
+ * `time[0].unit`. An action/minute/hour spell without either is not listed.
+ * One row per Spells-tab entry.
+ */
+export function spellGroupRows(entries: SheetSpellEntry[], details: SpellDetail[]): SpellGroupData[] {
+	const rows: SpellGroupData[] = []
+	for (const entry of entries) {
+		const detail = findSpellDetail(details, entry.name, entry.source)
+		if (!detail || (detail.spellAttack?.length ?? 0) > 0 || (detail.savingThrow?.length ?? 0) > 0) continue
+		const unit = detail.time[0]?.unit
+		if (unit === 'bonus' || unit === 'reaction') rows.push({ key: keyOf(entry.name, entry.source), entry, detail, actionType: unit })
+	}
+	return rows.sort((a, b) => a.detail.level - b.detail.level || a.entry.name.localeCompare(b.entry.name))
+}
+
 /**
  * One entry per spell that has an attack roll or a saving throw, sorted by
  * level then name. A spell with neither (Mage Armor, Detect Magic) is left out

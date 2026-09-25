@@ -1337,12 +1337,12 @@ button:disabled {
   font-size: 12px;
 }
 
-/* R5a, temporary until R5c's groups (D181): usable features under the table. */
-.sheet__actions-other {
-  padding: 12px 18px;
+/* R5c (D182): Action / Bonus Action / Reaction / Other groups under the table. */
+.sheet__action-group {
+  padding: 12px 18px 0;
 }
 
-.sheet__actions-other h3 {
+.sheet__action-group h3 {
   margin: 0 0 6px;
   font: 600 13px/1.2 var(--font-heading);
   letter-spacing: 0.08em;
@@ -1350,38 +1350,112 @@ button:disabled {
   color: var(--accent);
 }
 
-.sheet__actions-other ul {
+.sheet__action-group ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.sheet__feature-action {
+.sheet__group-row {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sheet__group-row-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
-  padding: 6px 12px;
-  border-top: 1px solid var(--line);
+  gap: 4px 8px;
 }
 
-.sheet__feature-action-text {
-  display: flex;
-  flex-direction: column;
+.sheet__group-row-toggle {
+  display: inline-flex;
+  min-width: 0;
+  white-space: normal;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: var(--text);
 }
 
-.sheet__feature-action .sheet__action-name {
+.sheet__group-row-arrow {
+  width: 14px;
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.sheet__group-row-name {
   font-size: 14px;
   font-weight: 600;
 }
 
-.sheet__feature-action .sheet__feature-origin {
-  font-size: 12px;
+.sheet__group-row-toggle:hover .sheet__group-row-name {
+  color: var(--accent);
 }
 
-.sheet__feature-action .sheet__action-uses {
+.sheet__group-row-source {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.sheet__group-row-spacer {
+  flex: 1 1 0;
+}
+
+.sheet__group-row-text {
+  max-width: 640px;
+  margin: 6px 0 0 22px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
+.sheet__use-boxes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.sheet__use-box {
+  box-sizing: border-box;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+/* Doubled class so a read-only sheet's disabled boxes keep their fill over button:disabled. */
+.sheet__use-box.sheet__use-box--used {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.sheet__use-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
+  font-size: 13px;
+}
+
+.sheet__use-recharge {
+  margin-left: 2px;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.sheet__action-group-empty {
+  margin: 12px 18px;
+  font-size: 13px;
+  color: var(--text-mute);
 }
 
 /* ---- character manager ---- */

@@ -71,7 +71,7 @@ export interface SheetSpellEntry {
 	usages: SpellUsage[]
 }
 
-function provenanceLabel(entry: SheetSpellEntry): string {
+export function provenanceLabel(entry: SheetSpellEntry): string {
 	const parts: string[] = []
 	if (entry.chosen) parts.push('player pick')
 	for (const subclassName of entry.subclassOrigins) parts.push(`always prepared (${subclassName})`)
@@ -250,8 +250,6 @@ function SpellRow({
 		)
 	}
 
-	const attackOrSave = formatAttackOrSave(detail.spellAttack, detail.savingThrow)
-
 	return (
 		<li>
 			<details>
@@ -278,42 +276,52 @@ function SpellRow({
 						</>
 					)}
 				</summary>
-				<dl className="spell-list__detail">
-					<dt>Casting Time</dt>
-					<dd>{formatCastingTime(detail.time)}</dd>
-					<dt>Range</dt>
-					<dd>{formatRange(detail.range)}</dd>
-					<dt>Components</dt>
-					<dd>{formatComponents(detail.components)}</dd>
-					<dt>Duration</dt>
-					<dd>{formatDuration(detail.duration)}</dd>
-					{attackOrSave && (
-						<>
-							<dt>Attack/Save</dt>
-							<dd>{attackOrSave}</dd>
-						</>
-					)}
-					<dt>Source</dt>
-					<dd>{detail.source}</dd>
-				</dl>
-				<ResolvedEntries entries={detail.entries} data={resolverData} />
-				{detail.entriesHigherLevel.length > 0 && (
-					<div className="spell-list__higher-level">
-						<strong>At Higher Levels</strong>
-						<ResolvedEntries entries={detail.entriesHigherLevel} data={resolverData} />
-					</div>
-				)}
-				{detail.scalingLevelDice.length > 0 && (
-					<div className="spell-list__scaling">
-						<strong>Cantrip scaling</strong>
-						<ul>
-							{formatScalingLevelDice(detail.scalingLevelDice).map((line) => (
-								<li key={line}>{line}</li>
-							))}
-						</ul>
-					</div>
-				)}
+				<SpellDetailBody detail={detail} resolverData={resolverData} />
 			</details>
 		</li>
+	)
+}
+
+/** A spell's text as the Spells tab shows it — also the Actions tab's expanded spell row (R5c). */
+export function SpellDetailBody({ detail, resolverData }: { detail: SpellDetail; resolverData: ResolverData }): ReactNode {
+	const attackOrSave = formatAttackOrSave(detail.spellAttack, detail.savingThrow)
+	return (
+		<>
+			<dl className="spell-list__detail">
+				<dt>Casting Time</dt>
+				<dd>{formatCastingTime(detail.time)}</dd>
+				<dt>Range</dt>
+				<dd>{formatRange(detail.range)}</dd>
+				<dt>Components</dt>
+				<dd>{formatComponents(detail.components)}</dd>
+				<dt>Duration</dt>
+				<dd>{formatDuration(detail.duration)}</dd>
+				{attackOrSave && (
+					<>
+						<dt>Attack/Save</dt>
+						<dd>{attackOrSave}</dd>
+					</>
+				)}
+				<dt>Source</dt>
+				<dd>{detail.source}</dd>
+			</dl>
+			<ResolvedEntries entries={detail.entries} data={resolverData} />
+			{detail.entriesHigherLevel.length > 0 && (
+				<div className="spell-list__higher-level">
+					<strong>At Higher Levels</strong>
+					<ResolvedEntries entries={detail.entriesHigherLevel} data={resolverData} />
+				</div>
+			)}
+			{detail.scalingLevelDice.length > 0 && (
+				<div className="spell-list__scaling">
+					<strong>Cantrip scaling</strong>
+					<ul>
+						{formatScalingLevelDice(detail.scalingLevelDice).map((line) => (
+							<li key={line}>{line}</li>
+						))}
+					</ul>
+				</div>
+			)}
+		</>
 	)
 }

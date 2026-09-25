@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { isActionTableFeature } from './actionTableFeatureData'
+import { classifyActionType, isActionTableFeature } from './actionTableFeatureData'
 
 describe('isActionTableFeature — fixture shapes', () => {
 	it('true when the feature carries consumes, regardless of entries', () => {
@@ -77,5 +77,38 @@ describe('isActionTableFeature — against the generated data (D86)', () => {
 		const records = subclassFeatures.filter((entry) => (entry as Record<string, unknown>)['name'] === 'Draconic Resilience')
 		expect(records.length).toBe(1)
 		expect(isActionTableFeature(records[0])).toBe(false)
+	})
+})
+
+describe('classifyActionType — against the generated data (D182, R5b hand list)', () => {
+	const records = ['class-features.json', 'subclass-features.json', 'feats.json', 'optional-features.json'].flatMap(read) as Record<string, unknown>[]
+	// The R5b script's pick: the XPHB record when there is one, else the first.
+	function record(name: string): Record<string, unknown> {
+		const matches = records.filter((entry) => String(entry['name']).toLowerCase() === name.toLowerCase())
+		expect(matches.length).toBeGreaterThan(0)
+		return matches.find((entry) => entry['source'] === 'XPHB') ?? matches[0]!
+	}
+
+	it.each([
+		...['Rage', 'Second Wind', 'Wild Shape', 'Lay on Hands', 'Bardic Inspiration', 'Flurry of Blows', 'Patient Defense', 'Step of the Wind'].map((name) => [name, 'bonus']),
+		...['Deflect Attacks', 'Riposte', 'Parry'].map((name) => [name, 'reaction']),
+		['Divine Spark', 'action'],
+		...['Action Surge', 'Font of Magic', 'Quickened Spell', 'Stunning Strike', 'Arcane Recovery', 'Indomitable', 'Channel Divinity', 'Commanding Presence'].map((name) => [name, 'other']),
+	])('%s → %s', (name, type) => {
+		expect(classifyActionType(record(name))).toBe(type)
+	})
+})
+
+describe('classifyActionType — frames', () => {
+	it('skips a frame preceded by a trigger', () => {
+		expect(classifyActionType({ entries: ['When you take a {@variantrule Reaction|XPHB} you gain 1 temporary Hit Point.'] })).toBe('other')
+	})
+
+	it('"its Reaction" is another creature’s, not the activation', () => {
+		expect(classifyActionType({ entries: ['An ally can use its {@variantrule Reaction|XPHB} to make one attack.'] })).toBe('other')
+	})
+
+	it('a nested sub-entry is read in document order', () => {
+		expect(classifyActionType({ entries: ['Intro.', { type: 'entries', name: 'Use', entries: ['You can take the {@action Dash|XPHB} action as a {@variantrule Bonus Action|XPHB}.'] }] })).toBe('bonus')
 	})
 })

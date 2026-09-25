@@ -578,6 +578,15 @@ o sobě nesou podmínky — u Wild Shape `miscellaneous=!swarm` (roje nejsou
 legální forma) a `speed type=!fly` na řádcích pod 8. úrovní. Tyhle
 podmínky nejsou nikde jinde v textu feature napsané.
 
+### Activation cost — tags, not fields (R5b, D182)
+
+No feature record carries a structured activation cost. It is only in the text, as `{@variantrule Bonus Action|…}`, `{@variantrule Reaction|…}` or `{@action X|…}` (the Attack/Dash/Magic… action). There is **no `{@variantrule Action}` tag** anywhere — a plain Action is only ever `{@action X} action` or untagged prose. A tag's first occurrence is often a trigger ("when you take a Reaction"), not the activation, which is why D182 matches frames around the tag rather than the first tag (scripts/investigate-r5b-action-types.js).
+
+- **Feats** always nest their activation tag in a named sub-entry (`{type: "entries", name: …}`), never in the top-level string; a walk that reads only top-level strings finds none.
+- **26 in-scope TCE/XGE records** carry no activation tag at all — 2014-era prose ("as a bonus action"). They classify as Other.
+- **Channel Divinity** (XPHB Cleric/Paladin) has no activation of its own; its effects are separate records reached through `refClassFeature` (Divine Spark, Turn Undead) and each carries its own `{@action Magic}` frame.
+- **Spells' `time`** is always structured: every spell has a `time` array, units `action`/`bonus`/`reaction`/`minute`/`hour`; exactly 1 spell has two entries; all 6 `reaction` entries carry a `condition` string (the trigger).
+
 ### `damageInflict` and the `choose` spell-prerequisite filter grammar
 
 A spell's `damageInflict` (array of damage types, absent when the spell deals none) is how "deals damage" is read structurally — never from a hand-written list of spell names (D21).

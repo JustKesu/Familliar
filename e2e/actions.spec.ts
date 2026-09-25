@@ -36,20 +36,20 @@ test.beforeEach(async ({ page }) => {
   await createFighter(page)
 })
 
-test('R5a a: All is the default and shows the table and Other; Attack hides Other only', async ({ page }) => {
+test('R5a a: All is the default and shows the table and the groups; Attack hides the groups only', async ({ page }) => {
   const actions = actionsPanel(page)
   await page.getByRole('tab', { name: 'Actions' }).click()
   await expect(actions.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true')
-  const other = actions.getByRole('region', { name: 'Other' })
+  const bonus = actions.getByRole('region', { name: 'Bonus Action' })
   await expect(actions.getByRole('table')).toBeVisible()
-  await expect(other).toContainText('Second Wind')
+  await expect(bonus).toContainText('Second Wind')
 
   await actions.getByRole('button', { name: 'Attack', exact: true }).click()
-  await expect(other).toHaveCount(0)
+  await expect(bonus).toHaveCount(0)
   await expect(actions.getByRole('table')).toBeVisible()
 
   await actions.getByRole('button', { name: 'All', exact: true }).click()
-  await expect(other).toBeVisible()
+  await expect(bonus).toBeVisible()
 })
 
 test('R5a b: the weapon HIT and DAMAGE buttons each add a roll history entry', async ({ page }) => {

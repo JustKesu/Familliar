@@ -116,9 +116,10 @@ import {
 	loadSubclassSource,
 	type FeatTextEntry,
 } from './sheetData'
-import { combineSpellEntries, SpellList } from './SpellList'
+import { combineSpellEntries, provenanceLabel, SpellDetailBody, SpellList } from './SpellList'
 import { featureActionRows, grantedFeatureOrigin, type FeatureActionData } from './featureActionRowData'
-import { spellActionRows, type SpellActionData } from './spellActionRowData'
+import { spellActionRows, spellGroupRows, type SpellActionData, type SpellGroupData } from './spellActionRowData'
+import type { ActionType } from '../actions/actionTableFeatureData'
 import { spellLevelLabel } from './spellFormatting'
 import { FeatureLanguageSlots } from '../languages/FeatureLanguageSlots'
 import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
@@ -1700,50 +1701,81 @@ function UsesTracker({ name, spent, max, onChange }: { name: string; spent: numb
 }
 
 /**
- * A usable class/subclass feature or feat (sheet rebuild slice 5 part A),
- * listed under the attack table until R5c groups it (D181). Which features
- * qualify is featureActionRowData.ts over D86's test.
- *
- * Only the 8 resources with a computed maximum (slice 9b2) get a tracker: a
- * feature's uses are otherwise not structured as numbers anywhere in the data
- * (D86). The row says the character HAS this action; the Features tab holds
- * its text.
+ * A feature resource's uses on its Actions row (D182): one box per use up to 10,
+ * filled from the left by the spent count; a bigger pool (Lay on Hands, Sorcery
+ * Points) is a spent / max counter. Same `play.resourceUses` record as ever.
  */
-function FeatureActionItem({
-	feature,
-	resourceMaxima,
-	resourceUses,
-	onSpendResource,
-}: {
-	feature: FeatureActionData
-	resourceMaxima: ReadonlyMap<string, number>
-	resourceUses: Record<string, number>
-	onSpendResource?: (name: string, delta: 1 | -1) => void
-}): ReactNode {
-	const max = resourceMaxima.get(feature.resourceName)
+function UseBoxes({ name, spent, max, recharge, onChange }: { name: string; spent: number; max: number; recharge: string | undefined; onChange?: (delta: 1 | -1) => void }): ReactNode {
 	return (
-		<li className="sheet__action-row sheet__feature-action">
-			<span className="sheet__feature-action-text">
-				<span className="sheet__action-name">{feature.name}</span>
-				{feature.origin && <span className="sheet__feature-origin">{feature.origin}</span>}
-			</span>
-			{max !== undefined && (
-				<UsesTracker
-					name={feature.resourceName}
-					spent={resourceUses[feature.resourceName] ?? 0}
-					max={max}
-					onChange={onSpendResource ? (delta) => onSpendResource(feature.resourceName, delta) : undefined}
-				/>
+		<span className="sheet__use-boxes" role="group" aria-label={`${name} uses`}>
+			{max <= 10 ? (
+				Array.from({ length: max }, (_, index) => {
+					const used = index < spent
+					return (
+						<button
+							key={index}
+							type="button"
+							className={used ? 'sheet__use-box sheet__use-box--used' : 'sheet__use-box'}
+							aria-label={used ? `Undo a use of ${name}` : `Use ${name}`}
+							aria-pressed={used}
+							disabled={!onChange}
+							onClick={() => onChange?.(used ? -1 : 1)}
+						/>
+					)
+				})
+			) : (
+				<span className="sheet__use-counter">
+					<button type="button" disabled={!onChange || spent <= 0} onClick={() => onChange?.(-1)} aria-label={`Undo a use of ${name}`}>
+						−
+					</button>
+					{spent} / {max}
+					<button type="button" disabled={!onChange || spent >= max} onClick={() => onChange?.(1)} aria-label={`Use ${name}`}>
+						+
+					</button>
+				</span>
 			)}
+			{recharge && <span className="sheet__use-recharge">/ {recharge}</span>}
+		</span>
+	)
+}
+
+/** One collapsible Actions-group row (D182): ▸ name source … uses, the full text below when open. Open state is this row's own UI state (D116). */
+function ActionGroupRow({ name, source, uses, children }: { name: string; source: string | null; uses?: ReactNode; children: ReactNode }): ReactNode {
+	const [open, setOpen] = useState(false)
+	return (
+		<li className="sheet__action-row sheet__group-row">
+			<div className="sheet__group-row-line">
+				<button type="button" className="sheet__group-row-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+					<span className="sheet__group-row-arrow" aria-hidden="true">
+						{open ? '▾' : '▸'}
+					</span>
+					<span className="sheet__action-name sheet__group-row-name">{name}</span>
+				</button>
+				{source && <span className="sheet__feature-origin sheet__group-row-source">{source}</span>}
+				<span className="sheet__group-row-spacer" />
+				{uses}
+			</div>
+			{open && <div className="sheet__group-row-text">{children}</div>}
 		</li>
 	)
 }
 
-type ActionFilter = 'all' | 'attack'
+type ActionFilter = 'all' | 'attack' | ActionType
 
 const ACTION_FILTERS: readonly { id: ActionFilter; label: string }[] = [
 	{ id: 'all', label: 'All' },
 	{ id: 'attack', label: 'Attack' },
+	{ id: 'action', label: 'Action' },
+	{ id: 'bonus', label: 'Bonus Action' },
+	{ id: 'reaction', label: 'Reaction' },
+	{ id: 'other', label: 'Other' },
+]
+
+const ACTION_GROUPS: readonly { id: ActionType; label: string }[] = [
+	{ id: 'action', label: 'Action' },
+	{ id: 'bonus', label: 'Bonus Action' },
+	{ id: 'reaction', label: 'Reaction' },
+	{ id: 'other', label: 'Other' },
 ]
 
 /**
@@ -1751,7 +1783,8 @@ const ACTION_FILTERS: readonly { id: ActionFilter; label: string }[] = [
  * holds the weapons the character is HOLDING plus the Unarmed Strike everyone
  * has (build order step 7 slice c) and — slice 4 — every spell they have
  * access to that carries an attack roll or a saving throw. Usable features
- * (slice 5 part A) are the "Other" list under it until R5c's groups (D181).
+ * (slice 5 part A) and bonus-action/reaction spells sit in R5c's groups under
+ * it, Action / Bonus Action / Reaction / Other (D182).
  *
  * Attacks per action (Extra Attack) is a property of the character's turn, not
  * of any one row, so it stays a summary beside the filters.
@@ -1761,8 +1794,11 @@ function ActionsSection({
 	attacksPerAction,
 	spellActions,
 	featureActions,
+	spellGroups,
 	resourceMaxima,
+	resourceRecharge,
 	resourceUses,
+	resolverData,
 	loading,
 	dataError,
 	onRoll,
@@ -1777,10 +1813,14 @@ function ActionsSection({
 	attacksPerAction: Calculated<number>
 	spellActions: SpellActionData[]
 	featureActions: FeatureActionData[]
+	spellGroups: SpellGroupData[]
 	/** The 8 resources with a computed maximum, resolved name to that maximum (slice 9b2) — the ~90 "not in data" resources are absent, so their rows below never look them up successfully. */
 	resourceMaxima: ReadonlyMap<string, number>
+	/** The rest that gives a resource back, as the rest logic (9b5) reads it. */
+	resourceRecharge: ReadonlyMap<string, string>
 	/** Character.play.resourceUses, or {} for a character who has spent nothing yet. */
 	resourceUses: Record<string, number>
+	resolverData: ResolverData
 	loading: boolean
 	dataError: string | null
 	onRoll: (report: RollReport) => void
@@ -1808,6 +1848,13 @@ function ActionsSection({
 		),
 		...spellActions.map((spell) => spellActionRow(spell, onRoll, open(`spell|${spell.key}`))),
 	]
+	const showTable = filter === 'all' || filter === 'attack' || filter === 'action'
+	const groups = ACTION_GROUPS.filter((group) => filter === 'all' || filter === group.id).map((group) => ({
+		...group,
+		features: featureActions.filter((feature) => feature.actionType === group.id),
+		spells: spellGroups.filter((spell) => spell.actionType === group.id),
+	}))
+	const filteredGroupEmpty = filter !== 'all' && filter !== 'attack' && groups.every((group) => group.features.length === 0 && group.spells.length === 0)
 	return (
 		<section className="sheet__actions">
 			<div className="sheet__actions-toolbar">
@@ -1828,7 +1875,7 @@ function ActionsSection({
 				</div>
 			</div>
 			{dataError && <p className="error">Could not load the weapon data this section needs: {dataError}</p>}
-			{loading ? (
+			{!showTable ? null : loading ? (
 				<p>Loading…</p>
 			) : (
 				<table className="sheet__actions-table">
@@ -1857,22 +1904,45 @@ function ActionsSection({
 					</tbody>
 				</table>
 			)}
-			{filter === 'all' && featureActions.length > 0 && (
-				<section className="sheet__actions-other" aria-label="Other">
-					<h3>Other</h3>
-					<ul>
-						{featureActions.map((feature, index) => (
-							<FeatureActionItem
-								key={`${feature.key}#${index}`}
-								feature={feature}
-								resourceMaxima={resourceMaxima}
-								resourceUses={resourceUses}
-								onSpendResource={onSpendResource}
-							/>
-						))}
-					</ul>
-				</section>
+			{groups.map(
+				(group) =>
+					(group.features.length > 0 || group.spells.length > 0) && (
+						<section key={group.id} className="sheet__action-group" aria-label={group.label}>
+							<h3>{group.label}</h3>
+							<ul>
+								{group.features.map((feature) => {
+									const max = resourceMaxima.get(feature.resourceName)
+									return (
+										<ActionGroupRow
+											key={feature.key}
+											name={feature.name}
+											source={feature.origin}
+											uses={
+												max !== undefined && (
+													<UseBoxes
+														name={feature.resourceName}
+														spent={resourceUses[feature.resourceName] ?? 0}
+														max={max}
+														recharge={resourceRecharge.get(feature.resourceName)}
+														onChange={onSpendResource ? (delta) => onSpendResource(feature.resourceName, delta) : undefined}
+													/>
+												)
+											}
+										>
+											<ResolvedEntries entries={feature.entries} data={resolverData} />
+										</ActionGroupRow>
+									)
+								})}
+								{group.spells.map((spell) => (
+									<ActionGroupRow key={`spell|${spell.key}`} name={spell.entry.name} source={`Spell · ${spellLevelLabel(spell.detail.level)} · ${provenanceLabel(spell.entry)}`}>
+										<SpellDetailBody detail={spell.detail} resolverData={resolverData} />
+									</ActionGroupRow>
+								))}
+							</ul>
+						</section>
+					),
 			)}
+			{filteredGroupEmpty && <p className="sheet__action-group-empty">Nothing here for this character.</p>}
 		</section>
 	)
 }
@@ -2814,6 +2884,8 @@ function CharacterSheetBody({
 	const resourceFeatures: ResourceFeature[] = [...grantedFeatures, ...chosenFeatTexts, ...chosenOptionalFeatures]
 	const characterResources = computeCharacterResources(character, resourceClassData, resourceFeatures)
 	const resourceMaxima = new Map(characterResources.filter((resource) => resource.max.status === 'known').map((resource) => [resource.name, resource.max.status === 'known' ? resource.max.value : 0]))
+	// A Long Rest returns every resource (afterLongRest); a Short Rest only the ones 9b5 reads as short-rest recoverable.
+	const resourceRecharge = new Map(characterResources.map((resource) => [resource.name, resource.shortRest ? 'Short Rest' : 'Long Rest']))
 	const resourceUses = character.play?.resourceUses ?? {}
 	function spendResource(name: string, delta: 1 | -1): void {
 		if (!onEditResourceUses) return
@@ -3681,8 +3753,11 @@ function CharacterSheetBody({
 				attacksPerAction={attacksPerAction}
 				spellActions={spellActions}
 				featureActions={featureActions}
+				spellGroups={spellGroupRows(combinedSpells, spellDetails)}
 				resourceMaxima={resourceMaxima}
+				resourceRecharge={resourceRecharge}
 				resourceUses={resourceUses}
+				resolverData={resolverData}
 				loading={itemRefs === null || weaponAttackData === null}
 				dataError={weaponAttackDataError}
 				onRoll={recordRoll}

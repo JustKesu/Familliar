@@ -3253,3 +3253,41 @@ otevře rozklad počtu útoků. Inline `<details>` v tabulce nejsou.
 **Mastery.** Poznámka „Mastery: X" jen u zbraně, jejíž druh má postava
 v `Character.masteries` (holá jména zbraní, D97); porovnává se jméno zbraně
 z items.json. Neovládnutá zbraň řádek Mastery nemá vůbec.
+
+## D182 — R5c: skupiny Actions podle „R-phrase"; use-boxy
+
+Zdroj: task R5c (rework sheetu), průzkum R5b, 25. 9. 2026.
+
+**Zařazení (R-phrase).** `classifyActionType` prochází text featury ve stejném
+tvaru stromu jako `hasRestTag` (entries/entry, items, rows, row.row), v pořadí
+dokumentu; vyhrává první rámec. Bonus Action / Reaction: `(as|use|take|takes|
+taking|using|spend) (a|an|your|one) {@variantrule Bonus Action|Reaction}`.
+Action: `(as|take|takes|taking|use) (the|a|an|one) {@action X} action(s)`
+a `take (both) the {@action X} and (the) {@action Y} actions` — ne když
+hned následuje „as/using a Bonus Action|Reaction" (Step of the Wind → Bonus).
+„(no action required)" → Other. Shoda, před níž stojí `(when|whenever|if|after|
+once|until|before) (you|it|they|the target|a creature) (can)`, je spouštěč,
+ne aktivace, a přeskakuje se. „its" není determinant (Commander's Strike —
+Reaction spojence). Bez shody → Other. Uzavřené seznamy slov kolem tagu jsou
+přijaté pod D21 ve stejném duchu jako D86; žádná tabulka jmen.
+
+**Přijaté limity.** 26 záznamů TCE/XGE bez aktivačního tagu (próza z 2014)
+→ Other. Rodič Channel Divinity → Other; jeho efekty (Divine Spark, Turn
+Undead) jsou vlastní řádky Action.
+
+**Rozsah.** K dnešní množině D86 (udělené class/subclass featury, featy,
+zvolené optional features, bez duplicit podle jména) přibývá z týchž tří
+zdrojů každá featura, kterou D86 odmítá, ale R-phrase dá Action / Bonus Action
+/ Reaction (Cunning Action, Uncanny Dodge). Druhové rysy a Actions in Combat
+jsou pozdější slice.
+
+**Kouzla.** Kouzla s útokem nebo záchranou jen v tabulce. Ostatní kouzla
+postavy podle strukturovaného `time[0].unit`: `bonus` → Bonus Action,
+`reaction` → Reaction; ostatní časy seslání se v Actions neuvádějí. Jeden
+řádek na položku seznamu záložky Spells.
+
+**Use-boxy.** Tentýž záznam `play.resourceUses`. Známé maximum ≤ 10: tolik
+políček, vyplněná zleva = spotřebované použití; klik na prázdné označí použití,
+na vyplněné ho vrátí. Maximum > 10: kompaktní „spent / max" s −/+. Za tím
+„/ Short Rest", když 9b5 čte obnovu na Short Rest, jinak „/ Long Rest".
+Neznámé maximum (D43): nic.

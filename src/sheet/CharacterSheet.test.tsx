@@ -4133,9 +4133,19 @@ describe('CharacterSheet', () => {
 				classFeatureIds: ['cf|channel divinity|cleric|xphb|2|xphb'],
 				classFeatures: ['Channel Divinity|Cleric|XPHB|2'],
 			},
+			{
+				entryType: 'class',
+				name: 'Rogue',
+				source: 'XPHB',
+				classFeatureIds: ['cf|cunning action|rogue|xphb|2|xphb', 'cf|uncanny dodge|rogue|xphb|5|xphb'],
+				classFeatures: ['Cunning Action|Rogue|XPHB|2', 'Uncanny Dodge|Rogue|XPHB|5'],
+			},
 		]
 
 		const CF = [
+			// D182's scope extension: neither `consumes` nor a rest tag, but an R-phrase activation.
+			{ id: 'cf|cunning action|rogue|xphb|2|xphb', name: 'Cunning Action', className: 'Rogue', classSource: 'XPHB', level: 2, source: 'XPHB', entries: ['You can take the {@action Dash|XPHB}, {@action Disengage|XPHB}, or {@action Hide|XPHB} action as a {@variantrule Bonus Action|XPHB}.'] },
+			{ id: 'cf|uncanny dodge|rogue|xphb|5|xphb', name: 'Uncanny Dodge', className: 'Rogue', classSource: 'XPHB', level: 5, source: 'XPHB', entries: ['When an attacker that you can see hits you with an attack roll, you can take a {@variantrule Reaction|XPHB} to halve the attack’s damage against you.'] },
 			{ id: 'cf|second wind|fighter|xphb|1|xphb', name: 'Second Wind', className: 'Fighter', classSource: 'XPHB', level: 1, source: 'XPHB', entries: [`You have a limited well of physical stamina. ${REST}`] },
 			// Restated at 17 (a second use) — the data holds two records for the one feature.
 			{ id: 'cf|action surge|fighter|xphb|2|xphb', name: 'Action Surge', className: 'Fighter', classSource: 'XPHB', level: 2, source: 'XPHB', entries: [`You can push yourself beyond your normal limits. ${REST}`] },
@@ -4143,7 +4153,7 @@ describe('CharacterSheet', () => {
 			// Qualifies under neither test — a passive the table must leave out.
 			{ id: 'cf|improved fighter|fighter|xphb|5|xphb', name: 'Improved Fighter', className: 'Fighter', classSource: 'XPHB', level: 5, source: 'XPHB', entries: ['Your attack rolls improve.'] },
 			// The `consumes`-only shape: 72 real features qualify this way and no rest tag appears in their text.
-			{ id: 'cf|rage|barbarian|xphb|1|xphb', name: 'Rage', className: 'Barbarian', classSource: 'XPHB', level: 1, source: 'XPHB', consumes: { name: 'Rage' }, entries: ['You can enter a Rage as a Bonus Action.'] },
+			{ id: 'cf|rage|barbarian|xphb|1|xphb', name: 'Rage', className: 'Barbarian', classSource: 'XPHB', level: 1, source: 'XPHB', consumes: { name: 'Rage' }, entries: ['You can enter a Rage as a {@variantrule Bonus Action|XPHB}.'] },
 			{ id: 'cf|unarmored defense|barbarian|xphb|1|xphb', name: 'Unarmored Defense', className: 'Barbarian', classSource: 'XPHB', level: 1, source: 'XPHB', entries: ['Your base AC equals 10 plus your Dexterity and Constitution modifiers.'] },
 			{ id: 'cf|channel divinity|cleric|xphb|2|xphb', name: 'Channel Divinity', className: 'Cleric', classSource: 'XPHB', level: 2, source: 'XPHB', entries: [`You can channel divine energy directly from the Outer Planes. ${REST}`] },
 		]
@@ -4201,7 +4211,13 @@ describe('CharacterSheet', () => {
 			expect(row.querySelector('.sheet__action-uses')).toBeNull()
 		})
 
-		it('R5a (D181): a feature is listed under "Other", outside the attack table, with its origin', async () => {
+		/* R5c (D182): the group a row sits in, by its heading. */
+		function groupOf(container: HTMLElement, name: string): string | null | undefined {
+			const row = Array.from(container.querySelectorAll('.sheet__group-row')).find((li) => li.querySelector('.sheet__action-name')?.textContent === name)
+			return row?.closest('.sheet__action-group')?.querySelector('h3')?.textContent
+		}
+
+		it('R5c (D182): a feature with no activation frame is in the Other group, outside the attack table, with its origin', async () => {
 			const fighter: Character = { ...character, id: 'act-fighter-cells', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] }
 			const container = await renderFor(fighter)
 
@@ -4211,24 +4227,68 @@ describe('CharacterSheet', () => {
 				return found as HTMLElement
 			})
 			expect(row.closest('table.sheet__actions-table')).toBeNull()
-			expect(row.closest('.sheet__actions-other')!.querySelector('h3')!.textContent).toBe('Other')
+			expect(groupOf(container, 'Second Wind')).toBe('Other')
 			expect(row.querySelector('.sheet__feature-origin')!.textContent).toBe('Fighter 1')
 		})
 
-		it('R5a: the Attack pill hides the Other list and keeps the table; All, the default, shows both', async () => {
+		it('R5c: a row is collapsed by default; its name opens the full text and a second click closes it', async () => {
 			const user = userEvent.setup()
-			const fighter: Character = { ...character, id: 'act-fighter-filter', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] }
+			const fighter: Character = { ...character, id: 'act-fighter-expand', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] }
 			const container = await renderFor(fighter)
-			await waitFor(() => expect(container.querySelector('.sheet__actions-other')).toBeTruthy())
+			const toggle = await screen.findByRole('button', { name: /Second Wind/, expanded: false })
+			const row = toggle.closest('.sheet__group-row') as HTMLElement
+			expect(row.textContent).not.toContain('limited well of physical stamina')
+
+			await user.click(toggle)
+			expect(toggle.getAttribute('aria-expanded')).toBe('true')
+			expect(within(row).getByText(/limited well of physical stamina/)).toBeTruthy()
+			// Several rows may be open at once.
+			await user.click(screen.getByRole('button', { name: /Action Surge/, expanded: false }))
+			expect(container.querySelectorAll('.sheet__group-row-text')).toHaveLength(2)
+
+			await user.click(toggle)
+			expect(row.textContent).not.toContain('limited well of physical stamina')
+		})
+
+		it('R5c: filters — Attack shows only the table, Bonus Action only its group, Other only its group, All both', async () => {
+			const user = userEvent.setup()
+			const barbarian: Character = { ...character, id: 'act-barb-filter', name: 'Grog', classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 5 }] }
+			const container = await renderFor(barbarian)
+			await waitFor(() => expect(groupOf(container, 'Rage')).toBe('Bonus Action'))
 			expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
 
 			await user.click(screen.getByRole('button', { name: 'Attack' }))
-			expect(container.querySelector('.sheet__actions-other')).toBeNull()
+			expect(container.querySelector('.sheet__action-group')).toBeNull()
 			expect(container.querySelector('.sheet__actions-table')).toBeTruthy()
-			expect(screen.getByRole('button', { name: 'Attack' }).getAttribute('aria-pressed')).toBe('true')
+
+			await user.click(screen.getByRole('button', { name: 'Bonus Action' }))
+			expect(container.querySelector('.sheet__actions-table')).toBeNull()
+			expect(Array.from(container.querySelectorAll('.sheet__action-group h3')).map((h) => h.textContent)).toEqual(['Bonus Action'])
+
+			await user.click(screen.getByRole('button', { name: 'Action' }))
+			expect(container.querySelector('.sheet__actions-table')).toBeTruthy()
+			expect(screen.getByText('Nothing here for this character.')).toBeTruthy()
+
+			await user.click(screen.getByRole('button', { name: 'Reaction' }))
+			expect(screen.getByText('Nothing here for this character.')).toBeTruthy()
 
 			await user.click(screen.getByRole('button', { name: 'All' }))
-			expect(container.querySelector('.sheet__actions-other')).toBeTruthy()
+			expect(container.querySelector('.sheet__actions-table')).toBeTruthy()
+			expect(groupOf(container, 'Rage')).toBe('Bonus Action')
+			expect(screen.queryByText('Nothing here for this character.')).toBeNull()
+		})
+
+		it('R5c (D182): a Rogue 2 gets Cunning Action under Bonus Action; Uncanny Dodge joins Reaction at 5', async () => {
+			const rogue2: Character = { ...character, id: 'act-rogue-2', name: 'Vex', classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 2 }] }
+			const container = await renderFor(rogue2)
+			await waitFor(() => expect(groupOf(container, 'Cunning Action')).toBe('Bonus Action'))
+			expect(rowNames(container)).not.toContain('Uncanny Dodge')
+		})
+
+		it('R5c (D182): Uncanny Dodge is a Reaction row for a Rogue 5', async () => {
+			const rogue5: Character = { ...character, id: 'act-rogue-5', name: 'Vex', classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 5 }] }
+			const container = await renderFor(rogue5)
+			await waitFor(() => expect(groupOf(container, 'Uncanny Dodge')).toBe('Reaction'))
 		})
 
 		it('a Barbarian gets a Rage row from `consumes` alone, with no rest tag anywhere in its text', async () => {
@@ -4400,9 +4460,9 @@ describe('CharacterSheet', () => {
 			expect(rowNames(container)).not.toContain('Defense')
 		})
 
-		/* R5a: a feature's origin is its own line in the Other list, so the name and origin read as "name (origin)" here. */
+		/* R5a: a feature's origin is its own span in the group row, so the name and origin read as "name (origin)" here. */
 		function nameCell(container: HTMLElement, name: string): string | null | undefined {
-			const item = Array.from(container.querySelectorAll('.sheet__actions-other .sheet__action-row')).find((row) => row.querySelector('.sheet__action-name')?.textContent === name)
+			const item = Array.from(container.querySelectorAll('.sheet__group-row')).find((row) => row.querySelector('.sheet__action-name')?.textContent === name)
 			const origin = item?.querySelector('.sheet__feature-origin')?.textContent
 			return item && (origin ? `${name} (${origin})` : name)
 		}
@@ -4535,9 +4595,11 @@ describe('CharacterSheet', () => {
 			return container
 		}
 
+		/* R5c (D182): "used / boxes" read off the row's use-boxes. */
 		function usesTextFor(container: HTMLElement, featureName: string): string | null {
 			const row = Array.from(container.querySelectorAll('.sheet__action-row')).find((tr) => tr.querySelector('.sheet__action-name')?.textContent === featureName)
-			return row?.querySelector('.sheet__action-uses')?.textContent ?? null
+			if (!row) return null
+			return `${row.querySelectorAll('.sheet__use-box--used').length} / ${row.querySelectorAll('.sheet__use-box').length}`
 		}
 
 		afterEach(() => {
@@ -4567,11 +4629,21 @@ describe('CharacterSheet', () => {
 			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 2 })
 		})
 
-		it('the mark-a-use button is disabled once spent reaches the maximum, so it cannot grow past it', async () => {
+		it('every box is filled once spent reaches the maximum, so there is no use left to mark', async () => {
 			const fighter: Character = { ...character, id: 'uses-fighter-capped', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 2 } } }
 			const container = await renderFor(fighter, vi.fn())
-			expect((screen.getByRole('button', { name: 'Use Second Wind' }) as HTMLButtonElement).disabled).toBe(true)
-			expect(container.querySelector('.sheet__action-uses')!.textContent).toContain('2 / 2')
+			expect(screen.queryByRole('button', { name: 'Use Second Wind' })).toBeNull()
+			expect(usesTextFor(container, 'Second Wind')).toBe('2 / 2')
+		})
+
+		it('R5c: the boxes are followed by the rest that returns them, and clicking one never opens the row', async () => {
+			const fighter: Character = { ...character, id: 'uses-fighter-recharge', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] }
+			const container = await renderFor(fighter, vi.fn())
+			const row = container.querySelector('.sheet__group-row') as HTMLElement
+			// The fixture's recharge sentence gives no Short Rest amount 9b5 reads, so only a Long Rest returns it.
+			expect(row.querySelector('.sheet__use-recharge')!.textContent).toBe('/ Long Rest')
+			fireEvent.click(screen.getAllByRole('button', { name: 'Use Second Wind' })[0]!)
+			expect(row.querySelector('.sheet__group-row-text')).toBeNull()
 		})
 
 		it('undoing a use reports the decremented count through onEditResourceUses', async () => {
@@ -4583,10 +4655,26 @@ describe('CharacterSheet', () => {
 			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 0 })
 		})
 
-		it('the undo button is disabled once spent reaches 0, so it cannot go below it', async () => {
+		it('no box is filled at 0 spent, so there is nothing to undo', async () => {
 			const fighter: Character = { ...character, id: 'uses-fighter-floored', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] }
 			await renderFor(fighter, vi.fn())
-			expect((screen.getByRole('button', { name: 'Undo a use of Second Wind' }) as HTMLButtonElement).disabled).toBe(true)
+			expect(screen.queryByRole('button', { name: 'Undo a use of Second Wind' })).toBeNull()
+			expect(screen.getAllByRole('button', { name: 'Use Second Wind' })).toHaveLength(2)
+		})
+
+		it('R5c: a pool above 10 is a spent / max counter with − and +, not boxes', async () => {
+			const onEditResourceUses = vi.fn()
+			// Level 5 of the table below: 25, the Lay on Hands-sized case.
+			const big: Character = { ...character, id: 'uses-fighter-big', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }], play: { resourceUses: { 'Second Wind': 3 } } }
+			const bigClasses = [{ ...CLASSES[0]!, classTableGroups: [{ colLabels: ['Second Wind'], rows: [[2], [2], [2], [3], [25]] }] }]
+			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(big, bigClasses, RESOLVER))
+			vi.mocked(loadDataFile).mockImplementation(async (path: string) => (path === 'data/classes.json' ? bigClasses : []))
+			const { container } = render(<CharacterSheet character={big} onEditResourceUses={onEditResourceUses} />)
+			await waitFor(() => expect(container.querySelector('.sheet__use-counter')?.textContent).toContain('3 / 25'))
+			expect(container.querySelector('.sheet__use-box')).toBeNull()
+			fireEvent.click(screen.getByRole('button', { name: 'Use Second Wind' }))
+			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 4 })
 		})
 
 		it('two rows that consume the same resolved resource show the same shared count, and marking either moves both', async () => {
@@ -5027,6 +5115,10 @@ describe('CharacterSheet', () => {
 				}),
 				spellDetail({ name: 'Fireball', source: 'XPHB', level: 3, savingThrow: ['dexterity'] }),
 				spellDetail({ name: 'Mage Armor', source: 'XPHB', level: 1 }),
+				spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2, time: [{ number: 1, unit: 'bonus' }], entries: ['Briefly surrounded by silvery mist, you teleport.'] }),
+				spellDetail({ name: 'Shield', source: 'XPHB', level: 1, time: [{ number: 1, unit: 'reaction', condition: 'which you take when you are hit' }] }),
+				// Bonus-action casting WITH a save stays a table row only (D182).
+				spellDetail({ name: 'Sanctuary', source: 'XPHB', level: 1, time: [{ number: 1, unit: 'bonus' }], savingThrow: ['wisdom'] }),
 			]
 
 			const wizard: Character = {
@@ -5045,10 +5137,33 @@ describe('CharacterSheet', () => {
 							{ name: 'Fire Bolt', source: 'XPHB' },
 							{ name: 'Fireball', source: 'XPHB' },
 							{ name: 'Mage Armor', source: 'XPHB' },
+							{ name: 'Misty Step', source: 'XPHB' },
+							{ name: 'Shield', source: 'XPHB' },
+							{ name: 'Sanctuary', source: 'XPHB' },
 						],
 					},
 				],
 			}
+
+			it('R5c (D182): a bonus-action spell with no attack/save is in the Bonus Action group, a reaction one in Reaction, never in the table', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderWizard()
+				const groupRow = (name: string) =>
+					Array.from(container.querySelectorAll('.sheet__group-row')).find((li) => li.querySelector('.sheet__action-name')?.textContent === name) as HTMLElement | undefined
+				const misty = groupRow('Misty Step')!
+				expect(misty.closest('.sheet__action-group')!.querySelector('h3')!.textContent).toBe('Bonus Action')
+				expect(misty.querySelector('.sheet__feature-origin')!.textContent).toBe('Spell · Level 2 · player pick')
+				expect(groupRow('Shield')!.closest('.sheet__action-group')!.querySelector('h3')!.textContent).toBe('Reaction')
+				expect(() => actionRow(container, 'Misty Step')).toThrow()
+				expect(groupRow('Mage Armor')).toBeUndefined()
+				expect(groupRow('Sanctuary')).toBeUndefined()
+				expect(actionRow(container, 'Sanctuary')).toBeTruthy()
+
+				await user.click(within(misty).getByRole('button', { name: 'Misty Step' }))
+				// The Spells tab's own detail block: casting time line plus the text.
+				expect(within(misty).getByText('Briefly surrounded by silvery mist, you teleport.')).toBeTruthy()
+				expect(misty.querySelector('.spell-list__detail')!.textContent).toContain('Casting Time')
+			})
 
 			function actionRow(container: HTMLElement, name: string): HTMLElement {
 				const row = Array.from(container.querySelectorAll('.sheet__actions-table .sheet__action-row')).find(

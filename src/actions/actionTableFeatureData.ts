@@ -43,6 +43,59 @@ export function hasRestTag(node: unknown): boolean {
 	return false
 }
 
+export type ActionType = 'action' | 'bonus' | 'reaction' | 'other'
+
+/** Every string leaf, in document order, over the same tree shape hasRestTag walks. */
+function stringLeaves(node: unknown, out: string[] = []): string[] {
+	if (typeof node === 'string') out.push(node)
+	else if (Array.isArray(node)) for (const child of node) stringLeaves(child, out)
+	else if (isRecord(node)) {
+		stringLeaves(nodeBody(node), out)
+		stringLeaves(node['items'], out)
+		stringLeaves(node['rows'], out)
+		if (isRecord(node['row'])) stringLeaves(node['row']['row'], out)
+	}
+	return out
+}
+
+/*
+ * D182 "R-phrase" (scripts/investigate-r5b-action-types.js): closed word lists
+ * around the activation tag, accepted under D21 in the spirit of D86. "its" is
+ * not a determiner — "its Reaction" is another creature's (Commander's Strike).
+ */
+const LEAD_IN = String.raw`\b(?:as|use|take|takes|taking|using|spend)\s+(?:a|an|your|one)\s+`
+const ACTION_FRAMES: readonly { type: ActionType; re: RegExp }[] = [
+	{ type: 'bonus', re: new RegExp(LEAD_IN + String.raw`\{@variantrule Bonus Action\b`, 'gi') },
+	{ type: 'reaction', re: new RegExp(LEAD_IN + String.raw`\{@variantrule Reaction\b`, 'gi') },
+	// "take the Dash action as a Bonus Action" is a Bonus Action (Step of the Wind), so the A frames stop short of it.
+	{ type: 'action', re: /\b(?:as|take|takes|taking|use)\s+(?:the|a|an|one)\s+\{@action [^}]+\}\s+actions?(?!\s+(?:as|using)\s+(?:a|an|your)\s+\{@variantrule (?:Bonus Action|Reaction)\b)/gi },
+	{ type: 'action', re: /\b(?:take|takes|taking)\s+(?:both\s+)?the\s+\{@action [^}]+\}\s+and\s+(?:the\s+)?\{@action [^}]+\}\s+actions(?!\s+as\s+(?:a|an|your)\s+\{@variantrule (?:Bonus Action|Reaction)\b)/gi },
+	{ type: 'other', re: /\(?no action required\)?/gi },
+]
+// "when you take a Reaction…" names a trigger, not how this feature is activated.
+const TRIGGER_BEFORE = /\b(?:when|whenever|if|after|once|until|before)\s+(?:you|it|they|the target|a creature)\s+(?:can\s+)?$/i
+
+/**
+ * Which action a feature's activation costs (D182): the first R-phrase frame in
+ * document order wins; a feature with none is 'other' (D86's accepted-limit spirit —
+ * the 26 untagged TCE/XGE records land there).
+ */
+export function classifyActionType(feature: unknown): ActionType {
+	if (!isRecord(feature)) return 'other'
+	for (const text of stringLeaves(feature['entries'])) {
+		let first: { type: ActionType; at: number } | null = null
+		for (const frame of ACTION_FRAMES) {
+			for (const match of text.matchAll(frame.re)) {
+				if (TRIGGER_BEFORE.test(text.slice(Math.max(0, match.index - 40), match.index))) continue
+				if (!first || match.index < first.at) first = { type: frame.type, at: match.index }
+				break
+			}
+		}
+		if (first) return first.type
+	}
+	return 'other'
+}
+
 /**
  * Whether a class feature, subclass feature, feat or optional feature
  * belongs in the actions table (D86). Pure (D38) and shape-agnostic: any

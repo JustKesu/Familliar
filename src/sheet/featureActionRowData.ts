@@ -25,7 +25,7 @@
  *   the rest tag reaches.
  */
 
-import { isActionTableFeature } from '../actions/actionTableFeatureData'
+import { type ActionType, classifyActionType, isActionTableFeature } from '../actions/actionTableFeatureData'
 import { resolveResourceName } from '../calculation/resources'
 import { featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
@@ -46,6 +46,10 @@ export interface FeatureActionData {
 	resourceName: string
 	/** Where the feature came from, as the row labels it ("Fighter 2", "Champion, Fighter 3", "Feat, level 4", "Sorcerer"); null when that is not known. */
 	origin: string | null
+	/** D182's R-phrase group. */
+	actionType: ActionType
+	/** The record's own text, for the row's expanded view. */
+	entries: unknown[]
 }
 
 /** A granted class/subclass feature's origin: its class and the class level it is gained at, plus the subclass for a subclass feature. */
@@ -104,30 +108,29 @@ export function featureActionRows(
 	const rows: FeatureActionData[] = []
 	const seen = new Set<string>()
 
-	function add(kind: 'feature' | 'feat' | 'option', name: string, resourceName: string, origin: string | null): void {
+	// D182: D86's set, plus any feature R-phrase places in Action/Bonus Action/Reaction (Cunning Action, Uncanny Dodge).
+	function add(kind: 'feature' | 'feat' | 'option', name: string, record: { name: string; consumes?: unknown; entries: unknown[] }, origin: string | null): void {
+		const actionType = classifyActionType(record)
+		if (!isActionTableFeature(record) && actionType === 'other') return
 		const key = name.toLowerCase()
 		if (seen.has(key)) return
 		seen.add(key)
-		rows.push({ key: `${kind}|${key}`, name, resourceName, origin })
+		rows.push({ key: `${kind}|${key}`, name, resourceName: resourceCandidateName(record), origin, actionType, entries: record.entries })
 	}
 
-	for (const feature of granted) {
-		if (isActionTableFeature(feature)) add('feature', feature.name, resourceCandidateName(feature), grantedFeatureOrigin(feature))
-	}
+	for (const feature of granted) add('feature', feature.name, feature, grantedFeatureOrigin(feature))
 
 	for (const choice of chosenFeats) {
 		// D43: a feat whose text is missing cannot be tested, so it gets no row —
 		// the Feats list already says the text was not found.
 		const text = featTexts.find((entry) => entry.name === choice.name && entry.source === choice.source)
-		if (text && isActionTableFeature(text)) add('feat', choice.name, resourceCandidateName(text), `Feat, ${featOriginLabel(choice)}`)
+		if (text) add('feat', choice.name, text, `Feat, ${featOriginLabel(choice)}`)
 	}
 
 	// Already resolved to the full option record by the caller, so — unlike a feat —
 	// there is no second lookup to do: D43's no-text-no-row is applied when the pick
 	// is resolved, and an unresolvable pick never reaches here.
-	for (const option of chosenOptions) {
-		if (isActionTableFeature(option)) add('option', option.name, resourceCandidateName(option), optionOrigin(option))
-	}
+	for (const option of chosenOptions) add('option', option.name, option, optionOrigin(option))
 
 	return rows
 }
