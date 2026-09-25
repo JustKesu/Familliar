@@ -3353,3 +3353,34 @@ parser počtů ani nové pooly tento řez nepřidal.
 **Úroveň.** Data druhu žádnou úroveň nenesou a Features & Traits žádné
 podmiňování nemá, takže se nic nepodmiňuje: Celestial Revelation je vidět i na
 úrovni 1.
+
+## D186 — Rysy druhu v Actions: Breath Weapon, úroveň, šum, políčka
+
+Navazuje na D185 a v bodech úrovně a políček ho mění.
+
+**Nahrazení útoku → Action.** Věta „When you take the Attack action … you can
+replace one of your attacks with …“ je nový R-phrase rámec (D182) se skupinou
+Action; trigger „When you take“ ho nepřeskakuje. Pravidlo textem, ne seznamem
+jmen (D21). V datech mění skupinu jen Breath Weapon (11 záznamů Dragonborn),
+War Magic (XPHB) a Commander's Strike (XPHB) — obojí je podle pravidel součást
+akce Attack, ponecháno.
+
+**Podmínění úrovní.** Rys druhu, jehož první věta začíná „When you reach
+character level N“, „Starting at character level N“, „Starting at/When you
+reach Nth level“ nebo „Once you reach …“, se ukáže (Actions i Features &
+Traits) až od celkové úrovně postavy N. Úroveň zmíněná až dál v textu rys
+nepodmiňuje — zvyšuje jen jeho část (Fey Step, kouzla Elven Lineage).
+
+**Šum.** Rys druhu jde do Actions jen se skupinou R-phrase Action / Bonus
+Action / Reaction, nebo se sledovaným počtem použití. Samotný tag odpočinku
+(Trance, Fiendish Legacy, Elven Lineage) nestačí; takový rys zůstane jen ve
+Features & Traits. Class featury, featy a volby beze změny (D86).
+
+**Políčka.** Rysy druhu jdou do `computeCharacterResources` jako samostatný
+vstup, čtený jen dvěma vzory: „Once you …, you can't do so / use it / use this
+trait again until you finish a Long Rest“ (i Short or Long) → max 1; „a number
+of times equal to your Proficiency Bonus … regain(ing) all expended uses when
+you finish a … Rest“ → max PB. Short Rest je vrací, jen když to věta říká;
+Long Rest vrací vše. Rys se oběma vzory (Merge with Stone) má dva nezávislé
+limity a nemá žádná políčka (jako D119). Cokoli jiného: bez políček (D43).
+Klíč v `play.resourceUses` je jméno rysu — stejný tvar, schéma beze změny.

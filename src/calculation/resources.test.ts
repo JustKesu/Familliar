@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, type CharacterResource, type ResourceFeature } from './resources'
+import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, type CharacterResource, type ResourceFeature } from './resources'
 import type { Character } from '../storage/character'
 
 /** classes.json is only read for its table groups, so the fixtures carry nothing else. */
@@ -513,6 +513,56 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 				'Unbreakable Majesty',
 			].sort(),
 		)
+	})
+})
+
+describe('species trait uses (D186)', () => {
+	const BREATH: ResourceFeature = {
+		name: 'Breath Weapon',
+		entries: ['You can use this Breath Weapon a number of times equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus}, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.'],
+	}
+	const HEALING_HANDS: ResourceFeature = { name: 'Healing Hands', entries: ["Once you use this trait, you can't use it again until you finish a {@variantrule Long Rest|XPHB}."] }
+	const ADRENALINE: ResourceFeature = {
+		name: 'Adrenaline Rush',
+		entries: ['You can use this trait a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a {@variantrule Short Rest|XPHB|Short} or {@variantrule Long Rest|XPHB}.'],
+	}
+
+	it.each([
+		['PB per Long Rest', BREATH, { max: 'proficiencyBonus', shortRest: false }],
+		['once per Long Rest', HEALING_HANDS, { max: 'one', shortRest: false }],
+		['PB per Short or Long Rest', ADRENALINE, { max: 'proficiencyBonus', shortRest: true }],
+		['PB, regaining, lower case', { name: 'Shifting', entries: ['You can shift a number of times equal to your proficiency bonus, regaining all expended uses when you finish a long rest.'] }, { max: 'proficiencyBonus', shortRest: false }],
+		['PB, regain in the next sentence', { name: 'Fey Gift', entries: ['You can do so a number of times equal to your proficiency bonus. You regain all expended uses when you finish a long rest.'] }, { max: 'proficiencyBonus', shortRest: false }],
+	])('%s', (_label, trait, uses) => {
+		expect(speciesTraitUses(trait)).toEqual(uses)
+	})
+
+	it.each([
+		['a bare rest mention', { name: 'Trance', entries: ['You finish a {@variantrule Long Rest|XPHB} in 4 hours.'] }],
+		['a spell regained in another way', { name: 'Fiendish Legacy', entries: ['You can cast it once without a spell slot, and you regain the ability to cast it that way when you finish a Long Rest.'] }],
+		[
+			'both limits in one trait',
+			{
+				name: 'Merge with Stone',
+				entries: ["You can cast it a number of times equal to your proficiency bonus, regaining all expended uses when you finish a long rest. Once you cast it, you can't do so again until you finish a long rest."],
+			},
+		],
+	])('no count for %s', (_label, trait) => {
+		expect(speciesTraitUses(trait)).toBeNull()
+	})
+
+	it('files each trait under its own name with PB or one use, and what a Short Rest returns', () => {
+		const resources = computeCharacterResources(character('Fighter', 5), CLASSES, [], [BREATH, HEALING_HANDS, ADRENALINE, { name: 'Trance', entries: [] }])
+		expect(resources.map((r) => [r.name, r.max.status === 'known' && r.max.value, r.shortRest])).toEqual([
+			['Adrenaline Rush', 3, 'all'],
+			['Breath Weapon', 3, null],
+			['Healing Hands', 1, null],
+		])
+	})
+
+	it('a class resource of the same name wins', () => {
+		const [rage] = computeCharacterResources(character('Barbarian', 5), CLASSES, [RAGE], [{ ...HEALING_HANDS, name: 'Rage' }])
+		expect(rage.max.status === 'known' && rage.max.value).toBe(4)
 	})
 })
 

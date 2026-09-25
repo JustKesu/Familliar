@@ -2316,7 +2316,8 @@ describe('CharacterSheet', () => {
 				expect(historyLines()).toHaveLength(50)
 				expect(historyLines().every((line) => line.startsWith('Athletics check: '))).toBe(true)
 				slot.remove()
-			})
+				// 51 full-sheet renders; at HEAD 63c8f4a it already took 5.0 s alone, over the 5 s default.
+			}, 15000)
 		})
 	})
 
@@ -4331,18 +4332,62 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(groupOf(container, 'Uncanny Dodge')).toBe('Reaction'))
 		})
 
-		it('D185: an Aasimar’s species traits sit in their R-phrase groups, labelled with the species, with no use boxes', async () => {
-			vi.mocked(loadSpeciesTraits).mockResolvedValue([
-				{ name: 'Celestial Revelation', entries: [`As a {@variantrule Bonus Action|XPHB}, you can transform. ${REST}`] },
+		describe('D185/D186: species traits', () => {
+			const AASIMAR_TRAITS = [
+				{
+					name: 'Celestial Revelation',
+					entries: [
+						'When you reach character level 3, you can transform as a {@variantrule Bonus Action|XPHB}. Once you transform, you can\'t do so again until you finish a {@variantrule Long Rest|XPHB}.',
+					],
+				},
+				{ name: 'Healing Hands', entries: ['As a {@action Magic|XPHB} action, you touch a creature. Once you use this trait, you can\'t use it again until you finish a {@variantrule Long Rest|XPHB}.'] },
+				{ name: 'Trance', entries: ['You finish a {@variantrule Long Rest|XPHB} in 4 hours.'] },
 				{ name: 'Darkvision', entries: ['You have Darkvision.'] },
-			])
-			const aasimar: Character = { ...character, id: 'act-aasimar', name: 'Halo', species: { name: 'Aasimar', source: 'XPHB' }, classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }] }
-			const container = await renderFor(aasimar)
-			await waitFor(() => expect(groupOf(container, 'Celestial Revelation')).toBe('Bonus Action'))
-			expect(rowNames(container)).not.toContain('Darkvision')
-			const row = Array.from(container.querySelectorAll('.sheet__group-row')).find((li) => li.querySelector('.sheet__action-name')?.textContent === 'Celestial Revelation')!
-			expect(row.querySelector('.sheet__feature-origin')!.textContent).toBe('Aasimar')
-			expect(row.querySelector('.sheet__use-box')).toBeNull()
+			]
+			const aasimarAt = (level: number): Character => ({
+				...character,
+				id: `act-aasimar-${level}`,
+				name: 'Halo',
+				species: { name: 'Aasimar', source: 'XPHB' },
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level }],
+			})
+			const actionRow = (container: HTMLElement, name: string) =>
+				Array.from(container.querySelectorAll('.sheet__group-row')).find((li) => li.querySelector('.sheet__action-name')?.textContent === name)
+
+			it('level 3: R-phrase groups, the species as origin, one use box each; a rest-only trait stays out', async () => {
+				vi.mocked(loadSpeciesTraits).mockResolvedValue(AASIMAR_TRAITS)
+				const container = await renderFor(aasimarAt(3))
+				await waitFor(() => expect(groupOf(container, 'Celestial Revelation')).toBe('Bonus Action'))
+				expect(groupOf(container, 'Healing Hands')).toBe('Action')
+				expect(groupOf(container, 'Darkvision')).toBeUndefined()
+				expect(groupOf(container, 'Trance')).toBeUndefined()
+				const row = actionRow(container, 'Celestial Revelation')!
+				expect(row.querySelector('.sheet__feature-origin')!.textContent).toBe('Aasimar')
+				expect(row.querySelectorAll('.sheet__use-box')).toHaveLength(1)
+				expect(actionRow(container, 'Healing Hands')!.querySelectorAll('.sheet__use-box')).toHaveLength(1)
+			})
+
+			it('level 1: a trait whose text starts at character level 3 is absent from Actions', async () => {
+				vi.mocked(loadSpeciesTraits).mockResolvedValue(AASIMAR_TRAITS)
+				const container = await renderFor(aasimarAt(1))
+				await waitFor(() => expect(groupOf(container, 'Healing Hands')).toBe('Action'))
+				expect(groupOf(container, 'Celestial Revelation')).toBeUndefined()
+			})
+
+			it('Breath Weapon replaces an attack: Action group, Proficiency Bonus use boxes', async () => {
+				vi.mocked(loadSpeciesTraits).mockResolvedValue([
+					{
+						name: 'Breath Weapon',
+						entries: [
+							'When you take the {@action Attack|XPHB} action on your turn, you can replace one of your attacks with an exhalation. You can use this Breath Weapon a number of times equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus}, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.',
+						],
+					},
+				])
+				const dragonborn: Character = { ...aasimarAt(5), id: 'act-dragonborn', species: { name: 'Dragonborn', source: 'XPHB' } }
+				const container = await renderFor(dragonborn)
+				await waitFor(() => expect(groupOf(container, 'Breath Weapon')).toBe('Action'))
+				expect(actionRow(container, 'Breath Weapon')!.querySelectorAll('.sheet__use-box')).toHaveLength(3)
+			})
 		})
 
 		it('a Barbarian gets a Rage row from `consumes` alone, with no rest tag anywhere in its text', async () => {

@@ -92,7 +92,7 @@ describe('classifyActionType — against the generated data (D182, R5b hand list
 	it.each([
 		...['Rage', 'Second Wind', 'Wild Shape', 'Lay on Hands', 'Bardic Inspiration', 'Flurry of Blows', 'Patient Defense', 'Step of the Wind'].map((name) => [name, 'bonus']),
 		...['Deflect Attacks', 'Riposte', 'Parry'].map((name) => [name, 'reaction']),
-		['Divine Spark', 'action'],
+		...['Divine Spark', 'War Magic', "Commander's Strike"].map((name) => [name, 'action']),
 		...['Action Surge', 'Font of Magic', 'Quickened Spell', 'Stunning Strike', 'Arcane Recovery', 'Indomitable', 'Channel Divinity', 'Commanding Presence'].map((name) => [name, 'other']),
 	])('%s → %s', (name, type) => {
 		expect(classifyActionType(record(name))).toBe(type)
@@ -106,6 +106,17 @@ describe('classifyActionType — frames', () => {
 
 	it('"its Reaction" is another creature’s, not the activation', () => {
 		expect(classifyActionType({ entries: ['An ally can use its {@variantrule Reaction|XPHB} to make one attack.'] })).toBe('other')
+	})
+
+	it('D186: replacing one of your attacks within the Attack action is an Action, despite the "When you take" trigger', () => {
+		expect(
+			classifyActionType({ entries: ['When you take the {@action Attack|XPHB} action on your turn, you can replace one of your attacks with an exhalation of magical energy.'] }),
+		).toBe('action')
+	})
+
+	it('D186: the Attack action alone, as a trigger, is still not an activation', () => {
+		expect(classifyActionType({ entries: ['When you take the {@action Attack|XPHB} action on your turn, you can make one additional attack.'] })).toBe('other')
+		expect(classifyActionType({ entries: ['You can replace one of your attacks with a shove.'] })).toBe('other')
 	})
 
 	it('a nested sub-entry is read in document order', () => {

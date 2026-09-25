@@ -188,7 +188,7 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		key: 'species',
 		kind: 'species',
 		label: 'Species Traits',
-		rows: input.speciesTraits.map((trait) => ({ key: `trait|${trait.name}`, name: trait.name, source: input.speciesName, entries: trait.entries, resourceName: null, options: [] })),
+		rows: input.speciesTraits.map((trait) => ({ key: `trait|${trait.name}`, name: trait.name, source: input.speciesName, entries: trait.entries, resourceName: resourceCandidateName(trait), options: [] })),
 	})
 
 	groups.push({

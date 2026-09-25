@@ -26,7 +26,7 @@
  */
 
 import { type ActionType, classifyActionType, isActionTableFeature } from '../actions/actionTableFeatureData'
-import { resolveResourceName } from '../calculation/resources'
+import { resolveResourceName, speciesTraitUses } from '../calculation/resources'
 import { featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import type { GrantedFeature } from './grantedClassFeatures'
@@ -114,7 +114,9 @@ export function featureActionRows(
 	// D182: D86's set, plus any feature R-phrase places in Action/Bonus Action/Reaction (Cunning Action, Uncanny Dodge).
 	function add(kind: 'feature' | 'feat' | 'option' | 'species',name: string, record: { name: string; consumes?: unknown; entries: unknown[] }, origin: string | null): void {
 		const actionType = classifyActionType(record)
-		if (!isActionTableFeature(record) && actionType === 'other') return
+		// D186: a species trait needs an R-phrase group or a tracked use count; a bare rest mention (Trance) is not enough.
+		const qualifies = kind === 'species' ? actionType !== 'other' || speciesTraitUses(record) !== null : isActionTableFeature(record) || actionType !== 'other'
+		if (!qualifies) return
 		const key = name.toLowerCase()
 		if (seen.has(key)) return
 		seen.add(key)
@@ -135,7 +137,7 @@ export function featureActionRows(
 	// is resolved, and an unresolvable pick never reaches here.
 	for (const option of chosenOptions) add('option', option.name, option, optionOrigin(option))
 
-	// D185: the species' own named traits take the same D86/D182 tests; the species data carries no level, so none gates them.
+	// D185/D186: the caller passes only the traits the character's level has reached (speciesTraitsAtLevel).
 	for (const trait of speciesTraits) add('species', trait.name, trait, speciesName)
 
 	return rows

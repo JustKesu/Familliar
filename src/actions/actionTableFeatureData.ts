@@ -71,6 +71,8 @@ const ACTION_FRAMES: readonly { type: ActionType; re: RegExp }[] = [
 	{ type: 'action', re: /\b(?:as|take|takes|taking|use)\s+(?:the|a|an|one)\s+\{@action [^}]+\}\s+actions?(?!\s+(?:as|using)\s+(?:a|an|your)\s+\{@variantrule (?:Bonus Action|Reaction)\b)/gi },
 	{ type: 'action', re: /\b(?:take|takes|taking)\s+(?:both\s+)?the\s+\{@action [^}]+\}\s+and\s+(?:the\s+)?\{@action [^}]+\}\s+actions(?!\s+as\s+(?:a|an|your)\s+\{@variantrule (?:Bonus Action|Reaction)\b)/gi },
 	{ type: 'other', re: /\(?no action required\)?/gi },
+	// D186: "When you take the Attack action…, you can replace one of your attacks with…" (Breath Weapon, War Magic) is spent within the Attack action; matched at "replace" so the "When you take" trigger does not skip it.
+	{ type: 'action', re: /(?<=\{@action Attack\b[^}]*\}\s+action\b[^.]*)\breplace\s+one\s+of\s+(?:your|the|those)\s+attacks\b/gi },
 ]
 // "when you take a Reaction…" names a trigger, not how this feature is activated.
 const TRIGGER_BEFORE = /\b(?:when|whenever|if|after|once|until|before)\s+(?:you|it|they|the target|a creature)\s+(?:can\s+)?$/i

@@ -43,6 +43,20 @@ export function speciesTraitsFrom(character: Character, parsedSpecies: unknown):
 		.map((child) => ({ name: child['name'] as string, entries: Array.isArray(child['entries']) ? child['entries'] : [] }))
 }
 
+// D186: only a trait's opening words gate it; a level later in the text raises part of it (Fey Step, Elven Lineage's spells) — DATA.md.
+const MIN_LEVEL_OPENING = /^\s*(?:When you reach|Starting at|Once you reach)\s+(?:character level (\d+)|(\d+)(?:st|nd|rd|th) level)\b/i
+
+/** The total character level a trait's text says it starts at, or null when it applies from level 1. */
+export function speciesTraitMinLevel(trait: SpeciesTrait): number | null {
+	const first = trait.entries[0]
+	const match = typeof first === 'string' ? first.replace(/\{@\w+\s+([^|}]*)[^}]*\}/g, '$1').match(MIN_LEVEL_OPENING) : null
+	return match ? Number(match[1] ?? match[2]) : null
+}
+
+export function speciesTraitsAtLevel(traits: readonly SpeciesTrait[], totalLevel: number): SpeciesTrait[] {
+	return traits.filter((trait) => (speciesTraitMinLevel(trait) ?? 0) <= totalLevel)
+}
+
 export function speciesTraitNamesFrom(character: Character, parsedSpecies: unknown): string[] {
 	return speciesTraitsFrom(character, parsedSpecies).map((trait) => trait.name)
 }

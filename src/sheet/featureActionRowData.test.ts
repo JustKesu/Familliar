@@ -82,7 +82,7 @@ describe('featureActionRows', () => {
 		expect(rows.map((row) => row.name)).toEqual(['Rage', 'Relentless Rage', 'Lucky', 'Quickened Spell'])
 	})
 
-	it('D185: species traits take the same tests, are labelled with the species and ordered last', () => {
+	it('D185/D186: species traits need an R-phrase group or a tracked use count, are labelled with the species and ordered last', () => {
 		const rows = featureActionRows(
 			[granted('Second Wind', { entries: [REST] })],
 			[],
@@ -93,13 +93,14 @@ describe('featureActionRows', () => {
 				{ name: 'Celestial Revelation', entries: ['As a {@variantrule Bonus Action|XPHB}, you can transform. Once you use it, you can\'t again until you finish a {@variantrule Long Rest|XPHB}.'] },
 				{ name: 'Darkvision', entries: ['You have Darkvision.'] },
 				{ name: 'Trance', entries: ['You finish a {@variantrule Long Rest|XPHB} in 4 hours.'] },
+				{ name: 'Relentless Endurance', entries: ['You drop to 1 Hit Point instead. Once you use this trait, you can\'t do so again until you finish a {@variantrule Long Rest|XPHB}.'] },
 			],
 			'Aasimar',
 		)
 		expect(rows.map((r) => [r.key, r.origin, r.actionType])).toEqual([
 			['feature|second wind', 'Fighter 1', 'other'],
 			['species|celestial revelation', 'Aasimar', 'bonus'],
-			['species|trance', 'Aasimar', 'other'],
+			['species|relentless endurance', 'Aasimar', 'other'],
 		])
 	})
 

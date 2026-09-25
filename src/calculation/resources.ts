@@ -33,6 +33,7 @@
 
 import { hasRestTag } from '../actions/actionTableFeatureData'
 import type { Character, CharacterClass } from '../storage/character'
+import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 /**
@@ -170,6 +171,48 @@ const SINGLE_USE_RECHARGE_RESTS = /can't (?:do so|use it|use this feature) again
 
 function singleUseRechargesOnShortRest(text: string): boolean {
 	return [...text.matchAll(SINGLE_USE_RECHARGE_RESTS)].some((match) => /Short Rest/i.test(match[1]))
+}
+
+// --- species traits (D186) -------------------------------------------------
+
+/*
+ * Only the two phrasings species traits use (scripts/investigate-species-actions-d186.mjs,
+ * DATA.md); anything else gets no count (D43). The strip keeps a tag's first
+ * segment, so XPHB's Proficiency Bonus tag reads "Proficiency". The rest group reads
+ * "Long Rest", "Short or Long Rest" or "Short Rest or Long Rest".
+ */
+const SPECIES_RESTS = String.raw`an?\s+((?:Short|Long)(?:\s+Rest)?(?:\s+or\s+(?:Short|Long))?\s+Rest)`
+const SPECIES_ONCE = new RegExp(String.raw`\bonce you\b[^.]{0,60}\byou can't (?:do so|use it|use this trait) again until you finish\s+` + SPECIES_RESTS, 'i')
+const SPECIES_PROFICIENCY_USES = new RegExp(
+	String.raw`\bnumber of times equal to your Proficiency(?: Bonus)?\b[^.]*?[,.]\s*(?:and\s+)?(?:you\s+)?regain(?:ing)?\s+all\s+expended\s+uses\s+when\s+you\s+finish\s+` + SPECIES_RESTS,
+	'i',
+)
+
+export interface SpeciesTraitUses {
+	max: 'one' | 'proficiencyBonus'
+	/** A Short Rest returns all of them, or only a Long Rest does. */
+	shortRest: boolean
+}
+
+/** A species trait's own tracked uses, or null. A trait stating both (Merge with Stone) has two independent limits and gets neither, as TWO_INDEPENDENT_LIMITS does for class features. */
+export function speciesTraitUses(trait: ResourceFeature): SpeciesTraitUses | null {
+	const text = plainText(trait.entries).join(' ')
+	const byProficiency = text.match(SPECIES_PROFICIENCY_USES)
+	const once = text.match(SPECIES_ONCE)
+	if (byProficiency && once) return null
+	const match = byProficiency ?? once
+	return match ? { max: byProficiency ? 'proficiencyBonus' : 'one', shortRest: /Short/i.test(match[1]) } : null
+}
+
+function speciesTraitResource(trait: ResourceFeature, uses: SpeciesTraitUses, character: Character): CharacterResource {
+	const proficiencyBonus = computeProficiencyBonus(character.classes)
+	const max: Calculated<number> =
+		uses.max === 'one'
+			? known(1, [{ source: `${trait.name}: once per rest`, amount: 1 }])
+			: proficiencyBonus.status === 'known'
+				? known(proficiencyBonus.value, [{ source: `${trait.name}: Proficiency Bonus`, amount: proficiencyBonus.value }])
+				: proficiencyBonus
+	return { name: resolveResourceName(trait.name), dataNames: [trait.name], max, shortRest: uses.shortRest ? 'all' : null }
 }
 
 // --- the per-level tables ------------------------------------------------
@@ -346,8 +389,15 @@ export function shortRestRecovery(names: readonly string[], features: readonly R
  * leaving the third source out loses the pool entirely.
  *
  * `parsedClasses` is classes.json. Pure (D38): nothing is fetched here.
+ *
+ * `speciesTraits` are read only through speciesTraitUses (D186), never the class-feature rules above.
  */
-export function computeCharacterResources(character: Character, parsedClasses: unknown, features: readonly ResourceFeature[]): CharacterResource[] {
+export function computeCharacterResources(
+	character: Character,
+	parsedClasses: unknown,
+	features: readonly ResourceFeature[],
+	speciesTraits: readonly ResourceFeature[] = [],
+): CharacterResource[] {
 	if (!Array.isArray(parsedClasses)) throw new Error('classes.json: expected a top-level array.')
 
 	// Resolved name -> the data names that produced it, in first-seen order.
@@ -375,8 +425,13 @@ export function computeCharacterResources(character: Character, parsedClasses: u
 		}
 	}
 
+	const speciesResources = speciesTraits.flatMap((trait) => {
+		const uses = speciesTraitUses(trait)
+		return uses && !found.has(resolveResourceName(trait.name)) ? [speciesTraitResource(trait, uses, character)] : []
+	})
+
 	return [...found.entries()]
-		.map(([name, dataNames]) => {
+		.map(([name, dataNames]): CharacterResource => {
 			const text = (ownText.get(name) ?? []).join(' ')
 			const impliedSingleUse = !pools.has(name) && isImplicitSingleUse(name, text)
 			// A recharge-sentence feature's uses are its whole pool, whether one or level-scaled (D120).
@@ -388,6 +443,7 @@ export function computeCharacterResources(character: Character, parsedClasses: u
 				shortRest: shortRestRecovery([name, ...dataNames], features) ?? (rechargesAsWhole && singleUseRechargesOnShortRest(text) ? 'all' : null),
 			}
 		})
+		.concat(speciesResources)
 		.sort((a, b) => a.name.localeCompare(b.name))
 }
 

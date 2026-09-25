@@ -932,3 +932,36 @@ Endurance — recharge sentence, no count); 28 state a count in prose (Breath
 Weapon: Proficiency Bonus) and would stay unknown.
 
 Found in task "Actions: species traits" (`scripts/investigate-species-actions.mjs`).
+
+### Species trait prose: attack replacement, level gates, use counts (D186)
+
+"replace one of … attacks" occurs in 14 records across the four feature files
+and species, always within 90 chars after "take the Attack action". The D186
+frame changes the group of 13: Breath Weapon ×11 (Dragonborn XPHB records), War
+Magic XPHB, Commander's Strike XPHB; all Other → Action.
+
+Level phrasings in species traits: "When you reach character level N" ×18,
+"Starting at character level N" ×7, "Starting at Nth/Nrd level" ×15, "When you
+reach Nrd level" ×4. In the OPENING words of the first entry string they gate the
+whole trait — 9 names: Celestial Revelation (+ 3 MPMM variants) 3, Wind Caller
+3, Gift of the Svirfneblin 3, Duergar Magic 3, Draconic Flight 5 (×11), Large
+Form 5 (×7). Later in the text they raise only part of a trait — 18 names, e.g.
+Fey Step, Elven Lineage (Drow/High Elf/Wood Elf), Fiendish Legacy variants,
+Blessing of the Raven Queen, the Genasi spell traits, Serpentine Spellcasting.
+
+Use-count phrasings (plain text; the markup strip reads XPHB's
+`{@variantrule Proficiency|XPHB|Proficiency Bonus}` as "Proficiency"):
+- "Once you …, you can't do so / use it / use this trait again until you finish
+  a Long Rest" — 30 records. Spell traits say "can't cast that spell with it
+  again" or "regain the ability to cast it" instead, and do not match.
+- "a number of times equal to your Proficiency Bonus" + "regain(ing) all
+  expended uses when you finish a … Rest", same or next sentence — 42 records;
+  only 15 if "Proficiency Bonus" is searched literally. "regaining" (Shifting
+  MPMM, Merge with Stone) and a sentence break (Fey Gift) both occur.
+- Only Adrenaline Rush (Orc XPHB) recharges on a Short or Long Rest.
+- Merge with Stone (Earth Genasi) matches both: two independent limits.
+
+Result: 70 trait records carry a count (29 once, 41 PB); the generic Gnome
+record's Gnomish Lineage gets PB from its Forest Gnome paragraph. Actions tab
+70 (D185) → 73 records (Action 15, Bonus 30, Reaction 2, Other 26). Found in
+task D186 (`scripts/investigate-species-actions-d186.mjs`).

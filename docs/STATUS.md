@@ -1429,6 +1429,21 @@ boxes: species traits are not in `computeCharacterResources`' feature input, so
 no maximum is known. E2E `e2e/speciesActions.spec.ts`. No schema change (still
 48). Next: species traits into the resource model (21 traits are single-use).
 
+D186: species traits follow-up. `classifyActionType` has an attack-replacement
+frame ("replace one of your attacks" after the Attack action → Action; Breath
+Weapon, War Magic, Commander's Strike). `speciesTraitMinLevel` /
+`speciesTraitsAtLevel` (`speciesTraitNames.ts`) gate a trait whose first entry
+opens with a character level; the sheet filters the loaded traits by total level
+once, so Actions, Features & Traits and the HP bonus names all see the same list.
+`speciesTraitUses` (`resources.ts`) reads two phrasings (once per rest → 1;
+Proficiency Bonus uses → PB); `computeCharacterResources` takes species traits
+as a 4th argument, a same-named class resource wins. A species trait joins
+Actions only with an R-phrase group or a count; Species Traits rows in Features
+& Traits now carry `resourceName`, so their boxes share the Actions count.
+`levelRemoval.ts` still passes no species traits (a PB count is not clamped on
+level loss). E2E `e2e/speciesActions.spec.ts` (5 scenarios). No schema change
+(still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

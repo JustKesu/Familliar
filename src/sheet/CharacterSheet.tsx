@@ -154,7 +154,7 @@ import { ArmourClassNotes, FireIcon, formatSpeed, SheetHeader, type StatCard } f
 import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
 import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
-import { loadSpeciesTraits, type SpeciesTrait } from './speciesTraitNames'
+import { loadSpeciesTraits, speciesTraitsAtLevel, type SpeciesTrait } from './speciesTraitNames'
 import { featuresTabGroups, type FeatureTabGroup, type FeatureTabGroupKind, type FeatureTabOption } from './featuresTabData'
 
 const SKILL_LABELS: Record<Skill, string> = {
@@ -2433,7 +2433,7 @@ function CharacterSheetBody({
 	const [grantedFeatures, setGrantedFeatures] = useState<GrantedFeature[]>([])
 	const [grantedFeaturesError, setGrantedFeaturesError] = useState<string | null>(null)
 	/** The species' own traits (slice 8a) — the third name source the max-HP bonus table matches against, beside the D87 features and the taken feats, and the Species Traits group (D184). Empty on failure: a missing name only means a bonus is not applied, which computeMaxHitPoints' breakdown shows by omission; the group states the failure (D43). */
-	const [speciesTraits, setSpeciesTraits] = useState<SpeciesTrait[]>([])
+	const [loadedSpeciesTraits, setSpeciesTraits] = useState<SpeciesTrait[]>([])
 	const [speciesTraitsError, setSpeciesTraitsError] = useState<string | null>(null)
 	/** The Find Familiar beast pool (step 6b slice 2). Fetched only for a character that actually has the spell — see the effect below. */
 	const [beasts, setBeasts] = useState<Beast[]>([])
@@ -2936,6 +2936,8 @@ function CharacterSheetBody({
 	const darkvision = computeDarkvision(character, speciesTraitsData, darkvisionGrants)
 	const hitDice = computeHitDicePool(character.classes, hitDiceClassData)
 	const chosenFeats = characterFeats(character, feats)
+	// D186: a trait whose text starts at a character level is absent below it, on every tab.
+	const speciesTraits = speciesTraitsAtLevel(loadedSpeciesTraits, character.classes.reduce((sum, c) => sum + c.level, 0))
 	/* Slice 8a: every feature name the character has, from the three sources that can carry a max-HP bonus. computeMaxHitPoints reads only the three names its table knows, so no filtering is needed here. */
 	const maxHitPoints = computeMaxHitPoints(
 		character,
@@ -3022,7 +3024,7 @@ function CharacterSheetBody({
 	 */
 	const chosenFeatTexts = chosenFeats.flatMap((choice) => featTextEntries.filter((text) => text.name === choice.name && text.source === choice.source))
 	const resourceFeatures: ResourceFeature[] = [...grantedFeatures, ...chosenFeatTexts, ...chosenOptionalFeatures]
-	const characterResources = computeCharacterResources(character, resourceClassData, resourceFeatures)
+	const characterResources = computeCharacterResources(character, resourceClassData, resourceFeatures, speciesTraits)
 	const resourceMaxima = new Map(characterResources.filter((resource) => resource.max.status === 'known').map((resource) => [resource.name, resource.max.status === 'known' ? resource.max.value : 0]))
 	// A Long Rest returns every resource (afterLongRest); a Short Rest only the ones 9b5 reads as short-rest recoverable.
 	const resourceRecharge = new Map(characterResources.map((resource) => [resource.name, resource.shortRest ? 'Short Rest' : 'Long Rest']))
