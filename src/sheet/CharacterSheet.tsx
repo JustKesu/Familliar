@@ -3010,7 +3010,7 @@ function CharacterSheetBody({
 		if (classOptionNames.has(name) || name === character.fightingStyle?.toLowerCase()) return singleClass.className
 		return singleClass.subclass
 	}
-	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures, optionOrigin)
+	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures, optionOrigin, speciesTraits, character.species?.name ?? null)
 	/*
 	 * Slice 9b2: the same three feature sources computeCharacterResources asks for
 	 * (its own doc comment) — granted features, the chosen feats' own text, and the

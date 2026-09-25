@@ -910,3 +910,25 @@ size; two (`["S","M"]`) is a player choice — 23 species, XPHB Human among them
 The four Genasi subraces carry no `size` and inherit the parent's via
 `raceName`/`raceSource` (same fallback as speed and darkvision). The choice is
 stored on the character as `speciesSize` (D175); nothing in the data records it.
+
+### Species traits against the Actions tab's tests (D185)
+
+`species.json`: 78 records, 316 named top-level `entries` elements. 70 of them
+pass D86 or the D182 R-phrase test — 36 by R-phrase (Action 4, Bonus Action 30,
+Reaction 2), 34 by the rest tag alone and therefore Other. Lineage records repeat
+the parent's traits (Dragonborn ×11 records, Goliath ×7), so a character sees
+about 1–5 of them. Sources: XPHB 58, EFA 11, MPMM 1.
+
+Traps: Breath Weapon opens "When you take the Attack action…", a trigger the
+R-phrase frames skip, so it is Other, not Action. The rest tag also catches
+passive traits that only mention a Long Rest (Trance, Fiendish Legacy, Elven
+Lineage) — they land in Other. Trait records carry no `consumes` and no level; 26
+of the 70 mention a character level in prose only (Celestial Revelation, Large
+Form, Draconic Flight).
+
+Resource model if species traits were fed to it: 21 records are single-use
+(Healing Hands, Celestial Revelation, Draconic Flight, Large Form, Relentless
+Endurance — recharge sentence, no count); 28 state a count in prose (Breath
+Weapon: Proficiency Bonus) and would stay unknown.
+
+Found in task "Actions: species traits" (`scripts/investigate-species-actions.mjs`).

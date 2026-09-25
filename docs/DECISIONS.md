@@ -3337,3 +3337,19 @@ viditelné pod All a Class Features.
 
 **Ikony.** SHORT REST (plamen z D183) a LONG REST (měsíc) v hlavičce mají ikonu
 14 px vlevo, mezera 8 px, barva `currentColor`.
+
+## D185 — Rysy druhu v záložce Actions
+
+Rysy druhu (pojmenované prvky nejvyšší úrovně `entries` záznamu druhu) prochází
+stejnými testy jako class featury: D86 (`consumes` nebo tag odpočinku) nebo
+R-phrase mimo „Other" (D182). Stejný řádek, stejné skupiny a filtry; šedý zdroj
+je název druhu. Na pořadí za featurami, featy a volbami nezáleží (deduplikace
+podle jména).
+
+**Políčka použití** jen tam, kde appka zná maximum. Rysy druhu se do
+`computeCharacterResources` nepředávají, takže žádná zatím políčka nemá; nový
+parser počtů ani nové pooly tento řez nepřidal.
+
+**Úroveň.** Data druhu žádnou úroveň nenesou a Features & Traits žádné
+podmiňování nemá, takže se nic nepodmiňuje: Celestial Revelation je vidět i na
+úrovni 1.

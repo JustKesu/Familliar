@@ -1420,6 +1420,15 @@ padding 9px 16px, radius 8. E2E `e2e/featuresTab.spec.ts`; `e2e/wizard.ts`
 gained `subclass`, `onClassStep`, `onLanguagesStep`. No schema change (still 48).
 Next: "Manage Feats" button (later slice).
 
+D185: species traits in the Actions tab. `featureActionRows` takes the loaded
+`speciesTraits` and `character.species.name` (row key `species|<name>`, grey
+source = species name, appended after granted features, feats and options); same
+D86 / D182 tests, same row and filters as class features. No level gating (the
+species data carries no level; Features & Traits has none either) and no use
+boxes: species traits are not in `computeCharacterResources`' feature input, so
+no maximum is known. E2E `e2e/speciesActions.spec.ts`. No schema change (still
+48). Next: species traits into the resource model (21 traits are single-use).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

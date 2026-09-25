@@ -82,6 +82,27 @@ describe('featureActionRows', () => {
 		expect(rows.map((row) => row.name)).toEqual(['Rage', 'Relentless Rage', 'Lucky', 'Quickened Spell'])
 	})
 
+	it('D185: species traits take the same tests, are labelled with the species and ordered last', () => {
+		const rows = featureActionRows(
+			[granted('Second Wind', { entries: [REST] })],
+			[],
+			[],
+			[],
+			undefined,
+			[
+				{ name: 'Celestial Revelation', entries: ['As a {@variantrule Bonus Action|XPHB}, you can transform. Once you use it, you can\'t again until you finish a {@variantrule Long Rest|XPHB}.'] },
+				{ name: 'Darkvision', entries: ['You have Darkvision.'] },
+				{ name: 'Trance', entries: ['You finish a {@variantrule Long Rest|XPHB} in 4 hours.'] },
+			],
+			'Aasimar',
+		)
+		expect(rows.map((r) => [r.key, r.origin, r.actionType])).toEqual([
+			['feature|second wind', 'Fighter 1', 'other'],
+			['species|celestial revelation', 'Aasimar', 'bonus'],
+			['species|trance', 'Aasimar', 'other'],
+		])
+	})
+
 	it('adds a feat whose own text carries the rest tag, and skips a feat that carries neither', () => {
 		const featTexts: FeatTextEntry[] = [
 			{ name: 'Lucky', source: 'XPHB', entries: [REST] },

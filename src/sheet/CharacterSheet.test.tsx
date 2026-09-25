@@ -4215,6 +4215,7 @@ describe('CharacterSheet', () => {
 			vi.mocked(loadGrantedClassFeatures).mockReset().mockResolvedValue([])
 			vi.mocked(loadResolverData).mockReset().mockResolvedValue({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })
 			vi.mocked(loadFeatTextEntries).mockReset().mockResolvedValue([])
+			vi.mocked(loadSpeciesTraits).mockReset().mockResolvedValue([])
 		})
 
 		it('a Fighter 17 gets Second Wind and ONE Action Surge row, after the weapon rows, and no row for a passive', async () => {
@@ -4328,6 +4329,20 @@ describe('CharacterSheet', () => {
 			const rogue5: Character = { ...character, id: 'act-rogue-5', name: 'Vex', classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 5 }] }
 			const container = await renderFor(rogue5)
 			await waitFor(() => expect(groupOf(container, 'Uncanny Dodge')).toBe('Reaction'))
+		})
+
+		it('D185: an Aasimar’s species traits sit in their R-phrase groups, labelled with the species, with no use boxes', async () => {
+			vi.mocked(loadSpeciesTraits).mockResolvedValue([
+				{ name: 'Celestial Revelation', entries: [`As a {@variantrule Bonus Action|XPHB}, you can transform. ${REST}`] },
+				{ name: 'Darkvision', entries: ['You have Darkvision.'] },
+			])
+			const aasimar: Character = { ...character, id: 'act-aasimar', name: 'Halo', species: { name: 'Aasimar', source: 'XPHB' }, classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }] }
+			const container = await renderFor(aasimar)
+			await waitFor(() => expect(groupOf(container, 'Celestial Revelation')).toBe('Bonus Action'))
+			expect(rowNames(container)).not.toContain('Darkvision')
+			const row = Array.from(container.querySelectorAll('.sheet__group-row')).find((li) => li.querySelector('.sheet__action-name')?.textContent === 'Celestial Revelation')!
+			expect(row.querySelector('.sheet__feature-origin')!.textContent).toBe('Aasimar')
+			expect(row.querySelector('.sheet__use-box')).toBeNull()
 		})
 
 		it('a Barbarian gets a Rage row from `consumes` alone, with no rest tag anywhere in its text', async () => {

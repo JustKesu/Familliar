@@ -31,6 +31,7 @@ import { featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import type { GrantedFeature } from './grantedClassFeatures'
 import type { FeatTextEntry } from './sheetData'
+import type { SpeciesTrait } from './speciesTraitNames'
 
 export interface FeatureActionData {
 	key: string
@@ -104,12 +105,14 @@ export function featureActionRows(
 	featTexts: FeatTextEntry[],
 	chosenOptions: OptionalFeatureOption[],
 	optionOrigin: (option: OptionalFeatureOption) => string | null = () => null,
+	speciesTraits: readonly SpeciesTrait[] = [],
+	speciesName: string | null = null,
 ): FeatureActionData[] {
 	const rows: FeatureActionData[] = []
 	const seen = new Set<string>()
 
 	// D182: D86's set, plus any feature R-phrase places in Action/Bonus Action/Reaction (Cunning Action, Uncanny Dodge).
-	function add(kind: 'feature' | 'feat' | 'option', name: string, record: { name: string; consumes?: unknown; entries: unknown[] }, origin: string | null): void {
+	function add(kind: 'feature' | 'feat' | 'option' | 'species',name: string, record: { name: string; consumes?: unknown; entries: unknown[] }, origin: string | null): void {
 		const actionType = classifyActionType(record)
 		if (!isActionTableFeature(record) && actionType === 'other') return
 		const key = name.toLowerCase()
@@ -131,6 +134,9 @@ export function featureActionRows(
 	// there is no second lookup to do: D43's no-text-no-row is applied when the pick
 	// is resolved, and an unresolvable pick never reaches here.
 	for (const option of chosenOptions) add('option', option.name, option, optionOrigin(option))
+
+	// D185: the species' own named traits take the same D86/D182 tests; the species data carries no level, so none gates them.
+	for (const trait of speciesTraits) add('species', trait.name, trait, speciesName)
 
 	return rows
 }
