@@ -8,7 +8,6 @@ import type { SpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
 import { combineSpellEntries, type SheetSpellEntry, type SpellGrant } from './SpellList'
 import {
-	castsWithSlot,
 	filterSpellsTabSections,
 	sectionLabel,
 	shortCastingTime,
@@ -16,8 +15,8 @@ import {
 	spellEffect,
 	spellNotes,
 	spellsTabActionSections,
+	rowHitDc,
 	spellsTabRowCaster,
-	spellsTabSections,
 	spellSubtitle,
 	UNRESOLVED_SECTION,
 } from './spellsTabData'
@@ -60,100 +59,17 @@ const DETAILS = [
 	detail('Detect Magic', 1, { ritual: true, concentration: true }),
 ]
 
-function keys(sections: ReturnType<typeof spellsTabSections>) {
+function keys(sections: { key: unknown; rows: { entry: { name: string } }[] }[]) {
 	return sections.map((section) => [section.key, section.rows.map((row) => row.entry.name)])
 }
 
-describe('spellsTabSections', () => {
-	it('single pool Warlock: slot-cast spells up to the pact level stand in the pact section with their own level as a badge', () => {
-		const sections = spellsTabSections({
-			entries: [
-				entry('Hex'),
-				entry('Misty Step', { chosen: false, subclassOrigins: ['Archfey Patron'], grants: [grant('subclass', 'Archfey Patron')] }),
-				entry('Counterspell'),
-				entry('Eldritch Blast'),
-				entry('Banishment'),
-			],
-			details: DETAILS,
-			ordinarySlots: NO_SLOTS,
-			pact: { count: 2, slotLevel: 3 },
-			unavailableAboveLevel: 3,
-		})
-		expect(keys(sections)).toEqual([
-			[0, ['Eldritch Blast']],
-			[3, ['Counterspell', 'Hex', 'Misty Step']],
-			[4, ['Banishment']],
-		])
-		const pactSection = sections[1]!
-		expect(pactSection.pactSlots).toBe(2)
-		expect(pactSection.ordinarySlots).toBe(0)
-		expect(pactSection.rows.map((row) => row.badgeLevel)).toEqual([null, 1, 2])
-		// Above the pact level: own section, no slots, marked by D106.
-		expect(sections[2]!.pactSlots + sections[2]!.ordinarySlots).toBe(0)
-		expect(sections[2]!.rows[0]!.unavailable).toBe(true)
-	})
-
-	it('single pool Warlock: a free-use grant keeps its own level section', () => {
-		const sections = spellsTabSections({
-			entries: [entry('Hex', { chosen: false, featOrigins: ['Hexed'], usages: [{ kind: 'onceFreePerLongRest' }] }), entry('Misty Step', { chosen: false, optionalFeatureOrigins: ['Fey Step'], usages: [{ kind: 'noSlot' }] })],
-			details: DETAILS,
-			ordinarySlots: NO_SLOTS,
-			pact: { count: 2, slotLevel: 3 },
-		})
-		expect(keys(sections)).toEqual([
-			[1, ['Hex']],
-			[2, ['Misty Step']],
-			[3, []],
-		])
-	})
-
-	it('both pools: spells stay in their native level, and the pact boxes join the matching ordinary section', () => {
-		const sections = spellsTabSections({
-			entries: [entry('Hex'), entry('Counterspell')],
-			details: DETAILS,
-			ordinarySlots: [4, 3, 2, 0, 0, 0, 0, 0, 0],
-			pact: { count: 1, slotLevel: 2 },
-		})
-		expect(keys(sections)).toEqual([
-			[1, ['Hex']],
-			[2, []],
-			[3, ['Counterspell']],
-		])
-		expect(sections[1]).toMatchObject({ ordinarySlots: 3, pactSlots: 1 })
-		expect(sections[0]!.rows[0]!.badgeLevel).toBeNull()
-	})
-
-	it('puts a spell without text in a last Unresolved section', () => {
-		const sections = spellsTabSections({ entries: [entry('Nowhere'), entry('Hex')], details: DETAILS, ordinarySlots: [2, 0, 0, 0, 0, 0, 0, 0, 0], pact: null })
-		expect(sections.map((section) => section.key)).toEqual([1, UNRESOLVED_SECTION])
-	})
-})
-
-describe('castsWithSlot', () => {
-	it('chosen and plain class grants cast with a slot; usage-term and feat/species-only grants do not', () => {
-		expect(castsWithSlot(entry('Hex'))).toBe(true)
-		expect(castsWithSlot(entry('Hex', { chosen: false, subclassOrigins: ['Fiend Patron'], grants: [grant('subclass', 'Fiend Patron')] }))).toBe(true)
-		expect(castsWithSlot(entry('Hex', { chosen: false, optionalFeatureOrigins: ['Pact of the Tome'], grants: [grant('optionalFeature', 'Pact of the Tome')] }))).toBe(true)
-		// D190: Archfey's Misty Step is a slot grant AND a CHA/LR grant — still cast with a slot.
-		const mistyStep = entry('Misty Step', {
-			chosen: false,
-			subclassOrigins: ['Archfey Patron'],
-			usages: [{ kind: 'freePerLongRestByAbility', ability: 'cha' }],
-			grants: [grant('subclass', 'Archfey Patron'), grant('subclass', 'Archfey Patron', { kind: 'freePerLongRestByAbility', ability: 'cha' })],
-		})
-		expect(castsWithSlot(mistyStep)).toBe(true)
-		expect(castsWithSlot(entry('Hex', { chosen: false, optionalFeatureOrigins: ['Mask of Many Faces'], usages: [{ kind: 'noSlot' }] }))).toBe(false)
-		expect(castsWithSlot(entry('Hex', { chosen: false, featOrigins: ['Magic Initiate'], usages: [{ kind: 'onceFreePerLongRest' }] }))).toBe(false)
-		expect(castsWithSlot(entry('Hex', { chosen: false, speciesOrigins: ['Tiefling'] }))).toBe(false)
-	})
-})
-
 describe('filterSpellsTabSections', () => {
-	const sections = spellsTabSections({
+	const sections = spellsTabActionSections({
 		entries: [entry('Eldritch Blast'), entry('Hex'), entry('Detect Magic'), entry('Misty Step')],
 		details: DETAILS,
 		ordinarySlots: [4, 3, 2, 0, 0, 0, 0, 0, 0],
 		pact: null,
+		resourceMaxima: new Map(),
 	})
 
 	it('All keeps every section, including a slot-only one', () => {
@@ -212,6 +128,28 @@ describe('cell texts', () => {
 		expect(spellSubtitle(row, 'Cleric')).toBe('Cleric · Life Domain · Concentration')
 		expect(spellSubtitle(row, null)).toBe('Chosen · Life Domain · Concentration')
 		expect(spellSubtitle({ ...row, unavailable: true, detail: detail('Bless', 1, { ritual: true }) }, 'Cleric')).toBe('Cleric · Life Domain · Ritual · Unavailable at this level')
+	})
+})
+
+describe('USE row texts (D191)', () => {
+	const ONCE: SpellUsage = { kind: 'onceFreePerLongRest' }
+	it('a USE row subtitle names its own source; the CAST row the class', () => {
+		const mistyStep = entry('Misty Step', { subclassOrigins: [], featOrigins: ['Fey-Touched'], usages: [ONCE], grants: [grant('feat', 'Fey-Touched', ONCE)] })
+		const sections = spellsTabActionSections({ entries: [mistyStep], details: DETAILS, ordinarySlots: [4, 3, 0, 0, 0, 0, 0, 0, 0], pact: null, resourceMaxima: new Map([['spell:feat:Fey-Touched:misty step|XPHB', 1]]) })
+		expect(sections.flatMap((section) => section.rows).map((row) => spellSubtitle(row, 'Cleric'))).toEqual(['Cleric · Fey-Touched', 'Fey-Touched'])
+	})
+
+	it('rowHitDc: nothing for a spell with neither attack nor save, the reason for an unresolved caster', () => {
+		const caster = { attack: { bonus: 5, breakdown: [] }, save: { dc: 13, abilities: [], breakdown: [] } }
+		expect(rowHitDc(detail('Bless', 1), caster)).toBeNull()
+		expect(rowHitDc(detail('Hex', 1, { spellAttack: ['R'] }), caster)).toMatchObject({ attack: { bonus: 5 }, save: null, unresolved: null })
+		expect(rowHitDc(detail('Hold', 2, { savingThrow: ['wisdom'] }), caster)).toMatchObject({ save: { dc: 13, abilities: ['wisdom'] } })
+		expect(rowHitDc(detail('Hex', 1, { spellAttack: ['R'] }), { reason: 'no ability' })).toEqual({ attack: null, save: null, unresolved: 'no ability' })
+	})
+
+	it('D106: a chosen spell above the castable level is marked on its CAST row', () => {
+		const sections = spellsTabActionSections({ entries: [entry('Banishment')], details: DETAILS, ordinarySlots: NO_SLOTS, pact: { count: 2, slotLevel: 3 }, unavailableAboveLevel: 3, resourceMaxima: new Map() })
+		expect(sections.flatMap((section) => section.rows).map((row) => row.unavailable)).toEqual([true])
 	})
 })
 

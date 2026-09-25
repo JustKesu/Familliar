@@ -149,7 +149,7 @@ test('R7a f: SAVE DC is the computed DC (WIS +3, PB +2 → 13), and its value op
   await expect(drawer).toContainText(/proficiency bonus/i)
 })
 
-test('R7a g: an origin Magic Initiate level-1 spell shows its short usage label and no CAST', async ({ page }) => {
+test('R7b-2 b: a Fighter (no slots) with origin Magic Initiate: its 1st-level spell has a USE row and no CAST row; a filled box returns the use', async ({ page }) => {
   const options: FighterOptions = { name: 'Initiate Fighter', level: 1, species: 'Dwarf|XPHB' }
   await fillUpToBackground(page, options)
   const originFeat = page.getByRole('group', { name: 'Origin feat: Magic Initiate; Cleric' })
@@ -160,8 +160,152 @@ test('R7a g: an origin Magic Initiate level-1 spell shows its short usage label 
   await finishFromBackground(page, options)
 
   await page.getByRole('tab', { name: 'Spells' }).click()
-  const bolt = row(page, 'Guiding Bolt')
-  await expect(bolt.locator('.sheet__spell-use')).toHaveText('1/LR')
-  await expect(bolt.getByRole('button', { name: /^Cast / })).toHaveCount(0)
+  await expect(panel(page).locator('.sheet__spell-row--cast')).toHaveCount(0)
+  const bolt = kindRow(panel(page),'Guiding Bolt', 'use')
+  await expect(bolt.locator('.sheet__spell-use')).toHaveText('Use')
   await expect(bolt.locator('.sheet__action-subtitle')).toContainText('Magic Initiate')
+  await expect(counterBoxes(bolt)).toHaveCount(1)
+
+  await bolt.getByRole('button', { name: 'Use Guiding Bolt', exact: true }).click()
+  await expect(counterBoxes(bolt, true)).toHaveCount(1)
+  await expect(bolt.getByRole('button', { name: 'Use Guiding Bolt', exact: true })).toBeDisabled()
+  await bolt.getByRole('button', { name: 'Undo a use of Guiding Bolt free cast' }).click()
+  await expect(counterBoxes(bolt, true)).toHaveCount(0)
+  await expect(bolt.getByRole('button', { name: 'Use Guiding Bolt', exact: true })).toBeEnabled()
+})
+
+const kindRow = (scope: Locator, name: string, kind: 'cast' | 'use'): Locator =>
+  scope.locator(`.sheet__spell-row--${kind}`, { has: scope.page().locator('.sheet__spell-name', { hasText: new RegExp(`^${name}$`) }) })
+const counterBoxes = (scope: Locator, used = false): Locator => scope.locator(`.sheet__spell-notes .sheet__use-box${used ? '--used' : ''}`)
+
+const TIEFLING_WARLOCK = {
+  schemaVersion: 48,
+  id: 'r7b2-tiefling',
+  name: 'Infernal Warlock',
+  classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 }],
+  abilityScores: scores('charisma'),
+  species: { name: 'Tiefling; Infernal Legacy', source: 'XPHB' },
+  speciesSpellcastingAbility: 'charisma',
+  spellChoices: [{ className: 'Warlock', classSource: 'XPHB', spells: spells('Eldritch Blast', 'Hellish Rebuke') }],
+}
+
+test('R7b-2 a: Tiefling Warlock 3 — Hellish Rebuke CAST in the pact section, USE in 1st Level; USE fills its own box and disables; pact boxes untouched; Long Rest restores', async ({ page }) => {
+  await openSaved(page, TIEFLING_WARLOCK)
+  const pact = section(page, '2nd Level')
+  const first = section(page, '1st Level')
+  await expect(pact.locator('.sheet__spell-pact-tag')).toHaveText('Pact')
+  await expect(kindRow(pact, 'Hellish Rebuke', 'cast')).toHaveCount(1)
+  await expect(kindRow(first, 'Hellish Rebuke', 'use')).toHaveCount(1)
+  await expect(kindRow(first, 'Hellish Rebuke', 'use').locator('.sheet__action-subtitle')).toContainText('Tiefling')
+
+  const use = kindRow(first, 'Hellish Rebuke', 'use')
+  await use.getByRole('button', { name: 'Use Hellish Rebuke', exact: true }).click()
+  await expect(counterBoxes(use, true)).toHaveCount(1)
+  await expect(use.getByRole('button', { name: 'Use Hellish Rebuke', exact: true })).toBeDisabled()
+  await expect(usedBoxes(pact)).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Long Rest', exact: true }).click()
+  await expect(counterBoxes(use, true)).toHaveCount(0)
+  await expect(use.getByRole('button', { name: 'Use Hellish Rebuke', exact: true })).toBeEnabled()
+})
+
+const FOREST_GNOME = {
+  schemaVersion: 48,
+  id: 'r7b2-gnome',
+  name: 'Forest Gnome',
+  classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 }],
+  abilityScores: scores('wisdom'),
+  species: { name: 'Gnome; Forest Gnome Lineage', source: 'XPHB' },
+  speciesSpellcastingAbility: 'wisdom',
+}
+
+test('R7b-2 c: Forest Gnome — USE on Speak with Animals fills one box that is the same record as Gnomish Lineage in Features & Traits', async ({ page }) => {
+  await openSaved(page, FOREST_GNOME)
+  const use = kindRow(panel(page),'Speak with Animals', 'use')
+  await use.getByRole('button', { name: 'Use Speak with Animals', exact: true }).click()
+  await expect(counterBoxes(use, true)).toHaveCount(1)
+
+  await page.getByRole('tab', { name: 'Features & Traits' }).click()
+  const lineage = page
+    .getByRole('tabpanel', { name: 'Features & Traits' })
+    .locator('.sheet__group-row', { has: page.locator('.sheet__group-row-name', { hasText: /^Gnomish Lineage \(Forest Gnome\)$/ }) })
+  await expect(lineage.locator('.sheet__use-box--used')).toHaveCount(1)
+  await lineage.getByRole('button', { name: 'Undo a use of Gnomish Lineage (Forest Gnome)' }).click()
+  await page.getByRole('tab', { name: 'Spells' }).click()
+  await expect(counterBoxes(kindRow(panel(page),'Speak with Animals', 'use'), true)).toHaveCount(0)
+})
+
+const MONK = {
+  schemaVersion: 48,
+  id: 'r7b2-monk',
+  name: 'Shadow Monk',
+  classes: [{ className: 'Monk', classSource: 'XPHB', subclass: 'Warrior of Shadow', level: 3 }],
+  abilityScores: scores('wisdom'),
+}
+
+test('R7b-2 d: Monk 3 Warrior of Shadow — USE on Darkness spends a Focus Point (shared with Features & Traits), disabled at none; it also starts concentration (g)', async ({ page }) => {
+  await openSaved(page, MONK)
+  const use = kindRow(panel(page),'Darkness', 'use')
+  await expect(use.locator('.sheet__spell-notes')).toContainText('Focus Point 3 / 3')
+  await use.getByRole('button', { name: 'Use Darkness', exact: true }).click()
+  await expect(use.locator('.sheet__spell-notes')).toContainText('Focus Point 2 / 3')
+  await expect(page.locator('.sheet__status-row .sheet__concentration')).toContainText('Darkness')
+
+  await page.getByRole('tab', { name: 'Features & Traits' }).click()
+  const focus = page.getByRole('tabpanel', { name: 'Features & Traits' }).getByRole('group', { name: 'Focus Point uses' }).first()
+  await expect(focus.locator('.sheet__use-box--used')).toHaveCount(1)
+
+  await page.getByRole('tab', { name: 'Spells' }).click()
+  await kindRow(panel(page),'Darkness', 'use').getByRole('button', { name: 'Use Darkness', exact: true }).click()
+  await kindRow(panel(page),'Darkness', 'use').getByRole('button', { name: 'Use Darkness', exact: true }).click()
+  await expect(kindRow(panel(page),'Darkness', 'use').locator('.sheet__spell-notes')).toContainText('Focus Point 0 / 3')
+  await expect(kindRow(panel(page),'Darkness', 'use').getByRole('button', { name: 'Use Darkness', exact: true })).toBeDisabled()
+})
+
+const CLERIC_FEY = {
+  ...CLERIC,
+  id: 'r7b2-cleric-fey',
+  name: 'Fey Cleric',
+  classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 5 }],
+  featAsiChoices: [
+    { level: 4, kind: 'feat', name: 'Fey-Touched', source: 'XPHB', chosenAbility: 'wisdom', filterChoiceSpells: { cantrips: [], spells: spells('Command') } },
+  ],
+}
+
+test('R7b-2 e: Cleric 5 with Fey-Touched — Misty Step has CAST and USE rows in 2nd Level; USE spends no slot, CAST spends no free use', async ({ page }) => {
+  await openSaved(page, CLERIC_FEY)
+  const second = section(page, '2nd Level')
+  const cast = kindRow(second, 'Misty Step', 'cast')
+  const use = kindRow(second, 'Misty Step', 'use')
+  await expect(cast).toHaveCount(1)
+  await expect(use).toHaveCount(1)
+  await expect(use.locator('.sheet__action-subtitle')).toContainText('Fey-Touched')
+
+  await use.getByRole('button', { name: 'Use Misty Step', exact: true }).click()
+  await expect(counterBoxes(use, true)).toHaveCount(1)
+  await expect(usedBoxes(second)).toHaveCount(0)
+
+  await cast.getByRole('button', { name: 'Cast Misty Step' }).click()
+  await expect(usedBoxes(second)).toHaveCount(1)
+  await expect(counterBoxes(use, true)).toHaveCount(1)
+})
+
+const FEY_TELEPORTER = {
+  schemaVersion: 48,
+  id: 'r7b2-teleporter',
+  name: 'Fey Teleporter',
+  classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+  abilityScores: scores('wisdom'),
+  featAsiChoices: [{ level: 4, kind: 'feat', name: 'Fey Teleportation', source: 'XGE' }],
+}
+
+test('R7b-2 f: a 1/Short Rest free cast (Fey Teleportation, seeded — its High Elf prerequisite is not enforced on load) is restored by Finish Short Rest', async ({ page }) => {
+  await openSaved(page, FEY_TELEPORTER)
+  const use = kindRow(panel(page),'Misty Step', 'use')
+  await expect(use.locator('.sheet__spell-notes')).toContainText('/ Short Rest')
+  await use.getByRole('button', { name: 'Use Misty Step', exact: true }).click()
+  await expect(counterBoxes(use, true)).toHaveCount(1)
+  await page.getByRole('button', { name: 'Short Rest', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Short Rest' }).getByRole('button', { name: 'Finish Short Rest' }).click()
+  await expect(counterBoxes(kindRow(panel(page),'Misty Step', 'use'), true)).toHaveCount(0)
 })

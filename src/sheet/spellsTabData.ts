@@ -12,7 +12,7 @@ import type { SpellDetail } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
 import type { SheetSpellEntry, SpellGrant } from './SpellList'
-import { cantripDamageAtLevel, casterFor, type SpellCaster, toCaster } from './spellActionRowData'
+import { cantripDamageAtLevel, casterFor, type SpellActionAttack, type SpellActionSave, type SpellCaster, toCaster } from './spellActionRowData'
 import { formatCastingTime, formatDuration, formatSpellUsage } from './spellFormatting'
 
 export const UNRESOLVED_SECTION = 'unresolved'
@@ -38,55 +38,12 @@ export interface SpellsTabSection {
 
 export type SpellsTabFilter = 'all' | 'concentration' | 'ritual' | number
 
-/** A class grant is cast with a slot unless its own usage term says otherwise; feat/species grants never here (R7a rendering). */
-export function castsWithSlot(entry: SheetSpellEntry): boolean {
-	return entry.chosen || entry.grants.some(isPlainClassGrant)
-}
-
 function isPlainClassGrant(grant: SpellGrant): boolean {
 	return (grant.origin === 'subclass' || grant.origin === 'optionalFeature') && grant.usage === null
 }
 
 function keyOf(entry: SheetSpellEntry): string {
 	return `${entry.name.toLowerCase()}|${entry.source.toUpperCase()}`
-}
-
-/**
- * One section per level that has a spell or a slot, cantrips first, Unresolved last.
- * D189: with pact slots and no ordinary slots, every slot-cast spell up to the pact
- * level stands in the pact level's section (2024 Pact Magic casts at slot level).
- */
-export function spellsTabSections({
-	entries,
-	details,
-	ordinarySlots,
-	pact,
-	unavailableAboveLevel,
-}: {
-	entries: SheetSpellEntry[]
-	details: SpellDetail[]
-	/** Index 0 = level 1. */
-	ordinarySlots: number[]
-	pact: { count: number; slotLevel: number } | null
-	unavailableAboveLevel?: number
-}): SpellsTabSection[] {
-	const pactLevel = pactOnlyLevel(ordinarySlots, pact)
-	const placed: { key: SpellSectionKey; row: SpellsTabRow }[] = []
-	for (const entry of entries) {
-		const detail = findSpellDetail(details, entry.name, entry.source)
-		const castWithSlot = castsWithSlot(entry)
-		const unavailable = entry.chosen && detail !== undefined && unavailableAboveLevel !== undefined && detail.level > unavailableAboveLevel
-		const row: SpellsTabRow = { key: keyOf(entry), entry, detail, badgeLevel: null, castWithSlot, unavailable }
-		if (!detail) {
-			placed.push({ key: UNRESOLVED_SECTION, row })
-		} else if (pactLevel !== null && castWithSlot && detail.level > 0 && detail.level <= pactLevel) {
-			if (detail.level !== pactLevel) row.badgeLevel = detail.level
-			placed.push({ key: pactLevel, row })
-		} else {
-			placed.push({ key: detail.level, row })
-		}
-	}
-	return buildSections(ordinarySlots, pact, placed)
 }
 
 /** D189: with pact slots and no ordinary slots, slot casts up to the pact level stand in the pact level's section. */
@@ -152,7 +109,8 @@ function useLabel(usage: SpellUsage): string {
 }
 
 /**
- * Additive to spellsTabSections until R7b-2 renders it: each spell expands into a
+ * One section per level that has a spell or a slot, cantrips first, Unresolved last.
+ * Each spell expands into a
  * CAST row (chosen, a plain class grant, or a grant from a source that is also
  * slot-castable — only with any spell slots), one USE row per counted grant, and a
  * label row only when it has neither. CAST follows D189's pact placement; USE and
@@ -252,8 +210,20 @@ export function spellsTabRowCaster(
 	return casterFor(row.entry, classEntries, featEntries, speciesEntries)
 }
 
+/** The Hit / DC cell: null for a spell with neither an attack roll nor a save (D43: an unresolved caster says why instead of a number). */
+export function rowHitDc(
+	detail: SpellDetail,
+	caster: SpellCaster,
+): { attack: SpellActionAttack | null; save: SpellActionSave | null; unresolved: string | null } | null {
+	const hasAttack = (detail.spellAttack?.length ?? 0) > 0
+	const saveAbilities = detail.savingThrow ?? []
+	if (!hasAttack && saveAbilities.length === 0) return null
+	if ('reason' in caster) return { attack: null, save: null, unresolved: caster.reason }
+	return { attack: hasAttack ? caster.attack : null, save: saveAbilities.length > 0 ? { ...caster.save, abilities: saveAbilities } : null, unresolved: null }
+}
+
 /** Search (name contains, any case) and the single-select pill combine; a level pill picks a section. */
-export function filterSpellsTabSections(sections: SpellsTabSection[], filter: SpellsTabFilter, search: string): SpellsTabSection[] {
+export function filterSpellsTabSections<S extends { key: SpellSectionKey; rows: SpellsTabRow[] }>(sections: S[], filter: SpellsTabFilter, search: string): S[] {
 	const needle = search.trim().toLowerCase()
 	return sections
 		.filter((section) => typeof filter !== 'number' || section.key === filter)
@@ -331,15 +301,19 @@ export function spellNotes(entry: SheetSpellEntry, detail: SpellDetail): string 
 }
 
 /** Short sources plus the flags; the chosen source is the casting class when there is exactly one. */
-export function spellSubtitle(row: SpellsTabRow, castingClassName: string | null): string {
+export function spellSubtitle(row: SpellsTabRow & { action?: SpellRowAction }, castingClassName: string | null): string {
 	const { entry, detail } = row
-	const parts = [
-		...(entry.chosen ? [castingClassName ?? 'Chosen'] : []),
-		...entry.subclassOrigins,
-		...entry.featOrigins,
-		...entry.optionalFeatureOrigins,
-		...entry.speciesOrigins,
-	]
+	// D191: a USE row names the one source it spends, not every source of the spell.
+	const parts =
+		row.action?.kind === 'use'
+			? [row.action.grant.originName]
+			: [
+					...(entry.chosen ? [castingClassName ?? 'Chosen'] : []),
+					...entry.subclassOrigins,
+					...entry.featOrigins,
+					...entry.optionalFeatureOrigins,
+					...entry.speciesOrigins,
+				]
 	if (detail?.concentration) parts.push('Concentration')
 	if (detail?.ritual) parts.push('Ritual')
 	if (row.unavailable) parts.push('Unavailable at this level')

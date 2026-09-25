@@ -19,7 +19,7 @@ import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
 import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
-import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell, type SpellUsage } from '../spells/subclassPreparedSpells'
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
@@ -51,8 +51,8 @@ import { loadItemEntryTemplates } from '../inventory/itemEntryResolver'
  */
 
 /** R7a: a Spells-tab row, found by its spell name. */
-function spellRow(scope: Element, name: string): HTMLElement {
-	const row = Array.from(scope.querySelectorAll('.sheet__spell-row')).find((li) => li.querySelector('.sheet__spell-name')?.textContent === name)
+function spellRow(scope: Element, name: string, kind?: 'cast' | 'use' | 'label'): HTMLElement {
+	const row = Array.from(scope.querySelectorAll(kind ? `.sheet__spell-row--${kind}` : '.sheet__spell-row')).find((li) => li.querySelector('.sheet__spell-name')?.textContent === name)
 	if (!row) throw new Error(`no spell row for ${name}`)
 	return row as HTMLElement
 }
@@ -4713,6 +4713,22 @@ describe('CharacterSheet', () => {
 			expect(usesTextFor(container, 'Second Wind')).toContain('1 / 2')
 		})
 
+		it('a Spells-tab USE row on a resource grant spends its cost from that pool and shows the pool instead of boxes (D191)', async () => {
+			const onEditResourceUses = vi.fn()
+			vi.mocked(loadSpellDetails).mockResolvedValue([spellDetail({ name: 'Sleep', source: 'XPHB', level: 1 })])
+			vi.mocked(loadFeatGrantedSpells).mockResolvedValueOnce([
+				{ name: 'Sleep', source: 'XPHB', level: 1, ritual: false, concentration: false, origin: 'feat', featName: 'Magic Initiate', ability: 'int', usage: { kind: 'resource', cost: 1, resourceName: 'Second Wind' } },
+			])
+			const fighter: Character = { ...character, id: 'uses-pool', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 1 } } }
+			const container = await renderFor(fighter, onEditResourceUses)
+			await waitFor(() => expect(container.querySelector('.sheet__spell-row--use')).toBeTruthy())
+			const row = container.querySelector('.sheet__spell-row--use')!
+			expect(row.querySelector('.sheet__spell-notes .sheet__use-box')).toBeNull()
+			expect(row.querySelector('.sheet__spell-notes')!.textContent).toContain('Second Wind 1 / 2')
+			fireEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Use Sleep' }))
+			expect(onEditResourceUses).toHaveBeenLastCalledWith({ 'Second Wind': 2 })
+		})
+
 		it('marking a use reports the incremented count through onEditResourceUses', async () => {
 			const onEditResourceUses = vi.fn()
 			const fighter: Character = { ...character, id: 'uses-fighter-mark', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 1 } } }
@@ -5087,6 +5103,42 @@ describe('CharacterSheet', () => {
 			expect(used(row)).toBe('0 / 3')
 			fireEvent.click(within(row).getAllByRole('button', { name: 'Use Gnomish Lineage (Forest Gnome)' })[0]!)
 			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Gnomish Lineage (Forest Gnome)': 1 })
+		})
+
+		it("Speak with Animals' Spells-tab USE row shows the same Gnomish Lineage record as its Features box (D191)", async () => {
+			const gnome = saved({
+				name: 'Tinker',
+				species: { name: 'Gnome; Forest Gnome Lineage', source: 'XPHB' },
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
+				play: { resourceUses: { 'Gnomish Lineage (Forest Gnome)': 2 } },
+			})
+			vi.mocked(loadSpeciesTraits).mockResolvedValue([{ name: 'Gnomish Lineage (Forest Gnome)', entries: ['Once per {@variantrule Long Rest|XPHB}, you can cast {@spell Speak with Animals|XPHB}.'] }])
+			vi.mocked(loadSpellDetails).mockResolvedValue([spellDetail({ name: 'Speak with Animals', source: 'XPHB', level: 1, ritual: true })])
+			vi.mocked(loadRaceSpells).mockResolvedValue({
+				spells: [
+					{
+						name: 'Speak with Animals',
+						source: 'XPHB',
+						level: 1,
+						ritual: true,
+						concentration: false,
+						origin: 'species',
+						speciesName: 'Gnome; Forest Gnome Lineage',
+						grantedAtLevel: null,
+						ability: 'int',
+						usage: { kind: 'freePerLongRestByProficiencyBonus', casts: 3 },
+					},
+				],
+				notes: [],
+			})
+			const { container } = render(<CharacterSheet character={gnome} onEditResourceUses={vi.fn()} />)
+			await waitFor(() => spellRow(container, 'Speak with Animals', 'use'))
+			const use = spellRow(container, 'Speak with Animals', 'use')
+			expect(use.querySelectorAll('.sheet__spell-notes .sheet__use-box')).toHaveLength(3)
+			expect(use.querySelectorAll('.sheet__spell-notes .sheet__use-box--used')).toHaveLength(2)
+			await openFeaturesTab()
+			const group = await featureGroup('Species Traits', 'Gnomish Lineage (Forest Gnome)')
+			expect(used(featureRow(group, 'Gnomish Lineage (Forest Gnome)'))).toBe('2 / 3')
 		})
 	})
 
@@ -5871,20 +5923,69 @@ describe('CharacterSheet', () => {
 				expect(onSlots).toHaveBeenLastCalledWith({ ordinary: { 2: 1 } })
 			})
 
-			it('a feat spell with a free-use term shows its short label and no CAST', async () => {
+			it('a feat spell with a free-use term gets a USE row beside its CAST row (D191)', async () => {
 				vi.mocked(loadSpellSlotsClassData).mockResolvedValue(CLERIC_SLOTS)
 				vi.mocked(loadSpellDetails).mockResolvedValue([spellDetail({ name: 'Sleep', source: 'XPHB', level: 1, conditionInflict: ['unconscious'] })])
 				vi.mocked(loadFeatGrantedSpells).mockResolvedValueOnce([
 					{ name: 'Sleep', source: 'XPHB', level: 1, ritual: false, concentration: false, origin: 'feat', featName: 'Magic Initiate', ability: 'int', usage: { kind: 'onceFreePerLongRest' } },
 				])
-				const { container } = render(<CharacterSheet character={{ ...cleric, spellChoices: [] }} onEditSpentSpellSlots={vi.fn()} />)
-				await waitFor(() => spellRow(container, 'Sleep'))
-				const sleep = spellRow(container, 'Sleep')
-				expect(sleep.querySelector('.sheet__spell-use')!.textContent).toBe('1/LR')
-				expect(within(sleep).queryByRole('button', { name: 'Cast Sleep' })).toBeNull()
-				expect(sleep.querySelector('.sheet__spell-effect')!.textContent).toBe('Unconscious')
-				expect(sleep.querySelector('.sheet__spell-notes')!.textContent).toBe('1/long rest (no slot) · V, S · Instantaneous')
-				expect(sleep.querySelector('.sheet__action-subtitle')!.textContent).toBe('Magic Initiate')
+				const { container } = render(<CharacterSheet character={{ ...cleric, spellChoices: [] }} onEditSpentSpellSlots={vi.fn()} onEditResourceUses={vi.fn()} />)
+				await waitFor(() => spellRow(container, 'Sleep', 'use'))
+				const use = spellRow(container, 'Sleep', 'use')
+				expect(spellRow(container, 'Sleep', 'cast').querySelector('.sheet__spell-use')!.textContent).toBe('Cast')
+				expect(use.querySelector('.sheet__spell-use')!.textContent).toBe('Use')
+				expect(use.querySelector('.sheet__spell-effect')!.textContent).toBe('Unconscious')
+				// The counter opens Notes: one box, then "/ Long Rest", then the usual notes.
+				expect(use.querySelectorAll('.sheet__spell-notes .sheet__use-box')).toHaveLength(1)
+				expect(use.querySelector('.sheet__spell-notes')!.textContent).toBe('/ Long Rest1/long rest (no slot) · V, S · Instantaneous')
+				expect(use.querySelector('.sheet__action-subtitle')!.textContent).toBe('Magic Initiate')
+			})
+		})
+
+		/* R7b-2 (D191): USE spends the row's counter through play.resourceUses; the row's box is the same record as everywhere else. */
+		describe('USE', () => {
+			const SLEEP = spellDetail({ name: 'Sleep', source: 'XPHB', level: 1, concentration: true, conditionInflict: ['unconscious'] })
+			const FEY_KEY = 'spell:feat:Magic Initiate:sleep|XPHB'
+			const fighter: Character = { id: 'use1', name: 'Initiate', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] }
+
+			async function renderInitiate(subject: Character, props: Partial<Parameters<typeof CharacterSheet>[0]> = {}, usage: SpellUsage = { kind: 'onceFreePerLongRest' }) {
+				vi.mocked(loadSpellDetails).mockResolvedValue([SLEEP])
+				vi.mocked(loadFeatGrantedSpells).mockResolvedValueOnce([{ name: 'Sleep', source: 'XPHB', level: 1, ritual: false, concentration: true, origin: 'feat', featName: 'Magic Initiate', ability: 'int', usage }])
+				const { container } = render(<CharacterSheet character={subject} {...props} />)
+				await waitFor(() => spellRow(container, 'Sleep', 'use'))
+				return container
+			}
+			const useButton = (container: Element) => within(spellRow(container, 'Sleep', 'use')).queryByRole('button', { name: 'Use Sleep' }) as HTMLButtonElement | null
+
+			it('with no slots there is no CAST row; USE spends one use and starts concentration', async () => {
+				const onUses = vi.fn()
+				const onConcentration = vi.fn()
+				const container = await renderInitiate(fighter, { onEditResourceUses: onUses, onEditConcentration: onConcentration })
+				expect(spellRow(container, 'Sleep', 'use')).toBeTruthy()
+				expect(container.querySelector('.sheet__spell-row--cast')).toBeNull()
+				fireEvent.click(useButton(container)!)
+				expect(onUses).toHaveBeenLastCalledWith({ [FEY_KEY]: 1 })
+				expect(onConcentration).toHaveBeenLastCalledWith('Sleep')
+			})
+
+			it('a spent use fills the box and disables USE; clicking the filled box returns it', async () => {
+				const onUses = vi.fn()
+				const container = await renderInitiate({ ...fighter, play: { resourceUses: { [FEY_KEY]: 1 } } }, { onEditResourceUses: onUses })
+				expect(useButton(container)!.disabled).toBe(true)
+				expect(spellRow(container, 'Sleep', 'use').querySelectorAll('.sheet__use-box--used')).toHaveLength(1)
+				fireEvent.click(within(spellRow(container, 'Sleep', 'use')).getByRole('button', { name: 'Undo a use of Sleep free cast' }))
+				expect(onUses).toHaveBeenLastCalledWith({ [FEY_KEY]: 0 })
+			})
+
+			it('a spent count above the maximum reads as none left (clamp)', async () => {
+				const container = await renderInitiate({ ...fighter, play: { resourceUses: { [FEY_KEY]: 5 } } }, { onEditResourceUses: vi.fn() })
+				expect(useButton(container)!.disabled).toBe(true)
+			})
+
+			it('a read-only sheet has no USE button and disabled boxes', async () => {
+				const container = await renderInitiate(fighter)
+				expect(useButton(container)).toBeNull()
+				expect((spellRow(container, 'Sleep', 'use').querySelector('.sheet__use-box') as HTMLButtonElement).disabled).toBe(true)
 			})
 		})
 

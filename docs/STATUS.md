@@ -1506,6 +1506,17 @@ CAST / USE / label rows — additive, the tab still renders `spellsTabSections`
 until R7b-2 (USE button, row split, e2e). `castsWithSlot` now reads grants. No
 schema change (still 48).
 
+R7b-2 (D191): the Spells tab now renders `spellsTabActionSections`
+(`spellsTabSections`, `castsWithSlot` removed). A spell can have a CAST row and
+one USE row per counter; USE (same look as CAST) spends the row's counter or the
+Focus Point pool through `spendResource` (now takes an amount), starts
+concentration, is disabled by `canSpendResource`, absent read-only. A USE row's
+Notes open with `UseBoxes` on the shared record (or "Focus Point 2 / 3" for a
+`resource` row). Hit/DC per row via `spellsTabRowCaster` + `rowHitDc`. E2E
+`spellsTab.spec.ts` R7b-2 a–f (Magic Initiate test rewritten as b; concentration
+g inside d). R7 (Spells) is done except upcast (R8) and Manage Spells (R9). No
+schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

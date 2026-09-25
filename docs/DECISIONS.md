@@ -3514,3 +3514,26 @@ ve Features & Traits a Actions. `resource` (Monk) utrácí `cost` z Focus Point.
 sekce podle D189. USE a štítek vždy ve vlastní úrovni kouzla. Štítek jen bez
 CAST i USE. Hit/DC po řádcích jen v Spells: USE podle zdroje grantu, CAST podle
 třídy; Actions beze změny.
+
+## D191 — R7b-2: Spells tab na řádcích CAST / USE
+
+Zdroj: task R7b-2. Schéma beze změny (48).
+
+**Spells tab renderuje `spellsTabActionSections`.** Sekce, záhlaví, sloty,
+pilulky, hledání a sloupce jako D189, mění se jen řádky. `spellsTabSections` a
+`castsWithSlot` odstraněny (nikdo je nepoužíval); `filterSpellsTabSections` je
+generické přes sekce. Kouzlo může mít CAST řádek a řádek USE na každé počítadlo,
+pod jménem se rozbalují každý zvlášť; podtitulek USE řádku jmenuje jeho zdroj
+(„Tiefling“), CAST řádku třídu.
+
+**USE tlačítko** vypadá jako CAST (stejná třída a rozměry). Klik utratí
+`cost` z počítadla řádku stávající cestou `spendResource` (`play.resourceUses`,
+stejný clamp), u `resource` řádku (Monk) z Focus Point. Zakázané, když
+`canSpendResource` řekne ne (0 zbývá, maximum neznámé). Kouzlo s koncentrací ji
+USE spouští stejně jako CAST. Read-only list: žádné tlačítko, boxy zakázané.
+
+**Počítadlo v Notes** USE řádku: `UseBoxes` (týž záznam jako Features & Traits a
+Actions u sdílených vlastníků), za nimi „/ Long Rest“ nebo „/ Short Rest“, pak
+obvyklé poznámky. U `resource` řádku místo boxů text „Focus Point 2 / 3“;
+neznámé maximum = `UnresolvedValue`. Bez slotů se CAST řádek neukazuje (D190),
+takže vybrané kouzlo postavy bez slotů je jen štítek.

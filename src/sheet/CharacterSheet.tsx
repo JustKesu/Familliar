@@ -35,7 +35,7 @@ import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
-import { freeCastResources, withFreeCastResources } from '../calculation/freeCastResources'
+import { canSpendResource, freeCastResources, remainingUses, withFreeCastResources } from '../calculation/freeCastResources'
 import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/proficiencies'
@@ -123,18 +123,19 @@ import {
 	filterSpellsTabSections,
 	ordinalLevel,
 	sectionLabel,
+	rowHitDc,
 	shortCastingTime,
-	shortUsageLabel,
 	spellEffect,
 	spellNotes,
-	spellsTabSections,
+	spellsTabActionSections,
+	spellsTabRowCaster,
 	spellSubtitle,
+	type SpellsTabActionRow,
+	type SpellsTabActionSection,
 	type SpellsTabFilter,
-	type SpellsTabRow,
-	type SpellsTabSection,
 } from './spellsTabData'
 import { featureActionRows, type FeatureActionData } from './featureActionRowData'
-import { spellActionRows, spellGroupRows, type SpellActionData, type SpellGroupData } from './spellActionRowData'
+import { spellActionRows, spellGroupRows, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
 import { formatRange, spellLevelLabel } from './spellFormatting'
@@ -1984,40 +1985,51 @@ function ActionsSection({
 	)
 }
 
-/** One spell row of the Spells tab (R7a, D189): CAST / AT WILL / usage, name, time, range, hit/DC, effect, notes; the text below when open. */
+/** One spell row of the Spells tab (R7a/R7b, D189/D191): CAST / USE / label, name, time, range, hit/DC, effect, notes (a USE row's counter first); the text below when open. */
 function SpellTabRow({
 	row,
 	section,
 	castingClassName,
-	spellAction,
+	caster,
 	characterLevel,
 	slotsLeft,
 	concentrating,
 	resolverData,
+	resourceUses,
+	resourceMaxima,
+	resourceRecharge,
 	onRoll,
 	onCast,
+	onUse,
+	onSpendResource,
 	onToggleConcentration,
 }: {
-	row: SpellsTabRow
-	section: SpellsTabSection
+	row: SpellsTabActionRow
+	section: SpellsTabActionSection
 	castingClassName: string | null
-	spellAction: SpellActionData | undefined
+	caster: SpellCaster
 	characterLevel: number
 	/** In the pool CAST spends from; 0 when the section has no slots. */
 	slotsLeft: number
 	concentrating: boolean
 	resolverData: ResolverData
+	resourceUses: Record<string, number>
+	resourceMaxima: ReadonlyMap<string, number>
+	resourceRecharge: ReadonlyMap<string, string>
 	onRoll: (report: RollReport) => void
-	onCast?: (row: SpellsTabRow, section: SpellsTabSection) => void
+	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection) => void
+	onUse?: (row: SpellsTabActionRow) => void
+	onSpendResource?: (name: string, delta: 1 | -1) => void
 	onToggleConcentration?: (spellName: string) => void
 }): ReactNode {
 	/* D116: open state is this row's own UI state. */
 	const [open, setOpen] = useState(false)
-	const { entry, detail } = row
+	const { entry, detail, action } = row
 	const effect = detail ? spellEffect(detail, characterLevel) : null
+	const hitDc = detail ? rowHitDc(detail, caster) : null
 	let use: ReactNode = null
-	if (detail?.level === 0) use = <span className="sheet__spell-use-label">At will</span>
-	else if (detail && row.castWithSlot) {
+	let counter: ReactNode = null
+	if (action.kind === 'cast') {
 		if (onCast) {
 			use = (
 				<button type="button" className="btn--accent-outline sheet__spell-cast" aria-label={`Cast ${entry.name}`} disabled={slotsLeft <= 0} onClick={() => onCast(row, section)}>
@@ -2025,9 +2037,41 @@ function SpellTabRow({
 				</button>
 			)
 		}
-	} else if (entry.usages.length > 0) use = <span className="sheet__spell-use-label sheet__spell-use-label--usage">{entry.usages.map(shortUsageLabel).join(' · ')}</span>
+	} else if (action.kind === 'use') {
+		const spent = resourceUses[action.counterKey] ?? 0
+		const max = resourceMaxima.get(action.counterKey)
+		if (onUse) {
+			use = (
+				<button type="button" className="btn--accent-outline sheet__spell-cast" aria-label={`Use ${entry.name}`} disabled={!canSpendResource(max, spent, action.cost)} onClick={() => onUse(row)}>
+					Use
+				</button>
+			)
+		}
+		if (max === undefined) counter = <UnresolvedValue reason="The number of uses is not known yet." />
+		else if (action.grant.usage?.kind === 'resource') {
+			counter = (
+				<span className="sheet__spell-counter">
+					{action.counterKey} {remainingUses(max, spent)} / {max}
+				</span>
+			)
+		} else {
+			counter = (
+				<span className="sheet__spell-counter">
+					<UseBoxes
+						name={action.counterKey.startsWith('spell:') ? `${entry.name} free cast` : action.counterKey}
+						spent={spent}
+						max={max}
+						recharge={resourceRecharge.get(action.counterKey)}
+						onChange={onSpendResource ? (delta) => onSpendResource(action.counterKey, delta) : undefined}
+					/>
+				</span>
+			)
+		}
+	} else if (action.label !== '') {
+		use = <span className={detail?.level === 0 ? 'sheet__spell-use-label' : 'sheet__spell-use-label sheet__spell-use-label--usage'}>{action.label}</span>
+	}
 	return (
-		<li className="sheet__spell-row">
+		<li className={`sheet__spell-row sheet__spell-row--${action.kind}`}>
 			<div className="sheet__spell-use">{use}</div>
 			<div className="sheet__spell-name-cell">
 				<span className="sheet__spell-name-line">
@@ -2046,18 +2090,18 @@ function SpellTabRow({
 					<div className="sheet__spell-cell">{shortCastingTime(detail)}</div>
 					<div className="sheet__spell-cell">{formatRange(detail.range)}</div>
 					<div className="sheet__action-to-hit">
-						{spellAction?.unresolved ? (
-							<UnresolvedValue reason={spellAction.unresolved} />
+						{hitDc?.unresolved ? (
+							<UnresolvedValue reason={hitDc.unresolved} />
 						) : (
 							<>
-								{spellAction?.attack && (
-									<RollButton modifier={spellAction.attack.bonus} label={`${entry.name} spell attack`} onRoll={onRoll}>
-										{formatModifier(spellAction.attack.bonus)}
+								{hitDc?.attack && (
+									<RollButton modifier={hitDc.attack.bonus} label={`${entry.name} spell attack`} onRoll={onRoll}>
+										{formatModifier(hitDc.attack.bonus)}
 									</RollButton>
 								)}
-								{spellAction?.save && (
+								{hitDc?.save && (
 									<span className="sheet__action-dc">
-										DC {spellAction.save.dc} {spellAction.save.abilities.map((ability) => ability.slice(0, 3).toUpperCase()).join('/')}
+										DC {hitDc.save.dc} {hitDc.save.abilities.map((ability) => ability.slice(0, 3).toUpperCase()).join('/')}
 									</span>
 								)}
 							</>
@@ -2074,7 +2118,10 @@ function SpellTabRow({
 							effect?.text
 						)}
 					</div>
-					<div className="sheet__spell-notes">{spellNotes(entry, detail)}</div>
+					<div className="sheet__spell-notes">
+						{counter}
+						{spellNotes(entry, detail)}
+					</div>
 				</>
 			) : (
 				<div className="sheet__spell-unresolved">
@@ -2110,32 +2157,42 @@ function SpellTabRow({
 function SpellsSection({
 	sections,
 	notices,
-	spellActions,
+	casterOf,
 	characterLevel,
 	castingClassName,
 	spentSpellSlots,
 	pactRecharge,
 	concentratingOn,
 	resolverData,
+	resourceUses,
+	resourceMaxima,
+	resourceRecharge,
 	onRoll,
 	onSpendOrdinary,
 	onSpendPact,
 	onCast,
+	onUse,
+	onSpendResource,
 	onToggleConcentration,
 }: {
-	sections: SpellsTabSection[]
+	sections: SpellsTabActionSection[]
 	notices: ReactNode
-	spellActions: SpellActionData[]
+	casterOf: (row: SpellsTabActionRow) => SpellCaster
 	characterLevel: number
 	castingClassName: string | null
 	spentSpellSlots: SpentSpellSlots
 	pactRecharge: string
 	concentratingOn: string | null
 	resolverData: ResolverData
+	resourceUses: Record<string, number>
+	resourceMaxima: ReadonlyMap<string, number>
+	resourceRecharge: ReadonlyMap<string, string>
 	onRoll: (report: RollReport) => void
 	onSpendOrdinary?: (slotLevel: number, max: number, delta: 1 | -1) => void
 	onSpendPact?: (max: number, delta: 1 | -1) => void
-	onCast?: (row: SpellsTabRow, section: SpellsTabSection) => void
+	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection) => void
+	onUse?: (row: SpellsTabActionRow) => void
+	onSpendResource?: (name: string, delta: 1 | -1) => void
 	onToggleConcentration?: (spellName: string) => void
 }): ReactNode {
 	const [filter, setFilter] = useState<SpellsTabFilter>('all')
@@ -2217,13 +2274,18 @@ function SpellsSection({
 												row={row}
 												section={section}
 												castingClassName={castingClassName}
-												spellAction={spellActions.find((action) => action.key === row.key)}
+												caster={casterOf(row)}
 												characterLevel={characterLevel}
 												slotsLeft={slotsLeft}
 												concentrating={concentratingOn === row.entry.name}
 												resolverData={resolverData}
+												resourceUses={resourceUses}
+												resourceMaxima={resourceMaxima}
+												resourceRecharge={resourceRecharge}
 												onRoll={onRoll}
 												onCast={onCast}
+												onUse={onUse}
+												onSpendResource={onSpendResource}
 												onToggleConcentration={onToggleConcentration}
 											/>
 										))}
@@ -3335,7 +3397,7 @@ function CharacterSheetBody({
 	// A Long Rest returns every resource (afterLongRest); a Short Rest only the ones 9b5 reads as short-rest recoverable.
 	const resourceRecharge = new Map(characterResources.map((resource) => [resource.name, resource.shortRest ? 'Short Rest' : 'Long Rest']))
 	const resourceUses = character.play?.resourceUses ?? {}
-	function spendResource(name: string, delta: 1 | -1): void {
+	function spendResource(name: string, delta: number): void {
 		if (!onEditResourceUses) return
 		const max = resourceMaxima.get(name)
 		const spent = resourceUses[name] ?? 0
@@ -3426,18 +3488,25 @@ function CharacterSheetBody({
 	const slotMaxima = spellSlotMaxima(spellSlotsEntries)
 	const pactSlotLevel = spellSlotsEntries.reduce((level, entry) => Math.max(level, entry.pactSlots?.slotLevel ?? 0), 0)
 	const hasSpellSlots = slotMaxima.pact > 0 || slotMaxima.ordinary.some((count) => count > 0)
-	const spellSections = spellsTabSections({
+	const spellSections = spellsTabActionSections({
 		entries: combinedSpells,
 		details: spellDetails,
 		ordinarySlots: slotMaxima.ordinary,
 		pact: slotMaxima.pact > 0 ? { count: slotMaxima.pact, slotLevel: pactSlotLevel } : null,
 		unavailableAboveLevel: spellLimitReason === null ? (highestCastableLevel ?? undefined) : undefined,
+		resourceMaxima,
 	})
 	/* D189: CAST spends one slot of its section's pool (ordinary first when a section has both, QUESTIONS.md) and starts concentration. */
-	function castSpell(row: SpellsTabRow, section: SpellsTabSection): void {
+	function castSpell(row: SpellsTabActionRow, section: SpellsTabActionSection): void {
 		const level = typeof section.key === 'number' ? section.key : 0
 		if (section.ordinarySlots > 0) spendOrdinarySlot(level, section.ordinarySlots, 1)
 		else if (section.pactSlots > 0) spendPactSlot(section.pactSlots, 1)
+		if (row.detail?.concentration) onEditConcentration?.(row.entry.name)
+	}
+	/* D191: USE spends the row's counter (or a resource pool's cost) through the shared resource path, and starts concentration like CAST. */
+	function useSpell(row: SpellsTabActionRow): void {
+		if (row.action.kind !== 'use') return
+		spendResource(row.action.counterKey, row.action.cost)
 		if (row.detail?.concentration) onEditConcentration?.(row.entry.name)
 	}
 	/* D184: every chosen option (class- and subclass-level, fighting style) sits under the feature that grants it; D88's separate option sections are gone. */
@@ -3880,17 +3949,22 @@ function CharacterSheetBody({
 			{(isCaster || combinedSpells.length > 0 || spellLoadErrors.length > 0 || raceSpells.notes.length > 0) && (
 				<SpellsSection
 					sections={spellSections}
-					spellActions={spellActions}
+					casterOf={(row) => spellsTabRowCaster(row, spellcastingEntries, featSpellcastingEntries, speciesSpellcastingEntries)}
 					characterLevel={character.classes.reduce((sum, c) => sum + c.level, 0)}
 					castingClassName={spellcastingEntries.length === 1 ? spellcastingEntries[0]!.className : null}
 					spentSpellSlots={spentSpellSlots}
 					pactRecharge={pactShortRest !== null ? 'Short Rest' : 'Long Rest'}
 					concentratingOn={concentratingOn}
 					resolverData={resolverData}
+					resourceUses={resourceUses}
+					resourceMaxima={resourceMaxima}
+					resourceRecharge={resourceRecharge}
 					onRoll={recordRoll}
 					onSpendOrdinary={onEditSpentSpellSlots ? spendOrdinarySlot : undefined}
 					onSpendPact={onEditSpentSpellSlots ? spendPactSlot : undefined}
 					onCast={onEditSpentSpellSlots ? castSpell : undefined}
+					onUse={onEditResourceUses ? useSpell : undefined}
+					onSpendResource={onEditResourceUses ? spendResource : undefined}
 					onToggleConcentration={onEditConcentration ? toggleConcentration : undefined}
 					notices={
 				<>
