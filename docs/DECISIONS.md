@@ -3214,3 +3214,17 @@ dosud (d5b-2).
 Picker je jedna komponenta `FeatSubChoicePicker` (D8, bez přístupu ke
 store), kterou sdílí ASI krok a krok backgroundu; znovu ji použije Manage
 Feats (R13). Změna featu nebo backgroundu podvolby dané instance maže.
+
+## D180 — E2E-1: chování ověřují Playwright scénáře, uživatel jen vzhled
+
+Zdroj: task E2E-1, rozhodnutí uživatele 25. 9. 2026.
+
+Behaviorální kontroly (co se objeví, co se povolí, co se uloží, co ukáže
+sheet) už neprokliká uživatel. Agent je píše jako Playwright scénáře v `e2e/`
+a spouští je sám přes `npm run e2e` — headless Chromium, produkční build
+servírovaný `vite preview` na portu 4173 (`--strictPort`, bez kolize s dev
+serverem na 5173), každý test s prázdným localStorage. Běží bez okna a bez
+ručně spuštěného serveru, takže funguje i přes Remote Control. Neprošlý e2e
+blokuje commit stejně jako unit testy. Uživatel na nasazené appce kontroluje
+jen to, co se musí posoudit okem: layout, velikosti, zalamování, vzhled.
+Jiný prohlížeč než ten, který spustí Playwright, agent dál nepoužívá.

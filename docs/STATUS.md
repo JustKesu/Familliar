@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-25 (A3: picker podvoleb featu — wizard, level-up, Edit Character, D179; před tím B6d: jeden zdroj zbraňové proficiency pro kartu i útoky, D178; před tím B6c: dovednosti z podtříd, nástroje druhů, skrytý prázdný krok level-upu, D177; před tím B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-25 (E2E-1: Playwright e2e — `npm run e2e`, scénáře smoke + podvolby featu, D180; před tím A3: picker podvoleb featu — wizard, level-up, Edit Character, D179; před tím B6d: jeden zdroj zbraňové proficiency pro kartu i útoky, D178; před tím B6c: dovednosti z podtříd, nástroje druhů, skrytý prázdný krok level-upu, D177; před tím B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1046,6 +1046,23 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   nezachytí a nedohledává se ručním seznamem — zůstává zobrazená jako
   běžný text ve Schopnostech a rysech. UI/tabulka zatím nepostavená. Test:
   `actionTableFeatureData.test.ts`.
+
+## E2E testy (D180)
+
+`npm run e2e` (Playwright, headless Chromium; jednorázově `npm run e2e:install`).
+`playwright.config.ts`: `webServer` = `npm run build` + `vite preview` na portu
+4173 `--strictPort`, `reuseExistingServer: false`; timeout testu 60 s; screenshot
+jen při selhání do `test-results/` (gitignorováno). Vitest dál jen `src/**/*.test.*`,
+Playwright jen `e2e/*.spec.ts`; `e2e/` a config typecheckuje `tsconfig.node.json`.
+Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
+
+- `e2e/wizard.ts` — průchod wizardem: Fighter (XPHB) N, background Acolyte,
+  volitelně feat na úrovni 4, háčky pro krok druhu a krok featu.
+- `e2e/smoke.spec.ts` — prázdný seznam, Fighter 1 přes wizard, sheet, seznam.
+- `e2e/featSubChoices.spec.ts` — A3 a+b (origin feat Magic Initiate; Cleric
+  s poznámkou „later", Next povolený; sheet hlásí 2× „Choices not made yet"),
+  c (Prodigy jazyk na kartě Proficiencies a v draweru „Prodigy (feat)"; Human
+  XPHB kvůli prerekvizitě), d (doplnění v Edit Character řádek odstraní).
 
 ## Dočasné scaffolding
 

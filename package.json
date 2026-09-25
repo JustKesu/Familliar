@@ -20,7 +20,9 @@
     "investigate-slice1": "node scripts/investigate-slice1.js",
     "investigate-subclass-choices": "node scripts/investigate-subclass-choices.js",
     "investigate-optional-feature-progression": "node scripts/investigate-optional-feature-progression.js",
-    "investigate-optional-feature-shape": "node scripts/investigate-optional-feature-shape.js"
+    "investigate-optional-feature-shape": "node scripts/investigate-optional-feature-shape.js",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@fontsource/bricolage-grotesque": "^5.3.0",
@@ -29,6 +31,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.13.2",

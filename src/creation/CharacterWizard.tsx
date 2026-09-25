@@ -1235,6 +1235,7 @@ export function CharacterWizard({
 					<li
 						key={step}
 						className={step === state.step ? 'wizard__step wizard__step--active' : 'wizard__step'}
+						aria-current={step === state.step ? 'step' : undefined}
 					>
 						{index + 1}. {stepLabel(step, classOptionalFeatureGroups)}
 					</li>

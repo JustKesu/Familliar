@@ -84,21 +84,31 @@ a moment earlier. It cannot touch tracked code.
 ## Verification
 
 Do not re-run the full suite after every intermediate step. Run typecheck,
-tests and validate-data once, at the end of a task.
+test, validate-data and e2e once, at the end of a task. A failing e2e blocks
+the commit exactly like a failing unit test.
 
 **Never use the Vercel tools** (any `mcp__*Vercel*` tool, read-only ones
 included). They prompt the user for permission and the team scope is not
 authorised anyway (403). Do not try to confirm a deployment; the user does it.
 
-**Never start the dev server and never open a browser.** No `npm run dev`, no
-`vite`, no `preview`, no browser tool, no screenshots. The user checks every
-change himself on the deployed app at https://familliar.vercel.app (it
-redeploys automatically after each push). Tests are your verification.
+**Never start the dev server and never open a browser yourself.** No
+`npm run dev`, no `vite`, no browser tool or MCP browser, and never take or
+read screenshots, traces or videos. The only browser allowed is the headless
+one Playwright starts inside `npm run e2e` (it builds and serves the app on
+its own port, D180). A failure's `error-context.md` is a text accessibility
+snapshot and may be read; the screenshot next to it may not.
 
-Instead, end REPORT.md with a section "Manual browser check for the user": a
-short numbered list of what to click and what should happen. Anything that
-only a browser could confirm (layout, overlap, widths) is listed there as
-unverified — never report as verified something you did not see.
+**Behaviour is checked by e2e scenarios (D180).** Every task that changes UI
+behaviour — what appears, what gets enabled, what is saved, what the sheet
+shows — adds or extends a Playwright scenario in `e2e/` for each point it
+would otherwise list as a manual check. Keep e2e output small; if the whole
+suite takes longer than about 3 minutes, say so in the report.
+
+End REPORT.md with a section "Manual browser check for the user" that lists
+ONLY what a person must judge by eye on https://familliar.vercel.app: layout,
+sizes, wrapping, looks. Each behavioural point is covered by a scenario named
+in the report; one that cannot be automated is listed with the reason. Never
+report as verified something neither a test nor you saw.
 
 ## Reporting
 
@@ -184,7 +194,8 @@ uncommitted change anywhere else is a surprise worth stopping for.
 ## Running commands
 
 Use the npm scripts defined in `package.json` (`typecheck`, `test`, `build`,
-`validate-data`, `survey-markup`) rather than invoking tools directly via
+`validate-data`, `survey-markup`, `e2e`; `e2e:install` once per machine to
+download Chromium) rather than invoking tools directly via
 `npx`. The npm scripts are pre-approved in `.claude/settings.json`; `npx` is
 not, so every `npx` call costs a permission prompt.
 
