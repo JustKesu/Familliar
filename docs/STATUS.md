@@ -1313,6 +1313,12 @@ only — no drawer editing for these). Expertise step never offers Scout's two
 skills. Level-up: the "Languages & Tools" step is skipped at the subclass level
 when the chosen subclass owes nothing (Fighter 3 Champion). Level removal at 3
 drops the subclass skill picks and a Cavalier/Samurai language.
+
+B6c-fix: reported "Scout Nature/Survival unmarked on the sheet" not reproduced
+in code — a sheet render of a Rogue 3 Scout / Drunken Master / Warrior of Mercy
+saved by the wizard's `saveCharacter` through a real `CharacterStore` shows the
+grants (regression test in `CharacterSheet.test.tsx`). Skills card: skill name
+14px, proficiency marks (skills and saves) 14px.
 Next: attack proficiency from subclass grants (B6d).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel

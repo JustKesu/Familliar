@@ -1019,7 +1019,7 @@ button:disabled {
 
 .sheet__row-name--skill {
   flex: 1;
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1040,11 +1040,13 @@ button:disabled {
   border-color: var(--accent);
 }
 
+/* B6c-fix: the ○/●/◐/★ glyphs draw well below their em box, so 14px lands near the 14px name's cap height. */
 .sheet__prof-mark {
   flex: none;
-  width: 9px;
-  font-size: 9px;
+  width: 14px;
+  font-size: 14px;
   line-height: 1;
+  text-align: center;
   color: var(--text);
 }
 

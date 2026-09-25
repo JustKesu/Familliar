@@ -25,7 +25,8 @@ import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpel
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells } from '../spells/raceSpells'
 import { choiceNames, CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition, type SpentSpellSlots } from '../storage/character'
-import type { HitPointFields } from '../storage/characterStore'
+import { CharacterStore, type HitPointFields } from '../storage/characterStore'
+import { emptyWizardData, saveCharacter, type WizardData, type WizardStep } from '../creation/wizardState'
 import { loadAcFormulaKeys } from './armourClassData'
 import { loadDamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
@@ -988,6 +989,34 @@ describe('CharacterSheet', () => {
 		const item = Array.from(skillsSection!.querySelectorAll('li')).find((li) => li.textContent?.includes('Stealth'))
 		expect(item?.textContent).toContain('★')
 		expect(item?.textContent).toContain(expected.value.modifier >= 0 ? `+${expected.value.modifier}` : `${expected.value.modifier}`)
+	})
+
+	/* B6c-fix: the character goes through the wizard's own saveCharacter, so the sheet sees exactly what a new character stores. */
+	it.each([
+		['Rogue', 'Scout', 'XGE', ['Nature', 'Survival'], '★', '+4'],
+		['Monk', 'Way of the Drunken Master', 'XGE', ['Performance'], '●', '+2'],
+		['Monk', 'Warrior of Mercy', 'XPHB', ['Insight', 'Medicine'], '●', '+2'],
+	])('%s 3 %s saved by the wizard shows its subclass skills on the Skills card', async (className, subclass, source, granted, mark, modifier) => {
+		const memory = new Map<string, string>()
+		const store = new CharacterStore({ getItem: (key) => memory.get(key) ?? null, setItem: (key, value) => void memory.set(key, value), removeItem: (key) => void memory.delete(key) })
+		const data: WizardData = {
+			...emptyWizardData(),
+			name: 'Wren',
+			classChoice: { className, classSource: 'XPHB', level: 3 },
+			subclass: { name: subclass, source, featureType: null },
+			abilityScores: { method: 'standardArray', scores: { strength: 10, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 } },
+		}
+		saveCharacter(store, data, undefined, { levelUpSteps: new Set<WizardStep>(['review']) })
+		const [saved] = store.list()
+
+		const { container } = render(<CharacterSheet character={saved} />)
+		await screen.findByRole('heading', { name: 'Wren' })
+		const rows = Array.from(container.querySelectorAll('.sheet__skills li'))
+		for (const label of granted) {
+			const row = rows.find((li) => li.querySelector('.sheet__row-name')?.textContent === label)
+			expect(row?.querySelector('.sheet__prof-mark')?.textContent, label).toBe(mark)
+			expect(row?.textContent, label).toContain(modifier)
+		}
 	})
 
 	it('Bard with Jack of All Trades shows half proficiency on a skill with no other proficiency source', async () => {
