@@ -7515,10 +7515,10 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b app
 		for (const cls of ['.sheet__saving-throws', '.sheet__skills', '.sheet__senses-card', '.sheet__senses']) {
 			expect(left.querySelector(cls)).toBeTruthy()
 		}
-		// Hit dice moved to the Hit Points drawer (R4c), not the left column.
+		// Hit dice are in the Short Rest drawer (D183), not the left column and not the Hit Points drawer.
 		expect(left.querySelector('.sheet__hit-dice')).toBeNull()
 		fireEvent.click(screen.getByRole('button', { name: 'Hit points details' }))
-		expect(screen.getByRole('dialog', { name: 'Hit Points' }).querySelector('.sheet__hit-dice')).toBeTruthy()
+		expect(screen.getByRole('dialog', { name: 'Hit Points' }).querySelector('.sheet__hit-dice')).toBeNull()
 	})
 
 	it('puts inventory under the Inventory tab, damage responses in the status row, and weapon attacks under Actions', async () => {
@@ -7837,12 +7837,12 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 			)
 		}
 
-		async function renderHarness(subject: Character, onRest?: (rest: unknown) => void) {
+		async function renderHarness(subject: Character, onRest: (rest: unknown) => void = vi.fn()) {
 			const onHitPoints = vi.fn()
 			const onSpent = vi.fn()
 			const { container } = render(<Harness initial={subject} onHitPoints={onHitPoints} onSpent={onSpent} onRest={onRest} />)
-			// R4c: hit dice live in the Hit Points drawer.
-			fireEvent.click(await screen.findByRole('button', { name: 'Hit points details' }))
+			// D183: hit dice live in the Short Rest drawer.
+			fireEvent.click(await screen.findByRole('button', { name: 'Short Rest' }))
 			await screen.findAllByRole('button', { name: /^Roll .* hit die$/ })
 			return { container, onHitPoints, onSpent }
 		}
@@ -7947,25 +7947,40 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 			expect(onSpent).not.toHaveBeenCalled()
 		})
 
-		it('a read-only sheet still rolls, and writes nothing', async () => {
-			const { container } = render(<CharacterSheet character={fighter} />)
+		it('a read-only sheet has no Short Rest button, so no hit dice, and the Hit Points drawer has none either (D183)', async () => {
+			render(<CharacterSheet character={fighter} />)
 			fireEvent.click(await screen.findByRole('button', { name: 'Hit points details' }))
-			await screen.findByRole('button', { name: 'Roll Fighter hit die' })
-
-			expect(rollButton('Fighter').disabled).toBe(false)
-			fireEvent.click(rollButton('Fighter'))
-
-			expect(lastRoll()).toMatchObject({ dice: [6], modifier: 1, total: 7 })
-			expect(hitDiceRows(container)[0]).toContain('5 / 5 remaining')
-			expect(container.querySelector('.sheet__hit-dice-note')).toBeNull()
+			expect(screen.queryByRole('button', { name: 'Short Rest' })).toBeNull()
+			expect(screen.queryByRole('button', { name: 'Roll Fighter hit die' })).toBeNull()
 		})
 
-		it('a Short Rest passes the spent hit dice through untouched, a Long Rest returns them all', async () => {
+		it('opening Short Rest changes nothing; Finish Short Rest applies the rest untouched by hit dice and closes the drawer', async () => {
 			const onRest = vi.fn()
 			await renderHarness({ ...fighter, play: { spentHitDice: { [FIGHTER_KEY]: 2 } } }, onRest)
+			expect(onRest).not.toHaveBeenCalled()
 
-			fireEvent.click(screen.getByRole('button', { name: 'Short Rest' }))
+			fireEvent.click(screen.getByRole('button', { name: 'Finish Short Rest' }))
+			expect(onRest).toHaveBeenCalledTimes(1)
 			expect(onRest).toHaveBeenLastCalledWith(expect.objectContaining({ spentHitDice: { [FIGHTER_KEY]: 2 } }))
+			expect(screen.queryByRole('dialog', { name: 'Short Rest' })).toBeNull()
+		})
+
+		it('closing with Esc keeps the rolled die and the healing but performs no rest', async () => {
+			const onRest = vi.fn()
+			const { onHitPoints, onSpent } = await renderHarness(fighter, onRest)
+			fireEvent.click(rollButton('Fighter'))
+
+			fireEvent.keyDown(document, { key: 'Escape' })
+
+			expect(screen.queryByRole('dialog', { name: 'Short Rest' })).toBeNull()
+			expect(onRest).not.toHaveBeenCalled()
+			expect(onHitPoints).toHaveBeenCalledTimes(1)
+			expect(onSpent).toHaveBeenCalledWith({ [FIGHTER_KEY]: 1 })
+		})
+
+		it('a Long Rest returns every hit die', async () => {
+			const onRest = vi.fn()
+			await renderHarness({ ...fighter, play: { spentHitDice: { [FIGHTER_KEY]: 2 } } }, onRest)
 
 			fireEvent.click(screen.getByRole('button', { name: 'Long Rest' }))
 			expect(onRest).toHaveBeenLastCalledWith(expect.objectContaining({ spentHitDice: {} }))

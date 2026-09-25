@@ -2,7 +2,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ReactNode } from 'react'
 import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
 import { known, unknown, type Calculated } from '../calculation/types'
 
@@ -16,8 +15,8 @@ function maxOf(value: number): Calculated<number> {
 }
 
 /** The card and its drawer panel side by side, as the sheet shows them once the drawer is open. */
-function renderHp(overrides: Partial<HitPointProps & { onOpen: () => void; hitDice: ReactNode; deathSaveRoll: string | null }> = {}) {
-	const { onOpen, hitDice = null, deathSaveRoll = null, ...rest } = overrides
+function renderHp(overrides: Partial<HitPointProps & { onOpen: () => void; deathSaveRoll: string | null }> = {}) {
+	const { onOpen, deathSaveRoll = null, ...rest } = overrides
 	const props: HitPointProps = {
 		currentHp: undefined,
 		maxHitPoints: maxOf(12),
@@ -30,7 +29,7 @@ function renderHp(overrides: Partial<HitPointProps & { onOpen: () => void; hitDi
 		<>
 			<HitPointsCard {...props} onOpen={onOpen} />
 			<div className="test-drawer">
-				<HitPointsPanel {...props} hitDice={hitDice} deathSaveRoll={deathSaveRoll} />
+				<HitPointsPanel {...props} deathSaveRoll={deathSaveRoll} />
 			</div>
 		</>,
 	)
@@ -122,9 +121,9 @@ describe('Hit Points drawer panel', () => {
 		expect(onEditHitPoints).toHaveBeenLastCalledWith({ currentHp: 0, maxHpOverride: 20, temporaryHitPoints: undefined })
 	})
 
-	it('places the hit dice slot in its own section', () => {
-		const { container } = renderHp({ hitDice: <div className="test-hit-dice">3 / 5 d10</div> })
-		expect(container.querySelector('.test-drawer .test-hit-dice')!.textContent).toBe('3 / 5 d10')
+	it('has no Hit dice section (D183: they are in the Short Rest drawer)', () => {
+		const { container } = renderHp()
+		expect(container.querySelector('.test-drawer')!.textContent).not.toMatch(/hit dice/i)
 	})
 })
 

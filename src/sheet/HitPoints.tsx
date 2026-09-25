@@ -182,8 +182,8 @@ function DeathSaveCard({ hp, onOpen }: { hp: HitPointProps; onOpen?: () => void 
 
 /**
  * The HP card at the end of the number strip (R4c). Fixed at the strip's 86px:
- * everything that does not fit — fields, breakdown, hit dice, manual death save
- * entry — is in the Hit Points drawer (HitPointsPanel).
+ * everything that does not fit — fields, breakdown, manual death save
+ * entry — is in the Hit Points drawer (HitPointsPanel). Hit dice are in the Short Rest drawer (D183).
  */
 export function HitPointsCard({ onOpen, ...hp }: HitPointProps & { onOpen?: () => void }): ReactNode {
 	const temporary = hp.temporaryHitPoints ?? 0
@@ -325,7 +325,7 @@ function DeathSaveRecord(hp: HitPointProps): ReactNode {
 }
 
 /** The Hit Points drawer (R4c): everything the 86px card leaves out. */
-export function HitPointsPanel({ hitDice, deathSaveRoll, ...hp }: HitPointProps & { hitDice: ReactNode; deathSaveRoll: string | null }): ReactNode {
+export function HitPointsPanel({ deathSaveRoll, ...hp }: HitPointProps & { deathSaveRoll: string | null }): ReactNode {
 	const { currentHp, maxHitPoints, maxHpOverride, temporaryHitPoints, deathSaves, onEditHitPoints } = hp
 	const temporary = temporaryHitPoints ?? 0
 	/** What the death saves are worth on a write that does not touch the current hit points (D111). */
@@ -368,7 +368,6 @@ export function HitPointsPanel({ hitDice, deathSaveRoll, ...hp }: HitPointProps 
 					</>
 				)}
 			</DrawerSection>
-			<DrawerSection title="Hit dice">{hitDice}</DrawerSection>
 			{currentHp === 0 && onEditHitPoints && (
 				<DrawerSection title="Death saving throws">
 					<DeathSaveRecord {...hp} />

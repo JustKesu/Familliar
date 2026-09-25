@@ -1385,6 +1385,14 @@ spent/max counter, "/ Short Rest" or "/ Long Rest" from 9b5's `shortRest`.
 `UsesTracker` now serves spell slots only. E2E `e2e/actionGroups.spec.ts`.
 Next: species traits in Actions, Actions in Combat (needs `actions.json`).
 
+D183: header SHORT REST opens the shared drawer "Short Rest" (`DrawerContent`
+kind `shortRest` in `CharacterSheet.tsx`) holding the Hit Dice section (the
+unchanged `hitDiceLine`) and a full-width "Finish Short Rest" button
+(`.btn--finish-rest`) that runs `takeShortRest` and closes the drawer. Closing
+with × / Esc keeps rolled dice and HP and does not rest. `HitPointsPanel` lost
+its `hitDice` prop and section. Read-only sheets have no rest button, so no hit
+dice. E2E `e2e/shortRest.spec.ts`. No schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

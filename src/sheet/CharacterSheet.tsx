@@ -249,6 +249,7 @@ type DrawerContent =
 	| { kind: 'proficiencies' }
 	| { kind: 'stat'; stat: StatCard }
 	| { kind: 'hitPoints' }
+	| { kind: 'shortRest' }
 	| { kind: 'defenses' }
 	| { kind: 'action'; key: string }
 	| { kind: 'attacksPerAction' }
@@ -3024,7 +3025,7 @@ function CharacterSheetBody({
 		{ what: 'species-granted spells', message: raceSpellsError },
 	].filter((entry): entry is { what: string; message: string } => entry.message !== null)
 
-	/* R4c: in the Hit Points drawer, whose section heading names it — same section class, no logic change. */
+	/* D183: in the Short Rest drawer (moved out of the Hit Points drawer) — same section class, no logic change. */
 	const hitDiceLine = (
 		<section className="sheet__hit-dice">
 			{hitDice.status === 'unknown' ? (
@@ -3099,7 +3100,7 @@ function CharacterSheetBody({
 				hitPoints={<HitPointsCard {...hitPointProps} onOpen={() => setDrawer({ kind: 'hitPoints' })} />}
 				concentratingOn={concentratingOn}
 				onDropConcentration={onEditConcentration ? () => onEditConcentration(null) : undefined}
-				onShortRest={onRest ? takeShortRest : undefined}
+				onShortRest={onRest ? () => setDrawer({ kind: 'shortRest' }) : undefined}
 				onLongRest={onRest ? takeLongRest : undefined}
 				onRoll={recordRoll}
 				onOpenBreakdown={(stat) => setDrawer({ kind: 'stat', stat })}
@@ -3815,7 +3816,27 @@ function CharacterSheetBody({
 
 			{drawer?.kind === 'hitPoints' && (
 				<Drawer title="Hit Points" onClose={() => setDrawer(null)}>
-					<HitPointsPanel {...hitPointProps} hitDice={hitDiceLine} deathSaveRoll={deathSaveRoll} />
+					<HitPointsPanel {...hitPointProps} deathSaveRoll={deathSaveRoll} />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'shortRest' && (
+				<Drawer title="Short Rest" onClose={() => setDrawer(null)}>
+					<DrawerSection title="Hit Dice">{hitDiceLine}</DrawerSection>
+					{/* D183: the rest itself happens here; closing the drawer any other way leaves the rolls and skips the recovery. */}
+					<button
+						type="button"
+						className="btn--accent btn--finish-rest"
+						onClick={() => {
+							takeShortRest()
+							setDrawer(null)
+						}}
+					>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+							<path d="M12 2c.5 3-1.500 4.500-3 6.500S6 12 6 15a6 6 0 0 0 12 0c0-2.500-1-4-2-5.500-.3 1.500-1 2.500-2 2.500 1-3-.5-7-2-10Z" />
+						</svg>
+						Finish Short Rest
+					</button>
 				</Drawer>
 			)}
 

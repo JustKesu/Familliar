@@ -3291,3 +3291,9 @@ políček, vyplněná zleva = spotřebované použití; klik na prázdné označ
 na vyplněné ho vrátí. Maximum > 10: kompaktní „spent / max" s −/+. Za tím
 „/ Short Rest", když 9b5 čte obnovu na Short Rest, jinak „/ Long Rest".
 Neznámé maximum (D43): nic.
+
+## D183 — Short Rest otevře boční panel s kostkami života
+
+Zdroj: task Short Rest drawer, 25. 9. 2026.
+
+Tlačítko Short Rest v hlavičce už neodpočívá hned: otevře sdílený boční panel „Short Rest" se sekcí Hit Dice (stejné řádky a hod jako dřív, včetně záznamu hodu v historii). Odpočinek (obnova zásob, `afterShortRest`) se provede až tlačítkem **Finish Short Rest**, které pak panel zavře. Zavření křížkem nebo Esc bez Finish ponechá už provedené hody (utracené kostky i získané HP), ale zásoby neobnoví. Kostky života už nejsou v panelu Hit Points. Long Rest beze změny. Schéma postavy beze změny.

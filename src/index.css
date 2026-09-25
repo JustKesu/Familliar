@@ -212,6 +212,21 @@ label {
   color: var(--accent-text);
 }
 
+.btn--finish-rest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .btn--heal {
   border-color: var(--heal);
   color: var(--heal);
