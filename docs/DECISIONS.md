@@ -3417,3 +3417,25 @@ počítá ruce po řádcích, tabulka útoků má řádek na držený záznam), 
 Dagger ×2 je pořád jedna dýka v ruce. Dual Wielder a jiné výjimky mimo rozsah.
 
 **Markup.** Tag `{@note …}` se vykresluje kurzívou, vnořené tagy se řeší.
+
+## D188 — Dvě zbraně ze stohu
+
+**Problém.** Equip na řádku Dagger ×2 dal `equipped: 'held'` celému řádku
+(množství 2 zůstalo), takže stoh byl jedna věc v jedné ruce a druhou dýku
+nešlo vzít — D187 počítá držené řádky, Two-Weapon Fighting se neobjevil.
+
+**Vzetí do ruky ze stohu** (množství > 1) oddělí jeden kus do vlastního
+drženého řádku hned pod stohem; stoh má o jeden méně a jeho Equip zůstává.
+Řádek s množstvím 1 (nebo 0) se vezme celý jako dosud. Držené řádky se nikdy
+neslučují — každý je jedna věc v jedné ruce.
+
+**Odložení** (Put down i vytlačení jinou věcí) vrátí řádek do stohu: sloučí
+se s řádkem, který má po odložení stejný `inventoryRowKey`, a množství se
+sečtou. Slučují se jen právě odložené řádky; jiné shodné řádky, které hráč
+drží odděleně (dvě stejné custom položky), zůstávají.
+
+**Pravidlo rukou beze změny** (hands.ts): druhá dýka jde přes
+`makeRoomForHands` jako každá jiná zbraň — co se nevejde, se odloží
+(nejvýš v seznamu první) a oznámí; štít ani obouruční zbraň se neodmítá.
+Pravidlo D187 (dva držené řádky s Light) beze změny. Bez změny schématu;
+staré uložené postavy s drženým řádkem ×2 fungují dál (jedna zbraň v ruce).

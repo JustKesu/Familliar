@@ -15,6 +15,8 @@ import {
 	isWeapon,
 	itemKey,
 	itemMagicBonusOf,
+	returnToStack,
+	splitOneOff,
 	wornAcBonusOf,
 	type ItemRef,
 } from './inventoryData'
@@ -239,6 +241,32 @@ describe('inventoryRowKey', () => {
 		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey({ ...row, custom: { ...scarf, requiresAttunement: true } }))
 		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey({ ...row, custom: { ...scarf, attunementCondition: 'by a bard' } }))
 		expect(inventoryRowKey({ ...row, custom: scarf })).not.toBe(inventoryRowKey({ ...row, custom: { ...scarf, description: 'It is warm.' } }))
+	})
+})
+
+describe('splitOneOff / returnToStack (D188)', () => {
+	const torch = { name: 'Torch', source: 'XPHB', quantity: 1 }
+	const dagger = (quantity: number) => ({ name: 'Dagger', source: 'XPHB', quantity })
+
+	it('splits one item off a stack into the row after it; a row of one stays whole', () => {
+		expect(splitOneOff([torch, dagger(2)], 1)).toEqual({ inventory: [torch, dagger(1), dagger(1)], index: 2 })
+		expect(splitOneOff([dagger(1), torch], 0)).toEqual({ inventory: [dagger(1), torch], index: 0 })
+		expect(splitOneOff([dagger(0)], 0)).toEqual({ inventory: [dagger(0)], index: 0 })
+	})
+
+	it('merges a put-down row into its matching stack, and leaves an unmatched one', () => {
+		expect(returnToStack([dagger(1), torch, dagger(1)], [2])).toEqual([dagger(2), torch])
+		expect(returnToStack([dagger(1), torch, dagger(1)], [0])).toEqual([torch, dagger(2)])
+		expect(returnToStack([dagger(1), torch], [0])).toEqual([dagger(1), torch])
+		// Held and +1 rows are different rows, not the same stack.
+		expect(returnToStack([{ ...dagger(1), equipped: 'held' as const }, dagger(1)], [1])).toEqual([{ ...dagger(1), equipped: 'held' }, dagger(1)])
+		expect(returnToStack([{ ...dagger(1), magicBonus: 1 as const }, dagger(1)], [1])).toEqual([{ ...dagger(1), magicBonus: 1 }, dagger(1)])
+	})
+
+	it('merges several put-down rows at once, whatever their order', () => {
+		expect(returnToStack([dagger(1), torch, dagger(1), dagger(3)], [0, 2])).toEqual([torch, dagger(5)])
+		// Only the returning rows merge; two identical rows the player keeps apart stay apart.
+		expect(returnToStack([torch, torch, dagger(1)], [2])).toEqual([torch, torch, dagger(1)])
 	})
 })
 

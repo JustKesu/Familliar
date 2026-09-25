@@ -407,6 +407,38 @@ export function withQuantity(inventory: readonly CharacterInventoryItem[], index
 	return inventory.map((item, i) => (i === index ? { ...item, quantity } : item))
 }
 
+/**
+ * D188: one item of a stack split off into its own row, placed right after the
+ * stack, so a stack of Daggers can put one in each hand. A row of one (or none)
+ * is returned as it is. `index` is where the split-off row now sits.
+ */
+export function splitOneOff(inventory: readonly CharacterInventoryItem[], index: number): { inventory: CharacterInventoryItem[]; index: number } {
+	const row = inventory[index]
+	if (row.quantity <= 1) return { inventory: [...inventory], index }
+	return {
+		inventory: [...inventory.slice(0, index), { ...row, quantity: row.quantity - 1 }, { ...row, quantity: 1 }, ...inventory.slice(index + 1)],
+		index: index + 1,
+	}
+}
+
+/**
+ * D188: the rows at `indices`, just put down, each joining another row they now
+ * match exactly (a Dagger back on its stack). A row with no match stays put.
+ * Only these rows merge — identical rows the player keeps apart are left alone.
+ */
+export function returnToStack(inventory: readonly CharacterInventoryItem[], indices: Iterable<number>): CharacterInventoryItem[] {
+	let result = [...inventory]
+	// Descending, so removing a row never shifts one still to be processed.
+	for (const index of [...indices].sort((a, b) => b - a)) {
+		const row = result[index]
+		const key = inventoryRowKey(row)
+		const target = result.findIndex((other, i) => i !== index && inventoryRowKey(other) === key)
+		if (target === -1) continue
+		result = result.flatMap((other, i) => (i === index ? [] : i === target ? [{ ...other, quantity: other.quantity + row.quantity }] : [other]))
+	}
+	return result
+}
+
 export function extractItemRefs(parsed: unknown): ItemRef[] {
 	if (!Array.isArray(parsed)) {
 		throw new Error('items.json: expected a top-level array.')

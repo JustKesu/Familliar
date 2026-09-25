@@ -1068,7 +1068,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Finish Short Rest, "From Background", rest-button icons).
 - `e2e/combatActions.spec.ts` — D187 a–e (Actions in Combat line: open/close/
   switch, Reaction and Other contents, Reaction filter, Two-Weapon Fighting with
-  Dagger + Shortsword held vs. one in the backpack, Help's `{@note}` italic).
+  Dagger + Shortsword held vs. one in the backpack, Help's `{@note}` italic);
+  D188 a–d (Dagger ×2: both into hand + TWF, put away back onto the stack,
+  shield/Greatsword displacement, reload).
 
 ## Dočasné scaffolding
 
@@ -1458,6 +1460,14 @@ alphabetical, one open at a time, text via `ResolvedEntries`; a group with only
 combat actions renders (Reaction, Other). Bonus Action line exists only with
 TWF. Markup: `{@note}` → italic (tags.ts, inventory regenerated, 47 tags).
 E2E `e2e/combatActions.spec.ts` (a–e). No schema change (still 48).
+
+D188: two weapons from one stack. `splitOneOff` and `returnToStack`
+(`inventoryData.ts`): Equip on a held-slot row with quantity > 1 splits one item
+into its own held row right after the stack; Put down and every hands
+displacement merge the put-down row into a row with the same `inventoryRowKey`.
+`takeInHand` takes the rows to work on. Hands rule and `holdsTwoLightWeapons`
+unchanged. E2E D188 a–d in `e2e/combatActions.spec.ts`. No schema change
+(still 48).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

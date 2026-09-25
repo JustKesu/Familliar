@@ -89,6 +89,8 @@ import {
 	itemKey,
 	itemMagicBonusOf,
 	loadItemRefs,
+	returnToStack,
+	splitOneOff,
 	withQuantity,
 	type ItemRef,
 } from '../inventory/inventoryData'
@@ -1072,7 +1074,7 @@ function InventorySection({
 
 		if (item.equipped) {
 			setNotice(null)
-			onEditInventory(inventory.map((row, i) => (i === index ? putDown(row) : row)))
+			onEditInventory(returnToStack(inventory.map((row, i) => (i === index ? putDown(row) : row)), [index]))
 			return
 		}
 
@@ -1084,7 +1086,9 @@ function InventorySection({
 			return
 		}
 
-		takeInHand(index, ref, { ...item, equipped: 'held' })
+		// D188: a hand holds one item, so a stack gives up one and the rest stays equippable.
+		const split = splitOneOff(inventory, index)
+		takeInHand(split.inventory, split.index, ref, { ...split.inventory[split.index], equipped: 'held' })
 	}
 
 	/**
@@ -1096,9 +1100,9 @@ function InventorySection({
 	 * alternative is a character quietly holding three things because one of them
 	 * could not be resolved (D43).
 	 */
-	function takeInHand(index: number, ref: ItemRef, next: CharacterInventoryItem): void {
+	function takeInHand(rows: CharacterInventoryItem[], index: number, ref: ItemRef, next: CharacterInventoryItem): void {
 		const held: HeldThing[] = []
-		inventory.forEach((row, i) => {
+		rows.forEach((row, i) => {
 			if (i === index || row.equipped !== 'held') return
 			const otherRef = resolve(row).ref
 			held.push({ index: i, name: row.name, hands: (otherRef ? handsRequiredOf(otherRef, row.grip) : null) ?? 1 })
@@ -1107,7 +1111,7 @@ function InventorySection({
 		const { displaced, message } = makeRoomForHands(held, { index, name: next.name, hands: handsRequiredOf(ref, next.grip) ?? 1 })
 		const putting = new Set(displaced.map((thing) => thing.index))
 		setNotice(message)
-		onEditInventory?.(inventory.map((row, i) => (i === index ? next : putting.has(i) ? putDown(row) : row)))
+		onEditInventory?.(returnToStack(rows.map((row, i) => (i === index ? next : putting.has(i) ? putDown(row) : row)), putting))
 	}
 
 	/**
@@ -1125,7 +1129,7 @@ function InventorySection({
 			onEditInventory(inventory.map((row, i) => (i === index ? oneHanded(row) : row)))
 			return
 		}
-		takeInHand(index, ref, { ...item, equipped: 'held', grip })
+		takeInHand(inventory, index, ref, { ...item, equipped: 'held', grip })
 	}
 
 	/**

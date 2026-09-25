@@ -89,6 +89,86 @@ test('D187 d: Two-Weapon Fighting only while two Light weapons are held', async 
   await expect(twf).toBeVisible()
 })
 
+/* D188: one inventory row of Dagger ×2. */
+async function stackOfDaggers(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: 'Inventory' }).click()
+  await addItem(page, 'dagger', 'Dagger (XPHB)')
+  const quantity = page.getByRole('spinbutton', { name: 'Quantity of Dagger', exact: true })
+  await quantity.fill('2')
+  await quantity.press('Enter')
+  await expect(quantity).toHaveValue('2')
+}
+
+function inventoryRow(page: Page, name: string): Locator {
+  return page.locator('.sheet__inventory-list > li').filter({ has: page.getByRole('spinbutton', { name: `Quantity of ${name}`, exact: true }) })
+}
+
+async function holdBothDaggers(page: Page): Promise<void> {
+  await stackOfDaggers(page)
+  await page.getByRole('button', { name: 'Equip Dagger', exact: true }).click()
+  // One dagger split off into hand; the one left on the stack can still be taken.
+  await expect(inventoryRow(page, 'Dagger')).toHaveCount(2)
+  await expect(inventoryRow(page, 'Dagger').first().getByRole('spinbutton')).toHaveValue('1')
+  await page.getByRole('button', { name: 'Equip Dagger', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Put down Dagger', exact: true })).toHaveCount(2)
+  await expect(page.getByRole('button', { name: 'Equip Dagger', exact: true })).toHaveCount(0)
+}
+
+async function expectTwoDaggersHeld(page: Page): Promise<void> {
+  await page.getByRole('tab', { name: 'Actions' }).click()
+  await expect(actions(page).locator('.sheet__action-name-cell', { hasText: 'Dagger' })).toHaveCount(2)
+  await expect(combatLine(page, 'Bonus Action').getByRole('button', { name: 'Two-Weapon Fighting', exact: true })).toBeVisible()
+}
+
+test('D188 a: both daggers of a Dagger ×2 stack can be taken in hand, and Two-Weapon Fighting appears', async ({ page }) => {
+  await holdBothDaggers(page)
+  await expectTwoDaggersHeld(page)
+})
+
+test('D188 b: putting a dagger away returns it to the stack and Two-Weapon Fighting goes', async ({ page }) => {
+  await holdBothDaggers(page)
+  await page.getByRole('button', { name: 'Put down Dagger', exact: true }).first().click()
+  await expect(page.getByRole('button', { name: 'Put down Dagger', exact: true })).toHaveCount(1)
+  await page.getByRole('tab', { name: 'Actions' }).click()
+  await expect(actions(page).locator('.sheet__action-name-cell', { hasText: 'Dagger' })).toHaveCount(1)
+  await expect(combatLine(page, 'Bonus Action').getByRole('button', { name: 'Two-Weapon Fighting', exact: true })).toHaveCount(0)
+
+  await page.getByRole('tab', { name: 'Inventory' }).click()
+  await page.getByRole('button', { name: 'Put down Dagger', exact: true }).click()
+  await expect(inventoryRow(page, 'Dagger')).toHaveCount(1)
+  await expect(inventoryRow(page, 'Dagger').getByRole('spinbutton')).toHaveValue('2')
+})
+
+test('D188 c: the second dagger follows the same hands rule — never three hands\' worth, whatever no longer fits is put down and named', async ({ page }) => {
+  const heldMarks = page.locator('.sheet__inventory-equipped')
+  // Shield first: what makes room is the held row highest in the list (hands.ts), so it is the one put down.
+  await page.getByRole('tab', { name: 'Inventory' }).click()
+  await addItem(page, 'shield', 'Shield (XPHB)')
+  await stackOfDaggers(page)
+  await page.getByRole('button', { name: 'Equip Shield', exact: true }).click()
+  await page.getByRole('button', { name: 'Equip Dagger', exact: true }).click()
+  await expect(heldMarks).toHaveCount(2)
+
+  await page.getByRole('button', { name: 'Equip Dagger', exact: true }).click()
+  await expect(page.locator('.sheet__inventory-notice')).toContainText('Unequipped Shield — Dagger needs a free hand.')
+  await expect(heldMarks).toHaveCount(2)
+  await expect(page.getByRole('button', { name: 'Equip Shield', exact: true })).toBeVisible()
+
+  await addItem(page, 'greatsword', 'Greatsword (XPHB)')
+  await page.getByRole('button', { name: 'Equip Greatsword', exact: true }).click()
+  await expect(page.locator('.sheet__inventory-notice')).toContainText('Unequipped Dagger, Dagger — Greatsword needs both hands.')
+  await expect(heldMarks).toHaveCount(1)
+  // Both daggers went back onto one stack.
+  await expect(inventoryRow(page, 'Dagger')).toHaveCount(1)
+  await expect(inventoryRow(page, 'Dagger').getByRole('spinbutton')).toHaveValue('2')
+})
+
+test('D188 d: both daggers are still held after a reload', async ({ page }) => {
+  await holdBothDaggers(page)
+  await page.reload()
+  await expectTwoDaggersHeld(page)
+})
+
 test('D187 e: Help renders its {@note} as readable italic text', async ({ page }) => {
   const line = combatLine(page, 'Action')
   await line.getByRole('button', { name: 'Help', exact: true }).click()
