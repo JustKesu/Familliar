@@ -50,6 +50,21 @@ import { loadItemEntryTemplates } from '../inventory/itemEntryResolver'
  * (same pattern as CharacterWizard.test.tsx).
  */
 
+/** R7a: a Spells-tab row, found by its spell name. */
+function spellRow(scope: Element, name: string): HTMLElement {
+	const row = Array.from(scope.querySelectorAll('.sheet__spell-row')).find((li) => li.querySelector('.sheet__spell-name')?.textContent === name)
+	if (!row) throw new Error(`no spell row for ${name}`)
+	return row as HTMLElement
+}
+
+/** Expands the row (its detail text, full provenance and Concentrate button) and returns it. */
+function openSpellRow(scope: Element, name: string): HTMLElement {
+	const row = spellRow(scope, name)
+	const toggle = row.querySelector<HTMLButtonElement>('.sheet__group-row-toggle')!
+	if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
+	return row
+}
+
 const CLASS_DATA: ClassSavingThrowProficiencies[] = [
 	{ className: 'Fighter', classSource: 'XPHB', abilities: ['str', 'con'] },
 	{ className: 'Rogue', classSource: 'XPHB', abilities: ['dex', 'int'] },
@@ -2648,6 +2663,7 @@ describe('CharacterSheet', () => {
 			entriesHigherLevel: [],
 			scalingLevelDice: [],
 			damageInflict: [],
+			conditionInflict: [],
 			...overrides,
 		}
 	}
@@ -2887,7 +2903,9 @@ describe('CharacterSheet', () => {
 			const attackSection = container.querySelector('.sheet__spell-attacks')!
 			expect(attackSection.textContent).toContain('+7')
 			expect(attackSection.textContent).toContain('14')
-			expect(attackSection.textContent).toContain('Wand of the War Mage, +1')
+			// R7a: the breakdown is in the drawer the value opens.
+			fireEvent.click(screen.getByRole('button', { name: 'Wizard spell attack breakdown' }))
+			expect(screen.getByRole('dialog', { name: 'Spell Attack' }).textContent).toContain('Wand of the War Mage, +1')
 		})
 
 		it('an attuned Ioun Stone of Mastery is shown against the proficiency bonus but never changes it', async () => {
@@ -5022,28 +5040,33 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={wizard} />)
 			await screen.findByRole('heading', { name: 'Elminster' })
 
+			// R7a: MODIFIER · SPELL ATTACK · SAVE DC, no label over a single source; INT 16 (+3) + PB 3 at level 5.
 			const attackSection = container.querySelector('.sheet__spell-attacks')!
-			expect(attackSection.textContent).toContain('Wizard (Intelligence)')
-			expect(attackSection.textContent).toContain('Spell attack bonus')
-			expect(attackSection.textContent).toContain('Spell save DC')
-			await user.click(attackSection.querySelector('summary')!)
-			expect(attackSection.textContent).toContain('proficiency bonus')
+			const stats = Array.from(attackSection.querySelectorAll('.sheet__spell-stat')).map((stat) => stat.textContent)
+			expect(stats).toEqual(['Modifier+3', 'Spell Attack+6', 'Save DC14'])
+			expect(attackSection.querySelector('.sheet__spell-source-label')).toBeNull()
+			await user.click(screen.getByRole('button', { name: 'Wizard spell attack breakdown' }))
+			const attackDrawer = screen.getByRole('dialog', { name: 'Spell Attack' })
+			expect(attackDrawer.textContent).toContain('Wizard (Intelligence)')
+			expect(attackDrawer.textContent).toContain('proficiency bonus')
+			await user.click(screen.getByRole('button', { name: 'Wizard save DC breakdown' }))
+			expect(screen.getByRole('dialog', { name: 'Save DC' }).textContent).toContain('14')
 
-			const slotsSection = container.querySelector('.sheet__spell-slots')!
-			expect(slotsSection.textContent).toContain('Level 1: 4')
-			expect(slotsSection.textContent).toContain('Level 2: 3')
-			expect(slotsSection.textContent).toContain('Level 3: 2')
+			// Slots are boxes in each level's heading; the Spell Slots drawer carries the breakdown.
+			const boxes = (label: string) => screen.getByRole('region', { name: label }).querySelectorAll('.sheet__use-box').length
+			expect([boxes('1st Level'), boxes('2nd Level'), boxes('3rd Level')]).toEqual([4, 3, 2])
+			await user.click(screen.getByRole('button', { name: 'Spell Slots' }))
+			expect(screen.getByRole('dialog', { name: 'Spell Slots' }).textContent).toContain('Wizard level 5: spell level 3')
 
 			const spellsSection = container.querySelector('.sheet__spells')!
-			expect(spellsSection.textContent).toContain('Cantrip')
-			expect(spellsSection.textContent).toContain('Prestidigitation')
-			expect(spellsSection.textContent).toContain('Level 3')
-			expect(spellsSection.textContent).toContain('Fireball')
+			expect(Array.from(spellsSection.querySelectorAll('.sheet__spell-section h3')).map((h) => h.textContent)).toEqual(['Cantrips', '1st Level', '2nd Level', '3rd Level'])
+			expect(within(screen.getByRole('region', { name: 'Cantrips' })).getByText('Prestidigitation')).toBeTruthy()
+			expect(within(screen.getByRole('region', { name: '3rd Level' })).getByText('Fireball')).toBeTruthy()
 
-			const fireballSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fireball'))!
-			await user.click(fireballSummary)
-			expect(fireballSummary.closest('details')!.textContent).toContain('Casting Time')
-			expect(fireballSummary.closest('details')!.textContent).toContain('A bright streak flashes.')
+			const fireball = openSpellRow(spellsSection, 'Fireball')
+			expect(fireball.textContent).toContain('Casting Time')
+			expect(fireball.textContent).toContain('A bright streak flashes.')
+			expect(fireball.textContent).toContain('player pick')
 		})
 
 		it('shows "At Higher Levels" text on expand when the spell has it, and omits the line when it does not (step 6 follow-up)', async () => {
@@ -5093,22 +5116,18 @@ describe('CharacterSheet', () => {
 				],
 			}
 
-			const user = userEvent.setup()
 			const { container } = render(<CharacterSheet character={cleric} />)
 			await screen.findByRole('heading', { name: 'Aramil' })
 
 			const spellsSection = container.querySelector('.sheet__spells')!
 
-			const healingWordSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Healing Word'))!
-			await user.click(healingWordSummary)
-			const healingWordDetails = healingWordSummary.closest('details')!
+			const healingWordDetails = openSpellRow(spellsSection, 'Healing Word')
 			expect(healingWordDetails.textContent).toContain('At Higher Levels')
 			expect(healingWordDetails.textContent).toContain('The healing increases by 2d4 for each spell slot level above 1.')
 
-			const guidanceSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Guidance'))!
-			await user.click(guidanceSummary)
-			expect(guidanceSummary.closest('details')!.textContent).not.toContain('At Higher Levels')
-			expect(guidanceSummary.closest('details')!.textContent).not.toContain('Cantrip scaling')
+			const guidance = openSpellRow(spellsSection, 'Guidance')
+			expect(guidance.textContent).not.toContain('At Higher Levels')
+			expect(guidance.textContent).not.toContain('Cantrip scaling')
 			expect(healingWordDetails.textContent).not.toContain('Cantrip scaling')
 		})
 
@@ -5168,27 +5187,27 @@ describe('CharacterSheet', () => {
 				],
 			}
 
-			const user = userEvent.setup()
 			const { container } = render(<CharacterSheet character={wizard} />)
 			await screen.findByRole('heading', { name: 'Tenser' })
 
 			const spellsSection = container.querySelector('.sheet__spells')!
 
-			const fireBoltSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
-			await user.click(fireBoltSummary)
-			const fireBoltDetails = fireBoltSummary.closest('details')!
+			const fireBoltDetails = openSpellRow(spellsSection, 'Fire Bolt')
 			expect(fireBoltDetails.textContent).toContain('Cantrip scaling')
 			expect(fireBoltDetails.textContent).toContain('Fire damage: 1d10 (1-4), 2d10 (5-10), 3d10 (11-16), 4d10 (17+)')
 
-			const boomingBladeSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Booming Blade'))!
-			await user.click(boomingBladeSummary)
-			const boomingBladeDetails = boomingBladeSummary.closest('details')!
+			const boomingBladeDetails = openSpellRow(spellsSection, 'Booming Blade')
 			expect(boomingBladeDetails.textContent).toContain('thunder damage on moving: 1d8 (1-4), 2d8 (5-10), 3d8 (11-16), 4d8 (17+)')
 			expect(boomingBladeDetails.textContent).toContain('thunder damage on hit: 1d8 (5-10), 2d8 (11-16), 3d8 (17+)')
 
-			const mageHandSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Mage Hand'))!
-			await user.click(mageHandSummary)
-			expect(mageHandSummary.closest('details')!.textContent).not.toContain('Cantrip scaling')
+			expect(openSpellRow(spellsSection, 'Mage Hand').textContent).not.toContain('Cantrip scaling')
+
+			// R7a Effect column: a cantrip's structured dice at the character's level, as roll buttons; none for Mage Hand.
+			expect(spellRow(spellsSection, 'Fire Bolt').querySelector('.sheet__spell-effect')!.textContent).toBe('1d10 Fire damage')
+			expect(within(spellRow(spellsSection, 'Fire Bolt')).getByRole('button', { name: 'Roll Fire Bolt damage' }).textContent).toBe('1d10')
+			expect(spellRow(spellsSection, 'Booming Blade').querySelector('.sheet__spell-effect')!.textContent).toBe('1d8 thunder damage on moving')
+			expect(spellRow(spellsSection, 'Mage Hand').querySelector('.sheet__spell-effect')!.textContent).toBe('')
+			expect(spellRow(spellsSection, 'Fire Bolt').querySelector('.sheet__spell-use')!.textContent).toBe('At will')
 		})
 
 		it('an Eldritch Knight renders a Wizard-list spell chosen during creation (step 6 EK/AT `expanded` wiring)', async () => {
@@ -5289,7 +5308,7 @@ describe('CharacterSheet', () => {
 			await screen.findByRole('heading', { name: 'DupeCheck' })
 
 			const spellsSection = container.querySelector('.sheet__spells')!
-			const blessRows = Array.from(spellsSection.querySelectorAll('summary')).filter((s) => s.textContent?.includes('Bless'))
+			const blessRows = Array.from(spellsSection.querySelectorAll('.sheet__spell-name')).filter((s) => s.textContent === 'Bless')
 			expect(blessRows).toHaveLength(1)
 		})
 
@@ -5321,10 +5340,12 @@ describe('CharacterSheet', () => {
 			await screen.findByRole('heading', { name: 'BothSources' })
 
 			const spellsSection = container.querySelector('.sheet__spells')!
-			const blessRows = Array.from(spellsSection.querySelectorAll('summary')).filter((s) => s.textContent?.includes('Bless'))
+			const blessRows = Array.from(spellsSection.querySelectorAll('.sheet__spell-name')).filter((s) => s.textContent === 'Bless')
 			expect(blessRows).toHaveLength(1)
-			expect(blessRows[0].textContent).toContain('player pick')
-			expect(blessRows[0].textContent).toContain('always prepared (Divine Soul)')
+			const bless = openSpellRow(spellsSection, 'Bless')
+			expect(bless.querySelector('.sheet__action-subtitle')!.textContent).toBe('Sorcerer · Divine Soul')
+			expect(bless.textContent).toContain('player pick')
+			expect(bless.textContent).toContain('always prepared (Divine Soul)')
 		})
 
 		it("a Wizard with Mark of Detection renders the mark's `expanded` pool-widening spell chosen during creation (D46, step 6), as a normal player pick", async () => {
@@ -5521,10 +5542,16 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={warlock} />)
 			await screen.findByRole('heading', { name: 'Pactbound' })
 
-			const slotsSection = container.querySelector('.sheet__spell-slots')!
-			expect(slotsSection.textContent).toContain('Pact Magic')
-			expect(slotsSection.textContent).toContain('2 slots (level 2)')
-			expect(slotsSection.textContent).not.toMatch(/Level \d+: \d+/) // no ordinary 1-9 list alongside it
+			// R7a: the pact pool is the one section with slots — its level, a PACT tag and its own boxes; no ordinary sections beside it.
+			const pact = await screen.findByRole('region', { name: '2nd Level' })
+			expect(pact.querySelector('.sheet__spell-pact-tag')!.textContent).toBe('Pact')
+			expect(pact.querySelectorAll('.sheet__spell-pact .sheet__use-box')).toHaveLength(2)
+			expect(container.querySelectorAll('.sheet__spell-section')).toHaveLength(1)
+
+			fireEvent.click(screen.getByRole('button', { name: 'Spell Slots' }))
+			const drawer = screen.getByRole('dialog', { name: 'Spell Slots' })
+			expect(drawer.textContent).toContain('Pact Magic')
+			expect(drawer.textContent).toContain('2 slots (level 2)')
 		})
 
 		/* Slice 9b3: spending a slot, in each of D11's two pools. */
@@ -5558,53 +5585,248 @@ describe('CharacterSheet', () => {
 				}
 				const { container } = render(<CharacterSheet character={subject} onEditSpentSpellSlots={onEditSpentSpellSlots} />)
 				await screen.findByRole('heading', { name: 'Slotter' })
-				await waitFor(() => expect(container.querySelector('.sheet__spell-slots')).toBeTruthy())
+				await waitFor(() => expect(container.querySelector('.sheet__spell-section')).toBeTruthy())
 				return container
 			}
 
-			it('shows one tracker per level that has slots, reading the stored spent count', async () => {
+			function boxes(container: HTMLElement): [number, number][] {
+				return Array.from(container.querySelectorAll('.sheet__spell-section-heading .sheet__use-boxes')).map((group) => [
+					group.querySelectorAll('.sheet__use-box').length,
+					group.querySelectorAll('.sheet__use-box--used').length,
+				])
+			}
+
+			it('R7a: one set of boxes per level that has slots, filled from the stored spent count', async () => {
 				const container = await renderCaster('Wizard', 3, WIZARD_SLOTS, { spentSpellSlots: { ordinary: { 1: 3 } } })
-				const trackers = Array.from(container.querySelectorAll('.sheet__spell-slots .sheet__action-uses')).map((node) => node.textContent)
-				expect(trackers).toHaveLength(2) // levels 1 and 2 only — level 3 has no slots at Wizard 3
-				expect(trackers[0]).toContain('3 / 4')
-				expect(trackers[1]).toContain('0 / 2')
+				// Levels 1 and 2 only — level 3 has no slots at Wizard 3. A section with slots shows even with no spell in it.
+				expect(boxes(container)).toEqual([
+					[4, 3],
+					[2, 0],
+				])
+				expect(screen.getByRole('region', { name: '1st Level' }).textContent).toContain('/ Long Rest')
 			})
 
-			it('marking and undoing a slot reports the new count for that level alone', async () => {
+			it('an empty box spends one, a filled box returns one, for that level alone', async () => {
 				const onEdit = vi.fn()
 				await renderCaster('Wizard', 3, WIZARD_SLOTS, { spentSpellSlots: { ordinary: { 1: 1, 2: 2 } } }, onEdit)
 
-				fireEvent.click(screen.getByRole('button', { name: 'Use level 1 spell slots' }))
+				fireEvent.click(screen.getAllByRole('button', { name: 'Use level 1 spell slots' })[0]!)
 				expect(onEdit).toHaveBeenCalledWith({ ordinary: { 1: 2, 2: 2 } })
 
-				fireEvent.click(screen.getByRole('button', { name: 'Undo a use of level 2 spell slots' }))
+				fireEvent.click(screen.getAllByRole('button', { name: 'Undo a use of level 2 spell slots' })[1]!)
 				expect(onEdit).toHaveBeenLastCalledWith({ ordinary: { 1: 1, 2: 1 } })
 			})
 
-			it('bounds each level at its own maximum and at 0', async () => {
+			it('a full level offers no box to spend; an empty one none to return', async () => {
 				await renderCaster('Wizard', 3, WIZARD_SLOTS, { spentSpellSlots: { ordinary: { 1: 4 } } }, vi.fn())
-				expect((screen.getByRole('button', { name: 'Use level 1 spell slots' }) as HTMLButtonElement).disabled).toBe(true)
-				expect((screen.getByRole('button', { name: 'Undo a use of level 1 spell slots' }) as HTMLButtonElement).disabled).toBe(false)
-				// Level 2 is untouched: its own bound is the other way round.
-				expect((screen.getByRole('button', { name: 'Use level 2 spell slots' }) as HTMLButtonElement).disabled).toBe(false)
-				expect((screen.getByRole('button', { name: 'Undo a use of level 2 spell slots' }) as HTMLButtonElement).disabled).toBe(true)
+				expect(screen.queryAllByRole('button', { name: 'Use level 1 spell slots' })).toHaveLength(0)
+				expect(screen.getAllByRole('button', { name: 'Undo a use of level 1 spell slots' })).toHaveLength(4)
+				expect(screen.getAllByRole('button', { name: 'Use level 2 spell slots' })).toHaveLength(2)
+				expect(screen.queryAllByRole('button', { name: 'Undo a use of level 2 spell slots' })).toHaveLength(0)
 			})
 
-			it('D11: a Warlock gets a Pact Magic tracker of its own, written under its own key', async () => {
+			it('D11: a Warlock gets Pact Magic boxes of their own, tagged PACT, "/ Short Rest", written under their own key', async () => {
+				vi.mocked(loadGrantedClassFeatures).mockResolvedValueOnce([
+					{ id: 'pm', name: 'Pact Magic', className: 'Warlock', classSource: 'XPHB', level: 1, source: 'XPHB', entries: ['You regain all expended Pact Magic spell slots when you finish a {@variantrule Short Rest|XPHB} or Long Rest.'] },
+				] as never)
 				const onEdit = vi.fn()
 				const container = await renderCaster('Warlock', 2, WARLOCK_SLOTS, { spentSpellSlots: { pact: 1 } }, onEdit)
 
-				const pact = container.querySelector('.sheet__pact-slots')!
-				expect(pact.querySelector('.sheet__action-uses')!.textContent).toContain('1 / 2')
-				expect(container.querySelectorAll('.sheet__spell-slots .sheet__action-uses')).toHaveLength(1)
+				const pact = container.querySelector('.sheet__spell-pact')!
+				expect(pact.querySelectorAll('.sheet__use-box')).toHaveLength(2)
+				expect(pact.querySelectorAll('.sheet__use-box--used')).toHaveLength(1)
+				await waitFor(() => expect(pact.textContent).toBe('Pact/ Short Rest'))
+				expect(boxes(container)).toHaveLength(1)
 
 				fireEvent.click(screen.getByRole('button', { name: 'Use Pact Magic slots' }))
 				expect(onEdit).toHaveBeenCalledWith({ pact: 2 })
 			})
 
-			it('leaves the counts unchangeable without the callback', async () => {
+			it('leaves the boxes unchangeable without the callback', async () => {
 				const container = await renderCaster('Wizard', 3, WIZARD_SLOTS, undefined)
-				expect(container.querySelector('.sheet__spell-slots button')).toBeNull()
+				const all = Array.from(container.querySelectorAll<HTMLButtonElement>('.sheet__spell-section .sheet__use-box'))
+				expect(all).toHaveLength(6)
+				expect(all.every((box) => box.disabled)).toBe(true)
+			})
+		})
+
+		/* R7a (D189): CAST spends one slot of the section the spell stands under, and starts concentration. */
+		describe('CAST', () => {
+			const CLERIC_SLOTS: ClassSpellSlotsData[] = [{ className: 'Cleric', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null }]
+			const DETAILS: SpellDetail[] = [
+				spellDetail({ name: 'Guidance', source: 'XPHB', level: 0, concentration: true }),
+				spellDetail({ name: 'Bless', source: 'XPHB', level: 1, concentration: true }),
+				spellDetail({ name: 'Cure Wounds', source: 'XPHB', level: 1 }),
+				spellDetail({ name: 'Aid', source: 'XPHB', level: 2 }),
+			]
+			const cleric: Character = {
+				id: 'cast1',
+				name: 'Caster',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 1 }],
+				spellChoices: [
+					{
+						className: 'Cleric',
+						classSource: 'XPHB',
+						spells: ['Guidance', 'Bless', 'Cure Wounds', 'Aid'].map((name) => ({ name, source: 'XPHB' })),
+					},
+				],
+			}
+
+			async function renderCleric(subject: Character, props: Partial<Parameters<typeof CharacterSheet>[0]> = {}) {
+				vi.mocked(loadSpellSlotsClassData).mockResolvedValue(CLERIC_SLOTS)
+				vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
+				const { container } = render(<CharacterSheet character={subject} {...props} />)
+				await waitFor(() => spellRow(container, 'Bless'))
+				return container
+			}
+
+			const cast = (name: string) => screen.getByRole('button', { name: `Cast ${name}` }) as HTMLButtonElement
+
+			it('spends a slot of its level; a concentration spell also becomes the one concentrated on', async () => {
+				const onSlots = vi.fn()
+				const onConcentration = vi.fn()
+				await renderCleric(cleric, { onEditSpentSpellSlots: onSlots, onEditConcentration: onConcentration })
+
+				fireEvent.click(cast('Cure Wounds'))
+				expect(onSlots).toHaveBeenLastCalledWith({ ordinary: { 1: 1 } })
+				expect(onConcentration).not.toHaveBeenCalled()
+
+				fireEvent.click(cast('Bless'))
+				expect(onSlots).toHaveBeenCalledTimes(2)
+				expect(onConcentration).toHaveBeenLastCalledWith('Bless')
+			})
+
+			it('a cantrip reads AT WILL with no CAST; a section without slots disables CAST; so does a spent pool', async () => {
+				const container = await renderCleric({ ...cleric, play: { spentSpellSlots: { ordinary: { 1: 2 } } } }, { onEditSpentSpellSlots: vi.fn() })
+				expect(spellRow(container, 'Guidance').querySelector('.sheet__spell-use')!.textContent).toBe('At will')
+				expect(screen.queryByRole('button', { name: 'Cast Guidance' })).toBeNull()
+				expect(cast('Bless').disabled).toBe(true)
+				expect(cast('Cure Wounds').disabled).toBe(true)
+				// A chosen 2nd-level spell at Cleric 1 (D106): its section has no boxes, so nothing to spend.
+				expect(screen.getByRole('region', { name: '2nd Level' }).querySelector('.sheet__use-boxes')).toBeNull()
+				expect(cast('Aid').disabled).toBe(true)
+			})
+
+			it('is not offered on a read-only sheet', async () => {
+				await renderCleric(cleric)
+				expect(screen.queryByRole('button', { name: /^Cast / })).toBeNull()
+			})
+
+			it('single pool Warlock: a 1st-level spell stands in the pact section with a "1st" badge, and CAST spends a pact slot', async () => {
+				vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue([{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }])
+				vi.mocked(loadSpellSlotsClassData).mockResolvedValue([
+					{ className: 'Warlock', classSource: 'XPHB', casterProgression: 'pact', spellSlotsByLevel: null, pactSlotsByLevel: [1, 2, 3, 4, 5].map((level) => ({ count: level === 1 ? 1 : 2, slotLevel: Math.ceil(level / 2) })) },
+				])
+				vi.mocked(loadSpellDetails).mockResolvedValue([spellDetail({ name: 'Hex', source: 'XPHB', level: 1, concentration: true }), spellDetail({ name: 'Counterspell', source: 'XPHB', level: 3 })])
+				const onSlots = vi.fn()
+				const warlock: Character = {
+					id: 'cast2',
+					name: 'Pact Caster',
+					classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
+					abilityScores: { method: 'standardArray', scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 10, wisdom: 10, charisma: 16 } },
+					spellChoices: [{ className: 'Warlock', classSource: 'XPHB', spells: ['Hex', 'Counterspell'].map((name) => ({ name, source: 'XPHB' })) }],
+				}
+				const { container } = render(<CharacterSheet character={warlock} onEditSpentSpellSlots={onSlots} />)
+				const third = await screen.findByRole('region', { name: '3rd Level' })
+				await waitFor(() => spellRow(third, 'Hex'))
+				expect(container.querySelectorAll('.sheet__spell-section')).toHaveLength(1)
+				expect(spellRow(third, 'Hex').querySelector('.sheet__spell-badge')!.textContent).toBe('1st')
+				expect(spellRow(third, 'Counterspell').querySelector('.sheet__spell-badge')).toBeNull()
+				expect(spellRow(third, 'Hex').querySelector('.sheet__action-subtitle')!.textContent).toBe('Warlock · Concentration')
+
+				fireEvent.click(within(spellRow(third, 'Hex')).getByRole('button', { name: 'Cast Hex' }))
+				expect(onSlots).toHaveBeenLastCalledWith({ pact: 1 })
+			})
+
+			it('both pools: the pact boxes sit beside the ordinary ones in the matching section, and CAST there spends an ordinary slot', async () => {
+				vi.mocked(loadSpellSlotsClassData).mockResolvedValue([
+					{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3], [4, 2]], pactSlotsByLevel: null },
+					{ className: 'Warlock', classSource: 'XPHB', casterProgression: 'pact', spellSlotsByLevel: null, pactSlotsByLevel: [{ count: 1, slotLevel: 1 }, { count: 2, slotLevel: 1 }, { count: 2, slotLevel: 2 }] },
+				])
+				vi.mocked(loadSpellDetails).mockResolvedValue([spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2 })])
+				const onSlots = vi.fn()
+				const multiclass: Character = {
+					id: 'cast3',
+					name: 'Two Pools',
+					classes: [
+						{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 3 },
+						{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 },
+					],
+					spellChoices: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Misty Step', source: 'XPHB' }] }],
+				}
+				render(<CharacterSheet character={multiclass} onEditSpentSpellSlots={onSlots} />)
+				const second = await screen.findByRole('region', { name: '2nd Level' })
+				await waitFor(() => spellRow(second, 'Misty Step'))
+				expect(second.querySelectorAll('.sheet__use-boxes')).toHaveLength(2)
+				expect(second.querySelector('.sheet__spell-pact-tag')).toBeTruthy()
+				expect(spellRow(second, 'Misty Step').querySelector('.sheet__spell-badge')).toBeNull()
+
+				fireEvent.click(within(second).getByRole('button', { name: 'Cast Misty Step' }))
+				expect(onSlots).toHaveBeenLastCalledWith({ ordinary: { 2: 1 } })
+			})
+
+			it('a feat spell with a free-use term shows its short label and no CAST', async () => {
+				vi.mocked(loadSpellSlotsClassData).mockResolvedValue(CLERIC_SLOTS)
+				vi.mocked(loadSpellDetails).mockResolvedValue([spellDetail({ name: 'Sleep', source: 'XPHB', level: 1, conditionInflict: ['unconscious'] })])
+				vi.mocked(loadFeatGrantedSpells).mockResolvedValueOnce([
+					{ name: 'Sleep', source: 'XPHB', level: 1, ritual: false, concentration: false, origin: 'feat', featName: 'Magic Initiate', ability: 'int', usage: { kind: 'onceFreePerLongRest' } },
+				])
+				const { container } = render(<CharacterSheet character={{ ...cleric, spellChoices: [] }} onEditSpentSpellSlots={vi.fn()} />)
+				await waitFor(() => spellRow(container, 'Sleep'))
+				const sleep = spellRow(container, 'Sleep')
+				expect(sleep.querySelector('.sheet__spell-use')!.textContent).toBe('1/LR')
+				expect(within(sleep).queryByRole('button', { name: 'Cast Sleep' })).toBeNull()
+				expect(sleep.querySelector('.sheet__spell-effect')!.textContent).toBe('Unconscious')
+				expect(sleep.querySelector('.sheet__spell-notes')!.textContent).toBe('1/long rest (no slot) · V, S · Instantaneous')
+				expect(sleep.querySelector('.sheet__action-subtitle')!.textContent).toBe('Magic Initiate')
+			})
+		})
+
+		/* R7a: search and pills are the tab's own state (D116) — nothing typed or picked is written to the character. */
+		describe('Spells tab filters', () => {
+			const DETAILS: SpellDetail[] = [
+				spellDetail({ name: 'Guidance', source: 'XPHB', level: 0, concentration: true }),
+				spellDetail({ name: 'Bless', source: 'XPHB', level: 1, concentration: true }),
+				spellDetail({ name: 'Detect Magic', source: 'XPHB', level: 1, ritual: true, concentration: true }),
+				spellDetail({ name: 'Cure Wounds', source: 'XPHB', level: 1, damageInflict: [] }),
+				spellDetail({ name: 'Hold Person', source: 'XPHB', level: 2, concentration: true, conditionInflict: ['paralyzed'] }),
+			]
+			const cleric: Character = {
+				id: 'filt1',
+				name: 'Filterer',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 3 }],
+				spellChoices: [{ className: 'Cleric', classSource: 'XPHB', spells: DETAILS.map(({ name }) => ({ name, source: 'XPHB' })) }],
+			}
+
+			function shown(container: HTMLElement): string[] {
+				return Array.from(container.querySelectorAll('.sheet__spells .sheet__spell-name')).map((node) => node.textContent ?? '')
+			}
+
+			it('level pills pick a section, Concentration/Ritual pick by flag, search narrows by name; All restores; nothing is written', async () => {
+				vi.mocked(loadSpellSlotsClassData).mockResolvedValue([{ className: 'Cleric', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3], [4, 2]], pactSlotsByLevel: null }])
+				vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
+				const onEdits = { onEditSpentSpellSlots: vi.fn(), onEditConcentration: vi.fn(), onEditText: vi.fn(), onEditInventory: vi.fn(), onEditResourceUses: vi.fn() }
+				const { container } = render(<CharacterSheet character={cleric} {...onEdits} />)
+				await waitFor(() => spellRow(container, 'Bless'))
+				const pills = within(screen.getByRole('group', { name: 'Filter spells' }))
+				expect(pills.getAllByRole('button').map((pill) => pill.textContent)).toEqual(['All', 'Cantrips', '1st', '2nd', 'Concentration', 'Ritual'])
+
+				fireEvent.click(pills.getByRole('button', { name: '1st' }))
+				expect(shown(container)).toEqual(['Bless', 'Cure Wounds', 'Detect Magic'])
+				fireEvent.click(pills.getByRole('button', { name: 'Concentration' }))
+				expect(shown(container)).toEqual(['Guidance', 'Bless', 'Detect Magic', 'Hold Person'])
+				fireEvent.click(pills.getByRole('button', { name: 'Ritual' }))
+				expect(shown(container)).toEqual(['Detect Magic'])
+
+				fireEvent.change(screen.getByRole('searchbox', { name: 'Search spells' }), { target: { value: 'bless' } })
+				expect(container.querySelector('.sheet__spells')!.textContent).toContain('Nothing here for this character.')
+				fireEvent.click(pills.getByRole('button', { name: 'All' }))
+				expect(shown(container)).toEqual(['Bless'])
+				fireEvent.change(screen.getByRole('searchbox', { name: 'Search spells' }), { target: { value: '' } })
+				expect(shown(container)).toEqual(['Guidance', 'Bless', 'Cure Wounds', 'Detect Magic', 'Hold Person'])
+
+				for (const onEdit of Object.values(onEdits)) expect(onEdit).not.toHaveBeenCalled()
+				expect(spellRow(container, 'Hold Person').querySelector('.sheet__spell-effect')!.textContent).toBe('Paralyzed')
 			})
 		})
 
@@ -5651,7 +5873,9 @@ describe('CharacterSheet', () => {
 				const onEdit = vi.fn()
 				const subject = play ? { ...caster, play } : caster
 				const { container } = render(<Harness initial={subject} onEdit={onEdit} />)
-				await screen.findByRole('button', { name: 'Concentrate on Bless' })
+				await waitFor(() => spellRow(container, 'Bless'))
+				// R7a: the toggle lives in the expanded row.
+				for (const name of ['Bless', 'Shield of Faith', 'Fireball']) openSpellRow(container, name)
 				return { container, onEdit }
 			}
 
@@ -5743,7 +5967,8 @@ describe('CharacterSheet', () => {
 				vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
 				const { container } = render(<CharacterSheet character={{ ...caster, play: { concentratingOn: 'Bless' } }} />)
 				await screen.findByRole('heading', { name: 'Focused' })
-				await waitFor(() => expect(container.querySelector('.sheet__spells summary')).toBeTruthy())
+				await waitFor(() => spellRow(container, 'Bless'))
+				openSpellRow(container, 'Bless')
 
 				expect(headerLine(container)).toBe('Bless')
 				expect(screen.queryByRole('button', { name: 'Drop concentration' })).toBeNull()
@@ -5762,7 +5987,9 @@ describe('CharacterSheet', () => {
 					vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
 					const concentrating: Character = { ...caster, play: { concentratingOn: 'Bless' } }
 					const { container, rerender } = render(<CharacterSheet character={concentrating} onEditConcentration={() => {}} />)
-					await screen.findByRole('button', { name: 'Concentrate on Bless' })
+					await waitFor(() => spellRow(container, 'Bless'))
+					openSpellRow(container, 'Bless')
+					openSpellRow(container, 'Shield of Faith')
 					expect(headerLine(container)).toBe('Bless')
 
 					// What the wizard's store.update hands back: a new spell list, play state carried across unchanged.
@@ -5783,7 +6010,8 @@ describe('CharacterSheet', () => {
 					vi.mocked(loadFeatGrantedSpells).mockImplementation(async (subject) => ((subject.featAsiChoices ?? []).length > 0 ? [HEX] : []))
 					const withFeat: Character = { ...caster, featAsiChoices: [HEXED_FEAT], play: { concentratingOn: 'Hex' } }
 					const { container, rerender } = render(<CharacterSheet character={withFeat} onEditConcentration={() => {}} />)
-					await screen.findByRole('button', { name: 'Concentrate on Hex' })
+					await waitFor(() => spellRow(container, 'Hex'))
+					openSpellRow(container, 'Hex')
 					expect(pressed('Concentrate on Hex')).toBe('true')
 					expect(headerLine(container)).toBe('Hex')
 
@@ -5845,10 +6073,10 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Cure Wounds'))
 
-			const cureWoundsSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Cure Wounds'))!
+			const cureWoundsSummary = openSpellRow(spellsSection, 'Cure Wounds')
 			expect(cureWoundsSummary.textContent).toContain('always prepared (Life Domain)')
 
-			const guidanceSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Guidance'))!
+			const guidanceSummary = openSpellRow(spellsSection, 'Guidance')
 			expect(guidanceSummary.textContent).toContain('player pick')
 			expect(guidanceSummary.textContent).not.toContain('always prepared')
 		})
@@ -5894,7 +6122,7 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(container.querySelector('.sheet__spells')?.textContent).toContain('Shield'))
 			const spellsSection = container.querySelector('.sheet__spells')!
 
-			const shieldSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Shield'))!
+			const shieldSummary = openSpellRow(spellsSection, 'Shield')
 			expect(shieldSummary.textContent).toContain('always prepared (The Hexblade)')
 
 			// The Warlock's own pactSlotsByLevel table (from the already-loaded spellSlotsClassData) must reach the resolver, not be silently dropped.
@@ -5929,7 +6157,7 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(container.querySelector('.sheet__spells')?.textContent).toContain('Misty Step'))
 			const spellsSection = container.querySelector('.sheet__spells')!
 
-			const mistyStepSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
+			const mistyStepSummary = openSpellRow(spellsSection, 'Misty Step')
 			expect(mistyStepSummary.textContent).toContain('always prepared (Archfey Patron)')
 		})
 
@@ -5972,7 +6200,7 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Fire Bolt'))
 
-			const fireBoltSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
+			const fireBoltSummary = openSpellRow(spellsSection, 'Fire Bolt')
 			expect(fireBoltSummary.textContent).toContain('always prepared (Evoker)')
 		})
 
@@ -6022,7 +6250,7 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Disguise Self'))
 
-			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Disguise Self'))!
+			const summary = openSpellRow(spellsSection, 'Disguise Self')
 			expect(summary.textContent).toContain('from invocation (Mask of Many Faces)')
 			// The grant is ADDITIONAL: it must never read as one of the player's own picks, which are what the spell picker counts.
 			expect(summary.textContent).not.toContain('player pick')
@@ -6069,14 +6297,13 @@ describe('CharacterSheet', () => {
 
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Healing Word'))
-			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Healing Word'))!
+			const summary = openSpellRow(spellsSection, 'Healing Word')
 			expect(summary.textContent).toContain('from species (Aasimar)')
 			expect(summary.textContent).toContain('1/long rest (no slot)')
 			expect(summary.textContent).not.toContain('player pick')
 
 			// A Fighter has no casting class at all, so these numbers can only come from the species entry (CHA 16 -> +3, PB 2).
-			const attacks = container.querySelector('.sheet__spell-attacks')!
-			expect(attacks.textContent).toContain('Aasimar')
+			const attacks = screen.getByRole('group', { name: 'Aasimar spellcasting' })
 			expect(attacks.textContent).toContain('+5')
 			expect(attacks.textContent).toContain('13')
 
@@ -6119,12 +6346,11 @@ describe('CharacterSheet', () => {
 
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Mage Hand'))
-			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Mage Hand'))!
+			const summary = openSpellRow(spellsSection, 'Mage Hand')
 			expect(summary.textContent).not.toContain('spellcasting ability not chosen yet')
 
 			// WIS 16 -> +3, PB 2 at level 3.
-			const attacks = container.querySelector('.sheet__spell-attacks')!
-			expect(attacks.textContent).toContain('Aarakocra')
+			const attacks = screen.getByRole('group', { name: 'Aarakocra spellcasting' })
 			expect(attacks.textContent).toContain('+5')
 			expect(attacks.textContent).toContain('13')
 		})
@@ -6166,7 +6392,7 @@ describe('CharacterSheet', () => {
 
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Mage Hand'))
-			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Mage Hand'))!
+			const summary = openSpellRow(spellsSection, 'Mage Hand')
 			expect(summary.textContent).toContain('from species (Elf; High Elf Lineage)')
 			expect(summary.textContent).toContain('spellcasting ability not chosen yet')
 			// No ability means no attack/DC entry to show — nothing is invented from the character's class.
@@ -6221,7 +6447,7 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Disguise Self'))
 
-			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Disguise Self'))!
+			const summary = openSpellRow(spellsSection, 'Disguise Self')
 			expect(summary.textContent).toContain('from invocation (Mask of Many Faces)')
 			expect(summary.textContent).toContain('no spell slot')
 			expect(summary.textContent).not.toContain('at will')
@@ -6262,7 +6488,7 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Misty Step'))
 
-			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
+			const summary = openSpellRow(spellsSection, 'Misty Step')
 			expect(summary.textContent).toContain('from feat (Fey Teleportation)')
 			expect(summary.textContent).toContain('1/short or long rest (no slot)')
 			expect(summary.textContent).not.toContain('/day')
@@ -6297,7 +6523,7 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Cure Wounds'))
 
-			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Cure Wounds'))!
+			const summary = openSpellRow(spellsSection, 'Cure Wounds')
 			expect(summary.textContent).toContain('always prepared (Life Domain)')
 			for (const term of ['at will', '/day', 'no spell slot', 'ritual (no slot)']) {
 				expect(summary.textContent).not.toContain(term)
@@ -6352,9 +6578,8 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Mage Hand'))
 
-			const summaries = Array.from(spellsSection.querySelectorAll('summary'))
-			const mageHand = summaries.find((s) => s.textContent?.includes('Mage Hand'))!
-			const alarm = summaries.find((s) => s.textContent?.includes('Alarm'))!
+			const mageHand = openSpellRow(spellsSection, 'Mage Hand')
+			const alarm = openSpellRow(spellsSection, 'Alarm')
 			expect(mageHand.textContent).toContain('from invocation (Pact of the Tome)')
 			expect(alarm.textContent).toContain('from invocation (Pact of the Tome)')
 			// A picked spell is still a GRANT, never one of the player's own counted picks.
@@ -6400,10 +6625,11 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Invisibility'))
 
-			const rows = Array.from(spellsSection.querySelectorAll('summary')).filter((s) => s.textContent?.includes('Invisibility'))
+			const rows = Array.from(spellsSection.querySelectorAll('.sheet__spell-name')).filter((s) => s.textContent === 'Invisibility')
 			expect(rows).toHaveLength(1)
-			expect(rows[0].textContent).toContain('from invocation (One with Shadows)')
-			expect(rows[0].textContent).toContain('from invocation (Shroud of Shadow)')
+			const invisibility = openSpellRow(spellsSection, 'Invisibility')
+			expect(invisibility.textContent).toContain('from invocation (One with Shadows)')
+			expect(invisibility.textContent).toContain('from invocation (Shroud of Shadow)')
 		})
 
 		it('a base Magic Initiate pick shows on the sheet marked "from feat (Magic Initiate)" (slice d5b-2)', async () => {
@@ -6448,7 +6674,7 @@ describe('CharacterSheet', () => {
 
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Fire Bolt'))
-			const fireBoltSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
+			const fireBoltSummary = openSpellRow(spellsSection, 'Fire Bolt')
 			expect(fireBoltSummary.textContent).toContain('from feat (Magic Initiate)')
 		})
 
@@ -6489,7 +6715,7 @@ describe('CharacterSheet', () => {
 
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Ray of Sickness'))
-			const summary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Ray of Sickness'))!
+			const summary = openSpellRow(spellsSection, 'Ray of Sickness')
 			expect(summary.textContent).toContain('from feat (Magic Initiate)')
 			expect(summary.textContent).toContain('1/long rest (no slot)')
 		})
@@ -6498,8 +6724,8 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
-			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
-			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+			expect(container.querySelector('.sheet__spell-header')).toBeNull()
+			expect(container.querySelector('.sheet__spell-section')).toBeNull()
 			expect(container.querySelector('.sheet__spells')).toBeNull()
 		})
 
@@ -6548,14 +6774,11 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={fighter} />)
 			await screen.findByRole('heading', { name: 'Magic Initiate Fighter' })
 
-			const attackSection = container.querySelector('.sheet__spell-attacks')!
-			expect(attackSection).not.toBeNull()
-			expect(attackSection.textContent).toContain('Magic Initiate (Intelligence)')
-			expect(attackSection.textContent).toContain('Spell attack bonus')
-			expect(attackSection.textContent).toContain('+3')
-			expect(attackSection.textContent).toContain('Spell save DC')
-			expect(attackSection.textContent).toContain('11')
-			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+			const attackSection = await screen.findByRole('group', { name: 'Magic Initiate spellcasting' })
+			expect(attackSection.textContent).toContain('Spell Attack+3')
+			expect(attackSection.textContent).toContain('Save DC11')
+			expect(screen.queryByRole('button', { name: 'Spell Slots' })).toBeNull()
+			expect(container.querySelector('.sheet__spell-section-heading .sheet__use-boxes')).toBeNull()
 
 			const spellsSection = container.querySelector('.sheet__spells')
 			expect(spellsSection).not.toBeNull()
@@ -6563,7 +6786,7 @@ describe('CharacterSheet', () => {
 			expect(spellsSection!.textContent).toContain('Mage Hand')
 			expect(spellsSection!.textContent).toContain('Shield')
 
-			const fireBoltSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fire Bolt'))!
+			const fireBoltSummary = openSpellRow(spellsSection!, 'Fire Bolt')
 			expect(fireBoltSummary.textContent).toContain('from feat (Magic Initiate)')
 		})
 
@@ -6589,17 +6812,15 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={fighter} />)
 			await screen.findByRole('heading', { name: 'Fey Touched Fighter' })
 
-			const attackSection = container.querySelector('.sheet__spell-attacks')!
-			expect(attackSection).not.toBeNull()
-			expect(attackSection.textContent).toContain('Fey Teleportation (Intelligence)')
+			const attackSection = await screen.findByRole('group', { name: 'Fey Teleportation spellcasting' })
 			expect(attackSection.textContent).toContain('+3')
 			expect(attackSection.textContent).toContain('11')
-			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+			expect(screen.queryByRole('button', { name: 'Spell Slots' })).toBeNull()
 
 			const spellsSection = container.querySelector('.sheet__spells')
 			expect(spellsSection).not.toBeNull()
 			await waitFor(() => expect(spellsSection!.textContent).toContain('Misty Step'))
-			const summary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
+			const summary = openSpellRow(spellsSection!, 'Misty Step')
 			expect(summary.textContent).toContain('from feat (Fey Teleportation)')
 		})
 
@@ -6636,7 +6857,7 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(spellsSection!.textContent).toContain('Detect Magic'))
 			expect(spellsSection!.textContent).toContain('Levitate')
 			expect(spellsSection!.textContent).toContain('Dispel Magic')
-			const summary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Detect Magic'))!
+			const summary = openSpellRow(spellsSection!, 'Detect Magic')
 			expect(summary.textContent).toContain('from feat (Drow High Magic)')
 		})
 
@@ -6680,9 +6901,9 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(spellsSection!.textContent).toContain('Misty Step'))
 			expect(spellsSection!.textContent).toContain('Identify')
 
-			const mistyStepSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Misty Step'))!
+			const mistyStepSummary = openSpellRow(spellsSection!, 'Misty Step')
 			expect(mistyStepSummary.textContent).toContain('from feat (Fey-Touched)')
-			const identifySummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Identify'))!
+			const identifySummary = openSpellRow(spellsSection!, 'Identify')
 			expect(identifySummary.textContent).toContain('from feat (Fey-Touched)')
 		})
 
@@ -6732,9 +6953,9 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(spellsSection!.textContent).toContain('Alarm'))
 			expect(spellsSection!.textContent).toContain('Comprehend Languages')
 
-			const alarmSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Alarm'))!
+			const alarmSummary = openSpellRow(spellsSection!, 'Alarm')
 			expect(alarmSummary.textContent).toContain('from feat (Ritual Caster)')
-			const clSummary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Comprehend Languages'))!
+			const clSummary = openSpellRow(spellsSection!, 'Comprehend Languages')
 			expect(clSummary.textContent).toContain('from feat (Ritual Caster)')
 		})
 
@@ -6760,17 +6981,15 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={fighter} />)
 			await screen.findByRole('heading', { name: 'Marked Fighter' })
 
-			const attackSection = container.querySelector('.sheet__spell-attacks')!
-			expect(attackSection).not.toBeNull()
-			expect(attackSection.textContent).toContain('Mark of Detection (Intelligence)')
+			const attackSection = await screen.findByRole('group', { name: 'Mark of Detection spellcasting' })
 			expect(attackSection.textContent).toContain('+3')
 			expect(attackSection.textContent).toContain('11')
-			expect(container.querySelector('.sheet__spell-slots')).toBeNull()
+			expect(screen.queryByRole('button', { name: 'Spell Slots' })).toBeNull()
 
 			const spellsSection = container.querySelector('.sheet__spells')
 			expect(spellsSection).not.toBeNull()
 			await waitFor(() => expect(spellsSection!.textContent).toContain('Detect Magic'))
-			const summary = Array.from(spellsSection!.querySelectorAll('summary')).find((s) => s.textContent?.includes('Detect Magic'))!
+			const summary = openSpellRow(spellsSection!, 'Detect Magic')
 			expect(summary.textContent).toContain('from feat (Mark of Detection)')
 		})
 
@@ -6820,10 +7039,10 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={multiclass} />)
 			await screen.findByRole('heading', { name: 'Theurge' })
 
+			// R7a: more than one source puts a "Class (ABI)" label over each set.
 			const attackSection = container.querySelector('.sheet__spell-attacks')!
-			expect(attackSection.textContent).toContain('Wizard (Intelligence)')
-			expect(attackSection.textContent).toContain('Cleric (Wisdom)')
-			expect(attackSection.querySelectorAll(':scope > ul > li')).toHaveLength(2)
+			expect(Array.from(attackSection.querySelectorAll('.sheet__spell-source-label')).map((label) => label.textContent)).toEqual(['Wizard (INT)', 'Cleric (WIS)'])
+			expect(attackSection.querySelectorAll('.sheet__spell-source')).toHaveLength(2)
 		})
 	})
 
@@ -6884,12 +7103,10 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Fireball'))
 
-			const fireballSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Fireball'))!
-			expect(fireballSummary.textContent).toContain('unavailable at this level')
-			const mageArmorSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Mage Armor'))!
-			expect(mageArmorSummary.textContent).not.toContain('unavailable at this level')
-			const cantripSummary = Array.from(spellsSection.querySelectorAll('summary')).find((s) => s.textContent?.includes('Prestidigitation'))!
-			expect(cantripSummary.textContent).not.toContain('unavailable at this level')
+			const subtitle = (name: string) => spellRow(spellsSection, name).querySelector('.sheet__action-subtitle')!.textContent
+			expect(subtitle('Fireball')).toBe('Chosen · Unavailable at this level')
+			expect(subtitle('Mage Armor')).toBe('Chosen')
+			expect(subtitle('Prestidigitation')).toBe('Chosen')
 			expect(spellsSection.querySelector('.sheet__spell-count-over')).toBeNull()
 			expect(spellsSection.querySelector('.sheet__spell-limit-unknown')).toBeNull()
 		})
@@ -6949,7 +7166,7 @@ describe('CharacterSheet', () => {
 
 			expect(spellsSection.textContent).toContain('Cantrips: 5 known, 4 allowed.')
 			expect(spellsSection.textContent).toContain('Spells known: 3 known, 2 allowed.')
-			expect(spellsSection.querySelector('.spell-list__unavailable')).toBeNull()
+			expect(spellsSection.textContent).not.toContain('Unavailable at this level')
 		})
 
 		it('shows no limit notice anywhere for a character within its limits', async () => {
@@ -6993,7 +7210,7 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Mage Armor'))
 
-			expect(spellsSection.querySelector('.spell-list__unavailable')).toBeNull()
+			expect(spellsSection.textContent).not.toContain('Unavailable at this level')
 			expect(spellsSection.querySelector('.sheet__spell-count-over')).toBeNull()
 			expect(spellsSection.querySelector('.sheet__spell-limit-unknown')).toBeNull()
 		})
@@ -7024,7 +7241,7 @@ describe('CharacterSheet', () => {
 
 			expect(container.querySelector('.sheet__spell-limit-unknown')).toBeTruthy()
 			expect(spellsSection.textContent).toContain('combining more than one class')
-			expect(spellsSection.querySelector('.spell-list__unavailable')).toBeNull()
+			expect(spellsSection.textContent).not.toContain('Unavailable at this level')
 			expect(spellsSection.querySelector('.sheet__spell-count-over')).toBeNull()
 		})
 	})

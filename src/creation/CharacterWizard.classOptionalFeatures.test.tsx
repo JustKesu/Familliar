@@ -293,6 +293,7 @@ function cantripDetail(name: string, damageInflict: string[], spellAttack?: stri
 		entriesHigherLevel: [],
 		scalingLevelDice: [],
 		damageInflict,
+		conditionInflict: [],
 	}
 }
 

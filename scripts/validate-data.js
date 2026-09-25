@@ -973,6 +973,34 @@ function validateBeasts() {
 	checkExpectedCounts(entries, "beasts");
 }
 
+/*
+ * D187: XPHB only, via extract-data.js's own ACTIONS_SOURCE — not exported
+ * from there, so the literal is repeated here.
+ */
+const ACTIONS_SOURCE = "XPHB";
+const ACTIONS_EXPECTED_COUNT = 18;
+
+function validateActions() {
+	console.log("\n--- actions.json ---");
+
+	const entries = loadOutputFile("actions.json");
+	if (!entries) return;
+
+	recordSimpleCheck(
+		`actions: exactly ${ACTIONS_EXPECTED_COUNT} records`,
+		entries.length === ACTIONS_EXPECTED_COUNT,
+		`${entries.length} records, expected ${ACTIONS_EXPECTED_COUNT}`,
+	);
+
+	const sourceFailures = [];
+	entries.forEach((entry, index) => {
+		if (entry.source !== ACTIONS_SOURCE) {
+			sourceFailures.push({ label: describeEntry(entry, index), detail: `source "${entry.source}" is not ${ACTIONS_SOURCE}` });
+		}
+	});
+	recordCheck(`actions: every record comes from ${ACTIONS_SOURCE}`, sourceFailures);
+}
+
 /* ============================================================================
  * SECTION 5b — CLASS VALIDATORS
  * ==========================================================================*/
@@ -1514,6 +1542,7 @@ function main() {
 	validateItemEntries();
 	validateLanguages();
 	validateBeasts();
+	validateActions();
 	validateHitPointBonusTable();
 	validateDanglingRefs();
 	// ---------------------------------------------------------------

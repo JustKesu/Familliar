@@ -2,10 +2,8 @@ import type { ReactNode } from 'react'
 import type { ResolverData } from '../featureResolver'
 import { ResolvedEntries } from '../featureResolver'
 import type { SpellDetail } from '../spells/spellDetailData'
-import { findSpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
-import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration, formatRange, formatScalingLevelDice, formatSpellUsage, spellLevelLabel, spellUsageKey } from './spellFormatting'
-import { UnresolvedValue } from './ValueBreakdown'
+import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration, formatRange, formatScalingLevelDice, formatSpellUsage, spellUsageKey } from './spellFormatting'
 
 /*
  * The character's spells (build order step 6, slice d4, sheet items 3+4):
@@ -16,9 +14,9 @@ import { UnresolvedValue } from './ValueBreakdown'
  * provenance) — `chosen` and `subclassOrigins` are independent flags on the
  * same entry rather than two rows.
  *
- * Collapsed by default (a <details> per spell, same pattern as the sheet's
- * feat list); expanding shows the fields a paper sheet shows, read from the
- * spell's own data rather than hand-formatted prose (spellFormatting.ts).
+ * R7a (D189): the rows are the Spells tab in CharacterSheet.tsx
+ * (spellsTabData.ts); this module keeps the merge, the provenance label and
+ * the expanded text.
  *
  * d5a adds feat-granted spells (featSpells.ts) as a third source, merged the
  * same way — `featOrigins` names the granting feat(s), distinct from
@@ -157,129 +155,6 @@ export function combineSpellEntries(
 	}
 
 	return [...map.values()]
-}
-
-const UNRESOLVED_LEVEL = -1
-
-export function SpellList({
-	entries,
-	spellDetails,
-	resolverData,
-	unavailableAboveLevel,
-	concentratingOn = null,
-	onToggleConcentration,
-}: {
-	entries: SheetSpellEntry[]
-	spellDetails: SpellDetail[]
-	resolverData: ResolverData
-	/** Slice 8e2: the highest level this character can currently cast, when known — a CHOSEN spell above it is marked unavailable rather than dropped (D106). Undefined leaves every spell unmarked, the multiclass/unknown case the sheet already states elsewhere. */
-	unavailableAboveLevel?: number
-	/** Slice 9d1: the spell currently concentrated on, by name — the one row whose button shows as pressed. */
-	concentratingOn?: string | null
-	/** Absent on a read-only sheet — the concentration spells then show no button. */
-	onToggleConcentration?: (spellName: string) => void
-}): ReactNode {
-	if (entries.length === 0) return <p>No spells chosen yet.</p>
-
-	const withDetail = entries.map((entry) => ({ entry, detail: findSpellDetail(spellDetails, entry.name, entry.source) }))
-
-	const byLevel = new Map<number, typeof withDetail>()
-	for (const item of withDetail) {
-		const level = item.detail?.level ?? UNRESOLVED_LEVEL
-		const bucket = byLevel.get(level) ?? []
-		bucket.push(item)
-		byLevel.set(level, bucket)
-	}
-
-	const levels = [...byLevel.keys()].sort((a, b) => {
-		if (a === UNRESOLVED_LEVEL) return 1
-		if (b === UNRESOLVED_LEVEL) return -1
-		return a - b
-	})
-
-	return (
-		<>
-			{levels.map((level) => (
-				<div key={level} className="spell-list__level-group">
-					<h3>{level === UNRESOLVED_LEVEL ? 'Unresolved' : spellLevelLabel(level)}</h3>
-					<ul>
-						{byLevel.get(level)!.map(({ entry, detail }) => (
-							<SpellRow
-								key={keyOf(entry.name, entry.source)}
-								entry={entry}
-								detail={detail}
-								resolverData={resolverData}
-								unavailableAboveLevel={unavailableAboveLevel}
-								concentrating={concentratingOn === entry.name}
-								onToggleConcentration={onToggleConcentration}
-							/>
-						))}
-					</ul>
-				</div>
-			))}
-		</>
-	)
-}
-
-function SpellRow({
-	entry,
-	detail,
-	resolverData,
-	unavailableAboveLevel,
-	concentrating,
-	onToggleConcentration,
-}: {
-	entry: SheetSpellEntry
-	detail: SpellDetail | undefined
-	resolverData: ResolverData
-	unavailableAboveLevel?: number
-	concentrating: boolean
-	onToggleConcentration?: (spellName: string) => void
-}): ReactNode {
-	/* Only a CHOSEN spell is marked (slice 8e2/D106) — known/prepared spells are the ones a player swaps freely (D104), so they're the ones that can end up above what the character can currently cast. A subclass/feat/species grant stays tied to its own fixed source and is never marked here. */
-	const unavailable = entry.chosen && detail !== undefined && unavailableAboveLevel !== undefined && detail.level > unavailableAboveLevel
-
-	if (!detail) {
-		return (
-			<li>
-				<strong>{entry.name}</strong> ({entry.source}) — {provenanceLabel(entry)}
-				<div>
-					<UnresolvedValue reason={`Spell text not found for "${entry.name}" (${entry.source}).`} />
-				</div>
-			</li>
-		)
-	}
-
-	return (
-		<li>
-			<details>
-				<summary>
-					{entry.name}
-					{detail.ritual && <span className="spell-list__flag"> (ritual)</span>}
-					{detail.concentration && <span className="spell-list__flag"> (concentration)</span>}
-					{unavailable && <span className="spell-list__flag spell-list__unavailable"> (unavailable at this level)</span>}
-					{' — '}
-					{provenanceLabel(entry)}
-					{/* A button inside <summary> does not toggle the <details>. Only a spell whose data says it needs concentration gets one — an unresolved row has no such flag to read. */}
-					{detail.concentration && onToggleConcentration && (
-						<>
-							{' '}
-							<button
-								type="button"
-								className="spell-list__concentrate"
-								aria-label={`Concentrate on ${entry.name}`}
-								aria-pressed={concentrating}
-								onClick={() => onToggleConcentration(entry.name)}
-							>
-								{concentrating ? 'Concentrating' : 'Concentrate'}
-							</button>
-						</>
-					)}
-				</summary>
-				<SpellDetailBody detail={detail} resolverData={resolverData} />
-			</details>
-		</li>
-	)
 }
 
 /** A spell's text as the Spells tab shows it — also the Actions tab's expanded spell row (R5c). */

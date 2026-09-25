@@ -41,7 +41,7 @@ import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/pro
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
-import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
+import { computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
 import { highestSlotLevel } from '../spells/spellLevelFilter'
@@ -117,12 +117,26 @@ import {
 	loadSubclassSource,
 	type FeatTextEntry,
 } from './sheetData'
-import { combineSpellEntries, provenanceLabel, SpellDetailBody, SpellList } from './SpellList'
+import { combineSpellEntries, provenanceLabel, SpellDetailBody } from './SpellList'
+import {
+	filterSpellsTabSections,
+	ordinalLevel,
+	sectionLabel,
+	shortCastingTime,
+	shortUsageLabel,
+	spellEffect,
+	spellNotes,
+	spellsTabSections,
+	spellSubtitle,
+	type SpellsTabFilter,
+	type SpellsTabRow,
+	type SpellsTabSection,
+} from './spellsTabData'
 import { featureActionRows, type FeatureActionData } from './featureActionRowData'
 import { spellActionRows, spellGroupRows, type SpellActionData, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
-import { spellLevelLabel } from './spellFormatting'
+import { formatRange, spellLevelLabel } from './spellFormatting'
 import { FeatureLanguageSlots } from '../languages/FeatureLanguageSlots'
 import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { ClassToolSlots } from '../toolProficiencies/ClassToolSlots'
@@ -256,6 +270,8 @@ type DrawerContent =
 	| { kind: 'defenses' }
 	| { kind: 'action'; key: string }
 	| { kind: 'attacksPerAction' }
+	| { kind: 'spellcasting'; key: string; part: 'attack' | 'dc' }
+	| { kind: 'spellSlots' }
 
 const PROFICIENCY_ROWS: [ProficiencyCategory, string][] = [
 	['armor', 'Armor'],
@@ -1682,31 +1698,6 @@ function spellActionRow(spell: SpellActionData, onRoll: (report: RollReport) => 
 }
 
 /**
- * Spent / max for one of the 8 resources with a computed maximum (slice 9b2),
- * with a button to mark and one to undo a use. Same convention as
- * SheetHeader.tsx's death-save panel — plain counts plus disabled-at-the-bound
- * buttons, not a new counter widget.
- */
-function UsesTracker({ name, spent, max, onChange }: { name: string; spent: number; max: number; onChange?: (delta: 1 | -1) => void }): ReactNode {
-	return (
-		<span className="sheet__action-uses" role="group" aria-label={`${name} uses`}>
-			Uses: {spent} / {max}
-			{onChange && (
-				<>
-					{' '}
-					<button type="button" disabled={spent <= 0} onClick={() => onChange(-1)} aria-label={`Undo a use of ${name}`}>
-						−
-					</button>{' '}
-					<button type="button" disabled={spent >= max} onClick={() => onChange(1)} aria-label={`Use ${name}`}>
-						+
-					</button>
-				</>
-			)}
-		</span>
-	)
-}
-
-/**
  * A feature resource's uses on its Actions row (D182): one box per use up to 10,
  * filled from the left by the spent count; a bigger pool (Lay on Hands, Sorcery
  * Points) is a spent / max counter. Same `play.resourceUses` record as ever.
@@ -1988,6 +1979,259 @@ function ActionsSection({
 					),
 			)}
 			{filteredGroupEmpty && <p className="sheet__action-group-empty">Nothing here for this character.</p>}
+		</section>
+	)
+}
+
+/** One spell row of the Spells tab (R7a, D189): CAST / AT WILL / usage, name, time, range, hit/DC, effect, notes; the text below when open. */
+function SpellTabRow({
+	row,
+	section,
+	castingClassName,
+	spellAction,
+	characterLevel,
+	slotsLeft,
+	concentrating,
+	resolverData,
+	onRoll,
+	onCast,
+	onToggleConcentration,
+}: {
+	row: SpellsTabRow
+	section: SpellsTabSection
+	castingClassName: string | null
+	spellAction: SpellActionData | undefined
+	characterLevel: number
+	/** In the pool CAST spends from; 0 when the section has no slots. */
+	slotsLeft: number
+	concentrating: boolean
+	resolverData: ResolverData
+	onRoll: (report: RollReport) => void
+	onCast?: (row: SpellsTabRow, section: SpellsTabSection) => void
+	onToggleConcentration?: (spellName: string) => void
+}): ReactNode {
+	/* D116: open state is this row's own UI state. */
+	const [open, setOpen] = useState(false)
+	const { entry, detail } = row
+	const effect = detail ? spellEffect(detail, characterLevel) : null
+	let use: ReactNode = null
+	if (detail?.level === 0) use = <span className="sheet__spell-use-label">At will</span>
+	else if (detail && row.castWithSlot) {
+		if (onCast) {
+			use = (
+				<button type="button" className="btn--accent-outline sheet__spell-cast" aria-label={`Cast ${entry.name}`} disabled={slotsLeft <= 0} onClick={() => onCast(row, section)}>
+					Cast
+				</button>
+			)
+		}
+	} else if (entry.usages.length > 0) use = <span className="sheet__spell-use-label sheet__spell-use-label--usage">{entry.usages.map(shortUsageLabel).join(' · ')}</span>
+	return (
+		<li className="sheet__spell-row">
+			<div className="sheet__spell-use">{use}</div>
+			<div className="sheet__spell-name-cell">
+				<span className="sheet__spell-name-line">
+					<button type="button" className="sheet__group-row-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+						<span className="sheet__group-row-arrow" aria-hidden="true">
+							{open ? '▾' : '▸'}
+						</span>
+						<span className="sheet__spell-name">{entry.name}</span>
+					</button>
+					{row.badgeLevel !== null && <span className="sheet__spell-badge">{ordinalLevel(row.badgeLevel)}</span>}
+				</span>
+				<span className="sheet__action-subtitle">{spellSubtitle(row, castingClassName)}</span>
+			</div>
+			{detail ? (
+				<>
+					<div className="sheet__spell-cell">{shortCastingTime(detail)}</div>
+					<div className="sheet__spell-cell">{formatRange(detail.range)}</div>
+					<div className="sheet__action-to-hit">
+						{spellAction?.unresolved ? (
+							<UnresolvedValue reason={spellAction.unresolved} />
+						) : (
+							<>
+								{spellAction?.attack && (
+									<RollButton modifier={spellAction.attack.bonus} label={`${entry.name} spell attack`} onRoll={onRoll}>
+										{formatModifier(spellAction.attack.bonus)}
+									</RollButton>
+								)}
+								{spellAction?.save && (
+									<span className="sheet__action-dc">
+										DC {spellAction.save.dc} {spellAction.save.abilities.map((ability) => ability.slice(0, 3).toUpperCase()).join('/')}
+									</span>
+								)}
+							</>
+						)}
+					</div>
+					<div className="sheet__spell-effect">
+						{effect && 'dice' in effect ? (
+							<span className="sheet__action-damage sheet__action-damage--lines">
+								{effect.dice.map((line, index) => (
+									<SpellDamageLine key={index} line={line} spellName={entry.name} onRoll={onRoll} />
+								))}
+							</span>
+						) : (
+							effect?.text
+						)}
+					</div>
+					<div className="sheet__spell-notes">{spellNotes(entry, detail)}</div>
+				</>
+			) : (
+				<div className="sheet__spell-unresolved">
+					<UnresolvedValue reason={`Spell text not found for "${entry.name}" (${entry.source}).`} />
+				</div>
+			)}
+			{open && (
+				<div className="sheet__spell-row-text">
+					{detail && <SpellDetailBody detail={detail} resolverData={resolverData} />}
+					<p className="sheet__spell-provenance">{provenanceLabel(entry)}</p>
+					{detail?.concentration && onToggleConcentration && (
+						<button
+							type="button"
+							className="spell-list__concentrate"
+							aria-label={`Concentrate on ${entry.name}`}
+							aria-pressed={concentrating}
+							onClick={() => onToggleConcentration(entry.name)}
+						>
+							{concentrating ? 'Concentrating' : 'Concentrate'}
+						</button>
+					)}
+				</div>
+			)}
+		</li>
+	)
+}
+
+/**
+ * The Spells tab below the header numbers (R7a, D189): search and pills (local
+ * state, D116), notices, then one section per slot level with its boxes on the
+ * same `play.spentSpellSlots` record as before (9b3).
+ */
+function SpellsSection({
+	sections,
+	notices,
+	spellActions,
+	characterLevel,
+	castingClassName,
+	spentSpellSlots,
+	pactRecharge,
+	concentratingOn,
+	resolverData,
+	onRoll,
+	onSpendOrdinary,
+	onSpendPact,
+	onCast,
+	onToggleConcentration,
+}: {
+	sections: SpellsTabSection[]
+	notices: ReactNode
+	spellActions: SpellActionData[]
+	characterLevel: number
+	castingClassName: string | null
+	spentSpellSlots: SpentSpellSlots
+	pactRecharge: string
+	concentratingOn: string | null
+	resolverData: ResolverData
+	onRoll: (report: RollReport) => void
+	onSpendOrdinary?: (slotLevel: number, max: number, delta: 1 | -1) => void
+	onSpendPact?: (max: number, delta: 1 | -1) => void
+	onCast?: (row: SpellsTabRow, section: SpellsTabSection) => void
+	onToggleConcentration?: (spellName: string) => void
+}): ReactNode {
+	const [filter, setFilter] = useState<SpellsTabFilter>('all')
+	const [search, setSearch] = useState('')
+	const visible = filterSpellsTabSections(sections, filter, search)
+	const pills: { id: SpellsTabFilter; label: string }[] = [
+		{ id: 'all', label: 'All' },
+		...sections.flatMap((section) => (typeof section.key === 'number' ? [{ id: section.key, label: section.key === 0 ? 'Cantrips' : ordinalLevel(section.key) }] : [])),
+		{ id: 'concentration', label: 'Concentration' },
+		{ id: 'ritual', label: 'Ritual' },
+	]
+	const spentOrdinary = spentSpellSlots.ordinary ?? {}
+	const spentPact = spentSpellSlots.pact ?? 0
+	return (
+		<section className="sheet__spells">
+			{sections.length > 0 && (
+				<div className="sheet__actions-toolbar sheet__spells-toolbar">
+					<input type="search" className="sheet__spells-search" aria-label="Search spells" placeholder="Search spells" value={search} onChange={(event) => setSearch(event.target.value)} />
+					<div className="sheet__actions-filters" role="group" aria-label="Filter spells">
+						{pills.map(({ id, label }) => (
+							<button key={String(id)} type="button" className={filter === id ? 'pill pill--active' : 'pill'} aria-pressed={filter === id} onClick={() => setFilter(id)}>
+								{label}
+							</button>
+						))}
+					</div>
+				</div>
+			)}
+			<div className="sheet__spells-notices">{notices}</div>
+			{sections.length > 0 &&
+				(visible.length === 0 ? (
+					<p className="sheet__action-group-empty">Nothing here for this character.</p>
+				) : (
+					<div className="sheet__spell-table">
+						<div className="sheet__spell-table-head" aria-hidden="true">
+							<span />
+							<span>Name</span>
+							<span>Time</span>
+							<span>Range</span>
+							<span>Hit / DC</span>
+							<span>Effect</span>
+							<span>Notes</span>
+						</div>
+						{visible.map((section) => {
+							const level = typeof section.key === 'number' ? section.key : 0
+							const label = sectionLabel(section.key)
+							const ordinaryLeft = section.ordinarySlots - (spentOrdinary[level] ?? 0)
+							const slotsLeft = section.ordinarySlots > 0 ? ordinaryLeft : section.pactSlots - spentPact
+							return (
+								<section key={String(section.key)} className="sheet__spell-section" aria-label={label}>
+									<div className="sheet__spell-section-heading">
+										<h3>{label}</h3>
+										{section.ordinarySlots > 0 && (
+											<UseBoxes
+												name={`level ${level} spell slots`}
+												spent={spentOrdinary[level] ?? 0}
+												max={section.ordinarySlots}
+												recharge="Long Rest"
+												onChange={onSpendOrdinary ? (delta) => onSpendOrdinary(level, section.ordinarySlots, delta) : undefined}
+											/>
+										)}
+										{/* D11: the pact pool keeps its own boxes and tag, never merged into the ordinary count. */}
+										{section.pactSlots > 0 && (
+											<span className="sheet__spell-pact">
+												<span className="sheet__spell-pact-tag">Pact</span>
+												<UseBoxes
+													name="Pact Magic slots"
+													spent={spentPact}
+													max={section.pactSlots}
+													recharge={pactRecharge}
+													onChange={onSpendPact ? (delta) => onSpendPact(section.pactSlots, delta) : undefined}
+												/>
+											</span>
+										)}
+									</div>
+									<ul>
+										{section.rows.map((row) => (
+											<SpellTabRow
+												key={row.key}
+												row={row}
+												section={section}
+												castingClassName={castingClassName}
+												spellAction={spellActions.find((action) => action.key === row.key)}
+												characterLevel={characterLevel}
+												slotsLeft={slotsLeft}
+												concentrating={concentratingOn === row.entry.name}
+												resolverData={resolverData}
+												onRoll={onRoll}
+												onCast={onCast}
+												onToggleConcentration={onToggleConcentration}
+											/>
+										))}
+									</ul>
+								</section>
+							)
+						})}
+					</div>
+				))}
 		</section>
 	)
 }
@@ -3168,6 +3412,29 @@ function CharacterSheetBody({
 	function toggleConcentration(spellName: string): void {
 		onEditConcentration?.(concentratingOn === spellName ? null : spellName)
 	}
+	/* R7a (D189): one set of header numbers per spellcasting source the sheet computes. */
+	const spellcastingSources = [
+		...spellcastingEntries.map((entry) => ({ ...entry, key: `class|${entry.className}|${entry.classSource}`, name: entry.className })),
+		...featSpellcastingEntries.map((entry) => ({ ...entry, key: `feat|${entry.featName}`, name: entry.featName })),
+		...speciesSpellcastingEntries.map((entry) => ({ ...entry, key: `species|${entry.speciesName}`, name: entry.speciesName })),
+	]
+	const slotMaxima = spellSlotMaxima(spellSlotsEntries)
+	const pactSlotLevel = spellSlotsEntries.reduce((level, entry) => Math.max(level, entry.pactSlots?.slotLevel ?? 0), 0)
+	const hasSpellSlots = slotMaxima.pact > 0 || slotMaxima.ordinary.some((count) => count > 0)
+	const spellSections = spellsTabSections({
+		entries: combinedSpells,
+		details: spellDetails,
+		ordinarySlots: slotMaxima.ordinary,
+		pact: slotMaxima.pact > 0 ? { count: slotMaxima.pact, slotLevel: pactSlotLevel } : null,
+		unavailableAboveLevel: spellLimitReason === null ? (highestCastableLevel ?? undefined) : undefined,
+	})
+	/* D189: CAST spends one slot of its section's pool (ordinary first when a section has both, QUESTIONS.md) and starts concentration. */
+	function castSpell(row: SpellsTabRow, section: SpellsTabSection): void {
+		const level = typeof section.key === 'number' ? section.key : 0
+		if (section.ordinarySlots > 0) spendOrdinarySlot(level, section.ordinarySlots, 1)
+		else if (section.pactSlots > 0) spendPactSlot(section.pactSlots, 1)
+		if (row.detail?.concentration) onEditConcentration?.(row.entry.name)
+	}
 	/* D184: every chosen option (class- and subclass-level, fighting style) sits under the feature that grants it; D88's separate option sections are gone. */
 	const featureGroups = featuresTabGroups({
 		classes: character.classes,
@@ -3549,112 +3816,79 @@ function CharacterSheetBody({
 				className={activeTab === 'spells' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
 			>
 			{isCaster && (
-				<>
-					{(spellcastingEntries.length > 0 || featSpellcastingEntries.length > 0 || speciesSpellcastingEntries.length > 0) && (
-						<section className="sheet__spell-attacks">
-							<h2>Spellcasting</h2>
-							<ul>
-								{/* Divs, not paragraphs: ValueBreakdown renders a <details>, which is not valid inside a <p> — the last of the four blocks the console warned about (slices g and e2b). */}
-								{spellcastingEntries.map((entry) => (
-									<li key={`${entry.className}|${entry.classSource}`}>
-										<h3>
-											{entry.className} ({ABILITY_LABELS[entry.ability]})
-										</h3>
-										<div>
-											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
-											<ValueBreakdown breakdown={entry.spellAttackBreakdown} />
-										</div>
-										<div>
-											Spell save DC: <span>{entry.spellSaveDC}</span> <ValueBreakdown breakdown={entry.spellSaveDCBreakdown} />
-										</div>
-									</li>
-								))}
-								{featSpellcastingEntries.map((entry) => (
-									<li key={`feat|${entry.featName}`}>
-										<h3>
-											{entry.featName} ({ABILITY_LABELS[entry.ability]})
-										</h3>
-										<div>
-											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
-											<ValueBreakdown breakdown={entry.spellAttackBreakdown} />
-										</div>
-										<div>
-											Spell save DC: <span>{entry.spellSaveDC}</span> <ValueBreakdown breakdown={entry.spellSaveDCBreakdown} />
-										</div>
-									</li>
-								))}
-								{speciesSpellcastingEntries.map((entry) => (
-									<li key={`species|${entry.speciesName}`}>
-										<h3>
-											{entry.speciesName} ({ABILITY_LABELS[entry.ability]})
-										</h3>
-										<div>
-											Spell attack bonus: <span>{formatModifier(entry.spellAttackBonus)}</span>{' '}
-											<ValueBreakdown breakdown={entry.spellAttackBreakdown} />
-										</div>
-										<div>
-											Spell save DC: <span>{entry.spellSaveDC}</span> <ValueBreakdown breakdown={entry.spellSaveDCBreakdown} />
-										</div>
-									</li>
-								))}
-							</ul>
-						</section>
-					)}
-
-					{spellSlotsEntries.length > 0 && (
-						<section className="sheet__spell-slots">
-							<h2>Spell slots</h2>
-							<ul>
-								{spellSlotsEntries.map((entry) => (
-									<li key={`${entry.className}|${entry.classSource}`}>
-										<h3>{entry.className}</h3>
-										{entry.ordinarySlots && (
-											<>
-												<ul>
-													{entry.ordinarySlots.map(
-														(count, index) =>
-															count > 0 && (
-																<li key={index}>
-																	Level {index + 1}: {count}{' '}
-																	<UsesTracker
-																		name={`level ${index + 1} spell slots`}
-																		spent={spentSpellSlots.ordinary?.[index + 1] ?? 0}
-																		max={count}
-																		onChange={onEditSpentSpellSlots ? (delta) => spendOrdinarySlot(index + 1, count, delta) : undefined}
-																	/>
-																</li>
-															),
-													)}
-												</ul>
-												<ValueBreakdown breakdown={entry.ordinarySlotsBreakdown ?? []} />
-											</>
+				<div className="sheet__spell-header">
+					{spellcastingSources.length > 0 && (
+						<div className="sheet__spell-attacks">
+							{spellcastingSources.map((source) => {
+								const abilityScore = abilityScores[source.ability]
+								return (
+									<div key={source.key} className="sheet__spell-source" role="group" aria-label={`${source.name} spellcasting`}>
+										{spellcastingSources.length > 1 && (
+											<p className="sheet__spell-source-label">
+												{source.name} ({ABILITY_LABELS[source.ability].slice(0, 3).toUpperCase()})
+											</p>
 										)}
-										{/* D11: its own block with its own heading, never a line in the list above — Pact Magic is a separate pool and two numbers side by side would read as one. */}
-										{entry.pactSlots && (
-											<div className="sheet__pact-slots">
-												<h4>Pact Magic</h4>
-												{entry.pactSlots.count} slot{entry.pactSlots.count === 1 ? '' : 's'} (level {entry.pactSlots.slotLevel}){' '}
-												<UsesTracker
-													name="Pact Magic slots"
-													spent={spentSpellSlots.pact ?? 0}
-													max={entry.pactSlots.count}
-													onChange={onEditSpentSpellSlots ? (delta) => spendPactSlot(entry.pactSlots?.count ?? 0, delta) : undefined}
-												/>
-												<ValueBreakdown breakdown={entry.pactSlotsBreakdown ?? []} />
+										<div className="sheet__spell-stats">
+											<div className="sheet__spell-stat">
+												<span className="sheet__spell-stat-label">Modifier</span>
+												<span className="sheet__spell-stat-value">
+													{abilityScore.status === 'known' ? formatModifier(abilityScore.value.modifier) : <UnresolvedValue reason={abilityScore.reason} />}
+												</span>
 											</div>
-										)}
-									</li>
-								))}
-							</ul>
-						</section>
+											<div className="sheet__spell-stat">
+												<span className="sheet__spell-stat-label">Spell Attack</span>
+												<button
+													type="button"
+													className="sheet__spell-stat-value sheet__spell-stat-button"
+													aria-label={`${source.name} spell attack breakdown`}
+													onClick={() => setDrawer({ kind: 'spellcasting', key: source.key, part: 'attack' })}
+												>
+													{formatModifier(source.spellAttackBonus)}
+												</button>
+											</div>
+											<div className="sheet__spell-stat">
+												<span className="sheet__spell-stat-label">Save DC</span>
+												<button
+													type="button"
+													className="sheet__spell-stat-value sheet__spell-stat-button"
+													aria-label={`${source.name} save DC breakdown`}
+													onClick={() => setDrawer({ kind: 'spellcasting', key: source.key, part: 'dc' })}
+												>
+													{source.spellSaveDC}
+												</button>
+											</div>
+										</div>
+									</div>
+								)
+							})}
+						</div>
 					)}
-				</>
+					{hasSpellSlots && (
+						<button type="button" className="sheet__actions-per-action-label sheet__spell-slots-button" onClick={() => setDrawer({ kind: 'spellSlots' })}>
+							Spell Slots
+						</button>
+					)}
+				</div>
 			)}
 
 			{/* The section appears for a failed grant load even with nothing to list — an empty spell list and a spell list that could not be built must not look alike (D43). */}
-			{(combinedSpells.length > 0 || spellLoadErrors.length > 0 || raceSpells.notes.length > 0) && (
-				<section className="sheet__spells">
-					<h2>Spells</h2>
+			{(isCaster || combinedSpells.length > 0 || spellLoadErrors.length > 0 || raceSpells.notes.length > 0) && (
+				<SpellsSection
+					sections={spellSections}
+					spellActions={spellActions}
+					characterLevel={character.classes.reduce((sum, c) => sum + c.level, 0)}
+					castingClassName={spellcastingEntries.length === 1 ? spellcastingEntries[0]!.className : null}
+					spentSpellSlots={spentSpellSlots}
+					pactRecharge={pactShortRest !== null ? 'Short Rest' : 'Long Rest'}
+					concentratingOn={concentratingOn}
+					resolverData={resolverData}
+					onRoll={recordRoll}
+					onSpendOrdinary={onEditSpentSpellSlots ? spendOrdinarySlot : undefined}
+					onSpendPact={onEditSpentSpellSlots ? spendPactSlot : undefined}
+					onCast={onEditSpentSpellSlots ? castSpell : undefined}
+					onToggleConcentration={onEditConcentration ? toggleConcentration : undefined}
+					notices={
+				<>
 					{spellLoadErrors.map((error) => (
 						<p key={error.what} className="error">
 							Could not load {error.what}: {error.message}
@@ -3683,17 +3917,9 @@ function CharacterSheetBody({
 							Spells {spellCountEntry.label}: {leveledSpellsStored} {spellCountEntry.label}, {spellCountEntry.leveledSpellCount} allowed.
 						</p>
 					)}
-					{combinedSpells.length > 0 && (
-						<SpellList
-							entries={combinedSpells}
-							spellDetails={spellDetails}
-							resolverData={resolverData}
-							unavailableAboveLevel={spellLimitReason === null ? (highestCastableLevel ?? undefined) : undefined}
-							concentratingOn={concentratingOn}
-							onToggleConcentration={onEditConcentration ? toggleConcentration : undefined}
-						/>
-					)}
-				</section>
+				</>
+					}
+				/>
 			)}
 			</div>
 
@@ -3976,6 +4202,44 @@ function CharacterSheetBody({
 			{drawer?.kind === 'attacksPerAction' && (
 				<Drawer title="Attacks per Action" onClose={() => setDrawer(null)}>
 					<CalculatedNumber result={attacksPerAction} breakdownOpen />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'spellcasting' &&
+				(() => {
+					const source = spellcastingSources.find((candidate) => candidate.key === drawer.key)
+					if (!source) return null
+					const label = `${source.name} (${ABILITY_LABELS[source.ability]})`
+					return (
+						<Drawer title={drawer.part === 'attack' ? 'Spell Attack' : 'Save DC'} onClose={() => setDrawer(null)}>
+							<DrawerSection title={label}>
+								<p className="drawer__value">{drawer.part === 'attack' ? formatModifier(source.spellAttackBonus) : source.spellSaveDC}</p>
+								<ValueBreakdown breakdown={drawer.part === 'attack' ? source.spellAttackBreakdown : source.spellSaveDCBreakdown} open />
+							</DrawerSection>
+						</Drawer>
+					)
+				})()}
+
+			{drawer?.kind === 'spellSlots' && (
+				<Drawer title="Spell Slots" onClose={() => setDrawer(null)}>
+					{spellSlotsEntries.map((entry) => (
+						<Fragment key={`${entry.className}|${entry.classSource}`}>
+							{entry.ordinarySlots && (
+								<DrawerSection title={entry.className}>
+									<ValueBreakdown breakdown={entry.ordinarySlotsBreakdown ?? []} open />
+								</DrawerSection>
+							)}
+							{/* D11: Pact Magic under its own heading, never a line of the ordinary list. */}
+							{entry.pactSlots && (
+								<DrawerSection title="Pact Magic">
+									<p className="drawer__value">
+										{entry.pactSlots.count} slot{entry.pactSlots.count === 1 ? '' : 's'} (level {entry.pactSlots.slotLevel})
+									</p>
+									<ValueBreakdown breakdown={entry.pactSlotsBreakdown ?? []} open />
+								</DrawerSection>
+							)}
+						</Fragment>
+					))}
 				</Drawer>
 			)}
 

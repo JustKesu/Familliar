@@ -1071,6 +1071,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Dagger + Shortsword held vs. one in the backpack, Help's `{@note}` italic);
   D188 a–d (Dagger ×2: both into hand + TWF, put away back onto the stack,
   shield/Greatsword displacement, reload).
+- `e2e/spellsTab.spec.ts` — R7a a–g (Cleric 3 / Warlock 5 written into
+  localStorage before load: slot boxes, CAST, pact section + badge, Finish Short
+  Rest, concentration via CAST, pills/search, AT WILL + cantrip dice, SAVE DC
+  drawer; Magic Initiate "1/LR" through the wizard).
 
 ## Dočasné scaffolding
 
@@ -1468,6 +1472,24 @@ displacement merge the put-down row into a row with the same `inventoryRowKey`.
 `takeInHand` takes the rows to work on. Hands rule and `holdsTwoLightWeapons`
 unchanged. E2E D188 a–d in `e2e/combatActions.spec.ts`. No schema change
 (still 48).
+
+R7a (D189): Spells tab rebuilt. Header: per spellcasting source (class, feat,
+species) MODIFIER · SPELL ATTACK · SAVE DC boxes (label "Cleric (WIS)" only with
+more than one source); the two values open the Drawer (`DrawerContent` kinds
+`spellcasting`, `spellSlots`), "Spell Slots" opens the slot breakdowns (Pact
+Magic under its own heading). `SpellsSection` / `SpellTabRow` in
+`CharacterSheet.tsx` over `src/sheet/spellsTabData.ts` (pure: sections by slot
+level incl. single-pool pact placement with a level badge, filters, effect,
+notes, short usage labels). Search + pills (local state). Sections carry
+`UseBoxes` on `play.spentSpellSlots` (one per level with slots, from
+`spellSlotMaxima`; pact boxes tagged PACT, "/ Short Rest" from the Pact Magic
+text). Rows: CAST (spends the section's pool, starts concentration; disabled at
+0; absent read-only) / AT WILL / short usage label; name toggles
+`SpellDetailBody` + `provenanceLabel` + Concentrate. `SpellList`/`SpellRow` and
+`UsesTracker` removed; `SpellDetail.conditionInflict` added. `validate-data`
+checks `actions.json` (18, XPHB). E2E `e2e/spellsTab.spec.ts` (a–g; casters
+seeded into storage). No schema change (still 48). Next: R7b (USE counter for
+free-use grants), R8 (leveled damage dice).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

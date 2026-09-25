@@ -18,6 +18,7 @@ function detail(over: Partial<SpellDetail> & { name: string }): SpellDetail {
 		entriesHigherLevel: [],
 		scalingLevelDice: [],
 		damageInflict: [],
+		conditionInflict: [],
 		...over,
 	}
 }

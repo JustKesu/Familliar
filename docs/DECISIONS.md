@@ -3439,3 +3439,44 @@ drží odděleně (dvě stejné custom položky), zůstávají.
 (nejvýš v seznamu první) a oznámí; štít ani obouruční zbraň se neodmítá.
 Pravidlo D187 (dva držené řádky s Light) beze změny. Bez změny schématu;
 staré uložené postavy s drženým řádkem ×2 fungují dál (jedna zbraň v ruce).
+
+## D189 — R7a: záložka Spells
+
+Zdroj: task R7a (rework sheetu), 25. 9. 2026.
+
+**Rozložení.** Nahoře sady čísel MODIFIER · SPELL ATTACK · SAVE DC, jedna na
+každý zdroj kouzlení, který sheet počítá (třída, feat, druh); při více zdrojích
+štítek „Cleric (WIS)" nad sadou. SPELL ATTACK a SAVE DC jsou tlačítka do
+sdíleného Draweru s rozpadem; vpravo „Spell Slots" (jen když má postava sloty)
+otevře rozpad běžných slotů a Pact Magic pod vlastním nadpisem (D11). Pod tím
+vyhledávání podle jména a pilulky All · Cantrips · 1st … (jen existující sekce) ·
+Concentration · Ritual — lokální stav, nic se neukládá (D116). Pak sekce po
+úrovních („CANTRIPS", „1ST LEVEL" …, poslední „UNRESOLVED") s boxy slotů v
+nadpisu (stejné `UseBoxes` a stejný záznam `play.spentSpellSlots` jako dřív) a
+řádky: CAST / AT WILL / štítek použití · jméno (▸/▾ rozbalí text, plný
+původ a Concentrate) · Time · Range · Hit / DC · Effect · Notes.
+
+**Pact Magic.** Postava s pact sloty a bez běžných slotů (single-class Warlock):
+každé kouzlo sesílané slotem (vybrané, subclass, invokace bez podmínky použití)
+do úrovně paktu stojí v sekci úrovně paktu s odznakem své úrovně („1st"), boxy
+pactu s tagem PACT a „/ Short Rest" — 2024 Pact Magic sesílá vždy na úrovni
+slotu. Kouzla nad úrovní paktu a kouzla jen z featu/druhu zůstávají ve své
+úrovni. Postava s oběma pooly: kouzla ve své úrovni, boxy pactu s tagem PACT v
+nadpisu sekce úrovně paktu vedle běžných boxů. Výběr poolu je otázka kroku 10
+(QUESTIONS.md).
+
+**CAST** utratí jeden slot poolu sekce, pod kterou kouzlo stojí (běžný slot té
+úrovně; pact slot v sekci paktu; při obou poolech běžný). Když pool nemá nic
+volného nebo sekce sloty nemá, je CAST disabled. CAST nic nehází. Kouzlo s
+koncentrací navíc přes `onEditConcentration` spustí koncentraci (nahradí
+dosavadní). Na read-only sheetu CAST není.
+
+**Effect.** Cantrip: kostky z `scalingLevelDice` na úrovni postavy (tlačítko
+hodu jako v Actions). Jinak typy poškození z `damageInflict`, jinak podmínky z
+`conditionInflict`, jinak prázdné. Kostky levelovaných kouzel jsou jen v próze
+(D21) — až R8.
+
+**Volné použití.** Levelované kouzlo jen z featu/druhu/volby s podmínkou
+použití (1/long rest bez slotu apod.) má místo tlačítka jen krátký šedý štítek
+(„1/LR", „1/SR", „PB/LR", „At will", „Ritual"). Tlačítko USE s počítadlem až
+R7b; úložiště se pro to teď nezakládá. Schéma beze změny (48).

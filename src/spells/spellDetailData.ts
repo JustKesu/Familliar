@@ -91,6 +91,8 @@ export interface SpellDetail {
 	 * question rather than a list of spell names (D21).
 	 */
 	damageInflict: string[]
+	/** The conditions a spell can impose (98/489 spells; lowercase names, array when present). Empty when absent. */
+	conditionInflict: string[]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -111,6 +113,7 @@ interface RawSpell {
 	entriesHigherLevel?: unknown
 	scalingLevelDice?: unknown
 	damageInflict?: unknown
+	conditionInflict?: unknown
 	meta?: { ritual?: boolean }
 }
 
@@ -156,6 +159,7 @@ export function extractSpellDetails(parsed: unknown): SpellDetail[] {
 		entriesHigherLevel: Array.isArray(spell.entriesHigherLevel) ? spell.entriesHigherLevel : [],
 		scalingLevelDice: spell.scalingLevelDice ? extractScalingLevelDice(spell.scalingLevelDice) : [],
 		damageInflict: Array.isArray(spell.damageInflict) ? (spell.damageInflict.filter((d) => typeof d === 'string') as string[]) : [],
+		conditionInflict: Array.isArray(spell.conditionInflict) ? (spell.conditionInflict.filter((c) => typeof c === 'string') as string[]) : [],
 	}))
 }
 

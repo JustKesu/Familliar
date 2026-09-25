@@ -1315,6 +1315,7 @@ button:disabled {
 
 /* The to-hit and damage values are roll buttons; a DC or flat damage wears the same box without being one. */
 .sheet__actions-table .roll-value,
+.sheet__spell-table .roll-value,
 .sheet__action-dc,
 .sheet__action-flat {
   display: inline-block;
@@ -1339,7 +1340,8 @@ button:disabled {
   font-size: 14px;
 }
 
-.sheet__actions-table .roll-value:hover:not(:disabled) {
+.sheet__actions-table .roll-value:hover:not(:disabled),
+.sheet__spell-table .roll-value:hover:not(:disabled) {
   border-color: var(--accent);
 }
 
@@ -1541,6 +1543,267 @@ button:disabled {
 .sheet__action-group-empty {
   margin: 12px 18px;
   font-size: 13px;
+  color: var(--text-mute);
+}
+
+/* ---- Spells tab (R7a, D189) ---- */
+
+.sheet__spell-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 24px;
+  padding: 12px 18px 0;
+}
+
+.sheet__spell-attacks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+
+.sheet__spell-source-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-sub);
+}
+
+.sheet__spell-stats {
+  display: flex;
+  gap: 8px;
+}
+
+.sheet__spell-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 72px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.sheet__spell-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-sub);
+}
+
+.sheet__spell-stat-value {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.sheet__spell-stat-button {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.sheet__spell-stat-button:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.sheet__spell-slots-button {
+  margin-bottom: 8px;
+}
+
+.sheet__spells-toolbar {
+  justify-content: flex-start;
+}
+
+.sheet__spells-search {
+  min-width: 160px;
+  padding: 5px 11px;
+  border-radius: 14px;
+  font-size: 13px;
+}
+
+.sheet__spells-notices > * {
+  margin: 4px 18px;
+  font-size: 12px;
+}
+
+/* One grid; header, sections, lists and rows are subgrids so every row shares the column widths.
+   HIT / DC is an auto track with a 72px cell minimum, as in the Actions table, so its boxes never spill. */
+.sheet__spell-table {
+  display: grid;
+  grid-template-columns: 72px minmax(150px, 2.2fr) 56px minmax(64px, 1fr) auto minmax(80px, 1.2fr) minmax(90px, 1.4fr);
+  column-gap: 10px;
+  margin: 0 6px;
+  /* Narrow windows only: scrolling beats clipping. */
+  overflow-x: auto;
+}
+
+.sheet__spell-table-head,
+.sheet__spell-section,
+.sheet__spell-section ul,
+.sheet__spell-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.sheet__spell-table-head {
+  padding: 8px 12px 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-mute);
+}
+
+.sheet__spell-section ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet__spell-section-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 16px 12px 6px;
+}
+
+.sheet__spell-section-heading h3 {
+  margin: 0 auto 0 0;
+  font: 600 13px/1.2 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+.sheet__spell-pact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sheet__spell-pact-tag {
+  padding: 1px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+.sheet__spell-row {
+  align-items: start;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sheet__spell-use-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-mute);
+}
+
+.sheet__spell-use-label--usage {
+  white-space: normal;
+}
+
+.sheet__spell-cast {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 0;
+  border-width: 1px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sheet__spell-name-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sheet__spell-name-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.sheet__spell-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sheet__group-row-toggle:hover .sheet__spell-name {
+  color: var(--accent);
+}
+
+.sheet__spell-badge {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--text-sub);
+}
+
+.sheet__spell-cell {
+  font-size: 12px;
+}
+
+.sheet__spell-row .sheet__action-to-hit {
+  min-width: 72px;
+}
+
+.sheet__spell-effect,
+.sheet__spell-notes {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.sheet__spell-unresolved {
+  grid-column: 3 / -1;
+  font-size: 12px;
+}
+
+/* Under the name: the ▸ plus its gap is 22px, so the text lines up with the name. */
+.sheet__spell-row-text {
+  grid-column: 2 / -1;
+  max-width: 640px;
+  margin: 6px 0 0 22px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
+.sheet__spell-provenance {
+  margin: 8px 0 6px;
+  font-size: 12px;
   color: var(--text-mute);
 }
 

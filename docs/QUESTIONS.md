@@ -391,6 +391,18 @@ B5 (24. 9. 2026, D174): pickery nástrojů třídy a podtřídy hotové (Bard, M
 Artificer, Battle Master); featové volby nástrojů zůstávají.
 STATUS: nerozhodnuto, blokuje dokončení D123's Proficiencies části.
 
+### CAST s oběma pooly slotů — běžný, nebo pact slot?
+
+R7a (D189): postava s běžnými sloty i Pact Magic (multiclass Warlock) má v
+nadpisu sekce úrovně paktu boxy obou poolů. CAST tam dnes vždy utratí
+**běžný** slot; pact slot jde označit jen klikem na jeho box. Hráč by si ale měl
+moct vybrat, ze kterého poolu kouzlí (a Warlock kouzla by šla sesílat i
+pact slotem z vyšší úrovně). Patří ke kroku 10 multiclass, spolu s
+„Utracené spell sloty (9b3) sdílí klíč jen podle úrovně kouzla".
+
+Nalezeno při R7a (25. 9. 2026).
+STATUS: nerozhodnuto, čeká na krok 10.
+
 ### Aberrant Dragonmark, Natural Recovery, Magic Item Tinker — dva nezávislé limity v jedné featuře
 
 D119/D120: tyhle tři featury nesou v jednom datovém záznamu dva nezávislé

@@ -593,6 +593,8 @@ No feature record carries a structured activation cost. It is only in the text, 
 
 A spell's `damageInflict` (array of damage types, absent when the spell deals none) is how "deals damage" is read structurally — never from a hand-written list of spell names (D21).
 
+`conditionInflict` is kept in `spells.json` too (the spell extractor keeps whole records): 98 of 489 spells, always an array of lowercase condition names ("paralyzed", "unconscious"), absent otherwise. 165 leveled spells carry `damageInflict`; 55 more leveled spells carry only `conditionInflict`. `scalingLevelDice` is not on every damage cantrip: XPHB Eldritch Blast has none (its extra beams are prose). R7a reads both arrays for the Spells tab's Effect column (D189; `scripts/investigate-spell-condition-inflict.js`, not kept).
+
 Optional-features.json prerequisites carry a `choose` filter string of the form `level=N|class=X|spell attack=m;r;o`: clauses pipe-separated, values within a clause semicolon-separated. `spell attack`'s value names 5etools' generic melee/ranged/other categories, but this data's own `spellAttack` field only ever holds `["M"]` or `["R"]` — never a third value (scripts/investigate-spell-attack-values.js).
 
 ## Fluff / lore text not extracted
