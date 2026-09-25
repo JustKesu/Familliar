@@ -20,6 +20,7 @@
  */
 
 import { featInstances, type FeatRef } from '../featAsi/featInstances'
+import { featureWeaponGrantsFor } from '../calculation/featureGrants'
 import type { Character } from '../storage/character'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -33,8 +34,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * absent means the whole category.
  */
 export type WeaponProficiencyGrant =
-	| { kind: 'category'; category: string; anyOfProperties?: string[] }
+	| { kind: 'category'; category: string; anyOfProperties?: string[]; ranged?: boolean }
 	| { kind: 'firearms' }
+	/** One weapon by name (College of Swords' Scimitar) — the only place a name is matched, because no category covers it. */
+	| { kind: 'named'; name: string }
 
 /** The slice of a feats.json entry this file reads — a caller-supplied parameter (D38), same contract as featEffects.ts's FeatEffectEntry. */
 export interface FeatWeaponProficiencyEntry {
@@ -170,7 +173,8 @@ export function weaponProficiencyGrantsFor(
 	backgroundOriginFeat: FeatRef | null,
 ): WeaponProficiencyGrant[] {
 	const grants = character.classes.flatMap((cls) => weaponProficiencyGrantsForClass(parsedClasses, cls.className, cls.classSource))
-	return [...grants, ...weaponProficiencyGrantsForFeats(featInstances(character, backgroundOriginFeat), feats)]
+	// D178: subclass and class-option grants come from the table the Proficiencies card also reads.
+	return [...grants, ...featureWeaponGrantsFor(character, parsedClasses), ...weaponProficiencyGrantsForFeats(featInstances(character, backgroundOriginFeat), feats)]
 }
 
 /** Whether an items.json entry is covered by any of the grants. */
@@ -178,10 +182,14 @@ export function isProficientWithWeapon(weapon: unknown, grants: WeaponProficienc
 	if (!isRecord(weapon)) return false
 	const category = weapon['weaponCategory']
 	const properties = Array.isArray(weapon['propertyFull']) ? weapon['propertyFull'] : []
+	// ResolvedWeapon carries the first `type` segment as typeCode; raw items.json entries carry "R|XPHB".
+	const typeCode = weapon['typeCode'] ?? (typeof weapon['type'] === 'string' ? weapon['type'].split('|')[0] : undefined)
 
 	return grants.some((grant) => {
 		if (grant.kind === 'firearms') return weapon['firearm'] === true
+		if (grant.kind === 'named') return weapon['name'] === grant.name
 		if (category !== grant.category) return false
+		if (grant.ranged && typeCode !== 'R') return false
 		return grant.anyOfProperties === undefined || grant.anyOfProperties.some((property) => properties.includes(property))
 	})
 }

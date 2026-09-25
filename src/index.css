@@ -901,7 +901,7 @@ button:disabled {
   padding: 6px 0;
   white-space: normal;
   overflow-wrap: break-word;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .sheet__proficiencies li + li {

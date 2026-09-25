@@ -1,7 +1,8 @@
 import { classPrereqInfoFor } from '../featAsi/featAsiData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
-import { ARTIFICER_SUBCLASS_TOOLS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
+import { classToolGrantsFor } from '../toolProficiencies/classToolChoices'
+import { FEATURE_GRANTS } from './featureGrants'
 import { isKhoravar, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
 import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
 import type { Character, FeatChoiceDetails } from '../storage/character'
@@ -69,100 +70,6 @@ export function extractFeatProficiencyEntries(parsedFeats: unknown): FeatProfici
 const ARMOR_LABELS: Record<string, string> = { light: 'Light armor', medium: 'Medium armor', heavy: 'Heavy armor', shield: 'Shields' }
 const ARMOR_ORDER = Object.keys(ARMOR_LABELS)
 
-interface FeatureGrant {
-	className: string
-	source: ProficiencySource
-	applies: (character: Character, parsedClasses: unknown) => boolean
-	armor: string[]
-	/** A category token (`martial`) or a key of EXTRA_WEAPON_LABELS. */
-	weapons: string[]
-	tools?: string[]
-	languages?: string[]
-	/** D176: a weapon choice with no picker yet, shown as one pending row. */
-	pendingWeapons?: string
-}
-
-const EXTRA_WEAPON_LABELS: Record<string, string> = { 'martial:ranged': 'Martial ranged weapons', scimitar: 'Scimitar' }
-
-/** The stored subclass name resolved to the source of its offered classes.json entry (storage keeps no source). */
-function subclassSourceOf(parsedClasses: unknown, cls: Character['classes'][number]): string | null {
-	if (!Array.isArray(parsedClasses)) return null
-	const entry = parsedClasses.find(
-		(candidate) =>
-			isRecord(candidate) &&
-			candidate['entryType'] === 'subclass' &&
-			candidate['className'] === cls.className &&
-			candidate['classSource'] === cls.classSource &&
-			candidate['name'] === cls.subclass &&
-			!candidate['reprintedAs'],
-	)
-	return isRecord(entry) && typeof entry['source'] === 'string' ? entry['source'] : null
-}
-
-// D176: every non-XPHB grant arrives at class level 3, whatever level the 2014 feature entry carries (DATA.md).
-function subclassGrant(className: string, subclass: string, subclassSource: string, grants: Partial<FeatureGrant>, classSource = 'XPHB'): FeatureGrant {
-	return {
-		className,
-		source: { kind: 'subclass', name: subclass },
-		applies: (character, parsedClasses) =>
-			character.classes.some(
-				(cls) => cls.className === className && cls.classSource === classSource && cls.subclass === subclass && cls.level >= 3 && subclassSourceOf(parsedClasses, cls) === subclassSource,
-			),
-		armor: [],
-		weapons: [],
-		...grants,
-	}
-}
-
-// D170: XPHB class/subclass grants exist only in feature text (DATA.md), so they are a hand table. D176 adds the non-XPHB subclasses, keyed by name AND source.
-const FEATURE_GRANTS: FeatureGrant[] = [
-	{
-		className: 'Cleric',
-		source: { kind: 'classFeatureChoice', name: 'Cleric — Protector' },
-		applies: (character) => hasChoice(character, 'Cleric', 'Divine Order', 'Protector'),
-		armor: ['heavy'],
-		weapons: ['martial'],
-	},
-	{
-		className: 'Druid',
-		source: { kind: 'classFeatureChoice', name: 'Druid — Warden' },
-		applies: (character) => hasChoice(character, 'Druid', 'Primal Order', 'Warden'),
-		armor: ['medium'],
-		weapons: ['martial'],
-	},
-	{
-		className: 'Bard',
-		source: { kind: 'subclass', name: 'College of Valor' },
-		applies: (character) => character.classes.some((cls) => cls.className === 'Bard' && cls.classSource === 'XPHB' && cls.subclass === 'College of Valor' && cls.level >= 3),
-		armor: ['medium', 'shield'],
-		weapons: ['martial'],
-	},
-	{
-		className: 'Monk',
-		source: { kind: 'subclass', name: 'Warrior of Mercy' },
-		applies: (character) => hasSubclass(character, 'Monk', 'Warrior of Mercy', 3),
-		armor: [],
-		weapons: [],
-		tools: ['herbalism kit'],
-	},
-	subclassGrant('Artificer', 'Alchemist', 'EFA', { tools: ARTIFICER_SUBCLASS_TOOLS['Alchemist'] }, 'EFA'),
-	subclassGrant('Artificer', 'Armorer', 'EFA', { armor: ['heavy'], tools: ARTIFICER_SUBCLASS_TOOLS['Armorer'] }, 'EFA'),
-	subclassGrant('Artificer', 'Artillerist', 'EFA', { weapons: ['martial:ranged'], tools: ARTIFICER_SUBCLASS_TOOLS['Artillerist'] }, 'EFA'),
-	subclassGrant('Artificer', 'Battle Smith', 'EFA', { weapons: ['martial'], tools: ARTIFICER_SUBCLASS_TOOLS['Battle Smith'] }, 'EFA'),
-	subclassGrant('Artificer', 'Cartographer', 'EFA', { tools: ARTIFICER_SUBCLASS_TOOLS['Cartographer'] }, 'EFA'),
-	subclassGrant('Bard', 'College of Swords', 'XGE', { armor: ['medium'], weapons: ['scimitar'] }),
-	subclassGrant('Cleric', 'Forge Domain', 'XGE', { armor: ['heavy'], tools: ["Smith's Tools"] }),
-	subclassGrant('Cleric', 'Order Domain', 'TCE', { armor: ['heavy'] }),
-	subclassGrant('Cleric', 'Twilight Domain', 'TCE', { armor: ['heavy'], weapons: ['martial'] }),
-	subclassGrant('Druid', 'Circle of the Shepherd', 'XGE', { languages: ['Sylvan'] }),
-	subclassGrant('Fighter', 'Rune Knight', 'TCE', { tools: ["Smith's Tools"], languages: ['Giant'] }),
-	subclassGrant('Monk', 'Way of the Drunken Master', 'XGE', { tools: ["Brewer's Supplies"] }),
-	subclassGrant('Monk', 'Way of the Kensei', 'XGE', { pendingWeapons: 'Kensei weapons' }),
-	subclassGrant('Rogue', 'Mastermind', 'XGE', { tools: ['Disguise Kit', 'Forgery Kit'] }),
-	subclassGrant('Sorcerer', 'Storm Sorcery', 'XGE', { languages: ['Primordial'] }),
-	subclassGrant('Warlock', 'The Hexblade', 'XGE', { armor: ['medium', 'shield'], weapons: ['martial'] }),
-]
-
 // D173: the two "choose" shapes in classes.json / feats.json. `any` is Prodigy's untyped pick.
 const TOOL_CHOICE_NOUNS: Record<string, [string, string]> = {
 	anyArtisansTool: ["artisan's tool", "artisan's tools"],
@@ -195,23 +102,15 @@ function classToolProficiencies(parsedClasses: unknown, className: string, class
 	return Array.isArray(tools) ? tools.filter(isRecord) : []
 }
 
-function hasSubclass(character: Character, className: string, subclass: string, level: number): boolean {
-	return character.classes.some((cls) => cls.className === className && cls.classSource === 'XPHB' && cls.subclass === subclass && cls.level >= level)
-}
-
 function capitalize(text: string): string {
 	return `${text[0].toUpperCase()}${text.slice(1)}`
 }
 
-function hasChoice(character: Character, className: string, featureName: string, optionName: string): boolean {
-	return (character.classFeatureChoices ?? []).some(
-		(choice) => choice.className === className && choice.classSource === 'XPHB' && choice.featureName === featureName && choice.optionName === optionName,
-	)
-}
-
 function weaponKeyAndLabel(grant: WeaponProficiencyGrant): { key: string; label: string } {
 	if (grant.kind === 'firearms') return { key: 'firearms', label: 'Firearms' }
-	const base = `${grant.category[0].toUpperCase()}${grant.category.slice(1)} weapons`
+	if (grant.kind === 'named') return { key: grant.name.toLowerCase(), label: grant.name }
+	const base = `${grant.category[0].toUpperCase()}${grant.category.slice(1)}${grant.ranged ? ' ranged' : ''} weapons`
+	if (grant.ranged) return { key: `${grant.category}:ranged`, label: base }
 	if (!grant.anyOfProperties) return { key: grant.category, label: base }
 	return { key: `${grant.category}:${grant.anyOfProperties.join('|').toLowerCase()}`, label: `${base} with the ${grant.anyOfProperties.join(' or ')} property` }
 }
@@ -314,7 +213,7 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 	for (const grant of FEATURE_GRANTS) {
 		if (!grant.applies(character, parsedClasses)) continue
 		grant.armor.forEach((token) => addArmor(token, grant.source))
-		grant.weapons.forEach((key) => (EXTRA_WEAPON_LABELS[key] ? add(weapons, key, EXTRA_WEAPON_LABELS[key], grant.source) : addWeapon({ kind: 'category', category: key }, grant.source)))
+		grant.weapons.forEach((weapon) => addWeapon(weapon, grant.source))
 		grant.tools?.forEach((tool) => addTool(titleCase(tool), grant.source))
 		grant.languages?.forEach((language) => addLanguage(language, grant.source))
 		if (grant.pendingWeapons) pendingWeapons.push({ key: `pending:weapons:${grant.source.name}`, label: `${grant.pendingWeapons} — not chosen`, sources: [grant.source], pending: true })

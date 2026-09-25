@@ -86,6 +86,10 @@ a moment earlier. It cannot touch tracked code.
 Do not re-run the full suite after every intermediate step. Run typecheck,
 tests and validate-data once, at the end of a task.
 
+**Never use the Vercel tools** (any `mcp__*Vercel*` tool, read-only ones
+included). They prompt the user for permission and the team scope is not
+authorised anyway (403). Do not try to confirm a deployment; the user does it.
+
 **Never start the dev server and never open a browser.** No `npm run dev`, no
 `vite`, no `preview`, no browser tool, no screenshots. The user checks every
 change himself on the deployed app at https://familliar.vercel.app (it

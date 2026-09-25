@@ -3183,3 +3183,17 @@ granty se nezobrazují: nástroj Githyanki, dovednost Kalashtar, volby Trance
 podtřída zvolená v class stepu nic nedluží (Fighter 3 Champion); dluží-li
 (Battle Master, Order Domain), krok se objeví. Stará postava bez nové volby má
 krok zablokovaný v Edit Character (D172/D174).
+
+## D178 — B6d: jeden zdroj zbraňové proficiency pro kartu i útoky
+
+Zdroj: task B6d, 25. 9. 2026. Navazuje na D70, D170, D176.
+
+Proficiency se zbraněmi ze subclass/class-option grantů (Hexblade, Twilight,
+Battle Smith, Artillerist, College of Swords, Protector, Warden, Valor) má jeden
+zdroj: `FEATURE_GRANTS` v `calculation/featureGrants.ts`, kde `weapons` jsou
+`WeaponProficiencyGrant[]`. Čte ho Proficiencies karta (`computeProficiencies`)
+i `weaponProficiencyGrantsFor` (útoky), takže se nemohou rozejít. Nový tvar
+grantu: `ranged` u kategorie (typ `R`; „Martial ranged weapons") a `named`
+(jediná zbraň podle jména — Scimitar). Kensei zůstává pending řádek a útokům
+nic nedává. Beze změny: Tavern Brawler, tabulka D70, rozdíl `classes[0]` vs.
+všechny třídy.

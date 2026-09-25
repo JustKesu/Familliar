@@ -1,6 +1,6 @@
 # Status
 
-Poslední aktualizace: 2026-09-24 (B6c: dovednosti z podtříd, nástroje druhů, skrytý prázdný krok level-upu, D177; před tím B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
+Poslední aktualizace: 2026-09-25 (B6d: jeden zdroj zbraňové proficiency pro kartu i útoky, D178; před tím B6c: dovednosti z podtříd, nástroje druhů, skrytý prázdný krok level-upu, D177; před tím B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
@@ -1297,8 +1297,7 @@ as "no longer owed, not counted"). "Kensei weapons — not chosen" is a pending
 WEAPONS row with no picker. Wizard step renamed "Languages & Tools". Level-up
 banner on that step is gone once the class step has chosen the subclass; before
 that it names the subclasses with a pick (Fighter, Rogue, Monk, Artificer 3).
-Deferred: skills, Cavalier/Samurai, Scout expertise, species tools (B6c);
-attack proficiency from subclass grants (B6d).
+Deferred: skills, Cavalier/Samurai, Scout expertise, species tools (B6c).
 
 B6c (D177): schema 48 (`Character.subclassSkills`; `grantedBy` `cavalier`/
 `samurai` for languages, `warforged`/`satyr`/`khoravar` for `toolChoices`; 47→48
@@ -1319,7 +1318,13 @@ in code — a sheet render of a Rogue 3 Scout / Drunken Master / Warrior of Merc
 saved by the wizard's `saveCharacter` through a real `CharacterStore` shows the
 grants (regression test in `CharacterSheet.test.tsx`). Skills card: skill name
 14px, proficiency marks (skills and saves) 14px.
-Next: attack proficiency from subclass grants (B6d).
+
+B6d (D178): weapon proficiency from subclass/class-option grants has one
+source, `FEATURE_GRANTS` in `src/calculation/featureGrants.ts` (moved out of
+`proficiencies.ts`), read by the Proficiencies card and by
+`weaponProficiencyGrantsFor` (attacks). Grants gained `ranged` and `named`
+(Scimitar). Kensei stays a pending row, grants attacks nothing. Proficiencies
+card text 14px.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
