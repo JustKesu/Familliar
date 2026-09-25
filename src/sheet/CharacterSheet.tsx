@@ -49,7 +49,7 @@ import { highestSlotLevel } from '../spells/spellLevelFilter'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
-import { computeAttacksPerAction, computeWeaponAttacks, type WeaponAttack } from '../calculation/weaponAttacks'
+import { computeAttacksPerAction, computeWeaponAttacks, damageText, type WeaponAttack } from '../calculation/weaponAttacks'
 import {
 	computeDamageResponses,
 	damageResponseBreakdown,
@@ -249,6 +249,8 @@ type DrawerContent =
 	| { kind: 'stat'; stat: StatCard }
 	| { kind: 'hitPoints' }
 	| { kind: 'defenses' }
+	| { kind: 'action'; key: string }
+	| { kind: 'attacksPerAction' }
 
 const PROFICIENCY_ROWS: [ProficiencyCategory, string][] = [
 	['armor', 'Armor'],
@@ -1460,9 +1462,25 @@ interface ActionTableRow {
  * only — every value comes straight from computeWeaponAttacks (build order step
  * 7 slice c), unchanged by this slice.
  */
+const WEAPON_KIND_LABELS: Record<NonNullable<WeaponAttack['kind']>, string> = {
+	melee: 'Melee Weapon',
+	ranged: 'Ranged Weapon',
+	unarmed: 'Unarmed',
+}
+
+/** R5a (D166's pattern): the row's name opens its breakdown in the drawer; the values beside it are roll buttons. */
+function ActionNameButton({ name, onOpen }: { name: string; onOpen?: () => void }): ReactNode {
+	return (
+		<button type="button" className="sheet__action-name" aria-label={`${name} breakdown`} onClick={onOpen}>
+			{name}
+		</button>
+	)
+}
+
 function weaponAttackRow(
 	attack: WeaponAttack,
 	onRoll: (report: RollReport) => void,
+	onOpenBreakdown?: () => void,
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void,
 	ammo?: { entries: AmmoEntry[]; onSpend?: (entry: AmmoEntry) => void },
 ): ActionTableRow {
@@ -1478,10 +1496,10 @@ function weaponAttackRow(
 		key: attack.key,
 		name: (
 			<>
-				<span className="sheet__action-name">{attack.name}</span>
+				<ActionNameButton name={attack.name} onOpen={onOpenBreakdown} />
+				{attack.kind && <span className="sheet__action-subtitle">{WEAPON_KIND_LABELS[attack.kind]}</span>}
 				{attack.abilityChoice && onChooseAttackAbility && (
 					<label className="sheet__action-ability">
-						{' '}
 						Attack with{' '}
 						<select
 							aria-label={`Attack ability for ${attack.name}`}
@@ -1500,44 +1518,45 @@ function weaponAttackRow(
 		),
 		/* Range is printed as the data writes it ("30/120"); a plain melee weapon carries none. */
 		range: attack.range ? `${attack.range} ft.` : null,
-		toHit: (
-			<>
-				<CalculatedNumber result={attack.toHit} format={formatModifier} />
-				{attack.toHit.status === 'known' && (
-					<>
-						{' '}
-						<RollButton modifier={attack.toHit.value} label={`${attack.name} to hit`} onRoll={onToHitRoll} />
-					</>
-				)}
-			</>
-		),
+		toHit:
+			attack.toHit.status === 'unknown' ? (
+				<UnresolvedValue reason={attack.toHit.reason} />
+			) : (
+				<RollButton modifier={attack.toHit.value} label={`${attack.name} to hit`} onRoll={onToHitRoll}>
+					{formatModifier(attack.toHit.value)}
+				</RollButton>
+			),
 		damage:
 			attack.damage.status === 'unknown' ? (
 				<UnresolvedValue reason={attack.damage.reason} />
 			) : (
 				<>
-					<span className="sheet__action-damage">{attack.damage.value.text}</span>
-					{/* The die above already follows the grip; this says which grip that was (slice b-fix). */}
-					{attack.damage.value.grip && (
-						<span className="sheet__action-versatile">
-							{' '}
-							(Versatile — held in {attack.damage.value.grip === 'two-handed' ? 'two hands' : 'one hand'})
-						</span>
-					)}{' '}
-					<ValueBreakdown breakdown={attack.damage.breakdown} />
+					<span className="sheet__action-damage">
 						{/* A null dice is a flat amount (Unarmed Strike without a Martial Arts die): nothing random to roll. */}
-						{damageDice && (
+						{damageDice ? (
+							<DamageRollButton
+								count={damageDice.count}
+								sides={damageDice.sides}
+								modifier={attack.damage.value.modifier}
+								label={`${attack.name} damage`}
+								onRoll={onRoll}
+							>
+								{damageText(attack.damage.value.dice, attack.damage.value.modifier, '')}
+							</DamageRollButton>
+						) : (
+							<span className="sheet__action-flat">{damageText(attack.damage.value.dice, attack.damage.value.modifier, '')}</span>
+						)}
+						{attack.damage.value.damageType && (
 							<>
 								{' '}
-								<DamageRollButton
-									count={damageDice.count}
-									sides={damageDice.sides}
-									modifier={attack.damage.value.modifier}
-									label={`${attack.name} damage`}
-									onRoll={onRoll}
-								/>
+								<span className="sheet__action-damage-type">{attack.damage.value.damageType}</span>
 							</>
 						)}
+					</span>
+					{/* The die above already follows the grip; this says which grip that was (slice b-fix). */}
+					{attack.damage.value.grip && (
+						<span className="sheet__action-versatile">Versatile — held in {attack.damage.value.grip === 'two-handed' ? 'two hands' : 'one hand'}</span>
+					)}
 				</>
 			),
 		notes: ammo ? (
@@ -1584,15 +1603,6 @@ function AmmoTracker({ weapon, entries, onSpend }: { weapon: string; entries: Am
 	)
 }
 
-const SAVE_ABILITY_LABELS: Record<string, string> = {
-	strength: 'Strength',
-	dexterity: 'Dexterity',
-	constitution: 'Constitution',
-	intelligence: 'Intelligence',
-	wisdom: 'Wisdom',
-	charisma: 'Charisma',
-}
-
 /**
  * A spell with an attack roll or a saving throw as an actions-table row (sheet
  * rebuild slice 4). Presentation only: which spells qualify and what their
@@ -1604,16 +1614,34 @@ const SAVE_ABILITY_LABELS: Record<string, string> = {
  * Notes is empty for every spell row for the same reason ("half on a save" is
  * prose, not a flag).
  */
-function spellActionRow(spell: SpellActionData): ActionTableRow {
+/** "2d10 fire damage": the leading dice, when they parse, are the roll button; the rest stays text. */
+function SpellDamageLine({ line, spellName, onRoll }: { line: string; spellName: string; onRoll: (report: RollReport) => void }): ReactNode {
+	const space = line.indexOf(' ')
+	const head = space === -1 ? line : line.slice(0, space)
+	const dice = parseDiceExpression(head)
+	if (!dice) return <span>{line}</span>
+	return (
+		<span>
+			<DamageRollButton count={dice.count} sides={dice.sides} modifier={0} label={`${spellName} damage`} onRoll={onRoll}>
+				{head}
+			</DamageRollButton>
+			{space !== -1 && <span className="sheet__action-damage-type">{line.slice(space)}</span>}
+		</span>
+	)
+}
+
+function spellActionRow(spell: SpellActionData, onRoll: (report: RollReport) => void, onOpenBreakdown?: () => void): ActionTableRow {
 	return {
 		key: `spell|${spell.key}`,
 		name: (
 			<>
-				<span className="sheet__action-name">{spell.name}</span>
-				{/* The same flags and level wording the Kouzla tab uses (SpellList.tsx) — the table has no level grouping to carry it instead. */}
-				<span className="sheet__action-spell-level"> ({spellLevelLabel(spell.level)})</span>
-				{spell.ritual && <span className="sheet__action-spell-flag"> (ritual)</span>}
-				{spell.concentration && <span className="sheet__action-spell-flag"> (concentration)</span>}
+				<ActionNameButton name={spell.name} onOpen={onOpenBreakdown} />
+				{/* The same level wording the Spells tab uses (SpellList.tsx) — the table has no level grouping to carry it instead. */}
+				<span className="sheet__action-subtitle">
+					{spellLevelLabel(spell.level)}
+					{spell.concentration && ' · Concentration'}
+					{spell.ritual && ' · Ritual'}
+				</span>
 			</>
 		),
 		range: spell.range,
@@ -1622,21 +1650,26 @@ function spellActionRow(spell: SpellActionData): ActionTableRow {
 		) : (
 			<>
 				{spell.attack && (
-					<span className="sheet__action-spell-attack">
-						{formatModifier(spell.attack.bonus)} <ValueBreakdown breakdown={spell.attack.breakdown} />
-					</span>
+					<RollButton modifier={spell.attack.bonus} label={`${spell.name} spell attack`} onRoll={onRoll}>
+						{formatModifier(spell.attack.bonus)}
+					</RollButton>
 				)}
-				{/* 5 spells carry an attack roll AND a save (spellActionRowData.ts) — both are shown, neither replaces the other. */}
-				{spell.attack && spell.save && ' · '}
+				{/* 5 spells carry an attack roll AND a save (spellActionRowData.ts) — both are shown, stacked, neither replaces the other. */}
 				{spell.save && (
-					<span className="sheet__action-spell-save">
-						DC {spell.save.dc} {spell.save.abilities.map((ability) => SAVE_ABILITY_LABELS[ability] ?? ability).join('/')}{' '}
-						<ValueBreakdown breakdown={spell.save.breakdown} />
+					<span className="sheet__action-dc">
+						DC {spell.save.dc} {spell.save.abilities.map((ability) => ability.slice(0, 3).toUpperCase()).join('/')}
 					</span>
 				)}
 			</>
 		),
-		damage: spell.damage.length > 0 ? <span className="sheet__action-damage">{spell.damage.join(' · ')}</span> : null,
+		damage:
+			spell.damage.length > 0 ? (
+				<span className="sheet__action-damage sheet__action-damage--lines">
+					{spell.damage.map((line, index) => (
+						<SpellDamageLine key={index} line={line} spellName={spell.name} onRoll={onRoll} />
+					))}
+				</span>
+			) : null,
 		notes: null,
 	}
 }
@@ -1667,55 +1700,61 @@ function UsesTracker({ name, spent, max, onChange }: { name: string; spent: numb
 }
 
 /**
- * A usable class/subclass feature or feat as an actions-table row (sheet
- * rebuild slice 5 part A). Presentation only; which features qualify is
- * featureActionRowData.ts over D86's test.
+ * A usable class/subclass feature or feat (sheet rebuild slice 5 part A),
+ * listed under the attack table until R5c groups it (D181). Which features
+ * qualify is featureActionRowData.ts over D86's test.
  *
- * Every cell but the name (and, since slice 9b2, Notes for the 8 resources
- * with a computed maximum) is empty, and deliberately: a feature's uses and
- * the pool it spends are otherwise not structured as numbers anywhere in the
- * data (D86, featureActionRowData.ts). The row says the character HAS this
- * action; the Features tab holds its text.
+ * Only the 8 resources with a computed maximum (slice 9b2) get a tracker: a
+ * feature's uses are otherwise not structured as numbers anywhere in the data
+ * (D86). The row says the character HAS this action; the Features tab holds
+ * its text.
  */
-function featureActionRow(
-	feature: FeatureActionData,
-	resourceMaxima: ReadonlyMap<string, number>,
-	resourceUses: Record<string, number>,
-	onSpendResource?: (name: string, delta: 1 | -1) => void,
-): ActionTableRow {
+function FeatureActionItem({
+	feature,
+	resourceMaxima,
+	resourceUses,
+	onSpendResource,
+}: {
+	feature: FeatureActionData
+	resourceMaxima: ReadonlyMap<string, number>
+	resourceUses: Record<string, number>
+	onSpendResource?: (name: string, delta: 1 | -1) => void
+}): ReactNode {
 	const max = resourceMaxima.get(feature.resourceName)
-	return {
-		key: `feature-action|${feature.key}`,
-		name: (
-			<>
+	return (
+		<li className="sheet__action-row sheet__feature-action">
+			<span className="sheet__feature-action-text">
 				<span className="sheet__action-name">{feature.name}</span>
-				{feature.origin && <span className="sheet__feature-origin"> ({feature.origin})</span>}
-			</>
-		),
-		range: null,
-		toHit: null,
-		damage: null,
-		notes:
-			max !== undefined ? (
+				{feature.origin && <span className="sheet__feature-origin">{feature.origin}</span>}
+			</span>
+			{max !== undefined && (
 				<UsesTracker
 					name={feature.resourceName}
 					spent={resourceUses[feature.resourceName] ?? 0}
 					max={max}
 					onChange={onSpendResource ? (delta) => onSpendResource(feature.resourceName, delta) : undefined}
 				/>
-			) : null,
-	}
+			)}
+		</li>
+	)
 }
 
+type ActionFilter = 'all' | 'attack'
+
+const ACTION_FILTERS: readonly { id: ActionFilter; label: string }[] = [
+	{ id: 'all', label: 'All' },
+	{ id: 'attack', label: 'Attack' },
+]
+
 /**
- * The actions table (sheet rebuild slice 3). One row per thing the character
- * can do on their turn: the weapons they are HOLDING plus the Unarmed Strike
- * everyone has (build order step 7 slice c), — slice 4 — every spell they
- * have access to that carries an attack roll or a saving throw, and — slice 5
- * part A — every feature they can use.
+ * The Actions tab (sheet rebuild slice 3, restyled by R5a). The attack table
+ * holds the weapons the character is HOLDING plus the Unarmed Strike everyone
+ * has (build order step 7 slice c) and — slice 4 — every spell they have
+ * access to that carries an attack roll or a saving throw. Usable features
+ * (slice 5 part A) are the "Other" list under it until R5c's groups (D181).
  *
  * Attacks per action (Extra Attack) is a property of the character's turn, not
- * of any one row, so it stays a summary line above the table.
+ * of any one row, so it stays a summary beside the filters.
  */
 function ActionsSection({
 	attacks,
@@ -1727,6 +1766,8 @@ function ActionsSection({
 	loading,
 	dataError,
 	onRoll,
+	onOpenBreakdown,
+	onOpenAttacksPerAction,
 	onChooseAttackAbility,
 	onSpendResource,
 	ammoFor,
@@ -1743,30 +1784,48 @@ function ActionsSection({
 	loading: boolean
 	dataError: string | null
 	onRoll: (report: RollReport) => void
+	/** Opens a row's to-hit/damage (or spell attack/DC) breakdown in the drawer, by the row's key (D166's pattern). */
+	onOpenBreakdown?: (key: string) => void
+	onOpenAttacksPerAction?: () => void
 	onChooseAttackAbility?: (key: string, ability: WeaponAttackAbility) => void
 	onSpendResource?: (name: string, delta: 1 | -1) => void
 	/** The inventory rows that feed a weapon firing this ammoType (slice 9d3). */
 	ammoFor: (ammoType: string) => AmmoEntry[]
 	onSpendAmmo?: (entry: AmmoEntry) => void
 }): ReactNode {
+	/* D116/R5a: which rows show is UI state of this tab only, never written to the character. */
+	const [filter, setFilter] = useState<ActionFilter>('all')
+	const open = (key: string) => (onOpenBreakdown ? () => onOpenBreakdown(key) : undefined)
 	const rows = [
 		...attacks.map((attack) =>
 			weaponAttackRow(
 				attack,
 				onRoll,
+				open(attack.key),
 				onChooseAttackAbility,
 				attack.ammoType !== undefined ? { entries: ammoFor(attack.ammoType), onSpend: onSpendAmmo } : undefined,
 			),
 		),
-		...spellActions.map(spellActionRow),
-		...featureActions.map((feature) => featureActionRow(feature, resourceMaxima, resourceUses, onSpendResource)),
+		...spellActions.map((spell) => spellActionRow(spell, onRoll, open(`spell|${spell.key}`))),
 	]
 	return (
 		<section className="sheet__actions">
-			<h2>Actions</h2>
-			{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
-			<div className="sheet__actions-per-action">
-				Attacks per action: <CalculatedNumber result={attacksPerAction} />
+			<div className="sheet__actions-toolbar">
+				<div className="sheet__actions-filters" role="group" aria-label="Filter actions">
+					{ACTION_FILTERS.map(({ id, label }) => (
+						<button key={id} type="button" className={filter === id ? 'pill pill--active' : 'pill'} aria-pressed={filter === id} onClick={() => setFilter(id)}>
+							{label}
+						</button>
+					))}
+				</div>
+				<div className="sheet__actions-per-action">
+					<button type="button" className="sheet__actions-per-action-label" aria-label="Attacks per Action breakdown" onClick={onOpenAttacksPerAction}>
+						Attacks per Action:
+					</button>{' '}
+					<strong>
+						<CalculatedValueOnly result={attacksPerAction} />
+					</strong>
+				</div>
 			</div>
 			{dataError && <p className="error">Could not load the weapon data this section needs: {dataError}</p>}
 			{loading ? (
@@ -1775,10 +1834,10 @@ function ActionsSection({
 				<table className="sheet__actions-table">
 					<thead>
 						<tr>
-							<th scope="col">Name</th>
+							<th scope="col">Attack</th>
 							<th scope="col">Range</th>
 							{/* Widened by slice 4: a weapon puts a to-hit here, a save spell a DC, and 5 spells put both. */}
-							<th scope="col">To Hit / DC</th>
+							<th scope="col">Hit / DC</th>
 							<th scope="col">Damage</th>
 							<th scope="col">Notes</th>
 						</tr>
@@ -1798,7 +1857,66 @@ function ActionsSection({
 					</tbody>
 				</table>
 			)}
+			{filter === 'all' && featureActions.length > 0 && (
+				<section className="sheet__actions-other" aria-label="Other">
+					<h3>Other</h3>
+					<ul>
+						{featureActions.map((feature, index) => (
+							<FeatureActionItem
+								key={`${feature.key}#${index}`}
+								feature={feature}
+								resourceMaxima={resourceMaxima}
+								resourceUses={resourceUses}
+								onSpendResource={onSpendResource}
+							/>
+						))}
+					</ul>
+				</section>
+			)}
 		</section>
+	)
+}
+
+/** R5a: a row's numbers opened from its name (D166's pattern) — the weapon's to-hit and damage, or the spell's attack and DC. */
+function ActionBreakdown({ attack, spell }: { attack?: WeaponAttack; spell?: SpellActionData }): ReactNode {
+	if (attack) {
+		return (
+			<>
+				<DrawerSection title="To hit">
+					<CalculatedNumber result={attack.toHit} format={formatModifier} breakdownOpen />
+				</DrawerSection>
+				<DrawerSection title="Damage">
+					{attack.damage.status === 'unknown' ? (
+						<UnresolvedValue reason={attack.damage.reason} />
+					) : (
+						<>
+							<p className="drawer__value">{attack.damage.value.text}</p>
+							<ValueBreakdown breakdown={attack.damage.breakdown} open />
+						</>
+					)}
+				</DrawerSection>
+			</>
+		)
+	}
+	if (!spell) return null
+	if (spell.unresolved) return <UnresolvedValue reason={spell.unresolved} />
+	return (
+		<>
+			{spell.attack && (
+				<DrawerSection title="Spell attack">
+					<p className="drawer__value">{formatModifier(spell.attack.bonus)}</p>
+					<ValueBreakdown breakdown={spell.attack.breakdown} open />
+				</DrawerSection>
+			)}
+			{spell.save && (
+				<DrawerSection title="Save DC">
+					<p className="drawer__value">
+						DC {spell.save.dc} {spell.save.abilities.map((ability) => ability.slice(0, 3).toUpperCase()).join('/')}
+					</p>
+					<ValueBreakdown breakdown={spell.save.breakdown} open />
+				</DrawerSection>
+			)}
+		</>
 	)
 }
 
@@ -3568,6 +3686,8 @@ function CharacterSheetBody({
 				loading={itemRefs === null || weaponAttackData === null}
 				dataError={weaponAttackDataError}
 				onRoll={recordRoll}
+				onOpenBreakdown={(key) => setDrawer({ kind: 'action', key })}
+				onOpenAttacksPerAction={() => setDrawer({ kind: 'attacksPerAction' })}
 				onChooseAttackAbility={onEditInventory ? chooseAttackAbility : undefined}
 				onSpendResource={onEditResourceUses ? spendResource : undefined}
 				ammoFor={(ammoType) => ammoEntriesFor(ammoType, character.inventory ?? [], itemRefs ?? [])}
@@ -3643,6 +3763,25 @@ function CharacterSheetBody({
 			{drawer?.kind === 'ability' && (
 				<Drawer title={ABILITY_LABELS[drawer.ability]} onClose={() => setDrawer(null)}>
 					<AbilityScorePanel result={abilityScores[drawer.ability]} />
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'action' && (() => {
+				const attack = weaponAttacks.find((candidate) => candidate.key === drawer.key)
+				const spell = spellActions.find((candidate) => `spell|${candidate.key}` === drawer.key)
+				const title = attack?.name ?? spell?.name
+				return (
+					title !== undefined && (
+						<Drawer title={title} onClose={() => setDrawer(null)}>
+							<ActionBreakdown attack={attack} spell={spell} />
+						</Drawer>
+					)
+				)
+			})()}
+
+			{drawer?.kind === 'attacksPerAction' && (
+				<Drawer title="Attacks per Action" onClose={() => setDrawer(null)}>
+					<CalculatedNumber result={attacksPerAction} breakdownOpen />
 				</Drawer>
 			)}
 

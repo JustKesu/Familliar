@@ -265,11 +265,24 @@ describe('computeWeaponAttacks — weapon properties', () => {
 	})
 
 	it('attacks with Dexterity with a ranged weapon and lists its mastery and properties', () => {
-		const attack = attackNamed(computeWeaponAttacks(character('Fighter', 1), [held(shortbow)], martialGrants), 'Shortbow')
+		const fighter = { ...character('Fighter', 1), masteries: [{ name: 'Shortbow' }] }
+		const attack = attackNamed(computeWeaponAttacks(fighter, [held(shortbow)], martialGrants), 'Shortbow')
 		expect(toHitOf(attack)).toBe(4)
 		expect(damageTextOf(attack)).toBe('1d6 + 2 piercing')
 		expect(attack.range).toBe('80/320')
 		expect(attack.notes).toEqual(['Mastery: Vex', 'Properties: Ammunition, Two-Handed'])
+	})
+
+	it('R5a (D181): notes the mastery only for a weapon kind the character has mastered', () => {
+		const fighter = { ...character('Fighter', 1), masteries: [{ name: 'Longsword', level: 1 }] }
+		const attacks = computeWeaponAttacks(fighter, [held(longsword), held(rapier)], martialGrants)
+		expect(attackNamed(attacks, 'Longsword').notes).toEqual(['Mastery: Sap', 'Properties: Versatile'])
+		expect(attackNamed(attacks, 'Rapier').notes).toEqual(['Properties: Finesse'])
+	})
+
+	it('R5a (D181): a character with no masteries gets no Mastery note at all', () => {
+		const attack = attackNamed(computeWeaponAttacks(character('Wizard', 1), [held(shortbow)], []), 'Shortbow')
+		expect(attack.notes.some((note) => note.startsWith('Mastery'))).toBe(false)
 	})
 })
 

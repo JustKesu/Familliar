@@ -68,6 +68,7 @@ export function DamageRollButton({
 	random,
 	onRoll,
 	disabled,
+	children,
 }: {
 	count: number
 	sides: number
@@ -78,10 +79,19 @@ export function DamageRollButton({
 	disabled?: boolean
 	/** The roll itself rides along as a second argument for a caller that needs the total (slice 9b6: a hit die heals by it); every other caller ignores it. */
 	onRoll?: (report: RollReport, roll: DiceRoll) => void
+	/** R5a: the damage text itself is the button, as RollButton's children (D166). */
+	children?: ReactNode
 }): ReactNode {
 	function makeRoll(): void {
 		const next = rollDice(count, sides, modifier, random)
 		onRoll?.({ label, text: formatRoll(next), detail: { dice: next.dice, keptIndex: null, modifier, total: next.total } }, next)
+	}
+	if (children !== undefined) {
+		return (
+			<button type="button" className="roll-value" aria-label={`Roll ${label}`} disabled={disabled} onClick={makeRoll}>
+				{children}
+			</button>
+		)
 	}
 	return (
 		<span className="dice-roll">

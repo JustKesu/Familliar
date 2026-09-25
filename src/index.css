@@ -232,10 +232,12 @@ button:disabled {
 
 .pill {
   font: inherit;
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
   border: 0;
   border-radius: 14px;
-  padding: 0.15rem 0.75rem;
+  padding: 5px 11px;
   background: var(--chip);
   color: var(--text-sub);
 }
@@ -1148,25 +1150,238 @@ button:disabled {
 
 /* ---- actions table (sheet rebuild slice 3) ---- */
 
-.sheet__actions-per-action {
-  margin: 0.5rem 0 0.75rem;
+/* R5a: filter pills and the attacks-per-action summary share one row. */
+.sheet__actions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 18px 8px;
 }
 
+.sheet__actions-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sheet__actions-per-action {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.sheet__actions-per-action-label {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.sheet__actions-per-action-label:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+/* R5a: a CSS grid; the rows are subgrids so every row shares the header's column widths.
+   HIT and DAMAGE are auto tracks with 64px/118px cell minimums (below), so they grow with
+   their content and never shrink under it — minmax(64px, auto) would let nowrap boxes spill. */
 .sheet__actions-table {
-  border-collapse: collapse;
+  display: grid;
+  grid-template-columns: 2.2fr 1fr auto auto 1.8fr;
+  column-gap: 10px;
   width: 100%;
+  /* Narrow windows only: the auto minimums can outgrow the panel, and scrolling beats clipping. */
+  overflow-x: auto;
+}
+
+.sheet__actions-table thead,
+.sheet__actions-table tbody {
+  display: contents;
+}
+
+.sheet__actions-table tr {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: start;
+  padding: 8px 12px;
+}
+
+.sheet__actions-table tbody tr {
+  border-top: 1px solid var(--line);
 }
 
 .sheet__actions-table th,
 .sheet__actions-table td {
-  border: 1px solid var(--rule);
-  padding: 0.35rem 0.6rem;
+  padding: 0;
   text-align: left;
-  vertical-align: top;
+  font-weight: normal;
+}
+
+.sheet__actions-table :is(th, td):nth-child(3) {
+  min-width: 64px;
+}
+
+.sheet__actions-table :is(th, td):nth-child(4) {
+  min-width: 118px;
 }
 
 .sheet__actions-table thead th {
-  background: var(--panel-bg);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-mute);
+}
+
+.sheet__action-name-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.sheet__action-name-cell .sheet__action-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  white-space: normal;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sheet__action-name-cell .sheet__action-name:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.sheet__action-subtitle {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.sheet__action-ability {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.sheet__action-range {
+  font-size: 13px;
+}
+
+.sheet__action-to-hit,
+.sheet__action-damage-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* The to-hit and damage values are roll buttons; a DC or flat damage wears the same box without being one. */
+.sheet__actions-table .roll-value,
+.sheet__action-dc,
+.sheet__action-flat {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.sheet__action-to-hit .roll-value {
+  font-size: 17px;
+}
+
+.sheet__action-dc {
+  font-size: 13px;
+}
+
+.sheet__action-damage .roll-value,
+.sheet__action-flat {
+  font-size: 14px;
+}
+
+.sheet__actions-table .roll-value:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.sheet__action-damage--lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sheet__action-damage-type,
+.sheet__action-versatile {
+  font-size: 11px;
+  color: var(--text-mute);
+}
+
+.sheet__action-notes {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.sheet__action-ammo-item {
+  white-space: nowrap;
+}
+
+.sheet__action-ammo button {
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+/* R5a, temporary until R5c's groups (D181): usable features under the table. */
+.sheet__actions-other {
+  padding: 12px 18px;
+}
+
+.sheet__actions-other h3 {
+  margin: 0 0 6px;
+  font: 600 13px/1.2 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.sheet__actions-other ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sheet__feature-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sheet__feature-action-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.sheet__feature-action .sheet__action-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sheet__feature-action .sheet__feature-origin {
+  font-size: 12px;
+}
+
+.sheet__feature-action .sheet__action-uses {
+  white-space: nowrap;
 }
 
 /* ---- character manager ---- */

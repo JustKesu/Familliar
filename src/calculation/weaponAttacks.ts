@@ -28,7 +28,7 @@
 
 import type { Ability } from '../abilities/abilityScores'
 import { TOTAL_ATTACKS_BY_FEATURE_NAME, totalAttacksAmong } from '../attacks/extraAttackData'
-import type { Character, WeaponGrip } from '../storage/character'
+import { choiceNames, type Character, type WeaponGrip } from '../storage/character'
 import { isProficientWithWeapon, type WeaponProficiencyGrant } from '../weapons/weaponProficiency'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
@@ -95,6 +95,8 @@ export interface WeaponAttack {
 	/** The inventory row this came from ("Longsword|XPHB"), or UNARMED_STRIKE_KEY. */
 	key: string
 	name: string
+	/** From the item's type code; null when the item data does not know the weapon (D43). */
+	kind: 'melee' | 'ranged' | 'unarmed' | null
 	/** Verbatim from the data ("30/120"); null for a weapon with no range field, i.e. plain melee. */
 	range: string | null
 	toHit: Calculated<number>
@@ -126,7 +128,7 @@ function signed(amount: number): string {
 	return amount >= 0 ? `+ ${amount}` : `- ${Math.abs(amount)}`
 }
 
-function damageText(dice: string | null, modifier: number, damageType: string): string {
+export function damageText(dice: string | null, modifier: number, damageType: string): string {
 	const head = dice ?? '1'
 	const withModifier = modifier === 0 ? head : `${head} ${signed(modifier)}`
 	return damageType ? `${withModifier} ${damageType}` : withModifier
@@ -184,10 +186,11 @@ function abilityFor(
 	return { using: weapon.typeCode === RANGED_TYPE_CODE ? 'dexterity' : 'strength', choice: null, reason: null }
 }
 
-function notesFor(weapon: ResolvedWeapon, proficient: boolean): string[] {
+/** R5a (D181): a weapon's mastery property applies only to a weapon kind the character has mastered (Character.masteries stores bare weapon names, D97). */
+function notesFor(weapon: ResolvedWeapon, proficient: boolean, masteredKinds: ReadonlySet<string>): string[] {
 	const notes: string[] = []
 	const mastery = weapon.masteryFull ?? []
-	if (mastery.length > 0) notes.push(`Mastery: ${mastery.join(', ')}`)
+	if (mastery.length > 0 && masteredKinds.has(weapon.name)) notes.push(`Mastery: ${mastery.join(', ')}`)
 	const properties = weapon.propertyFull ?? []
 	if (properties.length > 0) notes.push(`Properties: ${properties.join(', ')}`)
 	if (!proficient) notes.push('Not proficient — no proficiency bonus on the attack roll')
@@ -274,13 +277,14 @@ export function computeWeaponAttacks(
 	const proficiencyBonus = computeProficiencyBonus(character.classes)
 	// Same signal slice c reads for the die: a non-null die means at least one Monk level, so the ability clause and the die never disagree (D77).
 	const hasMartialArts = martialArtsDie !== null
+	const masteredKinds = new Set(choiceNames(character.masteries))
 
 	const attacks: WeaponAttack[] = held.map((row) => {
 		const key = row.key
 		if (!row.weapon) {
 			// D43: a row the item data does not know still renders, named with the bonus it carries and with the problem stated.
 			const reason = `"${row.magicBonus.label}" (${row.source}) is held but was not found in the item data.`
-			return { key, name: row.magicBonus.label, range: null, toHit: unknown(reason), damage: unknown(reason), notes: [reason], abilityChoice: null }
+			return { key, name: row.magicBonus.label, kind: null, range: null, toHit: unknown(reason), damage: unknown(reason), notes: [reason], abilityChoice: null }
 		}
 
 		const weapon = row.weapon
@@ -297,10 +301,11 @@ export function computeWeaponAttacks(
 		return {
 			key,
 			name: row.magicBonus.label,
+			kind: weapon.typeCode === RANGED_TYPE_CODE ? 'ranged' : 'melee',
 			range: weapon.range ?? null,
 			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus),
 			damage: scoresUnknown ? unknown(scoresUnknown) : noDice ? unknown(noDice) : known(damage, damage.breakdown),
-			notes: noDice ? [...notesFor(weapon, proficient), noDice] : notesFor(weapon, proficient),
+			notes: noDice ? [...notesFor(weapon, proficient, masteredKinds), noDice] : notesFor(weapon, proficient, masteredKinds),
 			abilityChoice: choice,
 			...(weapon.ammoType !== undefined ? { ammoType: weapon.ammoType } : {}),
 		}
@@ -323,9 +328,9 @@ export function computeWeaponAttacks(
 function unarmedStrike(modifiers: Record<Ability, number>, proficiencyBonus: Calculated<number>, martialArtsDie: string | null, scoresUnknown: string | null): WeaponAttack {
 	const name = 'Unarmed Strike'
 	const notes = martialArtsDie ? [`Martial Arts die (Monk): ${martialArtsDie}`] : []
-	if (scoresUnknown) return { key: UNARMED_STRIKE_KEY, name, range: null, toHit: unknown(scoresUnknown), damage: unknown(scoresUnknown), notes, abilityChoice: null }
+	if (scoresUnknown) return { key: UNARMED_STRIKE_KEY, name, kind: 'unarmed', range: null, toHit: unknown(scoresUnknown), damage: unknown(scoresUnknown), notes, abilityChoice: null }
 	if (proficiencyBonus.status === 'unknown') {
-		return { key: UNARMED_STRIKE_KEY, name, range: null, toHit: unknown(proficiencyBonus.reason), damage: unknown(proficiencyBonus.reason), notes, abilityChoice: null }
+		return { key: UNARMED_STRIKE_KEY, name, kind: 'unarmed', range: null, toHit: unknown(proficiencyBonus.reason), damage: unknown(proficiencyBonus.reason), notes, abilityChoice: null }
 	}
 
 	const hasMartialArts = martialArtsDie !== null
@@ -351,6 +356,7 @@ function unarmedStrike(modifiers: Record<Ability, number>, proficiencyBonus: Cal
 	return {
 		key: UNARMED_STRIKE_KEY,
 		name,
+		kind: 'unarmed',
 		range: null,
 		toHit: known(
 			toHitBreakdown.reduce((sum, row) => sum + row.amount, 0),

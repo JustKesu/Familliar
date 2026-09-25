@@ -24,6 +24,8 @@ export interface FighterOptions {
   feat?: string
   /** Runs on the featAsi step after the feat is picked. */
   onFeatStep?: (page: Page) => Promise<void>
+  /** The class's first starting-equipment option (Fighter: Greatsword, Flail, Javelins…) instead of the last. */
+  classGear?: boolean
 }
 
 /** Fighter with background Acolyte; stops on the Background step so the caller can inspect it. */
@@ -90,7 +92,8 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
   }
 
   await expectStep(page, 'Starting equipment')
-  await page.getByRole('group', { name: /From your class/ }).getByRole('radio').last().check()
+  const classOptions = page.getByRole('group', { name: /From your class/ }).getByRole('radio')
+  await (options.classGear ? classOptions.first() : classOptions.last()).check()
   await page.getByRole('group', { name: /From your background/ }).getByRole('radio').last().check()
   await next(page)
 

@@ -1679,7 +1679,7 @@ describe('CharacterSheet', () => {
 		const holding = (...names: string[]): Character['inventory'] => names.map((name) => ({ name, source: 'XPHB', quantity: 1, equipped: 'held' as const }))
 
 		it('lists a held longsword with its to-hit, its one-handed damage, mastery and properties', async () => {
-			const { container } = await renderSheet({ ...character, id: 'atk-longsword', inventory: holding('Longsword') })
+			const { container } = await renderSheet({ ...character, id: 'atk-longsword', inventory: holding('Longsword'), masteries: [{ name: 'Longsword' }] })
 			const row = attackRow(container, 'Longsword')
 			// STR 15 (+2) + PB 3 at level 5.
 			expect(row.textContent).toContain('+5')
@@ -1689,6 +1689,34 @@ describe('CharacterSheet', () => {
 			expect(row.textContent).toContain('Properties: Versatile')
 		})
 
+		it('R5a (D181): leaves the Mastery note off a weapon kind the character has not mastered', async () => {
+			const { container } = await renderSheet({ ...character, id: 'atk-unmastered', inventory: holding('Longsword', 'Dagger'), masteries: [{ name: 'Longsword' }] })
+			expect(attackRow(container, 'Longsword').querySelector('.sheet__action-notes')!.textContent).toContain('Mastery: Sap')
+			expect(attackRow(container, 'Dagger').querySelector('.sheet__action-notes')!.textContent).not.toContain('Mastery')
+		})
+
+		it('R5a: the name cell carries the weapon kind, and the to-hit and damage are the roll buttons themselves', async () => {
+			const { container } = await renderSheet({ ...character, id: 'atk-r5a', inventory: holding('Longsword', 'Shortbow') })
+			expect(attackRow(container, 'Longsword').querySelector('.sheet__action-subtitle')!.textContent).toBe('Melee Weapon')
+			expect(attackRow(container, 'Shortbow').querySelector('.sheet__action-subtitle')!.textContent).toBe('Ranged Weapon')
+			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-subtitle')!.textContent).toBe('Unarmed')
+			expect(screen.getByRole('button', { name: 'Roll Longsword to hit' }).textContent).toBe('+5')
+			expect(screen.getByRole('button', { name: 'Roll Longsword damage' }).textContent).toBe('1d8 + 2')
+			// Flat damage is not a button.
+			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-flat')!.textContent).toBe('1 + 2')
+		})
+
+		it('R5a (D166 pattern): a row name opens its to-hit and damage breakdowns in the drawer; no inline breakdown in the table', async () => {
+			const user = userEvent.setup()
+			const { container } = await renderSheet({ ...character, id: 'atk-drawer', inventory: holding('Longsword') })
+			expect(attacksSection(container).querySelector('.sheet__actions-table details')).toBeNull()
+			await user.click(screen.getByRole('button', { name: 'Longsword breakdown' }))
+			const drawer = screen.getByRole('dialog', { name: 'Longsword' })
+			expect(within(drawer).getByText('To hit')).toBeTruthy()
+			expect(drawer.textContent).toContain('proficiency bonus')
+			expect(drawer.textContent).toContain('1d8 + 2 slashing')
+			expect(drawer.textContent).toContain('Longsword damage dice')
+		})
 		it('shows the unarmed strike every character has, and the attacks-per-action count from the feature table', async () => {
 			const { container } = await renderSheet(character)
 			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-damage')!.textContent).toBe('1 + 2 bludgeoning')
@@ -1746,13 +1774,23 @@ describe('CharacterSheet', () => {
 			const table = attacksSection(container).querySelector('table.sheet__actions-table')!
 			expect(table).toBeTruthy()
 			const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent)
-			expect(headers).toEqual(['Name', 'Range', 'To Hit / DC', 'Damage', 'Notes'])
+			expect(headers).toEqual(['Attack', 'Range', 'Hit / DC', 'Damage', 'Notes'])
 			// One row per held weapon plus the Unarmed Strike, in the tbody.
 			const names = Array.from(table.querySelectorAll('tbody .sheet__action-row .sheet__action-name')).map((n) => n.textContent)
 			expect(names).toEqual(['Longsword', 'Unarmed Strike'])
-			// Attacks per action stays a summary line above the table, never a row.
-			expect(attacksSection(container).querySelector('.sheet__actions-per-action')!.textContent).toContain('Attacks per action')
-			expect(table.querySelector('tbody')!.textContent).not.toContain('Attacks per action')
+			// Attacks per action stays a summary beside the filters, never a row; the tab label replaced the heading.
+			expect(attacksSection(container).querySelector('.sheet__actions-per-action')!.textContent).toContain('Attacks per Action')
+			expect(table.querySelector('tbody')!.textContent).not.toContain('Attacks per Action')
+			expect(attacksSection(container).querySelector('h2')).toBeNull()
+		})
+
+		it('R5a: the attacks-per-action label opens its breakdown in the drawer', async () => {
+			const user = userEvent.setup()
+			await renderSheet({ ...character, id: 'atk-per-action' })
+			await user.click(screen.getByRole('button', { name: 'Attacks per Action breakdown' }))
+			const drawer = screen.getByRole('dialog', { name: 'Attacks per Action' })
+			expect(drawer.textContent).toContain('the Attack action')
+			expect(drawer.textContent).toContain('Extra Attack')
 		})
 
 		it('fills the Range cell for a Thrown weapon and leaves it blank for a plain melee weapon', async () => {
@@ -1852,7 +1890,7 @@ describe('CharacterSheet', () => {
 				])
 				expect(attackRow(container, 'Longsword').querySelector('.sheet__action-ammo')).toBeNull()
 				expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-ammo')).toBeNull()
-				expect(attackRow(container, 'Longsword').querySelector('.sheet__action-notes')!.textContent).toBe('Mastery: Sap · Properties: Versatile')
+				expect(attackRow(container, 'Longsword').querySelector('.sheet__action-notes')!.textContent).toBe('Properties: Versatile')
 				expect(screen.queryByRole('button', { name: /^Spend one/ })).toBeNull()
 			})
 
@@ -2050,8 +2088,8 @@ describe('CharacterSheet', () => {
 
 			it('offers no roll on an unresolved to-hit, and does on the Unarmed Strike', async () => {
 				const { container } = await renderSheet({ ...character, id: 'atk-roll-d43', inventory: holding('Sword of Nothing') })
-				expect(attackRow(container, 'Sword of Nothing').querySelector('.dice-roll__button')).toBeNull()
-				expect(attackRow(container, 'Unarmed Strike').querySelector('.dice-roll__button')).toBeTruthy()
+				expect(attackRow(container, 'Sword of Nothing').querySelector('.roll-value')).toBeNull()
+				expect(attackRow(container, 'Unarmed Strike').querySelector('.roll-value')).toBeTruthy()
 			})
 		})
 
@@ -2102,7 +2140,7 @@ describe('CharacterSheet', () => {
 				expect(screen.queryByRole('button', { name: 'Roll Unarmed Strike damage' })).toBeNull()
 				expect(screen.getByRole('button', { name: 'Roll Unarmed Strike to hit' })).toBeTruthy()
 				expect(screen.getByRole('button', { name: 'Roll Longsword damage' })).toBeTruthy()
-				expect(attackRow(container, 'Unarmed Strike').querySelectorAll('.dice-roll__button')).toHaveLength(1)
+				expect(attackRow(container, 'Unarmed Strike').querySelectorAll('.roll-value')).toHaveLength(1)
 			})
 
 		})
@@ -2501,7 +2539,8 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(held)
 			const row = attackNamed(container, 'Dagger of Venom +1')
 			expect(row.textContent).toContain('+6')
-			expect(row.textContent).toContain("considered (+1) — not applied: replaced by the +1 set on this item")
+			// R5a: the breakdown is in the drawer the row's name opens (D166's pattern).
+			expect(await drawerText('Dagger of Venom +1 breakdown')).toContain("considered (+1) — not applied: replaced by the +1 set on this item")
 		})
 
 		it('withholds an unattuned item’s bonus and applies it once attuned (D76)', async () => {
@@ -2513,7 +2552,7 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(unattuned)
 			const withheld = attackNamed(container, 'Sword of Sharpness +3')
 			expect(withheld.textContent).toContain('+5')
-			expect(withheld.textContent).toContain('requires attunement and you are not attuned to it')
+			expect(await drawerText('Sword of Sharpness +3 breakdown')).toContain('requires attunement and you are not attuned to it')
 			expect(withheld.querySelector('.sheet__action-damage')!.textContent).toBe('1d8 + 2 slashing')
 
 			cleanup()
@@ -4111,9 +4150,9 @@ describe('CharacterSheet', () => {
 
 		const RESOLVER = { classFeatures: CF, subclassFeatures: [], optionalFeatures: [], feats: [] }
 
+		/* R5a: the attack table's rows, then the Other list's (D181). */
 		function rowNames(container: HTMLElement): (string | null)[] {
-			const table = container.querySelector('.sheet__actions table.sheet__actions-table')!
-			return Array.from(table.querySelectorAll('tbody .sheet__action-row .sheet__action-name')).map((node) => node.textContent)
+			return Array.from(container.querySelectorAll('.sheet__actions .sheet__action-row .sheet__action-name')).map((node) => node.textContent)
 		}
 
 		async function renderFor(subject: Character): Promise<HTMLElement> {
@@ -4162,7 +4201,7 @@ describe('CharacterSheet', () => {
 			expect(row.querySelector('.sheet__action-uses')).toBeNull()
 		})
 
-		it('a feature row fills the Name cell only — Range, To Hit / DC and Damage stay empty', async () => {
+		it('R5a (D181): a feature is listed under "Other", outside the attack table, with its origin', async () => {
 			const fighter: Character = { ...character, id: 'act-fighter-cells', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] }
 			const container = await renderFor(fighter)
 
@@ -4171,11 +4210,25 @@ describe('CharacterSheet', () => {
 				expect(found).toBeTruthy()
 				return found as HTMLElement
 			})
-			expect(row.closest('table.sheet__actions-table')).toBeTruthy()
-			expect(row.querySelector('.sheet__action-range')!.textContent).toBe('')
-			expect(row.querySelector('.sheet__action-to-hit')!.textContent).toBe('')
-			expect(row.querySelector('.sheet__action-damage-cell')!.textContent).toBe('')
-			expect(row.querySelector('.sheet__action-notes')!.textContent).toBe('')
+			expect(row.closest('table.sheet__actions-table')).toBeNull()
+			expect(row.closest('.sheet__actions-other')!.querySelector('h3')!.textContent).toBe('Other')
+			expect(row.querySelector('.sheet__feature-origin')!.textContent).toBe('Fighter 1')
+		})
+
+		it('R5a: the Attack pill hides the Other list and keeps the table; All, the default, shows both', async () => {
+			const user = userEvent.setup()
+			const fighter: Character = { ...character, id: 'act-fighter-filter', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] }
+			const container = await renderFor(fighter)
+			await waitFor(() => expect(container.querySelector('.sheet__actions-other')).toBeTruthy())
+			expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
+
+			await user.click(screen.getByRole('button', { name: 'Attack' }))
+			expect(container.querySelector('.sheet__actions-other')).toBeNull()
+			expect(container.querySelector('.sheet__actions-table')).toBeTruthy()
+			expect(screen.getByRole('button', { name: 'Attack' }).getAttribute('aria-pressed')).toBe('true')
+
+			await user.click(screen.getByRole('button', { name: 'All' }))
+			expect(container.querySelector('.sheet__actions-other')).toBeTruthy()
 		})
 
 		it('a Barbarian gets a Rage row from `consumes` alone, with no rest tag anywhere in its text', async () => {
@@ -4347,9 +4400,11 @@ describe('CharacterSheet', () => {
 			expect(rowNames(container)).not.toContain('Defense')
 		})
 
+		/* R5a: a feature's origin is its own line in the Other list, so the name and origin read as "name (origin)" here. */
 		function nameCell(container: HTMLElement, name: string): string | null | undefined {
-			const cells = Array.from(container.querySelectorAll('.sheet__actions-table tbody .sheet__action-name-cell'))
-			return cells.find((cell) => cell.querySelector('.sheet__action-name')?.textContent === name)?.textContent
+			const item = Array.from(container.querySelectorAll('.sheet__actions-other .sheet__action-row')).find((row) => row.querySelector('.sheet__action-name')?.textContent === name)
+			const origin = item?.querySelector('.sheet__feature-origin')?.textContent
+			return item && (origin ? `${name} (${origin})` : name)
 		}
 
 		it('labels each feature row with where it came from: class and level, feat and level, the subclass for a maneuver', async () => {
@@ -4373,8 +4428,8 @@ describe('CharacterSheet', () => {
 			expect(nameCell(container, 'Lucky')).toBe('Lucky (Feat, level 4)')
 			// A wizard pick records no level (D99), so an option names only the subclass it came through.
 			expect(nameCell(container, 'Trip Attack')).toBe('Trip Attack (Battle Master)')
-			// Weapon rows carry no origin label.
-			expect(nameCell(container, 'Unarmed Strike')).toBe('Unarmed Strike')
+			// Weapon rows carry no origin label, only their kind.
+			expect(container.querySelector('.sheet__actions-table .sheet__feature-origin')).toBeNull()
 		})
 
 		it('names the class for an option its own progression granted (Metamagic)', async () => {
@@ -5016,10 +5071,32 @@ describe('CharacterSheet', () => {
 				const { container } = await renderWizard()
 				// INT 16 (+3) + PB 3 at level 5 — the same numbers the Spellcasting section shows.
 				expect(actionRow(container, 'Fire Bolt').querySelector('.sheet__action-to-hit')!.textContent).toContain('+6')
-				expect(actionRow(container, 'Fireball').querySelector('.sheet__action-to-hit')!.textContent).toContain('DC 14 Dexterity')
+				expect(actionRow(container, 'Fireball').querySelector('.sheet__action-to-hit')!.textContent).toBe('DC 14 DEX')
 				expect(() => actionRow(container, 'Mage Armor')).toThrow()
 				// Mage Armor is not duplicated away either — it stays in the Kouzla tab.
 				expect(container.querySelector('.sheet__spells')!.textContent).toContain('Mage Armor')
+			})
+
+			it('R5a: a spell attack is a roll button; a save DC has nothing to roll, so is not one', async () => {
+				const user = userEvent.setup()
+				const { container } = await renderWizard()
+				const roll = within(actionRow(container, 'Fire Bolt')).getByRole('button', { name: 'Roll Fire Bolt spell attack' })
+				expect(roll.textContent).toBe('+6')
+				await user.click(roll)
+				expect(lastRoll().label).toBe('Fire Bolt spell attack')
+				expect(lastRoll().modifier).toBe(6)
+				expect(actionRow(container, 'Fireball').querySelector('.sheet__action-to-hit button')).toBeNull()
+				// The cantrip's scaled dice roll as damage.
+				expect(within(actionRow(container, 'Fire Bolt')).getByRole('button', { name: 'Roll Fire Bolt damage' }).textContent).toBe('2d10')
+			})
+
+			it('R5a: a spell name opens its attack and save breakdowns in the drawer', async () => {
+				const user = userEvent.setup()
+				await renderWizard()
+				await user.click(screen.getByRole('button', { name: 'Fireball breakdown' }))
+				const drawer = screen.getByRole('dialog', { name: 'Fireball' })
+				expect(within(drawer).getByText('Save DC')).toBeTruthy()
+				expect(drawer.textContent).toContain('DC 14 DEX')
 			})
 
 			it('fills Damage from structured cantrip scaling only, and never invents a Notes value (D21)', async () => {
@@ -5031,8 +5108,8 @@ describe('CharacterSheet', () => {
 
 			it('labels a spell row with the level wording the spell list uses, and keeps the weapon rows alongside it', async () => {
 				const { container } = await renderWizard()
-				expect(actionRow(container, 'Fire Bolt').textContent).toContain('(Cantrip)')
-				expect(actionRow(container, 'Fireball').textContent).toContain('(Level 3)')
+				expect(actionRow(container, 'Fire Bolt').querySelector('.sheet__action-subtitle')!.textContent).toBe('Cantrip')
+				expect(actionRow(container, 'Fireball').querySelector('.sheet__action-subtitle')!.textContent).toBe('Level 3')
 				expect(actionRow(container, 'Unarmed Strike')).toBeTruthy()
 			})
 		})

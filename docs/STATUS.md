@@ -1356,6 +1356,20 @@ source, `FEATURE_GRANTS` in `src/calculation/featureGrants.ts` (moved out of
 (Scimitar). Kensei stays a pending row, grants attacks nothing. Proficiencies
 card text 14px.
 
+R5a (D181): Actions tab restyled. Filter row: pills All / Attack (local
+`useState`, never stored) and "Attacks per Action: N" (label opens the breakdown
+drawer); the `Actions` heading is gone. Attack table is a CSS grid over table
+markup (rows are subgrids): ATTACK (name button → drawer with to-hit/damage or
+spell attack/DC breakdowns, subtitle Melee/Ranged Weapon · Unarmed · spell level
++ Concentration/Ritual, Finesse select), RANGE, HIT / DC (to-hit is the
+`RollButton`; spell attacks now roll too; save = "DC 14 DEX" box, not a button),
+DAMAGE (dice are the `DamageRollButton`, which gained `children`; flat damage and
+unparsed spell text stay text), NOTES. Features (Second Wind, Rage…) moved out
+of the table into a temporary "Other" list under it; Attack hides it. Mastery
+note only for weapon kinds in `Character.masteries`; `WeaponAttack.kind` added.
+Next: R5b (feature classification investigation), R5c (groups, remaining
+filters). E2E `e2e/actions.spec.ts`.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

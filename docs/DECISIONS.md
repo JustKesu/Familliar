@@ -3228,3 +3228,28 @@ ručně spuštěného serveru, takže funguje i přes Remote Control. Neprošlý
 blokuje commit stejně jako unit testy. Uživatel na nasazené appce kontroluje
 jen to, co se musí posoudit okem: layout, velikosti, zalamování, vzhled.
 Jiný prohlížeč než ten, který spustí Playwright, agent dál nepoužívá.
+
+## D181 — R5: záložka Actions ve třech řezech; mastery jen u ovládnutých zbraní
+
+Zdroj: task R5a (rework sheetu), 25. 9. 2026.
+
+**Rozdělení.** R5a: tabulka útoků v novém vzhledu, filtry All / Attack,
+oprava mastery. R5b: průzkum — zařazení featur do Action / Bonus Action /
+Reaction podle tagů `{@variantrule Bonus Action}`, `{@variantrule Reaction}`
+a `{@action …}` v jejich textu. R5c: skupiny Action / Bonus Action / Reaction
+/ Other, sbalitelné řádky, use-boxy a zbývající filtry. Actions in Combat
+(potřebuje 5etools `actions.json`, zatím neextrahovaný) je samostatný pozdější
+slice. Do R5c jsou použitelné featury prostý seznam „Other" pod tabulkou;
+filtr Attack ho skryje.
+
+**Kouzla.** Kouzla s útokem nebo záchranou zůstávají v tabulce útoků. Ostatní
+kouzla s časem seslání Bonus Action / Reaction přijdou v R5c do těchto skupin;
+kouzla s časem Action bez útoku a záchrany se v Actions neuvádějí.
+
+**Rozklad hodnot.** Stejně jako levý sloupec (D166): hodnota zásahu a damage
+je tlačítko hodu, jméno řádku otevře rozklad v draweru; „Attacks per Action"
+otevře rozklad počtu útoků. Inline `<details>` v tabulce nejsou.
+
+**Mastery.** Poznámka „Mastery: X" jen u zbraně, jejíž druh má postava
+v `Character.masteries` (holá jména zbraní, D97); porovnává se jméno zbraně
+z items.json. Neovládnutá zbraň řádek Mastery nemá vůbec.
