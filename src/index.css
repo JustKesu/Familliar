@@ -1484,6 +1484,60 @@ button:disabled {
   color: var(--text-sub);
 }
 
+/* D187: Actions in Combat, one line at the end of each Actions group. A row's own bottom border already separates it. */
+.sheet__combat-actions {
+  padding: 9px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.sheet__action-group ul:not(:empty) + .sheet__combat-actions {
+  border-top: 0;
+}
+
+.sheet__combat-actions-line {
+  margin: 0;
+}
+
+.sheet__combat-actions-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-mute);
+}
+
+.sheet__combat-actions-sep {
+  color: var(--text-mute);
+}
+
+.sheet__combat-action {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sheet__combat-action:hover,
+.sheet__combat-action--open {
+  color: var(--accent);
+}
+
+.sheet__combat-action-text {
+  max-width: 640px;
+  margin: 6px 0 0 22px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
+.sheet__combat-action-text h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .sheet__action-group-empty {
   margin: 12px 18px;
   font-size: 13px;

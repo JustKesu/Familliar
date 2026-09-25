@@ -3384,3 +3384,36 @@ you finish a … Rest“ → max PB. Short Rest je vrací, jen když to věta ř
 Long Rest vrací vše. Rys se oběma vzory (Merge with Stone) má dva nezávislé
 limity a nemá žádná políčka (jako D119). Cokoli jiného: bez políček (D43).
 Klíč v `play.resourceUses` je jméno rysu — stejný tvar, schéma beze změny.
+
+## D187 — Actions in Combat v záložce Actions
+
+**Data.** Extrahuje se `actions.json`, jen zdroj XPHB (vlastní konstanta
+`ACTIONS_SOURCE`, jako `BEAST_SOURCE` v D67), ne `ALLOWED_SOURCES` — ty by
+pustily XGE Identify a Spell a Waking Someone. Výsledek: `data/actions.json`,
+18 záznamů.
+
+**Skupina** z `time[].unit`: action → Action, bonus → Bonus Action,
+reaction → Reaction. `time` jako řetězec („Free", „Varies": End Concentration,
+Improvising an Action) → Other.
+
+**Rozsah.** Všech 18 záznamů kromě Two-Weapon Fighting, které je podmíněné
+(níže). Grapple/Shove se nepřidávají — ve 2024 jsou volbami Unarmed Strike,
+ne akcemi. Tagy `{@action X}` v textu featur a kouzel zůstávají stylovaný
+text bez rozbalení.
+
+**Forma.** Na konci každé skupiny (Action, Bonus Action, Reaction, Other) jeden
+řádek „Actions in Combat: Attack · Dash · …", jména abecedně. Klik na jméno
+rozbalí jeho text pod řádkem, druhý klik ho zavře, klik na jiné jméno přepne
+(nejvýš jedno otevřené na skupinu). Bez políček použití a bez zdroje. Řádek patří
+ke své skupině a filtry ho skrývají s ní; skupina jen s akcemi v boji (Reaction
+s Opportunity Attack) se vykreslí i bez řádků featur. Read-only list ho ukazuje
+také.
+
+**Two-Weapon Fighting** je v řádku Bonus Action, jen když postava drží dvě
+položky inventáře se zbraní s vlastností Light (držené = stejná množina jako
+tabulka útoků, `equipped: 'held'`; batoh se nepočítá). Počítají se držené
+**řádky**, ne množství: držený řádek je jedna věc v jedné ruce (kontrola rukou
+počítá ruce po řádcích, tabulka útoků má řádek na držený záznam), takže řádek
+Dagger ×2 je pořád jedna dýka v ruce. Dual Wielder a jiné výjimky mimo rozsah.
+
+**Markup.** Tag `{@note …}` se vykresluje kurzívou, vnořené tagy se řeší.

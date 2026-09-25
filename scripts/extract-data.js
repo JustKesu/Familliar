@@ -1547,6 +1547,39 @@ function extractLanguages() {
 }
 
 /*
+ * ACTIONS (D187)
+ *
+ * The sheet's "Actions in Combat" lines. XPHB only, its own constant like
+ * BEAST_SOURCE: ALLOWED_SOURCES would let in XGE's Identify a Spell and
+ * Waking Someone (DATA.md).
+ */
+
+const ACTIONS_SOURCE = "XPHB";
+
+function extractActions() {
+	console.log("\n--- ACTIONS ---");
+
+	const sourceFile = path.join(SOURCE_DATA_DIR, "actions.json");
+	const rawActions = readJson(sourceFile).action;
+
+	const { entries: resolved, copyStats, versionStats, warnings } = prepareEntries(rawActions, "actions");
+
+	console.log(`Loaded before filtering:      ${copyStats.total}`);
+	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
+	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
+
+	let kept = resolved.filter((action) => action.source === ACTIONS_SOURCE);
+	kept = removeSuperseded(kept, "actions", warnings);
+
+	console.log(`Passed the source filter:     ${kept.length} (source ${ACTIONS_SOURCE})`);
+
+	const outputFile = path.join(OUTPUT_DIR, "actions.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
+
+	return warnings;
+}
+
+/*
  * BEASTS
  *
  * D67: XMM (Monster Manual 2024) is an allowed source for creatures of type
@@ -2438,6 +2471,7 @@ function main() {
 	allWarnings.push(...extractClasses());
 	allWarnings.push(...extractItems());
 	allWarnings.push(...extractLanguages());
+	allWarnings.push(...extractActions());
 	allWarnings.push(...extractBeasts());
 	// ---------------------------------------------------------------
 

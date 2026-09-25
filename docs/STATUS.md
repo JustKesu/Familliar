@@ -1066,6 +1066,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - `e2e/featuresTab.spec.ts` — R6 a–f (Fighter 3 Battle Master: groups, options
   under their feature, pills, expand/collapse, shared Second Wind boxes through
   Finish Short Rest, "From Background", rest-button icons).
+- `e2e/combatActions.spec.ts` — D187 a–e (Actions in Combat line: open/close/
+  switch, Reaction and Other contents, Reaction filter, Two-Weapon Fighting with
+  Dagger + Shortsword held vs. one in the backpack, Help's `{@note}` italic).
 
 ## Dočasné scaffolding
 
@@ -1443,6 +1446,18 @@ Actions only with an R-phrase group or a count; Species Traits rows in Features
 `levelRemoval.ts` still passes no species traits (a PB count is not clamped on
 level loss). E2E `e2e/speciesActions.spec.ts` (5 scenarios). No schema change
 (still 48).
+
+D187: Actions in Combat. `extractActions()` in `extract-data.js` writes
+`data/actions.json` (18 XPHB records, own `ACTIONS_SOURCE`). `src/actions/combatActions.ts`:
+`loadCombatActions` (best-effort load in the sheet; a failed load just drops the
+lines), `groupOfTime` (`time[].unit` → group, string time → Other),
+`holdsTwoLightWeapons` (≥ 2 held rows with a Light weapon, from
+`buildHeldWeapons`), `visibleCombatActions` (drops Two-Weapon Fighting
+otherwise). `ActionsSection` ends each group with `CombatActionsLine`: names
+alphabetical, one open at a time, text via `ResolvedEntries`; a group with only
+combat actions renders (Reaction, Other). Bonus Action line exists only with
+TWF. Markup: `{@note}` → italic (tags.ts, inventory regenerated, 47 tags).
+E2E `e2e/combatActions.spec.ts` (a–e). No schema change (still 48).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

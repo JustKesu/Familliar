@@ -170,6 +170,8 @@ after shown where a category changed; unchanged categories listed too):
   data/beasts.json               89 -> 96   (XMM 96) — 90.3 KB; type Beast at
                                       CR <= 6 (89) plus the 8 Pact of the
                                       Chain forms, 7 of them not Beasts, D67
+  data/actions.json               0 -> 18   (XPHB 18) — 15.5 KB, new category;
+                                      XPHB only, D187 (see "actions.json" below)
 
 The drops are entries superseded by a newer reprint we also keep (e.g. TCE
 "Chef" superseded by its XPHB reprint) — see extract-data.js's
@@ -965,3 +967,30 @@ Result: 70 trait records carry a count (29 once, 41 PB); the generic Gnome
 record's Gnomish Lineage gets PB from its Forest Gnome paragraph. Actions tab
 70 (D185) → 73 records (Action 15, Bonus 30, Reaction 2, Other 26). Found in
 task D186 (`scripts/investigate-species-actions-d186.mjs`).
+
+### actions.json — the Actions in Combat (D187)
+
+Source file: one key `action`, 48 records, no `_copy`/`_versions`. By source:
+PHB 20, XPHB 18, DMG 8, XGE 2. Fields on the XPHB records: `name`, `source`,
+`page`, `entries`, `time`, plus `srd52`, `basicRules2024`, `seeAlsoAction`
+(Attack ↔ Two-Weapon Fighting). Five have non-string top-level entries (Attack,
+Help, Influence, Search, Study: `entries` blocks and `table`s).
+
+`time` shapes: `[{number: 1, unit: "action" | "bonus" | "reaction"}]`, or a
+bare string — `["Free"]` (End Concentration), `["Varies"]` (Improvising an
+Action). XPHB groups: Action 15, Bonus Action 1 (Two-Weapon Fighting),
+Reaction 1 (Opportunity Attack), Other 2.
+
+Trap: the category's XGE records (Identify a Spell — time `reaction` AND
+`action` — and Waking Someone) are in ALLOWED_SOURCES and carry no
+`reprintedAs`, so a normal source filter keeps them. Hence the own XPHB
+constant. 19 PHB records point `reprintedAs` at XPHB; Grapple and Shove point at
+the `Unarmed Strike|XPHB` variantrule, not at an action. Other Activity (PHB)
+has no reprint.
+
+Markup: Help carries the only `{@note …}` in the category, wrapping a nested
+`{@book stabilize a creature|XPHB|1|…}`. All other tags were already handled.
+`{@action X|XPHB}` in the rest of data/ names only these 18 (492 occurrences,
+42 more with no source argument); never referenced that way: Don or Doff a
+Shield, End Concentration, Escape a Grapple, Improvising an Action, Ready,
+Two-Weapon Fighting. Found by `scripts/investigate-actions-in-combat.mjs`.

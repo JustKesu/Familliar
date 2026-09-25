@@ -13,27 +13,27 @@ by src/inventory/itemEntryResolver.ts) and `{{token}}` template fill-ins
 
 ## Totals
 
-- Files scanned: **12**
-- Strings walked: **55,828**
-- Strings containing markup: **5,377**
-- Tag occurrences: **10,635**
-- Distinct tag names: **52**
+- Files scanned: **13**
+- Strings walked: **55,982**
+- Strings containing markup: **5,414**
+- Tag occurrences: **10,703**
+- Distinct tag names: **53**
 - Distinct nested entry types: **16**
 
 ## Tags by frequency
 
 | Tag | Count | Files | Arg shapes | Nested inside another tag | Contains a nested tag |
 | --- | ---: | ---: | --- | ---: | ---: |
-| `{@variantrule}` | 2569 | 9 | 2 parts ×2007, 3 parts ×562 | 0 | 0 |
+| `{@variantrule}` | 2599 | 10 | 2 parts ×2033, 3 parts ×566 | 0 | 0 |
 | `{@spell}` | 1489 | 8 | 1 part ×468, 2 parts ×1020, 3 parts ×1 | 0 | 0 |
-| `{@item}` | 909 | 9 | 1 part ×49, 2 parts ×783, 3 parts ×77 | 0 | 0 |
-| `{@condition}` | 833 | 8 | 1 part ×226, 2 parts ×606, 3 parts ×1 | 0 | 0 |
+| `{@item}` | 912 | 10 | 1 part ×49, 2 parts ×786, 3 parts ×77 | 0 | 0 |
+| `{@condition}` | 836 | 9 | 1 part ×226, 2 parts ×609, 3 parts ×1 | 0 | 0 |
 | `{@damage}` | 802 | 8 | 1 part ×802 | 0 | 0 |
 | `{@dice}` | 596 | 9 | 1 part ×595, 2 parts ×1 | 0 | 0 |
-| `{@action}` | 534 | 9 | 1 part ×42, 2 parts ×471, 3 parts ×21 | 0 | 0 |
-| `{@skill}` | 403 | 9 | 1 part ×122, 2 parts ×281 | 0 | 0 |
+| `{@action}` | 541 | 10 | 1 part ×42, 2 parts ×477, 3 parts ×22 | 0 | 0 |
+| `{@skill}` | 421 | 10 | 1 part ×122, 2 parts ×299 | 0 | 0 |
 | `{@creature}` | 347 | 5 | 1 part ×71, 2 parts ×236, 3 parts ×40 | 0 | 0 |
-| `{@dc}` | 312 | 8 | 1 part ×312 | 0 | 0 |
+| `{@dc}` | 313 | 9 | 1 part ×313 | 0 | 0 |
 | `{@filter}` | 274 | 8 | 3 parts ×111, 4 parts ×134, 5 parts ×22, 6 parts ×3, 7 parts ×4 | 0 | 0 |
 | `{@i}` | 254 | 7 | 1 part ×254 | 0 | 0 |
 | `{@hit}` | 125 | 2 | 1 part ×125 | 0 | 0 |
@@ -42,8 +42,8 @@ by src/inventory/itemEntryResolver.ts) and `{{token}}` template fill-ins
 | `{@h}` | 103 | 1 | 1 part ×103 | 0 | 0 |
 | `{@sense}` | 97 | 7 | 1 part ×17, 2 parts ×80 | 0 | 0 |
 | `{@b}` | 93 | 3 | 1 part ×93 | 0 | 0 |
-| `{@book}` | 88 | 7 | 2 parts ×26, 3 parts ×14, 4 parts ×48 | 0 | 0 |
-| `{@status}` | 87 | 7 | 1 part ×15, 2 parts ×65, 3 parts ×7 | 0 | 0 |
+| `{@status}` | 91 | 8 | 1 part ×15, 2 parts ×69, 3 parts ×7 | 0 | 0 |
+| `{@book}` | 89 | 8 | 2 parts ×26, 3 parts ×14, 4 parts ×49 | 1 | 0 |
 | `{@scaledamage}` | 79 | 1 | 3 parts ×79 | 0 | 0 |
 | `{#itemEntry}` | 71 | 1 | 2 parts ×71 | 0 | 0 |
 | `{@5etools}` | 63 | 1 | 2 parts ×63 | 0 | 0 |
@@ -74,20 +74,21 @@ by src/inventory/itemEntryResolver.ts) and `{{token}}` template fill-ins
 | `{@deck}` | 3 | 1 | 2 parts ×2, 3 parts ×1 | 0 | 0 |
 | `{@actSaveSuccess}` | 2 | 1 | 1 part ×2 | 0 | 0 |
 | `{{item.resist}}` | 2 | 1 | 1 part ×2 | 0 | 0 |
+| `{@note}` | 1 | 1 | 1 part ×1 | 0 | 1 |
 | `{{item.detail2}}` | 1 | 1 | 1 part ×1 | 0 | 0 |
 | `{@class}` | 1 | 1 | 6 parts ×1 | 0 | 0 |
 
 ## Tag examples
 
-### `{@variantrule}` — 2569
+### `{@variantrule}` — 2599
 
-Files: beasts.json, class-features.json, feats.json, item-entries.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: actions.json, beasts.json, class-features.json, feats.json, item-entries.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
-{@variantrule Advantage|XPHB}
-{@variantrule Long Jump|XPHB}
-{@variantrule High Jump|XPHB}
-{@variantrule Bright Light|XPHB}
+{@variantrule Unarmed Strike|XPHB}
+{@variantrule Speed|XPHB}
+{@variantrule Fly Speed|XPHB}
+{@variantrule Swim Speed|XPHB}
 ```
 
 ### `{@spell}` — 1489
@@ -101,26 +102,26 @@ Files: beasts.json, class-features.json, feats.json, items.json, optional-featur
 {@spell Cure Wounds|XPHB}
 ```
 
-### `{@item}` — 909
+### `{@item}` — 912
 
-Files: backgrounds.json, class-features.json, classes.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: actions.json, backgrounds.json, class-features.json, classes.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
-{@item Disguise Kit|XPHB}
+{@item Shield|XPHB}
+{@item Shortsword|XPHB}
 {@item Dagger|XPHB}
-{@item Costume|XPHB}
-{@item Traveler's Clothes|XPHB}
+{@item Disguise Kit|XPHB}
 ```
 
-### `{@condition}` — 833
+### `{@condition}` — 836
 
-Files: beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: actions.json, beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
 {@condition Incapacitated|XPHB}
+{@condition Invisible|XPHB}
 {@condition Grappled|XPHB}
 {@condition Prone|XPHB}
-{@condition Poisoned|XPHB}
 ```
 
 ### `{@damage}` — 802
@@ -145,26 +146,26 @@ Files: class-features.json, classes.json, feats.json, item-entries.json, items.j
 {@dice d8}
 ```
 
-### `{@action}` — 534
+### `{@action}` — 541
 
-Files: beasts.json, class-features.json, feats.json, item-entries.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: actions.json, beasts.json, class-features.json, feats.json, item-entries.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
-{@action Opportunity Attack|XPHB}
 {@action Opportunity Attack|XPHB|Opportunity Attacks}
-{@action Disengage|XPHB}
-{@action Hide|XPHB}
+{@action Magic|XPHB}
+{@action Attack|XPHB}
+{@action Opportunity Attack|XPHB}
 ```
 
-### `{@skill}` — 403
+### `{@skill}` — 421
 
-Files: backgrounds.json, beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: actions.json, backgrounds.json, beasts.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
 
 ```
-{@skill History|XPHB}
-{@skill Intimidation|XPHB}
-{@skill Insight|XPHB}
-{@skill Religion|XPHB}
+{@skill Athletics|XPHB}
+{@skill Acrobatics|XPHB}
+{@skill Stealth|XPHB}
+{@skill Perception|XPHB}
 ```
 
 ### `{@creature}` — 347
@@ -178,15 +179,15 @@ Files: class-features.json, items.json, optional-features.json, spells.json, sub
 {@creature Wolf|XMM}
 ```
 
-### `{@dc}` — 312
+### `{@dc}` — 313
 
-Files: beasts.json, class-features.json, feats.json, item-entries.json, items.json, species.json, spells.json, subclass-features.json
+Files: actions.json, beasts.json, class-features.json, feats.json, item-entries.json, items.json, species.json, spells.json, subclass-features.json
 
 ```
+{@dc 15}
 {@dc 10}
 {@dc 11}
 {@dc 12}
-{@dc 13}
 ```
 
 ### `{@filter}` — 274
@@ -272,26 +273,26 @@ Files: items.json, spells.json, subclass-features.json
 {@b 4}
 ```
 
-### `{@book}` — 88
+### `{@status}` — 91
 
-Files: class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+Files: actions.json, beasts.json, class-features.json, feats.json, items.json, optional-features.json, spells.json, subclass-features.json
 
 ```
+{@status Concentration|XPHB}
+{@status Bloodied|XPHB}
+{@status Concentration|XPHB|Concentrating}
+{@status concentration}
+```
+
+### `{@book}` — 89
+
+Files: actions.json, class-features.json, feats.json, items.json, optional-features.json, species.json, spells.json, subclass-features.json
+
+```
+{@book stabilize a creature|XPHB|1|Stabilizing a Character}
 {@book Player's Handbook|XPHB}
 {@book Dungeon Master's Guide|XDMG}
 {@book Dungeon Master's Guide|XDMG|6|Crafting Magic Items}
-{@book chapter 7|XPHB|7}
-```
-
-### `{@status}` — 87
-
-Files: beasts.json, class-features.json, feats.json, items.json, optional-features.json, spells.json, subclass-features.json
-
-```
-{@status Bloodied|XPHB}
-{@status Concentration|XPHB}
-{@status Concentration|XPHB|Concentrating}
-{@status concentration}
 ```
 
 ### `{@scaledamage}` — 79
@@ -588,6 +589,14 @@ Files: item-entries.json
 {{item.resist}}
 ```
 
+### `{@note}` — 1
+
+Files: actions.json
+
+```
+{@note Additionally, the Help action may be used to {@book stabilize a creature|XPHB|1|Stabilizing a Character}.}
+```
+
 ### `{{item.detail2}}` — 1
 
 Files: item-entries.json
@@ -608,11 +617,11 @@ Files: optional-features.json
 
 | `type` | Count | Files | Keys seen (count) |
 | --- | ---: | ---: | --- |
-| `entries` | 1479 | 7 | `entries` 1479, `name` 1403, `page` 6 |
+| `entries` | 1489 | 8 | `entries` 1489, `name` 1410, `page` 6 |
 | `item` | 413 | 6 | `name` 413, `entries` 228, `entry` 185 |
 | `refSubclassFeature` | 321 | 1 | `subclassFeature` 321 |
 | `list` | 242 | 8 | `items` 242, `style` 122, `columns` 1 |
-| `table` | 162 | 7 | `colLabels` 162, `colStyles` 162, `rows` 162, `caption` 130, `page` 6, `footnotes` 3, `data` 3 |
+| `table` | 165 | 8 | `colLabels` 165, `colStyles` 165, `rows` 165, `caption` 133, `page` 6, `footnotes` 3, `data` 3 |
 | `refOptionalfeature` | 74 | 2 | `optionalfeature` 74, `preserve` 38, `name` 2 |
 | `dice` | 60 | 1 | `toRoll` 60, `rollable` 60 |
 | `refClassFeature` | 23 | 1 | `classFeature` 23 |
@@ -627,13 +636,13 @@ Files: optional-features.json
 
 ## Entry type examples
 
-### `entries` — 1479
+### `entries` — 1489
 
 ```json
-{"type":"entries","entries":[{"type":"entries","name":"Tools Required","entries":["You produce your Artificer spells through tools. You can use {@item Thieves' Tools|XPHB}, {@item Tinker's Tools|XPHB}, or another kind of…
-{"type":"entries","name":"Tools Required","entries":["You produce your Artificer spells through tools. You can use {@item Thieves' Tools|XPHB}, {@item Tinker's Tools|XPHB}, or another kind of {@item Artisan's Tools|XPHB}…
-{"type":"entries","name":"Cantrips","entries":["You know two {@filter Artificer cantrips|spells|level=0|class=Artificer} of your choice. {@spell Acid Splash|XPHB} and {@spell Prestidigitation|XPHB} are recommended.","Whe…
-{"type":"entries","name":"Spell Slots","entries":["The Artificer Features table shows how many spell slots you have to cast your level 1+ spells. You regain all expended slots when you finish a {@variantrule Long Rest|XP…
+{"type":"entries","entries":[{"type":"entries","name":"Equipping and Unequipping Weapons","entries":["You can either equip or unequip one weapon when you make an attack as part of this action. You do so either before or …
+{"type":"entries","name":"Equipping and Unequipping Weapons","entries":["You can either equip or unequip one weapon when you make an attack as part of this action. You do so either before or after the attack. If you equi…
+{"type":"entries","name":"Moving Between Attacks","entries":["If you move on your turn and have a feature, such as Extra Attack, that gives you more than one attack as part of the Attack action, you can use some or all o…
+{"type":"entries","entries":[{"type":"entries","name":"Assist an Ability Check","entries":["Choose one of your skill or tool proficiencies and one ally who is near enough for you to assist verbally or physically when the…
 ```
 
 ### `item` — 413
@@ -663,13 +672,13 @@ Files: optional-features.json
 {"type":"list","style":"list-hang-notitle","items":[{"type":"item","name":"Ability Scores:","entry":"Strength, Dexterity, Intelligence"},{"type":"item","name":"Feat:","entry":"{@feat Crafter|XPHB}"},{"type":"item","name"…
 ```
 
-### `table` — 162
+### `table` — 165
 
 ```json
+{"type":"table","caption":"Influence Checks","colLabels":["Ability Check","Interaction"],"colStyles":["col-4","col-8"],"rows":[["Charisma ({@skill Deception|XPHB})","Deceiving a monster that understands you"],["Charisma …
+{"type":"table","caption":"Search","colLabels":["Skill","Thing to Detect"],"colStyles":["col-4","col-8"],"rows":[["{@skill Insight|XPHB}","Creature's state of mind"],["{@skill Medicine|XPHB}","Creature's ailment or cause…
+{"type":"table","caption":"Areas of Knowledge","colLabels":["Skill","Areas"],"colStyles":["col-3","col-9"],"rows":[["{@skill Arcana|XPHB}","Spells, magic items, eldritch symbols, magical traditions, planes of existence, …
 {"caption":"Magic Item Plans (Artificer Level 2+)","type":"table","colLabels":["Magic Item Plan","Attunement"],"colStyles":["col-9","col-3 text-center"],"rows":[["{@item Alchemy Jug|XDMG}","No"],["{@item Bag of Holding|X…
-{"caption":"Magic Item Plans (Artificer Level 6+)","type":"table","colLabels":["Magic Item Plan","Attunement"],"colStyles":["col-9","col-3 text-center"],"rows":[["{@item +1 Armor|XDMG|Armor +1}","No"],["{@item Boots of E…
-{"caption":"Magic Item Plans (Artificer Level 10+)","type":"table","colLabels":["Magic Item Plan","Attunement"],"colStyles":["col-9","col-3 text-center"],"rows":[["{@item Armor of Resistance|XDMG}","Yes"],["{@item Dagger…
-{"caption":"Magic Item Plans (Artificer Level 14+)","type":"table","colLabels":["Magic Item Plan","Attunement"],"colStyles":["col-9","col-3 text-center"],"rows":[["{@item +2 Armor|XDMG|Armor, +2}","No"],["{@item Arrow-Ca…
 ```
 
 ### `refOptionalfeature` — 74

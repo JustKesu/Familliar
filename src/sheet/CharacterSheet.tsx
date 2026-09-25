@@ -13,7 +13,7 @@
  * itself). Data acquisition goes through the shared loader (D39).
  */
 
-import { useContext, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
+import { Fragment, useContext, useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
@@ -119,6 +119,7 @@ import { combineSpellEntries, provenanceLabel, SpellDetailBody, SpellList } from
 import { featureActionRows, type FeatureActionData } from './featureActionRowData'
 import { spellActionRows, spellGroupRows, type SpellActionData, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
+import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
 import { spellLevelLabel } from './spellFormatting'
 import { FeatureLanguageSlots } from '../languages/FeatureLanguageSlots'
 import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
@@ -1762,6 +1763,38 @@ function ActionGroupRow({ name, source, uses, below, children }: { name: string;
 	)
 }
 
+/** D187: a group's Actions in Combat as one line of names; a name opens its text under the line, at most one at a time. */
+function CombatActionsLine({ actions, resolverData }: { actions: CombatAction[]; resolverData: ResolverData }): ReactNode {
+	const [openName, setOpenName] = useState<string | null>(null)
+	const open = actions.find((action) => action.name === openName)
+	return (
+		<div className="sheet__combat-actions">
+			<p className="sheet__combat-actions-line">
+				<span className="sheet__combat-actions-label">Actions in Combat:</span>{' '}
+				{actions.map((action, index) => (
+					<Fragment key={action.name}>
+						{index > 0 && <span className="sheet__combat-actions-sep"> · </span>}
+						<button
+							type="button"
+							className={action === open ? 'sheet__combat-action sheet__combat-action--open' : 'sheet__combat-action'}
+							aria-expanded={action === open}
+							onClick={() => setOpenName(action === open ? null : action.name)}
+						>
+							{action.name}
+						</button>
+					</Fragment>
+				))}
+			</p>
+			{open && (
+				<div className="sheet__combat-action-text">
+					<h4>{open.name}</h4>
+					<ResolvedEntries entries={open.entries} data={resolverData} />
+				</div>
+			)}
+		</div>
+	)
+}
+
 type ActionFilter = 'all' | 'attack' | ActionType
 
 const ACTION_FILTERS: readonly { id: ActionFilter; label: string }[] = [
@@ -1797,6 +1830,7 @@ function ActionsSection({
 	spellActions,
 	featureActions,
 	spellGroups,
+	combatActions,
 	resourceMaxima,
 	resourceRecharge,
 	resourceUses,
@@ -1816,6 +1850,8 @@ function ActionsSection({
 	spellActions: SpellActionData[]
 	featureActions: FeatureActionData[]
 	spellGroups: SpellGroupData[]
+	/** D187: the actions.json entries shown, already without a Two-Weapon Fighting the character cannot take. */
+	combatActions: CombatAction[]
 	/** The 8 resources with a computed maximum, resolved name to that maximum (slice 9b2) — the ~90 "not in data" resources are absent, so their rows below never look them up successfully. */
 	resourceMaxima: ReadonlyMap<string, number>
 	/** The rest that gives a resource back, as the rest logic (9b5) reads it. */
@@ -1855,8 +1891,10 @@ function ActionsSection({
 		...group,
 		features: featureActions.filter((feature) => feature.actionType === group.id),
 		spells: spellGroups.filter((spell) => spell.actionType === group.id),
+		combat: combatActions.filter((action) => action.group === group.id),
 	}))
-	const filteredGroupEmpty = filter !== 'all' && filter !== 'attack' && groups.every((group) => group.features.length === 0 && group.spells.length === 0)
+	const hasRows = (group: (typeof groups)[number]) => group.features.length > 0 || group.spells.length > 0 || group.combat.length > 0
+	const filteredGroupEmpty = filter !== 'all' && filter !== 'attack' && !groups.some(hasRows)
 	return (
 		<section className="sheet__actions">
 			<div className="sheet__actions-toolbar">
@@ -1908,7 +1946,7 @@ function ActionsSection({
 			)}
 			{groups.map(
 				(group) =>
-					(group.features.length > 0 || group.spells.length > 0) && (
+					hasRows(group) && (
 						<section key={group.id} className="sheet__action-group" aria-label={group.label}>
 							<h3>{group.label}</h3>
 							<ul>
@@ -1941,6 +1979,7 @@ function ActionsSection({
 									</ActionGroupRow>
 								))}
 							</ul>
+							{group.combat.length > 0 && <CombatActionsLine actions={group.combat} resolverData={resolverData} />}
 						</section>
 					),
 			)}
@@ -2406,6 +2445,7 @@ function CharacterSheetBody({
 	const [itemRefsError, setItemRefsError] = useState<string | null>(null)
 	/** Shared `{#itemEntry}` description templates. Starts empty rather than null: an item description is inside a collapsed <details>, and until this resolves an unresolved reference just shows the D43 note (itemEntryResolver.ts) — it is never a blocking dependency. */
 	const [itemEntryTemplates, setItemEntryTemplates] = useState<ItemEntryTemplate[]>([])
+	const [combatActions, setCombatActions] = useState<CombatAction[]>([])
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
@@ -2536,6 +2576,19 @@ function CharacterSheetBody({
 		loadItemEntryTemplates()
 			.then((templates) => {
 				if (!cancelled) setItemEntryTemplates(templates)
+			})
+			.catch(() => {})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		// Best-effort like the templates above: without the file the groups just lack their Actions in Combat line.
+		loadCombatActions()
+			.then((actions) => {
+				if (!cancelled) setCombatActions(actions)
 			})
 			.catch(() => {})
 		return () => {
@@ -3797,6 +3850,7 @@ function CharacterSheetBody({
 				spellActions={spellActions}
 				featureActions={featureActions}
 				spellGroups={spellGroupRows(combinedSpells, spellDetails)}
+				combatActions={visibleCombatActions(combatActions, holdsTwoLightWeapons(heldWeapons))}
 				resourceMaxima={resourceMaxima}
 				resourceRecharge={resourceRecharge}
 				resourceUses={resourceUses}

@@ -130,6 +130,8 @@ const REFERENCE_TAGS: Record<string, number> = {
 const EMPHASIS_TAGS: Record<string, 'bold' | 'italic'> = {
 	b: 'bold',
 	i: 'italic',
+	// An aside inside rules text (actions.json Help, D187); 5etools prints it italic.
+	note: 'italic',
 }
 
 /** Formats a number with an explicit sign, as attack bonuses are written. */

@@ -44,7 +44,8 @@ test('R5a a: All is the default and shows the table and the groups; Attack hides
   await expect(actions.getByRole('table')).toBeVisible()
   await expect(bonus).toContainText('Second Wind')
 
-  await actions.getByRole('button', { name: 'Attack', exact: true }).click()
+  // Scoped to the pills: the Action group's Actions in Combat line has an Attack button too (D187).
+  await actions.getByRole('group', { name: 'Filter actions' }).getByRole('button', { name: 'Attack', exact: true }).click()
   await expect(bonus).toHaveCount(0)
   await expect(actions.getByRole('table')).toBeVisible()
 

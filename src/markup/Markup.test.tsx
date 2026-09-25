@@ -61,6 +61,12 @@ describe('<Markup>', () => {
 		)
 	})
 
+	it('renders a {@note} as italic text with its nested {@book} resolved (actions.json Help)', () => {
+		const markup = 'Help. {@note Additionally, the Help action may be used to {@book stabilize a creature|XPHB|1|Stabilizing a Character}.}'
+		expect(html(<Markup text={markup} />)).toContain('<em>Additionally, the Help action may be used to <span class="mk-ref mk-ref--book"')
+		expect(text(<Markup text={markup} />)).toBe('Help. Additionally, the Help action may be used to stabilize a creature.')
+	})
+
 	it('renders emphasis nested inside a reference', () => {
 		const out = html(<Markup text="{@item Rope|XPHB|{@i knotted} rope}" />)
 		expect(out).toContain('<em>knotted</em>')

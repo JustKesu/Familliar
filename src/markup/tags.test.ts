@@ -68,6 +68,7 @@ const TAG_CASES: ReadonlyArray<[tag: string, markup: string, display: string]> =
 	['actTrigger', '{@actTrigger}', 'Trigger:'],
 	['actResponse', '{@actResponse}', 'Response:'],
 	['recharge', '{@recharge 5}', '(Recharge 5–6)'],
+	['note', '{@note Additionally, the Help action may be used to {@book stabilize a creature|XPHB|1|Stabilizing a Character}.}', 'Additionally, the Help action may be used to {@book stabilize a creature|XPHB|1|Stabilizing a Character}.'],
 ]
 
 describe('resolveTag — every tag found in data/', () => {
@@ -84,8 +85,8 @@ describe('resolveTag — every tag found in data/', () => {
 	// {@…} tags: {#itemEntry} is resolved before rendering by
 	// src/inventory/itemEntryResolver.ts, and {{spellcasting_mod}} is not
 	// consumed by this layer at all. Only the {@…} tags belong here.
-	it('covers all 46 {@…} tags the inventory found', () => {
-		expect(TAG_CASES).toHaveLength(46)
+	it('covers all 47 {@…} tags the inventory found', () => {
+		expect(TAG_CASES).toHaveLength(47)
 	})
 
 	it('exercises every tag the module claims to handle', () => {
@@ -130,6 +131,7 @@ describe('resolveTag — value semantics', () => {
 	it('marks emphasis tags', () => {
 		expect(resolve('{@b bold}')).toMatchObject({ kind: 'emphasis', emphasis: 'bold' })
 		expect(resolve('{@i italic}')).toMatchObject({ kind: 'emphasis', emphasis: 'italic' })
+		expect(resolve('{@note aside}')).toMatchObject({ kind: 'emphasis', emphasis: 'italic' })
 	})
 })
 
