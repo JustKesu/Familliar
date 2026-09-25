@@ -114,6 +114,8 @@ export interface OptionalFeatureOption {
 	 * `entries` loses every one of them.
 	 */
 	consumes?: unknown
+	/** Set on a CHOSEN option only (chosenOptionalFeatureOptions): the stored featureType, or "FS" for the class fighting style — what the Features tab links it to its granting feature by (D184). */
+	featureType?: string
 }
 
 export interface OptionalFeatureChoice {
@@ -663,12 +665,12 @@ export function chosenOptionalFeatureOptions(
 		for (const name of choiceNames(entry.choices)) {
 			// D43: a stored pick the data no longer offers is skipped, not faked.
 			const option = all.find((candidate) => normalizeName(candidate.name) === normalizeName(name))
-			if (option) out.push(option)
+			if (option) out.push({ ...option, featureType: entry.featureType })
 		}
 	}
 	if (fightingStyle) {
 		const style = fightingStyleFeats(parsedFeats).find((candidate) => normalizeName(candidate.name) === normalizeName(fightingStyle))
-		if (style) out.push(style)
+		if (style) out.push({ ...style, featureType: 'FS' })
 	}
 	return out
 }

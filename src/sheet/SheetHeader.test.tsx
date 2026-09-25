@@ -231,6 +231,16 @@ describe('SheetHeader rest buttons (slice 9b5)', () => {
 		expect(container.querySelector('.sheet__strip .sheet__rest')).toBeNull()
 	})
 
+	/* D184: the fire (D183's) and a moon, before the label; hidden from the accessible name. */
+	it('puts an icon before each label, leaving the names unchanged', () => {
+		renderHeader({ onShortRest: vi.fn(), onLongRest: vi.fn() })
+		for (const name of ['Short Rest', 'Long Rest']) {
+			const button = screen.getByRole('button', { name })
+			expect(button.firstElementChild!.tagName.toLowerCase()).toBe('svg')
+			expect(button.firstElementChild!.getAttribute('aria-hidden')).toBe('true')
+		}
+	})
+
 	it('leaves the buttons out of a read-only sheet', () => {
 		renderHeader()
 		expect(screen.queryByRole('button', { name: 'Short Rest' })).toBeNull()

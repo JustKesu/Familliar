@@ -25,7 +25,6 @@ import { computeAbilityScores, type AbilityScoreValue } from '../calculation/abi
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
 import { BASE_ATTUNEMENT_LIMIT, computeAttunementLimit, countAttuned, describeAttunementRefusal } from '../calculation/attunement'
 import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
-import { featOriginLabel } from '../featAsi/featInstances'
 import { missingFeatSubChoices } from './featSubChoices'
 import { makeRoomForHands, type HeldThing } from '../calculation/hands'
 import { resolveMagicBonus } from '../calculation/magicBonus'
@@ -117,7 +116,7 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, provenanceLabel, SpellDetailBody, SpellList } from './SpellList'
-import { featureActionRows, grantedFeatureOrigin, type FeatureActionData } from './featureActionRowData'
+import { featureActionRows, type FeatureActionData } from './featureActionRowData'
 import { spellActionRows, spellGroupRows, type SpellActionData, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { spellLevelLabel } from './spellFormatting'
@@ -151,11 +150,12 @@ import { parseDiceExpression, type DiceRoll } from '../dice/roll'
 import type { CharacterTextField, HitPointFields, RestFields } from '../storage/characterStore'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calculatedValue'
-import { ArmourClassNotes, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
+import { ArmourClassNotes, FireIcon, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
 import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
 import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
-import { loadSpeciesTraitNames } from './speciesTraitNames'
+import { loadSpeciesTraits, type SpeciesTrait } from './speciesTraitNames'
+import { featuresTabGroups, type FeatureTabGroup, type FeatureTabGroupKind, type FeatureTabOption } from './featuresTabData'
 
 const SKILL_LABELS: Record<Skill, string> = {
 	acrobatics: 'Acrobatics',
@@ -1741,7 +1741,7 @@ function UseBoxes({ name, spent, max, recharge, onChange }: { name: string; spen
 }
 
 /** One collapsible Actions-group row (D182): ▸ name source … uses, the full text below when open. Open state is this row's own UI state (D116). */
-function ActionGroupRow({ name, source, uses, children }: { name: string; source: string | null; uses?: ReactNode; children: ReactNode }): ReactNode {
+function ActionGroupRow({ name, source, uses, below, children }: { name: string; source: string | null; uses?: ReactNode; below?: ReactNode; children: ReactNode }): ReactNode {
 	const [open, setOpen] = useState(false)
 	return (
 		<li className="sheet__action-row sheet__group-row">
@@ -1756,6 +1756,7 @@ function ActionGroupRow({ name, source, uses, children }: { name: string; source
 				<span className="sheet__group-row-spacer" />
 				{uses}
 			</div>
+			{below}
 			{open && <div className="sheet__group-row-text">{children}</div>}
 		</li>
 	)
@@ -1944,6 +1945,141 @@ function ActionsSection({
 					),
 			)}
 			{filteredGroupEmpty && <p className="sheet__action-group-empty">Nothing here for this character.</p>}
+		</section>
+	)
+}
+
+type FeaturesFilter = 'all' | FeatureTabGroupKind
+
+const FEATURE_FILTERS: readonly { id: FeaturesFilter; label: string }[] = [
+	{ id: 'all', label: 'All' },
+	{ id: 'class', label: 'Class Features' },
+	{ id: 'species', label: 'Species Traits' },
+	{ id: 'feats', label: 'Feats' },
+]
+
+const EMPTY_GROUP_TEXT: Record<FeatureTabGroupKind, string> = {
+	class: 'No class or subclass features found.',
+	species: 'No species traits found.',
+	feats: 'No feats chosen yet.',
+}
+
+/** A chosen option under its feature's row (D184): its name opens its own text; a pick with no text of its own is a plain line. */
+function FeatureOptionItem({ option, resolverData }: { option: FeatureTabOption; resolverData: ResolverData }): ReactNode {
+	const [open, setOpen] = useState(false)
+	if (option.missing) {
+		return (
+			<li>
+				{option.name} <UnresolvedValue reason={option.missing} />
+			</li>
+		)
+	}
+	if (option.entries === null) return <li>{option.name}</li>
+	return (
+		<li>
+			<button type="button" className="sheet__group-row-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+				<span className="sheet__group-row-arrow" aria-hidden="true">
+					{open ? '▾' : '▸'}
+				</span>
+				<span className="sheet__feature-option-name">{option.name}</span>
+			</button>
+			{open && (
+				<div className="sheet__group-row-text">
+					<ResolvedEntries entries={option.entries} data={resolverData} />
+				</div>
+			)}
+		</li>
+	)
+}
+
+/**
+ * The Features & Traits tab (R6, D184): filter pills, then one group per class,
+ * Species Traits and Feats, each record a collapsed row like the Actions groups,
+ * with the same use boxes on the same play.resourceUses record.
+ */
+function FeaturesSection({
+	groups,
+	errors,
+	classExtras,
+	resourceMaxima,
+	resourceRecharge,
+	resourceUses,
+	resolverData,
+	onSpendResource,
+}: {
+	groups: FeatureTabGroup[]
+	errors: ReactNode
+	/** Wild Shape forms and the familiar — shown after the class groups (docs/REPORT.md). */
+	classExtras: ReactNode
+	resourceMaxima: ReadonlyMap<string, number>
+	resourceRecharge: ReadonlyMap<string, string>
+	resourceUses: Record<string, number>
+	resolverData: ResolverData
+	onSpendResource?: (name: string, delta: 1 | -1) => void
+}): ReactNode {
+	/* D116: which groups show is UI state of this tab only, never written to the character. */
+	const [filter, setFilter] = useState<FeaturesFilter>('all')
+	const shown = (kind: FeatureTabGroupKind) => filter === 'all' || filter === kind
+	const renderGroup = (group: FeatureTabGroup) => (
+		<section key={group.key} className="sheet__action-group" aria-label={group.label}>
+			<h3>{group.label}</h3>
+			{group.rows.length === 0 ? (
+				<p className="sheet__feature-group-empty">{EMPTY_GROUP_TEXT[group.kind]}</p>
+			) : (
+				<ul>
+					{group.rows.map((row) => {
+						const max = row.resourceName !== null ? resourceMaxima.get(row.resourceName) : undefined
+						const resourceName = row.resourceName ?? ''
+						return (
+							<ActionGroupRow
+								key={row.key}
+								name={row.name}
+								source={row.source}
+								uses={
+									max !== undefined && (
+										<UseBoxes
+											name={resourceName}
+											spent={resourceUses[resourceName] ?? 0}
+											max={max}
+											recharge={resourceRecharge.get(resourceName)}
+											onChange={onSpendResource ? (delta) => onSpendResource(resourceName, delta) : undefined}
+										/>
+									)
+								}
+								below={
+									(row.options.length > 0 || row.pending) && (
+										<ul className="sheet__feature-options">
+											{row.pending && <li className="sheet__feat-pending">Choices not made yet: {row.pending.join(', ')} — make them in Edit Character.</li>}
+											{row.options.map((option) => (
+												<FeatureOptionItem key={option.key} option={option} resolverData={resolverData} />
+											))}
+										</ul>
+									)
+								}
+							>
+								{row.entries ? <ResolvedEntries entries={row.entries} data={resolverData} /> : <UnresolvedValue reason={`No text found for "${row.name}".`} />}
+							</ActionGroupRow>
+						)
+					})}
+				</ul>
+			)}
+		</section>
+	)
+	return (
+		<section className="sheet__features">
+			<div className="sheet__actions-toolbar">
+				<div className="sheet__actions-filters" role="group" aria-label="Filter features">
+					{FEATURE_FILTERS.map(({ id, label }) => (
+						<button key={id} type="button" className={filter === id ? 'pill pill--active' : 'pill'} aria-pressed={filter === id} onClick={() => setFilter(id)}>
+							{label}
+						</button>
+					))}
+				</div>
+			</div>
+			{errors}
+			{groups.filter((group) => group.kind === 'class' && shown('class')).map(renderGroup)}
+			{shown('class') && classExtras}
+			{groups.filter((group) => group.kind !== 'class' && shown(group.kind)).map(renderGroup)}
 		</section>
 	)
 }
@@ -2296,8 +2432,9 @@ function CharacterSheetBody({
 	/** The full class/subclass feature list (D87), its own fetch (classes.json + the resolver files); starts empty and stays empty on failure, same D43 rule as the effects above. */
 	const [grantedFeatures, setGrantedFeatures] = useState<GrantedFeature[]>([])
 	const [grantedFeaturesError, setGrantedFeaturesError] = useState<string | null>(null)
-	/** The species' own trait names (slice 8a) — the third name source the max-HP bonus table matches against, beside the D87 features and the taken feats. Empty on failure: a missing name only means a bonus is not applied, which computeMaxHitPoints' breakdown shows by omission. */
-	const [speciesTraitNames, setSpeciesTraitNames] = useState<string[]>([])
+	/** The species' own traits (slice 8a) — the third name source the max-HP bonus table matches against, beside the D87 features and the taken feats, and the Species Traits group (D184). Empty on failure: a missing name only means a bonus is not applied, which computeMaxHitPoints' breakdown shows by omission; the group states the failure (D43). */
+	const [speciesTraits, setSpeciesTraits] = useState<SpeciesTrait[]>([])
+	const [speciesTraitsError, setSpeciesTraitsError] = useState<string | null>(null)
 	/** The Find Familiar beast pool (step 6b slice 2). Fetched only for a character that actually has the spell — see the effect below. */
 	const [beasts, setBeasts] = useState<Beast[]>([])
 	/** Which alternative Armour Class formulas the character is eligible for (step 7 slice b). Depends on `character` and on whether Mage Armor is in the spell list, fetched separately same as the effects above. */
@@ -2599,14 +2736,16 @@ function CharacterSheetBody({
 
 	useEffect(() => {
 		let cancelled = false
-		loadSpeciesTraitNames(character)
-			.then((names) => {
+		loadSpeciesTraits(character)
+			.then((traits) => {
 				if (cancelled) return
-				setSpeciesTraitNames(names)
+				setSpeciesTraits(traits)
+				setSpeciesTraitsError(null)
 			})
-			.catch(() => {
+			.catch((error: unknown) => {
 				if (cancelled) return
-				setSpeciesTraitNames([])
+				setSpeciesTraits([])
+				setSpeciesTraitsError(messageOf(error))
 			})
 		return () => {
 			cancelled = true
@@ -2801,7 +2940,7 @@ function CharacterSheetBody({
 	const maxHitPoints = computeMaxHitPoints(
 		character,
 		hitDiceClassData,
-		[...grantedFeatures.map((feature) => feature.name), ...chosenFeats.map((choice) => choice.name), ...speciesTraitNames],
+		[...grantedFeatures.map((feature) => feature.name), ...chosenFeats.map((choice) => choice.name), ...speciesTraits.map((trait) => trait.name)],
 		feats,
 	)
 
@@ -2970,9 +3109,21 @@ function CharacterSheetBody({
 	function toggleConcentration(spellName: string): void {
 		onEditConcentration?.(concentratingOn === spellName ? null : spellName)
 	}
-	/* D88's gap: chosenOptionalFeatures resolves every stored pick (class- and subclass-level, plus fighting style); classOptionalFeatures only resolves class-level ones. Subtracting its names leaves exactly the subclass-level picks Class options does not already show. */
-	const classOptionalFeatureNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name)))
-	const subclassOptionalFeatures = chosenOptionalFeatures.filter((option) => !classOptionalFeatureNames.has(option.name))
+	/* D184: every chosen option (class- and subclass-level, fighting style) sits under the feature that grants it; D88's separate option sections are gone. */
+	const featureGroups = featuresTabGroups({
+		classes: character.classes,
+		speciesName: character.species?.name ?? null,
+		granted: grantedFeatures,
+		classFeatureChoices,
+		chosenOptions: chosenOptionalFeatures,
+		optionOrigin,
+		speciesTraits,
+		feats: chosenFeats.map((instance) => ({
+			instance,
+			text: featTextEntries.find((f) => f.name === instance.name && f.source === instance.source),
+			pending: missingFeatSubChoices(instance, feats),
+		})),
+	})
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0 || speciesSpellcastingEntries.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
@@ -3511,139 +3662,25 @@ function CharacterSheetBody({
 				aria-labelledby="sheet-tab-features"
 				className={activeTab === 'features' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
 			>
-			<section className="sheet__feats">
-				<h2>Feats</h2>
-				{chosenFeats.length === 0 ? (
-					<p>No feats chosen yet.</p>
-				) : (
-					<ul>
-						{chosenFeats.map((choice) => {
-							const featText = featTextEntries.find((f) => f.name === choice.name && f.source === choice.source)
-							const missing = missingFeatSubChoices(choice, feats)
-							return (
-								<li key={choice.key}>
-									<details>
-										<summary>
-											{choice.name} ({featOriginLabel(choice)})
-										</summary>
-										{missing.length > 0 && <p className="sheet__feat-pending">Choices not made yet: {missing.join(', ')} — make them in Edit Character.</p>}
-										{featText ? (
-											<ResolvedEntries entries={featText.entries} data={resolverData} />
-										) : (
-											<UnresolvedValue reason={`No text found for feat "${choice.name}" (${choice.source}).`} />
-										)}
-									</details>
-								</li>
-							)
-						})}
-					</ul>
-				)}
-			</section>
-
-			{/*
-			 * The full class + subclass feature list (D87). A NEW section — it does
-			 * not replace or merge into Feats / Class feature choices / Class options
-			 * below, which keep their own rows. The resolver excludes the choice
-			 * containers and the gainSubclassFeature placeholders those other
-			 * sections / the header already cover. Same collapsed-<details> +
-			 * ResolvedEntries pattern the Feats list uses (D51).
-			 */}
-			<section className="sheet__granted-features">
-				<h2>Class and subclass features</h2>
-				{grantedFeaturesError && <p className="error">Could not load class and subclass features: {grantedFeaturesError}</p>}
-				{grantedFeatures.length === 0 ? (
-					<p>No class or subclass features found.</p>
-				) : (
-					<ul>
-						{grantedFeatures.map((feature) => (
-							<li key={feature.id}>
-								<details>
-									<summary>
-										{feature.name}
-										<span className="sheet__feature-origin"> ({grantedFeatureOrigin(feature)})</span>
-									</summary>
-									<ResolvedEntries entries={feature.entries} data={resolverData} />
-								</details>
-							</li>
-						))}
-					</ul>
-				)}
-			</section>
-
-			{/* The D21 class-feature choices, one row per chosen alternative naming the feature it replaces. Nothing renders at all when the character made none — no empty heading, same rule the sections around it follow, except when the load itself failed (D43). */}
-			{(classFeatureChoices.length > 0 || classFeatureChoicesError) && (
-				<section className="sheet__class-feature-choices">
-					<h2>Class feature choices</h2>
-					{classFeatureChoicesError && <p className="error">Could not load class feature choices: {classFeatureChoicesError}</p>}
-					<ul>
-						{classFeatureChoices.map((choice) => (
-							<li key={`${choice.featureName}|${choice.optionName}`}>
-								<details>
-									<summary>
-										{choice.optionName} — {choice.featureName} (level {choice.grantedAtLevel})
-									</summary>
-									{choice.found ? (
-										<ResolvedEntries entries={choice.entries} data={resolverData} />
-									) : (
-										<UnresolvedValue reason={`No text found for "${choice.optionName}" (${choice.featureName}).`} />
-									)}
-								</details>
-							</li>
-						))}
-					</ul>
-				</section>
-			)}
-
-			{/* Headed generically: the progression's own name comes with the data that failed to load, so it isn't known here. */}
-			{classOptionalFeaturesError && (
-				<section className="sheet__class-optional-features">
-					<h2>Class options</h2>
-					<p className="error">Could not load the options chosen for your class: {classOptionalFeaturesError}</p>
-				</section>
-			)}
-
-			{/* One section per granted featureType, headed by the progression's own name ("Eldritch Invocations", "Metamagic"). A character with no class-level picks renders nothing at all — no empty heading. */}
-			{classOptionalFeatures.map((group) => (
-				<section key={group.featureType} className="sheet__class-optional-features">
-					<h2>{group.name ?? group.featureType}</h2>
-					<ul>
-						{group.options.map((option) => (
-							<li key={`${option.name}|${option.source}`}>
-								<details>
-									<summary>{option.name}</summary>
-									<ResolvedEntries entries={option.entries} data={resolverData} />
-								</details>
-							</li>
-						))}
-					</ul>
-				</section>
-			))}
-
-			{/*
-			 * D88: subclass-level optional-feature picks (Battle Master Maneuvers, Arcane Shot,
-			 * Runes, College of Swords fighting styles) plus the class-level fighting style —
-			 * neither shown anywhere else on the sheet, even though the actions table already
-			 * lists the usable ones by name. Deduped against Class options above by name, so a
-			 * class-level pick never appears twice. Nothing renders when there are none.
-			 */}
-			{subclassOptionalFeatures.length > 0 && (
-				<section className="sheet__subclass-optional-features">
-					<h2>Subclass options</h2>
-					<ul>
-						{subclassOptionalFeatures.map((option) => (
-							<li key={`${option.name}|${option.source}`}>
-								<details>
-									<summary>{option.name}</summary>
-									<ResolvedEntries entries={option.entries} data={resolverData} />
-								</details>
-							</li>
-						))}
-					</ul>
-				</section>
-			)}
-
-			{/* The Beast forms a Druid knows for Wild Shape. Nothing renders for a character with none — no empty heading. Uses per rest and transforming are play tracking (step 9), not shown. */}
-			{wildShapeForms.length > 0 && (
+			<FeaturesSection
+				groups={featureGroups}
+				errors={
+					<>
+						{grantedFeaturesError && <p className="error">Could not load class and subclass features: {grantedFeaturesError}</p>}
+						{classFeatureChoicesError && <p className="error">Could not load class feature choices: {classFeatureChoicesError}</p>}
+						{classOptionalFeaturesError && <p className="error">Could not load the options chosen for your class: {classOptionalFeaturesError}</p>}
+						{speciesTraitsError && <p className="error">Could not load species traits: {speciesTraitsError}</p>}
+					</>
+				}
+				resourceMaxima={resourceMaxima}
+				resourceRecharge={resourceRecharge}
+				resourceUses={resourceUses}
+				resolverData={resolverData}
+				onSpendResource={onEditResourceUses ? spendResource : undefined}
+				classExtras={
+				<>
+				{/* The Beast forms a Druid knows for Wild Shape. Nothing renders for a character with none — no empty heading. Uses per rest and transforming are play tracking (step 9), not shown. */}
+				{wildShapeForms.length > 0 && (
 				<section className="sheet__wild-shape-forms">
 					<h2>Wild Shape forms</h2>
 					{/* The forms are listed from storage, so this section never vanished — but without this line every one of them reads "no stat block found", blaming the form for a failure of the whole fetch. */}
@@ -3741,6 +3778,9 @@ function CharacterSheetBody({
 					)}
 				</section>
 			)}
+				</>
+				}
+			/>
 			</div>
 
 			<div
@@ -3832,9 +3872,7 @@ function CharacterSheetBody({
 							setDrawer(null)
 						}}
 					>
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-							<path d="M12 2c.5 3-1.500 4.500-3 6.500S6 12 6 15a6 6 0 0 0 12 0c0-2.500-1-4-2-5.500-.3 1.500-1 2.500-2 2.500 1-3-.5-7-2-10Z" />
-						</svg>
+						<FireIcon />
 						Finish Short Rest
 					</button>
 				</Drawer>

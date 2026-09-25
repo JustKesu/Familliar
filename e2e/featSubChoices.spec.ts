@@ -19,9 +19,10 @@ test('A3a+b: origin feat choices can wait; the sheet names them as not made yet'
   await finishFromBackground(page, options)
 
   await openFeats(page)
-  const feats = page.locator('section', { has: page.getByRole('heading', { name: 'Feats' }) })
-  await feats.getByText('Skilled (level 4)').click()
-  await feats.getByText('Magic Initiate; Cleric (Background)').click()
+  // R6 (D184): the pending line sits under the feat's row, shown while the row is collapsed.
+  const feats = page.getByRole('region', { name: 'Feats', exact: true })
+  await expect(feats.locator('.sheet__group-row', { hasText: 'Skilled' }).locator('.sheet__group-row-source')).toHaveText('From Fighter 4')
+  await expect(feats.locator('.sheet__group-row', { hasText: 'Magic Initiate; Cleric' }).locator('.sheet__group-row-source')).toHaveText('From Background')
   await expect(feats.getByText(PENDING)).toHaveCount(2)
 })
 
@@ -75,7 +76,9 @@ test('A3d: completing the open choices in Edit Character clears the pending line
   await expect(page).toHaveURL(/#\/character\/[^/]+$/)
 
   await openFeats(page)
-  await expect(page.getByRole('heading', { name: 'Feats' })).toBeVisible()
-  await expect(page.getByText('Skilled (level 4)')).toBeVisible()
+  const feats = page.getByRole('region', { name: 'Feats', exact: true })
+  await expect(feats.getByRole('button', { name: 'Skilled', exact: true })).toBeVisible()
+  // The stored picks now show under the feat instead.
+  await expect(feats.getByText('Skills: Arcana, History, Nature')).toBeVisible()
   await expect(page.getByText(/Choices not made yet/)).toHaveCount(0)
 })

@@ -3297,3 +3297,43 @@ Neznámé maximum (D43): nic.
 Zdroj: task Short Rest drawer, 25. 9. 2026.
 
 Tlačítko Short Rest v hlavičce už neodpočívá hned: otevře sdílený boční panel „Short Rest" se sekcí Hit Dice (stejné řádky a hod jako dřív, včetně záznamu hodu v historii). Odpočinek (obnova zásob, `afterShortRest`) se provede až tlačítkem **Finish Short Rest**, které pak panel zavře. Zavření křížkem nebo Esc bez Finish ponechá už provedené hody (utracené kostky i získané HP), ale zásoby neobnoví. Kostky života už nejsou v panelu Hit Points. Long Rest beze změny. Schéma postavy beze změny.
+
+## D184 — R6: záložka Features & Traits; ikony u rest tlačítek
+
+Zdroj: task R6 (rework sheetu), 25. 9. 2026.
+
+**Filtry.** Nahoře pilulky All · Class Features · Species Traits · Feats (stejná
+komponenta jako Actions). Filtr jen skrývá skupiny; stav filtru je UI stav (D116).
+
+**Skupiny.** „<Třída> Features" — jedna skupina za každou třídu v seznamu tříd
+postavy (iteruje se, nikdy `classes[0]`; připraveno na multiclass). Subclass
+featury patří do skupiny své třídy; řazení podle úrovně, pak jména. Dál
+„Species Traits" (pojmenované prvky `entries` druhu) a „Feats" se zdrojem
+„From Background" / „From Species" / „From <Třída> <úroveň>". U featu z ASI se
+třída zná jen u jedné třídy; u multiclassu se zdroj neukazuje.
+
+**Řádky.** Každá featura / rys / feat je sbalený řádek stejný jako ve skupinách
+Actions (▸/▾, jméno, šedý zdroj + úroveň, vpravo use-boxy). Klik na jméno
+rozbalí plný text.
+
+**Volby pod featurou.** Zvolená volba (Metamagic, Eldritch Invocations,
+manévry, fighting style) je v kompaktním seznamu pod featurou, která ji dává —
+viditelná i sbalená, každá volba rozbalitelná na svůj text. Vazba: text featury
+nese 5etools filtr `{@filter …|optionalfeatures|feature type=<kód>}`, u fighting
+style `{@filter …|feats|category=FS}`; bere se featura s nejnižší úrovní. Volba,
+kterou žádná featura nepropojí (dnes RN, AS, FS:B — rodič je choice container,
+D87 pravidlo 3), je vlastní řádek na konci skupiny třídy. D21 volby (Divine
+Order…) dostanou řádek rodiče sestavený z volby. Sub-volby featu (dovednosti,
+nástroje, jazyky, expertise, schopnost, kouzla) jsou řádky seznamu pod featem,
+bez rozbalení (vlastní text nemají). Oddíly „Class options" / „Subclass
+options" / „Class feature choices" (D88) zanikají.
+
+**Use-boxy.** Tatáž komponenta a tentýž záznam `play.resourceUses` jako Actions
+(D182) — klik v jedné záložce je vidět v druhé, Short/Long Rest nuluje obojí.
+Neznámé maximum (D43): nic.
+
+**Wild Shape formy a familiar** zůstávají na záložce, za skupinami tříd;
+viditelné pod All a Class Features.
+
+**Ikony.** SHORT REST (plamen z D183) a LONG REST (měsíc) v hlavičce mají ikonu
+14 px vlevo, mezera 8 px, barva `currentColor`.

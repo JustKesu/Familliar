@@ -26,6 +26,12 @@ export interface FighterOptions {
   onFeatStep?: (page: Page) => Promise<void>
   /** The class's first starting-equipment option (Fighter: Greatsword, Flail, Javelins…) instead of the last. */
   classGear?: boolean
+  /** Subclass radio at level 3+; Champion when absent. */
+  subclass?: string
+  /** Runs on the class step after the subclass is picked (its own options). */
+  onClassStep?: (page: Page) => Promise<void>
+  /** Runs on the Languages step (a subclass's tool or skill pick). */
+  onLanguagesStep?: (page: Page) => Promise<void>
 }
 
 /** Fighter with background Acolyte; stops on the Background step so the caller can inspect it. */
@@ -41,7 +47,8 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
     await page.getByRole('checkbox', { name: new RegExp(`^${weapon} —`) }).first().check()
   }
   await page.getByRole('radio', { name: 'Defense', exact: true }).first().check()
-  if (options.level >= 3) await page.getByRole('radio', { name: 'Champion', exact: true }).first().check()
+  if (options.level >= 3) await page.getByRole('radio', { name: options.subclass ?? 'Champion', exact: true }).first().check()
+  await options.onClassStep?.(page)
   await next(page)
 
   await expectStep(page, 'Species')
@@ -62,6 +69,7 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
   await expectStep(page, 'Languages')
   await page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' }).check()
   await page.getByRole('checkbox', { name: 'Elvish (XPHB)' }).check()
+  await options.onLanguagesStep?.(page)
   await next(page)
 
   await expectStep(page, 'Ability scores')

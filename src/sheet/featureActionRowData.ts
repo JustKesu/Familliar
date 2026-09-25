@@ -79,7 +79,7 @@ function consumedResourceName(feature: { name: string; consumes?: unknown }): st
  * own name only ever matches something in computeCharacterResources' list by
  * coincidence, which the data does not do).
  */
-function resourceCandidateName(feature: { name: string; consumes?: unknown }): string {
+export function resourceCandidateName(feature: { name: string; consumes?: unknown }): string {
 	return consumedResourceName(feature) ?? resolveResourceName(feature.name)
 }
 

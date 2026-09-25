@@ -22,7 +22,8 @@ async function useSecondWind(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Use Second Wind' }).first().click()
 }
 
-const usedBoxes = (page: Page): Locator => page.locator('.sheet__use-box--used')
+/* R6: the Features & Traits panel carries the same boxes, so count only the Actions tab's. */
+const usedBoxes = (page: Page): Locator => page.getByRole('tabpanel', { name: 'Actions' }).locator('.sheet__use-box--used')
 
 test.beforeEach(async ({ page }) => {
   await createFighter(page, { name: 'Rester', level: 2, species: 'Dwarf|XPHB' })

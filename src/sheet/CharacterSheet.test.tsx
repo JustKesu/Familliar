@@ -30,7 +30,7 @@ import { emptyWizardData, saveCharacter, type WizardData, type WizardStep } from
 import { loadAcFormulaKeys } from './armourClassData'
 import { loadDamageResponseData } from './damageResponseData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
-import { loadSpeciesTraitNames } from './speciesTraitNames'
+import { loadSpeciesTraits } from './speciesTraitNames'
 import { loadResolverData } from '../featureResolver'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { loadBeasts, type Beast } from '../beasts/beastData'
@@ -125,10 +125,10 @@ vi.mock('./grantedSenses', async (importOriginal) => {
 	return { ...actual, loadGrantedSenses: vi.fn(async () => []) }
 })
 
-/* Slice 8a: only the species.json fetch is stubbed — speciesTraitNamesFrom itself stays real. */
+/* Slice 8a: only the species.json fetch is stubbed — speciesTraitsFrom itself stays real. */
 vi.mock('./speciesTraitNames', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./speciesTraitNames')>()
-	return { ...actual, loadSpeciesTraitNames: vi.fn(async () => []) }
+	return { ...actual, loadSpeciesTraits: vi.fn(async () => []) }
 })
 
 /* Only the fetch is stubbed — familiarFormOptions and hasFindFamiliar stay real, so the section is proved against the actual filters. */
@@ -448,6 +448,30 @@ function lastRoll(): { label: string; dice: number[]; kept: number[]; modifier: 
 async function drawerText(buttonName: string): Promise<string> {
 	await userEvent.setup().click(screen.getByRole('button', { name: buttonName }))
 	return screen.getByRole('dialog', { name: buttonName.replace(' breakdown', '') }).textContent ?? ''
+}
+
+/* R6 (D184): the Features & Traits tab carries the same rows, use boxes and pill names, so Actions assertions look inside the Actions panel. */
+function actionsPanel(): HTMLElement {
+	return screen.getByRole('tabpanel', { name: 'Actions' })
+}
+
+async function openFeaturesTab(): Promise<HTMLElement> {
+	fireEvent.click(await screen.findByRole('tab', { name: 'Features & Traits' }))
+	return screen.getByRole('tabpanel', { name: 'Features & Traits' })
+}
+
+/** A Features & Traits group by its heading, once it holds `rowName`. */
+async function featureGroup(name: string, rowName: string): Promise<HTMLElement> {
+	return waitFor(() => {
+		const group = screen.getByRole('region', { name })
+		within(group).getByRole('button', { name: rowName })
+		return group
+	})
+}
+
+/** A Features & Traits row (the <li>) by the name on its toggle. */
+function featureRow(group: HTMLElement, name: string): HTMLElement {
+	return within(group).getByRole('button', { name }).closest('.sheet__group-row') as HTMLElement
 }
 
 function modeSwitch(): HTMLElement {
@@ -3635,31 +3659,55 @@ describe('CharacterSheet', () => {
 			optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Devil’s Sight' }] }],
 		}
 
-		it('renders each chosen invocation by name, under the progression’s own heading', async () => {
+		/* R6 (D184): the invocations sit under the feature whose text filters for their featureType. */
+		const INVOCATIONS_FEATURE = {
+			id: 'cf|eldritch invocations|warlock|xphb|1|xphb',
+			name: 'Eldritch Invocations',
+			level: 1,
+			kind: 'class' as const,
+			className: 'Warlock',
+			entries: ['You have unearthed Eldritch Invocations. {@filter Eldritch Invocation Options|optionalfeatures|feature type=EI|source=XPHB}'],
+		}
+
+		beforeEach(() => {
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue([INVOCATIONS_FEATURE])
+			vi.mocked(loadChosenOptionalFeatureOptions).mockImplementation(async (selection) =>
+				choiceNames(selection.find((entry) => entry.featureType === 'EI')?.choices).map((name) => ({ name, source: 'XPHB', entries: [`${name} does something useful.`], featureType: 'EI' })),
+			)
+		})
+
+		afterEach(() => {
+			vi.mocked(loadGrantedClassFeatures).mockReset().mockResolvedValue([])
+			vi.mocked(loadChosenOptionalFeatureOptions).mockReset().mockResolvedValue([])
+		})
+
+		it('lists each chosen invocation under the Eldritch Invocations row, while the row stays collapsed', async () => {
 			render(<CharacterSheet character={warlock} />)
-			await screen.findByRole('heading', { name: 'Kesu' })
+			await openFeaturesTab()
+			const row = featureRow(await featureGroup('Warlock Features', 'Eldritch Invocations'), 'Eldritch Invocations')
 
-			expect(await screen.findByRole('heading', { name: 'Eldritch Invocations' })).toBeTruthy()
-			expect(screen.getByText('Agonizing Blast')).toBeTruthy()
-			expect(screen.getByText('Devil’s Sight')).toBeTruthy()
+			await waitFor(() => expect(row.querySelector('.sheet__feature-options')?.textContent).toContain('Agonizing Blast'))
+			expect(row.querySelector('.sheet__feature-options')!.textContent).toContain('Devil’s Sight')
+			expect(within(row).getByRole('button', { name: 'Eldritch Invocations' }).getAttribute('aria-expanded')).toBe('false')
 		})
 
-		it('the text is collapsed behind a details element and expands on click', async () => {
+		it('an invocation name opens its own text and a second click closes it', async () => {
 			const user = userEvent.setup()
-			const { container } = render(<CharacterSheet character={warlock} />)
-			await screen.findByRole('heading', { name: 'Eldritch Invocations' })
+			render(<CharacterSheet character={warlock} />)
+			await openFeaturesTab()
+			const toggle = await screen.findByRole('button', { name: 'Agonizing Blast' })
+			expect(screen.queryByText(/Agonizing Blast does something useful/)).toBeNull()
 
-			const details = container.querySelector('.sheet__class-optional-features details') as HTMLDetailsElement
-			expect(details.open).toBe(false)
-			await user.click(screen.getByText('Agonizing Blast'))
-			expect(details.open).toBe(true)
+			await user.click(toggle)
 			expect(screen.getByText(/Agonizing Blast does something useful/)).toBeTruthy()
+			await user.click(toggle)
+			expect(screen.queryByText(/Agonizing Blast does something useful/)).toBeNull()
 		})
 
-		it('a character with no class-level picks renders no heading at all', async () => {
+		it('a character with no picks has no option list under any row', async () => {
 			const { container } = render(<CharacterSheet character={character} />)
-			await screen.findByRole('heading', { name: 'Aria' })
-			expect(container.querySelector('.sheet__class-optional-features')).toBeNull()
+			await openFeaturesTab()
+			expect(container.querySelector('.sheet__feature-options')).toBeNull()
 		})
 	})
 
@@ -3860,27 +3908,25 @@ describe('CharacterSheet', () => {
 				],
 			}
 
-			const { container } = render(<CharacterSheet character={cleric} />)
-			await screen.findByRole('heading', { name: 'Ordered Cleric' })
+			render(<CharacterSheet character={cleric} />)
+			await openFeaturesTab()
 
-			const section = await waitFor(() => {
-				const found = container.querySelector('.sheet__class-feature-choices')
-				expect(found).toBeTruthy()
-				return found!
-			})
-			expect(section.textContent).toContain('Thaumaturge')
-			expect(section.textContent).toContain('Divine Order')
-			expect(section.textContent).toContain('level 1')
-			// The chosen option's own text, resolved through the ref — not just its name.
-			expect(section.textContent).toContain('You know one extra cantrip from the Cleric spell list.')
+			// R6 (D184): D87 rule 3 keeps the parent out of the granted list, so its row is built from the pick.
+			const row = featureRow(await featureGroup('Cleric Features', 'Divine Order'), 'Divine Order')
+			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('Cleric 1')
+			const options = row.querySelector('.sheet__feature-options') as HTMLElement
+			expect(options.textContent).toContain('Thaumaturge')
 			// The option NOT chosen must not appear.
-			expect(section.textContent).not.toContain('Heavy armor training')
+			expect(options.textContent).not.toContain('Protector')
+			// The chosen option's own text, resolved through the ref — not just its name.
+			fireEvent.click(within(options).getByRole('button', { name: 'Thaumaturge' }))
+			expect(options.textContent).toContain('You know one extra cantrip from the Cleric spell list.')
 		})
 
-		it('renders no section at all for a character that made no such choice', async () => {
-			const { container } = render(<CharacterSheet character={character} />)
-			await screen.findByRole('heading', { name: 'Aria' })
-			expect(container.querySelector('.sheet__class-feature-choices')).toBeNull()
+		it('renders no row at all for a character that made no such choice', async () => {
+			render(<CharacterSheet character={character} />)
+			await openFeaturesTab()
+			expect(screen.queryByRole('button', { name: 'Divine Order' })).toBeNull()
 		})
 	})
 
@@ -4033,14 +4079,11 @@ describe('CharacterSheet', () => {
 			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
 			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(character, CLASSES, RESOLVER))
 
-			const { container } = render(<CharacterSheet character={character} />)
-			await screen.findByRole('heading', { name: 'Aria' })
+			render(<CharacterSheet character={character} />)
+			await openFeaturesTab()
 
-			const section = await waitFor(() => {
-				const found = container.querySelector('.sheet__granted-features')
-				expect(found?.textContent).toContain('Second Wind')
-				return found!
-			})
+			// R6 (D184): the subclass feature sits in its class's group.
+			const section = await featureGroup('Fighter Features', 'Second Wind')
 			expect(section.textContent).toContain('Improved Critical')
 			// Rule 3 / rule 4: neither the counted-options container nor the placeholder is listed.
 			expect(section.textContent).not.toContain('Fighting Style')
@@ -4051,15 +4094,12 @@ describe('CharacterSheet', () => {
 			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
 			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(character, CLASSES, RESOLVER))
 
-			const { container } = render(<CharacterSheet character={character} />)
-			const section = await waitFor(() => {
-				const found = container.querySelector('.sheet__granted-features')
-				expect(found?.textContent).toContain('Improved Critical')
-				return found!
-			})
-			const summaries = Array.from(section.querySelectorAll('summary')).map((summary) => summary.textContent)
-			expect(summaries).toContain('Second Wind (Fighter 1)')
-			expect(summaries).toContain('Improved Critical (Champion, Fighter 3)')
+			render(<CharacterSheet character={character} />)
+			await openFeaturesTab()
+			const section = await featureGroup('Fighter Features', 'Improved Critical')
+			const source = (name: string) => featureRow(section, name).querySelector('.sheet__group-row-source')!.textContent
+			expect(source('Second Wind')).toBe('Fighter 1')
+			expect(source('Improved Critical')).toBe('Champion, Fighter 3')
 		})
 
 		it('a Cleric (Life) 17 keeps the wrapper AND its ref-introduced parts, and resolves the Cleric "Potent Spellcasting" — not the Druid one', async () => {
@@ -4071,14 +4111,11 @@ describe('CharacterSheet', () => {
 			}
 			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(cleric, CLASSES, RESOLVER))
 
-			const { container } = render(<CharacterSheet character={cleric} />)
-			await screen.findByRole('heading', { name: 'Living Cleric' })
+			render(<CharacterSheet character={cleric} />)
+			await openFeaturesTab()
 
-			const section = await waitFor(() => {
-				const found = container.querySelector('.sheet__granted-features')
-				expect(found?.textContent).toContain('Disciple of Life')
-				return found!
-			})
+			const section = await featureGroup('Cleric Features', 'Disciple of Life')
+			for (const toggle of within(section).getAllByRole('button', { expanded: false })) fireEvent.click(toggle)
 			// Rule 5: the wrapper is an ordinary entry, alongside the features it introduces by ref.
 			expect(section.textContent).toContain('Life Domain')
 			expect(section.textContent).toContain('Disciple of Life')
@@ -4213,7 +4250,7 @@ describe('CharacterSheet', () => {
 
 		/* R5c (D182): the group a row sits in, by its heading. */
 		function groupOf(container: HTMLElement, name: string): string | null | undefined {
-			const row = Array.from(container.querySelectorAll('.sheet__group-row')).find((li) => li.querySelector('.sheet__action-name')?.textContent === name)
+			const row = Array.from(container.querySelectorAll('.sheet__actions .sheet__group-row')).find((li) => li.querySelector('.sheet__action-name')?.textContent === name)
 			return row?.closest('.sheet__action-group')?.querySelector('h3')?.textContent
 		}
 
@@ -4235,7 +4272,7 @@ describe('CharacterSheet', () => {
 			const user = userEvent.setup()
 			const fighter: Character = { ...character, id: 'act-fighter-expand', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] }
 			const container = await renderFor(fighter)
-			const toggle = await screen.findByRole('button', { name: /Second Wind/, expanded: false })
+			const toggle = await within(actionsPanel()).findByRole('button', { name: /Second Wind/, expanded: false })
 			const row = toggle.closest('.sheet__group-row') as HTMLElement
 			expect(row.textContent).not.toContain('limited well of physical stamina')
 
@@ -4243,7 +4280,7 @@ describe('CharacterSheet', () => {
 			expect(toggle.getAttribute('aria-expanded')).toBe('true')
 			expect(within(row).getByText(/limited well of physical stamina/)).toBeTruthy()
 			// Several rows may be open at once.
-			await user.click(screen.getByRole('button', { name: /Action Surge/, expanded: false }))
+			await user.click(within(actionsPanel()).getByRole('button', { name: /Action Surge/, expanded: false }))
 			expect(container.querySelectorAll('.sheet__group-row-text')).toHaveLength(2)
 
 			await user.click(toggle)
@@ -4253,26 +4290,28 @@ describe('CharacterSheet', () => {
 		it('R5c: filters — Attack shows only the table, Bonus Action only its group, Other only its group, All both', async () => {
 			const user = userEvent.setup()
 			const barbarian: Character = { ...character, id: 'act-barb-filter', name: 'Grog', classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 5 }] }
-			const container = await renderFor(barbarian)
+			await renderFor(barbarian)
+			const container = actionsPanel()
 			await waitFor(() => expect(groupOf(container, 'Rage')).toBe('Bonus Action'))
-			expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
+			const pill = (name: string) => within(container).getByRole('button', { name })
+			expect(pill('All').getAttribute('aria-pressed')).toBe('true')
 
-			await user.click(screen.getByRole('button', { name: 'Attack' }))
+			await user.click(pill('Attack'))
 			expect(container.querySelector('.sheet__action-group')).toBeNull()
 			expect(container.querySelector('.sheet__actions-table')).toBeTruthy()
 
-			await user.click(screen.getByRole('button', { name: 'Bonus Action' }))
+			await user.click(pill('Bonus Action'))
 			expect(container.querySelector('.sheet__actions-table')).toBeNull()
 			expect(Array.from(container.querySelectorAll('.sheet__action-group h3')).map((h) => h.textContent)).toEqual(['Bonus Action'])
 
-			await user.click(screen.getByRole('button', { name: 'Action' }))
+			await user.click(pill('Action'))
 			expect(container.querySelector('.sheet__actions-table')).toBeTruthy()
 			expect(screen.getByText('Nothing here for this character.')).toBeTruthy()
 
-			await user.click(screen.getByRole('button', { name: 'Reaction' }))
+			await user.click(pill('Reaction'))
 			expect(screen.getByText('Nothing here for this character.')).toBeTruthy()
 
-			await user.click(screen.getByRole('button', { name: 'All' }))
+			await user.click(pill('All'))
 			expect(container.querySelector('.sheet__actions-table')).toBeTruthy()
 			expect(groupOf(container, 'Rage')).toBe('Bonus Action')
 			expect(screen.queryByText('Nothing here for this character.')).toBeNull()
@@ -4400,14 +4439,11 @@ describe('CharacterSheet', () => {
 		})
 
 		/*
-		 * D88's gap: the actions table shows a Battle Master's maneuver by name,
-		 * but nothing on the sheet showed its full text — the "Class options"
-		 * section only resolves class-level picks, and a Maneuver is granted by
-		 * the SUBCLASS. The new "Subclass options" section (below the existing
-		 * "Class options" one) closes it, using the same resolved records the
-		 * actions table already gets.
+		 * D88's gap, closed by R6 (D184): a maneuver whose granting feature is not in
+		 * the character's list (this fixture has no Combat Superiority) is still on the
+		 * Features tab — its own row in the class group, with its full text.
 		 */
-		it("shows a Battle Master's chosen maneuver as full text on the sheet, not just its name in the actions table", async () => {
+		it("shows a Battle Master's chosen maneuver as its own Features row when no feature links it, with its full text", async () => {
 			withRealOptionResolution()
 			const battleMaster: Character = {
 				...character,
@@ -4419,31 +4455,11 @@ describe('CharacterSheet', () => {
 			const container = await renderFor(battleMaster)
 			await waitFor(() => expect(rowNames(container)).toContain('Trip Attack'))
 
-			const section = container.querySelector('.sheet__subclass-optional-features') as HTMLElement
-			expect(section).toBeTruthy()
-			expect(within(section).getAllByText('Trip Attack')).toHaveLength(1)
-			expect(within(section).getByText(/When you hit a creature with an attack roll/)).toBeTruthy()
-		})
-
-		it('does not repeat an option in Subclass options when Class options already shows it', async () => {
-			withRealOptionResolution()
-			vi.mocked(loadChosenClassOptionalFeatures).mockResolvedValueOnce([
-				{ featureType: 'MM', name: 'Metamagic', options: [{ name: 'Twinned Spell', source: 'XPHB', entries: OPTIONAL_FEATURES[0]!.entries }] },
-			])
-			const sorcerer: Character = {
-				...character,
-				id: 'act-sorcerer-dedupe',
-				name: 'Nott',
-				classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 }],
-				optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Twinned Spell' }] }],
-			}
-			const container = await renderFor(sorcerer)
-			await screen.findByRole('heading', { name: 'Metamagic' })
-
-			// Shown once, by Class options — Subclass options renders no section at all once its one pick is deduped away.
-			const classOptions = container.querySelector('.sheet__class-optional-features') as HTMLElement
-			expect(within(classOptions).getAllByText('Twinned Spell')).toHaveLength(1)
-			expect(container.querySelector('.sheet__subclass-optional-features')).toBeNull()
+			await openFeaturesTab()
+			const row = featureRow(await featureGroup('Fighter Features', 'Trip Attack'), 'Trip Attack')
+			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('Battle Master')
+			fireEvent.click(within(row).getByRole('button', { name: 'Trip Attack' }))
+			expect(within(row).getByText(/When you hit a creature with an attack roll/)).toBeTruthy()
 		})
 
 		it('gives no row to the chosen fighting style, which carries neither `consumes` nor a rest tag', async () => {
@@ -4462,7 +4478,7 @@ describe('CharacterSheet', () => {
 
 		/* R5a: a feature's origin is its own span in the group row, so the name and origin read as "name (origin)" here. */
 		function nameCell(container: HTMLElement, name: string): string | null | undefined {
-			const item = Array.from(container.querySelectorAll('.sheet__group-row')).find((row) => row.querySelector('.sheet__action-name')?.textContent === name)
+			const item = Array.from(container.querySelectorAll('.sheet__actions .sheet__group-row')).find((row) => row.querySelector('.sheet__action-name')?.textContent === name)
 			const origin = item?.querySelector('.sheet__feature-origin')?.textContent
 			return item && (origin ? `${name} (${origin})` : name)
 		}
@@ -4505,13 +4521,12 @@ describe('CharacterSheet', () => {
 				optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Twinned Spell' }] }],
 			}
 			const container = await renderFor(sorcerer)
-			await screen.findByRole('heading', { name: 'Metamagic' })
 
 			await waitFor(() => expect(nameCell(container, 'Twinned Spell')).toBe('Twinned Spell (Sorcerer)'))
 		})
 
-		/* D88: no actions-table row for a fighting style (above), but nothing else on the sheet showed it either — Subclass options now does. */
-		it('shows the chosen fighting style as full text in Subclass options, even though it never gets an actions-table row', async () => {
+		/* D88: no actions-table row for a fighting style (above); the Features tab shows it (R6, D184 — own row here, as this fixture has no Fighting Style feature). */
+		it('shows the chosen fighting style as full text on the Features tab, even though it never gets an actions-table row', async () => {
 			withRealOptionResolution()
 			const fighter: Character = {
 				...character,
@@ -4522,10 +4537,10 @@ describe('CharacterSheet', () => {
 			const container = await renderFor(fighter)
 			await waitFor(() => expect(rowNames(container)).toContain('Second Wind'))
 
-			const section = container.querySelector('.sheet__subclass-optional-features') as HTMLElement
-			expect(section).toBeTruthy()
-			expect(within(section).getByText('Defense')).toBeTruthy()
-			expect(within(section).getByText(/While you are wearing armor/)).toBeTruthy()
+			await openFeaturesTab()
+			const row = featureRow(await featureGroup('Fighter Features', 'Defense'), 'Defense')
+			fireEvent.click(within(row).getByRole('button', { name: 'Defense' }))
+			expect(within(row).getByText(/While you are wearing armor/)).toBeTruthy()
 		})
 	})
 
@@ -4597,7 +4612,7 @@ describe('CharacterSheet', () => {
 
 		/* R5c (D182): "used / boxes" read off the row's use-boxes. */
 		function usesTextFor(container: HTMLElement, featureName: string): string | null {
-			const row = Array.from(container.querySelectorAll('.sheet__action-row')).find((tr) => tr.querySelector('.sheet__action-name')?.textContent === featureName)
+			const row = Array.from(container.querySelectorAll('.sheet__actions .sheet__action-row')).find((tr) => tr.querySelector('.sheet__action-name')?.textContent === featureName)
 			if (!row) return null
 			return `${row.querySelectorAll('.sheet__use-box--used').length} / ${row.querySelectorAll('.sheet__use-box').length}`
 		}
@@ -4625,7 +4640,7 @@ describe('CharacterSheet', () => {
 			const fighter: Character = { ...character, id: 'uses-fighter-mark', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 1 } } }
 			await renderFor(fighter, onEditResourceUses)
 
-			fireEvent.click(screen.getByRole('button', { name: 'Use Second Wind' }))
+			fireEvent.click(within(actionsPanel()).getByRole('button', { name: 'Use Second Wind' }))
 			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 2 })
 		})
 
@@ -4639,10 +4654,10 @@ describe('CharacterSheet', () => {
 		it('R5c: the boxes are followed by the rest that returns them, and clicking one never opens the row', async () => {
 			const fighter: Character = { ...character, id: 'uses-fighter-recharge', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] }
 			const container = await renderFor(fighter, vi.fn())
-			const row = container.querySelector('.sheet__group-row') as HTMLElement
+			const row = container.querySelector('.sheet__actions .sheet__group-row') as HTMLElement
 			// The fixture's recharge sentence gives no Short Rest amount 9b5 reads, so only a Long Rest returns it.
 			expect(row.querySelector('.sheet__use-recharge')!.textContent).toBe('/ Long Rest')
-			fireEvent.click(screen.getAllByRole('button', { name: 'Use Second Wind' })[0]!)
+			fireEvent.click(within(row).getAllByRole('button', { name: 'Use Second Wind' })[0]!)
 			expect(row.querySelector('.sheet__group-row-text')).toBeNull()
 		})
 
@@ -4651,7 +4666,7 @@ describe('CharacterSheet', () => {
 			const fighter: Character = { ...character, id: 'uses-fighter-undo', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }], play: { resourceUses: { 'Second Wind': 1 } } }
 			await renderFor(fighter, onEditResourceUses)
 
-			fireEvent.click(screen.getByRole('button', { name: 'Undo a use of Second Wind' }))
+			fireEvent.click(within(actionsPanel()).getByRole('button', { name: 'Undo a use of Second Wind' }))
 			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 0 })
 		})
 
@@ -4659,7 +4674,7 @@ describe('CharacterSheet', () => {
 			const fighter: Character = { ...character, id: 'uses-fighter-floored', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }] }
 			await renderFor(fighter, vi.fn())
 			expect(screen.queryByRole('button', { name: 'Undo a use of Second Wind' })).toBeNull()
-			expect(screen.getAllByRole('button', { name: 'Use Second Wind' })).toHaveLength(2)
+			expect(within(actionsPanel()).getAllByRole('button', { name: 'Use Second Wind' })).toHaveLength(2)
 		})
 
 		it('R5c: a pool above 10 is a spent / max counter with − and +, not boxes', async () => {
@@ -4673,7 +4688,7 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={big} onEditResourceUses={onEditResourceUses} />)
 			await waitFor(() => expect(container.querySelector('.sheet__use-counter')?.textContent).toContain('3 / 25'))
 			expect(container.querySelector('.sheet__use-box')).toBeNull()
-			fireEvent.click(screen.getByRole('button', { name: 'Use Second Wind' }))
+			fireEvent.click(within(actionsPanel()).getByRole('button', { name: 'Use Second Wind' }))
 			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 4 })
 		})
 
@@ -4702,6 +4717,192 @@ describe('CharacterSheet', () => {
 
 			fireEvent.click(screen.getAllByRole('button', { name: 'Use Channel Divinity' })[0]!)
 			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Channel Divinity': 2 })
+		})
+	})
+
+	/*
+	 * R6 (D184): the Features & Traits tab, over a character saved through the real
+	 * store. grantedClassFeaturesFrom and chosenOptionalFeatureOptions run for real
+	 * over inline fixtures; only the fetches are stubbed.
+	 */
+	describe('Features & Traits tab (R6, D184)', () => {
+		const REST = 'You regain the expended use when you finish a {@variantrule Short Rest|XPHB}.'
+		const CLASSES = [
+			{
+				entryType: 'class',
+				name: 'Fighter',
+				source: 'XPHB',
+				classFeatureIds: ['cf|fighting style|fighter|xphb|1|xphb', 'cf|second wind|fighter|xphb|1|xphb', 'cf|action surge|fighter|xphb|2|xphb'],
+				classFeatures: ['Fighting Style|Fighter|XPHB|1', 'Second Wind|Fighter|XPHB|1', 'Action Surge|Fighter|XPHB|2'],
+				classTableGroups: [{ colLabels: ['Second Wind'], rows: [[2], [2], [2], [3]] }],
+			},
+			{
+				entryType: 'subclass',
+				name: 'Battle Master',
+				className: 'Fighter',
+				classSource: 'XPHB',
+				shortName: 'Battle Master',
+				source: 'XPHB',
+				subclassFeatureIds: ['scf|combat superiority|fighter|xphb|battle master|xphb|3|xphb', 'scf|student of war|fighter|xphb|battle master|xphb|3|xphb'],
+			},
+		]
+		const CF = [
+			{ id: 'cf|fighting style|fighter|xphb|1|xphb', name: 'Fighting Style', className: 'Fighter', classSource: 'XPHB', level: 1, source: 'XPHB', entries: ['You gain a {@filter Fighting Style feat|feats|category=FS} of your choice.'] },
+			{ id: 'cf|second wind|fighter|xphb|1|xphb', name: 'Second Wind', className: 'Fighter', classSource: 'XPHB', level: 1, source: 'XPHB', entries: [`You have a limited well of physical stamina. ${REST}`] },
+			{ id: 'cf|action surge|fighter|xphb|2|xphb', name: 'Action Surge', className: 'Fighter', classSource: 'XPHB', level: 2, source: 'XPHB', entries: ['You can push yourself beyond your normal limits.'] },
+		]
+		const bmFeature = (name: string, text: string) => ({
+			id: `scf|${name.toLowerCase()}|fighter|xphb|battle master|xphb|3|xphb`,
+			name,
+			className: 'Fighter',
+			classSource: 'XPHB',
+			subclassShortName: 'Battle Master',
+			subclassSource: 'XPHB',
+			level: 3,
+			source: 'XPHB',
+			entries: [text],
+		})
+		const SF = [
+			bmFeature('Combat Superiority', 'You learn maneuvers. {@filter Maneuvers Options|optionalfeatures|feature type=MV:B|source=XPHB}'),
+			bmFeature('Student of War', 'You gain proficiency with one type of Artisan’s Tools.'),
+		]
+		const RESOLVER = { classFeatures: CF, subclassFeatures: SF, optionalFeatures: [], feats: [] }
+		const OPTIONAL_FEATURES = [
+			{ name: 'Trip Attack', source: 'XPHB', featureType: ['MV:B'], entries: ['When you hit a creature with an attack roll, you can knock it prone.'] },
+			{ name: 'Riposte', source: 'XPHB', featureType: ['MV:B'], entries: ['When a creature misses you with a melee attack roll, you can strike back.'] },
+		]
+		const FS_FEATS = [{ name: 'Defense', source: 'XPHB', category: 'FS', entries: ['While you are wearing armor, you gain a +1 bonus to AC.'] }]
+
+		/** Saved through CharacterStore, so the sheet reads what storage actually keeps. */
+		function savedBattleMaster(play?: Character['play']): Character {
+			const memory = new Map<string, string>()
+			const store = new CharacterStore({ getItem: (key) => memory.get(key) ?? null, setItem: (key, value) => void memory.set(key, value), removeItem: (key) => void memory.delete(key) })
+			store.create({
+				name: 'Brakka',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 4 }],
+				species: { name: 'Elf', source: 'XPHB' },
+				background: { name: 'Farmer', source: 'XPHB', skillProficiencies: ['animalHandling', 'nature'], toolProficiency: "Carpenter's Tools" },
+				fightingStyle: 'Defense',
+				optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte' }] }],
+				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history'], tools: ["thieves' tools"] } }],
+				...(play ? { play } : {}),
+			})
+			return store.list()[0]!
+		}
+
+		async function renderBattleMaster(play?: Character['play'], onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void): Promise<HTMLElement> {
+			const subject = savedBattleMaster(play)
+			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(subject, CLASSES, RESOLVER))
+			vi.mocked(loadDataFile).mockImplementation(async (path: string) => (path === 'data/classes.json' ? CLASSES : []))
+			vi.mocked(loadChosenOptionalFeatureOptions).mockImplementation(async (selection, fightingStyle) => chosenOptionalFeatureOptions(OPTIONAL_FEATURES, FS_FEATS, selection, fightingStyle))
+			vi.mocked(loadFeatEffectEntries).mockResolvedValue([{ name: 'Tough', source: 'XPHB', grantedByBackgrounds: [{ name: 'Farmer', source: 'XPHB' }] }, { name: 'Skilled', source: 'XPHB' }])
+			vi.mocked(loadFeatTextEntries).mockResolvedValue([
+				{ name: 'Tough', source: 'XPHB', entries: ['Your Hit Point maximum increases.'] },
+				{ name: 'Skilled', source: 'XPHB', entries: ['You gain proficiency in any combination of three skills or tools.'] },
+			])
+			vi.mocked(loadSpeciesTraits).mockResolvedValue([
+				{ name: 'Elven Lineage', entries: ['You are part of a lineage.'] },
+				{ name: 'Fey Ancestry', entries: ['You have Advantage on saving throws you make to avoid or end the Charmed condition.'] },
+			])
+			const { container } = render(<CharacterSheet character={subject} onEditResourceUses={onEditResourceUses} />)
+			await openFeaturesTab()
+			await featureGroup('Fighter Features', 'Combat Superiority')
+			await featureGroup('Feats', 'Skilled')
+			return container
+		}
+
+		const rowNamesIn = (group: HTMLElement) => Array.from(group.querySelectorAll('.sheet__group-row-name')).map((node) => node.textContent)
+
+		afterEach(() => {
+			vi.mocked(loadGrantedClassFeatures).mockReset().mockResolvedValue([])
+			vi.mocked(loadResolverData).mockReset().mockResolvedValue({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })
+			vi.mocked(loadDataFile).mockReset().mockResolvedValue([])
+			vi.mocked(loadChosenOptionalFeatureOptions).mockReset().mockResolvedValue([])
+			vi.mocked(loadFeatEffectEntries).mockReset().mockResolvedValue([])
+			vi.mocked(loadFeatTextEntries).mockReset().mockResolvedValue([])
+			vi.mocked(loadSpeciesTraits).mockReset().mockResolvedValue([])
+		})
+
+		it('one group per class holds class and subclass features by level, then name', async () => {
+			await renderBattleMaster()
+			expect(rowNamesIn(screen.getByRole('region', { name: 'Fighter Features' }))).toEqual(['Fighting Style', 'Second Wind', 'Action Surge', 'Combat Superiority', 'Student of War'])
+			expect(featureRow(screen.getByRole('region', { name: 'Fighter Features' }), 'Combat Superiority').querySelector('.sheet__group-row-source')!.textContent).toBe(
+				'Battle Master, Fighter 3',
+			)
+		})
+
+		it('lists the chosen maneuvers under Combat Superiority and the fighting style under Fighting Style, visible while collapsed', async () => {
+			await renderBattleMaster()
+			const group = screen.getByRole('region', { name: 'Fighter Features' })
+			const options = (name: string) => Array.from(featureRow(group, name).querySelectorAll('.sheet__feature-option-name')).map((node) => node.textContent)
+			expect(options('Combat Superiority')).toEqual(['Trip Attack', 'Riposte'])
+			expect(options('Fighting Style')).toEqual(['Defense'])
+			// Linked, so never also a row of its own.
+			expect(rowNamesIn(group)).not.toContain('Trip Attack')
+
+			const riposte = within(featureRow(group, 'Combat Superiority')).getByRole('button', { name: 'Riposte' })
+			fireEvent.click(riposte)
+			expect(screen.getByText(/you can strike back/)).toBeTruthy()
+			fireEvent.click(riposte)
+			expect(screen.queryByText(/you can strike back/)).toBeNull()
+		})
+
+		it('Species Traits holds the species traits; Feats names each feat’s origin and its stored sub-choices', async () => {
+			await renderBattleMaster()
+			const species = screen.getByRole('region', { name: 'Species Traits' })
+			expect(rowNamesIn(species)).toEqual(['Elven Lineage', 'Fey Ancestry'])
+			expect(featureRow(species, 'Fey Ancestry').querySelector('.sheet__group-row-source')!.textContent).toBe('Elf')
+
+			const feats = screen.getByRole('region', { name: 'Feats' })
+			expect(rowNamesIn(feats)).toEqual(['Tough', 'Skilled'])
+			expect(featureRow(feats, 'Tough').querySelector('.sheet__group-row-source')!.textContent).toBe('From Background')
+			const skilled = featureRow(feats, 'Skilled')
+			expect(skilled.querySelector('.sheet__group-row-source')!.textContent).toBe('From Fighter 4')
+			expect(skilled.querySelector('.sheet__feature-options')!.textContent).toContain('Skills: Arcana, History')
+			expect(skilled.querySelector('.sheet__feature-options')!.textContent).toContain("Tools: Thieves' Tools")
+		})
+
+		it('a feature name opens its text and a second click closes it', async () => {
+			await renderBattleMaster()
+			const toggle = within(featureRow(screen.getByRole('region', { name: 'Fighter Features' }), 'Second Wind')).getByRole('button', { name: 'Second Wind' })
+			expect(toggle.getAttribute('aria-expanded')).toBe('false')
+			fireEvent.click(toggle)
+			expect(within(screen.getByRole('region', { name: 'Fighter Features' })).getByText(/limited well of physical stamina/)).toBeTruthy()
+			fireEvent.click(toggle)
+			expect(within(screen.getByRole('region', { name: 'Fighter Features' })).queryByText(/limited well of physical stamina/)).toBeNull()
+		})
+
+		it('the filter pills only hide groups: Class Features, Feats, then All', async () => {
+			await renderBattleMaster()
+			const panel = screen.getByRole('tabpanel', { name: 'Features & Traits' })
+			const groups = () => within(panel).getAllByRole('region').map((region) => region.getAttribute('aria-label'))
+			expect(groups()).toEqual(['Fighter Features', 'Species Traits', 'Feats'])
+
+			fireEvent.click(within(panel).getByRole('button', { name: 'Class Features' }))
+			expect(groups()).toEqual(['Fighter Features'])
+			fireEvent.click(within(panel).getByRole('button', { name: 'Feats' }))
+			expect(groups()).toEqual(['Feats'])
+			fireEvent.click(within(panel).getByRole('button', { name: 'Species Traits' }))
+			expect(groups()).toEqual(['Species Traits'])
+			fireEvent.click(within(panel).getByRole('button', { name: 'All' }))
+			expect(groups()).toEqual(['Fighter Features', 'Species Traits', 'Feats'])
+		})
+
+		it('Second Wind shows the same play.resourceUses count as Actions, and a click here writes that one record', async () => {
+			const onEditResourceUses = vi.fn()
+			const container = await renderBattleMaster({ resourceUses: { 'Second Wind': 1 } }, onEditResourceUses)
+			const used = (root: Element) => `${root.querySelectorAll('.sheet__use-box--used').length} / ${root.querySelectorAll('.sheet__use-box').length}`
+			const featuresRow = featureRow(screen.getByRole('region', { name: 'Fighter Features' }), 'Second Wind')
+			// Level 4 of the fixture's table: 3 uses.
+			expect(used(featuresRow)).toBe('1 / 3')
+			const actionsRow = Array.from(container.querySelectorAll('.sheet__actions .sheet__group-row')).find((row) => row.querySelector('.sheet__action-name')?.textContent === 'Second Wind')!
+			expect(used(actionsRow)).toBe('1 / 3')
+			// No box on a feature the resource list does not cover (D43).
+			expect(featureRow(screen.getByRole('region', { name: 'Fighter Features' }), 'Action Surge').querySelector('.sheet__use-boxes')).toBeNull()
+
+			fireEvent.click(within(featuresRow).getAllByRole('button', { name: 'Use Second Wind' })[0]!)
+			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Second Wind': 2 })
 		})
 	})
 
@@ -7222,22 +7423,29 @@ describe('CharacterSheet', () => {
 			expect(container.querySelector('.sheet__senses-card')!.textContent).toContain('Darkvision:')
 		})
 
-		it('a failed class-optional-feature load says so under its own heading', async () => {
+		it('a failed class-optional-feature load says so on the Features & Traits tab', async () => {
 			vi.mocked(loadChosenClassOptionalFeatures).mockRejectedValueOnce(new Error('data/optional-features.json — HTTP 500'))
 
 			const container = await renderAfterFailure()
-			expect(container.querySelector('.sheet__class-optional-features')!.textContent).toContain(
+			expect(container.querySelector('.sheet__features')!.textContent).toContain(
 				'Could not load the options chosen for your class: data/optional-features.json — HTTP 500',
 			)
 		})
 
-		it('a failed class-feature-choice load says so under its own heading', async () => {
+		it('a failed class-feature-choice load says so on the Features & Traits tab', async () => {
 			vi.mocked(loadChosenClassFeatureChoices).mockRejectedValueOnce(new Error('data/class-features.json — HTTP 500'))
 
 			const container = await renderAfterFailure()
-			expect(container.querySelector('.sheet__class-feature-choices')!.textContent).toContain(
+			expect(container.querySelector('.sheet__features')!.textContent).toContain(
 				'Could not load class feature choices: data/class-features.json — HTTP 500',
 			)
+		})
+
+		it('R6: a failed species-trait load says so on the Features & Traits tab', async () => {
+			vi.mocked(loadSpeciesTraits).mockRejectedValueOnce(new Error('data/species.json — HTTP 500'))
+
+			const container = await renderAfterFailure()
+			expect(container.querySelector('.sheet__features')!.textContent).toContain('Could not load species traits: data/species.json — HTTP 500')
 		})
 
 		it('a failed beast load keeps the Familiar section, states the cause, and still names the stored form', async () => {
@@ -7294,12 +7502,11 @@ describe('CharacterSheet', () => {
 		it('a character with nothing granted shows no error and no empty grant sections at all', async () => {
 			const { container } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
-			await waitFor(() => expect(container.querySelector('.sheet__feats')).toBeTruthy())
+			await waitFor(() => expect(container.querySelector('.sheet__features')).toBeTruthy())
 
 			expect(container.querySelector('.error')).toBeNull()
 			expect(container.querySelector('.sheet__senses')).toBeNull()
-			expect(container.querySelector('.sheet__class-feature-choices')).toBeNull()
-			expect(container.querySelector('.sheet__class-optional-features')).toBeNull()
+			expect(container.querySelector('.sheet__feature-options')).toBeNull()
 			expect(container.querySelector('.sheet__spells')).toBeNull()
 			// No Find Familiar and no stored form, so beasts.json is never fetched and no beast error can exist.
 			expect(container.querySelector('.sheet__familiar')).toBeNull()
@@ -7411,7 +7618,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 	})
 
 	it('a species trait in the bonus table raises the computed maximum (slice 8a)', async () => {
-		vi.mocked(loadSpeciesTraitNames).mockResolvedValueOnce(['Darkvision', 'Dwarven Resilience', 'Dwarven Toughness', 'Stonecunning'])
+		vi.mocked(loadSpeciesTraits).mockResolvedValueOnce(['Darkvision', 'Dwarven Resilience', 'Dwarven Toughness', 'Stonecunning'].map((name) => ({ name, entries: [] })))
 		const { container } = await renderSheet({ ...character, id: 'hp-dwarf' })
 		// +1 per character level on top of the 39 above.
 		await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 44'))
@@ -7433,21 +7640,23 @@ describe('the persistent header (rebuild slice 1)', () => {
 			await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 49'))
 			fireEvent.click(screen.getByRole('button', { name: 'Hit points details' }))
 			expect(container.querySelector('.sheet__max-hit-points')!.textContent).toContain('Tough (+2 per character level)')
-			expect(container.querySelector('.sheet__feats')!.textContent).toContain('Tough (Background)')
+			const row = featureRow(await featureGroup('Feats', 'Tough'), 'Tough')
+			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('From Background')
 		})
 
-		it("shows a background Magic Initiate's unmade picks as pending (D57)", async () => {
+		it("shows a background Magic Initiate's unmade picks as pending (D57), under its row while collapsed", async () => {
 			vi.mocked(loadFeatEffectEntries).mockResolvedValueOnce([{ name: 'Magic Initiate; Cleric', source: 'XPHB', grantedByBackgrounds: [{ name: 'Farmer', source: 'XPHB' }] }])
-			const { container } = await renderSheet(farmer)
-			await waitFor(() => expect(container.querySelector('.sheet__feats')!.textContent).toContain('Magic Initiate; Cleric (Background)'))
-			expect(container.querySelector('.sheet__feat-pending')!.textContent).toBe('Choices not made yet: ability, spells — make them in Edit Character.')
+			await renderSheet(farmer)
+			const row = featureRow(await featureGroup('Feats', 'Magic Initiate; Cleric'), 'Magic Initiate; Cleric')
+			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('From Background')
+			expect(row.querySelector('.sheet__feat-pending')!.textContent).toBe('Choices not made yet: ability, spells — make them in Edit Character.')
 		})
 
 		it('ignores a background feat that the feat data links to another background', async () => {
 			vi.mocked(loadFeatEffectEntries).mockResolvedValueOnce([{ name: 'Tough', source: 'XPHB', grantedByBackgrounds: [{ name: 'Guard', source: 'XPHB' }] }])
 			const { container } = await renderSheet(farmer)
 			await waitFor(() => expect(container.querySelector('.sheet__hit-points-value')!.textContent).toBe('— / 39'))
-			expect(container.querySelector('.sheet__feats')!.textContent).toContain('No feats chosen yet.')
+			expect(screen.getByRole('region', { name: 'Feats' }).textContent).toContain('No feats chosen yet.')
 		})
 	})
 })
@@ -7588,13 +7797,14 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b app
 
 		const { container } = render(<CharacterSheet character={warlock} />)
 		await screen.findByRole('heading', { name: 'Aria' })
-		await waitFor(() => expect(container.querySelector('.sheet__class-optional-features')).toBeTruthy())
+		await waitFor(() => expect(container.querySelector('.sheet__features')).toBeTruthy())
 
 		expect(container.querySelector('#sheet-panel-spells')!.querySelector('.sheet__spells')).toBeTruthy()
 
-		const features = container.querySelector('#sheet-panel-features')!
-		expect(features.querySelector('.sheet__feats')).toBeTruthy()
-		expect(features.querySelector('.sheet__class-optional-features')).toBeTruthy()
+		const features = container.querySelector('#sheet-panel-features') as HTMLElement
+		expect(within(features).getByRole('region', { name: 'Warlock Features' })).toBeTruthy()
+		expect(within(features).getByRole('region', { name: 'Species Traits' })).toBeTruthy()
+		expect(within(features).getByRole('region', { name: 'Feats' })).toBeTruthy()
 	})
 })
 

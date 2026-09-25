@@ -1063,6 +1063,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   s poznámkou „later", Next povolený; sheet hlásí 2× „Choices not made yet"),
   c (Prodigy jazyk na kartě Proficiencies a v draweru „Prodigy (feat)"; Human
   XPHB kvůli prerekvizitě), d (doplnění v Edit Character řádek odstraní).
+- `e2e/featuresTab.spec.ts` — R6 a–f (Fighter 3 Battle Master: groups, options
+  under their feature, pills, expand/collapse, shared Second Wind boxes through
+  Finish Short Rest, "From Background", rest-button icons).
 
 ## Dočasné scaffolding
 
@@ -1392,6 +1395,30 @@ unchanged `hitDiceLine`) and a full-width "Finish Short Rest" button
 with × / Esc keeps rolled dice and HP and does not rest. `HitPointsPanel` lost
 its `hitDice` prop and section. Read-only sheets have no rest button, so no hit
 dice. E2E `e2e/shortRest.spec.ts`. No schema change (still 48).
+
+R6 (D184): Features & Traits tab rebuilt as `FeaturesSection` in
+`CharacterSheet.tsx` over `featuresTabGroups` (`src/sheet/featuresTabData.ts`,
+pure). Pills All · Class Features · Species Traits · Feats (hide groups only).
+Groups: one "<Class> Features" per entry of `character.classes` (class +
+subclass features by level, then name; D21 parents such as Divine Order get a
+row built from the pick), "Species Traits" (new `speciesTraitsFrom` /
+`loadSpeciesTraits` in `speciesTraitNames.ts`, with a load-error line), "Feats"
+(source "From Background" / "From Species" / "From <Class> <level>", none for a
+multiclass ASI feat). Rows are `ActionGroupRow` (new `below` slot) with
+`UseBoxes` on the same `play.resourceUses`. Chosen options sit in a list under
+the feature whose text carries their `{@filter}` (`grantsFeatureType`; DATA.md),
+each expandable; unlinked ones (AS, RN, FS:B) are own rows at the end of the
+first class group. Feat sub-choices and the pending line sit under the feat.
+Old sections Feats / Class and subclass features / Class feature choices /
+Class options / Subclass options removed; Wild Shape forms and Familiar follow
+the class groups (All, Class Features). `chosenOptionalFeatureOptions` tags each
+option with `featureType` ("FS" for the class fighting style);
+`ChosenClassFeatureChoice` gained `className` and `featureEntries`. Header
+SHORT REST / LONG REST: `FireIcon` / `MoonIcon` (exported from `SheetHeader.tsx`,
+fire reused by Finish Short Rest), `.sheet__rest button` 12px/700 uppercase,
+padding 9px 16px, radius 8. E2E `e2e/featuresTab.spec.ts`; `e2e/wizard.ts`
+gained `subclass`, `onClassStep`, `onLanguagesStep`. No schema change (still 48).
+Next: "Manage Feats" button (later slice).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

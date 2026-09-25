@@ -68,6 +68,23 @@ export function ArmourClassNotes({ armourClass, formulaError }: { armourClass: A
 	)
 }
 
+/** D183's flame, shared by the header SHORT REST and the drawer's Finish Short Rest (D184). */
+export function FireIcon(): ReactNode {
+	return (
+		<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+			<path d="M12 2c.5 3-1.500 4.500-3 6.500S6 12 6 15a6 6 0 0 0 12 0c0-2.500-1-4-2-5.500-.3 1.500-1 2.500-2 2.500 1-3-.5-7-2-10Z" />
+		</svg>
+	)
+}
+
+export function MoonIcon(): ReactNode {
+	return (
+		<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+			<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z" />
+		</svg>
+	)
+}
+
 /** The card label is the button that opens its breakdown in the drawer; without a drawer to open it stays plain text. */
 function CardLabel({ stat, text, aria, onOpen }: { stat: StatCard; text: string; aria: string; onOpen?: (stat: StatCard) => void }): ReactNode {
 	if (!onOpen) return <h2>{text}</h2>
@@ -155,11 +172,13 @@ export function SheetHeader({
 					<div className="sheet__rest" role="group" aria-label="Rest">
 						{onShortRest && (
 							<button type="button" className="btn--accent-outline" onClick={onShortRest}>
+								<FireIcon />
 								Short Rest
 							</button>
 						)}{' '}
 						{onLongRest && (
 							<button type="button" className="btn--accent-outline" onClick={onLongRest}>
+								<MoonIcon />
 								Long Rest
 							</button>
 						)}

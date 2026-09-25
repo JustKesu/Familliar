@@ -42,6 +42,8 @@ export interface ClassFeatureChoice {
 	grantedAtLevel: number
 	count: number
 	options: ClassFeatureChoiceOption[]
+	/** The parent feature's own text — the Features tab's row for it (D184), since D87 rule 3 keeps the parent out of the granted list. */
+	featureEntries?: unknown[]
 }
 
 function findOptionsNode(node: unknown): Record<string, unknown> | null {
@@ -115,6 +117,7 @@ export function classFeatureChoicesFrom(
 					? { uid, name: resolved.name, entries: resolved.entries, found: true }
 					: { uid, name: uid.split('|')[0], entries: [], found: false }
 			}),
+			featureEntries: Array.isArray(feature['entries']) ? feature['entries'] : [],
 		})
 	}
 
@@ -140,10 +143,13 @@ export function areClassFeatureChoicesComplete(choices: ClassFeatureChoice[], va
 /** A stored pick joined to the text of the option it names — what the sheet displays. */
 export interface ChosenClassFeatureChoice {
 	featureName: string
+	className: string
 	grantedAtLevel: number
 	optionName: string
 	entries: unknown[]
 	found: boolean
+	/** The parent feature's text; empty when the class no longer offers the choice. */
+	featureEntries: unknown[]
 }
 
 /**
@@ -169,10 +175,12 @@ export function chosenClassFeatureChoicesFrom(character: ChoiceBearingCharacter,
 		const option = offered?.options.find((candidate) => candidate.name === pick.optionName)
 		return {
 			featureName: pick.featureName,
+			className: pick.className,
 			grantedAtLevel: pick.grantedAtLevel,
 			optionName: pick.optionName,
 			entries: option?.entries ?? [],
 			found: option?.found ?? false,
+			featureEntries: offered?.featureEntries ?? [],
 		}
 	})
 }

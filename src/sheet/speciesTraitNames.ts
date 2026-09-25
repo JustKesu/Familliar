@@ -22,8 +22,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+export interface SpeciesTrait {
+	name: string
+	/** The trait's own text — what the Features tab's Species Traits group shows (D184). */
+	entries: unknown[]
+}
+
 /** Pure (D38). An unknown species, or one with no named traits, yields an empty list — never a throw, since a missing trait only means a bonus is not applied (D43). */
-export function speciesTraitNamesFrom(character: Character, parsedSpecies: unknown): string[] {
+export function speciesTraitsFrom(character: Character, parsedSpecies: unknown): SpeciesTrait[] {
 	if (!character.species) return []
 	if (!Array.isArray(parsedSpecies)) throw new Error('species.json: expected a top-level array.')
 
@@ -32,10 +38,20 @@ export function speciesTraitNamesFrom(character: Character, parsedSpecies: unkno
 
 	const entries = entry['entries']
 	if (!Array.isArray(entries)) return []
-	return entries.filter((child): child is Record<string, unknown> => isRecord(child) && typeof child['name'] === 'string').map((child) => child['name'] as string)
+	return entries
+		.filter((child): child is Record<string, unknown> => isRecord(child) && typeof child['name'] === 'string')
+		.map((child) => ({ name: child['name'] as string, entries: Array.isArray(child['entries']) ? child['entries'] : [] }))
+}
+
+export function speciesTraitNamesFrom(character: Character, parsedSpecies: unknown): string[] {
+	return speciesTraitsFrom(character, parsedSpecies).map((trait) => trait.name)
 }
 
 /** species.json goes through the shared cache (D39), so this costs nothing beyond the fetch the sheet already makes for damage responses. */
 export async function loadSpeciesTraitNames(character: Character): Promise<string[]> {
 	return speciesTraitNamesFrom(character, await loadDataFile('data/species.json'))
+}
+
+export async function loadSpeciesTraits(character: Character): Promise<SpeciesTrait[]> {
+	return speciesTraitsFrom(character, await loadDataFile('data/species.json'))
 }

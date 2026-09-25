@@ -799,6 +799,24 @@ přináší, z odpovědi pro úroveň 3 zmizí. Hranici dodává `subclassLevelF
 Zjištěno průzkumem ve slice 8d2 (`scripts/investigate-closure-level-drift.js`,
 spotřebovaný a smazaný). Souvisí s D101.
 
+### Which feature grants a chosen option — the `{@filter}` tag, not a field
+
+Nothing structured links an `optionalfeatureProgression` featureType (or the
+fighting style) to the class/subclass feature that grants it; the progression's
+`name` ("Maneuvers") is not a feature name. The link is the 5etools filter tag
+in the granting feature's own text (R6, D184):
+
+| featureType | granting feature (level) | tag |
+|---|---|---|
+| MM (Sorcerer) | Metamagic (2; restated 10, 17) | `{@filter …\|optionalfeatures\|feature type=MM\|source=XPHB}` |
+| EI (Warlock) | Eldritch Invocations (1) | `… feature type=EI …` |
+| MV:B (Battle Master) | Combat Superiority (3) | `… feature type=MV:B …` |
+| fighting style | Fighting Style (Fighter 1, Paladin 2, Ranger 2); Champion's Additional Fighting Style (7) | `{@filter Fighting Style feat\|feats\|category=FS}` |
+| AS (Arcane Archer, XGE), RN (Rune Knight, TCE), FS:B (College of Swords, XGE) | none | the options sit only in a counted `options` node of `refOptionalfeature` (Arcane Shot Options, Rune Carver, Fighting Style) — a choice container that D87 rule 3 keeps out of the granted list |
+
+Sorcery Incarnate (Sorcerer 7) also carries the MM filter; the lowest-level
+match is the granter. Found by an investigation script in R6 (not kept).
+
 ### Armor / weapon / tool / language proficiency sources
 
 - Classes: `startingProficiencies.armor` tokens are `light`, `medium`, `heavy`,

@@ -522,6 +522,23 @@ button:disabled {
   gap: 0.5rem;
 }
 
+/* D184: same shape as Finish Short Rest, icon on the left. */
+.sheet__rest button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sheet__rest svg {
+  flex: none;
+}
+
 /* R4b (D166): every card is 86px; R4c holds the HP card to it too. */
 .sheet__strip {
   display: flex;
@@ -1470,6 +1487,49 @@ button:disabled {
 .sheet__action-group-empty {
   margin: 12px 18px;
   font-size: 13px;
+  color: var(--text-mute);
+}
+
+/* ---- Features & Traits tab (R6, D184): the Actions groups' rows, plus chosen options under a row ---- */
+
+.sheet__features > .error,
+.sheet__features > section:not(.sheet__action-group) {
+  margin: 0;
+  padding: 12px 18px 0;
+}
+
+.sheet__feature-group-empty {
+  margin: 6px 12px;
+  font-size: 13px;
+  color: var(--text-mute);
+}
+
+.sheet__action-group ul.sheet__feature-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0 22px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.sheet__feature-options .sheet__group-row-toggle {
+  color: var(--text-sub);
+}
+
+.sheet__feature-option-name {
+  font-size: 13px;
+}
+
+.sheet__feature-options .sheet__group-row-toggle:hover .sheet__feature-option-name {
+  color: var(--accent);
+}
+
+.sheet__feature-options .sheet__group-row-text {
+  margin-left: 22px;
+}
+
+.sheet__feat-pending {
   color: var(--text-mute);
 }
 

@@ -130,7 +130,16 @@ describe('chosenClassFeatureChoicesFrom', () => {
 
 	it('joins a stored pick to the text of the option it names', () => {
 		expect(chosenClassFeatureChoicesFrom(character, data)).toEqual([
-			{ featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge', entries: ['Thaumaturge text.'], found: true },
+			{
+				featureName: 'Divine Order',
+				className: 'Cleric',
+				grantedAtLevel: 1,
+				optionName: 'Thaumaturge',
+				entries: ['Thaumaturge text.'],
+				found: true,
+				// R6 (D184): the parent's own text, for its Features & Traits row.
+				featureEntries: classFeatures[0].entries,
+			},
 		])
 	})
 
@@ -146,7 +155,7 @@ describe('chosenClassFeatureChoicesFrom', () => {
 			],
 		}
 		expect(chosenClassFeatureChoicesFrom(stale, data)).toEqual([
-			{ featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Gone', entries: [], found: false },
+			{ featureName: 'Divine Order', className: 'Cleric', grantedAtLevel: 1, optionName: 'Gone', entries: [], found: false, featureEntries: classFeatures[0].entries },
 		])
 	})
 })
