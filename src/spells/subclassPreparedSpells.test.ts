@@ -626,6 +626,15 @@ describe('dedupeAlwaysPreparedSpells (this task)', () => {
 		const result = dedupeAlwaysPreparedSpells([entry({ name: 'Cure Wounds', grantedAtLevel: 1 }), entry({ name: 'Bless', grantedAtLevel: 1 }), entry({ name: 'Bane', grantedAtLevel: 1 })])
 		expect(result.map((s) => s.name).sort()).toEqual(['Bane', 'Bless', 'Cure Wounds'])
 	})
+
+	it('D190: keeps a slot grant and a free-use grant of the same spell (Archfey Misty Step: prepared["3"] and innate["_"] CHA/LR)', () => {
+		const result = dedupeAlwaysPreparedSpells([
+			entry({ name: 'Misty Step', level: 2, grantedAtLevel: 3, usage: null }),
+			entry({ name: 'Misty Step', level: 2, grantedAtLevel: 3, usage: { kind: 'freePerLongRestByAbility', ability: 'cha' } }),
+			entry({ name: 'Misty Step', level: 2, grantedAtLevel: 5 }),
+		])
+		expect(result.map((s) => s.usage ?? null)).toEqual([null, { kind: 'freePerLongRestByAbility', ability: 'cha' }])
+	})
 })
 
 /*

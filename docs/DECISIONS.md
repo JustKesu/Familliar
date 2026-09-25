@@ -3480,3 +3480,37 @@ hodu jako v Actions). Jinak typy poškození z `damageInflict`, jinak podmínky 
 použití (1/long rest bez slotu apod.) má místo tlačítka jen krátký šedý štítek
 („1/LR", „1/SR", „PB/LR", „At will", „Ritual"). Tlačítko USE s počítadlem až
 R7b; úložiště se pro to teď nezakládá. Schéma beze změny (48).
+
+## D190 — R7b-1: volná seslání, data a počítadla
+
+Zdroj: task R7b-1, rozhodnutí Daniela 25. 9. 2026 (průzkum R7b-0). Schéma beze
+změny (48).
+
+**Slotem?** Ruční tabulka ve stylu D21/D70 (`alsoCastableWithSlot.ts`), klíč =
+jméno zdroje, hodnota ano/ne, u každé položky citovaná věta. ANO: 12 Marks,
+Magic Initiate, Artificer Initiate, Fey-/Shadow-Touched, XPHB Tiefling ×3 a Elf
+lineages, Duergar, Triton, Yuan-Ti a implicitně Forest Gnome, Archfey Patron,
+The Fathomless, Psi Warrior. Ostatní NE. Zdroj mimo tabulku = NE; unit test
+porovná tabulku se všemi dosažitelnými zdroji volného seslání v datech.
+
+**Granty.** `combineSpellEntries` dál vrací jeden záznam na kouzlo (Actions beze
+změny) a nese `grants: {origin, originName, usage}[]`; `usages` zůstává
+odvozené pro `provenanceLabel`. Dedupe subclass kouzel drží kouzlo zvlášť pro
+každý odlišný usage (Archfey Misty Step: slot i CHA/LR).
+
+**Počítadla** v `play.resourceUses`, jedno na kouzlo na zdroj, klíč
+`spell:<druh zdroje>:<jméno zdroje>:<kouzlo malými>|<SOURCE>`. Maximum: 1/LR a
+1/SR → 1 (1/SR vrací Short Rest), schopnost → modifikátor, min. 1, PB → PB.
+Sheet je připojí k resources, takže clamp i Short Rest jdou stávající cestou.
+Level removal: clamp při zobrazení, `levelRemoval.ts` beze změny.
+
+**Sdílení vlastníci.** Kde feature/rys už boxy má, volné seslání utrácí jeho
+záznam: Gnomish Lineage (Forest Gnome), Serpentine Spellcasting, Chemical
+Mastery (Tasha's Bubbling Cauldron), Steps of the Fey, Restorative Reagents.
+Posledním dvěma dává maximum modifikátor schopnosti (min. 1), takže mají boxy i
+ve Features & Traits a Actions. `resource` (Monk) utrácí `cost` z Focus Point.
+
+**Řádky (model, UI až R7b-2).** CAST jen s nějakými sloty (bez slotů skrytý),
+sekce podle D189. USE a štítek vždy ve vlastní úrovni kouzla. Štítek jen bez
+CAST i USE. Hit/DC po řádcích jen v Spells: USE podle zdroje grantu, CAST podle
+třídy; Actions beze změny.

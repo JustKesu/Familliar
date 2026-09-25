@@ -35,6 +35,7 @@ import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
+import { freeCastResources, withFreeCastResources } from '../calculation/freeCastResources'
 import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/proficiencies'
@@ -3325,7 +3326,11 @@ function CharacterSheetBody({
 	 */
 	const chosenFeatTexts = chosenFeats.flatMap((choice) => featTextEntries.filter((text) => text.name === choice.name && text.source === choice.source))
 	const resourceFeatures: ResourceFeature[] = [...grantedFeatures, ...chosenFeatTexts, ...chosenOptionalFeatures]
-	const characterResources = computeCharacterResources(character, resourceClassData, resourceFeatures, speciesTraits)
+	// D190: free-cast counters join the list, so spending clamps and Short Rest recovery run through the same path.
+	const characterResources = withFreeCastResources(
+		computeCharacterResources(character, resourceClassData, resourceFeatures, speciesTraits),
+		freeCastResources(combinedSpells, abilityScores),
+	)
 	const resourceMaxima = new Map(characterResources.filter((resource) => resource.max.status === 'known').map((resource) => [resource.name, resource.max.status === 'known' ? resource.max.value : 0]))
 	// A Long Rest returns every resource (afterLongRest); a Short Rest only the ones 9b5 reads as short-rest recoverable.
 	const resourceRecharge = new Map(characterResources.map((resource) => [resource.name, resource.shortRest ? 'Short Rest' : 'Long Rest']))

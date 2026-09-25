@@ -29,12 +29,14 @@ export function AlwaysPreparedSpellsList({
 		return <p className="error">Could not load {subclassName}&rsquo;s always-prepared spells: {error}</p>
 	}
 	if (spells.length === 0) return null
+	// D190: one spell can arrive as two grants with different usages (Archfey's Misty Step); the list names it once.
+	const unique = [...new Map(spells.map((spell) => [`${spell.name}|${spell.source}`, spell])).values()]
 
 	return (
 		<div className="spell-picker__section spell-picker__section--always-prepared">
 			<p className="spell-picker__remaining">Always prepared from {subclassName} (free, not counted against the choices above):</p>
 			<ul className="spell-picker__list">
-				{spells.map((spell) => (
+				{unique.map((spell) => (
 					<li key={`${spell.name}|${spell.source}`} className="spell-picker__item">
 						{spell.name}
 						{spell.ritual && <span className="spell-picker__flag"> (ritual)</span>}

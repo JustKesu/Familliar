@@ -43,7 +43,7 @@
  *   NAME and no `|source` ("light#c", "mage hand#c"). parseSpellRef stripped
  *   `#...` only from the source half, so all 11 failed to resolve; it now
  *   strips it from both (see its own doc). All 81 refs resolve.
- * - Gnome; Rock Gnome Lineage is the only carrier of a `daily: {"pb": …}`
+ * - Gnome; Forest Gnome Lineage is the only carrier of a `daily: {"pb": …}`
  *   sub-key in the whole data set — proficiency-bonus-many free casts per Long
  *   Rest (parseDailySubkey's new `pb` case, fed the bonus computed here).
  *

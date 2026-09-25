@@ -1491,6 +1491,21 @@ checks `actions.json` (18, XPHB). E2E `e2e/spellsTab.spec.ts` (a–g; casters
 seeded into storage). No schema change (still 48). Next: R7b (USE counter for
 free-use grants), R8 (leveled damage dice).
 
+R7b-1 (D190): free-cast data and counters, no new UI. `SheetSpellEntry.grants`
+ties each usage to its source; subclass dedupe keeps one grant per usage
+(Archfey Misty Step: slot + CHA/LR). `src/spells/alsoCastableWithSlot.ts` (hand
+table, coverage test over data/). `src/calculation/freeCastResources.ts`:
+`freeCastResources` (per spell per source, key
+`spell:<origin>:<source>:<spell>|<SOURCE>`, shared owners Gnomish Lineage (Forest
+Gnome) / Serpentine Spellcasting / Chemical Mastery / Steps of the Fey /
+Restorative Reagents), `withFreeCastResources` (sheet appends them to
+`characterResources`, so Steps of the Fey and Restorative Reagents now show
+ability-modifier use boxes), `remainingUses`, `canSpendResource`.
+`spellsTabActionSections` + `spellsTabRowCaster` in `spellsTabData.ts` build the
+CAST / USE / label rows — additive, the tab still renders `spellsTabSections`
+until R7b-2 (USE button, row split, e2e). `castsWithSlot` now reads grants. No
+schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

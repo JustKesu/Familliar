@@ -996,3 +996,51 @@ Markup: Help carries the only `{@note …}` in the category, wrapping a nested
 42 more with no source argument); never referenced that way: Don or Doff a
 Shield, End Concentration, Escape a Grapple, Improvising an Action, Ready,
 Two-Weapon Fighting. Found by `scripts/investigate-actions-in-combat.mjs`.
+
+### Free casts: slot or not, per-spell counters, double counting (D190)
+
+**"Also castable with a slot?" is not in the data.** The same `daily:{"1":…}`
+wrapper sits on sources that say yes and on ones that say nothing, so it is a
+hand table (`src/spells/alsoCastableWithSlot.ts`). Stated yes: the 12 Marks
+("You can also cast it/these spells using any spell slots you have"), Magic
+Initiate, Artificer Initiate, Fey-/Shadow-Touched, XPHB Tiefling legacies and
+Elf lineages, Duergar, Triton, Yuan-Ti ("…of 2nd level or higher"). Implicit
+yes ("always prepared" / "learn"): Forest Gnome, Archfey Patron (Misty Step is
+also in `prepared["3"]`), The Fathomless, Psi Warrior. No: Alchemist (only
+"without expending a spell slot"), Drow High Magic, Fey Teleportation, Wood Elf
+Magic (XGE), MPMM Deep Gnome/Fairy/Githyanki/Githzerai/Genasi (records named
+Air/Fire/Water), the 3 limited and 12 bare invocations, Wild Heart (ritual only),
+Pact of the Chain, Monk resource spells.
+
+**Counters are per spell.** "either spell … that spell" (Fey-/Shadow-Touched,
+Deep Gnome), "any of these spells … that spell" (Triton), "each of which" (Wood
+Elf Magic, Drow High Magic): each spell has its own once-per-rest. The only
+shared pool is the `resource` kind — Focus Points, shared with every Monk
+feature (Sun Soul Burning Hands `resourceName` "Ki" cost 2, Warrior of Shadow
+Darkness "Focus Point" cost 1; both resolve to "Focus Point"). Ability-based
+counts say "(minimum of once)" in both texts (Steps of the Fey, Restorative
+Reagents). The 12 bare invocations state no limit at all.
+
+**Double counting.** A record that already has (or should have) its own boxes
+for the same casts: species trait Gnomish Lineage (Forest Gnome) (PB/LR) and
+Serpentine Spellcasting (Yuan-Ti, 1/LR); Chemical Mastery (EFA) — its "Once you
+use this feature, you can't use it again until you finish a Long Rest." is the
+last sentence of the Conjured Cauldron benefit, so it covers Tasha's Bubbling
+Cauldron; Steps of the Fey and Restorative Reagents — self-limited resources with
+no table maximum ("equal to your … modifier" is prose only). Mark of Sentinel
+(two limits) has no boxes. Future: Favored Enemy vs Hunter's Mark.
+
+**Archfey Misty Step is two grants.** `prepared["3"]` (bare = slot) and
+`innate["_"]` (`daily:{"cha":…}`). The old per-spell dedupe kept only the first,
+so the CHA/LR term never reached the sheet. Checked over every non-reprinted
+subclass: no other spell is granted twice with different usages.
+
+**Class-record `additionalSpells` are not read at all** — Ranger Hunter's Mark
+(Favored Enemy), Paladin Divine Smite, Druid Speak with Animals + Find Familiar,
+Bard 20, Warlock 9, Artificer Mending. Telepathic's detect thoughts (ability
+"inherit") is not reached by featSpells.ts either.
+
+**Forest, not Rock.** The only `daily:{"pb":…}` carrier is Gnome; Forest Gnome
+Lineage (Speak with Animals); the code once said Rock Gnome. Found by the R7b-0
+investigation and task D190; `alsoCastableWithSlot.test.ts` re-derives the
+reachable free-use sources from data/ on every test run.

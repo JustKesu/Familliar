@@ -41,7 +41,7 @@ const aarakocra = {
 	additionalSpells: [{ ability: { choose: ['int', 'wis', 'cha'] }, known: { _: ['mage hand#c'] }, innate: { 3: { daily: { '1e': ['gust of wind'] } } } }],
 }
 
-/** The only `daily: {"pb": …}` carrier in the data. */
+/** The `daily: {"pb": …}` shape; in the data its only carrier is Gnome; Forest Gnome Lineage (Speak with Animals), not Rock Gnome. */
 const rockGnome = {
 	name: 'Gnome; Rock Gnome Lineage',
 	source: 'XPHB',

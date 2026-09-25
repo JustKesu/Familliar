@@ -46,6 +46,15 @@ import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration
  * still handles it rather than assuming it can't happen.
  */
 
+export type SpellGrantOrigin = 'subclass' | 'feat' | 'optionalFeature' | 'species'
+
+/** One source's grant of a spell, with its own usage term (D190) — the player's pick is `chosen`, not a grant. */
+export interface SpellGrant {
+	origin: SpellGrantOrigin
+	originName: string
+	usage: SpellUsage | null
+}
+
 export interface SheetSpellEntry {
 	name: string
 	source: string
@@ -67,6 +76,8 @@ export interface SheetSpellEntry {
 	unresolvedAbilityReasons: string[]
 	/** How this spell is cast, from every contributing source (this task) — empty for an ordinary, silently-slot-cast spell. */
 	usages: SpellUsage[]
+	/** Every source grant, each usage tied to its source (D190); `usages` is these usages deduped. */
+	grants: SpellGrant[]
 }
 
 export function provenanceLabel(entry: SheetSpellEntry): string {
@@ -87,11 +98,15 @@ function keyOf(name: string, source: string): string {
 }
 
 function emptyEntry(name: string, source: string, chosen: boolean): SheetSpellEntry {
-	return { name, source, chosen, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [] }
+	return { name, source, chosen, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [] }
 }
 
-/** Adds `usage` to `entry.usages` unless it's absent or already present (by `spellUsageKey`) — an ordinary grant (undefined/null) leaves the list untouched. */
-function mergeUsage(entry: SheetSpellEntry, usage: SpellUsage | null | undefined): void {
+/** Records the grant, and adds `usage` to `entry.usages` unless it's absent or already present (by `spellUsageKey`) — an ordinary grant (undefined/null) leaves that list untouched. */
+function mergeUsage(entry: SheetSpellEntry, origin: SpellGrantOrigin, originName: string, usage: SpellUsage | null | undefined): void {
+	const grantKey = usage ? spellUsageKey(usage) : 'slot'
+	if (!entry.grants.some((g) => g.origin === origin && g.originName === originName && (g.usage ? spellUsageKey(g.usage) : 'slot') === grantKey)) {
+		entry.grants.push({ origin, originName, usage: usage ?? null })
+	}
 	if (!usage) return
 	const key = spellUsageKey(usage)
 	if (!entry.usages.some((u) => spellUsageKey(u) === key)) entry.usages.push(usage)
@@ -121,7 +136,7 @@ export function combineSpellEntries(
 			const key = keyOf(spell.name, spell.source)
 			const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
 			if (!entry.subclassOrigins.includes(group.subclassName)) entry.subclassOrigins.push(group.subclassName)
-			mergeUsage(entry, spell.usage)
+			mergeUsage(entry, 'subclass', group.subclassName, spell.usage)
 			map.set(key, entry)
 		}
 	}
@@ -130,7 +145,7 @@ export function combineSpellEntries(
 		const key = keyOf(spell.name, spell.source)
 		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
 		if (!entry.featOrigins.includes(spell.featName)) entry.featOrigins.push(spell.featName)
-		mergeUsage(entry, spell.usage)
+		mergeUsage(entry, 'feat', spell.featName, spell.usage)
 		map.set(key, entry)
 	}
 
@@ -138,7 +153,7 @@ export function combineSpellEntries(
 		const key = keyOf(spell.name, spell.source)
 		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
 		if (!entry.optionalFeatureOrigins.includes(spell.optionName)) entry.optionalFeatureOrigins.push(spell.optionName)
-		mergeUsage(entry, spell.usage)
+		mergeUsage(entry, 'optionalFeature', spell.optionName, spell.usage)
 		map.set(key, entry)
 	}
 
@@ -146,7 +161,7 @@ export function combineSpellEntries(
 		const key = keyOf(spell.name, spell.source)
 		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
 		if (!entry.speciesOrigins.includes(spell.speciesName)) entry.speciesOrigins.push(spell.speciesName)
-		mergeUsage(entry, spell.usage)
+		mergeUsage(entry, 'species', spell.speciesName, spell.usage)
 		// A spell the player ALSO picked, or that a class source grants, already has numbers — the species' unmade ability choice is not a gap there.
 		if (spell.unresolvedAbilityReason && !entry.unresolvedAbilityReasons.includes(spell.unresolvedAbilityReason)) {
 			entry.unresolvedAbilityReasons.push(spell.unresolvedAbilityReason)

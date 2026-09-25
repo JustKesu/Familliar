@@ -149,7 +149,7 @@ import { subclassLevelFor } from '../subclass/subclassData'
  *   this module) — the sheet shows which ability, not a number.
  * - `freePerLongRestByProficiencyBonus`: the `daily` key's sub-key is the
  *   literal "pb" — proficiency-bonus-many free casts per Long Rest. The only
- *   carrier in the whole data set is a SPECIES (Gnome; Rock Gnome Lineage,
+ *   carrier in the whole data set is a SPECIES (Gnome; Forest Gnome Lineage,
  *   raceSpells.ts); unlike `freePerLongRestByAbility` the number IS computable
  *   from what the caller already has (proficiency bonus needs only
  *   character.classes), so this one carries the resolved count rather than the
@@ -276,14 +276,15 @@ export function spellIdentityKey(name: string, source: string): string {
 /**
  * Collapses a spell reachable via more than one grant path (module comment
  * above — confirmed real for College of Glamour's Command) down to one entry
- * per spell identity, keeping the LOWEST `grantedAtLevel` seen rather than an
+ * per spell identity and usage, keeping the LOWEST `grantedAtLevel` seen rather than an
  * arbitrary path's value. Order-preserving (first occurrence's position is
  * kept) so callers that care about display order aren't disturbed.
  */
 export function dedupeAlwaysPreparedSpells(spells: AlwaysPreparedSpell[]): AlwaysPreparedSpell[] {
 	const byKey = new Map<string, AlwaysPreparedSpell>()
 	for (const spell of spells) {
-		const key = spellIdentityKey(spell.name, spell.source)
+		// D190: a different usage is a second grant, not a duplicate — Archfey's Misty Step is prepared["3"] (slot) AND innate["_"] (CHA/LR).
+		const key = `${spellIdentityKey(spell.name, spell.source)}|${JSON.stringify(spell.usage ?? null)}`
 		const existing = byKey.get(key)
 		if (!existing || spell.grantedAtLevel < existing.grantedAtLevel) byKey.set(key, spell)
 	}

@@ -78,12 +78,14 @@ function keyOf(name: string, source: string): string {
  * — that ability is not what the species casts with — so it resolves to the
  * stated reason instead, and the row appears saying so (D43/D58).
  */
-function casterFor(
+export type SpellCaster = { attack: SpellActionAttack; save: SpellActionSave } | { reason: string }
+
+export function casterFor(
 	entry: SheetSpellEntry,
 	classEntries: SpellcastingEntry[],
 	featEntries: FeatSpellcastingEntry[],
 	speciesEntries: SpeciesSpellcastingEntry[],
-): { attack: SpellActionAttack; save: SpellActionSave } | { reason: string } {
+): SpellCaster {
 	const featEntry = featEntries.find((f) => entry.featOrigins.includes(f.featName))
 	const speciesEntry = speciesEntries.find((s) => entry.speciesOrigins.includes(s.speciesName))
 	const grantedByClass = entry.chosen || entry.subclassOrigins.length > 0 || entry.optionalFeatureOrigins.length > 0
@@ -101,7 +103,7 @@ function casterFor(
 	return { reason: `"${entry.name}" could belong to more than one casting class, and the spell list does not record which — multiclass is build order step 10.` }
 }
 
-function toCaster(source: SpellcastingEntry | FeatSpellcastingEntry | SpeciesSpellcastingEntry): { attack: SpellActionAttack; save: SpellActionSave } {
+export function toCaster(source: SpellcastingEntry | FeatSpellcastingEntry | SpeciesSpellcastingEntry): { attack: SpellActionAttack; save: SpellActionSave } {
 	return {
 		attack: { bonus: source.spellAttackBonus, breakdown: source.spellAttackBreakdown },
 		save: { dc: source.spellSaveDC, breakdown: source.spellSaveDCBreakdown, abilities: [] },

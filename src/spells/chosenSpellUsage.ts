@@ -58,3 +58,6 @@ const USAGE_BY_SOURCE: Record<string, SpellUsage | null> = {
 export function chosenSpellUsageFor(sourceName: string): SpellUsage | null {
 	return USAGE_BY_SOURCE[sourceName] ?? null
 }
+
+/** Sources whose picks carry a usage term — for alsoCastableWithSlot.test.ts's coverage check. */
+export const CHOSEN_SPELL_USAGE_SOURCES = Object.keys(USAGE_BY_SOURCE).filter((name) => USAGE_BY_SOURCE[name] !== null)

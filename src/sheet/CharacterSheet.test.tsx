@@ -4984,6 +4984,112 @@ describe('CharacterSheet', () => {
 		})
 	})
 
+	/* D190: a free cast with a shared owner counts on that owner's boxes — saved through the real store, only fetches stubbed. */
+	describe('free-cast counters on shared owners (D190)', () => {
+		function saved(fields: Partial<Character>): Character {
+			const memory = new Map<string, string>()
+			const store = new CharacterStore({ getItem: (key) => memory.get(key) ?? null, setItem: (key, value) => void memory.set(key, value), removeItem: (key) => void memory.delete(key) })
+			store.create({
+				name: 'Free Caster',
+				classes: [],
+				abilityScores: { method: 'standardArray', scores: { strength: 10, dexterity: 13, constitution: 14, intelligence: 8, wisdom: 12, charisma: 15 } },
+				...fields,
+			})
+			return store.list()[0]!
+		}
+		const used = (row: Element) => `${row.querySelectorAll('.sheet__use-box--used').length} / ${row.querySelectorAll('.sheet__use-box').length}`
+
+		afterEach(() => {
+			vi.mocked(loadGrantedClassFeatures).mockReset().mockResolvedValue([])
+			vi.mocked(loadResolverData).mockReset().mockResolvedValue({ classFeatures: [], subclassFeatures: [], optionalFeatures: [], feats: [] })
+			vi.mocked(loadSpeciesTraits).mockReset().mockResolvedValue([])
+			vi.mocked(loadSubclassSource).mockReset().mockResolvedValue(null)
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockReset().mockResolvedValue([])
+			vi.mocked(loadRaceSpells).mockReset().mockResolvedValue({ spells: [], notes: [] })
+		})
+
+		it('an Archfey Warlock gets Charisma-modifier use boxes on Steps of the Fey in Features & Traits', async () => {
+			const classes = [
+				{ entryType: 'class', name: 'Warlock', source: 'XPHB', classFeatureIds: [], classFeatures: [] },
+				{
+					entryType: 'subclass',
+					name: 'Archfey Patron',
+					className: 'Warlock',
+					classSource: 'XPHB',
+					shortName: 'Archfey',
+					source: 'XPHB',
+					subclassFeatureIds: ['scf|steps of the fey|warlock|xphb|archfey|xphb|3|xphb'],
+				},
+			]
+			const stepsOfTheFey = {
+				id: 'scf|steps of the fey|warlock|xphb|archfey|xphb|3|xphb',
+				name: 'Steps of the Fey',
+				className: 'Warlock',
+				classSource: 'XPHB',
+				subclassShortName: 'Archfey',
+				subclassSource: 'XPHB',
+				level: 3,
+				source: 'XPHB',
+				entries: [
+					'You can cast {@spell Misty Step|XPHB} without expending a spell slot a number of times equal to your Charisma modifier (minimum of once), and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.',
+				],
+			}
+			const resolver = { classFeatures: [], subclassFeatures: [stepsOfTheFey], optionalFeatures: [], feats: [] }
+			const warlock = saved({ name: 'Fey Pact', classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: 'Archfey Patron', level: 3 }] })
+			vi.mocked(loadResolverData).mockResolvedValue(resolver)
+			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(warlock, classes, resolver))
+			vi.mocked(loadSubclassSource).mockResolvedValue('XPHB')
+			vi.mocked(loadSubclassAlwaysPreparedSpells).mockResolvedValue([
+				{ name: 'Misty Step', source: 'XPHB', level: 2, grantedAtLevel: 3, ritual: false, concentration: false, origin: 'subclass', usage: null },
+				{ name: 'Misty Step', source: 'XPHB', level: 2, grantedAtLevel: 3, ritual: false, concentration: false, origin: 'subclass', usage: { kind: 'freePerLongRestByAbility', ability: 'cha' } },
+			])
+
+			render(<CharacterSheet character={warlock} />)
+			await openFeaturesTab()
+			const group = await featureGroup('Warlock Features', 'Steps of the Fey')
+			// Charisma 15: modifier +2.
+			await waitFor(() => expect(used(featureRow(group, 'Steps of the Fey'))).toBe('0 / 2'))
+		})
+
+		it("a Forest Gnome's Gnomish Lineage keeps its Proficiency Bonus boxes, and Speak with Animals adds no second counter", async () => {
+			const onEditResourceUses = vi.fn()
+			const gnome = saved({ name: 'Tinker', species: { name: 'Gnome; Forest Gnome Lineage', source: 'XPHB' }, classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }] })
+			vi.mocked(loadSpeciesTraits).mockResolvedValue([
+				{
+					name: 'Gnomish Lineage (Forest Gnome)',
+					entries: [
+						'You also always have the {@spell Speak with Animals|XPHB} spell prepared. You can cast it without a spell slot a number of times equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus}, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.',
+					],
+				},
+			])
+			vi.mocked(loadRaceSpells).mockResolvedValue({
+				spells: [
+					{
+						name: 'Speak with Animals',
+						source: 'XPHB',
+						level: 1,
+						ritual: true,
+						concentration: false,
+						origin: 'species',
+						speciesName: 'Gnome; Forest Gnome Lineage',
+						grantedAtLevel: null,
+						ability: 'int',
+						usage: { kind: 'freePerLongRestByProficiencyBonus', casts: 3 },
+					},
+				],
+				notes: [],
+			})
+
+			render(<CharacterSheet character={gnome} onEditResourceUses={onEditResourceUses} />)
+			await openFeaturesTab()
+			const group = await featureGroup('Species Traits', 'Gnomish Lineage (Forest Gnome)')
+			const row = featureRow(group, 'Gnomish Lineage (Forest Gnome)')
+			expect(used(row)).toBe('0 / 3')
+			fireEvent.click(within(row).getAllByRole('button', { name: 'Use Gnomish Lineage (Forest Gnome)' })[0]!)
+			expect(onEditResourceUses).toHaveBeenCalledWith({ 'Gnomish Lineage (Forest Gnome)': 1 })
+		})
+	})
+
 	describe('spellcasting sections (build order step 6 slice d4)', () => {
 		afterEach(() => {
 			vi.mocked(loadSpellcastingAbilityClassData).mockReset().mockResolvedValue([])

@@ -24,7 +24,7 @@ function detail(over: Partial<SpellDetail> & { name: string }): SpellDetail {
 }
 
 function entry(name: string, over: Partial<SheetSpellEntry> = {}): SheetSpellEntry {
-	return { name, source: 'XPHB', chosen: true, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], ...over }
+	return { name, source: 'XPHB', chosen: true, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [], ...over }
 }
 
 const wizard: SpellcastingEntry = {

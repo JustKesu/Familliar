@@ -414,3 +414,14 @@ appka to dnes neumí nikde. Rozhodnout, až se na to dojde (možná víc
 featur má stejný tvar, mezi zbylými ~48 se to nekontrolovalo).
 STATUS: nerozhodnuto, nízká priorita — appka dnes tyhle featury jen
 neukazuje s trackerem, nic nefunguje špatně.
+
+### Class `additionalSpells` se nečtou vůbec
+
+`additionalSpells` na záznamech **tříd** (ne subclass) appka nečte: Ranger
+Hunter's Mark (Favored Enemy), Paladin Divine Smite, Druid Speak with Animals +
+Find Familiar, Bard, Warlock, Artificer Mending. Na sheetu tak chybí úplně. Pozor
+na dvojí počítání: Favored Enemy má vlastní boxy a Hunter's Mark by je měl sdílet
+(tabulka vlastníků D190). Samostatný task, ne R7b.
+
+Nalezeno při R7b-0, zapsáno v R7b-1 (25. 9. 2026).
+STATUS: nerozhodnuto, čeká na vlastní task.
