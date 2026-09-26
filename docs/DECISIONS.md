@@ -3537,3 +3537,17 @@ Actions u sdílených vlastníků), za nimi „/ Long Rest“ nebo „/ Short Re
 obvyklé poznámky. U `resource` řádku místo boxů text „Focus Point 2 / 3“;
 neznámé maximum = `UnresolvedValue`. Bez slotů se CAST řádek neukazuje (D190),
 takže vybrané kouzlo postavy bez slotů je jen štítek.
+
+## D192 — A-S1: always-prepared kouzla ze záznamu třídy
+
+Zdroj: task A-S1 (průzkum v DATA.md). Schéma beze změny (48).
+
+**Čte se `additionalSpells` záznamu třídy** (9 pevných grantů: Bard 20, Druid 1
+a 2, Paladin 2 a 5, Ranger 1, Warlock 9, Artificer EFA 1). Nový původ grantu
+`class`, štítek „always prepared (<Třída>)“. Klíč = úroveň v TÉ třídě (Fighter 5
+/ Paladin 1 nemá Divine Smite). Do limitu připravených kouzel se nepočítají a
+řádek se neduplikuje, když je hráč připraví také — jako u podtříd. Kouzlo se
+sesílá s vlastností a Hit/DC té třídy a umisťuje se jako kouzlo té třídy
+(Warlock: pact pravidla D189). Free casty (Hunter's Mark, Divine Smite, Find
+Steed, Find Familiar, Contact Other Plane) přijdou v dalším tasku; `usage` je
+zatím null. Bard `expanded` (Magical Secrets) se nečte, patří do Manage Spells.

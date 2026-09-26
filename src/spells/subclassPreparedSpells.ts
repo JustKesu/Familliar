@@ -194,8 +194,8 @@ export interface AlwaysPreparedSpell {
 	grantedAtLevel: number
 	ritual: boolean
 	concentration: boolean
-	/** Provenance (per the sheet's planned "always prepared (subclass)" label, slice d4): always the subclass, never a player pick. */
-	origin: 'subclass'
+	/** Provenance ("always prepared (subclass)" label, slice d4): the subclass or (D192) the class record itself, never a player pick. */
+	origin: 'class' | 'subclass'
 	/** How this spell is cast (this task) — undefined/null for an ordinary grant, cast with a slot like any other prepared/known spell (no wrapper found). */
 	usage?: SpellUsage | null
 }
@@ -406,6 +406,91 @@ export function extractRefsWithUsage(value: unknown, resourceName: string | unde
 }
 
 /**
+ * One additionalSpells entry's `prepared`/`known`/`innate` grants at or below
+ * `classLevel`, shared by the subclass and class-record readers (D192). A
+ * subclass has no "always", so `"_"` resolves to `underscoreLevel`; a class
+ * record passes null and never uses it.
+ */
+function collectFixedGrants(
+	entry: Record<string, unknown>,
+	spells: RawSpell[],
+	classLevel: number,
+	origin: AlwaysPreparedSpell['origin'],
+	underscoreLevel: number | null | undefined,
+): AlwaysPreparedSpell[] {
+	const result: AlwaysPreparedSpell[] = []
+	for (const key of FIXED_GRANT_KEYS) {
+		const levelMap = entry[key]
+		if (levelMap === undefined) continue
+		if (!isRecord(levelMap)) continue // unexpected variant of the key itself — skip cleanly, don't invent handling.
+
+		for (const [levelKey, value] of Object.entries(levelMap)) {
+			let grantedAtLevel: number
+			if (levelKey === '_') {
+				// "_" means always granted (featSpells.ts reads the same key the same way) — for a subclass that's "from the level the subclass itself was granted", not every level.
+				if (underscoreLevel === undefined || underscoreLevel === null) continue // can't resolve the grant level — skip cleanly (D43), don't guess.
+				grantedAtLevel = underscoreLevel
+			} else {
+				const parsed = Number(levelKey)
+				if (!Number.isFinite(parsed)) continue // neither a class-level key nor "_" (e.g. a pact-slot-rank key belongs to `expanded`, not this shape) — skip cleanly, not "unparseable means always".
+				grantedAtLevel = parsed
+			}
+			if (grantedAtLevel > classLevel) continue
+
+			const resourceName = typeof entry['resourceName'] === 'string' ? entry['resourceName'] : undefined
+			for (const { ref, usage } of extractRefsWithUsage(value, resourceName, null)) {
+				const spell = findSpell(spells, parseSpellRef(ref))
+				if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
+
+				result.push({
+					name: spell.name,
+					source: spell.source,
+					level: spell.level,
+					grantedAtLevel,
+					ritual: spell.meta?.ritual === true,
+					concentration: hasConcentration(spell.duration),
+					origin,
+					usage,
+				})
+			}
+		}
+	}
+	return result
+}
+
+interface RawClassEntry {
+	name: string
+	source: string
+	additionalSpells?: unknown
+}
+
+/**
+ * D192: the class record's own `additionalSpells` (Ranger's Hunter's Mark, Paladin's
+ * Divine Smite, ...). Keys are levels in THIS class, so a multiclass caller passes
+ * that class's level, not the character level. `expanded` (Bard Magical Secrets)
+ * is not a grant and stays unread.
+ */
+export function extractClassAlwaysPreparedSpells(parsedClasses: unknown, parsedSpells: unknown, className: string, classSource: string, classLevel: number): AlwaysPreparedSpell[] {
+	if (!Array.isArray(parsedClasses)) throw new Error('classes.json: expected a top-level array.')
+	if (!Array.isArray(parsedSpells)) throw new Error('spells.json: expected a top-level array.')
+
+	const classRecord = parsedClasses.find(
+		(candidate): candidate is RawClassEntry =>
+			isRecord(candidate) && candidate['entryType'] === 'class' && candidate['name'] === className && candidate['source'] === classSource,
+	)
+	if (!classRecord || !Array.isArray(classRecord.additionalSpells)) return []
+
+	const spells = parsedSpells.filter(isRawSpell)
+	const result = classRecord.additionalSpells.filter(isRecord).flatMap((entry) => collectFixedGrants(entry, spells, classLevel, 'class', null))
+	return dedupeAlwaysPreparedSpells(result)
+}
+
+export async function loadClassAlwaysPreparedSpells(className: string, classSource: string, classLevel: number): Promise<AlwaysPreparedSpell[]> {
+	const [parsedClasses, parsedSpells] = await Promise.all([loadDataFile('data/classes.json'), loadDataFile('data/spells.json')])
+	return extractClassAlwaysPreparedSpells(parsedClasses, parsedSpells, className, classSource, classLevel)
+}
+
+/**
  * Pure filter (D38). Takes ONE subclass identity plus the character's level
  * in that class (D11 — a multiclass caller unions per class, not built
  * here) and the parsed classes.json / spells.json arrays. Returns the
@@ -455,42 +540,7 @@ export function extractSubclassAlwaysPreparedSpells(
 	for (const entry of subclass.additionalSpells) {
 		if (!isRecord(entry)) continue
 
-		for (const key of FIXED_GRANT_KEYS) {
-			const levelMap = entry[key]
-			if (levelMap === undefined) continue
-			if (!isRecord(levelMap)) continue // unexpected variant of the key itself — skip cleanly, don't invent handling.
-
-			for (const [levelKey, value] of Object.entries(levelMap)) {
-				let grantedAtLevel: number
-				if (levelKey === '_') {
-					// "_" means always granted (featSpells.ts reads the same key the same way) — for a subclass that's "from the level the subclass itself was granted", not every level.
-					if (subclassGrantLevel === undefined || subclassGrantLevel === null) continue // can't resolve the grant level — skip cleanly (D43), don't guess.
-					grantedAtLevel = subclassGrantLevel
-				} else {
-					const parsed = Number(levelKey)
-					if (!Number.isFinite(parsed)) continue // neither a class-level key nor "_" (e.g. a pact-slot-rank key belongs to `expanded`, not this shape) — skip cleanly, not "unparseable means always".
-					grantedAtLevel = parsed
-				}
-				if (grantedAtLevel > classLevel) continue
-
-				const resourceName = typeof entry['resourceName'] === 'string' ? entry['resourceName'] : undefined
-				for (const { ref, usage } of extractRefsWithUsage(value, resourceName, null)) {
-					const spell = findSpell(spells, parseSpellRef(ref))
-					if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
-
-					result.push({
-						name: spell.name,
-						source: spell.source,
-						level: spell.level,
-						grantedAtLevel,
-						ritual: spell.meta?.ritual === true,
-						concentration: hasConcentration(spell.duration),
-						origin: 'subclass',
-						usage,
-					})
-				}
-			}
-		}
+		result.push(...collectFixedGrants(entry, spells, classLevel, 'subclass', subclassGrantLevel))
 
 		// Pact-slot-rank-keyed `expanded` grant (Hexblade/Fathomless). Guarded to a subclass with exactly ONE additionalSpells
 		// entry — Warlock The Genie's 4 per-genie-kind entries share this same "s1".."s5" shape but nothing stores which kind

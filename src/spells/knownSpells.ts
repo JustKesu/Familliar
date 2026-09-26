@@ -42,6 +42,8 @@ export interface KnownSpellInputs {
 	classSpellPicks: readonly { name: string; source: string }[]
 	/** Null when no subclass is chosen yet; the two subclass lists below are then ignored. */
 	subclassName: string | null
+	/** D192: the class record's own always-prepared grants (Ranger's Hunter's Mark). */
+	classAlwaysPrepared?: { className: string; spells: readonly { name: string; source: string }[] }
 	/** subclassPreparedSpells.ts's always-prepared grants for the chosen subclass. */
 	subclassAlwaysPrepared: readonly { name: string; source: string }[]
 	/** WizardData.subclassSpellChoices — the subclass filter-choice picker's own picks. */
@@ -64,6 +66,10 @@ export function collectKnownSpells(inputs: KnownSpellInputs): KnownSpell[] {
 	}
 
 	for (const pick of inputs.classSpellPicks) add(pick.name, pick.source, 'the Spells step', CLASS_SPELL_PICKER_KEY)
+
+	if (inputs.classAlwaysPrepared) {
+		for (const spell of inputs.classAlwaysPrepared.spells) add(spell.name, spell.source, `${inputs.classAlwaysPrepared.className}, always prepared`, null)
+	}
 
 	if (inputs.subclassName !== null) {
 		for (const spell of inputs.subclassAlwaysPrepared) add(spell.name, spell.source, `${inputs.subclassName}, always prepared`, null)

@@ -46,7 +46,7 @@ import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration
  * still handles it rather than assuming it can't happen.
  */
 
-export type SpellGrantOrigin = 'subclass' | 'feat' | 'optionalFeature' | 'species'
+export type SpellGrantOrigin = 'class' | 'subclass' | 'feat' | 'optionalFeature' | 'species'
 
 /** One source's grant of a spell, with its own usage term (D190) — the player's pick is `chosen`, not a grant. */
 export interface SpellGrant {
@@ -61,6 +61,8 @@ export interface SheetSpellEntry {
 	chosen: boolean
 	/** Subclass name(s) that grant this spell as always-prepared. Almost always 0 or 1 entry; a list only to cover a character with more than one subclass-granting class at once. */
 	subclassOrigins: string[]
+	/** D192: class(es) whose class record grants this spell as always-prepared (Ranger's Hunter's Mark). */
+	classOrigins: string[]
 	/** Feat name(s) that grant this spell (featSpells.ts, d5a). Almost always 0 or 1 entry. */
 	featOrigins: string[]
 	/** Optional-feature name(s) that grant this spell (optionalFeatureSpells.ts, step 6a). More than one is real — see the module comment. */
@@ -83,6 +85,7 @@ export interface SheetSpellEntry {
 export function provenanceLabel(entry: SheetSpellEntry): string {
 	const parts: string[] = []
 	if (entry.chosen) parts.push('player pick')
+	for (const className of entry.classOrigins) parts.push(`always prepared (${className})`)
 	for (const subclassName of entry.subclassOrigins) parts.push(`always prepared (${subclassName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
 	for (const optionName of entry.optionalFeatureOrigins) parts.push(`from invocation (${optionName})`)
@@ -98,7 +101,7 @@ function keyOf(name: string, source: string): string {
 }
 
 function emptyEntry(name: string, source: string, chosen: boolean): SheetSpellEntry {
-	return { name, source, chosen, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [] }
+	return { name, source, chosen, subclassOrigins: [], classOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [] }
 }
 
 /** Records the grant, and adds `usage` to `entry.usages` unless it's absent or already present (by `spellUsageKey`) — an ordinary grant (undefined/null) leaves that list untouched. */
@@ -119,8 +122,19 @@ export function combineSpellEntries(
 	featGrantedSpells: { featName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
 	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
 	raceGrantedSpells: { speciesName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
+	classAlwaysPrepared: { className: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[] = [],
 ): SheetSpellEntry[] {
 	const map = new Map<string, SheetSpellEntry>()
+
+	for (const group of classAlwaysPrepared) {
+		for (const spell of group.spells) {
+			const key = keyOf(spell.name, spell.source)
+			const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+			if (!entry.classOrigins.includes(group.className)) entry.classOrigins.push(group.className)
+			mergeUsage(entry, 'class', group.className, spell.usage)
+			map.set(key, entry)
+		}
+	}
 
 	for (const choice of spellChoices) {
 		for (const spell of choice.spells) {

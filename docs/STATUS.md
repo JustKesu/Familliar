@@ -1517,6 +1517,16 @@ Notes open with `UseBoxes` on the shared record (or "Focus Point 2 / 3" for a
 g inside d). R7 (Spells) is done except upcast (R8) and Manage Spells (R9). No
 schema change (still 48).
 
+A-S1 (D192): class-record `additionalSpells` are read
+(`extractClassAlwaysPreparedSpells` / `loadClassAlwaysPreparedSpells`, shared
+`collectFixedGrants` with the subclass reader). Grant origin `class`, label
+"always prepared (<Class>)", key = level in that class. The sheet effect loads
+them for every class (`classSpellInfo`); `combineSpellEntries` takes a last
+`classAlwaysPrepared` argument; `casterFor` casts them with that class's
+ability. The wizard's spell step lists them and includes them in the D71
+already-has set. `usage` is null (free casts: next task); Bard `expanded`
+still unread. E2E `classGrants.spec.ts` a–f. No schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

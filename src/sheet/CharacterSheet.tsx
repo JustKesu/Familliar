@@ -106,7 +106,7 @@ import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
-import { dedupeAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { dedupeAlwaysPreparedSpells, loadClassAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import {
 	loadFeatEffectEntries,
@@ -2760,6 +2760,8 @@ function CharacterSheetBody({
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
+	/** D192: class-record always-prepared grants, one group per class. */
+	const [classSpellInfo, setClassSpellInfo] = useState<{ className: string; spells: AlwaysPreparedSpell[] }[]>([])
 	/** Fixed feat-granted spells (d5a) — depends on the character's feats (featInstances, D156), fetched separately from the main load same as subclassSpellInfo. */
 	const [featSpells, setFeatSpells] = useState<FeatGrantedSpell[]>([])
 	/** The CLASS's own optionalfeatureProgression picks (step 6a slice 2) — Metamagic, Eldritch Invocations. Depends on `character`, fetched separately same as featSpells. */
@@ -2910,13 +2912,11 @@ function CharacterSheetBody({
 	useEffect(() => {
 		let cancelled = false
 		const classesWithSubclass = character.classes.filter((c): c is typeof c & { subclass: string } => c.subclass !== null)
-		if (classesWithSubclass.length === 0) {
-			setSubclassSpellInfo([])
-			setSubclassSpellsError(null)
-			spellGrantsSettled('subclass', character)
-			return
-		}
-		Promise.all(
+		// D192: the class record's own grants apply to every class, subclass or not (Druid 1, Ranger 1).
+		const classGrants = Promise.all(
+			character.classes.map(async (c) => ({ className: c.className, spells: await loadClassAlwaysPreparedSpells(c.className, c.classSource, c.level) })),
+		)
+		const subclassGrants = Promise.all(
 			classesWithSubclass.map(async (c) => {
 				const source = await loadSubclassSource(c.className, c.classSource, c.subclass)
 				// Only Warlock's own Pact Magic table applies to a rank-keyed patron grant (subclassPreparedSpells.ts) — any other class's table would be the wrong shape's numbers entirely.
@@ -2932,8 +2932,10 @@ function CharacterSheetBody({
 				return { subclassName: c.subclass, alwaysPrepared: dedupeAlwaysPreparedSpells([...alwaysPrepared, ...chosen]) }
 			}),
 		)
-			.then((infos) => {
+		Promise.all([classGrants, subclassGrants])
+			.then(([classInfos, infos]) => {
 				if (cancelled) return
+				setClassSpellInfo(classInfos)
 				setSubclassSpellInfo(infos)
 				setSubclassSpellsError(null)
 				// The run before the slot tables arrive has no rank-keyed patron grants yet; only the re-run after them is the full list.
@@ -2941,6 +2943,7 @@ function CharacterSheetBody({
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
+				setClassSpellInfo([])
 				setSubclassSpellInfo([])
 				setSubclassSpellsError(messageOf(error))
 				spellGrantsSettled('subclass', character)
@@ -3128,6 +3131,7 @@ function CharacterSheetBody({
 		featSpells,
 		optionalFeatureSpells,
 		raceSpells.spells,
+		classSpellInfo,
 	)
 	const knowsFindFamiliar = hasFindFamiliar(combinedSpells)
 	const knowsMageArmor = hasMageArmor(combinedSpells)

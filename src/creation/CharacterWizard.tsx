@@ -69,7 +69,7 @@ import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { SpellPicker } from '../spells/SpellPicker'
 import { spellListClassFor, expandedSpellListClassFor } from '../spells/classSpellListData'
 import { AlwaysPreparedSpellsList } from '../spells/AlwaysPreparedSpellsList'
-import { loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { loadClassAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { collectKnownSpells } from '../spells/knownSpells'
@@ -226,6 +226,7 @@ export function CharacterWizard({
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[]>([])
 	/** The three grant sources the shared "already has it" set needs (knownSpells.ts); the other two (class picks, subclass filter-choice picks) are wizard state already. */
 	const [subclassAlwaysPrepared, setSubclassAlwaysPrepared] = useState<AlwaysPreparedSpell[]>([])
+	const [classAlwaysPrepared, setClassAlwaysPrepared] = useState<AlwaysPreparedSpell[]>([])
 	const [featGrantedSpells, setFeatGrantedSpells] = useState<FeatGrantedSpell[]>([])
 	const [optionalFeatureGrantedSpells, setOptionalFeatureGrantedSpells] = useState<OptionalFeatureGrantedSpell[]>([])
 	/**
@@ -664,6 +665,26 @@ export function CharacterWizard({
 		}
 	}, [state.data.classChoice, state.data.subclass, spellSlotsClassData])
 
+	/** D192: the class record's own always-prepared grants; a failed load leaves the list empty, like the other best-effort grant loads. */
+	useEffect(() => {
+		let cancelled = false
+		const classChoice = state.data.classChoice
+		if (!classChoice) {
+			setClassAlwaysPrepared([])
+			return
+		}
+		loadClassAlwaysPreparedSpells(classChoice.className, classChoice.classSource, classChoice.level)
+			.then((spells) => {
+				if (!cancelled) setClassAlwaysPrepared(spells)
+			})
+			.catch(() => {
+				if (!cancelled) setClassAlwaysPrepared([])
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [state.data.classChoice])
+
 	/** Feat-granted spells — fixed grants AND the player's own Magic Initiate / filter-choice picks, both keyed to the granting feat by featSpells.ts. */
 	useEffect(() => {
 		let cancelled = false
@@ -1048,6 +1069,7 @@ export function CharacterWizard({
 	 */
 	const alreadyKnownSpells = collectKnownSpells({
 		classSpellPicks: state.data.spellChoices,
+		classAlwaysPrepared: state.data.classChoice ? { className: state.data.classChoice.className, spells: classAlwaysPrepared } : undefined,
 		subclassName: state.data.subclass?.name ?? null,
 		subclassAlwaysPrepared,
 		subclassSpellChoicePicks: state.data.subclassSpellChoices,
@@ -1523,6 +1545,7 @@ export function CharacterWizard({
 						onChange={(choices) => dispatch({ type: 'setSpellChoices', choices })}
 						alreadyKnown={alreadyKnownSpells}
 					/>
+					<AlwaysPreparedSpellsList subclassName={state.data.classChoice.className} spells={classAlwaysPrepared} />
 					{state.data.subclass && (
 						<AlwaysPreparedSpellsList subclassName={state.data.subclass.name} spells={subclassAlwaysPrepared} error={subclassAlwaysPreparedError} />
 					)}

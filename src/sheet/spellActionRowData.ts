@@ -88,7 +88,12 @@ export function casterFor(
 ): SpellCaster {
 	const featEntry = featEntries.find((f) => entry.featOrigins.includes(f.featName))
 	const speciesEntry = speciesEntries.find((s) => entry.speciesOrigins.includes(s.speciesName))
-	const grantedByClass = entry.chosen || entry.subclassOrigins.length > 0 || entry.optionalFeatureOrigins.length > 0
+	const grantedByClass = entry.chosen || entry.classOrigins.length > 0 || entry.subclassOrigins.length > 0 || entry.optionalFeatureOrigins.length > 0
+	// D192: a class-record grant casts with that class's own ability, also in a multiclass.
+	if (!entry.chosen && entry.classOrigins.length > 0) {
+		const own = classEntries.filter((c) => entry.classOrigins.includes(c.className))
+		if (own.length === 1) return toCaster(own[0]!)
+	}
 	if (featEntry && !grantedByClass) return toCaster(featEntry)
 	if (speciesEntry && !grantedByClass) return toCaster(speciesEntry)
 	if (!grantedByClass && !featEntry && entry.unresolvedAbilityReasons.length > 0) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
 	dedupeAlwaysPreparedSpells,
+	extractClassAlwaysPreparedSpells,
 	extractSubclassAlwaysPreparedSpells,
 	levelForPactSlotRank,
 	parseDailySubkey,
@@ -667,5 +668,37 @@ describe('parseDailySubkey', () => {
 	it('reads "pb" as proficiency-bonus-many casts, and carries no count when no bonus was supplied', () => {
 		expect(parseDailySubkey('pb', 3)).toEqual({ kind: 'freePerLongRestByProficiencyBonus', casts: 3 })
 		expect(parseDailySubkey('pb')).toBeNull()
+	})
+})
+
+describe('extractClassAlwaysPreparedSpells (D192)', () => {
+	const paladin = {
+		entryType: 'class',
+		name: 'Paladin',
+		source: 'XPHB',
+		additionalSpells: [{ prepared: { '2': ['divine smite|xphb'], '5': ['find steed|xphb'] }, expanded: { '10': ['bless|xphb'] } }],
+	}
+	const spells = [
+		{ name: 'Divine Smite', source: 'XPHB', level: 1 },
+		{ name: 'Find Steed', source: 'XPHB', level: 2 },
+		{ name: 'Bless', source: 'XPHB', level: 1 },
+	]
+	const names = (level: number) => extractClassAlwaysPreparedSpells([paladin], spells, 'Paladin', 'XPHB', level).map((s) => s.name)
+
+	it('reads prepared grants tagged origin class, gated by the level in that class', () => {
+		expect(names(1)).toEqual([])
+		expect(names(2)).toEqual(['Divine Smite'])
+		expect(names(5)).toEqual(['Divine Smite', 'Find Steed'])
+		expect(extractClassAlwaysPreparedSpells([paladin], spells, 'Paladin', 'XPHB', 2)[0]).toMatchObject({ origin: 'class', usage: null, grantedAtLevel: 2 })
+	})
+
+	it('never reads expanded, and returns nothing for a class with no additionalSpells', () => {
+		expect(names(20)).not.toContain('Bless')
+		expect(extractClassAlwaysPreparedSpells([{ entryType: 'class', name: 'Fighter', source: 'XPHB' }], spells, 'Fighter', 'XPHB', 20)).toEqual([])
+	})
+
+	it('multiclass: Fighter 5 / Paladin 1 has no Divine Smite, Fighter 1 / Paladin 2 has it (caller passes the Paladin level)', () => {
+		expect(names(1)).toEqual([])
+		expect(names(2)).toEqual(['Divine Smite'])
 	})
 })

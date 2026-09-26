@@ -39,7 +39,7 @@ export interface SpellsTabSection {
 export type SpellsTabFilter = 'all' | 'concentration' | 'ritual' | number
 
 function isPlainClassGrant(grant: SpellGrant): boolean {
-	return (grant.origin === 'subclass' || grant.origin === 'optionalFeature') && grant.usage === null
+	return (grant.origin === 'class' || grant.origin === 'subclass' || grant.origin === 'optionalFeature') && grant.usage === null
 }
 
 function keyOf(entry: SheetSpellEntry): string {
@@ -309,7 +309,8 @@ export function spellSubtitle(row: SpellsTabRow & { action?: SpellRowAction }, c
 			? [row.action.grant.originName]
 			: [
 					...(entry.chosen ? [castingClassName ?? 'Chosen'] : []),
-					...entry.subclassOrigins,
+					...entry.classOrigins,
+						...entry.subclassOrigins,
 					...entry.featOrigins,
 					...entry.optionalFeatureOrigins,
 					...entry.speciesOrigins,

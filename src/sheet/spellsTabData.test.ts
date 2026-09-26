@@ -42,7 +42,7 @@ function detail(name: string, level: number, over: Partial<SpellDetail> = {}): S
 }
 
 function entry(name: string, over: Partial<SheetSpellEntry> = {}): SheetSpellEntry {
-	return { name, source: 'XPHB', chosen: true, subclassOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [], ...over }
+	return { name, source: 'XPHB', chosen: true, subclassOrigins: [], classOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [], ...over }
 }
 
 function grant(origin: SpellGrant['origin'], originName: string, usage: SpellUsage | null = null): SpellGrant {
