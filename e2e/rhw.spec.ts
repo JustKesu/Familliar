@@ -32,7 +32,7 @@ test('D194 f: Artificer 3 offers Reanimator', async ({ page }) => {
   await expect(radio('Reanimator')).toHaveCount(1)
 })
 
-function shadowSorcerer(id: string, level: number) {
+function shadowSorcerer(id: string, level: number, metamagic = true) {
   return {
     schemaVersion: 48,
     id,
@@ -40,8 +40,7 @@ function shadowSorcerer(id: string, level: number) {
     classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: 'Shadow Sorcery', level }],
     abilityScores: { method: 'standardArray', scores: { strength: 8, dexterity: 12, constitution: 14, intelligence: 10, wisdom: 10, charisma: 16 } },
     spellChoices: [],
-    // The Sorcery Point pool is found through its spenders; a Sorcerer 2+ has these two from the wizard.
-    optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Quickened Spell', level: 2 }, { name: 'Twinned Spell', level: 2 }] }],
+    optionalFeatureChoices: metamagic ? [{ featureType: 'MM', choices: [{ name: 'Quickened Spell', level: 2 }, { name: 'Twinned Spell', level: 2 }] }] : [],
   }
 }
 
@@ -75,7 +74,19 @@ test('D194 d: Shadow Sorcerer 6 — USE Summon Beast (Beasts of Ill Omen) spends
   await expect(use.locator('.sheet__spell-notes')).toContainText('3 / 6')
 })
 
-test('D194 e: a Dark Gift feat is selectable at a feat choice, labelled "Dark Gift" with its campaign as a note', async ({ page }) => {
+test('D196: Shadow Sorcerer 6 with no Metamagic — Sorcery Points 6 / 6 from Font of Magic; USE Summon Beast spends 3 twice, then disables', async ({ page }) => {
+  const panel = await openSpells(page, shadowSorcerer('d196-shadow-6', 6, false))
+  const use = panel.locator('.sheet__spell-row--use', { has: page.locator('.sheet__spell-name', { hasText: /^Summon Beast$/ }) })
+  const button = use.getByRole('button', { name: 'Use Summon Beast', exact: true })
+  await expect(use.locator('.sheet__spell-notes')).toContainText('Sorcery Point 6 / 6')
+  await button.click()
+  await expect(use.locator('.sheet__spell-notes')).toContainText('Sorcery Point 3 / 6')
+  await button.click()
+  await expect(use.locator('.sheet__spell-notes')).toContainText('Sorcery Point 0 / 6')
+  await expect(button).toBeDisabled()
+})
+
+test('D194 e:a Dark Gift feat is selectable at a feat choice, labelled "Dark Gift" with its campaign as a note', async ({ page }) => {
   await createFighter(page, {
     name: 'D194 Dark Gift',
     level: 4,

@@ -112,9 +112,8 @@ Raw data before any filter (`scripts/investigate-books.mjs`, untracked):
   Inflict Wounds, Pass without Trace / Hunger of Hadar, Nondetection / Greater
   Invisibility, Phantasmal Killer / Contagion, Creation) plus
   `innate {6:{resource:{3:[summon beast]}}}`, `resourceName "Sorcery Point"`.
-  The Sorcery Point pool enters resources.ts only through a spender (`consumes`,
-  e.g. a Metamagic pick); a Sorcerer with none shows the Summon Beast USE as
-  "unresolved". Power of Shadow nests Eyes of the Dark (Darkvision 120,
+  Beasts of Ill Omen itself has no `consumes`; since D196 the pool comes from
+  the Sorcerer table's "Sorcery Points" column, spender or not. Power of Shadow nests Eyes of the Dark (Darkvision 120,
   Blindsight 10 — no `senses` field on subclass features) and Strength of the
   Grave (1/LR, nested, not found by the self-limited test); Umbral Form
   `consumes` Sorcery Point ×6.
@@ -418,6 +417,28 @@ Two structural signals, neither sufficient alone (step 9b1 investigation):
    (`expended use(s)`, `regain … uses`, `number of times equal to`, or "you
    can't do so again until you finish"). 92 class/subclass/optional/feat
    records match.
+
+`consumes` does NOT list every spender. 24 class/subclass features spend one of
+the 8 pools in prose only, with no `consumes` naming it
+(`scripts/investigate-prose-pool-spends.js`, 2026-09-26, D196; match =
+spend/expend within 40 characters of the pool name):
+
+- Pool definers / general rules: Font of Magic, Metamagic, Monk's Focus,
+  Psionic Power (Psi Warrior, Soulknife).
+- Fixed cost: Beasts of Ill Omen (Shadow RHW 6, 3 SP), Revelation in Flesh
+  (Aberrant 14, 1 SP), Heightened Focus (Monk 10, 1 FP), One with the Blade
+  (Kensei 6, 1 ki), Radiant Sun Bolt (Sun Soul 3, 1 ki), Rend Mind (Soulknife
+  17, 3 PED), Oceanic Gift (Sea 14, 2 Wild Shape), Wild Resurgence, Wild
+  Companion, Nature's Sanctuary, Land's Aid, Wrath of the Sea (1 Wild Shape
+  each), Divine Reaper (Grave RHW 17, 1 Channel Divinity), Know Your Enemy and
+  Relentless (Battle Master, 1 Superiority Die).
+- Variable cost: Arcane Apotheosis, Psionic Sorcery, Searing Sunburst,
+  Flurry of Healing and Harm.
+
+Only three spell grants carry a structured cost, via an additionalSpells
+`resource` wrapper + `resourceName`: Summon Beast (Shadow Sorcery 6, Sorcery
+Point 3), Burning Hands (Sun Soul XGE 6, Ki 2), Darkness (Warrior of Shadow
+XPHB 3, Focus Point 1). The feature-row counter never reads `consumes.amount`.
 
 The rest tag ALONE is far too broad, which is why D86's `isActionTableFeature`
 cannot be reused: Weapon Mastery carries it ("you can change your choices

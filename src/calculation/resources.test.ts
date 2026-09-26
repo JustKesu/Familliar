@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, type CharacterResource, type ResourceFeature } from './resources'
 import type { Character } from '../storage/character'
+import { canSpendResource, freeCastCounter } from './freeCastResources'
 
 /** classes.json is only read for its table groups, so the fixtures carry nothing else. */
 const CLASSES = [
@@ -22,6 +23,12 @@ const CLASSES = [
 		name: 'Fighter',
 		source: 'XPHB',
 		classTableGroups: [{ colLabels: ['Second Wind'], rows: [[2], [2], [2], [3], [3]] }],
+	},
+	{
+		entryType: 'class',
+		name: 'Sorcerer',
+		source: 'XPHB',
+		classTableGroups: [{ colLabels: ['Sorcery Points'], rows: [['—'], [2], [3], [4], [5], [6]] }],
 	},
 	{
 		entryType: 'subclass',
@@ -118,6 +125,29 @@ describe('the maximum, from the per-level tables (slice 9b1)', () => {
 		const [focus] = computeCharacterResources(character('Monk', 1), CLASSES, [STUNNING_STRIKE])
 		expect(focus.max.status).toBe('unknown')
 		expect(focus.max.status === 'unknown' && focus.max.reason).toContain('Focus Points')
+	})
+
+	it('D196: finds a pool the class table counts even when nothing held consumes it', () => {
+		const resources = computeCharacterResources(character('Sorcerer', 6, 'Shadow Sorcery'), CLASSES, [])
+		expect(resources).toEqual([
+			{ name: 'Sorcery Point', dataNames: ['Sorcery Point'], max: { status: 'known', value: 6, breakdown: [{ source: 'Sorcerer level 6: Sorcery Points', amount: 6 }] }, shortRest: null },
+		])
+	})
+
+	it('D196: registers no table pool at a level whose cell is an em dash, and no second copy beside a consumer', () => {
+		expect(computeCharacterResources(character('Sorcerer', 1), CLASSES, [])).toEqual([])
+		expect(computeCharacterResources(character('Sorcerer', 6), CLASSES, [METAMAGIC])).toHaveLength(1)
+	})
+
+	it('D196: Beasts of Ill Omen’s Summon Beast USE costs 3 of that pool and stops at 0', () => {
+		const [sorcery] = computeCharacterResources(character('Sorcerer', 6, 'Shadow Sorcery'), CLASSES, [])
+		const max = sorcery.max.status === 'known' ? sorcery.max.value : undefined
+		const counter = freeCastCounter({ name: 'Summon Beast', source: 'XPHB' }, { origin: 'subclass', originName: 'Shadow Sorcery', usage: { kind: 'resource', cost: 3, resourceName: 'Sorcery Point' } })
+		expect(counter).toEqual({ key: sorcery.name, cost: 3 })
+		expect(canSpendResource(max, 0, 3)).toBe(true)
+		expect(canSpendResource(max, 3, 3)).toBe(true)
+		expect(canSpendResource(max, 6, 3)).toBe(false)
+		expect(canSpendResource(max, 4, 3)).toBe(false)
 	})
 
 	it('refuses a classes.json that is not an array', () => {
@@ -237,8 +267,8 @@ const INDOMITABLE: ResourceFeature = {
 describe('one use where the text states only a recharge', () => {
 	it('gives 1 to a feature that says only it can’t be used again until a rest', () => {
 		for (const feature of [UNCANNY_METABOLISM, DIVINE_INTERVENTION]) {
-			const [resource] = computeCharacterResources(character('Monk', 5), CLASSES, [feature])
-			expect(resource.max.status === 'known' && resource.max.value).toBe(1)
+			const resource = computeCharacterResources(character('Monk', 5), CLASSES, [feature]).find((r) => r.name === feature.name)
+			expect(resource?.max.status === 'known' && resource.max.value).toBe(1)
 		}
 	})
 

@@ -1560,6 +1560,14 @@ Subclass gate `hasSubclassBySource` (featureGrants.ts). Not modelled: Wild
 Heart Owl, Mortal Bulwark, The Third Eye, Manifest Mind. E2E
 `classSenses.spec.ts` a–f. No schema change (still 48).
 
+D196: a named pool (the 8 `consumes` names) now also exists when the
+character's own class/subclass table counts it above 0 at their level
+(`tableGrantedPools`, resources.ts), not only when a held feature `consumes` it.
+A Shadow Sorcerer 6 with no Metamagic gets Sorcery Point 6 and a working
+Summon Beast USE (−3, disabled below 3). No override table: the USE path
+already reads the cost from the `resource` spell wrapper. E2E `rhw.spec.ts`
+"D196". No schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

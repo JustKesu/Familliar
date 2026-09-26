@@ -3611,3 +3611,23 @@ Smysly jsou jen v textu features, proto ruční tabulka `CLASS_SENSE_GRANTS`
   úložiště; Watchers Mortal Bulwark — dočasný buff na 1 minutu; Diviner The
   Third Eye — dočasná volba do odpočinku; Scribes Manifest Mind — smysl patří
   vyvolané mysli, ne postavě.
+
+## D196 — Pool existuje, když ho dává tabulka třídy, ne až když ho někdo utrácí
+
+Zdroj: task D196, 26. 9. 2026. Navazuje na 9b1, D191, D194. Schéma beze změny (48).
+
+- **Problém A:** `computeCharacterResources` zakládal pojmenovaný pool jen přes
+  `consumes` nějaké držené featury. Beasts of Ill Omen (Shadow Sorcery|RHW 6)
+  utrácí 3 Sorcery Points jen v próze; bez Metamagic volby pool chyběl a USE u
+  Summon Beast byl vypnutý s „not known“.
+- **Oprava A:** druhá, doplňková cesta: kterékoli z 8 jmen poolů, které má
+  vlastní class/subclass tabulka postavy na její úrovni jako číslo > 0
+  (`tableGrantedPools`, stejné `lookupInTableGroups` jako maximum), pool založí.
+  Pomlčka v buňce (Sorcerer 1) nic nezakládá. Cesta přes `consumes` zůstává
+  (pool z featu/předmětu bez tabulky).
+- **Problém B se nepotvrdil:** USE u Summon Beast nečte `consumes`, ale cenu
+  z `resource` wrapperu v additionalSpells (`freeCastCounter` → cost 3) a
+  odečítá ji celou (`spendResource`, `canSpendResource`). Ruční tabulka cen
+  proto nevznikla — neměla by čtenáře: řádek featury v Actions `consumes.amount`
+  nečte nikdy, jen ±1 na poolu. Ostatní prózové utrácení (23 featur) je v
+  DATA.md.

@@ -9,10 +9,11 @@
  * your choices when you finish a Long Rest" passes it). The narrower test here is
  * structural first and textual second:
  *
- *   1. A POOL — a name some feature's `consumes.name` spends. The 8 in the data
- *      are Arcane Shot, Channel Divinity, Focus Point, Ki, Psionic Energy Die,
- *      Sorcery Point, Superiority Die and Wild Shape
- *      (scripts, step 9b1 investigation).
+ *   1. A POOL — a name some feature's `consumes.name` spends, or (D196) one of
+ *      those names the character's own class/subclass table counts at their
+ *      level. The 8 in the data are Arcane Shot, Channel Divinity, Focus Point,
+ *      Ki, Psionic Energy Die, Sorcery Point, Superiority Die and Wild Shape
+ *      (scripts, step 9b1 investigation; re-confirmed for D196).
  *   2. A SELF-LIMITED FEATURE — one whose text carries a rest tag AND says its
  *      uses are expended and regained. The phrase test is what separates Rage,
  *      Second Wind, Favored Enemy and Action Surge (in) from Weapon Mastery
@@ -276,6 +277,24 @@ function isSubclassEntry(entry: unknown, characterClass: CharacterClass): entry 
 	return entry['name'] === characterClass.subclass || entry['shortName'] === characterClass.subclass
 }
 
+const POOL_NAMES = ['Arcane Shot', 'Channel Divinity', 'Focus Point', 'Ki', 'Psionic Energy Die', 'Sorcery Point', 'Superiority Die', 'Wild Shape']
+
+/** D196: the pools the character's own tables count above zero at their level — a pool spent only in prose (Beasts of Ill Omen) has no `consumes` to find it by. */
+function tableGrantedPools(character: Character, parsedClasses: unknown[]): string[] {
+	return POOL_NAMES.filter((pool) =>
+		character.classes.some((characterClass) =>
+			parsedClasses.some((entry) => {
+				const hit = isClassEntry(entry, characterClass)
+					? lookupInTableGroups(entry, 'classTableGroups', pool, characterClass.level)
+					: isSubclassEntry(entry, characterClass)
+						? lookupInTableGroups(entry, 'subclassTableGroups', pool, characterClass.level)
+						: null
+				return (cellCount(hit?.cell) ?? 0) > 0
+			}),
+		),
+	)
+}
+
 /** The maximum for one resource, from the first of the character's class/subclass tables that names it. */
 function computeResourceMax(name: string, character: Character, parsedClasses: unknown[], impliedSingleUse: boolean): Calculated<number> {
 	const looked: string[] = []
@@ -423,6 +442,10 @@ export function computeCharacterResources(
 			const resolved = resolveResourceName(feature.name)
 			ownText.set(resolved, [...(ownText.get(resolved) ?? []), ...plainText(feature.entries)])
 		}
+	}
+	for (const pool of tableGrantedPools(character, parsedClasses)) {
+		add(pool)
+		pools.add(resolveResourceName(pool))
 	}
 
 	const speciesResources = speciesTraits.flatMap((trait) => {
