@@ -34,7 +34,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * absent means the whole category.
  */
 export type WeaponProficiencyGrant =
-	| { kind: 'category'; category: string; anyOfProperties?: string[]; ranged?: boolean }
+	/** `melee` + `noneOfProperties`: Bladesinger's "Melee Martial weapons that lack the Two-Handed or Heavy property" (D203). */
+	| { kind: 'category'; category: string; anyOfProperties?: string[]; ranged?: boolean; melee?: boolean; noneOfProperties?: string[] }
 	| { kind: 'firearms' }
 	/** One weapon by name (College of Swords' Scimitar) — the only place a name is matched, because no category covers it. */
 	| { kind: 'named'; name: string }
@@ -190,6 +191,8 @@ export function isProficientWithWeapon(weapon: unknown, grants: WeaponProficienc
 		if (grant.kind === 'named') return weapon['name'] === grant.name
 		if (category !== grant.category) return false
 		if (grant.ranged && typeCode !== 'R') return false
+		if (grant.melee && typeCode !== 'M') return false
+		if (grant.noneOfProperties?.some((property) => properties.includes(property))) return false
 		return grant.anyOfProperties === undefined || grant.anyOfProperties.some((property) => properties.includes(property))
 	})
 }

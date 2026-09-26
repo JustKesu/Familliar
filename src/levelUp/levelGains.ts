@@ -39,7 +39,7 @@ import { featAsiGrantsFor } from '../featAsi/featAsiData'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
-import { SUBCLASS_SKILL_GRANTS, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
+import { SUBCLASS_SKILL_GRANTS, subclassSkillChoiceCount, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { masteryCountFor } from '../masteries/masteryData'
 import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
@@ -246,7 +246,7 @@ function languagesStepGain(className: string, classSource: string, level: number
 	const parts: LevelGainPart[] = [
 		...classFeatureLanguageGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: grant.featureName, count: grant.choice.count }] : [])),
 		...classToolGrantsFor([start]).flatMap((grant) => (grant.level === level ? [{ name: `${grant.owner} tool`, count: grant.count }] : [])),
-		...subclassSkillGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: `${grant.subclass} skill`, count: 1 }] : [])),
+		...subclassSkillGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: `${grant.subclass} skill`, count: subclassSkillChoiceCount(grant) }] : [])),
 	]
 	const gain = adds(parts)
 	if (gain.status === 'adds' || subclass !== null || subclassGrantLevel !== level) return gain

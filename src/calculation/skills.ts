@@ -116,7 +116,7 @@ export function computeSkill(skill: Skill, character: Character, feats: FeatEffe
 	const sources = proficiencySources(skill, character, feats)
 	const isProficient = sources.length > 0
 	const hasExpertise =
-		choiceNames(character.expertiseSkills).includes(skill) || featStoredExpertiseSkillNames(skill, character, feats).length > 0 || featFixedExpertiseNames(skill, character, feats).length > 0 || subclassExpertiseSkills(character.classes).includes(skill)
+		choiceNames(character.expertiseSkills).includes(skill) || featStoredExpertiseSkillNames(skill, character, feats).length > 0 || featFixedExpertiseNames(skill, character, feats).length > 0 || subclassExpertiseSkills(character.classes, character.subclassSkills).includes(skill)
 	const status: SkillProficiencyStatus =
 		isProficient
 			? hasExpertise

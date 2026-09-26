@@ -94,6 +94,61 @@ describe('subclass skill picks', () => {
 	})
 })
 
+describe('D203: RHW/FRHoF subclass picks', () => {
+	it.each([
+		['Wizard', 'Bladesinger', 'bladesinger', 'athletics'],
+		['Fighter', 'Banneret', 'banneret', 'intimidation'],
+		['Paladin', 'Oath of the Noble Genies', 'nobleGenies', 'acrobatics'],
+		['Bard', 'College of the Moon', 'collegeOfTheMoon', 'survival'],
+	] as const)('%s %s: a stored pick counts, an unmade one blocks Edit Character', (className, subclass, grantedBy, picked) => {
+		const stored = character(className, subclass, 3, { subclassSkills: [{ grantedBy, name: picked }] })
+		expect(computeSkill(picked, stored)).toMatchObject({ value: { status: 'proficient' } })
+		const edit = wizardDataFromCharacter(character(className, subclass, 3), { subclasses: [], spellLevels: [] })
+		expect(isStepComplete('languages', { ...edit, languageChoice: twoLanguages })).toBe(false)
+	})
+
+	it('Knowledge Domain: two picks, both with expertise, one of them a skill already held', () => {
+		const picks = [
+			{ grantedBy: 'knowledgeDomain' as const, name: 'religion' },
+			{ grantedBy: 'knowledgeDomain' as const, name: 'arcana' },
+		]
+		const cleric = character('Cleric', 'Knowledge Domain', 3, { classSkills: ['religion', 'insight'], subclassSkills: picks })
+		expect(computeSkill('religion', cleric)).toMatchObject({ value: { status: 'expertise', modifier: 4 }, breakdown: expect.arrayContaining([{ source: 'expertise (class, subclass (Knowledge Domain))', amount: 4 }]) })
+		expect(computeSkill('arcana', cleric)).toMatchObject({ value: { status: 'expertise' } })
+		expect(subclassExpertiseSkills(cleric.classes, picks)).toEqual(['religion', 'arcana'])
+
+		const data = wizardDataFromCharacter({ ...cleric, toolChoices: [{ grantedBy: 'knowledgeDomain', name: "Smith's Tools" }] }, { subclasses: [], spellLevels: [] })
+		expect(isStepComplete('languages', { ...data, languageChoice: twoLanguages })).toBe(true)
+		expect(isStepComplete('languages', { ...data, languageChoice: twoLanguages, subclassSkills: picks.slice(0, 1) })).toBe(false)
+		expect(isStepComplete('languages', { ...data, languageChoice: twoLanguages, toolChoices: [] })).toBe(false)
+	})
+
+	it('College of Spirits: Playing Cards; Reanimator: Alchemist\'s Supplies, and a replacement slot when already held', () => {
+		const classes = [
+			{ entryType: 'subclass', className: 'Bard', classSource: 'XPHB', name: 'College of Spirits', source: 'RHW' },
+			{ entryType: 'subclass', className: 'Artificer', classSource: 'EFA', name: 'Reanimator', source: 'RHW' },
+		]
+		const tools = (of: Character) => computeProficiencies(of, classes, [], []).tools.map((item) => item.label)
+		expect(tools(character('Bard', 'College of Spirits', 3))).toContain('Playing Cards')
+		const reanimator = { ...character('Artificer', 'Reanimator', 3), classes: [{ className: 'Artificer', classSource: 'EFA', subclass: 'Reanimator', level: 3 }] }
+		expect(tools(reanimator)).toEqual(expect.arrayContaining(["Alchemist's Supplies"]))
+		expect(tools(reanimator)).not.toContain("1 artisan's tool (Reanimator) — not chosen")
+		const alchemistBackground = { ...reanimator, background: { name: 'Guild Artisan', source: 'XPHB', skillProficiencies: ['insight', 'persuasion'] as [string, string], toolProficiency: "Alchemist's Supplies" } }
+		expect(tools(alchemistBackground)).toContain("1 artisan's tool (Reanimator) — not chosen")
+	})
+
+	it('Banneret: the language pick is owed too and shows under Knightly Envoy', () => {
+		const giant = { name: 'Giant', source: 'XPHB', grantedBy: 'banneret' as const }
+		const banneret = character('Fighter', 'Banneret', 3, { subclassSkills: [{ grantedBy: 'banneret', name: 'insight' }] })
+		const data = wizardDataFromCharacter(banneret, { subclasses: [], spellLevels: [] })
+		expect(isStepComplete('languages', { ...data, languageChoice: twoLanguages })).toBe(false)
+		expect(isStepComplete('languages', { ...data, languageChoice: twoLanguages, featureLanguages: [giant] })).toBe(true)
+		expect(computeProficiencies({ ...banneret, languages: [giant] }, [], [], []).languages).toContainEqual(
+			expect.objectContaining({ label: 'Giant', sources: [{ kind: 'classFeatureChoice', name: 'Banneret — Knightly Envoy' }] }),
+		)
+	})
+})
+
 describe('the wizard', () => {
 	const cavalierData = (): WizardData => ({
 		...emptyWizardData(),

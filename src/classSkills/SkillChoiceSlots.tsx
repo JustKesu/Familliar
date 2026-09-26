@@ -36,7 +36,7 @@ function useLoaded<T>(wanted: boolean, load: () => Promise<T>): { value: T | nul
 /**
  * D177: one select per subclass skill pick. A skill-or-language grant (Cavalier,
  * Samurai) offers both in the same select, so storing one clears the other.
- * `heldSkills` / `knownLanguages` are what the character has elsewhere and are never offered.
+ * `heldSkills` / `knownLanguages` are what the character has elsewhere and are never offered (bar an Expertise pick).
  */
 export function SubclassSkillSlots({
 	grants,
@@ -66,45 +66,54 @@ export function SubclassSkillSlots({
 
 	return (
 		<ul className="language-picker__list">
-			{choiceGrants.map(({ subclass, choice }) => {
-				const skill = skills.find((pick) => pick.grantedBy === choice.grantedBy)
-				const language = choice.orLanguage ? languages.find((entry) => entry.grantedBy === choice.orLanguage) : undefined
-				const value = skill ? `skill:${skill.name}` : language ? `language:${language.name}|${language.source}` : ''
-				const choose = (key: string): void => {
-					const nextSkills = skills.filter((pick) => pick.grantedBy !== choice.grantedBy)
-					const nextLanguages = languages.filter((entry) => entry.grantedBy !== choice.orLanguage)
-					if (key.startsWith('skill:')) nextSkills.push({ grantedBy: choice.grantedBy, name: key.slice('skill:'.length) })
-					const entry = (loaded.value ?? []).find((candidate: LanguageEntry) => `language:${candidate.name}|${candidate.source}` === key)
-					if (entry && choice.orLanguage) nextLanguages.push({ name: entry.name, source: entry.source, grantedBy: choice.orLanguage })
-					onChange(nextSkills, nextLanguages)
-				}
-				const skillOptions = choice.from.filter((name) => name === skill?.name || !takenSkills.has(name))
-				return (
-					<li key={choice.grantedBy}>
-						<label>
-							{subclass} skill{choice.orLanguage ? ' or language' : ''}:{' '}
-							<select value={value} onChange={(event) => choose(event.target.value)}>
-								<option value="">— not chosen —</option>
-								<optgroup label="Skill">
-									{skillOptions.map((name) => (
-										<option key={name} value={`skill:${name}`}>
-											{capitalize(name)}
-										</option>
-									))}
-								</optgroup>
-								{choice.orLanguage && (
-									<optgroup label="Language">
-										{featureLanguageOptions(loaded.value ?? [], takenLanguages, language?.name).map((entry) => (
-											<option key={`${entry.name}|${entry.source}`} value={`language:${entry.name}|${entry.source}`}>
-												{entry.name}
+			{choiceGrants.flatMap(({ subclass, choice }) => {
+				const picks = skills.filter((pick) => pick.grantedBy === choice.grantedBy)
+				const count = choice.count ?? 1
+				return Array.from({ length: count }, (_, slot) => {
+					const skill = picks[slot]
+					const language = choice.orLanguage ? languages.find((entry) => entry.grantedBy === choice.orLanguage) : undefined
+					const value = skill ? `skill:${skill.name}` : language ? `language:${language.name}|${language.source}` : ''
+					const choose = (key: string): void => {
+						const nextPicks: (CharacterSubclassSkill | undefined)[] = [...picks]
+						nextPicks[slot] = key.startsWith('skill:') ? { grantedBy: choice.grantedBy, name: key.slice('skill:'.length) } : undefined
+						const nextSkills = [...skills.filter((pick) => pick.grantedBy !== choice.grantedBy), ...nextPicks.filter((pick) => pick !== undefined)]
+						const nextLanguages = languages.filter((entry) => entry.grantedBy !== choice.orLanguage)
+						const entry = (loaded.value ?? []).find((candidate: LanguageEntry) => `language:${candidate.name}|${candidate.source}` === key)
+						if (entry && choice.orLanguage) nextLanguages.push({ name: entry.name, source: entry.source, grantedBy: choice.orLanguage })
+						onChange(nextSkills, nextLanguages)
+					}
+					// D203: an Expertise pick is worth taking on a skill held elsewhere; only this grant's other slots are excluded.
+					const excluded = choice.expertise ? new Set(picks.map((pick) => pick.name)) : takenSkills
+					const skillOptions = choice.from.filter((name) => name === skill?.name || !excluded.has(name))
+					return (
+						<li key={`${choice.grantedBy}:${slot}`}>
+							<label>
+								{subclass} skill{choice.orLanguage ? ' or language' : ''}
+								{count > 1 ? ` ${slot + 1}` : ''}
+								{choice.expertise ? ' (with Expertise)' : ''}:{' '}
+								<select value={value} onChange={(event) => choose(event.target.value)}>
+									<option value="">— not chosen —</option>
+									<optgroup label="Skill">
+										{skillOptions.map((name) => (
+											<option key={name} value={`skill:${name}`}>
+												{capitalize(name)}
 											</option>
 										))}
 									</optgroup>
-								)}
-							</select>
-						</label>
-					</li>
-				)
+									{choice.orLanguage && (
+										<optgroup label="Language">
+											{featureLanguageOptions(loaded.value ?? [], takenLanguages, language?.name).map((entry) => (
+												<option key={`${entry.name}|${entry.source}`} value={`language:${entry.name}|${entry.source}`}>
+													{entry.name}
+												</option>
+											))}
+										</optgroup>
+									)}
+								</select>
+							</label>
+						</li>
+					)
+				})
 			})}
 		</ul>
 	)

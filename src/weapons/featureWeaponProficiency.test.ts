@@ -81,6 +81,19 @@ describe('feature weapon grants reach attacks (D178)', () => {
 		expect(cardLabels(c)).not.toContain('Martial weapons')
 	})
 
+	it('D203 Bladesinger: melee martial weapons without Two-Handed or Heavy', () => {
+		const c = make('Wizard', 3, { subclass: 'Bladesinger' })
+		const classes = [...CLASSES, classEntry('Wizard'), subclassEntry('Wizard', 'Bladesinger', 'FRHoF')]
+		const grants = weaponProficiencyGrantsFor(c, classes, [], null)
+		const weapon = (name: string, typeCode: string, propertyFull: string[]) => ({ name, source: 'XPHB', typeCode, weaponCategory: 'martial', propertyFull })
+		expect(isProficientWithWeapon(weapon('Rapier', 'M', ['Finesse']), grants)).toBe(true)
+		expect(isProficientWithWeapon(weapon('Longsword', 'M', ['Versatile']), grants)).toBe(true)
+		expect(isProficientWithWeapon(weapon('Greatsword', 'M', ['Heavy', 'Two-Handed']), grants)).toBe(false)
+		expect(isProficientWithWeapon(weapon('Lance', 'M', ['Heavy', 'Reach']), grants)).toBe(false)
+		expect(isProficientWithWeapon(weapon('Hand Crossbow', 'R', ['Ammunition', 'Light']), grants)).toBe(false)
+		expect(computeProficiencies(c, classes, [], []).weapons.map((item) => item.label)).toContain('Martial melee weapons without the Two-Handed or Heavy property')
+	})
+
 	it('a character without these grants is unchanged', () => {
 		const c = make('Fighter', 3)
 		expect(grantsOf(c)).toEqual([{ kind: 'category', category: 'simple' }])

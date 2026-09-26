@@ -879,7 +879,7 @@ export function CharacterWizard({
 	 */
 	// D177: a skill a subclass already gives expertise in (Scout) is never offered again.
 	const featFixedExpertise = (instances: readonly FeatRef[]): string[] => instances.flatMap((instance) => proficiencyData.fixedExpertise[`${instance.name}|${instance.source}`] ?? [])
-	const fixedExpertise = [...(wizardClassChoice ? subclassExpertiseSkills([wizardClassChoice]) : []), ...featFixedExpertise(draftFeatInstances)]
+	const fixedExpertise = [...(wizardClassChoice ? subclassExpertiseSkills([wizardClassChoice], state.data.subclassSkills) : []), ...featFixedExpertise(draftFeatInstances)]
 	const expertisePool = proficientSkills.filter(
 		(entry) => !fixedExpertise.includes(entry.skill) && (!expertiseEligibility?.restrictedTo || expertiseEligibility.restrictedTo.includes(entry.skill)),
 	)
@@ -1452,7 +1452,7 @@ export function CharacterWizard({
 						className={state.data.classChoice.className}
 						classSource={state.data.classChoice.classSource}
 						level={state.data.classChoice.level}
-						proficientSkills={proficientSkills}
+						proficientSkills={proficientSkills.filter((entry) => !fixedExpertise.includes(entry.skill))}
 						value={state.data.expertiseSkills}
 						onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
 						lockedValues={held?.expertiseSkills}

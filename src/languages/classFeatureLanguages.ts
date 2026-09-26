@@ -11,12 +11,14 @@ export interface ClassFeatureLanguageGrant {
 	choice?: { count: number; grantedBy: FeatureLanguageSource }
 }
 
-// D171: XPHB class features that grant languages — prose only (DATA.md), hence a hand table. D176: Mastermind (XGE), keyed by name as in classToolChoices.ts.
+// D171: XPHB class features that grant languages — prose only (DATA.md), hence a hand table. D176: Mastermind (XGE), D203: Banneret (FRHoF), keyed by name as in classToolChoices.ts.
 export const CLASS_FEATURE_LANGUAGE_GRANTS: readonly ClassFeatureLanguageGrant[] = [
 	{ className: 'Druid', featureName: 'Druidic', level: 1, fixed: 'Druidic' },
 	{ className: 'Rogue', featureName: "Thieves' Cant", level: 1, fixed: "Thieves' Cant", choice: { count: 1, grantedBy: 'thievesCant' } },
 	{ className: 'Ranger', featureName: 'Deft Explorer', level: 2, choice: { count: 2, grantedBy: 'deftExplorer' } },
 	{ className: 'Rogue', subclass: 'Mastermind', featureName: 'Master of Intrigue', level: 3, choice: { count: 2, grantedBy: 'mastermind' } },
+	// D203: the swap after a Long Rest is not modelled.
+	{ className: 'Fighter', subclass: 'Banneret', featureName: 'Knightly Envoy', level: 3, choice: { count: 1, grantedBy: 'banneret' } },
 ]
 
 // D172: the picks come "from the language tables in chapter 2" — Standard AND Rare (DATA.md).

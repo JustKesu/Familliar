@@ -19,6 +19,7 @@ export interface FeatureGrant {
 const MARTIAL: WeaponProficiencyGrant = { kind: 'category', category: 'martial' }
 const MARTIAL_RANGED: WeaponProficiencyGrant = { kind: 'category', category: 'martial', ranged: true }
 const SCIMITAR: WeaponProficiencyGrant = { kind: 'named', name: 'Scimitar' }
+const BLADESINGER: WeaponProficiencyGrant = { kind: 'category', category: 'martial', melee: true, noneOfProperties: ['Two-Handed', 'Heavy'] }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -114,6 +115,10 @@ export const FEATURE_GRANTS: FeatureGrant[] = [
 	subclassGrant('Rogue', 'Mastermind', 'XGE', { tools: ['Disguise Kit', 'Forgery Kit'] }),
 	subclassGrant('Sorcerer', 'Storm Sorcery', 'XGE', { languages: ['Primordial'] }),
 	subclassGrant('Warlock', 'The Hexblade', 'XGE', { armor: ['medium', 'shield'], weapons: [MARTIAL] }),
+	// D203: RHW/FRHoF prose grants (DATA.md).
+	subclassGrant('Wizard', 'Bladesinger', 'FRHoF', { weapons: [BLADESINGER] }),
+	subclassGrant('Bard', 'College of Spirits', 'RHW', { tools: ['Playing Cards'] }),
+	subclassGrant('Artificer', 'Reanimator', 'RHW', { tools: ARTIFICER_SUBCLASS_TOOLS['Reanimator'] }, 'EFA'),
 ]
 
 /** The weapon grants of every feature the character currently has (D178). */

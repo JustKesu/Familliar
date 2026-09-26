@@ -141,9 +141,9 @@ describe('levelGainsFor', () => {
 			expect(wizardToolGrants(data('Battle Master'), 3)).toMatchObject([{ grantedBy: 'battleMaster', count: 1 }])
 		})
 
-		it('Rogue 2→3 names Mastermind; D177: Cleric 2→3 names Order Domain and Peace Domain', () => {
+		it('Rogue 2→3 names Mastermind; D177: Cleric 2→3 names Order Domain and Peace Domain; D203: and Knowledge Domain', () => {
 			expect(levelGainsFor(unchosenAt2('Rogue'), 3, CLASSES, RESOLVER).steps.languages.reason).toContain('Mastermind')
-			expect(levelGainsFor(unchosenAt2('Cleric'), 3, CLASSES, RESOLVER).steps.languages).toMatchObject({ status: 'unknown', owingSubclasses: ['Order Domain', 'Peace Domain'] })
+			expect(levelGainsFor(unchosenAt2('Cleric'), 3, CLASSES, RESOLVER).steps.languages).toMatchObject({ status: 'unknown', owingSubclasses: ['Knowledge Domain', 'Order Domain', 'Peace Domain'] })
 		})
 
 		describe('D177: the languages step is walked only when the chosen subclass owes a pick', () => {

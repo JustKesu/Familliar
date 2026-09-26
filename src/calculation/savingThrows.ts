@@ -34,6 +34,11 @@ function findClassProficiencies(
 	return classData.find((c) => c.className === characterClass.className && c.classSource === characterClass.classSource)
 }
 
+// D203: prose only (DATA.md). XPHB class keyed by subclass name, as in subclassSkillGrants.ts.
+const SUBCLASS_SAVE_GRANTS: readonly { className: string; subclass: string; level: number; featureName: string; ability: Ability }[] = [
+	{ className: 'Cleric', subclass: 'Knowledge Domain', level: 6, featureName: 'Unfettered Mind', ability: 'intelligence' },
+]
+
 /** Must tolerate a further status being added later (mirrors skills.ts's SkillProficiencyStatus, D45); not a boolean. */
 export type SavingThrowProficiencyStatus = 'none' | 'proficient'
 
@@ -70,6 +75,18 @@ export function computeSavingThrow(
 	}
 	grantingSources.push(...featSavingThrowProficiencyNames(ability, character, feats).map((name) => `feat (${name})`))
 
+	const subclassGrants = SUBCLASS_SAVE_GRANTS.filter(
+		(grant) =>
+			grant.ability === ability &&
+			character.classes.some((cls) => cls.className === grant.className && cls.classSource === 'XPHB' && cls.subclass === grant.subclass && cls.level >= grant.level),
+	)
+	// D203: the feature's "choose another save" when this one is already held is not modelled, only stated.
+	const redundantNotes: Contribution[] =
+		grantingSources.length > 0
+			? subclassGrants.map((grant) => ({ source: grant.featureName, amount: 0, note: `already proficient in ${ability[0].toUpperCase()}${ability.slice(1)} saves — choose another save (not tracked)` }))
+			: []
+	if (grantingSources.length === 0) grantingSources.push(...subclassGrants.map((grant) => `subclass (${grant.subclass})`))
+
 	const status: SavingThrowProficiencyStatus = grantingSources.length > 0 ? 'proficient' : 'none'
 	const breakdown: Contribution[] = [{ source: `${ability} modifier`, amount: abilityResult.value.modifier }]
 
@@ -78,6 +95,7 @@ export function computeSavingThrow(
 		if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
 		breakdown.push({ source: `proficiency (${grantingSources.join(', ')})`, amount: bonusResult.value })
 	}
+	breakdown.push(...redundantNotes)
 	breakdown.push(...itemBonuses)
 
 	const modifier = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)

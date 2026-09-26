@@ -424,6 +424,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 48 }),
 	},
+	{
+		from: 48,
+		to: 49,
+		/*
+		 * 49 adds the RHW/FRHoF subclass grantedBy values (D203): skill picks
+		 * 'bladesinger', 'knowledgeDomain', 'banneret', 'nobleGenies',
+		 * 'collegeOfTheMoon'; language 'banneret'; tool 'knowledgeDomain'. A
+		 * version-48 character stored none — the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 49 }),
+	},
 ]
 
 /**

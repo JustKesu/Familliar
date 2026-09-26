@@ -111,6 +111,11 @@ function weaponKeyAndLabel(grant: WeaponProficiencyGrant): { key: string; label:
 	if (grant.kind === 'named') return { key: grant.name.toLowerCase(), label: grant.name }
 	const base = `${grant.category[0].toUpperCase()}${grant.category.slice(1)}${grant.ranged ? ' ranged' : ''} weapons`
 	if (grant.ranged) return { key: `${grant.category}:ranged`, label: base }
+	if (grant.melee) {
+		const without = grant.noneOfProperties ?? []
+		const label = `${capitalize(grant.category)} melee weapons${without.length > 0 ? ` without the ${without.join(' or ')} property` : ''}`
+		return { key: `${grant.category}:melee:-${without.join('|').toLowerCase()}`, label }
+	}
 	if (!grant.anyOfProperties) return { key: grant.category, label: base }
 	return { key: `${grant.category}:${grant.anyOfProperties.join('|').toLowerCase()}`, label: `${base} with the ${grant.anyOfProperties.join(' or ')} property` }
 }

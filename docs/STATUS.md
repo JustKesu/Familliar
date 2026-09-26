@@ -1628,6 +1628,16 @@ picker; Echoing Soul asks for 2 skills (text over data). E2E
 `proficiencyGrants.spec.ts` a–f (Fighter stands in for the Wizard; the e2e
 helper gained `laterFeat` for ASI slots above 4). No schema change (still 48).
 
+D203: prose proficiency grants of the RHW/FRHoF subclasses modelled. Fixed:
+Bladesinger weapons (new `melee` + `noneOfProperties` on the category grant),
+College of Spirits Playing Cards, Reanimator Alchemist's Supplies (EFA
+replacement slot). Picks: Bladesinger / Banneret / Noble Genies / Moon skill,
+Knowledge Domain 2 skills with Expertise (`choice.count`, `choice.expertise`)
++ artisan's tool, Banneret language. Unfettered Mind (Knowledge 6): Int saves,
+or a breakdown note when already held. The class Expertise step now excludes
+fixed expertise (D202 gap, all wizard modes). Schema 49 (tag-only migration).
+E2E `subclassProseGrants.spec.ts` a–i (seeded characters for non-Fighters).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

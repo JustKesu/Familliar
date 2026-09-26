@@ -32,6 +32,8 @@ export const ARTIFICER_SUBCLASS_TOOLS: Readonly<Record<string, string[]>> = {
 	Artillerist: ["Woodcarver's Tools"],
 	'Battle Smith': ["Smith's Tools"],
 	Cartographer: ["Calligrapher's Supplies", "Cartographer's Tools"],
+	// D203: Reanimator (RHW) follows the same replacement rule.
+	Reanimator: ["Alchemist's Supplies"],
 }
 
 // D174: the class tool picks. XPHB Bard/Monk and EFA Artificer are structured in classes.json, Battle Master is prose only (D173).
@@ -43,6 +45,7 @@ export const CLASS_TOOL_CHOICE_GRANTS: readonly ClassToolChoiceGrant[] = [
 	{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3, owner: 'Battle Master', count: 1, categories: ['anyArtisansTool'], grantedBy: 'battleMaster' },
 	{ className: 'Rogue', classSource: 'XPHB', subclass: 'Mastermind', level: 3, owner: 'Mastermind', count: 1, categories: ['anyGamingSet'], grantedBy: 'mastermind' },
 	{ className: 'Monk', classSource: 'XPHB', subclass: 'Way of the Kensei', level: 3, owner: 'Way of the Kensei', count: 1, categories: [], options: ["Calligrapher's Supplies", "Painter's Supplies"], grantedBy: 'kensei' },
+	{ className: 'Cleric', classSource: 'XPHB', subclass: 'Knowledge Domain', level: 3, owner: 'Knowledge Domain', count: 1, categories: ['anyArtisansTool'], grantedBy: 'knowledgeDomain' },
 	...Object.entries(ARTIFICER_SUBCLASS_TOOLS).map(
 		([subclass, tools]): ClassToolChoiceGrant => ({
 			className: 'Artificer',

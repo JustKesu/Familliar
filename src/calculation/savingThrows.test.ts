@@ -129,6 +129,37 @@ describe('computeSavingThrow', () => {
 	})
 })
 
+describe('D203: Knowledge Domain — Unfettered Mind', () => {
+	const clericData: ClassSavingThrowProficiencies = { className: 'Cleric', classSource: 'XPHB', abilities: ['wis', 'cha'] }
+	const knowledge = (level: number, extra: Partial<Character> = {}): Character => ({
+		...fighter5,
+		classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: 'Knowledge Domain', level }],
+		abilityBonus: {},
+		...extra,
+	})
+	const resilient: FeatEffectEntry = { name: 'Resilient', source: 'XPHB', savingThrowProficiencies: [{ choose: { from: ['int'] } }] }
+
+	it('Intelligence saves from level 6, named after the subclass', () => {
+		expect(computeSavingThrow('intelligence', knowledge(5), [clericData])).toMatchObject({ value: { status: 'none' } })
+		expect(computeSavingThrow('intelligence', knowledge(6), [clericData])).toMatchObject({
+			value: { status: 'proficient', modifier: 4 },
+			breakdown: [{ source: 'intelligence modifier', amount: 1 }, { source: 'proficiency (subclass (Knowledge Domain))', amount: 3 }],
+		})
+	})
+
+	it('already proficient elsewhere: the other source stands and a note says the replacement save is not tracked', () => {
+		const withResilient = knowledge(6, { featAsiChoices: [{ level: 4, kind: 'feat', name: 'Resilient', source: 'XPHB', chosenAbility: 'intelligence' }] })
+		expect(computeSavingThrow('intelligence', withResilient, [clericData], [resilient])).toMatchObject({
+			value: { status: 'proficient', modifier: 4 },
+			breakdown: [
+				{ source: 'intelligence modifier', amount: 1 },
+				{ source: 'proficiency (feat (Resilient))', amount: 3 },
+				{ source: 'Unfettered Mind', amount: 0, note: 'already proficient in Intelligence saves — choose another save (not tracked)' },
+			],
+		})
+	})
+})
+
 describe('computeSavingThrows', () => {
 	it('computes all six saves for a Fighter 5', () => {
 		const result = computeSavingThrows(fighter5, classData)

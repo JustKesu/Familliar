@@ -77,9 +77,20 @@ Raw data before any filter (`scripts/investigate-books.mjs`, untracked):
 - FRHoF: 17 regional languages, all `type: standard`. Feats with `choose`
   (Cold Caster, Emerald Enclave Fledgling) need checking against the closed
   FILTER_CHOICE_FEAT_KEYS tables before FRHoF is loaded. Prose proficiency
-  grants (D176 scan) that remain: Bladesinger (Training in War and Song,
-  Bladesong), Knowledge (Blessings of Knowledge, Unfettered Mind), Banneret
-  (Knightly Envoy), Noble Genies (Genie's Splendor), Moon (Primal Lore). Boon of
+  grants, **modelled since D203** (all class level 3 except Unfettered Mind 6):
+  Bladesinger — Training in War and Song: Melee Martial weapons without the
+  Two-Handed or Heavy property + 1 of Acrobatics/Athletics/Performance/
+  Persuasion (Bladesong grants nothing lasting); Knowledge Domain — Blessings of
+  Knowledge: 1 Artisan's Tools + 2 of Arcana/History/Nature/Religion, both with
+  Expertise (a skill already held is still a valid pick); Unfettered Mind:
+  Intelligence saves ("choose another" if already held — not tracked);
+  Banneret — Knightly Envoy: 1 language (standard or rare; the Long Rest swap
+  and Comprehend Languages not modelled) + 1 of Insight/Intimidation/Persuasion/
+  Performance; Oath of the Noble Genies (the classes.json name) — Genie's
+  Splendor: 1 of Acrobatics/Intimidation/Performance/Persuasion; College of the
+  Moon — Primal Lore: 1 of Animal Handling/Insight/Medicine/Nature/Perception/
+  Survival. Each name is unique among offered subclasses (one entry, source
+  FRHoF, classSource XPHB). Boon of
   Terror is NOT prose: `skillProficiencies [{intimidation:true}]` + `expertise
   [{intimidation:true}]` (D202). Loading FRHoF also drops Blade of Disaster|TCE
   (reprinted).
@@ -206,8 +217,12 @@ feats 18, backgrounds 0, languages 0.
   records: Refined Reanimation, Reanimated Companion, Empowered Channeling
   (Short or Long), Divine Reaper (Short or Long), Ancient Might, Ghost Walk,
   Umbral Form, Necrotic Husk (Short or Long), Survivor.
-- Proficiency grants in prose (D176 scan, not modelled): Spirits (Channeler),
-  Reanimator (3 features).
+- Proficiency grants in prose, **modelled since D203**: College of Spirits —
+  Channeler: Playing Cards (items.json `Playing Cards|XPHB`, type `GS`),
+  proficiency only, no item; Reanimator (Artificer, classSource EFA) —
+  Reanimator's Skill Set: Alchemist's Supplies, or 1 other Artisan's Tools if
+  already held (the EFA replacement rule, D176). Not grants: Phantom's Whispers
+  of the Dead (temporary), Refined Reanimation, Reanimated Companion.
 - **Structured proficiency grants (D202)** — the earlier scan wrongly listed
   these as prose:
   - Aberrant Anatomy: `skillProficiencies [{perception:true}]`, `expertise
@@ -1127,6 +1142,9 @@ species, Monk-tool and language lines are B1's and were not re-checked.
   offered subclasses of one class share a name. Mastermind's language/tool
   feature is "Master of Intrigue" (L3, filed under classSource PHB). Gaming sets
   (`GS`): Dice Set, Dragonchess Set, Playing Cards, Three-Dragon Ante Set.
+- RHW/FRHoF prose grants (D203): see the RHW and FRHoF passages above. Weapon
+  properties are matched on items.json `propertyFull` ("Two-Handed", "Heavy")
+  and type code `M`.
 
 Found in investigation B6a and checked in B6b (2026-09-24, scripts consumed).
 

@@ -191,7 +191,7 @@ function toCharacterBackground(value: Record<string, unknown>): CharacterBackgro
 	}
 }
 
-const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer', 'mastermind', 'cavalier', 'samurai']
+const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer', 'mastermind', 'cavalier', 'samurai', 'banneret']
 
 /** Validates an optional `languages` field. Returns null if the field is absent (it's optional). */
 export function describeLanguagesError(value: unknown): string | null {
@@ -210,9 +210,21 @@ export function describeLanguagesError(value: unknown): string | null {
 	return null
 }
 
-const TOOL_CHOICE_SOURCES: readonly ToolChoiceSource[] = ['bard', 'monk', 'artificer', 'battleMaster', 'mastermind', 'kensei', 'artificerSubclass', 'warforged', 'satyr', 'khoravar']
+const TOOL_CHOICE_SOURCES: readonly ToolChoiceSource[] = ['bard', 'monk', 'artificer', 'battleMaster', 'mastermind', 'kensei', 'artificerSubclass', 'warforged', 'satyr', 'khoravar', 'knowledgeDomain']
 
-const SUBCLASS_SKILL_SOURCES: readonly SubclassSkillSource[] = ['battleMaster', 'orderDomain', 'peaceDomain', 'arcaneArcher', 'cavalier', 'samurai']
+const SUBCLASS_SKILL_SOURCES: readonly SubclassSkillSource[] = [
+	'battleMaster',
+	'orderDomain',
+	'peaceDomain',
+	'arcaneArcher',
+	'cavalier',
+	'samurai',
+	'bladesinger',
+	'knowledgeDomain',
+	'banneret',
+	'nobleGenies',
+	'collegeOfTheMoon',
+]
 
 /** Validates an optional `subclassSkills` field (D177). */
 export function describeSubclassSkillsError(value: unknown): string | null {

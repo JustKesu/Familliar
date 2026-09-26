@@ -8,8 +8,11 @@ export interface SubclassSkillGrant {
 	fixed?: readonly string[]
 	/** Scout's Survivalist doubles the proficiency bonus for its fixed skills. */
 	expertise?: true
-	/** One pick from `from`; with `orLanguage`, a language instead (Cavalier, Samurai). */
-	choice?: { grantedBy: SubclassSkillSource; from: readonly string[]; orLanguage?: FeatureLanguageSource }
+	/**
+	 * `count` picks (default 1) from `from`; with `orLanguage`, a language instead (Cavalier, Samurai).
+	 * With `expertise` the picks also get Expertise, so a skill held elsewhere is still offered (Knowledge Domain, D203).
+	 */
+	choice?: { grantedBy: SubclassSkillSource; from: readonly string[]; orLanguage?: FeatureLanguageSource; count?: number; expertise?: true }
 }
 
 type ClassRef = Pick<CharacterClass, 'className' | 'classSource' | 'level' | 'subclass'>
@@ -33,7 +36,22 @@ export const SUBCLASS_SKILL_GRANTS: readonly SubclassSkillGrant[] = [
 		choice: { grantedBy: 'cavalier', from: ['animal handling', 'history', 'insight', 'performance', 'persuasion'], orLanguage: 'cavalier' },
 	},
 	{ className: 'Fighter', subclass: 'Samurai', level: 3, choice: { grantedBy: 'samurai', from: ['history', 'insight', 'performance', 'persuasion'], orLanguage: 'samurai' } },
+	// D203: RHW/FRHoF, prose only too.
+	{ className: 'Wizard', subclass: 'Bladesinger', level: 3, choice: { grantedBy: 'bladesinger', from: ['acrobatics', 'athletics', 'performance', 'persuasion'] } },
+	{ className: 'Cleric', subclass: 'Knowledge Domain', level: 3, choice: { grantedBy: 'knowledgeDomain', from: ['arcana', 'history', 'nature', 'religion'], count: 2, expertise: true } },
+	{ className: 'Fighter', subclass: 'Banneret', level: 3, choice: { grantedBy: 'banneret', from: ['insight', 'intimidation', 'performance', 'persuasion'] } },
+	{ className: 'Paladin', subclass: 'Oath of the Noble Genies', level: 3, choice: { grantedBy: 'nobleGenies', from: ['acrobatics', 'intimidation', 'performance', 'persuasion'] } },
+	{
+		className: 'Bard',
+		subclass: 'College of the Moon',
+		level: 3,
+		choice: { grantedBy: 'collegeOfTheMoon', from: ['animal handling', 'insight', 'medicine', 'nature', 'perception', 'survival'] },
+	},
 ]
+
+export function subclassSkillChoiceCount(grant: SubclassSkillGrant): number {
+	return grant.choice?.count ?? 1
+}
 
 export const SUBCLASS_LANGUAGE_SOURCES: ReadonlySet<string> = new Set(SUBCLASS_SKILL_GRANTS.flatMap((grant) => (grant.choice?.orLanguage ? [grant.choice.orLanguage] : [])))
 
@@ -47,7 +65,7 @@ export function subclassSkillGrantsFor(classes: readonly ClassRef[]): SubclassSk
 export function isSubclassSkillChoiceMade(grant: SubclassSkillGrant, skills: readonly CharacterSubclassSkill[], languages: readonly CharacterLanguage[]): boolean {
 	const choice = grant.choice
 	if (!choice) return true
-	return skills.some((pick) => pick.grantedBy === choice.grantedBy) || (choice.orLanguage !== undefined && languages.some((language) => language.grantedBy === choice.orLanguage))
+	return skills.filter((pick) => pick.grantedBy === choice.grantedBy).length >= subclassSkillChoiceCount(grant) || (choice.orLanguage !== undefined && languages.some((language) => language.grantedBy === choice.orLanguage))
 }
 
 /** The subclasses whose fixed grant or stored pick gives `skill`. */
@@ -57,9 +75,12 @@ export function subclassSkillSourceNames(skill: string, character: Character): s
 		.map((grant) => grant.subclass)
 }
 
-/** Skills a subclass gives expertise in outright (Scout) — never offered by an expertise picker. */
-export function subclassExpertiseSkills(classes: readonly ClassRef[]): string[] {
-	return subclassSkillGrantsFor(classes).flatMap((grant) => (grant.expertise ? (grant.fixed ?? []) : []))
+/** Skills a subclass gives expertise in outright (Scout) or through its own pick (Knowledge Domain) — never offered by an expertise picker. */
+export function subclassExpertiseSkills(classes: readonly ClassRef[], picks: readonly CharacterSubclassSkill[] = []): string[] {
+	return subclassSkillGrantsFor(classes).flatMap((grant) => [
+		...(grant.expertise ? (grant.fixed ?? []) : []),
+		...(grant.choice?.expertise ? picks.filter((pick) => pick.grantedBy === grant.choice?.grantedBy).map((pick) => pick.name) : []),
+	])
 }
 
 /** Stored picks whose grant no longer applies (class, subclass or level changed) are dropped. */

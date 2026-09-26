@@ -57,14 +57,25 @@ export interface CharacterBackground {
  */
 export type LanguageGrantSource = 'automatic' | 'creation' | FeatureLanguageSource
 
-/** D177 adds Cavalier's and Samurai's skill-or-language pick when it is a language. */
-export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer' | 'mastermind' | 'cavalier' | 'samurai'
+/** D177 adds Cavalier's and Samurai's skill-or-language pick when it is a language; D203 Banneret's language. */
+export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer' | 'mastermind' | 'cavalier' | 'samurai' | 'banneret'
 
-/** D174: which class or subclass grant a stored tool pick fills; D176 adds the non-XPHB subclass picks, D177 the species picks. */
-export type ToolChoiceSource = 'bard' | 'monk' | 'artificer' | 'battleMaster' | 'mastermind' | 'kensei' | 'artificerSubclass' | 'warforged' | 'satyr' | 'khoravar'
+/** D174: which class or subclass grant a stored tool pick fills; D176 adds the non-XPHB subclass picks, D177 the species picks, D203 Knowledge Domain. */
+export type ToolChoiceSource = 'bard' | 'monk' | 'artificer' | 'battleMaster' | 'mastermind' | 'kensei' | 'artificerSubclass' | 'warforged' | 'satyr' | 'khoravar' | 'knowledgeDomain'
 
-/** D177: which subclass grant a stored skill pick fills. */
-export type SubclassSkillSource = 'battleMaster' | 'orderDomain' | 'peaceDomain' | 'arcaneArcher' | 'cavalier' | 'samurai'
+/** D177: which subclass grant a stored skill pick fills; D203 adds the RHW/FRHoF subclasses. */
+export type SubclassSkillSource =
+	| 'battleMaster'
+	| 'orderDomain'
+	| 'peaceDomain'
+	| 'arcaneArcher'
+	| 'cavalier'
+	| 'samurai'
+	| 'bladesinger'
+	| 'knowledgeDomain'
+	| 'banneret'
+	| 'nobleGenies'
+	| 'collegeOfTheMoon'
 
 export interface CharacterSubclassSkill {
 	grantedBy: SubclassSkillSource
@@ -938,7 +949,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 48 for Character.subclassSkills and the
+ * (see wireFormat.ts). Bumped to 49 for the RHW/FRHoF subclass `grantedBy`
+ * values (D203); 48 for Character.subclassSkills and the
  * species/Cavalier/Samurai `grantedBy` values (B6c, D177); 47 for the non-XPHB subclass
  * `grantedBy` values (B6b, D176); 46 for Character.toolChoices and
  * .speciesSize (D174, D175); 45 for the class-feature language
@@ -956,4 +968,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 48
+export const CURRENT_SCHEMA_VERSION = 49

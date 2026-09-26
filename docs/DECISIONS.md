@@ -3760,3 +3760,34 @@ Schéma beze změny (48).
   nemodeluje.
 - Bez nového pole ani změny schématu. Mimo rozsah zůstávají prózní podtřídy
   (Bladesinger, Knowledge, Banneret, Noble Genies, Moon, Spirits, Reanimator).
+
+## D203 — Prózní proficience z podtříd RHW/FRHoF
+
+Zdroj: task D203, 26. 9. 2026. Navazuje na D176, D177, D178, D202. Podklad:
+DATA.md (pasáže RHW a FRHoF).
+
+- **Pevné granty** (`FEATURE_GRANTS`): Bladesinger — nová varianta zbraňového
+  grantu `category` s `melee` a `noneOfProperties` („Martial melee weapons
+  without the Two-Handed or Heavy property“), jeden zdroj pro kartu i útoky
+  (D178); College of Spirits — Playing Cards jen jako proficience, do inventáře
+  nic; Reanimator — Alchemist's Supplies, náhradní slot `artificerSubclass`
+  (D176) pokrývá „už máš → jiný artisan's tool“ beze změny kódu.
+- **Volby** (vzor D177): dovednost Bladesinger, Banneret, Oath of the Noble
+  Genies, College of the Moon (1 z výčtu); Knowledge Domain 2 dovednosti
+  s expertise — `choice.count` + `choice.expertise`; nabízí i dovednost, kterou
+  postava už má (hodnota je expertise), expertise se neukládá zvlášť a žádný
+  jiný expertise picker ji nenabízí. Knowledge: 1 artisan's tool
+  (`toolChoices`, `knowledgeDomain`); Banneret: 1 jazyk standard/rare
+  (`languages`, `banneret`; výměna po Long Rest se nemodeluje).
+- **Unfettered Mind** (Knowledge 6): proficience v Int záchranách, zdroj
+  „subclass (Knowledge Domain)“. Má-li ji postava odjinud, žádný picker —
+  v rozpisu záchrany poznámka „Unfettered Mind: already proficient in
+  Intelligence saves — choose another save (not tracked)“.
+- **Oprava mezery D202:** třídní Expertise krok (tvorba, level-up, Edit
+  Character — všechno jeden wizard) dostával celý seznam dovedností; teď bez
+  pevné expertise (Scout, featy, Knowledge). Feat picker (`heldExpertise`) ji
+  vylučoval už dřív, nově i volby Knowledge. Manage Feats jako samostatný tok
+  neexistuje.
+- **Úložiště:** schéma 49, migrace 48→49 jen tag (nové `grantedBy`:
+  `bladesinger`, `knowledgeDomain`, `banneret`, `nobleGenies`,
+  `collegeOfTheMoon`; jazyk `banneret`; nástroj `knowledgeDomain`).
