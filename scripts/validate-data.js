@@ -38,7 +38,10 @@ const { execFileSync } = require("child_process");
 const OUTPUT_DIR = path.join(__dirname, "..", "data");
 
 // Must match ALLOWED_SOURCES in extract-data.js.
-const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM", "RHW"];
+const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM", "RHW", "SCC"];
+
+// D199: must match HIDDEN_FEAT_KEYS in src/featAsi/featAsiData.ts, which hides them by exact name.
+const SCC_HIDDEN_FEATS = ["Strixhaven Initiate", "Strixhaven Mascot"];
 
 /*
  * Valid values for a feat's `category` field.
@@ -78,6 +81,7 @@ const EXPECTED_COUNTS = {
 		TCE: 5,
 		EFA: 28, // not in the original spec, but this is what the data contains
 		RHW: 11, // 9 Dark Gifts (category DG) + 2 others
+		SCC: 2, // Strixhaven Initiate + Strixhaven Mascot, hidden from the picker (D199)
 	},
 	// Taken from the first successful extraction run. XDMG and MPMM ship no
 	// spell files at all, so they are absent rather than zero.
@@ -88,6 +92,7 @@ const EXPECTED_COUNTS = {
 		XGE: 85,
 		TCE: 12,
 		EFA: 1,
+		SCC: 5, // Borrowed Knowledge, Kinetic Jaunt, Silvery Barbs, Vortex Warp, Wither and Bloom (D199)
 	},
 	/*
 	 * Species counts include entries created by expansion:
@@ -104,11 +109,13 @@ const EXPECTED_COUNTS = {
 		MPMM: 35,
 		EFA: 9,
 		RHW: 3,
+		SCC: 0, // Owlin|SCC has no `edition`, dropped by the same filter as Dhampir (D199)
 	},
 	backgrounds: {
 		XPHB: 16,
 		EFA: 17,
 		RHW: 4,
+		SCC: 0, // EXCLUDED_BACKGROUND_SOURCES in extract-data.js (D199)
 	},
 	// classes.json holds classes AND subclasses, so these are the combined
 	// per-book totals: 13 classes + 102 subclasses = 115 entries.
@@ -141,6 +148,7 @@ const EXPECTED_COUNTS = {
 		XGE: 3,
 		EFA: 6,
 		RHW: 2,
+		SCC: 18,
 		PHB: 1,
 	},
 	// Languages ship in a single book today, so this is just the total.
@@ -633,6 +641,13 @@ function validateFeats() {
 		}
 	});
 	recordCheck("feats: every feat has a valid category", categoryFailures);
+
+	const sccFeatNames = entries.filter((entry) => entry.source === "SCC").map((entry) => entry.name).sort();
+	recordSimpleCheck(
+		"feats: SCC feats are exactly the ones HIDDEN_FEAT_KEYS names (D199)",
+		JSON.stringify(sccFeatNames) === JSON.stringify(SCC_HIDDEN_FEATS),
+		`actual ${sccFeatNames.join(", ")}, expected ${SCC_HIDDEN_FEATS.join(", ")}`,
+	);
 
 	// The expected per-book counts.
 	checkExpectedCounts(entries, "feats");

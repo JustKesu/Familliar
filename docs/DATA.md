@@ -28,8 +28,9 @@ Run:
 
 ## Content scope
 
-ALLOWED_SOURCES: XPHB, XGE, TCE, EFA, XDMG, MPMM, RHW
+ALLOWED_SOURCES: XPHB, XGE, TCE, EFA, XDMG, MPMM, RHW, SCC
 ALLOWED_CLASS_SOURCES: XPHB, EFA  (the class EDITION, not the book)
+EXCLUDED_BACKGROUND_SOURCES: SCC  (backgrounds step only, D199)
 
   XPHB  Player's Handbook 2024      — core
   XGE   Xanathar's Guide            — subclasses, spells, feats
@@ -38,13 +39,15 @@ ALLOWED_CLASS_SOURCES: XPHB, EFA  (the class EDITION, not the book)
   XDMG  Dungeon Master's Guide 2024 — magic item catalogue
   MPMM  Monsters of the Multiverse  — 2014 species pool
   RHW   Ravenloft: The Horrors Within (2026-06, 2024 rules) — whole book, D194
+  SCC   Strixhaven: A Curriculum of Chaos (2014 rules) — spells, items, 2
+        hidden feats; backgrounds excluded, Owlin dropped by the species filter (D199)
 
-Deliberately excluded: PHB 2014, FRHoF, SCC, all adventure modules,
+Deliberately excluded: PHB 2014, FRHoF, all adventure modules,
 UA/playtest, Plane Shift booklets, VGM/MTF (superseded by MPMM).
 
 A second copy of ALLOWED_SOURCES lives in src/subclass/subclassData.ts and one
 in scripts/validate-data.js; without the src copy the app does not offer a new
-book's subclasses.
+book's subclasses. The src copy has no SCC (the book has no subclasses).
 
 ### RHW, FRHoF, SCC — what the three books contain (survey 2026-09, D194)
 
@@ -90,6 +93,35 @@ Raw data before any filter (`scripts/investigate-books.mjs`, untracked):
   fine — no lookup, `parseSpellRef` matches by name). gendata gives all 24
   FRHoF/SCC spells XPHB classes (Silvery Barbs → Bard, Sorcerer, Wizard).
 - New keys: feats `immune` (1), `conditionImmune` (2) — text only in the app.
+
+### SCC records after extraction (D199)
+
+Confirmed in data/ after the D199 run: spells 5, feats 2, items 18,
+backgrounds 0, species 0.
+
+- **Spells** (`availableTo.classes`, all via gendata, no new path):
+  Borrowed Knowledge L2 — Bard, Cleric, Warlock, Wizard; Kinetic Jaunt L2 —
+  Bard, Sorcerer, Wizard, Artificer|EFA; Silvery Barbs L1 (reaction) — Bard,
+  Sorcerer, Wizard; Vortex Warp L2 — Sorcerer, Wizard, Artificer|EFA; Wither
+  and Bloom L2 — Druid, Sorcerer, Wizard. `classVariants` empty on all five.
+- **Feats**: `Strixhaven Initiate` (15 `additionalSpells` blocks, no category →
+  defaulted to `G`, no prerequisite) and `Strixhaven Mascot` (not "Mascot";
+  prerequisite `level 4` + `feat strixhaven initiate|scc`, category defaulted
+  `G`). Both hidden in the picker (HIDDEN_FEAT_KEYS).
+- **`availableTo.feats`**: 73 spells now list `Strixhaven Initiate|SCC` (its
+  college lists). Nothing in src reads `availableTo.feats`.
+- **Items** (18): 5 Primers (Lorehold, Prismari, Quandrix, Silverquill,
+  Witherbloom — uncommon, `reqAttune "by a spellcaster"`, `charges`/`recharge`,
+  `reqAttuneTags`), 5 matching Trinkets (Adventuring Gear, rarity `none`),
+  Alchemist's Doom, Catapult Munition, Murgaxor's Elixir of Life (Adventuring
+  Gear, rarity `unknown` — 2014 value; the app reads rarity only as `=== "none"`
+  in tool/focus filters), Bottle of Boundless Coffee, Cuddly Strixhaven
+  Mascot, Masque Charm (`attachedSpells`), Strixhaven Pennant (`light`),
+  Murgaxor's Orb (legendary, `reqAttune: true`, `sentient`, `curse`,
+  `attachedSpells`). `charges`, `attachedSpells`, `sentient`, `curse`, `light`
+  are not read by the app (text only). Markup tags in SCC items: book,
+  condition, creature, damage, dc, dice, item, sense, skill, spell — all
+  handled by the renderer.
 
 ### RHW records — shapes the app meets (D194)
 

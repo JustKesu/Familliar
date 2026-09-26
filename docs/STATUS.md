@@ -1079,6 +1079,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Magic, one Grave/Phantom, no Bladesinging, Reanimator; Shadow Sorcerer 3
   always-prepared spells; Shadow Sorcerer 6 Summon Beast USE −3 Sorcery Points;
   Echoing Soul selectable at level 4 with "Dark Gift" and "Ravenloft campaign").
+- `e2e/scc.spec.ts` — D199 a–d (Wizard spell step offers and picks Silvery
+  Barbs; seeded Bard sheet resolves it with CAST and text; Lorehold Primer added
+  from Inventory with "Requires attunement by a spellcaster"; no Owlin species,
+  no SCC background, no Strixhaven feat at level 4).
 
 ## Dočasné scaffolding
 
@@ -1581,6 +1585,17 @@ Night Spirit, read by `buildFeatGrants`). All are shown under "Only in certain
 conditions" with a condition text, never counted (D76). Rage of the Wilds stays
 out (unstored Bear/Eagle/Wolf pick). E2E `conditionalResponses.spec.ts`. No
 schema change (still 48).
+
+D199: SCC (Strixhaven, 2014 rules) joins ALLOWED_SOURCES. In: 5 spells
+(Borrowed Knowledge, Kinetic Jaunt, Silvery Barbs, Vortex Warp, Wither and
+Bloom — class lists via gendata) and 18 items (5 Primers, 5 Trinkets, Murgaxor's
+Orb and Elixir, Masque Charm, Strixhaven Pennant, Cuddly Strixhaven Mascot,
+Bottle of Boundless Coffee, Alchemist's Doom, Catapult Munition). Strixhaven
+Initiate and Strixhaven Mascot are in feats.json but hidden (HIDDEN_FEAT_KEYS)
+until their pickers exist. SCC backgrounds are excluded at extraction
+(`EXCLUDED_BACKGROUND_SOURCES`); Owlin drops out through the species `edition`
+filter. validate-data asserts 5/2/18/0/0 and the two feat names. E2E
+`scc.spec.ts` a–d. No schema change (still 48).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

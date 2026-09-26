@@ -3669,3 +3669,23 @@ Zdroj: task D198, 26. 9. 2026. Navazuje na D70, D76. Schéma beze změny (48).
 - **Rage of the Wilds zůstává vynechán:** odolnost závisí na volbě
   Bear/Eagle/Wolf, kterou aplikace neukládá (stejný důvod jako Storm Herald,
   The Genie, Four Elements, Circle of the Land).
+
+## D199 — Kniha SCC: kouzla a předměty, featy skryté, backgroundy a Owlin venku
+
+Zdroj: task D199, 26. 9. 2026. Mění D194 („SCC ne“) pro SCC; FRHoF dál venku.
+Schéma beze změny (48).
+
+- **SCC v ALLOWED_SOURCES** (extract-data.js, validate-data.js). Kopie
+  v subclassData.ts beze změny — SCC nemá žádnou podtřídu.
+- **Kouzla (5) a předměty (18)** bez omezení, stejný filtr jako ostatní knihy.
+  Třídy kouzel z gendata (XPHB/EFA třídy), žádná nová cesta.
+- **Backgroundy SCC (5) se neextrahují:** `EXCLUDED_BACKGROUND_SOURCES = ["SCC"]`
+  jen v kroku backgroundů, podle vzoru ALLOWED_CLASS_SOURCES. Jsou 2014 (bez
+  `ability`, bez origin featu); ALLOWED_SOURCES je jeden seznam pro všechny
+  kategorie, proto výjimka zvlášť.
+- **Featy Strixhaven Initiate a Strixhaven Mascot** jsou ve feats.json, ale
+  v HIDDEN_FEAT_KEYS (featAsiData.ts): každý potřebuje vlastní picker (volba
+  koleje s 5 bloky `additionalSpells`; Mascot vyvolává SCC tvory). Pickery jsou
+  další task. validate-data hlídá, že SCC featy jsou přesně tyto dva názvy.
+- **Owlin|SCC vypadne sám** — nemá `edition`, stejný filtr species jako
+  Dhampir|RHW (D194); ověřeno po extrakci (SCC species 0), bez výjimky.

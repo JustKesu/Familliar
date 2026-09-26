@@ -76,7 +76,15 @@ const ALLOWED_SOURCES = [
 	"XDMG", // Dungeon Master's Guide (2024)
 	"MPMM", // Mordenkainen Presents: Monsters of the Multiverse
 	"RHW", // Ravenloft: The Horrors Within (2024 rules, D194)
+	"SCC", // Strixhaven: A Curriculum of Chaos (2014 rules; spells, items, hidden feats — D199)
 ];
+
+/*
+ * Books whose BACKGROUNDS stay out even though the book is in ALLOWED_SOURCES.
+ * SCC's five college backgrounds are 2014-shaped (no `ability`, no origin
+ * feat) and are not offered (D199); the rest of the book is.
+ */
+const EXCLUDED_BACKGROUND_SOURCES = ["SCC"];
 
 /*
  * Which CLASS sources count as "a class my 2024 game actually uses".
@@ -1480,7 +1488,9 @@ function extractBackgrounds() {
 	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded}`);
 	console.log(`  ...into variants:           ${versionStats.variantsCreated}`);
 
-	let kept = resolved.filter((background) => ALLOWED_SOURCES.includes(background.source));
+	let kept = resolved.filter(
+		(background) => ALLOWED_SOURCES.includes(background.source) && !EXCLUDED_BACKGROUND_SOURCES.includes(background.source),
+	);
 	kept = removeSuperseded(kept, "backgrounds", warnings);
 
 	const bySource = {};
