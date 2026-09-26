@@ -86,6 +86,22 @@ test('D196: Shadow Sorcerer 6 with no Metamagic — Sorcery Points 6 / 6 from Fo
   await expect(button).toBeDisabled()
 })
 
+test('D197: Shadow Sorcerer 3 — Strength of the Grave is one Long Rest box on the Power of Shadow row; a use fills it, Long Rest clears it', async ({ page }) => {
+  await openSpells(page, shadowSorcerer('d197-shadow-3', 3, false))
+  await page.getByRole('tab', { name: 'Features & Traits' }).click()
+  const boxes = page.getByRole('tabpanel', { name: 'Features & Traits' }).getByRole('group', { name: 'Power of Shadow uses' })
+  await expect(boxes).toHaveCount(1)
+  await expect(boxes).toContainText('/ Long Rest')
+  await expect(boxes.locator('.sheet__use-box')).toHaveCount(1)
+  await expect(boxes.locator('.sheet__use-box--used')).toHaveCount(0)
+
+  await boxes.getByRole('button', { name: 'Use Power of Shadow', exact: true }).click()
+  await expect(boxes.locator('.sheet__use-box--used')).toHaveCount(1)
+
+  await page.getByRole('button', { name: 'Long Rest', exact: true }).click()
+  await expect(boxes.locator('.sheet__use-box--used')).toHaveCount(0)
+})
+
 test('D194 e:a Dark Gift feat is selectable at a feat choice, labelled "Dark Gift" with its campaign as a note', async ({ page }) => {
   await createFighter(page, {
     name: 'D194 Dark Gift',

@@ -3631,3 +3631,21 @@ Zdroj: task D196, 26. 9. 2026. Navazuje na 9b1, D191, D194. Schéma beze změny 
   proto nevznikla — neměla by čtenáře: řádek featury v Actions `consumes.amount`
   nečte nikdy, jen ±1 na poolu. Ostatní prózové utrácení (23 featur) je v
   DATA.md.
+
+## D197 — Strength of the Grave: počítadlo 1/Long Rest přes „use this benefit“
+
+Zdroj: task D197, 26. 9. 2026. Navazuje na D119, D194, D195. Schéma beze změny (48).
+
+- **Kde byla mezera:** jen v regexu, ne v dělení. Žádný mechanismus nedělí
+  pojmenované `entries` podzáznamy na samostatné záznamy; „Eyes of the Dark“
+  je jen řetězec v ruční tabulce `CLASS_SENSE_GRANTS` (D195). resources.ts vidí
+  celý záznam „Power of Shadow“ (s rest tagem), ale `EXPENDED_USES`,
+  `SINGLE_USE_RECHARGE` a `SINGLE_USE_RECHARGE_RESTS` znaly jen „do so / use it
+  / use this feature“, ne „can't use this benefit again“.
+- **Oprava:** všechny tři regexy navíc berou „use this benefit“. V datech jsou
+  přesně 2 výskyty: Power of Shadow|RHW a Ritual Caster|XPHB (Quick Ritual) —
+  oba dostanou 1 použití / Long Rest. Ostatní odlišné formulace jsou v DATA.md,
+  regex je nebere.
+- **Jméno (rozhodnutí uživatele):** počítadlo je pod jménem záznamu „Power of
+  Shadow“ a box je na jeho řádku ve Features & Traits (stejně jako Ritual
+  Caster na řádku featu). Žádný alias ani dělení podzáznamů.

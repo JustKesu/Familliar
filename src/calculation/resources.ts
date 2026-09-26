@@ -100,8 +100,9 @@ function plainText(node: unknown, out: string[] = []): string[] {
 }
 
 /** Rule 2's phrasings: a pool of uses that is expended and regained, a count of times per rest, or the once-per-rest sentence Action Surge uses. */
+// D197: "use this benefit" is the same sentence in Power of Shadow|RHW (Strength of the Grave) and Ritual Caster|XPHB (Quick Ritual), its only two recharge uses.
 const EXPENDED_USES =
-	/\bexpended uses?\b|\bregain\b[^.]{0,60}\buses?\b|number of times equal to|can't (?:do so|use it|use this feature) again until you finish/i
+	/\bexpended uses?\b|\bregain\b[^.]{0,60}\buses?\b|number of times equal to|can't (?:do so|use it|use this feature|use this benefit) again until you finish/i
 
 function isSelfLimitedFeature(feature: ResourceFeature): boolean {
 	if (!hasRestTag(feature.entries)) return false
@@ -114,7 +115,7 @@ function isSelfLimitedFeature(feature: ResourceFeature): boolean {
  * Bonus in the text does NOT block it: in every such feature it is a save DC,
  * an attack bonus or a damage formula, never the number of uses (D119).
  */
-const SINGLE_USE_RECHARGE = /can't (?:do so|use it|use this feature) again until you finish an? (?:Short|Long) Rest/i
+const SINGLE_USE_RECHARGE = /can't (?:do so|use it|use this feature|use this benefit) again until you finish an? (?:Short|Long) Rest/i
 /*
  * Only a count of this feature's own uses. "twice your Speed" / "three times your
  * Paladin level" is a multiplier, and "uses of Rage" / "uses of Wild Shape" counts
@@ -168,7 +169,7 @@ function isImplicitSingleUse(name: string, text: string): boolean {
  * counts: Arcane Recovery and Sorcerous Restoration mention a Short Rest as the time
  * you can act, and their own use still comes back on a Long Rest (DATA.md).
  */
-const SINGLE_USE_RECHARGE_RESTS = /can't (?:do so|use it|use this feature) again until you finish\s+an?\s+((?:Short|Long) Rest(?:\s+or\s+(?:Short|Long) Rest)?)/gi
+const SINGLE_USE_RECHARGE_RESTS = /can't (?:do so|use it|use this feature|use this benefit) again until you finish\s+an?\s+((?:Short|Long) Rest(?:\s+or\s+(?:Short|Long) Rest)?)/gi
 
 function singleUseRechargesOnShortRest(text: string): boolean {
 	return [...text.matchAll(SINGLE_USE_RECHARGE_RESTS)].some((match) => /Short Rest/i.test(match[1]))

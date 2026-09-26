@@ -115,7 +115,8 @@ Raw data before any filter (`scripts/investigate-books.mjs`, untracked):
   Beasts of Ill Omen itself has no `consumes`; since D196 the pool comes from
   the Sorcerer table's "Sorcery Points" column, spender or not. Power of Shadow nests Eyes of the Dark (Darkvision 120,
   Blindsight 10 — no `senses` field on subclass features) and Strength of the
-  Grave (1/LR, nested, not found by the self-limited test); Umbral Form
+  Grave (1/LR, nested; since D197 tracked as the whole record "Power of
+  Shadow", see "can't use this benefit" below); Umbral Form
   `consumes` Sorcery Point ×6.
 - **Phantom|RHW** Speak with Dead sits in a `rest` wrapper (1/rest), which
   `extractRefsWithUsage` reads as `usage: null` — same as Aberrant Dragonmark|EFA.
@@ -538,6 +539,29 @@ Sorcerous Restoration and Arcane Recovery name a Short Rest only as when you
 may act ("When you finish a Short Rest, you can…"); their recharge sentence is
 Long Rest only, so they are not among the 7. The other 33 name no Short Rest
 in the recharge. `resources.test.ts` guards all of this against the real data.
+
+Other recharge phrasings (D197, `scripts/investigate-strength-of-grave.js`).
+"can't X again until you finish a Short/Long Rest" with X outside "do so / use
+it / use this feature", across the four feature files: 8 phrasings, 11 hits.
+
+- "use this benefit" ×2 — Power of Shadow|RHW (Strength of the Grave) and
+  Ritual Caster|XPHB (Quick Ritual). Both rest-tagged, Long Rest only; since
+  D197 in the regexes, one use each. Whispers of the Dead|RHW also says "use
+  this benefit again", but about re-choosing a proficiency, with no rest clause.
+- "do so in this way" ×2 (Contact Patron|XPHB, Telekinetic Master|XPHB), "cast
+  that spell in this way" ×2 (Fey-Touched, Shadow-Touched), "cast them in this
+  way" ×1 (Signature Spells) — free spell casts, left to the spell-usage path
+  (Contact Patron's counter is D193's); whether each of the others has a
+  counter was not checked.
+- "create it" ×1 (Arcane Ward|XPHB) — a real 1/LR, not tracked.
+- No rest tag, so never self-limited whatever the phrase: "use the feature"
+  (Accursed Specter|XGE), "enter" (Bottled Respite|TCE), "cast it in this way"
+  (Undying Servitude|TCE).
+
+No mechanism splits a record's named `entries` sub-entries into separate
+records: the resolver, the Features tab and resources.ts all see "Power of
+Shadow" whole. "Eyes of the Dark" as a provenance name is only a string in
+`CLASS_SENSE_GRANTS` (D195).
 
 ### What a rest gives back is only in the prose, and it is not "all"
 The rest TAG says a feature cares about rests, never how much one returns

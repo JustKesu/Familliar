@@ -1547,8 +1547,8 @@ an "or any Dark Gift" pair; Mist Wanderer and Spirit Medium (DG only) are not
 offered. `campaign` prerequisites count as met and show as a note in the feat
 picker, DG feats carry a "Dark Gift" label, `exclusiveFeatCategory` is enforced.
 D190 table: College of Spirits, Hexblood yes; Shadow Sorcery no. Not modelled:
-DG feat spells, Eyes of the Dark senses, Strength of the Grave counter, RHW
-proficiency grants. E2E `rhw.spec.ts` a–f. No schema change (still 48).
+DG feat spells, RHW proficiency grants (Eyes of the Dark senses since D195,
+Strength of the Grave counter since D197). E2E `rhw.spec.ts` a–f. No schema change (still 48).
 
 D195: class and subclass senses reach the Senses card. `CLASS_SENSE_GRANTS`
 (`grantedSenses.ts`, origin `classFeature`, "from class feature (Name)"): Feral
@@ -1567,6 +1567,12 @@ A Shadow Sorcerer 6 with no Metamagic gets Sorcery Point 6 and a working
 Summon Beast USE (−3, disabled below 3). No override table: the USE path
 already reads the cost from the `resource` spell wrapper. E2E `rhw.spec.ts`
 "D196". No schema change (still 48).
+
+D197: the recharge regexes in resources.ts also read "can't use this benefit
+again". Strength of the Grave (inside Power of Shadow, Shadow Sorcery 3) is a
+1/Long Rest box on the "Power of Shadow" row in Features & Traits; Ritual
+Caster (Quick Ritual) gets the same. Named sub-entries are still not split into
+their own rows. E2E `rhw.spec.ts` "D197". No schema change (still 48).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

@@ -312,6 +312,26 @@ describe('one use where the text states only a recharge', () => {
 		expect(tinker.shortRest).toBeNull()
 	})
 
+	it('gives 1 to a "can’t use this benefit again" recharge nested in a named sub-entry, under the record’s name (D197)', () => {
+		const powerOfShadow: ResourceFeature = {
+			name: 'Power of Shadow',
+			entries: [
+				'You gain the following benefits.',
+				{ type: 'entries', name: 'Eyes of the Dark', entries: ['You have {@sense Blindsight|XPHB} with a range of 10 feet.'] },
+				{
+					type: 'entries',
+					name: 'Strength of the Grave',
+					entries: [
+						"If you would drop to 0 {@variantrule Hit Points|XPHB} and not die outright, you can make a Charisma saving throw (DC 5 plus the damage taken). After you succeed on this save, you can't use this benefit again until you finish a {@variantrule Long Rest|XPHB}.",
+					],
+				},
+			],
+		}
+		const resource = computeCharacterResources(character('Sorcerer', 3, 'Shadow Sorcery'), CLASSES, [powerOfShadow]).find((r) => r.name === 'Power of Shadow')
+		expect(resource?.max.status === 'known' && resource.max.value).toBe(1)
+		expect(resource?.shortRest).toBeNull()
+	})
+
 	it('makes no resource of a feature with no rest tag', () => {
 		expect(computeCharacterResources(character('Fighter', 5), CLASSES, [EXTRA_ATTACK])).toEqual([])
 	})
@@ -530,11 +550,17 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 		expect(indomitable?.status === 'known' && indomitable.value).toBe(3)
 	})
 
+	it.each(['Power of Shadow', 'Ritual Caster'])('%s: one use, from "can’t use this benefit again" (D197)', (name) => {
+		const resource = byName.get(name)
+		expect(resource?.max.status === 'known' && resource.max.value).toBe(1)
+		expect(resource?.shortRest).toBeNull()
+	})
+
 	// D194: +9 RHW (Refined Reanimation, Reanimated Companion, Empowered Channeling, Divine Reaper, Ancient Might, Ghost Walk,
 	// Umbral Form, Necrotic Husk, Survivor), -2 with their superseded subclasses (Telekinetic Master|TCE, Strength of the Grave|XGE).
-	it('holds 55 known maxima: 53 single uses (the 40 of D119, the 6 of D120, net +7 of D194) and the 2 level-table ones', () => {
-		expect(singleUse).toHaveLength(55)
-		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(53)
+	it('holds 57 known maxima: 55 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197) and the 2 level-table ones', () => {
+		expect(singleUse).toHaveLength(57)
+		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(55)
 	})
 
 	it('returns the whole pool on a Short Rest for exactly the ones whose recharge sentence names one', () => {
