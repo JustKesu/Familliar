@@ -77,14 +77,35 @@ const ALLOWED_SOURCES = [
 	"MPMM", // Mordenkainen Presents: Monsters of the Multiverse
 	"RHW", // Ravenloft: The Horrors Within (2024 rules, D194)
 	"SCC", // Strixhaven: A Curriculum of Chaos (2014 rules; spells, items, hidden feats — D199)
+	"FRHoF", // Heroes of Faerûn (2024 rules; reduced scope — D201)
 ];
 
 /*
  * Books whose BACKGROUNDS stay out even though the book is in ALLOWED_SOURCES.
  * SCC's five college backgrounds are 2014-shaped (no `ability`, no origin
- * feat) and are not offered (D199); the rest of the book is.
+ * feat) and are not offered (D199); FRHoF's are setting-specific (D201).
  */
-const EXCLUDED_BACKGROUND_SOURCES = ["SCC"];
+const EXCLUDED_BACKGROUND_SOURCES = ["SCC", "FRHoF"];
+
+// D201: FRHoF's regional languages are setting-specific.
+const EXCLUDED_LANGUAGE_SOURCES = ["FRHoF"];
+
+/*
+ * D201: FRHoF feats that stay out — every category-O feat (the faction Origin
+ * feats) plus the G feats whose prerequisite names one of them, which would sit
+ * disabled in the picker forever. Spellfire Adept is the one non-faction case
+ * (its prerequisite is Spellfire Spark, an O feat).
+ */
+const EXCLUDED_FEAT_KEYS = new Set([
+	"Dragonscarred|FRHoF",
+	"Enclave Magic|FRHoF",
+	"Harper Teamwork|FRHoF",
+	"Lordly Resolve|FRHoF",
+	"Order's Resilience|FRHoF",
+	"Purple Dragon Commandant|FRHoF",
+	"Spellfire Adept|FRHoF",
+	"Zhentarim Tactics|FRHoF",
+]);
 
 /*
  * Which CLASS sources count as "a class my 2024 game actually uses".
@@ -1103,7 +1124,12 @@ function extractFeats() {
 	console.log(`  ...into variants:           ${versionStats.variantsCreated}`);
 
 	// Step 2: NOW filter by source (never before resolving — see resolveCopies).
-	let kept = resolved.filter((feat) => ALLOWED_SOURCES.includes(feat.source));
+	let kept = resolved.filter(
+		(feat) =>
+			ALLOWED_SOURCES.includes(feat.source) &&
+			!(feat.source === "FRHoF" && feat.category === "O") &&
+			!EXCLUDED_FEAT_KEYS.has(`${feat.name}|${feat.source}`),
+	);
 
 	// Step 2b: drop any entry superseded by a newer reprint we are also
 	// keeping (e.g. TCE "Chef", replaced by the 2024 XPHB "Chef").
@@ -1541,7 +1567,9 @@ function extractLanguages() {
 	console.log(`_copy blocks resolved:        ${copyStats.copiesResolved}`);
 	console.log(`Entries expanded by _versions: ${versionStats.parentsExpanded} into ${versionStats.variantsCreated}`);
 
-	let kept = resolved.filter((language) => ALLOWED_SOURCES.includes(language.source));
+	let kept = resolved.filter(
+		(language) => ALLOWED_SOURCES.includes(language.source) && !EXCLUDED_LANGUAGE_SOURCES.includes(language.source),
+	);
 	kept = removeSuperseded(kept, "languages", warnings);
 
 	const bySource = {};

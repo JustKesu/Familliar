@@ -558,9 +558,10 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 
 	// D194: +9 RHW (Refined Reanimation, Reanimated Companion, Empowered Channeling, Divine Reaper, Ancient Might, Ghost Walk,
 	// Umbral Form, Necrotic Husk, Survivor), -2 with their superseded subclasses (Telekinetic Master|TCE, Strength of the Grave|XGE).
-	it('holds 57 known maxima: 55 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197) and the 2 level-table ones', () => {
-		expect(singleUse).toHaveLength(57)
-		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(55)
+	// D201: +12 FRHoF (subclass features, Epic Boons, Genie Magic), 3 of them Short Rest (Boon of Terror, Boon of the Soul Drinker, Group Recovery).
+	it('holds 69 known maxima: 67 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197, +12 of D201) and the 2 level-table ones', () => {
+		expect(singleUse).toHaveLength(69)
+		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(67)
 	})
 
 	it('returns the whole pool on a Short Rest for exactly the ones whose recharge sentence names one', () => {
@@ -569,6 +570,7 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 			[
 				'Action Surge', 'Clairvoyant Combatant', 'Illusory Self', 'Mage Slayer', 'Psi-Powered Leap', 'Stroke of Luck', 'Telekinetic Movement', 'The Third Eye',
 				'Unbreakable Majesty', 'Divine Reaper', 'Empowered Channeling', 'Necrotic Husk',
+				'Boon of Terror', 'Boon of the Soul Drinker', 'Group Recovery',
 			].sort(),
 		)
 	})

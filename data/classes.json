@@ -7459,6 +7459,48 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "College of the Moon",
+		"shortName": "Moon",
+		"source": "FRHoF",
+		"className": "Bard",
+		"classSource": "XPHB",
+		"page": 16,
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"innate": {
+					"3": [
+						{
+							"choose": "level=0|class=druid",
+							"count": 1
+						}
+					]
+				},
+				"prepared": {
+					"6": {
+						"daily": {
+							"1e": [
+								"moonbeam|xphb"
+							]
+						}
+					}
+				}
+			}
+		],
+		"subclassFeatures": [
+			"College of the Moon|Bard|XPHB|Moon|FRHoF|3|FRHoF",
+			"Blessing of Moonlight|Bard|XPHB|Moon|FRHoF|6|FRHoF",
+			"Eventide's Splendor|Bard|XPHB|Moon|FRHoF|14|FRHoF"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|college of the moon|bard|xphb|moon|frhof|3|frhof",
+			"scf|blessing of moonlight|bard|xphb|moon|frhof|6|frhof",
+			"scf|eventide's splendor|bard|xphb|moon|frhof|14|frhof"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "College of Spirits",
 		"shortName": "Spirits",
 		"source": "RHW",
@@ -7904,6 +7946,56 @@
 			"scf|war domain|cleric|xphb|war|xphb|3|xphb",
 			"scf|war god's blessing|cleric|xphb|war|xphb|6|xphb",
 			"scf|avatar of battle|cleric|xphb|war|xphb|17|xphb"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Knowledge Domain",
+		"shortName": "Knowledge",
+		"source": "FRHoF",
+		"className": "Cleric",
+		"classSource": "XPHB",
+		"page": 18,
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"command|xphb",
+						"comprehend languages|xphb",
+						"detect magic|xphb",
+						"detect thoughts|xphb",
+						"identify|xphb",
+						"mind spike|xphb"
+					],
+					"5": [
+						"dispel magic|xphb",
+						"nondetection|xphb",
+						"tongues|xphb"
+					],
+					"7": [
+						"arcane eye|xphb",
+						"banishment|xphb",
+						"confusion|xphb"
+					],
+					"9": [
+						"legend lore|xphb",
+						"scrying|xphb",
+						"synaptic static|xphb"
+					]
+				}
+			}
+		],
+		"subclassFeatures": [
+			"Knowledge Domain|Cleric|XPHB|Knowledge|FRHoF|3|FRHoF",
+			"Unfettered Mind|Cleric|XPHB|Knowledge|FRHoF|6|FRHoF",
+			"Divine Foreknowledge|Cleric|XPHB|Knowledge|FRHoF|17|FRHoF"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|knowledge domain|cleric|xphb|knowledge|frhof|3|frhof",
+			"scf|unfettered mind|cleric|xphb|knowledge|frhof|6|frhof",
+			"scf|divine foreknowledge|cleric|xphb|knowledge|frhof|17|frhof"
 		]
 	},
 	{
@@ -9053,6 +9145,43 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "Banneret",
+		"shortName": "Banneret",
+		"source": "FRHoF",
+		"className": "Fighter",
+		"classSource": "XPHB",
+		"page": 19,
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"innate": {
+					"3": {
+						"ritual": [
+							"comprehend languages|xphb"
+						]
+					}
+				},
+				"ability": "cha"
+			}
+		],
+		"subclassFeatures": [
+			"Banneret|Fighter|XPHB|Banneret|FRHoF|3|FRHoF",
+			"Team Tactics|Fighter|XPHB|Banneret|FRHoF|7|FRHoF",
+			"Rallying Surge|Fighter|XPHB|Banneret|FRHoF|10|FRHoF",
+			"Shared Resilience|Fighter|XPHB|Banneret|FRHoF|15|FRHoF",
+			"Inspiring Commander|Fighter|XPHB|Banneret|FRHoF|18|FRHoF"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|banneret|fighter|xphb|banneret|frhof|3|frhof",
+			"scf|team tactics|fighter|xphb|banneret|frhof|7|frhof",
+			"scf|rallying surge|fighter|xphb|banneret|frhof|10|frhof",
+			"scf|shared resilience|fighter|xphb|banneret|frhof|15|frhof",
+			"scf|inspiring commander|fighter|xphb|banneret|frhof|18|frhof"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "Way of the Drunken Master",
 		"shortName": "Drunken Master",
 		"source": "XGE",
@@ -9664,6 +9793,56 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "Oath of the Noble Genies",
+		"shortName": "Noble Genies",
+		"source": "FRHoF",
+		"className": "Paladin",
+		"classSource": "XPHB",
+		"page": 20,
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"chromatic orb|xphb",
+						"elementalism|xphb#c",
+						"thunderous smite|xphb"
+					],
+					"5": [
+						"mirror image|xphb",
+						"phantasmal force|xphb"
+					],
+					"9": [
+						"fly|xphb",
+						"gaseous form|xphb"
+					],
+					"13": [
+						"conjure minor elementals|xphb",
+						"summon elemental|xphb"
+					],
+					"17": [
+						"banishing smite|xphb",
+						"contact other plane|xphb"
+					]
+				}
+			}
+		],
+		"subclassFeatures": [
+			"Oath of the Noble Genies|Paladin|XPHB|Noble Genies|FRHoF|3|FRHoF",
+			"Aura of Elemental Shielding|Paladin|XPHB|Noble Genies|FRHoF|7|FRHoF",
+			"Elemental Rebuke|Paladin|XPHB|Noble Genies|FRHoF|15|FRHoF",
+			"Noble Scion|Paladin|XPHB|Noble Genies|FRHoF|20|FRHoF"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|oath of the noble genies|paladin|xphb|noble genies|frhof|3|frhof",
+			"scf|aura of elemental shielding|paladin|xphb|noble genies|frhof|7|frhof",
+			"scf|elemental rebuke|paladin|xphb|noble genies|frhof|15|frhof",
+			"scf|noble scion|paladin|xphb|noble genies|frhof|20|frhof"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "Horizon Walker",
 		"shortName": "Horizon Walker",
 		"source": "XGE",
@@ -9935,6 +10114,50 @@
 			"scf|defensive tactics|ranger|xphb|hunter|xphb|7|xphb",
 			"scf|superior hunter's prey|ranger|xphb|hunter|xphb|11|xphb",
 			"scf|superior hunter's defense|ranger|xphb|hunter|xphb|15|xphb"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Winter Walker",
+		"shortName": "Winter Walker",
+		"source": "FRHoF",
+		"className": "Ranger",
+		"classSource": "XPHB",
+		"page": 21,
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"ice knife|xphb"
+					],
+					"5": [
+						"hold person|xphb"
+					],
+					"9": [
+						"remove curse|xphb"
+					],
+					"13": [
+						"ice storm|xphb"
+					],
+					"17": [
+						"cone of cold|xphb"
+					]
+				}
+			}
+		],
+		"subclassFeatures": [
+			"Winter Walker|Ranger|XPHB|Winter Walker|FRHoF|3|FRHoF",
+			"Fortifying Soul|Ranger|XPHB|Winter Walker|FRHoF|7|FRHoF",
+			"Chilling Retribution|Ranger|XPHB|Winter Walker|FRHoF|11|FRHoF",
+			"Frozen Haunt|Ranger|XPHB|Winter Walker|FRHoF|15|FRHoF"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|winter walker|ranger|xphb|winter walker|frhof|3|frhof",
+			"scf|fortifying soul|ranger|xphb|winter walker|frhof|7|frhof",
+			"scf|chilling retribution|ranger|xphb|winter walker|frhof|11|frhof",
+			"scf|frozen haunt|ranger|xphb|winter walker|frhof|15|frhof"
 		]
 	},
 	{
@@ -10565,6 +10788,48 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "Scion of the Three",
+		"shortName": "Scion of the Three",
+		"source": "FRHoF",
+		"className": "Rogue",
+		"classSource": "XPHB",
+		"page": 23,
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"innate": {
+					"3": [
+						{
+							"choose": {
+								"from": [
+									"minor illusion|xphb#c",
+									"blade ward|xphb#c",
+									"chill touch|xphb#c"
+								],
+								"count": 1
+							}
+						}
+					]
+				},
+				"ability": "int"
+			}
+		],
+		"subclassFeatures": [
+			"Scion of the Three|Rogue|XPHB|Scion of the Three|FRHoF|3|FRHoF",
+			"Strike Fear|Rogue|XPHB|Scion of the Three|FRHoF|9|FRHoF",
+			"Aura of Malevolence|Rogue|XPHB|Scion of the Three|FRHoF|13|FRHoF",
+			"Dread Incarnate|Rogue|XPHB|Scion of the Three|FRHoF|17|FRHoF"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|scion of the three|rogue|xphb|scion of the three|frhof|3|frhof",
+			"scf|strike fear|rogue|xphb|scion of the three|frhof|9|frhof",
+			"scf|aura of malevolence|rogue|xphb|scion of the three|frhof|13|frhof",
+			"scf|dread incarnate|rogue|xphb|scion of the three|frhof|17|frhof"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "Phantom",
 		"shortName": "Phantom",
 		"source": "RHW",
@@ -11112,6 +11377,56 @@
 			"scf|bend luck|sorcerer|xphb|wild magic|xphb|6|xphb",
 			"scf|controlled chaos|sorcerer|xphb|wild magic|xphb|14|xphb",
 			"scf|tamed surge|sorcerer|xphb|wild magic|xphb|18|xphb"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Spellfire Sorcery",
+		"shortName": "Spellfire",
+		"source": "FRHoF",
+		"className": "Sorcerer",
+		"classSource": "XPHB",
+		"page": 24,
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"cure wounds|xphb",
+						"guiding bolt|xphb",
+						"lesser restoration|xphb",
+						"scorching ray|xphb"
+					],
+					"5": [
+						"aura of vitality|xphb",
+						"dispel magic|xphb"
+					],
+					"6": [
+						"counterspell|xphb"
+					],
+					"7": [
+						"fire shield|xphb",
+						"wall of fire|xphb"
+					],
+					"9": [
+						"greater restoration|xphb",
+						"flame strike|xphb"
+					]
+				}
+			}
+		],
+		"subclassFeatures": [
+			"Spellfire Sorcery|Sorcerer|XPHB|Spellfire|FRHoF|3|FRHoF",
+			"Absorb Spells|Sorcerer|XPHB|Spellfire|FRHoF|6|FRHoF",
+			"Honed Spellfire|Sorcerer|XPHB|Spellfire|FRHoF|14|FRHoF",
+			"Crown of Spellfire|Sorcerer|XPHB|Spellfire|FRHoF|18|FRHoF"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|spellfire sorcery|sorcerer|xphb|spellfire|frhof|3|frhof",
+			"scf|absorb spells|sorcerer|xphb|spellfire|frhof|6|frhof",
+			"scf|honed spellfire|sorcerer|xphb|spellfire|frhof|14|frhof",
+			"scf|crown of spellfire|sorcerer|xphb|spellfire|frhof|18|frhof"
 		]
 	},
 	{
@@ -11732,46 +12047,6 @@
 	},
 	{
 		"entryType": "subclass",
-		"name": "Bladesinging",
-		"shortName": "Bladesinging",
-		"source": "TCE",
-		"className": "Wizard",
-		"classSource": "XPHB",
-		"page": 76,
-		"otherSources": [
-			{
-				"source": "SCAG",
-				"page": 141
-			}
-		],
-		"reprintedAs": [
-			"Bladesinger|Wizard|XPHB|FRHoF"
-		],
-		"edition": "classic",
-		"subclassFeatures": [
-			"Bladesinging|Wizard|XPHB|Bladesinging|TCE|3",
-			"Extra Attack|Wizard||Bladesinging|TCE|6",
-			"Song of Defense|Wizard||Bladesinging|TCE|10",
-			"Song of Victory|Wizard||Bladesinging|TCE|14"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Bladesinging",
-				"source": "TCE",
-				"shortName": "Bladesinging",
-				"className": "Wizard",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|bladesinging|wizard|xphb|bladesinging|tce|3|tce",
-			"scf|extra attack|wizard|phb|bladesinging|tce|6|tce",
-			"scf|song of defense|wizard|phb|bladesinging|tce|10|tce",
-			"scf|song of victory|wizard|phb|bladesinging|tce|14|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
 		"name": "Order of Scribes",
 		"shortName": "Scribes",
 		"source": "TCE",
@@ -12107,6 +12382,29 @@
 			"scf|phantasmal creatures|wizard|xphb|illusionist|xphb|6|xphb",
 			"scf|illusory self|wizard|xphb|illusionist|xphb|10|xphb",
 			"scf|illusory reality|wizard|xphb|illusionist|xphb|14|xphb"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Bladesinger",
+		"shortName": "Bladesinger",
+		"source": "FRHoF",
+		"className": "Wizard",
+		"classSource": "XPHB",
+		"page": 26,
+		"edition": "one",
+		"subclassFeatures": [
+			"Bladesinger|Wizard|XPHB|Bladesinger|FRHoF|3|FRHoF",
+			"Extra Attack|Wizard|XPHB|Bladesinger|FRHoF|6|FRHoF",
+			"Song of Defense|Wizard|XPHB|Bladesinger|FRHoF|10|FRHoF",
+			"Song of Victory|Wizard|XPHB|Bladesinger|FRHoF|14|FRHoF"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|bladesinger|wizard|xphb|bladesinger|frhof|3|frhof",
+			"scf|extra attack|wizard|xphb|bladesinger|frhof|6|frhof",
+			"scf|song of defense|wizard|xphb|bladesinger|frhof|10|frhof",
+			"scf|song of victory|wizard|xphb|bladesinger|frhof|14|frhof"
 		]
 	}
 ]

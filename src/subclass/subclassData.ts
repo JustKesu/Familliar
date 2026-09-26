@@ -42,7 +42,7 @@
 import { loadDataFile } from '../dataLoader/dataLoader'
 
 const ALLOWED_CLASS_SOURCES = ['XPHB', 'EFA']
-const ALLOWED_SOURCES = ['XPHB', 'XGE', 'TCE', 'EFA', 'XDMG', 'MPMM', 'RHW']
+const ALLOWED_SOURCES = ['XPHB', 'XGE', 'TCE', 'EFA', 'XDMG', 'MPMM', 'RHW', 'FRHoF']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)

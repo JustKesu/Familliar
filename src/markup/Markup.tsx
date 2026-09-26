@@ -159,7 +159,11 @@ function TypedEntry({ node }: { node: Record<string, unknown> }): ReactNode {
 		case 'section': {
 			return (
 				<section className="mk-entries">
-					{name && <h4 className="mk-entries__name">{name}</h4>}
+					{name && (
+						<h4 className="mk-entries__name">
+							<Markup text={name} />
+						</h4>
+					)}
 					<Entries entries={entryBody(node)} />
 				</section>
 			)
@@ -297,7 +301,11 @@ function TypedEntry({ node }: { node: Record<string, unknown> }): ReactNode {
 			if (body.length === 0) return null
 			return (
 				<section className="mk-entries">
-					{name && <h4 className="mk-entries__name">{name}</h4>}
+					{name && (
+						<h4 className="mk-entries__name">
+							<Markup text={name} />
+						</h4>
+					)}
 					<Entries entries={body} />
 				</section>
 			)

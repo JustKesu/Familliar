@@ -3712,3 +3712,28 @@ Schéma beze změny (48) — nové pole je nepovinné.
   nevybrané.
 - Mechanismus bloků je připravený pro Boon of Siberys (přidat klíč do
   `NAMED_BLOCK_FEAT_KEYS` a odskrýt), ale to se v D200 nedělá.
+
+## D201 — Kniha FRHoF v omezeném rozsahu
+
+Zdroj: task D201, 26. 9. 2026. Mění D194 („FRHoF celá“) a dřívější „jazyky
+FRHoF ano“: uživatel nehraje ve Forgotten Realms. Schéma beze změny (48).
+
+- **FRHoF ve všech třech kopiích ALLOWED_SOURCES** (extract-data.js,
+  validate-data.js, subclassData.ts).
+- **Bere se:** 8 podtříd (56 featur), 19 kouzel, 27 předmětů (24 item + 3
+  baseitem; frakční Trinkets a Thayan Spell Tattoo zůstávají), featy kategorií
+  EB (13) a G (5 z 13).
+- **Nebere se:** backgroundy (`EXCLUDED_BACKGROUND_SOURCES`), jazyky
+  (`EXCLUDED_LANGUAGE_SOURCES`), všech 8 featů kategorie O a G featy, jejichž
+  prerekvizitou je vyřazený O feat (`EXCLUDED_FEAT_KEYS`): Dragonscarred, Enclave
+  Magic, Harper Teamwork, Lordly Resolve, Order's Resilience, Purple Dragon
+  Commandant, Zhentarim Tactics a Spellfire Adept (jediný nefrakční — vyžaduje
+  Spellfire Spark). D19 by je jinak ukazovalo trvale zablokované.
+- **Cold Caster** je ve feats.json, ale v HIDDEN_FEAT_KEYS: dva nepojmenované
+  alternativní bloky `additionalSpells`, jeden s filtrem „jiný cantrip Wizarda“;
+  žádný existující picker to nepokrývá. Nový picker je další task.
+- **Bladesinging|TCE** už není v classes.json (odstraněn jako reprint stejně
+  jako Blade of Disaster|TCE); aplikace nabízí Bladesinger|FRHoF.
+- Deities a bastiony extrakce nečte; jazyky, backgroundy a O featy mají v
+  validate-data hlídaný počet 0 / žádná kategorie O.
+- Prózní udělení proficiencí nových podtříd (D176) je další task.

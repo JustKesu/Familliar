@@ -127,6 +127,48 @@ backgrounds 0, species 0.
   condition, creature, damage, dc, dice, item, sense, skill, spell — all
   handled by the renderer.
 
+### FRHoF records after extraction (D201)
+
+Scope list: TAKE subclasses, spells, items, feats of category EB and G (minus
+exclusions); DROP backgrounds (18), languages (17), feats of category O (8),
+deities and bastions (extract-data.js reads neither). Correction to the survey
+table above: FRHoF has 13 EB, 13 G, 8 O feats (not 11 G / 10 O).
+
+Confirmed in data/: subclasses 8, subclass-features 56, spells 19, items 27,
+feats 18, backgrounds 0, languages 0.
+
+- **Feats:** the 8 G feats excluded are the ones whose prerequisite is a
+  faction O feat (Dragonscarred, Enclave Magic, Harper Teamwork, Lordly Resolve,
+  Order's Resilience → Tyro of the Gauntlet, Purple Dragon Commandant, Zhentarim
+  Tactics) plus Spellfire Adept → Spellfire Spark. Kept G: Cold Caster (hidden),
+  Fairy Trickster, Genie Magic, Mythal Touched, Street Justice. Cold Caster's
+  `additionalSpells` is two unnamed alternative blocks (`ray of frost|xphb#c`,
+  and `{choose:"level=0|class=Wizard"}`), both with `ability.choose`. Boon of
+  Revelry's `prepared._` (Otto's Irresistible Dance) has no `ability` field, so
+  `extractFixedFeatSpells` skips it — text only. Boon of Terror carries
+  `skillProficiencies` + `expertise` (prose scan, separate task).
+- **Reprints:** Bladesinging|TCE → Bladesinger|Wizard|XPHB|FRHoF and Blade of
+  Disaster|TCE → FRHoF are both removed by removeSuperseded (classes TCE 17→16,
+  spells TCE 12→11, subclass-features 685→734 = +56 −7).
+- **Subclass spells:** Moon `innate` cantrip choice + `prepared 6 daily 1e`
+  Moonbeam ("always prepared" → slot-castable); Banneret `innate ritual`
+  Comprehend Languages (ritual only → not slot-castable); Knowledge, Noble
+  Genies, Winter Walker, Spellfire `prepared` tables; Scion of the Three
+  `innate` cantrip choice with `ability: int`.
+- **Spells** all via gendata (Bard/Cleric/Druid/Paladin/Ranger/Sorcerer/
+  Warlock/Wizard lists), e.g. Wardaway L1 — Bard, Cleric, Paladin, Wizard.
+- **Items:** Bandore, Cittern, Yarting (baseitem); the eight faction Trinkets,
+  Adventurer's Ring, Devil Mask, Genie Robe, Locking Spellbook, Prosthetic
+  Limb, Thayan Spell Tattoo, camouflage/clothing gear, Covered Wagon and animals
+  (Axe Beak, Flying Snake, Sled Dog).
+- **Markup trap:** entry names may hold tags ("Terrify (Cost: {@dice 1d6})",
+  a Rogue Cunning Strike option); the renderer printed them raw
+  until D201.
+- Single-use pools: 12 new (Blessing of Moonlight, Boon of Exquisite Radiance,
+  Boon of Fluid Forms, Boon of Terror, Boon of the Soul Drinker, Crown of
+  Spellfire, Frozen Haunt, Genie Magic, Group Recovery and others); Boon of
+  Terror, Boon of the Soul Drinker and Group Recovery recharge on a Short Rest.
+
 ### RHW records — shapes the app meets (D194)
 
 - **Background `feats` alternatives.** Haunted One `[{"survivor|rhw"},

@@ -58,6 +58,8 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	'Psi Warrior': true,
 	// "You always have the Spirit Guardians spell prepared." (Empowered Channeling, RHW)
 	'College of Spirits': true,
+	// "You always have the Moonbeam spell prepared." (Blessing of Moonlight, FRHoF)
+	'College of the Moon': true,
 	// "You always have the Disguise Self and Hex spells prepared. … You can also cast the spell using any spell slots you have of the appropriate level." (RHW)
 	Hexblood: true,
 
@@ -101,6 +103,8 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	'Whispers of the Grave': false,
 	// "… but only as a Ritual."
 	'Path of the Wild Heart': false,
+	// "You can cast the Comprehend Languages spell but only as a Ritual." (FRHoF)
+	Banneret: false,
 	// "without expending a spell slot" (Find Familiar as a Magic action)
 	'Pact of the Chain': false,
 	// "spend 2 ki points to cast …" / Focus Points

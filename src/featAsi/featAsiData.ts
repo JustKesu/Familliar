@@ -185,6 +185,8 @@ function isRawFeatEntry(value: unknown): value is FeatEntry {
  *    distinct picker shape not built in this slice (see docs/REPORT.md).
  *  - Strixhaven Mascot (SCC) — extracted, familiar form deferred (D199/D200).
  *    Strixhaven Initiate is unhidden by D200.
+ *  - Cold Caster (FRHoF) — two unnamed alternative additionalSpells blocks, one
+ *    with a Wizard-cantrip filter; no picker covers that shape (D201).
  */
 const HIDDEN_FEAT_KEYS = new Set([
 	'Magic Initiate; Cleric|XPHB',
@@ -192,6 +194,7 @@ const HIDDEN_FEAT_KEYS = new Set([
 	'Magic Initiate; Wizard|XPHB',
 	'Boon of Siberys|EFA',
 	'Strixhaven Mascot|SCC',
+	'Cold Caster|FRHoF',
 ])
 
 /** Every feats.json entry except "Ability Score Improvement" (offered as its own ASI-vs-feat step, not a list entry) and HIDDEN_FEAT_KEYS. */

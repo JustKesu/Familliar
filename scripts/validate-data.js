@@ -38,7 +38,7 @@ const { execFileSync } = require("child_process");
 const OUTPUT_DIR = path.join(__dirname, "..", "data");
 
 // Must match ALLOWED_SOURCES in extract-data.js.
-const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM", "RHW", "SCC"];
+const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM", "RHW", "SCC", "FRHoF"];
 
 // D199/D200: Mascot must stay in HIDDEN_FEAT_KEYS (src/featAsi/featAsiData.ts, exact name); Initiate is offered and named in NAMED_BLOCK_FEAT_KEYS.
 const SCC_HIDDEN_FEATS = ["Strixhaven Initiate", "Strixhaven Mascot"];
@@ -82,6 +82,7 @@ const EXPECTED_COUNTS = {
 		EFA: 28, // not in the original spec, but this is what the data contains
 		RHW: 11, // 9 Dark Gifts (category DG) + 2 others
 		SCC: 2, // Strixhaven Initiate + Strixhaven Mascot, hidden from the picker (D199)
+		FRHoF: 18, // 13 EB + 5 G (Cold Caster hidden); 8 O feats and 8 O-prerequisite G feats excluded (D201)
 	},
 	// Taken from the first successful extraction run. XDMG and MPMM ship no
 	// spell files at all, so they are absent rather than zero.
@@ -90,9 +91,10 @@ const EXPECTED_COUNTS = {
 	spells: {
 		XPHB: 391,
 		XGE: 85,
-		TCE: 12,
+		TCE: 11, // 12 -> 11: Blade of Disaster reprinted in FRHoF (D201)
 		EFA: 1,
 		SCC: 5, // Borrowed Knowledge, Kinetic Jaunt, Silvery Barbs, Vortex Warp, Wither and Bloom (D199)
+		FRHoF: 19, // Blade of Disaster|TCE drops as reprinted (D201)
 	},
 	/*
 	 * Species counts include entries created by expansion:
@@ -116,6 +118,7 @@ const EXPECTED_COUNTS = {
 		EFA: 17,
 		RHW: 4,
 		SCC: 0, // EXCLUDED_BACKGROUND_SOURCES in extract-data.js (D199)
+		FRHoF: 0, // same (D201)
 	},
 	// classes.json holds classes AND subclasses, so these are the combined
 	// per-book totals: 13 classes + 102 subclasses = 115 entries.
@@ -124,9 +127,10 @@ const EXPECTED_COUNTS = {
 	classes: {
 		XPHB: 60, // 12 classes + 48 subclasses
 		XGE: 25,
-		TCE: 17,
+		TCE: 16,
 		EFA: 6, // 1 class (Artificer) + 5 subclasses
 		RHW: 7,
+		FRHoF: 8, // subclasses only; Bladesinging|TCE (17 -> 16) drops as reprinted (D201)
 	},
 	// TCE dropped from 47 to 38: nine TCE optional features were superseded
 	// by their XPHB reprint (removeSuperseded).
@@ -149,11 +153,13 @@ const EXPECTED_COUNTS = {
 		EFA: 6,
 		RHW: 2,
 		SCC: 18,
+		FRHoF: 27, // 24 items + 3 baseitems (instruments); faction trinkets kept (D201)
 		PHB: 1,
 	},
 	// Languages ship in a single book today, so this is just the total.
 	languages: {
 		XPHB: 19,
+		FRHoF: 0, // EXCLUDED_LANGUAGE_SOURCES in extract-data.js (D201)
 	},
 	// The {#itemEntry} description templates from items-base.json, filtered to
 	// ALLOWED_SOURCES (DMG 2014 and WBtW dropped). 7 XDMG + 1 TCE.
@@ -319,7 +325,7 @@ const VALID_LANGUAGE_TYPES = ["standard", "rare"];
 // 786 -> 685 (D194): +44 RHW, -145 of the 19 superseded subclasses.
 const EXPECTED_FEATURE_TOTALS = {
 	"class-features": 302,
-	"subclass-features": 685,
+	"subclass-features": 734, // D201: +56 FRHoF, -7 Bladesinging|TCE
 };
 
 // Fields every class / subclass must carry for character building to work.
@@ -647,6 +653,13 @@ function validateFeats() {
 		"feats: SCC feats are exactly Strixhaven Initiate and Mascot (D199, D200)",
 		JSON.stringify(sccFeatNames) === JSON.stringify(SCC_HIDDEN_FEATS),
 		`actual ${sccFeatNames.join(", ")}, expected ${SCC_HIDDEN_FEATS.join(", ")}`,
+	);
+
+	const frhofCategories = new Set(entries.filter((entry) => entry.source === "FRHoF").map((entry) => entry.category));
+	recordSimpleCheck(
+		"feats: FRHoF feats are only Epic Boons and General (no category O — D201)",
+		[...frhofCategories].every((category) => category === "EB" || category === "G"),
+		`actual categories ${[...frhofCategories].join(", ")}`,
 	);
 
 	// The expected per-book counts.

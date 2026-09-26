@@ -1083,6 +1083,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Barbs; seeded Bard sheet resolves it with CAST and text; Lorehold Primer added
   from Inventory with "Requires attunement by a spellcaster"; no Owlin species,
   no SCC background, no Strixhaven feat at level 4).
+- `e2e/frhof.spec.ts` — D201 a–d (Wizard 3 offers Bladesinger not Bladesinging;
+  Wizard spell step picks Wardaway; level 19 Fighter sees an FRHoF Epic Boon and
+  no FRHoF O / faction / Cold Caster feat in any feat group; no FRHoF background
+  or language).
 
 ## Dočasné scaffolding
 
@@ -1605,6 +1609,16 @@ ability, then the level-1 spell; stored as `blockName` + `chosenAbility` +
 with slots. Unmade choices are pending (D57). Strixhaven Mascot and Boon of
 Siberys stay hidden. E2E `strixhavenInitiate.spec.ts` a, b, d; `scc.spec.ts` d
 doubles as c. No schema change (still 48).
+
+D201: FRHoF (Heroes of Faerûn, 2024) joins ALLOWED_SOURCES in reduced scope: 8
+subclasses (56 features), 19 spells, 27 items, 18 feats (13 Epic Boons + 5
+General; Cold Caster hidden). Backgrounds, languages, all category-O feats and
+the General feats that need one are excluded at extraction. Bladesinging|TCE and
+Blade of Disaster|TCE drop as reprinted. Markup now renders `{@…}` in entry
+names (Terrify's "{@dice 1d6}" leaked); alsoCastableWithSlot rules on College of
+the Moon (yes) and Banneret (no); resources.test expects +12 single-use pools.
+validate-data asserts 8/19/0/0/18/27. E2E `frhof.spec.ts` a–d. No schema change
+(still 48).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

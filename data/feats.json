@@ -409,6 +409,92 @@
 		]
 	},
 	{
+		"name": "Boon of Bloodshed",
+		"source": "FRHoF",
+		"page": 42,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"str",
+						"dex",
+						"con",
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Killer's Fortune",
+				"entries": [
+					"When an enemy you can see is reduced to 0 {@variantrule Hit Points|XPHB}, you gain {@variantrule Advantage|XPHB} on the next attack roll you make before the end of your next turn."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Power from Pain",
+				"entries": [
+					"Once per turn, when you make an attack roll while {@status Bloodied|XPHB}, you can deal extra damage to the target equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus}. The extra damage's type is the same as the attack's type."
+				]
+			}
+		]
+	},
+	{
+		"name": "Boon of Bountiful Health",
+		"source": "FRHoF",
+		"page": 42,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"str",
+						"dex",
+						"con",
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Augmented Health",
+				"entries": [
+					"When you gain {@variantrule Temporary Hit Points|XPHB}, increase the number of {@variantrule Temporary Hit Points|XPHB} you gain by 5."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Superior Recuperation",
+				"entries": [
+					"When you spend one or more {@variantrule Hit Point Dice|XPHB} to regain {@variantrule Hit Points|XPHB}, you can instead use the highest number possible for each die."
+				]
+			}
+		]
+	},
+	{
 		"name": "Boon of Combat Prowess",
 		"source": "XPHB",
 		"page": 210,
@@ -442,6 +528,85 @@
 				"name": "Peerless Aim",
 				"entries": [
 					"When you miss with an attack roll, you can hit instead. Once you use this benefit, you can't use it again until the start of your next turn."
+				]
+			}
+		]
+	},
+	{
+		"name": "Boon of Communication",
+		"source": "FRHoF",
+		"page": 42,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Cunning Speaker",
+				"entries": [
+					"You don't have {@variantrule Disadvantage|XPHB} on ability checks to influence {@variantrule Hostile [Attitude]|XPHB|Hostile} creatures."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Gifted Interpreter",
+				"entries": [
+					"You understand the literal meaning of any language you hear or see signed, and you can understand the literal meaning of any written language you see."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Mental Communication",
+				"entries": [
+					"You gain telepathy with a range of 120 feet."
+				]
+			}
+		]
+	},
+	{
+		"name": "Boon of Desperate Resilience",
+		"source": "FRHoF",
+		"page": 42,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"str",
+						"con"
+					]
+				},
+				"max": 30
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Defense of Body and Mind",
+				"entries": [
+					"While you are {@status Bloodied|XPHB}, you have {@variantrule Resistance|XPHB} to every damage type except Force."
 				]
 			}
 		]
@@ -546,6 +711,49 @@
 		]
 	},
 	{
+		"name": "Boon of Exquisite Radiance",
+		"source": "FRHoF",
+		"page": 42,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"str",
+						"dex",
+						"con",
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Eternal Rest",
+				"entries": [
+					"Creatures you reduce to 0 {@variantrule Hit Points|XPHB} can't become Undead."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Powerful Radiance",
+				"entries": [
+					"When you make a damage roll that deals Radiant damage, you can instead use the highest number possible for each damage die. Once you use this benefit, you can't do so again until you finish a {@variantrule Long Rest|XPHB}."
+				]
+			}
+		]
+	},
+	{
 		"name": "Boon of Fate",
 		"source": "XPHB",
 		"page": 210,
@@ -585,6 +793,48 @@
 		"hasFluffImages": true
 	},
 	{
+		"name": "Boon of Fluid Forms",
+		"source": "FRHoF",
+		"page": 42,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Shapechanger",
+				"entries": [
+					"You can take a {@action Magic|XPHB} action to shape-shift into a Beast, Humanoid, or Monstrosity with a {@variantrule Challenge Rating|XPHB} no higher than 10. When you shape-shift, you gain a number of {@variantrule Temporary Hit Points|XPHB} equal to the {@variantrule Hit Points|XPHB} of the form. The shape-shifting effect lasts for 1 hour, and it ends early if you have no {@variantrule Temporary Hit Points|XPHB} left or if you take a {@action Magic|XPHB} action to return to your true form.",
+					"Your game statistics are replaced by the stat block of the chosen form, but you retain your creature type; alignment; personality; Intelligence, Wisdom, and Charisma scores; {@variantrule Hit Points|XPHB}; {@variantrule Hit Point Dice|XPHB}; proficiencies; and ability to communicate. If you have the Spellcasting or Pact Magic feature, you retain it too. Upon shape-shifting, you determine whether your equipment drops to the ground or changes in size and shape to fit the new form while you're in it.",
+					"Once you use this benefit, you can't do so again until you finish a {@variantrule Long Rest|XPHB}."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Hardy Transformation",
+				"entries": [
+					"When you gain {@variantrule Temporary Hit Points|XPHB} when you shape-shift, increase that number of {@variantrule Temporary Hit Points|XPHB} by 20."
+				]
+			}
+		]
+	},
+	{
 		"name": "Boon of Fortitude",
 		"source": "XPHB",
 		"page": 210,
@@ -616,6 +866,42 @@
 				"name": "Fortified Health",
 				"entries": [
 					"Your {@variantrule Hit Points|XPHB|Hit Point} maximum increases by 40. In addition, whenever you regain {@variantrule Hit Points|XPHB}, you can regain additional {@variantrule Hit Points|XPHB} equal to your Constitution modifier. Once you've regained these additional {@variantrule Hit Points|XPHB}, you can't do so again until the start of your next turn."
+				]
+			}
+		]
+	},
+	{
+		"name": "Boon of Fortune's Favor",
+		"source": "FRHoF",
+		"page": 43,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"str",
+						"dex",
+						"con",
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Saving Throw Reroll",
+				"entries": [
+					"When you fail a saving throw, you can reroll it and must use the new roll. Once you use this benefit, you can't do so again until the start of your next turn."
 				]
 			}
 		]
@@ -662,6 +948,55 @@
 		]
 	},
 	{
+		"name": "Boon of Poison Mastery",
+		"source": "FRHoF",
+		"page": 43,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"str",
+						"dex",
+						"con",
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"immune": [
+			"poison"
+		],
+		"conditionImmune": [
+			"poisoned"
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Antitoxic",
+				"entries": [
+					"You have {@variantrule Immunity|XPHB} to Poison damage and the {@condition Poisoned|XPHB} condition."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Perfect Poisoner",
+				"entries": [
+					"Once per turn, when you roll dice to determine Poison damage a creature takes from your attack, spell, or feature, you can instead use the highest number possible for each die."
+				]
+			}
+		]
+	},
+	{
 		"name": "Boon of Recovery",
 		"source": "XPHB",
 		"page": 211,
@@ -700,6 +1035,56 @@
 				"name": "Recover Vitality",
 				"entries": [
 					"You have a pool of ten d10s. As a {@variantrule Bonus Action|XPHB}, you can expend dice from the pool, roll those dice, and regain a number of {@variantrule Hit Points|XPHB} equal to the roll's total. You regain all the expended dice when you finish a {@variantrule Long Rest|XPHB}."
+				]
+			}
+		]
+	},
+	{
+		"name": "Boon of Revelry",
+		"source": "FRHoF",
+		"page": 43,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"additionalSpells": [
+			{
+				"prepared": {
+					"_": [
+						"otto's irresistible dance|xphb"
+					]
+				}
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Inspire Dance",
+				"entries": [
+					"You always have the {@spell Otto's Irresistible Dance|XPHB} spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it that way when you finish a {@variantrule Long Rest|XPHB}. You can also cast the spell using any spell slots you have of the appropriate level.",
+					"When you cast the spell, it requires no spell components, and taking damage doesn't break your {@status Concentration|XPHB} on it."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Sing Out",
+				"entries": [
+					"While a creature that failed its saving throw against your {@spell Otto's Irresistible Dance|XPHB} has the {@condition Charmed|XPHB} condition from that spell, it can't cast spells with Verbal components, and it sings delightful nonsense if it can sing."
 				]
 			}
 		]
@@ -1211,6 +1596,145 @@
 		]
 	},
 	{
+		"name": "Boon of Terror",
+		"source": "FRHoF",
+		"page": 43,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"cha": 1,
+				"max": 30
+			}
+		],
+		"skillProficiencies": [
+			{
+				"intimidation": true
+			}
+		],
+		"expertise": [
+			{
+				"intimidation": true
+			}
+		],
+		"conditionImmune": [
+			"frightened"
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Fearless",
+				"entries": [
+					"You have {@variantrule Immunity|XPHB} to the {@condition Frightened|XPHB} condition."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Flee, Fools!",
+				"entries": [
+					"When a creature with the {@condition Frightened|XPHB} condition starts its turn within 60 feet of you, you can take a {@variantrule Reaction|XPHB} to stoke its terror, provided you can see the creature and it isn't behind {@variantrule Cover|XPHB|Total Cover}. If you do so, the creature must succeed on a Wisdom saving throw (DC 8 plus your Charisma modifier and your {@variantrule Proficiency|XPHB|Proficiency Bonus}) or spend its turn moving away from you by the fastest available means. Once you use this benefit, you can't use it again until you finish a {@variantrule Short Rest|XPHB|Short} or {@variantrule Long Rest|XPHB}."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Intimidating",
+				"entries": [
+					"You gain {@variantrule Proficiency|XPHB} in the {@skill Intimidation|XPHB} skill if you don't already have it. You also gain {@variantrule Expertise|XPHB} in {@skill Intimidation|XPHB}."
+				]
+			}
+		]
+	},
+	{
+		"name": "Boon of the Bright Sun",
+		"source": "FRHoF",
+		"page": 43,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"con",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Daylight Presence",
+				"entries": [
+					"As a {@variantrule Bonus Action|XPHB}, you radiate a 30-foot {@variantrule Emanation [Area of Effect]|XPHB|Emanation} of {@variantrule Bright Light|XPHB} that is sunlight. If any of the {@variantrule Emanation [Area of Effect]|XPHB|Emanation}'s area overlaps with an area of {@spell Darkness|XPHB} created by a spell, that spell is dispelled. The {@variantrule Emanation [Area of Effect]|XPHB|Emanation} lasts until you dismiss it (no action required), die, or have the {@condition Incapacitated|XPHB} condition."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Fortifying Light",
+				"entries": [
+					"When your Daylight Presence is active, at the start of each of your turns, you and allies you can see in your Daylight Presence gain 10 {@variantrule Temporary Hit Points|XPHB}."
+				]
+			}
+		]
+	},
+	{
+		"name": "Boon of the Furious Storm",
+		"source": "FRHoF",
+		"page": 43,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19,
+				"spellcasting2020": true
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"resist": [
+			"lightning",
+			"thunder"
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Eye of the Storm",
+				"entries": [
+					"You have {@variantrule Resistance|XPHB} to Lightning and Thunder damage. While you are {@status Bloodied|XPHB}, you have {@variantrule Immunity|XPHB} to Lightning and Thunder damage."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Storm's Strength",
+				"entries": [
+					"Creatures have {@variantrule Disadvantage|XPHB} on saving throws against your spells that deal Lightning or Thunder damage."
+				]
+			}
+		]
+	},
+	{
 		"name": "Boon of the Night Spirit",
 		"source": "XPHB",
 		"page": 211,
@@ -1251,6 +1775,53 @@
 				"name": "Shadowy Form",
 				"entries": [
 					"While within {@variantrule Dim Light|XPHB} or {@variantrule Darkness|XPHB}, you have {@variantrule Resistance|XPHB} to all damage except Psychic and Radiant."
+				]
+			}
+		]
+	},
+	{
+		"name": "Boon of the Soul Drinker",
+		"source": "FRHoF",
+		"page": 43,
+		"category": "EB",
+		"prerequisite": [
+			{
+				"level": 19
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"str",
+						"dex",
+						"con",
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"max": 30
+			}
+		],
+		"resist": [
+			"cold",
+			"necrotic"
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Grave Resistance",
+				"entries": [
+					"You have {@variantrule Resistance|XPHB} to Cold damage and Necrotic damage."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Siphon Life",
+				"entries": [
+					"When an enemy within 120 feet of you is reduced to 0 {@variantrule Hit Points|XPHB}, you can take a {@variantrule Reaction|XPHB} to regain 50 {@variantrule Hit Points|XPHB}. Once you use this benefit, you can't use it again until you finish a {@variantrule Short Rest|XPHB|Short} or {@variantrule Long Rest|XPHB}."
 				]
 			}
 		]
@@ -1415,6 +1986,77 @@
 				"name": "Bolstering Treats",
 				"entries": [
 					"With 1 hour of work or when you finish a {@variantrule Long Rest|XPHB}, you can cook a number of treats equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus} if you have ingredients and {@item Cook's Utensils|XPHB} on hand. These special treats last 8 hours after being made. A creature can use a {@variantrule Bonus Action|XPHB} to eat one of those treats to gain a number of {@variantrule Temporary Hit Points|XPHB} equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus}."
+				]
+			}
+		]
+	},
+	{
+		"name": "Cold Caster",
+		"source": "FRHoF",
+		"page": 39,
+		"category": "G",
+		"prerequisite": [
+			{
+				"level": 4
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"int",
+						"wis",
+						"cha"
+					]
+				}
+			}
+		],
+		"additionalSpells": [
+			{
+				"ability": {
+					"choose": [
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"known": {
+					"_": [
+						"ray of frost|xphb#c"
+					]
+				}
+			},
+			{
+				"ability": {
+					"choose": [
+						"int",
+						"wis",
+						"cha"
+					]
+				},
+				"known": {
+					"_": [
+						{
+							"choose": "level=0|class=Wizard"
+						}
+					]
+				}
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Cantrip",
+				"entries": [
+					"You learn the {@spell Ray of Frost|XPHB} cantrip. If you already know it, you learn a different Wizard cantrip of your choice. The spell's spellcasting ability is the ability increased by this feat."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Frostbite",
+				"entries": [
+					"Once per turn when you hit a creature with an attack roll and deal Cold damage, you can temporarily negate the creature's defenses. The creature subtracts {@dice 1d4} from the next saving throw it makes before the end of your next turn."
 				]
 			}
 		]
@@ -2110,6 +2752,45 @@
 		"category": "G"
 	},
 	{
+		"name": "Fairy Trickster",
+		"source": "FRHoF",
+		"page": 39,
+		"category": "G",
+		"prerequisite": [
+			{
+				"level": 4
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"dex",
+						"cha"
+					]
+				}
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Faerie Trod Trotter",
+				"entries": [
+					"When you take the {@action Disengage|XPHB} action on your turn, {@variantrule Difficult Terrain|XPHB} doesn't cost you extra movement for the rest of that turn."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Flustering Strike",
+				"entries": [
+					"When you hit a creature with an attack roll, you can attempt to fluster the target. The target must succeed on a Wisdom saving throw (DC 8 plus the ability modifier of the score increased by this feat and your {@variantrule Proficiency|XPHB|Proficiency Bonus}) or have {@variantrule Disadvantage|XPHB} on saving throws until the end of your next turn.",
+					"You can use this benefit a number of times equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus}, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}."
+				]
+			}
+		]
+	},
+	{
 		"name": "Fey Teleportation",
 		"source": "XGE",
 		"page": 74,
@@ -2339,6 +3020,40 @@
 				"name": "Voices from Beyond",
 				"entries": [
 					"Immediately after you make a {@variantrule D20 Test|XPHB} and roll a 1 on the {@dice d20}, the haunting voices rise to a ghastly volume. Make a Wisdom saving throw (DC 13 plus your {@variantrule Proficiency|XPHB|Proficiency Bonus}). On a failed save, you have the {@condition Deafened|XPHB} condition until the end of your next turn. While {@condition Deafened|XPHB}, you have {@variantrule Disadvantage|XPHB} on ability checks and attack rolls."
+				]
+			}
+		]
+	},
+	{
+		"name": "Genie Magic",
+		"source": "FRHoF",
+		"page": 39,
+		"category": "G",
+		"prerequisite": [
+			{
+				"level": 4
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"int",
+						"wis",
+						"cha"
+					]
+				}
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Wish Magic",
+				"entries": [
+					"As a {@action Magic|XPHB} action, you can cast a {@filter level 1 spell of your choice from the Sorcerer spell list|spells|level=1|class=Sorcerer} that has a casting time of an action. Once you use this benefit, you can't do so again until you finish a {@variantrule Long Rest|XPHB}. The spell's spellcasting ability is the ability increased by this feat.",
+					"When you reach level 11, the spell you cast with this feat is cast as though using a level 2 spell slot.",
+					"When you reach level 17, the spell is cast as though using a level 3 spell slot."
 				]
 			}
 		]
@@ -5597,6 +6312,80 @@
 		]
 	},
 	{
+		"name": "Mythal Touched",
+		"source": "FRHoF",
+		"page": 40,
+		"category": "G",
+		"prerequisite": [
+			{
+				"level": 4
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"int",
+						"wis",
+						"cha"
+					]
+				}
+			}
+		],
+		"entries": [
+			{
+				"type": "entries",
+				"name": "Mythal Ward",
+				"entries": [
+					"If a spell attack hits you or you fail a saving throw against a spell, you can take a {@variantrule Reaction|XPHB} to roll on the Mythal-Touched {@action Magic|XPHB} table to create a magical effect. If an effect requires a saving throw, the DC equals 8 plus the modifier of the ability increased by this feat and your {@variantrule Proficiency|XPHB|Proficiency Bonus}.",
+					"You can use this benefit a number of times equal to your {@variantrule Proficiency|XPHB|Proficiency Bonus}, and you regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.",
+					{
+						"type": "table",
+						"caption": "Mythal-Touched Magic",
+						"colStyles": [
+							"col-2 text-center",
+							"col-10"
+						],
+						"colLabels": [
+							"1d20",
+							"Effect"
+						],
+						"rows": [
+							[
+								"1-2",
+								"You and each creature within 15 feet of you make a Dexterity saving throw, taking Force damage equal to {@dice 1d8} times the level of the triggering spell on a failed save or half as much damage on a successful one."
+							],
+							[
+								"3-7",
+								"You and the triggering spell's caster form a telepathic link for 1 hour."
+							],
+							[
+								"8-10",
+								"Gravity is reversed in a 15-foot-radius, 60-foot-tall {@variantrule Cylinder [Area of Effect]|XPHB|Cylinder} centered on you for 1 minute, per the {@spell Reverse Gravity|XPHB} spell."
+							],
+							[
+								"11-13",
+								"You and the triggering spell's caster each make a Constitution saving throw. On a failed save, the creature has the {@condition Stunned|XPHB} condition until the end of its next turn."
+							],
+							[
+								"14-17",
+								"You gain a +2 bonus to AC for 1 minute, potentially turning the triggering spell into a miss if it was a spell attack."
+							],
+							[
+								"18-19",
+								"Any flammable, nonmagical object within 10 feet of the triggering spell's caster that isn't being worn or carried by another creature bursts into flame, takes {@damage 1d4} Fire damage, and is burning."
+							],
+							[
+								"20",
+								"The triggering spell dissipates with no effect, and the action, {@variantrule Bonus Action|XPHB}, or {@variantrule Reaction|XPHB} used to cast it is wasted. If that spell was cast with a spell slot, the slot isn't expended."
+							]
+						]
+					}
+				]
+			}
+		]
+	},
+	{
 		"name": "Observant",
 		"source": "XPHB",
 		"page": 205,
@@ -6771,6 +7560,51 @@
 			}
 		],
 		"category": "G"
+	},
+	{
+		"name": "Street Justice",
+		"source": "FRHoF",
+		"page": 41,
+		"category": "G",
+		"prerequisite": [
+			{
+				"level": 4
+			}
+		],
+		"ability": [
+			{
+				"choose": {
+					"from": [
+						"str",
+						"dex"
+					]
+				}
+			}
+		],
+		"entries": [
+			"You gain the following benefits.",
+			{
+				"type": "entries",
+				"name": "Headlock",
+				"entries": [
+					"Your allies have {@variantrule Advantage|XPHB} on attack rolls against a creature {@condition Grappled|XPHB} by you."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Sturdy Knot",
+				"entries": [
+					"When you use {@item Chain|XPHB}, {@item Manacles|XPHB}, or {@item Rope|XPHB} to bind a creature, add your {@variantrule Proficiency|XPHB|Proficiency Bonus} to the DC to escape or burst the {@item Chain|XPHB}, {@item Manacles|XPHB}, or {@item Rope|XPHB}."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Tough Talk",
+				"entries": [
+					"A creature's {@variantrule Hostile [Attitude]|XPHB|Hostile} attitude doesn't impose {@variantrule Disadvantage|XPHB} on your Charisma ({@skill Intimidation|XPHB}) checks to influence that creature."
+				]
+			}
+		]
 	},
 	{
 		"name": "Strixhaven Initiate",
