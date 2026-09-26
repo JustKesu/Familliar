@@ -66,10 +66,8 @@ export interface RawFeatSavingThrowProficienciesEntry {
 /** feats.json's `skillProficiencies` array entry: a fixed set (skill-name keys, Boon of Skill), a named choice, or "any N". */
 export type RawFeatSkillProficienciesEntry = { choose: { from: string[] } } | { any: number } | Record<string, boolean>
 
-/** feats.json's `expertise` array entry — all 3 feats that carry this use the same shape: choose N skill(s) you're already proficient in. */
-export interface RawFeatExpertiseEntry {
-	anyProficientSkill: number
-}
+/** feats.json's `expertise` array entry: `{anyProficientSkill: N}` (choose N skills you're proficient in), or D202's FIXED `{perception: true}` (Aberrant Anatomy, Boon of Terror). */
+export type RawFeatExpertiseEntry = Record<string, number | boolean>
 
 /** feats.json's `toolProficiencies` array entry — four spellings across the 4 feats that carry it (DATA.md). */
 export type RawFeatToolProficienciesEntry =
@@ -155,6 +153,14 @@ export interface FeatProficiencyChoiceShape {
 	fixedSkills: string[]
 }
 
+/** D202: the skill count feats.json gets wrong. Echoing Soul's data says `{any: 1}`, its text says "proficiency in two skills of your choice"; the text wins. */
+const SKILL_COUNT_FROM_TEXT: Record<string, number> = { 'Echoing Soul|RHW': 2 }
+
+/** D202: a FIXED expertise grant (`{perception: true}`) — no pick, the skill simply has expertise. */
+export function featFixedExpertiseSkills(feat: FeatEffectEntry): string[] {
+	return (feat.expertise ?? []).flatMap((entry) => Object.keys(entry).filter((key) => entry[key] === true))
+}
+
 function toolChoiceShape(entry: Record<string, unknown>): FeatProficiencyChoiceShape['tools'] {
 	const choose = entry['choose'] as { from?: unknown; count?: unknown } | undefined
 	if (choose && Array.isArray(choose.from) && typeof choose.count === 'number') return { count: choose.count, categories: ['anyArtisansTool'], only: choose.from as string[] }
@@ -168,7 +174,7 @@ function toolChoiceShape(entry: Record<string, unknown>): FeatProficiencyChoiceS
 /** Boon of Skill's FIXED skillProficiencies is not a skills choice; its `expertise` still is (see module doc). Fixed tool/language grants (Chef, Fey Teleportation) ask for nothing. */
 export function featProficiencyChoiceShape(feat: FeatEffectEntry): FeatProficiencyChoiceShape {
 	const skillEntry = feat.skillProficiencies?.[0]
-	const skills = !skillEntry ? null : isAnySkillEntry(skillEntry) ? { count: skillEntry.any, from: ALL_SKILLS } : isChooseSkillEntry(skillEntry) ? { count: 1, from: skillEntry.choose.from } : null
+	const skills = !skillEntry ? null : isAnySkillEntry(skillEntry) ? { count: SKILL_COUNT_FROM_TEXT[`${feat.name}|${feat.source}`] ?? skillEntry.any, from: ALL_SKILLS } : isChooseSkillEntry(skillEntry) ? { count: 1, from: skillEntry.choose.from } : null
 	const fixedSkills = skillEntry && !skills ? Object.keys(skillEntry).filter((key) => (skillEntry as Record<string, unknown>)[key] === true) : []
 	const toolEntry = feat.toolProficiencies?.[0] as Record<string, unknown> | undefined
 	const sum = <T>(entries: readonly T[] | undefined, count: (entry: T) => unknown) => (entries ?? []).reduce((total, entry) => total + (typeof count(entry) === 'number' ? (count(entry) as number) : 0), 0)
@@ -177,7 +183,7 @@ export function featProficiencyChoiceShape(feat: FeatEffectEntry): FeatProficien
 		tools: toolEntry ? toolChoiceShape(toolEntry) : null,
 		skillsOrTools: sum(feat.skillToolLanguageProficiencies?.[0]?.choose, (group) => group.count),
 		languages: sum(feat.languageProficiencies, (entry) => entry.any),
-		expertise: sum(feat.expertise, (entry) => entry.anyProficientSkill),
+		expertise: sum(feat.expertise, (entry) => entry['anyProficientSkill']),
 		fixedSkills,
 	}
 }
@@ -254,6 +260,16 @@ export function featFixedSkillProficiencyNames(skill: Skill, character: Characte
 	return names
 }
 
+/** D202: feats granting FIXED expertise in `skill` (D44: names only). */
+export function featFixedExpertiseNames(skill: Skill, character: Character, feats: FeatEffectEntry[]): string[] {
+	const names: string[] = []
+	for (const choice of characterFeats(character, feats)) {
+		const feat = findFeat(feats, choice.name, choice.source)
+		if (feat && featFixedExpertiseSkills(feat).includes(skill)) names.push(feat.name)
+	}
+	return names
+}
+
 /** Feats granting `skill` via a STORED player pick (task A2) — same join-into-existing-source-list contract as featFixedSkillProficiencyNames, but reads FeatChoiceDetails.proficiencies.skills instead of feats.json (the picker enforces the pool; this only applies what got stored). */
 export function featStoredSkillProficiencyNames(skill: Skill, character: Character, feats: FeatEffectEntry[]): string[] {
 	const names: string[] = []
@@ -295,7 +311,7 @@ export function featSkillChoiceAwaitingNotes(skill: Skill, character: Character,
 		}
 
 		const hasStoredExpertisePick = (choice.proficiencies?.expertise?.length ?? 0) > 0
-		if (!hasStoredExpertisePick && feat.expertise?.[0] && isProficient) {
+		if (!hasStoredExpertisePick && featProficiencyChoiceShape(feat).expertise > 0 && isProficient) {
 			notes.push(skillChoiceAwaitingNote(`feat (${feat.name})`))
 		}
 	}

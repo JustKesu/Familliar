@@ -13,6 +13,8 @@ export async function next(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Next', exact: true }).click()
 }
 
+const FIGHTER_ASI_LEVELS = [4, 6, 8, 12, 14, 16, 19]
+
 export interface FighterOptions {
   name: string
   level: number
@@ -24,6 +26,8 @@ export interface FighterOptions {
   feat?: string
   /** Runs on the featAsi step after the feat is picked. */
   onFeatStep?: (page: Page) => Promise<void>
+  /** A feat at a Fighter ASI slot above 4 (all slots up to `level` are filled, the others with an ASI). */
+  laterFeat?: { level: number; feat: string; onFeatStep?: (page: Page) => Promise<void> }
   /** The class's first starting-equipment option (Fighter: Greatsword, Flail, Javelins…) instead of the last. */
   classGear?: boolean
   /** Subclass radio at level 3+; Champion when absent. */
@@ -81,14 +85,20 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
 
   if (options.level >= 4) {
     await expectStep(page, 'Ability Score Improvement / Feat')
-    const level4 = page.getByRole('group', { name: 'Level 4' })
-    if (options.feat) {
-      await level4.getByRole('radio', { name: 'Feat', exact: true }).check()
-      await level4.getByRole('radio', { name: options.feat, exact: true }).first().check()
-      await options.onFeatStep?.(page)
-    } else {
-      await level4.getByRole('radio', { name: 'Ability Score Improvement' }).check()
-      await level4.getByRole('combobox').first().selectOption('strength')
+    const asiLevels = FIGHTER_ASI_LEVELS.filter((l) => l <= options.level)
+    for (const [index, level] of asiLevels.entries()) {
+      const group = page.getByRole('group', { name: `Level ${level}` })
+      // `feat` / `onFeatStep` belong to level 4 when the character reaches it, else to the first slot (a level-19 epic boon).
+      const own = level === 4 ? options : level === options.laterFeat?.level ? options.laterFeat : undefined
+      const feat = level === 4 ? options.feat : options.laterFeat?.level === level ? options.laterFeat.feat : undefined
+      if (feat) {
+        await group.getByRole('radio', { name: 'Feat', exact: true }).check()
+        await group.getByRole('radio', { name: feat, exact: true }).first().check()
+        await own?.onFeatStep?.(page)
+      } else {
+        await group.getByRole('radio', { name: 'Ability Score Improvement' }).check()
+        await group.getByRole('combobox').first().selectOption(['strength', 'dexterity', 'constitution', 'wisdom', 'charisma', 'intelligence'][index % 6]!)
+      }
     }
     await next(page)
   }

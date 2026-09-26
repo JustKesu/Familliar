@@ -77,11 +77,12 @@ Raw data before any filter (`scripts/investigate-books.mjs`, untracked):
 - FRHoF: 17 regional languages, all `type: standard`. Feats with `choose`
   (Cold Caster, Emerald Enclave Fledgling) need checking against the closed
   FILTER_CHOICE_FEAT_KEYS tables before FRHoF is loaded. Prose proficiency
-  grants (D176 scan): Bladesinger (Training in War and Song, Bladesong),
-  Knowledge (Blessings of Knowledge, Unfettered Mind), Banneret (Knightly
-  Envoy), Noble Genies (Genie's Splendor), Moon (Primal Lore); feats Boon of
-  Terror, Cult of the Dragon Initiate, Harper Agent, Purple Dragon Rook,
-  Zhentarim Tactics. Loading FRHoF also drops Blade of Disaster|TCE (reprinted).
+  grants (D176 scan) that remain: Bladesinger (Training in War and Song,
+  Bladesong), Knowledge (Blessings of Knowledge, Unfettered Mind), Banneret
+  (Knightly Envoy), Noble Genies (Genie's Splendor), Moon (Primal Lore). Boon of
+  Terror is NOT prose: `skillProficiencies [{intimidation:true}]` + `expertise
+  [{intimidation:true}]` (D202). Loading FRHoF also drops Blade of Disaster|TCE
+  (reprinted).
 - SCC is 2014: backgrounds have no `ability` (no ASI) and carry
   `languageProficiencies`, `fromFeature` and `additionalSpells` with `expanded`
   s1–s5 lists (no background spell path exists in the app); Strixhaven Initiate
@@ -146,7 +147,7 @@ feats 18, backgrounds 0, languages 0.
   and `{choose:"level=0|class=Wizard"}`), both with `ability.choose`. Boon of
   Revelry's `prepared._` (Otto's Irresistible Dance) has no `ability` field, so
   `extractFixedFeatSpells` skips it — text only. Boon of Terror carries
-  `skillProficiencies` + `expertise` (prose scan, separate task).
+  structured `skillProficiencies` + a fixed `expertise` (see D202 below).
 - **Reprints:** Bladesinging|TCE → Bladesinger|Wizard|XPHB|FRHoF and Blade of
   Disaster|TCE → FRHoF are both removed by removeSuperseded (classes TCE 17→16,
   spells TCE 12→11, subclass-features 685→734 = +56 −7).
@@ -206,8 +207,21 @@ feats 18, backgrounds 0, languages 0.
   (Short or Long), Divine Reaper (Short or Long), Ancient Might, Ghost Walk,
   Umbral Form, Necrotic Husk (Short or Long), Survivor.
 - Proficiency grants in prose (D176 scan, not modelled): Spirits (Channeler),
-  Reanimator (3 features), feats Aberrant Anatomy, Echoing Soul, Symbiotic
-  Being; species Lupin, Reborn.
+  Reanimator (3 features).
+- **Structured proficiency grants (D202)** — the earlier scan wrongly listed
+  these as prose:
+  - Aberrant Anatomy: `skillProficiencies [{perception:true}]`, `expertise
+    [{perception:true}]`. Boon of Terror (FRHoF) has the same shape with
+    intimidation. The `expertise` entry here is FIXED (skill-name key `true`);
+    every other feat's `expertise` is `[{anyProficientSkill:N}]`.
+  - Echoing Soul: `skillProficiencies [{any:1}]`, `languageProficiencies
+    [{any:1}]`, `expertise [{anyProficientSkill:1}]`. **Data/text mismatch:** the
+    text says "proficiency in two skills of your choice"; the app follows the
+    text (2 skills).
+  - Symbiotic Being: `skillProficiencies [{choose:{from:[10 skills]}}]` (no
+    count = 1), `languageProficiencies [{any:1}]`.
+  - Species Lupin `skillProficiencies [{choose:{from:[perception, stealth,
+    survival]}}]`; Reborn `[{any:1}]`.
 
 XMM (Monster Manual 2024) is NOT in ALLOWED_SOURCES and must not be added to
 it. Per D67 it is allowed for ONE category only — `data/beasts.json`, for Wild

@@ -1620,6 +1620,14 @@ the Moon (yes) and Banneret (no); resources.test expects +12 single-use pools.
 validate-data asserts 8/19/0/0/18/27. E2E `frhof.spec.ts` a–d. No schema change
 (still 48).
 
+D202: proficiency grants of Aberrant Anatomy, Boon of Terror, Echoing Soul,
+Symbiotic Being and species Lupin/Reborn checked — all but two gaps already
+worked. Fixed: a FIXED feat expertise (`expertise:[{perception:true}]`) now gives
+expertise on the sheet and is never offered again by a feat or class expertise
+picker; Echoing Soul asks for 2 skills (text over data). E2E
+`proficiencyGrants.spec.ts` a–f (Fighter stands in for the Wizard; the e2e
+helper gained `laterFeat` for ASI slots above 4). No schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

@@ -57,7 +57,8 @@ import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
-import { backgroundOriginFeatFrom, featInstances, loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey } from '../featAsi/featInstances'
+import { featFixedExpertiseSkills, type FeatEffectEntry } from '../calculation/featEffects'
+import { backgroundOriginFeatFrom, featInstances, loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
@@ -296,12 +297,16 @@ export function CharacterWizard({
 	}, [])
 
 	/** What computeProficiencies reads, for the tools and languages a feat's picker must not offer again (D160). */
-	const [proficiencyData, setProficiencyData] = useState<{ classes: unknown; feats: FeatProficiencyEntry[] }>({ classes: [], feats: [] })
+	const [proficiencyData, setProficiencyData] = useState<{ classes: unknown; feats: FeatProficiencyEntry[]; fixedExpertise: Record<string, string[]> }>({ classes: [], feats: [], fixedExpertise: {} })
 	useEffect(() => {
 		let cancelled = false
 		Promise.all([loadDataFile('data/classes.json'), loadDataFile('data/feats.json')])
 			.then(([classes, feats]) => {
-				if (!cancelled) setProficiencyData({ classes, feats: extractFeatProficiencyEntries(feats) })
+				// D202: feats with a FIXED expertise grant, so no picker offers that skill again.
+				const fixedExpertise = Object.fromEntries(
+					(Array.isArray(feats) ? (feats as FeatEffectEntry[]) : []).map((feat) => [`${feat.name}|${feat.source}`, featFixedExpertiseSkills(feat)] as const).filter(([, skills]) => skills.length > 0),
+				)
+				if (!cancelled) setProficiencyData({ classes, feats: extractFeatProficiencyEntries(feats), fixedExpertise })
 			})
 			.catch(() => {
 				/* Best-effort: without it a feat picker still hides what the wizard state itself holds. */
@@ -873,7 +878,8 @@ export function CharacterWizard({
 	 * save both require.
 	 */
 	// D177: a skill a subclass already gives expertise in (Scout) is never offered again.
-	const fixedExpertise = wizardClassChoice ? subclassExpertiseSkills([wizardClassChoice]) : []
+	const featFixedExpertise = (instances: readonly FeatRef[]): string[] => instances.flatMap((instance) => proficiencyData.fixedExpertise[`${instance.name}|${instance.source}`] ?? [])
+	const fixedExpertise = [...(wizardClassChoice ? subclassExpertiseSkills([wizardClassChoice]) : []), ...featFixedExpertise(draftFeatInstances)]
 	const expertisePool = proficientSkills.filter(
 		(entry) => !fixedExpertise.includes(entry.skill) && (!expertiseEligibility?.restrictedTo || expertiseEligibility.restrictedTo.includes(entry.skill)),
 	)
@@ -981,7 +987,7 @@ export function CharacterWizard({
 				...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
 				...others.flatMap((instance) => (instance.proficiencies?.skills ?? []).map((skill) => ({ skill, source: instance.name }))),
 			],
-			heldExpertise: [...state.data.expertiseSkills, ...fixedExpertise, ...others.flatMap((instance) => instance.proficiencies?.expertise ?? [])],
+			heldExpertise: [...state.data.expertiseSkills, ...fixedExpertise, ...featFixedExpertise(others), ...others.flatMap((instance) => instance.proficiencies?.expertise ?? [])],
 			heldTools: toolsHeldElsewhere(proficiencies.tools, null),
 			knownLanguages: proficiencies.languages.filter((item) => !item.pending).map((item) => item.label),
 		}

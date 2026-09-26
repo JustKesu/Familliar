@@ -3737,3 +3737,26 @@ FRHoF ano“: uživatel nehraje ve Forgotten Realms. Schéma beze změny (48).
 - Deities a bastiony extrakce nečte; jazyky, backgroundy a O featy mají v
   validate-data hlídaný počet 0 / žádná kategorie O.
 - Prózní udělení proficiencí nových podtříd (D176) je další task.
+
+## D202 — Proficience z featů a druhů RHW/FRHoF jsou ve strukturovaných polích
+
+Zdroj: task D202, 26. 9. 2026. Oprava D176/DATA.md: Aberrant Anatomy, Boon of
+Terror, Echoing Soul, Symbiotic Being a druhy Lupin, Reborn nejsou „próza“.
+Schéma beze změny (48).
+
+- **Už fungovalo:** pevné `skillProficiencies` (`{perception:true}`) přes
+  `featFixedSkillProficiencyNames`; `{any:N}` a `{choose:{from}}` u featů přes
+  `featProficiencyChoiceShape` + `FeatSubChoicePicker` (D179); jazyk `{any:1}`;
+  druhy Lupin (`choose`) a Reborn (`any`) přes `SpeciesSkillPicker` (D81/D82).
+- **Opraveno:** nový tvar **pevné expertise** `expertise:[{perception:true}]`
+  (dosud jen `{anyProficientSkill:N}`). `featFixedExpertiseSkills` /
+  `featFixedExpertiseNames` → expertise ve `computeSkill` se zdrojem `feat
+  (název)` (D44); pevná expertise se nepočítá jako výběr (žádná „čeká na volbu“
+  poznámka) a žádný výběr expertise (feat ani třída) tu dovednost znovu
+  nenabízí (`heldExpertise`, `fixedExpertise` ve wizardu).
+- **Echoing Soul: text přebíjí data.** Data říkají `{any:1}`, text „two skills
+  of your choice“ → 2 dovednosti (`SKILL_COUNT_FROM_TEXT` v featEffects.ts).
+  Expertise (1 výběr) se ukládá jako u Skill Expert; přeučení po Long Rest se
+  nemodeluje.
+- Bez nového pole ani změny schématu. Mimo rozsah zůstávají prózní podtřídy
+  (Bladesinger, Knowledge, Banneret, Noble Genies, Moon, Spirits, Reanimator).

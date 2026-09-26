@@ -4,6 +4,8 @@ import {
 	backgroundOriginFeatAmong,
 	characterFeats,
 	featAbilityScoreContributions,
+	featFixedExpertiseNames,
+	featFixedExpertiseSkills,
 	featFixedSkillProficiencyNames,
 	featProficiencyChoiceShape,
 	featSavingThrowProficiencyNames,
@@ -39,6 +41,23 @@ const boonOfSkill: FeatEffectEntry = {
 }
 const keenMind: FeatEffectEntry = { name: 'Keen Mind', source: 'XPHB', skillProficiencies: [{ choose: { from: ['arcana', 'history', 'investigation', 'nature', 'religion'] } }] }
 const skillExpert: FeatEffectEntry = { name: 'Skill Expert', source: 'XPHB', skillProficiencies: [{ any: 1 }], expertise: [{ anyProficientSkill: 1 }] }
+
+const aberrantAnatomy: FeatEffectEntry = { name: 'Aberrant Anatomy', source: 'RHW', skillProficiencies: [{ perception: true }], expertise: [{ perception: true }] }
+const echoingSoul: FeatEffectEntry = { name: 'Echoing Soul', source: 'RHW', skillProficiencies: [{ any: 1 }], languageProficiencies: [{ any: 1 }], expertise: [{ anyProficientSkill: 1 }] }
+
+describe('D202 fixed expertise and Echoing Soul', () => {
+	it('a fixed expertise entry is expertise, not a pick', () => {
+		expect(featFixedExpertiseSkills(aberrantAnatomy)).toEqual(['perception'])
+		expect(featProficiencyChoiceShape(aberrantAnatomy)).toMatchObject({ expertise: 0, skills: null, fixedSkills: ['perception'] })
+		const character = withChoices(base, [{ level: 4, kind: 'feat', name: 'Aberrant Anatomy', source: 'RHW' }])
+		expect(featFixedExpertiseNames('perception', character, [aberrantAnatomy])).toEqual(['Aberrant Anatomy'])
+		expect(featSkillChoiceAwaitingNotes('perception', character, [aberrantAnatomy], true)).toEqual([])
+	})
+
+	it('Echoing Soul asks for two skills although its data says one', () => {
+		expect(featProficiencyChoiceShape(echoingSoul)).toMatchObject({ skills: { count: 2 }, languages: 1, expertise: 1 })
+	})
+})
 
 function withChoices(character: Omit<Character, 'featAsiChoices'>, choices: Character['featAsiChoices']): Character {
 	return { ...character, featAsiChoices: choices }
