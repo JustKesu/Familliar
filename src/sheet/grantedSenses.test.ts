@@ -1,6 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
-import { extractFeatGrantedSenses, extractOptionalFeatureGrantedSenses } from './grantedSenses'
+import { extractClassFeatureGrantedSenses, extractFeatGrantedSenses, extractOptionalFeatureGrantedSenses } from './grantedSenses'
+
+describe('extractClassFeatureGrantedSenses (D195)', () => {
+	const sub = (className: string, name: string, source: string) => ({ entryType: 'subclass', className, classSource: 'XPHB', name, source })
+	const classesData = [sub('Sorcerer', 'Shadow Sorcery', 'RHW'), sub('Ranger', 'Gloom Stalker', 'XPHB'), sub('Cleric', 'Twilight Domain', 'TCE')]
+	const withClass = (className: string, level: number, subclass?: string): Character => ({ id: '1', name: 'T', classes: [{ className, classSource: 'XPHB', level, subclass: subclass ?? null }] })
+
+	it('Feral Senses arrives at Ranger 18, not 17', () => {
+		expect(extractClassFeatureGrantedSenses(withClass('Ranger', 17), classesData)).toEqual([])
+		expect(extractClassFeatureGrantedSenses(withClass('Ranger', 18), classesData)).toEqual([{ senseType: 'blindsight', range: 30, origin: 'classFeature', name: 'Feral Senses' }])
+	})
+
+	it('Eyes of the Dark grants darkvision and blindsight at once', () => {
+		expect(extractClassFeatureGrantedSenses(withClass('Sorcerer', 3, 'Shadow Sorcery'), classesData)).toEqual([
+			{ senseType: 'darkvision', range: 120, origin: 'classFeature', name: 'Eyes of the Dark' },
+			{ senseType: 'blindsight', range: 10, origin: 'classFeature', name: 'Eyes of the Dark' },
+		])
+	})
+
+	it('Umbral Sight is additive', () => {
+		expect(extractClassFeatureGrantedSenses(withClass('Ranger', 3, 'Gloom Stalker'), classesData)).toEqual([
+			{ senseType: 'darkvision', range: 60, additive: true, origin: 'classFeature', name: 'Umbral Sight' },
+		])
+	})
+
+	it('a same-named subclass of another source grants nothing (D194)', () => {
+		expect(extractClassFeatureGrantedSenses(withClass('Cleric', 3, 'Twilight Domain'), [{ ...classesData[2], source: 'XYZ' }])).toEqual([])
+	})
+})
 
 /*
  * Fixtures mirror the real shapes scripts/investigate-senses.js found (D46):

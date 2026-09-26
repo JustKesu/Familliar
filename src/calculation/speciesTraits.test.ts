@@ -186,5 +186,50 @@ describe('computeDarkvision', () => {
 			const character: Character = { id: '1', name: 'Test', classes: [] }
 			expect(computeDarkvision(character, speciesData, []).status).toBe('unknown')
 		})
+
+		it('a flat class-feature grant competes by max like any other (D195)', () => {
+			expect(computeDarkvision(withSpecies('Elf', 'XPHB'), speciesData, [{ range: 300, origin: 'classFeature', name: 'Eyes of Night' }])).toEqual({
+				status: 'known',
+				value: 300,
+				breakdown: [
+					{ source: 'Elf', amount: 0, note: 'does not exceed from class feature (Eyes of Night) (300 ft.)' },
+					{ source: 'from class feature (Eyes of Night)', amount: 300 },
+				],
+			})
+		})
+	})
+
+	describe('with an additive darkvision grant (D195)', () => {
+		const umbral = { range: 60, origin: 'classFeature' as const, name: 'Umbral Sight', additive: true as const }
+
+		it('with no other darkvision it is a flat 60 ft.', () => {
+			expect(computeDarkvision(withSpecies('Human', 'XPHB'), speciesData, [umbral])).toEqual({
+				status: 'known',
+				value: 60,
+				breakdown: [{ source: 'from class feature (Umbral Sight)', amount: 60 }],
+			})
+		})
+
+		it('adds 60 ft. to the species darkvision, and the species row does not exceed it', () => {
+			expect(computeDarkvision(withSpecies('Elf', 'XPHB'), speciesData, [umbral])).toEqual({
+				status: 'known',
+				value: 120,
+				breakdown: [
+					{ source: 'Elf', amount: 0, note: 'does not exceed from class feature (Umbral Sight) (120 ft.)' },
+					{ source: 'from class feature (Umbral Sight)', amount: 120, note: '+120 (Elf 60 ft. + 60 ft.)' },
+				],
+			})
+		})
+
+		it('builds on the LARGEST other source, not the species one', () => {
+			const result = computeDarkvision(withSpecies('Elf', 'XPHB'), speciesData, [umbral, { range: 120, origin: 'optionalFeature', name: 'Stone Rune' }])
+			expect(result).toMatchObject({ status: 'known', value: 180 })
+			if (result.status === 'known') expect(result.breakdown.reduce((sum, c) => sum + c.amount, 0)).toBe(180)
+		})
+
+		it('ignores a withheld source as a base', () => {
+			const result = computeDarkvision(withSpecies('Human', 'XPHB'), speciesData, [umbral, { range: 120, origin: 'item', name: 'Goggles', withheldReason: 'not attuned' }])
+			expect(result).toMatchObject({ status: 'known', value: 60 })
+		})
 	})
 })

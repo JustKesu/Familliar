@@ -26,12 +26,14 @@ export interface SheetSenseEntry {
 	range: number
 	featOrigins: string[]
 	optionalFeatureOrigins: string[]
+	classFeatureOrigins: string[]
 }
 
 function senseProvenanceLabel(entry: SheetSenseEntry): string {
 	const parts: string[] = []
 	for (const optionName of entry.optionalFeatureOrigins) parts.push(`from invocation (${optionName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
+	for (const featureName of entry.classFeatureOrigins) parts.push(`from class feature (${featureName})`)
 	return parts.join('; ')
 }
 
@@ -45,22 +47,15 @@ export function combineSenseEntries(grantedSenses: GrantedSense[]): SheetSenseEn
 
 	for (const grant of grantedSenses) {
 		const key = grant.senseType.toLowerCase()
-		const existing = map.get(key)
-		if (existing) {
-			existing.range = Math.max(existing.range, grant.range)
-			if (grant.origin === 'feat') {
-				if (!existing.featOrigins.includes(grant.name)) existing.featOrigins.push(grant.name)
-			} else {
-				if (!existing.optionalFeatureOrigins.includes(grant.name)) existing.optionalFeatureOrigins.push(grant.name)
-			}
+		let entry = map.get(key)
+		if (entry) {
+			entry.range = Math.max(entry.range, grant.range)
 		} else {
-			map.set(key, {
-				senseType: grant.senseType,
-				range: grant.range,
-				featOrigins: grant.origin === 'feat' ? [grant.name] : [],
-				optionalFeatureOrigins: grant.origin === 'optionalFeature' ? [grant.name] : [],
-			})
+			entry = { senseType: grant.senseType, range: grant.range, featOrigins: [], optionalFeatureOrigins: [], classFeatureOrigins: [] }
+			map.set(key, entry)
 		}
+		const origins = grant.origin === 'feat' ? entry.featOrigins : grant.origin === 'classFeature' ? entry.classFeatureOrigins : entry.optionalFeatureOrigins
+		if (!origins.includes(grant.name)) origins.push(grant.name)
 	}
 
 	return [...map.values()]

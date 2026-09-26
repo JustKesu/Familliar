@@ -3297,7 +3297,7 @@ function CharacterSheetBody({
 	// Darkvision is the one granted sense that reconciles with the species value (D40/D53) rather than
 	// standing alone in the Senses section below — split out here, before combineSenseEntries sees the rest.
 	const darkvisionGrants: GrantedDarkvision[] = [
-		...grantedSenses.filter((sense) => sense.senseType.toLowerCase() === 'darkvision').map((sense) => ({ range: sense.range, origin: sense.origin, name: sense.name })),
+		...grantedSenses.filter((sense) => sense.senseType.toLowerCase() === 'darkvision').map((sense) => ({ range: sense.range, origin: sense.origin, name: sense.name, ...(sense.additive ? { additive: sense.additive } : {}) })),
 		/* Step 7 slice e2b: an item's darkvision is another candidate for the same reconciliation, never an addition to it. */
 		...buildItemDarkvisionGrants(character.inventory ?? [], itemRefs ?? []),
 	]

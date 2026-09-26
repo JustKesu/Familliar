@@ -993,6 +993,22 @@ species, Monk-tool and language lines are B1's and were not re-checked.
 
 Found in investigation B6a and checked in B6b (2026-09-24, scripts consumed).
 
+### Class and subclass senses — prose only (D195)
+
+- No class-features.json or subclass-features.json record carries a `senses`
+  field; every sense grant is prose, hence `CLASS_SENSE_GRANTS`.
+- Feral Senses (Ranger|XPHB L18) and Umbral Sight (Gloom Stalker|XPHB L3) are
+  their own records. Eyes of Night (Twilight Domain|TCE) is filed at L1 under
+  classSource PHB. Eyes of the Dark is a named sub-entry inside the Shadow
+  Sorcery|RHW L3 record "Power of Shadow". Warrior of Shadow's (shortName
+  "Shadow") L3 "Shadow Arts" has no inline sub-entries: its "Darkvision" is a
+  `refSubclassFeature` node pointing at a separate record.
+- Stored subclass names (classes.json `name`): `Twilight Domain`,
+  `Shadow Sorcery`, `Warrior of Shadow`, `Gloom Stalker`; none has
+  `reprintedAs`.
+
+Checked by `scripts/investigate-class-senses.js` (2026-09-26, D195).
+
 Skill grants, checked B6c (each name is one subclass entry in classes.json,
 classSource XPHB; feature entries mostly filed under classSource PHB):
 - Fixed: Way of the Drunken Master|XGE "Bonus Proficiencies" L3 (Performance);

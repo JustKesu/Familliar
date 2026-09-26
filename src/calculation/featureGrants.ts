@@ -40,14 +40,17 @@ function subclassSourceOf(parsedClasses: unknown, cls: Character['classes'][numb
 }
 
 // D176: every non-XPHB grant arrives at class level 3, whatever level the 2014 feature entry carries (DATA.md).
+export function hasSubclassBySource(character: Character, parsedClasses: unknown, className: string, subclass: string, subclassSource: string, classSource = 'XPHB'): boolean {
+	return character.classes.some(
+		(cls) => cls.className === className && cls.classSource === classSource && cls.subclass === subclass && cls.level >= 3 && subclassSourceOf(parsedClasses, cls) === subclassSource,
+	)
+}
+
 function subclassGrant(className: string, subclass: string, subclassSource: string, grants: Partial<FeatureGrant>, classSource = 'XPHB'): FeatureGrant {
 	return {
 		className,
 		source: { kind: 'subclass', name: subclass },
-		applies: (character, parsedClasses) =>
-			character.classes.some(
-				(cls) => cls.className === className && cls.classSource === classSource && cls.subclass === subclass && cls.level >= 3 && subclassSourceOf(parsedClasses, cls) === subclassSource,
-			),
+		applies: (character, parsedClasses) => hasSubclassBySource(character, parsedClasses, className, subclass, subclassSource, classSource),
 		armor: [],
 		weapons: [],
 		...grants,

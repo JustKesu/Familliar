@@ -51,16 +51,54 @@ import { featInstances, loadBackgroundOriginFeat, type FeatRef } from '../featAs
 import { choiceNames, type Character, type CharacterOptionalFeatureChoice } from '../storage/character'
 import { isRecord } from '../spells/subclassPreparedSpells'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { hasSubclassBySource } from '../calculation/featureGrants'
 
 export interface GrantedSense {
 	/** The sense's own key in the data — "blindsight", "darkvision", "truesight", "tremorsense", whatever occurs. Not narrowed to a fixed union: display only, no calculation branches on this beyond the label. */
 	senseType: string
 	/** Range in feet, as the data states it. */
 	range: number
-	/** Provenance kind — a chosen optional feature ("from invocation (Name)") or a chosen feat ("from feat (Name)"), matching the wording SpellList.tsx's provenanceLabel already uses for the same two sources. */
-	origin: 'optionalFeature' | 'feat'
-	/** The option's or feat's own name — the "(...)" part of the provenance label. */
+	/** Provenance kind — a chosen optional feature ("from invocation (Name)"), a chosen feat ("from feat (Name)") or a class/subclass feature ("from class feature (Name)", D195). */
+	origin: 'optionalFeature' | 'feat' | 'classFeature'
+	/** The option's, feat's or feature's own name — the "(...)" part of the provenance label. */
 	name: string
+	/** D195: darkvision that adds to the character's other darkvision (see speciesTraits.ts's GrantedDarkvision). */
+	additive?: true
+}
+
+interface ClassSenseGrant {
+	className: string
+	/** Base class features are keyed by class level; subclass ones go through hasSubclassBySource (level 3, D176). */
+	level?: number
+	subclass?: { name: string; source: string }
+	name: string
+	senses: { senseType: string; range: number; additive?: true }[]
+}
+
+// D195: class and subclass senses exist only in feature text (scripts confirmed the five), so they are a hand table like FEATURE_GRANTS.
+const CLASS_SENSE_GRANTS: ClassSenseGrant[] = [
+	{ className: 'Ranger', level: 18, name: 'Feral Senses', senses: [{ senseType: 'blindsight', range: 30 }] },
+	{ className: 'Cleric', subclass: { name: 'Twilight Domain', source: 'TCE' }, name: 'Eyes of Night', senses: [{ senseType: 'darkvision', range: 300 }] },
+	{
+		className: 'Sorcerer',
+		subclass: { name: 'Shadow Sorcery', source: 'RHW' },
+		name: 'Eyes of the Dark',
+		senses: [
+			{ senseType: 'darkvision', range: 120 },
+			{ senseType: 'blindsight', range: 10 },
+		],
+	},
+	{ className: 'Monk', subclass: { name: 'Warrior of Shadow', source: 'XPHB' }, name: 'Shadow Arts', senses: [{ senseType: 'darkvision', range: 60, additive: true }] },
+	{ className: 'Ranger', subclass: { name: 'Gloom Stalker', source: 'XPHB' }, name: 'Umbral Sight', senses: [{ senseType: 'darkvision', range: 60, additive: true }] },
+]
+
+/** Pure filter (D38). The senses the character's class and subclass features grant (D195). */
+export function extractClassFeatureGrantedSenses(character: Character, parsedClasses: unknown): GrantedSense[] {
+	return CLASS_SENSE_GRANTS.filter((grant) =>
+		grant.subclass
+			? hasSubclassBySource(character, parsedClasses, grant.className, grant.subclass.name, grant.subclass.source)
+			: character.classes.some((cls) => cls.className === grant.className && cls.classSource === 'XPHB' && cls.level >= (grant.level ?? 1)),
+	).flatMap((grant) => grant.senses.map((sense) => ({ ...sense, origin: 'classFeature' as const, name: grant.name })))
 }
 
 interface RawOptionalFeatureSenseEntry {
@@ -149,13 +187,18 @@ export function extractFeatGrantedSenses(parsedFeats: unknown, character: Charac
 	return result
 }
 
-/** Fetches optional-features.json and feats.json through the shared cache (D39) and returns both sources' granted senses, unmerged — merging same-type grants into one row is SensesList.tsx's job, the same split combineSpellEntries/SpellList.tsx already has. */
+/** Fetches optional-features.json, feats.json and classes.json through the shared cache (D39) and returns every source's granted senses, unmerged — merging same-type grants into one row is SensesList.tsx's job, the same split combineSpellEntries/SpellList.tsx already has. */
 export async function loadGrantedSenses(character: Character): Promise<GrantedSense[]> {
 	const selection = character.optionalFeatureChoices ?? []
-	const [optionalFeatures, feats, backgroundOriginFeat] = await Promise.all([
+	const [optionalFeatures, feats, classes, backgroundOriginFeat] = await Promise.all([
 		loadDataFile('data/optional-features.json'),
 		loadDataFile('data/feats.json'),
+		loadDataFile('data/classes.json'),
 		loadBackgroundOriginFeat(character.background),
 	])
-	return [...extractOptionalFeatureGrantedSenses(optionalFeatures, selection), ...extractFeatGrantedSenses(feats, character, backgroundOriginFeat)]
+	return [
+		...extractOptionalFeatureGrantedSenses(optionalFeatures, selection),
+		...extractFeatGrantedSenses(feats, character, backgroundOriginFeat),
+		...extractClassFeatureGrantedSenses(character, classes),
+	]
 }

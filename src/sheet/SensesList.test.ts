@@ -4,13 +4,13 @@ import { combineSenseEntries } from './SensesList'
 describe('combineSenseEntries', () => {
 	it('one granted sense from a feat becomes one row with the feat provenance', () => {
 		expect(combineSenseEntries([{ senseType: 'truesight', range: 60, origin: 'feat', name: 'Boon of Truesight' }])).toEqual([
-			{ senseType: 'truesight', range: 60, featOrigins: ['Boon of Truesight'], optionalFeatureOrigins: [] },
+			{ senseType: 'truesight', range: 60, featOrigins: ['Boon of Truesight'], optionalFeatureOrigins: [], classFeatureOrigins: [] },
 		])
 	})
 
 	it('one granted sense from an optional feature becomes one row with the invocation provenance', () => {
 		expect(combineSenseEntries([{ senseType: 'darkvision', range: 120, origin: 'optionalFeature', name: 'Stone Rune' }])).toEqual([
-			{ senseType: 'darkvision', range: 120, featOrigins: [], optionalFeatureOrigins: ['Stone Rune'] },
+			{ senseType: 'darkvision', range: 120, featOrigins: [], optionalFeatureOrigins: ['Stone Rune'], classFeatureOrigins: [] },
 		])
 	})
 
@@ -19,7 +19,15 @@ describe('combineSenseEntries', () => {
 			{ senseType: 'blindsight', range: 10, origin: 'feat', name: 'Skulker' },
 			{ senseType: 'blindsight', range: 30, origin: 'optionalFeature', name: 'Some Invocation' },
 		])
-		expect(result).toEqual([{ senseType: 'blindsight', range: 30, featOrigins: ['Skulker'], optionalFeatureOrigins: ['Some Invocation'] }])
+		expect(result).toEqual([{ senseType: 'blindsight', range: 30, featOrigins: ['Skulker'], optionalFeatureOrigins: ['Some Invocation'], classFeatureOrigins: [] }])
+	})
+
+	it('a class feature sense keeps its own origin list (D195)', () => {
+		const result = combineSenseEntries([
+			{ senseType: 'blindsight', range: 10, origin: 'classFeature', name: 'Eyes of the Dark' },
+			{ senseType: 'blindsight', range: 30, origin: 'classFeature', name: 'Feral Senses' },
+		])
+		expect(result).toEqual([{ senseType: 'blindsight', range: 30, featOrigins: [], optionalFeatureOrigins: [], classFeatureOrigins: ['Eyes of the Dark', 'Feral Senses'] }])
 	})
 
 	it('two different sense types stay two separate rows', () => {

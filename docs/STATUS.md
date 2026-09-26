@@ -1550,6 +1550,16 @@ D190 table: College of Spirits, Hexblood yes; Shadow Sorcery no. Not modelled:
 DG feat spells, Eyes of the Dark senses, Strength of the Grave counter, RHW
 proficiency grants. E2E `rhw.spec.ts` a–f. No schema change (still 48).
 
+D195: class and subclass senses reach the Senses card. `CLASS_SENSE_GRANTS`
+(`grantedSenses.ts`, origin `classFeature`, "from class feature (Name)"): Feral
+Senses (Ranger 18, Blindsight 30), Eyes of Night (Twilight Domain, Darkvision
+300), Eyes of the Dark (Shadow Sorcery, Darkvision 120 + Blindsight 10), and the
+additive Umbral Sight (Gloom Stalker) and Shadow Arts (Warrior of Shadow):
+best other darkvision + 60, else 60 (`additive` in `combineDarkvision`).
+Subclass gate `hasSubclassBySource` (featureGrants.ts). Not modelled: Wild
+Heart Owl, Mortal Bulwark, The Third Eye, Manifest Mind. E2E
+`classSenses.spec.ts` a–f. No schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

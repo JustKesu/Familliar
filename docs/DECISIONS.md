@@ -3589,3 +3589,25 @@ Schéma beze změny (48).
   už chce svolení DM). Picker ji ukazuje jako poznámku („Ravenloft campaign“) a
   DG featy nese štítkem „Dark Gift“. Týká se i 13 EFA Dragonmark featů; jejich
   `exclusiveFeatCategory` se proto vyhodnocuje (žádný jiný feat té kategorie).
+
+## D195 — Smysly z class a subclass features
+
+Zdroj: task D195, 26. 9. 2026. Navazuje na D176, D194. Schéma beze změny (48).
+Smysly jsou jen v textu features, proto ruční tabulka `CLASS_SENSE_GRANTS`
+(`grantedSenses.ts`), podtřídy přes jméno A zdroj (`hasSubclassBySource`, úroveň
+3 dle D176). Provenance „from class feature (Name)“.
+
+- **Pevné (největší vyhrává):** Ranger XPHB 18 Feral Senses → Blindsight 30;
+  Twilight Domain|TCE Eyes of Night → Darkvision 300 (data L1, app od 3, D176);
+  Shadow Sorcery|RHW 3 Eyes of the Dark (uvnitř Power of Shadow) → Darkvision
+  120 + Blindsight 10.
+- **Aditivní darkvision (nové pravidlo):** Gloom Stalker|XPHB 3 Umbral Sight
+  a Warrior of Shadow|XPHB 3 Shadow Arts (podfeatura „Darkvision“; provenance
+  „Shadow Arts“). Text zní „if you already have Darkvision, its range increases
+  by 60“, ne „větší z obou“: hodnota = největší jiný (neaditivní, nezadržený)
+  zdroj + 60, bez jiného zdroje 60. Tím vždy vyhraje max; ostatní řádky
+  breakdownu „does not exceed“ ji. Dvě aditivní se navzájem nesčítají.
+- **Mimo:** Wild Heart Aspect of the Wilds (Owl) — volba bez pickeru a
+  úložiště; Watchers Mortal Bulwark — dočasný buff na 1 minutu; Diviner The
+  Third Eye — dočasná volba do odpočinku; Scribes Manifest Mind — smysl patří
+  vyvolané mysli, ne postavě.

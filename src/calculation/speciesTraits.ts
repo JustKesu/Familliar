@@ -138,9 +138,12 @@ export function computeSize(character: Character, speciesData: SpeciesTraitsData
  * in per D38: this file fetches nothing.
  */
 export interface GrantedDarkvision {
+	/** For an `additive` grant, the increment (and the flat range when nothing else gives darkvision). */
 	range: number
-	origin: 'optionalFeature' | 'feat' | 'item'
+	origin: 'optionalFeature' | 'feat' | 'item' | 'classFeature'
 	name: string
+	/** D195: "if you already have Darkvision, its range increases by N" (Umbral Sight, Shadow Arts) — added to the best other source instead of competing with it. */
+	additive?: true
 	/**
 	 * Set when the app can see the character HAS the grant but not that it is in
 	 * effect — an item that requires attunement and is not attuned. Such a grant
@@ -155,12 +158,15 @@ interface DarkvisionCandidate {
 	value: number
 	/** Set on a grant the app cannot see as active (D76). It is listed, never chosen. */
 	withheldReason?: string
+	additive?: true
+	note?: string
 }
 
 const DARKVISION_ORIGIN_LABELS: Record<GrantedDarkvision['origin'], (name: string) => string> = {
 	feat: (name) => `from feat (${name})`,
 	optionalFeature: (name) => `from invocation (${name})`,
 	item: (name) => `from item (${name})`,
+	classFeature: (name) => `from class feature (${name})`,
 }
 
 /**
@@ -183,10 +189,24 @@ function combineDarkvision(species: { source: string; value: number } | null, gr
 			label: DARKVISION_ORIGIN_LABELS[grant.origin](grant.name),
 			value: grant.range,
 			...(grant.withheldReason !== undefined ? { withheldReason: grant.withheldReason } : {}),
+			...(grant.additive ? { additive: true as const } : {}),
 		})
 	}
 
 	if (candidates.length === 0) return known(0, [])
+
+	// D195: an additive grant builds on the best non-additive source, so it always wins the max below and the other rows still "do not exceed" it.
+	let base: DarkvisionCandidate | null = null
+	for (const candidate of candidates) {
+		if (candidate.additive || candidate.withheldReason !== undefined) continue
+		if (candidate.value > 0 && (base === null || candidate.value > base.value)) base = candidate
+	}
+	for (const candidate of candidates) {
+		if (!candidate.additive || base === null) continue
+		const increment = candidate.value
+		candidate.value += base.value
+		candidate.note = `+${candidate.value} (${base.label} ${base.value} ft. + ${increment} ft.)`
+	}
 
 	let winnerIndex = -1
 	for (let i = 0; i < candidates.length; i++) {
@@ -200,7 +220,7 @@ function combineDarkvision(species: { source: string; value: number } | null, gr
 		if (candidate.withheldReason !== undefined) {
 			return { source: candidate.label, amount: 0, note: `considered (${candidate.value} ft.) — not applied: ${candidate.withheldReason}` }
 		}
-		if (index === winnerIndex) return { source: candidate.label, amount: candidate.value }
+		if (index === winnerIndex) return { source: candidate.label, amount: candidate.value, ...(candidate.note !== undefined ? { note: candidate.note } : {}) }
 		return { source: candidate.label, amount: 0, note: `does not exceed ${winner!.label} (${winner!.value} ft.)` }
 	})
 	// D43: the species figure itself couldn't be resolved — say so plainly rather than presenting the grant as though it were the whole, confirmed answer.
