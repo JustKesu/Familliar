@@ -1574,6 +1574,14 @@ again". Strength of the Grave (inside Power of Shadow, Shadow Sorcery 3) is a
 Caster (Quick Ritual) gets the same. Named sub-entries are still not split into
 their own rows. E2E `rhw.spec.ts` "D197". No schema change (still 48).
 
+D198: five conditional damage responses join `FEATURE_DAMAGE_RESPONSES`
+(Superior Defense, Umbral Form, Full of Stars, Aura of Warding, Rage of the
+Gods) and one prose-only feat joins the new `FEAT_DAMAGE_RESPONSES` (Boon of the
+Night Spirit, read by `buildFeatGrants`). All are shown under "Only in certain
+conditions" with a condition text, never counted (D76). Rage of the Wilds stays
+out (unstored Bear/Eagle/Wolf pick). E2E `conditionalResponses.spec.ts`. No
+schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

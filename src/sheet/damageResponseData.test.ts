@@ -161,6 +161,25 @@ describe('buildFeatGrants', () => {
 		expect(grants[0].choiceFrom).toEqual(['acid', 'cold'])
 	})
 
+	it('D198: Boon of the Night Spirit is a conditional all-except-Psychic/Radiant resistance from the hand table', () => {
+		const boon = character({ featAsiChoices: [{ level: 19, kind: 'feat', name: 'Boon of the Night Spirit', source: 'XPHB' }] })
+		const grants = buildFeatGrants(boon, [{ name: 'Boon of the Night Spirit', source: 'XPHB' }], null)
+
+		expect(grants).toHaveLength(1)
+		expect(grants[0]).toMatchObject({ kind: 'resistance', sourceName: 'Boon of the Night Spirit', condition: 'while within Dim Light or Darkness' })
+		expect(grants[0].damageTypes).toHaveLength(11)
+		expect(grants[0].damageTypes).not.toContain('psychic')
+		expect(grants[0].damageTypes).not.toContain('radiant')
+		expect(buildFeatGrants(character(), [], null)).toEqual([])
+	})
+
+	it('D198: a feat that has both the structured field and a hand entry is not counted twice', () => {
+		const both = character({ featAsiChoices: [{ level: 19, kind: 'feat', name: 'Boon of the Night Spirit', source: 'XPHB' }] })
+		expect(buildFeatGrants(both, [{ name: 'Boon of the Night Spirit', source: 'XPHB', resist: ['fire'] }], null)).toEqual([
+			{ kind: 'resistance', sourceName: 'Boon of the Night Spirit', damageTypes: ['fire'] },
+		])
+	})
+
 	it('ignores an ASI pick and a character with no feats', () => {
 		expect(buildFeatGrants(character({ featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] }), feats, null)).toEqual([])
 		expect(buildFeatGrants(character(), feats, null)).toEqual([])
@@ -181,6 +200,30 @@ describe('buildFeatureGrants', () => {
 
 		expect(grants[0].damageTypes).toEqual(['cold'])
 		expect(grants[0].condition).toBeUndefined()
+	})
+
+	it.each([
+		['Superior Defense', 'Monk', 12, 'while Superior Defense is active'],
+		['Umbral Form', 'Sorcerer (Shadow Sorcery)', 11, 'while Umbral Form is active'],
+		['Full of Stars', 'Druid (Circle of the Stars)', 3, 'while in your Starry Form'],
+		['Aura of Warding', 'Paladin (Oath of the Ancients)', 3, 'while in your Aura of Protection'],
+		['Rage of the Gods', 'Barbarian (Path of the Zealot)', 3, 'while in Rage of the Gods form'],
+	])('D198: %s is a conditional resistance, and absent without the feature', (feature, origin, typeCount, condition) => {
+		const [grant] = buildFeatureGrants([feature])
+		expect(grant.sourceName).toBe(`${feature} (${origin})`)
+		expect(grant.damageTypes).toHaveLength(typeCount)
+		expect(grant.condition).toContain(condition)
+		expect(buildFeatureGrants(['Second Wind'])).toEqual([])
+	})
+
+	it('D198: Umbral Form leaves out Force and Radiant, Superior Defense only Force', () => {
+		expect(buildFeatureGrants(['Umbral Form'])[0].damageTypes).not.toContain('force')
+		expect(buildFeatureGrants(['Umbral Form'])[0].damageTypes).not.toContain('radiant')
+		expect(buildFeatureGrants(['Superior Defense'])[0].damageTypes).toContain('radiant')
+	})
+
+	it('D198: leaves Rage of the Wilds out (its Bear/Eagle/Wolf pick is not stored)', () => {
+		expect(buildFeatureGrants(['Rage of the Wilds'])).toEqual([])
 	})
 
 	it('grants nothing for a feature the table does not record', () => {

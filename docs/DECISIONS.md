@@ -3649,3 +3649,23 @@ Zdroj: task D197, 26. 9. 2026. Navazuje na D119, D194, D195. Schéma beze změny
 - **Jméno (rozhodnutí uživatele):** počítadlo je pod jménem záznamu „Power of
   Shadow“ a box je na jeho řádku ve Features & Traits (stejně jako Ritual
   Caster na řádku featu). Žádný alias ani dělení podzáznamů.
+
+## D198 — Podmíněné odolnosti: 5 rysů tříd a ruční tabulka featů
+
+Zdroj: task D198, 26. 9. 2026. Navazuje na D70, D76. Schéma beze změny (48).
+
+- **Přidáno do `FEATURE_DAMAGE_RESPONSES`** (zobrazeno s podmínkou, nikdy se
+  nepočítá, D76): Superior Defense (Monk 18, vše kromě Force), Umbral Form
+  (Shadow Sorcery 18, vše kromě Force a Radiant), Full of Stars (Circle of the
+  Stars 14, B/P/S), Aura of Warding (Oath of the Ancients 7, jen vlastní
+  odolnost postavy, ne spojenci), Rage of the Gods (Zealot 14,
+  Necrotic/Psychic/Radiant).
+- **Nová tabulka `FEAT_DAMAGE_RESPONSES`:** featy dostávají odolnost jen přes
+  strukturované `resist` (`buildFeatGrants`); Boon of the Night Spirit ho nemá
+  (jen próza). Kontrola feats.json našla jen tento jeden feat; Elemental Adept,
+  Poisoner, Touch of Death a Boon of Irresistible Offense odolnost ignorují,
+  ne dávají. Ruční záznam se použije jen když feat nemá strukturované pole, takže
+  se nic nedvojí.
+- **Rage of the Wilds zůstává vynechán:** odolnost závisí na volbě
+  Bear/Eagle/Wolf, kterou aplikace neukládá (stejný důvod jako Storm Herald,
+  The Genie, Four Elements, Circle of the Land).

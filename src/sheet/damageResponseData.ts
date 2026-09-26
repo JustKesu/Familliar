@@ -25,7 +25,7 @@
 
 import { isAttuned } from '../calculation/attunement'
 import type { DamageResponseGrant } from '../calculation/damageResponses'
-import { featureDamageResponsesAmong } from '../damageResponses/featureDamageResponses'
+import { FEAT_DAMAGE_RESPONSES, featureDamageResponsesAmong } from '../damageResponses/featureDamageResponses'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { featInstances, loadBackgroundOriginFeat, type FeatRef } from '../featAsi/featInstances'
 import { buildInventoryResolver, isConsumable, type ItemRef } from '../inventory/inventoryData'
@@ -171,7 +171,13 @@ export function buildFeatGrants(character: Character, parsedFeats: unknown, back
 			grants.push({ kind: 'resistance', sourceName: choice.name, damageTypes: [], unresolvedReason: `no feat data for "${choice.name}" (${choice.source})` })
 			continue
 		}
-		grants.push(...grantsFromEntry(entry, choice.name))
+		const structured = grantsFromEntry(entry, choice.name)
+			grants.push(...structured)
+			// A feat with a structured field is already covered; the hand table never doubles it.
+			if (structured.length > 0) continue
+			for (const hand of FEAT_DAMAGE_RESPONSES.filter((candidate) => candidate.feat === choice.name)) {
+				grants.push({ kind: hand.kind, sourceName: choice.name, damageTypes: hand.damageTypes, ...(hand.condition !== undefined ? { condition: hand.condition } : {}) })
+			}
 	}
 	return grants
 }

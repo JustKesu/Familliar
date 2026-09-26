@@ -21,9 +21,11 @@
  *  - The text describes an OBJECT's immunity, not the character's — Eldritch
  *    Cannon, Genie's Vessel, and the 11 items whose prose is a summoned
  *    object's statblock.
- *  - Conditional ones other than Rage — Superior Defense, Umbral Form, Full of
- *    Stars, Aura of Warding, Rage of the Wilds, Rage of the Gods, Boon of the
- *    Night Spirit. Step 9 owns conditions; Rage is here because SPEC names it.
+ *  - Rage of the Wilds — its resistance depends on a Bear/Eagle/Wolf pick that
+ *    nothing stores (D198). The other conditional ones (Superior Defense, Umbral
+ *    Form, Full of Stars, Aura of Warding, Rage of the Gods) are below, shown
+ *    with a condition and never counted (D76). Boon of the Night Spirit is a
+ *    feat, so it lives in FEAT_DAMAGE_RESPONSES.
  *  - Rules that IGNORE resistance rather than grant it — Poisoner, Envenom
  *    Weapons, Magic Arrow, Boon of Irresistible Offense.
  *
@@ -32,7 +34,12 @@
  * src/attacks/extraAttackData.ts matches Extra Attack.
  */
 
-import type { DamageResponseKind } from '../calculation/damageResponses'
+import { DAMAGE_TYPES, type DamageResponseKind } from '../calculation/damageResponses'
+
+/** "All damage except X" as the explicit list the grant model needs. */
+export function allDamageExcept(...excluded: string[]): string[] {
+	return DAMAGE_TYPES.filter((type) => !excluded.includes(type))
+}
 
 export interface FeatureDamageResponse {
 	/** Exactly as class-features.json / subclass-features.json spell it. */
@@ -57,7 +64,47 @@ export const FEATURE_DAMAGE_RESPONSES: readonly FeatureDamageResponse[] = [
 		quote: 'Damage Resistance. You have Resistance to Bludgeoning, Piercing, and Slashing damage.',
 	},
 	{
-		feature: 'Chemical Mastery',
+		feature: 'Superior Defense',
+			origin: 'Monk',
+			kind: 'resistance',
+			damageTypes: allDamageExcept('force'),
+			condition: 'while Superior Defense is active (3 Focus Points, 1 minute or until Incapacitated)',
+			quote: 'During that time, you have Resistance to all damage except Force damage.',
+		},
+		{
+			feature: 'Umbral Form',
+			origin: 'Sorcerer (Shadow Sorcery)',
+			kind: 'resistance',
+			damageTypes: allDamageExcept('force', 'radiant'),
+			condition: 'while Umbral Form is active (requires Innate Sorcery)',
+			quote: 'You have Resistance to all damage except Force and Radiant damage.',
+		},
+		{
+			feature: 'Full of Stars',
+			origin: 'Druid (Circle of the Stars)',
+			kind: 'resistance',
+			damageTypes: ['bludgeoning', 'piercing', 'slashing'],
+			condition: 'while in your Starry Form',
+			quote: 'While in your Starry Form, you become partially incorporeal, giving you Resistance to Bludgeoning, Piercing, and Slashing damage.',
+		},
+		{
+			feature: 'Aura of Warding',
+			origin: 'Paladin (Oath of the Ancients)',
+			kind: 'resistance',
+			damageTypes: ['necrotic', 'psychic', 'radiant'],
+			condition: 'while in your Aura of Protection',
+			quote: 'you and your allies have Resistance to Necrotic, Psychic, and Radiant damage while in your Aura of Protection.',
+		},
+		{
+			feature: 'Rage of the Gods',
+			origin: 'Barbarian (Path of the Zealot)',
+			kind: 'resistance',
+			damageTypes: ['necrotic', 'psychic', 'radiant'],
+			condition: 'while in Rage of the Gods form (1/Long Rest, only while raging)',
+			quote: 'You have Resistance to Necrotic, Psychic, and Radiant damage.',
+		},
+		{
+			feature: 'Chemical Mastery',
 		origin: 'Artificer (Alchemist)',
 		kind: 'resistance',
 		damageTypes: ['acid', 'poison'],
@@ -139,6 +186,31 @@ export const FEATURE_DAMAGE_RESPONSES: readonly FeatureDamageResponse[] = [
 		kind: 'resistance',
 		damageTypes: ['psychic'],
 		quote: 'You also have Resistance to Psychic damage.',
+	},
+]
+
+/**
+ * D198: feats whose damage response is prose-only. feats.json carries a
+ * structured `resist` on Boon of Energy Resistance alone; scripts/investigate-
+ * conditional-responses.js found Boon of the Night Spirit the only other feat
+ * granting one (Elemental Adept, Poisoner, Touch of Death, Boon of Irresistible
+ * Offense ignore resistance instead). Matched by feat name against featInstances.
+ */
+export interface FeatDamageResponse {
+	feat: string
+	kind: DamageResponseKind
+	damageTypes: string[]
+	condition?: string
+	quote: string
+}
+
+export const FEAT_DAMAGE_RESPONSES: readonly FeatDamageResponse[] = [
+	{
+		feat: 'Boon of the Night Spirit',
+		kind: 'resistance',
+		damageTypes: allDamageExcept('psychic', 'radiant'),
+		condition: 'while within Dim Light or Darkness',
+		quote: 'While within Dim Light or Darkness, you have Resistance to all damage except Psychic and Radiant damage.',
 	},
 ]
 
