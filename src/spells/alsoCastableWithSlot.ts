@@ -55,6 +55,12 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	// "You always have the Telekinesis spell prepared."
 	'Psi Warrior': true,
 
+	// D193, class-record grants (2024 PHB, decided by Daniel): "always prepared" spells, so slot-castable too. Keyed by class name.
+	Druid: true,
+	Paladin: true,
+	Ranger: true,
+	Warlock: true,
+
 	// Only "without expending a spell slot …"; nothing says it is prepared or slot-castable.
 	Alchemist: false,
 	// "You learn the … spell and can cast it once without expending a spell slot."

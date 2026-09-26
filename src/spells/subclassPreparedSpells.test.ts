@@ -689,7 +689,7 @@ describe('extractClassAlwaysPreparedSpells (D192)', () => {
 		expect(names(1)).toEqual([])
 		expect(names(2)).toEqual(['Divine Smite'])
 		expect(names(5)).toEqual(['Divine Smite', 'Find Steed'])
-		expect(extractClassAlwaysPreparedSpells([paladin], spells, 'Paladin', 'XPHB', 2)[0]).toMatchObject({ origin: 'class', usage: null, grantedAtLevel: 2 })
+		expect(extractClassAlwaysPreparedSpells([paladin], spells, 'Paladin', 'XPHB', 2)[0]).toMatchObject({ origin: 'class', usage: { kind: 'onceFreePerLongRest' }, grantedAtLevel: 2 })
 	})
 
 	it('never reads expanded, and returns nothing for a class with no additionalSpells', () => {

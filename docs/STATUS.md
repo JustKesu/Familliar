@@ -1527,6 +1527,14 @@ ability. The wizard's spell step lists them and includes them in the D71
 already-has set. `usage` is null (free casts: next task); Bard `expanded`
 still unread. E2E `classGrants.spec.ts` a–f. No schema change (still 48).
 
+A-S2 (D193): free casts of those grants from the hand table `CLASS_FREE_CASTS`
+(`subclassPreparedSpells.ts`): Hunter's Mark spends Favored Enemy, Find Familiar
+Wild Shape, Divine Smite / Find Steed / Contact Other Plane once per Long Rest on
+the feature counter (Paladin's Smite, Faithful Steed, Contact Patron via
+`SHARED_OWNERS`). All stay slot-castable (`ALSO_CASTABLE_WITH_SLOT` class keys).
+Class spells now have a CAST and a USE row (classGrants.spec.ts looks at CAST
+rows). E2E `classFreeCasts.spec.ts` a–d. No schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

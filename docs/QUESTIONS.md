@@ -424,4 +424,4 @@ na dvojí počítání: Favored Enemy má vlastní boxy a Hunter's Mark by je m�
 (tabulka vlastníků D190). Samostatný task, ne R7b.
 
 Nalezeno při R7b-0, zapsáno v R7b-1 (25. 9. 2026).
-STATUS: nerozhodnuto, čeká na vlastní task.
+STATUS: vyřešeno D192/D193; Bard Magical Secrets → Manage Spells.

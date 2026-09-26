@@ -3551,3 +3551,18 @@ sesílá s vlastností a Hit/DC té třídy a umisťuje se jako kouzlo té tří
 (Warlock: pact pravidla D189). Free casty (Hunter's Mark, Divine Smite, Find
 Steed, Find Familiar, Contact Other Plane) přijdou v dalším tasku; `usage` je
 zatím null. Bard `expanded` (Magical Secrets) se nečte, patří do Manage Spells.
+
+## D193 — A-S2: volná seslání class always-prepared kouzel
+
+Zdroj: task A-S2, pravidla 2024 PHB určil Daniel. Schéma beze změny (48).
+
+Záznam třídy žádný wrapper nenese, proto ruční tabulka `CLASS_FREE_CASTS`
+(třída|kouzlo → usage) v `subclassPreparedSpells.ts`:
+- Ranger Hunter's Mark: `resource`, cost 1, Favored Enemy (existující boxy).
+- Druid Find Familiar: `resource`, cost 1, Wild Shape (existující boxy).
+- Paladin Divine Smite / Find Steed, Warlock Contact Other Plane: 1× za Long Rest.
+  Počítadlo vlastní feature přes `SHARED_OWNERS` (klíč = název třídy): Paladin's
+  Smite, Faithful Steed, Contact Patron — boxy jsou i ve Features & Traits.
+Všech pět je i slotem: `ALSO_CASTABLE_WITH_SLOT` má Ranger, Paladin, Warlock,
+Druid (CAST řádek zůstává). Bard Power Words, Speak with Animals a Mending bez
+volného seslání. `alsoCastableWithSlot.test.ts` prochází i záznamy tříd.

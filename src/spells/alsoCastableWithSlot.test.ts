@@ -6,7 +6,7 @@ import { CHOSEN_SPELL_USAGE_SOURCES } from './chosenSpellUsage'
 import { extractFixedFeatSpells } from './featSpells'
 import { extractOptionalFeatureGrantedSpells } from './optionalFeatureSpells'
 import { raceSpellsFor } from './raceSpells'
-import { extractSubclassAlwaysPreparedSpells, isRecord, type SpellUsage } from './subclassPreparedSpells'
+import { extractClassAlwaysPreparedSpells, extractSubclassAlwaysPreparedSpells, isRecord, type SpellUsage } from './subclassPreparedSpells'
 
 function read(name: string): Record<string, unknown>[] {
 	const parsed: unknown = JSON.parse(readFileSync(`data/${name}`, 'utf8'))
@@ -26,6 +26,9 @@ describe('alsoCastableWithSlot — against the generated data (D190)', () => {
 	const sources = new Set<string>(CHOSEN_SPELL_USAGE_SOURCES)
 
 	const classes = read('classes.json')
+	for (const cls of withSpells(classes.filter((row) => row['entryType'] === 'class'))) {
+		if (free(extractClassAlwaysPreparedSpells(classes, spells, String(cls['name']), String(cls['source']), 20))) sources.add(String(cls['name']))
+	}
 	for (const subclass of withSpells(classes.filter((row) => row['entryType'] === 'subclass'))) {
 		const granted = extractSubclassAlwaysPreparedSpells(classes, spells, String(subclass['name']), String(subclass['source']), String(subclass['className']), String(subclass['classSource']), 20, undefined, 3)
 		if (free(granted)) sources.add(String(subclass['name']))
@@ -53,7 +56,7 @@ describe('alsoCastableWithSlot — against the generated data (D190)', () => {
 	})
 
 	it('reads YES for the stated and accepted sources and NO for the rest', () => {
-		expect(['Mark of Storm', 'Magic Initiate', 'Fey-Touched', 'Tiefling; Infernal Legacy', 'Yuan-Ti', 'Gnome; Forest Gnome Lineage', 'Archfey Patron', 'Psi Warrior'].every(alsoCastableWithSlot)).toBe(true)
+		expect(['Mark of Storm', 'Magic Initiate', 'Fey-Touched', 'Tiefling; Infernal Legacy', 'Yuan-Ti', 'Gnome; Forest Gnome Lineage', 'Archfey Patron', 'Psi Warrior', 'Ranger', 'Paladin', 'Warlock', 'Druid'].every(alsoCastableWithSlot)).toBe(true)
 		expect(['Alchemist', 'Drow High Magic', 'Fey Teleportation', 'Githyanki', 'Gift of the Depths', 'Armor of Shadows', 'Pact of the Chain', 'Warrior of Shadow', 'Nowhere'].some(alsoCastableWithSlot)).toBe(false)
 	})
 })

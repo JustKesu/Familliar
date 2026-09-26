@@ -464,6 +464,19 @@ interface RawClassEntry {
 	additionalSpells?: unknown
 }
 
+/*
+ * D193: the class record carries no free-cast wrapper, so the 2024 PHB rules come
+ * from this table (class|spell). Hunter's Mark and Find Familiar spend an existing
+ * pool; the other three are once per Long Rest, counted on their feature (SHARED_OWNERS).
+ */
+const CLASS_FREE_CASTS: Record<string, SpellUsage> = {
+	"Ranger|hunter's mark": { kind: 'resource', cost: 1, resourceName: 'Favored Enemy' },
+	'Druid|find familiar': { kind: 'resource', cost: 1, resourceName: 'Wild Shape' },
+	'Paladin|divine smite': { kind: 'onceFreePerLongRest' },
+	'Paladin|find steed': { kind: 'onceFreePerLongRest' },
+	'Warlock|contact other plane': { kind: 'onceFreePerLongRest' },
+}
+
 /**
  * D192: the class record's own `additionalSpells` (Ranger's Hunter's Mark, Paladin's
  * Divine Smite, ...). Keys are levels in THIS class, so a multiclass caller passes
@@ -481,7 +494,10 @@ export function extractClassAlwaysPreparedSpells(parsedClasses: unknown, parsedS
 	if (!classRecord || !Array.isArray(classRecord.additionalSpells)) return []
 
 	const spells = parsedSpells.filter(isRawSpell)
-	const result = classRecord.additionalSpells.filter(isRecord).flatMap((entry) => collectFixedGrants(entry, spells, classLevel, 'class', null))
+	const result = classRecord.additionalSpells
+		.filter(isRecord)
+		.flatMap((entry) => collectFixedGrants(entry, spells, classLevel, 'class', null))
+		.map((spell) => ({ ...spell, usage: CLASS_FREE_CASTS[`${className}|${spell.name.toLowerCase()}`] ?? spell.usage }))
 	return dedupeAlwaysPreparedSpells(result)
 }
 

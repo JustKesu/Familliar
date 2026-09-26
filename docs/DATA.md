@@ -1035,9 +1035,10 @@ no table maximum ("equal to your … modifier" is prose only). Mark of Sentinel
 so the CHA/LR term never reached the sheet. Checked over every non-reprinted
 subclass: no other spell is granted twice with different usages.
 
-**Class-record `additionalSpells` are not read at all** — Ranger Hunter's Mark
-(Favored Enemy), Paladin Divine Smite, Druid Speak with Animals + Find Familiar,
-Bard 20, Warlock 9, Artificer Mending (shape: next subsection). Telepathic's detect thoughts (ability
+**Class-record `additionalSpells`** (Ranger Hunter's Mark, Paladin Divine Smite,
+Druid Speak with Animals + Find Familiar, Bard 20, Warlock 9, Artificer Mending;
+shape: next subsection) are read since D192 and their free casts come from a hand
+table since D193. Telepathic's detect thoughts (ability
 "inherit") is not reached by featSpells.ts either.
 
 **Forest, not Rock.** The only `daily:{"pb":…}` carrier is Gnome; Forest Gnome
@@ -1077,7 +1078,9 @@ Druid column "Wild Shape" = 0,2,2,2,2,3…3,4,4,4,4 (4 from 17); Wild Shape is
 self-limited and a consumed pool, resource `Wild Shape`. Paladin's Smite,
 Faithful Steed and Contact Patron are NOT resources (no `consumes`, phrasing
 misses EXPENDED_USES; Contact Patron's "can't do so in this way again" misses
-only by "in this way"). Tinker's Magic is a resource (INT mod/LR) but counts
+only by "in this way"). D193 gives all three a counter through SHARED_OWNERS
+(the free-cast maximum 1 fills in; the box then also shows in Features & Traits,
+verified by e2e). Tinker's Magic is a resource (INT mod/LR) but counts
 item creations, not Mending.
 
 **Bard `expanded` is Magical Secrets, not a grant.** `{"10":[{"all":"level=1;2;3;4;5|class=Cleric;Druid;Wizard"}],"s6".."s9":[…level=N…]}`

@@ -32,8 +32,9 @@ async function openSaved(page: Page, saved: { id: string }): Promise<void> {
 
 const panel = (page: Page): Locator => page.getByRole('tabpanel', { name: 'Spells' })
 const section = (page: Page, label: string): Locator => panel(page).getByRole('region', { name: label, exact: true })
+// D193: a free-cast spell has a CAST and a USE row; these existence checks look at the CAST row (every character here has slots).
 const row = (page: Page, name: string): Locator =>
-  panel(page).locator('.sheet__spell-row', { has: page.locator('.sheet__spell-name', { hasText: new RegExp(`^${name}$`) }) })
+  panel(page).locator('.sheet__spell-row--cast', { has: page.locator('.sheet__spell-name', { hasText: new RegExp(`^${name}$`) }) })
 const usedBoxes = (scope: Locator): Locator => scope.locator('.sheet__spell-section-heading .sheet__use-box--used')
 
 test('A-S1 a: Ranger 1 — Hunter\'s Mark is there, labelled "always prepared (Ranger)"; CAST spends a level-1 slot', async ({ page }) => {
@@ -77,7 +78,7 @@ test('A-S1 e: Warlock 9 — Contact Other Plane stands in the pact (5th Level) s
   await openSaved(page, character('as1-warlock', [{ className: 'Warlock', level: 9 }], 'charisma'))
   const pact = section(page, '5th Level')
   await expect(pact.locator('.sheet__spell-pact-tag')).toHaveText('Pact')
-  await expect(pact.locator('.sheet__spell-name', { hasText: /^Contact Other Plane$/ })).toHaveCount(1)
+  await expect(pact.locator('.sheet__spell-row--cast .sheet__spell-name', { hasText: /^Contact Other Plane$/ })).toHaveCount(1)
 })
 
 test('A-S1 f: a Ranger 1 who also prepared Hunter\'s Mark has one row and no over-limit warning; stored picks are untouched', async ({ page }) => {

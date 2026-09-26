@@ -29,6 +29,9 @@ const SHARED_OWNERS: Record<string, Record<string, string>> = {
 	// EFA Chemical Mastery: "Once you use this feature, you can't use it again until you finish a Long Rest." sits inside its Conjured Cauldron benefit.
 	Alchemist: { "tasha's bubbling cauldron": 'Chemical Mastery', 'lesser restoration': 'Restorative Reagents' },
 	'Archfey Patron': { 'misty step': 'Steps of the Fey' },
+	// D193: class-record grants; the origin name is the class.
+	Paladin: { 'divine smite': "Paladin's Smite", 'find steed': 'Faithful Steed' },
+	Warlock: { 'contact other plane': 'Contact Patron' },
 }
 
 const ABILITY_BY_ABBREVIATION = Object.fromEntries(Object.entries(ABILITY_ABBREVIATIONS).map(([ability, abbreviation]) => [abbreviation, ability])) as Record<
