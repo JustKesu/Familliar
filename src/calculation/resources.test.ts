@@ -500,9 +500,11 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 		expect(indomitable?.status === 'known' && indomitable.value).toBe(3)
 	})
 
-	it('holds 48 known maxima: 46 single uses (the 40 of D119 plus the 6 of D120) and the 2 level-table ones', () => {
-		expect(singleUse).toHaveLength(48)
-		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(46)
+	// D194: +9 RHW (Refined Reanimation, Reanimated Companion, Empowered Channeling, Divine Reaper, Ancient Might, Ghost Walk,
+	// Umbral Form, Necrotic Husk, Survivor), -2 with their superseded subclasses (Telekinetic Master|TCE, Strength of the Grave|XGE).
+	it('holds 55 known maxima: 53 single uses (the 40 of D119, the 6 of D120, net +7 of D194) and the 2 level-table ones', () => {
+		expect(singleUse).toHaveLength(55)
+		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(53)
 	})
 
 	it('returns the whole pool on a Short Rest for exactly the ones whose recharge sentence names one', () => {
@@ -510,7 +512,7 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 		expect(onShortRest).toEqual(
 			[
 				'Action Surge', 'Clairvoyant Combatant', 'Illusory Self', 'Mage Slayer', 'Psi-Powered Leap', 'Stroke of Luck', 'Telekinetic Movement', 'The Third Eye',
-				'Unbreakable Majesty',
+				'Unbreakable Majesty', 'Divine Reaper', 'Empowered Channeling', 'Necrotic Husk',
 			].sort(),
 		)
 	})

@@ -147,11 +147,21 @@ function parseToolProficiency(raw: unknown): BackgroundToolProficiency {
 	return { kind: 'named', name: titleCase(key) }
 }
 
-export function parseOriginFeat(raw: unknown): BackgroundOriginFeat {
-	if (!Array.isArray(raw) || raw.length !== 1 || !isRecord(raw[0])) {
-		throw new Error(`background: expected a 1-element "feats" array, got ${JSON.stringify(raw)}`)
+/**
+ * The background's fixed origin feat, or null when it offers none. D194: RHW lists
+ * "any Dark Gift" ({anyFromCategory}) as an alternative; only the named feat is
+ * offered, and a background with no named feat (Mist Wanderer, Spirit Medium) is hidden.
+ */
+export function parseOriginFeat(raw: unknown): BackgroundOriginFeat | null {
+	if (!Array.isArray(raw) || raw.length === 0 || !raw.every(isRecord)) {
+		throw new Error(`background: expected a "feats" array of objects, got ${JSON.stringify(raw)}`)
 	}
-	const keys = Object.keys(raw[0])
+	const named = raw.filter((alternative) => !('anyFromCategory' in alternative))
+	if (named.length === 0) return null
+	if (named.length !== 1) {
+		throw new Error(`background: expected 1 named feat, got ${JSON.stringify(raw)}`)
+	}
+	const keys = Object.keys(named[0])
 	if (keys.length !== 1) {
 		throw new Error(`background: expected exactly 1 feats key, got ${JSON.stringify(keys)}`)
 	}
@@ -186,13 +196,15 @@ export function extractBackgrounds(parsed: unknown, index: ItemIndex): Backgroun
 	for (const entry of parsed) {
 		if (!isRawBackgroundEntry(entry)) continue
 		const raw = entry as unknown as Record<string, unknown>
+		const originFeat = parseOriginFeat(raw['feats'])
+		if (!originFeat) continue
 		backgrounds.push({
 			name: entry.name,
 			source: entry.source,
 			abilityChoices: parseAbilityChoices(raw['ability']),
 			skillProficiencies: parseSkillProficiencies(raw['skillProficiencies']),
 			toolProficiency: parseToolProficiency(raw['toolProficiencies']),
-			originFeat: parseOriginFeat(raw['feats']),
+			originFeat,
 			startingEquipment: parseBackgroundStartingEquipment(raw['startingEquipment'], entry.name, index),
 		})
 	}

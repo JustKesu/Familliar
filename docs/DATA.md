@@ -28,7 +28,7 @@ Run:
 
 ## Content scope
 
-ALLOWED_SOURCES: XPHB, XGE, TCE, EFA, XDMG, MPMM
+ALLOWED_SOURCES: XPHB, XGE, TCE, EFA, XDMG, MPMM, RHW
 ALLOWED_CLASS_SOURCES: XPHB, EFA  (the class EDITION, not the book)
 
   XPHB  Player's Handbook 2024      — core
@@ -37,9 +37,99 @@ ALLOWED_CLASS_SOURCES: XPHB, EFA  (the class EDITION, not the book)
   EFA   Eberron: Forge of Artificer — 2024-rules Artificer
   XDMG  Dungeon Master's Guide 2024 — magic item catalogue
   MPMM  Monsters of the Multiverse  — 2014 species pool
+  RHW   Ravenloft: The Horrors Within (2026-06, 2024 rules) — whole book, D194
 
-Deliberately excluded: PHB 2014, RHW (Reanimator subclass), all adventure
-modules, UA/playtest, Plane Shift booklets, VGM/MTF (superseded by MPMM).
+Deliberately excluded: PHB 2014, FRHoF, SCC, all adventure modules,
+UA/playtest, Plane Shift booklets, VGM/MTF (superseded by MPMM).
+
+A second copy of ALLOWED_SOURCES lives in src/subclass/subclassData.ts and one
+in scripts/validate-data.js; without the src copy the app does not offer a new
+book's subclasses.
+
+### RHW, FRHoF, SCC — what the three books contain (survey 2026-09, D194)
+
+Raw data before any filter (`scripts/investigate-books.mjs`, untracked):
+
+| | RHW (2024) | FRHoF (2025-11, 2024) | SCC (2021, **2014 rules**) |
+|---|---|---|---|
+| subclasses (+features) | 7 (+44): Reanimator/Artificer (classSource EFA), College of Spirits, Grave Domain, Hollow Warden, Phantom, Shadow Sorcery, Undead Patron | 8 (+56): Moon/Bard, Knowledge/Cleric, Banneret, Noble Genies, Winter Walker, Scion of the Three, Spellfire, Bladesinger | 0 |
+| spells | 0 (no spell file) | 19 | 5 (Borrowed Knowledge, Kinetic Jaunt, Silvery Barbs, Vortex Warp, Wither and Bloom) |
+| feats | 11 (9 category `DG` Dark Gift, Survivor and Sharp Eye `O`) | 34 (13 EB, 10 O, 11 G…) | 2 (Strixhaven Initiate, Strixhaven Mascot; no category) |
+| species | 4 (Dhampir, Hexblood, Lupin, Reborn) | 0 | 1 (Owlin) |
+| backgrounds | 4 | 18 | 5 (colleges) |
+| items | 2 | 24 + 3 baseitem + 1 itemGroup | 18 |
+| other | 70 monsters, 8 bastions, deck + 54 cards, 5 rewards | 17 languages, 42 deities, 8 bastions | 47 monsters, 4 adventures |
+
+- Classes/features are complete in class/*.json (not only book text); 0 dangling
+  refs; no optional features in any of the three. RHW/FRHoF reference `|XPHB`
+  everywhere; 0 markup tags unknown to MARKUP-INVENTORY.
+- `edition: "one"` sits on 13 RHW + 26 FRHoF records; SCC has no `edition`
+  anywhere. **Dhampir|RHW and Owlin|SCC have no `edition`**, so the species
+  filter (`edition === "one" && allowed source`, or MPMM) drops them — Dhampir
+  stays out by decision (D194).
+- RHW subclasses, reprint targets: XGE Shadow Magic → Shadow Sorcery|RHW, XGE
+  Grave → Grave|RHW, TCE Phantom → Phantom|RHW. Only TCE Bladesinging points at
+  FRHoF (unloaded), so it stays in classes.json with `reprintedAs` and the app
+  hides it (`!reprintedAs`, subclassData.ts / featureGrants.ts).
+- FRHoF: 17 regional languages, all `type: standard`. Feats with `choose`
+  (Cold Caster, Emerald Enclave Fledgling) need checking against the closed
+  FILTER_CHOICE_FEAT_KEYS tables before FRHoF is loaded. Prose proficiency
+  grants (D176 scan): Bladesinger (Training in War and Song, Bladesong),
+  Knowledge (Blessings of Knowledge, Unfettered Mind), Banneret (Knightly
+  Envoy), Noble Genies (Genie's Splendor), Moon (Primal Lore); feats Boon of
+  Terror, Cult of the Dragon Initiate, Harper Agent, Purple Dragon Rook,
+  Zhentarim Tactics. Loading FRHoF also drops Blade of Disaster|TCE (reprinted).
+- SCC is 2014: backgrounds have no `ability` (no ASI) and carry
+  `languageProficiencies`, `fromFeature` and `additionalSpells` with `expanded`
+  s1–s5 lists (no background spell path exists in the app); Strixhaven Initiate
+  has no category (would default to `G`, i.e. level 4+, though it is a
+  background feat) and 5 named `additionalSpells` blocks = a college choice (the
+  app reads only `[0]`); Strixhaven Mascot summons SCC creatures (6×
+  `{@creature …|SCC}`) outside beasts.json; 2 SCC spells keep an "At Higher
+  Levels" header; 66 bare `{@spell}`, 20 `{@skill}`, 32 `{@item …|phb}` (render
+  fine — no lookup, `parseSpellRef` matches by name). gendata gives all 24
+  FRHoF/SCC spells XPHB classes (Silvery Barbs → Bard, Sorcerer, Wizard).
+- New keys: feats `immune` (1), `conditionImmune` (2) — text only in the app.
+
+### RHW records — shapes the app meets (D194)
+
+- **Background `feats` alternatives.** Haunted One `[{"survivor|rhw"},
+  {anyFromCategory:{category:["DG"]}}]`, Investigator the same with Sharp Eye;
+  Mist Wanderer and Spirit Medium ONLY `anyFromCategory` DG (no named feat). The
+  33 older backgrounds are all one named feat. The app takes the named feat and
+  hides the two DG-only backgrounds (D194); `backgroundData.ts` threw on these
+  shapes before.
+- **Dark Gift feats** (`DG`, 9): every one has prerequisite
+  `[{campaign:["Ravenloft"]}]` and nothing else; no `ability` field. Five grant
+  spells under `ability:{choose:[int,wis,cha]}` + fixed spells (Gathered Whispers
+  message + augury `daily 1`, Living Shadow mage hand, Second Skin alter self
+  `daily 1`, Touch of Death chill touch, Watchers beast sense + speak with animals
+  `daily 1e`) — the choice-ability + fixed-grant path in featSpells.ts is
+  name-guarded to the Mark feats, so these spells do not reach the sheet.
+- Other `campaign` prerequisites: the 13 EFA Dragonmark feats (`campaign` +
+  `exclusiveFeatCategory:["D"]`) and Boon of Siberys (`campaign` + `level`).
+- **Shadow Sorcery**: shortName `Shadow`, `prepared` 3/5/7/9 (Bane, Darkness,
+  Inflict Wounds, Pass without Trace / Hunger of Hadar, Nondetection / Greater
+  Invisibility, Phantasmal Killer / Contagion, Creation) plus
+  `innate {6:{resource:{3:[summon beast]}}}`, `resourceName "Sorcery Point"`.
+  The Sorcery Point pool enters resources.ts only through a spender (`consumes`,
+  e.g. a Metamagic pick); a Sorcerer with none shows the Summon Beast USE as
+  "unresolved". Power of Shadow nests Eyes of the Dark (Darkvision 120,
+  Blindsight 10 — no `senses` field on subclass features) and Strength of the
+  Grave (1/LR, nested, not found by the self-limited test); Umbral Form
+  `consumes` Sorcery Point ×6.
+- **Phantom|RHW** Speak with Dead sits in a `rest` wrapper (1/rest), which
+  `extractRefsWithUsage` reads as `usage: null` — same as Aberrant Dragonmark|EFA.
+- **College of Spirits** `prepared {6:{daily:{1e:[spirit guardians]}}}`;
+  **Hexblood** `prepared {_:{daily:{1e:[disguise self, hex]}}}` with an ability
+  choice. Both texts say "always prepared" (slot-castable, D190 table).
+- Single-use sentences ("can't … again until you finish a … Rest") on 9 RHW
+  records: Refined Reanimation, Reanimated Companion, Empowered Channeling
+  (Short or Long), Divine Reaper (Short or Long), Ancient Might, Ghost Walk,
+  Umbral Form, Necrotic Husk (Short or Long), Survivor.
+- Proficiency grants in prose (D176 scan, not modelled): Spirits (Channeler),
+  Reanimator (3 features), feats Aberrant Anatomy, Echoing Soul, Symbiotic
+  Being; species Lupin, Reborn.
 
 XMM (Monster Manual 2024) is NOT in ALLOWED_SOURCES and must not be added to
 it. Per D67 it is allowed for ONE category only — `data/beasts.json`, for Wild
@@ -173,6 +263,18 @@ after shown where a category changed; unchanged categories listed too):
   data/actions.json               0 -> 18   (XPHB 18) — 15.5 KB, new category;
                                       XPHB only, D187 (see "actions.json" below)
 
+D194 (RHW + subclass reprint dedupe), before -> after:
+
+  data/feats.json               128 -> 139  (+RHW 11)
+  data/species.json              78 -> 81   (+RHW 3: Hexblood, Lupin, Reborn)
+  data/backgrounds.json          33 -> 37   (+RHW 4)
+  data/classes.json             127 -> 115  (13 classes + 102 subclasses:
+                                      XGE 31->25, TCE 30->17, +RHW 7)
+  data/subclass-features.json   786 -> 685  (+44 RHW, -145 of the dropped
+                                      subclasses)
+  data/items.json               900 -> 902  (+RHW 2)
+  spells, class-features, optional-features, languages unchanged.
+
 The drops are entries superseded by a newer reprint we also keep (e.g. TCE
 "Chef" superseded by its XPHB reprint) — see extract-data.js's
 `removeSuperseded()` and "Nine species names occur twice" below. `validate-data.js`
@@ -186,6 +288,19 @@ has one. Optional-feature picks have no such level (D99 — a wizard pick
 records none), and species traits are not listed on the sheet at all.
 
 ## Traps — things that silently break
+
+### A subclass's `reprintedAs` is its 4-part uid, not "name|source"
+Subclass reprint targets read `shortName|className|classSource|source`
+("Shadow|Sorcerer|XPHB|RHW"). Split on the last `|` they give the "name"
+"Shadow|Sorcerer|XPHB", which never equals a subclass name, so until D194
+`removeSuperseded` and validate's `checkNoSupersededDuplicates` never dropped a
+superseded subclass. Both now key subclasses on the 4-part uid. The fix dropped
+19 subclasses (their features follow, being kept by reference): TCE Alchemist,
+Armorer, Artillerist, Battle Smith (→ EFA), Stars, Psi Warrior, Mercy, Glory, Fey
+Wanderer, Soulknife, Aberrant Mind, Clockwork Soul (→ XPHB), Phantom (→ RHW); XGE
+Zealot, Glamour, Gloom Stalker, The Celestial (→ XPHB), Grave, Shadow Magic (→
+RHW). All were already hidden by the app's `!reprintedAs`. A subclass whose
+target is not loaded (Bladesinging → FRHoF) stays in the data, still hidden.
 
 ### Blank source means PHB, not "same as this"
 In class-feature references AND item codes, a blank/missing source
@@ -864,8 +979,8 @@ species, Monk-tool and language lines are B1's and were not re-checked.
   (EFA Artificer subclasses — a replacement pick); "if you don't already have
   it" (no replacement: Drunken Master, Scout, Kensei); skill-or-language
   (Cavalier, Samurai).
-- Bladesinging, Phantom, Grave and Shadow carry `reprintedAs` (FRHoF/RHW); the
-  app does not offer them.
+- Bladesinging carries `reprintedAs` (FRHoF); the app does not offer it.
+  Phantom, Grave and Shadow Magic left the data with D194 (RHW reprints).
 - Offered names (classes.json, after subclassesFor's filter), checked B6b:
   `College of Swords`|XGE, `Forge Domain`|XGE, `Order Domain`|TCE,
   `Twilight Domain`|TCE, `Circle of the Shepherd`|XGE, `Rune Knight`|TCE,
@@ -1006,7 +1121,9 @@ hand table (`src/spells/alsoCastableWithSlot.ts`). Stated yes: the 12 Marks
 Initiate, Artificer Initiate, Fey-/Shadow-Touched, XPHB Tiefling legacies and
 Elf lineages, Duergar, Triton, Yuan-Ti ("…of 2nd level or higher"). Implicit
 yes ("always prepared" / "learn"): Forest Gnome, Archfey Patron (Misty Step is
-also in `prepared["3"]`), The Fathomless, Psi Warrior. No: Alchemist (only
+also in `prepared["3"]`), The Fathomless, Psi Warrior, College of Spirits (RHW);
+Hexblood (RHW) says both. No: Shadow Sorcery (RHW, "3 Sorcery Points … without
+expending a spell slot, without preparing the spell"), Alchemist (only
 "without expending a spell slot"), Drow High Magic, Fey Teleportation, Wood Elf
 Magic (XGE), MPMM Deep Gnome/Fairy/Githyanki/Githzerai/Genasi (records named
 Air/Fire/Water), the 3 limited and 12 bare invocations, Wild Heart (ritual only),

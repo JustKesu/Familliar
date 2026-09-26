@@ -16,6 +16,7 @@ import {
 	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
 	featAbilityChoiceOptions,
+	featCampaignNote,
 	isMagicInitiateFeat,
 	isValidAbilityIncrease,
 	loadClassPrereqInfo,
@@ -406,6 +407,7 @@ function FeatSubPicker({
 			<ul className="feat-asi-picker__feats" aria-label={`Feats for level ${grantLevel}`}>
 				{sorted.map(({ feat, result }) => {
 					const isSelected = selected?.name === feat.name && selected.source === feat.source
+					const campaignNote = featCampaignNote(feat)
 					return (
 						<li key={`${feat.name}|${feat.source}`} className="feat-asi-picker__feat">
 							<label>
@@ -417,7 +419,9 @@ function FeatSubPicker({
 									onChange={() => onSelectFeat({ name: feat.name, source: feat.source })}
 								/>
 								{feat.name}
+								{feat.category === 'DG' && ' — Dark Gift'}
 							</label>
+							{campaignNote && <p className="feat-asi-picker__note">{campaignNote}</p>}
 							{!result.eligible && (
 								<ul className="feat-asi-picker__reasons">
 									{result.reasons.map((reason) => (

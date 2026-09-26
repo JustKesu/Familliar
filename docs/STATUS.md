@@ -1075,6 +1075,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   localStorage before load: slot boxes, CAST, pact section + badge, Finish Short
   Rest, concentration via CAST, pills/search, AT WILL + cantrip dice, SAVE DC
   drawer; Magic Initiate "1/LR" through the wizard).
+- `e2e/rhw.spec.ts` — D194 a–f (subclass pickers: Shadow Sorcery not Shadow
+  Magic, one Grave/Phantom, no Bladesinging, Reanimator; Shadow Sorcerer 3
+  always-prepared spells; Shadow Sorcerer 6 Summon Beast USE −3 Sorcery Points;
+  Echoing Soul selectable at level 4 with "Dark Gift" and "Ravenloft campaign").
 
 ## Dočasné scaffolding
 
@@ -1534,6 +1538,17 @@ the feature counter (Paladin's Smite, Faithful Steed, Contact Patron via
 `SHARED_OWNERS`). All stay slot-castable (`ALSO_CASTABLE_WITH_SLOT` class keys).
 Class spells now have a CAST and a USE row (classGrants.spec.ts looks at CAST
 rows). E2E `classFreeCasts.spec.ts` a–d. No schema change (still 48).
+
+D194: RHW is loaded whole (7 subclasses incl. Shadow Sorcery and Reanimator, 11
+feats, 3 species, 4 backgrounds, 2 items; Dhampir out). Subclass `reprintedAs`
+is matched on the 4-part uid, so 19 superseded XGE/TCE subclasses left
+classes.json; Bladesinging|TCE stays hidden. Backgrounds take the named feat of
+an "or any Dark Gift" pair; Mist Wanderer and Spirit Medium (DG only) are not
+offered. `campaign` prerequisites count as met and show as a note in the feat
+picker, DG feats carry a "Dark Gift" label, `exclusiveFeatCategory` is enforced.
+D190 table: College of Spirits, Hexblood yes; Shadow Sorcery no. Not modelled:
+DG feat spells, Eyes of the Dark senses, Strength of the Grave counter, RHW
+proficiency grants. E2E `rhw.spec.ts` a–f. No schema change (still 48).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

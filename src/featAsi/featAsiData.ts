@@ -148,6 +148,7 @@ export interface RawFeatPrerequisiteEntry {
 	proficiency?: { weapon?: string; armor?: string }[]
 	feat?: string[]
 	featCategory?: string[]
+	exclusiveFeatCategory?: string[]
 	campaign?: string[]
 	otherSummary?: { entry: string }
 }
@@ -510,9 +511,12 @@ function evaluateEntry(entry: RawFeatPrerequisiteEntry, ctx: PrerequisiteContext
 			if (!ctx.chosenFeats.some((f) => f.category === cat)) failures.push(`a feat from category ${cat}`)
 		}
 	}
-	if (entry.campaign) {
-		failures.push(`the ${entry.campaign.join('/')} campaign setting (not tracked by this app)`)
+	if (entry.exclusiveFeatCategory) {
+		for (const cat of entry.exclusiveFeatCategory) {
+			if (ctx.chosenFeats.some((f) => f.category === cat)) failures.push(`no other feat from category ${cat}`)
+		}
 	}
+	// D194: `campaign` is never unmet — the app tracks no campaign; the picker shows it as a note (featCampaignNote).
 
 	return failures.length > 0 ? `Requires ${failures.join(', ')}.` : null
 }
@@ -522,6 +526,12 @@ function evaluateEntry(entry: RawFeatPrerequisiteEntry, ctx: PrerequisiteContext
  * ineligible ones say why. `feat.prerequisite` (when present) is an array of
  * alternatives; the feat is eligible if ANY one alternative is fully met.
  */
+/** "Ravenloft campaign" for a feat whose prerequisite names a campaign (D194), else null. */
+export function featCampaignNote(feat: FeatEntry): string | null {
+	const campaigns = [...new Set((feat.prerequisite ?? []).flatMap((entry) => entry.campaign ?? []))]
+	return campaigns.length > 0 ? `${campaigns.join('/')} campaign` : null
+}
+
 export function evaluateFeatPrerequisites(feat: FeatEntry, ctx: PrerequisiteContext): PrerequisiteResult {
 	if (!feat.prerequisite || feat.prerequisite.length === 0) return { eligible: true, reasons: [] }
 

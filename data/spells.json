@@ -11335,6 +11335,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Hollow Warden",
+					"subclassShortName": "Hollow Warden",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Rogue",
 					"classSource": "XPHB",
 					"subclassName": "Arcane Trickster",
@@ -11353,6 +11360,10 @@
 				{
 					"name": "Boon of Siberys",
 					"source": "EFA"
+				},
+				{
+					"name": "Second Skin",
+					"source": "RHW"
 				}
 			],
 			"optionalFeatures": [
@@ -11701,6 +11712,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
@@ -11913,7 +11931,22 @@
 				}
 			],
 			"classVariants": [],
-			"subclasses": [],
+			"subclasses": [
+				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
+				}
+			],
 			"feats": [
 				{
 					"name": "Mark of Warding",
@@ -12856,7 +12889,12 @@
 					"subclassSource": "XPHB"
 				}
 			],
-			"feats": [],
+			"feats": [
+				{
+					"name": "Gathered Whispers",
+					"source": "RHW"
+				}
+			],
 			"optionalFeatures": []
 		}
 	},
@@ -13324,6 +13362,20 @@
 					"subclassName": "Divine Soul",
 					"subclassShortName": "Divine Soul",
 					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [
@@ -13803,6 +13855,10 @@
 				{
 					"name": "Mark of Handling",
 					"source": "EFA"
+				},
+				{
+					"name": "Watchers",
+					"source": "RHW"
 				}
 			],
 			"optionalFeatures": []
@@ -14520,6 +14576,20 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Druid",
 					"classSource": "XPHB",
 					"subclassName": "Circle of Spores",
@@ -14712,6 +14782,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
@@ -14745,6 +14822,13 @@
 					"subclassName": "Divine Soul",
 					"subclassShortName": "Divine Soul",
 					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [
@@ -15823,6 +15907,10 @@
 				{
 					"name": "Magic Initiate",
 					"source": "XPHB"
+				},
+				{
+					"name": "Touch of Death",
+					"source": "RHW"
 				}
 			],
 			"optionalFeatures": [
@@ -16538,6 +16626,13 @@
 					"subclassName": "Oath of Conquest",
 					"subclassShortName": "Conquest",
 					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [
@@ -18402,6 +18497,13 @@
 					"subclassName": "Divine Soul",
 					"subclassShortName": "Divine Soul",
 					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [],
@@ -19491,6 +19593,13 @@
 					"subclassSource": "XGE"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "The Genie",
@@ -20042,6 +20151,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Evoker",
@@ -20333,11 +20449,25 @@
 					"subclassSource": "EFA"
 				},
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Cleric",
 					"classSource": "XPHB",
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Sorcerer",
@@ -20642,6 +20772,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Sorcerer",
@@ -21516,6 +21653,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Sorcerer",
 					"classSource": "XPHB",
 					"subclassName": "Divine Soul",
@@ -22166,6 +22310,13 @@
 					"subclassName": "Oath of Conquest",
 					"subclassShortName": "Conquest",
 					"subclassSource": "XGE"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Hollow Warden",
+					"subclassShortName": "Hollow Warden",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Warlock",
@@ -23320,6 +23471,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
@@ -24412,11 +24570,25 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Fighter",
@@ -27432,6 +27604,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Druid",
 					"classSource": "XPHB",
 					"subclassName": "Circle of Spores",
@@ -28191,6 +28370,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "The Genie",
@@ -28206,6 +28392,13 @@
 					"subclassName": "Archfey Patron",
 					"subclassShortName": "Archfey",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Wizard",
@@ -30588,6 +30781,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "Great Old One Patron",
@@ -31607,6 +31807,13 @@
 					"subclassName": "Divine Soul",
 					"subclassShortName": "Divine Soul",
 					"subclassSource": "XGE"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [
@@ -33030,6 +33237,13 @@
 					"subclassSource": "EFA"
 				},
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
@@ -33764,6 +33978,10 @@
 				{
 					"name": "Artificer Initiate",
 					"source": "TCE"
+				},
+				{
+					"name": "Living Shadow",
+					"source": "RHW"
 				},
 				{
 					"name": "Magic Initiate",
@@ -35359,6 +35577,10 @@
 				{
 					"name": "Magic Initiate",
 					"source": "XPHB"
+				},
+				{
+					"name": "Gathered Whispers",
+					"source": "RHW"
 				},
 				{
 					"name": "Wood Elf Magic",
@@ -37064,6 +37286,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Abjurer",
@@ -37527,6 +37756,13 @@
 					"subclassName": "Trickery Domain",
 					"subclassShortName": "Trickery",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [
@@ -37728,6 +37964,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Illusionist",
@@ -37832,6 +38075,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Warlock",
 					"classSource": "XPHB",
 					"subclassName": "The Hexblade",
@@ -37844,6 +38094,13 @@
 					"subclassName": "The Genie",
 					"subclassShortName": "Genie",
 					"subclassSource": "TCE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Wizard",
@@ -37924,6 +38181,13 @@
 					"subclassName": "Eldritch Knight",
 					"subclassShortName": "Eldritch Knight",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Hollow Warden",
+					"subclassShortName": "Hollow Warden",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Rogue",
@@ -40222,6 +40486,20 @@
 					"subclassSource": "EFA"
 				},
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Sorcerer",
 					"classSource": "XPHB",
 					"subclassName": "Divine Soul",
@@ -40381,6 +40659,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Fighter",
@@ -40662,6 +40947,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [
@@ -41330,6 +41622,13 @@
 					"subclassName": "Life Domain",
 					"subclassShortName": "Life",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Druid",
@@ -44111,11 +44410,25 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Sorcerer",
@@ -44279,6 +44592,10 @@
 				{
 					"name": "Mark of Handling",
 					"source": "EFA"
+				},
+				{
+					"name": "Watchers",
+					"source": "RHW"
 				}
 			],
 			"optionalFeatures": [
@@ -44391,11 +44708,25 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Rogue",
+					"classSource": "XPHB",
+					"subclassName": "Phantom",
+					"subclassShortName": "Phantom",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Sorcerer",
 					"classSource": "XPHB",
 					"subclassName": "Divine Soul",
 					"subclassShortName": "Divine Soul",
 					"subclassSource": "XGE"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [],
@@ -44759,6 +45090,13 @@
 					"subclassName": "College of Lore",
 					"subclassShortName": "Lore",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Bard",
+					"classSource": "XPHB",
+					"subclassName": "College of Spirits",
+					"subclassShortName": "Spirits",
+					"subclassSource": "RHW"
 				},
 				{
 					"className": "Cleric",
@@ -45154,6 +45492,13 @@
 					"subclassName": "War Domain",
 					"subclassShortName": "War",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Hollow Warden",
+					"subclassShortName": "Hollow Warden",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [],
@@ -45894,6 +46239,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Sorcerer",
+					"classSource": "XPHB",
+					"subclassName": "Shadow Sorcery",
+					"subclassShortName": "Shadow",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Wizard",
 					"classSource": "XPHB",
 					"subclassName": "Illusionist",
@@ -46540,6 +46892,13 @@
 					"subclassName": "Arcane Trickster",
 					"subclassShortName": "Arcane Trickster",
 					"subclassSource": "XPHB"
+				},
+				{
+					"className": "Warlock",
+					"classSource": "XPHB",
+					"subclassName": "Undead Patron",
+					"subclassShortName": "Undead",
+					"subclassSource": "RHW"
 				}
 			],
 			"feats": [],
@@ -49538,6 +49897,13 @@
 					"subclassSource": "XPHB"
 				},
 				{
+					"className": "Cleric",
+					"classSource": "XPHB",
+					"subclassName": "Grave Domain",
+					"subclassShortName": "Grave",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Fighter",
 					"classSource": "XPHB",
 					"subclassName": "Eldritch Knight",
@@ -51144,6 +51510,13 @@
 			"classVariants": [],
 			"subclasses": [
 				{
+					"className": "Artificer",
+					"classSource": "EFA",
+					"subclassName": "Reanimator",
+					"subclassShortName": "Reanimator",
+					"subclassSource": "RHW"
+				},
+				{
 					"className": "Bard",
 					"classSource": "XPHB",
 					"subclassName": "College of Lore",
@@ -51425,6 +51798,13 @@
 			],
 			"classVariants": [],
 			"subclasses": [
+				{
+					"className": "Ranger",
+					"classSource": "XPHB",
+					"subclassName": "Hollow Warden",
+					"subclassShortName": "Hollow Warden",
+					"subclassSource": "RHW"
+				},
 				{
 					"className": "Warlock",
 					"classSource": "XPHB",

@@ -38,7 +38,7 @@ const { execFileSync } = require("child_process");
 const OUTPUT_DIR = path.join(__dirname, "..", "data");
 
 // Must match ALLOWED_SOURCES in extract-data.js.
-const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM"];
+const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM", "RHW"];
 
 /*
  * Valid values for a feat's `category` field.
@@ -54,11 +54,12 @@ const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM"];
  *   "D"     = Dragonmark feat. Used by 13 feats from EFA (Eberron).
  *   "FS:P"  = A Fighting Style restricted to Paladins (1 feat in XPHB).
  *   "FS:R"  = A Fighting Style restricted to Rangers  (1 feat in XPHB).
+ *   "DG"    = Dark Gift feat. 9 feats from RHW, taken in place of an Origin feat (D194).
  *
- * If you would rather treat those three as errors, delete them from this list
+ * If you would rather treat those as errors, delete them from this list
  * and the check will start reporting them.
  */
-const VALID_FEAT_CATEGORIES = ["O", "G", "FS", "EB", "D", "FS:P", "FS:R"];
+const VALID_FEAT_CATEGORIES = ["O", "G", "FS", "EB", "D", "FS:P", "FS:R", "DG"];
 
 /*
  * How many entries we EXPECT from each book, per category.
@@ -76,6 +77,7 @@ const EXPECTED_COUNTS = {
 		XGE: 15,
 		TCE: 5,
 		EFA: 28, // not in the original spec, but this is what the data contains
+		RHW: 11, // 9 Dark Gifts (category DG) + 2 others
 	},
 	// Taken from the first successful extraction run. XDMG and MPMM ship no
 	// spell files at all, so they are absent rather than zero.
@@ -94,24 +96,30 @@ const EXPECTED_COUNTS = {
 	 * + 10 from the Dragonborn `_abstract` template
 	 * = 87, minus 9 MPMM entries superseded by their EFA/XPHB reprint
 	 * (Shifter x4 variants, Aasimar, Goliath, Changeling, Orc) = 78.
-	 * RHW is excluded because it is not in ALLOWED_SOURCES.
+	 * RHW adds 3 (Hexblood, Lupin, Reborn); Dhampir|RHW has no `edition` and
+	 * stays out (D194).
 	 */
 	species: {
 		XPHB: 34,
 		MPMM: 35,
 		EFA: 9,
+		RHW: 3,
 	},
 	backgrounds: {
 		XPHB: 16,
 		EFA: 17,
+		RHW: 4,
 	},
 	// classes.json holds classes AND subclasses, so these are the combined
-	// per-book totals: 13 classes + 114 subclasses = 127 entries.
+	// per-book totals: 13 classes + 102 subclasses = 115 entries.
+	// D194: 19 XGE/TCE subclasses reprinted into XPHB/EFA/RHW are dropped
+	// now that removeSuperseded matches the 4-part subclass uid.
 	classes: {
 		XPHB: 60, // 12 classes + 48 subclasses
-		XGE: 31,
-		TCE: 30,
+		XGE: 25,
+		TCE: 17,
 		EFA: 6, // 1 class (Artificer) + 5 subclasses
+		RHW: 7,
 	},
 	// TCE dropped from 47 to 38: nine TCE optional features were superseded
 	// by their XPHB reprint (removeSuperseded).
@@ -132,6 +140,7 @@ const EXPECTED_COUNTS = {
 		TCE: 80,
 		XGE: 3,
 		EFA: 6,
+		RHW: 2,
 		PHB: 1,
 	},
 	// Languages ship in a single book today, so this is just the total.
@@ -258,16 +267,16 @@ const HIT_POINT_BONUS_TABLE_NAMES = ["Tough", "Dwarven Toughness", "Draconic Res
  * The full set of entries a phrase scan for "hit point maximum" (in any of its
  * three phrasings) finds across feats.json, species.json, class-features.json,
  * subclass-features.json and optional-features.json (scripts/investigate-hp-bonus-guard.js,
- * consumed — see docs/REPORT.md for the session that ran it). Ten total: the
- * three real per-level bonuses above, plus seven that use the phrase without
+ * consumed — see docs/REPORT.md for the session that ran it). Nine total: the
+ * three real per-level bonuses above, plus six that use the phrase without
  * raising the maximum by a fixed or per-level amount —
  *
  *   Arcane Ward          the maximum belongs to the ward, not the character
  *   Preserve Life        a healing cap expressed as a share of the maximum
  *   Boon of Recovery     healing computed from the maximum
  *   Unearthly Recovery   healing computed from the maximum
- *   Searing Vengeance     healing computed from the maximum — kept from BOTH
- *                         XGE and XPHB (not superseded — both editions ship)
+ *   Searing Vengeance     healing computed from the maximum (the XGE copy left
+ *                         with its superseded subclass, D194)
  *   Boon of Fortitude    a real but ONE-OFF +40 at level 19, out of scope
  *                        (docs/QUESTIONS.md)
  *
@@ -281,7 +290,6 @@ const KNOWN_HIT_POINT_MAXIMUM_CANDIDATES = [
 	"feats.json: Boon of Fortitude|XPHB",
 	"feats.json: Boon of Recovery|XPHB",
 	"subclass-features.json: Unearthly Recovery|XGE",
-	"subclass-features.json: Searing Vengeance|XGE",
 	"subclass-features.json: Searing Vengeance|XPHB",
 	"subclass-features.json: Preserve Life|XPHB",
 	"subclass-features.json: Draconic Resilience|XPHB",
@@ -300,9 +308,10 @@ const VALID_LANGUAGE_TYPES = ["standard", "rare"];
 // 279 -> 302 and 465 -> 786: extraction now also collects features reached
 // only via a ref* node inside another feature's text, not just the
 // classFeatureIds/subclassFeatureIds lists (see docs/DATA.md, "Traps").
+// 786 -> 685 (D194): +44 RHW, -145 of the 19 superseded subclasses.
 const EXPECTED_FEATURE_TOTALS = {
 	"class-features": 302,
-	"subclass-features": 786,
+	"subclass-features": 685,
 };
 
 // Fields every class / subclass must carry for character building to work.
@@ -519,6 +528,9 @@ function splitReprintTarget(target) {
  */
 function checkNoSupersededDuplicates(entries, categoryName) {
 	const keptKeys = new Set(entries.map((entry) => `${entry.name}|${entry.source}`));
+	// A subclass's reprintedAs is its 4-part uid, never "name|source" (D194).
+	const subclassKey = (entry) => `${entry.shortName}|${entry.className}|${entry.classSource}|${entry.source}`.toLowerCase();
+	const keptSubclassKeys = new Set(entries.filter((entry) => entry.entryType === "subclass").map(subclassKey));
 	const failures = [];
 
 	entries.forEach((entry, index) => {
@@ -528,6 +540,15 @@ function checkNoSupersededDuplicates(entries, categoryName) {
 			.filter(Boolean);
 
 		for (const target of targets) {
+			if (entry.entryType === "subclass") {
+				if (keptSubclassKeys.has(target.toLowerCase())) {
+					failures.push({
+						label: describeEntry(entry, index),
+						detail: `still present alongside its reprint "${target}" — removeSuperseded should have dropped it`,
+					});
+				}
+				continue;
+			}
 			const { name, source } = splitReprintTarget(target);
 			if (name !== entry.name) continue; // describes a parent, not this entry
 			if (keptKeys.has(`${name}|${source}`)) {

@@ -5,6 +5,7 @@ import {
 	extractSelectableFeats,
 	featAbilityChoiceOptions,
 	featAsiGrantsFor,
+	featCampaignNote,
 	featsRequiringAbilityChoice,
 	isMagicInitiateFeat,
 	isValidAbilityIncrease,
@@ -294,12 +295,17 @@ describe('evaluateFeatPrerequisites', () => {
 		).toBe(true)
 	})
 
-	it('a campaign prerequisite is always unmet — this app tracks no campaign setting', () => {
-		const feat: FeatEntry = { name: 'Aberrant Dragonmark', source: 'EFA', category: 'D', prerequisite: [{ campaign: ['Eberron'], exclusiveFeatCategory: ['D'] } as never] }
-		const result = evaluateFeatPrerequisites(feat, baseContext())
-		expect(result.eligible).toBe(false)
-		expect(result.reasons[0]).toContain('Eberron')
-		expect(result.reasons[0]).toContain('not tracked')
+	it('a campaign prerequisite is always met and shown as a note (D194)', () => {
+		const feat: FeatEntry = { name: 'Echoing Soul', source: 'RHW', category: 'DG', prerequisite: [{ campaign: ['Ravenloft'] }] }
+		expect(evaluateFeatPrerequisites(feat, baseContext()).eligible).toBe(true)
+		expect(featCampaignNote(feat)).toBe('Ravenloft campaign')
+		expect(featCampaignNote({ name: 'Alert', source: 'XPHB', category: 'O' })).toBeNull()
+	})
+
+	it('an exclusiveFeatCategory prerequisite fails once a feat of that category is chosen', () => {
+		const feat: FeatEntry = { name: 'Mark of Healing', source: 'EFA', category: 'D', prerequisite: [{ campaign: ['Eberron'], exclusiveFeatCategory: ['D'] }] }
+		expect(evaluateFeatPrerequisites(feat, baseContext()).eligible).toBe(true)
+		expect(evaluateFeatPrerequisites(feat, baseContext({ chosenFeats: [{ name: 'Aberrant Dragonmark', source: 'EFA', category: 'D' }] })).eligible).toBe(false)
 	})
 
 	it('an otherSummary prerequisite shows its own prose verbatim, not a "Requires ..." reason', () => {

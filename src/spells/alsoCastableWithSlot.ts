@@ -54,6 +54,10 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	'The Fathomless': true,
 	// "You always have the Telekinesis spell prepared."
 	'Psi Warrior': true,
+	// "You always have the Spirit Guardians spell prepared." (Empowered Channeling, RHW)
+	'College of Spirits': true,
+	// "You always have the Disguise Self and Hex spells prepared. … You can also cast the spell using any spell slots you have of the appropriate level." (RHW)
+	Hexblood: true,
 
 	// D193, class-record grants (2024 PHB, decided by Daniel): "always prepared" spells, so slot-castable too. Keyed by class name.
 	Druid: true,
@@ -100,6 +104,8 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	// "spend 2 ki points to cast …" / Focus Points
 	'Way of the Sun Soul': false,
 	'Warrior of Shadow': false,
+	// "You can spend 3 Sorcery Points to cast Summon Beast … without expending a spell slot, without preparing the spell …" (Beasts of Ill Omen, RHW)
+	'Shadow Sorcery': false,
 }
 
 export function alsoCastableWithSlot(sourceName: string): boolean {

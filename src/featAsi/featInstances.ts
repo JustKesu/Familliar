@@ -95,6 +95,7 @@ export function backgroundOriginFeatLinks(parsedBackgrounds: unknown, parsedFeat
 	for (const background of parsedBackgrounds) {
 		if (typeof background?.name !== 'string' || typeof background?.source !== 'string') continue
 		const parsed = parseOriginFeat(background.feats)
+		if (!parsed) continue
 		links.push({
 			background: { name: background.name, source: background.source },
 			feat: featsByKey.get(`${parsed.name}|${parsed.source}`.toLowerCase()) ?? parsed,

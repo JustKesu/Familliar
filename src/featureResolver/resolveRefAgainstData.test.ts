@@ -58,8 +58,8 @@ describe('resolveRef against the generated data', () => {
 	})
 
 	// A scan that silently found nothing would make the assertion above pass
-	// for the wrong reason.
+	// for the wrong reason. 368 since D194 dropped the superseded subclasses.
 	it('actually scanned the refs', () => {
-		expect(checked).toBeGreaterThan(400)
+		expect(checked).toBeGreaterThan(300)
 	})
 })

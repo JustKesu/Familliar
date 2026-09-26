@@ -75,6 +75,7 @@ const ALLOWED_SOURCES = [
 	"EFA", // Eberron: Forge of the Artificer
 	"XDMG", // Dungeon Master's Guide (2024)
 	"MPMM", // Mordenkainen Presents: Monsters of the Multiverse
+	"RHW", // Ravenloft: The Horrors Within (2024 rules, D194)
 ];
 
 /*
@@ -1028,8 +1029,12 @@ function splitReprintTarget(target) {
 	return { name: target.slice(0, separatorIndex), source: target.slice(separatorIndex + 1) };
 }
 
-function removeSuperseded(kept, label, warnings) {
-	const keptKeys = new Set(kept.map((entry) => makeNameSourceKey(entry.name, entry.source)));
+// A subclass's reprintedAs is its 4-part uid "shortName|className|classSource|source",
+// never "name|source" (D194).
+const subclassReprintKey = (entry) => makeNameSourceKey(`${entry.shortName}|${entry.className}|${entry.classSource}`, entry.source);
+
+function removeSuperseded(kept, label, warnings, keyOf = (entry) => makeNameSourceKey(entry.name, entry.source)) {
+	const keptKeys = new Set(kept.map(keyOf));
 
 	const survivors = [];
 	const removed = [];
@@ -1967,7 +1972,7 @@ function extractClasses() {
 	let keptSubclasses = prepared.subclass.filter(
 		(entry) => ALLOWED_CLASS_SOURCES.includes(entry.classSource) && ALLOWED_SOURCES.includes(entry.source),
 	);
-	keptSubclasses = removeSuperseded(keptSubclasses, "subclasses", warnings);
+	keptSubclasses = removeSuperseded(keptSubclasses, "subclasses", warnings, subclassReprintKey);
 
 	// Give EVERY feature its stable id first, so we can match against them.
 	for (const entry of prepared.classFeature) entry.id = makeClassFeatureIdFromEntry(entry);

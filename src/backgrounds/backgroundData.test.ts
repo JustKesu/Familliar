@@ -17,10 +17,16 @@ function loadRealItemIndex(): ItemIndex {
 describe('extractBackgrounds — real data/backgrounds.json', () => {
 	const backgrounds = extractBackgrounds(loadRealBackgrounds(), loadRealItemIndex())
 
-	it('reads all 33 backgrounds (17 EFA + 16 XPHB, per NOTES.md)', () => {
-		expect(backgrounds).toHaveLength(33)
+	it('reads 35 backgrounds (17 EFA + 16 XPHB + 2 RHW; Mist Wanderer and Spirit Medium have no named feat, D194)', () => {
+		expect(backgrounds).toHaveLength(35)
 		expect(backgrounds.filter((b) => b.source === 'EFA')).toHaveLength(17)
 		expect(backgrounds.filter((b) => b.source === 'XPHB')).toHaveLength(16)
+		expect(backgrounds.filter((b) => b.source === 'RHW').map((b) => b.name).sort()).toEqual(['Haunted One', 'Investigator'])
+	})
+
+	it('takes the named feat when RHW offers "or any Dark Gift" as an alternative (D194)', () => {
+		expect(backgrounds.find((b) => b.name === 'Haunted One')?.originFeat).toEqual({ name: 'Survivor', source: 'RHW' })
+		expect(backgrounds.find((b) => b.name === 'Investigator')?.originFeat).toEqual({ name: 'Sharp Eye', source: 'RHW' })
 	})
 
 	it('gives every background exactly 3 distinct ability choices, 2 skills, a tool proficiency, an origin feat and two equipment options', () => {

@@ -3566,3 +3566,26 @@ Záznam třídy žádný wrapper nenese, proto ruční tabulka `CLASS_FREE_CASTS
 Všech pět je i slotem: `ALSO_CASTABLE_WITH_SLOT` má Ranger, Paladin, Warlock,
 Druid (CAST řádek zůstává). Bard Power Words, Speak with Animals a Mending bez
 volného seslání. `alsoCastableWithSlot.test.ts` prochází i záznamy tříd.
+
+## D194 — Kniha RHW, dedupe reprintů podtříd, Dark Gift featy
+
+Zdroj: task D194, rozhodnutí Daniela 26. 9. 2026 (průzkum REPORT-KNIHY.md).
+Schéma beze změny (48).
+
+- **RHW celá kniha** v ALLOWED_SOURCES (extract, validate, subclassData.ts).
+  FRHoF a SCC ne.
+- **Dedupe reprintů podtříd (Q7).** `reprintedAs` podtřídy se porovnává jako
+  4dílné uid `shortName|className|classSource|source` v extrakci i ve validate.
+  Podtřída s načteným cílem vypadne i se svými features; s nenačteným cílem
+  (Bladesinging → FRHoF) zůstane v datech a app ji dál skrývá (`!reprintedAs`).
+- **Dhampir|RHW zůstává venku** (chybí `edition`, filtr species beze výjimky).
+- **Bladesinging|TCE se neodkrývá**, čeká na FRHoF.
+- **Dark Gift featy (DG).** Pravidlo knihy: DG místo Origin featu. App dnes volbu
+  Origin featu nikde nenabízí, proto žádný DG picker. Backgroundy RHW: Haunted
+  One a Investigator dávají svůj pojmenovaný feat (alternativa „any Dark Gift“
+  se ignoruje, výměna je pozdější task); Mist Wanderer a Spirit Medium (jen DG)
+  se v pickeru nenabízejí.
+- **Prerekvizita `campaign` je vždy splněná** (app kampaně nesleduje, DG pravidlo
+  už chce svolení DM). Picker ji ukazuje jako poznámku („Ravenloft campaign“) a
+  DG featy nese štítkem „Dark Gift“. Týká se i 13 EFA Dragonmark featů; jejich
+  `exclusiveFeatCategory` se proto vyhodnocuje (žádný jiný feat té kategorie).

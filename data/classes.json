@@ -6663,228 +6663,6 @@
 		"entryType": "subclass",
 		"name": "Alchemist",
 		"shortName": "Alchemist",
-		"source": "TCE",
-		"className": "Artificer",
-		"classSource": "EFA",
-		"page": 14,
-		"otherSources": [
-			{
-				"source": "ERLW",
-				"page": 58
-			}
-		],
-		"reprintedAs": [
-			"Alchemist|Artificer|EFA|EFA"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"prepared": {
-					"3": [
-						"healing word",
-						"ray of sickness"
-					],
-					"5": [
-						"flaming sphere",
-						"melf's acid arrow"
-					],
-					"9": [
-						"gaseous form",
-						"mass healing word"
-					],
-					"13": [
-						"blight",
-						"death ward"
-					],
-					"17": [
-						"cloudkill",
-						"raise dead"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Alchemist|Artificer|TCE|Alchemist|TCE|3",
-			"Alchemical Savant|Artificer|TCE|Alchemist|TCE|5",
-			"Restorative Reagents|Artificer|TCE|Alchemist|TCE|9",
-			"Chemical Mastery|Artificer|TCE|Alchemist|TCE|15"
-		],
-		"subclassFeatureIds": [
-			"scf|alchemist|artificer|tce|alchemist|tce|3|tce",
-			"scf|alchemical savant|artificer|tce|alchemist|tce|5|tce",
-			"scf|restorative reagents|artificer|tce|alchemist|tce|9|tce",
-			"scf|chemical mastery|artificer|tce|alchemist|tce|15|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Armorer",
-		"shortName": "Armorer",
-		"source": "TCE",
-		"className": "Artificer",
-		"classSource": "EFA",
-		"page": 15,
-		"reprintedAs": [
-			"Armorer|Artificer|EFA|EFA"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"prepared": {
-					"3": [
-						"magic missile",
-						"thunderwave"
-					],
-					"5": [
-						"mirror image",
-						"shatter"
-					],
-					"9": [
-						"hypnotic pattern",
-						"lightning bolt"
-					],
-					"13": [
-						"fire shield",
-						"greater invisibility"
-					],
-					"17": [
-						"passwall",
-						"wall of force"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Armorer|Artificer|TCE|Armorer|TCE|3",
-			"Extra Attack|Artificer|TCE|Armorer|TCE|5",
-			"Armor Modifications|Artificer|TCE|Armorer|TCE|9",
-			"Perfected Armor|Artificer|TCE|Armorer|TCE|15"
-		],
-		"subclassFeatureIds": [
-			"scf|armorer|artificer|tce|armorer|tce|3|tce",
-			"scf|extra attack|artificer|tce|armorer|tce|5|tce",
-			"scf|armor modifications|artificer|tce|armorer|tce|9|tce",
-			"scf|perfected armor|artificer|tce|armorer|tce|15|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Artillerist",
-		"shortName": "Artillerist",
-		"source": "TCE",
-		"className": "Artificer",
-		"classSource": "EFA",
-		"page": 17,
-		"otherSources": [
-			{
-				"source": "ERLW",
-				"page": 59
-			}
-		],
-		"reprintedAs": [
-			"Artillerist|Artificer|EFA|EFA"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"prepared": {
-					"3": [
-						"shield",
-						"thunderwave"
-					],
-					"5": [
-						"scorching ray",
-						"shatter"
-					],
-					"9": [
-						"fireball",
-						"wind wall"
-					],
-					"13": [
-						"ice storm",
-						"wall of fire"
-					],
-					"17": [
-						"cone of cold",
-						"wall of force"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Artillerist|Artificer|TCE|Artillerist|TCE|3",
-			"Arcane Firearm|Artificer|TCE|Artillerist|TCE|5",
-			"Explosive Cannon|Artificer|TCE|Artillerist|TCE|9",
-			"Fortified Position|Artificer|TCE|Artillerist|TCE|15"
-		],
-		"subclassFeatureIds": [
-			"scf|artillerist|artificer|tce|artillerist|tce|3|tce",
-			"scf|arcane firearm|artificer|tce|artillerist|tce|5|tce",
-			"scf|explosive cannon|artificer|tce|artillerist|tce|9|tce",
-			"scf|fortified position|artificer|tce|artillerist|tce|15|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Battle Smith",
-		"shortName": "Battle Smith",
-		"source": "TCE",
-		"className": "Artificer",
-		"classSource": "EFA",
-		"page": 18,
-		"otherSources": [
-			{
-				"source": "ERLW",
-				"page": 60
-			}
-		],
-		"reprintedAs": [
-			"Battle Smith|Artificer|EFA|EFA"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"prepared": {
-					"3": [
-						"heroism",
-						"shield"
-					],
-					"5": [
-						"branding smite",
-						"warding bond"
-					],
-					"9": [
-						"aura of vitality",
-						"conjure barrage"
-					],
-					"13": [
-						"aura of purity",
-						"fire shield"
-					],
-					"17": [
-						"banishing smite",
-						"mass cure wounds"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Battle Smith|Artificer|TCE|Battle Smith|TCE|3",
-			"Extra Attack|Artificer|TCE|Battle Smith|TCE|5",
-			"Arcane Jolt|Artificer|TCE|Battle Smith|TCE|9",
-			"Improved Defender|Artificer|TCE|Battle Smith|TCE|15"
-		],
-		"subclassFeatureIds": [
-			"scf|battle smith|artificer|tce|battle smith|tce|3|tce",
-			"scf|extra attack|artificer|tce|battle smith|tce|5|tce",
-			"scf|arcane jolt|artificer|tce|battle smith|tce|9|tce",
-			"scf|improved defender|artificer|tce|battle smith|tce|15|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Alchemist",
-		"shortName": "Alchemist",
 		"source": "EFA",
 		"className": "Artificer",
 		"classSource": "EFA",
@@ -7140,6 +6918,56 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "Reanimator",
+		"shortName": "Reanimator",
+		"source": "RHW",
+		"className": "Artificer",
+		"classSource": "EFA",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"false life|xphb",
+						"spare the dying|xphb",
+						"witch bolt|xphb"
+					],
+					"5": [
+						"blindness/deafness|xphb",
+						"enhance ability|xphb"
+					],
+					"9": [
+						"animate dead|xphb",
+						"lightning bolt|xphb"
+					],
+					"13": [
+						"blight|xphb",
+						"death ward|xphb"
+					],
+					"17": [
+						"antilife shell|xphb",
+						"raise dead|xphb"
+					]
+				}
+			}
+		],
+		"subclassFeatures": [
+			"Reanimator|Artificer|EFA|Reanimator|RHW|3|RHW",
+			"Strange Modifications|Artificer|EFA|Reanimator|RHW|5|RHW",
+			"Improved Reanimation|Artificer|EFA|Reanimator|RHW|9|RHW",
+			"Macabre Modifications|Artificer|EFA|Reanimator|RHW|9|RHW",
+			"Refined Reanimation|Artificer|EFA|Reanimator|RHW|15|RHW"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|reanimator|artificer|efa|reanimator|rhw|3|rhw",
+			"scf|strange modifications|artificer|efa|reanimator|rhw|5|rhw",
+			"scf|improved reanimation|artificer|efa|reanimator|rhw|9|rhw",
+			"scf|macabre modifications|artificer|efa|reanimator|rhw|9|rhw",
+			"scf|refined reanimation|artificer|efa|reanimator|rhw|15|rhw"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "Path of the Ancestral Guardian",
 		"shortName": "Ancestral Guardian",
 		"source": "XGE",
@@ -7200,31 +7028,6 @@
 			"scf|storm soul|barbarian|phb|storm herald|xge|6|xge",
 			"scf|shielding storm|barbarian|phb|storm herald|xge|10|xge",
 			"scf|raging storm|barbarian|phb|storm herald|xge|14|xge"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Path of the Zealot",
-		"shortName": "Zealot",
-		"source": "XGE",
-		"className": "Barbarian",
-		"classSource": "XPHB",
-		"page": 11,
-		"reprintedAs": [
-			"Zealot|Barbarian|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"subclassFeatures": [
-			"Path of the Zealot|Barbarian||Zealot|XGE|3",
-			"Fanatical Focus|Barbarian||Zealot|XGE|6",
-			"Zealous Presence|Barbarian||Zealot|XGE|10",
-			"Rage beyond Death|Barbarian||Zealot|XGE|14"
-		],
-		"subclassFeatureIds": [
-			"scf|path of the zealot|barbarian|phb|zealot|xge|3|xge",
-			"scf|fanatical focus|barbarian|phb|zealot|xge|6|xge",
-			"scf|zealous presence|barbarian|phb|zealot|xge|10|xge",
-			"scf|rage beyond death|barbarian|phb|zealot|xge|14|xge"
 		]
 	},
 	{
@@ -7397,38 +7200,6 @@
 			"scf|fanatical focus|barbarian|xphb|zealot|xphb|6|xphb",
 			"scf|zealous presence|barbarian|xphb|zealot|xphb|10|xphb",
 			"scf|rage of the gods|barbarian|xphb|zealot|xphb|14|xphb"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "College of Glamour",
-		"shortName": "Glamour",
-		"source": "XGE",
-		"className": "Bard",
-		"classSource": "XPHB",
-		"page": 14,
-		"reprintedAs": [
-			"Glamour|Bard|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"innate": {
-					"6": [
-						"command"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"College of Glamour|Bard||Glamour|XGE|3",
-			"Mantle of Majesty|Bard||Glamour|XGE|6",
-			"Unbreakable Majesty|Bard||Glamour|XGE|14"
-		],
-		"subclassFeatureIds": [
-			"scf|college of glamour|bard|phb|glamour|xge|3|xge",
-			"scf|mantle of majesty|bard|phb|glamour|xge|6|xge",
-			"scf|unbreakable majesty|bard|phb|glamour|xge|14|xge"
 		]
 	},
 	{
@@ -7688,6 +7459,39 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "College of Spirits",
+		"shortName": "Spirits",
+		"source": "RHW",
+		"className": "Bard",
+		"classSource": "XPHB",
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"6": {
+						"daily": {
+							"1e": [
+								"spirit guardians|xphb"
+							]
+						}
+					}
+				}
+			}
+		],
+		"subclassFeatures": [
+			"College of Spirits|Bard|XPHB|Spirits|RHW|3|RHW",
+			"Empowered Channeling|Bard|XPHB|Spirits|RHW|6|RHW",
+			"Mystical Connection|Bard|XPHB|Spirits|RHW|14|RHW"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|college of spirits|bard|xphb|spirits|rhw|3|rhw",
+			"scf|empowered channeling|bard|xphb|spirits|rhw|6|rhw",
+			"scf|mystical connection|bard|xphb|spirits|rhw|14|rhw"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "Forge Domain",
 		"shortName": "Forge",
 		"source": "XGE",
@@ -7741,71 +7545,6 @@
 			"scf|channel divinity: artisan's blessing|cleric|xphb|forge|xge|3|xge",
 			"scf|soul of the forge|cleric|phb|forge|xge|6|xge",
 			"scf|saint of forge and fire|cleric|phb|forge|xge|17|xge"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Grave Domain",
-		"shortName": "Grave",
-		"source": "XGE",
-		"className": "Cleric",
-		"classSource": "XPHB",
-		"page": 19,
-		"reprintedAs": [
-			"Grave|Cleric|XPHB|RHW"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"prepared": {
-					"1": [
-						"bane",
-						"false life"
-					],
-					"3": [
-						"gentle repose",
-						"ray of enfeeblement"
-					],
-					"5": [
-						"revivify",
-						"vampiric touch"
-					],
-					"7": [
-						"blight",
-						"death ward"
-					],
-					"9": [
-						"antilife shell",
-						"raise dead"
-					]
-				},
-				"known": {
-					"1": [
-						"spare the dying#c"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Grave Domain|Cleric|XPHB|Grave|XGE|3",
-			"Channel Divinity: Path to the Grave|Cleric|XPHB|Grave|XGE|3",
-			"Sentinel at Death's Door|Cleric||Grave|XGE|6",
-			"Keeper of Souls|Cleric||Grave|XGE|17"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Grave Domain",
-				"source": "XGE",
-				"shortName": "Grave",
-				"className": "Cleric",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|grave domain|cleric|xphb|grave|xge|3|xge",
-			"scf|channel divinity: path to the grave|cleric|xphb|grave|xge|3|xge",
-			"scf|sentinel at death's door|cleric|phb|grave|xge|6|xge",
-			"scf|keeper of souls|cleric|phb|grave|xge|17|xge"
 		]
 	},
 	{
@@ -8169,6 +7908,51 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "Grave Domain",
+		"shortName": "Grave",
+		"source": "RHW",
+		"className": "Cleric",
+		"classSource": "XPHB",
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"detect evil and good|xphb",
+						"false life|xphb",
+						"gentle repose|xphb",
+						"ray of enfeeblement|xphb",
+						"spare the dying|xphb"
+					],
+					"5": [
+						"revivify|xphb",
+						"vampiric touch|xphb"
+					],
+					"7": [
+						"blight|xphb",
+						"death ward|xphb"
+					],
+					"9": [
+						"dispel evil and good|xphb",
+						"raise dead|xphb"
+					]
+				}
+			}
+		],
+		"subclassFeatures": [
+			"Grave Domain|Cleric|XPHB|Grave|RHW|3|RHW",
+			"Sentinel at Death's Door|Cleric|XPHB|Grave|RHW|6|RHW",
+			"Divine Reaper|Cleric|XPHB|Grave|RHW|17|RHW"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|grave domain|cleric|xphb|grave|rhw|3|rhw",
+			"scf|sentinel at death's door|cleric|xphb|grave|rhw|6|rhw",
+			"scf|divine reaper|cleric|xphb|grave|rhw|17|rhw"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "Circle of Dreams",
 		"shortName": "Dreams",
 		"source": "XGE",
@@ -8291,54 +8075,6 @@
 			"scf|fungal infestation|druid|phb|spores|tce|6|tce",
 			"scf|spreading spores|druid|phb|spores|tce|10|tce",
 			"scf|fungal body|druid|phb|spores|tce|14|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Circle of Stars",
-		"shortName": "Stars",
-		"source": "TCE",
-		"className": "Druid",
-		"classSource": "XPHB",
-		"page": 38,
-		"reprintedAs": [
-			"Stars|Druid|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"known": {
-					"2": [
-						"guidance#c"
-					]
-				},
-				"prepared": {
-					"2": [
-						"guiding bolt"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Circle of Stars|Druid|XPHB|Stars|TCE|3",
-			"Cosmic Omen|Druid||Stars|TCE|6",
-			"Twinkling Constellations|Druid||Stars|TCE|10",
-			"Full of Stars|Druid||Stars|TCE|14"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Circle of Stars",
-				"source": "TCE",
-				"shortName": "Stars",
-				"className": "Druid",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|circle of stars|druid|xphb|stars|tce|3|tce",
-			"scf|cosmic omen|druid|phb|stars|tce|6|tce",
-			"scf|twinkling constellations|druid|phb|stars|tce|10|tce",
-			"scf|full of stars|druid|phb|stars|tce|14|tce"
 		]
 	},
 	{
@@ -8736,55 +8472,6 @@
 			"scf|tireless spirit|fighter|phb|samurai|xge|10|xge",
 			"scf|rapid strike|fighter|phb|samurai|xge|15|xge",
 			"scf|strength before death|fighter|phb|samurai|xge|18|xge"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Psi Warrior",
-		"shortName": "Psi Warrior",
-		"source": "TCE",
-		"className": "Fighter",
-		"classSource": "XPHB",
-		"page": 42,
-		"reprintedAs": [
-			"Psi Warrior|Fighter|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"innate": {
-					"18": {
-						"daily": {
-							"1": [
-								"telekinesis"
-							]
-						}
-					}
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Psi Warrior|Fighter||Psi Warrior|TCE|3",
-			"Telekinetic Adept|Fighter||Psi Warrior|TCE|7",
-			"Guarded Mind|Fighter||Psi Warrior|TCE|10",
-			"Bulwark of Force|Fighter||Psi Warrior|TCE|15",
-			"Telekinetic Master|Fighter||Psi Warrior|TCE|18"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Psi Warrior",
-				"source": "TCE",
-				"shortName": "Psi Warrior",
-				"className": "Fighter",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|psi warrior|fighter|phb|psi warrior|tce|3|tce",
-			"scf|telekinetic adept|fighter|phb|psi warrior|tce|7|tce",
-			"scf|guarded mind|fighter|phb|psi warrior|tce|10|tce",
-			"scf|bulwark of force|fighter|phb|psi warrior|tce|15|tce",
-			"scf|telekinetic master|fighter|phb|psi warrior|tce|18|tce"
 		]
 	},
 	{
@@ -9453,40 +9140,6 @@
 	},
 	{
 		"entryType": "subclass",
-		"name": "Way of Mercy",
-		"shortName": "Mercy",
-		"source": "TCE",
-		"className": "Monk",
-		"classSource": "XPHB",
-		"page": 49,
-		"reprintedAs": [
-			"Mercy|Monk|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"subclassFeatures": [
-			"Way of Mercy|Monk||Mercy|TCE|3",
-			"Physician's Touch|Monk||Mercy|TCE|6",
-			"Flurry of Healing and Harm|Monk||Mercy|TCE|11",
-			"Hand of Ultimate Mercy|Monk||Mercy|TCE|17"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Way of Mercy",
-				"source": "TCE",
-				"shortName": "Mercy",
-				"className": "Monk",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|way of mercy|monk|phb|mercy|tce|3|tce",
-			"scf|physician's touch|monk|phb|mercy|tce|6|tce",
-			"scf|flurry of healing and harm|monk|phb|mercy|tce|11|tce",
-			"scf|hand of ultimate mercy|monk|phb|mercy|tce|17|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
 		"name": "Way of the Astral Self",
 		"shortName": "Astral Self",
 		"source": "TCE",
@@ -9756,72 +9409,6 @@
 	},
 	{
 		"entryType": "subclass",
-		"name": "Oath of Glory",
-		"shortName": "Glory",
-		"source": "TCE",
-		"className": "Paladin",
-		"classSource": "XPHB",
-		"page": 53,
-		"otherSources": [
-			{
-				"source": "MOT",
-				"page": 29
-			}
-		],
-		"reprintedAs": [
-			"Glory|Paladin|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"prepared": {
-					"3": [
-						"guiding bolt",
-						"heroism"
-					],
-					"5": [
-						"enhance ability",
-						"magic weapon"
-					],
-					"9": [
-						"haste",
-						"protection from energy"
-					],
-					"13": [
-						"compulsion",
-						"freedom of movement"
-					],
-					"17": [
-						"commune",
-						"flame strike"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Oath of Glory|Paladin||Glory|TCE|3",
-			"Aura of Alacrity|Paladin||Glory|TCE|7",
-			"Glorious Defense|Paladin||Glory|TCE|15",
-			"Living Legend|Paladin||Glory|TCE|20"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Oath of Glory",
-				"source": "TCE",
-				"shortName": "Glory",
-				"className": "Paladin",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|oath of glory|paladin|phb|glory|tce|3|tce",
-			"scf|aura of alacrity|paladin|phb|glory|tce|7|tce",
-			"scf|glorious defense|paladin|phb|glory|tce|15|tce",
-			"scf|living legend|paladin|phb|glory|tce|20|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
 		"name": "Oath of the Watchers",
 		"shortName": "Watchers",
 		"source": "TCE",
@@ -10077,52 +9664,6 @@
 	},
 	{
 		"entryType": "subclass",
-		"name": "Gloom Stalker",
-		"shortName": "Gloom Stalker",
-		"source": "XGE",
-		"className": "Ranger",
-		"classSource": "XPHB",
-		"page": 41,
-		"reprintedAs": [
-			"Gloom Stalker|Ranger|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"known": {
-					"3": [
-						"disguise self"
-					],
-					"5": [
-						"rope trick"
-					],
-					"9": [
-						"fear"
-					],
-					"13": [
-						"greater invisibility"
-					],
-					"17": [
-						"seeming"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Gloom Stalker|Ranger||Gloom Stalker|XGE|3",
-			"Iron Mind|Ranger||Gloom Stalker|XGE|7",
-			"Stalker's Flurry|Ranger||Gloom Stalker|XGE|11",
-			"Shadowy Dodge|Ranger||Gloom Stalker|XGE|15"
-		],
-		"subclassFeatureIds": [
-			"scf|gloom stalker|ranger|phb|gloom stalker|xge|3|xge",
-			"scf|iron mind|ranger|phb|gloom stalker|xge|7|xge",
-			"scf|stalker's flurry|ranger|phb|gloom stalker|xge|11|xge",
-			"scf|shadowy dodge|ranger|phb|gloom stalker|xge|15|xge"
-		]
-	},
-	{
-		"entryType": "subclass",
 		"name": "Horizon Walker",
 		"shortName": "Horizon Walker",
 		"source": "XGE",
@@ -10205,61 +9746,6 @@
 			"scf|supernatural defense|ranger|phb|monster slayer|xge|7|xge",
 			"scf|magic-user's nemesis|ranger|phb|monster slayer|xge|11|xge",
 			"scf|slayer's counter|ranger|phb|monster slayer|xge|15|xge"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Fey Wanderer",
-		"shortName": "Fey Wanderer",
-		"source": "TCE",
-		"className": "Ranger",
-		"classSource": "XPHB",
-		"page": 58,
-		"reprintedAs": [
-			"Fey Wanderer|Ranger|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"known": {
-					"3": [
-						"charm person"
-					],
-					"5": [
-						"misty step"
-					],
-					"9": [
-						"dispel magic"
-					],
-					"13": [
-						"dimension door"
-					],
-					"17": [
-						"mislead"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Fey Wanderer|Ranger||Fey Wanderer|TCE|3",
-			"Beguiling Twist|Ranger||Fey Wanderer|TCE|7",
-			"Fey Reinforcements|Ranger||Fey Wanderer|TCE|11",
-			"Misty Wanderer|Ranger||Fey Wanderer|TCE|15"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Fey Wanderer",
-				"source": "TCE",
-				"shortName": "Fey Wanderer",
-				"className": "Ranger",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|fey wanderer|ranger|phb|fey wanderer|tce|3|tce",
-			"scf|beguiling twist|ranger|phb|fey wanderer|tce|7|tce",
-			"scf|fey reinforcements|ranger|phb|fey wanderer|tce|11|tce",
-			"scf|misty wanderer|ranger|phb|fey wanderer|tce|15|tce"
 		]
 	},
 	{
@@ -10453,6 +9939,49 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "Hollow Warden",
+		"shortName": "Hollow Warden",
+		"source": "RHW",
+		"className": "Ranger",
+		"classSource": "XPHB",
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"wrathful smite|xphb"
+					],
+					"5": [
+						"alter self|xphb"
+					],
+					"9": [
+						"phantom steed|xphb"
+					],
+					"13": [
+						"dominate beast|xphb"
+					],
+					"17": [
+						"steel wind strike|xphb"
+					]
+				}
+			}
+		],
+		"subclassFeatures": [
+			"Hollow Warden|Ranger|XPHB|Hollow Warden|RHW|3|RHW",
+			"Hungering Might|Ranger|XPHB|Hollow Warden|RHW|7|RHW",
+			"Rot and Violence|Ranger|XPHB|Hollow Warden|RHW|11|RHW",
+			"Ancient Might|Ranger|XPHB|Hollow Warden|RHW|15|RHW"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|hollow warden|ranger|xphb|hollow warden|rhw|3|rhw",
+			"scf|hungering might|ranger|xphb|hollow warden|rhw|7|rhw",
+			"scf|rot and violence|ranger|xphb|hollow warden|rhw|11|rhw",
+			"scf|ancient might|ranger|xphb|hollow warden|rhw|15|rhw"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "Inquisitive",
 		"shortName": "Inquisitive",
 		"source": "XGE",
@@ -10549,74 +10078,6 @@
 			"scf|panache|rogue|phb|swashbuckler|xge|9|xge",
 			"scf|elegant maneuver|rogue|phb|swashbuckler|xge|13|xge",
 			"scf|master duelist|rogue|phb|swashbuckler|xge|17|xge"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Phantom",
-		"shortName": "Phantom",
-		"source": "TCE",
-		"className": "Rogue",
-		"classSource": "XPHB",
-		"page": 62,
-		"reprintedAs": [
-			"Phantom|Rogue|XPHB|RHW"
-		],
-		"edition": "classic",
-		"subclassFeatures": [
-			"Phantom|Rogue||Phantom|TCE|3",
-			"Tokens of the Departed|Rogue||Phantom|TCE|9",
-			"Ghost Walk|Rogue||Phantom|TCE|13",
-			"Death's Friend|Rogue||Phantom|TCE|17"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Phantom",
-				"source": "TCE",
-				"shortName": "Phantom",
-				"className": "Rogue",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|phantom|rogue|phb|phantom|tce|3|tce",
-			"scf|tokens of the departed|rogue|phb|phantom|tce|9|tce",
-			"scf|ghost walk|rogue|phb|phantom|tce|13|tce",
-			"scf|death's friend|rogue|phb|phantom|tce|17|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Soulknife",
-		"shortName": "Soulknife",
-		"source": "TCE",
-		"className": "Rogue",
-		"classSource": "XPHB",
-		"page": 63,
-		"reprintedAs": [
-			"Soulknife|Rogue|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"subclassFeatures": [
-			"Soulknife|Rogue||Soulknife|TCE|3",
-			"Soul Blades|Rogue||Soulknife|TCE|9",
-			"Psychic Veil|Rogue||Soulknife|TCE|13",
-			"Rend Mind|Rogue||Soulknife|TCE|17"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Soulknife",
-				"source": "TCE",
-				"shortName": "Soulknife",
-				"className": "Rogue",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|soulknife|rogue|phb|soulknife|tce|3|tce",
-			"scf|soul blades|rogue|phb|soulknife|tce|9|tce",
-			"scf|psychic veil|rogue|phb|soulknife|tce|13|tce",
-			"scf|rend mind|rogue|phb|soulknife|tce|17|tce"
 		]
 	},
 	{
@@ -11104,6 +10565,44 @@
 	},
 	{
 		"entryType": "subclass",
+		"name": "Phantom",
+		"shortName": "Phantom",
+		"source": "RHW",
+		"className": "Rogue",
+		"classSource": "XPHB",
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"innate": {
+					"9": {
+						"rest": {
+							"1": [
+								"speak with dead|xphb"
+							]
+						}
+					}
+				},
+				"ability": "dex"
+			}
+		],
+		"subclassFeatures": [
+			"Phantom|Rogue|XPHB|Phantom|RHW|3|RHW",
+			"Tokens of the Departed|Rogue|XPHB|Phantom|RHW|9|RHW",
+			"Voice of Death|Rogue|XPHB|Phantom|RHW|9|RHW",
+			"Ghost Walk|Rogue|XPHB|Phantom|RHW|13|RHW",
+			"Death's Friend|Rogue|XPHB|Phantom|RHW|17|RHW"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|phantom|rogue|xphb|phantom|rhw|3|rhw",
+			"scf|tokens of the departed|rogue|xphb|phantom|rhw|9|rhw",
+			"scf|voice of death|rogue|xphb|phantom|rhw|9|rhw",
+			"scf|ghost walk|rogue|xphb|phantom|rhw|13|rhw",
+			"scf|death's friend|rogue|xphb|phantom|rhw|17|rhw"
+		]
+	},
+	{
+		"entryType": "subclass",
 		"name": "Divine Soul",
 		"shortName": "Divine Soul",
 		"source": "XGE",
@@ -11418,40 +10917,6 @@
 	},
 	{
 		"entryType": "subclass",
-		"name": "Shadow Magic",
-		"shortName": "Shadow",
-		"source": "XGE",
-		"className": "Sorcerer",
-		"classSource": "XPHB",
-		"page": 50,
-		"reprintedAs": [
-			"Shadow|Sorcerer|XPHB|RHW"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"known": {
-					"3": [
-						"darkness"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Shadow Magic|Sorcerer|XPHB|Shadow|XGE|3",
-			"Hound of Ill Omen|Sorcerer||Shadow|XGE|6",
-			"Shadow Walk|Sorcerer||Shadow|XGE|14",
-			"Umbral Form|Sorcerer||Shadow|XGE|18"
-		],
-		"subclassFeatureIds": [
-			"scf|shadow magic|sorcerer|xphb|shadow|xge|3|xge",
-			"scf|hound of ill omen|sorcerer|phb|shadow|xge|6|xge",
-			"scf|shadow walk|sorcerer|phb|shadow|xge|14|xge",
-			"scf|umbral form|sorcerer|phb|shadow|xge|18|xge"
-		]
-	},
-	{
-		"entryType": "subclass",
 		"name": "Storm Sorcery",
 		"shortName": "Storm",
 		"source": "XGE",
@@ -11478,129 +10943,6 @@
 			"scf|storm guide|sorcerer|phb|storm|xge|6|xge",
 			"scf|storm's fury|sorcerer|phb|storm|xge|14|xge",
 			"scf|wind soul|sorcerer|phb|storm|xge|18|xge"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Aberrant Mind",
-		"shortName": "Aberrant Mind",
-		"source": "TCE",
-		"className": "Sorcerer",
-		"classSource": "XPHB",
-		"page": 66,
-		"reprintedAs": [
-			"Aberrant|Sorcerer|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"known": {
-					"1": [
-						"mind sliver|tce#c",
-						"arms of Hadar",
-						"dissonant whispers"
-					],
-					"3": [
-						"calm emotions",
-						"detect thoughts"
-					],
-					"5": [
-						"hunger of Hadar",
-						"sending"
-					],
-					"7": [
-						"Evard's black tentacles",
-						"summon aberration|TCE"
-					],
-					"9": [
-						"Rary's telepathic bond",
-						"telekinesis"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Aberrant Mind|Sorcerer|XPHB|Aberrant Mind|TCE|3",
-			"Psionic Sorcery|Sorcerer||Aberrant Mind|TCE|6",
-			"Psychic Defenses|Sorcerer||Aberrant Mind|TCE|6",
-			"Revelation in Flesh|Sorcerer||Aberrant Mind|TCE|14",
-			"Warping Implosion|Sorcerer||Aberrant Mind|TCE|18"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Aberrant Mind",
-				"source": "TCE",
-				"shortName": "Aberrant Mind",
-				"className": "Sorcerer",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|aberrant mind|sorcerer|xphb|aberrant mind|tce|3|tce",
-			"scf|psionic sorcery|sorcerer|phb|aberrant mind|tce|6|tce",
-			"scf|psychic defenses|sorcerer|phb|aberrant mind|tce|6|tce",
-			"scf|revelation in flesh|sorcerer|phb|aberrant mind|tce|14|tce",
-			"scf|warping implosion|sorcerer|phb|aberrant mind|tce|18|tce"
-		]
-	},
-	{
-		"entryType": "subclass",
-		"name": "Clockwork Soul",
-		"shortName": "Clockwork Soul",
-		"source": "TCE",
-		"className": "Sorcerer",
-		"classSource": "XPHB",
-		"page": 68,
-		"reprintedAs": [
-			"Clockwork|Sorcerer|XPHB|XPHB"
-		],
-		"edition": "classic",
-		"additionalSpells": [
-			{
-				"known": {
-					"1": [
-						"alarm",
-						"protection from evil and good"
-					],
-					"3": [
-						"aid",
-						"lesser restoration"
-					],
-					"5": [
-						"dispel magic",
-						"protection from energy"
-					],
-					"7": [
-						"freedom of movement",
-						"summon construct|TCE"
-					],
-					"9": [
-						"greater restoration",
-						"wall of force"
-					]
-				}
-			}
-		],
-		"subclassFeatures": [
-			"Clockwork Soul|Sorcerer|XPHB|Clockwork Soul|TCE|3",
-			"Bastion of Law|Sorcerer||Clockwork Soul|TCE|6",
-			"Trance of Order|Sorcerer||Clockwork Soul|TCE|14",
-			"Clockwork Cavalcade|Sorcerer||Clockwork Soul|TCE|18"
-		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "Clockwork Soul",
-				"source": "TCE",
-				"shortName": "Clockwork Soul",
-				"className": "Sorcerer",
-				"classSource": "PHB"
-			}
-		},
-		"subclassFeatureIds": [
-			"scf|clockwork soul|sorcerer|xphb|clockwork soul|tce|3|tce",
-			"scf|bastion of law|sorcerer|phb|clockwork soul|tce|6|tce",
-			"scf|trance of order|sorcerer|phb|clockwork soul|tce|14|tce",
-			"scf|clockwork cavalcade|sorcerer|phb|clockwork soul|tce|18|tce"
 		]
 	},
 	{
@@ -11774,68 +11116,58 @@
 	},
 	{
 		"entryType": "subclass",
-		"name": "The Celestial",
-		"shortName": "Celestial",
-		"source": "XGE",
-		"className": "Warlock",
+		"name": "Shadow Sorcery",
+		"shortName": "Shadow",
+		"source": "RHW",
+		"className": "Sorcerer",
 		"classSource": "XPHB",
-		"page": 54,
-		"reprintedAs": [
-			"Celestial|Warlock|XPHB|XPHB"
-		],
-		"edition": "classic",
+		"edition": "one",
 		"additionalSpells": [
 			{
-				"known": {
-					"1": [
-						"sacred flame#c",
-						"light#c"
+				"prepared": {
+					"3": [
+						"bane|xphb",
+						"darkness|xphb",
+						"inflict wounds|xphb",
+						"pass without trace|xphb"
+					],
+					"5": [
+						"hunger of hadar|xphb",
+						"nondetection|xphb"
+					],
+					"7": [
+						"greater invisibility|xphb",
+						"phantasmal killer|xphb"
+					],
+					"9": [
+						"contagion|xphb",
+						"creation|xphb"
 					]
 				},
-				"expanded": {
-					"s1": [
-						"cure wounds",
-						"guiding bolt"
-					],
-					"s2": [
-						"flaming sphere",
-						"lesser restoration"
-					],
-					"s3": [
-						"daylight",
-						"revivify"
-					],
-					"s4": [
-						"guardian of faith",
-						"wall of fire"
-					],
-					"s5": [
-						"flame strike",
-						"greater restoration"
-					]
-				}
+				"innate": {
+					"6": {
+						"resource": {
+							"3": [
+								"summon beast|xphb"
+							]
+						}
+					}
+				},
+				"resourceName": "Sorcery Point"
 			}
 		],
 		"subclassFeatures": [
-			"The Celestial|Warlock|XPHB|Celestial|XGE|3",
-			"Radiant Soul|Warlock||Celestial|XGE|6",
-			"Celestial Resilience|Warlock||Celestial|XGE|10",
-			"Searing Vengeance|Warlock||Celestial|XGE|14"
+			"Shadow Sorcery|Sorcerer|XPHB|Shadow|RHW|3|RHW",
+			"Beasts of Ill Omen|Sorcerer|XPHB|Shadow|RHW|6|RHW",
+			"Shadow Walk|Sorcerer|XPHB|Shadow|RHW|14|RHW",
+			"Umbral Form|Sorcerer|XPHB|Shadow|RHW|18|RHW"
 		],
-		"fluff": {
-			"_subclassFluff": {
-				"name": "The Celestial",
-				"source": "XGE",
-				"shortName": "Celestial",
-				"className": "Warlock",
-				"classSource": "PHB"
-			}
-		},
+		"hasFluffImages": true,
 		"subclassFeatureIds": [
-			"scf|the celestial|warlock|xphb|celestial|xge|3|xge",
-			"scf|radiant soul|warlock|phb|celestial|xge|6|xge",
-			"scf|celestial resilience|warlock|phb|celestial|xge|10|xge",
-			"scf|searing vengeance|warlock|phb|celestial|xge|14|xge"
+			"scf|shadow sorcery|sorcerer|xphb|shadow|rhw|3|rhw",
+			"scf|beasts of ill omen|sorcerer|xphb|shadow|rhw|6|rhw",
+			"scf|shadow walk|sorcerer|xphb|shadow|rhw|14|rhw",
+			"scf|umbral form|sorcerer|xphb|shadow|rhw|18|rhw"
 		]
 	},
 	{
@@ -12319,6 +11651,52 @@
 			"scf|eldritch hex|warlock|xphb|great old one|xphb|10|xphb",
 			"scf|thought shield|warlock|xphb|great old one|xphb|10|xphb",
 			"scf|create thrall|warlock|xphb|great old one|xphb|14|xphb"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Undead Patron",
+		"shortName": "Undead",
+		"source": "RHW",
+		"className": "Warlock",
+		"classSource": "XPHB",
+		"edition": "one",
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"bane|xphb",
+						"blindness/deafness|xphb",
+						"phantasmal force|xphb",
+						"ray of sickness|xphb"
+					],
+					"5": [
+						"speak with dead|xphb",
+						"summon undead|xphb"
+					],
+					"7": [
+						"greater invisibility|xphb",
+						"phantasmal killer|xphb"
+					],
+					"9": [
+						"antilife shell|xphb",
+						"cloudkill|xphb"
+					]
+				}
+			}
+		],
+		"subclassFeatures": [
+			"Undead Patron|Warlock|XPHB|Undead|RHW|3|RHW",
+			"Grave Touched|Warlock|XPHB|Undead|RHW|6|RHW",
+			"Necrotic Husk|Warlock|XPHB|Undead|RHW|10|RHW",
+			"Superior Dread|Warlock|XPHB|Undead|RHW|14|RHW"
+		],
+		"hasFluffImages": true,
+		"subclassFeatureIds": [
+			"scf|undead patron|warlock|xphb|undead|rhw|3|rhw",
+			"scf|grave touched|warlock|xphb|undead|rhw|6|rhw",
+			"scf|necrotic husk|warlock|xphb|undead|rhw|10|rhw",
+			"scf|superior dread|warlock|xphb|undead|rhw|14|rhw"
 		]
 	},
 	{
