@@ -1037,10 +1037,56 @@ subclass: no other spell is granted twice with different usages.
 
 **Class-record `additionalSpells` are not read at all** — Ranger Hunter's Mark
 (Favored Enemy), Paladin Divine Smite, Druid Speak with Animals + Find Familiar,
-Bard 20, Warlock 9, Artificer Mending. Telepathic's detect thoughts (ability
+Bard 20, Warlock 9, Artificer Mending (shape: next subsection). Telepathic's detect thoughts (ability
 "inherit") is not reached by featSpells.ts either.
 
 **Forest, not Rock.** The only `daily:{"pb":…}` carrier is Gnome; Forest Gnome
 Lineage (Speak with Animals); the code once said Rock Gnome. Found by the R7b-0
 investigation and task D190; `alsoCastableWithSlot.test.ts` re-derives the
 reachable free-use sources from data/ on every test run.
+
+### Class-record `additionalSpells` — shape and what the wrapper leaves out
+
+Checked by `scripts/investigate-class-spells.mjs` (untracked). Extraction keeps
+the field untouched: all 6 carriers are identical in data-source and data/.
+6 classes, one entry each, 9 fixed grants, all BARE (no `daily`/`resource`/
+`will` wrapper, no `ability`, no `resourceName`, no `"_"` key). Level keys are
+the class's own level, same as subclasses.
+
+| Class | Key | Spell (lvl) | Feature text | Free cast in text |
+|---|---|---|---|---|
+| Artificer EFA | `innate[1]` | Mending (0) | Tinker's Magic: "You know the Mending cantrip." | cantrip |
+| Bard | `prepared[20]` | Power Word Heal, Power Word Kill (9) | Words of Creation: always prepared | none |
+| Druid | `prepared[1]` | Speak with Animals (1) | Druidic: always prepared | none |
+| Druid | `prepared[2]` | Find Familiar (1) | Wild Companion: "expend a spell slot or a use of Wild Shape" | 1 Wild Shape use per cast, slot also |
+| Paladin | `prepared[2]` | Divine Smite (1) | Paladin's Smite: always prepared | 1 per Long Rest |
+| Paladin | `prepared[5]` | Find Steed (2) | Faithful Steed: always prepared | 1 per Long Rest |
+| Ranger | `prepared[1]` | Hunter's Mark (1) | Favored Enemy: always prepared | "Favored Enemy" column, Long Rest |
+| Warlock | `prepared[9]` | Contact Other Plane (5) | Contact Patron: always prepared | 1 per Long Rest |
+
+**The wrapper misses every free cast.** Five grants are bare in the data while
+the text gives a free cast: Hunter's Mark, Divine Smite, Find Steed, Contact
+Other Plane, Find Familiar. All five are also slot-castable (always prepared;
+Wild Companion names the slot itself). The free cast can only come from a hand
+table, like D190's.
+
+**Counts and owners.** Ranger `classTableGroups` column "Favored Enemy" =
+2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6; Favored Enemy passes resources.ts's
+self-limited test, so it is already resource `Favored Enemy` with that maximum.
+Druid column "Wild Shape" = 0,2,2,2,2,3…3,4,4,4,4 (4 from 17); Wild Shape is
+self-limited and a consumed pool, resource `Wild Shape`. Paladin's Smite,
+Faithful Steed and Contact Patron are NOT resources (no `consumes`, phrasing
+misses EXPENDED_USES; Contact Patron's "can't do so in this way again" misses
+only by "in this way"). Tinker's Magic is a resource (INT mod/LR) but counts
+item creations, not Mending.
+
+**Bard `expanded` is Magical Secrets, not a grant.** `{"10":[{"all":"level=1;2;3;4;5|class=Cleric;Druid;Wizard"}],"s6".."s9":[…level=N…]}`
+— `"10"` is a class level, `s6`–`s9` are SPELL levels (not pact ranks). It
+widens the Bard picker to three more lists; nothing in src/ reads it
+(classSpellListData.ts widens only for EK/AT and Divine Soul).
+
+**Same spell from another source** (11): Hunter's Mark — Oath of Vengeance,
+Mark of Finding; Speak with Animals — Wild Heart, Oath of the Ancients, Mark of
+Handling, Forest Gnome; Find Familiar — Mark of Handling, Pact of the Chain;
+Mending — Mark of Making, Rock Gnome; Find Steed — Mark of Passage. Each is a
+separate feature with its own limit, so no shared boxes across them.
