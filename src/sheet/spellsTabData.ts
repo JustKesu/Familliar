@@ -12,7 +12,7 @@ import type { SpellDetail } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
 import type { SheetSpellEntry, SpellGrant } from './SpellList'
-import { cantripDamageAtLevel, casterFor, type SpellActionAttack, type SpellActionSave, type SpellCaster, toCaster } from './spellActionRowData'
+import { cantripDamageAtLevel, casterFor, type SpellActionAttack, type SpellActionSave, type SpellCaster, toCaster, unresolvedCaster } from './spellActionRowData'
 import { formatCastingTime, formatDuration, formatSpellUsage } from './spellFormatting'
 
 export const UNRESOLVED_SECTION = 'unresolved'
@@ -198,13 +198,12 @@ export function spellsTabRowCaster(
 	if (grant?.origin === 'feat') {
 		const own = featEntries.find((entry) => entry.featName === grant.originName)
 		if (own) return toCaster(own)
+		if (row.entry.unresolvedAbilityReasons.length > 0) return unresolvedCaster(row.entry)
 	}
 	if (grant?.origin === 'species') {
 		const own = speciesEntries.find((entry) => entry.speciesName === grant.originName)
 		if (own) return toCaster(own)
-		if (row.entry.unresolvedAbilityReasons.length > 0) {
-			return { reason: `"${row.entry.name}" is granted by your species, and its ${row.entry.unresolvedAbilityReasons.join('; ')} — no spell attack bonus or save DC yet.` }
-		}
+		if (row.entry.unresolvedAbilityReasons.length > 0) return unresolvedCaster(row.entry)
 	}
 	if (row.action.kind === 'cast' && classEntries.length === 1) return toCaster(classEntries[0]!)
 	return casterFor(row.entry, classEntries, featEntries, speciesEntries)

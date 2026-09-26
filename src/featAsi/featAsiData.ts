@@ -42,6 +42,7 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { FEATURE_LANGUAGE_TYPES } from '../languages/classFeatureLanguages'
 import { loadLanguages, type LanguageEntry } from '../languages/languageData'
+import { isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { ANY_TOOL_CATEGORIES } from '../toolProficiencies/speciesToolChoices'
 import { loadToolCategoryOptions } from '../toolProficiencies/toolProficiencyData'
 
@@ -166,6 +167,7 @@ export interface FeatEntry {
 	ability?: RawFeatAbilityEntry[]
 	/** feats.json's own flag; only 7 feats carry it, always `true`. */
 	repeatable?: boolean
+	additionalSpells?: unknown
 }
 
 function isRawFeatEntry(value: unknown): value is FeatEntry {
@@ -252,6 +254,8 @@ export interface FeatProficiencyChoice {
 	/** Every tool the feat offers, before anything the character holds is removed. */
 	toolOptions: string[]
 	languages: LanguageEntry[]
+	/** D204: featSpellcastingAbilityOptions. */
+	spellcastingAbilityOptions: Ability[] | null
 }
 
 export async function loadFeatProficiencyChoice(name: string, source: string): Promise<FeatProficiencyChoice | null> {
@@ -266,7 +270,7 @@ export async function loadFeatProficiencyChoice(name: string, source: string): P
 		.flat()
 		.filter((tool) => !only || only.includes(tool.toLowerCase()))
 		.sort((a, b) => a.localeCompare(b))
-	return { shape, toolOptions, languages }
+	return { shape, toolOptions, languages, spellcastingAbilityOptions: featSpellcastingAbilityOptions(entry as FeatEffectEntry) }
 }
 
 export async function loadFeats(): Promise<FeatEntry[]> {
@@ -289,11 +293,27 @@ export function featAbilityChoiceOptions(feat: FeatEntry): Ability[] | null {
 	return entry.choose.from.map((abbr) => ABBREV_TO_ABILITY[abbr])
 }
 
+/**
+ * D204: a selectable feat whose `additionalSpells` chooses the spellcasting
+ * ability while the feat itself has no ability choice (5 Dark Gifts, 12 marks).
+ * Magic Initiate and named-block feats ask for it through their own UI.
+ */
+export function featSpellcastingAbilityOptions(feat: { name: string; source: string; ability?: unknown; additionalSpells?: unknown }): Ability[] | null {
+	if (HIDDEN_FEAT_KEYS.has(`${feat.name}|${feat.source}`) || isMagicInitiateFamily(feat) || isNamedBlockFeat(feat)) return null
+	if (Array.isArray(feat.ability) && feat.ability.some((entry) => isRecord(entry) && 'choose' in entry)) return null
+	if (!Array.isArray(feat.additionalSpells)) return null
+	for (const entry of feat.additionalSpells) {
+		const ability = isRecord(entry) ? entry['ability'] : undefined
+		if (isRecord(ability) && Array.isArray(ability['choose'])) return (ability['choose'] as AbilityAbbreviation[]).map((abbr) => ABBREV_TO_ABILITY[abbr])
+	}
+	return null
+}
+
 /** `${name}|${source}` keys for every feat that needs an ability choice — what the wizard step's completion check tests against. */
 export function featsRequiringAbilityChoice(feats: FeatEntry[]): Set<string> {
 	const keys = new Set<string>()
 	for (const feat of feats) {
-		if (featAbilityChoiceOptions(feat) !== null) keys.add(`${feat.name}|${feat.source}`)
+		if (featAbilityChoiceOptions(feat) !== null || featSpellcastingAbilityOptions(feat) !== null) keys.add(`${feat.name}|${feat.source}`)
 	}
 	return keys
 }

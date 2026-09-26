@@ -173,7 +173,7 @@ function dedupeWithinSpecies(spells: RaceGrantedSpell[]): RaceGrantedSpell[] {
 	return [...byKey.values()]
 }
 
-const UNRESOLVED_ABILITY_REASON = 'spellcasting ability not chosen yet'
+export const UNRESOLVED_ABILITY_REASON = 'spellcasting ability not chosen yet'
 
 /**
  * Pure filter (D38). The spells the character's stored species grants at its

@@ -52,3 +52,14 @@ describe('missingFeatSubChoices — proficiency kinds (task A2)', () => {
 		expect(missingFeatSubChoices(instance({ name: 'Nonexistent' }), [prodigy, keenMind])).toEqual([])
 	})
 })
+
+describe('missingFeatSubChoices — spellcasting ability inside additionalSpells (D204)', () => {
+	const spellAbility = { additionalSpells: [{ ability: { choose: ['int', 'wis', 'cha'] }, known: { _: ['thunderclap'] } }] }
+	const watchers = { name: 'Watchers', source: 'RHW', ...spellAbility } as FeatEffectEntry
+	const markOfStorm = { name: 'Mark of Storm', source: 'EFA', ...spellAbility } as FeatEffectEntry
+
+	it.each([watchers, markOfStorm])('$name reports the ability as pending until chosenAbility is stored', (feat) => {
+		expect(missingFeatSubChoices(instance({ name: feat.name, source: feat.source }), [feat])).toEqual(['ability'])
+		expect(missingFeatSubChoices(instance({ name: feat.name, source: feat.source, chosenAbility: 'wisdom' }), [feat])).toEqual([])
+	})
+})

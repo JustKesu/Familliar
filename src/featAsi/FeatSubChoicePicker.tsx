@@ -102,7 +102,8 @@ export function FeatSubChoicePicker({
 	const shape = choice?.shape
 	const hasProficiencyChoice = !!shape && (shape.skills !== null || shape.tools !== null || shape.skillsOrTools > 0 || shape.languages > 0 || shape.expertise > 0)
 	const magicInitiate = isMagicInitiateFamily(feat)
-	if (!magicInitiate && !hasProficiencyChoice && loadError === null) return null
+	const spellAbilityOptions = choice?.spellcastingAbilityOptions ?? null
+	if (!magicInitiate && !hasProficiencyChoice && !spellAbilityOptions && loadError === null) return null
 
 	const showNote = laterNote && (hasProficiencyChoice || (magicInitiate && !magicInitiateRequired))
 
@@ -121,6 +122,21 @@ export function FeatSubChoicePicker({
 					onChangeMagicInitiate={(magicInitiate) => onChange({ ...value, magicInitiate })}
 					onSelectAbility={(chosenAbility) => onChange({ ...value, chosenAbility })}
 				/>
+			)}
+			{spellAbilityOptions && (
+				<label className="feat-asi-picker__feat-ability">
+					Spellcasting ability
+					<select value={value.chosenAbility ?? ''} onChange={(event) => onChange({ ...value, chosenAbility: event.target.value as Ability })}>
+						<option value="" disabled>
+							Choose an ability
+						</option>
+						{spellAbilityOptions.map((ability) => (
+							<option key={ability} value={ability}>
+								{ABILITY_LABEL[ability]}
+							</option>
+						))}
+					</select>
+				</label>
 			)}
 			{loadError !== null && <p className="error">Could not load this feat&rsquo;s choices: {loadError}</p>}
 			{choice && hasProficiencyChoice && <ProficiencySlots featName={feat.name} choice={choice} value={value} onChange={onChange} held={held} />}

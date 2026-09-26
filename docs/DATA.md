@@ -156,8 +156,10 @@ feats 18, backgrounds 0, languages 0.
   Fairy Trickster, Genie Magic, Mythal Touched, Street Justice. Cold Caster's
   `additionalSpells` is two unnamed alternative blocks (`ray of frost|xphb#c`,
   and `{choose:"level=0|class=Wizard"}`), both with `ability.choose`. Boon of
-  Revelry's `prepared._` (Otto's Irresistible Dance) has no `ability` field, so
-  `extractFixedFeatSpells` skips it — text only. Boon of Terror carries
+  Revelry's `prepared._` (Otto's Irresistible Dance) has no `ability` field and
+  no `daily` wrapper, though the text grants a free cast per Long Rest; since
+  D204 it is read with the feat's own +1 as its ability and a hand-table term
+  (`FEAT_BARE_GRANT_USAGE`). Boon of Terror carries
   structured `skillProficiencies` + a fixed `expertise` (see D202 below).
 - **Reprints:** Bladesinging|TCE → Bladesinger|Wizard|XPHB|FRHoF and Blade of
   Disaster|TCE → FRHoF are both removed by removeSuperseded (classes TCE 17→16,
@@ -194,8 +196,14 @@ feats 18, backgrounds 0, languages 0.
   spells under `ability:{choose:[int,wis,cha]}` + fixed spells (Gathered Whispers
   message + augury `daily 1`, Living Shadow mage hand, Second Skin alter self
   `daily 1`, Touch of Death chill touch, Watchers beast sense + speak with animals
-  `daily 1e`) — the choice-ability + fixed-grant path in featSpells.ts is
-  name-guarded to the Mark feats, so these spells do not reach the sheet.
+  `daily 1e`) — read since D204 by the same choice-ability + fixed-grant path as
+  the marks.
+- **Spellcasting ability inside `additionalSpells` (D204).** Among selectable
+  feats, those with `ability.choose` inside `additionalSpells` and no choice in
+  the top-level `ability` are exactly these 5 Dark Gifts, the 12 marks, Magic
+  Initiate and Strixhaven Initiate (the last two have their own UI). The top-level
+  `ability` (the +1) is a different field: before D204 no UI asked for the 17
+  others' ability (`featSpellcastingAbilityOptions`).
 - Other `campaign` prerequisites: the 13 EFA Dragonmark feats (`campaign` +
   `exclusiveFeatCategory:["D"]`) and Boon of Siberys (`campaign` + `level`).
 - **Shadow Sorcery**: shortName `Shadow`, `prepared` 3/5/7/9 (Bane, Darkness,
@@ -1326,8 +1334,9 @@ subclass: no other spell is granted twice with different usages.
 **Class-record `additionalSpells`** (Ranger Hunter's Mark, Paladin Divine Smite,
 Druid Speak with Animals + Find Familiar, Bard 20, Warlock 9, Artificer Mending;
 shape: next subsection) are read since D192 and their free casts come from a hand
-table since D193. Telepathic's detect thoughts (ability
-"inherit") is not reached by featSpells.ts either.
+table since D193. Telepathic's detect thoughts and Telekinetic's mage hand
+(ability "inherit") are reached by featSpells.ts since D204, cast with the feat's
+own +1.
 
 **Forest, not Rock.** The only `daily:{"pb":…}` carrier is Gnome; Forest Gnome
 Lineage (Speak with Animals); the code once said Rock Gnome. Found by the R7b-0

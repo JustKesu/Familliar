@@ -35,6 +35,16 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	'Shadow-Touched': true,
 	// "You can also cast the spell using any spell slots you have." (SCC)
 	'Strixhaven Initiate': true,
+	// D204. "You can also cast the spell using any spell slots you have." (RHW)
+	'Gathered Whispers': true,
+	// "You can also cast it using spell slots you have of the appropriate level." (RHW)
+	'Second Skin': true,
+	// "You can also cast these spells using spell slots you have of the appropriate level." (RHW)
+	Watchers: true,
+	// "You can also cast it using spell slots you have of the appropriate level."
+	Telepathic: true,
+	// "You can also cast the spell using any spell slots you have of the appropriate level." (FRHoF)
+	'Boon of Revelry': true,
 
 	// "You can also cast the spell using any spell slots you have of the appropriate level." (XPHB Tiefling legacies, Elf lineages)
 	'Tiefling; Abyssal Legacy': true,

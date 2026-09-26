@@ -1555,7 +1555,7 @@ an "or any Dark Gift" pair; Mist Wanderer and Spirit Medium (DG only) are not
 offered. `campaign` prerequisites count as met and show as a note in the feat
 picker, DG feats carry a "Dark Gift" label, `exclusiveFeatCategory` is enforced.
 D190 table: College of Spirits, Hexblood yes; Shadow Sorcery no. Not modelled:
-DG feat spells, RHW proficiency grants (Eyes of the Dark senses since D195,
+DG feat spells (modelled since D204), RHW proficiency grants (Eyes of the Dark senses since D195,
 Strength of the Grave counter since D197). E2E `rhw.spec.ts` a–f. No schema change (still 48).
 
 D195: class and subclass senses reach the Senses card. `CLASS_SENSE_GRANTS`
@@ -1637,6 +1637,18 @@ Knowledge Domain 2 skills with Expertise (`choice.count`, `choice.expertise`)
 or a breakdown note when already held. The class Expertise step now excludes
 fixed expertise (D202 gap, all wizard modes). Schema 49 (tag-only migration).
 E2E `subclassProseGrants.spec.ts` a–i (seeded characters for non-Fighters).
+
+D204: feat spells of the 5 Dark Gifts (Gathered Whispers, Living Shadow, Second
+Skin, Touch of Death, Watchers), Boon of Revelry, Telepathic and Telekinetic
+reach the sheet. The 5 Dark Gifts and 12 marks ask for a required "Spellcasting
+ability" (Int/Wis/Cha → `chosenAbility`) in `FeatSubChoicePicker`, derived by
+`featSpellcastingAbilityOptions` (featAsiData.ts), which replaces the
+`isMarkFeat` name guard. Revelry/Telepathic/Telekinetic cast with the feat's +1.
+Augury, Alter Self, Beast Sense, Speak with Animals, Detect Thoughts and Otto's
+Irresistible Dance: 1 free cast per Long Rest + slot-castable. A feat with no
+ability stored no longer blanks every feat's attack/DC: its rows show "spellcasting
+ability not chosen yet", other feats keep numbers. E2E `featSpellGrants.spec.ts`
+a–f. No schema change (still 49).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

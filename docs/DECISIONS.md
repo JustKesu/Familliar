@@ -3791,3 +3791,33 @@ DATA.md (pasáže RHW a FRHoF).
 - **Úložiště:** schéma 49, migrace 48→49 jen tag (nové `grantedBy`:
   `bladesinger`, `knowledgeDomain`, `banneret`, `nobleGenies`,
   `collegeOfTheMoon`; jazyk `banneret`; nástroj `knowledgeDomain`).
+
+## D204 — Kouzla featů Dark Gift, Boon of Revelry, Telepathic/Telekinetic; schopnost znamení
+
+Zdroj: task D204, rozhodl Daniel 27. 9. 2026. Schéma beze změny (49).
+
+1. **Výběr „Spellcasting ability“** (Int/Wis/Cha, ukládá se do `chosenAbility`,
+   D57) pro 17 featů: 5 Dark Gift s kouzly + 12 znamení. Pravidlo z dat, ne
+   seznam jmen: vybíratelný feat, `ability.choose` uvnitř `additionalSpells`,
+   žádná volba v horním `ability`, mimo rodinu Magic Initiate a featy
+   s pojmenovanými bloky. Ve `FeatSubChoicePicker` (tvorba, level-up, Edit
+   Character, origin feat pozadí). Povinný: blokuje krok featAsi;
+   `missingFeatSubChoices` hlásí `ability`.
+2. **featSpells.ts:** 5 Dark Gift dostává stejné zacházení jako znamení
+   (pevné granty, schopnost = `chosenAbility`); jmenná stráž `isMarkFeat`
+   nahrazena pravidlem z bodu 1. Boon of Siberys (skrytý) a Magic Initiate
+   dál nic.
+3. **Boon of Revelry, Telepathic, Telekinetic:** kouzlí schopností, kterou
+   feat zvyšuje (`chosenAbility`), stejně jako „inherit“ u Fey-Touched.
+   U Revelry text mlčí — Danielovo rozhodnutí.
+4. **Užití:** Augury, Alter Self, Beast Sense, Speak with Animals (každé
+   zvlášť), Detect Thoughts — 1× zdarma za Long Rest a lze se sloty
+   (`ALSO_CASTABLE_WITH_SLOT`). Otto's Irresistible Dance: data holá, text
+   „once without a spell slot … Long Rest“ → ruční tabulka
+   `FEAT_BARE_GRANT_USAGE` + se sloty. Triky bez termínu. Doplňky (bez
+   komponent, Second Skin bez koncentrace, Revelry, Touch of Death, neviditelná
+   ruka) zůstávají textem.
+5. **`computeFeatSpellcasting`:** feat bez vyřešené schopnosti se přeskočí;
+   jeho kouzla nesou důvod D43 („spellcasting ability not chosen yet“),
+   ostatní featy si čísla drží.
+6. Bez změny schématu.

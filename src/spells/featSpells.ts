@@ -11,7 +11,7 @@
  * Fey Teleportation (INT) are ALSO fixed in spellcasting ability. Telekinetic
  * and Telepathic have fixed spells too but a non-fixed ability ("inherit" —
  * derives from whatever ability the character already casts with, a rules
- * call outside this slice, and still deferred — NOT part of d5b-1's scope);
+ * call outside this slice; D204 resolves it to the feat's own +1);
  * the other 25 spell-granting feats let the player choose the spell itself.
  * Of those 25, the 12 Eberron "Mark of ..." feats
  * (investigate-feat-spell-choice-shapes.js) turn out to ALSO carry a fixed
@@ -51,14 +51,17 @@
  * to one class, so there is no class level to gate on the way subclass grants
  * do; confirmed no mark's `prepared`/`known` contains a `choose` node — every
  * ref is a literal spell name, so this is genuinely a fixed-grant slice, not
- * a picker). Only Mark feats get this choice-ability + fixed-grant treatment
- * (guarded by name) — other choice-ability feats (Magic Initiate variants,
+ * a picker). Only the feats featSpellcastingAbilityOptions names (the marks
+ * and, since D204, the 5 Dark Gifts) get this choice-ability + fixed-grant
+ * treatment — other choice-ability feats (Magic Initiate variants,
  * Boon of Siberys) also carry `prepared`/`known` under a choice ability, but
  * theirs is either choice-wrapped (safe, extractRefs finds nothing) or, for
  * Boon of Siberys, an array of 13 full alternatives the player must pick ONE
  * of (d5b-2, not this module) — applying this module's grant logic to every
  * one of those 13 unconditionally would incorrectly grant all 13 at once, so
- * the mark-name guard exists specifically to avoid that scope creep.
+ * the guard exists specifically to avoid that scope creep. D204 also reaches
+ * Telepathic/Telekinetic ("inherit") and Boon of Revelry (no ability field)
+ * through the feat's own +1 (`chosenAbility`).
  *
  * A feat is a one-time yes/no grant (the character either took it or
  * didn't, via featInstances) — there is no "granted at level N"
@@ -69,10 +72,12 @@
 
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { featSpellcastingAbilityOptions } from '../featAsi/featAsiData'
 import { featInstances, loadBackgroundOriginFeat, type FeatInstance, type FeatRef } from '../featAsi/featInstances'
 import type { Character } from '../storage/character'
 import { chosenSpellUsageFor } from './chosenSpellUsage'
 import { featAdditionalSpellsEntry, isFilterChoiceFeat, isNamedBlockFeat } from './featSpellChoiceData'
+import { UNRESOLVED_ABILITY_REASON } from './raceSpells'
 import { extractRefsWithUsage, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, spellIdentityKey, type RawSpell, type SpellUsage } from './subclassPreparedSpells'
 
 export interface FeatGrantedSpell {
@@ -104,11 +109,14 @@ export interface FeatGrantedSpell {
 	 * table by feat name, and only for a LEVELED pick (D21/D70).
 	 */
 	usage?: SpellUsage | null
+	/** Set by extractFeatGrantedSpells whenever `ability` is absent (D43). */
+	unresolvedAbilityReason?: string
 }
 
 interface RawFeatEntry {
 	name: string
 	source: string
+	ability?: unknown
 	additionalSpells?: unknown
 }
 
@@ -152,9 +160,13 @@ function applyFeatRechargeOverride(featName: string, usage: SpellUsage | null): 
 	return FEAT_RECHARGE_OVERRIDES[featName] ?? usage
 }
 
-/** Only the Eberron "Mark of ..." feats get the choice-ability + fixed-grant treatment (see module comment for why this is name-guarded rather than applied to every choice-ability feat). */
-function isMarkFeat(featName: string): boolean {
-	return featName.startsWith('Mark of ')
+/**
+ * D204: the data leaves Boon of Revelry's Otto's Irresistible Dance bare, but
+ * its text reads "You can cast it once without a spell slot, and you regain
+ * the ability to cast it that way when you finish a Long Rest."
+ */
+const FEAT_BARE_GRANT_USAGE: Record<string, SpellUsage> = {
+	'Boon of Revelry': { kind: 'onceFreePerLongRest' },
 }
 
 /**
@@ -222,7 +234,10 @@ export function extractFixedFeatSpells(
 
 	const spells: RawSpell[] = parsedSpells.filter(isRawSpell)
 	const result: FeatGrantedSpell[] = []
-	const mark = isMarkFeat(feat.name)
+	// D204: the 5 Dark Gifts and 12 marks; never Boon of Siberys (hidden, 13 alternatives) or Magic Initiate.
+	const spellAbilityChoice = featSpellcastingAbilityOptions(feat) !== null
+	// D204: the feat's own +1 is its spellcasting ability (Telepathic/Telekinetic "inherit", Boon of Revelry by Daniel's ruling).
+	const increasesAbility = Array.isArray(feat.ability) && feat.ability.some((a) => isRecord(a) && 'choose' in a)
 	const filterChoice = isFilterChoiceFeat({ name: feat.name, source: feat.source })
 	const namedBlock = isNamedBlockFeat({ name: feat.name, source: feat.source })
 
@@ -240,12 +255,14 @@ export function extractFixedFeatSpells(
 		let ability: AbilityAbbreviation | undefined
 		if (isFixedAbility(abilityField)) {
 			ability = abilityField
-		} else if ((mark || namedBlock) && isChoiceAbility(abilityField)) {
+		} else if ((spellAbilityChoice || namedBlock) && isChoiceAbility(abilityField)) {
 			ability = chosenAbility // may still be undefined if the character hasn't recorded a choice yet — the spell is granted either way.
-		} else if (filterChoice && abilityField === 'inherit') {
-			ability = chosenAbility // Fey-Touched/Shadow-Touched's fixed companion spell — see module comment above isMarkFeat.
+		} else if ((filterChoice || increasesAbility) && abilityField === 'inherit') {
+			ability = chosenAbility // Fey-Touched/Shadow-Touched's fixed companion spell — see the comment above FIXED_GRANT_KEYS.
+		} else if (increasesAbility && abilityField === undefined && FEAT_BARE_GRANT_USAGE[feat.name]) {
+			ability = chosenAbility
 		} else {
-			continue // choice ability on a non-mark, non-filter-choice feat, "inherit" outside that set, or no ability field at all.
+			continue // choice ability on any other feat, "inherit" outside that set, or no ability field at all.
 		}
 
 		for (const key of FIXED_GRANT_KEYS) {
@@ -272,7 +289,7 @@ export function extractFixedFeatSpells(
 						origin: 'feat',
 						featName: feat.name,
 						ability,
-						usage: inheritCompanion && spell.level >= 1 ? companionUsage : applyFeatRechargeOverride(feat.name, usage),
+						usage: inheritCompanion && spell.level >= 1 ? companionUsage : applyFeatRechargeOverride(feat.name, usage ?? FEAT_BARE_GRANT_USAGE[feat.name] ?? null),
 					})
 				}
 			}
@@ -393,7 +410,8 @@ export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unk
 		result.push(...extractMagicInitiateSpells(parsedSpells, choice))
 		result.push(...extractFilterChoiceSpells(parsedFeats, parsedSpells, choice))
 	}
-	return result
+	// D204: stated on the feat's own rows; the other feats keep their numbers.
+	return result.map((spell) => (spell.ability ? spell : { ...spell, unresolvedAbilityReason: UNRESOLVED_ABILITY_REASON }))
 }
 
 /** Fetches feats.json and spells.json and returns the character's fully-fixed feat-granted spells. */

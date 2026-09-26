@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { Ability } from '../abilities/abilityScores'
 import type { Character, MagicInitiateChoice } from '../storage/character'
@@ -27,6 +28,40 @@ describe('Strixhaven Initiate named blocks (D200)', () => {
 
 	it('grants nothing while no block is chosen', () => {
 		expect(extractFixedFeatSpells(feats, spells, 'Strixhaven Initiate', 'SCC', 4, 'wis')).toEqual([])
+	})
+})
+
+describe('D204 feat spell grants — against the generated data', () => {
+	const read = (name: string): unknown => JSON.parse(readFileSync(`data/${name}`, 'utf8'))
+	const realFeats = read('feats.json')
+	const realSpells = read('spells.json')
+	const LR = { kind: 'onceFreePerLongRest' }
+	const grant = (name: string, source: string, chosenAbility?: 'int' | 'wis' | 'cha') =>
+		extractFixedFeatSpells(realFeats, realSpells, name, source, 20, chosenAbility)
+			.map((s) => ({ name: s.name, level: s.level, usage: s.usage ?? null, ability: s.ability }))
+			.sort((a, b) => a.name.localeCompare(b.name))
+
+	it.each([
+		['Gathered Whispers', 'RHW', [{ name: 'Augury', level: 2, usage: LR }, { name: 'Message', level: 0, usage: null }]],
+		['Living Shadow', 'RHW', [{ name: 'Mage Hand', level: 0, usage: null }]],
+		['Second Skin', 'RHW', [{ name: 'Alter Self', level: 2, usage: LR }]],
+		['Touch of Death', 'RHW', [{ name: 'Chill Touch', level: 0, usage: null }]],
+		['Watchers', 'RHW', [{ name: 'Beast Sense', level: 2, usage: LR }, { name: 'Speak with Animals', level: 1, usage: LR }]],
+		['Boon of Revelry', 'FRHoF', [{ name: "Otto's Irresistible Dance", level: 6, usage: LR }]],
+		['Telepathic', 'XPHB', [{ name: 'Detect Thoughts', level: 2, usage: LR }]],
+		['Telekinetic', 'XPHB', [{ name: 'Mage Hand', level: 0, usage: null }]],
+	] as const)('%s (%s) grants its spells with the chosen ability', (name, source, expected) => {
+		expect(grant(name, source, 'wis')).toEqual(expected.map((spell) => ({ ...spell, ability: 'wis' })))
+	})
+
+	it('Boon of Siberys (hidden, 13 alternatives) still grants nothing', () => {
+		expect(grant('Boon of Siberys', 'EFA', 'int')).toEqual([])
+	})
+
+	it('a Dark Gift with no ability stored is still granted, carrying the unresolved reason instead of an ability', () => {
+		const character: Character = { id: 't', name: 'T', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Touch of Death', source: 'RHW' }] }
+		const [chillTouch] = extractFeatGrantedSpells(realFeats, realSpells, character, null)
+		expect(chillTouch).toMatchObject({ name: 'Chill Touch', ability: undefined, unresolvedAbilityReason: 'spellcasting ability not chosen yet' })
 	})
 })
 

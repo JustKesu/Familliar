@@ -72,7 +72,7 @@ export interface SheetSpellEntry {
 	/**
 	 * Why this spell has no attack bonus / save DC yet, when a source granted it
 	 * without a resolved spellcasting ability (raceSpells.ts's 33 choice-ability
-	 * species). Shown next to the provenance so the gap is visible where the
+	 * species; D204 a feat with no ability chosen). Shown next to the provenance so the gap is visible where the
 	 * spell is, not only missing from the actions table (D58).
 	 */
 	unresolvedAbilityReasons: string[]
@@ -119,7 +119,7 @@ function mergeUsage(entry: SheetSpellEntry, origin: SpellGrantOrigin, originName
 export function combineSpellEntries(
 	spellChoices: { spells: { name: string; source: string }[] }[],
 	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[],
-	featGrantedSpells: { featName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
+	featGrantedSpells: { featName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
 	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
 	raceGrantedSpells: { speciesName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
 	classAlwaysPrepared: { className: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[] = [],
@@ -160,6 +160,9 @@ export function combineSpellEntries(
 		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
 		if (!entry.featOrigins.includes(spell.featName)) entry.featOrigins.push(spell.featName)
 		mergeUsage(entry, 'feat', spell.featName, spell.usage)
+		if (spell.unresolvedAbilityReason && !entry.unresolvedAbilityReasons.includes(spell.unresolvedAbilityReason)) {
+			entry.unresolvedAbilityReasons.push(spell.unresolvedAbilityReason)
+		}
 		map.set(key, entry)
 	}
 

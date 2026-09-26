@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
 	evaluateFeatPrerequisites,
@@ -7,6 +8,7 @@ import {
 	featAsiGrantsFor,
 	featCampaignNote,
 	featsRequiringAbilityChoice,
+	featSpellcastingAbilityOptions,
 	isMagicInitiateFeat,
 	isValidAbilityIncrease,
 	speciesPrereqInfoFor,
@@ -116,6 +118,23 @@ describe('featsRequiringAbilityChoice', () => {
 			{ name: 'Tough', source: 'XPHB', category: 'G' },
 		]
 		expect(featsRequiringAbilityChoice(feats)).toEqual(new Set(['Athlete|XPHB']))
+	})
+})
+
+describe('featSpellcastingAbilityOptions — against the generated data (D204)', () => {
+	const selectable = extractSelectableFeats(JSON.parse(readFileSync('data/feats.json', 'utf8')))
+	const asking = selectable.filter((feat) => featSpellcastingAbilityOptions(feat) !== null)
+
+	it('is exactly the 5 Dark Gifts and the 12 marks', () => {
+		const marks = ['Detection', 'Finding', 'Handling', 'Healing', 'Hospitality', 'Making', 'Passage', 'Scribing', 'Sentinel', 'Shadow', 'Storm', 'Warding'].map((mark) => `Mark of ${mark}|EFA`)
+		const darkGifts = ['Gathered Whispers', 'Living Shadow', 'Second Skin', 'Touch of Death', 'Watchers'].map((name) => `${name}|RHW`)
+		expect(asking.map((feat) => `${feat.name}|${feat.source}`).sort()).toEqual([...darkGifts, ...marks].sort())
+	})
+
+	it('offers Intelligence/Wisdom/Charisma, and every one is in featsRequiringAbilityChoice', () => {
+		expect(asking.every((feat) => JSON.stringify(featSpellcastingAbilityOptions(feat)) === JSON.stringify(['intelligence', 'wisdom', 'charisma']))).toBe(true)
+		const requiring = featsRequiringAbilityChoice(selectable)
+		expect(asking.every((feat) => requiring.has(`${feat.name}|${feat.source}`))).toBe(true)
 	})
 })
 

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { featsRequiringAbilityChoice } from '../featAsi/featAsiData'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
@@ -205,6 +206,17 @@ describe('isStepComplete', () => {
 				{ featAsiEligibleLevelCount: 1, featsRequiringAbilityChoice: requiring },
 			),
 		).toBe(true)
+	})
+
+	it.each([
+		['Watchers', 'RHW'],
+		['Mark of Storm', 'EFA'],
+	])('D204: blocks the featAsi step for %s until its spellcasting ability is chosen', (name, source) => {
+		const requiring = featsRequiringAbilityChoice([{ name, source, category: 'DG', additionalSpells: [{ ability: { choose: ['int', 'wis', 'cha'] } }] }])
+		const conditions = { featAsiEligibleLevelCount: 1, featsRequiringAbilityChoice: requiring }
+		const choice = { level: 4, kind: 'feat' as const, name, source }
+		expect(isStepComplete('featAsi', { ...emptyWizardData(), featAsiChoices: [choice] }, conditions)).toBe(false)
+		expect(isStepComplete('featAsi', { ...emptyWizardData(), featAsiChoices: [{ ...choice, chosenAbility: 'wisdom' as const }] }, conditions)).toBe(true)
 	})
 
 	it('does not require an ability choice for a fixed-bonus feat (not in featsRequiringAbilityChoice)', () => {

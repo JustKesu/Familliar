@@ -159,9 +159,10 @@ export interface FeatSpellcastingEntry {
  * to a feat source) — a Fighter with Magic Initiate has no casting class at
  * all, so its attack/DC can't live on a class entry. `featGrantedSpells`
  * already carries each spell's resolved ability (featSpells.ts) — read here,
- * never re-derived. If any feat's ability is unresolved (a chosen-ability feat
- * with no chosenAbility recorded yet), the whole result is 'unknown' (D43),
- * matching computeSpellcasting's own abort-on-missing-data behaviour.
+ * never re-derived. D204: a feat whose ability is unresolved (no chosenAbility
+ * recorded yet) is skipped, like computeSpeciesSpellcasting's unresolved
+ * species; its spells carry the reason (featSpells.ts), the other feats keep
+ * their numbers.
  */
 export function computeFeatSpellcasting(
 	character: Character,
@@ -183,9 +184,7 @@ export function computeFeatSpellcasting(
 
 	for (const featName of featNames) {
 		const abilityAbbreviation = featGrantedSpells.find((spell) => spell.featName === featName)?.ability
-		if (!abilityAbbreviation) {
-			return unknown(`Feat "${featName}" grants a spell but its spellcasting ability has not been chosen yet.`)
-		}
+		if (!abilityAbbreviation) continue
 
 		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
 		const abilityResult = computeAbilityScore(ability, character, feats)

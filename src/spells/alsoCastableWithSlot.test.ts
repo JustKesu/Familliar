@@ -56,7 +56,7 @@ describe('alsoCastableWithSlot — against the generated data (D190)', () => {
 	})
 
 	it('reads YES for the stated and accepted sources and NO for the rest', () => {
-		expect(['Mark of Storm', 'Magic Initiate', 'Fey-Touched', 'Tiefling; Infernal Legacy', 'Yuan-Ti', 'Gnome; Forest Gnome Lineage', 'Archfey Patron', 'Psi Warrior', 'Ranger', 'Paladin', 'Warlock', 'Druid'].every(alsoCastableWithSlot)).toBe(true)
+		expect(['Mark of Storm', 'Magic Initiate', 'Fey-Touched', 'Tiefling; Infernal Legacy', 'Yuan-Ti', 'Gnome; Forest Gnome Lineage', 'Archfey Patron', 'Psi Warrior', 'Ranger', 'Paladin', 'Warlock', 'Druid', 'Gathered Whispers', 'Second Skin', 'Watchers', 'Telepathic', 'Boon of Revelry'].every(alsoCastableWithSlot)).toBe(true)
 		expect(['Alchemist', 'Drow High Magic', 'Fey Teleportation', 'Githyanki', 'Gift of the Depths', 'Armor of Shadows', 'Pact of the Chain', 'Warrior of Shadow', 'Nowhere'].some(alsoCastableWithSlot)).toBe(false)
 	})
 })

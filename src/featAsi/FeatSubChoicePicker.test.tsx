@@ -30,6 +30,7 @@ const FEATS = [
 	{ name: 'Crafter', source: 'XPHB', toolProficiencies: [{ choose: { from: CRAFTER_TOOLS, count: 3 } }] },
 	{ name: 'Tough', source: 'XPHB' },
 	{ name: 'Magic Initiate; Cleric', source: 'XPHB' },
+	{ name: 'Watchers', source: 'RHW', additionalSpells: [{ ability: { choose: ['int', 'wis', 'cha'] }, prepared: { _: { daily: { '1e': ['beast sense', 'speak with animals'] } } } }] },
 ]
 
 vi.mock('../dataLoader/dataLoader', () => ({
@@ -109,6 +110,23 @@ function renderPicker(props: Omit<Parameters<typeof Harness>[0], 'onValue'>) {
 }
 
 const optionTexts = (select: HTMLElement) => within(select).getAllByRole('option').map((option) => option.textContent)
+
+describe('FeatSubChoicePicker — spellcasting ability (D204)', () => {
+	it('a Dark Gift offers Intelligence/Wisdom/Charisma and stores the pick as chosenAbility', async () => {
+		const user = userEvent.setup()
+		const latest = renderPicker({ feat: { name: 'Watchers', source: 'RHW' } })
+		const select = await screen.findByRole('combobox', { name: 'Spellcasting ability' })
+		expect(optionTexts(select)).toEqual(['Choose an ability', 'Intelligence', 'Wisdom', 'Charisma'])
+		await user.selectOptions(select, 'wisdom')
+		expect(latest().chosenAbility).toBe('wisdom')
+	})
+
+	it('a feat without one shows no such select', async () => {
+		renderPicker({ feat: { name: 'Skilled', source: 'XPHB' } })
+		await screen.findByLabelText('Skilled skill or tool 1')
+		expect(screen.queryByRole('combobox', { name: 'Spellcasting ability' })).toBeNull()
+	})
+})
 
 describe('FeatSubChoicePicker (task A3)', () => {
 	it('Skilled at ASI: 2 skills + 1 tool — the skills count on the sheet, the tool shows on the Proficiencies card', async () => {

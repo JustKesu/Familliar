@@ -356,9 +356,11 @@ describe('computeFeatSpellcasting', () => {
 		expect(computeFeatSpellcasting(fighter5, [])).toEqual({ status: 'known', value: [], breakdown: [] })
 	})
 
-	it('D43: an unresolved ability (a chosen-ability feat with no chosenAbility stored yet) returns unknown, never a fake zero', () => {
-		const result = computeFeatSpellcasting(fighter5, [featSpell('Magic Initiate', undefined)])
-		expect(result.status).toBe('unknown')
+	it('D204: a feat with no chosenAbility stored yet gets no entry, never a fake zero, and does not blank out the other feats', () => {
+		const result = computeFeatSpellcasting(fighter5, [featSpell('Mark of Storm', undefined), featSpell('Touch of Death', 'int')])
+		expect(result.status).toBe('known')
+		if (result.status !== 'known') return
+		expect(result.value.map((entry) => entry.featName)).toEqual(['Touch of Death'])
 	})
 })
 

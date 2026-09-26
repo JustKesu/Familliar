@@ -96,9 +96,7 @@ export function casterFor(
 	}
 	if (featEntry && !grantedByClass) return toCaster(featEntry)
 	if (speciesEntry && !grantedByClass) return toCaster(speciesEntry)
-	if (!grantedByClass && !featEntry && entry.unresolvedAbilityReasons.length > 0) {
-		return { reason: `"${entry.name}" is granted by your species, and its ${entry.unresolvedAbilityReasons.join('; ')} — no spell attack bonus or save DC yet.` }
-	}
+	if (!grantedByClass && !featEntry && entry.unresolvedAbilityReasons.length > 0) return unresolvedCaster(entry)
 	if (classEntries.length === 1) return toCaster(classEntries[0]!)
 	if (featEntry) return toCaster(featEntry)
 	if (speciesEntry) return toCaster(speciesEntry)
@@ -106,6 +104,11 @@ export function casterFor(
 		return { reason: `No spellcasting ability is known for "${entry.name}" — nothing grants this character a spell attack bonus or save DC.` }
 	}
 	return { reason: `"${entry.name}" could belong to more than one casting class, and the spell list does not record which — multiclass is build order step 10.` }
+}
+
+export function unresolvedCaster(entry: SheetSpellEntry): { reason: string } {
+	const grantedBy = entry.speciesOrigins.length > 0 ? 'your species' : `the feat ${entry.featOrigins.join(' / ')}`
+	return { reason: `"${entry.name}" is granted by ${grantedBy}, and its ${entry.unresolvedAbilityReasons.join('; ')} — no spell attack bonus or save DC yet.` }
 }
 
 export function toCaster(source: SpellcastingEntry | FeatSpellcastingEntry | SpeciesSpellcastingEntry): { attack: SpellActionAttack; save: SpellActionSave } {

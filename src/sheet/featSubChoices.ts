@@ -1,6 +1,6 @@
 import { featProficiencyChoiceShape, type FeatEffectEntry } from '../calculation/featEffects'
 import type { FeatInstance } from '../featAsi/featInstances'
-import { isMagicInitiateFamily } from '../featAsi/featAsiData'
+import { featSpellcastingAbilityOptions, isMagicInitiateFamily } from '../featAsi/featAsiData'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 
 /**
@@ -12,7 +12,8 @@ export function missingFeatSubChoices(instance: FeatInstance, feats: readonly Fe
 	const missing: string[] = []
 	const entry = feats.find((feat) => feat.name === instance.name && feat.source === instance.source)
 	const abilityEntry = entry?.ability?.[0]
-	const asksForAbility = isMagicInitiateFamily(instance) || isNamedBlockFeat(instance) || (abilityEntry !== undefined && 'choose' in abilityEntry)
+	const asksForAbility =
+		isMagicInitiateFamily(instance) || isNamedBlockFeat(instance) || (abilityEntry !== undefined && 'choose' in abilityEntry) || (entry !== undefined && featSpellcastingAbilityOptions(entry) !== null)
 	if (isNamedBlockFeat(instance) && instance.blockName === undefined) missing.push('college')
 	if (asksForAbility && instance.chosenAbility === undefined) missing.push('ability')
 	if (isMagicInitiateFamily(instance) && instance.magicInitiate === undefined) missing.push('spells')
