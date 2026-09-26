@@ -1,7 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import type { Ability } from '../abilities/abilityScores'
 import type { Character, MagicInitiateChoice } from '../storage/character'
-import { extractFeatGrantedSpells } from './featSpells'
+import { extractFeatGrantedSpells, extractFixedFeatSpells } from './featSpells'
+
+describe('Strixhaven Initiate named blocks (D200)', () => {
+	const block = (name: string, cantrips: string[], classes: string) => ({
+		name,
+		ability: { choose: ['int', 'wis', 'cha'] },
+		known: { _: cantrips.map((c) => `${c}#c`) },
+		innate: { _: { daily: { '1': [{ choose: `level=1|class=${classes}` }] } } },
+	})
+	const feats = [
+		{
+			name: 'Strixhaven Initiate',
+			source: 'SCC',
+			additionalSpells: [block('Lorehold 1', ['light', 'sacred flame'], 'cleric;wizard'), block('Quandrix 2', ['druidcraft', 'mage hand'], 'druid;wizard')],
+		},
+	]
+	const spells = ['Light', 'Sacred Flame', 'Druidcraft', 'Mage Hand'].map((name) => ({ name, source: 'XPHB', level: 0 }))
+
+	it('grants only the chosen block, with the chosen ability', () => {
+		const granted = extractFixedFeatSpells(feats, spells, 'Strixhaven Initiate', 'SCC', 4, 'wis', 'Quandrix 2')
+		expect(granted.map((s) => s.name)).toEqual(['Druidcraft', 'Mage Hand'])
+		expect(granted.every((s) => s.ability === 'wis')).toBe(true)
+	})
+
+	it('grants nothing while no block is chosen', () => {
+		expect(extractFixedFeatSpells(feats, spells, 'Strixhaven Initiate', 'SCC', 4, 'wis')).toEqual([])
+	})
+})
 
 const markOfDetection = {
 	name: 'Mark of Detection',

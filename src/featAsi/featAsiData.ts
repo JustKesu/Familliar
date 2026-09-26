@@ -183,15 +183,14 @@ function isRawFeatEntry(value: unknown): value is FeatEntry {
  *  - Boon of Siberys (EFA) — deferred; its additionalSpells is 13 full named
  *    alternatives (one per dragonmark) the player must pick ONE of, a
  *    distinct picker shape not built in this slice (see docs/REPORT.md).
- *  - Strixhaven Initiate and Strixhaven Mascot (SCC) — extracted, pickers
- *    deferred to a follow-up task (D199).
+ *  - Strixhaven Mascot (SCC) — extracted, familiar form deferred (D199/D200).
+ *    Strixhaven Initiate is unhidden by D200.
  */
 const HIDDEN_FEAT_KEYS = new Set([
 	'Magic Initiate; Cleric|XPHB',
 	'Magic Initiate; Druid|XPHB',
 	'Magic Initiate; Wizard|XPHB',
 	'Boon of Siberys|EFA',
-	'Strixhaven Initiate|SCC',
 	'Strixhaven Mascot|SCC',
 ])
 

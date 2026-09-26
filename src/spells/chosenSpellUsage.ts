@@ -32,6 +32,9 @@ const USAGE_BY_SOURCE: Record<string, SpellUsage | null> = {
 	// "You can cast this feat's 1st-level spell without a spell slot, and you must finish a long rest before you can cast it in this way again. You can also cast the spell using any spell slots you have."
 	'Artificer Initiate': { kind: 'onceFreePerLongRest' },
 
+	// Strixhaven Initiate's additionalSpells wrap the pick in `daily: {"1": [...]}` (D73); the feat text is prose-only, so the term is the same Long Rest one.
+	'Strixhaven Initiate': { kind: 'onceFreePerLongRest' },
+
 	// "You can cast each of these spells without expending a spell slot. Once you cast either spell in this way, you can't cast that spell in this way again until you finish a Long Rest. You can also cast these spells using spell slots you have of the appropriate level." (covers the chosen spell AND the fixed companion — Misty Step / Invisibility)
 	'Fey-Touched': { kind: 'onceFreePerLongRest' },
 	'Shadow-Touched': { kind: 'onceFreePerLongRest' },

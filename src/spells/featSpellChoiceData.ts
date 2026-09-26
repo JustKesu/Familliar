@@ -78,6 +78,7 @@ export interface FilterChoiceFeatShape {
 
 /** Maps a `class=` clause's class name (case varies in the data) to the identity classSpellListData.ts needs — scoped to only the 5 classes the 8 in-scope feats plus College of Lore's class-list choice (d6b) reference, not a general class-name resolver. */
 const CLASS_NAME_LOOKUP: Record<string, { className: string; classSource: string }> = {
+	bard: { className: 'Bard', classSource: 'XPHB' },
 	cleric: { className: 'Cleric', classSource: 'XPHB' },
 	druid: { className: 'Druid', classSource: 'XPHB' },
 	artificer: { className: 'Artificer', classSource: 'EFA' },
@@ -185,10 +186,60 @@ export const FILTER_CHOICE_FEAT_KEYS = new Set([
 	'Fey-Touched|XPHB',
 	'Shadow-Touched|XPHB',
 	'Ritual Caster|XPHB',
+	'Strixhaven Initiate|SCC',
 ])
 
 export function isFilterChoiceFeat(feat: { name: string; source: string }): boolean {
 	return FILTER_CHOICE_FEAT_KEYS.has(`${feat.name}|${feat.source}`)
+}
+
+/**
+ * D200: feats whose `additionalSpells` is an array of NAMED alternative blocks
+ * the player picks ONE of, stored as FeatChoiceDetails.blockName. Boon of
+ * Siberys has the same shape but stays hidden and is deliberately not listed.
+ */
+const NAMED_BLOCK_FEAT_KEYS = new Set(['Strixhaven Initiate|SCC'])
+
+export function isNamedBlockFeat(feat: { name: string; source: string }): boolean {
+	return NAMED_BLOCK_FEAT_KEYS.has(`${feat.name}|${feat.source}`)
+}
+
+export interface NamedBlockOption {
+	/** The block's own name, e.g. "Quandrix 2" — what is stored. */
+	name: string
+	/** Block name without its trailing number ("Quandrix"). */
+	group: string
+	/** Display names of the block's fixed cantrips. */
+	cantrips: string[]
+}
+
+function titleCaseWords(text: string): string {
+	return text.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
+}
+
+/** The named blocks of a named-block feat, in data order; empty for any other feat. */
+export function namedBlockOptions(parsedFeats: unknown, featName: string, featSource: string): NamedBlockOption[] {
+	if (!isNamedBlockFeat({ name: featName, source: featSource })) return []
+	const additionalSpells = findFeat(parsedFeats, featName, featSource)?.additionalSpells
+	if (!Array.isArray(additionalSpells)) return []
+	return additionalSpells.filter(isRecord).flatMap((block) => {
+		const name = block['name']
+		if (typeof name !== 'string') return []
+		const known = isRecord(block['known']) ? block['known']['_'] : undefined
+		const cantrips = Array.isArray(known) ? known.filter((ref): ref is string => typeof ref === 'string').map((ref) => titleCaseWords(ref.split('#')[0])) : []
+		return [{ name, group: name.replace(/\s+\d+$/, ''), cantrips }]
+	})
+}
+
+export async function loadNamedBlockOptions(featName: string, featSource: string): Promise<NamedBlockOption[]> {
+	return namedBlockOptions(await loadDataFile('data/feats.json'), featName, featSource)
+}
+
+/** The `additionalSpells` entry a feat's picks read from: the chosen named block, or `[0]` for a plain feat. Undefined for a named-block feat with no block chosen yet. */
+export function featAdditionalSpellsEntry(feat: { additionalSpells?: unknown; name: string; source: string }, blockName: string | undefined): unknown {
+	if (!Array.isArray(feat.additionalSpells)) return undefined
+	if (!isNamedBlockFeat(feat)) return feat.additionalSpells[0]
+	return feat.additionalSpells.find((block) => isRecord(block) && block['name'] === blockName)
 }
 
 function findFeat(parsedFeats: unknown, featName: string, featSource: string): RawFeatEntry | undefined {
@@ -207,12 +258,12 @@ function findFeat(parsedFeats: unknown, featName: string, featSource: string): R
  * copies of the same clause collapse to one — see module comment on why the
  * data's own per-level counts aren't read).
  */
-export function filterChoiceFeatShape(parsedFeats: unknown, featName: string, featSource: string): FilterChoiceFeatShape {
+export function filterChoiceFeatShape(parsedFeats: unknown, featName: string, featSource: string, blockName?: string): FilterChoiceFeatShape {
 	const empty: FilterChoiceFeatShape = { cantripSlot: null, spellSlot: null }
 	if (!isFilterChoiceFeat({ name: featName, source: featSource })) return empty
 
 	const feat = findFeat(parsedFeats, featName, featSource)
-	const entry = feat && Array.isArray(feat.additionalSpells) ? feat.additionalSpells[0] : undefined
+	const entry = feat ? featAdditionalSpellsEntry(feat, blockName) : undefined
 	if (!isRecord(entry)) return empty
 
 	const knownNode = findChooseNodes(entry['known'])[0]
@@ -224,9 +275,9 @@ export function filterChoiceFeatShape(parsedFeats: unknown, featName: string, fe
 	}
 }
 
-export async function loadFilterChoiceFeatShape(featName: string, featSource: string): Promise<FilterChoiceFeatShape> {
+export async function loadFilterChoiceFeatShape(featName: string, featSource: string, blockName?: string): Promise<FilterChoiceFeatShape> {
 	const parsed = await loadDataFile('data/feats.json')
-	return filterChoiceFeatShape(parsed, featName, featSource)
+	return filterChoiceFeatShape(parsed, featName, featSource, blockName)
 }
 
 /** Ritual Caster's slot count (module comment) — proficiency bonus, computed once here so callers don't reimplement the calculation-layer formula. */
@@ -253,6 +304,7 @@ const FILTER_CHOICE_REQUIRED_COUNTS: Record<string, { cantrips: number; spells: 
 	'Fey-Touched|XPHB': { cantrips: 0, spells: 1 },
 	'Shadow-Touched|XPHB': { cantrips: 0, spells: 1 },
 	'Ritual Caster|XPHB': { cantrips: 0, spells: 'proficiencyBonus' },
+	'Strixhaven Initiate|SCC': { cantrips: 0, spells: 1 },
 }
 
 /** The exact cantrip/spell counts a completed pick for this feat must have, or null if the feat isn't one of the 8. */

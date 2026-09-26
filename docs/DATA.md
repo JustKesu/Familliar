@@ -107,7 +107,11 @@ backgrounds 0, species 0.
 - **Feats**: `Strixhaven Initiate` (15 `additionalSpells` blocks, no category →
   defaulted to `G`, no prerequisite) and `Strixhaven Mascot` (not "Mascot";
   prerequisite `level 4` + `feat strixhaven initiate|scc`, category defaulted
-  `G`). Both hidden in the picker (HIDDEN_FEAT_KEYS).
+  `G`). Mascot hidden in the picker (HIDDEN_FEAT_KEYS); Initiate offered (D200).
+  Initiate's 15 blocks are "<College> 1..3", each `known._` = 2 cantrips
+  (`name#c`), `ability.choose` int/wis/cha, and `innate._.daily.1` = one
+  `{choose:"level=1|class=a;b"}` (cleric;wizard, bard;sorcerer, druid;wizard,
+  bard;cleric). Bard is a class name the choose-string lookup needed (D200).
 - **`availableTo.feats`**: 73 spells now list `Strixhaven Initiate|SCC` (its
   college lists). Nothing in src reads `availableTo.feats`.
 - **Items** (18): 5 Primers (Lorehold, Prismari, Quandrix, Silverquill,

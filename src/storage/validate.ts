@@ -478,6 +478,7 @@ function describeFeatChoiceDetailsError(entry: Record<string, unknown>): string 
 	if (magicInitiateError) return magicInitiateError
 	const filterChoiceSpellsError = describeFilterChoiceSpellsError(entry['filterChoiceSpells'])
 	if (filterChoiceSpellsError) return filterChoiceSpellsError
+	if (entry['blockName'] !== undefined && !isNonEmptyString(entry['blockName'])) return `blockName must be a non-empty string`
 	return describeFeatProficienciesError(entry['proficiencies'])
 }
 
@@ -1123,6 +1124,7 @@ function toFeatChoiceDetails(record: Record<string, unknown>): FeatChoiceDetails
 		...(typeof chosenAbility === 'string' ? { chosenAbility: chosenAbility as Ability } : {}),
 		...(isRecord(magicInitiate) ? { magicInitiate: toMagicInitiateChoice(magicInitiate) } : {}),
 		...(isRecord(filterChoiceSpells) ? { filterChoiceSpells: toFilterChoiceSpellsChoice(filterChoiceSpells) } : {}),
+		...(typeof record['blockName'] === 'string' ? { blockName: record['blockName'] } : {}),
 		...(isRecord(proficiencies) ? { proficiencies: toFeatProficiencies(proficiencies) } : {}),
 	}
 }

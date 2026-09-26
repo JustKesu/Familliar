@@ -897,6 +897,8 @@ export interface FeatChoiceDetails {
 	magicInitiate?: MagicInitiateChoice
 	/** The 8 generic filter-choice feats only (slice d5b-1) — see FilterChoiceSpellsChoice. */
 	filterChoiceSpells?: FilterChoiceSpellsChoice
+	/** Strixhaven Initiate only (D200): the name of the chosen `additionalSpells` block ("Quandrix 2"); the college is its prefix. */
+	blockName?: string
 	/**
 	 * Skill/tool/language/expertise picks from the 10 feats that offer one
 	 * (DATA.md "Feat proficiency / expertise / language choices"; build order

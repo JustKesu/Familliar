@@ -79,7 +79,7 @@ test('D199 c: an SCC item (Lorehold Primer) is added from the Inventory tab and 
   await expect(row).toContainText('Requires attunement by a spellcaster')
 })
 
-test('D199 d: no Owlin species, no SCC background, and neither SCC feat at the level 4 feat choice', async ({ page }) => {
+test('D199 d / D200 c: no Owlin species, no SCC background, and Strixhaven Mascot and Boon of Siberys stay out of the level 4 feat choice', async ({ page }) => {
   const options: FighterOptions = {
     name: 'D199 Fighter',
     level: 4,
@@ -92,7 +92,10 @@ test('D199 d: no Owlin species, no SCC background, and neither SCC feat at the l
     onFeatStep: async (p) => {
       const level4 = p.getByRole('group', { name: 'Level 4' })
       await expect(level4.getByRole('radio', { name: 'Tough', exact: true })).toBeChecked()
-      await expect(level4.getByRole('radio', { name: /Strixhaven/ })).toHaveCount(0)
+      // D200: Strixhaven Initiate is offered now; Mascot and Boon of Siberys stay hidden.
+      await expect(level4.getByRole('radio', { name: 'Strixhaven Initiate', exact: true })).toHaveCount(1)
+      await expect(level4.getByRole('radio', { name: 'Strixhaven Mascot', exact: true })).toHaveCount(0)
+      await expect(level4.getByRole('radio', { name: 'Boon of Siberys', exact: true })).toHaveCount(0)
     },
   }
   await fillUpToBackground(page, options)

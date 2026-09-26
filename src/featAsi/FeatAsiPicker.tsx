@@ -3,11 +3,14 @@ import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import type { FeatAsiChoice, FilterChoiceSpellsChoice } from '../storage/character'
 import {
 	isFilterChoiceFeat,
+	isNamedBlockFeat,
 	loadFilterChoiceFeatShape,
+	loadNamedBlockOptions,
 	loadSlotCandidates,
 	ritualCasterSpellCount,
 	type FilterChoiceCandidateSpell,
 	type FilterChoiceFeatShape,
+	type NamedBlockOption,
 } from '../spells/featSpellChoiceData'
 import { ABILITY_ABBREVIATIONS } from '../calculation/abilityAbbreviations'
 import { loadFixedFeatSpells, type FeatGrantedSpell } from '../spells/featSpells'
@@ -19,6 +22,7 @@ import {
 	featCampaignNote,
 	isMagicInitiateFeat,
 	isValidAbilityIncrease,
+	MAGIC_INITIATE_ABILITY_OPTIONS,
 	loadClassPrereqInfo,
 	loadFeatAsiGrants,
 	loadFeats,
@@ -266,10 +270,26 @@ export function FeatAsiPicker({
 							/>
 						)}
 
-						{current?.kind === 'feat' && current.name && isFilterChoiceFeat(current) && (
+						{current?.kind === 'feat' && current.name && isNamedBlockFeat(current) && (
+							<NamedBlockSubPicker
+								featName={current.name}
+								featSource={current.source}
+								grantLevel={grant.level}
+								blockName={current.blockName}
+								chosenAbility={current.chosenAbility}
+								onSelectBlock={(blockName, resetSpells) => {
+									const { blockName: _block, filterChoiceSpells, ...rest } = current
+									setChoiceAt(index, { ...rest, ...(resetSpells || !filterChoiceSpells ? {} : { filterChoiceSpells }), ...(blockName ? { blockName } : {}) })
+								}}
+								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
+							/>
+						)}
+
+						{current?.kind === 'feat' && current.name && isFilterChoiceFeat(current) && (!isNamedBlockFeat(current) || current.blockName !== undefined) && (
 							<FilterChoiceSpellSubPicker
 								featName={current.name}
 								featSource={current.source}
+								blockName={current.blockName}
 								characterLevel={level}
 								chosenAbility={current.chosenAbility}
 								alreadyKnown={alreadyKnown}
@@ -452,6 +472,95 @@ function FeatSubPicker({
 	)
 }
 
+/**
+ * D200: two-step pick for a named-block feat (Strixhaven Initiate) — college,
+ * then which of that college's cantrip pairs — plus the block's own spellcasting
+ * ability. Only the block name is stored; the L1 spell is the ordinary
+ * filter-choice pick below, and a college change drops it (another class list).
+ */
+function NamedBlockSubPicker({
+	featName,
+	featSource,
+	grantLevel,
+	blockName,
+	chosenAbility,
+	onSelectBlock,
+	onSelectAbility,
+}: {
+	featName: string
+	featSource: string
+	grantLevel: number
+	blockName: string | undefined
+	chosenAbility: Ability | undefined
+	onSelectBlock: (blockName: string | undefined, resetSpells: boolean) => void
+	onSelectAbility: (ability: Ability) => void
+}): ReactNode {
+	const [options, setOptions] = useState<NamedBlockOption[] | null>(null)
+	const [pendingGroup, setPendingGroup] = useState<string | null>(null)
+
+	useEffect(() => {
+		let cancelled = false
+		loadNamedBlockOptions(featName, featSource).then((loaded) => {
+			if (!cancelled) setOptions(loaded)
+		})
+		return () => {
+			cancelled = true
+		}
+	}, [featName, featSource])
+
+	if (!options) return null
+	const groups = [...new Set(options.map((option) => option.group))]
+	const college = options.find((option) => option.name === blockName)?.group ?? pendingGroup
+
+	return (
+		<div className="feat-asi-picker__filter-choice">
+			<fieldset>
+				<legend>College</legend>
+				{groups.map((group) => (
+					<label key={group}>
+						<input
+							type="radio"
+							name={`block-college-${grantLevel}`}
+							checked={college === group}
+							onChange={() => {
+								setPendingGroup(group)
+								if (blockName !== undefined && college !== group) onSelectBlock(undefined, true)
+							}}
+						/>
+						{group}
+					</label>
+				))}
+			</fieldset>
+			{college && (
+				<fieldset>
+					<legend>{college} cantrips</legend>
+					{options
+						.filter((option) => option.group === college)
+						.map((option) => (
+							<label key={option.name}>
+								<input type="radio" name={`block-pair-${grantLevel}`} checked={blockName === option.name} onChange={() => onSelectBlock(option.name, false)} />
+								{option.cantrips.join(' + ')}
+							</label>
+						))}
+				</fieldset>
+			)}
+			<label className="feat-asi-picker__feat-ability">
+				Spellcasting ability
+				<select value={chosenAbility ?? ''} onChange={(event) => onSelectAbility(event.target.value as Ability)}>
+					<option value="" disabled>
+						Choose an ability
+					</option>
+					{MAGIC_INITIATE_ABILITY_OPTIONS.map((ability) => (
+						<option key={ability} value={ability}>
+							{ABILITY_LABEL[ability]}
+						</option>
+					))}
+				</select>
+			</label>
+		</div>
+	)
+}
+
 type FilterChoiceLoadState =
 	| { status: 'loading' }
 	| { status: 'ready'; shape: FilterChoiceFeatShape; cantripCandidates: FilterChoiceCandidateSpell[]; spellCandidates: FilterChoiceCandidateSpell[]; fixedCompanions: FeatGrantedSpell[] }
@@ -473,6 +582,7 @@ type FilterChoiceLoadState =
 function FilterChoiceSpellSubPicker({
 	featName,
 	featSource,
+	blockName,
 	characterLevel,
 	chosenAbility,
 	alreadyKnown,
@@ -481,6 +591,7 @@ function FilterChoiceSpellSubPicker({
 }: {
 	featName: string
 	featSource: string
+	blockName: string | undefined
 	characterLevel: number
 	chosenAbility: Ability | undefined
 	alreadyKnown: readonly KnownSpell[]
@@ -493,8 +604,8 @@ function FilterChoiceSpellSubPicker({
 		let cancelled = false
 		setState({ status: 'loading' })
 		Promise.all([
-			loadFilterChoiceFeatShape(featName, featSource),
-			loadFixedFeatSpells(featName, featSource, characterLevel, chosenAbility ? ABILITY_ABBREVIATIONS[chosenAbility] : undefined),
+			loadFilterChoiceFeatShape(featName, featSource, blockName),
+			loadFixedFeatSpells(featName, featSource, characterLevel, chosenAbility ? ABILITY_ABBREVIATIONS[chosenAbility] : undefined, blockName),
 		])
 			.then(([shape, fixedCompanions]) =>
 				Promise.all([
@@ -511,7 +622,7 @@ function FilterChoiceSpellSubPicker({
 		return () => {
 			cancelled = true
 		}
-	}, [featName, featSource, characterLevel, chosenAbility])
+	}, [featName, featSource, blockName, characterLevel, chosenAbility])
 
 	if (state.status === 'loading') return null
 	if (state.status === 'error') {

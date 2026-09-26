@@ -40,7 +40,7 @@ const OUTPUT_DIR = path.join(__dirname, "..", "data");
 // Must match ALLOWED_SOURCES in extract-data.js.
 const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM", "RHW", "SCC"];
 
-// D199: must match HIDDEN_FEAT_KEYS in src/featAsi/featAsiData.ts, which hides them by exact name.
+// D199/D200: Mascot must stay in HIDDEN_FEAT_KEYS (src/featAsi/featAsiData.ts, exact name); Initiate is offered and named in NAMED_BLOCK_FEAT_KEYS.
 const SCC_HIDDEN_FEATS = ["Strixhaven Initiate", "Strixhaven Mascot"];
 
 /*
@@ -644,7 +644,7 @@ function validateFeats() {
 
 	const sccFeatNames = entries.filter((entry) => entry.source === "SCC").map((entry) => entry.name).sort();
 	recordSimpleCheck(
-		"feats: SCC feats are exactly the ones HIDDEN_FEAT_KEYS names (D199)",
+		"feats: SCC feats are exactly Strixhaven Initiate and Mascot (D199, D200)",
 		JSON.stringify(sccFeatNames) === JSON.stringify(SCC_HIDDEN_FEATS),
 		`actual ${sccFeatNames.join(", ")}, expected ${SCC_HIDDEN_FEATS.join(", ")}`,
 	);

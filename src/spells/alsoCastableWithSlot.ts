@@ -33,6 +33,8 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	// "You can also cast these spells using spell slots you have of the appropriate level."
 	'Fey-Touched': true,
 	'Shadow-Touched': true,
+	// "You can also cast the spell using any spell slots you have." (SCC)
+	'Strixhaven Initiate': true,
 
 	// "You can also cast the spell using any spell slots you have of the appropriate level." (XPHB Tiefling legacies, Elf lineages)
 	'Tiefling; Abyssal Legacy': true,

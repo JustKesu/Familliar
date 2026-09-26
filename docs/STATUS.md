@@ -1597,6 +1597,15 @@ until their pickers exist. SCC backgrounds are excluded at extraction
 filter. validate-data asserts 5/2/18/0/0 and the two feat names. E2E
 `scc.spec.ts` a–d. No schema change (still 48).
 
+D200: Strixhaven Initiate is now selectable at any ASI/feat level (out of
+HIDDEN_FEAT_KEYS). Picker: college, then cantrip pair, then spellcasting
+ability, then the level-1 spell; stored as `blockName` + `chosenAbility` +
+`filterChoiceSpells`, the chosen block's cantrips granted through
+`extractFixedFeatSpells`, the level-1 spell free 1/Long Rest and also castable
+with slots. Unmade choices are pending (D57). Strixhaven Mascot and Boon of
+Siberys stay hidden. E2E `strixhavenInitiate.spec.ts` a, b, d; `scc.spec.ts` d
+doubles as c. No schema change (still 48).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

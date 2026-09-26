@@ -135,13 +135,13 @@ describe('extractSelectableFeats', () => {
 		expect(names).toEqual(['Magic Initiate', 'Tough'])
 	})
 
-	it('hides both SCC feats until their pickers exist (D199)', () => {
+	it('offers Strixhaven Initiate but still hides Strixhaven Mascot (D199, D200)', () => {
 		const names = extractSelectableFeats([
 			{ name: 'Strixhaven Initiate', source: 'SCC', category: 'G' },
 			{ name: 'Strixhaven Mascot', source: 'SCC', category: 'G' },
 			{ name: 'Tough', source: 'XPHB', category: 'G' },
 		]).map((f) => f.name)
-		expect(names).toEqual(['Tough'])
+		expect(names).toEqual(['Strixhaven Initiate', 'Tough'])
 	})
 })
 

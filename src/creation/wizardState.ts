@@ -55,7 +55,7 @@ import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
-import { filterChoiceRequiredCounts, isFilterChoiceFeat } from '../spells/featSpellChoiceData'
+import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { overwrittenHeldPicks } from '../levelUp/heldPicks'
 
 /**
@@ -721,6 +721,7 @@ function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityCho
 			)
 		}
 		if (featsRequiringAbilityChoice.has(`${choice.name}|${choice.source}`) && choice.chosenAbility === undefined) return false
+		if (isNamedBlockFeat(choice) && (choice.blockName === undefined || choice.chosenAbility === undefined)) return false
 		if (isFilterChoiceFeat(choice)) {
 			const required = filterChoiceRequiredCounts(choice.name, choice.source, totalCharacterLevel)
 			return (

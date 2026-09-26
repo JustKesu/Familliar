@@ -72,7 +72,7 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { featInstances, loadBackgroundOriginFeat, type FeatInstance, type FeatRef } from '../featAsi/featInstances'
 import type { Character } from '../storage/character'
 import { chosenSpellUsageFor } from './chosenSpellUsage'
-import { isFilterChoiceFeat } from './featSpellChoiceData'
+import { featAdditionalSpellsEntry, isFilterChoiceFeat, isNamedBlockFeat } from './featSpellChoiceData'
 import { extractRefsWithUsage, findSpell, hasConcentration, isRawSpell, isRecord, parseSpellRef, spellIdentityKey, type RawSpell, type SpellUsage } from './subclassPreparedSpells'
 
 export interface FeatGrantedSpell {
@@ -208,6 +208,7 @@ export function extractFixedFeatSpells(
 	featSource: string,
 	characterLevel: number,
 	chosenAbility?: AbilityAbbreviation,
+	blockName?: string,
 ): FeatGrantedSpell[] {
 	if (!Array.isArray(parsedFeats)) {
 		throw new Error('feats.json: expected a top-level array.')
@@ -223,8 +224,11 @@ export function extractFixedFeatSpells(
 	const result: FeatGrantedSpell[] = []
 	const mark = isMarkFeat(feat.name)
 	const filterChoice = isFilterChoiceFeat({ name: feat.name, source: feat.source })
+	const namedBlock = isNamedBlockFeat({ name: feat.name, source: feat.source })
 
-	for (const entry of feat.additionalSpells) {
+	// D200: a named-block feat grants only the block the player chose — never all of its alternatives.
+	const entries = namedBlock ? [featAdditionalSpellsEntry(feat, blockName)] : feat.additionalSpells
+	for (const entry of entries) {
 		if (!isRecord(entry)) continue
 
 		const abilityField = entry['ability']
@@ -236,7 +240,7 @@ export function extractFixedFeatSpells(
 		let ability: AbilityAbbreviation | undefined
 		if (isFixedAbility(abilityField)) {
 			ability = abilityField
-		} else if (mark && isChoiceAbility(abilityField)) {
+		} else if ((mark || namedBlock) && isChoiceAbility(abilityField)) {
 			ability = chosenAbility // may still be undefined if the character hasn't recorded a choice yet — the spell is granted either way.
 		} else if (filterChoice && abilityField === 'inherit') {
 			ability = chosenAbility // Fey-Touched/Shadow-Touched's fixed companion spell — see module comment above isMarkFeat.
@@ -337,7 +341,7 @@ function resolveFilterChoiceAbility(parsedFeats: unknown, featName: string, feat
 		throw new Error('feats.json: expected a top-level array.')
 	}
 	const feat = parsedFeats.find((candidate): candidate is RawFeatEntry => isRawFeatEntry(candidate) && candidate.name === featName && candidate.source === featSource)
-	const entry = feat && Array.isArray(feat.additionalSpells) ? feat.additionalSpells[0] : undefined
+	const entry = feat ? featAdditionalSpellsEntry(feat, undefined) : undefined
 	const abilityField = isRecord(entry) ? entry['ability'] : undefined
 	return isFixedAbility(abilityField) ? abilityField : chosenAbility
 }
@@ -385,7 +389,7 @@ export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unk
 	const characterLevel = totalCharacterLevel(character)
 	for (const choice of featInstances(character, backgroundOriginFeat)) {
 		const chosenAbility = choice.chosenAbility ? ABILITY_ABBREVIATIONS[choice.chosenAbility] : undefined
-		result.push(...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source, characterLevel, chosenAbility))
+		result.push(...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source, characterLevel, chosenAbility, choice.blockName))
 		result.push(...extractMagicInitiateSpells(parsedSpells, choice))
 		result.push(...extractFilterChoiceSpells(parsedFeats, parsedSpells, choice))
 	}
@@ -403,7 +407,7 @@ export async function loadFeatGrantedSpells(character: Character): Promise<FeatG
 }
 
 /** Fetches feats.json and spells.json and returns one feat's fixed-grant spells — the async wrapper extractFixedFeatSpells itself lacks. Used by the filter-choice picker (FeatAsiPicker.tsx) to show a feat's fixed companion spell, if any, alongside its choice. */
-export async function loadFixedFeatSpells(featName: string, featSource: string, characterLevel: number, chosenAbility?: AbilityAbbreviation): Promise<FeatGrantedSpell[]> {
+export async function loadFixedFeatSpells(featName: string, featSource: string, characterLevel: number, chosenAbility?: AbilityAbbreviation, blockName?: string): Promise<FeatGrantedSpell[]> {
 	const [parsedFeats, parsedSpells] = await Promise.all([loadDataFile('data/feats.json'), loadDataFile('data/spells.json')])
-	return extractFixedFeatSpells(parsedFeats, parsedSpells, featName, featSource, characterLevel, chosenAbility)
+	return extractFixedFeatSpells(parsedFeats, parsedSpells, featName, featSource, characterLevel, chosenAbility, blockName)
 }

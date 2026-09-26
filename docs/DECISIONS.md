@@ -3689,3 +3689,26 @@ Schéma beze změny (48).
   další task. validate-data hlídá, že SCC featy jsou přesně tyto dva názvy.
 - **Owlin|SCC vypadne sám** — nemá `edition`, stejný filtr species jako
   Dhampir|RHW (D194); ověřeno po extrakci (SCC species 0), bez výjimky.
+
+## D200 — Strixhaven Initiate je hratelný; výběr jednoho z pojmenovaných bloků
+
+Zdroj: task D200, 26. 9. 2026. Zpřesňuje D199 (Initiate už není skrytý).
+Schéma beze změny (48) — nové pole je nepovinné.
+
+- **Strixhaven Initiate odstraněn z HIDDEN_FEAT_KEYS.** Je to běžný feat na
+  úrovni ASI (bez kategorie Origin, D19: featy se nefiltrují podle kategorie).
+  Strixhaven Mascot a Boon of Siberys zůstávají skryté a mimo rozsah.
+- **`FeatChoiceDetails.blockName`** drží jméno zvoleného bloku `additionalSpells`
+  („Quandrix 2“); kolej je jeho prefix. Picker je dvoukrokový: kolej (5), pak
+  dvojice cantripů (3 bloky, zobrazené jako „Druidcraft + Mage Hand“), plus
+  schopnost (int/wis/cha do existujícího `chosenAbility`, D57).
+- **Zbytek jede existující cestou:** Initiate je ve `FILTER_CHOICE_FEAT_KEYS`
+  (1. úroveň = `filterChoiceSpells`, 1/Long Rest bez slotu i se slotem,
+  D21/D70/D73); pevné cantripy čte `extractFixedFeatSpells` jen ze zvoleného
+  bloku (`NAMED_BLOCK_FEAT_KEYS`). Změna koleje zahodí vybrané kouzlo 1. úrovně
+  (jiný seznam tříd). `CLASS_NAME_LOOKUP` získal `bard`.
+- **Nedokončená volba (D57/D58):** bez `blockName`/`chosenAbility` feat nic
+  neuděluje, wizard krok nejde dokončit a sheet ukáže „college“/„ability“ jako
+  nevybrané.
+- Mechanismus bloků je připravený pro Boon of Siberys (přidat klíč do
+  `NAMED_BLOCK_FEAT_KEYS` a odskrýt), ale to se v D200 nedělá.

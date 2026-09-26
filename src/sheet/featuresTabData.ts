@@ -104,6 +104,7 @@ function featSubChoiceItems(instance: FeatInstance): FeatureTabOption[] {
 	const names = (list: readonly { name: string }[]) => list.map((entry) => entry.name).join(', ')
 	const lines: [string, string][] = []
 	if (instance.chosenAbility) lines.push(['ability', `Ability: ${titleCase(instance.chosenAbility)}`])
+	if (instance.blockName) lines.push(['block', `Choice: ${instance.blockName}`])
 	if (instance.magicInitiate) {
 		const spells = [...instance.magicInitiate.cantrips, ...(instance.magicInitiate.spell ? [instance.magicInitiate.spell] : [])]
 		lines.push(['magic-initiate', `Spells (${instance.magicInitiate.className}): ${names(spells)}`])
