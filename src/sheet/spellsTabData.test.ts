@@ -100,11 +100,24 @@ describe('cell texts', () => {
 
 	it('spellEffect: cantrip dice at the character level, else damage types, else conditions', () => {
 		const fireBolt = detail('Fire Bolt', 0, { damageInflict: ['fire'], scalingLevelDice: [{ label: 'fire damage', scaling: { '1': '1d10', '5': '2d10' } }] })
-		expect(spellEffect(fireBolt, 5)).toEqual({ dice: ['2d10 fire damage'] })
-		expect(spellEffect(detail('Eldritch Blast', 0, { damageInflict: ['force'] }), 5)).toEqual({ text: 'Force' })
-		expect(spellEffect(detail('Ice Knife', 1, { damageInflict: ['piercing', 'cold'] }), 5)).toEqual({ text: 'Piercing, Cold' })
-		expect(spellEffect(detail('Hold Person', 2, { conditionInflict: ['paralyzed'] }), 5)).toEqual({ text: 'Paralyzed' })
-		expect(spellEffect(detail('Bless', 1), 5)).toBeNull()
+		expect(spellEffect(fireBolt, 5)).toEqual({ dice: ['2d10 fire damage'], text: null })
+		expect(spellEffect(detail('Eldritch Blast', 0, { damageInflict: ['force'] }), 5)).toEqual({ dice: [], text: 'Force' })
+		expect(spellEffect(detail('Ice Knife', 1, { damageInflict: ['piercing', 'cold'] }), 5)).toEqual({ dice: [], text: 'Piercing, Cold' })
+		expect(spellEffect(detail('Hold Person', 2, { conditionInflict: ['paralyzed'] }), 5)).toEqual({ dice: [], text: 'Paralyzed' })
+		expect(spellEffect(detail('Bless', 1, { entries: ['roll a {@dice 1d4}'] }), 5)).toBeNull()
+	})
+
+	it('spellEffect: leveled dice at the cast level above the types; scaled healing reads "Healing" (D206)', () => {
+		const hellishRebuke = detail('Hellish Rebuke', 1, {
+			damageInflict: ['fire'],
+			entries: ['takes {@damage 2d10} Fire damage'],
+			entriesHigherLevel: [{ type: 'entries', entries: ['increases by {@scaledamage 2d10|1-9|1d10}'] }],
+		})
+		expect(spellEffect(hellishRebuke, 5)).toEqual({ dice: ['2d10'], text: 'Fire' })
+		expect(spellEffect(hellishRebuke, 5, 3)).toEqual({ dice: ['4d10'], text: 'Fire' })
+		const cure = detail('Cure Wounds', 1, { miscTags: ['HL'], entries: ['regains {@dice 2d8}'], entriesHigherLevel: [{ type: 'entries', entries: ['{@scaledice 2d8|1-9|2d8}'] }] })
+		expect(spellEffect(cure, 5)).toEqual({ dice: ['2d8'], text: 'Healing' })
+		expect(spellEffect(detail('Aura of Vitality', 3, { miscTags: ['HL'], entries: ['regain {@dice 2d6}'] }), 5)).toBeNull()
 	})
 
 	it('shortUsageLabel', () => {

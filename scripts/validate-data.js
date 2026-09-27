@@ -751,6 +751,12 @@ function validateSpells() {
 	});
 	recordCheck("spells: availableTo present on every spell", availabilityFailures);
 
+	// Kept in step with SPELL_SCALE_CORRECTIONS in extract-data.js (D206/D68).
+	const scaleFailures = [{ name: "Ice Storm", source: "XPHB", tag: "{@scaledamage 2d10|4-9|1d10}" }]
+		.filter((c) => !JSON.stringify(entries.find((e) => e.name === c.name && e.source === c.source)?.entriesHigherLevel ?? null).includes(c.tag))
+		.map((c) => ({ label: `"${c.name}|${c.source}"`, detail: `entriesHigherLevel lacks the corrected ${c.tag} (D206)` }));
+	recordCheck("spells: corrected scale tags present", scaleFailures);
+
 	checkExpectedCounts(entries, "spells");
 }
 

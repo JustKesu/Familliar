@@ -874,6 +874,22 @@ A spell's `damageInflict` (array of damage types, absent when the spell deals no
 
 `conditionInflict` is kept in `spells.json` too (the spell extractor keeps whole records): 98 of 489 spells, always an array of lowercase condition names ("paralyzed", "unconscious"), absent otherwise. 165 leveled spells carry `damageInflict`; 55 more leveled spells carry only `conditionInflict`. `scalingLevelDice` is not on every damage cantrip: XPHB Eldritch Blast has none (its extra beams are prose). R7a reads both arrays for the Spells tab's Effect column (D189; `scripts/investigate-spell-condition-inflict.js`, not kept).
 
+### Leveled spell dice — `{@damage}` in entries, `{@scale…}` in entriesHigherLevel (R8a, D206)
+
+Survey of data/spells.json (`scripts/investigate-leveled-spell-dice.js`), 465 leveled spells:
+
+- **No leveled spell has `scalingLevelDice`** (cantrips only).
+- **Base dice** are only `{@damage X}` tags in `entries` (179 leveled spells, 228 tags; up to 5 per spell — Divine Smite 2d8 + 1d8 vs Fiend/Undead, Ice Knife 1d10 + 2d6). No `{@damage}` carries a pipe. All values are `NdM` or `NdM + K` except Chaos Bolt `2d8 + 1d6`. `{@dice X}` also appears in entries, mostly for non-effect rolls (Confusion behaviour table, Bless 1d4, Chaos Bolt `d8` type roll).
+- **Scale tags** sit only in `entriesHigherLevel`, never in `entries`: 92 spells — `{@scaledamage BASES|LEVELS|INC}` (85) or `{@scaledice …}` (7, all healing and all `miscTags` HL: Cure Wounds, Healing Word, Mass Cure Wounds, Mass Healing Word, Prayer of Healing, Healing Spirit, Heal). No tag has a 4th pipe part. `{@dice}` in those 7 spells' entries is always plain `NdM`/`NdM + K`.
+  - BASES may be several `;`-separated values all scaling by INC (5: Melf's Acid Arrow `4d4;2d4`, Enervation `4d8;2d8`, Storm Sphere `2d6;4d6`, Conjure Elemental `8d8;4d8`, Lightning Arrow).
+  - Two spells carry two scale tags (Bigby's Hand `5d8|5-9|2d8` + `4d6|5-9|2d6`; Wall of Ice `10d6|6-9|2d6` + `5d6|6-9|1d6`).
+  - LEVELS is `MIN-MAX` everywhere except **Spirit Shroud `3,5,7,9`** — a list of the slot levels where INC applies (one more INC at 5, 7, 9).
+  - A base may carry a flat part: Disintegrate `10d6 + 40|6-9|3d6` (the d6 term scales). Heal `{@scaledice 70|6-9|10}` is flat and matches no entry tag (70 is prose).
+  - 10 spells have a base equal to 2+ entry tags (Backlash 4d6, Enervation 4d8, Wall of Light 4d8, …) — the same dice named twice in the text; both lines scale.
+- **86 leveled spells** have `entriesHigherLevel` with no scale tag (more targets/rays/duration: Magic Missile, Scorching Ray, Hex) — their dice do not change with level.
+- **Healing:** 34 leveled spells have `miscTags` HL; only the 7 `{@scaledice}` ones show healing dice. The other 27 (Aura of Vitality, Aura of Life, Aid, Goodberry, Heroes' Feast, Mass Heal, Power Word Heal, Regenerate, Vampiric Touch, Life Transference, Revivify, …) show no healing dice. False Life is not tagged HL (temporary HP).
+- **Data bug, corrected in extraction (D206/D68):** XPHB Ice Storm's tag is `{@scaledamage 2d8|4-9|1d10}` while its entries (and the 2024 book) say `{@damage 2d10}` Bludgeoning; extract-data.js rewrites the base to 2d10 and validate-data.js checks it.
+
 Optional-features.json prerequisites carry a `choose` filter string of the form `level=N|class=X|spell attack=m;r;o`: clauses pipe-separated, values within a clause semicolon-separated. `spell attack`'s value names 5etools' generic melee/ranged/other categories, but this data's own `spellAttack` field only ever holds `["M"]` or `["R"]` — never a third value (scripts/investigate-spell-attack-values.js).
 
 ## Fluff / lore text not extracted

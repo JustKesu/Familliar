@@ -978,8 +978,9 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   jméno nese stejné popisky jako záložka Kouzla (`(Cantrip)` / `(Level 3)`,
   ritual, concentration), Range jde přes `formatRange`. Sloupec "To Hit / DC"
   ukazuje útočný bonus a/nebo "DC <n> <vlastnost>" — obojí s rozkladem
-  (D40/D41) a obojí z už existujících výpočtů. Damage jen u cantripů se
-  `scalingLevelDice`, jinak prázdná (D21); Notes u kouzel vždy prázdné. Testy:
+  (D40/D41) a obojí z už existujících výpočtů. Damage: cantrip ze
+  `scalingLevelDice`, leveled kouzlo z tagů `{@damage}` na vlastní úrovni
+  (`leveledSpellDice`, D206); Notes u kouzel vždy prázdné. Testy:
   `spellActionRowData.test.ts` + blok `spell rows in the actions table
   (rebuild slice 4)` v `CharacterSheet.test.tsx`.
 - Řádky použitelných schopností v tabulce akcí (přestavba sheetu, slice 5
@@ -1660,6 +1661,16 @@ Stored as `CharacterBackground.originFeatOverride` (schema 50, 49→50 tag only)
 spells, proficiencies, ASI "already granted") follows. Changing the background
 or the override clears the background feat's sub-choices. Sub-choices of the
 effective feat still never block (D179). E2E `darkGiftOriginFeat.spec.ts` a–f.
+
+R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
+`leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
+read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale
+them by the `{@scale…}` tags of entriesHigherLevel; `spellEffect` now returns
+`{dice, text}` (dice above the types / "Healing"). CAST rows use the section's
+slot level (pact rows the pact level), USE/label rows and Actions the spell's own.
+`SpellDamageLine` rolls "NdM + K" whole, never "2d8 + 1d6". `SpellDetail.miscTags`
+added. Ice Storm XPHB scale base 2d8→2d10 in extraction, guarded by validate-data.
+E2E `spellDice.spec.ts` a–d2. No schema change (still 50). Next: R8b (upcast rows).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

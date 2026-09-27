@@ -1639,18 +1639,17 @@ function AmmoTracker({ weapon, entries, onSpend }: { weapon: string; entries: Am
  * Notes is empty for every spell row for the same reason ("half on a save" is
  * prose, not a flag).
  */
-/** "2d10 fire damage": the leading dice, when they parse, are the roll button; the rest stays text. */
+/** "2d10 fire damage" / "1d4 + 1": the dice are the roll button, a trailing label stays text; anything else ("2d8 + 1d6") is only text (D206). */
 function SpellDamageLine({ line, spellName, onRoll }: { line: string; spellName: string; onRoll: (report: RollReport) => void }): ReactNode {
-	const space = line.indexOf(' ')
-	const head = space === -1 ? line : line.slice(0, space)
-	const dice = parseDiceExpression(head)
-	if (!dice) return <span>{line}</span>
+	const match = /^(\d+)d(\d+)(?:\s*\+\s*(\d+))?(?: ([A-Za-z].*))?$/.exec(line)
+	if (!match || Number(match[1]) === 0) return <span>{line}</span>
+	const label = match[4]
 	return (
 		<span>
-			<DamageRollButton count={dice.count} sides={dice.sides} modifier={0} label={`${spellName} damage`} onRoll={onRoll}>
-				{head}
+			<DamageRollButton count={Number(match[1])} sides={Number(match[2])} modifier={Number(match[3] ?? 0)} label={`${spellName} damage`} onRoll={onRoll}>
+				{label === undefined ? line : line.slice(0, -label.length - 1)}
 			</DamageRollButton>
-			{space !== -1 && <span className="sheet__action-damage-type">{line.slice(space)}</span>}
+			{label !== undefined && <span className="sheet__action-damage-type"> {label}</span>}
 		</span>
 	)
 }
@@ -2025,7 +2024,8 @@ function SpellTabRow({
 	/* D116: open state is this row's own UI state. */
 	const [open, setOpen] = useState(false)
 	const { entry, detail, action } = row
-	const effect = detail ? spellEffect(detail, characterLevel) : null
+	// D206: a CAST row is worked out at its section's slot level (a D189 pact row too), every other row at the spell's own.
+	const effect = detail ? spellEffect(detail, characterLevel, action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level) : null
 	const hitDc = detail ? rowHitDc(detail, caster) : null
 	let use: ReactNode = null
 	let counter: ReactNode = null
@@ -2108,15 +2108,14 @@ function SpellTabRow({
 						)}
 					</div>
 					<div className="sheet__spell-effect">
-						{effect && 'dice' in effect ? (
+						{effect && effect.dice.length > 0 && (
 							<span className="sheet__action-damage sheet__action-damage--lines">
 								{effect.dice.map((line, index) => (
 									<SpellDamageLine key={index} line={line} spellName={entry.name} onRoll={onRoll} />
 								))}
 							</span>
-						) : (
-							effect?.text
 						)}
+						{effect?.text}
 					</div>
 					<div className="sheet__spell-notes">
 						{counter}

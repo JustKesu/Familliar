@@ -93,6 +93,8 @@ export interface SpellDetail {
 	damageInflict: string[]
 	/** The conditions a spell can impose (98/489 spells; lowercase names, array when present). Empty when absent. */
 	conditionInflict: string[]
+	/** 5etools classification tags; "HL" marks healing (D206). */
+	miscTags?: string[]
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -114,6 +116,7 @@ interface RawSpell {
 	scalingLevelDice?: unknown
 	damageInflict?: unknown
 	conditionInflict?: unknown
+	miscTags?: unknown
 	meta?: { ritual?: boolean }
 }
 
@@ -160,6 +163,7 @@ export function extractSpellDetails(parsed: unknown): SpellDetail[] {
 		scalingLevelDice: spell.scalingLevelDice ? extractScalingLevelDice(spell.scalingLevelDice) : [],
 		damageInflict: Array.isArray(spell.damageInflict) ? (spell.damageInflict.filter((d) => typeof d === 'string') as string[]) : [],
 		conditionInflict: Array.isArray(spell.conditionInflict) ? (spell.conditionInflict.filter((c) => typeof c === 'string') as string[]) : [],
+		miscTags: Array.isArray(spell.miscTags) ? (spell.miscTags.filter((t) => typeof t === 'string') as string[]) : [],
 	}))
 }
 

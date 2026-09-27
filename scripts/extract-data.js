@@ -1327,6 +1327,14 @@ function buildSpellAvailability(spell, lookup, featKeptKeys, optionalFeatureKept
 	return availableTo;
 }
 
+/*
+ * D206, an application of D68: the XPHB Ice Storm scale tag names a 2d8 base,
+ * but its own entries and the 2024 book deal 2d10 Bludgeoning.
+ */
+const SPELL_SCALE_CORRECTIONS = [
+	{ name: "Ice Storm", source: "XPHB", from: "{@scaledamage 2d8|4-9|1d10}", to: "{@scaledamage 2d10|4-9|1d10}" },
+];
+
 function extractSpells(featKeptKeys, optionalFeatureKeptKeys) {
 	console.log("\n--- SPELLS ---");
 
@@ -1364,6 +1372,13 @@ function extractSpells(featKeptKeys, optionalFeatureKeptKeys) {
 	// Drop spells superseded by a newer reprint we are also keeping (e.g. TCE
 	// "Mind Sliver", replaced by the 2024 XPHB version).
 	kept = removeSuperseded(kept, "spells", warnings);
+
+	for (const correction of SPELL_SCALE_CORRECTIONS) {
+		const spell = kept.find((entry) => entry.name === correction.name && entry.source === correction.source);
+		const text = spell && JSON.stringify(spell.entriesHigherLevel);
+		if (text && text.includes(correction.from)) spell.entriesHigherLevel = JSON.parse(text.replace(correction.from, correction.to));
+		else if (!text || !text.includes(correction.to)) warnings.push(`[spells] "${correction.name}|${correction.source}" needs ${correction.to} (D206) but ${correction.from} was not found in the source data`);
+	}
 
 	// Attach the class-availability information.
 	const lookup = readJson(path.join(SOURCE_DATA_DIR, "generated", "gendata-spell-source-lookup.json"));

@@ -3842,3 +3842,30 @@ Schéma 50.
 4. Podvolby efektivního featu zůstávají podle D179 neblokující.
 5. Nahrazuje body D194 „alternativa ‚any Dark Gift‘ se ignoruje“ a „Mist
    Wanderer a Spirit Medium se v pickeru nenabízejí“.
+
+## D206 — Kostky leveled kouzel ve sloupci Effect (R8a)
+
+Zdroj: zadání R8a, 27. 9. 2026. Navazuje na D21, D189, D68. Tvar dat v DATA.md
+„Leveled spell dice“.
+
+1. **Řádky kostek:** každý tag `{@damage X}` z `entries` (i vnořených), v pořadí
+   textu, každý na vlastním řádku; `{@dice X}` jen u kouzel s `{@scaledice}`.
+   Jiné `{@dice}` (Bless, Confusion, Chaos Bolt) se neukazují. Čtou se tagy,
+   ne próza kolem nich — D21 tím není porušen.
+2. **Úroveň L:** hodnota rovná základu tagu `{@scaledamage|scaledice
+   BASES|MIN-MAX|INC}` se nahradí základ + (L − MIN) × INC. Stejná kostka se
+   sčítá (8d6 → 10d6), čísla se sčítají (Heal 70 → 80). Základ bez tagu v
+   `entries` je vlastní řádek. Jiná velikost kostky → text „základ + k×INC“.
+3. **Text pod kostkami:** typy z `damageInflict`, jinak podmínky; u kouzla s
+   `miscTags` HL a `{@scaledice}` „Healing“. Modifikátor sesílatele se k léčení
+   nepřičítá (jen v próze, D21).
+4. **Tlačítko hodu:** řádek „NdM“ nebo „NdM + K“; cokoli jiného (Chaos Bolt
+   „2d8 + 1d6“) je jen text, nikdy částečný hod.
+5. **Která úroveň:** Spells tab — CAST řádek úroveň své sekce (D189 pact řádek s
+   odznakem na úrovni pact slotu, Warlock 5 Hellish Rebuke = 4d10); USE a label
+   řádky vlastní úroveň kouzla. Actions tab vlastní úroveň kouzla. Cantripy
+   beze změny (`scalingLevelDice`).
+6. **Ice Storm (XPHB)** má ve scale tagu základ 2d8, `entries` i kniha 2d10 —
+   extrakce ho opravuje na 2d10 (D68), validate-data to hlídá.
+7. Upcast řádky pod vyššími sekcemi jsou R8b; výpočet `leveledSpellDice(detail,
+   slotLevel)` bere libovolnou úroveň.

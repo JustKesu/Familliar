@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { FeatSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import type { SheetSpellEntry } from './SpellList'
-import { cantripDamageAtLevel, spellActionRows } from './spellActionRowData'
+import { cantripDamageAtLevel, isScaledHealing, leveledSpellDice, spellActionRows } from './spellActionRowData'
 
 function detail(over: Partial<SpellDetail> & { name: string }): SpellDetail {
 	return {
@@ -107,10 +107,74 @@ describe('spellActionRows', () => {
 		expect(row).toMatchObject({ level: 3, ritual: false, concentration: false, range: expect.stringContaining('60') })
 	})
 
-	it('fills Damage only from structured cantrip scaling, leaving a leveled spell empty (D21)', () => {
-		const rows = spellActionRows([entry('Fire Bolt'), entry('Fireball')], details, 11, [wizard], [])
+	it('fills Damage from cantrip scaling, and a leveled spell from its tags at its own level (D206)', () => {
+		const withTags = [...details.filter((d) => d.name !== 'Fireball'), fireball]
+		const rows = spellActionRows([entry('Fire Bolt'), entry('Fireball')], withTags, 11, [wizard], [])
 		expect(rows[0]!.damage).toEqual(['3d10 fire damage'])
-		expect(rows[1]!.damage).toEqual([])
+		expect(rows[1]!.damage).toEqual(['8d6'])
+	})
+})
+
+const higher = (tag: string) => [{ type: 'entries', name: 'Using a Higher-Level Spell Slot', entries: [`The damage increases by ${tag}.`] }]
+const fireball = detail({
+	name: 'Fireball',
+	level: 3,
+	savingThrow: ['dexterity'],
+	entries: ['Each creature takes {@damage 8d6} Fire damage on a failed save.'],
+	entriesHigherLevel: higher('{@scaledamage 8d6|3-9|1d6}'),
+})
+
+describe('leveledSpellDice (D206)', () => {
+	it('Fireball merges the increment into the same die', () => {
+		expect(leveledSpellDice(fireball, 3)).toEqual(['8d6'])
+		expect(leveledSpellDice(fireball, 5)).toEqual(['10d6'])
+	})
+
+	it('Cure Wounds shows its {@dice} because it scales them, and is healing', () => {
+		const cure = detail({ name: 'Cure Wounds', miscTags: ['HL'], entries: ['regains {@dice 2d8} plus your modifier.'], entriesHigherLevel: higher('{@scaledice 2d8|1-9|2d8}') })
+		expect(leveledSpellDice(cure, 1)).toEqual(['2d8'])
+		expect(leveledSpellDice(cure, 3)).toEqual(['6d8'])
+		expect(isScaledHealing(cure)).toBe(true)
+	})
+
+	it('Heal: a flat base with no entry tag is its own line and adds flat', () => {
+		const heal = detail({ name: 'Heal', level: 6, miscTags: ['HL'], entries: ['regains 70 Hit Points.'], entriesHigherLevel: higher('{@scaledice 70|6-9|10}') })
+		expect(leveledSpellDice(heal, 6)).toEqual(['70'])
+		expect(leveledSpellDice(heal, 7)).toEqual(['80'])
+	})
+
+	it("Melf's Acid Arrow scales both bases", () => {
+		const arrow = detail({ name: "Melf's Acid Arrow", level: 2, entries: ['{@damage 4d4} Acid damage', 'and {@damage 2d4} Acid damage at the end'], entriesHigherLevel: higher('{@scaledamage 4d4;2d4|2-9|1d4}') })
+		expect(leveledSpellDice(arrow, 2)).toEqual(['4d4', '2d4'])
+		expect(leveledSpellDice(arrow, 3)).toEqual(['5d4', '3d4'])
+	})
+
+	it('Divine Smite leaves the Fiend/Undead die unscaled', () => {
+		const smite = detail({ name: 'Divine Smite', entries: ['an extra {@damage 2d8} Radiant damage', 'increases by {@damage 1d8} if the target is a Fiend or an Undead'], entriesHigherLevel: higher('{@scaledamage 2d8|1-9|1d8}') })
+		expect(leveledSpellDice(smite, 1)).toEqual(['2d8', '1d8'])
+		expect(leveledSpellDice(smite, 2)).toEqual(['3d8', '1d8'])
+	})
+
+	it('Ice Storm after the D206 base correction', () => {
+		const storm = detail({ name: 'Ice Storm', level: 4, entries: ['{@damage 2d10} Bludgeoning damage and {@damage 4d6} Cold damage'], entriesHigherLevel: higher('{@scaledamage 2d10|4-9|1d10}') })
+		expect(leveledSpellDice(storm, 4)).toEqual(['2d10', '4d6'])
+		expect(leveledSpellDice(storm, 5)).toEqual(['3d10', '4d6'])
+	})
+
+	it('Magic Missile has no scale tag and stays the same at any level', () => {
+		const missile = detail({ name: 'Magic Missile', entries: ['Each dart deals {@damage 1d4 + 1} Force damage.'], entriesHigherLevel: higher('one more dart') })
+		expect(leveledSpellDice(missile, 1)).toEqual(['1d4 + 1'])
+		expect(leveledSpellDice(missile, 4)).toEqual(['1d4 + 1'])
+	})
+
+	it('Chaos Bolt keeps its mixed dice as one line; Disintegrate bumps the dice term of "10d6 + 40"; Spirit Shroud steps by its level list', () => {
+		const bolt = detail({ name: 'Chaos Bolt', entries: ['{@damage 2d8 + 1d6} damage', 'roll the {@dice d8}s'], entriesHigherLevel: higher('{@scaledamage 2d8 + 1d6|1-9|1d6}') })
+		expect(leveledSpellDice(bolt, 1)).toEqual(['2d8 + 1d6'])
+		expect(leveledSpellDice(bolt, 2)).toEqual(['2d8 + 2d6'])
+		const disintegrate = detail({ name: 'Disintegrate', level: 6, entries: ['{@damage 10d6 + 40} Force damage'], entriesHigherLevel: higher('{@scaledamage 10d6 + 40|6-9|3d6}') })
+		expect(leveledSpellDice(disintegrate, 7)).toEqual(['13d6 + 40'])
+		const shroud = detail({ name: 'Spirit Shroud', level: 3, entries: ['an extra {@damage 1d8}'], entriesHigherLevel: higher('{@scaledamage 1d8|3,5,7,9|1d8}') })
+		expect([3, 4, 5, 9].map((level) => leveledSpellDice(shroud, level))).toEqual([['1d8'], ['1d8'], ['2d8'], ['4d8']])
 	})
 })
 

@@ -13,13 +13,11 @@
  *   them listing two abilities) marks a save. They are NOT exclusive — 5
  *   spells carry both (Storm Sphere, Wall of Light, Wrath of Nature, …), so a
  *   row can show a to-hit AND a DC. 252 spells have neither and get no row.
- * - Damage dice are NOT structured for leveled spells: 136 of the 237 rowable
- *   spells carry their dice only as `{@damage XdY}` inside `entries` prose, and
- *   `damageInflict` is damage TYPES with no dice. Per D21 that prose is not
- *   parsed — those rows leave the Damage cell empty. The one structured
- *   exception is `scalingLevelDice` (24 cantrips), whose own `label` already
- *   names the damage type ("Fire damage", "thunder damage on hit"), so it is
- *   shown as-is at the character's level.
+ * - Leveled spells carry their dice only as `{@damage XdY}` tags inside
+ *   `entries`; D206 reads those tags (not the prose around them) together with
+ *   the `{@scale…}` tags of entriesHigherLevel. Cantrips use `scalingLevelDice`
+ *   (24), whose own `label` already names the damage type ("Fire damage",
+ *   "thunder damage on hit"), shown as-is at the character's level.
  * - "Half damage on a save" is prose only — no top-level field anywhere marks
  *   it — so the Notes cell stays empty rather than being parsed out of text.
  */
@@ -52,7 +50,7 @@ export interface SpellActionData {
 	range: string
 	attack: SpellActionAttack | null
 	save: SpellActionSave | null
-	/** Dice + type per `scalingLevelDice` entry at the character's level; empty for every spell without that structured field. */
+	/** Cantrip: dice + type per `scalingLevelDice` entry at the character's level. Leveled: leveledSpellDice at the spell's own level (D206). */
 	damage: string[]
 	/** D43: set when the spell needs a to-hit/DC but no caster entry could be attributed to it — the row still appears, saying why the number is missing. */
 	unresolved: string | null
@@ -138,6 +136,55 @@ export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntr
 	return lines
 }
 
+const SCALE_TAG = /\{@scale(damage|dice) ([^}]*)\}/g
+
+/** "3-9" or Spirit Shroud's "3,5,7,9": the slot levels at which one more INC applies (the first adds none). */
+function scaleLevels(range: string): number[] {
+	const [min, max] = range.split('-').map(Number)
+	if (max !== undefined) return Array.from({ length: max - min! + 1 }, (_, index) => min! + index)
+	return range.split(',').map(Number)
+}
+
+/** "10d6 + 40" plus k×"3d6" bumps the d6 term; flat INC bumps the flat term; anything else stays readable text. */
+function addIncrements(base: string, increment: string, times: number): string {
+	if (times <= 0) return base
+	const terms = base.split('+').map((term) => term.trim())
+	const incDice = /^(\d+)d(\d+)$/.exec(increment)
+	const incFlat = /^\d+$/.test(increment)
+	const index = terms.findIndex((term) => (incDice ? new RegExp(`^\\d+d${incDice[2]}$`).test(term) : incFlat && /^\d+$/.test(term)))
+	if (index === -1) return `${base} + ${times}×${increment}`
+	const term = terms[index]!
+	terms[index] = incDice ? `${parseInt(term, 10) + times * Number(incDice[1])}d${incDice[2]}` : String(Number(term) + times * Number(increment))
+	return terms.join(' + ')
+}
+
+const sameDice = (a: string, b: string) => a.replace(/\s+/g, '') === b.replace(/\s+/g, '')
+
+/**
+ * D206: a leveled spell's Effect dice at `slotLevel`, one line per `{@damage}`
+ * tag of its entries in text order (plus `{@dice}` for `{@scaledice}` spells),
+ * each raised by the `{@scale…}` tags of entriesHigherLevel (DATA.md).
+ */
+export function leveledSpellDice(detail: SpellDetail, slotLevel: number): string[] {
+	const scales = [...JSON.stringify(detail.entriesHigherLevel).matchAll(SCALE_TAG)].flatMap((match) => {
+		const [bases = '', range = '', increment = ''] = match[2]!.split('|')
+		const times = scaleLevels(range).filter((level) => level <= slotLevel).length - 1
+		return bases.split(';').map((base) => ({ base: base.trim(), value: addIncrements(base.trim(), increment.trim(), times), kind: match[1] }))
+	})
+	const withDice = scales.some((scale) => scale.kind === 'dice')
+	const lines = [...JSON.stringify(detail.entries).matchAll(/\{@(damage|dice) ([^}|]*)[^}]*\}/g)]
+		.filter((match) => match[1] === 'damage' || withDice)
+		.map((match) => match[2]!.trim())
+	const scaled = lines.map((line) => scales.find((scale) => sameDice(scale.base, line))?.value ?? line)
+	const unmatched = scales.filter((scale) => !lines.some((line) => sameDice(scale.base, line))).map((scale) => scale.value)
+	return [...scaled, ...unmatched]
+}
+
+/** D206: healing text only where the healing dice are shown, i.e. `{@scaledice}` spells tagged HL. */
+export function isScaledHealing(detail: SpellDetail): boolean {
+	return (detail.miscTags ?? []).includes('HL') && /\{@scaledice /.test(JSON.stringify(detail.entriesHigherLevel))
+}
+
 export interface SpellGroupData {
 	key: string
 	entry: SheetSpellEntry
@@ -199,7 +246,7 @@ export function spellActionRows(
 			range: formatRange(detail.range),
 			attack: hasAttack && resolved ? resolved.attack : null,
 			save: saveAbilities.length > 0 && resolved ? { ...resolved.save, abilities: saveAbilities } : null,
-			damage: cantripDamageAtLevel(detail.scalingLevelDice, characterLevel),
+			damage: detail.level === 0 ? cantripDamageAtLevel(detail.scalingLevelDice, characterLevel) : leveledSpellDice(detail, detail.level),
 			unresolved: 'reason' in caster ? caster.reason : null,
 		})
 	}

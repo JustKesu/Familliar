@@ -12,7 +12,17 @@ import type { SpellDetail } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
 import type { SheetSpellEntry, SpellGrant } from './SpellList'
-import { cantripDamageAtLevel, casterFor, type SpellActionAttack, type SpellActionSave, type SpellCaster, toCaster, unresolvedCaster } from './spellActionRowData'
+import {
+	cantripDamageAtLevel,
+	casterFor,
+	isScaledHealing,
+	leveledSpellDice,
+	type SpellActionAttack,
+	type SpellActionSave,
+	type SpellCaster,
+	toCaster,
+	unresolvedCaster,
+} from './spellActionRowData'
 import { formatCastingTime, formatDuration, formatSpellUsage } from './spellFormatting'
 
 export const UNRESOLVED_SECTION = 'unresolved'
@@ -274,16 +284,19 @@ function capitalise(word: string): string {
 }
 
 /**
- * The Effect column: a cantrip's structured dice at the character's level;
- * otherwise damage types, else conditions. Leveled dice live only in prose (D21, R8).
+ * The Effect column: a cantrip's structured dice at the character's level
+ * alone; a leveled spell's dice at `castLevel` (D206) above its damage types,
+ * else conditions, or "Healing".
  */
-export function spellEffect(detail: SpellDetail, characterLevel: number): { dice: string[] } | { text: string } | null {
+export function spellEffect(detail: SpellDetail, characterLevel: number, castLevel = detail.level): { dice: string[]; text: string | null } | null {
 	if (detail.level === 0) {
 		const dice = cantripDamageAtLevel(detail.scalingLevelDice, characterLevel)
-		if (dice.length > 0) return { dice }
+		if (dice.length > 0) return { dice, text: null }
 	}
+	const dice = detail.level === 0 ? [] : leveledSpellDice(detail, castLevel)
 	const names = detail.damageInflict.length > 0 ? detail.damageInflict : detail.conditionInflict
-	return names.length > 0 ? { text: names.map(capitalise).join(', ') } : null
+	const text = isScaledHealing(detail) ? 'Healing' : names.length > 0 ? names.map(capitalise).join(', ') : null
+	return dice.length > 0 || text !== null ? { dice, text } : null
 }
 
 /** Without the reaction trigger — the expanded text carries it. */

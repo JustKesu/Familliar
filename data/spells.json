@@ -34193,7 +34193,7 @@
 				"type": "entries",
 				"name": "Using a Higher-Level Spell Slot",
 				"entries": [
-					"The Bludgeoning damage increases by {@scaledamage 2d8|4-9|1d10} for each spell slot level above 4."
+					"The Bludgeoning damage increases by {@scaledamage 2d10|4-9|1d10} for each spell slot level above 4."
 				]
 			}
 		],
