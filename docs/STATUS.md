@@ -1672,6 +1672,18 @@ slot level (pact rows the pact level), USE/label rows and Actions the spell's ow
 added. Ice Storm XPHB scale base 2d8→2d10 in extraction, guarded by validate-data.
 E2E `spellDice.spec.ts` a–d2. No schema change (still 50). Next: R8b (upcast rows).
 
+R8b (D207): upcast rows in the Spells tab. A CAST spell with non-empty
+`entriesHigherLevel` gets one more CAST row per higher ordinary-slot section
+(`spellsTabActionSections` in spellsTabData.ts), badged with its own level;
+CAST and Effect there already used `section.key`, so no change to `castSpell`
+or `spellEffect` was needed. No upcast for USE/label rows, cantrips,
+unresolved spells, `unavailable` (D106) spells, or pact-only casters (D189).
+Section row order: unbadged rows first, then badged rows ascending by level,
+then by name. Bundled: `leveledSpellDice` dedupes identical scaled lines
+(Enervation, Backlash, Wall of Light); a scaled-healing roll (`isScaledHealing`)
+is labelled "healing" in the roll history and button aria-label, not "damage"
+(`SpellDamageLine`). E2E `spellDice.spec.ts` extended. No schema change (still 50).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

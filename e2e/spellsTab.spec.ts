@@ -120,14 +120,17 @@ test('R7a d: level and Concentration pills, search, All; typing stores nothing',
   await expect(shownNames(page)).toHaveText(['Bless', 'Cure Wounds', 'Guiding Bolt', 'Shield of Faith'])
 
   await pills.getByRole('button', { name: 'Concentration', exact: true }).click()
-  await expect(shownNames(page)).toHaveText(['Guidance', 'Bless', 'Shield of Faith', 'Spiritual Weapon'])
+  // R8b/D207: Bless has no scale tag but still upcasts (no "At Higher Levels" die change needed to qualify) into the 2nd Level section it now has a slot for.
+  await expect(shownNames(page)).toHaveText(['Guidance', 'Bless', 'Shield of Faith', 'Spiritual Weapon', 'Bless'])
 
   const stored = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)
   await pills.getByRole('button', { name: 'All', exact: true }).click()
   await panel(page).getByRole('searchbox', { name: 'Search spells' }).fill('BOL')
-  await expect(shownNames(page)).toHaveText(['Guiding Bolt'])
+  // Guiding Bolt's own row (1st Level) plus its upcast row (2nd Level, R8b/D207) both match the search.
+  await expect(shownNames(page)).toHaveText(['Guiding Bolt', 'Guiding Bolt'])
   await panel(page).getByRole('searchbox', { name: 'Search spells' }).fill('')
-  await expect(shownNames(page)).toHaveCount(9)
+  // 9 own-level rows + Bless, Cure Wounds and Guiding Bolt upcast into the 2nd Level section (R8b/D207).
+  await expect(shownNames(page)).toHaveCount(12)
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(stored)
 })
 

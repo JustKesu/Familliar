@@ -57,7 +57,8 @@ test('A-S1 b: Paladin 2 has Divine Smite and no Find Steed; Paladin 5 has both',
 
 test('A-S1 b: Paladin 5 has Divine Smite and Find Steed', async ({ page }) => {
   await openSaved(page, character('as1-paladin5', [{ className: 'Paladin', level: 5 }], 'charisma'))
-  await expect(row(page, 'Divine Smite')).toHaveCount(1)
+  // Divine Smite's own-level row: at level 5 it also upcasts into 2nd Level with a "1st" badge (R8b/D207), which the badge-less filter excludes.
+  await expect(row(page, 'Divine Smite').filter({ hasNot: page.locator('.sheet__spell-badge') })).toHaveCount(1)
   await expect(row(page, 'Find Steed')).toHaveCount(1)
 })
 

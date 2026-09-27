@@ -167,6 +167,12 @@ describe('leveledSpellDice (D206)', () => {
 		expect(leveledSpellDice(missile, 4)).toEqual(['1d4 + 1'])
 	})
 
+	it('Enervation/Backlash/Wall of Light: the same dice named twice in entries scales to one line, not two (D207)', () => {
+		const enervation = detail({ name: 'Enervation', entries: ['deals {@damage 4d8} Necrotic damage', 'you gain {@damage 4d8} temporary hit points'], entriesHigherLevel: higher('{@scaledamage 4d8|5-9|2d8}') })
+		expect(leveledSpellDice(enervation, 5)).toEqual(['4d8'])
+		expect(leveledSpellDice(enervation, 6)).toEqual(['6d8'])
+	})
+
 	it('Chaos Bolt keeps its mixed dice as one line; Disintegrate bumps the dice term of "10d6 + 40"; Spirit Shroud steps by its level list', () => {
 		const bolt = detail({ name: 'Chaos Bolt', entries: ['{@damage 2d8 + 1d6} damage', 'roll the {@dice d8}s'], entriesHigherLevel: higher('{@scaledamage 2d8 + 1d6|1-9|1d6}') })
 		expect(leveledSpellDice(bolt, 1)).toEqual(['2d8 + 1d6'])

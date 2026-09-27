@@ -135,7 +135,7 @@ import {
 	type SpellsTabFilter,
 } from './spellsTabData'
 import { featureActionRows, type FeatureActionData } from './featureActionRowData'
-import { spellActionRows, spellGroupRows, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
+import { isScaledHealing, spellActionRows, spellGroupRows, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
 import { formatRange, spellLevelLabel } from './spellFormatting'
@@ -1639,14 +1639,14 @@ function AmmoTracker({ weapon, entries, onSpend }: { weapon: string; entries: Am
  * Notes is empty for every spell row for the same reason ("half on a save" is
  * prose, not a flag).
  */
-/** "2d10 fire damage" / "1d4 + 1": the dice are the roll button, a trailing label stays text; anything else ("2d8 + 1d6") is only text (D206). */
-function SpellDamageLine({ line, spellName, onRoll }: { line: string; spellName: string; onRoll: (report: RollReport) => void }): ReactNode {
+/** "2d10 fire damage" / "1d4 + 1": the dice are the roll button, a trailing label stays text; anything else ("2d8 + 1d6") is only text (D206). D207: a scaled-healing spell's roll is labelled "healing", not "damage". */
+function SpellDamageLine({ line, spellName, healing, onRoll }: { line: string; spellName: string; healing?: boolean; onRoll: (report: RollReport) => void }): ReactNode {
 	const match = /^(\d+)d(\d+)(?:\s*\+\s*(\d+))?(?: ([A-Za-z].*))?$/.exec(line)
 	if (!match || Number(match[1]) === 0) return <span>{line}</span>
 	const label = match[4]
 	return (
 		<span>
-			<DamageRollButton count={Number(match[1])} sides={Number(match[2])} modifier={Number(match[3] ?? 0)} label={`${spellName} damage`} onRoll={onRoll}>
+			<DamageRollButton count={Number(match[1])} sides={Number(match[2])} modifier={Number(match[3] ?? 0)} label={`${spellName} ${healing ? 'healing' : 'damage'}`} onRoll={onRoll}>
 				{label === undefined ? line : line.slice(0, -label.length - 1)}
 			</DamageRollButton>
 			{label !== undefined && <span className="sheet__action-damage-type"> {label}</span>}
@@ -2111,7 +2111,7 @@ function SpellTabRow({
 						{effect && effect.dice.length > 0 && (
 							<span className="sheet__action-damage sheet__action-damage--lines">
 								{effect.dice.map((line, index) => (
-									<SpellDamageLine key={index} line={line} spellName={entry.name} onRoll={onRoll} />
+									<SpellDamageLine key={index} line={line} spellName={entry.name} healing={isScaledHealing(detail)} onRoll={onRoll} />
 								))}
 							</span>
 						)}

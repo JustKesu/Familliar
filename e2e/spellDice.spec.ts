@@ -18,7 +18,9 @@ const SORCERER = {
   name: 'Dice Sorcerer',
   classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 5 }],
   abilityScores: scores('charisma'),
-  spellChoices: [{ className: 'Sorcerer', classSource: 'XPHB', spells: spells('Fire Bolt', 'Fireball') }],
+  spellChoices: [
+    { className: 'Sorcerer', classSource: 'XPHB', spells: spells('Fire Bolt', 'Fireball', 'Burning Hands', 'Magic Missile', 'Shield', 'Misty Step') },
+  ],
 }
 
 const WARLOCK = {
@@ -27,7 +29,7 @@ const WARLOCK = {
   name: 'Dice Warlock',
   classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 5 }],
   abilityScores: scores('charisma'),
-  spellChoices: [{ className: 'Warlock', classSource: 'XPHB', spells: spells('Eldritch Blast', 'Hellish Rebuke') }],
+  spellChoices: [{ className: 'Warlock', classSource: 'XPHB', spells: spells('Eldritch Blast', 'Hellish Rebuke', 'Counterspell') }],
 }
 
 const CLERIC = {
@@ -77,7 +79,7 @@ test('R8a b: Warlock 5 — Hellish Rebuke in the 3rd-level pact section with a "
 test('R8a c: Cleric 3 — Cure Wounds shows 2d8 and "Healing"', async ({ page }) => {
   await openSaved(page, CLERIC, 'Spells')
   const effect = castRow(section(page, '1st Level'), 'Cure Wounds').locator('.sheet__spell-effect')
-  await expect(effect.getByRole('button', { name: 'Roll Cure Wounds damage' })).toHaveText('2d8')
+  await expect(effect.getByRole('button', { name: 'Roll Cure Wounds healing' })).toHaveText('2d8')
   await expect(effect).toContainText('Healing')
 })
 
@@ -89,4 +91,70 @@ test('R8a d: Sorcerer 5 Actions tab — Fireball at its own level, 8d6', async (
 test('R8a d2: Warlock 5 Actions tab — Hellish Rebuke at its own level, 2d10', async ({ page }) => {
   await openSaved(page, WARLOCK, 'Actions')
   await expect(actionRow(page, 'Hellish Rebuke').getByRole('button', { name: 'Roll Hellish Rebuke damage' })).toHaveText('2d10')
+})
+
+const slotBoxes = (page: Page, level: number): Locator => spellsPanel(page).getByRole('group', { name: `level ${level} spell slots uses`, exact: true })
+const usedBoxes = (group: Locator): Locator => group.locator('.sheet__use-box--used')
+const names = (scope: Locator): Promise<string[]> => scope.locator('.sheet__spell-name').allTextContents()
+
+test('R8b a: Sorcerer 5 — Burning Hands upcasts into the 2nd and 3rd sections with a "1st" badge, Magic Missile into the 2nd unchanged, Shield stays in 1st only', async ({ page }) => {
+  await openSaved(page, SORCERER, 'Spells')
+
+  const hands2 = castRow(section(page, '2nd Level'), 'Burning Hands')
+  await expect(hands2.locator('.sheet__spell-badge')).toHaveText('1st')
+  await expect(hands2.locator('.sheet__spell-effect').getByRole('button', { name: 'Roll Burning Hands damage' })).toHaveText('4d6')
+
+  const hands3 = castRow(section(page, '3rd Level'), 'Burning Hands')
+  await expect(hands3.locator('.sheet__spell-badge')).toHaveText('1st')
+  await expect(hands3.locator('.sheet__spell-effect').getByRole('button', { name: 'Roll Burning Hands damage' })).toHaveText('5d6')
+
+  const missile2 = castRow(section(page, '2nd Level'), 'Magic Missile')
+  await expect(missile2.locator('.sheet__spell-badge')).toHaveText('1st')
+  await expect(missile2.locator('.sheet__spell-effect').getByRole('button', { name: 'Roll Magic Missile damage' })).toHaveText('1d4 + 1')
+
+  await expect(castRow(section(page, '2nd Level'), 'Shield')).toHaveCount(0)
+})
+
+test('R8b b: Sorcerer 5 — CAST on the 3rd-section Burning Hands row spends only a 3rd-level slot, and disables once they run out', async ({ page }) => {
+  await openSaved(page, SORCERER, 'Spells')
+  const row3 = castRow(section(page, '3rd Level'), 'Burning Hands')
+  const cast3 = row3.getByRole('button', { name: 'Cast Burning Hands' })
+
+  await cast3.click()
+  await expect(usedBoxes(slotBoxes(page, 3))).toHaveCount(1)
+  await expect(usedBoxes(slotBoxes(page, 1))).toHaveCount(0)
+
+  await cast3.click()
+  await expect(usedBoxes(slotBoxes(page, 3))).toHaveCount(2)
+  await expect(cast3).toBeDisabled()
+})
+
+test('R8b c: Sorcerer 5 — the 2nd section lists the character\'s own spell (Misty Step) before the badged upcast rows', async ({ page }) => {
+  await openSaved(page, SORCERER, 'Spells')
+  const rowNames = await names(section(page, '2nd Level'))
+  expect(rowNames.indexOf('Misty Step')).toBeLessThan(rowNames.indexOf('Burning Hands'))
+  expect(rowNames.indexOf('Misty Step')).toBeLessThan(rowNames.indexOf('Magic Missile'))
+})
+
+test('R8b d: Warlock 5 — the 3rd pact section lists the own 3rd-level spell (Counterspell) before the badged Hellish Rebuke', async ({ page }) => {
+  await openSaved(page, WARLOCK, 'Spells')
+  const rowNames = await names(section(page, '3rd Level'))
+  expect(rowNames.indexOf('Counterspell')).toBeLessThan(rowNames.indexOf('Hellish Rebuke'))
+})
+
+test('R8b e: the "2nd" level pill shows the 2nd section\'s upcast rows', async ({ page }) => {
+  await openSaved(page, SORCERER, 'Spells')
+  await spellsPanel(page).getByRole('button', { name: '2nd', exact: true }).click()
+  const rowNames = await names(spellsPanel(page))
+  expect(rowNames).toEqual(expect.arrayContaining(['Misty Step', 'Burning Hands', 'Magic Missile']))
+  expect(rowNames).not.toContain('Shield')
+})
+
+test('R8b f: Cleric 3 — the Cure Wounds roll history entry says "healing", not "damage"', async ({ page }) => {
+  await openSaved(page, CLERIC, 'Spells')
+  await castRow(section(page, '1st Level'), 'Cure Wounds').locator('.sheet__spell-effect').getByRole('button', { name: 'Roll Cure Wounds healing' }).click()
+  await page.getByRole('button', { name: 'Rolls', exact: true }).click()
+  const history = page.getByRole('dialog', { name: 'Roll history' }).getByRole('listitem')
+  await expect(history.filter({ hasText: 'Cure Wounds healing' })).toHaveCount(1)
+  await expect(history.filter({ hasText: 'Cure Wounds damage' })).toHaveCount(0)
 })

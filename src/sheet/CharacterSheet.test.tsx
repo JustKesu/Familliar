@@ -5435,6 +5435,42 @@ describe('CharacterSheet', () => {
 			expect(spellsSection.textContent).toContain('Cure Wounds')
 		})
 
+		it("D207: a scaled-healing spell's roll button and roll history entry read \"healing\", not \"damage\"", async () => {
+			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Cleric', classSource: 'XPHB', ability: 'wis' }]
+			const spellSlots: ClassSpellSlotsData[] = [{ className: 'Cleric', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2]], pactSlotsByLevel: null }]
+			const details: SpellDetail[] = [
+				spellDetail({
+					name: 'Cure Wounds',
+					source: 'XPHB',
+					level: 1,
+					miscTags: ['HL'],
+					entries: ['A creature regains {@dice 2d8} plus your spellcasting ability modifier Hit Points.'],
+					entriesHigherLevel: [
+						{ type: 'entries', name: 'Using a Higher-Level Spell Slot', entries: ['The healing increases by {@scaledice 2d8|1-9|2d8} for each spell slot level above 1st.'] },
+					],
+				}),
+			]
+			vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue(spellcastingAbility)
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue(spellSlots)
+			vi.mocked(loadSpellDetails).mockResolvedValue(details)
+
+			const cleric: Character = {
+				id: 'cw-healing',
+				name: 'Brother Joran',
+				classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 1 }],
+				abilityScores: { method: 'standardArray', scores: { strength: 10, dexterity: 10, constitution: 12, intelligence: 10, wisdom: 16, charisma: 10 } },
+				spellChoices: [{ className: 'Cleric', classSource: 'XPHB', spells: [{ name: 'Cure Wounds', source: 'XPHB' }] }],
+			}
+
+			const { container } = render(<CharacterSheet character={cleric} />)
+			await screen.findByRole('heading', { name: 'Brother Joran' })
+
+			const spellsSection = container.querySelector('.sheet__spells')!
+			const button = within(spellRow(spellsSection, 'Cure Wounds')).getByRole('button', { name: 'Roll Cure Wounds healing' })
+			expect(button).toBeTruthy()
+			expect(screen.queryByRole('button', { name: 'Roll Cure Wounds damage' })).toBeNull()
+		})
+
 		it('a duplicate subclass grant (reported bug repro: Bless showing twice for Divine Soul) shows once on the sheet — defensive dedup at the point the sheet assembles alwaysPrepared+chosen (this task)', async () => {
 			const spellcastingAbility: ClassSpellcastingAbility[] = [{ className: 'Sorcerer', classSource: 'XPHB', ability: 'cha' }]
 			const spellSlots: ClassSpellSlotsData[] = [

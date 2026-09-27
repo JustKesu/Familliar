@@ -88,7 +88,9 @@ function buildSections<R extends SpellsTabRow>(
 	if (pact !== null && pact.count > 0) section(pact.slotLevel)
 	for (const { key, row } of placed) section(key).rows.push(row)
 
-	for (const found of sections.values()) found.rows.sort((a, b) => a.entry.name.localeCompare(b.entry.name) || a.key.localeCompare(b.key))
+	// D207: unbadged rows first (by name), then badged rows by badge level ascending, then by name.
+	for (const found of sections.values())
+		found.rows.sort((a, b) => (a.badgeLevel ?? -1) - (b.badgeLevel ?? -1) || a.entry.name.localeCompare(b.entry.name) || a.key.localeCompare(b.key))
 	return [...sections.values()].sort((a, b) => {
 		if (a.key === UNRESOLVED_SECTION) return 1
 		if (b.key === UNRESOLVED_SECTION) return -1
@@ -171,6 +173,16 @@ export function spellsTabActionSections({
 				key: inPact ? pactLevel : detail.level,
 				row: { ...base, key: `${spellKey}#cast`, badgeLevel: inPact && detail.level !== pactLevel ? detail.level : null, castWithSlot: true, action: { kind: 'cast' } },
 			})
+			// R8b/D207: an ordinary-slot CAST spell with higher-level text gets one more CAST row per higher ordinary section.
+			if (!inPact && !unavailable && detail.entriesHigherLevel.length > 0) {
+				for (let level = detail.level + 1; level <= 9; level++) {
+					if ((ordinarySlots[level - 1] ?? 0) <= 0) continue
+					placed.push({
+						key: level,
+						row: { ...base, key: `${spellKey}#cast@${level}`, badgeLevel: detail.level, castWithSlot: true, action: { kind: 'cast' } },
+					})
+				}
+			}
 		}
 
 		const counterKeys = new Set<string>()

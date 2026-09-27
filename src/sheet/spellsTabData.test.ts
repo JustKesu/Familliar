@@ -199,6 +199,8 @@ describe('spellsTabActionSections (D190)', () => {
 		detail('Command', 1),
 		detail('Mage Armor', 1),
 		detail('Water Breathing', 3),
+		detail('Burning Hands', 1, { entriesHigherLevel: [{ type: 'entries', entries: ['The damage increases by 1d6 for each slot level above 1st.'] }] }),
+		detail('Shield', 1),
 	]
 	function scores(charisma: number): Record<Ability, Calculated<AbilityScoreValue>> {
 		const abilities: Ability[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']
@@ -284,6 +286,30 @@ describe('spellsTabActionSections (D190)', () => {
 
 	it('a spell with no text is one label row in Unresolved', () => {
 		expect(rows(sectionsFor([entry('Nowhere')], {}))).toEqual([[UNRESOLVED_SECTION, 'nowhere|XPHB#label', 'LABEL ']])
+	})
+
+	describe('upcast rows (R8b/D207)', () => {
+		it('a spell with entriesHigherLevel gets one CAST row per higher ordinary section; one without (Shield) stays in its own level; unbadged rows sort before badged ones (rule 5)', () => {
+			const entries = combineSpellEntries([{ spells: [{ name: 'Burning Hands', source: 'XPHB' }, { name: 'Shield', source: 'XPHB' }, { name: 'Misty Step', source: 'XPHB' }] }], [])
+			expect(rows(sectionsFor(entries, { ordinary: [1, 1, 1, 0, 0, 0, 0, 0, 0] }))).toEqual([
+				[1, 'burning hands|XPHB#cast', 'CAST'],
+				[1, 'shield|XPHB#cast', 'CAST'],
+				[2, 'misty step|XPHB#cast', 'CAST'],
+				[2, 'burning hands|XPHB#cast@2', 'CAST (1)'],
+				[3, 'burning hands|XPHB#cast@3', 'CAST (1)'],
+			])
+		})
+
+		it('a chosen spell marked unavailable above the castable level gets no upcast rows (rule 3)', () => {
+			const entries = combineSpellEntries([{ spells: [{ name: 'Burning Hands', source: 'XPHB' }] }], [])
+			const sections = spellsTabActionSections({ entries, details: ROW_DETAILS, ordinarySlots: [1, 1, 1, 0, 0, 0, 0, 0, 0], pact: null, unavailableAboveLevel: 0, resourceMaxima: new Map() })
+			expect(rows(sections)).toEqual([[1, 'burning hands|XPHB#cast', 'CAST']])
+		})
+
+		it('a pact-only character gets no extra rows for a spell with entriesHigherLevel (rule 4)', () => {
+			const entries = combineSpellEntries([{ spells: [{ name: 'Burning Hands', source: 'XPHB' }] }], [])
+			expect(rows(sectionsFor(entries, { pact: { count: 2, slotLevel: 2 } }))).toEqual([[2, 'burning hands|XPHB#cast', 'CAST (1)']])
+		})
 	})
 
 	describe('spellsTabRowCaster', () => {

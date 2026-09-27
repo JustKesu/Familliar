@@ -3869,3 +3869,29 @@ Zdroj: zadání R8a, 27. 9. 2026. Navazuje na D21, D189, D68. Tvar dat v DATA.md
    extrakce ho opravuje na 2d10 (D68), validate-data to hlídá.
 7. Upcast řádky pod vyššími sekcemi jsou R8b; výpočet `leveledSpellDice(detail,
    slotLevel)` bere libovolnou úroveň.
+
+## D207 — Upcast řádky ve Spells tabu (R8b)
+
+Zdroj: zadání R8b, 27. 9. 2026. Navazuje na D189, D190, D206.
+
+1. Kouzlo s CAST řádkem (pravidla beze změny) a neprázdným `entriesHigherLevel`
+   dostane další CAST řádek v každé vyšší sekci L (`detail.level < L <= 9`),
+   kde postava má běžný slot (`ordinarySlots[L-1] > 0`) — i bez scale tagu
+   (Magic Missile, Scorching Ray): Effect zůstává základní, mění se jen
+   rozbalený text. Kouzlo bez `entriesHigherLevel` (Shield, Mage Armor) žádný
+   upcast řádek nedostane.
+2. Upcast řádek nese odznak vlastní úrovně kouzla, `castWithSlot: true`, akci
+   `cast`, klíč `${spellKey}#cast@${L}`; Effect počítá na L stávající cestou
+   (`spellEffect` podle `section.key`), CAST utrácí slot úrovně L stávající
+   cestou (`castSpell` podle `section.key`) — nic nového.
+3. Žádný upcast pro USE a label řádky, cantripy, nenalezená kouzla a vybraná
+   kouzla označená `unavailable` (D106).
+4. Pact Magic beze změny (D189): s pact sloty a bez běžných slotů žádné extra
+   řádky (pact sekce už je na své úrovni). Při obou poolech jdou upcast řádky
+   jen do běžných sekcí, protože CAST tam stojí ve vlastní úrovni kouzla.
+5. Řazení v každé sekci (pact nevyjímaje): řádky bez odznaku první (podle
+   jména), pak odznačené podle úrovně odznaku vzestupně, pak podle jména.
+6. `leveledSpellDice` slučuje shodné řádky po přepočtu do jednoho (Enervation,
+   Backlash, Wall of Light místo dvou stejných řádků jeden).
+7. Hod ze škálovaného léčení (`isScaledHealing`) je v historii hodů i
+   aria-labelu tlačítka „healing", ne „damage" (`SpellDamageLine`).

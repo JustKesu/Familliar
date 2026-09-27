@@ -177,7 +177,8 @@ export function leveledSpellDice(detail: SpellDetail, slotLevel: number): string
 		.map((match) => match[2]!.trim())
 	const scaled = lines.map((line) => scales.find((scale) => sameDice(scale.base, line))?.value ?? line)
 	const unmatched = scales.filter((scale) => !lines.some((line) => sameDice(scale.base, line))).map((scale) => scale.value)
-	return [...scaled, ...unmatched]
+	// D207: the same dice named twice in entries (Backlash, Wall of Light) scale identically — one line, not two.
+	return [...new Set([...scaled, ...unmatched])]
 }
 
 /** D206: healing text only where the healing dice are shown, i.e. `{@scaledice}` spells tagged HL. */
