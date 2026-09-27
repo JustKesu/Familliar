@@ -538,6 +538,21 @@ describe('the migration chain (D69)', () => {
 		expect('proficiencies' in grantedFeat).toBe(false)
 	})
 
+	/* D205: an older background keeps its derived origin feat — the step only tags. */
+	it('tags a version-49 character without inventing an origin-feat override', () => {
+		const before = {
+			schemaVersion: 49,
+			id: '1',
+			name: 'Aria',
+			classes: [],
+			background: { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+		}
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: 50 })
+		expect('originFeatOverride' in (migrated['background'] as Record<string, unknown>)).toBe(false)
+	})
+
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
 	it('passes through anything that is not a versioned record', () => {
 		expect(migrateToCurrent(null)).toBeNull()

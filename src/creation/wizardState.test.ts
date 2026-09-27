@@ -51,6 +51,7 @@ function completeData(): WizardData {
 		classOptionalFeatureChoices: [],
 		featAsiChoices: [],
 		grantedFeats: [],
+		backgroundOriginFeatOverride: null,
 		spellChoices: [],
 		subclassSpellChoices: [],
 		classFeatureChoices: [],

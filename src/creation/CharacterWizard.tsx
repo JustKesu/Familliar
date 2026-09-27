@@ -58,7 +58,8 @@ import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
 import { featFixedExpertiseSkills, type FeatEffectEntry } from '../calculation/featEffects'
-import { backgroundOriginFeatFrom, featInstances, loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
+import { OriginFeatSwapPicker } from '../featAsi/OriginFeatSwapPicker'
+import { backgroundOriginFeatFrom, featInstances,loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
@@ -330,8 +331,10 @@ export function CharacterWizard({
 		}
 	}, [])
 
-	/** D156: the feat the chosen background grants, and the background as the draft Characters below need it (only its identity is read). */
-	const backgroundOriginFeat = backgroundOriginFeatFrom(originFeatLinks, state.data.backgroundChoice)
+	/** D156: the feat the chosen background grants (D205: or the Dark Gift taken instead), and the background as the draft Characters below need it. */
+	const derivedBackgroundFeat = backgroundOriginFeatFrom(originFeatLinks, state.data.backgroundChoice)
+	const backgroundFeatOverride = state.data.backgroundOriginFeatOverride
+	const backgroundOriginFeat = backgroundFeatOverride ?? derivedBackgroundFeat
 	const draftBackgroundEntry = state.data.backgroundChoice
 		? backgrounds.find((b) => b.name === state.data.backgroundChoice!.name && b.source === state.data.backgroundChoice!.source)
 		: undefined
@@ -341,6 +344,7 @@ export function CharacterWizard({
 				source: draftBackgroundEntry.source,
 				skillProficiencies: draftBackgroundEntry.skillProficiencies,
 				toolProficiency: state.data.backgroundToolProficiency ?? '',
+				...(backgroundFeatOverride ? { originFeatOverride: backgroundFeatOverride } : {}),
 			}
 		: undefined
 	const draftGrantedFeats = state.data.grantedFeats.length > 0 ? state.data.grantedFeats : undefined
@@ -728,7 +732,7 @@ export function CharacterWizard({
 			cancelled = true
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- `name` only rides along on the draft Character; refetching when the player types would be pure waste.
-	}, [state.data.featAsiChoices, state.data.classChoice, state.data.subclass, draftBackground?.name, draftBackground?.source, draftGrantedFeats])
+	}, [state.data.featAsiChoices, state.data.classChoice, state.data.subclass, draftBackground?.name, draftBackground?.source, backgroundFeatOverride, draftGrantedFeats])
 
 	/**
 	 * Optional-feature-granted spells, from BOTH progressions at once: the
@@ -1197,6 +1201,8 @@ export function CharacterWizard({
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
+		// Stays incomplete until backgrounds.json has loaded, like speciesSkillsComplete.
+		backgroundOriginFeatComplete: state.data.backgroundChoice === null || (selectedBackground !== undefined && (selectedBackground.originFeat !== null || backgroundFeatOverride !== null)),
 		characterLevel: state.data.classChoice?.level ?? null,
 		editingExistingCharacter: character !== undefined,
 		...levelUpConditions,
@@ -1428,6 +1434,14 @@ export function CharacterWizard({
 							toolProficiency={selectedBackground.toolProficiency}
 							value={state.data.backgroundToolProficiency}
 							onChange={(tool) => dispatch({ type: 'setBackgroundToolProficiency', tool })}
+						/>
+					)}
+					{selectedBackground && (
+						<OriginFeatSwapPicker
+							key={`${selectedBackground.name}|${selectedBackground.source}`}
+							namedFeat={selectedBackground.originFeat ? (derivedBackgroundFeat ?? selectedBackground.originFeat) : null}
+							value={backgroundFeatOverride}
+							onChange={(feat) => dispatch({ type: 'setBackgroundOriginFeatOverride', feat })}
 						/>
 					)}
 					{backgroundOriginFeat && (

@@ -188,9 +188,13 @@ feats 18, backgrounds 0, languages 0.
 - **Background `feats` alternatives.** Haunted One `[{"survivor|rhw"},
   {anyFromCategory:{category:["DG"]}}]`, Investigator the same with Sharp Eye;
   Mist Wanderer and Spirit Medium ONLY `anyFromCategory` DG (no named feat). The
-  33 older backgrounds are all one named feat. The app takes the named feat and
-  hides the two DG-only backgrounds (D194); `backgroundData.ts` threw on these
-  shapes before.
+  33 older backgrounds are all one named feat. Every `anyFromCategory` here is
+  exactly `{category:["DG"]}` (no `count`); `parseOriginFeat` throws on any other
+  category. Since D205 the app reads the named feat as the default
+  (`BackgroundEntry.originFeat`) and a DG-only background as `originFeat: null`
+  (Dark Gift required); the DG alternative itself is not read, because D205 lets
+  every background swap its feat. D194 hid the DG-only pair; `backgroundData.ts`
+  threw on these shapes before D194.
 - **Dark Gift feats** (`DG`, 9): every one has prerequisite
   `[{campaign:["Ravenloft"]}]` and nothing else; no `ability` field. Five grant
   spells under `ability:{choose:[int,wis,cha]}` + fixed spells (Gathered Whispers

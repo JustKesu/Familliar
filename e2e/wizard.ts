@@ -36,9 +36,11 @@ export interface FighterOptions {
   onClassStep?: (page: Page) => Promise<void>
   /** Runs on the Languages step (a subclass's tool or skill pick). */
   onLanguagesStep?: (page: Page) => Promise<void>
+  /** Background radio and its +2/+1 abilities; Acolyte (Wisdom/Intelligence) when absent. */
+  background?: { radio: string; plusTwo: string; plusOne: string }
 }
 
-/** Fighter with background Acolyte; stops on the Background step so the caller can inspect it. */
+/** Fighter with background Acolyte unless `background` says otherwise; stops on the Background step so the caller can inspect it. */
 export async function fillUpToBackground(page: Page, options: FighterOptions): Promise<void> {
   await page.goto('/#/new')
   await expectStep(page, 'Class and level')
@@ -61,9 +63,10 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
   await next(page)
 
   await expectStep(page, 'Background')
-  await page.getByRole('radio', { name: 'Acolyte (XPHB)' }).check()
-  await select(page, '+2').selectOption('wisdom')
-  await select(page, '+1').selectOption('intelligence')
+  const background = options.background ?? { radio: 'Acolyte (XPHB)', plusTwo: 'wisdom', plusOne: 'intelligence' }
+  await page.getByRole('radio', { name: background.radio }).check()
+  await select(page, '+2').selectOption(background.plusTwo)
+  await select(page, '+1').selectOption(background.plusOne)
 }
 
 /** Continues from the Background step to the saved sheet. */

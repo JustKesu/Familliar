@@ -1712,6 +1712,24 @@ describe('stored granted feats (D156)', () => {
 	})
 })
 
+describe('background origin-feat override (D205)', () => {
+	const background = { name: 'Spirit Medium', source: 'RHW', skillProficiencies: ['arcana', 'religion'], toolProficiency: 'Calligrapher’s Supplies' }
+
+	it('round-trips the override through save and reload', () => {
+		const backing = new MemoryStorage()
+		new CharacterStore(backing).create({ name: 'Aria', background: { ...background, skillProficiencies: ['arcana', 'religion'], originFeatOverride: { name: 'Gathered Whispers', source: 'RHW' } } })
+		expect(new CharacterStore(backing).list()[0].background?.originFeatOverride).toEqual({ name: 'Gathered Whispers', source: 'RHW' })
+	})
+
+	it('rejects an override without a name or source', () => {
+		for (const originFeatOverride of [{ name: 'Gathered Whispers' }, 'Gathered Whispers', { name: '', source: 'RHW' }]) {
+			const backing = new MemoryStorage()
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], background: { ...background, originFeatOverride } }]))
+			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+		}
+	})
+})
+
 describe('stored feat proficiency picks (task A2)', () => {
 	it('round-trips proficiencies through save, reload, export and import, and migrates a version-42 save', () => {
 		const backing = new MemoryStorage()

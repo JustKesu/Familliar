@@ -178,16 +178,22 @@ export function describeBackgroundError(value: unknown): string | null {
 	if (!isNonEmptyString(value['toolProficiency'])) {
 		return `background.toolProficiency is missing or not a string`
 	}
+	const override = value['originFeatOverride']
+	if (override !== undefined && (!isRecord(override) || !isNonEmptyString(override['name']) || !isNonEmptyString(override['source']))) {
+		return `background.originFeatOverride must be an object with a name and a source`
+	}
 	return null
 }
 
 function toCharacterBackground(value: Record<string, unknown>): CharacterBackground {
 	const skillProficiencies = value['skillProficiencies'] as [string, string]
+	const override = value['originFeatOverride'] as Record<string, unknown> | undefined
 	return {
 		name: value['name'] as string,
 		source: value['source'] as string,
 		skillProficiencies,
 		toolProficiency: value['toolProficiency'] as string,
+		...(override ? { originFeatOverride: { name: override['name'] as string, source: override['source'] as string } } : {}),
 	}
 }
 

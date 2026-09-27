@@ -435,6 +435,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 49 }),
 	},
+	{
+		from: 49,
+		to: 50,
+		/*
+		 * 50 adds CharacterBackground.originFeatOverride (D205). A version-49
+		 * character stored none and keeps its background's origin feat — the
+		 * step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 50 }),
+	},
 ]
 
 /**

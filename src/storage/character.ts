@@ -41,6 +41,8 @@ export interface CharacterBackground {
 	 * scripts/investigate-tool-proficiencies.js).
 	 */
 	toolProficiency: string
+	/** D205: the Dark Gift feat the player took instead of the background's origin feat; featInstances reads it in place of the derived feat. */
+	originFeatOverride?: { name: string; source: string }
 }
 
 /**
@@ -949,7 +951,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 49 for the RHW/FRHoF subclass `grantedBy`
+ * (see wireFormat.ts). Bumped to 50 for CharacterBackground.originFeatOverride
+ * (D205); 49 for the RHW/FRHoF subclass `grantedBy`
  * values (D203); 48 for Character.subclassSkills and the
  * species/Cavalier/Samurai `grantedBy` values (B6c, D177); 47 for the non-XPHB subclass
  * `grantedBy` values (B6b, D176); 46 for Character.toolChoices and
@@ -968,4 +971,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 49
+export const CURRENT_SCHEMA_VERSION = 50

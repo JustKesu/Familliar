@@ -63,7 +63,8 @@ export interface BackgroundEntry {
 	abilityChoices: [Ability, Ability, Ability]
 	skillProficiencies: [string, string]
 	toolProficiency: BackgroundToolProficiency
-	originFeat: BackgroundOriginFeat
+	/** null: no fixed feat, the player must take a Dark Gift feat (D205). */
+	originFeat: BackgroundOriginFeat | null
 	/** The same offer the equipment step takes the background's half from; this step only previews it. */
 	startingEquipment: StartingEquipmentOffer
 }
@@ -148,13 +149,17 @@ function parseToolProficiency(raw: unknown): BackgroundToolProficiency {
 }
 
 /**
- * The background's fixed origin feat, or null when it offers none. D194: RHW lists
- * "any Dark Gift" ({anyFromCategory}) as an alternative; only the named feat is
- * offered, and a background with no named feat (Mist Wanderer, Spirit Medium) is hidden.
+ * The background's fixed origin feat, or null when it offers only "any Dark Gift"
+ * (Mist Wanderer, Spirit Medium). RHW's {anyFromCategory: DG} alternative needs no
+ * reading: D205 lets every background swap its feat for a Dark Gift.
  */
 export function parseOriginFeat(raw: unknown): BackgroundOriginFeat | null {
 	if (!Array.isArray(raw) || raw.length === 0 || !raw.every(isRecord)) {
 		throw new Error(`background: expected a "feats" array of objects, got ${JSON.stringify(raw)}`)
+	}
+	const categories = raw.filter((alternative) => 'anyFromCategory' in alternative)
+	if (categories.some((alternative) => !isRecord(alternative['anyFromCategory']) || JSON.stringify(alternative['anyFromCategory']['category']) !== '["DG"]')) {
+		throw new Error(`background: expected anyFromCategory to name only DG, got ${JSON.stringify(raw)}`)
 	}
 	const named = raw.filter((alternative) => !('anyFromCategory' in alternative))
 	if (named.length === 0) return null
@@ -196,15 +201,13 @@ export function extractBackgrounds(parsed: unknown, index: ItemIndex): Backgroun
 	for (const entry of parsed) {
 		if (!isRawBackgroundEntry(entry)) continue
 		const raw = entry as unknown as Record<string, unknown>
-		const originFeat = parseOriginFeat(raw['feats'])
-		if (!originFeat) continue
 		backgrounds.push({
 			name: entry.name,
 			source: entry.source,
 			abilityChoices: parseAbilityChoices(raw['ability']),
 			skillProficiencies: parseSkillProficiencies(raw['skillProficiencies']),
 			toolProficiency: parseToolProficiency(raw['toolProficiencies']),
-			originFeat,
+			originFeat: parseOriginFeat(raw['feats']),
 			startingEquipment: parseBackgroundStartingEquipment(raw['startingEquipment'], entry.name, index),
 		})
 	}

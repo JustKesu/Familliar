@@ -200,7 +200,14 @@ function BackgroundGrants({
 				/>
 			</p>
 			<p>
-				<strong>Origin feat:</strong> <Markup text={background.originFeat.name} /> ({background.originFeat.source})
+				<strong>Origin feat:</strong>{' '}
+				{background.originFeat ? (
+					<>
+						<Markup text={background.originFeat.name} /> ({background.originFeat.source})
+					</>
+				) : (
+					'a Dark Gift feat of your choice'
+				)}
 			</p>
 			<div className="background-picker__equipment">
 				{background.startingEquipment.options.map((option) => (

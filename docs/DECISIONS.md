@@ -3821,3 +3821,24 @@ Zdroj: task D204, rozhodl Daniel 27. 9. 2026. Schéma beze změny (49).
    jeho kouzla nesou důvod D43 („spellcasting ability not chosen yet“),
    ostatní featy si čísla drží.
 6. Bez změny schématu.
+
+## D205 — Dark Gift místo origin featu u každého backgroundu
+
+Zdroj: task D205, rozhodl Daniel 27. 9. 2026. Navazuje na D156, D179, D194.
+Schéma 50.
+
+1. **Pravidlo (RHW):** „With the DM's permission, whenever you would gain a feat
+   from the Origin category, you can instead gain a Dark Gift feat.“ Nabízí se
+   u **všech backgroundů**, ne jen u čtyř z RHW (Daniel 27. 9.). Human
+   Versatile (origin feat druhu) mimo rozsah.
+2. **Mist Wanderer a Spirit Medium** (jen `anyFromCategory` DG) se nabízejí;
+   `BackgroundEntry.originFeat` je `null` a krok Background čeká na výběr
+   Dark Gift featu. Ostatní backgroundy mají pojmenovaný feat jako výchozí.
+3. **Úložiště:** `CharacterBackground.originFeatOverride?: {name, source}`.
+   `featInstances` ho čte místo odvozeného featu — jediné místo, přes které
+   jdou všichni čtenáři (D156). Změna backgroundu override i podvolby featu
+   backgroundu maže; změna override maže podvolby. Schéma 50, migrace 49→50
+   jen tag; staré postavy beze změny.
+4. Podvolby efektivního featu zůstávají podle D179 neblokující.
+5. Nahrazuje body D194 „alternativa ‚any Dark Gift‘ se ignoruje“ a „Mist
+   Wanderer a Spirit Medium se v pickeru nenabízejí“.

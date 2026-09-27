@@ -133,6 +133,8 @@ export interface WizardStepConditions {
 	wildShapeFormCount?: number
 	/** Whether every category element inside the two chosen starting-equipment options has an item picked. Which elements those are is only known from the loaded offers, so the caller computes it (missingCategoryPicks). */
 	startingEquipmentCategoryPicksComplete?: boolean
+	/** D205: false while the chosen background has no fixed feat and no Dark Gift is picked yet (only known from backgrounds.json). */
+	backgroundOriginFeatComplete?: boolean
 	/**
 	 * Total character level (single class, D11) — decides only whether the
 	 * 'hitPoints' step has anything to show. Level 1 is always the die maximum
@@ -185,6 +187,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		speciesSpellcastingAbilityComplete: conditions.speciesSpellcastingAbilityComplete ?? true,
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
+		backgroundOriginFeatComplete: conditions.backgroundOriginFeatComplete ?? true,
 		characterLevel: conditions.characterLevel ?? 1,
 		editingExistingCharacter: conditions.editingExistingCharacter ?? false,
 		levelUpSteps: conditions.levelUpSteps ?? null,
@@ -329,6 +332,8 @@ export interface WizardData {
 	featAsiChoices: FeatAsiChoice[]
 	/** D156: sub-choices of the background's (and later the species') feat. The background entry clears whenever the background's identity changes. */
 	grantedFeats: CharacterGrantedFeat[]
+	/** D205: the Dark Gift feat taken instead of the background's origin feat. Clears whenever the background's identity changes. */
+	backgroundOriginFeatOverride: { name: string; source: string } | null
 	/** The class spell picks (build order step 6 slice d2) — clears whenever class, level or subclass changes, since the offered list, counts and (for a third caster) eligibility itself are all keyed to those. */
 	spellChoices: SpellPick[]
 	/** The subclass filter-choice spell picks (build order step 6 slice d6b — the 5 subclasses in subclassSpellChoiceData.ts's SUBCLASS_SPELL_CHOICE_KEYS) — clears whenever class, level or subclass changes, same reasoning as spellChoices: the offered slots and their level caps are keyed to those. */
@@ -396,6 +401,7 @@ export function emptyWizardData(): WizardData {
 		classOptionalFeatureChoices: [],
 		featAsiChoices: [],
 		grantedFeats: [],
+		backgroundOriginFeatOverride: null,
 		spellChoices: [],
 		subclassSpellChoices: [],
 		classFeatureChoices: [],
@@ -503,6 +509,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		classOptionalFeatureChoices: storedOptionalFeatures.filter((entry) => entry.featureType !== subclassFeatureType),
 		featAsiChoices: character.featAsiChoices ?? [],
 		grantedFeats: character.grantedFeats ?? [],
+		backgroundOriginFeatOverride: character.background?.originFeatOverride ?? null,
 		spellChoices: (character.spellChoices ?? []).flatMap((entry) =>
 			entry.spells.map((spell) => ({ name: spell.name, source: spell.source, level: spellLevelOf(spell) })),
 		),
@@ -577,6 +584,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		startingEquipmentCategoryPicksComplete,
+		backgroundOriginFeatComplete,
 		levelUpTargetLevel,
 	} = resolveConditions(conditions)
 	switch (step) {
@@ -616,7 +624,8 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			return (
 				data.backgroundChoice !== null &&
 				Object.keys(data.backgroundChoice.abilityBonus).length > 0 &&
-				data.backgroundToolProficiency !== null
+				data.backgroundToolProficiency !== null &&
+				backgroundOriginFeatComplete
 			)
 		case 'expertise':
 			return expertiseRequiredCount === null || data.expertiseSkills.length === expertiseRequiredCount
@@ -773,6 +782,7 @@ export type WizardAction =
 	| { type: 'setFeatAsiChoices'; choices: FeatAsiChoice[] }
 	/** Replaces the one entry of `feat.origin`. */
 	| { type: 'setGrantedFeat'; feat: CharacterGrantedFeat }
+	| { type: 'setBackgroundOriginFeatOverride'; feat: { name: string; source: string } | null }
 	| { type: 'setSpellChoices'; choices: SpellPick[] }
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
 	| { type: 'setClassFeatureChoices'; choices: CharacterClassFeatureChoice[] }
@@ -882,6 +892,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					backgroundToolProficiency: sameBackground ? state.data.backgroundToolProficiency : null,
 					expertiseSkills: sameBackground ? state.data.expertiseSkills : [],
 					grantedFeats: sameBackground ? state.data.grantedFeats : state.data.grantedFeats.filter((feat) => feat.origin !== 'background'),
+					backgroundOriginFeatOverride: sameBackground ? state.data.backgroundOriginFeatOverride : null,
 					startingEquipment: sameBackground
 						? state.data.startingEquipment
 						: clearStartingEquipmentFor(state.data.startingEquipment, 'background'),
@@ -938,6 +949,11 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, featAsiChoices: action.choices } }
 		case 'setGrantedFeat':
 			return { ...state, data: { ...state.data, grantedFeats: [...state.data.grantedFeats.filter((feat) => feat.origin !== action.feat.origin), action.feat] } }
+		case 'setBackgroundOriginFeatOverride':
+			return {
+				...state,
+				data: { ...state.data, backgroundOriginFeatOverride: action.feat, grantedFeats: state.data.grantedFeats.filter((feat) => feat.origin !== 'background') },
+			}
 		case 'setSpellChoices':
 			return { ...state, data: { ...state.data, spellChoices: action.choices } }
 		case 'setSubclassSpellChoices':
@@ -1058,6 +1074,7 @@ export function saveCharacter(
 					source: data.backgroundChoice.source,
 					skillProficiencies: backgroundSkillProficiencies,
 					toolProficiency: data.backgroundToolProficiency,
+					...(data.backgroundOriginFeatOverride ? { originFeatOverride: data.backgroundOriginFeatOverride } : {}),
 				}
 			: undefined
 

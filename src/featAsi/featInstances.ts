@@ -50,12 +50,14 @@ function choiceDetails(details: FeatChoiceDetails): FeatChoiceDetails {
 
 /**
  * Every feat the character has (D156). The background's origin feat is derived
- * from the background, never read from storage; a stored 'background' entry only
- * contributes its sub-choices, and only while it names that same feat.
+ * from the background, never read from storage — unless the player took a Dark
+ * Gift instead (background.originFeatOverride, D205); a stored 'background' entry
+ * only contributes its sub-choices, and only while it names that same feat.
  * 'species' entries are not read until the wizard can set them (D157).
  */
-export function featInstances(character: Character, backgroundOriginFeat: FeatRef | null): FeatInstance[] {
+export function featInstances(character: Character, derivedBackgroundFeat: FeatRef | null): FeatInstance[] {
 	const instances: FeatInstance[] = []
+	const backgroundOriginFeat = character.background?.originFeatOverride ?? derivedBackgroundFeat
 
 	if (backgroundOriginFeat) {
 		const stored = (character.grantedFeats ?? []).find((entry) => entry.origin === 'background' && sameRef(entry, backgroundOriginFeat))

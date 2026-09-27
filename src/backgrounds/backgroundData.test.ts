@@ -17,25 +17,31 @@ function loadRealItemIndex(): ItemIndex {
 describe('extractBackgrounds — real data/backgrounds.json', () => {
 	const backgrounds = extractBackgrounds(loadRealBackgrounds(), loadRealItemIndex())
 
-	it('reads 35 backgrounds (17 EFA + 16 XPHB + 2 RHW; Mist Wanderer and Spirit Medium have no named feat, D194)', () => {
-		expect(backgrounds).toHaveLength(35)
+	it('reads 37 backgrounds (17 EFA + 16 XPHB + 4 RHW, D205)', () => {
+		expect(backgrounds).toHaveLength(37)
 		expect(backgrounds.filter((b) => b.source === 'EFA')).toHaveLength(17)
 		expect(backgrounds.filter((b) => b.source === 'XPHB')).toHaveLength(16)
-		expect(backgrounds.filter((b) => b.source === 'RHW').map((b) => b.name).sort()).toEqual(['Haunted One', 'Investigator'])
+		expect(backgrounds.filter((b) => b.source === 'RHW').map((b) => b.name).sort()).toEqual(['Haunted One', 'Investigator', 'Mist Wanderer', 'Spirit Medium'])
 	})
 
-	it('takes the named feat when RHW offers "or any Dark Gift" as an alternative (D194)', () => {
+	it('keeps the named feat as the default when RHW offers "or any Dark Gift"; a DG-only background has no fixed feat (D205)', () => {
 		expect(backgrounds.find((b) => b.name === 'Haunted One')?.originFeat).toEqual({ name: 'Survivor', source: 'RHW' })
 		expect(backgrounds.find((b) => b.name === 'Investigator')?.originFeat).toEqual({ name: 'Sharp Eye', source: 'RHW' })
+		expect(backgrounds.find((b) => b.name === 'Mist Wanderer')?.originFeat).toBeNull()
+		expect(backgrounds.find((b) => b.name === 'Spirit Medium')?.originFeat).toBeNull()
 	})
 
-	it('gives every background exactly 3 distinct ability choices, 2 skills, a tool proficiency, an origin feat and two equipment options', () => {
+	it('gives every background exactly 3 distinct ability choices, 2 skills, a tool proficiency, an origin feat unless DG-only, and two equipment options', () => {
 		for (const bg of backgrounds) {
 			expect(new Set(bg.abilityChoices).size).toBe(3)
 			expect(bg.skillProficiencies).toHaveLength(2)
 			expect(bg.toolProficiency).toBeDefined()
-			expect(bg.originFeat.name.length).toBeGreaterThan(0)
-			expect(bg.originFeat.source.length).toBeGreaterThan(0)
+			if (bg.originFeat) {
+				expect(bg.originFeat.name.length).toBeGreaterThan(0)
+				expect(bg.originFeat.source.length).toBeGreaterThan(0)
+			} else {
+				expect(['Mist Wanderer', 'Spirit Medium']).toContain(bg.name)
+			}
 			expect(bg.startingEquipment.options).toHaveLength(2)
 			for (const option of bg.startingEquipment.options) expect(option.elements.length).toBeGreaterThan(0)
 		}

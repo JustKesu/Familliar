@@ -1552,7 +1552,7 @@ feats, 3 species, 4 backgrounds, 2 items; Dhampir out). Subclass `reprintedAs`
 is matched on the 4-part uid, so 19 superseded XGE/TCE subclasses left
 classes.json; Bladesinging|TCE stays hidden. Backgrounds take the named feat of
 an "or any Dark Gift" pair; Mist Wanderer and Spirit Medium (DG only) are not
-offered. `campaign` prerequisites count as met and show as a note in the feat
+offered (both superseded by D205). `campaign` prerequisites count as met and show as a note in the feat
 picker, DG feats carry a "Dark Gift" label, `exclusiveFeatCategory` is enforced.
 D190 table: College of Spirits, Hexblood yes; Shadow Sorcery no. Not modelled:
 DG feat spells (modelled since D204), RHW proficiency grants (Eyes of the Dark senses since D195,
@@ -1649,6 +1649,17 @@ Irresistible Dance: 1 free cast per Long Rest + slot-castable. A feat with no
 ability stored no longer blanks every feat's attack/DC: its rows show "spellcasting
 ability not chosen yet", other feats keep numbers. E2E `featSpellGrants.spec.ts`
 a–f. No schema change (still 49).
+
+D205: every background's origin feat can be swapped for one of the 9 Dark Gift
+feats; Mist Wanderer and Spirit Medium are offered and require one
+(`BackgroundEntry.originFeat` null). The Background step shows
+`OriginFeatSwapPicker` (`src/featAsi/`): the named feat vs "A Dark Gift feat
+instead", or only the DG list for a DG-only background (Next waits for a pick).
+Stored as `CharacterBackground.originFeatOverride` (schema 50, 49→50 tag only);
+`featInstances` reads it in place of the derived feat, so every reader (sheet,
+spells, proficiencies, ASI "already granted") follows. Changing the background
+or the override clears the background feat's sub-choices. Sub-choices of the
+effective feat still never block (D179). E2E `darkGiftOriginFeat.spec.ts` a–f.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
