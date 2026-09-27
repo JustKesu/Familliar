@@ -3895,3 +3895,24 @@ Zdroj: zadání R8b, 27. 9. 2026. Navazuje na D189, D190, D206.
    Backlash, Wall of Light místo dvou stejných řádků jeden).
 7. Hod ze škálovaného léčení (`isScaledHealing`) je v historii hodů i
    aria-labelu tlačítka „healing", ne „damage" (`SpellDamageLine`).
+
+## D208 — Panel Manage Spells na listu (R9a)
+
+Zdroj: zadání R9a, 27. 9. 2026. Navazuje na D46, D62, D104, D106, D116, D134,
+D163, D192.
+
+1. Tlačítko „Manage Spells" ve Spells tabu otevírá sdílený drawer pro KAŽDOU
+   sesílající třídu (známé i připravované kouzla stejně). Každé kliknutí se
+   ukládá hned do `Character.spellChoices`; beze změny schématu.
+2. Kontrolují se jen POČTY (`computeSpellCounts`), nikdy kdy se smí kouzlo
+   vyměnit. Panel smí mít méně výběrů než maximum; plný čítač zakáže další
+   Prepare/Add.
+3. Čítač „Prepared" pro všechny třídy, i known castery (terminologie 2024).
+   Počítají se jen výběry třídy ze `spellChoices`; always-prepared (D62/D192)
+   a výběry podtřídy (subclassSpellChoiceData.ts) ne.
+4. Always-prepared a výběry podtřídy jsou v „Prepared Spells" jen ke čtení
+   (šedý štítek); výběry podtřídy se dál mění v Edit Character. Kouzla druhů,
+   featů a volitelných schopností se v panelu neukazují.
+5. Pool je jedna funkce (`classSpellPool.ts`: seznam třídy + D46 rozšíření +
+   `expanded` featů), kterou používá SpellPicker v průvodci i panel.
+6. Hledání, filtry úrovní a rozbalené řádky jsou stav panelu (D116).

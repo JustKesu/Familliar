@@ -633,6 +633,18 @@ export class CharacterStore {
 		this.writeAll(updated)
 	}
 
+	/** Replaces the class spell picks (R9a, D208: the Manage Spells drawer). An empty list clears the field. */
+	setSpellChoices(id: string, spellChoices: CharacterSpellChoice[]): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { spellChoices: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = spellChoices.length > 0 ? { ...rest, spellChoices } : rest
+		this.writeAll(updated)
+	}
+
 	/** Turns Heroic Inspiration on or off (R4b, D167) — a targeted write like setConcentration. */
 	setHeroicInspiration(id: string, on: boolean): void {
 		const characters = this.list()

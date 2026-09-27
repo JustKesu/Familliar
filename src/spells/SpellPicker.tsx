@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { loadClassSpellList, loadFeatExpandedSpellList, type ClassSpellListSpell } from './classSpellListData'
+import type { ReactNode } from 'react'
+import type { ClassSpellListSpell } from './classSpellListData'
+import { useClassSpellPool } from './classSpellPool'
 import { filterSpellsByLevel } from './spellLevelFilter'
 import { CLASS_SPELL_PICKER_KEY, knownSpellNote, knownSpellReason, type KnownSpell } from './knownSpells'
 import type { SpellSlotsEntry } from '../calculation/spellSlots'
@@ -29,11 +30,6 @@ export interface SpellPick {
 	source: string
 	level: number
 }
-
-type LoadState =
-	| { status: 'loading' }
-	| { status: 'ready'; spells: ClassSpellListSpell[] }
-	| { status: 'error'; message: string }
 
 export function SpellPicker({
 	className,
@@ -65,32 +61,7 @@ export function SpellPicker({
 	/** Spells the character already has from elsewhere (knownSpells.ts) — shown, not hidden, but not selectable here. This picker's own picks are excluded by key, so unselecting stays possible. */
 	alreadyKnown?: readonly KnownSpell[]
 }): ReactNode {
-	const [state, setState] = useState<LoadState>({ status: 'loading' })
-
-	useEffect(() => {
-		let cancelled = false
-		setState({ status: 'loading' })
-		Promise.all([
-			loadClassSpellList(className, classSource),
-			expandedClassName && expandedClassSource ? loadClassSpellList(expandedClassName, expandedClassSource) : Promise.resolve([]),
-			Promise.all((featChoices ?? []).map((feat) => loadFeatExpandedSpellList(feat.name, feat.source))),
-		])
-			.then(([spells, expandedSpells, featExpandedSpells]) => {
-				if (cancelled) return
-				const merged = new Map<string, ClassSpellListSpell>()
-				for (const spell of [...spells, ...expandedSpells, ...featExpandedSpells.flat()]) merged.set(`${spell.name}|${spell.source}`, spell)
-				setState({ status: 'ready', spells: [...merged.values()] })
-			})
-			.catch((error: unknown) => {
-				if (!cancelled) {
-					setState({ status: 'error', message: error instanceof Error ? error.message : String(error) })
-				}
-			})
-		return () => {
-			cancelled = true
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- featChoices is a fresh array each render; its content (JSON) is the real dependency.
-	}, [className, classSource, expandedClassName, expandedClassSource, JSON.stringify(featChoices)])
+	const state = useClassSpellPool({ className, classSource, expandedClassName, expandedClassSource, featChoices })
 
 	if (state.status === 'loading') return null
 	if (state.status === 'error') {

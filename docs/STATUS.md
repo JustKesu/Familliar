@@ -1088,6 +1088,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Wizard spell step picks Wardaway; level 19 Fighter sees an FRHoF Epic Boon and
   no FRHoF O / faction / Cold Caster feat in any feat group; no FRHoF background
   or language).
+- `e2e/manageSpells.spec.ts` — R9a a–k (seeded Cleric 3 / Life Domain / Magic
+  Initiate Cleric, Warlock 3, Sorcerer 1, Fighter 1: drawer layout and counters,
+  Prepare/Unprepare live + after reload, full counters disable, level pills +
+  search, always-prepared and feat notes, shared slot boxes, pact section, no
+  button for a Fighter, ▸ text).
 
 ## Dočasné scaffolding
 
@@ -1683,6 +1688,23 @@ then by name. Bundled: `leveledSpellDice` dedupes identical scaled lines
 (Enervation, Backlash, Wall of Light); a scaled-healing roll (`isScaledHealing`)
 is labelled "healing" in the roll history and button aria-label, not "damage"
 (`SpellDamageLine`). E2E `spellDice.spec.ts` extended. No schema change (still 50).
+
+R9a (D208): Manage Spells drawer on the sheet, every casting class. "Manage
+Spells" button at the right end of the Spells tab toolbar (shown for any class
+with spell counts, even with no picks; toolbar now renders for it alone; absent
+without `onEditSpellChoices`). Drawer: Spell Slots / Pact Magic sections (same
+`UseBoxes` on `play.spentSpellSlots`, header summary via new
+`DrawerSection.summary`), then one `ClassSpellsManager` (src/sheet/ManageSpellsPanel.tsx,
+no slot code, reusable by R9c) per class: "Prepared Spells (N)" (picks with
+Delete/Unprepare; class/subclass always-prepared and subclass choice picks
+read-only with a grey tag) and "Add Spells" (Cantrips/Prepared counters, search,
+multi-select level pills, Prepare/Add disabled when full or had from elsewhere
+via knownSpells.ts, ▸ spell text). Every click writes through
+`CharacterStore.setSpellChoices` (empty list clears the field). Pool loading
+moved to `src/spells/classSpellPool.ts` (`loadClassSpellPool` /
+`useClassSpellPool`), used by both SpellPicker and the panel. Pure helpers in
+src/sheet/manageSpellsData.ts. Wizard unchanged. E2E `manageSpells.spec.ts`
+a–k. No schema change (still 50). Next: R9b (Bard Magical Secrets).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

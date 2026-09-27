@@ -149,6 +149,7 @@ import {
 	type CharacterFamiliar,
 	type CharacterInventoryItem,
 	type CharacterLanguage,
+	type CharacterSpellChoice,
 	type CharacterToolChoice,
 	type CustomArmourCategory,
 	type CustomItemDefinition,
@@ -172,6 +173,10 @@ import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calcula
 import { ArmourClassNotes, FireIcon, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
 import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
+import { ClassSpellsManager } from './ManageSpellsPanel'
+import { withClassPicks } from './manageSpellsData'
+import { collectKnownSpells } from '../spells/knownSpells'
+import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
 import { loadSpeciesTraits, speciesTraitsAtLevel, type SpeciesTrait } from './speciesTraitNames'
 import { featuresTabGroups, type FeatureTabGroup, type FeatureTabGroupKind, type FeatureTabOption } from './featuresTabData'
@@ -274,6 +279,7 @@ type DrawerContent =
 	| { kind: 'attacksPerAction' }
 	| { kind: 'spellcasting'; key: string; part: 'attack' | 'dc' }
 	| { kind: 'spellSlots' }
+	| { kind: 'manageSpells' }
 
 const PROFICIENCY_ROWS: [ProficiencyCategory, string][] = [
 	['armor', 'Armor'],
@@ -2173,6 +2179,7 @@ function SpellsSection({
 	onUse,
 	onSpendResource,
 	onToggleConcentration,
+	onManageSpells,
 }: {
 	sections: SpellsTabActionSection[]
 	notices: ReactNode
@@ -2193,6 +2200,8 @@ function SpellsSection({
 	onUse?: (row: SpellsTabActionRow) => void
 	onSpendResource?: (name: string, delta: 1 | -1) => void
 	onToggleConcentration?: (spellName: string) => void
+	/** R9a (D208): opens the Manage Spells drawer; absent for a non-caster or a read-only sheet. */
+	onManageSpells?: () => void
 }): ReactNode {
 	const [filter, setFilter] = useState<SpellsTabFilter>('all')
 	const [search, setSearch] = useState('')
@@ -2207,16 +2216,25 @@ function SpellsSection({
 	const spentPact = spentSpellSlots.pact ?? 0
 	return (
 		<section className="sheet__spells">
-			{sections.length > 0 && (
+			{(sections.length > 0 || onManageSpells) && (
 				<div className="sheet__actions-toolbar sheet__spells-toolbar">
-					<input type="search" className="sheet__spells-search" aria-label="Search spells" placeholder="Search spells" value={search} onChange={(event) => setSearch(event.target.value)} />
-					<div className="sheet__actions-filters" role="group" aria-label="Filter spells">
-						{pills.map(({ id, label }) => (
-							<button key={String(id)} type="button" className={filter === id ? 'pill pill--active' : 'pill'} aria-pressed={filter === id} onClick={() => setFilter(id)}>
-								{label}
-							</button>
-						))}
-					</div>
+					{sections.length > 0 && (
+						<>
+							<input type="search" className="sheet__spells-search" aria-label="Search spells" placeholder="Search spells" value={search} onChange={(event) => setSearch(event.target.value)} />
+							<div className="sheet__actions-filters" role="group" aria-label="Filter spells">
+								{pills.map(({ id, label }) => (
+									<button key={String(id)} type="button" className={filter === id ? 'pill pill--active' : 'pill'} aria-pressed={filter === id} onClick={() => setFilter(id)}>
+										{label}
+									</button>
+								))}
+							</div>
+						</>
+					)}
+					{onManageSpells && (
+						<button type="button" className="sheet__manage-spells" onClick={onManageSpells}>
+							Manage Spells
+						</button>
+					)}
 				</div>
 			)}
 			<div className="sheet__spells-notices">{notices}</div>
@@ -2678,6 +2696,7 @@ function CharacterSheetBody({
 	onEditHeroicInspiration,
 	onEditLanguages,
 	onEditToolChoices,
+	onEditSpellChoices,
 	onEditText,
 	onRest,
 	onEditCharacter,
@@ -2702,6 +2721,8 @@ function CharacterSheetBody({
 	/** Replaces the known languages — the Proficiencies drawer's class-feature picks (D172). Absent leaves the drawer without the selects. */
 	onEditLanguages?: (languages: CharacterLanguage[]) => void
 	onEditToolChoices?: (toolChoices: CharacterToolChoice[]) => void
+	/** Replaces the class spell picks from the Manage Spells drawer (R9a, D208). Absent leaves the Spells tab without the button. */
+	onEditSpellChoices?: (spellChoices: CharacterSpellChoice[]) => void
 	/** Writes one of the three free-text fields, exactly as typed (slice 9d2). Absent leaves the textareas showing the stored text, read-only. */
 	onEditText?: (field: CharacterTextField, text: string) => void
 	/** Applies a finished rest in one write (slice 9b5). Absent leaves the header without the two rest buttons. */
@@ -3529,6 +3550,31 @@ function CharacterSheetBody({
 	})
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0 || speciesSpellcastingEntries.length > 0
+	/* R9a (D208): one Manage Spells section per class that has spell counts; species, feat and option spells stay with their sources. */
+	const managedClasses = character.classes.flatMap((c) => {
+		const counts = spellCountEntries.find((entry) => entry.className === c.className && entry.classSource === c.classSource)
+		if (!counts) return []
+		const choicePicks = (character.subclassSpellChoices ?? [])
+			.filter((choice) => choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass)
+			.flatMap((choice) => choice.picks.map((pick) => ({ name: pick.name, source: pick.source })))
+		const choiceKeys = new Set(choicePicks.map((pick) => spellIdentityKey(pick.name, pick.source)))
+		const subclassGrants = subclassSpellInfo.find((info) => info.subclassName === c.subclass)?.alwaysPrepared ?? []
+		// subclassSpellInfo merges the fixed grants with the filter-choice picks; the panel shows the two differently.
+		const subclassFixed = subclassGrants.filter((spell) => !choiceKeys.has(spellIdentityKey(spell.name, spell.source)))
+		const classFixed = classSpellInfo.find((info) => info.className === c.className)?.spells ?? []
+		const picks = (character.spellChoices ?? []).find((choice) => choice.className === c.className && choice.classSource === c.classSource)?.spells ?? []
+		const alreadyKnown = collectKnownSpells({
+			classSpellPicks: picks,
+			classAlwaysPrepared: { className: c.className, spells: classFixed },
+			subclassName: c.subclass,
+			subclassAlwaysPrepared: subclassFixed,
+			subclassSpellChoicePicks: choicePicks,
+			featGrantedSpells: featSpells,
+			optionalFeatureGrantedSpells: optionalFeatureSpells,
+		})
+		return [{ characterClass: c, counts, alreadyKnown, holdings: { picks, subclassChoicePicks: choicePicks, alwaysPrepared: [...classFixed, ...subclassFixed] } }]
+	})
+	const canManageSpells = onEditSpellChoices !== undefined && managedClasses.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
 	const familiarForms = knowsFindFamiliar ? familiarFormOptions(beasts, hasPactOfTheChain(character.optionalFeatureChoices ?? [])) : []
 	const storedFamiliar = character.familiar ?? null
@@ -3969,6 +4015,7 @@ function CharacterSheetBody({
 					onUse={onEditResourceUses ? useSpell : undefined}
 					onSpendResource={onEditResourceUses ? spendResource : undefined}
 					onToggleConcentration={onEditConcentration ? toggleConcentration : undefined}
+					onManageSpells={canManageSpells ? () => setDrawer({ kind: 'manageSpells' }) : undefined}
 					notices={
 				<>
 					{spellLoadErrors.map((error) => (
@@ -4321,6 +4368,66 @@ function CharacterSheetBody({
 								</DrawerSection>
 							)}
 						</Fragment>
+					))}
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'manageSpells' && onEditSpellChoices && (
+				<Drawer title="Manage Spells" onClose={() => setDrawer(null)}>
+					{slotMaxima.ordinary.some((count) => count > 0) && (
+						<DrawerSection
+							title="Spell Slots"
+							summary={slotMaxima.ordinary.flatMap((count, index) => (count > 0 ? [`${ordinalLevel(index + 1)} ${count}`] : [])).join(' · ')}
+						>
+							{slotMaxima.ordinary.map((count, index) => {
+								const level = index + 1
+								return (
+									count > 0 && (
+										<div key={level} className="manage-spells__slot-row">
+											<span className="manage-spells__slot-label">{sectionLabel(level)}</span>
+											<UseBoxes
+												name={`level ${level} spell slots`}
+												spent={spentSpellSlots.ordinary?.[level] ?? 0}
+												max={count}
+												recharge="Long Rest"
+												onChange={onEditSpentSpellSlots ? (delta) => spendOrdinarySlot(level, count, delta) : undefined}
+											/>
+										</div>
+									)
+								)
+							})}
+						</DrawerSection>
+					)}
+					{slotMaxima.pact > 0 && (
+						<DrawerSection title="Pact Magic" summary={`${ordinalLevel(pactSlotLevel)} ${slotMaxima.pact}`}>
+							<div className="manage-spells__slot-row">
+								<span className="manage-spells__slot-label">{sectionLabel(pactSlotLevel)}</span>
+								<UseBoxes
+									name="Pact Magic slots"
+									spent={spentSpellSlots.pact ?? 0}
+									max={slotMaxima.pact}
+									recharge={pactShortRest !== null ? 'Short Rest' : 'Long Rest'}
+									onChange={onEditSpentSpellSlots ? (delta) => spendPactSlot(slotMaxima.pact, delta) : undefined}
+								/>
+							</div>
+						</DrawerSection>
+					)}
+					{managedClasses.map(({ characterClass, counts, holdings, alreadyKnown }) => (
+						<ClassSpellsManager
+							key={`${characterClass.className}|${characterClass.classSource}`}
+							className={characterClass.className}
+							classSource={characterClass.classSource}
+							subclassName={characterClass.subclass}
+							cantripCount={counts.cantripCount}
+							leveledSpellCount={counts.leveledSpellCount}
+							spellSlots={spellSlotsEntries.find((entry) => entry.className === characterClass.className && entry.classSource === characterClass.classSource)}
+							featChoices={chosenFeats.map((feat) => ({ name: feat.name, source: feat.source }))}
+							holdings={holdings}
+							alreadyKnown={alreadyKnown}
+							details={spellDetails}
+							resolverData={resolverData}
+							onChange={(picks) => onEditSpellChoices(withClassPicks(character.spellChoices ?? [], characterClass.className, characterClass.classSource, picks))}
+						/>
 					))}
 				</Drawer>
 			)}

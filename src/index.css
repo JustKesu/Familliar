@@ -2264,3 +2264,174 @@ button:disabled {
 .drawer-row__body {
   padding: 0.35rem 0.1rem 0.5rem;
 }
+
+.drawer-section__summary {
+  margin-left: auto;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: var(--text-mute);
+}
+
+/* ---- Manage Spells drawer (R9a, D208) ---- */
+
+.sheet__manage-spells {
+  margin-left: auto;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.manage-spells__slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 4px 0;
+}
+
+.manage-spells__slot-label {
+  min-width: 6.5em;
+  font: 600 12px/1.2 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-sub);
+}
+
+.manage-spells__list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manage-spells__level {
+  margin: 10px 0 2px;
+  font: 600 12px/1.2 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+.manage-spells__row {
+  border-bottom: 1px solid var(--line);
+}
+
+.manage-spells__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.manage-spells__name-cell {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.manage-spells__name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.manage-spells__meta,
+.manage-spells__tag {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.manage-spells__note {
+  display: block;
+}
+
+.manage-spells__tag {
+  white-space: nowrap;
+}
+
+.manage-spells__marker {
+  margin-left: 4px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.manage-spells__button {
+  min-width: 6.5em;
+  padding: 4px 8px;
+  border-color: var(--accent);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.manage-spells__button--on {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.manage-spells__expand {
+  padding: 2px 6px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+}
+
+.manage-spells__text {
+  padding: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
+.manage-spells__counters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 8px;
+}
+
+.manage-spells__counter {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.manage-spells__counter--full {
+  color: var(--accent);
+}
+
+.manage-spells__counter--full::after {
+  content: ' · full';
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.manage-spells__search {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.manage-spells__pills {
+  margin-bottom: 4px;
+}
+
+.manage-spells__empty {
+  margin: 6px 0;
+  font-size: 12px;
+  color: var(--text-mute);
+}

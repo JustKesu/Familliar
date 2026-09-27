@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CharacterStore, type CharacterTextField, type HitPointFields, type RestFields } from './storage/characterStore'
 import { StorageError } from './storage/errors'
-import type { Character, CharacterFamiliar, CharacterInventoryItem, CharacterLanguage, CharacterToolChoice, SpentSpellSlots } from './storage/character'
+import type { Character, CharacterFamiliar, CharacterInventoryItem, CharacterLanguage, CharacterSpellChoice, CharacterToolChoice, SpentSpellSlots } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
 import { LevelUpWizardGate } from './levelUp/LevelUpWizardGate'
@@ -226,6 +226,11 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setToolChoices(id, toolChoices))
 	}
 
+	function handleEditSpellChoices(id: string, spellChoices: CharacterSpellChoice[]): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setSpellChoices(id, spellChoices))
+	}
+
 	function handleEditText(id: string, field: CharacterTextField, text: string): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setText(id, field, text))
@@ -367,6 +372,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onEditHeroicInspiration={(on) => handleEditHeroicInspiration(character.id, on)}
 					onEditLanguages={(languages) => handleEditLanguages(character.id, languages)}
 					onEditToolChoices={(toolChoices) => handleEditToolChoices(character.id, toolChoices)}
+					onEditSpellChoices={(spellChoices) => handleEditSpellChoices(character.id, spellChoices)}
 						onEditText={(field, text) => handleEditText(character.id, field, text)}
 					onRest={(rest) => handleRest(character.id, rest)}
 					onEditCharacter={() => navigate({ view: 'edit', id: character.id })}
