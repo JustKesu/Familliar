@@ -7,7 +7,7 @@ export interface FeatRef {
 	source: string
 }
 
-export type FeatInstanceKey = `asi:${number}` | 'background' | 'species'
+export type FeatInstanceKey = `asi:${number}` | 'background' | 'species' | `manual:${number}`
 
 export type FeatInstanceOrigin = 'asi' | GrantedFeatOrigin
 
@@ -21,10 +21,11 @@ export interface FeatInstance extends FeatChoiceDetails {
 	level?: number
 }
 
-/** Where the feat came from, as the sheet labels it: "Background", "Species" or "level 4". */
+/** Where the feat came from, as the sheet labels it: "Background", "Species", "Added manually" or "level 4". */
 export function featOriginLabel(instance: Pick<FeatInstance, 'origin' | 'level'>): string {
 	if (instance.origin === 'background') return 'Background'
 	if (instance.origin === 'species') return 'Species'
+	if (instance.origin === 'manual') return 'Added manually'
 	return `level ${instance.level}`
 }
 
@@ -54,6 +55,7 @@ function choiceDetails(details: FeatChoiceDetails): FeatChoiceDetails {
  * Gift instead (background.originFeatOverride, D205); a stored 'background' entry
  * only contributes its sub-choices, and only while it names that same feat.
  * 'species' entries are not read until the wizard can set them (D157).
+ * 'manual' entries (D215) come last, keyed by their order among manual entries.
  */
 export function featInstances(character: Character, derivedBackgroundFeat: FeatRef | null): FeatInstance[] {
 	const instances: FeatInstance[] = []
@@ -74,6 +76,9 @@ export function featInstances(character: Character, derivedBackgroundFeat: FeatR
 		if (choice.kind !== 'feat') continue
 		instances.push({ key: `asi:${choice.level}`, origin: 'asi', level: choice.level, name: choice.name, source: choice.source, ...choiceDetails(choice) })
 	}
+
+	const manual = (character.grantedFeats ?? []).filter((entry) => entry.origin === 'manual')
+	manual.forEach((entry, n) => instances.push({ key: `manual:${n}`, origin: 'manual', name: entry.name, source: entry.source, ...choiceDetails(entry) }))
 
 	return instances
 }

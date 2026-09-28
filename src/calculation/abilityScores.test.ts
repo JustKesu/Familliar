@@ -81,6 +81,17 @@ describe('computeAbilityScore', () => {
 		})
 	})
 
+	it('adds a manually added feat’s bonus after the level feats (D215)', () => {
+		const actor: FeatEffectEntry = { name: 'Actor', source: 'XPHB', ability: [{ cha: 1 }] }
+		const withManual: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'asi', increases: { charisma: 2 } }], grantedFeats: [{ origin: 'manual', name: 'Actor', source: 'XPHB' }] }
+		const result = computeAbilityScore('charisma', withManual, [actor])
+		expect(result.status === 'known' && result.breakdown).toEqual([
+			{ source: 'base', amount: 8 },
+			{ source: 'ASI (level 4)', amount: 2 },
+			{ source: 'feat (Actor)', amount: 1 },
+		])
+	})
+
 	it('adds an ASI increase as a further list entry, alongside background (D42)', () => {
 		const withAsi: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 1, dexterity: 1 } }] }
 		expect(computeAbilityScore('strength', withAsi, [])).toEqual({

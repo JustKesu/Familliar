@@ -37,9 +37,9 @@ export function Drawer({ title, onClose, children }: { title: string; onClose: (
 }
 
 /** A collapsible block inside the drawer: a heading bar with ▾/▸, open to start. */
-export function DrawerSection({ title, summary, children }: { title: string; summary?: string; children: ReactNode }): ReactNode {
+export function DrawerSection({ title, summary, open = true, children }: { title: string; summary?: string; open?: boolean; children: ReactNode }): ReactNode {
 	return (
-		<details className="drawer-section" open>
+		<details className="drawer-section" open={open}>
 			<summary>
 				{title}
 				{summary && <span className="drawer-section__summary">{summary}</span>}

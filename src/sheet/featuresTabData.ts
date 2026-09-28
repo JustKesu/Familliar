@@ -95,6 +95,7 @@ function titleCase(text: string): string {
 export function featSource(instance: Pick<FeatInstance, 'origin' | 'level'>, classes: FeaturesTabInput['classes']): string | null {
 	if (instance.origin === 'background') return 'From Background'
 	if (instance.origin === 'species') return 'From Species'
+	if (instance.origin === 'manual') return 'Added manually'
 	// FeatAsiChoice stores the character level only; which class paid for the ASI is knowable with one class.
 	return classes.length === 1 ? `From ${classes[0].className} ${instance.level}` : null
 }

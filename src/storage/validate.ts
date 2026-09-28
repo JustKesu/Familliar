@@ -531,7 +531,7 @@ function isStringArray(value: unknown): value is string[] {
 	return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
 
-const GRANTED_FEAT_ORIGINS: readonly GrantedFeatOrigin[] = ['background', 'species']
+const GRANTED_FEAT_ORIGINS: readonly GrantedFeatOrigin[] = ['background', 'species', 'manual']
 
 /** Validates an optional `grantedFeats` field. Returns null if the field is absent (it's optional). */
 export function describeGrantedFeatsError(value: unknown): string | null {
@@ -541,8 +541,8 @@ export function describeGrantedFeatsError(value: unknown): string | null {
 	for (let i = 0; i < value.length; i++) {
 		const entry: unknown = value[i]
 		if (!isRecord(entry)) return `grantedFeats[${i}] is not an object`
-		if (!GRANTED_FEAT_ORIGINS.includes(entry['origin'] as GrantedFeatOrigin)) return `grantedFeats[${i}].origin must be "background" or "species"`
-		if (seenOrigins.has(entry['origin'])) return `grantedFeats[${i}].origin "${String(entry['origin'])}" appears more than once`
+		if (!GRANTED_FEAT_ORIGINS.includes(entry['origin'] as GrantedFeatOrigin)) return `grantedFeats[${i}].origin must be "background", "species" or "manual"`
+		if (entry['origin'] !== 'manual' && seenOrigins.has(entry['origin'])) return `grantedFeats[${i}].origin "${String(entry['origin'])}" appears more than once`
 		seenOrigins.add(entry['origin'])
 		if (!isNonEmptyString(entry['name'])) return `grantedFeats[${i}].name is missing or not a string`
 		if (!isNonEmptyString(entry['source'])) return `grantedFeats[${i}].source is missing or not a string`

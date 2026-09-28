@@ -153,6 +153,7 @@ import { ExtrasTab } from './ExtrasTab'
 import { FamiliarHitPointsPanel, type FamiliarHitPointFields } from './FamiliarHitPointsPanel'
 import { extraRows } from './extrasData'
 import { ManageExtrasPanel } from './ManageExtrasPanel'
+import { ManageFeatsPanel } from './ManageFeatsPanel'
 import { ManageInventoryPanel } from './ManageInventoryPanel'
 import { withClassPicks } from './manageSpellsData'
 import { collectKnownSpells } from '../spells/knownSpells'
@@ -265,6 +266,7 @@ type DrawerContent =
 	| { kind: 'manageSpells' }
 	| { kind: 'manageInventory' }
 	| { kind: 'manageExtras' }
+	| { kind: 'manageFeats' }
 	| { kind: 'familiarHitPoints' }
 	| { kind: 'beast'; beast: Beast }
 
@@ -1224,6 +1226,7 @@ function FeaturesSection({
 	resourceUses,
 	resolverData,
 	onSpendResource,
+	onManageFeats,
 }: {
 	groups: FeatureTabGroup[]
 	errors: ReactNode
@@ -1232,6 +1235,7 @@ function FeaturesSection({
 	resourceUses: Record<string, number>
 	resolverData: ResolverData
 	onSpendResource?: (name: string, delta: 1 | -1) => void
+	onManageFeats?: () => void
 }): ReactNode {
 	/* D116: which groups show is UI state of this tab only, never written to the character. */
 	const [filter, setFilter] = useState<FeaturesFilter>('all')
@@ -1265,7 +1269,13 @@ function FeaturesSection({
 								below={
 									(row.options.length > 0 || row.pending) && (
 										<ul className="sheet__feature-options">
-											{row.pending && <li className="sheet__feat-pending">Choices not made yet: {row.pending.join(', ')} — make them in Edit Character.</li>}
+											{row.pending && (
+												<li className="sheet__feat-pending">
+													Choices not made yet: {row.pending.join(', ')}
+													{/* R13b (D215) edits a manual feat's choices; Edit Character does not show it. */}
+													{row.key.startsWith('feat|manual:') ? '.' : ' — make them in Edit Character.'}
+												</li>
+											)}
 											{row.options.map((option) => (
 												<FeatureOptionItem key={option.key} option={option} resolverData={resolverData} />
 											))}
@@ -1291,6 +1301,11 @@ function FeaturesSection({
 						</button>
 					))}
 				</div>
+				{onManageFeats && (
+					<button type="button" className="sheet__manage-spells" onClick={onManageFeats}>
+						Manage Feats
+					</button>
+				)}
 			</div>
 			{errors}
 			{groups.filter((group) => group.kind === 'class' && shown('class')).map(renderGroup)}
@@ -1546,6 +1561,8 @@ function CharacterSheetBody({
 	onEditHeroicInspiration,
 	onEditConditions,
 	onEditExhaustion,
+	onAddManualFeat,
+	onRemoveManualFeat,
 	onEditLanguages,
 	onEditToolChoices,
 	onEditSpellChoices,
@@ -1578,6 +1595,9 @@ function CharacterSheetBody({
 	onEditConditions?: (conditions: string[]) => void
 	/** Sets the Exhaustion level 0–6 (R12, D214). Absent leaves the level read-only. */
 	onEditExhaustion?: (level: number) => void
+	/** Adds / removes a manually added feat from the Manage Feats drawer (R13a, D215). Absent leaves the Features & Traits tab without the button. */
+	onAddManualFeat?: (feat: { name: string; source: string }) => void
+	onRemoveManualFeat?: (key: string) => void
 	/** Replaces the known languages — the Proficiencies drawer's class-feature picks (D172). Absent leaves the drawer without the selects. */
 	onEditLanguages?: (languages: CharacterLanguage[]) => void
 	onEditToolChoices?: (toolChoices: CharacterToolChoice[]) => void
@@ -2949,6 +2969,7 @@ function CharacterSheetBody({
 				resourceUses={resourceUses}
 				resolverData={resolverData}
 				onSpendResource={onEditResourceUses ? spendResource : undefined}
+				onManageFeats={onAddManualFeat && onRemoveManualFeat ? () => setDrawer({ kind: 'manageFeats' }) : undefined}
 			/>
 			</div>
 
@@ -3254,6 +3275,21 @@ function CharacterSheetBody({
 						beastsLoading={beastsLoading}
 						onChooseFamiliar={onChooseFamiliar}
 						onEditWildShapeForms={onEditWildShapeForms}
+					/>
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'manageFeats' && onAddManualFeat && onRemoveManualFeat && (
+				<Drawer title="Manage Feats" onClose={() => setDrawer(null)}>
+					<ManageFeatsPanel
+						character={character}
+						instances={chosenFeats}
+						featRows={featureGroups.find((group) => group.kind === 'feats')?.rows ?? []}
+						featTexts={featTextEntries}
+						abilityScores={Object.fromEntries(Object.entries(abilityScores).flatMap(([ability, score]) => (score.status === 'known' ? [[ability, score.value.score]] : [])))}
+						resolverData={resolverData}
+						onAdd={onAddManualFeat}
+						onRemove={onRemoveManualFeat}
 					/>
 				</Drawer>
 			)}

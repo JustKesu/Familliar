@@ -1793,6 +1793,21 @@ omits it. `src/conditions/conditions.ts` (names, loader, penalty text) and
 replaced by a `conditions` slot. Nothing is recalculated. E2E `conditions.spec.ts`
 a–h. Next: R13 Manage Feats.
 
+R13a (D215) done. Schema 53 (52→53 tag only): `GrantedFeatOrigin` gains
+`'manual'` (a DM-granted feat; decides which feat, may repeat).
+`featInstances` returns them last as `manual:<n>` (n = order among manual
+entries), `featOriginLabel`/`featSource` → "Added manually";
+`featAbilityScoreContributions` appends them (the one direct `featAsiChoices`
+reader). `characterStore.addManualFeat` / `removeManualFeat` (wired as
+`onAddManualFeat` / `onRemoveManualFeat`). Features & Traits toolbar has
+MANAGE FEATS → drawer kind `manageFeats` (`ManageFeatsPanel.tsx`): My Feats
+(background/species/level feats and the class Fighting Style locked with a
+chip, ASI levels as "Ability Score Improvement", manual feats with REMOVE, ▸ =
+text + stored sub-choices read-only), Add Feats (search, category pills, ADD;
+held non-repeatable feats not offered; `featOffers`), Unavailable (collapsed,
+reasons). `DrawerSection` gained `open`. E2E `manageFeats.spec.ts` a–h. Next:
+R13b (edit a feat's sub-choices in the panel, incl. ASI increases).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

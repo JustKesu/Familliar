@@ -236,6 +236,16 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setExhaustion(id, level))
 	}
 
+	function handleAddManualFeat(id: string, feat: { name: string; source: string }): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.addManualFeat(id, feat))
+	}
+
+	function handleRemoveManualFeat(id: string, key: string): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.removeManualFeat(id, key))
+	}
+
 	function handleEditLanguages(id: string, languages: CharacterLanguage[]): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setLanguages(id, languages))
@@ -394,6 +404,8 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onEditHeroicInspiration={(on) => handleEditHeroicInspiration(character.id, on)}
 						onEditConditions={(conditions) => handleEditConditions(character.id, conditions)}
 						onEditExhaustion={(level) => handleEditExhaustion(character.id, level)}
+					onAddManualFeat={(feat) => handleAddManualFeat(character.id, feat)}
+					onRemoveManualFeat={(key) => handleRemoveManualFeat(character.id, key)}
 					onEditLanguages={(languages) => handleEditLanguages(character.id, languages)}
 					onEditToolChoices={(toolChoices) => handleEditToolChoices(character.id, toolChoices)}
 					onEditSpellChoices={(spellChoices) => handleEditSpellChoices(character.id, spellChoices)}

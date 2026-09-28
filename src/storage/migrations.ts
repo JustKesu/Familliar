@@ -465,6 +465,15 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 52 }),
 	},
+	{
+		from: 52,
+		to: 53,
+		/*
+		 * 53 adds the 'manual' grantedFeats origin (R13a, D215). A version-52
+		 * character stored none — the step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 53 }),
+	},
 ]
 
 /**

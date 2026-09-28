@@ -4024,3 +4024,7 @@ Zdroj: zadání R11b, 28. 9. 2026. Navazuje na D9, D43, D55, D110, D116, D212.
 ## D214 — Conditions (R12)
 
 Conditions (R12): texty stavů z 5etools XPHB (data/conditions.json). Uloženo v play.conditions + play.exhaustion (1–6). Long Rest sníží Exhaustion o 1 (pravidla 2024). Nic se nepřepočítává: postih Exhaustion (−2 d20 a −5 ft za úroveň) jen jako text ve štítku; Exhaustion 6 ani 0 HP nic automaticky nedělají — jen text pravidla. Rozhodl Daniel 28. 9.
+
+## D215 — Manage Feats (R13)
+
+Manage Feats (R13): R13a přidání/odebrání ručního featu (grantedFeats, origin 'manual', štítek „Added manually“), R13b úprava voleb v panelu. Featy z úrovní a z backgroundu jsou v panelu zamčené se štítkem „From Background“ / „From level N“ (úroveň postavy, ne třída — u multiclassu nejde určit); úrovně vzaté jako ASI se ukazují jako zamčený řádek „Ability Score Improvement“. Výměna featu na úrovni se v panelu nedělá (zůstává v Edit Character). Fighting Style z třídy jako zamčený řádek „From <Class>“, pokud jde čistě spárovat s featem FS. Rozhodl Daniel 28. 9.

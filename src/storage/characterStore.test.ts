@@ -1842,6 +1842,56 @@ describe('stored granted feats (D156)', () => {
 	})
 })
 
+describe('manual feats (R13a, D215)', () => {
+	it('loads several manual entries with sub-choices, but still rejects a bad one', () => {
+		const grantedFeats = [
+			{ origin: 'background', name: 'Alert', source: 'XPHB' },
+			{ origin: 'manual', name: 'Elemental Adept', source: 'XPHB', chosenAbility: 'intelligence' },
+			{ origin: 'manual', name: 'Elemental Adept', source: 'XPHB' },
+		]
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats }]))
+		expect(new CharacterStore(backing).list()[0].grantedFeats).toEqual(grantedFeats)
+
+		for (const bad of [{ origin: 'manual', source: 'XPHB' }, { origin: 'manual', name: 'Tough', source: 'XPHB', chosenAbility: 'luck' }]) {
+			const badBacking = new MemoryStorage()
+			badBacking.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats: [bad] }]))
+			expect(() => new CharacterStore(badBacking).list()).toThrow(CorruptDataError)
+		}
+	})
+
+	it('adds a repeatable feat twice and removes one of the two with what was stored on it', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const { id } = store.create({ name: 'Aria', grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB' }] })
+		store.addManualFeat(id, { name: 'Elemental Adept', source: 'XPHB' })
+		store.addManualFeat(id, { name: 'Elemental Adept', source: 'XPHB' })
+		store.addManualFeat(id, { name: 'Tough', source: 'XPHB' })
+		expect(store.list()[0].grantedFeats).toHaveLength(4)
+
+		store.removeManualFeat(id, 'manual:0')
+		expect(new CharacterStore(backing).list()[0].grantedFeats).toEqual([
+			{ origin: 'background', name: 'Alert', source: 'XPHB' },
+			{ origin: 'manual', name: 'Elemental Adept', source: 'XPHB' },
+			{ origin: 'manual', name: 'Tough', source: 'XPHB' },
+		])
+
+		store.removeManualFeat(id, 'manual:1')
+		store.removeManualFeat(id, 'manual:0')
+		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'background', name: 'Alert', source: 'XPHB' }])
+	})
+
+	it('drops the field when the last entry goes, and refuses a key that is not a manual one', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		store.addManualFeat(id, { name: 'Tough', source: 'XPHB' })
+		store.removeManualFeat(id, 'manual:0')
+		expect('grantedFeats' in store.list()[0]).toBe(false)
+		expect(() => store.removeManualFeat(id, 'asi:4')).toThrow()
+		expect(() => store.addManualFeat('nope', { name: 'Tough', source: 'XPHB' })).toThrow(CharacterNotFoundError)
+	})
+})
+
 describe('background origin-feat override (D205)', () => {
 	const background = { name: 'Spirit Medium', source: 'RHW', skillProficiencies: ['arcana', 'religion'], toolProficiency: 'Calligrapher’s Supplies' }
 

@@ -198,10 +198,12 @@ export function featAbilityScoreContributions(ability: Ability, character: Chara
 	const abbreviation = ABILITY_ABBREVIATIONS[ability]
 	const contributions: Contribution[] = []
 
-	const instances = new Map(characterFeats(character, feats).map((instance) => [instance.key, instance]))
+	const all = characterFeats(character, feats)
+	const instances = new Map(all.map((instance) => [instance.key, instance]))
 	const inLevelOrder = [
 		instances.get('background'),
 		...(character.featAsiChoices ?? []).map((choice) => (choice.kind === 'asi' ? choice : instances.get(`asi:${choice.level}`))),
+		...all.filter((instance) => instance.origin === 'manual'),
 	]
 
 	for (const choice of inLevelOrder) {

@@ -691,6 +691,34 @@ export class CharacterStore {
 		this.writeAll(updated)
 	}
 
+	/** Adds a feat the DM granted (R13a, D215) as a 'manual' grantedFeats entry; a repeatable feat may be added again. */
+	addManualFeat(id: string, feat: { name: string; source: string }): void {
+		this.writeGrantedFeats(id, (grantedFeats) => [...grantedFeats, { origin: 'manual', name: feat.name, source: feat.source }])
+	}
+
+	/** Removes the manual feat at featInstances key `manual:<n>` (n counts manual entries only), with everything stored on it. */
+	removeManualFeat(id: string, key: string): void {
+		const match = /^manual:(\d+)$/.exec(key)
+		if (!match) throw new Error(`Not a manual feat key: ${key}`)
+		const target = Number(match[1])
+		this.writeGrantedFeats(id, (grantedFeats) => {
+			let n = -1
+			return grantedFeats.filter((entry) => entry.origin !== 'manual' || ++n !== target)
+		})
+	}
+
+	private writeGrantedFeats(id: string, change: (grantedFeats: CharacterGrantedFeat[]) => CharacterGrantedFeat[]): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { grantedFeats, ...rest } = characters[index]
+		const next = change(grantedFeats ?? [])
+		const updated = [...characters]
+		updated[index] = next.length > 0 ? { ...rest, grantedFeats: next } : rest
+		this.writeAll(updated)
+	}
+
 	/** Turns Heroic Inspiration on or off (R4b, D167) — a targeted write like setConcentration. */
 	setHeroicInspiration(id: string, on: boolean): void {
 		const characters = this.list()

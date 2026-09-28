@@ -1106,6 +1106,15 @@ Magic Initiate, and no top-level `ability` field.
 
 Found in task A1 (2026-09-22, scripts/investigate-origin-feat-repeatable.js, consumed).
 
+### Feat categories, and the class Fighting Style as a feat
+
+feats.json has 159 entries in 8 `category` codes: G 84, EB 26, O 15, D 13, FS 10,
+DG 9, FS:P 1, FS:R 1. Every entry has an `entries` array. The 10 category-`FS`
+entries are all XPHB and their names are unique (case-insensitively), so
+`Character.fightingStyle` — a bare name, picked from exactly those 10 — maps to
+one feats.json entry without a source. FS:P / FS:R are not offered by the class
+Fighting Style picker. Found in R13a (2026-09-28, scripts/investigate-manage-feats.js).
+
 ### Frázové vyhledávání v `entries` musí nejdřív stripnout 5etools markup
 
 5etools tagy rozdělují frázi na dvě části, které nikdy neleží vedle sebe v

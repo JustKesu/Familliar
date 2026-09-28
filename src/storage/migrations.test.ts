@@ -566,8 +566,16 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 51, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: 52 })
-		expect(CURRENT_SCHEMA_VERSION).toBe(52)
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
+	/* D215: an older character has no manually added feats — the step only tags. */
+	it('tags a version-52 character and keeps its grantedFeats as they were', () => {
+		const before = { schemaVersion: 52, id: '1', name: 'Aria', classes: [], grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB' }] }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: 53 })
+		expect(CURRENT_SCHEMA_VERSION).toBe(53)
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

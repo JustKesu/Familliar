@@ -188,8 +188,9 @@ export interface Character {
 	 */
 	featAsiChoices?: FeatAsiChoice[]
 	/**
-	 * Sub-choices of the feats the background and species grant. At most one
-	 * entry per origin. Read only through featInstances (featInstances.ts).
+	 * Sub-choices of the feats the background and species grant, and the feats
+	 * added manually (D215). At most one background/species entry; 'manual' may
+	 * repeat. Read only through featInstances (featInstances.ts).
 	 */
 	grantedFeats?: CharacterGrantedFeat[]
 	/**
@@ -946,14 +947,15 @@ export interface FeatChoiceProficiencies {
 	expertise?: string[]
 }
 
-/** Where a feat that no ASI level paid for came from (D156). 'species' is shape only until the wizard rebuild (D157). */
-export type GrantedFeatOrigin = 'background' | 'species'
+/** Where a feat that no ASI level paid for came from (D156). 'species' is shape only until the wizard rebuild (D157). 'manual': added on the sheet (D215). */
+export type GrantedFeatOrigin = 'background' | 'species' | 'manual'
 
 /**
- * A feat granted by the background or the species, with its sub-choices.
- * A 'background' entry never decides WHICH feat the character has — that is
- * derived from the background — and applies only while its name/source match
- * the current background's origin feat (featInstances.ts).
+ * A feat granted by the background or the species, or added manually, with its
+ * sub-choices. A 'background' entry never decides WHICH feat the character has —
+ * that is derived from the background — and applies only while its name/source
+ * match the current background's origin feat (featInstances.ts). A 'manual'
+ * entry does decide it, and may repeat.
  */
 export type CharacterGrantedFeat = {
 	origin: GrantedFeatOrigin
@@ -963,7 +965,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 52 for Character.play.conditions and
+ * (see wireFormat.ts). Bumped to 53 for the 'manual' grantedFeats origin
+ * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
  * .temporaryHitPoints (D213); 50 for CharacterBackground.originFeatOverride
  * (D205); 49 for the RHW/FRHoF subclass `grantedBy`
@@ -985,4 +988,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 52
+export const CURRENT_SCHEMA_VERSION = 53
