@@ -29,6 +29,7 @@ function ManagedSpellRow({
 	level,
 	flags,
 	note,
+	magicalSecrets,
 	action,
 	detail,
 	resolverData,
@@ -36,6 +37,7 @@ function ManagedSpellRow({
 	name: string
 	level: number | null
 	flags?: { ritual: boolean; concentration: boolean }
+	magicalSecrets?: boolean
 	note?: ReactNode
 	action: ReactNode
 	detail: SpellDetail | undefined
@@ -48,6 +50,7 @@ function ManagedSpellRow({
 			<div className="manage-spells__line">
 				<span className="manage-spells__name-cell">
 					<span className="manage-spells__name">{name}</span> <span className="manage-spells__meta">({levelLabel(level)})</span>
+					{magicalSecrets && <span className="manage-spells__meta manage-spells__secrets">Magical Secrets</span>}
 					{flags?.concentration && (
 						<span className="manage-spells__marker" title="Concentration" aria-label="Concentration">
 							C
@@ -87,6 +90,7 @@ function PickButton({ spell, picked, disabled, onClick }: { spell: { name: strin
 export function ClassSpellsManager({
 	className,
 	classSource,
+	classLevel,
 	subclassName,
 	cantripCount,
 	leveledSpellCount,
@@ -100,6 +104,7 @@ export function ClassSpellsManager({
 }: {
 	className: string
 	classSource: string
+	classLevel: number
 	subclassName: string | null
 	cantripCount: number
 	leveledSpellCount: number
@@ -116,6 +121,7 @@ export function ClassSpellsManager({
 	const pool = useClassSpellPool({
 		className: listClass.className,
 		classSource: listClass.classSource,
+		classLevel,
 		expandedClassName: expandedClass?.className,
 		expandedClassSource: expandedClass?.classSource,
 		featChoices,
@@ -129,6 +135,8 @@ export function ClassSpellsManager({
 		const key = spellIdentityKey(spell.name, spell.source)
 		return poolSpells.find((candidate) => spellIdentityKey(candidate.name, candidate.source) === key)?.level ?? findSpellDetail(details, spell.name, spell.source)?.level ?? null
 	}
+	const secretKeys = new Set(poolSpells.filter((spell) => spell.viaClassExpanded).map((spell) => spellIdentityKey(spell.name, spell.source)))
+	const isSecret = (spell: SpellRef) => secretKeys.has(spellIdentityKey(spell.name, spell.source))
 	const rows = preparedSpellRows(holdings, levelOf)
 	const counts = pickCounts(rows)
 	const cantripsFull = counts.cantrips >= cantripCount
@@ -163,6 +171,7 @@ export function ClassSpellsManager({
 				name={spell.name}
 				level={spell.level}
 				flags={spell}
+				magicalSecrets={isSecret(spell)}
 				note={known !== null ? knownSpellNote(known) : undefined}
 				action={<PickButton spell={spell} picked={picked} disabled={!picked && (full || known !== null)} onClick={() => (picked ? remove(spell) : add(spell))} />}
 				detail={findSpellDetail(details, spell.name, spell.source)}
@@ -185,6 +194,7 @@ export function ClassSpellsManager({
 										key={`${row.name}|${row.source}`}
 										name={row.name}
 										level={row.level}
+										magicalSecrets={isSecret(row)}
 										action={
 											row.kind === 'pick' ? (
 												<PickButton spell={row} picked onClick={() => remove(row)} />

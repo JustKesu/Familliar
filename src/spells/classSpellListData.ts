@@ -27,6 +27,8 @@ export interface ClassSpellListSpell {
 	concentration: boolean
 	/** True when this spell reached the class only via `availableTo.classVariants` (optional/variant content), not the core `availableTo.classes` list. */
 	viaVariant: boolean
+	/** True when the spell is in the pool only through the class's own `additionalSpells.expanded` (Bard's Magical Secrets, D209). */
+	viaClassExpanded?: boolean
 }
 
 interface RawAvailableToEntry {
@@ -154,6 +156,51 @@ const EXPANDED_POOL_ADDITIONS: Record<string, { className: string; classSource: 
 export function expandedSpellListClassFor(subclassName: string | null | undefined): { className: string; classSource: string } | null {
 	if (subclassName && subclassName in EXPANDED_POOL_ADDITIONS) return EXPANDED_POOL_ADDITIONS[subclassName]!
 	return null
+}
+
+export interface ClassExpandedQuery {
+	levels: number[]
+	classNames: string[]
+}
+
+/**
+ * D209: a base class record's `additionalSpells[].expanded` (Bard's Magical
+ * Secrets, the only one — DATA.md). A numeric key is a class-level gate (met when
+ * classLevel >= key); an "sN" key is gated by the spell level the character can
+ * cast, which filterSpellsByLevel already enforces, so it carries no gate here.
+ * Entries are `{"all": "level=1;2|class=Cleric;Wizard"}` queries.
+ */
+export function extractClassExpandedQueries(parsedClasses: unknown, className: string, classSource: string, classLevel: number): ClassExpandedQuery[] {
+	if (!Array.isArray(parsedClasses)) {
+		throw new Error('classes.json: expected a top-level array.')
+	}
+	const record = parsedClasses.find((c) => isRecord(c) && c['entryType'] === 'class' && c['name'] === className && c['source'] === classSource)
+	if (!isRecord(record) || !Array.isArray(record['additionalSpells'])) return []
+
+	const queries: ClassExpandedQuery[] = []
+	for (const block of record['additionalSpells']) {
+		const expanded = isRecord(block) ? block['expanded'] : undefined
+		if (!isRecord(expanded)) continue
+		for (const [key, entries] of Object.entries(expanded)) {
+			if (/^\d+$/.test(key) && classLevel < Number(key)) continue
+			if (!Array.isArray(entries)) continue
+			for (const entry of entries) {
+				const all = isRecord(entry) ? entry['all'] : undefined
+				if (typeof all !== 'string') continue
+				const fields = Object.fromEntries(all.split('|').map((part) => part.split('=') as [string, string]))
+				queries.push({
+					levels: (fields['level'] ?? '').split(';').filter(Boolean).map(Number),
+					classNames: (fields['class'] ?? '').split(';').filter(Boolean),
+				})
+			}
+		}
+	}
+	return queries
+}
+
+/** Fetches classes.json and returns the class record's `expanded` queries that `classLevel` has reached. */
+export async function loadClassExpandedQueries(className: string, classSource: string, classLevel: number): Promise<ClassExpandedQuery[]> {
+	return extractClassExpandedQueries(await loadDataFile('data/classes.json'), className, classSource, classLevel)
 }
 
 interface RawFeatEntry {

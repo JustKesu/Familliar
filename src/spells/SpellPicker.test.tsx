@@ -34,6 +34,7 @@ vi.mock('./classSpellListData', async () => {
 	const actual = await vi.importActual<typeof import('./classSpellListData')>('./classSpellListData')
 	return {
 		...actual,
+		loadClassExpandedQueries: vi.fn(async () => []),
 		loadClassSpellList: vi.fn(async (className: string) => {
 			if (className === 'Wizard') return wizardList
 			return []

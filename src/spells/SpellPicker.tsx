@@ -34,6 +34,7 @@ export interface SpellPick {
 export function SpellPicker({
 	className,
 	classSource,
+	classLevel,
 	expandedClassName,
 	expandedClassSource,
 	featChoices,
@@ -47,6 +48,8 @@ export function SpellPicker({
 }: {
 	className: string
 	classSource: string
+	/** D209: level in this class, for the class's own `expanded` (Bard's Magical Secrets). */
+	classLevel?: number
 	/** D46 (Divine Soul): an extra class list to UNION into the pool, e.g. Cleric alongside Sorcerer. Omitted for every other class/subclass. */
 	expandedClassName?: string
 	expandedClassSource?: string
@@ -61,7 +64,7 @@ export function SpellPicker({
 	/** Spells the character already has from elsewhere (knownSpells.ts) — shown, not hidden, but not selectable here. This picker's own picks are excluded by key, so unselecting stays possible. */
 	alreadyKnown?: readonly KnownSpell[]
 }): ReactNode {
-	const state = useClassSpellPool({ className, classSource, expandedClassName, expandedClassSource, featChoices })
+	const state = useClassSpellPool({ className, classSource, classLevel, expandedClassName, expandedClassSource, featChoices })
 
 	if (state.status === 'loading') return null
 	if (state.status === 'error') {
@@ -112,6 +115,7 @@ export function SpellPicker({
 					{spell.ritual && <span className="spell-picker__flag"> (ritual)</span>}
 					{spell.concentration && <span className="spell-picker__flag"> (concentration)</span>}
 					{spell.viaVariant && <span className="spell-picker__flag spell-picker__flag--variant"> (variant)</span>}
+						{spell.viaClassExpanded && <span className="spell-picker__flag spell-picker__flag--variant"> Magical Secrets</span>}
 					{known !== null && <span className="spell-picker__already-known"> {knownSpellNote(known)}</span>}
 				</label>
 			</li>

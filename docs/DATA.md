@@ -1402,8 +1402,18 @@ item creations, not Mending.
 
 **Bard `expanded` is Magical Secrets, not a grant.** `{"10":[{"all":"level=1;2;3;4;5|class=Cleric;Druid;Wizard"}],"s6".."s9":[…level=N…]}`
 — `"10"` is a class level, `s6`–`s9` are SPELL levels (not pact ranks). It
-widens the Bard picker to three more lists; nothing in src/ reads it
-(classSpellListData.ts widens only for EK/AT and Divine Soul).
+widens the Bard picker to three more lists. Bard XPHB is the ONLY class record
+(entryType `class`) in data/classes.json with a class-level `expanded`; the other
+records with one are subclasses (EK, AT, Divine Soul, Hexblade, Fathomless,
+Genie) — confirmed R9b by a summary script. Every entry is `{"all": "level=…|
+class=…"}` (levels `;`-separated, so `level=1;2;3;4;5` is one query). Gate
+semantics (D209): a numeric key applies from that class level; an `sN` key has no
+class-level gate of its own — filterSpellsByLevel (slots) is what holds it back,
+so the pool for Bard 9 still contains the `s6`–`s9` spells and only the slot
+filter hides them. Cantrips never appear (`level=1..9` only). Read by
+`extractClassExpandedQueries` (classSpellListData.ts), `prepared` (power word
+heal/kill at 20) is not read here. Sourced from the same-source class lists
+(XPHB Cleric/Druid/Wizard).
 
 **Same spell from another source** (11): Hunter's Mark — Oath of Vengeance,
 Mark of Finding; Speak with Animals — Wild Heart, Oath of the Ancients, Mark of

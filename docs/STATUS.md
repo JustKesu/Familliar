@@ -1706,6 +1706,19 @@ moved to `src/spells/classSpellPool.ts` (`loadClassSpellPool` /
 src/sheet/manageSpellsData.ts. Wizard unchanged. E2E `manageSpells.spec.ts`
 a–k. No schema change (still 50). Next: R9b (Bard Magical Secrets).
 
+R9b (D209): Bard Magical Secrets. `loadClassSpellPool` takes `classLevel` and
+reads the class record's `additionalSpells[].expanded` structurally
+(`extractClassExpandedQueries` / `loadClassExpandedQueries` in
+classSpellListData.ts; numeric key = class-level gate, `sN` ungated, slot filter
+applies). From Bard 10 levels 1–5 of Cleric/Druid/Wizard join the pool, from 11
+the 6th+ ones as slots allow; never cantrips. Spells not on the Bard list carry
+`viaClassExpanded` and a grey "Magical Secrets" tag in Add Spells, Prepared
+Spells and SpellPicker; dedupe by name|source. Picks live in the Bard's
+`spellChoices`. Not handled: level removal below 10 leaves such picks in place.
+`ClassSpellsManager` gained a `classLevel` prop. E2E `manageSpells.spec.ts`
+R9b a–d, unit tests in classSpellPool.test.ts. No schema change (still 50).
+Next: R9c (wizard rework).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

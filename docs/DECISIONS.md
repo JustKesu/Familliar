@@ -3916,3 +3916,20 @@ D163, D192.
 5. Pool je jedna funkce (`classSpellPool.ts`: seznam třídy + D46 rozšíření +
    `expanded` featů), kterou používá SpellPicker v průvodci i panel.
 6. Hledání, filtry úrovní a rozbalené řádky jsou stav panelu (D116).
+
+## D209 — Bard Magical Secrets rozšiřuje pool (R9b)
+
+Zdroj: zadání R9b, 28. 9. 2026. Navazuje na D46, D208.
+
+1. `additionalSpells[].expanded` třídy (data: jen Bard XPHB) se čte strukturálně,
+   ne tabulkou ani jménem třídy: dotaz `{"all": "level=…|class=…"}` → úrovně
+   kouzel + seznamy tříd. Číselný klíč je brána podle úrovně ve třídě; klíč
+   `sN` vlastní bránu nemá, drží ho filtr slotů.
+2. Kouzla se přidají do sdíleného poolu (`classSpellPool.ts`, vstup `classLevel`);
+   duplicita podle name|source, kouzlo už ze seznamu Barda se neoznačuje.
+3. Kouzla přidaná jen touto cestou nesou `viaClassExpanded` a šedý štítek
+   „Magical Secrets" v Add Spells, Prepared Spells i ve SpellPickeru. Výběry se
+   ukládají do `spellChoices` Barda a sesílají s jeho vlastností; beze změny
+   schématu.
+4. Kantripy se nenabízejí. Odebrání úrovně pod 10 se neřeší: výběry z cizích
+   seznamů zůstanou v `spellChoices`.

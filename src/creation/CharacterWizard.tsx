@@ -1554,6 +1554,7 @@ export function CharacterWizard({
 					<SpellPicker
 						className={spellListClass.className}
 						classSource={spellListClass.classSource}
+						classLevel={state.data.classChoice.level}
 						expandedClassName={expandedSpellListClass?.className}
 						expandedClassSource={expandedSpellListClass?.classSource}
 						featChoices={markFeatChoices}

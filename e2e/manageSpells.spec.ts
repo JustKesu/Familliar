@@ -177,6 +177,41 @@ test('R9a j2: Fighter 1 — no Manage Spells button', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Manage Spells', exact: true })).toHaveCount(0)
 })
 
+const BARD_10 = caster('r9b-bard10', 'Bard', 10, ['Vicious Mockery'])
+const secrets = (scope: Locator): Locator => scope.locator('.manage-spells__secrets')
+
+test('R9b a: Bard 10 — Fireball is offered with the Magical Secrets tag; Prepare puts it on the Spells tab with the Bard save DC, and Prepared Spells keeps the tag', async ({ page }) => {
+  const panel = await openManage(page, BARD_10)
+  await expect(secrets(row(addSpells(panel), 'Fireball'))).toHaveText('Magical Secrets')
+  await addSpells(panel).getByRole('button', { name: 'Prepare Fireball', exact: true }).click()
+  await expect(secrets(row(prepared(panel), 'Fireball'))).toHaveText('Magical Secrets')
+  const fireball = spellsPanel(page).locator('.sheet__spell-row', { has: page.locator('.sheet__spell-name', { hasText: /^Fireball$/ }) })
+  await expect(fireball.locator('.sheet__action-to-hit').first()).toContainText('DC 15 DEX')
+})
+
+test('R9b b: Bard 9 — Fireball is not offered, nothing carries the tag', async ({ page }) => {
+  const panel = await openManage(page, caster('r9b-bard9', 'Bard', 9, []))
+  await expect(row(addSpells(panel), 'Fireball')).toHaveCount(0)
+  await expect(secrets(panel)).toHaveCount(0)
+})
+
+test('R9b c1: Fire Bolt (a Wizard-only cantrip) is never offered at Bard 10, nor is a 6th-level spell', async ({ page }) => {
+  const panel = await openManage(page, BARD_10)
+  await expect(row(addSpells(panel), 'Fire Bolt')).toHaveCount(0)
+  await expect(row(addSpells(panel), 'Chain Lightning')).toHaveCount(0)
+})
+
+test('R9b c2: Bard 11 — Chain Lightning is offered with the tag', async ({ page }) => {
+  const panel = await openManage(page, caster('r9b-bard11', 'Bard', 11, []))
+  await expect(secrets(row(addSpells(panel), 'Chain Lightning'))).toHaveText('Magical Secrets')
+})
+
+test('R9b d: Cure Wounds is on the Bard list itself, so it carries no tag', async ({ page }) => {
+  const panel = await openManage(page, BARD_10)
+  await expect(row(addSpells(panel), 'Cure Wounds')).toHaveCount(1)
+  await expect(secrets(row(addSpells(panel), 'Cure Wounds'))).toHaveCount(0)
+})
+
 test('R9a k: ▸ on a row opens the spell text in the drawer', async ({ page }) => {
   const panel = await openManage(page, CLERIC)
   const bless = row(addSpells(panel), 'Bless')

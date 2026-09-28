@@ -2354,6 +2354,11 @@ button:disabled {
   white-space: nowrap;
 }
 
+.manage-spells__secrets {
+  margin-left: 4px;
+  font-size: 12px;
+}
+
 .manage-spells__marker {
   margin-left: 4px;
   padding: 0 4px;

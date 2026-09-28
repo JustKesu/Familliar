@@ -4417,6 +4417,7 @@ function CharacterSheetBody({
 							key={`${characterClass.className}|${characterClass.classSource}`}
 							className={characterClass.className}
 							classSource={characterClass.classSource}
+							classLevel={characterClass.level}
 							subclassName={characterClass.subclass}
 							cantripCount={counts.cantripCount}
 							leveledSpellCount={counts.leveledSpellCount}
