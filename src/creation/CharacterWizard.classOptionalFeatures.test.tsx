@@ -402,6 +402,15 @@ function checkbox(name: string): HTMLInputElement {
 	return screen.getByRole('checkbox', { name }) as HTMLInputElement
 }
 
+/** D210: the Spells step's Add (cantrip) / Prepare (leveled) button for a spell. */
+function spellButton(name: string): HTMLElement {
+	return screen.getByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+}
+
+function findSpellButton(name: string): Promise<HTMLElement> {
+	return screen.findByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+}
+
 function stepLabels(): string[] {
 	return Array.from(document.querySelectorAll('.wizard__step')).map((li) => li.textContent ?? '')
 }
@@ -449,9 +458,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Warlock', '3')
 
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		// No Back was ever pressed: this is the first forward pass.
@@ -472,9 +481,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Warlock', '3')
 
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Blade' }))
@@ -502,9 +511,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Warlock', '3')
 
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Blade' }))
@@ -529,9 +538,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Warlock', '3')
 
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Blade' }))
@@ -539,7 +548,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		expect(checkbox('Pact of the Blade').checked).toBe(true)
 
 		await goBack(user)
-		expect(await screen.findByLabelText(/Eldritch Blast/)).toBeTruthy()
+		expect((await screen.findAllByRole('button', { name: 'Delete Eldritch Blast' })).length).toBeGreaterThan(0)
 		await goNext(user)
 
 		// Both invocation slots are filled, so the list comes back collapsed; open it to read the picks.
@@ -554,9 +563,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Warlock', '3')
 
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		await screen.findByRole('checkbox', { name: 'Pact of the Blade' })
@@ -574,9 +583,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Sorcerer', '3')
 
-		await user.click(await screen.findByLabelText(/Fire Bolt/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Magic Missile/))
+		await user.click(await findSpellButton('Fire Bolt'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Magic Missile'))
 		await goNext(user)
 
 		expect(stepLabels().some((label) => label.includes('Metamagic'))).toBe(true)
@@ -606,9 +615,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Warlock', '3', 'Archfey Patron')
 
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
@@ -627,9 +636,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Warlock', '3')
 
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
@@ -644,9 +653,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		renderWizard()
 		await walkToSpells(user, 'Warlock', '3')
 
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Prestidigitation'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
@@ -665,9 +674,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await walkToSpells(user, 'Warlock', '3')
 
 		// Eldritch Blast, Chill Touch and Hex — nothing the Tome's own lists offer.
-		await user.click(await screen.findByLabelText(/Eldritch Blast/))
-		await user.click(screen.getByLabelText(/Chill Touch/))
-		await user.click(screen.getByLabelText(/Hex/))
+		await user.click(await findSpellButton('Eldritch Blast'))
+		await user.click(spellButton('Chill Touch'))
+		await user.click(spellButton('Hex'))
 		await goNext(user)
 
 		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))

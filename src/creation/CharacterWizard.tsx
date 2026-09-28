@@ -68,9 +68,8 @@ import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
 import { loadCharacterMaxHp } from '../hitPoints/hpDefault'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
-import { SpellPicker } from '../spells/SpellPicker'
-import { spellListClassFor, expandedSpellListClassFor } from '../spells/classSpellListData'
-import { AlwaysPreparedSpellsList } from '../spells/AlwaysPreparedSpellsList'
+import { ClassSpellsManager } from '../sheet/ManageSpellsPanel'
+import { loadResolverData, type ResolverData } from '../featureResolver'
 import { loadClassAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
@@ -226,6 +225,8 @@ export function CharacterWizard({
 	/** How many spells each chosen option still needs picked (step 6a — Pact of the Tome). Read from the data by the effect below, never a hardcoded table. */
 	const [optionalFeatureSpellRequirements, setOptionalFeatureSpellRequirements] = useState<OptionalFeatureSpellRequirement[]>([])
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[]>([])
+	/** Only read when a spell row's text is opened in the class section (D210); empty until loaded. */
+	const [resolverData, setResolverData] = useState<ResolverData>({ classFeatures: null, subclassFeatures: null, optionalFeatures: null, feats: null })
 	/** The three grant sources the shared "already has it" set needs (knownSpells.ts); the other two (class picks, subclass filter-choice picks) are wizard state already. */
 	const [subclassAlwaysPrepared, setSubclassAlwaysPrepared] = useState<AlwaysPreparedSpell[]>([])
 	const [classAlwaysPrepared, setClassAlwaysPrepared] = useState<AlwaysPreparedSpell[]>([])
@@ -638,6 +639,20 @@ export function CharacterWizard({
 		}
 	}, [])
 
+	useEffect(() => {
+		let cancelled = false
+		loadResolverData()
+			.then((data) => {
+				if (!cancelled) setResolverData(data)
+			})
+			.catch(() => {
+				/* Spell text still renders; only ref* links inside it stay unresolved. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
 	/**
 	 * The subclass's always-prepared grants — the single computation behind
 	 * both AlwaysPreparedSpellsList (rendered from this state) and the D71
@@ -1038,15 +1053,9 @@ export function CharacterWizard({
 	const spellRequirement: SpellRequirement | null = spellCountEntry
 		? { cantripCount: spellCountEntry.cantripCount, leveledSpellCount: spellCountEntry.leveledSpellCount, label: spellCountEntry.label }
 		: null
-	/** D46: EK/AT's picker draws from the Wizard list, not Fighter's/Rogue's (classSpellListData.ts's THIRD_CASTER_SPELL_LIST). */
-	const spellListClass = state.data.classChoice
-		? spellListClassFor(state.data.classChoice.className, state.data.classChoice.classSource, state.data.subclass?.name)
-		: null
-	/** D46: Divine Soul widens its Sorcerer pool with the Cleric list — union, not replacement (classSpellListData.ts's EXPANDED_POOL_ADDITIONS). Null for every other subclass. */
-	const expandedSpellListClass = expandedSpellListClassFor(state.data.subclass?.name)
 	/**
 	 * D46 (the 12 marks): every feat taken so far (featInstances, D156) —
-	 * SpellPicker fetches each one's `expanded` pool-widening spells itself
+	 * ClassSpellsManager fetches each one's `expanded` pool-widening spells itself
 	 * (classSpellListData.ts's loadFeatExpandedSpellList) and unions in
 	 * whatever isn't empty. Reading current wizard state here (not a saved
 	 * Character) means stepping back to 'spells' after picking a mark on the
@@ -1548,28 +1557,34 @@ export function CharacterWizard({
 				</div>
 			)}
 
-			{state.step === 'spells' && state.data.classChoice && spellRequirement && spellListClass && (
+			{state.step === 'spells' && state.data.classChoice && spellRequirement && (
 				<div className="wizard__panel">
 					{knownSpellsIncompleteNotice}
-					<SpellPicker
-						className={spellListClass.className}
-						classSource={spellListClass.classSource}
+					{/* D210: the sheet's class section; Next still needs the exact counts (isCompleteSpellChoices). */}
+					<ClassSpellsManager
+						className={state.data.classChoice.className}
+						classSource={state.data.classChoice.classSource}
 						classLevel={state.data.classChoice.level}
-						expandedClassName={expandedSpellListClass?.className}
-						expandedClassSource={expandedSpellListClass?.classSource}
-						featChoices={markFeatChoices}
-						spellSlots={spellSlotsEntry}
+						subclassName={state.data.subclass?.name ?? null}
 						cantripCount={spellRequirement.cantripCount}
 						leveledSpellCount={spellRequirement.leveledSpellCount}
-						label={spellRequirement.label}
-						value={state.data.spellChoices}
-						onChange={(choices) => dispatch({ type: 'setSpellChoices', choices })}
+						spellSlots={spellSlotsEntry}
+						featChoices={markFeatChoices}
+						holdings={{
+							picks: state.data.spellChoices,
+							subclassChoicePicks: state.data.subclassSpellChoices,
+							alwaysPrepared: [...classAlwaysPrepared, ...subclassAlwaysPrepared],
+						}}
 						alreadyKnown={alreadyKnownSpells}
+						details={spellDetails}
+						resolverData={resolverData}
+						onChange={(picks) =>
+							dispatch({
+								type: 'setSpellChoices',
+								choices: picks.flatMap((pick) => (pick.level === undefined ? [] : [{ name: pick.name, source: pick.source, level: pick.level }])),
+							})
+						}
 					/>
-					<AlwaysPreparedSpellsList subclassName={state.data.classChoice.className} spells={classAlwaysPrepared} />
-					{state.data.subclass && (
-						<AlwaysPreparedSpellsList subclassName={state.data.subclass.name} spells={subclassAlwaysPrepared} error={subclassAlwaysPreparedError} />
-					)}
 					{state.data.subclass && isSubclassSpellChoice(state.data.subclass) && (
 						<SubclassSpellChoicePicker
 							subclassName={state.data.subclass.name}

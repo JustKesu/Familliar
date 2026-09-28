@@ -51,7 +51,6 @@ import {
 	type SubclassSkillGrant,
 } from '../classSkills/subclassSkillGrants'
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
-import type { SpellPick } from '../spells/SpellPicker'
 import type { SpellCountLabel } from '../calculation/spellCounts'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
@@ -697,6 +696,13 @@ function isCompleteHitPointLevels(hitPointLevels: CharacterHitPointLevel[], char
 }
 
 /** Cantrips and leveled spells are counted separately (a cantrip is not a leveled-spell pick) — both totals must match exactly. */
+/** What the wizard stores per pick — `level` rides along so completion/count checks never need to re-fetch the spell list to classify a pick as cantrip vs leveled. */
+export interface SpellPick {
+	name: string
+	source: string
+	level: number
+}
+
 function isCompleteSpellChoices(spellChoices: SpellPick[], spellRequirement: SpellRequirement): boolean {
 	const cantripsChosen = spellChoices.filter((pick) => pick.level === 0).length
 	const leveledChosen = spellChoices.filter((pick) => pick.level > 0).length

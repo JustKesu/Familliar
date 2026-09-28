@@ -49,10 +49,10 @@ test('D199 a: the Wizard spell step offers Silvery Barbs (SCC) and it can be pic
   }
   await next(page)
   await expectStep(page, 'Spells')
-  const barbs = page.getByRole('checkbox', { name: 'Silvery Barbs', exact: true })
+  const barbs = page.getByRole('button', { name: 'Prepare Silvery Barbs', exact: true })
   await expect(barbs).toHaveCount(1)
-  await barbs.check()
-  await expect(barbs).toBeChecked()
+  await barbs.click()
+  await expect(page.getByRole('button', { name: 'Unprepare Silvery Barbs', exact: true }).first()).toBeVisible()
 })
 
 test('D199 b: a Bard who knows Silvery Barbs (SCC) sees it resolved in 1st Level with CAST and its text', async ({ page }) => {

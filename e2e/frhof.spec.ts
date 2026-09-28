@@ -37,10 +37,10 @@ test('D201 b: the Wizard spell step offers Wardaway (FRHoF) and it can be picked
   }
   await next(page)
   await expectStep(page, 'Spells')
-  const wardaway = page.getByRole('checkbox', { name: 'Wardaway', exact: true })
+  const wardaway = page.getByRole('button', { name: 'Prepare Wardaway', exact: true })
   await expect(wardaway).toHaveCount(1)
-  await wardaway.check()
-  await expect(wardaway).toBeChecked()
+  await wardaway.click()
+  await expect(page.getByRole('button', { name: 'Unprepare Wardaway', exact: true }).first()).toBeVisible()
 })
 
 test('D201 c: a level 19 character is offered FRHoF Epic Boons, no FRHoF Origin feat and no faction General feat in any feat group', async ({ page }) => {

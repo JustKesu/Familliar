@@ -473,6 +473,24 @@ async function fillThroughAbilities(
 	await goNext(user)
 }
 
+/** D210: the class section's buttons — a cantrip is Added/Deleted, a leveled spell Prepared/Unprepared. Anchored so "Prepare X" never matches "Unprepare X". */
+function offerButton(name: string): HTMLElement {
+	return screen.getByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+}
+
+function findOfferButton(name: string): Promise<HTMLElement> {
+	return screen.findByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+}
+
+function queryOfferButton(name: string): HTMLElement | null {
+	return screen.queryByRole('button', { name: new RegExp(`^(Add|Prepare) ${name}$`) })
+}
+
+/** A picked spell shows in Prepared Spells and again in Add Spells, so more than one button carries the name. */
+function isPicked(name: string): boolean {
+	return screen.queryAllByRole('button', { name: new RegExp(`^(Delete|Unprepare) ${name}$`) }).length > 0
+}
+
 describe('CharacterWizard — spells step', () => {
 	it('a full caster (Wizard 3) is offered spells up to its max slot level, enforces cantrip/leveled counts separately, and picks persist through the wizard', async () => {
 		const user = userEvent.setup()
@@ -481,27 +499,27 @@ describe('CharacterWizard — spells step', () => {
 		await fillThroughAbilities(user, 'Wizard', '3')
 
 		// Level filter: max slot level 2 (row [4,2,0,...]) — Fireball (level 3) must not appear.
-		expect(await screen.findByLabelText(/Prestidigitation/)).toBeTruthy()
-		expect(screen.getByLabelText(/Misty Step/)).toBeTruthy()
-		expect(screen.queryByLabelText(/Fireball/)).toBeNull()
-		expect(screen.getByText('0 of 3 cantrips chosen.')).toBeTruthy()
-		expect(screen.getByText('0 of 3 spells prepared chosen.')).toBeTruthy()
+		expect(await findOfferButton('Prestidigitation')).toBeTruthy()
+		expect(offerButton('Misty Step')).toBeTruthy()
+		expect(queryOfferButton('Fireball')).toBeNull()
+		expect(screen.getByText('Cantrips: 0/3')).toBeTruthy()
+		expect(screen.getByText('Prepared: 0/3')).toBeTruthy()
 
 		// Variant-sourced spell (Chromatic Orb) is offered and selectable, not hidden.
-		const variant = (await screen.findByLabelText(/Chromatic Orb/)) as HTMLInputElement
-		expect(variant.disabled).toBe(false)
+		expect((await findOfferButton('Chromatic Orb') as HTMLButtonElement).disabled).toBe(false)
 
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Fire Bolt/))
-		await user.click(screen.getByLabelText(/Ray of Frost/))
-		expect(screen.getByText('3 of 3 cantrips chosen.')).toBeTruthy()
-		// Cantrip cap reached — a further cantrip cannot be selected, leveled spells are untouched by it.
-		expect((screen.getByLabelText(/Prestidigitation/) as HTMLInputElement).checked).toBe(true)
+		await user.click(offerButton('Prestidigitation'))
+		await user.click(offerButton('Fire Bolt'))
+		await user.click(offerButton('Ray of Frost'))
+		expect(screen.getByText('Cantrips: 3/3')).toBeTruthy()
+		expect(isPicked('Prestidigitation')).toBe(true)
 
-		await user.click(screen.getByLabelText(/Magic Missile/))
-		await user.click(screen.getByLabelText(/Find Familiar/))
-		await user.click(variant)
-		expect(screen.getByText('3 of 3 spells prepared chosen.')).toBeTruthy()
+		await user.click(offerButton('Magic Missile'))
+		await user.click(offerButton('Find Familiar'))
+		await user.click(offerButton('Chromatic Orb'))
+		expect(screen.getByText('Prepared: 3/3')).toBeTruthy()
+		// Both counters full — nothing else can be added, but Unprepare stays available.
+		expect((offerButton('Misty Step') as HTMLButtonElement).disabled).toBe(true)
 
 		await goNext(user)
 		await passHitPointsStep(user)
@@ -511,8 +529,41 @@ describe('CharacterWizard — spells step', () => {
 		await goBack(user)
 		await goBack(user)
 
-		expect((await screen.findByLabelText(/Prestidigitation/) as HTMLInputElement).checked).toBe(true)
-		expect((screen.getByLabelText(/Magic Missile/) as HTMLInputElement).checked).toBe(true)
+		await screen.findByText('Cantrips: 3/3')
+		expect(isPicked('Prestidigitation')).toBe(true)
+		expect(isPicked('Magic Missile')).toBe(true)
+	}, 15000)
+
+	it('Next stays blocked until both counts are exactly met, and level pills and search narrow the offered list', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughAbilities(user, 'Wizard', '3')
+		await findOfferButton('Fire Bolt')
+		const next = screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement
+		expect(next.disabled).toBe(true)
+
+		await user.click(offerButton('Prestidigitation'))
+		await user.click(offerButton('Fire Bolt'))
+		await user.click(offerButton('Ray of Frost'))
+		await user.click(offerButton('Magic Missile'))
+		await user.click(offerButton('Find Familiar'))
+		expect(next.disabled).toBe(true)
+		await user.click(offerButton('Chromatic Orb'))
+		expect(next.disabled).toBe(false)
+
+		await user.click(screen.getAllByRole('button', { name: 'Unprepare Magic Missile' })[0])
+		expect(next.disabled).toBe(true)
+
+		const filter = screen.getByRole('group', { name: 'Filter by level' })
+		await user.click(within(filter).getByRole('button', { name: '2nd' }))
+		expect(queryOfferButton('Misty Step')).toBeTruthy()
+		expect(queryOfferButton('Magic Missile')).toBeNull()
+		await user.click(within(filter).getByRole('button', { name: '2nd' }))
+		expect(queryOfferButton('Magic Missile')).toBeTruthy()
+		await user.type(screen.getByRole('searchbox', { name: 'Search Wizard spells' }), 'misty')
+		expect(queryOfferButton('Misty Step')).toBeTruthy()
+		expect(queryOfferButton('Magic Missile')).toBeNull()
 	}, 15000)
 
 	it('a class whose count could look ability-modifier-dependent (Cleric) reads the same count regardless of the chosen Wisdom score', async () => {
@@ -522,8 +573,8 @@ describe('CharacterWizard — spells step', () => {
 		// Minimum possible Wisdom (8) — if the count wrongly depended on the ability modifier, this would show fewer than a high-Wisdom character.
 		await fillThroughAbilities(user, 'Cleric', '3', { str: '14', dex: '13', con: '12', int: '15', wis: '8', cha: '10' })
 
-		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
-		expect(screen.getByText('0 of 3 spells prepared chosen.')).toBeTruthy()
+		expect(await screen.findByText('Cantrips: 0/3')).toBeTruthy()
+		expect(screen.getByText('Prepared: 0/3')).toBeTruthy()
 	})
 
 	it('a non-caster (Fighter, Champion subclass) never sees the spells step, and numbering stays contiguous', async () => {
@@ -582,21 +633,21 @@ describe('CharacterWizard — spells step', () => {
 		await goNext(user)
 
 		// EK's own progression: 2 cantrips, 3 leveled spells known (Fighter subclass counts, not Wizard's).
-		expect(await screen.findByText('0 of 2 cantrips chosen.')).toBeTruthy()
-		expect(screen.getByText('0 of 3 spells known chosen.')).toBeTruthy()
+		expect(await screen.findByText('Cantrips: 0/2')).toBeTruthy()
+		expect(screen.getByText('Prepared: 0/3')).toBeTruthy()
 		// Offered from Wizard's list, capped at EK's max slot level (1 at level 3) — Misty Step (2) and Fireball (3) must not appear.
-		expect(screen.getByLabelText(/Fire Bolt/)).toBeTruthy()
-		expect(screen.getByLabelText(/Magic Missile/)).toBeTruthy()
-		expect(screen.queryByLabelText(/Misty Step/)).toBeNull()
-		expect(screen.queryByLabelText(/Fireball/)).toBeNull()
+		expect(offerButton('Fire Bolt')).toBeTruthy()
+		expect(offerButton('Magic Missile')).toBeTruthy()
+		expect(queryOfferButton('Misty Step')).toBeNull()
+		expect(queryOfferButton('Fireball')).toBeNull()
 
-		await user.click(screen.getByLabelText(/Fire Bolt/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Magic Missile/))
-		await user.click(screen.getByLabelText(/Find Familiar/))
-		await user.click(screen.getByLabelText(/Chromatic Orb/))
-		expect(screen.getByText('2 of 2 cantrips chosen.')).toBeTruthy()
-		expect(screen.getByText('3 of 3 spells known chosen.')).toBeTruthy()
+		await user.click(offerButton('Fire Bolt'))
+		await user.click(offerButton('Prestidigitation'))
+		await user.click(offerButton('Magic Missile'))
+		await user.click(offerButton('Find Familiar'))
+		await user.click(offerButton('Chromatic Orb'))
+		expect(screen.getByText('Cantrips: 2/2')).toBeTruthy()
+		expect(screen.getByText('Prepared: 3/3')).toBeTruthy()
 
 		await goNext(user)
 		await passHitPointsStep(user)
@@ -606,8 +657,9 @@ describe('CharacterWizard — spells step', () => {
 		await goBack(user)
 		await goBack(user)
 
-		expect((await screen.findByLabelText(/Fire Bolt/) as HTMLInputElement).checked).toBe(true)
-		expect((screen.getByLabelText(/Magic Missile/) as HTMLInputElement).checked).toBe(true)
+		await screen.findByText('Cantrips: 2/2')
+		expect(isPicked('Fire Bolt')).toBe(true)
+		expect(isPicked('Magic Missile')).toBe(true)
 	})
 
 	it('an Arcane Trickster (Rogue 3) is offered spells from the WIZARD list (not Rogue\'s own, empty, list), capped by its third-caster slot level', async () => {
@@ -636,12 +688,12 @@ describe('CharacterWizard — spells step', () => {
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 		await goNext(user)
 
-		expect(await screen.findByText('0 of 2 cantrips chosen.')).toBeTruthy()
-		expect(screen.getByText('0 of 3 spells known chosen.')).toBeTruthy()
-		expect(screen.getByLabelText(/Fire Bolt/)).toBeTruthy()
-		expect(screen.getByLabelText(/Magic Missile/)).toBeTruthy()
-		expect(screen.queryByLabelText(/Misty Step/)).toBeNull()
-		expect(screen.queryByLabelText(/Fireball/)).toBeNull()
+		expect(await screen.findByText('Cantrips: 0/2')).toBeTruthy()
+		expect(screen.getByText('Prepared: 0/3')).toBeTruthy()
+		expect(offerButton('Fire Bolt')).toBeTruthy()
+		expect(offerButton('Magic Missile')).toBeTruthy()
+		expect(queryOfferButton('Misty Step')).toBeNull()
+		expect(queryOfferButton('Fireball')).toBeNull()
 	})
 
 	it("a Divine Soul Sorcerer's picker offers the Sorcerer list UNIONED with the Cleric list (D46 expanded pool-widening), counts stay Sorcerer's own, a spell on both lists appears once, and a chosen Cleric spell persists and renders on the sheet", async () => {
@@ -669,28 +721,28 @@ describe('CharacterWizard — spells step', () => {
 		await goNext(user)
 
 		// Counts are Sorcerer's own (spellCountData above), unaffected by the widened pool.
-		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
-		expect(screen.getByText('0 of 3 spells known chosen.')).toBeTruthy()
+		expect(await screen.findByText('Cantrips: 0/3')).toBeTruthy()
+		expect(screen.getByText('Prepared: 0/3')).toBeTruthy()
 
 		// Sorcerer's own list is offered...
-		expect(screen.getByLabelText(/Fire Bolt/)).toBeTruthy()
-		expect(screen.getByLabelText(/Prestidigitation/)).toBeTruthy()
-		expect(screen.getByLabelText(/Magic Missile/)).toBeTruthy()
+		expect(offerButton('Fire Bolt')).toBeTruthy()
+		expect(offerButton('Prestidigitation')).toBeTruthy()
+		expect(offerButton('Magic Missile')).toBeTruthy()
 		// ...and the Cleric addition from `expanded` is offered too, including a Cleric-only healing spell.
-		expect(screen.getByLabelText(/Guidance/)).toBeTruthy()
-		expect(screen.getByLabelText(/Cure Wounds/)).toBeTruthy()
+		expect(offerButton('Guidance')).toBeTruthy()
+		expect(offerButton('Cure Wounds')).toBeTruthy()
 		// Shield is on BOTH lists — it must appear exactly once, not twice.
-		expect(screen.getAllByLabelText(/^Shield/)).toHaveLength(1)
+		expect(screen.getAllByRole('button', { name: 'Prepare Shield' })).toHaveLength(1)
 
-		await user.click(screen.getByLabelText(/Fire Bolt/))
-		await user.click(screen.getByLabelText(/Prestidigitation/))
-		await user.click(screen.getByLabelText(/Guidance/))
-		expect(screen.getByText('3 of 3 cantrips chosen.')).toBeTruthy()
+		await user.click(offerButton('Fire Bolt'))
+		await user.click(offerButton('Prestidigitation'))
+		await user.click(offerButton('Guidance'))
+		expect(screen.getByText('Cantrips: 3/3')).toBeTruthy()
 
-		await user.click(screen.getByLabelText(/Magic Missile/))
-		await user.click(screen.getByLabelText(/^Shield/))
-		await user.click(screen.getByLabelText(/Cure Wounds/))
-		expect(screen.getByText('3 of 3 spells known chosen.')).toBeTruthy()
+		await user.click(offerButton('Magic Missile'))
+		await user.click(offerButton('Shield'))
+		await user.click(offerButton('Cure Wounds'))
+		expect(screen.getByText('Prepared: 3/3')).toBeTruthy()
 
 		await goNext(user)
 		await passHitPointsStep(user)
@@ -700,7 +752,8 @@ describe('CharacterWizard — spells step', () => {
 		await goBack(user)
 		await goBack(user)
 
-		expect((await screen.findByLabelText(/Cure Wounds/) as HTMLInputElement).checked).toBe(true)
+		await screen.findByText('Prepared: 3/3')
+		expect(isPicked('Cure Wounds')).toBe(true)
 	})
 
 	it('a non-Divine-Soul Sorcerer (Draconic Bloodline) is offered only the Sorcerer list — no Cleric addition', async () => {
@@ -727,12 +780,12 @@ describe('CharacterWizard — spells step', () => {
 		await user.selectOptions(screen.getByLabelText('Charisma'), '8')
 		await goNext(user)
 
-		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
-		expect(screen.getByLabelText(/Fire Bolt/)).toBeTruthy()
-		expect(screen.getByLabelText(/^Shield/)).toBeTruthy()
+		expect(await screen.findByText('Cantrips: 0/3')).toBeTruthy()
+		expect(offerButton('Fire Bolt')).toBeTruthy()
+		expect(offerButton('Shield')).toBeTruthy()
 		// No Cleric addition — Guidance and Cure Wounds are not offered.
-		expect(screen.queryByLabelText(/Guidance/)).toBeNull()
-		expect(screen.queryByLabelText(/Cure Wounds/)).toBeNull()
+		expect(queryOfferButton('Guidance')).toBeNull()
+		expect(queryOfferButton('Cure Wounds')).toBeNull()
 	})
 
 	/** Warlock reaches its subclass on the class step (level >= 3), then the standard walk to the spells step. */
@@ -764,9 +817,10 @@ describe('CharacterWizard — spells step', () => {
 
 		await fillWarlockThroughSpells(user, /The Hexblade/, '5')
 
-		const heading = await screen.findByText('Always prepared from The Hexblade (free, not counted against the choices above):')
-		const list = heading.closest('.spell-picker__section--always-prepared') as HTMLElement
-		expect(within(list).getByText('Blur')).toBeTruthy()
+		const prepared = await screen.findByRole('region', { name: 'Prepared Spells' })
+		expect(await within(prepared).findByText('Blur')).toBeTruthy()
+		expect(within(prepared).getByText('Always prepared')).toBeTruthy()
+		expect(screen.queryByText(/Always prepared from/)).toBeNull()
 
 		// The rank grant only resolves because the wizard now passes the Warlock's own pact-slot table (never a second slot computation).
 		expect(vi.mocked(loadSubclassAlwaysPreparedSpells)).toHaveBeenCalledWith(
@@ -785,9 +839,8 @@ describe('CharacterWizard — spells step', () => {
 
 		await fillWarlockThroughSpells(user, /The Hexblade/, '5')
 
-		const blur = (await screen.findByLabelText(/^Blur/)) as HTMLInputElement
+		const blur = (await findOfferButton('Blur')) as HTMLButtonElement
 		expect(blur.disabled).toBe(true)
-		expect(blur.checked).toBe(false)
 		expect(screen.getByText(/already have it from The Hexblade, always prepared/)).toBeTruthy()
 	})
 
@@ -797,26 +850,20 @@ describe('CharacterWizard — spells step', () => {
 
 		await fillWarlockThroughSpells(user, /Fiend/, '5')
 
-		const heading = await screen.findByText('Always prepared from Fiend (free, not counted against the choices above):')
-		const list = heading.closest('.spell-picker__section--always-prepared') as HTMLElement
-		expect(within(list).getByText('Command')).toBeTruthy()
+		const prepared = await screen.findByRole('region', { name: 'Prepared Spells' })
+		expect(await within(prepared).findByText('Command')).toBeTruthy()
 
-		const command = (await screen.findByLabelText(/^Command/)) as HTMLInputElement
+		const command = (await findOfferButton('Command')) as HTMLButtonElement
 		expect(command.disabled).toBe(true)
 		expect(screen.getByText(/already have it from Fiend, always prepared/)).toBeTruthy()
 	})
 
-	it('a failed always-prepared load is shown, not rendered as an empty list (D43)', async () => {
+	it('a failed always-prepared load is shown as a warning that the "already have it" set is incomplete (D43)', async () => {
 		const user = userEvent.setup()
 		renderWizard()
 
 		await fillWarlockThroughSpells(user, /The Undying/, '5')
 
-		// The list's own failure message...
-		expect(await screen.findByText(/Could not load The Undying.+always-prepared spells: data\/classes\.json — HTTP 500/)).toBeTruthy()
-		// ...and the spells step warns that the D71 "already have it" set is incomplete.
-		expect(screen.getByText(/Couldn.t load everything you already have from your other choices/)).toBeTruthy()
-		// It must NOT look like the subclass simply grants nothing.
-		expect(screen.queryByText(/Always prepared from The Undying/)).toBeNull()
+		expect(await screen.findByText(/Couldn.t load everything you already have from your other choices/)).toBeTruthy()
 	})
 })

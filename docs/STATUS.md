@@ -1719,6 +1719,18 @@ Spells and SpellPicker; dedupe by name|source. Picks live in the Bard's
 R9b a–d, unit tests in classSpellPool.test.ts. No schema change (still 50).
 Next: R9c (wizard rework).
 
+R9c (D210): the wizard's Spells step renders `ClassSpellsManager` inline in
+`wizard__panel` (creation, Edit Character, level-up) instead of SpellPicker;
+wizard state (`spellChoices: SpellPick[]`, now defined in wizardState.ts) and the
+stored Character are unchanged. The manager's `onChange` hands a new pick its
+`level`. Always-prepared class/subclass spells show in Prepared Spells with the
+"Always prepared" tag; subclass choice picks read-only. Next still needs the exact
+counts (`isCompleteSpellChoices`). `SpellPicker` and `AlwaysPreparedSpellsList`
+(with tests) deleted; the wizard loads `ResolverData` for the ▸ spell text.
+SubclassSpellChoicePicker stays below the class section. E2E `wizardSpells.spec.ts`
+(Eldritch Knight 3); frhof/scc specs moved to the new buttons. No schema change
+(still 50).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

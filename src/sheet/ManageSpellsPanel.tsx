@@ -114,7 +114,8 @@ export function ClassSpellsManager({
 	alreadyKnown: readonly KnownSpell[]
 	details: SpellDetail[]
 	resolverData: ResolverData
-	onChange: (picks: SpellRef[]) => void
+	/** A newly added pick carries its level (the wizard stores it, D210); picks passed in come back untouched. */
+	onChange: (picks: (SpellRef & { level?: number })[]) => void
 }): ReactNode {
 	const listClass = spellListClassFor(className, classSource, subclassName)
 	const expandedClass = expandedSpellListClassFor(subclassName)
@@ -144,7 +145,7 @@ export function ClassSpellsManager({
 	const pickedKeys = new Set(holdings.picks.map((pick) => spellIdentityKey(pick.name, pick.source)))
 	const isPicked = (spell: SpellRef) => pickedKeys.has(spellIdentityKey(spell.name, spell.source))
 
-	const add = (spell: SpellRef) => onChange([...holdings.picks, { name: spell.name, source: spell.source }])
+	const add = (spell: ClassSpellListSpell) => onChange([...holdings.picks, { name: spell.name, source: spell.source, level: spell.level }])
 	const remove = (spell: SpellRef) => onChange(holdings.picks.filter((pick) => spellIdentityKey(pick.name, pick.source) !== spellIdentityKey(spell.name, spell.source)))
 
 	const offered = filterSpellsByLevel(poolSpells, spellSlots).filter((spell) => (spell.level === 0 ? cantripCount > 0 : leveledSpellCount > 0))

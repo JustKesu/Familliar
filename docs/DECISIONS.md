@@ -3933,3 +3933,17 @@ Zdroj: zadání R9b, 28. 9. 2026. Navazuje na D46, D208.
    schématu.
 4. Kantripy se nenabízejí. Odebrání úrovně pod 10 se neřeší: výběry z cizích
    seznamů zůstanou v `spellChoices`.
+
+## D210 — Krok Spells v průvodci používá sekci třídy z panelu Manage Spells (R9c)
+
+Zdroj: zadání R9c, 28. 9. 2026. Navazuje na D208, D209.
+
+1. Krok Spells ve všech režimech průvodce (tvorba, Edit Character, level-up)
+   vykresluje `ClassSpellsManager` přímo v panelu kroku, bez Spell Slots a Pact
+   Magic. Stav průvodce (`spellChoices: SpellPick[]`) a uložená postava se nemění.
+2. Next zůstává zablokované, dokud počty nejsou přesně splněné
+   (`isCompleteSpellChoices`); na listu stačí méně.
+3. Kouzla „always prepared" třídy a podtřídy jsou v Prepared Spells se štítkem;
+   seznamy „Always prepared from …" zanikly. Výběr podtřídy
+   (`SubclassSpellChoicePicker`) zůstává pod sekcí.
+4. `SpellPicker` a `AlwaysPreparedSpellsList` odstraněny i s testy.
