@@ -36,6 +36,7 @@ import type {
 	WeaponAttackAbility,
 	WeaponGrip,
 } from './character'
+import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import { canMigrateToCurrent } from './migrations'
 import type { StoredCharacter } from './wireFormat'
@@ -945,6 +946,19 @@ export function describePlayError(value: unknown): string | null {
 
 	const heroicInspiration = value['heroicInspiration']
 	if (heroicInspiration !== undefined && typeof heroicInspiration !== 'boolean') return 'play.heroicInspiration must be true or false'
+
+	const conditions = value['conditions']
+	if (conditions !== undefined) {
+		if (!Array.isArray(conditions)) return 'play.conditions must be an array'
+		const known: readonly unknown[] = CONDITION_NAMES
+		if (conditions.some((name) => !known.includes(name))) return 'play.conditions must hold only known condition names (not Exhaustion)'
+		if (new Set(conditions).size !== conditions.length) return 'play.conditions must not repeat a name'
+	}
+
+	const exhaustion = value['exhaustion']
+	if (exhaustion !== undefined && (typeof exhaustion !== 'number' || !Number.isInteger(exhaustion) || exhaustion < 1 || exhaustion > MAX_EXHAUSTION)) {
+		return 'play.exhaustion must be a whole number from 1 to 6'
+	}
 	return null
 }
 
@@ -1070,6 +1084,8 @@ function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayStat
 		...(isRecord(spentHitDice) ? { spentHitDice: { ...(spentHitDice as Record<string, number>) } } : {}),
 		...(typeof concentratingOn === 'string' ? { concentratingOn } : {}),
 		...(value['heroicInspiration'] === true ? { heroicInspiration: true } : {}),
+		...(Array.isArray(value['conditions']) ? { conditions: [...(value['conditions'] as string[])] } : {}),
+		...(typeof value['exhaustion'] === 'number' ? { exhaustion: value['exhaustion'] } : {}),
 	}
 }
 

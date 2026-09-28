@@ -382,6 +382,9 @@ after shown where a category changed; unchanged categories listed too):
   data/actions.json               0 -> 18   (XPHB 18) — 15.5 KB, new category;
                                       XPHB only, D187 (see "actions.json" below)
 
+  data/conditions.json            0 -> 15  (XPHB 15) — new category, R12/D214
+                                      (see "conditions.json" below)
+
 D194 (RHW + subclass reprint dedupe), before -> after:
 
   data/feats.json               128 -> 139  (+RHW 11)
@@ -398,6 +401,18 @@ The drops are entries superseded by a newer reprint we also keep (e.g. TCE
 "Chef" superseded by its XPHB reprint) — see extract-data.js's
 `removeSuperseded()` and "Nine species names occur twice" below. `validate-data.js`
 now asserts these counts and checks that no superseded duplicate survives.
+
+### conditions.json (R12, D214)
+
+Source: `conditionsdiseases.json`, key `condition` (30 entries; the file also
+holds `disease` 29 and `status` 5, both ignored). It has 15 PHB and 15 XPHB
+entries under the same 15 names; only XPHB is kept, the PHB duplicates are
+ignored. Kept fields: `name`, `source`, `entries` (the source `page`, `srd52`
+and `basicRules2024` are dropped). `entries` is a string plus nested
+`{type:"entries", name, entries}` blocks. Markup tags present in the XPHB texts:
+`{@action}`, `{@variantrule}`, `{@status}`, `{@condition}` — all already handled
+by src/markup/tags.ts. The sheet's Exhaustion chip text "−2N d20 · −5N ft" is
+computed in code, not read from data (D214).
 
 Feature origin (2026-09-21, one-off survey): all 302 class-features records
 carry `className` and a numeric `level`; all 786 subclass-features records

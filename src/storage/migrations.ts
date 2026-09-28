@@ -455,6 +455,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 51 }),
 	},
+	{
+		from: 51,
+		to: 52,
+		/*
+		 * 52 adds Character.play.conditions and .exhaustion (R12, D214). A
+		 * version-51 character stored neither, which reads as no conditions — the
+		 * step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 52 }),
+	},
 ]
 
 /**

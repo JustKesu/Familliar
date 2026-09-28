@@ -1322,6 +1322,57 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect(() => new CharacterStore(wrongType).list()).toThrow(CorruptDataError)
 	})
 
+	/* R12 (D214): conditions and exhaustion follow the same absence convention as every play field. */
+	it('stores conditions and exhaustion, surviving a reload and other play writes, and clears them to absence', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const character = store.create({ name: 'Aria', currentHp: 20 })
+
+		store.setConditions(character.id, ['Poisoned', 'Prone'])
+		store.setExhaustion(character.id, 2)
+		store.setHitPoints(character.id, { currentHp: 12 })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ conditions: ['Poisoned', 'Prone'], exhaustion: 2 })
+
+		store.setConditions(character.id, [])
+		store.setExhaustion(character.id, 0)
+		expect('play' in new CharacterStore(backing).list()[0]).toBe(false)
+	})
+
+	it('rejects unknown, repeated and Exhaustion names, and a bad exhaustion level, on write and on load', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const { id } = store.create({ name: 'Aria', currentHp: 20 })
+		expect(() => store.setConditions(id, ['Sleepy'])).toThrow()
+		expect(() => store.setConditions(id, ['Prone', 'Prone'])).toThrow()
+		expect(() => store.setConditions(id, ['Exhaustion'])).toThrow()
+		for (const level of [-1, 7, 1.5]) expect(() => store.setExhaustion(id, level)).toThrow()
+		expect(() => store.setConditions('nope', [])).toThrow(CharacterNotFoundError)
+		expect(() => store.setExhaustion('nope', 1)).toThrow(CharacterNotFoundError)
+
+		for (const play of [{ conditions: ['Sleepy'] }, { conditions: ['Prone', 'Prone'] }, { conditions: 'Prone' }, { exhaustion: 0 }, { exhaustion: 7 }, { exhaustion: 1.5 }, { exhaustion: '2' }]) {
+			const stored = new MemoryStorage()
+			stored.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], play }]))
+			expect(() => new CharacterStore(stored).list()).toThrow(CorruptDataError)
+		}
+	})
+
+	it('lowers Exhaustion by one on a Long Rest write, drops it at 0, and leaves conditions alone', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const { id } = store.create({ name: 'Aria', currentHp: 20 })
+		store.setConditions(id, ['Poisoned'])
+		store.setExhaustion(id, 2)
+
+		store.applyRest(id, { currentHp: 20, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {}, exhaustion: 1 })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ conditions: ['Poisoned'], exhaustion: 1 })
+
+		store.applyRest(id, { currentHp: 20, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ conditions: ['Poisoned'], exhaustion: 1 })
+
+		store.applyRest(id, { currentHp: 20, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {}, exhaustion: 0 })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ conditions: ['Poisoned'] })
+	})
+
 	it('throws CharacterNotFoundError for an unknown id on a concentration write', () => {
 		expect(() => new CharacterStore(new MemoryStorage()).setConcentration('nope', 'Bless')).toThrow(CharacterNotFoundError)
 	})

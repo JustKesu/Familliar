@@ -1056,6 +1056,39 @@ function validateActions() {
 	recordCheck(`actions: every record comes from ${ACTIONS_SOURCE}`, sourceFailures);
 }
 
+const CONDITION_NAMES = [
+	"Blinded", "Charmed", "Deafened", "Exhaustion", "Frightened", "Grappled", "Incapacitated", "Invisible",
+	"Paralyzed", "Petrified", "Poisoned", "Prone", "Restrained", "Stunned", "Unconscious",
+];
+
+// R12, D214: XPHB only, the 15 rule texts the Conditions drawer shows.
+function validateConditions() {
+	console.log("\n--- conditions.json ---");
+
+	const entries = loadOutputFile("conditions.json");
+	if (!entries) return;
+
+	recordSimpleCheck(
+		`conditions: exactly ${CONDITION_NAMES.length} records`,
+		entries.length === CONDITION_NAMES.length,
+		`${entries.length} records, expected ${CONDITION_NAMES.length}`,
+	);
+
+	const names = entries.map((entry) => entry.name).sort();
+	recordSimpleCheck(
+		"conditions: the 15 known names, each once",
+		JSON.stringify(names) === JSON.stringify([...CONDITION_NAMES].sort()),
+		`got ${names.join(", ")}`,
+	);
+
+	const failures = [];
+	entries.forEach((entry, index) => {
+		if (entry.source !== "XPHB") failures.push({ label: describeEntry(entry, index), detail: `source "${entry.source}" is not XPHB` });
+		if (!Array.isArray(entry.entries) || entry.entries.length === 0) failures.push({ label: describeEntry(entry, index), detail: "entries missing or empty" });
+	});
+	recordCheck("conditions: every record is XPHB with non-empty entries", failures);
+}
+
 /* ============================================================================
  * SECTION 5b — CLASS VALIDATORS
  * ==========================================================================*/
@@ -1598,6 +1631,7 @@ function main() {
 	validateLanguages();
 	validateBeasts();
 	validateActions();
+	validateConditions();
 	validateHitPointBonusTable();
 	validateDanglingRefs();
 	// ---------------------------------------------------------------

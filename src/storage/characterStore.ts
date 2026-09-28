@@ -24,6 +24,7 @@ import type {
 	FeatAsiChoice,
 	SpentSpellSlots,
 } from './character'
+import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
 import { CURRENT_SCHEMA_VERSION } from './character'
 import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
 import {
@@ -219,6 +220,8 @@ export interface RestFields {
 	spentHitDice?: Record<string, number>
 	/** D213: a Long Rest brings the familiar back to full hit points (drops its stored current and temporary). */
 	resetFamiliarHp?: boolean
+	/** D214: a Long Rest lowers Exhaustion by 1; a Short Rest leaves it out, so the stored level rides through. */
+	exhaustion?: number
 }
 
 /**
@@ -242,6 +245,8 @@ function storedPlayState(currentHp: number | undefined, play: CharacterPlayState
 		...(Object.keys(spentHitDice).length > 0 ? { spentHitDice } : {}),
 		...(play?.concentratingOn ? { concentratingOn: play.concentratingOn } : {}),
 		...(play?.heroicInspiration ? { heroicInspiration: true } : {}),
+		...(play?.conditions && play.conditions.length > 0 ? { conditions: [...new Set(play.conditions)] } : {}),
+		...(play?.exhaustion ? { exhaustion: play.exhaustion } : {}),
 	}
 	return Object.keys(stored).length > 0 ? stored : undefined
 }
@@ -703,6 +708,37 @@ export class CharacterStore {
 		this.writeAll(updated)
 	}
 
+	/** Replaces the active conditions other than Exhaustion (R12, D214). Only known names, no repeats; an empty list clears the field. */
+	setConditions(id: string, conditions: string[]): void {
+		const known: readonly string[] = CONDITION_NAMES
+		if (conditions.some((name) => !known.includes(name)) || new Set(conditions).size !== conditions.length) {
+			throw new Error(`Invalid conditions: ${conditions.join(', ')}`)
+		}
+		this.writePlay(id, { conditions })
+	}
+
+	/** Sets the Exhaustion level (R12, D214): a whole number 0–6, 0 clears the field. */
+	setExhaustion(id: string, exhaustion: number): void {
+		if (!Number.isInteger(exhaustion) || exhaustion < 0 || exhaustion > MAX_EXHAUSTION) throw new Error(`Invalid Exhaustion level: ${exhaustion}`)
+		this.writePlay(id, { exhaustion })
+	}
+
+	private writePlay(id: string, change: Partial<CharacterPlayState>): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { currentHp, play, ...rest } = characters[index]
+		const storedPlay = storedPlayState(currentHp, { ...play, ...change })
+		const updated = [...characters]
+		updated[index] = {
+			...rest,
+			...(currentHp !== undefined ? { currentHp } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
+		}
+		this.writeAll(updated)
+	}
+
 	/**
 	 * Applies a finished rest (slice 9b5) — the first writer of `spentHitDice`, and
 	 * the only one that replaces all four spent piles together. Temporary hit points
@@ -720,6 +756,7 @@ export class CharacterStore {
 			resourceUses: rest.resourceUses,
 			spentSpellSlots: rest.spentSpellSlots,
 			spentHitDice: rest.spentHitDice,
+			...(rest.exhaustion !== undefined ? { exhaustion: rest.exhaustion } : {}),
 		})
 		const updated = [...characters]
 		updated[index] = {

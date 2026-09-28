@@ -425,6 +425,14 @@ export interface CharacterPlayState {
 	 * convention every field above uses.
 	 */
 	heroicInspiration?: boolean
+	/**
+	 * Active conditions except Exhaustion (R12, D214) — names from CONDITION_NAMES,
+	 * no duplicates, in the order they were turned on. Play tracking only: nothing
+	 * is recalculated from them. Empty is stored as absence.
+	 */
+	conditions?: string[]
+	/** Exhaustion level, an integer 1–6 (R12, D214); 0 is stored as absence. */
+	exhaustion?: number
 }
 
 /**
@@ -955,7 +963,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 51 for CharacterFamiliar.currentHp and
+ * (see wireFormat.ts). Bumped to 52 for Character.play.conditions and
+ * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
  * .temporaryHitPoints (D213); 50 for CharacterBackground.originFeatOverride
  * (D205); 49 for the RHW/FRHoF subclass `grantedBy`
  * values (D203); 48 for Character.subclassSkills and the
@@ -976,4 +985,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 51
+export const CURRENT_SCHEMA_VERSION = 52

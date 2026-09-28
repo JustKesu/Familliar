@@ -889,6 +889,58 @@ button:disabled {
   white-space: nowrap;
 }
 
+.sheet__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sheet__chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.sheet__chip-name,
+.sheet__chip-remove {
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+}
+
+.sheet__chip-name {
+  padding-left: 10px;
+}
+
+.sheet__chip-remove {
+  padding-right: 8px;
+}
+
+.conditions__stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.conditions__step {
+  min-width: 0;
+  padding: 4px 10px;
+}
+
+.conditions__level {
+  min-width: 1.5em;
+  text-align: center;
+  font-weight: 700;
+}
+
 .sheet__body {
   flex: 1;
   min-height: 0;

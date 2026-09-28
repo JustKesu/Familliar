@@ -1605,6 +1605,32 @@ function extractLanguages() {
 }
 
 /*
+ * CONDITIONS (R12, D214)
+ *
+ * The sheet's Conditions drawer shows the 15 XPHB rule texts. The PHB
+ * duplicates in the same file and the diseases/statuses are ignored (DATA.md).
+ */
+
+const CONDITIONS_SOURCE = "XPHB";
+
+function extractConditions() {
+	console.log("\n--- CONDITIONS ---");
+
+	const rawConditions = readJson(path.join(SOURCE_DATA_DIR, "conditionsdiseases.json")).condition;
+	const kept = rawConditions
+		.filter((condition) => condition.source === CONDITIONS_SOURCE)
+		.map(({ name, source, entries }) => ({ name, source, entries }));
+
+	console.log(`Loaded before filtering:      ${rawConditions.length}`);
+	console.log(`Passed the source filter:     ${kept.length} (source ${CONDITIONS_SOURCE})`);
+
+	const outputFile = path.join(OUTPUT_DIR, "conditions.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
+
+	return [];
+}
+
+/*
  * ACTIONS (D187)
  *
  * The sheet's "Actions in Combat" lines. XPHB only, its own constant like
@@ -2530,6 +2556,7 @@ function main() {
 	allWarnings.push(...extractItems());
 	allWarnings.push(...extractLanguages());
 	allWarnings.push(...extractActions());
+	allWarnings.push(...extractConditions());
 	allWarnings.push(...extractBeasts());
 	// ---------------------------------------------------------------
 

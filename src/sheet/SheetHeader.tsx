@@ -117,6 +117,7 @@ export function SheetHeader({
 	identity,
 	abilities,
 	defenses,
+	conditions,
 }: {
 	/** R4b (D166): a card label opens that card's breakdown in the drawer. Absent leaves the labels plain text. */
 	onOpenBreakdown?: (stat: StatCard) => void
@@ -130,6 +131,8 @@ export function SheetHeader({
 	abilities?: ReactNode
 	/** R4c: the Defenses card of the status row. */
 	defenses?: ReactNode
+	/** R12 (D214): the Conditions card of the status row (Conditions.tsx). */
+	conditions?: ReactNode
 	/** R4c: the HP card closing the number strip (HitPointsCard). */
 	hitPoints?: ReactNode
 	armourClass: Calculated<ArmourClassValue>
@@ -262,13 +265,7 @@ export function SheetHeader({
 		<div className="sheet__status-row">
 			{defenses}
 
-			{/* R4c: a placeholder until conditions exist — no state, no stored field (rework R12). */}
-			<section className="sheet__status-card sheet__status-conditions">
-				<h2>Conditions</h2>
-				<button type="button" className="sheet__add-condition" disabled title="Coming later">
-					+ Add condition
-				</button>
-			</section>
+			{conditions}
 
 			<section className="sheet__status-card sheet__concentration">
 				<h2>Concentration</h2>

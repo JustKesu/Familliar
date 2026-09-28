@@ -226,6 +226,16 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setHeroicInspiration(id, on))
 	}
 
+	function handleEditConditions(id: string, conditions: string[]): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setConditions(id, conditions))
+	}
+
+	function handleEditExhaustion(id: string, level: number): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setExhaustion(id, level))
+	}
+
 	function handleEditLanguages(id: string, languages: CharacterLanguage[]): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setLanguages(id, languages))
@@ -382,6 +392,8 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onEditSpentHitDice={(spentHitDice) => handleEditSpentHitDice(character.id, spentHitDice)}
 					onEditConcentration={(spellName) => handleEditConcentration(character.id, spellName)}
 					onEditHeroicInspiration={(on) => handleEditHeroicInspiration(character.id, on)}
+						onEditConditions={(conditions) => handleEditConditions(character.id, conditions)}
+						onEditExhaustion={(level) => handleEditExhaustion(character.id, level)}
 					onEditLanguages={(languages) => handleEditLanguages(character.id, languages)}
 					onEditToolChoices={(toolChoices) => handleEditToolChoices(character.id, toolChoices)}
 					onEditSpellChoices={(spellChoices) => handleEditSpellChoices(character.id, spellChoices)}

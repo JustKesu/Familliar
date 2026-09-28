@@ -145,6 +145,8 @@ import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calcula
 import { ArmourClassNotes, FireIcon, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
 import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
+import { ConditionRuleText, ConditionsCard, ConditionsPanel } from './Conditions'
+import { loadConditionRules, type ConditionRule } from '../conditions/conditions'
 import { ClassSpellsManager } from './ManageSpellsPanel'
 import { InventoryTab } from './InventoryTab'
 import { ExtrasTab } from './ExtrasTab'
@@ -254,6 +256,8 @@ type DrawerContent =
 	| { kind: 'hitPoints' }
 	| { kind: 'shortRest' }
 	| { kind: 'defenses' }
+	| { kind: 'conditions' }
+	| { kind: 'condition'; name: string }
 	| { kind: 'action'; key: string }
 	| { kind: 'attacksPerAction' }
 	| { kind: 'spellcasting'; key: string; part: 'attack' | 'dc' }
@@ -1540,6 +1544,8 @@ function CharacterSheetBody({
 	onEditSpentHitDice,
 	onEditConcentration,
 	onEditHeroicInspiration,
+	onEditConditions,
+	onEditExhaustion,
 	onEditLanguages,
 	onEditToolChoices,
 	onEditSpellChoices,
@@ -1568,6 +1574,10 @@ function CharacterSheetBody({
 	onEditConcentration?: (spellName: string | null) => void
 	/** Turns Heroic Inspiration on or off (R4b, D167). Absent leaves the checkbox showing the stored state, disabled. */
 	onEditHeroicInspiration?: (on: boolean) => void
+	/** Replaces the active conditions other than Exhaustion (R12, D214). Absent leaves the Conditions card read-only. */
+	onEditConditions?: (conditions: string[]) => void
+	/** Sets the Exhaustion level 0–6 (R12, D214). Absent leaves the level read-only. */
+	onEditExhaustion?: (level: number) => void
 	/** Replaces the known languages — the Proficiencies drawer's class-feature picks (D172). Absent leaves the drawer without the selects. */
 	onEditLanguages?: (languages: CharacterLanguage[]) => void
 	onEditToolChoices?: (toolChoices: CharacterToolChoice[]) => void
@@ -1627,6 +1637,7 @@ function CharacterSheetBody({
 	/** Shared `{#itemEntry}` description templates. Starts empty rather than null: an item description is inside a collapsed <details>, and until this resolves an unresolved reference just shows the D43 note (itemEntryResolver.ts) — it is never a blocking dependency. */
 	const [itemEntryTemplates, setItemEntryTemplates] = useState<ItemEntryTemplate[]>([])
 	const [combatActions, setCombatActions] = useState<CombatAction[]>([])
+	const [conditionRules, setConditionRules] = useState<ConditionRule[] | null>(null)
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
@@ -1772,6 +1783,19 @@ function CharacterSheetBody({
 		loadCombatActions()
 			.then((actions) => {
 				if (!cancelled) setCombatActions(actions)
+			})
+			.catch(() => {})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		// Best-effort: without the file the drawers open with "Loading…" where the rule text would be.
+		loadConditionRules()
+			.then((rules) => {
+				if (!cancelled) setConditionRules(rules)
 			})
 			.catch(() => {})
 		return () => {
@@ -2587,6 +2611,18 @@ function CharacterSheetBody({
 						onOpen={() => setDrawer({ kind: 'defenses' })}
 					/>
 				}
+				conditions={
+					<ConditionsCard
+						conditions={character.play?.conditions ?? []}
+						exhaustion={character.play?.exhaustion ?? 0}
+						onAdd={() => setDrawer({ kind: 'conditions' })}
+						onOpen={(name) => setDrawer({ kind: 'condition', name })}
+						onRemoveCondition={
+							onEditConditions ? (name) => onEditConditions((character.play?.conditions ?? []).filter((active) => active !== name)) : undefined
+						}
+						onClearExhaustion={onEditExhaustion ? () => onEditExhaustion(0) : undefined}
+					/>
+				}
 			/>
 
 			<div className="sheet__body">
@@ -3039,6 +3075,24 @@ function CharacterSheetBody({
 						loading={itemRefs === null || damageResponseData === null}
 						dataError={damageResponseDataError}
 					/>
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'conditions' && (
+				<Drawer title="Conditions" onClose={() => setDrawer(null)}>
+					<ConditionsPanel
+						rules={conditionRules}
+						conditions={character.play?.conditions ?? []}
+						exhaustion={character.play?.exhaustion ?? 0}
+						onEditConditions={onEditConditions}
+						onEditExhaustion={onEditExhaustion}
+					/>
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'condition' && (
+				<Drawer title={drawer.name} onClose={() => setDrawer(null)}>
+					<ConditionRuleText rules={conditionRules} name={drawer.name} />
 				</Drawer>
 			)}
 

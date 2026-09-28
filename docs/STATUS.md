@@ -1779,8 +1779,19 @@ max" button (+ "+N temp"), max = stat block average (`familiarHitPoints` in
 (`FamiliarHitPointsPanel.tsx`: Heal/Damage/Temp on one amount input, Resummon,
 "disappears" text at 0 HP). Manage Extras is also offered when a familiar or
 Wild Shape form is stored but its category is no longer available (Current Extras
-only). E2E `manageExtras.spec.ts` R11b a–g. Next: R12 (Heroic Inspiration,
-Defenses, Conditions).
+only). E2E `manageExtras.spec.ts` R11b a–g.
+
+R12 (D214) done — Conditions only (Heroic Inspiration D167 and Defenses R4c were
+already in). New `data/conditions.json` (15 XPHB, `extractConditions`, checked in
+`validate-data`). Schema 52 (51→52 tag only): `play.conditions` (14 names, no
+Exhaustion) and `play.exhaustion` (1–6), `characterStore.setConditions` /
+`setExhaustion` (wired as `onEditConditions` / `onEditExhaustion`);
+`afterLongRest` returns `exhaustion − 1` via `RestFields.exhaustion`, a Short Rest
+omits it. `src/conditions/conditions.ts` (names, loader, penalty text) and
+`src/sheet/Conditions.tsx` (status-row `ConditionsCard` with chips, drawer kinds
+`conditions` and `condition`); the disabled placeholder in `SheetHeader` is
+replaced by a `conditions` slot. Nothing is recalculated. E2E `conditions.spec.ts`
+a–h. Next: R13 Manage Feats.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

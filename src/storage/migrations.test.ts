@@ -558,7 +558,16 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 50, id: '1', name: 'Aria', classes: [], familiar: { name: 'Imp', source: 'XMM' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: 51 })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
+	/* D214: an older character has no conditions or exhaustion, which reads as none — the step only tags. */
+	it('tags a version-51 character and adds no conditions or exhaustion', () => {
+		const before = { schemaVersion: 51, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: 52 })
+		expect(CURRENT_SCHEMA_VERSION).toBe(52)
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

@@ -79,4 +79,18 @@ describe('a Long Rest (slice 9b5)', () => {
 		expect(afterLongRest(11, PLAY, 44)).not.toHaveProperty('temporaryHitPoints')
 		expect(afterShortRest(11, PLAY, RESOURCES, 'all')).not.toHaveProperty('temporaryHitPoints')
 	})
+
+	/* D214: 2024 rules — a Long Rest removes one level of Exhaustion; a Short Rest and other conditions are untouched. */
+	it('lowers Exhaustion by one, to 0 (stored as absence) at the floor', () => {
+		expect(afterLongRest(11, { ...PLAY, exhaustion: 3 }, 44).exhaustion).toBe(2)
+		expect(afterLongRest(11, { ...PLAY, exhaustion: 1 }, 44).exhaustion).toBe(0)
+		expect(afterLongRest(11, PLAY, 44).exhaustion).toBe(0)
+	})
+
+	it('leaves Exhaustion and conditions to the stored play on a Short Rest, and never reports conditions', () => {
+		const play = { ...PLAY, exhaustion: 3, conditions: ['Poisoned'] }
+		expect(afterShortRest(11, play, RESOURCES, 'all')).not.toHaveProperty('exhaustion')
+		expect(afterShortRest(11, play, RESOURCES, 'all')).not.toHaveProperty('conditions')
+		expect(afterLongRest(11, play, 44)).not.toHaveProperty('conditions')
+	})
 })

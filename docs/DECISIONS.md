@@ -4020,3 +4020,7 @@ Zdroj: zadání R11b, 28. 9. 2026. Navazuje na D9, D43, D55, D110, D116, D212.
    postava uloženého familiara nebo formu Wild Shape, ale kategorie už není
    dostupná (postava ztratila kouzlo/třídu); panel pak ukáže jen Current Extras
    s DELETE, bez sekce Add an Extra.
+
+## D214 — Conditions (R12)
+
+Conditions (R12): texty stavů z 5etools XPHB (data/conditions.json). Uloženo v play.conditions + play.exhaustion (1–6). Long Rest sníží Exhaustion o 1 (pravidla 2024). Nic se nepřepočítává: postih Exhaustion (−2 d20 a −5 ft za úroveň) jen jako text ve štítku; Exhaustion 6 ani 0 HP nic automaticky nedělají — jen text pravidla. Rozhodl Daniel 28. 9.

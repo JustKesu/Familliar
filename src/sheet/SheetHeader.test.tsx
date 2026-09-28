@@ -137,6 +137,7 @@ describe('SheetHeader layout blocks', () => {
 			abilities: <ul className="test-abilities" />,
 			hitPoints: <section className="test-hit-points" />,
 			defenses: <section className="test-defenses" />,
+			conditions: <section className="test-conditions" />,
 			concentratingOn: 'Bless',
 			onDropConcentration: vi.fn(),
 		})
@@ -160,7 +161,7 @@ describe('SheetHeader layout blocks', () => {
 
 		expect([...status.children].map((child) => child.className)).toEqual([
 			'test-defenses',
-			'sheet__status-card sheet__status-conditions',
+			'test-conditions',
 			'sheet__status-card sheet__concentration',
 		])
 		expect(status.querySelector('.sheet__concentration')!.textContent).toContain('Bless')
@@ -181,13 +182,6 @@ describe('SheetHeader layout blocks', () => {
 
 /* R4c: the status row. */
 describe('SheetHeader status row', () => {
-	it('shows Conditions as a disabled placeholder', () => {
-		renderHeader()
-		const add = screen.getByRole('button', { name: '+ Add condition' }) as HTMLButtonElement
-		expect(add.disabled).toBe(true)
-		expect(add.title).toBe('Coming later')
-	})
-
 	it('shows "—" for no concentration, and the spell with a drop control otherwise', () => {
 		const { container, rerender } = renderHeader({ onDropConcentration: vi.fn() })
 		expect(container.querySelector('.sheet__concentration .sheet__status-text')!.textContent).toBe('—')
