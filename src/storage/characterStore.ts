@@ -217,6 +217,8 @@ export interface RestFields {
 	resourceUses?: Record<string, number>
 	spentSpellSlots?: SpentSpellSlots
 	spentHitDice?: Record<string, number>
+	/** D213: a Long Rest brings the familiar back to full hit points (drops its stored current and temporary). */
+	resetFamiliarHp?: boolean
 }
 
 /**
@@ -432,7 +434,33 @@ export class CharacterStore {
 
 		const { familiar: _previous, ...rest } = characters[index]
 		const updated = [...characters]
-		updated[index] = familiar ? { ...rest, familiar } : rest
+		// D213: a new form always starts at full hit points, so whatever hit points the caller's object carries are not kept.
+		updated[index] = familiar ? { ...rest, familiar: { name: familiar.name, source: familiar.source } } : rest
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Sets the familiar's own hit points (D213). Absent current is full; temporary 0
+	 * is none — both are stored as absence. Does nothing when there is no familiar.
+	 */
+	setFamiliarHitPoints(id: string, hitPoints: { currentHp?: number; temporaryHitPoints?: number }): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { familiar } = characters[index]
+		if (!familiar) return
+		const { currentHp, temporaryHitPoints } = hitPoints
+		const updated = [...characters]
+		updated[index] = {
+			...characters[index],
+			familiar: {
+				name: familiar.name,
+				source: familiar.source,
+				...(currentHp !== undefined ? { currentHp } : {}),
+				...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
+			},
+		}
 		this.writeAll(updated)
 	}
 
@@ -686,7 +714,7 @@ export class CharacterStore {
 		const index = characters.findIndex((character) => character.id === id)
 		if (index === -1) throw new CharacterNotFoundError(id)
 
-		const { currentHp: _currentHp, play, ...unchanged } = characters[index]
+		const { currentHp: _currentHp, play, familiar, ...unchanged } = characters[index]
 		const storedPlay = storedPlayState(rest.currentHp, {
 			...play,
 			resourceUses: rest.resourceUses,
@@ -696,6 +724,7 @@ export class CharacterStore {
 		const updated = [...characters]
 		updated[index] = {
 			...unchanged,
+			...(familiar ? { familiar: rest.resetFamiliarHp ? { name: familiar.name, source: familiar.source } : familiar } : {}),
 			...(rest.currentHp !== undefined ? { currentHp: rest.currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}

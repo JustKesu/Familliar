@@ -148,6 +148,8 @@ import { Drawer, DrawerSection } from './Drawer'
 import { ClassSpellsManager } from './ManageSpellsPanel'
 import { InventoryTab } from './InventoryTab'
 import { ExtrasTab } from './ExtrasTab'
+import { FamiliarHitPointsPanel, type FamiliarHitPointFields } from './FamiliarHitPointsPanel'
+import { extraRows } from './extrasData'
 import { ManageExtrasPanel } from './ManageExtrasPanel'
 import { ManageInventoryPanel } from './ManageInventoryPanel'
 import { withClassPicks } from './manageSpellsData'
@@ -259,6 +261,7 @@ type DrawerContent =
 	| { kind: 'manageSpells' }
 	| { kind: 'manageInventory' }
 	| { kind: 'manageExtras' }
+	| { kind: 'familiarHitPoints' }
 	| { kind: 'beast'; beast: Beast }
 
 const PROFICIENCY_ROWS: [ProficiencyCategory, string][] = [
@@ -1527,6 +1530,7 @@ export function CharacterSheet(props: ComponentProps<typeof CharacterSheetBody>)
 function CharacterSheetBody({
 	character,
 	onChooseFamiliar,
+	onEditFamiliarHitPoints,
 	onEditWildShapeForms,
 	onEditInventory,
 	onEditCurrency,
@@ -1547,6 +1551,8 @@ function CharacterSheetBody({
 }: {
 	character: Character
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
+	/** The familiar's own hit points from its Extras drawer (R11b, D213). Absent leaves the numbers without controls. */
+	onEditFamiliarHitPoints?: (hitPoints: FamiliarHitPointFields) => void
 	/** Replaces the known Wild Shape forms from the Manage Extras drawer (R11a, D212). Absent leaves Wild Shape out of the drawer. */
 	onEditWildShapeForms?: (forms: CharacterWildShapeForms[]) => void
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
@@ -2424,8 +2430,12 @@ function CharacterSheetBody({
 	const familiarForms = knowsFindFamiliar ? familiarFormOptions(beasts, hasPactOfTheChain(character.optionalFeatureChoices ?? [])) : []
 	/* beasts.json starts as [] and is never empty once loaded, so this is "fetch in flight". */
 	const beastsLoading = needsBeasts && beasts.length === 0 && beastsError === null
+	const familiarExtra = extraRows({ familiar: character.familiar ?? null, familiarForms, wildShapeForms: [], beasts, pending: beastsLoading || beastsError !== null })[0]
 	// The Manage Extras button needs a category the character has AND the callback that edits it.
-	const canManageExtras = (knowsFindFamiliar && onChooseFamiliar !== undefined) || (wildShapeAccess !== null && onEditWildShapeForms !== undefined)
+	// R11b (D213): stored extras keep the button too, so a familiar or Wild Shape form left behind by a lost spell/class can still be deleted.
+	const canManageExtras =
+		(onChooseFamiliar !== undefined && (knowsFindFamiliar || character.familiar !== undefined)) ||
+		(onEditWildShapeForms !== undefined && (wildShapeAccess !== null || storedWildShapeForms.some((entry) => entry.forms.length > 0)))
 	// Darkvision grants are folded into the traits row above, not shown again here.
 	const combinedSenses = combineSenseEntries(grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'))
 
@@ -2922,6 +2932,7 @@ function CharacterSheetBody({
 				beastsLoading={beastsLoading}
 				onOpenBeast={(beast) => setDrawer({ kind: 'beast', beast })}
 				onManageExtras={canManageExtras ? () => setDrawer({ kind: 'manageExtras' }) : undefined}
+				onOpenFamiliarHitPoints={() => setDrawer({ kind: 'familiarHitPoints' })}
 			/>
 			</div>
 
@@ -3189,6 +3200,16 @@ function CharacterSheetBody({
 						beastsLoading={beastsLoading}
 						onChooseFamiliar={onChooseFamiliar}
 						onEditWildShapeForms={onEditWildShapeForms}
+					/>
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'familiarHitPoints' && character.familiar && (
+				<Drawer title={`${character.familiar.name} — Hit Points`} onClose={() => setDrawer(null)}>
+					<FamiliarHitPointsPanel
+						hitPoints={familiarExtra?.hitPoints ?? null}
+						unresolved={familiarExtra?.problem ?? "The familiar's stat block is not available."}
+						onEdit={onEditFamiliarHitPoints}
 					/>
 				</Drawer>
 			)}

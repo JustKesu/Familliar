@@ -70,9 +70,37 @@ describe('ExtrasTab', () => {
 		expect(rows(container)).toHaveLength(2)
 		expect(rows(container)[0].textContent).toContain('Owl')
 		expect(rows(container)[0].textContent).toContain('Tiny Beast')
-		expect(cells(rows(container)[0])).toEqual(['11', '1', '5 ft., fly 60 ft.'])
+		expect(cells(rows(container)[0])).toEqual(['11', '1 / 1', '5 ft., fly 60 ft.'])
 		expect(rows(container)[0].querySelector('.extras-tab__notes')!.textContent).toBe('CR 0, Darkvision 120 ft.')
 		expect(rows(container)[1].textContent).toContain('Wolf')
+	})
+
+	it('D213: the familiar HIT POINTS cell is a "current / max" button, with "+N temp" beside it only while temp exists', async () => {
+		const user = userEvent.setup()
+		const onOpenFamiliarHitPoints = vi.fn()
+		const { container } = tab({ familiar: { name: 'Imp', source: 'XMM', currentHp: 16 }, onOpenFamiliarHitPoints })
+		const button = screen.getByRole('button', { name: 'Imp hit points' })
+		expect(button.textContent).toBe('16 / 21')
+		expect(container.querySelector('.extras-tab__temp')).toBeNull()
+		await user.click(button)
+		expect(onOpenFamiliarHitPoints).toHaveBeenCalledTimes(1)
+
+		cleanup()
+		const withTemp = tab({ familiar: { name: 'Imp', source: 'XMM', temporaryHitPoints: 4 }, onOpenFamiliarHitPoints })
+		expect(screen.getByRole('button', { name: 'Imp hit points' }).textContent).toBe('21 / 21')
+		expect(withTemp.container.querySelector('.extras-tab__temp')!.textContent).toBe('+4 temp')
+	})
+
+	it('D213/D43: no button and no invented number when the familiar has no resolvable stat block or only an HP formula', () => {
+		const illegal = tab({ familiar: { name: 'Wolf', source: 'XMM', currentHp: 3 }, onOpenFamiliarHitPoints: vi.fn() })
+		expect(screen.queryByRole('button', { name: 'Wolf hit points' })).toBeNull()
+		expect(cells(rows(illegal.container)[0])[1]).toBe('—')
+
+		cleanup()
+		const formula = beast({ name: 'Owl', hp: { formula: '2d6' } })
+		const noAverage = tab({ familiar: { name: 'Owl', source: 'XMM' }, familiarForms: [{ beast: formula, origin: 'spell' }], onOpenFamiliarHitPoints: vi.fn() })
+		expect(screen.queryByRole('button', { name: 'Owl hit points' })).toBeNull()
+		expect(cells(rows(noAverage.container)[0])[1]).toBe('2d6')
 	})
 
 	it('shows "Uses your HP" for a Wild Shape form, not the beast\'s own number (2024)', () => {

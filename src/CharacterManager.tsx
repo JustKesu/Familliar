@@ -176,6 +176,11 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setFamiliar(id, familiar))
 	}
 
+	function handleEditFamiliarHitPoints(id: string, hitPoints: { currentHp?: number; temporaryHitPoints?: number }): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setFamiliarHitPoints(id, hitPoints))
+	}
+
 	function handleEditWildShapeForms(id: string, wildShapeForms: CharacterWildShapeForms[]): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setWildShapeForms(id, wildShapeForms))
@@ -367,6 +372,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 				<CharacterSheet
 					character={character}
 					onChooseFamiliar={(familiar) => handleChooseFamiliar(character.id, familiar)}
+					onEditFamiliarHitPoints={(hitPoints) => handleEditFamiliarHitPoints(character.id, hitPoints)}
 					onEditWildShapeForms={(forms) => handleEditWildShapeForms(character.id, forms)}
 					onEditInventory={(inventory) => handleEditInventory(character.id, inventory)}
 					onEditCurrency={(copper) => handleEditCurrency(character.id, copper)}

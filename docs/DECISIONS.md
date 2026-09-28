@@ -3988,3 +3988,35 @@ D211.
    nabízí formy). Initiative ve stat blocku = Dex modifikátor plus proficiency
    bonus podle CR u tvorů s `initiative: { proficiency: 1 }` (DATA.md).
 7. Hledání a filtry v tabu i v panelu jsou stav komponenty (D116).
+
+## D213 — Životy familiara a Manage Extras pro uložené extras (R11b)
+
+Zdroj: zadání R11b, 28. 9. 2026. Navazuje na D9, D43, D55, D110, D116, D212.
+
+1. Familiar má VLASTNÍ životy, oddělené od postavy: maximum = průměrné HP jeho
+   stat blocku (`beastAverageHp`), žádné pole pro ruční přepsání (D9/D55). Formy
+   Wild Shape dál říkají „Uses your HP".
+2. Uloženo na `CharacterFamiliar`: `currentHp` a `temporaryHitPoints` (nezáporná
+   celá čísla, schéma 51, migrace jen tag). Chybějící `currentHp` = plné životy,
+   chybějící/0 `temporaryHitPoints` = žádné.
+3. Poškození, léčení a dočasné životy používají stejná pravidla jako postava
+   (`applyDamage`, `applyHealing`, `grantTemporaryHitPoints`, D110): poškození bere
+   nejdřív dočasné, léčení nepřekročí maximum, dočasné se nesčítají. Death saves
+   familiar nemá.
+4. Na 0 HP se familiar podle pravidel ztratí — appka jen ukáže text „At 0 HP the
+   familiar disappears. Resummon it when you cast Find Familiar again." a
+   familiara sama nemaže.
+5. Plné životy (dočasné vymazány): Long Rest, ADD/REPLACE formy v Manage Extras
+   (nová forma vždy začíná čerstvá — `setFamiliar` obě pole zahodí), tlačítko
+   RESUMMON. Short Rest nic nemění.
+6. Nelze-li stat block familiara určit (načítání, chyba načtení, uložená forma
+   není legální), životy nejdou upravit a ukáže se `UnresolvedValue` (D43: neznámé
+   se nečte jako 0).
+7. UI: buňka HIT POINTS familiara v Extras je tlačítko „current / max" (+ „+N temp"
+   šedě, dokud dočasné životy existují); otevře drawer „<jméno> — Hit Points"
+   s panelem Heal / částka / Damage / Temp, RESUMMON a nápovědou. Částka je
+   lokální stav, postava se zapisuje jen kliknutím na tlačítko (D116).
+8. Opravená mezera z D212: tlačítko MANAGE EXTRAS se zobrazí i tehdy, když má
+   postava uloženého familiara nebo formu Wild Shape, ale kategorie už není
+   dostupná (postava ztratila kouzlo/třídu); panel pak ukáže jen Current Extras
+   s DELETE, bez sekce Add an Extra.

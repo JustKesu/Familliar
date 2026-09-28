@@ -492,6 +492,60 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		expect(() => store.setFamiliar('nope', { name: 'Owl', source: 'XMM' })).toThrow(CharacterNotFoundError)
 	})
 
+	it('stores the familiar\'s own hit points, and writes "full" and "no temp" as absence (D213)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create({ name: 'Conjurer' })
+		store.setFamiliar(character.id, { name: 'Imp', source: 'XMM' })
+
+		store.setFamiliarHitPoints(character.id, { currentHp: 16, temporaryHitPoints: 4 })
+		expect(store.list()[0].familiar).toEqual({ name: 'Imp', source: 'XMM', currentHp: 16, temporaryHitPoints: 4 })
+
+		store.setFamiliarHitPoints(character.id, { currentHp: 0, temporaryHitPoints: 0 })
+		expect(store.list()[0].familiar).toEqual({ name: 'Imp', source: 'XMM', currentHp: 0 })
+
+		store.setFamiliarHitPoints(character.id, {})
+		expect(store.list()[0].familiar).toEqual({ name: 'Imp', source: 'XMM' })
+	})
+
+	it('does nothing for the familiar\'s hit points when there is no familiar, and throws for an unknown id', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create({ name: 'Conjurer' })
+		store.setFamiliarHitPoints(character.id, { currentHp: 5 })
+		expect(store.list()[0].familiar).toBeUndefined()
+		expect(() => store.setFamiliarHitPoints('nope', { currentHp: 5 })).toThrow(CharacterNotFoundError)
+	})
+
+	it('a new form always starts at full hit points, even when the caller passes the old ones along (D213)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create({ name: 'Conjurer' })
+		store.setFamiliar(character.id, { name: 'Imp', source: 'XMM' })
+		store.setFamiliarHitPoints(character.id, { currentHp: 3, temporaryHitPoints: 2 })
+
+		store.setFamiliar(character.id, { name: 'Owl', source: 'XMM', currentHp: 3, temporaryHitPoints: 2 })
+		expect(store.list()[0].familiar).toEqual({ name: 'Owl', source: 'XMM' })
+	})
+
+	it('a Long Rest (resetFamiliarHp) drops the familiar\'s hit points; a rest without it leaves them (D213)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create({ name: 'Conjurer' })
+		store.setFamiliar(character.id, { name: 'Imp', source: 'XMM' })
+		store.setFamiliarHitPoints(character.id, { currentHp: 3, temporaryHitPoints: 2 })
+
+		store.applyRest(character.id, { resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} })
+		expect(store.list()[0].familiar).toEqual({ name: 'Imp', source: 'XMM', currentHp: 3, temporaryHitPoints: 2 })
+
+		store.applyRest(character.id, { resourceUses: {}, spentSpellSlots: {}, spentHitDice: {}, resetFamiliarHp: true })
+		expect(store.list()[0].familiar).toEqual({ name: 'Imp', source: 'XMM' })
+	})
+
+	it('rejects a familiar hit-point field that is negative or not a whole number', () => {
+		for (const bad of [{ currentHp: -1 }, { currentHp: 1.5 }, { temporaryHitPoints: -2 }, { currentHp: '3' }]) {
+			const storage = new MemoryStorage()
+			storage.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Conjurer', classes: [], familiar: { name: 'Imp', source: 'XMM', ...bad } }]))
+			expect(() => new CharacterStore(storage).list()).toThrow(CorruptDataError)
+		}
+	})
+
 	it('replaces the Wild Shape forms, drops a class left with none, and clears the field when nothing remains (R11a)', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const character = store.create({ name: 'Shifter' })

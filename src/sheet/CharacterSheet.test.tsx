@@ -7634,7 +7634,7 @@ describe('CharacterSheet', () => {
 			const cells = [...extrasRowsOf(container)[0].querySelectorAll('.extras-tab__cell')].map((cell) => cell.textContent)
 			expect(extrasRowsOf(container)[0].textContent).toContain('Owl')
 			expect(extrasRowsOf(container)[0].textContent).toContain('Tiny Beast')
-			expect(cells).toEqual(['11', '1', '5 ft., fly 60 ft.'])
+			expect(cells).toEqual(['11', '1 / 1', '5 ft., fly 60 ft.'])
 			expect(extrasRowsOf(container)[0].querySelector('.extras-tab__notes')!.textContent).toBe('CR 0')
 		})
 
@@ -7811,6 +7811,44 @@ describe('CharacterSheet', () => {
 			expect(container.querySelector('#sheet-panel-extras')!.textContent).toContain('No extras yet.')
 			expect(screen.queryByRole('button', { name: 'Manage Extras' })).toBeNull()
 			expect(vi.mocked(loadBeasts)).not.toHaveBeenCalled()
+		})
+
+		it('R11b: keeps Manage Extras for a stored familiar or Wild Shape form the character can no longer add, with only Current Extras and a working Delete', async () => {
+			const user = userEvent.setup()
+			const onChooseFamiliar = vi.fn()
+			const onEditWildShapeForms = vi.fn()
+			const { unmount } = render(<CharacterSheet character={{ ...character, familiar: { name: 'Owl', source: 'XMM' } }} onChooseFamiliar={onChooseFamiliar} onEditWildShapeForms={onEditWildShapeForms} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await user.click(screen.getByRole('button', { name: 'Manage Extras' }))
+			const panel = await screen.findByRole('dialog', { name: 'Manage Extras' })
+			expect(within(panel).queryByText('Add an Extra')).toBeNull()
+			expect(within(panel).getByText('Current Extras')).toBeTruthy()
+			await user.click(within(panel).getByRole('button', { name: 'Delete Owl' }))
+			expect(onChooseFamiliar).toHaveBeenCalledWith(null)
+
+			unmount()
+			const leftBehind: Character = { ...character, wildShapeForms: [{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Wolf', source: 'XMM' }] }] }
+			render(<CharacterSheet character={leftBehind} onChooseFamiliar={onChooseFamiliar} onEditWildShapeForms={onEditWildShapeForms} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await user.click(screen.getByRole('button', { name: 'Manage Extras' }))
+			const wildPanel = await screen.findByRole('dialog', { name: 'Manage Extras' })
+			expect(within(wildPanel).queryByText('Add an Extra')).toBeNull()
+			await user.click(within(wildPanel).getByRole('button', { name: 'Delete Wolf' }))
+			expect(onEditWildShapeForms).toHaveBeenCalledWith([{ className: 'Druid', classSource: 'XPHB', forms: [] }])
+		})
+
+		it('R11b (D213): the familiar\'s HP cell opens its own Hit Points drawer, and Damage writes the familiar\'s hit points', async () => {
+			const user = userEvent.setup()
+			const onEditFamiliarHitPoints = vi.fn()
+			const withFamiliar: Character = { ...wizard, familiar: { name: 'Owl', source: 'XMM' } }
+			render(<CharacterSheet character={withFamiliar} onEditFamiliarHitPoints={onEditFamiliarHitPoints} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+
+			await user.click(await screen.findByRole('button', { name: 'Owl hit points' }))
+			const drawer = await screen.findByRole('dialog', { name: 'Owl — Hit Points' })
+			await user.type(within(drawer).getByRole('spinbutton', { name: 'Amount' }), '1')
+			await user.click(within(drawer).getByRole('button', { name: 'Damage' }))
+			expect(onEditFamiliarHitPoints).toHaveBeenCalledWith({ currentHp: 0, temporaryHitPoints: 0 })
 		})
 
 		it('renders the Druid\'s known Wild Shape forms in the Extras tab, and nothing for a character with none', async () => {

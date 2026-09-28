@@ -60,7 +60,7 @@ test('R11a b: familiar ADD, REPLACE, DELETE, and it survives a reload', async ({
   await expect(owl).toHaveCount(1)
   const cells = owl.locator('.extras-tab__cell')
   await expect(cells.nth(0)).toHaveText(/^\d+$/) // AC
-  await expect(cells.nth(1)).toHaveText(/^\d+$/) // average hit points
+  await expect(cells.nth(1)).toHaveText(/^\d+ \/ \d+$/) // current / average hit points (D213)
   await expect(cells.nth(2)).toContainText('ft.')
 
   await search(panel, 'Cat')
@@ -158,4 +158,132 @@ test('R11a f: Features & Traits shows neither a Familiar nor a Wild Shape forms 
   await expect(features.getByRole('heading', { name: 'Familiar', exact: true })).toHaveCount(0)
   await expect(features.getByRole('heading', { name: 'Wild Shape forms' })).toHaveCount(0)
   await expect(features.locator('.beast')).toHaveCount(0)
+})
+
+/* R11b (D213): the familiar's own hit points. Imp is a Pact of the Chain form; its maximum is read from the app, never hardcoded. */
+const chainWarlock = (id: string, extra: Record<string, unknown> = {}) =>
+  character(id, 'Warlock', 3, {
+    ...withFindFamiliar('Warlock'),
+    optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Pact of the Chain' }] }],
+    familiar: { name: 'Imp', source: 'XMM' },
+    ...extra,
+  })
+
+const hpButton = (page: Page, name = 'Imp'): Locator => tab(page).getByRole('button', { name: `${name} hit points` })
+const hpDrawer = (page: Page): Locator => page.getByRole('dialog', { name: 'Imp — Hit Points' })
+
+async function tabHp(page: Page, name = 'Imp'): Promise<{ current: number; max: number }> {
+  const match = /(\d+)\s*\/\s*(\d+)/.exec(await hpButton(page, name).innerText())
+  if (!match) throw new Error('familiar HP cell has no "current / max"')
+  return { current: Number(match[1]), max: Number(match[2]) }
+}
+
+async function openHp(page: Page, subject: { id: string }): Promise<{ max: number; panel: Locator }> {
+  await openExtras(page, subject)
+  const { max } = await tabHp(page)
+  await hpButton(page).click()
+  return { max, panel: hpDrawer(page) }
+}
+
+async function apply(panel: Locator, button: 'Heal' | 'Damage' | 'Temp', amount: number): Promise<void> {
+  await panel.getByRole('spinbutton', { name: 'Amount' }).fill(String(amount))
+  await panel.getByRole('button', { name: button, exact: true }).click()
+}
+
+const shown = (page: Page, panel: Locator, current: number, max: number) =>
+  Promise.all([expect(panel.locator('.familiar-hp__value')).toHaveText(`${current} / ${max}`), expect(hpButton(page)).toHaveText(`${current} / ${max}`)])
+
+test('R11b a: the row starts at max / max, opens its drawer, and Damage / Heal move both — healing stops at max', async ({ page }) => {
+  const { max, panel } = await openHp(page, chainWarlock('r11b-a'))
+  expect(max).toBeGreaterThan(10)
+  await expect(panel).toBeVisible()
+  await shown(page, panel, max, max)
+
+  await apply(panel, 'Damage', 5)
+  await shown(page, panel, max - 5, max)
+  await apply(panel, 'Heal', 3)
+  await shown(page, panel, max - 2, max)
+  await apply(panel, 'Heal', 100)
+  await shown(page, panel, max, max)
+})
+
+test('R11b b: temp HP is spent before current HP, and "+N temp" shows in the tab only while it exists', async ({ page }) => {
+  const { max, panel } = await openHp(page, chainWarlock('r11b-b'))
+  await apply(panel, 'Temp', 4)
+  await expect(panel.locator('.familiar-hp__temp')).toHaveText('4')
+  await expect(tab(page).locator('.extras-tab__temp')).toHaveText('+4 temp')
+
+  await apply(panel, 'Damage', 6)
+  await shown(page, panel, max - 2, max)
+  await expect(panel.locator('.familiar-hp__temp')).toHaveText('—')
+  await expect(tab(page).locator('.extras-tab__temp')).toHaveCount(0)
+})
+
+test('R11b c: at 0 HP the drawer says the familiar disappears, and RESUMMON restores full HP and clears temp', async ({ page }) => {
+  const { max, panel } = await openHp(page, chainWarlock('r11b-c'))
+  await expect(panel).not.toContainText('disappears')
+  await apply(panel, 'Temp', 4)
+  await apply(panel, 'Damage', max + 4)
+  await shown(page, panel, 0, max)
+  await expect(panel).toContainText('At 0 HP the familiar disappears. Resummon it when you cast Find Familiar again.')
+  await expect(panel).toContainText('Restores full HP — use when you cast Find Familiar again.')
+  await expect(tabRows(page)).toHaveCount(1) // the app never deletes it by itself
+
+  await panel.getByRole('button', { name: 'Resummon', exact: true }).click()
+  await shown(page, panel, max, max)
+  await expect(panel.locator('.familiar-hp__temp')).toHaveText('—')
+  await expect(panel).not.toContainText('disappears')
+})
+
+test('R11b d: a Short Rest changes nothing, a Long Rest restores full HP and clears temp', async ({ page }) => {
+  const { max, panel } = await openHp(page, chainWarlock('r11b-d'))
+  await apply(panel, 'Damage', 5)
+  await apply(panel, 'Temp', 3)
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Short Rest', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Short Rest' }).getByRole('button', { name: 'Finish Short Rest' }).click()
+  await expect(hpButton(page)).toHaveText(`${max - 5} / ${max}`)
+  await expect(tab(page).locator('.extras-tab__temp')).toHaveText('+3 temp')
+
+  await page.getByRole('button', { name: 'Long Rest', exact: true }).click()
+  await expect(hpButton(page)).toHaveText(`${max} / ${max}`)
+  await expect(tab(page).locator('.extras-tab__temp')).toHaveCount(0)
+})
+
+test('R11b e: REPLACE with another form starts that form at its full HP', async ({ page }) => {
+  const { panel } = await openHp(page, chainWarlock('r11b-e'))
+  await apply(panel, 'Damage', 5)
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('button', { name: 'Manage Extras', exact: true }).click()
+  const manage = drawer(page)
+  await search(manage, 'Cat')
+  await addSection(manage).getByRole('button', { name: 'Replace Cat', exact: true }).click()
+
+  await expect(hpButton(page, 'Cat')).toBeVisible()
+  const { current, max } = await tabHp(page, 'Cat')
+  expect(current).toBe(max)
+  await expect(tab(page).locator('.extras-tab__temp')).toHaveCount(0)
+})
+
+test('R11b f: current and temp HP survive a reload', async ({ page }) => {
+  const { max, panel } = await openHp(page, chainWarlock('r11b-f'))
+  await apply(panel, 'Damage', 5)
+  await apply(panel, 'Temp', 4)
+
+  await page.reload()
+  await page.getByRole('tab', { name: 'Extras' }).click()
+  await expect(hpButton(page)).toHaveText(`${max - 5} / ${max}`)
+  await expect(tab(page).locator('.extras-tab__temp')).toHaveText('+4 temp')
+})
+
+test('R11b g: a stored familiar without Find Familiar keeps MANAGE EXTRAS, which shows only Current Extras and can DELETE it', async ({ page }) => {
+  const panel = await openManage(page, character('r11b-g', 'Fighter', 3, { familiar: { name: 'Owl', source: 'XMM' } }))
+  await expect(currentSection(panel)).toContainText('Owl')
+  await expect(addSection(panel)).toHaveCount(0)
+  await currentSection(panel).getByRole('button', { name: 'Delete Owl', exact: true }).click()
+  await expect(tabRows(page)).toHaveCount(0)
+  await expect(tab(page)).toContainText('No extras yet.')
 })

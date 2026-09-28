@@ -10,12 +10,27 @@ import type { CharacterClass, CharacterFamiliar, CharacterWildShapeForms } from 
 
 export type ExtraKind = 'familiar' | 'wildShape'
 
+export interface FamiliarHitPoints {
+	current: number
+	max: number
+	temporary: number
+}
+
+/** D213: max is the stat block's average HP; null (D43) when there is no stat block or it gives a formula only — never read as 0. */
+export function familiarHitPoints(familiar: CharacterFamiliar, beast: Beast | null): FamiliarHitPoints | null {
+	const max = beast?.hp.average
+	if (max === undefined) return null
+	return { current: familiar.currentHp ?? max, max, temporary: familiar.temporaryHitPoints ?? 0 }
+}
+
 export interface ExtraRow {
 	key: string
 	kind: ExtraKind
 	name: string
 	source: string
 	beast: Beast | null
+	/** Only the familiar (Wild Shape forms use the character's HP), and only when the stat block resolves. */
+	hitPoints: FamiliarHitPoints | null
 	/** The class whose Wild Shape entry holds the form — what a DELETE has to edit. Null for the familiar. */
 	owner: { className: string; classSource: string } | null
 	/** Only the familiar: the form comes from Pact of the Chain, not from the spell (a Notes entry). */
@@ -47,6 +62,7 @@ export function extraRows({
 			name: familiar.name,
 			source: familiar.source,
 			beast: option?.beast ?? null,
+			hitPoints: familiarHitPoints(familiar, option?.beast ?? null),
 			owner: null,
 			pactOfTheChain: option?.origin === 'pact-of-the-chain',
 			problem: option || pending ? null : `"${familiar.name}" (${familiar.source}) is not a form this familiar can take.`,
@@ -61,6 +77,7 @@ export function extraRows({
 				name: form.name,
 				source: form.source,
 				beast,
+				hitPoints: null,
 				owner: { className: entry.className, classSource: entry.classSource },
 				pactOfTheChain: false,
 				problem: beast || pending ? null : `No stat block found for "${form.name}" (${form.source}).`,

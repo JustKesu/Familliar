@@ -445,6 +445,16 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 50 }),
 	},
+	{
+		from: 50,
+		to: 51,
+		/*
+		 * 51 adds CharacterFamiliar.currentHp and .temporaryHitPoints (D213). A
+		 * version-50 familiar stored neither, which reads as full hit points — the
+		 * step only tags.
+		 */
+		migrate: (record) => ({ ...record, schemaVersion: 51 }),
+	},
 ]
 
 /**

@@ -69,6 +69,12 @@ describe('a Long Rest (slice 9b5)', () => {
 		expect(afterLongRest(11, PLAY, null).currentHp).toBe(11)
 	})
 
+	/* D213: the familiar's own hit points come back on a Long Rest and are left alone by a Short Rest. */
+	it('asks the store to reset the familiar\'s hit points on a Long Rest only', () => {
+		expect(afterLongRest(11, PLAY, 44).resetFamiliarHp).toBe(true)
+		expect(afterShortRest(11, PLAY, RESOURCES, 'all')).not.toHaveProperty('resetFamiliarHp')
+	})
+
 	it('reports no temporary hit points at all — neither rest is allowed to move them (D110)', () => {
 		expect(afterLongRest(11, PLAY, 44)).not.toHaveProperty('temporaryHitPoints')
 		expect(afterShortRest(11, PLAY, RESOURCES, 'all')).not.toHaveProperty('temporaryHitPoints')

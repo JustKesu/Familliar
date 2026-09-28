@@ -549,8 +549,16 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: 50 })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		expect('originFeatOverride' in (migrated['background'] as Record<string, unknown>)).toBe(false)
+	})
+
+	/* D213: an older familiar has no hit-point fields, which reads as full — the step only tags. */
+	it('tags a version-50 character and adds nothing to its familiar', () => {
+		const before = { schemaVersion: 50, id: '1', name: 'Aria', classes: [], familiar: { name: 'Imp', source: 'XMM' } }
+		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+
+		expect(migrated).toEqual({ ...before, schemaVersion: 51 })
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

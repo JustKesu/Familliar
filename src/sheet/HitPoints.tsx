@@ -42,7 +42,7 @@ function knownMax(maxHitPoints: Calculated<number>): number | null {
 	return maxHitPoints.status === 'known' ? maxHitPoints.value : null
 }
 
-function parseAmount(draft: string): number | null {
+export function parseAmount(draft: string): number | null {
 	const parsed = Math.floor(Number(draft.trim()))
 	return draft.trim() !== '' && Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }

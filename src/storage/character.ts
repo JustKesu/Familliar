@@ -739,6 +739,10 @@ export const CUSTOM_ITEM_SOURCE = 'Custom'
 export interface CharacterFamiliar {
 	name: string
 	source: string
+	/** D213: the familiar's own hit points; absent means full (its stat block's average). */
+	currentHp?: number
+	/** D213: absent or 0 is none. */
+	temporaryHitPoints?: number
 }
 
 /**
@@ -951,7 +955,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 50 for CharacterBackground.originFeatOverride
+ * (see wireFormat.ts). Bumped to 51 for CharacterFamiliar.currentHp and
+ * .temporaryHitPoints (D213); 50 for CharacterBackground.originFeatOverride
  * (D205); 49 for the RHW/FRHoF subclass `grantedBy`
  * values (D203); 48 for Character.subclassSkills and the
  * species/Cavalier/Samurai `grantedBy` values (B6c, D177); 47 for the non-XPHB subclass
@@ -971,4 +976,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 50
+export const CURRENT_SCHEMA_VERSION = 51

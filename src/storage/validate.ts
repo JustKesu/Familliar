@@ -728,11 +728,21 @@ export function describeFamiliarError(value: unknown): string | null {
 	if (!isRecord(value)) return `familiar is not an object`
 	if (!isNonEmptyString(value['name'])) return `familiar.name is missing or not a string`
 	if (!isNonEmptyString(value['source'])) return `familiar.source is missing or not a string`
+	for (const field of ['currentHp', 'temporaryHitPoints'] as const) {
+		const hp = value[field]
+		if (hp !== undefined && (typeof hp !== 'number' || !Number.isInteger(hp) || hp < 0)) return `familiar.${field} must be a non-negative whole number`
+	}
 	return null
 }
 
 function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar {
-	return { name: value['name'] as string, source: value['source'] as string }
+	const { currentHp, temporaryHitPoints } = value
+	return {
+		name: value['name'] as string,
+		source: value['source'] as string,
+		...(typeof currentHp === 'number' ? { currentHp } : {}),
+		...(typeof temporaryHitPoints === 'number' && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
+	}
 }
 
 /**

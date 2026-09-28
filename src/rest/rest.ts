@@ -78,5 +78,5 @@ export function afterLongRest(currentHp: number | undefined, play: CharacterPlay
 			? currentHp
 			: applyHealing({ currentHp, temporaryHitPoints: play?.temporaryHitPoints ?? 0 }, maxHitPoints, maxHitPoints).currentHp
 
-	return { currentHp: healed, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} }
+	return { currentHp: healed, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {}, resetFamiliarHp: true }
 }

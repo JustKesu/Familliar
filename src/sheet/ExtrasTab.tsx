@@ -24,6 +24,7 @@ export function ExtrasTab({
 	beastsLoading,
 	onOpenBeast,
 	onManageExtras,
+	onOpenFamiliarHitPoints,
 }: {
 	familiar: CharacterFamiliar | null
 	familiarForms: FamiliarFormOption[]
@@ -34,6 +35,8 @@ export function ExtrasTab({
 	beastsLoading: boolean
 	onOpenBeast: (beast: Beast) => void
 	onManageExtras?: () => void
+	/** D213: opens the familiar's Hit Points drawer. Absent shows the numbers without the button. */
+	onOpenFamiliarHitPoints?: () => void
 }): ReactNode {
 	const [filter, setFilter] = useState<Filter>('all')
 	const rows = extraRows({ familiar, familiarForms, wildShapeForms, beasts, pending: beastsLoading || beastsError !== null })
@@ -100,7 +103,26 @@ export function ExtrasTab({
 									</span>
 									<span className="extras-tab__cell">{row.beast ? row.beast.ac.join('/') : '—'}</span>
 									<span className={row.kind === 'wildShape' ? 'extras-tab__cell extras-tab__cell--mute' : 'extras-tab__cell'}>
-										{row.kind === 'wildShape' ? 'Uses your HP' : row.beast ? beastAverageHp(row.beast) : '—'}
+										{row.kind === 'wildShape' ? (
+												'Uses your HP'
+											) : row.hitPoints ? (
+												<>
+													{onOpenFamiliarHitPoints ? (
+														<button type="button" className="extras-tab__hp" aria-label={`${row.name} hit points`} onClick={onOpenFamiliarHitPoints}>
+															{row.hitPoints.current}
+															<span className="familiar-hp__slash"> / </span>
+															{row.hitPoints.max}
+														</button>
+													) : (
+														`${row.hitPoints.current} / ${row.hitPoints.max}`
+													)}
+													{row.hitPoints.temporary > 0 && <span className="extras-tab__temp">+{row.hitPoints.temporary} temp</span>}
+												</>
+											) : row.beast ? (
+												beastAverageHp(row.beast)
+											) : (
+												'—'
+											)}
 									</span>
 									<span className="extras-tab__cell">{row.beast ? formatSpeed(row.beast.speed) : '—'}</span>
 									<span className="extras-tab__notes">{extraNotes(row)}</span>

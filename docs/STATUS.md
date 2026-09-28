@@ -1767,8 +1767,20 @@ are gone from Features & Traits. `BeastStatBlock` restyled and split into
 `BeastStatBody` (drawer/panel) + the `<details>` wrapper (wizard); Initiative
 shown (Dex + proficiency when the data says so). beasts.json now also loads for a
 Wild Shape class with no stored forms. E2E `manageExtras.spec.ts` a–f;
-`classGrants` spec adjusted. No schema change (still 50). Next: R11b (familiar
-current/max HP with a damage/heal panel — needs a schema change).
+`classGrants` spec adjusted. No schema change (still 50).
+
+R11b (D213) done — R11 complete. Schema 51 (50→51 tag only):
+`CharacterFamiliar.currentHp` / `.temporaryHitPoints` (absent = full / none),
+`characterStore.setFamiliarHitPoints` (wired as `onEditFamiliarHitPoints`);
+`setFamiliar` always drops both fields; `RestFields.resetFamiliarHp` (set by
+`afterLongRest`) drops them on a Long Rest. Extras familiar HP cell = "current /
+max" button (+ "+N temp"), max = stat block average (`familiarHitPoints` in
+`extrasData.ts`); it opens the new drawer kind `familiarHitPoints`
+(`FamiliarHitPointsPanel.tsx`: Heal/Damage/Temp on one amount input, Resummon,
+"disappears" text at 0 HP). Manage Extras is also offered when a familiar or
+Wild Shape form is stored but its category is no longer available (Current Extras
+only). E2E `manageExtras.spec.ts` R11b a–g. Next: R12 (Heroic Inspiration,
+Defenses, Conditions).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
