@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { BeastStatBlock } from './BeastStatBlock'
+import { BeastStatBlock, BeastStatBody } from './BeastStatBlock'
 import type { Beast } from '../beasts/beastData'
 
 afterEach(cleanup)
@@ -44,9 +44,25 @@ describe('BeastStatBlock', () => {
 		expect(text).toContain('5 ft., fly 60 ft.') // walk unlabelled, other modes named
 
 		// Modifiers come from the calculation layer's own rule, not a second copy.
-		expect(text).toContain('STR 3 (-4)')
-		expect(text).toContain('DEX 13 (+1)')
-		expect(text).toContain('CHA 7 (-2)')
+		const abilities = [...container.querySelectorAll('.beast__abilities li')].map((li) => li.textContent)
+		expect(abilities).toEqual(['STR3(-4)', 'DEX13(+1)', 'CON8(-1)', 'INT2(-4)', 'WIS12(+1)', 'CHA7(-2)'])
+		expect(container.querySelector('.beast__kind')!.textContent).toBe('Tiny Beast, CR 0')
+	})
+
+	it('shows Initiative as the Dex modifier, plus the proficiency bonus when the data says so', () => {
+		const plain = render(<BeastStatBlock beast={beast()} />)
+		expect(plain.container.querySelector('.beast__vitals')!.textContent).toContain('Initiative +1')
+
+		cleanup()
+		// CR 5 -> proficiency bonus 3; Dex 11 -> +0.
+		const shark = render(<BeastStatBlock beast={beast({ dex: 11, cr: '5', crNumber: 5, initiative: { proficiency: 1 } })} />)
+		expect(shark.container.querySelector('.beast__vitals')!.textContent).toContain('Initiative +3')
+	})
+
+	it('BeastStatBody renders the content with no <details> wrapper', () => {
+		const { container } = render(<BeastStatBody beast={beast()} />)
+		expect(container.querySelector('details')).toBeNull()
+		expect(screen.getByRole('heading', { name: 'Actions' })).toBeTruthy()
 	})
 
 	it('renders skills, senses and passive Perception', () => {

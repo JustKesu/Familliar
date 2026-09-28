@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadBeasts, type Beast } from './beastData'
-import { wildShapeForms, wildShapeLimits } from './wildShapeData'
+import { wildShapeForms, wildShapeHint, wildShapeLimits } from './wildShapeData'
 import { BeastStatBlock } from '../sheet/BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 
@@ -112,11 +112,7 @@ export function WildShapeFormPicker({
 
 	return (
 		<div className="wild-shape-form-picker">
-			<p className="wild-shape-form-picker__hint">
-				Maximum Challenge Rating {limits.maxCrLabel}
-				{limits.moonCap ? ' (Circle of the Moon)' : ''};{' '}
-				{limits.flyAllowed ? 'a form with a Fly Speed is allowed' : 'no form with a Fly Speed yet'}.
-			</p>
+			<p className="wild-shape-form-picker__hint">{wildShapeHint(limits)}</p>
 			<SearchableOptionList
 				legend="Wild Shape forms"
 				name="wild-shape-form"

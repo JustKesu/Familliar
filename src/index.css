@@ -2604,3 +2604,167 @@ button:disabled {
 .manage-inventory__currency label {
   white-space: nowrap;
 }
+
+/* ---- Extras tab and Manage Extras drawer (R11a, D212) ---- */
+
+.extras-tab__notice,
+.extras-tab__empty {
+  margin: 4px 18px;
+}
+
+.extras-tab__table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.extras-tab__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.extras-tab__row {
+  display: grid;
+  grid-template-columns: minmax(160px, 2.2fr) minmax(48px, 0.5fr) minmax(104px, 1fr) minmax(120px, 1.4fr) minmax(140px, 2fr);
+  column-gap: 10px;
+  align-items: start;
+  padding: 8px 12px;
+}
+
+.extras-tab__item {
+  border-top: 1px solid var(--line);
+}
+
+.extras-tab__head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-mute);
+}
+
+.extras-tab__cell {
+  font-size: 13px;
+}
+
+.extras-tab__cell--mute {
+  color: var(--text-mute);
+}
+
+.extras-tab__notes {
+  font-size: 12px;
+  color: var(--text-sub);
+  overflow-wrap: anywhere;
+}
+
+.manage-extras__category {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* ---- Beast stat block (R11a) ---- */
+
+details.beast > .beast__body {
+  padding: 6px 0 4px 16px;
+}
+
+.beast__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
+.beast__kind,
+.beast__line {
+  margin: 0;
+}
+
+.beast__kind {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.beast__vitals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  margin: 0;
+  color: var(--text);
+}
+
+.beast__vitals strong,
+.beast__line strong {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-mute);
+}
+
+.beast__abilities {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  margin: 4px 0;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+}
+
+.beast__abilities li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.beast__ability-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-mute);
+}
+
+.beast__ability-score {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.beast__ability-modifier {
+  font-size: 12px;
+}
+
+.beast__blocks h4 {
+  margin: 8px 0 2px;
+  font: 600 13px/1.2 var(--font-heading);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.beast__blocks ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.beast__blocks li {
+  margin: 0 0 6px;
+}
+
+.beast__block-name {
+  color: var(--text);
+}

@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react'
 import type { Beast, BeastEntryBlock, BeastSpeed } from '../beasts/beastData'
 import { abilityModifier } from '../calculation/abilityScores'
+import { proficiencyBonusForLevel } from '../calculation/proficiencyBonus'
 import { Entries } from '../markup'
 
 /*
- * One beast stat block, read-only, collapsed by default (D51's <details>
- * shape, the same one the feat list and the spell list use) so a list of
- * them does not flood the sheet. `defaultOpen` is for the one block a sheet
- * shows on its own — the currently summoned familiar — where a player would
- * otherwise have to open it every visit.
+ * One beast stat block, read-only. BeastStatBlock is the collapsed-by-default
+ * <details> (D51's shape, the same one the feat list and the spell list use) the
+ * wizard's pickers put inside an option row; BeastStatBody is the same content
+ * without the wrapper, for the Extras drawer and the Manage Extras rows, which
+ * open it themselves.
  *
  * Trait and action text goes through the PLAIN markup renderer, not
  * ResolvedEntries: beasts.json carries no ref* node anywhere
@@ -68,6 +69,11 @@ function formatType(type: Beast['type']): string {
 	return base
 }
 
+/** "Tiny Beast" — the size and type as the Extras tab and the panel rows print them. */
+export function beastKind(beast: Beast): string {
+	return `${formatSize(beast.size)} ${formatType(beast.type)}`
+}
+
 function formatSpeedValue(value: BeastSpeed): string {
 	if (typeof value === 'number') return `${value} ft.`
 	const amount = value.amount === undefined ? '' : `${value.amount} ft.`
@@ -75,7 +81,7 @@ function formatSpeedValue(value: BeastSpeed): string {
 }
 
 /** Walk speed leads unlabelled, the way a stat block prints it; every other mode is named. */
-function formatSpeed(speed: Record<string, BeastSpeed>): string {
+export function formatSpeed(speed: Record<string, BeastSpeed>): string {
 	const parts: string[] = []
 	if (speed.walk !== undefined) parts.push(formatSpeedValue(speed.walk))
 	for (const [mode, value] of Object.entries(speed)) {
@@ -88,6 +94,21 @@ function formatSpeed(speed: Record<string, BeastSpeed>): string {
 function formatHitPoints(hp: Beast['hp']): string {
 	if (hp.average === undefined) return hp.formula ?? '—'
 	return hp.formula ? `${hp.average} (${hp.formula})` : `${hp.average}`
+}
+
+/** The average hit points as a bare number — the Extras table's HIT POINTS cell. */
+export function beastAverageHp(beast: Beast): string {
+	return beast.hp.average === undefined ? (beast.hp.formula ?? '—') : String(beast.hp.average)
+}
+
+/**
+ * Dex modifier, plus the proficiency bonus once for the creatures whose data says
+ * `initiative: { proficiency: 1 }`. The bonus comes from the CR (a Beast has no
+ * level): the same 2-at-1-to-4, +1 per four table the character uses.
+ */
+export function beastInitiative(beast: Beast): number {
+	const proficiencyBonus = proficiencyBonusForLevel(Math.max(1, beast.crNumber))
+	return abilityModifier(beast.dex) + (beast.initiative?.proficiency ?? 0) * proficiencyBonus
 }
 
 /** Renders one labelled line, or nothing at all when the beast has no such values. */
@@ -122,25 +143,38 @@ function formatGear(gear: string[]): string[] {
 	return gear.map((entry) => titleCase(entry.split('|')[0]))
 }
 
-export function BeastStatBlock({ beast, defaultOpen = false }: { beast: Beast; defaultOpen?: boolean }): ReactNode {
+/** The stat block's content, unwrapped. */
+export function BeastStatBody({ beast }: { beast: Beast }): ReactNode {
 	const senseValues = [...(beast.senses ?? [])]
 	if (beast.passive !== undefined) senseValues.push(`Passive Perception ${beast.passive}`)
 
 	return (
-		<details className="beast" open={defaultOpen}>
-			<summary>
-				{beast.name} — {formatSize(beast.size)} {formatType(beast.type)}, CR {beast.cr}
-			</summary>
+		<div className="beast__body">
+			<p className="beast__kind">
+				{beastKind(beast)}, CR {beast.cr}
+			</p>
 
-			<p className="beast__line">
-				<strong>AC</strong> {beast.ac.join('/')} <strong>HP</strong> {formatHitPoints(beast.hp)} <strong>Speed</strong>{' '}
-				{formatSpeed(beast.speed)}
+			<p className="beast__vitals">
+				<span>
+					<strong>AC</strong> {beast.ac.join('/')}
+				</span>
+				<span>
+					<strong>Initiative</strong> {formatModifier(beastInitiative(beast))}
+				</span>
+				<span>
+					<strong>HP</strong> {formatHitPoints(beast.hp)}
+				</span>
+				<span>
+					<strong>Speed</strong> {formatSpeed(beast.speed)}
+				</span>
 			</p>
 
 			<ul className="beast__abilities">
 				{ABILITY_COLUMNS.map(([key, label]) => (
 					<li key={key}>
-						{label} {beast[key]} ({formatModifier(abilityModifier(beast[key]))})
+						<span className="beast__ability-label">{label}</span>
+						<span className="beast__ability-score">{beast[key]}</span>
+						<span className="beast__ability-modifier">({formatModifier(abilityModifier(beast[key]))})</span>
 					</li>
 				))}
 			</ul>
@@ -153,11 +187,11 @@ export function BeastStatBlock({ beast, defaultOpen = false }: { beast: Beast; d
 				label="Skills"
 				values={Object.entries(beast.skill ?? {}).map(([skill, bonus]) => `${titleCase(skill)} ${bonus}`)}
 			/>
-			<StatLine label="Senses" values={senseValues} />
 			<StatLine label="Resistances" values={beast.resist ?? []} />
 			<StatLine label="Immunities" values={beast.immune ?? []} />
 			<StatLine label="Vulnerabilities" values={beast.vulnerable ?? []} />
 			<StatLine label="Condition immunities" values={beast.conditionImmune ?? []} />
+			<StatLine label="Senses" values={senseValues} />
 			<StatLine label="Languages" values={beast.languages ?? []} />
 			<StatLine label="Gear" values={formatGear(beast.gear ?? [])} />
 
@@ -166,6 +200,17 @@ export function BeastStatBlock({ beast, defaultOpen = false }: { beast: Beast; d
 			<BeastBlocks title="Actions" blocks={beast.action} />
 			<BeastBlocks title="Bonus actions" blocks={beast.bonus} />
 			<BeastBlocks title="Reactions" blocks={beast.reaction} />
+		</div>
+	)
+}
+
+export function BeastStatBlock({ beast, defaultOpen = false }: { beast: Beast; defaultOpen?: boolean }): ReactNode {
+	return (
+		<details className="beast" open={defaultOpen}>
+			<summary>
+				{beast.name} — {beastKind(beast)}, CR {beast.cr}
+			</summary>
+			<BeastStatBody beast={beast} />
 		</details>
 	)
 }

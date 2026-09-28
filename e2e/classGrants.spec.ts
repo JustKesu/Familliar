@@ -62,12 +62,13 @@ test('A-S1 b: Paladin 5 has Divine Smite and Find Steed', async ({ page }) => {
   await expect(row(page, 'Find Steed')).toHaveCount(1)
 })
 
-test('A-S1 c: Druid 2 — Speak with Animals and Find Familiar, and the Familiar section', async ({ page }) => {
+test('A-S1 c: Druid 2 — Speak with Animals and Find Familiar, and Manage Extras offering a familiar (R11a)', async ({ page }) => {
   await openSaved(page, character('as1-druid', [{ className: 'Druid', level: 2 }], 'wisdom'))
   await expect(row(page, 'Speak with Animals')).toHaveCount(1)
   await expect(row(page, 'Find Familiar')).toHaveCount(1)
-  await page.getByRole('tab', { name: 'Features & Traits' }).click()
-  await expect(page.getByRole('tabpanel', { name: 'Features & Traits' }).getByRole('heading', { name: 'Familiar' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Extras' }).click()
+  await page.getByRole('button', { name: 'Manage Extras', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Manage Extras' }).getByRole('combobox', { name: 'Category' }).locator('option')).toHaveText(['Familiar', 'Wild Shape'])
 })
 
 test('A-S1 d: Artificer (EFA) 1 — Mending among the cantrips', async ({ page }) => {

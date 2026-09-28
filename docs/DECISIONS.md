@@ -3961,3 +3961,30 @@ Inventory (REMOVE). Množství −/+ s editovatelným číslem. Add Items ukáž
 custom; počet naladění v hlavičce záložky vedle peněz i v panelu nad My
 Inventory; ▸ popis předmětu i v záložce. Formulář custom předmětu se v R10
 nerozšiřuje (rozšíření = R14a–d).
+
+## D212 — Záložka Extras a panel Manage Extras (R11a)
+
+Zdroj: zadání R11a, 28. 9. 2026. Navazuje na D68, D104, D106, D116, D163, D208,
+D211.
+
+1. Nová poslední záložka „Extras" (vždy viditelná): pills All/Familiar/Wild Shape,
+   tlačítko MANAGE EXTRAS (jen když má postava aspoň jednu kategorii a list dostal
+   editační callbacky), tabulka NAME · AC · HIT POINTS · SPEED · NOTES. Jméno
+   otevře stat block ve sdíleném draweru.
+2. Postava má nejvýš JEDNOHO familiara. V panelu je tlačítko ADD, když žádný není,
+   a REPLACE, když už jeden je; forma, kterou familiar právě má, nese šedý štítek
+   „Current". Kategorie Familiar = Find Familiar v celkovém seznamu kouzel;
+   pool je `familiarFormOptions`, formy z Pact of the Chain nesou štítek.
+3. Wild Shape: sloupec HIT POINTS říká „Uses your HP" (2024: druid v Divoké podobě
+   si drží vlastní životy, žádný panel). Kategorie Wild Shape =
+   `wildShapeLimitsFor(classes) !== null`.
+4. Formy Wild Shape se dají měnit v průvodci i v panelu (`setWildShapeForms`,
+   beze změny schématu). Kontrolují se jen POČTY („Known forms: X / N", plný čítač
+   zakáže další ADD); kdy smí být forma vyměněna, se nehlídá (D104/D106).
+5. Sekce Familiar a Wild Shape forms z Features & Traits zmizely; chyba načtení
+   beasts.json, hláška o nerozpoznané formě a oznámení o překročení počtu (D106)
+   jsou nad tabulkou v Extras.
+6. `beasts.json` se načítá i pro třídu s Wild Shape bez uložených forem (panel
+   nabízí formy). Initiative ve stat blocku = Dex modifikátor plus proficiency
+   bonus podle CR u tvorů s `initiative: { proficiency: 1 }` (DATA.md).
+7. Hledání a filtry v tabu i v panelu jsou stav komponenty (D116).

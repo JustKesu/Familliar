@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CharacterStore, type CharacterTextField, type HitPointFields, type RestFields } from './storage/characterStore'
 import { StorageError } from './storage/errors'
-import type { Character, CharacterFamiliar, CharacterInventoryItem, CharacterLanguage, CharacterSpellChoice, CharacterToolChoice, SpentSpellSlots } from './storage/character'
+import type { Character, CharacterFamiliar, CharacterInventoryItem, CharacterLanguage, CharacterSpellChoice, CharacterToolChoice, CharacterWildShapeForms, SpentSpellSlots } from './storage/character'
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
 import { LevelUpWizardGate } from './levelUp/LevelUpWizardGate'
@@ -174,6 +174,11 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	function handleChooseFamiliar(id: string, familiar: CharacterFamiliar | null): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setFamiliar(id, familiar))
+	}
+
+	function handleEditWildShapeForms(id: string, wildShapeForms: CharacterWildShapeForms[]): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setWildShapeForms(id, wildShapeForms))
 	}
 
 	function handleEditInventory(id: string, inventory: CharacterInventoryItem[]): void {
@@ -362,6 +367,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 				<CharacterSheet
 					character={character}
 					onChooseFamiliar={(familiar) => handleChooseFamiliar(character.id, familiar)}
+					onEditWildShapeForms={(forms) => handleEditWildShapeForms(character.id, forms)}
 					onEditInventory={(inventory) => handleEditInventory(character.id, inventory)}
 					onEditCurrency={(copper) => handleEditCurrency(character.id, copper)}
 					onEditHitPoints={(hitPoints) => handleEditHitPoints(character.id, hitPoints)}

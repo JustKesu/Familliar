@@ -492,6 +492,31 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		expect(() => store.setFamiliar('nope', { name: 'Owl', source: 'XMM' })).toThrow(CharacterNotFoundError)
 	})
 
+	it('replaces the Wild Shape forms, drops a class left with none, and clears the field when nothing remains (R11a)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create({ name: 'Shifter' })
+		expect(character.wildShapeForms).toBeUndefined()
+
+		const wolf = { name: 'Wolf', source: 'XMM' }
+		const cat = { name: 'Cat', source: 'XMM' }
+		store.setWildShapeForms(character.id, [{ className: 'Druid', classSource: 'XPHB', forms: [wolf, cat] }])
+		expect(store.list()[0].wildShapeForms).toEqual([{ className: 'Druid', classSource: 'XPHB', forms: [wolf, cat] }])
+
+		store.setWildShapeForms(character.id, [
+			{ className: 'Druid', classSource: 'XPHB', forms: [cat] },
+			{ className: 'Ranger', classSource: 'XPHB', forms: [] },
+		])
+		expect(store.list()[0].wildShapeForms).toEqual([{ className: 'Druid', classSource: 'XPHB', forms: [cat] }])
+
+		store.setWildShapeForms(character.id, [{ className: 'Druid', classSource: 'XPHB', forms: [] }])
+		expect('wildShapeForms' in store.list()[0]).toBe(false)
+	})
+
+	it('throws CharacterNotFoundError when setting Wild Shape forms on an unknown id', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		expect(() => store.setWildShapeForms('nope', [])).toThrow(CharacterNotFoundError)
+	})
+
 	it('rejects a saved optionalFeatureChoices entry missing featureType', () => {
 		const backing = new MemoryStorage()
 		backing.setItem(

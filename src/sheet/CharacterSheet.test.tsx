@@ -7622,50 +7622,32 @@ describe('CharacterSheet', () => {
 			spellChoices: [{ className: 'Wizard', classSource: 'XPHB', spells: [{ name: 'Find Familiar', source: 'XPHB' }] }],
 		}
 
-		it('lists the CR 0 forms for a character who has the spell', async () => {
-			const { container } = render(<CharacterSheet character={wizard} />)
-			await screen.findByRole('heading', { name: 'Conjurer' })
+		/** The Extras tab's rows, once beasts.json has resolved. */
+		const extrasRowsOf = (container: HTMLElement) => container.querySelectorAll('#sheet-panel-extras .extras-tab__item')
 
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
-			const section = container.querySelector('.sheet__familiar')!
-			expect(section.textContent).toContain('Owl')
-			// The pool is capped at CR 0 by the spell's own text — Wolf is CR 1/2.
-			expect(section.textContent).not.toContain('Wolf')
-		})
-
-		it('says plainly that nothing is summoned when no form is chosen', async () => {
-			const { container } = render(<CharacterSheet character={wizard} />)
-			await screen.findByRole('heading', { name: 'Conjurer' })
-
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
-			const section = container.querySelector('.sheet__familiar')!
-			expect(section.querySelector('.sheet__familiar-none')!.textContent).toContain('No familiar is summoned')
-			// The picker is the shared searchable control; with nothing chosen it starts open
-			// so a form can be picked, and every option carries its own collapsed stat block.
-			const toggle = section.querySelector('.option-list__toggle')!
-			expect(toggle.getAttribute('aria-expanded')).toBe('true')
-			expect((screen.getByRole('radio', { name: 'No familiar summoned' }) as HTMLInputElement).checked).toBe(true)
-			expect(section.querySelector('details.beast')).toBeTruthy()
-		})
-
-		it('shows the chosen form as an open stat block instead of the prompt', async () => {
-			const user = userEvent.setup()
+		it('lists the summoned familiar in the Extras tab with its AC, hit points and speed', async () => {
 			const withFamiliar: Character = { ...wizard, familiar: { name: 'Owl', source: 'XMM' } }
 			const { container } = render(<CharacterSheet character={withFamiliar} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
 
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
-			const section = container.querySelector('.sheet__familiar')!
-			expect(section.querySelector('.sheet__familiar-none')).toBeNull()
-			// Exactly one stat block is open: the summoned form, shown below the picker.
-			const chosen = section.querySelector('details.beast[open]')!
-			expect(chosen.querySelector('summary')!.textContent).toContain('Owl')
+			await waitFor(() => expect(extrasRowsOf(container)).toHaveLength(1))
+			const cells = [...extrasRowsOf(container)[0].querySelectorAll('.extras-tab__cell')].map((cell) => cell.textContent)
+			expect(extrasRowsOf(container)[0].textContent).toContain('Owl')
+			expect(extrasRowsOf(container)[0].textContent).toContain('Tiny Beast')
+			expect(cells).toEqual(['11', '1', '5 ft., fly 60 ft.'])
+			expect(extrasRowsOf(container)[0].querySelector('.extras-tab__notes')!.textContent).toBe('CR 0')
+		})
 
-			// The control auto-collapses once a form is chosen; opening it shows Owl selected.
-			const toggle = section.querySelector('.option-list__toggle')!
-			expect(toggle.getAttribute('aria-expanded')).toBe('false')
-			await user.click(toggle)
-			expect((screen.getByRole('radio', { name: /Owl/ }) as HTMLInputElement).checked).toBe(true)
+		it('says "No extras yet." for a character with Find Familiar and nothing summoned, and offers Manage Extras only with the callback', async () => {
+			const { container, unmount } = render(<CharacterSheet character={wizard} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+			expect(container.querySelector('#sheet-panel-extras')!.textContent).toContain('No extras yet.')
+			expect(screen.queryByRole('button', { name: 'Manage Extras' })).toBeNull()
+
+			unmount()
+			render(<CharacterSheet character={wizard} onChooseFamiliar={vi.fn()} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+			expect(screen.getByRole('button', { name: 'Manage Extras' })).toBeTruthy()
 		})
 
 		it('states the gap when the stored form is not one this familiar can take (D43)', async () => {
@@ -7673,30 +7655,58 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={stale} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
 
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
-			const section = container.querySelector('.sheet__familiar')!
-			expect(section.textContent).toContain('"Imp" (XMM) is not a form this familiar can take')
+			await waitFor(() => expect(container.querySelector('#sheet-panel-extras')!.textContent).toContain('"Imp" (XMM) is not a form this familiar can take'))
 		})
 
-		it('reports a pick to the caller, and clearing it as null', async () => {
+		it('Manage Extras adds a familiar, and the same button reads Replace once one is summoned', async () => {
 			const user = userEvent.setup()
 			const onChooseFamiliar = vi.fn()
-			const { container, unmount } = render(<CharacterSheet character={wizard} onChooseFamiliar={onChooseFamiliar} />)
+			const { unmount } = render(<CharacterSheet character={wizard} onChooseFamiliar={onChooseFamiliar} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
-
-			await user.click(screen.getByRole('radio', { name: /Owl/ }))
+			await user.click(screen.getByRole('button', { name: 'Manage Extras' }))
+			const panel = await screen.findByRole('dialog', { name: 'Manage Extras' })
+			await waitFor(() => expect(within(panel).getByRole('button', { name: 'Add Owl' })).toBeTruthy())
+			// The pool is capped at CR 0 by the spell's own text — Wolf is CR 1/2.
+			expect(within(panel).queryByText('Wolf')).toBeNull()
+			await user.click(within(panel).getByRole('button', { name: 'Add Owl' }))
 			expect(onChooseFamiliar).toHaveBeenCalledWith({ name: 'Owl', source: 'XMM' })
 
-			// With a form on record the list starts collapsed; open it and pick "No familiar summoned".
 			unmount()
 			const withFamiliar: Character = { ...wizard, familiar: { name: 'Owl', source: 'XMM' } }
 			render(<CharacterSheet character={withFamiliar} onChooseFamiliar={onChooseFamiliar} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
-			await waitFor(() => expect(document.querySelector('.sheet__familiar')).toBeTruthy())
-			await user.click(document.querySelector('.sheet__familiar .option-list__toggle') as HTMLElement)
-			await user.click(screen.getByRole('radio', { name: 'No familiar summoned' }))
+			await user.click(screen.getByRole('button', { name: 'Manage Extras' }))
+			const again = await screen.findByRole('dialog', { name: 'Manage Extras' })
+			await user.click(within(again).getByRole('button', { name: 'Delete Owl' }))
 			expect(onChooseFamiliar).toHaveBeenLastCalledWith(null)
+		})
+
+		it('opens the creature\'s stat block in the drawer from its name, and Esc closes it', async () => {
+			const user = userEvent.setup()
+			const withFamiliar: Character = { ...wizard, familiar: { name: 'Owl', source: 'XMM' } }
+			const { container } = render(<CharacterSheet character={withFamiliar} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+			await waitFor(() => expect(extrasRowsOf(container)).toHaveLength(1))
+
+			await user.click(within(extrasRowsOf(container)[0] as HTMLElement).getByRole('button', { name: 'Owl' }))
+			const drawer = screen.getByRole('dialog', { name: 'Owl' })
+			expect(within(drawer).getByRole('heading', { name: 'Actions' })).toBeTruthy()
+			expect(drawer.textContent).toContain('Melee Attack Roll:')
+			expect(drawer.textContent).not.toContain('{@')
+			await user.keyboard('{Escape}')
+			expect(screen.queryByRole('dialog', { name: 'Owl' })).toBeNull()
+		})
+
+		it('Features & Traits no longer carries a Familiar or Wild Shape forms section', async () => {
+			const withFamiliar: Character = { ...wizard, familiar: { name: 'Owl', source: 'XMM' } }
+			const { container } = render(<CharacterSheet character={withFamiliar} />)
+			await screen.findByRole('heading', { name: 'Conjurer' })
+			await waitFor(() => expect(extrasRowsOf(container)).toHaveLength(1))
+
+			expect(container.querySelector('#sheet-panel-features')!.textContent).not.toContain('Familiar')
+			expect(container.querySelector('#sheet-panel-features')!.textContent).not.toContain('Wild Shape forms')
+			expect(container.querySelector('.sheet__familiar')).toBeNull()
+			expect(container.querySelector('.sheet__wild-shape-forms')).toBeNull()
 		})
 
 		it('offers the Pact of the Chain forms only to a Warlock who took the invocation', async () => {
@@ -7722,22 +7732,35 @@ describe('CharacterSheet', () => {
 				},
 			])
 
-			const { container } = render(<CharacterSheet character={chainWarlock} />)
+			const user = userEvent.setup()
+			render(<CharacterSheet character={chainWarlock} onChooseFamiliar={vi.fn()} />)
 			await screen.findByRole('heading', { name: 'Chainer' })
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
-
-			const section = container.querySelector('.sheet__familiar')!
-			expect(section.textContent).toContain('Imp')
-			expect(section.querySelector('.sheet__familiar-origin')!.textContent).toContain('Pact of the Chain')
+			await user.click(await screen.findByRole('button', { name: 'Manage Extras' }))
+			const panel = await screen.findByRole('dialog', { name: 'Manage Extras' })
+			await waitFor(() => expect(within(panel).getByRole('button', { name: 'Add Imp' })).toBeTruthy())
+			expect(within(panel).getByRole('button', { name: 'Add Imp' }).closest('li')!.textContent).toContain('Pact of the Chain')
+			expect(within(panel).getByRole('button', { name: 'Add Owl' }).closest('li')!.textContent).not.toContain('Pact of the Chain')
 
 			// A Wizard with the same spell and no invocation is offered the spell's own pool only.
 			cleanup()
 			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([])
-			const { container: plain } = render(<CharacterSheet character={wizard} />)
+			render(<CharacterSheet character={wizard} onChooseFamiliar={vi.fn()} />)
 			await screen.findByRole('heading', { name: 'Conjurer' })
-			await waitFor(() => expect(plain.querySelector('.sheet__familiar')).toBeTruthy())
-			expect(plain.querySelector('.sheet__familiar')!.textContent).not.toContain('Imp')
-			expect(plain.querySelector('.sheet__familiar .sheet__familiar-origin')).toBeNull()
+			await user.click(await screen.findByRole('button', { name: 'Manage Extras' }))
+			const plain = await screen.findByRole('dialog', { name: 'Manage Extras' })
+			await waitFor(() => expect(within(plain).getByRole('button', { name: 'Add Owl' })).toBeTruthy())
+			expect(within(plain).queryByRole('button', { name: 'Add Imp' })).toBeNull()
+		})
+
+		it('shows "Pact of the Chain" in the Notes of a familiar taken from the invocation', async () => {
+			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([
+				{ name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'optionalFeature', optionName: 'Pact of the Chain' },
+			])
+			const { container } = render(<CharacterSheet character={chainWarlock({ name: 'Imp', source: 'XMM' })} />)
+			await screen.findByRole('heading', { name: 'Chainer' })
+
+			await waitFor(() => expect(extrasRowsOf(container)).toHaveLength(1))
+			expect(extrasRowsOf(container)[0].querySelector('.extras-tab__notes')!.textContent).toBe('CR 1, Pact of the Chain')
 		})
 
 		/** A chain Warlock has two forms in the pool (Owl from the spell, Imp from the pact) — enough to filter. */
@@ -7756,37 +7779,7 @@ describe('CharacterSheet', () => {
 			}
 		}
 
-		it('filters the familiar forms by name as the player types', async () => {
-			const user = userEvent.setup()
-			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([
-				{ name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'optionalFeature', optionName: 'Pact of the Chain' },
-			])
-			render(<CharacterSheet character={chainWarlock()} onChooseFamiliar={vi.fn()} />)
-			await screen.findByRole('heading', { name: 'Chainer' })
-			await waitFor(() => expect(document.querySelector('.sheet__familiar')).toBeTruthy())
-
-			expect(screen.getByRole('radio', { name: /Owl/ })).toBeTruthy()
-			await user.type(screen.getByLabelText('Search Familiar form'), 'imp')
-			expect(screen.getByRole('radio', { name: /Imp/ })).toBeTruthy()
-			expect(screen.queryByRole('radio', { name: /Owl/ })).toBeNull()
-		})
-
-		it('keeps the chosen familiar form visible and selected through a non-matching search', async () => {
-			const user = userEvent.setup()
-			vi.mocked(loadOptionalFeatureGrantedSpells).mockResolvedValue([
-				{ name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'optionalFeature', optionName: 'Pact of the Chain' },
-			])
-			render(<CharacterSheet character={chainWarlock({ name: 'Imp', source: 'XMM' })} onChooseFamiliar={vi.fn()} />)
-			await screen.findByRole('heading', { name: 'Chainer' })
-			await waitFor(() => expect(document.querySelector('.sheet__familiar')).toBeTruthy())
-
-			await user.click(document.querySelector('.sheet__familiar .option-list__toggle') as HTMLElement)
-			await user.type(screen.getByLabelText('Search Familiar form'), 'owl')
-			const imp = screen.getByRole('radio', { name: /Imp/ }) as HTMLInputElement
-			expect(imp.checked).toBe(true)
-		})
-
-		it('shows the section when the spell arrives from a feat rather than a class pick', async () => {
+		it('offers Manage Extras when the spell arrives from a feat rather than a class pick', async () => {
 			const featGranted: FeatGrantedSpell[] = [
 				{ featName: 'Magic Initiate (Wizard)', name: 'Find Familiar', source: 'XPHB', level: 1, ritual: true, concentration: false, origin: 'feat' },
 			]
@@ -7802,23 +7795,25 @@ describe('CharacterSheet', () => {
 				},
 			}
 
-			const { container } = render(<CharacterSheet character={fighter} />)
+			const user = userEvent.setup()
+			render(<CharacterSheet character={fighter} onChooseFamiliar={vi.fn()} />)
 			await screen.findByRole('heading', { name: 'Dabbler' })
 
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
-			expect(container.querySelector('.sheet__familiar')!.textContent).toContain('Owl')
+			await user.click(await screen.findByRole('button', { name: 'Manage Extras' }))
+			const panel = await screen.findByRole('dialog', { name: 'Manage Extras' })
+			await waitFor(() => expect(within(panel).getByRole('button', { name: 'Add Owl' })).toBeTruthy())
 		})
 
-		it('renders no section at all — and fetches nothing — for a character without the spell', async () => {
-			const { container } = render(<CharacterSheet character={character} />)
+		it('shows an empty tab, no Manage Extras button and fetches nothing for a character with neither category', async () => {
+			const { container } = render(<CharacterSheet character={character} onChooseFamiliar={vi.fn()} onEditWildShapeForms={vi.fn()} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
-			expect(container.querySelector('.sheet__familiar')).toBeNull()
-			expect(screen.queryByRole('heading', { name: 'Familiar' })).toBeNull()
+			expect(container.querySelector('#sheet-panel-extras')!.textContent).toContain('No extras yet.')
+			expect(screen.queryByRole('button', { name: 'Manage Extras' })).toBeNull()
 			expect(vi.mocked(loadBeasts)).not.toHaveBeenCalled()
 		})
 
-		it('renders the Druid\'s known Wild Shape forms, and nothing for a character with none', async () => {
+		it('renders the Druid\'s known Wild Shape forms in the Extras tab, and nothing for a character with none', async () => {
 			const druid: Character = {
 				id: 'ws1',
 				name: 'Shifter',
@@ -7833,21 +7828,65 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={druid} />)
 			await screen.findByRole('heading', { name: 'Shifter' })
 
-			await waitFor(() => expect(container.querySelector('.sheet__wild-shape-forms')).toBeTruthy())
-			const section = container.querySelector('.sheet__wild-shape-forms')!
-			expect(screen.getByRole('heading', { name: 'Wild Shape forms' })).toBeTruthy()
-			expect(section.textContent).toContain('Wolf')
-			expect(section.textContent).toContain('11 (2d8 + 2)') // the form's own hit points
-			expect(section.textContent).toContain('13') // its AC
-			expect(section.textContent).not.toContain('{@')
-			// Slice 8e2 (D106): one known form against an allowance of 8 (level 6) — well within limits, no count notice.
-			expect(section.querySelector('.sheet__wild-shape-count-over')).toBeNull()
-			expect(section.querySelector('.sheet__wild-shape-count-unknown')).toBeNull()
+			await waitFor(() => expect(extrasRowsOf(container)).toHaveLength(1))
+			const row = extrasRowsOf(container)[0]
+			expect(row.textContent).toContain('Wolf')
+			// 2024: a Druid in Wild Shape keeps their own hit points, so the form's 11 is not shown.
+			expect([...row.querySelectorAll('.extras-tab__cell')].map((cell) => cell.textContent)).toEqual(['13', 'Uses your HP', '40 ft.'])
+			expect(container.querySelector('#sheet-panel-extras')!.textContent).not.toContain('{@')
+			// Slice 8e2 (D106): one known form against an allowance of 6 (level 6) — well within limits, no count notice.
+			expect(container.querySelector('.sheet__wild-shape-count-over')).toBeNull()
+			expect(container.querySelector('.sheet__wild-shape-count-unknown')).toBeNull()
 
 			cleanup()
 			const { container: without } = render(<CharacterSheet character={character} />)
 			await screen.findByRole('heading', { name: 'Aria' })
-			expect(without.querySelector('.sheet__wild-shape-forms')).toBeNull()
+			expect(without.querySelector('#sheet-panel-extras .extras-tab__item')).toBeNull()
+		})
+
+		it('Manage Extras counts the stored forms against the level\'s limit and offers only forms under its CR and fly cap', async () => {
+			const user = userEvent.setup()
+			const onEditWildShapeForms = vi.fn()
+			const druid: Character = {
+				id: 'ws4',
+				name: 'Adder',
+				classes: [{ className: 'Druid', classSource: 'XPHB', subclass: null, level: 2 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 15, charisma: 8 },
+				},
+				wildShapeForms: [{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Owl', source: 'XMM' }] }],
+			}
+			render(<CharacterSheet character={druid} onEditWildShapeForms={onEditWildShapeForms} />)
+			await screen.findByRole('heading', { name: 'Adder' })
+			await user.click(screen.getByRole('button', { name: 'Manage Extras' }))
+			const panel = await screen.findByRole('dialog', { name: 'Manage Extras' })
+
+			// Level 2: CR 1/4 at most and no Fly Speed, so neither the Owl (flies) nor the Wolf (CR 1/2) is offered.
+			await waitFor(() => expect(within(panel).getByText('Known forms: 1 / 4')).toBeTruthy())
+			expect(within(panel).queryByRole('button', { name: 'Add Wolf' })).toBeNull()
+			expect(within(panel).queryByRole('button', { name: 'Add Owl' })).toBeNull()
+		})
+
+		it('a Druid with Wild Shape but no stored form still loads the beast pool for the panel', async () => {
+			const druid: Character = {
+				id: 'ws5',
+				name: 'Fresh Shifter',
+				classes: [{ className: 'Druid', classSource: 'XPHB', subclass: 'Circle of the Moon', level: 6 }],
+				abilityScores: {
+					method: 'standardArray',
+					scores: { strength: 10, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 15, charisma: 8 },
+				},
+			}
+			const user = userEvent.setup()
+			const onEditWildShapeForms = vi.fn()
+			render(<CharacterSheet character={druid} onEditWildShapeForms={onEditWildShapeForms} />)
+			await screen.findByRole('heading', { name: 'Fresh Shifter' })
+			await user.click(screen.getByRole('button', { name: 'Manage Extras' }))
+			const panel = await screen.findByRole('dialog', { name: 'Manage Extras' })
+
+			await user.click(await within(panel).findByRole('button', { name: 'Add Wolf' }))
+			expect(onEditWildShapeForms).toHaveBeenCalledWith([{ className: 'Druid', classSource: 'XPHB', forms: [{ name: 'Wolf', source: 'XMM' }] }])
 		})
 
 		it('states the gap when a stored form has no stat block (D43)', async () => {
@@ -7865,8 +7904,8 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={druid} />)
 			await screen.findByRole('heading', { name: 'Lost Shifter' })
 
-			await waitFor(() => expect(container.querySelector('.sheet__wild-shape-forms')).toBeTruthy())
-			expect(container.querySelector('.sheet__wild-shape-forms')!.textContent).toContain('Dire Corgi')
+			await waitFor(() => expect(container.querySelector('#sheet-panel-extras')!.textContent).toContain('No stat block found for "Dire Corgi" (XMM).'))
+			expect(extrasRowsOf(container)[0].textContent).toContain('Dire Corgi')
 		})
 
 		it('shows a count, not a guess at which form, when more Wild Shape forms are known than the level allows (slice 8e2, D106)', async () => {
@@ -7897,22 +7936,8 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={druid} />)
 			await screen.findByRole('heading', { name: 'Overstuffed Shifter' })
 
-			await waitFor(() => expect(container.querySelector('.sheet__wild-shape-forms')).toBeTruthy())
-			const section = container.querySelector('.sheet__wild-shape-forms')!
-			expect(section.textContent).toContain('Druid Wild Shape forms: 5 known, 4 allowed.')
-		})
-
-		it('renders each form as a collapsed stat block with its markup resolved', async () => {
-			const { container } = render(<CharacterSheet character={wizard} />)
-			await screen.findByRole('heading', { name: 'Conjurer' })
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
-
-			const section = container.querySelector('.sheet__familiar')!
-			const details = section.querySelector('details.beast')!
-			expect(details.hasAttribute('open')).toBe(false)
-			expect(details.querySelector('summary')!.textContent).toContain('Owl — Tiny Beast, CR 0')
-			expect(section.textContent).toContain('Melee Attack Roll:')
-			expect(section.textContent).not.toContain('{@')
+			expect(container.querySelector('.sheet__wild-shape-count-over')!.textContent).toBe('Druid Wild Shape forms: 5 known, 4 allowed.')
+			expect(screen.queryByRole('heading', { name: 'Wild Shape forms' })).toBeNull()
 		})
 	})
 
@@ -8015,7 +8040,7 @@ describe('CharacterSheet', () => {
 			expect(container.querySelector('.sheet__features')!.textContent).toContain('Could not load species traits: data/species.json — HTTP 500')
 		})
 
-		it('a failed beast load keeps the Familiar section, states the cause, and still names the stored form', async () => {
+		it('a failed beast load states the cause in the Extras tab and still names the stored form', async () => {
 			vi.mocked(loadBeasts).mockRejectedValue(new Error('data/beasts.json — HTTP 500'))
 			const conjurer: Character = {
 				id: 'ff9',
@@ -8031,18 +8056,20 @@ describe('CharacterSheet', () => {
 
 			const { container } = render(<CharacterSheet character={conjurer} />)
 			await screen.findByRole('heading', { name: 'Unlucky Conjurer' })
-			await waitFor(() => expect(container.querySelector('.sheet__familiar')).toBeTruthy())
+			await waitFor(() => expect(container.querySelector('#sheet-panel-extras .error')).toBeTruthy())
 
-			const section = container.querySelector('.sheet__familiar')!
-			expect(section.textContent).toContain('Could not load the Beast forms a familiar can take: data/beasts.json — HTTP 500')
-			expect(section.textContent).toContain('Summoned form on record: Owl (XMM)')
+			const section = container.querySelector('#sheet-panel-extras')!
+			expect(section.textContent).toContain('Could not load the Beast stat blocks: data/beasts.json — HTTP 500')
+			const row = section.querySelector('.extras-tab__item')!
+			expect(row.textContent).toContain('Owl')
+			expect(row.textContent).toContain('Stored form (XMM)')
 			// Never the misattributed message the empty pool would otherwise produce.
 			expect(section.textContent).not.toContain('is not a form this familiar can take')
 			expect(container.querySelector('.ability-cards [data-ability="charisma"]')).toBeTruthy()
 			expect(container.querySelector('.sheet__skills')).toBeTruthy()
 		})
 
-		it('a failed beast load names itself in the Wild Shape section instead of blaming each form', async () => {
+		it('a failed beast load names itself once in the Extras tab instead of blaming each form', async () => {
 			vi.mocked(loadBeasts).mockRejectedValue(new Error('data/beasts.json — HTTP 500'))
 			const druid: Character = {
 				id: 'ws9',
@@ -8059,10 +8086,11 @@ describe('CharacterSheet', () => {
 			await screen.findByRole('heading', { name: 'Unlucky Shifter' })
 			await waitFor(() => expect(container.querySelector('.error')).toBeTruthy())
 
-			const section = container.querySelector('.sheet__wild-shape-forms')!
-			expect(section.textContent).toContain('Could not load Beast stat blocks: data/beasts.json — HTTP 500')
-			// The form is still listed by name — the section never depended on the fetch to know what the character stored.
+			const section = container.querySelector('#sheet-panel-extras')!
+			expect(section.textContent).toContain('Could not load the Beast stat blocks: data/beasts.json — HTTP 500')
+			// The form is still listed by name — the tab never depended on the fetch to know what the character stored.
 			expect(section.textContent).toContain('Wolf')
+			expect(section.textContent).not.toContain('No stat block found')
 			expect(container.querySelector('.sheet__skills')).toBeTruthy()
 		})
 
@@ -8075,9 +8103,8 @@ describe('CharacterSheet', () => {
 			expect(container.querySelector('.sheet__senses')).toBeNull()
 			expect(container.querySelector('.sheet__feature-options')).toBeNull()
 			expect(container.querySelector('.sheet__spells')).toBeNull()
-			// No Find Familiar and no stored form, so beasts.json is never fetched and no beast error can exist.
-			expect(container.querySelector('.sheet__familiar')).toBeNull()
-			expect(container.querySelector('.sheet__wild-shape-forms')).toBeNull()
+			// No Find Familiar, no Wild Shape and no stored form, so beasts.json is never fetched and no beast error can exist.
+			expect(container.querySelector('#sheet-panel-extras .extras-tab__item')).toBeNull()
 			expect(vi.mocked(loadBeasts)).not.toHaveBeenCalled()
 		})
 	})
@@ -8229,14 +8256,14 @@ describe('the persistent header (rebuild slice 1)', () => {
 })
 
 describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b applies D148: English labels and order)', () => {
-	const TAB_LABELS = ['Actions', 'Spells', 'Inventory', 'Features & Traits', 'Notes']
-	const TAB_IDS = ['actions', 'spells', 'inventory', 'features', 'notes']
+	const TAB_LABELS = ['Actions', 'Spells', 'Inventory', 'Features & Traits', 'Notes', 'Extras']
+	const TAB_IDS = ['actions', 'spells', 'inventory', 'features', 'notes', 'extras']
 
 	afterEach(() => {
 		vi.mocked(loadGrantedSenses).mockReset().mockResolvedValue([])
 	})
 
-	it('renders the five section tabs with the actions tab selected by default', async () => {
+	it('renders the six section tabs with the actions tab selected by default', async () => {
 		render(<CharacterSheet character={character} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
@@ -8255,7 +8282,7 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b app
 			expect(container.querySelector(`#sheet-panel-${id}`)!.getAttribute('aria-labelledby')).toBe(`sheet-tab-${id}`)
 		}
 		expect(container.querySelector('#sheet-panel-actions')!.className).toContain('sheet__panel--active')
-		for (const id of ['spells', 'inventory', 'features', 'notes']) {
+		for (const id of ['spells', 'inventory', 'features', 'notes', 'extras']) {
 			expect(container.querySelector(`#sheet-panel-${id}`)!.className).not.toContain('sheet__panel--active')
 		}
 	})
@@ -8405,11 +8432,11 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 		return Array.from(container.querySelectorAll<HTMLDetailsElement>('#sheet-panel-notes details'))
 	}
 
-	it('is the last tab and is reached like the other four', async () => {
+	it('is the tab before Extras and is reached like the others', async () => {
 		const { container } = await openNotesTab()
 
 		const tabs = screen.getAllByRole('tab')
-		expect(tabs[tabs.length - 1].textContent).toBe('Notes')
+		expect(tabs[tabs.length - 2].textContent).toBe('Notes')
 		expect(screen.getByRole('tab', { name: 'Notes' }).getAttribute('aria-selected')).toBe('true')
 		expect(container.querySelector('#sheet-panel-notes')!.className).toContain('sheet__panel--active')
 		expect(container.querySelector('#sheet-panel-actions')!.className).not.toContain('sheet__panel--active')

@@ -102,6 +102,13 @@ export function wildShapeLimits(className: string, level: number, subclassName?:
 	}
 }
 
+/** The one-line reminder of what a form may be under these limits — the wizard picker and Manage Extras print the same sentence. */
+export function wildShapeHint(limits: WildShapeLimits): string {
+	return `Maximum Challenge Rating ${limits.maxCrLabel}${limits.moonCap ? ' (Circle of the Moon)' : ''}; ${
+		limits.flyAllowed ? 'a form with a Fly Speed is allowed' : 'no form with a Fly Speed yet'
+	}.`
+}
+
 /** The first class entry that has Wild Shape, with its limits. Written to iterate the array (D11). */
 export function wildShapeLimitsFor(
 	classes: { className: string; classSource: string; subclass: string | null; level: number }[],

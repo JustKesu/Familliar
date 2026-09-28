@@ -4,8 +4,8 @@
  * not Beasts). Every pool that means "a Beast" therefore has to say so; see
  * isBeastCreature.
  *
- * Only the fields a stat block displays are typed. `familiar`, `alignment`
- * and `initiative` are present in the data but deliberately untyped here —
+ * Only the fields a stat block displays are typed. `familiar` and `alignment`
+ * are present in the data but deliberately untyped here —
  * see findFamiliarBeasts below for why the flag is not what the pool is
  * derived from.
  */
@@ -69,6 +69,8 @@ export interface Beast {
 	/** Item references as the data writes them ("shortsword|xphb"). Absent on every Beast. */
 	gear?: string[]
 	spellcasting?: BeastSpellcastingBlock[]
+	/** Present on 2 of 96 beasts as `{ proficiency: 1 }`: the creature adds its proficiency bonus to Initiative (docs/DATA.md). */
+	initiative?: { proficiency?: number }
 	/**
 	 * Set by the extractor on the eight creatures Pact of the Chain names in
 	 * its own text. Seven of them are not Beasts and are in beasts.json only

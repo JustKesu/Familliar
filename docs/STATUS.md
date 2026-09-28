@@ -1755,6 +1755,21 @@ state only (D116). Item price is no longer shown. E2E `inventoryTab.spec.ts`
 a–f (+ g/d via panel); `manageInventory`, `combatActions`, `scc` specs adjusted.
 No schema change (still 50). Next: see BUILD ORDER after R10.
 
+R11a (D212) done: new last tab Extras (`src/sheet/ExtrasTab.tsx`, rows/notes/
+overage notices in `extrasData.ts`): pills All/Familiar/Wild Shape, MANAGE EXTRAS,
+table NAME·AC·HIT POINTS·SPEED·NOTES (familiar = average HP, Wild Shape forms =
+"Uses your HP"), name opens the stat block in the shared drawer. Manage Extras
+(`ManageExtrasPanel.tsx`): Add an Extra (category select, search, ADD/REPLACE/
+"Current"/"Known", Wild Shape counter "Known forms: X / N" + "· FULL") and Current
+Extras (DELETE). `characterStore.setWildShapeForms` (wired as
+`onEditWildShapeForms`); the Familiar and Wild Shape sections and `classExtras`
+are gone from Features & Traits. `BeastStatBlock` restyled and split into
+`BeastStatBody` (drawer/panel) + the `<details>` wrapper (wizard); Initiative
+shown (Dex + proficiency when the data says so). beasts.json now also loads for a
+Wild Shape class with no stored forms. E2E `manageExtras.spec.ts` a–f;
+`classGrants` spec adjusted. No schema change (still 50). Next: R11b (familiar
+current/max HP with a damage/heal panel — needs a schema change).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

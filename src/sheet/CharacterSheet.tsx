@@ -20,7 +20,7 @@ import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
 import { totalCharacterLevel } from '../levelUp/levelUpSteps'
 import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
-import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
+import { familiarFormOptions, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast } from '../beasts/beastData'
 import { computeAbilityScores, type AbilityScoreValue } from '../calculation/abilityScores'
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
 import { computeAttunementLimit } from '../calculation/attunement'
@@ -44,7 +44,7 @@ import { computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '..
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
 import { highestSlotLevel } from '../spells/spellLevelFilter'
-import { wildShapeLimits } from '../beasts/wildShapeData'
+import { wildShapeLimitsFor } from '../beasts/wildShapeData'
 import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { computeAttacksPerAction, computeWeaponAttacks, damageText, type WeaponAttack } from '../calculation/weaponAttacks'
@@ -68,8 +68,7 @@ import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpel
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells, type RaceSpellGrants } from '../spells/raceSpells'
 import { findSpellDetail, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
-import { BeastStatBlock } from './BeastStatBlock'
-import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
+import { BeastStatBody } from './BeastStatBlock'
 import {
 	inventoryRowKey,
 	loadItemRefs,
@@ -130,6 +129,7 @@ import {
 	type CharacterLanguage,
 	type CharacterSpellChoice,
 	type CharacterToolChoice,
+	type CharacterWildShapeForms,
 	type SpentSpellSlots,
 	type WeaponAttackAbility,
 } from '../storage/character'
@@ -147,6 +147,8 @@ import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
 import { ClassSpellsManager } from './ManageSpellsPanel'
 import { InventoryTab } from './InventoryTab'
+import { ExtrasTab } from './ExtrasTab'
+import { ManageExtrasPanel } from './ManageExtrasPanel'
 import { ManageInventoryPanel } from './ManageInventoryPanel'
 import { withClassPicks } from './manageSpellsData'
 import { collectKnownSpells } from '../spells/knownSpells'
@@ -214,7 +216,7 @@ const ABILITY_LABELS: Record<Ability, string> = {
  * R3b applies D148 (English tab labels) and the planned order; ids stay as
  * they are since tests hook them.
  */
-type SheetTabId = 'spells' | 'inventory' | 'features' | 'actions' | 'notes'
+type SheetTabId = 'spells' | 'inventory' | 'features' | 'actions' | 'notes' | 'extras'
 
 const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
 	{ id: 'actions', label: 'Actions' },
@@ -222,6 +224,7 @@ const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
 	{ id: 'inventory', label: 'Inventory' },
 	{ id: 'features', label: 'Features & Traits' },
 	{ id: 'notes', label: 'Notes' },
+	{ id: 'extras', label: 'Extras' },
 ]
 
 /** The Notes tab's sections (slice 9d2), in display order — each one Character field. */
@@ -255,6 +258,8 @@ type DrawerContent =
 	| { kind: 'spellSlots' }
 	| { kind: 'manageSpells' }
 	| { kind: 'manageInventory' }
+	| { kind: 'manageExtras' }
+	| { kind: 'beast'; beast: Beast }
 
 const PROFICIENCY_ROWS: [ProficiencyCategory, string][] = [
 	['armor', 'Armor'],
@@ -308,38 +313,6 @@ function AbilityScorePanel({ result }: { result: Calculated<AbilityScoreValue> }
 			<ValueBreakdown breakdown={result.breakdown} open />
 		</>
 	)
-}
-
-const NO_FAMILIAR_KEY = ''
-
-/**
- * The familiar-form options for the sheet's one editable control. "No familiar
- * summoned" leads (its key is the empty string, which maps back to
- * onChooseFamiliar(null)); then the Find Familiar pool, then any Pact of the
- * Chain forms — the order the old <select> used its optgroups in. Each form's
- * stat block rides in `detail` as a default-collapsed <details>, so a search
- * result narrows the summaries shown without flinging stat blocks open.
- */
-function familiarPickerOptions(forms: FamiliarFormOption[], storedFamiliar: CharacterFamiliar | null): SearchableOption[] {
-	const ordered = [
-		...forms.filter((option) => option.origin === 'spell'),
-		...forms.filter((option) => option.origin === 'pact-of-the-chain'),
-	]
-	return [
-		{ key: NO_FAMILIAR_KEY, name: 'No familiar summoned', selected: storedFamiliar === null },
-		...ordered.map(({ beast, origin }) => ({
-			key: formKey(beast),
-			name: beast.name,
-			label: (
-				<>
-					{beast.name} (CR {beast.cr})
-					{origin === 'pact-of-the-chain' && <span className="sheet__familiar-origin"> Pact of the Chain</span>}
-				</>
-			),
-			detail: <BeastStatBlock beast={beast} />,
-			selected: storedFamiliar !== null && formKey(beast) === formKey(storedFamiliar),
-		})),
-	]
 }
 
 /**
@@ -1239,7 +1212,6 @@ function FeatureOptionItem({ option, resolverData }: { option: FeatureTabOption;
 function FeaturesSection({
 	groups,
 	errors,
-	classExtras,
 	resourceMaxima,
 	resourceRecharge,
 	resourceUses,
@@ -1248,8 +1220,6 @@ function FeaturesSection({
 }: {
 	groups: FeatureTabGroup[]
 	errors: ReactNode
-	/** Wild Shape forms and the familiar — shown after the class groups (docs/REPORT.md). */
-	classExtras: ReactNode
 	resourceMaxima: ReadonlyMap<string, number>
 	resourceRecharge: ReadonlyMap<string, string>
 	resourceUses: Record<string, number>
@@ -1317,7 +1287,6 @@ function FeaturesSection({
 			</div>
 			{errors}
 			{groups.filter((group) => group.kind === 'class' && shown('class')).map(renderGroup)}
-			{shown('class') && classExtras}
 			{groups.filter((group) => group.kind !== 'class' && shown(group.kind)).map(renderGroup)}
 		</section>
 	)
@@ -1558,6 +1527,7 @@ export function CharacterSheet(props: ComponentProps<typeof CharacterSheetBody>)
 function CharacterSheetBody({
 	character,
 	onChooseFamiliar,
+	onEditWildShapeForms,
 	onEditInventory,
 	onEditCurrency,
 	onEditHitPoints,
@@ -1577,6 +1547,8 @@ function CharacterSheetBody({
 }: {
 	character: Character
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
+	/** Replaces the known Wild Shape forms from the Manage Extras drawer (R11a, D212). Absent leaves Wild Shape out of the drawer. */
+	onEditWildShapeForms?: (forms: CharacterWildShapeForms[]) => void
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
 	onEditHitPoints?: (hitPoints: HitPointFields) => void
@@ -2028,10 +2000,11 @@ function CharacterSheetBody({
 	const knowsFindFamiliar = hasFindFamiliar(combinedSpells)
 	const knowsMageArmor = hasMageArmor(combinedSpells)
 	const storedWildShapeForms = character.wildShapeForms ?? []
-	const needsBeasts = knowsFindFamiliar || storedWildShapeForms.length > 0
+	const wildShapeAccess = wildShapeLimitsFor(character.classes)
+	const needsBeasts = knowsFindFamiliar || storedWildShapeForms.length > 0 || wildShapeAccess !== null
 
-	// beasts.json is 80 KB, so a character with neither Find Familiar nor a
-	// known Wild Shape form never fetches it.
+	// beasts.json is 80 KB, so a character with no Find Familiar, no Wild Shape
+	// and no stored form never fetches it.
 	useEffect(() => {
 		if (!needsBeasts) {
 			setBeastsError(null)
@@ -2449,43 +2422,10 @@ function CharacterSheetBody({
 	const canManageSpells = onEditSpellChoices !== undefined && managedClasses.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
 	const familiarForms = knowsFindFamiliar ? familiarFormOptions(beasts, hasPactOfTheChain(character.optionalFeatureChoices ?? [])) : []
-	const storedFamiliar = character.familiar ?? null
-	const chosenFamiliar = storedFamiliar ? (familiarForms.find((option) => formKey(option.beast) === formKey(storedFamiliar)) ?? null) : null
-	/* The stat block is re-derived from beasts.json, never stored — storage carries name+source only. */
-	const wildShapeForms = storedWildShapeForms.flatMap((entry) =>
-		entry.forms.map((form) => ({
-			form,
-			className: entry.className,
-			beast: beasts.find((beast) => beast.name === form.name && beast.source === form.source) ?? null,
-		})),
-	)
-	/*
-	 * Slice 8e2 (D106): storage keeps every Wild Shape pick regardless of level
-	 * (D104) — this is the count-only half of that gap, one entry per class
-	 * that has ANY stored forms. Unlike the spell limits above, Wild Shape's
-	 * allowance is read off that one class's own level (wildShapeLimits), so
-	 * multiclassing elsewhere on the sheet doesn't make it undeterminable —
-	 * only a class the character no longer has does.
-	 */
-	const wildShapeOverages = storedWildShapeForms.map((entry) => {
-		const classEntry = character.classes.find((c) => c.className === entry.className && c.classSource === entry.classSource)
-		if (!classEntry) {
-			return {
-				key: `${entry.className}|${entry.classSource}`,
-				className: entry.className,
-				status: 'unknown' as const,
-				reason: `Cannot tell the Wild Shape limit for "${entry.className}": that class is no longer on this character.`,
-			}
-		}
-		const limits = wildShapeLimits(entry.className, classEntry.level, classEntry.subclass)
-		return {
-			key: `${entry.className}|${entry.classSource}`,
-			className: entry.className,
-			status: 'known' as const,
-			stored: entry.forms.length,
-			allowed: limits?.knownForms ?? 0,
-		}
-	})
+	/* beasts.json starts as [] and is never empty once loaded, so this is "fetch in flight". */
+	const beastsLoading = needsBeasts && beasts.length === 0 && beastsError === null
+	// The Manage Extras button needs a category the character has AND the callback that edits it.
+	const canManageExtras = (knowsFindFamiliar && onChooseFamiliar !== undefined) || (wildShapeAccess !== null && onEditWildShapeForms !== undefined)
 	// Darkvision grants are folded into the traits row above, not shown again here.
 	const combinedSenses = combineSenseEntries(grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'))
 
@@ -2963,109 +2903,25 @@ function CharacterSheetBody({
 				resourceUses={resourceUses}
 				resolverData={resolverData}
 				onSpendResource={onEditResourceUses ? spendResource : undefined}
-				classExtras={
-				<>
-				{/* The Beast forms a Druid knows for Wild Shape. Nothing renders for a character with none — no empty heading. Uses per rest and transforming are play tracking (step 9), not shown. */}
-				{wildShapeForms.length > 0 && (
-				<section className="sheet__wild-shape-forms">
-					<h2>Wild Shape forms</h2>
-					{/* The forms are listed from storage, so this section never vanished — but without this line every one of them reads "no stat block found", blaming the form for a failure of the whole fetch. */}
-					{beastsError && <p className="error">Could not load Beast stat blocks: {beastsError}</p>}
-					{/* Slice 8e2 (D106): the count-only notice — which form is surplus is unknowable (D104), so only how many is shown, same spirit as the spell counts above. */}
-					{wildShapeOverages.map((overage) =>
-						overage.status === 'unknown' ? (
-							<p key={overage.key} className="sheet__wild-shape-count-unknown">
-								<UnresolvedValue reason={overage.reason} />
-							</p>
-						) : (
-							overage.stored > overage.allowed && (
-								<p key={overage.key} className="sheet__wild-shape-count-over">
-									{overage.className} Wild Shape forms: {overage.stored} known, {overage.allowed} allowed.
-								</p>
-							)
-						),
-					)}
-					<ul>
-						{wildShapeForms.map(({ form, beast }) => (
-							<li key={`${form.name}|${form.source}`}>
-								{beast ? (
-									<BeastStatBlock beast={beast} />
-								) : (
-									// D43: a stored form whose stat block is missing is still listed, with the gap stated.
-									<UnresolvedValue reason={`No stat block found for "${form.name}" (${form.source}).`} />
-								)}
-							</li>
-						))}
-					</ul>
-				</section>
-			)}
+			/>
+			</div>
 
-			{/*
-			 * A failed beast load empties familiarForms, which would silently remove the section below — a character who
-			 * knows the spell would look like one who doesn't (D43). This states the failure instead; it and the section
-			 * below are mutually exclusive, since familiarForms is non-empty only when the load succeeded.
-			 */}
-			{knowsFindFamiliar && beastsError !== null && (
-				<section className="sheet__familiar">
-					<h2>Familiar</h2>
-					<p className="error">Could not load the Beast forms a familiar can take: {beastsError}</p>
-					{/* Named from storage rather than dropped — no form can be offered, but the player still sees what is on record. */}
-					{storedFamiliar && (
-						<p>
-							Summoned form on record: {storedFamiliar.name} ({storedFamiliar.source}).
-						</p>
-					)}
-				</section>
-			)}
-
-			{/* The familiar. Nothing renders for a character without the spell — no empty heading, same rule the sections above follow. With the spell but nothing chosen, the section says so rather than showing an empty list. */}
-			{familiarForms.length > 0 && (
-				<section className="sheet__familiar">
-					<h2>Familiar</h2>
-
-					{/*
-					 * The one editable control on the sheet. It carries a full stat block per
-					 * form (as the old "All eligible forms" list did) so a form can be compared
-					 * before switching; each block is a default-collapsed <details>, and the
-					 * list itself collapses once a familiar is chosen, so it stays out of the
-					 * way of the summoned form shown below. Radio, so exactly one form (or none)
-					 * is summoned — nothing about that changed with the control swap.
-					 */}
-					<SearchableOptionList
-						legend="Familiar form"
-						name="familiar-form"
-						inputType="radio"
-						options={familiarPickerOptions(familiarForms, storedFamiliar)}
-						required={1}
-						defaultOpen={storedFamiliar === null}
-						renderCount={() =>
-							storedFamiliar ? `Current form: ${storedFamiliar.name}` : 'No familiar summoned'
-						}
-						onToggle={(key) => {
-							if (key === NO_FAMILIAR_KEY) {
-								onChooseFamiliar?.(null)
-								return
-							}
-							const picked = familiarForms.find((option) => formKey(option.beast) === key)
-							if (picked) onChooseFamiliar?.({ name: picked.beast.name, source: picked.beast.source })
-						}}
-					/>
-
-					{storedFamiliar === null ? (
-						<p className="sheet__familiar-none">No familiar is summoned. Choose a form above to summon one.</p>
-					) : chosenFamiliar ? (
-						<>
-							{chosenFamiliar.origin === 'pact-of-the-chain' && <p className="sheet__familiar-origin">Special form from Pact of the Chain.</p>}
-							<BeastStatBlock beast={chosenFamiliar.beast} defaultOpen />
-						</>
-					) : (
-						// D43: a stored form that is no longer offered (the invocation was dropped, or the data changed) is named, with the gap stated.
-						<UnresolvedValue reason={`"${storedFamiliar.name}" (${storedFamiliar.source}) is not a form this familiar can take.`} />
-					)}
-				</section>
-			)}
-				</>
-				}
+			<div
+				role="tabpanel"
+				id="sheet-panel-extras"
+				aria-labelledby="sheet-tab-extras"
+				className={activeTab === 'extras' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
+			>
+			<ExtrasTab
+				familiar={character.familiar ?? null}
+				familiarForms={familiarForms}
+				wildShapeForms={storedWildShapeForms}
+				classes={character.classes}
+				beasts={beasts}
+				beastsError={beastsError}
+				beastsLoading={beastsLoading}
+				onOpenBeast={(beast) => setDrawer({ kind: 'beast', beast })}
+				onManageExtras={canManageExtras ? () => setDrawer({ kind: 'manageExtras' }) : undefined}
 			/>
 			</div>
 
@@ -3317,6 +3173,29 @@ function CharacterSheetBody({
 						onEditInventory={onEditInventory}
 						onEditCurrency={onEditCurrency}
 					/>
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'manageExtras' && (
+				<Drawer title="Manage Extras" onClose={() => setDrawer(null)}>
+					<ManageExtrasPanel
+						familiar={character.familiar ?? null}
+						familiarAvailable={knowsFindFamiliar}
+						familiarForms={familiarForms}
+						wildShape={wildShapeAccess}
+						wildShapeForms={storedWildShapeForms}
+						beasts={beasts}
+						beastsError={beastsError}
+						beastsLoading={beastsLoading}
+						onChooseFamiliar={onChooseFamiliar}
+						onEditWildShapeForms={onEditWildShapeForms}
+					/>
+				</Drawer>
+			)}
+
+			{drawer?.kind === 'beast' && (
+				<Drawer title={drawer.beast.name} onClose={() => setDrawer(null)}>
+					<BeastStatBody beast={drawer.beast} />
 				</Drawer>
 			)}
 

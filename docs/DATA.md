@@ -986,6 +986,13 @@ Each `spellcasting` block sets `displayAs: "action"` and hides its own `will`
 list, so `headerEntries` IS the printed line — that is all the stat block
 renders.
 
+`initiative` (R11a survey, scripts/investigate-beast-initiative.js): absent on
+94 of 96 beasts; on the other two (Giant Shark, Mammoth) it is
+`{ proficiency: 1 }` — the creature adds its proficiency bonus once. The data
+carries no bonus number, so the stat block computes Dex modifier +
+`proficiency` × the proficiency bonus of the creature's CR (2 up to CR 4, 3 for
+CR 5–8: `proficiencyBonusForLevel(max(1, crNumber))`).
+
 Beast trait/action text uses eight markup tags that occur nowhere else in
 data/: `{@atkr}`, `{@h}`, `{@recharge}`, `{@actTrigger}`, `{@actResponse}`,
 `{@actSave}`, `{@actSaveFail}`, `{@actSaveSuccess}`. All eight are handled in

@@ -645,6 +645,19 @@ export class CharacterStore {
 		this.writeAll(updated)
 	}
 
+	/** Replaces the known Wild Shape forms (R11a, D212: the Manage Extras panel). A class left with no forms is dropped, and an empty result clears the field. */
+	setWildShapeForms(id: string, wildShapeForms: CharacterWildShapeForms[]): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const kept = wildShapeForms.filter((entry) => entry.forms.length > 0)
+		const { wildShapeForms: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = kept.length > 0 ? { ...rest, wildShapeForms: kept } : rest
+		this.writeAll(updated)
+	}
+
 	/** Turns Heroic Inspiration on or off (R4b, D167) — a targeted write like setConcentration. */
 	setHeroicInspiration(id: string, on: boolean): void {
 		const characters = this.list()
