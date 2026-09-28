@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { BASE_ATTUNEMENT_LIMIT, countAttuned, describeAttunementRefusal } from '../calculation/attunement'
-import { makeRoomForHands, type HeldThing } from '../calculation/hands'
+import { putDown, takeInHand, toggleEquip, type EquipResult } from '../inventory/equipActions'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import { type Calculated } from '../calculation/types'
 import { damageTypeLabel, DAMAGE_TYPES } from '../calculation/damageResponses'
@@ -16,7 +16,6 @@ import {
 	CUSTOM_WEAPON_CATEGORIES,
 	CUSTOM_WEAPON_RANGES,
 	equipSlotOf,
-	handsRequiredOf,
 	inventoryRowKey,
 	isMagicItem,
 	isVersatileWeapon,
@@ -24,8 +23,6 @@ import {
 	itemFilterKindsOf,
 	itemKey,
 	itemMagicBonusOf,
-	returnToStack,
-	splitOneOff,
 	withQuantity,
 	type ItemFilterKind,
 	type ItemRef,
@@ -172,19 +169,6 @@ function AddPlatinumField({ onAdd }: { onAdd: (platinum: number) => void }): Rea
 			/>
 		</label>
 	)
-}
-
-/**
- * A row put down. Only the equipped flag goes: everything else the row carries
- * — attunement, the Finesse ability pick, the magic bonus, a custom item's own
- * definition — is a fact about the item, not about whether it is in hand, and a
- * sheathed sword that stopped being a +1 (or stopped being a custom item at
- * all) would be data loss.
- */
-function putDown(row: CharacterInventoryItem): CharacterInventoryItem {
-	const rest = { ...row }
-	delete rest.equipped
-	return rest
 }
 
 /** The row back in one hand — the key is removed, since absent is what "one-handed" means in storage (slice b-fix). */
@@ -852,60 +836,15 @@ export function ManageInventoryPanel({
 		onEditInventory(inventory.map((row, i) => (i === index ? withMagicBonus(row, bonus) : row)))
 	}
 
-	/**
-	 * Equipping is the one inventory edit that can change another row: a body
-	 * wears one suit of armour and has two hands, so taking something up puts
-	 * down whatever it has to. That is reported in `notice` rather than done
-	 * quietly.
-	 */
-	function toggleEquip(index: number): void {
-		const item = inventory[index]
-		const ref = resolve(item).ref
-		const slot = ref ? equipSlotOf(ref) : null
-		if (!slot || !ref) return
-
-		if (item.equipped) {
-			setNotice(null)
-			onEditInventory(returnToStack(inventory.map((row, i) => (i === index ? putDown(row) : row)), [index]))
-			return
-		}
-
-		if (slot === 'worn') {
-			// 'worn' is armour and nothing else, so the previous suit is simply the other worn row (storage allows at most one).
-			const displacedIndex = inventory.findIndex((row, i) => i !== index && row.equipped === 'worn')
-			setNotice(displacedIndex === -1 ? null : `Unequipped ${inventory[displacedIndex].name} — only one suit of armour can be worn at a time.`)
-			onEditInventory(inventory.map((row, i) => (i === index ? { ...row, equipped: 'worn' } : i === displacedIndex ? putDown(row) : row)))
-			return
-		}
-
-		// D188: a hand holds one item, so a stack gives up one and the rest stays equippable.
-		const split = splitOneOff(inventory, index)
-		takeInHand(split.inventory, split.index, ref, { ...split.inventory[split.index], equipped: 'held' })
+	function applyEquip(result: EquipResult | null): void {
+		if (!result) return
+		setNotice(result.notice)
+		onEditInventory(result.inventory)
 	}
 
-	/**
-	 * Taking a row into the hands, in the shape `next` describes. Everything
-	 * already held that no longer fits alongside it is put down, oldest first,
-	 * and named (src/calculation/hands.ts).
-	 *
-	 * A held row the item data does not know still counts as one hand: the
-	 * alternative is a character quietly holding three things because one of them
-	 * could not be resolved (D43).
-	 */
-	function takeInHand(rows: CharacterInventoryItem[], index: number, ref: ItemRef, next: CharacterInventoryItem): void {
-		const held: HeldThing[] = []
-		rows.forEach((row, i) => {
-			if (i === index || row.equipped !== 'held') return
-			const otherRef = resolve(row).ref
-			held.push({ index: i, name: row.name, hands: (otherRef ? handsRequiredOf(otherRef, row.grip) : null) ?? 1 })
-		})
-
-		const { displaced, message } = makeRoomForHands(held, { index, name: next.name, hands: handsRequiredOf(ref, next.grip) ?? 1 })
-		const putting = new Set(displaced.map((thing) => thing.index))
-		setNotice(message)
-		onEditInventory(returnToStack(rows.map((row, i) => (i === index ? next : putting.has(i) ? putDown(row) : row)), putting))
+	function toggleEquipRow(index: number): void {
+		applyEquip(toggleEquip(inventory, index, resolve))
 	}
-
 	/**
 	 * A Versatile weapon's grip. Two-handing one is a real claim on a hand, not
 	 * just a bigger damage die, so it goes through the same rule equipping does
@@ -920,7 +859,7 @@ export function ManageInventoryPanel({
 			onEditInventory(inventory.map((row, i) => (i === index ? oneHanded(row) : row)))
 			return
 		}
-		takeInHand(inventory, index, ref, { ...item, equipped: 'held', grip })
+		applyEquip(takeInHand(inventory, index, ref, { ...item, equipped: 'held', grip }, resolve))
 	}
 
 	/**
@@ -1091,7 +1030,7 @@ export function ManageInventoryPanel({
 										</span>
 										{/* Only gear that can actually be worn or held offers the control at all. */}
 										{slot !== null && (
-											<button type="button" aria-label={`${item.equipped ? 'Put down' : 'Equip'} ${bonus.label}`} onClick={() => toggleEquip(index)}>
+											<button type="button" aria-label={`${item.equipped ? 'Put down' : 'Equip'} ${bonus.label}`} onClick={() => toggleEquipRow(index)}>
 												{item.equipped ? 'Put down' : 'Equip'}
 											</button>
 										)}

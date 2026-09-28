@@ -1375,16 +1375,17 @@ describe('CharacterSheet', () => {
 			expect(onEditInventory).toHaveBeenCalledWith([])
 		})
 
-		it('the Inventory tab itself is read-only: no quantity field, no Equip, no Remove (R10a)', async () => {
+		it('the Inventory tab has no quantity field, Equip or Remove button (R10a, R10b)', async () => {
 			const held: Character = { ...character, id: 'inv-readonly-tab', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 2, equipped: 'held' }] }
 			const { container } = render(<CharacterSheet character={held} onEditInventory={vi.fn()} onEditCurrency={vi.fn()} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
 			const section = container.querySelector('.sheet__inventory') as HTMLElement
-			await waitFor(() => expect(section.textContent).toContain('×2'))
+			await waitFor(() => expect(section.querySelector('.inventory-tab__qty')!.textContent).toBe('2'))
 			expect(within(section).getByRole('button', { name: 'Manage Inventory' })).toBeTruthy()
-			expect(section.querySelector('input, select')).toBeNull()
-			expect(within(section).queryByRole('button', { name: /^(Put down|Equip|Remove|Discard)/ })).toBeNull()
+			// R10b: the only inputs are search and the ACTIVE checkbox — no quantity field, grip or bonus select.
+			expect(Array.from(section.querySelectorAll('input, select')).map((el) => el.getAttribute('type') ?? el.tagName)).toEqual(['search', 'checkbox'])
+			expect(within(section).queryByRole('button', { name: /^(Put down|Equip |Remove|Discard)/ })).toBeNull()
 		})
 
 		it('putting a held weapon down leaves it in the inventory, unequipped', async () => {
@@ -2407,17 +2408,17 @@ describe('CharacterSheet', () => {
 		it('marks an attuned row so it is recognisable at a glance', async () => {
 			const owner: Character = { ...character, id: 'att-mark', inventory: [{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1, attuned: true }] }
 			const { container } = await renderSheet(owner)
-			expect(inventoryRow(container, 'Cloak of Protection').querySelector('.sheet__inventory-attuned')!.textContent).toContain('attuned')
+			expect(inventoryRow(container, 'Cloak of Protection').querySelector('.inventory-tab__notes')!.textContent).toContain('attuned')
 		})
 
 		it('shows the requirement, with a restriction sentence reaching the row unchanged (D21)', async () => {
 			const owner: Character = { ...character, id: 'att-text', inventory: carrying('Wand of the War Mage, +1', 'Amulet of Health') }
 			const { container } = await renderSheet(owner)
-			expect(inventoryRow(container, 'Wand of the War Mage, +1').querySelector('.sheet__attunement-requirement')!.textContent).toContain(
-				'Requires attunement by a spellcaster',
+			expect(inventoryRow(container, 'Wand of the War Mage, +1').querySelector('.inventory-tab__notes')!.textContent).toContain(
+				'requires attunement by a spellcaster',
 			)
 			// A requirement with no condition says only that there is one — nothing is invented to fill the gap.
-			expect(inventoryRow(container, 'Amulet of Health').querySelector('.sheet__attunement-requirement')!.textContent!.trim()).toBe('Requires attunement')
+			expect(inventoryRow(container, 'Amulet of Health').querySelector('.inventory-tab__notes')!.textContent!.trim()).toBe('requires attunement')
 		})
 
 		it('attunes and un-attunes, writing the flag to the row', async () => {
@@ -2973,11 +2974,14 @@ describe('CharacterSheet', () => {
 			const rendered = render(<CharacterSheet character={subject} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await waitFor(() => expect(rendered.container.querySelector('.sheet__inventory-list')).toBeTruthy())
+			// R10b: the tab keeps descriptions collapsed behind ▸; open every one so the text tests read them.
+			const user = userEvent.setup()
+			for (const toggle of Array.from(rendered.container.querySelectorAll<HTMLElement>('.inventory-tab__name-line button'))) await user.click(toggle)
 			return rendered
 		}
 
 		function descriptions(container: HTMLElement): HTMLElement[] {
-			return Array.from(container.querySelectorAll<HTMLElement>('.sheet__item-description'))
+			return Array.from(container.querySelectorAll<HTMLElement>('.inventory-tab__description'))
 		}
 
 		it('renders an item’s plain description text on its row', async () => {
@@ -2987,10 +2991,6 @@ describe('CharacterSheet', () => {
 			const shown = descriptions(container)
 			expect(shown).toHaveLength(1)
 			expect(shown[0].textContent).toContain('A torch sheds bright light in a 20-foot radius while it burns.')
-			// Collapsed by default: the survey found a median description of 330 characters.
-			expect(shown[0].tagName).toBe('DETAILS')
-			expect((shown[0] as HTMLDetailsElement).open).toBe(false)
-			expect(shown[0].querySelector('summary')!.textContent).toContain('Torch')
 		})
 
 		it('renders a description’s markup through the shared renderer, not as raw braces', async () => {
@@ -3014,7 +3014,7 @@ describe('CharacterSheet', () => {
 			// Absent text is not an error (D43) — the row is there, the section is not.
 			expect(container.querySelector('.sheet__inventory-list')!.textContent).toContain('Backpack')
 			expect(descriptions(container)).toHaveLength(0)
-			expect(container.querySelector('.sheet__inventory')!.textContent).not.toContain('Description of')
+			expect(screen.queryByRole('button', { name: /description$/ })).toBeNull()
 		})
 
 		it('an unresolvable row still renders, named, with the problem stated and no description (D43)', async () => {
@@ -3038,8 +3038,11 @@ describe('CharacterSheet', () => {
 			}
 			const { container } = await renderSheet(owner)
 
-			const summaries = descriptions(container).map((details) => details.querySelector('summary')!.textContent)
-			expect(summaries).toEqual(['Description of Torch', 'Description of Cloak of Protection'])
+			const rows = Array.from(container.querySelectorAll('.sheet__inventory-list > li'))
+			expect(rows).toHaveLength(2)
+			expect(rows[0].querySelector('.inventory-tab__description')!.textContent).toContain('A torch sheds')
+			expect(rows[1].querySelector('.inventory-tab__description')!.textContent).toContain('+1 bonus to Armor Class')
+			expect(within(rows[0] as HTMLElement).getByRole('button', { name: 'Torch description' })).toBeTruthy()
 		})
 
 		/*
@@ -3110,6 +3113,12 @@ describe('CharacterSheet', () => {
 			await waitFor(() => expect(inventorySection(rendered.container).querySelector('.sheet__attunement-count')).toBeTruthy())
 			if (onEditInventory) await openManageInventory()
 			return rendered
+		}
+
+		/** R10b: descriptions sit behind ▸ in the tab. */
+		async function expandAll(container: HTMLElement): Promise<void> {
+			const user = userEvent.setup()
+			for (const toggle of Array.from(container.querySelectorAll<HTMLElement>('.inventory-tab__name-line button'))) await user.click(toggle)
 		}
 
 		const scarf = {
@@ -3328,11 +3337,11 @@ describe('CharacterSheet', () => {
 		it('shows the row with its description, its value and a custom marker', async () => {
 			const owner: Character = { ...character, id: 'ci-row', inventory: [scarf] }
 			const { container } = await renderSheet(owner)
+			await expandAll(container)
 
 			const row = inventoryRow(container, 'Scarf of Warmth')
-			expect(row.textContent).toContain('(custom)')
-			expect(row.textContent).toContain('50 gp')
-			expect(row.querySelector('.sheet__item-description')!.textContent).toContain('You are comfortable in cold weather.')
+			expect(row.querySelector('.inventory-tab__notes')!.textContent).toContain('custom')
+			expect(row.querySelector('.inventory-tab__description')!.textContent).toContain('You are comfortable in cold weather.')
 			// It resolves against its own definition, so nothing reports it missing from items.json (D43).
 			expect(row.textContent).not.toContain('Item data not found')
 		})
@@ -3353,6 +3362,7 @@ describe('CharacterSheet', () => {
 				],
 			}
 			const { container } = await renderSheet(owner)
+			await expandAll(container)
 
 			expect(inventoryRow(container, 'Comfortable Chain Mail').textContent).toContain('does not impose disadvantage on Stealth')
 			// Armour Class is 10 + Dex 2: a custom suit declares no AC in this slice, and prose is never read for one (D21).
@@ -3373,7 +3383,7 @@ describe('CharacterSheet', () => {
 			const { container } = await renderSheet(owner, onEditInventory)
 
 			// The requirement is printed exactly as the definition writes it and never evaluated (D78).
-			expect(inventoryRow(container, 'Bone Blade').textContent).toContain('Requires attunement by a druid')
+			expect(inventoryRow(container, 'Bone Blade').textContent).toContain('requires attunement by a druid')
 
 			await user.click(screen.getByRole('button', { name: 'Equip Bone Blade' }))
 			expect(onEditInventory).toHaveBeenLastCalledWith([{ ...blade, equipped: 'held' }])
@@ -3427,6 +3437,7 @@ describe('CharacterSheet', () => {
 				],
 			}
 			const { container } = await renderSheet(owner)
+			await expandAll(container)
 
 			const rows = Array.from(inventorySection(container).querySelectorAll('.sheet__inventory-list > li'))
 			expect(rows).toHaveLength(2)
@@ -3443,6 +3454,7 @@ describe('CharacterSheet', () => {
 				],
 			}
 			const { container } = await renderSheet(owner)
+			await expandAll(container)
 
 			const row = inventoryRow(container, 'Bad Thing')
 			expect(row.textContent).toContain('Custom item "Bad Thing" cannot be read')

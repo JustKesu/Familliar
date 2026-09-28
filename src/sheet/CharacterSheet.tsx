@@ -23,10 +23,9 @@ import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, formKey, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast, type FamiliarFormOption } from '../beasts/beastData'
 import { computeAbilityScores, type AbilityScoreValue } from '../calculation/abilityScores'
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
-import { BASE_ATTUNEMENT_LIMIT, computeAttunementLimit, countAttuned } from '../calculation/attunement'
+import { computeAttunementLimit } from '../calculation/attunement'
 import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
 import { missingFeatSubChoices } from './featSubChoices'
-import { resolveMagicBonus } from '../calculation/magicBonus'
 import { computeHitDicePool, hitDiceKey, type ClassHitDie, type HitDiceEntry } from '../calculation/hitDice'
 import { deathSavesAfterHitPointChange, describeDeathSaveRoll, type DeathSaveRollResult } from '../hitPoints/deathSaves'
 import { applyHealing } from '../hitPoints/damageHealing'
@@ -71,16 +70,13 @@ import { loadRaceSpells, type RaceSpellGrants } from '../spells/raceSpells'
 import { findSpellDetail, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBlock } from './BeastStatBlock'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
-import { copperToCoins } from '../inventory/currency'
 import {
-	buildInventoryResolver,
 	inventoryRowKey,
-	itemMagicBonusOf,
 	loadItemRefs,
 	type ItemRef,
 } from '../inventory/inventoryData'
 import { ammoEntriesFor, autoSpendEntry, canSpendAmmo, spendAmmo, type AmmoEntry } from '../inventory/ammunition'
-import { loadItemEntryTemplates, resolveItemEntryRefs, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
+import { loadItemEntryTemplates, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
 import { buildItemDarkvisionGrants, buildItemSpeedAdjustments } from './itemEffectData'
@@ -150,7 +146,8 @@ import { ArmourClassNotes, FireIcon, formatSpeed, SheetHeader, type StatCard } f
 import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
 import { ClassSpellsManager } from './ManageSpellsPanel'
-import { ItemDescription, itemValueText, ManageInventoryPanel } from './ManageInventoryPanel'
+import { InventoryTab } from './InventoryTab'
+import { ManageInventoryPanel } from './ManageInventoryPanel'
 import { withClassPicks } from './manageSpellsData'
 import { collectKnownSpells } from '../spells/knownSpells'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
@@ -343,131 +340,6 @@ function familiarPickerOptions(forms: FamiliarFormOption[], storedFamiliar: Char
 			selected: storedFamiliar !== null && formKey(beast) === formKey(storedFamiliar),
 		})),
 	]
-}
-
-/**
- * Inventory and money (build order step 7, slice a1). Read-only since R10a:
- * every edit lives in the Manage Inventory drawer (ManageInventoryPanel.tsx).
- *
- * An empty inventory is a normal state, shown as a plain line — never an
- * error (contrast itemRefsError, which is the item DATA failing to load, D43).
- * A stored item whose (name, source) isn't in the loaded list is kept and
- * shown with a note, never dropped (D43).
- *
- * Slice e2a: a row carrying its own definition resolves against that instead of
- * items.json, through the same resolver every other consumer uses, so it takes
- * part in quantity, equipping, attunement, the magic bonus and the name label
- * without a second code path.
- */
-function InventorySection({
-	inventory,
-	currencyCopper,
-	itemRefs,
-	itemRefsError,
-	itemEntryTemplates,
-	attunementLimit,
-	onManageInventory,
-}: {
-	inventory: CharacterInventoryItem[]
-	currencyCopper: number
-	itemRefs: ItemRef[] | null
-	itemRefsError: string | null
-	itemEntryTemplates: ItemEntryTemplate[]
-	attunementLimit: Calculated<number>
-	/** R10a: opens the Manage Inventory drawer; absent on a read-only sheet. */
-	onManageInventory?: () => void
-}): ReactNode {
-	const resolve = buildInventoryResolver(itemRefs ?? [])
-	const coins = copperToCoins(currencyCopper)
-	const attunedCount = countAttuned(inventory)
-	const limit = attunementLimit.status === 'known' ? attunementLimit.value : BASE_ATTUNEMENT_LIMIT
-
-	return (
-		<section className="sheet__inventory">
-			{onManageInventory && (
-				<div className="sheet__actions-toolbar">
-					<button type="button" className="sheet__manage-spells" onClick={onManageInventory}>
-						Manage Inventory
-					</button>
-				</div>
-			)}
-			<h2>Inventory</h2>
-
-			<div className="sheet__currency">
-				<h3>Money</h3>
-				<p>
-					{coins.gp} gp, {coins.sp} sp, {coins.cp} cp
-				</p>
-			</div>
-
-			{/* The count is plain text, not behind the breakdown: how many slots are spent has to be readable without opening anything (this slice's brief). */}
-			<div className="sheet__attunement">
-				<h3>Attunement</h3>
-				<div className="sheet__attunement-count">
-					<span>
-						{attunedCount} of {limit} attuned
-					</span>{' '}
-					{attunementLimit.status === 'known' && <ValueBreakdown breakdown={attunementLimit.breakdown} />}
-				</div>
-			</div>
-
-			{itemRefsError && <p className="error">Could not load the item list: {itemRefsError}</p>}
-
-			{inventory.length === 0 ? (
-				<p className="sheet__inventory-empty">Nothing carried yet.</p>
-			) : (
-				<ul className="sheet__inventory-list">
-					{inventory.map((item, index) => {
-						const { ref, problem } = resolve(item)
-						/*
-						 * A missing items.json entry is only a problem once the file has
-						 * loaded; a broken custom definition is one either way, since
-						 * nothing about it depends on that file (slice e2a).
-						 */
-						const showProblem = problem !== null && (problem.kind === 'malformed-custom' || (itemRefs !== null && itemRefsError === null))
-						/* Slice e: one place computes the displayed name, so the AC breakdown and the attacks section call this sword the same thing. */
-						const bonus = resolveMagicBonus({
-							name: item.name,
-							itemBonus: ref ? itemMagicBonusOf(ref) : null,
-							playerBonus: item.magicBonus ?? null,
-							requiresAttunement: ref?.requiresAttunement === true,
-							attuned: item.attuned === true,
-						})
-						// Two rows can legitimately end up identical (the same item set to the same bonus twice), so the position keeps the key unique.
-						return (
-							<li key={`${inventoryRowKey(item)}#${index}`}>
-								<span>{bonus.label}</span>
-								{item.custom !== undefined && <span className="sheet__inventory-custom"> (custom)</span>}
-								{ref?.value !== undefined && <span className="sheet__inventory-value"> {itemValueText(ref.value)}</span>}
-								{item.equipped && <span className="sheet__inventory-equipped"> ({item.equipped})</span>}
-								{item.attuned && <span className="sheet__inventory-attuned"> (attuned)</span>}
-								{ref?.requiresAttunement && (
-									<span className="sheet__attunement-requirement">
-										{' '}
-										{/* The condition is printed verbatim as items.json writes it — the app never reads it (D21). */}
-										Requires attunement{ref.attunementCondition ? ` ${ref.attunementCondition}` : ''}
-									</span>
-								)}
-								{showProblem && (
-									<>
-										{' '}
-										<UnresolvedValue reason={problem!.message} />
-									</>
-								)}
-								<> ×{item.quantity}</>
-								{/* Absent text is not an error: an item with no description gets no section at all, and an unresolvable row already carries its own note (D43).
-								    resolveItemEntryRefs fills any {#itemEntry ...} reference from the shared templates before <Entries> — the one brace shape the markup renderer does not know. */}
-								{ref?.entries && (
-									<ItemDescription entries={resolveItemEntryRefs(ref.entries, ref, itemEntryTemplates)} label={bonus.label} />
-								)}
-							</li>
-						)
-					})}
-				</ul>
-			)}
-
-		</section>
-	)
 }
 
 /**
@@ -3058,13 +2930,14 @@ function CharacterSheetBody({
 				aria-labelledby="sheet-tab-inventory"
 				className={activeTab === 'inventory' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
 			>
-			<InventorySection
+			<InventoryTab
 				inventory={character.inventory ?? []}
 				currencyCopper={character.currencyCopper ?? 0}
 				itemRefs={itemRefs}
 				itemRefsError={itemRefsError}
 				itemEntryTemplates={itemEntryTemplates}
 				attunementLimit={attunementLimit}
+				onEditInventory={onEditInventory}
 				onManageInventory={onEditInventory || onEditCurrency ? () => setDrawer({ kind: 'manageInventory' }) : undefined}
 			/>
 			</div>

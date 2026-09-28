@@ -46,9 +46,9 @@ const row = (scope: Locator, name: string): Locator =>
 test('R10a a: the tab shows MANAGE INVENTORY and no edit controls; the panel has four sections and Esc closes it', async ({ page }) => {
   await openInventory(page, fighter('r10a-a', [{ ...item('Longsword'), equipped: 'held' }]))
   await expect(tab(page).getByRole('button', { name: 'Manage Inventory', exact: true })).toBeVisible()
-  await expect(tabRow(page, 'Longsword')).toContainText('×1')
-  await expect(tab(page).locator('input, select')).toHaveCount(0)
-  await expect(tab(page).getByRole('button', { name: /^(Equip|Put down|Remove|Discard|Attune|Edit)/ })).toHaveCount(0)
+  await expect(tabRow(page, 'Longsword').locator('.inventory-tab__qty')).toHaveText('1')
+  await expect(tab(page).locator('input, select')).toHaveCount(2) // R10b: search + the ACTIVE checkbox
+  await expect(tab(page).getByRole('button', { name: /^(Equip |Put down|Remove|Discard|Attune |Edit )/ })).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Manage Inventory', exact: true }).click()
   const panel = drawer(page)
@@ -92,7 +92,7 @@ test('R10a c: ADD twice gives one row of 2, in the panel and on the tab', async 
   await add.click()
   await expect(rows(myInventory(panel))).toHaveCount(1)
   await expect(myInventory(panel).getByRole('spinbutton', { name: 'Quantity of Arrow', exact: true })).toHaveValue('2')
-  await expect(tabRow(page, 'Arrow')).toContainText('×2')
+  await expect(tabRow(page, 'Arrow').locator('.inventory-tab__qty')).toHaveText('2')
 })
 
 test('R10a d: − and + change the quantity, − is disabled at 0, and typing still commits', async ({ page }) => {
@@ -102,11 +102,11 @@ test('R10a d: − and + change the quantity, − is disabled at 0, and typing st
   await expect(panel.getByRole('spinbutton', { name: 'Quantity of Torch' })).toHaveValue('0')
   await expect(minus).toBeDisabled()
   await panel.getByRole('button', { name: 'Increase quantity of Torch' }).click()
-  await expect(tabRow(page, 'Torch')).toContainText('×1')
+  await expect(tabRow(page, 'Torch').locator('.inventory-tab__qty')).toHaveText('1')
   const field = panel.getByRole('spinbutton', { name: 'Quantity of Torch' })
   await field.fill('5')
   await field.press('Enter')
-  await expect(tabRow(page, 'Torch')).toContainText('×5')
+  await expect(tabRow(page, 'Torch').locator('.inventory-tab__qty')).toHaveText('5')
 })
 
 test('R10a e: a second suit of armour puts the first down, with the notice', async ({ page }) => {

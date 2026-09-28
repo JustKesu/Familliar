@@ -2275,6 +2275,115 @@ button:disabled {
   color: var(--text-mute);
 }
 
+/* ---- Inventory tab (R10b, D211) ---- */
+
+.inventory-tab__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 24px;
+  padding: 12px 18px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.inventory-tab__notice,
+.inventory-tab__empty {
+  margin: 4px 18px;
+}
+
+.inventory-tab__table {
+  width: 100%;
+}
+
+.inventory-tab__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inventory-tab__row {
+  display: grid;
+  grid-template-columns: 64px 2.4fr 64px 2fr;
+  column-gap: 10px;
+  align-items: start;
+  padding: 8px 12px;
+}
+
+.inventory-tab__item {
+  border-top: 1px solid var(--line);
+}
+
+.inventory-tab__head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-mute);
+}
+
+.inventory-tab__active {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.inventory-tab__name-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.inventory-tab__name-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.inventory-tab__name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.inventory-tab__name-line .manage-spells__expand {
+  flex: none;
+  width: 16px;
+  padding: 0;
+}
+
+.inventory-tab__toggle-spacer {
+  flex: none;
+  width: 16px;
+}
+
+.inventory-tab__subtitle {
+  font-size: 12px;
+  color: var(--text-mute);
+  padding-left: 22px;
+}
+
+.inventory-tab__qty {
+  font-size: 13px;
+}
+
+.inventory-tab__notes {
+  font-size: 12px;
+  color: var(--text-sub);
+  overflow-wrap: anywhere;
+}
+
+.inventory-tab__description {
+  max-width: 640px;
+  padding: 0 12px 8px 34px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
 /* ---- Manage Spells drawer (R9a, D208) ---- */
 
 .sheet__manage-spells {

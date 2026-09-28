@@ -142,7 +142,7 @@ test('D188 b: putting a dagger away returns it to the stack and Two-Weapon Fight
 })
 
 test('D188 c: the second dagger follows the same hands rule — never three hands\' worth, whatever no longer fits is put down and named', async ({ page }) => {
-  const heldMarks = page.locator('.sheet__inventory-equipped')
+  const heldMarks = page.locator('.manage-spells__meta', { hasText: 'held' })
   // Shield first: what makes room is the held row highest in the list (hands.ts), so it is the one put down.
   await page.getByRole('tab', { name: 'Inventory' }).click()
   await addItem(page, 'shield', 'Shield')

@@ -1742,7 +1742,18 @@ count, descriptions) until R10b. ItemRef gained `wondrous`, `staff`, `rarity`;
 `itemFilterKindsOf`/`isMagicItem` in inventoryData.ts (DATA.md "Item filter
 kinds"). The old "Add an item" checkbox list (add/remove toggle) is gone. E2E
 `manageInventory.spec.ts` a–i; combatActions/actions/scc specs moved to the
-drawer. No schema change (still 50). Next: R10b (Inventory tab table, filters).
+drawer. No schema change (still 50).
+
+R10b (D211): the Inventory tab is `src/sheet/InventoryTab.tsx` (old read-only
+list removed). Header (money, "X of Y attuned" + breakdown), toolbar (search,
+pills All/Equipment/Attunement/Other possessions, MANAGE INVENTORY), table
+ACTIVE·NAME·QTY·NOTES with ▸ description, empty states. ACTIVE checkbox (only
+on equippable rows) = Equip/Put down through the shared
+`src/inventory/equipActions.ts` (putDown, takeInHand, toggleEquip), also used by
+the panel; the notice shows above the table. Search/filter/open rows are tab
+state only (D116). Item price is no longer shown. E2E `inventoryTab.spec.ts`
+a–f (+ g/d via panel); `manageInventory`, `combatActions`, `scc` specs adjusted.
+No schema change (still 50). Next: see BUILD ORDER after R10.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

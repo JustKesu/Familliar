@@ -76,7 +76,7 @@ test('D199 c: an SCC item (Lorehold Primer) is added from the Inventory tab and 
   await panel.getByRole('button', { name: 'Add Lorehold Primer', exact: true }).click()
   const row = page.locator('.sheet__inventory-list > li', { hasText: 'Lorehold Primer' })
   await expect(row).toHaveCount(1)
-  await expect(row).toContainText('Requires attunement by a spellcaster')
+  await expect(row).toContainText('requires attunement by a spellcaster')
 })
 
 test('D199 d / D200 c: no Owlin species, no SCC background, and Strixhaven Mascot and Boon of Siberys stay out of the level 4 feat choice', async ({ page }) => {
