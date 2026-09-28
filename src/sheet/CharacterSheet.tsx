@@ -38,7 +38,7 @@ import { computeCharacterResources, shortRestRecovery, type ResourceFeature } fr
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/proficiencies'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
-import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
+import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILL_LABELS, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
@@ -164,27 +164,6 @@ import { spellIdentityKey } from '../spells/subclassPreparedSpells'
 import { HitPointsCard, HitPointsPanel, type HitPointProps } from './HitPoints'
 import { loadSpeciesTraits, speciesTraitsAtLevel, type SpeciesTrait } from './speciesTraitNames'
 import { featuresTabGroups, type FeatureTabGroup, type FeatureTabGroupKind, type FeatureTabOption } from './featuresTabData'
-
-const SKILL_LABELS: Record<Skill, string> = {
-	acrobatics: 'Acrobatics',
-	'animal handling': 'Animal Handling',
-	arcana: 'Arcana',
-	athletics: 'Athletics',
-	deception: 'Deception',
-	history: 'History',
-	insight: 'Insight',
-	intimidation: 'Intimidation',
-	investigation: 'Investigation',
-	medicine: 'Medicine',
-	nature: 'Nature',
-	perception: 'Perception',
-	performance: 'Performance',
-	persuasion: 'Persuasion',
-	religion: 'Religion',
-	'sleight of hand': 'Sleight of Hand',
-	stealth: 'Stealth',
-	survival: 'Survival',
-}
 
 /** D45 — a mark per proficiency status, never a number standing in for it. */
 const SKILL_STATUS_MARKS: Record<SkillValue['status'], string> = {
@@ -2172,19 +2151,22 @@ function CharacterSheetBody({
 
 	const abilityScores = computeAbilityScores(character, feats)
 	/* Step 7 slice h: a worn magic item's flat bonuses, gated on attunement, each landing on the value that owns it. */
-	const itemFlatBonuses = flatBonusesByTarget(buildItemFlatBonusGrants(character.inventory ?? [], itemRefs ?? []))
+	const itemFlatBonuses = flatBonusesByTarget(
+		buildItemFlatBonusGrants(character.inventory ?? [], itemRefs ?? []),
+		character.classes.reduce((sum, c) => sum + c.level, 0),
+	)
 	const proficiencyBonusResult = computeProficiencyBonus(character.classes)
 	/* The proficiency bonus item bonus is a note only — itemFlatBonuses.ts says why the number is left alone. Every amount is 0, so the total does not move. */
 	const proficiencyBonus =
 		proficiencyBonusResult.status === 'known' && itemFlatBonuses.proficiencyBonus.length > 0
 			? { ...proficiencyBonusResult, breakdown: [...proficiencyBonusResult.breakdown, ...itemFlatBonuses.proficiencyBonus] }
 			: proficiencyBonusResult
-	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow)
-	const initiative = computeInitiative(character, feats)
-	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck)
-	const passivePerception = computePassivePerception(character, feats, itemFlatBonuses.abilityCheck)
-	const passiveInvestigation = computePassiveInvestigation(character, feats, itemFlatBonuses.abilityCheck)
-	const passiveInsight = computePassiveInsight(character, feats, itemFlatBonuses.abilityCheck)
+	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor)
+	const initiative = computeInitiative(character, feats, itemFlatBonuses.initiative)
+	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor)
+	const passivePerception = computePassivePerception(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.perception)
+	const passiveInvestigation = computePassiveInvestigation(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.investigation)
+	const passiveInsight = computePassiveInsight(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.insight)
 	/* Step 7 slice b: what the character has in use. itemRefs is null only while the item list is still loading — the AC section says so rather than reporting an unarmoured number it would then have to correct. */
 	const equippedGear = buildEquippedGear(character.inventory ?? [], itemRefs ?? [])
 	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats, itemFlatBonuses.armourClass)
@@ -2195,7 +2177,10 @@ function CharacterSheetBody({
 	])
 	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
 	const heldWeapons = buildHeldWeapons(character.inventory ?? [], itemRefs ?? [])
-	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null)
+	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null, {
+		attack: itemFlatBonuses.weaponAttack,
+		damage: itemFlatBonuses.weaponDamage,
+	})
 	const attacksPerAction = computeAttacksPerAction(weaponAttackData?.featureNames ?? [])
 	/* Step 7 slice d: the limit needs the character's own levels only, so it is not waiting on any fetch. */
 	const attunementLimit = computeAttunementLimit(character)
@@ -2236,6 +2221,7 @@ function CharacterSheetBody({
 		hitDiceClassData,
 		[...grantedFeatures.map((feature) => feature.name), ...chosenFeats.map((choice) => choice.name), ...speciesTraits.map((trait) => trait.name)],
 		feats,
+		itemFlatBonuses.maxHitPoints,
 	)
 
 	const spellcasting = computeSpellcasting(character, spellcastingAbilityData, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)

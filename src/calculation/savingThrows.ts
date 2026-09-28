@@ -107,8 +107,12 @@ export function computeSavingThrows(
 	classData: ClassSavingThrowProficiencies[],
 	feats: FeatEffectEntry[] = [],
 	itemBonuses: Contribution[] = [],
+	/** R14a1: a custom item's bonus to ONE save, stacking with `itemBonuses`. */
+	itemBonusesByAbility: Partial<Record<Ability, Contribution[]>> = {},
 ): Record<Ability, Calculated<SavingThrowValue>> {
-	return Object.fromEntries(ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats, itemBonuses)])) as Record<
+	return Object.fromEntries(
+		ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats, [...itemBonuses, ...(itemBonusesByAbility[ability] ?? [])])]),
+	) as Record<
 		Ability,
 		Calculated<SavingThrowValue>
 	>

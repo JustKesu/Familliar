@@ -14,10 +14,14 @@
  * this list is not dropped — the sheet shows it with a note (D43).
  */
 
+import { ABILITIES } from '../abilities/abilityScores'
+import { ALL_SKILLS } from '../classSkills/classSkillData'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type {
 	CharacterInventoryItem,
 	CustomArmourCategory,
+	CustomBonusPassive,
+	CustomItemBonus,
 	CustomItemDefinition,
 	CustomItemKind,
 	CustomWeaponCategory,
@@ -187,6 +191,12 @@ export interface ItemRef {
 	 * from a `type` string.
 	 */
 	customKind?: CustomItemKind
+	/**
+	 * R14a1: a custom definition's bonuses whose target items.json has no field
+	 * for. The rest ride on bonusAc/bonusSavingThrow/… (customItemRef), so
+	 * itemFlatBonusData.ts reads one field per target whatever the item.
+	 */
+	customBonuses?: CustomItemBonus[]
 }
 
 function isItemEntry(value: unknown): value is Record<string, unknown> & { name: string; source: string } {
@@ -226,6 +236,38 @@ export const CUSTOM_WEAPON_RANGES: readonly CustomWeaponRange[] = ['melee', 'ran
 
 /** The two `weaponCategory` values a weapon proficiency grant can match. */
 export const CUSTOM_WEAPON_CATEGORIES: readonly CustomWeaponCategory[] = ['simple', 'martial']
+
+/** The bonus targets that take no qualifier (R14a1). */
+export const CUSTOM_BONUS_PLAIN_TARGETS = [
+	'armourClass',
+	'initiative',
+	'maxHitPoints',
+	'weaponAttack',
+	'weaponDamage',
+	'spellAttack',
+	'spellSaveDc',
+	'allSavingThrows',
+	'allAbilityChecks',
+] as const
+
+export const CUSTOM_BONUS_PASSIVES: readonly CustomBonusPassive[] = ['perception', 'investigation', 'insight']
+
+/** The targets items.json has its own field for; customItemRef writes them there so one reader serves both. */
+const ITEM_DATA_BONUS_FIELDS = {
+	armourClass: 'bonusAc',
+	allSavingThrows: 'bonusSavingThrow',
+	allAbilityChecks: 'bonusAbilityCheck',
+	spellAttack: 'bonusSpellAttack',
+	spellSaveDc: 'bonusSpellSaveDc',
+} as const
+
+/** What makes two bonuses the same target — the target plus its ability, skill or passive. */
+export function customBonusKey(bonus: CustomItemBonus): string {
+	if (bonus.target === 'savingThrow') return `savingThrow:${bonus.ability}`
+	if (bonus.target === 'skill') return `skill:${bonus.skill}`
+	if (bonus.target === 'passive') return `passive:${bonus.passive}`
+	return bonus.target
+}
 
 /**
  * Where each kind goes when equipped. 'worn' (a cloak, a ring) and 'other' get
@@ -650,20 +692,54 @@ export function customItemRef(custom: CustomItemDefinition, source: string): Ite
 		...customDamageTypes(custom.immune, 'immune'),
 		...customNumber(custom.speedBonus, 'speedBonus'),
 		...customNumber(custom.darkvision, 'darkvision'),
-		/*
-		 * The five flat-bonus fields land on the same ItemRef keys items.json's
-		 * own bonuses use, so itemFlatBonusData.ts reads them with no second
-		 * branch. `bonusAc` on an armour- or shield-kind item is that suit's
-		 * magic bonus rather than a worn bonus, exactly as Dragon Scale Mail's is
-		 * (itemMagicBonusOf / wornAcBonusOf make that split, not this function).
-		 */
-		...customNumber(custom.bonusArmourClass, 'bonusAc'),
-		...customNumber(custom.bonusSavingThrow, 'bonusSavingThrow'),
-		...customNumber(custom.bonusSpellAttack, 'bonusSpellAttack'),
-		...customNumber(custom.bonusSpellSaveDc, 'bonusSpellSaveDc'),
-		...customNumber(custom.bonusAbilityCheck, 'bonusAbilityCheck'),
+		...customBonusFields(custom.bonuses ?? []),
 		...(entries.length > 0 ? { entries } : {}),
 	}
+}
+
+/**
+ * The five targets items.json also has land on the same ItemRef keys its own
+ * bonuses use, so itemFlatBonusData.ts reads them with no second branch.
+ * `bonusAc` on an armour- or shield-kind item is that suit's magic bonus rather
+ * than a worn bonus, exactly as Dragon Scale Mail's is (itemMagicBonusOf /
+ * wornAcBonusOf make that split, not this function).
+ */
+function customBonusFields(bonuses: readonly CustomItemBonus[]): Partial<ItemRef> {
+	const fields: Partial<Record<(typeof ITEM_DATA_BONUS_FIELDS)[keyof typeof ITEM_DATA_BONUS_FIELDS], number>> = {}
+	const customBonuses: CustomItemBonus[] = []
+	for (const bonus of bonuses) {
+		if (bonus.amount === 0) continue
+		if (bonus.target in ITEM_DATA_BONUS_FIELDS) fields[ITEM_DATA_BONUS_FIELDS[bonus.target as keyof typeof ITEM_DATA_BONUS_FIELDS]] = bonus.amount
+		else customBonuses.push(bonus)
+	}
+	return { ...fields, ...(customBonuses.length > 0 ? { customBonuses } : {}) }
+}
+
+/** What is wrong with a definition's `bonuses`, or null (R14a1). Each rule is one CustomItemBonus promises. */
+function describeCustomBonusesProblem(value: unknown): string | null {
+	if (!Array.isArray(value)) return 'its bonuses must be a list'
+	const seen = new Set<string>()
+	for (const entry of value) {
+		if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return 'each of its bonuses must be an object'
+		const bonus = entry as Record<string, unknown>
+		const target = bonus['target']
+		if (target === 'savingThrow') {
+			if (!ABILITIES.includes(bonus['ability'] as (typeof ABILITIES)[number])) return `its saving throw bonus names an unknown ability "${String(bonus['ability'])}"`
+		} else if (target === 'skill') {
+			if (!ALL_SKILLS.includes(bonus['skill'] as (typeof ALL_SKILLS)[number])) return `its skill bonus names an unknown skill "${String(bonus['skill'])}"`
+		} else if (target === 'passive') {
+			if (!CUSTOM_BONUS_PASSIVES.includes(bonus['passive'] as CustomBonusPassive)) return `its passive bonus names an unknown passive "${String(bonus['passive'])}"`
+		} else if (!CUSTOM_BONUS_PLAIN_TARGETS.includes(target as (typeof CUSTOM_BONUS_PLAIN_TARGETS)[number])) {
+			return `its bonus target "${String(target)}" is not one the app knows`
+		}
+		const key = customBonusKey(bonus as unknown as CustomItemBonus)
+		const amount = bonus['amount']
+		if (typeof amount !== 'number' || !Number.isInteger(amount) || amount === 0) return `its ${key} bonus must be a whole number other than zero`
+		if (bonus['perLevel'] !== undefined && (target !== 'maxHitPoints' || bonus['perLevel'] !== true)) return `its ${key} bonus cannot be per level — only a max HP bonus can, and only as true`
+		if (seen.has(key)) return `its ${key} bonus is listed more than once`
+		seen.add(key)
+	}
+	return null
 }
 
 /**
@@ -723,11 +799,12 @@ export function describeCustomItemProblem(custom: unknown): string | null {
 		if (value === undefined) continue
 		if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) return `its ${key} must be a list of damage types`
 	}
+	if (record['bonuses'] !== undefined) return describeCustomBonusesProblem(record['bonuses'])
 	return null
 }
 
 /** Every field of the definition that must be a number when present. Listed once so the check cannot fall behind the type. */
-const NUMERIC_CUSTOM_FIELDS = ['speedBonus', 'darkvision', 'bonusArmourClass', 'bonusSavingThrow', 'bonusSpellAttack', 'bonusSpellSaveDc', 'bonusAbilityCheck'] as const
+const NUMERIC_CUSTOM_FIELDS = ['speedBonus', 'darkvision'] as const
 
 /** Why a row could not be resolved. The two kinds are separated because only the first is independent of whether items.json has loaded yet. */
 export interface InventoryRowProblem {
@@ -791,6 +868,13 @@ export function customItemFromRef(ref: ItemRef): CustomItemDefinition {
 	const category = armourCategoryOf(ref)
 	const strengthRequirement = ref.strength === undefined ? Number.NaN : Number.parseInt(ref.strength, 10)
 	const kind: CustomItemKind = isWeapon(ref) ? 'weapon' : isShield(ref) ? 'shield' : category !== null || ref.armor === true ? 'armour' : 'other'
+	/* The AC bonus copies into the target that lands where the ORIGINAL's did — a cloak's on the character, a suit's on the suit. */
+	const bonuses = (Object.entries(ITEM_DATA_BONUS_FIELDS) as [keyof typeof ITEM_DATA_BONUS_FIELDS, (typeof ITEM_DATA_BONUS_FIELDS)[keyof typeof ITEM_DATA_BONUS_FIELDS]][]).flatMap(
+		([target, field]): CustomItemBonus[] => {
+			const amount = ref[field]
+			return typeof amount === 'number' && amount !== 0 ? [{ target, amount }] : []
+		},
+	)
 	return {
 		name: ref.name,
 		kind,
@@ -818,12 +902,7 @@ export function customItemFromRef(ref: ItemRef): CustomItemDefinition {
 			: {}),
 		...(ref.resist !== undefined ? { resist: [...ref.resist] } : {}),
 		...(ref.immune !== undefined ? { immune: [...ref.immune] } : {}),
-		/* The AC bonus copies into the field that lands where the ORIGINAL's did — a cloak's on the character, a suit's on the suit. */
-		...(ref.bonusAc !== undefined ? { bonusArmourClass: ref.bonusAc } : {}),
-		...(ref.bonusSavingThrow !== undefined ? { bonusSavingThrow: ref.bonusSavingThrow } : {}),
-		...(ref.bonusSpellAttack !== undefined ? { bonusSpellAttack: ref.bonusSpellAttack } : {}),
-		...(ref.bonusSpellSaveDc !== undefined ? { bonusSpellSaveDc: ref.bonusSpellSaveDc } : {}),
-		...(ref.bonusAbilityCheck !== undefined ? { bonusAbilityCheck: ref.bonusAbilityCheck } : {}),
+		...(bonuses.length > 0 ? { bonuses } : {}),
 		...(paragraphs.length > 0 ? { description: paragraphs.join('\n\n') } : {}),
 	}
 }

@@ -40,6 +40,7 @@ import {
 	type WeaponGrip,
 } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
+import { bonusesFromRows, bonusRowsFrom, CustomItemBonusList, type BonusRow } from './CustomItemBonusList'
 import { DrawerSection } from './Drawer'
 
 /**
@@ -298,15 +299,6 @@ function DamageTypeChoice({ label, selected, onChange }: { label: string; select
 	)
 }
 
-/** The five flat bonuses a custom item may declare, and what each is called on the form. The sixth target, the proficiency bonus, is deliberately not offered — slice h leaves it unapplied, so a field for it would be a number nothing counts. */
-const CUSTOM_FLAT_BONUS_FIELDS: readonly { key: 'bonusArmourClass' | 'bonusSavingThrow' | 'bonusSpellAttack' | 'bonusSpellSaveDc' | 'bonusAbilityCheck'; label: string }[] = [
-	{ key: 'bonusArmourClass', label: 'Custom item bonus to armour class' },
-	{ key: 'bonusSavingThrow', label: 'Custom item bonus to saving throws' },
-	{ key: 'bonusSpellAttack', label: 'Custom item bonus to spell attack' },
-	{ key: 'bonusSpellSaveDc', label: 'Custom item bonus to spell save DC' },
-	{ key: 'bonusAbilityCheck', label: 'Custom item bonus to ability checks' },
-]
-
 /**
  * Creating and editing a custom item (build order step 7, slices e2a and e2b).
  * Two routes into the same form: copy an existing item and change what you
@@ -341,6 +333,8 @@ function CustomItemForm({
 	onCancel: () => void
 }): ReactNode {
 	const [draft, setDraft] = useState<CustomItemDefinition>(() => editing ?? blankCustomItem())
+	/* The rows replace draft.bonuses until submit — a row may be half-typed, which a CustomItemBonus cannot hold. */
+	const [bonusRows, setBonusRows] = useState<BonusRow[]>(() => bonusRowsFrom(editing?.bonuses))
 	const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
 	function update(change: Partial<CustomItemDefinition>): void {
@@ -361,14 +355,19 @@ function CustomItemForm({
 		const ref = itemRefs.find((candidate) => itemKey(candidate) === key)
 		if (!ref) return
 		setCopiedKey(key)
-		setDraft(customItemFromRef(ref))
+		const copied = customItemFromRef(ref)
+		setDraft(copied)
+		setBonusRows(bonusRowsFrom(copied.bonuses))
 	}
 
 	function submit(): void {
 		if (draft.name.trim() === '') return
-		onSubmit({ ...draft, name: draft.name.trim() })
+		const { bonuses: _replaced, ...rest } = draft
+		const bonuses = bonusesFromRows(bonusRows)
+		onSubmit({ ...rest, name: draft.name.trim(), ...(bonuses.length > 0 ? { bonuses } : {}) })
 		if (editing === null) {
 			setDraft(blankCustomItem())
+			setBonusRows([])
 			setCopiedKey(null)
 		}
 	}
@@ -639,13 +638,7 @@ function CustomItemForm({
 				<OptionalNumberField label="Custom item darkvision" value={draft.darkvision} onChange={(value) => updateOptional('darkvision', value)} />
 			</p>
 
-			<p className="sheet__custom-item-bonuses">
-				{CUSTOM_FLAT_BONUS_FIELDS.map(({ key, label }) => (
-					<span key={key}>
-						<OptionalNumberField label={label} value={draft[key]} onChange={(value) => updateOptional(key, value)} />{' '}
-					</span>
-				))}
-			</p>
+			<CustomItemBonusList rows={bonusRows} onChange={setBonusRows} />
 
 			{/* Last, because it is where everything the structured fields above cannot express ends up — and it is shown, never read (D9/D55/D21). */}
 			<p>

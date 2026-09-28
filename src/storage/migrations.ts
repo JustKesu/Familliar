@@ -474,7 +474,44 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		 */
 		migrate: (record) => ({ ...record, schemaVersion: 53 }),
 	},
+	{
+		from: 53,
+		to: 54,
+		/*
+		 * 54 replaces a custom item's five `bonus*` fields with one `bonuses`
+		 * list (R14a1, D216). A zero or absent field becomes no entry; anything
+		 * that is not a record is left for validation/D43 to report.
+		 */
+		migrate: (record) => {
+			const inventory = record['inventory']
+			if (!Array.isArray(inventory)) return { ...record, schemaVersion: 54 }
+			return { ...record, inventory: inventory.map(migrateCustomBonuses), schemaVersion: 54 }
+		},
+	},
 ]
+
+const LEGACY_CUSTOM_BONUS_FIELDS = [
+	['bonusArmourClass', 'armourClass'],
+	['bonusSavingThrow', 'allSavingThrows'],
+	['bonusAbilityCheck', 'allAbilityChecks'],
+	['bonusSpellAttack', 'spellAttack'],
+	['bonusSpellSaveDc', 'spellSaveDc'],
+] as const
+
+function migrateCustomBonuses(row: unknown): unknown {
+	if (typeof row !== 'object' || row === null || Array.isArray(row)) return row
+	const custom = (row as Record<string, unknown>)['custom']
+	if (typeof custom !== 'object' || custom === null || Array.isArray(custom)) return row
+	const next: Record<string, unknown> = { ...custom }
+	const bonuses: { target: string; amount: unknown }[] = []
+	for (const [field, target] of LEGACY_CUSTOM_BONUS_FIELDS) {
+		const amount = next[field]
+		delete next[field]
+		if (amount !== undefined && amount !== 0) bonuses.push({ target, amount })
+	}
+	if (bonuses.length > 0) next['bonuses'] = bonuses
+	return { ...row, custom: next }
+}
 
 /**
  * The steps that carry `version` to the current one, or null when no chain

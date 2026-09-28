@@ -1121,11 +1121,11 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 				immune: ['poison'],
 				speedBonus: 10,
 				darkvision: 60,
-				bonusArmourClass: 1,
-				bonusSavingThrow: 2,
-				bonusSpellAttack: 1,
-				bonusSpellSaveDc: 1,
-				bonusAbilityCheck: 1,
+				bonuses: [
+					{ target: 'armourClass' as const, amount: 1 },
+					{ target: 'maxHitPoints' as const, amount: 1, perLevel: true as const },
+					{ target: 'skill' as const, skill: 'stealth' as const, amount: 3 },
+				],
 			},
 		}
 

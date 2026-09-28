@@ -4028,3 +4028,19 @@ Conditions (R12): texty stavů z 5etools XPHB (data/conditions.json). Uloženo v
 ## D215 — Manage Feats (R13)
 
 Manage Feats (R13): R13a přidání/odebrání ručního featu (grantedFeats, origin 'manual', štítek „Added manually“), R13b úprava voleb v panelu. Featy z úrovní a z backgroundu jsou v panelu zamčené se štítkem „From Background“ / „From level N“ (úroveň postavy, ne třída — u multiclassu nejde určit); úrovně vzaté jako ASI se ukazují jako zamčený řádek „Ability Score Improvement“. Výměna featu na úrovni se v panelu nedělá (zůstává v Edit Character). Fighting Style z třídy jako zamčený řádek „From <Class>“, pokud jde čistě spárovat s featem FS. Rozhodl Daniel 28. 9.
+
+## D216 — Rozšířený custom předmět (R14a)
+
+Custom předmět má umět „všechno, co jde“ (Daniel 28. 9.): čísla, smysly, proficiency,
+odolnosti/imunity (i vůči condition), feat, kouzlo, invokaci, bonusy familiara. Rozděleno
+na R14a1 (seznam bonusů), R14a2 (fly/swim/climb, blindsight/tremorsense/truesight),
+R14b–d; bonusy k vlastnostem (typ Belt of Giant Strength) jako samostatný R14e.
+- Brána zůstává naladění (7h, e2b): předmět s naladěním platí jen naladěný, bez naladění
+  platí vždycky, i v batohu. Žádné „nasazení“ pro worn/other.
+- Číselné bonusy jsou seznam `bonuses` (cíl + částka), každý cíl nejvýš jednou; pět
+  dřívějších polí `bonus*` převádí migrace (schéma 54).
+- Max HP: pevné číslo, nebo „za každou úroveň“ (× celková úroveň postavy).
+- Útok a damage: všechny útoky zbraní, ne kouzla ani unarmed strike.
+- Rychlosti fly/swim/climb a smysly blindsight/tremorsense/truesight (R14a2): dosah ve
+  stopách, platí nejvyšší ze všech zdrojů, nesčítají se.
+- Bonus ke skillu zvedá i jeho pasivní hodnotu (pravidla); cíl „Passive …“ jen pasivní.

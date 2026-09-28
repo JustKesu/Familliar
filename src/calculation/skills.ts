@@ -60,6 +60,27 @@ export const SKILL_ABILITIES: Record<Skill, Ability> = {
 	survival: 'wisdom',
 }
 
+export const SKILL_LABELS: Record<Skill, string> = {
+	acrobatics: 'Acrobatics',
+	'animal handling': 'Animal Handling',
+	arcana: 'Arcana',
+	athletics: 'Athletics',
+	deception: 'Deception',
+	history: 'History',
+	insight: 'Insight',
+	intimidation: 'Intimidation',
+	investigation: 'Investigation',
+	medicine: 'Medicine',
+	nature: 'Nature',
+	perception: 'Perception',
+	performance: 'Performance',
+	persuasion: 'Persuasion',
+	religion: 'Religion',
+	'sleight of hand': 'Sleight of Hand',
+	stealth: 'Stealth',
+	survival: 'Survival',
+}
+
 /** D45 — must tolerate a further status being added later; not a boolean. */
 export type SkillProficiencyStatus = 'none' | 'half' | 'proficient' | 'expertise'
 
@@ -149,28 +170,65 @@ export function computeSkill(skill: Skill, character: Character, feats: FeatEffe
 	return known({ status, modifier }, breakdown)
 }
 
-export function computeSkills(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Record<Skill, Calculated<SkillValue>> {
-	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character, feats, itemBonuses)])) as Record<Skill, Calculated<SkillValue>>
+/** R14a1: `itemBonusesBySkill` is a custom item's bonus to ONE skill, stacking with the all-checks `itemBonuses`. */
+export function computeSkills(
+	character: Character,
+	feats: FeatEffectEntry[] = [],
+	itemBonuses: Contribution[] = [],
+	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
+): Record<Skill, Calculated<SkillValue>> {
+	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])])])) as Record<
+		Skill,
+		Calculated<SkillValue>
+	>
 }
 
-/** D48 — 10 + the named skill's bonus. Not a real skill check, so it has no proficiency status of its own. */
-function computePassiveValue(skill: Skill, character: Character, feats: FeatEffectEntry[], itemBonuses: Contribution[]): Calculated<number> {
-	const skillResult = computeSkill(skill, character, feats, itemBonuses)
+/**
+ * D48 — 10 + the named skill's bonus, so a bonus to the skill raises it too (PHB: every modifier to the check).
+ * `passiveBonuses` (R14a1) reach this value only, never the skill roll.
+ */
+function computePassiveValue(
+	skill: Skill,
+	character: Character,
+	feats: FeatEffectEntry[],
+	itemBonuses: Contribution[],
+	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>>,
+	passiveBonuses: Contribution[],
+): Calculated<number> {
+	const skillResult = computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])])
 	if (skillResult.status === 'unknown') return unknown(skillResult.reason)
 
-	const breakdown: Contribution[] = [{ source: 'base', amount: 10 }, ...skillResult.breakdown]
+	const breakdown: Contribution[] = [{ source: 'base', amount: 10 }, ...skillResult.breakdown, ...passiveBonuses]
 	const total = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known(total, breakdown)
 }
 
-export function computePassivePerception(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<number> {
-	return computePassiveValue('perception', character, feats, itemBonuses)
+export function computePassivePerception(
+	character: Character,
+	feats: FeatEffectEntry[] = [],
+	itemBonuses: Contribution[] = [],
+	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
+	passiveBonuses: Contribution[] = [],
+): Calculated<number> {
+	return computePassiveValue('perception', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses)
 }
 
-export function computePassiveInvestigation(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<number> {
-	return computePassiveValue('investigation', character, feats, itemBonuses)
+export function computePassiveInvestigation(
+	character: Character,
+	feats: FeatEffectEntry[] = [],
+	itemBonuses: Contribution[] = [],
+	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
+	passiveBonuses: Contribution[] = [],
+): Calculated<number> {
+	return computePassiveValue('investigation', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses)
 }
 
-export function computePassiveInsight(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<number> {
-	return computePassiveValue('insight', character, feats, itemBonuses)
+export function computePassiveInsight(
+	character: Character,
+	feats: FeatEffectEntry[] = [],
+	itemBonuses: Contribution[] = [],
+	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
+	passiveBonuses: Contribution[] = [],
+): Calculated<number> {
+	return computePassiveValue('insight', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses)
 }

@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { computeArmourClass, type EquippedGear } from '../calculation/armourClass'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
-import { computeSavingThrow, type ClassSavingThrowProficiencies } from '../calculation/savingThrows'
-import { computeSkill } from '../calculation/skills'
+import type { ClassHitDie } from '../calculation/hitDice'
+import { computeInitiative } from '../calculation/initiative'
+import { computeMaxHitPoints } from '../calculation/maxHitPoints'
+import { computeSavingThrow, computeSavingThrows, type ClassSavingThrowProficiencies } from '../calculation/savingThrows'
+import { computePassiveInsight, computePassivePerception, computeSkill, computeSkills } from '../calculation/skills'
 import { computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import type { ItemRef } from '../inventory/inventoryData'
 import { CUSTOM_ITEM_SOURCE, type Character, type CharacterInventoryItem } from '../storage/character'
@@ -153,8 +156,9 @@ describe('buildItemFlatBonusGrants', () => {
 	it('names an attuned row the item data does not know, on every value it could have touched (D43)', () => {
 		const grants = buildItemFlatBonusGrants([row('Amulet of Nothing', 'HB', { attuned: true })], itemRefs)
 
-		expect(grants).toHaveLength(6)
-		expect(new Set(grants.map((grant) => grant.target)).size).toBe(6)
+		// R14a1: the six items.json targets plus initiative, max HP, weapon attack and weapon damage — a custom item can reach those too.
+		expect(grants).toHaveLength(10)
+		expect(new Set(grants.map((grant) => grant.target)).size).toBe(10)
 		expect(grants[0].unresolvedReason).toBe('attuned but not found in the item data (HB) — any flat bonus it grants is not counted')
 	})
 
@@ -184,11 +188,13 @@ describe('buildItemFlatBonusGrants', () => {
 				name: 'Charm of the Sage',
 				kind: 'worn',
 				requiresAttunement: true,
-				bonusArmourClass: 1,
-				bonusSavingThrow: 2,
-				bonusSpellAttack: 1,
-				bonusSpellSaveDc: 1,
-				bonusAbilityCheck: 1,
+				bonuses: [
+					{ target: 'armourClass', amount: 1 },
+					{ target: 'allSavingThrows', amount: 2 },
+					{ target: 'spellAttack', amount: 1 },
+					{ target: 'spellSaveDc', amount: 1 },
+					{ target: 'allAbilityChecks', amount: 1 },
+				],
 			},
 		}
 
@@ -221,9 +227,70 @@ describe('buildItemFlatBonusGrants', () => {
 				source: CUSTOM_ITEM_SOURCE,
 				quantity: 1,
 				equipped: 'worn',
-				custom: { name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium', bonusArmourClass: 1 },
+				custom: { name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium', bonuses: [{ target: 'armourClass', amount: 1 }] },
 			}
 			expect(buildItemFlatBonusGrants([suit], itemRefs)).toEqual([])
 		})
+	})
+})
+
+describe('R14a1 bonus targets on a custom item', () => {
+	function custom(bonusList: NonNullable<NonNullable<CharacterInventoryItem['custom']>['bonuses']>, extra: Partial<CharacterInventoryItem> = {}, requiresAttunement = false): CharacterInventoryItem {
+		return {
+			name: 'Lucky Pin',
+			source: CUSTOM_ITEM_SOURCE,
+			quantity: 1,
+			custom: { name: 'Lucky Pin', kind: 'other', ...(requiresAttunement ? { requiresAttunement: true as const } : {}), bonuses: bonusList },
+			...extra,
+		}
+	}
+	const byTarget = (inventory: CharacterInventoryItem[], level = 5) => flatBonusesByTarget(buildItemFlatBonusGrants(inventory, itemRefs), level)
+	const hitDice: ClassHitDie[] = [{ className: 'Fighter', classSource: 'XPHB', faces: 10 }]
+
+	it('applies with no attunement requirement even carried in the pack, and ignores quantity', () => {
+		const applied = byTarget([custom([{ target: 'initiative', amount: 2 }], { quantity: 3 })])
+		const initiative = computeInitiative(fighter5, [], applied.initiative)
+		// DEX +2, pin +2.
+		expect(initiative).toMatchObject({ status: 'known', value: 4 })
+		expect(initiative.status === 'known' && initiative.breakdown).toContainEqual({ source: 'Lucky Pin', amount: 2 })
+	})
+
+	it('withholds every target of an unattuned item that requires attunement, as a considered note (D76)', () => {
+		const pin = custom([{ target: 'initiative', amount: 2 }, { target: 'maxHitPoints', amount: 1, perLevel: true }], {}, true)
+		const withheld = byTarget([pin])
+		expect(computeInitiative(fighter5, [], withheld.initiative)).toMatchObject({ value: 2 })
+		expect(withheld.initiative).toEqual([{ source: 'Lucky Pin', amount: 0, note: 'considered (+2) — not applied: requires attunement and you are not attuned to it' }])
+		expect(withheld.maxHitPoints).toEqual([{ source: 'Lucky Pin (+1 per level × 5)', amount: 0, note: 'considered (+5) — not applied: requires attunement and you are not attuned to it' }])
+
+		expect(computeInitiative(fighter5, [], byTarget([{ ...pin, attuned: true }]).initiative)).toMatchObject({ value: 4 })
+	})
+
+	it('lands a single save bonus on that save only, stacking with an all-saves bonus', () => {
+		const applied = byTarget([custom([{ target: 'savingThrow', ability: 'wisdom', amount: 2 }]), { ...custom([{ target: 'allSavingThrows', amount: 1 }]), name: 'Ward Ring' }])
+		const saves = computeSavingThrows(fighter5, fighterSaves, [], applied.savingThrow, applied.savingThrowFor)
+		// WIS +0, pin +2, ring +1; DEX +2, ring +1.
+		expect(saves.wisdom).toMatchObject({ value: { modifier: 3 } })
+		expect(saves.dexterity).toMatchObject({ value: { modifier: 3 } })
+	})
+
+	it('lands a skill bonus on that skill and its passive value; a passive bonus on the passive only', () => {
+		const applied = byTarget([custom([{ target: 'skill', skill: 'perception', amount: 3 }, { target: 'passive', passive: 'insight', amount: 5 }])])
+		const skills = computeSkills(fighter5, [], applied.abilityCheck, applied.skillFor)
+		expect(skills.perception).toMatchObject({ value: { modifier: 3 } })
+		expect(skills.stealth).toMatchObject({ value: { modifier: 2 } })
+		expect(skills.insight).toMatchObject({ value: { modifier: 0 } })
+		expect(computePassivePerception(fighter5, [], applied.abilityCheck, applied.skillFor, applied.passiveFor.perception)).toMatchObject({ value: 13 })
+		expect(computePassiveInsight(fighter5, [], applied.abilityCheck, applied.skillFor, applied.passiveFor.insight)).toMatchObject({ value: 15 })
+	})
+
+	it('multiplies a per-level max HP bonus by the total character level, and names the rule on the line', () => {
+		const applied = byTarget([custom([{ target: 'maxHitPoints', amount: 1, perLevel: true }])])
+		const maxHp = computeMaxHitPoints(fighter5, hitDice, [], [], applied.maxHitPoints)
+		// 10 + 4 × 6 = 34, CON +1 × 5 = 5, pin 5.
+		expect(maxHp).toMatchObject({ status: 'known', value: 44 })
+		expect(maxHp.status === 'known' && maxHp.breakdown).toContainEqual({ source: 'Lucky Pin (+1 per level × 5)', amount: 5 })
+
+		const flat = computeMaxHitPoints(fighter5, hitDice, [], [], byTarget([custom([{ target: 'maxHitPoints', amount: 3 }])]).maxHitPoints)
+		expect(flat).toMatchObject({ value: 42 })
 	})
 })

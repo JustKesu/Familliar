@@ -83,6 +83,8 @@ export function computeMaxHitPoints(
 	classData: readonly ClassHitDie[],
 	bonusFeatureNames: readonly string[] = [],
 	feats: FeatEffectEntry[] = [],
+	/** R14a1: a custom item's max HP bonus, per-level already multiplied out (itemFlatBonuses.ts). */
+	itemBonuses: readonly Contribution[] = [],
 ): Calculated<number> {
 	const override = character.maxHpOverride
 	if (override !== undefined) {
@@ -154,6 +156,7 @@ export function computeMaxHitPoints(
 		const parts = [rule.flat > 0 ? `+${rule.flat}` : null, rule.perLevel > 0 ? `+${rule.perLevel} per ${describeAxis(rule.axis)}` : null].filter(Boolean)
 		breakdown.push({ source: `${name} (${parts.join(', ')})`, amount: rule.flat + rule.perLevel * level })
 	}
+	breakdown.push(...itemBonuses)
 
 	const total = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known(total, breakdown)

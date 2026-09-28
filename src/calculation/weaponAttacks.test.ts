@@ -155,6 +155,28 @@ describe('computeWeaponAttacks — proficiency', () => {
 	})
 })
 
+describe('computeWeaponAttacks — a custom item’s weapon attack/damage bonus (R14a1)', () => {
+	const itemBonuses = { attack: [{ source: 'Band of Aim', amount: 1 }], damage: [{ source: 'Band of Aim', amount: 2 }] }
+
+	it('reaches every weapon row, melee and ranged, as its own line — the damage text included', () => {
+		const attacks = computeWeaponAttacks(character('Fighter', 1), [held(longsword), held(shortbow)], martialGrants, [], null, itemBonuses)
+		const sword = attackNamed(attacks, 'Longsword')
+		expect(toHitOf(sword)).toBe(6)
+		expect(sword.toHit.status === 'known' && sword.toHit.breakdown).toContainEqual({ source: 'Band of Aim', amount: 1 })
+		expect(damageTextOf(sword)).toBe('1d8 + 5 slashing')
+		expect(sword.damage.status === 'known' && sword.damage.breakdown).toContainEqual({ source: 'Band of Aim', amount: 2 })
+		// DEX +2, PB +2, item +1; damage DEX +2, item +2.
+		expect(toHitOf(attackNamed(attacks, 'Shortbow'))).toBe(5)
+		expect(damageTextOf(attackNamed(attacks, 'Shortbow'))).toBe('1d6 + 4 piercing')
+	})
+
+	it('leaves the Unarmed Strike alone (D216)', () => {
+		const unarmed = attackNamed(computeWeaponAttacks(character('Fighter', 1), [], martialGrants, [], null, itemBonuses), 'Unarmed Strike')
+		expect(toHitOf(unarmed)).toBe(5)
+		expect(damageTextOf(unarmed)).toBe('1 + 3 bludgeoning')
+	})
+})
+
 describe('computeWeaponAttacks — magic bonuses (slice e)', () => {
 	const own = (name: string, bonus: number, requiresAttunement = false, attuned = false) =>
 		resolveMagicBonus({ name, itemBonus: bonus, playerBonus: null, requiresAttunement, attuned })

@@ -574,8 +574,62 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 52, id: '1', name: 'Aria', classes: [], grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB' }] }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: 53 })
-		expect(CURRENT_SCHEMA_VERSION).toBe(53)
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
+	/* D216: the five flat-bonus fields become one `bonuses` list. */
+	it('moves a version-53 custom item’s five bonus fields into `bonuses`, dropping zeros', () => {
+		const plainRow = { name: 'Rope', source: 'XPHB', quantity: 1 }
+		const noBonuses = { name: 'Scarf', source: 'custom', quantity: 1, custom: { name: 'Scarf', kind: 'worn', speedBonus: 10 } }
+		const before = {
+			schemaVersion: 53,
+			id: '1',
+			name: 'Aria',
+			classes: [],
+			inventory: [
+				plainRow,
+				noBonuses,
+				{
+					name: 'Charm',
+					source: 'custom',
+					quantity: 1,
+					attuned: true,
+					custom: { name: 'Charm', kind: 'worn', bonusArmourClass: 1, bonusSavingThrow: 2, bonusAbilityCheck: -1, bonusSpellAttack: 0, bonusSpellSaveDc: 3 },
+				},
+			],
+		}
+		const migrated = migrateToCurrent(structuredClone(before)) as Record<string, unknown>
+
+		expect(migrated).toEqual({
+			...before,
+			schemaVersion: 54,
+			inventory: [
+				plainRow,
+				noBonuses,
+				{
+					name: 'Charm',
+					source: 'custom',
+					quantity: 1,
+					attuned: true,
+					custom: {
+						name: 'Charm',
+						kind: 'worn',
+						bonuses: [
+							{ target: 'armourClass', amount: 1 },
+							{ target: 'allSavingThrows', amount: 2 },
+							{ target: 'allAbilityChecks', amount: -1 },
+							{ target: 'spellSaveDc', amount: 3 },
+						],
+					},
+				},
+			],
+		})
+		expect(CURRENT_SCHEMA_VERSION).toBe(54)
+	})
+
+	it('tags a version-53 character with no inventory', () => {
+		const before = { schemaVersion: 53, id: '1', name: 'Aria', classes: [] }
+		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: 54 })
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

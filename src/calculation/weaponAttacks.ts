@@ -205,6 +205,7 @@ function toHitFor(
 	proficient: boolean,
 	abilityReason: string | null,
 	magicBonus: MagicBonus,
+	itemBonuses: readonly Contribution[],
 ): Calculated<number> {
 	if (proficiencyBonus.status === 'unknown') return unknown(proficiencyBonus.reason)
 	const breakdown: Contribution[] = [{ source: abilityLabel(using, abilityReason ?? undefined), amount: modifiers[using] }]
@@ -215,6 +216,7 @@ function toHitFor(
 	)
 	// Slice e: the magic bonus reaches the attack roll AND the damage roll, as its own line in each.
 	breakdown.push(...magicBonus.contributions)
+	breakdown.push(...itemBonuses)
 	return known(
 		breakdown.reduce((sum, row) => sum + row.amount, 0),
 		breakdown,
@@ -228,6 +230,7 @@ function damageFor(
 	abilityReason: string | null,
 	magicBonus: MagicBonus,
 	grip: WeaponGrip,
+	itemBonuses: readonly Contribution[],
 ): AttackDamage {
 	/*
 	 * PHB 2024, "Versatile": the weapon's damage die follows the hand it is held
@@ -236,11 +239,12 @@ function damageFor(
 	 */
 	const versatile = hasProperty(weapon, VERSATILE)
 	const dice = (versatile && grip === 'two-handed' ? weapon.dmg2 : undefined) ?? weapon.dmg1 ?? null
-	const modifier = modifiers[using] + magicBonus.applied
+	const modifier = modifiers[using] + magicBonus.applied + itemBonuses.reduce((sum, row) => sum + row.amount, 0)
 	const damageType = weapon.dmgTypeFull ?? ''
 	const breakdown: Contribution[] = [{ source: `${weapon.name} damage dice`, amount: 0, note: dice ?? '1' }]
 	breakdown.push({ source: abilityLabel(using, abilityReason ?? undefined), amount: modifiers[using] })
 	breakdown.push(...magicBonus.contributions)
+	breakdown.push(...itemBonuses)
 	// SPEC section B: damage takes the ability modifier and no proficiency bonus.
 	if (versatile) breakdown.push({ source: 'Versatile', amount: 0, note: grip === 'two-handed' ? 'held in two hands' : 'held in one hand' })
 	return { dice, modifier, damageType, text: damageText(dice, modifier, damageType), grip: versatile ? grip : null, breakdown }
@@ -261,6 +265,8 @@ export function computeWeaponAttacks(
 	grants: WeaponProficiencyGrant[],
 	feats: FeatEffectEntry[] = [],
 	martialArtsDie: string | null = null,
+	/** R14a1: a custom item's bonus to every weapon attack's to-hit / damage — never the Unarmed Strike (D216). */
+	itemBonuses: { attack: readonly Contribution[]; damage: readonly Contribution[] } = { attack: [], damage: [] },
 ): WeaponAttack[] {
 	const abilities: Ability[] = ['strength', 'dexterity']
 	const modifiers = {} as Record<Ability, number>
@@ -297,13 +303,13 @@ export function computeWeaponAttacks(
 		 * than printing the "1" damageText would fall back to.
 		 */
 		const noDice = weapon.dmg1 === undefined ? `${row.magicBonus.label} has no damage dice set, so its damage cannot be worked out.` : null
-		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip)
+		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, itemBonuses.damage)
 		return {
 			key,
 			name: row.magicBonus.label,
 			kind: weapon.typeCode === RANGED_TYPE_CODE ? 'ranged' : 'melee',
 			range: weapon.range ?? null,
-			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus),
+			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus, itemBonuses.attack),
 			damage: scoresUnknown ? unknown(scoresUnknown) : noDice ? unknown(noDice) : known(damage, damage.breakdown),
 			notes: noDice ? [...notesFor(weapon, proficient, masteredKinds), noDice] : notesFor(weapon, proficient, masteredKinds),
 			abilityChoice: choice,

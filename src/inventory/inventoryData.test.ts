@@ -407,12 +407,15 @@ describe('custom items', () => {
 		const armour = customItemRef({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium' }, CUSTOM_ITEM_SOURCE)
 		expect(armourCategoryOf(armour)).toBe('medium')
 		expect(armour.ac).toBe(14)
-		// bonusArmourClass on a SUIT is that suit's magic bonus, exactly as Dragon Scale Mail's bonusAc is — not a second, worn one.
-		const magicArmour = customItemRef({ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium', bonusArmourClass: 1 }, CUSTOM_ITEM_SOURCE)
+		// An armourClass bonus on a SUIT is that suit's magic bonus, exactly as Dragon Scale Mail's bonusAc is — not a second, worn one.
+		const magicArmour = customItemRef(
+			{ name: 'Bark Plate', kind: 'armour', armourClass: 14, armourCategory: 'medium', bonuses: [{ target: 'armourClass', amount: 1 }] },
+			CUSTOM_ITEM_SOURCE,
+		)
 		expect(itemMagicBonusOf(magicArmour)).toBe(1)
 		expect(wornAcBonusOf(magicArmour)).toBeNull()
-		// On a worn wondrous item the same field lands on the character instead.
-		expect(wornAcBonusOf(customItemRef({ name: 'Cloak', kind: 'worn', bonusArmourClass: 1 }, CUSTOM_ITEM_SOURCE))).toBe(1)
+		// On a worn wondrous item the same bonus lands on the character instead.
+		expect(wornAcBonusOf(customItemRef({ name: 'Cloak', kind: 'worn', bonuses: [{ target: 'armourClass', amount: 1 }] }, CUSTOM_ITEM_SOURCE))).toBe(1)
 
 		const weapon = customItemRef({ name: 'Bone Club', kind: 'weapon', damageDice: '1d6', damageType: 'bludgeoning', weaponCategory: 'simple' }, CUSTOM_ITEM_SOURCE)
 		expect(isWeapon(weapon)).toBe(true)
@@ -480,7 +483,22 @@ describe('custom items', () => {
 
 	it('carries the effects that need no armour or weapon role, gated by nothing here', () => {
 		const ring = customItemRef(
-			{ name: 'Ring of Ash', kind: 'worn', resist: ['fire'], immune: ['poison'], speedBonus: 10, darkvision: 60, bonusSavingThrow: 2, bonusSpellAttack: 1, bonusSpellSaveDc: 1, bonusAbilityCheck: 1 },
+			{
+				name: 'Ring of Ash',
+				kind: 'worn',
+				resist: ['fire'],
+				immune: ['poison'],
+				speedBonus: 10,
+				darkvision: 60,
+				bonuses: [
+					{ target: 'allSavingThrows', amount: 2 },
+					{ target: 'spellAttack', amount: 1 },
+					{ target: 'spellSaveDc', amount: 1 },
+					{ target: 'allAbilityChecks', amount: 1 },
+					{ target: 'initiative', amount: 2 },
+					{ target: 'skill', skill: 'stealth', amount: 3 },
+				],
+			},
 			CUSTOM_ITEM_SOURCE,
 		)
 		expect(ring).toMatchObject({
@@ -492,9 +510,50 @@ describe('custom items', () => {
 			bonusSpellAttack: 1,
 			bonusSpellSaveDc: 1,
 			bonusAbilityCheck: 1,
+			// R14a1: the targets items.json has no field for ride along as they are.
+			customBonuses: [
+				{ target: 'initiative', amount: 2 },
+				{ target: 'skill', skill: 'stealth', amount: 3 },
+			],
 		})
 		// A declared zero says nothing a blank field does not, so it is not carried through as a contribution of 0.
 		expect(customItemRef({ name: 'Ring of Ash', kind: 'worn', speedBonus: 0 }, CUSTOM_ITEM_SOURCE).speedBonus).toBeUndefined()
+	})
+
+	describe('describeCustomItemProblem on bonuses (R14a1)', () => {
+		const base = { name: 'Ring', kind: 'worn' }
+		it.each([
+			['not a list', { target: 'initiative', amount: 1 }, 'must be a list'],
+			['an unknown target', [{ target: 'proficiencyBonus', amount: 1 }], 'bonus target "proficiencyBonus"'],
+			['an unknown ability', [{ target: 'savingThrow', ability: 'luck', amount: 1 }], 'unknown ability "luck"'],
+			['an unknown skill', [{ target: 'skill', skill: 'flying', amount: 1 }], 'unknown skill "flying"'],
+			['an unknown passive', [{ target: 'passive', passive: 'stealth', amount: 1 }], 'unknown passive "stealth"'],
+			['a fractional amount', [{ target: 'initiative', amount: 1.5 }], 'whole number other than zero'],
+			['a zero amount', [{ target: 'initiative', amount: 0 }], 'whole number other than zero'],
+			['a text amount', [{ target: 'initiative', amount: '1' }], 'whole number other than zero'],
+			['a duplicate target', [{ target: 'skill', skill: 'stealth', amount: 1 }, { target: 'skill', skill: 'stealth', amount: 2 }], 'skill:stealth bonus is listed more than once'],
+			['perLevel on another target', [{ target: 'initiative', amount: 1, perLevel: true }], 'cannot be per level'],
+			['perLevel false', [{ target: 'maxHitPoints', amount: 1, perLevel: false }], 'cannot be per level'],
+		])('rejects %s', (_, bonuses, message) => {
+			expect(describeCustomItemProblem({ ...base, bonuses })).toContain(message)
+		})
+
+		it('accepts one of each target shape, negatives included, and two different saves', () => {
+			expect(
+				describeCustomItemProblem({
+					...base,
+					bonuses: [
+						{ target: 'armourClass', amount: -1 },
+						{ target: 'maxHitPoints', amount: 1, perLevel: true },
+						{ target: 'savingThrow', ability: 'wisdom', amount: 2 },
+						{ target: 'savingThrow', ability: 'dexterity', amount: 2 },
+						{ target: 'allSavingThrows', amount: 1 },
+						{ target: 'skill', skill: 'sleight of hand', amount: 1 },
+						{ target: 'passive', passive: 'insight', amount: 5 },
+					],
+				}),
+			).toBeNull()
+		})
 	})
 
 	it('seeds a definition from an existing item, computed fields included', () => {
@@ -551,7 +610,7 @@ describe('custom items', () => {
 			name: 'Cloak of Protection',
 			kind: 'other',
 			requiresAttunement: true,
-			bonusArmourClass: 1,
+			bonuses: [{ target: 'armourClass', amount: 1 }],
 		})
 	})
 

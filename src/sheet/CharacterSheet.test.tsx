@@ -3619,7 +3619,15 @@ describe('CharacterSheet', () => {
 		})
 
 		it('a custom item’s flat bonus reaches its target once attuned', async () => {
-			const charm: CustomItemDefinition = { name: 'Charm of the Sage', kind: 'worn', requiresAttunement: true, bonusArmourClass: 1, bonusSavingThrow: 2 }
+			const charm: CustomItemDefinition = {
+				name: 'Charm of the Sage',
+				kind: 'worn',
+				requiresAttunement: true,
+				bonuses: [
+					{ target: 'armourClass', amount: 1 },
+					{ target: 'allSavingThrows', amount: 2 },
+				],
+			}
 			const { container } = await renderSheet(owning('e2b-flat', customRow(charm, { attuned: true })))
 
 			// Nothing is worn, so 10 + Dex 2 + the charm's 1.

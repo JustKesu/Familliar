@@ -21,25 +21,53 @@
  * but unattuned item shows as a considered candidate with the reason (D76).
  */
 
+import { ABILITIES, type Ability } from '../abilities/abilityScores'
+import type { CustomBonusPassive } from '../storage/character'
+import { SKILLS, type Skill } from './skills'
 import type { Contribution } from './types'
 
-/** The values a worn item's flat bonus can land on — one per items.json bonus field this slice reads. */
-export type FlatBonusTarget = 'armourClass' | 'savingThrow' | 'spellAttack' | 'spellSaveDc' | 'abilityCheck' | 'proficiencyBonus'
+/**
+ * The values a flat bonus lands on as a whole: slice h's six items.json fields,
+ * plus the four a custom item can also target (R14a1). `savingThrow` and
+ * `abilityCheck` are ALL saves / ALL checks.
+ */
+export type BroadFlatBonusTarget =
+	| 'armourClass'
+	| 'savingThrow'
+	| 'spellAttack'
+	| 'spellSaveDc'
+	| 'abilityCheck'
+	| 'proficiencyBonus'
+	| 'initiative'
+	| 'maxHitPoints'
+	| 'weaponAttack'
+	| 'weaponDamage'
 
-export const FLAT_BONUS_TARGETS: readonly FlatBonusTarget[] = [
+export const BROAD_FLAT_BONUS_TARGETS: readonly BroadFlatBonusTarget[] = [
 	'armourClass',
 	'savingThrow',
 	'spellAttack',
 	'spellSaveDc',
 	'abilityCheck',
 	'proficiencyBonus',
+	'initiative',
+	'maxHitPoints',
+	'weaponAttack',
+	'weaponDamage',
 ]
+
+/** R14a1: a custom item can also aim at one save, one skill or one passive value. */
+export type FlatBonusTarget = BroadFlatBonusTarget | `savingThrow:${Ability}` | `skill:${Skill}` | `passive:${CustomBonusPassive}`
+
+const PASSIVES: readonly CustomBonusPassive[] = ['perception', 'investigation', 'insight']
 
 export interface ItemFlatBonusGrant {
 	/** The item as the sheet displays it — magicItemLabel has already been applied. */
 	sourceName: string
 	target: FlatBonusTarget
 	amount: number
+	/** maxHitPoints only: `amount` is per character level (R14a1). */
+	perLevel?: true
 	/** Set when the app can see the item is owned but not that it is in effect: not attuned (D76). */
 	withheldReason?: string
 	/** Set when the row's (name, source) is not in items.json at all, so what it grants is unknowable (D43). */
@@ -62,8 +90,11 @@ function signed(amount: number): string {
 	return amount >= 0 ? `+${amount}` : `-${Math.abs(amount)}`
 }
 
-/** The breakdown lines one value gets from the worn items — applied bonuses as real amounts, withheld ones as zero-amount notes (D60's mechanism). */
-export function flatBonusContributions(target: FlatBonusTarget, grants: readonly ItemFlatBonusGrant[]): Contribution[] {
+/**
+ * The breakdown lines one value gets from the worn items — applied bonuses as real amounts, withheld ones as zero-amount notes (D60's mechanism).
+ * `characterLevel` multiplies a per-level grant, the way maxHitPoints.ts names Tough's.
+ */
+export function flatBonusContributions(target: FlatBonusTarget, grants: readonly ItemFlatBonusGrant[], characterLevel = 0): Contribution[] {
 	const contributions: Contribution[] = []
 	for (const grant of grants) {
 		if (grant.target !== target) continue
@@ -72,24 +103,42 @@ export function flatBonusContributions(target: FlatBonusTarget, grants: readonly
 			contributions.push({ source: grant.sourceName, amount: 0, note: grant.unresolvedReason })
 			continue
 		}
+		const amount = grant.perLevel ? grant.amount * characterLevel : grant.amount
+		const source = grant.perLevel ? `${grant.sourceName} (${signed(grant.amount)} per level × ${characterLevel})` : grant.sourceName
 		if (grant.withheldReason !== undefined) {
-			contributions.push({ source: grant.sourceName, amount: 0, note: `considered (${signed(grant.amount)}) — not applied: ${grant.withheldReason}` })
+			contributions.push({ source, amount: 0, note: `considered (${signed(amount)}) — not applied: ${grant.withheldReason}` })
 			continue
 		}
 		if (target === 'proficiencyBonus') {
-			contributions.push({ source: grant.sourceName, amount: 0, note: `considered (${signed(grant.amount)}) — not applied: ${PROFICIENCY_BONUS_UNHANDLED}` })
+			contributions.push({ source, amount: 0, note: `considered (${signed(amount)}) — not applied: ${PROFICIENCY_BONUS_UNHANDLED}` })
 			continue
 		}
-		contributions.push({ source: grant.sourceName, amount: grant.amount })
+		contributions.push({ source, amount })
 	}
 	return contributions
 }
 
-export type FlatBonusContributions = Record<FlatBonusTarget, Contribution[]>
+export type FlatBonusContributions = Record<BroadFlatBonusTarget, Contribution[]> & {
+	/** One save's own lines, on top of `savingThrow`'s. */
+	savingThrowFor: Record<Ability, Contribution[]>
+	/** One skill's own lines, on top of `abilityCheck`'s. */
+	skillFor: Record<Skill, Contribution[]>
+	/** One passive value's own lines, never the skill roll's. */
+	passiveFor: Record<CustomBonusPassive, Contribution[]>
+}
 
-/** Every target's lines at once — the shape the sheet hands out to the six calculations. */
-export function flatBonusesByTarget(grants: readonly ItemFlatBonusGrant[]): FlatBonusContributions {
-	return Object.fromEntries(FLAT_BONUS_TARGETS.map((target) => [target, flatBonusContributions(target, grants)])) as FlatBonusContributions
+function linesFor<K extends string>(keys: readonly K[], target: (key: K) => FlatBonusTarget, grants: readonly ItemFlatBonusGrant[]): Record<K, Contribution[]> {
+	return Object.fromEntries(keys.map((key) => [key, flatBonusContributions(target(key), grants)])) as Record<K, Contribution[]>
+}
+
+/** Every target's lines at once — the shape the sheet hands out to the calculations. */
+export function flatBonusesByTarget(grants: readonly ItemFlatBonusGrant[], characterLevel = 0): FlatBonusContributions {
+	return {
+		...(Object.fromEntries(BROAD_FLAT_BONUS_TARGETS.map((target) => [target, flatBonusContributions(target, grants, characterLevel)])) as Record<BroadFlatBonusTarget, Contribution[]>),
+		savingThrowFor: linesFor(ABILITIES, (ability) => `savingThrow:${ability}`, grants),
+		skillFor: linesFor(SKILLS, (skill) => `skill:${skill}`, grants),
+		passiveFor: linesFor(PASSIVES, (passive) => `passive:${passive}`, grants),
+	}
 }
 
 /** No worn item contributes anything — the shape a caller with no inventory data yet can pass. */

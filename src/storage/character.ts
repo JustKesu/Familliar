@@ -8,6 +8,7 @@
  */
 
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
+import type { Skill } from '../calculation/skills'
 
 export interface CharacterClass {
 	className: string
@@ -712,17 +713,29 @@ export interface CustomItemDefinition {
 	speedBonus?: number
 	/** Darkvision in feet. Reconciled against every other source, never summed with them (speciesTraits.ts). */
 	darkvision?: number
-	/*
-	 * The flat bonuses slice h wired, one field each. `bonusProficiencyBonus` is
-	 * deliberately absent: slice h leaves that one unapplied, so a field for it
+	/**
+	 * R14a1 (D216): the numeric bonuses, each target at most once. Replaced the
+	 * five `bonus*` fields of slice h (migration 53 → 54). The proficiency bonus
+	 * is deliberately not a target: slice h leaves that one unapplied, so it
 	 * would be a number the sheet shows and never counts.
 	 */
-	bonusArmourClass?: number
-	bonusSavingThrow?: number
-	bonusSpellAttack?: number
-	bonusSpellSaveDc?: number
-	bonusAbilityCheck?: number
+	bonuses?: CustomItemBonus[]
 }
+
+/** One entry of CustomItemDefinition.bonuses. `amount` is a non-zero integer; describeCustomItemProblem proves the shape (D43). */
+export type CustomItemBonus =
+	| {
+			target: 'armourClass' | 'initiative' | 'allSavingThrows' | 'allAbilityChecks' | 'weaponAttack' | 'weaponDamage' | 'spellAttack' | 'spellSaveDc'
+			amount: number
+	  }
+	/** `perLevel`: amount × total character level. Present only when true. */
+	| { target: 'maxHitPoints'; amount: number; perLevel?: true }
+	| { target: 'savingThrow'; ability: Ability; amount: number }
+	| { target: 'skill'; skill: Skill; amount: number }
+	| { target: 'passive'; passive: CustomBonusPassive; amount: number }
+
+/** The three passive values the sheet shows. */
+export type CustomBonusPassive = 'perception' | 'investigation' | 'insight'
 
 /** The three Dexterity-cap categories, as items.json's LA/MA/HA type codes name them. */
 export type CustomArmourCategory = 'light' | 'medium' | 'heavy'
@@ -965,7 +978,8 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 53 for the 'manual' grantedFeats origin
+ * (see wireFormat.ts). Bumped to 54 for CustomItemDefinition.bonuses (R14a1,
+ * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
  * .temporaryHitPoints (D213); 50 for CharacterBackground.originFeatOverride
@@ -988,4 +1002,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 53
+export const CURRENT_SCHEMA_VERSION = 54

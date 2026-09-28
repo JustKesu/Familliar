@@ -9,9 +9,9 @@
  */
 
 import { isAttuned } from '../calculation/attunement'
-import { FLAT_BONUS_TARGETS, type FlatBonusTarget, type ItemFlatBonusGrant } from '../calculation/itemFlatBonuses'
+import { BROAD_FLAT_BONUS_TARGETS, type FlatBonusTarget, type ItemFlatBonusGrant } from '../calculation/itemFlatBonuses'
 import { magicItemLabel } from '../calculation/magicBonus'
-import { buildInventoryResolver, wornAcBonusOf, type ItemRef } from '../inventory/inventoryData'
+import { buildInventoryResolver, customBonusKey, wornAcBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { CharacterInventoryItem } from '../storage/character'
 
 /** Which items.json field feeds which value. `bonusAc` is read through wornAcBonusOf so an armour's or shield's own bonus is not counted twice (slice e already applies it). */
@@ -33,10 +33,10 @@ const NOT_ATTUNED = 'requires attunement and you are not attuned to it'
  * D43: a row that does not resolve — absent from items.json, or a custom
  * definition too broken to read (slice e2a) — is announced only when it is ATTUNED. An
  * unattuned row would contribute nothing even if it did resolve, so naming it
- * on all six values would be noise rather than a warning; an attuned one is a
+ * on every value would be noise rather than a warning; an attuned one is a
  * deliberate act by the player whose effect the app genuinely cannot see, and
- * since the missing entry could have carried any of the six fields it is named
- * on all of them.
+ * since the missing entry could have carried any bonus it is named on every
+ * broad target (a single save or skill already shows the all-saves/all-checks line).
  */
 export function buildItemFlatBonusGrants(inventory: readonly CharacterInventoryItem[], itemRefs: readonly ItemRef[]): ItemFlatBonusGrant[] {
 	const resolve = buildInventoryResolver(itemRefs)
@@ -51,7 +51,7 @@ export function buildItemFlatBonusGrants(inventory: readonly CharacterInventoryI
 				problem?.kind === 'malformed-custom'
 					? 'attuned but its custom definition cannot be read'
 					: `attuned but not found in the item data (${item.source})`
-			for (const target of FLAT_BONUS_TARGETS) {
+			for (const target of BROAD_FLAT_BONUS_TARGETS) {
 				grants.push({
 					sourceName: name,
 					target,
@@ -68,6 +68,16 @@ export function buildItemFlatBonusGrants(inventory: readonly CharacterInventoryI
 			const amount = read(ref)
 			if (amount === null || amount === 0) continue
 			grants.push({ sourceName: label, target, amount, ...(withheld ? { withheldReason: NOT_ATTUNED } : {}) })
+		}
+		/* R14a1: customItemRef keeps only the targets items.json has no field for here; the key's spelling is FlatBonusTarget's, apart from the unqualified ones. */
+		for (const bonus of ref.customBonuses ?? []) {
+			grants.push({
+				sourceName: label,
+				target: customBonusKey(bonus) as FlatBonusTarget,
+				amount: bonus.amount,
+				...(bonus.target === 'maxHitPoints' && bonus.perLevel === true ? { perLevel: true as const } : {}),
+				...(withheld ? { withheldReason: NOT_ATTUNED } : {}),
+			})
 		}
 	}
 	return grants

@@ -1093,6 +1093,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Prepare/Unprepare live + after reload, full counters disable, level pills +
   search, always-prepared and feat notes, shared slot boxes, pact section, no
   button for a Fighter, ▸ text).
+- `e2e/customItemBonuses.spec.ts` — R14a1 a–f (seeded Fighter 3 at schema 53:
+  six bonuses via Add Custom Item reach Initiative/Stealth/passive
+  Perception/Longsword/max HP + breakdowns; attunement gate; single save +
+  all saves; Edit removes a row; target exclusion + per-level checkbox; old
+  `bonusArmourClass` migrates to an Armor Class row).
 
 ## Dočasné scaffolding
 
@@ -1830,6 +1835,25 @@ mode radios cleared `increases` to `{}`, and mode was derived purely from its
 length) — mode is now local state, initialized from the stored value. E2E
 `manageFeats.spec.ts` R13b a–g. Next: R14a (custom item — numbers and
 senses).
+
+R14a1 (D216) done. Schema 54 (53→54 migrates): `CustomItemDefinition.bonuses:
+CustomItemBonus[]` replaces the five `bonus*` fields (armourClass,
+initiative, maxHitPoints [+`perLevel`], weaponAttack, weaponDamage,
+spellAttack, spellSaveDc, allSavingThrows, savingThrow+ability,
+allAbilityChecks, skill+skill, passive+passive; one per target, non-zero
+integer). `describeCustomItemProblem` checks it (D43). `customItemRef` writes
+the five items.json-backed targets onto `bonusAc`/`bonusSavingThrow`/…, the
+rest onto `ItemRef.customBonuses`; `buildItemFlatBonusGrants` reads both.
+`flatBonusesByTarget(grants, characterLevel)` adds `initiative`,
+`maxHitPoints`, `weaponAttack`, `weaponDamage` and `savingThrowFor` /
+`skillFor` / `passiveFor`; new optional params on `computeInitiative`,
+`computeSavingThrows`, `computeSkills`, `computePassive*`,
+`computeMaxHitPoints`, `computeWeaponAttacks` (Unarmed Strike untouched). An
+unresolved attuned item is now noted on 10 targets (was 6). `SKILL_LABELS`
+moved to `skills.ts`. Form: `CustomItemBonusList.tsx` (rows: grouped target
+select, amount, per-level checkbox for Max HP, Remove; "+ Add bonus"). Current
+HP is not touched when an item changes max HP (same as a manual feat, R13a).
+E2E `customItemBonuses.spec.ts` R14a1 a–f. Next: R14a2.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

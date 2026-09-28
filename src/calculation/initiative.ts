@@ -11,13 +11,15 @@ import type { FeatEffectEntry } from './featEffects'
 import { proseFeatEffectNotes } from './featEffects'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
-export function computeInitiative(character: Character, feats: FeatEffectEntry[] = []): Calculated<number> {
+/** `itemBonuses`: a custom item's initiative bonus (R14a1), each its own line. */
+export function computeInitiative(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<number> {
 	const dexterity = computeAbilityScore('dexterity', character, feats)
 	if (dexterity.status === 'unknown') return unknown(dexterity.reason)
 
 	const breakdown: Contribution[] = [
 		{ source: 'dexterity modifier', amount: dexterity.value.modifier },
 		...proseFeatEffectNotes('initiative', character, feats),
+		...itemBonuses,
 	]
 	const total = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
 	return known(total, breakdown)
