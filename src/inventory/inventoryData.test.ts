@@ -10,7 +10,9 @@ import {
 	handsRequiredOf,
 	inventoryRowKey,
 	isConsumable,
+	isMagicItem,
 	isShield,
+	itemFilterKindsOf,
 	isVersatileWeapon,
 	isWeapon,
 	itemKey,
@@ -30,10 +32,25 @@ describe('extractItemRefs', () => {
 			{ name: 'Longsword', source: 'XDMG', rarity: 'rare' },
 		]
 		expect(extractItemRefs(parsed)).toEqual([
-			{ name: 'Longsword', source: 'XDMG' },
+			{ name: 'Longsword', source: 'XDMG', rarity: 'rare' },
 			{ name: 'Longsword', source: 'XPHB', weapon: true },
 			{ name: 'Torch', source: 'XPHB', typeCode: 'G', value: 1 },
 		])
+	})
+
+	it('R10a: sorts items into the Add Items type pills and tells magic from mundane by rarity', () => {
+		const [potion, staff, torch, wondrous, mystery] = extractItemRefs([
+			{ name: 'A Potion of Healing', source: 'XDMG', type: 'P|XDMG', rarity: 'common' },
+			{ name: 'B Staff of Power', source: 'XDMG', type: 'M|XPHB', staff: true, rarity: 'very rare' },
+			{ name: 'C Torch', source: 'XPHB', type: 'G|XPHB', rarity: 'none' },
+			{ name: 'D Bag of Holding', source: 'XDMG', wondrous: true, rarity: 'uncommon' },
+			{ name: 'E Alchemist\'s Doom', source: 'SCC', type: 'G', rarity: 'unknown' },
+		])
+		expect(itemFilterKindsOf(potion)).toEqual(['Potion'])
+		expect(itemFilterKindsOf(staff)).toEqual(['Weapon', 'Staff'])
+		expect(itemFilterKindsOf(torch)).toEqual(['Other gear'])
+		expect(itemFilterKindsOf(wondrous)).toEqual(['Wondrous'])
+		expect([potion, staff, torch, wondrous, mystery].map(isMagicItem)).toEqual([true, true, false, true, false])
 	})
 
 	it('drops malformed rows rather than throwing', () => {

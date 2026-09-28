@@ -28,7 +28,9 @@ function row(page: Page, name: string): Locator {
 
 async function equip(page: Page, name: string): Promise<void> {
   await page.getByRole('tab', { name: 'Inventory' }).click()
+  await page.getByRole('button', { name: 'Manage Inventory', exact: true }).click()
   await page.getByRole('button', { name: `Equip ${name}`, exact: true }).click()
+  await page.keyboard.press('Escape')
   await page.getByRole('tab', { name: 'Actions' }).click()
 }
 

@@ -1731,6 +1731,19 @@ SubclassSpellChoicePicker stays below the class section. E2E `wizardSpells.spec.
 (Eldritch Knight 3); frhof/scc specs moved to the new buttons. No schema change
 (still 50).
 
+R10a (D211): Manage Inventory drawer (`src/sheet/ManageInventoryPanel.tsx`),
+opened by "Manage Inventory" in the Inventory tab. Sections: Add Items (search,
+10 type pills, Magical checkbox, max 20 rows alphabetically + "Showing 20 of N",
+ADD = +1 piece merged into the plain row), Add Custom Item (CustomItemForm
+unchanged; Edit scrolls to it), Currency (unchanged controls), My Inventory
+(−/number/+, Equip/Put down, Grip, Magic bonus, Attune, Edit, REMOVE; attunement
+count and notice above). The Inventory tab is read-only (×N, money, attunement
+count, descriptions) until R10b. ItemRef gained `wondrous`, `staff`, `rarity`;
+`itemFilterKindsOf`/`isMagicItem` in inventoryData.ts (DATA.md "Item filter
+kinds"). The old "Add an item" checkbox list (add/remove toggle) is gone. E2E
+`manageInventory.spec.ts` a–i; combatActions/actions/scc specs moved to the
+drawer. No schema change (still 50). Next: R10b (Inventory tab table, filters).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

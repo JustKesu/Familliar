@@ -15,13 +15,12 @@ function combatLine(page: Page, name: string): Locator {
   return group(page, name).locator('.sheet__combat-actions')
 }
 
-async function addItem(page: Page, search: string, checkbox: string): Promise<void> {
-  const inventory = page.locator('.sheet__inventory')
-  if ((await inventory.getByRole('searchbox', { name: 'Search Add an item' }).count()) === 0) {
-    await inventory.getByRole('button', { name: /^Add an item/ }).click()
-  }
-  await inventory.getByRole('searchbox', { name: 'Search Add an item' }).fill(search)
-  await inventory.getByRole('checkbox', { name: checkbox, exact: true }).first().check()
+/* R10a: items are added and equipped in the Manage Inventory drawer, which stays open across tab switches. */
+async function addItem(page: Page, search: string, name: string): Promise<void> {
+  const panel = page.getByRole('dialog', { name: 'Manage Inventory' })
+  if ((await panel.count()) === 0) await page.getByRole('button', { name: 'Manage Inventory', exact: true }).click()
+  await panel.getByRole('searchbox', { name: 'Search items' }).fill(search)
+  await panel.getByRole('button', { name: `Add ${name}`, exact: true }).first().click()
 }
 
 test.beforeEach(async ({ page }) => {
@@ -75,9 +74,9 @@ test('D187 d: Two-Weapon Fighting only while two Light weapons are held', async 
   }
 
   await page.getByRole('tab', { name: 'Inventory' }).click()
-  await addItem(page, 'dagger', 'Dagger (XPHB)')
+  await addItem(page, 'dagger', 'Dagger')
   await equip('Dagger')
-  await addItem(page, 'shortsword', 'Shortsword (XPHB)')
+  await addItem(page, 'shortsword', 'Shortsword')
   await page.getByRole('tab', { name: 'Actions' }).click()
   // One Light weapon held, the second still in the backpack. TWF is the only XPHB bonus action, so the whole line is absent.
   await expect(group(page, 'Bonus Action')).toContainText('Second Wind')
@@ -92,7 +91,7 @@ test('D187 d: Two-Weapon Fighting only while two Light weapons are held', async 
 /* D188: one inventory row of Dagger ×2. */
 async function stackOfDaggers(page: Page): Promise<void> {
   await page.getByRole('tab', { name: 'Inventory' }).click()
-  await addItem(page, 'dagger', 'Dagger (XPHB)')
+  await addItem(page, 'dagger', 'Dagger')
   const quantity = page.getByRole('spinbutton', { name: 'Quantity of Dagger', exact: true })
   await quantity.fill('2')
   await quantity.press('Enter')
@@ -100,7 +99,10 @@ async function stackOfDaggers(page: Page): Promise<void> {
 }
 
 function inventoryRow(page: Page, name: string): Locator {
-  return page.locator('.sheet__inventory-list > li').filter({ has: page.getByRole('spinbutton', { name: `Quantity of ${name}`, exact: true }) })
+  return page
+    .getByRole('region', { name: 'My Inventory' })
+    .locator('.manage-spells__row')
+    .filter({ has: page.getByRole('spinbutton', { name: `Quantity of ${name}`, exact: true }) })
 }
 
 async function holdBothDaggers(page: Page): Promise<void> {
@@ -143,7 +145,7 @@ test('D188 c: the second dagger follows the same hands rule — never three hand
   const heldMarks = page.locator('.sheet__inventory-equipped')
   // Shield first: what makes room is the held row highest in the list (hands.ts), so it is the one put down.
   await page.getByRole('tab', { name: 'Inventory' }).click()
-  await addItem(page, 'shield', 'Shield (XPHB)')
+  await addItem(page, 'shield', 'Shield')
   await stackOfDaggers(page)
   await page.getByRole('button', { name: 'Equip Shield', exact: true }).click()
   await page.getByRole('button', { name: 'Equip Dagger', exact: true }).click()
@@ -154,7 +156,7 @@ test('D188 c: the second dagger follows the same hands rule — never three hand
   await expect(heldMarks).toHaveCount(2)
   await expect(page.getByRole('button', { name: 'Equip Shield', exact: true })).toBeVisible()
 
-  await addItem(page, 'greatsword', 'Greatsword (XPHB)')
+  await addItem(page, 'greatsword', 'Greatsword')
   await page.getByRole('button', { name: 'Equip Greatsword', exact: true }).click()
   await expect(page.locator('.sheet__inventory-notice')).toContainText('Unequipped Dagger, Dagger — Greatsword needs both hands.')
   await expect(heldMarks).toHaveCount(1)

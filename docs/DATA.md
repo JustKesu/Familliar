@@ -769,6 +769,26 @@ Kontejnery nemají příznak — poznají se podle přítomnosti `containerCapac
 
 Zjištěno při průzkumu před krokem 7; původní znění tvrdilo, že příznaky stačí.
 
+### Item filter kinds (R10a)
+
+Průzkum `scripts/investigate-item-filter-kinds.js` nad data/items.json (947
+předmětů) pro filtry panelu Add Items:
+- Potion, Ring, Rod, Scroll, Wand mají vlastní kód v `type`: `P` (45), `RG`
+  (37), `RD` (11), `SC` (31), `WD` (20). Všechny jsou magické.
+- Hůl (staff) kód NEMÁ. Pozná se jen podle příznaku `staff: true` (27): 26
+  magických holí má kód `M` (jsou to zároveň zbraně), obyčejná Staff|XPHB má
+  kód `SCF`. Hůl proto patří do dvou filtrů, Weapon i Staff.
+- Wondrous = příznak `wondrous: true` (325): 271 předmětů bez `type` (každý
+  předmět bez `type` je wondrous, včetně 27 tetování), 39 `SCF`, 15 `INS`.
+  Žádný wondrous předmět nemá příznak `weapon`/`armor`.
+- Magický vs. obyčejný = `rarity`. Hodnoty: none 405, common 61, uncommon 136,
+  rare 163, very rare 108, legendary 52, artifact 19, unknown 3. `unknown` mají
+  jen 3 alchymistické spotřebáky ze SCC (Alchemist's Doom, Catapult Munition,
+  Murgaxor's Elixir of Life, kód `G`) — počítají se jako obyčejné. Žádný
+  předmět s `rarity: "none"` nemá `reqAttune` ani magický bonus.
+- ItemRef nese `wondrous`, `staff` a `rarity`; třídění dělá
+  `itemFilterKindsOf` / `isMagicItem` (src/inventory/inventoryData.ts).
+
 ### Ammunition and charges — the only structured spend-and-refresh fields
 `ammoType` on a weapon names the exact ammunition item code that weapon
 consumes — a direct item-to-item link, no name matching needed.

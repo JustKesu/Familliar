@@ -2440,3 +2440,58 @@ button:disabled {
   font-size: 12px;
   color: var(--text-mute);
 }
+
+/* ---- Manage Inventory drawer (R10a) ---- */
+
+.manage-inventory__magical {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.manage-inventory__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 0 0 8px;
+  font-size: 13px;
+}
+
+.manage-inventory__controls button,
+.manage-inventory__controls label {
+  white-space: nowrap;
+}
+
+.manage-inventory__controls .sheet__inventory-discard {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.manage-inventory__qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.manage-inventory__qty > button {
+  min-width: 2em;
+  padding: 2px 6px;
+}
+
+.manage-inventory__currency {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.manage-inventory__currency label {
+  white-space: nowrap;
+}

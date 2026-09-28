@@ -3947,3 +3947,17 @@ Zdroj: zadání R9c, 28. 9. 2026. Navazuje na D208, D209.
    seznamy „Always prepared from …" zanikly. Výběr podtřídy
    (`SubclassSpellChoicePicker`) zůstává pod sekcí.
 4. `SpellPicker` a `AlwaysPreparedSpellsList` odstraněny i s testy.
+
+## D211 — R10 Inventory (Daniel 28. 9.)
+
+R10 rozdělen na R10a (panel Manage Inventory, veškeré ovládání inventáře
+přesunuto do panelu) a R10b (záložka Inventory: tabulka, filtry). ADD v panelu
+přidá vždy 1 kus a sloučí se se stejným obyčejným řádkem; odebírá se jen v My
+Inventory (REMOVE). Množství −/+ s editovatelným číslem. Add Items ukáže nejvýš
+20 výsledků abecedně s poznámkou o zbytku. Pro R10b: sloupec Active
+(zaškrtávátko = Equip/Put down) jen u věcí, které jde nasadit; filtry Equipment
+= jde nasadit, Attunement = vyžaduje naladění, Other possessions = zbytek; Notes
+= způsob držení (held/worn/two-handed), attuned, requires attunement + podmínka,
+custom; počet naladění v hlavičce záložky vedle peněz i v panelu nad My
+Inventory; ▸ popis předmětu i v záložce. Formulář custom předmětu se v R10
+nerozšiřuje (rozšíření = R14a–d).

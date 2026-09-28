@@ -493,6 +493,11 @@ function modeSwitch(): HTMLElement {
 	return screen.getByRole('group', { name: 'Roll mode' })
 }
 
+/** R10a: every inventory and money control sits in the Manage Inventory drawer, which has to be opened first. */
+async function openManageInventory(): Promise<void> {
+	fireEvent.click(await screen.findByRole('button', { name: 'Manage Inventory' }))
+}
+
 async function chooseMode(user: ReturnType<typeof userEvent.setup>, mode: 'Normal' | 'Advantage' | 'Disadvantage'): Promise<void> {
 	await user.click(within(modeSwitch()).getByRole('button', { name: mode }))
 }
@@ -1222,6 +1227,7 @@ describe('CharacterSheet', () => {
 			const onEditCurrency = vi.fn()
 			render(<CharacterSheet character={owner} onEditCurrency={onEditCurrency} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
 
 			// 1234 cp is 12 gp 3 sp 4 cp — never 1 pp, however large the total.
 			const gold = (await screen.findByLabelText('Gold')) as HTMLInputElement
@@ -1241,6 +1247,7 @@ describe('CharacterSheet', () => {
 			const onEditCurrency = vi.fn()
 			const { container } = render(<CharacterSheet character={owner} onEditCurrency={onEditCurrency} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
 
 			const platinum = (await screen.findByLabelText('Add platinum')) as HTMLInputElement
 			expect(platinum.value).toBe('') // entry only — it has no stored value to show back
@@ -1262,61 +1269,58 @@ describe('CharacterSheet', () => {
 			expect(money).not.toMatch(/\d+\s*pp/)
 		})
 
-		it('adds an item from the searchable list at quantity 1', async () => {
+		it('adds an item from the Add Items list at quantity 1 (R10a)', async () => {
 			const user = userEvent.setup()
 			const onEditInventory = vi.fn()
-			const { container } = render(<CharacterSheet character={character} onEditInventory={onEditInventory} />)
+			render(<CharacterSheet character={character} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
 
-			const section = container.querySelector('.sheet__inventory')!
-			await waitFor(() => expect(section.querySelector('.option-list__toggle')).toBeTruthy())
-			await user.click(section.querySelector('.option-list__toggle') as HTMLElement)
-			await user.click(screen.getByRole('checkbox', { name: 'Torch (XPHB)' }))
+			await user.type(await screen.findByRole('searchbox', { name: 'Search items' }), 'torch')
+			await user.click(screen.getByRole('button', { name: 'Add Torch' }))
 
 			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Torch', source: 'XPHB', quantity: 1 }])
 		})
 
-		it('the search filters carried items too, not just the ones left to add', async () => {
+		it('ADD on an item already carried as a plain row adds one to it instead of removing it (R10a)', async () => {
 			const user = userEvent.setup()
-			const carrying: Character = {
-				...character,
-				id: 'inv-search-carried',
-				inventory: [
-					{ name: 'Cloak of Protection', source: 'XDMG', quantity: 1 },
-					{ name: 'Longsword', source: 'XPHB', quantity: 1 },
-				],
-			}
-			const { container } = render(<CharacterSheet character={carrying} onEditInventory={vi.fn()} />)
+			const onEditInventory = vi.fn()
+			render(<CharacterSheet character={owner} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
 
-			const section = container.querySelector('.sheet__inventory')!
-			await waitFor(() => expect(section.querySelector('.option-list__toggle')).toBeTruthy())
-			await user.click(section.querySelector('.option-list__toggle') as HTMLElement)
-			await user.type(screen.getByRole('searchbox', { name: 'Search Add an item' }), 'cloak of prote')
+			await user.type(await screen.findByRole('searchbox', { name: 'Search items' }), 'torch')
+			await user.click(screen.getByRole('button', { name: 'Add Torch' }))
 
-			expect(screen.getByRole('checkbox', { name: 'Cloak of Protection (XDMG)' })).toBeTruthy()
-			// Longsword is carried too, but it doesn't match the search, so it must not still be listed.
-			expect(screen.queryByRole('checkbox', { name: 'Longsword (XPHB)' })).toBeNull()
+			expect(onEditInventory).toHaveBeenCalledWith([
+				{ name: 'Longsword', source: 'XPHB', quantity: 1 },
+				{ name: 'Torch', source: 'XPHB', quantity: 6 },
+			])
 		})
 
-		it('clears the search text when the panel is closed and reopened', async () => {
+		it('the search narrows the Add Items list by name', async () => {
 			const user = userEvent.setup()
-			const { container } = render(<CharacterSheet character={character} onEditInventory={vi.fn()} />)
+			render(<CharacterSheet character={character} onEditInventory={vi.fn()} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
 
-			const section = container.querySelector('.sheet__inventory')!
-			await waitFor(() => expect(section.querySelector('.option-list__toggle')).toBeTruthy())
-			const toggle = section.querySelector('.option-list__toggle') as HTMLElement
-			await user.click(toggle)
-			await user.type(screen.getByRole('searchbox', { name: 'Search Add an item' }), 'torch')
-			expect(screen.queryByRole('checkbox', { name: 'Longsword (XPHB)' })).toBeNull()
+			await user.type(await screen.findByRole('searchbox', { name: 'Search items' }), 'cloak of prote')
 
-			await user.click(toggle) // close
-			await user.click(toggle) // reopen
+			expect(screen.getByRole('button', { name: 'Add Cloak of Protection' })).toBeTruthy()
+			expect(screen.queryByRole('button', { name: 'Add Longsword' })).toBeNull()
+		})
 
-			const search = screen.getByRole('searchbox', { name: 'Search Add an item' }) as HTMLInputElement
-			expect(search.value).toBe('')
-			expect(screen.getByRole('checkbox', { name: 'Longsword (XPHB)' })).toBeTruthy()
+		it('clears the search text when the panel is closed and reopened (D116)', async () => {
+			const user = userEvent.setup()
+			render(<CharacterSheet character={character} onEditInventory={vi.fn()} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
+
+			await user.type(await screen.findByRole('searchbox', { name: 'Search items' }), 'torch')
+			await user.click(screen.getByRole('button', { name: 'Close' }))
+			await openManageInventory()
+
+			expect((screen.getByRole('searchbox', { name: 'Search items' }) as HTMLInputElement).value).toBe('')
 		})
 
 		it('changes a quantity on commit, and floors it at 0 (slice 9d3)', async () => {
@@ -1325,6 +1329,7 @@ describe('CharacterSheet', () => {
 			const five: Character = { ...character, id: 'inv3', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 5 }] }
 			render(<CharacterSheet character={five} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
 
 			const qty = (await screen.findByLabelText('Quantity of Longsword')) as HTMLInputElement
 			await user.clear(qty)
@@ -1332,7 +1337,7 @@ describe('CharacterSheet', () => {
 			await user.tab()
 			expect(onEditInventory).toHaveBeenLastCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 3 }])
 
-			// 0 is a real quantity now (a spent stack stays to be restocked); below it the field stops, and removing is Discard's job.
+			// 0 is a real quantity now (a spent stack stays to be restocked); below it the field stops, and removing is REMOVE's job.
 			await user.clear(qty)
 			await user.type(qty, '0')
 			await user.tab()
@@ -1345,17 +1350,41 @@ describe('CharacterSheet', () => {
 			expect(qty.value).toBe('0')
 		})
 
-		it('discarding an item takes it out of the inventory entirely', async () => {
+		it('the − and + buttons step the quantity, and − is disabled at 0 (R10a)', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const empty: Character = { ...character, id: 'inv-step', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 0 }] }
+			render(<CharacterSheet character={empty} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
+
+			expect((screen.getByRole('button', { name: 'Decrease quantity of Longsword' }) as HTMLButtonElement).disabled).toBe(true)
+			await user.click(screen.getByRole('button', { name: 'Increase quantity of Longsword' }))
+			expect(onEditInventory).toHaveBeenLastCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 1 }])
+		})
+
+		it('REMOVE takes an item out of the inventory entirely', async () => {
 			const user = userEvent.setup()
 			const onEditInventory = vi.fn()
 			const one: Character = { ...character, id: 'inv4', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 2 }] }
-			const { container } = render(<CharacterSheet character={one} onEditInventory={onEditInventory} />)
+			render(<CharacterSheet character={one} onEditInventory={onEditInventory} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
+
+			await user.click(await screen.findByRole('button', { name: 'Remove Longsword from inventory' }))
+			expect(onEditInventory).toHaveBeenCalledWith([])
+		})
+
+		it('the Inventory tab itself is read-only: no quantity field, no Equip, no Remove (R10a)', async () => {
+			const held: Character = { ...character, id: 'inv-readonly-tab', inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 2, equipped: 'held' }] }
+			const { container } = render(<CharacterSheet character={held} onEditInventory={vi.fn()} onEditCurrency={vi.fn()} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 
-			const section = container.querySelector('.sheet__inventory')!
-			await waitFor(() => expect(section.querySelector('.sheet__inventory-list')).toBeTruthy())
-			await user.click(screen.getByRole('button', { name: 'Discard Longsword from inventory' }))
-			expect(onEditInventory).toHaveBeenCalledWith([])
+			const section = container.querySelector('.sheet__inventory') as HTMLElement
+			await waitFor(() => expect(section.textContent).toContain('×2'))
+			expect(within(section).getByRole('button', { name: 'Manage Inventory' })).toBeTruthy()
+			expect(section.querySelector('input, select')).toBeNull()
+			expect(within(section).queryByRole('button', { name: /^(Put down|Equip|Remove|Discard)/ })).toBeNull()
 		})
 
 		it('putting a held weapon down leaves it in the inventory, unequipped', async () => {
@@ -1368,12 +1397,13 @@ describe('CharacterSheet', () => {
 			}
 			render(<CharacterSheet character={holding} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
 
 			await user.click(screen.getByRole('button', { name: 'Put down Longsword' }))
 			expect(onEditInventory).toHaveBeenCalledWith([{ name: 'Longsword', source: 'XPHB', quantity: 1 }])
 		})
 
-		it('names Put down and Discard distinguishably, so a slip between them is not a silent loss', async () => {
+		it('names Put down and Remove distinguishably, so a slip between them is not a silent loss', async () => {
 			const held: Character = {
 				...character,
 				id: 'inv-control-names',
@@ -1381,12 +1411,13 @@ describe('CharacterSheet', () => {
 			}
 			render(<CharacterSheet character={held} onEditInventory={vi.fn()} />)
 			await screen.findByRole('heading', { name: 'Aria' })
+			await openManageInventory()
 
 			expect(screen.getByRole('button', { name: 'Put down Longsword' })).toBeTruthy()
-			expect(screen.getByRole('button', { name: 'Discard Longsword from inventory' })).toBeTruthy()
+			expect(screen.getByRole('button', { name: 'Remove Longsword from inventory' })).toBeTruthy()
 			// Neither name is a substring of the other, so a screen reader or a fuzzy match can't confuse them.
-			expect('Put down Longsword'.includes('Discard')).toBe(false)
-			expect('Discard Longsword from inventory'.includes('Put down')).toBe(false)
+			expect('Put down Longsword'.includes('Remove')).toBe(false)
+			expect('Remove Longsword from inventory'.includes('Put down')).toBe(false)
 		})
 	})
 
@@ -1405,6 +1436,7 @@ describe('CharacterSheet', () => {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await waitFor(() => expect(acSection(rendered.container).querySelector('.sheet__armour-class-value')).toBeTruthy())
+			if (onEditInventory) await openManageInventory()
 			return rendered
 		}
 
@@ -1525,12 +1557,8 @@ describe('CharacterSheet', () => {
 	 * cases a count of weapons would get wrong.
 	 */
 	describe('hands and grip (step 7 slice b-fix)', () => {
-		function inventorySection(container: HTMLElement): HTMLElement {
-			return container.querySelector('.sheet__inventory') as HTMLElement
-		}
-
 		function notice(container: HTMLElement): string {
-			return inventorySection(container).querySelector('.sheet__inventory-notice')?.textContent ?? ''
+			return container.querySelector('.sheet__inventory-notice')?.textContent ?? ''
 		}
 
 		function attackDamage(container: HTMLElement, name: string): string {
@@ -1543,6 +1571,7 @@ describe('CharacterSheet', () => {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await waitFor(() => expect(rendered.container.querySelector('.sheet__actions-table')).toBeTruthy())
+			if (onEditInventory) await openManageInventory()
 			return rendered
 		}
 
@@ -1712,6 +1741,7 @@ describe('CharacterSheet', () => {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await waitFor(() => expect(attacksSection(rendered.container).querySelector('.sheet__actions-table')).toBeTruthy())
+			if (onEditInventory) await openManageInventory()
 			return rendered
 		}
 
@@ -1868,6 +1898,7 @@ describe('CharacterSheet', () => {
 				const rendered = render(<Harness initial={{ ...character, id: `ammo-${Math.random()}`, inventory }} onEdit={onEdit} />)
 				await screen.findByRole('heading', { name: 'Aria' })
 				await waitFor(() => expect(attacksSection(rendered.container).querySelector('.sheet__actions-table')).toBeTruthy())
+				await openManageInventory()
 				return { ...rendered, onEdit }
 			}
 
@@ -2356,6 +2387,7 @@ describe('CharacterSheet', () => {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await waitFor(() => expect(inventorySection(rendered.container).querySelector('.sheet__attunement-count')).toBeTruthy())
+			if (onEditInventory) await openManageInventory()
 			return rendered
 		}
 
@@ -2429,7 +2461,7 @@ describe('CharacterSheet', () => {
 			await user.click(screen.getByRole('button', { name: 'Attune to Wand of the War Mage, +1' }))
 			expect(onEditInventory).not.toHaveBeenCalled()
 			// Slice b-fix: the refusal now uses the SAME notice the equip displacement does, and is announced (role="status") rather than only drawn.
-			const refusal = inventorySection(container).querySelector('.sheet__inventory-notice')!
+			const refusal = container.querySelector('.sheet__inventory-notice')!
 			expect(refusal.getAttribute('role')).toBe('status')
 			expect(refusal.textContent).toBe('Cannot attune to Wand of the War Mage, +1: you can be attuned to at most 3 magic items at once, and 3 already are.')
 		})
@@ -2474,7 +2506,7 @@ describe('CharacterSheet', () => {
 			expect(inventorySection(second).querySelector('.sheet__attunement-count')!.textContent).toContain('4 of 4 attuned')
 
 			await user.click(screen.getByRole('button', { name: 'Attune to Ring of Spell Storing' }))
-			expect(inventorySection(second).querySelector('.sheet__inventory-notice')!.textContent).toContain('at most 4 magic items at once')
+			expect(second.querySelector('.sheet__inventory-notice')!.textContent).toContain('at most 4 magic items at once')
 		})
 
 		it('keeps the control on an attuned row whose item data is missing, so the attunement can be ended (D43)', async () => {
@@ -2531,6 +2563,7 @@ describe('CharacterSheet', () => {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await waitFor(() => expect(acSection(rendered.container).querySelector('.sheet__armour-class-value')).toBeTruthy())
+			if (onEditInventory) await openManageInventory()
 			return rendered
 		}
 
@@ -3075,6 +3108,7 @@ describe('CharacterSheet', () => {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await waitFor(() => expect(inventorySection(rendered.container).querySelector('.sheet__attunement-count')).toBeTruthy())
+			if (onEditInventory) await openManageInventory()
 			return rendered
 		}
 
@@ -3437,6 +3471,7 @@ describe('CharacterSheet', () => {
 			const rendered = render(<CharacterSheet character={subject} onEditInventory={onEditInventory} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await waitFor(() => expect(inventorySection(rendered.container).querySelector('.sheet__attunement-count')).toBeTruthy())
+			if (onEditInventory) await openManageInventory()
 			return rendered
 		}
 
@@ -3635,7 +3670,7 @@ describe('CharacterSheet', () => {
 				owning('e2b-edit-only', customRow({ name: 'Bone Blade', kind: 'weapon' }), { name: 'Torch', source: 'XPHB', quantity: 1 }),
 				vi.fn(),
 			)
-			const buttons = Array.from(inventorySection(container).querySelectorAll('button')).map((button) => button.getAttribute('aria-label'))
+			const buttons = Array.from(container.querySelectorAll('.drawer button')).map((button) => button.getAttribute('aria-label'))
 			expect(buttons).toContain('Edit Bone Blade')
 			expect(buttons).not.toContain('Edit Torch')
 		})

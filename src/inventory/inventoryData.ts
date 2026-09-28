@@ -40,6 +40,12 @@ export interface ItemRef {
 	armor?: boolean
 	/** items.json `weapon` — mundane weapons only, see typeCode. */
 	weapon?: boolean
+	/** items.json `wondrous` (325 items) — DATA.md, "Item filter kinds (R10a)". */
+	wondrous?: boolean
+	/** items.json `staff` — the one marker of a staff; no type code exists for it (DATA.md, "Item filter kinds (R10a)"). */
+	staff?: boolean
+	/** items.json `rarity`, verbatim. "none" and "unknown" are the mundane values (DATA.md, "Item filter kinds (R10a)"). */
+	rarity?: string
 	/** Base AC for a suit of armour; for a shield this is the BONUS (always 2), never a total — DATA.md, "Identifying item kinds". */
 	ac?: number
 	/** Minimum Strength score for heavy armour, stored as a STRING ("13"/"15") — DATA.md, "Armour AC". Only HA entries carry it. */
@@ -253,6 +259,34 @@ export function isWeapon(ref: ItemRef): boolean {
 	return ref.weapon === true || (ref.typeCode !== undefined && WEAPON_CODES.includes(ref.typeCode))
 }
 
+/** R10a: the Add Items type pills, in the order shown. */
+export const ITEM_FILTER_KINDS = ['Armor', 'Weapon', 'Potion', 'Ring', 'Rod', 'Scroll', 'Staff', 'Wand', 'Wondrous', 'Other gear'] as const
+export type ItemFilterKind = (typeof ITEM_FILTER_KINDS)[number]
+
+const FILTER_KIND_BY_CODE: Record<string, ItemFilterKind> = { P: 'Potion', RG: 'Ring', RD: 'Rod', SC: 'Scroll', WD: 'Wand' }
+
+/**
+ * Every pill the item answers to; an item can be in several (a magic staff is
+ * also a Weapon). Staff and Wondrous have no type code, only flags (DATA.md,
+ * "Item filter kinds (R10a)"). 'Other gear' is whatever matched none.
+ */
+export function itemFilterKindsOf(ref: ItemRef): ItemFilterKind[] {
+	const kinds: ItemFilterKind[] = []
+	if (armourCategoryOf(ref) !== null || ref.armor === true || isShield(ref)) kinds.push('Armor')
+	if (isWeapon(ref)) kinds.push('Weapon')
+	const byCode = ref.typeCode === undefined ? undefined : FILTER_KIND_BY_CODE[ref.typeCode]
+	if (byCode) kinds.push(byCode)
+	if (ref.staff === true) kinds.push('Staff')
+	if (ref.wondrous === true) kinds.push('Wondrous')
+	if (kinds.length === 0) kinds.push('Other gear')
+	return ITEM_FILTER_KINDS.filter((kind) => kinds.includes(kind))
+}
+
+/** DATA.md, "Item filter kinds (R10a)": rarity "unknown" is on 3 mundane SCC consumables, so it counts as mundane with "none". */
+export function isMagicItem(ref: ItemRef): boolean {
+	return ref.rarity !== undefined && ref.rarity !== 'none' && ref.rarity !== 'unknown'
+}
+
 /**
  * Which slot this item occupies when equipped, or null when it is not
  * equippable at all. Armour is worn; a shield or a weapon is held. Worn
@@ -458,6 +492,9 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...(typeof type === 'string' ? { typeCode: type.split('|')[0] } : {}),
 				...(entry['armor'] === true ? { armor: true } : {}),
 				...(entry['weapon'] === true ? { weapon: true } : {}),
+				...(entry['wondrous'] === true ? { wondrous: true } : {}),
+				...(entry['staff'] === true ? { staff: true } : {}),
+				...stringField(entry, 'rarity'),
 				...(typeof ac === 'number' ? { ac } : {}),
 				...(typeof strength === 'string' ? { strength } : {}),
 				...(typeof value === 'number' ? { value } : {}),
