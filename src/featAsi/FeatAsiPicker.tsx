@@ -71,6 +71,7 @@ type LoadState =
 	  }
 
 const NO_LOCKED_LEVELS: readonly number[] = []
+const NO_MANUAL_FEATS: readonly FeatRef[] = []
 
 export function FeatAsiPicker({
 	className,
@@ -85,6 +86,7 @@ export function FeatAsiPicker({
 	alreadyKnown = [],
 	lockedLevels = NO_LOCKED_LEVELS,
 	backgroundOriginFeat = null,
+	manualFeats = NO_MANUAL_FEATS,
 	heldForFeat,
 	laterNote = false,
 }: {
@@ -105,6 +107,8 @@ export function FeatAsiPicker({
 	lockedLevels?: readonly number[]
 	/** The feat the background grants (D156) — counts as already taken, so a non-repeatable one is not offered again. */
 	backgroundOriginFeat?: FeatRef | null
+	/** Feats added manually (R13b, D215: grantedFeats origin 'manual') — count as already taken and in the prerequisite context, same as featOffers in the Manage Feats panel. */
+	manualFeats?: readonly FeatRef[]
 	/** D160: what the character has apart from the feat at this instance key. */
 	heldForFeat?: (key: FeatInstanceKey) => FeatChoiceHeld
 	/** D179: show that a feat's own picks can wait for Edit Character. */
@@ -169,7 +173,10 @@ export function FeatAsiPicker({
 	const backgroundFeatEntry = backgroundOriginFeat ? feats.find((f) => f.name === backgroundOriginFeat.name && f.source === backgroundOriginFeat.source) : undefined
 
 	function chosenFeatsUpto(uptoIndex: number): ChosenFeatRef[] {
-		const refs: ChosenFeatRef[] = backgroundOriginFeat ? [{ ...backgroundOriginFeat, category: backgroundFeatEntry?.category ?? '' }] : []
+		const refs: ChosenFeatRef[] = [
+			...(backgroundOriginFeat ? [{ ...backgroundOriginFeat, category: backgroundFeatEntry?.category ?? '' }] : []),
+			...manualFeats.map((feat) => ({ ...feat, category: feats.find((f) => f.name === feat.name && f.source === feat.source)?.category ?? '' })),
+		]
 		for (let i = 0; i < uptoIndex; i++) {
 			const choice = value[i]
 			if (choice?.kind === 'feat') {
@@ -251,6 +258,7 @@ export function FeatAsiPicker({
 								feats={feats}
 								context={ctx}
 								grantedByBackground={backgroundOriginFeat}
+								manualFeats={manualFeats}
 								selected={current.name ? { name: current.name, source: current.source, chosenAbility: current.chosenAbility } : null}
 								onSelectFeat={(feat) => setChoiceAt(index, { level: grant.level, kind: 'feat', name: feat.name, source: feat.source })}
 								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
@@ -304,8 +312,8 @@ export function FeatAsiPicker({
 	)
 }
 
-/** +2 to one ability, or +1 to two — the level-20 cap (D20) disables any option that would exceed it. */
-function AsiSubPicker({
+/** +2 to one ability, or +1 to two — the level-20 cap (D20) disables any option that would exceed it. Exported for the Manage Feats panel (R13b, D215), which edits an ASI level's increases the same way. */
+export function AsiSubPicker({
 	grantLevel,
 	increases,
 	currentScores,
@@ -316,7 +324,16 @@ function AsiSubPicker({
 	currentScores: Partial<Record<Ability, number>>
 	onChange: (increases: Partial<Record<Ability, number>>) => void
 }): ReactNode {
-	const mode: 'plusTwo' | 'plusOneTwice' = Object.keys(increases).length === 2 ? 'plusOneTwice' : 'plusTwo'
+	/*
+	 * The mode can't be derived from `increases.length` alone: switching to
+	 * "+1 to two abilities" starts from zero choices, which is as empty as
+	 * "+2 to one ability" also is — deriving it would snap back to plusTwo
+	 * on the very next render, making the second radio unreachable. Local
+	 * state remembers which one the player picked; the initializer still
+	 * derives it once, so a level loaded with two increases already opens
+	 * on the right radio.
+	 */
+	const [mode, setMode] = useState<'plusTwo' | 'plusOneTwice'>(Object.keys(increases).length === 2 ? 'plusOneTwice' : 'plusTwo')
 	const [ability1] = Object.keys(increases)
 	const chosenAbilities = Object.keys(increases) as Ability[]
 
@@ -343,11 +360,27 @@ function AsiSubPicker({
 	return (
 		<div className="feat-asi-picker__asi">
 			<label>
-				<input type="radio" name={`asi-mode-${grantLevel}`} checked={mode === 'plusTwo'} onChange={() => onChange({})} />
+				<input
+					type="radio"
+					name={`asi-mode-${grantLevel}`}
+					checked={mode === 'plusTwo'}
+					onChange={() => {
+						setMode('plusTwo')
+						onChange({})
+					}}
+				/>
 				+2 to one ability
 			</label>
 			<label>
-				<input type="radio" name={`asi-mode-${grantLevel}`} checked={mode === 'plusOneTwice'} onChange={() => onChange({})} />
+				<input
+					type="radio"
+					name={`asi-mode-${grantLevel}`}
+					checked={mode === 'plusOneTwice'}
+					onChange={() => {
+						setMode('plusOneTwice')
+						onChange({})
+					}}
+				/>
 				+1 to two abilities
 			</label>
 
@@ -395,6 +428,7 @@ function FeatSubPicker({
 	feats,
 	context,
 	grantedByBackground,
+	manualFeats,
 	selected,
 	onSelectFeat,
 	onSelectAbility,
@@ -404,13 +438,19 @@ function FeatSubPicker({
 	feats: FeatEntry[]
 	context: PrerequisiteContext
 	grantedByBackground: FeatRef | null
+	manualFeats: readonly FeatRef[]
 	selected: { name: string; source: string; chosenAbility?: Ability } | null
 	onSelectFeat: (feat: { name: string; source: string }) => void
 	onSelectAbility: (ability: Ability) => void
 }): ReactNode {
 	const evaluated = feats.map((feat) => {
 		const heldFromBackground = !feat.repeatable && grantedByBackground?.name === feat.name && grantedByBackground.source === feat.source
-		const result = heldFromBackground ? { eligible: false, reasons: ['Already granted by your background.'] } : evaluateFeatPrerequisites(feat, context)
+		const heldManually = !feat.repeatable && manualFeats.some((held) => held.name === feat.name && held.source === feat.source)
+		const result = heldFromBackground
+			? { eligible: false, reasons: ['Already granted by your background.'] }
+			: heldManually
+				? { eligible: false, reasons: ['Already added manually.'] }
+				: evaluateFeatPrerequisites(feat, context)
 		return { feat, result }
 	})
 	// Epic Boon levels show category-EB feats first (the feature's own suggested pool) — still just a sort, D19's "no category filter" is unaffected.

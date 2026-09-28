@@ -6,6 +6,7 @@
 import type { ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
 import type { FeatInstance } from '../featAsi/featInstances'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
+import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { grantedFeatureOrigin, resourceCandidateName } from './featureActionRowData'
 import type { GrantedFeature } from './grantedClassFeatures'
 import type { FeatTextEntry } from './sheetData'
@@ -32,6 +33,8 @@ export interface FeatureTabRow {
 	options: FeatureTabOption[]
 	/** A feat's sub-choices not made yet (missingFeatSubChoices). */
 	pending?: string[]
+	/** R13b (D215): whether the Manage Feats drawer can make `pending`'s choices — false for Strixhaven Initiate/the filter-choice feats, which FeatSubChoicePicker doesn't cover. */
+	pendingEditableInManageFeats?: boolean
 }
 
 export type FeatureTabGroupKind = 'class' | 'species' | 'feats'
@@ -204,7 +207,7 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 			entries: text?.entries ?? null,
 			resourceName: text ? resourceCandidateName(text) : null,
 			options: featSubChoiceItems(instance),
-			...(pending.length > 0 ? { pending } : {}),
+			...(pending.length > 0 ? { pending, pendingEditableInManageFeats: !isNamedBlockFeat(instance) && !isFilterChoiceFeat(instance) } : {}),
 		})),
 	})
 

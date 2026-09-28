@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { createFighter, expectStep, fillUpToBackground, finishFromBackground, next, select } from './wizard.ts'
 
-const PENDING = /Choices not made yet: .+ — make them in Edit Character\./
+/* R13b (D215): Skilled and Magic Initiate are both feat types Manage Feats can now edit, so the pending line points there instead of Edit Character. */
+const PENDING = /Choices not made yet: .+ — make them in Manage Feats\./
 
 async function openFeats(page: Page): Promise<void> {
   await page.getByRole('tab', { name: 'Features & Traits' }).click()
@@ -13,7 +14,7 @@ test('A3a+b: origin feat choices can wait; the sheet names them as not made yet'
 
   const originFeat = page.getByRole('group', { name: 'Origin feat: Magic Initiate; Cleric' })
   await expect(originFeat).toBeVisible()
-  await expect(originFeat.getByText('You can make this choice later in Edit Character.')).toBeVisible()
+  await expect(originFeat.getByText('You can make this choice later in Manage Feats.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeEnabled()
 
   await finishFromBackground(page, options)

@@ -16,7 +16,7 @@ import {
 	type FeatProficiencyChoice,
 } from './featAsiData'
 
-export const LATER_CHOICE_NOTE = 'You can make this choice later in Edit Character.'
+export const LATER_CHOICE_NOTE = 'You can make this choice later in Manage Feats.'
 
 const ABILITY_LABEL: Record<Ability, string> = {
 	strength: 'Strength',

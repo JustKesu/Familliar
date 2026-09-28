@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { createFighter, expectStep, next } from './wizard.ts'
 
 /* R13a (D215). Characters seeded at schema 52 before the app loads, as in manageExtras.spec.ts. */
 const STORAGE_KEY = 'familliar:characters'
@@ -46,6 +47,18 @@ async function maxHp(page: Page): Promise<number> {
   return match ? Number(match[1]) : NaN
 }
 
+async function abilityScore(page: Page, ability: string): Promise<number> {
+  return Number(await page.locator(`.ability-card[data-ability="${ability}"] .ability-card__score`).innerText())
+}
+
+async function skillStatus(page: Page, skillLabel: string): Promise<string | null> {
+  return page.locator('.sheet__skills .sheet__row', { hasText: skillLabel }).locator('.sheet__prof-mark').getAttribute('data-status')
+}
+
+async function closeManage(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Close' }).click()
+}
+
 test('R13a a: level, background and Fighting Style feats are locked; an ASI level shows as Ability Score Improvement', async ({ page }) => {
   await seed(page, [withFeatAt4('r13a-a1'), fighter('r13a-a2', 4, { featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] })])
   await page.goto('/#/character/r13a-a1')
@@ -66,7 +79,8 @@ test('R13a a: level, background and Fighting Style feats are locked; an ASI leve
   const asi = row(mine(asiPanel), 'Ability Score Improvement')
   await expect(asi).toContainText('From level 4')
   await asi.getByRole('button', { name: 'Ability Score Improvement text' }).click()
-  await expect(asi).toContainText('Strength +2')
+  // R13b (D215): the stored pick now shows through the editable picker, not static text.
+  await expect(asi.locator('.feat-asi-picker__asi select')).toHaveValue('strength')
   await expect(mine(asiPanel).getByRole('button', { name: /^Remove / })).toHaveCount(0)
 })
 
@@ -135,4 +149,168 @@ test('R13a h: a character seeded at schema 52 loads with its feats unchanged', a
   expect(stored.featAsiChoices).toEqual([{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }])
   expect(stored.background).toEqual(ACOLYTE)
   expect(stored.grantedFeats).toBeUndefined()
+})
+
+/* R13b (D215): editing feat sub-choices, including ASI ability increases, directly in the panel. */
+const ACOLYTE_WITH_MAGIC_INITIATE = (id: string) =>
+  fighter(id, 4, {
+    background: ACOLYTE,
+    grantedFeats: [
+      {
+        origin: 'background',
+        name: 'Magic Initiate; Cleric',
+        source: 'XPHB',
+        chosenAbility: 'wisdom',
+        magicInitiate: {
+          className: 'Cleric',
+          classSource: 'XPHB',
+          cantrips: [
+            { name: 'Guidance', source: 'XPHB' },
+            { name: 'Sacred Flame', source: 'XPHB' },
+          ],
+          spell: { name: 'Bless', source: 'XPHB' },
+        },
+      },
+    ],
+  })
+
+test('R13b a: changing ASI +2 STR to +1 STR/+1 DEX in the panel moves the ability scores', async ({ page }) => {
+  await seed(page, [fighter('r13b-a', 4, { featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] })])
+  await page.goto('/#/character/r13b-a')
+  const strBefore = await abilityScore(page, 'strength')
+  const dexBefore = await abilityScore(page, 'dexterity')
+
+  const panel = await openManage(page, 'r13b-a')
+  const asi = row(mine(panel), 'Ability Score Improvement')
+  await asi.getByRole('button', { name: 'Ability Score Improvement text' }).click()
+  await asi.getByLabel('+1 to two abilities').click()
+  const selects = asi.locator('.feat-asi-picker__asi select')
+  await selects.nth(0).selectOption('strength')
+  await selects.nth(1).selectOption('dexterity')
+
+  await expect.poll(() => abilityScore(page, 'strength')).toBe(strBefore - 1)
+  await expect.poll(() => abilityScore(page, 'dexterity')).toBe(dexBefore + 1)
+})
+
+test('R13b b: an ability already at 20 cannot receive an increase in the panel', async ({ page }) => {
+  const maxed = fighter('r13b-b', 4, {
+    abilityScores: { method: 'standardArray', scores: { strength: 20, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 } },
+    // The schema has no "empty" state for a stored 'asi' choice (setAsiIncreases, characterStore.test.ts) — seed a valid pick unrelated to strength.
+    featAsiChoices: [{ level: 4, kind: 'asi', increases: { constitution: 2 } }],
+  })
+  await seed(page, [maxed])
+  const panel = await openManage(page, 'r13b-b')
+  const asi = row(mine(panel), 'Ability Score Improvement')
+  await asi.getByRole('button', { name: 'Ability Score Improvement text' }).click()
+  const select = asi.locator('.feat-asi-picker__asi select').first()
+  await expect(select.locator('option', { hasText: 'Strength' })).toBeDisabled()
+  await expect(select.locator('option', { hasText: 'Dexterity' })).toBeEnabled()
+})
+
+test('R13b c: picking a manually added Skilled\'s three skills in the panel makes them proficient and clears the pending note', async ({ page }) => {
+  await seed(page, [fighter('r13b-c', 4)])
+  const panel = await openManage(page, 'r13b-c')
+  await search(panel, 'Skilled')
+  await add(panel).getByRole('button', { name: 'Add Skilled', exact: true }).click()
+  const skilled = row(mine(panel), 'Skilled')
+  await skilled.getByRole('button', { name: 'Skilled text' }).click()
+  for (const [slot, skill] of [
+    ['1', 'arcana'],
+    ['2', 'history'],
+    ['3', 'nature'],
+  ] as const) {
+    await skilled.getByLabel(`Skilled skill or tool ${slot}`, { exact: true }).selectOption(`skill:${skill}`)
+  }
+
+  await expect.poll(() => skillStatus(page, 'Arcana')).toBe('proficient')
+  await expect.poll(() => skillStatus(page, 'History')).toBe('proficient')
+  await expect.poll(() => skillStatus(page, 'Nature')).toBe('proficient')
+
+  const feats = page.getByRole('tabpanel', { name: 'Features & Traits' }).getByRole('region', { name: 'Feats', exact: true })
+  await expect(feats.locator('.sheet__group-row', { hasText: 'Skilled' })).not.toContainText('Choices not made yet')
+})
+
+test('R13b d: changing a background Magic Initiate cantrip in the panel updates the Spells tab', async ({ page }) => {
+  await seed(page, [ACOLYTE_WITH_MAGIC_INITIATE('r13b-d')])
+  const panel = await openManage(page, 'r13b-d')
+  const magicInitiate = row(mine(panel), 'Magic Initiate; Cleric')
+  await magicInitiate.getByRole('button', { name: 'Magic Initiate; Cleric text' }).click()
+  await magicInitiate.getByRole('checkbox', { name: 'Guidance', exact: true }).uncheck()
+  await magicInitiate.getByRole('checkbox', { name: 'Toll the Dead', exact: true }).check()
+  await closeManage(page)
+
+  await page.getByRole('tab', { name: 'Spells' }).click()
+  const spellNames = page.getByRole('tabpanel', { name: 'Spells' }).locator('.sheet__spell-name')
+  await expect(spellNames).toContainText(['Toll the Dead'])
+  await expect(spellNames.filter({ hasText: 'Guidance' })).toHaveCount(0)
+})
+
+test('R13b e: changing a half-feat\'s chosen ability at an ASI level moves the +1 bonus', async ({ page }) => {
+  await seed(page, [fighter('r13b-e', 4, { featAsiChoices: [{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' }] })])
+  await page.goto('/#/character/r13b-e')
+  const strBefore = await abilityScore(page, 'strength')
+  const dexBefore = await abilityScore(page, 'dexterity')
+
+  const panel = await openManage(page, 'r13b-e')
+  const athlete = row(mine(panel), 'Athlete')
+  await athlete.getByRole('button', { name: 'Athlete text' }).click()
+  await athlete.getByRole('combobox', { name: 'Ability', exact: true }).selectOption('dexterity')
+  await closeManage(page)
+
+  await expect.poll(() => abilityScore(page, 'strength')).toBe(strBefore - 1)
+  await expect.poll(() => abilityScore(page, 'dexterity')).toBe(dexBefore + 1)
+})
+
+test('R13b f: panel edits survive a reload', async ({ page }) => {
+  await seed(page, [fighter('r13b-f', 4, { featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] })])
+  await page.goto('/#/character/r13b-f')
+  const strBefore = await abilityScore(page, 'strength')
+
+  const panel = await openManage(page, 'r13b-f')
+  const asi = row(mine(panel), 'Ability Score Improvement')
+  await asi.getByRole('button', { name: 'Ability Score Improvement text' }).click()
+  await asi.getByLabel('+1 to two abilities').click()
+  const selects = asi.locator('.feat-asi-picker__asi select')
+  await selects.nth(0).selectOption('strength')
+  await selects.nth(1).selectOption('dexterity')
+  await expect.poll(() => abilityScore(page, 'strength')).toBe(strBefore - 1)
+
+  await page.reload()
+  await expect.poll(() => abilityScore(page, 'strength')).toBe(strBefore - 1)
+
+  const reloaded = await openManage(page, 'r13b-f')
+  const asiReloaded = row(mine(reloaded), 'Ability Score Improvement')
+  await asiReloaded.getByRole('button', { name: 'Ability Score Improvement text' }).click()
+  const reloadedSelects = asiReloaded.locator('.feat-asi-picker__asi select')
+  await expect(reloadedSelects.nth(0)).toHaveValue('strength')
+  await expect(reloadedSelects.nth(1)).toHaveValue('dexterity')
+})
+
+test('R13b g: Edit Character does not offer a manually added Tough again at an ASI level', async ({ page }) => {
+  await createFighter(page, { name: 'Manual Tough Test', level: 4, species: 'Dwarf|XPHB' })
+
+  await page.getByRole('tab', { name: 'Features & Traits' }).click()
+  await page.getByRole('button', { name: 'Manage Feats', exact: true }).click()
+  const panel = page.getByRole('dialog', { name: 'Manage Feats' })
+  await search(panel, 'Tough')
+  await add(panel).getByRole('button', { name: 'Add Tough', exact: true }).click()
+  await closeManage(page)
+
+  await page.getByRole('button', { name: 'Edit character' }).click()
+  await expectStep(page, 'Class and level')
+  await next(page)
+  await expectStep(page, 'Species')
+  await next(page)
+  await expectStep(page, 'Background')
+  await next(page)
+  await expectStep(page, 'Languages')
+  await next(page)
+  await expectStep(page, 'Ability scores')
+  await next(page)
+  await expectStep(page, 'Ability Score Improvement / Feat')
+
+  const group = page.getByRole('group', { name: 'Level 4' })
+  await group.getByRole('radio', { name: 'Feat', exact: true }).check()
+  await expect(group.getByRole('radio', { name: 'Tough', exact: true })).toBeDisabled()
+  await expect(group.getByText('Already added manually.')).toBeVisible()
 })

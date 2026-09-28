@@ -1892,6 +1892,62 @@ describe('manual feats (R13a, D215)', () => {
 	})
 })
 
+describe('editing feat choices and ASI increases (R13b, D215)', () => {
+	it("replaces an asi:N feat choice's sub-choices, keeping its name/source", () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria', featAsiChoices: [{ level: 4, kind: 'feat', name: 'Skilled', source: 'XPHB' }] })
+		store.setFeatChoiceDetails(id, 'asi:4', { name: 'Skilled', source: 'XPHB' }, { proficiencies: { skills: ['arcana'] } })
+		expect(store.list()[0].featAsiChoices).toEqual([{ level: 4, kind: 'feat', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } }])
+	})
+
+	it('creates a background grantedFeats entry when none names the feat yet, and replaces it on a second edit', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		store.setFeatChoiceDetails(id, 'background', { name: 'Magic Initiate; Cleric', source: 'XPHB' }, { chosenAbility: 'wisdom' })
+		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'background', name: 'Magic Initiate; Cleric', source: 'XPHB', chosenAbility: 'wisdom' }])
+
+		store.setFeatChoiceDetails(id, 'background', { name: 'Magic Initiate; Cleric', source: 'XPHB' }, { chosenAbility: 'intelligence' })
+		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'background', name: 'Magic Initiate; Cleric', source: 'XPHB', chosenAbility: 'intelligence' }])
+	})
+
+	it("replaces a manual:n feat's sub-choices, keeping its name/source", () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		store.addManualFeat(id, { name: 'Skilled', source: 'XPHB' })
+		store.setFeatChoiceDetails(id, 'manual:0', { name: 'Skilled', source: 'XPHB' }, { proficiencies: { skills: ['arcana', 'history', 'nature'] } })
+		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'manual', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history', 'nature'] } }])
+	})
+
+	it('refuses a key that names no feat instance', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		expect(() => store.setFeatChoiceDetails(id, 'species', { name: 'Tough', source: 'XPHB' }, {})).toThrow()
+		expect(() => store.setFeatChoiceDetails(id, 'asi:4', { name: 'Tough', source: 'XPHB' }, {})).toThrow()
+		expect(() => store.setFeatChoiceDetails(id, 'manual:0', { name: 'Tough', source: 'XPHB' }, {})).toThrow()
+	})
+
+	it("replaces an ASI level's increases", () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria', featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] })
+		store.setAsiIncreases(id, 4, { strength: 1, dexterity: 1 })
+		expect(store.list()[0].featAsiChoices).toEqual([{ level: 4, kind: 'asi', increases: { strength: 1, dexterity: 1 } }])
+
+		store.setAsiIncreases(id, 4, { constitution: 2 })
+		expect(store.list()[0].featAsiChoices).toEqual([{ level: 4, kind: 'asi', increases: { constitution: 2 } }])
+	})
+
+	it('rejects an invalid or incomplete increase shape, and a level with no ASI choice', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria', featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }] })
+		expect(() => store.setAsiIncreases(id, 4, { strength: 3 })).toThrow()
+		expect(() => store.setAsiIncreases(id, 4, { strength: 1, dexterity: 1, constitution: 1 })).toThrow()
+		// The schema has no "empty" state for a stored 'asi' choice — an in-progress pick (mode switched, nothing chosen yet) is refused, not persisted.
+		expect(() => store.setAsiIncreases(id, 4, {})).toThrow()
+		expect(() => store.setAsiIncreases(id, 4, { strength: 1 })).toThrow()
+		expect(() => store.setAsiIncreases(id, 8, { strength: 2 })).toThrow()
+	})
+})
+
 describe('background origin-feat override (D205)', () => {
 	const background = { name: 'Spirit Medium', source: 'RHW', skillProficiencies: ['arcana', 'religion'], toolProficiency: 'Calligrapher’s Supplies' }
 

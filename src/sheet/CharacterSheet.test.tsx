@@ -8281,7 +8281,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 			await renderSheet(farmer)
 			const row = featureRow(await featureGroup('Feats', 'Magic Initiate; Cleric'), 'Magic Initiate; Cleric')
 			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('From Background')
-			expect(row.querySelector('.sheet__feat-pending')!.textContent).toBe('Choices not made yet: ability, spells — make them in Edit Character.')
+			expect(row.querySelector('.sheet__feat-pending')!.textContent).toBe('Choices not made yet: ability, spells — make them in Manage Feats.')
 		})
 
 		it('ignores a background feat that the feat data links to another background', async () => {

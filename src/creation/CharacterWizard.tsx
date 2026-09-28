@@ -1637,6 +1637,7 @@ export function CharacterWizard({
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
 						lockedLevels={held?.featAsiChoices.map((choice) => choice.level)}
 						backgroundOriginFeat={backgroundOriginFeat}
+						manualFeats={state.data.grantedFeats.filter((feat) => feat.origin === 'manual')}
 						heldForFeat={heldForFeat}
 						laterNote={laterNote}
 					/>

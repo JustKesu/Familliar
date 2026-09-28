@@ -1805,8 +1805,31 @@ MANAGE FEATS → drawer kind `manageFeats` (`ManageFeatsPanel.tsx`): My Feats
 chip, ASI levels as "Ability Score Improvement", manual feats with REMOVE, ▸ =
 text + stored sub-choices read-only), Add Feats (search, category pills, ADD;
 held non-repeatable feats not offered; `featOffers`), Unavailable (collapsed,
-reasons). `DrawerSection` gained `open`. E2E `manageFeats.spec.ts` a–h. Next:
-R13b (edit a feat's sub-choices in the panel, incl. ASI increases).
+reasons). `DrawerSection` gained `open`. E2E `manageFeats.spec.ts` a–h.
+
+R13b (D215) done — **R13 complete**. My Feats' ▸ is now editable for
+`asi:N`/`background`/`manual:n` instances: `FeatSubChoicePicker` (skills/
+tools/languages/expertise, Magic Initiate, spellcasting ability), plus a
+plain half-feat ability select (`featAbilityChoiceOptions`) the picker itself
+doesn't cover, and `AsiSubPicker` (exported from `FeatAsiPicker.tsx`) for an
+ASI level's own increases. Strixhaven Initiate and the 8 filter-choice feats
+stay read-only (no picker for `blockName`/`filterChoiceSpells` — not built,
+D215 report). `characterStore.setFeatChoiceDetails(id, key, feat, details)`
+(asi:N and manual:n must already exist; background is created if no entry
+names that feat yet) and `.setAsiIncreases(id, level, increases)` (shape only,
+`isValidAbilityIncrease`; the level-20 cap is a picker-side disable, same as
+the wizard) — wired as `onEditFeatChoice` / `onEditAsiIncreases`. No schema
+change. Sheet's "Choices not made yet" and `LATER_CHOICE_NOTE` now say
+"Manage Feats" wherever the panel can make that choice, "Edit Character" only
+for the two feat types it can't (`FeatureTabRow.pendingEditableInManageFeats`).
+Bundled: `FeatAsiPicker`'s `manualFeats` prop — a held non-repeatable manual
+feat is now disabled ("Already added manually.") and counted in the
+prerequisite context, same as `featOffers`. Bug found and fixed in the same
+component: `AsiSubPicker`'s "+1 to two abilities" radio was unreachable (both
+mode radios cleared `increases` to `{}`, and mode was derived purely from its
+length) — mode is now local state, initialized from the stored value. E2E
+`manageFeats.spec.ts` R13b a–g. Next: R14a (custom item — numbers and
+senses).
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

@@ -123,6 +123,7 @@ import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguage
 import { ClassToolSlots } from '../toolProficiencies/ClassToolSlots'
 import { classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import {
+	type AbilityIncreaseMap,
 	type Character,
 	type CharacterFamiliar,
 	type CharacterInventoryItem,
@@ -130,9 +131,11 @@ import {
 	type CharacterSpellChoice,
 	type CharacterToolChoice,
 	type CharacterWildShapeForms,
+	type FeatChoiceDetails,
 	type SpentSpellSlots,
 	type WeaponAttackAbility,
 } from '../storage/character'
+import type { FeatInstanceKey, FeatRef } from '../featAsi/featInstances'
 import { afterLongRest, afterShortRest } from '../rest/rest'
 import { DamageRollButton, RollButton } from '../dice/RollButton'
 import { addRollHistoryEntry, RollHistory, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
@@ -1272,8 +1275,8 @@ function FeaturesSection({
 											{row.pending && (
 												<li className="sheet__feat-pending">
 													Choices not made yet: {row.pending.join(', ')}
-													{/* R13b (D215) edits a manual feat's choices; Edit Character does not show it. */}
-													{row.key.startsWith('feat|manual:') ? '.' : ' — make them in Edit Character.'}
+													{/* R13b (D215): Manage Feats now makes most feats' choices; Edit Character stays the only place for Strixhaven Initiate/the filter-choice feats, and a manual feat was never in Edit Character at all. */}
+													{row.pendingEditableInManageFeats ? ' — make them in Manage Feats.' : row.key.startsWith('feat|manual:') ? '.' : ' — make them in Edit Character.'}
 												</li>
 											)}
 											{row.options.map((option) => (
@@ -1563,6 +1566,8 @@ function CharacterSheetBody({
 	onEditExhaustion,
 	onAddManualFeat,
 	onRemoveManualFeat,
+	onEditFeatChoice,
+	onEditAsiIncreases,
 	onEditLanguages,
 	onEditToolChoices,
 	onEditSpellChoices,
@@ -1598,6 +1603,10 @@ function CharacterSheetBody({
 	/** Adds / removes a manually added feat from the Manage Feats drawer (R13a, D215). Absent leaves the Features & Traits tab without the button. */
 	onAddManualFeat?: (feat: { name: string; source: string }) => void
 	onRemoveManualFeat?: (key: string) => void
+	/** Replaces one feat instance's sub-choices from the Manage Feats drawer's My Feats (R13b, D215). Absent leaves a feat's sub-choices read-only there. */
+	onEditFeatChoice?: (key: FeatInstanceKey, feat: FeatRef, details: FeatChoiceDetails) => void
+	/** Replaces one ASI level's ability increases from the Manage Feats drawer (R13b, D215). Absent leaves the Ability Score Improvement row read-only. */
+	onEditAsiIncreases?: (level: number, increases: AbilityIncreaseMap) => void
 	/** Replaces the known languages — the Proficiencies drawer's class-feature picks (D172). Absent leaves the drawer without the selects. */
 	onEditLanguages?: (languages: CharacterLanguage[]) => void
 	onEditToolChoices?: (toolChoices: CharacterToolChoice[]) => void
@@ -3290,6 +3299,8 @@ function CharacterSheetBody({
 						resolverData={resolverData}
 						onAdd={onAddManualFeat}
 						onRemove={onRemoveManualFeat}
+						onEditFeatChoice={onEditFeatChoice}
+						onEditAsiIncreases={onEditAsiIncreases}
 					/>
 				</Drawer>
 			)}

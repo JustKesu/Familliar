@@ -164,7 +164,7 @@ describe('FeatAsiPicker', () => {
 		render(<Harness />)
 
 		await user.click(await screen.findByLabelText('Skilled'))
-		expect(await screen.findByText('You can make this choice later in Edit Character.')).toBeTruthy()
+		expect(await screen.findByText('You can make this choice later in Manage Feats.')).toBeTruthy()
 		await user.selectOptions(screen.getByLabelText('Skilled skill or tool 1'), 'skill:arcana')
 		expect(latest[0]).toMatchObject({ name: 'Skilled', proficiencies: { skills: ['arcana'] } })
 
@@ -270,6 +270,29 @@ describe('FeatAsiPicker', () => {
 		)
 		expect(((await screen.findByLabelText('Skilled')) as HTMLInputElement).disabled).toBe(false)
 		expect(((screen.getByLabelText('Tough')) as HTMLInputElement).disabled).toBe(false)
+	})
+
+	it("does not offer a manually added non-repeatable feat again, but keeps a repeatable one (R13b, D215)", async () => {
+		const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: '', source: '' }]
+		render(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={value}
+				onChange={() => {}}
+				manualFeats={[
+					{ name: 'Tough', source: 'XPHB' },
+					{ name: 'Skilled', source: 'XPHB' },
+				]}
+			/>,
+		)
+		expect(((await screen.findByLabelText('Tough')) as HTMLInputElement).disabled).toBe(true)
+		expect(screen.getByText('Already added manually.')).toBeTruthy()
+		expect(((screen.getByLabelText('Skilled')) as HTMLInputElement).disabled).toBe(false)
 	})
 
 	it('choosing an eligible feat reports it upward', async () => {
@@ -441,6 +464,38 @@ describe('FeatAsiPicker', () => {
 		const select = await screen.findByRole('combobox')
 		await user.selectOptions(select, 'strength')
 		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'asi', increases: { strength: 2 } }])
+	})
+
+	it('switching to "+1 to two abilities" reaches the two-select UI and reports both increases (R13b: the mode used to snap back to plusTwo, since both radios cleared increases to {})', async () => {
+		const user = userEvent.setup()
+		let latest: FeatAsiChoice[] = []
+		function Harness() {
+			const [value, setValue] = useState<FeatAsiChoice[]>([{ level: 4, kind: 'asi', increases: {} }])
+			return (
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={(next) => {
+						latest = next
+						setValue(next)
+					}}
+				/>
+			)
+		}
+		render(<Harness />)
+
+		await user.click(await screen.findByLabelText('+1 to two abilities'))
+		expect(await screen.findAllByRole('combobox')).toHaveLength(2)
+
+		const [first, second] = screen.getAllByRole('combobox')
+		await user.selectOptions(first, 'strength')
+		await user.selectOptions(second, 'dexterity')
+		expect(latest[0]).toEqual({ level: 4, kind: 'asi', increases: { strength: 1, dexterity: 1 } })
 	})
 
 	describe('Magic Initiate (slice d5b-2)', () => {

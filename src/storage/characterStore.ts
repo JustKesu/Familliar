@@ -1,6 +1,7 @@
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type {
 	AbilityBonusMap,
+	AbilityIncreaseMap,
 	Character,
 	CharacterBackground,
 	CharacterClass,
@@ -22,10 +23,13 @@ import type {
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
 	FeatAsiChoice,
+	FeatChoiceDetails,
 	SpentSpellSlots,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
 import { CURRENT_SCHEMA_VERSION } from './character'
+import { isValidAbilityIncrease } from '../featAsi/featAsiData'
+import type { FeatInstanceKey, FeatRef } from '../featAsi/featInstances'
 import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
 import {
 	CharacterNotFoundError,
@@ -717,6 +721,82 @@ export class CharacterStore {
 		const updated = [...characters]
 		updated[index] = next.length > 0 ? { ...rest, grantedFeats: next } : rest
 		this.writeAll(updated)
+	}
+
+	private writeFeatAsiChoices(id: string, change: (choices: FeatAsiChoice[]) => FeatAsiChoice[]): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { featAsiChoices, ...rest } = characters[index]
+		const next = change(featAsiChoices ?? [])
+		const updated = [...characters]
+		updated[index] = next.length > 0 ? { ...rest, featAsiChoices: next } : rest
+		this.writeAll(updated)
+	}
+
+	/**
+	 * Replaces one feat instance's sub-choices (R13b, D215: editing in the Manage
+	 * Feats drawer). Valid for `asi:<level>` and `manual:<n>` — both already exist
+	 * — and `background`, created with `feat`'s name/source if no entry names it
+	 * yet. `details` is a full replace, same contract as FeatSubChoicePicker's
+	 * onChange. The picker enforces which options are valid (D215: not whether the
+	 * player cheats); nothing here re-checks the picks against feats.json.
+	 */
+	setFeatChoiceDetails(id: string, key: FeatInstanceKey, feat: FeatRef, details: FeatChoiceDetails): void {
+		const asiMatch = /^asi:(\d+)$/.exec(key)
+		if (asiMatch) {
+			const level = Number(asiMatch[1])
+			this.writeFeatAsiChoices(id, (choices) => {
+				const index = choices.findIndex((choice) => choice.level === level)
+				const current = choices[index]
+				if (!current || current.kind !== 'feat') throw new Error(`No feat choice at level ${level}.`)
+				const next = [...choices]
+				next[index] = { level, kind: 'feat', name: current.name, source: current.source, ...details }
+				return next
+			})
+			return
+		}
+
+		const manualMatch = /^manual:(\d+)$/.exec(key)
+		if (manualMatch) {
+			const target = Number(manualMatch[1])
+			this.writeGrantedFeats(id, (grantedFeats) => {
+				let n = -1
+				let found = false
+				const next = grantedFeats.map((entry) => {
+					if (entry.origin !== 'manual' || ++n !== target) return entry
+					found = true
+					return { origin: 'manual' as const, name: entry.name, source: entry.source, ...details }
+				})
+				if (!found) throw new Error(`No manual feat at key: ${key}`)
+				return next
+			})
+			return
+		}
+
+		if (key === 'background') {
+			this.writeGrantedFeats(id, (grantedFeats) => {
+				const matches = (entry: CharacterGrantedFeat) => entry.origin === 'background' && entry.name === feat.name && entry.source === feat.source
+				const entry: CharacterGrantedFeat = { origin: 'background', name: feat.name, source: feat.source, ...details }
+				return grantedFeats.some(matches) ? grantedFeats.map((existing) => (matches(existing) ? entry : existing)) : [...grantedFeats, entry]
+			})
+			return
+		}
+
+		throw new Error(`Feat choices are not editable for key: ${key}`)
+	}
+
+	/** Replaces one ASI level's ability increases (R13b, D215) — always +2 to one ability or +1 to two, same shape FeatAsiPicker enforces; the schema has no "empty" state for a stored 'asi' choice, so an incomplete pick is refused rather than clearing it. */
+	setAsiIncreases(id: string, level: number, increases: AbilityIncreaseMap): void {
+		if (!isValidAbilityIncrease(increases)) throw new Error(`Invalid ability increase: ${JSON.stringify(increases)}`)
+		this.writeFeatAsiChoices(id, (choices) => {
+			const index = choices.findIndex((choice) => choice.level === level)
+			if (!choices[index] || choices[index].kind !== 'asi') throw new Error(`No ASI choice at level ${level}.`)
+			const next = [...choices]
+			next[index] = { level, kind: 'asi', increases }
+			return next
+		})
 	}
 
 	/** Turns Heroic Inspiration on or off (R4b, D167) — a targeted write like setConcentration. */

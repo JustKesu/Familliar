@@ -1,7 +1,19 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CharacterStore, type CharacterTextField, type HitPointFields, type RestFields } from './storage/characterStore'
 import { StorageError } from './storage/errors'
-import type { Character, CharacterFamiliar, CharacterInventoryItem, CharacterLanguage, CharacterSpellChoice, CharacterToolChoice, CharacterWildShapeForms, SpentSpellSlots } from './storage/character'
+import type {
+	AbilityIncreaseMap,
+	Character,
+	CharacterFamiliar,
+	CharacterInventoryItem,
+	CharacterLanguage,
+	CharacterSpellChoice,
+	CharacterToolChoice,
+	CharacterWildShapeForms,
+	FeatChoiceDetails,
+	SpentSpellSlots,
+} from './storage/character'
+import type { FeatInstanceKey, FeatRef } from './featAsi/featInstances'
 import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
 import { LevelUpWizardGate } from './levelUp/LevelUpWizardGate'
@@ -246,6 +258,16 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.removeManualFeat(id, key))
 	}
 
+	function handleEditFeatChoice(id: string, key: FeatInstanceKey, feat: FeatRef, details: FeatChoiceDetails): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setFeatChoiceDetails(id, key, feat, details))
+	}
+
+	function handleEditAsiIncreases(id: string, level: number, increases: AbilityIncreaseMap): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setAsiIncreases(id, level, increases))
+	}
+
 	function handleEditLanguages(id: string, languages: CharacterLanguage[]): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setLanguages(id, languages))
@@ -406,6 +428,8 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 						onEditExhaustion={(level) => handleEditExhaustion(character.id, level)}
 					onAddManualFeat={(feat) => handleAddManualFeat(character.id, feat)}
 					onRemoveManualFeat={(key) => handleRemoveManualFeat(character.id, key)}
+					onEditFeatChoice={(key, feat, details) => handleEditFeatChoice(character.id, key, feat, details)}
+					onEditAsiIncreases={(level, increases) => handleEditAsiIncreases(character.id, level, increases)}
 					onEditLanguages={(languages) => handleEditLanguages(character.id, languages)}
 					onEditToolChoices={(toolChoices) => handleEditToolChoices(character.id, toolChoices)}
 					onEditSpellChoices={(spellChoices) => handleEditSpellChoices(character.id, spellChoices)}

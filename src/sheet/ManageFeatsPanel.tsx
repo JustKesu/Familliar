@@ -1,7 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Ability } from '../abilities/abilityScores'
+import { ALL_SKILLS } from '../classSkills/classSkillData'
+import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
+import { subclassSkillSourceNames } from '../classSkills/subclassSkillGrants'
+import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere } from '../calculation/proficiencies'
+import { loadDataFile } from '../dataLoader/dataLoader'
+import { AsiSubPicker } from '../featAsi/FeatAsiPicker'
 import {
 	evaluateFeatPrerequisites,
+	featAbilityChoiceOptions,
+	isValidAbilityIncrease,
 	loadClassPrereqInfo,
 	loadFeats,
 	loadHasFightingStyleFeature,
@@ -10,9 +18,11 @@ import {
 	type PrerequisiteContext,
 	type PrerequisiteResult,
 } from '../featAsi/featAsiData'
-import type { FeatInstance, FeatRef } from '../featAsi/featInstances'
+import type { FeatInstance, FeatInstanceKey, FeatRef } from '../featAsi/featInstances'
+import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { ResolvedEntries, type ResolverData } from '../featureResolver'
-import type { Character } from '../storage/character'
+import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
+import { choiceNames, type AbilityIncreaseMap, type Character, type FeatChoiceDetails } from '../storage/character'
 import { DrawerSection } from './Drawer'
 import type { FeatureTabRow } from './featuresTabData'
 import type { FeatTextEntry } from './sheetData'
@@ -26,16 +36,44 @@ const titleCase = (text: string): string => text.charAt(0).toUpperCase() + text.
 
 const featKey = (feat: FeatRef): string => `${feat.name}|${feat.source}`.toLowerCase()
 
+/** The current ability scores minus one ASI level's own increases — AsiSubPicker's cap check needs the scores WITHOUT that level's contribution. */
+function withoutIncreases(scores: Partial<Record<Ability, number>>, increases: AbilityIncreaseMap): Partial<Record<Ability, number>> {
+	const next = { ...scores }
+	for (const [ability, amount] of Object.entries(increases)) {
+		if (amount) next[ability as Ability] = (next[ability as Ability] ?? 0) - amount
+	}
+	return next
+}
+
+function asiIncreasesSummary(increases: AbilityIncreaseMap): string {
+	const chosen = Object.entries(increases).filter(([, amount]) => amount)
+	return chosen.length > 0 ? chosen.map(([ability, amount]) => `${titleCase(ability)} +${amount}`).join(', ') : 'No increases chosen yet.'
+}
+
+/** Only the sub-choice fields (featInstances.ts's own choiceDetails, not exported) — never the instance's key/origin/name/source/level, which setFeatChoiceDetails would otherwise store as stray fields. */
+function choiceDetailsOf(instance: FeatInstance): FeatChoiceDetails {
+	return {
+		...(instance.chosenAbility !== undefined ? { chosenAbility: instance.chosenAbility } : {}),
+		...(instance.magicInitiate !== undefined ? { magicInitiate: instance.magicInitiate } : {}),
+		...(instance.filterChoiceSpells !== undefined ? { filterChoiceSpells: instance.filterChoiceSpells } : {}),
+		...(instance.blockName !== undefined ? { blockName: instance.blockName } : {}),
+		...(instance.proficiencies !== undefined ? { proficiencies: instance.proficiencies } : {}),
+	}
+}
+
 type Loaded = {
 	feats: FeatEntry[]
 	ctx: Omit<PrerequisiteContext, 'characterLevel' | 'abilityScores' | 'chosenFeats'>
 	/** The first class whose Fighting Style feature the character has reached — the "From <Class>" of the class pick. */
 	fightingStyleClass: string | null
+	/** D160, via computeProficiencies — what heldForFeat needs for tools/languages. */
+	rawClasses: unknown
+	featProficiencyEntries: ReturnType<typeof extractFeatProficiencyEntries>
 }
 
 async function loadPanelData(character: Character): Promise<Loaded> {
 	const species = character.species
-	const [feats, classInfo, speciesInfo] = await Promise.all([
+	const [feats, classInfo, speciesInfo, rawClasses, rawFeats] = await Promise.all([
 		loadFeats(),
 		Promise.all(
 			character.classes.map(async (c) => ({
@@ -45,10 +83,14 @@ async function loadPanelData(character: Character): Promise<Loaded> {
 			})),
 		),
 		species ? loadSpeciesPrereqInfo(species.name, species.source) : Promise.resolve(null),
+		loadDataFile('data/classes.json'),
+		loadDataFile('data/feats.json'),
 	])
 	return {
 		feats,
 		fightingStyleClass: classInfo.find((c) => c.fightingStyle)?.className ?? null,
+		rawClasses,
+		featProficiencyEntries: extractFeatProficiencyEntries(rawFeats),
 		ctx: {
 			hasFightingStyleFeature: classInfo.some((c) => c.fightingStyle),
 			hasSpellcasting: classInfo.some((c) => c.info?.hasSpellcasting),
@@ -100,6 +142,38 @@ function FeatText({ entries, name, resolverData }: { entries: unknown[] | null |
 }
 
 /**
+ * Wraps AsiSubPicker with a local draft: the schema has no "empty" or
+ * half-chosen state for a stored 'asi' choice (setAsiIncreases refuses one),
+ * so switching mode or filling only one of two slots stays local and is
+ * written only once the shape is complete — same principle as the wizard
+ * never persisting until Save, just scoped to this one row.
+ */
+function AsiRow({
+	level,
+	increases,
+	abilityScores,
+	onEdit,
+}: {
+	level: number
+	increases: AbilityIncreaseMap
+	abilityScores: Partial<Record<Ability, number>>
+	onEdit?: (level: number, increases: AbilityIncreaseMap) => void
+}): ReactNode {
+	const [draft, setDraft] = useState(increases)
+	useEffect(() => setDraft(increases), [increases])
+
+	if (!onEdit) return <p>{asiIncreasesSummary(increases)}</p>
+	const edit = onEdit
+
+	function handleChange(next: AbilityIncreaseMap): void {
+		setDraft(next)
+		if (isValidAbilityIncrease(next)) edit(level, next)
+	}
+
+	return <AsiSubPicker grantLevel={level} increases={draft} currentScores={withoutIncreases(abilityScores, increases)} onChange={handleChange} />
+}
+
+/**
  * The Manage Feats drawer (R13a, D215): every feat the character holds, and feats
  * the DM grants, added and removed one at a time. Level and background feats are
  * locked here; changing them stays in Edit Character.
@@ -113,6 +187,8 @@ export function ManageFeatsPanel({
 	resolverData,
 	onAdd,
 	onRemove,
+	onEditFeatChoice,
+	onEditAsiIncreases,
 }: {
 	character: Character
 	/** featInstances — manual feats included. */
@@ -124,6 +200,10 @@ export function ManageFeatsPanel({
 	resolverData: ResolverData
 	onAdd: (feat: FeatRef) => void
 	onRemove: (key: string) => void
+	/** Replaces one feat instance's sub-choices (R13b, D215). Absent leaves My Feats' ▸ read-only. */
+	onEditFeatChoice?: (key: FeatInstanceKey, feat: FeatRef, details: FeatChoiceDetails) => void
+	/** Replaces one ASI level's ability increases (R13b, D215). Absent leaves the Ability Score Improvement row read-only. */
+	onEditAsiIncreases?: (level: number, increases: AbilityIncreaseMap) => void
 }): ReactNode {
 	const [loaded, setLoaded] = useState<Loaded | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
@@ -153,9 +233,35 @@ export function ManageFeatsPanel({
 	const fightingStyle = character.fightingStyle && loaded ? loaded.feats.find((feat) => feat.category === 'FS' && feat.name.toLowerCase() === character.fightingStyle?.toLowerCase()) : undefined
 	const held: FeatRef[] = [...instances, ...(fightingStyle ? [fightingStyle] : [])]
 
+	/** D160: what the character has apart from the feat at `key` — same shape FeatAsiPicker's heldForFeat builds for the wizard, but read straight off the saved character instead of wizard draft state. */
+	function heldForFeat(key: FeatInstanceKey): FeatChoiceHeld {
+		const others = instances.filter((instance) => instance.key !== key)
+		const heldSkills: DisabledSkill[] = [
+			...(character.classSkills ?? []).map((skill) => ({ skill, source: 'class' })),
+			...(character.speciesSkills ?? []).map((skill) => ({ skill, source: 'species' })),
+			...(character.background?.skillProficiencies ?? []).map((skill) => ({ skill, source: 'background' })),
+			...(character.subclassSkills ?? []).map((entry) => ({ skill: entry.name, source: entry.grantedBy })),
+			...ALL_SKILLS.flatMap((skill) => subclassSkillSourceNames(skill, character).map((source) => ({ skill, source }))),
+			...others.flatMap((instance) => (instance.proficiencies?.skills ?? []).map((skill) => ({ skill, source: instance.name }))),
+		]
+		const heldExpertise = [...choiceNames(character.expertiseSkills), ...others.flatMap((instance) => instance.proficiencies?.expertise ?? [])]
+		const proficiencies = loaded ? computeProficiencies(character, loaded.rawClasses, others, loaded.featProficiencyEntries) : null
+		return {
+			heldSkills,
+			heldExpertise,
+			heldTools: proficiencies ? toolsHeldElsewhere(proficiencies.tools, character.classes[0]?.subclass ?? null) : [],
+			knownLanguages: proficiencies ? proficiencies.languages.filter((item) => !item.pending).map((item) => item.label) : [],
+		}
+	}
+
 	function instanceRow(instance: FeatInstance): ReactNode {
 		const row = rowOf(instance)
 		const chip = instance.origin === 'background' ? 'From Background' : instance.origin === 'species' ? 'From Species' : instance.origin === 'asi' ? `From level ${instance.level}` : undefined
+		/* R13b (D215): everything FeatSubChoicePicker covers is editable here, including on a locked (level/background) feat — Strixhaven Initiate and the 8 filter-choice feats aren't, and stay read-only. */
+		const editable = instance.origin !== 'species' && !isNamedBlockFeat(instance) && !isFilterChoiceFeat(instance)
+		const entry = loaded?.feats.find((feat) => feat.name === instance.name && feat.source === instance.source)
+		/* A half-feat's plain ability choice — FeatSubChoicePicker doesn't render it (that select lives in FeatAsiPicker's own FeatSubPicker, alongside choosing the feat itself); Magic Initiate/spellcasting-ability feats never have this field set, so there's no double select (featSpellcastingAbilityOptions). */
+		const abilityOptions = editable && entry ? featAbilityChoiceOptions(entry) : null
 		return (
 			<FeatRow
 				key={instance.key}
@@ -170,13 +276,46 @@ export function ManageFeatsPanel({
 				}
 			>
 				<FeatText entries={row?.entries} name={instance.name} resolverData={resolverData} />
-				{row && (row.options.length > 0 || row.pending) && (
-					<ul className="sheet__feature-options">
-						{row.options.map((option) => (
-							<li key={option.key}>{option.name}</li>
-						))}
-						{row.pending && <li className="sheet__feat-pending">Choices not made yet: {row.pending.join(', ')}.</li>}
-					</ul>
+				{editable && onEditFeatChoice ? (
+					<>
+						{abilityOptions && (
+							<label className="feat-asi-picker__feat-ability">
+								Ability
+								<select
+									value={instance.chosenAbility ?? ''}
+									onChange={(event) =>
+										onEditFeatChoice(instance.key, { name: instance.name, source: instance.source }, { ...choiceDetailsOf(instance), chosenAbility: event.target.value as Ability })
+									}
+								>
+									<option value="" disabled>
+										Choose an ability
+									</option>
+									{abilityOptions.map((ability) => (
+										<option key={ability} value={ability}>
+											{titleCase(ability)}
+										</option>
+									))}
+								</select>
+							</label>
+						)}
+						<FeatSubChoicePicker
+							feat={{ name: instance.name, source: instance.source }}
+							value={choiceDetailsOf(instance)}
+							onChange={(details) => onEditFeatChoice(instance.key, { name: instance.name, source: instance.source }, details)}
+							held={heldForFeat(instance.key)}
+							idPrefix={`manage-feats-${instance.key}`}
+						/>
+					</>
+				) : (
+					row &&
+					(row.options.length > 0 || row.pending) && (
+						<ul className="sheet__feature-options">
+							{row.options.map((option) => (
+								<li key={option.key}>{option.name}</li>
+							))}
+							{row.pending && <li className="sheet__feat-pending">Choices not made yet: {row.pending.join(', ')}.</li>}
+						</ul>
+					)
 				)}
 			</FeatRow>
 		)
@@ -190,10 +329,9 @@ export function ManageFeatsPanel({
 				const instance = byKey.get(`asi:${choice.level}`)
 				return instance && instanceRow(instance)
 			}
-			const increases = Object.entries(choice.increases).filter(([, amount]) => amount)
 			return (
 				<FeatRow key={`asi:${choice.level}`} name="Ability Score Improvement" chip={`From level ${choice.level}`}>
-					<p>{increases.length > 0 ? increases.map(([ability, amount]) => `${titleCase(ability)} +${amount}`).join(', ') : 'No increases chosen yet.'}</p>
+					<AsiRow level={choice.level} increases={choice.increases} abilityScores={abilityScores} onEdit={onEditAsiIncreases} />
 				</FeatRow>
 			)
 		})
