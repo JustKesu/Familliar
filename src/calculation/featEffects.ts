@@ -203,7 +203,7 @@ export function featAbilityScoreContributions(ability: Ability, character: Chara
 	const inLevelOrder = [
 		instances.get('background'),
 		...(character.featAsiChoices ?? []).map((choice) => (choice.kind === 'asi' ? choice : instances.get(`asi:${choice.level}`))),
-		...all.filter((instance) => instance.origin === 'manual'),
+		...all.filter((instance) => instance.origin === 'manual' || instance.origin === 'item'),
 	]
 
 	for (const choice of inLevelOrder) {

@@ -4056,3 +4056,14 @@ Daniel 29. 9.:
   Conditions. Stav jde zapnout dál, nic se nehlídá (rozhodnutí 11).
 - Výhoda na záchranu proti condition jen jako poznámka pod Saving Throws.
 - Brána jako D216 (naladění).
+
+## D218 — Custom předmět přidává feat a invokaci (R14c1)
+
+Daniel 29. 9.:
+- Feat z předmětu: volby featu se ukládají u předmětu a zmizí s ním. V Manage Feats je zamčený
+  se štítkem „From item (…)“, volby jdou měnit tam. Prerekvizity se nekontrolují (dárek od DM).
+- Invokace z předmětu: jakákoli invokace, bez kontroly prerekvizit a třídy. Stejná invokace
+  od Warlocka i z předmětu se počítá jednou. Metamagic a manévry z předmětu se nedělají.
+- Kouzlo z předmětu je samostatný krok R14c2: at will / N× za Long Rest / Short Rest, úroveň
+  seslání, DC a útok pevné z předmětu nebo vlastní. Nabití hůlek (charges) se nedělají.
+- Brána jako D216 (naladění).

@@ -4,8 +4,8 @@
  */
 
 import type { ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
-import type { FeatInstance } from '../featAsi/featInstances'
-import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
+import { featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
+import type { ItemInvocationOption, OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { grantedFeatureOrigin, resourceCandidateName } from './featureActionRowData'
 import type { GrantedFeature } from './grantedClassFeatures'
@@ -60,6 +60,8 @@ export interface FeaturesTabInput {
 	granted: readonly GrantedFeature[]
 	classFeatureChoices: readonly ChosenClassFeatureChoice[]
 	chosenOptions: readonly OptionalFeatureOption[]
+	/** R14c1 (D218): invocations custom items grant right now — their own "From items" group. */
+	itemOptions?: readonly ItemInvocationOption[]
 	/** Where an option no feature could be linked to came from, as its own row labels it (the Actions tab's optionOrigin). */
 	optionOrigin: (option: OptionalFeatureOption) => string | null
 	speciesTraits: readonly SpeciesTrait[]
@@ -95,10 +97,11 @@ function titleCase(text: string): string {
 }
 
 /** A feat row's source text; null when it cannot be told (report). */
-export function featSource(instance: Pick<FeatInstance, 'origin' | 'level'>, classes: FeaturesTabInput['classes']): string | null {
+export function featSource(instance: Pick<FeatInstance, 'origin' | 'level' | 'itemName'>, classes: FeaturesTabInput['classes']): string | null {
 	if (instance.origin === 'background') return 'From Background'
 	if (instance.origin === 'species') return 'From Species'
 	if (instance.origin === 'manual') return 'Added manually'
+	if (instance.origin === 'item') return featOriginLabel(instance)
 	// FeatAsiChoice stores the character level only; which class paid for the ASI is knowable with one class.
 	return classes.length === 1 ? `From ${classes[0].className} ${instance.level}` : null
 }
@@ -188,6 +191,23 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		className: characterClass.className,
 		rows: items.map((item) => item.row),
 	}))
+
+	// Kind 'class' so the Class Features filter shows it, after the class groups (R14c1).
+	if (input.itemOptions?.length) {
+		groups.push({
+			key: 'items',
+			kind: 'class',
+			label: 'From items',
+			rows: input.itemOptions.map(({ option, itemNames }) => ({
+				key: `item-option|${option.name}|${option.source}`,
+				name: option.name,
+				source: itemNames.join(', '),
+				entries: option.entries,
+				resourceName: resourceCandidateName(option),
+				options: [],
+			})),
+		})
+	}
 
 	groups.push({
 		key: 'species',

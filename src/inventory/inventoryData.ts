@@ -19,6 +19,7 @@ import { DAMAGE_TYPES } from '../calculation/damageResponses'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import { CONDITION_NAMES, EXHAUSTION } from '../conditions/conditions'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { describeFeatChoiceDetailsError } from '../storage/validate'
 import type {
 	CharacterInventoryItem,
 	CustomArmourCategory,
@@ -915,6 +916,30 @@ function describeCustomDefenceProblem(record: Record<string, unknown>): string |
 		const unknownEntry = value.find((entry) => typeof entry !== 'string' || !known.includes(entry))
 		if (unknownEntry !== undefined) return `its ${key} names an unknown ${what} "${String(unknownEntry)}"`
 		if (new Set(value).size !== value.length) return `its ${key} lists the same ${what} more than once`
+	}
+	return describeCustomGrantsProblem(record)
+}
+
+/** R14c1: `feats` (with their sub-choices, checked as grantedFeats' are) and `invocations`, each name|source at most once per list. */
+function describeCustomGrantsProblem(record: Record<string, unknown>): string | null {
+	for (const key of ['feats', 'invocations'] as const) {
+		const value = record[key]
+		if (value === undefined) continue
+		const what = key === 'feats' ? 'feat' : 'invocation'
+		if (!Array.isArray(value)) return `its ${key} must be a list`
+		const seen = new Set<string>()
+		for (const item of value) {
+			if (typeof item !== 'object' || item === null || Array.isArray(item)) return `each of its ${key} must be an object`
+			const entry = item as Record<string, unknown>
+			if (!isNonEmptyText(entry['name']) || !isNonEmptyText(entry['source'])) return `each of its ${key} needs a name and source`
+			const id = `${entry['name']}|${entry['source']}`.toLowerCase()
+			if (seen.has(id)) return `its ${what} ${entry['name']} is listed more than once`
+			seen.add(id)
+			if (key === 'feats') {
+				const detailsError = describeFeatChoiceDetailsError(entry)
+				if (detailsError) return `its feat ${entry['name']}: ${detailsError}`
+			}
+		}
 	}
 	return null
 }

@@ -37,7 +37,9 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { choiceNames, type CharacterOptionalFeatureChoice } from '../storage/character'
+import { itemInvocationGrants, type ItemInvocationGrant } from '../inventory/customItemGrants'
+import { ITEM_INVOCATION_FEATURE_TYPE } from '../optionalFeatures/optionalFeatureData'
+import { choiceNames, type CharacterInventoryItem, type CharacterOptionalFeatureChoice } from '../storage/character'
 import { chosenSpellUsageFor } from './chosenSpellUsage'
 import {
 	extractRefsWithUsage,
@@ -79,6 +81,8 @@ export interface OptionalFeatureGrantedSpell {
 	 * label) for Pact of the Tome, whose picks "function as Warlock spells".
 	 */
 	usage?: SpellUsage | null
+	/** R14c1 (D218): set when a custom item grants the invocation, not a Warlock pick. */
+	itemName?: string
 }
 
 /** The same fixed-grant keys the other two consumers read. `expanded` is absent from this data entirely (module comment). */
@@ -253,9 +257,25 @@ export function extractOptionalFeatureChosenSpells(parsedSpells: unknown, select
  */
 export async function loadOptionalFeatureGrantedSpells(character: {
 	optionalFeatureChoices?: CharacterOptionalFeatureChoice[]
+	inventory?: CharacterInventoryItem[]
 }): Promise<OptionalFeatureGrantedSpell[]> {
 	const selection = character.optionalFeatureChoices ?? []
-	if (selection.length === 0) return []
+	const itemGrants = itemInvocationGrants(character.inventory)
+	if (selection.length === 0 && itemGrants.length === 0) return []
 	const [optionalFeatures, spells] = await Promise.all([loadDataFile('data/optional-features.json'), loadDataFile('data/spells.json')])
-	return [...extractOptionalFeatureGrantedSpells(optionalFeatures, spells, selection), ...extractOptionalFeatureChosenSpells(spells, selection)]
+	return [
+		...extractOptionalFeatureGrantedSpells(optionalFeatures, spells, selection),
+		...extractOptionalFeatureChosenSpells(spells, selection),
+		...extractItemInvocationSpells(optionalFeatures, spells, itemGrants),
+	]
+}
+
+/** R14c1: an item's invocation grants its fixed spells as a Warlock pick would; it has no stored spell picks (Pact of the Tome's stay empty). */
+export function extractItemInvocationSpells(parsedOptionalFeatures: unknown, parsedSpells: unknown, grants: readonly ItemInvocationGrant[]): OptionalFeatureGrantedSpell[] {
+	return grants.flatMap((grant) =>
+		extractOptionalFeatureGrantedSpells(parsedOptionalFeatures, parsedSpells, [{ featureType: ITEM_INVOCATION_FEATURE_TYPE, choices: [{ name: grant.name }] }]).map((spell) => ({
+			...spell,
+			itemName: grant.itemName,
+		})),
+	)
 }

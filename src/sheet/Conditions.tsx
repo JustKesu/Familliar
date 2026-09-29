@@ -96,7 +96,8 @@ export function ConditionsPanel({
 		const entry = immunities.find((immunity) => immunity.condition === name)
 		return entry ? `immune (${entry.sources.join(', ')})` : undefined
 	}
-	const names = [...CONDITION_NAMES, EXHAUSTION].sort((a, b) => a.localeCompare(b))
+	// Code-unit order, not localeCompare: a Czech system locale sorts "Charmed" after "Grappled" (R14b report).
+	const names = [...CONDITION_NAMES, EXHAUSTION].sort()
 	return (
 		<section aria-label="Conditions list" className="manage-spells__list">
 		<ul>

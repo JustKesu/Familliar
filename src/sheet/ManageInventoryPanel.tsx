@@ -42,6 +42,9 @@ import {
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { bonusesFromRows, bonusRowsFrom, CustomItemBonusList, type BonusRow } from './CustomItemBonusList'
 import { ConditionChoice, CustomItemProficiencyList, proficienciesFromRows, proficiencyRowsFrom, type ProficiencyRow } from './CustomItemProficiencyList'
+import { CustomItemGrantList, grantRowsFrom, grantsFromRows } from './CustomItemGrantList'
+import { loadFeats } from '../featAsi/featAsiData'
+import { loadAllInvocations } from '../optionalFeatures/optionalFeatureData'
 import { DrawerSection } from './Drawer'
 
 /**
@@ -338,6 +341,8 @@ function CustomItemForm({
 	/* The rows replace draft.bonuses until submit — a row may be half-typed, which a CustomItemBonus cannot hold. */
 	const [bonusRows, setBonusRows] = useState<BonusRow[]>(() => bonusRowsFrom(editing?.bonuses))
 	const [proficiencyRows, setProficiencyRows] = useState<ProficiencyRow[]>(() => proficiencyRowsFrom(editing?.proficiencies))
+	const [featRows, setFeatRows] = useState<string[]>(() => grantRowsFrom(editing?.feats))
+	const [invocationRows, setInvocationRows] = useState<string[]>(() => grantRowsFrom(editing?.invocations))
 	const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
 	function update(change: Partial<CustomItemDefinition>): void {
@@ -362,18 +367,31 @@ function CustomItemForm({
 		setDraft(copied)
 		setBonusRows(bonusRowsFrom(copied.bonuses))
 		setProficiencyRows(proficiencyRowsFrom(copied.proficiencies))
+		setFeatRows([])
+		setInvocationRows([])
 	}
 
 	function submit(): void {
 		if (draft.name.trim() === '') return
-		const { bonuses: _replaced, proficiencies: _replacedProficiencies, ...rest } = draft
+		const { bonuses: _replaced, proficiencies: _replacedProficiencies, feats: _replacedFeats, invocations: _replacedInvocations, ...rest } = draft
 		const bonuses = bonusesFromRows(bonusRows)
 		const proficiencies = proficienciesFromRows(proficiencyRows)
-		onSubmit({ ...rest, name: draft.name.trim(), ...(bonuses.length > 0 ? { bonuses } : {}), ...(proficiencies.length > 0 ? { proficiencies } : {}) })
+		const feats = grantsFromRows(featRows, editing?.feats)
+		const invocations = grantsFromRows(invocationRows, undefined)
+		onSubmit({
+			...rest,
+			name: draft.name.trim(),
+			...(bonuses.length > 0 ? { bonuses } : {}),
+			...(proficiencies.length > 0 ? { proficiencies } : {}),
+			...(feats.length > 0 ? { feats } : {}),
+			...(invocations.length > 0 ? { invocations } : {}),
+		})
 		if (editing === null) {
 			setDraft(blankCustomItem())
 			setBonusRows([])
 			setProficiencyRows([])
+			setFeatRows([])
+			setInvocationRows([])
 			setCopiedKey(null)
 		}
 	}
@@ -656,6 +674,11 @@ function CustomItemForm({
 			<CustomItemBonusList rows={bonusRows} onChange={setBonusRows} />
 
 			<CustomItemProficiencyList rows={proficiencyRows} itemRefs={itemRefs} onChange={setProficiencyRows} />
+
+			{/* D218: no sub-choice controls here — a feat's choices are made in Manage Feats. */}
+			<CustomItemGrantList title="Feats" noun="feat" rows={featRows} load={loadFeats} onChange={setFeatRows} />
+
+			<CustomItemGrantList title="Invocations" noun="invocation" rows={invocationRows} load={loadAllInvocations} onChange={setInvocationRows} />
 
 			{/* Last, because it is where everything the structured fields above cannot express ends up — and it is shown, never read (D9/D55/D21). */}
 			<p>

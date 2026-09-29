@@ -86,7 +86,9 @@ export function casterFor(
 ): SpellCaster {
 	const featEntry = featEntries.find((f) => entry.featOrigins.includes(f.featName))
 	const speciesEntry = speciesEntries.find((s) => entry.speciesOrigins.includes(s.speciesName))
-	const grantedByClass = entry.chosen || entry.classOrigins.length > 0 || entry.subclassOrigins.length > 0 || entry.optionalFeatureOrigins.length > 0
+	// R14c1: an item's invocation casts with a Warlock's numbers; without a Warlock level there are none to borrow (D43).
+	const itemInvocationAsWarlock = entry.itemInvocationOrigins.length > 0 && classEntries.some((c) => c.className === 'Warlock')
+	const grantedByClass = entry.chosen || entry.classOrigins.length > 0 || entry.subclassOrigins.length > 0 || entry.optionalFeatureOrigins.length > 0 || itemInvocationAsWarlock
 	// D192: a class-record grant casts with that class's own ability, also in a multiclass.
 	if (!entry.chosen && entry.classOrigins.length > 0) {
 		const own = classEntries.filter((c) => entry.classOrigins.includes(c.className))
@@ -95,6 +97,9 @@ export function casterFor(
 	if (featEntry && !grantedByClass) return toCaster(featEntry)
 	if (speciesEntry && !grantedByClass) return toCaster(speciesEntry)
 	if (!grantedByClass && !featEntry && entry.unresolvedAbilityReasons.length > 0) return unresolvedCaster(entry)
+	if (!grantedByClass && !featEntry && !speciesEntry && entry.itemInvocationOrigins.length > 0) {
+		return { reason: `"${entry.name}" is granted by the invocation ${entry.itemInvocationOrigins.join(' / ')}, cast with a Warlock's spellcasting ability — this character has no Warlock level, so no spell attack bonus or save DC.` }
+	}
 	if (classEntries.length === 1) return toCaster(classEntries[0]!)
 	if (featEntry) return toCaster(featEntry)
 	if (speciesEntry) return toCaster(speciesEntry)

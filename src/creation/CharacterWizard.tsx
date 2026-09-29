@@ -350,9 +350,20 @@ export function CharacterWizard({
 		: undefined
 	const draftGrantedFeats = state.data.grantedFeats.length > 0 ? state.data.grantedFeats : undefined
 	const draftFeatInstances = useMemo(
-		() => featInstances({ id: '', name: '', classes: [], featAsiChoices: state.data.featAsiChoices, ...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}) }, backgroundOriginFeat),
+		() =>
+			featInstances(
+				{
+					id: '',
+					name: '',
+					classes: [],
+					featAsiChoices: state.data.featAsiChoices,
+					...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}),
+					...(character?.inventory !== undefined ? { inventory: character.inventory } : {}),
+				},
+				backgroundOriginFeat,
+			),
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the origin feat's identity, not the object rebuilt each render.
-		[state.data.featAsiChoices, draftGrantedFeats, backgroundOriginFeat?.name, backgroundOriginFeat?.source],
+		[state.data.featAsiChoices, draftGrantedFeats, character?.inventory, backgroundOriginFeat?.name, backgroundOriginFeat?.source],
 	)
 
 	/**
@@ -1640,6 +1651,7 @@ export function CharacterWizard({
 						lockedLevels={held?.featAsiChoices.map((choice) => choice.level)}
 						backgroundOriginFeat={backgroundOriginFeat}
 						manualFeats={state.data.grantedFeats.filter((feat) => feat.origin === 'manual')}
+						itemFeats={draftFeatInstances.filter((instance) => instance.origin === 'item')}
 						heldForFeat={heldForFeat}
 						laterNote={laterNote}
 					/>

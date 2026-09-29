@@ -736,7 +736,14 @@ export interface CustomItemDefinition {
 	conditionImmune?: string[]
 	/** R14b: conditions the wearer has advantage on saving throws against. Text under Saving Throws only. */
 	conditionAdvantage?: string[]
+	/** R14c1 (D218): feats the item grants, each at most once, with their sub-choices — which leave with the item. */
+	feats?: CustomItemFeat[]
+	/** R14c1 (D218): Eldritch Invocations (featureType "EI") the item grants, each at most once; no prerequisite or class check. */
+	invocations?: { name: string; source: string }[]
 }
+
+/** One entry of CustomItemDefinition.feats; describeCustomItemProblem proves the shape (D43). */
+export type CustomItemFeat = { name: string; source: string } & FeatChoiceDetails
 
 /** One entry of CustomItemDefinition.proficiencies; describeCustomItemProblem proves the shape (D43). */
 export type CustomItemProficiency =

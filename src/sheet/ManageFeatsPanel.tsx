@@ -18,7 +18,7 @@ import {
 	type PrerequisiteContext,
 	type PrerequisiteResult,
 } from '../featAsi/featAsiData'
-import type { FeatInstance, FeatInstanceKey, FeatRef } from '../featAsi/featInstances'
+import { featOriginLabel, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { ResolvedEntries, type ResolverData } from '../featureResolver'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
@@ -256,7 +256,16 @@ export function ManageFeatsPanel({
 
 	function instanceRow(instance: FeatInstance): ReactNode {
 		const row = rowOf(instance)
-		const chip = instance.origin === 'background' ? 'From Background' : instance.origin === 'species' ? 'From Species' : instance.origin === 'asi' ? `From level ${instance.level}` : undefined
+		const chip =
+			instance.origin === 'background'
+				? 'From Background'
+				: instance.origin === 'species'
+					? 'From Species'
+					: instance.origin === 'asi'
+						? `From level ${instance.level}`
+						: instance.origin === 'item'
+							? featOriginLabel(instance)
+							: undefined
 		/* R13b (D215): everything FeatSubChoicePicker covers is editable here, including on a locked (level/background) feat — Strixhaven Initiate and the 8 filter-choice feats aren't, and stay read-only. */
 		const editable = instance.origin !== 'species' && !isNamedBlockFeat(instance) && !isFilterChoiceFeat(instance)
 		const entry = loaded?.feats.find((feat) => feat.name === instance.name && feat.source === instance.source)
@@ -347,6 +356,7 @@ export function ManageFeatsPanel({
 				]
 			: []),
 		...instances.filter((instance) => instance.origin === 'manual').map(instanceRow),
+		...instances.filter((instance) => instance.origin === 'item').map(instanceRow),
 	]
 
 	let offered: FeatOffer[] = []

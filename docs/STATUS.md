@@ -1108,6 +1108,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   vulnerability, condition immunity and save-advantage notes; attunement gate
   for all of them; form exclusion and Skill-only level select; level-up Hit
   points step maximum with an item bonus).
+- `e2e/customItemFeats.spec.ts` — R14c1 a–g (Human Fighter 3 / Fighter 4: item Tough
+  max HP + locked "From item" row; item Skilled choices in Manage Feats and removal;
+  attunement gate; Edit Character does not offer the item feat; Witch Sight
+  truesight + "From items" group; form exclusion; Conditions drawer order under cs-CZ).
 
 ## Dočasné scaffolding
 
@@ -1910,7 +1914,29 @@ Remove, "+ Add proficiency"; tool and language lists load on first use),
 Bundled fix: `HitPointsPicker` loads `loadItemMaxHpBonuses` (extracted from
 `loadCharacterMaxHp`), so the level-up Hit points step's maximum includes item
 max-HP bonuses; the wizard's hit-points draft carries the inventory. E2E
-`customItemProficiencies.spec.ts` R14b a–h. Next: R14c.
+`customItemProficiencies.spec.ts` R14b a–h.
+
+R14c1 (D218) done. No schema bump (optional fields, same convention as R14a2/R14b):
+`CustomItemDefinition.feats: CustomItemFeat[]` (name+source + `FeatChoiceDetails`,
+each once) and `invocations: {name, source}[]` (EI options, each once);
+`describeCustomItemProblem` checks both (sub-choices via the exported
+`describeFeatChoiceDetailsError`). New `inventory/customItemGrants.ts`
+(`itemFeatGrants`, `itemInvocationGrants`: D216 gate + malformed → nothing).
+`featInstances` adds origin `'item'`, key `item:<row>:<n>`, `itemName`; label
+"From item (<name>)" (Manage Feats chip, Features & Traits feat source; locked, no
+Remove, choices editable — `setFeatChoiceDetails` writes into the row's
+`custom.feats`). Wizard: the draft feat instances carry the inventory;
+`FeatAsiPicker.itemFeats` ("Already granted by an item."). Invocations:
+`itemInvocationOptions`/`loadItemInvocationOptions`/`loadAllInvocations`
+(optionalFeatureData.ts); spells (`extractItemInvocationSpells`, grant origin
+`'item'`, `SheetSpellEntry.itemInvocationOrigins`, cast with Warlock numbers only —
+else `casterFor` reason), senses (`extractItemInvocationSenses`, "Invocation — Item"),
+Actions/resources (item-only invocations, deduped by name against picks), Pact of
+the Chain familiar forms, Features & Traits group "From items" (kind `'class'`).
+No invocation has a damage response (D70 table), so nothing there. Form:
+`CustomItemGrantList.tsx` (Feats / Invocations rows: select · Remove). Bundled fix:
+Conditions drawer sorts by code unit, not `localeCompare`. E2E
+`customItemFeats.spec.ts` R14c1 a–g. Next: R14c2.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

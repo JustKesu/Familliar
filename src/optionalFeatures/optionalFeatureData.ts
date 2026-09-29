@@ -15,7 +15,8 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { choiceNames, type LeveledChoice } from '../storage/character'
+import { itemInvocationGrants, type ItemInvocationGrant } from '../inventory/customItemGrants'
+import { choiceNames, type CharacterInventoryItem, type LeveledChoice } from '../storage/character'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -683,6 +684,42 @@ export async function loadChosenOptionalFeatureOptions(
 	if (selection.length === 0 && !fightingStyle) return []
 	const [optionalFeatures, feats] = await Promise.all([loadDataFile('data/optional-features.json'), loadDataFile('data/feats.json')])
 	return chosenOptionalFeatureOptions(optionalFeatures, feats, selection, fightingStyle)
+}
+
+/** R14c1 (D218): what a custom item can grant — the Eldritch Invocations. */
+export const ITEM_INVOCATION_FEATURE_TYPE = 'EI'
+
+export interface ItemInvocationOption {
+	option: OptionalFeatureOption
+	itemNames: string[]
+}
+
+/** The granting items' invocations as option records, one per invocation naming every item that grants it; one the data no longer has is skipped (D43). */
+export function itemInvocationOptions(parsedOptionalFeatures: unknown, grants: readonly ItemInvocationGrant[]): ItemInvocationOption[] {
+	const all = optionalFeaturesByType(parsedOptionalFeatures, ITEM_INVOCATION_FEATURE_TYPE)
+	const out: ItemInvocationOption[] = []
+	for (const grant of grants) {
+		const option = all.find((candidate) => normalizeName(candidate.name) === normalizeName(grant.name) && candidate.source === grant.source)
+		if (!option) continue
+		const held = out.find((entry) => entry.option.name === option.name && entry.option.source === option.source)
+		if (held) {
+			if (!held.itemNames.includes(grant.itemName)) held.itemNames.push(grant.itemName)
+		} else {
+			out.push({ option: { ...option, featureType: ITEM_INVOCATION_FEATURE_TYPE }, itemNames: [grant.itemName] })
+		}
+	}
+	return out
+}
+
+/** Every invocation a custom item may grant (the form's list). */
+export async function loadAllInvocations(): Promise<OptionalFeatureOption[]> {
+	return optionalFeaturesByType(await loadDataFile('data/optional-features.json'), ITEM_INVOCATION_FEATURE_TYPE)
+}
+
+export async function loadItemInvocationOptions(inventory: readonly CharacterInventoryItem[] | undefined): Promise<ItemInvocationOption[]> {
+	const grants = itemInvocationGrants(inventory)
+	if (grants.length === 0) return []
+	return itemInvocationOptions(await loadDataFile('data/optional-features.json'), grants)
 }
 
 /** Fetches classes.json, optional-features.json and feats.json and returns classOptionalFeatureGroupsFor's result. */

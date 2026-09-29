@@ -46,7 +46,7 @@ import { formatAttackOrSave, formatCastingTime, formatComponents, formatDuration
  * still handles it rather than assuming it can't happen.
  */
 
-export type SpellGrantOrigin = 'class' | 'subclass' | 'feat' | 'optionalFeature' | 'species'
+export type SpellGrantOrigin = 'class' | 'subclass' | 'feat' | 'optionalFeature' | 'species' | 'item'
 
 /** One source's grant of a spell, with its own usage term (D190) — the player's pick is `chosen`, not a grant. */
 export interface SpellGrant {
@@ -67,6 +67,8 @@ export interface SheetSpellEntry {
 	featOrigins: string[]
 	/** Optional-feature name(s) that grant this spell (optionalFeatureSpells.ts, step 6a). More than one is real — see the module comment. */
 	optionalFeatureOrigins: string[]
+	/** R14c1: invocations a custom item grants, as "Invocation — Item". Cast with a Warlock's numbers only (casterFor). */
+	itemInvocationOrigins: string[]
 	/** Species name(s) that grant this spell (raceSpells.ts). A character has one species, so 0 or 1 — a list only to keep the five sources one shape. */
 	speciesOrigins: string[]
 	/**
@@ -88,7 +90,7 @@ export function provenanceLabel(entry: SheetSpellEntry): string {
 	for (const className of entry.classOrigins) parts.push(`always prepared (${className})`)
 	for (const subclassName of entry.subclassOrigins) parts.push(`always prepared (${subclassName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
-	for (const optionName of entry.optionalFeatureOrigins) parts.push(`from invocation (${optionName})`)
+	for (const optionName of [...entry.optionalFeatureOrigins, ...entry.itemInvocationOrigins]) parts.push(`from invocation (${optionName})`)
 	for (const speciesName of entry.speciesOrigins) parts.push(`from species (${speciesName})`)
 	let label = parts.join('; ')
 	if (entry.usages.length > 0) label += ` — ${entry.usages.map(formatSpellUsage).join('; ')}`
@@ -101,7 +103,7 @@ function keyOf(name: string, source: string): string {
 }
 
 function emptyEntry(name: string, source: string, chosen: boolean): SheetSpellEntry {
-	return { name, source, chosen, subclassOrigins: [], classOrigins: [], featOrigins: [], optionalFeatureOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [] }
+	return { name, source, chosen, subclassOrigins: [], classOrigins: [], featOrigins: [], optionalFeatureOrigins: [], itemInvocationOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [] }
 }
 
 /** Records the grant, and adds `usage` to `entry.usages` unless it's absent or already present (by `spellUsageKey`) — an ordinary grant (undefined/null) leaves that list untouched. */
@@ -120,7 +122,7 @@ export function combineSpellEntries(
 	spellChoices: { spells: { name: string; source: string }[] }[],
 	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[],
 	featGrantedSpells: { featName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
-	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string; usage?: SpellUsage | null }[] = [],
+	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string; usage?: SpellUsage | null; itemName?: string }[] = [],
 	raceGrantedSpells: { speciesName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
 	classAlwaysPrepared: { className: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[] = [],
 ): SheetSpellEntry[] {
@@ -169,8 +171,10 @@ export function combineSpellEntries(
 	for (const spell of optionalFeatureGrantedSpells) {
 		const key = keyOf(spell.name, spell.source)
 		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
-		if (!entry.optionalFeatureOrigins.includes(spell.optionName)) entry.optionalFeatureOrigins.push(spell.optionName)
-		mergeUsage(entry, 'optionalFeature', spell.optionName, spell.usage)
+		const originName = spell.itemName === undefined ? spell.optionName : `${spell.optionName} — ${spell.itemName}`
+		const origins = spell.itemName === undefined ? entry.optionalFeatureOrigins : entry.itemInvocationOrigins
+		if (!origins.includes(originName)) origins.push(originName)
+		mergeUsage(entry, spell.itemName === undefined ? 'optionalFeature' : 'item', originName, spell.usage)
 		map.set(key, entry)
 	}
 

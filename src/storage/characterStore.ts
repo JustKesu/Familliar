@@ -737,7 +737,7 @@ export class CharacterStore {
 
 	/**
 	 * Replaces one feat instance's sub-choices (R13b, D215: editing in the Manage
-	 * Feats drawer). Valid for `asi:<level>` and `manual:<n>` — both already exist
+	 * Feats drawer). Valid for `asi:<level>`, `manual:<n>` and `item:<row>:<n>` (R14c1: written into that row's custom.feats) — all already exist
 	 * — and `background`, created with `feat`'s name/source if no entry names it
 	 * yet. `details` is a full replace, same contract as FeatSubChoicePicker's
 	 * onChange. The picker enforces which options are valid (D215: not whether the
@@ -772,6 +772,18 @@ export class CharacterStore {
 				if (!found) throw new Error(`No manual feat at key: ${key}`)
 				return next
 			})
+			return
+		}
+
+		const itemMatch = /^item:(\d+):(\d+)$/.exec(key)
+		if (itemMatch) {
+			const [row, n] = [Number(itemMatch[1]), Number(itemMatch[2])]
+			const inventory = this.list().find((character) => character.id === id)?.inventory ?? []
+			const item = inventory[row]
+			const entry = item?.custom?.feats?.[n]
+			if (!item?.custom || !entry || entry.name !== feat.name || entry.source !== feat.source) throw new Error(`No item feat at key: ${key}`)
+			const feats = item.custom.feats!.map((existing, i) => (i === n ? { name: existing.name, source: existing.source, ...details } : existing))
+			this.setInventory(id, inventory.map((existing, i) => (i === row ? { ...existing, custom: { ...item.custom!, feats } } : existing)))
 			return
 		}
 

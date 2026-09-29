@@ -1918,6 +1918,16 @@ describe('editing feat choices and ASI increases (R13b, D215)', () => {
 		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'manual', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history', 'nature'] } }])
 	})
 
+	it("writes an item:row:n feat's sub-choices into that row's custom.feats (R14c1)", () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		const custom = { name: 'Ring', kind: 'worn' as const, feats: [{ name: 'Tough', source: 'XPHB' }, { name: 'Skilled', source: 'XPHB' }] }
+		store.setInventory(id, [{ name: 'Rope', source: 'XPHB', quantity: 1 }, { name: 'Ring', source: 'custom', quantity: 1, custom }])
+		store.setFeatChoiceDetails(id, 'item:1:1', { name: 'Skilled', source: 'XPHB' }, { proficiencies: { skills: ['arcana'] } })
+		expect(store.list()[0].inventory?.[1].custom?.feats).toEqual([{ name: 'Tough', source: 'XPHB' }, { name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } }])
+		expect(() => store.setFeatChoiceDetails(id, 'item:1:0', { name: 'Skilled', source: 'XPHB' }, {})).toThrow()
+	})
+
 	it('refuses a key that names no feat instance', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const { id } = store.create({ name: 'Aria' })

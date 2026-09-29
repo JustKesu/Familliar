@@ -52,6 +52,8 @@ import { choiceNames, type Character, type CharacterOptionalFeatureChoice } from
 import { isRecord } from '../spells/subclassPreparedSpells'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { hasSubclassBySource } from '../calculation/featureGrants'
+import { itemInvocationGrants, type ItemInvocationGrant } from '../inventory/customItemGrants'
+import { ITEM_INVOCATION_FEATURE_TYPE } from '../optionalFeatures/optionalFeatureData'
 
 export interface GrantedSense {
 	/** The sense's own key in the data — "blindsight", "darkvision", "truesight", "tremorsense", whatever occurs. Not narrowed to a fixed union: display only, no calculation branches on this beyond the label. */
@@ -170,6 +172,16 @@ export function extractOptionalFeatureGrantedSenses(parsedOptionalFeatures: unkn
 	return result
 }
 
+/** R14c1: an item's invocation grants its sense as a Warlock pick would, labelled "Invocation — Item". */
+export function extractItemInvocationSenses(parsedOptionalFeatures: unknown, grants: readonly ItemInvocationGrant[]): GrantedSense[] {
+	return grants.flatMap((grant) =>
+		extractOptionalFeatureGrantedSenses(parsedOptionalFeatures, [{ featureType: ITEM_INVOCATION_FEATURE_TYPE, choices: [{ name: grant.name }] }]).map((sense) => ({
+			...sense,
+			name: `${sense.name} — ${grant.itemName}`,
+		})),
+	)
+}
+
 /** Pure filter (D38). The senses a character's feats (featInstances, D156) grant — Blind Fighting, Boon of Truesight, Skulker, matched by (name, source) the same way featSpells.ts's extractFixedFeatSpells matches a feat entry. */
 export function extractFeatGrantedSenses(parsedFeats: unknown, character: Character, backgroundOriginFeat: FeatRef | null): GrantedSense[] {
 	if (!Array.isArray(parsedFeats)) {
@@ -200,6 +212,7 @@ export async function loadGrantedSenses(character: Character): Promise<GrantedSe
 	])
 	return [
 		...extractOptionalFeatureGrantedSenses(optionalFeatures, selection),
+		...extractItemInvocationSenses(optionalFeatures, itemInvocationGrants(character.inventory)),
 		...extractFeatGrantedSenses(feats, character, backgroundOriginFeat),
 		...extractClassFeatureGrantedSenses(character, classes),
 	]

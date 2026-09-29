@@ -1,5 +1,6 @@
 import { parseOriginFeat } from '../backgrounds/backgroundData'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { itemFeatGrants } from '../inventory/customItemGrants'
 import type { Character, CharacterBackground, FeatChoiceDetails, GrantedFeatOrigin } from '../storage/character'
 
 export interface FeatRef {
@@ -7,9 +8,10 @@ export interface FeatRef {
 	source: string
 }
 
-export type FeatInstanceKey = `asi:${number}` | 'background' | 'species' | `manual:${number}`
+/** `item:<inventory row>:<n>` — the n-th entry of that row's custom.feats (R14c1). */
+export type FeatInstanceKey = `asi:${number}` | 'background' | 'species' | `manual:${number}` | `item:${number}:${number}`
 
-export type FeatInstanceOrigin = 'asi' | GrantedFeatOrigin
+export type FeatInstanceOrigin = 'asi' | GrantedFeatOrigin | 'item'
 
 /** One feat the character has, whatever granted it (D156). */
 export interface FeatInstance extends FeatChoiceDetails {
@@ -19,13 +21,16 @@ export interface FeatInstance extends FeatChoiceDetails {
 	source: string
 	/** The ASI level that paid for the feat; absent for a granted feat. */
 	level?: number
+	/** origin 'item': the granting item's name. */
+	itemName?: string
 }
 
-/** Where the feat came from, as the sheet labels it: "Background", "Species", "Added manually" or "level 4". */
-export function featOriginLabel(instance: Pick<FeatInstance, 'origin' | 'level'>): string {
+/** Where the feat came from, as the sheet labels it: "Background", "Species", "Added manually", "From item (…)" or "level 4". */
+export function featOriginLabel(instance: Pick<FeatInstance, 'origin' | 'level' | 'itemName'>): string {
 	if (instance.origin === 'background') return 'Background'
 	if (instance.origin === 'species') return 'Species'
 	if (instance.origin === 'manual') return 'Added manually'
+	if (instance.origin === 'item') return `From item (${instance.itemName})`
 	return `level ${instance.level}`
 }
 
@@ -55,7 +60,8 @@ function choiceDetails(details: FeatChoiceDetails): FeatChoiceDetails {
  * Gift instead (background.originFeatOverride, D205); a stored 'background' entry
  * only contributes its sub-choices, and only while it names that same feat.
  * 'species' entries are not read until the wizard can set them (D157).
- * 'manual' entries (D215) come last, keyed by their order among manual entries.
+ * 'manual' entries (D215) follow, keyed by their order among manual entries,
+ * then the feats of granting custom items (R14c1, D216 gate), read off the inventory.
  */
 export function featInstances(character: Character, derivedBackgroundFeat: FeatRef | null): FeatInstance[] {
 	const instances: FeatInstance[] = []
@@ -79,6 +85,10 @@ export function featInstances(character: Character, derivedBackgroundFeat: FeatR
 
 	const manual = (character.grantedFeats ?? []).filter((entry) => entry.origin === 'manual')
 	manual.forEach((entry, n) => instances.push({ key: `manual:${n}`, origin: 'manual', name: entry.name, source: entry.source, ...choiceDetails(entry) }))
+
+	for (const { row, n, itemName, feat } of itemFeatGrants(character.inventory)) {
+		instances.push({ key: `item:${row}:${n}`, origin: 'item', itemName, name: feat.name, source: feat.source, ...choiceDetails(feat) })
+	}
 
 	return instances
 }

@@ -28,6 +28,34 @@ describe('featInstances — manual feats (D215)', () => {
 	})
 })
 
+describe('featInstances — item feats (R14c1)', () => {
+	const skilled = { name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } }
+	const withInventory = (inventory: Character['inventory']): Character => ({ id: '1', name: 'A', classes: [], inventory })
+
+	it('keys each feat by inventory row and position, with the item name and the stored sub-choices', () => {
+		const character = withInventory([
+			{ name: 'Rope', source: 'XPHB', quantity: 1 },
+			{ name: 'Ring', source: 'custom', quantity: 1, custom: { name: 'Ring', kind: 'worn', feats: [{ name: 'Tough', source: 'XPHB' }, skilled] } },
+		])
+		expect(featInstances(character, null)).toEqual([
+			{ key: 'item:1:0', origin: 'item', itemName: 'Ring', name: 'Tough', source: 'XPHB' },
+			{ key: 'item:1:1', origin: 'item', itemName: 'Ring', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } },
+		])
+		expect(featOriginLabel({ origin: 'item', itemName: 'Ring' })).toBe('From item (Ring)')
+	})
+
+	it('grants nothing from an unattuned attunement item, and grants once attuned', () => {
+		const custom = { name: 'Amulet', kind: 'worn' as const, requiresAttunement: true as const, feats: [{ name: 'Tough', source: 'XPHB' }] }
+		expect(featInstances(withInventory([{ name: 'Amulet', source: 'custom', quantity: 1, custom }]), null)).toEqual([])
+		expect(featInstances(withInventory([{ name: 'Amulet', source: 'custom', quantity: 1, attuned: true, custom }]), null).map((feat) => feat.key)).toEqual(['item:0:0'])
+	})
+
+	it('grants nothing from a malformed definition (D43)', () => {
+		const custom = { name: 'Ring', kind: 'worn' as const, feats: [{ name: 'Tough', source: 'XPHB' }, { name: 'Tough', source: 'XPHB' }] }
+		expect(featInstances(withInventory([{ name: 'Ring', source: 'custom', quantity: 1, custom }]), null)).toEqual([])
+	})
+})
+
 describe('featInstances — origin-feat override (D205)', () => {
 	const soldier = { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'] as [string, string], toolProficiency: 'Dice Set' }
 	const savageAttacker = { name: 'Savage Attacker', source: 'XPHB' }

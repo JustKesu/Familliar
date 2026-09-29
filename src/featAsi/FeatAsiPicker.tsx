@@ -87,6 +87,7 @@ export function FeatAsiPicker({
 	lockedLevels = NO_LOCKED_LEVELS,
 	backgroundOriginFeat = null,
 	manualFeats = NO_MANUAL_FEATS,
+	itemFeats = NO_MANUAL_FEATS,
 	heldForFeat,
 	laterNote = false,
 }: {
@@ -109,6 +110,8 @@ export function FeatAsiPicker({
 	backgroundOriginFeat?: FeatRef | null
 	/** Feats added manually (R13b, D215: grantedFeats origin 'manual') — count as already taken and in the prerequisite context, same as featOffers in the Manage Feats panel. */
 	manualFeats?: readonly FeatRef[]
+	/** R14c1 (D218): feats an item grants right now — treated like manual ones. */
+	itemFeats?: readonly FeatRef[]
 	/** D160: what the character has apart from the feat at this instance key. */
 	heldForFeat?: (key: FeatInstanceKey) => FeatChoiceHeld
 	/** D179: show that a feat's own picks can wait for Edit Character. */
@@ -175,7 +178,7 @@ export function FeatAsiPicker({
 	function chosenFeatsUpto(uptoIndex: number): ChosenFeatRef[] {
 		const refs: ChosenFeatRef[] = [
 			...(backgroundOriginFeat ? [{ ...backgroundOriginFeat, category: backgroundFeatEntry?.category ?? '' }] : []),
-			...manualFeats.map((feat) => ({ ...feat, category: feats.find((f) => f.name === feat.name && f.source === feat.source)?.category ?? '' })),
+			...[...manualFeats, ...itemFeats].map((feat) => ({ name: feat.name, source: feat.source, category: feats.find((f) => f.name === feat.name && f.source === feat.source)?.category ?? '' })),
 		]
 		for (let i = 0; i < uptoIndex; i++) {
 			const choice = value[i]
@@ -259,6 +262,7 @@ export function FeatAsiPicker({
 								context={ctx}
 								grantedByBackground={backgroundOriginFeat}
 								manualFeats={manualFeats}
+								itemFeats={itemFeats}
 								selected={current.name ? { name: current.name, source: current.source, chosenAbility: current.chosenAbility } : null}
 								onSelectFeat={(feat) => setChoiceAt(index, { level: grant.level, kind: 'feat', name: feat.name, source: feat.source })}
 								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
@@ -429,6 +433,7 @@ function FeatSubPicker({
 	context,
 	grantedByBackground,
 	manualFeats,
+	itemFeats,
 	selected,
 	onSelectFeat,
 	onSelectAbility,
@@ -439,18 +444,21 @@ function FeatSubPicker({
 	context: PrerequisiteContext
 	grantedByBackground: FeatRef | null
 	manualFeats: readonly FeatRef[]
+	itemFeats: readonly FeatRef[]
 	selected: { name: string; source: string; chosenAbility?: Ability } | null
 	onSelectFeat: (feat: { name: string; source: string }) => void
 	onSelectAbility: (ability: Ability) => void
 }): ReactNode {
 	const evaluated = feats.map((feat) => {
 		const heldFromBackground = !feat.repeatable && grantedByBackground?.name === feat.name && grantedByBackground.source === feat.source
-		const heldManually = !feat.repeatable && manualFeats.some((held) => held.name === feat.name && held.source === feat.source)
+		const heldIn = (list: readonly FeatRef[]) => !feat.repeatable && list.some((held) => held.name === feat.name && held.source === feat.source)
 		const result = heldFromBackground
 			? { eligible: false, reasons: ['Already granted by your background.'] }
-			: heldManually
+			: heldIn(manualFeats)
 				? { eligible: false, reasons: ['Already added manually.'] }
-				: evaluateFeatPrerequisites(feat, context)
+				: heldIn(itemFeats)
+					? { eligible: false, reasons: ['Already granted by an item.'] }
+					: evaluateFeatPrerequisites(feat, context)
 		return { feat, result }
 	})
 	// Epic Boon levels show category-EB feats first (the feature's own suggested pool) — still just a sort, D19's "no category filter" is unaffected.

@@ -488,7 +488,7 @@ export function describeFeatAsiChoicesError(value: unknown): string | null {
 }
 
 /** The FeatChoiceDetails fields, shared by a featAsiChoices feat entry and a grantedFeats entry. */
-function describeFeatChoiceDetailsError(entry: Record<string, unknown>): string | null {
+export function describeFeatChoiceDetailsError(entry: Record<string, unknown>): string | null {
 	const chosenAbility = entry['chosenAbility']
 	if (chosenAbility !== undefined && !ABILITIES.includes(chosenAbility as (typeof ABILITIES)[number])) {
 		return `chosenAbility must be a valid ability`

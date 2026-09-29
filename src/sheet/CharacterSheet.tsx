@@ -60,7 +60,9 @@ import { loadResolverData, ResolvedEntries, type ResolverData } from '../feature
 import {
 	loadChosenClassOptionalFeatures,
 	loadChosenOptionalFeatureOptions,
+	loadItemInvocationOptions,
 	type ChosenClassOptionalFeatureGroup,
+	type ItemInvocationOption,
 	type OptionalFeatureOption,
 } from '../optionalFeatures/optionalFeatureData'
 import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
@@ -1256,7 +1258,7 @@ function FeaturesSection({
 												<li className="sheet__feat-pending">
 													Choices not made yet: {row.pending.join(', ')}
 													{/* R13b (D215): Manage Feats now makes most feats' choices; Edit Character stays the only place for Strixhaven Initiate/the filter-choice feats, and a manual feat was never in Edit Character at all. */}
-													{row.pendingEditableInManageFeats ? ' — make them in Manage Feats.' : row.key.startsWith('feat|manual:') ? '.' : ' — make them in Edit Character.'}
+													{row.pendingEditableInManageFeats ? ' — make them in Manage Feats.' : row.key.startsWith('feat|manual:') || row.key.startsWith('feat|item:') ? '.' : ' — make them in Edit Character.'}
 												</li>
 											)}
 											{row.options.map((option) => (
@@ -1703,6 +1705,8 @@ function CharacterSheetBody({
 	 * Master's maneuvers and an Arcane Archer's shots are absent from it.
 	 */
 	const [chosenOptionalFeatures, setChosenOptionalFeatures] = useState<OptionalFeatureOption[]>([])
+	/** R14c1 (D218): invocations granted by custom items right now — the Features tab's "From items" group, and extra actions/resources rows. */
+	const [itemInvocations, setItemInvocations] = useState<ItemInvocationOption[]>([])
 	/** Spells granted BY those picks (step 6a final slice) — separate from the option text above, which classOptionalFeatures already renders. */
 	const [optionalFeatureSpells, setOptionalFeatureSpells] = useState<OptionalFeatureGrantedSpell[]>([])
 	/** Species-granted spells plus the notes for the deferred cantrip-choice entries (race slice). Depends on `character.species`, fetched separately same as featSpells. */
@@ -1937,12 +1941,16 @@ function CharacterSheetBody({
 		let cancelled = false
 		// D43: an empty result on failure, same as the granted-feature source the
 		// actions table already has — a missing row never claims the feature is passive.
-		loadChosenOptionalFeatureOptions(character.optionalFeatureChoices ?? [], character.fightingStyle ?? null)
-			.then((options) => {
-				if (!cancelled) setChosenOptionalFeatures(options)
+		Promise.all([loadChosenOptionalFeatureOptions(character.optionalFeatureChoices ?? [], character.fightingStyle ?? null), loadItemInvocationOptions(character.inventory)])
+			.then(([options, fromItems]) => {
+				if (cancelled) return
+				setChosenOptionalFeatures(options)
+				setItemInvocations(fromItems)
 			})
 			.catch(() => {
-				if (!cancelled) setChosenOptionalFeatures([])
+				if (cancelled) return
+				setChosenOptionalFeatures([])
+				setItemInvocations([])
 			})
 		return () => {
 			cancelled = true
@@ -2329,13 +2337,19 @@ function CharacterSheetBody({
 	 */
 	const singleClass = character.classes.length === 1 ? character.classes[0] : null
 	const classOptionNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name.toLowerCase())))
+	/* R14c1 (D44): an invocation both picked and granted by an item is one action row and one resource, under the pick. */
+	const pickedOptionNames = new Set(chosenOptionalFeatures.map((option) => option.name.toLowerCase()))
+	const itemOnlyInvocations = itemInvocations.filter(({ option }) => !pickedOptionNames.has(option.name.toLowerCase()))
+	const actionOptions = [...chosenOptionalFeatures, ...itemOnlyInvocations.map(({ option }) => option)]
 	function optionOrigin(option: OptionalFeatureOption): string | null {
+		const fromItems = itemOnlyInvocations.find((entry) => entry.option.name === option.name)
+		if (fromItems) return fromItems.itemNames.join(', ')
 		if (!singleClass || classOptionalFeaturesError) return null
 		const name = option.name.toLowerCase()
 		if (classOptionNames.has(name) || name === character.fightingStyle?.toLowerCase()) return singleClass.className
 		return singleClass.subclass
 	}
-	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, chosenOptionalFeatures, optionOrigin, speciesTraits, character.species?.name ?? null)
+	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, actionOptions, optionOrigin, speciesTraits, character.species?.name ?? null)
 	/*
 	 * Slice 9b2: the same three feature sources computeCharacterResources asks for
 	 * (its own doc comment) — granted features, the chosen feats' own text, and the
@@ -2346,7 +2360,7 @@ function CharacterSheetBody({
 	 * has no maximum to key a Uses tracker off and renders those rows unchanged.
 	 */
 	const chosenFeatTexts = chosenFeats.flatMap((choice) => featTextEntries.filter((text) => text.name === choice.name && text.source === choice.source))
-	const resourceFeatures: ResourceFeature[] = [...grantedFeatures, ...chosenFeatTexts, ...chosenOptionalFeatures]
+	const resourceFeatures: ResourceFeature[] = [...grantedFeatures, ...chosenFeatTexts, ...actionOptions]
 	// D190: free-cast counters join the list, so spending clamps and Short Rest recovery run through the same path.
 	const characterResources = withFreeCastResources(
 		computeCharacterResources(character, resourceClassData, resourceFeatures, speciesTraits),
@@ -2475,6 +2489,7 @@ function CharacterSheetBody({
 		granted: grantedFeatures,
 		classFeatureChoices,
 		chosenOptions: chosenOptionalFeatures,
+		itemOptions: itemInvocations,
 		optionOrigin,
 		speciesTraits,
 		feats: chosenFeats.map((instance) => ({
@@ -2511,7 +2526,12 @@ function CharacterSheetBody({
 	})
 	const canManageSpells = onEditSpellChoices !== undefined && managedClasses.length > 0
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
-	const familiarForms = knowsFindFamiliar ? familiarFormOptions(beasts, hasPactOfTheChain(character.optionalFeatureChoices ?? [])) : []
+	const familiarForms = knowsFindFamiliar
+		? familiarFormOptions(
+				beasts,
+				hasPactOfTheChain([...(character.optionalFeatureChoices ?? []), { choices: itemInvocations.map(({ option }) => ({ name: option.name })) }]),
+			)
+		: []
 	/* beasts.json starts as [] and is never empty once loaded, so this is "fetch in flight". */
 	const beastsLoading = needsBeasts && beasts.length === 0 && beastsError === null
 	const familiarExtra = extraRows({ familiar: character.familiar ?? null, familiarForms, wildShapeForms: [], beasts, pending: beastsLoading || beastsError !== null })[0]

@@ -626,6 +626,33 @@ describe('custom items', () => {
 		})
 	})
 
+	describe('feats and invocations (R14c1)', () => {
+		const base = { name: 'Ring', kind: 'worn' }
+		it.each([
+			['feats that are not a list', { feats: { name: 'Tough', source: 'XPHB' } }, 'feats must be a list'],
+			['a feat that is text', { feats: ['Tough'] }, 'each of its feats must be an object'],
+			['a feat without a source', { feats: [{ name: 'Tough' }] }, 'needs a name and source'],
+			['the same feat twice', { feats: [{ name: 'Tough', source: 'XPHB' }, { name: 'Tough', source: 'XPHB' }] }, 'feat Tough is listed more than once'],
+			['a malformed sub-choice', { feats: [{ name: 'Skilled', source: 'XPHB', proficiencies: { skills: 'arcana' } }] }, 'its feat Skilled: proficiencies.skills'],
+			['an unknown chosen ability', { feats: [{ name: 'Athlete', source: 'XPHB', chosenAbility: 'luck' }] }, 'chosenAbility'],
+			['invocations that are not a list', { invocations: 'Witch Sight' }, 'invocations must be a list'],
+			['an invocation without a name', { invocations: [{ source: 'XPHB' }] }, 'needs a name and source'],
+			['the same invocation twice', { invocations: [{ name: 'Witch Sight', source: 'XPHB' }, { name: 'witch sight', source: 'XPHB' }] }, 'invocation witch sight is listed more than once'],
+		])('rejects %s', (_, fields, message) => {
+			expect(describeCustomItemProblem({ ...base, ...fields })).toContain(message)
+		})
+
+		it('accepts feats with sub-choices and invocations', () => {
+			expect(
+				describeCustomItemProblem({
+					...base,
+					feats: [{ name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } }, { name: 'Tough', source: 'XPHB' }],
+					invocations: [{ name: 'Witch Sight', source: 'XPHB' }],
+				}),
+			).toBeNull()
+		})
+	})
+
 	it('seeds a definition from an existing item, computed fields included', () => {
 		expect(
 			customItemFromRef({
