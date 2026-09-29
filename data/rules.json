@@ -1,0 +1,255 @@
+{
+	"variantrule": [
+		{
+			"name": "Armor Training",
+			"source": "XPHB",
+			"entries": [
+				"Armor training allows you to use armor of a certain category without the following drawbacks. If you wear {@filter Light|items|type=Light Armor}, {@filter Medium|items|type=Medium Armor}, or {@filter Heavy|items|type=Heavy Armor} armor and lack training with it, you have {@variantrule Disadvantage|XPHB} on any {@variantrule D20 Test|XPHB} that involves Strength or Dexterity, and you can't cast spells. If you use a {@item Shield|XPHB} and lack training with it, you don't gain its AC bonus."
+			]
+		},
+		{
+			"name": "Expertise",
+			"source": "XPHB",
+			"entries": [
+				"Expertise is a feature that enhances your use of a skill proficiency. When you make an ability check with a skill proficiency in which you have Expertise, your {@variantrule Proficiency|XPHB|Proficiency Bonus} is doubled for that check unless the bonus is doubled by another feature.",
+				"If you gain Expertise, you gain it in one {@variantrule skill|XPHB} in which you have proficiency. You can't have Expertise in the same skill proficiency more than once."
+			]
+		},
+		{
+			"name": "Passive Perception",
+			"source": "XPHB",
+			"entries": [
+				"Passive Perception is a score that reflects a creature's general awareness of its surroundings. The DM uses this score when determining whether a creature notices something without consciously making a Wisdom ({@skill Perception|XPHB}) check.",
+				"A creature's Passive Perception equals 10 plus the creature's Wisdom ({@skill Perception|XPHB}) check bonus. If the creature has {@variantrule Advantage|XPHB} on such checks, increase the score by 5. If the creature has {@variantrule Disadvantage|XPHB} on them, decrease the score by 5. For example, a level 1 character with a Wisdom of 15 and proficiency in Perception has a Passive Perception of 14 ({@dice 10 + 2 + 2}). If that character has {@variantrule Advantage|XPHB} on Wisdom ({@skill Perception|XPHB}) checks, the score becomes {@dice 10 + 2 + 2 + 5|19}."
+			]
+		},
+		{
+			"name": "Proficiency",
+			"source": "XPHB",
+			"entries": [
+				"If you have proficiency with something, you can add your Proficiency Bonus to any {@variantrule D20 Test|XPHB} you make using that thing. A creature might have proficiency in a skill or {@variantrule Saving Throw|XPHB|saving throw} or with a weapon or tool."
+			]
+		},
+		{
+			"name": "Saving Throw",
+			"source": "XPHB",
+			"entries": [
+				"A saving throw—also called a save—represents an attempt to avoid or resist a threat. You normally make a saving throw only when a rule requires you to do so, but you can decide to fail the save without rolling. The result of a save is detailed in the effect that allowed it. If a target is forced to make a save and lacks the ability score used by it, the target automatically fails."
+			]
+		},
+		{
+			"name": "Skill",
+			"source": "XPHB",
+			"entries": [
+				"A skill is an {@book area of specialization|XPHB|1|Skill List} associated with an ability check. If you have proficiency in a skill, you can add your {@variantrule Proficiency|XPHB|Proficiency Bonus} when you make an ability check associated with that skill."
+			]
+		},
+		{
+			"name": "Weapon",
+			"source": "XPHB",
+			"entries": [
+				"A weapon is an object that is in the {@filter Simple|items|category=basic|type=simple weapon} or {@filter Martial|items|category=basic|type=martial weapon} weapon category."
+			]
+		}
+	],
+	"sense": [
+		{
+			"name": "Blindsight",
+			"source": "XPHB",
+			"entries": [
+				"If you have Blindsight, you can see within a specific range without relying on physical sight. Within that range, you can see anything that isn't behind {@variantrule Cover|XPHB|Total Cover} even if you have the {@condition Blinded|XPHB} condition or are in {@variantrule Darkness|XPHB}. Moreover, in that range, you can see something that has the {@condition Invisible|XPHB} condition."
+			]
+		},
+		{
+			"name": "Darkvision",
+			"source": "XPHB",
+			"entries": [
+				"If you have Darkvision, you can see in {@variantrule Dim Light|XPHB} within a specified range as if it were {@variantrule Bright Light|XPHB} and in {@variantrule Darkness|XPHB} within that range as if it were {@variantrule Dim Light|XPHB}. You discern colors in that {@variantrule Darkness|XPHB} only as shades of gray."
+			]
+		},
+		{
+			"name": "Tremorsense",
+			"source": "XPHB",
+			"entries": [
+				"A creature with Tremorsense can pinpoint the location of creatures and moving objects within a specific range, provided that the creature with Tremorsense and anything it is detecting are both in contact with the same surface (such as the ground, a wall, or a ceiling) or the same liquid.",
+				"Tremorsense can't detect creatures or objects in the air, and it doesn't count as a form of sight."
+			]
+		},
+		{
+			"name": "Truesight",
+			"source": "XPHB",
+			"entries": [
+				"If you have Truesight, your vision is enhanced within a specified range. Within that range, your vision pierces through the following:",
+				{
+					"type": "list",
+					"style": "list-hang-notitle",
+					"items": [
+						{
+							"type": "item",
+							"name": "Darkness",
+							"entries": [
+								"You can see in normal and magical {@variantrule Darkness|XPHB}."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Invisibility",
+							"entries": [
+								"You see creatures and objects that have the {@condition Invisible|XPHB} condition."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Visual Illusions",
+							"entries": [
+								"Visual illusions appear transparent to you, and you automatically succeed on {@variantrule Saving Throw|XPHB|saving throws} against them."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Transformations",
+							"entries": [
+								"You discern the true form of any creature or object you see that has been transformed by magic."
+							]
+						},
+						{
+							"type": "item",
+							"name": "Ethereal Plane",
+							"entries": [
+								"You see into the Ethereal Plane."
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"skill": [
+		{
+			"name": "Acrobatics",
+			"source": "XPHB",
+			"entries": [
+				"Stay on your feet in a tricky situation, or perform an acrobatic stunt."
+			]
+		},
+		{
+			"name": "Animal Handling",
+			"source": "XPHB",
+			"entries": [
+				"Calm or train an animal, or get an animal to behave in a certain way."
+			]
+		},
+		{
+			"name": "Arcana",
+			"source": "XPHB",
+			"entries": [
+				"Recall lore about spells, magic items, and the planes of existence."
+			]
+		},
+		{
+			"name": "Athletics",
+			"source": "XPHB",
+			"entries": [
+				"Jump farther than normal, stay afloat in rough water, or break something."
+			]
+		},
+		{
+			"name": "Deception",
+			"source": "XPHB",
+			"entries": [
+				"Tell a convincing lie, or wear a disguise convincingly."
+			]
+		},
+		{
+			"name": "History",
+			"source": "XPHB",
+			"entries": [
+				"Recall lore about historical events, people, nations, and cultures."
+			]
+		},
+		{
+			"name": "Insight",
+			"source": "XPHB",
+			"entries": [
+				"Discern a person's mood and intentions."
+			]
+		},
+		{
+			"name": "Intimidation",
+			"source": "XPHB",
+			"entries": [
+				"Awe or threaten someone into doing what you want."
+			]
+		},
+		{
+			"name": "Investigation",
+			"source": "XPHB",
+			"entries": [
+				"Find obscure information in books, or deduce how something works."
+			]
+		},
+		{
+			"name": "Medicine",
+			"source": "XPHB",
+			"entries": [
+				"Diagnose an illness, or determine what killed the recently slain."
+			]
+		},
+		{
+			"name": "Nature",
+			"source": "XPHB",
+			"entries": [
+				"Recall lore about terrain, plants, animals, and weather."
+			]
+		},
+		{
+			"name": "Perception",
+			"source": "XPHB",
+			"entries": [
+				"Using a combination of senses, notice something that's easy to miss."
+			]
+		},
+		{
+			"name": "Performance",
+			"source": "XPHB",
+			"entries": [
+				"Act, tell a story, perform music, or dance."
+			]
+		},
+		{
+			"name": "Persuasion",
+			"source": "XPHB",
+			"entries": [
+				"Honestly and graciously convince someone of something."
+			]
+		},
+		{
+			"name": "Religion",
+			"source": "XPHB",
+			"entries": [
+				"Recall lore about gods, religious rituals, and holy symbols."
+			]
+		},
+		{
+			"name": "Sleight of Hand",
+			"source": "XPHB",
+			"entries": [
+				"Pick a pocket, conceal a handheld object, or perform legerdemain."
+			]
+		},
+		{
+			"name": "Stealth",
+			"source": "XPHB",
+			"entries": [
+				"Escape notice by moving quietly and hiding behind things."
+			]
+		},
+		{
+			"name": "Survival",
+			"source": "XPHB",
+			"entries": [
+				"Follow tracks, forage, find a trail, or avoid natural hazards."
+			]
+		}
+	]
+}

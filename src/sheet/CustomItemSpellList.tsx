@@ -233,7 +233,7 @@ export function CustomItemSpellList({
 			<p>
 				<button
 					type="button"
-					onClick={() => onChange([...rows, { spell: '', uses: 'atWill', count: '1', castLevel: null, caster: 'fixed', ability: '', saveDc: '', attackBonus: '' }])}
+					onClick={() => onChange([...rows, { spell: '', uses: 'atWill', count: '1', castLevel: null, caster: 'own', ability: defaultAbility ?? '', saveDc: '', attackBonus: '' }])}
 				>
 					+ Add spell
 				</button>

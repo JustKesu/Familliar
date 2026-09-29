@@ -806,6 +806,57 @@ describe('CharacterSheet', () => {
 		expect(within(open).getAllByText('Breakdown')).toHaveLength(18)
 	})
 
+	it('R15 (D223): the four detail drawers carry collapsed rule texts from rules.json and the custom item sentence', async () => {
+		const user = userEvent.setup()
+		const text = (name: string) => ({ name, source: 'XPHB', entries: [`${name} rule body.`] })
+		vi.mocked(loadDataFile).mockImplementation(async (path: string) =>
+			path === 'data/rules.json'
+				? {
+						variantrule: ['Saving Throw', 'Skill', 'Expertise', 'Proficiency', 'Armor Training', 'Weapon', 'Passive Perception'].map(text),
+						sense: ['Darkvision', 'Blindsight'].map(text),
+						skill: ['Acrobatics', 'Stealth'].map(text),
+					}
+				: [],
+		)
+		try {
+			render(<CharacterSheet character={character} />)
+			await screen.findByRole('heading', { name: 'Aria' })
+			const hint = 'Need an extra bonus (a DM gift, homebrew)? Add it as a custom item in Manage Inventory.'
+			const row = (scope: HTMLElement, label: string) => within(scope).getByText(label, { selector: 'summary' }).closest('details') as HTMLDetailsElement
+
+			await user.click(screen.getByRole('button', { name: 'Saving throws details' }))
+			let open = screen.getByRole('dialog', { name: 'Saving throws' })
+			await waitFor(() => expect(open.textContent).toContain('Saving Throw rule body.'))
+			expect(row(open, 'Saving Throw').open).toBe(false)
+			expect(within(open).getByText(hint)).toBeTruthy()
+
+			await user.click(screen.getByRole('button', { name: 'Skills details' }))
+			open = screen.getByRole('dialog', { name: 'Skills' })
+			for (const label of ['Skill', 'Expertise', 'Acrobatics description']) expect(row(open, label).open).toBe(false)
+			expect(row(open, 'Acrobatics description').textContent).toContain('Acrobatics rule body.')
+			expect(within(open).getByText(hint)).toBeTruthy()
+
+			await user.click(screen.getByRole('button', { name: 'Stealth breakdown' }))
+			open = screen.getByRole('dialog', { name: 'Stealth' })
+			expect(row(open, 'Stealth description').textContent).toContain('Stealth rule body.')
+
+			await user.click(screen.getByRole('button', { name: 'Proficiencies details' }))
+			open = screen.getByRole('dialog', { name: 'Proficiencies' })
+			for (const label of ['Proficiency', 'Armor Training', 'Weapon']) expect(row(open, label).open).toBe(false)
+			expect(within(open).getByText(hint)).toBeTruthy()
+
+			await user.click(screen.getByRole('button', { name: 'Senses details' }))
+			open = screen.getByRole('dialog', { name: 'Senses' })
+			expect(row(open, 'Passive Perception rule').textContent).toContain('Passive Perception rule body.')
+			// Elf darkvision 60: its rule row appears; no Blindsight grant, so no Blindsight section.
+			expect(row(open, 'Darkvision rule').textContent).toContain('Darkvision rule body.')
+			expect(within(open).queryByText('Blindsight', { selector: 'summary' })).toBeNull()
+			expect(within(open).getByText(hint)).toBeTruthy()
+		} finally {
+			vi.mocked(loadDataFile).mockImplementation(async () => [])
+		}
+	})
+
 	it('B2/B3/B4 (D170/D171/D173): Proficiencies shows ARMOR, WEAPONS, TOOLS and LANGUAGES rows in that order; its gear lists each item with its sources', async () => {
 		const user = userEvent.setup()
 		render(<CharacterSheet character={character} />)

@@ -68,6 +68,7 @@ async function shortRest(page: Page): Promise<void> {
 test('R14c2 a: Fighter 3 — an item with Misty Step 2/LR is a 2nd Level USE row with 2 boxes; two uses empty it, Long Rest refills, no slot anywhere', async ({ page }) => {
   await open(page, character('r14c2-a', 'Fighter'))
   const panel = await startItemWithSpell(page, 'Cloak of Steps', 'Misty Step')
+  await panel.getByRole('combobox', { name: 'Custom item spell 1 DC and attack' }).selectOption('fixed')
   await panel.getByRole('combobox', { name: 'Custom item spell 1 uses', exact: true }).selectOption('perLongRest')
   await panel.getByRole('spinbutton', { name: 'Custom item spell 1 uses per rest' }).fill('2')
   await panel.getByRole('button', { name: 'Add custom item' }).click()
@@ -114,12 +115,17 @@ test('R14c2 b: Fireball 1/SR cast at 5th with fixed DC 15 — 5th Level row badg
   await expect(action).toContainText('Staff of Embers')
 })
 
-test('R14c2 c: "Use my own" — the ability select appears only with it, starts empty for a Fighter and blocks saving; DC = 8 + PB + Cha on Spells and Actions', async ({ page }) => {
+test('R14c2 c / R15 f: a new spell row starts on "Use my own" — ability empty for a Fighter and blocks saving, gone with "Fixed"; DC = 8 + PB + Cha on Spells and Actions', async ({ page }) => {
   await open(page, character('r14c2-c', 'Fighter'))
   const panel = await startItemWithSpell(page, 'Charm of Holding', 'Hold Person')
+  const caster = panel.getByRole('combobox', { name: 'Custom item spell 1 DC and attack' })
   const ability = panel.getByRole('combobox', { name: 'Custom item spell 1 spellcasting ability' })
+  await expect(caster).toHaveValue('own')
+  await expect(caster.locator('option:checked')).toHaveText('Use my own')
+  await expect(ability).toHaveValue('')
+  await caster.selectOption('fixed')
   await expect(ability).toHaveCount(0)
-  await panel.getByRole('combobox', { name: 'Custom item spell 1 DC and attack' }).selectOption('own')
+  await caster.selectOption('own')
   await expect(ability).toHaveValue('')
   await expect(panel.getByRole('button', { name: 'Add custom item' })).toBeDisabled()
   await ability.selectOption('cha')
@@ -138,6 +144,13 @@ test('R14c2 c2: for a Cleric the spellcasting ability starts on Wisdom', async (
   const panel = await startItemWithSpell(page, 'Holy Charm', 'Hold Person')
   await panel.getByRole('combobox', { name: 'Custom item spell 1 DC and attack' }).selectOption('own')
   await expect(panel.getByRole('combobox', { name: 'Custom item spell 1 spellcasting ability' })).toHaveValue('wis')
+})
+
+test('R15 f: for a Wizard a new spell row starts on "Use my own" with Intelligence', async ({ page }) => {
+  await open(page, character('r15-f', 'Wizard'))
+  const panel = await startItemWithSpell(page, 'Wizard Charm', 'Hold Person')
+  await expect(panel.getByRole('combobox', { name: 'Custom item spell 1 DC and attack' })).toHaveValue('own')
+  await expect(panel.getByRole('combobox', { name: 'Custom item spell 1 spellcasting ability' })).toHaveValue('int')
 })
 
 test('R14c2 d: an unattuned item that requires attunement grants no spell; Attune grants it', async ({ page }) => {
@@ -183,6 +196,7 @@ test('R14c2 f: a spent use stays with its item when another item is removed, and
   await inventory.getByRole('button', { name: 'Remove Ring B from inventory' }).click()
   await page.keyboard.press('Escape')
   const panel = await startItemWithSpell(page, 'Ring B', 'Misty Step')
+  await panel.getByRole('combobox', { name: 'Custom item spell 1 DC and attack' }).selectOption('fixed')
   await panel.getByRole('combobox', { name: 'Custom item spell 1 uses', exact: true }).selectOption('perLongRest')
   await panel.getByRole('spinbutton', { name: 'Custom item spell 1 uses per rest' }).fill('2')
   await panel.getByRole('button', { name: 'Add custom item' }).click()

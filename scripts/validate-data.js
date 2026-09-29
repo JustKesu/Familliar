@@ -1090,6 +1090,45 @@ function validateConditions() {
 	recordCheck("conditions: every record is XPHB with non-empty entries", failures);
 }
 
+const RULE_TEXT_NAMES = {
+	variantrule: ["Armor Training", "Expertise", "Passive Perception", "Proficiency", "Saving Throw", "Skill", "Weapon"],
+	sense: ["Blindsight", "Darkvision", "Tremorsense", "Truesight"],
+	skill: [
+		"Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History", "Insight", "Intimidation",
+		"Investigation", "Medicine", "Nature", "Perception", "Performance", "Persuasion", "Religion",
+		"Sleight of Hand", "Stealth", "Survival",
+	],
+};
+
+// R15, D223: the rule texts the Saves, Skills, Proficiencies and Senses drawers show.
+function validateRuleTexts() {
+	console.log("\n--- rules.json ---");
+
+	// An object keyed by 5etools category, not an array, so loadOutputFile does not apply.
+	const filePath = path.join(OUTPUT_DIR, "rules.json");
+	if (!fs.existsSync(filePath)) {
+		recordSimpleCheck("rules: rules.json exists", false, `not found: ${filePath}`);
+		return;
+	}
+	const rules = readJson(filePath);
+
+	for (const [key, expected] of Object.entries(RULE_TEXT_NAMES)) {
+		const records = Array.isArray(rules[key]) ? rules[key] : [];
+		const names = records.map((record) => record.name).sort();
+		recordSimpleCheck(
+			`rules: ${key} has the ${expected.length} expected names, each once`,
+			JSON.stringify(names) === JSON.stringify(expected),
+			`got ${names.join(", ")}`,
+		);
+		const failures = [];
+		records.forEach((record, index) => {
+			if (record.source !== "XPHB") failures.push({ label: describeEntry(record, index), detail: `source "${record.source}" is not XPHB` });
+			if (!Array.isArray(record.entries) || record.entries.length === 0) failures.push({ label: describeEntry(record, index), detail: "entries missing or empty" });
+		});
+		recordCheck(`rules: every ${key} record is XPHB with non-empty entries`, failures);
+	}
+}
+
 /* ============================================================================
  * SECTION 5b — CLASS VALIDATORS
  * ==========================================================================*/
@@ -1640,6 +1679,7 @@ function main() {
 	validateBeasts();
 	validateActions();
 	validateConditions();
+	validateRuleTexts();
 	validateHitPointBonusTable();
 	validateDanglingRefs();
 	// ---------------------------------------------------------------

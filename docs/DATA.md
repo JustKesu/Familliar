@@ -384,6 +384,8 @@ after shown where a category changed; unchanged categories listed too):
 
   data/conditions.json            0 -> 15  (XPHB 15) — new category, R12/D214
                                       (see "conditions.json" below)
+  data/rules.json                 0 -> 7+4+18 (XPHB, 8.5 KB) — new, R15/D223
+                                      (see "rules.json" below)
 
 D194 (RHW + subclass reprint dedupe), before -> after:
 
@@ -413,6 +415,22 @@ and `basicRules2024` are dropped). `entries` is a string plus nested
 `{@action}`, `{@variantrule}`, `{@status}`, `{@condition}` — all already handled
 by src/markup/tags.ts. The sheet's Exhaustion chip text "−2N d20 · −5N ft" is
 computed in code, not read from data (D214).
+
+### rules.json (R15, D223)
+
+One object, not an array: `{ variantrule, sense, skill }`, each a list of
+`{ name, source, entries }`, XPHB only. Sources: `variantrules.json` (7 XPHB
+Rules Glossary entries, ruleType "C": Saving Throw, Skill, Expertise,
+Proficiency, Armor Training, Weapon, Passive Perception), `senses.json` (4 XPHB:
+Blindsight, Darkvision, Tremorsense, Truesight), `skills.json` (all 18 XPHB).
+Survey (scripts/investigate-rule-texts.js, 2026-09-29): every entry is real text,
+no `_copy`; lengths 43–871 characters (skill texts are one sentence, 43–77).
+Tags used: `{@variantrule}`, `{@book}`, `{@filter}`, `{@item}`, `{@skill}`,
+`{@dice}`, `{@condition}` — all handled by src/markup/tags.ts. Nested entry
+types: only `list`/`item`. The XPHB glossary has no entry with "Tool" or
+"Language" in its name, and none named Darkvision/Blindsight/Tremorsense/
+Truesight/Proficiency Bonus — the sense texts come from senses.json instead.
+validate-data asserts the exact name sets.
 
 Feature origin (2026-09-21, one-off survey): all 302 class-features records
 carry `className` and a numeric `level`; all 786 subclass-features records

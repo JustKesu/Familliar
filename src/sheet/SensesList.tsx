@@ -33,7 +33,7 @@ export interface SheetSenseEntry {
 	withheldItemOrigins: { name: string; reason: string }[]
 }
 
-function senseProvenanceLabel(entry: SheetSenseEntry): string {
+export function senseProvenanceLabel(entry: SheetSenseEntry): string {
 	const parts: string[] = []
 	for (const optionName of entry.optionalFeatureOrigins) parts.push(`from invocation (${optionName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
@@ -43,7 +43,7 @@ function senseProvenanceLabel(entry: SheetSenseEntry): string {
 	return parts.join('; ')
 }
 
-function senseLabel(senseType: string): string {
+export function senseLabel(senseType: string): string {
 	return senseType.length === 0 ? senseType : senseType[0].toUpperCase() + senseType.slice(1)
 }
 

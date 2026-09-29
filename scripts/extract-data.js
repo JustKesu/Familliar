@@ -1631,6 +1631,39 @@ function extractConditions() {
 }
 
 /*
+ * RULE TEXTS (R15, D223)
+ *
+ * The glossary, sense and skill texts shown collapsed in the Saves, Skills,
+ * Proficiencies and Senses drawers. XPHB only; the names are fixed lists.
+ */
+
+const RULE_TEXT_NAMES = {
+	variantrule: ["Saving Throw", "Skill", "Expertise", "Proficiency", "Armor Training", "Weapon", "Passive Perception"],
+	sense: ["Blindsight", "Darkvision", "Tremorsense", "Truesight"],
+};
+
+function extractRuleTexts() {
+	console.log("\n--- RULE TEXTS ---");
+
+	const pick = (records, names) =>
+		records
+			.filter((record) => record.source === "XPHB" && (!names || names.includes(record.name)))
+			.map(({ name, source, entries }) => ({ name, source, entries }));
+
+	const kept = {
+		variantrule: pick(readJson(path.join(SOURCE_DATA_DIR, "variantrules.json")).variantrule, RULE_TEXT_NAMES.variantrule),
+		sense: pick(readJson(path.join(SOURCE_DATA_DIR, "senses.json")).sense, RULE_TEXT_NAMES.sense),
+		skill: pick(readJson(path.join(SOURCE_DATA_DIR, "skills.json")).skill),
+	};
+	for (const [key, records] of Object.entries(kept)) console.log(`${key.padEnd(12)} ${records.length}`);
+
+	const outputFile = path.join(OUTPUT_DIR, "rules.json");
+	console.log(`Wrote: ${outputFile} (${formatBytes(writeJson(outputFile, kept))})`);
+
+	return [];
+}
+
+/*
  * ACTIONS (D187)
  *
  * The sheet's "Actions in Combat" lines. XPHB only, its own constant like
@@ -2575,6 +2608,7 @@ function main() {
 	allWarnings.push(...extractLanguages());
 	allWarnings.push(...extractActions());
 	allWarnings.push(...extractConditions());
+	allWarnings.push(...extractRuleTexts());
 	allWarnings.push(...extractBeasts());
 	// ---------------------------------------------------------------
 

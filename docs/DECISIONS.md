@@ -4104,3 +4104,15 @@ na stejný výpočet.
 D222 (R14e2): Custom předmět může nastavit vlastnost na N nebo přičíst N s maximem (výchozí 20).
 Jde do stejného výpočtu jako skutečné předměty (D221). Brána D216 — bez naladění platí vždy, na
 rozdíl od skutečných předmětů, kde platí jen předměty s naladěním. Formulář: blok Ability scores.
+
+## D223 — Texty pravidel v detailních panelech (R15)
+
+D223 (R15): Drawery Saving Throws, Skills, Proficiencies a Senses (ozubené kolečko i klik na jednu
+záchranu/dovednost) ukazují texty pravidel 2024 z 5etools (XPHB, nový soubor data/rules.json:
+glosář variantrules, senses.json, skills.json). Všechny sbalené (▸). Nástroje a jazyky text nemají
+(v XPHB glosáři žádné heslo není). Senses drawer vypisuje i Blindsight/Tremorsense/Truesight, které
+postava má, se zdroji jako karta; smysly, které nemá, se nevypisují. Nic se tam needituje, žádné
+override pole; dole věta, že extra bonus se přidá custom předmětem v Manage Inventory. Karta na
+listu se nemění. Nový řádek kouzla custom předmětu začíná na „Use my own“ s předvybranou vlastností
+první sesilatelské třídy (bez ní prázdná, řádek neplatný); uložená kouzla drží svou volbu. Beze
+změny schématu.

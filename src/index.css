@@ -2317,6 +2317,14 @@ button:disabled {
   padding: 0.35rem 0.1rem 0.5rem;
 }
 
+/* R15: rule texts in the detail drawers, kept to a readable line length. */
+.rule-text {
+  max-width: 75ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
 .drawer-section__summary {
   margin-left: auto;
   font-family: var(--font-body);

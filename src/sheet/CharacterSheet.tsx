@@ -156,6 +156,8 @@ import { AbilityModifierCards } from './AbilityModifierCards'
 import { Drawer, DrawerSection } from './Drawer'
 import { ConditionRuleText, ConditionsCard, ConditionsPanel } from './Conditions'
 import { loadConditionRules, type ConditionRule } from '../conditions/conditions'
+import { loadRuleTexts, type RuleTexts } from '../rules/ruleTexts'
+import { CustomItemHint, GrantedSenseSections, RuleTextRow } from './RuleText'
 import { ClassSpellsManager } from './ManageSpellsPanel'
 import { InventoryTab } from './InventoryTab'
 import { ExtrasTab } from './ExtrasTab'
@@ -1693,6 +1695,7 @@ function CharacterSheetBody({
 	const [itemEntryTemplates, setItemEntryTemplates] = useState<ItemEntryTemplate[]>([])
 	const [combatActions, setCombatActions] = useState<CombatAction[]>([])
 	const [conditionRules, setConditionRules] = useState<ConditionRule[] | null>(null)
+	const [ruleTexts, setRuleTexts] = useState<RuleTexts | null>(null)
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
 	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
@@ -1853,6 +1856,11 @@ function CharacterSheetBody({
 		loadConditionRules()
 			.then((rules) => {
 				if (!cancelled) setConditionRules(rules)
+			})
+			.catch(() => {})
+		loadRuleTexts()
+			.then((texts) => {
+				if (!cancelled) setRuleTexts(texts)
 			})
 			.catch(() => {})
 		return () => {
@@ -3166,6 +3174,7 @@ function CharacterSheetBody({
 			{/* D163: fixed to the window, so where it sits in the markup decides nothing about the layout. */}
 			{drawer?.kind === 'senses' && (
 				<Drawer title="Senses" onClose={() => setDrawer(null)}>
+					<RuleTextRow texts={ruleTexts} kind="variantrule" name="Passive Perception" label="Passive Perception rule" />
 					<DrawerSection title="Passive Perception">
 						<CalculatedNumber result={passivePerception} breakdownOpen />
 					</DrawerSection>
@@ -3181,9 +3190,12 @@ function CharacterSheetBody({
 						) : (
 							<>
 								<span>{darkvision.value > 0 ? `${darkvision.value} ft.` : 'None'}</span> <ValueBreakdown breakdown={darkvision.breakdown} open />
+								{darkvision.value > 0 && <RuleTextRow texts={ruleTexts} kind="sense" name="Darkvision" label="Darkvision rule" />}
 							</>
 						)}
 					</DrawerSection>
+					<GrantedSenseSections entries={combinedSenses} texts={ruleTexts} />
+					<CustomItemHint />
 				</Drawer>
 			)}
 
@@ -3445,39 +3457,50 @@ function CharacterSheetBody({
 			{drawer?.kind === 'save' && (
 				<Drawer title={`${ABILITY_LABELS[drawer.ability]} saving throw`} onClose={() => setDrawer(null)}>
 					<RowBreakdown result={savingThrows[drawer.ability]} />
+					<RuleTextRow texts={ruleTexts} kind="variantrule" name="Saving Throw" />
 				</Drawer>
 			)}
 
 			{drawer?.kind === 'skill' && (
 				<Drawer title={SKILL_LABELS[drawer.skill]} onClose={() => setDrawer(null)}>
 					<RowBreakdown result={skills[drawer.skill]} />
+					<RuleTextRow texts={ruleTexts} kind="skill" name={SKILL_LABELS[drawer.skill]} label={`${SKILL_LABELS[drawer.skill]} description`} />
 				</Drawer>
 			)}
 
 			{drawer?.kind === 'saves' && (
 				<Drawer title="Saving throws" onClose={() => setDrawer(null)}>
+					<RuleTextRow texts={ruleTexts} kind="variantrule" name="Saving Throw" />
 					{ABILITIES.map((ability) => (
 						<DrawerSection key={ability} title={ABILITY_LABELS[ability]}>
 							<RowBreakdown result={savingThrows[ability]} />
 						</DrawerSection>
 					))}
+					<CustomItemHint />
 				</Drawer>
 			)}
 
 			{drawer?.kind === 'skills' && (
 				<Drawer title="Skills" onClose={() => setDrawer(null)}>
+					<RuleTextRow texts={ruleTexts} kind="variantrule" name="Skill" />
+					<RuleTextRow texts={ruleTexts} kind="variantrule" name="Expertise" />
 					{SKILLS.map((skill) => (
 						<DrawerSection key={skill} title={SKILL_LABELS[skill]}>
 							<RowBreakdown result={skills[skill]} />
+							<RuleTextRow texts={ruleTexts} kind="skill" name={SKILL_LABELS[skill]} label={`${SKILL_LABELS[skill]} description`} />
 						</DrawerSection>
 					))}
+					<CustomItemHint />
 				</Drawer>
 			)}
 
 			{drawer?.kind === 'proficiencies' && (
 				<Drawer title="Proficiencies" onClose={() => setDrawer(null)}>
+					<RuleTextRow texts={ruleTexts} kind="variantrule" name="Proficiency" />
 					{PROFICIENCY_ROWS.map(([category, label]) => (
 						<DrawerSection key={category} title={label}>
+							{category === 'armor' && <RuleTextRow texts={ruleTexts} kind="variantrule" name="Armor Training" />}
+							{category === 'weapons' && <RuleTextRow texts={ruleTexts} kind="variantrule" name="Weapon" />}
 							{weaponAttackData === null ? (
 								<p>Loading…</p>
 							) : weaponAttackData.proficiencies[category].length === 0 ? (
@@ -3511,6 +3534,7 @@ function CharacterSheetBody({
 							)}
 						</DrawerSection>
 					))}
+					<CustomItemHint />
 				</Drawer>
 			)}
 

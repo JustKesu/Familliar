@@ -2017,6 +2017,20 @@ pack included; malformed → nothing); the calculation is unchanged. Form block
 used ability not offered again, invalid row disables Add/Save). Copy-from-item
 does not carry ability scores. E2E `customItemAbilityScores.spec.ts` R14e2 a–e.
 
+R15 (D223) done. No schema bump. New `data/rules.json` (`extractRuleTexts`,
+checked in validate-data: 7 XPHB glossary + 4 senses + 18 skills), loaded by
+`rules/ruleTexts.ts` (`loadRuleTexts`, `findRuleText`). `sheet/RuleText.tsx`:
+`RuleTextRow` (collapsed `DrawerRow` + `Entries`), `CustomItemHint`,
+`GrantedSenseSections` (non-Darkvision granted senses with range and the card's
+provenance incl. "not applied"; `senseLabel`/`senseProvenanceLabel` now exported
+from SensesList). Drawers: saves/save (Saving Throw), skills (Skill, Expertise,
+per-skill description)/skill (description), proficiencies (Proficiency; Armor
+Training in Armor, Weapon in Weapons; none for Tools/Languages), senses (Passive
+Perception; Darkvision rule when > 0; granted-sense sections). Hint sentence at
+the bottom of the four group drawers. Sheet cards unchanged. CustomItemSpellList
+"+ Add spell" starts on `own` with `defaultAbility`. E2E `ruleTexts.spec.ts`
+R15 a–e, `customItemSpells.spec.ts` R14c2 c / R15 f.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic
