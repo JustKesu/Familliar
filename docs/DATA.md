@@ -837,6 +837,33 @@ Separately, `charges` / `recharge` / `rechargeAmount` on items are the only
 fully structured spend-and-refresh fields anywhere in the data set;
 `recharge`'s only value is `"dawn"`.
 
+### Item `ability` — ability-score changes (survey R14e1)
+`scripts/investigate-item-ability-scores.js`. Source items.json: 72 items carry
+`ability`; data/items.json keeps the field untouched (the extractor copies whole
+entries): 32 items. The app's `extractItemRefs` (src/inventory/inventoryData.ts)
+does NOT carry it onto `ItemRef` today. Shapes in data/items.json (all XDMG):
+- `{ static: { str: 21 } }` — set to N. 16 items: Amulet of Health (con 19),
+  Headband of Intellect (int 19), Gauntlets of Ogre Power (str 19), Hand of
+  Vecna (str 20), six Belts of Giant Strength (21–29) — all attunement — and six
+  **Potions of Giant Strength** (21–29), no attunement: a consumable, its
+  `static` is a temporary effect of drinking, not of carrying.
+- `{ <abi>: N }` — flat addition, always +2. 14 items: Belt of Dwarvenkind
+  (con), six Ioun Stones (Agility, Fortitude, Insight, Intellect, Leadership,
+  Strength), Book of Exalted Deeds (wis) — all attunement — and six one-time
+  books without attunement (Manual of Bodily Health / Gainful Exercise /
+  Quickness of Action, Tome of Clear Thought / Leadership and Influence /
+  Understanding). **No maximum is in the data**: the cap exists only in prose,
+  and every one of the 14 has a "maximum of N" phrase — 20 for the Belt and the
+  Ioun Stones, 24 for Book of Exalted Deeds, 30 for the six books.
+- `{ choose: [{ from: [6 abilities], count: 1, amount: 2 }] }` — Book of Vile
+  Darkness (attunement): player picks the ability.
+- `{ from: [6 abilities], count: 1, amount: 2 }` (no `choose` wrapper) — Deck of
+  Many Things: a one-time card effect, not a carried bonus.
+- Source-only shapes in dropped books: `static{cha}` (Sword of Zariel|BGDIA),
+  `choose` without `amount` (Deck of Several Things|LLK).
+- No item in data/items.json describes a score change in prose without the field
+  (phrase search over stripped markup: 0).
+
 ### Artificer infusions
 AI (Artificer Infusion, 16 entries) exists in optional-features.json, but
 the EFA Artificer grants infusions through a regular class feature, not
