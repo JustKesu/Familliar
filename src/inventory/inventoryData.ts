@@ -908,7 +908,37 @@ export function describeCustomItemProblem(custom: unknown): string | null {
 		const problem = describeCustomBonusesProblem(record['bonuses'])
 		if (problem !== null) return problem
 	}
+	if (record['abilityScores'] !== undefined) {
+		const problem = describeCustomAbilityScoresProblem(record['abilityScores'])
+		if (problem !== null) return problem
+	}
 	return describeCustomDefenceProblem(record)
+}
+
+const isScore = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 30
+
+/** What is wrong with a definition's `abilityScores`, or null (R14e2). */
+function describeCustomAbilityScoresProblem(value: unknown): string | null {
+	if (!Array.isArray(value)) return 'its ability scores must be a list'
+	const seen = new Set<string>()
+	for (const item of value) {
+		if (typeof item !== 'object' || item === null || Array.isArray(item)) return 'each of its ability scores must be an object'
+		const entry = item as Record<string, unknown>
+		const ability = entry['ability']
+		if (!ABILITIES.includes(ability as (typeof ABILITIES)[number])) return `its ability score names an unknown ability "${String(ability)}"`
+		if (entry['kind'] === 'set') {
+			if (!isScore(entry['value'])) return `its ${String(ability)} score must be set to a whole number from 1 to 30`
+		} else if (entry['kind'] === 'add') {
+			const amount = entry['amount']
+			if (typeof amount !== 'number' || !Number.isInteger(amount) || amount === 0) return `its ${String(ability)} increase must be a whole number other than zero`
+			if (!isScore(entry['max'])) return `its ${String(ability)} maximum must be a whole number from 1 to 30`
+		} else {
+			return `its ${String(ability)} score kind "${String(entry['kind'])}" is not set or add`
+		}
+		if (seen.has(ability as string)) return `its ${String(ability)} score is listed more than once`
+		seen.add(ability as string)
+	}
+	return null
 }
 
 const isNonEmptyText = (value: unknown): value is string => typeof value === 'string' && value.trim() !== ''

@@ -4098,3 +4098,9 @@ základu, pozadí a featech, pak nastavení na N, jen když je vyšší (víc ta
 Book of Vile Darkness (volba vlastnosti) nepodporován, jen nulový řádek v rozkladu. Wizard,
 level-up, Edit Character a prerekvizity featů počítají bez předmětů. Custom předměty napojí R14e2
 na stejný výpočet.
+
+## D222 — Custom předmět nastavuje nebo zvyšuje vlastnosti (R14e2)
+
+D222 (R14e2): Custom předmět může nastavit vlastnost na N nebo přičíst N s maximem (výchozí 20).
+Jde do stejného výpočtu jako skutečné předměty (D221). Brána D216 — bez naladění platí vždy, na
+rozdíl od skutečných předmětů, kde platí jen předměty s naladěním. Formulář: blok Ability scores.

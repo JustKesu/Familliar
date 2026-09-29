@@ -1,8 +1,8 @@
 import { ABILITIES } from '../abilities/abilityScores'
 import { isAttuned } from '../calculation/attunement'
-import type { ItemAbilityGrant } from '../calculation/itemAbilityScores'
+import type { ItemAbilityEffect, ItemAbilityGrant } from '../calculation/itemAbilityScores'
 import { magicItemLabel } from '../calculation/magicBonus'
-import { buildInventoryResolver, type ItemRef } from '../inventory/inventoryData'
+import { buildInventoryResolver, describeCustomItemProblem, type ItemRef } from '../inventory/inventoryData'
 import type { CharacterInventoryItem } from '../storage/character'
 
 /**
@@ -14,6 +14,17 @@ export function buildItemAbilityGrants(inventory: readonly CharacterInventoryIte
 	const resolve = buildInventoryResolver(itemRefs)
 	const grants: ItemAbilityGrant[] = []
 	for (const item of inventory) {
+		if (item.custom) {
+			/* D222: D216's gate, not the real-item rule — no attunement requirement means it applies always. A malformed definition grants nothing (D43). */
+			if (describeCustomItemProblem(item.custom) !== null) continue
+			const sourceName = magicItemLabel(item.custom.name, item.magicBonus ?? 0)
+			const withheld = item.custom.requiresAttunement === true && !isAttuned(item) ? { withheldReason: 'not attuned' } : {}
+			for (const score of item.custom.abilityScores ?? []) {
+				const effect: ItemAbilityEffect = score.kind === 'set' ? { kind: 'set', score: score.value } : { kind: 'add', amount: score.amount, max: score.max }
+				grants.push({ sourceName, ability: score.ability, effect, ...withheld })
+			}
+			continue
+		}
 		const { ref } = resolve(item)
 		if (!ref || ref.requiresAttunement !== true) continue
 		const sourceName = magicItemLabel(ref.name, item.magicBonus ?? 0)

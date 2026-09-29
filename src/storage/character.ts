@@ -748,7 +748,12 @@ export interface CustomItemDefinition {
 	invocations?: { name: string; source: string }[]
 	/** R14c2 (D219): spells the item grants, each name|source at most once; cast only from the item, never with slots. */
 	spells?: CustomItemSpell[]
+	/** R14e2 (D222): ability scores the item sets or raises, each ability at most once. */
+	abilityScores?: CustomItemAbilityScore[]
 }
+
+/** One entry of CustomItemDefinition.abilityScores; whole numbers, `value` and `max` 1 to 30, `amount` not 0. describeCustomItemProblem proves the shape (D43). */
+export type CustomItemAbilityScore = { ability: Ability; kind: 'set'; value: number } | { ability: Ability; kind: 'add'; amount: number; max: number }
 
 /** One entry of CustomItemDefinition.spells; describeCustomItemProblem proves the shape (D43). A cantrip is always at will and has no castLevel. */
 export interface CustomItemSpell {

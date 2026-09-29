@@ -2005,8 +2005,17 @@ Vile Darkness attuned → six "ability choice not supported" lines). Sheet passe
 them everywhere except Manage Feats prerequisites (`baseAbilityScores`);
 `hpDefault.loadItemMaxHpBonuses` now returns `{ itemBonuses, itemAbilityGrants }`
 so level-up HP shift and HitPointsPicker include Con items. Wizard untouched.
-E2E `itemAbilityScores.spec.ts` R14e1 a–i. Next: R14e2 custom items as a second
-grant source.
+E2E `itemAbilityScores.spec.ts` R14e1 a–i.
+
+R14e2 (D222) done. No schema bump. `CustomItemDefinition.abilityScores?`
+(`{ability, kind:'set', value}` | `{ability, kind:'add', amount, max}`, each
+ability once, 1–30, amount ≠ 0), proved by `describeCustomItemProblem`.
+`buildItemAbilityGrants` now emits grants for custom rows under D216's gate
+(requiresAttunement and not attuned → "not attuned" zero line; otherwise always,
+pack included; malformed → nothing); the calculation is unchanged. Form block
+`CustomItemAbilityScoreList.tsx` after Bonuses (Max only for Add, default 20,
+used ability not offered again, invalid row disables Add/Save). Copy-from-item
+does not carry ability scores. E2E `customItemAbilityScores.spec.ts` R14e2 a–e.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'
 import { describe, expect, it } from 'vitest'
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { itemAbilityScoreContributions, type ItemAbilityGrant } from '../calculation/itemAbilityScores'
-import { extractItemRefs, type ItemRef } from '../inventory/inventoryData'
+import { describeCustomItemProblem, extractItemRefs, type ItemRef } from '../inventory/inventoryData'
 import type { Character, CharacterInventoryItem } from '../storage/character'
 import { buildItemAbilityGrants } from './itemAbilityScoreData'
 
@@ -114,6 +114,26 @@ describe('buildItemAbilityGrants', () => {
 	})
 	it('caps Belt of Dwarvenkind at 20 with Con 19', () => {
 		expect(computeAbilityScore('constitution', character(15, 19), [], buildItemAbilityGrants([row(dwarvenkind, true)], refs))).toMatchObject({ value: { score: 20 } })
+	})
+	it('custom items (D222): gate follows D216, malformed grants nothing, merges with real grants', () => {
+		const custom = (definition: Record<string, unknown>, attuned = false): CharacterInventoryItem => ({
+			name: 'Glove',
+			source: 'custom',
+			quantity: 1,
+			custom: { name: 'Glove', kind: 'other', ...definition } as never,
+			...(attuned ? { attuned: true } : {}),
+		})
+		const set19 = [{ ability: 'strength', kind: 'set', value: 19 }]
+		expect(buildItemAbilityGrants([custom({ abilityScores: set19 })], refs)).toEqual([{ sourceName: 'Glove', ability: 'strength', effect: { kind: 'set', score: 19 } }])
+		expect(buildItemAbilityGrants([custom({ requiresAttunement: true, abilityScores: set19 })], refs)).toEqual([
+			{ sourceName: 'Glove', ability: 'strength', effect: { kind: 'set', score: 19 }, withheldReason: 'not attuned' },
+		])
+		expect(buildItemAbilityGrants([custom({ requiresAttunement: true, abilityScores: set19 }, true)], refs)).toHaveLength(1)
+		expect(buildItemAbilityGrants([custom({ abilityScores: [{ ability: 'strength', kind: 'set', value: 31 }] })], refs)).toEqual([])
+		expect(buildItemAbilityGrants([custom({ abilityScores: [...set19, { ability: 'strength', kind: 'add', amount: 1, max: 20 }] })], refs)).toEqual([])
+		expect(describeCustomItemProblem({ name: 'x', kind: 'other', abilityScores: [{ ability: 'con', kind: 'add', amount: 0, max: 20 }] })).not.toBeNull()
+		const merged = computeAbilityScore('strength', character(15), [], buildItemAbilityGrants([row(belt, true), custom({ abilityScores: set19 })], refs))
+		expect(merged).toMatchObject({ value: { score: 21 } })
 	})
 	it('sets Constitution from Amulet of Health', () => {
 		expect(computeAbilityScore('constitution', character(15), [], buildItemAbilityGrants([row(amulet, true)], refs))).toMatchObject({ value: { score: 19, modifier: 4 } })

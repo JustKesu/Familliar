@@ -41,6 +41,7 @@ import {
 	type WeaponGrip,
 } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
+import { abilityScoreRowsFrom, abilityScoreRowsIncomplete, abilityScoresFromRows, CustomItemAbilityScoreList, type AbilityScoreRow } from './CustomItemAbilityScoreList'
 import { bonusesFromRows, bonusRowsFrom, CustomItemBonusList, type BonusRow } from './CustomItemBonusList'
 import { ConditionChoice, CustomItemProficiencyList, proficienciesFromRows, proficiencyRowsFrom, type ProficiencyRow } from './CustomItemProficiencyList'
 import { CustomItemGrantList, grantRowsFrom, grantsFromRows } from './CustomItemGrantList'
@@ -349,7 +350,8 @@ function CustomItemForm({
 	const [featRows, setFeatRows] = useState<string[]>(() => grantRowsFrom(editing?.feats))
 	const [invocationRows, setInvocationRows] = useState<string[]>(() => grantRowsFrom(editing?.invocations))
 	const [spellRows, setSpellRows] = useState<SpellRow[]>(() => spellRowsFrom(editing?.spells))
-	const incomplete = draft.name.trim() === '' || spellRowsIncomplete(spellRows)
+	const [abilityRows, setAbilityRows] = useState<AbilityScoreRow[]>(() => abilityScoreRowsFrom(editing?.abilityScores))
+	const incomplete = draft.name.trim() === '' || spellRowsIncomplete(spellRows) || abilityScoreRowsIncomplete(abilityRows)
 	const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
 	function update(change: Partial<CustomItemDefinition>): void {
@@ -377,16 +379,18 @@ function CustomItemForm({
 		setFeatRows([])
 		setInvocationRows([])
 		setSpellRows([])
+		setAbilityRows([])
 	}
 
 	function submit(): void {
 		if (incomplete) return
-		const { bonuses: _replaced, proficiencies: _replacedProficiencies, feats: _replacedFeats, invocations: _replacedInvocations, spells: _replacedSpells, ...rest } = draft
+		const { bonuses: _replaced, proficiencies: _replacedProficiencies, feats: _replacedFeats, invocations: _replacedInvocations, spells: _replacedSpells, abilityScores: _replacedAbilityScores, ...rest } = draft
 		const bonuses = bonusesFromRows(bonusRows)
 		const proficiencies = proficienciesFromRows(proficiencyRows)
 		const feats = grantsFromRows(featRows, editing?.feats)
 		const invocations = grantsFromRows(invocationRows, undefined)
 		const spells = spellsFromRows(spellRows)
+		const abilityScores = abilityScoresFromRows(abilityRows)
 		onSubmit({
 			...rest,
 			name: draft.name.trim(),
@@ -395,6 +399,7 @@ function CustomItemForm({
 			...(feats.length > 0 ? { feats } : {}),
 			...(invocations.length > 0 ? { invocations } : {}),
 			...(spells.length > 0 ? { spells } : {}),
+			...(abilityScores.length > 0 ? { abilityScores } : {}),
 		})
 		if (editing === null) {
 			setDraft(blankCustomItem())
@@ -403,6 +408,7 @@ function CustomItemForm({
 			setFeatRows([])
 			setInvocationRows([])
 			setSpellRows([])
+			setAbilityRows([])
 			setCopiedKey(null)
 		}
 	}
@@ -683,6 +689,8 @@ function CustomItemForm({
 			</p>
 
 			<CustomItemBonusList rows={bonusRows} onChange={setBonusRows} />
+
+			<CustomItemAbilityScoreList rows={abilityRows} onChange={setAbilityRows} />
 
 			<CustomItemProficiencyList rows={proficiencyRows} itemRefs={itemRefs} onChange={setProficiencyRows} />
 
