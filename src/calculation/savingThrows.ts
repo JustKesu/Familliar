@@ -17,6 +17,7 @@ import type { Character, CharacterClass } from '../storage/character'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
 import { featSavingThrowProficiencyNames, type FeatEffectEntry } from './featEffects'
+import { itemSaveProficiency, type ItemProficiencyGrant } from './itemProficiencies'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -54,6 +55,8 @@ export function computeSavingThrow(
 	feats: FeatEffectEntry[] = [],
 	/** Slice h: `bonusSavingThrow` from a worn magic item (Cloak of Protection). Applies to every save alike — no item in the data limits it to some of them. */
 	itemBonuses: Contribution[] = [],
+	/** R14b: proficiencies a custom item grants (D217). */
+	itemProficiencies: readonly ItemProficiencyGrant[] = [],
 ): Calculated<SavingThrowValue> {
 	const abilityResult = computeAbilityScore(ability, character, feats)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
@@ -74,6 +77,8 @@ export function computeSavingThrow(
 		}
 	}
 	grantingSources.push(...featSavingThrowProficiencyNames(ability, character, feats).map((name) => `feat (${name})`))
+	const fromItems = itemSaveProficiency(itemProficiencies, ability)
+	grantingSources.push(...fromItems.sources)
 
 	const subclassGrants = SUBCLASS_SAVE_GRANTS.filter(
 		(grant) =>
@@ -96,6 +101,7 @@ export function computeSavingThrow(
 		breakdown.push({ source: `proficiency (${grantingSources.join(', ')})`, amount: bonusResult.value })
 	}
 	breakdown.push(...redundantNotes)
+	breakdown.push(...fromItems.withheld)
 	breakdown.push(...itemBonuses)
 
 	const modifier = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
@@ -109,9 +115,10 @@ export function computeSavingThrows(
 	itemBonuses: Contribution[] = [],
 	/** R14a1: a custom item's bonus to ONE save, stacking with `itemBonuses`. */
 	itemBonusesByAbility: Partial<Record<Ability, Contribution[]>> = {},
+	itemProficiencies: readonly ItemProficiencyGrant[] = [],
 ): Record<Ability, Calculated<SavingThrowValue>> {
 	return Object.fromEntries(
-		ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats, [...itemBonuses, ...(itemBonusesByAbility[ability] ?? [])])]),
+		ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats, [...itemBonuses, ...(itemBonusesByAbility[ability] ?? [])], itemProficiencies)]),
 	) as Record<
 		Ability,
 		Calculated<SavingThrowValue>

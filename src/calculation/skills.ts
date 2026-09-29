@@ -31,6 +31,7 @@ import {
 	skillChoiceAwaitingNote,
 	type FeatEffectEntry,
 } from './featEffects'
+import { itemSkillProficiency, type ItemProficiencyGrant } from './itemProficiencies'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -129,15 +130,23 @@ function subclassSkillChoiceAwaitingNotes(skill: Skill, character: Character, is
  * skill check IS an ability check, so it lands on all 18 alike — and, through
  * computePassiveValue below, on the passive scores built from them.
  */
-export function computeSkill(skill: Skill, character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<SkillValue> {
+export function computeSkill(
+	skill: Skill,
+	character: Character,
+	feats: FeatEffectEntry[] = [],
+	itemBonuses: Contribution[] = [],
+	/** R14b (D217): proficiency or expertise a custom item grants; the highest status across all sources wins. */
+	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+): Calculated<SkillValue> {
 	const ability = SKILL_ABILITIES[skill]
 	const abilityResult = computeAbilityScore(ability, character, feats)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
-	const sources = proficiencySources(skill, character, feats)
+	const fromItems = itemSkillProficiency(itemProficiencies, skill)
+	const sources = [...proficiencySources(skill, character, feats), ...fromItems.sources]
 	const isProficient = sources.length > 0
 	const hasExpertise =
-		choiceNames(character.expertiseSkills).includes(skill) || featStoredExpertiseSkillNames(skill, character, feats).length > 0 || featFixedExpertiseNames(skill, character, feats).length > 0 || subclassExpertiseSkills(character.classes, character.subclassSkills).includes(skill)
+		fromItems.expertise || choiceNames(character.expertiseSkills).includes(skill) || featStoredExpertiseSkillNames(skill, character, feats).length > 0 || featFixedExpertiseNames(skill, character, feats).length > 0 || subclassExpertiseSkills(character.classes, character.subclassSkills).includes(skill)
 	const status: SkillProficiencyStatus =
 		isProficient
 			? hasExpertise
@@ -164,6 +173,7 @@ export function computeSkill(skill: Skill, character: Character, feats: FeatEffe
 
 	breakdown.push(...featSkillChoiceAwaitingNotes(skill, character, feats, isProficient))
 	breakdown.push(...subclassSkillChoiceAwaitingNotes(skill, character, isProficient))
+	breakdown.push(...fromItems.withheld)
 	breakdown.push(...itemBonuses)
 
 	const modifier = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
@@ -176,8 +186,9 @@ export function computeSkills(
 	feats: FeatEffectEntry[] = [],
 	itemBonuses: Contribution[] = [],
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
+	itemProficiencies: readonly ItemProficiencyGrant[] = [],
 ): Record<Skill, Calculated<SkillValue>> {
-	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])])])) as Record<
+	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])], itemProficiencies)])) as Record<
 		Skill,
 		Calculated<SkillValue>
 	>
@@ -194,8 +205,9 @@ function computePassiveValue(
 	itemBonuses: Contribution[],
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>>,
 	passiveBonuses: Contribution[],
+	itemProficiencies: readonly ItemProficiencyGrant[],
 ): Calculated<number> {
-	const skillResult = computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])])
+	const skillResult = computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])], itemProficiencies)
 	if (skillResult.status === 'unknown') return unknown(skillResult.reason)
 
 	const breakdown: Contribution[] = [{ source: 'base', amount: 10 }, ...skillResult.breakdown, ...passiveBonuses]
@@ -209,8 +221,9 @@ export function computePassivePerception(
 	itemBonuses: Contribution[] = [],
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
 	passiveBonuses: Contribution[] = [],
+	itemProficiencies: readonly ItemProficiencyGrant[] = [],
 ): Calculated<number> {
-	return computePassiveValue('perception', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses)
+	return computePassiveValue('perception', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies)
 }
 
 export function computePassiveInvestigation(
@@ -219,8 +232,9 @@ export function computePassiveInvestigation(
 	itemBonuses: Contribution[] = [],
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
 	passiveBonuses: Contribution[] = [],
+	itemProficiencies: readonly ItemProficiencyGrant[] = [],
 ): Calculated<number> {
-	return computePassiveValue('investigation', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses)
+	return computePassiveValue('investigation', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies)
 }
 
 export function computePassiveInsight(
@@ -229,6 +243,7 @@ export function computePassiveInsight(
 	itemBonuses: Contribution[] = [],
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
 	passiveBonuses: Contribution[] = [],
+	itemProficiencies: readonly ItemProficiencyGrant[] = [],
 ): Calculated<number> {
-	return computePassiveValue('insight', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses)
+	return computePassiveValue('insight', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies)
 }

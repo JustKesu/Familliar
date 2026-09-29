@@ -974,6 +974,8 @@ export function CharacterWizard({
 		...(state.data.featAsiChoices.length > 0 ? { featAsiChoices: state.data.featAsiChoices } : {}),
 		...(draftBackground ? { background: draftBackground } : {}),
 		...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}),
+		/* R14b: HitPointsPicker adds the carried items' max-HP bonuses to the maximum it shows, as the sheet does. */
+		...(character?.inventory !== undefined ? { inventory: character.inventory } : {}),
 	}
 
 	/** As draftCharacterForHitPoints, plus the picks the hit points step itself owns (D107 needs the running total, not just its inputs) and the manual override (D9), so a character with one keeps it. */
@@ -981,8 +983,6 @@ export function CharacterWizard({
 		...draftCharacterForHitPoints,
 		...(state.data.hitPointLevels.length > 0 ? { hitPointLevels: state.data.hitPointLevels } : {}),
 		...(character?.maxHpOverride !== undefined ? { maxHpOverride: character.maxHpOverride } : {}),
-		/* R14a2: item max-HP bonuses count on both sides of the level-up shift (loadCharacterMaxHp). */
-		...(character?.inventory !== undefined ? { inventory: character.inventory } : {}),
 	}
 
 	const draftCharacterForProficiencies: Character = {

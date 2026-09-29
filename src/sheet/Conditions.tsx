@@ -55,13 +55,14 @@ export function ConditionsCard({
 	)
 }
 
-function ConditionRow({ name, rule, action }: { name: string; rule: ConditionRule | undefined; action: ReactNode }): ReactNode {
+function ConditionRow({ name, rule, action, note }: { name: string; rule: ConditionRule | undefined; action: ReactNode; note?: string }): ReactNode {
 	const [open, setOpen] = useState(false)
 	return (
 		<li className="manage-spells__row">
 			<div className="manage-spells__line">
 				<span className="manage-spells__name-cell">
 					<span className="manage-spells__name">{name}</span>
+					{note && <span className="manage-spells__meta manage-spells__note">{note}</span>}
 				</span>
 				{action}
 				<button type="button" className="manage-spells__expand" aria-expanded={open} aria-label={`${name} rule text`} onClick={() => setOpen(!open)}>
@@ -78,16 +79,23 @@ export function ConditionsPanel({
 	rules,
 	conditions,
 	exhaustion,
+	immunities = [],
 	onEditConditions,
 	onEditExhaustion,
 }: {
 	rules: readonly ConditionRule[] | null
 	conditions: readonly string[]
 	exhaustion: number
+	/** R14b (D217): conditions an item makes the character immune to. A note only — the switch still works. */
+	immunities?: readonly { condition: string; sources: string[] }[]
 	onEditConditions?: (conditions: string[]) => void
 	onEditExhaustion?: (level: number) => void
 }): ReactNode {
 	const ruleOf = (name: string): ConditionRule | undefined => rules?.find((rule) => rule.name === name)
+	const noteOf = (name: string): string | undefined => {
+		const entry = immunities.find((immunity) => immunity.condition === name)
+		return entry ? `immune (${entry.sources.join(', ')})` : undefined
+	}
 	const names = [...CONDITION_NAMES, EXHAUSTION].sort((a, b) => a.localeCompare(b))
 	return (
 		<section aria-label="Conditions list" className="manage-spells__list">
@@ -98,6 +106,7 @@ export function ConditionsPanel({
 						key={name}
 						name={name}
 						rule={ruleOf(name)}
+						note={noteOf(name)}
 						action={
 							<span className="conditions__stepper">
 								<button
@@ -129,6 +138,7 @@ export function ConditionsPanel({
 						key={name}
 						name={name}
 						rule={ruleOf(name)}
+						note={noteOf(name)}
 						action={
 							<button
 								type="button"

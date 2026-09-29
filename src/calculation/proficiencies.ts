@@ -3,6 +3,7 @@ import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '..
 import type { FeatRef } from '../featAsi/featInstances'
 import { classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import { FEATURE_GRANTS } from './featureGrants'
+import type { ItemProficiencyGrant } from './itemProficiencies'
 import { isKhoravar, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
 import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
 import type { Character, FeatChoiceDetails } from '../storage/character'
@@ -17,7 +18,7 @@ import {
 export type ProficiencyCategory = 'armor' | 'weapons' | 'tools' | 'languages'
 
 export interface ProficiencySource {
-	kind: 'class' | 'subclass' | 'classFeatureChoice' | 'feat' | 'creation' | 'background' | 'species'
+	kind: 'class' | 'subclass' | 'classFeatureChoice' | 'feat' | 'creation' | 'background' | 'species' | 'item'
 	/** As shown: "Fighter", "Cleric — Protector", "College of Valor", "Heavily Armored (feat)". */
 	name: string
 }
@@ -130,7 +131,8 @@ function weaponRank(key: string): number {
 
 /** D176: the tools held from a source other than the subclass — what an Artificer subclass's replacement count reads. */
 export function toolsHeldElsewhere(tools: readonly ProficiencyItem[], subclass: string | null): string[] {
-	return tools.filter((item) => !item.pending && item.sources.some((source) => source.name !== subclass)).map((item) => item.label)
+	// R14b: an item can be put down, so its tool never makes a stored subclass pick redundant.
+	return tools.filter((item) => !item.pending && item.sources.some((source) => source.kind !== 'item' && source.name !== subclass)).map((item) => item.label)
 }
 
 /**
@@ -139,7 +141,14 @@ export function toolsHeldElsewhere(tools: readonly ProficiencyItem[], subclass: 
  * weaponProficiency.ts. Tavern Brawler's "improvised" is listed here although
  * weaponProficiency.ts skips it (no item to match).
  */
-export function computeProficiencies(character: Character, parsedClasses: unknown, takenFeats: readonly TakenFeat[], feats: FeatProficiencyEntry[]): Proficiencies {
+export function computeProficiencies(
+	character: Character,
+	parsedClasses: unknown,
+	takenFeats: readonly TakenFeat[],
+	feats: FeatProficiencyEntry[],
+	/** R14b (D217): an unattuned item's grants are skipped here; the numbers that would use them show the D76 line. */
+	itemGrants: readonly ItemProficiencyGrant[] = [],
+): Proficiencies {
 	const armor = new Map<string, ProficiencyItem>()
 	const weapons = new Map<string, ProficiencyItem>()
 	const languages = new Map<string, ProficiencyItem>()
@@ -285,6 +294,17 @@ export function computeProficiencies(character: Character, parsedClasses: unknow
 		const remaining = Math.max(0, grant.count - picks.length)
 		const nouns = grant.options ? grant.options.join(' or ') : nounText(TOOL_CHOICE_NOUNS[grant.categories[0]], remaining)
 		addPendingTool(remaining, nouns, grant.owner, source)
+	}
+
+	// After the D176 pass above on purpose: see toolsHeldElsewhere.
+	for (const { sourceName, proficiency, withheldReason } of itemGrants) {
+		if (withheldReason !== undefined) continue
+		const source: ProficiencySource = { kind: 'item', name: sourceName }
+		if (proficiency.kind === 'weaponCategory') addWeapon({ kind: 'category', category: proficiency.category }, source)
+		else if (proficiency.kind === 'weapon') addWeapon({ kind: 'named', name: proficiency.name }, source)
+		else if (proficiency.kind === 'armor') addArmor(proficiency.armor, source)
+		else if (proficiency.kind === 'tool') addTool(proficiency.tool, source)
+		else if (proficiency.kind === 'language') addLanguage(proficiency.language, source)
 	}
 
 	// D170: a Monk/Rogue subset says nothing once full Martial weapons are there.

@@ -82,6 +82,7 @@ import { buildItemDarkvisionGrants, buildItemSenseGrants, buildItemSpeedAdjustme
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
 import { loadGrantedClassFeatures, type GrantedFeature } from './grantedClassFeatures'
 import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from './damageResponseData'
+import { buildItemConditionGrants, buildItemProficiencyGrants, conditionAdvantageLines, conditionsGranted } from './itemProficiencyData'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -1360,7 +1361,17 @@ function DamageResponseLine({ response }: { response: DamageResponse }): ReactNo
  * states the condition instead of counting the resistance (D76, the same
  * treatment Mage Armor gets in the Armour Class section).
  */
-function DamageResponsesSection({ responses, loading, dataError }: { responses: DamageResponses; loading: boolean; dataError: string | null }): ReactNode {
+function DamageResponsesSection({
+	responses,
+	conditionImmunities,
+	loading,
+	dataError,
+}: {
+	responses: DamageResponses
+	conditionImmunities: readonly ConditionDefense[]
+	loading: boolean
+	dataError: string | null
+}): ReactNode {
 	const applying = responses.unconditional.filter((response) => response.supersededBy === null)
 	return (
 		<section className="sheet__damage-responses">
@@ -1370,8 +1381,18 @@ function DamageResponsesSection({ responses, loading, dataError }: { responses: 
 				<p>Loading…</p>
 			) : (
 				<>
+					{conditionImmunities.length > 0 && (
+						<ul className="sheet__damage-response-list">
+							{conditionImmunities.map((entry) => (
+								<li key={entry.condition}>
+									<span className="sheet__damage-response-type">{entry.condition}</span> — condition immunity{' '}
+									<span className="sheet__damage-response-sources">({entry.sources.join(', ')})</span>
+								</li>
+							))}
+						</ul>
+					)}
 					{responses.unconditional.length === 0 ? (
-						<p>No damage resistances, immunities or vulnerabilities.</p>
+						conditionImmunities.length === 0 && <p>No damage resistances, immunities or vulnerabilities.</p>
 					) : (
 						<ul className="sheet__damage-response-list">
 							{responses.unconditional.map((response) => (
@@ -1416,11 +1437,30 @@ const DEFENSE_PREFIXES: readonly { kind: DamageResponse['kind']; prefix: string 
 	{ kind: 'vulnerability', prefix: 'Vulnerable' },
 ]
 
+/** One condition an item makes the character immune to, with every item granting it (R14b). */
+type ConditionDefense = { condition: string; sources: string[] }
+
 /** R4c: the status row's one line — only what applies now; the conditional ones and the sources are in the drawer. */
-function DefensesCard({ responses, loading, dataError, onOpen }: { responses: DamageResponses; loading: boolean; dataError: string | null; onOpen: () => void }): ReactNode {
+function DefensesCard({
+	responses,
+	conditionImmunities,
+	loading,
+	dataError,
+	onOpen,
+}: {
+	responses: DamageResponses
+	conditionImmunities: readonly ConditionDefense[]
+	loading: boolean
+	dataError: string | null
+	onOpen: () => void
+}): ReactNode {
 	const applying = responses.unconditional.filter((response) => response.supersededBy === null)
 	const parts = DEFENSE_PREFIXES.flatMap(({ kind, prefix }) => {
-		const types = applying.filter((response) => response.kind === kind).map((response) => damageTypeLabel(response.damageType))
+		const types = [
+			...applying.filter((response) => response.kind === kind).map((response) => damageTypeLabel(response.damageType)),
+			/* R14b (D217): condition immunity rides on the same "Immune:" line. */
+			...(kind === 'immunity' ? conditionImmunities.map((entry) => entry.condition) : []),
+		]
 		return types.length === 0 ? [] : [{ prefix, types: types.join(', ') }]
 	})
 	return (
@@ -2161,12 +2201,17 @@ function CharacterSheetBody({
 		proficiencyBonusResult.status === 'known' && itemFlatBonuses.proficiencyBonus.length > 0
 			? { ...proficiencyBonusResult, breakdown: [...proficiencyBonusResult.breakdown, ...itemFlatBonuses.proficiencyBonus] }
 			: proficiencyBonusResult
-	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor)
+	/* R14b (D217): the list-shaped grants of a custom item — proficiencies and condition immunity / save advantage, gated on attunement like every item effect. */
+	const itemProficiencyGrants = buildItemProficiencyGrants(character.inventory ?? [], itemRefs ?? [])
+	const itemConditionGrants = buildItemConditionGrants(character.inventory ?? [], itemRefs ?? [])
+	const conditionImmunities = conditionsGranted(itemConditionGrants, 'immune')
+	const conditionAdvantages = conditionAdvantageLines(itemConditionGrants)
+	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor, itemProficiencyGrants)
 	const initiative = computeInitiative(character, feats, itemFlatBonuses.initiative)
-	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor)
-	const passivePerception = computePassivePerception(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.perception)
-	const passiveInvestigation = computePassiveInvestigation(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.investigation)
-	const passiveInsight = computePassiveInsight(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.insight)
+	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemProficiencyGrants)
+	const passivePerception = computePassivePerception(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.perception, itemProficiencyGrants)
+	const passiveInvestigation = computePassiveInvestigation(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.investigation, itemProficiencyGrants)
+	const passiveInsight = computePassiveInsight(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.insight, itemProficiencyGrants)
 	/* Step 7 slice b: what the character has in use. itemRefs is null only while the item list is still loading — the AC section says so rather than reporting an unarmoured number it would then have to correct. */
 	const equippedGear = buildEquippedGear(character.inventory ?? [], itemRefs ?? [])
 	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats, itemFlatBonuses.armourClass)
@@ -2624,6 +2669,7 @@ function CharacterSheetBody({
 				defenses={
 					<DefensesCard
 						responses={damageResponses}
+						conditionImmunities={conditionImmunities}
 						loading={itemRefs === null || damageResponseData === null}
 						dataError={damageResponseDataError}
 						onOpen={() => setDrawer({ kind: 'defenses' })}
@@ -2681,6 +2727,13 @@ function CharacterSheetBody({
 						)
 					})}
 				</ul>
+				{conditionAdvantages.length > 0 && (
+					<ul className="sheet__save-advantages">
+						{conditionAdvantages.map((line) => (
+							<li key={line}>{line}</li>
+						))}
+					</ul>
+				)}
 			</section>
 
 			{/*
@@ -3091,6 +3144,7 @@ function CharacterSheetBody({
 				<Drawer title="Defenses" onClose={() => setDrawer(null)}>
 					<DamageResponsesSection
 						responses={damageResponses}
+						conditionImmunities={conditionImmunities}
 						loading={itemRefs === null || damageResponseData === null}
 						dataError={damageResponseDataError}
 					/>
@@ -3103,6 +3157,7 @@ function CharacterSheetBody({
 						rules={conditionRules}
 						conditions={character.play?.conditions ?? []}
 						exhaustion={character.play?.exhaustion ?? 0}
+						immunities={conditionImmunities}
 						onEditConditions={onEditConditions}
 						onEditExhaustion={onEditExhaustion}
 					/>

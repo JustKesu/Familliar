@@ -4044,3 +4044,15 @@ R14b–d; bonusy k vlastnostem (typ Belt of Giant Strength) jako samostatný R14
 - Rychlosti fly/swim/climb a smysly blindsight/tremorsense/truesight (R14a2): dosah ve
   stopách, platí nejvyšší ze všech zdrojů, nesčítají se.
 - Bonus ke skillu zvedá i jeho pasivní hodnotu (pravidla); cíl „Passive …“ jen pasivní.
+
+## D217 — Custom předmět: proficiency a obrany (R14b)
+
+Daniel 29. 9.:
+- Proficiency z předmětu: kategorie zbraní i konkrétní zbraň, zbroj (Light/Medium/Heavy/Shields),
+  nástroj, jazyk, záchrana, skill. U skillu volba Proficient / Expertise; z více zdrojů platí
+  nejvyšší stav.
+- Zranitelnost vůči typu poškození jde nastavit vedle odolností a imunit.
+- Imunita vůči condition: řádek „Immune:“ na kartě Defenses a poznámka u stavu v draweru
+  Conditions. Stav jde zapnout dál, nic se nehlídá (rozhodnutí 11).
+- Výhoda na záchranu proti condition jen jako poznámka pod Saving Throws.
+- Brána jako D216 (naladění).

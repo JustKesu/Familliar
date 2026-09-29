@@ -22,6 +22,7 @@
 
 import { isAttuned } from '../calculation/attunement'
 import { resolveMagicBonus } from '../calculation/magicBonus'
+import { itemWeaponGrants } from '../calculation/itemProficiencies'
 import { computeProficiencies, extractFeatProficiencyEntries, type Proficiencies } from '../calculation/proficiencies'
 import type { HeldWeapon, ResolvedWeapon } from '../calculation/weaponAttacks'
 import { loadDataFile } from '../dataLoader/dataLoader'
@@ -34,6 +35,7 @@ import {
 	type WeaponProficiencyGrant,
 } from '../weapons/weaponProficiency'
 import { buildFeatureReachTest } from './featureReach'
+import { buildItemProficiencyGrants } from './itemProficiencyData'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -194,10 +196,12 @@ export async function loadWeaponAttackData(character: Character): Promise<Weapon
 		loadDataFile('data/subclass-features.json'),
 		loadBackgroundOriginFeat(character.background),
 	])
+	/* R14b: custom items carry their own definition, so no item list is needed to resolve them. */
+	const itemGrants = buildItemProficiencyGrants(character.inventory ?? [], [])
 	return {
-		grants: weaponProficiencyGrantsFor(character, classes, extractFeatWeaponProficiencyEntries(feats), backgroundOriginFeat),
+		grants: [...weaponProficiencyGrantsFor(character, classes, extractFeatWeaponProficiencyEntries(feats), backgroundOriginFeat), ...itemWeaponGrants(itemGrants)],
 		martialArtsDie: martialArtsDieFrom(character, classes),
 		featureNames: featureNamesFor(character, classFeatures, subclassFeatures, classes),
-		proficiencies: computeProficiencies(character, classes, featInstances(character, backgroundOriginFeat), extractFeatProficiencyEntries(feats)),
+		proficiencies: computeProficiencies(character, classes, featInstances(character, backgroundOriginFeat), extractFeatProficiencyEntries(feats), itemGrants),
 	}
 }

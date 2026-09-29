@@ -1102,6 +1102,12 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   fly/swim via Add Custom Item in the Speed drawer; truesight + blindsight rows
   "from item"; attunement gate for speeds and senses; Level up to 5 with a
   per-level Max HP item leaves current HP = new maximum).
+- `e2e/customItemProficiencies.spec.ts` — R14b a–h (Human Fighter 3 / Wizard 3 /
+  Fighter 4: language, tool, INT save and Stealth expertise from Add Custom Item
+  on the card, saves and skills; martial category on a Wizard's Longsword;
+  vulnerability, condition immunity and save-advantage notes; attunement gate
+  for all of them; form exclusion and Skill-only level select; level-up Hit
+  points step maximum with an item bonus).
 
 ## Dočasné scaffolding
 
@@ -1873,7 +1879,38 @@ Form: six `OptionalNumberField`s ("Fly speed" … "Truesight") that drop 0/negat
 Bundled fix: `loadCharacterMaxHp` (level-up / level-removal current-HP shift) now
 includes item max-HP bonuses (loads items.json only when the character carries
 something); the wizard's max-HP draft carries the inventory. E2E
-`customItemModes.spec.ts` R14a2 a–d. Next: R14b.
+`customItemModes.spec.ts` R14a2 a–d.
+
+R14b (D217) done. No schema bump (optional fields, same convention as R14a2):
+`CustomItemDefinition.proficiencies: CustomItemProficiency[]` (weaponCategory,
+weapon name+source, armor light/medium/heavy/shield, tool, language,
+savingThrow, skill [+`expertise`]; each entry once, a skill once),
+`vulnerable`, `conditionImmune`, `conditionAdvantage` (the 14 conditions +
+Exhaustion). `describeCustomItemProblem` checks all four; `customItemRef` writes
+`customProficiencies`/`vulnerable`/`conditionImmune`/`conditionAdvantage` onto
+`ItemRef`. New `calculation/itemProficiencies.ts` (`ItemProficiencyGrant`,
+`itemWeaponGrants`, `itemSaveProficiency`, `itemSkillProficiency`) and
+`sheet/itemProficiencyData.ts` (`buildItemProficiencyGrants`,
+`buildItemConditionGrants`, `conditionsGranted`, `conditionAdvantageLines`);
+grants of an unattuned attunement item carry `withheldReason`. `computeSavingThrow(s)`,
+`computeSkill(s)` and `computePassive*` take a trailing `itemProficiencies`
+(source named "proficiency (<item>)"; highest status wins; unattuned → D76
+"considered" line); `computeProficiencies` takes `itemGrants` (`ProficiencySource`
+kind `'item'`; item tools never count in `toolsHeldElsewhere`); the weapon
+proficiency grants of `loadWeaponAttackData` include the item's, so the HIT
+gains the bonus (the mastery picker does not read them). `buildItemGrants` reads
+`vulnerable` and withholds an unattuned item's vulnerability / condition immunity
+like its resistance. Sheet: Defenses card "Immune:" also lists condition
+immunities, the Defenses drawer a "condition immunity" line per condition,
+Conditions drawer rows a "immune (<item>)" note (the switch still works), a
+"Advantage on saving throws against …" note under Saving Throws. Form:
+`CustomItemProficiencyList.tsx` (kind · value · Proficient/Expertise for Skill ·
+Remove, "+ Add proficiency"; tool and language lists load on first use),
+`ConditionChoice` (two checkbox groups), Vulnerabilities via `DamageTypeChoice`.
+Bundled fix: `HitPointsPicker` loads `loadItemMaxHpBonuses` (extracted from
+`loadCharacterMaxHp`), so the level-up Hit points step's maximum includes item
+max-HP bonuses; the wizard's hit-points draft carries the inventory. E2E
+`customItemProficiencies.spec.ts` R14b a–h. Next: R14c.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

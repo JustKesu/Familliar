@@ -15,7 +15,9 @@
  */
 
 import { ABILITIES } from '../abilities/abilityScores'
+import { DAMAGE_TYPES } from '../calculation/damageResponses'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
+import { CONDITION_NAMES, EXHAUSTION } from '../conditions/conditions'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type {
 	CharacterInventoryItem,
@@ -24,6 +26,8 @@ import type {
 	CustomItemBonus,
 	CustomItemDefinition,
 	CustomItemKind,
+	CustomItemProficiency,
+	CustomProficiencyArmor,
 	CustomWeaponCategory,
 	CustomWeaponRange,
 	WeaponGrip,
@@ -191,6 +195,11 @@ export interface ItemRef {
 	blindsight?: number
 	tremorsense?: number
 	truesight?: number
+	/** R14b: set by a custom definition only, as the fields above (items.json has no `vulnerable`, and its one `conditionImmune` item is deliberately not read). */
+	vulnerable?: string[]
+	conditionImmune?: string[]
+	conditionAdvantage?: string[]
+	customProficiencies?: CustomItemProficiency[]
 	/**
 	 * Set only on a ref built from a row's OWN definition (slice e2a) — the kind
 	 * the player declared. It is what makes a custom item equippable, since the
@@ -258,6 +267,32 @@ export const CUSTOM_BONUS_PLAIN_TARGETS = [
 ] as const
 
 export const CUSTOM_BONUS_PASSIVES: readonly CustomBonusPassive[] = ['perception', 'investigation', 'insight']
+
+/** R14b: the armour tokens a custom item can grant proficiency in, in the Proficiencies card's order. */
+export const CUSTOM_PROFICIENCY_ARMOR: readonly CustomProficiencyArmor[] = ['light', 'medium', 'heavy', 'shield']
+
+/** R14b: the conditions an item can grant immunity or save advantage for — the 14 kept conditions plus Exhaustion, alphabetical. */
+export const CUSTOM_CONDITION_NAMES: readonly string[] = [...CONDITION_NAMES, EXHAUSTION].sort()
+
+/** What makes two proficiency entries the same — a skill counts once whether or not it is expertise. */
+export function customProficiencyKey(entry: CustomItemProficiency): string {
+	switch (entry.kind) {
+		case 'weaponCategory':
+			return `weaponCategory:${entry.category}`
+		case 'weapon':
+			return `weapon:${entry.name}|${entry.source}`
+		case 'armor':
+			return `armor:${entry.armor}`
+		case 'tool':
+			return `tool:${entry.tool.toLowerCase()}`
+		case 'language':
+			return `language:${entry.language.toLowerCase()}`
+		case 'savingThrow':
+			return `savingThrow:${entry.ability}`
+		case 'skill':
+			return `skill:${entry.skill}`
+	}
+}
 
 /** The targets items.json has its own field for; customItemRef writes them there so one reader serves both. */
 const ITEM_DATA_BONUS_FIELDS = {
@@ -697,6 +732,10 @@ export function customItemRef(custom: CustomItemDefinition, source: string): Ite
 		...(custom.attunementCondition !== undefined && custom.attunementCondition !== '' ? { attunementCondition: custom.attunementCondition } : {}),
 		...customDamageTypes(custom.resist, 'resist'),
 		...customDamageTypes(custom.immune, 'immune'),
+		...customDamageTypes(custom.vulnerable, 'vulnerable'),
+		...customDamageTypes(custom.conditionImmune, 'conditionImmune'),
+		...customDamageTypes(custom.conditionAdvantage, 'conditionAdvantage'),
+		...(custom.proficiencies !== undefined && custom.proficiencies.length > 0 ? { customProficiencies: custom.proficiencies } : {}),
 		...customNumber(custom.speedBonus, 'speedBonus'),
 		...customNumber(custom.darkvision, 'darkvision'),
 		...customNumber(custom.flySpeed, 'flySpeed'),
@@ -816,7 +855,67 @@ export function describeCustomItemProblem(custom: unknown): string | null {
 		if (value === undefined) continue
 		if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) return `its ${key} must be a list of damage types`
 	}
-	if (record['bonuses'] !== undefined) return describeCustomBonusesProblem(record['bonuses'])
+	if (record['bonuses'] !== undefined) {
+		const problem = describeCustomBonusesProblem(record['bonuses'])
+		if (problem !== null) return problem
+	}
+	return describeCustomDefenceProblem(record)
+}
+
+const isNonEmptyText = (value: unknown): value is string => typeof value === 'string' && value.trim() !== ''
+
+/** What is wrong with a definition's `proficiencies`, or null (R14b). */
+function describeCustomProficienciesProblem(value: unknown): string | null {
+	if (!Array.isArray(value)) return 'its proficiencies must be a list'
+	const seen = new Set<string>()
+	for (const item of value) {
+		if (typeof item !== 'object' || item === null || Array.isArray(item)) return 'each of its proficiencies must be an object'
+		const entry = item as Record<string, unknown>
+		const kind = entry['kind']
+		if (kind === 'weaponCategory') {
+			if (!CUSTOM_WEAPON_CATEGORIES.includes(entry['category'] as CustomWeaponCategory)) return `its weapon category proficiency names an unknown category "${String(entry['category'])}"`
+		} else if (kind === 'weapon') {
+			if (!isNonEmptyText(entry['name']) || !isNonEmptyText(entry['source'])) return 'its weapon proficiency needs a weapon name and source'
+		} else if (kind === 'armor') {
+			if (!CUSTOM_PROFICIENCY_ARMOR.includes(entry['armor'] as CustomProficiencyArmor)) return `its armor proficiency names an unknown armor "${String(entry['armor'])}"`
+		} else if (kind === 'tool') {
+			if (!isNonEmptyText(entry['tool'])) return 'its tool proficiency needs a tool name'
+		} else if (kind === 'language') {
+			if (!isNonEmptyText(entry['language'])) return 'its language proficiency needs a language name'
+		} else if (kind === 'savingThrow') {
+			if (!ABILITIES.includes(entry['ability'] as (typeof ABILITIES)[number])) return `its saving throw proficiency names an unknown ability "${String(entry['ability'])}"`
+		} else if (kind === 'skill') {
+			if (!ALL_SKILLS.includes(entry['skill'] as (typeof ALL_SKILLS)[number])) return `its skill proficiency names an unknown skill "${String(entry['skill'])}"`
+		} else {
+			return `its proficiency kind "${String(kind)}" is not one the app knows`
+		}
+		if (entry['expertise'] !== undefined && (kind !== 'skill' || entry['expertise'] !== true)) return 'only a skill proficiency can be expertise, and only as true'
+		const key = customProficiencyKey(entry as unknown as CustomItemProficiency)
+		if (seen.has(key)) return `its ${key} proficiency is listed more than once`
+		seen.add(key)
+	}
+	return null
+}
+
+/** R14b: the proficiency list, vulnerabilities and the two condition lists. Each list holds each value at most once. */
+function describeCustomDefenceProblem(record: Record<string, unknown>): string | null {
+	if (record['proficiencies'] !== undefined) {
+		const problem = describeCustomProficienciesProblem(record['proficiencies'])
+		if (problem !== null) return problem
+	}
+	const lists = [
+		{ key: 'vulnerable', known: DAMAGE_TYPES, what: 'damage type' },
+		{ key: 'conditionImmune', known: CUSTOM_CONDITION_NAMES, what: 'condition' },
+		{ key: 'conditionAdvantage', known: CUSTOM_CONDITION_NAMES, what: 'condition' },
+	] as const
+	for (const { key, known, what } of lists) {
+		const value = record[key]
+		if (value === undefined) continue
+		if (!Array.isArray(value)) return `its ${key} must be a list of ${what}s`
+		const unknownEntry = value.find((entry) => typeof entry !== 'string' || !known.includes(entry))
+		if (unknownEntry !== undefined) return `its ${key} names an unknown ${what} "${String(unknownEntry)}"`
+		if (new Set(value).size !== value.length) return `its ${key} lists the same ${what} more than once`
+	}
 	return null
 }
 

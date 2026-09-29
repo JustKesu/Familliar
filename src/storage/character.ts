@@ -728,7 +728,31 @@ export interface CustomItemDefinition {
 	 * would be a number the sheet shows and never counts.
 	 */
 	bonuses?: CustomItemBonus[]
+	/** R14b (D217): proficiencies the item grants, each entry at most once (a skill once, expertise or not). */
+	proficiencies?: CustomItemProficiency[]
+	/** R14b: damage types the wearer is vulnerable to, the shape of `resist`. */
+	vulnerable?: string[]
+	/** R14b: names from CONDITION_NAMES plus Exhaustion. Shown on the Defenses card and in the Conditions drawer; nothing is switched off (D214). */
+	conditionImmune?: string[]
+	/** R14b: conditions the wearer has advantage on saving throws against. Text under Saving Throws only. */
+	conditionAdvantage?: string[]
 }
+
+/** One entry of CustomItemDefinition.proficiencies; describeCustomItemProblem proves the shape (D43). */
+export type CustomItemProficiency =
+	| { kind: 'weaponCategory'; category: CustomWeaponCategory }
+	/** A base weapon from the item data. */
+	| { kind: 'weapon'; name: string; source: string }
+	| { kind: 'armor'; armor: CustomProficiencyArmor }
+	/** The tool's name as the wizard stores a tool choice ("Thieves' Tools"). */
+	| { kind: 'tool'; tool: string }
+	/** The language's name as the wizard stores a language ("Elvish"). */
+	| { kind: 'language'; language: string }
+	| { kind: 'savingThrow'; ability: Ability }
+	| { kind: 'skill'; skill: Skill; expertise?: true }
+
+/** The armour tokens the Proficiencies card knows (proficiencies.ts's ARMOR_LABELS). */
+export type CustomProficiencyArmor = 'light' | 'medium' | 'heavy' | 'shield'
 
 /** One entry of CustomItemDefinition.bonuses. `amount` is a non-zero integer; describeCustomItemProblem proves the shape (D43). */
 export type CustomItemBonus =

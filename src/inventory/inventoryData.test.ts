@@ -569,6 +569,63 @@ describe('custom items', () => {
 		})
 	})
 
+	describe('proficiencies and defences (R14b)', () => {
+		const base = { name: 'Ring', kind: 'worn' }
+		it.each([
+			['proficiencies that are not a list', { kind: 'skill', skill: 'stealth' }, 'proficiencies must be a list'],
+			['an unknown kind', [{ kind: 'vehicle' }], 'kind "vehicle"'],
+			['an unknown weapon category', [{ kind: 'weaponCategory', category: 'exotic' }], 'unknown category "exotic"'],
+			['a weapon without a source', [{ kind: 'weapon', name: 'Rapier' }], 'weapon name and source'],
+			['an unknown armor', [{ kind: 'armor', armor: 'plate' }], 'unknown armor "plate"'],
+			['a blank tool', [{ kind: 'tool', tool: ' ' }], 'tool name'],
+			['a missing language', [{ kind: 'language' }], 'language name'],
+			['an unknown ability', [{ kind: 'savingThrow', ability: 'luck' }], 'unknown ability "luck"'],
+			['an unknown skill', [{ kind: 'skill', skill: 'flying' }], 'unknown skill "flying"'],
+			['expertise on a non-skill', [{ kind: 'tool', tool: 'Dice', expertise: true }], 'only a skill proficiency can be expertise'],
+			['expertise false', [{ kind: 'skill', skill: 'stealth', expertise: false }], 'only a skill proficiency can be expertise'],
+			['a duplicate save', [{ kind: 'savingThrow', ability: 'wisdom' }, { kind: 'savingThrow', ability: 'wisdom' }], 'savingThrow:wisdom proficiency is listed more than once'],
+			['a skill twice, expertise or not', [{ kind: 'skill', skill: 'stealth' }, { kind: 'skill', skill: 'stealth', expertise: true }], 'skill:stealth proficiency is listed more than once'],
+		])('rejects %s', (_, proficiencies, message) => {
+			expect(describeCustomItemProblem({ ...base, proficiencies })).toContain(message)
+		})
+
+		it.each([
+			['an unknown damage type', { vulnerable: ['sonic'] }, 'unknown damage type "sonic"'],
+			['a vulnerability list that is text', { vulnerable: 'fire' }, 'list of damage types'],
+			['an unknown condition immunity', { conditionImmune: ['Sleepy'] }, 'unknown condition "Sleepy"'],
+			['a non-text condition advantage', { conditionAdvantage: [3] }, 'unknown condition "3"'],
+			['a repeated condition', { conditionAdvantage: ['Charmed', 'Charmed'] }, 'more than once'],
+		])('rejects %s', (_, fields, message) => {
+			expect(describeCustomItemProblem({ ...base, ...fields })).toContain(message)
+		})
+
+		it('accepts every kind once, Exhaustion as a condition, and carries them to the ref', () => {
+			const custom: CustomItemDefinition = {
+				...base,
+				kind: 'worn',
+				proficiencies: [
+					{ kind: 'weaponCategory', category: 'simple' },
+					{ kind: 'weapon', name: 'Rapier', source: 'XPHB' },
+					{ kind: 'armor', armor: 'shield' },
+					{ kind: 'tool', tool: "Thieves' Tools" },
+					{ kind: 'language', language: 'Elvish' },
+					{ kind: 'savingThrow', ability: 'wisdom' },
+					{ kind: 'skill', skill: 'stealth', expertise: true },
+				],
+				vulnerable: ['fire'],
+				conditionImmune: ['Exhaustion', 'Frightened'],
+				conditionAdvantage: ['Charmed'],
+			}
+			expect(describeCustomItemProblem(custom)).toBeNull()
+			expect(customItemRef(custom, CUSTOM_ITEM_SOURCE)).toMatchObject({
+				customProficiencies: custom.proficiencies,
+				vulnerable: ['fire'],
+				conditionImmune: ['Exhaustion', 'Frightened'],
+				conditionAdvantage: ['Charmed'],
+			})
+		})
+	})
+
 	it('seeds a definition from an existing item, computed fields included', () => {
 		expect(
 			customItemFromRef({

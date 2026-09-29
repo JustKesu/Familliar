@@ -66,6 +66,7 @@ function grantsFromEntry(entry: Record<string, unknown>, sourceName: string): Da
 	for (const [key, kind] of [
 		['resist', 'resistance'],
 		['immune', 'immunity'],
+		['vulnerable', 'vulnerability'],
 	] as const) {
 		const { types, choices } = readResponseField(entry[key])
 		if (types.length > 0) grants.push({ kind, sourceName, damageTypes: types })
@@ -106,7 +107,8 @@ export function buildItemGrants(inventory: readonly CharacterInventoryItem[], it
 			})
 			continue
 		}
-		if (ref.resist === undefined && ref.immune === undefined) continue
+		/* R14b: a custom item's vulnerability or condition immunity is withheld and noted here exactly as its resistance is. */
+		if (ref.resist === undefined && ref.immune === undefined && ref.vulnerable === undefined && ref.conditionImmune === undefined) continue
 
 		const label = magicItemLabel(ref.name, item.magicBonus ?? 0)
 		if (isConsumable(ref)) {
@@ -127,7 +129,7 @@ export function buildItemGrants(inventory: readonly CharacterInventoryItem[], it
 			})
 			continue
 		}
-		grants.push(...grantsFromEntry({ resist: ref.resist, immune: ref.immune }, label))
+		grants.push(...grantsFromEntry({ resist: ref.resist, immune: ref.immune, vulnerable: ref.vulnerable }, label))
 	}
 	return grants
 }

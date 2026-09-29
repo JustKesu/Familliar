@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeMaxHitPoints, fixedAverage } from '../calculation/maxHitPoints'
 import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
+import type { Contribution } from '../calculation/types'
+import { loadItemMaxHpBonuses } from './hpDefault'
 import { loadFeatEffectEntries, loadHitDiceClassData } from '../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../sheet/grantedClassFeatures'
 import { loadSpeciesTraitNames } from '../sheet/speciesTraitNames'
@@ -26,6 +28,8 @@ interface LoadedData {
 	classData: ClassHitDie[]
 	feats: FeatEffectEntry[]
 	bonusFeatureNames: string[]
+	/** R14b: the character's item max-HP bonuses, so the total matches the sheet's. */
+	itemBonuses: Contribution[]
 }
 
 function rollDie(faces: number): number {
@@ -57,13 +61,14 @@ export function HitPointsPicker({
 
 	useEffect(() => {
 		let cancelled = false
-		Promise.all([loadHitDiceClassData(), loadFeatEffectEntries(), loadGrantedClassFeatures(character), loadSpeciesTraitNames(character)])
-			.then(([classData, feats, grantedFeatures, speciesTraitNames]) => {
+		Promise.all([loadHitDiceClassData(), loadFeatEffectEntries(), loadGrantedClassFeatures(character), loadSpeciesTraitNames(character), loadItemMaxHpBonuses(character)])
+			.then(([classData, feats, grantedFeatures, speciesTraitNames, itemBonuses]) => {
 				if (cancelled) return
 				setLoaded({
 					classData,
 					feats,
 					bonusFeatureNames: [...grantedFeatures.map((feature) => feature.name), ...characterFeats(character, feats).map((choice) => choice.name), ...speciesTraitNames],
+					itemBonuses,
 				})
 			})
 			.catch((error: unknown) => {
@@ -81,6 +86,7 @@ export function HitPointsPicker({
 		character.background?.name,
 		character.background?.source,
 		character.featAsiChoices,
+		character.inventory,
 	])
 
 	if (loadError) return <p className="error">Could not load hit points: {loadError}</p>
@@ -104,7 +110,7 @@ export function HitPointsPicker({
 	}
 
 	const draftCharacter: Character = { ...character, hitPointLevels: value }
-	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats)
+	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats, loaded.itemBonuses)
 
 	return (
 		<div className="hit-points-picker">

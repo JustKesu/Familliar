@@ -41,6 +41,7 @@ import {
 } from '../storage/character'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { bonusesFromRows, bonusRowsFrom, CustomItemBonusList, type BonusRow } from './CustomItemBonusList'
+import { ConditionChoice, CustomItemProficiencyList, proficienciesFromRows, proficiencyRowsFrom, type ProficiencyRow } from './CustomItemProficiencyList'
 import { DrawerSection } from './Drawer'
 
 /**
@@ -336,6 +337,7 @@ function CustomItemForm({
 	const [draft, setDraft] = useState<CustomItemDefinition>(() => editing ?? blankCustomItem())
 	/* The rows replace draft.bonuses until submit — a row may be half-typed, which a CustomItemBonus cannot hold. */
 	const [bonusRows, setBonusRows] = useState<BonusRow[]>(() => bonusRowsFrom(editing?.bonuses))
+	const [proficiencyRows, setProficiencyRows] = useState<ProficiencyRow[]>(() => proficiencyRowsFrom(editing?.proficiencies))
 	const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
 	function update(change: Partial<CustomItemDefinition>): void {
@@ -359,16 +361,19 @@ function CustomItemForm({
 		const copied = customItemFromRef(ref)
 		setDraft(copied)
 		setBonusRows(bonusRowsFrom(copied.bonuses))
+		setProficiencyRows(proficiencyRowsFrom(copied.proficiencies))
 	}
 
 	function submit(): void {
 		if (draft.name.trim() === '') return
-		const { bonuses: _replaced, ...rest } = draft
+		const { bonuses: _replaced, proficiencies: _replacedProficiencies, ...rest } = draft
 		const bonuses = bonusesFromRows(bonusRows)
-		onSubmit({ ...rest, name: draft.name.trim(), ...(bonuses.length > 0 ? { bonuses } : {}) })
+		const proficiencies = proficienciesFromRows(proficiencyRows)
+		onSubmit({ ...rest, name: draft.name.trim(), ...(bonuses.length > 0 ? { bonuses } : {}), ...(proficiencies.length > 0 ? { proficiencies } : {}) })
 		if (editing === null) {
 			setDraft(blankCustomItem())
 			setBonusRows([])
+			setProficiencyRows([])
 			setCopiedKey(null)
 		}
 	}
@@ -635,6 +640,9 @@ function CustomItemForm({
 			<p className="sheet__custom-item-effects">
 				<DamageTypeChoice label="Custom item resistances" selected={draft.resist} onChange={(types) => updateOptional('resist', types)} />{' '}
 				<DamageTypeChoice label="Custom item immunities" selected={draft.immune} onChange={(types) => updateOptional('immune', types)} />{' '}
+				<DamageTypeChoice label="Custom item vulnerabilities" selected={draft.vulnerable} onChange={(types) => updateOptional('vulnerable', types)} />{' '}
+				<ConditionChoice label="Custom item condition immunities" selected={draft.conditionImmune} onChange={(names) => updateOptional('conditionImmune', names)} />{' '}
+				<ConditionChoice label="Custom item advantage on saves against" selected={draft.conditionAdvantage} onChange={(names) => updateOptional('conditionAdvantage', names)} />{' '}
 				<OptionalNumberField label="Custom item speed bonus" value={draft.speedBonus} onChange={(value) => updateOptional('speedBonus', value)} />{' '}
 				<OptionalNumberField label="Custom item darkvision" value={draft.darkvision} onChange={(value) => updateOptional('darkvision', value)} />{' '}
 				<OptionalNumberField label="Custom item fly speed" text="Fly speed" positive value={draft.flySpeed} onChange={(value) => updateOptional('flySpeed', value)} />{' '}
@@ -646,6 +654,8 @@ function CustomItemForm({
 			</p>
 
 			<CustomItemBonusList rows={bonusRows} onChange={setBonusRows} />
+
+			<CustomItemProficiencyList rows={proficiencyRows} itemRefs={itemRefs} onChange={setProficiencyRows} />
 
 			{/* Last, because it is where everything the structured fields above cannot express ends up — and it is shown, never read (D9/D55/D21). */}
 			<p>
