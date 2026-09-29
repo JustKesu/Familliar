@@ -39,7 +39,9 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/proficiencies'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILL_LABELS, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
-import { computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
+import { computeAbilitySpellcasting, computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
+import { itemSpellGrants, withItemSpellSpent } from '../inventory/customItemGrants'
+import { itemSpellAbilityOf, itemSpellActionRows, itemSpells as buildItemSpells } from './itemSpellRows'
 import { computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
@@ -117,7 +119,7 @@ import {
 	type SpellsTabFilter,
 } from './spellsTabData'
 import { featureActionRows, type FeatureActionData } from './featureActionRowData'
-import { isScaledHealing, spellActionRows, spellGroupRows, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
+import { isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
 import { formatRange, spellLevelLabel } from './spellFormatting'
@@ -510,6 +512,7 @@ function spellActionRow(spell: SpellActionData, onRoll: (report: RollReport) => 
 					{spellLevelLabel(spell.level)}
 					{spell.concentration && ' · Concentration'}
 					{spell.ritual && ' · Ritual'}
+					{spell.origin && ` · ${spell.origin}`}
 				</span>
 			</>
 		),
@@ -870,7 +873,7 @@ function SpellTabRow({
 	const [open, setOpen] = useState(false)
 	const { entry, detail, action } = row
 	// D206: a CAST row is worked out at its section's slot level (a D189 pact row too), every other row at the spell's own.
-	const effect = detail ? spellEffect(detail, characterLevel, action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level) : null
+	const effect = detail ? spellEffect(detail, characterLevel, row.item?.castLevel ?? (action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level)) : null
 	const hitDc = detail ? rowHitDc(detail, caster) : null
 	let use: ReactNode = null
 	let counter: ReactNode = null
@@ -903,7 +906,7 @@ function SpellTabRow({
 			counter = (
 				<span className="sheet__spell-counter">
 					<UseBoxes
-						name={action.counterKey.startsWith('spell:') ? `${entry.name} free cast` : action.counterKey}
+						name={action.counterKey.startsWith('spell:') || row.item ? `${entry.name} free cast` : action.counterKey}
 						spent={spent}
 						max={max}
 						recharge={resourceRecharge.get(action.counterKey)}
@@ -2321,6 +2324,11 @@ function CharacterSheetBody({
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
 	const speciesSpellcasting = computeSpeciesSpellcasting(character, raceSpells.spells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
 	const speciesSpellcastingEntries = speciesSpellcasting.status === 'known' ? speciesSpellcasting.value : []
+	/* R14c2 (D219): a custom item's spells stand beside the combined list, never merged into it — own rows, own numbers, own counters. */
+	const itemSpells = buildItemSpells(itemSpellGrants(character.inventory), spellDetails, (ability) => {
+		const own = computeAbilitySpellcasting(character, ability, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
+		return own.status === 'known' ? toCaster(own.value) : { reason: own.reason }
+	})
 	/* Sheet rebuild slice 4: the SAME combined spell list the Kouzla tab shows, filtered to the spells that carry an attack roll or a save — never re-derived from the grants. */
 	const spellActions = spellActionRows(
 		combinedSpells,
@@ -2329,6 +2337,7 @@ function CharacterSheetBody({
 		spellcastingEntries,
 		featSpellcastingEntries,
 		speciesSpellcastingEntries,
+		itemSpellActionRows(itemSpells, character.classes.reduce((sum, c) => sum + c.level, 0)),
 	)
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
 	/*
@@ -2366,16 +2375,30 @@ function CharacterSheetBody({
 		computeCharacterResources(character, resourceClassData, resourceFeatures, speciesTraits),
 		freeCastResources(combinedSpells, abilityScores),
 	)
-	const resourceMaxima = new Map(characterResources.filter((resource) => resource.max.status === 'known').map((resource) => [resource.name, resource.max.status === 'known' ? resource.max.value : 0]))
+	// D219: an item spell's counter joins these maps under its per-render key; its spent count is read from, and written to, its inventory row.
+	const itemSpellCounters = itemSpells.filter((spell) => spell.max !== null)
+	const resourceMaxima = new Map([
+		...characterResources.filter((resource) => resource.max.status === 'known').map((resource) => [resource.name, resource.max.status === 'known' ? resource.max.value : 0] as const),
+		...itemSpellCounters.map((spell) => [spell.key, spell.max ?? 0] as const),
+	])
 	// A Long Rest returns every resource (afterLongRest); a Short Rest only the ones 9b5 reads as short-rest recoverable.
-	const resourceRecharge = new Map(characterResources.map((resource) => [resource.name, resource.shortRest ? 'Short Rest' : 'Long Rest']))
-	const resourceUses = character.play?.resourceUses ?? {}
+	const resourceRecharge = new Map([
+		...characterResources.map((resource) => [resource.name, resource.shortRest ? 'Short Rest' : 'Long Rest'] as const),
+		...itemSpellCounters.map((spell) => [spell.key, spell.usage.kind === 'perShortRest' ? 'Short Rest' : 'Long Rest'] as const),
+	])
+	const storedResourceUses = character.play?.resourceUses ?? {}
+	const resourceUses = { ...storedResourceUses, ...Object.fromEntries(itemSpellCounters.map((spell) => [spell.key, spell.grant.spent])) }
 	function spendResource(name: string, delta: number): void {
-		if (!onEditResourceUses) return
 		const max = resourceMaxima.get(name)
 		const spent = resourceUses[name] ?? 0
 		const next = Math.max(0, max !== undefined ? Math.min(spent + delta, max) : spent + delta)
-		onEditResourceUses({ ...resourceUses, [name]: next })
+		const itemSpell = itemSpellCounters.find((spell) => spell.key === name)
+		if (itemSpell) {
+			onEditInventory?.(withItemSpellSpent(character.inventory ?? [], itemSpell.grant.row, itemSpell.grant.spell, next))
+			return
+		}
+		if (!onEditResourceUses) return
+		onEditResourceUses({ ...storedResourceUses, [name]: next })
 	}
 	/*
 	 * Slice 9b5: what a rest gives back is decided here, where the resource list and
@@ -2386,10 +2409,10 @@ function CharacterSheetBody({
 	 */
 	const pactShortRest = shortRestRecovery(['Pact Magic'], resourceFeatures)
 	function takeShortRest(): void {
-		onRest?.(afterShortRest(character.currentHp, character.play, characterResources, pactShortRest))
+		onRest?.(afterShortRest(character.currentHp, character.play, characterResources, pactShortRest, character.inventory))
 	}
 	function takeLongRest(): void {
-		onRest?.(afterLongRest(character.currentHp, character.play, maxHitPoints.status === 'known' ? maxHitPoints.value : null))
+		onRest?.(afterLongRest(character.currentHp, character.play, maxHitPoints.status === 'known' ? maxHitPoints.value : null, character.inventory))
 	}
 	/*
 	 * Slice 9b3: the same spend/undo shape one pool over, kept as two functions
@@ -2448,7 +2471,9 @@ function CharacterSheetBody({
 		Object.values(spellGrantsSettledFor).every((settledFor) => settledFor === character) &&
 		[subclassSpellsError, featSpellsError, optionalFeatureSpellsError, raceSpellsError].every((error) => error === null)
 	const concentratingOn =
-		storedConcentration !== null && spellListComplete && !combinedSpells.some((entry) => entry.name === storedConcentration) ? null : storedConcentration
+		storedConcentration !== null && spellListComplete && ![...combinedSpells, ...itemSpells.map((spell) => spell.entry)].some((entry) => entry.name === storedConcentration)
+			? null
+			: storedConcentration
 	function toggleConcentration(spellName: string): void {
 		onEditConcentration?.(concentratingOn === spellName ? null : spellName)
 	}
@@ -2468,6 +2493,7 @@ function CharacterSheetBody({
 		pact: slotMaxima.pact > 0 ? { count: slotMaxima.pact, slotLevel: pactSlotLevel } : null,
 		unavailableAboveLevel: spellLimitReason === null ? (highestCastableLevel ?? undefined) : undefined,
 		resourceMaxima,
+		itemSpells,
 	})
 	/* D189: CAST spends one slot of its section's pool (ordinary first when a section has both, QUESTIONS.md) and starts concentration. */
 	function castSpell(row: SpellsTabActionRow, section: SpellsTabActionSection): void {
@@ -2944,7 +2970,7 @@ function CharacterSheetBody({
 			)}
 
 			{/* The section appears for a failed grant load even with nothing to list — an empty spell list and a spell list that could not be built must not look alike (D43). */}
-			{(isCaster || combinedSpells.length > 0 || spellLoadErrors.length > 0 || raceSpells.notes.length > 0) && (
+			{(isCaster || combinedSpells.length > 0 || itemSpells.length > 0 || spellLoadErrors.length > 0 || raceSpells.notes.length > 0) && (
 				<SpellsSection
 					sections={spellSections}
 					casterOf={(row) => spellsTabRowCaster(row, spellcastingEntries, featSpellcastingEntries, speciesSpellcastingEntries)}
@@ -3075,7 +3101,11 @@ function CharacterSheetBody({
 				attacksPerAction={attacksPerAction}
 				spellActions={spellActions}
 				featureActions={featureActions}
-				spellGroups={spellGroupRows(combinedSpells, spellDetails)}
+				spellGroups={spellGroupRows(
+					// D219: an item's bonus-action/reaction spell is listed once, under the character's own entry when it has one.
+					[...new Map([...itemSpells.map((spell) => spell.entry), ...combinedSpells].map((entry) => [`${entry.name.toLowerCase()}|${entry.source.toUpperCase()}`, entry])).values()],
+					spellDetails,
+				)}
 				combatActions={visibleCombatActions(combatActions, holdsTwoLightWeapons(heldWeapons))}
 				resourceMaxima={resourceMaxima}
 				resourceRecharge={resourceRecharge}
@@ -3329,6 +3359,7 @@ function CharacterSheetBody({
 						itemRefsError={itemRefsError}
 						itemEntryTemplates={itemEntryTemplates}
 						attunementLimit={attunementLimit}
+						defaultSpellAbility={spellcastingEntries[0] ? itemSpellAbilityOf(spellcastingEntries[0].ability) : null}
 						onEditInventory={onEditInventory}
 						onEditCurrency={onEditCurrency}
 					/>

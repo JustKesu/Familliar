@@ -4067,3 +4067,16 @@ Daniel 29. 9.:
 - Kouzlo z předmětu je samostatný krok R14c2: at will / N× za Long Rest / Short Rest, úroveň
   seslání, DC a útok pevné z předmětu nebo vlastní. Nabití hůlek (charges) se nedělají.
 - Brána jako D216 (naladění).
+
+## D219 — Custom předmět dává kouzla (R14c2)
+
+D219 (R14c2): Custom předmět může dávat kouzla. Použití at will / N× za Long Rest / N× za Short
+Rest (Short Rest doplní i Long Rest), úroveň seslání od úrovně kouzla do 9 (kostky jako upcast
+R8, řádek v sekci úrovně seslání se štítkem původní úrovně). DC a útok buď pevné z předmětu (dvě
+nepovinná pole, chybějící potřebné číslo = důvod místo čísla), nebo vlastní: hráč zvolí Int/Wis/Cha
+přímo u kouzla v předmětu (výběr jen tam, předvyplněný vlastností první kouzlící třídy). Kouzlo
+z předmětu nejde seslat vlastními sloty. Cantrip vždy at will. Brána D216. Počitadlo zmizí
+s předmětem.
+
+Počitadlo se ukládá přímo na řádek inventáře (`spellUses`, klíč `jméno|zdroj` kouzla), stejně jako
+naladění — odejde s předmětem, přežije odebrání či přesun jiných řádků a nový předmět začíná plný.

@@ -92,6 +92,8 @@ export function provenanceLabel(entry: SheetSpellEntry): string {
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
 	for (const optionName of [...entry.optionalFeatureOrigins, ...entry.itemInvocationOrigins]) parts.push(`from invocation (${optionName})`)
 	for (const speciesName of entry.speciesOrigins) parts.push(`from species (${speciesName})`)
+	// R14c2: a custom item's own spell; an item's invocation is already named above.
+	for (const grant of entry.grants) if (grant.origin === 'item' && !entry.itemInvocationOrigins.includes(grant.originName)) parts.push(`from item (${grant.originName})`)
 	let label = parts.join('; ')
 	if (entry.usages.length > 0) label += ` — ${entry.usages.map(formatSpellUsage).join('; ')}`
 	for (const reason of entry.unresolvedAbilityReasons) label += ` — ${reason}`

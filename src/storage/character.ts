@@ -598,6 +598,12 @@ export interface CharacterInventoryItem {
 	 * (src/inventory/inventoryData.ts) is what checks it, at resolution time.
 	 */
 	custom?: CustomItemDefinition
+	/**
+	 * R14c2 (D219): spent uses of the custom item's spells, keyed `name|source`
+	 * (itemSpellKey). On the row for the reason `attuned` is: the count dies with
+	 * the item and follows it when other rows move. Absent or 0 is none spent.
+	 */
+	spellUses?: Record<string, number>
 }
 
 /** A player-set magic bonus. +1 to +3 is the whole range the rules give a magic weapon or suit of armour. */
@@ -740,7 +746,22 @@ export interface CustomItemDefinition {
 	feats?: CustomItemFeat[]
 	/** R14c1 (D218): Eldritch Invocations (featureType "EI") the item grants, each at most once; no prerequisite or class check. */
 	invocations?: { name: string; source: string }[]
+	/** R14c2 (D219): spells the item grants, each name|source at most once; cast only from the item, never with slots. */
+	spells?: CustomItemSpell[]
 }
+
+/** One entry of CustomItemDefinition.spells; describeCustomItemProblem proves the shape (D43). A cantrip is always at will and has no castLevel. */
+export interface CustomItemSpell {
+	name: string
+	source: string
+	/** perShortRest recharges on a Short Rest and a Long Rest. */
+	uses: { kind: 'atWill' } | { kind: 'perLongRest'; count: number } | { kind: 'perShortRest'; count: number }
+	/** Leveled spells only, from the spell's own level to 9; absent is its own level. */
+	castLevel?: number
+	caster: { kind: 'own'; ability: CustomItemSpellAbility } | { kind: 'fixed'; saveDc?: number; attackBonus?: number }
+}
+
+export type CustomItemSpellAbility = 'int' | 'wis' | 'cha'
 
 /** One entry of CustomItemDefinition.feats; describeCustomItemProblem proves the shape (D43). */
 export type CustomItemFeat = { name: string; source: string } & FeatChoiceDetails

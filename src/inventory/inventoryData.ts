@@ -941,6 +941,41 @@ function describeCustomGrantsProblem(record: Record<string, unknown>): string | 
 			}
 		}
 	}
+	return describeCustomSpellsProblem(record['spells'])
+}
+
+const isWholeNumber = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value)
+
+/** R14c2 (D219): `spells`. Whether a castLevel is at or above the spell's own level needs spells.json, so the sheet decides that. */
+function describeCustomSpellsProblem(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return 'its spells must be a list'
+	const seen = new Set<string>()
+	for (const item of value) {
+		if (typeof item !== 'object' || item === null || Array.isArray(item)) return 'each of its spells must be an object'
+		const entry = item as Record<string, unknown>
+		if (!isNonEmptyText(entry['name']) || !isNonEmptyText(entry['source'])) return 'each of its spells needs a name and source'
+		const name = entry['name']
+		const id = `${name}|${entry['source']}`.toLowerCase()
+		if (seen.has(id)) return `its spell ${name} is listed more than once`
+		seen.add(id)
+		const uses = entry['uses'] as Record<string, unknown> | null | undefined
+		if (typeof uses !== 'object' || uses === null) return `its spell ${name} needs its uses`
+		if (uses['kind'] === 'perLongRest' || uses['kind'] === 'perShortRest') {
+			if (!isWholeNumber(uses['count']) || uses['count'] < 1) return `its spell ${name} must have a whole number of uses of at least 1`
+		} else if (uses['kind'] !== 'atWill') return `its spell ${name} has uses "${String(uses['kind'])}" the app does not know`
+		const castLevel = entry['castLevel']
+		if (castLevel !== undefined && (!isWholeNumber(castLevel) || castLevel < 1 || castLevel > 9)) return `its spell ${name} must be cast at a level from 1 to 9`
+		const caster = entry['caster'] as Record<string, unknown> | null | undefined
+		if (typeof caster !== 'object' || caster === null) return `its spell ${name} needs its DC and attack`
+		if (caster['kind'] === 'own') {
+			if (!['int', 'wis', 'cha'].includes(caster['ability'] as string)) return `its spell ${name} names an unknown spellcasting ability "${String(caster['ability'])}"`
+		} else if (caster['kind'] === 'fixed') {
+			for (const key of ['saveDc', 'attackBonus'] as const) {
+				if (caster[key] !== undefined && !isWholeNumber(caster[key])) return `its spell ${name} must have a whole number ${key === 'saveDc' ? 'save DC' : 'attack bonus'}`
+			}
+		} else return `its spell ${name} has a DC and attack kind "${String(caster['kind'])}" the app does not know`
+	}
 	return null
 }
 

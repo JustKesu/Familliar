@@ -212,6 +212,34 @@ export function computeFeatSpellcasting(
 	return known(value, breakdown)
 }
 
+/** R14c2 (D219): an item spell cast with the ability the player chose on the item — any character, caster or not. */
+export function computeAbilitySpellcasting(
+	character: Character,
+	ability: Ability,
+	feats: FeatEffectEntry[] = [],
+	spellAttackItemBonuses: Contribution[] = [],
+	spellSaveDcItemBonuses: Contribution[] = [],
+): Calculated<Omit<FeatSpellcastingEntry, 'featName'>> {
+	const bonusResult = computeProficiencyBonus(character.classes)
+	if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
+	const abilityResult = computeAbilityScore(ability, character, feats)
+	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
+	const spellAttackBreakdown: Contribution[] = [
+		{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
+		{ source: 'proficiency bonus', amount: bonusResult.value },
+		...spellAttackItemBonuses,
+	]
+	const spellSaveDCBreakdown: Contribution[] = [
+		{ source: 'base', amount: 8 },
+		{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
+		{ source: 'proficiency bonus', amount: bonusResult.value },
+		...spellSaveDcItemBonuses,
+	]
+	const sum = (breakdown: Contribution[]) => breakdown.reduce((total, contribution) => total + contribution.amount, 0)
+	const value = { ability, spellAttackBonus: sum(spellAttackBreakdown), spellAttackBreakdown, spellSaveDC: sum(spellSaveDCBreakdown), spellSaveDCBreakdown }
+	return known(value, [{ source: ability, amount: value.spellAttackBonus }])
+}
+
 export interface SpeciesSpellcastingEntry {
 	speciesName: string
 	ability: Ability

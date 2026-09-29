@@ -184,6 +184,9 @@ export type SpellUsage =
 	| { kind: 'ritual' }
 	| { kind: 'resource'; cost: number; resourceName: string }
 	| { kind: 'noSlot' }
+	/** R14c2 (D219): a custom item's spell; the count is spent on the inventory row, not in play.resourceUses. */
+	| { kind: 'perLongRest'; count: number }
+	| { kind: 'perShortRest'; count: number }
 
 export interface AlwaysPreparedSpell {
 	name: string

@@ -1938,6 +1938,33 @@ No invocation has a damage response (D70 table), so nothing there. Form:
 Conditions drawer sorts by code unit, not `localeCompare`. E2E
 `customItemFeats.spec.ts` R14c1 a–g. Next: R14c2.
 
+R14c2 (D219) done. No schema bump: `CustomItemDefinition.spells: CustomItemSpell[]`
+(name, source, `uses` atWill / perLongRest / perShortRest + count, optional
+`castLevel`, `caster` own {ability int/wis/cha} | fixed {saveDc?, attackBonus?});
+`describeCustomItemProblem` checks the shape. Spent counts on the ROW:
+`CharacterInventoryItem.spellUses` (`name|source` → spent; validate.ts checks and
+carries it). `itemSpellGrants`, `itemSpellKey`, `mapItemSpellUses`,
+`withItemSpellSpent` (customItemGrants.ts). `SpellUsage` gains `perLongRest` /
+`perShortRest` (labels "N/LR", "N/SR"). New `sheet/itemSpellRows.ts`: `itemSpells`
+(never merged into `combineSpellEntries`; cantrip → at will; castLevel clamped to
+≥ spell level; fixed caster → D43 reason when a needed number is empty; own →
+`computeAbilitySpellcasting`, PB + mod + item spell attack/DC bonuses),
+`itemSpellActionRows` (via the extracted `spellActionData`, dice at castLevel,
+subtitle names the item). `spellsTabActionSections({ itemSpells })`: one row per
+item spell in its castLevel section, badge = own level, USE row (counter key
+`item:<row>:<name|source>`, per render only) or "At will" label, never CAST;
+`SpellsTabRow.item` carries caster + castLevel. Sheet overlays the item counters
+onto `resourceMaxima` / `resourceRecharge` / `resourceUses`; `spendResource`
+writes them to the row via `onEditInventory`. Rests: `afterShortRest` /
+`afterLongRest` take the inventory, `RestFields.inventory` (one write). Editing
+an item drops counts of removed spells and clamps to the new count. Bonus/Reaction
+groups list item spells deduped against the character's own entries. Form:
+`CustomItemSpellList.tsx` (spell by level · uses · N · cast at level · DC and
+attack · ability or Save DC / Attack bonus · Remove); `ManageInventoryPanel`
+prop `defaultSpellAbility`. E2E `customItemSpells.spec.ts` R14c2 a–g (+c2).
+Not done: an item's Find Familiar / Mage Armor does not enable the Extras /
+Mage Armor features (they read `combineSpellEntries` only).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

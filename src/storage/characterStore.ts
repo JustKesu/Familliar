@@ -226,6 +226,8 @@ export interface RestFields {
 	resetFamiliarHp?: boolean
 	/** D214: a Long Rest lowers Exhaustion by 1; a Short Rest leaves it out, so the stored level rides through. */
 	exhaustion?: number
+	/** D219: the inventory with its item spell counters refilled; absent leaves the inventory as stored. */
+	inventory?: CharacterInventoryItem[]
 }
 
 /**
@@ -884,6 +886,7 @@ export class CharacterStore {
 			...(familiar ? { familiar: rest.resetFamiliarHp ? { name: familiar.name, source: familiar.source } : familiar } : {}),
 			...(rest.currentHp !== undefined ? { currentHp: rest.currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
+			...(rest.inventory ? { inventory: rest.inventory } : {}),
 		}
 		this.writeAll(updated)
 	}

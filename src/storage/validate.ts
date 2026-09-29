@@ -817,6 +817,10 @@ export function describeInventoryError(value: unknown): string | null {
 		if (custom !== undefined && !isRecord(custom)) {
 			return `inventory[${i}].custom must be an object when present`
 		}
+		const spellUses = entry['spellUses']
+		if (spellUses !== undefined && (!isRecord(spellUses) || Object.values(spellUses).some((spent) => typeof spent !== 'number' || !Number.isInteger(spent) || spent < 0))) {
+			return `inventory[${i}].spellUses must map spells to whole numbers of at least 0 when present`
+		}
 	}
 	const worn = value.filter((entry) => (entry as Record<string, unknown>)['equipped'] === 'worn')
 	if (worn.length > 1) {
@@ -1027,6 +1031,7 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 			...(magicBonus !== undefined ? { magicBonus: magicBonus as MagicItemBonus } : {}),
 			// Carried through as-is: its fields are the resolver's to check, not this layer's (see describeInventoryError).
 			...(custom !== undefined ? { custom: custom as CustomItemDefinition } : {}),
+			...(record['spellUses'] !== undefined ? { spellUses: record['spellUses'] as Record<string, number> } : {}),
 		}
 	})
 }

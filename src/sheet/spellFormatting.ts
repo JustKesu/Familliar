@@ -144,6 +144,10 @@ export function formatSpellUsage(usage: SpellUsage): string {
 			return `${usage.cost} ${usage.resourceName}`
 		case 'noSlot':
 			return 'no spell slot'
+		case 'perLongRest':
+			return `${usage.count}/long rest (no slot)`
+		case 'perShortRest':
+			return `${usage.count}/short or long rest (no slot)`
 	}
 }
 
@@ -156,6 +160,9 @@ export function spellUsageKey(usage: SpellUsage): string {
 			return `freePerLongRestByProficiencyBonus:${usage.casts}`
 		case 'resource':
 			return `resource:${usage.cost}:${usage.resourceName}`
+		case 'perLongRest':
+		case 'perShortRest':
+			return `${usage.kind}:${usage.count}`
 		default:
 			return usage.kind
 	}

@@ -54,6 +54,8 @@ export interface SpellActionData {
 	damage: string[]
 	/** D43: set when the spell needs a to-hit/DC but no caster entry could be attributed to it — the row still appears, saying why the number is missing. */
 	unresolved: string | null
+	/** R14c2: the item a custom item's spell row comes from. */
+	origin?: string
 }
 
 /** Matches SpellList.ts's own key, so a row and its Kouzla-tab entry identify a spell the same way. */
@@ -114,7 +116,9 @@ export function unresolvedCaster(entry: SheetSpellEntry): { reason: string } {
 	return { reason: `"${entry.name}" is granted by ${grantedBy}, and its ${entry.unresolvedAbilityReasons.join('; ')} — no spell attack bonus or save DC yet.` }
 }
 
-export function toCaster(source: SpellcastingEntry | FeatSpellcastingEntry | SpeciesSpellcastingEntry): { attack: SpellActionAttack; save: SpellActionSave } {
+export function toCaster(
+	source: Pick<SpellcastingEntry, 'spellAttackBonus' | 'spellAttackBreakdown' | 'spellSaveDC' | 'spellSaveDCBreakdown'>,
+): { attack: SpellActionAttack; save: SpellActionSave } {
 	return {
 		attack: { bonus: source.spellAttackBonus, breakdown: source.spellAttackBreakdown },
 		save: { dc: source.spellSaveDC, breakdown: source.spellSaveDCBreakdown, abilities: [] },
@@ -230,32 +234,46 @@ export function spellActionRows(
 	classEntries: SpellcastingEntry[],
 	featEntries: FeatSpellcastingEntry[],
 	speciesEntries: SpeciesSpellcastingEntry[] = [],
+	/** R14c2: rows built elsewhere (a custom item's spells) sorted in with these. */
+	extraRows: SpellActionData[] = [],
 ): SpellActionData[] {
-	const rows: SpellActionData[] = []
+	const rows: SpellActionData[] = [...extraRows]
 
 	for (const entry of entries) {
 		const detail = findSpellDetail(details, entry.name, entry.source)
 		if (!detail) continue
-		const hasAttack = (detail.spellAttack?.length ?? 0) > 0
-		const saveAbilities = detail.savingThrow ?? []
-		if (!hasAttack && saveAbilities.length === 0) continue
-
-		const caster = casterFor(entry, classEntries, featEntries, speciesEntries)
-		const resolved = 'reason' in caster ? null : caster
-
-		rows.push({
-			key: keyOf(entry.name, entry.source),
-			name: entry.name,
-			level: detail.level,
-			ritual: detail.ritual,
-			concentration: detail.concentration,
-			range: formatRange(detail.range),
-			attack: hasAttack && resolved ? resolved.attack : null,
-			save: saveAbilities.length > 0 && resolved ? { ...resolved.save, abilities: saveAbilities } : null,
-			damage: detail.level === 0 ? cantripDamageAtLevel(detail.scalingLevelDice, characterLevel) : leveledSpellDice(detail, detail.level),
-			unresolved: 'reason' in caster ? caster.reason : null,
-		})
+		const row = spellActionData(keyOf(entry.name, entry.source), entry.name, detail, () => casterFor(entry, classEntries, featEntries, speciesEntries), characterLevel)
+		if (row) rows.push(row)
 	}
 
 	return rows.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
+}
+
+/** One actions-table row, or null for a spell with neither an attack roll nor a save; leveled dice at `castLevel` (D206). */
+export function spellActionData(
+	key: string,
+	name: string,
+	detail: SpellDetail,
+	casterOf: () => SpellCaster,
+	characterLevel: number,
+	castLevel = detail.level,
+): SpellActionData | null {
+	const hasAttack = (detail.spellAttack?.length ?? 0) > 0
+	const saveAbilities = detail.savingThrow ?? []
+	if (!hasAttack && saveAbilities.length === 0) return null
+
+	const caster = casterOf()
+	const resolved = 'reason' in caster ? null : caster
+	return {
+		key,
+		name,
+		level: detail.level,
+		ritual: detail.ritual,
+		concentration: detail.concentration,
+		range: formatRange(detail.range),
+		attack: hasAttack && resolved ? resolved.attack : null,
+		save: saveAbilities.length > 0 && resolved ? { ...resolved.save, abilities: saveAbilities } : null,
+		damage: detail.level === 0 ? cantripDamageAtLevel(detail.scalingLevelDice, characterLevel) : leveledSpellDice(detail, castLevel),
+		unresolved: 'reason' in caster ? caster.reason : null,
+	}
 }

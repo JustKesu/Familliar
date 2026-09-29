@@ -23,6 +23,7 @@ import {
 	toCaster,
 	unresolvedCaster,
 } from './spellActionRowData'
+import type { ItemSpell } from './itemSpellRows'
 import { formatCastingTime, formatDuration, formatSpellUsage } from './spellFormatting'
 
 export const UNRESOLVED_SECTION = 'unresolved'
@@ -37,6 +38,8 @@ export interface SpellsTabRow {
 	castWithSlot: boolean
 	/** D106: a chosen spell above what the character can cast now. */
 	unavailable: boolean
+	/** R14c2 (D219): set on a custom item's spell row — its own numbers and cast level, never the character's. */
+	item?: { itemName: string; castLevel: number; caster: SpellCaster }
 }
 
 export interface SpellsTabSection {
@@ -135,6 +138,7 @@ export function spellsTabActionSections({
 	pact,
 	unavailableAboveLevel,
 	resourceMaxima,
+	itemSpells = [],
 }: {
 	entries: SheetSpellEntry[]
 	details: SpellDetail[]
@@ -144,6 +148,8 @@ export function spellsTabActionSections({
 	unavailableAboveLevel?: number
 	/** The sheet's known resource maxima, free-cast counters included. */
 	resourceMaxima: ReadonlyMap<string, number>
+	/** D219: one row each, in its cast level's section with the spell's own level as the badge (as R8 upcasts); never a CAST row. */
+	itemSpells?: readonly ItemSpell[]
 }): SpellsTabActionSection[] {
 	const pactLevel = pactOnlyLevel(ordinarySlots, pact)
 	const hasSlots = ordinarySlots.some((count) => count > 0) || (pact?.count ?? 0) > 0
@@ -203,6 +209,26 @@ export function spellsTabActionSections({
 
 		if (!cast && counterKeys.size === 0) labelRow(detail.level, entry.usages.map(shortUsageLabel).join(' · '))
 	}
+	for (const spell of itemSpells) {
+		const { entry, detail, usage, castLevel } = spell
+		const level = detail?.level ?? 0
+		placed.push({
+			key: detail ? castLevel : UNRESOLVED_SECTION,
+			row: {
+				entry,
+				detail,
+				badgeLevel: castLevel > level ? level : null,
+				castWithSlot: false,
+				unavailable: false,
+				item: { itemName: spell.grant.itemName, castLevel, caster: spell.caster },
+				key: `${keyOf(entry)}#${spell.key}`,
+				action:
+					spell.max === null
+						? { kind: 'label', label: shortUsageLabel(usage) }
+						: { kind: 'use', grant: entry.grants[0]!, counterKey: spell.key, cost: 1, max: spell.max, label: shortUsageLabel(usage) },
+			},
+		})
+	}
 	return buildSections(ordinarySlots, pact, placed)
 }
 
@@ -216,6 +242,7 @@ export function spellsTabRowCaster(
 	featEntries: FeatSpellcastingEntry[],
 	speciesEntries: SpeciesSpellcastingEntry[],
 ): SpellCaster {
+	if (row.item) return row.item.caster
 	const grant = row.action.kind === 'use' ? row.action.grant : null
 	if (grant?.origin === 'feat') {
 		const own = featEntries.find((entry) => entry.featName === grant.originName)
@@ -288,6 +315,10 @@ export function shortUsageLabel(usage: SpellUsage): string {
 			return `${usage.cost} ${usage.resourceName}`
 		case 'noSlot':
 			return 'No slot'
+		case 'perLongRest':
+			return `${usage.count}/LR`
+		case 'perShortRest':
+			return `${usage.count}/SR`
 	}
 }
 
@@ -331,7 +362,9 @@ export function spellSubtitle(row: SpellsTabRow & { action?: SpellRowAction }, c
 	const parts =
 		row.action?.kind === 'use'
 			? [row.action.grant.originName]
-			: [
+			: row.item
+				? [row.item.itemName]
+				: [
 					...(entry.chosen ? [castingClassName ?? 'Chosen'] : []),
 					...entry.classOrigins,
 						...entry.subclassOrigins,

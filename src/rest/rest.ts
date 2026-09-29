@@ -22,8 +22,18 @@
 
 import type { RestRecovery } from '../calculation/resources'
 import { applyHealing } from '../hitPoints/damageHealing'
-import type { CharacterPlayState } from '../storage/character'
+import { mapItemSpellUses } from '../inventory/customItemGrants'
+import type { CharacterInventoryItem, CharacterPlayState, CustomItemSpell } from '../storage/character'
 import type { RestFields } from '../storage/characterStore'
+
+/** D219: item spell counters live on the inventory rows; undefined when no row has one, so the rest leaves the inventory alone. */
+function inventoryAfterRest(
+	inventory: readonly CharacterInventoryItem[] | undefined,
+	next: (spent: number, spell: CustomItemSpell | undefined) => number,
+): { inventory?: CharacterInventoryItem[] } {
+	if (!inventory?.some((item) => item.spellUses)) return {}
+	return { inventory: inventory.map((item) => mapItemSpellUses(item, next)) }
+}
 
 /** The part of a resource a rest cares about — CharacterResource satisfies it, so the sheet passes its own list through. */
 export interface RestingResource {
@@ -42,6 +52,7 @@ export function afterShortRest(
 	play: CharacterPlayState | undefined,
 	resources: readonly RestingResource[],
 	pactRecovery: RestRecovery | null,
+	inventory?: readonly CharacterInventoryItem[],
 ): RestFields {
 	const recoveries = new Map(resources.map((resource) => [resource.name, resource.shortRest]))
 	const resourceUses: Record<string, number> = {}
@@ -60,6 +71,7 @@ export function afterShortRest(
 		resourceUses,
 		spentSpellSlots,
 		spentHitDice: play?.spentHitDice,
+		...inventoryAfterRest(inventory, (spent, spell) => (spell?.uses.kind === 'perShortRest' ? 0 : spent)),
 	}
 }
 
@@ -72,7 +84,12 @@ export function afterShortRest(
  * `maxHitPoints` is null when the maximum cannot be computed: the hit points are
  * then left exactly as they are rather than healed to a guessed number (D43).
  */
-export function afterLongRest(currentHp: number | undefined, play: CharacterPlayState | undefined, maxHitPoints: number | null): RestFields {
+export function afterLongRest(
+	currentHp: number | undefined,
+	play: CharacterPlayState | undefined,
+	maxHitPoints: number | null,
+	inventory?: readonly CharacterInventoryItem[],
+): RestFields {
 	const healed =
 		currentHp === undefined || maxHitPoints === null
 			? currentHp
@@ -85,5 +102,6 @@ export function afterLongRest(currentHp: number | undefined, play: CharacterPlay
 		spentHitDice: {},
 		resetFamiliarHp: true,
 		exhaustion: Math.max(0, (play?.exhaustion ?? 0) - 1),
+		...inventoryAfterRest(inventory, () => 0),
 	}
 }

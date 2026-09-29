@@ -34,6 +34,7 @@ import {
 	type CustomArmourCategory,
 	type CustomItemDefinition,
 	type CustomItemKind,
+	type CustomItemSpellAbility,
 	type CustomWeaponCategory,
 	type CustomWeaponRange,
 	type MagicItemBonus,
@@ -43,6 +44,8 @@ import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { bonusesFromRows, bonusRowsFrom, CustomItemBonusList, type BonusRow } from './CustomItemBonusList'
 import { ConditionChoice, CustomItemProficiencyList, proficienciesFromRows, proficiencyRowsFrom, type ProficiencyRow } from './CustomItemProficiencyList'
 import { CustomItemGrantList, grantRowsFrom, grantsFromRows } from './CustomItemGrantList'
+import { CustomItemSpellList, spellRowsFrom, spellRowsIncomplete, spellsFromRows, type SpellRow } from './CustomItemSpellList'
+import { mapItemSpellUses } from '../inventory/customItemGrants'
 import { loadFeats } from '../featAsi/featAsiData'
 import { loadAllInvocations } from '../optionalFeatures/optionalFeatureData'
 import { DrawerSection } from './Drawer'
@@ -328,12 +331,14 @@ function DamageTypeChoice({ label, selected, onChange }: { label: string; select
 function CustomItemForm({
 	itemRefs,
 	editing,
+	defaultSpellAbility,
 	onSubmit,
 	onCancel,
 }: {
 	itemRefs: ItemRef[]
 	/** The definition being changed, or null when a new item is being made. */
 	editing: CustomItemDefinition | null
+	defaultSpellAbility: CustomItemSpellAbility | null
 	onSubmit: (custom: CustomItemDefinition) => void
 	onCancel: () => void
 }): ReactNode {
@@ -343,6 +348,8 @@ function CustomItemForm({
 	const [proficiencyRows, setProficiencyRows] = useState<ProficiencyRow[]>(() => proficiencyRowsFrom(editing?.proficiencies))
 	const [featRows, setFeatRows] = useState<string[]>(() => grantRowsFrom(editing?.feats))
 	const [invocationRows, setInvocationRows] = useState<string[]>(() => grantRowsFrom(editing?.invocations))
+	const [spellRows, setSpellRows] = useState<SpellRow[]>(() => spellRowsFrom(editing?.spells))
+	const incomplete = draft.name.trim() === '' || spellRowsIncomplete(spellRows)
 	const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
 	function update(change: Partial<CustomItemDefinition>): void {
@@ -369,15 +376,17 @@ function CustomItemForm({
 		setProficiencyRows(proficiencyRowsFrom(copied.proficiencies))
 		setFeatRows([])
 		setInvocationRows([])
+		setSpellRows([])
 	}
 
 	function submit(): void {
-		if (draft.name.trim() === '') return
-		const { bonuses: _replaced, proficiencies: _replacedProficiencies, feats: _replacedFeats, invocations: _replacedInvocations, ...rest } = draft
+		if (incomplete) return
+		const { bonuses: _replaced, proficiencies: _replacedProficiencies, feats: _replacedFeats, invocations: _replacedInvocations, spells: _replacedSpells, ...rest } = draft
 		const bonuses = bonusesFromRows(bonusRows)
 		const proficiencies = proficienciesFromRows(proficiencyRows)
 		const feats = grantsFromRows(featRows, editing?.feats)
 		const invocations = grantsFromRows(invocationRows, undefined)
+		const spells = spellsFromRows(spellRows)
 		onSubmit({
 			...rest,
 			name: draft.name.trim(),
@@ -385,6 +394,7 @@ function CustomItemForm({
 			...(proficiencies.length > 0 ? { proficiencies } : {}),
 			...(feats.length > 0 ? { feats } : {}),
 			...(invocations.length > 0 ? { invocations } : {}),
+			...(spells.length > 0 ? { spells } : {}),
 		})
 		if (editing === null) {
 			setDraft(blankCustomItem())
@@ -392,6 +402,7 @@ function CustomItemForm({
 			setProficiencyRows([])
 			setFeatRows([])
 			setInvocationRows([])
+			setSpellRows([])
 			setCopiedKey(null)
 		}
 	}
@@ -680,6 +691,8 @@ function CustomItemForm({
 
 			<CustomItemGrantList title="Invocations" noun="invocation" rows={invocationRows} load={loadAllInvocations} onChange={setInvocationRows} />
 
+			<CustomItemSpellList rows={spellRows} defaultAbility={defaultSpellAbility} onChange={setSpellRows} />
+
 			{/* Last, because it is where everything the structured fields above cannot express ends up — and it is shown, never read (D9/D55/D21). */}
 			<p>
 				<label>
@@ -694,7 +707,7 @@ function CustomItemForm({
 			</p>
 
 			<p>
-				<button type="button" onClick={submit} disabled={draft.name.trim() === ''}>
+				<button type="button" onClick={submit} disabled={incomplete}>
 					{editing === null ? 'Add custom item' : 'Save changes'}
 				</button>{' '}
 				{editing !== null && (
@@ -807,6 +820,7 @@ export function ManageInventoryPanel({
 	itemRefsError,
 	itemEntryTemplates,
 	attunementLimit,
+	defaultSpellAbility = null,
 	onEditInventory: inventoryCallback,
 	onEditCurrency: currencyCallback,
 }: {
@@ -816,6 +830,8 @@ export function ManageInventoryPanel({
 	itemRefsError: string | null
 	itemEntryTemplates: ItemEntryTemplate[]
 	attunementLimit: Calculated<number>
+	/** D219: the first casting class's ability, preselected in a spell row set to "Use my own". */
+	defaultSpellAbility?: CustomItemSpellAbility | null
 	/** Either callback may be absent; its sections are then left out, as the tab's controls were before R10a. */
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
@@ -955,7 +971,8 @@ export function ManageInventoryPanel({
 		onEditInventory(
 			inventory.map((row, i) => {
 				if (i !== index) return row
-				const next: CharacterInventoryItem = { ...row, name: custom.name, custom }
+				// D219: a spent count goes with a spell the edit removed, and never stays above a lowered count.
+				const next = mapItemSpellUses({ ...row, name: custom.name, custom }, (spent, spell) => (spell && spell.uses.kind !== 'atWill' ? Math.min(spent, spell.uses.count) : 0))
 				if (next.equipped !== undefined && equipSlotOf(customItemRef(custom, row.source)) !== next.equipped) return putDown(next)
 				return next
 			}),
@@ -988,6 +1005,7 @@ export function ManageInventoryPanel({
 							key={editingIndex === null ? 'new' : `edit-${editingIndex}`}
 							itemRefs={itemRefs}
 							editing={editingIndex === null ? null : (inventory[editingIndex]?.custom ?? null)}
+							defaultSpellAbility={defaultSpellAbility}
 							onSubmit={(custom) => (editingIndex === null ? addCustom(custom) : saveCustom(editingIndex, custom))}
 							onCancel={() => setEditingIndex(null)}
 						/>
