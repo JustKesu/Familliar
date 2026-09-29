@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { computeDarkvision, computeSpeed, type SpeciesTraitsData } from '../calculation/speciesTraits'
 import type { ItemRef } from '../inventory/inventoryData'
 import { CUSTOM_ITEM_SOURCE, type Character, type CharacterInventoryItem, type CustomItemDefinition } from '../storage/character'
-import { buildItemDarkvisionGrants, buildItemSpeedAdjustments } from './itemEffectData'
+import { buildItemDarkvisionGrants, buildItemSenseGrants, buildItemSpeedAdjustments, buildItemSpeedModeGrants } from './itemEffectData'
 
 /** Elf: 30 ft. walk, 60 ft. darkvision — the same fixture speciesTraits' own tests use. */
 const SPECIES: SpeciesTraitsData[] = [{ name: 'Elf', source: 'XPHB', speed: 30, size: ['M'], darkvision: 60 }]
@@ -50,6 +50,37 @@ describe('buildItemSpeedAdjustments', () => {
 
 	it('finds nothing on an ordinary item', () => {
 		expect(buildItemSpeedAdjustments([{ name: 'Torch', source: 'XPHB', quantity: 1 }], ITEMS)).toEqual([])
+	})
+})
+
+describe('buildItemSpeedModeGrants / buildItemSenseGrants (R14a2)', () => {
+	const cloak: CustomItemDefinition = { name: 'Storm Cloak', kind: 'worn', flySpeed: 60, swimSpeed: 30, climbSpeed: 20, blindsight: 10, tremorsense: 15, truesight: 30 }
+	const reason = 'requires attunement and you are not attuned to it'
+
+	it('turns each set field into one grant, quantity ignored', () => {
+		expect(buildItemSpeedModeGrants([row(cloak, { quantity: 2 })], ITEMS)).toEqual([
+			{ mode: 'fly', range: 60, name: 'Storm Cloak' },
+			{ mode: 'swim', range: 30, name: 'Storm Cloak' },
+			{ mode: 'climb', range: 20, name: 'Storm Cloak' },
+		])
+		expect(buildItemSenseGrants([row(cloak)], ITEMS).map((grant) => [grant.senseType, grant.range, grant.origin])).toEqual([
+			['blindsight', 10, 'item'],
+			['tremorsense', 15, 'item'],
+			['truesight', 30, 'item'],
+		])
+	})
+
+	it('marks every grant withheld while an attunement item is not attuned, and lifts it on Attune', () => {
+		const gated = { ...cloak, requiresAttunement: true as const }
+		expect(buildItemSpeedModeGrants([row(gated)], ITEMS).every((grant) => grant.withheldReason === reason)).toBe(true)
+		expect(buildItemSenseGrants([row(gated)], ITEMS).every((grant) => grant.withheldReason === reason)).toBe(true)
+		expect(buildItemSpeedModeGrants([row(gated, { attuned: true })], ITEMS).some((grant) => grant.withheldReason !== undefined)).toBe(false)
+		expect(buildItemSenseGrants([row(gated, { attuned: true })], ITEMS).some((grant) => grant.withheldReason !== undefined)).toBe(false)
+	})
+
+	it('finds nothing on an ordinary item', () => {
+		expect(buildItemSpeedModeGrants([{ name: 'Torch', source: 'XPHB', quantity: 1 }], ITEMS)).toEqual([])
+		expect(buildItemSenseGrants([{ name: 'Torch', source: 'XPHB', quantity: 1 }], ITEMS)).toEqual([])
 	})
 })
 

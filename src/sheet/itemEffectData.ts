@@ -1,6 +1,7 @@
 /*
- * The two item effects that are neither a flat bonus nor a damage response
- * (build order step 7, slice e2b): a walking speed adjustment and a darkvision
+ * The item effects that are neither a flat bonus nor a damage response
+ * (build order step 7, slice e2b; R14a2 added the movement modes and the other
+ * senses): a walking speed adjustment and a darkvision
  * grant. Both land in the module that already owns the value — computeSpeed's
  * `adjustments` parameter and computeDarkvision's granted-senses parameter —
  * so nothing here computes anything; it only resolves rows.
@@ -21,7 +22,8 @@
 
 import { isAttuned } from '../calculation/attunement'
 import { magicItemLabel } from '../calculation/magicBonus'
-import type { GrantedDarkvision } from '../calculation/speciesTraits'
+import type { GrantedDarkvision, GrantedSpeedMode } from '../calculation/speciesTraits'
+import type { GrantedSense } from './grantedSenses'
 import type { Contribution } from '../calculation/types'
 import { buildInventoryResolver, type ItemRef } from '../inventory/inventoryData'
 import type { CharacterInventoryItem } from '../storage/character'
@@ -62,6 +64,34 @@ export function buildItemSpeedAdjustments(inventory: readonly CharacterInventory
 		)
 	}
 	return contributions
+}
+
+/** R14a2: the fixed fly / swim / climb speeds carried items grant, for computeSpeed's fourth parameter. */
+export function buildItemSpeedModeGrants(inventory: readonly CharacterInventoryItem[], itemRefs: readonly ItemRef[]): GrantedSpeedMode[] {
+	const grants: GrantedSpeedMode[] = []
+	for (const { ref, label, withheld } of effectRows(inventory, itemRefs)) {
+		for (const [mode, range] of [['fly', ref.flySpeed], ['swim', ref.swimSpeed], ['climb', ref.climbSpeed]] as const) {
+			if (range === undefined || range <= 0) continue
+			grants.push({ mode, range, name: label, ...(withheld ? { withheldReason: NOT_ATTUNED } : {}) })
+		}
+	}
+	return grants
+}
+
+/**
+ * R14a2: blindsight, tremorsense and truesight from carried items, in the shape
+ * the Granted senses list already merges (largest range wins, every origin named).
+ * Darkvision is not here: it reconciles with the species value instead.
+ */
+export function buildItemSenseGrants(inventory: readonly CharacterInventoryItem[], itemRefs: readonly ItemRef[]): GrantedSense[] {
+	const grants: GrantedSense[] = []
+	for (const { ref, label, withheld } of effectRows(inventory, itemRefs)) {
+		for (const [senseType, range] of [['blindsight', ref.blindsight], ['tremorsense', ref.tremorsense], ['truesight', ref.truesight]] as const) {
+			if (range === undefined || range <= 0) continue
+			grants.push({ senseType, range, origin: 'item', name: label, ...(withheld ? { withheldReason: NOT_ATTUNED } : {}) })
+		}
+	}
+	return grants
 }
 
 /**

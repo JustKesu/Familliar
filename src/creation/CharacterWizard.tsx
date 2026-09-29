@@ -981,6 +981,8 @@ export function CharacterWizard({
 		...draftCharacterForHitPoints,
 		...(state.data.hitPointLevels.length > 0 ? { hitPointLevels: state.data.hitPointLevels } : {}),
 		...(character?.maxHpOverride !== undefined ? { maxHpOverride: character.maxHpOverride } : {}),
+		/* R14a2: item max-HP bonuses count on both sides of the level-up shift (loadCharacterMaxHp). */
+		...(character?.inventory !== undefined ? { inventory: character.inventory } : {}),
 	}
 
 	const draftCharacterForProficiencies: Character = {

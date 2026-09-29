@@ -245,10 +245,11 @@ function blankCustomItem(): CustomItemDefinition {
  * gives nothing. The draft is local to the form, so this commits per keystroke —
  * unlike CommitNumberField, nothing round-trips through storage while typing.
  */
-function OptionalNumberField({ label, value, onChange }: { label: string; value: number | undefined; onChange: (value: number | undefined) => void }): ReactNode {
+/** `text` is the visible label when it differs from the aria-label; `positive` drops zero and negatives, which a fixed speed or sense range cannot be (describeCustomItemProblem would otherwise leave the item unreadable). */
+function OptionalNumberField({ label, text, positive, value, onChange }: { label: string; text?: string; positive?: true; value: number | undefined; onChange: (value: number | undefined) => void }): ReactNode {
 	return (
 		<label>
-			{label}{' '}
+			{text ?? label}{' '}
 			<input
 				type="number"
 				className="input--narrow"
@@ -257,7 +258,7 @@ function OptionalNumberField({ label, value, onChange }: { label: string; value:
 				onChange={(event) => {
 					const text = event.target.value.trim()
 					const parsed = Number(text)
-					onChange(text === '' || !Number.isFinite(parsed) ? undefined : Math.trunc(parsed))
+					onChange(text === '' || !Number.isFinite(parsed) || (positive && Math.trunc(parsed) <= 0) ? undefined : Math.trunc(parsed))
 				}}
 			/>
 		</label>
@@ -635,7 +636,13 @@ function CustomItemForm({
 				<DamageTypeChoice label="Custom item resistances" selected={draft.resist} onChange={(types) => updateOptional('resist', types)} />{' '}
 				<DamageTypeChoice label="Custom item immunities" selected={draft.immune} onChange={(types) => updateOptional('immune', types)} />{' '}
 				<OptionalNumberField label="Custom item speed bonus" value={draft.speedBonus} onChange={(value) => updateOptional('speedBonus', value)} />{' '}
-				<OptionalNumberField label="Custom item darkvision" value={draft.darkvision} onChange={(value) => updateOptional('darkvision', value)} />
+				<OptionalNumberField label="Custom item darkvision" value={draft.darkvision} onChange={(value) => updateOptional('darkvision', value)} />{' '}
+				<OptionalNumberField label="Custom item fly speed" text="Fly speed" positive value={draft.flySpeed} onChange={(value) => updateOptional('flySpeed', value)} />{' '}
+				<OptionalNumberField label="Custom item swim speed" text="Swim speed" positive value={draft.swimSpeed} onChange={(value) => updateOptional('swimSpeed', value)} />{' '}
+				<OptionalNumberField label="Custom item climb speed" text="Climb speed" positive value={draft.climbSpeed} onChange={(value) => updateOptional('climbSpeed', value)} />{' '}
+				<OptionalNumberField label="Custom item blindsight" text="Blindsight" positive value={draft.blindsight} onChange={(value) => updateOptional('blindsight', value)} />{' '}
+				<OptionalNumberField label="Custom item tremorsense" text="Tremorsense" positive value={draft.tremorsense} onChange={(value) => updateOptional('tremorsense', value)} />{' '}
+				<OptionalNumberField label="Custom item truesight" text="Truesight" positive value={draft.truesight} onChange={(value) => updateOptional('truesight', value)} />
 			</p>
 
 			<CustomItemBonusList rows={bonusRows} onChange={setBonusRows} />

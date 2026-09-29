@@ -126,7 +126,8 @@ vi.mock('../toolProficiencies/toolProficiencyData', () => ({
 	}),
 }))
 
-vi.mock('../classSkills/classSkillData', () => ({
+vi.mock('../classSkills/classSkillData', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../classSkills/classSkillData')>()),
 	loadClassSkillChoice: vi.fn(async () => ({ count: 2, options: ['athletics', 'intimidation', 'perception'] })),
 }))
 

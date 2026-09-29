@@ -78,7 +78,7 @@ import { ammoEntriesFor, autoSpendEntry, canSpendAmmo, spendAmmo, type AmmoEntry
 import { loadItemEntryTemplates, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
-import { buildItemDarkvisionGrants, buildItemSpeedAdjustments } from './itemEffectData'
+import { buildItemDarkvisionGrants, buildItemSenseGrants, buildItemSpeedAdjustments, buildItemSpeedModeGrants } from './itemEffectData'
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
 import { loadGrantedClassFeatures, type GrantedFeature } from './grantedClassFeatures'
 import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from './damageResponseData'
@@ -2174,7 +2174,7 @@ function CharacterSheetBody({
 	const speed = computeSpeed(character, speciesTraitsData, [
 		...armourSpeedPenalty(character, equippedGear.armour, feats),
 		...buildItemSpeedAdjustments(character.inventory ?? [], itemRefs ?? []),
-	])
+	], buildItemSpeedModeGrants(character.inventory ?? [], itemRefs ?? []))
 	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
 	const heldWeapons = buildHeldWeapons(character.inventory ?? [], itemRefs ?? [])
 	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null, {
@@ -2476,7 +2476,10 @@ function CharacterSheetBody({
 		(onChooseFamiliar !== undefined && (knowsFindFamiliar || character.familiar !== undefined)) ||
 		(onEditWildShapeForms !== undefined && (wildShapeAccess !== null || storedWildShapeForms.some((entry) => entry.forms.length > 0)))
 	// Darkvision grants are folded into the traits row above, not shown again here.
-	const combinedSenses = combineSenseEntries(grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'))
+	const combinedSenses = combineSenseEntries([
+		...grantedSenses.filter((sense) => sense.senseType.toLowerCase() !== 'darkvision'),
+		...buildItemSenseGrants(character.inventory ?? [], itemRefs ?? []),
+	])
 
 	/* D43: the three grants feeding the spell list each name themselves, so the player can tell which part of the list is short rather than just that something is. */
 	const spellLoadErrors: { what: string; message: string }[] = [

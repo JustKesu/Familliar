@@ -184,6 +184,13 @@ export interface ItemRef {
 	speedBonus?: number
 	/** Darkvision in feet, reaching computeDarkvision through the same senses path a feat's grant uses (slice e2b). Set by a custom definition only, as speedBonus is. */
 	darkvision?: number
+	/** R14a2: fixed movement modes and senses in feet, set by a custom definition only (itemEffectData.ts reads them). */
+	flySpeed?: number
+	swimSpeed?: number
+	climbSpeed?: number
+	blindsight?: number
+	tremorsense?: number
+	truesight?: number
 	/**
 	 * Set only on a ref built from a row's OWN definition (slice e2a) — the kind
 	 * the player declared. It is what makes a custom item equippable, since the
@@ -692,6 +699,12 @@ export function customItemRef(custom: CustomItemDefinition, source: string): Ite
 		...customDamageTypes(custom.immune, 'immune'),
 		...customNumber(custom.speedBonus, 'speedBonus'),
 		...customNumber(custom.darkvision, 'darkvision'),
+		...customNumber(custom.flySpeed, 'flySpeed'),
+		...customNumber(custom.swimSpeed, 'swimSpeed'),
+		...customNumber(custom.climbSpeed, 'climbSpeed'),
+		...customNumber(custom.blindsight, 'blindsight'),
+		...customNumber(custom.tremorsense, 'tremorsense'),
+		...customNumber(custom.truesight, 'truesight'),
 		...customBonusFields(custom.bonuses ?? []),
 		...(entries.length > 0 ? { entries } : {}),
 	}
@@ -768,6 +781,10 @@ export function describeCustomItemProblem(custom: unknown): string | null {
 		const value = record[key]
 		if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value))) return `its ${key} must be a number`
 	}
+	for (const key of POSITIVE_INTEGER_CUSTOM_FIELDS) {
+		const value = record[key]
+		if (value !== undefined && (typeof value !== 'number' || !Number.isInteger(value) || value <= 0)) return `its ${key} must be a whole number of feet above zero`
+	}
 	const armourClass = record['armourClass']
 	if (armourClass !== undefined && (typeof armourClass !== 'number' || !Number.isInteger(armourClass) || armourClass < 0)) {
 		return 'its armour class must be a whole number, not below zero'
@@ -805,6 +822,9 @@ export function describeCustomItemProblem(custom: unknown): string | null {
 
 /** Every field of the definition that must be a number when present. Listed once so the check cannot fall behind the type. */
 const NUMERIC_CUSTOM_FIELDS = ['speedBonus', 'darkvision'] as const
+
+/** R14a2: a fixed mode speed or sense range of zero or below means nothing, so it is refused rather than silently ignored. */
+const POSITIVE_INTEGER_CUSTOM_FIELDS = ['flySpeed', 'swimSpeed', 'climbSpeed', 'blindsight', 'tremorsense', 'truesight'] as const
 
 /** Why a row could not be resolved. The two kinds are separated because only the first is independent of whether items.json has loaded yet. */
 export interface InventoryRowProblem {

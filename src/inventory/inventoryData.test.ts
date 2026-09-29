@@ -556,6 +556,19 @@ describe('custom items', () => {
 		})
 	})
 
+	describe('movement modes and senses (R14a2)', () => {
+		const fields = ['flySpeed', 'swimSpeed', 'climbSpeed', 'blindsight', 'tremorsense', 'truesight'] as const
+		it.each(fields.flatMap((field) => [[field, 0], [field, -10], [field, 12.5], [field, '30']] as const))('rejects %s = %j', (field, value) => {
+			expect(describeCustomItemProblem({ name: 'Ring', kind: 'worn', [field]: value })).toContain(field)
+		})
+
+		it('accepts a positive whole number of feet in all six and carries them to the ref', () => {
+			const custom = { name: 'Ring', kind: 'worn', flySpeed: 60, swimSpeed: 30, climbSpeed: 20, blindsight: 10, tremorsense: 15, truesight: 30 } as const
+			expect(describeCustomItemProblem(custom)).toBeNull()
+			expect(customItemRef(custom, CUSTOM_ITEM_SOURCE)).toMatchObject({ flySpeed: 60, swimSpeed: 30, climbSpeed: 20, blindsight: 10, tremorsense: 15, truesight: 30 })
+		})
+	})
+
 	it('seeds a definition from an existing item, computed fields included', () => {
 		expect(
 			customItemFromRef({

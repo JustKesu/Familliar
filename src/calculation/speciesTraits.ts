@@ -81,7 +81,41 @@ export interface SpeedValue {
  * object-shaped species speed means "equal to your walking speed", so a
  * reduced walk reduces them too.
  */
-export function computeSpeed(character: Character, speciesData: SpeciesTraitsData[], adjustments: Contribution[] = []): Calculated<SpeedValue> {
+export type SpeedMode = 'fly' | 'swim' | 'climb'
+
+/** A fixed fly/swim/climb speed an item grants (R14a2), passed in per D38. `withheldReason` marks an attunement item that is not attuned (D76). */
+export interface GrantedSpeedMode {
+	mode: SpeedMode
+	range: number
+	name: string
+	withheldReason?: string
+}
+
+/**
+ * R14a2 (D216): each mode is the HIGHEST of the species-derived value and every
+ * applied item grant, never a sum, and a walking adjustment does not touch an
+ * item's fixed figure. The grant lines carry amount 0 so the breakdown still
+ * sums to the walking speed.
+ */
+function applyModeGrants(value: SpeedValue, grants: GrantedSpeedMode[]): Contribution[] {
+	const lines: Contribution[] = []
+	for (const mode of ['fly', 'swim', 'climb'] as const) {
+		const forMode = grants.filter((grant) => grant.mode === mode)
+		if (forMode.length === 0) continue
+		const best = Math.max(value[mode] ?? 0, ...forMode.filter((grant) => grant.withheldReason === undefined).map((grant) => grant.range))
+		for (const grant of forMode) {
+			if (grant.withheldReason !== undefined) {
+				lines.push({ source: grant.name, amount: 0, note: `considered (${mode} ${grant.range} ft.) — not applied: ${grant.withheldReason}` })
+			} else {
+				lines.push({ source: grant.name, amount: 0, note: grant.range === best ? `${mode} ${grant.range} ft.` : `considered (${mode} ${grant.range} ft.) — ${mode} ${best} ft. applies` })
+			}
+		}
+		if (best > 0) value[mode] = best
+	}
+	return lines
+}
+
+export function computeSpeed(character: Character, speciesData: SpeciesTraitsData[], adjustments: Contribution[] = [], modeGrants: GrantedSpeedMode[] = []): Calculated<SpeedValue> {
 	const lookup = findCharacterSpeciesEntry(character, speciesData)
 	if (!lookup) return unknown('Species has not been chosen for this character yet.')
 	if (lookup.status === 'unknown') return unknown(lookup.reason)
@@ -104,7 +138,7 @@ export function computeSpeed(character: Character, speciesData: SpeciesTraitsDat
 		if (raw.climb) value.climb = walk
 	}
 
-	return known(value, breakdown)
+	return known(value, [...breakdown, ...applyModeGrants(value, modeGrants)])
 }
 
 /** The sizes a species offers — more than one means the player chooses (D175). Empty when the species is unknown. */

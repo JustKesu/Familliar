@@ -1098,6 +1098,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Perception/Longsword/max HP + breakdowns; attunement gate; single save +
   all saves; Edit removes a row; target exclusion + per-level checkbox; old
   `bonusArmourClass` migrates to an Armor Class row).
+- `e2e/customItemModes.spec.ts` — R14a2 a–d (Human Fighter 3 / Fighter 4:
+  fly/swim via Add Custom Item in the Speed drawer; truesight + blindsight rows
+  "from item"; attunement gate for speeds and senses; Level up to 5 with a
+  per-level Max HP item leaves current HP = new maximum).
 
 ## Dočasné scaffolding
 
@@ -1853,7 +1857,23 @@ unresolved attuned item is now noted on 10 targets (was 6). `SKILL_LABELS`
 moved to `skills.ts`. Form: `CustomItemBonusList.tsx` (rows: grouped target
 select, amount, per-level checkbox for Max HP, Remove; "+ Add bonus"). Current
 HP is not touched when an item changes max HP (same as a manual feat, R13a).
-E2E `customItemBonuses.spec.ts` R14a1 a–f. Next: R14a2.
+E2E `customItemBonuses.spec.ts` R14a1 a–f.
+
+R14a2 (D216) done. No schema bump: `CustomItemDefinition` gained optional
+`flySpeed`/`swimSpeed`/`climbSpeed` and `blindsight`/`tremorsense`/`truesight`
+(positive whole feet; `describeCustomItemProblem` rejects the rest), the same
+convention `speedBonus`/`darkvision` used in e2b. `computeSpeed` takes a fourth
+parameter `GrantedSpeedMode[]` (`buildItemSpeedModeGrants`): each mode is the
+highest of the species-derived value and the applied item grants, never summed,
+unaffected by walking adjustments; zero-amount breakdown lines name the item
+(unattuned: D76 note). Senses: `GrantedSense.origin` gained `'item'` +
+`withheldReason`; `buildItemSenseGrants` feeds `combineSenseEntries`
+(`itemOrigins`, `withheldItemOrigins`; an all-withheld type shows no range).
+Form: six `OptionalNumberField`s ("Fly speed" … "Truesight") that drop 0/negative.
+Bundled fix: `loadCharacterMaxHp` (level-up / level-removal current-HP shift) now
+includes item max-HP bonuses (loads items.json only when the character carries
+something); the wizard's max-HP draft carries the inventory. E2E
+`customItemModes.spec.ts` R14a2 a–d. Next: R14b.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

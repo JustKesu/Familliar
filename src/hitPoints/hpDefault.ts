@@ -11,19 +11,29 @@
 import { characterFeats } from '../calculation/featEffects'
 import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
+import { loadItemRefs } from '../inventory/inventoryData'
 import type { Character } from '../storage/character'
+import { buildItemFlatBonusGrants } from '../sheet/itemFlatBonusData'
+import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { loadFeatEffectEntries, loadHitDiceClassData } from '../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../sheet/grantedClassFeatures'
 import { loadSpeciesTraitNames } from '../sheet/speciesTraitNames'
 
 /** `character`'s maximum hit points, loading the same four files HitPointsPicker/CharacterSheet load for computeMaxHitPoints' bonus table. */
 export async function loadCharacterMaxHp(character: Character): Promise<Calculated<number>> {
-	const [classData, feats, grantedFeatures, speciesTraitNames] = await Promise.all([
+	const [classData, feats, grantedFeatures, speciesTraitNames, itemRefs] = await Promise.all([
 		loadHitDiceClassData(),
 		loadFeatEffectEntries(),
 		loadGrantedClassFeatures(character),
 		loadSpeciesTraitNames(character),
+		/* Nothing carried means nothing to read: creation never waits on items.json for a maximum it does not need. */
+		character.inventory?.length ? loadItemRefs() : Promise.resolve([]),
 	])
 	const bonusFeatureNames = [...grantedFeatures.map((feature) => feature.name), ...characterFeats(character, feats).map((choice) => choice.name), ...speciesTraitNames]
-	return computeMaxHitPoints(character, classData, bonusFeatureNames, feats)
+	/* R14a2: the sheet's own item grants and level count, so the level-up / removal shift equals the change in the maximum the sheet shows. */
+	const itemBonuses = flatBonusesByTarget(
+		buildItemFlatBonusGrants(character.inventory ?? [], itemRefs),
+		character.classes.reduce((sum, c) => sum + c.level, 0),
+	).maxHitPoints
+	return computeMaxHitPoints(character, classData, bonusFeatureNames, feats, itemBonuses)
 }

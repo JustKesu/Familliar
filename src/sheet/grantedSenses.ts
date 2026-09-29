@@ -59,9 +59,11 @@ export interface GrantedSense {
 	/** Range in feet, as the data states it. */
 	range: number
 	/** Provenance kind — a chosen optional feature ("from invocation (Name)"), a chosen feat ("from feat (Name)") or a class/subclass feature ("from class feature (Name)", D195). */
-	origin: 'optionalFeature' | 'feat' | 'classFeature'
+	origin: 'optionalFeature' | 'feat' | 'classFeature' | 'item'
 	/** The option's, feat's or feature's own name — the "(...)" part of the provenance label. */
 	name: string
+	/** R14a2: an attunement item the character is not attuned to. Listed with the reason, never sets the range (D76). */
+	withheldReason?: string
 	/** D195: darkvision that adds to the character's other darkvision (see speciesTraits.ts's GrantedDarkvision). */
 	additive?: true
 }

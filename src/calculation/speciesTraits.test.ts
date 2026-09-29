@@ -59,6 +59,50 @@ describe('computeSpeed', () => {
 	it('returns unknown when no species has been chosen', () => {
 		expect(computeSpeed({ id: '1', name: 'Test', classes: [] }, speciesData).status).toBe('unknown')
 	})
+
+	describe('item mode grants (R14a2)', () => {
+		it('an item fly speed above the species value wins and the walk total does not move', () => {
+			const result = computeSpeed(withSpecies('Elf', 'XPHB'), speciesData, [], [{ mode: 'fly', range: 60, name: 'Winged Boots' }])
+			expect(result).toEqual({
+				status: 'known',
+				value: { walk: 30, fly: 60 },
+				breakdown: [
+					{ source: 'Elf', amount: 30 },
+					{ source: 'Winged Boots', amount: 0, note: 'fly 60 ft.' },
+				],
+			})
+		})
+
+		it('a species fly speed above the item value stays, and the item line says the higher one applies', () => {
+			const result = computeSpeed(withSpecies('Aarakocra', 'MPMM'), speciesData, [], [{ mode: 'fly', range: 20, name: 'Feather' }])
+			expect(result.status === 'known' && result.value).toEqual({ walk: 30, fly: 30 })
+			expect(result.status === 'known' && result.breakdown[1]).toEqual({ source: 'Feather', amount: 0, note: 'considered (fly 20 ft.) — fly 30 ft. applies' })
+		})
+
+		it('several items give the highest, never the sum, and a walking adjustment leaves an item figure alone', () => {
+			const result = computeSpeed(
+				withSpecies('Elf', 'XPHB'),
+				speciesData,
+				[{ source: 'Heavy armour', amount: -10 }],
+				[
+					{ mode: 'swim', range: 30, name: 'Fins' },
+					{ mode: 'swim', range: 40, name: 'Trident' },
+					{ mode: 'climb', range: 25, name: 'Claws' },
+				],
+			)
+			expect(result.status === 'known' && result.value).toEqual({ walk: 20, swim: 40, climb: 25 })
+		})
+
+		it('an unattuned attunement item is only a note', () => {
+			const result = computeSpeed(withSpecies('Elf', 'XPHB'), speciesData, [], [{ mode: 'fly', range: 60, name: 'Cloak', withheldReason: 'requires attunement and you are not attuned to it' }])
+			expect(result.status === 'known' && result.value).toEqual({ walk: 30 })
+			expect(result.status === 'known' && result.breakdown[1]).toEqual({
+				source: 'Cloak',
+				amount: 0,
+				note: 'considered (fly 60 ft.) — not applied: requires attunement and you are not attuned to it',
+			})
+		})
+	})
 })
 
 describe('computeSize', () => {

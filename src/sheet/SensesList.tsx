@@ -27,6 +27,10 @@ export interface SheetSenseEntry {
 	featOrigins: string[]
 	optionalFeatureOrigins: string[]
 	classFeatureOrigins: string[]
+	/** R14a2: applied items. */
+	itemOrigins: string[]
+	/** R14a2: attunement items not attuned to — named with the reason, and never part of `range` (D76). */
+	withheldItemOrigins: { name: string; reason: string }[]
 }
 
 function senseProvenanceLabel(entry: SheetSenseEntry): string {
@@ -34,6 +38,8 @@ function senseProvenanceLabel(entry: SheetSenseEntry): string {
 	for (const optionName of entry.optionalFeatureOrigins) parts.push(`from invocation (${optionName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
 	for (const featureName of entry.classFeatureOrigins) parts.push(`from class feature (${featureName})`)
+	for (const itemName of entry.itemOrigins) parts.push(`from item (${itemName})`)
+	for (const { name, reason } of entry.withheldItemOrigins) parts.push(`from item (${name}) — not applied: ${reason}`)
 	return parts.join('; ')
 }
 
@@ -48,13 +54,18 @@ export function combineSenseEntries(grantedSenses: GrantedSense[]): SheetSenseEn
 	for (const grant of grantedSenses) {
 		const key = grant.senseType.toLowerCase()
 		let entry = map.get(key)
+		const applied = grant.withheldReason === undefined ? grant.range : 0
 		if (entry) {
-			entry.range = Math.max(entry.range, grant.range)
+			entry.range = Math.max(entry.range, applied)
 		} else {
-			entry = { senseType: grant.senseType, range: grant.range, featOrigins: [], optionalFeatureOrigins: [], classFeatureOrigins: [] }
+			entry = { senseType: grant.senseType, range: applied, featOrigins: [], optionalFeatureOrigins: [], classFeatureOrigins: [], itemOrigins: [], withheldItemOrigins: [] }
 			map.set(key, entry)
 		}
-		const origins = grant.origin === 'feat' ? entry.featOrigins : grant.origin === 'classFeature' ? entry.classFeatureOrigins : entry.optionalFeatureOrigins
+		if (grant.withheldReason !== undefined) {
+			if (!entry.withheldItemOrigins.some((origin) => origin.name === grant.name)) entry.withheldItemOrigins.push({ name: grant.name, reason: grant.withheldReason })
+			continue
+		}
+		const origins = grant.origin === 'item' ? entry.itemOrigins : grant.origin === 'feat' ? entry.featOrigins : grant.origin === 'classFeature' ? entry.classFeatureOrigins : entry.optionalFeatureOrigins
 		if (!origins.includes(grant.name)) origins.push(grant.name)
 	}
 
@@ -79,7 +90,7 @@ export function SensesList({ entries, error }: { entries: SheetSenseEntry[]; err
 			<ul>
 				{entries.map((entry) => (
 					<li key={entry.senseType.toLowerCase()}>
-						{senseLabel(entry.senseType)}: <span>{entry.range} ft.</span> — {senseProvenanceLabel(entry)}
+						{senseLabel(entry.senseType)}: {entry.range > 0 && <><span>{entry.range} ft.</span> — </>}{senseProvenanceLabel(entry)}
 					</li>
 				))}
 			</ul>

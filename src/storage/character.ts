@@ -713,6 +713,14 @@ export interface CustomItemDefinition {
 	speedBonus?: number
 	/** Darkvision in feet. Reconciled against every other source, never summed with them (speciesTraits.ts). */
 	darkvision?: number
+	/** R14a2 (D216): fixed fly / swim / climb speeds in feet. The highest of these and the species-derived speed applies, never a sum (speciesTraits.ts). */
+	flySpeed?: number
+	swimSpeed?: number
+	climbSpeed?: number
+	/** R14a2 (D216): senses in feet, listed in Granted senses; the largest range of a type wins over every other source. */
+	blindsight?: number
+	tremorsense?: number
+	truesight?: number
 	/**
 	 * R14a1 (D216): the numeric bonuses, each target at most once. Replaced the
 	 * five `bonus*` fields of slice h (migration 53 → 54). The proficiency bonus
