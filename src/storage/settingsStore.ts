@@ -10,11 +10,12 @@ export type Theme = 'dark' | 'light'
 
 export interface AppSettings {
 	theme: Theme
+	flame: boolean
 }
 
 export const SETTINGS_KEY = 'familliar:settings'
 
-export const DEFAULT_SETTINGS: AppSettings = { theme: 'dark' }
+export const DEFAULT_SETTINGS: AppSettings = { theme: 'dark', flame: true }
 
 function browserStorage(): KeyValueStorage | null {
 	try {
@@ -29,8 +30,11 @@ export function loadSettings(storage: KeyValueStorage | null = browserStorage())
 		const raw = storage?.getItem(SETTINGS_KEY)
 		if (!raw) return { ...DEFAULT_SETTINGS }
 		const parsed: unknown = JSON.parse(raw)
-		const theme = (parsed as { theme?: unknown } | null)?.theme
-		return { theme: theme === 'light' || theme === 'dark' ? theme : DEFAULT_SETTINGS.theme }
+		const { theme, flame } = (parsed ?? {}) as { theme?: unknown; flame?: unknown }
+		return {
+			theme: theme === 'light' || theme === 'dark' ? theme : DEFAULT_SETTINGS.theme,
+			flame: typeof flame === 'boolean' ? flame : DEFAULT_SETTINGS.flame,
+		}
 	} catch {
 		return { ...DEFAULT_SETTINGS }
 	}
@@ -46,4 +50,9 @@ export function saveSettings(settings: AppSettings, storage: KeyValueStorage | n
 
 export function applyTheme(theme: Theme, root: HTMLElement = document.documentElement): void {
 	root.dataset.theme = theme
+}
+
+/** D224: the flame canvas watches this attribute, so a toggle never re-renders the app tree. */
+export function applyFlame(flame: boolean, root: HTMLElement = document.documentElement): void {
+	root.dataset.flame = flame ? 'on' : 'off'
 }

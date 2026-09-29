@@ -2031,6 +2031,13 @@ the bottom of the four group drawers. Sheet cards unchanged. CustomItemSpellList
 "+ Add spell" starts on `own` with `defaultAbility`. E2E `ruleTexts.spec.ts`
 R15 a–e, `customItemSpells.spec.ts` R14c2 c / R15 f.
 
+R16 (D224) done. No schema bump. `app/FlameBackground.tsx`: one fixed canvas
+behind the app (particles and pointer in effect-local variables, rAF stops when
+hidden or idle, not mounted under reduced motion), watches `data-flame` /
+`data-theme` on `<html>`. `FlameToggle.tsx` ("Flame: On/Off") next to the theme
+toggle; `AppSettings.flame` (default true) via `applyFlame`. `--flame-hot` in
+theme.css; `main` has an opaque `var(--bg)`. E2E `flame.spec.ts` R16 a–d.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

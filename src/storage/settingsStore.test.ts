@@ -16,16 +16,25 @@ class MemoryStorage implements KeyValueStorage {
 }
 
 describe('settingsStore', () => {
-	it('defaults to the dark theme when nothing is stored', () => {
-		expect(loadSettings(new MemoryStorage())).toEqual({ theme: 'dark' })
+	it('defaults to the dark theme with the flame on when nothing is stored', () => {
+		expect(loadSettings(new MemoryStorage())).toEqual({ theme: 'dark', flame: true })
 		expect(DEFAULT_SETTINGS.theme).toBe('dark')
+		expect(DEFAULT_SETTINGS.flame).toBe(true)
 	})
 
-	it('round-trips a saved theme under familliar:settings', () => {
+	it('round-trips a saved theme and flame switch under familliar:settings', () => {
 		const storage = new MemoryStorage()
-		saveSettings({ theme: 'light' }, storage)
-		expect(JSON.parse(storage.data.get(SETTINGS_KEY)!)).toEqual({ theme: 'light' })
-		expect(loadSettings(storage)).toEqual({ theme: 'light' })
+		saveSettings({ theme: 'light', flame: false }, storage)
+		expect(JSON.parse(storage.data.get(SETTINGS_KEY)!)).toEqual({ theme: 'light', flame: false })
+		expect(loadSettings(storage)).toEqual({ theme: 'light', flame: false })
+	})
+
+	it('keeps the flame on for settings saved before it existed or with a non-boolean value', () => {
+		const storage = new MemoryStorage()
+		storage.setItem(SETTINGS_KEY, '{"theme":"light"}')
+		expect(loadSettings(storage)).toEqual({ theme: 'light', flame: true })
+		storage.setItem(SETTINGS_KEY, '{"theme":"light","flame":"off"}')
+		expect(loadSettings(storage).flame).toBe(true)
 	})
 
 	it('falls back to the defaults on corrupt JSON or an unknown theme', () => {

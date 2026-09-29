@@ -18,7 +18,7 @@ describe('ThemeToggle', () => {
 
 		fireEvent.click(screen.getByRole('button', { name: 'Light' }))
 		expect(document.documentElement.dataset.theme).toBe('light')
-		expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toEqual({ theme: 'light' })
+		expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toEqual({ theme: 'light', flame: true })
 		expect(screen.getByRole('button', { name: 'Dark' }).getAttribute('aria-pressed')).toBe('true')
 
 		fireEvent.click(screen.getByRole('button', { name: 'Dark' }))

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import CharacterManager from './CharacterManager'
 import { RollsNavSlot } from './dice/RollUi'
 import MarkupDemo from './MarkupDemo'
+import FlameBackground from './app/FlameBackground'
+import FlameToggle from './FlameToggle'
 import ThemeToggle from './ThemeToggle'
 import { useRoute } from './navigation/useRoute'
 import type { CharacterRoute } from './navigation/route'
@@ -15,6 +17,7 @@ function App() {
 
 	return (
 		<>
+			<FlameBackground />
 			<nav className="tabs">
 				<button
 					type="button"
@@ -32,7 +35,8 @@ function App() {
 				</button>
 				{/* D165: CharacterSheet portals its "Rolls" button in here, so it exists only while a sheet is open. */}
 			<span ref={setRollsSlot} className="tabs__slot" />
-			<ThemeToggle />
+			<FlameToggle />
+				<ThemeToggle />
 			</nav>
 
 			<RollsNavSlot.Provider value={rollsSlot}>

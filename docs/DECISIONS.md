@@ -4116,3 +4116,15 @@ override pole; dole věta, že extra bonus se přidá custom předmětem v Manag
 listu se nemění. Nový řádek kouzla custom předmětu začíná na „Use my own“ s předvybranou vlastností
 první sesilatelské třídy (bez ní prázdná, řádek neplatný); uložená kouzla drží svou volbu. Beze
 změny schématu.
+
+## D224 — Tyrkysový plamen za kurzorem (R16)
+
+D224 (R16): Za celou appkou (jedno pevné plátno v kořeni, za obsahem, bez zachytávání myši) hoří
+měkký tyrkysový plamen, který sleduje kurzor a zanechává souvislou stopu. Je vidět jen na okrajích
+mimo obsah: `<main>` (seznam, sheet i wizard) má neprůhozné pozadí, takže mezi kartami uvnitř sheetu
+se plamen nezobrazuje. Výchozí stav je zapnuto. Vypínač „Flame: On/Off“ je v horní liště vedle
+přepínače tématu a ukládá se do nastavení appky (`familliar:settings`, pole `flame`), ne do postavy.
+Při `prefers-reduced-motion: reduce` se plátno vůbec nepřipojí (vypínač zůstává). Pozice myši a
+částice žijí jen v proměnných komponenty a smyčka `requestAnimationFrame` se zastaví, když je karta
+skrytá nebo kurzor mimo okno a žádná částice nežije — pohyb myši nikdy nepřekreslí React. Barvy jdou
+z CSS proměnných (`--accent`, nová `--flame-hot`). Beze změny schématu.

@@ -21,7 +21,9 @@ body {
 
 /* R3c: the one width rule shared by the list, sheet and wizard screens (all render into a
    <main>) — below --page-max-width it fills the window, never scrolling horizontally. */
+/* D224: opaque so the background flame shows only in the margins, not between cards. */
 main {
+  background: var(--bg);
   max-width: var(--page-max-width);
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
@@ -379,6 +381,10 @@ button:disabled {
 
 .tabs__theme {
   margin-left: auto;
+}
+
+.tabs__theme + .tabs__theme {
+  margin-left: 0;
 }
 
 /* ---- character sheet tabs (sheet rebuild slice 2) ---- */
