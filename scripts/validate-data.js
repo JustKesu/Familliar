@@ -29,6 +29,7 @@
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
+const { isAdditiveAbility } = require("./extract-data.js");
 
 /* ============================================================================
  * SECTION 1 — CONFIGURATION
@@ -1306,6 +1307,13 @@ function validateItems() {
 		return null;
 	}).filter(Boolean);
 	recordCheck(`items: all ${ATTUNEMENT_RESTORED_ITEMS.length} rings with restored attunement carry reqAttune`, attunementFailures);
+
+	// D221: without abilityMax the app would have no cap for an additive ability item.
+	const additive = entries.filter((entry) => isAdditiveAbility(entry.ability));
+	const abilityMaxFailures = additive
+		.filter((entry) => !Number.isInteger(entry.abilityMax))
+		.map((entry) => ({ label: `"${entry.name}|${entry.source}"`, detail: "additive `ability` without `abilityMax` (no \"maximum of N\" in its text)" }));
+	recordCheck(`items: all ${additive.length} items with an additive \`ability\` carry abilityMax`, abilityMaxFailures);
 
 	// Every item needs a name and a source. Items deliberately do NOT need an
 	// `entries` array — plenty of mundane gear has no descriptive text.

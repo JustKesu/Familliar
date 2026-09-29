@@ -31,6 +31,7 @@ import {
 	skillChoiceAwaitingNote,
 	type FeatEffectEntry,
 } from './featEffects'
+import type { ItemAbilityGrant } from './itemAbilityScores'
 import { itemSkillProficiency, type ItemProficiencyGrant } from './itemProficiencies'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
@@ -137,9 +138,10 @@ export function computeSkill(
 	itemBonuses: Contribution[] = [],
 	/** R14b (D217): proficiency or expertise a custom item grants; the highest status across all sources wins. */
 	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<SkillValue> {
 	const ability = SKILL_ABILITIES[skill]
-	const abilityResult = computeAbilityScore(ability, character, feats)
+	const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
 	const fromItems = itemSkillProficiency(itemProficiencies, skill)
@@ -187,8 +189,11 @@ export function computeSkills(
 	itemBonuses: Contribution[] = [],
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
 	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Record<Skill, Calculated<SkillValue>> {
-	return Object.fromEntries(SKILLS.map((skill) => [skill, computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])], itemProficiencies)])) as Record<
+	return Object.fromEntries(
+		SKILLS.map((skill) => [skill, computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])], itemProficiencies, itemAbilityGrants)]),
+	) as Record<
 		Skill,
 		Calculated<SkillValue>
 	>
@@ -206,8 +211,9 @@ function computePassiveValue(
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>>,
 	passiveBonuses: Contribution[],
 	itemProficiencies: readonly ItemProficiencyGrant[],
+	itemAbilityGrants: readonly ItemAbilityGrant[],
 ): Calculated<number> {
-	const skillResult = computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])], itemProficiencies)
+	const skillResult = computeSkill(skill, character, feats, [...itemBonuses, ...(itemBonusesBySkill[skill] ?? [])], itemProficiencies, itemAbilityGrants)
 	if (skillResult.status === 'unknown') return unknown(skillResult.reason)
 
 	const breakdown: Contribution[] = [{ source: 'base', amount: 10 }, ...skillResult.breakdown, ...passiveBonuses]
@@ -222,8 +228,9 @@ export function computePassivePerception(
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
 	passiveBonuses: Contribution[] = [],
 	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<number> {
-	return computePassiveValue('perception', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies)
+	return computePassiveValue('perception', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies, itemAbilityGrants)
 }
 
 export function computePassiveInvestigation(
@@ -233,8 +240,9 @@ export function computePassiveInvestigation(
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
 	passiveBonuses: Contribution[] = [],
 	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<number> {
-	return computePassiveValue('investigation', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies)
+	return computePassiveValue('investigation', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies, itemAbilityGrants)
 }
 
 export function computePassiveInsight(
@@ -244,6 +252,7 @@ export function computePassiveInsight(
 	itemBonusesBySkill: Partial<Record<Skill, Contribution[]>> = {},
 	passiveBonuses: Contribution[] = [],
 	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<number> {
-	return computePassiveValue('insight', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies)
+	return computePassiveValue('insight', character, feats, itemBonuses, itemBonusesBySkill, passiveBonuses, itemProficiencies, itemAbilityGrants)
 }

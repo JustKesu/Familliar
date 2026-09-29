@@ -14,7 +14,8 @@
  * this list is not dropped — the sheet shows it with a note (D43).
  */
 
-import { ABILITIES } from '../abilities/abilityScores'
+import { ABILITIES, type Ability } from '../abilities/abilityScores'
+import type { ItemAbilityEffect } from '../calculation/itemAbilityScores'
 import { DAMAGE_TYPES } from '../calculation/damageResponses'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import { CONDITION_NAMES, EXHAUSTION } from '../conditions/conditions'
@@ -143,6 +144,10 @@ export interface ItemRef {
 	bonusAbilityCheck?: number
 	/** On 1 item (Ioun Stone of Mastery). Parsed but deliberately not applied — see src/calculation/itemFlatBonuses.ts. */
 	bonusProficiencyBonus?: number
+	/** items.json `ability` (D221): `static` → set, the additive shape → add with the extractor's `abilityMax`. `from` (Deck of Many Things) is not read. */
+	abilityEffects?: { ability: Ability; effect: ItemAbilityEffect }[]
+	/** `ability.choose` — the player picks the ability (Book of Vile Darkness); not supported, only named. */
+	abilityChoice?: true
 	/**
 	 * items.json `resist` / `immune` (slice f), each an array of lowercase
 	 * damage-type strings. 54 items carry `resist` and 3 carry `immune`; no item
@@ -573,6 +578,33 @@ export function returnToStack(inventory: readonly CharacterInventoryItem[], indi
 	return result
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function abilityOf(key: string): Ability | undefined {
+	return key.length === 3 ? ABILITIES.find((ability) => ability.startsWith(key)) : undefined
+}
+
+function abilityFields(raw: unknown, max: unknown): Pick<ItemRef, 'abilityEffects' | 'abilityChoice'> {
+	if (!isRecord(raw)) return {}
+	if (raw['choose'] !== undefined) return { abilityChoice: true }
+	const effects: { ability: Ability; effect: ItemAbilityEffect }[] = []
+	const statics = raw['static']
+	if (isRecord(statics)) {
+		for (const [key, score] of Object.entries(statics)) {
+			const ability = abilityOf(key)
+			if (ability && typeof score === 'number') effects.push({ ability, effect: { kind: 'set', score } })
+		}
+	} else if (raw['from'] === undefined && typeof max === 'number') {
+		for (const [key, amount] of Object.entries(raw)) {
+			const ability = abilityOf(key)
+			if (ability && typeof amount === 'number') effects.push({ ability, effect: { kind: 'add', amount, max } })
+		}
+	}
+	return effects.length > 0 ? { abilityEffects: effects } : {}
+}
+
 export function extractItemRefs(parsed: unknown): ItemRef[] {
 	if (!Array.isArray(parsed)) {
 		throw new Error('items.json: expected a top-level array.')
@@ -616,6 +648,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...bonusField(entry, 'bonusSpellSaveDc'),
 				...bonusField(entry, 'bonusAbilityCheck'),
 				...bonusField(entry, 'bonusProficiencyBonus'),
+				...abilityFields(entry['ability'], entry['abilityMax']),
 				...damageTypeArrayField(entry, 'resist'),
 				...damageTypeArrayField(entry, 'immune'),
 				...stringField(entry, 'detail1'),

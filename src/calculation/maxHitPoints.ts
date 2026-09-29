@@ -26,6 +26,7 @@ import type { Character } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
 import { computeHitDicePool, type ClassHitDie } from './hitDice'
+import type { ItemAbilityGrant } from './itemAbilityScores'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 /**
@@ -85,6 +86,7 @@ export function computeMaxHitPoints(
 	feats: FeatEffectEntry[] = [],
 	/** R14a1: a custom item's max HP bonus, per-level already multiplied out (itemFlatBonuses.ts). */
 	itemBonuses: readonly Contribution[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<number> {
 	const override = character.maxHpOverride
 	if (override !== undefined) {
@@ -101,7 +103,7 @@ export function computeMaxHitPoints(
 	}
 
 	const { faces, count: totalLevel } = pool.value[0]
-	const constitution = computeAbilityScore('constitution', character, feats)
+	const constitution = computeAbilityScore('constitution', character, feats, itemAbilityGrants)
 	if (constitution.status === 'unknown') return unknown(constitution.reason)
 
 	const breakdown: Contribution[] = []

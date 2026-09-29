@@ -8,6 +8,7 @@
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import type { Character } from '../storage/character'
 import { featAbilityScoreContributions, type FeatEffectEntry } from './featEffects'
+import { itemAbilityScoreContributions, type ItemAbilityGrant } from './itemAbilityScores'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 export interface AbilityScoreValue {
@@ -33,7 +34,12 @@ export function abilityModifier(score: number): number {
  * wizard session must not feed back into that session's own prerequisite
  * checks.
  */
-export function computeAbilityScore(ability: Ability, character: Character, feats: FeatEffectEntry[] = []): Calculated<AbilityScoreValue> {
+export function computeAbilityScore(
+	ability: Ability,
+	character: Character,
+	feats: FeatEffectEntry[] = [],
+	itemGrants: readonly ItemAbilityGrant[] = [],
+): Calculated<AbilityScoreValue> {
 	if (!character.abilityScores) {
 		return unknown('Ability scores have not been set for this character yet.')
 	}
@@ -48,12 +54,19 @@ export function computeAbilityScore(ability: Ability, character: Character, feat
 
 	breakdown.push(...featAbilityScoreContributions(ability, character, feats))
 
-	const score = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
+	const sum = () => breakdown.reduce((total, contribution) => total + contribution.amount, 0)
+	breakdown.push(...itemAbilityScoreContributions(ability, sum(), itemGrants))
+
+	const score = sum()
 	return known({ score, modifier: abilityModifier(score) }, breakdown)
 }
 
-export function computeAbilityScores(character: Character, feats: FeatEffectEntry[] = []): Record<Ability, Calculated<AbilityScoreValue>> {
-	return Object.fromEntries(ABILITIES.map((ability) => [ability, computeAbilityScore(ability, character, feats)])) as Record<
+export function computeAbilityScores(
+	character: Character,
+	feats: FeatEffectEntry[] = [],
+	itemGrants: readonly ItemAbilityGrant[] = [],
+): Record<Ability, Calculated<AbilityScoreValue>> {
+	return Object.fromEntries(ABILITIES.map((ability) => [ability, computeAbilityScore(ability, character, feats, itemGrants)])) as Record<
 		Ability,
 		Calculated<AbilityScoreValue>
 	>

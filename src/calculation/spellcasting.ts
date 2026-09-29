@@ -23,6 +23,7 @@ import type { Character, CharacterClass } from '../storage/character'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
+import type { ItemAbilityGrant } from './itemAbilityScores'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -85,6 +86,7 @@ export function computeSpellcasting(
 	feats: FeatEffectEntry[] = [],
 	spellAttackItemBonuses: Contribution[] = [],
 	spellSaveDcItemBonuses: Contribution[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<SpellcastingEntry[]> {
 	if (character.classes.length === 0) {
 		return unknown('Character has no classes yet.')
@@ -111,7 +113,7 @@ export function computeSpellcasting(
 		if (abilityAbbreviation === null) continue
 
 		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
-		const abilityResult = computeAbilityScore(ability, character, feats)
+		const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 		if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
 		const spellAttackBreakdown: Contribution[] = [
@@ -170,6 +172,7 @@ export function computeFeatSpellcasting(
 	feats: FeatEffectEntry[] = [],
 	spellAttackItemBonuses: Contribution[] = [],
 	spellSaveDcItemBonuses: Contribution[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<FeatSpellcastingEntry[]> {
 	if (featGrantedSpells.length === 0) {
 		return known([], [])
@@ -187,7 +190,7 @@ export function computeFeatSpellcasting(
 		if (!abilityAbbreviation) continue
 
 		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
-		const abilityResult = computeAbilityScore(ability, character, feats)
+		const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 		if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
 		const spellAttackBreakdown: Contribution[] = [
@@ -219,10 +222,11 @@ export function computeAbilitySpellcasting(
 	feats: FeatEffectEntry[] = [],
 	spellAttackItemBonuses: Contribution[] = [],
 	spellSaveDcItemBonuses: Contribution[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<Omit<FeatSpellcastingEntry, 'featName'>> {
 	const bonusResult = computeProficiencyBonus(character.classes)
 	if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
-	const abilityResult = computeAbilityScore(ability, character, feats)
+	const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 	const spellAttackBreakdown: Contribution[] = [
 		{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
@@ -272,6 +276,7 @@ export function computeSpeciesSpellcasting(
 	feats: FeatEffectEntry[] = [],
 	spellAttackItemBonuses: Contribution[] = [],
 	spellSaveDcItemBonuses: Contribution[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<SpeciesSpellcastingEntry[]> {
 	const resolved = raceGrantedSpells.filter((spell) => spell.ability !== undefined)
 	if (resolved.length === 0) {
@@ -288,7 +293,7 @@ export function computeSpeciesSpellcasting(
 	for (const speciesName of speciesNames) {
 		const abilityAbbreviation = resolved.find((spell) => spell.speciesName === speciesName)!.ability!
 		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
-		const abilityResult = computeAbilityScore(ability, character, feats)
+		const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 		if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
 		const spellAttackBreakdown: Contribution[] = [

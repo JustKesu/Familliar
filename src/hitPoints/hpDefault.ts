@@ -15,6 +15,8 @@ import { loadItemRefs } from '../inventory/inventoryData'
 import type { Character } from '../storage/character'
 import { buildItemFlatBonusGrants } from '../sheet/itemFlatBonusData'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
+import type { ItemAbilityGrant } from '../calculation/itemAbilityScores'
+import { buildItemAbilityGrants } from '../sheet/itemAbilityScoreData'
 import { loadFeatEffectEntries, loadHitDiceClassData } from '../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../sheet/grantedClassFeatures'
 import { loadSpeciesTraitNames } from '../sheet/speciesTraitNames'
@@ -23,18 +25,22 @@ import { loadSpeciesTraitNames } from '../sheet/speciesTraitNames'
  * R14a2: the sheet's own item grants and level count, so the level-up / removal shift equals the change in the maximum the sheet shows.
  * Also read by HitPointsPicker (R14b), so the wizard's "Maximum hit points" is that same number.
  */
-export async function loadItemMaxHpBonuses(character: Character): Promise<Contribution[]> {
+export async function loadItemMaxHpBonuses(character: Character): Promise<{ itemBonuses: Contribution[]; itemAbilityGrants: ItemAbilityGrant[] }> {
 	/* Nothing carried means nothing to read: creation never waits on items.json for a maximum it does not need. */
 	const itemRefs = character.inventory?.length ? await loadItemRefs() : []
-	return flatBonusesByTarget(
-		buildItemFlatBonusGrants(character.inventory ?? [], itemRefs),
-		character.classes.reduce((sum, c) => sum + c.level, 0),
-	).maxHitPoints
+	return {
+		itemBonuses: flatBonusesByTarget(
+			buildItemFlatBonusGrants(character.inventory ?? [], itemRefs),
+			character.classes.reduce((sum, c) => sum + c.level, 0),
+		).maxHitPoints,
+		/* D221: a Constitution item moves the maximum exactly the way an item's max HP bonus does. */
+		itemAbilityGrants: buildItemAbilityGrants(character.inventory ?? [], itemRefs),
+	}
 }
 
 /** `character`'s maximum hit points, loading the same four files HitPointsPicker/CharacterSheet load for computeMaxHitPoints' bonus table. */
 export async function loadCharacterMaxHp(character: Character): Promise<Calculated<number>> {
-	const [classData, feats, grantedFeatures, speciesTraitNames, itemBonuses] = await Promise.all([
+	const [classData, feats, grantedFeatures, speciesTraitNames, { itemBonuses, itemAbilityGrants }] = await Promise.all([
 		loadHitDiceClassData(),
 		loadFeatEffectEntries(),
 		loadGrantedClassFeatures(character),
@@ -42,5 +48,5 @@ export async function loadCharacterMaxHp(character: Character): Promise<Calculat
 		loadItemMaxHpBonuses(character),
 	])
 	const bonusFeatureNames = [...grantedFeatures.map((feature) => feature.name), ...characterFeats(character, feats).map((choice) => choice.name), ...speciesTraitNames]
-	return computeMaxHitPoints(character, classData, bonusFeatureNames, feats, itemBonuses)
+	return computeMaxHitPoints(character, classData, bonusFeatureNames, feats, itemBonuses, itemAbilityGrants)
 }

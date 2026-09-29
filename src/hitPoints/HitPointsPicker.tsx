@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
 import { computeMaxHitPoints, fixedAverage } from '../calculation/maxHitPoints'
 import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
+import type { ItemAbilityGrant } from '../calculation/itemAbilityScores'
 import type { Contribution } from '../calculation/types'
 import { loadItemMaxHpBonuses } from './hpDefault'
 import { loadFeatEffectEntries, loadHitDiceClassData } from '../sheet/sheetData'
@@ -30,6 +31,8 @@ interface LoadedData {
 	bonusFeatureNames: string[]
 	/** R14b: the character's item max-HP bonuses, so the total matches the sheet's. */
 	itemBonuses: Contribution[]
+	/** D221: attuned Constitution items, for the same reason. */
+	itemAbilityGrants: ItemAbilityGrant[]
 }
 
 function rollDie(faces: number): number {
@@ -62,13 +65,14 @@ export function HitPointsPicker({
 	useEffect(() => {
 		let cancelled = false
 		Promise.all([loadHitDiceClassData(), loadFeatEffectEntries(), loadGrantedClassFeatures(character), loadSpeciesTraitNames(character), loadItemMaxHpBonuses(character)])
-			.then(([classData, feats, grantedFeatures, speciesTraitNames, itemBonuses]) => {
+			.then(([classData, feats, grantedFeatures, speciesTraitNames, { itemBonuses, itemAbilityGrants }]) => {
 				if (cancelled) return
 				setLoaded({
 					classData,
 					feats,
 					bonusFeatureNames: [...grantedFeatures.map((feature) => feature.name), ...characterFeats(character, feats).map((choice) => choice.name), ...speciesTraitNames],
 					itemBonuses,
+					itemAbilityGrants,
 				})
 			})
 			.catch((error: unknown) => {
@@ -110,7 +114,7 @@ export function HitPointsPicker({
 	}
 
 	const draftCharacter: Character = { ...character, hitPointLevels: value }
-	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats, loaded.itemBonuses)
+	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats, loaded.itemBonuses, loaded.itemAbilityGrants)
 
 	return (
 		<div className="hit-points-picker">

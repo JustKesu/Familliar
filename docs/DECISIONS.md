@@ -4088,3 +4088,13 @@ postavy), útok, damage, všechny záchrany, rychlost chůze. Nové cíle v sezn
 pro familiara v Extras (ne Wild Shape, ne výběr v Manage Extras a wizardu). Brána D216 — předmět
 nese postava. Útok a damage se přepíšou přímo v textu akcí statbloku; drawer ukazuje řádek
 Bonuses from items.
+
+## D221 — Magické předměty z dat mění hodnoty vlastností (R14e1)
+
+D221 (R14e1): Magické předměty z dat mění hodnoty vlastností. Platí jen předměty s naladěním a jen
+naladěné — tím vypadnou lektvary, knihy Manual/Tome a Deck of Many Things (žádný naladění nemá).
+Přičtení s maximem (maximum vytahuje extraktor z věty „maximum of N“, validate-data hlídá) po
+základu, pozadí a featech, pak nastavení na N, jen když je vyšší (víc takových: platí nejvyšší).
+Book of Vile Darkness (volba vlastnosti) nepodporován, jen nulový řádek v rozkladu. Wizard,
+level-up, Edit Character a prerekvizity featů počítají bez předmětů. Custom předměty napojí R14e2
+na stejný výpočet.

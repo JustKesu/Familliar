@@ -863,6 +863,13 @@ does NOT carry it onto `ItemRef` today. Shapes in data/items.json (all XDMG):
   `choose` without `amount` (Deck of Several Things|LLK).
 - No item in data/items.json describes a score change in prose without the field
   (phrase search over stripped markup: 0).
+- **`abilityMax` (derived, R14e1/D221).** extract-data.js adds `abilityMax: N` to
+  every item with the additive shape, read from its own "maximum of N" sentence
+  (markup stripped). 14 items carry it (20 / 24 / 30 as above); `static`,
+  `choose` and `from` items never do. validate-data fails if an additive item
+  lacks it. The app's `extractItemRefs` turns `ability` into
+  `ItemRef.abilityEffects` (set / add+max) or `abilityChoice` (choose); `from` is
+  not read.
 
 ### Artificer infusions
 AI (Artificer Infusion, 16 entries) exists in optional-features.json, but

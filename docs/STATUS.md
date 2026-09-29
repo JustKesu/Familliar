@@ -1117,6 +1117,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   from items"; attack and damage in the action text; six saves; attunement gate;
   max HP per level; clamp after removing the item; Wild Shape row and Manage Extras
   unchanged).
+- `e2e/itemAbilityScores.spec.ts` — R14e1 a–i (Human Fighter 3: Belt of Hill Giant
+  Strength attuned / not attuned; Gauntlets at Str 20; Amulet of Health max HP;
+  two belts; Belt of Dwarvenkind cap; potion + manual; Book of Vile Darkness line;
+  level-up ASI from base Strength).
 
 ## Dočasné scaffolding
 
@@ -1987,6 +1991,22 @@ applies it to the familiar row only; `familiarHitPoints` clamps current to max.
 drawer shows "Bonuses from items" (unattuned: "not applied: not attuned"). Wild
 Shape rows and Manage Extras pass no bonuses. E2E `familiarItemBonuses.spec.ts`
 R14d a–g.
+
+R14e1 (D221) done. No schema bump. extract-data.js derives `abilityMax` for
+additive `ability` items (validate-data asserts it). `ItemRef.abilityEffects`
+(set / add+max) and `abilityChoice`. Pure `calculation/itemAbilityScores.ts`
+(`ItemAbilityGrant`, `itemAbilityScoreContributions`: adds capped, then highest
+set-to, "no effect" lines); `computeAbilityScore(s)` takes the grants as a 4th
+argument, threaded as a trailing optional `itemAbilityGrants` through initiative,
+AC, armourSpeedPenalty, weapon attacks, max HP, saves, skills/passives and the
+four spellcasting functions. `sheet/itemAbilityScoreData.ts`
+`buildItemAbilityGrants` (requires-attunement only; unattuned → "not attuned";
+Vile Darkness attuned → six "ability choice not supported" lines). Sheet passes
+them everywhere except Manage Feats prerequisites (`baseAbilityScores`);
+`hpDefault.loadItemMaxHpBonuses` now returns `{ itemBonuses, itemAbilityGrants }`
+so level-up HP shift and HitPointsPicker include Con items. Wizard untouched.
+E2E `itemAbilityScores.spec.ts` R14e1 a–i. Next: R14e2 custom items as a second
+grant source.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

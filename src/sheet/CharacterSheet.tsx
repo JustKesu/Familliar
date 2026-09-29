@@ -82,6 +82,7 @@ import { ammoEntriesFor, autoSpendEntry, canSpendAmmo, spendAmmo, type AmmoEntry
 import { loadItemEntryTemplates, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
 import { buildItemFlatBonusGrants } from './itemFlatBonusData'
+import { buildItemAbilityGrants } from './itemAbilityScoreData'
 import { buildItemDarkvisionGrants, buildItemSenseGrants, buildItemSpeedAdjustments, buildItemSpeedModeGrants } from './itemEffectData'
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
 import { loadGrantedClassFeatures, type GrantedFeature } from './grantedClassFeatures'
@@ -2201,7 +2202,10 @@ function CharacterSheetBody({
 		)
 	}
 
-	const abilityScores = computeAbilityScores(character, feats)
+	/* D221: attuned items' ability-score changes reach every value built on a score; the wizard and feat prerequisites stay on base scores. */
+	const itemAbilityGrants = buildItemAbilityGrants(character.inventory ?? [], itemRefs ?? [])
+	const abilityScores = computeAbilityScores(character, feats, itemAbilityGrants)
+	const baseAbilityScores = computeAbilityScores(character, feats)
 	/* Step 7 slice h: a worn magic item's flat bonuses, gated on attunement, each landing on the value that owns it. */
 	const itemFlatBonuses = flatBonusesByTarget(
 		buildItemFlatBonusGrants(character.inventory ?? [], itemRefs ?? []),
@@ -2218,18 +2222,18 @@ function CharacterSheetBody({
 	const itemConditionGrants = buildItemConditionGrants(character.inventory ?? [], itemRefs ?? [])
 	const conditionImmunities = conditionsGranted(itemConditionGrants, 'immune')
 	const conditionAdvantages = conditionAdvantageLines(itemConditionGrants)
-	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor, itemProficiencyGrants)
-	const initiative = computeInitiative(character, feats, itemFlatBonuses.initiative)
-	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemProficiencyGrants)
-	const passivePerception = computePassivePerception(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.perception, itemProficiencyGrants)
-	const passiveInvestigation = computePassiveInvestigation(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.investigation, itemProficiencyGrants)
-	const passiveInsight = computePassiveInsight(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.insight, itemProficiencyGrants)
+	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor, itemProficiencyGrants, itemAbilityGrants)
+	const initiative = computeInitiative(character, feats, itemFlatBonuses.initiative, itemAbilityGrants)
+	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemProficiencyGrants, itemAbilityGrants)
+	const passivePerception = computePassivePerception(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.perception, itemProficiencyGrants, itemAbilityGrants)
+	const passiveInvestigation = computePassiveInvestigation(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.investigation, itemProficiencyGrants, itemAbilityGrants)
+	const passiveInsight = computePassiveInsight(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.insight, itemProficiencyGrants, itemAbilityGrants)
 	/* Step 7 slice b: what the character has in use. itemRefs is null only while the item list is still loading — the AC section says so rather than reporting an unarmoured number it would then have to correct. */
 	const equippedGear = buildEquippedGear(character.inventory ?? [], itemRefs ?? [])
-	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats, itemFlatBonuses.armourClass)
+	const armourClass = computeArmourClass(character, equippedGear, acFormulaKeys, feats, itemFlatBonuses.armourClass, itemAbilityGrants)
 	/* Step 7 slice e2b: an item's own speed adjustment arrives through the same `adjustments` parameter slice b's heavy-armour penalty does. */
 	const speed = computeSpeed(character, speciesTraitsData, [
-		...armourSpeedPenalty(character, equippedGear.armour, feats),
+		...armourSpeedPenalty(character, equippedGear.armour, feats, itemAbilityGrants),
 		...buildItemSpeedAdjustments(character.inventory ?? [], itemRefs ?? []),
 	], buildItemSpeedModeGrants(character.inventory ?? [], itemRefs ?? []))
 	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
@@ -2237,7 +2241,7 @@ function CharacterSheetBody({
 	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null, {
 		attack: itemFlatBonuses.weaponAttack,
 		damage: itemFlatBonuses.weaponDamage,
-	})
+	}, itemAbilityGrants)
 	const attacksPerAction = computeAttacksPerAction(weaponAttackData?.featureNames ?? [])
 	/* Step 7 slice d: the limit needs the character's own levels only, so it is not waiting on any fetch. */
 	const attunementLimit = computeAttunementLimit(character)
@@ -2279,9 +2283,10 @@ function CharacterSheetBody({
 		[...grantedFeatures.map((feature) => feature.name), ...chosenFeats.map((choice) => choice.name), ...speciesTraits.map((trait) => trait.name)],
 		feats,
 		itemFlatBonuses.maxHitPoints,
+		itemAbilityGrants,
 	)
 
-	const spellcasting = computeSpellcasting(character, spellcastingAbilityData, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
+	const spellcasting = computeSpellcasting(character, spellcastingAbilityData, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 	const spellcastingEntries = spellcasting.status === 'known' ? spellcasting.value : []
 	const spellSlots = computeSpellSlots(character, spellSlotsClassData)
 	const spellSlotsEntries = spellSlots.status === 'known' ? spellSlots.value : []
@@ -2321,13 +2326,13 @@ function CharacterSheetBody({
 	const cantripsStored = chosenSpellLevels.filter((level) => level === 0).length
 	const leveledSpellsStored = chosenSpellLevels.filter((level) => level > 0).length
 	const hasChosenSpells = combinedSpells.some((entry) => entry.chosen)
-	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
+	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
-	const speciesSpellcasting = computeSpeciesSpellcasting(character, raceSpells.spells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
+	const speciesSpellcasting = computeSpeciesSpellcasting(character, raceSpells.spells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 	const speciesSpellcastingEntries = speciesSpellcasting.status === 'known' ? speciesSpellcasting.value : []
 	/* R14c2 (D219): a custom item's spells stand beside the combined list, never merged into it — own rows, own numbers, own counters. */
 	const itemSpells = buildItemSpells(itemSpellGrants(character.inventory), spellDetails, (ability) => {
-		const own = computeAbilitySpellcasting(character, ability, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc)
+		const own = computeAbilitySpellcasting(character, ability, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 		return own.status === 'known' ? toCaster(own.value) : { reason: own.reason }
 	})
 	/* Sheet rebuild slice 4: the SAME combined spell list the Kouzla tab shows, filtered to the spells that carry an attack roll or a save — never re-derived from the grants. */
@@ -3406,7 +3411,7 @@ function CharacterSheetBody({
 						instances={chosenFeats}
 						featRows={featureGroups.find((group) => group.kind === 'feats')?.rows ?? []}
 						featTexts={featTextEntries}
-						abilityScores={Object.fromEntries(Object.entries(abilityScores).flatMap(([ability, score]) => (score.status === 'known' ? [[ability, score.value.score]] : [])))}
+						abilityScores={Object.fromEntries(Object.entries(baseAbilityScores).flatMap(([ability, score]) => (score.status === 'known' ? [[ability, score.value.score]] : [])))}
 						resolverData={resolverData}
 						onAdd={onAddManualFeat}
 						onRemove={onRemoveManualFeat}

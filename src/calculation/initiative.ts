@@ -9,11 +9,17 @@ import type { Character } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
 import { proseFeatEffectNotes } from './featEffects'
+import type { ItemAbilityGrant } from './itemAbilityScores'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 /** `itemBonuses`: a custom item's initiative bonus (R14a1), each its own line. */
-export function computeInitiative(character: Character, feats: FeatEffectEntry[] = [], itemBonuses: Contribution[] = []): Calculated<number> {
-	const dexterity = computeAbilityScore('dexterity', character, feats)
+export function computeInitiative(
+	character: Character,
+	feats: FeatEffectEntry[] = [],
+	itemBonuses: Contribution[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
+): Calculated<number> {
+	const dexterity = computeAbilityScore('dexterity', character, feats, itemAbilityGrants)
 	if (dexterity.status === 'unknown') return unknown(dexterity.reason)
 
 	const breakdown: Contribution[] = [

@@ -2354,6 +2354,18 @@ const ATTUNEMENT_RESTORED_ITEMS = [
 	{ name: "Ring of Thunder Resistance", source: "XDMG" },
 ];
 
+/** True for `{ str: 2 }` — the additive shape, as opposed to `static`, `choose` or `from` (DATA.md, "Item `ability`"). */
+function isAdditiveAbility(ability) {
+	return ability !== null && typeof ability === "object" && !ability.static && !ability.choose && !ability.from;
+}
+
+function itemAbilityMax(item) {
+	if (!isAdditiveAbility(item.ability)) return null;
+	const prose = JSON.stringify(item.entries || []).replace(/\{@\w+ ([^|}]*)[^}]*\}/g, "$1");
+	const match = prose.match(/maximum of (\d+)/i);
+	return match ? Number(match[1]) : null;
+}
+
 function extractItems() {
 	console.log("\n--- ITEMS ---");
 
@@ -2399,6 +2411,12 @@ function extractItems() {
 		const item = kept.find((entry) => entry.name === correction.name && entry.source === correction.source);
 		if (item) item.reqAttune = true;
 		else warnings.push(`[items] "${correction.name}|${correction.source}" needs its attunement restored (D80) but was not found in the source data`);
+	}
+
+	// D221: an additive `ability` carries no cap in the data; the cap is only the item's own "maximum of N" sentence.
+	for (const item of kept) {
+		const max = itemAbilityMax(item);
+		if (max !== null) item.abilityMax = max;
 	}
 
 	// --- item entry templates ({#itemEntry}) -------------------------------
@@ -2586,4 +2604,6 @@ module.exports = {
 	makeClassFeatureIdFromRef,
 	makeSubclassFeatureIdFromRef,
 	collectFeatureRefs,
+	isAdditiveAbility,
+	itemAbilityMax,
 };

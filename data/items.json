@@ -5824,7 +5824,8 @@
 		"lootTables": [
 			"Implements - Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 20
 	},
 	{
 		"name": "Belt of Fire Giant Strength",
@@ -6336,7 +6337,8 @@
 				"dim": 20
 			}
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 24
 	},
 	{
 		"name": "Book of Vile Darkness",
@@ -13942,7 +13944,8 @@
 		"lootTables": [
 			"Implements - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 20
 	},
 	{
 		"name": "Ioun Stone, Awareness",
@@ -13983,7 +13986,8 @@
 		"lootTables": [
 			"Arcana - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 20
 	},
 	{
 		"name": "Ioun Stone, Greater Absorption",
@@ -14024,7 +14028,8 @@
 		"lootTables": [
 			"Relics - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 20
 	},
 	{
 		"name": "Ioun Stone, Intellect",
@@ -14046,7 +14051,8 @@
 		"lootTables": [
 			"Arcana - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 20
 	},
 	{
 		"name": "Ioun Stone, Leadership",
@@ -14068,7 +14074,8 @@
 		"lootTables": [
 			"Arcana - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 20
 	},
 	{
 		"name": "Ioun Stone, Mastery",
@@ -14171,7 +14178,8 @@
 		"lootTables": [
 			"Armaments - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 20
 	},
 	{
 		"name": "Ioun Stone, Sustenance",
@@ -15515,7 +15523,8 @@
 		"lootTables": [
 			"Relics - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 30
 	},
 	{
 		"name": "Manual of Clay Golems",
@@ -15572,7 +15581,8 @@
 		],
 		"lootTables": [
 			"Armaments - Very Rare|XDMG"
-		]
+		],
+		"abilityMax": 30
 	},
 	{
 		"name": "Manual of Iron Golems",
@@ -15611,7 +15621,8 @@
 		"lootTables": [
 			"Implements - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 30
 	},
 	{
 		"name": "Manual of Stone Golems",
@@ -25317,7 +25328,8 @@
 		"lootTables": [
 			"Arcana - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 30
 	},
 	{
 		"name": "Tome of Leadership and Influence",
@@ -25337,7 +25349,8 @@
 		"lootTables": [
 			"Implements - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 30
 	},
 	{
 		"name": "Tome of the Stilled Tongue",
@@ -25386,7 +25399,8 @@
 		"lootTables": [
 			"Relics - Very Rare|XDMG"
 		],
-		"hasFluffImages": true
+		"hasFluffImages": true,
+		"abilityMax": 30
 	},
 	{
 		"name": "Topaz",

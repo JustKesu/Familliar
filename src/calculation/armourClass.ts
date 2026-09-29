@@ -20,6 +20,7 @@ import type { Character } from '../storage/character'
 import { ABILITY_ABBREVIATIONS } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
+import type { ItemAbilityGrant } from './itemAbilityScores'
 import type { MagicBonus } from './magicBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -229,11 +230,12 @@ export function computeArmourClass(
 	feats: FeatEffectEntry[] = [],
 	/** Slice h: `bonusAc` from a worn magic item (Cloak of Protection, Ring of Protection). It adds to whichever candidate won, an Unarmored Defense included — not to the armour. */
 	wornItemBonuses: Contribution[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<ArmourClassValue> {
 	const abilities: Ability[] = ['dexterity', 'constitution', 'wisdom', 'charisma']
 	const modifiers = {} as Record<Ability, number>
 	for (const ability of abilities) {
-		const result = computeAbilityScore(ability, character, feats)
+		const result = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 		if (result.status === 'unknown') return unknown(result.reason)
 		modifiers[ability] = result.value.modifier
 	}
@@ -289,10 +291,15 @@ export function computeArmourClass(
  * so the reduction shows up in the breakdown of the number it actually
  * changes — computeSpeed's (speciesTraits.ts).
  */
-export function armourSpeedPenalty(character: Character, armour: EquippedArmour | null, feats: FeatEffectEntry[] = []): Contribution[] {
+export function armourSpeedPenalty(
+	character: Character,
+	armour: EquippedArmour | null,
+	feats: FeatEffectEntry[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
+): Contribution[] {
 	if (!armour || armour.category !== 'heavy' || armour.strengthRequirement === null) return []
 
-	const strength = computeAbilityScore('strength', character, feats)
+	const strength = computeAbilityScore('strength', character, feats, itemAbilityGrants)
 	if (strength.status === 'unknown') return []
 	if (strength.value.score >= armour.strengthRequirement) return []
 

@@ -32,6 +32,7 @@ import { choiceNames, type Character, type WeaponGrip } from '../storage/charact
 import { isProficientWithWeapon, type WeaponProficiencyGrant } from '../weapons/weaponProficiency'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
+import type { ItemAbilityGrant } from './itemAbilityScores'
 import type { MagicBonus } from './magicBonus'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
@@ -267,12 +268,13 @@ export function computeWeaponAttacks(
 	martialArtsDie: string | null = null,
 	/** R14a1: a custom item's bonus to every weapon attack's to-hit / damage — never the Unarmed Strike (D216). */
 	itemBonuses: { attack: readonly Contribution[]; damage: readonly Contribution[] } = { attack: [], damage: [] },
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): WeaponAttack[] {
 	const abilities: Ability[] = ['strength', 'dexterity']
 	const modifiers = {} as Record<Ability, number>
 	let scoresUnknown: string | null = null
 	for (const ability of abilities) {
-		const result = computeAbilityScore(ability, character, feats)
+		const result = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 		if (result.status === 'unknown') {
 			scoresUnknown = result.reason
 			modifiers[ability] = 0

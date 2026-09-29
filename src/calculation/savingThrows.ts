@@ -17,6 +17,7 @@ import type { Character, CharacterClass } from '../storage/character'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
 import { featSavingThrowProficiencyNames, type FeatEffectEntry } from './featEffects'
+import type { ItemAbilityGrant } from './itemAbilityScores'
 import { itemSaveProficiency, type ItemProficiencyGrant } from './itemProficiencies'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
@@ -57,8 +58,9 @@ export function computeSavingThrow(
 	itemBonuses: Contribution[] = [],
 	/** R14b: proficiencies a custom item grants (D217). */
 	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Calculated<SavingThrowValue> {
-	const abilityResult = computeAbilityScore(ability, character, feats)
+	const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
 
 	if (character.classes.length === 0) {
@@ -116,9 +118,13 @@ export function computeSavingThrows(
 	/** R14a1: a custom item's bonus to ONE save, stacking with `itemBonuses`. */
 	itemBonusesByAbility: Partial<Record<Ability, Contribution[]>> = {},
 	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 ): Record<Ability, Calculated<SavingThrowValue>> {
 	return Object.fromEntries(
-		ABILITIES.map((ability) => [ability, computeSavingThrow(ability, character, classData, feats, [...itemBonuses, ...(itemBonusesByAbility[ability] ?? [])], itemProficiencies)]),
+		ABILITIES.map((ability) => [
+			ability,
+			computeSavingThrow(ability, character, classData, feats, [...itemBonuses, ...(itemBonusesByAbility[ability] ?? [])], itemProficiencies, itemAbilityGrants),
+		]),
 	) as Record<
 		Ability,
 		Calculated<SavingThrowValue>
