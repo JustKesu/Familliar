@@ -38,10 +38,23 @@ const TARGET_GROUPS: readonly { label: string; options: readonly { key: string; 
 		options: [{ key: 'allAbilityChecks', label: 'All ability checks' }, ...[...SKILLS].sort().map((skill) => ({ key: `skill:${skill}`, label: SKILL_LABELS[skill] }))],
 	},
 	{ label: 'Passive', options: CUSTOM_BONUS_PASSIVES.map((passive) => ({ key: `passive:${passive}`, label: `Passive ${capitalised(passive)}` })) },
+	{
+		label: 'Familiar',
+		options: [
+			{ key: 'familiarArmourClass', label: 'Familiar: AC' },
+			{ key: 'familiarMaxHitPoints', label: 'Familiar: Max HP' },
+			{ key: 'familiarAttack', label: 'Familiar: Attack rolls' },
+			{ key: 'familiarDamage', label: 'Familiar: Damage rolls' },
+			{ key: 'familiarSavingThrows', label: 'Familiar: Saving throws (all)' },
+			{ key: 'familiarWalkingSpeed', label: 'Familiar: Walking speed' },
+		],
+	},
 ]
 
+const PER_LEVEL_TARGETS: readonly string[] = ['maxHitPoints', 'familiarMaxHitPoints']
+
 export function bonusRowsFrom(bonuses: readonly CustomItemBonus[] | undefined): BonusRow[] {
-	return (bonuses ?? []).map((bonus) => ({ target: customBonusKey(bonus), amount: String(bonus.amount), perLevel: bonus.target === 'maxHitPoints' && bonus.perLevel === true }))
+	return (bonuses ?? []).map((bonus) => ({ target: customBonusKey(bonus), amount: String(bonus.amount), perLevel: PER_LEVEL_TARGETS.includes(bonus.target) && 'perLevel' in bonus && bonus.perLevel === true }))
 }
 
 /** Rows without a target, or with an empty or 0 amount, are dropped. */
@@ -53,8 +66,8 @@ export function bonusesFromRows(rows: readonly BonusRow[]): CustomItemBonus[] {
 		if (target === 'savingThrow') return [{ target, ability: qualifier as Ability, amount }]
 		if (target === 'skill') return [{ target, skill: qualifier as Skill, amount }]
 		if (target === 'passive') return [{ target, passive: qualifier as CustomBonusPassive, amount }]
-		if (target === 'maxHitPoints') return [row.perLevel ? { target, amount, perLevel: true } : { target, amount }]
-		return [{ target: target as Exclude<(typeof CUSTOM_BONUS_PLAIN_TARGETS)[number], 'maxHitPoints'>, amount }]
+		if (target === 'maxHitPoints' || target === 'familiarMaxHitPoints') return [row.perLevel ? { target, amount, perLevel: true } : { target, amount }]
+		return [{ target: target as Exclude<(typeof CUSTOM_BONUS_PLAIN_TARGETS)[number], 'maxHitPoints' | 'familiarMaxHitPoints'>, amount }]
 	})
 }
 
@@ -77,7 +90,7 @@ export function CustomItemBonusList({ rows, onChange }: { rows: readonly BonusRo
 							<select
 								aria-label={`Custom item bonus ${number} target`}
 								value={row.target}
-								onChange={(event) => change(index, { target: event.target.value, perLevel: event.target.value === 'maxHitPoints' && row.perLevel })}
+								onChange={(event) => change(index, { target: event.target.value, perLevel: PER_LEVEL_TARGETS.includes(event.target.value) && row.perLevel })}
 							>
 								<option value="">choose…</option>
 								{TARGET_GROUPS.map((group) => {
@@ -107,7 +120,7 @@ export function CustomItemBonusList({ rows, onChange }: { rows: readonly BonusRo
 								onChange={(event) => change(index, { amount: event.target.value })}
 							/>
 						</label>{' '}
-						{row.target === 'maxHitPoints' && (
+						{PER_LEVEL_TARGETS.includes(row.target) && (
 							<>
 								<label>
 									<input

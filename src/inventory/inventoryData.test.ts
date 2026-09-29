@@ -534,8 +534,27 @@ describe('custom items', () => {
 			['a duplicate target', [{ target: 'skill', skill: 'stealth', amount: 1 }, { target: 'skill', skill: 'stealth', amount: 2 }], 'skill:stealth bonus is listed more than once'],
 			['perLevel on another target', [{ target: 'initiative', amount: 1, perLevel: true }], 'cannot be per level'],
 			['perLevel false', [{ target: 'maxHitPoints', amount: 1, perLevel: false }], 'cannot be per level'],
+			['perLevel on a familiar target other than max HP', [{ target: 'familiarAttack', amount: 1, perLevel: true }], 'cannot be per level'],
+			['a duplicate familiar target', [{ target: 'familiarArmourClass', amount: 1 }, { target: 'familiarArmourClass', amount: 2 }], 'familiarArmourClass bonus is listed more than once'],
+			['a zero familiar amount', [{ target: 'familiarWalkingSpeed', amount: 0 }], 'whole number other than zero'],
 		])('rejects %s', (_, bonuses, message) => {
 			expect(describeCustomItemProblem({ ...base, bonuses })).toContain(message)
+		})
+
+		it('accepts the six familiar targets (R14d), max HP per level included', () => {
+			expect(
+				describeCustomItemProblem({
+					...base,
+					bonuses: [
+						{ target: 'familiarArmourClass', amount: 2 },
+						{ target: 'familiarMaxHitPoints', amount: 1, perLevel: true },
+						{ target: 'familiarAttack', amount: 1 },
+						{ target: 'familiarDamage', amount: 1 },
+						{ target: 'familiarSavingThrows', amount: 1 },
+						{ target: 'familiarWalkingSpeed', amount: 10 },
+					],
+				}),
+			).toBeNull()
 		})
 
 		it('accepts one of each target shape, negatives included, and two different saves', () => {

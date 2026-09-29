@@ -1015,6 +1015,24 @@ src/markup/tags.ts. Adding any further bestiary content will likely bring
 more of that family with it (`{@m}`, `{@hom}`, `{@actSaveFailBy}`,
 `{@actSaveSuccessOrFail}` exist in 5etools but do not occur here).
 
+Attack and damage numbers in the 32 familiar forms (CR 0 Beasts that are not
+swarms + the pactOfTheChain creatures; R14d survey,
+scripts/investigate-familiar-attack-text.js): 66 action/trait blocks, 33 of them
+attacks, and every attack has the same skeleton — `{@atkr m}` or `{@atkr r}`,
+then `{@hit N}`, then `{@h}A` where A is either a bare number ("`{@h}1`
+Piercing damage", 18) or an average followed by `({@damage XdY}` or
+`XdY ± K})` (15: "`{@h}4 ({@damage 1d4 + 2})`"). No plain "+N to hit" text, no
+`{@hit}` outside an `{@atkr}` block, and the printed average always equals
+floor(dice average) — so the number can be rewritten and the dice modifier moved
+by the same amount. A tag may sit between `{@hit N}` and `{@h}` (Piranha's
+`(with {@variantrule Advantage|XPHB} …)`), so the two are matched
+independently. Extra damage after the hit damage is a rider, not a second
+`{@h}`: "or 2 ({@damage 1d4})" (Goat charge) and "plus 3 ({@damage 1d6}) Poison
+damage" (Scorpion, Spider). The one save-based action (Pseudodragon Sting,
+`{@actSave con}`) has no `{@atkr}` and no `{@hit}`. A save bonus falls back to
+the ability modifier for every ability the form's `save` map does not list (the
+Owl has no `save` at all).
+
 ### Feats — čím pole `senses` a `speed` NEJSOU
 
 Žádný ze 128 featů nemá pole `speed`. Pole `senses` má jen 3 featy

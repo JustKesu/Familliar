@@ -3,6 +3,7 @@ import type { Beast, FamiliarFormOption } from '../beasts/beastData'
 import type { CharacterClass, CharacterFamiliar, CharacterWildShapeForms } from '../storage/character'
 import { beastAverageHp, beastKind, formatSpeed } from './BeastStatBlock'
 import { extraNotes, extraRows, wildShapeNotices, type ExtraKind } from './extrasData'
+import type { FamiliarItemBonuses } from './familiarItemBonuses'
 import { UnresolvedValue } from './ValueBreakdown'
 
 type Filter = 'all' | ExtraKind
@@ -23,6 +24,8 @@ export function ExtrasTab({
 	beastsError,
 	beastsLoading,
 	onOpenBeast,
+	onOpenFamiliar,
+	familiarBonuses,
 	onManageExtras,
 	onOpenFamiliarHitPoints,
 }: {
@@ -34,12 +37,16 @@ export function ExtrasTab({
 	beastsError: string | null
 	beastsLoading: boolean
 	onOpenBeast: (beast: Beast) => void
+	/** R14d: the familiar's row opens through this when given, so its drawer can list the item bonuses. */
+	onOpenFamiliar?: (beast: Beast) => void
+	/** R14d (D220): custom item bonuses for the familiar's row. */
+	familiarBonuses?: FamiliarItemBonuses
 	onManageExtras?: () => void
 	/** D213: opens the familiar's Hit Points drawer. Absent shows the numbers without the button. */
 	onOpenFamiliarHitPoints?: () => void
 }): ReactNode {
 	const [filter, setFilter] = useState<Filter>('all')
-	const rows = extraRows({ familiar, familiarForms, wildShapeForms, beasts, pending: beastsLoading || beastsError !== null })
+	const rows = extraRows({ familiar, familiarForms, wildShapeForms, beasts, pending: beastsLoading || beastsError !== null, familiarBonuses })
 	const visible = rows.filter((row) => filter === 'all' || row.kind === filter)
 
 	return (
@@ -92,7 +99,7 @@ export function ExtrasTab({
 								<div className="extras-tab__row">
 									<span className="sheet__action-name-cell">
 										{row.beast ? (
-											<button type="button" className="sheet__action-name" onClick={() => onOpenBeast(row.beast!)}>
+											<button type="button" className="sheet__action-name" onClick={() => (row.kind === 'familiar' && onOpenFamiliar ? onOpenFamiliar(row.beast!) : onOpenBeast(row.beast!))}>
 												{row.name}
 											</button>
 										) : (

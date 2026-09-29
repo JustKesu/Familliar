@@ -177,12 +177,13 @@ test('R14a1 e: a target used in one row is not offered in another; per level app
   await panel.getByRole('button', { name: '+ Add bonus' }).click()
   await panel.getByRole('button', { name: '+ Add bonus' }).click()
 
-  await expect(target(panel, 1).locator('optgroup')).toHaveCount(4)
+  await expect(target(panel, 1).locator('optgroup')).toHaveCount(5)
   expect(await target(panel, 1).locator('optgroup').evaluateAll((groups) => groups.map((group) => group.getAttribute('label')))).toEqual([
     'General',
     'Saving throws',
     'Ability checks & skills',
     'Passive',
+    'Familiar',
   ])
   await target(panel, 1).selectOption({ label: 'Initiative' })
   await expect(target(panel, 2).locator('option[value="initiative"]')).toHaveCount(0)

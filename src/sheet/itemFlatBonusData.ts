@@ -11,7 +11,7 @@
 import { isAttuned } from '../calculation/attunement'
 import { BROAD_FLAT_BONUS_TARGETS, type FlatBonusTarget, type ItemFlatBonusGrant } from '../calculation/itemFlatBonuses'
 import { magicItemLabel } from '../calculation/magicBonus'
-import { buildInventoryResolver, customBonusKey, wornAcBonusOf, type ItemRef } from '../inventory/inventoryData'
+import { buildInventoryResolver, customBonusKey, isFamiliarBonusTarget, wornAcBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { CharacterInventoryItem } from '../storage/character'
 
 /** Which items.json field feeds which value. `bonusAc` is read through wornAcBonusOf so an armour's or shield's own bonus is not counted twice (slice e already applies it). */
@@ -71,6 +71,7 @@ export function buildItemFlatBonusGrants(inventory: readonly CharacterInventoryI
 		}
 		/* R14a1: customItemRef keeps only the targets items.json has no field for here; the key's spelling is FlatBonusTarget's, apart from the unqualified ones. */
 		for (const bonus of ref.customBonuses ?? []) {
+			if (isFamiliarBonusTarget(bonus.target)) continue // R14d: reaches the familiar, not the character (familiarItemBonuses.ts)
 			grants.push({
 				sourceName: label,
 				target: customBonusKey(bonus) as FlatBonusTarget,

@@ -254,6 +254,20 @@ export const CUSTOM_WEAPON_RANGES: readonly CustomWeaponRange[] = ['melee', 'ran
 /** The two `weaponCategory` values a weapon proficiency grant can match. */
 export const CUSTOM_WEAPON_CATEGORIES: readonly CustomWeaponCategory[] = ['simple', 'martial']
 
+/** R14d (D220): the targets that reach the familiar in the Extras tab instead of the character. */
+export const CUSTOM_FAMILIAR_BONUS_TARGETS = [
+	'familiarArmourClass',
+	'familiarMaxHitPoints',
+	'familiarAttack',
+	'familiarDamage',
+	'familiarSavingThrows',
+	'familiarWalkingSpeed',
+] as const
+
+export function isFamiliarBonusTarget(target: string): boolean {
+	return (CUSTOM_FAMILIAR_BONUS_TARGETS as readonly string[]).includes(target)
+}
+
 /** The bonus targets that take no qualifier (R14a1). */
 export const CUSTOM_BONUS_PLAIN_TARGETS = [
 	'armourClass',
@@ -265,6 +279,7 @@ export const CUSTOM_BONUS_PLAIN_TARGETS = [
 	'spellSaveDc',
 	'allSavingThrows',
 	'allAbilityChecks',
+	...CUSTOM_FAMILIAR_BONUS_TARGETS,
 ] as const
 
 export const CUSTOM_BONUS_PASSIVES: readonly CustomBonusPassive[] = ['perception', 'investigation', 'insight']
@@ -788,7 +803,7 @@ function describeCustomBonusesProblem(value: unknown): string | null {
 		const key = customBonusKey(bonus as unknown as CustomItemBonus)
 		const amount = bonus['amount']
 		if (typeof amount !== 'number' || !Number.isInteger(amount) || amount === 0) return `its ${key} bonus must be a whole number other than zero`
-		if (bonus['perLevel'] !== undefined && (target !== 'maxHitPoints' || bonus['perLevel'] !== true)) return `its ${key} bonus cannot be per level — only a max HP bonus can, and only as true`
+		if (bonus['perLevel'] !== undefined && ((target !== 'maxHitPoints' && target !== 'familiarMaxHitPoints') || bonus['perLevel'] !== true)) return `its ${key} bonus cannot be per level — only a max HP bonus can, and only as true`
 		if (seen.has(key)) return `its ${key} bonus is listed more than once`
 		seen.add(key)
 	}

@@ -4080,3 +4080,11 @@ s předmětem.
 
 Počitadlo se ukládá přímo na řádek inventáře (`spellUses`, klíč `jméno|zdroj` kouzla), stejně jako
 naladění — odejde s předmětem, přežije odebrání či přesun jiných řádků a nový předmět začíná plný.
+
+## D220 — Custom předmět dává bonusy familiarovi (R14d)
+
+D220 (R14d): Custom předmět může dávat bonusy familiarovi: AC, max HP (pevně nebo za úroveň
+postavy), útok, damage, všechny záchrany, rychlost chůze. Nové cíle v seznamu Bonuses. Platí jen
+pro familiara v Extras (ne Wild Shape, ne výběr v Manage Extras a wizardu). Brána D216 — předmět
+nese postava. Útok a damage se přepíšou přímo v textu akcí statbloku; drawer ukazuje řádek
+Bonuses from items.

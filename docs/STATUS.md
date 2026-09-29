@@ -1112,6 +1112,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   max HP + locked "From item" row; item Skilled choices in Manage Feats and removal;
   attunement gate; Edit Character does not offer the item feat; Witch Sight
   truesight + "From items" group; form exclusion; Conditions drawer order under cs-CZ).
+- `e2e/familiarItemBonuses.spec.ts` — R14d a–g (Wizard 3 with Find Familiar and an
+  Owl, Druid 2 for g: AC / max HP / speed in the Extras row and stat block + "Bonuses
+  from items"; attack and damage in the action text; six saves; attunement gate;
+  max HP per level; clamp after removing the item; Wild Shape row and Manage Extras
+  unchanged).
 
 ## Dočasné scaffolding
 
@@ -1964,6 +1969,24 @@ attack · ability or Save DC / Attack bonus · Remove); `ManageInventoryPanel`
 prop `defaultSpellAbility`. E2E `customItemSpells.spec.ts` R14c2 a–g (+c2).
 Not done: an item's Find Familiar / Mage Armor does not enable the Extras /
 Mage Armor features (they read `combineSpellEntries` only).
+
+R14d (D220) done. No schema bump: `CustomItemBonus` gained `familiarArmourClass`,
+`familiarMaxHitPoints` (per level allowed), `familiarAttack`, `familiarDamage`,
+`familiarSavingThrows`, `familiarWalkingSpeed` (`CUSTOM_FAMILIAR_BONUS_TARGETS`,
+`isFamiliarBonusTarget` in inventoryData.ts; `describeCustomItemProblem` accepts
+them; `itemFlatBonusData` skips them, so no character number moves). Form: a
+"Familiar" group ("Familiar: AC" …) in `CustomItemBonusList`. New
+`sheet/familiarItemBonuses.ts`: `familiarItemBonuses` (D216 gate over the whole
+inventory, per-level × total character level), `applyFamiliarBonuses` (a COPY of
+the Beast: AC, average HP + formula, walk speed only when the form has one > 0,
+all six saves when a save bonus applies, attack/damage in action text via
+`rewriteAttackText`: first `{@hit}` and first `{@h}` damage of an `{@atkr}`
+action, riders untouched), `familiarBonusLines`. `extraRows({ familiarBonuses })`
+applies it to the familiar row only; `familiarHitPoints` clamps current to max.
+`ExtrasTab` gets `familiarBonuses` + `onOpenFamiliar`; the familiar's stat block
+drawer shows "Bonuses from items" (unattuned: "not applied: not attuned"). Wild
+Shape rows and Manage Extras pass no bonuses. E2E `familiarItemBonuses.spec.ts`
+R14d a–g.
 
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další

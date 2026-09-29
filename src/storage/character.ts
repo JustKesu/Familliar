@@ -788,8 +788,10 @@ export type CustomItemBonus =
 			target: 'armourClass' | 'initiative' | 'allSavingThrows' | 'allAbilityChecks' | 'weaponAttack' | 'weaponDamage' | 'spellAttack' | 'spellSaveDc'
 			amount: number
 	  }
+	/** R14d (D220): bonuses for the familiar in the Extras tab, never the character. */
+	| { target: 'familiarArmourClass' | 'familiarAttack' | 'familiarDamage' | 'familiarSavingThrows' | 'familiarWalkingSpeed'; amount: number }
 	/** `perLevel`: amount × total character level. Present only when true. */
-	| { target: 'maxHitPoints'; amount: number; perLevel?: true }
+	| { target: 'maxHitPoints' | 'familiarMaxHitPoints'; amount: number; perLevel?: true }
 	| { target: 'savingThrow'; ability: Ability; amount: number }
 	| { target: 'skill'; skill: Skill; amount: number }
 	| { target: 'passive'; passive: CustomBonusPassive; amount: number }

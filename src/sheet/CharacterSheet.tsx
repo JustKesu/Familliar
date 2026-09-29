@@ -160,6 +160,7 @@ import { InventoryTab } from './InventoryTab'
 import { ExtrasTab } from './ExtrasTab'
 import { FamiliarHitPointsPanel, type FamiliarHitPointFields } from './FamiliarHitPointsPanel'
 import { extraRows } from './extrasData'
+import { familiarBonusLines, familiarItemBonuses } from './familiarItemBonuses'
 import { ManageExtrasPanel } from './ManageExtrasPanel'
 import { ManageFeatsPanel } from './ManageFeatsPanel'
 import { ManageInventoryPanel } from './ManageInventoryPanel'
@@ -255,7 +256,7 @@ type DrawerContent =
 	| { kind: 'manageExtras' }
 	| { kind: 'manageFeats' }
 	| { kind: 'familiarHitPoints' }
-	| { kind: 'beast'; beast: Beast }
+	| { kind: 'beast'; beast: Beast; familiar?: true }
 
 const PROFICIENCY_ROWS: [ProficiencyCategory, string][] = [
 	['armor', 'Armor'],
@@ -2560,7 +2561,20 @@ function CharacterSheetBody({
 		: []
 	/* beasts.json starts as [] and is never empty once loaded, so this is "fetch in flight". */
 	const beastsLoading = needsBeasts && beasts.length === 0 && beastsError === null
-	const familiarExtra = extraRows({ familiar: character.familiar ?? null, familiarForms, wildShapeForms: [], beasts, pending: beastsLoading || beastsError !== null })[0]
+	/* R14d (D220): custom item bonuses for the familiar; the character carries the item, so this reads the whole inventory. */
+	const familiarBonuses = familiarItemBonuses(
+		character.inventory ?? [],
+		itemRefs ?? [],
+		character.classes.reduce((sum, c) => sum + c.level, 0),
+	)
+	const familiarExtra = extraRows({
+		familiar: character.familiar ?? null,
+		familiarForms,
+		wildShapeForms: [],
+		beasts,
+		pending: beastsLoading || beastsError !== null,
+		familiarBonuses,
+	})[0]
 	// The Manage Extras button needs a category the character has AND the callback that edits it.
 	// R11b (D213): stored extras keep the button too, so a familiar or Wild Shape form left behind by a lost spell/class can still be deleted.
 	const canManageExtras =
@@ -3085,6 +3099,8 @@ function CharacterSheetBody({
 				beastsError={beastsError}
 				beastsLoading={beastsLoading}
 				onOpenBeast={(beast) => setDrawer({ kind: 'beast', beast })}
+				onOpenFamiliar={(beast) => setDrawer({ kind: 'beast', beast, familiar: true })}
+				familiarBonuses={familiarBonuses}
 				onManageExtras={canManageExtras ? () => setDrawer({ kind: 'manageExtras' }) : undefined}
 				onOpenFamiliarHitPoints={() => setDrawer({ kind: 'familiarHitPoints' })}
 			/>
@@ -3412,6 +3428,11 @@ function CharacterSheetBody({
 
 			{drawer?.kind === 'beast' && (
 				<Drawer title={drawer.beast.name} onClose={() => setDrawer(null)}>
+					{drawer.familiar && familiarBonuses.sources.length > 0 && (
+						<p className="beast__line">
+							<strong>Bonuses from items</strong> {familiarBonusLines(familiarBonuses).join('; ')}
+						</p>
+					)}
 					<BeastStatBody beast={drawer.beast} />
 				</Drawer>
 			)}

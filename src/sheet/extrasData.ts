@@ -1,6 +1,7 @@
 import { formKey, type Beast, type FamiliarFormOption } from '../beasts/beastData'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 import type { CharacterClass, CharacterFamiliar, CharacterWildShapeForms } from '../storage/character'
+import { applyFamiliarBonuses, NO_FAMILIAR_BONUSES, type FamiliarItemBonuses } from './familiarItemBonuses'
 
 /*
  * The Extras tab's rows (R11a, D212): the one familiar, then every stored Wild
@@ -16,11 +17,11 @@ export interface FamiliarHitPoints {
 	temporary: number
 }
 
-/** D213: max is the stat block's average HP; null (D43) when there is no stat block or it gives a formula only — never read as 0. */
+/** D213: max is the stat block's average HP; null (D43) when there is no stat block or it gives a formula only — never read as 0. A stored current above a lowered max (R14d: the item left) shows clamped, like the character's own. */
 export function familiarHitPoints(familiar: CharacterFamiliar, beast: Beast | null): FamiliarHitPoints | null {
 	const max = beast?.hp.average
 	if (max === undefined) return null
-	return { current: familiar.currentHp ?? max, max, temporary: familiar.temporaryHitPoints ?? 0 }
+	return { current: Math.min(familiar.currentHp ?? max, max), max, temporary: familiar.temporaryHitPoints ?? 0 }
 }
 
 export interface ExtraRow {
@@ -46,23 +47,27 @@ export function extraRows({
 	wildShapeForms,
 	beasts,
 	pending,
+	familiarBonuses = NO_FAMILIAR_BONUSES,
 }: {
 	familiar: CharacterFamiliar | null
 	familiarForms: FamiliarFormOption[]
 	wildShapeForms: CharacterWildShapeForms[]
 	beasts: Beast[]
 	pending: boolean
+	/** R14d (D220): item bonuses for the familiar's row only — Wild Shape rows and the Manage Extras panel pass none. */
+	familiarBonuses?: FamiliarItemBonuses
 }): ExtraRow[] {
 	const rows: ExtraRow[] = []
 	if (familiar) {
 		const option = familiarForms.find((candidate) => formKey(candidate.beast) === formKey(familiar))
+		const beast = option ? applyFamiliarBonuses(option.beast, familiarBonuses) : null
 		rows.push({
 			key: `familiar|${formKey(familiar)}`,
 			kind: 'familiar',
 			name: familiar.name,
 			source: familiar.source,
-			beast: option?.beast ?? null,
-			hitPoints: familiarHitPoints(familiar, option?.beast ?? null),
+			beast,
+			hitPoints: familiarHitPoints(familiar, beast),
 			owner: null,
 			pactOfTheChain: option?.origin === 'pact-of-the-chain',
 			problem: option || pending ? null : `"${familiar.name}" (${familiar.source}) is not a form this familiar can take.`,
