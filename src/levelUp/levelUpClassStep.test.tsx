@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { CharacterWizard } from '../creation/CharacterWizard'
+import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import { WIZARD_STEPS, type WizardStep } from '../creation/wizardState'
 import type { LevelGain, LevelGains } from './levelGains'
 import type { Character } from '../storage/character'
@@ -97,8 +98,8 @@ describe('the class step during a level up', () => {
 	it('shows the subclass, fighting style and class skill pickers when editing, so their absence below is the fix and not the mocks', async () => {
 		renderWizard()
 		// A picker whose count is already met starts collapsed, so its inputs are only in the DOM, not the accessibility tree.
-		expect(await screen.findByRole('radio', { name: /Battle Master/, hidden: true })).toBeTruthy()
-		expect(await screen.findByLabelText('Archery')).toBeTruthy()
+		expect(await screen.findByRole('button', { name: 'Choose Battle Master', hidden: true })).toBeTruthy()
+		expect(await screen.findByRole('button', { name: 'Choose Archery', hidden: true })).toBeTruthy()
 		expect(await screen.findByRole('checkbox', { name: /intimidation/i, hidden: true })).toBeTruthy()
 	})
 
@@ -106,26 +107,26 @@ describe('the class step during a level up', () => {
 		renderWizard(fighterFour)
 		expect(await screen.findByText('Level up: Fighter 3 → 4')).toBeTruthy()
 		// The maneuver picker loads after the seed, as the subclass and fighting-style pickers would.
-		await screen.findByRole('checkbox', { name: /Parry/ })
+		await screen.findByRole('button', { name: 'Choose Parry' })
 
-		expect(screen.queryByRole('radio', { name: /Battle Master/, hidden: true })).toBeNull()
-		expect(screen.queryByRole('radio', { name: /Champion/, hidden: true })).toBeNull()
-		expect(screen.queryByLabelText('Archery')).toBeNull()
-		expect(screen.queryByLabelText('Defense')).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Choose Battle Master', hidden: true })).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Choose Champion', hidden: true })).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Choose Archery', hidden: true })).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Choose Defense', hidden: true })).toBeNull()
 		expect(screen.queryByRole('checkbox', { name: /intimidation/i, hidden: true })).toBeNull()
 	})
 
 	it('keeps earlier masteries and maneuvers checked and locked, leaving only the new picks open', async () => {
 		renderWizard(fighterFour)
 
-		const longsword = (await screen.findByRole('checkbox', { name: /Longsword/ })) as HTMLInputElement
-		expect(longsword.checked && longsword.disabled).toBe(true)
-		expect((screen.getByRole('checkbox', { name: /Greatsword/ }) as HTMLInputElement).disabled).toBe(false)
+		const longsword = (await screen.findByRole('button', { name: 'Choose Longsword' })) as HTMLButtonElement
+		expect(isChosen(longsword) && longsword.disabled).toBe(true)
+		expect(chooseButton('Greatsword').disabled).toBe(false)
 
-		for (const held of [/Trip Attack/, /Riposte/]) {
-			const option = (await screen.findByRole('checkbox', { name: held })) as HTMLInputElement
-			expect(option.checked && option.disabled).toBe(true)
+		for (const held of ['Trip Attack', 'Riposte']) {
+			const option = (await screen.findByRole('button', { name: `Choose ${held}` })) as HTMLButtonElement
+			expect(isChosen(option) && option.disabled).toBe(true)
 		}
-		expect((screen.getByRole('checkbox', { name: /Parry/ }) as HTMLInputElement).disabled).toBe(false)
+		expect(chooseButton('Parry').disabled).toBe(false)
 	})
 })

@@ -122,6 +122,7 @@ export function MasteryPicker({
 			legend="Weapon masteries"
 			name="weapon-mastery"
 			inputType="checkbox"
+				variant="choose"
 			options={options}
 			required={count}
 			renderCount={({ chosen, required }) => {

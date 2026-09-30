@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { loadClassFeatureChoices, type ClassFeatureChoice } from './classFeatureChoiceData'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 import { Entries } from '../markup'
+import { ChoiceRow } from '../pickers/ChoiceRow'
 import type { CharacterClassFeatureChoice } from '../storage/character'
 
 /*
@@ -121,30 +122,29 @@ export function ClassFeatureChoicePicker({
 						</p>
 						<ul className="class-feature-choice-picker__list">
 							{choice.options.map((option) => (
-								<li key={option.uid} className="class-feature-choice-picker__item">
-									<label>
-										<input
-											type="radio"
-											name={`class-feature-choice:${choice.featureName}`}
-											checked={chosen === option.name}
-											disabled={locked}
-											onChange={() => select(choice, option.name)}
-										/>
-										<strong>{option.name}</strong>
-									</label>
-									<div className="class-feature-choice-picker__description">
-										{option.found ? (
-											resolverData ? (
-												<ResolvedEntries entries={option.entries} data={resolverData} />
+								<ChoiceRow
+									key={option.uid}
+									name={option.name}
+									chosen={chosen === option.name}
+									locked={locked && chosen === option.name}
+									disabled={locked}
+									single
+									onPick={() => select(choice, option.name)}
+									detail={
+										<div className="class-feature-choice-picker__description">
+											{option.found ? (
+												resolverData ? (
+													<ResolvedEntries entries={option.entries} data={resolverData} />
+												) : (
+													<Entries entries={option.entries} />
+												)
 											) : (
-												<Entries entries={option.entries} />
-											)
-										) : (
-											// D43: an option whose target text is missing is still offered, with the gap stated.
-											<p className="class-feature-choice-picker__not-found">Text pro „{option.name}“ se nepodařilo dohledat.</p>
-										)}
-									</div>
-								</li>
+												// D43: an option whose target text is missing is still offered, with the gap stated.
+												<p className="class-feature-choice-picker__not-found">Text pro „{option.name}“ se nepodařilo dohledat.</p>
+											)}
+										</div>
+									}
+								/>
 							))}
 						</ul>
 					</section>

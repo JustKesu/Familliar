@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { expectStep, fillUpToBackground, next, select, type FighterOptions } from './wizard.ts'
+import { chooseButton, expectStep, fillUpToBackground, next, select, type FighterOptions } from './wizard.ts'
 
 /* D201: FRHoF (Heroes of Faerûn) in reduced scope — subclasses, spells, items, Epic Boons and General feats only. */
 
@@ -7,8 +7,8 @@ test('D201 a: Wizard 3 offers Bladesinger (FRHoF) and not Bladesinging (TCE)', a
   await page.goto('/#/new')
   await select(page, 'Class').selectOption('Wizard|XPHB')
   await select(page, 'Level').selectOption('3')
-  await expect(page.getByRole('radio', { name: 'Bladesinger', exact: true })).toHaveCount(1)
-  await expect(page.getByRole('radio', { name: 'Bladesinging', exact: true })).toHaveCount(0)
+  await expect(chooseButton(page, 'Bladesinger')).toHaveCount(1)
+  await expect(chooseButton(page, 'Bladesinging')).toHaveCount(0)
 })
 
 test('D201 b: the Wizard spell step offers Wardaway (FRHoF) and it can be picked', async ({ page }) => {

@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WildShapeFormPicker } from './WildShapeFormPicker'
 import { loadBeasts, type Beast } from './beastData'
+import { chooseButton, chooseButtons, chooseNames, isChosen } from '../pickers/choiceTestHelpers'
 
 vi.mock('./beastData', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./beastData')>()
@@ -90,7 +91,7 @@ describe('WildShapeFormPicker', () => {
 		expect(screen.getByText(/Maximum Challenge Rating 1\/4/)).toBeTruthy()
 		expect(screen.getByText(/no form with a Fly Speed yet/)).toBeTruthy()
 
-		const labels = screen.getAllByRole('checkbox').map((box) => box.closest('label')?.textContent ?? '')
+		const labels = chooseNames()
 		expect(labels.some((text) => text.includes('Wolf'))).toBe(true)
 		expect(labels.some((text) => text.includes('Owl'))).toBe(false) // has a Fly Speed
 		expect(labels.some((text) => text.includes('Brown Bear'))).toBe(false) // CR 1
@@ -102,7 +103,7 @@ describe('WildShapeFormPicker', () => {
 
 		expect(screen.getByText(/Choose 8 Beast forms/)).toBeTruthy()
 		expect(screen.getByText(/a form with a Fly Speed is allowed/)).toBeTruthy()
-		const labels = screen.getAllByRole('checkbox').map((box) => box.closest('label')?.textContent ?? '')
+		const labels = chooseNames()
 		expect(labels.some((text) => text.includes('Owl'))).toBe(true)
 		expect(labels.some((text) => text.includes('Brown Bear'))).toBe(true)
 	})
@@ -112,13 +113,15 @@ describe('WildShapeFormPicker', () => {
 		await screen.findByRole('button', { name: /Wild Shape forms/ })
 
 		expect(screen.getByText(/Maximum Challenge Rating 1 \(Circle of the Moon\)/)).toBeTruthy()
-		const labels = screen.getAllByRole('checkbox').map((box) => box.closest('label')?.textContent ?? '')
+		const labels = chooseNames()
 		expect(labels.some((text) => text.includes('Brown Bear'))).toBe(true)
 	})
 
 	it('shows each offered beast through the shared stat block, with markup resolved', async () => {
 		const { container } = renderPicker()
 		await screen.findByRole('button', { name: /Wild Shape forms/ })
+		expect(container.querySelectorAll('details.beast').length).toBe(0) // W5: rule text is collapsed until ▸
+		await userEvent.setup().click(screen.getByRole('button', { name: 'Wolf text' }))
 
 		expect(container.querySelectorAll('details.beast').length).toBeGreaterThan(0)
 		expect(container.textContent).toContain('Melee Attack Roll:')
@@ -130,7 +133,7 @@ describe('WildShapeFormPicker', () => {
 		const { onChange } = renderPicker()
 		await screen.findByRole('button', { name: /Wild Shape forms/ })
 
-		const wolf = screen.getAllByRole('checkbox').find((box) => box.closest('label')?.textContent?.includes('Wolf'))!
+		const wolf = chooseButton('Wolf')
 		await user.click(wolf)
 		expect(onChange).toHaveBeenCalledWith([{ name: 'Wolf', source: 'XMM' }])
 	})
@@ -146,7 +149,7 @@ describe('WildShapeFormPicker', () => {
 		const { onChange, rerender } = renderPicker({ value: [{ name: 'Rat', source: 'XMM' }] })
 		await screen.findByRole('button', { name: /Wild Shape forms/ })
 
-		const wolf = screen.getAllByRole('checkbox').find((box) => box.closest('label')?.textContent?.includes('Wolf'))!
+		const wolf = chooseButton('Wolf')
 		await user.click(wolf)
 		expect(onChange).toHaveBeenCalledWith([
 			{ name: 'Rat', source: 'XMM' },
@@ -164,7 +167,7 @@ describe('WildShapeFormPicker', () => {
 				onChange={onChange}
 			/>,
 		)
-		const rat = screen.getAllByRole('checkbox').find((box) => box.closest('label')?.textContent?.includes('Rat'))!
+		const rat = chooseButton('Rat')
 		await user.click(rat)
 		expect(onChange).toHaveBeenCalledWith([
 			{ name: 'Wolf', source: 'XMM' },
@@ -182,7 +185,7 @@ describe('WildShapeFormPicker', () => {
 		})
 		await screen.findByRole('button', { name: /Wild Shape forms/ })
 
-		const wolf = screen.getAllByRole('checkbox').find((box) => box.closest('label')?.textContent?.includes('Wolf'))!
+		const wolf = chooseButton('Wolf')
 		await user.click(wolf)
 		expect(onChange).toHaveBeenCalledWith([{ name: 'Rat', source: 'XMM' }])
 	})
@@ -202,14 +205,13 @@ describe('WildShapeFormPicker', () => {
 		await waitFor(() => expect(screen.getByText(/chosen 4/)).toBeTruthy())
 		await openList(user) // the list comes back collapsed once all 4 are chosen
 
-		const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[]
-		const badger = boxes.find((box) => box.closest('label')?.textContent?.includes('Badger'))!
-		expect(badger.disabled).toBe(true)
-		expect(boxes.filter((box) => box.checked).every((box) => !box.disabled)).toBe(true)
+		const boxes = chooseButtons()
+		expect(chooseButton('Badger').disabled).toBe(true)
+		expect(boxes.filter(isChosen).every((box) => !box.disabled)).toBe(true)
+		expect(screen.getByText(/4 \/ 4 · FULL/)).toBeTruthy()
 
 		// Unchecking one frees a slot rather than being blocked by the limit.
-		const wolf = boxes.find((box) => box.closest('label')?.textContent?.includes('Wolf'))!
-		await user.click(wolf)
+		await user.click(chooseButton('Wolf'))
 		expect(onChange).toHaveBeenCalledWith([
 			{ name: 'Rat', source: 'XMM' },
 			{ name: 'Spider', source: 'XMM' },
@@ -229,8 +231,8 @@ describe('WildShapeFormPicker', () => {
 		await openList(user)
 
 		await user.type(screen.getByLabelText('Search Wild Shape forms'), 'wol')
-		expect(screen.getByRole('checkbox', { name: /Wolf/ })).toBeTruthy()
-		expect(screen.queryByRole('checkbox', { name: /Badger/ })).toBeNull()
+		expect(chooseButton('Wolf')).toBeTruthy()
+		expect(screen.queryByRole('button', { name: 'Choose Badger' })).toBeNull()
 
 		// Every stat block that is still shown stays in its default-collapsed <details> state.
 		const openStatBlocks = document.querySelectorAll('details.beast[open]')
@@ -243,8 +245,7 @@ describe('WildShapeFormPicker', () => {
 		await openList(user)
 
 		await user.type(screen.getByLabelText('Search Wild Shape forms'), 'badger')
-		const wolf = screen.getByRole('checkbox', { name: /Wolf/ }) as HTMLInputElement
-		expect(wolf.checked).toBe(true)
+		expect(isChosen(chooseButton('Wolf'))).toBe(true)
 	})
 
 	it('a form disabled by the full limit stays visible and disabled while searching', async () => {
@@ -261,7 +262,6 @@ describe('WildShapeFormPicker', () => {
 		await openList(user)
 
 		await user.type(screen.getByLabelText('Search Wild Shape forms'), 'badger')
-		const badger = screen.getByRole('checkbox', { name: /Badger/ }) as HTMLInputElement
-		expect(badger.disabled).toBe(true)
+		expect(chooseButton('Badger').disabled).toBe(true)
 	})
 })

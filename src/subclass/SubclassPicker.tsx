@@ -92,7 +92,7 @@ export function SubclassPicker({
 	const searchableOptions: SearchableOption[] = options.map((option) => ({
 		key: optionKey(option),
 		name: option.name,
-		label: <strong>{option.name}</strong>,
+		book: option.source,
 		detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
 		selected: value === option.name,
 	}))
@@ -103,6 +103,7 @@ export function SubclassPicker({
 				legend="Subclass"
 				name="subclass"
 				inputType="radio"
+					variant="choose"
 				options={searchableOptions}
 				required={1}
 				renderCount={({ chosen }) => (chosen === 0 ? 'Choose a subclass.' : 'Subclass chosen.')}

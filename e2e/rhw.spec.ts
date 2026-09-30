@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFighter, select } from './wizard.ts'
+import { chooseButton, createFighter, select } from './wizard.ts'
 
 /* D194: RHW (Ravenloft: The Horrors Within). Casters are saved characters seeded into storage like classFreeCasts.spec.ts. */
 const STORAGE_KEY = 'familliar:characters'
@@ -8,7 +8,7 @@ async function subclassRadios(page: Page, classValue: string): Promise<(name: st
   await page.goto('/#/new')
   await select(page, 'Class').selectOption(classValue)
   await select(page, 'Level').selectOption('3')
-  return (name) => page.getByRole('radio', { name, exact: true })
+  return (name) => chooseButton(page, name)
 }
 
 test('D194 a: Sorcerer 3 offers Shadow Sorcery and not Shadow Magic', async ({ page }) => {
@@ -23,7 +23,7 @@ test('D194 b: Cleric 3 offers one Grave Domain, Rogue 3 one Phantom, Wizard 3 no
   radio = await subclassRadios(page, 'Rogue|XPHB')
   await expect(radio('Phantom')).toHaveCount(1)
   radio = await subclassRadios(page, 'Wizard|XPHB')
-  await expect(page.getByRole('radio', { name: 'Evoker', exact: true })).toHaveCount(1)
+  await expect(radio('Evoker')).toHaveCount(1)
   await expect(radio('Bladesinging')).toHaveCount(0)
 })
 

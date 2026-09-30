@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createFighter, expectStep, next, select, stepBar, wizardNav } from './wizard.ts'
+import { chooseButton, createFighter, expectStep, next, select, stepBar, wizardNav } from './wizard.ts'
 
 const FIGHTER = { name: 'Edda', level: 1, species: 'Dwarf|XPHB' }
 
@@ -9,9 +9,9 @@ async function fillFighterClassStep(page: Page): Promise<void> {
   await page.getByRole('checkbox', { name: 'Athletics', exact: true }).check()
   await page.getByRole('checkbox', { name: 'Perception', exact: true }).check()
   for (const weapon of ['Longsword', 'Greatsword', 'Handaxe']) {
-    await page.getByRole('checkbox', { name: new RegExp(`^${weapon} —`) }).first().check()
+    await chooseButton(page, weapon).first().click()
   }
-  await page.getByRole('radio', { name: 'Defense', exact: true }).first().check()
+  await chooseButton(page, 'Defense').first().click()
 }
 
 const stepButton = (page: Page, name: string) => stepBar(page).getByRole('button', { name, exact: true })

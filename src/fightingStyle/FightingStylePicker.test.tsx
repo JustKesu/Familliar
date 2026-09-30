@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FightingStylePicker } from './FightingStylePicker'
+import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 
 /*
  * Component test for the fighting style picker, following the jsdom/testing-
@@ -81,8 +82,7 @@ describe('FightingStylePicker', () => {
 
 		// A style is already chosen, so the list starts collapsed; open it to reach the options.
 		await user.click(await screen.findByRole('button', { name: /fighting style/i }))
-		const archery = await screen.findByRole('radio', { name: /Archery/ })
-		await user.click(archery)
+		await user.click(await screen.findByRole('button', { name: 'Choose Archery' }))
 
 		expect(onChange).toHaveBeenCalledTimes(1)
 		expect(onChange).toHaveBeenCalledWith('Archery')
@@ -102,11 +102,9 @@ describe('FightingStylePicker', () => {
 
 		await user.click(await screen.findByRole('button', { name: /fighting style/i }))
 		await waitFor(() => {
-			const archery = screen.getByRole('radio', { name: /Archery/ }) as HTMLInputElement
-			expect(archery.checked).toBe(true)
+			expect(isChosen(chooseButton('Archery'))).toBe(true)
 		})
-		const dueling = screen.getByRole('radio', { name: /Dueling/ }) as HTMLInputElement
-		expect(dueling.checked).toBe(false)
+		expect(isChosen(chooseButton('Dueling'))).toBe(false)
 	})
 
 	it('search filters the fighting style list, but never hides the one already chosen', async () => {
@@ -124,9 +122,8 @@ describe('FightingStylePicker', () => {
 		await user.click(await screen.findByRole('button', { name: /fighting style/i }))
 		await user.type(screen.getByLabelText('Search Fighting style'), 'Archery')
 
-		expect(screen.getByRole('radio', { name: /Archery/ })).toBeTruthy()
+		expect(chooseButton('Archery')).toBeTruthy()
 		// Dueling is chosen and does not match "Archery" — still shown, pinned.
-		const dueling = screen.getByRole('radio', { name: /Dueling/ }) as HTMLInputElement
-		expect(dueling.checked).toBe(true)
+		expect(isChosen(chooseButton('Dueling'))).toBe(true)
 	})
 })

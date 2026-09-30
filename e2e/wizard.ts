@@ -14,6 +14,16 @@ export function wizardNav(page: Page): Locator {
   return page.getByRole('group', { name: 'Step navigation', exact: true })
 }
 
+/** W5: the CHOOSE / CHOSEN button of a Class-step list row; its name is always "Choose <name>", aria-pressed carries the state. */
+export function chooseButton(scope: Page | Locator, name: string): Locator {
+  return scope.getByRole('button', { name: `Choose ${name}`, exact: true })
+}
+
+/** The ▸ toggle of the same row, which shows and hides its rule text. */
+export function textToggle(scope: Page | Locator, name: string): Locator {
+  return scope.getByRole('button', { name: `${name} text`, exact: true })
+}
+
 export function stepBar(page: Page): Locator {
   return page.getByRole('navigation', { name: 'Wizard steps' })
 }
@@ -63,10 +73,10 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
   await page.getByRole('checkbox', { name: 'Athletics', exact: true }).check()
   await page.getByRole('checkbox', { name: 'Perception', exact: true }).check()
   for (const weapon of ['Longsword', 'Greatsword', 'Handaxe']) {
-    await page.getByRole('checkbox', { name: new RegExp(`^${weapon} —`) }).first().check()
+    await chooseButton(page, weapon).first().click()
   }
-  await page.getByRole('radio', { name: 'Defense', exact: true }).first().check()
-  if (options.level >= 3) await page.getByRole('radio', { name: options.subclass ?? 'Champion', exact: true }).first().check()
+  await chooseButton(page, 'Defense').first().click()
+  if (options.level >= 3) await chooseButton(page, options.subclass ?? 'Champion').first().click()
   await options.onClassStep?.(page)
   await next(page)
 

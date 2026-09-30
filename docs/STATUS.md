@@ -2051,6 +2051,15 @@ token in theme.css. Step label "ASI / Feat". Tests target the "Step
 navigation" row (`e2e/wizard.ts` `wizardNav`, `src/creation/wizardTestNav.ts`).
 E2E `wizardShell.spec.ts` W9 a/b, W23 c–f, W28 g.
 
+W-2 (D237) done. No schema bump. Class step / Class options lists with rule text
+(subclass, fighting style, masteries, subclass options, invocations/metamagic, Wild
+Shape forms, class feature "pick one" choices) are CHOOSE / CHOSEN rows:
+`pickers/ChoiceRow.tsx` + `variant="choose"` on `SearchableOptionList` (other uses
+unchanged). ▸ folds the rule text; `extra` keeps a chosen option's sub-picker
+(Pact of the Tome spells) visible. Class skills stay checkboxes. Test helpers:
+`pickers/choiceTestHelpers.ts`, e2e `chooseButton` / `textToggle` in `e2e/wizard.ts`.
+E2E `chooseLists.spec.ts` W-2 a–g.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

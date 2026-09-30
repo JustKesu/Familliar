@@ -2425,6 +2425,87 @@ button:disabled {
   margin: 0.15rem 0 0 1.5rem;
 }
 
+/* W5: CHOOSE / CHOSEN rows (src/pickers/ChoiceRow.tsx); button look comes from .manage-spells__button. */
+.choice-row {
+  border-top: 1px solid var(--rule);
+}
+
+.choice-row__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+}
+
+.choice-row__head {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.choice-row__arrow {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.choice-row__name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.choice-row__name--off {
+  color: var(--text-sub);
+}
+
+.choice-row__book {
+  font-size: 12px;
+  color: var(--text-mute);
+}
+
+.choice-row__button {
+  flex: none;
+}
+
+.choice-row__button--on:disabled {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.choice-row__button:disabled:not(.manage-spells__button--on) {
+  color: var(--text-sub);
+  border-color: var(--text-sub);
+}
+
+.choice-row__reason {
+  padding: 0 12px 8px 34px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.choice-row__text {
+  box-sizing: border-box;
+  max-width: 640px;
+  padding: 0 12px 10px 34px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+
+.option-list__counter {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
 .option-list__pinned-label {
   margin: 0.25rem 0 0;
   font-size: 0.8rem;

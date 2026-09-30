@@ -4199,3 +4199,14 @@ Panel kroku Spells se roztahuje na šířku obsahu.
 
 D236 (W32): Pořadí kroků se nemění (D13/D64). Tvorba postavy zůstává samostatná obrazovka krok po
 kroku.
+
+## D237 — Seznamy voleb v kroku Class: CHOOSE / CHOSEN s rozbalovacím textem (W5, W-2)
+
+D237 (W5): Podtřída, bojový styl, mastery, volby podtřídy (manévry…), třídní volby (invokace,
+metamagie), formy Wild Shape a „pick one version“ volby třídních rysů (Divine Order…) ukazují jen
+jména; pravidlový text se rozbalí přes ▸ (jako Manage Feats / Manage Spells). Volba se dělá tlačítkem
+vpravo: CHOOSE (obrys) / CHOSEN (plné). Jednoduchá volba: CHOOSE jinde přesune volbu, klik na CHOSEN
+nedělá nic. Vícenásobná volba: CHOSEN odebere, při plném počtu jsou CHOOSE zakázaná a počítadlo ukazuje
+„X / N · FULL“. Zamčené (D108) položky jsou CHOSEN a neklikatelné. Krátké seznamy bez textu (třídní
+dovednosti) zůstávají checkboxy. Implementace: varianta `choose` sdíleného SearchableOptionList,
+ostatní použití beze změny.

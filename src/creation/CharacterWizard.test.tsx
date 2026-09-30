@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
 import { stepBar, stepNav } from './wizardTestNav'
+import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
@@ -586,8 +587,8 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await user.click(await screen.findByLabelText('Athletics'))
-		await user.click(await screen.findByLabelText('Longsword', { exact: false }))
-		await user.click(await screen.findByLabelText('Archery'))
+		await user.click(await screen.findByRole('button', { name: 'Choose Longsword' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Archery' }))
 
 		await goNext(user)
 		await screen.findByLabelText('Species')
@@ -597,8 +598,8 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await user.click(await screen.findByRole('button', { name: /Weapon masteries/ }))
 		await user.click(screen.getByRole('button', { name: /Fighting style/ }))
 		expect((screen.getByLabelText('Athletics') as HTMLInputElement).checked).toBe(true)
-		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(true)
-		expect((screen.getByLabelText('Archery') as HTMLInputElement).checked).toBe(true)
+		expect(isChosen(chooseButton('Longsword'))).toBe(true)
+		expect(isChosen(chooseButton('Archery'))).toBe(true)
 	})
 
 	it('class step: changing the class clears the class skill, weapon mastery and fighting style selections', async () => {
@@ -607,19 +608,19 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await user.click(await screen.findByLabelText('Athletics'))
-		await user.click(await screen.findByLabelText('Longsword', { exact: false }))
-		await user.click(await screen.findByLabelText('Archery'))
+		await user.click(await screen.findByRole('button', { name: 'Choose Longsword' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Archery' }))
 
 		await user.selectOptions(screen.getByLabelText('Class'), 'Wizard')
 
 		expect((await screen.findByLabelText('Athletics') as HTMLInputElement).checked).toBe(false)
-		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(false)
+		expect(isChosen(chooseButton('Longsword'))).toBe(false)
 		expect(screen.getByText('Choose a fighting style.')).toBeTruthy()
 
 		await user.selectOptions(screen.getByLabelText('Class'), 'Fighter')
 
 		expect((await screen.findByLabelText('Athletics') as HTMLInputElement).checked).toBe(false)
-		expect((screen.getByLabelText('Longsword', { exact: false }) as HTMLInputElement).checked).toBe(false)
+		expect(isChosen(chooseButton('Longsword'))).toBe(false)
 		expect(screen.getByText('Choose a fighting style.')).toBeTruthy()
 	})
 
@@ -629,7 +630,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
-		await user.click(await screen.findByRole('radio', { name: /Champion/ }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Champion' }))
 
 		await goNext(user)
 		await screen.findByLabelText('Species')
@@ -637,7 +638,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		// The subclass list auto-collapses once its one pick is made; reopen it.
 		await user.click(await screen.findByRole('button', { name: /Subclass/ }))
-		expect((screen.getByRole('radio', { name: /Champion/ }) as HTMLInputElement).checked).toBe(true)
+		expect(isChosen(chooseButton('Champion'))).toBe(true)
 	})
 
 	it('class step: changing the class clears the subclass selection', async () => {
@@ -646,7 +647,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
-		await user.click(await screen.findByRole('radio', { name: /Champion/ }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Champion' }))
 
 		await user.selectOptions(screen.getByLabelText('Class'), 'Wizard')
 		await user.selectOptions(screen.getByLabelText('Class'), 'Fighter')
@@ -661,14 +662,14 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
-		await user.click(await screen.findByRole('radio', { name: /Battle Master/ }))
-		await user.click(await screen.findByLabelText('Trip Attack'))
+		await user.click(await screen.findByRole('button', { name: 'Choose Battle Master' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Trip Attack' }))
 
 		await goNext(user)
 		await screen.findByLabelText('Species')
 		await goBack(user)
 
-		expect((await screen.findByLabelText('Trip Attack') as HTMLInputElement).checked).toBe(true)
+		expect(isChosen(await screen.findByRole('button', { name: 'Choose Trip Attack' }))).toBe(true)
 	})
 
 	it('class step: changing the subclass clears the maneuver picks', async () => {
@@ -677,15 +678,15 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
-		await user.click(await screen.findByRole('radio', { name: /Battle Master/ }))
-		await user.click(await screen.findByLabelText('Trip Attack'))
+		await user.click(await screen.findByRole('button', { name: 'Choose Battle Master' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Trip Attack' }))
 
-		await user.click(screen.getByRole('radio', { name: /Champion/ }))
-		expect(screen.queryByLabelText('Trip Attack')).toBeNull()
+		await user.click(screen.getByRole('button', { name: 'Choose Champion' }))
+		expect(screen.queryByRole('button', { name: 'Choose Trip Attack' })).toBeNull()
 
-		await user.click(screen.getByRole('radio', { name: /Battle Master/ }))
+		await user.click(screen.getByRole('button', { name: 'Choose Battle Master' }))
 
-		expect((await screen.findByLabelText('Trip Attack') as HTMLInputElement).checked).toBe(false)
+		expect(isChosen(await screen.findByRole('button', { name: 'Choose Trip Attack' }))).toBe(false)
 	})
 })
 
@@ -728,8 +729,8 @@ describe('CharacterWizard — storage', () => {
 
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
-		await user.click(await screen.findByRole('radio', { name: /Battle Master/ }))
-		await user.click(await screen.findByLabelText('Trip Attack'))
+		await user.click(await screen.findByRole('button', { name: 'Choose Battle Master' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Trip Attack' }))
 		await goNext(user)
 		await fillSpeciesStep(user)
 		await goNext(user)

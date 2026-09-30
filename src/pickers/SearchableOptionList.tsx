@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { ChoiceRow } from './ChoiceRow'
 
 /*
  * One shared control for pickers whose option list is long enough to be
@@ -32,6 +33,10 @@ export interface SearchableOption {
 	disabledReason?: ReactNode
 	/** D108: a pick an earlier level already made, shown selected and never removable here — the one exception to D71's rule below. */
 	locked?: boolean
+	/** Choose variant only: source book next to the name. */
+	book?: string
+	/** Choose variant only: content kept visible while the rule text is collapsed. */
+	extra?: ReactNode
 }
 
 /** Lowercase and strip diacritics, so "à" matches "a". */
@@ -51,6 +56,7 @@ export function SearchableOptionList({
 	defaultOpen,
 	emptyLabel,
 	pinSelected = true,
+	variant = 'input',
 }: {
 	/** Group heading, also the basis of the search field's accessible name. */
 	legend: string
@@ -78,6 +84,11 @@ export function SearchableOptionList({
 	 * false, so the filter applies to everything the list shows.
 	 */
 	pinSelected?: boolean
+	/**
+	 * 'choose' (W5): rows of name + ▸ rule text + CHOOSE/CHOSEN button instead of
+	 * radios/checkboxes. `inputType` then only says single (radio) or multi (checkbox).
+	 */
+	variant?: 'input' | 'choose'
 }): ReactNode {
 	const chosen = options.filter((option) => option.selected).length
 	const [open, setOpen] = useState(defaultOpen ?? chosen < required)
@@ -105,6 +116,24 @@ export function SearchableOptionList({
 	}
 
 	function item(option: SearchableOption): ReactNode {
+		if (variant === 'choose') {
+			return (
+				<ChoiceRow
+					key={option.key}
+					name={option.name}
+					label={option.label}
+					book={option.book}
+					detail={option.detail}
+					extra={option.extra}
+					reason={option.disabled && !option.selected ? option.disabledReason : undefined}
+					chosen={option.selected}
+					disabled={option.disabled}
+					locked={option.locked}
+					single={inputType === 'radio'}
+					onPick={() => onToggle(option.key)}
+				/>
+			)
+		}
 		return (
 			<li key={option.key} className="option-list__item">
 				<label
@@ -138,7 +167,16 @@ export function SearchableOptionList({
 				onClick={toggleOpen}
 			>
 				<span className="option-list__legend">{legend}</span>
-				<span className="option-list__count">{renderCount({ chosen, required })}</span>
+				<span className="option-list__count">
+					{renderCount({ chosen, required })}
+					{variant === 'choose' && inputType === 'checkbox' && required > 0 && (
+						<span className="option-list__counter">
+							{' '}
+							{chosen} / {required}
+							{chosen >= required && ' · FULL'}
+						</span>
+					)}
+				</span>
 			</button>
 			<div className="option-list__body" hidden={!open}>
 				<input

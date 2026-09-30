@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { OptionalFeaturePicker } from './OptionalFeaturePicker'
+import { chooseButton, chooseButtons, isChosen, queryChooseButton } from '../pickers/choiceTestHelpers'
 
 /*
  * Component test for the general optionalfeatureProgression picker,
@@ -68,7 +69,8 @@ describe('OptionalFeaturePicker', () => {
 
 		expect(await screen.findByText('Maneuver 1')).toBeTruthy()
 		expect(screen.getByText('Maneuver 23')).toBeTruthy()
-		expect(screen.getAllByRole('checkbox')).toHaveLength(23)
+		expect(chooseButtons()).toHaveLength(23)
+		expect(screen.getByText(/0 \/ 3/)).toBeTruthy()
 		expect(screen.getByText('Choose 3 more options.')).toBeTruthy()
 	})
 
@@ -121,7 +123,7 @@ describe('OptionalFeaturePicker', () => {
 		)
 
 		await screen.findByText('Fighting Style 1')
-		expect(screen.getAllByRole('checkbox')).toHaveLength(10)
+		expect(chooseButtons()).toHaveLength(10)
 	})
 
 	it('cannot exceed the count', async () => {
@@ -141,8 +143,9 @@ describe('OptionalFeaturePicker', () => {
 
 		// The list collapses once the required count is met; open it to reach the options.
 		await user.click(await screen.findByRole('button', { name: /options/i }))
-		const fourth = screen.getByRole('checkbox', { name: 'Maneuver 4' }) as HTMLInputElement
+		const fourth = chooseButton('Maneuver 4')
 		expect(fourth.disabled).toBe(true)
+		expect(screen.getByText(/3 \/ 3 · FULL/)).toBeTruthy()
 		await user.click(fourth)
 		expect(onChange).not.toHaveBeenCalled()
 	})
@@ -161,13 +164,10 @@ describe('OptionalFeaturePicker', () => {
 		)
 
 		await waitFor(() => {
-			const five = screen.getByRole('checkbox', { name: 'Maneuver 5' }) as HTMLInputElement
-			expect(five.checked).toBe(true)
+			expect(isChosen(chooseButton('Maneuver 5'))).toBe(true)
 		})
-		const nine = screen.getByRole('checkbox', { name: 'Maneuver 9' }) as HTMLInputElement
-		const one = screen.getByRole('checkbox', { name: 'Maneuver 1' }) as HTMLInputElement
-		expect(nine.checked).toBe(true)
-		expect(one.checked).toBe(false)
+		expect(isChosen(chooseButton('Maneuver 9'))).toBe(true)
+		expect(isChosen(chooseButton('Maneuver 1'))).toBe(false)
 	})
 
 	it('search filters the maneuver list, but never hides a maneuver already picked', async () => {
@@ -186,10 +186,9 @@ describe('OptionalFeaturePicker', () => {
 
 		await user.type(await screen.findByLabelText('Search Options'), 'Maneuver 20')
 
-		expect(screen.getByRole('checkbox', { name: 'Maneuver 20' })).toBeTruthy()
-		expect(screen.queryByRole('checkbox', { name: 'Maneuver 2' })).toBeNull()
+		expect(chooseButton('Maneuver 20')).toBeTruthy()
+		expect(queryChooseButton('Maneuver 2')).toBeNull()
 		// Maneuver 1 is picked and does not match "Maneuver 20" — still shown, pinned.
-		const one = screen.getByRole('checkbox', { name: 'Maneuver 1' }) as HTMLInputElement
-		expect(one.checked).toBe(true)
+		expect(isChosen(chooseButton('Maneuver 1'))).toBe(true)
 	})
 })

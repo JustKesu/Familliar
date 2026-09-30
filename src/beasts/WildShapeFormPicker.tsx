@@ -117,6 +117,7 @@ export function WildShapeFormPicker({
 				legend="Wild Shape forms"
 				name="wild-shape-form"
 				inputType="checkbox"
+				variant="choose"
 				options={options}
 				required={limits.knownForms}
 				renderCount={({ chosen: picked, required }) =>

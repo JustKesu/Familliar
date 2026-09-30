@@ -117,7 +117,7 @@ export function OptionalFeaturePicker({
 		return {
 			key: optionKey(option),
 			name: option.name,
-			label: <strong>{option.name}</strong>,
+			book: option.source,
 			detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
 			selected: checked,
 			disabled: !checked && remaining <= 0,
@@ -131,6 +131,7 @@ export function OptionalFeaturePicker({
 				legend="Options"
 				name="optional-feature"
 				inputType="checkbox"
+					variant="choose"
 				options={searchableOptions}
 				required={count}
 				renderCount={({ chosen, required }) => {

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SubclassPicker } from './SubclassPicker'
+import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 
 /*
  * Component test for the subclass picker, following the jsdom/testing-
@@ -50,10 +51,34 @@ describe('SubclassPicker', () => {
 
 		// A subclass is already chosen, so the list starts collapsed; open it to reach the options.
 		await userEvent.setup().click(await screen.findByRole('button', { name: /subclass/i }))
-		const champion = (await screen.findByRole('radio', { name: /Champion/ })) as HTMLInputElement
-		expect(champion.checked).toBe(true)
-		const battleMaster = screen.getByRole('radio', { name: /Battle Master/ }) as HTMLInputElement
-		expect(battleMaster.checked).toBe(false)
+		await screen.findByRole('button', { name: 'Choose Champion' })
+		expect(isChosen(chooseButton('Champion'))).toBe(true)
+		expect(chooseButton('Champion').textContent).toBe('Chosen')
+		expect(isChosen(chooseButton('Battle Master'))).toBe(false)
+		expect(chooseButton('Battle Master').textContent).toBe('Choose')
+	})
+
+	it('shows names only until ▸ opens the rule text, and a second click hides it again', async () => {
+		const user = userEvent.setup()
+		render(<SubclassPicker className="Fighter" classSource="XPHB" level={3} value={null} onChange={() => {}} />)
+
+		const arrow = await screen.findByRole('button', { name: 'Champion text' })
+		expect(screen.queryByText('Simple, brutal effectiveness.')).toBeNull()
+		await user.click(arrow)
+		expect(screen.getByText('Simple, brutal effectiveness.')).toBeTruthy()
+		expect(screen.queryByText('Maneuvers and superiority dice.')).toBeNull()
+		await user.click(arrow)
+		expect(screen.queryByText('Simple, brutal effectiveness.')).toBeNull()
+	})
+
+	it('clicking CHOSEN does nothing: a single choice stays chosen like a radio', async () => {
+		const user = userEvent.setup()
+		const onChange = vi.fn()
+		render(<SubclassPicker className="Fighter" classSource="XPHB" level={3} value="Champion" onChange={onChange} />)
+
+		await user.click(await screen.findByRole('button', { name: /subclass/i }))
+		await user.click(chooseButton('Champion'))
+		expect(onChange).not.toHaveBeenCalled()
 	})
 
 	it('choosing replaces the previous choice', async () => {
@@ -64,8 +89,7 @@ describe('SubclassPicker', () => {
 		)
 
 		await user.click(await screen.findByRole('button', { name: /subclass/i }))
-		const battleMaster = await screen.findByRole('radio', { name: /Battle Master/ })
-		await user.click(battleMaster)
+		await user.click(await screen.findByRole('button', { name: 'Choose Battle Master' }))
 
 		expect(onChange).toHaveBeenCalledWith('Battle Master')
 	})
@@ -79,9 +103,8 @@ describe('SubclassPicker', () => {
 		await user.click(await screen.findByRole('button', { name: /subclass/i }))
 		await user.type(screen.getByLabelText('Search Subclass'), 'Battle')
 
-		expect(screen.getByRole('radio', { name: /Battle Master/ })).toBeTruthy()
+		expect(chooseButton('Battle Master')).toBeTruthy()
 		// Champion is chosen and does not match "Battle" — still shown, pinned.
-		const champion = screen.getByRole('radio', { name: /Champion/ }) as HTMLInputElement
-		expect(champion.checked).toBe(true)
+		expect(isChosen(chooseButton('Champion'))).toBe(true)
 	})
 })

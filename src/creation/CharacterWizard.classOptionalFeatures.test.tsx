@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import { stepNav } from './wizardTestNav'
 import userEvent from '@testing-library/user-event'
+import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
@@ -422,7 +423,7 @@ async function walkToSpells(user: ReturnType<typeof userEvent.setup>, className:
 	await user.type(screen.getByLabelText('Character name'), 'Aria')
 	await user.selectOptions(await screen.findByLabelText('Class'), className)
 	await user.selectOptions(screen.getByLabelText('Level'), level)
-	if (subclassName) await user.click(await screen.findByRole('radio', { name: new RegExp(subclassName) }))
+	if (subclassName) await user.click(await screen.findByRole('button', { name: new RegExp(`^Choose ${subclassName}`) }))
 	await goNext(user)
 	await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 	await goNext(user)
@@ -453,7 +454,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 
 		// The class step no longer waits on invocations — the gate moved with the picker.
 		expect(await screen.findByText(/Eldritch Invocations/)).toBeTruthy()
-		expect(screen.queryByRole('checkbox', { name: 'Agonizing Blast' })).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Choose Agonizing Blast' })).toBeNull()
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 
 		cleanup()
@@ -466,10 +467,10 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await goNext(user)
 
 		// No Back was ever pressed: this is the first forward pass.
-		const agonizing = await screen.findByRole('checkbox', { name: 'Agonizing Blast' })
-		expect((agonizing as HTMLInputElement).disabled).toBe(false)
+		const agonizing = await screen.findByRole('button', { name: 'Choose Agonizing Blast' })
+		expect((agonizing as HTMLButtonElement).disabled).toBe(false)
 		await user.click(agonizing)
-		expect(checkbox('Agonizing Blast').checked).toBe(true)
+		expect(isChosen(chooseButton('Agonizing Blast'))).toBe(true)
 	})
 
 	/*
@@ -488,8 +489,8 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(spellButton('Hex'))
 		await goNext(user)
 
-		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Blade' }))
-		await user.click(checkbox('Pact of the Tome'))
+		await user.click(await screen.findByRole('button', { name: 'Choose Pact of the Blade' }))
+		await user.click(chooseButton('Pact of the Tome'))
 		// Both granted invocation slots are filled, so the group itself is complete...
 		expect(screen.getByText('All options chosen.')).toBeTruthy()
 		// ...but the Tome's own picks are not.
@@ -518,8 +519,8 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(spellButton('Hex'))
 		await goNext(user)
 
-		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Blade' }))
-		await user.click(checkbox('Agonizing Blast'))
+		await user.click(await screen.findByRole('button', { name: 'Choose Pact of the Blade' }))
+		await user.click(chooseButton('Agonizing Blast'))
 		await waitFor(() => expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false))
 	})
 
@@ -545,9 +546,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(spellButton('Hex'))
 		await goNext(user)
 
-		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Blade' }))
-		await user.click(checkbox('Agonizing Blast'))
-		expect(checkbox('Pact of the Blade').checked).toBe(true)
+		await user.click(await screen.findByRole('button', { name: 'Choose Pact of the Blade' }))
+		await user.click(chooseButton('Agonizing Blast'))
+		expect(isChosen(chooseButton('Pact of the Blade'))).toBe(true)
 
 		await goBack(user)
 		expect((await screen.findAllByRole('button', { name: 'Delete Eldritch Blast' })).length).toBeGreaterThan(0)
@@ -555,9 +556,9 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 
 		// Both invocation slots are filled, so the list comes back collapsed; open it to read the picks.
 		await user.click(await screen.findByRole('button', { name: /^Eldritch Invocations/ }))
-		await screen.findByRole('checkbox', { name: 'Pact of the Blade' })
-		expect(checkbox('Pact of the Blade').checked).toBe(true)
-		expect(checkbox('Agonizing Blast').checked).toBe(true)
+		await screen.findByRole('button', { name: 'Choose Pact of the Blade' })
+		expect(isChosen(chooseButton('Pact of the Blade'))).toBe(true)
+		expect(isChosen(chooseButton('Agonizing Blast'))).toBe(true)
 	})
 
 	it('the step blocks Next until every granted count is filled', async () => {
@@ -570,13 +571,13 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(spellButton('Hex'))
 		await goNext(user)
 
-		await screen.findByRole('checkbox', { name: 'Pact of the Blade' })
+		await screen.findByRole('button', { name: 'Choose Pact of the Blade' })
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
-		await user.click(checkbox('Pact of the Blade'))
+		await user.click(chooseButton('Pact of the Blade'))
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
-		await user.click(checkbox('Agonizing Blast'))
+		await user.click(chooseButton('Agonizing Blast'))
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 	})
 
@@ -591,7 +592,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await goNext(user)
 
 		expect(stepLabels().some((label) => label.includes('Metamagic'))).toBe(true)
-		await user.click(await screen.findByRole('checkbox', { name: 'Careful Spell' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Careful Spell' }))
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 
 		await goNext(user)
@@ -622,7 +623,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(spellButton('Hex'))
 		await goNext(user)
 
-		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Pact of the Tome' }))
 
 		const mistyStep = (await screen.findByRole('checkbox', { name: /Misty Step/ })) as HTMLInputElement
 		// Still offered, never hidden (D18) — but not selectable, and it says where it comes from.
@@ -643,7 +644,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(spellButton('Hex'))
 		await goNext(user)
 
-		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Pact of the Tome' }))
 
 		const prestidigitation = (await screen.findByRole('checkbox', { name: /Prestidigitation/ })) as HTMLInputElement
 		expect(prestidigitation.disabled).toBe(true)
@@ -660,7 +661,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(spellButton('Hex'))
 		await goNext(user)
 
-		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Pact of the Tome' }))
 		await user.click(await screen.findByRole('checkbox', { name: 'Mage Hand' }))
 		expect(checkbox('Mage Hand').checked).toBe(true)
 
@@ -681,7 +682,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(spellButton('Hex'))
 		await goNext(user)
 
-		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Tome' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Pact of the Tome' }))
 		await screen.findByText('0 of 3 cantrips chosen.')
 
 		for (const name of ['Mage Hand', 'Minor Illusion', 'Prestidigitation', 'Dancing Lights', 'Alarm', 'Detect Magic', 'Misty Step']) {

@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { ClassFeatureChoicePicker } from './ClassFeatureChoicePicker'
 import { areClassFeatureChoicesComplete, type ClassFeatureChoice } from './classFeatureChoiceData'
 import type { CharacterClassFeatureChoice } from '../storage/character'
+import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 
 /*
  * Component test for the D21 class-feature choice picker (D8). The loader is
@@ -87,6 +88,9 @@ describe('ClassFeatureChoicePicker', () => {
 	it('offers each option with its own text (D13)', async () => {
 		render(<Harness className="Cleric" level={1} />)
 		await screen.findByText('Protector')
+		expect(screen.queryByText('You gain Heavy armor training.')).toBeNull() // W5: text folds behind ▸
+		await userEvent.click(screen.getByRole('button', { name: 'Protector text' }))
+		await userEvent.click(screen.getByRole('button', { name: 'Thaumaturge text' }))
 		expect(screen.getByText('You gain Heavy armor training.')).toBeTruthy()
 		expect(screen.getByText('You know one extra cantrip.')).toBeTruthy()
 	})
@@ -95,7 +99,7 @@ describe('ClassFeatureChoicePicker', () => {
 		const onChange = vi.fn()
 		render(<ClassFeatureChoicePicker className="Cleric" classSource="XPHB" level={1} value={[]} onChange={onChange} />)
 		await screen.findByText('Thaumaturge')
-		await userEvent.click(screen.getByRole('radio', { name: /Thaumaturge/ }))
+		await userEvent.click(chooseButton('Thaumaturge'))
 		expect(onChange).toHaveBeenCalledWith([
 			{ className: 'Cleric', classSource: 'XPHB', featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' },
 		])
@@ -104,10 +108,10 @@ describe('ClassFeatureChoicePicker', () => {
 	it('replaces the pick for the same feature rather than accumulating', async () => {
 		render(<Harness className="Cleric" level={1} />)
 		await screen.findByText('Protector')
-		await userEvent.click(screen.getByRole('radio', { name: /Protector/ }))
-		await userEvent.click(screen.getByRole('radio', { name: /Thaumaturge/ }))
+		await userEvent.click(chooseButton('Protector'))
+		await userEvent.click(chooseButton('Thaumaturge'))
 		await waitFor(() => expect(screen.getByText('Thaumaturge chosen.')).toBeTruthy())
-		expect((screen.getByRole('radio', { name: /Protector/ }) as HTMLInputElement).checked).toBe(false)
+		expect(isChosen(chooseButton('Protector'))).toBe(false)
 	})
 
 	/*
@@ -121,13 +125,13 @@ describe('ClassFeatureChoicePicker', () => {
 		render(<Harness className="Druid" level={7} />)
 		await screen.findByText('Magician')
 
-		await userEvent.click(screen.getByRole('radio', { name: /Magician/ }))
-		await userEvent.click(screen.getByRole('radio', { name: /Primal Strike/ }))
+		await userEvent.click(chooseButton('Magician'))
+		await userEvent.click(chooseButton('Primal Strike'))
 		await waitFor(() => expect(screen.getByText('Primal Strike chosen.')).toBeTruthy())
 		expect(screen.getByText('Magician chosen.')).toBeTruthy()
 
 		// And in the opposite order — changing the EARLIER feature must not drop the later one.
-		await userEvent.click(screen.getByRole('radio', { name: /Warden/ }))
+		await userEvent.click(chooseButton('Warden'))
 		await waitFor(() => expect(screen.getByText('Warden chosen.')).toBeTruthy())
 		expect(screen.getByText('Primal Strike chosen.')).toBeTruthy()
 	})
@@ -147,9 +151,9 @@ describe('ClassFeatureChoicePicker', () => {
 	it('states the gap for an option whose text is missing rather than rendering blank (D43)', async () => {
 		const { container } = render(<Harness className="Broken" level={1} />)
 		await screen.findByText('Nowhere')
+		expect(chooseButton('Nowhere')).toBeTruthy() // Still offered — a missing description never removes the option itself.
+		await userEvent.click(screen.getByRole('button', { name: 'Nowhere text' }))
 		expect(container.textContent).toContain('se nepodařilo dohledat')
-		// Still offered — a missing description never removes the option itself.
-		expect(screen.getByRole('radio', { name: /Nowhere/ })).toBeTruthy()
 	})
 
 	it('does not let a level up change a version chosen at an earlier level, while a newly granted one stays open (D108)', async () => {
@@ -167,13 +171,15 @@ describe('ClassFeatureChoicePicker', () => {
 		)
 		await screen.findByText('Potent Spellcasting')
 
-		const warden = screen.getByRole('radio', { name: /Warden/ }) as HTMLInputElement
+		const warden = chooseButton('Warden')
 		expect(warden.disabled).toBe(true)
+		expect(isChosen(chooseButton('Magician'))).toBe(true)
+		expect(chooseButton('Magician').disabled).toBe(true)
 		expect(screen.getByText('Magician chosen at an earlier level.')).toBeTruthy()
 		await userEvent.click(warden)
 		expect(onChange).not.toHaveBeenCalled()
 
-		await userEvent.click(screen.getByRole('radio', { name: /Primal Strike/ }))
+		await userEvent.click(chooseButton('Primal Strike'))
 		expect(onChange).toHaveBeenCalledWith([held, expect.objectContaining({ featureName: 'Elemental Fury', optionName: 'Primal Strike' })])
 	})
 })

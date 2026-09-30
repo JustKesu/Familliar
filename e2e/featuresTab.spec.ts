@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFighter } from './wizard.ts'
+import { chooseButton, createFighter } from './wizard.ts'
 
 /*
  * R6 (D184). A Fighter 3 Battle Master with Defense and three maneuvers; the
@@ -16,7 +16,7 @@ async function createBattleMaster(page: Page): Promise<void> {
     onClassStep: async (p) => {
       const list = p.getByRole('button', { name: /^Options/ })
       if ((await list.getAttribute('aria-expanded')) === 'false') await list.click()
-      for (const maneuver of MANEUVERS) await p.getByRole('checkbox', { name: maneuver, exact: true }).first().check()
+      for (const maneuver of MANEUVERS) await chooseButton(p, maneuver).first().click()
     },
     // Student of War's tool and skill picks: the first offer of each.
     onLanguagesStep: async (p) => {

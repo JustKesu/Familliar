@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MasteryPicker } from './MasteryPicker'
+import { chooseButton, isChosen, queryChooseButton } from '../pickers/choiceTestHelpers'
 import { loadMasteryWeaponsFor } from './masteryData'
 
 /*
@@ -70,8 +71,9 @@ describe('MasteryPicker', () => {
 
 		// The list collapses once the required count is met; open it to reach the options.
 		await user.click(await screen.findByRole('button', { name: /weapon master/i }))
-		const rapier = (await screen.findByRole('checkbox', { name: /Rapier/ })) as HTMLInputElement
+		const rapier = (await screen.findByRole('button', { name: 'Choose Rapier' })) as HTMLButtonElement
 		expect(rapier.disabled).toBe(true)
+		expect(screen.getByText(/2 \/ 2 · FULL/)).toBeTruthy()
 		await user.click(rapier)
 		expect(onChange).not.toHaveBeenCalled()
 	})
@@ -88,11 +90,9 @@ describe('MasteryPicker', () => {
 		)
 
 		await waitFor(() => {
-			const battleaxe = screen.getByRole('checkbox', { name: /Battleaxe/ }) as HTMLInputElement
-			expect(battleaxe.checked).toBe(true)
+			expect(isChosen(chooseButton('Battleaxe'))).toBe(true)
 		})
-		const greatsword = screen.getByRole('checkbox', { name: /Greatsword/ }) as HTMLInputElement
-		expect(greatsword.checked).toBe(false)
+		expect(isChosen(chooseButton('Greatsword'))).toBe(false)
 	})
 
 	it('forwards the character’s feats to the weapon loader (Part 3)', async () => {
@@ -117,11 +117,10 @@ describe('MasteryPicker', () => {
 
 		await user.type(await screen.findByLabelText('Search Weapon masteries'), 'rapier')
 
-		expect(screen.getByRole('checkbox', { name: /Rapier/ })).toBeTruthy()
-		expect(screen.queryByRole('checkbox', { name: /Greatsword/ })).toBeNull()
+		expect(chooseButton('Rapier')).toBeTruthy()
+		expect(queryChooseButton('Greatsword')).toBeNull()
 		// Battleaxe is picked and does not match "rapier" — still shown, pinned.
-		const battleaxe = screen.getByRole('checkbox', { name: /Battleaxe/ }) as HTMLInputElement
-		expect(battleaxe.checked).toBe(true)
+		expect(isChosen(chooseButton('Battleaxe'))).toBe(true)
 	})
 
 	it('keeps a pick from an earlier level checked and unremovable during a level up (D108), while the new slot stays open', async () => {
@@ -131,14 +130,14 @@ describe('MasteryPicker', () => {
 			<MasteryPicker className="Fighter" classSource="XPHB" level={4} value={['Battleaxe']} onChange={onChange} lockedValues={['Battleaxe']} />,
 		)
 
-		const battleaxe = (await screen.findByRole('checkbox', { name: /Battleaxe/ })) as HTMLInputElement
-		expect(battleaxe.checked).toBe(true)
+		const battleaxe = (await screen.findByRole('button', { name: 'Choose Battleaxe' })) as HTMLButtonElement
+		expect(isChosen(battleaxe)).toBe(true)
 		expect(battleaxe.disabled).toBe(true)
 		expect(screen.getByText('(chosen at an earlier level)')).toBeTruthy()
 		await user.click(battleaxe)
 		expect(onChange).not.toHaveBeenCalled()
 
-		await user.click(screen.getByRole('checkbox', { name: /Rapier/ }))
+		await user.click(chooseButton('Rapier'))
 		expect(onChange).toHaveBeenCalledWith(['Battleaxe', 'Rapier'])
 	})
 })

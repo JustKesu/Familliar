@@ -584,7 +584,7 @@ describe('CharacterWizard — spells step', () => {
 		renderWizard()
 
 		await fillClassStep(user, 'Fighter', '3')
-		await user.click(await screen.findByRole('radio', { name: /Champion/ }))
+		await user.click(await screen.findByRole('button', { name: /^Choose Champion/ }))
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
@@ -615,7 +615,7 @@ describe('CharacterWizard — spells step', () => {
 		renderWizard()
 
 		await fillClassStep(user, 'Fighter', '3')
-		await user.click(await screen.findByRole('radio', { name: /Eldritch Knight/ }))
+		await user.click(await screen.findByRole('button', { name: /^Choose Eldritch Knight/ }))
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
@@ -669,7 +669,7 @@ describe('CharacterWizard — spells step', () => {
 		renderWizard()
 
 		await fillClassStep(user, 'Rogue', '3')
-		await user.click(await screen.findByRole('radio', { name: /Arcane Trickster/ }))
+		await user.click(await screen.findByRole('button', { name: /^Choose Arcane Trickster/ }))
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
@@ -703,7 +703,7 @@ describe('CharacterWizard — spells step', () => {
 		renderWizard()
 
 		await fillClassStep(user, 'Sorcerer', '3')
-		await user.click(await screen.findByRole('radio', { name: /Divine Soul/ }))
+		await user.click(await screen.findByRole('button', { name: /^Choose Divine Soul/ }))
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
@@ -763,7 +763,7 @@ describe('CharacterWizard — spells step', () => {
 		renderWizard()
 
 		await fillClassStep(user, 'Sorcerer', '3')
-		await user.click(await screen.findByRole('radio', { name: /Draconic Bloodline/ }))
+		await user.click(await screen.findByRole('button', { name: /^Choose Draconic Bloodline/ }))
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)
@@ -793,7 +793,7 @@ describe('CharacterWizard — spells step', () => {
 	/** Warlock reaches its subclass on the class step (level >= 3), then the standard walk to the spells step. */
 	async function fillWarlockThroughSpells(user: ReturnType<typeof userEvent.setup>, subclassPattern: RegExp, level: string) {
 		await fillClassStep(user, 'Warlock', level)
-		await user.click(await screen.findByRole('radio', { name: subclassPattern }))
+		await user.click(await screen.findByRole('button', { name: new RegExp(`^Choose ${subclassPattern.source}`) }))
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await goNext(user)

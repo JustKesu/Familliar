@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { ClassOptionalFeaturePicker } from './ClassOptionalFeaturePicker'
+import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import type { ClassOptionalFeatureGroup } from './optionalFeatureData'
 import type { CharacterOptionalFeatureChoice } from '../storage/character'
 
@@ -154,15 +155,15 @@ describe('ClassOptionalFeaturePicker', () => {
 		expect(screen.getByText('Choose 2 more options.')).toBeTruthy()
 		// Metamagic auto-collapses once its one pick is made; open it to read its options back.
 		await user.click(screen.getByRole('button', { name: /Metamagic/ }))
-		expect(checkbox('Pact of the Blade').disabled).toBe(false)
-		expect(checkbox('Distant Spell').disabled).toBe(true)
+		expect(chooseButton('Pact of the Blade').disabled).toBe(false)
+		expect(chooseButton('Distant Spell').disabled).toBe(true)
 	})
 
 	it('an ineligible option stays visible and disabled, with its reasons (D19)', async () => {
 		renderPicker()
 		await screen.findByText('Pact of the Blade')
 
-		const smite = checkbox('Eldritch Smite')
+		const smite = chooseButton('Eldritch Smite')
 		expect(smite.disabled).toBe(true)
 		expect(screen.getByText('Requires the pact of the blade option.')).toBeTruthy()
 	})
@@ -170,7 +171,7 @@ describe('ClassOptionalFeaturePicker', () => {
 	it('a Talisman invocation is shown, never hidden, and says the data has no such boon', async () => {
 		renderPicker()
 		await screen.findByText('Bond of the Talisman')
-		expect(checkbox('Bond of the Talisman').disabled).toBe(true)
+		expect(chooseButton('Bond of the Talisman').disabled).toBe(true)
 		expect(screen.getByText(/this app's data does not offer/)).toBeTruthy()
 	})
 
@@ -179,9 +180,9 @@ describe('ClassOptionalFeaturePicker', () => {
 		const onChange = vi.fn()
 		const { rerender } = renderPicker({}, onChange)
 		await screen.findByText('Pact of the Blade')
-		expect(checkbox('Eldritch Smite').disabled).toBe(true)
+		expect(chooseButton('Eldritch Smite').disabled).toBe(true)
 
-		await user.click(checkbox('Pact of the Blade'))
+		await user.click(chooseButton('Pact of the Blade'))
 		expect(onChange).toHaveBeenCalledWith([{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] }])
 
 		// The caller owns the value (D8), so the unlock is verified by feeding its report back in.
@@ -199,26 +200,26 @@ describe('ClassOptionalFeaturePicker', () => {
 				onChange={onChange}
 			/>,
 		)
-		expect(checkbox('Eldritch Smite').disabled).toBe(false)
+		expect(chooseButton('Eldritch Smite').disabled).toBe(false)
 	})
 
 	it('Agonizing Blast unlocks once the character knows a damaging cantrip', async () => {
 		renderPicker({ damagingCantripNames: [] })
 		await screen.findByText('Agonizing Blast')
-		expect(checkbox('Agonizing Blast').disabled).toBe(true)
+		expect(chooseButton('Agonizing Blast').disabled).toBe(true)
 
 		cleanup()
 		renderPicker({ damagingCantripNames: ['Eldritch Blast'], knownSpellNames: ['Eldritch Blast'] })
 		await screen.findByText('Agonizing Blast')
-		expect(checkbox('Agonizing Blast').disabled).toBe(false)
+		expect(chooseButton('Agonizing Blast').disabled).toBe(false)
 	})
 
 	it('the removal case: a chosen option that stops qualifying stays checked and is warned about, not dropped', async () => {
 		renderPicker({ value: [{ featureType: 'EI', choices: [{ name: 'Eldritch Smite' }] }] })
 		await screen.findByText('Eldritch Smite')
 
-		const smite = checkbox('Eldritch Smite')
-		expect(smite.checked).toBe(true)
+		const smite = chooseButton('Eldritch Smite')
+		expect(isChosen(smite)).toBe(true)
 		expect(smite.disabled).toBe(false)
 		expect(screen.getByText(/Eldritch Smite no longer qualifies/)).toBeTruthy()
 	})
@@ -232,7 +233,7 @@ describe('ClassOptionalFeaturePicker', () => {
 		await screen.findByText('All options chosen.')
 		await user.click(screen.getByRole('button', { name: /Metamagic/ }))
 
-		const distant = checkbox('Distant Spell')
+		const distant = chooseButton('Distant Spell')
 		expect(distant.disabled).toBe(true)
 		await user.click(distant)
 		expect(onChange).not.toHaveBeenCalled()
@@ -244,7 +245,7 @@ describe('ClassOptionalFeaturePicker', () => {
 		renderPicker({ value: [{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }] }] }, onChange)
 		await screen.findByText('Pact of the Blade')
 
-		await user.click(checkbox('Pact of the Blade'))
+		await user.click(chooseButton('Pact of the Blade'))
 		expect(onChange).toHaveBeenCalledWith([])
 	})
 })
@@ -338,7 +339,7 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 		expect(tomePicks(latest)?.spells.map((s) => s.name)).toEqual(['Alarm'])
 
 		// Now the OTHER control — taking a second, unrelated invocation.
-		await user.click(checkbox('Pact of the Blade'))
+		await user.click(chooseButton('Pact of the Blade'))
 		// D99: a pick made during creation carries no level, and taking a second one leaves the first untouched.
 		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual([{ name: 'Pact of the Tome' }, { name: 'Pact of the Blade' }])
 		expect(tomePicks(latest)?.cantrips.map((c) => c.name)).toEqual(['Eldritch Blast'])
@@ -369,7 +370,7 @@ describe('ClassOptionalFeaturePicker — Pact of the Tome spell sub-picker', () 
 		// Both picks made, so the list auto-collapses; open it to toggle one back off.
 		await user.click(screen.getByRole('button', { name: /Eldritch Invocations/ }))
 
-		await user.click(checkbox('Pact of the Tome'))
+		await user.click(chooseButton('Pact of the Tome'))
 		expect(latest.find((e) => e.featureType === 'EI')?.choices).toEqual([{ name: 'Pact of the Blade' }])
 		expect(latest.find((e) => e.featureType === 'EI')?.spellChoices).toBeUndefined()
 	})

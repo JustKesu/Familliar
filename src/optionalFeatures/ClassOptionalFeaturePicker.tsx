@@ -176,33 +176,31 @@ export function ClassOptionalFeaturePicker({
 					return {
 						key: `${option.name}|${option.source}`,
 						name: option.name,
-						label: <strong>{option.name}</strong>,
-						// Reasons ride in `detail`, which SearchableOptionList always renders, so a
-						// disabled option keeps its reason whether or not a search is active (D71/D19).
+						book: option.source,
+						// W5: reasons stay visible on the collapsed row (D71/D19), the rule text folds away.
+						disabledReason:
+							reasons.length > 0 ? (
+								<ul className="class-optional-feature-picker__reasons">
+									{reasons.map((reason, index) => (
+										<li key={index}>{reason}</li>
+									))}
+								</ul>
+							) : undefined,
 						detail: (
-							<>
-								{reasons.length > 0 && (
-									<ul className="class-optional-feature-picker__reasons">
-										{reasons.map((reason, index) => (
-											<li key={index}>{reason}</li>
-										))}
-									</ul>
-								)}
-								<div className="class-optional-feature-picker__description">
-									{resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />}
-								</div>
-								{/* Revealed once the option is taken, the same way the feat step reveals its own spell sub-picker. */}
-								{checked && (
-									<OptionalFeatureSpellSubPicker
-										featureType={group.featureType}
-										optionName={option.name}
-										alreadyKnown={alreadyKnown}
-										value={value.find((entry) => entry.featureType === group.featureType)?.spellChoices?.find((p) => p.optionName === option.name)}
-										onChange={(pick) => setSpellChoice(group.featureType, pick)}
-									/>
-								)}
-							</>
+							<div className="class-optional-feature-picker__description">
+								{resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />}
+							</div>
 						),
+						// Outside `detail` so a collapsed row never hides a spell pick that Next waits on.
+						extra: checked ? (
+							<OptionalFeatureSpellSubPicker
+								featureType={group.featureType}
+								optionName={option.name}
+								alreadyKnown={alreadyKnown}
+								value={value.find((entry) => entry.featureType === group.featureType)?.spellChoices?.find((p) => p.optionName === option.name)}
+								onChange={(pick) => setSpellChoice(group.featureType, pick)}
+							/>
+						) : undefined,
 						selected: checked,
 						disabled,
 						locked: checked && lockedNames.includes(option.name),
@@ -223,6 +221,7 @@ export function ClassOptionalFeaturePicker({
 							legend={group.name ?? group.featureType}
 							name={`class-optional-feature-${group.featureType}`}
 							inputType="checkbox"
+							variant="choose"
 							options={options}
 							required={group.count}
 							renderCount={({ chosen, required }) => {
