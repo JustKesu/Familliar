@@ -34,7 +34,8 @@ describe('HitPointsPicker', () => {
 		render(<HitPointsPicker character={fighter(3)} value={[]} onChange={() => {}} />)
 
 		expect(await screen.findByText('Level 1')).toBeTruthy()
-		expect(screen.getByText('10 (maximum)')).toBeTruthy()
+		expect(screen.getByText('Maximum die (d10)')).toBeTruthy()
+		expect(screen.getByText('Maximum hit points')).toBeTruthy()
 		expect(screen.getByText('Level 2')).toBeTruthy()
 		expect(screen.getByText('Level 3')).toBeTruthy()
 		expect(screen.queryByText('Level 4')).toBeNull()
@@ -78,11 +79,11 @@ describe('HitPointsPicker', () => {
 		random.mockRestore()
 	})
 
-	it('choosing manual entry starts at 0, and typing a value records it', async () => {
+	it('choosing manual entry records 0 as "nothing typed yet", and typing a value records it', async () => {
 		const user = userEvent.setup()
 		const onChangeInitial = vi.fn()
 		render(<HitPointsPicker character={fighter(2)} value={[]} onChange={onChangeInitial} />)
-		await user.click(await screen.findByLabelText('Enter manually'))
+		await user.click(await screen.findByLabelText('Manual'))
 		expect(onChangeInitial).toHaveBeenCalledWith([{ level: 2, kind: 'manual', dieResult: 0 }])
 
 		cleanup()
@@ -93,13 +94,44 @@ describe('HitPointsPicker', () => {
 		expect(onChangeEdit).toHaveBeenCalledWith([{ level: 2, kind: 'manual', dieResult: 7 }])
 	})
 
+	/* W20: the field starts empty and only 1 to the die size is valid. */
+	it('shows the manual field empty with the 1–10 hint, and drops the hint and red state once the value is valid', async () => {
+		render(<HitPointsPicker character={fighter(2)} value={[{ level: 2, kind: 'manual', dieResult: 0 }]} onChange={() => {}} />)
+		const input = (await screen.findByLabelText('Level 2 manual result')) as HTMLInputElement
+		expect(input.value).toBe('')
+		expect(input.getAttribute('aria-invalid')).toBe('true')
+		expect(screen.getByText('1–10')).toBeTruthy()
+
+		cleanup()
+		render(<HitPointsPicker character={fighter(2)} value={[{ level: 2, kind: 'manual', dieResult: 11 }]} onChange={() => {}} />)
+		expect(((await screen.findByLabelText('Level 2 manual result')) as HTMLInputElement).getAttribute('aria-invalid')).toBe('true')
+		expect(screen.getByText('1–10')).toBeTruthy()
+
+		cleanup()
+		render(<HitPointsPicker character={fighter(2)} value={[{ level: 2, kind: 'manual', dieResult: 7 }]} onChange={() => {}} />)
+		const valid = (await screen.findByLabelText('Level 2 manual result')) as HTMLInputElement
+		expect(valid.value).toBe('7')
+		expect(valid.getAttribute('aria-invalid')).toBe('false')
+		expect(screen.queryByText('1–10')).toBeNull()
+	})
+
+	it('never records a fractional or negative manual text as a hit point value', async () => {
+		const onChange = vi.fn()
+		render(<HitPointsPicker character={fighter(2)} value={[{ level: 2, kind: 'manual', dieResult: 0 }]} onChange={onChange} />)
+		const input = (await screen.findByLabelText('Level 2 manual result')) as HTMLInputElement
+		for (const text of ['2.5', '-1']) {
+			fireEvent.change(input, { target: { value: text } })
+			expect(onChange).toHaveBeenLastCalledWith([{ level: 2, kind: 'manual', dieResult: 0 }])
+		}
+	})
+
 	it('the apply-average-to-all control sets every level from 2 up in one click, overwriting any prior choice', async () => {
 		const user = userEvent.setup()
 		const onChange = vi.fn()
 		const value: CharacterHitPointLevel[] = [{ level: 2, kind: 'roll', dieResult: 9 }]
 		render(<HitPointsPicker character={fighter(4)} value={value} onChange={onChange} />)
 
-		await user.click(await screen.findByRole('button', { name: /Use the average \(6\) for every level/ }))
+		await user.click(await screen.findByRole('button', { name: /Use the average for every level/ }))
 		expect(onChange).toHaveBeenCalledWith([
 			{ level: 2, kind: 'average', dieResult: 6 },
 			{ level: 3, kind: 'average', dieResult: 6 },
@@ -116,7 +148,7 @@ describe('HitPointsPicker', () => {
 		expect(screen.queryByText('Level 2')).toBeNull()
 		expect(screen.queryByText('Level 3')).toBeNull()
 		expect(screen.queryByText('Level 4')).toBeNull()
-		expect(screen.queryByRole('button', { name: /Use the average .* for every level/ })).toBeNull()
+		expect(screen.queryByRole('button', { name: /Use the average/ })).toBeNull()
 	})
 
 	it('still lets the level-up row be set the same three ways', async () => {

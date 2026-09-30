@@ -4310,3 +4310,29 @@ Neopakovatelný feat, který postava už má z pozadí, ručně, z předmětu ne
 s „(already taken)“ (dřív se featy jiných úrovní nehlídaly). Kontext prerekvizit je beze změny: skóre
 z pozadí bez ASI tohoto průchodu a featy dřívějších úrovní. Nabídku počítá jedna funkce `featOffers`
 (featAsiData.ts), kterou sdílí Manage Feats (tam držené featy vynechá).
+
+## D249 — Krok Hit points: maximum nahoře, pilulky metody u každé úrovně (W19, W-6)
+
+D249 (W19): Nahoře kroku je „Maximum hit points“ (štítek 11px, číslo 34px/600 jako na listu) a vedle něj
+rozpis čísla (`ValueBreakdown`, otevřený; stejné `computeMaxHitPoints` jako dřív, žádný druhý součet).
+Tlačítko „Use the average for every level“ je outline accent. Tabulka Level · Method · Result: metoda
+jsou tři pilulky ve stylu přepínače Normal / Advantage / Disadvantage (`roll-mode__option`, vybraná
+vyplněná accentem), technicky rádia (jedna volba na řádek). Roll ukazuje hozenou kostku jako kostky
+v kroku Ability scores (`ability-roll__die`) a malé Reroll; Manual dává číselné pole do sloupce Result.
+Level 1 zůstává řádkem jen ke čtení. Level up ukazuje jen řádek nové úrovně a tlačítko „všechny
+průměrem“ skrývá jako dřív. Nový `HitPointLevelRow.tsx`; beze změny schématu postavy.
+
+## D250 — Ruční hodnota hit pointů: 1 až kostka, a nikdy se neuloží, co uložená data odmítnou (W20, W-6)
+
+D250 (W20): Manual přijme jen celé číslo 1 až velikost kostky (d8 → 1–8). Prázdné nebo mimo rozsah:
+pole má červený okraj (`--damage`), pod ním je nápověda „1–8“ a Next zůstává zamčený. Volba Manual
+začíná prázdným polem; v uložených datech je „nic zatím nezadáno“ hodnota 0 (prázdné, desetinné,
+záporné text se zapíše jako 0), takže to, co wizard zapíše, vždy projde `describeHitPointLevelsError`.
+Brána `isStepComplete('hitPoints')` kontroluje každou úroveň podle metody (`isValidHitPointEntry`):
+average = pevná hodnota kostky, roll a manual = celé 1..kostka; velikost kostky přichází jako podmínka
+`hitDieFaces` (null při načítání = jen „celé ≥ 1“). Starší postava s ruční hodnotou 0 (uložená data ji
+připouštějí) v Edit Character ukáže na řádku chybu a Next je zamčený do opravy. Pojistka: `buildCharacter`
+(tedy `create` i `update`) odmítne `hitPointLevels`, které by `describeHitPointLevelsError` odmítla
+(záporné, desetinné, NaN), s běžnou chybou uložení (`ImportValidationError`), takže `CorruptDataError`
+celého seznamu postav už z wizardu vzniknout nemůže. Uložená validace zůstává laxnější než brána
+(0 a hodnota nad kostkou projdou) — kostku storage nezná (D43).

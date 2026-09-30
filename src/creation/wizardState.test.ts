@@ -337,6 +337,33 @@ describe('isStepComplete', () => {
 			expect(isStepComplete('hitPoints', data)).toBe(false)
 		})
 
+		/* W20: a recorded value must also be valid for its method and the class's hit die. */
+		it('with the hit die known, accepts only the fixed average, or a whole number 1..faces for roll and manual', () => {
+			const base = { ...emptyWizardData(), classChoice: { className: 'Fighter', classSource: 'XPHB', level: 2 } }
+			const gate = (kind: 'average' | 'roll' | 'manual', dieResult: number, hitDieFaces: number | null = 10) =>
+				isStepComplete('hitPoints', { ...base, hitPointLevels: [{ level: 2, kind, dieResult }] }, { hitDieFaces })
+
+			expect(gate('average', 6)).toBe(true)
+			expect(gate('average', 5)).toBe(false)
+			for (const kind of ['roll', 'manual'] as const) {
+				expect(gate(kind, 1)).toBe(true)
+				expect(gate(kind, 10)).toBe(true)
+				expect(gate(kind, 0)).toBe(false)
+				expect(gate(kind, 11)).toBe(false)
+				expect(gate(kind, -1)).toBe(false)
+				expect(gate(kind, 2.5)).toBe(false)
+			}
+			// Hit die not loaded yet: still refuses what no die could allow.
+			expect(gate('manual', 0, null)).toBe(false)
+			expect(gate('manual', 11, null)).toBe(true)
+		})
+
+		it('during a level-up walk, the target level is checked the same way', () => {
+			const data = { ...emptyWizardData(), classChoice: { className: 'Fighter', classSource: 'XPHB', level: 4 }, hitPointLevels: [{ level: 4, kind: 'manual' as const, dieResult: 0 }] }
+			expect(isStepComplete('hitPoints', data, { levelUpTargetLevel: 4, hitDieFaces: 10 })).toBe(false)
+			expect(isStepComplete('hitPoints', { ...data, hitPointLevels: [{ level: 4, kind: 'manual' as const, dieResult: 7 }] }, { levelUpTargetLevel: 4, hitDieFaces: 10 })).toBe(true)
+		})
+
 		/* Build order step 8, slice 8d5: a level-up walk asks about only the level being gained. */
 		it('during a level-up walk, needs only the level being gained, not every level below it', () => {
 			const data = {

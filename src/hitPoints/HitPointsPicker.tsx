@@ -8,7 +8,8 @@ import { loadItemMaxHpBonuses } from './hpDefault'
 import { loadFeatEffectEntries, loadHitDiceClassData } from '../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../sheet/grantedClassFeatures'
 import { loadSpeciesTraitNames } from '../sheet/speciesTraitNames'
-import { CalculatedNumber } from '../sheet/calculatedValue'
+import { UnresolvedValue, ValueBreakdown } from '../sheet/ValueBreakdown'
+import { HitPointLevelRow } from './HitPointLevelRow'
 import type { Character, CharacterHitPointLevel, HitPointLevelKind } from '../storage/character'
 
 /*
@@ -33,10 +34,6 @@ interface LoadedData {
 	itemBonuses: Contribution[]
 	/** D221: attuned Constitution items, for the same reason. */
 	itemAbilityGrants: ItemAbilityGrant[]
-}
-
-function rollDie(faces: number): number {
-	return Math.floor(Math.random() * faces) + 1
 }
 
 export function HitPointsPicker({
@@ -115,90 +112,46 @@ export function HitPointsPicker({
 
 	const draftCharacter: Character = { ...character, hitPointLevels: value }
 	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats, loaded.itemBonuses, loaded.itemAbilityGrants)
+	const levels = levelUpLevel !== undefined ? [levelUpLevel] : Array.from({ length: Math.max(0, totalLevel - 1) }, (_, index) => index + 2)
 
 	return (
 		<div className="hit-points-picker">
-			{/* A div, not a p: CalculatedNumber renders a <details>, which is not valid inside a paragraph. */}
+			{/* A div, not a p: ValueBreakdown renders a <details>, which is not valid inside a paragraph. */}
 			<div className="hit-points-picker__running-total">
-				Maximum hit points: <CalculatedNumber result={maxHitPoints} />
+				<div className="hit-points-picker__max">
+					<span className="hit-points-picker__label">Maximum hit points</span>
+					{maxHitPoints.status === 'unknown' ? <UnresolvedValue reason={maxHitPoints.reason} /> : <span className="hit-points-picker__number">{maxHitPoints.value}</span>}
+				</div>
+				{maxHitPoints.status === 'known' && <ValueBreakdown breakdown={maxHitPoints.breakdown} open />}
 			</div>
 			{levelUpLevel === undefined && (
-				<button type="button" onClick={applyAverageToAll}>
-					Use the average ({fixedAverage(faces)}) for every level
+				<button type="button" className="btn--accent-outline hit-points-picker__average-all" onClick={applyAverageToAll}>
+					Use the average for every level
 				</button>
 			)}
-			<table className="hit-points-picker__table">
-				<thead>
-					<tr>
-						<th>Level</th>
-						<th>Result</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td>Level 1</td>
-						<td>{faces} (maximum)</td>
-					</tr>
-					{(levelUpLevel !== undefined
-						? [levelUpLevel]
-						: Array.from({ length: Math.max(0, totalLevel - 1) }, (_, index) => index + 2)
-					).map((level) => {
-						const entry = value.find((candidate) => candidate.level === level)
-						const groupName = `hit-points-picker__level-${level}`
-						return (
-							<tr key={level}>
-								<td>Level {level}</td>
-								<td>
-									<label>
-										<input
-											type="radio"
-											name={groupName}
-											checked={entry?.kind === 'average'}
-											onChange={() => setLevel(level, 'average', fixedAverage(faces))}
-										/>
-										Average ({fixedAverage(faces)})
-									</label>
-									<label>
-										<input
-											type="radio"
-											name={groupName}
-											checked={entry?.kind === 'roll'}
-											onChange={() => setLevel(level, 'roll', rollDie(faces))}
-										/>
-										Roll (d{faces})
-									</label>
-									{entry?.kind === 'roll' && (
-										<>
-											<span>{entry.dieResult}</span>
-											<button type="button" onClick={() => setLevel(level, 'roll', rollDie(faces))}>
-												Reroll
-											</button>
-										</>
-									)}
-									<label>
-										<input
-											type="radio"
-											name={groupName}
-											checked={entry?.kind === 'manual'}
-											onChange={() => setLevel(level, 'manual', entry?.kind === 'manual' ? entry.dieResult : 0)}
-										/>
-										Enter manually
-									</label>
-									{entry?.kind === 'manual' && (
-										<input
-											type="number"
-											className="input--narrow"
-											aria-label={`Level ${level} manual result`}
-											value={entry.dieResult}
-											onChange={(event) => setLevel(level, 'manual', Number(event.target.value))}
-										/>
-									)}
-								</td>
-							</tr>
-						)
-					})}
-				</tbody>
-			</table>
+			<div className="hit-points-picker__scroll">
+				<table className="hit-points-picker__table">
+					<thead>
+						<tr>
+							<th scope="col">Level</th>
+							<th scope="col">Method</th>
+							<th scope="col">Result</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td className="hit-points-picker__level">Level 1</td>
+							<td>Maximum die (d{faces})</td>
+							<td className="hit-points-picker__result">
+								<span className="hit-points-picker__value">{faces}</span>
+							</td>
+						</tr>
+						{levels.map((level) => (
+							<HitPointLevelRow key={level} level={level} faces={faces} entry={value.find((candidate) => candidate.level === level)} onSet={setLevel} />
+						))}
+					</tbody>
+				</table>
+			</div>
 		</div>
 	)
 }

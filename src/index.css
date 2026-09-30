@@ -2256,6 +2256,145 @@ button:disabled {
   min-width: 0;
 }
 
+/* W19/W20: hit points step — big maximum, method pills per level, manual value with range hint. */
+.hit-points-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.hit-points-picker__running-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 24px;
+}
+
+.hit-points-picker__max {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hit-points-picker__label,
+.hit-points-picker__table th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-sub);
+  text-align: left;
+}
+
+.hit-points-picker__number {
+  font: 600 34px/1 var(--font-heading);
+}
+
+.hit-points-picker__scroll {
+  align-self: stretch;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.hit-points-picker__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hit-points-picker__table th,
+.hit-points-picker__table td {
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.hit-points-picker__level {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hit-points-picker__method {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hit-points-picker__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+/* The radio covers its pill, so clicks land on a real input while only the pill shows. */
+.hit-points-picker__pill {
+  position: relative;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hit-points-picker__pill input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.hit-points-picker__pill:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.hit-points-picker__die {
+  min-width: 30px;
+  padding: 4px 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.hit-points-picker__reroll {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+}
+
+.hit-points-picker__result {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.hit-points-picker__result > * {
+  display: block;
+  margin-left: auto;
+}
+
+.hit-points-picker__value {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.hit-points-picker__value--invalid,
+.hit-points-picker__hint {
+  color: var(--damage);
+}
+
+.hit-points-picker__hint {
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.hit-points-picker__manual[aria-invalid='true'] {
+  border-color: var(--damage);
+}
+
 .ability-table {
   width: 100%;
   min-width: 460px;

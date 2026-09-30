@@ -32,6 +32,7 @@ import type {
 	LeveledChoice,
 } from '../storage/character'
 import { choiceNames } from '../storage/character'
+import { isValidHitPointEntry } from '../hitPoints/hitPointEntry'
 import type { AbilityBonusDistribution } from '../backgrounds/abilityBonus'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassLevelChoice } from '../classes/ClassPicker'
@@ -169,6 +170,8 @@ export interface WizardStepConditions {
 	 * instead of being demanded here. `null` is an ordinary creation or edit run.
 	 */
 	levelUpTargetLevel?: number | null
+	/** W20: the class's hit die size, so 'hitPoints' can check each value against it. `null` while loading. */
+	hitDieFaces?: number | null
 }
 
 /** The single choices and exact counts the class step's pickers (subclass, fighting style, masteries, subclass options) require. */
@@ -215,6 +218,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<Omit<Wiza
 		editingExistingCharacter: conditions.editingExistingCharacter ?? false,
 		levelUpSteps: conditions.levelUpSteps ?? null,
 		levelUpTargetLevel: conditions.levelUpTargetLevel ?? null,
+		hitDieFaces: conditions.hitDieFaces ?? null,
 	}
 }
 
@@ -610,6 +614,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		startingEquipmentCategoryPicksComplete,
 		backgroundOriginFeatComplete,
 		levelUpTargetLevel,
+		hitDieFaces,
 	} = resolveConditions(conditions)
 	switch (step) {
 		case 'class':
@@ -696,9 +701,10 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			// asked for — it is always the die maximum, not a choice.
 			// A level-up walk (D103) narrows that to the single level being gained — the levels
 			// below it are left on whatever they already had, not demanded here.
+			// W20: "recorded" also means valid for its method (isValidHitPointEntry).
 			return levelUpTargetLevel !== null
-				? data.hitPointLevels.some((entry) => entry.level === levelUpTargetLevel)
-				: isCompleteHitPointLevels(data.hitPointLevels, data.classChoice?.level ?? 1)
+				? data.hitPointLevels.some((entry) => entry.level === levelUpTargetLevel && isValidHitPointEntry(entry, hitDieFaces))
+				: isCompleteHitPointLevels(data.hitPointLevels, data.classChoice?.level ?? 1, hitDieFaces)
 		case 'equipment':
 			// A character takes one option from the class AND one from the background;
 			// an unmade choice blocks the step. Whether a chosen option still needs a
@@ -715,9 +721,9 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 }
 
 /** Every level from 2 up to `characterLevel` must have its own recorded entry — an exact set, not just a count, so a duplicate or a level above the character's own cannot stand in for a missing one. */
-function isCompleteHitPointLevels(hitPointLevels: CharacterHitPointLevel[], characterLevel: number): boolean {
+function isCompleteHitPointLevels(hitPointLevels: CharacterHitPointLevel[], characterLevel: number, faces: number | null): boolean {
 	for (let level = 2; level <= characterLevel; level++) {
-		if (!hitPointLevels.some((entry) => entry.level === level)) return false
+		if (!hitPointLevels.some((entry) => entry.level === level && isValidHitPointEntry(entry, faces))) return false
 	}
 	return true
 }

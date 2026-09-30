@@ -2086,6 +2086,13 @@ level) disabled with the reason in the option text. `featOffers` moved to `featA
 with Manage Feats; `isCompleteFeatAsiChoice` exported. E2E `wizardW5.spec.ts` a–h; `e2e/wizard.ts` has
 `levelCard`, `openLevelCard`, `featOrAsiSelect`, `featOption`, `chooseLevelFeat`, `chooseLevelAsi`.
 
+W-6 (D249, D250) done. No schema bump. Hit points step: big "Maximum hit points" with open breakdown, per
+level row (`hitPoints/HitPointLevelRow.tsx`) with AVERAGE / ROLL / MANUAL pills, rolled die in the
+ability-score die look plus REROLL, manual field validated 1..die size (red border, "1–N" hint, Next locked).
+`isStepComplete('hitPoints')` checks each value via `hitPoints/hitPointEntry.ts` (die size arrives as the
+`hitDieFaces` condition); `CharacterStore.buildCharacter` refuses hit point values `list()` would reject.
+E2E `wizardW6.spec.ts` a–f; `e2e/wizard.ts` `stopAtHitPoints` option.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

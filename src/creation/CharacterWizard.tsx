@@ -68,6 +68,7 @@ import { backgroundOriginFeatFrom, featInstances,loadBackgroundOriginFeatLinks, 
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
+import { loadHitDiceClassData } from '../sheet/sheetData'
 import { computeAbilityScore } from '../calculation/abilityScores'
 import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
@@ -201,6 +202,7 @@ export function CharacterWizard({
 	/** D175: the chosen species' sizes, tagged like speciesSkillShape — the completion check needs them before the picker's panel would mount. */
 	const [speciesSizeShape, setSpeciesSizeShape] = useState<{ key: string; sizes: string[] } | null>(null)
 	const [saveError, setSaveError] = useState<string | null>(null)
+	const [hitDie, setHitDie] = useState<{ key: string; faces: number } | null>(null)
 	/** W23: what Cancel compares against — the empty draft, or the seed once it is dispatched. */
 	const [baseline, setBaseline] = useState<WizardData>(emptyWizardData)
 	const [confirmingCancel, setConfirmingCancel] = useState(false)
@@ -1118,6 +1120,23 @@ export function CharacterWizard({
 		character,
 	])
 
+	/** W20: the hit die size the 'hitPoints' gate checks rolls and manual values against. */
+	const hitDieKey = state.data.classChoice ? `${state.data.classChoice.className}|${state.data.classChoice.classSource}` : null
+	useEffect(() => {
+		if (hitDieKey === null) return
+		let cancelled = false
+		Promise.resolve()
+			.then(() => loadHitDiceClassData())
+			.then((classData) => {
+				const found = classData.find((entry) => `${entry.className}|${entry.classSource}` === hitDieKey)
+				if (!cancelled && found) setHitDie({ key: hitDieKey, faces: found.faces })
+			})
+			.catch(() => {})
+		return () => {
+			cancelled = true
+		}
+	}, [hitDieKey])
+
 	const spellSlotsResult = computeSpellSlots(draftCharacterForSpells, spellSlotsClassData)
 	const spellCountsResult = computeSpellCounts(draftCharacterForSpells, spellCountClassData)
 	const spellSlotsEntry = spellSlotsResult.status === 'known' ? spellSlotsResult.value[0] : undefined
@@ -1292,6 +1311,7 @@ export function CharacterWizard({
 		// Stays incomplete until backgrounds.json has loaded, like speciesSkillsComplete.
 		backgroundOriginFeatComplete: state.data.backgroundChoice === null || (selectedBackground !== undefined && (selectedBackground.originFeat !== null || backgroundFeatOverride !== null)),
 		characterLevel: state.data.classChoice?.level ?? null,
+		hitDieFaces: hitDie?.key === hitDieKey ? hitDie.faces : null,
 		editingExistingCharacter: character !== undefined,
 		...levelUpConditions,
 	}

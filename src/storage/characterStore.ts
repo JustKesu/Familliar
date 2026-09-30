@@ -40,7 +40,7 @@ import {
 	UnknownSchemaVersionError,
 } from './errors'
 import { migrateToCurrent } from './migrations'
-import { describeStoredCharacterError, isSupportedVersion, toStoredCharacter } from './validate'
+import { describeHitPointLevelsError, describeStoredCharacterError, isSupportedVersion, toStoredCharacter } from './validate'
 import type { StoredCharacter } from './wireFormat'
 
 /*
@@ -308,6 +308,10 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		backstory,
 		notes,
 	} = input
+
+	// W20: list() rejects the whole character list on a bad value, so a write must never produce one.
+	const hitPointLevelsError = describeHitPointLevelsError(hitPointLevels)
+	if (hitPointLevelsError) throw new ImportValidationError(`Hit points could not be saved: ${hitPointLevelsError}.`)
 
 	const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
 	const storedPlay = storedPlayState(storedCurrentHp, play)

@@ -110,6 +110,8 @@ export interface FighterOptions {
   onLanguagesStep?: (page: Page) => Promise<void>
   /** Background radio and its +2/+1 abilities; Acolyte (Wisdom/Intelligence) when absent. */
   background?: { radio: string; plusTwo: string; plusOne: string }
+  /** W-6: finishFromBackground returns on the Hit points step instead of filling it in. */
+  stopAtHitPoints?: boolean
 }
 
 /** Fighter with background Acolyte unless `background` says otherwise; stops on the Background step so the caller can inspect it. */
@@ -179,6 +181,7 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
 
   if (options.level >= 2) {
     await expectStep(page, 'Hit points')
+    if (options.stopAtHitPoints) return
     await page.getByRole('button', { name: /Use the average/ }).click()
     await next(page)
   }

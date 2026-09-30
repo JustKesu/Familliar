@@ -215,6 +215,21 @@ describe('CharacterStore.update', () => {
 		expect(() => store.update(created.id, { name: '  ' })).toThrow(ImportValidationError)
 		expect(store.list()).toEqual([created])
 	})
+
+	/* W20: a value list() would reject must never be written, or the whole character list fails to load. */
+	it('refuses hit point values the stored-data validation rejects, on create and update, leaving the list readable', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const created = store.create({ name: 'Aria' })
+		for (const dieResult of [-1, 2.5, Number.NaN]) {
+			const hitPointLevels = [{ level: 2, kind: 'manual' as const, dieResult }]
+			expect(() => store.create({ name: 'Bad', hitPointLevels })).toThrow(ImportValidationError)
+			expect(() => store.update(created.id, { name: 'Aria', hitPointLevels })).toThrow(ImportValidationError)
+		}
+		expect(store.list()).toEqual([created])
+
+		const ok = store.update(created.id, { name: 'Aria', hitPointLevels: [{ level: 2, kind: 'manual', dieResult: 5 }] })
+		expect(store.list()).toEqual([ok])
+	})
 })
 
 describe('CharacterStore.create with ability scores', () => {
