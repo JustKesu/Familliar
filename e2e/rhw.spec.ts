@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { chooseButton, createFighter, select } from './wizard.ts'
+import { chooseButton, createFighter, featOption, featOrAsiSelect, levelCard, select } from './wizard.ts'
 
 /* D194: RHW (Ravenloft: The Horrors Within). Casters are saved characters seeded into storage like classFreeCasts.spec.ts. */
 const STORAGE_KEY = 'familliar:characters'
@@ -107,11 +107,12 @@ test('D194 e:a Dark Gift feat is selectable at a feat choice, labelled "Dark Gif
     name: 'D194 Dark Gift',
     level: 4,
     species: 'Dwarf|XPHB',
-    feat: 'Echoing Soul — Dark Gift',
+    feat: 'Echoing Soul',
     onFeatStep: async (step) => {
-      const item = step.getByRole('group', { name: 'Level 4' }).locator('li', { has: step.getByRole('radio', { name: 'Echoing Soul — Dark Gift', exact: true }) })
-      await expect(item.getByRole('radio')).toBeChecked()
-      await expect(item).toContainText('Ravenloft campaign')
+      await expect(featOrAsiSelect(step, 4)).toHaveValue('Echoing Soul|RHW')
+      await expect(featOption(step, 4, 'Echoing Soul')).toHaveText('Echoing Soul · RHW')
+      await expect(featOption(step, 4, 'Echoing Soul').locator('xpath=..')).toHaveAttribute('label', 'Dark Gift')
+      await expect(levelCard(step, 4)).toContainText('Ravenloft campaign')
     },
   })
   await page.getByRole('tab', { name: 'Features & Traits' }).click()

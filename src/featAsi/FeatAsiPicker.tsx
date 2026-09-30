@@ -1,6 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
-import type { FeatAsiChoice, FilterChoiceSpellsChoice } from '../storage/character'
+import { AbilityScoreTable } from '../abilities/AbilityScoreTable'
+import type { FeatEffectEntry } from '../calculation/featEffects'
+import { ResolvedEntries, type ResolverData } from '../featureResolver'
+import { Entries } from '../markup'
+import type { Character, FeatAsiChoice, FilterChoiceSpellsChoice } from '../storage/character'
 import {
 	isFilterChoiceFeat,
 	isNamedBlockFeat,
@@ -16,10 +20,13 @@ import { ABILITY_ABBREVIATIONS } from '../calculation/abilityAbbreviations'
 import { loadFixedFeatSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { featSpellPickerKey, knownSpellNote, knownSpellReason, type KnownSpell } from '../spells/knownSpells'
 import {
-	evaluateFeatPrerequisites,
 	exceedsAbilityScoreCap,
+	FEAT_CATEGORY_LABELS,
 	featAbilityChoiceOptions,
 	featCampaignNote,
+	featCategoryLabel,
+	featOffers,
+	featsRequiringAbilityChoice,
 	isMagicInitiateFeat,
 	isValidAbilityIncrease,
 	MAGIC_INITIATE_ABILITY_OPTIONS,
@@ -28,23 +35,26 @@ import {
 	loadFeats,
 	loadHasFightingStyleFeature,
 	loadSpeciesPrereqInfo,
-	type ChosenFeatRef,
 	type FeatAsiGrant,
 	type FeatEntry,
+	type FeatOffer,
 	type PrerequisiteContext,
 } from './featAsiData'
+import { featAsiCardTitle, featAsiMissing, FeatAsiLevelCard, featOptionLabel } from './FeatAsiLevelCard'
 import type { FeatInstanceKey, FeatRef } from './featInstances'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from './FeatSubChoicePicker'
 
 /*
- * Feat/ASI picker (build order step 4a). One sub-panel per level that
- * grants a choice (D19/D20): the player picks ASI-or-feat FIRST, then sees
- * only the options for whichever they picked (task instructions, point 3).
+ * Feat/ASI picker (build order step 4a). One card per level that grants a
+ * choice (D19/D20, W16): one dropdown with ASI and every feat, then only the
+ * sub-choices of what was picked.
  *
  * Mirrors ExpertisePicker/D8: state lives in the wizard (`value`), this
  * component only displays it and reports changes upward. Renders nothing
  * when the class has no grant by `level`.
  */
+
+const ASI_TEXT = 'Increase one ability score by 2, or two ability scores by 1 each. No score can go above 20.'
 
 const ABILITY_LABEL: Record<Ability, string> = {
 	strength: 'Strength',
@@ -62,6 +72,7 @@ type LoadState =
 			status: 'ready'
 			grants: FeatAsiGrant[]
 			feats: FeatEntry[]
+			featsRequiringAbilityChoice: Set<string>
 			armorProficiencies: string[]
 			weaponProficiencies: string[]
 			hasSpellcasting: boolean
@@ -90,6 +101,8 @@ export function FeatAsiPicker({
 	itemFeats = NO_MANUAL_FEATS,
 	heldForFeat,
 	laterNote = false,
+	abilityDraft,
+	resolverData,
 }: {
 	className: string
 	classSource: string
@@ -116,6 +129,9 @@ export function FeatAsiPicker({
 	heldForFeat?: (key: FeatInstanceKey) => FeatChoiceHeld
 	/** D179: show that a feat's own picks can wait for Edit Character. */
 	laterNote?: boolean
+	/** W16: the draft character the ability table on top reads (scores, background bonus, other feats); the table is left out without it. */
+	abilityDraft?: Character
+	resolverData?: ResolverData
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -135,6 +151,7 @@ export function FeatAsiPicker({
 					status: 'ready',
 					grants,
 					feats,
+					featsRequiringAbilityChoice: featsRequiringAbilityChoice(feats),
 					armorProficiencies: classInfo?.armorProficiencies ?? [],
 					weaponProficiencies: classInfo?.weaponProficiencies ?? [],
 					hasSpellcasting: classInfo?.hasSpellcasting ?? false,
@@ -173,22 +190,22 @@ export function FeatAsiPicker({
 		return scores
 	}
 
-	const backgroundFeatEntry = backgroundOriginFeat ? feats.find((f) => f.name === backgroundOriginFeat.name && f.source === backgroundOriginFeat.source) : undefined
-
-	function chosenFeatsUpto(uptoIndex: number): ChosenFeatRef[] {
-		const refs: ChosenFeatRef[] = [
-			...(backgroundOriginFeat ? [{ ...backgroundOriginFeat, category: backgroundFeatEntry?.category ?? '' }] : []),
-			...[...manualFeats, ...itemFeats].map((feat) => ({ name: feat.name, source: feat.source, category: feats.find((f) => f.name === feat.name && f.source === feat.source)?.category ?? '' })),
-		]
-		for (let i = 0; i < uptoIndex; i++) {
-			const choice = value[i]
-			if (choice?.kind === 'feat') {
-				const entry = feats.find((f) => f.name === choice.name && f.source === choice.source)
-				refs.push({ name: choice.name, source: choice.source, category: entry?.category ?? '' })
-			}
-		}
-		return refs
+	const grantedFeats: FeatRef[] = [...(backgroundOriginFeat ? [backgroundOriginFeat] : []), ...manualFeats, ...itemFeats]
+	const levelFeats = (include: (index: number) => boolean): FeatRef[] =>
+		value.flatMap((choice, index) => (choice?.kind === 'feat' && choice.name !== '' && include(index) ? [{ name: choice.name, source: choice.source }] : []))
+	const ctx: Omit<PrerequisiteContext, 'chosenFeats'> = {
+		characterLevel: level,
+		abilityScores: finalAbilityScores,
+		hasFightingStyleFeature: state.hasFightingStyleFeature,
+		hasSpellcasting: state.hasSpellcasting,
+		armorProficiencies: state.armorProficiencies,
+		weaponProficiencies: state.weaponProficiencies,
+		speciesName,
+		speciesRaceTags: state.speciesRaceTags,
+		speciesSize: state.speciesSize ?? chosenSpeciesSize,
 	}
+	// loadFeats keeps each feats.json object whole, so it carries the ability fields the calculation layer reads.
+	const featEffects = feats as unknown as FeatEffectEntry[]
 
 	function setChoiceAt(index: number, choice: FeatAsiChoice): void {
 		if (lockedLevels.includes(grants[index].level)) return
@@ -197,76 +214,55 @@ export function FeatAsiPicker({
 		onChange(next.slice(0, grants.length))
 	}
 
+	function selectOption(index: number, grantLevel: number, option: string): void {
+		if (option === 'asi') return setChoiceAt(index, { level: grantLevel, kind: 'asi', increases: {} })
+		const [name, source] = option.split('|')
+		setChoiceAt(index, { level: grantLevel, kind: 'feat', name, source })
+	}
+
 	return (
 		<div className="feat-asi-picker">
+			{abilityDraft && (
+				<div className="feat-asi-picker__table">
+					<AbilityScoreTable
+						base={Object.fromEntries(ABILITIES.map((ability) => [ability, abilityDraft.abilityScores?.scores[ability] ?? null])) as Record<Ability, number | null>}
+						background={abilityDraft.abilityBonus}
+						feats={featEffects}
+						draft={{ ...abilityDraft, featAsiChoices: value }}
+					/>
+				</div>
+			)}
 			{grants.map((grant, index) => {
 				const current = value[index]
 				const locked = lockedLevels.includes(grant.level)
 				const runningScores = runningAbilityScoresForCap(index)
-				const ctx: PrerequisiteContext = {
-					characterLevel: level,
-					abilityScores: finalAbilityScores,
-					hasFightingStyleFeature: state.hasFightingStyleFeature,
-					hasSpellcasting: state.hasSpellcasting,
-					armorProficiencies: state.armorProficiencies,
-					weaponProficiencies: state.weaponProficiencies,
-					speciesName,
-					speciesRaceTags: state.speciesRaceTags,
-					speciesSize: state.speciesSize ?? chosenSpeciesSize,
-					chosenFeats: chosenFeatsUpto(index),
-				}
+				// W18: a non-repeatable feat held anywhere else is disabled; only earlier levels count for feat prerequisites, as before.
+				const offers = featOffers(feats, [...grantedFeats, ...levelFeats((other) => other !== index)], ctx, [...grantedFeats, ...levelFeats((other) => other < index)])
+				const selectedFeat = current?.kind === 'feat' && current.name !== '' ? feats.find((f) => f.name === current.name && f.source === current.source) : undefined
+				const abilityOptions = selectedFeat ? featAbilityChoiceOptions(selectedFeat) : null
+				const campaignNote = selectedFeat ? featCampaignNote(selectedFeat) : null
+				const missing = locked ? [] : featAsiMissing(current, feats, state.featsRequiringAbilityChoice, level)
+				const selectValue = current?.kind === 'asi' ? 'asi' : current?.kind === 'feat' && current.name !== '' ? `${current.name}|${current.source}` : ''
 
 				return (
-					<fieldset key={grant.level} className="feat-asi-picker__level" disabled={locked}>
-						<legend>
-							Level {grant.level}
-							{grant.kind === 'epicBoon' ? ' — Epic Boon' : ''}
-							{locked && ' (chosen at an earlier level)'}
-						</legend>
-
-						<label>
-							<input
-								type="radio"
-								name={`feat-asi-kind-${grant.level}`}
-								checked={current?.kind === 'asi'}
-								disabled={locked}
-								onChange={() => setChoiceAt(index, { level: grant.level, kind: 'asi', increases: {} })}
-							/>
-							Ability Score Improvement
-						</label>
-						<label>
-							<input
-								type="radio"
-								name={`feat-asi-kind-${grant.level}`}
-								checked={current?.kind === 'feat'}
-								disabled={locked}
-								onChange={() => setChoiceAt(index, { level: grant.level, kind: 'feat', name: '', source: '' })}
-							/>
-							Feat
-						</label>
+					<FeatAsiLevelCard key={grant.level} level={grant.level} title={featAsiCardTitle(grant.level, current, feats)} initiallyOpen={missing.length > 0} locked={locked}>
+						<FeatOrAsiSelect grantKind={grant.kind} offers={offers} value={selectValue} onChange={(option) => selectOption(index, grant.level, option)} />
+						{missing.length > 0 && <p className="feat-asi-card__missing">Choose {missing.join(', ')}.</p>}
 
 						{current?.kind === 'asi' && (
-							<AsiSubPicker
-								grantLevel={grant.level}
-								increases={current.increases}
-								currentScores={runningScores}
-								onChange={(increases) => setChoiceAt(index, { level: grant.level, kind: 'asi', increases })}
-							/>
+							<>
+								<AsiSubPicker
+									grantLevel={grant.level}
+									increases={current.increases}
+									currentScores={runningScores}
+									onChange={(increases) => setChoiceAt(index, { level: grant.level, kind: 'asi', increases })}
+								/>
+								<p className="feat-asi-card__text">{ASI_TEXT}</p>
+							</>
 						)}
 
-						{current?.kind === 'feat' && (
-							<FeatSubPicker
-								grantLevel={grant.level}
-								grantKind={grant.kind}
-								feats={feats}
-								context={ctx}
-								grantedByBackground={backgroundOriginFeat}
-								manualFeats={manualFeats}
-								itemFeats={itemFeats}
-								selected={current.name ? { name: current.name, source: current.source, chosenAbility: current.chosenAbility } : null}
-								onSelectFeat={(feat) => setChoiceAt(index, { level: grant.level, kind: 'feat', name: feat.name, source: feat.source })}
-								onSelectAbility={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
-							/>
+						{current?.kind === 'feat' && abilityOptions && (
+							<HalfFeatAbilitySelect options={abilityOptions} value={current.chosenAbility} onChange={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })} />
 						)}
 
 						{current?.kind === 'feat' && current.name && (
@@ -309,7 +305,12 @@ export function FeatAsiPicker({
 								onChange={(filterChoiceSpells) => setChoiceAt(index, { ...current, filterChoiceSpells })}
 							/>
 						)}
-					</fieldset>
+
+						{campaignNote && <p className="feat-asi-picker__note">{campaignNote}</p>}
+						{selectedFeat?.entries && (
+							<div className="feat-asi-card__text">{resolverData ? <ResolvedEntries entries={selectedFeat.entries} data={resolverData} /> : <Entries entries={selectedFeat.entries} />}</div>
+						)}
+					</FeatAsiLevelCard>
 				)
 			})}
 		</div>
@@ -389,7 +390,7 @@ export function AsiSubPicker({
 			</label>
 
 			{mode === 'plusTwo' ? (
-				<select value={ability1 ?? ''} onChange={(event) => setPlusTwo(event.target.value as Ability)}>
+				<select aria-label="+2 ability" value={ability1 ?? ''} onChange={(event) => setPlusTwo(event.target.value as Ability)}>
 					<option value="" disabled>
 						Choose an ability
 					</option>
@@ -403,7 +404,7 @@ export function AsiSubPicker({
 			) : (
 				<>
 					{([0, 1] as const).map((slot) => (
-						<select key={slot} value={chosenAbilities[slot] ?? ''} onChange={(event) => setPlusOne(slot, event.target.value as Ability)}>
+						<select key={slot} aria-label={`+1 ability ${slot + 1}`} value={chosenAbilities[slot] ?? ''} onChange={(event) => setPlusOne(slot, event.target.value as Ability)}>
 							<option value="" disabled>
 								Choose an ability
 							</option>
@@ -425,98 +426,67 @@ export function AsiSubPicker({
 	)
 }
 
-/** D19: every feat is listed; ineligible ones stay visible with the reason shown, never hidden. */
-function FeatSubPicker({
-	grantLevel,
+/**
+ * W16: every feat in one dropdown, grouped by category; D19 still holds — an ineligible or held one
+ * stays listed, disabled, with the reason in its text (W18). Epic Boon levels list that pool first.
+ */
+function FeatOrAsiSelect({
 	grantKind,
-	feats,
-	context,
-	grantedByBackground,
-	manualFeats,
-	itemFeats,
-	selected,
-	onSelectFeat,
-	onSelectAbility,
+	offers,
+	value,
+	onChange,
 }: {
-	grantLevel: number
 	grantKind: FeatAsiGrant['kind']
-	feats: FeatEntry[]
-	context: PrerequisiteContext
-	grantedByBackground: FeatRef | null
-	manualFeats: readonly FeatRef[]
-	itemFeats: readonly FeatRef[]
-	selected: { name: string; source: string; chosenAbility?: Ability } | null
-	onSelectFeat: (feat: { name: string; source: string }) => void
-	onSelectAbility: (ability: Ability) => void
+	offers: FeatOffer[]
+	value: string
+	onChange: (value: string) => void
 }): ReactNode {
-	const evaluated = feats.map((feat) => {
-		const heldFromBackground = !feat.repeatable && grantedByBackground?.name === feat.name && grantedByBackground.source === feat.source
-		const heldIn = (list: readonly FeatRef[]) => !feat.repeatable && list.some((held) => held.name === feat.name && held.source === feat.source)
-		const result = heldFromBackground
-			? { eligible: false, reasons: ['Already granted by your background.'] }
-			: heldIn(manualFeats)
-				? { eligible: false, reasons: ['Already added manually.'] }
-				: heldIn(itemFeats)
-					? { eligible: false, reasons: ['Already granted by an item.'] }
-					: evaluateFeatPrerequisites(feat, context)
-		return { feat, result }
-	})
-	// Epic Boon levels show category-EB feats first (the feature's own suggested pool) — still just a sort, D19's "no category filter" is unaffected.
-	const sorted =
-		grantKind === 'epicBoon'
-			? [...evaluated].sort((a, b) => Number(b.feat.category === 'EB') - Number(a.feat.category === 'EB') || a.feat.name.localeCompare(b.feat.name))
-			: [...evaluated].sort((a, b) => a.feat.name.localeCompare(b.feat.name))
-
-	const selectedFeat = selected ? feats.find((f) => f.name === selected.name && f.source === selected.source) : undefined
-	const abilityOptions = selectedFeat ? featAbilityChoiceOptions(selectedFeat) : null
+	const groups = new Map<string, FeatOffer[]>()
+	for (const offer of [...offers].sort((a, b) => a.feat.name.localeCompare(b.feat.name))) {
+		groups.set(offer.feat.category, [...(groups.get(offer.feat.category) ?? []), offer])
+	}
+	const order = Object.keys(FEAT_CATEGORY_LABELS)
+	const rank = (category: string) => (grantKind === 'epicBoon' && category === 'EB' ? -1 : order.includes(category) ? order.indexOf(category) : order.length)
+	const categories = [...groups.keys()].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
 
 	return (
-		<>
-			<ul className="feat-asi-picker__feats" aria-label={`Feats for level ${grantLevel}`}>
-				{sorted.map(({ feat, result }) => {
-					const isSelected = selected?.name === feat.name && selected.source === feat.source
-					const campaignNote = featCampaignNote(feat)
-					return (
-						<li key={`${feat.name}|${feat.source}`} className="feat-asi-picker__feat">
-							<label>
-								<input
-									type="radio"
-									name={`feat-choice-${grantLevel}`}
-									checked={isSelected}
-									disabled={!result.eligible}
-									onChange={() => onSelectFeat({ name: feat.name, source: feat.source })}
-								/>
-								{feat.name}
-								{feat.category === 'DG' && ' — Dark Gift'}
-							</label>
-							{campaignNote && <p className="feat-asi-picker__note">{campaignNote}</p>}
-							{!result.eligible && (
-								<ul className="feat-asi-picker__reasons">
-									{result.reasons.map((reason) => (
-										<li key={reason}>{reason}</li>
-									))}
-								</ul>
-							)}
-						</li>
-					)
-				})}
-			</ul>
-			{abilityOptions && (
-				<label className="feat-asi-picker__feat-ability">
-					Ability
-					<select value={selected?.chosenAbility ?? ''} onChange={(event) => onSelectAbility(event.target.value as Ability)}>
-						<option value="" disabled>
-							Choose an ability
-						</option>
-						{abilityOptions.map((ability) => (
-							<option key={ability} value={ability}>
-								{ABILITY_LABEL[ability]}
+		<label className="feat-asi-card__field">
+			Feat or ASI
+			<select className="feat-asi-card__select" value={value} onChange={(event) => onChange(event.target.value)}>
+				<option value="" disabled>
+					Choose a feat or ASI…
+				</option>
+				<option value="asi">Ability Score Improvement</option>
+				{categories.map((category) => (
+					<optgroup key={category} label={featCategoryLabel(category)}>
+						{groups.get(category)!.map((offer) => (
+							<option key={`${offer.feat.name}|${offer.feat.source}`} value={`${offer.feat.name}|${offer.feat.source}`} disabled={offer.held || !offer.result.eligible}>
+								{featOptionLabel(offer)}
 							</option>
 						))}
-					</select>
-				</label>
-			)}
-		</>
+					</optgroup>
+				))}
+			</select>
+		</label>
+	)
+}
+
+/** A half-feat's +1 (task instructions point 4). */
+function HalfFeatAbilitySelect({ options, value, onChange }: { options: Ability[]; value: Ability | undefined; onChange: (ability: Ability) => void }): ReactNode {
+	return (
+		<label className="feat-asi-picker__feat-ability">
+			Ability
+			<select value={value ?? ''} onChange={(event) => onChange(event.target.value as Ability)}>
+				<option value="" disabled>
+					Choose an ability
+				</option>
+				{options.map((ability) => (
+					<option key={ability} value={ability}>
+						{ABILITY_LABEL[ability]}
+					</option>
+				))}
+			</select>
+		</label>
 	)
 }
 

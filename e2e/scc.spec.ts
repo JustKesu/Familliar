@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { expectStep, fillUpToBackground, finishFromBackground, next, select, type FighterOptions } from './wizard.ts'
+import { expectStep, featOption, featOrAsiSelect, fillUpToBackground, finishFromBackground, next, select, type FighterOptions } from './wizard.ts'
 
 /* D199: SCC (Strixhaven) — spells and items in, feats extracted but hidden, backgrounds and Owlin out. */
 const STORAGE_KEY = 'familliar:characters'
@@ -90,12 +90,11 @@ test('D199 d / D200 c: no Owlin species, no SCC background, and Strixhaven Masco
     },
     feat: 'Tough',
     onFeatStep: async (p) => {
-      const level4 = p.getByRole('group', { name: 'Level 4' })
-      await expect(level4.getByRole('radio', { name: 'Tough', exact: true })).toBeChecked()
+      await expect(featOrAsiSelect(p, 4)).toHaveValue('Tough|XPHB')
       // D200: Strixhaven Initiate is offered now; Mascot and Boon of Siberys stay hidden.
-      await expect(level4.getByRole('radio', { name: 'Strixhaven Initiate', exact: true })).toHaveCount(1)
-      await expect(level4.getByRole('radio', { name: 'Strixhaven Mascot', exact: true })).toHaveCount(0)
-      await expect(level4.getByRole('radio', { name: 'Boon of Siberys', exact: true })).toHaveCount(0)
+      await expect(featOption(p, 4, 'Strixhaven Initiate')).toHaveCount(1)
+      await expect(featOption(p, 4, 'Strixhaven Mascot')).toHaveCount(0)
+      await expect(featOption(p, 4, 'Boon of Siberys')).toHaveCount(0)
     },
   }
   await fillUpToBackground(page, options)

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { chooseButton, expectStep, fillUpToBackground, next, select, type FighterOptions } from './wizard.ts'
+import { chooseButton, expectStep, featOption, featOrAsiSelect, fillUpToBackground, next, select, type FighterOptions } from './wizard.ts'
 
 /* D201: FRHoF (Heroes of Faerûn) in reduced scope — subclasses, spells, items, Epic Boons and General feats only. */
 
@@ -58,17 +58,16 @@ test('D201 c: a level 19 character is offered FRHoF Epic Boons, no FRHoF Origin 
   await next(page)
   await expectStep(page, 'ASI / Feat')
 
-  // Fighter ASI levels; taken in order because a later grant only registers once the earlier ones are set.
+  // Fighter ASI levels, each card with its own dropdown.
   for (const level of [4, 6, 8, 12, 14, 16, 19]) {
-    const group = page.getByRole('group', { name: new RegExp(`^Level ${level}\\b`) })
-    await group.getByRole('radio', { name: 'Feat', exact: true }).check()
+    await expect(featOrAsiSelect(page, level)).toBeVisible()
     // FRHoF O feats, and the General feats that need one (D201).
     for (const name of ['Harper Agent', 'Zhentarim Ruffian', 'Spellfire Spark', 'Harper Teamwork', 'Zhentarim Tactics', 'Dragonscarred', 'Enclave Magic', 'Spellfire Adept', 'Cold Caster']) {
-      await expect(group.getByRole('radio', { name, exact: true })).toHaveCount(0)
+      await expect(featOption(page, level, name)).toHaveCount(0)
     }
   }
-  await expect(page.getByRole('group', { name: /^Level 19\b/ }).getByRole('radio', { name: 'Boon of Bloodshed', exact: true })).toHaveCount(1)
-  await expect(page.getByRole('group', { name: /^Level 4\b/ }).getByRole('radio', { name: 'Fairy Trickster', exact: true })).toHaveCount(1)
+  await expect(featOption(page, 19, 'Boon of Bloodshed')).toHaveCount(1)
+  await expect(featOption(page, 4, 'Fairy Trickster')).toHaveCount(1)
 })
 
 test('D201 d: no FRHoF background and no FRHoF language is offered', async ({ page }) => {

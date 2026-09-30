@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFighter, expectStep, next } from './wizard.ts'
+import { createFighter, expectStep, featOption, next, openLevelCard } from './wizard.ts'
 
 /* R13a (D215). Characters seeded at schema 52 before the app loads, as in manageExtras.spec.ts. */
 const STORAGE_KEY = 'familliar:characters'
@@ -309,8 +309,8 @@ test('R13b g: Edit Character does not offer a manually added Tough again at an A
   await next(page)
   await expectStep(page, 'ASI / Feat')
 
-  const group = page.getByRole('group', { name: 'Level 4' })
-  await group.getByRole('radio', { name: 'Feat', exact: true }).check()
-  await expect(group.getByRole('radio', { name: 'Tough', exact: true })).toBeDisabled()
-  await expect(group.getByText('Already added manually.')).toBeVisible()
+  await openLevelCard(page, 4)
+  const tough = featOption(page, 4, 'Tough')
+  await expect(tough).toHaveJSProperty('disabled', true)
+  await expect(tough).toHaveText('Tough · XPHB (already taken)')
 })

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FeatAsiPicker } from './FeatAsiPicker'
 import { loadFeatAsiGrants } from './featAsiData'
@@ -125,6 +125,15 @@ afterEach(cleanup)
 
 const fullScores = { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 }
 
+/** W16: the one ASI-or-feat dropdown of a single-level picker. */
+const featOrAsi = async (): Promise<HTMLSelectElement> => (await screen.findByRole('combobox', { name: 'Feat or ASI' })) as HTMLSelectElement
+
+const option = (select: HTMLSelectElement, featName: string): HTMLOptionElement => Array.from(select.options).find((o) => o.value === `${featName}|XPHB`)!
+
+function tableRow(name: string): string[] {
+	return within(screen.getByRole('rowheader', { name }).closest('tr')!).getAllByRole('cell').map((cell) => cell.textContent ?? '')
+}
+
 /** Built through the real collector so these tests exercise the same labels/keys the wizard produces. */
 function known(overrides: Partial<KnownSpellInputs>) {
 	return collectKnownSpells({
@@ -163,15 +172,106 @@ describe('FeatAsiPicker', () => {
 		}
 		render(<Harness />)
 
-		await user.click(await screen.findByLabelText('Skilled'))
+		await user.selectOptions(await featOrAsi(), 'Skilled|XPHB')
 		expect(await screen.findByText('You can make this choice later in Manage Feats.')).toBeTruthy()
 		await user.selectOptions(screen.getByLabelText('Skilled skill or tool 1'), 'skill:arcana')
 		expect(latest[0]).toMatchObject({ name: 'Skilled', proficiencies: { skills: ['arcana'] } })
 
-		await user.click(screen.getByLabelText('Tough'))
+		await user.selectOptions(await featOrAsi(), 'Tough|XPHB')
 		expect(latest[0]).toEqual({ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' })
-		await user.click(screen.getByLabelText('Skilled'))
+		await user.selectOptions(await featOrAsi(), 'Skilled|XPHB')
 		expect(((await screen.findByLabelText('Skilled skill or tool 1')) as HTMLSelectElement).value).toBe('')
+	})
+
+	it('W16: the step shows the ability table on top, and its ASI / Feats row follows the choices live', async () => {
+		const user = userEvent.setup()
+		function Harness() {
+			const [value, setValue] = useState<FeatAsiChoice[]>([])
+			return (
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={value}
+					onChange={setValue}
+					abilityDraft={{ id: '', name: '', classes: [], abilityScores: { method: 'standardArray', scores: fullScores }, abilityBonus: { strength: 2 } }}
+				/>
+			)
+		}
+		render(<Harness />)
+
+		await user.selectOptions(await featOrAsi(), 'asi')
+		await user.selectOptions(screen.getByRole('combobox', { name: '+2 ability' }), 'dexterity')
+		expect(tableRow('ASI / Feats')).toEqual(['—', '+2', '—', '—', '—', '—'])
+		expect(tableRow('Total')).toEqual(['17', '16', '13', '12', '10', '8'])
+
+		await user.selectOptions(await featOrAsi(), 'Athlete|XPHB')
+		expect(tableRow('ASI / Feats')).toEqual(['—', '—', '—', '—', '—', '—'])
+		await user.selectOptions(screen.getByLabelText('Ability'), 'strength')
+		expect(tableRow('ASI / Feats')).toEqual(['+1', '—', '—', '—', '—', '—'])
+		expect(tableRow('Modifier')[0]).toBe('+4')
+
+		await user.selectOptions(await featOrAsi(), 'Tough|XPHB')
+		expect(tableRow('ASI / Feats')).toEqual(['—', '—', '—', '—', '—', '—'])
+	})
+
+	it('W16/W17: an incomplete card is open with a "Choose …" line; a complete one is collapsed with its summary, and the player can open it', async () => {
+		const user = userEvent.setup()
+		render(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={6}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={[
+					{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'dexterity' },
+					{ level: 6, kind: 'feat', name: 'Athlete', source: 'XPHB' },
+				]}
+				onChange={() => {}}
+			/>,
+		)
+
+		const level4 = await screen.findByRole('button', { name: 'Level 4 — Athlete (+1 DEX)' })
+		expect(level4.getAttribute('aria-expanded')).toBe('false')
+		expect(within(screen.getByRole('group', { name: 'Level 4' })).queryByRole('combobox')).toBeNull()
+
+		const level6 = screen.getByRole('button', { name: 'Level 6 — Athlete' })
+		expect(level6.getAttribute('aria-expanded')).toBe('true')
+		expect(within(screen.getByRole('group', { name: 'Level 6' })).getByText('Choose an ability.')).toBeTruthy()
+
+		await user.click(level4)
+		expect(level4.getAttribute('aria-expanded')).toBe('true')
+		expect(((await within(screen.getByRole('group', { name: 'Level 4' })).findByLabelText('Ability')) as HTMLSelectElement).value).toBe('dexterity')
+	})
+
+	it('W18: a feat taken at another level is disabled as already taken; a repeatable one stays open', async () => {
+		render(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={6}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={[
+					{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' },
+					{ level: 6, kind: 'feat', name: '', source: '' },
+				]}
+				onChange={() => {}}
+			/>,
+		)
+
+		const level6 = within(await screen.findByRole('group', { name: 'Level 6' }))
+		const select = (await level6.findByRole('combobox', { name: 'Feat or ASI' })) as HTMLSelectElement
+		expect(option(select, 'Tough').disabled).toBe(true)
+		expect(option(select, 'Tough').textContent).toBe('Tough · XPHB (already taken)')
+		expect(option(select, 'Skilled').disabled).toBe(false)
+		expect(Array.from(select.querySelectorAll('optgroup')).map((group) => group.label)).toEqual(['Origin', 'General'])
 	})
 
 	it('renders nothing when the class has no grant by that level', async () => {
@@ -189,7 +289,7 @@ describe('FeatAsiPicker', () => {
 		)
 
 		await waitFor(() => expect(loadFeatAsiGrants).toHaveBeenCalled())
-		expect(container.querySelector('.feat-asi-picker__level')).toBeNull()
+		expect(container.querySelector('.feat-asi-card')).toBeNull()
 	})
 
 	it('shows one panel per level the class has granted by then — Fighter 12 sees four, not the generic three, because Fighter also gets one at level 6', async () => {
@@ -206,12 +306,10 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		const legends = await screen.findAllByRole('group')
-		expect(legends).toHaveLength(4)
-		expect(screen.getByText('Level 4')).toBeTruthy()
-		expect(screen.getByText('Level 6')).toBeTruthy()
-		expect(screen.getByText('Level 8')).toBeTruthy()
-		expect(screen.getByText('Level 12')).toBeTruthy()
+		const cards = await screen.findAllByRole('group', { name: /^Level \d+$/ })
+		expect(cards.map((card) => card.getAttribute('aria-label'))).toEqual(['Level 4', 'Level 6', 'Level 8', 'Level 12'])
+		expect(screen.getByRole('button', { name: 'Level 4 — Choose a feat or ASI' }).getAttribute('aria-expanded')).toBe('true')
+		expect(screen.getAllByText('Choose a feat or Ability Score Improvement.')).toHaveLength(4)
 	})
 
 	it('a feat with an unmet prerequisite is shown but disabled, with the reason visible', async () => {
@@ -229,12 +327,11 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		const actorRadio = (await screen.findByLabelText('Actor')) as HTMLInputElement
-		expect(actorRadio.disabled).toBe(true)
-		expect(screen.getByText('Requires Charisma 13+.')).toBeTruthy()
-
-		const toughRadio = (await screen.findByLabelText('Tough')) as HTMLInputElement
-		expect(toughRadio.disabled).toBe(false)
+		const select = await featOrAsi()
+		expect(option(select, 'Actor').disabled).toBe(true)
+		expect(option(select, 'Actor').textContent).toBe('Actor · XPHB (needs CHA 13)')
+		expect(option(select, 'Tough').disabled).toBe(false)
+		expect(option(select, 'Tough').textContent).toBe('Tough · XPHB')
 	})
 
 	it("does not offer the background's non-repeatable origin feat again, but keeps a repeatable one (D156)", async () => {
@@ -252,8 +349,8 @@ describe('FeatAsiPicker', () => {
 				backgroundOriginFeat={{ name: 'Tough', source: 'XPHB' }}
 			/>,
 		)
-		expect(((await screen.findByLabelText('Tough')) as HTMLInputElement).disabled).toBe(true)
-		expect(screen.getByText('Already granted by your background.')).toBeTruthy()
+		expect(option(await featOrAsi(), 'Tough').disabled).toBe(true)
+		expect(option(await featOrAsi(), 'Tough').textContent).toBe('Tough · XPHB (already taken)')
 
 		rerender(
 			<FeatAsiPicker
@@ -268,8 +365,8 @@ describe('FeatAsiPicker', () => {
 				backgroundOriginFeat={{ name: 'Skilled', source: 'XPHB' }}
 			/>,
 		)
-		expect(((await screen.findByLabelText('Skilled')) as HTMLInputElement).disabled).toBe(false)
-		expect(((screen.getByLabelText('Tough')) as HTMLInputElement).disabled).toBe(false)
+		expect(option(await featOrAsi(), 'Skilled').disabled).toBe(false)
+		expect(option(await featOrAsi(), 'Tough').disabled).toBe(false)
 	})
 
 	it("does not offer a manually added non-repeatable feat again, but keeps a repeatable one (R13b, D215)", async () => {
@@ -290,9 +387,10 @@ describe('FeatAsiPicker', () => {
 				]}
 			/>,
 		)
-		expect(((await screen.findByLabelText('Tough')) as HTMLInputElement).disabled).toBe(true)
-		expect(screen.getByText('Already added manually.')).toBeTruthy()
-		expect(((screen.getByLabelText('Skilled')) as HTMLInputElement).disabled).toBe(false)
+		const select = await featOrAsi()
+		expect(option(select, 'Tough').disabled).toBe(true)
+		expect(option(select, 'Tough').textContent).toBe('Tough · XPHB (already taken)')
+		expect(option(select, 'Skilled').disabled).toBe(false)
 	})
 
 	it('choosing an eligible feat reports it upward', async () => {
@@ -312,7 +410,7 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		await user.click(await screen.findByLabelText('Tough'))
+		await user.selectOptions(await featOrAsi(), 'Tough|XPHB')
 		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }])
 	})
 
@@ -334,7 +432,7 @@ describe('FeatAsiPicker', () => {
 
 		expect(screen.queryByLabelText('Ability')).toBeNull()
 
-		await user.click(await screen.findByLabelText('Tough'))
+		await user.selectOptions(await featOrAsi(), 'Tough|XPHB')
 		rerender(
 			<FeatAsiPicker
 				className="Fighter"
@@ -349,7 +447,7 @@ describe('FeatAsiPicker', () => {
 		)
 		expect(screen.queryByLabelText('Ability')).toBeNull()
 
-		await user.click(await screen.findByLabelText('Athlete'))
+		await user.selectOptions(await featOrAsi(), 'Athlete|XPHB')
 		rerender(
 			<FeatAsiPicker
 				className="Fighter"
@@ -418,7 +516,9 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		await user.click(await screen.findByLabelText('Tough'))
+		// W17: the complete card starts collapsed.
+		await user.click(await screen.findByRole('button', { name: 'Level 4 — Athlete (+1 STR)' }))
+		await user.selectOptions(await featOrAsi(), 'Tough|XPHB')
 		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }])
 	})
 
@@ -437,7 +537,7 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		const select = await screen.findByRole('combobox')
+		const select = await screen.findByRole('combobox', { name: '+2 ability' })
 		const strengthOption = Array.from(select.querySelectorAll('option')).find((o) => o.textContent?.startsWith('Strength')) as HTMLOptionElement
 		expect(strengthOption.disabled).toBe(true)
 		const dexOption = Array.from(select.querySelectorAll('option')).find((o) => o.textContent?.startsWith('Dexterity')) as HTMLOptionElement
@@ -461,7 +561,7 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		const select = await screen.findByRole('combobox')
+		const select = await screen.findByRole('combobox', { name: '+2 ability' })
 		await user.selectOptions(select, 'strength')
 		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'asi', increases: { strength: 2 } }])
 	})
@@ -490,11 +590,10 @@ describe('FeatAsiPicker', () => {
 		render(<Harness />)
 
 		await user.click(await screen.findByLabelText('+1 to two abilities'))
-		expect(await screen.findAllByRole('combobox')).toHaveLength(2)
+		expect(await screen.findAllByRole('combobox', { name: /^\+1 ability/ })).toHaveLength(2)
 
-		const [first, second] = screen.getAllByRole('combobox')
-		await user.selectOptions(first, 'strength')
-		await user.selectOptions(second, 'dexterity')
+		await user.selectOptions(screen.getByRole('combobox', { name: '+1 ability 1' }), 'strength')
+		await user.selectOptions(screen.getByRole('combobox', { name: '+1 ability 2' }), 'dexterity')
 		expect(latest[0]).toEqual({ level: 4, kind: 'asi', increases: { strength: 1, dexterity: 1 } })
 	})
 
@@ -777,17 +876,19 @@ describe('FeatAsiPicker', () => {
 				<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={value} onChange={onChange} />,
 			)
 
-			await user.click(await screen.findByRole('radio', { name: 'Tough' }))
+			await user.selectOptions(await featOrAsi(), 'Tough|XPHB')
 			const latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
 			expect(latest[0]).toEqual({ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' })
 		})
 
 		it('a character with no filter-choice feat selected shows no filter-choice picker', async () => {
+			const user = userEvent.setup()
 			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }]
 			const { container } = render(
 				<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={value} onChange={() => {}} />,
 			)
-			await screen.findByRole('radio', { name: 'Tough' })
+			await user.click(await screen.findByRole('button', { name: 'Level 4 — Tough' }))
+			expect((await featOrAsi()).value).toBe('Tough|XPHB')
 			expect(container.querySelector('.feat-asi-picker__filter-choice')).toBeNull()
 		})
 	})

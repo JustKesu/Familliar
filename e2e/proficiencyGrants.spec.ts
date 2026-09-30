@@ -28,7 +28,7 @@ test('D202 a: Aberrant Anatomy — Perception with expertise from the feat; a la
     level: 6,
     ...HUMAN,
     onSpeciesStep: humanStep,
-    feat: 'Aberrant Anatomy — Dark Gift',
+    feat: 'Aberrant Anatomy',
     laterFeat: {
       level: 6,
       feat: 'Skill Expert',
@@ -57,7 +57,7 @@ test('D202 c: Echoing Soul asks for 2 skills, 1 language, 1 expertise and all fo
     level: 4,
     ...HUMAN,
     onSpeciesStep: humanStep,
-    feat: 'Echoing Soul — Dark Gift',
+    feat: 'Echoing Soul',
     onFeatStep: async (p) => {
       await expect(p.getByLabel(/^Echoing Soul skill \d$/)).toHaveCount(2)
       await expect(p.getByLabel(/^Echoing Soul language/)).toHaveCount(1)
@@ -81,7 +81,7 @@ test('D202 d: Symbiotic Being offers exactly its 10 skills and a language pick',
     level: 4,
     ...HUMAN,
     onSpeciesStep: humanStep,
-    feat: 'Symbiotic Being — Dark Gift',
+    feat: 'Symbiotic Being',
     onFeatStep: async (p) => {
       const skill = p.getByLabel('Symbiotic Being skill', { exact: true })
       listed = (await skill.getByRole('option').count()) - 1 // minus the "not chosen" placeholder

@@ -7,8 +7,10 @@ import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { AsiSubPicker } from '../featAsi/FeatAsiPicker'
 import {
-	evaluateFeatPrerequisites,
+	FEAT_CATEGORY_LABELS,
 	featAbilityChoiceOptions,
+	featCategoryLabel as categoryLabel,
+	featOffers as allFeatOffers,
 	isValidAbilityIncrease,
 	loadClassPrereqInfo,
 	loadFeats,
@@ -16,7 +18,7 @@ import {
 	loadSpeciesPrereqInfo,
 	type FeatEntry,
 	type PrerequisiteContext,
-	type PrerequisiteResult,
+	type FeatOffer,
 } from '../featAsi/featAsiData'
 import { featOriginLabel, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
@@ -27,10 +29,7 @@ import { DrawerSection } from './Drawer'
 import type { FeatureTabRow } from './featuresTabData'
 import type { FeatTextEntry } from './sheetData'
 
-const CATEGORY_LABELS: Record<string, string> = { O: 'Origin', G: 'General', FS: 'Fighting Style', EB: 'Epic Boon', DG: 'Dark Gift' }
-const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS)
-
-const categoryLabel = (code: string): string => CATEGORY_LABELS[code] ?? code
+const CATEGORY_ORDER = Object.keys(FEAT_CATEGORY_LABELS)
 
 const titleCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
 
@@ -103,16 +102,9 @@ async function loadPanelData(character: Character): Promise<Loaded> {
 	}
 }
 
-export interface FeatOffer {
-	feat: FeatEntry
-	result: PrerequisiteResult
-}
-
 /** Every feat Add Feats may list, with its prerequisite result. A held non-repeatable feat is left out; every held feat counts as chosen (manual ones included). */
 export function featOffers(feats: readonly FeatEntry[], held: readonly FeatRef[], ctx: Omit<PrerequisiteContext, 'chosenFeats'>): FeatOffer[] {
-	const heldKeys = new Set(held.map(featKey))
-	const chosenFeats = held.map((feat) => ({ name: feat.name, source: feat.source, category: feats.find((entry) => featKey(entry) === featKey(feat))?.category ?? '' }))
-	return feats.filter((feat) => feat.repeatable || !heldKeys.has(featKey(feat))).map((feat) => ({ feat, result: evaluateFeatPrerequisites(feat, { ...ctx, chosenFeats }) }))
+	return allFeatOffers(feats, held, ctx).filter((offer) => !offer.held)
 }
 
 /** One row laid out like a Manage Spells row; ▸ opens its text. D116: which rows are open is panel state only. */

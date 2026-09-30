@@ -45,6 +45,42 @@ export async function takeAllFighterLevel4Picks(page: Page): Promise<void> {
   for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe']) await chooseButton(page, weapon).first().click()
 }
 
+/** W16: an ASI level's card; its accessible name is exactly "Level N" whatever its header summary says. */
+export function levelCard(scope: Page | Locator, level: number): Locator {
+  return scope.getByRole('group', { name: `Level ${level}`, exact: true })
+}
+
+/** The card's ▸/▾ header button, named by its summary ("Level 4 — Athlete (+1 DEX)"). */
+export function levelCardHeader(scope: Page | Locator, level: number): Locator {
+  return levelCard(scope, level).getByRole('button', { name: new RegExp(`^Level ${level} — `) })
+}
+
+/** W17: a complete card starts collapsed when the step is entered. */
+export async function openLevelCard(scope: Page | Locator, level: number): Promise<void> {
+  const header = levelCardHeader(scope, level)
+  if ((await header.getAttribute('aria-expanded')) === 'false') await header.click()
+}
+
+export function featOrAsiSelect(scope: Page | Locator, level: number): Locator {
+  return levelCard(scope, level).getByRole('combobox', { name: 'Feat or ASI', exact: true })
+}
+
+/** The dropdown option of a feat, "Name · Book" plus any reason it cannot be taken. */
+export function featOption(scope: Page | Locator, level: number, feat: string): Locator {
+  const escaped = feat.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return featOrAsiSelect(scope, level).locator('option', { hasText: new RegExp(`^${escaped} · `) })
+}
+
+export async function chooseLevelFeat(scope: Page | Locator, level: number, feat: string): Promise<void> {
+  const value = await featOption(scope, level, feat).first().getAttribute('value')
+  await featOrAsiSelect(scope, level).selectOption(value!)
+}
+
+export async function chooseLevelAsi(scope: Page | Locator, level: number, ability: string): Promise<void> {
+  await featOrAsiSelect(scope, level).selectOption('asi')
+  await levelCard(scope, level).getByRole('combobox', { name: '+2 ability', exact: true }).selectOption(ability)
+}
+
 export async function next(page: Page): Promise<void> {
   await nextButton(page).click()
 }
@@ -128,17 +164,14 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
     await expectStep(page, 'ASI / Feat')
     const asiLevels = FIGHTER_ASI_LEVELS.filter((l) => l <= options.level)
     for (const [index, level] of asiLevels.entries()) {
-      const group = page.getByRole('group', { name: `Level ${level}` })
       // `feat` / `onFeatStep` belong to level 4 when the character reaches it, else to the first slot (a level-19 epic boon).
       const own = level === 4 ? options : level === options.laterFeat?.level ? options.laterFeat : undefined
       const feat = level === 4 ? options.feat : options.laterFeat?.level === level ? options.laterFeat.feat : undefined
       if (feat) {
-        await group.getByRole('radio', { name: 'Feat', exact: true }).check()
-        await group.getByRole('radio', { name: feat, exact: true }).first().check()
+        await chooseLevelFeat(page, level, feat)
         await own?.onFeatStep?.(page)
       } else {
-        await group.getByRole('radio', { name: 'Ability Score Improvement' }).check()
-        await group.getByRole('combobox').first().selectOption(['strength', 'dexterity', 'constitution', 'wisdom', 'charisma', 'intelligence'][index % 6]!)
+        await chooseLevelAsi(page, level, ['strength', 'dexterity', 'constitution', 'wisdom', 'charisma', 'intelligence'][index % 6]!)
       }
     }
     await next(page)

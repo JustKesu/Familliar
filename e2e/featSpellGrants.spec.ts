@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFighter, expectStep, next, nextButton, takeFighterLevel4Mastery, wizardNav } from './wizard.ts'
+import { chooseLevelFeat, createFighter, expectStep, next, nextButton, openLevelCard, takeFighterLevel4Mastery, wizardNav } from './wizard.ts'
 
 /*
  * D204: spells of the Dark Gift feats, Boon of Revelry, Telepathic/Telekinetic, and the marks' spellcasting ability.
@@ -92,8 +92,8 @@ function cleric(id: string, feats: Record<string, unknown>[]) {
 test('D204 a: Edit Character — Watchers asks for a spellcasting ability (Int/Wis/Cha) and the step waits for it', async ({ page }) => {
   await openSaved(page, cleric('watchers-edit', [{ level: 4, kind: 'asi', increases: { wisdom: 2 } }]))
   const level4 = await editToLevel(page, 4)
-  await level4.getByRole('radio', { name: 'Feat', exact: true }).check()
-  await level4.getByRole('radio', { name: 'Watchers — Dark Gift', exact: true }).check()
+  await openLevelCard(page, 4)
+  await chooseLevelFeat(page, 4, 'Watchers')
   const select = abilitySelect(level4)
   await expect(select.getByRole('option')).toHaveText(['Choose an ability', 'Intelligence', 'Wisdom', 'Charisma'])
   await expect(nextButton(page)).toBeDisabled()
@@ -107,8 +107,7 @@ test('D204 a: Level up — a Dark Gift asks for its spellcasting ability there t
   await takeFighterLevel4Mastery(page)
   const level4 = page.getByRole('group', { name: 'Level 4' })
   for (let steps = 0; steps < 8 && !(await level4.isVisible()); steps++) await next(page)
-  await level4.getByRole('radio', { name: 'Feat', exact: true }).check()
-  await level4.getByRole('radio', { name: 'Second Skin — Dark Gift', exact: true }).check()
+  await chooseLevelFeat(page, 4, 'Second Skin')
   await expect(nextButton(page)).toBeDisabled()
   await abilitySelect(level4).selectOption('charisma')
   await expect(nextButton(page)).toBeEnabled()
@@ -139,7 +138,7 @@ test('D204 d: a mark with no ability stored leaves only its own spells unresolve
     name: 'Stormtouched',
     level: 6,
     species: 'Dwarf|XPHB',
-    feat: 'Touch of Death — Dark Gift',
+    feat: 'Touch of Death',
     onFeatStep: async (p) => {
       await abilitySelect(p.getByRole('group', { name: 'Level 4' })).selectOption('intelligence')
     },

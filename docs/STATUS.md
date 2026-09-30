@@ -2078,6 +2078,14 @@ Manual / Rolled merges typed dice and ROLL/REROLL cards. Class step's Next also 
 skill count (`ClassPickRequirements.skillCount`, null when a level up holds them). E2E `wizardW4.spec.ts`
 a–e; `takeAllFighterLevel4Picks` also checks two class skills.
 
+W-5 (D246–D248) done. No schema bump. ASI / Feat step: `AbilityScoreTable` on top with the step's
+choices live, then one collapsible card per ASI level (`featAsi/FeatAsiLevelCard.tsx`: header summary,
+"Choose …" line, open when something is missing on entry). One "Feat or ASI" `<select>` per card, feats
+grouped by category; unmet prerequisites and held non-repeatable feats (background, manual, item, other
+level) disabled with the reason in the option text. `featOffers` moved to `featAsiData.ts` and is shared
+with Manage Feats; `isCompleteFeatAsiChoice` exported. E2E `wizardW5.spec.ts` a–h; `e2e/wizard.ts` has
+`levelCard`, `openLevelCard`, `featOrAsiSelect`, `featOption`, `chooseLevelFeat`, `chooseLevelAsi`.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

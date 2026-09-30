@@ -4279,3 +4279,34 @@ D245: Next v kroku Class je zamčený i do výběru přesného počtu třídníc
 (ClassSkillPicker), podle SPEC „žádná volba se nesmí přeskočit“. Počet se čte stejným loaderem jako
 picker (D240). Level up, který už dovednosti drží (picker je skrytý, D108), se nekontroluje; ručně
 založená postava bez třídních dovedností je při level upu musí doplnit.
+
+## D246 — Krok ASI / Feat: tabulka a karta úrovně s jedním výběrem (W16, W-5)
+
+D246 (W16): Nahoře kroku je `AbilityScoreTable` z D241 s featy a volbami kroku; řádek ASI / Feats se
+mění hned (ASI +2 / +1+1, zvolená vlastnost half-featu, pevný bonus featu; feat bez vlivu nic).
+Předměty se v tabulce nepočítají, stejně jako v kroku Ability scores. Pod ní jedna karta na každou
+úroveň s ASI (úrovně z dat jako dřív). Záhlaví „Level 4 — Athlete“ / „— Ability Score Improvement“ /
+„— Choose a feat or ASI“ se ▸/▾. V kartě: jeden nativní `<select>` „Feat or ASI“ (první volba Ability
+Score Improvement, pak všechny featy „Name · Book“ v `<optgroup>` podle kategorie: Origin, General,
+Fighting Style, Epic Boon, Dark Gift, ostatní kódem z dat; na úrovni Epic Boon je skupina Epic Boon
+první), pod ním chybějící podvolba řádkem „Choose …“ v barvě accent, podvolby (AsiSubPicker, výběr
+vlastnosti half-featu, FeatSubChoicePicker, kouzla) a text featu. Nahrazuje rádia ASI/Feat a dlouhý
+seznam featů. „Choose …“ ukazuje i volby, které D179 dovoluje odložit (Skilled); Next zamyká dál jen
+`isCompleteFeatAsiChoice`. Tvar volby a onChange kontrakt se nemění.
+
+## D247 — Karta úrovně otevřená, nebo sbalená (W17, W-5)
+
+D247 (W17): Při vstupu do kroku je karta, které něco chybí (stejný seznam jako řádek „Choose …“),
+otevřená; hotová je sbalená se souhrnem v záhlaví: „Level 4 — Athlete (+1 DEX)“, „Level 8 — Ability
+Score Improvement (+2 STR)“, „Level 12 — Skilled“. Otevření/sbalení je jen stav karty: nastaví se při
+vstupu a dál ho mění jen hráč, karta se sama nesbalí. Úroveň držená z dřívějška (level up, D110) je
+sbalená a zamčená jako dřív („(chosen at an earlier level)“).
+
+## D248 — Nedostupné featy v nabídce (W18, W-5)
+
+D248 (W18): Feat s nesplněnou prerekvizitou zůstává v nabídce zakázaný s důvodem v textu volby
+(„Heavy Armor Master · XPHB (needs STR 13)“; text je zkrácená podoba důvodů `evaluateFeatPrerequisites`).
+Neopakovatelný feat, který postava už má z pozadí, ručně, z předmětu nebo z jiné úrovně ASI, je zakázaný
+s „(already taken)“ (dřív se featy jiných úrovní nehlídaly). Kontext prerekvizit je beze změny: skóre
+z pozadí bez ASI tohoto průchodu a featy dřívějších úrovní. Nabídku počítá jedna funkce `featOffers`
+(featAsiData.ts), kterou sdílí Manage Feats (tam držené featy vynechá).

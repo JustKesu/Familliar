@@ -751,7 +751,7 @@ function isCompleteSpellChoices(spellChoices: SpellPick[], spellRequirement: Spe
  * covered by the ordinary `featsRequiringAbilityChoice` check below since it
  * has a normal half-feat `ability` field, unlike Magic Initiate.
  */
-function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityChoice: ReadonlySet<string>, totalCharacterLevel: number): boolean {
+export function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityChoice: ReadonlySet<string>, totalCharacterLevel: number): boolean {
 	if (choice.kind === 'feat') {
 		if (choice.name.trim() === '' || choice.source.trim() === '') return false
 		if (isMagicInitiateFeat(choice)) {

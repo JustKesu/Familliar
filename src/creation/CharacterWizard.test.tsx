@@ -929,10 +929,9 @@ describe('CharacterWizard — feat/ASI step', () => {
 
 		await fillThroughAbilities(user, '4')
 
-		expect(await screen.findByText('Level 4')).toBeTruthy()
-		await user.click(screen.getByLabelText('Ability Score Improvement'))
-		const abilitySelect = await screen.findByRole('combobox')
-		await user.selectOptions(abilitySelect, 'strength')
+		expect(await screen.findByRole('group', { name: 'Level 4' })).toBeTruthy()
+		await user.selectOptions(await screen.findByRole('combobox', { name: 'Feat or ASI' }), 'asi')
+		await user.selectOptions(await screen.findByRole('combobox', { name: '+2 ability' }), 'strength')
 
 		await goNext(user)
 		await fillHitPointsStep(user)
@@ -944,8 +943,12 @@ describe('CharacterWizard — feat/ASI step', () => {
 		await goBack(user)
 		await goBack(user)
 		await goBack(user)
-		expect((screen.getByLabelText('Ability Score Improvement') as HTMLInputElement).checked).toBe(true)
-		expect(selectedOptionText(screen.getByRole('combobox'))).toBe('Strength')
+		// W17: back on the step, the complete card is collapsed with its summary.
+		const header = await screen.findByRole('button', { name: 'Level 4 — Ability Score Improvement (+2 STR)' })
+		expect(header.getAttribute('aria-expanded')).toBe('false')
+		await user.click(header)
+		expect((screen.getByRole('combobox', { name: 'Feat or ASI' }) as HTMLSelectElement).value).toBe('asi')
+		expect(selectedOptionText(screen.getByRole('combobox', { name: '+2 ability' }))).toBe('Strength')
 	})
 
 	it('a Fighter at level 3 is never offered the feat/ASI step', async () => {
@@ -969,10 +972,10 @@ describe('CharacterWizard — feat/ASI step', () => {
 
 		await fillThroughAbilities(user, '12')
 
-		expect(await screen.findByText('Level 4')).toBeTruthy()
-		expect(screen.getByText('Level 6')).toBeTruthy()
-		expect(screen.getByText('Level 8')).toBeTruthy()
-		expect(screen.getByText('Level 12')).toBeTruthy()
+		expect(await screen.findByRole('group', { name: 'Level 4' })).toBeTruthy()
+		expect(screen.getByRole('group', { name: 'Level 6' })).toBeTruthy()
+		expect(screen.getByRole('group', { name: 'Level 8' })).toBeTruthy()
+		expect(screen.getByRole('group', { name: 'Level 12' })).toBeTruthy()
 	})
 
 	it('a feat with an unmet prerequisite is shown but cannot be taken, and the reason is visible', async () => {
@@ -980,14 +983,12 @@ describe('CharacterWizard — feat/ASI step', () => {
 		renderWizard()
 
 		await fillThroughAbilities(user, '4')
-		await user.click(screen.getByLabelText('Feat'))
+		const select = (await screen.findByRole('combobox', { name: 'Feat or ASI' })) as HTMLSelectElement
+		const optionFor = (name: string) => Array.from(select.options).find((option) => option.textContent?.startsWith(`${name} · `))!
 
-		const actorRadio = (await screen.findByLabelText('Actor')) as HTMLInputElement
-		expect(actorRadio.disabled).toBe(true)
-		expect(screen.getByText('Requires Charisma 13+.')).toBeTruthy()
-
-		const toughRadio = (await screen.findByLabelText('Tough')) as HTMLInputElement
-		expect(toughRadio.disabled).toBe(false)
+		expect(optionFor('Actor').disabled).toBe(true)
+		expect(optionFor('Actor').textContent).toContain('(needs CHA 13)')
+		expect(optionFor('Tough').disabled).toBe(false)
 
 		// The level-20 ASI cap itself (D20) is exercised in FeatAsiPicker.test.tsx, which can supply a
 		// near-cap final ability score directly — standard array + a +2 background bonus tops out at 17,

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFighter, expectStep, next } from './wizard.ts'
+import { createFighter, expectStep, featOption, next, openLevelCard } from './wizard.ts'
 
 /* R14c1 (D218). A Human Fighter 3 seeded at the current schema, as customItemProficiencies.spec.ts: no skill proficiencies. */
 const STORAGE_KEY = 'familliar:characters'
@@ -154,10 +154,10 @@ test('R14c1 d: with an item feat Tough active, Edit Character does not offer Tou
   await next(page)
   await expectStep(page, 'ASI / Feat')
 
-  const group = page.getByRole('group', { name: 'Level 4' })
-  await group.getByRole('radio', { name: 'Feat', exact: true }).check()
-  await expect(group.getByRole('radio', { name: 'Tough', exact: true })).toBeDisabled()
-  await expect(group.getByText('Already granted by an item.')).toBeVisible()
+  await openLevelCard(page, 4)
+  const tough = featOption(page, 4, 'Tough')
+  await expect(tough).toHaveJSProperty('disabled', true)
+  await expect(tough).toHaveText('Tough · XPHB (already taken)')
 })
 
 test('R14c1 e: a non-Warlock with an item granting Witch Sight has Truesight 30 ft. and a "From items" group', async ({ page }) => {

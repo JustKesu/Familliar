@@ -1045,6 +1045,9 @@ export function CharacterWizard({
 		...(character?.inventory !== undefined ? { inventory: character.inventory } : {}),
 	}
 
+	/** W16: the ASI / Feat step's table counts ASI and feats only, as the Ability scores step's does — no item bonuses. */
+	const { inventory: _inventory, ...abilityTableDraft } = draftCharacterForHitPoints
+
 	/** As draftCharacterForHitPoints, plus the picks the hit points step itself owns (D107 needs the running total, not just its inputs) and the manual override (D9), so a character with one keeps it. */
 	const draftCharacterForMaxHp: Character = {
 		...draftCharacterForHitPoints,
@@ -1765,6 +1768,8 @@ export function CharacterWizard({
 						itemFeats={draftFeatInstances.filter((instance) => instance.origin === 'item')}
 						heldForFeat={heldForFeat}
 						laterNote={laterNote}
+						abilityDraft={abilityTableDraft}
+						resolverData={resolverData}
 					/>
 				</div>
 			)}

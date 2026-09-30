@@ -168,6 +168,8 @@ export interface FeatEntry {
 	/** feats.json's own flag; only 7 feats carry it, always `true`. */
 	repeatable?: boolean
 	additionalSpells?: unknown
+	/** The feat's rule text, as feats.json has it. */
+	entries?: unknown[]
 }
 
 function isRawFeatEntry(value: unknown): value is FeatEntry {
@@ -569,4 +571,29 @@ export function evaluateFeatPrerequisites(feat: FeatEntry, ctx: PrerequisiteCont
 	const reasons = feat.prerequisite.map((entry) => evaluateEntry(entry, ctx)).filter((r): r is string => r !== null)
 	const eligible = reasons.length < feat.prerequisite.length
 	return { eligible, reasons: eligible ? [] : reasons }
+}
+
+export const FEAT_CATEGORY_LABELS: Record<string, string> = { O: 'Origin', G: 'General', FS: 'Fighting Style', EB: 'Epic Boon', DG: 'Dark Gift' }
+
+export const featCategoryLabel = (code: string): string => FEAT_CATEGORY_LABELS[code] ?? code
+
+export interface FeatOffer {
+	feat: FeatEntry
+	result: PrerequisiteResult
+	/** A non-repeatable feat the character already has. */
+	held: boolean
+}
+
+const featRefKey = (feat: { name: string; source: string }): string => `${feat.name}|${feat.source}`.toLowerCase()
+
+/** Every feat with its prerequisite result (Manage Feats and the wizard's ASI / Feat step). `chosen` feeds the feat/category prerequisites; it defaults to `held`. */
+export function featOffers(
+	feats: readonly FeatEntry[],
+	held: readonly { name: string; source: string }[],
+	ctx: Omit<PrerequisiteContext, 'chosenFeats'>,
+	chosen: readonly { name: string; source: string }[] = held,
+): FeatOffer[] {
+	const heldKeys = new Set(held.map(featRefKey))
+	const chosenFeats = chosen.map((feat) => ({ name: feat.name, source: feat.source, category: feats.find((entry) => featRefKey(entry) === featRefKey(feat))?.category ?? '' }))
+	return feats.map((feat) => ({ feat, result: evaluateFeatPrerequisites(feat, { ...ctx, chosenFeats }), held: !feat.repeatable && heldKeys.has(featRefKey(feat)) }))
 }

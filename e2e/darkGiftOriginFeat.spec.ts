@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { expectStep, fillUpToBackground, finishFromBackground, next, nextButton, takeFighterLevel4Mastery, wizardNav, type FighterOptions } from './wizard.ts'
+import { expectStep, featOption, fillUpToBackground, finishFromBackground, next, nextButton, takeFighterLevel4Mastery, wizardNav, type FighterOptions } from './wizard.ts'
 
 /* D205: any background's origin feat can be swapped for a Dark Gift; Mist Wanderer and Spirit Medium require one. */
 
@@ -161,7 +161,7 @@ test('D205 f: a Dark Gift taken at background is not offered again at level 4', 
   await takeFighterLevel4Mastery(page)
   const level4 = page.getByRole('group', { name: 'Level 4' })
   for (let steps = 0; steps < 8 && !(await level4.isVisible()); steps++) await next(page)
-  await level4.getByRole('radio', { name: 'Feat', exact: true }).check()
-  await expect(level4.getByRole('radio', { name: 'Living Shadow — Dark Gift', exact: true })).toBeDisabled()
-  await expect(level4.getByText('Already granted by your background.')).toBeVisible()
+  const livingShadow = featOption(page, 4, 'Living Shadow')
+  await expect(livingShadow).toHaveJSProperty('disabled', true)
+  await expect(livingShadow).toContainText('(already taken)')
 })
