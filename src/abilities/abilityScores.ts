@@ -79,6 +79,14 @@ export function rollSixAbilityScores(rollDie: () => number): RolledSet[] {
 	return Array.from({ length: 6 }, () => rollAbilityScore(rollDie))
 }
 
+/** W14: gives `ability` the value; an ability already holding it takes over `ability`'s previous value (possibly empty), so no value is ever held twice. */
+export function assignWithSwap<T>(assignment: Record<Ability, T | null>, ability: Ability, value: T | null): Record<Ability, T | null> {
+	const next = { ...assignment, [ability]: value }
+	const holder = value === null ? undefined : ABILITIES.find((other) => other !== ability && assignment[other] === value)
+	if (holder) next[holder] = assignment[ability]
+	return next
+}
+
 /** Default die: a uniformly random integer 1-6. */
 export function randomDie(): number {
 	return Math.floor(Math.random() * 6) + 1

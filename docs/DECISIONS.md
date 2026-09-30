@@ -4238,3 +4238,44 @@ Požadavky se čtou stejnými loadery jako pickery, takže brána a UI se nemoho
 volba chybí: krok je neúplný, Next i skoky v liště kroků vpřed jsou zamčené, dokud se volba nedoplní
 (W9). Chybějící volba se hlásí v záhlaví seznamu („Choose a subclass.“, „Choose 2 more…“). Selhání
 načtení požadavků krok nezamyká (pickery ukazují vlastní chybu).
+
+## D241 — Sdílená tabulka výsledků vlastností (W12, W-4)
+
+D241 (W12): Komponenta `AbilityScoreTable` ukazuje po sloupcích STR…CHA řádky Base · Background ·
+ASI / Feats · Total · Modifier. Total a Modifier počítá `computeAbilityScore` (D17), tabulka nic
+nesčítá sama. ASI / Feats bere featy jako vstup; bez nich ukazuje „—“ (krok Ability scores). Krok
+ASI / Feat (W-5) tutéž komponentu použije a featy předá. Feat bez vlivu na vlastnost nic nepřidá.
+Žádný řádek Override ani Other modifier (D9). Řádek Species není: postava nemá pole pro bonus
+vlastností od druhu a data druhů pole `ability` nemají (validace „species: no ability field“).
+
+## D242 — Rozložení kroku Ability scores (W13, W-4)
+
+D242 (W13): Nahoře pilulky metody (Standard Array · Point Buy · Manual / Rolled, vzhled přepínače
+Normal/Advantage/Disadvantage). Pod nimi jedna tabulka: první řádek jsou vstupy metody (jeden na
+sloupec), pod ním řádky z D241, takže sloupce lícují. Point Buy: záhlaví „Points remaining N / 27“ živě,
+výběr 8–15 u každé vlastnosti, v textu volby cena („13 (5)“), volby nad zbývající rozpočet jsou
+zakázané. Standard Array: výběr 15 / 14 / 13 / 12 / 10 / 8. Uložený tvar se nemění (`method`,
+`scores`, `rolledSets?`).
+
+## D243 — Standard Array: prohození místo zákazu (W14, W-4)
+
+D243 (W14): Sloupce začínají prázdné („—“) a každý výběr nabízí všech šest hodnot. Volba hodnoty,
+kterou má jiná vlastnost, hodnoty prohodí: druhá vlastnost dostane předchozí hodnotu této (nebo zůstane
+prázdná). Hodnota nikdy není dvakrát. Next až po přiřazení všech šesti.
+
+## D244 — Manual / Rolled jako jedna metoda (W15, W-4)
+
+D244 (W15): „Roll for me“ a „Enter physical dice results“ jsou jedna metoda (uložená jako `roll`).
+Každý sloupec má číselný vstup 3–18 pro fyzické kostky. Tlačítko ROLL hodí 6 × 4d6; každý výsledek je
+karta se čtyřmi kostkami (nejnižší šedá, přeškrtnutá), součtem a výběrem „Assign to…“. Přiřazení
+vyplní vstup; přiřazení výsledku vlastnosti, která drží jiný výsledek, prohodí jako D243. REROLL je
+neomezený, nahradí všech šest výsledků a vyprázdní sloupce, které držely starý výsledek (napsaná čísla
+zůstanou). Hody se ukládají v `rolledSets` (i když vlastnost nese napsané číslo); přiřazení se při
+Edit Character dopočítá shodou součtu v pořadí vlastností.
+
+## D245 — Krok Class chce i třídní dovednosti (W-4)
+
+D245: Next v kroku Class je zamčený i do výběru přesného počtu třídních dovedností
+(ClassSkillPicker), podle SPEC „žádná volba se nesmí přeskočit“. Počet se čte stejným loaderem jako
+picker (D240). Level up, který už dovednosti drží (picker je skrytý, D108), se nekontroluje; ručně
+založená postava bez třídních dovedností je při level upu musí doplnit.

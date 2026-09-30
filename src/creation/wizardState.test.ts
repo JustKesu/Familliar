@@ -106,8 +106,24 @@ describe('isStepComplete', () => {
 	/* W-3: SPEC — "no choice may be skipped". Each missing pick on its own keeps the step incomplete. */
 	describe('class pick requirements', () => {
 		const fighter3 = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 } }
-		const required = { subclass: true, fightingStyle: true, masteryCount: 2, optionalFeatureCount: 0 }
-		const done = { ...fighter3, subclass: { name: 'Champion', source: 'XPHB', featureType: null }, fightingStyle: 'Defense', masteries: ['Longsword', 'Greatsword'] }
+		const required = { subclass: true, fightingStyle: true, masteryCount: 2, optionalFeatureCount: 0, skillCount: 2 }
+		const done = {
+			...fighter3,
+			subclass: { name: 'Champion', source: 'XPHB', featureType: null },
+			fightingStyle: 'Defense',
+			masteries: ['Longsword', 'Greatsword'],
+			classSkills: ['athletics', 'perception'],
+		}
+
+		it('needs exactly the class skill count', () => {
+			expect(isStepComplete('class', { ...done, classSkills: ['athletics'] }, { classPickRequirements: required })).toBe(false)
+			expect(isStepComplete('class', { ...done, classSkills: [] }, { classPickRequirements: required })).toBe(false)
+			expect(isStepComplete('class', done, { classPickRequirements: required })).toBe(true)
+		})
+
+		it('does not ask a level up that already holds its class skills (skillCount null)', () => {
+			expect(isStepComplete('class', { ...done, classSkills: ['athletics'] }, { classPickRequirements: { ...required, skillCount: null }, levelUpTargetLevel: 4 })).toBe(true)
+		})
 
 		it('is complete only when the subclass, the fighting style and every mastery are chosen', () => {
 			expect(isStepComplete('class', done, { classPickRequirements: required })).toBe(true)
@@ -117,7 +133,7 @@ describe('isStepComplete', () => {
 		})
 
 		it('asks for nothing a class does not grant at this level', () => {
-			const level1 = { ...fighter3, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 1 }, fightingStyle: 'Defense', masteries: ['Longsword', 'Greatsword'] }
+			const level1 = { ...fighter3, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 1 }, fightingStyle: 'Defense', masteries: ['Longsword', 'Greatsword'], classSkills: ['athletics', 'perception'] }
 			expect(isStepComplete('class', level1, { classPickRequirements: { ...required, subclass: false } })).toBe(true)
 		})
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { stepNav } from './wizardTestNav'
+import { chooseClassSkills, stepNav } from './wizardTestNav'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
@@ -116,6 +116,7 @@ function renderWizard() {
 async function reachSpeciesStep(user: ReturnType<typeof userEvent.setup>) {
 	await user.type(screen.getByLabelText('Character name'), 'Aria')
 	await user.selectOptions(await screen.findByLabelText('Class'), 'Fighter')
+	await chooseClassSkills(user, ['Athletics', 'Intimidation'])
 	await user.click(stepNav().getByRole('button', { name: 'Next' }))
 	await screen.findByLabelText('Species')
 }

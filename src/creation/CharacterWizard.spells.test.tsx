@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
-import { stepBar, stepNav } from './wizardTestNav'
+import { chooseClassSkills, stepBar, stepNav } from './wizardTestNav'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
@@ -416,6 +416,7 @@ async function fillClassStep(user: ReturnType<typeof userEvent.setup>, className
 	await user.type(screen.getByLabelText('Character name'), 'Aria')
 	await user.selectOptions(await screen.findByLabelText('Class'), className)
 	await user.selectOptions(screen.getByLabelText('Level'), level)
+	await chooseClassSkills(user)
 }
 
 async function goNext(user: ReturnType<typeof userEvent.setup>) {

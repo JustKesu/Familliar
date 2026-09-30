@@ -9,6 +9,7 @@ import { FeatureLanguageSlots } from '../languages/FeatureLanguageSlots'
 import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { AUTOMATIC_LANGUAGE } from '../languages/languageData'
 import { ClassSkillPicker, type DisabledSkill } from '../classSkills/ClassSkillPicker'
+import { loadClassSkillChoice } from '../classSkills/classSkillData'
 import { SpeciesSkillPicker } from '../speciesSkills/SpeciesSkillPicker'
 import { loadSpeciesSkillProficiencies, type SpeciesSkillProficiencies } from '../speciesSkills/speciesSkillData'
 import { SpeciesSpellcastingAbilityPicker } from '../spells/SpeciesSpellcastingAbilityPicker'
@@ -560,8 +561,9 @@ export function CharacterWizard({
 			loadFightingStyleGrantLevel(pickClassName, pickClassSource),
 			loadMasteryCountFor(pickClassName, pickClassSource, pickLevel),
 			pickSubclass ? loadOptionalFeatureChoicesFor(pickClassName, pickClassSource, pickSubclass.name, pickSubclass.source, pickLevel) : Promise.resolve(null),
+			loadClassSkillChoice(pickClassName, pickClassSource),
 		])
-			.then(([subclassLevel, styleLevel, masteryCount, optional]) => {
+			.then(([subclassLevel, styleLevel, masteryCount, optional, skills]) => {
 				if (cancelled) return
 				setClassPickShape({
 					key: classPickKey,
@@ -570,11 +572,12 @@ export function CharacterWizard({
 						fightingStyle: styleLevel !== null && pickLevel >= styleLevel,
 						masteryCount: masteryCount ?? 0,
 						optionalFeatureCount: optional?.count ?? 0,
+						skillCount: skills.count,
 					},
 				})
 			})
 			.catch(() => {
-				if (!cancelled) setClassPickShape({ key: classPickKey, requirements: { subclass: false, fightingStyle: false, masteryCount: 0, optionalFeatureCount: 0 } })
+				if (!cancelled) setClassPickShape({ key: classPickKey, requirements: { subclass: false, fightingStyle: false, masteryCount: 0, optionalFeatureCount: 0, skillCount: null } })
 			})
 		return () => {
 			cancelled = true
@@ -1276,7 +1279,12 @@ export function CharacterWizard({
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
 		// null while loading for the CURRENT class/level/subclass, which keeps the step incomplete.
-		classPickRequirements: state.data.classChoice === null ? undefined : classPickShape?.key === classPickKey ? classPickShape.requirements : null,
+		classPickRequirements:
+			state.data.classChoice === null
+				? undefined
+				: classPickShape?.key === classPickKey
+					? { ...classPickShape.requirements, skillCount: held && held.classSkills.length > 0 ? null : classPickShape.requirements.skillCount }
+					: null,
 		startingEquipmentCategoryPicksComplete,
 		// Stays incomplete until backgrounds.json has loaded, like speciesSkillsComplete.
 		backgroundOriginFeatComplete: state.data.backgroundChoice === null || (selectedBackground !== undefined && (selectedBackground.originFeat !== null || backgroundFeatOverride !== null)),
@@ -1661,10 +1669,13 @@ export function CharacterWizard({
 
 			{state.step === 'abilities' && (
 				<div className="wizard__panel">
-					<AbilityScorePicker
-						value={state.data.abilityScores}
-						onChange={(scores) => dispatch({ type: 'setAbilityScores', scores })}
-					/>
+					<section className="wizard__card">
+						<AbilityScorePicker
+							value={state.data.abilityScores}
+							onChange={(scores) => dispatch({ type: 'setAbilityScores', scores })}
+							background={state.data.backgroundChoice?.abilityBonus}
+						/>
+					</section>
 				</div>
 			)}
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
-import { stepBar, stepNav } from './wizardTestNav'
+import { chooseClassSkills, stepBar, stepNav } from './wizardTestNav'
 import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
@@ -130,7 +130,7 @@ vi.mock('../toolProficiencies/toolProficiencyData', () => ({
 
 vi.mock('../classSkills/classSkillData', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../classSkills/classSkillData')>()),
-	loadClassSkillChoice: vi.fn(async () => ({ count: 2, options: ['athletics', 'intimidation', 'perception'] })),
+	loadClassSkillChoice: vi.fn(async () => ({ count: 2, options: ['athletics', 'intimidation', 'perception', 'survival'] })),
 }))
 
 vi.mock('../masteries/masteryData', () => ({
@@ -307,6 +307,7 @@ async function fillClassStep(user: ReturnType<typeof userEvent.setup>) {
 	await user.type(screen.getByLabelText('Character name'), 'Aria')
 	await user.selectOptions(await screen.findByLabelText('Class'), 'Fighter')
 	await chooseMasteryAndStyle(user)
+	await chooseClassSkills(user)
 }
 
 /** W-3: the class step's Next needs the mocked mastery (count 1) and fighting style, which the mocks offer to every class. */
@@ -384,6 +385,9 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		renderWizard()
 
 		await fillClassStep(user)
+		// The class took Perception; give it back so the Elf can pick it.
+		await user.click(screen.getByLabelText('Perception'))
+		await user.click(screen.getByLabelText('Athletics'))
 		await goNext(user)
 		await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 		await user.click(await screen.findByLabelText('Perception'))
@@ -599,7 +603,6 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		renderWizard()
 
 		await fillClassStep(user)
-		await user.click(await screen.findByLabelText('Athletics'))
 
 		await goNext(user)
 		await screen.findByLabelText('Species')
@@ -608,7 +611,8 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		// The mastery and fighting-style lists auto-collapse once their one pick is made; reopen them.
 		await user.click(await screen.findByRole('button', { name: /Weapon masteries/ }))
 		await user.click(screen.getByRole('button', { name: /Fighting style/ }))
-		expect((screen.getByLabelText('Athletics') as HTMLInputElement).checked).toBe(true)
+		expect((screen.getByLabelText('Intimidation') as HTMLInputElement).checked).toBe(true)
+		expect((screen.getByLabelText('Perception') as HTMLInputElement).checked).toBe(true)
 		expect(isChosen(chooseButton('Longsword'))).toBe(true)
 		expect(isChosen(chooseButton('Archery'))).toBe(true)
 	})
@@ -618,17 +622,16 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		renderWizard()
 
 		await fillClassStep(user)
-		await user.click(await screen.findByLabelText('Athletics'))
 
 		await user.selectOptions(screen.getByLabelText('Class'), 'Wizard')
 
-		expect((await screen.findByLabelText('Athletics') as HTMLInputElement).checked).toBe(false)
+		expect((await screen.findByLabelText('Intimidation') as HTMLInputElement).checked).toBe(false)
 		expect(isChosen(chooseButton('Longsword'))).toBe(false)
 		expect(screen.getByText('Choose a fighting style.')).toBeTruthy()
 
 		await user.selectOptions(screen.getByLabelText('Class'), 'Fighter')
 
-		expect((await screen.findByLabelText('Athletics') as HTMLInputElement).checked).toBe(false)
+		expect((await screen.findByLabelText('Intimidation') as HTMLInputElement).checked).toBe(false)
 		expect(isChosen(chooseButton('Longsword'))).toBe(false)
 		expect(screen.getByText('Choose a fighting style.')).toBeTruthy()
 	})
@@ -786,7 +789,7 @@ describe('CharacterWizard — storage', () => {
 				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
-			classSkills: [],
+			classSkills: ['intimidation', 'perception'],
 			masteries: [{ name: 'Longsword' }],
 			fightingStyle: 'Archery',
 			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte' }, { name: 'Parry' }] }],
@@ -997,6 +1000,7 @@ describe('CharacterWizard — expertise step', () => {
 		await user.type(screen.getByLabelText('Character name'), 'Aria')
 		await user.selectOptions(await screen.findByLabelText('Class'), cls)
 		await chooseMasteryAndStyle(user)
+		await chooseClassSkills(user)
 		await goNext(user)
 		await fillSpeciesStep(user)
 		await goNext(user)
@@ -1047,6 +1051,8 @@ describe('CharacterWizard — expertise step', () => {
 		for (let i = 0; i < 4; i++) await goBack(user)
 		await user.selectOptions(await screen.findByLabelText('Class'), 'Fighter')
 		await chooseMasteryAndStyle(user)
+		// Soldier (already chosen) holds Athletics and Intimidation, so the class takes the other two.
+		await chooseClassSkills(user, ['Perception', 'Survival'])
 		for (let i = 0; i < 3; i++) await goNext(user)
 		await screen.findByLabelText('Draconic (XPHB)')
 		expect(screen.queryByRole('combobox', { name: /Thieves' Cant language/ })).toBeNull()
@@ -1080,6 +1086,7 @@ describe('CharacterWizard — expertise step', () => {
 		await user.selectOptions(screen.getByLabelText('Class'), 'Fighter')
 		await user.selectOptions(screen.getByLabelText('Class'), 'Rogue')
 		await chooseMasteryAndStyle(user)
+		await chooseClassSkills(user, ['Perception', 'Survival'])
 
 		await goNext(user) // class -> species
 		await fillSpeciesStep(user)

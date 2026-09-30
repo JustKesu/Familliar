@@ -2069,6 +2069,15 @@ exact subclass options (`ClassPickRequirements` / `classPicksComplete` in `wizar
 in `CharacterWizard.tsx` through the pickers' own loaders). E2E `wizardW3.spec.ts` a–g; `e2e/wizard.ts`
 helpers pick the Fighter mastery count by level.
 
+W-4 (D241–D245) done. No schema bump. Ability scores step: method pills (Standard Array · Point
+Buy · Manual / Rolled) over one table whose first row holds the inputs (`abilities/AbilityScorePicker.tsx`)
+and whose rows come from the shared `abilities/AbilityScoreTable.tsx` (Base · Background · ASI / Feats ·
+Total · Modifier via `computeAbilityScore`; W-5 passes feats). Standard Array and roll assignment swap
+(`assignWithSwap` in `abilityScores.ts`); Point Buy selects show cost and disable unaffordable options;
+Manual / Rolled merges typed dice and ROLL/REROLL cards. Class step's Next also needs the exact class
+skill count (`ClassPickRequirements.skillCount`, null when a level up holds them). E2E `wizardW4.spec.ts`
+a–e; `takeAllFighterLevel4Picks` also checks two class skills.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

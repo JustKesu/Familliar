@@ -37,8 +37,10 @@ export async function takeFighterLevel4Mastery(page: Page): Promise<void> {
   await chooseButton(page, 'Battleaxe').first().click()
 }
 
-/** For a hand-seeded Fighter 3 saved without any class pick: fighting style plus the four masteries a level 4 Fighter knows. */
+/** For a hand-seeded Fighter 3 saved without any class pick: class skills (W-4), fighting style plus the four masteries a level 4 Fighter knows. */
 export async function takeAllFighterLevel4Picks(page: Page): Promise<void> {
+  await page.getByRole('checkbox', { name: 'Athletics', exact: true }).check()
+  await page.getByRole('checkbox', { name: 'Perception', exact: true }).check()
   await chooseButton(page, 'Defense').first().click()
   for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe']) await chooseButton(page, weapon).first().click()
 }

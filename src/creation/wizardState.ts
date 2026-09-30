@@ -177,11 +177,14 @@ export interface ClassPickRequirements {
 	fightingStyle: boolean
 	masteryCount: number
 	optionalFeatureCount: number
+	/** ClassSkillPicker's count; `null` when a level up already holds the class skills (D108 hides the picker). */
+	skillCount: number | null
 }
 
 /** Held (level-up) picks are already in `data`, so they count as chosen. Counts are exact, like the pickers' own caps. */
 export function classPicksComplete(data: WizardData, required: ClassPickRequirements): boolean {
 	return (
+		(required.skillCount === null || data.classSkills.length === required.skillCount) &&
 		(!required.subclass || data.subclass !== null) &&
 		(!required.fightingStyle || data.fightingStyle !== null) &&
 		data.masteries.length === required.masteryCount &&

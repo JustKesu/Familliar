@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
-import { stepNav } from './wizardTestNav'
+import { chooseClassSkills, stepNav } from './wizardTestNav'
 import userEvent from '@testing-library/user-event'
 import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import { CharacterWizard } from './CharacterWizard'
@@ -429,6 +429,7 @@ async function walkToSpells(user: ReturnType<typeof userEvent.setup>, className:
 	await user.type(screen.getByLabelText('Character name'), 'Aria')
 	await user.selectOptions(await screen.findByLabelText('Class'), className)
 	await user.selectOptions(screen.getByLabelText('Level'), level)
+	await chooseClassSkills(user)
 	// W-3: the class step's Next needs the subclass; the mock only offers one to a Warlock.
 	const subclass = subclassName ?? (className === 'Warlock' && Number(level) >= 3 ? 'Fiend Patron' : undefined)
 	if (subclass) await user.click(await screen.findByRole('button', { name: new RegExp(`^Choose ${subclass}`) }))
@@ -460,6 +461,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.selectOptions(await screen.findByLabelText('Class'), 'Warlock')
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
 		await user.click(await screen.findByRole('button', { name: 'Choose Archfey Patron' }))
+		await chooseClassSkills(user)
 
 		// The class step no longer waits on invocations — the gate moved with the picker.
 		expect(await screen.findByText(/Eldritch Invocations/)).toBeTruthy()

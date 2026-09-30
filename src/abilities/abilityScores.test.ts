@@ -3,6 +3,7 @@ import {
 	ABILITIES,
 	POINT_BUY_BUDGET,
 	STANDARD_ARRAY,
+	assignWithSwap,
 	pointBuyCost,
 	pointBuyTotal,
 	rollAbilityScore,
@@ -10,6 +11,26 @@ import {
 	usesStandardArrayExactly,
 	type AbilityScores,
 } from './abilityScores'
+
+describe('assignWithSwap (W14)', () => {
+	const empty = { strength: null, dexterity: null, constitution: null, intelligence: null, wisdom: null, charisma: null }
+
+	it('moves a value away from its holder, which takes the previous value or becomes empty', () => {
+		const str15 = assignWithSwap<number>(empty, 'strength', 15)
+		expect(assignWithSwap(str15, 'dexterity', 15)).toEqual({ ...empty, dexterity: 15, strength: null })
+		const both = assignWithSwap(str15, 'dexterity', 14)
+		expect(assignWithSwap(both, 'dexterity', 15)).toEqual({ ...empty, dexterity: 15, strength: 14 })
+	})
+
+	it('never leaves a duplicate, and clearing only clears', () => {
+		let state: Record<(typeof ABILITIES)[number], number | null> = empty
+		for (const [i, ability] of ABILITIES.entries()) state = assignWithSwap(state, ability, STANDARD_ARRAY[i]!)
+		state = assignWithSwap(state, 'charisma', 15)
+		const held = ABILITIES.map((a) => state[a])
+		expect(new Set(held).size).toBe(6)
+		expect(assignWithSwap(state, 'charisma', null)).toEqual({ ...state, charisma: null })
+	})
+})
 
 describe('pointBuyCost', () => {
 	it('costs 1 point per step from 8 to 13', () => {

@@ -5,6 +5,7 @@ import {
 	POINT_BUY_MAX,
 	POINT_BUY_MIN,
 	STANDARD_ARRAY,
+	assignWithSwap,
 	pointBuyCost,
 	pointBuyTotal,
 	randomDie,
@@ -16,14 +17,8 @@ import {
 	type CharacterAbilityScores,
 	type RolledSet,
 } from './abilityScores'
-
-/*
- * Character creation, ability scores slice (PHASE1.md build order step 3,
- * section A.3). Lets the player pick one of the three methods and produces
- * the final six scores. Does NOT apply the background ability bonus (no
- * background exists yet) and does NOT compute modifiers — both are later
- * steps.
- */
+import { AbilityScoreTable } from './AbilityScoreTable'
+import type { AbilityBonusMap } from '../storage/character'
 
 const ABILITY_LABELS: Record<Ability, string> = {
 	strength: 'Strength',
@@ -34,353 +29,274 @@ const ABILITY_LABELS: Record<Ability, string> = {
 	charisma: 'Charisma',
 }
 
-function emptyAssignment(): Record<Ability, number | null> {
-	return { strength: null, dexterity: null, constitution: null, intelligence: null, wisdom: null, charisma: null }
+const METHOD_LABELS: Record<AbilityScoreMethod, string> = {
+	standardArray: 'Standard Array',
+	pointBuy: 'Point Buy',
+	roll: 'Manual / Rolled',
 }
 
-function isComplete(assignment: Record<Ability, number | null>): assignment is Record<Ability, number> {
-	return ABILITIES.every((ability) => assignment[ability] !== null)
+const MIN_ROLLED = 3
+const MAX_ROLLED = 18
+
+type Nullable = Record<Ability, number | null>
+
+function perAbility<T>(make: (ability: Ability) => T): Record<Ability, T> {
+	return Object.fromEntries(ABILITIES.map((ability) => [ability, make(ability)])) as Record<Ability, T>
 }
 
-/**
- * Reconstructs a ValuePoolAssigner's ability->slot-index assignment from a
- * previously reported result, so a remounted picker can redisplay a choice
- * the wizard already has instead of showing blank selects. Matches each
- * ability's stored score to the first not-yet-used pool slot with that
- * value, in ability order — exact for the standard array (no duplicate
- * values) and a reasonable best effort for rolled sets (duplicate totals
- * are possible there).
- */
-function reconstructAssignment(values: number[], scores: AbilityScores | undefined): Record<Ability, number | null> {
-	const assignment = emptyAssignment()
-	if (!scores) return assignment
-	const used = new Set<number>()
-	for (const ability of ABILITIES) {
-		const target = scores[ability]
-		const slot = values.findIndex((value, index) => value === target && !used.has(index))
-		if (slot !== -1) {
-			assignment[ability] = slot
-			used.add(slot)
-		}
-	}
-	return assignment
-}
-
-/** Assigns a fixed pool of values (standard array values, or rolled totals) to the six abilities, each slot used once. */
-function ValuePoolAssigner({
-	values,
-	assignment,
-	onAssign,
-	describeValue,
-}: {
-	values: number[]
-	assignment: Record<Ability, number | null>
-	onAssign: (ability: Ability, slotIndex: number | null) => void
-	describeValue?: (value: number, index: number) => string
-}): ReactNode {
-	const usedSlots = new Set(
-		ABILITIES.map((ability) => assignment[ability]).filter((slot): slot is number => slot !== null),
-	)
-
-	return (
-		<div className="ability-picker__grid">
-			{ABILITIES.map((ability) => {
-				const currentSlot = assignment[ability]
-				return (
-					<label key={ability} className="ability-picker__row">
-						{ABILITY_LABELS[ability]}
-						<select
-							value={currentSlot ?? ''}
-							onChange={(event) => {
-								const raw = event.target.value
-								onAssign(ability, raw === '' ? null : Number(raw))
-							}}
-						>
-							<option value="">Choose…</option>
-							{values.map((value, index) => {
-								if (usedSlots.has(index) && index !== currentSlot) return null
-								return (
-									<option key={index} value={index}>
-										{describeValue ? describeValue(value, index) : value}
-									</option>
-								)
-							})}
-						</select>
-					</label>
-				)
-			})}
-		</div>
-	)
-}
-
-function StandardArrayMethod({
-	value,
-	onResult,
-}: {
+interface MethodProps {
 	value: CharacterAbilityScores | null
 	onResult: (result: CharacterAbilityScores | null) => void
-}): ReactNode {
-	const [assignment, setAssignment] = useState<Record<Ability, number | null>>(() =>
-		reconstructAssignment([...STANDARD_ARRAY], value?.method === 'standardArray' ? value.scores : undefined),
-	)
-
-	function handleAssign(ability: Ability, slotIndex: number | null): void {
-		const next = { ...assignment, [ability]: slotIndex }
-		setAssignment(next)
-		if (isComplete(next)) {
-			const scores = Object.fromEntries(ABILITIES.map((a) => [a, STANDARD_ARRAY[next[a]]])) as AbilityScores
-			onResult(usesStandardArrayExactly(scores) ? { method: 'standardArray', scores } : null)
-		} else {
-			onResult(null)
-		}
-	}
-
-	return (
-		<div>
-			<p className="ability-picker__hint">Assign each value to one ability. Every value is used exactly once.</p>
-			<ValuePoolAssigner values={[...STANDARD_ARRAY]} assignment={assignment} onAssign={handleAssign} />
-		</div>
-	)
+	background: AbilityBonusMap | undefined
 }
 
-function PointBuyMethod({
-	value,
-	onResult,
-}: {
-	value: CharacterAbilityScores | null
-	onResult: (result: CharacterAbilityScores | null) => void
-}): ReactNode {
-	const [scores, setScores] = useState<AbilityScores>(
-		value?.method === 'pointBuy'
-			? value.scores
-			: {
-					strength: POINT_BUY_MIN,
-					dexterity: POINT_BUY_MIN,
-					constitution: POINT_BUY_MIN,
-					intelligence: POINT_BUY_MIN,
-					wisdom: POINT_BUY_MIN,
-					charisma: POINT_BUY_MIN,
-				},
-	)
+function StandardArrayMethod({ value, onResult, background }: MethodProps): ReactNode {
+	const [scores, setScores] = useState<Nullable>(() => perAbility((a) => (value?.method === 'standardArray' ? value.scores[a] : null)))
 
-	const spent = pointBuyTotal(scores)
-	const remaining = POINT_BUY_BUDGET - spent
-
-	function adjust(ability: Ability, delta: 1 | -1): void {
-		const nextScore = scores[ability] + delta
-		if (nextScore < POINT_BUY_MIN || nextScore > POINT_BUY_MAX) return
-		const nextScores = { ...scores, [ability]: nextScore }
-		if (pointBuyTotal(nextScores) > POINT_BUY_BUDGET) return
-		setScores(nextScores)
-		onResult({ method: 'pointBuy', scores: nextScores })
+	function choose(ability: Ability, score: number | null): void {
+		const next = assignWithSwap(scores, ability, score)
+		setScores(next)
+		const complete = ABILITIES.every((a) => next[a] !== null) && usesStandardArrayExactly(next as AbilityScores)
+		onResult(complete ? { method: 'standardArray', scores: next as AbilityScores } : null)
 	}
 
-	// Report the initial (all-8) state once so the parent has a value even before any adjustment.
+	const inputs = perAbility((ability) => (
+		<select
+			aria-label={ABILITY_LABELS[ability]}
+			className="ability-picker__control"
+			value={scores[ability] ?? ''}
+			onChange={(event) => choose(ability, event.target.value === '' ? null : Number(event.target.value))}
+		>
+			<option value="">—</option>
+			{STANDARD_ARRAY.map((score) => (
+				<option key={score} value={score}>
+					{score}
+				</option>
+			))}
+		</select>
+	))
+
+	return <AbilityScoreTable base={scores} background={background} inputs={inputs} />
+}
+
+function PointBuyMethod({ value, onResult, background }: MethodProps): ReactNode {
+	const [scores, setScores] = useState<AbilityScores>(value?.method === 'pointBuy' ? value.scores : perAbility(() => POINT_BUY_MIN))
+	const remaining = POINT_BUY_BUDGET - pointBuyTotal(scores)
+
+	// Report the initial (all-8) state once so the parent has a value even before any change.
 	useEffect(() => {
 		onResult({ method: 'pointBuy', scores: { ...scores } })
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
+	function choose(ability: Ability, score: number): void {
+		const next = { ...scores, [ability]: score }
+		if (pointBuyTotal(next) > POINT_BUY_BUDGET) return
+		setScores(next)
+		onResult({ method: 'pointBuy', scores: next })
+	}
+
+	const options = Array.from({ length: POINT_BUY_MAX - POINT_BUY_MIN + 1 }, (_, i) => POINT_BUY_MIN + i)
+	const inputs = perAbility((ability) => (
+		<select
+			aria-label={ABILITY_LABELS[ability]}
+			className="ability-picker__control"
+			value={scores[ability]}
+			onChange={(event) => choose(ability, Number(event.target.value))}
+		>
+			{options.map((score) => (
+				<option key={score} value={score} disabled={pointBuyCost(score) - pointBuyCost(scores[ability]) > remaining}>
+					{score} ({pointBuyCost(score)})
+				</option>
+			))}
+		</select>
+	))
+
 	return (
-		<div>
-			<p className="ability-picker__hint">
-				{remaining} of {POINT_BUY_BUDGET} points remaining.
+		<>
+			<p className="ability-picker__budget">
+				<span className="ability-picker__label">Points remaining</span>{' '}
+				<span data-testid="points-remaining">
+					{remaining} / {POINT_BUY_BUDGET}
+				</span>
 			</p>
-			<div className="ability-picker__grid">
-				{ABILITIES.map((ability) => {
-					const score = scores[ability]
-					const nextStepCost = score < POINT_BUY_MAX ? pointBuyCost(score + 1) - pointBuyCost(score) : null
-					return (
-						<div key={ability} className="ability-picker__row">
-							<span>{ABILITY_LABELS[ability]}</span>
-							<button type="button" onClick={() => adjust(ability, -1)} disabled={score <= POINT_BUY_MIN}>
-								−
-							</button>
-							<span className="ability-picker__score">{score}</span>
-							<button
-								type="button"
-								onClick={() => adjust(ability, 1)}
-								disabled={score >= POINT_BUY_MAX || (nextStepCost !== null && nextStepCost > remaining)}
-							>
-								+
-							</button>
-							{nextStepCost !== null && <span className="ability-picker__cost">next step costs {nextStepCost}</span>}
-						</div>
-					)
-				})}
-			</div>
-		</div>
+			<AbilityScoreTable base={scores} background={background} inputs={inputs} />
+		</>
 	)
 }
 
-function RollMethod({
-	value,
-	onResult,
+/** Which rolled set each ability holds, matched back from saved scores in ability order (duplicate totals take the first free set). */
+function reconstructSets(sets: RolledSet[] | undefined, scores: AbilityScores | undefined): Nullable {
+	const used = new Set<number>()
+	return perAbility((ability) => {
+		if (!sets || !scores) return null
+		const index = sets.findIndex((set, i) => set.total === scores[ability] && !used.has(i))
+		if (index === -1) return null
+		used.add(index)
+		return index
+	})
+}
+
+function RollResultCard({
+	set,
+	index,
+	holder,
+	onAssign,
 }: {
-	value: CharacterAbilityScores | null
-	onResult: (result: CharacterAbilityScores | null) => void
+	set: RolledSet
+	index: number
+	holder: Ability | null
+	onAssign: (ability: Ability | null) => void
 }): ReactNode {
-	const priorRoll = value?.method === 'roll' ? value : null
-	const [entryMode, setEntryMode] = useState<'roll' | 'manual'>(
-		priorRoll && !priorRoll.rolledSets ? 'manual' : 'roll',
+	const dropped = set.dice.indexOf(Math.min(...set.dice))
+	return (
+		<li className="ability-roll" aria-label={`Roll result ${index + 1}`}>
+			<div className="ability-roll__dice">
+				{set.dice.map((die, i) => (
+					<span key={i} className={i === dropped ? 'ability-roll__die ability-roll__die--dropped' : 'ability-roll__die'}>
+						{die}
+					</span>
+				))}
+			</div>
+			<div className="ability-roll__total">{set.total}</div>
+			<select
+				aria-label={`Assign result ${index + 1}`}
+				className="ability-picker__control"
+				value={holder ?? ''}
+				onChange={(event) => onAssign(event.target.value === '' ? null : (event.target.value as Ability))}
+			>
+				<option value="">Assign to…</option>
+				{ABILITIES.map((ability) => (
+					<option key={ability} value={ability}>
+						{ABILITY_LABELS[ability]}
+					</option>
+				))}
+			</select>
+		</li>
 	)
-	const [rolledSets, setRolledSets] = useState<RolledSet[] | null>(priorRoll?.rolledSets ?? null)
-	const [assignment, setAssignment] = useState<Record<Ability, number | null>>(() =>
-		priorRoll?.rolledSets
-			? reconstructAssignment(
-					priorRoll.rolledSets.map((set) => set.total),
-					priorRoll.scores,
-				)
-			: emptyAssignment(),
-	)
-	const [manualScores, setManualScores] = useState<Record<Ability, string>>(() => {
-		if (priorRoll && !priorRoll.rolledSets) {
-			return Object.fromEntries(ABILITIES.map((a) => [a, String(priorRoll.scores[a])])) as Record<Ability, string>
+}
+
+function ManualRolledMethod({ value, onResult, background }: MethodProps): ReactNode {
+	const prior = value?.method === 'roll' ? value : null
+	const [sets, setSets] = useState<RolledSet[] | null>(prior?.rolledSets ?? null)
+	const [setFor, setSetFor] = useState<Nullable>(() => reconstructSets(prior?.rolledSets, prior?.scores))
+	const [values, setValues] = useState<Record<Ability, string>>(() => perAbility((a) => (prior ? String(prior.scores[a]) : '')))
+
+	function report(nextValues: Record<Ability, string>, nextSets: RolledSet[] | null): void {
+		const parsed = perAbility((a) => (nextValues[a].trim() === '' ? NaN : Number(nextValues[a])))
+		const valid = ABILITIES.every((a) => Number.isInteger(parsed[a]) && parsed[a] >= MIN_ROLLED && parsed[a] <= MAX_ROLLED)
+		onResult(valid ? { method: 'roll', scores: parsed, ...(nextSets ? { rolledSets: nextSets } : {}) } : null)
+	}
+
+	function update(nextValues: Record<Ability, string>, nextSetFor: Nullable, nextSets: RolledSet[] | null): void {
+		setValues(nextValues)
+		setSetFor(nextSetFor)
+		setSets(nextSets)
+		report(nextValues, nextSets)
+	}
+
+	function roll(): void {
+		const rolled = rollSixAbilityScores(randomDie)
+		update(perAbility((a) => (setFor[a] === null ? values[a] : '')), perAbility(() => null), rolled)
+	}
+
+	function assign(index: number, ability: Ability | null): void {
+		if (!sets) return
+		const holder = ABILITIES.find((a) => setFor[a] === index) ?? null
+		if (ability === null) {
+			if (holder) update({ ...values, [holder]: '' }, { ...setFor, [holder]: null }, sets)
+			return
 		}
-		return { strength: '', dexterity: '', constitution: '', intelligence: '', wisdom: '', charisma: '' }
+		const nextValues = { ...values, [ability]: String(sets[index].total) }
+		if (holder && holder !== ability) nextValues[holder] = values[ability]
+		update(nextValues, assignWithSwap(setFor, ability, index), sets)
+	}
+
+	const inputs = perAbility((ability) => (
+		<input
+			type="number"
+			aria-label={ABILITY_LABELS[ability]}
+			min={MIN_ROLLED}
+			max={MAX_ROLLED}
+			className="ability-picker__control"
+			value={values[ability]}
+			onChange={(event) => update({ ...values, [ability]: event.target.value }, { ...setFor, [ability]: null }, sets)}
+		/>
+	))
+
+	const base = perAbility((a) => {
+		const n = Number(values[a])
+		return values[a].trim() !== '' && Number.isInteger(n) && n >= MIN_ROLLED && n <= MAX_ROLLED ? n : null
 	})
 
-	function handleRoll(): void {
-		setRolledSets(rollSixAbilityScores(randomDie))
-		setAssignment(emptyAssignment())
-		onResult(null)
-	}
-
-	function handleAssign(ability: Ability, slotIndex: number | null): void {
-		const next = { ...assignment, [ability]: slotIndex }
-		setAssignment(next)
-		if (rolledSets && isComplete(next)) {
-			const scores = Object.fromEntries(ABILITIES.map((a) => [a, rolledSets[next[a]].total])) as AbilityScores
-			onResult({ method: 'roll', scores, rolledSets })
-		} else {
-			onResult(null)
-		}
-	}
-
-	function handleManualChange(ability: Ability, raw: string): void {
-		const next = { ...manualScores, [ability]: raw }
-		setManualScores(next)
-		const parsed = Object.fromEntries(
-			ABILITIES.map((a) => [a, next[a].trim() === '' ? NaN : Number(next[a])]),
-		) as AbilityScores
-		const allValid = ABILITIES.every(
-			(a) => Number.isInteger(parsed[a]) && parsed[a] >= 3 && parsed[a] <= 18,
-		)
-		onResult(allValid ? { method: 'roll', scores: parsed } : null)
-	}
-
 	return (
-		<div>
-			<div className="ability-picker__mode-toggle">
-				<label>
-					<input
-						type="radio"
-						checked={entryMode === 'roll'}
-						onChange={() => {
-							setEntryMode('roll')
-							onResult(null)
-						}}
-					/>
-					Roll for me
-				</label>
-				<label>
-					<input
-						type="radio"
-						checked={entryMode === 'manual'}
-						onChange={() => {
-							setEntryMode('manual')
-							onResult(null)
-						}}
-					/>
-					Enter physical dice results
-				</label>
+		<>
+			<div className="ability-picker__roll-bar">
+				<button type="button" className="ability-picker__roll" onClick={roll}>
+					{sets ? 'Reroll' : 'Roll'}
+				</button>
+				<span className="ability-picker__hint">
+					Type your own dice results ({MIN_ROLLED}–{MAX_ROLLED}) or roll 6 × 4d6, drop the lowest.
+				</span>
 			</div>
-
-			{entryMode === 'roll' ? (
-				<div>
-					<button type="button" onClick={handleRoll}>
-						Roll 6 sets of 4d6
-					</button>
-					{rolledSets && (
-						<>
-							<ul className="ability-picker__rolls">
-								{rolledSets.map((set, index) => (
-									<li key={index}>
-										Set {index + 1}: [{set.dice.join(', ')}] → {set.total}
-									</li>
-								))}
-							</ul>
-							<ValuePoolAssigner
-								values={rolledSets.map((s) => s.total)}
-								assignment={assignment}
-								onAssign={handleAssign}
-								describeValue={(value, index) => `Set ${index + 1}: ${value}`}
-							/>
-						</>
-					)}
-				</div>
-			) : (
-				<div className="ability-picker__grid">
-					{ABILITIES.map((ability) => (
-						<label key={ability} className="ability-picker__row">
-							{ABILITY_LABELS[ability]}
-							<input
-								type="number"
-								min={3}
-								max={18}
-								className="input--narrow"
-								value={manualScores[ability]}
-								onChange={(event) => handleManualChange(ability, event.target.value)}
-							/>
-						</label>
+			{sets && (
+				<ul className="ability-picker__rolls">
+					{sets.map((set, index) => (
+						<RollResultCard
+							key={index}
+							set={set}
+							index={index}
+							holder={ABILITIES.find((a) => setFor[a] === index) ?? null}
+							onAssign={(ability) => assign(index, ability)}
+						/>
 					))}
-				</div>
+				</ul>
 			)}
-		</div>
+			<AbilityScoreTable base={base} background={background} inputs={inputs} />
+		</>
 	)
 }
 
 /**
- * Lets the player pick one of the three ability score methods and produces
- * the raw six scores. Displays `value` — the result as the caller currently
- * has it — and reports every change upward via `onChange`, matching
- * ClassPicker: the caller owns the selection, so it survives this component
- * (and the per-method sub-components) unmounting and remounting.
+ * Displays `value` — the result as the caller currently has it — and reports every change upward via
+ * `onChange` (null while incomplete), so the choice survives this component remounting.
  */
 export function AbilityScorePicker({
 	value,
 	onChange,
+	background,
 }: {
 	value: CharacterAbilityScores | null
 	onChange: (result: CharacterAbilityScores | null) => void
+	background?: AbilityBonusMap
 }): ReactNode {
 	const [method, setMethod] = useState<AbilityScoreMethod>(value?.method ?? 'standardArray')
 
 	function selectMethod(next: AbilityScoreMethod): void {
+		if (next === method) return
 		setMethod(next)
 		onChange(null)
 	}
 
+	const props = { value, onResult: onChange, background }
 	return (
 		<div className="ability-picker">
-			<div className="ability-picker__method-toggle">
-				<label>
-					<input type="radio" checked={method === 'standardArray'} onChange={() => selectMethod('standardArray')} />
-					Standard array
-				</label>
-				<label>
-					<input type="radio" checked={method === 'pointBuy'} onChange={() => selectMethod('pointBuy')} />
-					Point buy
-				</label>
-				<label>
-					<input type="radio" checked={method === 'roll'} onChange={() => selectMethod('roll')} />
-					Roll
-				</label>
+			<div className="roll-mode ability-picker__methods" role="group" aria-label="Ability score method">
+				{(Object.keys(METHOD_LABELS) as AbilityScoreMethod[]).map((option) => (
+					<button
+						key={option}
+						type="button"
+						className={option === method ? 'roll-mode__option roll-mode__option--active' : 'roll-mode__option'}
+						aria-pressed={option === method}
+						onClick={() => selectMethod(option)}
+					>
+						{METHOD_LABELS[option]}
+					</button>
+				))}
 			</div>
-
-			{method === 'standardArray' && <StandardArrayMethod value={value} onResult={onChange} />}
-			{method === 'pointBuy' && <PointBuyMethod value={value} onResult={onChange} />}
-			{method === 'roll' && <RollMethod value={value} onResult={onChange} />}
+			{method === 'standardArray' && <StandardArrayMethod {...props} />}
+			{method === 'pointBuy' && <PointBuyMethod {...props} />}
+			{method === 'roll' && <ManualRolledMethod {...props} />}
 		</div>
 	)
 }
