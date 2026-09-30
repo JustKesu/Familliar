@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { next } from './wizard.ts'
+import { next, takeAllFighterLevel4Picks } from './wizard.ts'
 
 /*
  * R14e2 (D222). The Fighter 3 of itemAbilityScores.spec.ts: STR 15, DEX 14, CON 13, max HP 25 (CON +1 × 3 levels).
@@ -123,6 +123,7 @@ test('R14e2 e: Level up shows the base Strength, not the custom item', async ({ 
   await open(page, fighter('r14e2-e', [glove], {}, { classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 3 }] }))
   await expect(score(page, 'strength')).toHaveText('21')
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await takeAllFighterLevel4Picks(page)
   const level4 = page.getByRole('group', { name: 'Level 4' })
   for (let steps = 0; steps < 8 && !(await level4.isVisible()); steps++) await next(page)
   await level4.getByRole('radio', { name: 'Ability Score Improvement', exact: true }).check()

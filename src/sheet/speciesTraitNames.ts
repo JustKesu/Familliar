@@ -29,7 +29,7 @@ export interface SpeciesTrait {
 }
 
 /** Pure (D38). An unknown species, or one with no named traits, yields an empty list — never a throw, since a missing trait only means a bonus is not applied (D43). */
-export function speciesTraitsFrom(character: Character, parsedSpecies: unknown): SpeciesTrait[] {
+export function speciesTraitsFrom(character: Pick<Character, 'species'> & Partial<Character>, parsedSpecies: unknown): SpeciesTrait[] {
 	if (!character.species) return []
 	if (!Array.isArray(parsedSpecies)) throw new Error('species.json: expected a top-level array.')
 

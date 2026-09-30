@@ -182,6 +182,7 @@ vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
 					options: [
 						{ name: 'Trip Attack', source: 'XPHB', entries: ['Knock them down.'] },
 						{ name: 'Riposte', source: 'XPHB', entries: ['Strike back.'] },
+						{ name: 'Parry', source: 'XPHB', entries: ['Reduce the damage.'] },
 					],
 				}
 			}
@@ -305,6 +306,18 @@ function renderWizard() {
 async function fillClassStep(user: ReturnType<typeof userEvent.setup>) {
 	await user.type(screen.getByLabelText('Character name'), 'Aria')
 	await user.selectOptions(await screen.findByLabelText('Class'), 'Fighter')
+	await chooseMasteryAndStyle(user)
+}
+
+/** W-3: the class step's Next needs the mocked mastery (count 1) and fighting style, which the mocks offer to every class. */
+async function chooseMasteryAndStyle(user: ReturnType<typeof userEvent.setup>) {
+	await user.click(await screen.findByRole('button', { name: 'Choose Longsword' }))
+	await user.click(await screen.findByRole('button', { name: 'Choose Archery' }))
+}
+
+/** The mocked Battle Master asks for three maneuvers. */
+async function chooseManeuvers(user: ReturnType<typeof userEvent.setup>) {
+	for (const name of ['Trip Attack', 'Riposte', 'Parry']) await user.click(await screen.findByRole('button', { name: `Choose ${name}` }))
 }
 
 /** Dwarf grants no species skill, so the step completes on the species alone — the species step's own gates (D81) have their own file, CharacterWizard.species.test.tsx. */
@@ -587,8 +600,6 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await user.click(await screen.findByLabelText('Athletics'))
-		await user.click(await screen.findByRole('button', { name: 'Choose Longsword' }))
-		await user.click(await screen.findByRole('button', { name: 'Choose Archery' }))
 
 		await goNext(user)
 		await screen.findByLabelText('Species')
@@ -608,8 +619,6 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await fillClassStep(user)
 		await user.click(await screen.findByLabelText('Athletics'))
-		await user.click(await screen.findByRole('button', { name: 'Choose Longsword' }))
-		await user.click(await screen.findByRole('button', { name: 'Choose Archery' }))
 
 		await user.selectOptions(screen.getByLabelText('Class'), 'Wizard')
 
@@ -663,12 +672,14 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
 		await user.click(await screen.findByRole('button', { name: 'Choose Battle Master' }))
-		await user.click(await screen.findByRole('button', { name: 'Choose Trip Attack' }))
+		await chooseManeuvers(user)
 
 		await goNext(user)
 		await screen.findByLabelText('Species')
 		await goBack(user)
 
+		// All three picks auto-collapse the list; reopen it.
+		await user.click(await screen.findByRole('button', { name: /Options/ }))
 		expect(isChosen(await screen.findByRole('button', { name: 'Choose Trip Attack' }))).toBe(true)
 	})
 
@@ -730,7 +741,7 @@ describe('CharacterWizard — storage', () => {
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), '3')
 		await user.click(await screen.findByRole('button', { name: 'Choose Battle Master' }))
-		await user.click(await screen.findByRole('button', { name: 'Choose Trip Attack' }))
+		await chooseManeuvers(user)
 		await goNext(user)
 		await fillSpeciesStep(user)
 		await goNext(user)
@@ -776,9 +787,9 @@ describe('CharacterWizard — storage', () => {
 				{ name: 'Dwarvish', source: 'XPHB', grantedBy: 'creation' },
 			],
 			classSkills: [],
-			masteries: [],
-			fightingStyle: null,
-			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }] }],
+			masteries: [{ name: 'Longsword' }],
+			fightingStyle: 'Archery',
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte' }, { name: 'Parry' }] }],
 			speciesSkills: [],
 			expertiseSkills: [],
 			featAsiChoices: [],
@@ -890,6 +901,7 @@ describe('CharacterWizard — feat/ASI step', () => {
 	async function fillThroughAbilities(user: ReturnType<typeof userEvent.setup>, level: string) {
 		await fillClassStep(user)
 		await user.selectOptions(screen.getByLabelText('Level'), level)
+		if (Number(level) >= 3) await user.click(await screen.findByRole('button', { name: 'Choose Champion' }))
 		await goNext(user)
 		await fillSpeciesStep(user)
 		await goNext(user)
@@ -984,6 +996,7 @@ describe('CharacterWizard — expertise step', () => {
 	async function fillThroughBackground(user: ReturnType<typeof userEvent.setup>, cls: string) {
 		await user.type(screen.getByLabelText('Character name'), 'Aria')
 		await user.selectOptions(await screen.findByLabelText('Class'), cls)
+		await chooseMasteryAndStyle(user)
 		await goNext(user)
 		await fillSpeciesStep(user)
 		await goNext(user)
@@ -1033,6 +1046,7 @@ describe('CharacterWizard — expertise step', () => {
 
 		for (let i = 0; i < 4; i++) await goBack(user)
 		await user.selectOptions(await screen.findByLabelText('Class'), 'Fighter')
+		await chooseMasteryAndStyle(user)
 		for (let i = 0; i < 3; i++) await goNext(user)
 		await screen.findByLabelText('Draconic (XPHB)')
 		expect(screen.queryByRole('combobox', { name: /Thieves' Cant language/ })).toBeNull()
@@ -1065,6 +1079,7 @@ describe('CharacterWizard — expertise step', () => {
 
 		await user.selectOptions(screen.getByLabelText('Class'), 'Fighter')
 		await user.selectOptions(screen.getByLabelText('Class'), 'Rogue')
+		await chooseMasteryAndStyle(user)
 
 		await goNext(user) // class -> species
 		await fillSpeciesStep(user)

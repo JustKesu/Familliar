@@ -58,7 +58,7 @@ function resolveField<K extends 'speed' | 'size' | 'darkvision'>(
 	return undefined
 }
 
-function findCharacterSpeciesEntry(character: Character, data: SpeciesTraitsData[]): Calculated<SpeciesTraitsData> | undefined {
+function findCharacterSpeciesEntry(character: Pick<Character, 'species'>, data:SpeciesTraitsData[]): Calculated<SpeciesTraitsData> | undefined {
 	if (!character.species) return undefined
 	const entry = findSpeciesEntry(data, character.species.name, character.species.source)
 	if (!entry) return unknown(`No species data for "${character.species.name}" (${character.species.source}).`)
@@ -115,7 +115,7 @@ function applyModeGrants(value: SpeedValue, grants: GrantedSpeedMode[]): Contrib
 	return lines
 }
 
-export function computeSpeed(character: Character, speciesData: SpeciesTraitsData[], adjustments: Contribution[] = [], modeGrants: GrantedSpeedMode[] = []): Calculated<SpeedValue> {
+export function computeSpeed(character: Pick<Character, 'species'> & Partial<Character>, speciesData: SpeciesTraitsData[], adjustments: Contribution[] = [], modeGrants: GrantedSpeedMode[] = []): Calculated<SpeedValue> {
 	const lookup = findCharacterSpeciesEntry(character, speciesData)
 	if (!lookup) return unknown('Species has not been chosen for this character yet.')
 	if (lookup.status === 'unknown') return unknown(lookup.reason)
@@ -147,7 +147,7 @@ export function speciesSizeOptions(data: SpeciesTraitsData[], name: string, sour
 	return (entry && resolveField(entry, data, 'size')?.value) || []
 }
 
-export function computeSize(character: Character, speciesData: SpeciesTraitsData[]): Calculated<string> {
+export function computeSize(character: Pick<Character, 'species' | 'speciesSize'> & Partial<Character>, speciesData: SpeciesTraitsData[]): Calculated<string> {
 	const lookup = findCharacterSpeciesEntry(character, speciesData)
 	if (!lookup) return unknown('Species has not been chosen for this character yet.')
 	if (lookup.status === 'unknown') return unknown(lookup.reason)

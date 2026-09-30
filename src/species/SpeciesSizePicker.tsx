@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-const SIZE_NAMES: Record<string, string> = { T: 'Tiny', S: 'Small', M: 'Medium', L: 'Large' }
+export const SIZE_NAMES: Record<string, string> = { T: 'Tiny', S: 'Small', M: 'Medium', L: 'Large' }
 
 /** D175: the size a species that offers several is played as. Renders nothing for a species with one size. */
 export function SpeciesSizePicker({ options, value, onChange }: { options: readonly string[]; value: string | null; onChange: (size: string) => void }): ReactNode {

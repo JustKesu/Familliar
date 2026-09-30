@@ -303,7 +303,7 @@ test('R13b g: Edit Character does not offer a manually added Tough again at an A
   await next(page)
   await expectStep(page, 'Background')
   await next(page)
-  await expectStep(page, 'Languages')
+  await expectStep(page, 'Proficiencies')
   await next(page)
   await expectStep(page, 'Ability scores')
   await next(page)

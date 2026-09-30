@@ -16,8 +16,15 @@ interface Seed {
   [field: string]: unknown
 }
 
+// W-3: Edit Character's class step waits for the picks a class has at its level, so a seeded character carries them.
+const SEEDED_PICKS: Record<string, Record<string, unknown>> = {
+  Paladin: { masteries: [{ name: 'Longsword' }, { name: 'Greatsword' }], fightingStyle: 'Defense' },
+  Rogue: { masteries: [{ name: 'Dagger' }, { name: 'Shortsword' }] },
+}
+
 function seeded(id: string, { className, classSource = 'XPHB', subclass, level, ...rest }: Seed) {
   return {
+    ...SEEDED_PICKS[className],
     schemaVersion: 48,
     id,
     name: id,
@@ -71,7 +78,7 @@ const KNOWLEDGE_PICKS = [
 
 test('D203 a: Bladesinger — the skill pick offers its 4 skills and is required in Edit Character', async ({ page }) => {
   await open(page, 'blade-edit', WIZARD_3)
-  await editToStep(page, 'Languages')
+  await editToStep(page, 'Proficiencies')
   const select = skillSelect(page, /^Bladesinger skill/)
   await expect(offered(select)).toHaveText(['Acrobatics', 'Athletics', 'Performance', 'Persuasion'])
   await expect(nextButton(page)).toBeDisabled()
@@ -98,7 +105,7 @@ test('D203 a: Bladesinger — weapon grant on the card; a Rapier attack is profi
 
 test('D203 b: Knowledge Domain — a tool and 2 skills, the background Religion offered too; Next waits for all three', async ({ page }) => {
   await open(page, 'knowledge-edit', { ...CLERIC, level: 3 })
-  await editToStep(page, 'Languages')
+  await editToStep(page, 'Proficiencies')
   const first = skillSelect(page, /^Knowledge Domain skill 1 \(with Expertise\)/)
   const second = skillSelect(page, /^Knowledge Domain skill 2 \(with Expertise\)/)
   await expect(offered(first)).toHaveText(['Arcana', 'History', 'Nature', 'Religion'])
@@ -176,7 +183,7 @@ test('D203 d: Banneret — language and skill picks are required and both reach 
 
 test('D203 e: Oath of the Noble Genies offers only its list', async ({ page }) => {
   await open(page, 'genies', { className: 'Paladin', subclass: 'Oath of the Noble Genies', level: 3, classSkills: ['athletics', 'medicine'] })
-  await editToStep(page, 'Languages')
+  await editToStep(page, 'Proficiencies')
   await expect(offered(skillSelect(page, /^Oath of the Noble Genies skill/))).toHaveText(['Acrobatics', 'Intimidation', 'Performance', 'Persuasion'])
 })
 
@@ -189,7 +196,7 @@ test('D203 e: College of the Moon offers only its list, minus a skill already he
     expertiseSkills: [{ name: 'deception' }, { name: 'stealth' }],
     toolChoices: ['Lute', 'Flute', 'Drum'].map((name) => ({ grantedBy: 'bard', name })),
   })
-  await editToStep(page, 'Languages')
+  await editToStep(page, 'Proficiencies')
   await expect(offered(skillSelect(page, /^College of the Moon skill/))).toHaveText(['Animal handling', 'Medicine', 'Nature', 'Perception', 'Survival'])
 })
 
@@ -212,7 +219,7 @@ test("D203 g: Reanimator — Alchemist's Supplies on the card, no replacement ow
 test("D203 g: Reanimator already holding Alchemist's Supplies gets one replacement artisan's-tool slot", async ({ page }) => {
   await open(page, 'reanimator-dup', { ...ARTIFICER, toolChoices: [{ grantedBy: 'artificer', name: "Alchemist's Supplies" }] })
   await expect(card(page, 'TOOLS')).toContainText("1 artisan's tool (Reanimator) — not chosen")
-  await editToStep(page, 'Languages')
+  await editToStep(page, 'Proficiencies')
   await expect(page.getByLabel(/^Reanimator tool/)).toHaveCount(1)
   await expect(nextButton(page)).toBeDisabled()
 })

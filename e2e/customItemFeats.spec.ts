@@ -148,7 +148,7 @@ test('R14c1 d: with an item feat Tough active, Edit Character does not offer Tou
   await next(page)
   await expectStep(page, 'Background')
   await next(page)
-  await expectStep(page, 'Languages')
+  await expectStep(page, 'Proficiencies')
   await next(page)
   await expectStep(page, 'Ability scores')
   await next(page)

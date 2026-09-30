@@ -103,6 +103,42 @@ describe('isStepComplete', () => {
 		expect(isStepComplete('class', four, { wildShapeFormCount: 4 })).toBe(true)
 	})
 
+	/* W-3: SPEC — "no choice may be skipped". Each missing pick on its own keeps the step incomplete. */
+	describe('class pick requirements', () => {
+		const fighter3 = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 } }
+		const required = { subclass: true, fightingStyle: true, masteryCount: 2, optionalFeatureCount: 0 }
+		const done = { ...fighter3, subclass: { name: 'Champion', source: 'XPHB', featureType: null }, fightingStyle: 'Defense', masteries: ['Longsword', 'Greatsword'] }
+
+		it('is complete only when the subclass, the fighting style and every mastery are chosen', () => {
+			expect(isStepComplete('class', done, { classPickRequirements: required })).toBe(true)
+			expect(isStepComplete('class', { ...done, subclass: null }, { classPickRequirements: required })).toBe(false)
+			expect(isStepComplete('class', { ...done, fightingStyle: null }, { classPickRequirements: required })).toBe(false)
+			expect(isStepComplete('class', { ...done, masteries: ['Longsword'] }, { classPickRequirements: required })).toBe(false)
+		})
+
+		it('asks for nothing a class does not grant at this level', () => {
+			const level1 = { ...fighter3, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 1 }, fightingStyle: 'Defense', masteries: ['Longsword', 'Greatsword'] }
+			expect(isStepComplete('class', level1, { classPickRequirements: { ...required, subclass: false } })).toBe(true)
+		})
+
+		it('needs the exact count of subclass options, such as Battle Master maneuvers', () => {
+			const master = { ...done, subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' } }
+			const needs = { ...required, optionalFeatureCount: 3 }
+			expect(isStepComplete('class', { ...master, optionalFeatureChoices: ['A', 'B'] }, { classPickRequirements: needs })).toBe(false)
+			expect(isStepComplete('class', { ...master, optionalFeatureChoices: ['A', 'B', 'C'] }, { classPickRequirements: needs })).toBe(true)
+		})
+
+		it('stays incomplete while the requirements are still loading (null) and skips the check when none are supplied', () => {
+			expect(isStepComplete('class', done, { classPickRequirements: null })).toBe(false)
+			expect(isStepComplete('class', fighter3)).toBe(true)
+		})
+
+		it('counts held level-up picks as chosen, because they are already in the data', () => {
+			// Fighter 3 → 4 keeps subclass, style and the two masteries it already had; the level asks for no more.
+			expect(isStepComplete('class', done, { classPickRequirements: required, levelUpTargetLevel: 4 })).toBe(true)
+		})
+	})
+
 	it('does not ask a non-Druid for Wild Shape forms', () => {
 		const data = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Fighter', classSource: 'XPHB', level: 8 } }
 		expect(isStepComplete('class', data)).toBe(true)

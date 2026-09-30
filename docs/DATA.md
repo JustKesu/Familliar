@@ -1014,6 +1014,12 @@ nástrojů (Horn of Valhalla, Lyre of Building, Rhythm-Maker's Drum
 +1/+2/+3…). Filtr musí kromě kódu typu vyžadovat i `rarity: "none"`,
 teprve pak zbyde 10 obyčejných nástrojů, které background nabízí.
 
+## Species: creatureTypes (W-3)
+species.json (81 záznamů) má `creatureTypes` (pole malých písmen, např. `["humanoid"]`, `["fey"]`)
+u 57 druhů; u 24 chybí, a appka tam Creature Type nevypisuje. `creatureTypeTags` (8 záznamů) je
+něco jiného — značky rodiny (`elf`, `gnome`), ne typ tvora. Všech 81 záznamů má alespoň jednu
+pojmenovanou vlastnost v `entries`; `size` je u 77, `speed` u 79 (4 záznamy mají `raceName`/`raceSource`, přes které se chybějící pole doplňuje).
+
 UID v odkazech ref* je totožné s polem id.
 
 ### Feat `ability` — 13 pevných, 68 s volbou, vždy +1

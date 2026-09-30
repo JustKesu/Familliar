@@ -2138,6 +2138,85 @@ button:disabled {
   background: var(--surface);
 }
 
+/* W-3: a wizard__card groups pickers that render as bare blocks; a card with nothing inside (no grant) is hidden. */
+.wizard__panel > section.wizard__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wizard__card:empty {
+  display: none;
+}
+
+.wizard__card > h3 {
+  margin: 0;
+}
+
+/* W6: species traits card — stats row, then each trait's full text. */
+.species-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.species-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.species-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.species-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-sub);
+}
+
+.species-card__value {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.species-card__traits {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+}
+
+.species-card__trait-name {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+}
+
+.species-card__trait-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-sub);
+  overflow-wrap: anywhere;
+}
+
+.species-card__trait-text p {
+  margin: 0 0 6px;
+}
+
 .wizard__content fieldset fieldset {
   background: var(--surface-2);
 }

@@ -39,7 +39,7 @@ test('D199 a: the Wizard spell step offers Silvery Barbs (SCC) and it can be pic
   await select(page, '+2').selectOption('intelligence')
   await select(page, '+1').selectOption('wisdom')
   await next(page)
-  await expectStep(page, 'Languages')
+  await expectStep(page, 'Proficiencies')
   await page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' }).check()
   await page.getByRole('checkbox', { name: 'Elvish (XPHB)' }).check()
   await next(page)

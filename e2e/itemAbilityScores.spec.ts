@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { next } from './wizard.ts'
+import { next, takeAllFighterLevel4Picks } from './wizard.ts'
 
 /*
  * R14e1 (D221). A Human Fighter 3 at the current schema, as customItemProficiencies.spec.ts: STR 15, DEX 14,
@@ -110,6 +110,7 @@ test('R14e1 i: Level up works from the base Strength, not the belt', async ({ pa
   await open(page, fighter('r14e1-i', [item('Belt of Hill Giant Strength', true)], {}, { classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 3 }] }))
   await expect(score(page, 'strength')).toHaveText('21')
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await takeAllFighterLevel4Picks(page)
   const level4 = page.getByRole('group', { name: 'Level 4' })
   for (let steps = 0; steps < 8 && !(await level4.isVisible()); steps++) await next(page)
   await level4.getByRole('radio', { name: 'Ability Score Improvement', exact: true }).check()

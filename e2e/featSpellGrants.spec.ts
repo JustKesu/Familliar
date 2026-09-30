@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFighter, expectStep, next, nextButton, wizardNav } from './wizard.ts'
+import { createFighter, expectStep, next, nextButton, takeFighterLevel4Mastery, wizardNav } from './wizard.ts'
 
 /*
  * D204: spells of the Dark Gift feats, Boon of Revelry, Telepathic/Telekinetic, and the marks' spellcasting ability.
@@ -104,6 +104,7 @@ test('D204 a: Edit Character — Watchers asks for a spellcasting ability (Int/W
 test('D204 a: Level up — a Dark Gift asks for its spellcasting ability there too', async ({ page }) => {
   await createFighter(page, { name: 'Leveller', level: 3, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await takeFighterLevel4Mastery(page)
   const level4 = page.getByRole('group', { name: 'Level 4' })
   for (let steps = 0; steps < 8 && !(await level4.isVisible()); steps++) await next(page)
   await level4.getByRole('radio', { name: 'Feat', exact: true }).check()

@@ -41,7 +41,11 @@ import { loadOptionalFeatureSpellChoiceShape, offersSpellChoice, requiredSpellCh
 import { ExpertisePicker } from '../expertise/ExpertisePicker'
 import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertise/expertiseData'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
-import { loadSubclassesFor, type SubclassOption } from '../subclass/subclassData'
+import { loadSubclassLevelFor, loadSubclassesFor, type SubclassOption } from '../subclass/subclassData'
+import { loadMasteryCountFor } from '../masteries/masteryData'
+import { loadFightingStyleGrantLevel } from '../fightingStyle/fightingStyleData'
+import { loadOptionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
+import { SpeciesCard } from '../species/SpeciesCard'
 import { StartingEquipmentPicker } from '../inventory/StartingEquipmentPicker'
 import {
 	buildStartingInventory,
@@ -96,6 +100,7 @@ import {
 	isStepComplete,
 	isStepReachable,
 	saveCharacter,
+	type ClassPickRequirements,
 	stepIndex,
 	visibleSteps,
 	wizardDataFromCharacter,
@@ -136,7 +141,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	species: 'Species',
 	background: 'Background',
 	expertise: 'Expertise',
-	languages: 'Languages & Tools',
+	languages: 'Proficiencies',
 	abilities: 'Ability scores',
 	spells: 'Spells',
 	classOptionalFeatures: 'Class options',
@@ -204,6 +209,7 @@ export function CharacterWizard({
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
 	const [originFeatLinks, setOriginFeatLinks] = useState<BackgroundOriginFeatLink[]>([])
 	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
+	const [classPickShape, setClassPickShape] = useState<{ key: string; requirements: ClassPickRequirements } | null>(null)
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
 	/** The species list, grouped into species + their own choice (D81) — loaded here as well as in the picker, since the species step's completion check needs to know whether a choice is outstanding before that panel would ever mount. */
 	const [speciesOptions, setSpeciesOptions] = useState<SpeciesOption[]>([])
@@ -538,6 +544,44 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [state.data.classChoice])
+
+	/** What the class step's pickers require here, read through the pickers' own loaders so the gate and the UI cannot disagree. A failed load means the pickers show their own error, so it asks for nothing rather than locking the step for good. */
+	const pickClassName = state.data.classChoice?.className ?? null
+	const pickClassSource = state.data.classChoice?.classSource ?? null
+	const pickLevel = state.data.classChoice?.level ?? null
+	const pickSubclass = state.data.subclass
+	const classPickKey = pickClassName === null ? null : `${pickClassName}|${pickClassSource}|${pickLevel}|${pickSubclass?.name ?? ''}|${pickSubclass?.source ?? ''}`
+	useEffect(() => {
+		let cancelled = false
+		setClassPickShape(null)
+		if (pickClassName === null || pickClassSource === null || pickLevel === null || classPickKey === null) return
+		Promise.all([
+			loadSubclassLevelFor(pickClassName, pickClassSource),
+			loadFightingStyleGrantLevel(pickClassName, pickClassSource),
+			loadMasteryCountFor(pickClassName, pickClassSource, pickLevel),
+			pickSubclass ? loadOptionalFeatureChoicesFor(pickClassName, pickClassSource, pickSubclass.name, pickSubclass.source, pickLevel) : Promise.resolve(null),
+		])
+			.then(([subclassLevel, styleLevel, masteryCount, optional]) => {
+				if (cancelled) return
+				setClassPickShape({
+					key: classPickKey,
+					requirements: {
+						subclass: subclassLevel !== null && pickLevel >= subclassLevel,
+						fightingStyle: styleLevel !== null && pickLevel >= styleLevel,
+						masteryCount: masteryCount ?? 0,
+						optionalFeatureCount: optional?.count ?? 0,
+					},
+				})
+			})
+			.catch(() => {
+				if (!cancelled) setClassPickShape({ key: classPickKey, requirements: { subclass: false, fightingStyle: false, masteryCount: 0, optionalFeatureCount: 0 } })
+			})
+		return () => {
+			cancelled = true
+		}
+		// pickSubclass is read through classPickKey; the object itself changes identity on unrelated edits.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [classPickKey])
 
 	/**
 	 * The number of subclass spell-choice slots unlocked at the chosen class
@@ -1231,6 +1275,8 @@ export function CharacterWizard({
 		speciesSizeComplete,
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
+		// null while loading for the CURRENT class/level/subclass, which keeps the step incomplete.
+		classPickRequirements: state.data.classChoice === null ? undefined : classPickShape?.key === classPickKey ? classPickShape.requirements : null,
 		startingEquipmentCategoryPicksComplete,
 		// Stays incomplete until backgrounds.json has loaded, like speciesSkillsComplete.
 		backgroundOriginFeatComplete: state.data.backgroundChoice === null || (selectedBackground !== undefined && (selectedBackground.originFeat !== null || backgroundFeatOverride !== null)),
@@ -1453,6 +1499,7 @@ export function CharacterWizard({
 
 			{state.step === 'species' && (
 				<div className="wizard__panel">
+					<section className="wizard__card">
 					<SpeciesPicker
 						value={state.data.speciesChoice}
 						onChange={(choice) => dispatch({ type: 'setSpeciesChoice', choice })}
@@ -1479,23 +1526,27 @@ export function CharacterWizard({
 							onChange={(ability) => dispatch({ type: 'setSpeciesSpellcastingAbility', ability })}
 						/>
 					)}
+					{state.data.speciesChoice && speciesVariantChoiceComplete && <SpeciesCard species={state.data.speciesChoice} chosenSize={state.data.speciesSize} />}
+					</section>
 				</div>
 			)}
 
 			{state.step === 'background' && (
 				<div className="wizard__panel">
-					<BackgroundPicker
-						value={state.data.backgroundChoice}
-						onChange={(choice) => dispatch({ type: 'setBackgroundChoice', choice })}
-						disabledSkills={[...classSkillsAsDisabled, ...speciesSkillsAsDisabled]}
-					/>
-					{selectedBackground && (
-						<ToolProficiencyPicker
-							toolProficiency={selectedBackground.toolProficiency}
-							value={state.data.backgroundToolProficiency}
-							onChange={(tool) => dispatch({ type: 'setBackgroundToolProficiency', tool })}
+					<section className="wizard__card">
+						<BackgroundPicker
+							value={state.data.backgroundChoice}
+							onChange={(choice) => dispatch({ type: 'setBackgroundChoice', choice })}
+							disabledSkills={[...classSkillsAsDisabled, ...speciesSkillsAsDisabled]}
 						/>
-					)}
+						{selectedBackground && (
+							<ToolProficiencyPicker
+								toolProficiency={selectedBackground.toolProficiency}
+								value={state.data.backgroundToolProficiency}
+								onChange={(tool) => dispatch({ type: 'setBackgroundToolProficiency', tool })}
+							/>
+						)}
+					</section>
 					{selectedBackground && (
 						<OriginFeatSwapPicker
 							key={`${selectedBackground.name}|${selectedBackground.source}`}
@@ -1522,15 +1573,18 @@ export function CharacterWizard({
 
 			{state.step === 'expertise' && state.data.classChoice && (
 				<div className="wizard__panel">
-					<ExpertisePicker
-						className={state.data.classChoice.className}
-						classSource={state.data.classChoice.classSource}
-						level={state.data.classChoice.level}
-						proficientSkills={proficientSkills.filter((entry) => !fixedExpertise.includes(entry.skill))}
-						value={state.data.expertiseSkills}
-						onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
-						lockedValues={held?.expertiseSkills}
-					/>
+					<section className="wizard__card">
+						<h3>Expertise skills</h3>
+						<ExpertisePicker
+							className={state.data.classChoice.className}
+							classSource={state.data.classChoice.classSource}
+							level={state.data.classChoice.level}
+							proficientSkills={proficientSkills.filter((entry) => !fixedExpertise.includes(entry.skill))}
+							value={state.data.expertiseSkills}
+							onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
+							lockedValues={held?.expertiseSkills}
+						/>
+					</section>
 				</div>
 			)}
 
@@ -1538,15 +1592,20 @@ export function CharacterWizard({
 				<div className="wizard__panel">
 					{/* D172: a level-up walk only collects the new level's class-feature picks. */}
 					{!levelUp && (
-						<LanguagePicker
-							value={state.data.languageChoice}
-							onChange={(choice) => dispatch({ type: 'setLanguageChoice', choice })}
-							exclude={[
-								...state.data.featureLanguages.map((language) => language.name),
-								...draftFeatInstances.flatMap((instance) => (instance.proficiencies?.languages ?? []).map((language) => language.name)),
-							]}
-						/>
+						<section className="wizard__card">
+							<h3>Languages</h3>
+							<LanguagePicker
+								value={state.data.languageChoice}
+								onChange={(choice) => dispatch({ type: 'setLanguageChoice', choice })}
+								exclude={[
+									...state.data.featureLanguages.map((language) => language.name),
+									...draftFeatInstances.flatMap((instance) => (instance.proficiencies?.languages ?? []).map((language) => language.name)),
+								]}
+							/>
+						</section>
 					)}
+					{/* The slot components render nothing when a character has no such grant; an empty card is hidden by CSS. */}
+					<section className="wizard__card">
 					<FeatureLanguageSlots
 						grants={featureLanguageGrants}
 						value={state.data.featureLanguages}
@@ -1596,6 +1655,7 @@ export function CharacterWizard({
 							onChange={({ skill, tool }) => dispatch({ type: 'setSpeciesSkillOrTool', skill, tool })}
 						/>
 					)}
+					</section>
 				</div>
 			)}
 
@@ -1612,6 +1672,7 @@ export function CharacterWizard({
 				<div className="wizard__panel">
 					{knownSpellsIncompleteNotice}
 					{/* D210: the sheet's class section; Next still needs the exact counts (isCompleteSpellChoices). */}
+					<section className="wizard__card">
 					<ClassSpellsManager
 						className={state.data.classChoice.className}
 						classSource={state.data.classChoice.classSource}
@@ -1636,6 +1697,7 @@ export function CharacterWizard({
 							})
 						}
 					/>
+					</section>
 					{state.data.subclass && isSubclassSpellChoice(state.data.subclass) && (
 						<SubclassSpellChoicePicker
 							subclassName={state.data.subclass.name}

@@ -27,7 +27,7 @@ test('R9c: Eldritch Knight 3 — the Spells step uses the class section, Next ne
   const options = { name: 'Wizard Spells Knight', level: 3, species: 'Dwarf|XPHB', subclass: 'Eldritch Knight' }
   await fillUpToBackground(page, options)
   await next(page)
-  await expectStep(page, 'Languages')
+  await expectStep(page, 'Proficiencies')
   await page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' }).check()
   await page.getByRole('checkbox', { name: 'Elvish (XPHB)' }).check()
   await next(page)

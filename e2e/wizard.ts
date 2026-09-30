@@ -32,6 +32,17 @@ export function nextButton(page: Page): Locator {
   return wizardNav(page).getByRole('button', { name: 'Next', exact: true })
 }
 
+/** W-3: a Fighter levelling 3 → 4 knows one more weapon mastery, and the class step's Next waits for it. */
+export async function takeFighterLevel4Mastery(page: Page): Promise<void> {
+  await chooseButton(page, 'Battleaxe').first().click()
+}
+
+/** For a hand-seeded Fighter 3 saved without any class pick: fighting style plus the four masteries a level 4 Fighter knows. */
+export async function takeAllFighterLevel4Picks(page: Page): Promise<void> {
+  await chooseButton(page, 'Defense').first().click()
+  for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe']) await chooseButton(page, weapon).first().click()
+}
+
 export async function next(page: Page): Promise<void> {
   await nextButton(page).click()
 }
@@ -72,7 +83,9 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
   await select(page, 'Level').selectOption(String(options.level))
   await page.getByRole('checkbox', { name: 'Athletics', exact: true }).check()
   await page.getByRole('checkbox', { name: 'Perception', exact: true }).check()
-  for (const weapon of ['Longsword', 'Greatsword', 'Handaxe']) {
+  // W-3: the step's Next needs the exact mastery count — Fighter gets 3, 4 from level 4, 5 from 10, 6 from 16.
+  const masteryCount = options.level >= 16 ? 6 : options.level >= 10 ? 5 : options.level >= 4 ? 4 : 3
+  for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe', 'Flail', 'Glaive'].slice(0, masteryCount)) {
     await chooseButton(page, weapon).first().click()
   }
   await chooseButton(page, 'Defense').first().click()
@@ -96,7 +109,7 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
 export async function finishFromBackground(page: Page, options: FighterOptions): Promise<void> {
   await next(page)
 
-  await expectStep(page, 'Languages')
+  await expectStep(page, 'Proficiencies')
   await page.getByRole('checkbox', { name: 'Dwarvish (XPHB)' }).check()
   await page.getByRole('checkbox', { name: 'Elvish (XPHB)' }).check()
   await options.onLanguagesStep?.(page)

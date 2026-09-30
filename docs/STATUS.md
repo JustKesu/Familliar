@@ -2060,6 +2060,15 @@ unchanged). ▸ folds the rule text; `extra` keeps a chosen option's sub-picker
 `pickers/choiceTestHelpers.ts`, e2e `chooseButton` / `textToggle` in `e2e/wizard.ts`.
 E2E `chooseLists.spec.ts` W-2 a–g.
 
+W-3 (D238–D240) done. No schema bump. Species step has a card (`species/SpeciesCard.tsx`):
+Creature Type · Size · Speed and every species trait with full text, loaded per species
+(`speciesTraitsFrom`, `computeSize`/`computeSpeed` now take `Pick<Character, 'species'…>`).
+Background, Expertise, Proficiencies (renamed from "Languages & Tools"), Spells sit in
+`wizard__card` sections. Class step's Next needs subclass, fighting style, exact masteries and
+exact subclass options (`ClassPickRequirements` / `classPicksComplete` in `wizardState.ts`, loaded
+in `CharacterWizard.tsx` through the pickers' own loaders). E2E `wizardW3.spec.ts` a–g; `e2e/wizard.ts`
+helpers pick the Fighter mastery count by level.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

@@ -130,6 +130,8 @@ export interface WizardStepConditions {
 	speciesSpellcastingAbilityComplete?: boolean
 	/** Wild Shape forms the class step must collect (wildShapeData.ts's Beast Shapes table); 0 for a character without Wild Shape. */
 	wildShapeFormCount?: number
+	/** D-class-gate: what the class step's pickers ask for at this class, level and subclass; `null` while that is still loading, which keeps the step incomplete. Omitted means the picks are not checked at all (no class chosen yet, or a caller that has no loaded data). */
+	classPickRequirements?: ClassPickRequirements | null
 	/** Whether every category element inside the two chosen starting-equipment options has an item picked. Which elements those are is only known from the loaded offers, so the caller computes it (missingCategoryPicks). */
 	startingEquipmentCategoryPicksComplete?: boolean
 	/** D205: false while the chosen background has no fixed feat and no Dark Gift is picked yet (only known from backgrounds.json). */
@@ -169,8 +171,26 @@ export interface WizardStepConditions {
 	levelUpTargetLevel?: number | null
 }
 
+/** The single choices and exact counts the class step's pickers (subclass, fighting style, masteries, subclass options) require. */
+export interface ClassPickRequirements {
+	subclass: boolean
+	fightingStyle: boolean
+	masteryCount: number
+	optionalFeatureCount: number
+}
+
+/** Held (level-up) picks are already in `data`, so they count as chosen. Counts are exact, like the pickers' own caps. */
+export function classPicksComplete(data: WizardData, required: ClassPickRequirements): boolean {
+	return (
+		(!required.subclass || data.subclass !== null) &&
+		(!required.fightingStyle || data.fightingStyle !== null) &&
+		data.masteries.length === required.masteryCount &&
+		data.optionalFeatureChoices.length === required.optionalFeatureCount
+	)
+}
+
 /** The omitted-field values, in one place, so every entry point agrees on them. */
-function resolveConditions(conditions: WizardStepConditions): Required<WizardStepConditions> {
+function resolveConditions(conditions: WizardStepConditions): Required<Omit<WizardStepConditions, 'classPickRequirements'>> & Pick<WizardStepConditions, 'classPickRequirements'> {
 	return {
 		expertiseRequiredCount: conditions.expertiseRequiredCount ?? null,
 		featAsiEligibleLevelCount: conditions.featAsiEligibleLevelCount ?? 0,
@@ -185,6 +205,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<WizardSte
 		speciesSizeComplete: conditions.speciesSizeComplete ?? true,
 		speciesSpellcastingAbilityComplete: conditions.speciesSpellcastingAbilityComplete ?? true,
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
+		classPickRequirements: conditions.classPickRequirements,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
 		backgroundOriginFeatComplete: conditions.backgroundOriginFeatComplete ?? true,
 		characterLevel: conditions.characterLevel ?? 1,
@@ -582,6 +603,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		speciesSizeComplete,
 		speciesSpellcastingAbilityComplete,
 		wildShapeFormCount,
+		classPickRequirements,
 		startingEquipmentCategoryPicksComplete,
 		backgroundOriginFeatComplete,
 		levelUpTargetLevel,
@@ -598,7 +620,9 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				data.name.trim() !== '' &&
 				data.classChoice !== null &&
 				classFeatureChoicesComplete &&
-				data.wildShapeForms.length === wildShapeFormCount
+				data.wildShapeForms.length === wildShapeFormCount &&
+				classPickRequirements !== null &&
+				(classPickRequirements === undefined || classPicksComplete(data, classPickRequirements))
 			)
 		case 'species':
 			// A species is REMEMBERED the moment it is picked, like a background, but the

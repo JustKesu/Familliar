@@ -456,6 +456,8 @@ async function fillThroughAbilities(
 	},
 ) {
 	await fillClassStep(user, className, level)
+	// W-3: the class step's Next needs the subclass a level 3+ character has to take (the mock offers Champion to these classes).
+	if (Number(level) >= 3) await user.click(await screen.findByRole('button', { name: 'Choose Champion' }))
 	await goNext(user)
 	await user.selectOptions(await screen.findByLabelText('Species'), 'Elf (XPHB)')
 	await goNext(user)

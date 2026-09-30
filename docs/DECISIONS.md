@@ -4210,3 +4210,31 @@ nedělá nic. Vícenásobná volba: CHOSEN odebere, při plném počtu jsou CHOO
 „X / N · FULL“. Zamčené (D108) položky jsou CHOSEN a neklikatelné. Krátké seznamy bez textu (třídní
 dovednosti) zůstávají checkboxy. Implementace: varianta `choose` sdíleného SearchableOptionList,
 ostatní použití beze změny.
+
+## D238 — Karta druhu s vlastnostmi v kroku Species (W6, W-3)
+
+D238 (W6): Výběr druhu zůstává rozbalovací (jméno + kniha). Pod ním jsou volby (dovednosti, velikost,
+vlastnost kouzlení) a na téže kartě řádek Creature Type · Size · Speed a všechny vlastnosti druhu s
+plným textem (bez skládání, bez lore). Texty jsou stejné jako v záložce Features & Traits listu
+(`speciesTraitsFrom`), načítají se v efektu podle vybraného druhu (D116). Nic se neukazuje, dokud není
+vybrán druh a případná varianta (D81). Creature Type je v datech jen u 57 z 81 druhů; u ostatních se
+dvojice vynechá, nic se nedomýšlí.
+
+## D239 — Kroky Background, Expertise, Proficiencies, Spells v kartách; přejmenování (W7, W-3)
+
+D239 (W7): Logika kroků Background, Expertise, Languages & Tools a Spells se nemění, dostávají vzhled
+listu (W1) v novém shellu: obsah v kartách, nadpisy sekcí, žádné odrážky. Krok „Languages & Tools“ se
+jmenuje „Proficiencies“ (lišta kroků i nadpis kroku). Panel Manage Spells v kroku Spells leží v kartě
+na plnou šířku obsahu. Karta bez obsahu (postava nemá žádný slot) se skryje.
+
+## D240 — Krok Class pustí Next jen s každou volbou, kterou ukazuje (W-3)
+
+D240: Next v kroku Class je zamčený, dokud není hotová každá volba, kterou krok pro danou třídu a úroveň
+ukazuje: podtřída (když ji třída na úrovni dává), bojový styl, přesný počet weapon masteries, přesný
+počet voleb podtřídy (manévry, runy…) plus dosavadní kontroly (jméno, třída, třídní volby, formy Wild
+Shape). Důvod: SPEC „žádná volba se nesmí přeskočit“; Fighter 3 bez podtřídy byl dosud vytvořitelný.
+Požadavky se čtou stejnými loadery jako pickery, takže brána a UI se nemohou rozejít. Level up: držené
+(zamčené) volby už jsou v datech, takže se počítají jako zvolené. Edit Character u starší postavy, které
+volba chybí: krok je neúplný, Next i skoky v liště kroků vpřed jsou zamčené, dokud se volba nedoplní
+(W9). Chybějící volba se hlásí v záhlaví seznamu („Choose a subclass.“, „Choose 2 more…“). Selhání
+načtení požadavků krok nezamyká (pickery ukazují vlastní chybu).
