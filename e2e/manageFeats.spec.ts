@@ -307,7 +307,7 @@ test('R13b g: Edit Character does not offer a manually added Tough again at an A
   await next(page)
   await expectStep(page, 'Ability scores')
   await next(page)
-  await expectStep(page, 'Ability Score Improvement / Feat')
+  await expectStep(page, 'ASI / Feat')
 
   const group = page.getByRole('group', { name: 'Level 4' })
   await group.getByRole('radio', { name: 'Feat', exact: true }).check()

@@ -507,6 +507,25 @@ describe('wizardReducer navigation', () => {
 		const result = wizardReducer(state, { type: 'next' })
 		expect(result).toBe(state)
 	})
+
+	it('goTo jumps back to any earlier step and keeps every choice (W9)', () => {
+		const state: WizardControllerState = { step: 'review', data: completeData() }
+		const result = wizardReducer(state, { type: 'goTo', step: 'class' })
+		expect(result.step).toBe('class')
+		expect(result.data).toBe(state.data)
+	})
+
+	it('goTo jumps forward while every step before the target is complete (W9)', () => {
+		const state: WizardControllerState = { step: 'class', data: completeData() }
+		expect(wizardReducer(state, { type: 'goTo', step: 'review' }).step).toBe('review')
+	})
+
+	it('goTo refuses a step past an incomplete one (W9)', () => {
+		const state: WizardControllerState = { step: 'class', data: { ...completeData(), speciesChoice: null } }
+		expect(wizardReducer(state, { type: 'goTo', step: 'species' }).step).toBe('species')
+		expect(wizardReducer(state, { type: 'goTo', step: 'background' })).toBe(state)
+		expect(wizardReducer(state, { type: 'goTo', step: 'review' })).toBe(state)
+	})
 })
 
 describe('saveCharacter', () => {

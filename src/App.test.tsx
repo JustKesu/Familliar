@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import { stepNav } from './creation/wizardTestNav'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import { CharacterStore } from './storage/characterStore'
@@ -135,7 +136,7 @@ describe('App routing (rework R1b, D151)', () => {
 		await user.click(await screen.findByRole('button', { name: 'Edit character' }))
 		expect(await screen.findByText('1. Class and level')).not.toBeNull()
 
-		await user.click(screen.getByRole('button', { name: 'Cancel' }))
+		await user.click(stepNav().getByRole('button', { name: 'Cancel' }))
 
 		expect(window.location.hash).toBe(`#/character/${created.id}`)
 		expect(await screen.findByRole('button', { name: 'Edit character' })).not.toBeNull()

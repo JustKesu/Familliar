@@ -4128,3 +4128,74 @@ Při `prefers-reduced-motion: reduce` se plátno vůbec nepřipojí (vypínač z
 částice žijí jen v proměnných komponenty a smyčka `requestAnimationFrame` se zastaví, když je karta
 skrytá nebo kurzor mimo okno a žádná částice nežije — pohyb myši nikdy nepřekreslí React. Barvy jdou
 z CSS proměnných (`--accent`, nová `--flame-hot`). Beze změny schématu.
+
+## D225 — Wizard používá téma listu (W1, W-1)
+
+D225 (W1): Celý wizard (všechny kroky, všechny režimy, pickery uvnitř) používá barvy, písma,
+tlačítka, vstupy, checkboxy a pilulky listu, žádný vlastní vzhled. Seznamy uvnitř wizardu nemají
+odrážky ani odsazení (vykreslený text pravidel `.mk-list` své odrážky drží).
+
+## D226 — Vodorovná sticky lišta kroků, „ASI / Feat" (W8, W-1)
+
+D226 (W8): Svislý seznam kroků nahradila vodorovná lišta „1. CLASS AND LEVEL · 2. SPECIES · …"
+(velká písmena jen přes CSS, text v DOM zůstává). Aktuální krok: barva textu a 2px spodní akcent;
+dosažitelné text-sub, nedosažitelné text-mute. Lišta je `position: sticky` nahoře (D116, žádný JS),
+neprůhledná, popisky se nezkracují — když se nevejdou, seznam kroků se zalomí na další řádek. Krok
+„Ability Score Improvement / Feat" se jmenuje „ASI / Feat".
+
+## D227 — Skákání mezi kroky (W9, W-1)
+
+D227 (W9): Každý dosažitelný krok v liště je tlačítko. Krok je dosažitelný, když jsou hotové všechny
+viditelné kroky před ním — tedy dozadu kamkoli, dopředu jen tam, kam by došlo opakované Next.
+Pravidlo hlídá i reducer (akce `goTo`), ne jen UI. Skok sám nic nemaže. V Edit Character je vše
+dosažitelné; level up má stejné pravidlo nad svým zkráceným seznamem.
+
+## D228 — Rozložení tlačítek, větší uložení (W10, W-1)
+
+D228 (W10): Tlačítka jsou v liště vpravo i pod krokem. Cancel je tiché textové tlačítko, oddělené
+mezerou od dvojice Back (obrys) + Next (plný akcent). Pod krokem Cancel úplně vlevo, Back + Next
+úplně vpravo. Na Review nahrazuje Next tlačítko uložení (CREATE CHARACTER / SAVE CHANGES / SAVE
+LEVEL N), plné a viditelně větší. Cíl: netrefit Cancel místo uložení.
+
+## D229 — ASI/Feat zůstává samostatný krok (W11, W-1)
+
+D229 (W11): Výběr ASI nebo featu zůstává vlastním krokem wizardu, neslučuje se s jiným.
+
+## D230 — Hierarchie nadpisů a karty (W21, W-1)
+
+D230 (W21): Nahoře krok má nadpis (heading font ~22px, 600, barva textu). Nadpisy sekcí (legend,
+h3) jako nadpisy sekcí listu (13px, velká písmena, akcent). Skupiny obsahu jsou karty (surface,
+linka, radius 12, padding 14/16, mezera 14); fieldsety wizardu se stylují jako karty, legenda uvnitř
+karty. Tlačítka a vstupy radius 6–8, pilulky 14, bez stínů a přechodů.
+
+## D231 — Potvrzovací dialog v appce při Cancel (W23, W27, W-1)
+
+D231 (W23/W27): Sdílený modální dialog (`ConfirmDialog`), nikdy `window.confirm`. Bezpečná volba
+plná a zaměřená, destruktivní obrys; Esc a klik na pozadí = bezpečná volba; fokus se vrací na
+spouštěcí tlačítko. Cancel ve wizardu: „Cancel character creation?" / „Discard your changes?" /
+„Cancel level up?", tlačítka „Keep editing" / „Discard". Když se nic nevyplnilo ani nezměnilo (data
+= prázdná, resp. = seed), Cancel odchází hned bez dialogu.
+
+## D232 — Remove level používá stejný dialog (W28, W-1)
+
+D232 (W28): Remove level místo dialogu vloženého do stránky používá ConfirmDialog: „Remove level N?",
+„Choices made at this level will be lost.", seznam toho, co zmizí (plan.dropped) zůstává, tlačítka
+„Keep level" / „Remove level". Tlačítko v hlavičce vypadá jako Level up.
+
+## D233 — Level up zůstává zkrácený celostránkový wizard (W25, W-1)
+
+D233 (W25): Level up se dál prochází jako celostránkový wizard s jen těmi kroky, které úroveň nabízí.
+
+## D234 — Nové texty anglicky (W29, W-1)
+
+D234 (W29): Všechny nové texty v UI jsou anglicky.
+
+## D235 — Centrovaný obsah wizardu (W30, W-1)
+
+D235 (W30): Obsah wizardu je centrovaný s max. šířkou ~960px, lišta kroků přes celou šířku stránky.
+Panel kroku Spells se roztahuje na šířku obsahu.
+
+## D236 — Pořadí kroků beze změny, tvorba zůstává samostatná obrazovka (W32, W-1)
+
+D236 (W32): Pořadí kroků se nemění (D13/D64). Tvorba postavy zůstává samostatná obrazovka krok po
+kroku.

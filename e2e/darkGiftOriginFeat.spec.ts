@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { expectStep, fillUpToBackground, finishFromBackground, next, type FighterOptions } from './wizard.ts'
+import { expectStep, fillUpToBackground, finishFromBackground, next, nextButton, wizardNav, type FighterOptions } from './wizard.ts'
 
 /* D205: any background's origin feat can be swapped for a Dark Gift; Mist Wanderer and Spirit Medium require one. */
 
@@ -10,7 +10,6 @@ const MIST_WANDERER = { radio: 'Mist Wanderer (RHW)', plusTwo: 'dexterity', plus
 const HAUNTED_ONE = { radio: 'Haunted One (RHW)', plusTwo: 'constitution', plusOne: 'wisdom' }
 const FARMER = { radio: 'Farmer (XPHB)', plusTwo: 'strength', plusOne: 'constitution' }
 
-const nextButton = (page: Page): Locator => page.getByRole('button', { name: 'Next', exact: true })
 const darkGiftList = (page: Page): Locator => page.getByRole('list', { name: 'Dark Gift feats' })
 const darkGift = (page: Page, name: string): Locator => darkGiftList(page).getByRole('radio', { name: `${name} — Dark Gift`, exact: true })
 const abilitySelect = (page: Page): Locator => page.getByRole('combobox', { name: 'Spellcasting ability', exact: true })
@@ -40,8 +39,8 @@ async function editToBackground(page: Page): Promise<void> {
 }
 
 async function saveEdit(page: Page): Promise<void> {
-  while (!(await page.getByRole('button', { name: 'Save changes' }).isVisible())) await next(page)
-  await page.getByRole('button', { name: 'Save changes' }).click()
+  while (!(await wizardNav(page).getByRole('button', { name: 'Save changes' }).isVisible())) await next(page)
+  await wizardNav(page).getByRole('button', { name: 'Save changes' }).click()
   await expect(page).toHaveURL(/#\/character\/[^/]+$/)
 }
 

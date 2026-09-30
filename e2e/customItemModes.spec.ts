@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { next } from './wizard.ts'
+import { next, wizardNav } from './wizard.ts'
 
 /*
  * R14a2 (D216). A Human Fighter 3 seeded at the current schema, as customItemBonuses.spec.ts:
@@ -106,7 +106,7 @@ test('R14a2 d: a Max HP +1 per level item at full HP — Level up to 5 leaves cu
   await expect(hitPoints(page)).toHaveText('36 / 36')
 
   await page.getByRole('button', { name: 'Level up to 5' }).click()
-  const save = page.getByRole('button', { name: 'Save level 5' })
+  const save = wizardNav(page).getByRole('button', { name: 'Save level 5' })
   for (let steps = 0; steps < 8 && !(await save.isVisible()); steps++) {
     const average = page.getByRole('radio', { name: 'Average (6)' })
     if (await average.isVisible()) await average.check()

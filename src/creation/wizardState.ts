@@ -754,6 +754,13 @@ function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbilityCho
 	return false
 }
 
+/** W9: a step can be jumped to when every visible step before it is complete — exactly as far as repeated Next would get. */
+export function isStepReachable(step: WizardStep, data: WizardData, conditions: WizardStepConditions = {}): boolean {
+	const steps = visibleSteps(conditions)
+	const idx = steps.indexOf(step)
+	return idx >= 0 && steps.slice(0, idx).every((earlier) => isStepComplete(earlier, data, conditions))
+}
+
 /** Whether every picker step is complete — the gate for the review step's save button. */
 export function isReadyToSave(data: WizardData, conditions: WizardStepConditions = {}): boolean {
 	return pickerSteps(conditions).every((step) => isStepComplete(step, data, conditions))
@@ -764,6 +771,7 @@ export type WizardAction =
 	| { type: 'seed'; data: WizardData; conditions?: WizardStepConditions }
 	| { type: 'next'; conditions?: WizardStepConditions }
 	| { type: 'back'; conditions?: WizardStepConditions }
+	| { type: 'goTo'; step: WizardStep; conditions?: WizardStepConditions }
 	| { type: 'setName'; name: string }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
@@ -816,6 +824,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			const prev = previousStep(state.step, action.conditions ?? {})
 			return prev ? { ...state, step: prev } : state
 		}
+		case 'goTo':
+			return isStepReachable(action.step, state.data, action.conditions ?? {}) ? { ...state, step: action.step } : state
 		case 'setName':
 			return { ...state, data: { ...state.data, name: action.name } }
 		case 'setClassChoice': {

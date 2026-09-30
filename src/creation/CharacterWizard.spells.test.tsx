@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
+import { stepBar, stepNav } from './wizardTestNav'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
@@ -418,11 +419,11 @@ async function fillClassStep(user: ReturnType<typeof userEvent.setup>, className
 }
 
 async function goNext(user: ReturnType<typeof userEvent.setup>) {
-	await user.click(screen.getByRole('button', { name: 'Next' }))
+	await user.click(stepNav().getByRole('button', { name: 'Next' }))
 }
 
 async function goBack(user: ReturnType<typeof userEvent.setup>) {
-	await user.click(screen.getByRole('button', { name: 'Back' }))
+	await user.click(stepNav().getByRole('button', { name: 'Back' }))
 }
 
 /** The hit points step (build order step 8, slice 8b) sits between featAsi and equipment for any level above 1; the apply-average-to-all control clears its gate in one click. */
@@ -541,7 +542,7 @@ describe('CharacterWizard — spells step', () => {
 
 		await fillThroughAbilities(user, 'Wizard', '3')
 		await findOfferButton('Fire Bolt')
-		const next = screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement
+		const next = stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement
 		expect(next.disabled).toBe(true)
 
 		await user.click(offerButton('Prestidigitation'))
@@ -606,7 +607,7 @@ describe('CharacterWizard — spells step', () => {
 
 		// Straight to hit points then equipment then review — no spells panel in between, and no gap in the step numbering.
 		expect(await screen.findByText('Name: Aria')).toBeTruthy()
-		expect(screen.queryByText('Spells', { selector: 'li' })).toBeNull()
+		expect(stepBar().queryByText(/\. Spells$/)).toBeNull()
 	})
 
 	it('an Eldritch Knight (Fighter 3) is offered spells from the WIZARD list (not Fighter\'s own, empty, list), capped by its third-caster slot level, and the step can be completed with picks persisting', async () => {

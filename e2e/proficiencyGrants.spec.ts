@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createFighter, fillUpToBackground, finishFromBackground } from './wizard.ts'
+import { createFighter, fillUpToBackground, finishFromBackground, nextButton } from './wizard.ts'
 
 /* D202: proficiency grants from RHW/FRHoF feats and species that carry them in structured fields. Fighter stands in for the Wizard of the task text: the wizard helper is Fighter-only and the species/feat steps do not depend on the class. */
 
@@ -102,11 +102,11 @@ test('D202 e: Lupin needs one of Perception/Stealth/Survival; the sheet shows it
     species: 'Lupin|RHW',
     onSpeciesStep: async (p) => {
       await expect(skillOptions(p)).toHaveText([/^Perception/, /^Stealth/, /^Survival/])
-      await expect(p.getByRole('button', { name: 'Next', exact: true })).toBeDisabled()
+      await expect(nextButton(p)).toBeDisabled()
       await p.getByRole('radio', { name: 'Medium', exact: true }).check()
-      await expect(p.getByRole('button', { name: 'Next', exact: true })).toBeDisabled()
+      await expect(nextButton(p)).toBeDisabled()
       await p.getByRole('checkbox', { name: 'Stealth', exact: true }).check()
-      await expect(p.getByRole('button', { name: 'Next', exact: true })).toBeEnabled()
+      await expect(nextButton(p)).toBeEnabled()
     },
   })
   await finishFromBackground(page, { name: 'Lupin', level: 1, species: 'Lupin|RHW' })
@@ -122,11 +122,11 @@ test('D202 f: Reborn needs one skill of any kind; the sheet shows it', async ({ 
     species: 'Reborn|RHW',
     onSpeciesStep: async (p) => {
       await expect(skillOptions(p)).toHaveCount(18)
-      await expect(p.getByRole('button', { name: 'Next', exact: true })).toBeDisabled()
+      await expect(nextButton(p)).toBeDisabled()
       await p.getByRole('radio', { name: 'Medium', exact: true }).check()
-      await expect(p.getByRole('button', { name: 'Next', exact: true })).toBeDisabled()
+      await expect(nextButton(p)).toBeDisabled()
       await p.getByRole('checkbox', { name: 'Stealth', exact: true }).check()
-      await expect(p.getByRole('button', { name: 'Next', exact: true })).toBeEnabled()
+      await expect(nextButton(p)).toBeEnabled()
     },
   })
   await finishFromBackground(page, { name: 'Reborn', level: 1, species: 'Reborn|RHW' })

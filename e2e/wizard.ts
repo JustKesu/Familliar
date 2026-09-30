@@ -9,8 +9,21 @@ export function select(scope: Page | Locator, label: string): Locator {
   return scope.getByRole('combobox', { name: label, exact: true })
 }
 
+/** W10: Next/Back/Cancel/save exist in the sticky bar and under the step; specs always use the row under the step. */
+export function wizardNav(page: Page): Locator {
+  return page.getByRole('group', { name: 'Step navigation', exact: true })
+}
+
+export function stepBar(page: Page): Locator {
+  return page.getByRole('navigation', { name: 'Wizard steps' })
+}
+
+export function nextButton(page: Page): Locator {
+  return wizardNav(page).getByRole('button', { name: 'Next', exact: true })
+}
+
 export async function next(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await nextButton(page).click()
 }
 
 const FIGHTER_ASI_LEVELS = [4, 6, 8, 12, 14, 16, 19]
@@ -87,7 +100,7 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
   await next(page)
 
   if (options.level >= 4) {
-    await expectStep(page, 'Ability Score Improvement / Feat')
+    await expectStep(page, 'ASI / Feat')
     const asiLevels = FIGHTER_ASI_LEVELS.filter((l) => l <= options.level)
     for (const [index, level] of asiLevels.entries()) {
       const group = page.getByRole('group', { name: `Level ${level}` })
@@ -119,7 +132,7 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
   await next(page)
 
   await expectStep(page, 'Review and save')
-  await page.getByRole('button', { name: 'Create character' }).click()
+  await wizardNav(page).getByRole('button', { name: 'Create character' }).click()
   await expect(page).toHaveURL(/#\/character\/[^/]+$/)
 }
 

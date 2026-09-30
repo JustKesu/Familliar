@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { ConfirmDialog } from '../app/ConfirmDialog'
 import type { Character } from '../storage/character'
 import { levelRemovalTarget, loadLevelRemovalPlan, type LevelRemovalPlan } from './levelRemoval'
 
@@ -45,47 +46,59 @@ export function RemoveLevelButton({
 
 	const current: ControlState = 'reason' in target ? { kind: 'unavailable', reason: target.reason } : state
 
-	if (current.kind === 'confirming') {
+	if (current.kind === 'ready' || current.kind === 'confirming') {
 		const { plan } = current
 		return (
-			<div className="sheet__remove-level-confirm" role="alertdialog" aria-label={`Remove level ${plan.level}?`}>
-				<p>
-					Remove level {plan.level}? The character goes back to level {plan.level - 1}.
-					{plan.dropped.length > 0 ? ' This deletes:' : ' Nothing stored carries this level.'}
-				</p>
-				{plan.dropped.length > 0 && (
-					<ul>
-						{plan.dropped.map((line, index) => (
-							<li key={index}>{line}</li>
-						))}
-					</ul>
+			<>
+				<button type="button" className="sheet__remove-level sheet__header-button" onClick={() => setState({ kind: 'confirming', plan })}>
+					<DownArrowIcon />
+					Remove level {plan.level}
+				</button>
+				{current.kind === 'confirming' && (
+					<ConfirmDialog
+						title={`Remove level ${plan.level}?`}
+						body="Choices made at this level will be lost."
+						safeLabel="Keep level"
+						destructiveLabel="Remove level"
+						onSafe={() => setState({ kind: 'ready', plan })}
+						onDestructive={() => onRemoveLevel(plan.result)}
+					>
+						<div className="confirm-dialog__extra">
+							<p>
+								The character goes back to level {plan.level - 1}.
+								{plan.dropped.length > 0 ? ' This deletes:' : ' Nothing stored carries this level.'}
+							</p>
+							{plan.dropped.length > 0 && (
+								<ul>
+									{plan.dropped.map((line, index) => (
+										<li key={index}>{line}</li>
+									))}
+								</ul>
+							)}
+							<p>Known and prepared spells are kept.</p>
+						</div>
+					</ConfirmDialog>
 				)}
-				<p>Known and prepared spells are kept.</p>
-				<button type="button" onClick={() => onRemoveLevel(plan.result)}>
-					Confirm removing level {plan.level}
-				</button>
-				<button type="button" onClick={() => setState({ kind: 'ready', plan })}>
-					Cancel
-				</button>
-			</div>
-		)
-	}
-	if (current.kind === 'ready') {
-		const { plan } = current
-		return (
-			<button type="button" className="sheet__remove-level" onClick={() => setState({ kind: 'confirming', plan })}>
-				Remove level {plan.level}
-			</button>
+			</>
 		)
 	}
 	return (
 		<button
 			type="button"
-			className="sheet__remove-level"
+			className="sheet__remove-level sheet__header-button"
 			disabled
 			title={current.kind === 'checking' ? 'Checking what the level holds…' : `Remove level unavailable: ${current.reason}`}
 		>
+			<DownArrowIcon />
 			Remove level
 		</button>
+	)
+}
+
+function DownArrowIcon(): ReactNode {
+	return (
+		<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+			<path d="M6 1.5v9M2 6.5l4 4 4-4" />
+		</svg>
 	)
 }

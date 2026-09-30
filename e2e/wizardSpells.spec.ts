@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { expectStep, fillUpToBackground, next, select } from './wizard.js'
+import { expectStep, fillUpToBackground, next, select, wizardNav } from './wizard.js'
 
 /*
  * R9c (D210). The wizard's Spells step renders the Manage Spells class section;
@@ -36,7 +36,7 @@ test('R9c: Eldritch Knight 3 — the Spells step uses the class section, Next ne
   for (const [ability, score] of scores) await select(page, ability).selectOption({ label: score })
   await next(page)
   await expectStep(page, 'Spells')
-  const nextButton = page.getByRole('button', { name: 'Next', exact: true })
+  const nextButton = wizardNav(page).getByRole('button', { name: 'Next', exact: true })
 
   await test.step('a: class section, both subsections, real counters, no "Always prepared from" list', async () => {
     await expect(prepared(page)).toBeVisible()
@@ -101,7 +101,7 @@ test('R9c: Eldritch Knight 3 — the Spells step uses the class section, Next ne
     await page.getByRole('group', { name: /From your background/ }).getByRole('radio').last().check()
     await next(page)
     await expectStep(page, 'Review and save')
-    await page.getByRole('button', { name: 'Create character' }).click()
+    await wizardNav(page).getByRole('button', { name: 'Create character' }).click()
     await expect(page).toHaveURL(/#\/character\/[^/]+$/)
 
     await page.getByRole('tab', { name: 'Spells' }).click()

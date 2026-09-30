@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
+import { stepNav } from './creation/wizardTestNav'
 import userEvent from '@testing-library/user-event'
 import CharacterManager from './CharacterManager'
 import { CharacterStore } from './storage/characterStore'
@@ -149,7 +150,7 @@ describe('CharacterManager level up (slice 8d3, rework R1b)', () => {
 		expect(await screen.findByText('1. Hit points')).not.toBeNull()
 		expect(screen.getByText('2. Review and save')).not.toBeNull()
 
-		await user.click(screen.getByRole('button', { name: 'Cancel' }))
+		await user.click(stepNav().getByRole('button', { name: 'Cancel' }))
 
 		expect(screen.queryByText('1. Hit points')).toBeNull()
 		expect(store.exportCharacter(created.id)).toBe(before)
@@ -194,7 +195,7 @@ describe('CharacterManager remove level (slice 8e)', () => {
 
 		const dialog = screen.getByRole('alertdialog', { name: 'Remove level 5?' })
 		expect(dialog.textContent).toContain('Hit points for level 5')
-		await user.click(screen.getByRole('button', { name: 'Cancel' }))
+		await user.click(within(dialog).getByRole('button', { name: 'Keep level' }))
 
 		expect(screen.queryByRole('alertdialog')).toBeNull()
 		expect(store.exportCharacter(created.id)).toBe(before)
@@ -209,7 +210,7 @@ describe('CharacterManager remove level (slice 8e)', () => {
 		render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
 		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
-		await user.click(screen.getByRole('button', { name: 'Confirm removing level 5' }))
+		await user.click(within(screen.getByRole('alertdialog', { name: 'Remove level 5?' })).getByRole('button', { name: 'Remove level' }))
 
 		const stored = store.list().find((character) => character.id === created.id)
 		expect(stored?.classes[0].level).toBe(4)
@@ -312,7 +313,7 @@ describe('CharacterManager routing (rework R1b)', () => {
 		await user.click(await screen.findByRole('button', { name: 'Edit character' }))
 
 		expect(await screen.findByText('1. Class and level')).not.toBeNull()
-		await user.click(screen.getByRole('button', { name: 'Cancel' }))
+		await user.click(stepNav().getByRole('button', { name: 'Cancel' }))
 
 		expect(await screen.findByRole('button', { name: 'Edit character' })).not.toBeNull()
 		expect(screen.queryByText('1. Class and level')).toBeNull()

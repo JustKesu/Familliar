@@ -29,6 +29,7 @@
   --heal: #6cc08a;
   --damage: #f08a6c;
   --chip: #27272b;
+  --backdrop: rgba(0, 0, 0, 0.6);
 }
 
 :root[data-theme='light'] {
@@ -47,4 +48,5 @@
   --heal: #2e7d3a;
   --damage: #b3432a;
   --chip: #ececef;
+  --backdrop: rgba(28, 28, 31, 0.45);
 }

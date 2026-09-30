@@ -1976,6 +1976,256 @@ button:disabled {
   color: var(--text-mute);
 }
 
+/* ---- character wizard shell (W-1) ---- */
+
+/* The flex row the list's New character button needs squeezed the wizard to its content width. */
+.char-create:has(> .wizard) {
+  display: block;
+  margin-bottom: 0;
+}
+
+/* W8: sticky by CSS alone (D116), opaque so content scrolls under it unseen. */
+.wizard__bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  margin-bottom: 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+/* The step list takes what the buttons leave and wraps its own items; labels never truncate. */
+.wizard__steps-nav {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.wizard__steps {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wizard__step {
+  padding: 10px 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-sub);
+  font: 600 13px/1.2 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wizard__step:hover:not(:disabled) {
+  color: var(--text);
+  border-color: transparent;
+}
+
+.wizard__step--active,
+.wizard__step--active:hover:not(:disabled) {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.wizard__step:disabled {
+  color: var(--text-mute);
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+/* W10: Cancel stands apart from Back + Next so a misclick never lands on it instead of the save. */
+.wizard__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+.wizard__bar > .wizard__nav {
+  margin-left: auto;
+  padding: 4px 0;
+}
+
+.wizard__content > .wizard__nav {
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.wizard__nav-main {
+  display: flex;
+  gap: 8px;
+}
+
+.wizard__nav button {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.wizard__nav .wizard__cancel {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-sub);
+}
+
+.wizard__nav .wizard__cancel:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--text);
+}
+
+.wizard__nav .wizard__save {
+  padding: 8px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* W30: content centered at ~960px under the full-width bar. */
+.wizard__content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.wizard__panel,
+.wizard__content .starting-equipment {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* W21: heading hierarchy — step title, then section headings like the sheet's. */
+.wizard__title {
+  margin: 0;
+  font: 600 22px/1.25 var(--font-heading);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+}
+
+.wizard__content legend,
+.wizard__content h3 {
+  margin: 0 0 8px;
+  padding: 0;
+  font: 600 13px/1.3 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* W21: content groups are cards; a floated legend sits inside the card instead of on its border. */
+.wizard__content fieldset,
+.wizard__panel > section,
+.wizard__content .starting-equipment > section {
+  min-width: 0;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.wizard__content fieldset fieldset {
+  background: var(--surface-2);
+}
+
+.wizard__content legend {
+  float: left;
+  width: 100%;
+}
+
+.wizard__content legend + * {
+  clear: both;
+}
+
+.wizard__content .option-list {
+  margin: 0;
+}
+
+/* W1: no bullets before checkboxes and radios; rendered rules text (.mk-list) keeps its own. */
+.wizard__content ul:not(.mk-list),
+.wizard__content ol:not(.mk-list) {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+/* ---- shared confirm dialog (W23/W28) ---- */
+
+.confirm-dialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--backdrop);
+}
+
+.confirm-dialog {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.confirm-dialog__title {
+  margin: 0 0 8px;
+  font: 600 18px/1.3 var(--font-heading);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+}
+
+.confirm-dialog__body,
+.confirm-dialog__extra {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+
+.confirm-dialog__extra p {
+  margin: 8px 0 0;
+}
+
+.confirm-dialog__extra ul {
+  margin: 4px 0 0;
+  padding-left: 1.25rem;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.confirm-dialog__actions button {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
 .counts {
   display: flex;
   flex-wrap: wrap;

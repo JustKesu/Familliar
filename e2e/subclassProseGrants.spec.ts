@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFighter, expectStep, next } from './wizard.ts'
+import { createFighter, expectStep, next, nextButton } from './wizard.ts'
 
 /*
  * D203: prose proficiency grants of RHW/FRHoF subclasses. Characters of other classes than Fighter are seeded into
@@ -50,11 +50,10 @@ async function open(page: Page, id: string, seed: Seed): Promise<void> {
 async function editToStep(page: Page, label: string): Promise<void> {
   await page.getByRole('button', { name: 'Edit character' }).click()
   await expectStep(page, 'Class and level')
-  for (let steps = 0; steps < 6 && !(await page.locator('[aria-current="step"]').innerText()).includes(label); steps++) await next(page)
+  for (let steps = 0; steps < 6 && !(await page.locator('[aria-current="step"]').textContent())?.includes(label); steps++) await next(page)
   await expectStep(page, label)
 }
 
-const nextButton = (page: Page): Locator => page.getByRole('button', { name: 'Next', exact: true })
 const skillSelect = (page: Page, label: string | RegExp): Locator => page.getByLabel(label)
 const offered = (select: Locator): Locator => select.locator('optgroup[label="Skill"] option')
 const skillRow = (page: Page, skill: string): Locator => page.locator('.sheet__skills li', { hasText: skill })
@@ -236,7 +235,7 @@ test('D203 h: removing level 3 deletes the Banneret skill and language picks', a
   const dialog = page.getByRole('alertdialog', { name: 'Remove level 3?' })
   await expect(dialog).toContainText('Skill proficiency: persuasion')
   await expect(dialog).toContainText('Language: Giant')
-  await dialog.getByRole('button', { name: 'Confirm removing level 3' }).click()
+  await dialog.getByRole('button', { name: 'Remove level', exact: true }).click()
   await expect(skillRow(page, 'Persuasion')).not.toContainText('●')
   const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0], STORAGE_KEY)
   expect(stored.subclassSkills ?? []).toEqual([])

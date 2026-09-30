@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createFighter, expectStep, fillUpToBackground, finishFromBackground, next, select } from './wizard.ts'
+import { createFighter, expectStep, fillUpToBackground, finishFromBackground, next, nextButton, select, wizardNav } from './wizard.ts'
 
 /* R13b (D215): Skilled and Magic Initiate are both feat types Manage Feats can now edit, so the pending line points there instead of Edit Character. */
 const PENDING = /Choices not made yet: .+ — make them in Manage Feats\./
@@ -15,7 +15,7 @@ test('A3a+b: origin feat choices can wait; the sheet names them as not made yet'
   const originFeat = page.getByRole('group', { name: 'Origin feat: Magic Initiate; Cleric' })
   await expect(originFeat).toBeVisible()
   await expect(originFeat.getByText('You can make this choice later in Manage Feats.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeEnabled()
+  await expect(nextButton(page)).toBeEnabled()
 
   await finishFromBackground(page, options)
 
@@ -67,13 +67,13 @@ test('A3d: completing the open choices in Edit Character clears the pending line
   await select(originFeat, 'Ability').selectOption('wisdom')
 
   while (!(await page.getByRole('group', { name: 'Level 4' }).isVisible())) await next(page)
-  await expectStep(page, 'Ability Score Improvement / Feat')
+  await expectStep(page, 'ASI / Feat')
   for (const [slot, skill] of [['1', 'arcana'], ['2', 'history'], ['3', 'nature']]) {
     await page.getByLabel(`Skilled skill or tool ${slot}`, { exact: true }).selectOption(`skill:${skill}`)
   }
 
-  while (!(await page.getByRole('button', { name: 'Save changes' }).isVisible())) await next(page)
-  await page.getByRole('button', { name: 'Save changes' }).click()
+  while (!(await wizardNav(page).getByRole('button', { name: 'Save changes' }).isVisible())) await next(page)
+  await wizardNav(page).getByRole('button', { name: 'Save changes' }).click()
   await expect(page).toHaveURL(/#\/character\/[^/]+$/)
 
   await openFeats(page)

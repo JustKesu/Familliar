@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { stepNav } from './wizardTestNav'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
@@ -387,11 +388,11 @@ function renderWizard() {
 }
 
 function goNext(user: ReturnType<typeof userEvent.setup>) {
-	return user.click(screen.getByRole('button', { name: 'Next' }))
+	return user.click(stepNav().getByRole('button', { name: 'Next' }))
 }
 
 function goBack(user: ReturnType<typeof userEvent.setup>) {
-	return user.click(screen.getByRole('button', { name: 'Back' }))
+	return user.click(stepNav().getByRole('button', { name: 'Back' }))
 }
 
 /** The apply-average-to-all control fills every level in one click — enough to clear the step's gate for tests that don't care about the specific hit point choices. */
@@ -453,7 +454,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		// The class step no longer waits on invocations — the gate moved with the picker.
 		expect(await screen.findByText(/Eldritch Invocations/)).toBeTruthy()
 		expect(screen.queryByRole('checkbox', { name: 'Agonizing Blast' })).toBeNull()
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 
 		cleanup()
 		renderWizard()
@@ -493,18 +494,18 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		expect(screen.getByText('All options chosen.')).toBeTruthy()
 		// ...but the Tome's own picks are not.
 		expect(await screen.findByText('0 of 3 cantrips chosen.')).toBeTruthy()
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		// Dancing Lights, not Prestidigitation: that one is already a class cantrip pick and is no longer offered here.
 		await user.click(checkbox('Mage Hand'))
 		await user.click(checkbox('Minor Illusion'))
 		await user.click(checkbox('Dancing Lights'))
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		await user.click(checkbox('Alarm'))
 		await user.click(checkbox('Detect Magic'))
 		expect(screen.getByText('2 of 2 spells chosen.')).toBeTruthy()
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 	})
 
 	it('an invocation that grants no choice leaves the step completable as before', async () => {
@@ -519,7 +520,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 
 		await user.click(await screen.findByRole('checkbox', { name: 'Pact of the Blade' }))
 		await user.click(checkbox('Agonizing Blast'))
-		await waitFor(() => expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false))
+		await waitFor(() => expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false))
 	})
 
 	it('the step is named after the granted progression, not a featureType code, and sits directly after Spells', async () => {
@@ -553,7 +554,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await goNext(user)
 
 		// Both invocation slots are filled, so the list comes back collapsed; open it to read the picks.
-		await user.click(await screen.findByRole('button', { name: /Eldritch Invocations/ }))
+		await user.click(await screen.findByRole('button', { name: /^Eldritch Invocations/ }))
 		await screen.findByRole('checkbox', { name: 'Pact of the Blade' })
 		expect(checkbox('Pact of the Blade').checked).toBe(true)
 		expect(checkbox('Agonizing Blast').checked).toBe(true)
@@ -570,13 +571,13 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await goNext(user)
 
 		await screen.findByRole('checkbox', { name: 'Pact of the Blade' })
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		await user.click(checkbox('Pact of the Blade'))
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		await user.click(checkbox('Agonizing Blast'))
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 	})
 
 	it('a Sorcerer (Metamagic, no spell-dependent prerequisite) reaches the step and completes it', async () => {
@@ -591,7 +592,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 
 		expect(stepLabels().some((label) => label.includes('Metamagic'))).toBe(true)
 		await user.click(await screen.findByRole('checkbox', { name: 'Careful Spell' }))
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 
 		await goNext(user)
 		await fillHitPointsStep(user)
@@ -602,7 +603,7 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
 		await user.click(within(screen.getByRole('group', { name: /From your background/ })).getByRole('radio', { name: 'Option B' }))
 		await goNext(user)
-		const save = (await screen.findByRole('button', { name: 'Create character' })) as HTMLButtonElement
+		const save = (await stepNav().findByRole('button', { name: 'Create character' })) as HTMLButtonElement
 		expect(save.disabled).toBe(false)
 	})
 

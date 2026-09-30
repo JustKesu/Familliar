@@ -56,7 +56,7 @@ test('D201 c: a level 19 character is offered FRHoF Epic Boons, no FRHoF Origin 
     await select(page, ability).selectOption({ label: score })
   }
   await next(page)
-  await expectStep(page, 'Ability Score Improvement / Feat')
+  await expectStep(page, 'ASI / Feat')
 
   // Fighter ASI levels; taken in order because a later grant only registers once the earlier ones are set.
   for (const level of [4, 6, 8, 12, 14, 16, 19]) {

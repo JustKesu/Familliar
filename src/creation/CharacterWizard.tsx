@@ -87,10 +87,14 @@ import type { CharacterStore } from '../storage/characterStore'
 import type { LevelGains } from '../levelUp/levelGains'
 import { levelUpStepConditions, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
 import { heldPicksFrom } from '../levelUp/heldPicks'
+import { ConfirmDialog } from '../app/ConfirmDialog'
+import { WizardNavButtons, WizardStepList } from './WizardShell'
 import {
+	emptyWizardData,
 	initialControllerState,
 	isReadyToSave,
 	isStepComplete,
+	isStepReachable,
 	saveCharacter,
 	stepIndex,
 	visibleSteps,
@@ -101,6 +105,7 @@ import {
 	wizardSubclassSkillGrants,
 	wizardToolGrants,
 	type SpellRequirement,
+	type WizardData,
 	type WizardStep,
 	type WizardStepConditions,
 } from './wizardState'
@@ -135,7 +140,7 @@ const STEP_LABELS: Record<WizardStep, string> = {
 	abilities: 'Ability scores',
 	spells: 'Spells',
 	classOptionalFeatures: 'Class options',
-	featAsi: 'Ability Score Improvement / Feat',
+	featAsi: 'ASI / Feat',
 	hitPoints: 'Hit points',
 	equipment: 'Starting equipment',
 	review: 'Review and save',
@@ -190,6 +195,9 @@ export function CharacterWizard({
 	/** D175: the chosen species' sizes, tagged like speciesSkillShape — the completion check needs them before the picker's panel would mount. */
 	const [speciesSizeShape, setSpeciesSizeShape] = useState<{ key: string; sizes: string[] } | null>(null)
 	const [saveError, setSaveError] = useState<string | null>(null)
+	/** W23: what Cancel compares against — the empty draft, or the seed once it is dispatched. */
+	const [baseline, setBaseline] = useState<WizardData>(emptyWizardData)
+	const [confirmingCancel, setConfirmingCancel] = useState(false)
 	/** Editing only: false until the seed's own data (subclass sources/featureTypes, spell levels) has loaded and been dispatched. */
 	const [seeded, setSeeded] = useState(character === undefined)
 	const [seedError, setSeedError] = useState<string | null>(null)
@@ -274,6 +282,7 @@ export function CharacterWizard({
 				// Nothing is stored until the save at the end, so the raised level lives only in this run's state.
 				const data = levelUp && seed.classChoice ? { ...seed, classChoice: { ...seed.classChoice, level: levelUp.level } } : seed
 				dispatch({ type: 'seed', data, conditions: levelUp ? levelUpStepConditions(levelUp) : {} })
+				setBaseline(data)
 				setSeeded(true)
 			})
 			.catch((error: unknown) => {
@@ -1270,6 +1279,31 @@ export function CharacterWizard({
 
 	const canGoNext = isStepComplete(state.step, state.data, stepConditions)
 
+	function handleCancel(): void {
+		if (JSON.stringify(state.data) === JSON.stringify(baseline)) onCancel()
+		else setConfirmingCancel(true)
+	}
+
+	const cancelDialog = levelUp
+		? { title: 'Cancel level up?', body: 'Choices for this level will be lost.' }
+		: character
+			? { title: 'Discard your changes?', body: 'Changes you made will be lost.' }
+			: { title: 'Cancel character creation?', body: 'Your choices will be lost.' }
+
+	const onReview = state.step === 'review'
+	const navButtons = (label: string): ReactNode => (
+		<WizardNavButtons
+			label={label}
+			onCancel={handleCancel}
+			onBack={() => dispatch({ type: 'back', conditions: stepConditions })}
+			backDisabled={stepIndex(state.step, stepConditions) === 0}
+			primaryLabel={onReview ? (levelUp ? `Save level ${levelUp.level}` : character ? 'Save changes' : 'Create character') : 'Next'}
+			onPrimary={onReview ? handleSave : () => dispatch({ type: 'next', conditions: stepConditions })}
+			primaryDisabled={onReview ? !isReadyToSave(state.data, stepConditions) : !canGoNext}
+			isSave={onReview}
+		/>
+	)
+
 	if (seedError !== null) {
 		return (
 			<div className="wizard">
@@ -1286,17 +1320,21 @@ export function CharacterWizard({
 
 	return (
 		<div className="wizard">
-			<ol className="wizard__steps">
-				{visibleSteps(stepConditions).map((step, index) => (
-					<li
-						key={step}
-						className={step === state.step ? 'wizard__step wizard__step--active' : 'wizard__step'}
-						aria-current={step === state.step ? 'step' : undefined}
-					>
-						{index + 1}. {stepLabel(step, classOptionalFeatureGroups)}
-					</li>
-				))}
-			</ol>
+			<div className="wizard__bar">
+				<WizardStepList
+					steps={visibleSteps(stepConditions).map((step) => ({
+						key: step,
+						label: stepLabel(step, classOptionalFeatureGroups),
+						current: step === state.step,
+						reachable: isStepReachable(step, state.data, stepConditions),
+					}))}
+					onGoTo={(step) => dispatch({ type: 'goTo', step: step as WizardStep, conditions: stepConditions })}
+				/>
+				{navButtons('Quick navigation')}
+			</div>
+
+			<div className="wizard__content">
+			<h2 className="wizard__title">{stepLabel(state.step, classOptionalFeatureGroups)}</h2>
 
 			{levelUp && unknownStepReasons[state.step] !== undefined && (
 				<p className="wizard__level-up-unknown">
@@ -1761,35 +1799,18 @@ export function CharacterWizard({
 				</div>
 			)}
 
-			<div className="wizard__nav">
-				<button type="button" onClick={onCancel}>
-					Cancel
-				</button>
-				<button
-					type="button"
-					onClick={() => dispatch({ type: 'back', conditions: stepConditions })}
-					disabled={stepIndex(state.step, stepConditions) === 0}
-				>
-					Back
-				</button>
-				{state.step === 'review' ? (
-					<button
-						type="button"
-						onClick={handleSave}
-						disabled={!isReadyToSave(state.data, stepConditions)}
-					>
-						{levelUp ? `Save level ${levelUp.level}` : character ? 'Save changes' : 'Create character'}
-					</button>
-				) : (
-					<button
-						type="button"
-						onClick={() => dispatch({ type: 'next', conditions: stepConditions })}
-						disabled={!canGoNext}
-					>
-						Next
-					</button>
-				)}
+			{navButtons('Step navigation')}
 			</div>
+			{confirmingCancel && (
+				<ConfirmDialog
+					title={cancelDialog.title}
+					body={cancelDialog.body}
+					safeLabel="Keep editing"
+					destructiveLabel="Discard"
+					onSafe={() => setConfirmingCancel(false)}
+					onDestructive={onCancel}
+				/>
+			)}
 		</div>
 	)
 }

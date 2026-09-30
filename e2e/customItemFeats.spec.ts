@@ -152,7 +152,7 @@ test('R14c1 d: with an item feat Tough active, Edit Character does not offer Tou
   await next(page)
   await expectStep(page, 'Ability scores')
   await next(page)
-  await expectStep(page, 'Ability Score Improvement / Feat')
+  await expectStep(page, 'ASI / Feat')
 
   const group = page.getByRole('group', { name: 'Level 4' })
   await group.getByRole('radio', { name: 'Feat', exact: true }).check()

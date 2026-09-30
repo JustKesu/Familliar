@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { next } from './wizard.ts'
+import { next, wizardNav } from './wizard.ts'
 
 /*
  * R14b (D217). A Human Fighter 3 seeded at the current schema, as customItemModes.spec.ts: STR 15, DEX 14,
@@ -233,7 +233,7 @@ test('R14b h: the level-up Hit points step shows the maximum with the item bonus
   await open(page, character)
 
   await page.getByRole('button', { name: 'Level up to 5' }).click()
-  const saveButton = page.getByRole('button', { name: 'Save level 5' })
+  const saveButton = wizardNav(page).getByRole('button', { name: 'Save level 5' })
   let checkedTotal = false
   for (let steps = 0; steps < 8 && !(await saveButton.isVisible()); steps++) {
     const average = page.getByRole('radio', { name: 'Average (6)' })

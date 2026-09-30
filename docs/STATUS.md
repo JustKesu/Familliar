@@ -2038,6 +2038,19 @@ hidden or idle, not mounted under reduced motion), watches `data-flame` /
 toggle; `AppSettings.flame` (default true) via `applyFlame`. `--flame-hot` in
 theme.css; `main` has an opaque `var(--bg)`. E2E `flame.spec.ts` R16 a–d.
 
+W-1 (D225–D236) done. No schema bump. Wizard shell: `creation/WizardShell.tsx`
+(`WizardStepList` — sticky horizontal step bar, reachable steps are buttons;
+`WizardNavButtons` — Cancel · Back + Next/save, rendered in the bar as "Quick
+navigation" and under the step as "Step navigation"). Step title h2 per step,
+fieldsets styled as cards, content centered at 960px. `wizardState.ts`:
+`isStepReachable` + reducer action `goTo`. `app/ConfirmDialog.tsx` (portal,
+role alertdialog, safe button focused, Esc/backdrop = safe, focus returns) used
+by wizard Cancel (only when data differs from empty/seed) and Remove level
+(keeps the dropped list; header button styled like Level up). `--backdrop`
+token in theme.css. Step label "ASI / Feat". Tests target the "Step
+navigation" row (`e2e/wizard.ts` `wizardNav`, `src/creation/wizardTestNav.ts`).
+E2E `wizardShell.spec.ts` W9 a/b, W23 c–f, W28 g.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

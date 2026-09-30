@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { saveCharacter, wizardDataFromCharacter } from '../creation/wizardState'
@@ -453,14 +453,22 @@ describe('RemoveLevelButton', () => {
 		render(<RemoveLevelButton character={single('Fighter', 'Champion', 5, 4)} onRemoveLevel={onRemoveLevel} loadPlan={fixturePlan} />)
 
 		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
-		expect(screen.getByRole('alertdialog', { name: 'Remove level 5?' })).not.toBeNull()
-		await user.click(screen.getByRole('button', { name: 'Cancel' }))
+		const dialog = screen.getByRole('alertdialog', { name: 'Remove level 5?' })
+		expect(dialog.textContent).toContain('Choices made at this level will be lost.')
+		expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Keep level' }))
+		await user.click(within(dialog).getByRole('button', { name: 'Keep level' }))
 
 		expect(onRemoveLevel).not.toHaveBeenCalled()
-		expect(screen.getByRole('button', { name: 'Remove level 5' })).not.toBeNull()
+		expect(screen.queryByRole('alertdialog')).toBeNull()
+		expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove level 5' }))
 
 		await user.click(screen.getByRole('button', { name: 'Remove level 5' }))
-		await user.click(screen.getByRole('button', { name: 'Confirm removing level 5' }))
+		await user.keyboard('{Escape}')
+		expect(screen.queryByRole('alertdialog')).toBeNull()
+		expect(onRemoveLevel).not.toHaveBeenCalled()
+
+		await user.click(screen.getByRole('button', { name: 'Remove level 5' }))
+		await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Remove level' }))
 		expect(onRemoveLevel).toHaveBeenCalledTimes(1)
 		expect((onRemoveLevel.mock.calls[0][0] as Character).classes[0].level).toBe(4)
 	})

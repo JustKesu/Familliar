@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, within } from '@testing-library/react'
+import { stepBar, stepNav } from './wizardTestNav'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
@@ -311,11 +312,11 @@ async function fillSpeciesStep(user: ReturnType<typeof userEvent.setup>) {
 }
 
 async function goNext(user: ReturnType<typeof userEvent.setup>) {
-	await user.click(screen.getByRole('button', { name: 'Next' }))
+	await user.click(stepNav().getByRole('button', { name: 'Next' }))
 }
 
 async function goBack(user: ReturnType<typeof userEvent.setup>) {
-	await user.click(screen.getByRole('button', { name: 'Back' }))
+	await user.click(stepNav().getByRole('button', { name: 'Back' }))
 }
 
 async function fillLanguagesStep(user: ReturnType<typeof userEvent.setup>) {
@@ -436,7 +437,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goNext(user)
 		await user.click(await screen.findByRole('radio', { name: 'Soldier (XPHB)' }))
 		// No ability-bonus distribution made.
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		await goBack(user) // background -> species
 		await screen.findByLabelText('Species')
@@ -444,12 +445,12 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 
 		await user.click(await screen.findByRole('button', { name: /^Background/ }))
 		expect((screen.getByRole('radio', { name: 'Soldier (XPHB)' }) as HTMLInputElement).checked).toBe(true)
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		// Finishing the distribution now completes the step.
 		await user.selectOptions(screen.getByLabelText('+2'), 'strength')
 		await user.selectOptions(screen.getByLabelText('+1'), 'dexterity')
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 		await goNext(user)
 		expect(await screen.findByLabelText('Draconic (XPHB)')).toBeTruthy()
 	})
@@ -715,7 +716,7 @@ describe('CharacterWizard — storage', () => {
 
 		expect(store.create).not.toHaveBeenCalled()
 
-		await user.click(screen.getByRole('button', { name: 'Create character' }))
+		await user.click(stepNav().getByRole('button', { name: 'Create character' }))
 
 		expect(store.create).toHaveBeenCalledTimes(1)
 		expect(onSaved).toHaveBeenCalledTimes(1)
@@ -738,10 +739,10 @@ describe('CharacterWizard — storage', () => {
 		await goNext(user)
 		await fillLanguagesStep(user)
 		// D174: Battle Master's artisan's tool blocks the step until it is chosen.
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 		await user.selectOptions(await screen.findByRole('combobox', { name: /Battle Master tool/ }), "Smith's Tools")
 		// D177: so does Student of War's Fighter skill.
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 		await user.selectOptions(screen.getByRole('combobox', { name: /Battle Master skill/ }), 'History')
 		await goNext(user)
 		await user.selectOptions(screen.getByLabelText('Strength'), '15')
@@ -756,7 +757,7 @@ describe('CharacterWizard — storage', () => {
 		await fillEquipmentStep(user)
 		await goNext(user)
 
-		await user.click(screen.getByRole('button', { name: 'Create character' }))
+		await user.click(stepNav().getByRole('button', { name: 'Create character' }))
 
 		expect(store.create).toHaveBeenCalledWith({
 			name: 'Aria',
@@ -832,14 +833,14 @@ describe('CharacterWizard — starting equipment step', () => {
 
 		await fillThroughAbilities(user)
 		const fromClass = await screen.findByRole('group', { name: /From your class/ })
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		const fromBackground = screen.getByRole('group', { name: /From your background/ })
 		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 	})
 
 	it('a coin-only option on both sides saves money and no items', async () => {
@@ -852,7 +853,7 @@ describe('CharacterWizard — starting equipment step', () => {
 		const fromBackground = screen.getByRole('group', { name: /From your background/ })
 		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
 		await goNext(user)
-		await user.click(await screen.findByRole('button', { name: 'Create character' }))
+		await user.click(await stepNav().findByRole('button', { name: 'Create character' }))
 
 		const call = vi.mocked(store.create).mock.calls[0][0]
 		expect(call.inventory).toEqual([])
@@ -870,13 +871,13 @@ describe('CharacterWizard — starting equipment step', () => {
 		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
 
 		// Both options taken, but the instrument the option grants is still unnamed.
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		await user.click(await screen.findByRole('radio', { name: 'Flute (XPHB)' }))
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 
 		await goNext(user)
-		await user.click(await screen.findByRole('button', { name: 'Create character' }))
+		await user.click(await stepNav().findByRole('button', { name: 'Create character' }))
 
 		const call = vi.mocked(store.create).mock.calls[0][0]
 		expect(call.inventory).toEqual([{ name: 'Flute', source: 'XPHB', quantity: 1 }])
@@ -943,7 +944,7 @@ describe('CharacterWizard — feat/ASI step', () => {
 
 		// Straight to hit points, then equipment then review — no feat/ASI panel in between, and no gap in the step numbering.
 		expect(await screen.findByText('Name: Aria')).toBeTruthy()
-		expect(screen.queryByText('Ability Score Improvement / Feat', { selector: 'li' })).toBeNull()
+		expect(stepBar().queryByText(/ASI \/ Feat/)).toBeNull()
 	})
 
 	it('a Fighter at level 12 sees a feat/ASI choice for every level the class has granted by then — four, not the generic three, because Fighter also gets one at level 6', async () => {
@@ -1023,9 +1024,9 @@ describe('CharacterWizard — expertise step', () => {
 		const slot = await screen.findByRole('combobox', { name: /Thieves' Cant language/ })
 		// The two creation picks are never offered again.
 		expect(within(slot).queryByRole('option', { name: 'Draconic' })).toBeNull()
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 		await user.selectOptions(slot, 'Elvish')
-		expect((screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 		// A feature pick is no longer offered as a creation pick.
 		expect(screen.queryByLabelText('Elvish (XPHB)')).toBeNull()
 
@@ -1045,7 +1046,7 @@ describe('CharacterWizard — expertise step', () => {
 
 		// Straight to languages — no expertise panel in between, and no gap in the step numbering.
 		expect(await screen.findByLabelText('Draconic (XPHB)')).toBeTruthy()
-		expect(screen.queryByText('Expertise', { selector: 'li' })).toBeNull()
+		expect(stepBar().queryByText(/Expertise/)).toBeNull()
 	})
 
 	it('changing the class clears previously chosen expertise skills', async () => {

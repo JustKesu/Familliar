@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { createFighter, expectStep, next } from './wizard.ts'
+import { createFighter, expectStep, next, nextButton, wizardNav } from './wizard.ts'
 
 /*
  * D204: spells of the Dark Gift feats, Boon of Revelry, Telepathic/Telekinetic, and the marks' spellcasting ability.
@@ -42,7 +42,6 @@ const spellRow = (page: Page, name: string): Locator => panel(page).locator('.sh
 const kindRow = (page: Page, name: string, kind: 'cast' | 'use'): Locator => panel(page).locator(`.sheet__spell-row--${kind}`, { has: named(page, name) })
 const hitDc = (row: Locator): Locator => row.locator('.sheet__action-to-hit')
 const abilitySelect = (scope: Page | Locator): Locator => scope.getByRole('combobox', { name: 'Spellcasting ability', exact: true })
-const nextButton = (page: Page): Locator => page.getByRole('button', { name: 'Next', exact: true })
 
 async function expectLongRestUse(page: Page, name: string): Promise<void> {
   await expect(kindRow(page, name, 'use')).toHaveCount(1)
@@ -167,8 +166,8 @@ test('D204 d: a mark with no ability stored leaves only its own spells unresolve
   const level6 = await editToLevel(page, 6)
   await expect(nextButton(page)).toBeDisabled()
   await abilitySelect(level6).selectOption('charisma')
-  while (!(await page.getByRole('button', { name: 'Save changes' }).isVisible())) await next(page)
-  await page.getByRole('button', { name: 'Save changes' }).click()
+  while (!(await wizardNav(page).getByRole('button', { name: 'Save changes' }).isVisible())) await next(page)
+  await wizardNav(page).getByRole('button', { name: 'Save changes' }).click()
   await page.getByRole('tab', { name: 'Spells' }).click()
   // 8 + PB 3 + Cha mod -1 (Cha 8).
   await expect(hitDc(spellRow(page, 'Thunderclap'))).toContainText('DC 10')
