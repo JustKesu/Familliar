@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { expectStep, fillUpToBackground, next, select, wizardNav } from './wizard.js'
+import { expectStep, fillUpToBackground, next, select, takeStartingEquipment, wizardNav } from './wizard.js'
 
 /*
  * R9c (D210). The wizard's Spells step renders the Manage Spells class section;
@@ -97,8 +97,7 @@ test('R9c: Eldritch Knight 3 — the Spells step uses the class section, Next ne
     await page.getByRole('button', { name: /Use the average/ }).click()
     await next(page)
     await expectStep(page, 'Starting equipment')
-    await page.getByRole('group', { name: /From your class/ }).getByRole('radio').last().check()
-    await page.getByRole('group', { name: /From your background/ }).getByRole('radio').last().check()
+    await takeStartingEquipment(page)
     await next(page)
     await expectStep(page, 'Review and save')
     await wizardNav(page).getByRole('button', { name: 'Create character' }).click()

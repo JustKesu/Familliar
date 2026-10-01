@@ -28,6 +28,27 @@ export function textToggle(scope: Page | Locator, name: string): Locator {
   return scope.getByRole('button', { name: `${name} text`, exact: true })
 }
 
+/** W-7: the option cards of one Starting equipment section; each card has one CHOOSE / CHOSEN button, "Choose class option A". */
+export function equipmentSection(page: Page, origin: 'class' | 'background'): Locator {
+  return page.getByRole('group', { name: origin === 'class' ? /^From your class/ : /^From your background/ })
+}
+
+export function equipmentChoose(page: Page, origin: 'class' | 'background', option: string): Locator {
+  return equipmentSection(page, origin).getByRole('button', { name: `Choose ${origin} option ${option}`, exact: true })
+}
+
+/** The first or last option card of a section, whatever its letter — for specs that only need to get past the step. */
+export function equipmentChooseAny(page: Page, origin: 'class' | 'background', which: 'first' | 'last'): Locator {
+  const buttons = equipmentSection(page, origin).getByRole('button', { name: new RegExp(`^Choose ${origin} option `) })
+  return which === 'first' ? buttons.first() : buttons.last()
+}
+
+/** The Starting equipment step as most specs need it: last option of the class (first with `classGear`) and last of the background. */
+export async function takeStartingEquipment(page: Page, classGear = false): Promise<void> {
+  await equipmentChooseAny(page, 'class', classGear ? 'first' : 'last').click()
+  await equipmentChooseAny(page, 'background', 'last').click()
+}
+
 export function stepBar(page: Page): Locator {
   return page.getByRole('navigation', { name: 'Wizard steps' })
 }
@@ -114,10 +135,14 @@ export interface FighterOptions {
   onLanguagesStep?: (page: Page) => Promise<void>
   /** Background radio and its +2/+1 abilities; Acolyte (Wisdom/Intelligence) when absent. */
   background?: { radio: string; plusTwo: string; plusOne: string }
+  /** W-7: runs on the Background step after the abilities (a background's tool pick, e.g. Soldier's gaming set). */
+  onBackgroundStep?: (page: Page) => Promise<void>
   /** W-6: finishFromBackground returns on the Hit points step instead of filling it in. */
   stopAtHitPoints?: boolean
   /** F-2b: finishFromBackground returns on the ASI / Feat step with every card still empty. */
   stopAtAsi?: boolean
+  /** W-7: finishFromBackground returns on the Starting equipment step with nothing taken. */
+  stopAtEquipment?: boolean
 }
 
 /** Fighter with background Acolyte unless `background` says otherwise; stops on the Background step so the caller can inspect it. */
@@ -149,6 +174,7 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
   await page.getByRole('radio', { name: background.radio }).check()
   await select(page, '+2').selectOption(background.plusTwo)
   await select(page, '+1').selectOption(background.plusOne)
+  await options.onBackgroundStep?.(page)
 }
 
 /** Continues from the Background step to the saved sheet. */
@@ -194,9 +220,8 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
   }
 
   await expectStep(page, 'Starting equipment')
-  const classOptions = page.getByRole('group', { name: /From your class/ }).getByRole('radio')
-  await (options.classGear ? classOptions.first() : classOptions.last()).check()
-  await page.getByRole('group', { name: /From your background/ }).getByRole('radio').last().check()
+  if (options.stopAtEquipment) return
+  await takeStartingEquipment(page, options.classGear)
   await next(page)
 
   await expectStep(page, 'Review and save')

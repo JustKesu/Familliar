@@ -11,7 +11,8 @@ import {
 	type StartingEquipmentOffer,
 	type StartingEquipmentOption,
 } from './startingEquipmentData'
-import { copperToCoins } from './currency'
+import { EquipmentOptionCard } from './EquipmentOptionCard'
+import { StartingTable } from './StartingTable'
 
 /*
  * The wizard's starting-equipment step (build order step 7, slice a2). One
@@ -57,7 +58,7 @@ function CategoryPicker({
 	const options: SearchableOption[] = refs.map((ref) => ({
 		key: itemKey(ref),
 		name: ref.name,
-		label: `${ref.name} (${ref.source})`,
+		book: ref.source,
 		selected: picked !== undefined && itemKey(picked) === itemKey(ref),
 	}))
 
@@ -69,76 +70,15 @@ function CategoryPicker({
 
 	return (
 		<SearchableOptionList
-			legend={`Choose ${label}`}
+			legend={label.charAt(0).toUpperCase() + label.slice(1)}
 			name={`starting-equipment-${pickKey}`}
 			inputType="radio"
+			variant="choose"
 			options={options}
 			required={1}
 			renderCount={({ chosen }) => (chosen === 1 ? 'Chosen' : 'Choose 1')}
 			onToggle={toggle}
 		/>
-	)
-}
-
-function ElementList({
-	origin,
-	option,
-	selected,
-	categoryItems,
-	value,
-	onChange,
-}: {
-	origin: EquipmentOrigin
-	option: StartingEquipmentOption
-	selected: boolean
-	categoryItems: Record<EquipmentCategory, ItemRef[]> | null
-	value: StartingEquipmentChoice
-	onChange: (choice: StartingEquipmentChoice) => void
-}): ReactNode {
-	return (
-		<ul className="starting-equipment__grants">
-			{option.elements.map((element, elementIndex) => {
-				if (element.kind === 'coins') {
-					return <li key={elementIndex}>{element.label}</li>
-				}
-				if (element.kind === 'category') {
-					return (
-						<li key={elementIndex}>
-							{element.label}
-							{selected && (
-								<CategoryPicker
-									origin={origin}
-									option={option}
-									elementIndex={elementIndex}
-									categories={element.categories}
-									label={element.label}
-									categoryItems={categoryItems}
-									value={value}
-									onChange={onChange}
-								/>
-							)}
-						</li>
-					)
-				}
-				// A pack contributes its contents, not itself — show them, so the option says what it really grants.
-				const expanded = element.items.length !== 1 || element.items[0].name !== element.label.replace(/ ×\d+$/, '')
-				return (
-					<li key={elementIndex}>
-						{element.label}
-						{expanded && (
-							<ul className="starting-equipment__contents">
-								{element.items.map((item) => (
-									<li key={itemKey(item)}>
-										{item.name}
-										{item.quantity > 1 ? ` ×${item.quantity}` : ''}
-									</li>
-								))}
-							</ul>
-						)}
-					</li>
-				)
-			})}
-		</ul>
 	)
 }
 
@@ -160,8 +100,11 @@ function OfferSection({
 	onChange: (choice: StartingEquipmentChoice) => void
 }): ReactNode {
 	const chosenKey = origin === 'class' ? value.classOptionKey : value.backgroundOptionKey
+	const chosenOption = findOption(offer, chosenKey)
 
 	function chooseOption(key: string): void {
+		// Like a radio: taking the option already taken changes nothing, so its category picks survive a second click.
+		if (key === chosenKey) return
 		// Switching option drops the category picks made under the old one: their keys name the option they belong to.
 		const categoryPicks = Object.fromEntries(
 			Object.entries(value.categoryPicks).filter(([pickKey]) => !pickKey.startsWith(`${origin}:`)),
@@ -178,27 +121,35 @@ function OfferSection({
 			<legend>{legend}</legend>
 			{error && <p className="error">Could not load the starting equipment: {error}</p>}
 			{offer === null && !error && <p>Loading…</p>}
-			{offer?.options.map((option) => (
-				<div key={option.key} className="starting-equipment__option">
-					<label>
-						<input
-							type="radio"
-							name={`starting-equipment-${origin}`}
-							checked={chosenKey === option.key}
-							onChange={() => chooseOption(option.key)}
-						/>{' '}
-						{option.label}
-					</label>
-					<ElementList
+			{offer && (
+				<div className="equip-cards">
+					{offer.options.map((option) => (
+						<EquipmentOptionCard
+							key={option.key}
+							origin={origin}
+							option={option}
+							chosen={chosenKey === option.key}
+							onChoose={() => chooseOption(option.key)}
+						/>
+					))}
+				</div>
+			)}
+			{/* Under the cards at full width, only for the chosen option. */}
+			{chosenOption?.elements.map((element, elementIndex) =>
+				element.kind === 'category' ? (
+					<CategoryPicker
+						key={elementIndex}
 						origin={origin}
-						option={option}
-						selected={chosenKey === option.key}
+						option={chosenOption}
+						elementIndex={elementIndex}
+						categories={element.categories}
+						label={element.label}
 						categoryItems={categoryItems}
 						value={value}
 						onChange={onChange}
 					/>
-				</div>
-			))}
+				) : null,
+			)}
 		</fieldset>
 	)
 }
@@ -225,7 +176,6 @@ export function StartingEquipmentPicker({
 	onChange: (choice: StartingEquipmentChoice) => void
 }): ReactNode {
 	const { inventory, currencyCopper } = buildStartingInventory(classOffer, backgroundOffer, value)
-	const coins = copperToCoins(currencyCopper)
 	const bothChosen = findOption(classOffer, value.classOptionKey) !== null && findOption(backgroundOffer, value.backgroundOptionKey) !== null
 
 	return (
@@ -253,24 +203,7 @@ export function StartingEquipmentPicker({
 			/>
 
 			{bothChosen && (
-				<section className="starting-equipment__summary">
-					<h3>You will start with</h3>
-					<p>
-						Money: {coins.gp} gp, {coins.sp} sp, {coins.cp} cp
-					</p>
-					{inventory.length === 0 ? (
-						<p>No items — this character starts with money only.</p>
-					) : (
-						<ul>
-							{inventory.map((item) => (
-								<li key={itemKey(item)}>
-									{item.name}
-									{item.quantity > 1 ? ` ×${item.quantity}` : ''}
-								</li>
-							))}
-						</ul>
-					)}
-				</section>
+				<StartingTable inventory={inventory} currencyCopper={currencyCopper} />
 			)}
 		</div>
 	)

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { chooseButton, createFighter, expectStep, finishFromBackground, next, nextButton, select, wizardNav } from './wizard.ts'
+import { chooseButton, createFighter, expectStep, finishFromBackground, next, nextButton, select, takeStartingEquipment, wizardNav } from './wizard.ts'
 
 /* F-1: fixes from the W-1 to W-4 code review (D251, D252). */
 
@@ -78,8 +78,7 @@ test('F-1 b (D251): a new Paladin 2 with a fighting style lowered to level 1 sav
   await prepare.first().click()
   await next(page)
   await expectStep(page, 'Starting equipment')
-  await page.getByRole('group', { name: /From your class/ }).getByRole('radio').last().check()
-  await page.getByRole('group', { name: /From your background/ }).getByRole('radio').last().check()
+  await takeStartingEquipment(page)
   await next(page)
   await wizardNav(page).getByRole('button', { name: 'Create character' }).click()
   await expect(page).toHaveURL(/#\/character\/[^/]+$/)

@@ -2149,6 +2149,128 @@ button:disabled {
   display: none;
 }
 
+/* W-7 (D263): starting equipment — the two offers are plain sections, the option cards inside them are the cards. */
+.wizard__content .starting-equipment__offer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.equip-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.equip-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.equip-card--on {
+  border-color: var(--accent);
+}
+
+.equip-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.equip-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-sub);
+}
+
+.equip-card__list,
+.equip-card__contents {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equip-card__row {
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.equip-card__pack {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.equip-card__contents {
+  padding: 4px 0 0 22px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.wizard__content .start-table__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 8px;
+}
+
+.wizard__content .start-table__header h3 {
+  margin: 0;
+}
+
+.start-table__money {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.start-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.start-table th,
+.start-table td {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.start-table th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-mute);
+}
+
+.start-table td {
+  border-top: 1px solid var(--line);
+}
+
+.start-table th:last-child,
+.start-table td:last-child {
+  width: 64px;
+}
+
 .wizard__card > h3 {
   margin: 0;
 }

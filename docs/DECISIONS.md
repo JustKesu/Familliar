@@ -4441,3 +4441,21 @@ takže nový pokus opravdu načítá znovu. (2) Wizard předává `FeatAsiPicker
 (`load`) a `abilityDraft` je povinný; tabulka nahoře čte stejný draft jako karty (`FeatAsiLevels.draft`,
 včetně origin featu backgroundu). Brána `featAsiChoicesValid` je čistá funkce `featAsiStepValid`, jejíž deps jsou
 jen `abilityScores`, `backgroundChoice`, `grantedFeats` a `featAsiChoices`.
+
+## D263 — Krok Starting equipment: karty voleb a tabulka „You will start with“ (W22, W-7)
+
+D263 (W22): Čistě vzhled, logika kroku beze změny (co která volba dává, jak se skládá inventář a peníze, co se
+ukládá; bez změny schématu). Každá nabídka („From your class (…)“, „From your background (…)“) je skupina
+s nadpisem ve stylu sekcí wizardu a volby (Option A, B, případně C) jsou vedle sebe stejně široké karty
+(`EquipmentOptionCard.tsx`; poloměr 12, `--surface`, rámeček `--line`, padding 14×16, mezera 14, na úzkém okně
+pod sebou). Karta nahoře nese popisek volby (11px, verzálky) a tlačítko CHOOSE / CHOSEN, pod nimi řádky toho, co
+volba dává; vybraná karta má rámeček `--accent`. Klik kamkoli na kartu volbu vybere, tlačítko je cesta pro
+klávesnici a čtečku (názvy „Choose class option A“, „Choose background option B“, jedinečné). Opětovný klik na
+už zvolenou volbu nedělá nic (jako dřív rádio), takže jí nezahodí category picky; přepnutí na jinou je zahodí
+jako dřív. Balíček (pack) je sbalený řádek ▸ / ▾ „<pack> contents“ s položkami; jeho otevření volbu nevybírá.
+Samostatná položka a mince jsou obyčejné řádky. Category pick zvolené volby (hudební nástroj, artisan’s tools,
+herní sada) je pod kartami přes celou šířku sekce jako `SearchableOptionList` ve variantě `choose` (CHOOSE /
+CHOSEN s hledáním jako W-2), nadepsaný názvem kategorie, a objeví se jen u zvolené volby. „You will start with“
+(jen když jsou zvolené obě volby) je karta (`StartingTable.tsx`): v záhlaví vpravo peníze „15 gp · 0 sp · 0 cp“,
+pod ním tabulka NAME · QTY ve stylu záložky Inventory na listu; bez položek zůstává věta „No items — this
+character starts with money only.“. Hlášky o načítání a chybě zůstávají v sekci. Rádia a odrážkové seznamy zmizely.

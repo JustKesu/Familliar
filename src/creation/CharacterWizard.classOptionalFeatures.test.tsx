@@ -612,8 +612,8 @@ describe('CharacterWizard — class optional features step (D64)', () => {
 		// Lands on review with the save enabled: the new step satisfies isReadyToSave rather than blocking it.
 		await goNext(user)
 		const fromClass = await screen.findByRole('group', { name: /From your class/ })
-		await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
-		await user.click(within(screen.getByRole('group', { name: /From your background/ })).getByRole('radio', { name: 'Option B' }))
+		await user.click(within(fromClass).getByRole('button', { name: 'Choose class option A' }))
+		await user.click(within(screen.getByRole('group', { name: /From your background/ })).getByRole('button', { name: 'Choose background option B' }))
 		await goNext(user)
 		const save = (await stepNav().findByRole('button', { name: 'Create character' })) as HTMLButtonElement
 		expect(save.disabled).toBe(false)

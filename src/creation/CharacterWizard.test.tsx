@@ -348,9 +348,9 @@ async function fillHitPointsStep(user: ReturnType<typeof userEvent.setup>) {
 /** Takes the class's gear package and the background's coin option — one option from each side, which is what the step requires. */
 async function fillEquipmentStep(user: ReturnType<typeof userEvent.setup>) {
 	const fromClass = await screen.findByRole('group', { name: /From your class/ })
-	await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
+	await user.click(within(fromClass).getByRole('button', { name: 'Choose class option A' }))
 	const fromBackground = screen.getByRole('group', { name: /From your background/ })
-	await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+	await user.click(within(fromBackground).getByRole('button', { name: 'Choose background option B' }))
 }
 
 describe('CharacterWizard — selections survive back-navigation', () => {
@@ -885,11 +885,11 @@ describe('CharacterWizard — starting equipment step', () => {
 		const fromClass = await screen.findByRole('group', { name: /From your class/ })
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
-		await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
+		await user.click(within(fromClass).getByRole('button', { name: 'Choose class option A' }))
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
 		const fromBackground = screen.getByRole('group', { name: /From your background/ })
-		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+		await user.click(within(fromBackground).getByRole('button', { name: 'Choose background option B' }))
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 	})
 
@@ -899,9 +899,9 @@ describe('CharacterWizard — starting equipment step', () => {
 
 		await fillThroughAbilities(user)
 		const fromClass = await screen.findByRole('group', { name: /From your class/ })
-		await user.click(within(fromClass).getByRole('radio', { name: 'Option B' }))
+		await user.click(within(fromClass).getByRole('button', { name: 'Choose class option B' }))
 		const fromBackground = screen.getByRole('group', { name: /From your background/ })
-		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+		await user.click(within(fromBackground).getByRole('button', { name: 'Choose background option B' }))
 		await goNext(user)
 		await user.click(await stepNav().findByRole('button', { name: 'Create character' }))
 
@@ -916,14 +916,14 @@ describe('CharacterWizard — starting equipment step', () => {
 
 		await fillThroughAbilities(user)
 		const fromClass = await screen.findByRole('group', { name: /From your class/ })
-		await user.click(within(fromClass).getByRole('radio', { name: 'Option C' }))
+		await user.click(within(fromClass).getByRole('button', { name: 'Choose class option C' }))
 		const fromBackground = screen.getByRole('group', { name: /From your background/ })
-		await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+		await user.click(within(fromBackground).getByRole('button', { name: 'Choose background option B' }))
 
 		// Both options taken, but the instrument the option grants is still unnamed.
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
 
-		await user.click(await screen.findByRole('radio', { name: 'Flute (XPHB)' }))
+		await user.click(await screen.findByRole('button', { name: 'Choose Flute' }))
 		expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false)
 
 		await goNext(user)

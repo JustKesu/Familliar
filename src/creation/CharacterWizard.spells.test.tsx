@@ -436,9 +436,9 @@ async function passHitPointsStep(user: ReturnType<typeof userEvent.setup>) {
 /** The equipment step (step 7 slice a2) sits between the last picker step and review; these tests only need to pass through it. */
 async function passEquipmentStep(user: ReturnType<typeof userEvent.setup>) {
 	const fromClass = await screen.findByRole('group', { name: /From your class/ })
-	await user.click(within(fromClass).getByRole('radio', { name: 'Option A' }))
+	await user.click(within(fromClass).getByRole('button', { name: 'Choose class option A' }))
 	const fromBackground = screen.getByRole('group', { name: /From your background/ })
-	await user.click(within(fromBackground).getByRole('radio', { name: 'Option B' }))
+	await user.click(within(fromBackground).getByRole('button', { name: 'Choose background option B' }))
 	await goNext(user)
 }
 

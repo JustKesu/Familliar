@@ -12,6 +12,7 @@ import {
   nextButton,
   select,
   stepBar,
+  takeStartingEquipment,
   wizardNav,
   type FighterOptions,
 } from './wizard.ts'
@@ -82,8 +83,7 @@ test('F-3 3 (D260): a new Fighter 8 with Roll on every level, lowered to level 4
   await expect(nextButton(page)).toBeEnabled()
   await next(page)
   await expectStep(page, 'Starting equipment')
-  await page.getByRole('group', { name: /From your class/ }).getByRole('radio').last().check()
-  await page.getByRole('group', { name: /From your background/ }).getByRole('radio').last().check()
+  await takeStartingEquipment(page)
   await next(page)
   await expectStep(page, 'Review and save')
   await wizardNav(page).getByRole('button', { name: 'Create character' }).click()

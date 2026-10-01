@@ -2138,6 +2138,17 @@ retries the wizard's hit die lookup). `FeatAsiPicker` takes the wizard's `load` 
 (`FeatAsiLevels.draft`, so the table counts the background origin feat); the Next gate is `featAsiStepValid`.
 E2E `wizardF3.spec.ts` 1–4; `wizardF2a.spec.ts` seeds only states the app can produce.
 
+W-7 (D263) done. No schema bump, no logic change. Starting equipment step: each offer ("From your class (…)" /
+"From your background (…)", still a `fieldset` group) shows its options as equal-width cards
+(`inventory/EquipmentOptionCard.tsx`): small-caps label, CHOOSE / CHOSEN button ("Choose class option A"), rows
+of what the option grants; the whole card is clickable. A pack is a ▸/▾ row ("<pack> contents") with its items;
+single items and coins are plain rows. A chosen option's category pick is a `SearchableOptionList` in the
+`choose` variant under the cards. "You will start with" (`inventory/StartingTable.tsx`) is a card with money
+("15 gp · 0 sp · 0 cp") in the header and a NAME · QTY table. Old radios and bullet lists are gone. Unit
+`StartingEquipmentPicker.test.tsx`; E2E `wizardW7.spec.ts` a–d; `e2e/wizard.ts` has `equipmentSection`,
+`equipmentChoose`, `equipmentChooseAny`, `takeStartingEquipment`, and the `stopAtEquipment` / `onBackgroundStep`
+options.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic
