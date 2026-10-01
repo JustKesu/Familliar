@@ -2198,3 +2198,74 @@ describe('CharacterStore.exportCharacter / import', () => {
 		expect(() => store.import(file)).toThrow(StorageFullError)
 	})
 })
+
+describe('Character.portrait (W-8)', () => {
+	const PORTRAIT = 'data:image/jpeg;base64,/9j/AAAA'
+
+	it('round-trips through export and import', () => {
+		const source = new CharacterStore(new MemoryStorage())
+		const original = source.create({ name: 'Aria', portrait: PORTRAIT })
+		const destination = new CharacterStore(new MemoryStorage())
+		const [imported] = destination.import(source.exportCharacter(original.id))
+		expect(imported?.portrait).toBe(PORTRAIT)
+		expect(destination.list()[0].portrait).toBe(PORTRAIT)
+	})
+
+	it.each([
+		['a PNG data URL', 'data:image/png;base64,AAAA'],
+		['a number', 7],
+		['an oversized string', `data:image/jpeg;base64,${'A'.repeat(200_000)}`],
+	])('rejects an import file whose portrait is %s, naming the problem, and leaves the store unchanged', (_label, portrait) => {
+		const store = new CharacterStore(new MemoryStorage())
+		store.create({ name: 'Existing' })
+		const file = JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], portrait }])
+		expect(() => store.import(file)).toThrow(ImportValidationError)
+		expect(() => store.import(file)).toThrow(/portrait must be a JPEG data URL/)
+		expect(store.list()).toHaveLength(1)
+	})
+
+	it('drops a malformed stored portrait on read instead of failing the whole list', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], portrait: 'not an image' },
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '2', name: 'Bran', classes: [], portrait: PORTRAIT },
+			]),
+		)
+		const characters = new CharacterStore(backing).list()
+		expect(characters.map((character) => character.name)).toEqual(['Aria', 'Bran'])
+		expect('portrait' in characters[0]).toBe(false)
+		expect(characters[1].portrait).toBe(PORTRAIT)
+	})
+
+	it('setPortrait sets, replaces and removes it; a malformed one is refused before anything is written', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		store.setPortrait(id, PORTRAIT)
+		expect(store.list()[0].portrait).toBe(PORTRAIT)
+		expect(() => store.setPortrait(id, 'data:image/png;base64,AAAA')).toThrow(ImportValidationError)
+		expect(store.list()[0].portrait).toBe(PORTRAIT)
+		store.setPortrait(id, null)
+		expect('portrait' in store.list()[0]).toBe(false)
+	})
+
+	it('create and update refuse a malformed portrait', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		expect(() => store.create({ name: 'Aria', portrait: 'nope' })).toThrow(/portrait could not be saved/)
+		const { id } = store.create({ name: 'Aria', portrait: PORTRAIT })
+		expect(() => store.update(id, { name: 'Aria', portrait: 'nope' })).toThrow(ImportValidationError)
+		expect(store.list()[0].portrait).toBe(PORTRAIT)
+	})
+
+	it('a full storage keeps the previous portrait', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const { id } = store.create({ name: 'Aria', portrait: PORTRAIT })
+		backing.setItem = () => {
+			throw new DOMException('quota exceeded', 'QuotaExceededError')
+		}
+		expect(() => store.setPortrait(id, 'data:image/jpeg;base64,BBBB')).toThrow(StorageFullError)
+		expect(store.list()[0].portrait).toBe(PORTRAIT)
+	})
+})

@@ -4459,3 +4459,54 @@ CHOSEN s hledáním jako W-2), nadepsaný názvem kategorie, a objeví se jen u 
 (jen když jsou zvolené obě volby) je karta (`StartingTable.tsx`): v záhlaví vpravo peníze „15 gp · 0 sp · 0 cp“,
 pod ním tabulka NAME · QTY ve stylu záložky Inventory na listu; bez položek zůstává věta „No items — this
 character starts with money only.“. Hlášky o načítání a chybě zůstávají v sekci. Rádia a odrážkové seznamy zmizely.
+
+## D264 — Portrét postavy: nahrání a dialog ořezu (W2, upraveno 1. 10. 2026, W-8)
+
+D264 (W2, ve znění Daniela z 1. 10. 2026; ruší dřívější znění „bez nástroje na ořez, výřez ze středu“, které
+tu zapsané nebylo): Hráč může postavě nahrát obrázek portrétu. Je nepovinný — bez něj vše funguje jako dřív,
+Next nikdy nezamyká a list ukazuje písmeno jména. Po výběru souboru se otevře dialog „Crop portrait“: obrázek
+v pevném ČTVERCOVÉM rámu (poměr rámu portrétu na listu, 320×320, na úzkém okně menší). Obrázek se posouvá tažením
+(myš i prst, pointer events), zoom posuvníkem „Zoom“ a kolečkem myši. Minimální zoom = obrázek právě pokryje
+celý čtverec (nikdy prázdné okraje, posun se omezí tak, aby rám byl vždy pokrytý), maximum 4× minima. Šipky
+posouvají obrázek, když má rám fokus. Cancel (obrys), Apply (plné `--accent`); Esc nebo klik mimo = Cancel
+(tažení, které skončí mimo dialog, se za klik mimo nepočítá). Apply vykreslí viditelný čtverec do 256×256
+canvasu a uloží JPEG data URL (kvalita 0.85; kdyby přesáhl strop z D267, zkusí 0.7 a 0.5). Průhledné části
+vyplní barva `--surface` aktuálního tématu přečtená přes `getComputedStyle`. Ukládá se jen ořezaný JPEG, nikdy
+originál; nový ořez = nové nahrání. Je to pole postavy, takže jde s Exportem/Importem. Dekódování jde přes
+`<img>` (`image.decode()`), které respektuje EXIF orientaci, a `drawImage` z něj taky — ověřeno e2e
+`portrait.spec.ts` h (JPEG s orientací 6 je 400×600 a ořízne se nastojato). Nečitelný soubor (ne obrázek,
+HEIC, který prohlížeč neumí, poškozený) → „This image could not be read. Try a JPEG or PNG.“, soubor nad 20 MB
+→ „This image is too large (max 20 MB).“, text vedle ovládání, nic se neuloží. Tažení a zoom mění jen stav
+dialogu (D116); do úložiště se nic nepíše a nic mimo dialog se nepřekresluje až do Apply.
+
+## D265 — Portrét v hlavičce listu (W3, W-8)
+
+D265 (W3): Portrét nahrazuje písmeno v rámu hlavičky (`.sheet__portrait`): stejná velikost, poloměr i
+rámeček, obrázek ho vyplní (`object-fit: cover`), alt „Portrait of <jméno>“. Rám je tlačítko „Portrait“;
+klik (s obrázkem i s písmenem) otevře malé menu u rámu: „Upload image“ (výběr souboru, pak dialog D264) a
+„Remove“ jen když portrét existuje. Remove platí hned, bez potvrzení. Esc nebo klik mimo menu zavře. Menu je
+absolutně umístěné, hlavičku neposune. Chyba čtení souboru se ukáže v témž menu. Na listu jen ke čtení (bez
+`onEditPortrait`, stejně jako chybí tlačítka odpočinku) rám není klikatelný a jen ukazuje obrázek nebo
+písmeno. Zápis jde přes `CharacterStore.setPortrait` a `withErrorHandling` jako ostatní zápisy listu, takže
+`StorageFullError` se ukáže jako jejich chyba nad listem a předchozí portrét zůstane.
+
+## D266 — Portrét v prvním kroku wizardu (W31, W-8)
+
+D266 (W31): V kroku Class je vlevo od pole „Character name“ v jedné řadě čtverec 88×88 (poloměr 12,
+`--surface-2`, rámeček `--line`, uprostřed „+“ 28px `--text-mute`), pod ním „Portrait (optional)“
+(11px/600, verzálky, .08em, `--text-sub`). Klik otevře výběr souboru a dialog D264; s portrétem ukazuje
+obrázek, další klik ho nahradí, pod ním textové tlačítko „Remove“. Edit Character ukáže uložený portrét a
+umí ho změnit/odebrat. Level up ovládání neukazuje (krok Class v level-upu neukazuje ani jméno) a portrét
+nemění. `WizardData.portrait` (akce `setPortrait`) není svázaný s třídou, backgroundem ani podtřídou, takže
+ho žádné prořezávání nesmaže; přežije Back/Next i skoky v liště. Review ho zatím neukazuje (W-9).
+
+## D267 — Uložení portrétu: validace při zápisu a importu, zahození při čtení (W-8, schéma 55)
+
+D267: `Character.portrait` (schéma 55, migrace 54→55 jen tag). Platný portrét je řetězec začínající
+„data:image/jpeg;base64,“ o nejvýš 200 000 znacích (`isValidPortrait`). Kontroluje se na každé cestě zápisu
+(`buildCharacter` — tedy `create`, `update` a uložení z wizardu — a `setPortrait`; neplatný → 
+`ImportValidationError`, nic se nezapíše) a při Importu (soubor s vadným portrétem se odmítne zprávou
+„… portrait must be a JPEG data URL …“). Při ČTENÍ už uložených dat (`list()`) se vadný portrét zahodí
+(postava je bez portrétu) místo toho, aby byl celý seznam postav nečitelný — jedno vadné pole jinak
+zablokuje celý seznam (`writeAll`/`list` validují všechno), a portrét to způsobit nesmí. Import zůstává
+přísný, protože odmítnutí souboru nic uloženého neohrožuje.

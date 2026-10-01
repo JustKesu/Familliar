@@ -602,7 +602,7 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated).toEqual({
 			...before,
-			schemaVersion: 54,
+			schemaVersion: CURRENT_SCHEMA_VERSION,
 			inventory: [
 				plainRow,
 				noBonuses,
@@ -624,12 +624,18 @@ describe('the migration chain (D69)', () => {
 				},
 			],
 		})
-		expect(CURRENT_SCHEMA_VERSION).toBe(54)
 	})
 
 	it('tags a version-53 character with no inventory', () => {
 		const before = { schemaVersion: 53, id: '1', name: 'Aria', classes: [] }
-		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: 54 })
+		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
+	/* W-8: an older character has no portrait — the step only tags. */
+	it('tags a version-54 character and adds no portrait', () => {
+		const before = { schemaVersion: 54, id: '1', name: 'Aria', classes: [], notes: 'x' }
+		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: 55 })
+		expect(CURRENT_SCHEMA_VERSION).toBe(55)
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

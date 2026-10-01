@@ -38,6 +38,7 @@ function plan(character: Character, resolver: ResolverData = RESOLVER): LevelRem
 }
 
 const lookups = { subclasses: [{ name: 'Champion', source: 'XPHB', featureType: null }], spellLevels: [] }
+const PORTRAIT = 'data:image/jpeg;base64,AAAA'
 
 function removeTopLevel(store: CharacterStore, id: string): void {
 	const stored = store.list().find((character) => character.id === id)!
@@ -59,6 +60,7 @@ describe('a level up followed by removing that level', () => {
 			hitPointLevels: [2, 3, 4].map((level) => ({ level, dieResult: 6, kind: 'average' as const })),
 			currentHp: 30,
 			createdAtLevel: 4,
+			portrait: PORTRAIT,
 		})
 		const before = storage.raw()
 
@@ -71,6 +73,8 @@ describe('a level up followed by removing that level', () => {
 		}
 		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5)
 		expect(storage.raw()).not.toBe(before)
+		// W-8: a level up keeps the portrait, and removing the level again (byte-identical below) does too.
+		expect(store.list()[0].portrait).toBe(PORTRAIT)
 
 		removeTopLevel(store, created.id)
 		expect(storage.raw()).toBe(before)

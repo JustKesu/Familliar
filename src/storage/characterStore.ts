@@ -40,7 +40,14 @@ import {
 	UnknownSchemaVersionError,
 } from './errors'
 import { migrateToCurrent } from './migrations'
-import { describeHitPointLevelsError, describeStoredCharacterError, isSupportedVersion, toStoredCharacter } from './validate'
+import {
+	describeHitPointLevelsError,
+	describePortraitError,
+	describeStoredCharacterError,
+	isSupportedVersion,
+	toStoredCharacter,
+	withoutMalformedPortrait,
+} from './validate'
 import type { StoredCharacter } from './wireFormat'
 
 /*
@@ -84,7 +91,7 @@ function isQuotaExceeded(error: unknown): boolean {
  * whose message the caller wraps in the error type appropriate to its
  * context (an app's own saved data vs. an imported file).
  */
-function parseStoredCharacters(raw: string): StoredCharacter[] {
+function parseStoredCharacters(raw: string, dropMalformedPortraits: boolean): StoredCharacter[] {
 	let parsed: unknown
 	try {
 		parsed = JSON.parse(raw)
@@ -110,7 +117,8 @@ function parseStoredCharacters(raw: string): StoredCharacter[] {
 
 	// D69: an older but supported save is carried forward here, so everything
 	// below this line only ever sees the current shape.
-	const records = parsed.map(migrateToCurrent)
+	const migrated = parsed.map(migrateToCurrent)
+	const records = dropMalformedPortraits ? migrated.map(withoutMalformedPortrait) : migrated
 
 	for (let i = 0; i < records.length; i++) {
 		const error = describeStoredCharacterError(records[i], i)
@@ -185,6 +193,8 @@ export interface CharacterCreateInput {
 	appearance?: string
 	backstory?: string
 	notes?: string
+	/** W-8: the cropped portrait; the edit and level-up paths pass the character's own back in. */
+	portrait?: string
 }
 
 /** The three free-text fields `setText` writes (slice 9d2). */
@@ -307,11 +317,13 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		appearance,
 		backstory,
 		notes,
+		portrait,
 	} = input
 
 	// W20: list() rejects the whole character list on a bad value, so a write must never produce one.
 	const hitPointLevelsError = describeHitPointLevelsError(hitPointLevels)
 	if (hitPointLevelsError) throw new ImportValidationError(`Hit points could not be saved: ${hitPointLevelsError}.`)
+	assertValidPortrait(portrait)
 
 	const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
 	const storedPlay = storedPlayState(storedCurrentHp, play)
@@ -355,7 +367,13 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(appearance ? { appearance } : {}),
 		...(backstory ? { backstory } : {}),
 		...(notes ? { notes } : {}),
+		...(portrait ? { portrait } : {}),
 	}
+}
+
+function assertValidPortrait(portrait: string | undefined): void {
+	const error = describePortraitError(portrait)
+	if (error) throw new ImportValidationError(`The portrait could not be saved: ${error}.`)
 }
 
 export class CharacterStore {
@@ -377,7 +395,7 @@ export class CharacterStore {
 		if (raw === null) return []
 
 		try {
-			return parseStoredCharacters(raw).map(toCharacter)
+			return parseStoredCharacters(raw, true).map(toCharacter)
 		} catch (error) {
 			if (error instanceof UnknownSchemaVersionError) throw error
 			const message = error instanceof Error ? error.message : String(error)
@@ -510,6 +528,19 @@ export class CharacterStore {
 		const { [field]: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = text.length > 0 ? { ...rest, [field]: text } : rest
+		this.writeAll(updated)
+	}
+
+	/** Sets (or, with null, removes) the portrait (W-8) — a targeted write like setText. */
+	setPortrait(id: string, portrait: string | null): void {
+		if (portrait !== null) assertValidPortrait(portrait)
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { portrait: _previous, ...rest } = characters[index]
+		const updated = [...characters]
+		updated[index] = portrait ? { ...rest, portrait } : rest
 		this.writeAll(updated)
 	}
 
@@ -919,7 +950,7 @@ export class CharacterStore {
 	import(raw: string): Character[] {
 		let stored: StoredCharacter[]
 		try {
-			stored = parseStoredCharacters(raw)
+			stored = parseStoredCharacters(raw, false)
 		} catch (error) {
 			if (error instanceof UnknownSchemaVersionError) throw error
 			const message = error instanceof Error ? error.message : String(error)

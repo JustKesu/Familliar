@@ -288,6 +288,11 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setText(id, field, text))
 	}
 
+	function handleEditPortrait(id: string, portrait: string | null): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setPortrait(id, portrait))
+	}
+
 	function handleRest(id: string, rest: RestFields): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.applyRest(id, rest))
@@ -435,6 +440,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onEditSpellChoices={(spellChoices) => handleEditSpellChoices(character.id, spellChoices)}
 						onEditText={(field, text) => handleEditText(character.id, field, text)}
 					onRest={(rest) => handleRest(character.id, rest)}
+					onEditPortrait={(portrait) => handleEditPortrait(character.id, portrait)}
 					onEditCharacter={() => navigate({ view: 'edit', id: character.id })}
 					onLevelUp={() => navigate({ view: 'level-up', id: character.id })}
 					onRemoveLevel={(result) => {

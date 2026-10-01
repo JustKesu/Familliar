@@ -357,6 +357,16 @@ export interface Character {
 	appearance?: string
 	backstory?: string
 	notes?: string
+	/** W-8: the cropped 256×256 portrait as a JPEG data URL (`isValidPortrait`); never the uploaded original. Absent = the sheet shows the name's letter. */
+	portrait?: string
+}
+
+/** W-8 storage rule: what a stored portrait must look like (prefix and size cap). */
+export const PORTRAIT_PREFIX = 'data:image/jpeg;base64,'
+export const PORTRAIT_MAX_LENGTH = 200_000
+
+export function isValidPortrait(value: unknown): value is string {
+	return typeof value === 'string' && value.startsWith(PORTRAIT_PREFIX) && value.length <= PORTRAIT_MAX_LENGTH
 }
 
 /** What the character has spent and gained since the last rest (slice 9b1) — see Character.play. */
@@ -1045,7 +1055,7 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1069,4 +1079,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 54
+export const CURRENT_SCHEMA_VERSION = 55

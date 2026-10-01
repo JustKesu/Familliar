@@ -1211,8 +1211,29 @@ describe('editing an existing character', () => {
 			currencyCopper: 500,
 			currentHp: 30,
 			familiar: { name: 'Owl', source: 'XMM' },
+			// W-8: the round trip below proves an untouched edit keeps it.
+			portrait: 'data:image/jpeg;base64,AAAA',
 		}
 	}
+
+	it('W-8: the setPortrait action replaces or removes the portrait, and an edit saves what the wizard holds', () => {
+		const store = editStore()
+		const character = storedCharacter()
+		const state = { step: 'class' as const, data: wizardDataFromCharacter(character, lookups) }
+		expect(state.data.portrait).toBe(character.portrait)
+
+		const replaced = wizardReducer(state, { type: 'setPortrait', portrait: 'data:image/jpeg;base64,BBBB' })
+		expect(replaced.data.portrait).toBe('data:image/jpeg;base64,BBBB')
+		// Keyed to nothing: a class, background or subclass reset leaves it alone.
+		const otherClass = wizardReducer(replaced, { type: 'setClassChoice', choice: { className: 'Wizard', classSource: 'XPHB', level: 5 } })
+		const noBackground = wizardReducer(otherClass, { type: 'setBackgroundChoice', choice: null })
+		expect(wizardReducer(noBackground, { type: 'setSubclass', subclass: null }).data.portrait).toBe('data:image/jpeg;base64,BBBB')
+		const removed = wizardReducer(replaced, { type: 'setPortrait', portrait: null })
+		expect('portrait' in removed.data).toBe(false)
+
+		saveCharacter(store, removed.data, ['athletics', 'intimidation'], editConditions, undefined, character)
+		expect(vi.mocked(store.update).mock.calls[0][1].portrait).toBeUndefined()
+	})
 
 	const lookups = {
 		subclasses: [{ name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' }],

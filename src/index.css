@@ -472,6 +472,176 @@ button:disabled {
   background: var(--surface);
   color: var(--accent);
   font: 600 28px/1 var(--font-heading);
+  /* W3: also a <button>; the image fills the same frame. */
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sheet__portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sheet__portrait-wrap {
+  position: relative;
+  flex: none;
+}
+
+/* Absolute, so opening it never moves the header. */
+.portrait-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: max-content;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.portrait-menu button {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+}
+
+.portrait-menu button:hover,
+.portrait-menu button:focus-visible {
+  background: var(--surface-2);
+}
+
+.portrait-menu__error {
+  max-width: 240px;
+  margin: 2px 8px 6px;
+  font-size: 13px;
+  white-space: normal;
+}
+
+/* W31: the portrait square left of the Character name field. */
+.wizard-portrait__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.wizard-portrait {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.wizard-portrait__square {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.wizard-portrait__square img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wizard-portrait__plus {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text-mute);
+}
+
+.wizard-portrait__label,
+.portrait-crop__zoom {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-sub);
+}
+
+.wizard-portrait__remove {
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.wizard-portrait__remove:hover {
+  text-decoration: underline;
+}
+
+/* W2: the crop dialog, on .confirm-dialog's look. */
+.portrait-crop {
+  max-width: 400px;
+}
+
+.portrait-crop__title {
+  font-size: 22px;
+}
+
+.portrait-crop__frame {
+  position: relative;
+  box-sizing: border-box;
+  width: min(320px, 100%);
+  aspect-ratio: 1;
+  margin: 12px auto 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  cursor: grab;
+  touch-action: none;
+}
+
+.portrait-crop__frame:active {
+  cursor: grabbing;
+}
+
+.portrait-crop__frame:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.portrait-crop__image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.portrait-crop__zoom {
+  display: block;
+}
+
+.portrait-crop__slider {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 6px 0 0;
+  accent-color: var(--accent);
 }
 
 .sheet__header-main {

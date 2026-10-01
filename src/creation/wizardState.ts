@@ -473,6 +473,8 @@ export interface WizardData {
 	 * the two options are independent.
 	 */
 	startingEquipment: StartingEquipmentChoice
+	/** W-8: the cropped portrait data URL. Keyed to nothing, so no class/background/subclass reset prunes it; absent = none. */
+	portrait?: string
 }
 
 export function emptyWizardData(): WizardData {
@@ -617,6 +619,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		wildShapeForms: (character.wildShapeForms ?? []).flatMap((entry) => entry.forms),
 		hitPointLevels: character.hitPointLevels ?? [],
 		startingEquipment: emptyStartingEquipmentChoice(),
+		...(character.portrait ? { portrait: character.portrait } : {}),
 	}
 }
 
@@ -892,6 +895,7 @@ export type WizardAction =
 	| { type: 'pruneClassPicks'; requirements: ClassPickRequirements }
 	| { type: 'pruneClassOptionalFeatures'; featureTypes: readonly string[] }
 	| { type: 'setName'; name: string }
+	| { type: 'setPortrait'; portrait: string | null }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
 	| { type: 'setSpeciesSkills'; skills: string[] }
@@ -951,6 +955,10 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return pruneClassOptionalFeatures(state, action.featureTypes)
 		case 'setName':
 			return { ...state, data: { ...state.data, name: action.name } }
+		case 'setPortrait': {
+			const { portrait: _previous, ...data } = state.data
+			return { ...state, data: action.portrait ? { ...data, portrait: action.portrait } : data }
+		}
 		case 'setClassChoice': {
 			/*
 			 * D100: everything below is keyed to the CLASS — its skill list, its
@@ -1377,6 +1385,8 @@ export function saveCharacter(
 		appearance: existing?.appearance,
 		backstory: existing?.backstory,
 		notes: existing?.notes,
+		// W-8: seeded from the character by wizardDataFromCharacter, so an edit or a level up that does not touch it keeps it.
+		portrait: data.portrait,
 	}
 
 	return existing ? store.update(existing.id, input) : store.create(input)

@@ -26,6 +26,7 @@ import { type SpeedValue } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { CalculatedValueOnly, formatModifier } from './calculatedValue'
 import { UnresolvedValue } from './ValueBreakdown'
+import { SheetPortrait } from '../portrait/SheetPortrait'
 
 export type StatCard = 'proficiency' | 'speed' | 'initiative' | 'armour'
 
@@ -118,7 +119,13 @@ export function SheetHeader({
 	abilities,
 	defenses,
 	conditions,
+	portrait,
+	onEditPortrait,
 }: {
+	/** W-8: the stored portrait; absent shows the name's letter. */
+	portrait?: string
+	/** W3: absent on a read-only sheet — the frame then only shows. */
+	onEditPortrait?: (portrait: string | null) => void
 	/** R4b (D166): a card label opens that card's breakdown in the drawer. Absent leaves the labels plain text. */
 	onOpenBreakdown?: (stat: StatCard) => void
 	/** R4b (D167): a manual on/off. Absent handler shows it read-only. */
@@ -156,15 +163,12 @@ export function SheetHeader({
 	onRoll?: (report: RollReport) => void
 }): ReactNode {
 	const rollMode = useContext(RollModeContext)
-	const initial = name.trim().charAt(0).toUpperCase()
 
 	return (
 		<>
 		<header className="sheet__persistent-header">
 			<div className="sheet__header-row">
-				<div className="sheet__portrait" aria-hidden="true">
-					{initial}
-				</div>
+				<SheetPortrait name={name} portrait={portrait} onChange={onEditPortrait} />
 				<div className="sheet__header-main">
 					<h1>{name}</h1>
 					{identity}

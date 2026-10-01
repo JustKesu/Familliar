@@ -488,6 +488,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			return { ...record, inventory: inventory.map(migrateCustomBonuses), schemaVersion: 54 }
 		},
 	},
+	{
+		from: 54,
+		to: 55,
+		/* 55 adds Character.portrait (W-8). A version-54 character has none — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 55 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

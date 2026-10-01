@@ -1604,8 +1604,11 @@ function CharacterSheetBody({
 	onEditCharacter,
 	onLevelUp,
 	onRemoveLevel,
+	onEditPortrait,
 }: {
 	character: Character
+	/** Sets or, with null, removes the portrait from the header frame (W3). Absent leaves the frame showing only. */
+	onEditPortrait?: (portrait: string | null) => void
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
 	/** The familiar's own hit points from its Extras drawer (R11b, D213). Absent leaves the numbers without controls. */
 	onEditFamiliarHitPoints?: (hitPoints: FamiliarHitPointFields) => void
@@ -2673,6 +2676,8 @@ function CharacterSheetBody({
 				)}
 			<SheetHeader
 				name={character.name}
+				portrait={character.portrait}
+				onEditPortrait={onEditPortrait}
 				armourClass={armourClass}
 				armourClassLoading={itemRefs === null}
 				acFormulaKeysError={acFormulaKeysError}

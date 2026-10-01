@@ -2149,6 +2149,18 @@ single items and coins are plain rows. A chosen option's category pick is a `Sea
 `equipmentChoose`, `equipmentChooseAny`, `takeStartingEquipment`, and the `stopAtEquipment` / `onBackgroundStep`
 options.
 
+W-8 (D264–D267) done. Schema 55: `Character.portrait` (cropped 256×256 JPEG data URL, ≤ 200 000 chars,
+`isValidPortrait`); migration 54→55 tags only. Write paths (`buildCharacter`, new `CharacterStore.setPortrait`)
+and Import reject a malformed one; `list()` drops it (`withoutMalformedPortrait`). New `src/portrait/`:
+`cropMath.ts` (pure crop: zoom 1 = cover, max 4, clamped pan/zoom, source rect), `PortraitCropDialog.tsx`
+("Crop portrait": drag, wheel, Zoom slider, arrow keys, Apply → canvas JPEG), `usePortraitUpload.tsx` (file
+chooser, 20 MB / unreadable errors, decode via `<img>` with EXIF orientation), `WizardPortrait.tsx` (88px
+square left of Character name; hidden in level up), `SheetPortrait.tsx` (header frame as "Portrait" button with
+Upload image / Remove menu; plain on a read-only sheet). `useModal` extracted from `ConfirmDialog.tsx`.
+`WizardData.portrait` + `setPortrait` action; `saveCharacter` writes it, so Edit/Level up keep it, Remove level
+keeps it via `characterUpdateInput`. Review step does not show it yet (W-9). E2E `portrait.spec.ts` a–h;
+fixtures `e2e/fixtures/portrait-600x400.png`, `not-an-image.png`.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

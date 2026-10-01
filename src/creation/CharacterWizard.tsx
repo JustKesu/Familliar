@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
 import { ClassPicker } from '../classes/ClassPicker'
+import { WizardPortrait } from '../portrait/WizardPortrait'
 import { SpeciesPicker } from '../species/SpeciesPicker'
 import { findSpeciesSelection, loadSpeciesOptions, type SpeciesOption } from '../species/speciesData'
 import { BackgroundPicker } from '../backgrounds/BackgroundPicker'
@@ -1419,14 +1420,16 @@ export function CharacterWizard({
 						</p>
 					) : (
 						<>
-							<label className="wizard__field">
-								Character name
-								<input
-									type="text"
-									value={state.data.name}
-									onChange={(event) => dispatch({ type: 'setName', name: event.target.value })}
-								/>
-							</label>
+							<WizardPortrait portrait={state.data.portrait} onChange={(portrait) => dispatch({ type: 'setPortrait', portrait })}>
+								<label className="wizard__field">
+									Character name
+									<input
+										type="text"
+										value={state.data.name}
+										onChange={(event) => dispatch({ type: 'setName', name: event.target.value })}
+									/>
+								</label>
+							</WizardPortrait>
 							<ClassPicker
 								value={state.data.classChoice}
 								onChange={(choice) => dispatch({ type: 'setClassChoice', choice })}

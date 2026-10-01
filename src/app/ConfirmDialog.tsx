@@ -1,7 +1,51 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 
 const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'
+
+/** The modal behaviour of the in-app dialogs: background inert, focus moved in and trapped, Esc calls `onEscape`, focus returned on close. */
+export function useModal(
+	backdropRef: RefObject<HTMLElement | null>,
+	dialogRef: RefObject<HTMLElement | null>,
+	initialFocusRef: RefObject<HTMLElement | null>,
+	onEscape: () => void,
+): void {
+	const onEscapeRef = useRef(onEscape)
+	useEffect(() => {
+		onEscapeRef.current = onEscape
+	})
+
+	useEffect(() => {
+		const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+		const inerted = Array.from(document.body.children).filter((element) => element !== backdropRef.current && !element.hasAttribute('inert'))
+		inerted.forEach((element) => element.setAttribute('inert', ''))
+		initialFocusRef.current?.focus()
+
+		// F-1: on window in the capture phase, so Esc works wherever focus is and never reaches an open drawer's document listener.
+		function handleKeyDown(event: KeyboardEvent): void {
+			const dialog = dialogRef.current
+			if (!dialog) return
+			if (event.key === 'Escape') {
+				event.preventDefault()
+				event.stopPropagation()
+				onEscapeRef.current()
+			} else if (event.key === 'Tab') {
+				const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
+				if (focusable.length === 0) return
+				const index = focusable.indexOf(document.activeElement as HTMLElement)
+				const next = event.shiftKey ? (index <= 0 ? focusable.length - 1 : index - 1) : index === -1 || index === focusable.length - 1 ? 0 : index + 1
+				event.preventDefault()
+				focusable[next].focus()
+			}
+		}
+		window.addEventListener('keydown', handleKeyDown, true)
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown, true)
+			inerted.forEach((element) => element.removeAttribute('inert'))
+			trigger?.focus()
+		}
+	}, [backdropRef, dialogRef, initialFocusRef])
+}
 
 /**
  * W23/W28: the in-app confirmation, never `confirm()` — a script driving the
@@ -29,41 +73,7 @@ export function ConfirmDialog({
 	const backdropRef = useRef<HTMLDivElement>(null)
 	const dialogRef = useRef<HTMLDivElement>(null)
 	const safeRef = useRef<HTMLButtonElement>(null)
-	const onSafeRef = useRef(onSafe)
-	useEffect(() => {
-		onSafeRef.current = onSafe
-	})
-
-	useEffect(() => {
-		const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
-		const inerted = Array.from(document.body.children).filter((element) => element !== backdropRef.current && !element.hasAttribute('inert'))
-		inerted.forEach((element) => element.setAttribute('inert', ''))
-		safeRef.current?.focus()
-
-		// F-1: on window in the capture phase, so Esc works wherever focus is and never reaches an open drawer's document listener.
-		function handleKeyDown(event: KeyboardEvent): void {
-			const dialog = dialogRef.current
-			if (!dialog) return
-			if (event.key === 'Escape') {
-				event.preventDefault()
-				event.stopPropagation()
-				onSafeRef.current()
-			} else if (event.key === 'Tab') {
-				const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
-				if (focusable.length === 0) return
-				const index = focusable.indexOf(document.activeElement as HTMLElement)
-				const next = event.shiftKey ? (index <= 0 ? focusable.length - 1 : index - 1) : index === -1 || index === focusable.length - 1 ? 0 : index + 1
-				event.preventDefault()
-				focusable[next].focus()
-			}
-		}
-		window.addEventListener('keydown', handleKeyDown, true)
-		return () => {
-			window.removeEventListener('keydown', handleKeyDown, true)
-			inerted.forEach((element) => element.removeAttribute('inert'))
-			trigger?.focus()
-		}
-	}, [])
+	useModal(backdropRef, dialogRef, safeRef, onSafe)
 
 	return createPortal(
 		<div ref={backdropRef} className="confirm-dialog__backdrop" onClick={(event) => event.target === event.currentTarget && onSafe()}>

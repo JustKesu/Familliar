@@ -37,7 +37,7 @@ import type {
 	WeaponGrip,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
-import { CURRENT_SCHEMA_VERSION } from './character'
+import { CURRENT_SCHEMA_VERSION, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
 import { canMigrateToCurrent } from './migrations'
 import type { StoredCharacter } from './wireFormat'
 
@@ -1275,7 +1275,22 @@ export function describeCharacterError(value: unknown, index: number): string | 
 		const text = value[key]
 		if (text !== undefined && typeof text !== 'string') return `[${index}].${key} must be a string`
 	}
+	const portraitError = describePortraitError(value['portrait'])
+	if (portraitError) return `[${index}].${portraitError}`
 	return null
+}
+
+/** W-8: an Import file with a malformed portrait is rejected with this; `list()` drops the field before validating instead (`withoutMalformedPortrait`). */
+export function describePortraitError(value: unknown): string | null {
+	if (value === undefined || isValidPortrait(value)) return null
+	return `portrait must be a JPEG data URL ("${PORTRAIT_PREFIX}…") of at most ${PORTRAIT_MAX_LENGTH} characters`
+}
+
+/** W-8: a bad portrait in already stored data must never make the whole character list unreadable, so reading drops it. */
+export function withoutMalformedPortrait(value: unknown): unknown {
+	if (!isRecord(value) || value['portrait'] === undefined || isValidPortrait(value['portrait'])) return value
+	const { portrait: _dropped, ...rest } = value
+	return rest
 }
 
 /** Validates the full wire record, including the version tag. */
@@ -1360,6 +1375,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(typeof appearance === 'string' && appearance.length > 0 ? { appearance } : {}),
 		...(typeof backstory === 'string' && backstory.length > 0 ? { backstory } : {}),
 		...(typeof notes === 'string' && notes.length > 0 ? { notes } : {}),
+		...(isValidPortrait(value['portrait']) ? { portrait: value['portrait'] } : {}),
 	}
 }
 
