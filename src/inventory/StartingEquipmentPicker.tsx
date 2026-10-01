@@ -35,6 +35,7 @@ function CategoryPicker({
 	categories,
 	label,
 	categoryItems,
+	categoryItemsFailed,
 	value,
 	onChange,
 }: {
@@ -44,6 +45,7 @@ function CategoryPicker({
 	categories: EquipmentCategory[]
 	label: string
 	categoryItems: Record<EquipmentCategory, ItemRef[]> | null
+	categoryItemsFailed: boolean
 	value: StartingEquipmentChoice
 	onChange: (choice: StartingEquipmentChoice) => void
 }): ReactNode {
@@ -51,7 +53,8 @@ function CategoryPicker({
 	const picked = value.categoryPicks[pickKey]
 
 	if (categoryItems === null) {
-		return <p className="error">Could not load the items {label} offers.</p>
+		// Still loading shows nothing, so a quick step entry does not flash the error.
+		return categoryItemsFailed ? <p className="error">Could not load the items {label} offers.</p> : null
 	}
 
 	const refs = categories.flatMap((category) => categoryItems[category] ?? [])
@@ -88,6 +91,7 @@ function OfferSection({
 	offer,
 	error,
 	categoryItems,
+	categoryItemsFailed,
 	value,
 	onChange,
 }: {
@@ -96,6 +100,7 @@ function OfferSection({
 	offer: StartingEquipmentOffer | null
 	error: string | null
 	categoryItems: Record<EquipmentCategory, ItemRef[]> | null
+	categoryItemsFailed: boolean
 	value: StartingEquipmentChoice
 	onChange: (choice: StartingEquipmentChoice) => void
 }): ReactNode {
@@ -138,13 +143,14 @@ function OfferSection({
 			{chosenOption?.elements.map((element, elementIndex) =>
 				element.kind === 'category' ? (
 					<CategoryPicker
-						key={elementIndex}
+						key={`${chosenOption.key}:${elementIndex}`}
 						origin={origin}
 						option={chosenOption}
 						elementIndex={elementIndex}
 						categories={element.categories}
 						label={element.label}
 						categoryItems={categoryItems}
+						categoryItemsFailed={categoryItemsFailed}
 						value={value}
 						onChange={onChange}
 					/>
@@ -162,6 +168,7 @@ export function StartingEquipmentPicker({
 	classOfferError,
 	backgroundOfferError,
 	categoryItems,
+	categoryItemsFailed = false,
 	value,
 	onChange,
 }: {
@@ -172,6 +179,7 @@ export function StartingEquipmentPicker({
 	classOfferError: string | null
 	backgroundOfferError: string | null
 	categoryItems: Record<EquipmentCategory, ItemRef[]> | null
+	categoryItemsFailed?: boolean
 	value: StartingEquipmentChoice
 	onChange: (choice: StartingEquipmentChoice) => void
 }): ReactNode {
@@ -188,6 +196,7 @@ export function StartingEquipmentPicker({
 				offer={classOffer}
 				error={classOfferError}
 				categoryItems={categoryItems}
+				categoryItemsFailed={categoryItemsFailed}
 				value={value}
 				onChange={onChange}
 			/>
@@ -198,6 +207,7 @@ export function StartingEquipmentPicker({
 				offer={backgroundOffer}
 				error={backgroundOfferError}
 				categoryItems={categoryItems}
+				categoryItemsFailed={categoryItemsFailed}
 				value={value}
 				onChange={onChange}
 			/>

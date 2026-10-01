@@ -2161,6 +2161,19 @@ Upload image / Remove menu; plain on a read-only sheet). `useModal` extracted fr
 keeps it via `characterUpdateInput`. Review step does not show it yet (W-9). E2E `portrait.spec.ts` a–h;
 fixtures `e2e/fixtures/portrait-600x400.png`, `not-an-image.png`.
 
+F-4 (D268–D270) done. No schema bump. Fixes from the W-7/W-8 review. `usePortraitUpload` downscales an image
+whose longer side is over 2048 px once after decode (`downscaledSize` in `cropMath.ts`, PNG copy, full-size URL
+revoked), ignores a stale decode (request counter), revokes the open URL on unmount and takes an optional
+`returnFocus` ref. `PortraitCropDialog` has `onFail` (Apply that cannot encode closes the dialog and shows the
+unreadable text), drags with button 0 only and clears on `lostpointercapture`, anchors the wheel on the padding
+box; the 0.3 quality fallback is gone. `SheetPortrait` is now a disclosure (button `aria-expanded`/`aria-controls`
++ group "Portrait options" with plain buttons, error as `role="alert"`, button named "Portrait of <name>" with an
+image), and focus returns to the frame after Esc, a menu choice, Apply and Cancel. A click inside an open pack's
+contents no longer chooses the option. `CategoryPicker` is keyed by option and index; the wizard tells "loading"
+(nothing shown) from "failed" for the category items (`categoryItemsFailed`). Unit `usePortraitUpload.test.tsx`,
+`cropMath.test.ts`, `characterStore.test.ts` (cap boundary), `wizardState.test.ts` (replaced portrait); E2E
+`portrait.spec.ts` F-4 a–d, `wizardW7.spec.ts` e.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

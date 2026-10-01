@@ -28,11 +28,22 @@ function renderPortrait(image: HTMLImageElement, rect: { x: number; y: number; s
 		const url = canvas.toDataURL('image/jpeg', quality)
 		if (url.length <= PORTRAIT_MAX_LENGTH) return url
 	}
-	return canvas.toDataURL('image/jpeg', 0.3)
+	throw new Error('portrait over the storage cap at every quality')
 }
 
 /** D116: dragging and zooming change only this dialog's state; nothing outside re-renders or is stored until Apply. */
-export function PortraitCropDialog({ image, onApply, onCancel }: { image: LoadedImage; onApply: (portrait: string) => void; onCancel: () => void }): ReactNode {
+export function PortraitCropDialog({
+	image,
+	onApply,
+	onCancel,
+	onFail,
+}: {
+	image: LoadedImage
+	onApply: (portrait: string) => void
+	onCancel: () => void
+	/** Encoding failed (tainted or out-of-memory canvas); nothing was produced. */
+	onFail: () => void
+}): ReactNode {
 	const id = useId()
 	const backdropRef = useRef<HTMLDivElement>(null)
 	const dialogRef = useRef<HTMLDivElement>(null)
@@ -57,8 +68,9 @@ export function PortraitCropDialog({ image, onApply, onCancel }: { image: Loaded
 		if (!element) return
 		function handleWheel(event: WheelEvent): void {
 			event.preventDefault()
+			// The image is drawn in the padding box, inside the frame's border.
 			const box = element!.getBoundingClientRect()
-			const anchor = { x: (event.clientX - box.left) / box.width, y: (event.clientY - box.top) / box.height }
+			const anchor = { x: (event.clientX - box.left - element!.clientLeft) / element!.clientWidth, y: (event.clientY - box.top - element!.clientTop) / element!.clientHeight }
 			setCrop((current) => zoomCrop(image, current, current.zoom * Math.exp(-event.deltaY * 0.002), anchor))
 		}
 		element.addEventListener('wheel', handleWheel, { passive: false })
@@ -71,7 +83,14 @@ export function PortraitCropDialog({ image, onApply, onCancel }: { image: Loaded
 	function apply(): void {
 		if (!imageRef.current || !frameRef.current) return
 		const fill = getComputedStyle(frameRef.current).getPropertyValue('--surface').trim()
-		onApply(renderPortrait(imageRef.current, sourceRect(image, crop), fill))
+		let portrait: string
+		try {
+			portrait = renderPortrait(imageRef.current, sourceRect(image, crop), fill)
+		} catch {
+			onFail()
+			return
+		}
+		onApply(portrait)
 	}
 
 	return createPortal(
@@ -93,7 +112,8 @@ export function PortraitCropDialog({ image, onApply, onCancel }: { image: Loaded
 					aria-label="Image position — drag or use the arrow keys"
 					tabIndex={0}
 					onPointerDown={(event) => {
-						event.currentTarget.setPointerCapture(event.pointerId)
+						if (event.button !== 0) return
+							event.currentTarget.setPointerCapture(event.pointerId)
 						drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
 					}}
 					onPointerMove={(event) => {
@@ -106,6 +126,7 @@ export function PortraitCropDialog({ image, onApply, onCancel }: { image: Loaded
 					}}
 					onPointerUp={() => (drag.current = null)}
 					onPointerCancel={() => (drag.current = null)}
+						onLostPointerCapture={() => (drag.current = null)}
 					onKeyDown={(event) => {
 						const step = ARROWS[event.key]
 						if (!step) return

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
 import { applyHealing } from '../hitPoints/damageHealing'
-import { choiceNames, CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE } from './character'
+import { choiceNames, CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
 import {
 	CharacterNotFoundError,
@@ -2222,6 +2222,18 @@ describe('Character.portrait (W-8)', () => {
 		expect(() => store.import(file)).toThrow(ImportValidationError)
 		expect(() => store.import(file)).toThrow(/portrait must be a JPEG data URL/)
 		expect(store.list()).toHaveLength(1)
+	})
+
+	it('the length cap is inclusive: exactly PORTRAIT_MAX_LENGTH characters is stored, one more is refused', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		const ofLength = (length: number) => PORTRAIT_PREFIX + 'A'.repeat(length - PORTRAIT_PREFIX.length)
+		store.setPortrait(id, ofLength(PORTRAIT_MAX_LENGTH))
+		expect(store.list()[0].portrait).toHaveLength(PORTRAIT_MAX_LENGTH)
+		expect(() => store.setPortrait(id, ofLength(PORTRAIT_MAX_LENGTH + 1))).toThrow(ImportValidationError)
+		expect(store.list()[0].portrait).toHaveLength(PORTRAIT_MAX_LENGTH)
+		const file = JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Bran', classes: [], portrait: ofLength(PORTRAIT_MAX_LENGTH) }])
+		expect(store.import(file)).toHaveLength(1)
 	})
 
 	it('drops a malformed stored portrait on read instead of failing the whole list', () => {

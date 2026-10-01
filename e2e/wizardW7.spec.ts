@@ -88,6 +88,22 @@ test('W-7 c: the Dungeoneer’s Pack of Fighter option A expands with ▸ and co
   await expect(card(page, 'Class', 'A').locator('.equip-card__contents')).toHaveCount(0)
 })
 
+test('W-7 e (D269): a click inside an open pack’s contents never chooses the option; the card body still does', async ({ page }) => {
+  await openEquipmentStep(page)
+  const classA = card(page, 'Class', 'A')
+  await classA.getByRole('button', { name: "Dungeoneer's Pack contents" }).click()
+  const row = classA.locator('.equip-card__contents li').first()
+  await expect(row).toBeVisible()
+
+  await row.click()
+  await expect(equipmentChoose(page, 'class', 'A')).toHaveText('Choose')
+  await classA.locator('.equip-card__contents').click({ position: { x: 2, y: 2 } })
+  await expect(equipmentChoose(page, 'class', 'A')).toHaveText('Choose')
+
+  await classA.getByText('Option A', { exact: true }).click()
+  await expect(equipmentChoose(page, 'class', 'A')).toHaveText('Chosen')
+})
+
 test('W-7 d: the start table lists the items with quantities and the money, and the sheet’s Inventory tab matches', async ({ page }) => {
   await openEquipmentStep(page)
   await expect(page.getByRole('heading', { name: 'You will start with' })).toHaveCount(0)

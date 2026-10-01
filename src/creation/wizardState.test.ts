@@ -1235,6 +1235,16 @@ describe('editing an existing character', () => {
 		expect(vi.mocked(store.update).mock.calls[0][1].portrait).toBeUndefined()
 	})
 
+	it('W-8: a replaced portrait (not only a removed one) reaches store.update', () => {
+		const store = editStore()
+		const character = storedCharacter()
+		const state = { step: 'class' as const, data: wizardDataFromCharacter(character, lookups) }
+		const replaced = wizardReducer(state, { type: 'setPortrait', portrait: 'data:image/jpeg;base64,BBBB' })
+
+		saveCharacter(store, replaced.data, ['athletics', 'intimidation'], editConditions, undefined, character)
+		expect(vi.mocked(store.update).mock.calls[0][1].portrait).toBe('data:image/jpeg;base64,BBBB')
+	})
+
 	const lookups = {
 		subclasses: [{ name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' }],
 		spellLevels: [{ name: 'Fire Bolt', source: 'XPHB', level: 0 }],

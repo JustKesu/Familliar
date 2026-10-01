@@ -4510,3 +4510,25 @@ D267: `Character.portrait` (schéma 55, migrace 54→55 jen tag). Platný portr�
 (postava je bez portrétu) místo toho, aby byl celý seznam postav nečitelný — jedno vadné pole jinak
 zablokuje celý seznam (`writeAll`/`list` validují všechno), a portrét to způsobit nesmí. Import zůstává
 přísný, protože odmítnutí souboru nic uloženého neohrožuje.
+
+## D268 — Velké obrázky se po dekódování zmenší na 2048 px (F-4, doplňuje D264)
+
+D268 (Daniel, odpověď na Q1 review W-7/W-8): Strop 20 MB na soubor zůstává, ale omezuje bajty, ne pixely.
+Po dekódování (`image.decode()`, tedy s EXIF orientací) se obrázek, jehož delší strana přesahuje 2048 px,
+JEDNOU zmenší na delší stranu 2048 px se zachovaným poměrem stran (`downscaledSize`; menší obrázek se nechá
+být) a veškerý ořez v dialogu D264 jde z této kopie; hráč nic nepozná. Kopie je PNG (kvůli průhlednosti,
+kterou ořez později vyplní barvou tématu) v novém object URL; plnohodnotný dekódovaný obrázek se uvolní
+(revokuje se jeho URL). Selže-li zmenšení, platí „This image could not be read…“. Apply, které
+nevyprodukuje JPEG (canvas nejde zakódovat: tainted nebo bez paměti), dialog zavře, ukáže stejný text a nic
+neuloží. Nedokumentovaná poslední záchrana s kvalitou 0.3 z D264 je zrušena: zůstává 0.85 → 0.7 → 0.5 a když
+ani 0.5 nesedí do stropu D267, je to totéž selhání (u 256×256 se to v praxi nestane).
+
+## D269 — Klik v obsahu rozbaleného balíčku volbu nevybírá (F-4, doplňuje D263)
+
+D269 (Daniel, odpověď na Q2): Klik na řádek uvnitř rozbaleného obsahu balíčku (`.equip-card__contents`) volbu
+nikdy nevybere, stejně jako přepínač ▸ / ▾. Klik kamkoli jinam na kartu ji vybírá dál (D263).
+
+## D270 — Vadný uložený portrét se při čtení zahazuje beze zprávy (F-4, potvrzuje D267)
+
+D270 (Daniel, odpověď na Q3): Vadný uložený portrét se při čtení dál tiše zahazuje (D267) a hráč se o tom
+nedozví; žádné oznámení se nepřidává. Potvrzeno jako správné chování, ne přehlédnutí.

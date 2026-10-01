@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampCrop, initialCrop, MAX_ZOOM, panCrop, sourceRect, zoomCrop, type Crop } from './cropMath'
+import { clampCrop, downscaledSize, initialCrop, MAX_DECODED_SIDE, MAX_ZOOM, panCrop, sourceRect, zoomCrop, type Crop } from './cropMath'
 
 const WIDE = { width: 600, height: 400 }
 const TALL = { width: 300, height: 900 }
@@ -35,6 +35,17 @@ describe('crop math (W-8)', () => {
 		const moved = panCrop(WIDE, initialCrop(WIDE), 80, 80, 320)
 		// 80 frame px × 400/320 image px per frame px = 100.
 		expect(sourceRect(WIDE, moved)).toEqual({ x: 0, y: 0, size: 400 })
+	})
+
+	it('downscale (D268) caps the longer side at 2048, keeps the aspect, and leaves a small image alone', () => {
+		expect(downscaledSize({ width: 5000, height: 3000 })).toEqual({ width: 2048, height: 1229 })
+		expect(downscaledSize({ width: 3000, height: 5000 })).toEqual({ width: 1229, height: 2048 })
+		expect(downscaledSize({ width: 4096, height: 4096 })).toEqual({ width: 2048, height: 2048 })
+		// A sliver stays at least one pixel wide.
+		expect(downscaledSize({ width: 40000, height: 3 })).toEqual({ width: 2048, height: 1 })
+		const small = { width: MAX_DECODED_SIDE, height: 100 }
+		expect(downscaledSize(small)).toBe(small)
+		expect(downscaledSize(WIDE)).toBe(WIDE)
 	})
 
 	it('zooming keeps the anchored point in place and stays covered', () => {

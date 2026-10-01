@@ -11,7 +11,11 @@ const NOT_AN_IMAGE = 'e2e/fixtures/not-an-image.png'
 const UNREADABLE = 'This image could not be read. Try a JPEG or PNG.'
 
 const square = (page: Page) => page.getByRole('button', { name: 'Portrait (optional)', exact: true })
-const frame = (page: Page) => page.getByRole('button', { name: 'Portrait', exact: true })
+// "Portrait" with the letter, "Portrait of <name>" once an image is shown.
+const frame = (page: Page) => page.getByRole('button', { name: /^Portrait( of .+)?$/ })
+const portraitMenu = (page: Page) => page.getByRole('group', { name: 'Portrait options' })
+const uploadItem = (page: Page) => portraitMenu(page).getByRole('button', { name: 'Upload image' })
+const removeItem = (page: Page) => portraitMenu(page).getByRole('button', { name: 'Remove' })
 const dialog = (page: Page) => page.getByRole('dialog', { name: 'Crop portrait' })
 const cropArea = (page: Page) => dialog(page).getByRole('group', { name: /^Image position/ })
 
@@ -163,28 +167,34 @@ test('W-8 d + e + g: no portrait shows the letter; the sheet menu uploads, survi
   await expect(page.getByAltText('Portrait of Edda')).toHaveCount(0)
 
   await frame(page).click()
-  await expect(page.getByRole('menuitem', { name: 'Upload image' })).toBeVisible()
-  await expect(page.getByRole('menuitem', { name: 'Remove' })).toHaveCount(0)
+  await expect(frame(page)).toHaveAttribute('aria-expanded', 'true')
+  await expect(uploadItem(page)).toBeVisible()
+  await expect(removeItem(page)).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(portraitMenu(page)).toHaveCount(0)
+  await expect(frame(page)).toHaveAttribute('aria-expanded', 'false')
 
   await frame(page).click()
-  await upload(page, page.getByRole('menuitem', { name: 'Upload image' }), NOT_AN_IMAGE)
+  await upload(page, uploadItem(page), NOT_AN_IMAGE)
+  // The error alone keeps the card shown, and the button says so.
+  await expect(frame(page)).toHaveAttribute('aria-expanded', 'true')
+  await expect(portraitMenu(page).getByRole('alert')).toHaveText(UNREADABLE)
   await expect(page.getByText(UNREADABLE)).toBeVisible()
   expect(await storedPortrait(page)).toBeUndefined()
   await page.keyboard.press('Escape')
   await expect(page.getByText(UNREADABLE)).toHaveCount(0)
 
   await frame(page).click()
-  await upload(page, page.getByRole('menuitem', { name: 'Upload image' }), FIXTURE)
+  await upload(page, uploadItem(page), FIXTURE)
   await apply(page)
   await expect(page.getByAltText('Portrait of Edda')).toBeVisible()
+  await expect(frame(page)).toHaveAccessibleName('Portrait of Edda')
   expect(await storedPortrait(page)).toMatch(/^data:image\/jpeg;base64,/)
   await page.reload()
   await expect(page.getByAltText('Portrait of Edda')).toBeVisible()
 
   await frame(page).click()
-  await page.getByRole('menuitem', { name: 'Remove' }).click()
+  await removeItem(page).click()
   await expect(frame(page)).toHaveText('E')
   await expect(page.getByAltText('Portrait of Edda')).toHaveCount(0)
   expect(await storedPortrait(page)).toBeUndefined()
@@ -254,4 +264,101 @@ test('W-8 h: a phone JPEG with EXIF orientation 6 is cropped upright', async ({ 
   expect(isRed(rgb[0]!)).toBe(true)
   expect(isRed(rgb[1]!)).toBe(true)
   expect(isBlue(rgb[2]!)).toBe(true)
+})
+
+test('F-4 a (D264): a drag that starts inside the crop frame and ends outside the dialog does not close it', async ({ page }) => {
+  await openWizard(page)
+  await upload(page, square(page), FIXTURE)
+  await expect(dialog(page)).toBeVisible()
+
+  const box = (await cropArea(page).boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(4, 4, { steps: 8 })
+  await page.mouse.up()
+  await expect(dialog(page)).toBeVisible()
+
+  // A plain click on the backdrop still closes it.
+  await page.mouse.click(4, 4)
+  await expect(dialog(page)).toHaveCount(0)
+})
+
+test('F-4 b: on the sheet, Esc in the menu, Cancel and Apply all return focus to the Portrait button', async ({ page }) => {
+  await createFighter(page, { name: 'Fay', level: 1, species: 'Dwarf|XPHB' })
+
+  await frame(page).click()
+  await expect(uploadItem(page)).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(portraitMenu(page)).toHaveCount(0)
+  await expect(frame(page)).toBeFocused()
+
+  await frame(page).click()
+  await upload(page, uploadItem(page), FIXTURE)
+  await expect(dialog(page)).toBeVisible()
+  await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog(page)).toHaveCount(0)
+  await expect(frame(page)).toBeFocused()
+
+  await frame(page).click()
+  await upload(page, uploadItem(page), FIXTURE)
+  await apply(page)
+  await expect(frame(page)).toHaveAccessibleName('Portrait of Fay')
+  await expect(frame(page)).toBeFocused()
+
+  await frame(page).click()
+  await removeItem(page).click()
+  await expect(frame(page)).toBeFocused()
+})
+
+test('F-4 c (D268): a 5000×3000 image opens the crop dialog downscaled to 2048×1229 and Apply stores a 256×256 JPEG', async ({ page }) => {
+  await openWizard(page)
+  const bytes = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 5000
+    canvas.height = 3000
+    const context = canvas.getContext('2d')!
+    context.fillStyle = 'rgb(220, 30, 30)'
+    context.fillRect(0, 0, 2500, 3000)
+    context.fillStyle = 'rgb(30, 60, 220)'
+    context.fillRect(2500, 0, 2500, 3000)
+    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), 'image/png'))
+    return [...new Uint8Array(await blob.arrayBuffer())]
+  })
+
+  await upload(page, square(page), { name: 'huge.png', mimeType: 'image/png', buffer: Buffer.from(bytes) })
+  await expect(dialog(page)).toBeVisible()
+  expect(await dialog(page).locator('img').evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])).toEqual([2048, 1229])
+  await apply(page)
+  const { size, rgb } = await inspect(page, await squareSource(page), [[40, 128], [216, 128]])
+  expect(size).toEqual([256, 256])
+  expect(isRed(rgb[0]!)).toBe(true)
+  expect(isBlue(rgb[1]!)).toBe(true)
+})
+
+test('F-4 d: a full storage on the sheet shows the storage-full message and keeps the previous portrait', async ({ page }) => {
+  await createFighter(page, { name: 'Gus', level: 1, species: 'Dwarf|XPHB' })
+  await frame(page).click()
+  await upload(page, uploadItem(page), FIXTURE)
+  await apply(page)
+  const before = (await storedPortrait(page)) ?? ''
+  expect(before).toMatch(/^data:image\/jpeg;base64,/)
+  const shownBefore = await page.getByAltText('Portrait of Gus').getAttribute('src')
+
+  await page.evaluate((key) => {
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function (name: string, value: string) {
+      if (name === key) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+      return original.call(this, name, value)
+    }
+  }, STORAGE_KEY)
+
+  await frame(page).click()
+  await upload(page, uploadItem(page), FIXTURE)
+  // A different crop than the stored one, so a silent overwrite would show.
+  await dialog(page).getByLabel('Zoom').press('End')
+  await apply(page)
+
+  await expect(page.getByText(/Local storage is full/)).toBeVisible()
+  await expect(page.getByAltText('Portrait of Gus')).toHaveAttribute('src', shownBefore ?? '')
+  expect(await storedPortrait(page)).toBe(before)
 })

@@ -6,7 +6,8 @@ import type { EquipmentOrigin, StartingEquipmentElement, StartingEquipmentOption
  * W-7 (D263): one starting-equipment option as a card — label, what it grants,
  * a CHOOSE / CHOSEN button. The whole card is the click target; the button is
  * the keyboard one (its click bubbles to the card). A pack row's ▸ stops the
- * click, so opening a pack never takes the option. Never owns the selection (D8);
+ * click, so opening a pack never takes the option, nor does a click inside
+ * its contents (D269). Never owns the selection (D8);
  * a pack's open state is local only (D116).
  */
 
@@ -30,7 +31,7 @@ function PackRow({ element }: { element: Extract<StartingEquipmentElement, { kin
 				<span>{element.label}</span>
 			</button>
 			{open && (
-				<ul className="equip-card__contents">
+				<ul className="equip-card__contents" onClick={(event) => event.stopPropagation()}>
 					{element.items.map((item) => (
 						<li key={itemKey(item)}>
 							{item.name}

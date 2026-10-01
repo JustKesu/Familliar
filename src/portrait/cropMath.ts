@@ -16,6 +16,17 @@ export interface ImageSize {
 
 export const MAX_ZOOM = 4
 
+/** D268: the longest side an uploaded image keeps before cropping. */
+export const MAX_DECODED_SIDE = 2048
+
+/** Size after capping the longer side at MAX_DECODED_SIDE, aspect kept; a smaller image is returned as is. */
+export function downscaledSize(image: ImageSize): ImageSize {
+	const longer = Math.max(image.width, image.height)
+	if (longer <= MAX_DECODED_SIDE) return image
+	const factor = MAX_DECODED_SIDE / longer
+	return { width: Math.max(1, Math.round(image.width * factor)), height: Math.max(1, Math.round(image.height * factor)) }
+}
+
 /** Side of the source square at this zoom. */
 export function cropSide(image: ImageSize, zoom: number): number {
 	return Math.min(image.width, image.height) / zoom

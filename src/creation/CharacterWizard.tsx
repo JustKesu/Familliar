@@ -240,6 +240,7 @@ export function CharacterWizard({
 	const [backgroundEquipmentOffer, setBackgroundEquipmentOffer] = useState<StartingEquipmentOffer | null>(null)
 	const [backgroundEquipmentError, setBackgroundEquipmentError] = useState<string | null>(null)
 	const [equipmentCategoryItems, setEquipmentCategoryItems] = useState<Record<EquipmentCategory, ItemRef[]> | null>(null)
+	const [equipmentCategoryItemsFailed, setEquipmentCategoryItemsFailed] = useState(false)
 	/** How many spells each chosen option still needs picked (step 6a — Pact of the Tome). Read from the data by the effect below, never a hardcoded table. */
 	const [optionalFeatureSpellRequirements, setOptionalFeatureSpellRequirements] = useState<OptionalFeatureSpellRequirement[]>([])
 	const [spellDetails, setSpellDetails] = useState<SpellDetail[]>([])
@@ -487,6 +488,7 @@ export function CharacterWizard({
 			})
 			.catch(() => {
 				/* Left null; the equipment step says so where the category pick would be, and the step cannot complete without the pick. */
+				if (!cancelled) setEquipmentCategoryItemsFailed(true)
 			})
 		return () => {
 			cancelled = true
@@ -1803,6 +1805,7 @@ export function CharacterWizard({
 						classOfferError={classEquipmentError}
 						backgroundOfferError={backgroundEquipmentError}
 						categoryItems={equipmentCategoryItems}
+						categoryItemsFailed={equipmentCategoryItemsFailed}
 						value={state.data.startingEquipment}
 						onChange={(choice) => dispatch({ type: 'setStartingEquipment', choice })}
 					/>

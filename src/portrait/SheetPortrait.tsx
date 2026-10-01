@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { usePortraitUpload } from './usePortraitUpload'
 
 /** W3: the header frame. With `onChange` it is a button opening Upload image / Remove; without (read-only sheet) it only shows. */
 export function SheetPortrait({ name, portrait, onChange }: { name: string; portrait?: string; onChange?: (portrait: string | null) => void }): ReactNode {
 	const [open, setOpen] = useState(false)
 	const wrapRef = useRef<HTMLDivElement>(null)
-	const upload = usePortraitUpload((next) => onChange?.(next))
+	const buttonRef = useRef<HTMLButtonElement>(null)
+	const popupId = useId()
+	const upload = usePortraitUpload((next) => onChange?.(next), buttonRef)
 	const { clearError } = upload
 	const content = portrait ? <img src={portrait} alt={`Portrait of ${name}`} /> : <span aria-hidden="true">{name.trim().charAt(0).toUpperCase()}</span>
 	const shown = open || upload.error !== null
@@ -20,7 +22,9 @@ export function SheetPortrait({ name, portrait, onChange }: { name: string; port
 			if (!wrapRef.current?.contains(event.target as Node)) close()
 		}
 		function handleKeyDown(event: KeyboardEvent): void {
-			if (event.key === 'Escape') close()
+			if (event.key !== 'Escape') return
+			close()
+			buttonRef.current?.focus()
 		}
 		document.addEventListener('pointerdown', handlePointerDown)
 		document.addEventListener('keydown', handleKeyDown)
@@ -32,31 +36,37 @@ export function SheetPortrait({ name, portrait, onChange }: { name: string; port
 
 	if (!onChange) return <div className="sheet__portrait">{content}</div>
 
+	// A disclosure (button + popup of plain buttons), not role="menu", which would owe arrow-key navigation.
 	return (
 		<div ref={wrapRef} className="sheet__portrait-wrap">
 			<button
+				ref={buttonRef}
 				type="button"
 				className="sheet__portrait"
-				aria-label="Portrait"
-				aria-haspopup="menu"
-				aria-expanded={open}
+				aria-label={portrait ? `Portrait of ${name}` : 'Portrait'}
+				aria-expanded={shown}
+				aria-controls={shown ? popupId : undefined}
 				onClick={() => {
 					upload.clearError()
-					setOpen(!open)
+					setOpen(!shown)
 				}}
 			>
 				{content}
 			</button>
 			{shown && (
-				<div className="portrait-menu" role="menu" aria-label="Portrait">
-					{upload.error && <p className="error portrait-menu__error">{upload.error}</p>}
+				<div id={popupId} className="portrait-menu" role="group" aria-label="Portrait options">
+					{upload.error && (
+						<p className="error portrait-menu__error" role="alert">
+							{upload.error}
+						</p>
+					)}
 					<button
 						type="button"
-						role="menuitem"
 						autoFocus
 						onClick={() => {
 							setOpen(false)
 							upload.clearError()
+							buttonRef.current?.focus()
 							upload.choose()
 						}}
 					>
@@ -65,9 +75,9 @@ export function SheetPortrait({ name, portrait, onChange }: { name: string; port
 					{portrait && (
 						<button
 							type="button"
-							role="menuitem"
 							onClick={() => {
 								setOpen(false)
+								buttonRef.current?.focus()
 								onChange(null)
 							}}
 						>
