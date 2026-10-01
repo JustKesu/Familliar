@@ -2251,6 +2251,25 @@ describe('Character.portrait (W-8)', () => {
 		expect(characters[1].portrait).toBe(PORTRAIT)
 	})
 
+	it('F-5: drops a malformed stored speciesCantrip on read; Import still refuses it', () => {
+		const backing = new MemoryStorage()
+		const fire = { name: 'Fire Bolt', source: 'XPHB' }
+		backing.setItem(
+			STORAGE_KEY,
+			JSON.stringify([
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], speciesCantrip: { name: '' } },
+				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '2', name: 'Bran', classes: [], speciesCantrip: fire },
+			]),
+		)
+		const store = new CharacterStore(backing)
+		const characters = store.list()
+		expect(characters.map((character) => character.name)).toEqual(['Aria', 'Bran'])
+		expect('speciesCantrip' in characters[0]).toBe(false)
+		expect(characters[1].speciesCantrip).toEqual(fire)
+		const file = JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '3', name: 'Cora', classes: [], speciesCantrip: 'Fire Bolt' }])
+		expect(() => store.import(file)).toThrow(/speciesCantrip must be an object/)
+	})
+
 	it('setPortrait sets, replaces and removes it; a malformed one is refused before anything is written', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const { id } = store.create({ name: 'Aria' })

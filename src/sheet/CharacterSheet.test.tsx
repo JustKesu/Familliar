@@ -1164,7 +1164,7 @@ describe('CharacterSheet', () => {
 		}
 	})
 
-	it('a character with Alert shows a "not computed" note on initiative, not a number', async () => {
+	it('F-5: a character with Alert adds the Proficiency Bonus to initiative as its own line', async () => {
 		const alertCharacter: Character = {
 			id: 'c6',
 			name: 'Watchful',
@@ -1181,7 +1181,8 @@ describe('CharacterSheet', () => {
 
 		expect(container.querySelector('.sheet__initiative')!.querySelector('details')).toBeNull()
 		await user.click(screen.getByRole('button', { name: 'Initiative breakdown' }))
-		expect(screen.getByRole('dialog', { name: 'Initiative' }).textContent).toContain('not computed')
+		expect(screen.getByRole('dialog', { name: 'Initiative' }).textContent).toContain('feat (Alert): +2')
+		expect(screen.getByRole('dialog', { name: 'Initiative' }).textContent).not.toContain('not computed')
 	})
 
 	it('a species with an unresolved size choice shows "unresolved", never Medium', async () => {

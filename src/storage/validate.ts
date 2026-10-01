@@ -1262,10 +1262,7 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (hitPointLevelsError) return `[${index}].${hitPointLevelsError}`
 	const speciesSpellcastingAbilityError = describeSpeciesSpellcastingAbilityError(value['speciesSpellcastingAbility'])
 	if (speciesSpellcastingAbilityError) return `[${index}].${speciesSpellcastingAbilityError}`
-	const speciesCantrip = value['speciesCantrip']
-	if (speciesCantrip !== undefined && !(isRecord(speciesCantrip) && isNonEmptyString(speciesCantrip['name']) && isNonEmptyString(speciesCantrip['source']))) {
-		return `[${index}].speciesCantrip must be an object with a non-empty name and source`
-	}
+	if (!isValidSpeciesCantrip(value['speciesCantrip'])) return `[${index}].speciesCantrip must be an object with a non-empty name and source`
 	const toolChoicesError = describeToolChoicesError(value['toolChoices'])
 	if (toolChoicesError) return `[${index}].${toolChoicesError}`
 	const subclassSkillsError = describeSubclassSkillsError(value['subclassSkills'])
@@ -1284,17 +1281,25 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	return null
 }
 
-/** W-8: an Import file with a malformed portrait is rejected with this; `list()` drops the field before validating instead (`withoutMalformedPortrait`). */
+function isValidSpeciesCantrip(value: unknown): boolean {
+	return value === undefined || (isRecord(value) && isNonEmptyString(value['name']) && isNonEmptyString(value['source']))
+}
+
+/** W-8: an Import file with a malformed portrait is rejected with this; `list()` drops the field before validating instead (`withoutMalformedDroppableFields`). */
 export function describePortraitError(value: unknown): string | null {
 	if (value === undefined || isValidPortrait(value)) return null
 	return `portrait must be a JPEG data URL ("${PORTRAIT_PREFIX}…") of at most ${PORTRAIT_MAX_LENGTH} characters`
 }
 
-/** W-8: a bad portrait in already stored data must never make the whole character list unreadable, so reading drops it. */
-export function withoutMalformedPortrait(value: unknown): unknown {
-	if (!isRecord(value) || value['portrait'] === undefined || isValidPortrait(value['portrait'])) return value
-	const { portrait: _dropped, ...rest } = value
-	return rest
+/** W-8 (D266), F-5: a bad portrait or species cantrip in already stored data must never make the whole character list unreadable, so reading drops it. */
+export function withoutMalformedDroppableFields(value: unknown): unknown {
+	if (!isRecord(value)) return value
+	const { portrait, speciesCantrip, ...rest } = value
+	return {
+		...rest,
+		...(portrait !== undefined && isValidPortrait(portrait) ? { portrait } : {}),
+		...(speciesCantrip !== undefined && isValidSpeciesCantrip(speciesCantrip) ? { speciesCantrip } : {}),
+	}
 }
 
 /** Validates the full wire record, including the version tag. */

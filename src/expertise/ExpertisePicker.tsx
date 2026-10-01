@@ -86,8 +86,10 @@ export function ExpertisePicker({
 
 	const { count, restrictedTo } = state
 	const pool = restrictedTo ? proficientSkills.filter((p) => restrictedTo.includes(p.skill)) : proficientSkills
+	// F-5: a stored pick outside the pool (not proficient any more) stays listed so it can be unchecked; the step stays incomplete until it is.
+	const stale = value.filter((skill) => !pool.some((p) => p.skill === skill))
 
-	if (pool.length === 0) {
+	if (pool.length === 0 && stale.length === 0) {
 		return <p className="expertise-picker__empty">No skill proficiencies to grant Expertise in yet — choose class, background or species skills first.</p>
 	}
 
@@ -95,7 +97,7 @@ export function ExpertisePicker({
 	const remaining = effectiveCount - value.length
 
 	function toggle(skill: string): void {
-		if (lockedValues.includes(skill)) return
+		if (lockedValues.includes(skill) && !stale.includes(skill)) return
 		if (value.includes(skill)) {
 			onChange(value.filter((s) => s !== skill))
 			return
@@ -112,12 +114,27 @@ export function ExpertisePicker({
 					than the {count} Expertise allows. Choose from what you have.
 				</p>
 			)}
-			<p className="expertise-picker__remaining">
-				{remaining > 0
-					? `Choose ${remaining} more skill${remaining === 1 ? '' : 's'} for Expertise (${value.length} of ${effectiveCount} chosen).`
-					: `All ${effectiveCount} Expertise skill${effectiveCount === 1 ? '' : 's'} chosen.`}
-			</p>
+			{stale.length > 0 ? (
+				<p className="expertise-picker__stale" role="alert">
+					Not proficient in {stale.map(capitalize).join(', ')} any more — uncheck {stale.length === 1 ? 'it' : 'them'} and choose another skill for Expertise.
+				</p>
+			) : (
+				<p className="expertise-picker__remaining">
+					{remaining > 0
+						? `Choose ${remaining} more skill${remaining === 1 ? '' : 's'} for Expertise (${value.length} of ${effectiveCount} chosen).`
+						: `All ${effectiveCount} Expertise skill${effectiveCount === 1 ? '' : 's'} chosen.`}
+				</p>
+			)}
 			<ul className="expertise-picker__list">
+				{stale.map((skill) => (
+					<li key={skill} className="expertise-picker__item">
+						<label>
+							<input type="checkbox" checked onChange={() => toggle(skill)} />
+							{capitalize(skill)}
+							<span className="expertise-picker__source"> (not proficient)</span>
+						</label>
+					</li>
+				))}
 				{pool.map(({ skill, source }) => {
 					const checked = value.includes(skill)
 					const atLimit = !checked && remaining <= 0

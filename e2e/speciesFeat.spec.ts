@@ -77,7 +77,7 @@ test('S1 a: a Human Fighter cannot leave Background until the species feat is ch
   await expect(nextButton(page)).toBeEnabled()
   await finishFromBackground(page, options)
 
-  // Alert's initiative proficiency is a D55 note only, as for every Alert (featEffects.ts PROSE_FEAT_EFFECT_TARGETS).
+  // F-5: Alert adds the Proficiency Bonus to initiative, from any origin.
   await page.getByRole('button', { name: 'Initiative breakdown', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Initiative', exact: true })).toContainText('feat (Alert)')
   await page.keyboard.press('Escape')
@@ -195,12 +195,11 @@ test('S1 g: the species feat is taken at an ASI level — disabled on level up, 
   await expect(featOption(page, 4, 'Alert')).toHaveJSProperty('disabled', true)
   await expect(featOption(page, 4, 'Alert')).toHaveText('Alert · XPHB (already taken)')
 
+  // F-5 (D286): the species dropdown counts ASI-level feats too, so the clash is refused on the Background step.
   await createFighter(page, human('Clash Level', { level: 4, speciesFeat: 'Alert', feat: 'Tough' }))
   await editToBackground(page)
-  await speciesFeatSelect(page).selectOption('Tough|XPHB')
-  for (let steps = 0; steps < 8 && !(await levelCard(page, 4).isVisible()); steps++) await next(page)
-  await expect(levelCard(page, 4)).toContainText('Tough is already taken (Species) — choose another feat.')
-  await expect(nextButton(page)).toBeDisabled()
+  await expect(speciesOption(page, 'Tough')).toHaveJSProperty('disabled', true)
+  await expect(speciesOption(page, 'Tough')).toHaveText('Tough · XPHB (already taken: level 4)')
 })
 
 test('S1 h: Manage Feats edits the sub-choices of Skilled taken as the species feat', async ({ page }) => {

@@ -31,6 +31,14 @@ const rogueProficientSkills = [
 ]
 
 describe('ExpertisePicker', () => {
+	it('F-5: lists a stored pick the character is no longer proficient in, says why, and lets it be unchecked', async () => {
+		const onChange = vi.fn()
+		render(<ExpertisePicker className="Rogue" classSource="XPHB" level={1} proficientSkills={rogueProficientSkills} value={['arcana', 'stealth']} onChange={onChange} />)
+		expect(await screen.findByText('Not proficient in Arcana any more — uncheck it and choose another skill for Expertise.')).toBeTruthy()
+		await userEvent.click(screen.getByRole('checkbox', { name: /Arcana/ }))
+		expect(onChange).toHaveBeenCalledWith(['stealth'])
+	})
+
 	it('offers nothing to a Fighter', async () => {
 		const { container } = render(
 			<ExpertisePicker

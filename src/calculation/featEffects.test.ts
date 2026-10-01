@@ -12,7 +12,6 @@ import {
 	featSkillChoiceAwaitingNotes,
 	featStoredExpertiseSkillNames,
 	featStoredSkillProficiencyNames,
-	proseFeatEffectNotes,
 	type FeatEffectEntry,
 } from './featEffects'
 
@@ -222,20 +221,6 @@ describe('stored feat proficiency picks (task A2)', () => {
 	})
 })
 
-describe('proseFeatEffectNotes', () => {
-	it('flags Alert on initiative', () => {
-		const character = withChoices(base, [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }])
-		const notes = proseFeatEffectNotes('initiative', character, [])
-		expect(notes).toHaveLength(1)
-		expect(notes[0]).toEqual({ source: 'feat (Alert)', amount: 0, note: expect.stringContaining('D55') })
-	})
-
-	it('is empty for a character without Alert', () => {
-		const character = withChoices(base, [{ level: 4, kind: 'feat', name: 'Actor', source: 'XPHB' }])
-		expect(proseFeatEffectNotes('initiative', character, [])).toEqual([])
-	})
-})
-
 describe('the background origin feat (D156)', () => {
 	const criminal = { name: 'Criminal', source: 'XPHB' }
 	const alert: FeatEffectEntry = { name: 'Alert', source: 'XPHB', grantedByBackgrounds: [criminal] }
@@ -247,7 +232,6 @@ describe('the background origin feat (D156)', () => {
 	it('is derived from the background alone, with nothing stored', () => {
 		expect(backgroundOriginFeatAmong([alert], withBackground)).toEqual({ name: 'Alert', source: 'XPHB' })
 		expect(characterFeats(withBackground, [alert])).toEqual([{ key: 'background', origin: 'background', name: 'Alert', source: 'XPHB' }])
-		expect(proseFeatEffectNotes('initiative', withBackground, [alert])).toEqual([{ source: 'feat (Alert)', amount: 0, note: expect.stringContaining('D55') }])
 	})
 
 	it("applies the stored entry's sub-choices when it names the background's feat", () => {

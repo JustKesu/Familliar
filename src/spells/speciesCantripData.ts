@@ -15,7 +15,7 @@ export interface SpeciesCantripOption {
 	classNames: string[]
 }
 
-/** Null when the species has no cantrip choice — or is a family base, which the wizard never stores (D81). */
+/** Null when the species has no cantrip choice or is Elf's family base (named block). Kobold|MPMM's base has an unnamed block and does return a slot; the wizard never stores a base (D81). */
 export function extractSpeciesCantripSlot(parsedSpecies: unknown, speciesName: string, speciesSource: string): SpeciesCantripSlot | null {
 	if (!Array.isArray(parsedSpecies)) throw new Error('species.json: expected a top-level array.')
 	const entry = parsedSpecies.find((candidate) => isRecord(candidate) && candidate['name'] === speciesName && candidate['source'] === speciesSource)
@@ -46,7 +46,7 @@ export function speciesCantripOptions(parsedSpells: unknown, slot: SpeciesCantri
 
 /** The slot plus its options, or null for a species without the grant. */
 export async function loadSpeciesCantripChoice(speciesName: string, speciesSource: string): Promise<{ slot: SpeciesCantripSlot; options: SpeciesCantripOption[] } | null> {
-	const [parsedSpecies, parsedSpells] = await Promise.all([loadDataFile('data/species.json'), loadDataFile('data/spells.json')])
-	const slot = extractSpeciesCantripSlot(parsedSpecies, speciesName, speciesSource)
-	return slot ? { slot, options: speciesCantripOptions(parsedSpells, slot) } : null
+	const slot = extractSpeciesCantripSlot(await loadDataFile('data/species.json'), speciesName, speciesSource)
+	// A spells.json failure must lock only the species that has the grant (D281).
+	return slot ? { slot, options: speciesCantripOptions(await loadDataFile('data/spells.json'), slot) } : null
 }

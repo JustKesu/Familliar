@@ -108,6 +108,8 @@ const EMPTY_FEAT_SET: ReadonlySet<string> = new Set()
 export interface WizardStepConditions {
 	/** Expertise skills the 'expertise' step must collect — `null` means no entitlement, so the step is skipped. */
 	expertiseRequiredCount?: number | null
+	/** F-5: false while a stored Expertise skill is outside the step's pool (no longer proficient); the picker lists it for unchecking. */
+	expertiseSkillsAvailable?: boolean
 	/** Levels granting an ASI-or-feat choice; 0 skips the 'featAsi' step. */
 	featAsiEligibleLevelCount?: number
 	/** `${name}|${source}` keys of feats that additionally need `chosenAbility` (half-feats). */
@@ -274,6 +276,7 @@ function pruneClassOptionalFeatures(state: WizardControllerState, featureTypes: 
 function resolveConditions(conditions: WizardStepConditions): Required<Omit<WizardStepConditions, 'classPickRequirements'>> & Pick<WizardStepConditions, 'classPickRequirements'> {
 	return {
 		expertiseRequiredCount: conditions.expertiseRequiredCount ?? null,
+		expertiseSkillsAvailable: conditions.expertiseSkillsAvailable ?? true,
 		featAsiEligibleLevelCount: conditions.featAsiEligibleLevelCount ?? 0,
 		featsRequiringAbilityChoice: conditions.featsRequiringAbilityChoice ?? EMPTY_FEAT_SET,
 		featAsiChoicesValid: conditions.featAsiChoicesValid ?? true,
@@ -699,6 +702,7 @@ function previousStep(step: WizardStep, conditions: WizardStepConditions): Wizar
 export function isStepComplete(step: WizardStep, data: WizardData, conditions: WizardStepConditions = {}): boolean {
 	const {
 		expertiseRequiredCount,
+		expertiseSkillsAvailable,
 		featAsiEligibleLevelCount,
 		featsRequiringAbilityChoice,
 		featAsiChoicesValid,
@@ -764,7 +768,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				speciesOriginFeatComplete
 			)
 		case 'expertise':
-			return expertiseRequiredCount === null || data.expertiseSkills.length === expertiseRequiredCount
+			return expertiseRequiredCount === null || (data.expertiseSkills.length === expertiseRequiredCount && expertiseSkillsAvailable)
 		case 'languages': {
 			// A level-up walk only collects the new level's feature picks; the creation picks are not its to demand.
 			const creationComplete = levelUpTargetLevel !== null || data.languageChoice.length === CHOSEN_LANGUAGE_COUNT

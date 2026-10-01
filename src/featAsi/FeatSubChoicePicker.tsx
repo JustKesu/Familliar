@@ -6,6 +6,7 @@ import { featureLanguageOptions } from '../languages/classFeatureLanguages'
 import { loadClassSpellList, type ClassSpellListSpell } from '../spells/classSpellListData'
 import { featSpellPickerKey, knownSpellNote, knownSpellReason, type KnownSpell } from '../spells/knownSpells'
 import type { FeatChoiceDetails, FeatChoiceProficiencies, MagicInitiateChoice } from '../storage/character'
+import { featOriginLabel, type FeatInstance } from './featInstances'
 import { toolChoiceOptions } from '../toolProficiencies/classToolChoices'
 import {
 	isMagicInitiateFamily,
@@ -33,9 +34,20 @@ export interface FeatChoiceHeld {
 	heldExpertise: string[]
 	heldTools: string[]
 	knownLanguages: string[]
+	/** The class lists the character's other Magic Initiate instances use, by origin label (XPHB Repeatable: a different list each time). */
+	magicInitiateLists?: readonly { className: string; origin: string }[]
 }
 
 const NOTHING_HELD: FeatChoiceHeld = { heldSkills: [], heldExpertise: [], heldTools: [], knownLanguages: [] }
+
+/** For FeatChoiceHeld.magicInitiateLists: `others` are every feat instance except the one being edited. */
+export function magicInitiateListsOf(others: readonly FeatInstance[]): { className: string; origin: string }[] {
+	return others.flatMap((instance) => {
+		if (!isMagicInitiateFamily(instance)) return []
+		const className = instance.magicInitiate?.className ?? magicInitiateFixedClass(instance)?.className
+		return className ? [{ className, origin: featOriginLabel(instance) }] : []
+	})
+}
 
 function capitalize(word: string): string {
 	return word.charAt(0).toUpperCase() + word.slice(1)
@@ -117,6 +129,7 @@ export function FeatSubChoicePicker({
 					magicInitiate={value.magicInitiate ?? null}
 					chosenAbility={value.chosenAbility}
 					alreadyKnown={alreadyKnown}
+					listsTaken={held.magicInitiateLists ?? []}
 					ownPickerKey={featSpellPickerKey(feat.name)}
 					radioName={`${idPrefix}-magic-initiate-class`}
 					onChangeMagicInitiate={(magicInitiate) => onChange({ ...value, magicInitiate })}
@@ -316,6 +329,7 @@ function MagicInitiateSubPicker({
 	magicInitiate: stored,
 	chosenAbility,
 	alreadyKnown,
+	listsTaken,
 	ownPickerKey,
 	radioName,
 	onChangeMagicInitiate,
@@ -326,6 +340,7 @@ function MagicInitiateSubPicker({
 	magicInitiate: MagicInitiateChoice | null
 	chosenAbility: Ability | undefined
 	alreadyKnown: readonly KnownSpell[]
+	listsTaken: readonly { className: string; origin: string }[]
 	ownPickerKey: string
 	radioName: string
 	onChangeMagicInitiate: (value: MagicInitiateChoice) => void
@@ -385,12 +400,17 @@ function MagicInitiateSubPicker({
 			{!fixedClass && (
 				<fieldset>
 					<legend>Class list</legend>
-					{MAGIC_INITIATE_CLASS_OPTIONS.map((option) => (
-						<label key={option.className}>
-							<input type="radio" name={radioName} checked={className === option.className} onChange={() => selectClass(option)} />
-							{option.className}
-						</label>
-					))}
+					{MAGIC_INITIATE_CLASS_OPTIONS.map((option) => {
+						const takenBy = listsTaken.filter((list) => list.className === option.className).map((list) => list.origin)
+						const checked = className === option.className
+						return (
+							<label key={option.className}>
+								<input type="radio" name={radioName} checked={checked} disabled={!checked && takenBy.length > 0} onChange={() => selectClass(option)} />
+								{option.className}
+								{takenBy.length > 0 && <span className="feat-asi-picker__already-known"> (already chosen: {takenBy.join(', ')})</span>}
+							</label>
+						)
+					})}
 				</fieldset>
 			)}
 

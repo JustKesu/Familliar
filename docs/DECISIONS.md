@@ -4615,3 +4615,66 @@ raceSpells.ts dává uložený cantrip jako řádek druhu s úrovní grantu (`1`
 `speciesSpellcastingAbility`, takže Spells i Actions ho ukazují jako ostatní cantripy druhu. Bez uložené
 volby (postava před schématem 56) místo dřívějšího „not yet supported“ ukáže „Cantrip not chosen yet —
 choose it in Edit Character.“ a Edit Character zamkne Species (D281). Žádná migrace.
+
+## D283 — Každý Magic Initiate postavy má jiný seznam tříd (F-5, nález 1)
+
+Pravidlo XPHB Repeatable: při každém vzetí jiný seznam. Ve výběru seznamu (FeatSubChoicePicker, wizard i
+Manage Feats) je třída, kterou už používá jiná instance Magic Initiate postavy (pozadí včetně „Magic
+Initiate; Class“, druh, úroveň ASI, ruční, z předmětu), zakázaná s „(already chosen: Background)“ (popisek
+původu jako `featOriginLabel`). Seznamy nese `FeatChoiceHeld.magicInitiateLists` (`magicInitiateListsOf`).
+Už zvolená třída zůstává zaškrtnutá a jen ukáže důvod; Next se tím nezamyká.
+
+## D284 — Krok Expertise je neúplný, dokud uložená expertise leží mimo jeho nabídku (F-5, nález 2)
+
+Podmínka `expertiseSkillsAvailable`: každá uložená dovednost expertise musí být v nabídce kroku (dovednosti
+třídy, pozadí a druhu bez pevné expertise, u Scholara průnik — D49, D203). Jinak je krok neúplný i při plném
+počtu. ExpertisePicker takovou dovednost ukáže zaškrtnutou s „(not proficient)“, nad seznamem „Not proficient
+in Arcana any more — uncheck it and choose another skill for Expertise.“ a dovolí ji odškrtnout i u zamčené
+volby z dřívější úrovně. Reducer expertise při změně featu druhu ani Dark Gift nemaže.
+
+## D285 — Data featu a cantripu druhu se čtou jen pro druh s grantem (F-5, nález 3)
+
+`loadSpeciesCantripChoice` čte spells.json až po nalezení slotu, `useSpeciesOriginFeat` feats.json až když
+druh grant má; selhání tedy zasáhne jen High Elf / Khoravar / Kobold; Draconic Sorcery, resp. Human. Výsledek
+i chyba se klíčují druhem: pro nový druh hook vrací `loading`, dokud jeho načtení nedoběhne (brána zavřená).
+Selhání species.json se dál hlásí u každého druhu (grant nejde zjistit).
+
+## D286 — Dropdown featu druhu počítá featy ze všech původů (F-5, nález 5, rozšiřuje D273)
+
+Obsazené featy = `grantedFeatsOf` (pozadí, ruční, z předmětu) + featy z úrovní ASI (`pickedFeats`), popisek
+„(already taken: Added manually)“ apod. Neopakovatelný feat z jiného původu Next zamkne, feat z předmětu jen
+varuje („is also granted by …“, jako D261). Selhané načtení odkazů pozadí → origin feat (feats.json /
+backgrounds.json) ukáže na kartě druhu „Could not load the background feats: …“ a Next drží zamčený; během
+načítání odkazů je krok pro druh s grantem taky zamčený. Střet featu druhu s featem úrovně ASI se tak v Edit
+Character odmítne už v kroku Background („(already taken: level 4)“); karta ASI ho dál hlásí s „(Species)“.
+
+## D287 — Cantrip High Elf zůstává volnou volbou; výměna jen přes Edit Character (F-5, nález 6)
+
+Rozhodnutí uživatele: model D278/D279 zůstává. Prestidigitation je na seznamu, výchozí volba se nedoplňuje a
+výměna po Long Rest se na sheetu nemodeluje; cantrip se mění v Edit Character.
+
+## D288 — Vadný uložený `speciesCantrip` se při čtení zahodí (F-5, jako D267/D270)
+
+`withoutMalformedDroppableFields` (dřív `withoutMalformedPortrait`) zahodí při čtení seznamu vadný portrét i
+`speciesCantrip`, který není objekt s neprázdným `name` a `source`; postava se načte bez něj a Spells ukáže
+„Cantrip not chosen yet“. Bez oznámení (D270). Import vadnou hodnotu dál odmítá (D278).
+
+## D289 — Alert přidává Proficiency Bonus k iniciativě; seznam próza featů D55 zrušen (F-5)
+
+Alert|XPHB („When you roll Initiative, you can add your Proficiency Bonus to the roll.“) z jakéhokoli původu
+(pozadí, druh, ASI, ruční, předmět) přidá k iniciativě Proficiency Bonus jako vlastní řádek „feat (Alert):
++2“, jednou i při více instancích. Jiný Alert feats.json nemá (DATA.md). Neznámý Proficiency Bonus (postava bez
+třídy) → řádek 0 s poznámkou. Mění D55 pro Alert: `PROSE_FEAT_EFFECT_TARGETS` / `proseFeatEffectNotes` měly
+jen Alert, takže jsou odstraněny; poznámku „not computed“ dnes nedává žádný feat.
+
+## D290 — Manage Feats zná kouzla postavy (F-5, nález 8, rozšiřuje D280)
+
+Sheet předá ManageFeatsPanel `alreadyKnown` sestavené jako u Manage Spells (všechny třídy, featy, options,
+cantrip druhu, bez duplicit), takže Magic Initiate v Manage Feats zakazuje i cantrip druhu a kouzla z kroku
+Spells.
+
+## D291 — Poznámka „Cantrip not chosen yet“ jen pro uzel, který krok Species umí vybrat (F-5, nález 7)
+
+raceSpellsFor dává poznámku i uložený cantrip jen tehdy, když `extractSpeciesCantripSlot` vrátí slot
+(`level=0|class=…`). Jiný tvar `choose` uzlu by hráče posílal do Edit Character, kde výběr není; dnes žádný
+takový v datech není.

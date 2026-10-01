@@ -63,9 +63,9 @@ import {
 import type { ItemRef } from '../inventory/inventoryData'
 import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
-import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
+import { FeatSubChoicePicker, magicInitiateListsOf, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
-import { featAsiStepValid, grantedFeatsOf, useFeatAsiStepData } from '../featAsi/featAsiLevels'
+import { featAsiStepValid, grantedFeatsOf, pickedFeats, useFeatAsiStepData } from '../featAsi/featAsiLevels'
 import { featFixedExpertiseSkills, type FeatEffectEntry } from '../calculation/featEffects'
 import { OriginFeatSwapPicker } from '../featAsi/OriginFeatSwapPicker'
 import { SpeciesOriginFeatPicker } from '../featAsi/SpeciesOriginFeatPicker'
@@ -217,7 +217,8 @@ export function CharacterWizard({
 	const [seeded, setSeeded] = useState(character === undefined)
 	const [seedError, setSeedError] = useState<string | null>(null)
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
-	const [originFeatLinks, setOriginFeatLinks] = useState<BackgroundOriginFeatLink[]>([])
+	const [originFeatLinks, setOriginFeatLinks] = useState<BackgroundOriginFeatLink[] | null>(null)
+	const [originFeatLinksError, setOriginFeatLinksError] = useState<string | null>(null)
 	const [classPickShape, setClassPickShape] = useState<{ key: string; requirements: ClassPickRequirements } | null>(null)
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
 	/** The species list, grouped into species + their own choice (D81) — loaded here as well as in the picker, since the species step's completion check needs to know whether a choice is outstanding before that panel would ever mount. */
@@ -351,8 +352,9 @@ export function CharacterWizard({
 			.then((links) => {
 				if (!cancelled) setOriginFeatLinks(links)
 			})
-			.catch(() => {
-				/* Best-effort like `backgrounds`: the sheet's own loads show the origin feat, or their failure, once saved. */
+			.catch((error: unknown) => {
+				// The sheet shows the background feat's own failure once saved; here it only blocks the species feat's clash check (finding 5).
+				if (!cancelled) setOriginFeatLinksError(error instanceof Error ? error.message : String(error))
 			})
 		return () => {
 			cancelled = true
@@ -360,7 +362,7 @@ export function CharacterWizard({
 	}, [])
 
 	/** D156: the feat the chosen background grants (D205: or the Dark Gift taken instead), and the background as the draft Characters below need it. */
-	const derivedBackgroundFeat = backgroundOriginFeatFrom(originFeatLinks, state.data.backgroundChoice)
+	const derivedBackgroundFeat = backgroundOriginFeatFrom(originFeatLinks ?? [], state.data.backgroundChoice)
 	const backgroundFeatOverride = state.data.backgroundOriginFeatOverride
 	const backgroundOriginFeat = backgroundFeatOverride ?? derivedBackgroundFeat
 	const draftBackgroundEntry = state.data.backgroundChoice
@@ -984,6 +986,7 @@ export function CharacterWizard({
 		(entry) => !fixedExpertise.includes(entry.skill) && (!expertiseEligibility?.restrictedTo || expertiseEligibility.restrictedTo.includes(entry.skill)),
 	)
 	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count, expertisePool.length) : null
+	const expertiseSkillsAvailable = state.data.expertiseSkills.every((skill) => expertisePool.some((entry) => entry.skill === skill))
 
 	/**
 	 * Slots (slice b) and counts (slice d2) via the calculation layer,
@@ -1054,6 +1057,10 @@ export function CharacterWizard({
 		[speciesFeatEntry?.name, speciesFeatEntry?.source],
 	)
 	const speciesFeatLoad = useSpeciesOriginFeat(state.data.speciesChoice)
+	const speciesFeatTaken = useMemo(
+		() => [...grantedFeatsOf(backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats), ...pickedFeats(state.data.featAsiChoices, () => true)],
+		[backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats, state.data.featAsiChoices],
+	)
 	const featAsiLoad = useFeatAsiStepData(
 		state.data.classChoice?.className ?? null,
 		state.data.classChoice?.classSource ?? null,
@@ -1102,6 +1109,7 @@ export function CharacterWizard({
 			heldExpertise: [...state.data.expertiseSkills, ...fixedExpertise, ...featFixedExpertise(others), ...others.flatMap((instance) => instance.proficiencies?.expertise ?? [])],
 			heldTools: toolsHeldElsewhere(proficiencies.tools, null),
 			knownLanguages: proficiencies.languages.filter((item) => !item.pending).map((item) => item.label),
+			magicInitiateLists: magicInitiateListsOf(others),
 		}
 	}
 	/** D179: creation and level-up say a feat's own picks can wait; Edit Character is where they are made. */
@@ -1136,6 +1144,8 @@ export function CharacterWizard({
 		draftCharacterForMaxHp.featAsiChoices,
 		draftCharacterForMaxHp.hitPointLevels,
 		draftCharacterForMaxHp.maxHpOverride,
+		draftGrantedFeats,
+		backgroundFeatOverride,
 		character,
 	])
 
@@ -1313,6 +1323,7 @@ export function CharacterWizard({
 	/** Assembled once so navigation, the Next gate and the save gate cannot drift apart. */
 	const stepConditions: WizardStepConditions = {
 		expertiseRequiredCount,
+		expertiseSkillsAvailable,
 		featAsiEligibleLevelCount: featAsiGrantCount,
 		featsRequiringAbilityChoice: featsNeedingAbilityChoice,
 		featAsiChoicesValid,
@@ -1337,7 +1348,7 @@ export function CharacterWizard({
 		startingEquipmentCategoryPicksComplete,
 		// Stays incomplete until backgrounds.json has loaded, like speciesSkillsComplete.
 		backgroundOriginFeatComplete: state.data.backgroundChoice === null || (selectedBackground !== undefined && (selectedBackground.originFeat !== null || backgroundFeatOverride !== null)),
-		speciesOriginFeatComplete: speciesOriginFeatComplete(speciesFeatLoad, speciesFeatEntry, backgroundOriginFeat),
+		speciesOriginFeatComplete: speciesOriginFeatComplete(speciesFeatLoad, speciesFeatEntry, speciesFeatTaken, originFeatLinks !== null),
 		characterLevel: state.data.classChoice?.level ?? null,
 		hitDieFaces: hitDie?.key === hitDieKey ? hitDie.faces : null,
 		editingExistingCharacter: character !== undefined,
@@ -1646,7 +1657,8 @@ export function CharacterWizard({
 							load={speciesFeatLoad}
 							speciesName={state.data.speciesChoice.name}
 							value={speciesFeatEntry}
-							backgroundFeat={backgroundOriginFeat}
+							takenFeats={speciesFeatTaken}
+							backgroundFeatError={originFeatLinksError}
 							onChange={(feat) => dispatch({ type: 'setGrantedFeat', feat: { ...feat, origin: 'species' } })}
 							held={() => heldForFeat('species')}
 							alreadyKnown={alreadyKnownSpells}

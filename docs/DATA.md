@@ -1425,6 +1425,20 @@ Wizard (+ Artificer).
 
 Found in task S2 (2026-10-01, `scripts/investigate-species-cantrips.js`, consumed).
 
+`extractSpeciesCantripSlot` returns a slot for Kobold|MPMM's family base too (its block has no `name`); only
+Elf's named base block yields null. Harmless: the wizard never stores a base (D81).
+
+### Alert — one entry only (F-5)
+
+feats.json has exactly one Alert: Alert|XPHB, category O, keys `name, source, page, srd52, basicRules2024,
+category, entries` — no structured field, so its effect lives only in prose. Initiative sentence (tags
+stripped): "When you roll Initiative, you can add your Proficiency to the roll." (the tag is
+`{@variantrule Proficiency|XPHB|Proficiency Bonus}`), plus the Initiative swap with an ally, which the app
+does not model. No 2014 PHB Alert (+5) is in the filtered data. Backgrounds granting it: Criminal|XPHB,
+Guard|XPHB, Inquisitive|EFA.
+
+Found in task F-5 (2026-10-01, `scripts/investigate-alert-initiative.js`).
+
 ### Species traits against the Actions tab's tests (D185)
 
 `species.json`: 78 records, 316 named top-level `entries` elements. 70 of them

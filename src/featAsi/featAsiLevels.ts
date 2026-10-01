@@ -159,7 +159,7 @@ export function featAsiLevels(data: FeatAsiStepData, choices: readonly FeatAsiCh
 	}
 }
 
-const pickedFeats = (choices: readonly FeatAsiChoice[], include: (level: number) => boolean): GrantedFeat[] =>
+export const pickedFeats = (choices: readonly FeatAsiChoice[], include: (level: number) => boolean): GrantedFeat[] =>
 	choices.flatMap((choice) => (choice.kind === 'feat' && choice.name !== '' && include(choice.level) ? [{ name: choice.name, source: choice.source, origin: `level ${choice.level}` }] : []))
 
 function contextAt(levels: FeatAsiLevels, level: number): Omit<PrerequisiteContext, 'chosenFeats'> {

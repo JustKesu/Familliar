@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { CharacterGrantedFeat } from '../storage/character'
 import { loadFeats, sameFeatName, type FeatEntry } from './featAsiData'
+import type { GrantedFeat } from './featAsiLevels'
 import type { FeatRef } from './featInstances'
 
 /** Human|XPHB's `feats`, the only shape species.json carries (DATA.md). */
@@ -23,42 +24,58 @@ export async function loadSpeciesGrantsOriginFeat(species: FeatRef | null | unde
 	return speciesGrantsOriginFeat(await loadDataFile('data/species.json'), species)
 }
 
-/** D273: a non-repeatable feat the background already grants cannot be the species feat; null when `feat` is fine. */
-export function speciesOriginFeatProblem(feat: FeatEntry, backgroundFeat: FeatRef | null): string | null {
-	if (feat.repeatable || !backgroundFeat || !sameFeatName(feat, backgroundFeat)) return null
-	return `${feat.name} is already taken (Background) — choose another feat.`
+/** D273: who already holds a non-repeatable feat of this name — background, ASI level, manual or item (`held` as grantedFeatsOf + pickedFeats build it). A blocking holder wins over an item. */
+export function speciesOriginFeatTaker(feat: FeatEntry, held: readonly GrantedFeat[]): GrantedFeat | undefined {
+	if (feat.repeatable) return undefined
+	const takers = held.filter((other) => sameFeatName(other, feat))
+	return takers.find((other) => !other.item) ?? takers[0]
+}
+
+/** Null when `feat` is fine; an item's feat only warns, as on the ASI card (F-3). */
+export function speciesOriginFeatProblem(feat: FeatEntry, held: readonly GrantedFeat[]): { text: string; blocking: boolean } | null {
+	const taker = speciesOriginFeatTaker(feat, held)
+	if (!taker) return null
+	if (taker.item) return { text: `${feat.name} is also granted by ${taker.item.name ?? 'an item'} — you may keep it or choose another feat.`, blocking: false }
+	return { text: `${feat.name} is already taken (${taker.origin}) — choose another feat.`, blocking: true }
 }
 
 export type SpeciesOriginFeatLoad =
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
-	| { status: 'ready'; key: string; grants: boolean; originFeats: FeatEntry[] }
+	| { status: 'ready'; grants: boolean; originFeats: FeatEntry[] }
 
-/** The chosen species' grant and the Origin feats it picks from (D272: category "O" only, so no Dark Gift). */
+/** The chosen species' grant and the Origin feats it picks from (D272: category "O" only, so no Dark Gift). feats.json is read only for a species with the grant. */
 export function useSpeciesOriginFeat(species: FeatRef | null): SpeciesOriginFeatLoad {
 	const key = species ? `${species.name}|${species.source}` : ''
-	const [state, setState] = useState<SpeciesOriginFeatLoad>({ status: 'loading' })
+	const [state, setState] = useState<{ key: string; load: SpeciesOriginFeatLoad } | null>(null)
 	useEffect(() => {
 		let cancelled = false
-		Promise.all([loadSpeciesGrantsOriginFeat(species), loadFeats()])
-			.then(([grants, feats]) => {
-				if (!cancelled) setState({ status: 'ready', key, grants, originFeats: feats.filter((feat) => feat.category === 'O').sort((a, b) => a.name.localeCompare(b.name)) })
+		const settle = (load: SpeciesOriginFeatLoad) => {
+			if (!cancelled) setState({ key, load })
+		}
+		loadSpeciesGrantsOriginFeat(species)
+			.then(async (grants) => {
+				const feats = grants ? await loadFeats() : []
+				settle({ status: 'ready', grants, originFeats: feats.filter((feat) => feat.category === 'O').sort((a, b) => a.name.localeCompare(b.name)) })
 			})
-			.catch((error: unknown) => {
-				if (!cancelled) setState({ status: 'error', message: error instanceof Error ? error.message : String(error) })
-			})
+			.catch((error: unknown) => settle({ status: 'error', message: error instanceof Error ? error.message : String(error) }))
 		return () => {
 			cancelled = true
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the species' identity.
 	}, [key])
-	return state.status === 'ready' && state.key !== key ? { status: 'loading' } : state
+	// Another species' result or error never stands in for this one's.
+	return state?.key === key ? state.load : { status: 'loading' }
 }
 
-/** D274: the Background step's Next gate for the species feat. Loading keeps it shut, a failed load opens it (the card shows the error); sub-choices never block (D179). */
-export function speciesOriginFeatComplete(load: SpeciesOriginFeatLoad, chosen: CharacterGrantedFeat | undefined, backgroundFeat: FeatRef | null): boolean {
+/**
+ * D274: the Background step's Next gate for the species feat. Loading keeps it shut, a failed load opens it (the card shows the error);
+ * sub-choices never block (D179). `heldKnown` false (background feat links still loading or failed) keeps it shut for a granting species.
+ */
+export function speciesOriginFeatComplete(load: SpeciesOriginFeatLoad, chosen: CharacterGrantedFeat | undefined, held: readonly GrantedFeat[], heldKnown = true): boolean {
 	if (load.status !== 'ready') return load.status === 'error'
 	if (!load.grants) return true
+	if (!heldKnown) return false
 	const feat = chosen && load.originFeats.find((entry) => entry.name === chosen.name && entry.source === chosen.source)
-	return !!feat && speciesOriginFeatProblem(feat, backgroundFeat) === null
+	return !!feat && speciesOriginFeatProblem(feat, held)?.blocking !== true
 }

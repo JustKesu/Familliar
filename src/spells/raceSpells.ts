@@ -60,6 +60,7 @@ import { proficiencyBonusForLevel } from '../calculation/proficiencyBonus'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character } from '../storage/character'
 import { findChooseNodes } from './featSpellChoiceData'
+import { extractSpeciesCantripSlot } from './speciesCantripData'
 import {
 	extractRefsWithUsage,
 	findSpell,
@@ -186,6 +187,7 @@ export function raceSpellsFor(character: Character, parsedSpecies: unknown, pars
 	const proficiencyBonus = characterLevel > 0 ? proficiencyBonusForLevel(characterLevel) : undefined
 	const granted: RaceGrantedSpell[] = []
 	const notes: RaceSpellNote[] = []
+	const cantripSlot = extractSpeciesCantripSlot(parsedSpecies, stored.name, stored.source)
 
 	for (const entry of species.additionalSpells) {
 		if (!isRecord(entry)) continue
@@ -216,7 +218,8 @@ export function raceSpellsFor(character: Character, parsedSpecies: unknown, pars
 
 				// S2: a `choose` filter node is filled by the stored pick; without one it is a visible note, not a gap.
 				const chosen: { ref: string; usage: SpellUsage | null }[] = []
-				if (findChooseNodes(value).length > 0) {
+				// Only a node the Species step can actually pick for may send the player to Edit Character.
+				if (cantripSlot && findChooseNodes(value).length > 0) {
 					if (character.speciesCantrip) chosen.push({ ref: `${character.speciesCantrip.name}|${character.speciesCantrip.source}`, usage: null })
 					else notes.push({ speciesName: species.name, text: SPECIES_CANTRIP_NOT_CHOSEN })
 				}

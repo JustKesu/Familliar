@@ -3,16 +3,18 @@ import { ResolvedEntries, type ResolverData } from '../featureResolver'
 import { Entries } from '../markup'
 import type { KnownSpell } from '../spells/knownSpells'
 import type { CharacterGrantedFeat, FeatChoiceDetails } from '../storage/character'
+import type { GrantedFeat } from './featAsiLevels'
 import type { FeatRef } from './featInstances'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from './FeatSubChoicePicker'
-import { speciesOriginFeatProblem, type SpeciesOriginFeatLoad } from './speciesOriginFeat'
+import { speciesOriginFeatProblem, speciesOriginFeatTaker, type SpeciesOriginFeatLoad } from './speciesOriginFeat'
 
 /** D271/D272: the Background step's card for the origin feat the species grants (Human Versatile). Renders nothing for a species without one. */
 export function SpeciesOriginFeatPicker({
 	load,
 	speciesName,
 	value,
-	backgroundFeat,
+	takenFeats,
+	backgroundFeatError,
 	onChange,
 	held,
 	alreadyKnown,
@@ -22,7 +24,10 @@ export function SpeciesOriginFeatPicker({
 	load: SpeciesOriginFeatLoad
 	speciesName: string
 	value: CharacterGrantedFeat | undefined
-	backgroundFeat: FeatRef | null
+	/** Every other feat the character holds, labelled by origin (grantedFeatsOf + ASI levels). */
+	takenFeats: readonly GrantedFeat[]
+	/** The background feat links failed to load, so a clash with the background feat cannot be ruled out. */
+	backgroundFeatError: string | null
 	onChange: (feat: FeatRef & FeatChoiceDetails) => void
 	/** Called only once a feat is chosen — what the character holds apart from it (D160). */
 	held: () => FeatChoiceHeld
@@ -33,8 +38,8 @@ export function SpeciesOriginFeatPicker({
 	if (load.status === 'error') return <p className="error">Could not load the species feat: {load.message}</p>
 	if (load.status !== 'ready' || !load.grants) return null
 	const selected = value && load.originFeats.find((feat) => feat.name === value.name && feat.source === value.source)
-	const problem = selected ? speciesOriginFeatProblem(selected, backgroundFeat) : null
-	const line = problem ?? (selected ? null : 'Choose an origin feat.')
+	const problem = selected ? speciesOriginFeatProblem(selected, takenFeats)?.text : null
+	const line = backgroundFeatError !== null ? `Could not load the background feats: ${backgroundFeatError}` : (problem ?? (selected ? null : 'Choose an origin feat.'))
 
 	function select(option: string): void {
 		const split = option.lastIndexOf('|')
@@ -57,11 +62,11 @@ export function SpeciesOriginFeatPicker({
 						Choose an origin feat…
 					</option>
 					{load.originFeats.map((feat) => {
-						const taken = speciesOriginFeatProblem(feat, backgroundFeat) !== null
+						const taker = speciesOriginFeatTaker(feat, takenFeats)
 						return (
-							<option key={`${feat.name}|${feat.source}`} value={`${feat.name}|${feat.source}`} disabled={taken}>
+							<option key={`${feat.name}|${feat.source}`} value={`${feat.name}|${feat.source}`} disabled={taker !== undefined}>
 								{feat.name} · {feat.source}
-								{taken ? ' (already taken: Background)' : ''}
+								{taker ? ` (already taken: ${taker.origin})` : ''}
 							</option>
 						)
 					})}

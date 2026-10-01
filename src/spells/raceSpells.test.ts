@@ -146,6 +146,11 @@ describe('raceSpellsFor', () => {
 		expect(result.spells[0]).toMatchObject({ origin: 'species', speciesName: 'Elf; High Elf Lineage', level: 0, ability: 'int', grantedAtLevel: 1, usage: null })
 	})
 
+	it('a `choose` node the Species step cannot pick for yields no Edit Character note (finding 7)', () => {
+		const oddChoice = { name: 'Odd', source: 'XPHB', additionalSpells: [{ ability: 'int', known: { 1: [{ choose: 'level=1|class=Wizard' }] } }] }
+		expect(raceSpellsFor(character('Odd', 1), [oddChoice], spells).notes).toEqual([])
+	})
+
 	it('ignores a stored species cantrip on a species without the grant', () => {
 		const result = raceSpellsFor({ ...character('Aarakocra', 1), speciesCantrip: { name: 'Light', source: 'XPHB' } }, species, spells)
 		expect(result.spells.map((s) => s.name)).toEqual(['Mage Hand'])

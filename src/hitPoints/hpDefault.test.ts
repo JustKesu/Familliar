@@ -37,6 +37,11 @@ describe('loadCharacterMaxHp with item bonuses (R14a2)', () => {
 		expect(currentHpAfterMaxHpChange(36, after, before)).toBe(28)
 	})
 
+	it('F-5 (finding 10): Tough taken as the species feat reaches the maximum', async () => {
+		const human = { ...fighter(3), grantedFeats: [{ origin: 'species' as const, name: 'Tough', source: 'XPHB' }] }
+		expect(await loadCharacterMaxHp(human)).toMatchObject({ status: 'known', value: 25 + 6 })
+	})
+
 	it('leaves an unattuned attunement item out of the shift (D76)', async () => {
 		const gated = { ...perLevel, requiresAttunement: true }
 		const [before, after] = await Promise.all([loadCharacterMaxHp(fighter(3, gated)), loadCharacterMaxHp(fighter(4, gated))])

@@ -80,6 +80,36 @@ describe('a level up followed by removing that level', () => {
 		expect(storage.raw()).toBe(before)
 	})
 
+	it('F-5 (finding 10): a level up and removing that level keep the species cantrip and the species feat', () => {
+		const storage = memoryStorage()
+		const store = new CharacterStore(storage)
+		const speciesCantrip = { name: 'Fire Bolt', source: 'XPHB' }
+		const speciesFeat = { origin: 'species' as const, name: 'Alert', source: 'XPHB' }
+		const created = store.create({
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 4 }],
+			species: { name: 'Elf; High Elf Lineage', source: 'XPHB' },
+			speciesCantrip,
+			grantedFeats: [speciesFeat],
+			classSkills: ['athletics', 'perception'],
+			masteries: [{ name: 'Longsword' }, { name: 'Greataxe' }, { name: 'Shortbow' }, { name: 'Rapier' }],
+			fightingStyle: 'Archery',
+			featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
+			hitPointLevels: [2, 3, 4].map((level) => ({ level, dieResult: 6, kind: 'average' as const })),
+			createdAtLevel: 4,
+		})
+		const before = storage.raw()
+
+		const gains = levelGainsFor(created, 5, CLASSES, RESOLVER)
+		const seed = wizardDataFromCharacter(created, lookups)
+		const data = { ...seed, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 }, hitPointLevels: [...seed.hitPointLevels, { level: 5, kind: 'roll' as const, dieResult: 9 }] }
+		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5)
+		expect(store.list()[0]).toMatchObject({ speciesCantrip, grantedFeats: [speciesFeat] })
+
+		removeTopLevel(store, created.id)
+		expect(storage.raw()).toBe(before)
+	})
+
 	it('leaves a Fighter levelled from 3 to 4 with new picks byte-identical to before the level up', () => {
 		const storage = memoryStorage()
 		const store = new CharacterStore(storage)

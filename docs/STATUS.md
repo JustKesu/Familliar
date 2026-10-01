@@ -1122,10 +1122,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   two belts; Belt of Dwarvenkind cap; potion + manual; Book of Vile Darkness line;
   level-up ASI from base Strength).
 - `e2e/speciesFeat.spec.ts` — S1 a–i (Human species feat on the Background step:
-  Next gate, Alert note in Initiative + "From Species" rows; Farmer/Tough disabled,
+  Next gate, Alert line in Initiative + "From Species" rows; Farmer/Tough disabled,
   Charlatan/Skilled allowed; background clash blocks Next; Human → Dwarf drops it;
   Edit Character keeps Skilled picks and switches to Tough (+2 max HP); older Human
-  line + gate; level-up/edit clash with a level-4 feat; Manage Feats Skilled picks;
+  line + gate; level-up/edit: a level-4 feat is disabled in the species dropdown; Manage Feats Skilled picks;
   no Dark Gift in the dropdown).
 - `e2e/speciesCantrip.spec.ts` — S2 a–h (High Elf Fighter: Species gate, Wizard
   list only, Fire Bolt on Spells/Actions with the species ability; Khoravar merged
@@ -1133,6 +1133,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Elf: class cantrip disabled in the species dropdown, species cantrip disabled on
   the Spells step; High Elf → Wood Elf drops it; Edit keeps and changes it; schema-55
   High Elf note + gate; v55 import and malformed import refused).
+- `e2e/wizardF5.spec.ts` — F-5 a–f plus finding-10 checks (Sage Human: species MI
+  Wizard list disabled; seeded Rogue stale Expertise blocks Next; level 2 Alert →
+  Tough after Hit points saves full HP; manual Alert disabled in species dropdown;
+  Criminal Alert initiative +PB; malformed stored speciesCantrip loads; Manage Spells
+  and background MI disable the species cantrip; Manage Feats MI list + known spells).
 
 ## Dočasné scaffolding
 
@@ -1736,6 +1741,21 @@ it, and the species dropdown disables cantrips known elsewhere. raceSpells.ts
 turns the pick into an ordinary species row (Spells + Actions); with no pick the
 note reads "Cantrip not chosen yet — choose it in Edit Character." E2E
 `speciesCantrip.spec.ts` a–h; `e2e/wizard.ts` gained `speciesCantrip`.
+
+F-5 (D283–D291, S1/S2 review fixes): Magic Initiate
+class lists used by another MI instance are disabled ("(already chosen: Background)",
+`FeatChoiceHeld.magicInitiateLists`, wizard + Manage Feats). Expertise step needs
+every stored pick inside its pool (`expertiseSkillsAvailable`); ExpertisePicker lists a
+stale pick as "(not proficient)" with an alert line and lets it be unchecked. Species
+feat / cantrip data load only for a species with the grant, keyed by species. Species
+feat dropdown's taken set = grantedFeatsOf + ASI feats (item feat warns only); failed
+background feat-link load shows an error and keeps Background Next shut. Max HP effect
+re-runs on grantedFeats / Dark Gift override. Manage Feats gets `alreadyKnown`.
+SpeciesCantripPicker hint whenever the value is off the list. raceSpells' not-chosen
+note only for an extractable slot. Malformed stored `speciesCantrip` dropped on read
+(`withoutMalformedDroppableFields`). Alert|XPHB adds Proficiency Bonus to initiative
+("feat (Alert): +N", any origin); `PROSE_FEAT_EFFECT_TARGETS` / `proseFeatEffectNotes`
+removed. E2E `wizardF5.spec.ts`.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

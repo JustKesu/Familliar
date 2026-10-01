@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { extractSpeciesCantripSlot, speciesCantripOptions } from './speciesCantripData'
+import { describe, expect, it, vi } from 'vitest'
+import { extractSpeciesCantripSlot, loadSpeciesCantripChoice, speciesCantripOptions } from './speciesCantripData'
+
+vi.mock('../dataLoader/dataLoader', () => ({
+	loadDataFile: vi.fn(async (path: string) => {
+		if (path === 'data/species.json') return species
+		throw new Error('spells.json failed')
+	}),
+}))
 
 /* Shapes from scripts/investigate-species-cantrips.js (DATA.md, S2). */
 const species = [
@@ -7,6 +14,7 @@ const species = [
 	{ name: 'Elf; High Elf Lineage', source: 'XPHB', additionalSpells: [{ ability: { choose: ['int', 'wis', 'cha'] }, known: { 1: { _: [{ choose: 'level=0|class=Wizard' }] } } }] },
 	{ name: 'Khoravar', source: 'EFA', additionalSpells: [{ ability: { choose: ['int', 'wis', 'cha'] }, known: { 1: { _: [{ choose: 'level=0|class=Cleric;Druid;Wizard' }] } } }] },
 	{ name: 'Elf; Wood Elf Lineage', source: 'XPHB', additionalSpells: [{ ability: { choose: ['int', 'wis', 'cha'] }, known: { 1: ['druidcraft|xphb'] } }] },
+	{ name: 'Kobold; Draconic Sorcery', source: 'MPMM', additionalSpells: [{ ability: { choose: ['int', 'wis', 'cha'] }, known: { _: [{ choose: 'level=0|class=Sorcerer', count: 1 }] } }] },
 ]
 
 const onList = (...classes: string[]) => ({ classes: classes.map((name) => ({ name, classSource: 'XPHB' })) })
@@ -23,6 +31,15 @@ describe('species cantrip choice (S2)', () => {
 		expect(extractSpeciesCantripSlot(species, 'Elf; High Elf Lineage', 'XPHB')?.classes.map((c) => c.className)).toEqual(['Wizard'])
 		expect(extractSpeciesCantripSlot(species, 'Elf', 'XPHB')).toBeNull()
 		expect(extractSpeciesCantripSlot(species, 'Elf; Wood Elf Lineage', 'XPHB')).toBeNull()
+	})
+
+	it('reads Kobold’s always-granted known._ node with an explicit count 1', () => {
+		expect(extractSpeciesCantripSlot(species, 'Kobold; Draconic Sorcery', 'MPMM')?.classes.map((c) => c.className)).toEqual(['Sorcerer'])
+	})
+
+	it('a spells.json failure hits only a species with the grant (finding 3)', async () => {
+		await expect(loadSpeciesCantripChoice('Elf; Wood Elf Lineage', 'XPHB')).resolves.toBeNull()
+		await expect(loadSpeciesCantripChoice('Khoravar', 'EFA')).rejects.toThrow('spells.json failed')
 	})
 
 	it('merges Khoravar’s three lists into one, cantrips only, each labelled with its classes', () => {

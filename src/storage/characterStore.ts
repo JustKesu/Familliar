@@ -46,7 +46,7 @@ import {
 	describeStoredCharacterError,
 	isSupportedVersion,
 	toStoredCharacter,
-	withoutMalformedPortrait,
+	withoutMalformedDroppableFields,
 } from './validate'
 import type { StoredCharacter } from './wireFormat'
 
@@ -91,7 +91,7 @@ function isQuotaExceeded(error: unknown): boolean {
  * whose message the caller wraps in the error type appropriate to its
  * context (an app's own saved data vs. an imported file).
  */
-function parseStoredCharacters(raw: string, dropMalformedPortraits: boolean): StoredCharacter[] {
+function parseStoredCharacters(raw: string, dropMalformedFields: boolean): StoredCharacter[] {
 	let parsed: unknown
 	try {
 		parsed = JSON.parse(raw)
@@ -118,7 +118,7 @@ function parseStoredCharacters(raw: string, dropMalformedPortraits: boolean): St
 	// D69: an older but supported save is carried forward here, so everything
 	// below this line only ever sees the current shape.
 	const migrated = parsed.map(migrateToCurrent)
-	const records = dropMalformedPortraits ? migrated.map(withoutMalformedPortrait) : migrated
+	const records = dropMalformedFields ? migrated.map(withoutMalformedDroppableFields) : migrated
 
 	for (let i = 0; i < records.length; i++) {
 		const error = describeStoredCharacterError(records[i], i)

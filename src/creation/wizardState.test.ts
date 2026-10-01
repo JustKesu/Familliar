@@ -239,6 +239,12 @@ describe('isStepComplete', () => {
 		})
 	})
 
+	it('F-5: the expertise step stays incomplete while a stored pick is no longer proficient, even at the full count', () => {
+		const data = { ...emptyWizardData(), expertiseSkills: ['arcana', 'stealth'] }
+		expect(isStepComplete('expertise', data, { expertiseRequiredCount: 2 })).toBe(true)
+		expect(isStepComplete('expertise', data, { expertiseRequiredCount: 2, expertiseSkillsAvailable: false })).toBe(false)
+	})
+
 	it('blocks the languages step until exactly two are chosen, allows it at exactly two', () => {
 		const data = emptyWizardData()
 		expect(isStepComplete('languages', { ...data, languageChoice: [{ name: 'Draconic', source: 'XPHB' }] })).toBe(

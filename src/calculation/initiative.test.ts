@@ -27,20 +27,28 @@ describe('computeInitiative', () => {
 		expect(computeInitiative(noScores).status).toBe('unknown')
 	})
 
-	it('Alert (a prose feat) adds a D55 note but no numeric bonus', () => {
+	it('F-5: Alert adds the Proficiency Bonus as its own line', () => {
 		const withAlert: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] }
-		const result = computeInitiative(withAlert)
-		expect(result).toEqual({
+		expect(computeInitiative(withAlert)).toEqual({
 			status: 'known',
-			value: 2,
+			value: 5,
 			breakdown: [
 				{ source: 'dexterity modifier', amount: 2 },
-				{ source: 'feat (Alert)', amount: 0, note: expect.stringContaining('D55') },
+				{ source: 'feat (Alert)', amount: 3 },
 			],
 		})
 	})
 
-	it("Alert from the background adds the same note, with nothing stored (D156)", () => {
+	it('F-5: Alert from the species, a manual entry or an item counts once, whatever the origin', () => {
+		const species: Character = { ...fighter5, grantedFeats: [{ origin: 'species', name: 'Alert', source: 'XPHB' }] }
+		expect(computeInitiative(species)).toMatchObject({ value: 5 })
+		const twice: Character = { ...species, grantedFeats: [...species.grantedFeats!, { origin: 'manual', name: 'Alert', source: 'XPHB' }] }
+		expect(computeInitiative(twice)).toMatchObject({ value: 5 })
+		const otherBook: Character = { ...fighter5, grantedFeats: [{ origin: 'manual', name: 'Alert', source: 'PHB' }] }
+		expect(computeInitiative(otherBook)).toMatchObject({ value: 2 })
+	})
+
+	it("Alert from the background counts with nothing stored (D156)", () => {
 		const criminal: Character = {
 			...fighter5,
 			background: { name: 'Criminal', source: 'XPHB', skillProficiencies: ['sleightOfHand', 'stealth'], toolProficiency: "Thieves' Tools" },
@@ -48,15 +56,15 @@ describe('computeInitiative', () => {
 		const feats = [{ name: 'Alert', source: 'XPHB', grantedByBackgrounds: [{ name: 'Criminal', source: 'XPHB' }] }]
 		expect(computeInitiative(criminal, feats)).toEqual({
 			status: 'known',
-			value: 2,
+			value: 5,
 			breakdown: [
 				{ source: 'dexterity modifier', amount: 2 },
-				{ source: 'feat (Alert)', amount: 0, note: expect.stringContaining('D55') },
+				{ source: 'feat (Alert)', amount: 3 },
 			],
 		})
 	})
 
-	it('a feat with no listed effect on initiative adds no note', () => {
+	it('a feat with no effect on initiative adds no line', () => {
 		const withActor: Character = { ...fighter5, featAsiChoices: [{ level: 4, kind: 'feat', name: 'Actor', source: 'XPHB' }] }
 		expect(computeInitiative(withActor)).toEqual({
 			status: 'known',

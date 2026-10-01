@@ -1,7 +1,18 @@
-import { describe, expect, it } from 'vitest'
+// @vitest-environment jsdom
+import { describe, expect, it, vi } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
 import { emptyWizardData, isStepComplete, wizardReducer, type WizardControllerState } from '../creation/wizardState'
 import type { FeatEntry } from './featAsiData'
-import { speciesGrantsOriginFeat, speciesOriginFeatComplete, speciesOriginFeatProblem, type SpeciesOriginFeatLoad } from './speciesOriginFeat'
+import { grantedFeatsOf, pickedFeats } from './featAsiLevels'
+import { speciesGrantsOriginFeat, speciesOriginFeatComplete, speciesOriginFeatProblem, speciesOriginFeatTaker, useSpeciesOriginFeat, type SpeciesOriginFeatLoad } from './speciesOriginFeat'
+
+vi.mock('../dataLoader/dataLoader', () => ({ loadDataFile: vi.fn(async () => SPECIES) }))
+vi.mock('./featAsiData', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./featAsiData')>()),
+	loadFeats: vi.fn(async () => {
+		throw new Error('feats.json failed')
+	}),
+}))
 
 const SPECIES = [
 	{ name: 'Human', source: 'XPHB', feats: [{ anyFromCategory: { category: ['O'], count: 1 } }] },
@@ -14,7 +25,8 @@ const ORIGIN_FEATS = [
 	{ name: 'Tough', source: 'XPHB', category: 'O' },
 ] as FeatEntry[]
 const [alert, skilled] = ORIGIN_FEATS
-const ready = (grants: boolean): SpeciesOriginFeatLoad => ({ status: 'ready', key: 'Human|XPHB', grants, originFeats: ORIGIN_FEATS })
+const ready = (grants: boolean): SpeciesOriginFeatLoad => ({ status: 'ready', grants, originFeats: ORIGIN_FEATS })
+const background = (name: string) => grantedFeatsOf({ name, source: 'XPHB' }, [], [])
 
 describe('D271: which species grant an origin feat', () => {
 	it('is exactly the single anyFromCategory O, count 1', () => {
@@ -25,12 +37,34 @@ describe('D271: which species grant an origin feat', () => {
 	})
 })
 
-describe('D273: the background feat blocks only a non-repeatable feat of the same name', () => {
+describe('useSpeciesOriginFeat (finding 3)', () => {
+	it('a feats.json failure hits only the granting species, and never carries over to the next species', async () => {
+		const { result, rerender } = renderHook(({ species }) => useSpeciesOriginFeat(species), { initialProps: { species: { name: 'Human', source: 'XPHB' } } })
+		await waitFor(() => expect(result.current).toEqual({ status: 'error', message: 'feats.json failed' }))
+		rerender({ species: { name: 'Dwarf', source: 'XPHB' } })
+		expect(result.current).toEqual({ status: 'loading' })
+		await waitFor(() => expect(result.current).toEqual({ status: 'ready', grants: false, originFeats: [] }))
+	})
+})
+
+describe('D273: a feat held elsewhere blocks only a non-repeatable feat of the same name', () => {
 	it('names the background', () => {
-		expect(speciesOriginFeatProblem(alert, { name: 'Alert', source: 'XPHB' })).toBe('Alert is already taken (Background) — choose another feat.')
-		expect(speciesOriginFeatProblem(skilled, { name: 'Skilled', source: 'XPHB' })).toBeNull()
-		expect(speciesOriginFeatProblem(alert, { name: 'Tough', source: 'XPHB' })).toBeNull()
-		expect(speciesOriginFeatProblem(alert, null)).toBeNull()
+		expect(speciesOriginFeatProblem(alert, background('Alert'))).toEqual({ text: 'Alert is already taken (Background) — choose another feat.', blocking: true })
+		expect(speciesOriginFeatProblem(skilled, background('Skilled'))).toBeNull()
+		expect(speciesOriginFeatProblem(alert, background('Tough'))).toBeNull()
+		expect(speciesOriginFeatProblem(alert, [])).toBeNull()
+	})
+
+	it('names manual and ASI-level holders; an item only warns (finding 5)', () => {
+		const manual = grantedFeatsOf(null, [{ name: 'Alert', source: 'XPHB' }], [])
+		expect(speciesOriginFeatProblem(alert, manual)).toEqual({ text: 'Alert is already taken (Added manually) — choose another feat.', blocking: true })
+		const asi = pickedFeats([{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }], () => true)
+		expect(speciesOriginFeatTaker(alert, asi)?.origin).toBe('level 4')
+		const item = grantedFeatsOf(null, [], [{ name: 'Alert', source: 'XPHB', itemName: 'Ring' }])
+		expect(speciesOriginFeatTaker(alert, item)?.origin).toBe('From item (Ring)')
+		expect(speciesOriginFeatProblem(alert, item)).toEqual({ text: 'Alert is also granted by Ring — you may keep it or choose another feat.', blocking: false })
+		expect(speciesOriginFeatComplete(ready(true), { origin: 'species', name: 'Alert', source: 'XPHB' }, item)).toBe(true)
+		expect(speciesOriginFeatComplete(ready(true), { origin: 'species', name: 'Alert', source: 'XPHB' }, manual)).toBe(false)
 	})
 })
 
@@ -38,17 +72,22 @@ describe('D274: the Background step gate', () => {
 	const human = { origin: 'species' as const, name: 'Alert', source: 'XPHB' }
 
 	it('stays shut while loading, opens after a failed load, and needs nothing for a species without the grant', () => {
-		expect(speciesOriginFeatComplete({ status: 'loading' }, undefined, null)).toBe(false)
-		expect(speciesOriginFeatComplete({ status: 'error', message: 'x' }, undefined, null)).toBe(true)
-		expect(speciesOriginFeatComplete(ready(false), undefined, null)).toBe(true)
+		expect(speciesOriginFeatComplete({ status: 'loading' }, undefined, [])).toBe(false)
+		expect(speciesOriginFeatComplete({ status: 'error', message: 'x' }, undefined, [])).toBe(true)
+		expect(speciesOriginFeatComplete(ready(false), undefined, [])).toBe(true)
 	})
 
 	it('needs a chosen feat that the background does not already grant; sub-choices never count', () => {
-		expect(speciesOriginFeatComplete(ready(true), undefined, null)).toBe(false)
-		expect(speciesOriginFeatComplete(ready(true), human, { name: 'Tough', source: 'XPHB' })).toBe(true)
-		expect(speciesOriginFeatComplete(ready(true), human, { name: 'Alert', source: 'XPHB' })).toBe(false)
-		expect(speciesOriginFeatComplete(ready(true), { origin: 'species', name: 'Skilled', source: 'XPHB' }, { name: 'Skilled', source: 'XPHB' })).toBe(true)
-		expect(speciesOriginFeatComplete(ready(true), { origin: 'species', name: 'Gone', source: 'XPHB' }, null)).toBe(false)
+		expect(speciesOriginFeatComplete(ready(true), undefined, [])).toBe(false)
+		expect(speciesOriginFeatComplete(ready(true), human, background('Tough'))).toBe(true)
+		expect(speciesOriginFeatComplete(ready(true), human, background('Alert'))).toBe(false)
+		expect(speciesOriginFeatComplete(ready(true), { origin: 'species', name: 'Skilled', source: 'XPHB' }, background('Skilled'))).toBe(true)
+		expect(speciesOriginFeatComplete(ready(true), { origin: 'species', name: 'Gone', source: 'XPHB' }, [])).toBe(false)
+	})
+
+	it('stays shut for a granting species while the background feat links are unknown (finding 5)', () => {
+		expect(speciesOriginFeatComplete(ready(true), human, [], false)).toBe(false)
+		expect(speciesOriginFeatComplete(ready(false), undefined, [], false)).toBe(true)
 	})
 
 	it('blocks the Background step through its condition', () => {

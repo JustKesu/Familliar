@@ -39,7 +39,7 @@ export function SpeciesCantripPicker({
 					})}
 				</select>
 			</label>
-			{value === null && <p className="species-spellcasting-ability-picker__hint">Choose your species cantrip to continue.</p>}
+			{!options.some((option) => option.name === value?.name && option.source === value.source) && <p className="species-spellcasting-ability-picker__hint">Choose your species cantrip to continue.</p>}
 		</div>
 	)
 }

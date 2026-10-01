@@ -22,9 +22,10 @@ import {
 	type FeatOffer,
 } from '../featAsi/featAsiData'
 import { featOriginLabel, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
-import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
+import { FeatSubChoicePicker, magicInitiateListsOf, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { ResolvedEntries, type ResolverData } from '../featureResolver'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
+import type { KnownSpell } from '../spells/knownSpells'
 import { choiceNames, type AbilityIncreaseMap, type Character, type FeatChoiceDetails } from '../storage/character'
 import { DrawerSection } from './Drawer'
 import type { FeatureTabRow } from './featuresTabData'
@@ -172,6 +173,7 @@ function AsiRow({
 export function ManageFeatsPanel({
 	character,
 	instances,
+	alreadyKnown = [],
 	featRows,
 	featTexts,
 	abilityScores,
@@ -184,6 +186,8 @@ export function ManageFeatsPanel({
 	character: Character
 	/** featInstances — manual feats included. */
 	instances: readonly FeatInstance[]
+	/** The sheet's collectKnownSpells result, so Magic Initiate does not offer a spell the character already has (D280). */
+	alreadyKnown?: readonly KnownSpell[]
 	/** The Features & Traits feat rows, keyed `feat|<instance key>`: text, stored sub-choices, pending ones. */
 	featRows: readonly FeatureTabRow[]
 	featTexts: readonly FeatTextEntry[]
@@ -242,6 +246,7 @@ export function ManageFeatsPanel({
 			heldExpertise,
 			heldTools: proficiencies ? toolsHeldElsewhere(proficiencies.tools, character.classes[0]?.subclass ?? null) : [],
 			knownLanguages: proficiencies ? proficiencies.languages.filter((item) => !item.pending).map((item) => item.label) : [],
+			magicInitiateLists: magicInitiateListsOf(others),
 		}
 	}
 
@@ -303,6 +308,7 @@ export function ManageFeatsPanel({
 							value={choiceDetailsOf(instance)}
 							onChange={(details) => onEditFeatChoice(instance.key, { name: instance.name, source: instance.source }, details)}
 							held={heldForFeat(instance.key)}
+							alreadyKnown={alreadyKnown}
 							idPrefix={`manage-feats-${instance.key}`}
 						/>
 					</>

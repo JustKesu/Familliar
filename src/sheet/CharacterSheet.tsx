@@ -2569,6 +2569,23 @@ function CharacterSheetBody({
 		return [{ characterClass: c, counts, alreadyKnown, holdings: { picks, subclassChoicePicks: choicePicks, alwaysPrepared: [...classFixed, ...subclassFixed] } }]
 	})
 	const canManageSpells = onEditSpellChoices !== undefined && managedClasses.length > 0
+	// Finding 8: Manage Feats' spell sub-pickers see what Manage Spells sees, across every class, once per source.
+	const featPanelKnown = [
+		...new Map(
+			[
+				...managedClasses.flatMap((managed) => managed.alreadyKnown),
+				...collectKnownSpells({
+					classSpellPicks: [],
+					subclassName: null,
+					subclassAlwaysPrepared: [],
+					subclassSpellChoicePicks: [],
+					featGrantedSpells: featSpells,
+					optionalFeatureGrantedSpells: optionalFeatureSpells,
+					speciesCantrip: character.speciesCantrip,
+				}),
+			].map((spell) => [`${spellIdentityKey(spell.name, spell.source)}|${spell.label}`, spell]),
+		).values(),
+	]
 	// The invocation's eight extra forms are offered only to a character who took it (D68's rule-over-flag reasoning: what the feature says, not what a creature is tagged with).
 	const familiarForms = knowsFindFamiliar
 		? familiarFormOptions(
@@ -3427,6 +3444,7 @@ function CharacterSheetBody({
 					<ManageFeatsPanel
 						character={character}
 						instances={chosenFeats}
+						alreadyKnown={featPanelKnown}
 						featRows={featureGroups.find((group) => group.kind === 'feats')?.rows ?? []}
 						featTexts={featTextEntries}
 						abilityScores={Object.fromEntries(Object.entries(baseAbilityScores).flatMap(([ability, score]) => (score.status === 'known' ? [[ability, score.value.score]] : [])))}

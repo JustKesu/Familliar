@@ -9,7 +9,7 @@ import type { FeatEffectEntry } from '../calculation/featEffects'
 import { missingFeatSubChoices } from '../sheet/featSubChoices'
 import { extractFeatGrantedSpells } from '../spells/featSpells'
 import type { Character, FeatChoiceDetails } from '../storage/character'
-import { FeatSubChoicePicker, LATER_CHOICE_NOTE, type FeatChoiceHeld } from './FeatSubChoicePicker'
+import { FeatSubChoicePicker, LATER_CHOICE_NOTE, magicInitiateListsOf, type FeatChoiceHeld } from './FeatSubChoicePicker'
 import { featInstances } from './featInstances'
 
 /* Task A3: the shared feat sub-choice picker. feats.json is stubbed with the real shapes (DATA.md). */
@@ -110,6 +110,24 @@ function renderPicker(props: Omit<Parameters<typeof Harness>[0], 'onValue'>) {
 }
 
 const optionTexts = (select: HTMLElement) => within(select).getAllByRole('option').map((option) => option.textContent)
+
+describe('FeatSubChoicePicker — Magic Initiate list rule (F-5, finding 1)', () => {
+	it('disables a class list another Magic Initiate instance uses, names its origin, and leaves the rest open', async () => {
+		const user = userEvent.setup()
+		const druid = { className: 'Druid', classSource: 'XPHB', cantrips: [], spell: null }
+		const others = featInstances({ id: '1', name: 'A', classes: [], grantedFeats: [{ origin: 'manual', name: 'Magic Initiate', source: 'XPHB', magicInitiate: druid }] }, { name: 'Magic Initiate; Wizard', source: 'XPHB' })
+		const latest = renderPicker({ feat: { name: 'Magic Initiate', source: 'XPHB' }, held: { ...NOTHING, magicInitiateLists: magicInitiateListsOf(others) } })
+		const radio = (name: string) => screen.getByRole('radio', { name: new RegExp(`^${name}`) }) as HTMLInputElement
+		await screen.findByText('Class list')
+		expect(radio('Wizard').disabled).toBe(true)
+		expect(radio('Wizard').closest('label')!.textContent).toBe('Wizard (already chosen: Background)')
+		expect(radio('Druid').disabled).toBe(true)
+		expect(radio('Druid').closest('label')!.textContent).toBe('Druid (already chosen: Added manually)')
+		expect(radio('Cleric').disabled).toBe(false)
+		await user.click(radio('Cleric'))
+		expect(latest().magicInitiate?.className).toBe('Cleric')
+	})
+})
 
 describe('FeatSubChoicePicker — spellcasting ability (D204)', () => {
 	it('a Dark Gift offers Intelligence/Wisdom/Charisma and stores the pick as chosenAbility', async () => {

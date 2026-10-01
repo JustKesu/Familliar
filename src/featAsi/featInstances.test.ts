@@ -45,8 +45,11 @@ describe('featInstances — species feat (D271)', () => {
 		expect(featOriginLabel({ origin: 'species' })).toBe('Species')
 	})
 
-	it('has no species instance without a stored entry', () => {
-		expect(featInstances({ id: '1', name: 'A', classes: [] }, null)).toEqual([])
+	it('has a species instance exactly when a species entry is stored; another origin never becomes one', () => {
+		const manualOnly: Character = { id: '1', name: 'A', classes: [], grantedFeats: [{ origin: 'manual', name: 'Alert', source: 'XPHB' }] }
+		expect(featInstances(manualOnly, null).map((feat) => feat.key)).toEqual(['manual:0'])
+		const withSpecies: Character = { ...manualOnly, grantedFeats: [...manualOnly.grantedFeats!, { origin: 'species', name: 'Tough', source: 'XPHB' }] }
+		expect(featInstances(withSpecies, null).map((feat) => feat.key)).toEqual(['species', 'manual:0'])
 	})
 })
 
