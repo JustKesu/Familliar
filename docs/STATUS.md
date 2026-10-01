@@ -2102,6 +2102,22 @@ choose rows show their reason when chosen too, a collapsed list keeps chosen row
 same-named options name their book ("Choose Champion (PHB)"); `SubclassPicker` takes name + source.
 E2E `wizardF1.spec.ts`; `e2e/wizard.ts` `chooseButton` matches the book-qualified name (XPHB by default).
 
+F-2a (D253–D256) done. No schema bump. Fixes from the W-5 review. New `featAsi/featAsiLevels.ts`: one
+loader/hook for the ASI / Feat step data (`useFeatAsiStepData`, used by `FeatAsiPicker` and by the wizard's
+Next gate), `abilityScoresBelowLevel` (prerequisites and the cap of 20 read lower levels' ASI/feats, the
+background and manual feats, no items), `featAsiLevelOffers`, `featAsiChoiceProblem` /
+`invalidFeatAsiLevels` (taken by a granted feat or a lower level, prerequisite no longer met, Dark Gift
+conflict). A flagged card opens with the reason in its "Choose …" line; the new
+`featAsiChoicesValid` step condition locks Next and save, except at a level up's locked levels ("Fix it
+in Edit Character."). "Already taken" matches feat names across books (`featOffers`, Manage Feats
+`addableFeatOffers`). Card title "Level 19 (Epic Boon) — …", bonus via `featAbilityScoreContributions`;
+reasons joined with " or ", category labels, "already has a Dark Gift"; a saved feat missing from the
+data keeps a disabled "(not in data)" option. Selects are named "Level N feat or ASI" / "Level N +2
+ability" / "Level N ability", the "Choose …" line is their `aria-describedby`, the card body has a
+visually hidden legend. A new character's lowered level also prunes ASI choices above it, Class options
+picks of a progression it no longer grants (`pruneClassOptionalFeatures` action) and Proficiencies-step
+language/tool/skill picks granted only above it. E2E `wizardF2a.spec.ts` 1–7.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

@@ -965,8 +965,8 @@ describe('CharacterWizard — feat/ASI step', () => {
 		await fillThroughAbilities(user, '4')
 
 		expect(await screen.findByRole('group', { name: 'Level 4' })).toBeTruthy()
-		await user.selectOptions(await screen.findByRole('combobox', { name: 'Feat or ASI' }), 'asi')
-		await user.selectOptions(await screen.findByRole('combobox', { name: '+2 ability' }), 'strength')
+		await user.selectOptions(await screen.findByRole('combobox', { name: 'Level 4 feat or ASI' }), 'asi')
+		await user.selectOptions(await screen.findByRole('combobox', { name: 'Level 4 +2 ability' }), 'strength')
 
 		await goNext(user)
 		await fillHitPointsStep(user)
@@ -982,8 +982,8 @@ describe('CharacterWizard — feat/ASI step', () => {
 		const header = await screen.findByRole('button', { name: 'Level 4 — Ability Score Improvement (+2 STR)' })
 		expect(header.getAttribute('aria-expanded')).toBe('false')
 		await user.click(header)
-		expect((screen.getByRole('combobox', { name: 'Feat or ASI' }) as HTMLSelectElement).value).toBe('asi')
-		expect(selectedOptionText(screen.getByRole('combobox', { name: '+2 ability' }))).toBe('Strength')
+		expect((screen.getByRole('combobox', { name: 'Level 4 feat or ASI' }) as HTMLSelectElement).value).toBe('asi')
+		expect(selectedOptionText(screen.getByRole('combobox', { name: 'Level 4 +2 ability' }))).toBe('Strength')
 	})
 
 	it('a Fighter at level 3 is never offered the feat/ASI step', async () => {
@@ -1018,7 +1018,7 @@ describe('CharacterWizard — feat/ASI step', () => {
 		renderWizard()
 
 		await fillThroughAbilities(user, '4')
-		const select = (await screen.findByRole('combobox', { name: 'Feat or ASI' })) as HTMLSelectElement
+		const select = (await screen.findByRole('combobox', { name: 'Level 4 feat or ASI' })) as HTMLSelectElement
 		const optionFor = (name: string) => Array.from(select.options).find((option) => option.textContent?.startsWith(`${name} · `))!
 
 		expect(optionFor('Actor').disabled).toBe(true)

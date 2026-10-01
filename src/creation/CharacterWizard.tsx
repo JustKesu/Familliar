@@ -62,6 +62,7 @@ import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
+import { featAsiLevels, grantedFeatsOf, invalidFeatAsiLevels, useFeatAsiStepData } from '../featAsi/featAsiLevels'
 import { featFixedExpertiseSkills, type FeatEffectEntry } from '../calculation/featEffects'
 import { OriginFeatSwapPicker } from '../featAsi/OriginFeatSwapPicker'
 import { backgroundOriginFeatFrom, featInstances,loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
@@ -69,11 +70,9 @@ import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { loadHitDiceClassData } from '../sheet/sheetData'
-import { computeAbilityScore } from '../calculation/abilityScores'
 import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
 import { loadCharacterMaxHp } from '../hitPoints/hpDefault'
-import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { ClassSpellsManager } from '../sheet/ManageSpellsPanel'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { loadClassAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
@@ -611,7 +610,10 @@ export function CharacterWizard({
 		}
 		loadClassOptionalFeatureGroups(state.data.classChoice.className, state.data.classChoice.classSource, state.data.classChoice.level)
 			.then((groups) => {
-				if (!cancelled) setClassOptionalFeatureGroups(groups)
+				if (cancelled) return
+				setClassOptionalFeatureGroups(groups)
+				// D256: as D251, only a new character's level can change.
+				if (character === undefined) dispatch({ type: 'pruneClassOptionalFeatures', featureTypes: groups.map((group) => group.featureType) })
 			})
 			.catch(() => {
 				/* ClassOptionalFeaturePicker itself surfaces load errors; this lookup (for step completion) is best-effort. */
@@ -954,29 +956,6 @@ export function CharacterWizard({
 	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count, expertisePool.length) : null
 
 	/**
-	 * FINAL ability scores (base + background bonus) via the calculation
-	 * layer's own computeAbilityScore (D16/D17, task instructions point 4) —
-	 * built from a draft Character rather than a second sum, since the real
-	 * Character doesn't exist until the review step saves. Feeds
-	 * FeatAsiPicker's prerequisite checks.
-	 */
-	const draftCharacterForAbilityScores: Character = {
-		id: '',
-		name: state.data.name,
-		classes: [],
-		...(state.data.abilityScores ? { abilityScores: state.data.abilityScores } : {}),
-		...(state.data.backgroundChoice && Object.keys(state.data.backgroundChoice.abilityBonus).length > 0
-			? { abilityBonus: state.data.backgroundChoice.abilityBonus }
-			: {}),
-	}
-	const finalAbilityScores = Object.fromEntries(
-		ABILITIES.map((ability) => {
-			const calculated = computeAbilityScore(ability, draftCharacterForAbilityScores)
-			return [ability, calculated.status === 'known' ? calculated.value.score : undefined]
-		}),
-	) as Partial<Record<Ability, number>>
-
-	/**
 	 * Slots (slice b) and counts (slice d2) via the calculation layer,
 	 * reused unchanged — this only builds the draft Character they need
 	 * (real classes.json data loaded once above) and reads off the single
@@ -1027,8 +1006,32 @@ export function CharacterWizard({
 		...(character?.inventory !== undefined ? { inventory: character.inventory } : {}),
 	}
 
-	/** W16: the ASI / Feat step's table counts ASI and feats only, as the Ability scores step's does — no item bonuses. */
-	const { inventory: _inventory, ...abilityTableDraft } = draftCharacterForHitPoints
+	/** W16: the ASI / Feat step's table counts ASI and feats only, as the Ability scores step's does — no item bonuses. D253: also the base of each card's prerequisite scores; memoised so the step's evaluation is too (D116). */
+	const abilityTableDraft = useMemo<Character>(
+		() => {
+			const { inventory: _inventory, ...draft } = draftCharacterForHitPoints
+			return draft
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- draftCharacterForHitPoints is rebuilt every render from exactly these.
+		[state.data, draftBackground?.name, draftBackground?.source, backgroundFeatOverride],
+	)
+	const featAsiManualFeats = useMemo(() => state.data.grantedFeats.filter((feat) => feat.origin === 'manual'), [state.data.grantedFeats])
+	const featAsiItemFeats = useMemo(() => draftFeatInstances.filter((instance) => instance.origin === 'item'), [draftFeatInstances])
+	const featAsiLoad = useFeatAsiStepData(
+		state.data.classChoice?.className ?? null,
+		state.data.classChoice?.classSource ?? null,
+		state.data.classChoice?.level ?? 0,
+		state.data.speciesChoice?.name ?? null,
+		state.data.speciesChoice?.source ?? null,
+		state.data.speciesSize,
+	)
+	const heldFeatAsiLevels = useMemo(() => (levelUp && character ? (character.featAsiChoices ?? []).map((choice) => choice.level) : undefined), [levelUp, character])
+	/** D254: an invalid feat choice locks the step's Next, except at a level a level up cannot change. Still loading keeps the step incomplete; a failed load relaxes it (the picker shows the error). */
+	const featAsiChoicesValid = useMemo(() => {
+		if (featAsiLoad.status !== 'ready') return featAsiLoad.status === 'error'
+		const levels = featAsiLevels(featAsiLoad.data, state.data.featAsiChoices, grantedFeatsOf(backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats), state.data.classChoice?.level ?? 0, abilityTableDraft)
+		return invalidFeatAsiLevels(levels, heldFeatAsiLevels).length === 0
+	}, [featAsiLoad, state.data.featAsiChoices, state.data.classChoice?.level, backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats, abilityTableDraft, heldFeatAsiLevels])
 
 	/** As draftCharacterForHitPoints, plus the picks the hit points step itself owns (D107 needs the running total, not just its inputs) and the manual override (D9), so a character with one keeps it. */
 	const draftCharacterForMaxHp: Character = {
@@ -1270,6 +1273,7 @@ export function CharacterWizard({
 		expertiseRequiredCount,
 		featAsiEligibleLevelCount: featAsiGrantCount,
 		featsRequiringAbilityChoice: featsNeedingAbilityChoice,
+		featAsiChoicesValid,
 		spellRequirement,
 		subclassSpellChoiceSlotCount,
 		classOptionalFeaturesComplete,
@@ -1756,17 +1760,16 @@ export function CharacterWizard({
 						className={state.data.classChoice.className}
 						classSource={state.data.classChoice.classSource}
 						level={state.data.classChoice.level}
-						finalAbilityScores={finalAbilityScores}
 						speciesName={state.data.speciesChoice?.name ?? null}
 						speciesSource={state.data.speciesChoice?.source ?? null}
 						chosenSpeciesSize={state.data.speciesSize}
 						alreadyKnown={alreadyKnownSpells}
 						value={state.data.featAsiChoices}
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
-						lockedLevels={held?.featAsiChoices.map((choice) => choice.level)}
+						lockedLevels={heldFeatAsiLevels}
 						backgroundOriginFeat={backgroundOriginFeat}
-						manualFeats={state.data.grantedFeats.filter((feat) => feat.origin === 'manual')}
-						itemFeats={draftFeatInstances.filter((instance) => instance.origin === 'item')}
+						manualFeats={featAsiManualFeats}
+						itemFeats={featAsiItemFeats}
 						heldForFeat={heldForFeat}
 						laterNote={laterNote}
 						abilityDraft={abilityTableDraft}

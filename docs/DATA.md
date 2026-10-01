@@ -1191,6 +1191,16 @@ entries are all XPHB and their names are unique (case-insensitively), so
 one feats.json entry without a source. FS:P / FS:R are not offered by the class
 Fighting Style picker. Found in R13a (2026-09-28, scripts/investigate-manage-feats.js).
 
+### Feat names across books — none twice today (F-2a, D255)
+
+No feat name occurs in two books in feats.json (159 entries, case-insensitive name match): Alert and
+Tough exist only as XPHB. D255's "same name = same feat" therefore changes nothing on today's data; it
+covers a future source. Alert is the origin feat of Criminal|XPHB, Guard|XPHB and Inquisitive|EFA
+(among others possibly); Tough of Farmer|XPHB. feats.json carries no `grantedByBackgrounds` field —
+`sheetData.ts` adds it at runtime from backgrounds.json, so a reader of plain `loadFeats` entries must
+be told the background feat another way (featAsiLevels.ts passes it as `originFeatOverride`).
+Found in F-2a (2026-10-01, scripts/investigate-feat-name-duplicates.js, consumed).
+
 ### Frázové vyhledávání v `entries` musí nejdřív stripnout 5etools markup
 
 5etools tagy rozdělují frázi na dvě části, které nikdy neleží vedle sebe v

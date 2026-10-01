@@ -70,7 +70,7 @@ test('W-5 b: a half-feat asks for its ability until chosen; back on the step its
   await expect(missing).toBeVisible()
   await expect(nextButton(page)).toBeDisabled()
 
-  await levelCard(page, 4).getByRole('combobox', { name: 'Ability', exact: true }).selectOption('dexterity')
+  await levelCard(page, 4).getByRole('combobox', { name: 'Level 4 ability', exact: true }).selectOption('dexterity')
   await expect(missing).toHaveCount(0)
   await expect(tableRow(page, 'ASI / Feats')).toHaveText(['—', '+1', '—', '—', '—', '—'])
   await expect(nextButton(page)).toBeEnabled()
@@ -87,7 +87,7 @@ test('W-5 b: a half-feat asks for its ability until chosen; back on the step its
 test('W-5 c: with Strength 8, a Strength 13 feat is listed but disabled with the reason', async ({ page }) => {
   await reachAsi(page, 4, [['Strength', '8'], ['Dexterity', '14'], ['Constitution', '13'], ['Intelligence', '12'], ['Wisdom', '10'], ['Charisma', '15']])
   const gwm = featOption(page, 4, 'Great Weapon Master')
-  // toBeDisabled() reads an <option> inside an <optgroup> as enabled; the DOM property is what the browser honours.
+  // Tried again in F-2a: toBeDisabled() reads an <option> inside an <optgroup> as enabled; the DOM property is what the browser honours.
   await expect(gwm).toHaveJSProperty('disabled', true)
   await expect(gwm).toContainText('needs STR 13')
   await expect(featOption(page, 4, 'Athlete')).toHaveJSProperty('disabled', false)
@@ -116,7 +116,7 @@ test('W-5 e: Fighter 6 — Next waits for both cards; re-entering shows the comp
   await expect(levelCardHeader(page, 6)).toHaveAttribute('aria-expanded', 'true')
   await expect(nextButton(page)).toBeDisabled()
 
-  await levelCard(page, 6).getByRole('combobox', { name: 'Ability', exact: true }).selectOption('strength')
+  await levelCard(page, 6).getByRole('combobox', { name: 'Level 6 ability', exact: true }).selectOption('strength')
   await expect(nextButton(page)).toBeEnabled()
 })
 
@@ -140,7 +140,7 @@ test('W-5 g: Edit Character on a Fighter 4 with a feat — the card is collapsed
     species: 'Dwarf|XPHB',
     feat: 'Athlete',
     onFeatStep: async (p) => {
-      await levelCard(p, 4).getByRole('combobox', { name: 'Ability', exact: true }).selectOption('dexterity')
+      await levelCard(p, 4).getByRole('combobox', { name: 'Level 4 ability', exact: true }).selectOption('dexterity')
     },
   })
   await page.getByRole('button', { name: 'Edit character' }).click()

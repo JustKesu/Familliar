@@ -112,6 +112,8 @@ export interface WizardStepConditions {
 	featAsiEligibleLevelCount?: number
 	/** `${name}|${source}` keys of feats that additionally need `chosenAbility` (half-feats). */
 	featsRequiringAbilityChoice?: ReadonlySet<string>
+	/** D254: false while a feat chosen at a changeable level is already taken or no longer meets its prerequisite (featAsiLevels.ts). */
+	featAsiChoicesValid?: boolean
 	/** Cantrip/leveled counts the 'spells' step must satisfy — `null` means no spellcasting, so the step is skipped. */
 	spellRequirement?: SpellRequirement | null
 	/** Subclass filter-choice spell slots the 'spells' step must also fill. */
@@ -216,15 +218,49 @@ function pruneClassPicks(state: WizardControllerState, required: ClassPickRequir
 	const optionalFeatureChoices = required.optionalFeatureCount === 0 ? [] : data.optionalFeatureChoices
 	const classFeatureChoices = featureNames === null ? data.classFeatureChoices : data.classFeatureChoices.filter((choice) => featureNames.includes(choice.featureName))
 	const wildShapeForms = data.classChoice && wildShapeLimits(data.classChoice.className, data.classChoice.level, data.subclass?.name ?? null) ? data.wildShapeForms : []
+	// D256: outside the Class step too — ASI levels and Proficiencies-step picks above the chosen level.
+	const featAsiChoices = data.featAsiChoices.filter((choice) => choice.level <= (data.classChoice?.level ?? 0))
+	const above = grantedAboveLevel(data)
+	const featureLanguages = data.featureLanguages.filter((language) => !above.languages.has(language.grantedBy))
+	const toolChoices = data.toolChoices.filter((choice) => !above.tools.has(choice.grantedBy))
+	const subclassSkills = data.subclassSkills.filter((pick) => !above.skills.has(pick.grantedBy))
 	if (
 		fightingStyle === data.fightingStyle &&
 		optionalFeatureChoices.length === data.optionalFeatureChoices.length &&
 		classFeatureChoices.length === data.classFeatureChoices.length &&
-		wildShapeForms.length === data.wildShapeForms.length
+		wildShapeForms.length === data.wildShapeForms.length &&
+		featAsiChoices.length === data.featAsiChoices.length &&
+		featureLanguages.length === data.featureLanguages.length &&
+		toolChoices.length === data.toolChoices.length &&
+		subclassSkills.length === data.subclassSkills.length
 	) {
 		return unsubclassed
 	}
-	return { ...unsubclassed, data: { ...data, fightingStyle, optionalFeatureChoices, classFeatureChoices, wildShapeForms } }
+	return {
+		...unsubclassed,
+		data: { ...data, fightingStyle, optionalFeatureChoices, classFeatureChoices, wildShapeForms, featAsiChoices, featureLanguages, toolChoices, subclassSkills },
+	}
+}
+
+/** The `grantedBy` of every language, tool and skill pick the class and subclass grant only above the chosen level. */
+function grantedAboveLevel(data: WizardData): { languages: Set<string>; tools: Set<string>; skills: Set<string> } {
+	const now = wizardClass(data)
+	if (!now) return { languages: new Set(), tools: new Set(), skills: new Set() }
+	const atMax = { ...now, level: 20 }
+	const languages = (cls: typeof now): string[] => [
+		...classFeatureLanguageGrantsFor([cls]).flatMap((grant) => (grant.choice ? [grant.choice.grantedBy] : [])),
+		...subclassSkillGrantsFor([cls]).flatMap((grant) => (grant.choice?.orLanguage ? [grant.choice.orLanguage] : [])),
+	]
+	const tools = (cls: typeof now): string[] => classToolGrantsFor([cls]).map((grant) => grant.grantedBy)
+	const skills = (cls: typeof now): string[] => subclassSkillGrantsFor([cls]).flatMap((grant) => (grant.choice ? [grant.choice.grantedBy] : []))
+	const minus = (all: string[], held: string[]): Set<string> => new Set(all.filter((source) => !held.includes(source)))
+	return { languages: minus(languages(atMax), languages(now)), tools: minus(tools(atMax), tools(now)), skills: minus(skills(atMax), skills(now)) }
+}
+
+/** D256: a new character's Class options picks of a progression the chosen level no longer grants (count 0 or none). */
+function pruneClassOptionalFeatures(state: WizardControllerState, featureTypes: readonly string[]): WizardControllerState {
+	const kept = state.data.classOptionalFeatureChoices.filter((entry) => featureTypes.includes(entry.featureType))
+	return kept.length === state.data.classOptionalFeatureChoices.length ? state : { ...state, data: { ...state.data, classOptionalFeatureChoices: kept } }
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
@@ -233,6 +269,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<Omit<Wiza
 		expertiseRequiredCount: conditions.expertiseRequiredCount ?? null,
 		featAsiEligibleLevelCount: conditions.featAsiEligibleLevelCount ?? 0,
 		featsRequiringAbilityChoice: conditions.featsRequiringAbilityChoice ?? EMPTY_FEAT_SET,
+		featAsiChoicesValid: conditions.featAsiChoicesValid ?? true,
 		spellRequirement: conditions.spellRequirement ?? null,
 		subclassSpellChoiceSlotCount: conditions.subclassSpellChoiceSlotCount ?? 0,
 		classOptionalFeaturesComplete: conditions.classOptionalFeaturesComplete ?? true,
@@ -633,6 +670,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		expertiseRequiredCount,
 		featAsiEligibleLevelCount,
 		featsRequiringAbilityChoice,
+		featAsiChoicesValid,
 		spellRequirement,
 		subclassSpellChoiceSlotCount,
 		classOptionalFeaturesComplete,
@@ -722,6 +760,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			return classOptionalFeaturesComplete
 		case 'featAsi':
 			return (
+				featAsiChoicesValid &&
 				data.featAsiChoices.length === featAsiEligibleLevelCount &&
 				data.featAsiChoices.every((choice) =>
 					isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice, data.classChoice?.level ?? 0),
@@ -848,6 +887,7 @@ export type WizardAction =
 	| { type: 'goTo'; step: WizardStep; conditions?: WizardStepConditions }
 	/** D251: dispatched once the class step's requirements have loaded for the current class, level and subclass. */
 	| { type: 'pruneClassPicks'; requirements: ClassPickRequirements }
+	| { type: 'pruneClassOptionalFeatures'; featureTypes: readonly string[] }
 	| { type: 'setName'; name: string }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
@@ -904,6 +944,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return isStepReachable(action.step, state.step, state.data, action.conditions ?? {}) ? { ...state, step: action.step } : state
 		case 'pruneClassPicks':
 			return pruneClassPicks(state, action.requirements)
+		case 'pruneClassOptionalFeatures':
+			return pruneClassOptionalFeatures(state, action.featureTypes)
 		case 'setName':
 			return { ...state, data: { ...state.data, name: action.name } }
 		case 'setClassChoice': {

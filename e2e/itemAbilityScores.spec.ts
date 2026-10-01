@@ -114,7 +114,7 @@ test('R14e1 i: Level up works from the base Strength, not the belt', async ({ pa
   const level4 = page.getByRole('group', { name: 'Level 4' })
   for (let steps = 0; steps < 8 && !(await level4.isVisible()); steps++) await next(page)
   await featOrAsiSelect(page, 4).selectOption('asi')
-  const strength = level4.getByRole('combobox', { name: '+2 ability', exact: true }).locator('option[value="strength"]')
+  const strength = level4.getByRole('combobox', { name: 'Level 4 +2 ability', exact: true }).locator('option[value="strength"]')
   await expect(strength).toHaveText('Strength')
   await expect(strength).toBeEnabled()
 })

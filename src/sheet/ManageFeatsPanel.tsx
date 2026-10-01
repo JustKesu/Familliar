@@ -10,7 +10,8 @@ import {
 	FEAT_CATEGORY_LABELS,
 	featAbilityChoiceOptions,
 	featCategoryLabel as categoryLabel,
-	featOffers as allFeatOffers,
+	featOffers,
+	featRefKey,
 	isValidAbilityIncrease,
 	loadClassPrereqInfo,
 	loadFeats,
@@ -32,8 +33,6 @@ import type { FeatTextEntry } from './sheetData'
 const CATEGORY_ORDER = Object.keys(FEAT_CATEGORY_LABELS)
 
 const titleCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
-
-const featKey = (feat: FeatRef): string => `${feat.name}|${feat.source}`.toLowerCase()
 
 /** The current ability scores minus one ASI level's own increases — AsiSubPicker's cap check needs the scores WITHOUT that level's contribution. */
 function withoutIncreases(scores: Partial<Record<Ability, number>>, increases: AbilityIncreaseMap): Partial<Record<Ability, number>> {
@@ -102,9 +101,9 @@ async function loadPanelData(character: Character): Promise<Loaded> {
 	}
 }
 
-/** Every feat Add Feats may list, with its prerequisite result. A held non-repeatable feat is left out; every held feat counts as chosen (manual ones included). */
-export function featOffers(feats: readonly FeatEntry[], held: readonly FeatRef[], ctx: Omit<PrerequisiteContext, 'chosenFeats'>): FeatOffer[] {
-	return allFeatOffers(feats, held, ctx).filter((offer) => !offer.held)
+/** Every feat Add Feats may list, with its prerequisite result. A held non-repeatable feat is left out (D255: by name, any book); every held feat counts as chosen (manual ones included). */
+export function addableFeatOffers(feats: readonly FeatEntry[], held: readonly FeatRef[], ctx: Omit<PrerequisiteContext, 'chosenFeats'>): FeatOffer[] {
+	return featOffers(feats, held, ctx).filter((offer) => !offer.held)
 }
 
 /** One row laid out like a Manage Spells row; ▸ opens its text. D116: which rows are open is panel state only. */
@@ -354,7 +353,7 @@ export function ManageFeatsPanel({
 	let offered: FeatOffer[] = []
 	let categories: string[] = []
 	if (loaded) {
-		offered = featOffers(loaded.feats, held, { ...loaded.ctx, characterLevel: character.classes.reduce((sum, c) => sum + c.level, 0), abilityScores })
+		offered = addableFeatOffers(loaded.feats, held, { ...loaded.ctx, characterLevel: character.classes.reduce((sum, c) => sum + c.level, 0), abilityScores })
 		const present = new Set(loaded.feats.map((feat) => feat.category))
 		categories = [...CATEGORY_ORDER.filter((code) => present.has(code)), ...[...present].filter((code) => !CATEGORY_ORDER.includes(code)).sort()]
 	}
@@ -390,7 +389,7 @@ export function ManageFeatsPanel({
 					<ul>
 						{available.map(({ feat }) => (
 							<FeatRow
-								key={featKey(feat)}
+								key={featRefKey(feat)}
 								name={feat.name}
 								meta={categoryLabel(feat.category)}
 								action={
@@ -411,7 +410,7 @@ export function ManageFeatsPanel({
 					{loaded && unavailable.length === 0 && <p className="manage-spells__empty">No feats match.</p>}
 					<ul>
 						{unavailable.map(({ feat, result }) => (
-							<FeatRow key={featKey(feat)} name={feat.name} meta={categoryLabel(feat.category)} note={result.reasons.join(' ')}>
+							<FeatRow key={featRefKey(feat)} name={feat.name} meta={categoryLabel(feat.category)} note={result.reasons.join(' ')}>
 								<FeatText entries={textOf(feat)} name={feat.name} resolverData={resolverData} />
 							</FeatRow>
 						))}

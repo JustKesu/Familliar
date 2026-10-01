@@ -37,7 +37,7 @@ test('D202 a: Aberrant Anatomy — Perception with expertise from the feat; a la
         await expect(expertise.getByRole('option', { name: 'Athletics', exact: true })).toHaveCount(1)
         await expect(expertise.getByRole('option', { name: 'Perception', exact: true })).toHaveCount(0)
         // Skill Expert is a half-feat: its +1 ability is required to continue.
-        await p.getByRole('group', { name: 'Level 6' }).getByRole('combobox', { name: 'Ability', exact: true }).selectOption('dexterity')
+        await p.getByRole('group', { name: 'Level 6' }).getByRole('combobox', { name: 'Level 6 ability', exact: true }).selectOption('dexterity')
       },
     },
   })

@@ -27,12 +27,9 @@ export function abilityModifier(score: number): number {
  * no bonus applies; the same holds for every ASI/feat contribution
  * (featAbilityScoreContributions only ever returns entries that apply).
  *
- * `feats` is optional (defaults to none) — CharacterWizard.tsx's own draft
- * ability scores (used for THIS SAME wizard step's own feat prerequisite
- * checks) deliberately omit it, per the documented limitation in
- * src/featAsi/featAsiData.ts: a feat/ASI pick made earlier in the same
- * wizard session must not feed back into that session's own prerequisite
- * checks.
+ * `feats` is optional (defaults to none); without it only ASI picks count,
+ * no feat bonus. The ASI / Feat step's prerequisites read these scores below
+ * each card's level (D253, featAsiLevels.ts).
  */
 export function computeAbilityScore(
 	ability: Ability,

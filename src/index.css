@@ -2560,8 +2560,18 @@ button:disabled {
   min-width: 0;
 }
 
+.feat-asi-card__legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .feat-asi-card__missing {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: 14px;
   font-weight: 600;
   color: var(--accent);

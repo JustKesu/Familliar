@@ -26,13 +26,10 @@
  *   2024/allowed-source pool, so those prerequisite alternatives are always
  *   unmet (still shown, with a reason, per D19 — never silently dropped).
  * - Ability score values fed into prerequisite checks come from the
- *   calculation layer's computeAbilityScore (final = base + background),
- *   never a second sum computed here (D16/D17, task instructions point 4).
- *   This does NOT include ASI increases picked earlier in this same wizard
- *   session — the calculation layer doesn't carry those yet (deferred to
- *   the slice that applies feat/ASI effects), so a feat prerequisite that
- *   only becomes true because of an earlier pick in this same flow will not
- *   yet show as met. Documented as a known limitation, not fixed here.
+ *   calculation layer's computeAbilityScores, never a second sum computed
+ *   here (D16/D17): the scores as they stand below the card's level, i.e.
+ *   with every lower-level ASI/feat and the granted feats, without items
+ *   (D253, featAsiLevels.ts).
  */
 
 import type { Ability } from '../abilities/abilityScores'
@@ -431,7 +428,7 @@ export interface ChosenFeatRef {
 /** Everything a prerequisite entry might need to check, already resolved by the caller (D38-style: pure function, data passed in). */
 export interface PrerequisiteContext {
 	characterLevel: number
-	/** FINAL ability scores (base + background, from the calculation layer) — see module doc for what this deliberately excludes. */
+	/** Ability scores from the calculation layer — see module doc for what they include. */
 	abilityScores: Partial<Record<Ability, number>>
 	hasFightingStyleFeature: boolean
 	hasSpellcasting: boolean
@@ -454,7 +451,7 @@ const ABBREV_TO_ABILITY: Record<AbilityAbbreviation, Ability> = Object.fromEntri
 	(Object.entries(ABILITY_ABBREVIATIONS) as [Ability, AbilityAbbreviation][]).map(([full, abbr]) => [abbr, full]),
 ) as Record<AbilityAbbreviation, Ability>
 
-const ABILITY_FULL_NAME: Record<AbilityAbbreviation, string> = {
+export const ABILITY_FULL_NAME: Record<AbilityAbbreviation, string> = {
 	str: 'Strength',
 	dex: 'Dexterity',
 	con: 'Constitution',
@@ -541,17 +538,19 @@ function evaluateEntry(entry: RawFeatPrerequisiteEntry, ctx: PrerequisiteContext
 	}
 	if (entry.featCategory) {
 		for (const cat of entry.featCategory) {
-			if (!ctx.chosenFeats.some((f) => f.category === cat)) failures.push(`a feat from category ${cat}`)
+			if (!ctx.chosenFeats.some((f) => f.category === cat)) failures.push(cat in FEAT_CATEGORY_LABELS ? `a ${FEAT_CATEGORY_LABELS[cat]} feat` : `a feat from category ${cat}`)
 		}
 	}
+	const conflicts: string[] = []
 	if (entry.exclusiveFeatCategory) {
 		for (const cat of entry.exclusiveFeatCategory) {
-			if (ctx.chosenFeats.some((f) => f.category === cat)) failures.push(`no other feat from category ${cat}`)
+			if (ctx.chosenFeats.some((f) => f.category === cat)) conflicts.push(cat in FEAT_CATEGORY_LABELS ? `Already has a ${FEAT_CATEGORY_LABELS[cat]}.` : `Already has a feat from category ${cat}.`)
 		}
 	}
 	// D194: `campaign` is never unmet — the app tracks no campaign; the picker shows it as a note (featCampaignNote).
 
-	return failures.length > 0 ? `Requires ${failures.join(', ')}.` : null
+	const parts = [...(failures.length > 0 ? [`Requires ${failures.join(', ')}.`] : []), ...conflicts]
+	return parts.length > 0 ? parts.join(' ') : null
 }
 
 /**
@@ -573,6 +572,25 @@ export function evaluateFeatPrerequisites(feat: FeatEntry, ctx: PrerequisiteCont
 	return { eligible, reasons: eligible ? [] : reasons }
 }
 
+const ABILITY_SCORE_REQUIREMENT = new RegExp(`(${Object.values(ABILITY_FULL_NAME).join('|')}) (\\d+)\\+`, 'g')
+
+/** W18: the unmet reasons, short: "needs STR 13 or needs DEX 13", "already has a Dark Gift". Alternatives are OR'd. */
+export function unmetPrerequisiteText(result: PrerequisiteResult): string {
+	return result.reasons
+		.map((reason) =>
+			reason
+				.replace(/\.$/, '')
+				.split('. ')
+				.map((part) => part.replace(/^Requires /, 'needs ').replace(/^Already /, 'already '))
+				.join(', ')
+				.replace(ABILITY_SCORE_REQUIREMENT, (_, name: string, score: string) => {
+					const abbreviation = (Object.keys(ABILITY_FULL_NAME) as AbilityAbbreviation[]).find((key) => ABILITY_FULL_NAME[key] === name)!
+					return `${abbreviation.toUpperCase()} ${score}`
+				}),
+		)
+		.join(' or ')
+}
+
 export const FEAT_CATEGORY_LABELS: Record<string, string> = { O: 'Origin', G: 'General', FS: 'Fighting Style', EB: 'Epic Boon', DG: 'Dark Gift' }
 
 export const featCategoryLabel = (code: string): string => FEAT_CATEGORY_LABELS[code] ?? code
@@ -584,7 +602,15 @@ export interface FeatOffer {
 	held: boolean
 }
 
-const featRefKey = (feat: { name: string; source: string }): string => `${feat.name}|${feat.source}`.toLowerCase()
+export const featRefKey = (feat: { name: string; source: string }): string => `${feat.name}|${feat.source}`.toLowerCase()
+
+/** D255: the same feat name from two books is one feat for "already taken". */
+export const sameFeatName = (a: { name: string }, b: { name: string }): boolean => a.name.toLowerCase() === b.name.toLowerCase()
+
+/** The categories of `chosen`, looked up in `feats`, as the feat/category prerequisites read them. */
+export function chosenFeatRefs(feats: readonly FeatEntry[], chosen: readonly { name: string; source: string }[]): ChosenFeatRef[] {
+	return chosen.map((feat) => ({ name: feat.name, source: feat.source, category: feats.find((entry) => featRefKey(entry) === featRefKey(feat))?.category ?? '' }))
+}
 
 /** Every feat with its prerequisite result (Manage Feats and the wizard's ASI / Feat step). `chosen` feeds the feat/category prerequisites; it defaults to `held`. */
 export function featOffers(
@@ -593,7 +619,7 @@ export function featOffers(
 	ctx: Omit<PrerequisiteContext, 'chosenFeats'>,
 	chosen: readonly { name: string; source: string }[] = held,
 ): FeatOffer[] {
-	const heldKeys = new Set(held.map(featRefKey))
-	const chosenFeats = chosen.map((feat) => ({ name: feat.name, source: feat.source, category: feats.find((entry) => featRefKey(entry) === featRefKey(feat))?.category ?? '' }))
-	return feats.map((feat) => ({ feat, result: evaluateFeatPrerequisites(feat, { ...ctx, chosenFeats }), held: !feat.repeatable && heldKeys.has(featRefKey(feat)) }))
+	const heldNames = new Set(held.map((feat) => feat.name.toLowerCase()))
+	const chosenFeats = chosenFeatRefs(feats, chosen)
+	return feats.map((feat) => ({ feat, result: evaluateFeatPrerequisites(feat, { ...ctx, chosenFeats }), held: !feat.repeatable && heldNames.has(feat.name.toLowerCase()) }))
 }

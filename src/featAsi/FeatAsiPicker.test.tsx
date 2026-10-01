@@ -21,8 +21,8 @@ vi.mock('./featAsiData', async () => {
 		...actual,
 		loadFeatAsiGrants: vi.fn(async (className: string, _classSource: string, level: number) => {
 			// Fighter's real class-features.json grants at 4/6/8/12/14/16 (confirmed, scripts/investigate-feat-asi-eligibility.js) — includes the bonus level 6 the flat task-brief list omitted.
-			const table: Record<string, number[]> = { Fighter: [4, 6, 8, 12, 14, 16], Wizard: [4, 8, 12, 16] }
-			return (table[className] ?? []).filter((l) => l <= level).map((l) => ({ level: l, kind: 'asi' as const }))
+			const table: Record<string, number[]> = { Fighter: [4, 6, 8, 12, 14, 16], Wizard: [4, 8, 12, 16], Rogue: [19] }
+			return (table[className] ?? []).filter((l) => l <= level).map((l) => ({ level: l, kind: l === 19 ? ('epicBoon' as const) : ('asi' as const) }))
 		}),
 		loadFeats: vi.fn(async () => [
 			{ name: 'Tough', source: 'XPHB', category: 'G' },
@@ -33,6 +33,9 @@ vi.mock('./featAsiData', async () => {
 			{ name: 'Fey-Touched', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['int', 'wis', 'cha'] } }] },
 			{ name: 'Ritual Caster', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['int', 'wis', 'cha'] } }] },
 			{ name: 'Skilled', source: 'XPHB', category: 'O', repeatable: true },
+			{ name: 'Great Weapon Master', source: 'XPHB', category: 'G', prerequisite: [{ level: 4, ability: [{ str: 13 }] }] },
+			{ name: 'Boon of Speed', source: 'XPHB', category: 'EB' },
+			{ name: 'Gift of Night', source: 'TEST', category: 'DG', prerequisite: [{ exclusiveFeatCategory: ['DG'] }] },
 		]),
 		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
 		loadHasFightingStyleFeature: vi.fn(async () => false),
@@ -126,7 +129,7 @@ afterEach(cleanup)
 const fullScores = { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 }
 
 /** W16: the one ASI-or-feat dropdown of a single-level picker. */
-const featOrAsi = async (): Promise<HTMLSelectElement> => (await screen.findByRole('combobox', { name: 'Feat or ASI' })) as HTMLSelectElement
+const featOrAsi = async (level = 4): Promise<HTMLSelectElement> => (await screen.findByRole('combobox', { name: `Level ${level} feat or ASI` })) as HTMLSelectElement
 
 const option = (select: HTMLSelectElement, featName: string): HTMLOptionElement => Array.from(select.options).find((o) => o.value === `${featName}|XPHB`)!
 
@@ -204,13 +207,13 @@ describe('FeatAsiPicker', () => {
 		render(<Harness />)
 
 		await user.selectOptions(await featOrAsi(), 'asi')
-		await user.selectOptions(screen.getByRole('combobox', { name: '+2 ability' }), 'dexterity')
+		await user.selectOptions(screen.getByRole('combobox', { name: 'Level 4 +2 ability' }), 'dexterity')
 		expect(tableRow('ASI / Feats')).toEqual(['—', '+2', '—', '—', '—', '—'])
 		expect(tableRow('Total')).toEqual(['17', '16', '13', '12', '10', '8'])
 
 		await user.selectOptions(await featOrAsi(), 'Athlete|XPHB')
 		expect(tableRow('ASI / Feats')).toEqual(['—', '—', '—', '—', '—', '—'])
-		await user.selectOptions(screen.getByLabelText('Ability'), 'strength')
+		await user.selectOptions(screen.getByLabelText('Level 4 ability'), 'strength')
 		expect(tableRow('ASI / Feats')).toEqual(['+1', '—', '—', '—', '—', '—'])
 		expect(tableRow('Modifier')[0]).toBe('+4')
 
@@ -229,49 +232,154 @@ describe('FeatAsiPicker', () => {
 				speciesName={null}
 				speciesSource={null}
 				value={[
-					{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'dexterity' },
+					{ level: 4, kind: 'asi', increases: { dexterity: 2 } },
 					{ level: 6, kind: 'feat', name: 'Athlete', source: 'XPHB' },
 				]}
 				onChange={() => {}}
 			/>,
 		)
 
-		const level4 = await screen.findByRole('button', { name: 'Level 4 — Athlete (+1 DEX)' })
+		const level4 = await screen.findByRole('button', { name: 'Level 4 — Ability Score Improvement (+2 DEX)' })
 		expect(level4.getAttribute('aria-expanded')).toBe('false')
 		expect(within(screen.getByRole('group', { name: 'Level 4' })).queryByRole('combobox')).toBeNull()
 
 		const level6 = screen.getByRole('button', { name: 'Level 6 — Athlete' })
 		expect(level6.getAttribute('aria-expanded')).toBe('true')
-		expect(within(screen.getByRole('group', { name: 'Level 6' })).getByText('Choose an ability.')).toBeTruthy()
+		const missing = within(screen.getByRole('group', { name: 'Level 6' })).getByText('Choose an ability.')
+		expect(screen.getByRole('combobox', { name: 'Level 6 feat or ASI' }).getAttribute('aria-describedby')).toBe(missing.id)
 
 		await user.click(level4)
 		expect(level4.getAttribute('aria-expanded')).toBe('true')
-		expect(((await within(screen.getByRole('group', { name: 'Level 4' })).findByLabelText('Ability')) as HTMLSelectElement).value).toBe('dexterity')
+		expect(((await screen.findByRole('combobox', { name: 'Level 4 +2 ability' })) as HTMLSelectElement).value).toBe('dexterity')
 	})
 
-	it('W18: a feat taken at another level is disabled as already taken; a repeatable one stays open', async () => {
+	it('W18: a feat taken at another level is disabled as already taken; a repeatable one held elsewhere stays open', async () => {
 		render(
 			<FeatAsiPicker
 				className="Fighter"
 				classSource="XPHB"
-				level={6}
+				level={8}
 				finalAbilityScores={fullScores}
 				speciesName={null}
 				speciesSource={null}
 				value={[
 					{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' },
-					{ level: 6, kind: 'feat', name: '', source: '' },
+					{ level: 6, kind: 'feat', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history', 'nature'] } },
+					{ level: 8, kind: 'feat', name: '', source: '' },
 				]}
 				onChange={() => {}}
 			/>,
 		)
 
-		const level6 = within(await screen.findByRole('group', { name: 'Level 6' }))
-		const select = (await level6.findByRole('combobox', { name: 'Feat or ASI' })) as HTMLSelectElement
+		const select = await featOrAsi(8)
 		expect(option(select, 'Tough').disabled).toBe(true)
 		expect(option(select, 'Tough').textContent).toBe('Tough · XPHB (already taken)')
 		expect(option(select, 'Skilled').disabled).toBe(false)
-		expect(Array.from(select.querySelectorAll('optgroup')).map((group) => group.label)).toEqual(['Origin', 'General'])
+		expect(option(select, 'Skilled').textContent).toBe('Skilled · XPHB')
+		expect(Array.from(select.querySelectorAll('optgroup')).map((group) => group.label)).toEqual(['Origin', 'General', 'Epic Boon', 'Dark Gift'])
+	})
+
+	it('W18: an Epic Boon level lists the Epic Boon group first and names itself in the header', async () => {
+		render(
+			<FeatAsiPicker className="Rogue" classSource="XPHB" level={19} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={[]} onChange={() => {}} />,
+		)
+		expect(await screen.findByRole('button', { name: 'Level 19 (Epic Boon) — Choose a feat or ASI' })).toBeTruthy()
+		const select = await featOrAsi(19)
+		expect(Array.from(select.querySelectorAll('optgroup')).map((group) => group.label)).toEqual(['Epic Boon', 'Origin', 'General', 'Dark Gift'])
+	})
+
+	it('a saved feat missing from the data keeps a disabled "(not in data)" option, so the select shows it', async () => {
+		render(
+			<FeatAsiPicker
+				className="Fighter"
+				classSource="XPHB"
+				level={4}
+				finalAbilityScores={fullScores}
+				speciesName={null}
+				speciesSource={null}
+				value={[{ level: 4, kind: 'feat', name: 'Old Feat', source: 'UA' }]}
+				onChange={() => {}}
+			/>,
+		)
+		await userEvent.setup().click(await screen.findByRole('button', { name: 'Level 4 — Old Feat' }))
+		const select = await featOrAsi()
+		expect(select.value).toBe('Old Feat|UA')
+		expect(select.selectedOptions[0].textContent).toBe('Old Feat · UA (not in data)')
+		expect(select.selectedOptions[0].disabled).toBe(true)
+	})
+
+	describe('D254: an invalid chosen feat', () => {
+		it('opens its card with the reason when the background starts granting it', async () => {
+			const value: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }]
+			const props = { className: 'Fighter', classSource: 'XPHB', level: 4, finalAbilityScores: fullScores, speciesName: null, speciesSource: null, value, onChange: () => {} }
+			const { rerender } = render(<FeatAsiPicker {...props} />)
+			expect((await screen.findByRole('button', { name: 'Level 4 — Tough' })).getAttribute('aria-expanded')).toBe('false')
+
+			rerender(<FeatAsiPicker {...props} backgroundOriginFeat={{ name: 'Tough', source: 'XPHB' }} />)
+			expect(await screen.findByText('Tough is already taken (Background) — choose another feat.')).toBeTruthy()
+			expect(screen.getByRole('button', { name: 'Level 4 — Tough' }).getAttribute('aria-expanded')).toBe('true')
+		})
+
+		it('flags only the higher of two levels with the same feat, and a Dark Gift after another', async () => {
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={8}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={[
+						{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' },
+						{ level: 6, kind: 'feat', name: 'Gift of Night', source: 'TEST' },
+						{ level: 8, kind: 'feat', name: 'Tough', source: 'XPHB' },
+					]}
+					onChange={() => {}}
+					backgroundOriginFeat={{ name: 'Gift of Night', source: 'TEST' }}
+				/>,
+			)
+			expect(await within(await screen.findByRole('group', { name: 'Level 8' })).findByText('Tough is already taken (level 4) — choose another feat.')).toBeTruthy()
+			expect(within(screen.getByRole('group', { name: 'Level 6' })).getByText('Gift of Night is already taken (Background) — choose another feat.')).toBeTruthy()
+			expect(screen.getByRole('button', { name: 'Level 4 — Tough' }).getAttribute('aria-expanded')).toBe('false')
+		})
+
+		it('a prerequisite met through a lower level breaks when that level changes', async () => {
+			const athlete = (ability: 'strength' | 'dexterity'): FeatAsiChoice => ({ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: ability })
+			const rest: FeatAsiChoice[] = [
+				{ level: 6, kind: 'asi', increases: { constitution: 2 } },
+				{ level: 8, kind: 'feat', name: 'Great Weapon Master', source: 'XPHB' },
+			]
+			const props = { className: 'Fighter', classSource: 'XPHB', level: 8, finalAbilityScores: { ...fullScores, strength: 12 }, speciesName: null, speciesSource: null, onChange: () => {} }
+			const { rerender } = render(<FeatAsiPicker {...props} value={[athlete('strength'), ...rest]} />)
+			expect((await screen.findByRole('button', { name: 'Level 8 — Great Weapon Master' })).getAttribute('aria-expanded')).toBe('false')
+
+			rerender(<FeatAsiPicker {...props} value={[athlete('dexterity'), ...rest]} />)
+			expect(await screen.findByText('Great Weapon Master no longer meets its prerequisite (needs STR 13) — choose another feat.')).toBeTruthy()
+		})
+
+		it('at a locked level up level says to fix it in Edit Character', async () => {
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={6}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={[
+						{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' },
+						{ level: 6, kind: 'feat', name: '', source: '' },
+					]}
+					onChange={() => {}}
+					lockedLevels={[4]}
+					backgroundOriginFeat={{ name: 'Tough', source: 'XPHB' }}
+				/>,
+			)
+			const level4 = within(await screen.findByRole('group', { name: 'Level 4' }))
+			expect(level4.getByText('Tough is already taken (Background) — choose another feat. Fix it in Edit Character.')).toBeTruthy()
+			expect(screen.getByRole('button', { name: 'Level 4 — Tough (chosen at an earlier level)' }).getAttribute('aria-expanded')).toBe('true')
+			expect((level4.getByRole('group', { name: 'Feat or ASI choice' }) as HTMLFieldSetElement).disabled).toBe(true)
+		})
 	})
 
 	it('renders nothing when the class has no grant by that level', async () => {
@@ -430,7 +538,7 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		expect(screen.queryByLabelText('Ability')).toBeNull()
+		expect(screen.queryByLabelText('Level 4 ability')).toBeNull()
 
 		await user.selectOptions(await featOrAsi(), 'Tough|XPHB')
 		rerender(
@@ -445,7 +553,7 @@ describe('FeatAsiPicker', () => {
 				onChange={() => {}}
 			/>,
 		)
-		expect(screen.queryByLabelText('Ability')).toBeNull()
+		expect(screen.queryByLabelText('Level 4 ability')).toBeNull()
 
 		await user.selectOptions(await featOrAsi(), 'Athlete|XPHB')
 		rerender(
@@ -460,7 +568,7 @@ describe('FeatAsiPicker', () => {
 				onChange={() => {}}
 			/>,
 		)
-		expect(await screen.findByLabelText('Ability')).toBeTruthy()
+		expect(await screen.findByLabelText('Level 4 ability')).toBeTruthy()
 	})
 
 	it('choosing the ability for a half-feat reports chosenAbility upward, and the choice holds across a re-render (navigation)', async () => {
@@ -479,7 +587,7 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		const abilitySelect = (await screen.findByLabelText('Ability')) as HTMLSelectElement
+		const abilitySelect = (await screen.findByLabelText('Level 4 ability')) as HTMLSelectElement
 		await user.selectOptions(abilitySelect, 'strength')
 		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' }])
 
@@ -496,7 +604,7 @@ describe('FeatAsiPicker', () => {
 				onChange={() => {}}
 			/>,
 		)
-		const select = (await screen.findByLabelText('Ability')) as HTMLSelectElement
+		const select = (await screen.findByLabelText('Level 4 ability')) as HTMLSelectElement
 		expect(select.value).toBe('strength')
 	})
 
@@ -537,7 +645,7 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		const select = await screen.findByRole('combobox', { name: '+2 ability' })
+		const select = await screen.findByRole('combobox', { name: 'Level 4 +2 ability' })
 		const strengthOption = Array.from(select.querySelectorAll('option')).find((o) => o.textContent?.startsWith('Strength')) as HTMLOptionElement
 		expect(strengthOption.disabled).toBe(true)
 		const dexOption = Array.from(select.querySelectorAll('option')).find((o) => o.textContent?.startsWith('Dexterity')) as HTMLOptionElement
@@ -561,7 +669,7 @@ describe('FeatAsiPicker', () => {
 			/>,
 		)
 
-		const select = await screen.findByRole('combobox', { name: '+2 ability' })
+		const select = await screen.findByRole('combobox', { name: 'Level 4 +2 ability' })
 		await user.selectOptions(select, 'strength')
 		expect(onChange).toHaveBeenCalledWith([{ level: 4, kind: 'asi', increases: { strength: 2 } }])
 	})
@@ -590,10 +698,10 @@ describe('FeatAsiPicker', () => {
 		render(<Harness />)
 
 		await user.click(await screen.findByLabelText('+1 to two abilities'))
-		expect(await screen.findAllByRole('combobox', { name: /^\+1 ability/ })).toHaveLength(2)
+		expect(await screen.findAllByRole('combobox', { name: /^Level 4 \+1 ability/ })).toHaveLength(2)
 
-		await user.selectOptions(screen.getByRole('combobox', { name: '+1 ability 1' }), 'strength')
-		await user.selectOptions(screen.getByRole('combobox', { name: '+1 ability 2' }), 'dexterity')
+		await user.selectOptions(screen.getByRole('combobox', { name: 'Level 4 +1 ability 1' }), 'strength')
+		await user.selectOptions(screen.getByRole('combobox', { name: 'Level 4 +1 ability 2' }), 'dexterity')
 		expect(latest[0]).toEqual({ level: 4, kind: 'asi', increases: { strength: 1, dexterity: 1 } })
 	})
 
@@ -857,7 +965,7 @@ describe('FeatAsiPicker', () => {
 			expect(latest[0]).toMatchObject({ filterChoiceSpells: { cantrips: [], spells: [{ name: 'Identify', source: 'XPHB' }] } })
 
 			rerender(<FeatAsiPicker className="Fighter" classSource="XPHB" level={4} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={latest} onChange={onChange} />)
-			const abilitySelect = (await screen.findByLabelText('Ability')) as HTMLSelectElement
+			const abilitySelect = (await screen.findByLabelText('Level 4 ability')) as HTMLSelectElement
 			await user.selectOptions(abilitySelect, 'wisdom')
 			latest = onChange.mock.calls.at(-1)![0] as FeatAsiChoice[]
 			expect(latest[0]).toMatchObject({

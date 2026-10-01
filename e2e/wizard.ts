@@ -66,7 +66,7 @@ export async function openLevelCard(scope: Page | Locator, level: number): Promi
 }
 
 export function featOrAsiSelect(scope: Page | Locator, level: number): Locator {
-  return levelCard(scope, level).getByRole('combobox', { name: 'Feat or ASI', exact: true })
+  return levelCard(scope, level).getByRole('combobox', { name: `Level ${level} feat or ASI`, exact: true })
 }
 
 /** The dropdown option of a feat, "Name · Book" plus any reason it cannot be taken. */
@@ -82,7 +82,7 @@ export async function chooseLevelFeat(scope: Page | Locator, level: number, feat
 
 export async function chooseLevelAsi(scope: Page | Locator, level: number, ability: string): Promise<void> {
   await featOrAsiSelect(scope, level).selectOption('asi')
-  await levelCard(scope, level).getByRole('combobox', { name: '+2 ability', exact: true }).selectOption(ability)
+  await levelCard(scope, level).getByRole('combobox', { name: `Level ${level} +2 ability`, exact: true }).selectOption(ability)
 }
 
 export async function next(page: Page): Promise<void> {

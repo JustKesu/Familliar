@@ -4353,3 +4353,38 @@ Požadavek, jehož loader selhal, je neznámý (`null`): nevyžaduje se ani neza
 D252: Krok s indexem ≤ aktuálnímu kroku je v liště kroků i v akci `goTo` vždy dosažitelný, i když je
 některý dřívější krok neúplný (jako tlačítko Back). Pravidlo pro skok dopředu z D227 se nemění.
 Upřesňuje D227.
+
+## D253 — Prerekvizity featů a cap 20 počítají skóre pod úrovní karty (F-2a)
+
+D253: Prerekvizity featů i cap 20 v kroku ASI / Feat čtou skóre vlastností tak, jak stojí POD úrovní
+karty: základ + background + každé ASI, half-feat a pevný bonus featu ze všech nižších úrovní (filtr podle
+`choice.level`, ne podle pořadí) + origin feat backgroundu + ručně přidané featy (Manage Feats, origin
+`manual`). Magické předměty se nepočítají nikdy (žádné attuned ani custom předměty, ani featy z předmětů).
+Platí při tvorbě, v Edit Character i při level upu; level up započítá i ASI/featy z dřívějších úrovní
+uložené postavy, včetně dřívějších level upů. Počítá se přes calculation layer (`computeAbilityScores`),
+memoizovaně (`featAsiLevels.ts`). Nahrazuje omezení „volba z téže session se nezapočítá“ z modul-docu
+featAsiData.ts (D16/D17 beze změny: žádný druhý součet mimo calculation layer).
+
+## D254 — Zvolený feat, který přestal platit, je označený a zamkne Next (F-2a)
+
+D254: Vybraný feat je neplatný, když je už vzatý (origin feat backgroundu, ruční feat, feat z předmětu
+nebo NIŽŠÍ úroveň), když už nesplňuje prerekvizitu (počítanou podle D253), nebo při konfliktu exkluzivní
+kategorie (Dark Gift). Konflikt se hlásí jen vůči granted featům a nižším úrovním, takže ze dvou karet se
+stejným featem je označená jen vyšší. Označená karta se otevře, ukáže větu („Tough is already taken
+(Background) — choose another feat.“ / „Great Weapon Master no longer meets its prerequisite (needs
+STR 13) — choose another feat.“), ta je součástí řádku „Choose …“, a Next kroku (i brána uložení) je
+zamčený. Platí i pro staré uložené postavy v Edit Character. Výjimka: při level upu jsou karty dřívějších
+úrovní zamčené — věta má navíc „Fix it in Edit Character.“, ale Next nezamyká. Rozšiřuje D248.
+
+## D255 — Stejné jméno featu ze dvou knih je jeden feat (F-2a)
+
+D255: Feat se stejným jménem z jiné knihy (např. Alert PHB a Alert XPHB) se počítá jako tentýž feat:
+drží-li postava jeden, druhý je „already taken“, pokud feat není opakovatelný. Platí ve wizardu (nabídka
+i D254) i v nabídce Manage Feats. Dnešní feats.json žádné jméno ve dvou knihách nemá (DATA.md).
+
+## D256 — Snížení úrovně nové postavy prořeže i volby mimo krok Class (F-2a)
+
+D256: Jako D251 a jen u nové postavy: po snížení úrovně se zahodí volby ASI / Feat nad novou úrovní,
+volby kroku Class options (invokace, metamagie), když jejich progrese na nové úrovni nic nedává (počet 0
+nebo žádná), a jazyky, nástroje a dovednosti kroku Proficiencies, které třída nebo podtřída dává jen nad
+novou úrovní. Rozšiřuje D251.

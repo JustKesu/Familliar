@@ -1,42 +1,26 @@
-import { useState, type ReactNode } from 'react'
-import type { Ability } from '../abilities/abilityScores'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ABILITIES } from '../abilities/abilityScores'
 import { ABILITY_ABBREVIATIONS } from '../calculation/abilityAbbreviations'
-import type { FeatEffectEntry } from '../calculation/featEffects'
+import { featAbilityScoreContributions, type FeatEffectEntry } from '../calculation/featEffects'
 import { isCompleteFeatAsiChoice } from '../creation/wizardState'
 import { missingFeatSubChoices } from '../sheet/featSubChoices'
 import type { FeatAsiChoice } from '../storage/character'
-import { featAbilityChoiceOptions, isValidAbilityIncrease, type FeatEntry, type FeatOffer } from './featAsiData'
-
-const ABBREVIATION_BY_NAME: Record<string, string> = {
-	Strength: 'STR',
-	Dexterity: 'DEX',
-	Constitution: 'CON',
-	Intelligence: 'INT',
-	Wisdom: 'WIS',
-	Charisma: 'CHA',
-}
+import { isValidAbilityIncrease, unmetPrerequisiteText, type FeatAsiGrantKind, type FeatEntry, type FeatOffer } from './featAsiData'
 
 const MISSING_LABEL: Record<string, string> = { college: 'a college', ability: 'an ability' }
 
-const abbreviation = (ability: string): string => (ABILITY_ABBREVIATIONS[ability as Ability] ?? ability).toUpperCase()
-
-const signed = (increases: Record<string, unknown>): string[] =>
-	Object.entries(increases).flatMap(([ability, amount]) => (typeof amount === 'number' && amount > 0 ? [`+${amount} ${abbreviation(ability)}`] : []))
-
-const findFeat = (feats: readonly FeatEntry[], choice: { name: string; source: string }): FeatEntry | undefined =>
-	feats.find((feat) => feat.name === choice.name && feat.source === choice.source)
-
-/** W16/W17: "Level 4 — Athlete (+1 DEX)", "Level 8 — Ability Score Improvement (+2 STR)", "Level 12 — Skilled". */
-export function featAsiCardTitle(level: number, choice: FeatAsiChoice | undefined, feats: readonly FeatEntry[]): string {
-	if (choice?.kind === 'asi') {
-		const bonus = signed(choice.increases)
-		return `Level ${level} — Ability Score Improvement${bonus.length > 0 ? ` (${bonus.join(', ')})` : ''}`
-	}
-	if (choice?.kind !== 'feat' || choice.name === '') return `Level ${level} — Choose a feat or ASI`
-	const feat = findFeat(feats, choice)
-	const fixed = (feat?.ability?.[0] ?? {}) as Record<string, unknown>
-	const bonus = feat && featAbilityChoiceOptions(feat) ? (choice.chosenAbility ? [`+1 ${abbreviation(choice.chosenAbility)}`] : []) : signed(fixed)
-	return `Level ${level} — ${choice.name}${bonus.length > 0 ? ` (${bonus.join(', ')})` : ''}`
+/** W16/W17: "Level 4 — Athlete (+1 DEX)", "Level 8 — Ability Score Improvement (+2 STR)", "Level 19 (Epic Boon) — Skilled". */
+export function featAsiCardTitle(level: number, choice: FeatAsiChoice | undefined, feats: readonly FeatEntry[], grantKind: FeatAsiGrantKind = 'asi'): string {
+	const heading = `Level ${level}${grantKind === 'epicBoon' ? ' (Epic Boon)' : ''} — `
+	if (!choice || (choice.kind === 'feat' && choice.name === '')) return `${heading}Choose a feat or ASI`
+	// loadFeats keeps each feats.json object whole, so it carries the ability fields the calculation layer reads.
+	const draft = { id: '', name: '', classes: [], featAsiChoices: [choice] }
+	const bonus = ABILITIES.flatMap((ability) => {
+		const amount = featAbilityScoreContributions(ability, draft, feats as unknown as FeatEffectEntry[]).reduce((sum, contribution) => sum + contribution.amount, 0)
+		return amount > 0 ? [`+${amount} ${ABILITY_ABBREVIATIONS[ability].toUpperCase()}`] : []
+	})
+	const name = choice.kind === 'asi' ? 'Ability Score Improvement' : choice.name
+	return `${heading}${name}${bonus.length > 0 ? ` (${bonus.join(', ')})` : ''}`
 }
 
 /** What the card still asks for; empty when the choice is complete. Completeness is the Next gate's own rule (isCompleteFeatAsiChoice); proficiency picks D179 lets wait are listed too. */
@@ -54,30 +38,29 @@ export function featOptionLabel({ feat, result, held }: FeatOffer): string {
 	const label = `${feat.name} · ${feat.source}`
 	if (held) return `${label} (already taken)`
 	if (result.eligible) return label
-	const reasons = result.reasons.map((reason) =>
-		reason
-			.replace(/^Requires /, 'needs ')
-			.replace(/\.$/, '')
-			.replace(/(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma) (\d+)\+/g, (_, name: string, score: string) => `${ABBREVIATION_BY_NAME[name]} ${score}`),
-	)
-	return `${label} (${reasons.join('; ')})`
+	return `${label} (${unmetPrerequisiteText(result)})`
 }
 
-/** W16/W17: one ASI level. Opens when something is missing on entering the step; after that only the player toggles it. */
+/** W16/W17: one ASI level. Opens when something is missing on entering the step, and whenever its choice becomes invalid (D254); otherwise only the player toggles it. */
 export function FeatAsiLevelCard({
 	level,
 	title,
 	initiallyOpen,
+	flagged = false,
 	locked,
 	children,
 }: {
 	level: number
 	title: string
 	initiallyOpen: boolean
+	flagged?: boolean
 	locked: boolean
 	children: ReactNode
 }): ReactNode {
 	const [open, setOpen] = useState(initiallyOpen)
+	useEffect(() => {
+		if (flagged) setOpen(true)
+	}, [flagged])
 	return (
 		<section className="feat-asi-card" role="group" aria-label={`Level ${level}`}>
 			<button type="button" className="feat-asi-card__header" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -91,6 +74,8 @@ export function FeatAsiLevelCard({
 			</button>
 			{open && (
 				<fieldset className="feat-asi-card__body" disabled={locked}>
+					{/* Without the level: the card itself is the group named "Level N", and specs find it by that name. */}
+					<legend className="feat-asi-card__legend">Feat or ASI choice</legend>
 					{children}
 				</fieldset>
 			)}

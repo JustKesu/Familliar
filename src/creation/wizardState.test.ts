@@ -699,6 +699,48 @@ describe('pruneClassPicks (D251)', () => {
 		const unknown: ClassPickRequirements = { subclass: null, fightingStyle: null, masteryCount: null, optionalFeatureCount: null, skillCount: null, classFeatureNames: null }
 		expect(wizardReducer(state, { type: 'pruneClassPicks', requirements: unknown })).toBe(state)
 	})
+
+	it('D256: drops ASI levels and Proficiencies-step picks above the chosen level', () => {
+		const fighter8: WizardControllerState = {
+			step: 'class',
+			data: {
+				...completeData(),
+				subclass: null,
+				optionalFeatureChoices: [],
+				classChoice: { className: 'Fighter', classSource: 'XPHB', level: 4 },
+				featAsiChoices: [
+					{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' },
+					{ level: 6, kind: 'feat', name: 'Alert', source: 'XPHB' },
+					{ level: 8, kind: 'asi', increases: { strength: 2 } },
+				],
+			},
+		}
+		expect(wizardReducer(fighter8, { type: 'pruneClassPicks', requirements: { ...known, subclass: false, optionalFeatureCount: 0 } }).data.featAsiChoices).toEqual([
+			{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' },
+		])
+
+		const ranger: WizardControllerState = {
+			step: 'class',
+			data: {
+				...completeData(),
+				subclass: null,
+				fightingStyle: null,
+				optionalFeatureChoices: [],
+				classChoice: { className: 'Ranger', classSource: 'XPHB', level: 1 },
+				featureLanguages: [{ name: 'Elvish', source: 'XPHB', grantedBy: 'deftExplorer' }],
+			},
+		}
+		expect(wizardReducer(ranger, { type: 'pruneClassPicks', requirements: { ...known, subclass: false, fightingStyle: false, optionalFeatureCount: 0 } }).data.featureLanguages).toEqual([])
+	})
+
+	it('D256: drops Class options picks of a progression the level no longer grants', () => {
+		const state: WizardControllerState = {
+			step: 'class',
+			data: { ...completeData(), classOptionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }] },
+		}
+		expect(wizardReducer(state, { type: 'pruneClassOptionalFeatures', featureTypes: ['EI'] })).toBe(state)
+		expect(wizardReducer(state, { type: 'pruneClassOptionalFeatures', featureTypes: [] }).data.classOptionalFeatureChoices).toEqual([])
+	})
 })
 
 describe('saveCharacter', () => {
