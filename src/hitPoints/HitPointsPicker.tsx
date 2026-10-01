@@ -10,6 +10,7 @@ import { loadGrantedClassFeatures } from '../sheet/grantedClassFeatures'
 import { loadSpeciesTraitNames } from '../sheet/speciesTraitNames'
 import { UnresolvedValue, ValueBreakdown } from '../sheet/ValueBreakdown'
 import { HitPointLevelRow } from './HitPointLevelRow'
+import { isValidHitPointEntry } from './hitPointEntry'
 import type { Character, CharacterHitPointLevel, HitPointLevelKind } from '../storage/character'
 
 /*
@@ -100,7 +101,7 @@ export function HitPointsPicker({
 	const { faces, count: totalLevel } = pool.value[0]
 
 	function setLevel(level: number, kind: HitPointLevelKind, dieResult: number): void {
-		onChange([...value.filter((entry) => entry.level !== level), { level, kind, dieResult }])
+		onChange([...value.filter((entry) => entry.level !== level), { level, kind, dieResult }].sort((a, b) => a.level - b.level))
 	}
 
 	function applyAverageToAll(): void {
@@ -110,17 +111,20 @@ export function HitPointsPicker({
 		onChange(levels)
 	}
 
-	const draftCharacter: Character = { ...character, hitPointLevels: value }
-	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats, loaded.itemBonuses, loaded.itemAbilityGrants)
 	const levels = levelUpLevel !== undefined ? [levelUpLevel] : Array.from({ length: Math.max(0, totalLevel - 1) }, (_, index) => index + 2)
+	// An invalid row (empty Manual, legacy value) must not feed the total: it is left out, so the breakdown shows it as "no choice recorded".
+	const isUnset = (entry: CharacterHitPointLevel): boolean => levels.includes(entry.level) && !isValidHitPointEntry(entry, faces)
+	const anyUnset = value.some(isUnset)
+	const draftCharacter: Character = { ...character, hitPointLevels: value.filter((entry) => !isUnset(entry)) }
+	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats, loaded.itemBonuses, loaded.itemAbilityGrants)
 
 	return (
 		<div className="hit-points-picker">
 			{/* A div, not a p: ValueBreakdown renders a <details>, which is not valid inside a paragraph. */}
-			<div className="hit-points-picker__running-total">
+			<div className="hit-points-picker__running-total" data-testid="hit-points-running-total">
 				<div className="hit-points-picker__max">
 					<span className="hit-points-picker__label">Maximum hit points</span>
-					{maxHitPoints.status === 'unknown' ? <UnresolvedValue reason={maxHitPoints.reason} /> : <span className="hit-points-picker__number">{maxHitPoints.value}</span>}
+					{maxHitPoints.status === 'unknown' ? <UnresolvedValue reason={maxHitPoints.reason} /> : <span className="hit-points-picker__number" data-testid="hit-points-max">{anyUnset ? '—' : maxHitPoints.value}</span>}
 				</div>
 				{maxHitPoints.status === 'known' && <ValueBreakdown breakdown={maxHitPoints.breakdown} open />}
 			</div>

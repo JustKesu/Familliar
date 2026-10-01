@@ -69,7 +69,7 @@ describe('a level up followed by removing that level', () => {
 			classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 },
 			hitPointLevels: [...seed.hitPointLevels, { level: 5, kind: 'roll' as const, dieResult: 9 }],
 		}
-		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1 }, undefined, created, 5)
+		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5)
 		expect(storage.raw()).not.toBe(before)
 
 		removeTopLevel(store, created.id)
@@ -97,7 +97,7 @@ describe('a level up followed by removing that level', () => {
 			featAsiChoices: [{ level: 4, kind: 'asi' as const, increases: { strength: 2 } }],
 			hitPointLevels: [...seed.hitPointLevels, { level: 4, kind: 'roll' as const, dieResult: 7 }],
 		}
-		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 4, featAsiEligibleLevelCount: 1 }, undefined, created, 4)
+		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 4, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 4)
 		expect(store.list()[0].masteries).toContainEqual({ name: 'Rapier', level: 4 })
 
 		removeTopLevel(store, created.id)

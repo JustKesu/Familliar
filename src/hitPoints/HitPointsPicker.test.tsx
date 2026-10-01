@@ -71,10 +71,10 @@ describe('HitPointsPicker', () => {
 		]
 		render(<HitPointsPicker character={fighter(3)} value={value} onChange={onChange} />)
 
-		await user.click(await screen.findByRole('button', { name: 'Reroll' }))
+		await user.click(await screen.findByRole('button', { name: 'Reroll level 2' }))
 		expect(onChange).toHaveBeenCalledWith([
-			{ level: 3, kind: 'average', dieResult: 6 },
 			{ level: 2, kind: 'roll', dieResult: 10 },
+			{ level: 3, kind: 'average', dieResult: 6 },
 		])
 		random.mockRestore()
 	})
@@ -100,26 +100,61 @@ describe('HitPointsPicker', () => {
 		const input = (await screen.findByLabelText('Level 2 manual result')) as HTMLInputElement
 		expect(input.value).toBe('')
 		expect(input.getAttribute('aria-invalid')).toBe('true')
-		expect(screen.getByText('1–10')).toBeTruthy()
+		expect(screen.getByText('Whole number 1–10')).toBeTruthy()
+		expect(screen.queryByRole('alert')).toBeNull()
+		expect(screen.getByRole('radiogroup', { name: 'Level 2 hit points method' }).getAttribute('aria-describedby')).toBe(screen.getByText('Whole number 1–10').id)
 
 		cleanup()
 		render(<HitPointsPicker character={fighter(2)} value={[{ level: 2, kind: 'manual', dieResult: 11 }]} onChange={() => {}} />)
 		expect(((await screen.findByLabelText('Level 2 manual result')) as HTMLInputElement).getAttribute('aria-invalid')).toBe('true')
-		expect(screen.getByText('1–10')).toBeTruthy()
+		expect(screen.getByText('Whole number 1–10')).toBeTruthy()
 
 		cleanup()
 		render(<HitPointsPicker character={fighter(2)} value={[{ level: 2, kind: 'manual', dieResult: 7 }]} onChange={() => {}} />)
 		const valid = (await screen.findByLabelText('Level 2 manual result')) as HTMLInputElement
 		expect(valid.value).toBe('7')
 		expect(valid.getAttribute('aria-invalid')).toBe('false')
-		expect(screen.queryByText('1–10')).toBeNull()
+		expect(screen.queryByText('Whole number 1–10')).toBeNull()
+	})
+
+	/* D258: a legacy average with the wrong value is fixed by one click on the already-checked pill. */
+	it('shows a method-specific hint for a legacy average and re-applies it on click', async () => {
+		const user = userEvent.setup()
+		const onChange = vi.fn()
+		render(<HitPointsPicker character={fighter(2)} value={[{ level: 2, kind: 'average', dieResult: 5 }]} onChange={onChange} />)
+
+		expect(await screen.findByText('Average is 6')).toBeTruthy()
+		await user.click(screen.getByLabelText('Average (6)'))
+		expect(onChange).toHaveBeenCalledTimes(1)
+		expect(onChange).toHaveBeenCalledWith([{ level: 2, kind: 'average', dieResult: 6 }])
+	})
+
+	it('shows a dash for the maximum while a row is invalid, and leaves that row out of the breakdown', async () => {
+		const character = { ...fighter(2), abilityScores: { method: 'standardArray' as const, scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 } } }
+		render(<HitPointsPicker character={character} value={[{ level: 2, kind: 'manual', dieResult: 0 }]} onChange={() => {}} />)
+		expect((await screen.findByTestId('hit-points-max')).textContent).toBe('—')
+		expect(screen.queryByText(/level 2 \(manual\)/)).toBeNull()
+
+		cleanup()
+		render(<HitPointsPicker character={character} value={[{ level: 2, kind: 'manual', dieResult: 7 }]} onChange={() => {}} />)
+		expect((await screen.findByTestId('hit-points-max')).textContent).toBe('19') // 10 + 7 + CON +1 × 2
+	})
+
+	it('names each reroll button after its level', async () => {
+		const value: CharacterHitPointLevel[] = [
+			{ level: 2, kind: 'roll', dieResult: 4 },
+			{ level: 3, kind: 'roll', dieResult: 5 },
+		]
+		render(<HitPointsPicker character={fighter(3)} value={value} onChange={() => {}} />)
+		expect(await screen.findByRole('button', { name: 'Reroll level 2' })).toBeTruthy()
+		expect(screen.getByRole('button', { name: 'Reroll level 3' })).toBeTruthy()
 	})
 
 	it('never records a fractional or negative manual text as a hit point value', async () => {
 		const onChange = vi.fn()
 		render(<HitPointsPicker character={fighter(2)} value={[{ level: 2, kind: 'manual', dieResult: 0 }]} onChange={onChange} />)
 		const input = (await screen.findByLabelText('Level 2 manual result')) as HTMLInputElement
-		for (const text of ['2.5', '-1']) {
+		for (const text of ['2.5', '-1', '1e1']) {
 			fireEvent.change(input, { target: { value: text } })
 			expect(onChange).toHaveBeenLastCalledWith([{ level: 2, kind: 'manual', dieResult: 0 }])
 		}

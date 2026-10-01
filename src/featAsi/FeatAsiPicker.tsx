@@ -119,7 +119,7 @@ export function FeatAsiPicker({
 			classes: [],
 			abilityScores: { method: 'standardArray', scores: Object.fromEntries(ABILITIES.map((ability) => [ability, finalAbilityScores[ability] ?? 0])) as Record<Ability, number> },
 		}
-		return featAsiLevels(load.data, value, grantedFeatsOf(backgroundOriginFeat, manualFeats, itemFeats), level, draft)
+		return featAsiLevels(load.data, value, grantedFeatsOf(backgroundOriginFeat, manualFeats, itemFeats), draft)
 	}, [load, value, abilityDraft, finalAbilityScores, backgroundOriginFeat, manualFeats, itemFeats, level])
 
 	if (load.status === 'error') {

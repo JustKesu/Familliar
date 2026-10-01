@@ -361,7 +361,7 @@ describe('isStepComplete', () => {
 					{ level: 3, kind: 'roll' as const, dieResult: 8 },
 				],
 			}
-			expect(isStepComplete('hitPoints', complete)).toBe(true)
+			expect(isStepComplete('hitPoints', complete, { hitDieFaces: 10 })).toBe(true)
 		})
 
 		it('does not let a level above the character\'s own stand in for a missing one', () => {
@@ -389,9 +389,10 @@ describe('isStepComplete', () => {
 				expect(gate(kind, -1)).toBe(false)
 				expect(gate(kind, 2.5)).toBe(false)
 			}
-			// Hit die not loaded yet: still refuses what no die could allow.
+			// Hit die not loaded or lookup failed: the step stays incomplete whatever the value.
 			expect(gate('manual', 0, null)).toBe(false)
-			expect(gate('manual', 11, null)).toBe(true)
+			expect(gate('manual', 7, null)).toBe(false)
+			expect(gate('average', 6, null)).toBe(false)
 		})
 
 		it('during a level-up walk, the target level is checked the same way', () => {
@@ -413,7 +414,8 @@ describe('isStepComplete', () => {
 			expect(isStepComplete('hitPoints', withLowerLevelsOnly, { levelUpTargetLevel: 10 })).toBe(false)
 
 			const withTargetLevel = { ...data, hitPointLevels: [{ level: 10, kind: 'roll' as const, dieResult: 8 }] }
-			expect(isStepComplete('hitPoints', withTargetLevel, { levelUpTargetLevel: 10 })).toBe(true)
+			expect(isStepComplete('hitPoints', withTargetLevel, { levelUpTargetLevel: 10, hitDieFaces: 10 })).toBe(true)
+			expect(isStepComplete('hitPoints', withTargetLevel, { levelUpTargetLevel: 10 })).toBe(false)
 		})
 	})
 })
@@ -1200,7 +1202,7 @@ describe('editing an existing character', () => {
 	}
 
 	/** What the round trip needs so every visible step counts as complete: one ASI grant at level 4, and a level-5 character (so the hit-points step appears). */
-	const editConditions = { featAsiEligibleLevelCount: 1, characterLevel: 5, editingExistingCharacter: true }
+	const editConditions = { featAsiEligibleLevelCount: 1, characterLevel: 5, editingExistingCharacter: true, hitDieFaces: 10 }
 
 	it('seeds the wizard from a stored character', () => {
 		const data = wizardDataFromCharacter(storedCharacter(), lookups)

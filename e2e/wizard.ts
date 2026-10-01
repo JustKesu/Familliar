@@ -116,6 +116,8 @@ export interface FighterOptions {
   background?: { radio: string; plusTwo: string; plusOne: string }
   /** W-6: finishFromBackground returns on the Hit points step instead of filling it in. */
   stopAtHitPoints?: boolean
+  /** F-2b: finishFromBackground returns on the ASI / Feat step with every card still empty. */
+  stopAtAsi?: boolean
 }
 
 /** Fighter with background Acolyte unless `background` says otherwise; stops on the Background step so the caller can inspect it. */
@@ -168,6 +170,7 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
 
   if (options.level >= 4) {
     await expectStep(page, 'ASI / Feat')
+    if (options.stopAtAsi) return
     const asiLevels = FIGHTER_ASI_LEVELS.filter((l) => l <= options.level)
     for (const [index, level] of asiLevels.entries()) {
       // `feat` / `onFeatStep` belong to level 4 when the character reaches it, else to the first slot (a level-19 epic boon).

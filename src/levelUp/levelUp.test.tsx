@@ -104,7 +104,7 @@ describe('the hit points step during a level up', () => {
 	it('completes once the single new-level entry is recorded, for a character with no stored hit point history', () => {
 		const character = single('Fighter', 'Champion', 9)
 		const gains = levelGainsFor(character, 10, CLASSES, RESOLVER)
-		const conditions = { ...levelUpStepConditions(gains), characterLevel: 10 }
+		const conditions = { ...levelUpStepConditions(gains), characterLevel: 10, hitDieFaces: 10 }
 		expect(conditions.levelUpTargetLevel).toBe(10)
 
 		const seed = wizardDataFromCharacter(character, { subclasses: [], spellLevels: [] })
@@ -154,7 +154,7 @@ describe('saving a level up', () => {
 	}
 
 	function conditions(character: Character) {
-		return { ...levelUpStepConditions(levelGainsFor(character, 4, CLASSES, RESOLVER)), featAsiEligibleLevelCount: 1, characterLevel: 4 }
+		return { ...levelUpStepConditions(levelGainsFor(character, 4, CLASSES, RESOLVER)), featAsiEligibleLevelCount: 1, characterLevel: 4, hitDieFaces: 10 }
 	}
 
 	it('writes the new level once, and every pick made during the walk carries that level', () => {

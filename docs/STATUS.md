@@ -2118,6 +2118,16 @@ visually hidden legend. A new character's lowered level also prunes ASI choices 
 picks of a progression it no longer grants (`pruneClassOptionalFeatures` action) and Proficiencies-step
 language/tool/skill picks granted only above it. E2E `wizardF2a.spec.ts` 1–7.
 
+F-2b (D257, D258) done. No schema bump. Fixes from the W-6 review. A feat's `level` prerequisite in the ASI /
+Feat step is compared with the card's level (`contextAt` in `featAsiLevels.ts`; `FeatAsiLevels.characterLevel`
+removed); Manage Feats still uses the total level. Hit points step: the Average pill re-applies on click,
+the hint is per method ("Average is 6" / "Whole number 1–N", no `role="alert"`, linked to the radiogroup),
+the big maximum is "—" while a row is invalid (`data-testid="hit-points-max"`), Reroll buttons are named
+"Reroll level N", Manual takes digits only, `isValidHitPointEntry(entry, null)` is false so an unknown hit
+die keeps the step incomplete, `setLevel` keeps levels sorted, the wizard reuses `computeHitDicePool` and
+`rollDice`. E2E `wizardW6.spec.ts` rewritten on roles/testids plus five F-2b scenarios; `e2e/wizard.ts`
+`stopAtAsi` option.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

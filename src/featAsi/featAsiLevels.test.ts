@@ -10,6 +10,7 @@ const feats = [
 	{ name: 'Skilled', source: 'XPHB', category: 'O', repeatable: true },
 	{ name: 'Athlete', source: 'XPHB', category: 'G', ability: [{ choose: { from: ['str', 'dex'] } }] },
 	{ name: 'Great Weapon Master', source: 'XPHB', category: 'G', prerequisite: [{ level: 4, ability: [{ str: 13 }] }] },
+	{ name: 'Late Boon', source: 'TEST', category: 'EB', prerequisite: [{ level: 8 }] },
 	{ name: 'Gift A', source: 'TEST', category: 'DG', prerequisite: [{ exclusiveFeatCategory: ['DG'] }] },
 	{ name: 'Gift B', source: 'TEST', category: 'DG', prerequisite: [{ exclusiveFeatCategory: ['DG'] }] },
 ] as unknown as FeatEntry[]
@@ -25,7 +26,7 @@ function draft(strength: number, extra: Partial<Character> = {}): Character {
 	return { id: '', name: '', classes: [], abilityScores: { method: 'standardArray', scores: { strength, dexterity: 10, constitution: 10, intelligence: 10, wisdom: 10, charisma: 10 } }, ...extra }
 }
 
-const levelsOf = (choices: FeatAsiChoice[], strength = 12, granted = grantedFeatsOf(null, [], []), base: Partial<Character> = {}) => featAsiLevels(data, choices, granted, 8, draft(strength, base))
+const levelsOf = (choices: FeatAsiChoice[], strength = 12, granted = grantedFeatsOf(null, [], []), base: Partial<Character> = {}) => featAsiLevels(data, choices, granted, draft(strength, base))
 
 describe('D253: ability scores below a card', () => {
 	it('adds lower-level ASIs and half-feats, never the card itself or higher, and never items', () => {
@@ -51,7 +52,7 @@ describe('D253: ability scores below a card', () => {
 			background: { name: 'Farmhand', source: 'TEST', skillProficiencies: ['nature', 'survival'], toolProficiency: "Carpenter's Tools" },
 			grantedFeats: [{ origin: 'background', name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' }],
 		})
-		expect(featAsiLevels(data, [], grantedFeatsOf({ name: 'Athlete', source: 'XPHB' }, [], []), 8, background).scoresBelow(4).strength).toBe(13)
+		expect(featAsiLevels(data, [], grantedFeatsOf({ name: 'Athlete', source: 'XPHB' }, [], []), background).scoresBelow(4).strength).toBe(13)
 	})
 })
 
@@ -104,6 +105,17 @@ describe('D254: a chosen feat that is no longer valid', () => {
 		])
 		expect(invalidFeatAsiLevels(levels)).toEqual([8])
 		expect(featAsiChoiceProblem(levels, levels.choices[2])).toBe('Gift A no longer meets its prerequisite (already has a Dark Gift) — choose another feat.')
+	})
+})
+
+describe('D257: a level prerequisite reads the card level', () => {
+	it('offers a level-8 feat on the level 8 card only, and flags it on a lower card', () => {
+		const levels = levelsOf([{ level: 4, kind: 'feat', name: 'Late Boon', source: 'TEST' }])
+		const eligibleAt = (level: number) => featAsiLevelOffers(levels, level).find((offer) => offer.feat.name === 'Late Boon')?.result.eligible
+		expect(eligibleAt(4)).toBe(false)
+		expect(eligibleAt(8)).toBe(true)
+		expect(featAsiChoiceProblem(levels, levels.choices[0])).toBe('Late Boon no longer meets its prerequisite (needs character level 8) — choose another feat.')
+		expect(featAsiChoiceProblem(levelsOf([{ level: 8, kind: 'feat', name: 'Late Boon', source: 'TEST' }]), { level: 8, kind: 'feat', name: 'Late Boon', source: 'TEST' })).toBeNull()
 	})
 })
 

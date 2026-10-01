@@ -4388,3 +4388,22 @@ D256: Jako D251 a jen u nové postavy: po snížení úrovně se zahodí volby A
 volby kroku Class options (invokace, metamagie), když jejich progrese na nové úrovni nic nedává (počet 0
 nebo žádná), a jazyky, nástroje a dovednosti kroku Proficiencies, které třída nebo podtřída dává jen nad
 novou úrovní. Rozšiřuje D251.
+
+## D257 — Prerekvizita „level“ featu se porovnává s úrovní karty (F-2b)
+
+D257: V kroku ASI / Feat se prerekvizita featu s klíčem `level` (např. Epic Boons „Level 19+“) porovnává
+s úrovní KARTY, ne s celkovou úrovní postavy. Nová postava úrovně 20 tak na kartě úrovně 4 Epic Boon
+nedostane (je zakázaný s důvodem „needs character level 19“), na kartě 19 ano. Stejné pravidlo používá
+varování z D254. Manage Feats na listu zůstává u celkové úrovně postavy (feat přidaný tam nemá úroveň).
+Upřesňuje D253 (karta čte skóre i úroveň pod sebou).
+
+## D258 — Oprava kroku Hit points: znovu použitelný Average, „—“, neznámá kostka zamyká (F-2b)
+
+D258: (1) Pilulka Average se použije i při kliknutí na už zaškrtnutou (onClick), takže jeden klik opraví
+starý uložený řádek se špatnou hodnotou; hint je podle metody („Average is 6“, jinak „Whole number 1–N“),
+bez `role="alert"`, propojený přes `aria-describedby` s radiogroupem i polem. (2) Dokud je řádek nevalidní
+(prázdné Manual, starý uložený výsledek), velké maximum ukazuje „—“ a řádek se do rozpisu nepočítá (rozpis
+ho ukáže jako „no choice recorded“). (3) Manual přijme jen číslice (`/^\d+$/`), „1e1“ je nevalidní.
+(4) Neznámá kostka (lookup selhal nebo ještě nedoběhl) už není „libovolné číslo ≥ 1“: brána kroku zůstává
+nesplněná a picker ukáže svou chybu. (5) `setLevel` drží `hitPointLevels` seřazené podle úrovně. Upřesňuje
+D250.

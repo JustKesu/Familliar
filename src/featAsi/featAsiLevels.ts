@@ -127,11 +127,10 @@ export interface FeatAsiLevels {
 	data: FeatAsiStepData
 	choices: readonly FeatAsiChoice[]
 	granted: readonly GrantedFeat[]
-	characterLevel: number
 	scoresBelow: (level: number) => Partial<Record<Ability, number>>
 }
 
-export function featAsiLevels(data: FeatAsiStepData, choices: readonly FeatAsiChoice[], granted: readonly GrantedFeat[], characterLevel: number, draft: Character): FeatAsiLevels {
+export function featAsiLevels(data: FeatAsiStepData, choices: readonly FeatAsiChoice[], granted: readonly GrantedFeat[], draft: Character): FeatAsiLevels {
 	const cache = new Map<number, Partial<Record<Ability, number>>>()
 	// loadFeats' entries carry no grantedByBackgrounds (sheetData adds it), so the calculation layer is told the background feat directly.
 	const backgroundFeat = granted.find((feat) => feat.origin === 'Background')
@@ -141,7 +140,6 @@ export function featAsiLevels(data: FeatAsiStepData, choices: readonly FeatAsiCh
 		data,
 		choices,
 		granted,
-		characterLevel,
 		scoresBelow(level) {
 			if (!cache.has(level)) cache.set(level, abilityScoresBelowLevel(withChoices, data.feats, level))
 			return cache.get(level)!
@@ -153,7 +151,8 @@ const pickedFeats = (choices: readonly FeatAsiChoice[], include: (level: number)
 	choices.flatMap((choice) => (choice.kind === 'feat' && choice.name !== '' && include(choice.level) ? [{ name: choice.name, source: choice.source, origin: `level ${choice.level}` }] : []))
 
 function contextAt(levels: FeatAsiLevels, level: number): Omit<PrerequisiteContext, 'chosenFeats'> {
-	return { ...levels.data.ctx, characterLevel: levels.characterLevel, abilityScores: levels.scoresBelow(level) }
+	// D257: a level prerequisite is read against the card's level, not the character's total level.
+	return { ...levels.data.ctx, characterLevel: level, abilityScores: levels.scoresBelow(level) }
 }
 
 /** W18: what the card at `level` offers — a non-repeatable feat held anywhere else is taken; prerequisites read only what lies below `level`. */

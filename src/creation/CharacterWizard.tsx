@@ -69,6 +69,7 @@ import { backgroundOriginFeatFrom, featInstances,loadBackgroundOriginFeatLinks, 
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
+import { computeHitDicePool } from '../calculation/hitDice'
 import { loadHitDiceClassData } from '../sheet/sheetData'
 import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
@@ -1029,7 +1030,7 @@ export function CharacterWizard({
 	/** D254: an invalid feat choice locks the step's Next, except at a level a level up cannot change. Still loading keeps the step incomplete; a failed load relaxes it (the picker shows the error). */
 	const featAsiChoicesValid = useMemo(() => {
 		if (featAsiLoad.status !== 'ready') return featAsiLoad.status === 'error'
-		const levels = featAsiLevels(featAsiLoad.data, state.data.featAsiChoices, grantedFeatsOf(backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats), state.data.classChoice?.level ?? 0, abilityTableDraft)
+		const levels = featAsiLevels(featAsiLoad.data, state.data.featAsiChoices, grantedFeatsOf(backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats), abilityTableDraft)
 		return invalidFeatAsiLevels(levels, heldFeatAsiLevels).length === 0
 	}, [featAsiLoad, state.data.featAsiChoices, state.data.classChoice?.level, backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats, abilityTableDraft, heldFeatAsiLevels])
 
@@ -1108,13 +1109,16 @@ export function CharacterWizard({
 	useEffect(() => {
 		if (hitDieKey === null) return
 		let cancelled = false
-		Promise.resolve()
-			.then(() => loadHitDiceClassData())
+		const [className, classSource] = hitDieKey.split('|')
+		loadHitDiceClassData()
 			.then((classData) => {
-				const found = classData.find((entry) => `${entry.className}|${entry.classSource}` === hitDieKey)
-				if (!cancelled && found) setHitDie({ key: hitDieKey, faces: found.faces })
+				const pool = computeHitDicePool([{ className: className!, classSource: classSource!, subclass: null, level: 1 }], classData)
+				// A failed lookup leaves hitDie null: the gate (D258) keeps the step incomplete and the picker shows its own load error.
+				if (!cancelled && pool.status === 'known') setHitDie({ key: hitDieKey, faces: pool.value[0]!.faces })
 			})
-			.catch(() => {})
+			.catch(() => {
+				if (!cancelled) setHitDie(null)
+			})
 		return () => {
 			cancelled = true
 		}
