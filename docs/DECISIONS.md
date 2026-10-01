@@ -4742,3 +4742,13 @@ Proficiencies je „—“.
 ability scores ani bonusu pozadí. Při vytváření zůstal snímek z kroku Class (bez skóre, tedy Constitution
 neznámá) až do Review, takže karta Hit points ukázala „—“ a výchozí `currentHp` (D107) se nepočítal. Do závislostí
 přibyly `abilityScores` a `abilityBonus`.
+
+## D301 — Nadpis karty Proficiencies vede na krok Proficiencies (W-9, mění D298)
+
+Rozhodl uživatel: nadpis karty Proficiencies na Review skočí na krok, který lišta kroků jmenuje „Proficiencies“
+(`languages`), ne na `background`. Zbytek D298 (tlačítko jen u kroku v tomto průchodu) platí.
+
+## D302 — Karta Spells ukazuje jen vybraná kouzla (W-9)
+
+Rozhodl uživatel: karta Spells na Review vypisuje kouzla, která hráč vybral (třída, volby podtřídy, volby options,
+cantrip druhu). Vždy připravená kouzla (třída, podtřída) se na ní neuvádějí. Beze změny kódu.

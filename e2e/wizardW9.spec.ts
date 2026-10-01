@@ -83,6 +83,11 @@ test('W-9 c: a card heading opens the step that sets it, and Next comes back to 
   await nextUntil(page, 'Review and save')
   await expect(review(page)).toBeVisible()
   expect(await totals(review(page))).toEqual(before)
+
+  // D301: the Proficiencies card leads to the step the bar calls "Proficiencies".
+  await card(page, 'Proficiencies').getByRole('button', { name: 'Proficiencies', exact: true }).click()
+  await expectStep(page, 'Proficiencies')
+  await nextUntil(page, 'Review and save')
 })
 
 test('W-9 d: a level up to 2 opens Review with the "What\'s new" card; headings of steps outside the walk are plain text', async ({ page }) => {

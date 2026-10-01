@@ -241,7 +241,7 @@ export function ReviewStep({
 			</section>
 
 			<section className="review__card" aria-label="Proficiencies">
-				<CardHeading title="Proficiencies" step="background" steps={steps} onGoTo={onGoTo} />
+				<CardHeading title="Proficiencies" step="languages" steps={steps} onGoTo={onGoTo} />
 				<Row label="Skills">{listOf(proficiencies.skills.map(capitalize))}</Row>
 				<Row label="Expertise">{listOf(proficiencies.expertise.map(capitalize))}</Row>
 				<Row label="Armor">{listOf(proficiencies.armor)}</Row>
