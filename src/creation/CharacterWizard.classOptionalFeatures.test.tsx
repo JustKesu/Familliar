@@ -159,7 +159,9 @@ vi.mock('../expertise/expertiseData', () => ({
 	loadExpertiseEligibility: vi.fn(async () => null),
 }))
 
-vi.mock('../featAsi/featAsiData', () => ({
+vi.mock('../featAsi/featAsiData', async (importOriginal) => ({
+	// W-9: the Review step's Proficiencies card calls computeProficiencies, which reads classPrereqInfoFor from this module.
+	...(await importOriginal<typeof import('../featAsi/featAsiData')>()),
 	loadFeatAsiGrants: vi.fn(async () => []),
 	loadFeats: vi.fn(async () => []),
 	featsRequiringAbilityChoice: vi.fn(() => new Set<string>()),

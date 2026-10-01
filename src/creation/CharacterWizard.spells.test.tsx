@@ -152,7 +152,9 @@ vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
 	}
 })
 
-vi.mock('../featAsi/featAsiData', () => ({
+vi.mock('../featAsi/featAsiData', async (importOriginal) => ({
+	// W-9: the Review step's Proficiencies card calls computeProficiencies, which reads classPrereqInfoFor from this module.
+	...(await importOriginal<typeof import('../featAsi/featAsiData')>()),
 	loadFeatAsiGrants: vi.fn(async () => []),
 	loadFeats: vi.fn(async () => []),
 	featsRequiringAbilityChoice: vi.fn(() => new Set<string>()),
@@ -532,7 +534,7 @@ describe('CharacterWizard — spells step', () => {
 		await goNext(user)
 		await passHitPointsStep(user)
 		await passEquipmentStep(user)
-		await screen.findByText('Name: Aria')
+		await screen.findByRole('region', { name: 'Review' })
 		await goBack(user)
 		await goBack(user)
 		await goBack(user)
@@ -612,7 +614,7 @@ describe('CharacterWizard — spells step', () => {
 		await passEquipmentStep(user)
 
 		// Straight to hit points then equipment then review — no spells panel in between, and no gap in the step numbering.
-		expect(await screen.findByText('Name: Aria')).toBeTruthy()
+		expect(await screen.findByRole('region', { name: 'Review' })).toBeTruthy()
 		expect(stepBar().queryByText(/\. Spells$/)).toBeNull()
 	})
 
@@ -660,7 +662,7 @@ describe('CharacterWizard — spells step', () => {
 		await goNext(user)
 		await passHitPointsStep(user)
 		await passEquipmentStep(user)
-		await screen.findByText('Name: Aria')
+		await screen.findByRole('region', { name: 'Review' })
 		await goBack(user)
 		await goBack(user)
 		await goBack(user)
@@ -755,7 +757,7 @@ describe('CharacterWizard — spells step', () => {
 		await goNext(user)
 		await passHitPointsStep(user)
 		await passEquipmentStep(user)
-		await screen.findByText('Name: Aria')
+		await screen.findByRole('region', { name: 'Review' })
 		await goBack(user)
 		await goBack(user)
 		await goBack(user)

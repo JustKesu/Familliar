@@ -4700,3 +4700,45 @@ Dovednosti zvolené v pozdějších krocích (ASI featy v kroku ASI / Feat, volb
 dostanou, až se hráč vrátí na Expertise přes lištu kroků, a v level-upu / Edit Character, kde už existují.
 Změna pořadí kroků se nedělá (rozhodl uživatel). Uložená Expertise na dovednosti, kterou pozdější krok odebral,
 zůstává blokovaná (brána F-5), ale na kroku Review k tomu není žádný vysvětlující text — viz REPORT.md.
+## D295 — Review je hlavička s portrétem a karty (W-9, W24)
+
+Krok Review = hlavička (portrét 52×52 nebo první písmeno jména, jméno Bricolage 28px, pod ním „Druh · Třída N ·
+Pozadí“, druh s variantou jako dřív) a pod ní karty jako na sheetu: Ability scores (tabulka W12, jen čtení),
+Proficiencies (Skills, Expertise, Armor, Weapons, Tools, Languages z `computeProficiencies` nad draftem
+wizardu), Spells, Feats (původ: Background / Species / Level N; ASI jako „Level 4: STR +2“), Hit points
+(maximum a hit dice) a Equipment (jen při vytváření, tabulka z W-7). Hodnoty počítá `CharacterWizard`, komponenta
+`src/creation/review/ReviewStep.tsx` jen zobrazuje. Staré řádky „Name: … / Class: …“ jsou pryč.
+
+## D296 — Level-up Review má kartu „Level N — What's new“ (W-9, W26)
+
+Nad běžnými kartami: nové features levelu (`levelUp.newFeatures`) jako rozbalovací řádky se stejnými třídami a
+`ResolvedEntries` jako Features & Traits, text se dohledá přes `loadGrantedClassFeatures` pro draft postavy;
+přírůstek HP „+5 → 33“ = maximum po uložení minus maximum před (D107); přidaná kouzla = rozdíl proti uložené
+postavě; ASI nebo feat vzatý na tomto levelu. Řádek bez obsahu se vynechá. Seznam „Features gained at level N“
+je pryč.
+
+## D297 — Review vysvětluje zastaralou Expertise (W-9, doplňuje D294)
+
+Když `expertiseSkillsAvailable` je false, Review nahoře ukáže řádek (role alert, třída jako v ExpertisePickeru):
+„Expertise in Arcana needs a proficiency you no longer have.“ s tlačítkem „Go to Expertise“ (`goTo`). Uložení
+zůstává zakázané přes `isReadyToSave`; nic se samo neodebírá.
+
+## D298 — Nadpis karty je tlačítko jen tehdy, když je jeho krok v tomhle průchodu (W-9)
+
+Ability scores → abilities, Proficiencies → background, Spells → spells, Feats → featAsi, Hit points → hitPoints,
+Equipment → equipment, přes stávající `goTo` (zpět je vždy povolené, D252). Krok mimo `visibleSteps` (level-up
+vynechává kroky, které daný level nemění) nechá nadpis prostým textem. Pozn.: krok „Proficiencies“ v liště je
+`languages`, ale karta Proficiencies vede na `background` (zadání).
+
+## D299 — Prázdná karta se na Review nezobrazí (W-9)
+
+Spells a Feats se vynechají, když postava nemá žádné kouzlo / feat ani ASI; Equipment se ukazuje jen při
+vytváření (Edit i level-up inventář nemění). Ability scores, Proficiencies a Hit points jsou vždy; prázdný řádek
+Proficiencies je „—“.
+
+## D300 — Efekt maximálních HP závisí i na ability scores (W-9, nález)
+
+`loadCharacterMaxHp` v CharacterWizardu se spouštěl jen při změně třídy/druhu/featů/HP volby, ne při změně
+ability scores ani bonusu pozadí. Při vytváření zůstal snímek z kroku Class (bez skóre, tedy Constitution
+neznámá) až do Review, takže karta Hit points ukázala „—“ a výchozí `currentHp` (D107) se nepočítal. Do závislostí
+přibyly `abilityScores` a `abilityBonus`.

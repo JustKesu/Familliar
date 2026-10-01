@@ -147,6 +147,8 @@ export interface FighterOptions {
   stopAtAsi?: boolean
   /** W-7: finishFromBackground returns on the Starting equipment step with nothing taken. */
   stopAtEquipment?: boolean
+  /** W-9: finishFromBackground returns on the Review step without saving. */
+  stopAtReview?: boolean
 }
 
 /** Fighter with background Acolyte unless `background` says otherwise; stops on the Background step so the caller can inspect it. */
@@ -242,6 +244,7 @@ export async function finishFromBackground(page: Page, options: FighterOptions):
   await next(page)
 
   await expectStep(page, 'Review and save')
+  if (options.stopAtReview) return
   await wizardNav(page).getByRole('button', { name: 'Create character' }).click()
   await expect(page).toHaveURL(/#\/character\/[^/]+$/)
 }

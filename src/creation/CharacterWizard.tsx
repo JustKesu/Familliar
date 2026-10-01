@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
 import { ClassPicker } from '../classes/ClassPicker'
 import { WizardPortrait } from '../portrait/WizardPortrait'
+import { ReviewStep, type ReviewProficiencies } from './review/ReviewStep'
 import { SpeciesPicker } from '../species/SpeciesPicker'
 import { findSpeciesSelection, loadSpeciesOptions, type SpeciesOption } from '../species/speciesData'
 import { BackgroundPicker } from '../backgrounds/BackgroundPicker'
@@ -61,7 +62,6 @@ import {
 	type StartingEquipmentOffer,
 } from '../inventory/startingEquipmentData'
 import type { ItemRef } from '../inventory/inventoryData'
-import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { FeatSubChoicePicker, magicInitiateListsOf, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
@@ -1154,6 +1154,9 @@ export function CharacterWizard({
 		draftCharacterForMaxHp.background?.name,
 		draftCharacterForMaxHp.background?.source,
 		draftCharacterForMaxHp.featAsiChoices,
+		// W-9: Constitution reaches the maximum; without these the class step's snapshot (no scores yet, so "unknown") was kept to Review.
+		draftCharacterForMaxHp.abilityScores,
+		draftCharacterForMaxHp.abilityBonus,
 		draftCharacterForMaxHp.hitPointLevels,
 		draftCharacterForMaxHp.maxHpOverride,
 		draftGrantedFeats,
@@ -1447,6 +1450,21 @@ export function CharacterWizard({
 		)
 	}
 	if (!seeded) return <p>Loading this character…</p>
+
+	/** W-9: the Review step's Proficiencies card, from the same draft the feat pickers' held lists use (D160); only built on that step. */
+	function reviewProficiencies(): ReviewProficiencies {
+		if (state.step !== 'review') return { skills: [], expertise: [], armor: [], weapons: [], tools: [], languages: [] }
+		const held = computeProficiencies(draftCharacterForProficiencies, proficiencyData.classes, draftFeatInstances, proficiencyData.feats)
+		const labels = (items: readonly { label: string }[]) => items.map((item) => item.label)
+		return {
+			skills: expertiseSourceSkills.map((entry) => entry.skill),
+			expertise: [...new Set([...state.data.expertiseSkills, ...fixedExpertise, ...draftFeatInstances.flatMap((instance) => instance.proficiencies?.expertise ?? [])])],
+			armor: labels(held.armor),
+			weapons: labels(held.weapons),
+			tools: labels(held.tools),
+			languages: labels(held.languages),
+		}
+	}
 
 	return (
 		<div className="wizard">
@@ -1899,79 +1917,31 @@ export function CharacterWizard({
 			)}
 
 			{state.step === 'review' && (
-				<div className="wizard__panel">
-					{/* No step collects these; they are what the level grants outright, named as the data names them. */}
-					{levelUp && (
-						<section className="wizard__level-up-features" aria-label={`Features gained at level ${levelUp.level}`}>
-							<h3>Features gained at level {levelUp.level}</h3>
-							{levelUp.newFeatures.length > 0 ? (
-								<ul>
-									{levelUp.newFeatures.map((feature) => (
-										<li key={feature.id}>{feature.name}</li>
-									))}
-								</ul>
-							) : (
-								<p>None.</p>
-							)}
-						</section>
-					)}
-					<p>Name: {state.data.name}</p>
-					<p>
-						Class: {state.data.classChoice ? `${state.data.classChoice.className} (level ${state.data.classChoice.level})` : '—'}
-					</p>
-					{/* Storage holds the variant's own name ("Air"), which alone doesn't say what species it is — so the review names the species and the choice separately. */}
-					<p>
-						Species:{' '}
-						{speciesSelection
+				<ReviewStep
+					data={state.data}
+					baseline={baseline}
+					// Storage holds the variant's own name ("Air"), which alone doesn't say what species it is — so the review names the species and the choice separately.
+					speciesLabel={
+						speciesSelection
 							? `${speciesSelection.option.displayName}${speciesSelection.variant ? ` — ${speciesSelection.variant.optionName}` : ''}`
-							: (state.data.speciesChoice?.name ?? '—')}
-					</p>
-					<p>Background: {state.data.backgroundChoice?.name ?? '—'}</p>
-					<p>Tool proficiency: {state.data.backgroundToolProficiency ?? '—'}</p>
-					<p>
-						Languages: Common
-						{state.data.languageChoice.length > 0
-							? `, ${state.data.languageChoice.map((l) => l.name).join(', ')}`
-							: ''}
-					</p>
-					<p>
-						Expertise: {state.data.expertiseSkills.length > 0 ? state.data.expertiseSkills.join(', ') : '—'}
-					</p>
-					<p>Ability score method: {state.data.abilityScores?.method ?? '—'}</p>
-					<p>
-						Spells: {state.data.spellChoices.length > 0 ? state.data.spellChoices.map((s) => s.name).join(', ') : '—'}
-					</p>
-					<p>
-						Ability Score Improvements / feats:{' '}
-						{state.data.featAsiChoices.length > 0
-							? state.data.featAsiChoices
-									.map((choice) =>
-										choice.kind === 'asi'
-											? `level ${choice.level}: ASI (${Object.entries(choice.increases)
-													.map(([ability, amount]) => `${ability} +${amount}`)
-													.join(', ')})`
-											: `level ${choice.level}: ${choice.name}${choice.chosenAbility ? ` (${choice.chosenAbility})` : ''}`,
-									)
-									.join('; ')
-							: '—'}
-					</p>
-					{/* Not part of an edit: starting equipment is a one-time creation grant and the character's inventory is left as it is. */}
-					<p hidden={character !== undefined}>
-						Starting equipment:{' '}
-						{(() => {
-							const { inventory, currencyCopper } = buildStartingInventory(
-								classEquipmentOffer,
-								backgroundEquipmentOffer,
-								state.data.startingEquipment,
-							)
-							const items = inventory.map((item) => (item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name))
-							const coins = copperToCoins(currencyCopper)
-							const money = `${coins.gp} gp, ${coins.sp} sp, ${coins.cp} cp`
-							return items.length > 0 ? `${items.join(', ')}; ${money}` : money
-						})()}
-					</p>
-					{saveError && <p className="error">{saveError}</p>}
-				</div>
+							: (state.data.speciesChoice?.name ?? '')
+					}
+					levelUp={levelUp}
+					draft={draftCharacterForSpells}
+					abilityDraft={abilityTableDraft}
+					resolverData={resolverData}
+					proficiencies={reviewProficiencies()}
+					feats={draftFeatInstances}
+					maxHp={maxHp?.current.status === 'known' ? maxHp.current.value : null}
+					hitDice={hitDie?.key === hitDieKey && state.data.classChoice ? `${state.data.classChoice.level}d${hitDie.faces}` : null}
+					hpGain={levelUp && maxHp?.current.status === 'known' && maxHp.previous?.status === 'known' ? maxHp.current.value - maxHp.previous.value : null}
+					// Not part of an edit: starting equipment is a one-time creation grant and the character's inventory is left as it is.
+					startingInventory={character === undefined ? buildStartingInventory(classEquipmentOffer, backgroundEquipmentOffer, state.data.startingEquipment) : null}
+					staleExpertise={state.data.expertiseSkills.filter((skill) => !expertisePool.some((entry) => entry.skill === skill))}
+					steps={visibleSteps(stepConditions)}
+					onGoTo={(step) => dispatch({ type: 'goTo', step, conditions: stepConditions })}
+					saveError={saveError}
+				/>
 			)}
 
 			{navButtons('Step navigation')}

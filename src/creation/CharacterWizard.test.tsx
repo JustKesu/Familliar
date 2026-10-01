@@ -594,7 +594,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goNext(user)
 		await fillEquipmentStep(user)
 		await goNext(user)
-		await screen.findByText('Ability score method: standardArray')
+		await screen.findByRole('region', { name: 'Review' })
 		await goBack(user)
 		await goBack(user)
 
@@ -983,7 +983,7 @@ describe('CharacterWizard — feat/ASI step', () => {
 		await goNext(user)
 		await fillEquipmentStep(user)
 		await goNext(user)
-		expect(await screen.findByText(/level 4: ASI \(strength \+2\)/)).toBeTruthy()
+		expect(await screen.findByText('Level 4: STR +2')).toBeTruthy()
 
 		await goBack(user)
 		await goBack(user)
@@ -1007,7 +1007,7 @@ describe('CharacterWizard — feat/ASI step', () => {
 		await goNext(user)
 
 		// Straight to hit points, then equipment then review — no feat/ASI panel in between, and no gap in the step numbering.
-		expect(await screen.findByText('Name: Aria')).toBeTruthy()
+		expect(await screen.findByRole('region', { name: 'Review' })).toBeTruthy()
 		expect(stepBar().queryByText(/ASI \/ Feat/)).toBeNull()
 	})
 

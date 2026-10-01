@@ -1768,6 +1768,15 @@ every feat instance's skills (stored picks and fixed grants such as Boon of Skil
 Khoravar extra skill. `proficientSkills` is unchanged (it feeds `heldForFeat`). Step
 order unchanged. E2E `expertiseE1.spec.ts` a–c.
 
+W-9 (D295–D300) done. No schema bump. The Review step is `src/creation/review/ReviewStep.tsx`: portrait header
+(`.review__header`), then cards (Ability scores via `AbilityScoreTable`, Proficiencies, Spells, Feats, Hit points,
+Equipment via `StartingTable`'s new `heading` prop); in a level up a "Level N — What's new" card first (feature rows
+with `ResolvedEntries`, HP gain, spells added, ASI / feat). Card headings jump with `goTo` when the step is in the
+walk. `expertiseSkillsAvailable` false → alert line + "Go to Expertise". CharacterWizard passes the derived values
+(`reviewProficiencies()`, `draftFeatInstances`, `maxHp`, `hitDie`); the old text lines and "Features gained" list are
+gone. Max-HP load now also keys on `abilityScores` / `abilityBonus` (D300). E2E `wizardW9.spec.ts` a–e;
+`e2e/wizard.ts` has `stopAtReview`.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale
