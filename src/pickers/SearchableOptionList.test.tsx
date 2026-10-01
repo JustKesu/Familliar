@@ -219,3 +219,34 @@ describe('SearchableOptionList', () => {
 		expect(options[0].selected).toBe(false)
 	})
 })
+
+describe('SearchableOptionList, choose variant (F-1)', () => {
+	function renderChoose(options: SearchableOption[], required = 1): void {
+		render(<SearchableOptionList legend="Options" name="o" inputType="checkbox" variant="choose" options={options} required={required} renderCount={renderCount} onToggle={() => {}} />)
+	}
+
+	it('shows the reason on a CHOSEN row too (an invocation that no longer qualifies)', () => {
+		renderChoose([{ key: 'a', name: 'Agonizing Blast', selected: true, disabledReason: 'Needs a damaging cantrip.' }], 2)
+		expect(screen.getByText('Needs a damaging cantrip.')).toBeTruthy()
+	})
+
+	it('keeps a chosen row’s sub-choice visible while the full list starts collapsed', async () => {
+		renderChoose([{ key: 't', name: 'Pact of the Tome', selected: true, extra: <p>Choose 3 cantrips.</p> }])
+		expect(screen.getByRole('button', { name: /Options/ }).getAttribute('aria-expanded')).toBe('false')
+		expect(screen.getByText('Choose 3 cantrips.')).toBeTruthy()
+		await userEvent.setup().click(screen.getByRole('button', { name: /Options/ }))
+		expect(screen.getAllByText('Choose 3 cantrips.')).toHaveLength(1)
+	})
+
+	it('names the book in the button only when two books share the name', () => {
+		renderChoose([
+			{ key: 'c1', name: 'Champion', book: 'PHB', selected: false },
+			{ key: 'c2', name: 'Champion', book: 'XPHB', selected: false },
+			{ key: 'b', name: 'Battle Master', book: 'XPHB', selected: false },
+		])
+		expect(screen.getByRole('button', { name: 'Choose Champion (PHB)' })).toBeTruthy()
+		expect(screen.getByRole('button', { name: 'Choose Champion (XPHB)' })).toBeTruthy()
+		expect(screen.getByRole('button', { name: 'Choose Battle Master' })).toBeTruthy()
+		expect(screen.getAllByText('Champion')).toHaveLength(2)
+	})
+})

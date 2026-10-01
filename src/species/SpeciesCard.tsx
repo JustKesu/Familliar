@@ -89,20 +89,20 @@ export function SpeciesCard({ species, chosenSize }: { species: { name: string; 
 			: null
 
 	return (
-		<div className="species-card" aria-label="Species traits">
+		<section className="species-card" aria-label="Species traits">
 			<dl className="species-card__stats">
 				{loaded.creatureTypes.length > 0 && <Stat label="Creature Type" value={loaded.creatureTypes.map(capitalise).join(', ')} />}
 				{size.status === 'known' && <Stat label="Size" value={SIZE_NAMES[size.value] ?? size.value} />}
 				{speedText !== null && <Stat label="Speed" value={speedText} />}
 			</dl>
 			<div className="species-card__traits">
-				{loaded.traits.map((trait) => (
-					<div key={trait.name} className="species-card__trait">
+				{loaded.traits.map((trait, index) => (
+					<div key={`${index}|${trait.name}`} className="species-card__trait">
 						<h4 className="species-card__trait-name">{trait.name}</h4>
 						<div className="species-card__trait-text">{resolverData ? <ResolvedEntries entries={trait.entries} data={resolverData} /> : <Entries entries={trait.entries} />}</div>
 					</div>
 				))}
 			</div>
-		</div>
+		</section>
 	)
 }

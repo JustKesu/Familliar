@@ -89,12 +89,15 @@ export function FightingStylePicker({
 	const { grantLevel, options } = state.grantLevel !== null ? state : { grantLevel: null, options: [] }
 	if (grantLevel === null || level < grantLevel) return null
 
+	// The style is stored by name only, so of two books' same-named rows only the first reads as chosen; the other cannot be picked over it.
+	const chosenOption = options.find((option) => option.name === value)
 	const searchableOptions: SearchableOption[] = options.map((option) => ({
 		key: optionKey(option),
 		name: option.name,
 		book: option.source,
 		detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
-		selected: value === option.name,
+		selected: option === chosenOption,
+		disabled: option !== chosenOption && option.name === value,
 	}))
 
 	return (

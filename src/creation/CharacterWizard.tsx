@@ -42,7 +42,7 @@ import { loadOptionalFeatureSpellChoiceShape, offersSpellChoice, requiredSpellCh
 import { ExpertisePicker } from '../expertise/ExpertisePicker'
 import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertise/expertiseData'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
-import { loadSubclassLevelFor, loadSubclassesFor, type SubclassOption } from '../subclass/subclassData'
+import { loadSubclassLevelFor, loadSubclassesFor } from '../subclass/subclassData'
 import { loadMasteryCountFor } from '../masteries/masteryData'
 import { loadFightingStyleGrantLevel } from '../fightingStyle/fightingStyleData'
 import { loadOptionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
@@ -100,7 +100,7 @@ import {
 	initialControllerState,
 	isReadyToSave,
 	isStepComplete,
-	isStepReachable,
+	reachableSteps,
 	saveCharacter,
 	type ClassPickRequirements,
 	stepIndex,
@@ -211,7 +211,6 @@ export function CharacterWizard({
 	const [seedError, setSeedError] = useState<string | null>(null)
 	const [backgrounds, setBackgrounds] = useState<BackgroundEntry[]>([])
 	const [originFeatLinks, setOriginFeatLinks] = useState<BackgroundOriginFeatLink[]>([])
-	const [subclasses, setSubclasses] = useState<SubclassOption[]>([])
 	const [classPickShape, setClassPickShape] = useState<{ key: string; requirements: ClassPickRequirements } | null>(null)
 	const [expertiseEligibility, setExpertiseEligibility] = useState<ExpertiseEligibility | null>(null)
 	/** The species list, grouped into species + their own choice (D81) — loaded here as well as in the picker, since the species step's completion check needs to know whether a choice is outstanding before that panel would ever mount. */
@@ -530,24 +529,6 @@ export function CharacterWizard({
 		}
 	}, [equipmentBackgroundName, equipmentBackgroundSource])
 
-	useEffect(() => {
-		let cancelled = false
-		if (!state.data.classChoice) {
-			setSubclasses([])
-			return
-		}
-		loadSubclassesFor(state.data.classChoice.className, state.data.classChoice.classSource)
-			.then((loaded) => {
-				if (!cancelled) setSubclasses(loaded)
-			})
-			.catch(() => {
-				/* SubclassPicker already surfaces load errors; this lookup (for the subclass's source) is best-effort. */
-			})
-		return () => {
-			cancelled = true
-		}
-	}, [state.data.classChoice])
-
 	/** What the class step's pickers require here, read through the pickers' own loaders so the gate and the UI cannot disagree. A failed load means the pickers show their own error, so it asks for nothing rather than locking the step for good. */
 	const pickClassName = state.data.classChoice?.className ?? null
 	const pickClassSource = state.data.classChoice?.classSource ?? null
@@ -558,29 +539,28 @@ export function CharacterWizard({
 		let cancelled = false
 		setClassPickShape(null)
 		if (pickClassName === null || pickClassSource === null || pickLevel === null || classPickKey === null) return
-		Promise.all([
+		void Promise.allSettled([
 			loadSubclassLevelFor(pickClassName, pickClassSource),
 			loadFightingStyleGrantLevel(pickClassName, pickClassSource),
 			loadMasteryCountFor(pickClassName, pickClassSource, pickLevel),
 			pickSubclass ? loadOptionalFeatureChoicesFor(pickClassName, pickClassSource, pickSubclass.name, pickSubclass.source, pickLevel) : Promise.resolve(null),
 			loadClassSkillChoice(pickClassName, pickClassSource),
-		])
-			.then(([subclassLevel, styleLevel, masteryCount, optional, skills]) => {
-				if (cancelled) return
-				setClassPickShape({
-					key: classPickKey,
-					requirements: {
-						subclass: subclassLevel !== null && pickLevel >= subclassLevel,
-						fightingStyle: styleLevel !== null && pickLevel >= styleLevel,
-						masteryCount: masteryCount ?? 0,
-						optionalFeatureCount: optional?.count ?? 0,
-						skillCount: skills.count,
-					},
-				})
-			})
-			.catch(() => {
-				if (!cancelled) setClassPickShape({ key: classPickKey, requirements: { subclass: false, fightingStyle: false, masteryCount: 0, optionalFeatureCount: 0, skillCount: null } })
-			})
+			loadClassFeatureChoices(pickClassName, pickClassSource, pickLevel),
+		]).then(([subclassLevel, styleLevel, masteryCount, optional, skills, featureChoices]) => {
+			if (cancelled) return
+			// F-1: a failed loader relaxes only its own pick (null); its picker shows the error.
+			const requirements: ClassPickRequirements = {
+				subclass: subclassLevel.status === 'fulfilled' ? subclassLevel.value !== null && pickLevel >= subclassLevel.value : null,
+				fightingStyle: styleLevel.status === 'fulfilled' ? styleLevel.value !== null && pickLevel >= styleLevel.value : null,
+				masteryCount: masteryCount.status === 'fulfilled' ? (masteryCount.value ?? 0) : null,
+				optionalFeatureCount: optional.status === 'fulfilled' ? (optional.value?.count ?? 0) : null,
+				skillCount: skills.status === 'fulfilled' ? skills.value.count : null,
+				classFeatureNames: featureChoices.status === 'fulfilled' ? featureChoices.value.map((choice) => choice.featureName) : null,
+			}
+			setClassPickShape({ key: classPickKey, requirements })
+			// D251: only a new character's level can change; Edit Character and level up keep theirs.
+			if (character === undefined) dispatch({ type: 'pruneClassPicks', requirements })
+		})
 		return () => {
 			cancelled = true
 		}
@@ -1355,6 +1335,8 @@ export function CharacterWizard({
 	}
 
 	const canGoNext = isStepComplete(state.step, state.data, stepConditions)
+	const readyToSave = state.step === 'review' && isReadyToSave(state.data, stepConditions)
+	const reachable = reachableSteps(state.step, state.data, stepConditions)
 
 	function handleCancel(): void {
 		if (JSON.stringify(state.data) === JSON.stringify(baseline)) onCancel()
@@ -1376,7 +1358,7 @@ export function CharacterWizard({
 			backDisabled={stepIndex(state.step, stepConditions) === 0}
 			primaryLabel={onReview ? (levelUp ? `Save level ${levelUp.level}` : character ? 'Save changes' : 'Create character') : 'Next'}
 			onPrimary={onReview ? handleSave : () => dispatch({ type: 'next', conditions: stepConditions })}
-			primaryDisabled={onReview ? !isReadyToSave(state.data, stepConditions) : !canGoNext}
+			primaryDisabled={onReview ? !readyToSave : !canGoNext}
 			isSave={onReview}
 		/>
 	)
@@ -1403,7 +1385,7 @@ export function CharacterWizard({
 						key: step,
 						label: stepLabel(step, classOptionalFeatureGroups),
 						current: step === state.step,
-						reachable: isStepReachable(step, state.data, stepConditions),
+						reachable: reachable.includes(step),
 					}))}
 					onGoTo={(step) => dispatch({ type: 'goTo', step: step as WizardStep, conditions: stepConditions })}
 				/>
@@ -1492,14 +1474,13 @@ export function CharacterWizard({
 									className={state.data.classChoice.className}
 									classSource={state.data.classChoice.classSource}
 									level={state.data.classChoice.level}
-									value={state.data.subclass?.name ?? null}
-									onChange={(subclassName) => {
-										const found = subclassName ? subclasses.find((sc) => sc.name === subclassName) : undefined
+									value={state.data.subclass}
+									onChange={(found) =>
 										dispatch({
 											type: 'setSubclass',
 											subclass: found ? { name: found.name, source: found.source, featureType: found.featureType } : null,
 										})
-									}}
+									}
 								/>
 							)}
 							{state.data.subclass && (

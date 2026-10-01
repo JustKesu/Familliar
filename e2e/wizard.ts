@@ -14,9 +14,13 @@ export function wizardNav(page: Page): Locator {
   return page.getByRole('group', { name: 'Step navigation', exact: true })
 }
 
-/** W5: the CHOOSE / CHOSEN button of a Class-step list row; its name is always "Choose <name>", aria-pressed carries the state. */
-export function chooseButton(scope: Page | Locator, name: string): Locator {
-  return scope.getByRole('button', { name: `Choose ${name}`, exact: true })
+/**
+ * W5: the CHOOSE / CHOSEN button of a Class-step list row; aria-pressed carries the state. Its name is
+ * "Choose <name>", or "Choose <name> (<book>)" when two books share the name (F-1) — then the XPHB row.
+ */
+export function chooseButton(scope: Page | Locator, name: string, book = 'XPHB'): Locator {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return scope.getByRole('button', { name: new RegExp(`^Choose ${escaped}( \\(${book}\\))?$`) })
 }
 
 /** The ▸ toggle of the same row, which shows and hides its rule text. */
@@ -41,7 +45,7 @@ export async function takeFighterLevel4Mastery(page: Page): Promise<void> {
 export async function takeAllFighterLevel4Picks(page: Page): Promise<void> {
   await page.getByRole('checkbox', { name: 'Athletics', exact: true }).check()
   await page.getByRole('checkbox', { name: 'Perception', exact: true }).check()
-  await chooseButton(page, 'Defense').first().click()
+  await chooseButton(page, 'Defense').click()
   for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe']) await chooseButton(page, weapon).first().click()
 }
 
@@ -128,8 +132,8 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
   for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe', 'Flail', 'Glaive'].slice(0, masteryCount)) {
     await chooseButton(page, weapon).first().click()
   }
-  await chooseButton(page, 'Defense').first().click()
-  if (options.level >= 3) await chooseButton(page, options.subclass ?? 'Champion').first().click()
+  await chooseButton(page, 'Defense').click()
+  if (options.level >= 3) await chooseButton(page, options.subclass ?? 'Champion').click()
   await options.onClassStep?.(page)
   await next(page)
 

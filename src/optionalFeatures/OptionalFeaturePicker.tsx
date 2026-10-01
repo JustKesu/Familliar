@@ -113,14 +113,16 @@ export function OptionalFeaturePicker({
 	}
 
 	const searchableOptions: SearchableOption[] = options.map((option) => {
-		const checked = value.includes(option.name)
+		// Picks are stored by name only: of two books' same-named rows only the first reads as chosen, the other stays unpickable.
+		const taken = value.includes(option.name)
+		const checked = taken && options.find((candidate) => candidate.name === option.name) === option
 		return {
 			key: optionKey(option),
 			name: option.name,
 			book: option.source,
 			detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
 			selected: checked,
-			disabled: !checked && remaining <= 0,
+			disabled: !checked && (taken || remaining <= 0),
 			locked: checked && lockedValues.includes(option.name),
 		}
 	})

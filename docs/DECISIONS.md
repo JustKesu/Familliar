@@ -4336,3 +4336,20 @@ připouštějí) v Edit Character ukáže na řádku chybu a Next je zamčený d
 (záporné, desetinné, NaN), s běžnou chybou uložení (`ImportValidationError`), takže `CorruptDataError`
 celého seznamu postav už z wizardu vzniknout nemůže. Uložená validace zůstává laxnější než brána
 (0 a hodnota nad kostkou projdou) — kostku storage nezná (D43).
+
+## D251 — Snížení úrovně nové postavy prořeže volby kroku Class (F-1)
+
+D251: U nové postavy (ne Edit Character, ne level up — tam je úroveň pevná) se po načtení požadavků
+kroku Class pro novou třídu/úroveň/podtřídu zahodí volby, jejichž picker na té úrovni zmizí: podtřída
+(i s tím, co čistí `setSubclass`: volby podtřídy, kouzla, subclass spell picks, formy Wild Shape,
+dovednosti a jazyky podtřídy), bojový styl, volby podtřídy při počtu 0, třídní volby D21, které úroveň
+nedává (Elemental Fury), a formy Wild Shape, když úroveň Wild Shape nedává. Volby, jejichž picker
+zůstává (menší počet masteries, manévrů, forem), nechává hráči. Brána kroku Class navíc odmítne
+podtřídu, bojový styl a třídní volbu D21, které úroveň nedává, takže se taková postava nikdy neuloží.
+Požadavek, jehož loader selhal, je neznámý (`null`): nevyžaduje se ani nezakazuje a nic se neprořezává.
+
+## D252 — Skok zpět v liště kroků je vždy povolený (F-1)
+
+D252: Krok s indexem ≤ aktuálnímu kroku je v liště kroků i v akci `goTo` vždy dosažitelný, i když je
+některý dřívější krok neúplný (jako tlačítko Back). Pravidlo pro skok dopředu z D227 se nemění.
+Upřesňuje D227.

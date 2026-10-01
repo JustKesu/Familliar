@@ -2093,6 +2093,15 @@ ability-score die look plus REROLL, manual field validated 1..die size (red bord
 `hitDieFaces` condition); `CharacterStore.buildCharacter` refuses hit point values `list()` would reject.
 E2E `wizardW6.spec.ts` a–f; `e2e/wizard.ts` `stopAtHitPoints` option.
 
+F-1 (D251, D252) done. No schema bump. Fixes from the W-1–W-4 review: a new character's lowered level
+prunes class-step picks it no longer grants (`pruneClassPicks` action) and the class gate refuses them;
+requirement loaders run through `Promise.allSettled`, a failed one only relaxes its own pick (`null`);
+back jumps in the step bar are always allowed (`reachableSteps`, completeness evaluated once per render);
+`ConfirmDialog` traps focus, makes the background inert and catches Esc on window before a drawer;
+choose rows show their reason when chosen too, a collapsed list keeps chosen rows' sub-picks visible,
+same-named options name their book ("Choose Champion (PHB)"); `SubclassPicker` takes name + source.
+E2E `wizardF1.spec.ts`; `e2e/wizard.ts` `chooseButton` matches the book-qualified name (XPHB by default).
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

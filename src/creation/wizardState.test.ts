@@ -11,9 +11,13 @@ import {
 	visibleSteps,
 	wizardDataFromCharacter,
 	wizardReducer,
+	reachableSteps,
+	type ClassPickRequirements,
 	type WizardControllerState,
 	type WizardData,
 } from './wizardState'
+
+const ELEMENTAL_FURY = { className: 'Druid', classSource: 'XPHB', featureName: 'Elemental Fury', grantedAtLevel: 7, optionName: 'Potent Spellcasting' }
 
 function completeData(): WizardData {
 	return {
@@ -106,7 +110,7 @@ describe('isStepComplete', () => {
 	/* W-3: SPEC — "no choice may be skipped". Each missing pick on its own keeps the step incomplete. */
 	describe('class pick requirements', () => {
 		const fighter3 = { ...emptyWizardData(), name: 'Aria', classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 } }
-		const required = { subclass: true, fightingStyle: true, masteryCount: 2, optionalFeatureCount: 0, skillCount: 2 }
+		const required: ClassPickRequirements = { subclass: true, fightingStyle: true, masteryCount: 2, optionalFeatureCount: 0, skillCount: 2, classFeatureNames: [] }
 		const done = {
 			...fighter3,
 			subclass: { name: 'Champion', source: 'XPHB', featureType: null },
@@ -137,6 +141,23 @@ describe('isStepComplete', () => {
 			expect(isStepComplete('class', level1, { classPickRequirements: { ...required, subclass: false } })).toBe(true)
 		})
 
+		it('D251: refuses a pick the level does not grant, so it can never be saved', () => {
+			const paladin1 = { ...done, subclass: null, classChoice: { className: 'Paladin', classSource: 'XPHB', level: 1 } }
+			const level1: ClassPickRequirements = { ...required, subclass: false, fightingStyle: false }
+			expect(isStepComplete('class', paladin1, { classPickRequirements: level1 })).toBe(false)
+			expect(isStepComplete('class', { ...paladin1, fightingStyle: null }, { classPickRequirements: level1 })).toBe(true)
+			expect(isStepComplete('class', { ...done, fightingStyle: null }, { classPickRequirements: { ...level1, fightingStyle: false } })).toBe(false)
+			const elementalFury = { ...paladin1, fightingStyle: null, classFeatureChoices: [ELEMENTAL_FURY] }
+			expect(isStepComplete('class', elementalFury, { classPickRequirements: { ...level1, classFeatureNames: ['Primal Order'] } })).toBe(false)
+		})
+
+		it('F-1: a requirement whose loader failed (null) is neither demanded nor forbidden', () => {
+			const unknown: ClassPickRequirements = { subclass: null, fightingStyle: null, masteryCount: null, optionalFeatureCount: null, skillCount: 2, classFeatureNames: null }
+			expect(isStepComplete('class', done, { classPickRequirements: unknown })).toBe(true)
+			expect(isStepComplete('class', { ...done, subclass: null, fightingStyle: null, masteries: [] }, { classPickRequirements: unknown })).toBe(true)
+			expect(isStepComplete('class', { ...done, classSkills: [] }, { classPickRequirements: unknown })).toBe(false)
+		})
+
 		it('needs the exact count of subclass options, such as Battle Master maneuvers', () => {
 			const master = { ...done, subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' } }
 			const needs = { ...required, optionalFeatureCount: 3 }
@@ -150,8 +171,23 @@ describe('isStepComplete', () => {
 		})
 
 		it('counts held level-up picks as chosen, because they are already in the data', () => {
-			// Fighter 3 → 4 keeps subclass, style and the two masteries it already had; the level asks for no more.
-			expect(isStepComplete('class', done, { classPickRequirements: required, levelUpTargetLevel: 4 })).toBe(true)
+			// Fighter 3 → 4: the seeded character already holds subclass, style, masteries and class skills.
+			const seeded = wizardDataFromCharacter(
+				{
+					id: 'f',
+					name: 'Aria',
+					classes: [{ className: 'Fighter', classSource: 'XPHB', level: 4, subclass: 'Champion' }],
+					classSkills: ['athletics', 'perception'],
+					fightingStyle: 'Defense',
+					masteries: [{ name: 'Longsword', level: 1 }, { name: 'Greatsword', level: 1 }],
+				} as Character,
+				{ subclasses: [{ name: 'Champion', source: 'XPHB', featureType: null }], spellLevels: [] },
+			)
+			// CharacterWizard maps held class skills to skillCount null (D108 hides the picker).
+			const levelUp = { ...required, skillCount: null }
+			expect(isStepComplete('class', seeded, { classPickRequirements: levelUp, levelUpTargetLevel: 4 })).toBe(true)
+			expect(isStepComplete('class', { ...seeded, classSkills: [] }, { classPickRequirements: levelUp, levelUpTargetLevel: 4 })).toBe(true)
+			expect(isStepComplete('class', { ...seeded, masteries: ['Longsword'] }, { classPickRequirements: levelUp, levelUpTargetLevel: 4 })).toBe(false)
 		})
 	})
 
@@ -587,11 +623,16 @@ describe('wizardReducer navigation', () => {
 		expect(result).toBe(state)
 	})
 
-	it('goTo jumps back to any earlier step and keeps every choice (W9)', () => {
-		const state: WizardControllerState = { step: 'review', data: completeData() }
-		const result = wizardReducer(state, { type: 'goTo', step: 'class' })
-		expect(result.step).toBe('class')
-		expect(result.data).toBe(state.data)
+	it('goTo jumps back to any earlier step and keeps every choice, even past an incomplete one (W9, D252)', () => {
+		// Species became incomplete while the player stood on a later step.
+		const state: WizardControllerState = { step: 'abilities', data: { ...completeData(), speciesChoice: null } }
+		for (const step of ['class', 'species', 'background', 'languages'] as const) {
+			const result = wizardReducer(state, { type: 'goTo', step })
+			expect(result.step).toBe(step)
+			expect(result.data).toBe(state.data)
+		}
+		expect(wizardReducer(state, { type: 'goTo', step: 'equipment' })).toBe(state)
+		expect(reachableSteps('abilities', state.data)).toEqual(['class', 'species', 'background', 'languages', 'abilities'])
 	})
 
 	it('goTo jumps forward while every step before the target is complete (W9)', () => {
@@ -604,6 +645,59 @@ describe('wizardReducer navigation', () => {
 		expect(wizardReducer(state, { type: 'goTo', step: 'species' }).step).toBe('species')
 		expect(wizardReducer(state, { type: 'goTo', step: 'background' })).toBe(state)
 		expect(wizardReducer(state, { type: 'goTo', step: 'review' })).toBe(state)
+	})
+})
+
+describe('pruneClassPicks (D251)', () => {
+	const known: ClassPickRequirements = { subclass: true, fightingStyle: true, masteryCount: 3, optionalFeatureCount: 3, skillCount: 2, classFeatureNames: [] }
+	const battleMaster3 = (): WizardControllerState => ({
+		step: 'class',
+		data: {
+			...completeData(),
+			classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 },
+			optionalFeatureChoices: ['Trip Attack', 'Riposte', 'Parry'],
+			spellChoices: [{ name: 'Shield', source: 'XPHB', level: 1 }],
+		},
+	})
+
+	it('a Fighter 3 Battle Master lowered to level 1 loses the subclass, its maneuvers and what hangs on the subclass', () => {
+		let state = wizardReducer(battleMaster3(), { type: 'setClassChoice', choice: { className: 'Fighter', classSource: 'XPHB', level: 1 } })
+		expect(state.data.subclass).not.toBeNull()
+		state = wizardReducer(state, { type: 'pruneClassPicks', requirements: { ...known, subclass: false, optionalFeatureCount: 0 } })
+		expect(state.data.subclass).toBeNull()
+		expect(state.data.optionalFeatureChoices).toEqual([])
+		expect(state.data.spellChoices).toEqual([])
+		expect(state.data.fightingStyle).toBe('Archery')
+		expect(state.data.masteries).toEqual(['Longsword'])
+		expect(isStepComplete('class', state.data, { classPickRequirements: { ...known, subclass: false, optionalFeatureCount: 0, masteryCount: 1 } })).toBe(true)
+	})
+
+	it('a Paladin lowered below level 2 loses the fighting style; a Druid below 2 its Wild Shape forms, below 7 Elemental Fury', () => {
+		const paladin: WizardControllerState = { step: 'class', data: { ...completeData(), subclass: null, optionalFeatureChoices: [], classChoice: { className: 'Paladin', classSource: 'XPHB', level: 1 } } }
+		expect(wizardReducer(paladin, { type: 'pruneClassPicks', requirements: { ...known, subclass: false, fightingStyle: false, optionalFeatureCount: 0 } }).data.fightingStyle).toBeNull()
+
+		const druid: WizardControllerState = {
+			step: 'class',
+			data: {
+				...completeData(),
+				subclass: null,
+				fightingStyle: null,
+				optionalFeatureChoices: [],
+				classChoice: { className: 'Druid', classSource: 'XPHB', level: 1 },
+				wildShapeForms: [{ name: 'Wolf', source: 'XMM' }],
+				classFeatureChoices: [{ ...ELEMENTAL_FURY, featureName: 'Primal Order', grantedAtLevel: 1, optionName: 'Magician' }, ELEMENTAL_FURY],
+			},
+		}
+		const pruned = wizardReducer(druid, { type: 'pruneClassPicks', requirements: { ...known, subclass: false, fightingStyle: false, optionalFeatureCount: 0, classFeatureNames: ['Primal Order'] } })
+		expect(pruned.data.wildShapeForms).toEqual([])
+		expect(pruned.data.classFeatureChoices.map((choice) => choice.featureName)).toEqual(['Primal Order'])
+	})
+
+	it('leaves picks whose picker stays, prunes nothing for unknown requirements, and returns the same state when nothing changes', () => {
+		const state = battleMaster3()
+		expect(wizardReducer(state, { type: 'pruneClassPicks', requirements: known })).toBe(state)
+		const unknown: ClassPickRequirements = { subclass: null, fightingStyle: null, masteryCount: null, optionalFeatureCount: null, skillCount: null, classFeatureNames: null }
+		expect(wizardReducer(state, { type: 'pruneClassPicks', requirements: unknown })).toBe(state)
 	})
 })
 

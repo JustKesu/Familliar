@@ -57,6 +57,7 @@ import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { overwrittenHeldPicks } from '../levelUp/heldPicks'
+import { wildShapeLimits } from '../beasts/wildShapeData'
 
 /**
  * The chosen subclass, name and source together — carrying `featureType`
@@ -174,25 +175,56 @@ export interface WizardStepConditions {
 	hitDieFaces?: number | null
 }
 
-/** The single choices and exact counts the class step's pickers (subclass, fighting style, masteries, subclass options) require. */
+/**
+ * The single choices and exact counts the class step's pickers (subclass, fighting style, masteries, subclass options) require.
+ * `null` in any field means its loader failed (F-1): that one pick is neither demanded nor forbidden.
+ */
 export interface ClassPickRequirements {
-	subclass: boolean
-	fightingStyle: boolean
-	masteryCount: number
-	optionalFeatureCount: number
-	/** ClassSkillPicker's count; `null` when a level up already holds the class skills (D108 hides the picker). */
+	subclass: boolean | null
+	fightingStyle: boolean | null
+	masteryCount: number | null
+	optionalFeatureCount: number | null
+	/** ClassSkillPicker's count; `null` also when a level up already holds the class skills (D108 hides the picker). */
 	skillCount: number | null
+	/** The D21 class-feature choices (Divine Order, Elemental Fury…) this level grants. */
+	classFeatureNames: readonly string[] | null
 }
 
-/** Held (level-up) picks are already in `data`, so they count as chosen. Counts are exact, like the pickers' own caps. */
+/** Held (level-up) picks are already in `data`, so they count as chosen. Counts are exact, like the pickers' own caps; a pick the level does not grant blocks the step (D251). */
 export function classPicksComplete(data: WizardData, required: ClassPickRequirements): boolean {
+	const featureNames = required.classFeatureNames
 	return (
 		(required.skillCount === null || data.classSkills.length === required.skillCount) &&
-		(!required.subclass || data.subclass !== null) &&
-		(!required.fightingStyle || data.fightingStyle !== null) &&
-		data.masteries.length === required.masteryCount &&
-		data.optionalFeatureChoices.length === required.optionalFeatureCount
+		(required.subclass === null || (data.subclass !== null) === required.subclass) &&
+		(required.fightingStyle === null || (data.fightingStyle !== null) === required.fightingStyle) &&
+		(required.masteryCount === null || data.masteries.length === required.masteryCount) &&
+		(required.optionalFeatureCount === null || data.optionalFeatureChoices.length === required.optionalFeatureCount) &&
+		(featureNames === null || data.classFeatureChoices.every((choice) => featureNames.includes(choice.featureName)))
 	)
+}
+
+/**
+ * D251: drops the class-step picks the chosen level no longer grants, whose pickers are gone so the
+ * player could not remove them. Picks whose picker stays (a smaller mastery or maneuver count) are left
+ * to the player. Unknown (`null`) requirements prune nothing.
+ */
+function pruneClassPicks(state: WizardControllerState, required: ClassPickRequirements): WizardControllerState {
+	const unsubclassed = required.subclass === false && state.data.subclass !== null ? wizardReducer(state, { type: 'setSubclass', subclass: null }) : state
+	const data = unsubclassed.data
+	const featureNames = required.classFeatureNames
+	const fightingStyle = required.fightingStyle === false ? null : data.fightingStyle
+	const optionalFeatureChoices = required.optionalFeatureCount === 0 ? [] : data.optionalFeatureChoices
+	const classFeatureChoices = featureNames === null ? data.classFeatureChoices : data.classFeatureChoices.filter((choice) => featureNames.includes(choice.featureName))
+	const wildShapeForms = data.classChoice && wildShapeLimits(data.classChoice.className, data.classChoice.level, data.subclass?.name ?? null) ? data.wildShapeForms : []
+	if (
+		fightingStyle === data.fightingStyle &&
+		optionalFeatureChoices.length === data.optionalFeatureChoices.length &&
+		classFeatureChoices.length === data.classFeatureChoices.length &&
+		wildShapeForms.length === data.wildShapeForms.length
+	) {
+		return unsubclassed
+	}
+	return { ...unsubclassed, data: { ...data, fightingStyle, optionalFeatureChoices, classFeatureChoices, wildShapeForms } }
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
@@ -787,11 +819,20 @@ export function isCompleteFeatAsiChoice(choice: FeatAsiChoice, featsRequiringAbi
 	return false
 }
 
-/** W9: a step can be jumped to when every visible step before it is complete — exactly as far as repeated Next would get. */
-export function isStepReachable(step: WizardStep, data: WizardData, conditions: WizardStepConditions = {}): boolean {
+/**
+ * W9: forward, a step can be jumped to when every visible step before it is complete — exactly as far
+ * as repeated Next would get. D252: back (index ≤ the current step's) is always allowed.
+ */
+export function isStepReachable(step: WizardStep, current: WizardStep, data: WizardData, conditions: WizardStepConditions = {}): boolean {
+	return reachableSteps(current, data, conditions).includes(step)
+}
+
+/** The steps the step bar may jump to, with each step's completeness evaluated once (D116). */
+export function reachableSteps(current: WizardStep, data: WizardData, conditions: WizardStepConditions = {}): readonly WizardStep[] {
 	const steps = visibleSteps(conditions)
-	const idx = steps.indexOf(step)
-	return idx >= 0 && steps.slice(0, idx).every((earlier) => isStepComplete(earlier, data, conditions))
+	const firstIncomplete = steps.findIndex((step) => !isStepComplete(step, data, conditions))
+	const prefixEnd = firstIncomplete === -1 ? steps.length - 1 : firstIncomplete
+	return steps.filter((_, index) => index <= Math.max(prefixEnd, steps.indexOf(current)))
 }
 
 /** Whether every picker step is complete — the gate for the review step's save button. */
@@ -805,6 +846,8 @@ export type WizardAction =
 	| { type: 'next'; conditions?: WizardStepConditions }
 	| { type: 'back'; conditions?: WizardStepConditions }
 	| { type: 'goTo'; step: WizardStep; conditions?: WizardStepConditions }
+	/** D251: dispatched once the class step's requirements have loaded for the current class, level and subclass. */
+	| { type: 'pruneClassPicks'; requirements: ClassPickRequirements }
 	| { type: 'setName'; name: string }
 	| { type: 'setClassChoice'; choice: ClassLevelChoice | null }
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
@@ -858,7 +901,9 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return prev ? { ...state, step: prev } : state
 		}
 		case 'goTo':
-			return isStepReachable(action.step, state.data, action.conditions ?? {}) ? { ...state, step: action.step } : state
+			return isStepReachable(action.step, state.step, state.data, action.conditions ?? {}) ? { ...state, step: action.step } : state
+		case 'pruneClassPicks':
+			return pruneClassPicks(state, action.requirements)
 		case 'setName':
 			return { ...state, data: { ...state.data, name: action.name } }
 		case 'setClassChoice': {

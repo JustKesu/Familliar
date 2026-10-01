@@ -11,7 +11,7 @@ async function fillFighterClassStep(page: Page): Promise<void> {
   for (const weapon of ['Longsword', 'Greatsword', 'Handaxe']) {
     await chooseButton(page, weapon).first().click()
   }
-  await chooseButton(page, 'Defense').first().click()
+  await chooseButton(page, 'Defense').click()
 }
 
 const stepButton = (page: Page, name: string) => stepBar(page).getByRole('button', { name, exact: true })

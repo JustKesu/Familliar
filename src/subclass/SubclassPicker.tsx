@@ -41,8 +41,8 @@ export function SubclassPicker({
 	className: string
 	classSource: string
 	level: number
-	value: string | null
-	onChange: (subclass: string | null) => void
+	value: { name: string; source: string } | null
+	onChange: (subclass: SubclassOption | null) => void
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
@@ -94,7 +94,7 @@ export function SubclassPicker({
 		name: option.name,
 		book: option.source,
 		detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
-		selected: value === option.name,
+		selected: value !== null && value.name === option.name && value.source === option.source,
 	}))
 
 	return (
@@ -109,7 +109,7 @@ export function SubclassPicker({
 				renderCount={({ chosen }) => (chosen === 0 ? 'Choose a subclass.' : 'Subclass chosen.')}
 				onToggle={(key) => {
 					const option = options.find((candidate) => optionKey(candidate) === key)
-					if (option) onChange(option.name)
+					if (option) onChange(option)
 				}}
 			/>
 		</div>

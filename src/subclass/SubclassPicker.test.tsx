@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SubclassPicker } from './SubclassPicker'
+import { loadSubclassesFor } from './subclassData'
 import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
+
+const CHAMPION = { name: 'Champion', source: 'XPHB' }
 
 /*
  * Component test for the subclass picker, following the jsdom/testing-
@@ -46,7 +49,7 @@ describe('SubclassPicker', () => {
 
 	it('renders whatever value it is given', async () => {
 		render(
-			<SubclassPicker className="Fighter" classSource="XPHB" level={3} value="Champion" onChange={() => {}} />,
+			<SubclassPicker className="Fighter" classSource="XPHB" level={3} value={CHAMPION} onChange={() => {}} />,
 		)
 
 		// A subclass is already chosen, so the list starts collapsed; open it to reach the options.
@@ -74,7 +77,7 @@ describe('SubclassPicker', () => {
 	it('clicking CHOSEN does nothing: a single choice stays chosen like a radio', async () => {
 		const user = userEvent.setup()
 		const onChange = vi.fn()
-		render(<SubclassPicker className="Fighter" classSource="XPHB" level={3} value="Champion" onChange={onChange} />)
+		render(<SubclassPicker className="Fighter" classSource="XPHB" level={3} value={CHAMPION} onChange={onChange} />)
 
 		await user.click(await screen.findByRole('button', { name: /subclass/i }))
 		await user.click(chooseButton('Champion'))
@@ -85,19 +88,35 @@ describe('SubclassPicker', () => {
 		const user = userEvent.setup()
 		const onChange = vi.fn()
 		render(
-			<SubclassPicker className="Fighter" classSource="XPHB" level={3} value="Champion" onChange={onChange} />,
+			<SubclassPicker className="Fighter" classSource="XPHB" level={3} value={CHAMPION} onChange={onChange} />,
 		)
 
 		await user.click(await screen.findByRole('button', { name: /subclass/i }))
 		await user.click(await screen.findByRole('button', { name: 'Choose Battle Master' }))
 
-		expect(onChange).toHaveBeenCalledWith('Battle Master')
+		expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'Battle Master', source: 'XPHB' }))
+	})
+
+	it('F-1: a name two books share is chosen by book, and its button names the book', async () => {
+		vi.mocked(loadSubclassesFor).mockResolvedValueOnce([
+			{ name: 'Champion', source: 'PHB', entries: ['Old champion.'], featureType: null },
+			{ name: 'Champion', source: 'XPHB', entries: ['New champion.'], featureType: null },
+		])
+		const user = userEvent.setup()
+		const onChange = vi.fn()
+		render(<SubclassPicker className="Fighter" classSource="XPHB" level={3} value={CHAMPION} onChange={onChange} />)
+
+		await user.click(await screen.findByRole('button', { name: /subclass/i }))
+		expect(isChosen(chooseButton('Champion (XPHB)'))).toBe(true)
+		expect(isChosen(chooseButton('Champion (PHB)'))).toBe(false)
+		await user.click(chooseButton('Champion (PHB)'))
+		expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ name: 'Champion', source: 'PHB' }))
 	})
 
 	it('search filters the subclass list, but never hides the one already chosen', async () => {
 		const user = userEvent.setup()
 		render(
-			<SubclassPicker className="Fighter" classSource="XPHB" level={3} value="Champion" onChange={() => {}} />,
+			<SubclassPicker className="Fighter" classSource="XPHB" level={3} value={CHAMPION} onChange={() => {}} />,
 		)
 
 		await user.click(await screen.findByRole('button', { name: /subclass/i }))

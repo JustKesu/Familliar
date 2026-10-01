@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { CharacterWizard } from '../creation/CharacterWizard'
 import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import { WIZARD_STEPS, type WizardStep } from '../creation/wizardState'
@@ -89,10 +89,32 @@ const fighterFour: LevelGains = {
 	) as Record<WizardStep, LevelGain>,
 }
 
-function renderWizard(levelUp?: LevelGains) {
+function renderWizard(levelUp?: LevelGains): { onCancel: ReturnType<typeof vi.fn> } {
 	const store = { create: vi.fn(), update: vi.fn() } as unknown as CharacterStore
-	render(<CharacterWizard store={store} character={battleMaster} levelUp={levelUp} onSaved={() => {}} onCancel={() => {}} />)
+	const onCancel = vi.fn()
+	render(<CharacterWizard store={store} character={battleMaster} levelUp={levelUp} onSaved={() => {}} onCancel={onCancel} />)
+	return { onCancel }
 }
+
+describe('Cancel without changes (F-1, finding 9)', () => {
+	it('Edit Character leaves at once, with no dialog, once every picker has loaded', async () => {
+		const { onCancel } = renderWizard()
+		await screen.findByRole('button', { name: 'Choose Battle Master', hidden: true })
+		await screen.findByRole('button', { name: 'Choose Parry', hidden: true })
+		fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0])
+		expect(screen.queryByRole('alertdialog')).toBeNull()
+		expect(onCancel).toHaveBeenCalledTimes(1)
+	})
+
+	it('a level up leaves at once, with no dialog, once every picker has loaded', async () => {
+		const { onCancel } = renderWizard(fighterFour)
+		await screen.findByRole('button', { name: 'Choose Parry' })
+		await screen.findByRole('button', { name: 'Choose Greatsword' })
+		fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0])
+		expect(screen.queryByRole('alertdialog')).toBeNull()
+		expect(onCancel).toHaveBeenCalledTimes(1)
+	})
+})
 
 describe('the class step during a level up', () => {
 	it('shows the subclass, fighting style and class skill pickers when editing, so their absence below is the fix and not the mocks', async () => {

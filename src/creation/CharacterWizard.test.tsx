@@ -6,6 +6,7 @@ import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import userEvent from '@testing-library/user-event'
 import { CharacterWizard } from './CharacterWizard'
 import type { CharacterStore } from '../storage/characterStore'
+import { loadSubclassLevelFor } from '../subclass/subclassData'
 
 /*
  * Component tests for the wizard shell, added alongside the jsdom/testing-
@@ -701,6 +702,40 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await user.click(screen.getByRole('button', { name: 'Choose Battle Master' }))
 
 		expect(isChosen(await screen.findByRole('button', { name: 'Choose Trip Attack' }))).toBe(false)
+	})
+
+	it('D251: lowering a new Battle Master 3 to level 1 drops the subclass and maneuvers, and Next works', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillClassStep(user)
+		await user.selectOptions(screen.getByLabelText('Level'), '3')
+		await user.click(await screen.findByRole('button', { name: 'Choose Battle Master' }))
+		await chooseManeuvers(user)
+		await user.selectOptions(screen.getByLabelText('Level'), '1')
+
+		await vi.waitFor(() => expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false))
+		await user.selectOptions(screen.getByLabelText('Level'), '3')
+		// Back at level 3 the subclass is asked for again: the old pick did not survive.
+		expect(isChosen(await screen.findByRole('button', { name: 'Choose Battle Master' }))).toBe(false)
+		expect(screen.queryByRole('button', { name: 'Choose Trip Attack' })).toBeNull()
+	})
+
+	it('F-1: one failing requirement loader relaxes only its own pick — the class skills are still demanded', async () => {
+		const user = userEvent.setup()
+		vi.mocked(loadSubclassLevelFor).mockRejectedValue(new Error('classes.json unavailable'))
+		try {
+			renderWizard()
+			await user.type(screen.getByLabelText('Character name'), 'Aria')
+			await user.selectOptions(await screen.findByLabelText('Class'), 'Fighter')
+			await chooseMasteryAndStyle(user)
+			await screen.findByText(/Could not load subclasses/)
+			expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(true)
+			await chooseClassSkills(user)
+			await vi.waitFor(() => expect((stepNav().getByRole('button', { name: 'Next' }) as HTMLButtonElement).disabled).toBe(false))
+		} finally {
+			vi.mocked(loadSubclassLevelFor).mockImplementation(async () => 3)
+		}
 	})
 })
 

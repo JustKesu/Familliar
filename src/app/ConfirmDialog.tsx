@@ -1,5 +1,7 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+
+const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'
 
 /**
  * W23/W28: the in-app confirmation, never `confirm()` — a script driving the
@@ -24,35 +26,56 @@ export function ConfirmDialog({
 	onDestructive: () => void
 }): ReactNode {
 	const id = useId()
+	const backdropRef = useRef<HTMLDivElement>(null)
+	const dialogRef = useRef<HTMLDivElement>(null)
 	const safeRef = useRef<HTMLButtonElement>(null)
-	const destructiveRef = useRef<HTMLButtonElement>(null)
+	const onSafeRef = useRef(onSafe)
+	useEffect(() => {
+		onSafeRef.current = onSafe
+	})
 
 	useEffect(() => {
 		const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null
+		const inerted = Array.from(document.body.children).filter((element) => element !== backdropRef.current && !element.hasAttribute('inert'))
+		inerted.forEach((element) => element.setAttribute('inert', ''))
 		safeRef.current?.focus()
-		return () => trigger?.focus()
+
+		// F-1: on window in the capture phase, so Esc works wherever focus is and never reaches an open drawer's document listener.
+		function handleKeyDown(event: KeyboardEvent): void {
+			const dialog = dialogRef.current
+			if (!dialog) return
+			if (event.key === 'Escape') {
+				event.preventDefault()
+				event.stopPropagation()
+				onSafeRef.current()
+			} else if (event.key === 'Tab') {
+				const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
+				if (focusable.length === 0) return
+				const index = focusable.indexOf(document.activeElement as HTMLElement)
+				const next = event.shiftKey ? (index <= 0 ? focusable.length - 1 : index - 1) : index === -1 || index === focusable.length - 1 ? 0 : index + 1
+				event.preventDefault()
+				focusable[next].focus()
+			}
+		}
+		window.addEventListener('keydown', handleKeyDown, true)
+		return () => {
+			window.removeEventListener('keydown', handleKeyDown, true)
+			inerted.forEach((element) => element.removeAttribute('inert'))
+			trigger?.focus()
+		}
 	}, [])
 
-	function handleKeyDown(event: KeyboardEvent): void {
-		if (event.key === 'Escape') {
-			event.preventDefault()
-			onSafe()
-		} else if (event.key === 'Tab') {
-			// Only two focusable controls: Tab keeps focus inside the modal.
-			event.preventDefault()
-			;(document.activeElement === safeRef.current ? destructiveRef : safeRef).current?.focus()
-		}
-	}
-
 	return createPortal(
-		<div className="confirm-dialog__backdrop" onClick={(event) => event.target === event.currentTarget && onSafe()}>
+		<div ref={backdropRef} className="confirm-dialog__backdrop" onClick={(event) => event.target === event.currentTarget && onSafe()}>
+			{/* tabIndex -1: a click on the text keeps focus in the dialog instead of dropping it to body. */}
 			<div
+				ref={dialogRef}
 				className="confirm-dialog"
 				role="alertdialog"
 				aria-modal="true"
 				aria-labelledby={`${id}-title`}
 				aria-describedby={`${id}-body`}
-				onKeyDown={handleKeyDown}
+				tabIndex={-1}
 			>
 				<h2 id={`${id}-title`} className="confirm-dialog__title">
 					{title}
@@ -62,7 +85,7 @@ export function ConfirmDialog({
 				</p>
 				{children}
 				<div className="confirm-dialog__actions">
-					<button ref={destructiveRef} type="button" className="btn--accent-outline" onClick={onDestructive}>
+					<button type="button" className="btn--accent-outline" onClick={onDestructive}>
 						{destructiveLabel}
 					</button>
 					<button ref={safeRef} type="button" className="btn--accent" onClick={onSafe}>

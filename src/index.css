@@ -2917,7 +2917,7 @@ button:disabled {
   flex: none;
 }
 
-.choice-row__button--on:disabled {
+.choice-row__button.manage-spells__button--on:disabled {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-text);

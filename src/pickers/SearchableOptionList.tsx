@@ -117,15 +117,17 @@ export function SearchableOptionList({
 
 	function item(option: SearchableOption): ReactNode {
 		if (variant === 'choose') {
+			// F-1: a name two books share gets its book in the accessible name, so "Choose Champion (PHB)" is unambiguous.
+			const shared = option.book !== undefined && options.some((other) => other !== option && other.name === option.name)
 			return (
 				<ChoiceRow
 					key={option.key}
-					name={option.name}
-					label={option.label}
+					name={shared ? `${option.name} (${option.book})` : option.name}
+					label={option.label ?? option.name}
 					book={option.book}
 					detail={option.detail}
-					extra={option.extra}
-					reason={option.disabled && !option.selected ? option.disabledReason : undefined}
+					extra={open ? option.extra : undefined}
+					reason={option.disabledReason}
 					chosen={option.selected}
 					disabled={option.disabled}
 					locked={option.locked}
@@ -178,6 +180,15 @@ export function SearchableOptionList({
 					)}
 				</span>
 			</button>
+			{/* F-1: a collapsed list never hides a sub-choice a chosen option still needs (a spell pick Next waits on). */}
+			{!open &&
+				options
+					.filter((option) => option.selected && option.extra != null)
+					.map((option) => (
+						<div key={option.key} className="option-list__extra">
+							{option.extra}
+						</div>
+					))}
 			<div className="option-list__body" hidden={!open}>
 				<input
 					type="search"
