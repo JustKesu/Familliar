@@ -2,12 +2,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FeatAsiPicker } from './FeatAsiPicker'
+import { FeatAsiPicker as RealFeatAsiPicker } from './FeatAsiPicker'
+import { useFeatAsiStepData } from './featAsiLevels'
+import type { Ability } from '../abilities/abilityScores'
+import type { Character } from '../storage/character'
 import { loadFeatAsiGrants } from './featAsiData'
 import { collectKnownSpells, type KnownSpellInputs } from '../spells/knownSpells'
 import type { FeatAsiChoice } from '../storage/character'
 import { featProficiencyChoiceShape } from '../calculation/featEffects'
-import { useState } from 'react'
+import { useMemo, useState, type ComponentProps } from 'react'
 
 /*
  * Component test for the feat/ASI picker, following the jsdom/testing-
@@ -36,6 +39,9 @@ vi.mock('./featAsiData', async () => {
 			{ name: 'Great Weapon Master', source: 'XPHB', category: 'G', prerequisite: [{ level: 4, ability: [{ str: 13 }] }] },
 			{ name: 'Boon of Speed', source: 'XPHB', category: 'EB' },
 			{ name: 'Gift of Night', source: 'TEST', category: 'DG', prerequisite: [{ exclusiveFeatCategory: ['DG'] }] },
+			{ name: 'Gift of Day', source: 'TEST', category: 'DG', prerequisite: [{ exclusiveFeatCategory: ['DG'] }] },
+			{ name: 'Origin Strong', source: 'TEST', category: 'O', ability: [{ str: 1 }] },
+			{ name: 'Boon of Might', source: 'TEST', category: 'EB', ability: [{ choose: { from: ['str', 'dex'] }, max: 30 }] },
 		]),
 		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
 		loadHasFightingStyleFeature: vi.fn(async () => false),
@@ -127,6 +133,36 @@ vi.mock('../spells/featSpells', async () => {
 afterEach(cleanup)
 
 const fullScores = { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 }
+
+/**
+ * The wizard owns the load (useFeatAsiStepData) and the draft; this stands in for it so a test states only the
+ * class, the base scores and the species, as before. An explicit `abilityDraft` wins over `finalAbilityScores`.
+ */
+function FeatAsiPicker({
+	className,
+	classSource,
+	speciesName,
+	speciesSource,
+	chosenSpeciesSize = null,
+	finalAbilityScores,
+	abilityDraft,
+	...rest
+}: Omit<ComponentProps<typeof RealFeatAsiPicker>, 'load' | 'abilityDraft'> & {
+	className: string
+	classSource: string
+	speciesName: string | null
+	speciesSource: string | null
+	chosenSpeciesSize?: string | null
+	finalAbilityScores: Partial<Record<Ability, number>>
+	abilityDraft?: Character
+}) {
+	const load = useFeatAsiStepData(className, classSource, rest.level, speciesName, speciesSource, chosenSpeciesSize)
+	const draft = useMemo<Character>(
+		() => abilityDraft ?? { id: '', name: '', classes: [], abilityScores: { method: 'standardArray', scores: { strength: 0, dexterity: 0, constitution: 0, intelligence: 0, wisdom: 0, charisma: 0, ...finalAbilityScores } } },
+		[abilityDraft, finalAbilityScores],
+	)
+	return <RealFeatAsiPicker {...rest} load={load} abilityDraft={draft} />
+}
 
 /** W16: the one ASI-or-feat dropdown of a single-level picker. */
 const featOrAsi = async (level = 4): Promise<HTMLSelectElement> => (await screen.findByRole('combobox', { name: `Level ${level} feat or ASI` })) as HTMLSelectElement
@@ -335,12 +371,134 @@ describe('FeatAsiPicker', () => {
 						{ level: 8, kind: 'feat', name: 'Tough', source: 'XPHB' },
 					]}
 					onChange={() => {}}
-					backgroundOriginFeat={{ name: 'Gift of Night', source: 'TEST' }}
+					backgroundOriginFeat={{ name: 'Gift of Day', source: 'TEST' }}
 				/>,
 			)
 			expect(await within(await screen.findByRole('group', { name: 'Level 8' })).findByText('Tough is already taken (level 4) — choose another feat.')).toBeTruthy()
-			expect(within(screen.getByRole('group', { name: 'Level 6' })).getByText('Gift of Night is already taken (Background) — choose another feat.')).toBeTruthy()
+			// A different Dark Gift on the background: the exclusive category, not "already taken", is the reason.
+			expect(within(screen.getByRole('group', { name: 'Level 6' })).getByText('Gift of Night no longer meets its prerequisite (already has a Dark Gift) — choose another feat.')).toBeTruthy()
 			expect(screen.getByRole('button', { name: 'Level 4 — Tough' }).getAttribute('aria-expanded')).toBe('false')
+		})
+
+		it('a clash with an item feat warns on the opened card and leaves the choice selectable', async () => {
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={[{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }]}
+					onChange={() => {}}
+					itemFeats={[{ name: 'Tough', source: 'XPHB', itemName: 'Ring of Vigor' }]}
+				/>,
+			)
+			expect(await screen.findByText('Tough is also granted by Ring of Vigor — you may keep it or choose another feat.')).toBeTruthy()
+			expect(screen.getByRole('button', { name: 'Level 4 — Tough' }).getAttribute('aria-expanded')).toBe('true')
+		})
+
+		it('the ability table counts the background origin feat’s bonus like the cards do', async () => {
+			render(
+				<FeatAsiPicker
+					className="Fighter"
+					classSource="XPHB"
+					level={4}
+					finalAbilityScores={fullScores}
+					speciesName={null}
+					speciesSource={null}
+					value={[]}
+					onChange={() => {}}
+					backgroundOriginFeat={{ name: 'Origin Strong', source: 'TEST' }}
+					abilityDraft={{
+						id: '',
+						name: '',
+						classes: [],
+						abilityScores: { method: 'standardArray', scores: fullScores },
+						background: { name: 'Hand', source: 'TEST', skillProficiencies: ['nature', 'survival'], toolProficiency: "Carpenter's Tools" },
+					}}
+				/>,
+			)
+			await screen.findByRole('combobox', { name: 'Level 4 feat or ASI' })
+			expect(tableRow('ASI / Feats')[0]).toBe('+1')
+			expect(tableRow('Total')[0]).toBe('16')
+		})
+
+		it('F-3: choosing a later card first fills the earlier ones with the empty placeholder, never a hole', async () => {
+			const onChange = vi.fn()
+			render(<FeatAsiPicker className="Fighter" classSource="XPHB" level={6} finalAbilityScores={fullScores} speciesName={null} speciesSource={null} value={[]} onChange={onChange} />)
+			await userEvent.setup().selectOptions(await featOrAsi(6), 'asi')
+			expect(onChange).toHaveBeenCalledWith([
+				{ level: 4, kind: 'feat', name: '', source: '' },
+				{ level: 6, kind: 'asi', increases: {} },
+			])
+		})
+
+		describe('F-3: the ability cap', () => {
+			const strong = { ...fullScores, strength: 20 }
+
+			it('opens a card whose ASI would pass 20 with the reason, and Choose line', async () => {
+				render(
+					<FeatAsiPicker
+						className="Fighter"
+						classSource="XPHB"
+						level={6}
+						finalAbilityScores={{ ...fullScores, strength: 18 }}
+						speciesName={null}
+						speciesSource={null}
+						value={[
+							{ level: 4, kind: 'asi', increases: { strength: 2 } },
+							{ level: 6, kind: 'asi', increases: { strength: 2 } },
+						]}
+						onChange={() => {}}
+					/>,
+				)
+				const level6 = within(await screen.findByRole('group', { name: 'Level 6' }))
+				expect(await level6.findByText('+2 STR would take Strength above 20 — choose another ability.')).toBeTruthy()
+				expect(screen.getByRole('button', { name: 'Level 6 — Ability Score Improvement (+2 STR)' }).getAttribute('aria-expanded')).toBe('true')
+				expect(screen.getByRole('button', { name: 'Level 4 — Ability Score Improvement (+2 STR)' }).getAttribute('aria-expanded')).toBe('false')
+			})
+
+			it('disables a half-feat ability that would pass 20, and flags the chosen one', async () => {
+				render(
+					<FeatAsiPicker
+						className="Fighter"
+						classSource="XPHB"
+						level={4}
+						finalAbilityScores={strong}
+						speciesName={null}
+						speciesSource={null}
+						value={[{ level: 4, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' }]}
+						onChange={() => {}}
+					/>,
+				)
+				expect(await screen.findByText('+1 STR would take Strength above 20 — choose another ability.')).toBeTruthy()
+				const select = screen.getByLabelText('Level 4 ability') as HTMLSelectElement
+				const strength = Array.from(select.options).find((o) => o.value === 'strength')!
+				expect(strength.disabled).toBe(true)
+				expect(strength.textContent).toBe('Strength (would exceed 20)')
+				expect(Array.from(select.options).find((o) => o.value === 'dexterity')!.disabled).toBe(false)
+			})
+
+			it('lets an Epic Boon go past 20 up to the feat’s own max', async () => {
+				render(
+					<FeatAsiPicker
+						className="Rogue"
+						classSource="XPHB"
+						level={19}
+						finalAbilityScores={strong}
+						speciesName={null}
+						speciesSource={null}
+						value={[{ level: 19, kind: 'feat', name: 'Boon of Might', source: 'TEST', chosenAbility: 'strength' }]}
+						onChange={() => {}}
+					/>,
+				)
+				// Nothing is wrong, so the complete card stays collapsed; open it to read the select.
+				await userEvent.setup().click(await screen.findByRole('button', { name: 'Level 19 (Epic Boon) — Boon of Might (+1 STR)' }))
+				const select = screen.getByLabelText('Level 19 ability') as HTMLSelectElement
+				expect(Array.from(select.options).find((o) => o.value === 'strength')!.disabled).toBe(false)
+				expect(screen.queryByText(/would take Strength above/)).toBeNull()
+			})
 		})
 
 		it('a prerequisite met through a lower level breaks when that level changes', async () => {

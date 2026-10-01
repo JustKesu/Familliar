@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { CharacterWizard } from '../creation/CharacterWizard'
 import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import { WIZARD_STEPS, type WizardStep } from '../creation/wizardState'
@@ -114,6 +114,35 @@ describe('Cancel without changes (F-1, finding 9)', () => {
 		expect(screen.queryByRole('alertdialog')).toBeNull()
 		expect(onCancel).toHaveBeenCalledTimes(1)
 	})
+})
+
+describe('D251, D256, D260: only a new character is pruned', () => {
+	/** Rows above its level and a subclass it has not reached: all of it would go for a new character. */
+	const overreaching: Character = {
+		...battleMaster,
+		classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 2 }],
+		featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
+		hitPointLevels: [
+			{ level: 2, kind: 'average', dieResult: 6 },
+			{ level: 5, kind: 'roll', dieResult: 4 },
+		],
+	}
+
+	/** Pruning changes the wizard's data, which turns Cancel into a confirmation dialog (F-1, finding 9). */
+	async function expectNothingPruned(levelUp?: LevelGains): Promise<void> {
+		const onCancel = vi.fn()
+		const store = { create: vi.fn(), update: vi.fn() } as unknown as CharacterStore
+		render(<CharacterWizard store={store} character={overreaching} levelUp={levelUp} onSaved={() => {}} onCancel={onCancel} />)
+		await screen.findByRole('button', { name: 'Choose Longsword', hidden: true })
+		await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
+		fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0])
+		expect(screen.queryByRole('alertdialog')).toBeNull()
+		expect(onCancel).toHaveBeenCalledTimes(1)
+	}
+
+	it('Edit Character keeps every pick, ASI level and hit point row', () => expectNothingPruned())
+
+	it('a level up keeps every pick, ASI level and hit point row above the new level too', () => expectNothingPruned({ ...fighterFour, level: 3 }))
 })
 
 describe('the class step during a level up', () => {

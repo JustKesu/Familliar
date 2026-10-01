@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
+import { ABILITY_ABBREVIATIONS } from '../calculation/abilityAbbreviations'
 import { computeAbilityScores } from '../calculation/abilityScores'
-import type { FeatEffectEntry } from '../calculation/featEffects'
+import { featAbilityScoreContributions, type FeatEffectEntry } from '../calculation/featEffects'
 import type { Character, FeatAsiChoice } from '../storage/character'
 import {
+	ABILITY_LABEL,
+	ABILITY_SCORE_CAP,
 	chosenFeatRefs,
 	evaluateFeatPrerequisites,
+	exceedsAbilityScoreCap,
+	featAbilityCap,
 	featOffers,
 	featsRequiringAbilityChoice,
 	loadClassPrereqInfo,
@@ -95,6 +100,8 @@ export function useFeatAsiStepData(
 /** A feat the character has from outside the ASI levels, with the origin the "already taken" sentence names. */
 export interface GrantedFeat extends FeatRef {
 	origin: string
+	/** F-3: set for an item feat — the item may be dropped any time, so a clash with it warns and does not lock Next. */
+	item?: { name?: string }
 }
 
 /** The background feat, manual feats and item feats, labelled as featOriginLabel labels them. */
@@ -106,7 +113,7 @@ export function grantedFeatsOf(
 	return [
 		...(backgroundOriginFeat ? [{ name: backgroundOriginFeat.name, source: backgroundOriginFeat.source, origin: 'Background' }] : []),
 		...manualFeats.map((feat) => ({ name: feat.name, source: feat.source, origin: 'Added manually' })),
-		...itemFeats.map((feat) => ({ name: feat.name, source: feat.source, origin: feat.itemName ? `From item (${feat.itemName})` : 'From item' })),
+		...itemFeats.map((feat) => ({ name: feat.name, source: feat.source, origin: feat.itemName ? `From item (${feat.itemName})` : 'From item', item: { name: feat.itemName } })),
 	]
 }
 
@@ -127,6 +134,8 @@ export interface FeatAsiLevels {
 	data: FeatAsiStepData
 	choices: readonly FeatAsiChoice[]
 	granted: readonly GrantedFeat[]
+	/** The draft every score on the step is read from, with the background origin feat override and `choices` — the ability table on top uses it too. */
+	draft: Character
 	scoresBelow: (level: number) => Partial<Record<Ability, number>>
 }
 
@@ -140,6 +149,7 @@ export function featAsiLevels(data: FeatAsiStepData, choices: readonly FeatAsiCh
 		data,
 		choices,
 		granted,
+		draft: withChoices,
 		scoresBelow(level) {
 			if (!cache.has(level)) cache.set(level, abilityScoresBelowLevel(withChoices, data.feats, level))
 			return cache.get(level)!
@@ -161,22 +171,61 @@ export function featAsiLevelOffers(levels: FeatAsiLevels, level: number): FeatOf
 	return featOffers(levels.data.feats, [...levels.granted, ...pickedFeats(levels.choices, (other) => other !== level)], contextAt(levels, level), lower)
 }
 
+/** F-3: a choice's own ability increase on top of the scores below its level — the score may not pass 20 (30 for an Epic Boon's own `max`). */
+function abilityCapProblem(levels: FeatAsiLevels, choice: FeatAsiChoice, feat: FeatEntry | undefined): string | null {
+	const cap = feat ? featAbilityCap(feat) : ABILITY_SCORE_CAP
+	// Only this choice in the draft, so the contribution is exactly what the card adds.
+	const alone = { id: '', name: '', classes: [], featAsiChoices: [choice] }
+	const below = levels.scoresBelow(choice.level)
+	for (const ability of ABILITIES) {
+		const amount = featAbilityScoreContributions(ability, alone, levels.data.feats as unknown as FeatEffectEntry[]).reduce((sum, contribution) => sum + contribution.amount, 0)
+		if (amount > 0 && exceedsAbilityScoreCap(below, { [ability]: amount }, cap)) {
+			return `+${amount} ${ABILITY_ABBREVIATIONS[ability].toUpperCase()} would take ${ABILITY_LABEL[ability]} above ${cap} — choose another ability.`
+		}
+	}
+	return null
+}
+
 /**
  * D254: why a chosen feat is no longer valid, or null. Checked only against the granted feats and LOWER
- * levels, so of two cards holding the same feat only the higher one is flagged.
+ * levels, so of two cards holding the same feat only the higher one is flagged. F-3: an ASI or feat whose
+ * ability increase would pass the cap on top of the lower levels is flagged the same way.
  */
 export function featAsiChoiceProblem(levels: FeatAsiLevels, choice: FeatAsiChoice | undefined): string | null {
-	if (choice?.kind !== 'feat' || choice.name === '') return null
+	return choiceProblem(levels, choice)?.text ?? null
+}
+
+/** `blocking: false` is a warning only: the feat clashes with an item's feat, and the item can be dropped. */
+function choiceProblem(levels: FeatAsiLevels, choice: FeatAsiChoice | undefined): { text: string; blocking: boolean } | null {
+	if (!choice) return null
+	const cap = (feat: FeatEntry | undefined) => {
+		const text = abilityCapProblem(levels, choice, feat)
+		return text === null ? null : { text, blocking: true }
+	}
+	if (choice.kind === 'asi') return cap(undefined)
+	if (choice.name === '') return null
 	const feat = levels.data.feats.find((entry) => entry.name === choice.name && entry.source === choice.source)
 	if (!feat) return null
 	const lower = [...levels.granted, ...pickedFeats(levels.choices, (other) => other < choice.level)]
-	const taker = feat.repeatable ? undefined : lower.find((other) => sameFeatName(other, feat))
-	if (taker) return `${feat.name} is already taken (${taker.origin}) — choose another feat.`
+	const takers = feat.repeatable ? [] : lower.filter((other) => sameFeatName(other, feat))
+	// A blocking holder wins over an item, so an item never hides a clash the player must fix.
+	const blocker = takers.find((other) => !other.item)
+	if (blocker) return { text: `${feat.name} is already taken (${blocker.origin}) — choose another feat.`, blocking: true }
 	const result = evaluateFeatPrerequisites(feat, { ...contextAt(levels, choice.level), chosenFeats: chosenFeatRefs(levels.data.feats, lower) })
-	return result.eligible ? null : `${feat.name} no longer meets its prerequisite (${unmetPrerequisiteText(result)}) — choose another feat.`
+	if (!result.eligible) return { text: `${feat.name} no longer meets its prerequisite (${unmetPrerequisiteText(result)}) — choose another feat.`, blocking: true }
+	const capProblem = cap(feat)
+	if (capProblem) return capProblem
+	const item = takers[0]
+	return item ? { text: `${feat.name} is also granted by ${item.item?.name ?? 'an item'} — you may keep it or choose another feat.`, blocking: false } : null
 }
 
-/** The levels whose choice is invalid, leaving out `lockedLevels` (D254: a level up cannot change those). */
+/** The levels whose choice is invalid, leaving out `lockedLevels` (D254: a level up cannot change those) and warning-only clashes with an item's feat. */
 export function invalidFeatAsiLevels(levels: FeatAsiLevels, lockedLevels: readonly number[] = []): number[] {
-	return levels.choices.filter((choice) => !lockedLevels.includes(choice.level) && featAsiChoiceProblem(levels, choice) !== null).map((choice) => choice.level)
+	return levels.choices.filter((choice) => !lockedLevels.includes(choice.level) && choiceProblem(levels, choice)?.blocking === true).map((choice) => choice.level)
+}
+
+/** The ASI / Feat step's Next gate: still loading keeps it shut, a failed load opens it (the picker shows the error). */
+export function featAsiStepValid(load: FeatAsiStepLoad, choices: readonly FeatAsiChoice[], granted: readonly GrantedFeat[], draft: Character, lockedLevels: readonly number[] | undefined): boolean {
+	if (load.status !== 'ready') return load.status === 'error'
+	return invalidFeatAsiLevels(featAsiLevels(load.data, choices, granted, draft), lockedLevels).length === 0
 }

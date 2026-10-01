@@ -62,7 +62,7 @@ import { copperToCoins } from '../inventory/currency'
 import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
-import { featAsiLevels, grantedFeatsOf, invalidFeatAsiLevels, useFeatAsiStepData } from '../featAsi/featAsiLevels'
+import { featAsiStepValid, grantedFeatsOf, useFeatAsiStepData } from '../featAsi/featAsiLevels'
 import { featFixedExpertiseSkills, type FeatEffectEntry } from '../calculation/featEffects'
 import { OriginFeatSwapPicker } from '../featAsi/OriginFeatSwapPicker'
 import { backgroundOriginFeatFrom, featInstances,loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
@@ -203,6 +203,7 @@ export function CharacterWizard({
 	const [speciesSizeShape, setSpeciesSizeShape] = useState<{ key: string; sizes: string[] } | null>(null)
 	const [saveError, setSaveError] = useState<string | null>(null)
 	const [hitDie, setHitDie] = useState<{ key: string; faces: number } | null>(null)
+	const [hitDieAttempt, setHitDieAttempt] = useState(0)
 	/** W23: what Cancel compares against — the empty draft, or the seed once it is dispatched. */
 	const [baseline, setBaseline] = useState<WizardData>(emptyWizardData)
 	const [confirmingCancel, setConfirmingCancel] = useState(false)
@@ -1013,8 +1014,8 @@ export function CharacterWizard({
 			const { inventory: _inventory, ...draft } = draftCharacterForHitPoints
 			return draft
 		},
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- draftCharacterForHitPoints is rebuilt every render from exactly these.
-		[state.data, draftBackground?.name, draftBackground?.source, backgroundFeatOverride],
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- draftCharacterForHitPoints is rebuilt every render; only these parts of it reach a score (the name, hit points and classes do not).
+		[state.data.abilityScores, state.data.backgroundChoice, state.data.grantedFeats, state.data.featAsiChoices, draftBackground?.name, draftBackground?.source, backgroundFeatOverride],
 	)
 	const featAsiManualFeats = useMemo(() => state.data.grantedFeats.filter((feat) => feat.origin === 'manual'), [state.data.grantedFeats])
 	const featAsiItemFeats = useMemo(() => draftFeatInstances.filter((instance) => instance.origin === 'item'), [draftFeatInstances])
@@ -1028,11 +1029,10 @@ export function CharacterWizard({
 	)
 	const heldFeatAsiLevels = useMemo(() => (levelUp && character ? (character.featAsiChoices ?? []).map((choice) => choice.level) : undefined), [levelUp, character])
 	/** D254: an invalid feat choice locks the step's Next, except at a level a level up cannot change. Still loading keeps the step incomplete; a failed load relaxes it (the picker shows the error). */
-	const featAsiChoicesValid = useMemo(() => {
-		if (featAsiLoad.status !== 'ready') return featAsiLoad.status === 'error'
-		const levels = featAsiLevels(featAsiLoad.data, state.data.featAsiChoices, grantedFeatsOf(backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats), abilityTableDraft)
-		return invalidFeatAsiLevels(levels, heldFeatAsiLevels).length === 0
-	}, [featAsiLoad, state.data.featAsiChoices, state.data.classChoice?.level, backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats, abilityTableDraft, heldFeatAsiLevels])
+	const featAsiChoicesValid = useMemo(
+		() => featAsiStepValid(featAsiLoad, state.data.featAsiChoices, grantedFeatsOf(backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats), abilityTableDraft, heldFeatAsiLevels),
+		[featAsiLoad, state.data.featAsiChoices, backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats, abilityTableDraft, heldFeatAsiLevels],
+	)
 
 	/** As draftCharacterForHitPoints, plus the picks the hit points step itself owns (D107 needs the running total, not just its inputs) and the manual override (D9), so a character with one keeps it. */
 	const draftCharacterForMaxHp: Character = {
@@ -1122,7 +1122,7 @@ export function CharacterWizard({
 		return () => {
 			cancelled = true
 		}
-	}, [hitDieKey])
+	}, [hitDieKey, hitDieAttempt])
 
 	const spellSlotsResult = computeSpellSlots(draftCharacterForSpells, spellSlotsClassData)
 	const spellCountsResult = computeSpellCounts(draftCharacterForSpells, spellCountClassData)
@@ -1761,12 +1761,8 @@ export function CharacterWizard({
 				<div className="wizard__panel">
 					{knownSpellsIncompleteNotice}
 					<FeatAsiPicker
-						className={state.data.classChoice.className}
-						classSource={state.data.classChoice.classSource}
+						load={featAsiLoad}
 						level={state.data.classChoice.level}
-						speciesName={state.data.speciesChoice?.name ?? null}
-						speciesSource={state.data.speciesChoice?.source ?? null}
-						chosenSpeciesSize={state.data.speciesSize}
 						alreadyKnown={alreadyKnownSpells}
 						value={state.data.featAsiChoices}
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
@@ -1789,6 +1785,7 @@ export function CharacterWizard({
 						value={state.data.hitPointLevels}
 						onChange={(levels) => dispatch({ type: 'setHitPointLevels', levels })}
 						levelUpLevel={levelUp?.level}
+						onRetry={() => setHitDieAttempt((attempt) => attempt + 1)}
 					/>
 				</div>
 			)}

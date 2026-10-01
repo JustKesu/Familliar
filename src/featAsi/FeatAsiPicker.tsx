@@ -20,8 +20,10 @@ import { ABILITY_ABBREVIATIONS } from '../calculation/abilityAbbreviations'
 import { loadFixedFeatSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { featSpellPickerKey, knownSpellNote, knownSpellReason, type KnownSpell } from '../spells/knownSpells'
 import {
+	ABILITY_LABEL,
 	exceedsAbilityScoreCap,
 	FEAT_CATEGORY_LABELS,
+	featAbilityCap,
 	featAbilityChoiceOptions,
 	featCampaignNote,
 	featCategoryLabel,
@@ -32,7 +34,7 @@ import {
 	type FeatOffer,
 } from './featAsiData'
 import { featAsiCardTitle, featAsiMissing, FeatAsiLevelCard, featOptionLabel } from './FeatAsiLevelCard'
-import { featAsiChoiceProblem, featAsiLevelOffers, featAsiLevels, grantedFeatsOf, useFeatAsiStepData, type FeatAsiLevels } from './featAsiLevels'
+import { featAsiChoiceProblem, featAsiLevelOffers, featAsiLevels, grantedFeatsOf, type FeatAsiLevels, type FeatAsiStepLoad } from './featAsiLevels'
 import type { FeatInstanceKey, FeatRef } from './featInstances'
 import { FeatSubChoicePicker, type FeatChoiceHeld } from './FeatSubChoicePicker'
 
@@ -48,27 +50,12 @@ import { FeatSubChoicePicker, type FeatChoiceHeld } from './FeatSubChoicePicker'
 
 const ASI_TEXT = 'Increase one ability score by 2, or two ability scores by 1 each. No score can go above 20.'
 
-const ABILITY_LABEL: Record<Ability, string> = {
-	strength: 'Strength',
-	dexterity: 'Dexterity',
-	constitution: 'Constitution',
-	intelligence: 'Intelligence',
-	wisdom: 'Wisdom',
-	charisma: 'Charisma',
-}
-
 const NO_LOCKED_LEVELS: readonly number[] = []
 const NO_MANUAL_FEATS: readonly FeatRef[] = []
-const NO_SCORES: Partial<Record<Ability, number>> = {}
 
 export function FeatAsiPicker({
-	className,
-	classSource,
+	load,
 	level,
-	finalAbilityScores = NO_SCORES,
-	speciesName,
-	speciesSource,
-	chosenSpeciesSize = null,
 	value,
 	onChange,
 	alreadyKnown = [],
@@ -81,15 +68,9 @@ export function FeatAsiPicker({
 	abilityDraft,
 	resolverData,
 }: {
-	className: string
-	classSource: string
+	/** F-3: the wizard's own load (useFeatAsiStepData), so the step's gate and the picker read one state. */
+	load: FeatAsiStepLoad
 	level: number
-	/** Base scores used only when there is no `abilityDraft`; prerequisites and the cap add every lower level's ASI and feats to them (D253). */
-	finalAbilityScores?: Partial<Record<Ability, number>>
-	speciesName: string | null
-	speciesSource: string | null
-	/** D175: the size the player chose for a multi-size species; species.json alone leaves a "small race" prerequisite unresolved for it. */
-	chosenSpeciesSize?: string | null
 	value: FeatAsiChoice[]
 	onChange: (choices: FeatAsiChoice[]) => void
 	/** Spells the character already has from elsewhere (knownSpells.ts) — shown but not selectable in either spell sub-picker below. A feat's own picks are excluded by key so unselecting stays possible. */
@@ -106,21 +87,14 @@ export function FeatAsiPicker({
 	heldForFeat?: (key: FeatInstanceKey) => FeatChoiceHeld
 	/** D179: show that a feat's own picks can wait for Edit Character. */
 	laterNote?: boolean
-	/** W16: the draft character the ability table on top reads (scores, background bonus, other feats); the table is left out without it. D253: also the base of each card's prerequisite scores. */
-	abilityDraft?: Character
+	/** W16: the draft character the ability table on top reads (scores, background bonus, other feats). D253: also the base of each card's prerequisite scores. */
+	abilityDraft: Character
 	resolverData?: ResolverData
 }): ReactNode {
-	const load = useFeatAsiStepData(className, classSource, level, speciesName, speciesSource, chosenSpeciesSize)
-	const levels = useMemo(() => {
-		if (load.status !== 'ready') return null
-		const draft: Character = abilityDraft ?? {
-			id: '',
-			name: '',
-			classes: [],
-			abilityScores: { method: 'standardArray', scores: Object.fromEntries(ABILITIES.map((ability) => [ability, finalAbilityScores[ability] ?? 0])) as Record<Ability, number> },
-		}
-		return featAsiLevels(load.data, value, grantedFeatsOf(backgroundOriginFeat, manualFeats, itemFeats), draft)
-	}, [load, value, abilityDraft, finalAbilityScores, backgroundOriginFeat, manualFeats, itemFeats, level])
+	const levels = useMemo(
+		() => (load.status === 'ready' ? featAsiLevels(load.data, value, grantedFeatsOf(backgroundOriginFeat, manualFeats, itemFeats), abilityDraft) : null),
+		[load, value, abilityDraft, backgroundOriginFeat, manualFeats, itemFeats],
+	)
 
 	if (load.status === 'error') {
 		return <p className="error">Could not load feats: {load.message}</p>
@@ -134,8 +108,9 @@ export function FeatAsiPicker({
 
 	function setChoiceAt(index: number, choice: FeatAsiChoice): void {
 		if (lockedLevels.includes(grants[index].level)) return
-		const next = [...value]
-		next[index] = choice
+		// Choosing a later card first must not leave holes: readers iterate the array, and the unchosen card is the empty feat placeholder.
+		const next = Array.from({ length: index }, (_, i): FeatAsiChoice => value[i] ?? { level: grants[i].level, kind: 'feat', name: '', source: '' })
+		next.push(choice, ...value.slice(index + 1))
 		onChange(next.slice(0, grants.length))
 	}
 
@@ -147,16 +122,14 @@ export function FeatAsiPicker({
 
 	return (
 		<div className="feat-asi-picker">
-			{abilityDraft && (
-				<div className="feat-asi-picker__table">
-					<AbilityScoreTable
-						base={Object.fromEntries(ABILITIES.map((ability) => [ability, abilityDraft.abilityScores?.scores[ability] ?? null])) as Record<Ability, number | null>}
-						background={abilityDraft.abilityBonus}
-						feats={featEffects}
-						draft={{ ...abilityDraft, featAsiChoices: value }}
-					/>
-				</div>
-			)}
+			<div className="feat-asi-picker__table">
+				<AbilityScoreTable
+					base={Object.fromEntries(ABILITIES.map((ability) => [ability, abilityDraft.abilityScores?.scores[ability] ?? null])) as Record<Ability, number | null>}
+					background={abilityDraft.abilityBonus}
+					feats={featEffects}
+					draft={levels.draft}
+				/>
+			</div>
 			{grants.map((grant, index) => {
 				const current = value[index]
 				const locked = lockedLevels.includes(grant.level)
@@ -207,6 +180,8 @@ export function FeatAsiPicker({
 							<HalfFeatAbilitySelect
 								grantLevel={grant.level}
 								options={abilityOptions}
+								currentScores={levels.scoresBelow(grant.level)}
+								cap={featAbilityCap(selectedFeat!)}
 								value={current.chosenAbility}
 								onChange={(ability) => setChoiceAt(index, { ...current, chosenAbility: ability })}
 							/>
@@ -438,15 +413,19 @@ function FeatOrAsiSelect({
 	)
 }
 
-/** A half-feat's +1 (task instructions point 4). */
+/** A half-feat's +1 (task instructions point 4); an ability already at the feat's cap is listed but disabled, like the ASI select. */
 function HalfFeatAbilitySelect({
 	grantLevel,
 	options,
+	currentScores,
+	cap,
 	value,
 	onChange,
 }: {
 	grantLevel: number
 	options: Ability[]
+	currentScores: Partial<Record<Ability, number>>
+	cap: number
 	value: Ability | undefined
 	onChange: (ability: Ability) => void
 }): ReactNode {
@@ -457,11 +436,15 @@ function HalfFeatAbilitySelect({
 				<option value="" disabled>
 					Choose an ability
 				</option>
-				{options.map((ability) => (
-					<option key={ability} value={ability}>
-						{ABILITY_LABEL[ability]}
-					</option>
-				))}
+				{options.map((ability) => {
+					const over = exceedsAbilityScoreCap(currentScores, { [ability]: 1 }, cap)
+					return (
+						<option key={ability} value={ability} disabled={over}>
+							{ABILITY_LABEL[ability]}
+							{over ? ` (would exceed ${cap})` : ''}
+						</option>
+					)
+				})}
 			</select>
 		</label>
 	)

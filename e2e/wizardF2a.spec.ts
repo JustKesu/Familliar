@@ -40,13 +40,23 @@ async function patchStored(page: Page, patch: { strength?: number; featAsiLevel?
   await page.evaluate(
     ({ key, patch }) => {
       const [character] = JSON.parse(localStorage.getItem(key)!)
-      if (patch.strength !== undefined) character.abilityScores.scores.strength = patch.strength
+      // STR 11 is not in the standard array; point buy (27 points, this spends 21) is a method that can hold it.
+      if (patch.strength !== undefined) {
+        character.abilityScores.scores.strength = patch.strength
+        character.abilityScores.method = 'pointBuy'
+      }
       if (patch.featAsiLevel) {
         character.featAsiChoices = character.featAsiChoices.map((choice: { level: number }) =>
           choice.level === patch.featAsiLevel!.level ? { level: choice.level, kind: 'feat', name: patch.featAsiLevel!.name, source: 'XPHB' } : choice,
         )
       }
-      if (patch.farmer) character.background = { name: 'Farmer', source: 'XPHB', skillProficiencies: ['animal handling', 'nature'], toolProficiency: "Carpenter's Tools" }
+      if (patch.farmer) {
+        // What the Background step leaves behind: Farmer's own +2/+1 (Strength, Constitution and Wisdom are its choices), and no
+        // Acolyte entry. Tough has no sub-choice, so the app stores no 'background' grantedFeats entry for it at all.
+        character.background = { name: 'Farmer', source: 'XPHB', skillProficiencies: ['animal handling', 'nature'], toolProficiency: "Carpenter's Tools" }
+        character.abilityBonus = { strength: 2, constitution: 1 }
+        if (character.grantedFeats) character.grantedFeats = character.grantedFeats.filter((feat: { origin: string }) => feat.origin !== 'background')
+      }
       localStorage.setItem(key, JSON.stringify([character]))
     },
     { key: STORAGE_KEY, patch },

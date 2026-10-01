@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { featsRequiringAbilityChoice } from '../featAsi/featAsiData'
-import type { Character } from '../storage/character'
+import type { Character, CharacterHitPointLevel } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
 	emptyWizardData,
@@ -733,6 +733,24 @@ describe('pruneClassPicks (D251)', () => {
 			},
 		}
 		expect(wizardReducer(ranger, { type: 'pruneClassPicks', requirements: { ...known, subclass: false, fightingStyle: false, optionalFeatureCount: 0 } }).data.featureLanguages).toEqual([])
+	})
+
+	it('D260: drops hit point rows above the chosen level, keeps the rest, and the state is unchanged when none are above', () => {
+		const rolled = (level: number): CharacterHitPointLevel => ({ level, kind: 'roll', dieResult: 4 })
+		const fighter8: WizardControllerState = {
+			step: 'class',
+			data: {
+				...completeData(),
+				subclass: null,
+				optionalFeatureChoices: [],
+				classChoice: { className: 'Fighter', classSource: 'XPHB', level: 4 },
+				hitPointLevels: [2, 3, 4, 5, 6, 7, 8].map(rolled),
+			},
+		}
+		const requirements = { ...known, subclass: false, optionalFeatureCount: 0 }
+		const pruned = wizardReducer(fighter8, { type: 'pruneClassPicks', requirements })
+		expect(pruned.data.hitPointLevels.map((entry) => entry.level)).toEqual([2, 3, 4])
+		expect(wizardReducer(pruned, { type: 'pruneClassPicks', requirements })).toBe(pruned)
 	})
 
 	it('D256: drops Class options picks of a progression the level no longer grants', () => {

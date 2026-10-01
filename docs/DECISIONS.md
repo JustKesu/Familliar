@@ -4407,3 +4407,37 @@ ho ukáže jako „no choice recorded“). (3) Manual přijme jen číslice (`/^
 (4) Neznámá kostka (lookup selhal nebo ještě nedoběhl) už není „libovolné číslo ≥ 1“: brána kroku zůstává
 nesplněná a picker ukáže svou chybu. (5) `setLevel` drží `hitPointLevels` seřazené podle úrovně. Upřesňuje
 D250.
+
+## D259 — Strop vlastnosti platí na každé kartě ASI / Feat (F-3)
+
+D259: Strop skóre platí pro ASI, pro +1 half-featu i pro pevný bonus featu. Strop je 20; Epic Boon má strop
+z dat — feats.json nese `max: 30` u položky `ability` všech 26 Epic Boonů, ostatní feat `max` nemají (`featAbilityCap`).
+Karta se kontroluje proti skóre pod její úrovní (D253) plus příspěvku jen její vlastní volby
+(`featAbilityScoreContributions`). Karta, jejíž volba strop překročí, je označená jako u D254: otevře se,
+věta „+2 STR would take Strength above 20 — choose another ability.“ je součástí řádku „Choose …“ a Next
+(i brána uložení) je zamčený. Platí i když strop překročí až pozdější změna NIŽŠÍ karty. Výjimka jako u D254:
+zamčené dřívější úrovně při level upu ukážou větu s „Fix it in Edit Character.“ a Next nezamykají. Výběr
+vlastnosti half-featu zakáže volby přes strop, důvod je v textu volby („Strength (would exceed 20)“), jako
+u ASI. Upřesňuje D20 a D254.
+
+## D260 — Snížení úrovně nové postavy prořeže i řádky Hit points (F-3)
+
+D260: Rozšíření D256, opět jen u nové postavy: `pruneClassPicks` zahodí i `hitPointLevels` nad novou úrovní. Bez
+toho zůstaly staré hody v uložené postavě a pozdější level up je našel a krok Hit points přeskočil bez nové
+volby. Edit Character a level up nemažou nic (stejný `character === undefined` strážce jako D251/D256).
+
+## D261 — Konflikt featu s featem z předmětu je jen varování (F-3)
+
+D261: Feat zvolený na kartě, který dává i předmět (origin `item`), už Next nezamyká: karta se otevře s větou
+„Alert is also granted by <předmět> — you may keep it or choose another feat.“, ale krok je platný. Předmět lze
+kdykoli odebrat, volba na kartě je trvalá. Konflikt s origin featem backgroundu, ručním featem nebo nižší
+úrovní zůstává blokující (D254) a má přednost, i když feat drží zároveň předmět. Upřesňuje D254.
+
+## D262 — Hit points: Retry u selhaného lookupu kostky, jedno načtení kroku ASI / Feat (F-3)
+
+D262: (1) Chyba pickeru Hit points při selhaném načtení má tlačítko „Retry“; přepočítá načtení pickeru i
+wizardův lookup kostky (brána D258) přes čítač v deps efektů. `loadDataFile` odmítnutý promise nekešuje,
+takže nový pokus opravdu načítá znovu. (2) Wizard předává `FeatAsiPicker` svůj `featAsiLoad` jako prop
+(`load`) a `abilityDraft` je povinný; tabulka nahoře čte stejný draft jako karty (`FeatAsiLevels.draft`,
+včetně origin featu backgroundu). Brána `featAsiChoicesValid` je čistá funkce `featAsiStepValid`, jejíž deps jsou
+jen `abilityScores`, `backgroundChoice`, `grantedFeats` a `featAsiChoices`.

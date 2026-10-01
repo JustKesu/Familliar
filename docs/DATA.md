@@ -1031,6 +1031,11 @@ Pozor na počet: dřívější zadání mluvilo o 70 choice featech — ty dva
 navíc byla samotná "Ability Score Improvement", kterou picker
 z nabídky featů vyřazuje.
 
+Strop skóre (F-3, D259): položka `ability` nese `max: 30` u všech 26 Epic
+Boonů (25 s volbou, Boon of Terror pevný) a u žádného jiného featu (13 pevných
+a 60 s volbou kategorie G ho nemá). Strop 20 u ostatních featů a u ASI tedy
+v datech není, je jen v pravidlech; `featAbilityCap` čte `max` a jinak vrací 20.
+
 ### Beast stat blocks — CR, type and the markup they carry
 
 `cr` is a display string ("1/4", "2") OR an object `{ cr, xp }` — both shapes

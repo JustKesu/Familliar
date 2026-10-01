@@ -42,6 +42,7 @@ export function HitPointsPicker({
 	value,
 	onChange,
 	levelUpLevel,
+	onRetry,
 }: {
 	/** A draft Character carrying classes (single class, D11), species, background and featAsiChoices — everything computeMaxHitPoints and its bonus-feature lookup need. */
 	character: Character
@@ -56,9 +57,12 @@ export function HitPointsPicker({
 	 * still show every level from 2 up.
 	 */
 	levelUpLevel?: number
+	/** F-3: the parent's own hit die lookup (the Next gate) is retried with the picker's. */
+	onRetry?: () => void
 }): ReactNode {
 	const [loaded, setLoaded] = useState<LoadedData | null>(null)
 	const [loadError, setLoadError] = useState<string | null>(null)
+	const [attempt, setAttempt] = useState(0)
 
 	useEffect(() => {
 		let cancelled = false
@@ -89,9 +93,27 @@ export function HitPointsPicker({
 		character.background?.source,
 		character.featAsiChoices,
 		character.inventory,
+		attempt,
 	])
 
-	if (loadError) return <p className="error">Could not load hit points: {loadError}</p>
+	if (loadError) {
+		return (
+			<div>
+				<p className="error">Could not load hit points: {loadError}</p>
+				<button
+					type="button"
+					className="btn--accent-outline"
+					onClick={() => {
+						setLoadError(null)
+						setAttempt(attempt + 1)
+						onRetry?.()
+					}}
+				>
+					Retry
+				</button>
+			</div>
+		)
+	}
 	if (!loaded) return <p>Loading…</p>
 
 	const pool = computeHitDicePool(character.classes, loaded.classData)

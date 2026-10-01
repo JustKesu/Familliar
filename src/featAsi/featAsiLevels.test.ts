@@ -1,9 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import type { Character, FeatAsiChoice } from '../storage/character'
+import { computeAbilityScores } from '../calculation/abilityScores'
+import type { FeatEffectEntry } from '../calculation/featEffects'
+import { ABILITIES } from '../abilities/abilityScores'
 import type { FeatEntry } from './featAsiData'
-import { abilityScoresBelowLevel, featAsiChoiceProblem, featAsiLevelOffers, featAsiLevels, grantedFeatsOf, invalidFeatAsiLevels, type FeatAsiStepData } from './featAsiLevels'
+import {
+	abilityScoresBelowLevel,
+	featAsiChoiceProblem,
+	featAsiLevelOffers,
+	featAsiLevels,
+	featAsiStepValid,
+	grantedFeatsOf,
+	invalidFeatAsiLevels,
+	type FeatAsiStepData,
+	type FeatAsiStepLoad,
+} from './featAsiLevels'
 
 const feats = [
+	{ name: 'Fixed Strength', source: 'TEST', category: 'G', ability: [{ str: 1 }] },
+	{ name: 'Boon of Might', source: 'TEST', category: 'EB', ability: [{ choose: { from: ['str', 'dex'] }, max: 30 }] },
 	{ name: 'Tough', source: 'XPHB', category: 'O' },
 	{ name: 'Alert', source: 'XPHB', category: 'O' },
 	{ name: 'Alert', source: 'PHB', category: 'G' },
@@ -37,11 +52,35 @@ describe('D253: ability scores below a card', () => {
 				{ level: 6, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' },
 				{ level: 8, kind: 'asi', increases: { strength: 2 } },
 			],
-			inventory: [{ name: 'Gauntlets of Ogre Power', source: 'DMG', quantity: 1, attuned: true }] as unknown as Character['inventory'],
+			// The custom ring grants a half-feat through itemFeatGrants; it would add +1 STR if the inventory were not left out.
+			inventory: [
+				{ name: 'Gauntlets of Ogre Power', source: 'DMG', quantity: 1, attuned: true },
+				{ name: 'Ring of Might', source: 'custom', quantity: 1, custom: { name: 'Ring of Might', kind: 'worn', feats: [{ name: 'Athlete', source: 'XPHB', chosenAbility: 'strength' }] } },
+			] as unknown as Character['inventory'],
 		})
+		const withItem = computeAbilityScores(character, feats as unknown as FeatEffectEntry[]).strength
+		expect(withItem.status === 'known' && withItem.value.score).toBe(12 + 2 + 1 + 2 + 1)
 		expect(abilityScoresBelowLevel(character, feats, 4).strength).toBe(12)
 		expect(abilityScoresBelowLevel(character, feats, 6).strength).toBe(14)
 		expect(abilityScoresBelowLevel(character, feats, 8).strength).toBe(15)
+	})
+
+	it('at a level above every choice equals the scores the sheet shows without items', () => {
+		const character = draft(11, {
+			abilityBonus: { strength: 1, dexterity: 2 },
+			featAsiChoices: [
+				{ level: 4, kind: 'asi', increases: { strength: 2 } },
+				{ level: 6, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility: 'dexterity' },
+				{ level: 8, kind: 'asi', increases: { dexterity: 1, wisdom: 1 } },
+			],
+			grantedFeats: [{ origin: 'manual', name: 'Fixed Strength', source: 'TEST' }],
+		})
+		const sheet = computeAbilityScores(character, feats as unknown as FeatEffectEntry[])
+		const below = abilityScoresBelowLevel(character, feats, 21)
+		for (const ability of ABILITIES) {
+			const score = sheet[ability]
+			expect(below[ability]).toBe(score.status === 'known' ? score.value.score : undefined)
+		}
 	})
 
 	it('counts the background origin feat and manual feats, whatever the level', () => {
@@ -71,10 +110,31 @@ describe('D254: a chosen feat that is no longer valid', () => {
 		expect(invalidFeatAsiLevels(twice, [8])).toEqual([])
 	})
 
-	it('names the manual and item origins', () => {
+	it('names the manual origin', () => {
 		const levels = levelsOf([], 12, grantedFeatsOf(null, [{ name: 'Tough', source: 'XPHB' }], [{ name: 'Alert', source: 'XPHB', itemName: 'Ring' }]))
 		expect(featAsiChoiceProblem(levels, { level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' })).toBe('Tough is already taken (Added manually) — choose another feat.')
-		expect(featAsiChoiceProblem(levels, { level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' })).toBe('Alert is already taken (From item (Ring)) — choose another feat.')
+	})
+
+	it('a clash with an item feat is a warning that does not lock the step', () => {
+		const alert: FeatAsiChoice = { level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }
+		const levels = levelsOf([alert], 12, grantedFeatsOf(null, [], [{ name: 'Alert', source: 'XPHB', itemName: 'Ring' }]))
+		expect(featAsiChoiceProblem(levels, alert)).toBe('Alert is also granted by Ring — you may keep it or choose another feat.')
+		expect(invalidFeatAsiLevels(levels)).toEqual([])
+		const unnamed = levelsOf([alert], 12, grantedFeatsOf(null, [], [{ name: 'Alert', source: 'XPHB' }]))
+		expect(featAsiChoiceProblem(unnamed, alert)).toBe('Alert is also granted by an item — you may keep it or choose another feat.')
+	})
+
+	it('an item never hides a holder the player must fix', () => {
+		const alert: FeatAsiChoice = { level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }
+		const itemFirst = grantedFeatsOf({ name: 'Alert', source: 'XPHB' }, [], [{ name: 'Alert', source: 'XPHB', itemName: 'Ring' }])
+		expect(featAsiChoiceProblem(levelsOf([alert], 12, itemFirst), alert)).toBe('Alert is already taken (Background) — choose another feat.')
+		const lowerLevel = levelsOf(
+			[alert, { level: 8, kind: 'feat', name: 'Alert', source: 'XPHB' }],
+			12,
+			grantedFeatsOf(null, [], [{ name: 'Alert', source: 'XPHB', itemName: 'Ring' }]),
+		)
+		expect(invalidFeatAsiLevels(lowerLevel)).toEqual([8])
+		expect(featAsiChoiceProblem(lowerLevel, lowerLevel.choices[1])).toBe('Alert is already taken (level 4) — choose another feat.')
 	})
 
 	it('a repeatable feat is never taken', () => {
@@ -105,6 +165,65 @@ describe('D254: a chosen feat that is no longer valid', () => {
 		])
 		expect(invalidFeatAsiLevels(levels)).toEqual([8])
 		expect(featAsiChoiceProblem(levels, levels.choices[2])).toBe('Gift A no longer meets its prerequisite (already has a Dark Gift) — choose another feat.')
+	})
+
+	it('a Dark Gift on the background excludes a different one chosen at a level', () => {
+		const levels = levelsOf([{ level: 4, kind: 'feat', name: 'Gift A', source: 'TEST' }], 12, grantedFeatsOf({ name: 'Gift B', source: 'TEST' }, [], []))
+		expect(featAsiChoiceProblem(levels, levels.choices[0])).toBe('Gift A no longer meets its prerequisite (already has a Dark Gift) — choose another feat.')
+	})
+})
+
+describe('F-3: the ability cap on every card', () => {
+	const asi = (level: number, ability: 'strength' | 'dexterity'): FeatAsiChoice => ({ level, kind: 'asi', increases: { [ability]: 2 } })
+
+	it('flags a card whose ASI passes 20 once a LOWER card is changed, and locks it only outside a level up', () => {
+		// STR 15 + background +1 = 16; 6: +2 -> 18, 8: +2 -> 20, then 4: +2 pushes card 8 to 22.
+		const base = { abilityBonus: { strength: 1 } }
+		const before = levelsOf([asi(6, 'strength'), asi(8, 'strength')], 15, grantedFeatsOf(null, [], []), base)
+		expect(invalidFeatAsiLevels(before)).toEqual([])
+		const after = levelsOf([asi(4, 'strength'), asi(6, 'strength'), asi(8, 'strength')], 15, grantedFeatsOf(null, [], []), base)
+		expect(invalidFeatAsiLevels(after)).toEqual([8])
+		expect(featAsiChoiceProblem(after, after.choices[2])).toBe('+2 STR would take Strength above 20 — choose another ability.')
+		expect(featAsiChoiceProblem(after, after.choices[1])).toBeNull()
+		expect(invalidFeatAsiLevels(after, [8])).toEqual([])
+		expect(featAsiChoiceProblem(after, after.choices[2])).not.toBeNull()
+	})
+
+	it('flags a half-feat bonus and a fixed feat bonus above 20', () => {
+		const athlete = (chosenAbility: 'strength' | 'dexterity'): FeatAsiChoice => ({ level: 8, kind: 'feat', name: 'Athlete', source: 'XPHB', chosenAbility })
+		const full = levelsOf([athlete('strength')], 20)
+		expect(featAsiChoiceProblem(full, full.choices[0])).toBe('+1 STR would take Strength above 20 — choose another ability.')
+		expect(featAsiChoiceProblem(levelsOf([athlete('dexterity')], 20), athlete('dexterity'))).toBeNull()
+		const fixed = levelsOf([{ level: 8, kind: 'feat', name: 'Fixed Strength', source: 'TEST' }], 20)
+		expect(featAsiChoiceProblem(fixed, fixed.choices[0])).toBe('+1 STR would take Strength above 20 — choose another ability.')
+		expect(featAsiChoiceProblem(levelsOf([{ level: 8, kind: 'feat', name: 'Fixed Strength', source: 'TEST' }], 19), { level: 8, kind: 'feat', name: 'Fixed Strength', source: 'TEST' })).toBeNull()
+	})
+
+	it('an Epic Boon goes up to the feat’s own max of 30', () => {
+		const boon = (strength: number): ReturnType<typeof levelsOf> => levelsOf([{ level: 8, kind: 'feat', name: 'Boon of Might', source: 'TEST', chosenAbility: 'strength' }], strength)
+		expect(featAsiChoiceProblem(boon(29), boon(29).choices[0])).toBeNull()
+		expect(featAsiChoiceProblem(boon(30), boon(30).choices[0])).toBe('+1 STR would take Strength above 30 — choose another ability.')
+	})
+
+	it('a choice not yet complete adds nothing', () => {
+		const levels = levelsOf([{ level: 4, kind: 'asi', increases: {} }, { level: 6, kind: 'feat', name: 'Athlete', source: 'XPHB' }], 20)
+		expect(invalidFeatAsiLevels(levels)).toEqual([])
+	})
+})
+
+describe('F-3: the Next gate', () => {
+	const choices: FeatAsiChoice[] = [{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }]
+	const granted = grantedFeatsOf({ name: 'Tough', source: 'XPHB' }, [], [])
+	const gate = (load: FeatAsiStepLoad, held?: number[]) => featAsiStepValid(load, choices, granted, draft(12), held)
+
+	it('stays shut while loading and opens after a failed load', () => {
+		expect(gate({ status: 'loading' })).toBe(false)
+		expect(gate({ status: 'error', message: 'offline' })).toBe(true)
+	})
+
+	it('follows the choices once loaded, except at a level a level up cannot change', () => {
+		expect(gate({ status: 'ready', data })).toBe(false)
+		expect(gate({ status: 'ready', data }, [4])).toBe(true)
 	})
 })
 

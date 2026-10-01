@@ -220,6 +220,8 @@ function pruneClassPicks(state: WizardControllerState, required: ClassPickRequir
 	const wildShapeForms = data.classChoice && wildShapeLimits(data.classChoice.className, data.classChoice.level, data.subclass?.name ?? null) ? data.wildShapeForms : []
 	// D256: outside the Class step too — ASI levels and Proficiencies-step picks above the chosen level.
 	const featAsiChoices = data.featAsiChoices.filter((choice) => choice.level <= (data.classChoice?.level ?? 0))
+	// D260: hit point rows above the chosen level go too, or a later level up finds an old roll and skips its own choice.
+	const hitPointLevels = data.hitPointLevels.filter((entry) => entry.level <= (data.classChoice?.level ?? 0))
 	const above = grantedAboveLevel(data)
 	const featureLanguages = data.featureLanguages.filter((language) => !above.languages.has(language.grantedBy))
 	const toolChoices = data.toolChoices.filter((choice) => !above.tools.has(choice.grantedBy))
@@ -230,6 +232,7 @@ function pruneClassPicks(state: WizardControllerState, required: ClassPickRequir
 		classFeatureChoices.length === data.classFeatureChoices.length &&
 		wildShapeForms.length === data.wildShapeForms.length &&
 		featAsiChoices.length === data.featAsiChoices.length &&
+		hitPointLevels.length === data.hitPointLevels.length &&
 		featureLanguages.length === data.featureLanguages.length &&
 		toolChoices.length === data.toolChoices.length &&
 		subclassSkills.length === data.subclassSkills.length
@@ -238,7 +241,7 @@ function pruneClassPicks(state: WizardControllerState, required: ClassPickRequir
 	}
 	return {
 		...unsubclassed,
-		data: { ...data, fightingStyle, optionalFeatureChoices, classFeatureChoices, wildShapeForms, featAsiChoices, featureLanguages, toolChoices, subclassSkills },
+		data: { ...data, fightingStyle, optionalFeatureChoices, classFeatureChoices, wildShapeForms, featAsiChoices, hitPointLevels, featureLanguages, toolChoices, subclassSkills },
 	}
 }
 

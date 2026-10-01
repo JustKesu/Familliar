@@ -2128,6 +2128,16 @@ die keeps the step incomplete, `setLevel` keeps levels sorted, the wizard reuses
 `rollDice`. E2E `wizardW6.spec.ts` rewritten on roles/testids plus five F-2b scenarios; `e2e/wizard.ts`
 `stopAtAsi` option.
 
+F-3 (D259–D262) done. No schema bump. Fixes from the F-2a/F-2b review. The ability cap (20; an Epic Boon's own
+`max: 30` from feats.json via `featAbilityCap`) now applies on every ASI / Feat card: `featAsiChoiceProblem`
+checks the card's own increase against `scoresBelow` (ASI, half-feat bonus, fixed feat bonus), so a later change
+to a lower card flags it like D254; `HalfFeatAbilitySelect` disables abilities over the cap. A clash with an
+item's feat is a warning only (`GrantedFeat.item`, non-blocking in `invalidFeatAsiLevels`). `pruneClassPicks`
+also drops `hitPointLevels` above the new level. The Hit points error has a Retry button (`onRetry` also
+retries the wizard's hit die lookup). `FeatAsiPicker` takes the wizard's `load` and a required `abilityDraft`
+(`FeatAsiLevels.draft`, so the table counts the background origin feat); the Next gate is `featAsiStepValid`.
+E2E `wizardF3.spec.ts` 1–4; `wizardF2a.spec.ts` seeds only states the app can produce.
+
 **Krok 9 běží.** Slice 9a1 (D110) zavedla dočasné životy, panel
 poškození/léčení v hlavičce a clamp current HP na 0 — a s ní tvar, který další
 slice kroku 9 kopírují: nepovinné pole na `Character`, absence = nic

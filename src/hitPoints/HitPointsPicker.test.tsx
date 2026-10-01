@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HitPointsPicker } from './HitPointsPicker'
+import { loadHitDiceClassData } from '../sheet/sheetData'
 import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import type { Character, CharacterHitPointLevel } from '../storage/character'
 
@@ -196,6 +197,18 @@ describe('HitPointsPicker', () => {
 			{ level: 2, kind: 'average', dieResult: 6 },
 			{ level: 5, kind: 'average', dieResult: 6 },
 		])
+	})
+
+	it('F-3: a failed lookup offers Retry, which loads again, tells the parent and shows the rows', async () => {
+		vi.mocked(loadHitDiceClassData).mockRejectedValueOnce(new Error('network down'))
+		const onRetry = vi.fn()
+		render(<HitPointsPicker character={fighter(2)} value={[]} onChange={() => {}} onRetry={onRetry} />)
+
+		expect(await screen.findByText('Could not load hit points: network down')).toBeTruthy()
+		fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+		expect(await screen.findByLabelText('Average (6)')).toBeTruthy()
+		expect(onRetry).toHaveBeenCalledTimes(1)
+		expect(screen.queryByText(/Could not load hit points/)).toBeNull()
 	})
 
 	/* Task instructions: the running total must come from computeMaxHitPoints itself, never a second sum written here. */

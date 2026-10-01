@@ -124,12 +124,26 @@ export function isValidAbilityIncrease(increases: AbilityIncreaseMap): boolean {
 	return false
 }
 
-/** True if applying `increases` on top of `currentScores` would push any ability above the cap. */
-export function exceedsAbilityScoreCap(currentScores: Partial<Record<Ability, number>>, increases: AbilityIncreaseMap): boolean {
+export const ABILITY_LABEL: Record<Ability, string> = {
+	strength: 'Strength',
+	dexterity: 'Dexterity',
+	constitution: 'Constitution',
+	intelligence: 'Intelligence',
+	wisdom: 'Wisdom',
+	charisma: 'Charisma',
+}
+
+/** True if applying `increases` on top of `currentScores` would push any ability above `cap`. */
+export function exceedsAbilityScoreCap(currentScores: Partial<Record<Ability, number>>, increases: AbilityIncreaseMap, cap: number = ABILITY_SCORE_CAP): boolean {
 	return Object.entries(increases).some(([ability, amount]) => {
 		const current = currentScores[ability as Ability] ?? 0
-		return current + (amount ?? 0) > ABILITY_SCORE_CAP
+		return current + (amount ?? 0) > cap
 	})
+}
+
+/** F-3: the ceiling a feat's own ability bonus may reach — feats.json carries `max: 30` on the Epic Boons, none on the rest (20). */
+export function featAbilityCap(feat: FeatEntry): number {
+	return feat.ability?.[0]?.max ?? ABILITY_SCORE_CAP
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +168,8 @@ export interface RawFeatPrerequisiteEntry {
 /** One feats.json `ability` array entry: either a fixed bonus (key = ability abbreviation) or a choice among named abilities. Only `choose` is read — fixed-bonus entries need no ability picker (D-ASI-ability). */
 export interface RawFeatAbilityEntry {
 	choose?: { from: AbilityAbbreviation[] }
+	/** The ability maximum the bonus may reach; 30 on every Epic Boon, absent elsewhere. */
+	max?: number
 }
 
 export interface FeatEntry {
