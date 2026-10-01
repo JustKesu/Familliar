@@ -61,6 +61,7 @@ export function FeatAsiPicker({
 	alreadyKnown = [],
 	lockedLevels = NO_LOCKED_LEVELS,
 	backgroundOriginFeat = null,
+	speciesFeat = null,
 	manualFeats = NO_MANUAL_FEATS,
 	itemFeats = NO_MANUAL_FEATS,
 	heldForFeat,
@@ -79,6 +80,8 @@ export function FeatAsiPicker({
 	lockedLevels?: readonly number[]
 	/** The feat the background grants (D156) — counts as already taken, so a non-repeatable one is not offered again. */
 	backgroundOriginFeat?: FeatRef | null
+	/** D271: the species' origin feat (Human Versatile) — taken, same as the background's. */
+	speciesFeat?: FeatRef | null
 	/** Feats added manually (R13b, D215: grantedFeats origin 'manual') — count as already taken and in the prerequisite context, same as featOffers in the Manage Feats panel. */
 	manualFeats?: readonly FeatRef[]
 	/** R14c1 (D218): feats an item grants right now — count as already taken; never in the ability scores (D253). */
@@ -92,8 +95,8 @@ export function FeatAsiPicker({
 	resolverData?: ResolverData
 }): ReactNode {
 	const levels = useMemo(
-		() => (load.status === 'ready' ? featAsiLevels(load.data, value, grantedFeatsOf(backgroundOriginFeat, manualFeats, itemFeats), abilityDraft) : null),
-		[load, value, abilityDraft, backgroundOriginFeat, manualFeats, itemFeats],
+		() => (load.status === 'ready' ? featAsiLevels(load.data, value, grantedFeatsOf(backgroundOriginFeat, manualFeats, itemFeats, speciesFeat), abilityDraft) : null),
+		[load, value, abilityDraft, backgroundOriginFeat, speciesFeat, manualFeats, itemFeats],
 	)
 
 	if (load.status === 'error') {

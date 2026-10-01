@@ -257,8 +257,8 @@ export function ManageFeatsPanel({
 						: instance.origin === 'item'
 							? featOriginLabel(instance)
 							: undefined
-		/* R13b (D215): everything FeatSubChoicePicker covers is editable here, including on a locked (level/background) feat — Strixhaven Initiate and the 8 filter-choice feats aren't, and stay read-only. */
-		const editable = instance.origin !== 'species' && !isNamedBlockFeat(instance) && !isFilterChoiceFeat(instance)
+		/* R13b (D215): everything FeatSubChoicePicker covers is editable here, including on a locked (level/background/species, D275) feat — Strixhaven Initiate and the 8 filter-choice feats aren't, and stay read-only. */
+		const editable = !isNamedBlockFeat(instance) && !isFilterChoiceFeat(instance)
 		const entry = loaded?.feats.find((feat) => feat.name === instance.name && feat.source === instance.source)
 		/* A half-feat's plain ability choice — FeatSubChoicePicker doesn't render it (that select lives in FeatAsiPicker's own FeatSubPicker, alongside choosing the feat itself); Magic Initiate/spellcasting-ability feats never have this field set, so there's no double select (featSpellcastingAbilityOptions). */
 		const abilityOptions = editable && entry ? featAbilityChoiceOptions(entry) : null

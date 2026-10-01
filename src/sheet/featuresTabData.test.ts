@@ -25,6 +25,18 @@ describe('grantsFeatureType (D184)', () => {
 	})
 })
 
+describe('featuresTabGroups — species feat not chosen (D276)', () => {
+	const versatile = { name: 'Versatile', entries: ['You gain an Origin feat of your choice.'], grantsOriginFeat: true as const }
+	const input = { classes: [], speciesName: 'Human', granted: [], classFeatureChoices: [], chosenOptions: [], optionOrigin: () => null, speciesTraits: [versatile, { name: 'Skillful', entries: [] }] }
+	const speciesRows = (feats: Parameters<typeof featuresTabGroups>[0]['feats']) => featuresTabGroups({ ...input, feats }).find((group) => group.key === 'species')!.rows
+
+	it('puts the line under the granting trait only while no species feat is stored', () => {
+		expect(speciesRows([]).map((row) => row.options.map((option) => option.name))).toEqual([['Origin feat not chosen yet — choose it in Edit Character.'], []])
+		const alert = { instance: { key: 'species' as const, origin: 'species' as const, name: 'Alert', source: 'XPHB' }, text: undefined, pending: [] }
+		expect(speciesRows([alert]).every((row) => row.options.length === 0)).toBe(true)
+	})
+})
+
 describe('featuresTabGroups (D184)', () => {
 	const base = { speciesName: null, classFeatureChoices: [], optionOrigin: () => 'Sorcerer', speciesTraits: [], feats: [] }
 

@@ -1218,7 +1218,9 @@ class-features.json, subclass-features.json a optional-features.json
 `stripEtoolsTags`/`plainTextOfEntry` ve `scripts/validate-data.js`). Jakýkoli
 budoucí frázový scan přes `entries` musí nejdřív tagy stripnout na jejich
 zobrazovaný text (`{@tag text|zdroj}` -> `text`), jinak potichu minimalizuje
-výsledky na zlomek skutečného počtu.
+výsledky na zlomek skutečného počtu. Tag se 3+ segmenty zobrazuje segment
+podle tabulky v src/markup/tags.ts (`{@variantrule Hit Points|XPHB|Hit Point}`
+-> „Hit Point"), ne první (D277).
 ### Odkazy mezi featurami přeskakují úrovně — vždy dolů, nikdy nahoru
 
 Tranzitivní uzávěr v `grantedClassFeaturesFrom` (D87) chodí po `ref*` uzlech
@@ -1276,7 +1278,8 @@ match is the granter. Found by an investigation script in R6 (not kept).
   Primal Order → Warden (Martial weapons, Medium armor), both L1 options of a
   D21 choice; Bard College of Valor L3 Martial Training (Martial weapons,
   Medium armor, Shields). The only Valor subclass in classes.json is XPHB.
-- 2024 (XPHB) species grant no proficiencies and no languages.
+- 2024 (XPHB) species grant no tool, weapon or armor proficiencies and no
+  languages; 5 of them do grant skills (see "Species grants beyond traits (S1)").
 - Monk's `toolProficiencies` array lists ALTERNATIVES (pick one), not a set of
   grants. Background tool shapes: see "Tool proficiencies" above.
 - The 2024 "Common + 2 languages of your choice" rule is not in the data.
@@ -1370,6 +1373,34 @@ size; two (`["S","M"]`) is a player choice — 23 species, XPHB Human among them
 The four Genasi subraces carry no `size` and inherit the parent's via
 `raceName`/`raceSource` (same fallback as speed and darkvision). The choice is
 stored on the character as `speciesSize` (D175); nothing in the data records it.
+
+### Species grants beyond traits (S1)
+
+- `skillProficiencies` on 5 XPHB entries: Elf and its 3 lineages choose one of
+  insight/perception/survival, Human `{any:1}`. Tools, weapons, armor and
+  languages really are 0.
+- No extracted species carries `languageProficiencies`, weapon/armor
+  proficiencies, `immune`, `conditionImmune`, `vulnerable`, `blindsight` or
+  `skillToolLanguageProficiencies` (raw races.json has them only on entries we
+  do not extract).
+- `feats`: 3 raw entries (Human XPHB, Variant PHB, Custom Lineage TCE); only
+  Human|XPHB is extracted, shape `[{"anyFromCategory":{"category":["O"],"count":1}}]`.
+  Its trait Versatile is the only one of its 3 named traits whose text mentions
+  an Origin feat. feats.json has 15 category-O feats; repeatable are Skilled and
+  the 4 Magic Initiate entries (D271–D273).
+- Speed: base Elf|XPHB 30, Wood Elf lineage 35; Goliath and its 6 ancestries 35.
+  An XPHB fly speed exists only in prose and is temporary (12 entries).
+- Gnome|XPHB base has no `additionalSpells` (only its lineages); Elf|XPHB base
+  carries all three lineage blocks, each with `name`.
+- raw races.json: 160 races, 98 subraces, 17 `_copy`, `_versions` on 24 entries
+  (55 versions, `_mod` only on `entries`).
+- Markup: a 3-segment tag such as `{@variantrule Hit Points|XPHB|Hit Point}`
+  displays the THIRD segment ("Hit Point"), the override index of
+  src/markup/tags.ts REFERENCE_TAGS. validate-data's `stripEtoolsTags` follows
+  that table since S1 (D277).
+
+Found in task S1 (2026-10-01, `scripts/investigate-species-feats.js`, consumed)
+and the species survey before it.
 
 ### Species traits against the Actions tab's tests (D185)
 

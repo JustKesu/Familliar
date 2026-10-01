@@ -28,6 +28,28 @@ describe('featInstances — manual feats (D215)', () => {
 	})
 })
 
+describe('featInstances — species feat (D271)', () => {
+	it('reads the stored species entry with its sub-choices, right after the background feat', () => {
+		const character: Character = {
+			id: '1',
+			name: 'A',
+			classes: [],
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }],
+			grantedFeats: [{ origin: 'species', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } }],
+		}
+		expect(featInstances(character, { name: 'Tough', source: 'XPHB' }).map((feat) => [feat.key, feat.origin, feat.name, feat.proficiencies])).toEqual([
+			['background', 'background', 'Tough', undefined],
+			['species', 'species', 'Skilled', { skills: ['arcana'] }],
+			['asi:4', 'asi', 'Alert', undefined],
+		])
+		expect(featOriginLabel({ origin: 'species' })).toBe('Species')
+	})
+
+	it('has no species instance without a stored entry', () => {
+		expect(featInstances({ id: '1', name: 'A', classes: [] }, null)).toEqual([])
+	})
+})
+
 describe('featInstances — item feats (R14c1)', () => {
 	const skilled = { name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } }
 	const withInventory = (inventory: Character['inventory']): Character => ({ id: '1', name: 'A', classes: [], inventory })

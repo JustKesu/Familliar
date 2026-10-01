@@ -1121,6 +1121,12 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Strength attuned / not attuned; Gauntlets at Str 20; Amulet of Health max HP;
   two belts; Belt of Dwarvenkind cap; potion + manual; Book of Vile Darkness line;
   level-up ASI from base Strength).
+- `e2e/speciesFeat.spec.ts` — S1 a–i (Human species feat on the Background step:
+  Next gate, Alert note in Initiative + "From Species" rows; Farmer/Tough disabled,
+  Charlatan/Skilled allowed; background clash blocks Next; Human → Dwarf drops it;
+  Edit Character keeps Skilled picks and switches to Tough (+2 max HP); older Human
+  line + gate; level-up/edit clash with a level-4 feat; Manage Feats Skilled picks;
+  no Dark Gift in the dropdown).
 
 ## Dočasné scaffolding
 
@@ -1694,6 +1700,22 @@ Stored as `CharacterBackground.originFeatOverride` (schema 50, 49→50 tag only)
 spells, proficiencies, ASI "already granted") follows. Changing the background
 or the override clears the background feat's sub-choices. Sub-choices of the
 effective feat still never block (D179). E2E `darkGiftOriginFeat.spec.ts` a–f.
+
+S1 (D271–D277): a species whose `feats` is one `anyFromCategory` O count 1
+(Human|XPHB, Versatile) gets an origin feat chosen on the Background step —
+`SpeciesOriginFeatPicker` + `speciesOriginFeat.ts` (`src/featAsi/`): dropdown of
+category-O feats (no Dark Gift), feat text, FeatSubChoicePicker (prefix `species`).
+A non-repeatable feat equal to the background's feat is disabled / flagged and
+blocks Next (`speciesOriginFeatComplete` → `WizardStepConditions.speciesOriginFeatComplete`).
+Stored as `grantedFeats` origin 'species' (schema still 55); dropped when the species
+changes. `featInstances` reads it (key `species`, after the background feat), so all
+feat readers follow; `grantedFeatsOf` counts it as taken ("Species") for ASI cards and
+Manage Feats → Add Feats. Manage Feats edits its sub-choices (`setFeatChoiceDetails`
+key `species`), not the feat. A character with the grant but no entry shows "Origin
+feat not chosen yet — choose it in Edit Character." under the trait whose text names
+an Origin feat (`SpeciesTrait.grantsOriginFeat`). validate-data's `stripEtoolsTags`
+uses the tags.ts display segment. E2E `speciesFeat.spec.ts` a–i; `e2e/wizard.ts`
+picks Lucky for a Human unless `speciesFeat` says otherwise.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

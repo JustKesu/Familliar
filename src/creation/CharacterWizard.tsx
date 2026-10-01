@@ -66,6 +66,8 @@ import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../fe
 import { featAsiStepValid, grantedFeatsOf, useFeatAsiStepData } from '../featAsi/featAsiLevels'
 import { featFixedExpertiseSkills, type FeatEffectEntry } from '../calculation/featEffects'
 import { OriginFeatSwapPicker } from '../featAsi/OriginFeatSwapPicker'
+import { SpeciesOriginFeatPicker } from '../featAsi/SpeciesOriginFeatPicker'
+import { speciesOriginFeatComplete, useSpeciesOriginFeat } from '../featAsi/speciesOriginFeat'
 import { backgroundOriginFeatFrom, featInstances,loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
@@ -1022,6 +1024,13 @@ export function CharacterWizard({
 	)
 	const featAsiManualFeats = useMemo(() => state.data.grantedFeats.filter((feat) => feat.origin === 'manual'), [state.data.grantedFeats])
 	const featAsiItemFeats = useMemo(() => draftFeatInstances.filter((instance) => instance.origin === 'item'), [draftFeatInstances])
+	const speciesFeatEntry = state.data.grantedFeats.find((feat) => feat.origin === 'species')
+	const speciesFeat = useMemo(
+		() => (speciesFeatEntry ? { name: speciesFeatEntry.name, source: speciesFeatEntry.source } : null),
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the feat's identity, not the entry rebuilt with each sub-choice.
+		[speciesFeatEntry?.name, speciesFeatEntry?.source],
+	)
+	const speciesFeatLoad = useSpeciesOriginFeat(state.data.speciesChoice)
 	const featAsiLoad = useFeatAsiStepData(
 		state.data.classChoice?.className ?? null,
 		state.data.classChoice?.classSource ?? null,
@@ -1033,8 +1042,8 @@ export function CharacterWizard({
 	const heldFeatAsiLevels = useMemo(() => (levelUp && character ? (character.featAsiChoices ?? []).map((choice) => choice.level) : undefined), [levelUp, character])
 	/** D254: an invalid feat choice locks the step's Next, except at a level a level up cannot change. Still loading keeps the step incomplete; a failed load relaxes it (the picker shows the error). */
 	const featAsiChoicesValid = useMemo(
-		() => featAsiStepValid(featAsiLoad, state.data.featAsiChoices, grantedFeatsOf(backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats), abilityTableDraft, heldFeatAsiLevels),
-		[featAsiLoad, state.data.featAsiChoices, backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats, abilityTableDraft, heldFeatAsiLevels],
+		() => featAsiStepValid(featAsiLoad, state.data.featAsiChoices, grantedFeatsOf(backgroundOriginFeat, featAsiManualFeats, featAsiItemFeats, speciesFeat), abilityTableDraft, heldFeatAsiLevels),
+		[featAsiLoad, state.data.featAsiChoices, backgroundOriginFeat, speciesFeat, featAsiManualFeats, featAsiItemFeats, abilityTableDraft, heldFeatAsiLevels],
 	)
 
 	/** As draftCharacterForHitPoints, plus the picks the hit points step itself owns (D107 needs the running total, not just its inputs) and the manual override (D9), so a character with one keeps it. */
@@ -1301,6 +1310,7 @@ export function CharacterWizard({
 		startingEquipmentCategoryPicksComplete,
 		// Stays incomplete until backgrounds.json has loaded, like speciesSkillsComplete.
 		backgroundOriginFeatComplete: state.data.backgroundChoice === null || (selectedBackground !== undefined && (selectedBackground.originFeat !== null || backgroundFeatOverride !== null)),
+		speciesOriginFeatComplete: speciesOriginFeatComplete(speciesFeatLoad, speciesFeatEntry, backgroundOriginFeat),
 		characterLevel: state.data.classChoice?.level ?? null,
 		hitDieFaces: hitDie?.key === hitDieKey ? hitDie.faces : null,
 		editingExistingCharacter: character !== undefined,
@@ -1593,6 +1603,19 @@ export function CharacterWizard({
 							idPrefix="background"
 						/>
 					)}
+					{state.data.speciesChoice && (
+						<SpeciesOriginFeatPicker
+							load={speciesFeatLoad}
+							speciesName={state.data.speciesChoice.name}
+							value={speciesFeatEntry}
+							backgroundFeat={backgroundOriginFeat}
+							onChange={(feat) => dispatch({ type: 'setGrantedFeat', feat: { ...feat, origin: 'species' } })}
+							held={() => heldForFeat('species')}
+							alreadyKnown={alreadyKnownSpells}
+							laterNote={laterNote}
+							resolverData={resolverData}
+						/>
+					)}
 				</div>
 			)}
 
@@ -1773,6 +1796,7 @@ export function CharacterWizard({
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
 						lockedLevels={heldFeatAsiLevels}
 						backgroundOriginFeat={backgroundOriginFeat}
+						speciesFeat={speciesFeat}
 						manualFeats={featAsiManualFeats}
 						itemFeats={featAsiItemFeats}
 						heldForFeat={heldForFeat}

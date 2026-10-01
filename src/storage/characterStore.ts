@@ -775,8 +775,8 @@ export class CharacterStore {
 	/**
 	 * Replaces one feat instance's sub-choices (R13b, D215: editing in the Manage
 	 * Feats drawer). Valid for `asi:<level>`, `manual:<n>` and `item:<row>:<n>` (R14c1: written into that row's custom.feats) — all already exist
-	 * — and `background`, created with `feat`'s name/source if no entry names it
-	 * yet. `details` is a full replace, same contract as FeatSubChoicePicker's
+	 * — `background`, created with `feat`'s name/source if no entry names it
+	 * yet, and `species`, which must already name `feat`. `details` is a full replace, same contract as FeatSubChoicePicker's
 	 * onChange. The picker enforces which options are valid (D215: not whether the
 	 * player cheats); nothing here re-checks the picks against feats.json.
 	 */
@@ -829,6 +829,15 @@ export class CharacterStore {
 				const matches = (entry: CharacterGrantedFeat) => entry.origin === 'background' && entry.name === feat.name && entry.source === feat.source
 				const entry: CharacterGrantedFeat = { origin: 'background', name: feat.name, source: feat.source, ...details }
 				return grantedFeats.some(matches) ? grantedFeats.map((existing) => (matches(existing) ? entry : existing)) : [...grantedFeats, entry]
+			})
+			return
+		}
+
+		// D275: the species feat itself is chosen in Edit Character only, so its entry must already exist.
+		if (key === 'species') {
+			this.writeGrantedFeats(id, (grantedFeats) => {
+				if (!grantedFeats.some((entry) => entry.origin === 'species' && entry.name === feat.name && entry.source === feat.source)) throw new Error(`No species feat named ${feat.name}.`)
+				return grantedFeats.map((entry) => (entry.origin === 'species' ? { origin: 'species' as const, name: feat.name, source: feat.source, ...details } : entry))
 			})
 			return
 		}

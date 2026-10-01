@@ -16,6 +16,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { speciesGrantsOriginFeat } from '../featAsi/speciesOriginFeat'
 import type { Character } from '../storage/character'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -26,6 +27,8 @@ export interface SpeciesTrait {
 	name: string
 	/** The trait's own text — what the Features tab's Species Traits group shows (D184). */
 	entries: unknown[]
+	/** D276: the trait that grants the species' origin feat (Human Versatile) — the one whose text names an Origin feat. */
+	grantsOriginFeat?: true
 }
 
 /** Pure (D38). An unknown species, or one with no named traits, yields an empty list — never a throw, since a missing trait only means a bonus is not applied (D43). */
@@ -38,9 +41,14 @@ export function speciesTraitsFrom(character: Pick<Character, 'species'> & Partia
 
 	const entries = entry['entries']
 	if (!Array.isArray(entries)) return []
+	const grantsFeat = speciesGrantsOriginFeat(parsedSpecies, character.species)
 	return entries
 		.filter((child): child is Record<string, unknown> => isRecord(child) && typeof child['name'] === 'string')
-		.map((child) => ({ name: child['name'] as string, entries: Array.isArray(child['entries']) ? child['entries'] : [] }))
+		.map((child) => {
+			const traitEntries = Array.isArray(child['entries']) ? child['entries'] : []
+			const originFeat = grantsFeat && /origin feat/i.test(JSON.stringify(traitEntries))
+			return { name: child['name'] as string, entries: traitEntries, ...(originFeat ? { grantsOriginFeat: true as const } : {}) }
+		})
 }
 
 // D186: only a trait's opening words gate it; a level later in the text raises part of it (Fey Step, Elven Lineage's spells) — DATA.md.

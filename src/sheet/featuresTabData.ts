@@ -88,6 +88,8 @@ export function grantsFeatureType(entries: readonly unknown[], featureType: stri
 	return false
 }
 
+export const ORIGIN_FEAT_MISSING = 'Origin feat not chosen yet — choose it in Edit Character.'
+
 function optionItem(option: OptionalFeatureOption): FeatureTabOption {
 	return { key: `${option.name}|${option.source}`, name: option.name, entries: option.entries }
 }
@@ -209,11 +211,20 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		})
 	}
 
+	// D276: an older Human saved before the species feat existed has no 'species' entry.
+	const speciesFeatMissing = !input.feats.some(({ instance }) => instance.origin === 'species')
 	groups.push({
 		key: 'species',
 		kind: 'species',
 		label: 'Species Traits',
-		rows: input.speciesTraits.map((trait) => ({ key: `trait|${trait.name}`, name: trait.name, source: input.speciesName, entries: trait.entries, resourceName: resourceCandidateName(trait), options: [] })),
+		rows: input.speciesTraits.map((trait) => ({
+			key: `trait|${trait.name}`,
+			name: trait.name,
+			source: input.speciesName,
+			entries: trait.entries,
+			resourceName: resourceCandidateName(trait),
+			options: trait.grantsOriginFeat && speciesFeatMissing ? [{ key: 'origin-feat-missing', name: ORIGIN_FEAT_MISSING, entries: null }] : [],
+		})),
 	})
 
 	groups.push({

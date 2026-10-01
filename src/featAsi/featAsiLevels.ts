@@ -104,14 +104,16 @@ export interface GrantedFeat extends FeatRef {
 	item?: { name?: string }
 }
 
-/** The background feat, manual feats and item feats, labelled as featOriginLabel labels them. */
+/** The background feat, the species feat, manual feats and item feats, labelled as featOriginLabel labels them. */
 export function grantedFeatsOf(
 	backgroundOriginFeat: FeatRef | null,
 	manualFeats: readonly FeatRef[],
 	itemFeats: readonly (FeatRef & { itemName?: string })[],
+	speciesFeat: FeatRef | null = null,
 ): GrantedFeat[] {
 	return [
 		...(backgroundOriginFeat ? [{ name: backgroundOriginFeat.name, source: backgroundOriginFeat.source, origin: 'Background' }] : []),
+		...(speciesFeat ? [{ name: speciesFeat.name, source: speciesFeat.source, origin: 'Species' }] : []),
 		...manualFeats.map((feat) => ({ name: feat.name, source: feat.source, origin: 'Added manually' })),
 		...itemFeats.map((feat) => ({ name: feat.name, source: feat.source, origin: feat.itemName ? `From item (${feat.itemName})` : 'From item', item: { name: feat.itemName } })),
 	]

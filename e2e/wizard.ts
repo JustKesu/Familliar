@@ -119,6 +119,8 @@ export interface FighterOptions {
   species: string
   /** Runs on the species step for a species that asks for more (skill, size). */
   onSpeciesStep?: (page: Page) => Promise<void>
+  /** S1 (D271): Human's Versatile origin feat, chosen on the Background step; Lucky for a Human when absent, null leaves it unchosen. */
+  speciesFeat?: string | null
   /** Feat taken at level 4; its own sub-choices are left empty. */
   feat?: string
   /** Runs on the featAsi step after the feat is picked. */
@@ -174,7 +176,14 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
   await page.getByRole('radio', { name: background.radio }).check()
   await select(page, '+2').selectOption(background.plusTwo)
   await select(page, '+1').selectOption(background.plusOne)
+  const speciesFeat = options.speciesFeat === undefined ? (options.species === 'Human|XPHB' ? 'Lucky' : null) : options.speciesFeat
+  if (speciesFeat) await speciesFeatSelect(page).selectOption(`${speciesFeat}|XPHB`)
   await options.onBackgroundStep?.(page)
+}
+
+/** S1 (D272): the Background step's dropdown for the species' origin feat. */
+export function speciesFeatSelect(page: Page): Locator {
+  return select(page, 'Species origin feat')
 }
 
 /** Continues from the Background step to the saved sheet. */

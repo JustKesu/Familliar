@@ -4532,3 +4532,52 @@ nikdy nevybere, stejně jako přepínač ▸ / ▾. Klik kamkoli jinam na kartu 
 
 D270 (Daniel, odpověď na Q3): Vadný uložený portrét se při čtení dál tiše zahazuje (D267) a hráč se o tom
 nedozví; žádné oznámení se nepřidává. Potvrzeno jako správné chování, ne přehlédnutí.
+
+## D271 — Origin feat od druhu se volí v kroku Background a ukládá jako `grantedFeats` 'species' (S1)
+
+Druh, jehož záznam v species.json nese `feats` = jeden `anyFromCategory` s kategorií `["O"]` a `count` 1
+(dnes jen Human|XPHB, trait Versatile), dává hráči jeden Origin feat. Volí se v kroku Background na vlastní
+kartě pod kartou origin featu pozadí („Species feat: Versatile (Human)“). Ukládá se jako položka
+`grantedFeats` s `origin: 'species'` (tvar z D157, schéma zůstává 55) včetně svých podvoleb. `featInstances`
+ji čte celou hned za featem pozadí (klíč `species`), takže efekty featu jdou stávajícími čtenáři. Změna druhu
+na jiný (jiné name/source) položku smaže; level-up se na ni nikdy neptá. Žádný název druhu není natvrdo.
+
+## D272 — Výběr featu druhu: dropdown jen s kategorií „O“, bez Dark Gift (S1)
+
+Ovládání je dropdown jako na kartě ASI / Feat; nabízí feats.json s `category` „O“ (skryté varianty Magic
+Initiate; Class vypadají jako jinde). Výměna za Dark Gift (D205) zůstává jen u featu pozadí; dropdown druhu
+žádný Dark Gift nenabízí. Pod dropdownem je text featu a FeatSubChoicePicker s prefixem `species` a stejnými
+vstupy held/alreadyKnown/laterNote jako u featu pozadí, takže dovednosti Skilled kolidují správně.
+
+## D273 — Feat druhu nesmí být týž neopakovatelný feat jako feat pozadí (S1)
+
+Neopakovatelný feat se stejným jménem (D255) jako origin feat pozadí (odvozený i Dark Gift z D205) je v
+dropdownu druhu zakázaný s „(already taken: Background)“; zvolený takový feat ukáže „X is already taken
+(Background) — choose another feat.“. Opakovatelný (Skilled, Magic Initiate) zůstává povolený. Opačně se
+feat druhu počítá jako „already taken“ s původem „Species“ všude, kde se počítá feat pozadí
+(`grantedFeatsOf`, karta ASI / Feat, Manage Feats → Add Feats).
+
+## D274 — Next kroku Background čeká na platný feat druhu (S1)
+
+Má-li druh grant (D271), Next kroku Background je zamčený, dokud není zvolen feat, který D273 nezakazuje;
+podvolby nezamykají (D179). Pozdější změna pozadí na takové, které dává tentýž neopakovatelný feat, ukáže
+důvod a Next znovu zamkne (jako neplatný feat na kartě ASI, D254). Během načítání je krok zamčený, selhané
+načtení ho odemkne a karta ukáže chybu (jako krok ASI / Feat, F-3).
+
+## D275 — Manage Feats edituje podvolby featu druhu, feat sám ne (S1)
+
+Podvolby featu druhu jdou v Manage Feats měnit stejně jako u featu pozadí (výjimky Strixhaven Initiate a
+filter-choice featy platí dál). Feat sám se v Manage Feats vyměnit nedá; mění se v Edit Character. Úložiště
+(`setFeatChoiceDetails`, klíč `species`) mění jen existující položku, novou nevytváří.
+
+## D276 — Starší postava bez featu druhu: řádek ve Features & Traits a zamčený Background (S1)
+
+Postava, jejíž druh grant má, ale uloženou položku 'species' nemá (Human uložený před S1), ukáže pod traitem
+druhu, jehož text zmiňuje Origin feat (Versatile): „Origin feat not chosen yet — choose it in Edit
+Character.“. Edit Character pak zamkne Next kroku Background, dokud feat není zvolen (D274). Žádná migrace.
+
+## D277 — validate-data stripuje tag se 3+ segmenty na zobrazovaný segment (S1)
+
+`stripEtoolsTags` ve scripts/validate-data.js bere u odkazových tagů segment podle tabulky REFERENCE_TAGS ze
+src/markup/tags.ts (většinou třetí, `{@variantrule Hit Points|XPHB|Hit Point}` → „Hit Point“), jinak první —
+stejně jako je vykresluje aplikace. Tabulka je v skriptu zkopírovaná, protože node skript TS modul neimportuje.

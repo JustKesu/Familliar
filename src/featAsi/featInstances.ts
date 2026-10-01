@@ -59,7 +59,8 @@ function choiceDetails(details: FeatChoiceDetails): FeatChoiceDetails {
  * from the background, never read from storage — unless the player took a Dark
  * Gift instead (background.originFeatOverride, D205); a stored 'background' entry
  * only contributes its sub-choices, and only while it names that same feat.
- * 'species' entries are not read until the wizard can set them (D157).
+ * The stored 'species' entry (Human Versatile, D271) follows it whole — the
+ * wizard drops it when the species changes, so it is never re-derived here.
  * 'manual' entries (D215) follow, keyed by their order among manual entries,
  * then the feats of granting custom items (R14c1, D216 gate), read off the inventory.
  */
@@ -77,6 +78,9 @@ export function featInstances(character: Character, derivedBackgroundFeat: FeatR
 			...(stored ? choiceDetails(stored) : {}),
 		})
 	}
+
+	const species = (character.grantedFeats ?? []).find((entry) => entry.origin === 'species')
+	if (species) instances.push({ key: 'species', origin: 'species', name: species.name, source: species.source, ...choiceDetails(species) })
 
 	for (const choice of character.featAsiChoices ?? []) {
 		if (choice.kind !== 'feat') continue

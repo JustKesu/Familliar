@@ -238,6 +238,19 @@ describe('D257: a level prerequisite reads the card level', () => {
 	})
 })
 
+describe('D271: the species feat counts as taken', () => {
+	it('labels it "Species" after the background feat, and flags an ASI card holding it', () => {
+		const granted = grantedFeatsOf({ name: 'Lucky', source: 'XPHB' }, [], [], { name: 'Tough', source: 'XPHB' })
+		expect(granted.map((feat) => [feat.name, feat.origin])).toEqual([
+			['Lucky', 'Background'],
+			['Tough', 'Species'],
+		])
+		const levels = levelsOf([{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }], 12, granted)
+		expect(featAsiChoiceProblem(levels, levels.choices[0])).toBe('Tough is already taken (Species) — choose another feat.')
+		expect(featAsiLevelOffers(levels, 4).find((offer) => offer.feat.name === 'Tough')?.held).toBe(true)
+	})
+})
+
 describe('D255: the same feat name from two books', () => {
 	it('is taken once either book is held', () => {
 		const levels = levelsOf([], 12, grantedFeatsOf({ name: 'Alert', source: 'XPHB' }, [], []))

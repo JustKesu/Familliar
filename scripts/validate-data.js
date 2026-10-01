@@ -1528,8 +1528,17 @@ function collectStringsDeep(value, out) {
  * stripping first is not optional polish, it is the difference between a
  * check that works and one that silently misses 80% of its targets.
  */
+// D277: src/markup/tags.ts REFERENCE_TAGS — the segment holding the display override; other tags show the first.
+const TAG_DISPLAY_INDEX = Object.assign(
+	Object.fromEntries(["action", "class", "condition", "creature", "deck", "feat", "hazard", "item", "itemMastery", "itemProperty", "language", "object", "optfeature", "race", "sense", "skill", "spell", "status", "table", "variantrule"].map((tag) => [tag, 2])),
+	{ deity: 3, subclass: 4, quickref: 4, classFeature: 5, subclassFeature: 7 },
+);
+
 function stripEtoolsTags(text) {
-	return text.replace(/\{@\w+\s+([^}|]+)(?:\|[^}]*)?\}/g, "$1");
+	return text.replace(/\{@(\w+)\s+([^}]*)\}/g, (_, tag, body) => {
+		const args = body.split("|");
+		return args[TAG_DISPLAY_INDEX[tag] ?? 0] || args[0];
+	});
 }
 
 function plainTextOfEntry(entry) {

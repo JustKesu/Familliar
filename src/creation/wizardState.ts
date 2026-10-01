@@ -140,6 +140,8 @@ export interface WizardStepConditions {
 	startingEquipmentCategoryPicksComplete?: boolean
 	/** D205: false while the chosen background has no fixed feat and no Dark Gift is picked yet (only known from backgrounds.json). */
 	backgroundOriginFeatComplete?: boolean
+	/** D274: false while the species grants an origin feat (Human Versatile) and none valid is chosen (speciesOriginFeat.ts). */
+	speciesOriginFeatComplete?: boolean
 	/**
 	 * Total character level (single class, D11) — decides only whether the
 	 * 'hitPoints' step has anything to show. Level 1 is always the die maximum
@@ -286,6 +288,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<Omit<Wiza
 		classPickRequirements: conditions.classPickRequirements,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
 		backgroundOriginFeatComplete: conditions.backgroundOriginFeatComplete ?? true,
+		speciesOriginFeatComplete: conditions.speciesOriginFeatComplete ?? true,
 		characterLevel: conditions.characterLevel ?? 1,
 		editingExistingCharacter: conditions.editingExistingCharacter ?? false,
 		levelUpSteps: conditions.levelUpSteps ?? null,
@@ -689,6 +692,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		classPickRequirements,
 		startingEquipmentCategoryPicksComplete,
 		backgroundOriginFeatComplete,
+		speciesOriginFeatComplete,
 		levelUpTargetLevel,
 		hitDieFaces,
 	} = resolveConditions(conditions)
@@ -732,7 +736,8 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				data.backgroundChoice !== null &&
 				Object.keys(data.backgroundChoice.abilityBonus).length > 0 &&
 				data.backgroundToolProficiency !== null &&
-				backgroundOriginFeatComplete
+				backgroundOriginFeatComplete &&
+				speciesOriginFeatComplete
 			)
 		case 'expertise':
 			return expertiseRequiredCount === null || data.expertiseSkills.length === expertiseRequiredCount
@@ -1000,12 +1005,15 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 				},
 			}
 		}
-		case 'setSpeciesChoice':
+		case 'setSpeciesChoice': {
+			const prev = state.data.speciesChoice
+			const sameSpecies = prev !== null && action.choice !== null && prev.name === action.choice.name && prev.source === action.choice.source
 			return {
 				...state,
 				data: {
 					...state.data,
 					speciesChoice: action.choice,
+					grantedFeats: sameSpecies ? state.data.grantedFeats : state.data.grantedFeats.filter((feat) => feat.origin !== 'species'),
 					speciesSkills: [],
 					speciesExtraSkill: null,
 					toolChoices: state.data.toolChoices.filter((choice) => !isSpeciesToolChoice(choice)),
@@ -1014,6 +1022,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					expertiseSkills: [],
 				},
 			}
+		}
 		case 'setSpeciesSkills':
 			return { ...state, data: { ...state.data, speciesSkills: action.skills, expertiseSkills: [] } }
 		case 'setSpeciesSpellcastingAbility':
