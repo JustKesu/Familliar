@@ -1262,6 +1262,10 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (hitPointLevelsError) return `[${index}].${hitPointLevelsError}`
 	const speciesSpellcastingAbilityError = describeSpeciesSpellcastingAbilityError(value['speciesSpellcastingAbility'])
 	if (speciesSpellcastingAbilityError) return `[${index}].${speciesSpellcastingAbilityError}`
+	const speciesCantrip = value['speciesCantrip']
+	if (speciesCantrip !== undefined && !(isRecord(speciesCantrip) && isNonEmptyString(speciesCantrip['name']) && isNonEmptyString(speciesCantrip['source']))) {
+		return `[${index}].speciesCantrip must be an object with a non-empty name and source`
+	}
 	const toolChoicesError = describeToolChoicesError(value['toolChoices'])
 	if (toolChoicesError) return `[${index}].${toolChoicesError}`
 	const subclassSkillsError = describeSubclassSkillsError(value['subclassSkills'])
@@ -1366,6 +1370,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(isRecord(play) ? { play: toCharacterPlayState(play) } : {}),
 		...(Array.isArray(hitPointLevels) ? { hitPointLevels: toCharacterHitPointLevels(hitPointLevels) } : {}),
 		...(typeof speciesSpellcastingAbility === 'string' ? { speciesSpellcastingAbility: speciesSpellcastingAbility as Ability } : {}),
+		...(isRecord(value['speciesCantrip'])
+			? { speciesCantrip: { name: value['speciesCantrip']['name'] as string, source: value['speciesCantrip']['source'] as string } }
+			: {}),
 		...(Array.isArray(toolChoices) ? { toolChoices: toCharacterToolChoices(toolChoices) } : {}),
 		...(Array.isArray(subclassSkills)
 			? { subclassSkills: subclassSkills.map((entry) => ({ grantedBy: (entry as Record<string, unknown>)['grantedBy'] as SubclassSkillSource, name: (entry as Record<string, unknown>)['name'] as string })) }

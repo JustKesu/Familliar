@@ -66,6 +66,15 @@ vi.mock('../spells/speciesSpellcastingAbilityData', () => ({
 	}),
 }))
 
+/** Only High Elf carries a species cantrip choice here (S2). */
+vi.mock('../spells/speciesCantripData', () => ({
+	loadSpeciesCantripChoice: vi.fn(async (speciesName: string) =>
+		speciesName === 'Elf; High Elf Lineage'
+			? { slot: { classes: [{ className: 'Wizard', classSource: 'XPHB' }] }, options: [{ name: 'Fire Bolt', source: 'XPHB', classNames: ['Wizard'] }] }
+			: null,
+	),
+}))
+
 /** Only Human offers a size choice here (D175). */
 vi.mock('../species/speciesSizeData', () => ({
 	loadSpeciesSizeOptions: vi.fn(async (speciesName: string) => (speciesName === 'Human' ? ['S', 'M'] : ['M'])),
@@ -291,5 +300,26 @@ describe('CharacterWizard — the species step waits for the spellcasting-abilit
 		await user.selectOptions(screen.getByLabelText('Species'), 'Dwarf (XPHB)')
 		expect(screen.queryByLabelText('Spellcasting ability')).toBeNull()
 		expect(nextButton().disabled).toBe(false)
+	})
+
+	it('refuses to advance until the species cantrip is chosen, and drops it when the lineage changes (S2)', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+		await reachSpeciesStep(user)
+
+		await user.selectOptions(screen.getByLabelText('Species'), 'Elf (XPHB)')
+		await user.selectOptions(await screen.findByLabelText('Elven Lineage'), 'High Elf')
+		const picker = (await screen.findByLabelText('Species cantrip')) as HTMLSelectElement
+		await user.click(await screen.findByLabelText('Perception'))
+		expect(nextButton().disabled).toBe(true)
+		expect(screen.getByText('Choose your species cantrip to continue.')).toBeTruthy()
+
+		await user.selectOptions(picker, 'Fire Bolt (Wizard)')
+		expect(nextButton().disabled).toBe(false)
+
+		await user.selectOptions(screen.getByLabelText('Elven Lineage'), 'Wood Elf')
+		expect(screen.queryByLabelText('Species cantrip')).toBeNull()
+		await user.selectOptions(screen.getByLabelText('Elven Lineage'), 'High Elf')
+		expect(((await screen.findByLabelText('Species cantrip')) as HTMLSelectElement).value).toBe('')
 	})
 })

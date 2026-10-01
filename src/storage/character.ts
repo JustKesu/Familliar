@@ -332,6 +332,8 @@ export interface Character {
 	 * keeps today's "not chosen yet" placeholder in both cases, never a guess.
 	 */
 	speciesSpellcastingAbility?: Ability
+	/** S2: the cantrip a species' `choose` filter grant was filled with (High Elf, Khoravar, Kobold; Draconic Sorcery). Absent = the species has none, or it is not chosen yet. */
+	speciesCantrip?: { name: string; source: string }
 	/** D175: the size a species that offers more than one ('S'/'M') was played as. Absent means not chosen yet (D54). */
 	speciesSize?: string
 	/** D174: the class/subclass tool picks (Bard, Monk, Artificer, Battle Master). Absent means none chosen. */
@@ -1055,7 +1057,7 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1079,4 +1081,4 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 55
+export const CURRENT_SCHEMA_VERSION = 56

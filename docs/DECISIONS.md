@@ -4581,3 +4581,37 @@ Character.“. Edit Character pak zamkne Next kroku Background, dokud feat není
 `stripEtoolsTags` ve scripts/validate-data.js bere u odkazových tagů segment podle tabulky REFERENCE_TAGS ze
 src/markup/tags.ts (většinou třetí, `{@variantrule Hit Points|XPHB|Hit Point}` → „Hit Point“), jinak první —
 stejně jako je vykresluje aplikace. Tabulka je v skriptu zkopírovaná, protože node skript TS modul neimportuje.
+
+## D278 — Cantrip druhu se ukládá jako `Character.speciesCantrip` (S2, schéma 56)
+
+Druh, jehož `additionalSpells.known` nese `choose` filtr `level=0|class=…` (High Elf, Khoravar, Kobold;
+Draconic Sorcery — DATA.md), dává jeden cantrip ze seznamu tříd. Ukládá se jako `speciesCantrip: { name,
+source }` (jedna volba, tvar spell ref). Schéma 56, migrace 55 → 56 jen přepíše verzi; starší postava pole
+nemá. validate.ts odmítne import, kde pole není objekt s neprázdným `name` a `source`.
+
+## D279 — Výběr cantripu: dropdown v kroku Species, Khoravar jeden sloučený seznam (S2)
+
+Dropdown „Species cantrip“ stojí pod výběrem spellcasting ability a zobrazí se jen pro druh (variantu) s
+grantem. Nabízí cantripy (level 0) ze seznamů jmenovaných tříd přes classSpellListData (včetně
+`classVariants`, jako Magic Initiate). Khoravar má jeden seznam Cleric + Druid + Wizard, každá položka nese
+třídy v závorce („Light (Cleric, Wizard)“); jednotřídní seznamy nesou třídu taky.
+
+## D280 — Cantrip druhu je „already known“ pro ostatní výběry a naopak (S2)
+
+`collectKnownSpells` dostává `speciesCantrip` s textem „your species cantrip“ a klíčem `speciesCantrip`.
+Krok Spells, feat pickery (Magic Initiate z pozadí apod.) a Manage Spells na sheetu ho nabízejí zakázaný s
+„(already have it from your species cantrip)“. Dropdown druhu zakazuje kouzla známá odjinud stejným textem
+(„from the Spells step“ apod.).
+
+## D281 — Next kroku Species čeká na cantrip; změna druhu ho zahodí (S2)
+
+Next je zamčený, dokud uložená volba není na seznamu aktuálního druhu; během načítání a při chybě načtení
+(chyba se ukáže) taky. Změna druhu nebo linie (jiné name/source) volbu smaže, opětovné nahlášení téhož druhu
+ji nechá. Level-up se neptá (krok Species v něm není); měnit jde jen v Edit Character.
+
+## D282 — Sheet: cantrip druhu je běžný řádek kouzla druhu; bez volby řádek „not chosen“ (S2)
+
+raceSpells.ts dává uložený cantrip jako řádek druhu s úrovní grantu (`1` nebo `"_"`) a schopností ze
+`speciesSpellcastingAbility`, takže Spells i Actions ho ukazují jako ostatní cantripy druhu. Bez uložené
+volby (postava před schématem 56) místo dřívějšího „not yet supported“ ukáže „Cantrip not chosen yet —
+choose it in Edit Character.“ a Edit Character zamkne Species (D281). Žádná migrace.

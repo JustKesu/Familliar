@@ -27,6 +27,7 @@ export interface KnownSpell {
 
 export const CLASS_SPELL_PICKER_KEY = 'classSpells'
 export const SUBCLASS_SPELL_CHOICE_PICKER_KEY = 'subclassSpellChoice'
+export const SPECIES_CANTRIP_PICKER_KEY = 'speciesCantrip'
 
 /** Keyed by feat name, not by grant level: a feat's sub-pickers (Magic Initiate's, the filter-choice one) are the only controls that can undo that feat's own picks. */
 export function featSpellPickerKey(featName: string): string {
@@ -52,6 +53,8 @@ export interface KnownSpellInputs {
 	featGrantedSpells: readonly { name: string; source: string; featName: string }[]
 	/** optionalFeatureSpells.ts's grants: fixed AND the player's own option picks (Pact of the Tome), both tagged with the granting option. */
 	optionalFeatureGrantedSpells: readonly { name: string; source: string; optionName: string }[]
+	/** S2: WizardData.speciesCantrip — the Species step's own pick. */
+	speciesCantrip?: { name: string; source: string } | null
 }
 
 export function collectKnownSpells(inputs: KnownSpellInputs): KnownSpell[] {
@@ -79,6 +82,8 @@ export function collectKnownSpells(inputs: KnownSpellInputs): KnownSpell[] {
 	for (const spell of inputs.featGrantedSpells) add(spell.name, spell.source, `the ${spell.featName} feat`, featSpellPickerKey(spell.featName))
 
 	for (const spell of inputs.optionalFeatureGrantedSpells) add(spell.name, spell.source, spell.optionName, optionalFeatureSpellPickerKey(spell.optionName))
+
+	if (inputs.speciesCantrip) add(inputs.speciesCantrip.name, inputs.speciesCantrip.source, 'your species cantrip', SPECIES_CANTRIP_PICKER_KEY)
 
 	return result
 }

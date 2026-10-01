@@ -15,6 +15,8 @@ import { SpeciesSkillPicker } from '../speciesSkills/SpeciesSkillPicker'
 import { loadSpeciesSkillProficiencies, type SpeciesSkillProficiencies } from '../speciesSkills/speciesSkillData'
 import { SpeciesSpellcastingAbilityPicker } from '../spells/SpeciesSpellcastingAbilityPicker'
 import { loadSpeciesSpellcastingAbilityChoice } from '../spells/speciesSpellcastingAbilityData'
+import { SpeciesCantripPicker } from '../spells/SpeciesCantripPicker'
+import { loadSpeciesCantripChoice, type SpeciesCantripOption } from '../spells/speciesCantripData'
 import type { AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { ToolProficiencyPicker } from '../toolProficiencies/ToolProficiencyPicker'
 import { ClassToolSlots } from '../toolProficiencies/ClassToolSlots'
@@ -118,6 +120,7 @@ import {
 	type WizardData,
 	type WizardStep,
 	type WizardStepConditions,
+	isSpeciesCantripComplete,
 } from './wizardState'
 
 /*
@@ -229,6 +232,8 @@ export function CharacterWizard({
 	 * whether a choice is outstanding before that panel would ever mount.
 	 */
 	const [speciesSpellcastingAbilityChoices, setSpeciesSpellcastingAbilityChoices] = useState<{ key: string; choices: AbilityAbbreviation[] | null } | null>(null)
+	/** S2: the chosen species' cantrip options (null = no cantrip grant), tagged like the ability choices above for the same reason. */
+	const [speciesCantripChoice, setSpeciesCantripChoice] = useState<{ key: string; options: SpeciesCantripOption[] | null; error?: string } | null>(null)
 	const [featAsiGrantCount, setFeatAsiGrantCount] = useState(0)
 	const [featsNeedingAbilityChoice, setFeatsNeedingAbilityChoice] = useState<ReadonlySet<string>>(new Set())
 	const [spellSlotsClassData, setSpellSlotsClassData] = useState<ClassSpellSlotsData[]>([])
@@ -476,6 +481,24 @@ export function CharacterWizard({
 			})
 			.catch(() => {
 				/* SpeciesSpellcastingAbilityPicker shows the error; left unset, the step stays incomplete rather than passing with no ability chosen. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [speciesName, speciesSource])
+
+	useEffect(() => {
+		let cancelled = false
+		setSpeciesCantripChoice(null)
+		if (speciesName === null || speciesSource === null) return
+		const key = `${speciesName}|${speciesSource}`
+		loadSpeciesCantripChoice(speciesName, speciesSource)
+			.then((choice) => {
+				if (!cancelled) setSpeciesCantripChoice({ key, options: choice ? choice.options : null })
+			})
+			.catch((error: unknown) => {
+				// An empty option list with the error keeps the step incomplete rather than passing with no cantrip.
+				if (!cancelled) setSpeciesCantripChoice({ key, options: [], error: error instanceof Error ? error.message : String(error) })
 			})
 		return () => {
 			cancelled = true
@@ -1184,6 +1207,7 @@ export function CharacterWizard({
 		subclassSpellChoicePicks: state.data.subclassSpellChoices,
 		featGrantedSpells,
 		optionalFeatureGrantedSpells,
+		speciesCantrip: state.data.speciesCantrip,
 	})
 	/** D43: if any of the three grant loads failed, `alreadyKnownSpells` is missing entries — say so on every step whose picker consumes it, rather than letting an already-had option quietly look pickable. */
 	const knownSpellsLoadFailed = subclassAlwaysPreparedError !== null || featGrantedSpellsError !== null || optionalFeatureGrantedSpellsError !== null
@@ -1273,6 +1297,8 @@ export function CharacterWizard({
 		(speciesSpellcastingAbilityChoices?.key === `${state.data.speciesChoice.name}|${state.data.speciesChoice.source}` &&
 			(speciesSpellcastingAbilityChoices.choices === null || state.data.speciesSpellcastingAbility !== null))
 
+	const speciesCantripComplete = isSpeciesCantripComplete(state.data.speciesChoice, speciesCantripChoice, state.data.speciesCantrip)
+
 	/** Read from the same rules table the picker offers from, for the same reason. 0 for anyone without Wild Shape. */
 	const wildShapeFormCount = state.data.classChoice
 		? (wildShapeLimits(state.data.classChoice.className, state.data.classChoice.level, state.data.subclass?.name ?? null)
@@ -1299,6 +1325,7 @@ export function CharacterWizard({
 		speciesSkillsComplete,
 		speciesSizeComplete,
 		speciesSpellcastingAbilityComplete,
+		speciesCantripComplete,
 		wildShapeFormCount,
 		// null while loading for the CURRENT class/level/subclass, which keeps the step incomplete.
 		classPickRequirements:
@@ -1559,6 +1586,17 @@ export function CharacterWizard({
 							speciesSource={state.data.speciesChoice.source}
 							value={state.data.speciesSpellcastingAbility}
 							onChange={(ability) => dispatch({ type: 'setSpeciesSpellcastingAbility', ability })}
+						/>
+					)}
+					{state.data.speciesChoice && speciesVariantChoiceComplete && speciesCantripChoice?.error && (
+						<p className="error">Could not load the species cantrips: {speciesCantripChoice.error}</p>
+					)}
+					{state.data.speciesChoice && speciesVariantChoiceComplete && speciesCantripChoice?.key === speciesKey && speciesCantripChoice.options && !speciesCantripChoice.error && (
+						<SpeciesCantripPicker
+							options={speciesCantripChoice.options}
+							value={state.data.speciesCantrip}
+							onChange={(cantrip) => dispatch({ type: 'setSpeciesCantrip', cantrip })}
+							alreadyKnown={alreadyKnownSpells}
 						/>
 					)}
 					{state.data.speciesChoice && speciesVariantChoiceComplete && <SpeciesCard species={state.data.speciesChoice} chosenSize={state.data.speciesSize} />}

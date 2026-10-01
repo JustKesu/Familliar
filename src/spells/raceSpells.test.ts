@@ -132,12 +132,23 @@ describe('raceSpellsFor', () => {
 		expect(result.notes).toEqual([])
 	})
 
-	it('grants no spell for a `choose` filter node but says so in one visible note (High Elf)', () => {
+	it('without a stored pick, a `choose` filter node grants no spell and says so in one visible note (High Elf)', () => {
 		const result = raceSpellsFor(character('Elf; High Elf Lineage', 3), species, spells)
 		expect(result.spells.map((s) => s.name)).toEqual(['Detect Magic'])
-		expect(result.notes).toEqual([
-			{ speciesName: 'Elf; High Elf Lineage', text: 'Elf; High Elf Lineage lets you pick a cantrip from the Wizard spell list — not yet supported.' },
-		])
+		expect(result.notes).toEqual([{ speciesName: 'Elf; High Elf Lineage', text: 'Cantrip not chosen yet — choose it in Edit Character.' }])
+	})
+
+	/* S2: the stored speciesCantrip fills the node as an ordinary species row with the species ability. */
+	it('turns the stored species cantrip into a normal species spell row (High Elf)', () => {
+		const result = raceSpellsFor({ ...character('Elf; High Elf Lineage', 3, 'XPHB', 'intelligence'), speciesCantrip: { name: 'Mage Hand', source: 'XPHB' } }, species, spells)
+		expect(result.notes).toEqual([])
+		expect(result.spells.map((s) => s.name)).toEqual(['Mage Hand', 'Detect Magic'])
+		expect(result.spells[0]).toMatchObject({ origin: 'species', speciesName: 'Elf; High Elf Lineage', level: 0, ability: 'int', grantedAtLevel: 1, usage: null })
+	})
+
+	it('ignores a stored species cantrip on a species without the grant', () => {
+		const result = raceSpellsFor({ ...character('Aarakocra', 1), speciesCantrip: { name: 'Light', source: 'XPHB' } }, species, spells)
+		expect(result.spells.map((s) => s.name)).toEqual(['Mage Hand'])
 	})
 
 	it('grants nothing for the unresolved family-base shape D81 rules out', () => {

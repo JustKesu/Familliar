@@ -1402,6 +1402,29 @@ stored on the character as `speciesSize` (D175); nothing in the data records it.
 Found in task S1 (2026-10-01, `scripts/investigate-species-feats.js`, consumed)
 and the species survey before it.
 
+### Species cantrip choice — `choose` filter in `additionalSpells.known` (S2)
+
+Exactly 5 species.json entries carry a `choose` node in `additionalSpells`, all
+under `known`, all `level=0|class=…`, count 1 (explicit `count: 1` only on the
+Kobold pair), all with `ability: {"choose":["int","wis","cha"]}`:
+
+| Entry | Grant key | Filter | Stored by the wizard? |
+|---|---|---|---|
+| Elf\|XPHB (block `name: "High Elf"`) | `known["1"]` | `class=Wizard` | no — family base (D81) |
+| Elf; High Elf Lineage\|XPHB | `known["1"]` | `class=Wizard` | yes |
+| Khoravar\|EFA | `known["1"]` | `class=Cleric;Druid;Wizard` | yes (no variants) |
+| Kobold\|MPMM (block without `name`) | `known["_"]` | `class=Sorcerer` | no — family base (D81) |
+| Kobold; Draconic Sorcery\|MPMM | `known["_"]` | `class=Sorcerer` | yes |
+
+The node sits in an array inside the level key: `{"1": {"_": [{"choose": …}]}}`
+for Elf/Khoravar, `{"_": [{"choose": …, "count": 1}]}` for Kobold. Kobold|MPMM's
+base block has no `name`, unlike Elf's. XPHB cantrip counts (core + variant
+lists): Wizard 31, Sorcerer 31, Druid 22, Cleric 9. Single-list examples: Sacred
+Flame (Cleric), Shillelagh (Druid); Fire Bolt and Ray of Frost are Sorcerer +
+Wizard (+ Artificer).
+
+Found in task S2 (2026-10-01, `scripts/investigate-species-cantrips.js`, consumed).
+
 ### Species traits against the Actions tab's tests (D185)
 
 `species.json`: 78 records, 316 named top-level `entries` elements. 70 of them

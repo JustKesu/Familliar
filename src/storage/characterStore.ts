@@ -173,6 +173,7 @@ export interface CharacterCreateInput {
 	inventory?: CharacterInventoryItem[]
 	currencyCopper?: number
 	speciesSpellcastingAbility?: Ability
+	speciesCantrip?: { name: string; source: string }
 	speciesSize?: string
 	toolChoices?: CharacterToolChoice[]
 	subclassSkills?: CharacterSubclassSkill[]
@@ -305,6 +306,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		inventory,
 		currencyCopper,
 		speciesSpellcastingAbility,
+		speciesCantrip,
 		speciesSize,
 		toolChoices,
 		subclassSkills,
@@ -352,6 +354,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(inventory && inventory.length > 0 ? { inventory } : {}),
 		...(currencyCopper ? { currencyCopper } : {}),
 		...(speciesSpellcastingAbility ? { speciesSpellcastingAbility } : {}),
+		...(speciesCantrip ? { speciesCantrip } : {}),
 		...(speciesSize ? { speciesSize } : {}),
 		...(toolChoices && toolChoices.length > 0 ? { toolChoices } : {}),
 		...(subclassSkills && subclassSkills.length > 0 ? { subclassSkills } : {}),

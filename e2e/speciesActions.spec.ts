@@ -95,7 +95,7 @@ test('D186 b2: Aasimar 3 has Celestial Revelation under Bonus Action with 1 use 
 })
 
 test('D186 c: a High Elf’s Trance is in Features & Traits → Species Traits but not in Actions', async ({ page }) => {
-  await createFighter(page, { name: 'Sylas', level: 1, species: 'Elf|XPHB',
+  await createFighter(page, { name: 'Sylas', level: 1, species: 'Elf|XPHB', speciesCantrip: 'Fire Bolt|XPHB',
     onSpeciesStep: async (p) => {
       await p.getByRole('combobox', { name: 'Elven Lineage', exact: true }).selectOption('High Elf')
       await p.getByRole('checkbox', { name: 'Insight', exact: true }).check()

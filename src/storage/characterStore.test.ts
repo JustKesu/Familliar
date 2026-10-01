@@ -2281,3 +2281,36 @@ describe('Character.portrait (W-8)', () => {
 		expect(store.list()[0].portrait).toBe(PORTRAIT)
 	})
 })
+
+describe('Character.speciesCantrip (S2)', () => {
+	const HIGH_ELF = { name: 'Elf; High Elf Lineage', source: 'XPHB' }
+	const FIRE_BOLT = { name: 'Fire Bolt', source: 'XPHB' }
+
+	it('round-trips through create, export and import', () => {
+		const source = new CharacterStore(new MemoryStorage())
+		const original = source.create({ name: 'Aria', species: HIGH_ELF, speciesCantrip: FIRE_BOLT })
+		expect(source.list()[0].speciesCantrip).toEqual(FIRE_BOLT)
+		const destination = new CharacterStore(new MemoryStorage())
+		const [imported] = destination.import(source.exportCharacter(original.id))
+		expect(imported?.speciesCantrip).toEqual(FIRE_BOLT)
+	})
+
+	it('imports a version-55 High Elf without the field', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const [imported] = store.import(JSON.stringify([{ schemaVersion: 55, id: '1', name: 'Aria', classes: [], species: HIGH_ELF }]))
+		expect(imported?.species).toEqual(HIGH_ELF)
+		expect('speciesCantrip' in imported!).toBe(false)
+	})
+
+	it.each([
+		['a string', 'Fire Bolt'],
+		['an object without a source', { name: 'Fire Bolt' }],
+		['an empty name', { name: '', source: 'XPHB' }],
+	])('rejects an import file whose speciesCantrip is %s and leaves the store unchanged', (_label, speciesCantrip) => {
+		const store = new CharacterStore(new MemoryStorage())
+		store.create({ name: 'Existing' })
+		const file = JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], species: HIGH_ELF, speciesCantrip }])
+		expect(() => store.import(file)).toThrow(/speciesCantrip must be an object/)
+		expect(store.list()).toHaveLength(1)
+	})
+})

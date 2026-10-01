@@ -6,6 +6,7 @@ import {
 	emptyWizardData,
 	initialControllerState,
 	isReadyToSave,
+	isSpeciesCantripComplete,
 	isStepComplete,
 	saveCharacter,
 	visibleSteps,
@@ -47,6 +48,7 @@ function completeData(): WizardData {
 		speciesSkills: ['perception'],
 		speciesSize: null,
 		speciesSpellcastingAbility: null,
+		speciesCantrip: null,
 		expertiseSkills: [],
 		masteries: ['Longsword'],
 		fightingStyle: 'Archery',
@@ -209,6 +211,32 @@ describe('isStepComplete', () => {
 		const data = { ...emptyWizardData(), speciesChoice: { name: 'Aarakocra', source: 'XPHB' }, speciesSkills: ['perception'] }
 		expect(isStepComplete('species', data, { speciesSkillsComplete: true, speciesSpellcastingAbilityComplete: false })).toBe(false)
 		expect(isStepComplete('species', data, { speciesSkillsComplete: true, speciesSpellcastingAbilityComplete: true })).toBe(true)
+	})
+
+	describe('species cantrip (S2)', () => {
+		const HIGH_ELF = { name: 'Elf; High Elf Lineage', source: 'XPHB' }
+		const FIRE_BOLT = { name: 'Fire Bolt', source: 'XPHB' }
+		const loaded = { key: 'Elf; High Elf Lineage|XPHB', options: [FIRE_BOLT] }
+
+		it('gates the species step until a cantrip from the loaded list is picked', () => {
+			expect(isSpeciesCantripComplete(HIGH_ELF, null, FIRE_BOLT)).toBe(false)
+			expect(isSpeciesCantripComplete(HIGH_ELF, { key: 'Khoravar|EFA', options: [FIRE_BOLT] }, FIRE_BOLT)).toBe(false)
+			expect(isSpeciesCantripComplete(HIGH_ELF, loaded, null)).toBe(false)
+			expect(isSpeciesCantripComplete(HIGH_ELF, loaded, { name: 'Sacred Flame', source: 'XPHB' })).toBe(false)
+			expect(isSpeciesCantripComplete(HIGH_ELF, loaded, FIRE_BOLT)).toBe(true)
+			expect(isSpeciesCantripComplete(HIGH_ELF, { ...loaded, options: null }, null)).toBe(true)
+			const data = { ...emptyWizardData(), speciesChoice: HIGH_ELF }
+			expect(isStepComplete('species', data, { speciesCantripComplete: false })).toBe(false)
+			expect(isStepComplete('species', data, { speciesCantripComplete: true })).toBe(true)
+		})
+
+		it('keeps the pick when the same species is re-reported and drops it on a species or lineage change', () => {
+			let state = wizardReducer(initialControllerState(),{ type: 'setSpeciesChoice', choice: HIGH_ELF })
+			state = wizardReducer(state, { type: 'setSpeciesCantrip', cantrip: FIRE_BOLT })
+			expect(wizardReducer(state, { type: 'setSpeciesChoice', choice: { ...HIGH_ELF } }).data.speciesCantrip).toEqual(FIRE_BOLT)
+			expect(wizardReducer(state, { type: 'setSpeciesChoice', choice: { name: 'Elf; Wood Elf Lineage', source: 'XPHB' } }).data.speciesCantrip).toBeNull()
+			expect(wizardReducer(state, { type: 'setSpeciesChoice', choice: null }).data.speciesCantrip).toBeNull()
+		})
 	})
 
 	it('blocks the languages step until exactly two are chosen, allows it at exactly two', () => {

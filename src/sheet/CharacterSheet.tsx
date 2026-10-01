@@ -2564,6 +2564,7 @@ function CharacterSheetBody({
 			subclassSpellChoicePicks: choicePicks,
 			featGrantedSpells: featSpells,
 			optionalFeatureGrantedSpells: optionalFeatureSpells,
+			speciesCantrip: character.speciesCantrip,
 		})
 		return [{ characterClass: c, counts, alreadyKnown, holdings: { picks, subclassChoicePicks: choicePicks, alwaysPrepared: [...classFixed, ...subclassFixed] } }]
 	})
@@ -3030,7 +3031,7 @@ function CharacterSheetBody({
 							Could not load {error.what}: {error.message}
 						</p>
 					))}
-					{/* The 5 species whose grant is a "pick a cantrip from a class list" filter (raceSpells.ts): no picker exists yet, so the gap is stated rather than left blank (D43/D58). */}
+					{/* S2: a species cantrip grant with no stored pick (a save from before schema 56) — stated rather than left blank (D43/D58). */}
 					{raceSpells.notes.map((note) => (
 						<p key={note.text} className="sheet__spells-note">
 							<UnresolvedValue reason={note.text} />

@@ -119,6 +119,8 @@ export interface FighterOptions {
   species: string
   /** Runs on the species step for a species that asks for more (skill, size). */
   onSpeciesStep?: (page: Page) => Promise<void>
+  /** S2: `<option value>` of the Species step's cantrip, e.g. "Fire Bolt|XPHB" (High Elf, Khoravar, Kobold; Draconic Sorcery). */
+  speciesCantrip?: string
   /** S1 (D271): Human's Versatile origin feat, chosen on the Background step; Lucky for a Human when absent, null leaves it unchosen. */
   speciesFeat?: string | null
   /** Feat taken at level 4; its own sub-choices are left empty. */
@@ -169,6 +171,7 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
   await expectStep(page, 'Species')
   await select(page, 'Species').selectOption(options.species)
   await options.onSpeciesStep?.(page)
+  if (options.speciesCantrip) await speciesCantripSelect(page).selectOption(options.speciesCantrip)
   await next(page)
 
   await expectStep(page, 'Background')
@@ -184,6 +187,11 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
 /** S1 (D272): the Background step's dropdown for the species' origin feat. */
 export function speciesFeatSelect(page: Page): Locator {
   return select(page, 'Species origin feat')
+}
+
+/** S2: the Species step's dropdown for a species' class-list cantrip. */
+export function speciesCantripSelect(page: Page): Locator {
+  return select(page, 'Species cantrip')
 }
 
 /** Continues from the Background step to the saved sheet. */

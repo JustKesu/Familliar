@@ -132,6 +132,8 @@ export interface WizardStepConditions {
 	speciesSizeComplete?: boolean
 	/** D89 follow-up: whether the species' own spellcasting-ability choice (`additionalSpells.ability: {choose:[...]}`) is settled. True for a species with a fixed ability or none at all — the count/list comes from species.json, not from WizardData. */
 	speciesSpellcastingAbilityComplete?: boolean
+	/** S2: false while the species carries a `choose` cantrip grant (High Elf, Khoravar, Kobold; Draconic Sorcery) and no valid pick is stored. */
+	speciesCantripComplete?: boolean
 	/** Wild Shape forms the class step must collect (wildShapeData.ts's Beast Shapes table); 0 for a character without Wild Shape. */
 	wildShapeFormCount?: number
 	/** D-class-gate: what the class step's pickers ask for at this class, level and subclass; `null` while that is still loading, which keeps the step incomplete. Omitted means the picks are not checked at all (no class chosen yet, or a caller that has no loaded data). */
@@ -284,6 +286,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<Omit<Wiza
 		speciesSkillsComplete: conditions.speciesSkillsComplete ?? true,
 		speciesSizeComplete: conditions.speciesSizeComplete ?? true,
 		speciesSpellcastingAbilityComplete: conditions.speciesSpellcastingAbilityComplete ?? true,
+		speciesCantripComplete: conditions.speciesCantripComplete ?? true,
 		wildShapeFormCount: conditions.wildShapeFormCount ?? 0,
 		classPickRequirements: conditions.classPickRequirements,
 		startingEquipmentCategoryPicksComplete: conditions.startingEquipmentCategoryPicksComplete ?? true,
@@ -378,6 +381,21 @@ export function wizardClass(data: WizardData): (ClassLevelChoice & { subclass: s
 }
 
 /** The picker steps only — every one of these must be complete before the review step may save. */
+/**
+ * S2: the species step's cantrip gate. Incomplete while the options for the CURRENT species are loading
+ * (or failed), and while a species with the grant has no pick from its own list.
+ */
+export function isSpeciesCantripComplete(
+	species: { name: string; source: string } | null,
+	loaded: { key: string; options: readonly { name: string; source: string }[] | null } | null,
+	pick: { name: string; source: string } | null,
+): boolean {
+	if (species === null) return true
+	if (loaded?.key !== `${species.name}|${species.source}`) return false
+	if (loaded.options === null) return true
+	return pick !== null && loaded.options.some((option) => option.name === pick.name && option.source === pick.source)
+}
+
 function pickerSteps(conditions: WizardStepConditions): readonly WizardStep[] {
 	return visibleSteps(conditions).filter((step) => step !== 'review')
 }
@@ -414,6 +432,8 @@ export interface WizardData {
 	 * a different choice, or none at all.
 	 */
 	speciesSpellcastingAbility: Ability | null
+	/** S2: the cantrip a species `choose` filter grant was filled with. Kept while the same species is re-reported, cleared when the species or lineage changes. */
+	speciesCantrip: { name: string; source: string } | null
 	/** Which already-proficient skills the player named as Expertise (D8) — clears whenever class, level, class skills, species, species skills or background change, since all of those affect the offer or the count (task instructions, point 4). */
 	expertiseSkills: string[]
 	masteries: string[]
@@ -497,6 +517,7 @@ export function emptyWizardData(): WizardData {
 		speciesSkills: [],
 		speciesSize: null,
 		speciesSpellcastingAbility: null,
+		speciesCantrip: null,
 		expertiseSkills: [],
 		masteries: [],
 		fightingStyle: null,
@@ -603,6 +624,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		speciesSkills: isKhoravar(character.species) ? [] : (character.speciesSkills ?? []),
 		speciesSize: character.speciesSize ?? null,
 		speciesSpellcastingAbility: character.speciesSpellcastingAbility ?? null,
+		speciesCantrip: character.speciesCantrip ?? null,
 		expertiseSkills: choiceNames(character.expertiseSkills),
 		masteries: choiceNames(character.masteries),
 		fightingStyle: character.fightingStyle ?? null,
@@ -688,6 +710,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		speciesSkillsComplete,
 		speciesSizeComplete,
 		speciesSpellcastingAbilityComplete,
+		speciesCantripComplete,
 		wildShapeFormCount,
 		classPickRequirements,
 		startingEquipmentCategoryPicksComplete,
@@ -725,7 +748,8 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				speciesVariantChoiceComplete &&
 				speciesSkillsComplete &&
 				speciesSizeComplete &&
-				speciesSpellcastingAbilityComplete
+				speciesSpellcastingAbilityComplete &&
+				speciesCantripComplete
 			)
 		case 'background':
 			// A background is REMEMBERED the moment it is picked (D8), but the step only
@@ -905,6 +929,7 @@ export type WizardAction =
 	| { type: 'setSpeciesChoice'; choice: SpeciesChoice | null }
 	| { type: 'setSpeciesSkills'; skills: string[] }
 	| { type: 'setSpeciesSpellcastingAbility'; ability: Ability | null }
+	| { type: 'setSpeciesCantrip'; cantrip: { name: string; source: string } | null }
 	| { type: 'setExpertiseSkills'; skills: string[] }
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
 	| { type: 'setBackgroundToolProficiency'; tool: string | null }
@@ -1019,10 +1044,13 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					toolChoices: state.data.toolChoices.filter((choice) => !isSpeciesToolChoice(choice)),
 					speciesSize: null,
 					speciesSpellcastingAbility: null,
+					speciesCantrip: sameSpecies ? state.data.speciesCantrip : null,
 					expertiseSkills: [],
 				},
 			}
 		}
+		case 'setSpeciesCantrip':
+			return { ...state, data: { ...state.data, speciesCantrip: action.cantrip } }
 		case 'setSpeciesSkills':
 			return { ...state, data: { ...state.data, speciesSkills: action.skills, expertiseSkills: [] } }
 		case 'setSpeciesSpellcastingAbility':
@@ -1374,6 +1402,7 @@ export function saveCharacter(
 		inventory: existing ? existing.inventory : startingEquipment?.inventory,
 		currencyCopper: existing ? existing.currencyCopper : startingEquipment?.currencyCopper,
 		speciesSpellcastingAbility: data.speciesSpellcastingAbility ?? undefined,
+		speciesCantrip: data.speciesCantrip ?? undefined,
 		speciesSize: data.speciesSize ?? undefined,
 		toolChoices,
 		subclassSkills,

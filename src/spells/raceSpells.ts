@@ -47,21 +47,19 @@
  *   sub-key in the whole data set — proficiency-bonus-many free casts per Long
  *   Rest (parseDailySubkey's new `pb` case, fed the bonus computed here).
  *
- * Deliberately NOT built here (deferred, and visible rather than silent — the
- * same spirit as D43/D58): 5 entries (Elf base + Elf; High Elf Lineage,
- * Khoravar, Kobold base + Kobold; Draconic Sorcery) whose `known` value is a
- * `choose` FILTER node ("pick a cantrip from the Wizard spell list") rather
- * than a named spell. No picker and no storage is built for those; each
- * produces one plainly-marked note (`RaceSpellGrants.notes`) that the sheet
- * shows next to the granted spells, so the gap is honest instead of an empty
- * space.
+ * S2: 5 entries (Elf base + Elf; High Elf Lineage, Khoravar, Kobold base +
+ * Kobold; Draconic Sorcery) carry a `choose` FILTER node ("pick a cantrip from
+ * the Wizard spell list") instead of a named spell. The Species step stores
+ * the pick as `Character.speciesCantrip`, which becomes an ordinary species
+ * row here; with no pick stored (a save from before schema 56) the node
+ * yields one note (`RaceSpellGrants.notes`) instead.
  */
 
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { proficiencyBonusForLevel } from '../calculation/proficiencyBonus'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character } from '../storage/character'
-import { findChooseNodes, type RawChooseNode } from './featSpellChoiceData'
+import { findChooseNodes } from './featSpellChoiceData'
 import {
 	extractRefsWithUsage,
 	findSpell,
@@ -126,29 +124,7 @@ function totalCharacterLevel(character: Character): number {
 	return (character.classes ?? []).reduce((sum, c) => sum + c.level, 0)
 }
 
-/** The data writes a `class=` clause's name in whatever case the book used ("wizard", "Wizard"); the note shows it the way a player writes it. */
-function titleCase(name: string): string {
-	return name.charAt(0).toUpperCase() + name.slice(1)
-}
-
-/**
- * The one visible line a deferred `choose`-filter grant produces. Reads the
- * `level=`/`class=` clauses straight off the choose string rather than through
- * featSpellChoiceData.ts's parser: that parser resolves a class NAME to a
- * class identity through a 5-entry lookup and returns null for anything else,
- * which would turn an unlisted class into no note at all — exactly the silent
- * omission this line exists to prevent.
- */
-function deferredChoiceNote(speciesName: string, node: RawChooseNode): string {
-	const parts = node.choose.split('|')
-	const levels = /^level=([\d;]+)$/.exec(parts[0])?.[1].split(';') ?? []
-	const what = levels.length === 1 && levels[0] === '0' ? 'a cantrip' : levels.length > 0 ? `a spell of level ${levels.join('/')}` : 'a spell'
-	const classClause = parts.slice(1).find((clause) => clause.startsWith('class='))
-	const from = classClause
-		? `the ${classClause.slice('class='.length).split(';').map(titleCase).join('/')} spell list`
-		: 'a class spell list'
-	return `${speciesName} lets you pick ${what} from ${from} — not yet supported.`
-}
+export const SPECIES_CANTRIP_NOT_CHOSEN = 'Cantrip not chosen yet — choose it in Edit Character.'
 
 interface RawSpeciesEntry {
 	name: string
@@ -238,10 +214,14 @@ export function raceSpellsFor(character: Character, parsedSpecies: unknown, pars
 					grantedAtLevel = parsed
 				}
 
-				// A `choose` filter node grants no concrete spell (the 5 deferred entries). One visible note each, no picker, no storage.
-				for (const node of findChooseNodes(value)) notes.push({ speciesName: species.name, text: deferredChoiceNote(species.name, node) })
+				// S2: a `choose` filter node is filled by the stored pick; without one it is a visible note, not a gap.
+				const chosen: { ref: string; usage: SpellUsage | null }[] = []
+				if (findChooseNodes(value).length > 0) {
+					if (character.speciesCantrip) chosen.push({ ref: `${character.speciesCantrip.name}|${character.speciesCantrip.source}`, usage: null })
+					else notes.push({ speciesName: species.name, text: SPECIES_CANTRIP_NOT_CHOSEN })
+				}
 
-				for (const { ref, usage } of extractRefsWithUsage(value, undefined, null, proficiencyBonus)) {
+				for (const { ref, usage } of [...extractRefsWithUsage(value, undefined, null, proficiencyBonus), ...chosen]) {
 					const spell = findSpell(spells, parseSpellRef(ref))
 					if (!spell) continue // reference doesn't resolve against this app's filtered spells.json — skip cleanly (D43).
 

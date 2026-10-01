@@ -61,6 +61,9 @@ vi.mock('../species/speciesSizeData', () => ({ loadSpeciesSizeOptions: vi.fn(asy
 vi.mock('../spells/speciesSpellcastingAbilityData', () => ({
 	loadSpeciesSpellcastingAbilityChoice: vi.fn(async () => null),
 }))
+vi.mock('../spells/speciesCantripData', () => ({
+	loadSpeciesCantripChoice: vi.fn(async () => null),
+}))
 
 vi.mock('../backgrounds/backgroundData', () => ({
 	loadBackgrounds: vi.fn(async () => [

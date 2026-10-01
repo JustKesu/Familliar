@@ -1127,6 +1127,12 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Edit Character keeps Skilled picks and switches to Tough (+2 max HP); older Human
   line + gate; level-up/edit clash with a level-4 feat; Manage Feats Skilled picks;
   no Dark Gift in the dropdown).
+- `e2e/speciesCantrip.spec.ts` — S2 a–h (High Elf Fighter: Species gate, Wizard
+  list only, Fire Bolt on Spells/Actions with the species ability; Khoravar merged
+  list with class labels; Kobold; Draconic Sorcery Sorcerer list; seeded Wizard High
+  Elf: class cantrip disabled in the species dropdown, species cantrip disabled on
+  the Spells step; High Elf → Wood Elf drops it; Edit keeps and changes it; schema-55
+  High Elf note + gate; v55 import and malformed import refused).
 
 ## Dočasné scaffolding
 
@@ -1716,6 +1722,20 @@ feat not chosen yet — choose it in Edit Character." under the trait whose text
 an Origin feat (`SpeciesTrait.grantsOriginFeat`). validate-data's `stripEtoolsTags`
 uses the tags.ts display segment. E2E `speciesFeat.spec.ts` a–i; `e2e/wizard.ts`
 picks Lucky for a Human unless `speciesFeat` says otherwise.
+
+S2 (D278–D282): schema 56, `Character.speciesCantrip { name, source }` (migration
+55→56 tags only; validate refuses a malformed value on import). High Elf, Khoravar
+and Kobold; Draconic Sorcery pick their class-list cantrip on the Species step:
+`SpeciesCantripPicker` + `speciesCantripData.ts` (`src/spells/`), one dropdown under
+the spellcasting-ability picker; Khoravar's Cleric/Druid/Wizard lists merged, each
+option labelled with its classes. `isSpeciesCantripComplete` (wizardState.ts) →
+`speciesCantripComplete` blocks Species Next; a species/lineage change drops the
+pick; level-up never asks. `collectKnownSpells` gets `speciesCantrip` ("your
+species cantrip"), so the Spells step, feat pickers and sheet Manage Spells disable
+it, and the species dropdown disables cantrips known elsewhere. raceSpells.ts
+turns the pick into an ordinary species row (Spells + Actions); with no pick the
+note reads "Cantrip not chosen yet — choose it in Edit Character." E2E
+`speciesCantrip.spec.ts` a–h; `e2e/wizard.ts` gained `speciesCantrip`.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

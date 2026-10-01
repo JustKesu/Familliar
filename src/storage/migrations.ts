@@ -494,6 +494,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 55 adds Character.portrait (W-8). A version-54 character has none — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 55 }),
 	},
+	{
+		from: 55,
+		to: 56,
+		/* 56 adds Character.speciesCantrip (S2). A version-55 character has none — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 56 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

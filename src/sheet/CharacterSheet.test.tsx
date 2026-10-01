@@ -6722,7 +6722,7 @@ describe('CharacterSheet', () => {
 						unresolvedAbilityReason: 'spellcasting ability not chosen yet',
 					},
 				],
-				notes: [{ speciesName: 'Elf; High Elf Lineage', text: 'Elf; High Elf Lineage lets you pick a cantrip from the Wizard spell list — not yet supported.' }],
+				notes: [{ speciesName: 'Elf; High Elf Lineage', text: 'Cantrip not chosen yet — choose it in Edit Character.' }],
 			})
 
 			const elf: Character = {
@@ -6746,7 +6746,7 @@ describe('CharacterSheet', () => {
 			expect(summary.textContent).toContain('spellcasting ability not chosen yet')
 			// No ability means no attack/DC entry to show — nothing is invented from the character's class.
 			expect(container.querySelector('.sheet__spell-attacks')).toBeNull()
-			expect(spellsSection.textContent).toContain('pick a cantrip from the Wizard spell list — not yet supported.')
+			expect(spellsSection.textContent).toContain('Cantrip not chosen yet — choose it in Edit Character.')
 		})
 
 		/*

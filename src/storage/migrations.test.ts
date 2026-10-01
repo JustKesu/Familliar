@@ -634,8 +634,16 @@ describe('the migration chain (D69)', () => {
 	/* W-8: an older character has no portrait — the step only tags. */
 	it('tags a version-54 character and adds no portrait', () => {
 		const before = { schemaVersion: 54, id: '1', name: 'Aria', classes: [], notes: 'x' }
-		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: 55 })
-		expect(CURRENT_SCHEMA_VERSION).toBe(55)
+		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+	})
+
+	/* S2: an older character has no species cantrip — the step only tags, the sheet then asks for the pick. */
+	it('tags a version-55 character and adds no species cantrip', () => {
+		const before = { schemaVersion: 55, id: '1', name: 'Aria', classes: [], species: { name: 'Elf; High Elf Lineage', source: 'XPHB' } }
+		const migrated = migrateToCurrent({ ...before })
+		expect(migrated).toEqual({ ...before, schemaVersion: 56 })
+		expect('speciesCantrip' in (migrated as object)).toBe(false)
+		expect(CURRENT_SCHEMA_VERSION).toBe(56)
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */
