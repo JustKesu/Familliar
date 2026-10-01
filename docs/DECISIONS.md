@@ -4678,3 +4678,25 @@ Spells.
 raceSpellsFor dává poznámku i uložený cantrip jen tehdy, když `extractSpeciesCantripSlot` vrátí slot
 (`level=0|class=…`). Jiný tvar `choose` uzlu by hráče posílal do Edit Character, kde výběr není; dnes žádný
 takový v datech není.
+
+## D292 — Expertise vybírá z každé dovednosti, ve které je postava zdatná (E-1)
+
+Pool kroku Expertise (Wizard / Edit Character / level-up) = dovednosti třídy, pozadí a druhu (D49) + vybrané
+dovednosti featů (každá instance z `draftFeatInstances`, tj. i Skilled) + pevná dovednost featu (Boon of Skill,
+`featProficiencyChoiceShape(feat).fixedSkills`) + volby dovedností podtřídy + pevné dovednosti podtřídy +
+Khoravar extra skill. Bez duplicit, první zdroj vyhrává. Scholar (`restrictedTo`), pevná expertiza (D177, D202)
+i brána F-5 („(not proficient)“ blokuje Next) platí beze změny nad větším poolem. Seznam Scholar se nerozšiřuje.
+
+## D293 — `expertiseSourceSkills` je samostatný seznam; `proficientSkills` zůstává pro `heldForFeat` (E-1)
+
+`proficientSkills` je i základ `heldForFeat` („co postava drží mimo editovaný feat“). Kdyby se do něj přidaly
+dovednosti featů, Skilled by viděl vlastní volby jako držené jinde. Pool Expertise proto staví
+`expertiseSourceSkills` = `proficientSkills` + zdroje z D292; `heldForFeat` se nezměnilo. Hlídá to unit test
+(Skilled: vlastní volba není v jeho pickeru označená „(from Skilled)“).
+
+## D294 — Pořadí kroků zůstává: Expertise je hned po Background (E-1)
+
+Dovednosti zvolené v pozdějších krocích (ASI featy v kroku ASI / Feat, volby podtřídy v kroku jazyků) se do poolu
+dostanou, až se hráč vrátí na Expertise přes lištu kroků, a v level-upu / Edit Character, kde už existují.
+Změna pořadí kroků se nedělá (rozhodl uživatel). Uložená Expertise na dovednosti, kterou pozdější krok odebral,
+zůstává blokovaná (brána F-5), ale na kroku Review k tomu není žádný vysvětlující text — viz REPORT.md.

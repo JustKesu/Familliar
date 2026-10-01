@@ -200,14 +200,21 @@ vi.mock('../optionalFeatures/optionalFeatureData', async (importOriginal) => {
 /** Fighter's real class-features.json grants at 4/6/8/12/14/16 (confirmed, scripts/investigate-feat-asi-eligibility.js) — includes the bonus level 6 the flat task-brief list omitted. */
 vi.mock('../featAsi/featAsiData', async () => {
 	const actual = await vi.importActual<typeof import('../featAsi/featAsiData')>('../featAsi/featAsiData')
+	const { featProficiencyChoiceShape } = await vi.importActual<typeof import('../calculation/featEffects')>('../calculation/featEffects')
 	return {
 		...actual,
+		loadFeatProficiencyChoice: vi.fn(async (name: string, source: string) =>
+			name === 'Skilled'
+				? { shape: featProficiencyChoiceShape({ name, source, skillToolLanguageProficiencies: [{ choose: [{ from: ['anySkill', 'anyTool'], count: 3 }] }] }), toolOptions: [], languages: [] }
+				: null,
+		),
 		loadFeatAsiGrants: vi.fn(async (className: string, _classSource: string, level: number) => {
 			const table: Record<string, number[]> = { Fighter: [4, 6, 8, 12, 14, 16], Wizard: [4, 8, 12, 16], Rogue: [4, 8, 10, 12, 16] }
 			return (table[className] ?? []).filter((l) => l <= level).map((l) => ({ level: l, kind: 'asi' as const }))
 		}),
 		loadFeats: vi.fn(async () => [
 			{ name: 'Tough', source: 'XPHB', category: 'G' },
+			{ name: 'Skilled', source: 'XPHB', category: 'O', repeatable: true },
 			{ name: 'Actor', source: 'XPHB', category: 'G', prerequisite: [{ level: 4, ability: [{ cha: 13 }] }] },
 		]),
 		loadClassPrereqInfo: vi.fn(async () => ({ armorProficiencies: [], weaponProficiencies: [], hasSpellcasting: false })),
@@ -1014,6 +1021,19 @@ describe('CharacterWizard — feat/ASI step', () => {
 		expect(screen.getByRole('group', { name: 'Level 6' })).toBeTruthy()
 		expect(screen.getByRole('group', { name: 'Level 8' })).toBeTruthy()
 		expect(screen.getByRole('group', { name: 'Level 12' })).toBeTruthy()
+	})
+
+	it("E-1: a Skilled feat's own skill picks are not listed as held elsewhere in its own picker", async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		await fillThroughAbilities(user, '4')
+		await user.selectOptions(await screen.findByRole('combobox', { name: 'Level 4 feat or ASI' }), 'Skilled|XPHB')
+		await user.selectOptions(await screen.findByLabelText('Skilled skill or tool 1'), 'skill:arcana')
+
+		// Held skills are labelled "(from …)" and disabled; a pick of this very feat must be only disabled in the other slots, never labelled as coming from elsewhere.
+		const arcanaInSlot2 = within(screen.getByLabelText('Skilled skill or tool 2')).getByRole('option', { name: /^Arcana/ })
+		expect(arcanaInSlot2.textContent).toBe('Arcana')
 	})
 
 	it('a feat with an unmet prerequisite is shown but cannot be taken, and the reason is visible', async () => {

@@ -1138,6 +1138,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Tough after Hit points saves full HP; manual Alert disabled in species dropdown;
   Criminal Alert initiative +PB; malformed stored speciesCantrip loads; Manage Spells
   and background MI disable the species cantrip; Manage Feats MI list + known spells).
+- `e2e/expertiseE1.spec.ts` — E-1 a–c (Human Rogue with species Skilled: Arcana offered
+  in Expertise and shown as expertise on the sheet; swapping the species feat to Lucky
+  leaves Arcana "(not proficient)" and blocks Next; Khoravar extra skill offered).
 
 ## Dočasné scaffolding
 
@@ -1756,6 +1759,14 @@ note only for an extractable slot. Malformed stored `speciesCantrip` dropped on 
 (`withoutMalformedDroppableFields`). Alert|XPHB adds Proficiency Bonus to initiative
 ("feat (Alert): +N", any origin); `PROSE_FEAT_EFFECT_TARGETS` / `proseFeatEffectNotes`
 removed. E2E `wizardF5.spec.ts`.
+
+E-1 (D292–D294): the Expertise pool (`expertisePool`, `expertiseRequiredCount`,
+`expertiseSkillsAvailable`, ExpertisePicker's `proficientSkills`) is built from the new
+`expertiseSourceSkills` in CharacterWizard.tsx — class/background/species skills plus
+every feat instance's skills (stored picks and fixed grants such as Boon of Skill via
+`featProficiencyChoiceShape`), subclass skill picks and fixed grants, and the
+Khoravar extra skill. `proficientSkills` is unchanged (it feeds `heldForFeat`). Step
+order unchanged. E2E `expertiseE1.spec.ts` a–c.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

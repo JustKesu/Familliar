@@ -66,7 +66,7 @@ import { FeatAsiPicker } from '../featAsi/FeatAsiPicker'
 import { FeatSubChoicePicker, magicInitiateListsOf, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { featsRequiringAbilityChoice, loadFeatAsiGrants, loadFeats } from '../featAsi/featAsiData'
 import { featAsiStepValid, grantedFeatsOf, pickedFeats, useFeatAsiStepData } from '../featAsi/featAsiLevels'
-import { featFixedExpertiseSkills, type FeatEffectEntry } from '../calculation/featEffects'
+import { featFixedExpertiseSkills, featProficiencyChoiceShape, type FeatEffectEntry } from '../calculation/featEffects'
 import { OriginFeatSwapPicker } from '../featAsi/OriginFeatSwapPicker'
 import { SpeciesOriginFeatPicker } from '../featAsi/SpeciesOriginFeatPicker'
 import { speciesOriginFeatComplete, useSpeciesOriginFeat } from '../featAsi/speciesOriginFeat'
@@ -327,7 +327,7 @@ export function CharacterWizard({
 	}, [])
 
 	/** What computeProficiencies reads, for the tools and languages a feat's picker must not offer again (D160). */
-	const [proficiencyData, setProficiencyData] = useState<{ classes: unknown; feats: FeatProficiencyEntry[]; fixedExpertise: Record<string, string[]> }>({ classes: [], feats: [], fixedExpertise: {} })
+	const [proficiencyData, setProficiencyData] = useState<{ classes: unknown; feats: FeatProficiencyEntry[]; fixedExpertise: Record<string, string[]>; fixedSkills: Record<string, string[]> }>({ classes: [], feats: [], fixedExpertise: {}, fixedSkills: {} })
 	useEffect(() => {
 		let cancelled = false
 		Promise.all([loadDataFile('data/classes.json'), loadDataFile('data/feats.json')])
@@ -336,7 +336,11 @@ export function CharacterWizard({
 				const fixedExpertise = Object.fromEntries(
 					(Array.isArray(feats) ? (feats as FeatEffectEntry[]) : []).map((feat) => [`${feat.name}|${feat.source}`, featFixedExpertiseSkills(feat)] as const).filter(([, skills]) => skills.length > 0),
 				)
-				if (!cancelled) setProficiencyData({ classes, feats: extractFeatProficiencyEntries(feats), fixedExpertise })
+				// E-1: a feat's FIXED skill grant (Boon of Skill) joins the Expertise pool.
+				const fixedSkills = Object.fromEntries(
+					(Array.isArray(feats) ? (feats as FeatEffectEntry[]) : []).map((feat) => [`${feat.name}|${feat.source}`, featProficiencyChoiceShape(feat).fixedSkills] as const).filter(([, skills]) => skills.length > 0),
+				)
+				if (!cancelled) setProficiencyData({ classes, feats: extractFeatProficiencyEntries(feats), fixedExpertise, fixedSkills })
 			})
 			.catch(() => {
 				/* Best-effort: without it a feat picker still hides what the wizard state itself holds. */
@@ -982,7 +986,15 @@ export function CharacterWizard({
 	// D177: a skill a subclass already gives expertise in (Scout) is never offered again.
 	const featFixedExpertise = (instances: readonly FeatRef[]): string[] => instances.flatMap((instance) => proficiencyData.fixedExpertise[`${instance.name}|${instance.source}`] ?? [])
 	const fixedExpertise = [...(wizardClassChoice ? subclassExpertiseSkills([wizardClassChoice], state.data.subclassSkills) : []), ...featFixedExpertise(draftFeatInstances)]
-	const expertisePool = proficientSkills.filter(
+	/** E-1: Expertise draws on every skill proficiency, not only class/background/species; kept apart from proficientSkills, which heldForFeat reads as "held outside the feat being edited". */
+	const expertiseSourceSkills: DisabledSkill[] = [
+		...proficientSkills,
+		...(state.data.speciesExtraSkill && state.data.speciesChoice ? [{ skill: state.data.speciesExtraSkill, source: state.data.speciesChoice.name }] : []),
+		...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: state.data.subclass?.name ?? '' })),
+		...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
+		...draftFeatInstances.flatMap((instance) => [...(proficiencyData.fixedSkills[`${instance.name}|${instance.source}`] ?? []), ...(instance.proficiencies?.skills ?? [])].map((skill) => ({ skill, source: instance.name }))),
+	].filter((entry, index, all) => all.findIndex((other) => other.skill === entry.skill) === index)
+	const expertisePool = expertiseSourceSkills.filter(
 		(entry) => !fixedExpertise.includes(entry.skill) && (!expertiseEligibility?.restrictedTo || expertiseEligibility.restrictedTo.includes(entry.skill)),
 	)
 	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count, expertisePool.length) : null
@@ -1677,7 +1689,7 @@ export function CharacterWizard({
 							className={state.data.classChoice.className}
 							classSource={state.data.classChoice.classSource}
 							level={state.data.classChoice.level}
-							proficientSkills={proficientSkills.filter((entry) => !fixedExpertise.includes(entry.skill))}
+							proficientSkills={expertiseSourceSkills.filter((entry) => !fixedExpertise.includes(entry.skill))}
 							value={state.data.expertiseSkills}
 							onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
 							lockedValues={held?.expertiseSkills}
