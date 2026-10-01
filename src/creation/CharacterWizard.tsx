@@ -44,6 +44,7 @@ import { wildShapeLimits } from '../beasts/wildShapeData'
 import { damagingAttackCantripsAmong, damagingCantripsAmong, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { loadOptionalFeatureSpellChoiceShape, offersSpellChoice, requiredSpellChoiceCounts } from '../spells/optionalFeatureSpellChoiceData'
 import { ExpertisePicker } from '../expertise/ExpertisePicker'
+import { expertisePoolOf, featSkillSources } from './expertisePool'
 import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertise/expertiseData'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
 import { loadSubclassLevelFor, loadSubclassesFor } from '../subclass/subclassData'
@@ -277,7 +278,7 @@ export function CharacterWizard({
 	 * to the current value, a level up raises `currentHp` by exactly the
 	 * increase between the two.
 	 */
-	const [maxHp, setMaxHp] = useState<{ current: Calculated<number>; previous: Calculated<number> | null } | null>(null)
+	const [maxHpLoaded, setMaxHpLoaded] = useState<{ key: string; character: Character | undefined; current: Calculated<number>; previous: Calculated<number> | null } | null>(null)
 
 	/**
 	 * Slice 8d1: the seed needs two things storage deliberately doesn't hold —
@@ -992,11 +993,13 @@ export function CharacterWizard({
 		...(state.data.speciesExtraSkill && state.data.speciesChoice ? [{ skill: state.data.speciesExtraSkill, source: state.data.speciesChoice.name }] : []),
 		...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: state.data.subclass?.name ?? '' })),
 		...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
-		...draftFeatInstances.flatMap((instance) => [...(proficiencyData.fixedSkills[`${instance.name}|${instance.source}`] ?? []), ...(instance.proficiencies?.skills ?? [])].map((skill) => ({ skill, source: instance.name }))),
+		...featSkillSources(draftFeatInstances, proficiencyData.fixedSkills),
 	].filter((entry, index, all) => all.findIndex((other) => other.skill === entry.skill) === index)
-	const expertisePool = expertiseSourceSkills.filter(
-		(entry) => !fixedExpertise.includes(entry.skill) && (!expertiseEligibility?.restrictedTo || expertiseEligibility.restrictedTo.includes(entry.skill)),
-	)
+	const {
+		taken: expertiseTaken,
+		pool: expertisePool,
+		stale: staleExpertise,
+	} = expertisePoolOf({ sourceSkills: expertiseSourceSkills, fixedExpertise, feats: draftFeatInstances, restrictedTo: expertiseEligibility?.restrictedTo, picked: state.data.expertiseSkills })
 	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count, expertisePool.length) : null
 	const expertiseSkillsAvailable = state.data.expertiseSkills.every((skill) => expertisePool.some((entry) => entry.skill === skill))
 
@@ -1133,20 +1136,8 @@ export function CharacterWizard({
 	 * hit points step being visited: a level-1 creation never shows that step
 	 * (D92) but still needs a maximum to default `currentHp` to.
 	 */
-	useEffect(() => {
-		let cancelled = false
-		Promise.all([loadCharacterMaxHp(draftCharacterForMaxHp), character ? loadCharacterMaxHp(character) : Promise.resolve(null)])
-			.then(([current, previous]) => {
-				if (!cancelled) setMaxHp({ current, previous })
-			})
-			.catch(() => {
-				if (!cancelled) setMaxHp(null)
-			})
-		return () => {
-			cancelled = true
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the same class/species/feat/level-pick identity HitPointsPicker uses, plus `character` itself for the "before" side.
-	}, [
+	// W-9: Constitution reaches the maximum, hence the scores and bonus in the key. F-6: a result is only used while its key still matches, so a Save or Review never reads the previous inputs' maximum.
+	const maxHpKey = JSON.stringify([
 		draftCharacterForMaxHp.classes[0]?.className,
 		draftCharacterForMaxHp.classes[0]?.classSource,
 		draftCharacterForMaxHp.classes[0]?.level,
@@ -1154,15 +1145,28 @@ export function CharacterWizard({
 		draftCharacterForMaxHp.background?.name,
 		draftCharacterForMaxHp.background?.source,
 		draftCharacterForMaxHp.featAsiChoices,
-		// W-9: Constitution reaches the maximum; without these the class step's snapshot (no scores yet, so "unknown") was kept to Review.
 		draftCharacterForMaxHp.abilityScores,
 		draftCharacterForMaxHp.abilityBonus,
 		draftCharacterForMaxHp.hitPointLevels,
 		draftCharacterForMaxHp.maxHpOverride,
 		draftGrantedFeats,
 		backgroundFeatOverride,
-		character,
 	])
+	useEffect(() => {
+		let cancelled = false
+		Promise.all([loadCharacterMaxHp(draftCharacterForMaxHp), character ? loadCharacterMaxHp(character) : Promise.resolve(null)])
+			.then(([current, previous]) => {
+				if (!cancelled) setMaxHpLoaded({ key: maxHpKey, character, current, previous })
+			})
+			.catch(() => {
+				if (!cancelled) setMaxHpLoaded(null)
+			})
+		return () => {
+			cancelled = true
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- maxHpKey stands for every input of draftCharacterForMaxHp; `character` is the "before" side.
+	}, [maxHpKey, character])
+	const maxHp = maxHpLoaded?.key === maxHpKey && maxHpLoaded.character === character ? maxHpLoaded : null
 
 	/** W20: the hit die size the 'hitPoints' gate checks rolls and manual values against. */
 	const hitDieKey = state.data.classChoice ? `${state.data.classChoice.className}|${state.data.classChoice.classSource}` : null
@@ -1457,7 +1461,12 @@ export function CharacterWizard({
 		const held = computeProficiencies(draftCharacterForProficiencies, proficiencyData.classes, draftFeatInstances, proficiencyData.feats)
 		const labels = (items: readonly { label: string }[]) => items.map((item) => item.label)
 		return {
-			skills: expertiseSourceSkills.map((entry) => entry.skill),
+			skills: [
+				...new Set([
+					...expertiseSourceSkills.map((entry) => entry.skill),
+					...draftFeatInstances.filter((instance) => instance.origin === 'item').flatMap((instance) => [...(proficiencyData.fixedSkills[`${instance.name}|${instance.source}`] ?? []), ...(instance.proficiencies?.skills ?? [])]),
+				]),
+			],
 			expertise: [...new Set([...state.data.expertiseSkills, ...fixedExpertise, ...draftFeatInstances.flatMap((instance) => instance.proficiencies?.expertise ?? [])])],
 			armor: labels(held.armor),
 			weapons: labels(held.weapons),
@@ -1707,7 +1716,7 @@ export function CharacterWizard({
 							className={state.data.classChoice.className}
 							classSource={state.data.classChoice.classSource}
 							level={state.data.classChoice.level}
-							proficientSkills={expertiseSourceSkills.filter((entry) => !fixedExpertise.includes(entry.skill))}
+							proficientSkills={expertiseSourceSkills.filter((entry) => !expertiseTaken.includes(entry.skill))}
 							value={state.data.expertiseSkills}
 							onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
 							lockedValues={held?.expertiseSkills}
@@ -1937,7 +1946,8 @@ export function CharacterWizard({
 					hpGain={levelUp && maxHp?.current.status === 'known' && maxHp.previous?.status === 'known' ? maxHp.current.value - maxHp.previous.value : null}
 					// Not part of an edit: starting equipment is a one-time creation grant and the character's inventory is left as it is.
 					startingInventory={character === undefined ? buildStartingInventory(classEquipmentOffer, backgroundEquipmentOffer, state.data.startingEquipment) : null}
-					staleExpertise={state.data.expertiseSkills.filter((skill) => !expertisePool.some((entry) => entry.skill === skill))}
+					maxHpOverride={character?.maxHpOverride ?? null}
+					staleExpertise={staleExpertise}
 					steps={visibleSteps(stepConditions)}
 					onGoTo={(step) => dispatch({ type: 'goTo', step, conditions: stepConditions })}
 					saveError={saveError}

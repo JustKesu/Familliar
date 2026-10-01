@@ -1777,6 +1777,16 @@ walk. `expertiseSkillsAvailable` false → alert line + "Go to Expertise". Chara
 gone. Max-HP load now also keys on `abilityScores` / `abilityBonus` (D300). E2E `wizardW9.spec.ts` a–e;
 `e2e/wizard.ts` has `stopAtReview`.
 
+F-6 (D303–D307, review fixes of E-1 and W-9): the pool arithmetic moved to `src/creation/expertisePool.ts`
+(`featSkillSources`, `expertisePoolOf`; unit-tested). Item-granted feats no longer feed the pool; the Expertise step and
+pool skip skills with a feat's chosen expertise; stale picks are measured against `expertiseSourceSkills` and carry a
+reason (`proficiency` / `taken` / `restricted`). Review: "Go to Expertise" only if the walk has the step, else "Fix it
+in Edit Character."; "Manual maximum: N" with `maxHpOverride`; "Spells added" includes class-option spells; species
+cantrip suffix uses `speciesLabel`; Equipment card is a region (`StartingTable` `ariaLabel`); empty-name portrait. In
+CharacterWizard `maxHp` is keyed (`maxHpKey`, `character`) and read as unresolved on a mismatch. Unit
+`ReviewStep.test.tsx`, `expertisePool.test.ts`; e2e `wizardW9.spec.ts` (exact Fighter 1 maximum, creation `currentHp`,
+stale Expertise in a level up).
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

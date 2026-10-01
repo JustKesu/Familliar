@@ -4752,3 +4752,33 @@ Rozhodl uživatel: nadpis karty Proficiencies na Review skočí na krok, který 
 
 Rozhodl uživatel: karta Spells na Review vypisuje kouzla, která hráč vybral (třída, volby podtřídy, volby options,
 cantrip druhu). Vždy připravená kouzla (třída, podtřída) se na ní neuvádějí. Beze změny kódu.
+
+## D303 — Dovednosti z featů od předmětu se nepočítají do poolu Expertise (F-6, upřesňuje D292)
+
+Rozhodl uživatel: feat s původem `item` přispívá do `expertiseSourceSkills` ničím; dovednost, která odejde s předmětem,
+není trvalý zdroj Expertise. Ostatní instance (ASI, pozadí, druh, ruční) platí dál. Karta Proficiencies na Review
+dovednosti z předmětu dál vypisuje.
+
+## D304 — Zastaralá Expertise při level-upu bez kroku Expertise neblokuje uložení (F-6)
+
+Rozhodl uživatel: když průchod level-upu nemá krok Expertise, Review ukáže varování s textem „Fix it in Edit
+Character.“ místo tlačítka „Go to Expertise“ a Save zůstane povolený. Tlačítko je jen tehdy, když `steps` krok
+`expertise` obsahuje.
+
+## D305 — Při `maxHpOverride` Review neukazuje „+gain → max“ (F-6)
+
+Rozhodl uživatel: s ručním maximem je v kartě What's new řádek Hit points „Manual maximum: N“. Override je na obou
+stranách level-upu, takže rozdíl by byl vždy +0.
+
+## D306 — „Spells added“ zahrnuje kouzla z voleb třídy (F-6)
+
+Rozhodl uživatel: do „Spells added“ patří i `classOptionalFeatureChoices[].spellChoices` vzatá na tomto levelu
+(základ i aktuální stav se porovnává včetně nich).
+
+## D307 — Zastaralá Expertise se měří proti zdrojovým dovednostem a má slovo podle důvodu (F-6)
+
+Pick se měří proti `expertiseSourceSkills`, ne proti poolu. Tři důvody: ztracená proficiency („needs a proficiency you
+no longer have“), už má Expertise z pevného zdroje nebo z volby featu („already has Expertise from another source“),
+mimo povolený seznam třídy (Scholar; „is not in this class's allowed list“). Pool i krok Expertise navíc vynechávají
+dovednosti, které mají vybranou Expertise z featu (`instance.proficiencies.expertise`). Znění obou nových vět zvolil
+agent jako krátké neutrální; uživatel je může změnit.

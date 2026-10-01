@@ -36,6 +36,21 @@ function listOf(names: readonly string[]): string {
 	return names.length > 0 ? names.join(', ') : '—'
 }
 
+/** D307: a lost proficiency is worded as before; the other two reasons name what is actually wrong. */
+function staleExpertiseText(stale: readonly { skill: string; reason: 'proficiency' | 'taken' | 'restricted' }[]): string {
+	const of = (reason: 'proficiency' | 'taken' | 'restricted') => stale.filter((entry) => entry.reason === reason).map((entry) => capitalize(entry.skill))
+	const lost = of('proficiency')
+	const taken = of('taken')
+	const restricted = of('restricted')
+	return [
+		lost.length > 0 ? `Expertise in ${lost.join(' and ')} needs ${lost.length === 1 ? 'a proficiency' : 'proficiencies'} you no longer have.` : '',
+		taken.length > 0 ? `${taken.join(' and ')} already has Expertise from another source.` : '',
+		restricted.length > 0 ? `Expertise in ${restricted.join(' and ')} is not in this class's allowed list.` : '',
+	]
+		.filter((sentence) => sentence !== '')
+		.join(' ')
+}
+
 function Row({ label, children }: { label: string; children: ReactNode }): ReactNode {
 	return (
 		<div className="review__row">
@@ -122,6 +137,7 @@ export function ReviewStep({
 	maxHp,
 	hitDice,
 	hpGain,
+	maxHpOverride,
 	startingInventory,
 	staleExpertise,
 	steps,
@@ -145,10 +161,12 @@ export function ReviewStep({
 	hitDice: string | null
 	/** Level up only: the maximum now minus the maximum before. */
 	hpGain: number | null
+	/** D305: a manual maximum is on both sides of a level up, so a gain would read +0. */
+	maxHpOverride: number | null
 	/** Creation only; null leaves the card out. */
 	startingInventory: { inventory: CharacterInventoryItem[]; currencyCopper: number } | null
-	/** Expertise picks the character is no longer proficient in. */
-	staleExpertise: string[]
+	/** Expertise picks that no longer fit the pool: proficiency lost, already given by a fixed source or a feat's choice, or outside the class's allowed list. */
+	staleExpertise: { skill: string; reason: 'proficiency' | 'taken' | 'restricted' }[]
 	steps: readonly WizardStep[]
 	onGoTo: (step: WizardStep) => void
 	saveError: string | null
@@ -177,15 +195,17 @@ export function ReviewStep({
 	const cantrips = [
 		...data.spellChoices.filter((pick) => pick.level === 0).map((pick) => pick.name),
 		...optionSpells.filter((spell) => spell.level === 0).map((spell) => spell.name),
-		...(data.speciesCantrip ? [`${data.speciesCantrip.name} (${data.speciesChoice?.name ?? 'species'})`] : []),
+		...(data.speciesCantrip ? [`${data.speciesCantrip.name} (${speciesLabel || 'species'})`] : []),
 	]
 	const spellLevels = [...new Set(data.spellChoices.filter((pick) => pick.level > 0).map((pick) => pick.level))].sort((a, b) => a - b)
 	const subclassSpells = data.subclassSpellChoices.map((pick) => pick.name)
 	const optionLeveled = optionSpells.filter((spell) => spell.level > 0).map((spell) => spell.name)
 	const hasSpells = cantrips.length > 0 || spellLevels.length > 0 || subclassSpells.length > 0 || optionLeveled.length > 0
 
-	const knownBefore = new Set([...baseline.spellChoices.map(pickKey), ...baseline.subclassSpellChoices.map(pickKey)])
-	const spellsAdded = [...data.spellChoices, ...data.subclassSpellChoices].filter((pick) => !knownBefore.has(pickKey(pick))).map((pick) => pick.name)
+	// D306: spells from class options taken at this level count too.
+	const optionSpellsOf = (source: WizardData) => source.classOptionalFeatureChoices.flatMap((entry) => (entry.spellChoices ?? []).flatMap((choice) => [...choice.cantrips, ...choice.spells]))
+	const knownBefore = new Set([...baseline.spellChoices, ...baseline.subclassSpellChoices, ...optionSpellsOf(baseline)].map(pickKey))
+	const spellsAdded = [...data.spellChoices, ...data.subclassSpellChoices, ...optionSpellsOf(data)].filter((pick) => !knownBefore.has(pickKey(pick))).map((pick) => pick.name)
 
 	const increaseText = (increases: AbilityIncreaseMap): string =>
 		Object.entries(increases)
@@ -200,7 +220,11 @@ export function ReviewStep({
 		<div className="wizard__panel review" role="region" aria-label="Review">
 			<div className="review__header">
 				<div className="review__portrait">
-					{data.portrait ? <img src={data.portrait} alt={`Portrait of ${data.name}`} /> : <span aria-hidden="true">{data.name.trim().charAt(0).toUpperCase()}</span>}
+					{data.portrait ? (
+						<img src={data.portrait} alt={data.name.trim() ? `Portrait of ${data.name}` : 'Portrait'} />
+					) : (
+						data.name.trim() !== '' && <span aria-hidden="true">{data.name.trim().charAt(0).toUpperCase()}</span>
+					)}
 				</div>
 				<div className="review__identity">
 					<h2 className="review__name">{data.name}</h2>
@@ -210,12 +234,15 @@ export function ReviewStep({
 
 			{staleExpertise.length > 0 && (
 				<p className="expertise-picker__stale review__stale" role="alert">
-					<span>
-						Expertise in {staleExpertise.map(capitalize).join(' and ')} needs {staleExpertise.length === 1 ? 'a proficiency' : 'proficiencies'} you no longer have.
-					</span>
-					<button type="button" className="btn--accent-outline" onClick={() => onGoTo('expertise')}>
-						Go to Expertise
-					</button>
+					<span>{staleExpertiseText(staleExpertise)}</span>
+					{/* D304: a level up without an Expertise step cannot reach it; the character is fixed in Edit Character. */}
+					{steps.includes('expertise') ? (
+						<button type="button" className="btn--accent-outline" onClick={() => onGoTo('expertise')}>
+							Go to Expertise
+						</button>
+					) : (
+						<span>Fix it in Edit Character.</span>
+					)}
 				</p>
 			)}
 
@@ -229,7 +256,11 @@ export function ReviewStep({
 							))}
 						</ul>
 					)}
-					{hpGain !== null && maxHp !== null && <Row label="Hit points">{`${signed(hpGain)} → ${maxHp}`}</Row>}
+					{maxHpOverride !== null ? (
+						<Row label="Hit points">{`Manual maximum: ${maxHpOverride}`}</Row>
+					) : (
+						hpGain !== null && maxHp !== null && <Row label="Hit points">{`${signed(hpGain)} → ${maxHp}`}</Row>
+					)}
 					{spellsAdded.length > 0 && <Row label="Spells added">{spellsAdded.join(', ')}</Row>}
 					{levelChoiceText && <Row label={levelChoice?.kind === 'asi' ? 'Ability score improvement' : 'Feat'}>{levelChoiceText}</Row>}
 				</section>
@@ -296,6 +327,7 @@ export function ReviewStep({
 				<StartingTable
 					inventory={startingInventory.inventory}
 					currencyCopper={startingInventory.currencyCopper}
+					ariaLabel="Equipment"
 					heading={<CardHeading title="Equipment" step="equipment" steps={steps} onGoTo={onGoTo} />}
 				/>
 			)}

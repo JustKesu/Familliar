@@ -44,12 +44,25 @@ test('W-9 a: a Fighter 1 Review shows the header and the Ability scores, Profici
 
   const hitPoints = card(page, 'Hit points')
   await expect(rowText(hitPoints, 'Hit dice')).toHaveText('1d10')
-  await expect(rowText(hitPoints, 'Maximum')).toHaveText(/^\d+$/)
+  // D300: d10 + Constitution modifier (from the Ability scores card), + 1 for Dwarven Toughness.
+  const constitution = Number((await totals(card(page, 'Ability scores')))[2])
+  await expect(rowText(hitPoints, 'Maximum')).toHaveText(String(10 + Math.floor((constitution - 10) / 2) + 1))
 
+  await expect(card(page, 'Equipment')).toBeVisible()
   await expect(review(page).getByRole('heading', { name: 'Equipment', exact: true })).toBeVisible()
   await expect(review(page).locator('.start-table')).toContainText('Greatsword')
 
   await expect(card(page, 'Spells')).toHaveCount(0)
+})
+
+test('F-6: creating through the UI saves current hit points equal to the maximum the Review showed', async ({ page }) => {
+  await createFighter(page, pia)
+  const shown = Number(await rowText(card(page, 'Hit points'), 'Maximum').innerText())
+
+  await wizardNav(page).getByRole('button', { name: 'Create character' }).click()
+  await expect(page).toHaveURL(/#\/character\/[^/]+$/)
+  const hitPoints = page.locator('.sheet__hit-points-value').first()
+  await expect(hitPoints).toHaveText(new RegExp(`^\\s*${shown}\\s*/\\s*${shown}\\b`))
 })
 
 test('W-9 b: the header shows the uploaded portrait', async ({ page }) => {
@@ -174,9 +187,38 @@ test('W-9 e: Expertise in a skill the character no longer has is explained on Re
 
   await expect(review(page).getByRole('alert')).toContainText('Expertise in Arcana needs a proficiency you no longer have.')
   await expect(wizardNav(page).getByRole('button', { name: 'Save changes' })).toBeDisabled()
+  // F-6: only a level up shows "What's new".
+  await expect(card(page, /What.s new/)).toHaveCount(0)
 
   await review(page).getByRole('button', { name: 'Go to Expertise', exact: true }).click()
   await expectStep(page, 'Expertise')
   await expect(page.getByText('(not proficient)')).toBeVisible()
   await expect(page.getByRole('checkbox', { name: /^Arcana/ })).toBeChecked()
+})
+
+test('F-6: a level up whose walk has no Expertise step explains a stale Expertise, points to Edit Character and still saves', async ({ page }) => {
+  // The Skilled feat is gone (removed on the sheet), so Arcana is no longer proficient; Rogue 4 → 5 grants no Expertise.
+  const stale = { ...ROGUE, id: 'f6-rogue', featAsiChoices: [{ level: 4, kind: 'feat', name: 'Tough', source: 'XPHB' }] }
+  await page.addInitScript(
+    ({ key, value }) => {
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, value)
+    },
+    { key: STORAGE_KEY, value: JSON.stringify([stale]) },
+  )
+  await page.goto('/#/character/f6-rogue')
+  await page.getByRole('button', { name: 'Level up to 5' }).click()
+  for (let steps = 0; steps < 8 && !(await step(page).textContent())?.includes('Review and save'); steps++) {
+    const average = page.getByRole('radio', { name: /^Average/ })
+    if (await average.isVisible()) await average.check()
+    await next(page)
+  }
+  await expectStep(page, 'Review and save')
+
+  const alert = review(page).getByRole('alert')
+  await expect(alert).toContainText('Expertise in Arcana needs a proficiency you no longer have.')
+  await expect(alert).toContainText('Fix it in Edit Character.')
+  await expect(review(page).getByRole('button', { name: 'Go to Expertise' })).toHaveCount(0)
+  await expect(wizardNav(page).getByRole('button', { name: 'Save level 5' })).toBeEnabled()
+  await wizardNav(page).getByRole('button', { name: 'Save level 5' }).click()
+  await expect(page).toHaveURL(/#\/character\/f6-rogue$/)
 })
