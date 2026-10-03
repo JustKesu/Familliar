@@ -1,0 +1,117 @@
+/* Intro overlay (D312), timings from docs/mockups/intro-preview.html. */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.intro__bg {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  pointer-events: auto;
+  transition: opacity 1.1s ease-in-out;
+}
+
+.intro__bg.intro--out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro__sparks {
+  position: absolute;
+  inset: 0;
+}
+
+.intro__title {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  transition: opacity 1s ease-in, transform 1.3s ease-in, filter 1.1s ease-in;
+}
+
+.intro__title.intro--out {
+  opacity: 0;
+  transform: scale(1.035);
+  filter: blur(4px);
+}
+
+.intro__bg.intro--skip,
+.intro__title.intro--skip {
+  transition-duration: 0.2s;
+}
+
+.intro__word {
+  display: flex;
+  margin: 0;
+  font: 600 clamp(44px, 11vw, 128px) / 1 var(--font-heading);
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.intro__word span {
+  display: inline-block;
+  opacity: 0;
+  filter: blur(10px);
+  transform: translateY(0.12em) scale(1.06);
+  transition: opacity 0.9s ease-out, filter 1.2s ease-out, transform 1.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.intro__word span.lit {
+  opacity: 1;
+  filter: blur(0);
+  transform: none;
+  animation: intro-flare 2.2s ease-out forwards;
+}
+
+@keyframes intro-flare {
+  0% {
+    color: var(--hot);
+    text-shadow: 0 0 0.18em var(--glow), 0 0 0.55em var(--glow);
+  }
+  100% {
+    color: var(--accent);
+    text-shadow: 0 0 0.4em var(--glow-soft);
+  }
+}
+
+.intro__rule {
+  height: 1px;
+  width: 0;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  transition: width 1.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.intro__rule.in {
+  width: min(40vw, 380px);
+}
+
+.intro__sub {
+  font: 600 clamp(11px, 1.45vw, 16px) / 1 var(--font-body);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--text-sub);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 1s ease-out, transform 1.2s ease-out;
+}
+
+.intro__sub.in {
+  opacity: 1;
+  transform: none;
+}
+
+/* The list under the intro slides up as the overlay fades (.app.in in the preview). */
+:root[data-intro] #root {
+  transition: opacity 1s ease-out 0.2s, transform 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s;
+}
+
+:root[data-intro='play'] #root {
+  opacity: 0;
+  transform: translateY(10px);
+}

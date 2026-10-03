@@ -3,6 +3,7 @@ import CharacterManager from './CharacterManager'
 import { RollsNavSlot } from './dice/RollUi'
 import MarkupDemo from './MarkupDemo'
 import FlameBackground from './app/FlameBackground'
+import IntroOverlay from './app/IntroOverlay'
 import { AppHeader } from './app/AppHeader'
 import { useRoute } from './navigation/useRoute'
 import type { CharacterRoute } from './navigation/route'
@@ -22,6 +23,7 @@ function App() {
 			<RollsNavSlot.Provider value={rollsSlot}>
 				{onMarkupDemo ? <MarkupDemo /> : <CharacterManager route={characterRoute} navigate={navigate} />}
 			</RollsNavSlot.Provider>
+			<IntroOverlay />
 		</>
 	)
 }

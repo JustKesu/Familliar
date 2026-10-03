@@ -5,6 +5,12 @@ import { createFighter } from './wizard.ts'
 
 const canvas = (page: import('@playwright/test').Page) => page.locator('canvas[data-flame-canvas]')
 
+// The flame needs motion; marking the intro as played keeps it from covering the page (D312).
+test.use({ reducedMotion: 'no-preference' })
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('familliar:intro-played', '1'))
+})
+
 test('R16 a: on the sheet the canvas is aria-hidden and pointer-transparent, and a roll button in the left column still works', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New character' }).click()

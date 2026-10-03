@@ -30,6 +30,13 @@
   --damage: #f08a6c;
   --chip: #27272b;
   --backdrop: rgba(0, 0, 0, 0.6);
+  /* Intro (D312): --spark and --spark-hot are bare r,g,b triples the canvas mixes per frame. */
+  --hot: #eaffff;
+  --glow: rgba(0, 244, 248, 0.6);
+  --glow-soft: rgba(0, 244, 248, 0.22);
+  --spark: 0, 244, 248;
+  --spark-hot: 225, 255, 255;
+  --blend: lighter;
 }
 
 :root[data-theme='light'] {
@@ -49,4 +56,10 @@
   --damage: #b3432a;
   --chip: #ececef;
   --backdrop: rgba(28, 28, 31, 0.45);
+  --hot: #003b3d;
+  --glow: rgba(0, 124, 128, 0.4);
+  --glow-soft: rgba(0, 124, 128, 0.12);
+  --spark: 0, 140, 146;
+  --spark-hot: 0, 60, 64;
+  --blend: source-over;
 }

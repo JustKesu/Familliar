@@ -14,6 +14,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
     trace: 'off',
+    // D312: the first-open intro would cover every fresh tab for ~6 s; intro.spec.ts and flame.spec.ts opt back in.
+    reducedMotion: 'reduce',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {

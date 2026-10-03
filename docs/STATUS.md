@@ -1795,6 +1795,13 @@ all views, `src/app/AppHeader.tsx` (wordmark → list, Rolls slot, Flame, theme)
 are gone, `#/markup-demo` still works by address. `CharacterManager` keeps the handlers only. E2E
 `characterList.spec.ts` a–j; unit `characterSummary.test.ts`.
 
+U-2 (D312) done. No schema bump. First-open intro "FAMILLIAR" ported from `docs/mockups/intro-preview.html`:
+`src/app/IntroOverlay.tsx` (portal to body, mounted from App; sessionStorage `familliar:intro-played` set at the first
+decision; plays only when the tab's first route parses to the list, motion is allowed and `matchMedia` exists; click or
+key skips; `#root` inert and slid in via `html[data-intro]`), `introSparks.ts` (particles, timeline `T`, spawn/heat),
+`intro.css`. Theme tokens `--hot --glow --glow-soft --spark --spark-hot --blend` in theme.css. Playwright runs with
+`reducedMotion: 'reduce'` globally; `flame.spec.ts` opts back in and pre-marks the intro played. E2E `intro.spec.ts` a–g.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

@@ -4803,3 +4803,9 @@ Přejmenování dvojklikem je zrušeno.
 
 „Delete <name>?“, „This removes the character from this browser. It cannot be undone.“, tlačítka Keep (výchozí) /
 Delete; Esc a klik na pozadí znamenají Keep. `confirm()` je pryč. Po smazání se focus přesune na kartu New character.
+
+## D312 — Úvodní animace FAMILLIAR (U8, U9)
+
+Podle docs/mockups/intro-preview.html: jen při prvním načtení appky v záložce (sessionStorage), jen když první adresa
+je seznam postav (jinak se přeskočí a v záložce už nespustí), klik nebo klávesa přeskočí, při prefers-reduced-motion
+se nespustí, e2e běží globálně s reducedMotion 'reduce'.
