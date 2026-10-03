@@ -1478,6 +1478,33 @@ no type. The dice and DC exist only in prose.
 
 Found in task S3 (`scripts/investigate-breath-weapon.js`).
 
+### Species advantage on saving throws (S4)
+
+Stripped prose matching "advantage on … saving throw" / "saving throw … with
+advantage": 28 of 81 species records, 18 distinct trait sentences. All prose,
+no structured field.
+- Named condition (21 hits): Fey Ancestry / Charmed — Elf|XPHB + 3 lineages,
+  Khoravar|EFA, Bugbear, Eladrin, Goblin, Hobgoblin, Sea Elf, Shadar-Kai (MPMM);
+  Poisoned — Dwarven Resilience (Dwarf|XPHB, Duergar|MPMM), Construct Resilience
+  (Warforged|EFA), Poison Resilience (Yuan-Ti|MPMM); Frightened — Brave
+  (Halfling|XPHB), Kobold Legacy (Kobold|MPMM base, Kobold; Defiance|MPMM);
+  Charmed+Stunned — Psionic Fortitude (Duergar); Charmed+Frightened — Mental
+  Discipline (Githzerai|MPMM).
+- Abilities (6): Gnomish Cunning INT/WIS/CHA (Gnome|XPHB + 2 lineages), Dual Mind
+  WIS/CHA (Kalashtar|EFA), Shell Defense STR/CON (Tortle|MPMM).
+- Spells (3): Magic Resistance (Satyr, Yuan-Ti|MPMM), Gnomish Magic Resistance
+  INT/WIS/CHA vs spells (Deep Gnome|MPMM).
+- Other (1): Escaped Death — Death Saving Throws (Reborn|RHW).
+- Damage type: 0. False positive: Howl (Lupin|RHW) — the save is the target's.
+- Temporary: only Shell Defense ("Until you emerge…", while in the shell). No
+  level gate in any of them. Duergar has two such traits; XPHB Dwarf's sentence
+  starts "You also have…". Kobold|MPMM base is never stored (D81).
+- Kobold; Defiance|MPMM names the trait "Kobold Legacy (Defiance)". Yuan-Ti|MPMM
+  has size ["S","M"] and `additionalSpells`. D314's table (src/sheet/speciesSaveAdvantages.ts)
+  covers all of the above except Shell Defense, Howl and the never-stored Kobold base.
+
+Found in task S4 (2026-10-03, `scripts/investigate-species-save-advantage.js`).
+
 ### Species trait prose: attack replacement, level gates, use counts (D186)
 
 "replace one of … attacks" occurs in 14 records across the four feature files

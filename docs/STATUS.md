@@ -1808,6 +1808,12 @@ S3 (D313) done. No schema bump. Breath Weapon's Actions group row shows "15-foot
 (DC from item-aware CON + PB; type from the species' resistance grant in `damageResponseData.speciesGrants`; bare
 Dragonborn → unresolved). Unit `breathWeapon.test.ts`, E2E `breathWeapon.spec.ts` a–c.
 
+S4 (D314) done. No schema bump. `src/sheet/speciesSaveAdvantages.ts`: hand table of 13 traits over 26 species records
+(XPHB, MPMM, EFA, RHW) and `speciesSaveAdvantageLines(species)`; its lines follow the item lines in
+`.sheet__save-advantages` under the Saving Throws card and at the bottom of the Saving throws drawer, above the custom
+item hint. Tortle's Shell Defense left out (temporary). Unit `speciesSaveAdvantages.test.ts` (data guard: every
+record carries its trait), E2E `speciesSaveAdvantages.spec.ts` a–d.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

@@ -4817,3 +4817,11 @@ záchranu „DC n DEX“, zranění jako tlačítko hodu (stejná komponenta jak
 a za ním typ. DC = 8 + modifikátor CON (včetně předmětů) + PB. Kostky podle celkové úrovně postavy z ruční
 tabulky (PHB): 1d10, 2d10 od 5, 3d10 od 11, 4d10 od 17. Typ zranění z Draconic Ancestry (`resist` varianty);
 nezvolený předek → „unresolved“ s důvodem. Rozhodl Daniel 3. 10. 2026.
+
+## D314 — Výhoda na záchrany z rasy pod Saving Throws (S4)
+
+Ruční tabulka (D21) podle záznamu rasy (jméno + zdroj, včetně linií/variant) a jména rysu, všechny knihy, ne jen
+XPHB. Každý rys = jeden řádek v seznamu pod kartou Saving Throws (za řádky předmětů) a dole v jejím draweru,
+s jménem rysu v závorce, např. „Advantage on saves to avoid or end Charmed (Fey Ancestry)“. Šest řádků záchran
+beze značek. Shell Defense (Tortle) vynechán — platí jen v krunýři; Escaped Death (Reborn, death saves) zahrnut.
+Rozhodl Daniel 3. 10. 2026.

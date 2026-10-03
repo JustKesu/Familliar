@@ -88,6 +88,7 @@ import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from '.
 import { loadGrantedClassFeatures, type GrantedFeature } from './grantedClassFeatures'
 import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from './damageResponseData'
 import { buildItemConditionGrants, buildItemProficiencyGrants, conditionAdvantageLines, conditionsGranted } from './itemProficiencyData'
+import { speciesSaveAdvantageLines } from './speciesSaveAdvantages'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -2256,7 +2257,7 @@ function CharacterSheetBody({
 	const itemProficiencyGrants = buildItemProficiencyGrants(character.inventory ?? [], itemRefs ?? [])
 	const itemConditionGrants = buildItemConditionGrants(character.inventory ?? [], itemRefs ?? [])
 	const conditionImmunities = conditionsGranted(itemConditionGrants, 'immune')
-	const conditionAdvantages = conditionAdvantageLines(itemConditionGrants)
+	const saveAdvantages = [...conditionAdvantageLines(itemConditionGrants), ...speciesSaveAdvantageLines(character.species)]
 	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor, itemProficiencyGrants, itemAbilityGrants)
 	const initiative = computeInitiative(character, feats, itemFlatBonuses.initiative, itemAbilityGrants)
 	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemProficiencyGrants, itemAbilityGrants)
@@ -2847,10 +2848,10 @@ function CharacterSheetBody({
 						)
 					})}
 				</ul>
-				{conditionAdvantages.length > 0 && (
+				{saveAdvantages.length > 0 && (
 					<ul className="sheet__save-advantages">
-						{conditionAdvantages.map((line) => (
-							<li key={line}>{line}</li>
+						{saveAdvantages.map((line, index) => (
+							<li key={index}>{line}</li>
 						))}
 					</ul>
 				)}
@@ -3530,6 +3531,13 @@ function CharacterSheetBody({
 							<RowBreakdown result={savingThrows[ability]} />
 						</DrawerSection>
 					))}
+					{saveAdvantages.length > 0 && (
+						<ul className="sheet__save-advantages">
+							{saveAdvantages.map((line, index) => (
+								<li key={index}>{line}</li>
+							))}
+						</ul>
+					)}
 					<CustomItemHint />
 				</Drawer>
 			)}
