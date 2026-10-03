@@ -28,7 +28,9 @@ describe('preparedSpellRows / pickCounts (D208)', () => {
 	})
 
 	it('counts only the class’s own picks of known level — not always-prepared, not subclass choice picks', () => {
-		expect(pickCounts(rows)).toEqual({ cantrips: 1, prepared: 2 })
+		// Bless is picked AND always prepared: it keeps its Unprepare button but no longer takes a slot (F-7b).
+		expect(rows.find((row) => row.name === 'Bless')).toMatchObject({ kind: 'pick', alsoGranted: true })
+		expect(pickCounts(rows)).toEqual({ cantrips: 1, prepared: 1 })
 	})
 })
 

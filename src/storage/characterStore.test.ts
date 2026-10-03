@@ -1388,6 +1388,19 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect(new CharacterStore(backing).list()[0].play).toEqual({ conditions: ['Poisoned'] })
 	})
 
+	it('a Long Rest write clears Concentration; a Short Rest write leaves it (F-7b)', () => {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const { id } = store.create({ name: 'Aria', currentHp: 20 })
+		store.setConcentration(id, 'Bless')
+
+		store.applyRest(id, { currentHp: 20, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} })
+		expect(new CharacterStore(backing).list()[0].play?.concentratingOn).toBe('Bless')
+
+		store.applyRest(id, { currentHp: 20, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {}, concentratingOn: null })
+		expect(new CharacterStore(backing).list()[0].play?.concentratingOn).toBeUndefined()
+	})
+
 	it('throws CharacterNotFoundError for an unknown id on a concentration write', () => {
 		expect(() => new CharacterStore(new MemoryStorage()).setConcentration('nope', 'Bless')).toThrow(CharacterNotFoundError)
 	})

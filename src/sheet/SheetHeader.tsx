@@ -17,7 +17,7 @@
  * R4c: the HP card, death saves included, is a caller-built slot (HitPoints.tsx).
  */
 
-import { useContext, type ReactNode } from 'react'
+import { useContext, useState, type ReactNode } from 'react'
 import { RollButton } from '../dice/RollButton'
 import { type RollReport } from '../dice/RollHistory'
 import { RollModeContext, RollModeSwitch } from '../dice/RollUi'
@@ -111,6 +111,7 @@ export function SheetHeader({
 	onDropConcentration,
 	onShortRest,
 	onLongRest,
+	longRestBlockedReason = null,
 	onRoll,
 	onOpenBreakdown,
 	heroicInspiration,
@@ -160,9 +161,12 @@ export function SheetHeader({
 	 */
 	onShortRest?: () => void
 	onLongRest?: () => void
+	/** Why Long Rest cannot be taken right now (0 HP, data still loading); null when it can. */
+	longRestBlockedReason?: string | null
 	onRoll?: (report: RollReport) => void
 }): ReactNode {
 	const rollMode = useContext(RollModeContext)
+	const [longRestBusy, setLongRestBusy] = useState(false)
 
 	return (
 		<>
@@ -184,7 +188,18 @@ export function SheetHeader({
 							</button>
 						)}{' '}
 						{onLongRest && (
-							<button type="button" className="btn--accent-outline" onClick={onLongRest}>
+							<button
+								type="button"
+								className="btn--accent-outline"
+								disabled={longRestBusy || longRestBlockedReason !== null}
+								title={longRestBlockedReason ?? undefined}
+								onClick={() => {
+									// F-7b: Exhaustion −1 is the one non-idempotent part, so a second click must not land before the write has re-rendered.
+									setLongRestBusy(true)
+									window.setTimeout(() => setLongRestBusy(false), 600)
+									onLongRest()
+								}}
+							>
 								<MoonIcon />
 								Long Rest
 							</button>

@@ -481,6 +481,25 @@ describe('RemoveLevelButton', () => {
 		expect(button.title).toContain('Multiclass')
 	})
 
+	it('stays clickable across a save and confirms a plan built from the latest character (F-7b)', async () => {
+		const onRemoveLevel = vi.fn()
+		const user = userEvent.setup()
+		const before = single('Fighter', 'Champion', 5, 4)
+		const { rerender } = render(<RemoveLevelButton character={before} onRemoveLevel={onRemoveLevel} loadPlan={fixturePlan} />)
+		await screen.findByRole('button', { name: 'Remove level 5' })
+
+		// A blur-triggered save re-renders with a new character object right before the click lands.
+		rerender(<RemoveLevelButton character={{ ...before, name: 'Saved just now' }} onRemoveLevel={onRemoveLevel} loadPlan={fixturePlan} />)
+		const button = screen.getByRole('button', { name: 'Remove level 5' }) as HTMLButtonElement
+		expect(button.disabled).toBe(false)
+
+		await user.click(button)
+		await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove level' }))
+
+		expect(onRemoveLevel).toHaveBeenCalledTimes(1)
+		expect(onRemoveLevel.mock.calls[0][0].name).toBe('Saved just now')
+	})
+
 	it('asks inside the page first, and cancelling hands nothing to the writer', async () => {
 		const onRemoveLevel = vi.fn()
 		const user = userEvent.setup()

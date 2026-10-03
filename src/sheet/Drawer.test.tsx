@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Drawer, DrawerRow, DrawerSection } from './Drawer'
 
@@ -23,6 +24,31 @@ describe('Drawer (D146/D163)', () => {
 		await user.click(screen.getByRole('button', { name: 'Close' }))
 		await user.keyboard('{Escape}')
 		expect(onClose).toHaveBeenCalledTimes(2)
+	})
+
+	it('moves focus to the close button on open and back to the opener on close (F-7b)', async () => {
+		const user = userEvent.setup()
+		function Host() {
+			const [open, setOpen] = useState(false)
+			return (
+				<>
+					<button onClick={() => setOpen(true)}>Open</button>
+					{open && (
+						<Drawer title="Senses" onClose={() => setOpen(false)}>
+							<p>panel</p>
+						</Drawer>
+					)}
+				</>
+			)
+		}
+		render(<Host />)
+
+		const opener = screen.getByRole('button', { name: 'Open' })
+		await user.click(opener)
+		expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Close' }))
+
+		await user.click(screen.getByRole('button', { name: 'Close' }))
+		expect(document.activeElement).toBe(opener)
 	})
 
 	it('stops listening for Esc once it is gone', async () => {

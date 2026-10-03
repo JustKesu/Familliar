@@ -68,6 +68,7 @@ export function DamageRollButton({
 	random,
 	onRoll,
 	disabled,
+	title,
 	children,
 }: {
 	count: number
@@ -77,6 +78,8 @@ export function DamageRollButton({
 	random?: RandomSource
 	/** Slice 9b6: a hit die with none left to spend. */
 	disabled?: boolean
+	/** Why it is disabled, when that is not obvious (F-7b: a hit die at 0 HP). */
+	title?: string
 	/** The roll itself rides along as a second argument for a caller that needs the total (slice 9b6: a hit die heals by it); every other caller ignores it. */
 	onRoll?: (report: RollReport, roll: DiceRoll) => void
 	/** R5a: the damage text itself is the button, as RollButton's children (D166). */
@@ -88,14 +91,14 @@ export function DamageRollButton({
 	}
 	if (children !== undefined) {
 		return (
-			<button type="button" className="roll-value" aria-label={`Roll ${label}`} disabled={disabled} onClick={makeRoll}>
+			<button type="button" className="roll-value" aria-label={`Roll ${label}`} disabled={disabled} title={title} onClick={makeRoll}>
 				{children}
 			</button>
 		)
 	}
 	return (
 		<span className="dice-roll">
-			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} disabled={disabled} onClick={makeRoll}>
+			<button type="button" className="dice-roll__button" aria-label={`Roll ${label}`} disabled={disabled} title={title} onClick={makeRoll}>
 				Roll
 			</button>
 		</span>

@@ -12,7 +12,7 @@
  * and the click handling, exactly as ValueBreakdown does (D41).
  */
 
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 export function Drawer({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }): ReactNode {
 	useEffect(() => {
@@ -23,11 +23,21 @@ export function Drawer({ title, onClose, children }: { title: string; onClose: (
 		return () => document.removeEventListener('keydown', close)
 	}, [onClose])
 
+	// F-7b: same pattern as ConfirmDialog, without the trap — in on open, back to the opener on close.
+	const closeRef = useRef<HTMLButtonElement>(null)
+	useEffect(() => {
+		const opener = document.activeElement
+		closeRef.current?.focus()
+		return () => {
+			if (opener instanceof HTMLElement && opener.isConnected) opener.focus()
+		}
+	}, [])
+
 	return (
 		<aside className="drawer" role="dialog" aria-label={title}>
 			<header className="drawer__header">
 				<h2>{title}</h2>
-				<button type="button" className="drawer__close" aria-label="Close" onClick={onClose}>
+				<button ref={closeRef} type="button" className="drawer__close" aria-label="Close" onClick={onClose}>
 					×
 				</button>
 			</header>

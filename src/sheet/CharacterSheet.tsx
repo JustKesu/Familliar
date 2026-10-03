@@ -1758,6 +1758,9 @@ function CharacterSheetBody({
 	/** The species' own traits (slice 8a) — the third name source the max-HP bonus table matches against, beside the D87 features and the taken feats, and the Species Traits group (D184). Empty on failure: a missing name only means a bonus is not applied, which computeMaxHitPoints' breakdown shows by omission; the group states the failure (D43). */
 	const [loadedSpeciesTraits, setSpeciesTraits] = useState<SpeciesTrait[]>([])
 	const [speciesTraitsError, setSpeciesTraitsError] = useState<string | null>(null)
+	/** Set once the first fetch of each settles (failure included). Until then the max HP and the resource list are incomplete, so a rest must not read them. */
+	const [grantedFeaturesSettled, setGrantedFeaturesSettled] = useState(false)
+	const [speciesTraitsSettled, setSpeciesTraitsSettled] = useState(false)
 	/** The Find Familiar beast pool (step 6b slice 2). Fetched only for a character that actually has the spell — see the effect below. */
 	const [beasts, setBeasts] = useState<Beast[]>([])
 	/** Which alternative Armour Class formulas the character is eligible for (step 7 slice b). Depends on `character` and on whether Mage Armor is in the spell list, fetched separately same as the effects above. */
@@ -2082,11 +2085,13 @@ function CharacterSheetBody({
 				if (cancelled) return
 				setGrantedFeatures(features)
 				setGrantedFeaturesError(null)
+				setGrantedFeaturesSettled(true)
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
 				setGrantedFeatures([])
 				setGrantedFeaturesError(messageOf(error))
+				setGrantedFeaturesSettled(true)
 			})
 		return () => {
 			cancelled = true
@@ -2100,11 +2105,13 @@ function CharacterSheetBody({
 				if (cancelled) return
 				setSpeciesTraits(traits)
 				setSpeciesTraitsError(null)
+				setSpeciesTraitsSettled(true)
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return
 				setSpeciesTraits([])
 				setSpeciesTraitsError(messageOf(error))
+				setSpeciesTraitsSettled(true)
 			})
 		return () => {
 			cancelled = true
@@ -2461,7 +2468,13 @@ function CharacterSheetBody({
 	function takeShortRest(): void {
 		onRest?.(afterShortRest(character.currentHp, character.play && { ...character.play, resourceUses: storedResourceUses }, characterResources, pactShortRest, character.inventory))
 	}
+	/* The data a rest reads (max HP, resource list) is incomplete until these settle (B2-1/B2-2). */
+	const restDataReady = itemRefs !== null && grantedFeaturesSettled && speciesTraitsSettled
+	/* XPHB Long/Short Rest: "you must have at least 1 Hit Points" — a Long Rest never revives (F-7b B2). */
+	const needsHitPointReason = 'Needs at least 1 Hit Point'
+	const longRestBlockedReason = !restDataReady || maxHitPoints.status !== 'known' ? 'Hit Point maximum not known yet' : character.currentHp === 0 ? needsHitPointReason : null
 	function takeLongRest(): void {
+		if (longRestBlockedReason !== null) return
 		onRest?.(afterLongRest(character.currentHp, character.play, maxHitPoints.status === 'known' ? maxHitPoints.value : null, character.inventory))
 	}
 	/*
@@ -2500,7 +2513,8 @@ function CharacterSheetBody({
 	const hitDiceCanHeal = currentHp !== undefined && maxHitPoints.status === 'known'
 	function rollHitDie(entry: HitDiceEntry, roll: DiceRoll): void {
 		if (onEditHitPoints && currentHp !== undefined && maxHitPoints.status === 'known') {
-			const healed = applyHealing({ currentHp, temporaryHitPoints: character.play?.temporaryHitPoints ?? 0 }, roll.total, maxHitPoints.value)
+			// XPHB Short Rest: "(minimum of 1 Hit Point)".
+			const healed = applyHealing({ currentHp, temporaryHitPoints: character.play?.temporaryHitPoints ?? 0 }, Math.max(1, roll.total), maxHitPoints.value)
 			onEditHitPoints({
 				currentHp: healed.currentHp,
 				maxHpOverride: character.maxHpOverride,
@@ -2530,7 +2544,14 @@ function CharacterSheetBody({
 	/* R7a (D189): one set of header numbers per spellcasting source the sheet computes. */
 	const spellcastingSources = [
 		...spellcastingEntries.map((entry) => ({ ...entry, key: `class|${entry.className}|${entry.classSource}`, name: entry.className })),
-		...featSpellcastingEntries.map((entry) => ({ ...entry, key: `feat|${entry.featKey}`, name: entry.featName })),
+		...featSpellcastingEntries.map((entry) => {
+			// Two Magic Initiates are told apart by their spell list; a single one keeps the plain title.
+			// The background's copy is stored as "Magic Initiate; <Class>" (DATA.md), so the instances are matched on the base name.
+			const base = entry.featName.split(';')[0].trim()
+			const initiates = chosenFeats.filter((feat) => feat.name.split(';')[0].trim() === base && feat.magicInitiate)
+			const list = initiates.length > 1 ? initiates.find((feat) => feat.key === entry.featKey)?.magicInitiate?.className : undefined
+			return { ...entry, key: `feat|${entry.featKey}`, name: list ? `${base} (${list})` : entry.featName }
+		}),
 		...speciesSpellcastingEntries.map((entry) => ({ ...entry, key: `species|${entry.speciesName}`, name: entry.speciesName })),
 	]
 	const slotMaxima = spellSlotMaxima(spellSlotsEntries)
@@ -2684,7 +2705,8 @@ function CharacterSheetBody({
 												sides={entry.faces}
 												modifier={constitution.value.modifier}
 												label={`${entry.className} hit die`}
-												disabled={remaining === 0 || (onEditHitPoints !== undefined && !hitDiceCanHeal)}
+												disabled={remaining === 0 || currentHp === 0 || (onEditHitPoints !== undefined && !hitDiceCanHeal)}
+												title={currentHp === 0 ? needsHitPointReason : undefined}
 												onRoll={(report, roll) => {
 													recordRoll(report)
 													rollHitDie(entry, roll)
@@ -2696,6 +2718,7 @@ function CharacterSheetBody({
 							)
 						})}
 					</ul>
+					{currentHp === 0 && <p className="sheet__hit-dice-note">{needsHitPointReason} to spend a Hit Die.</p>}
 					{onEditHitPoints && !hitDiceCanHeal && (
 						<p className="sheet__hit-dice-note">Hit dice cannot be rolled: healing needs a current HP and a computable maximum.</p>
 					)}
@@ -2740,6 +2763,7 @@ function CharacterSheetBody({
 				onDropConcentration={onEditConcentration ? () => onEditConcentration(null) : undefined}
 				onShortRest={onRest ? () => setDrawer({ kind: 'shortRest' }) : undefined}
 				onLongRest={onRest ? takeLongRest : undefined}
+				longRestBlockedReason={longRestBlockedReason}
 				onRoll={recordRoll}
 				onOpenBreakdown={(stat) => setDrawer({ kind: 'stat', stat })}
 				heroicInspiration={character.play?.heroicInspiration ?? false}
@@ -3274,6 +3298,8 @@ function CharacterSheetBody({
 					<button
 						type="button"
 						className="btn--accent btn--finish-rest"
+						disabled={!restDataReady}
+						title={restDataReady ? undefined : 'Still loading character data'}
 						onClick={() => {
 							takeShortRest()
 							setDrawer(null)

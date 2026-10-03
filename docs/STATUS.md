@@ -1831,6 +1831,18 @@ carry `featInstance`; `FeatSpellcastingEntry.featKey`, `SpellGrant.instanceKey`;
 Actions, CAST and USE (CAST of a species/feat-only spell uses that source). Aberrant Dragonmark's 1st-level pick: 1/SR
 free + slot. Unit `sheetReviewFixes.test.ts`, E2E `sheetCalculations.spec.ts`.
 
+F-7b done. No schema bump, no new decision. Play-state/UI fixes from sheet reviews B/B2. Long Rest (SheetHeader): disabled
+600 ms after a click (Exhaustion −1 is not idempotent), while max HP is unknown, while `itemRefs`/granted features/species
+traits have not settled (`restDataReady` in CharacterSheet) and at 0 HP (title "Needs at least 1 Hit Point"); Finish Short
+Rest waits for `restDataReady`; hit die roll disabled at 0 HP (new `title` prop on `DamageRollButton`) and heals
+`max(1, total)`. `afterLongRest` returns `concentratingOn: null`, `RestFields.concentratingOn`/`applyRest` clear it.
+`saveCustom` runs a held row through `takeInHand` (Two-Handed edit puts the shield down, with the notice).
+`RemoveLevelButton` keeps its availability probe but computes the plan on click, never re-entering "checking" on a save.
+`Drawer` focuses its × on open and restores the opener's focus on close. `preparedSpellRows` flags a pick that a grant
+also covers (`alsoGranted`): Unprepare stays, `pickCounts` skips it. Two Magic Initiates: spellcasting cards titled
+"Magic Initiate (Cleric)" etc. FeatureLanguageSlots left as is (B7). Unit tests in CharacterSheet/rest/characterStore/
+Drawer/levelRemoval/manageSpellsData tests, E2E `restsAndUi.spec.ts`.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

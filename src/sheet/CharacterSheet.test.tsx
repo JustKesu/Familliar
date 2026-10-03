@@ -3738,6 +3738,22 @@ describe('CharacterSheet', () => {
 			])
 		})
 
+		it('editing a held weapon into Two-Handed puts the held shield down, with the notice (F-7b)', async () => {
+			const user = userEvent.setup()
+			const onEditInventory = vi.fn()
+			const shield = { name: 'Shield', source: 'XPHB', quantity: 1, equipped: 'held' as const }
+			await renderSheet(owning('e2b-edit-two-handed', shield, customRow({ name: 'Bone Greatclub', kind: 'weapon', damageDice: '1d10' }, { equipped: 'held' })), onEditInventory)
+
+			await user.click(screen.getByRole('button', { name: 'Edit Bone Greatclub' }))
+			await user.click(screen.getByLabelText('Custom item two-handed'))
+			await user.click(screen.getByRole('button', { name: 'Save changes' }))
+
+			const saved = onEditInventory.mock.calls.at(-1)![0]
+			expect(saved[0]).toEqual({ name: 'Shield', source: 'XPHB', quantity: 1 })
+			expect(saved[1].equipped).toBe('held')
+			expect(screen.getByText(/Unequipped Shield/)).toBeTruthy()
+		})
+
 		it('offers the Edit control on a custom row and on no other', async () => {
 			const { container } = await renderSheet(
 				owning('e2b-edit-only', customRow({ name: 'Bone Blade', kind: 'weapon' }), { name: 'Torch', source: 'XPHB', quantity: 1 }),
@@ -8879,6 +8895,47 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 			expect(onRest).not.toHaveBeenCalled()
 			expect(onHitPoints).toHaveBeenCalledTimes(1)
 			expect(onSpent).toHaveBeenCalledWith({ [FIGHTER_KEY]: 1 })
+		})
+
+		it('heals at least 1 Hit Point when a negative Constitution modifier drives the total below it (XPHB, F-7b)', async () => {
+			vi.spyOn(Math, 'random').mockReturnValue(0)
+			const weak: Character = { ...fighter, abilityScores: { ...fighter.abilityScores!, scores: { ...fighter.abilityScores!.scores, constitution: 6 } } }
+			const { onHitPoints } = await renderHarness(weak)
+
+			fireEvent.click(rollButton('Fighter'))
+
+			// d10 rolled as 1, CON 6 is -2: the total is -1, which must heal 1, not 0.
+			expect(onHitPoints).toHaveBeenCalledWith(expect.objectContaining({ currentHp: 21 }))
+		})
+
+		it('at 0 HP the hit die roll and Long Rest are disabled with the reason, and nothing is written (F-7b)', async () => {
+			const onRest = vi.fn()
+			const { onHitPoints, onSpent } = await renderHarness({ ...fighter, currentHp: 0 }, onRest)
+
+			expect(rollButton('Fighter').disabled).toBe(true)
+			expect(rollButton('Fighter').title).toBe('Needs at least 1 Hit Point')
+			fireEvent.click(rollButton('Fighter'))
+			const longRest = screen.getByRole('button', { name: 'Long Rest' }) as HTMLButtonElement
+			await waitFor(() => expect(longRest.title).toBe('Needs at least 1 Hit Point'))
+			expect(longRest.disabled).toBe(true)
+			fireEvent.click(longRest)
+
+			expect(onHitPoints).not.toHaveBeenCalled()
+			expect(onSpent).not.toHaveBeenCalled()
+			expect(onRest).not.toHaveBeenCalled()
+		})
+
+		it('a second Long Rest click before the first has settled is ignored (F-7b)', async () => {
+			const onRest = vi.fn()
+			await renderHarness(fighter, onRest)
+			const longRest = screen.getByRole('button', { name: 'Long Rest' }) as HTMLButtonElement
+			await waitFor(() => expect(longRest.disabled).toBe(false))
+
+			fireEvent.click(longRest)
+			fireEvent.click(longRest)
+
+			expect(onRest).toHaveBeenCalledTimes(1)
+			expect(longRest.disabled).toBe(true)
 		})
 
 		it('a Long Rest returns every hit die', async () => {

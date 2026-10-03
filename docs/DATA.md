@@ -1712,3 +1712,20 @@ prose; the hand tables cite these sentences.
   "; Class" name (`Magic Initiate; Wizard` for Sage), the Human Versatile and
   ASI picks under base `Magic Initiate` — so two instances share a name only
   when both are base picks (species + ASI, ASI + manual, …).
+
+### Rest rule texts (F-7b) — variantrules.json / conditionsdiseases.json, XPHB
+
+Checked by `scripts/investigate-f7b.js` (cleared after the task), markup stripped.
+Both rests are `variantrules.json` records (the 7 in rules.json are a different
+subset); nothing named "Concentration" exists there.
+
+- **Long Rest**: "To start a Long Rest, you must have at least 1 Hit Points."
+  Benefits: all lost Hit Points and all spent Hit Point Dice back; Exhaustion
+  level −1; "During sleep, you have the Unconscious condition." Nothing in the
+  record says an interrupted rest gives partial benefits (not modelled).
+- **Short Rest**: same "at least 1 Hit Points" start condition; each Hit Point
+  Die spent heals "the total (minimum of 1 Hit Point)" — roll + Constitution
+  modifier, clamped at 1.
+- **Unconscious** (condition): "You have the Incapacitated and Prone
+  conditions"; **Incapacitated**: "Your Concentration is broken." Together with
+  sleep, a Long Rest ends Concentration.

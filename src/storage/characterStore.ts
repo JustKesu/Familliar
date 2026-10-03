@@ -237,6 +237,8 @@ export interface RestFields {
 	resetFamiliarHp?: boolean
 	/** D214: a Long Rest lowers Exhaustion by 1; a Short Rest leaves it out, so the stored level rides through. */
 	exhaustion?: number
+	/** F-7b: a Long Rest is sleep (Unconscious → Incapacitated), which ends Concentration; null clears it, absent leaves it. */
+	concentratingOn?: null
 	/** D219: the inventory with its item spell counters refilled; absent leaves the inventory as stored. */
 	inventory?: CharacterInventoryItem[]
 }
@@ -926,6 +928,7 @@ export class CharacterStore {
 			spentSpellSlots: rest.spentSpellSlots,
 			spentHitDice: rest.spentHitDice,
 			...(rest.exhaustion !== undefined ? { exhaustion: rest.exhaustion } : {}),
+			...(rest.concentratingOn === null ? { concentratingOn: undefined } : {}),
 		})
 		const updated = [...characters]
 		updated[index] = {

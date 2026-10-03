@@ -102,6 +102,7 @@ export function afterLongRest(
 		spentHitDice: {},
 		resetFamiliarHp: true,
 		exhaustion: Math.max(0, (play?.exhaustion ?? 0) - 1),
+		concentratingOn: null,
 		...inventoryAfterRest(inventory, () => 0),
 	}
 }

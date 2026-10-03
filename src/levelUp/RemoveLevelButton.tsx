@@ -5,7 +5,7 @@ import { levelRemovalTarget, loadLevelRemovalPlan, type LevelRemovalPlan } from 
 
 type ControlState =
 	| { kind: 'checking' }
-	| { kind: 'ready'; plan: LevelRemovalPlan }
+	| { kind: 'ready' }
 	| { kind: 'confirming'; plan: LevelRemovalPlan }
 	| { kind: 'unavailable'; reason: string }
 
@@ -28,39 +28,51 @@ export function RemoveLevelButton({
 	const available = !('reason' in target)
 	const [state, setState] = useState<ControlState>({ kind: 'checking' })
 
+	function failed(error: unknown): ControlState {
+		return { kind: 'unavailable', reason: `Could not read what the level holds: ${error instanceof Error ? error.message : String(error)}` }
+	}
+
+	// Availability is checked ahead so the reason shows on the control (D43), but the plan that gets confirmed is
+	// always computed on the click: a plan held from before the latest save would overwrite it (F-7b), and
+	// re-entering "checking" on every save swapped the button out from under a click that began on a blur.
 	useEffect(() => {
 		if (!available) return
 		let cancelled = false
-		setState({ kind: 'checking' })
 		loadPlan(character)
 			.then((plan) => {
-				if (!cancelled) setState('reason' in plan ? { kind: 'unavailable', reason: plan.reason } : { kind: 'ready', plan })
+				if (!cancelled) setState((prev) => (prev.kind === 'confirming' ? prev : 'reason' in plan ? { kind: 'unavailable', reason: plan.reason } : { kind: 'ready' }))
 			})
 			.catch((error: unknown) => {
-				if (!cancelled) setState({ kind: 'unavailable', reason: `Could not read what the level holds: ${error instanceof Error ? error.message : String(error)}` })
+				if (!cancelled) setState((prev) => (prev.kind === 'confirming' ? prev : failed(error)))
 			})
 		return () => {
 			cancelled = true
 		}
 	}, [character, available, loadPlan])
 
+	function openConfirm(): void {
+		loadPlan(character)
+			.then((plan) => setState('reason' in plan ? { kind: 'unavailable', reason: plan.reason } : { kind: 'confirming', plan }))
+			.catch((error: unknown) => setState(failed(error)))
+	}
+
 	const current: ControlState = 'reason' in target ? { kind: 'unavailable', reason: target.reason } : state
 
 	if (current.kind === 'ready' || current.kind === 'confirming') {
-		const { plan } = current
+		const plan = current.kind === 'confirming' ? current.plan : null
 		return (
 			<>
-				<button type="button" className="sheet__remove-level sheet__header-button" onClick={() => setState({ kind: 'confirming', plan })}>
+				<button type="button" className="sheet__remove-level sheet__header-button" onClick={openConfirm}>
 					<DownArrowIcon />
-					Remove level {plan.level}
+					Remove level {plan?.level ?? ('level' in target ? target.level : '')}
 				</button>
-				{current.kind === 'confirming' && (
+				{plan && (
 					<ConfirmDialog
 						title={`Remove level ${plan.level}?`}
 						body="Choices made at this level will be lost."
 						safeLabel="Keep level"
 						destructiveLabel="Remove level"
-						onSafe={() => setState({ kind: 'ready', plan })}
+						onSafe={() => setState({ kind: 'ready' })}
 						onDestructive={() => onRemoveLevel(plan.result)}
 					>
 						<div className="confirm-dialog__extra">

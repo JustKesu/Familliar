@@ -87,6 +87,11 @@ describe('a Long Rest (slice 9b5)', () => {
 		expect(afterLongRest(11, PLAY, 44).exhaustion).toBe(0)
 	})
 
+	it('ends Concentration on a Long Rest (sleep is Unconscious, XPHB) and not on a Short Rest (F-7b)', () => {
+		expect(afterLongRest(11, { ...PLAY, concentratingOn: 'Bless' }, 44).concentratingOn).toBeNull()
+		expect(afterShortRest(11, { ...PLAY, concentratingOn: 'Bless' }, RESOURCES, 'all')).not.toHaveProperty('concentratingOn')
+	})
+
 	it('leaves Exhaustion and conditions to the stored play on a Short Rest, and never reports conditions', () => {
 		const play = { ...PLAY, exhaustion: 3, conditions: ['Poisoned'] }
 		expect(afterShortRest(11, play, RESOURCES, 'all')).not.toHaveProperty('exhaustion')

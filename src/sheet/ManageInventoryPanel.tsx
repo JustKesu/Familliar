@@ -976,15 +976,19 @@ export function ManageInventoryPanel({
 	 */
 	function saveCustom(index: number, custom: CustomItemDefinition): void {
 		setEditingIndex(null)
-		onEditInventory(
-			inventory.map((row, i) => {
-				if (i !== index) return row
-				// D219: a spent count goes with a spell the edit removed, and never stays above a lowered count.
-				const next = mapItemSpellUses({ ...row, name: custom.name, custom }, (spent, spell) => (spell && spell.uses.kind !== 'atWill' ? Math.min(spent, spell.uses.count) : 0))
-				if (next.equipped !== undefined && equipSlotOf(customItemRef(custom, row.source)) !== next.equipped) return putDown(next)
-				return next
-			}),
-		)
+		const rows = inventory.map((row, i) => {
+			if (i !== index) return row
+			// D219: a spent count goes with a spell the edit removed, and never stays above a lowered count.
+			const next = mapItemSpellUses({ ...row, name: custom.name, custom }, (spent, spell) => (spell && spell.uses.kind !== 'atWill' ? Math.min(spent, spell.uses.count) : 0))
+			if (next.equipped !== undefined && equipSlotOf(customItemRef(custom, row.source)) !== next.equipped) return putDown(next)
+			return next
+		})
+		// F-7b: a held weapon edited to Two-Handed claims both hands, like equipping it does.
+		if (rows[index].equipped === 'held') {
+			applyEquip(takeInHand(rows, index, customItemRef(custom, rows[index].source), rows[index], resolve))
+			return
+		}
+		onEditInventory(rows)
 	}
 
 	return (
