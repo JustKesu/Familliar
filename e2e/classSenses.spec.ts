@@ -57,7 +57,7 @@ test('D195 e: Gloom Stalker 3 on an Elf — Darkvision 120 ft., breakdown names 
   await card.getByRole('button', { name: 'Senses details' }).click()
   const drawer = page.getByRole('dialog')
   await expect(drawer).toContainText('Elf: does not exceed from class feature (Umbral Sight) (120 ft.)')
-  await expect(drawer).toContainText('from class feature (Umbral Sight): +120 (Elf 60 ft. + 60 ft.)')
+  await expect(drawer).toContainText('from class feature (Umbral Sight): +60 ft. (Elf 60 ft. + 60 ft. = 120 ft.)')
 })
 
 test('D195 f: Warrior of Shadow Monk 3 on a Human — Darkvision 60 ft.', async ({ page }) => {

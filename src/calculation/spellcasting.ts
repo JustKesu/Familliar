@@ -112,35 +112,11 @@ export function computeSpellcasting(
 		}
 		if (abilityAbbreviation === null) continue
 
-		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
-		const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
-		if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
+		const numbers = computeAbilitySpellcasting(character, ABILITY_BY_ABBREVIATION[abilityAbbreviation], feats, spellAttackItemBonuses, spellSaveDcItemBonuses, itemAbilityGrants)
+		if (numbers.status === 'unknown') return numbers
 
-		const spellAttackBreakdown: Contribution[] = [
-			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
-			{ source: 'proficiency bonus', amount: bonusResult.value },
-			...spellAttackItemBonuses,
-		]
-		const spellAttackBonus = spellAttackBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
-
-		const spellSaveDCBreakdown: Contribution[] = [
-			{ source: 'base', amount: 8 },
-			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
-			{ source: 'proficiency bonus', amount: bonusResult.value },
-			...spellSaveDcItemBonuses,
-		]
-		const spellSaveDC = spellSaveDCBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
-
-		value.push({
-			className: characterClass.className,
-			classSource: characterClass.classSource,
-			ability,
-			spellAttackBonus,
-			spellAttackBreakdown,
-			spellSaveDC,
-			spellSaveDCBreakdown,
-		})
-		breakdown.push({ source: characterClass.className, amount: spellAttackBonus })
+		value.push({ className: characterClass.className, classSource: characterClass.classSource, ...numbers.value })
+		breakdown.push({ source: characterClass.className, amount: numbers.value.spellAttackBonus })
 	}
 
 	return known(value, breakdown)
@@ -148,6 +124,8 @@ export function computeSpellcasting(
 
 export interface FeatSpellcastingEntry {
 	featName: string
+	/** A2-1: the feat instance (featInstances.ts key), or the feat name for a spell that carries none. Two Magic Initiates are two entries. */
+	featKey: string
 	ability: Ability
 	spellAttackBonus: number
 	spellAttackBreakdown: Contribution[]
@@ -181,41 +159,30 @@ export function computeFeatSpellcasting(
 	const bonusResult = computeProficiencyBonus(character.classes)
 	if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
 
-	const featNames = [...new Set(featGrantedSpells.map((spell) => spell.featName))]
+	const featKeys = [...new Set(featGrantedSpells.map(featKeyOf))]
 	const value: FeatSpellcastingEntry[] = []
 	const breakdown: Contribution[] = []
 
-	for (const featName of featNames) {
-		const abilityAbbreviation = featGrantedSpells.find((spell) => spell.featName === featName)?.ability
-		if (!abilityAbbreviation) continue
+	for (const featKey of featKeys) {
+		const first = featGrantedSpells.find((spell) => spell.ability && featKeyOf(spell) === featKey)
+		if (!first?.ability) continue
 
-		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
-		const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
-		if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
+		const numbers = computeAbilitySpellcasting(character, ABILITY_BY_ABBREVIATION[first.ability], feats, spellAttackItemBonuses, spellSaveDcItemBonuses, itemAbilityGrants)
+		if (numbers.status === 'unknown') return numbers
 
-		const spellAttackBreakdown: Contribution[] = [
-			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
-			{ source: 'proficiency bonus', amount: bonusResult.value },
-			...spellAttackItemBonuses,
-		]
-		const spellAttackBonus = spellAttackBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
-
-		const spellSaveDCBreakdown: Contribution[] = [
-			{ source: 'base', amount: 8 },
-			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
-			{ source: 'proficiency bonus', amount: bonusResult.value },
-			...spellSaveDcItemBonuses,
-		]
-		const spellSaveDC = spellSaveDCBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
-
-		value.push({ featName, ability, spellAttackBonus, spellAttackBreakdown, spellSaveDC, spellSaveDCBreakdown })
-		breakdown.push({ source: featName, amount: spellAttackBonus })
+		value.push({ featName: first.featName, featKey, ...numbers.value })
+		breakdown.push({ source: first.featName, amount: numbers.value.spellAttackBonus })
 	}
 
 	return known(value, breakdown)
 }
 
-/** R14c2 (D219): an item spell cast with the ability the player chose on the item — any character, caster or not. */
+/** A2-1: which feat instance a granted spell belongs to — the spell's own instance key, else its feat name. */
+export function featKeyOf(spell: { featName: string; featInstance?: string }): string {
+	return spell.featInstance ?? spell.featName
+}
+
+/** A9: the one attack bonus / save DC computation every spellcasting source (class, feat, species, item) goes through. */
 export function computeAbilitySpellcasting(
 	character: Character,
 	ability: Ability,
@@ -223,7 +190,7 @@ export function computeAbilitySpellcasting(
 	spellAttackItemBonuses: Contribution[] = [],
 	spellSaveDcItemBonuses: Contribution[] = [],
 	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
-): Calculated<Omit<FeatSpellcastingEntry, 'featName'>> {
+): Calculated<Omit<FeatSpellcastingEntry, 'featName' | 'featKey'>> {
 	const bonusResult = computeProficiencyBonus(character.classes)
 	if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
 	const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
@@ -283,36 +250,17 @@ export function computeSpeciesSpellcasting(
 		return known([], [])
 	}
 
-	const bonusResult = computeProficiencyBonus(character.classes)
-	if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
-
 	const speciesNames = [...new Set(resolved.map((spell) => spell.speciesName))]
 	const value: SpeciesSpellcastingEntry[] = []
 	const breakdown: Contribution[] = []
 
 	for (const speciesName of speciesNames) {
 		const abilityAbbreviation = resolved.find((spell) => spell.speciesName === speciesName)!.ability!
-		const ability = ABILITY_BY_ABBREVIATION[abilityAbbreviation]
-		const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
-		if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
+		const numbers = computeAbilitySpellcasting(character, ABILITY_BY_ABBREVIATION[abilityAbbreviation], feats, spellAttackItemBonuses, spellSaveDcItemBonuses, itemAbilityGrants)
+		if (numbers.status === 'unknown') return numbers
 
-		const spellAttackBreakdown: Contribution[] = [
-			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
-			{ source: 'proficiency bonus', amount: bonusResult.value },
-			...spellAttackItemBonuses,
-		]
-		const spellAttackBonus = spellAttackBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
-
-		const spellSaveDCBreakdown: Contribution[] = [
-			{ source: 'base', amount: 8 },
-			{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
-			{ source: 'proficiency bonus', amount: bonusResult.value },
-			...spellSaveDcItemBonuses,
-		]
-		const spellSaveDC = spellSaveDCBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
-
-		value.push({ speciesName, ability, spellAttackBonus, spellAttackBreakdown, spellSaveDC, spellSaveDCBreakdown })
-		breakdown.push({ source: speciesName, amount: spellAttackBonus })
+		value.push({ speciesName, ...numbers.value })
+		breakdown.push({ source: speciesName, amount: numbers.value.spellAttackBonus })
 	}
 
 	return known(value, breakdown)

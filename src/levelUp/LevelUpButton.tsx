@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Character } from '../storage/character'
 import { loadLevelGainsFor, type LevelGains } from './levelGains'
-import { levelUpTarget, MAX_CHARACTER_LEVEL, totalCharacterLevel } from './levelUpSteps'
+import { totalCharacterLevel } from '../calculation/characterLevel'
+import { levelUpTarget, MAX_CHARACTER_LEVEL } from './levelUpSteps'
 
 type ButtonState = { kind: 'checking' } | { kind: 'ready'; gains: LevelGains } | { kind: 'unavailable'; reason: string }
 
@@ -49,7 +50,7 @@ export function LevelUpButton({
 			</button>
 		)
 	}
-	const atMaximum = totalCharacterLevel(character) >= MAX_CHARACTER_LEVEL
+	const atMaximum = totalCharacterLevel(character.classes) >= MAX_CHARACTER_LEVEL
 	return (
 		<button type="button" className="sheet__level-up sheet__header-button" disabled title={atMaximum ? 'Maximum level' : undefined}>
 			<UpArrowIcon />

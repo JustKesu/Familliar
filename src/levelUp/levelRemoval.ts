@@ -15,7 +15,7 @@ import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
 import type { Character, LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
 import { subclassLevelFor } from '../subclass/subclassData'
-import { totalCharacterLevel } from './levelUpSteps'
+import { totalCharacterLevel } from '../calculation/characterLevel'
 
 /**
  * The level a Remove level would take off, or why there is none. Only what can
@@ -27,7 +27,7 @@ export function levelRemovalTarget(character: Character): { level: number } | { 
 	if (character.classes.length > 1) {
 		return { reason: `Multiclass characters are build order step 10: nothing records which of the ${character.classes.length} classes the last level belongs to.` }
 	}
-	const level = totalCharacterLevel(character)
+	const level = totalCharacterLevel(character.classes)
 	if (level <= 1) return { reason: 'Level 1 is the lowest character level.' }
 	if (character.createdAtLevel === undefined) {
 		return { reason: 'The level this character was created at is not known (it was saved before that was recorded), so its creation choices cannot be told apart from later ones.' }

@@ -1,12 +1,9 @@
 import { WIZARD_STEPS, type WizardStep, type WizardStepConditions } from '../creation/wizardState'
+import { totalCharacterLevel } from '../calculation/characterLevel'
 import type { Character } from '../storage/character'
 import type { LevelGains } from './levelGains'
 
 export const MAX_CHARACTER_LEVEL = 20
-
-export function totalCharacterLevel(character: Character): number {
-	return character.classes.reduce((total, entry) => total + entry.level, 0)
-}
 
 /**
  * The level a Level up would take this character to, or why there is none.
@@ -16,7 +13,7 @@ export function totalCharacterLevel(character: Character): number {
  */
 export function levelUpTarget(character: Character): { level: number } | { reason: string } {
 	if (character.classes.length === 0) return { reason: 'This character has no class yet.' }
-	const level = totalCharacterLevel(character)
+	const level = totalCharacterLevel(character.classes)
 	if (level >= MAX_CHARACTER_LEVEL) return { reason: `Level ${MAX_CHARACTER_LEVEL} is the highest character level.` }
 	return { level: level + 1 }
 }

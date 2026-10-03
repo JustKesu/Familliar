@@ -10,6 +10,7 @@ export interface FreeCastGrant {
 	origin: string
 	originName: string
 	usage: SpellUsage | null
+	instanceKey?: string
 }
 
 export interface FreeCastSpell {
@@ -43,6 +44,8 @@ export interface FreeCastCounter {
 	/** The `play.resourceUses` key the free cast spends. */
 	key: string
 	cost: number
+	/** A2-1: the key this counter had before feat instances were told apart, still read when the new key has nothing stored. */
+	legacyKey?: string
 }
 
 /** What one grant's free cast spends, or null when it has no counter (a slot cast, at will, no slot, ritual). */
@@ -55,12 +58,37 @@ export function freeCastCounter(spell: { name: string; source: string }, grant: 
 		case 'freePerLongRestByAbility':
 		case 'freePerLongRestByProficiencyBonus': {
 			const spellName = spell.name.toLowerCase()
-			const key = SHARED_OWNERS[grant.originName]?.[spellName] ?? `spell:${grant.origin}:${grant.originName}:${spellName}|${spell.source.toUpperCase()}`
-			return { key, cost: 1 }
+			const shared = SHARED_OWNERS[grant.originName]?.[spellName]
+			if (shared) return { key: shared, cost: 1 }
+			const legacyKey = `spell:${grant.origin}:${grant.originName}:${spellName}|${spell.source.toUpperCase()}`
+			if (grant.instanceKey === undefined) return { key: legacyKey, cost: 1 }
+			return { key: `spell:${grant.origin}:${grant.originName}#${grant.instanceKey}:${spellName}|${spell.source.toUpperCase()}`, cost: 1, legacyKey }
 		}
 		default:
 			return null
 	}
+}
+
+/**
+ * A2-1: moves a spent count stored under a counter's pre-instance key onto its
+ * current key, so no spent use is lost and no migration is needed. Two instances
+ * that shared the old key each start from its count.
+ */
+export function withLegacyFreeCastUses(stored: Readonly<Record<string, number>>, spells: readonly FreeCastSpell[]): Record<string, number> {
+	const result = { ...stored }
+	const moved = new Set<string>()
+	const live = new Set<string>()
+	for (const spell of spells) {
+		for (const grant of spell.grants) {
+			const counter = freeCastCounter(spell, grant)
+			if (counter) live.add(counter.key)
+			if (!counter?.legacyKey || stored[counter.legacyKey] === undefined) continue
+			if (stored[counter.key] === undefined) result[counter.key] = stored[counter.legacyKey]
+			moved.add(counter.legacyKey)
+		}
+	}
+	for (const key of moved) if (!live.has(key)) delete result[key]
+	return result
 }
 
 function freeCastMax(usage: SpellUsage, label: string, abilityScores: Record<Ability, Calculated<AbilityScoreValue>>): Calculated<number> {

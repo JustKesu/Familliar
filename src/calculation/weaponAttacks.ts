@@ -32,6 +32,7 @@ import { choiceNames, type Character, type WeaponGrip } from '../storage/charact
 import { isProficientWithWeapon, type WeaponProficiencyGrant } from '../weapons/weaponProficiency'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
+import { hasFightingStyle } from './fightingStyles'
 import type { ItemAbilityGrant } from './itemAbilityScores'
 import type { MagicBonus } from './magicBonus'
 import { computeProficiencyBonus } from './proficiencyBonus'
@@ -115,6 +116,7 @@ export const UNARMED_STRIKE_KEY = 'unarmed-strike'
 const FINESSE = 'Finesse'
 const LIGHT = 'Light'
 const VERSATILE = 'Versatile'
+const THROWN = 'Thrown'
 const RANGED_TYPE_CODE = 'R'
 const MELEE_TYPE_CODE = 'M'
 
@@ -131,7 +133,8 @@ function signed(amount: number): string {
 
 export function damageText(dice: string | null, modifier: number, damageType: string): string {
 	const head = dice ?? '1'
-	const withModifier = modifier === 0 ? head : `${head} ${signed(modifier)}`
+	// A8: a flat 1 + a negative modifier deals no damage rather than negative damage.
+	const withModifier = dice === null && 1 + modifier < 0 ? '0' : modifier === 0 ? head : `${head} ${signed(modifier)}`
 	return damageType ? `${withModifier} ${damageType}` : withModifier
 }
 
@@ -224,6 +227,11 @@ function toHitFor(
 	)
 }
 
+function averageOf(dice: string): number {
+	const match = /^(\d+)d(\d+)$/.exec(dice.trim())
+	return match ? (Number(match[1]) * (Number(match[2]) + 1)) / 2 : 0
+}
+
 function damageFor(
 	weapon: ResolvedWeapon,
 	using: Ability,
@@ -232,6 +240,8 @@ function damageFor(
 	magicBonus: MagicBonus,
 	grip: WeaponGrip,
 	itemBonuses: readonly Contribution[],
+	/** Set only for a Monk weapon in a Monk's hands (A3). */
+	martialArtsDie: string | null = null,
 ): AttackDamage {
 	/*
 	 * PHB 2024, "Versatile": the weapon's damage die follows the hand it is held
@@ -239,10 +249,15 @@ function damageFor(
 	 * whatever the row happens to store.
 	 */
 	const versatile = hasProperty(weapon, VERSATILE)
-	const dice = (versatile && grip === 'two-handed' ? weapon.dmg2 : undefined) ?? weapon.dmg1 ?? null
+	const weaponDice = (versatile && grip === 'two-handed' ? weapon.dmg2 : undefined) ?? weapon.dmg1 ?? null
+	// PHB 2024 Martial Arts: a Monk weapon may roll the Martial Arts die in place of its own; the larger is shown.
+	const useMartialArts = martialArtsDie !== null && weaponDice !== null && averageOf(martialArtsDie) > averageOf(weaponDice)
+	const dice = useMartialArts ? martialArtsDie : weaponDice
 	const modifier = modifiers[using] + magicBonus.applied + itemBonuses.reduce((sum, row) => sum + row.amount, 0)
 	const damageType = weapon.dmgTypeFull ?? ''
-	const breakdown: Contribution[] = [{ source: `${weapon.name} damage dice`, amount: 0, note: dice ?? '1' }]
+	const breakdown: Contribution[] = useMartialArts
+		? [{ source: 'Martial Arts die', amount: 0, note: `${martialArtsDie} (in place of ${weaponDice})` }]
+		: [{ source: `${weapon.name} damage dice`, amount: 0, note: dice ?? '1' }]
 	breakdown.push({ source: abilityLabel(using, abilityReason ?? undefined), amount: modifiers[using] })
 	breakdown.push(...magicBonus.contributions)
 	breakdown.push(...itemBonuses)
@@ -286,6 +301,9 @@ export function computeWeaponAttacks(
 	// Same signal slice c reads for the die: a non-null die means at least one Monk level, so the ability clause and the die never disagree (D77).
 	const hasMartialArts = martialArtsDie !== null
 	const masteredKinds = new Set(choiceNames(character.masteries))
+	const archery = hasFightingStyle(character, feats, 'Archery')
+	const dueling = hasFightingStyle(character, feats, 'Dueling')
+	const thrownWeaponFighting = hasFightingStyle(character, feats, 'Thrown Weapon Fighting')
 
 	const attacks: WeaponAttack[] = held.map((row) => {
 		const key = row.key
@@ -305,13 +323,23 @@ export function computeWeaponAttacks(
 		 * than printing the "1" damageText would fall back to.
 		 */
 		const noDice = weapon.dmg1 === undefined ? `${row.magicBonus.label} has no damage dice set, so its damage cannot be worked out.` : null
-		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, itemBonuses.damage)
+		// XPHB Archery: "+2 bonus to attack rolls you make with Ranged weapons." Dueling and Thrown Weapon Fighting hang on how the weapon is held or used, so they are named, not counted (D76).
+		const styleAttack: Contribution[] = archery && weapon.typeCode === RANGED_TYPE_CODE ? [{ source: 'Archery (Fighting Style)', amount: 2 }] : []
+		const styleDamage: Contribution[] = [
+			...(dueling && weapon.typeCode === MELEE_TYPE_CODE
+				? [{ source: 'Dueling (Fighting Style)', amount: 0, note: 'considered (+2) — not included: only while it is your one weapon, held in one hand' }]
+				: []),
+			...(thrownWeaponFighting && hasProperty(weapon, THROWN)
+				? [{ source: 'Thrown Weapon Fighting (Fighting Style)', amount: 0, note: 'considered (+2) — not included: only on a ranged attack made by throwing it' }]
+				: []),
+		]
+		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, [...itemBonuses.damage, ...styleDamage], hasMartialArts && isMonkWeapon(weapon) ? martialArtsDie : null)
 		return {
 			key,
 			name: row.magicBonus.label,
 			kind: weapon.typeCode === RANGED_TYPE_CODE ? 'ranged' : 'melee',
 			range: weapon.range ?? null,
-			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus, itemBonuses.attack),
+			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus, [...styleAttack, ...itemBonuses.attack]),
 			damage: scoresUnknown ? unknown(scoresUnknown) : noDice ? unknown(noDice) : known(damage, damage.breakdown),
 			notes: noDice ? [...notesFor(weapon, proficient, masteredKinds), noDice] : notesFor(weapon, proficient, masteredKinds),
 			abilityChoice: choice,
@@ -353,6 +381,7 @@ function unarmedStrike(modifiers: Record<Ability, number>, proficiencyBonus: Cal
 		{ source: martialArtsDie ? 'Martial Arts die' : 'unarmed strike base', amount: 0, note: martialArtsDie ?? '1' },
 		{ source: abilityLabel(using, reason), amount: modifiers[using] },
 	]
+	if (!martialArtsDie && 1 + modifiers[using] < 0) damageBreakdown.push({ source: 'minimum damage', amount: 0, note: 'damage is never below 0' })
 	const damage: AttackDamage = {
 		dice: martialArtsDie,
 		modifier: modifiers[using],

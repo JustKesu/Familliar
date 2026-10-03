@@ -178,12 +178,18 @@ describe('computeMaxHitPoints — the bonus table', () => {
 		expect(sources(result)).toContain('Dwarven Toughness (+1 per character level)')
 	})
 
-	it('Draconic Resilience: +3 flat and +1 per SORCERER level', () => {
+	it('Draconic Resilience: +1 per SORCERER level (3 at level 3, then +1 each level)', () => {
 		const sorcerer = character({ classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: 'Draconic', level: 4 }] })
 		const base = total(computeMaxHitPoints(sorcerer, classData))
 		const result = computeMaxHitPoints(sorcerer, classData, ['Draconic Resilience'])
-		expect(total(result) - base).toBe(3 + 4)
-		expect(sources(result)).toContain('Draconic Resilience (+3, +1 per Sorcerer level)')
+		expect(total(result) - base).toBe(4)
+		expect(sources(result)).toContain('Draconic Resilience (+1 per Sorcerer level)')
+	})
+
+	it('Draconic Resilience at Sorcerer 3 adds exactly +3', () => {
+		const sorcerer = character({ classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: 'Draconic', level: 3 }] })
+		const base = total(computeMaxHitPoints(sorcerer, classData))
+		expect(total(computeMaxHitPoints(sorcerer, classData, ['Draconic Resilience'])) - base).toBe(3)
 	})
 
 	it('Draconic Resilience on a character with no Sorcerer levels is reported, not applied (D43)', () => {
@@ -197,12 +203,12 @@ describe('computeMaxHitPoints — the bonus table', () => {
 		const sorcerer = character({ classes: [{ className: 'Sorcerer', classSource: 'XPHB', subclass: 'Draconic', level: 5 }] })
 		const base = total(computeMaxHitPoints(sorcerer, classData))
 		const result = computeMaxHitPoints(sorcerer, classData, ['Tough', 'Dwarven Toughness', 'Draconic Resilience'])
-		expect(total(result) - base).toBe(10 + 5 + 8)
+		expect(total(result) - base).toBe(10 + 5 + 5)
 		expect(sources(result).filter((source) => !source.startsWith('level ') && source !== 'per-level hit points')).toEqual([
 			'constitution modifier (+2) × 5 levels',
 			'Tough (+2 per character level)',
 			'Dwarven Toughness (+1 per character level)',
-			'Draconic Resilience (+3, +1 per Sorcerer level)',
+			'Draconic Resilience (+1 per Sorcerer level)',
 		])
 	})
 

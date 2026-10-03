@@ -353,6 +353,7 @@ vi.mock('./weaponAttackData', async (importOriginal) => {
 		loadWeaponAttackData: vi.fn(async () => ({
 			grants: [{ kind: 'category' as const, category: 'martial' }],
 			martialArtsDie: null,
+			unarmoredMovement: null,
 			featureNames: ['Extra Attack'],
 			proficiencies: {
 				tools: [{ key: 'gaming set', label: 'Gaming Set', sources: [{ kind: 'background' as const, name: 'Soldier (background)' }] }],

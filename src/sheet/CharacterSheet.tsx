@@ -17,7 +17,7 @@ import { Fragment, useContext, useEffect, useRef, useState, type ComponentProps,
 import { createPortal } from 'react-dom'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
-import { totalCharacterLevel } from '../levelUp/levelUpSteps'
+import { totalCharacterLevel } from '../calculation/characterLevel'
 import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast } from '../beasts/beastData'
@@ -25,6 +25,7 @@ import { computeAbilityScores, type AbilityScoreValue } from '../calculation/abi
 import { armourSpeedPenalty, computeArmourClass, type AcFormulaKey } from '../calculation/armourClass'
 import { computeAttunementLimit } from '../calculation/attunement'
 import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
+import { featureSpeedAdjustments } from '../calculation/featureSpeed'
 import { missingFeatSubChoices } from './featSubChoices'
 import { computeHitDicePool, hitDiceKey, type ClassHitDie, type HitDiceEntry } from '../calculation/hitDice'
 import { deathSavesAfterHitPointChange, describeDeathSaveRoll, type DeathSaveRollResult } from '../hitPoints/deathSaves'
@@ -33,7 +34,7 @@ import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
-import { canSpendResource, freeCastResources, remainingUses, withFreeCastResources } from '../calculation/freeCastResources'
+import { canSpendResource, freeCastResources, remainingUses, withFreeCastResources, withLegacyFreeCastUses } from '../calculation/freeCastResources'
 import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/proficiencies'
@@ -2183,7 +2184,7 @@ function CharacterSheetBody({
 			.catch((error: unknown) => {
 				if (cancelled) return
 				// D43: no grants means "proficient with nothing", which is a real state — the error line is what keeps it from reading as one.
-				setWeaponAttackData({ grants: [], martialArtsDie: null, featureNames: [], proficiencies: { armor: [], weapons: [], tools: [], languages: [] } })
+				setWeaponAttackData({ grants: [], martialArtsDie: null, unarmoredMovement: null, featureNames: [], proficiencies: { armor: [], weapons: [], tools: [], languages: [] } })
 				setWeaponAttackDataError(messageOf(error))
 			})
 		return () => {
@@ -2245,7 +2246,7 @@ function CharacterSheetBody({
 	/* Step 7 slice h: a worn magic item's flat bonuses, gated on attunement, each landing on the value that owns it. */
 	const itemFlatBonuses = flatBonusesByTarget(
 		buildItemFlatBonusGrants(character.inventory ?? [], itemRefs ?? []),
-		character.classes.reduce((sum, c) => sum + c.level, 0),
+		totalCharacterLevel(character.classes),
 	)
 	const proficiencyBonusResult = computeProficiencyBonus(character.classes)
 	/* The proficiency bonus item bonus is a note only — itemFlatBonuses.ts says why the number is left alone. Every amount is 0, so the total does not move. */
@@ -2270,6 +2271,13 @@ function CharacterSheetBody({
 	/* Step 7 slice e2b: an item's own speed adjustment arrives through the same `adjustments` parameter slice b's heavy-armour penalty does. */
 	const speed = computeSpeed(character, speciesTraitsData, [
 		...armourSpeedPenalty(character, equippedGear.armour, feats, itemAbilityGrants),
+		/* A4: class features and the Speedy feat, gated on the same worn gear the AC formulas read. */
+		...featureSpeedAdjustments(
+			[...(weaponAttackData?.featureNames ?? []), ...characterFeats(character, feats).map((choice) => choice.name)],
+			weaponAttackData?.unarmoredMovement ?? null,
+			equippedGear.armour,
+			equippedGear.shield,
+		),
 		...buildItemSpeedAdjustments(character.inventory ?? [], itemRefs ?? []),
 	], buildItemSpeedModeGrants(character.inventory ?? [], itemRefs ?? []))
 	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
@@ -2311,7 +2319,7 @@ function CharacterSheetBody({
 	const hitDice = computeHitDicePool(character.classes, hitDiceClassData)
 	const chosenFeats = characterFeats(character, feats)
 	// D186: a trait whose text starts at a character level is absent below it, on every tab.
-	const speciesTraits = speciesTraitsAtLevel(loadedSpeciesTraits, character.classes.reduce((sum, c) => sum + c.level, 0))
+	const speciesTraits = speciesTraitsAtLevel(loadedSpeciesTraits, totalCharacterLevel(character.classes))
 	/* Slice 8a: every feature name the character has, from the three sources that can carry a max-HP bonus. computeMaxHitPoints reads only the three names its table knows, so no filtering is needed here. */
 	const maxHitPoints = computeMaxHitPoints(
 		character,
@@ -2375,11 +2383,11 @@ function CharacterSheetBody({
 	const spellActions = spellActionRows(
 		combinedSpells,
 		spellDetails,
-		character.classes.reduce((sum, c) => sum + c.level, 0),
+		totalCharacterLevel(character.classes),
 		spellcastingEntries,
 		featSpellcastingEntries,
 		speciesSpellcastingEntries,
-		itemSpellActionRows(itemSpells, character.classes.reduce((sum, c) => sum + c.level, 0)),
+		itemSpellActionRows(itemSpells, totalCharacterLevel(character.classes)),
 	)
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
 	/*
@@ -2428,7 +2436,7 @@ function CharacterSheetBody({
 		...characterResources.map((resource) => [resource.name, resource.shortRest ? 'Short Rest' : 'Long Rest'] as const),
 		...itemSpellCounters.map((spell) => [spell.key, spell.usage.kind === 'perShortRest' ? 'Short Rest' : 'Long Rest'] as const),
 	])
-	const storedResourceUses = character.play?.resourceUses ?? {}
+	const storedResourceUses = withLegacyFreeCastUses(character.play?.resourceUses ?? {}, combinedSpells)
 	const resourceUses = { ...storedResourceUses, ...Object.fromEntries(itemSpellCounters.map((spell) => [spell.key, spell.grant.spent])) }
 	function spendResource(name: string, delta: number): void {
 		const max = resourceMaxima.get(name)
@@ -2451,7 +2459,7 @@ function CharacterSheetBody({
 	 */
 	const pactShortRest = shortRestRecovery(['Pact Magic'], resourceFeatures)
 	function takeShortRest(): void {
-		onRest?.(afterShortRest(character.currentHp, character.play, characterResources, pactShortRest, character.inventory))
+		onRest?.(afterShortRest(character.currentHp, character.play && { ...character.play, resourceUses: storedResourceUses }, characterResources, pactShortRest, character.inventory))
 	}
 	function takeLongRest(): void {
 		onRest?.(afterLongRest(character.currentHp, character.play, maxHitPoints.status === 'known' ? maxHitPoints.value : null, character.inventory))
@@ -2522,7 +2530,7 @@ function CharacterSheetBody({
 	/* R7a (D189): one set of header numbers per spellcasting source the sheet computes. */
 	const spellcastingSources = [
 		...spellcastingEntries.map((entry) => ({ ...entry, key: `class|${entry.className}|${entry.classSource}`, name: entry.className })),
-		...featSpellcastingEntries.map((entry) => ({ ...entry, key: `feat|${entry.featName}`, name: entry.featName })),
+		...featSpellcastingEntries.map((entry) => ({ ...entry, key: `feat|${entry.featKey}`, name: entry.featName })),
 		...speciesSpellcastingEntries.map((entry) => ({ ...entry, key: `species|${entry.speciesName}`, name: entry.speciesName })),
 	]
 	const slotMaxima = spellSlotMaxima(spellSlotsEntries)
@@ -2624,7 +2632,7 @@ function CharacterSheetBody({
 	const familiarBonuses = familiarItemBonuses(
 		character.inventory ?? [],
 		itemRefs ?? [],
-		character.classes.reduce((sum, c) => sum + c.level, 0),
+		totalCharacterLevel(character.classes),
 	)
 	const familiarExtra = extraRows({
 		familiar: character.familiar ?? null,
@@ -2763,7 +2771,7 @@ function CharacterSheetBody({
 									))
 								)}
 							</span>
-							{character.classes.length > 0 && ` · Level ${totalCharacterLevel(character)}`}
+							{character.classes.length > 0 && ` · Level ${totalCharacterLevel(character.classes)}`}
 							{' · '}
 							<span className="sheet__background">
 								{character.background ? character.background.name : <UnresolvedValue reason="No background chosen yet." />}
@@ -3049,7 +3057,7 @@ function CharacterSheetBody({
 				<SpellsSection
 					sections={spellSections}
 					casterOf={(row) => spellsTabRowCaster(row, spellcastingEntries, featSpellcastingEntries, speciesSpellcastingEntries)}
-					characterLevel={character.classes.reduce((sum, c) => sum + c.level, 0)}
+					characterLevel={totalCharacterLevel(character.classes)}
 					castingClassName={spellcastingEntries.length === 1 ? spellcastingEntries[0]!.className : null}
 					spentSpellSlots={spentSpellSlots}
 					pactRecharge={pactShortRest !== null ? 'Short Rest' : 'Long Rest'}
@@ -3179,7 +3187,7 @@ function CharacterSheetBody({
 				spellActions={spellActions}
 				featureActions={featureActions}
 				breathWeapon={computeBreathWeapon(
-					character.classes.reduce((sum, c) => sum + c.level, 0),
+					totalCharacterLevel(character.classes),
 					abilityScores.constitution,
 					proficiencyBonus,
 					damageResponseData?.speciesGrants ?? null,

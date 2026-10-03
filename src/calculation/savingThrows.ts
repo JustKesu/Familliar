@@ -41,6 +41,15 @@ const SUBCLASS_SAVE_GRANTS: readonly { className: string; subclass: string; leve
 	{ className: 'Cleric', subclass: 'Knowledge Domain', level: 6, featureName: 'Unfettered Mind', ability: 'intelligence' },
 ]
 
+// A5, XPHB prose: Disciplined Survivor "proficiency in all saving throws"; Slippery Mind "proficiency in Wisdom and Charisma saving throws".
+const CLASS_SAVE_GRANTS: readonly { className: string; level: number; featureName: string; abilities: readonly Ability[] }[] = [
+	{ className: 'Monk', level: 14, featureName: 'Disciplined Survivor', abilities: ABILITIES },
+	{ className: 'Rogue', level: 15, featureName: 'Slippery Mind', abilities: ['wisdom', 'charisma'] },
+]
+
+/** A6, XPHB Paladin 6: "a bonus to saving throws equal to your Charisma modifier (minimum bonus of +1)"; inactive while Incapacitated. */
+const AURA_OF_PROTECTION = { className: 'Paladin', level: 6 }
+
 /** Must tolerate a further status being added later (mirrors skills.ts's SkillProficiencyStatus, D45); not a boolean. */
 export type SavingThrowProficiencyStatus = 'none' | 'proficient'
 
@@ -78,6 +87,11 @@ export function computeSavingThrow(
 			grantingSources.push(characterClass.className)
 		}
 	}
+	for (const grant of CLASS_SAVE_GRANTS) {
+		if (grant.abilities.includes(ability) && character.classes.some((cls) => cls.className === grant.className && cls.classSource === 'XPHB' && cls.level >= grant.level)) {
+			grantingSources.push(`class feature (${grant.featureName})`)
+		}
+	}
 	grantingSources.push(...featSavingThrowProficiencyNames(ability, character, feats).map((name) => `feat (${name})`))
 	const fromItems = itemSaveProficiency(itemProficiencies, ability)
 	grantingSources.push(...fromItems.sources)
@@ -103,6 +117,11 @@ export function computeSavingThrow(
 		breakdown.push({ source: `proficiency (${grantingSources.join(', ')})`, amount: bonusResult.value })
 	}
 	breakdown.push(...redundantNotes)
+	if (character.classes.some((cls) => cls.className === AURA_OF_PROTECTION.className && cls.classSource === 'XPHB' && cls.level >= AURA_OF_PROTECTION.level)) {
+		const charisma = computeAbilityScore('charisma', character, feats, itemAbilityGrants)
+		if (charisma.status === 'unknown') return unknown(charisma.reason)
+		breakdown.push({ source: 'Aura of Protection (while conscious)', amount: Math.max(1, charisma.value.modifier) })
+	}
 	breakdown.push(...fromItems.withheld)
 	breakdown.push(...itemBonuses)
 

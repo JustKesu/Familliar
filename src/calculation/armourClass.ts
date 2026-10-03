@@ -20,6 +20,7 @@ import type { Character } from '../storage/character'
 import { ABILITY_ABBREVIATIONS } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
 import type { FeatEffectEntry } from './featEffects'
+import { hasFightingStyle } from './fightingStyles'
 import type { ItemAbilityGrant } from './itemAbilityScores'
 import type { MagicBonus } from './magicBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
@@ -271,6 +272,8 @@ export function computeArmourClass(
 		breakdown.push({ source: gear.shield.name, amount: gear.shield.acBonus })
 		breakdown.push(...gear.shield.magicBonus.contributions)
 	}
+	// XPHB Defense: "While you're wearing Light, Medium, or Heavy armor, you gain a +1 bonus to Armor Class."
+	if (gear.armour && hasFightingStyle(character, feats, 'Defense')) breakdown.push({ source: 'Defense (Fighting Style)', amount: 1 })
 	breakdown.push(...wornItemBonuses)
 
 	const value = breakdown.reduce((sum, row) => sum + row.amount, 0)

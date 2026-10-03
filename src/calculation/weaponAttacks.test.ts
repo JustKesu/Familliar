@@ -392,7 +392,8 @@ describe('computeWeaponAttacks — Martial Arts ability (D77)', () => {
 		const dg = attackNamed(computeWeaponAttacks(character('Monk', 1, nimbleScores), [held(dagger, 'strength')], martialGrants, [], monkDie), 'Dagger')
 		expect(dg.abilityChoice).toEqual({ using: 'strength', options: ['strength', 'dexterity'], isDefault: false })
 		expect(toHitOf(dg)).toBe(3)
-		expect(damageTextOf(dg)).toBe('1d4 + 1 piercing')
+		// A3: the Martial Arts die (1d6) replaces the Dagger's 1d4.
+		expect(damageTextOf(dg)).toBe('1d6 + 1 piercing')
 	})
 
 	it('honours a stored pick on a non-Finesse Monk weapon even though no selector is shown', () => {

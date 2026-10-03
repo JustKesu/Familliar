@@ -76,6 +76,7 @@ import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeHitDicePool } from '../calculation/hitDice'
+import { totalCharacterLevel } from '../calculation/characterLevel'
 import { loadHitDiceClassData } from '../sheet/sheetData'
 import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
@@ -1524,7 +1525,7 @@ export function CharacterWizard({
 								onChange={(choice) => dispatch({ type: 'setClassChoice', choice })}
 								fixedLevel={
 									character
-										? character.classes.reduce((total, entry) => total + entry.level, 0)
+										? totalCharacterLevel(character.classes)
 										: undefined
 								}
 							/>

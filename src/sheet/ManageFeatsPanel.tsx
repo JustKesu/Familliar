@@ -3,6 +3,7 @@ import type { Ability } from '../abilities/abilityScores'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { subclassSkillSourceNames } from '../classSkills/subclassSkillGrants'
+import { totalCharacterLevel } from '../calculation/characterLevel'
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { AsiSubPicker } from '../featAsi/FeatAsiPicker'
@@ -359,7 +360,7 @@ export function ManageFeatsPanel({
 	let offered: FeatOffer[] = []
 	let categories: string[] = []
 	if (loaded) {
-		offered = addableFeatOffers(loaded.feats, held, { ...loaded.ctx, characterLevel: character.classes.reduce((sum, c) => sum + c.level, 0), abilityScores })
+		offered = addableFeatOffers(loaded.feats, held, { ...loaded.ctx, characterLevel: totalCharacterLevel(character.classes), abilityScores })
 		const present = new Set(loaded.feats.map((feat) => feat.category))
 		categories = [...CATEGORY_ORDER.filter((code) => present.has(code)), ...[...present].filter((code) => !CATEGORY_ORDER.includes(code)).sort()]
 	}

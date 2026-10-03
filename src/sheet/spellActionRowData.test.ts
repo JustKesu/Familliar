@@ -39,6 +39,7 @@ const wizard: SpellcastingEntry = {
 
 const magicInitiate: FeatSpellcastingEntry = {
 	featName: 'Magic Initiate',
+	featKey: 'Magic Initiate',
 	ability: 'charisma',
 	spellAttackBonus: 4,
 	spellAttackBreakdown: [{ source: 'Charisma', amount: 1 }],

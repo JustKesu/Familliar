@@ -1675,3 +1675,40 @@ Mark of Finding; Speak with Animals — Wild Heart, Oath of the Ancients, Mark o
 Handling, Forest Gnome; Find Familiar — Mark of Handling, Pact of the Chain;
 Mending — Mark of Making, Rock Gnome; Find Steed — Mark of Passage. Each is a
 separate feature with its own limit, so no shared boxes across them.
+
+### Sheet-review rule texts (F-7a) — prose only, no structured field
+
+Checked by `scripts/investigate-f7a.js` (cleared after the task), markup
+stripped first. One record each, all XPHB unless noted. Every amount below is
+prose; the hand tables cite these sentences.
+
+- **Draconic Resilience** (subclass, L3): "Hit Point maximum increases by 3,
+  and it increases by 1 whenever you gain another Sorcerer level" — the total
+  equals the Sorcerer level, not 3 + level.
+- **Unarmored Movement** (Monk L2): "+10 feet while you aren't wearing armor or
+  wielding a Shield". The real amount is the Monk `classTableGroups` column
+  labelled exactly `"Unarmored Movement"`, cells `{type:"bonusSpeed",value}`
+  (L1 0, L6 15) — the column exists from level 1 with value 0.
+- **Fast Movement** (Barbarian L5) and **Roving** (Ranger L6): +10 ft "while you
+  aren't wearing Heavy armor". Roving also gives Climb/Swim Speed equal to Speed
+  (not computed).
+- **Speedy** feat exists once (XPHB): "Your Speed increases by 10 feet", no
+  condition.
+- **Aura of Protection** (Paladin L6): bonus to saves = Cha modifier
+  "(minimum bonus of +1)"; "inactive while you have the Incapacitated
+  condition".
+- **Disciplined Survivor** (Monk L14): proficiency in all saving throws.
+  **Slippery Mind** (Rogue L15): Wisdom and Charisma saves.
+- Fighting Style feats: **Archery** +2 to attack rolls "with Ranged weapons";
+  **Defense** +1 AC "while you're wearing Light, Medium, or Heavy armor";
+  **Dueling** +2 damage only holding a Melee weapon in one hand and no other
+  weapons; **Thrown Weapon Fighting** +2 damage on a ranged attack with a
+  Thrown weapon.
+- **Aberrant Dragonmark** (EFA): the 1st-level pick is cast "once without a
+  spell slot", regained on "a Short or Long Rest", and "You can also cast this
+  spell using any spell slots you have". The feat's other benefit (the one
+  Long-Rest limit) is separate — D119's two limits in one record.
+- The background origin feat for Magic Initiate is stored under the
+  "; Class" name (`Magic Initiate; Wizard` for Sage), the Human Versatile and
+  ASI picks under base `Magic Initiate` — so two instances share a name only
+  when both are base picks (species + ASI, ASI + manual, …).

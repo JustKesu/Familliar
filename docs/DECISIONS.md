@@ -4826,3 +4826,12 @@ s jménem rysu v závorce, např. „Advantage on saves to avoid or end Charmed 
 beze značek. Shell Defense (Tortle) má podmíněný řádek „Advantage on Strength and Constitution saves while in your
 shell (Shell Defense)“; Escaped Death (Reborn, death saves) zahrnut.
 Rozhodl Daniel 3. 10. 2026.
+
+## D315 — CAST řádek kouzla z rasy/featu sesílá s jejich vlastností (ruší část D190)
+
+Mění část D190 „CAST podle třídy“. CAST řádek ve Spells bere čísla třídy jen u kouzla, které třída udělila
+nebo které hráč vybral do třídy (`chosen`, class/subclass/optional-feature původ). Kouzlo udělené jen rasou nebo
+featem sesílá i přes slot s vlastností té rasy/featu, stejně jako Actions a USE řádek. O všech třech řádcích
+rozhoduje jedna funkce (`casterFor` v spellActionRowData.ts). Identita featu = instance featu (FeatInstance.key),
+ne jméno: dvě Magic Initiate mají každá svou vlastnost a své počítadlo volného seslání; starý klíč počítadla
+se dál čte jako záloha. Task F-7a, rozhodl Daniel 4. 10. 2026.

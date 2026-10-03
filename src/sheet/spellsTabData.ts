@@ -20,8 +20,6 @@ import {
 	type SpellActionAttack,
 	type SpellActionSave,
 	type SpellCaster,
-	toCaster,
-	unresolvedCaster,
 } from './spellActionRowData'
 import type { ItemSpell } from './itemSpellRows'
 import { formatCastingTime, formatDuration, formatSpellUsage } from './spellFormatting'
@@ -232,10 +230,7 @@ export function spellsTabActionSections({
 	return buildSections(ordinarySlots, pact, placed)
 }
 
-/**
- * Spells tab only (D190): a USE row casts with its granting feat's or species'
- * numbers, a CAST row with the casting class; Actions keeps casterFor per spell.
- */
+/** A USE row casts with its own grant's source, a CAST or label row like the Actions tab (casterFor, D315). */
 export function spellsTabRowCaster(
 	row: SpellsTabActionRow,
 	classEntries: SpellcastingEntry[],
@@ -243,19 +238,7 @@ export function spellsTabRowCaster(
 	speciesEntries: SpeciesSpellcastingEntry[],
 ): SpellCaster {
 	if (row.item) return row.item.caster
-	const grant = row.action.kind === 'use' ? row.action.grant : null
-	if (grant?.origin === 'feat') {
-		const own = featEntries.find((entry) => entry.featName === grant.originName)
-		if (own) return toCaster(own)
-		if (row.entry.unresolvedAbilityReasons.length > 0) return unresolvedCaster(row.entry)
-	}
-	if (grant?.origin === 'species') {
-		const own = speciesEntries.find((entry) => entry.speciesName === grant.originName)
-		if (own) return toCaster(own)
-		if (row.entry.unresolvedAbilityReasons.length > 0) return unresolvedCaster(row.entry)
-	}
-	if (row.action.kind === 'cast' && classEntries.length === 1) return toCaster(classEntries[0]!)
-	return casterFor(row.entry, classEntries, featEntries, speciesEntries)
+	return casterFor(row.entry, classEntries, featEntries, speciesEntries, row.action.kind === 'use' ? row.action.grant : null)
 }
 
 /** The Hit / DC cell: null for a spell with neither an attack roll nor a save (D43: an unresolved caster says why instead of a number). */

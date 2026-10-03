@@ -57,6 +57,7 @@
 
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { proficiencyBonusForLevel } from '../calculation/proficiencyBonus'
+import { totalCharacterLevel } from '../calculation/characterLevel'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { Character } from '../storage/character'
 import { findChooseNodes } from './featSpellChoiceData'
@@ -120,11 +121,6 @@ function isChoiceAbility(value: unknown): boolean {
 	return isRecord(value) && Array.isArray(value['choose'])
 }
 
-/** D11: total level across every class, the same sum featSpells.ts and proficiencyBonus.ts use — a species' numeric grant keys gate on this, not on any one class's level. */
-function totalCharacterLevel(character: Character): number {
-	return (character.classes ?? []).reduce((sum, c) => sum + c.level, 0)
-}
-
 export const SPECIES_CANTRIP_NOT_CHOSEN = 'Cantrip not chosen yet — choose it in Edit Character.'
 
 interface RawSpeciesEntry {
@@ -182,7 +178,8 @@ export function raceSpellsFor(character: Character, parsedSpecies: unknown, pars
 	if (!species || !Array.isArray(species.additionalSpells)) return empty
 
 	const spells: RawSpell[] = parsedSpells.filter(isRawSpell)
-	const characterLevel = totalCharacterLevel(character)
+	// D11: a species' numeric grant keys gate on total level, not on any one class's level.
+	const characterLevel = totalCharacterLevel(character.classes)
 	// No class yet means no proficiency bonus to report, so a "pb" grant carries no count rather than a guessed one (parseDailySubkey).
 	const proficiencyBonus = characterLevel > 0 ? proficiencyBonusForLevel(characterLevel) : undefined
 	const granted: RaceGrantedSpell[] = []

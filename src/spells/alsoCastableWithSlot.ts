@@ -30,6 +30,8 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	'Magic Initiate; Wizard': true,
 	// "You can also cast the spell using any spell slots you have."
 	'Artificer Initiate': true,
+	// "You can also cast this spell using any spell slots you have." (EFA)
+	'Aberrant Dragonmark': true,
 	// "You can also cast these spells using spell slots you have of the appropriate level."
 	'Fey-Touched': true,
 	'Shadow-Touched': true,

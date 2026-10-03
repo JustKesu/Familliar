@@ -7,6 +7,7 @@ import { type Calculated, known } from '../calculation/types'
 import type { SpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
 import { combineSpellEntries, type SheetSpellEntry, type SpellGrant } from './SpellList'
+import { casterFor } from './spellActionRowData'
 import {
 	filterSpellsTabSections,
 	sectionLabel,
@@ -316,9 +317,9 @@ describe('spellsTabActionSections (D190)', () => {
 		const numbers = (bonus: number) => ({ spellAttackBonus: bonus, spellAttackBreakdown: [], spellSaveDC: 8 + bonus, spellSaveDCBreakdown: [] })
 		const warlock: SpellcastingEntry = { className: 'Warlock', classSource: 'XPHB', ability: 'charisma', ...numbers(5) }
 		const tiefling: SpeciesSpellcastingEntry = { speciesName: 'Tiefling; Infernal Legacy', ability: 'intelligence', ...numbers(2) }
-		const feyTouched: FeatSpellcastingEntry = { featName: 'Fey-Touched', ability: 'wisdom', ...numbers(3) }
+		const feyTouched: FeatSpellcastingEntry = { featName: 'Fey-Touched', featKey: 'Fey-Touched', ability: 'wisdom', ...numbers(3) }
 
-		it('USE casts with its granting species or feat, CAST with the class', () => {
+		it('USE casts with its granting species or feat; CAST with the class only for a class pick or grant (D315)', () => {
 			const tieflingEntries = combineSpellEntries([{ spells: [{ name: 'Hellish Rebuke', source: 'XPHB' }] }], [], [], [], [
 				{ speciesName: 'Tiefling; Infernal Legacy', name: 'Hellish Rebuke', source: 'XPHB', usage: ONCE },
 			])
@@ -335,9 +336,41 @@ describe('spellsTabActionSections (D190)', () => {
 			const feyEntries = combineSpellEntries([], [], [{ featName: 'Fey-Touched', name: 'Misty Step', source: 'XPHB', usage: ONCE }])
 			const feyRows = sectionsFor(feyEntries, { pact: { count: 2, slotLevel: 2 } }).flatMap((section) => section.rows)
 			expect(feyRows.map((row) => [row.action.kind, bonusOf(row)])).toEqual([
-				['cast', 5],
+				['cast', 3],
 				['use', 3],
 			])
+		})
+
+		it('A2-2: a species-only spell (Hellish Rebuke, Infernal Legacy) CASTs with the species numbers, like Actions', () => {
+			const entries = combineSpellEntries([], [], [], [], [{ speciesName: 'Tiefling; Infernal Legacy', name: 'Hellish Rebuke', source: 'XPHB', usage: ONCE }])
+			const sectionRows = sectionsFor(entries, { pact: { count: 2, slotLevel: 2 } }).flatMap((section) => section.rows)
+			const kinds = sectionRows.map((row) => {
+				const caster = spellsTabRowCaster(row, [warlock], [], [tiefling])
+				return [row.action.kind, 'save' in caster ? caster.save.dc : caster.reason]
+			})
+			expect(kinds).toEqual([
+				['use', 10],
+				['cast', 10],
+			])
+		})
+
+		it('A2-1: two Magic Initiate instances keep their own numbers and their own free-cast counter', () => {
+			const cleric: FeatSpellcastingEntry = { featName: 'Magic Initiate', featKey: 'species', ability: 'wisdom', ...numbers(2) }
+			const wizardMi: FeatSpellcastingEntry = { featName: 'Magic Initiate', featKey: 'background', ability: 'intelligence', ...numbers(5) }
+			const entries = combineSpellEntries([], [], [
+				{ featName: 'Magic Initiate', featInstance: 'species', name: 'Detect Magic', source: 'XPHB', usage: ONCE },
+				{ featName: 'Magic Initiate', featInstance: 'background', name: 'Detect Magic', source: 'XPHB', usage: ONCE },
+				{ featName: 'Magic Initiate', featInstance: 'species', name: 'Guiding Bolt', source: 'XPHB', usage: ONCE },
+			])
+			const useRows = sectionsFor(entries, { pact: null }).flatMap((section) => section.rows).filter((row) => row.action.kind === 'use')
+			const counters = useRows.map((row) => (row.action.kind === 'use' ? row.action.counterKey : ''))
+			expect(counters.filter((key) => key.includes('detect magic')).sort()).toEqual([
+				'spell:feat:Magic Initiate#background:detect magic|XPHB',
+				'spell:feat:Magic Initiate#species:detect magic|XPHB',
+			])
+			const guidingBolt = entries.find((entry) => entry.name === 'Guiding Bolt')!
+			const caster = casterFor(guidingBolt, [], [wizardMi, cleric], [])
+			expect('attack' in caster ? caster.attack.bonus : caster.reason).toBe(2)
 		})
 	})
 })

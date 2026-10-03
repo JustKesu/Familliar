@@ -260,7 +260,7 @@ describe('computeDarkvision', () => {
 				value: 120,
 				breakdown: [
 					{ source: 'Elf', amount: 0, note: 'does not exceed from class feature (Umbral Sight) (120 ft.)' },
-					{ source: 'from class feature (Umbral Sight)', amount: 120, note: '+120 (Elf 60 ft. + 60 ft.)' },
+					{ source: 'from class feature (Umbral Sight)', amount: 120, note: '+60 ft. (Elf 60 ft. + 60 ft. = 120 ft.)' },
 				],
 			})
 		})

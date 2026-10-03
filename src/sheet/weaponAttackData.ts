@@ -134,6 +134,26 @@ export function martialArtsDieFrom(character: Character, parsedClasses: unknown)
 	return null
 }
 
+/** A4: the Monk table's "Unarmored Movement" bonus (a `bonusSpeed` cell) at the character's level in that class, or null. */
+export function unarmoredMovementFrom(character: Character, parsedClasses: unknown): number | null {
+	if (!Array.isArray(parsedClasses)) throw new Error('classes.json: expected a top-level array.')
+	for (const characterClass of character.classes) {
+		const entry = parsedClasses.find(
+			(candidate) =>
+				isRecord(candidate) && candidate['entryType'] === 'class' && candidate['name'] === characterClass.className && candidate['source'] === characterClass.classSource,
+		)
+		if (!isRecord(entry) || !Array.isArray(entry['classTableGroups'])) continue
+		for (const group of entry['classTableGroups']) {
+			if (!isRecord(group) || !Array.isArray(group['colLabels']) || !Array.isArray(group['rows'])) continue
+			const column = group['colLabels'].findIndex((label) => label === 'Unarmored Movement')
+			const row = column === -1 ? undefined : group['rows'][characterClass.level - 1]
+			const cell = Array.isArray(row) ? row[column] : undefined
+			if (isRecord(cell) && cell['type'] === 'bonusSpeed' && typeof cell['value'] === 'number') return cell['value']
+		}
+	}
+	return null
+}
+
 interface RawFeature {
 	name: string
 	className: string
@@ -181,6 +201,8 @@ export function featureNamesFor(character: Character, parsedClassFeatures: unkno
 export interface WeaponAttackData {
 	grants: WeaponProficiencyGrant[]
 	martialArtsDie: string | null
+	/** A4: the Monk table's Unarmored Movement bonus; null without a Monk level. */
+	unarmoredMovement: number | null
 	/** Feature names, for computeAttacksPerAction. */
 	featureNames: string[]
 	/** The Proficiencies card (D170) — here because it reads the same three sources. */
@@ -201,6 +223,7 @@ export async function loadWeaponAttackData(character: Character): Promise<Weapon
 	return {
 		grants: [...weaponProficiencyGrantsFor(character, classes, extractFeatWeaponProficiencyEntries(feats), backgroundOriginFeat), ...itemWeaponGrants(itemGrants)],
 		martialArtsDie: martialArtsDieFrom(character, classes),
+		unarmoredMovement: unarmoredMovementFrom(character, classes),
 		featureNames: featureNamesFor(character, classFeatures, subclassFeatures, classes),
 		proficiencies: computeProficiencies(character, classes, featInstances(character, backgroundOriginFeat), extractFeatProficiencyEntries(feats), itemGrants),
 	}

@@ -53,6 +53,8 @@ export interface SpellGrant {
 	origin: SpellGrantOrigin
 	originName: string
 	usage: SpellUsage | null
+	/** A2-1: a feat grant's feat instance (FeatInstance.key); two instances of one feat are two grants. */
+	instanceKey?: string
 }
 
 export interface SheetSpellEntry {
@@ -109,10 +111,10 @@ function emptyEntry(name: string, source: string, chosen: boolean): SheetSpellEn
 }
 
 /** Records the grant, and adds `usage` to `entry.usages` unless it's absent or already present (by `spellUsageKey`) — an ordinary grant (undefined/null) leaves that list untouched. */
-function mergeUsage(entry: SheetSpellEntry, origin: SpellGrantOrigin, originName: string, usage: SpellUsage | null | undefined): void {
+function mergeUsage(entry: SheetSpellEntry, origin: SpellGrantOrigin, originName: string, usage: SpellUsage | null | undefined, instanceKey?: string): void {
 	const grantKey = usage ? spellUsageKey(usage) : 'slot'
-	if (!entry.grants.some((g) => g.origin === origin && g.originName === originName && (g.usage ? spellUsageKey(g.usage) : 'slot') === grantKey)) {
-		entry.grants.push({ origin, originName, usage: usage ?? null })
+	if (!entry.grants.some((g) => g.origin === origin && g.originName === originName && g.instanceKey === instanceKey && (g.usage ? spellUsageKey(g.usage) : 'slot') === grantKey)) {
+		entry.grants.push({ origin, originName, usage: usage ?? null, ...(instanceKey === undefined ? {} : { instanceKey }) })
 	}
 	if (!usage) return
 	const key = spellUsageKey(usage)
@@ -123,7 +125,7 @@ function mergeUsage(entry: SheetSpellEntry, origin: SpellGrantOrigin, originName
 export function combineSpellEntries(
 	spellChoices: { spells: { name: string; source: string }[] }[],
 	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[],
-	featGrantedSpells: { featName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
+	featGrantedSpells: { featName: string; featInstance?: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
 	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string; usage?: SpellUsage | null; itemName?: string }[] = [],
 	raceGrantedSpells: { speciesName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
 	classAlwaysPrepared: { className: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[] = [],
@@ -163,7 +165,7 @@ export function combineSpellEntries(
 		const key = keyOf(spell.name, spell.source)
 		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
 		if (!entry.featOrigins.includes(spell.featName)) entry.featOrigins.push(spell.featName)
-		mergeUsage(entry, 'feat', spell.featName, spell.usage)
+		mergeUsage(entry, 'feat', spell.featName, spell.usage, spell.featInstance)
 		if (spell.unresolvedAbilityReason && !entry.unresolvedAbilityReasons.includes(spell.unresolvedAbilityReason)) {
 			entry.unresolvedAbilityReasons.push(spell.unresolvedAbilityReason)
 		}

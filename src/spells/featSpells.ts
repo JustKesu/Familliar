@@ -71,9 +71,10 @@
  */
 
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
+import { totalCharacterLevel } from '../calculation/characterLevel'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { featSpellcastingAbilityOptions } from '../featAsi/featAsiData'
-import { featInstances, loadBackgroundOriginFeat, type FeatInstance, type FeatRef } from '../featAsi/featInstances'
+import { featInstances, loadBackgroundOriginFeat, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import type { Character } from '../storage/character'
 import { chosenSpellUsageFor } from './chosenSpellUsage'
 import { featAdditionalSpellsEntry, isFilterChoiceFeat, isNamedBlockFeat } from './featSpellChoiceData'
@@ -91,6 +92,8 @@ export interface FeatGrantedSpell {
 	origin: 'feat'
 	/** Which feat granted this spell — the name the "from feat (...)" label needs. */
 	featName: string
+	/** A2-1: the granting feat instance (FeatInstance.key) — two Magic Initiates keep their own ability and free cast. */
+	featInstance?: FeatInstanceKey
 	/** The spellcasting ability for this grant — carried through for a later attack/DC consumer; not computed here. Fixed feats (Drow High Magic, Fey Teleportation) always have one. A Mark feat has one only once the character's D57 `chosenAbility` is on record; absent until then (the spell itself is still granted — the mark's ability choice does not gate whether the spell is granted, only what it's cast with). */
 	ability?: AbilityAbbreviation
 	/**
@@ -301,11 +304,6 @@ export function extractFixedFeatSpells(
 
 type FeatChoice = FeatInstance
 
-/** D11: total level across every class, the same sum proficiencyBonus.ts uses — a Mark feat's numeric grant keys are gated on this, not on any one class's level (a feat isn't tied to a class). */
-function totalCharacterLevel(character: Character): number {
-	return (character.classes ?? []).reduce((sum, c) => sum + c.level, 0)
-}
-
 /**
  * Base Magic Initiate's own stored pick (build order step 6, slice d5b-2:
  * FeatAsiChoice.magicInitiate) — not a feats.json fixed grant at all, since
@@ -403,12 +401,16 @@ function extractFilterChoiceSpells(parsedFeats: unknown, parsedSpells: unknown, 
 /** Every fully-fixed feat-granted spell the character's feats (featInstances, D156) provide. Additional to the class picker's own counts — never subtracted from cantrip/prepared/known limits, same as subclass always-prepared spells. */
 export function extractFeatGrantedSpells(parsedFeats: unknown, parsedSpells: unknown, character: Character, backgroundOriginFeat: FeatRef | null): FeatGrantedSpell[] {
 	const result: FeatGrantedSpell[] = []
-	const characterLevel = totalCharacterLevel(character)
+	// D11: a Mark feat's numeric grant keys are gated on total level — a feat isn't tied to a class.
+	const characterLevel = totalCharacterLevel(character.classes)
 	for (const choice of featInstances(character, backgroundOriginFeat)) {
 		const chosenAbility = choice.chosenAbility ? ABILITY_ABBREVIATIONS[choice.chosenAbility] : undefined
-		result.push(...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source, characterLevel, chosenAbility, choice.blockName))
-		result.push(...extractMagicInitiateSpells(parsedSpells, choice))
-		result.push(...extractFilterChoiceSpells(parsedFeats, parsedSpells, choice))
+		const spells = [
+			...extractFixedFeatSpells(parsedFeats, parsedSpells, choice.name, choice.source, characterLevel, chosenAbility, choice.blockName),
+			...extractMagicInitiateSpells(parsedSpells, choice),
+			...extractFilterChoiceSpells(parsedFeats, parsedSpells, choice),
+		]
+		result.push(...spells.map((spell) => ({ ...spell, featInstance: choice.key })))
 	}
 	// D204: stated on the feat's own rows; the other feats keep their numbers.
 	return result.map((spell) => (spell.ability ? spell : { ...spell, unresolvedAbilityReason: UNRESOLVED_ABILITY_REASON }))

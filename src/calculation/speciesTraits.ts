@@ -239,7 +239,7 @@ function combineDarkvision(species: { source: string; value: number } | null, gr
 		if (!candidate.additive || base === null) continue
 		const increment = candidate.value
 		candidate.value += base.value
-		candidate.note = `+${candidate.value} (${base.label} ${base.value} ft. + ${increment} ft.)`
+		candidate.note = `+${increment} ft. (${base.label} ${base.value} ft. + ${increment} ft. = ${candidate.value} ft.)`
 	}
 
 	let winnerIndex = -1

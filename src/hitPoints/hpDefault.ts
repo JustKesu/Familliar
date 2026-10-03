@@ -8,6 +8,7 @@
  * load done the same way.
  */
 
+import { totalCharacterLevel } from '../calculation/characterLevel'
 import { characterFeats } from '../calculation/featEffects'
 import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import type { Calculated, Contribution } from '../calculation/types'
@@ -31,7 +32,7 @@ export async function loadItemMaxHpBonuses(character: Character): Promise<{ item
 	return {
 		itemBonuses: flatBonusesByTarget(
 			buildItemFlatBonusGrants(character.inventory ?? [], itemRefs),
-			character.classes.reduce((sum, c) => sum + c.level, 0),
+			totalCharacterLevel(character.classes),
 		).maxHitPoints,
 		/* D221: a Constitution item moves the maximum exactly the way an item's max HP bonus does. */
 		itemAbilityGrants: buildItemAbilityGrants(character.inventory ?? [], itemRefs),

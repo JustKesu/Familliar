@@ -278,6 +278,7 @@ describe('computeFeatSpellcasting', () => {
 		expect(result.value).toEqual([
 			{
 				featName: 'Magic Initiate',
+				featKey: 'Magic Initiate',
 				ability: 'charisma',
 				spellAttackBonus: 6,
 				spellAttackBreakdown: [
@@ -310,6 +311,7 @@ describe('computeFeatSpellcasting', () => {
 		expect(result.value).toEqual([
 			{
 				featName: 'Drow High Magic',
+				featKey: 'Drow High Magic',
 				ability: 'charisma',
 				spellAttackBonus: 5,
 				spellAttackBreakdown: [
@@ -410,6 +412,7 @@ describe('computeFeatSpellcasting — fed the REAL featSpells.ts extraction (not
 		expect(result.value).toEqual([
 			{
 				featName: 'Magic Initiate',
+				featKey: 'asi:4',
 				ability: 'charisma',
 				spellAttackBonus: 5,
 				spellAttackBreakdown: [

@@ -49,8 +49,8 @@ const USAGE_BY_SOURCE: Record<string, SpellUsage | null> = {
 	'Druidic Warrior': null,
 	// Wood Elf Magic: "You learn one druid cantrip of your choice." (its fixed Longstrider / Pass Without Trace are not picks — see docs/REPORT.md)
 	'Wood Elf Magic': null,
-	// Aberrant Dragonmark: "You know one cantrip of your choice from the Sorcerer spell list."
-	'Aberrant Dragonmark': null,
+	// Aberrant Dragonmark's 1st-level pick (EFA): "You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Short or Long Rest."
+	'Aberrant Dragonmark': { kind: 'onceFreePerShortOrLongRest' },
 }
 
 /**

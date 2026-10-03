@@ -1141,6 +1141,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - `e2e/expertiseE1.spec.ts` — E-1 a–c (Human Rogue with species Skilled: Arcana offered
   in Expertise and shown as expertise on the sheet; swapping the species feat to Lucky
   leaves Arcana "(not proficient)" and blocks Next; Khoravar extra skill offered).
+- `e2e/sheetCalculations.spec.ts` — F-7a a–f (Archery Longbow +7 with its row; Defense
+  Chain Mail AC 17; Monk 6 Speed 45, with a Shield 30; Paladin 6 Aura of Protection on
+  saves; three Magic Initiates: Guiding Bolt WIS in Actions and Spells, Thunderwave two
+  USE rows; Tiefling Wizard Hellish Rebuke CAST DC = Actions DC; Draconic Resilience +3).
 
 ## Dočasné scaffolding
 
@@ -1813,6 +1817,19 @@ S4 (D314) done. No schema bump. `src/sheet/speciesSaveAdvantages.ts`: hand table
 `.sheet__save-advantages` under the Saving Throws card and at the bottom of the Saving throws drawer, above the custom
 item hint. Tortle's Shell Defense has a conditional "while in your shell" line. Unit `speciesSaveAdvantages.test.ts`
 (data guard: every record carries its trait), E2E `speciesSaveAdvantages.spec.ts` a–e.
+
+F-7a (D315) done. No schema bump. Calculation fixes from sheet reviews A/A2: Draconic Resilience = Sorcerer level;
+Fighting Style (`calculation/fightingStyles.ts`): Archery +2 ranged to-hit and Defense +1 AC in armour as rows,
+Dueling / Thrown Weapon Fighting as "not included" damage notes; Martial Arts die replaces a smaller Monk-weapon die;
+speed rows from Unarmored Movement (Monk table column, no armour/shield), Fast Movement, Roving (not heavy armour) and
+Speedy (`calculation/featureSpeed.ts`, `unarmoredMovementFrom` in weaponAttackData.ts); save proficiency from
+Disciplined Survivor / Slippery Mind and Aura of Protection (+Cha, min 1) in savingThrows.ts; additive darkvision note
+shows the increment; flat unarmed damage floors at 0 (`damageText`). One `computeAbilitySpellcasting` behind class,
+feat, species and item numbers; one `totalCharacterLevel(classes)` (`calculation/characterLevel.ts`). Feat spells
+carry `featInstance`; `FeatSpellcastingEntry.featKey`, `SpellGrant.instanceKey`; free-cast counter key
+`spell:feat:<name>#<instance>:<spell>|<src>`, old key read via `withLegacyFreeCastUses`. `casterFor(…, grant)` decides
+Actions, CAST and USE (CAST of a species/feat-only spell uses that source). Aberrant Dragonmark's 1st-level pick: 1/SR
+free + slot. Unit `sheetReviewFixes.test.ts`, E2E `sheetCalculations.spec.ts`.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

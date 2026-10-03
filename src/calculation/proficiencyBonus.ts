@@ -6,6 +6,7 @@
  */
 
 import type { CharacterClass } from '../storage/character'
+import { totalCharacterLevel } from './characterLevel'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 /** 2 at level 1-4, rising by 1 every 4 levels, capping at 6 for level 17-20. */
@@ -19,6 +20,5 @@ export function computeProficiencyBonus(classes: CharacterClass[]): Calculated<n
 	}
 
 	const breakdown: Contribution[] = classes.map((c) => ({ source: c.className, amount: c.level }))
-	const totalLevel = breakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
-	return known(proficiencyBonusForLevel(totalLevel), breakdown)
+	return known(proficiencyBonusForLevel(totalCharacterLevel(classes)), breakdown)
 }

@@ -53,6 +53,7 @@ import {
 } from '../classSkills/subclassSkillGrants'
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellCountLabel } from '../calculation/spellCounts'
+import { totalCharacterLevel } from '../calculation/characterLevel'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
@@ -1224,7 +1225,7 @@ export function saveCharacter(
 		throw new Error('Cannot save a character before every step is complete.')
 	}
 
-	const existingLevel = existing ? existing.classes.reduce((total, entry) => total + entry.level, 0) : 0
+	const existingLevel = existing ? totalCharacterLevel(existing.classes) : 0
 	if (existing && levelUpTo === undefined && (data.classChoice?.level ?? 0) !== existingLevel) {
 		throw new Error(`Editing a character cannot change its level: this character is level ${existingLevel}.`)
 	}

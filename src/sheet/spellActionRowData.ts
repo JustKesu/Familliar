@@ -26,7 +26,7 @@ import type { FeatSpellcastingEntry, SpeciesSpellcastingEntry, SpellcastingEntry
 import type { Contribution } from '../calculation/types'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
-import type { SheetSpellEntry } from './SpellList'
+import type { SheetSpellEntry, SpellGrant } from './SpellList'
 import { formatRange } from './spellFormatting'
 
 export interface SpellActionAttack {
@@ -80,13 +80,32 @@ function keyOf(name: string, source: string): string {
  */
 export type SpellCaster = { attack: SpellActionAttack; save: SpellActionSave } | { reason: string }
 
+/**
+ * A2-4: the one answer to "who casts this spell" for the Actions row, the Spells
+ * CAST row (grant null) and the Spells USE row (its own grant). A USE row casts
+ * with its granting feat instance or species; everything else goes by where the
+ * spell came from — a class grant or class pick with class numbers, a spell only
+ * a feat or species grants with that source's numbers (A2-2, D315).
+ */
 export function casterFor(
 	entry: SheetSpellEntry,
 	classEntries: SpellcastingEntry[],
 	featEntries: FeatSpellcastingEntry[],
 	speciesEntries: SpeciesSpellcastingEntry[],
+	grant: SpellGrant | null = null,
 ): SpellCaster {
-	const featEntry = featEntries.find((f) => entry.featOrigins.includes(f.featName))
+	if (grant?.origin === 'feat') {
+		const own = featEntries.find((f) => f.featKey === (grant.instanceKey ?? grant.originName))
+		if (own) return toCaster(own)
+		if (entry.unresolvedAbilityReasons.length > 0) return unresolvedCaster(entry)
+	}
+	if (grant?.origin === 'species') {
+		const own = speciesEntries.find((s) => s.speciesName === grant.originName)
+		if (own) return toCaster(own)
+		if (entry.unresolvedAbilityReasons.length > 0) return unresolvedCaster(entry)
+	}
+	const featKeys = entry.grants.filter((g) => g.origin === 'feat').map((g) => g.instanceKey ?? g.originName)
+	const featEntry = featEntries.find((f) => featKeys.includes(f.featKey)) ?? featEntries.find((f) => entry.featOrigins.includes(f.featName) && f.featKey === f.featName)
 	const speciesEntry = speciesEntries.find((s) => entry.speciesOrigins.includes(s.speciesName))
 	// R14c1: an item's invocation casts with a Warlock's numbers; without a Warlock level there are none to borrow (D43).
 	const itemInvocationAsWarlock = entry.itemInvocationOrigins.length > 0 && classEntries.some((c) => c.className === 'Warlock')
