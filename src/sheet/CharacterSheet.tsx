@@ -124,6 +124,7 @@ import { isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellA
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
 import { formatRange, spellLevelLabel } from './spellFormatting'
+import { BREATH_WEAPON, BREATH_WEAPON_AREAS, type BreathWeapon, computeBreathWeapon } from '../calculation/breathWeapon'
 import { FeatureLanguageSlots } from '../languages/FeatureLanguageSlots'
 import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { ClassToolSlots } from '../toolProficiencies/ClassToolSlots'
@@ -590,7 +591,25 @@ function UseBoxes({ name, spent, max, recharge, onChange }: { name: string; spen
 }
 
 /** One collapsible Actions-group row (D182): ▸ name source … uses, the full text below when open. Open state is this row's own UI state (D116). */
-function ActionGroupRow({ name, source, uses, below, children }: { name: string; source: string | null; uses?: ReactNode; below?: ReactNode; children: ReactNode }): ReactNode {
+/** D313: Breath Weapon's range, save and damage, in the formats a spell row uses. */
+function BreathWeaponCells({ breathWeapon, onRoll }: { breathWeapon: BreathWeapon; onRoll: (report: RollReport) => void }): ReactNode {
+	const { dc, damage } = breathWeapon
+	return (
+		<span className="sheet__group-row-cells">
+			<span className="sheet__action-range">{BREATH_WEAPON_AREAS.map((area) => formatRange(area)).join(' / ')}</span>
+			{dc.status === 'known' ? <span className="sheet__action-dc">DC {dc.value} DEX</span> : <UnresolvedValue reason={dc.reason} />}
+			{damage.status === 'known' ? (
+				<span className="sheet__action-damage">
+					<SpellDamageLine line={damage.value} spellName={BREATH_WEAPON} onRoll={onRoll} />
+				</span>
+			) : (
+				<UnresolvedValue reason={damage.reason} />
+			)}
+		</span>
+	)
+}
+
+function ActionGroupRow({ name, source, cells, uses, below, children }: { name: string; source: string | null; cells?: ReactNode; uses?: ReactNode; below?: ReactNode; children: ReactNode }): ReactNode {
 	const [open, setOpen] = useState(false)
 	return (
 		<li className="sheet__action-row sheet__group-row">
@@ -603,6 +622,7 @@ function ActionGroupRow({ name, source, uses, below, children }: { name: string;
 				</button>
 				{source && <span className="sheet__feature-origin sheet__group-row-source">{source}</span>}
 				<span className="sheet__group-row-spacer" />
+				{cells}
 				{uses}
 			</div>
 			{below}
@@ -677,6 +697,7 @@ function ActionsSection({
 	attacksPerAction,
 	spellActions,
 	featureActions,
+	breathWeapon,
 	spellGroups,
 	combatActions,
 	resourceMaxima,
@@ -697,6 +718,8 @@ function ActionsSection({
 	attacksPerAction: Calculated<number>
 	spellActions: SpellActionData[]
 	featureActions: FeatureActionData[]
+	/** D313: the numbers the Breath Weapon row shows, whether or not the character has the trait. */
+	breathWeapon: BreathWeapon
 	spellGroups: SpellGroupData[]
 	/** D187: the actions.json entries shown, already without a Two-Weapon Fighting the character cannot take. */
 	combatActions: CombatAction[]
@@ -805,6 +828,7 @@ function ActionsSection({
 											key={feature.key}
 											name={feature.name}
 											source={feature.origin}
+											cells={feature.key === `species|${BREATH_WEAPON.toLowerCase()}` && <BreathWeaponCells breathWeapon={breathWeapon} onRoll={onRoll} />}
 											uses={
 												max !== undefined && (
 													<UseBoxes
@@ -3153,6 +3177,12 @@ function CharacterSheetBody({
 				attacksPerAction={attacksPerAction}
 				spellActions={spellActions}
 				featureActions={featureActions}
+				breathWeapon={computeBreathWeapon(
+					character.classes.reduce((sum, c) => sum + c.level, 0),
+					abilityScores.constitution,
+					proficiencyBonus,
+					damageResponseData?.speciesGrants ?? null,
+				)}
 				spellGroups={spellGroupRows(
 					// D219: an item's bonus-action/reaction spell is listed once, under the character's own entry when it has one.
 					[...new Map([...itemSpells.map((spell) => spell.entry), ...combinedSpells].map((entry) => [`${entry.name.toLowerCase()}|${entry.source.toUpperCase()}`, entry])).values()],

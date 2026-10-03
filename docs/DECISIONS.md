@@ -4809,3 +4809,11 @@ Delete; Esc a klik na pozadí znamenají Keep. `confirm()` je pryč. Po smazán�
 Podle docs/mockups/intro-preview.html: jen při prvním načtení appky v záložce (sessionStorage), jen když první adresa
 je seznam postav (jinak se přeskočí a v záložce už nespustí), klik nebo klávesa přeskočí, při prefers-reduced-motion
 se nespustí, e2e běží globálně s reducedMotion 'reduce'.
+
+## D313 — Breath Weapon: DC, dosah a zranění v Actions (S3)
+
+Řádek Breath Weapon (D186) ukazuje hodnoty jako řádek kouzla: dosah obě oblasti („15-foot cone / 30-foot line“),
+záchranu „DC n DEX“, zranění jako tlačítko hodu (stejná komponenta jako u kouzel, záznam „Breath Weapon damage“)
+a za ním typ. DC = 8 + modifikátor CON (včetně předmětů) + PB. Kostky podle celkové úrovně postavy z ruční
+tabulky (PHB): 1d10, 2d10 od 5, 3d10 od 11, 4d10 od 17. Typ zranění z Draconic Ancestry (`resist` varianty);
+nezvolený předek → „unresolved“ s důvodem. Rozhodl Daniel 3. 10. 2026.

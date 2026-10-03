@@ -1666,6 +1666,13 @@ button:disabled {
   flex: 1 1 0;
 }
 
+.sheet__group-row-cells {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
 .sheet__group-row-text {
   max-width: 640px;
   margin: 6px 0 0 22px;

@@ -1461,6 +1461,23 @@ Weapon: Proficiency Bonus) and would stay unknown.
 
 Found in task "Actions: species traits" (`scripts/investigate-species-actions.mjs`).
 
+### Breath Weapon records and the ancestry damage type (D313)
+
+`species.json`: 11 records carry a top-level `Breath Weapon` trait, all XPHB —
+bare `Dragonborn` plus the 10 `Dragonborn (Colour)` variants. No other source has
+one. The prose is identical across the 11 except the damage word: Dexterity save,
+"8 plus your Constitution modifier and Proficiency" (the markup strip leaves
+"Proficiency" for the PB tag), 1d10 rising at character levels 5/11/17 to
+2d10/3d10/4d10, 15-foot Cone or 30-foot Line, uses = PB per Long Rest.
+
+The damage type is structured only as the variant's `resist`: a one-string array
+(Black/Copper `acid`, Blue/Bronze `lightning`, Brass/Gold/Red `fire`, Green
+`poison`, Silver/White `cold`), always equal to the type in the breath prose. The
+bare record has `resist: [{ choose: { from: [5 types] } }]` and prose "1d10" with
+no type. The dice and DC exist only in prose.
+
+Found in task S3 (`scripts/investigate-breath-weapon.js`).
+
 ### Species trait prose: attack replacement, level gates, use counts (D186)
 
 "replace one of … attacks" occurs in 14 records across the four feature files

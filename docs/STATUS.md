@@ -1802,6 +1802,12 @@ key skips; `#root` inert and slid in via `html[data-intro]`), `introSparks.ts` (
 `intro.css`. Theme tokens `--hot --glow --glow-soft --spark --spark-hot --blend` in theme.css. Playwright runs with
 `reducedMotion: 'reduce'` globally; `flame.spec.ts` opts back in and pre-marks the intro played. E2E `intro.spec.ts` a–g.
 
+S3 (D313) done. No schema bump. Breath Weapon's Actions group row shows "15-foot cone / 30-foot line", "DC n DEX" and a
+`SpellDamageLine` ("1d10" button + type, roll "Breath Weapon damage"), placed on the row line before the use boxes
+(`ActionGroupRow` `cells` slot). `src/calculation/breathWeapon.ts`: `breathWeaponDiceCount` hand table, `computeBreathWeapon`
+(DC from item-aware CON + PB; type from the species' resistance grant in `damageResponseData.speciesGrants`; bare
+Dragonborn → unresolved). Unit `breathWeapon.test.ts`, E2E `breathWeapon.spec.ts` a–c.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale
