@@ -34,6 +34,7 @@ const HUMAN = fighter('s4-human', {
   grantedFeats: [{ origin: 'species', name: 'Tough', source: 'XPHB' }],
 })
 const YUAN_TI = fighter('s4-yuanti', { species: { name: 'Yuan-Ti', source: 'MPMM' }, speciesSize: 'M', speciesSpellcastingAbility: 'charisma' })
+const TORTLE = fighter('s4-tortle', { species: { name: 'Tortle', source: 'MPMM' }, speciesSize: 'M', speciesSkills: ['survival'] })
 
 async function open(page: Page, subject: { id: string }): Promise<Locator> {
   await page.addInitScript(
@@ -68,4 +69,9 @@ test('S4 c: a Human Fighter shows no species line', async ({ page }) => {
 test('S4 d: a Yuan-Ti (MPMM) Fighter shows both its lines', async ({ page }) => {
   const lines = await open(page, YUAN_TI)
   await expect(lines).toHaveText(['Advantage on saves to avoid or end Poisoned (Poison Resilience)', 'Advantage on saves against spells (Magic Resistance)'])
+})
+
+test('S4 e: a Tortle (MPMM) Fighter shows the conditional Shell Defense line', async ({ page }) => {
+  const lines = await open(page, TORTLE)
+  await expect(lines).toHaveText(['Advantage on Strength and Constitution saves while in your shell (Shell Defense)'])
 })

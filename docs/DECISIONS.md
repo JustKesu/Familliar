@@ -4823,5 +4823,6 @@ nezvolený předek → „unresolved“ s důvodem. Rozhodl Daniel 3. 10. 2026.
 Ruční tabulka (D21) podle záznamu rasy (jméno + zdroj, včetně linií/variant) a jména rysu, všechny knihy, ne jen
 XPHB. Každý rys = jeden řádek v seznamu pod kartou Saving Throws (za řádky předmětů) a dole v jejím draweru,
 s jménem rysu v závorce, např. „Advantage on saves to avoid or end Charmed (Fey Ancestry)“. Šest řádků záchran
-beze značek. Shell Defense (Tortle) vynechán — platí jen v krunýři; Escaped Death (Reborn, death saves) zahrnut.
+beze značek. Shell Defense (Tortle) má podmíněný řádek „Advantage on Strength and Constitution saves while in your
+shell (Shell Defense)“; Escaped Death (Reborn, death saves) zahrnut.
 Rozhodl Daniel 3. 10. 2026.

@@ -31,6 +31,10 @@ describe('speciesSaveAdvantageLines', () => {
 		expect(speciesSaveAdvantageLines({ name: 'Elf; Drow Lineage', source: 'XPHB' })).toEqual(['Advantage on saves to avoid or end Charmed (Fey Ancestry)'])
 	})
 
+	it('Tortle gets the conditional Shell Defense line', () => {
+		expect(speciesSaveAdvantageLines({ name: 'Tortle', source: 'MPMM' })).toEqual(['Advantage on Strength and Constitution saves while in your shell (Shell Defense)'])
+	})
+
 	it('a species with two traits gets two lines; one without an entry or no species gets none', () => {
 		expect(speciesSaveAdvantageLines({ name: 'Yuan-Ti', source: 'MPMM' })).toEqual(['Advantage on saves to avoid or end Poisoned (Poison Resilience)', 'Advantage on saves against spells (Magic Resistance)'])
 		expect(speciesSaveAdvantageLines({ name: 'Human', source: 'XPHB' })).toEqual([])

@@ -8,7 +8,7 @@ export interface SpeciesSaveAdvantage {
 	text: string
 }
 
-// PHB 2024 / MPMM / EFA / RHW species traits, hand-copied from prose (D21, D314). Tortle's Shell Defense is left out: it holds only while in the shell.
+// PHB 2024 / MPMM / EFA / RHW species traits, hand-copied from prose (D21, D314).
 export const SPECIES_SAVE_ADVANTAGES: readonly SpeciesSaveAdvantage[] = [
 	{
 		trait: 'Fey Ancestry',
@@ -38,6 +38,7 @@ export const SPECIES_SAVE_ADVANTAGES: readonly SpeciesSaveAdvantage[] = [
 	{ trait: 'Mental Discipline', text: 'Advantage on saves to avoid or end Charmed or Frightened', records: ['Githzerai|MPMM'] },
 	{ trait: 'Gnomish Cunning', text: 'Advantage on Intelligence, Wisdom and Charisma saves', records: ['Gnome|XPHB', 'Gnome; Forest Gnome Lineage|XPHB', 'Gnome; Rock Gnome Lineage|XPHB'] },
 	{ trait: 'Dual Mind', text: 'Advantage on Wisdom and Charisma saves', records: ['Kalashtar|EFA'] },
+	{ trait: 'Shell Defense', text: 'Advantage on Strength and Constitution saves while in your shell', records: ['Tortle|MPMM'] },
 	{ trait: 'Escaped Death', text: 'Advantage on Death Saving Throws', records: ['Reborn|RHW'] },
 ]
 

@@ -1501,7 +1501,8 @@ no structured field.
   starts "You also have…". Kobold|MPMM base is never stored (D81).
 - Kobold; Defiance|MPMM names the trait "Kobold Legacy (Defiance)". Yuan-Ti|MPMM
   has size ["S","M"] and `additionalSpells`. D314's table (src/sheet/speciesSaveAdvantages.ts)
-  covers all of the above except Shell Defense, Howl and the never-stored Kobold base.
+  covers all of the above except Howl and the never-stored Kobold base; Shell Defense
+  gets a conditional "while in your shell" line.
 
 Found in task S4 (2026-10-03, `scripts/investigate-species-save-advantage.js`).
 
