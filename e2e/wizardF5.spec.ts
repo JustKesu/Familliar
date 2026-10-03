@@ -158,7 +158,7 @@ const HIGH_ELF_WIZARD = {
 test('F-5 f: a stored malformed speciesCantrip is dropped on read — the list loads, the character opens, Spells says the cantrip is not chosen', async ({ page }) => {
   await seed(page, { ...HIGH_ELF_WIZARD, id: 'f5-broken', name: 'Broken Cantrip', speciesCantrip: 'Prestidigitation' })
   await page.goto('/#/')
-  await expect(page.locator('.char-list')).toContainText('Broken Cantrip')
+  await expect(page.locator('.char-grid')).toContainText('Broken Cantrip')
   await page.goto('/#/character/f5-broken')
   await page.getByRole('tab', { name: 'Spells' }).click()
   await expect(page.getByRole('tabpanel', { name: 'Spells' })).toContainText('Cantrip not chosen yet — choose it in Edit Character.')

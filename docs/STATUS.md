@@ -1787,6 +1787,14 @@ CharacterWizard `maxHp` is keyed (`maxHpKey`, `character`) and read as unresolve
 `ReviewStep.test.tsx`, `expertisePool.test.ts`; e2e `wizardW9.spec.ts` (exact Fighter 1 maximum, creation `currentHp`,
 stale Expertise in a level up).
 
+U-1 (D308–D311) done. No schema bump. Home screen is a card grid: `src/characters/CharacterList.tsx` (heading, hidden
+file input behind "Import character", New character card first, `ConfirmDialog` for Delete, focus to New character
+afterwards), `CharacterCard.tsx` (one open button + sibling ⋯ disclosure with Rename/Export/Delete, in-card rename),
+`characterSummary.ts` ("Elf · Fighter 3 / Wizard 2", species is `species.name` as in the sheet header). One header in
+all views, `src/app/AppHeader.tsx` (wordmark → list, Rolls slot, Flame, theme); the Characters and Markup demo buttons
+are gone, `#/markup-demo` still works by address. `CharacterManager` keeps the handlers only. E2E
+`characterList.spec.ts` a–j; unit `characterSummary.test.ts`.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

@@ -3,7 +3,7 @@ import { createFighter } from './wizard.ts'
 
 test('app loads, lists characters, creates a level 1 Fighter and opens its sheet', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByText('No characters saved yet.')).toBeVisible()
+  await expect(page.getByText('No characters yet.')).toBeVisible()
   await page.getByRole('button', { name: 'New character' }).click()
 
   await createFighter(page, { name: 'Smoke Test', level: 1, species: 'Dwarf|XPHB' })

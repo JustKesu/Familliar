@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
+import { CharacterList } from './characters/CharacterList'
 import { CharacterStore, type CharacterTextField, type HitPointFields, type RestFields } from './storage/characterStore'
 import { StorageError } from './storage/errors'
 import type {
@@ -24,14 +25,8 @@ import type { CharacterRoute } from './navigation/route'
 import type { Navigate } from './navigation/useRoute'
 
 /*
- * TEMPORARY UI for the storage layer (PHASE1.md build order step 2).
- *
- * Character creation itself is real: it delegates to CharacterWizard
- * (PHASE1.md build order step 3, section D — the multi-step wizard). What
- * remains temporary here is list, rename, delete, export and import —
- * proving the storage layer works by hand. The read-only inspect view
- * (CharacterInspector.tsx, D14) is gone now that the real sheet (step 5)
- * covers everything it used to show.
+ * Routes a character to the list, the sheet or a wizard and owns the store
+ * handlers; the list itself lives in characters/CharacterList.tsx (D308).
  *
  * Rework R1b (D145, D151): the list, the sheet and the wizard are separate
  * views selected by `route`, never rendered together. `route` and `navigate`
@@ -53,78 +48,6 @@ function download(filename: string, contents: string): void {
 	URL.revokeObjectURL(url)
 }
 
-function CharacterRow({
-	character,
-	onRename,
-	onDelete,
-	onExport,
-	onViewSheet,
-}: {
-	character: Character
-	onRename: (id: string, name: string) => void
-	onDelete: (id: string) => void
-	onExport: (id: string) => void
-	onViewSheet: (id: string) => void
-}): ReactNode {
-	const [editing, setEditing] = useState(false)
-	const [draftName, setDraftName] = useState(character.name)
-
-	function commitRename(): void {
-		setEditing(false)
-		if (draftName.trim() && draftName.trim() !== character.name) {
-			onRename(character.id, draftName)
-		} else {
-			setDraftName(character.name)
-		}
-	}
-
-	return (
-		<li className="char-row">
-			{editing ? (
-				<input
-					className="char-row__name-input"
-					autoFocus
-					value={draftName}
-					onChange={(event) => setDraftName(event.target.value)}
-					onBlur={commitRename}
-					onKeyDown={(event) => {
-						if (event.key === 'Enter') commitRename()
-						if (event.key === 'Escape') {
-							setDraftName(character.name)
-							setEditing(false)
-						}
-					}}
-				/>
-			) : (
-				<span className="char-row__name" onDoubleClick={() => setEditing(true)}>
-					{character.name}
-				</span>
-			)}
-
-			<span className="char-row__meta">
-				{character.classes.length === 0
-					? 'no class yet'
-					: character.classes.map((c) => `${c.className} ${c.level}`).join(' / ')}
-			</span>
-
-			<span className="char-row__actions">
-				<button type="button" onClick={() => onViewSheet(character.id)}>
-					Sheet
-				</button>
-				<button type="button" onClick={() => setEditing(true)}>
-					Rename
-				</button>
-				<button type="button" onClick={() => onExport(character.id)}>
-					Export
-				</button>
-				<button type="button" onClick={() => onDelete(character.id)}>
-					Delete
-				</button>
-			</span>
-		</li>
-	)
-}
-
 function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate: Navigate }) {
 	const [store] = useState(() => {
 		try {
@@ -139,7 +62,6 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	const [charactersLoaded, setCharactersLoaded] = useState(false)
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [actionError, setActionError] = useState<string | null>(null)
-	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	function refresh(): void {
 		if (!store.store) return
@@ -300,7 +222,6 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 
 	function handleDelete(id: string): void {
 		if (!store.store) return
-		if (!confirm('Delete this character? This cannot be undone.')) return
 		withErrorHandling(() => store.store?.delete(id))
 	}
 
@@ -340,60 +261,17 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 
 	if (route.view === 'list') {
 		return (
-			<main>
-				<p className="subtitle">
-					Characters. Creation opens the real wizard (build order step 3). Listing, renaming,
-					deleting and export/import are still temporary UI; "Sheet" opens the real character
-					sheet (step 5).
-				</p>
-
-				{loadError && (
-					<p className="error">
-						Could not read saved characters: {loadError}
-						<br />
-						Delete or fix the saved data in this browser&apos;s storage, or import a character
-						file below once the underlying problem is resolved.
-					</p>
-				)}
-
-				{actionError && <p className="error">{actionError}</p>}
-
-				{!loadError && (
-					<ul className="char-list">
-						{characters.length === 0 && <li className="char-row char-row--empty">No characters saved yet.</li>}
-						{characters.map((character) => (
-							<CharacterRow
-								key={character.id}
-								character={character}
-								onRename={handleRename}
-								onDelete={handleDelete}
-								onExport={handleExport}
-								onViewSheet={(id) => navigate({ view: 'sheet', id })}
-							/>
-						))}
-					</ul>
-				)}
-
-				<div className="char-create">
-					<button type="button" onClick={() => navigate({ view: 'new' })}>
-						New character
-					</button>
-				</div>
-
-				<div className="char-import">
-					<input
-						ref={fileInputRef}
-						type="file"
-						accept="application/json"
-						onChange={(event) => {
-							const file = event.target.files?.[0]
-							if (file) handleImportFile(file)
-							event.target.value = ''
-						}}
-					/>
-					<span className="char-import__hint">Import a character file exported from this app.</span>
-				</div>
-			</main>
+			<CharacterList
+				characters={characters}
+				loadError={loadError}
+				actionError={actionError}
+				onNew={() => navigate({ view: 'new' })}
+				onOpen={(id) => navigate({ view: 'sheet', id })}
+				onRename={handleRename}
+				onExport={handleExport}
+				onDelete={handleDelete}
+				onImportFile={handleImportFile}
+			/>
 		)
 	}
 

@@ -50,8 +50,10 @@ beforeEach(() => {
 describe('App routing (rework R1b, D151)', () => {
 	it('starts on the character list for an empty or missing hash', async () => {
 		render(<App />)
-		expect(await screen.findByText('No characters saved yet.')).not.toBeNull()
-		expect(screen.getByRole('button', { name: 'Characters' })).toHaveProperty('className', expect.stringContaining('tabs__button--active'))
+		expect(await screen.findByText('No characters yet.')).not.toBeNull()
+		expect(screen.getByRole('heading', { name: 'Your characters' })).not.toBeNull()
+		expect(screen.queryByRole('button', { name: 'Characters' })).toBeNull()
+		expect(screen.queryByRole('button', { name: 'Markup demo' })).toBeNull()
 	})
 
 	it('selects the right view from the hash already in place on mount', async () => {
@@ -62,7 +64,7 @@ describe('App routing (rework R1b, D151)', () => {
 		render(<App />)
 
 		expect(await screen.findByRole('button', { name: 'Edit character' })).not.toBeNull()
-		expect(screen.queryByText('No characters saved yet.')).toBeNull()
+		expect(screen.queryByText('No characters yet.')).toBeNull()
 	})
 
 	it('has no "Familliar" page heading on the list or on a sheet (D165)', async () => {
@@ -90,9 +92,9 @@ describe('App routing (rework R1b, D151)', () => {
 		window.dispatchEvent(new Event('hashchange'))
 		await user.click(await screen.findByRole('button', { name: 'Rolls' }))
 		expect(screen.getByRole('dialog', { name: 'Roll history' })).not.toBeNull()
-		expect(screen.getByRole('button', { name: 'Rolls' }).closest('nav')).not.toBeNull()
+		expect(screen.getByRole('button', { name: 'Rolls' }).closest('header')).not.toBeNull()
 
-		await user.click(screen.getByRole('button', { name: 'Characters' }))
+		await user.click(screen.getByRole('button', { name: 'Familliar — your characters' }))
 		expect(screen.queryByRole('button', { name: 'Rolls' })).toBeNull()
 	})
 
@@ -103,11 +105,11 @@ describe('App routing (rework R1b, D151)', () => {
 
 		const user = userEvent.setup()
 		render(<App />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 
 		expect(window.location.hash).toBe(`#/character/${created.id}`)
 		expect(history.length).toBeGreaterThan(before)
-		expect(screen.queryByText('No characters saved yet.')).toBeNull()
+		expect(screen.queryByText('No characters yet.')).toBeNull()
 		expect(await screen.findByRole('button', { name: 'Edit character' })).not.toBeNull()
 	})
 
@@ -117,12 +119,12 @@ describe('App routing (rework R1b, D151)', () => {
 
 		const user = userEvent.setup()
 		render(<App />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
 
 		expect(await screen.findByText('1. Hit points')).not.toBeNull()
 		expect(screen.queryByRole('button', { name: 'Edit character' })).toBeNull()
-		expect(screen.queryByText('No characters saved yet.')).toBeNull()
+		expect(screen.queryByText('No characters yet.')).toBeNull()
 		expect(window.location.hash).toMatch(/\/level-up$/)
 	})
 
@@ -132,7 +134,7 @@ describe('App routing (rework R1b, D151)', () => {
 
 		const user = userEvent.setup()
 		render(<App />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Edit character' }))
 		expect(await screen.findByText('1. Class and level')).not.toBeNull()
 
@@ -167,7 +169,7 @@ describe('App routing (rework R1b, D151)', () => {
 		expect(screen.queryByRole('button', { name: 'Edit character' })).toBeNull()
 	})
 
-	it('switches to the Markup demo tab and keeps it selected on that hash, leaving the character view intact underneath', async () => {
+	it('reaches the Markup demo only by its hash, and the wordmark leads back to the list (D308, D309)', async () => {
 		const store = new CharacterStore()
 		store.create({ name: 'Aria' })
 
@@ -175,13 +177,13 @@ describe('App routing (rework R1b, D151)', () => {
 		render(<App />)
 		await screen.findByText('Aria')
 
-		await user.click(screen.getByRole('button', { name: 'Markup demo' }))
+		goTo('#/markup-demo')
 
-		expect(window.location.hash).toBe('#/markup-demo')
-		expect(screen.getByRole('button', { name: 'Markup demo' })).toHaveProperty('className', expect.stringContaining('tabs__button--active'))
+		expect(await screen.findByText(/5etools markup renderer/)).not.toBeNull()
 		expect(screen.queryByText('Aria')).toBeNull()
 
-		await user.click(screen.getByRole('button', { name: 'Characters' }))
+		await user.click(screen.getByRole('button', { name: 'Familliar — your characters' }))
 		expect(await screen.findByText('Aria')).not.toBeNull()
+		expect(window.location.hash).toBe('#/')
 	})
 })

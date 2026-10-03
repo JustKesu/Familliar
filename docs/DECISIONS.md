@@ -4782,3 +4782,24 @@ no longer have“), už má Expertise z pevného zdroje nebo z volby featu („a
 mimo povolený seznam třídy (Scholar; „is not in this class's allowed list“). Pool i krok Expertise navíc vynechávají
 dovednosti, které mají vybranou Expertise z featu (`instance.proficiencies.expertise`). Znění obou nových vět zvolil
 agent jako krátké neutrální; uživatel je může změnit.
+
+## D308 — Seznam postav jako mřížka karet (U1–U7)
+
+Nadpis „Your characters“, „Import character“ jako obrysové tlačítko vedle něj, „+ New character“ jako první karta
+mřížky, klik na kartu otevře sheet, Rename/Export/Delete jsou v menu ⋯ na kartě. Záložka Markup demo z lišty zmizela,
+stránka zůstává na `#/markup-demo`.
+
+## D309 — Jedna hlavička ve všech pohledech
+
+Wordmark FAMILLIAR vlevo vrací na seznam postav; vpravo Rolls (jen na sheetu), Flame a téma. Tlačítko Characters je
+zrušeno. Místo vpravo nahoře zůstává volné pro pozdější „Sign in“.
+
+## D310 — Rename přímo v kartě
+
+Jméno karty se změní na vstup: Enter nebo opuštění pole uloží, Esc zruší; prázdné nebo nezměněné jméno nic nezapíše.
+Přejmenování dvojklikem je zrušeno.
+
+## D311 — Delete postavy přes ConfirmDialog
+
+„Delete <name>?“, „This removes the character from this browser. It cannot be undone.“, tlačítka Keep (výchozí) /
+Delete; Esc a klik na pozadí znamenají Keep. `confirm()` je pryč. Po smazání se focus přesune na kartu New character.

@@ -79,59 +79,102 @@ beforeEach(() => {
 	})
 })
 
+/* D311: Delete goes through the in-app dialog, never confirm(). */
+async function openDeleteDialog(user: ReturnType<typeof userEvent.setup>, name: string) {
+	await user.click(screen.getByRole('button', { name: `More actions for ${name}` }))
+	await user.click(screen.getByRole('button', { name: 'Delete' }))
+	return screen.getByRole('alertdialog', { name: `Delete ${name}?` })
+}
+
 describe('CharacterManager delete', () => {
-	it('removes the character from the rendered list when delete is clicked', async () => {
+	it('removes the character from the rendered list once Delete is confirmed in the dialog', async () => {
 		const store = new CharacterStore()
 		store.create({ name: 'Aria' })
-		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
 		render(<Harness />)
-
 		expect(await screen.findByText('Aria')).not.toBeNull()
 
-		await user.click(screen.getByRole('button', { name: 'Delete' }))
+		const dialog = await openDeleteDialog(user, 'Aria')
+		expect(dialog.textContent).toContain('This removes the character from this browser. It cannot be undone.')
+		await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
 
 		expect(screen.queryByText('Aria')).toBeNull()
+		expect(store.list()).toHaveLength(0)
+		expect(document.activeElement).toBe(screen.getByRole('button', { name: 'New character' }))
+	})
+
+	it('writes nothing on Keep or Esc', async () => {
+		const store = new CharacterStore()
+		store.create({ name: 'Aria' })
+
+		const user = userEvent.setup()
+		render(<Harness />)
+		await screen.findByText('Aria')
+
+		await user.click(within(await openDeleteDialog(user, 'Aria')).getByRole('button', { name: 'Keep' }))
+		expect(screen.queryByRole('alertdialog')).toBeNull()
+		await openDeleteDialog(user, 'Aria')
+		await user.keyboard('{Escape}')
+
+		expect(screen.queryByRole('alertdialog')).toBeNull()
+		expect(screen.getByText('Aria')).not.toBeNull()
+		expect(store.list()).toHaveLength(1)
 	})
 
 	it('removes the correct row when multiple characters are present', async () => {
 		const store = new CharacterStore()
 		store.create({ name: 'Aria' })
 		store.create({ name: 'Bree' })
-		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
 		render(<Harness />)
-
 		expect(await screen.findByText('Aria')).not.toBeNull()
-		expect(screen.getByText('Bree')).not.toBeNull()
 
-		const [firstDelete] = screen.getAllByRole('button', { name: 'Delete' })
-		await user.click(firstDelete)
+		await user.click(within(await openDeleteDialog(user, 'Aria')).getByRole('button', { name: 'Delete' }))
 
 		expect(screen.queryByText('Aria')).toBeNull()
 		expect(screen.getByText('Bree')).not.toBeNull()
 	})
 
-	it('surfaces an error instead of silently doing nothing when the row is stale', async () => {
+	it('surfaces an error instead of silently doing nothing when the card is stale', async () => {
 		const store = new CharacterStore()
 		const character = store.create({ name: 'Aria' })
-		vi.spyOn(window, 'confirm').mockReturnValue(true)
 
 		const user = userEvent.setup()
 		render(<Harness />)
-
 		expect(await screen.findByText('Aria')).not.toBeNull()
 
-		// Simulate the row going stale: something else (another tab, a hand
-		// edit) removes the character from storage after the list was read,
-		// but before this row's delete button is clicked.
+		// Something else (another tab, a hand edit) removes the character from
+		// storage after the list was read, but before the dialog is confirmed.
 		store.delete(character.id)
 
-		await user.click(screen.getByRole('button', { name: 'Delete' }))
+		await user.click(within(await openDeleteDialog(user, 'Aria')).getByRole('button', { name: 'Delete' }))
 
 		expect(await screen.findByText(/No character with id/)).not.toBeNull()
+	})
+})
+
+describe('CharacterManager rename (D310)', () => {
+	it('renames in the card on Enter, and Esc keeps the old name', async () => {
+		const store = new CharacterStore()
+		store.create({ name: 'Aria' })
+
+		const user = userEvent.setup()
+		render(<Harness />)
+		await screen.findByText('Aria')
+
+		await user.click(screen.getByRole('button', { name: 'More actions for Aria' }))
+		await user.click(screen.getByRole('button', { name: 'Rename' }))
+		await user.keyboard('Zed{Escape}')
+		expect(screen.getByText('Aria')).not.toBeNull()
+		expect(store.list()[0].name).toBe('Aria')
+
+		await user.click(screen.getByRole('button', { name: 'More actions for Aria' }))
+		await user.click(screen.getByRole('button', { name: 'Rename' }))
+		await user.keyboard('Zed{Enter}')
+		expect(await screen.findByText('Zed')).not.toBeNull()
+		expect(store.list()[0].name).toBe('Zed')
 	})
 })
 
@@ -143,7 +186,7 @@ describe('CharacterManager level up (slice 8d3, rework R1b)', () => {
 
 		const user = userEvent.setup()
 		render(<Harness />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
 
 		// Fighter 4 → 5 walks only hit points and review; the walk opens on hit points.
@@ -164,7 +207,7 @@ describe('CharacterManager level up (slice 8d3, rework R1b)', () => {
 
 		const user = userEvent.setup()
 		render(<Harness />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
 
 		expect(await screen.findByText('1. Hit points')).not.toBeNull()
@@ -190,7 +233,7 @@ describe('CharacterManager remove level (slice 8e)', () => {
 
 		const user = userEvent.setup()
 		render(<Harness />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
 
 		const dialog = screen.getByRole('alertdialog', { name: 'Remove level 5?' })
@@ -208,7 +251,7 @@ describe('CharacterManager remove level (slice 8e)', () => {
 
 		const user = userEvent.setup()
 		render(<Harness />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
 		await user.click(within(screen.getByRole('alertdialog', { name: 'Remove level 5?' })).getByRole('button', { name: 'Remove level' }))
 
@@ -230,7 +273,7 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 
 		const user = userEvent.setup()
 		const { unmount } = render(<Harness />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('tab', { name: 'Notes' }))
 
 		await user.type(screen.getByRole('textbox', { name: 'Příběh' }), '- Raised by owls{Enter}  - Left at dawn  ')
@@ -259,16 +302,12 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 
 		const user = userEvent.setup()
 		render(<Harness />)
-		const [ariaSheetButton] = await screen.findAllByRole('button', { name: 'Sheet' })
-		await user.click(ariaSheetButton)
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.type(await screen.findByRole('textbox', { name: 'Poznámky' }), 'Aria only')
 		await user.tab()
 
 		goTo('#/')
-		const breeRow = (await screen.findByText('Bree')).closest('.char-row')
-		const breeSheetButton = breeRow?.querySelector('button')
-		expect(breeSheetButton?.textContent).toBe('Sheet')
-		await user.click(breeSheetButton!)
+		await user.click(await screen.findByRole('button', { name: 'Bree' }))
 
 		// A fresh CharacterSheet mount for Bree — no sheet state, tab included, survives from Aria's.
 		await user.click(await screen.findByRole('tab', { name: 'Notes' }))
@@ -285,10 +324,10 @@ describe('CharacterManager routing (rework R1b)', () => {
 
 		const user = userEvent.setup()
 		render(<Harness />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 
 		expect(await screen.findByRole('button', { name: 'Edit character' })).not.toBeNull()
-		expect(screen.queryByText('No characters saved yet.')).toBeNull()
+		expect(screen.queryByText('No characters yet.')).toBeNull()
 		expect(screen.queryByRole('button', { name: 'New character' })).toBeNull()
 	})
 
@@ -309,7 +348,7 @@ describe('CharacterManager routing (rework R1b)', () => {
 
 		const user = userEvent.setup()
 		render(<Harness />)
-		await user.click(await screen.findByRole('button', { name: 'Sheet' }))
+		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Edit character' }))
 
 		expect(await screen.findByText('1. Class and level')).not.toBeNull()

@@ -214,12 +214,12 @@ test('S2 g: a schema-55 High Elf without the cantrip loads, says it is not chose
 test('S2 h: importing a v55 High Elf works; a malformed speciesCantrip is refused', async ({ page }) => {
   const v55 = { schemaVersion: 55, id: 's2-import', name: 'Imported Elf', classes: [], species: { name: 'Elf; High Elf Lineage', source: 'XPHB' } }
   await page.goto('/#/')
-  const file = page.locator('.char-import input[type="file"]')
+  const file = page.locator('input[type="file"]')
   await file.setInputFiles({ name: 'elf.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify([v55])) })
-  await expect(page.locator('.char-list')).toContainText('Imported Elf')
+  await expect(page.locator('.char-grid')).toContainText('Imported Elf')
 
   const broken = { ...v55, schemaVersion: 56, id: 's2-broken', name: 'Broken Elf', speciesCantrip: 'Fire Bolt' }
   await file.setInputFiles({ name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify([broken])) })
   await expect(page.locator('.error')).toContainText('speciesCantrip must be an object')
-  await expect(page.locator('.char-list')).not.toContainText('Broken Elf')
+  await expect(page.locator('.char-grid')).not.toContainText('Broken Elf')
 })

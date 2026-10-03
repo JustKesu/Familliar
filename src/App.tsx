@@ -3,8 +3,7 @@ import CharacterManager from './CharacterManager'
 import { RollsNavSlot } from './dice/RollUi'
 import MarkupDemo from './MarkupDemo'
 import FlameBackground from './app/FlameBackground'
-import FlameToggle from './FlameToggle'
-import ThemeToggle from './ThemeToggle'
+import { AppHeader } from './app/AppHeader'
 import { useRoute } from './navigation/useRoute'
 import type { CharacterRoute } from './navigation/route'
 
@@ -18,26 +17,7 @@ function App() {
 	return (
 		<>
 			<FlameBackground />
-			<nav className="tabs">
-				<button
-					type="button"
-					className={onMarkupDemo ? 'tabs__button' : 'tabs__button tabs__button--active'}
-					onClick={() => navigate({ view: 'list' })}
-				>
-					Characters
-				</button>
-				<button
-					type="button"
-					className={onMarkupDemo ? 'tabs__button tabs__button--active' : 'tabs__button'}
-					onClick={() => navigate({ view: 'markup-demo' })}
-				>
-					Markup demo
-				</button>
-				{/* D165: CharacterSheet portals its "Rolls" button in here, so it exists only while a sheet is open. */}
-			<span ref={setRollsSlot} className="tabs__slot" />
-			<FlameToggle />
-				<ThemeToggle />
-			</nav>
+			<AppHeader navigate={navigate} rollsSlotRef={setRollsSlot} />
 
 			<RollsNavSlot.Provider value={rollsSlot}>
 				{onMarkupDemo ? <MarkupDemo /> : <CharacterManager route={characterRoute} navigate={navigate} />}

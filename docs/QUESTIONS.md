@@ -242,7 +242,8 @@ zápisem přímo do úložiště prohlížeče, ne tlačítkem. Stalo se to už 
 Až se ten dočasný seznam postav bude nahrazovat pořádným, potvrzení má být
 prvek uvnitř appky, ne `confirm()`.
 
-STATUS: nerozhodnuto, spolu s náhradou dočasného seznamu.
+STATUS: vyřešeno U-1 (D311) — Delete jde přes ConfirmDialog, seznam už není
+dočasný (D308).
 
 ### Bonus ke kouzlům se přičítá všem kouzlům, i když ho předmět váže na jednu třídu
 
