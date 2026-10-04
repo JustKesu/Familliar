@@ -17,7 +17,7 @@ import { Fragment, useContext, useEffect, useRef, useState, type ComponentProps,
 import { createPortal } from 'react-dom'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
-import { totalCharacterLevel } from '../calculation/characterLevel'
+import { isMulticlass, totalCharacterLevel } from '../calculation/characterLevel'
 import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast } from '../beasts/beastData'
@@ -2802,11 +2802,16 @@ function CharacterSheetBody({
 							</span>
 						</p>
 
-						{onEditCharacter && (
-							<button type="button" className="sheet__edit-character sheet__header-button" onClick={onEditCharacter}>
-								Edit character
-							</button>
-						)}
+						{onEditCharacter &&
+							(isMulticlass(character.classes) ? (
+								<button type="button" className="sheet__edit-character sheet__header-button" disabled>
+									Edit unavailable: multiclass characters cannot be edited yet
+								</button>
+							) : (
+								<button type="button" className="sheet__edit-character sheet__header-button" onClick={onEditCharacter}>
+									Edit character
+								</button>
+							))}
 						{onLevelUp && <LevelUpButton character={character} onLevelUp={onLevelUp} />}
 						{onRemoveLevel && <RemoveLevelButton character={character} onRemoveLevel={onRemoveLevel} />}
 					</div>

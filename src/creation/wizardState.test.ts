@@ -808,6 +808,20 @@ describe('saveCharacter', () => {
 		expect(store.create).not.toHaveBeenCalled()
 	})
 
+	it('refuses to edit a multiclass character (D316)', () => {
+		const existing = {
+			id: 'x',
+			name: 'Aria',
+			classes: [
+				{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 6 },
+				{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 },
+			],
+		} as Character
+		expect(() => saveCharacter(fakeStore(), completeData(), ['athletics', 'intimidation'], {}, undefined, existing)).toThrow(
+			'Editing a multiclass character is not supported yet',
+		)
+	})
+
 	/* D107: currentHp defaults to the caller-resolved maximum on creation, and stays absent when none is given. */
 	describe('currentHp (D107)', () => {
 		it('defaults currentHp to the given maximum for a freshly created character', () => {

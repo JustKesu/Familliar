@@ -21,6 +21,7 @@ import { LevelUpWizardGate } from './levelUp/LevelUpWizardGate'
 import { characterUpdateInput } from './levelUp/levelRemoval'
 import { currentHpAfterMaxHpChange } from './calculation/maxHitPoints'
 import { loadCharacterMaxHp } from './hitPoints/hpDefault'
+import { isMulticlass } from './calculation/characterLevel'
 import type { CharacterRoute } from './navigation/route'
 import type { Navigate } from './navigation/useRoute'
 
@@ -341,6 +342,9 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	}
 
 	if (route.view === 'edit') {
+		if (isMulticlass(character.classes)) {
+			return <BounceToSheet onBounce={() => navigate({ view: 'sheet', id: character.id }, { replace: true })} />
+		}
 		return (
 			<main>
 				{actionError && <p className="error">{actionError}</p>}
@@ -371,6 +375,12 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 			</div>
 		</main>
 	)
+}
+
+/** D316: a typed #/edit/<id> for a multiclass character never shows the wizard. */
+function BounceToSheet({ onBounce }: { onBounce: () => void }): null {
+	useEffect(onBounce, [onBounce])
+	return null
 }
 
 export default CharacterManager

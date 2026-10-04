@@ -44,6 +44,7 @@ import {
 	describeHitPointLevelsError,
 	describePortraitError,
 	describeStoredCharacterError,
+	describeImportedCharacterError,
 	isSupportedVersion,
 	toStoredCharacter,
 	withoutMalformedDroppableFields,
@@ -123,6 +124,13 @@ function parseStoredCharacters(raw: string, dropMalformedFields: boolean): Store
 	for (let i = 0; i < records.length; i++) {
 		const error = describeStoredCharacterError(records[i], i)
 		if (error) throw new Error(`Entry ${error} is malformed.`)
+	}
+	if (!dropMalformedFields) {
+		// D316: the import path only; stored data is deliberately not checked.
+		for (let i = 0; i < records.length; i++) {
+			const error = describeImportedCharacterError(records[i], i)
+			if (error) throw new Error(error)
+		}
 	}
 
 	return (records as Record<string, unknown>[]).map(toStoredCharacter)

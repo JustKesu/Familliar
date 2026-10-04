@@ -1311,6 +1311,27 @@ export function describeStoredCharacterError(value: unknown, index: number): str
 	return describeCharacterError(value, index)
 }
 
+/**
+ * D316: import-only. Never call this on stored data — one bad stored character
+ * must not make the whole list unreadable. Run after describeStoredCharacterError,
+ * so `classes` is already known to be well-formed.
+ */
+export function describeImportedCharacterError(value: unknown, index: number): string | null {
+	const classes = isRecord(value) ? value['classes'] : undefined
+	if (!Array.isArray(classes)) return null
+	let total = 0
+	const seen = new Set<string>()
+	for (const entry of classes) {
+		if (!isRecord(entry)) continue
+		total += typeof entry['level'] === 'number' ? entry['level'] : 0
+		const key = `${String(entry['className'])}|${String(entry['classSource'])}`
+		if (seen.has(key)) return `Entry [${index}] has the class ${String(entry['className'])} (${String(entry['classSource'])}) twice.`
+		seen.add(key)
+	}
+	if (total > 20) return `Entry [${index}] classes add up to level ${total}, the maximum is 20.`
+	return null
+}
+
 export function toCharacter(value: Record<string, unknown>): Character {
 	const abilityScores = value['abilityScores']
 	const species = value['species']

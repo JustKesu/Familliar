@@ -53,7 +53,7 @@ import {
 } from '../classSkills/subclassSkillGrants'
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellCountLabel } from '../calculation/spellCounts'
-import { totalCharacterLevel } from '../calculation/characterLevel'
+import { isMulticlass, totalCharacterLevel } from '../calculation/characterLevel'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
@@ -1223,6 +1223,10 @@ export function saveCharacter(
 ): Character {
 	if (!isReadyToSave(data, conditions)) {
 		throw new Error('Cannot save a character before every step is complete.')
+	}
+
+	if (existing && levelUpTo === undefined && isMulticlass(existing.classes)) {
+		throw new Error('Editing a multiclass character is not supported yet: it would drop all but one class.')
 	}
 
 	const existingLevel = existing ? totalCharacterLevel(existing.classes) : 0

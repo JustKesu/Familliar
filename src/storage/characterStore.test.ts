@@ -2202,6 +2202,36 @@ describe('CharacterStore.exportCharacter / import', () => {
 		expect(() => store.import(badFile)).toThrow(ImportValidationError)
 	})
 
+	describe('M0 multiclass import checks (D316)', () => {
+		const klass = (className: string, level: number) => ({ className, classSource: 'XPHB', subclass: null, level })
+		const file = (classes: unknown[]) => JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes }])
+
+		it('rejects levels adding up to 21 and leaves the store unchanged', () => {
+			const store = new CharacterStore(new MemoryStorage())
+			store.create({ name: 'Existing' })
+			expect(() => store.import(file([klass('Warlock', 12), klass('Sorcerer', 9)]))).toThrow(
+				'That file could not be imported: Entry [0] classes add up to level 21, the maximum is 20.',
+			)
+			expect(store.list()).toHaveLength(1)
+		})
+
+		it('rejects the same class twice', () => {
+			const store = new CharacterStore(new MemoryStorage())
+			expect(() => store.import(file([klass('Wizard', 2), klass('Wizard', 3)]))).toThrow('has the class Wizard (XPHB) twice.')
+		})
+
+		it('accepts a valid Warlock 6 / Sorcerer 3 file', () => {
+			const store = new CharacterStore(new MemoryStorage())
+			expect(store.import(file([klass('Warlock', 6), klass('Sorcerer', 3)]))).toHaveLength(1)
+		})
+
+		it('still lists a stored 2-class character whose levels add up to 21', () => {
+			const storage = new MemoryStorage()
+			storage.setItem(STORAGE_KEY, file([klass('Warlock', 12), klass('Sorcerer', 9)]))
+			expect(new CharacterStore(storage).list()[0]?.classes).toHaveLength(2)
+		})
+	})
+
 	it('throws StorageFullError when the destination storage is full', () => {
 		const source = new CharacterStore(new MemoryStorage())
 		const original = source.create({ name: 'Aria' })

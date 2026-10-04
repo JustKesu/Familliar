@@ -1843,6 +1843,12 @@ also covers (`alsoGranted`): Unprepare stays, `pickCounts` skips it. Two Magic I
 "Magic Initiate (Cleric)" etc. FeatureLanguageSlots left as is (B7). Unit tests in CharacterSheet/rest/characterStore/
 Drawer/levelRemoval/manageSpellsData tests, E2E `restsAndUi.spec.ts`.
 
+M0 done (D316, multiclass safeguard). No schema bump. Edit Character is blocked for `classes.length > 1`
+(`isMulticlass` in `calculation/characterLevel.ts`): disabled sheet button with reason, `#/character/<id>/edit` bounces
+to the sheet (`BounceToSheet` in CharacterManager), `saveCharacter` throws. Import rejects a sum of levels > 20 and a
+duplicate class (`describeImportedCharacterError`, called only from `parseStoredCharacters(raw, false)`); stored data is
+not checked. E2E `multiclassGuard.spec.ts`.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

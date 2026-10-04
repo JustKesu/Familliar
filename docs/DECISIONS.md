@@ -4835,3 +4835,11 @@ featem sesílá i přes slot s vlastností té rasy/featu, stejně jako Actions 
 rozhoduje jedna funkce (`casterFor` v spellActionRowData.ts). Identita featu = instance featu (FeatInstance.key),
 ne jméno: dvě Magic Initiate mají každá svou vlastnost a své počítadlo volného seslání; starý klíč počítadla
 se dál čte jako záloha. Task F-7a, rozhodl Daniel 4. 10. 2026.
+
+## D316 — Multiclass pojistka před krokem 10 (M0)
+
+Edit Character je zablokovaný pro postavu s víc než jednou třídou, dokud nebude multiclass (M9): tlačítko na listu je
+vypnuté s důvodem, přímá adresa úprav vrátí na list a saveCharacter při úpravě takové postavy vyhodí chybu (úprava by
+zahodila všechny třídy kromě jedné). Import souboru kontroluje, že součet úrovní tříd je nejvýš 20 a že se žádná třída
+(className + classSource) neopakuje; soubor se odmítne celý. Uložená data se záměrně nekontrolují: jedna špatná uložená
+postava nesmí znepřístupnit celý seznam. Task M0, rozhodl Daniel 4. 10. 2026.
