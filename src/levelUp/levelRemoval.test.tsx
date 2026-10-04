@@ -139,6 +139,56 @@ describe('a level up followed by removing that level', () => {
 	})
 })
 
+describe('level history (M1a, D317)', () => {
+	const FIGHTER = { className: 'Fighter', classSource: 'XPHB' }
+
+	function levelUpFighter4(store: CharacterStore, created: Character): void {
+		const gains = levelGainsFor(created, 5, CLASSES, RESOLVER)
+		const seed = wizardDataFromCharacter(created, lookups)
+		const data = { ...seed, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 }, hitPointLevels: [...seed.hitPointLevels, { level: 5, kind: 'roll' as const, dieResult: 9 }] }
+		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5)
+	}
+
+	function fighter4(levelOrder?: typeof FIGHTER[]) {
+		return {
+			name: 'Aria',
+			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 4 }],
+			classSkills: ['athletics', 'perception'],
+			masteries: [{ name: 'Longsword' }, { name: 'Greataxe' }, { name: 'Shortbow' }, { name: 'Rapier' }],
+			fightingStyle: 'Archery',
+			featAsiChoices: [{ level: 4, kind: 'asi' as const, increases: { strength: 2 } }],
+			hitPointLevels: [2, 3, 4].map((level) => ({ level, dieResult: 6, kind: 'average' as const })),
+			createdAtLevel: 4,
+			...(levelOrder ? { levelOrder } : {}),
+		}
+	}
+
+	it('a level up appends the class, and removing the level drops it again', () => {
+		const storage = memoryStorage()
+		const store = new CharacterStore(storage)
+		const created = store.create(fighter4([FIGHTER, FIGHTER, FIGHTER, FIGHTER]))
+		const before = storage.raw()
+
+		levelUpFighter4(store, created)
+		expect(store.list()[0].levelOrder).toEqual([FIGHTER, FIGHTER, FIGHTER, FIGHTER, FIGHTER])
+
+		removeTopLevel(store, created.id)
+		expect(store.list()[0].levelOrder).toEqual([FIGHTER, FIGHTER, FIGHTER, FIGHTER])
+		expect(storage.raw()).toBe(before)
+	})
+
+	it('a character with no history stays without one through a level up and a removal', () => {
+		const store = new CharacterStore(memoryStorage())
+		const created = store.create(fighter4())
+		expect('levelOrder' in created).toBe(false)
+
+		levelUpFighter4(store, created)
+		expect('levelOrder' in store.list()[0]).toBe(false)
+		removeTopLevel(store, created.id)
+		expect('levelOrder' in store.list()[0]).toBe(false)
+	})
+})
+
 describe('what removing a level drops', () => {
 	const rogue: Character = {
 		...single('Rogue', 'Thief', 6, 3),

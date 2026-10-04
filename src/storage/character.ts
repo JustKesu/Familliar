@@ -348,6 +348,8 @@ export interface Character {
 	 * schema version 34 — and removal is then refused rather than guessed.
 	 */
 	createdAtLevel?: number
+	/** D317: entry i is the class that took character level i+1. Absent = order not known (e.g. a migrated multiclass character). */
+	levelOrder?: CharacterLevelOrderEntry[]
 	/**
 	 * The three free-text fields of the "Vzhled a poznámky" tab (slice 9d2), each
 	 * exactly what the player typed — line breaks and spacing included, nothing
@@ -1057,7 +1059,7 @@ export type CharacterGrantedFeat = {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1081,4 +1083,21 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 56
+export const CURRENT_SCHEMA_VERSION = 57
+
+export interface CharacterLevelOrderEntry {
+	className: string
+	classSource: string
+}
+
+/** D317: valid only when it has one entry per character level and each class appears exactly its `level` times. */
+export function isConsistentLevelOrder(levelOrder: readonly CharacterLevelOrderEntry[], classes: readonly CharacterClass[]): boolean {
+	const counts = new Map<string, number>()
+	for (const entry of levelOrder) counts.set(`${entry.className}|${entry.classSource}`, (counts.get(`${entry.className}|${entry.classSource}`) ?? 0) + 1)
+	return levelOrder.length === classes.reduce((sum, c) => sum + c.level, 0) && classes.every((c) => counts.get(`${c.className}|${c.classSource}`) === c.level)
+}
+
+/** D317: one class taking every level — the history create and Edit write. */
+export function singleClassLevelOrder(classes: readonly CharacterClass[]): CharacterLevelOrderEntry[] {
+	return classes.flatMap((c) => Array.from({ length: c.level }, () => ({ className: c.className, classSource: c.classSource })))
+}

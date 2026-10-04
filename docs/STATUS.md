@@ -1849,6 +1849,13 @@ to the sheet (`BounceToSheet` in CharacterManager), `saveCharacter` throws. Impo
 duplicate class (`describeImportedCharacterError`, called only from `parseStoredCharacters(raw, false)`); stored data is
 not checked. E2E `multiclassGuard.spec.ts`.
 
+M1a done (D317). Schema 57: `Character.levelOrder?: { className, classSource }[]` (level history; absent = unknown).
+Migration 56→57: 0 classes → `[]`, 1 class → repeated `level` times, >1 → absent. `isConsistentLevelOrder` /
+`singleClassLevelOrder` in storage/character.ts; `withoutInconsistentLevelOrder` (validate.ts) drops a bad one on list()
+(inside `withoutMalformedDroppableFields`) and on import; `buildCharacter` never writes an inconsistent one. Writers:
+`saveCharacter` (create/Edit rebuild, level up appends or keeps absent), `levelRemovalPlan` (drops last). Nothing reads
+it yet; no visible change. E2E `levelOrder.spec.ts`.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

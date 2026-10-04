@@ -27,7 +27,7 @@ import type {
 	SpentSpellSlots,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
-import { CURRENT_SCHEMA_VERSION } from './character'
+import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, type CharacterLevelOrderEntry } from './character'
 import { isValidAbilityIncrease } from '../featAsi/featAsiData'
 import type { FeatInstanceKey, FeatRef } from '../featAsi/featInstances'
 import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
@@ -47,6 +47,7 @@ import {
 	describeImportedCharacterError,
 	isSupportedVersion,
 	toStoredCharacter,
+	withoutInconsistentLevelOrder,
 	withoutMalformedDroppableFields,
 } from './validate'
 import type { StoredCharacter } from './wireFormat'
@@ -119,7 +120,7 @@ function parseStoredCharacters(raw: string, dropMalformedFields: boolean): Store
 	// D69: an older but supported save is carried forward here, so everything
 	// below this line only ever sees the current shape.
 	const migrated = parsed.map(migrateToCurrent)
-	const records = dropMalformedFields ? migrated.map(withoutMalformedDroppableFields) : migrated
+	const records = migrated.map(dropMalformedFields ? withoutMalformedDroppableFields : withoutInconsistentLevelOrder)
 
 	for (let i = 0; i < records.length; i++) {
 		const error = describeStoredCharacterError(records[i], i)
@@ -198,6 +199,8 @@ export interface CharacterCreateInput {
 	play?: CharacterPlayState
 	familiar?: CharacterFamiliar
 	createdAtLevel?: number
+	/** D317: the level history; an inconsistent one is stored as absence. */
+	levelOrder?: CharacterLevelOrderEntry[]
 	/** Slice 9d2: the sheet's free-text fields. `update` replaces every field, so the edit path passes the character's own back in. */
 	appearance?: string
 	backstory?: string
@@ -326,6 +329,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		play,
 		familiar,
 		createdAtLevel,
+		levelOrder,
 		appearance,
 		backstory,
 		notes,
@@ -376,6 +380,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(storedPlay ? { play: storedPlay } : {}),
 		...(familiar ? { familiar } : {}),
 		...(createdAtLevel !== undefined ? { createdAtLevel } : {}),
+		...(levelOrder && isConsistentLevelOrder(levelOrder, classes) ? { levelOrder } : {}),
 		// Slice 9d2: kept verbatim — never trimmed — and only the empty string is absence.
 		...(appearance ? { appearance } : {}),
 		...(backstory ? { backstory } : {}),

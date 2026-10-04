@@ -4843,3 +4843,14 @@ vypnuté s důvodem, přímá adresa úprav vrátí na list a saveCharacter při
 zahodila všechny třídy kromě jedné). Import souboru kontroluje, že součet úrovní tříd je nejvýš 20 a že se žádná třída
 (className + classSource) neopakuje; soubor se odmítne celý. Uložená data se záměrně nekontrolují: jedna špatná uložená
 postava nesmí znepřístupnit celý seznam. Task M0, rozhodl Daniel 4. 10. 2026.
+
+## D317 — Historie úrovní `Character.levelOrder` (M1a, schéma 57)
+
+`levelOrder?: { className, classSource }[]`: položka i je třída, která vzala úroveň postavy i+1. Chybějící pole znamená
+„neznámé“ (styl D43), ne prázdnou historii. Platné je jen tehdy, když délka = celková úroveň postavy a každá třída
+(className + classSource) se v něm vyskytuje přesně tolikrát, kolik je její `level` v `classes`. Migrace 56→57: žádná
+třída → `[]`, jedna třída → ta třída `level`krát, víc tříd → pole chybí (pořadí neznáme, nehádá se). Nekonzistentní nebo
+poškozené pole se při čtení uložených dat i při importu zahodí (postava pak historii nemá), nikdy kvůli němu neselže
+seznam ani import; export ho nese. Zápis: vytvoření a Edit (jen jedna třída od M0, Edit může třídu změnit) ho přestaví
+jako uloženou třídu `level`krát, level up přidá položku na konec, Remove level odebere poslední; bez historie zůstává bez
+ní. Zatím ho nic nečte (M4, M6, M8). Task M1a, rozhodl Daniel 4. 10. 2026.

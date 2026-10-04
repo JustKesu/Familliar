@@ -500,6 +500,23 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 56 adds Character.speciesCantrip (S2). A version-55 character has none — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 56 }),
 	},
+	{
+		from: 56,
+		to: 57,
+		/*
+		 * 57 adds Character.levelOrder (M1a, D317). With one class (or none) the
+		 * order is certain; with several it is unknown and left absent, never guessed.
+		 * A malformed `classes` is left for validation to report.
+		 */
+		migrate: (record) => {
+			const classes = record['classes']
+			if (!Array.isArray(classes) || classes.length > 1) return { ...record, schemaVersion: 57 }
+			const only = classes[0] as Record<string, unknown> | undefined
+			if (only !== undefined && (typeof only !== 'object' || only === null || !Number.isInteger(only['level']) || (only['level'] as number) < 0)) return { ...record, schemaVersion: 57 }
+			const levelOrder = only === undefined ? [] : Array.from({ length: only['level'] as number }, () => ({ className: only['className'], classSource: only['classSource'] }))
+			return { ...record, levelOrder, schemaVersion: 57 }
+		},
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

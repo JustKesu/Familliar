@@ -191,6 +191,7 @@ export function levelRemovalPlan(
 		classFeatureChoices,
 		subclassSpellChoices,
 		hitPointLevels,
+		...(character.levelOrder ? { levelOrder: character.levelOrder.slice(0, -1) } : {}),
 		...(languages ? { languages } : {}),
 		...(toolChoices ? { toolChoices } : {}),
 		...(subclassSkills ? { subclassSkills } : {}),

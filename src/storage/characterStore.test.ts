@@ -1847,7 +1847,7 @@ describe('stored granted feats (D156)', () => {
 		const saved = { schemaVersion: 41, id: '1', name: 'Aria', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] }
 		backing.setItem(STORAGE_KEY, JSON.stringify([saved]))
 		const [loaded] = new CharacterStore(backing).list()
-		expect(loaded).toEqual({ id: '1', name: 'Aria', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] })
+		expect(loaded).toEqual({ id: '1', name: 'Aria', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }], levelOrder: [] })
 
 		expect('grantedFeats' in new CharacterStore(new MemoryStorage()).create({ name: 'Cato', grantedFeats: [] })).toBe(false)
 	})
@@ -2040,7 +2040,7 @@ describe('stored feat proficiency picks (task A2)', () => {
 		const migratedBacking = new MemoryStorage()
 		migratedBacking.setItem(STORAGE_KEY, JSON.stringify([v42]))
 		const [migrated] = new CharacterStore(migratedBacking).list()
-		expect(migrated).toEqual({ id: '2', name: 'Bram', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }] })
+		expect(migrated).toEqual({ id: '2', name: 'Bram', classes: [], featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }], levelOrder: [] })
 	})
 
 	it('rejects a malformed proficiencies field', () => {
@@ -2374,5 +2374,100 @@ describe('Character.speciesCantrip (S2)', () => {
 		const file = JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], species: HIGH_ELF, speciesCantrip }])
 		expect(() => store.import(file)).toThrow(/speciesCantrip must be an object/)
 		expect(store.list()).toHaveLength(1)
+	})
+})
+
+describe('Character.levelOrder (M1a, D317)', () => {
+	const FIGHTER = { className: 'Fighter', classSource: 'XPHB' }
+	const WIZARD = { className: 'Wizard', classSource: 'XPHB' }
+	const fighter = (level: number) => ({ ...FIGHTER, subclass: level >= 3 ? 'Battle Master' : null, level })
+
+	/** A realistic schema-56 level-5 Fighter, every field in the shape toCharacter keeps verbatim. */
+	function schema56Fighter() {
+		return {
+			schemaVersion: 56,
+			id: 'f1',
+			name: 'Aria',
+			classes: [fighter(5)],
+			abilityScores: { method: 'standardArray', scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 } },
+			species: { name: 'Elf', source: 'XPHB' },
+			background: { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+			abilityBonus: { strength: 2, constitution: 1 },
+			languages: [
+				{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' },
+				{ name: 'Draconic', source: 'XPHB', grantedBy: 'creation' },
+			],
+			classSkills: ['acrobatics', 'survival'],
+			masteries: [{ name: 'Longsword', level: 4 }, { name: 'Greataxe' }],
+			expertiseSkills: [{ name: 'acrobatics', level: 3 }],
+			fightingStyle: 'Archery',
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Precision Attack', level: 3 }, { name: 'Riposte' }] }],
+			speciesSkills: ['perception'],
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }],
+			spellChoices: [{ className: 'Fighter', classSource: 'XPHB', spells: [{ name: 'Fire Bolt', source: 'XPHB' }] }],
+			hitPointLevels: [
+				{ level: 2, kind: 'average', dieResult: 6 },
+				{ level: 3, kind: 'roll', dieResult: 4 },
+				{ level: 4, kind: 'average', dieResult: 6 },
+				{ level: 5, kind: 'manual', dieResult: 10 },
+			],
+			inventory: [{ name: 'Longsword', source: 'XPHB', quantity: 1 }],
+			currencyCopper: 500,
+			currentHp: 30,
+			createdAtLevel: 1,
+			notes: 'Owes the guild 10 gp.',
+		}
+	}
+
+	function storeWith(records: unknown[]): CharacterStore {
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify(records))
+		return new CharacterStore(backing)
+	}
+
+	it('a full schema-56 single-class character loads exactly as before, plus its level history', () => {
+		const { schemaVersion: _v, ...before } = schema56Fighter()
+		const [loaded] = storeWith([schema56Fighter()]).list()
+		expect(loaded).toEqual({ ...before, levelOrder: [FIGHTER, FIGHTER, FIGHTER, FIGHTER, FIGHTER] })
+	})
+
+	it.each([
+		['too short', [FIGHTER, FIGHTER]],
+		['the wrong class', [FIGHTER, FIGHTER, FIGHTER, FIGHTER, WIZARD]],
+		['not an array', 'Fighter'],
+		['an entry without a source', [FIGHTER, FIGHTER, FIGHTER, FIGHTER, { className: 'Fighter' }]],
+	])('drops a stored history that is %s, and the list still loads', (_label, levelOrder) => {
+		const other = { schemaVersion: CURRENT_SCHEMA_VERSION, id: 'o1', name: 'Bram', classes: [], levelOrder: [] }
+		const list = storeWith([{ ...schema56Fighter(), schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder }, other]).list()
+		expect(list).toHaveLength(2)
+		expect('levelOrder' in list[0]).toBe(false)
+		expect(list[0].classes).toEqual([fighter(5)])
+		expect(list[1].levelOrder).toEqual([])
+	})
+
+	it('keeps a consistent multiclass history in any order', () => {
+		const record = { schemaVersion: CURRENT_SCHEMA_VERSION, id: 'm1', name: 'Cato', classes: [fighter(2), { ...WIZARD, subclass: null, level: 1 }], levelOrder: [FIGHTER, WIZARD, FIGHTER] }
+		expect(storeWith([record]).list()[0].levelOrder).toEqual([FIGHTER, WIZARD, FIGHTER])
+	})
+
+	it('imports a file with a bad history without it, and the import still succeeds', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const [imported] = store.import(JSON.stringify([{ ...schema56Fighter(), schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: [WIZARD] }]))
+		expect(imported.name).toBe('Aria')
+		expect('levelOrder' in imported).toBe(false)
+		expect('levelOrder' in store.list()[0]).toBe(false)
+	})
+
+	it('export then import keeps it', () => {
+		const source = new CharacterStore(new MemoryStorage())
+		const created = source.create({ name: 'Aria', classes: [fighter(2)], levelOrder: [FIGHTER, FIGHTER] })
+		expect(source.exportCharacter(created.id)).toContain('"levelOrder"')
+		const [imported] = new CharacterStore(new MemoryStorage()).import(source.exportCharacter(created.id))
+		expect(imported.levelOrder).toEqual([FIGHTER, FIGHTER])
+	})
+
+	it('a write never stores an inconsistent history', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		expect('levelOrder' in store.create({ name: 'Aria', classes: [fighter(2)], levelOrder: [FIGHTER] })).toBe(false)
 	})
 })

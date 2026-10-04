@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CURRENT_SCHEMA_VERSION } from './character'
+import { CURRENT_SCHEMA_VERSION, singleClassLevelOrder } from './character'
 import { MIGRATIONS, canMigrateToCurrent, migrateToCurrent } from './migrations'
 import { describeLanguagesError, describeSubclassSkillsError, describeToolChoicesError } from './validate'
 
@@ -78,7 +78,7 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
 		// Every row is exactly what it was: `custom` is what a row lacks unless the player made one (slice e2a).
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	it('carries a version-23 custom item forward with its computed fields simply absent', () => {
@@ -102,7 +102,7 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
 		// Nothing is backfilled: an absent computed field means the item declares nothing there, which is exactly what it declared before.
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	it('carries a version-24 custom suit forward imposing neither penalty it never declared', () => {
@@ -126,7 +126,7 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
 		// Backfilling either would change a number the player never set — the suit keeps hampering nothing and demanding nothing.
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	it('carries a version-25 held weapon forward in one hand', () => {
@@ -141,7 +141,7 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
 		// An absent grip is one-handed, which is the die (dmg1) such a row was already being given.
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	it('carries a version-26 custom weapon forward taking one hand, exactly as it did before', () => {
@@ -164,7 +164,7 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
 		// Backfilling twoHanded/versatile would change what the weapon costs to hold — the player never declared either.
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	it('carries a version-27 character forward without inventing any hit points', () => {
@@ -178,7 +178,7 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
 		// currentHp/maxHp are manual (D9) — an existing character has neither, and absent means "not set".
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('currentHp' in migrated).toBe(false)
 		expect('maxHp' in migrated).toBe(false)
 	})
@@ -195,7 +195,7 @@ describe('the migration chain (D69)', () => {
 
 		expect(migrated['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION)
 		// speciesSpellcastingAbility is D57-style optional — absent already means "not chosen yet" (computeSpeciesSpellcasting's existing placeholder).
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('speciesSpellcastingAbility' in migrated).toBe(false)
 	})
 
@@ -227,7 +227,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('maxHpOverride' in migrated).toBe(false)
 	})
 
@@ -255,7 +255,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('masteries' in migrated).toBe(false)
 	})
 
@@ -284,7 +284,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('expertiseSkills' in migrated).toBe(false)
 	})
 
@@ -353,7 +353,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('optionalFeatureChoices' in migrated).toBe(false)
 	})
 
@@ -367,7 +367,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('createdAtLevel' in migrated).toBe(false)
 	})
 
@@ -382,7 +382,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('temporaryHitPoints' in migrated).toBe(false)
 	})
 
@@ -400,7 +400,7 @@ describe('the migration chain (D69)', () => {
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
 		// 36->37 moved it under `play`; the value is the same one a version-35 save carried.
-		expect(migrated).toEqual({ ...withoutTemporary, play: { temporaryHitPoints: 4 }, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...withoutTemporary, play: { temporaryHitPoints: 4 }, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('deathSaves' in migrated).toBe(false)
 	})
 
@@ -427,7 +427,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 36, id: '1', name: 'Aria', classes: [], currentHp: 12 }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('play' in migrated).toBe(false)
 	})
 
@@ -436,7 +436,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 38, id: '1', name: 'Aria', classes: [], play: { temporaryHitPoints: 4 } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect((migrated['play'] as Record<string, unknown>)['spentHitDice']).toBeUndefined()
 	})
 
@@ -445,7 +445,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 39, id: '1', name: 'Aria', classes: [], play: { temporaryHitPoints: 4 } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect((migrated['play'] as Record<string, unknown>)['concentratingOn']).toBeUndefined()
 	})
 
@@ -454,7 +454,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 43, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect((migrated['play'] as Record<string, unknown>)['heroicInspiration']).toBeUndefined()
 	})
 
@@ -467,7 +467,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 44, id: '1', name: 'Aria', classes: [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 1 }], languages }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect(describeLanguagesError(migrated['languages'])).toBeNull()
 		expect(describeLanguagesError([...languages, { name: 'Abyssal', source: 'XPHB', grantedBy: 'thievesCant' }])).toBeNull()
 		expect(describeLanguagesError([{ name: 'Abyssal', source: 'XPHB', grantedBy: 'feat' }])).toContain('grantedBy')
@@ -478,7 +478,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 45, id: '1', name: 'Aria', classes: [{ className: 'Bard', classSource: 'XPHB', subclass: null, level: 1 }] }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect(describeToolChoicesError([{ grantedBy: 'bard', name: 'Lute' }])).toBeNull()
 		expect(describeToolChoicesError([{ grantedBy: 'wizard', name: 'Lute' }])).toContain('grantedBy')
 		expect(describeToolChoicesError([{ grantedBy: 'bard', name: '' }])).toContain('name')
@@ -489,7 +489,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 47, id: '1', name: 'Aria', classes: [{ className: 'Cleric', classSource: 'XPHB', subclass: 'Order Domain', level: 3 }] }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('subclassSkills' in migrated).toBe(false)
 		expect(describeSubclassSkillsError([{ grantedBy: 'orderDomain', name: 'persuasion' }])).toBeNull()
 		expect(describeSubclassSkillsError([{ grantedBy: 'champion', name: 'persuasion' }])).toContain('grantedBy')
@@ -502,7 +502,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 40, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		for (const field of ['appearance', 'backstory', 'notes']) expect(field in migrated).toBe(false)
 	})
 
@@ -518,7 +518,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('grantedFeats' in migrated).toBe(false)
 	})
 
@@ -533,7 +533,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		const [grantedFeat] = migrated['grantedFeats'] as Record<string, unknown>[]
 		expect('proficiencies' in grantedFeat).toBe(false)
 	})
@@ -549,7 +549,7 @@ describe('the migration chain (D69)', () => {
 		}
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect('originFeatOverride' in (migrated['background'] as Record<string, unknown>)).toBe(false)
 	})
 
@@ -558,7 +558,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 50, id: '1', name: 'Aria', classes: [], familiar: { name: 'Imp', source: 'XMM' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	/* D214: an older character has no conditions or exhaustion, which reads as none — the step only tags. */
@@ -566,7 +566,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 51, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	/* D215: an older character has no manually added feats — the step only tags. */
@@ -574,7 +574,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 52, id: '1', name: 'Aria', classes: [], grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB' }] }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	/* D216: the five flat-bonus fields become one `bonuses` list. */
@@ -603,6 +603,7 @@ describe('the migration chain (D69)', () => {
 		expect(migrated).toEqual({
 			...before,
 			schemaVersion: CURRENT_SCHEMA_VERSION,
+			levelOrder: [],
 			inventory: [
 				plainRow,
 				noBonuses,
@@ -628,22 +629,36 @@ describe('the migration chain (D69)', () => {
 
 	it('tags a version-53 character with no inventory', () => {
 		const before = { schemaVersion: 53, id: '1', name: 'Aria', classes: [] }
-		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	/* W-8: an older character has no portrait — the step only tags. */
 	it('tags a version-54 character and adds no portrait', () => {
 		const before = { schemaVersion: 54, id: '1', name: 'Aria', classes: [], notes: 'x' }
-		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		expect(migrateToCurrent({ ...before })).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	/* S2: an older character has no species cantrip — the step only tags, the sheet then asks for the pick. */
 	it('tags a version-55 character and adds no species cantrip', () => {
 		const before = { schemaVersion: 55, id: '1', name: 'Aria', classes: [], species: { name: 'Elf; High Elf Lineage', source: 'XPHB' } }
 		const migrated = migrateToCurrent({ ...before })
-		expect(migrated).toEqual({ ...before, schemaVersion: 56 })
+		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: [] })
 		expect('speciesCantrip' in (migrated as object)).toBe(false)
-		expect(CURRENT_SCHEMA_VERSION).toBe(56)
+	})
+
+	/* M1a (D317): one class (or none) gives a certain order; several leave it unknown rather than guessed. */
+	it('gives a version-56 character a level history only when it has at most one class', () => {
+		const rogue = { className: 'Rogue', classSource: 'XPHB', subclass: null, level: 3 }
+		const wizard = { className: 'Wizard', classSource: 'XPHB', subclass: null, level: 2 }
+		const rogueEntry = { className: 'Rogue', classSource: 'XPHB' }
+		const base = { schemaVersion: 56, id: '1', name: 'Aria' }
+
+		expect(migrateToCurrent({ ...base, classes: [] })).toEqual({ ...base, classes: [], levelOrder: [], schemaVersion: 57 })
+		expect(migrateToCurrent({ ...base, classes: [rogue] })).toEqual({ ...base, classes: [rogue], levelOrder: [rogueEntry, rogueEntry, rogueEntry], schemaVersion: 57 })
+		const multi = migrateToCurrent({ ...base, classes: [rogue, wizard] })
+		expect(multi).toEqual({ ...base, classes: [rogue, wizard], schemaVersion: 57 })
+		expect('levelOrder' in (multi as object)).toBe(false)
+		expect(CURRENT_SCHEMA_VERSION).toBe(57)
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

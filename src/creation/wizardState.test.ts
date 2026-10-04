@@ -872,6 +872,7 @@ describe('saveCharacter', () => {
 			speciesSpellcastingAbility: undefined,
 			hitPointLevels: undefined,
 			createdAtLevel: 1,
+			levelOrder: [{ className: 'Fighter', classSource: 'XPHB' }],
 		})
 	})
 
@@ -949,6 +950,7 @@ describe('saveCharacter', () => {
 			speciesSpellcastingAbility: undefined,
 			hitPointLevels: undefined,
 			createdAtLevel: 1,
+			levelOrder: [{ className: 'Fighter', classSource: 'XPHB' }],
 		})
 	})
 
@@ -988,6 +990,7 @@ describe('saveCharacter', () => {
 			speciesSpellcastingAbility: undefined,
 			hitPointLevels: undefined,
 			createdAtLevel: 1,
+			levelOrder: [{ className: 'Fighter', classSource: 'XPHB' }],
 		})
 	})
 
@@ -1031,6 +1034,7 @@ describe('saveCharacter', () => {
 			speciesSpellcastingAbility: undefined,
 			hitPointLevels: undefined,
 			createdAtLevel: 1,
+			levelOrder: [{ className: 'Fighter', classSource: 'XPHB' }],
 		})
 	})
 
@@ -1057,6 +1061,23 @@ describe('saveCharacter', () => {
 		expect(vi.mocked(store.update).mock.calls[0][1].createdAtLevel).toBe(1)
 		saveCharacter(store, data, ['athletics', 'intimidation'], {}, undefined, existing)
 		expect(vi.mocked(store.update).mock.calls[1][1].createdAtLevel).toBeUndefined()
+	})
+
+	/* M1a (D317): create writes the class once per level; Edit (single-class, may change the class) rebuilds it from the saved class. */
+	it('writes the level history on creation and rebuilds it on an Edit that changes the class', () => {
+		const store = { ...fakeStore(), update: vi.fn(() => ({ id: 'e1', name: 'Aria', classes: [] })) } as unknown as CharacterStore
+		const fighter = { className: 'Fighter', classSource: 'XPHB' }
+		const rogue = { className: 'Rogue', classSource: 'XPHB' }
+		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[0][0].levelOrder).toEqual([fighter])
+
+		const existing: Character = { id: 'e1', name: 'Aria', classes: [{ ...rogue, subclass: null, level: 1 }], levelOrder: [rogue] }
+		saveCharacter(store, completeData(), ['athletics', 'intimidation'], {}, undefined, existing)
+		expect(vi.mocked(store.update).mock.calls[0][1].levelOrder).toEqual([fighter])
+		// An Edit of a character with no history writes one: a single class leaves no doubt about the order.
+		const { levelOrder: _l, ...noHistory } = existing
+		saveCharacter(store, completeData(), ['athletics', 'intimidation'], {}, undefined, noHistory)
+		expect(vi.mocked(store.update).mock.calls[1][1].levelOrder).toEqual([fighter])
 	})
 
 	it('never touches storage while merely navigating steps and editing choices', () => {
@@ -1259,6 +1280,7 @@ describe('editing an existing character', () => {
 			currencyCopper: 500,
 			currentHp: 30,
 			familiar: { name: 'Owl', source: 'XMM' },
+			levelOrder: Array.from({ length: 5 }, () => ({ className: 'Fighter', classSource: 'XPHB' })),
 			// W-8: the round trip below proves an untouched edit keeps it.
 			portrait: 'data:image/jpeg;base64,AAAA',
 		}

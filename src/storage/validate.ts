@@ -9,6 +9,7 @@ import type {
 	CharacterFamiliar,
 	CharacterGrantedFeat,
 	CharacterHitPointLevel,
+	CharacterLevelOrderEntry,
 	CharacterPlayState,
 	SpentSpellSlots,
 	CharacterInventoryItem,
@@ -37,7 +38,7 @@ import type {
 	WeaponGrip,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
-import { CURRENT_SCHEMA_VERSION, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
+import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
 import { canMigrateToCurrent } from './migrations'
 import type { StoredCharacter } from './wireFormat'
 
@@ -1278,6 +1279,7 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	}
 	const portraitError = describePortraitError(value['portrait'])
 	if (portraitError) return `[${index}].${portraitError}`
+	if (!isValidLevelOrder(value['levelOrder'], classes)) return `[${index}].levelOrder must list one class per character level, matching classes`
 	return null
 }
 
@@ -1291,10 +1293,25 @@ export function describePortraitError(value: unknown): string | null {
 	return `portrait must be a JPEG data URL ("${PORTRAIT_PREFIX}…") of at most ${PORTRAIT_MAX_LENGTH} characters`
 }
 
+function isValidLevelOrder(levelOrder: unknown, classes: unknown): boolean {
+	if (levelOrder === undefined) return true
+	if (!Array.isArray(levelOrder) || !Array.isArray(classes)) return false
+	if (!levelOrder.every((entry) => isRecord(entry) && isNonEmptyString(entry['className']) && isNonEmptyString(entry['classSource']))) return false
+	if (!classes.every((c) => isRecord(c) && typeof c['className'] === 'string' && typeof c['classSource'] === 'string' && Number.isInteger(c['level']))) return false
+	return isConsistentLevelOrder(levelOrder as CharacterLevelOrderEntry[], classes as CharacterClass[])
+}
+
+/** D317: an inconsistent level history is dropped (the character then has none) on both reading and Import, never fatal. */
+export function withoutInconsistentLevelOrder(value: unknown): unknown {
+	if (!isRecord(value) || isValidLevelOrder(value['levelOrder'], value['classes'])) return value
+	const { levelOrder: _levelOrder, ...rest } = value
+	return rest
+}
+
 /** W-8 (D266), F-5: a bad portrait or species cantrip in already stored data must never make the whole character list unreadable, so reading drops it. */
 export function withoutMalformedDroppableFields(value: unknown): unknown {
 	if (!isRecord(value)) return value
-	const { portrait, speciesCantrip, ...rest } = value
+	const { portrait, speciesCantrip, ...rest } = withoutInconsistentLevelOrder(value) as Record<string, unknown>
 	return {
 		...rest,
 		...(portrait !== undefined && isValidPortrait(portrait) ? { portrait } : {}),
@@ -1409,6 +1426,9 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(typeof backstory === 'string' && backstory.length > 0 ? { backstory } : {}),
 		...(typeof notes === 'string' && notes.length > 0 ? { notes } : {}),
 		...(isValidPortrait(value['portrait']) ? { portrait: value['portrait'] } : {}),
+		...(Array.isArray(value['levelOrder'])
+			? { levelOrder: (value['levelOrder'] as Record<string, unknown>[]).map((entry) => ({ className: entry['className'] as string, classSource: entry['classSource'] as string })) }
+			: {}),
 	}
 }
 

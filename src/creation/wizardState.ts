@@ -31,7 +31,7 @@ import type {
 	FeatAsiChoice,
 	LeveledChoice,
 } from '../storage/character'
-import { choiceNames } from '../storage/character'
+import { choiceNames, singleClassLevelOrder } from '../storage/character'
 import { isValidHitPointEntry } from '../hitPoints/hitPointEntry'
 import type { AbilityBonusDistribution } from '../backgrounds/abilityBonus'
 import type { CharacterStore } from '../storage/characterStore'
@@ -1428,6 +1428,11 @@ export function saveCharacter(
 		familiar: existing?.familiar,
 		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".
 		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,
+		// D317: create and Edit (single-class since M0, may change the class) rebuild it; a level up appends, and keeps "not known" as it is.
+		levelOrder:
+			levelUpTo === undefined
+				? singleClassLevelOrder(classes)
+				: existing?.levelOrder && [...existing.levelOrder, { className: classes[0].className, classSource: classes[0].classSource }],
 		// Slice 9d2: sheet-only text the wizard never shows, carried across so an edit or a level up does not erase it.
 		appearance: existing?.appearance,
 		backstory: existing?.backstory,
