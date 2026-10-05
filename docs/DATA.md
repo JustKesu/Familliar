@@ -1206,6 +1206,13 @@ covers a future source. Alert is the origin feat of Criminal|XPHB, Guard|XPHB an
 be told the background feat another way (featAsiLevels.ts passes it as `originFeatOverride`).
 Found in F-2a (2026-10-01, scripts/investigate-feat-name-duplicates.js, consumed).
 
+### Subclass names across books — none twice today (M1b)
+
+data/classes.json holds 109 subclass entries with 109 distinct `name`s (exact match): no subclass
+name occurs with more than one `source`. `CharacterClass.subclass`, stored by name only, is therefore
+unambiguous on today's data; a future source reusing a name would make it ambiguous.
+Found in M1b (2026-10-05, scripts/investigate-subclass-names.js, consumed).
+
 ### Frázové vyhledávání v `entries` musí nejdřív stripnout 5etools markup
 
 5etools tagy rozdělují frázi na dvě části, které nikdy neleží vedle sebe v
