@@ -113,7 +113,8 @@ report as verified something neither a test nor you saw.
 ## Reporting
 
 At the end of every task, write a report to `docs/REPORT.md`, overwriting the
-previous one. Do this regardless of task size.
+previous one. Do this regardless of task size. docs/REPORT.md is committed with
+every task, because the planning chat reads it from GitHub.
 
 The report is read by the planning agent that scopes the next task, not by a
 beginner learning to code. Write it densely and technically: no explanations of

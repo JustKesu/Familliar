@@ -2,6 +2,8 @@
 
 Poslední aktualizace: 2026-09-25 (E2E-1: Playwright e2e — `npm run e2e`, scénáře smoke + podvolby featu, D180; před tím A3: picker podvoleb featu — wizard, level-up, Edit Character, D179; před tím B6d: jeden zdroj zbraňové proficiency pro kartu i útoky, D178; před tím B6c: dovednosti z podtříd, nástroje druhů, skrytý prázdný krok level-upu, D177; před tím B6b: proficiency grants from non-XPHB subclasses, D176; před tím B5: pickery nástrojů třídy a volba velikosti druhu, D174/D175; před tím B3b: zalamování karty Proficiencies, volba extra jazyků Rogue/Ranger, D172; před tím B3: řádek LANGUAGES na kartě Proficiencies, D171; před tím B2: karta Proficiencies — armor a weapons, D170; před tím R4c: HP karta s death saves, drawer Hit Points, status row Defenses/Conditions/Concentration, D168; před tím R4b: kompaktní levý sloupec a pás čísel, D166/D167; před tím oprava: stav hodů se při přepnutí postavy maže — `CharacterSheet` je klíčovaný podle `character.id`; dřív: R4d globální advantage, toast s výsledkem hodu, Rolls v horní liště)
 
+Projekt běží i v Claude Code cloud sessions (C0): npm ci, typecheck, test a validate-data projdou; `npm run e2e:install` selže (403, host cdn.playwright.dev blokuje síťová politika), e2e tam zatím neběží.
+
 Tenhle soubor říká, co appka teď umí a co je dál. Proč je to tak a jak to
 vzniklo je v DECISIONS.md (čísla D1–D109) a v REPORT.md (poslední session).
 Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
