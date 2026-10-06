@@ -261,6 +261,42 @@ describe('characterSpellSlotMaxima', () => {
 		expect(value.ordinary).toEqual([4, 3, 0, 0, 0, 0, 0, 0, 0])
 	})
 
+	it('Warlock 5 / Wizard 3 / Cleric 3: the combined ordinary pool and the pact pool come together', () => {
+		const value = maxima(multiclass(['Warlock', 5], ['Wizard', 3], ['Cleric', 3]))
+		expect(value.casterLevel).toBe(6)
+		expect(value.ordinary).toEqual([4, 3, 3, 0, 0, 0, 0, 0, 0])
+		expect(value.pact).toBe(2)
+		expect(value.pactSlotLevel).toBe(3)
+	})
+
+	it('Rogue (Arcane Trickster) 4 / Wizard 3: Arcane Trickster contributes floor(4/3) = 1, caster level 4', () => {
+		const withRogue = [...data, rogueSlots]
+		const result = characterSpellSlotMaxima(multiclass(['Rogue', 4, 'Arcane Trickster'], ['Wizard', 3]), withRogue)
+		if (result.status !== 'known') throw new Error(result.reason)
+		expect(result.value.casterLevel).toBe(4)
+		expect(result.value.ordinary).toEqual([4, 3, 0, 0, 0, 0, 0, 0, 0])
+	})
+
+	it('Wizard 2 / Cleric 2 / Ranger 3: three Spellcasting classes add up, 2 + 2 + 2 = caster level 6', () => {
+		const value = maxima(multiclass(['Wizard', 2], ['Cleric', 2], ['Ranger', 3]))
+		expect(value.casterLevel).toBe(6)
+		expect(value.ordinary).toEqual([4, 3, 3, 0, 0, 0, 0, 0, 0])
+		expect(value.ordinaryBreakdown.map((contribution) => contribution.amount)).toEqual([2, 2, 2])
+	})
+
+	it('a lone Warlock reports its pact slot level, a character without Pact Magic reports 0', () => {
+		expect(maxima(multiclass(['Warlock', 5])).pactSlotLevel).toBe(3)
+		expect(maxima(multiclass(['Wizard', 3])).pactSlotLevel).toBe(0)
+	})
+
+	it('unknown: no Wizard XPHB row for the combined caster level, and a class missing from the data', () => {
+		const noWizard = data.filter((entry) => entry.className !== 'Wizard')
+		const missingTable = characterSpellSlotMaxima(multiclass(['Cleric', 3], ['Sorcerer', 3]), noWizard)
+		expect(missingTable.status).toBe('unknown')
+		expect(missingTable.status === 'unknown' && missingTable.reason).toContain('Wizard XPHB')
+		expect(characterSpellSlotMaxima(multiclass(['Wizard', 3], ['Artificer', 3]), data).status).toBe('unknown')
+	})
+
 	it('a single-class character gets exactly spellSlotMaxima’s result', () => {
 		const character = characterWithClass('Wizard', 5)
 		const result = computeSpellSlots(character, classData)

@@ -1271,6 +1271,33 @@ function validateClasses() {
 	});
 	recordCheck(`classes: all ${subclasses.length} subclasses have ${REQUIRED_SUBCLASS_FIELDS.join(", ")}`, subclassFieldFailures);
 
+	/*
+	 * D322 (M3): the app uses Wizard XPHB's own slot table as the multiclass
+	 * table (DATA.md). The PHB multiclass table rows below are what that claim
+	 * rests on, so a data update that changes them must fail here.
+	 */
+	const MULTICLASS_TABLE_ROWS = {
+		1: [2, 0, 0, 0, 0, 0, 0, 0, 0],
+		5: [4, 3, 2, 0, 0, 0, 0, 0, 0],
+		19: [4, 3, 3, 3, 3, 2, 1, 1, 1],
+		20: [4, 3, 3, 3, 3, 2, 2, 1, 1],
+	};
+	const wizard = classes.find((entry) => entry.name === "Wizard" && entry.source === "XPHB");
+	const wizardRows = wizard && wizard.classTableGroups && wizard.classTableGroups.find((group) => group.rowsSpellProgression);
+	const multiclassFailures = [];
+	if (!wizardRows) {
+		multiclassFailures.push({ label: "Wizard (XPHB)", detail: "has no rowsSpellProgression table" });
+	} else {
+		for (const [level, expected] of Object.entries(MULTICLASS_TABLE_ROWS)) {
+			const row = wizardRows.rowsSpellProgression[Number(level) - 1] || [];
+			const padded = Array.from({ length: 9 }, (_, i) => row[i] || 0);
+			if (padded.join(",") !== expected.join(",")) {
+				multiclassFailures.push({ label: `Wizard (XPHB) row ${level}`, detail: `actual ${padded.join("/")}, multiclass table ${expected.join("/")}` });
+			}
+		}
+	}
+	recordCheck("classes: Wizard XPHB slot rows 1, 5, 19, 20 equal the multiclass spellcaster table", multiclassFailures);
+
 	// --- counts -------------------------------------------------------------
 	checkExpectedCounts(classEntries, "classes");
 

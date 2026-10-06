@@ -176,6 +176,8 @@ export function spellSlotMaxima(entries: readonly SpellSlotsEntry[]): { ordinary
 export interface CharacterSpellSlotMaxima {
 	ordinary: number[]
 	pact: number
+	/** Slot level of the Pact Magic pool; 0 when there is none. */
+	pactSlotLevel: number
 	/** Set only when the D322 multiclass table applies (2+ Spellcasting classes). */
 	casterLevel: number | null
 	/** Per-class caster-level contributions when combined, otherwise each class's own non-zero slot lines. */
@@ -202,6 +204,7 @@ export function characterSpellSlotMaxima(character: Character, classData: ClassS
 	const slots = computeSpellSlots(character, classData)
 	if (slots.status === 'unknown') return slots
 	const own = spellSlotMaxima(slots.value)
+	const pactSlotLevel = slots.value.reduce((level, entry) => Math.max(level, entry.pactSlots?.slotLevel ?? 0), 0)
 
 	// An EK/AT row is all zeros before its subclass grants Spellcasting, so a non-zero row is what marks a Spellcasting class.
 	const casters: { characterClass: CharacterClass; casterProgression: CasterProgression }[] = []
@@ -216,7 +219,7 @@ export function characterSpellSlotMaxima(character: Character, classData: ClassS
 
 	if (casters.length < 2) {
 		const ordinaryBreakdown = slots.value.flatMap((entry) => entry.ordinarySlotsBreakdown ?? [])
-		return known({ ordinary: own.ordinary, pact: own.pact, casterLevel: null, ordinaryBreakdown }, [])
+		return known({ ordinary: own.ordinary, pact: own.pact, pactSlotLevel, casterLevel: null, ordinaryBreakdown }, [])
 	}
 
 	const ordinaryBreakdown: Contribution[] = casters.map(({ characterClass, casterProgression }) => ({
@@ -230,7 +233,7 @@ export function characterSpellSlotMaxima(character: Character, classData: ClassS
 		return unknown(`No multiclass spell slot row for caster level ${casterLevel} (Wizard XPHB table).`)
 	}
 	const ordinary = Array.from({ length: SPELL_LEVELS }, (_, i) => row[i] ?? 0)
-	return known({ ordinary, pact: own.pact, casterLevel, ordinaryBreakdown }, ordinaryBreakdown)
+	return known({ ordinary, pact: own.pact, pactSlotLevel, casterLevel, ordinaryBreakdown }, ordinaryBreakdown)
 }
 
 /**

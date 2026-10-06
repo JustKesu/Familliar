@@ -6083,6 +6083,34 @@ describe('CharacterSheet', () => {
 				expect(onSlots).toHaveBeenLastCalledWith({ ordinary: { 2: 1 } })
 			})
 
+			it('F-9 D324: unknown slot maxima (no Wizard XPHB row for the combined table) show the reason in the Spells section and the Spell Slots drawer, not zero slots', async () => {
+				vi.mocked(loadSpellcastingAbilityClassData).mockResolvedValue([
+					{ className: 'Cleric', classSource: 'XPHB', ability: 'wis' },
+					{ className: 'Sorcerer', classSource: 'XPHB', ability: 'cha' },
+				])
+				const table = [[2], [3], [4, 2]]
+				vi.mocked(loadSpellSlotsClassData).mockResolvedValue([
+					{ className: 'Cleric', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: table, pactSlotsByLevel: null },
+					{ className: 'Sorcerer', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: table, pactSlotsByLevel: null },
+				])
+				const twoCasters: Character = {
+					id: 'f9-unknown',
+					name: 'No Combined Table',
+					classes: [
+						{ className: 'Cleric', classSource: 'XPHB', subclass: null, level: 2 },
+						{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 2 },
+					],
+					abilityScores: { method: 'standardArray', scores: { strength: 8, dexterity: 12, constitution: 13, intelligence: 10, wisdom: 15, charisma: 14 } },
+				}
+				const { container } = render(<CharacterSheet character={twoCasters} />)
+				await waitFor(() => expect(screen.getAllByText(/Wizard XPHB/)).toHaveLength(1))
+				expect(container.querySelectorAll('.sheet__use-box')).toHaveLength(0)
+
+				fireEvent.click(screen.getByRole('button', { name: 'Spell Slots' }))
+				const drawer = await screen.findByRole('dialog', { name: 'Spell Slots' })
+				expect(within(drawer).getByText(/Wizard XPHB/)).toBeTruthy()
+			})
+
 			it('a feat spell with a free-use term gets a USE row beside its CAST row (D191)', async () => {
 				vi.mocked(loadSpellSlotsClassData).mockResolvedValue(CLERIC_SLOTS)
 				vi.mocked(loadSpellDetails).mockResolvedValue([spellDetail({ name: 'Sleep', source: 'XPHB', level: 1, conditionInflict: ['unconscious'] })])
@@ -7097,6 +7125,7 @@ describe('CharacterSheet', () => {
 		})
 
 		it('a non-caster (Fighter) with Magic Initiate shows the Spells list AND a feat spellcasting entry (attack/DC), with no slots section', async () => {
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue([{ className: 'Fighter', classSource: 'XPHB', casterProgression: null, spellSlotsByLevel: null, pactSlotsByLevel: null }])
 			const details: SpellDetail[] = [
 				spellDetail({ name: 'Fire Bolt', source: 'XPHB', level: 0, entries: ['You hurl a mote of fire.'] }),
 				spellDetail({ name: 'Mage Hand', source: 'XPHB', level: 0, entries: ['A spectral hand appears.'] }),
@@ -7158,6 +7187,7 @@ describe('CharacterSheet', () => {
 		})
 
 		it('a non-caster with a fixed-ability feat spell (Fey Teleportation) shows it in the Spells list and a feat spellcasting entry', async () => {
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue([{ className: 'Fighter', classSource: 'XPHB', casterProgression: null, spellSlotsByLevel: null, pactSlotsByLevel: null }])
 			const details: SpellDetail[] = [spellDetail({ name: 'Misty Step', source: 'XPHB', level: 2, entries: ['Briefly surrounded by silvery mist.'] })]
 			const featGrantedSpells: FeatGrantedSpell[] = [
 				{ name: 'Misty Step', source: 'XPHB', level: 2, ritual: false, concentration: false, origin: 'feat', featName: 'Fey Teleportation', ability: 'int' },
@@ -7327,6 +7357,7 @@ describe('CharacterSheet', () => {
 		})
 
 		it("a non-caster (Fighter) with a Mark feat shows the mark's FIXED spell plus its own feat spellcasting entry, no slots — `expanded` never applies with no Spellcasting/Pact Magic feature to widen (D46)", async () => {
+			vi.mocked(loadSpellSlotsClassData).mockResolvedValue([{ className: 'Fighter', classSource: 'XPHB', casterProgression: null, spellSlotsByLevel: null, pactSlotsByLevel: null }])
 			const details: SpellDetail[] = [spellDetail({ name: 'Detect Magic', source: 'XPHB', level: 1, entries: ['You sense the presence of magic.'] })]
 			const featGrantedSpells: FeatGrantedSpell[] = [
 				{ name: 'Detect Magic', source: 'XPHB', level: 1, ritual: false, concentration: true, origin: 'feat', featName: 'Mark of Detection', ability: 'int' },

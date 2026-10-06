@@ -4934,3 +4934,10 @@ Kostka každé úrovně postavy = kostka třídy té úrovně: jedna třída = t
 „Cannot tell which class each level came from (no level history). Set a manual maximum.“; `maxHpOverride` vyhrává dál.
 Krok Hit points při level-upu už neukazuje řádek Level 1, jen novou úroveň (rozhodl Daniel); creation a Edit ho
 ukazují dál. Brána `hitDieKey` a průběžné max HP wizardu zůstávají jednotřídní do M7. Task M4, 6. 10. 2026.
+
+## D324 — Neznámá maxima slotů ukazují důvod, pact úroveň v maximech (F-9, schéma zůstává 59)
+
+Když `characterSpellSlotMaxima` vrátí nevyřešeno (chybí řádek Wizard XPHB pro společnou úroveň, nebo třída v datech slotů),
+karta Spells i drawer Spell Slots ukážou důvod komponentou `UnresolvedValue` (jako max HP) místo tichých nulových slotů.
+`CharacterSpellSlotMaxima` nově nese `pactSlotLevel` (0 bez Pact Magic); sheet ho čte odtud, ne z `spellSlotsEntries`.
+Chování při známých datech beze změny. Task F-9, 6. 10. 2026.

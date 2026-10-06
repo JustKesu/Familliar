@@ -6,8 +6,6 @@ const SCORES = { strength: 8, dexterity: 14, constitution: 13, intelligence: 15,
 
 function multiclass(id: string, order: [string, number][]) {
   return {
-    // Multiclass max HP is not computed yet and Long Rest needs one.
-    maxHpOverride: 40,
     schemaVersion: 59,
     id,
     name: id,
@@ -48,6 +46,16 @@ test('M3 a: Wizard 3 / Cleric 3 — caster level 6 gives 4/3/3 slot boxes; a spe
   await expect(usedBoxes(third)).toHaveCount(1)
   await page.getByRole('button', { name: 'Long Rest', exact: true }).click()
   await expect(usedBoxes(third)).toHaveCount(0)
+})
+
+test('F-9: Wizard 3 / Cleric 3 — the Spell Slots drawer shows the multiclass section and no per-class slot sections', async ({ page }) => {
+  await openSpells(page, multiclass('f9-drawer', [['Wizard', 3], ['Cleric', 3]]))
+  await page.getByRole('button', { name: 'Spell Slots', exact: true }).click()
+  const drawer = page.getByRole('dialog', { name: 'Spell Slots' })
+  await expect(drawer.getByText('Multiclass Spellcaster (caster level 6)', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('1st 4 · 2nd 3 · 3rd 3', { exact: true })).toBeVisible()
+  await expect(drawer.getByText('Wizard', { exact: true })).toHaveCount(0)
+  await expect(drawer.getByText('Cleric', { exact: true })).toHaveCount(0)
 })
 
 test('M3 b: Warlock 6 / Sorcerer 3 — ordinary 1st and 2nd from Sorcerer 3 alone (4 and 2), the pact section unchanged', async ({ page }) => {

@@ -2561,8 +2561,9 @@ function CharacterSheetBody({
 		...speciesSpellcastingEntries.map((entry) => ({ ...entry, key: `species|${entry.speciesName}`, name: entry.speciesName })),
 	]
 	const slotMaximaResult = characterSpellSlotMaxima(character, spellSlotsClassData)
-	const slotMaxima = slotMaximaResult.status === 'known' ? slotMaximaResult.value : { ...spellSlotMaxima([]), casterLevel: null, ordinaryBreakdown: [] }
-	const pactSlotLevel = spellSlotsEntries.reduce((level, entry) => Math.max(level, entry.pactSlots?.slotLevel ?? 0), 0)
+	const slotMaxima = slotMaximaResult.status === 'known' ? slotMaximaResult.value : { ...spellSlotMaxima([]), pactSlotLevel: 0, casterLevel: null, ordinaryBreakdown: [] }
+	const slotMaximaReason = slotMaximaResult.status === 'unknown' ? slotMaximaResult.reason : null
+	const pactSlotLevel = slotMaxima.pactSlotLevel
 	const hasSpellSlots = slotMaxima.pact > 0 || slotMaxima.ordinary.some((count) => count > 0)
 	const spellSections = spellsTabActionSections({
 		entries: combinedSpells,
@@ -3080,7 +3081,7 @@ function CharacterSheetBody({
 							})}
 						</div>
 					)}
-					{hasSpellSlots && (
+					{(hasSpellSlots || slotMaximaReason !== null) && (
 						<button type="button" className="sheet__actions-per-action-label sheet__spell-slots-button" onClick={() => setDrawer({ kind: 'spellSlots' })}>
 							Spell Slots
 						</button>
@@ -3123,6 +3124,12 @@ function CharacterSheetBody({
 							<UnresolvedValue reason={note.text} />
 						</p>
 					))}
+					{/* D324: unknown slot maxima say why instead of showing zero slots. */}
+					{slotMaximaReason !== null && (
+						<p className="sheet__spell-slots-unknown">
+							<UnresolvedValue reason={slotMaximaReason} />
+						</p>
+					)}
 					{/* Slice 8e2 (D106): the "cannot tell" case (D43) — multiclassing, or a class this app's data has nothing for — replaces both notices below rather than showing a count that would silently ignore the gap. */}
 					{spellLimitReason !== null && hasChosenSpells && (
 						<p className="sheet__spell-limit-unknown">
@@ -3401,6 +3408,11 @@ function CharacterSheetBody({
 
 			{drawer?.kind === 'spellSlots' && (
 				<Drawer title="Spell Slots" onClose={() => setDrawer(null)}>
+					{slotMaximaReason !== null && (
+						<DrawerSection title="Spell slots">
+							<UnresolvedValue reason={slotMaximaReason} />
+						</DrawerSection>
+					)}
 					{slotMaxima.casterLevel !== null && (
 						<DrawerSection title={`Multiclass Spellcaster (caster level ${slotMaxima.casterLevel})`}>
 							<p className="drawer__value">

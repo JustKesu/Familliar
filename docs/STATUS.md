@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4 done (see the entries below).
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9 done (see the entries below).
 
 ## Co appka umí navíc k build orderu
 
@@ -1920,6 +1920,14 @@ multiclass breakdown rows name the class, single-class wording unchanged) and `H
 row. Multiclass with levelOrder now gets a known max, so Long Rest is enabled. Wizard `hitDieKey` gate and draft max HP
 stay single-class (M7). Unit `maxHitPoints.test.ts`, `HitPointsPicker.test.tsx`; E2E `multiclassHitPoints.spec.ts`,
 `wizardW6.spec.ts` (W-6 a/e).
+
+F-9 done (D324), review fixes for M2–M4. No schema change (59). `CharacterSpellSlotMaxima.pactSlotLevel` added (sheet
+reads it instead of `spellSlotsEntries`). Unknown slot maxima now show their reason (`UnresolvedValue`) in the Spells
+section and the Spell Slots drawer (button shown too) instead of zero slots. Manage Feats held tools use `firstClass`
+(`heldToolsOf`); prerequisite proficiencies moved to exported `prerequisiteClassProficiencies`. validate-data pins Wizard
+XPHB slot rows 1, 5, 19, 20 to the multiclass table. Tests: `spellSlots.test.ts` (Warlock + two casters, Arcane Trickster,
+three classes, unknown), `ManageFeatsPanel.test.ts`, `CharacterSheet.test.tsx` (unknown reason), E2E
+`multiclassSlots.spec.ts` (drawer; stale max HP override dropped). Findings 1–2 of the review stay open (M6/M7).
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
