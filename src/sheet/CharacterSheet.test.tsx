@@ -7613,7 +7613,7 @@ describe('CharacterSheet', () => {
 			expect(spellsSection.querySelector('.sheet__spell-limit-unknown')).toBeNull()
 		})
 
-		it('says the limit cannot be determined for a multiclass character, rather than showing nothing', async () => {
+		it('D325: gives a multiclass character the unknown reason of the class that chose the spell only', async () => {
 			const details: SpellDetail[] = [spellDetail({ name: 'Fireball', source: 'XPHB', level: 3 })]
 			vi.mocked(loadSpellDetails).mockResolvedValue(details)
 
@@ -7637,8 +7637,9 @@ describe('CharacterSheet', () => {
 			const spellsSection = container.querySelector('.sheet__spells')!
 			await waitFor(() => expect(spellsSection.textContent).toContain('Fireball'))
 
-			expect(container.querySelector('.sheet__spell-limit-unknown')).toBeTruthy()
-			expect(spellsSection.textContent).toContain('combining more than one class')
+			const unknown = [...container.querySelectorAll('.sheet__spell-limit-unknown')].map((node) => node.textContent)
+			expect(unknown).toEqual([expect.stringContaining('No spell slot data for class "Wizard"')])
+			expect(spellsSection.textContent).not.toContain('combining more than one class')
 			expect(spellsSection.textContent).not.toContain('Unavailable at this level')
 			expect(spellsSection.querySelector('.sheet__spell-count-over')).toBeNull()
 		})

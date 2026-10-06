@@ -57,10 +57,21 @@ export interface SpellGrant {
 	instanceKey?: string
 }
 
+export interface SpellClassRef {
+	className: string
+	classSource: string
+}
+
 export interface SheetSpellEntry {
 	name: string
 	source: string
 	chosen: boolean
+	/** D325: the class whose pick this row is; a spell two classes chose is two rows. */
+	chosenBy?: SpellClassRef
+	/** D325: set on the second class's row of a spell, so the two rows key apart. */
+	rowKey?: string
+	/** D325: the classes owning the subclasses in subclassOrigins — a subclass grant casts with its own class. */
+	subclassOwners?: SpellClassRef[]
 	/** Subclass name(s) that grant this spell as always-prepared. Almost always 0 or 1 entry; a list only to cover a character with more than one subclass-granting class at once. */
 	subclassOrigins: string[]
 	/** D192: class(es) whose class record grants this spell as always-prepared (Ranger's Hunter's Mark). */
@@ -86,9 +97,10 @@ export interface SheetSpellEntry {
 	grants: SpellGrant[]
 }
 
-export function provenanceLabel(entry: SheetSpellEntry): string {
+/** `multiclass`: the character has 2+ classes, so a pick names its class (D325). */
+export function provenanceLabel(entry: SheetSpellEntry, multiclass = false): string {
 	const parts: string[] = []
-	if (entry.chosen) parts.push('player pick')
+	if (entry.chosen) parts.push(multiclass && entry.chosenBy ? `player pick (${entry.chosenBy.className})` : 'player pick')
 	for (const className of entry.classOrigins) parts.push(`always prepared (${className})`)
 	for (const subclassName of entry.subclassOrigins) parts.push(`always prepared (${subclassName})`)
 	for (const featName of entry.featOrigins) parts.push(`from feat (${featName})`)
@@ -104,6 +116,15 @@ export function provenanceLabel(entry: SheetSpellEntry): string {
 
 function keyOf(name: string, source: string): string {
 	return `${name.toLowerCase()}|${source.toUpperCase()}`
+}
+
+/** A row's identity on the Spells and Actions tabs. */
+export function spellEntryKey(entry: Pick<SheetSpellEntry, 'name' | 'source' | 'rowKey'>): string {
+	return entry.rowKey ?? keyOf(entry.name, entry.source)
+}
+
+function sameClass(a: SpellClassRef, b: SpellClassRef): boolean {
+	return a.className === b.className && a.classSource === b.classSource
 }
 
 function emptyEntry(name: string, source: string, chosen: boolean): SheetSpellEntry {
@@ -123,8 +144,8 @@ function mergeUsage(entry: SheetSpellEntry, origin: SpellGrantOrigin, originName
 
 /** Merges the player's chosen spells, every class's subclass always-prepared spells, fixed feat-granted spells (d5a), chosen-optional-feature grants (step 6a) and species grants (raceSpells.ts) into one list, counting an overlap once (D44 spirit). */
 export function combineSpellEntries(
-	spellChoices: { spells: { name: string; source: string }[] }[],
-	subclassAlwaysPrepared: { subclassName: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[],
+	spellChoices: { className?: string; classSource?: string; spells: { name: string; source: string }[] }[],
+	subclassAlwaysPrepared: { subclassName: string; className?: string; classSource?: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[],
 	featGrantedSpells: { featName: string; featInstance?: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
 	optionalFeatureGrantedSpells: { optionName: string; name: string; source: string; usage?: SpellUsage | null; itemName?: string }[] = [],
 	raceGrantedSpells: { speciesName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
@@ -143,19 +164,30 @@ export function combineSpellEntries(
 	}
 
 	for (const choice of spellChoices) {
+		const chooser = choice.className !== undefined && choice.classSource !== undefined ? { className: choice.className, classSource: choice.classSource } : undefined
 		for (const spell of choice.spells) {
 			const key = keyOf(spell.name, spell.source)
 			const existing = map.get(key)
-			if (existing) existing.chosen = true
-			else map.set(key, emptyEntry(spell.name, spell.source, true))
+			if (!existing) {
+				map.set(key, { ...emptyEntry(spell.name, spell.source, true), ...(chooser ? { chosenBy: chooser } : {}) })
+			} else if (!existing.chosen) {
+				existing.chosen = true
+				if (chooser) existing.chosenBy = chooser
+			} else if (chooser && existing.chosenBy && !sameClass(existing.chosenBy, chooser)) {
+				// D325: grants stay merged into the first chooser's row; the second class gets a pick-only row.
+				const rowKey = `${key}|${chooser.className}|${chooser.classSource}`
+				if (!map.has(rowKey)) map.set(rowKey, { ...emptyEntry(spell.name, spell.source, true), chosenBy: chooser, rowKey })
+			}
 		}
 	}
 
 	for (const group of subclassAlwaysPrepared) {
+		const owner = group.className !== undefined && group.classSource !== undefined ? { className: group.className, classSource: group.classSource } : undefined
 		for (const spell of group.spells) {
 			const key = keyOf(spell.name, spell.source)
 			const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
 			if (!entry.subclassOrigins.includes(group.subclassName)) entry.subclassOrigins.push(group.subclassName)
+			if (owner && !(entry.subclassOwners ?? []).some((known) => sameClass(known, owner))) entry.subclassOwners = [...(entry.subclassOwners ?? []), owner]
 			mergeUsage(entry, 'subclass', group.subclassName, spell.usage)
 			map.set(key, entry)
 		}

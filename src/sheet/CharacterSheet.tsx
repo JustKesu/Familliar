@@ -46,7 +46,6 @@ import { itemSpellAbilityOf, itemSpellActionRows, itemSpells as buildItemSpells 
 import { characterSpellSlotMaxima, computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
-import { highestSlotLevel } from '../spells/spellLevelFilter'
 import { wildShapeLimitsFor } from '../beasts/wildShapeData'
 import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
@@ -72,7 +71,7 @@ import { loadChosenClassFeatureChoices, type ChosenClassFeatureChoice } from '..
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells, type RaceSpellGrants } from '../spells/raceSpells'
-import { findSpellDetail, loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
+import { loadSpellDetails, type SpellDetail } from '../spells/spellDetailData'
 import { BeastStatBody } from './BeastStatBlock'
 import {
 	inventoryRowKey,
@@ -106,6 +105,7 @@ import {
 	type FeatTextEntry,
 } from './sheetData'
 import { combineSpellEntries, provenanceLabel, SpellDetailBody } from './SpellList'
+import { chosenSpellCap, classSpellLimits } from './classSpellLimits'
 import {
 	filterSpellsTabSections,
 	ordinalLevel,
@@ -717,6 +717,7 @@ function ActionsSection({
 	onSpendResource,
 	ammoFor,
 	onSpendAmmo,
+	multiclass = false,
 }: {
 	attacks: WeaponAttack[]
 	attacksPerAction: Calculated<number>
@@ -745,6 +746,8 @@ function ActionsSection({
 	/** The inventory rows that feed a weapon firing this ammoType (slice 9d3). */
 	ammoFor: (ammoType: string) => AmmoEntry[]
 	onSpendAmmo?: (entry: AmmoEntry) => void
+	/** D325: a pick's provenance names its class. */
+	multiclass?: boolean
 }): ReactNode {
 	/* D116/R5a: which rows show is UI state of this tab only, never written to the character. */
 	const [filter, setFilter] = useState<ActionFilter>('all')
@@ -850,7 +853,7 @@ function ActionsSection({
 									)
 								})}
 								{group.spells.map((spell) => (
-									<ActionGroupRow key={`spell|${spell.key}`} name={spell.entry.name} source={`Spell · ${spellLevelLabel(spell.detail.level)} · ${provenanceLabel(spell.entry)}`}>
+									<ActionGroupRow key={`spell|${spell.key}`} name={spell.entry.name} source={`Spell · ${spellLevelLabel(spell.detail.level)} · ${provenanceLabel(spell.entry, multiclass)}`}>
 										<SpellDetailBody detail={spell.detail} resolverData={resolverData} />
 									</ActionGroupRow>
 								))}
@@ -869,6 +872,7 @@ function SpellTabRow({
 	row,
 	section,
 	castingClassName,
+	multiclass,
 	caster,
 	characterLevel,
 	slotsLeft,
@@ -886,6 +890,7 @@ function SpellTabRow({
 	row: SpellsTabActionRow
 	section: SpellsTabActionSection
 	castingClassName: string | null
+	multiclass: boolean
 	caster: SpellCaster
 	characterLevel: number
 	/** In the pool CAST spends from; 0 when the section has no slots. */
@@ -963,7 +968,7 @@ function SpellTabRow({
 					</button>
 					{row.badgeLevel !== null && <span className="sheet__spell-badge">{ordinalLevel(row.badgeLevel)}</span>}
 				</span>
-				<span className="sheet__action-subtitle">{spellSubtitle(row, castingClassName)}</span>
+				<span className="sheet__action-subtitle">{spellSubtitle(row, castingClassName, multiclass)}</span>
 			</div>
 			{detail ? (
 				<>
@@ -1010,7 +1015,7 @@ function SpellTabRow({
 			{open && (
 				<div className="sheet__spell-row-text">
 					{detail && <SpellDetailBody detail={detail} resolverData={resolverData} />}
-					<p className="sheet__spell-provenance">{provenanceLabel(entry)}</p>
+					<p className="sheet__spell-provenance">{provenanceLabel(entry, multiclass)}</p>
 					{detail?.concentration && onToggleConcentration && (
 						<button
 							type="button"
@@ -1039,6 +1044,7 @@ function SpellsSection({
 	casterOf,
 	characterLevel,
 	castingClassName,
+	multiclass,
 	spentSpellSlots,
 	pactRecharge,
 	concentratingOn,
@@ -1060,6 +1066,7 @@ function SpellsSection({
 	casterOf: (row: SpellsTabActionRow) => SpellCaster
 	characterLevel: number
 	castingClassName: string | null
+	multiclass: boolean
 	spentSpellSlots: SpentSpellSlots
 	pactRecharge: string
 	concentratingOn: ConcentrationRef | null
@@ -1165,6 +1172,7 @@ function SpellsSection({
 												row={row}
 												section={section}
 												castingClassName={castingClassName}
+											multiclass={multiclass}
 												caster={casterOf(row)}
 												characterLevel={characterLevel}
 												slotsLeft={slotsLeft}
@@ -1729,7 +1737,7 @@ function CharacterSheetBody({
 	const [ruleTexts, setRuleTexts] = useState<RuleTexts | null>(null)
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
-	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
+	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; className: string; classSource: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
 	/** D192: class-record always-prepared grants, one group per class. */
 	const [classSpellInfo, setClassSpellInfo] = useState<{ className: string; spells: AlwaysPreparedSpell[] }[]>([])
 	/** Fixed feat-granted spells (d5a) — depends on the character's feats (featInstances, D156), fetched separately from the main load same as subclassSpellInfo. */
@@ -1922,7 +1930,7 @@ function CharacterSheetBody({
 				)
 				const chosen = matchingChoices.length > 0 ? await loadSubclassChosenSpells(matchingChoices) : []
 				// dedupeAlwaysPreparedSpells: a d6b picked spell could in principle coincide with the subclass's own fixed grant — same "spell reachable via two paths" reasoning as subclassPreparedSpells.ts's own dedup, applied again here since this concatenation happens outside that module.
-				return { subclassName: c.subclass, alwaysPrepared: dedupeAlwaysPreparedSpells([...alwaysPrepared, ...chosen]) }
+				return { subclassName: c.subclass, className: c.className, classSource: c.classSource, alwaysPrepared: dedupeAlwaysPreparedSpells([...alwaysPrepared, ...chosen]) }
 			}),
 		)
 		Promise.all([classGrants, subclassGrants])
@@ -2128,7 +2136,7 @@ function CharacterSheetBody({
 	 */
 	const combinedSpells = combineSpellEntries(
 		character.spellChoices ?? [],
-		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, spells: info.alwaysPrepared })),
+		subclassSpellInfo.map((info) => ({ subclassName: info.subclassName, className: info.className, classSource: info.classSource, spells: info.alwaysPrepared })),
 		featSpells,
 		optionalFeatureSpells,
 		raceSpells.spells,
@@ -2347,40 +2355,9 @@ function CharacterSheetBody({
 	const spellSlotsEntries = spellSlots.status === 'known' ? spellSlots.value : []
 	const spellCounts = computeSpellCounts(character, spellCountClassData)
 	const spellCountEntries = spellCounts.status === 'known' ? spellCounts.value : []
-	/*
-	 * Slice 8e2 (D106): what this character stores against what its level
-	 * allows, for the two things that carry no level of their own (D104) —
-	 * known/prepared spells and Wild Shape forms. D11's phase-1 single-class
-	 * assumption runs through spellSlots.ts/spellCounts.ts/spellLevelFilter.ts
-	 * already; a multiclass character (more than one class) is the same gap
-	 * those modules already name, so it reads as "cannot tell" (D43) rather
-	 * than silently showing nothing or, worse, a number computed off just one
-	 * of its classes.
-	 */
-	const singleCastingClass = character.classes.length === 1 ? character.classes[0] : null
-	const spellLimitReason: string | null =
-		character.classes.length > 1
-			? 'Cannot tell this character’s spell limits: combining more than one class’s spellcasting is build order step 10.'
-			: spellSlots.status === 'unknown'
-				? spellSlots.reason
-				: spellCounts.status === 'unknown'
-					? spellCounts.reason
-					: null
-	const castableSlotsEntry = singleCastingClass
-		? spellSlotsEntries.find((entry) => entry.className === singleCastingClass.className && entry.classSource === singleCastingClass.classSource)
-		: undefined
-	const highestCastableLevel = spellLimitReason === null ? highestSlotLevel(castableSlotsEntry) : null
-	const spellCountEntry = singleCastingClass
-		? spellCountEntries.find((entry) => entry.className === singleCastingClass.className && entry.classSource === singleCastingClass.classSource)
-		: undefined
-	/* Only CHOSEN spells (spellChoices) are the freely-swapped known/prepared pool D104 leaves untouched by level removal — a subclass/feat/species grant is always legal by construction and isn't counted here. */
-	const chosenSpellLevels = combinedSpells
-		.filter((entry) => entry.chosen)
-		.map((entry) => findSpellDetail(spellDetails, entry.name, entry.source)?.level)
-		.filter((level): level is number => level !== undefined)
-	const cantripsStored = chosenSpellLevels.filter((level) => level === 0).length
-	const leveledSpellsStored = chosenSpellLevels.filter((level) => level > 0).length
-	const hasChosenSpells = combinedSpells.some((entry) => entry.chosen)
+	/* Slice 8e2 (D106), per class since D325: what each class's picks store against what that class alone allows. Only CHOSEN spells count (D104). */
+	const multiclassed = isMulticlass(character.classes)
+	const spellLimits = classSpellLimits(character, spellSlotsClassData, spellCountClassData, combinedSpells, spellDetails)
 	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
 	const speciesSpellcasting = computeSpeciesSpellcasting(character, raceSpells.spells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
@@ -2570,7 +2547,7 @@ function CharacterSheetBody({
 		details: spellDetails,
 		ordinarySlots: slotMaxima.ordinary,
 		pact: slotMaxima.pact > 0 ? { count: slotMaxima.pact, slotLevel: pactSlotLevel } : null,
-		unavailableAboveLevel: spellLimitReason === null ? (highestCastableLevel ?? undefined) : undefined,
+		unavailableAboveFor: chosenSpellCap(spellLimits, character),
 		resourceMaxima,
 		itemSpells,
 	})
@@ -3096,6 +3073,7 @@ function CharacterSheetBody({
 					casterOf={(row) => spellsTabRowCaster(row, spellcastingEntries, featSpellcastingEntries, speciesSpellcastingEntries)}
 					characterLevel={totalCharacterLevel(character.classes)}
 					castingClassName={spellcastingEntries.length === 1 ? spellcastingEntries[0]!.className : null}
+				multiclass={multiclassed}
 					spentSpellSlots={spentSpellSlots}
 					pactRecharge={pactShortRest !== null ? 'Short Rest' : 'Long Rest'}
 					concentratingOn={concentratingOn}
@@ -3130,23 +3108,27 @@ function CharacterSheetBody({
 							<UnresolvedValue reason={slotMaximaReason} />
 						</p>
 					)}
-					{/* Slice 8e2 (D106): the "cannot tell" case (D43) — multiclassing, or a class this app's data has nothing for — replaces both notices below rather than showing a count that would silently ignore the gap. */}
-					{spellLimitReason !== null && hasChosenSpells && (
-						<p className="sheet__spell-limit-unknown">
-							<UnresolvedValue reason={spellLimitReason} />
-						</p>
-					)}
-					{/* The count-only notice (D106): which spell is over the limit is unknowable (freely swapped, D104), so only how many is shown — never a guess at which one. */}
-					{spellLimitReason === null && spellCountEntry && cantripsStored > spellCountEntry.cantripCount && (
-						<p className="sheet__spell-count-over">
-							Cantrips: {cantripsStored} known, {spellCountEntry.cantripCount} allowed.
-						</p>
-					)}
-					{spellLimitReason === null && spellCountEntry && leveledSpellsStored > spellCountEntry.leveledSpellCount && (
-						<p className="sheet__spell-count-over">
-							Spells {spellCountEntry.label}: {leveledSpellsStored} {spellCountEntry.label}, {spellCountEntry.leveledSpellCount} allowed.
-						</p>
-					)}
+					{/* Slice 8e2 (D106): the "cannot tell" case (D43) — a class this app's data has nothing for — replaces that class's notices below rather than showing a count that would silently ignore the gap. */}
+					{spellLimits.map((limit) => (
+						<Fragment key={`${limit.className}|${limit.classSource}`}>
+							{limit.reason !== null && limit.hasChosenSpells && (
+								<p className="sheet__spell-limit-unknown">
+									<UnresolvedValue reason={limit.reason} />
+								</p>
+							)}
+							{/* The count-only notice (D106): which spell is over the limit is unknowable (freely swapped, D104), so only how many is shown — never a guess at which one. */}
+							{limit.counts && limit.cantripsStored > limit.counts.cantripCount && (
+								<p className="sheet__spell-count-over">
+									{multiclassed ? `${limit.className} cantrips` : 'Cantrips'}: {limit.cantripsStored} known, {limit.counts.cantripCount} allowed.
+								</p>
+							)}
+							{limit.counts && limit.leveledSpellsStored > limit.counts.leveledSpellCount && (
+								<p className="sheet__spell-count-over">
+									{multiclassed ? `${limit.className} spells` : 'Spells'} {limit.counts.label}: {limit.leveledSpellsStored} {limit.counts.label}, {limit.counts.leveledSpellCount} allowed.
+								</p>
+							)}
+						</Fragment>
+					))}
 				</>
 					}
 				/>
@@ -3225,6 +3207,7 @@ function CharacterSheetBody({
 				className={activeTab === 'actions' ? 'sheet__panel sheet__panel--active' : 'sheet__panel'}
 			>
 			<ActionsSection
+				multiclass={multiclassed}
 				attacks={weaponAttacks}
 				attacksPerAction={attacksPerAction}
 				spellActions={spellActions}

@@ -26,7 +26,7 @@ import type { FeatSpellcastingEntry, SpeciesSpellcastingEntry, SpellcastingEntry
 import type { Contribution } from '../calculation/types'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
-import type { SheetSpellEntry, SpellGrant } from './SpellList'
+import { spellEntryKey, type SheetSpellEntry, type SpellGrant } from './SpellList'
 import { formatRange } from './spellFormatting'
 
 export interface SpellActionAttack {
@@ -58,19 +58,14 @@ export interface SpellActionData {
 	origin?: string
 }
 
-/** Matches SpellList.ts's own key, so a row and its Kouzla-tab entry identify a spell the same way. */
-function keyOf(name: string, source: string): string {
-	return `${name.toLowerCase()}|${source.toUpperCase()}`
-}
-
 /**
  * Which caster the spell's numbers come from. A feat- or species-granted spell
  * uses its own source's entry (a Fighter with Magic Initiate, or an Aasimar
  * Fighter, has no casting class at all — computeFeatSpellcasting and
  * computeSpeciesSpellcasting exist for exactly that); anything else uses the
- * character's casting class. More than one casting class is a multiclass
- * question (build order step 10) and the entry carries no class attribution,
- * so it resolves to nothing rather than to an arbitrary pick.
+ * character's casting class. A pick casts with the class that chose it, a
+ * class or subclass grant with its own class (D325); anything else under more
+ * than one casting class resolves to nothing rather than to an arbitrary pick.
  *
  * The race slice adds one case the others don't have: a spell granted ONLY by
  * a species whose spellcasting ability has not been chosen yet (33 of the 34
@@ -110,9 +105,19 @@ export function casterFor(
 	// R14c1: an item's invocation casts with a Warlock's numbers; without a Warlock level there are none to borrow (D43).
 	const itemInvocationAsWarlock = entry.itemInvocationOrigins.length > 0 && classEntries.some((c) => c.className === 'Warlock')
 	const grantedByClass = entry.chosen || entry.classOrigins.length > 0 || entry.subclassOrigins.length > 0 || entry.optionalFeatureOrigins.length > 0 || itemInvocationAsWarlock
-	// D192: a class-record grant casts with that class's own ability, also in a multiclass.
-	if (!entry.chosen && entry.classOrigins.length > 0) {
-		const own = classEntries.filter((c) => entry.classOrigins.includes(c.className))
+	// D325: a pick casts with the class that chose it.
+	if (entry.chosen && entry.chosenBy) {
+		const chooser = entry.chosenBy
+		const own = classEntries.find((c) => c.className === chooser.className && c.classSource === chooser.classSource)
+		if (own) return toCaster(own)
+		if (classEntries.length > 1) return { reason: `No spellcasting ability is known for ${chooser.className}, the class that chose "${entry.name}".` }
+	}
+	// D192: a class-record grant casts with that class's own ability, also in a multiclass; D325: a subclass grant with the class owning the subclass.
+	const owners = entry.subclassOwners ?? []
+	if (!entry.chosen && (entry.classOrigins.length > 0 || owners.length > 0)) {
+		const own = classEntries.filter(
+			(c) => entry.classOrigins.includes(c.className) || owners.some((owner) => owner.className === c.className && owner.classSource === c.classSource),
+		)
 		if (own.length === 1) return toCaster(own[0]!)
 	}
 	if (featEntry && !grantedByClass) return toCaster(featEntry)
@@ -233,7 +238,7 @@ export function spellGroupRows(entries: SheetSpellEntry[], details: SpellDetail[
 		const detail = findSpellDetail(details, entry.name, entry.source)
 		if (!detail || (detail.spellAttack?.length ?? 0) > 0 || (detail.savingThrow?.length ?? 0) > 0) continue
 		const unit = detail.time[0]?.unit
-		if (unit === 'bonus' || unit === 'reaction') rows.push({ key: keyOf(entry.name, entry.source), entry, detail, actionType: unit })
+		if (unit === 'bonus' || unit === 'reaction') rows.push({ key: spellEntryKey(entry), entry, detail, actionType: unit })
 	}
 	return rows.sort((a, b) => a.detail.level - b.detail.level || a.entry.name.localeCompare(b.entry.name))
 }
@@ -261,7 +266,9 @@ export function spellActionRows(
 	for (const entry of entries) {
 		const detail = findSpellDetail(details, entry.name, entry.source)
 		if (!detail) continue
-		const row = spellActionData(keyOf(entry.name, entry.source), entry.name, detail, () => casterFor(entry, classEntries, featEntries, speciesEntries), characterLevel)
+		const row = spellActionData(spellEntryKey(entry), entry.name, detail, () => casterFor(entry, classEntries, featEntries, speciesEntries), characterLevel)
+		// D325: with two casting classes a pick's row names its class, so a spell both chose reads as two rows.
+		if (row && entry.chosen && entry.chosenBy && classEntries.length > 1) row.origin = entry.chosenBy.className
 		if (row) rows.push(row)
 	}
 

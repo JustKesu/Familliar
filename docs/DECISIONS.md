@@ -4941,3 +4941,13 @@ Když `characterSpellSlotMaxima` vrátí nevyřešeno (chybí řádek Wizard XPH
 karta Spells i drawer Spell Slots ukážou důvod komponentou `UnresolvedValue` (jako max HP) místo tichých nulových slotů.
 `CharacterSpellSlotMaxima` nově nese `pactSlotLevel` (0 bez Pact Magic); sheet ho čte odtud, ne z `spellSlotsEntries`.
 Chování při známých datech beze změny. Task F-9, 6. 10. 2026.
+
+## D325 — Vybrané kouzlo patří třídě, která ho vybrala (M5a, schéma zůstává 59)
+
+Podle XPHB „Multiclassing > Spellcasting“: kouzlo z `spellChoices` patří třídě svého záznamu a sesílá se s jejím Hit/DC;
+always-prepared kouzlo podtřídy se sesílá s třídou, které podtřída patří. Kouzlo vybrané dvěma třídami = dva řádky (Spells
+i Actions), každý s čísly své třídy; granty (podtřída, feat, druh) se slévají do řádku první vybírající třídy. U víc tříd
+provenance „player pick (<Třída>)“, řádek na Actions nese název třídy. Limity se počítají po třídách jako u jedné třídy:
+nejvyšší úroveň z VLASTNÍ tabulky třídy (pact úroveň u Warlocka), počty cantripů a kouzel jen proti kouzlům té třídy;
+neznámá data jedné třídy ukážou jen její důvod. Manage Spells filtruje po třídách už dřív. Volba poolu u CAST a upcast do
+pact slotů zůstávají na M5b. Task M5a, 6. 10. 2026.

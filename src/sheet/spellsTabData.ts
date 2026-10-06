@@ -11,7 +11,7 @@ import { alsoCastableWithSlot } from '../spells/alsoCastableWithSlot'
 import type { SpellDetail } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
-import type { SheetSpellEntry, SpellGrant } from './SpellList'
+import { spellEntryKey, type SheetSpellEntry, type SpellGrant } from './SpellList'
 import {
 	cantripDamageAtLevel,
 	casterFor,
@@ -54,7 +54,7 @@ function isPlainClassGrant(grant: SpellGrant): boolean {
 }
 
 function keyOf(entry: SheetSpellEntry): string {
-	return `${entry.name.toLowerCase()}|${entry.source.toUpperCase()}`
+	return spellEntryKey(entry)
 }
 
 /** D189: with pact slots and no ordinary slots, slot casts up to the pact level stand in the pact level's section. */
@@ -135,6 +135,7 @@ export function spellsTabActionSections({
 	ordinarySlots,
 	pact,
 	unavailableAboveLevel,
+	unavailableAboveFor,
 	resourceMaxima,
 	itemSpells = [],
 }: {
@@ -144,6 +145,8 @@ export function spellsTabActionSections({
 	ordinarySlots: number[]
 	pact: { count: number; slotLevel: number } | null
 	unavailableAboveLevel?: number
+	/** D325: the cap of the class that chose the entry; takes precedence over unavailableAboveLevel. */
+	unavailableAboveFor?: (entry: SheetSpellEntry) => number | undefined
 	/** The sheet's known resource maxima, free-cast counters included. */
 	resourceMaxima: ReadonlyMap<string, number>
 	/** D219: one row each, in its cast level's section with the spell's own level as the badge (as R8 upcasts); never a CAST row. */
@@ -156,7 +159,8 @@ export function spellsTabActionSections({
 	for (const entry of entries) {
 		const detail = findSpellDetail(details, entry.name, entry.source)
 		const spellKey = keyOf(entry)
-		const unavailable = entry.chosen && detail !== undefined && unavailableAboveLevel !== undefined && detail.level > unavailableAboveLevel
+		const above = unavailableAboveFor ? unavailableAboveFor(entry) : unavailableAboveLevel
+		const unavailable = entry.chosen && detail !== undefined && above !== undefined && detail.level > above
 		const base = { entry, detail, badgeLevel: null, castWithSlot: false, unavailable }
 		const labelRow = (key: SpellSectionKey, label: string) =>
 			placed.push({ key, row: { ...base, key: `${spellKey}#label`, action: { kind: 'label', label } } })
@@ -339,7 +343,7 @@ export function spellNotes(entry: SheetSpellEntry, detail: SpellDetail): string 
 }
 
 /** Short sources plus the flags; the chosen source is the casting class when there is exactly one. */
-export function spellSubtitle(row: SpellsTabRow & { action?: SpellRowAction }, castingClassName: string | null): string {
+export function spellSubtitle(row: SpellsTabRow & { action?: SpellRowAction }, castingClassName: string | null, multiclass = false): string {
 	const { entry, detail } = row
 	// D191: a USE row names the one source it spends, not every source of the spell.
 	const parts =
@@ -348,7 +352,7 @@ export function spellSubtitle(row: SpellsTabRow & { action?: SpellRowAction }, c
 			: row.item
 				? [row.item.itemName]
 				: [
-					...(entry.chosen ? [castingClassName ?? 'Chosen'] : []),
+					...(entry.chosen ? [castingClassName ?? (multiclass ? entry.chosenBy?.className : undefined) ?? 'Chosen'] : []),
 					...entry.classOrigins,
 						...entry.subclassOrigins,
 					...entry.featOrigins,
