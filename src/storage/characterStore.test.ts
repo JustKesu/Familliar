@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
+import { freeCastCounter, remainingUses } from '../calculation/freeCastResources'
+import { featInstances } from '../featAsi/featInstances'
 import { applyHealing } from '../hitPoints/damageHealing'
 import { choiceNames, CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
@@ -1290,18 +1292,18 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		const store = new CharacterStore(backing)
 		const character = store.create({ name: 'Aria', currentHp: 20, play: { resourceUses: { Rage: 1 } } })
 
-		store.setConcentration(character.id, 'Bless')
-		expect(new CharacterStore(backing).list()[0].play).toEqual({ resourceUses: { Rage: 1 }, concentratingOn: 'Bless' })
+		store.setConcentration(character.id, { name: 'Bless', source: 'XPHB' })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ resourceUses: { Rage: 1 }, concentratingOn: { name: 'Bless', source: 'XPHB' } })
 
-		store.setConcentration(character.id, 'Hex')
-		expect(new CharacterStore(backing).list()[0].play?.concentratingOn).toBe('Hex')
+		store.setConcentration(character.id, { name: 'Hex', source: 'XPHB' })
+		expect(new CharacterStore(backing).list()[0].play?.concentratingOn).toEqual({ name: 'Hex', source: 'XPHB' })
 
 		// Neither a hit-point write nor a rest is a reason to stop concentrating.
 		store.setHitPoints(character.id, { currentHp: 12, temporaryHitPoints: 3 })
 		store.applyRest(character.id, { currentHp: 39, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} })
 		const afterWrites = new CharacterStore(backing).list()[0]
 		expect(afterWrites.currentHp).toBe(39)
-		expect(afterWrites.play).toEqual({ temporaryHitPoints: 3, concentratingOn: 'Hex' })
+		expect(afterWrites.play).toEqual({ temporaryHitPoints: 3, concentratingOn: { name: 'Hex', source: 'XPHB' } })
 
 		store.setConcentration(character.id, null)
 		store.setHitPoints(character.id, { currentHp: 39 })
@@ -1320,9 +1322,9 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		store.setHeroicInspiration(character.id, true)
 		expect(new CharacterStore(backing).list()[0].play).toEqual({ heroicInspiration: true })
 
-		store.setConcentration(character.id, 'Bless')
+		store.setConcentration(character.id, { name: 'Bless', source: 'XPHB' })
 		store.setHitPoints(character.id, { currentHp: 12 })
-		expect(new CharacterStore(backing).list()[0].play).toEqual({ heroicInspiration: true, concentratingOn: 'Bless' })
+		expect(new CharacterStore(backing).list()[0].play).toEqual({ heroicInspiration: true, concentratingOn: { name: 'Bless', source: 'XPHB' } })
 
 		store.setHeroicInspiration(character.id, false)
 		store.setConcentration(character.id, null)
@@ -1392,17 +1394,17 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
 		const { id } = store.create({ name: 'Aria', currentHp: 20 })
-		store.setConcentration(id, 'Bless')
+		store.setConcentration(id, { name: 'Bless', source: 'XPHB' })
 
 		store.applyRest(id, { currentHp: 20, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {} })
-		expect(new CharacterStore(backing).list()[0].play?.concentratingOn).toBe('Bless')
+		expect(new CharacterStore(backing).list()[0].play?.concentratingOn).toEqual({ name: 'Bless', source: 'XPHB' })
 
 		store.applyRest(id, { currentHp: 20, resourceUses: {}, spentSpellSlots: {}, spentHitDice: {}, concentratingOn: null })
 		expect(new CharacterStore(backing).list()[0].play?.concentratingOn).toBeUndefined()
 	})
 
 	it('throws CharacterNotFoundError for an unknown id on a concentration write', () => {
-		expect(() => new CharacterStore(new MemoryStorage()).setConcentration('nope', 'Bless')).toThrow(CharacterNotFoundError)
+		expect(() => new CharacterStore(new MemoryStorage()).setConcentration('nope', { name: 'Bless', source: 'XPHB' })).toThrow(CharacterNotFoundError)
 	})
 
 	it('reads a stored null concentration as none and rejects a non-name value', () => {
@@ -1740,7 +1742,7 @@ describe('CharacterStore free-text fields (slice 9d2)', () => {
 	it('replaces one field without touching the other two or the play state', () => {
 		const backing = new MemoryStorage()
 		const store = new CharacterStore(backing)
-		const character = store.create({ name: 'Aria', currentHp: 9, play: { concentratingOn: 'Bless' } })
+		const character = store.create({ name: 'Aria', currentHp: 9, play: { concentratingOn: { name: 'Bless', source: 'XPHB' } } })
 		store.setText(character.id, 'appearance', 'Tall')
 		store.setText(character.id, 'notes', 'Owes Cato 5 gp')
 
@@ -1748,7 +1750,7 @@ describe('CharacterStore free-text fields (slice 9d2)', () => {
 		store.setText(character.id, 'appearance', 'Short')
 
 		const stored = new CharacterStore(backing).list()[0]
-		expect(stored).toMatchObject({ appearance: 'Short', backstory: 'Orphan', notes: 'Owes Cato 5 gp', currentHp: 9, play: { concentratingOn: 'Bless' } })
+		expect(stored).toMatchObject({ appearance: 'Short', backstory: 'Orphan', notes: 'Owes Cato 5 gp', currentHp: 9, play: { concentratingOn: { name: 'Bless', source: 'XPHB' } } })
 	})
 
 	it('stores the empty string as absence', () => {
@@ -1874,8 +1876,8 @@ describe('manual feats (R13a, D215)', () => {
 	it('loads several manual entries with sub-choices, but still rejects a bad one', () => {
 		const grantedFeats = [
 			{ origin: 'background', name: 'Alert', source: 'XPHB' },
-			{ origin: 'manual', name: 'Elemental Adept', source: 'XPHB', chosenAbility: 'intelligence' },
-			{ origin: 'manual', name: 'Elemental Adept', source: 'XPHB' },
+			{ origin: 'manual', id: '0', name: 'Elemental Adept', source: 'XPHB', chosenAbility: 'intelligence' },
+			{ origin: 'manual', id: '1', name: 'Elemental Adept', source: 'XPHB' },
 		]
 		const backing = new MemoryStorage()
 		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats }]))
@@ -1896,16 +1898,17 @@ describe('manual feats (R13a, D215)', () => {
 		store.addManualFeat(id, { name: 'Elemental Adept', source: 'XPHB' })
 		store.addManualFeat(id, { name: 'Tough', source: 'XPHB' })
 		expect(store.list()[0].grantedFeats).toHaveLength(4)
+		const [, first, second, third] = store.list()[0].grantedFeats!
 
-		store.removeManualFeat(id, 'manual:0')
+		store.removeManualFeat(id, `manual:${first.id}`)
 		expect(new CharacterStore(backing).list()[0].grantedFeats).toEqual([
 			{ origin: 'background', name: 'Alert', source: 'XPHB' },
-			{ origin: 'manual', name: 'Elemental Adept', source: 'XPHB' },
-			{ origin: 'manual', name: 'Tough', source: 'XPHB' },
+			{ origin: 'manual', id: second.id, name: 'Elemental Adept', source: 'XPHB' },
+			{ origin: 'manual', id: third.id, name: 'Tough', source: 'XPHB' },
 		])
 
-		store.removeManualFeat(id, 'manual:1')
-		store.removeManualFeat(id, 'manual:0')
+		store.removeManualFeat(id, `manual:${third.id}`)
+		store.removeManualFeat(id, `manual:${second.id}`)
 		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'background', name: 'Alert', source: 'XPHB' }])
 	})
 
@@ -1913,7 +1916,7 @@ describe('manual feats (R13a, D215)', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const { id } = store.create({ name: 'Aria' })
 		store.addManualFeat(id, { name: 'Tough', source: 'XPHB' })
-		store.removeManualFeat(id, 'manual:0')
+		store.removeManualFeat(id, `manual:${store.list()[0].grantedFeats![0].id}`)
 		expect('grantedFeats' in store.list()[0]).toBe(false)
 		expect(() => store.removeManualFeat(id, 'asi:4')).toThrow()
 		expect(() => store.addManualFeat('nope', { name: 'Tough', source: 'XPHB' })).toThrow(CharacterNotFoundError)
@@ -1942,8 +1945,9 @@ describe('editing feat choices and ASI increases (R13b, D215)', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const { id } = store.create({ name: 'Aria' })
 		store.addManualFeat(id, { name: 'Skilled', source: 'XPHB' })
-		store.setFeatChoiceDetails(id, 'manual:0', { name: 'Skilled', source: 'XPHB' }, { proficiencies: { skills: ['arcana', 'history', 'nature'] } })
-		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'manual', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history', 'nature'] } }])
+		const featId = store.list()[0].grantedFeats![0].id
+		store.setFeatChoiceDetails(id, `manual:${featId}`, { name: 'Skilled', source: 'XPHB' }, { proficiencies: { skills: ['arcana', 'history', 'nature'] } })
+		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'manual', id: featId, name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history', 'nature'] } }])
 	})
 
 	it("writes an item:row:n feat's sub-choices into that row's custom.feats (R14c1)", () => {
@@ -2602,5 +2606,93 @@ describe('fightingStyles and option sources (M1b, D318)', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		expect(() => store.create({ name: 'Aria', fightingStyles: [{ ...FIGHTER, name: 'Archery' }, { ...FIGHTER, name: 'Defense' }] })).toThrow(ImportValidationError)
 		expect(store.list()).toEqual([])
+	})
+})
+
+describe('concentration source and stable manual feat ids (M1c, D319)', () => {
+	const initiate = (className: string, spell: string) => ({ className, classSource: 'XPHB', cantrips: [], spell: { name: spell, source: 'XPHB' } })
+	const SLEEP_KEY = (n: string) => `spell:feat:Magic Initiate#manual:${n}:sleep|XPHB`
+	const BLESS_KEY = (n: string) => `spell:feat:Magic Initiate#manual:${n}:bless|XPHB`
+	const v58 = {
+		schemaVersion: 58,
+		id: 'm1c',
+		name: 'Aria',
+		classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }],
+		levelOrder: Array.from({ length: 4 }, () => ({ className: 'Fighter', classSource: 'XPHB' })),
+		grantedFeats: [
+			{ origin: 'background', name: 'Alert', source: 'XPHB' },
+			{ origin: 'manual', name: 'Magic Initiate', source: 'XPHB', chosenAbility: 'intelligence', magicInitiate: initiate('Wizard', 'Sleep') },
+			{ origin: 'manual', name: 'Magic Initiate', source: 'XPHB', chosenAbility: 'wisdom', magicInitiate: initiate('Cleric', 'Bless') },
+		],
+		play: { concentratingOn: 'Bless', resourceUses: { [SLEEP_KEY('0')]: 1, [BLESS_KEY('1')]: 1, Rage: 2 } },
+	}
+
+	function seeded(): { backing: MemoryStorage; store: CharacterStore } {
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([v58]))
+		return { backing, store: new CharacterStore(backing) }
+	}
+
+	it('a schema-58 character loads with the same resourceUses keys, instance keys and remaining uses', () => {
+		const [loaded] = seeded().store.list()
+		expect(loaded.play).toEqual({ concentratingOn: { name: 'Bless' }, resourceUses: v58.play.resourceUses })
+		expect(loaded.grantedFeats?.map((entry) => entry.id)).toEqual([undefined, '0', '1'])
+		expect(featInstances(loaded, null).map((instance) => instance.key)).toEqual(['manual:0', 'manual:1'])
+		for (const [instanceKey, spell] of [['manual:0', 'Sleep'], ['manual:1', 'Bless']] as const) {
+			const counter = freeCastCounter({ name: spell, source: 'XPHB' }, { origin: 'feat', originName: 'Magic Initiate', usage: { kind: 'onceFreePerLongRest' }, instanceKey })
+			expect(remainingUses(1, loaded.play?.resourceUses?.[counter!.key] ?? 0)).toBe(0)
+		}
+	})
+
+	it('removing the first manual feat keeps the second one’s key and spent use, and drops only the first one’s uses', () => {
+		const { backing, store } = seeded()
+		store.removeManualFeat('m1c', 'manual:0')
+		const [after] = new CharacterStore(backing).list()
+		expect(featInstances(after, null).map((instance) => instance.key)).toEqual(['manual:1'])
+		expect(after.play?.resourceUses).toEqual({ [BLESS_KEY('1')]: 1, Rage: 2 })
+	})
+
+	it('a feat added after a deletion gets an id never used on the character', () => {
+		const { store } = seeded()
+		store.removeManualFeat('m1c', 'manual:1')
+		store.addManualFeat('m1c', { name: 'Tough', source: 'XPHB' })
+		const ids = store.list()[0].grantedFeats!.filter((entry) => entry.origin === 'manual').map((entry) => entry.id)
+		expect(ids[0]).toBe('0')
+		expect(ids[1]).not.toBe('0')
+		expect(ids[1]).not.toBe('1')
+		expect(ids[1]?.length).toBeGreaterThan(0)
+	})
+
+	it('editing a manual feat keeps its id', () => {
+		const { store } = seeded()
+		store.setFeatChoiceDetails('m1c', 'manual:1', { name: 'Magic Initiate', source: 'XPHB' }, { chosenAbility: 'charisma' })
+		expect(store.list()[0].grantedFeats?.[2]).toEqual({ origin: 'manual', id: '1', name: 'Magic Initiate', source: 'XPHB', chosenAbility: 'charisma' })
+	})
+
+	it('rejects a stored manual feat without an id or with a repeated one, an id on another origin, and a bare concentration name', () => {
+		const current = { schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [] }
+		const manual = { origin: 'manual', name: 'Tough', source: 'XPHB' }
+		for (const bad of [
+			{ grantedFeats: [manual] },
+			{ grantedFeats: [{ ...manual, id: '0' }, { ...manual, id: '0' }] },
+			{ grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB', id: '0' }] },
+			{ play: { concentratingOn: 'Bless' } },
+			{ play: { concentratingOn: { name: '' } } },
+			{ play: { concentratingOn: { name: 'Bless', source: 3 } } },
+		]) {
+			const backing = new MemoryStorage()
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ ...current, ...bad }]))
+			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+		}
+	})
+
+	it('survives an export and import round trip unchanged', () => {
+		const { store } = seeded()
+		store.setConcentration('m1c', { name: 'Bless', source: 'XPHB' })
+		const original = store.list()[0]
+		const [imported] = new CharacterStore(new MemoryStorage()).import(store.exportCharacter('m1c'))
+		expect({ ...imported, id: original.id }).toEqual(original)
+		expect(imported.play?.concentratingOn).toEqual({ name: 'Bless', source: 'XPHB' })
+		expect(imported.grantedFeats?.map((entry) => entry.id)).toEqual([undefined, '0', '1'])
 	})
 })

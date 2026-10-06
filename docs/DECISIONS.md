@@ -4870,3 +4870,15 @@ klíče uvnitř položek se při čtení zahodí jako u ostatních vnořených p
 level up) zapíše třídu stylu a zdroj; volbě bez zdroje doplní zdroj řádku, na který ji jméno dnes vede (první shoda), takže
 se uloží to, co list už ukazoval. `CharacterClass.subclass` zůstává záměrně jen jménem: classes.json nemá žádné jméno
 podtřídy s víc než jedním zdrojem (DATA.md) a změna by zasáhla 26 souborů. Task M1b, rozhodl Daniel 6. 10. 2026.
+
+## D319 — Zdroj koncentrace a stálá id ručních featů (M1c, schéma 59)
+
+`play.concentratingOn?: { name, source? } | null` místo holého jména kouzla. Shoda podle pravidla D318 (choiceMatch.ts):
+se zdrojem jméno A zdroj, bez zdroje jen jméno, jméno porovnané přesně jako dřív. Každý nový zápis (Concentrate, CAST,
+USE) uloží i zdroj kouzla; Long Rest a zrušení koncentrace dál zapisují null. Hlavička ukazuje jen jméno. Ruční featy
+(`grantedFeats` s origin 'manual') mají uložené `id: string` a klíč instance je `manual:<id>` (i uvnitř klíčů
+`resourceUses` pro free casty). Nový ruční feat dostane náhodné id, které na postavě nikdy nebylo; jiný origin id nemá.
+Odebrání ručního featu smaže i jeho `resourceUses` (klíče `spell:…#manual:<id>:…`). Migrace 58→59: řetězec → `{ name }`
+bez zdroje, null/chybějící beze změny; ruční featy dostanou id "0", "1", … podle dosavadního pořadí, takže id
+migrovaných featů = jejich stará pozice a uložené klíče se nezmění ani o bajt. Featy z vlastních předmětů
+(`item:<řádek>:<n>`) mají stejný problém s pořadím, ale řeší se až se stálými id řádků inventáře — mimo rozsah. Task M1c.

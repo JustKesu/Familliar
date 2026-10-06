@@ -23,6 +23,7 @@ import type {
 	CharacterSpecies,
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
+	ConcentrationRef,
 	FeatAsiChoice,
 	FeatChoiceDetails,
 	SpentSpellSlots,
@@ -30,7 +31,7 @@ import type {
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
 import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, type CharacterLevelOrderEntry } from './character'
 import { isValidAbilityIncrease } from '../featAsi/featAsiData'
-import type { FeatInstanceKey, FeatRef } from '../featAsi/featInstances'
+import { manualFeatKey, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
 import {
 	CharacterNotFoundError,
@@ -275,7 +276,9 @@ function storedPlayState(currentHp: number | undefined, play: CharacterPlayState
 		...(Object.keys(resourceUses).length > 0 ? { resourceUses } : {}),
 		...(spentSpellSlots ? { spentSpellSlots } : {}),
 		...(Object.keys(spentHitDice).length > 0 ? { spentHitDice } : {}),
-		...(play?.concentratingOn ? { concentratingOn: play.concentratingOn } : {}),
+		...(play?.concentratingOn
+			? { concentratingOn: { name: play.concentratingOn.name, ...(play.concentratingOn.source !== undefined ? { source: play.concentratingOn.source } : {}) } }
+			: {}),
 		...(play?.heroicInspiration ? { heroicInspiration: true } : {}),
 		...(play?.conditions && play.conditions.length > 0 ? { conditions: [...new Set(play.conditions)] } : {}),
 		...(play?.exhaustion ? { exhaustion: play.exhaustion } : {}),
@@ -689,13 +692,13 @@ export class CharacterStore {
 	 * replaces only `concentratingOn`. A rest or a hit-point write never touches
 	 * it: each spreads `play` through storedPlayState, which carries it along.
 	 */
-	setConcentration(id: string, spellName: string | null): void {
+	setConcentration(id: string, spell: ConcentrationRef | null): void {
 		const characters = this.list()
 		const index = characters.findIndex((character) => character.id === id)
 		if (index === -1) throw new CharacterNotFoundError(id)
 
 		const { currentHp, play, ...rest } = characters[index]
-		const storedPlay = storedPlayState(currentHp, { ...play, concentratingOn: spellName })
+		const storedPlay = storedPlayState(currentHp, { ...play, concentratingOn: spell })
 		const updated = [...characters]
 		updated[index] = {
 			...rest,
@@ -756,18 +759,29 @@ export class CharacterStore {
 
 	/** Adds a feat the DM granted (R13a, D215) as a 'manual' grantedFeats entry; a repeatable feat may be added again. */
 	addManualFeat(id: string, feat: { name: string; source: string }): void {
-		this.writeGrantedFeats(id, (grantedFeats) => [...grantedFeats, { origin: 'manual', name: feat.name, source: feat.source }])
+		// D319: a random id, so a deleted feat's id (and the resourceUses keys built on it) is never handed to a new one.
+		this.writeGrantedFeats(id, (grantedFeats) => [...grantedFeats, { origin: 'manual', id: newId(), name: feat.name, source: feat.source }])
 	}
 
-	/** Removes the manual feat at featInstances key `manual:<n>` (n counts manual entries only), with everything stored on it. */
+	/** Removes the manual feat at featInstances key `manual:<id>`, with everything stored on it — its free-cast resourceUses too (D319). */
 	removeManualFeat(id: string, key: string): void {
-		const match = /^manual:(\d+)$/.exec(key)
-		if (!match) throw new Error(`Not a manual feat key: ${key}`)
-		const target = Number(match[1])
+		if (!/^manual:.+$/.test(key)) throw new Error(`Not a manual feat key: ${key}`)
 		this.writeGrantedFeats(id, (grantedFeats) => {
 			let n = -1
-			return grantedFeats.filter((entry) => entry.origin !== 'manual' || ++n !== target)
+			return grantedFeats.filter((entry) => entry.origin !== 'manual' || manualFeatKey(entry, ++n) !== key)
 		})
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		const resourceUses = characters[index].play?.resourceUses
+		if (!resourceUses) return
+		// freeCastResources.ts: an instance's own counters are `spell:<origin>:<originName>#<instanceKey>:<spell>|<SOURCE>`.
+		const kept = Object.fromEntries(Object.entries(resourceUses).filter(([name]) => !(name.startsWith('spell:') && name.includes(`#${key}:`))))
+		if (Object.keys(kept).length === Object.keys(resourceUses).length) return
+		const { currentHp, play, ...rest } = characters[index]
+		const storedPlay = storedPlayState(currentHp, { ...play, resourceUses: kept })
+		const updated = [...characters]
+		updated[index] = { ...rest, ...(currentHp !== undefined ? { currentHp } : {}), ...(storedPlay ? { play: storedPlay } : {}) }
+		this.writeAll(updated)
 	}
 
 	private writeGrantedFeats(id: string, change: (grantedFeats: CharacterGrantedFeat[]) => CharacterGrantedFeat[]): void {
@@ -817,16 +831,14 @@ export class CharacterStore {
 			return
 		}
 
-		const manualMatch = /^manual:(\d+)$/.exec(key)
-		if (manualMatch) {
-			const target = Number(manualMatch[1])
+		if (/^manual:.+$/.test(key)) {
 			this.writeGrantedFeats(id, (grantedFeats) => {
 				let n = -1
 				let found = false
 				const next = grantedFeats.map((entry) => {
-					if (entry.origin !== 'manual' || ++n !== target) return entry
+					if (entry.origin !== 'manual' || manualFeatKey(entry, ++n) !== key) return entry
 					found = true
-					return { origin: 'manual' as const, name: entry.name, source: entry.source, ...details }
+					return { origin: 'manual' as const, ...(entry.id !== undefined ? { id: entry.id } : {}), name: entry.name, source: entry.source, ...details }
 				})
 				if (!found) throw new Error(`No manual feat at key: ${key}`)
 				return next

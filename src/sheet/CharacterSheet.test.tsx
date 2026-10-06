@@ -24,7 +24,7 @@ import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { loadRaceSpells } from '../spells/raceSpells'
-import { choiceNames, CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type CustomItemDefinition, type SpentSpellSlots } from '../storage/character'
+import { choiceNames, CUSTOM_ITEM_SOURCE, type Character, type CharacterFamiliar, type ConcentrationRef, type CustomItemDefinition, type SpentSpellSlots } from '../storage/character'
 import { CharacterStore, type HitPointFields } from '../storage/characterStore'
 import { emptyWizardData, saveCharacter, type WizardData, type WizardStep } from '../creation/wizardState'
 import { loadAcFormulaKeys } from './armourClassData'
@@ -6011,7 +6011,7 @@ describe('CharacterSheet', () => {
 
 				fireEvent.click(cast('Bless'))
 				expect(onSlots).toHaveBeenCalledTimes(2)
-				expect(onConcentration).toHaveBeenLastCalledWith('Bless')
+				expect(onConcentration).toHaveBeenLastCalledWith({ name: 'Bless', source: 'XPHB' })
 			})
 
 			it('a cantrip reads AT WILL with no CAST; a section without slots disables CAST; so does a spent pool', async () => {
@@ -6125,7 +6125,7 @@ describe('CharacterSheet', () => {
 				expect(container.querySelector('.sheet__spell-row--cast')).toBeNull()
 				fireEvent.click(useButton(container)!)
 				expect(onUses).toHaveBeenLastCalledWith({ [FEY_KEY]: 1 })
-				expect(onConcentration).toHaveBeenLastCalledWith('Sleep')
+				expect(onConcentration).toHaveBeenLastCalledWith({ name: 'Sleep', source: 'XPHB' })
 			})
 
 			it('a spent use fills the box and disables USE; clicking the filled box returns it', async () => {
@@ -6222,7 +6222,7 @@ describe('CharacterSheet', () => {
 			}
 
 			/* Holds the character in state the way CharacterManager does, so a click is followed by the sheet re-reading what it wrote. */
-			function Harness({ initial, onEdit }: { initial: Character; onEdit: (spellName: string | null) => void }) {
+			function Harness({ initial, onEdit }: { initial: Character; onEdit: (spell: ConcentrationRef | null) => void }) {
 				const [current, setCurrent] = useState(initial)
 				return (
 					<CharacterSheet
@@ -6271,7 +6271,7 @@ describe('CharacterSheet', () => {
 
 				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Bless' }))
 
-				expect(onEdit).toHaveBeenLastCalledWith('Bless')
+				expect(onEdit).toHaveBeenLastCalledWith({ name: 'Bless', source: 'XPHB' })
 				expect(pressed('Concentrate on Bless')).toBe('true')
 				expect(pressed('Concentrate on Shield of Faith')).toBe('false')
 				expect(headerLine(container)).toBe('Bless')
@@ -6279,13 +6279,13 @@ describe('CharacterSheet', () => {
 
 			it('replaces the spell already being concentrated on, without asking', async () => {
 				const confirm = vi.spyOn(window, 'confirm')
-				const { container, onEdit } = await renderCaster({ concentratingOn: 'Bless' })
+				const { container, onEdit } = await renderCaster({ concentratingOn: { name: 'Bless' } })
 				expect(headerLine(container)).toBe('Bless')
 
 				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Shield of Faith' }))
 
 				expect(onEdit).toHaveBeenCalledTimes(1)
-				expect(onEdit).toHaveBeenLastCalledWith('Shield of Faith')
+				expect(onEdit).toHaveBeenLastCalledWith({ name: 'Shield of Faith', source: 'XPHB' })
 				expect(pressed('Concentrate on Bless')).toBe('false')
 				expect(pressed('Concentrate on Shield of Faith')).toBe('true')
 				expect(headerLine(container)).toBe('Shield of Faith')
@@ -6295,7 +6295,7 @@ describe('CharacterSheet', () => {
 			})
 
 			it('drops it when the pressed button is clicked again', async () => {
-				const { container, onEdit } = await renderCaster({ concentratingOn: 'Bless' })
+				const { container, onEdit } = await renderCaster({ concentratingOn: { name: 'Bless' } })
 				expect(pressed('Concentrate on Bless')).toBe('true')
 
 				fireEvent.click(screen.getByRole('button', { name: 'Concentrate on Bless' }))
@@ -6306,7 +6306,7 @@ describe('CharacterSheet', () => {
 			})
 
 			it('drops it from the header control, and the spell’s own button follows', async () => {
-				const { container, onEdit } = await renderCaster({ concentratingOn: 'Shield of Faith' })
+				const { container, onEdit } = await renderCaster({ concentratingOn: { name: 'Shield of Faith' } })
 				expect(pressed('Concentrate on Shield of Faith')).toBe('true')
 
 				fireEvent.click(within(container.querySelector<HTMLElement>('.sheet__status-row')!).getByRole('button', { name: 'Drop concentration' }))
@@ -6332,7 +6332,7 @@ describe('CharacterSheet', () => {
 
 			it('on a read-only sheet still shows a stored concentration, with nothing to change it', async () => {
 				vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
-				const { container } = render(<CharacterSheet character={{ ...caster, play: { concentratingOn: 'Bless' } }} />)
+				const { container } = render(<CharacterSheet character={{ ...caster, play: { concentratingOn: { name: 'Bless' } } }} />)
 				await screen.findByRole('heading', { name: 'Focused' })
 				await waitFor(() => spellRow(container, 'Bless'))
 				openSpellRow(container, 'Bless')
@@ -6352,7 +6352,7 @@ describe('CharacterSheet', () => {
 
 				it('an edit that drops the spell from the chosen list clears it from the header and the spell list', async () => {
 					vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
-					const concentrating: Character = { ...caster, play: { concentratingOn: 'Bless' } }
+					const concentrating: Character = { ...caster, play: { concentratingOn: { name: 'Bless' } } }
 					const { container, rerender } = render(<CharacterSheet character={concentrating} onEditConcentration={() => {}} />)
 					await waitFor(() => spellRow(container, 'Bless'))
 					openSpellRow(container, 'Bless')
@@ -6375,7 +6375,7 @@ describe('CharacterSheet', () => {
 				it('a spell granted by a feat shows while the feat is taken and clears once it is not', async () => {
 					vi.mocked(loadSpellDetails).mockResolvedValue([...DETAILS, spellDetail({ name: 'Hex', source: 'XPHB', level: 1, concentration: true })])
 					vi.mocked(loadFeatGrantedSpells).mockImplementation(async (subject) => ((subject.featAsiChoices ?? []).length > 0 ? [HEX] : []))
-					const withFeat: Character = { ...caster, featAsiChoices: [HEXED_FEAT], play: { concentratingOn: 'Hex' } }
+					const withFeat: Character = { ...caster, featAsiChoices: [HEXED_FEAT], play: { concentratingOn: { name: 'Hex' } } }
 					const { container, rerender } = render(<CharacterSheet character={withFeat} onEditConcentration={() => {}} />)
 					await waitFor(() => spellRow(container, 'Hex'))
 					openSpellRow(container, 'Hex')
@@ -6391,7 +6391,7 @@ describe('CharacterSheet', () => {
 				it('keeps showing it while a spell grant failed to load, since the list is then known to be short (D43)', async () => {
 					vi.mocked(loadSpellDetails).mockResolvedValue(DETAILS)
 					vi.mocked(loadFeatGrantedSpells).mockRejectedValue(new Error('feats.json unavailable'))
-					const { container } = render(<CharacterSheet character={{ ...caster, featAsiChoices: [HEXED_FEAT], play: { concentratingOn: 'Hex' } }} />)
+					const { container } = render(<CharacterSheet character={{ ...caster, featAsiChoices: [HEXED_FEAT], play: { concentratingOn: { name: 'Hex' } } }} />)
 					await waitFor(() => expect(container.textContent).toContain('feats.json unavailable'))
 
 					expect(headerLine(container)).toBe('Hex')

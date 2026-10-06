@@ -1,7 +1,7 @@
 import { parseOriginFeat } from '../backgrounds/backgroundData'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { itemFeatGrants } from '../inventory/customItemGrants'
-import type { Character, CharacterBackground, FeatChoiceDetails, GrantedFeatOrigin } from '../storage/character'
+import type { Character, CharacterBackground, CharacterGrantedFeat, FeatChoiceDetails, GrantedFeatOrigin } from '../storage/character'
 
 export interface FeatRef {
 	name: string
@@ -9,7 +9,12 @@ export interface FeatRef {
 }
 
 /** `item:<inventory row>:<n>` — the n-th entry of that row's custom.feats (R14c1). */
-export type FeatInstanceKey = `asi:${number}` | 'background' | 'species' | `manual:${number}` | `item:${number}:${number}`
+export type FeatInstanceKey = `asi:${number}` | 'background' | 'species' | `manual:${string}` | `item:${number}:${number}`
+
+/** D319: a stored manual entry always has an id; the position is only for an unsaved in-memory character. */
+export function manualFeatKey(entry: Pick<CharacterGrantedFeat, 'id'>, n: number): `manual:${string}` {
+	return `manual:${entry.id ?? n}`
+}
 
 export type FeatInstanceOrigin = 'asi' | GrantedFeatOrigin | 'item'
 
@@ -61,7 +66,7 @@ function choiceDetails(details: FeatChoiceDetails): FeatChoiceDetails {
  * only contributes its sub-choices, and only while it names that same feat.
  * The stored 'species' entry (Human Versatile, D271) follows it whole — the
  * wizard drops it when the species changes, so it is never re-derived here.
- * 'manual' entries (D215) follow, keyed by their order among manual entries,
+ * 'manual' entries (D215) follow, keyed by their stored id (D319),
  * then the feats of granting custom items (R14c1, D216 gate), read off the inventory.
  */
 export function featInstances(character: Character, derivedBackgroundFeat: FeatRef | null): FeatInstance[] {
@@ -88,7 +93,7 @@ export function featInstances(character: Character, derivedBackgroundFeat: FeatR
 	}
 
 	const manual = (character.grantedFeats ?? []).filter((entry) => entry.origin === 'manual')
-	manual.forEach((entry, n) => instances.push({ key: `manual:${n}`, origin: 'manual', name: entry.name, source: entry.source, ...choiceDetails(entry) }))
+	manual.forEach((entry, n) => instances.push({ key: manualFeatKey(entry, n), origin: 'manual', name: entry.name, source: entry.source, ...choiceDetails(entry) }))
 
 	for (const { row, n, itemName, feat } of itemFeatGrants(character.inventory)) {
 		instances.push({ key: `item:${row}:${n}`, origin: 'item', itemName, name: feat.name, source: feat.source, ...choiceDetails(feat) })

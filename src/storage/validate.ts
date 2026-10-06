@@ -575,6 +575,7 @@ export function describeGrantedFeatsError(value: unknown): string | null {
 	if (value === undefined) return null
 	if (!Array.isArray(value)) return `grantedFeats must be an array`
 	const seenOrigins = new Set<unknown>()
+	const seenManualIds = new Set<string>()
 	for (let i = 0; i < value.length; i++) {
 		const entry: unknown = value[i]
 		if (!isRecord(entry)) return `grantedFeats[${i}] is not an object`
@@ -583,6 +584,11 @@ export function describeGrantedFeatsError(value: unknown): string | null {
 		seenOrigins.add(entry['origin'])
 		if (!isNonEmptyString(entry['name'])) return `grantedFeats[${i}].name is missing or not a string`
 		if (!isNonEmptyString(entry['source'])) return `grantedFeats[${i}].source is missing or not a string`
+		if (entry['origin'] === 'manual') {
+			if (!isNonEmptyString(entry['id'])) return `grantedFeats[${i}].id is missing or not a string`
+			if (seenManualIds.has(entry['id'])) return `grantedFeats[${i}].id "${entry['id']}" appears more than once`
+			seenManualIds.add(entry['id'])
+		} else if (entry['id'] !== undefined) return `grantedFeats[${i}].id is only stored on a manual feat`
 		const detailsError = describeFeatChoiceDetailsError(entry)
 		if (detailsError) return `grantedFeats[${i}].${detailsError}`
 	}
@@ -981,8 +987,14 @@ export function describePlayError(value: unknown): string | null {
 	}
 
 	const concentratingOn = value['concentratingOn']
-	if (concentratingOn !== undefined && concentratingOn !== null && (typeof concentratingOn !== 'string' || concentratingOn.length === 0)) {
-		return 'play.concentratingOn must be a spell name or null'
+	if (
+		concentratingOn !== undefined &&
+		concentratingOn !== null &&
+		(!isRecord(concentratingOn) ||
+			!isNonEmptyString(concentratingOn['name']) ||
+			(concentratingOn['source'] !== undefined && !isNonEmptyString(concentratingOn['source'])))
+	) {
+		return 'play.concentratingOn must be { name, source? } or null'
 	}
 
 	const heroicInspiration = value['heroicInspiration']
@@ -1124,7 +1136,14 @@ function toCharacterPlayState(value: Record<string, unknown>): CharacterPlayStat
 		...(isRecord(resourceUses) ? { resourceUses: { ...(resourceUses as Record<string, number>) } } : {}),
 		...(isRecord(spentSpellSlots) ? { spentSpellSlots: toSpentSpellSlots(spentSpellSlots) } : {}),
 		...(isRecord(spentHitDice) ? { spentHitDice: { ...(spentHitDice as Record<string, number>) } } : {}),
-		...(typeof concentratingOn === 'string' ? { concentratingOn } : {}),
+		...(isRecord(concentratingOn)
+			? {
+					concentratingOn: {
+						name: concentratingOn['name'] as string,
+						...(typeof concentratingOn['source'] === 'string' ? { source: concentratingOn['source'] } : {}),
+					},
+				}
+			: {}),
 		...(value['heroicInspiration'] === true ? { heroicInspiration: true } : {}),
 		...(Array.isArray(value['conditions']) ? { conditions: [...(value['conditions'] as string[])] } : {}),
 		...(typeof value['exhaustion'] === 'number' ? { exhaustion: value['exhaustion'] } : {}),
@@ -1235,6 +1254,7 @@ function toCharacterGrantedFeats(value: unknown[]): CharacterGrantedFeat[] {
 			origin: record['origin'] as GrantedFeatOrigin,
 			name: record['name'] as string,
 			source: record['source'] as string,
+			...(typeof record['id'] === 'string' ? { id: record['id'] } : {}),
 			...toFeatChoiceDetails(record),
 		}
 	})

@@ -1,29 +1,35 @@
-# Report — M1b: fighting style per class and option sources, schema 58
+# Report — M1c: concentration source and stable manual feat ids, schema 59
 
 ## What changed
-- Schema 58 (D318). `Character.fightingStyle` → `fightingStyles?: CharacterFightingStyle[]` ({className?, classSource?, name, source?}); `CharacterOptionalFeatureChoice.choices` → `CharacterOptionalFeaturePick[]` (own type, optional `source`); `LeveledChoice` untouched. `fightingStyleFor(styles, owner)` in character.ts.
-- Migration 57→58 (migrations.ts): null/absent → absent; 1 class → assigned entry; ≥2 or 0 classes → one unassigned entry; picks untouched; a malformed old value moves to `fightingStyles` so validation rejects it (fatal on list(), same mechanism as before).
-- Shared rule `matchesPick`/`findPicked` (new storage/choiceMatch.ts). Readers switched: optionalFeatureData (evaluateClassOptionalFeatureGroups, chosenClassOptionalFeatures, chosenOptionalFeatureOptions — now takes the style list), optionalFeatureSpells, grantedSenses, beastData (`hasPactOfTheChain` vs {Pact of the Chain, XPHB}), calculation/fightingStyles, ManageFeatsPanel (one row per style, chip = its class), CharacterSheet (option origin, item invocation picks carry source), levelRemoval (drops the class's own entry), heldPicks, wizardDataFromCharacter.
-- Validation: `describeFightingStylesError` (array; name; source/className/classSource non-empty when present; both class fields or neither; ≤1 entry per class and ≤1 unassigned); pick `source` checked. Unknown extra keys are dropped on read by `toCharacter…`, as every other nested field (no validator in validate.ts rejects extra keys; "rejected as for other fields" implemented as that). `buildCharacter` refuses a write the validator would reject.
-- Writes: `saveCharacter` gains trailing `pickSources?: PickSourceLookup` (new optionalFeatures/pickSources.ts, loaded once in CharacterWizard). Every save writes className/classSource; a pick or style without a source gets the source of the row its name resolves to today (first same-named row); a stored source is kept. Applies to create, Edit, level up. Manage Feats only reads the style (no write path). Pickers still hold names (WizardData unchanged).
-- Extra files beyond the 16 listed: new choiceMatch.ts, pickSources.ts; comment-only FightingStylePicker.tsx, OptionalFeaturePicker.tsx. levelGains.ts and featAsiData.ts match the grep only via `grantsFightingStyleAt`/`optionalFeatureChoicesFor` — no change needed. ClassOptionalFeaturePicker.tsx unchanged (source added at save).
-- Docs: D318 (DECISIONS), STATUS M1b, DATA.md "Option names across books — none twice today" (survey: 10 FS feats, 11 featureTypes, 0 same-name multi-source; Pact of the Chain = 1 row XPHB).
+- Schema 59 (D319). `play.concentratingOn?: ConcentrationRef | null` ({ name, source? }); `CharacterGrantedFeat.id?: string` (required + unique on 'manual', refused on other origins by `describeGrantedFeatsError`).
+- Migration 58→59: string → `{ name }`; null/absent untouched; manual entries get id "0", "1", … in order (non-manual untouched). Malformed values pass through for validation. Stored `manual:<n>` and `spell:…#manual:<n>:…` keys stay byte-identical.
+- Matching: `matchesConcentration` (choiceMatch.ts) — D318 rule with exact name comparison (as the sheet compared before; `matchesPick` is case-insensitive, so not reused).
+- Writers: CharacterSheet toggle/CAST/USE now pass `{ name, source }`; `setConcentration(id, ConcentrationRef | null)`; CharacterManager handler retyped. Long Rest (rest.ts) and Drop still write null. Header: SheetHeader unchanged, CharacterSheet passes `concentratingOn.name`.
+- Readers/writers vs. the listed set: SheetHeader.tsx and rest/rest.ts needed no change. Extra: CharacterManager.tsx, featAsi/featInstances.ts (`manualFeatKey`, `FeatInstanceKey` is now `manual:${string}`), storage/choiceMatch.ts.
+- Manual feats: `addManualFeat` writes `id: crypto.randomUUID()` (never reused). `removeManualFeat` and `setFeatChoiceDetails` match by `manual:<id>`; the edit keeps the id. Remove did NOT previously drop resourceUses — it now drops keys starting `spell:` and containing `#manual:<id>:` (the shared pre-A2-1 legacyKey is left alone).
+- `manualFeatKey` falls back to the position only for an in-memory character without ids (unit fixtures); stored data always has ids.
+- Docs: D319 (DECISIONS), STATUS M1c. DATA.md not touched (no data finding).
 
 ## Verified
-- typecheck pass; `npm test` 166 files / 3036 tests pass; validate-data 174/174; full e2e 426 passed (4.7 min).
-- New unit: migrations.test (57→58: none/null, one class, two classes, no class, picks untouched, malformed, last step); characterStore.test (realistic schema-57 Fighter 5 and Battle Master 3 load identically except the new field, 2-class save/reload, export→import, schema-57 import, 6 malformed shapes fatal, bad pick source fatal, extra keys dropped, write refuses duplicate class); choiceMatch.test (with/without source, missing source, fixture PHB/XPHB pair distinct after save+reload, hasFightingStyle, lookup); wizardState.test (new save writes class+source, edit keeps stored source and backfills, no lookup → class only).
-- New e2e `choiceSources.spec.ts`: M1b a (schema-57 Fighter: Longbow +7 / Archery breakdown and Fighting Style row as before; level up → `fightingStyles` = [{Fighter, XPHB, Archery, XPHB}]), M1b b (schema-57 Battle Master 6: maneuvers under Combat Superiority as before; level up to 7 picks 2 maneuvers stored with level 7 + source XPHB).
+- typecheck, `npm test` 166 files / 3047 tests, validate-data 174/174, full e2e 429 passed (4.9 min, re-run in full after fixing levelOrder.spec).
+- New unit: migrations.test "version 58 to 59" (string/null/absent; manual 0/1/2 with a background entry between; malformed; last step); choiceMatch.test "D319 concentration rule" (with/without source, exact case); characterStore.test "M1c" (schema-58 character with concentration + two manual Magic Initiates with spent free casts: same resourceUses, keys manual:0/1, remaining 0 via `freeCastCounter`; remove first keeps second's key/use and drops only first's; fresh id after deletion; edit keeps id; rejection cases; export→import round trip).
+- New e2e `e2e/stableIds.spec.ts`: a) spend 2nd Magic Initiate's Bless, remove 1st → still spent, Use disabled, stored keys checked; b) Concentrate on Bless from Spells → header + localStorage `{name:'Bless',source:'XPHB'}` + schema 59, reload, Long Rest clears; c) schema-58 `concentratingOn: "Bless"` → header Bless, button pressed.
 
-## Existing tests changed (renamed field / schema number / exact stored object)
-- sheetReviewFixes.test (4 inputs), levelRemoval.test (2 inputs + style-removal expectations), levelUp.test, levelUpClassStep.test, CharacterSheet.test (3 inputs), characterStore.test (2 tests + schema-56 load expectation), wizardState.test (storedCharacter fixture, `as Character` fixture, 4 expected store inputs), CharacterWizard.test (expected store input): `fightingStyle` → `fightingStyles`.
-- migrations.test M1a test: expected schemaVersion 57 → 58, `CURRENT_SCHEMA_VERSION` assertion moved to the new block.
-- e2e levelOrder.spec: schemaVersion 57 → 58; wizardF1.spec a/b: read `fightingStyles`; expertiseE1.spec: setup deletes `fightingStyles` (was a no-op after rename).
+## Existing tests changed (expectation/shape only)
+- rest.test.ts F-7b: fixture string → `{ name, source }`.
+- characterStore.test.ts: concentration tests (setConcentration args + stored object); manual feats (R13a/R13b): fixtures at current schema get ids, removal/edit use real `manual:<id>` keys, expected entries include ids.
+- CharacterSheet.test.tsx concentration/CAST/USE: `onEditConcentration` now called with `{ name, source: 'XPHB' }`; fixtures `{ name }`; Harness param type.
+- migrations.test.ts: 40/43/51 expect `{ name: 'Bless' }`; 56→ and 57→58 expected `schemaVersion` 58→59; "is the last step" moved to the 58→59 block (59).
+- e2e/levelOrder.spec.ts: stored schemaVersion 58→59. e2e/wizardF5.spec.ts F-5 d: injected manual Alert at current schema gets `id` (an id-less manual entry at schema 59 is now corrupt data).
 
-## Decisions taken / noticed
-- Backfilling a sourceless held pick at save with the first same-named row's source (needed for the required e2e expectation; equals what the sheet reads). Recorded in D318.
-- Real flow: a level up now adds sources to held picks, so level up + Remove level is no longer byte-identical in the browser (levelRemoval.test passes no lookup and still is).
-- Pickers stay name-keyed: a hypothetical stored second-row source would display the first row as chosen in the wizard; no such pair exists in data.
-- Investigation script `scripts/investigate-same-name-options.js` left untracked (not committed); `git clean` not run per this session's rules.
+## Decisions taken / noted
+- A stored schema-59 manual entry without id, or a bare-string concentration, is rejected as corrupt (strict, like other fields) rather than tolerated.
+- New ids are random UUIDs (keys look like `manual:3f2a…`), not a counter — no extra stored field needed for "never reused".
+- Process slip: the CharacterSheet.test.tsx fixture rewrite (12 lines) was done with one `node -e` script instead of the Edit tool; result checked by Grep and typecheck.
+
+## Known, not done
+- Custom-item feats `item:<row>:<n>` keep positional keys (same renumbering problem); needs stable inventory row ids.
+- Untracked `scripts/investigate-same-name-options.js` predates this task; left uncommitted and not cleaned (git clean not run per instructions).
 
 ## Manual browser check for the user
-Nothing to check: no visible change.
+- Nothing to check by eye: no visible change (header still shows only the spell name; keys are not displayed).

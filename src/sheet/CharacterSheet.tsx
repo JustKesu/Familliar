@@ -140,6 +140,7 @@ import {
 	type CharacterSpellChoice,
 	type CharacterToolChoice,
 	type CharacterWildShapeForms,
+	type ConcentrationRef,
 	type FeatChoiceDetails,
 	type SpentSpellSlots,
 	type WeaponAttackAbility,
@@ -152,7 +153,7 @@ import { RollModeContext, RollsNavSlot, RollToast } from '../dice/RollUi'
 import type { RollMode } from '../dice/roll'
 import { parseDiceExpression, type DiceRoll } from '../dice/roll'
 import type { CharacterTextField, HitPointFields, RestFields } from '../storage/characterStore'
-import { matchesPick } from '../storage/choiceMatch'
+import { matchesConcentration, matchesPick } from '../storage/choiceMatch'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calculatedValue'
 import { ArmourClassNotes, FireIcon, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
@@ -898,7 +899,7 @@ function SpellTabRow({
 	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection) => void
 	onUse?: (row: SpellsTabActionRow) => void
 	onSpendResource?: (name: string, delta: 1 | -1) => void
-	onToggleConcentration?: (spellName: string) => void
+	onToggleConcentration?: (spell: { name: string; source: string }) => void
 }): ReactNode {
 	/* D116: open state is this row's own UI state. */
 	const [open, setOpen] = useState(false)
@@ -1016,7 +1017,7 @@ function SpellTabRow({
 							className="spell-list__concentrate"
 							aria-label={`Concentrate on ${entry.name}`}
 							aria-pressed={concentrating}
-							onClick={() => onToggleConcentration(entry.name)}
+							onClick={() => onToggleConcentration(entry)}
 						>
 							{concentrating ? 'Concentrating' : 'Concentrate'}
 						</button>
@@ -1061,7 +1062,7 @@ function SpellsSection({
 	castingClassName: string | null
 	spentSpellSlots: SpentSpellSlots
 	pactRecharge: string
-	concentratingOn: string | null
+	concentratingOn: ConcentrationRef | null
 	resolverData: ResolverData
 	resourceUses: Record<string, number>
 	resourceMaxima: ReadonlyMap<string, number>
@@ -1072,7 +1073,7 @@ function SpellsSection({
 	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection) => void
 	onUse?: (row: SpellsTabActionRow) => void
 	onSpendResource?: (name: string, delta: 1 | -1) => void
-	onToggleConcentration?: (spellName: string) => void
+	onToggleConcentration?: (spell: { name: string; source: string }) => void
 	/** R9a (D208): opens the Manage Spells drawer; absent for a non-caster or a read-only sheet. */
 	onManageSpells?: () => void
 }): ReactNode {
@@ -1167,7 +1168,7 @@ function SpellsSection({
 												caster={casterOf(row)}
 												characterLevel={characterLevel}
 												slotsLeft={slotsLeft}
-												concentrating={concentratingOn === row.entry.name}
+												concentrating={concentratingOn !== null && matchesConcentration(concentratingOn, row.entry)}
 												resolverData={resolverData}
 												resourceUses={resourceUses}
 												resourceMaxima={resourceMaxima}
@@ -1651,7 +1652,7 @@ function CharacterSheetBody({
 	/** Marks one spent hit die per class from the Hit dice section (slice 9b6), keyed by hitDiceKey. Absent leaves the roll working but writing nothing — the remaining count then never changes. */
 	onEditSpentHitDice?: (spentHitDice: Record<string, number> | undefined) => void
 	/** Sets or, with null, drops the spell being concentrated on (slice 9d1). Absent leaves the buttons and the header control off; the header line still shows a stored one. */
-	onEditConcentration?: (spellName: string | null) => void
+	onEditConcentration?: (spell: ConcentrationRef | null) => void
 	/** Turns Heroic Inspiration on or off (R4b, D167). Absent leaves the checkbox showing the stored state, disabled. */
 	onEditHeroicInspiration?: (on: boolean) => void
 	/** Replaces the active conditions other than Exhaustion (R12, D214). Absent leaves the Conditions card read-only. */
@@ -2526,7 +2527,7 @@ function CharacterSheetBody({
 		spendHitDie(hitDiceKey(entry.className, entry.classSource), entry.count)
 	}
 	/* Slice 9d1: absent and null are both "none" (Character.play.concentratingOn). Clicking the active spell again drops it; any other replaces it without asking. */
-	const storedConcentration = character.play?.concentratingOn ?? null
+	const storedConcentration: ConcentrationRef | null = character.play?.concentratingOn ?? null
 	/*
 	 * A spell that has left the character (an edit, a lost subclass or feat grant) is not concentrated on. Decided here, not at
 	 * the write, because only the sheet assembles all five spell sources; and only once the list is complete (D43) — a grant still
@@ -2536,11 +2537,13 @@ function CharacterSheetBody({
 		Object.values(spellGrantsSettledFor).every((settledFor) => settledFor === character) &&
 		[subclassSpellsError, featSpellsError, optionalFeatureSpellsError, raceSpellsError].every((error) => error === null)
 	const concentratingOn =
-		storedConcentration !== null && spellListComplete && ![...combinedSpells, ...itemSpells.map((spell) => spell.entry)].some((entry) => entry.name === storedConcentration)
+		storedConcentration !== null &&
+		spellListComplete &&
+		![...combinedSpells, ...itemSpells.map((spell) => spell.entry)].some((entry) => matchesConcentration(storedConcentration, entry))
 			? null
 			: storedConcentration
-	function toggleConcentration(spellName: string): void {
-		onEditConcentration?.(concentratingOn === spellName ? null : spellName)
+	function toggleConcentration(spell: { name: string; source: string }): void {
+		onEditConcentration?.(concentratingOn !== null && matchesConcentration(concentratingOn, spell) ? null : { name: spell.name, source: spell.source })
 	}
 	/* R7a (D189): one set of header numbers per spellcasting source the sheet computes. */
 	const spellcastingSources = [
@@ -2572,13 +2575,13 @@ function CharacterSheetBody({
 		const level = typeof section.key === 'number' ? section.key : 0
 		if (section.ordinarySlots > 0) spendOrdinarySlot(level, section.ordinarySlots, 1)
 		else if (section.pactSlots > 0) spendPactSlot(section.pactSlots, 1)
-		if (row.detail?.concentration) onEditConcentration?.(row.entry.name)
+		if (row.detail?.concentration) onEditConcentration?.({ name: row.entry.name, source: row.entry.source })
 	}
 	/* D191: USE spends the row's counter (or a resource pool's cost) through the shared resource path, and starts concentration like CAST. */
 	function useSpell(row: SpellsTabActionRow): void {
 		if (row.action.kind !== 'use') return
 		spendResource(row.action.counterKey, row.action.cost)
-		if (row.detail?.concentration) onEditConcentration?.(row.entry.name)
+		if (row.detail?.concentration) onEditConcentration?.({ name: row.entry.name, source: row.entry.source })
 	}
 	/* D184: every chosen option (class- and subclass-level, fighting style) sits under the feature that grants it; D88's separate option sections are gone. */
 	const featureGroups = featuresTabGroups({
@@ -2760,7 +2763,7 @@ function CharacterSheetBody({
 				speed={speed}
 				proficiencyBonus={proficiencyBonus}
 				hitPoints={<HitPointsCard {...hitPointProps} onOpen={() => setDrawer({ kind: 'hitPoints' })} />}
-				concentratingOn={concentratingOn}
+				concentratingOn={concentratingOn?.name ?? null}
 				onDropConcentration={onEditConcentration ? () => onEditConcentration(null) : undefined}
 				onShortRest={onRest ? () => setDrawer({ kind: 'shortRest' }) : undefined}
 				onLongRest={onRest ? takeLongRest : undefined}

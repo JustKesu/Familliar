@@ -11,6 +11,7 @@ import type {
 	CharacterSpellChoice,
 	CharacterToolChoice,
 	CharacterWildShapeForms,
+	ConcentrationRef,
 	FeatChoiceDetails,
 	SpentSpellSlots,
 } from './storage/character'
@@ -151,9 +152,9 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setSpentHitDice(id, spentHitDice))
 	}
 
-	function handleEditConcentration(id: string, spellName: string | null): void {
+	function handleEditConcentration(id: string, spell: ConcentrationRef | null): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.setConcentration(id, spellName))
+		withErrorHandling(() => store.store?.setConcentration(id, spell))
 	}
 
 	function handleEditHeroicInspiration(id: string, on: boolean): void {
@@ -306,7 +307,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onEditResourceUses={(resourceUses) => handleEditResourceUses(character.id, resourceUses)}
 					onEditSpentSpellSlots={(spentSpellSlots) => handleEditSpentSpellSlots(character.id, spentSpellSlots)}
 					onEditSpentHitDice={(spentHitDice) => handleEditSpentHitDice(character.id, spentHitDice)}
-					onEditConcentration={(spellName) => handleEditConcentration(character.id, spellName)}
+					onEditConcentration={(spell) => handleEditConcentration(character.id, spell)}
 					onEditHeroicInspiration={(on) => handleEditHeroicInspiration(character.id, on)}
 						onEditConditions={(conditions) => handleEditConditions(character.id, conditions)}
 						onEditExhaustion={(level) => handleEditExhaustion(character.id, level)}

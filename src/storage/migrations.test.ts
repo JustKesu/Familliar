@@ -454,7 +454,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 43, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
+		expect(migrated).toEqual({ ...before, play: { concentratingOn: { name: 'Bless' } }, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		expect((migrated['play'] as Record<string, unknown>)['heroicInspiration']).toBeUndefined()
 	})
 
@@ -502,7 +502,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 40, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
+		expect(migrated).toEqual({ ...before, play: { concentratingOn: { name: 'Bless' } }, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 		for (const field of ['appearance', 'backstory', 'notes']) expect(field in migrated).toBe(false)
 	})
 
@@ -566,7 +566,7 @@ describe('the migration chain (D69)', () => {
 		const before = { schemaVersion: 51, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 'Bless' } }
 		const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
 
-		expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
+		expect(migrated).toEqual({ ...before, play: { concentratingOn: { name: 'Bless' } }, schemaVersion: CURRENT_SCHEMA_VERSION, levelOrder: singleClassLevelOrder(before.classes) })
 	})
 
 	/* D215: an older character has no manually added feats — the step only tags. */
@@ -653,10 +653,10 @@ describe('the migration chain (D69)', () => {
 		const rogueEntry = { className: 'Rogue', classSource: 'XPHB' }
 		const base = { schemaVersion: 56, id: '1', name: 'Aria' }
 
-		expect(migrateToCurrent({ ...base, classes: [] })).toEqual({ ...base, classes: [], levelOrder: [], schemaVersion: 58 })
-		expect(migrateToCurrent({ ...base, classes: [rogue] })).toEqual({ ...base, classes: [rogue], levelOrder: [rogueEntry, rogueEntry, rogueEntry], schemaVersion: 58 })
+		expect(migrateToCurrent({ ...base, classes: [] })).toEqual({ ...base, classes: [], levelOrder: [], schemaVersion: 59 })
+		expect(migrateToCurrent({ ...base, classes: [rogue] })).toEqual({ ...base, classes: [rogue], levelOrder: [rogueEntry, rogueEntry, rogueEntry], schemaVersion: 59 })
 		const multi = migrateToCurrent({ ...base, classes: [rogue, wizard] })
-		expect(multi).toEqual({ ...base, classes: [rogue, wizard], schemaVersion: 58 })
+		expect(multi).toEqual({ ...base, classes: [rogue, wizard], schemaVersion: 59 })
 		expect('levelOrder' in (multi as object)).toBe(false)
 	})
 
@@ -667,9 +667,9 @@ describe('the migration chain (D69)', () => {
 		const base = { schemaVersion: 57, id: '1', name: 'Aria' }
 
 		it('drops a null or absent style', () => {
-			expect(migrateToCurrent({ ...base, classes: [fighter], levelOrder: [] })).toEqual({ ...base, classes: [fighter], levelOrder: [], schemaVersion: 58 })
+			expect(migrateToCurrent({ ...base, classes: [fighter], levelOrder: [] })).toEqual({ ...base, classes: [fighter], levelOrder: [], schemaVersion: 59 })
 			const fromNull = migrateToCurrent({ ...base, classes: [fighter], fightingStyle: null }) as Record<string, unknown>
-			expect(fromNull).toEqual({ ...base, classes: [fighter], schemaVersion: 58 })
+			expect(fromNull).toEqual({ ...base, classes: [fighter], schemaVersion: 59 })
 			expect('fightingStyles' in fromNull || 'fightingStyle' in fromNull).toBe(false)
 		})
 
@@ -678,7 +678,7 @@ describe('the migration chain (D69)', () => {
 				...base,
 				classes: [fighter],
 				fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
-				schemaVersion: 58,
+				schemaVersion: 59,
 			})
 		})
 
@@ -687,22 +687,67 @@ describe('the migration chain (D69)', () => {
 				...base,
 				classes: [fighter, paladin],
 				fightingStyles: [{ name: 'Defense' }],
-				schemaVersion: 58,
+				schemaVersion: 59,
 			})
-			expect(migrateToCurrent({ ...base, classes: [], fightingStyle: 'Defense' })).toEqual({ ...base, classes: [], fightingStyles: [{ name: 'Defense' }], schemaVersion: 58 })
+			expect(migrateToCurrent({ ...base, classes: [], fightingStyle: 'Defense' })).toEqual({ ...base, classes: [], fightingStyles: [{ name: 'Defense' }], schemaVersion: 59 })
 		})
 
 		it('leaves optional-feature picks as they are', () => {
 			const optionalFeatureChoices = [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', level: 3 }, { name: 'Riposte' }] }]
-			expect(migrateToCurrent({ ...base, classes: [], optionalFeatureChoices })).toEqual({ ...base, classes: [], optionalFeatureChoices, schemaVersion: 58 })
+			expect(migrateToCurrent({ ...base, classes: [], optionalFeatureChoices })).toEqual({ ...base, classes: [], optionalFeatureChoices, schemaVersion: 59 })
 		})
 
 		it('carries a malformed style across for validation to reject', () => {
-			expect(migrateToCurrent({ ...base, classes: [fighter], fightingStyle: 5 })).toEqual({ ...base, classes: [fighter], fightingStyles: 5, schemaVersion: 58 })
+			expect(migrateToCurrent({ ...base, classes: [fighter], fightingStyle: 5 })).toEqual({ ...base, classes: [fighter], fightingStyles: 5, schemaVersion: 59 })
+		})
+	})
+
+	/* M1c (D319): concentration gains a shape, manual feats an id equal to their old position; nothing else moves. */
+	describe('version 58 to 59', () => {
+		const base = { schemaVersion: 58, id: '1', name: 'Aria', classes: [] }
+
+		it('wraps a concentration name in { name } with no source, and leaves null and absent alone', () => {
+			expect(migrateToCurrent({ ...base, play: { concentratingOn: 'Bless', temporaryHitPoints: 2 } })).toEqual({
+				...base,
+				play: { concentratingOn: { name: 'Bless' }, temporaryHitPoints: 2 },
+				schemaVersion: 59,
+			})
+			expect(migrateToCurrent({ ...base, play: { concentratingOn: null } })).toEqual({ ...base, play: { concentratingOn: null }, schemaVersion: 59 })
+			expect(migrateToCurrent({ ...base, play: { resourceUses: { Rage: 1 } } })).toEqual({ ...base, play: { resourceUses: { Rage: 1 } }, schemaVersion: 59 })
+			expect(migrateToCurrent({ ...base })).toEqual({ ...base, schemaVersion: 59 })
+		})
+
+		it('gives manual feats ids "0", "1", "2" in their order and leaves other granted feats untouched', () => {
+			const background = { origin: 'background', name: 'Magic Initiate; Cleric', source: 'XPHB', chosenAbility: 'wisdom' }
+			const grantedFeats = [
+				{ origin: 'manual', name: 'Alert', source: 'XPHB' },
+				background,
+				{ origin: 'manual', name: 'Tough', source: 'XPHB' },
+				{ origin: 'manual', name: 'Lucky', source: 'XPHB' },
+			]
+			expect(migrateToCurrent({ ...base, grantedFeats })).toEqual({
+				...base,
+				grantedFeats: [
+					{ origin: 'manual', name: 'Alert', source: 'XPHB', id: '0' },
+					background,
+					{ origin: 'manual', name: 'Tough', source: 'XPHB', id: '1' },
+					{ origin: 'manual', name: 'Lucky', source: 'XPHB', id: '2' },
+				],
+				schemaVersion: 59,
+			})
+		})
+
+		it('carries malformed values across for validation to reject', () => {
+			expect(migrateToCurrent({ ...base, play: { concentratingOn: 7 }, grantedFeats: [null, 'x'] })).toEqual({
+				...base,
+				play: { concentratingOn: 7 },
+				grantedFeats: [null, 'x'],
+				schemaVersion: 59,
+			})
 		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(58)
+			expect(CURRENT_SCHEMA_VERSION).toBe(59)
 		})
 	})
 

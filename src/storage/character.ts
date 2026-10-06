@@ -430,9 +430,10 @@ export interface CharacterPlayState {
 	 * tracking only, nothing detects a cast or prompts a save. One name because a
 	 * character concentrates on one spell at a time; setting another replaces it.
 	 * Absent and null both mean none, and the store writes none as absence, the
-	 * convention every field above uses.
+	 * convention every field above uses. D319: `source` is absent on a value saved
+	 * before schema 59; matched through choiceMatch.ts.
 	 */
-	concentratingOn?: string | null
+	concentratingOn?: ConcentrationRef | null
 	/**
 	 * Heroic Inspiration (R4b, D167) — a manual on/off the player toggles. Nothing
 	 * grants or spends it. Absent means off, and off is stored as absence, the
@@ -1077,11 +1078,19 @@ export type CharacterGrantedFeat = {
 	origin: GrantedFeatOrigin
 	name: string
 	source: string
+	/** D319: present on every stored 'manual' entry, never reused on the character; its featInstances key is `manual:<id>`. */
+	id?: string
 } & FeatChoiceDetails
+
+/** D319: the spell concentrated on. */
+export interface ConcentrationRef {
+	name: string
+	source?: string
+}
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1105,7 +1114,7 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 58
+export const CURRENT_SCHEMA_VERSION = 59
 
 export interface CharacterLevelOrderEntry {
 	className: string

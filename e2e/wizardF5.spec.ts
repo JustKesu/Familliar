@@ -125,7 +125,7 @@ test('F-5 d: Edit Character of a Human with a manual Alert — Alert is disabled
   await createFighter(page, human('Manual Alert'))
   await page.evaluate((key) => {
     const all = JSON.parse(localStorage.getItem(key) ?? '[]')
-    for (const character of all) character.grantedFeats = [...(character.grantedFeats ?? []), { origin: 'manual', name: 'Alert', source: 'XPHB' }]
+    for (const character of all) character.grantedFeats = [...(character.grantedFeats ?? []), { origin: 'manual', id: 'f5d', name: 'Alert', source: 'XPHB' }]
     localStorage.setItem(key, JSON.stringify(all))
   }, STORAGE_KEY)
   await page.reload()

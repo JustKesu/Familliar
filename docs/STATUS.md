@@ -1869,6 +1869,13 @@ takes a trailing `PickSourceLookup` (optionalFeatures/pickSources.ts, loaded by 
 source; a sourceless held pick gets the first same-named row's source. Pickers still hold names. No visible change.
 E2E `choiceSources.spec.ts`.
 
+M1c done (D319). Schema 59: `play.concentratingOn?: ConcentrationRef | null` ({ name, source? }), matched by
+`matchesConcentration` (choiceMatch.ts, exact name); sheet writes (Concentrate/CAST/USE) store the source, header shows
+the name. `CharacterGrantedFeat.id` (required on 'manual', validated unique; none on other origins); instance key
+`manual:<id>` via `manualFeatKey` (featInstances.ts). `addManualFeat` uses a random UUID; `removeManualFeat` also drops
+its `spell:…#manual:<id>:…` resourceUses. Migration 58→59: string → `{ name }`, manual ids "0".. in order. Custom-item
+feat keys (`item:<row>:<n>`) still positional. No visible change. E2E `stableIds.spec.ts`.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

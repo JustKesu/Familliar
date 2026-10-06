@@ -539,6 +539,33 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			return { ...rest, fightingStyles: [{ ...owner, name: fightingStyle }], schemaVersion: 58 }
 		},
 	},
+	{
+		from: 58,
+		to: 59,
+		/*
+		 * 59 (M1c, D319): a concentration name becomes `{ name }` with no source, and each
+		 * manual feat gets id "0", "1", … in its old position, so `manual:<n>` keys and the
+		 * resourceUses keys built on them stay byte-identical. Malformed values move as they are.
+		 */
+		migrate: (record) => {
+			const play = record['play']
+			const concentratingOn = typeof play === 'object' && play !== null ? (play as Record<string, unknown>)['concentratingOn'] : undefined
+			const grantedFeats = record['grantedFeats']
+			let n = 0
+			return {
+				...record,
+				...(typeof concentratingOn === 'string' ? { play: { ...(play as Record<string, unknown>), concentratingOn: { name: concentratingOn } } } : {}),
+				...(Array.isArray(grantedFeats)
+					? {
+							grantedFeats: grantedFeats.map((entry) =>
+								typeof entry === 'object' && entry !== null && (entry as Record<string, unknown>)['origin'] === 'manual' ? { ...entry, id: String(n++) } : entry,
+							),
+						}
+					: {}),
+				schemaVersion: 59,
+			}
+		},
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

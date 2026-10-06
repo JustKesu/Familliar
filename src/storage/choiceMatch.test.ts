@@ -3,7 +3,7 @@ import { chosenOptionalFeatureOptions } from '../optionalFeatures/optionalFeatur
 import { pickSourceLookup } from '../optionalFeatures/pickSources'
 import { hasFightingStyle } from '../calculation/fightingStyles'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
-import { findPicked, matchesPick } from './choiceMatch'
+import { findPicked, matchesConcentration, matchesPick } from './choiceMatch'
 
 class MemoryStorage implements KeyValueStorage {
 	private data = new Map<string, string>()
@@ -73,5 +73,22 @@ describe('the D318 matching rule', () => {
 		expect(lookup('FS', 'Archery')).toBe('PHB')
 		expect(lookup('FS:B', 'Archery')).toBe('PHB')
 		expect(lookup('MV:B', 'Parry')).toBeUndefined()
+	})
+})
+
+describe('the D319 concentration rule', () => {
+	const BLESS_PHB = { name: 'Bless', source: 'PHB' }
+	const BLESS_XPHB = { name: 'Bless', source: 'XPHB' }
+
+	it('with a source, name and source must match', () => {
+		expect(matchesConcentration({ name: 'Bless', source: 'XPHB' }, BLESS_XPHB)).toBe(true)
+		expect(matchesConcentration({ name: 'Bless', source: 'XPHB' }, BLESS_PHB)).toBe(false)
+		expect(matchesConcentration({ name: 'Bless', source: 'XPHB' }, { name: 'Bane', source: 'XPHB' })).toBe(false)
+	})
+
+	it('without a source (saved before schema 59), the name alone, compared exactly as before', () => {
+		expect(matchesConcentration({ name: 'Bless' }, BLESS_PHB)).toBe(true)
+		expect(matchesConcentration({ name: 'Bless' }, BLESS_XPHB)).toBe(true)
+		expect(matchesConcentration({ name: 'bless' }, BLESS_XPHB)).toBe(false)
 	})
 })
