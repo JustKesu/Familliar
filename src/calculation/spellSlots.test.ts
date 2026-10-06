@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Character } from '../storage/character'
-import { type ClassSpellSlotsData, computeSpellSlots, spellSlotMaxima, spentSpellSlotsWithinMaxima } from './spellSlots'
+import { type ClassSpellSlotsData, characterSpellSlotMaxima, computeSpellSlots, spellSlotMaxima, spentSpellSlotsWithinMaxima } from './spellSlots'
 
 // Rows confirmed against data/classes.json by scripts/investigate-spell-slots.js.
 const wizardSlots: ClassSpellSlotsData = {
@@ -170,6 +170,103 @@ describe('computeSpellSlots', () => {
 	it('returns unknown when the character has no classes', () => {
 		const result = computeSpellSlots({ id: '2', name: 'Blank', classes: [] }, classData)
 		expect(result.status).toBe('unknown')
+	})
+})
+
+/* M3 (D322): the multiclass table only for 2+ Spellcasting classes; Wizard XPHB's table is the multiclass table (DATA.md). */
+describe('characterSpellSlotMaxima', () => {
+	const fullCasterRows = [
+		[2, 0, 0, 0, 0, 0, 0, 0, 0],
+		[3, 0, 0, 0, 0, 0, 0, 0, 0],
+		[4, 2, 0, 0, 0, 0, 0, 0, 0],
+		[4, 3, 0, 0, 0, 0, 0, 0, 0],
+		[4, 3, 2, 0, 0, 0, 0, 0, 0],
+		[4, 3, 3, 0, 0, 0, 0, 0, 0],
+	]
+	const fullCaster = (className: string): ClassSpellSlotsData => ({
+		className,
+		classSource: 'XPHB',
+		casterProgression: 'full',
+		spellSlotsByLevel: fullCasterRows,
+		pactSlotsByLevel: null,
+	})
+	const rangerSlots: ClassSpellSlotsData = {
+		className: 'Ranger',
+		classSource: 'XPHB',
+		casterProgression: 'artificer',
+		spellSlotsByLevel: [
+			[2, 0, 0, 0, 0],
+			[2, 0, 0, 0, 0],
+			[3, 0, 0, 0, 0],
+		],
+		pactSlotsByLevel: null,
+	}
+	const warlock6: ClassSpellSlotsData = { ...warlockSlots, pactSlotsByLevel: [...(warlockSlots.pactSlotsByLevel ?? []), { count: 2, slotLevel: 3 }] }
+	const data = [fullCaster('Wizard'), fullCaster('Cleric'), fullCaster('Sorcerer'), fullCaster('Druid'), rangerSlots, paladinSlots, fighterSlots, warlock6]
+
+	function multiclass(...classes: [string, number, string?][]): Character {
+		return {
+			id: '1',
+			name: 'Test',
+			classes: classes.map(([className, level, subclass]) => ({ className, classSource: 'XPHB', subclass: subclass ?? null, level })),
+		}
+	}
+
+	function maxima(character: Character) {
+		const result = characterSpellSlotMaxima(character, data)
+		if (result.status !== 'known') throw new Error(result.reason)
+		return result.value
+	}
+
+	it('Wizard 3 / Cleric 3: caster level 6, 4/3/3', () => {
+		const value = maxima(multiclass(['Wizard', 3], ['Cleric', 3]))
+		expect(value.casterLevel).toBe(6)
+		expect(value.ordinary).toEqual([4, 3, 3, 0, 0, 0, 0, 0, 0])
+	})
+
+	it('Paladin 5 / Fighter 1: one Spellcasting class, Paladin’s own table', () => {
+		const value = maxima(multiclass(['Paladin', 5], ['Fighter', 1]))
+		expect(value.casterLevel).toBeNull()
+		expect(value.ordinary).toEqual([4, 2, 0, 0, 0, 0, 0, 0, 0])
+	})
+
+	it('Wizard 1 / Paladin 1: Paladin rounds up, caster level 2, three 1st-level slots', () => {
+		const value = maxima(multiclass(['Wizard', 1], ['Paladin', 1]))
+		expect(value.casterLevel).toBe(2)
+		expect(value.ordinary).toEqual([3, 0, 0, 0, 0, 0, 0, 0, 0])
+	})
+
+	it('Fighter (Eldritch Knight) 3 / Wizard 1: EK rounds down to 1, caster level 2', () => {
+		const value = maxima(multiclass(['Fighter', 3, 'Eldritch Knight'], ['Wizard', 1]))
+		expect(value.casterLevel).toBe(2)
+		expect(value.ordinary).toEqual([3, 0, 0, 0, 0, 0, 0, 0, 0])
+	})
+
+	it('Fighter (no subclass) 2 / Wizard 1: Wizard 1’s own table', () => {
+		const value = maxima(multiclass(['Fighter', 2], ['Wizard', 1]))
+		expect(value.casterLevel).toBeNull()
+		expect(value.ordinary).toEqual([2, 0, 0, 0, 0, 0, 0, 0, 0])
+	})
+
+	it('Warlock 6 / Sorcerer 3: Pact Magic never counts, Sorcerer 3’s own table, pact unchanged', () => {
+		const value = maxima(multiclass(['Warlock', 6], ['Sorcerer', 3]))
+		expect(value.casterLevel).toBeNull()
+		expect(value.ordinary).toEqual([4, 2, 0, 0, 0, 0, 0, 0, 0])
+		expect(value.pact).toBe(2)
+	})
+
+	it('Ranger 3 / Druid 2: ceil(3/2) + 2 = caster level 4', () => {
+		const value = maxima(multiclass(['Ranger', 3], ['Druid', 2]))
+		expect(value.casterLevel).toBe(4)
+		expect(value.ordinary).toEqual([4, 3, 0, 0, 0, 0, 0, 0, 0])
+	})
+
+	it('a single-class character gets exactly spellSlotMaxima’s result', () => {
+		const character = characterWithClass('Wizard', 5)
+		const result = computeSpellSlots(character, classData)
+		if (result.status !== 'known') throw new Error(result.reason)
+		const value = characterSpellSlotMaxima(character, classData)
+		expect(value.status === 'known' && { ordinary: value.value.ordinary, pact: value.value.pact }).toEqual(spellSlotMaxima(result.value))
 	})
 })
 

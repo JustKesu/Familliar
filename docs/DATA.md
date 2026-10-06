@@ -1316,6 +1316,14 @@ match is the granter. Found by an investigation script in R6 (not kept).
   | Monk, Sorcerer, Wizard | no `proficienciesGained` | | | |
 
   (All XPHB except Artificer; `tools` is the prose twin of `toolProficiencies`.)
+- `casterProgression` values (M3, D322, `scripts/investigate-caster-progression.js`, consumed): base classes —
+  "full" Bard, Cleric, Druid, Sorcerer, Wizard (XPHB); "artificer" Artificer (EFA), Paladin, Ranger (XPHB); "pact"
+  Warlock (XPHB). Subclasses — "1/3" Eldritch Knight and Arcane Trickster (XPHB) only, each carrying
+  `casterProgression`, `spellcastingAbility`, `preparedSpellsProgression` and a `subclassTableGroups` entry with
+  `rowsSpellProgression`. No other value (e.g. "1/2") exists in the data.
+- Wizard XPHB `rowsSpellProgression` has 20 rows of 9 numbers and is identical on all 20 levels to the XPHB
+  Multiclass Spellcaster table (row 1 `2 0…`, row 5 `4 3 2 0…`, row 20 `4 3 3 3 3 2 2 1 1`); the app uses it as
+  that table.
 
 Found in investigation B1 (2026-09-24, scripts consumed); class/feat/Protector/
 Warden/Valor shapes re-checked in B2 (`scripts/verify-b2.js`, consumed). The

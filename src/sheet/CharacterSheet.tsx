@@ -43,7 +43,7 @@ import { computePassiveInsight, computePassiveInvestigation, computePassivePerce
 import { computeAbilitySpellcasting, computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { itemSpellGrants, withItemSpellSpent } from '../inventory/customItemGrants'
 import { itemSpellAbilityOf, itemSpellActionRows, itemSpells as buildItemSpells } from './itemSpellRows'
-import { computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
+import { characterSpellSlotMaxima, computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
 import { highestSlotLevel } from '../spells/spellLevelFilter'
@@ -2560,7 +2560,8 @@ function CharacterSheetBody({
 		}),
 		...speciesSpellcastingEntries.map((entry) => ({ ...entry, key: `species|${entry.speciesName}`, name: entry.speciesName })),
 	]
-	const slotMaxima = spellSlotMaxima(spellSlotsEntries)
+	const slotMaximaResult = characterSpellSlotMaxima(character, spellSlotsClassData)
+	const slotMaxima = slotMaximaResult.status === 'known' ? slotMaximaResult.value : { ...spellSlotMaxima([]), casterLevel: null, ordinaryBreakdown: [] }
 	const pactSlotLevel = spellSlotsEntries.reduce((level, entry) => Math.max(level, entry.pactSlots?.slotLevel ?? 0), 0)
 	const hasSpellSlots = slotMaxima.pact > 0 || slotMaxima.ordinary.some((count) => count > 0)
 	const spellSections = spellsTabActionSections({
@@ -3400,9 +3401,17 @@ function CharacterSheetBody({
 
 			{drawer?.kind === 'spellSlots' && (
 				<Drawer title="Spell Slots" onClose={() => setDrawer(null)}>
+					{slotMaxima.casterLevel !== null && (
+						<DrawerSection title={`Multiclass Spellcaster (caster level ${slotMaxima.casterLevel})`}>
+							<p className="drawer__value">
+								{slotMaxima.ordinary.flatMap((count, index) => (count > 0 ? [`${ordinalLevel(index + 1)} ${count}`] : [])).join(' · ')}
+							</p>
+							<ValueBreakdown breakdown={slotMaxima.ordinaryBreakdown} open />
+						</DrawerSection>
+					)}
 					{spellSlotsEntries.map((entry) => (
 						<Fragment key={`${entry.className}|${entry.classSource}`}>
-							{entry.ordinarySlots && (
+							{entry.ordinarySlots && slotMaxima.casterLevel === null && (
 								<DrawerSection title={entry.className}>
 									<ValueBreakdown breakdown={entry.ordinarySlotsBreakdown ?? []} open />
 								</DrawerSection>

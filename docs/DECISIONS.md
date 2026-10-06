@@ -4912,3 +4912,15 @@ Ostatní zdroje záchran (rysy, předměty, featy) beze změny. Kartu Proficienc
 prerekvizity featů v Manage Feats čte jedna funkce `classProficiencyGrants`; řádek nese původ „<Třída> (multiclass)“.
 Volby (nástroj Barda, multiclass dovednost Barda/Rangera/Rogua/Artificera, nástroje podtřídy nepočáteční třídy —
 Battle Master, Knowledge Domain) odloženy do M7 s level upem. Task M2, rozhodl Daniel 6. 10. 2026.
+
+## D322 — Společné sloty kouzel multiclass sesilatele (M3, schéma zůstává 59)
+
+Společná tabulka (XPHB „Multiclassing > Spell Slots“) platí jen pro postavu se Spellcasting ze DVOU a více tříd; s jednou
+nebo žádnou zůstávají sloty z tabulky té třídy. Pact Magic (Warlock) není Spellcasting a nikdy se nepočítá; pact sloty
+zůstávají oddělené beze změny (D11). Úroveň sesilatele = součet: celé úrovně `casterProgression` "full", polovina
+zaokrouhlená NAHORU u "artificer" (Paladin XPHB, Ranger XPHB, Artificer EFA), třetina zaokrouhlená DOLŮ u "1/3"
+(Eldritch Knight, Arcane Trickster), jakákoli jiná hodnota polovina dolů. Podtřída "1/3" se počítá až od úrovně, kde
+její tabulka dává první slot (EK/AT od 3). Řádek tabulky = `rowsSpellProgression` Wizarda XPHB pro tu úroveň (shodný s
+tabulkou v knize). `spentSpellSlots.ordinary` zůstává jeden sdílený pool po úrovních slotu. Všichni čtenáři maxim berou
+`characterSpellSlotMaxima` (spellSlots.ts). Mimo rozsah (M5): které úrovně kouzel třída smí připravit, `spellLimitReason`,
+`highestCastableLevel` po třídách, Hit/DC multiclass kouzel, volba poolu u CAST, upcast do pact slotů. Task M3, 6. 10. 2026.

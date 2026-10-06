@@ -1900,6 +1900,14 @@ ClassToolSlots) pass the first class. Not done (M7): Bard instrument, multiclass
 class. Wizard/level-up/mastery picker untouched (single class). Unit `classProficiencies.test.ts`,
 `savingThrows.test.ts`, `characterLevel.test.ts`; E2E `multiclassProficiencies.spec.ts`.
 
+M3 done (D322). No schema change (59). `characterSpellSlotMaxima(character, classData)` (spellSlots.ts): with 2+
+Spellcasting classes (non-zero ordinary row; Pact Magic never counts) the ordinary pool is Wizard XPHB's row for the
+summed caster level, `casterLevel` + per-class breakdown set; otherwise `spellSlotMaxima` of the class entries. Read by
+the sheet (Spells tab sections/boxes, upcast rows, CAST, Manage Spells summary and boxes, Spell Slots drawer — one
+"Multiclass Spellcaster (caster level N)" section when combined) and level removal's spent-slot clamp. Long Rest still
+clears all spent slots. Not done (M5): per-class castable levels, `spellLimitReason`, Hit/DC, CAST pool choice. Unit
+`spellSlots.test.ts`; E2E `multiclassSlots.spec.ts`.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

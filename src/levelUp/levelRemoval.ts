@@ -1,6 +1,6 @@
 import { spentHitDiceWithinMaxima } from '../calculation/hitDice'
 import { computeCharacterResources, resourceUsesWithinMaxima, type ResourceFeature } from '../calculation/resources'
-import { computeSpellSlots, spellSlotMaxima, spentSpellSlotsWithinMaxima } from '../calculation/spellSlots'
+import { characterSpellSlotMaxima, spentSpellSlotsWithinMaxima } from '../calculation/spellSlots'
 import { extractSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { featInstances, loadBackgroundOriginFeat, type FeatRef } from '../featAsi/featInstances'
@@ -221,14 +221,14 @@ export function levelRemovalPlan(
 	 * Slice 9b3: the same invariant one pool over — a level's worth of spell slots
 	 * can disappear, and a spent count recorded against the old table would outlive
 	 * it. Computed against the REDUCED character, like the resource maxima above.
-	 * computeSpellSlots returning `unknown` is not "no slots", so nothing is
+	 * characterSpellSlotMaxima returning `unknown` is not "no slots", so nothing is
 	 * clamped then and the stored counts stand.
 	 */
 	const storedSlots = result.play?.spentSpellSlots
 	if (storedSlots !== undefined) {
-		const slots = computeSpellSlots(result, extractSpellSlotsClassData(parsedClasses))
+		const slots = characterSpellSlotMaxima(result, extractSpellSlotsClassData(parsedClasses))
 		if (slots.status === 'known') {
-			const clamped = spentSpellSlotsWithinMaxima(storedSlots, spellSlotMaxima(slots.value))
+			const clamped = spentSpellSlotsWithinMaxima(storedSlots, slots.value)
 			for (const [slotLevel, spent] of Object.entries(storedSlots.ordinary ?? {})) {
 				const now = clamped?.ordinary?.[Number(slotLevel)] ?? 0
 				if (now < spent) dropped.push(`Level ${slotLevel} spell slots: ${spent} spent, now ${now}`)

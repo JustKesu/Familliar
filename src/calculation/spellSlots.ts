@@ -91,7 +91,7 @@ export function computeSpellSlots(character: Character, classData: ClassSpellSlo
 	const value: SpellSlotsEntry[] = []
 	const breakdown: Contribution[] = []
 
-	// D11: multiclass caster combining (the shared multiclass slot table) is step 10 — each class's slots are returned un-combined.
+	// Each class's own table, un-combined; the multiclass table is characterSpellSlotMaxima's (D322).
 	for (const characterClass of character.classes) {
 		const classEntry = findClassSpellSlotsData(characterClass, classData)
 		if (!classEntry) {
@@ -157,11 +157,9 @@ export function computeSpellSlots(character: Character, classData: ClassSpellSlo
  * pool (slice 9b3) — the bound a spent count is measured against, in the two
  * pools D11 keeps apart.
  *
- * Multiclass slot combining is build order step 10, so nothing here adds two
- * classes' tables together: with more than one ordinary caster entry this takes
- * the largest of them per level, which is a bound and not a combined table. It
- * is only ever used to clamp, so overstating it leaves a player's count alone
- * rather than silently refilling a slot.
+ * Nothing here adds two classes' tables together: with more than one ordinary
+ * caster entry this takes the largest of them per level. Readers use
+ * characterSpellSlotMaxima, which applies the multiclass table (D322).
  */
 export function spellSlotMaxima(entries: readonly SpellSlotsEntry[]): { ordinary: number[]; pact: number } {
 	const ordinary = Array.from({ length: SPELL_LEVELS }, () => 0)
@@ -173,6 +171,66 @@ export function spellSlotMaxima(entries: readonly SpellSlotsEntry[]): { ordinary
 		if (entry.pactSlots) pact = Math.max(pact, entry.pactSlots.count)
 	}
 	return { ordinary, pact }
+}
+
+export interface CharacterSpellSlotMaxima {
+	ordinary: number[]
+	pact: number
+	/** Set only when the D322 multiclass table applies (2+ Spellcasting classes). */
+	casterLevel: number | null
+	/** Per-class caster-level contributions when combined, otherwise each class's own non-zero slot lines. */
+	ordinaryBreakdown: Contribution[]
+}
+
+/** D322: a class's contribution to the multiclass caster level. */
+function casterLevelContribution(casterProgression: CasterProgression, level: number): number {
+	if (casterProgression === 'full') return level
+	if (casterProgression === 'artificer') return Math.ceil(level / 2)
+	if (casterProgression === '1/3') return Math.floor(level / 3)
+	return Math.floor(level / 2)
+}
+
+/**
+ * The slot maxima for the whole character (M3, D322) — what every reader of
+ * ordinary slot counts uses. With Spellcasting from two or more classes the
+ * ordinary pool is the multiclass table row for the combined caster level
+ * (identical to Wizard XPHB's table, DATA.md); otherwise it is the single
+ * class's own table, exactly as spellSlotMaxima gives it. Pact Magic never
+ * counts as Spellcasting and its pool is unchanged.
+ */
+export function characterSpellSlotMaxima(character: Character, classData: ClassSpellSlotsData[]): Calculated<CharacterSpellSlotMaxima> {
+	const slots = computeSpellSlots(character, classData)
+	if (slots.status === 'unknown') return slots
+	const own = spellSlotMaxima(slots.value)
+
+	// An EK/AT row is all zeros before its subclass grants Spellcasting, so a non-zero row is what marks a Spellcasting class.
+	const casters: { characterClass: CharacterClass; casterProgression: CasterProgression }[] = []
+	for (const characterClass of character.classes) {
+		const entry = slots.value.find((e) => e.className === characterClass.className && e.classSource === characterClass.classSource)
+		if (!entry?.ordinarySlots?.some((count) => count > 0)) continue
+		const classEntry = findClassSpellSlotsData(characterClass, classData)
+		const casterProgression =
+			classEntry?.spellSlotsByLevel === null ? findSubclassSpellSlotsData(characterClass, classEntry)?.casterProgression : classEntry?.casterProgression
+		if (casterProgression) casters.push({ characterClass, casterProgression })
+	}
+
+	if (casters.length < 2) {
+		const ordinaryBreakdown = slots.value.flatMap((entry) => entry.ordinarySlotsBreakdown ?? [])
+		return known({ ordinary: own.ordinary, pact: own.pact, casterLevel: null, ordinaryBreakdown }, [])
+	}
+
+	const ordinaryBreakdown: Contribution[] = casters.map(({ characterClass, casterProgression }) => ({
+		source: `${characterClass.className} level ${characterClass.level} (${casterProgression} caster)`,
+		amount: casterLevelContribution(casterProgression, characterClass.level),
+	}))
+	const casterLevel = ordinaryBreakdown.reduce((sum, contribution) => sum + contribution.amount, 0)
+	const multiclassTable = classData.find((c) => c.className === 'Wizard' && c.classSource === 'XPHB')?.spellSlotsByLevel
+	const row = multiclassTable?.[casterLevel - 1]
+	if (!row) {
+		return unknown(`No multiclass spell slot row for caster level ${casterLevel} (Wizard XPHB table).`)
+	}
+	const ordinary = Array.from({ length: SPELL_LEVELS }, (_, i) => row[i] ?? 0)
+	return known({ ordinary, pact: own.pact, casterLevel, ordinaryBreakdown }, ordinaryBreakdown)
 }
 
 /**
