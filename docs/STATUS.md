@@ -1945,7 +1945,8 @@ M5b done (D326). No schema change (59). `SpellRowAction` cast carries `pools: ('
 (`spellsTabActionSections`); a both-pools section renders Slot + Pact buttons (`CAST_POOL_NAME` / `CAST_POOL_EMPTY`,
 `.sheet__spell-cast-pair`), `castSpell` spends the named pool. D207 upcast rows now also go to a pact section without
 ordinary slots. An `unavailable` row's CAST is disabled. Unit `spellsTabData.test.ts` "cast pools (D326)"; E2E
-`multiclassCast.spec.ts`.
+`multiclassCast.spec.ts`. Follow-up (D327): a spell below the pact level with no slot of its own level and no
+`entriesHigherLevel` gets a badged pact-only CAST row in the pact section (`#cast@<pact level>`); E2E M5b e.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

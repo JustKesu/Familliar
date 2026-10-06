@@ -347,6 +347,17 @@ describe('spellsTabActionSections (D190)', () => {
 			])
 			expect(pools(sectionsFor(entries, { pact: { count: 2, slotLevel: 2 } }))).toEqual([[2, 'burning hands|XPHB#cast', 1, 'pact']])
 		})
+
+		it('D327: Warlock 5 / Sorcerer 1 — Misty Step (no slot of its level) gets a pact-only row in the 3rd; Shield, which has a slot, does not', () => {
+			const entries = combineSpellEntries([{ spells: [{ name: 'Misty Step', source: 'XPHB' }, { name: 'Shield', source: 'XPHB' }, { name: 'Burning Hands', source: 'XPHB' }] }], [])
+			expect(pools(sectionsFor(entries, { ordinary: [4, 0, 0, 0, 0, 0, 0, 0, 0], pact: { count: 2, slotLevel: 3 } }))).toEqual([
+				[1, 'burning hands|XPHB#cast', null, 'ordinary'],
+				[1, 'shield|XPHB#cast', null, 'ordinary'],
+				[2, 'misty step|XPHB#cast', null, ''],
+				[3, 'burning hands|XPHB#cast@3', 1, 'pact'],
+				[3, 'misty step|XPHB#cast@3', 2, 'pact'],
+			])
+		})
 	})
 
 	describe('spellsTabRowCaster', () => {

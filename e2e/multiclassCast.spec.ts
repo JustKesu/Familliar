@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
-/* M5b (D326): in a section with both pools CAST becomes Slot and Pact; lower spells upcast into the pact section. Seeded at schema 59. */
+/* M5b (D326, D327): in a section with both pools CAST becomes Slot and Pact; lower spells upcast into the pact section. Seeded at schema 59. */
 const STORAGE_KEY = 'familliar:characters'
 const SCORES = { strength: 8, dexterity: 14, constitution: 13, intelligence: 10, wisdom: 12, charisma: 15 }
 
@@ -85,6 +85,17 @@ test('M5b c: the Sorcerer’s Burning Hands upcasts into the 2nd section with a 
   await expect(upcast.getByRole('button', { name: 'Cast Burning Hands with a Pact Magic slot', exact: true })).toBeEnabled()
   const own = rows(section(page, '1st Level'), 'Burning Hands')
   await expect(own.getByRole('button', { name: 'Cast Burning Hands', exact: true })).toHaveCount(1)
+})
+
+// D327: Sorcerer 1 gives ordinary 1st slots only, Warlock 5 Pact Magic 2 slots at 3rd — no slot at 2nd.
+test('M5b e: Warlock 5 / Sorcerer 1 — Misty Step gets a "2nd" pact row in the 3rd section whose CAST spends a pact box', async ({ page }) => {
+  await openSpells(page, character('m5b-e', [['Warlock', 5], ['Sorcerer', 1]], { Warlock: ['Misty Step'] }))
+  const third = section(page, '3rd Level')
+  const pactRow = rows(third, 'Misty Step')
+  await expect(pactRow).toHaveCount(1)
+  await expect(pactRow.locator('.sheet__spell-badge')).toHaveText('2nd')
+  await pactRow.getByRole('button', { name: 'Cast Misty Step', exact: true }).click()
+  await expect(usedBoxes(third, 'Pact Magic slots')).toHaveCount(1)
 })
 
 test('M5b d1: a single-class Warlock keeps one CAST button per row', async ({ page }) => {

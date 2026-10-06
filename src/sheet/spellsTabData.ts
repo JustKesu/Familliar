@@ -204,6 +204,13 @@ export function spellsTabActionSections({
 					})
 				}
 			}
+			// D327: with no slot of its own level, the pact section is the only place it can be cast; D207's loop already covers spells with higher-level text.
+			if (!inPact && !unavailable && detail.entriesHigherLevel.length === 0 && poolsAt(detail.level).length === 0 && pact !== null && pact.count > 0 && pact.slotLevel > detail.level) {
+				placed.push({
+					key: pact.slotLevel,
+					row: { ...base, key: `${spellKey}#cast@${pact.slotLevel}`, badgeLevel: detail.level, castWithSlot: true, action: { kind: 'cast', pools: ['pact'] } },
+				})
+			}
 		}
 
 		const counterKeys = new Set<string>()

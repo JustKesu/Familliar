@@ -4962,3 +4962,9 @@ prázdný („No spell slots left“ / „No Pact Magic slots left“). Nahrazuj
 bez ohledu na třídu, se stejným odznakem; nahrazuje „jen do běžných sekcí“ z D207 bodu 4. Sekce s jedním poolem a
 single-class postavy mají jedno CAST jako dřív (pact-only Warlock dál podle D189). Vybrané kouzlo `unavailable` (D325)
 nejde seslat z žádného poolu. Úložiště beze změny (`spentSpellSlots.ordinary` / `.pact`). Task M5b, 6. 10. 2026.
+
+## D327 — Pact řádek pro kouzlo bez slotu své úrovně (M5b follow-up, schéma zůstává 59)
+
+Doplňuje D326: kouzlo nižší úrovně, než je pact slot, jehož vlastní úroveň nemá běžné sloty ani není pact úrovní, dostane
+v pact sekci řádek s odznakem a jedním CAST z pact poolu i bez `entriesHigherLevel` (Warlock 5 / Sorcerer 1: Misty Step
+ve 3rd). Kouzla se slotem své úrovně dál podle D207; disabled CAST ve vlastní sekci zůstává. Rozhodl Daniel 6. 10. 2026.
