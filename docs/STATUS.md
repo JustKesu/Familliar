@@ -1147,6 +1147,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Chain Mail AC 17; Monk 6 Speed 45, with a Shield 30; Paladin 6 Aura of Protection on
   saves; three Magic Initiates: Guiding Bolt WIS in Actions and Spells, Thunderwave two
   USE rows; Tiefling Wizard Hellish Rebuke CAST DC = Actions DC; Draconic Resilience +3).
+- `e2e/storageRepair.spec.ts` — F-8 (schema-59 seed with a bare-string concentration and an
+  id-less manual Tough loads next to a valid character; Tough removed in Manage Feats stays
+  removed after a reload).
 
 ## Dočasné scaffolding
 
@@ -1875,6 +1878,14 @@ the name. `CharacterGrantedFeat.id` (required on 'manual', validated unique; non
 `manual:<id>` via `manualFeatKey` (featInstances.ts). `addManualFeat` uses a random UUID; `removeManualFeat` also drops
 its `spell:…#manual:<id>:…` resourceUses. Migration 58→59: string → `{ name }`, manual ids "0".. in order. Custom-item
 feat keys (`item:<row>:<n>`) still positional. No visible change. E2E `stableIds.spec.ts`.
+
+F-8 done (D320). M1 review fixes, schema still 59. `withRepairedFields` (validate.ts) runs on read and import for
+records already at 59: bad `concentratingOn` dropped, `fightingStyles` one entry per class owner (bad shapes dropped),
+manual feat ids re-assigned when missing/duplicate/not `^[^:#|]+$` (position id, else `repaired-<n>[-k]`), non-manual
+feat `id` dropped. Narrow setters writing `play`/`grantedFeats` go through `CharacterStore.writeChanged`
+(`describeCharacterError` before write). `removeManualFeat` throws on an unknown key and drops the pre-A2-1 counter
+with the last instance of that feat. `hasFightingStyle` name fallback only when no same-named row exists. Migration
+56→57 skips `levelOrder` above level 20. No visible change. E2E `storageRepair.spec.ts`.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

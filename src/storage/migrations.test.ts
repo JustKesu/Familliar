@@ -660,6 +660,14 @@ describe('the migration chain (D69)', () => {
 		expect('levelOrder' in (multi as object)).toBe(false)
 	})
 
+	it('F-8: a version-56 level above 20, or not a whole number, gets no level history (validation reports it as before)', () => {
+		for (const level of [21, 1e9, 2.5, -1]) {
+			const classes = [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level }]
+			const migrated = migrateToCurrent({ schemaVersion: 56, id: '1', name: 'Aria', classes })
+			expect(migrated).toEqual({ schemaVersion: 59, id: '1', name: 'Aria', classes })
+		}
+	})
+
 	/* M1b (D318): the style gets its class only when that is certain; old optional-feature picks stay sourceless. */
 	describe('version 57 to 58', () => {
 		const fighter = { className: 'Fighter', classSource: 'XPHB', subclass: null, level: 2 }

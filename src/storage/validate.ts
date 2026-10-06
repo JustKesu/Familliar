@@ -570,6 +570,11 @@ function isStringArray(value: unknown): value is string[] {
 
 const GRANTED_FEAT_ORIGINS: readonly GrantedFeatOrigin[] = ['background', 'species', 'manual']
 
+/** C (F-8, D320): the id sits inside `manual:<id>` keys and resourceUses keys, where `:`, `#` and `|` are separators. */
+function isValidManualFeatId(value: unknown): value is string {
+	return typeof value === 'string' && /^[^:#|]+$/.test(value)
+}
+
 /** Validates an optional `grantedFeats` field. Returns null if the field is absent (it's optional). */
 export function describeGrantedFeatsError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -585,10 +590,10 @@ export function describeGrantedFeatsError(value: unknown): string | null {
 		if (!isNonEmptyString(entry['name'])) return `grantedFeats[${i}].name is missing or not a string`
 		if (!isNonEmptyString(entry['source'])) return `grantedFeats[${i}].source is missing or not a string`
 		if (entry['origin'] === 'manual') {
-			if (!isNonEmptyString(entry['id'])) return `grantedFeats[${i}].id is missing or not a string`
+			if (!isValidManualFeatId(entry['id'])) return `grantedFeats[${i}].id is missing, or not a string without ":", "#" or "|"`
 			if (seenManualIds.has(entry['id'])) return `grantedFeats[${i}].id "${entry['id']}" appears more than once`
 			seenManualIds.add(entry['id'])
-		} else if (entry['id'] !== undefined) return `grantedFeats[${i}].id is only stored on a manual feat`
+		}
 		const detailsError = describeFeatChoiceDetailsError(entry)
 		if (detailsError) return `grantedFeats[${i}].${detailsError}`
 	}
@@ -1254,7 +1259,7 @@ function toCharacterGrantedFeats(value: unknown[]): CharacterGrantedFeat[] {
 			origin: record['origin'] as GrantedFeatOrigin,
 			name: record['name'] as string,
 			source: record['source'] as string,
-			...(typeof record['id'] === 'string' ? { id: record['id'] } : {}),
+			...(record['origin'] === 'manual' && typeof record['id'] === 'string' ? { id: record['id'] } : {}),
 			...toFeatChoiceDetails(record),
 		}
 	})
@@ -1362,6 +1367,69 @@ export function withoutInconsistentLevelOrder(value: unknown): unknown {
 	if (!isRecord(value) || isValidLevelOrder(value['levelOrder'], value['classes'])) return value
 	const { levelOrder: _levelOrder, ...rest } = value
 	return rest
+}
+
+function isValidConcentration(value: unknown): boolean {
+	return isRecord(value) && isNonEmptyString(value['name']) && isOptionalNonEmptyString(value['source'])
+}
+
+function isValidFightingStyleEntry(entry: unknown): boolean {
+	if (!isRecord(entry) || !isNonEmptyString(entry['name']) || !isOptionalNonEmptyString(entry['source'])) return false
+	const { className, classSource } = entry
+	return isOptionalNonEmptyString(className) && isOptionalNonEmptyString(classSource) && (className === undefined) === (classSource === undefined)
+}
+
+function repairedFightingStyles(value: unknown[]): unknown[] {
+	const owners = new Set<string>()
+	return value.filter((entry) => {
+		if (!isValidFightingStyleEntry(entry)) return false
+		const { className, classSource } = entry as Record<string, unknown>
+		const owner = className === undefined ? '' : `${String(className)}|${String(classSource)}`
+		if (owners.has(owner)) return false
+		owners.add(owner)
+		return true
+	})
+}
+
+/**
+ * D320: manual feats whose id is missing, malformed or a repeat get a deterministic one. The first entry
+ * holding a valid id keeps it. The rule is the 58→59 migration's (the entry's position among manual feats),
+ * and when that is taken, `repaired-<n>`, then `repaired-<n>-2`, … — never a collision, since `used` holds every kept id.
+ */
+function repairedGrantedFeats(value: unknown[]): unknown[] {
+	const used = new Set<string>()
+	const keeps = value.map((entry) => {
+		if (!isRecord(entry) || entry['origin'] !== 'manual') return false
+		const id = entry['id']
+		if (!isValidManualFeatId(id) || used.has(id)) return false
+		used.add(id)
+		return true
+	})
+	let n = -1
+	return value.map((entry, i) => {
+		if (!isRecord(entry) || entry['origin'] !== 'manual') return entry
+		n++
+		if (keeps[i]) return entry
+		let id = String(n)
+		for (let attempt = 1; used.has(id); attempt++) id = attempt === 1 ? `repaired-${n}` : `repaired-${n}-${attempt}`
+		used.add(id)
+		return { ...entry, id }
+	})
+}
+
+/** D320 (extends D317): a bad concentration, fighting-style list or manual feat id in stored or imported data is repaired, never fatal. */
+export function withRepairedFields(value: unknown): unknown {
+	if (!isRecord(value)) return value
+	const play = value['play']
+	const concentratingOn = isRecord(play) ? play['concentratingOn'] : undefined
+	const fightingStyles = value['fightingStyles']
+	const grantedFeats = value['grantedFeats']
+	return {
+		...value,
+		...(isRecord(play) && concentratingOn !== undefined && concentratingOn !== null && !isValidConcentration(concentratingOn) ? { play: { ...play, concentratingOn: null } } : {}),
+		...(Array.isArray(fightingStyles) ? { fightingStyles: repairedFightingStyles(fightingStyles) } : {}),
+		...(Array.isArray(grantedFeats) ? { grantedFeats: repairedGrantedFeats(grantedFeats) } : {}),
+	}
 }
 
 /** W-8 (D266), F-5: a bad portrait or species cantrip in already stored data must never make the whole character list unreadable, so reading drops it. */

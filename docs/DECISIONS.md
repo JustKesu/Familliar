@@ -4882,3 +4882,21 @@ Odebrání ručního featu smaže i jeho `resourceUses` (klíče `spell:…#manu
 bez zdroje, null/chybějící beze změny; ruční featy dostanou id "0", "1", … podle dosavadního pořadí, takže id
 migrovaných featů = jejich stará pozice a uložené klíče se nezmění ani o bajt. Featy z vlastních předmětů
 (`item:<řádek>:<n>`) mají stejný problém s pořadím, ale řeší se až se stálými id řádků inventáře — mimo rozsah. Task M1c.
+
+## D320 — Oprava při čtení a pojistka při zápisu (F-8, schéma zůstává 59)
+
+Rozšiřuje D317, zpřesňuje D316, D318 a D319 (z nich se mění jen to, že uvedené chyby už nejsou fatální). Postava ve
+schématu 59 se při čtení uložených dat i při importu opraví, nikdy kvůli tomu neselže seznam: `play.concentratingOn`,
+které není `{ name, source? }` s neprázdnými řetězci (holý řetězec, prázdné jméno či zdroj), se zahodí (null);
+`fightingStyles` si nechá první položku na vlastníka (className + classSource, nepřiřazené jako jeden vlastník), špatně
+tvarované položky a další položky téhož vlastníka se zahodí; ruční feat bez id, s id mimo formát nebo s opakovaným id dostane
+deterministické id: pozici mezi ručními featy jako v migraci 58→59 ("0", "1", …), a když je zabrané, `repaired-<n>`, pak
+`repaired-<n>-2`, … (zabraná id se sbírají předem, první držitel platného id si ho nechává, kolize nevznikne); `id` na
+featu jiného původu než manual se zahodí jako dřív neznámé klíče. `fightingStyles`, které není pole, a ostatní kontroly
+zůstávají fatální. Starší schémata se neopravují (odmítají se jako dřív). Id ručního featu musí odpovídat
+`^[^:#|]+$` (jinak by `manual:<id>` a klíče resourceUses šly zaměnit), na zápisu to validátor odmítne. Zápis: každý úzký
+setter, který mění `play` nebo `grantedFeats` (včetně HP, odpočinků, koncentrace, ručních featů), spustí
+`describeCharacterError` na změněné postavě a před zápisem vyhodí chybu, stejně jako W20 u HP. `removeManualFeat` vyhodí
+„No manual feat at key“, když nic neodebral, a odebere i starý (před A2-1) čítač `spell:feat:<jméno>:…`, pokud na
+postavě nezůstala jiná instance téhož featu. `hasFightingStyle` bere uložené jméno jako zálohu jen tehdy, když
+v datech není žádný řádek toho jména (D318). Migrace 56→57 nestaví `levelOrder` pro úroveň nad 20. Task F-8.

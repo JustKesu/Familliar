@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { CharacterAbilityScores } from '../abilities/abilityScores'
 import { freeCastCounter, remainingUses } from '../calculation/freeCastResources'
 import { featInstances } from '../featAsi/featInstances'
 import { applyHealing } from '../hitPoints/damageHealing'
 import { choiceNames, CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
+import type { Character } from './character'
 import { CharacterStore, type KeyValueStorage } from './characterStore'
 import {
 	CharacterNotFoundError,
@@ -1407,7 +1408,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		expect(() => new CharacterStore(new MemoryStorage()).setConcentration('nope', { name: 'Bless', source: 'XPHB' })).toThrow(CharacterNotFoundError)
 	})
 
-	it('reads a stored null concentration as none and rejects a non-name value', () => {
+	it('reads a stored null concentration as none and drops a non-name value (D320)', () => {
 		const withNull = new MemoryStorage()
 		withNull.setItem(
 			STORAGE_KEY,
@@ -1420,7 +1421,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], play: { concentratingOn: 7 } }]),
 		)
-		expect(() => new CharacterStore(wrongType).list()).toThrow(CorruptDataError)
+		expect(new CharacterStore(wrongType).list()[0].play?.concentratingOn).toBeUndefined()
 	})
 
 	/* Slice 9b5: one write for all four spent piles, with temporary hit points riding through both rests. */
@@ -2567,15 +2568,20 @@ describe('fightingStyles and option sources (M1b, D318)', () => {
 		expect(imported.fightingStyles).toEqual([{ ...FIGHTER, name: 'Defense' }])
 	})
 
+	it('rejects stored fightingStyles that are not an array, as the old field was', () => {
+		expect(() => storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], fightingStyles: 'Archery' }]).list()).toThrow(CorruptDataError)
+	})
+
+	// D320: a bad entry in a stored list is repaired on read, not fatal.
 	it.each([
-		['not an array', 'Archery'],
-		['an entry without a name', [{ ...FIGHTER }]],
-		['a class without its source', [{ className: 'Fighter', name: 'Archery' }]],
-		['an empty source', [{ ...FIGHTER, name: 'Archery', source: '' }]],
-		['two entries for one class', [{ ...FIGHTER, name: 'Archery' }, { ...FIGHTER, name: 'Defense' }]],
-		['two unassigned entries', [{ name: 'Archery' }, { name: 'Defense' }]],
-	])('rejects stored fightingStyles that are %s, as the old field was', (_label, fightingStyles) => {
-		expect(() => storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], fightingStyles }]).list()).toThrow(CorruptDataError)
+		['an entry without a name', [{ ...FIGHTER }], []],
+		['a class without its source', [{ className: 'Fighter', name: 'Archery' }], []],
+		['an empty source', [{ ...FIGHTER, name: 'Archery', source: '' }], []],
+		['two entries for one class', [{ ...FIGHTER, name: 'Archery' }, { ...FIGHTER, name: 'Defense' }], [{ ...FIGHTER, name: 'Archery' }]],
+		['two unassigned entries', [{ name: 'Archery' }, { name: 'Defense' }], [{ name: 'Archery' }]],
+	])('repairs stored fightingStyles that are %s', (_label, fightingStyles, expected) => {
+		const [loaded] = storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], fightingStyles }]).list()
+		expect(loaded.fightingStyles ?? []).toEqual(expected)
 	})
 
 	it('rejects a schema-57 save whose old style is malformed, as before', () => {
@@ -2669,21 +2675,117 @@ describe('concentration source and stable manual feat ids (M1c, D319)', () => {
 		expect(store.list()[0].grantedFeats?.[2]).toEqual({ origin: 'manual', id: '1', name: 'Magic Initiate', source: 'XPHB', chosenAbility: 'charisma' })
 	})
 
-	it('rejects a stored manual feat without an id or with a repeated one, an id on another origin, and a bare concentration name', () => {
-		const current = { schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [] }
+	describe('repair on read (F-8, D320)', () => {
+		const current = { schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }] }
 		const manual = { origin: 'manual', name: 'Tough', source: 'XPHB' }
-		for (const bad of [
-			{ grantedFeats: [manual] },
-			{ grantedFeats: [{ ...manual, id: '0' }, { ...manual, id: '0' }] },
-			{ grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB', id: '0' }] },
-			{ play: { concentratingOn: 'Bless' } },
-			{ play: { concentratingOn: { name: '' } } },
-			{ play: { concentratingOn: { name: 'Bless', source: 3 } } },
-		]) {
+		const load = (extra: object): Character => {
 			const backing = new MemoryStorage()
-			backing.setItem(STORAGE_KEY, JSON.stringify([{ ...current, ...bad }]))
-			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ ...current, ...extra }, { ...current, id: '2', name: 'Valid' }]))
+			const list = new CharacterStore(backing).list()
+			expect(list.map((c) => c.name)).toEqual(['Aria', 'Valid'])
+			return list[0]
 		}
+		const manualIds = (character: Character) => character.grantedFeats?.filter((entry) => entry.origin === 'manual').map((entry) => entry.id)
+
+		it('drops a bare-string, empty-name or empty-source concentration and keeps the character readable', () => {
+			for (const concentratingOn of ['Bless', { name: '' }, { name: 'Bless', source: '' }, { name: 'Bless', source: 3 }]) {
+				expect(load({ play: { concentratingOn, resourceUses: { Rage: 1 } } }).play).toEqual({ resourceUses: { Rage: 1 } })
+			}
+		})
+
+		it('keeps the first fighting style per class owner and drops malformed entries', () => {
+			const fighter = { className: 'Fighter', classSource: 'XPHB' }
+			const kept = load({ fightingStyles: [{ ...fighter, name: 'Archery' }, { ...fighter, name: 'Defense' }, { name: '' }, 'Dueling', { className: 'Cleric', name: 'Blessed Warrior' }, { name: 'Unassigned' }] })
+			expect(kept.fightingStyles).toEqual([{ ...fighter, name: 'Archery' }, { name: 'Unassigned' }])
+		})
+
+		it('gives a manual feat without an id the id the 58→59 migration would have', () => {
+			expect(manualIds(load({ grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB' }, manual, manual] }))).toEqual(['0', '1'])
+		})
+
+		it('repairs a repeated or malformed id; the first holder of a valid id keeps it and a taken fallback never collides', () => {
+			expect(manualIds(load({ grantedFeats: [{ ...manual, id: '0' }, { ...manual, id: '0' }] }))).toEqual(['0', '1'])
+			expect(manualIds(load({ grantedFeats: [{ ...manual, id: '1' }, manual, { ...manual, id: '1' }] }))).toEqual(['1', 'repaired-1', '2'])
+			expect(manualIds(load({ grantedFeats: [{ ...manual, id: 'a:b' }, { ...manual, id: 'x#1' }, { ...manual, id: 'p|q' }] }))).toEqual(['0', '1', '2'])
+			expect(manualIds(load({ grantedFeats: [{ ...manual, id: '1' }, { ...manual, id: 'repaired-1' }, { ...manual, id: 'a:b' }, { ...manual, id: '' }] }))).toEqual(['1', 'repaired-1', '2', '3'])
+		})
+
+		it('drops an id stored on a background or species feat instead of rejecting the list', () => {
+			const [background, species] = load({ grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB', id: '0' }, { origin: 'species', name: 'Skilled', source: 'XPHB', id: '9' }] }).grantedFeats!
+			expect(background).toEqual({ origin: 'background', name: 'Alert', source: 'XPHB' })
+			expect(species).toEqual({ origin: 'species', name: 'Skilled', source: 'XPHB' })
+		})
+
+		it('repairs the same fields in an imported file', () => {
+			const text = JSON.stringify([{ ...current, play: { concentratingOn: 'Bless' }, grantedFeats: [manual], fightingStyles: [{ name: 'Archery' }, { name: 'Defense' }] }])
+			const [imported] = new CharacterStore(new MemoryStorage()).import(text)
+			expect(imported.play?.concentratingOn).toBeUndefined()
+			expect(manualIds(imported)).toEqual(['0'])
+			expect(imported.fightingStyles).toEqual([{ name: 'Archery' }])
+		})
+
+		it('still rejects what is not repairable: a bad shape inside a granted feat', () => {
+			const backing = new MemoryStorage()
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ ...current, grantedFeats: [{ origin: 'manual', source: 'XPHB' }] }]))
+			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+		})
+	})
+
+	describe('write guard (F-8, D320)', () => {
+		it('setConcentration with an empty source throws and writes nothing', () => {
+			const { backing, store } = seeded()
+			const before = backing.getItem(STORAGE_KEY)
+			expect(() => store.setConcentration('m1c', { name: 'Bless', source: '' })).toThrow(ImportValidationError)
+			expect(backing.getItem(STORAGE_KEY)).toBe(before)
+		})
+
+		it('addManualFeat throws and writes nothing when the new id would not be valid, or the feat has no source', () => {
+			const { backing, store } = seeded()
+			const before = backing.getItem(STORAGE_KEY)
+			for (const bad of ['', 'a:b']) {
+				const spy = vi.spyOn(crypto, 'randomUUID').mockReturnValue(bad as ReturnType<typeof crypto.randomUUID>)
+				expect(() => store.addManualFeat('m1c', { name: 'Tough', source: 'XPHB' })).toThrow(ImportValidationError)
+				spy.mockRestore()
+			}
+			expect(() => store.addManualFeat('m1c', { name: 'Tough', source: '' })).toThrow(ImportValidationError)
+			expect(backing.getItem(STORAGE_KEY)).toBe(before)
+		})
+
+		it('removeManualFeat throws "No manual feat at key" for an unknown key and leaves resourceUses alone', () => {
+			const { backing, store } = seeded()
+			const before = backing.getItem(STORAGE_KEY)
+			expect(() => store.removeManualFeat('m1c', 'manual:nope')).toThrow('No manual feat at key: manual:nope')
+			expect(backing.getItem(STORAGE_KEY)).toBe(before)
+		})
+
+		it('rejects a manual feat id containing a separator', () => {
+			const { store } = seeded()
+			const spy = vi.spyOn(crypto, 'randomUUID').mockReturnValue('1:x' as ReturnType<typeof crypto.randomUUID>)
+			expect(() => store.addManualFeat('m1c', { name: 'Tough', source: 'XPHB' })).toThrow(ImportValidationError)
+			spy.mockRestore()
+		})
+	})
+
+	describe('removing a manual feat and its pre-A2-1 counter (F-8, D320)', () => {
+		const LEGACY = 'spell:feat:Magic Initiate:sleep|XPHB'
+		const withUses = (grantedFeats: unknown[], resourceUses: Record<string, number>) => {
+			const backing = new MemoryStorage()
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ ...v58, schemaVersion: CURRENT_SCHEMA_VERSION, grantedFeats, play: { resourceUses } }]))
+			return { backing, store: new CharacterStore(backing) }
+		}
+		const mi = (id: string) => ({ origin: 'manual', id, name: 'Magic Initiate', source: 'XPHB', chosenAbility: 'intelligence', magicInitiate: initiate('Wizard', 'Sleep') })
+
+		it('drops the legacy counter with the last instance of that feat', () => {
+			const { store } = withUses([mi('a')], { [LEGACY]: 1, [SLEEP_KEY('a')]: 1, Rage: 2 })
+			store.removeManualFeat('m1c', 'manual:a')
+			expect(store.list()[0].play?.resourceUses).toEqual({ Rage: 2 })
+		})
+
+		it('keeps the legacy counter while another instance of the feat remains', () => {
+			const { store } = withUses([mi('a'), mi('b')], { [LEGACY]: 1, [SLEEP_KEY('a')]: 1, [SLEEP_KEY('b')]: 1 })
+			store.removeManualFeat('m1c', 'manual:a')
+			expect(store.list()[0].play?.resourceUses).toEqual({ [LEGACY]: 1, [SLEEP_KEY('b')]: 1 })
+		})
 	})
 
 	it('survives an export and import round trip unchanged', () => {

@@ -6,7 +6,7 @@ import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spel
 import { saveCharacter, wizardDataFromCharacter } from '../creation/wizardState'
 import type { ResolverData } from '../featureResolver'
 import type { Character, SpentSpellSlots } from '../storage/character'
-import { CharacterStore, type KeyValueStorage } from '../storage/characterStore'
+import { CharacterStore, type CharacterCreateInput, type KeyValueStorage } from '../storage/characterStore'
 import { levelGainsFor } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
 import { characterUpdateInput, levelRemovalPlan, levelRemovalTarget, type LevelRemovalPlan } from './levelRemoval'
@@ -46,7 +46,7 @@ function removeTopLevel(store: CharacterStore, id: string): void {
 }
 
 describe('a level up followed by removing that level', () => {
-	it('leaves a Fighter levelled from 4 to 5 byte-identical to before the level up', () => {
+	it('leaves a Fighter levelled from 4 to 5 as before the level up, except that the held style keeps the source the level up backfilled (D318)', () => {
 		const storage = memoryStorage()
 		const store = new CharacterStore(storage)
 		const created = store.create({
@@ -71,13 +71,17 @@ describe('a level up followed by removing that level', () => {
 			classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 },
 			hitPointLevels: [...seed.hitPointLevels, { level: 5, kind: 'roll' as const, dieResult: 9 }],
 		}
-		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5)
+		// The wizard always passes a lookup; it backfills a source on held picks that have none.
+		const pickSources = (featureType: string, name: string) => (featureType === 'FS' && name === 'Archery' ? 'XPHB' : undefined)
+		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5, undefined, pickSources)
 		expect(storage.raw()).not.toBe(before)
-		// W-8: a level up keeps the portrait, and removing the level again (byte-identical below) does too.
+		// W-8: a level up keeps the portrait, and removing the level again does too.
 		expect(store.list()[0].portrait).toBe(PORTRAIT)
 
 		removeTopLevel(store, created.id)
-		expect(storage.raw()).toBe(before)
+		const [after] = JSON.parse(storage.raw()!) as Record<string, unknown>[]
+		expect(after['fightingStyles']).toEqual([{ className: 'Fighter', classSource: 'XPHB', name: 'Archery', source: 'XPHB' }])
+		expect({ ...after, fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }] }).toEqual((JSON.parse(before!) as unknown[])[0])
 	})
 
 	it('F-5 (finding 10): a level up and removing that level keep the species cantrip and the species feat', () => {
@@ -149,13 +153,13 @@ describe('level history (M1a, D317)', () => {
 		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5)
 	}
 
-	function fighter4(levelOrder?: typeof FIGHTER[]) {
+	function fighter4(levelOrder?: (typeof FIGHTER)[]): CharacterCreateInput {
 		return {
 			name: 'Aria',
 			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 4 }],
 			classSkills: ['athletics', 'perception'],
 			masteries: [{ name: 'Longsword' }, { name: 'Greataxe' }, { name: 'Shortbow' }, { name: 'Rapier' }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			featAsiChoices: [{ level: 4, kind: 'asi' as const, increases: { strength: 2 } }],
 			hitPointLevels: [2, 3, 4].map((level) => ({ level, dieResult: 6, kind: 'average' as const })),
 			createdAtLevel: 4,

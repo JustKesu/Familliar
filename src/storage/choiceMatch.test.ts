@@ -67,6 +67,14 @@ describe('the D318 matching rule', () => {
 		expect(hasFightingStyle(character({ name: 'Defense' }), feats, 'Archery')).toBe(false)
 	})
 
+	it('F-8: the stored-name fallback applies only when no row of that name exists; a same-named row of another source does not count', () => {
+		const feats = [{ name: 'Archery', source: 'PHB' }]
+		const character = (style: { name: string; source?: string }) => ({ id: '1', name: 'Aria', classes: [], fightingStyles: [style] })
+		expect(hasFightingStyle(character({ name: 'Archery', source: 'XPHB' }), feats, 'Archery')).toBe(false)
+		expect(hasFightingStyle(character({ name: 'Archery', source: 'PHB' }), feats, 'Archery')).toBe(true)
+		expect(hasFightingStyle(character({ name: 'Archery', source: 'XPHB' }), [], 'Archery')).toBe(true)
+	})
+
 	it('the save-time lookup records the first same-named row, the one a sourceless pick reads as', () => {
 		const lookup = pickSourceLookup(OPTIONS, FEATS)
 		expect(lookup('MV:B', 'Shove')).toBe('PHB')

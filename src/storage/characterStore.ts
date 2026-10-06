@@ -43,6 +43,7 @@ import {
 } from './errors'
 import { migrateToCurrent } from './migrations'
 import {
+	describeCharacterError,
 	describeFightingStylesError,
 	describeHitPointLevelsError,
 	describePortraitError,
@@ -50,6 +51,7 @@ import {
 	describeImportedCharacterError,
 	isSupportedVersion,
 	toStoredCharacter,
+	withRepairedFields,
 	withoutInconsistentLevelOrder,
 	withoutMalformedDroppableFields,
 } from './validate'
@@ -123,7 +125,12 @@ function parseStoredCharacters(raw: string, dropMalformedFields: boolean): Store
 	// D69: an older but supported save is carried forward here, so everything
 	// below this line only ever sees the current shape.
 	const migrated = parsed.map(migrateToCurrent)
-	const records = migrated.map(dropMalformedFields ? withoutMalformedDroppableFields : withoutInconsistentLevelOrder)
+	// D320: only a character already at the current schema is repaired; an older one keeps being rejected as before.
+	const records = migrated.map((entry, i) => {
+		const dropped = dropMalformedFields ? withoutMalformedDroppableFields(entry) : withoutInconsistentLevelOrder(entry)
+		const original: unknown = parsed[i]
+		return isRecordWithSchemaVersion(original) && original.schemaVersion === CURRENT_SCHEMA_VERSION ? withRepairedFields(dropped) : dropped
+	})
 
 	for (let i = 0; i < records.length; i++) {
 		const error = describeStoredCharacterError(records[i], i)
@@ -438,6 +445,13 @@ export class CharacterStore {
 		}
 	}
 
+	/** D320: a narrow setter must never write what list() would reject (W20), so the changed character is validated first. */
+	private writeChanged(characters: Character[], index: number): void {
+		const error = describeCharacterError(characters[index], index)
+		if (error) throw new ImportValidationError(`The change could not be saved: ${error}.`)
+		this.writeAll(characters)
+	}
+
 	create(input: CharacterCreateInput): Character {
 		if (!input.name.trim()) throw new ImportValidationError('A character needs a name.')
 
@@ -618,7 +632,7 @@ export class CharacterStore {
 			...(maxHpOverride !== undefined ? { maxHpOverride } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -641,7 +655,7 @@ export class CharacterStore {
 			...(currentHp !== undefined ? { currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -662,7 +676,7 @@ export class CharacterStore {
 			...(currentHp !== undefined ? { currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -683,7 +697,7 @@ export class CharacterStore {
 			...(currentHp !== undefined ? { currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -705,7 +719,7 @@ export class CharacterStore {
 			...(currentHp !== undefined ? { currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/** Replaces the known languages (D172: the drawer's class-feature picks). An empty list clears the field, like setInventory. */
@@ -766,22 +780,40 @@ export class CharacterStore {
 	/** Removes the manual feat at featInstances key `manual:<id>`, with everything stored on it — its free-cast resourceUses too (D319). */
 	removeManualFeat(id: string, key: string): void {
 		if (!/^manual:.+$/.test(key)) throw new Error(`Not a manual feat key: ${key}`)
-		this.writeGrantedFeats(id, (grantedFeats) => {
-			let n = -1
-			return grantedFeats.filter((entry) => entry.origin !== 'manual' || manualFeatKey(entry, ++n) !== key)
-		})
 		const characters = this.list()
 		const index = characters.findIndex((character) => character.id === id)
-		const resourceUses = characters[index].play?.resourceUses
-		if (!resourceUses) return
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const character = characters[index]
+		const current = character.grantedFeats ?? []
+		const removed = current.filter((entry) => entry.origin === 'manual').find((entry, n) => manualFeatKey(entry, n) === key)
+		if (!removed) throw new Error(`No manual feat at key: ${key}`)
+		const grantedFeats = current.filter((entry) => entry !== removed)
+		// I (F-8): a pre-A2-1 counter is shared by name, so it goes only with the last instance of that feat.
+		const stillHeld =
+			grantedFeats.some((entry) => entry.name === removed.name) ||
+			(character.featAsiChoices ?? []).some((choice) => choice.kind === 'feat' && choice.name === removed.name) ||
+			(character.inventory ?? []).some((item) => item.custom?.feats?.some((feat) => feat.name === removed.name))
+		const legacyPrefix = `spell:feat:${removed.name}:`
+
+		const { currentHp, play, grantedFeats: _previous, ...rest } = character
+		const resourceUses = play?.resourceUses
 		// freeCastResources.ts: an instance's own counters are `spell:<origin>:<originName>#<instanceKey>:<spell>|<SOURCE>`.
-		const kept = Object.fromEntries(Object.entries(resourceUses).filter(([name]) => !(name.startsWith('spell:') && name.includes(`#${key}:`))))
-		if (Object.keys(kept).length === Object.keys(resourceUses).length) return
-		const { currentHp, play, ...rest } = characters[index]
-		const storedPlay = storedPlayState(currentHp, { ...play, resourceUses: kept })
+		const kept = resourceUses
+			? Object.fromEntries(
+					Object.entries(resourceUses).filter(([name]) => !(name.startsWith('spell:') && (name.includes(`#${key}:`) || (!stillHeld && name.startsWith(legacyPrefix))))),
+				)
+			: undefined
+		const usesChanged = resourceUses !== undefined && kept !== undefined && Object.keys(kept).length !== Object.keys(resourceUses).length
+		const storedPlay = usesChanged ? storedPlayState(currentHp, { ...play, resourceUses: kept }) : play
 		const updated = [...characters]
-		updated[index] = { ...rest, ...(currentHp !== undefined ? { currentHp } : {}), ...(storedPlay ? { play: storedPlay } : {}) }
-		this.writeAll(updated)
+		updated[index] = {
+			...rest,
+			...(grantedFeats.length > 0 ? { grantedFeats } : {}),
+			...(currentHp !== undefined ? { currentHp } : {}),
+			...(storedPlay ? { play: storedPlay } : {}),
+		}
+		this.writeChanged(updated, index)
 	}
 
 	private writeGrantedFeats(id: string, change: (grantedFeats: CharacterGrantedFeat[]) => CharacterGrantedFeat[]): void {
@@ -793,7 +825,7 @@ export class CharacterStore {
 		const next = change(grantedFeats ?? [])
 		const updated = [...characters]
 		updated[index] = next.length > 0 ? { ...rest, grantedFeats: next } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	private writeFeatAsiChoices(id: string, change: (choices: FeatAsiChoice[]) => FeatAsiChoice[]): void {
@@ -905,7 +937,7 @@ export class CharacterStore {
 			...(currentHp !== undefined ? { currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/** Replaces the active conditions other than Exhaustion (R12, D214). Only known names, no repeats; an empty list clears the field. */
@@ -936,7 +968,7 @@ export class CharacterStore {
 			...(currentHp !== undefined ? { currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -967,7 +999,7 @@ export class CharacterStore {
 			...(storedPlay ? { play: storedPlay } : {}),
 			...(rest.inventory ? { inventory: rest.inventory } : {}),
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	delete(id: string): void {
