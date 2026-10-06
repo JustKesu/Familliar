@@ -107,6 +107,8 @@ import {
 import { combineSpellEntries, provenanceLabel, SpellDetailBody } from './SpellList'
 import { chosenSpellCap, classSpellLimits } from './classSpellLimits'
 import {
+	CAST_POOL_EMPTY,
+	CAST_POOL_NAME,
 	filterSpellsTabSections,
 	ordinalLevel,
 	sectionLabel,
@@ -117,6 +119,7 @@ import {
 	spellsTabActionSections,
 	spellsTabRowCaster,
 	spellSubtitle,
+	type CastPool,
 	type SpellsTabActionRow,
 	type SpellsTabActionSection,
 	type SpellsTabFilter,
@@ -875,7 +878,8 @@ function SpellTabRow({
 	multiclass,
 	caster,
 	characterLevel,
-	slotsLeft,
+	ordinaryLeft,
+	pactLeft,
 	concentrating,
 	resolverData,
 	resourceUses,
@@ -893,15 +897,16 @@ function SpellTabRow({
 	multiclass: boolean
 	caster: SpellCaster
 	characterLevel: number
-	/** In the pool CAST spends from; 0 when the section has no slots. */
-	slotsLeft: number
+	/** Free slots of the section's ordinary level and of Pact Magic. */
+	ordinaryLeft: number
+	pactLeft: number
 	concentrating: boolean
 	resolverData: ResolverData
 	resourceUses: Record<string, number>
 	resourceMaxima: ReadonlyMap<string, number>
 	resourceRecharge: ReadonlyMap<string, string>
 	onRoll: (report: RollReport) => void
-	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection) => void
+	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection, pool: CastPool) => void
 	onUse?: (row: SpellsTabActionRow) => void
 	onSpendResource?: (name: string, delta: 1 | -1) => void
 	onToggleConcentration?: (spell: { name: string; source: string }) => void
@@ -916,11 +921,43 @@ function SpellTabRow({
 	let counter: ReactNode = null
 	if (action.kind === 'cast') {
 		if (onCast) {
-			use = (
-				<button type="button" className="btn--accent-outline sheet__spell-cast" aria-label={`Cast ${entry.name}`} disabled={slotsLeft <= 0} onClick={() => onCast(row, section)}>
-					Cast
-				</button>
-			)
+			const left = (pool: CastPool) => (pool === 'ordinary' ? ordinaryLeft : pactLeft)
+			if (action.pools.length === 2) {
+				// D326: a section with both pools lets the player pick the slot.
+				use = (
+					<span className="sheet__spell-cast-pair">
+						{action.pools.map((pool) => {
+							const reason = row.unavailable ? 'Unavailable at this level' : left(pool) <= 0 ? CAST_POOL_EMPTY[pool] : null
+							return (
+								<button
+									key={pool}
+									type="button"
+									className="btn--accent-outline sheet__spell-cast"
+									aria-label={`Cast ${entry.name} with ${CAST_POOL_NAME[pool]}`}
+									disabled={reason !== null}
+									title={reason ?? undefined}
+									onClick={() => onCast(row, section, pool)}
+								>
+									{pool === 'ordinary' ? 'Slot' : 'Pact'}
+								</button>
+							)
+						})}
+					</span>
+				)
+			} else {
+				const pool = action.pools[0]
+				use = (
+					<button
+						type="button"
+						className="btn--accent-outline sheet__spell-cast"
+						aria-label={`Cast ${entry.name}`}
+						disabled={pool === undefined || left(pool) <= 0 || row.unavailable}
+						onClick={() => pool && onCast(row, section, pool)}
+					>
+						Cast
+					</button>
+				)
+			}
 		}
 	} else if (action.kind === 'use') {
 		const spent = resourceUses[action.counterKey] ?? 0
@@ -1077,7 +1114,7 @@ function SpellsSection({
 	onRoll: (report: RollReport) => void
 	onSpendOrdinary?: (slotLevel: number, max: number, delta: 1 | -1) => void
 	onSpendPact?: (max: number, delta: 1 | -1) => void
-	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection) => void
+	onCast?: (row: SpellsTabActionRow, section: SpellsTabActionSection, pool: CastPool) => void
 	onUse?: (row: SpellsTabActionRow) => void
 	onSpendResource?: (name: string, delta: 1 | -1) => void
 	onToggleConcentration?: (spell: { name: string; source: string }) => void
@@ -1137,7 +1174,7 @@ function SpellsSection({
 							const level = typeof section.key === 'number' ? section.key : 0
 							const label = sectionLabel(section.key)
 							const ordinaryLeft = section.ordinarySlots - (spentOrdinary[level] ?? 0)
-							const slotsLeft = section.ordinarySlots > 0 ? ordinaryLeft : section.pactSlots - spentPact
+							const pactLeft = section.pactSlots - spentPact
 							return (
 								<section key={String(section.key)} className="sheet__spell-section" aria-label={label}>
 									<div className="sheet__spell-section-heading">
@@ -1175,7 +1212,8 @@ function SpellsSection({
 											multiclass={multiclass}
 												caster={casterOf(row)}
 												characterLevel={characterLevel}
-												slotsLeft={slotsLeft}
+												ordinaryLeft={ordinaryLeft}
+												pactLeft={pactLeft}
 												concentrating={concentratingOn !== null && matchesConcentration(concentratingOn, row.entry)}
 												resolverData={resolverData}
 												resourceUses={resourceUses}
@@ -2551,11 +2589,11 @@ function CharacterSheetBody({
 		resourceMaxima,
 		itemSpells,
 	})
-	/* D189: CAST spends one slot of its section's pool (ordinary first when a section has both, QUESTIONS.md) and starts concentration. */
-	function castSpell(row: SpellsTabActionRow, section: SpellsTabActionSection): void {
+	/* D189/D326: CAST spends one slot of the pool the button names and starts concentration. */
+	function castSpell(row: SpellsTabActionRow, section: SpellsTabActionSection, pool: CastPool): void {
 		const level = typeof section.key === 'number' ? section.key : 0
-		if (section.ordinarySlots > 0) spendOrdinarySlot(level, section.ordinarySlots, 1)
-		else if (section.pactSlots > 0) spendPactSlot(section.pactSlots, 1)
+		if (pool === 'ordinary' && section.ordinarySlots > 0) spendOrdinarySlot(level, section.ordinarySlots, 1)
+		else if (pool === 'pact' && section.pactSlots > 0) spendPactSlot(section.pactSlots, 1)
 		if (row.detail?.concentration) onEditConcentration?.({ name: row.entry.name, source: row.entry.source })
 	}
 	/* D191: USE spends the row's counter (or a resource pool's cost) through the shared resource path, and starts concentration like CAST. */

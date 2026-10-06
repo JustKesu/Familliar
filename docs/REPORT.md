@@ -1,40 +1,42 @@
-# M5a — vybraná kouzla po třídách, limity po třídách (D325, schéma zůstává 59)
+# REPORT — M5b (step 10): CAST pool choice and pact upcast (D326)
 
-## Co se změnilo
-- `SpellList.tsx`: `SheetSpellEntry` + `chosenBy`, `rowKey`, `subclassOwners` (vše volitelné, `chosen` zůstává).
-  `combineSpellEntries` bere `className/classSource` ze `spellChoices` a ze skupin podtříd; kouzlo vybrané 2 třídami =
-  2 záznamy (druhý jen s pickem, `rowKey` = `name|SRC|Class|Src`); granty se slévají do řádku první vybírající třídy.
-  `spellEntryKey()` = klíč řádku pro Spells i Actions. `provenanceLabel(entry, multiclass)` → „player pick (Class)“.
-- `casterFor`: pick → spellcasting entry své třídy (bez entry a víc tříd → vlastní důvod); grant podtřídy → třída
-  vlastnící podtřídu (`subclassOwners`, sloučeno s D192 `classOrigins`). Fallback „could belong to more than one casting
-  class“ zůstává jen pro ne-pick zdroje (optional feature v multiclassu). `spellActionRows`: v multiclassu `origin` = třída.
-- Nový `sheet/classSpellLimits.ts`: `classSpellLimits` počítá každou třídu samostatně (`computeSpellSlots/Counts` nad
-  postavou s jedinou třídou) → vlastní cap, počty, důvod; `chosenSpellCap` pro `spellsTabActionSections`
-  (nový parametr `unavailableAboveFor`, `unavailableAboveLevel` zůstal). Jedna třída: všechny picky patří jí (beze změny).
-- `CharacterSheet.tsx`: plošný multiclass `spellLimitReason` smazán; notice po třídách, v multiclassu
-  „Sorcerer cantrips: 5 known, 4 allowed.“ / „Sorcerer spells prepared: …“. `spellSubtitle(row, castingClassName, multiclass)`.
-- Manage Spells beze změny — už filtroval podle vlastního `SpellSlotsEntry` třídy (krok 1 inventury, STOP nenastal).
+## Changed
+- `spellsTabData.ts`: `SpellRowAction` cast = `{ kind: 'cast'; pools: CastPool[] }`, pools from the row's section
+  (`poolsAt`: ordinary if `ordinarySlots[L-1] > 0`, pact if `pact.slotLevel === L`). D207 upcast loop now targets every
+  higher level with any pool, so a pact section above the ordinary levels gets badged upcast rows too; when the pact
+  level also has ordinary slots the existing ordinary upcast row simply carries both pools (no duplicate row).
+  Pact-only path (D189) untouched. `CAST_POOL_NAME`, `CAST_POOL_EMPTY` exported.
+- `CharacterSheet.tsx`: `SpellTabRow` takes `ordinaryLeft` / `pactLeft` (was `slotsLeft`); two pools → "Slot" / "Pact"
+  buttons ("Cast X with a spell slot" / "Cast X with a Pact Magic slot", disabled + `title` "No spell slots left" /
+  "No Pact Magic slots left"); else one CAST as before. `castSpell(row, section, pool)` spends the named pool. An
+  `unavailable` (D325) row's CAST/Slot/Pact is disabled (title "Unavailable at this level" on the pair).
+- `index.css`: `.sheet__spell-cast-pair` (flex, 3px gap, tighter letter spacing inside the 72px column).
+- Docs: D326 added; STATUS.md updated. QUESTIONS.md untouched — D326 resolves "CAST s oběma pooly slotů — běžný, nebo
+  pact slot?" (status there still "nerozhodnuto").
 
-## Ověřeno
-- typecheck, test (3102), validate-data (175), e2e (443, 4,5 min — nad 3 min) — vše zelené.
-- Unit `classSpellLimits.test.ts`: split Detect Magic Wizard/Cleric (DC 13/12), Warlock/Sorcerer Hold Person dva řádky,
-  subclass grant → vlastník, merge grantu do řádku pickující třídy, limity Warlock 6 (3) / Sorcerer 3 (2), neznámá třída.
-- E2E `multiclassSpells.spec.ts` a–e (zadání a–e).
-- Upravený existující test: `CharacterSheet.test.tsx` „says the limit cannot be determined for a multiclass character“ →
-  „D325: … reason of the class that chose the spell only“ — testoval přesně smazané chování. Jednotřídní testy beze změny.
+## Step 1 inventory
+No STOP condition: `pactSlots` is non-zero only where `pact.slotLevel === level`; pact upcast needs no class distinction
+(all CAST spells below the pact level qualify), so `chosenBy` was not needed.
 
-## Odchylky a rozhodnutí
-- E2E skóre INT 15 / WIS 12 (standardArray jako `multiclassSlots.spec.ts`) místo INT 16 / WIS 14; DC 13 vs 12.
-- Kouzlo vybrané třídou A a zároveň always-prepared třídy B → jeden řádek, čísla třídy A (pick vyhrává).
-- Druhá vybírající třída nedostane granty (USE řádky) — ty zůstávají na řádku první.
-- Starší zmínky „multiclass = nejde zjistit“ v historických záznamech STATUS.md (ř. ~174, ~472–483) nechány.
+## Verified
+- typecheck, test (168 files / 3105), validate-data (175/175), e2e 448 passed (4.5 min — over the ~3 min budget).
+- Unit `spellsTabData.test.ts` "cast pools (D326)": both-pools section, pact upcast with and without ordinary slots at
+  the pact level, single-pool unchanged. `CharacterSheet.test.tsx` both-pools test rewritten to Slot/Pact.
+- E2E `multiclassCast.spec.ts` M5b a (Pact/Slot spend own pool), b (Pact disabled + title when spent, Slot works),
+  c (Burning Hands "1st" upcast in 2nd with both buttons), d1/d2 (single-class Warlock / Sorcerer one CAST).
 
-## Rozhodnutí pro uživatele
-- Žádné otevřené. M5b (volba poolu u CAST, upcast do pact) zbývá.
+## Decisions taken / for the user
+- Pact upcast rows keep D207's `entriesHigherLevel` filter. Consequence: Warlock 5 / Sorcerer 1 (pact 3rd, ordinary
+  1st only) — a 2nd-level Warlock spell without higher-level text (Misty Step) sits in a slotless 2nd section with a
+  disabled CAST and has no pact row. Rules allow casting it with a pact slot; dropping the filter for pact rows would fix
+  it. Needs your call.
+- Disabling CAST on `unavailable` rows also applies single-class; there such rows have no slots in their section, so no
+  visible change.
 
 ## Manual browser check for the user
-Na https://familliar.vercel.app, 1366 i 1920, tmavý i světlý režim, postava Wizard 3 / Cleric 3 s Hold Person u obou:
-- Spells tab: dva řádky Hold Person pod sebou — podtitul „Wizard“ / „Cleric“ se nezalamuje divně, DC buňka zarovnaná.
-- Rozbalený řádek: „player pick (Wizard)“ čitelné, nepřetéká.
-- Actions tab: dva řádky Hold Person, „· Wizard“ / „· Cleric“ v podtitulu se vejde.
-- Warlock 6 / Sorcerer 3 s 5 cantripy Sorcereru: notice „Sorcerer cantrips: …“ vzhled a zalomení.
+On https://familliar.vercel.app, a Warlock 3 / Sorcerer 3 character, Spells tab:
+- 2nd Level section: Slot and Pact buttons side by side fit the first column, readable, not clipped; heading still shows
+  ordinary boxes + PACT boxes.
+- Burning Hands upcast row in 2nd Level: "1st" badge alignment next to the two buttons.
+- Disabled Pact button look (and tooltip on hover).
+- At 1366 and 1920 width, dark and light theme, and phone width (table scrolls horizontally).

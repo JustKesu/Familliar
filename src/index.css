@@ -1972,6 +1972,16 @@ button:disabled {
   text-transform: uppercase;
 }
 
+.sheet__spell-cast-pair {
+  display: flex;
+  gap: 3px;
+}
+
+/* D326: two buttons share the 72px column, so the letter spacing gives way. */
+.sheet__spell-cast-pair .sheet__spell-cast {
+  letter-spacing: 0.02em;
+}
+
 .sheet__spell-name-cell {
   display: flex;
   flex-direction: column;

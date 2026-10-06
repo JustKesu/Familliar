@@ -313,6 +313,42 @@ describe('spellsTabActionSections (D190)', () => {
 		})
 	})
 
+	describe('cast pools (D326)', () => {
+		function pools(sections: ReturnType<typeof spellsTabActionSections>) {
+			return sections.flatMap((section) => section.rows.flatMap((row) => (row.action.kind === 'cast' ? [[section.key, row.key, row.badgeLevel, row.action.pools.join('+')]] : [])))
+		}
+		const BOTH = { ordinary: [4, 2, 0, 0, 0, 0, 0, 0, 0], pact: { count: 2, slotLevel: 2 } }
+
+		it('Warlock 3 / Sorcerer 3: the 2nd-level section offers both pools, the 1st only ordinary', () => {
+			const entries = combineSpellEntries([{ spells: [{ name: 'Darkness', source: 'XPHB' }, { name: 'Shield', source: 'XPHB' }] }], [])
+			expect(pools(sectionsFor(entries, BOTH))).toEqual([
+				[1, 'shield|XPHB#cast', null, 'ordinary'],
+				[2, 'darkness|XPHB#cast', null, 'ordinary+pact'],
+			])
+		})
+
+		it('a lower spell with higher-level text gets a badged upcast row in the pact section, also when that level has no ordinary slots', () => {
+			const entries = combineSpellEntries([{ spells: [{ name: 'Burning Hands', source: 'XPHB' }] }], [])
+			expect(pools(sectionsFor(entries, BOTH))).toEqual([
+				[1, 'burning hands|XPHB#cast', null, 'ordinary'],
+				[2, 'burning hands|XPHB#cast@2', 1, 'ordinary+pact'],
+			])
+			expect(pools(sectionsFor(entries, { ordinary: [2, 0, 0, 0, 0, 0, 0, 0, 0], pact: { count: 2, slotLevel: 3 } }))).toEqual([
+				[1, 'burning hands|XPHB#cast', null, 'ordinary'],
+				[3, 'burning hands|XPHB#cast@3', 1, 'pact'],
+			])
+		})
+
+		it('single-pool characters keep one pool per CAST row', () => {
+			const entries = combineSpellEntries([{ spells: [{ name: 'Burning Hands', source: 'XPHB' }] }], [])
+			expect(pools(sectionsFor(entries, { ordinary: [2, 2, 0, 0, 0, 0, 0, 0, 0] }))).toEqual([
+				[1, 'burning hands|XPHB#cast', null, 'ordinary'],
+				[2, 'burning hands|XPHB#cast@2', 1, 'ordinary'],
+			])
+			expect(pools(sectionsFor(entries, { pact: { count: 2, slotLevel: 2 } }))).toEqual([[2, 'burning hands|XPHB#cast', 1, 'pact']])
+		})
+	})
+
 	describe('spellsTabRowCaster', () => {
 		const numbers = (bonus: number) => ({ spellAttackBonus: bonus, spellAttackBreakdown: [], spellSaveDC: 8 + bonus, spellSaveDCBreakdown: [] })
 		const warlock: SpellcastingEntry = { className: 'Warlock', classSource: 'XPHB', ability: 'charisma', ...numbers(5) }

@@ -101,8 +101,14 @@ function buildSections<R extends SpellsTabRow>(
 
 // --- R7b rows: CAST / USE / label (D190) --------------------------------------
 
+export type CastPool = 'ordinary' | 'pact'
+
+export const CAST_POOL_NAME: Record<CastPool, string> = { ordinary: 'a spell slot', pact: 'a Pact Magic slot' }
+export const CAST_POOL_EMPTY: Record<CastPool, string> = { ordinary: 'No spell slots left', pact: 'No Pact Magic slots left' }
+
 export type SpellRowAction =
-	| { kind: 'cast' }
+	/** D326: the pools the section offers; two render as Slot and Pact, none as a disabled CAST. */
+	| { kind: 'cast'; pools: CastPool[] }
 	| { kind: 'use'; grant: SpellGrant; counterKey: string; cost: number; max: number | null; label: string }
 	| { kind: 'label'; label: string }
 
@@ -154,6 +160,11 @@ export function spellsTabActionSections({
 }): SpellsTabActionSection[] {
 	const pactLevel = pactOnlyLevel(ordinarySlots, pact)
 	const hasSlots = ordinarySlots.some((count) => count > 0) || (pact?.count ?? 0) > 0
+	const poolsAt = (level: number): CastPool[] => [
+		...((ordinarySlots[level - 1] ?? 0) > 0 ? (['ordinary'] as const) : []),
+		...(pact !== null && pact.count > 0 && pact.slotLevel === level ? (['pact'] as const) : []),
+	]
+	const castAction = (level: number): SpellRowAction => ({ kind: 'cast', pools: poolsAt(level) })
 	const placed: { key: SpellSectionKey; row: SpellsTabActionRow }[] = []
 
 	for (const entry of entries) {
@@ -177,17 +188,19 @@ export function spellsTabActionSections({
 		const cast = hasSlots && (entry.chosen || entry.grants.some((grant) => isPlainClassGrant(grant) || alsoCastableWithSlot(grant.originName)))
 		if (cast) {
 			const inPact = pactLevel !== null && detail.level <= pactLevel
+			const castLevel = inPact ? pactLevel : detail.level
 			placed.push({
-				key: inPact ? pactLevel : detail.level,
-				row: { ...base, key: `${spellKey}#cast`, badgeLevel: inPact && detail.level !== pactLevel ? detail.level : null, castWithSlot: true, action: { kind: 'cast' } },
+				key: castLevel,
+				row: { ...base, key: `${spellKey}#cast`, badgeLevel: inPact && detail.level !== pactLevel ? detail.level : null, castWithSlot: true, action: castAction(castLevel) },
 			})
-			// R8b/D207: an ordinary-slot CAST spell with higher-level text gets one more CAST row per higher ordinary section.
+			// R8b/D207: an ordinary-slot CAST spell with higher-level text gets one more CAST row per higher section with slots — D326: the pact section too.
 			if (!inPact && !unavailable && detail.entriesHigherLevel.length > 0) {
 				for (let level = detail.level + 1; level <= 9; level++) {
-					if ((ordinarySlots[level - 1] ?? 0) <= 0) continue
+					const pools = poolsAt(level)
+					if (pools.length === 0) continue
 					placed.push({
 						key: level,
-						row: { ...base, key: `${spellKey}#cast@${level}`, badgeLevel: detail.level, castWithSlot: true, action: { kind: 'cast' } },
+						row: { ...base, key: `${spellKey}#cast@${level}`, badgeLevel: detail.level, castWithSlot: true, action: { kind: 'cast', pools } },
 					})
 				}
 			}

@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a done (see the entries below).
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b done (see the entries below).
 
 ## Co appka umí navíc k build orderu
 
@@ -1159,6 +1159,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - `e2e/multiclassSpells.spec.ts` — M5a a–e (Wizard 3 / Cleric 3: Wizard pick DC 13, Cleric pick DC 12, "player pick
   (<Class>)"; Hold Person chosen by both = two rows on Spells and Actions; Warlock 6 / Sorcerer 3: Sorcerer Fireball
   unavailable, Warlock Counterspell not; "Sorcerer cantrips: 5 known, 4 allowed."; Sorcerer Manage Spells up to 2nd).
+- `e2e/multiclassCast.spec.ts` — M5b a–d2 (Warlock 3 / Sorcerer 3: 2nd-level Slot / Pact spend their own pool, Pact
+  disabled when spent, Burning Hands "1st" upcast row with both buttons; single-class Warlock / Sorcerer one CAST).
 
 ## Dočasné scaffolding
 
@@ -1938,6 +1940,12 @@ chooser's class entry, a subclass grant the owning class. Provenance "player pic
 in multiclass. New `sheet/classSpellLimits.ts`: per-class cap (own table / pact level) and counts against that class's
 picks; blanket multiclass `spellLimitReason` removed; over-limit notices "<Class> cantrips: …" in multiclass. Not done
 (M5b): CAST pool choice, upcast into pact slots. Unit `classSpellLimits.test.ts`; E2E `multiclassSpells.spec.ts`.
+
+M5b done (D326). No schema change (59). `SpellRowAction` cast carries `pools: ('ordinary'|'pact')[]` from its section
+(`spellsTabActionSections`); a both-pools section renders Slot + Pact buttons (`CAST_POOL_NAME` / `CAST_POOL_EMPTY`,
+`.sheet__spell-cast-pair`), `castSpell` spends the named pool. D207 upcast rows now also go to a pact section without
+ordinary slots. An `unavailable` row's CAST is disabled. Unit `spellsTabData.test.ts` "cast pools (D326)"; E2E
+`multiclassCast.spec.ts`.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

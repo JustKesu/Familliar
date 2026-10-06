@@ -4951,3 +4951,14 @@ provenance „player pick (<Třída>)“, řádek na Actions nese název třídy
 nejvyšší úroveň z VLASTNÍ tabulky třídy (pact úroveň u Warlocka), počty cantripů a kouzel jen proti kouzlům té třídy;
 neznámá data jedné třídy ukážou jen její důvod. Manage Spells filtruje po třídách už dřív. Volba poolu u CAST a upcast do
 pact slotů zůstávají na M5b. Task M5a, 6. 10. 2026.
+
+## D326 — CAST s výběrem poolu a upcast do pact sekce (M5b, schéma zůstává 59)
+
+Podle XPHB „Multiclassing > Spellcasting > Pact Magic“: pact sloty sesílají kouzla Spellcasting tříd a běžné sloty
+Warlockova kouzla. V sekci, která má běžné i pact sloty (jen úroveň pact slotu), má každý CAST řádek dvě tlačítka „Slot“
+a „Pact“ („Cast X with a spell slot“ / „… with a Pact Magic slot“); každé utratí svůj pool a je disabled, když je pool
+prázdný („No spell slots left“ / „No Pact Magic slots left“). Nahrazuje „při obou poolech běžný“ z D189. Upcast řádky
+(D207, pravidla beze změny včetně `entriesHigherLevel`) jdou i do pact sekce pro kouzla nižší úrovně, než je pact slot,
+bez ohledu na třídu, se stejným odznakem; nahrazuje „jen do běžných sekcí“ z D207 bodu 4. Sekce s jedním poolem a
+single-class postavy mají jedno CAST jako dřív (pact-only Warlock dál podle D189). Vybrané kouzlo `unavailable` (D325)
+nejde seslat z žádného poolu. Úložiště beze změny (`spentSpellSlots.ordinary` / `.pact`). Task M5b, 6. 10. 2026.

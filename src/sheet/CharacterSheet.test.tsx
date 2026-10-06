@@ -6056,7 +6056,7 @@ describe('CharacterSheet', () => {
 				expect(onSlots).toHaveBeenLastCalledWith({ pact: 1 })
 			})
 
-			it('both pools: the pact boxes sit beside the ordinary ones in the matching section, and CAST there spends an ordinary slot', async () => {
+			it('both pools: the pact boxes sit beside the ordinary ones in the matching section, and Slot / Pact there spend their own pool (D326)', async () => {
 				vi.mocked(loadSpellSlotsClassData).mockResolvedValue([
 					{ className: 'Wizard', classSource: 'XPHB', casterProgression: 'full', spellSlotsByLevel: [[2], [3], [4, 2]], pactSlotsByLevel: null },
 					{ className: 'Warlock', classSource: 'XPHB', casterProgression: 'pact', spellSlotsByLevel: null, pactSlotsByLevel: [{ count: 1, slotLevel: 1 }, { count: 2, slotLevel: 1 }, { count: 2, slotLevel: 2 }] },
@@ -6079,8 +6079,11 @@ describe('CharacterSheet', () => {
 				expect(second.querySelector('.sheet__spell-pact-tag')).toBeTruthy()
 				expect(spellRow(second, 'Misty Step').querySelector('.sheet__spell-badge')).toBeNull()
 
-				fireEvent.click(within(second).getByRole('button', { name: 'Cast Misty Step' }))
+				expect(within(second).queryByRole('button', { name: 'Cast Misty Step' })).toBeNull()
+				fireEvent.click(within(second).getByRole('button', { name: 'Cast Misty Step with a spell slot' }))
 				expect(onSlots).toHaveBeenLastCalledWith({ ordinary: { 2: 1 } })
+				fireEvent.click(within(second).getByRole('button', { name: 'Cast Misty Step with a Pact Magic slot' }))
+				expect(onSlots).toHaveBeenLastCalledWith({ pact: 1 })
 			})
 
 			it('F-9 D324: unknown slot maxima (no Wizard XPHB row for the combined table) show the reason in the Spells section and the Spell Slots drawer, not zero slots', async () => {
