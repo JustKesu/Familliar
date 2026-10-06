@@ -20,6 +20,7 @@
  */
 
 import { featInstances, type FeatRef } from '../featAsi/featInstances'
+import { classProficiencyGrants } from '../calculation/classProficiencies'
 import { featureWeaponGrantsFor } from '../calculation/featureGrants'
 import type { Character } from '../storage/character'
 
@@ -163,9 +164,9 @@ export function weaponProficiencyGrantsForFeats(takenFeats: readonly FeatRef[], 
 }
 
 /**
- * Every weapon proficiency the character has, from every class they hold
- * (D11) plus their feats. Species and backgrounds are absent on purpose:
- * neither data file has a weaponProficiencies field on any entry.
+ * Every weapon proficiency the character has, from their classes (D321) plus
+ * their feats. Species and backgrounds are absent on purpose: neither data
+ * file has a weaponProficiencies field on any entry.
  */
 export function weaponProficiencyGrantsFor(
 	character: Character,
@@ -173,7 +174,7 @@ export function weaponProficiencyGrantsFor(
 	feats: FeatWeaponProficiencyEntry[],
 	backgroundOriginFeat: FeatRef | null,
 ): WeaponProficiencyGrant[] {
-	const grants = character.classes.flatMap((cls) => weaponProficiencyGrantsForClass(parsedClasses, cls.className, cls.classSource))
+	const grants = classProficiencyGrants(character, parsedClasses).weapons.map(({ grant }) => grant)
 	// D178: subclass and class-option grants come from the table the Proficiencies card also reads.
 	return [...grants, ...featureWeaponGrantsFor(character, parsedClasses), ...weaponProficiencyGrantsForFeats(featInstances(character, backgroundOriginFeat), feats)]
 }

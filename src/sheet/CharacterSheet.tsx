@@ -17,7 +17,7 @@ import { Fragment, useContext, useEffect, useRef, useState, type ComponentProps,
 import { createPortal } from 'react-dom'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
-import { isMulticlass, totalCharacterLevel } from '../calculation/characterLevel'
+import { firstClass, isMulticlass, totalCharacterLevel } from '../calculation/characterLevel'
 import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import { familiarFormOptions, hasFindFamiliar, hasPactOfTheChain, loadBeasts, type Beast } from '../beasts/beastData'
@@ -2269,6 +2269,8 @@ function CharacterSheetBody({
 	const conditionImmunities = conditionsGranted(itemConditionGrants, 'immune')
 	const saveAdvantages = [...conditionAdvantageLines(itemConditionGrants), ...speciesSaveAdvantageLines(character.species)]
 	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor, itemProficiencyGrants, itemAbilityGrants)
+	const startingClass = firstClass(character)
+	const startingClasses = startingClass ? [startingClass] : []
 	const initiative = computeInitiative(character, feats, itemFlatBonuses.initiative, itemAbilityGrants)
 	const skills = computeSkills(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemProficiencyGrants, itemAbilityGrants)
 	const passivePerception = computePassivePerception(character, feats, itemFlatBonuses.abilityCheck, itemFlatBonuses.skillFor, itemFlatBonuses.passiveFor.perception, itemProficiencyGrants, itemAbilityGrants)
@@ -3621,7 +3623,7 @@ function CharacterSheetBody({
 							)}
 							{category === 'tools' && weaponAttackData !== null && onEditToolChoices && (
 								<ClassToolSlots
-									grants={classToolGrantsFor(character.classes, toolsHeldElsewhere(weaponAttackData.proficiencies.tools, character.classes[0]?.subclass ?? null))}
+									grants={classToolGrantsFor(startingClasses, toolsHeldElsewhere(weaponAttackData.proficiencies.tools, startingClasses[0]?.subclass ?? null))}
 									value={character.toolChoices ?? []}
 									known={weaponAttackData.proficiencies.tools.filter((item) => !item.pending).map((item) => item.label)}
 									onChange={onEditToolChoices}

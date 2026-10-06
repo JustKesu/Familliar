@@ -4,6 +4,7 @@ import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { subclassSkillSourceNames } from '../classSkills/subclassSkillGrants'
 import { totalCharacterLevel } from '../calculation/characterLevel'
+import { classProficiencyGrants } from '../calculation/classProficiencies'
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { AsiSubPicker } from '../featAsi/FeatAsiPicker'
@@ -87,6 +88,7 @@ async function loadPanelData(character: Character): Promise<Loaded> {
 		loadDataFile('data/classes.json'),
 		loadDataFile('data/feats.json'),
 	])
+	const classGrants = classProficiencyGrants(character, rawClasses)
 	return {
 		feats,
 		fightingStyleClass: classInfo.find((c) => c.fightingStyle)?.className ?? null,
@@ -95,8 +97,11 @@ async function loadPanelData(character: Character): Promise<Loaded> {
 		ctx: {
 			hasFightingStyleFeature: classInfo.some((c) => c.fightingStyle),
 			hasSpellcasting: classInfo.some((c) => c.info?.hasSpellcasting),
-			armorProficiencies: [...new Set(classInfo.flatMap((c) => c.info?.armorProficiencies ?? []))],
-			weaponProficiencies: [...new Set(classInfo.flatMap((c) => c.info?.weaponProficiencies ?? []))],
+			// D321: the same class proficiencies the Proficiencies card shows.
+			armorProficiencies: [...new Set(classGrants.armor.map(({ token }) => token))],
+			weaponProficiencies: [
+				...new Set(classGrants.weapons.flatMap(({ grant }) => (grant.kind === 'category' && !grant.anyOfProperties && !grant.ranged && !grant.melee ? [grant.category] : []))),
+			],
 			speciesName: species?.name ?? null,
 			speciesRaceTags: speciesInfo?.raceTags ?? [],
 			speciesSize: speciesInfo?.size ?? character.speciesSize ?? null,

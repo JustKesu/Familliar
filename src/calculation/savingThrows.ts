@@ -1,7 +1,7 @@
 /*
  * Saving throws (build order step 4/4a): ability modifier plus proficiency
- * bonus for the abilities a character's class(es), or a feat (Resilient),
- * grant proficiency in. D11 — iterate the classes array. D44 — a class and
+ * bonus for the abilities a character's first class (D321), or a feat (Resilient),
+ * grant proficiency in. D44 — a class and
  * a feat granting the SAME save's proficiency still counts once, with both
  * sources named in the breakdown.
  *
@@ -16,6 +16,7 @@ import { ABILITIES, type Ability } from '../abilities/abilityScores'
 import type { Character, CharacterClass } from '../storage/character'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
+import { firstClass } from './characterLevel'
 import { featSavingThrowProficiencyNames, type FeatEffectEntry } from './featEffects'
 import type { ItemAbilityGrant } from './itemAbilityScores'
 import { itemSaveProficiency, type ItemProficiencyGrant } from './itemProficiencies'
@@ -78,13 +79,15 @@ export function computeSavingThrow(
 
 	const abbreviation = ABILITY_ABBREVIATIONS[ability]
 	const grantingSources: string[] = []
-	for (const characterClass of character.classes) {
-		const proficiencies = findClassProficiencies(characterClass, classData)
+	// D321 (XPHB Multiclassing): save proficiencies come from the first class only.
+	const startingClass = firstClass(character)
+	if (startingClass) {
+		const proficiencies = findClassProficiencies(startingClass, classData)
 		if (!proficiencies) {
-			return unknown(`No saving throw data for class "${characterClass.className}" (${characterClass.classSource}).`)
+			return unknown(`No saving throw data for class "${startingClass.className}" (${startingClass.classSource}).`)
 		}
 		if (proficiencies.abilities.includes(abbreviation)) {
-			grantingSources.push(characterClass.className)
+			grantingSources.push(startingClass.className)
 		}
 	}
 	for (const grant of CLASS_SAVE_GRANTS) {

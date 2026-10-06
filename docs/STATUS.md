@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [not started] Multiclass
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2 done (see the entries below).
 
 ## Co appka umí navíc k build orderu
 
@@ -1150,6 +1150,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - `e2e/storageRepair.spec.ts` — F-8 (schema-59 seed with a bare-string concentration and an
   id-less manual Tough loads next to a valid character; Tough removed in Manage Feats stays
   removed after a reload).
+- `e2e/multiclassProficiencies.spec.ts` — M2 a–b (Warlock 6 / Sorcerer 3, Warlock first: WIS/CHA saves only, no
+  Sorcerer in the Saving throws drawer; Wizard 1 / Fighter 1: medium armor, shields, martial weapons "Fighter
+  (multiclass)", no heavy armor, Longsword to hit +4).
 
 ## Dočasné scaffolding
 
@@ -1886,6 +1889,16 @@ feat `id` dropped. Narrow setters writing `play`/`grantedFeats` go through `Char
 (`describeCharacterError` before write). `removeManualFeat` throws on an unknown key and drops the pre-A2-1 counter
 with the last instance of that feat. `hasFightingStyle` name fallback only when no same-named row exists. Migration
 56→57 skips `levelOrder` above level 20. No visible change. E2E `storageRepair.spec.ts`.
+
+M2 done (D321). No schema change (59). `firstClass` (calculation/characterLevel.ts): `levelOrder[0]`, else
+`classes[0]`. Saves: class proficiency from the first class only (`computeSavingThrow`); feature/feat/item/aura saves
+unchanged. New `calculation/classProficiencies.ts` `classProficiencyGrants`: first class's starting armor/weapons, every
+other class's fixed `multiclassing.proficienciesGained` armor/weapons/`toolProficiencies` (`true` values only), origin
+"<Class> (multiclass)". Read by `computeProficiencies` (card + drawer), `weaponProficiencyGrantsFor` (attacks) and
+Manage Feats prerequisite ctx (armor/weapon tokens). `classToolGrantsFor` callers (computeProficiencies, sheet
+ClassToolSlots) pass the first class. Not done (M7): Bard instrument, multiclass skill, subclass tools of a non-first
+class. Wizard/level-up/mastery picker untouched (single class). Unit `classProficiencies.test.ts`,
+`savingThrows.test.ts`, `characterLevel.test.ts`; E2E `multiclassProficiencies.spec.ts`.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

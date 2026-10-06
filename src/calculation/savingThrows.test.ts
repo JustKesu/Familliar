@@ -170,3 +170,37 @@ describe('computeSavingThrows', () => {
 		expect(result.wisdom.status === 'known' && result.wisdom.value).toEqual({ status: 'none', modifier: 0 })
 	})
 })
+
+describe('D321: multiclass saves come from the first class only', () => {
+	const multiclassData: ClassSavingThrowProficiencies[] = [
+		{ className: 'Warlock', classSource: 'XPHB', abilities: ['wis', 'cha'] },
+		{ className: 'Sorcerer', classSource: 'XPHB', abilities: ['con', 'cha'] },
+	]
+	const warlock = { className: 'Warlock', classSource: 'XPHB' }
+	const sorcerer = { className: 'Sorcerer', classSource: 'XPHB' }
+	const base: Character = {
+		id: 'mc',
+		name: 'Warlock 6 / Sorcerer 3',
+		classes: [
+			{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 6 },
+			{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 },
+		],
+		abilityScores: fighter5.abilityScores,
+	}
+	const proficient = (character: Character) =>
+		Object.entries(computeSavingThrows(character, multiclassData))
+			.filter(([, result]) => result.status === 'known' && result.value.status === 'proficient')
+			.map(([ability]) => ability)
+
+	it('Warlock first: WIS and CHA, not CON', () => {
+		const character = { ...base, levelOrder: [...Array(6).fill(warlock), ...Array(3).fill(sorcerer)] }
+		expect(proficient(character)).toEqual(['wisdom', 'charisma'])
+		const charisma = computeSavingThrow('charisma', character, multiclassData)
+		expect(charisma.status === 'known' && charisma.breakdown.map((row) => row.source)).toContain('proficiency (Warlock)')
+	})
+
+	it('Sorcerer first: CON and CHA, even though classes lists Warlock first', () => {
+		const character = { ...base, levelOrder: [...Array(3).fill(sorcerer), ...Array(6).fill(warlock)] }
+		expect(proficient(character)).toEqual(['constitution', 'charisma'])
+	})
+})

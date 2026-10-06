@@ -1,7 +1,8 @@
-import { classPrereqInfoFor } from '../featAsi/featAsiData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
 import { classToolGrantsFor } from '../toolProficiencies/classToolChoices'
+import { firstClass } from './characterLevel'
+import { classProficiencyGrants } from './classProficiencies'
 import { FEATURE_GRANTS } from './featureGrants'
 import type { ItemProficiencyGrant } from './itemProficiencies'
 import { isKhoravar, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
@@ -9,7 +10,6 @@ import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
 import type { Character, FeatChoiceDetails } from '../storage/character'
 import {
 	extractFeatWeaponProficiencyEntries,
-	weaponProficiencyGrantsForClass,
 	weaponProficiencyGrantsForFeats,
 	type FeatWeaponProficiencyEntry,
 	type WeaponProficiencyGrant,
@@ -136,8 +136,8 @@ export function toolsHeldElsewhere(tools: readonly ProficiencyItem[], subclass: 
 }
 
 /**
- * Armor and weapon proficiencies for display (D170). Starting proficiencies come
- * from the first class only; attack proficiency itself stays with
+ * Armor and weapon proficiencies for display (D170). Class-derived ones come from
+ * classProficiencyGrants (D321); attack proficiency itself stays with
  * weaponProficiency.ts. Tavern Brawler's "improvised" is listed here although
  * weaponProficiency.ts skips it (no item to match).
  */
@@ -176,14 +176,17 @@ export function computeProficiencies(
 		add(weapons, key, label, source)
 	}
 
-	const startingClass = character.classes[0]
+	const startingClass = firstClass(character)
+	const startingClasses = startingClass ? [startingClass] : []
+	const classGrants = classProficiencyGrants(character, parsedClasses)
+	classGrants.armor.forEach(({ token, source }) => addArmor(token, source))
+	classGrants.weapons.forEach(({ grant, source }) => addWeapon(grant, source))
+	classGrants.tools.forEach(({ name, source }) => addTool(name, source))
 	if (startingClass) {
 		const source: ProficiencySource = { kind: 'class', name: startingClass.className }
-		for (const token of classPrereqInfoFor(parsedClasses, startingClass.className, startingClass.classSource)?.armorProficiencies ?? []) addArmor(token, source)
-		for (const grant of weaponProficiencyGrantsForClass(parsedClasses, startingClass.className, startingClass.classSource)) addWeapon(grant, source)
 		const toolEntries = classToolProficiencies(parsedClasses, startingClass.className, startingClass.classSource)
 		// D174: stored picks join the tools, and only the remainder stays pending.
-		const startGrant = classToolGrantsFor(character.classes).find((grant) => !grant.subclass)
+		const startGrant = classToolGrantsFor(startingClasses).find((grant) => !grant.subclass)
 		const startPicks = (character.toolChoices ?? []).filter((choice) => choice.grantedBy === startGrant?.grantedBy)
 		startPicks.forEach((choice) => addTool(choice.name, source))
 		if (toolEntries.length > 1) {
@@ -284,7 +287,7 @@ export function computeProficiencies(
 
 	// D174: a subclass's own pick (Battle Master), pending until a slot stores it. After every other tool source,
 	// since D176's Artificer replacement count is the subclass tools the character also has from elsewhere.
-	for (const grant of classToolGrantsFor(character.classes, toolsHeldElsewhere([...tools.values()], startingClass?.subclass ?? null))) {
+	for (const grant of classToolGrantsFor(startingClasses, toolsHeldElsewhere([...tools.values()], startingClass?.subclass ?? null))) {
 		if (!grant.subclass) continue
 		const source: ProficiencySource = { kind: 'subclass', name: grant.owner }
 		const picks = (character.toolChoices ?? []).filter((choice) => choice.grantedBy === grant.grantedBy)

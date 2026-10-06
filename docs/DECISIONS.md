@@ -4900,3 +4900,15 @@ setter, který mění `play` nebo `grantedFeats` (včetně HP, odpočinků, konc
 „No manual feat at key“, když nic neodebral, a odebere i starý (před A2-1) čítač `spell:feat:<jméno>:…`, pokud na
 postavě nezůstala jiná instance téhož featu. `hasFightingStyle` bere uložené jméno jako zálohu jen tehdy, když
 v datech není žádný řádek toho jména (D318). Migrace 56→57 nestaví `levelOrder` pro úroveň nad 20. Task F-8.
+
+## D321 — Záchranné hody a zdatnosti multiclass postavy z první třídy (M2, schéma zůstává 59)
+
+Zpřesňuje D11: záchranné hody se už neberou ze všech tříd v poli, ale jen z první třídy. První třída = první položka
+`levelOrder` (D317), když chybí, první položka `classes`; jeden helper `firstClass` v characterLevel.ts. První třída dává
+své startovní zdatnosti (zbroj, zbraně, nástroje, volby nástrojů i nástroje podtřídy jako dřív). Každá další třída dává
+jen pevnou část `multiclassing.proficienciesGained` (zbroj, zbraně, pevné nástroje ze strukturovaného
+`toolProficiencies`; textové `tools` se nečte); Monk, Sorcerer a Wizard nic. Multiclass nikdy nedává záchranné hody.
+Ostatní zdroje záchran (rysy, předměty, featy) beze změny. Kartu Proficiencies, její drawer, útoky zbraní a
+prerekvizity featů v Manage Feats čte jedna funkce `classProficiencyGrants`; řádek nese původ „<Třída> (multiclass)“.
+Volby (nástroj Barda, multiclass dovednost Barda/Rangera/Rogua/Artificera, nástroje podtřídy nepočáteční třídy —
+Battle Master, Knowledge Domain) odloženy do M7 s level upem. Task M2, rozhodl Daniel 6. 10. 2026.

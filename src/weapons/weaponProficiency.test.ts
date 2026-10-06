@@ -121,13 +121,22 @@ describe('weaponProficiencyGrantsFor', () => {
 		expect(proficientNames(ALL_WEAPONS, grants)).toEqual(['Dagger', 'Club', 'Shortsword', 'Rapier', 'Pistol'])
 	})
 
-	it('a multiclass character gets the union — the Barbarian half brings the Greataxe the Rogue half cannot use', () => {
+	it("D321: a second class adds only its proficienciesGained — the Barbarian half's martial brings the Greataxe", () => {
 		const rogueBarbarian = character([
 			{ className: 'Rogue', classSource: 'XPHB' },
 			{ className: 'Barbarian', classSource: 'XPHB' },
 		])
-		const grants = weaponProficiencyGrantsFor(rogueBarbarian, CLASSES, FEATS, null)
-		expect(proficientNames(ALL_WEAPONS, grants)).toEqual(['Dagger', 'Club', 'Shortsword', 'Rapier', 'Greataxe', 'Pistol'])
+		const withGained = [...CLASSES, { ...(classEntry('Barbarian', ['simple', 'martial']) as object), multiclassing: { proficienciesGained: { weapons: ['martial'] } } }]
+		expect(proficientNames(ALL_WEAPONS, weaponProficiencyGrantsFor(rogueBarbarian, withGained.slice(1), FEATS, null))).toEqual([
+			'Dagger',
+			'Club',
+			'Shortsword',
+			'Rapier',
+			'Greataxe',
+			'Pistol',
+		])
+		// No proficienciesGained: the second class's starting weapons are not added.
+		expect(proficientNames(ALL_WEAPONS, weaponProficiencyGrantsFor(rogueBarbarian, CLASSES, FEATS, null))).toEqual(['Dagger', 'Club', 'Shortsword', 'Rapier'])
 	})
 })
 

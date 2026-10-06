@@ -1298,6 +1298,24 @@ match is the granter. Found by an investigation script in R6 (not kept).
 - Monk's `toolProficiencies` array lists ALTERNATIVES (pick one), not a set of
   grants. Background tool shapes: see "Tool proficiencies" above.
 - The 2024 "Common + 2 languages of your choice" rule is not in the data.
+- Multiclass (M2, D321, `scripts/investigate-multiclass-profs.js`, consumed): every class has a `multiclassing` key,
+  but Monk, Sorcerer and Wizard have no `proficienciesGained`. `armor`/`weapons` are plain token arrays;
+  `toolProficiencies` entries are `{toolName: true}` or a choice count. No `proficienciesGained` carries saves.
+
+  | Class (source) | armor | weapons | toolProficiencies | other keys |
+  |---|---|---|---|---|
+  | Artificer (EFA) | light, medium, shield | — | `{"tinker's tools": true}` | tools, skills |
+  | Barbarian | shield | martial | — | — |
+  | Bard | light | — | `{"anyMusicalInstrument": 1}` (choice) | tools, skills |
+  | Cleric | light, medium, shield | — | — | — |
+  | Druid | light, shield | — | — | — |
+  | Fighter | light, medium, shield | martial | — | — |
+  | Paladin, Ranger | light, medium, shield | martial | — | Ranger: skills |
+  | Rogue | light | — | `{"thieves' tools": true}` | tools, skills |
+  | Warlock | light | — | — | — |
+  | Monk, Sorcerer, Wizard | no `proficienciesGained` | | | |
+
+  (All XPHB except Artificer; `tools` is the prose twin of `toolProficiencies`.)
 
 Found in investigation B1 (2026-09-24, scripts consumed); class/feat/Protector/
 Warden/Valor shapes re-checked in B2 (`scripts/verify-b2.js`, consumed). The
