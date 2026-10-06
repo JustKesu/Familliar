@@ -4968,3 +4968,16 @@ nejde seslat z žádného poolu. Úložiště beze změny (`spentSpellSlots.ordi
 Doplňuje D326: kouzlo nižší úrovně, než je pact slot, jehož vlastní úroveň nemá běžné sloty ani není pact úrovní, dostane
 v pact sekci řádek s odznakem a jedním CAST z pact poolu i bez `entriesHigherLevel` (Warlock 5 / Sorcerer 1: Misty Step
 ve 3rd). Kouzla se slotem své úrovně dál podle D207; disabled CAST ve vlastní sekci zůstává. Rozhodl Daniel 6. 10. 2026.
+
+## D328 — Level gains na dvou osách úrovní (M6, schéma zůstává 59)
+
+`levelGainsFor(character, cílová třída, …)`: úroveň postavy = součet úrovní + 1, úroveň třídy = úroveň cílové třídy + 1
+(nová třída 1). Vše, co data klíčují úrovní třídy (podtřída, fighting style, mastery, expertise, volby rysů, ASI/Epic
+Boon, kouzla, nástroje/jazyky/dovednosti), čte úroveň cílové třídy a mění jen ji; hit points zůstávají na ose postavy.
+Nová třída na úrovni 1 se počítá také, ale bez záchranných hodů, startovního vybavení, startovních dovedností a
+startovních voleb nástrojů (Bard, Monk, Artificer); multiclass volba dovednosti/nástroje z `proficienciesGained` čeká na
+M7. Blok Level up pro víc tříd (D316) se přesunul z `levelGainsFor` do `levelUpTarget` (stejný text). `FeatAsiChoice.level`
+zůstává úrovní postavy; karty ASI/featů se na úrovně postavy mapují přes `levelOrder` (`featAsiCharacterLevels`), víc tříd
+bez historie = neznámé. Remove level: jádro odebírá úroveň třídě z `levelOrder.at(-1)` na obou osách, brána D316 trvá;
+level up připíše do `levelOrder` třídu, jejíž úroveň vzrostla. Zápis víc tříd s nekonzistentním `levelOrder` je chyba,
+čtení a import beze změny (D317). Task M6, rozhodl Daniel 6. 10. 2026.

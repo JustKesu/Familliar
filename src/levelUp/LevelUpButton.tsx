@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Character } from '../storage/character'
-import { loadLevelGainsFor, type LevelGains } from './levelGains'
+import { loadLevelGainsFor, type LevelGains, type LevelUpClass } from './levelGains'
 import { totalCharacterLevel } from '../calculation/characterLevel'
 import { levelUpTarget, MAX_CHARACTER_LEVEL } from './levelUpSteps'
 
@@ -17,17 +17,17 @@ export function LevelUpButton({
 }: {
 	character: Character
 	onLevelUp: (gains: LevelGains) => void
-	loadGains?: (character: Character, level: number) => Promise<LevelGains>
+	loadGains?: (character: Character, target: LevelUpClass) => Promise<LevelGains>
 }): ReactNode {
 	const target = levelUpTarget(character)
-	const targetLevel = 'level' in target ? target.level : null
 	const [state, setState] = useState<ButtonState>({ kind: 'checking' })
 
 	useEffect(() => {
-		if (targetLevel === null) return
+		const next = levelUpTarget(character)
+		if (!('level' in next)) return
 		let cancelled = false
 		setState({ kind: 'checking' })
-		loadGains(character, targetLevel)
+		loadGains(character, { className: next.className, classSource: next.classSource })
 			.then((gains) => {
 				if (cancelled) return
 				setState(gains.unresolved === null ? { kind: 'ready', gains } : { kind: 'unavailable', reason: gains.unresolved })
@@ -38,7 +38,7 @@ export function LevelUpButton({
 		return () => {
 			cancelled = true
 		}
-	}, [character, targetLevel, loadGains])
+	}, [character, loadGains])
 
 	const current: ButtonState = 'reason' in target ? { kind: 'unavailable', reason: target.reason } : state
 

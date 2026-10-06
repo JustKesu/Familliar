@@ -2475,6 +2475,21 @@ describe('Character.levelOrder (M1a, D317)', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		expect('levelOrder' in store.create({ name: 'Aria', classes: [fighter(2)], levelOrder: [FIGHTER] })).toBe(false)
 	})
+
+	it('D328: a multiclass write with an inconsistent history throws and stores nothing; a consistent one is stored', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const classes = [{ ...WIZARD, subclass: null, level: 1 }, fighter(2)]
+		expect(() => store.create({ name: 'Split', classes, levelOrder: [WIZARD, FIGHTER, FIGHTER, FIGHTER] })).toThrow(
+			'The level history could not be saved: classes are Wizard 1 / Fighter 2, but the history has Wizard 1 / Fighter 3.',
+		)
+		expect(store.list()).toEqual([])
+		const created = store.create({ name: 'Split', classes, levelOrder: [WIZARD, FIGHTER, FIGHTER] })
+		expect(store.list()[0].levelOrder).toEqual([WIZARD, FIGHTER, FIGHTER])
+		expect(() => store.update(created.id, { name: 'Split', classes, levelOrder: [FIGHTER, FIGHTER, FIGHTER] })).toThrow('The level history could not be saved')
+		expect(store.list()[0].levelOrder).toEqual([WIZARD, FIGHTER, FIGHTER])
+		// Without a history a multiclass write stays allowed (unknown, D317).
+		expect('levelOrder' in store.create({ name: 'Unknown', classes })).toBe(false)
+	})
 })
 
 describe('fightingStyles and option sources (M1b, D318)', () => {

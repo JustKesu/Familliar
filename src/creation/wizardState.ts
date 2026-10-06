@@ -55,7 +55,7 @@ import {
 } from '../classSkills/subclassSkillGrants'
 import type { Ability, CharacterAbilityScores } from '../abilities/abilityScores'
 import type { SpellCountLabel } from '../calculation/spellCounts'
-import { isMulticlass, totalCharacterLevel } from '../calculation/characterLevel'
+import { isMulticlass, levelOrderAfterLevelUp, totalCharacterLevel } from '../calculation/characterLevel'
 import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
@@ -1453,10 +1453,8 @@ export function saveCharacter(
 		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".
 		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,
 		// D317: create and Edit (single-class since M0, may change the class) rebuild it; a level up appends, and keeps "not known" as it is.
-		levelOrder:
-			levelUpTo === undefined
-				? singleClassLevelOrder(classes)
-				: existing?.levelOrder && [...existing.levelOrder, { className: classes[0].className, classSource: classes[0].classSource }],
+		// D328: what a level up appends is the class whose level rose, not classes[0].
+		levelOrder: levelUpTo === undefined ? singleClassLevelOrder(classes) : existing && levelOrderAfterLevelUp(existing, classes),
 		// Slice 9d2: sheet-only text the wizard never shows, carried across so an edit or a level up does not erase it.
 		appearance: existing?.appearance,
 		backstory: existing?.backstory,

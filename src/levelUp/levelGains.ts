@@ -46,8 +46,10 @@ import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../opt
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractSpellCountClassData } from '../spells/spellCountClassData'
 import { subclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
-import type { Character } from '../storage/character'
+import type { Character, CharacterClass } from '../storage/character'
 import { subclassLevelFor } from '../subclass/subclassData'
+import { totalCharacterLevel } from '../calculation/characterLevel'
+import { MAX_CHARACTER_LEVEL as MAX_LEVEL } from './levelUpSteps'
 
 /**
  * 'adds'    — the step collects something new at this level; `count` says how much.
@@ -84,13 +86,24 @@ export interface NewFeature {
 	kind: 'class' | 'subclass'
 }
 
+/** D328: the class that takes the new level — one the character has, or a new one at class level 1. */
+export interface LevelUpClass {
+	className: string
+	classSource: string
+}
+
 export interface LevelGains {
+	/** The character level the level up reaches. */
 	level: number
+	/** D328: the target class's own level after it — what every class-keyed grant is read at. */
+	classLevel: number
+	className: string
+	classSource: string
 	/**
-	 * Non-null when the whole question cannot be answered (no class, more than
-	 * one class, a level that is not a character level, a class missing from
-	 * classes.json). Every step then carries 'unknown' with this same reason and
-	 * `newFeatures` is empty — never a zero that reads like "adds nothing".
+	 * Non-null when the whole question cannot be answered (no class, a level
+	 * above 20, a class missing from classes.json). Every step then carries
+	 * 'unknown' with this same reason and `newFeatures` is empty — never a zero
+	 * that reads like "adds nothing".
 	 */
 	unresolved: string | null
 	newFeatures: NewFeature[]
@@ -147,28 +160,30 @@ function findSubclassSource(parsedClasses: unknown[], className: string, classSo
 }
 
 /**
- * The character as it stood at `level`: the class level replaced, and the
- * subclass present only once the class actually chooses one. Everything else is
- * carried unchanged — a choice already recorded is a fact about the character,
- * not a guess about a level.
+ * The character with `target` at class level `level` (0 = without it): the
+ * subclass present only once the class actually chooses one. Other classes and
+ * everything else are carried unchanged — a choice already recorded is a fact
+ * about the character, not a guess about a level.
  */
-function characterAtLevel(character: Character, level: number, subclassGrantLevel: number | null): Character {
-	const characterClass = character.classes[0]
+function characterAtLevel(character: Character, target: CharacterClass, level: number, subclassGrantLevel: number | null): Character {
 	const keepSubclass = subclassGrantLevel === null || level >= subclassGrantLevel
-	return {
-		...character,
-		classes: [{ ...characterClass, level, subclass: keepSubclass ? characterClass.subclass : null }],
-	}
+	const atLevel = { ...target, level, subclass: keepSubclass ? target.subclass : null }
+	const held = character.classes.includes(target)
+	const classes = held
+		? character.classes.flatMap((entry) => (entry !== target ? [entry] : level > 0 ? [atLevel] : []))
+		: level > 0
+			? [...character.classes, atLevel]
+			: character.classes
+	return { ...character, classes }
 }
 
 /** The subclass in force at `level`, or null before the class chooses one. */
 function subclassAtLevel(
-	character: Character,
+	name: string | null,
 	level: number,
 	subclassGrantLevel: number | null,
 	subclassSource: string | null,
 ): { name: string; source: string } | null {
-	const name = character.classes[0].subclass
 	if (!name || subclassSource === null) return null
 	if (subclassGrantLevel !== null && level < subclassGrantLevel) return null
 	return { name, source: subclassSource }
@@ -181,33 +196,40 @@ function subclassAtLevel(
  * `parsedClasses` is classes.json; `resolverData` carries class-features.json,
  * subclass-features.json, optional-features.json and feats.json.
  */
-export function levelGainsFor(character: Character, level: number, parsedClasses: unknown, resolverData: ResolverData): LevelGains {
+export function levelGainsFor(character: Character, target: LevelUpClass, parsedClasses: unknown, resolverData: ResolverData): LevelGains {
 	if (!Array.isArray(parsedClasses)) throw new Error('classes.json: expected a top-level array.')
 
-	const blocked = unresolvedReason(character, level, parsedClasses)
+	const { className, classSource } = target
+	const held = character.classes.find((entry) => entry.className === className && entry.classSource === classSource)
+	const level = totalCharacterLevel(character.classes) + 1
+	const classLevel = (held?.level ?? 0) + 1
+	const header = { level, classLevel, className, classSource }
+
+	const blocked = unresolvedReason(character, target, level, classLevel, parsedClasses)
 	if (blocked !== null) {
-		return { level, unresolved: blocked, newFeatures: [], steps: everyStep(unknownGain(blocked)) }
+		return { ...header, unresolved: blocked, newFeatures: [], steps: everyStep(unknownGain(blocked)) }
 	}
 
-	const characterClass = character.classes[0]
-	const { className, classSource } = characterClass
-	const previous = level - 1
+	// D328: a class the character does not have yet joins at class level 1.
+	const characterClass: CharacterClass = held ?? { className, classSource, subclass: null, level: 0 }
+	const isNewClass = held === undefined
+	const previous = classLevel - 1
 	const classEntry = findClassEntry(parsedClasses, className, classSource)
 	const subclassGrantLevel = subclassLevelFor(parsedClasses, resolverData.classFeatures, className, classSource)
 	const subclassSource = characterClass.subclass ? findSubclassSource(parsedClasses, className, classSource, characterClass.subclass) : null
 	const subclassUnreadable = characterClass.subclass !== null && subclassSource === null
 
-	const now = characterAtLevel(character, level, subclassGrantLevel)
-	const before = characterAtLevel(character, previous, subclassGrantLevel)
+	const now = characterAtLevel(character, characterClass, classLevel, subclassGrantLevel)
+	const before = characterAtLevel(character, characterClass, previous, subclassGrantLevel)
 
 	return {
-		level,
+		...header,
 		unresolved: null,
 		newFeatures: newFeaturesBetween(before, now, parsedClasses, resolverData),
 		steps: {
 			class: classStepGain(
-				character,
-				level,
+				characterClass,
+				classLevel,
 				previous,
 				parsedClasses,
 				resolverData,
@@ -216,19 +238,20 @@ export function levelGainsFor(character: Character, level: number, parsedClasses
 			),
 			species: never('A species, its variant, its skills and its spellcasting ability are all chosen at creation; nothing in species.json is keyed to character level.'),
 			background: never('A background, its ability-bonus distribution and its tool proficiency are all chosen at creation.'),
-			expertise: expertiseStepGain(resolverData, className, classSource, level, previous),
+			expertise: expertiseStepGain(resolverData, className, classSource, classLevel, previous),
 			// D172: the creation picks never grow; a class feature's free picks (Deft Explorer at Ranger 2) arrive with its level.
-			languages: languagesStepGain(className, classSource, level, subclassGrantLevel, characterClass.subclass),
+			languages: languagesStepGain(className, classSource, classLevel, subclassGrantLevel, characterClass.subclass, isNewClass),
 			abilities: never('Ability scores are set at creation. A later level raises them only through the featAsi step, never through this one.'),
-			spells: spellsStepGain(before, now, parsedClasses, level, previous, {
+			spells: spellsStepGain(before, now, parsedClasses, classLevel, previous, {
 				subclassGrantLevel,
 				subclassSource,
 				subclassUnreadable,
 				className,
 				classSource,
+				subclassName: characterClass.subclass,
 			}),
-			classOptionalFeatures: classOptionalFeaturesStepGain(parsedClasses, className, classSource, level, previous),
-			featAsi: featAsiStepGain(resolverData, className, classSource, level),
+			classOptionalFeatures: classOptionalFeaturesStepGain(parsedClasses, className, classSource, classLevel, previous),
+			featAsi: featAsiStepGain(resolverData, className, classSource, classLevel),
 			hitPoints: hitPointsStepGain(level),
 			equipment: never('Starting equipment is a one-time grant taken at creation (D100); the inventory after that is play state the sheet edits.'),
 			review: never('The review step collects nothing at any level — it is where the save happens.'),
@@ -241,11 +264,14 @@ export function levelGainsFor(character: Character, level: number, parsedClasses
  * D174: so do the class tool picks — and a subclass's (Battle Master at 3), which the stored character cannot show yet
  * while the subclass is still to be chosen at this very level, so that case is walked as unknown rather than skipped.
  */
-function languagesStepGain(className: string, classSource: string, level: number, subclassGrantLevel: number | null, subclass: string | null): LevelGain {
+function languagesStepGain(className: string, classSource: string, level: number, subclassGrantLevel: number | null, subclass: string | null, isNewClass: boolean): LevelGain {
 	const start = { className, classSource, level, subclass }
+	// D328: a class's own (non-subclass) tool picks are its starting proficiencies (D170), which a class joined later never gets.
+	const toolGrants = classToolGrantsFor([start]).filter((grant) => !isNewClass || grant.subclass !== undefined)
+	// D328: the multiclass skill/tool pick of multiclassing.proficienciesGained (D321) joins here in M7.
 	const parts: LevelGainPart[] = [
 		...classFeatureLanguageGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: grant.featureName, count: grant.choice.count }] : [])),
-		...classToolGrantsFor([start]).flatMap((grant) => (grant.level === level ? [{ name: `${grant.owner} tool`, count: grant.count }] : [])),
+		...toolGrants.flatMap((grant) => (grant.level === level ? [{ name: `${grant.owner} tool`, count: grant.count }] : [])),
 		...subclassSkillGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: `${grant.subclass} skill`, count: subclassSkillChoiceCount(grant) }] : [])),
 	]
 	const gain = adds(parts)
@@ -264,14 +290,11 @@ function languagesStepGain(className: string, classSource: string, level: number
 	}
 }
 
-function unresolvedReason(character: Character, level: number, parsedClasses: unknown[]): string | null {
-	if (!Number.isInteger(level) || level < 1) return `Level ${level} is not a character level.`
+function unresolvedReason(character: Character, target: LevelUpClass, level: number, classLevel: number, parsedClasses: unknown[]): string | null {
 	if (character.classes.length === 0) return 'This character has no class.'
-	// D11/build order step 10: nothing here can tell which class a new level belongs to, and guessing would answer the wrong class's question.
-	if (character.classes.length > 1) {
-		return `Multiclass characters are build order step 10: this character has ${character.classes.length} classes and nothing records which one the new level belongs to.`
-	}
-	const { className, classSource } = character.classes[0]
+	if (level > MAX_LEVEL) return `Level ${level} is above the highest character level (${MAX_LEVEL}).`
+	if (classLevel > MAX_LEVEL) return `${target.className} level ${classLevel} is above the highest class level (${MAX_LEVEL}).`
+	const { className, classSource } = target
 	if (findClassEntry(parsedClasses, className, classSource) === null) {
 		return `No entry for class "${className}" (${classSource}) in classes.json.`
 	}
@@ -300,7 +323,7 @@ interface SubclassContext {
  * its skill proficiencies once, at level 1.
  */
 function classStepGain(
-	character: Character,
+	characterClass: CharacterClass,
 	level: number,
 	previous: number,
 	parsedClasses: unknown[],
@@ -308,13 +331,13 @@ function classStepGain(
 	context: SubclassContext,
 	subclassTitle: string | null,
 ): LevelGain {
-	const { className, classSource } = character.classes[0]
+	const { className, classSource } = characterClass
 
 	if (context.subclassGrantLevel === null) {
 		return unknownGain(`Cannot tell at which level "${className}" (${classSource}) chooses a subclass: no subclassTitle on the class, or no class feature of that name.`)
 	}
 	if (context.subclassUnreadable) {
-		return unknownGain(`Subclass "${character.classes[0].subclass}" is not in classes.json, so nothing it grants at level ${level} can be counted.`)
+		return unknownGain(`Subclass "${characterClass.subclass}" is not in classes.json, so nothing it grants at level ${level} can be counted.`)
 	}
 
 	const parts: LevelGainPart[] = []
@@ -330,7 +353,7 @@ function classStepGain(
 	const masteryBefore = masteryCountFor(parsedClasses, className, classSource, previous) ?? 0
 	parts.push({ name: 'Weapon Mastery', count: masteryNow - masteryBefore })
 
-	const subclassName = character.classes[0].subclass
+	const subclassName = characterClass.subclass
 	const formsNow = wildShapeLimits(className, level, subclassName)?.knownForms ?? 0
 	const formsBefore = wildShapeLimits(className, previous, subclassName)?.knownForms ?? 0
 	parts.push({ name: 'Wild Shape', count: formsNow - formsBefore })
@@ -339,23 +362,23 @@ function classStepGain(
 		if (choice.grantedAtLevel === level) parts.push({ name: choice.featureName, count: choice.count })
 	}
 
-	parts.push(subclassOptionalFeaturePart(character, level, previous, parsedClasses, resolverData, context))
+	parts.push(subclassOptionalFeaturePart(characterClass, level, previous, parsedClasses, resolverData, context))
 
 	return adds(parts)
 }
 
 /** The subclass's OWN optionalfeatureProgression (Battle Master maneuvers, Rune Knight runes) — the class's own progressions are the classOptionalFeatures step instead. */
 function subclassOptionalFeaturePart(
-	character: Character,
+	characterClass: CharacterClass,
 	level: number,
 	previous: number,
 	parsedClasses: unknown[],
 	resolverData: ResolverData,
 	context: SubclassContext,
 ): LevelGainPart {
-	const { className, classSource } = character.classes[0]
+	const { className, classSource } = characterClass
 	const countAt = (at: number): number => {
-		const subclass = subclassAtLevel(character, at, context.subclassGrantLevel, context.subclassSource)
+		const subclass = subclassAtLevel(characterClass.subclass, at, context.subclassGrantLevel, context.subclassSource)
 		if (!subclass) return 0
 		return (
 			optionalFeatureChoicesFor(
@@ -370,7 +393,7 @@ function subclassOptionalFeaturePart(
 			)?.count ?? 0
 		)
 	}
-	return { name: character.classes[0].subclass ?? 'Subclass options', count: countAt(level) - countAt(previous) }
+	return { name: characterClass.subclass ?? 'Subclass options', count: countAt(level) - countAt(previous) }
 }
 
 function expertiseStepGain(resolverData: ResolverData, className: string, classSource: string, level: number, previous: number): LevelGain {
@@ -381,6 +404,7 @@ function expertiseStepGain(resolverData: ResolverData, className: string, classS
 interface SpellsContext extends SubclassContext {
 	className: string
 	classSource: string
+	subclassName: string | null
 }
 
 function spellsStepGain(
@@ -392,29 +416,31 @@ function spellsStepGain(
 	context: SpellsContext,
 ): LevelGain {
 	if (context.subclassUnreadable) {
-		return unknownGain(`Subclass "${now.classes[0].subclass}" is not in classes.json, so its spell choices at level ${level} cannot be counted.`)
+		return unknownGain(`Subclass "${context.subclassName}" is not in classes.json, so its spell choices at level ${level} cannot be counted.`)
 	}
 
 	const classData = extractSpellCountClassData(parsedClasses)
 	const countsNow = computeSpellCounts(now, classData)
-	const countsBefore = computeSpellCounts(before, classData)
+	// D328: a class joined at this level had no counts before; computeSpellCounts refuses a character with no class at all.
+	const countsBefore = before.classes.length > 0 ? computeSpellCounts(before, classData) : ({ status: 'known', value: [] } as const)
 	if (countsNow.status === 'unknown') return unknownGain(countsNow.reason)
 	if (countsBefore.status === 'unknown') return unknownGain(countsBefore.reason)
 
-	const sum = (entries: { cantripCount: number; leveledSpellCount: number }[], field: 'cantripCount' | 'leveledSpellCount'): number =>
-		entries.reduce((total, entry) => total + entry[field], 0)
+	// D328: only the target class's own counts — the other classes are the same on both sides.
+	const sum = (entries: readonly { className: string; classSource: string; cantripCount: number; leveledSpellCount: number }[], field: 'cantripCount' | 'leveledSpellCount'): number =>
+		entries.filter((entry) => entry.className === context.className && entry.classSource === context.classSource).reduce((total, entry) => total + entry[field], 0)
 
 	const parts: LevelGainPart[] = [
 		{ name: 'Cantrips', count: sum(countsNow.value, 'cantripCount') - sum(countsBefore.value, 'cantripCount') },
 		{ name: 'Leveled spells', count: sum(countsNow.value, 'leveledSpellCount') - sum(countsBefore.value, 'leveledSpellCount') },
 	]
 
-	const subclass = subclassAtLevel(now, level, context.subclassGrantLevel, context.subclassSource)
+	const subclass = subclassAtLevel(context.subclassName, level, context.subclassGrantLevel, context.subclassSource)
 	if (subclass) {
 		const shape = subclassSpellChoiceShape(parsedClasses, subclass.name, subclass.source, context.className, context.classSource)
 		const slotsNow = unlockedSubclassSpellChoiceSlots(shape, level).length
 		// The same shape read at the earlier level, but only where the subclass was already held.
-		const heldBefore = subclassAtLevel(before, previous, context.subclassGrantLevel, context.subclassSource) !== null
+		const heldBefore = subclassAtLevel(context.subclassName, previous, context.subclassGrantLevel, context.subclassSource) !== null
 		const slotsBefore = heldBefore ? unlockedSubclassSpellChoiceSlots(shape, previous).length : 0
 		parts.push({ name: `${subclass.name} spell choices`, count: slotsNow - slotsBefore })
 	}
@@ -447,7 +473,7 @@ function hitPointsStepGain(level: number): LevelGain {
 }
 
 /** Fetches classes.json and the four resolver files and returns levelGainsFor's result. */
-export async function loadLevelGainsFor(character: Character, level: number): Promise<LevelGains> {
+export async function loadLevelGainsFor(character: Character, target: LevelUpClass): Promise<LevelGains> {
 	const [classes, resolverData] = await Promise.all([loadDataFile('data/classes.json'), loadResolverData()])
-	return levelGainsFor(character, level, classes, resolverData)
+	return levelGainsFor(character, target, classes, resolverData)
 }

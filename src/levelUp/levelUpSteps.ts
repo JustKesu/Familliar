@@ -8,14 +8,18 @@ export const MAX_CHARACTER_LEVEL = 20
 /**
  * The level a Level up would take this character to, or why there is none.
  * Only what can be told without the data: whether a level-up is answerable at
- * all (multiclass, a class missing from classes.json) is levelGainsFor's
- * `unresolved`.
+ * all (a class missing from classes.json) is levelGainsFor's `unresolved`.
  */
-export function levelUpTarget(character: Character): { level: number } | { reason: string } {
+export function levelUpTarget(character: Character): { level: number; className: string; classSource: string } | { reason: string } {
 	if (character.classes.length === 0) return { reason: 'This character has no class yet.' }
 	const level = totalCharacterLevel(character.classes)
 	if (level >= MAX_CHARACTER_LEVEL) return { reason: `Level ${MAX_CHARACTER_LEVEL} is the highest character level.` }
-	return { level: level + 1 }
+	// D316/D328: levelGainsFor answers any class, but choosing which one is M7, so more than one class stays blocked here.
+	if (character.classes.length > 1) {
+		return { reason: `Multiclass characters are build order step 10: this character has ${character.classes.length} classes and nothing records which one the new level belongs to.` }
+	}
+	const { className, classSource } = character.classes[0]
+	return { level: level + 1, className, classSource }
 }
 
 /**

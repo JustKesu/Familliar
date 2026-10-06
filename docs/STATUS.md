@@ -1948,6 +1948,17 @@ ordinary slots. An `unavailable` row's CAST is disabled. Unit `spellsTabData.tes
 `multiclassCast.spec.ts`. Follow-up (D327): a spell below the pact level with no slot of its own level and no
 `entriesHigherLevel` gets a badged pact-only CAST row in the pact section (`#cast@<pact level>`); E2E M5b e.
 
+M6 done (D328). No schema change (59), no UI change. `levelGainsFor(character, { className, classSource }, …)` derives
+`level` (character) and `classLevel` (target class); `LevelGains` carries `classLevel`, `className`, `classSource`. Class-keyed
+gains read the target class only (`characterAtLevel` changes only it; spell delta sums only its counts); a class not yet
+held is computed at class level 1 without its starting tool picks. The multiclass Level up block moved to `levelUpTarget`
+(callers pass `classes[0]` until M7). New `featAsi/featAsiCharacterLevels.ts` maps class-level ASI/Epic Boon grants to
+character levels via `levelOrder` (not wired into the wizard or sheet yet). `levelRemovalCore` removes the top level from
+the class of `levelOrder.at(-1)` on both axes; `levelRemovalPlan`/`levelRemovalTarget` still refuse more than one class.
+`levelOrderAfterLevelUp` (characterLevel.ts) appends the raised class. `characterStore` refuses a multiclass write whose
+`levelOrder` is inconsistent. Not done: choosing the class at level up and multiclass prerequisites (M7), removing a
+class's last level (M8).
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

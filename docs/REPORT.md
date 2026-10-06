@@ -1,31 +1,43 @@
-# REPORT — M5b follow-up: pact row for spells without a slot of their level (D327)
+# REPORT — M6 (step 10): level gains on class and character level axes (D328)
 
 ## Changed
-- `spellsTabData.ts` (`spellsTabActionSections`): after the D207 upcast loop, a CAST spell below the pact level with
-  no pool at its own level (`poolsAt(detail.level)` empty) and empty `entriesHigherLevel` gets one badged row
-  `#cast@<pact level>` in the pact section, `pools: ['pact']`. Skipped when inPact (D189), `unavailable` (D325), or when
-  `entriesHigherLevel` is non-empty (D207's loop already adds the pact row, so no duplicate). Own-section disabled CAST
-  unchanged.
-- Docs: D327 added (D326 untouched); STATUS.md M5b entry extended.
+- `levelGains.ts`: `levelGainsFor(character, target: LevelUpClass, …)`; `level` = total + 1, `classLevel` = target's level + 1
+  (new class 1); `LevelGains` + `classLevel`/`className`/`classSource`. `characterAtLevel` changes only the target entry
+  (before = without it at class level 1). Class step, expertise, languages/tools/skills, class optional features, featAsi,
+  spells read `classLevel`; spell delta sums only the target's `SpellCountEntry`s; hit points on character level.
+  Unresolved: no class, character level > 20, class level > 20, class missing from classes.json. Multiclass block removed.
+- New class at class level 1 excludes the non-subclass `CLASS_TOOL_CHOICE_GRANTS` (starting proficiencies, D170):
+  Bard XPHB (3 instruments), Monk XPHB (1 artisan tool or instrument), Artificer EFA (1 artisan tool). Saves, starting
+  equipment and class skills are not level-up steps, so nothing to exclude there. M7 comment placed in `languagesStepGain`.
+- `levelUpSteps.levelUpTarget` now holds the D316 block (same text) after the level-20 check, and returns the class;
+  `LevelUpButton` / `LevelUpWizardGate` pass it to `loadLevelGainsFor(character, target)`.
+- New `featAsi/featAsiCharacterLevels.ts` (+ test): class-level ASI/Epic Boon → character level via `levelOrder`; single
+  class without history OK; multiclass without consistent history → unknown with the specified reason. Not wired in.
+- `levelRemoval.ts`: `levelRemovalPlan` = unchanged gate + new exported `levelRemovalCore` (class of `levelOrder.at(-1)`,
+  else the only class). Character axis: masteries, expertise, optional features, featAsi, hit points. Class axis (that
+  class's level): subclass, fighting style, `classFeatureChoices` / `subclassSpellChoices` of that class only, language/
+  skill/tool grants. Class to 0 → "Removing the last level of a class is build order step M8."
+- `characterLevel.ts`: `raisedClass`, `levelOrderAfterLevelUp`; `wizardState.saveCharacter` appends the raised class.
+- `characterStore.buildCharacter`: multiclass + inconsistent `levelOrder` throws `ImportValidationError` ("The level
+  history could not be saved: classes are Wizard 1 / Fighter 2, but the history has Wizard 1 / Fighter 3."). Single class
+  and import/read unchanged.
+- Tests: `levelGains.fixtures.ts` + Warlock and Wizard XPHB (PHB 2024 counts, ASI 4/8 and 4). `levelGains.test.ts` calls
+  go through `gainsAt` (stored one level below the asked level, which the old signature passed separately), expectations
+  unchanged; the old "multiclass is unresolved" test now checks `levelUpTarget` + a named-class answer. New: Sorcerer 3→4
+  ASI and spell delta, Warlock 6→7 no ASI, Warlock 6 + Sorcerer 1, Warlock 6 + Bard 1 (no instruments), Fighter 4 + Wizard
+  1 (no Fighter mastery), level 21. `levelRemoval.test.tsx`: core on [Wizard 1, Fighter 2] / [W, F, F], level-0 refusal,
+  gate; slot test filters the new fixture Warlock. `characterStore.test.ts`, `characterLevel.test.ts` additions.
 
 ## Verified
-- typecheck, test (168 files / 3106), validate-data (175/175), e2e 449 passed (4.5 min — over the ~3 min budget).
-- Unit `spellsTabData.test.ts` "D327: Warlock 5 / Sorcerer 1 …": Misty Step → own 2nd row with no pool + `@3` pact row
-  badge 2; Shield (has a 1st slot) no pact row; Burning Hands keeps the single D207 `@3` row.
-- E2E `multiclassCast.spec.ts` M5b e: 3rd Level section has one Misty Step row with badge "2nd"; its CAST spends one
-  Pact Magic box.
+- typecheck, test (169 files / 3122), validate-data (175/175), e2e 449 passed (4.4 min; multiclassGuard green).
 
-## Decisions taken / for the user
-- The pact row offers only the pact pool even if the pact level also had ordinary slots (unreachable: then the spell
-  would need no slot at its own level while the pact level has ordinary slots, which a combined table never gives).
+## Decisions taken / questions worked around
+- Prompt listed "a stored subclass missing from classes.json" as unresolved; the existing test (`unresolved` null, class and
+  spells steps unknown) was kept as is, since expectations were not to change. Your call if it should become unresolved.
+- `levelUpTarget` checks level 20 before multiclass so a level-20 multiclass keeps its old text.
+- Class-feature language picks at class level 1 (`CLASS_FEATURE_LANGUAGE_GRANTS`) still count for a new class; they are
+  class features, not starting proficiencies.
+- `fightingStyleFor` falls back to a style with no owner class; in multiclass that may attribute it to the removed class (M8).
 
 ## Manual browser check for the user
-On https://familliar.vercel.app, a Warlock 3 / Sorcerer 3 character, Spells tab:
-- 2nd Level section: Slot and Pact buttons side by side fit the first column, readable, not clipped; heading still shows
-  ordinary boxes + PACT boxes.
-- Burning Hands upcast row in 2nd Level: "1st" badge alignment next to the two buttons.
-- Disabled Pact button look (and tooltip on hover).
-- At 1366 and 1920 width, dark and light theme, and phone width (table scrolls horizontally).
-
-A Warlock 5 / Sorcerer 1 with Misty Step, Spells tab:
-- 3rd Level section: Misty Step row with the "2nd" badge sits with the other pact rows, badge aligned next to CAST.
+Nothing new to check by eye: no UI change in this task.

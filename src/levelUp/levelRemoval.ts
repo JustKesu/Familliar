@@ -82,9 +82,31 @@ export function levelRemovalPlan(
 ): LevelRemovalPlan | { reason: string } {
 	const target = levelRemovalTarget(character)
 	if ('reason' in target) return target
-	const { level } = target
-	const characterClass = character.classes[0]
+	return levelRemovalCore(character, parsedClasses, resolverData, backgroundOriginFeat)
+}
+
+/**
+ * D328: the top character level removed from the class that took it — levelOrder.at(-1), or the only class.
+ * Character-axis choices go by character level, class-axis ones by that class's own level. Ungated: callers go
+ * through levelRemovalPlan, whose levelRemovalTarget still refuses more than one class (D316).
+ */
+export function levelRemovalCore(
+	character: Character,
+	parsedClasses: unknown,
+	resolverData: ResolverData,
+	backgroundOriginFeat: FeatRef | null,
+): LevelRemovalPlan | { reason: string } {
+	const level = totalCharacterLevel(character.classes)
+	const top = character.levelOrder?.at(-1)
+	const characterClass = top
+		? character.classes.find((entry) => entry.className === top.className && entry.classSource === top.classSource)
+		: character.classes.length === 1
+			? character.classes[0]
+			: undefined
+	if (!characterClass) return { reason: 'Cannot tell which class the last level belongs to (no level history).' }
+	if (characterClass.level <= 1) return { reason: 'Removing the last level of a class is build order step M8.' }
 	const { className, classSource } = characterClass
+	const classLevel = characterClass.level
 	const dropped: string[] = []
 
 	// Derived, not stored (D101): the subclass and the fighting style belong to the level the class grants them at.
@@ -94,7 +116,7 @@ export function levelRemovalPlan(
 		if (subclassLevel === null) {
 			return { reason: `Cannot tell at which level "${className}" (${classSource}) chooses a subclass, so whether "${subclass}" goes with level ${level} is unknown.` }
 		}
-		if (subclassLevel === level) {
+		if (subclassLevel === classLevel) {
 			dropped.push(`Subclass: ${subclass}`)
 			subclass = null
 		}
@@ -102,7 +124,7 @@ export function levelRemovalPlan(
 
 	let fightingStyles = character.fightingStyles
 	const fightingStyle = fightingStyleFor(fightingStyles, characterClass)
-	if (fightingStyle && grantsFightingStyleAt(resolverData.classFeatures, className, classSource) === level) {
+	if (fightingStyle && grantsFightingStyleAt(resolverData.classFeatures, className, classSource) === classLevel) {
 		dropped.push(`Fighting style: ${fightingStyle.name}`)
 		fightingStyles = fightingStyles?.filter((style) => style !== fightingStyle)
 	}
@@ -127,15 +149,18 @@ export function levelRemovalPlan(
 		return false
 	})
 
+	const ofClass = (entry: { className: string; classSource: string }): boolean => entry.className === className && entry.classSource === classSource
+
 	const classFeatureChoices = (character.classFeatureChoices ?? []).filter((choice) => {
-		if (choice.grantedAtLevel !== level) return true
+		if (!ofClass(choice) || choice.grantedAtLevel !== classLevel) return true
 		dropped.push(`${choice.featureName}: ${choice.optionName}`)
 		return false
 	})
 
 	const subclassSpellChoices = (character.subclassSpellChoices ?? []).flatMap((entry) => {
+		if (!ofClass(entry)) return [entry]
 		const picks = entry.picks.filter((pick) => {
-			if (pick.grantedAtLevel !== level) return true
+			if (pick.grantedAtLevel !== classLevel) return true
 			dropped.push(`${entry.subclassName} spell choice: ${pick.name}`)
 			return false
 		})
@@ -144,10 +169,10 @@ export function levelRemovalPlan(
 
 	// D172: derived like the subclass — a feature's language picks belong to the level the feature arrives at.
 	// D177: likewise a subclass's skill picks, and Cavalier's/Samurai's language taken instead of a skill.
-	const lostSubclassSkillGrants = SUBCLASS_SKILL_GRANTS.filter((grant) => grant.choice && grant.className === className && classSource === 'XPHB' && grant.level === level)
+	const lostSubclassSkillGrants = SUBCLASS_SKILL_GRANTS.filter((grant) => grant.choice && grant.className === className && classSource === 'XPHB' && grant.level === classLevel)
 	const lostLanguageGrants = new Set<string>([
 		...CLASS_FEATURE_LANGUAGE_GRANTS.flatMap((grant) =>
-			grant.choice && grant.className === className && classSource === 'XPHB' && grant.level === level ? [grant.choice.grantedBy] : [],
+			grant.choice && grant.className === className && classSource === 'XPHB' && grant.level === classLevel ? [grant.choice.grantedBy] : [],
 		),
 		...lostSubclassSkillGrants.flatMap((grant) => (grant.choice?.orLanguage ? [grant.choice.orLanguage] : [])),
 	])
@@ -165,7 +190,7 @@ export function levelRemovalPlan(
 
 	// D174: a tool pick belongs to the level its grant arrives at (Battle Master at 3); creation-level grants can never match a removed level.
 	const lostToolGrants = new Set(
-		CLASS_TOOL_CHOICE_GRANTS.flatMap((grant) => (grant.className === className && grant.classSource === classSource && grant.level === level ? [grant.grantedBy] : [])),
+		CLASS_TOOL_CHOICE_GRANTS.flatMap((grant) => (grant.className === className && grant.classSource === classSource && grant.level === classLevel ? [grant.grantedBy] : [])),
 	)
 	const toolChoices = character.toolChoices?.filter((choice) => {
 		if (!lostToolGrants.has(choice.grantedBy)) return true
@@ -183,7 +208,7 @@ export function levelRemovalPlan(
 	const result: Character = {
 		...withoutPlay,
 		...(character.play ? { play: character.play } : {}),
-		classes: [{ ...characterClass, subclass, level: characterClass.level - 1 }],
+		classes: character.classes.map((entry) => (entry === characterClass ? { ...characterClass, subclass, level: classLevel - 1 } : entry)),
 		fightingStyles,
 		masteries: masteries.kept,
 		expertiseSkills: expertiseSkills.kept,

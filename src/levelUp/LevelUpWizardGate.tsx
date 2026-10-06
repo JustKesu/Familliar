@@ -29,17 +29,16 @@ export function LevelUpWizardGate({
 	/** The character cannot be levelled up right now (already resolved, at level 20, multiclass, …) — the caller decides where that bounces to. */
 	onUnavailable: () => void
 }): ReactNode {
-	const target = levelUpTarget(character)
-	const targetLevel = 'level' in target ? target.level : null
 	const [state, setState] = useState<GateState>({ kind: 'loading' })
 
 	useEffect(() => {
-		if (targetLevel === null) {
+		const target = levelUpTarget(character)
+		if (!('level' in target)) {
 			onUnavailable()
 			return
 		}
 		let cancelled = false
-		loadLevelGainsFor(character, targetLevel)
+		loadLevelGainsFor(character, { className: target.className, classSource: target.classSource })
 			.then((gains) => {
 				if (cancelled) return
 				if (gains.unresolved === null) setState({ kind: 'ready', gains })
@@ -51,7 +50,7 @@ export function LevelUpWizardGate({
 		return () => {
 			cancelled = true
 		}
-	}, [character, targetLevel, onUnavailable])
+	}, [character, onUnavailable])
 
 	if (state.kind === 'ready') {
 		return <CharacterWizard store={store} character={character} levelUp={state.gains} onSaved={onSaved} onCancel={onCancel} />

@@ -18,8 +18,8 @@ vi.mock('./levelUp/levelGains', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./levelUp/levelGains')>()
 	return {
 		...actual,
-		loadLevelGainsFor: async (character: Parameters<typeof actual.levelGainsFor>[0], level: number) =>
-			actual.levelGainsFor(character, level, CLASSES, RESOLVER),
+		loadLevelGainsFor: async (character: Parameters<typeof actual.levelGainsFor>[0], target: Parameters<typeof actual.levelGainsFor>[1]) =>
+			actual.levelGainsFor(character, target, CLASSES, RESOLVER),
 	}
 })
 

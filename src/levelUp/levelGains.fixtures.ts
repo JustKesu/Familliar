@@ -68,6 +68,30 @@ export const CLASSES = [
 	},
 	{
 		entryType: 'class',
+		name: 'Warlock',
+		source: 'XPHB',
+		subclassTitle: 'Warlock Subclass',
+		hd: { number: 1, faces: 8 },
+		preparedSpellsChange: 'level',
+		cantripProgression: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4],
+		preparedSpellsProgression: [2, 3, 4, 5, 6, 7, 8, 9, 10, 10],
+		classFeatureIds: ['cf|warlock subclass|warlock|xphb|3|xphb', 'cf|ability score improvement|warlock|xphb|4|xphb', 'cf|ability score improvement|warlock|xphb|8|xphb'],
+		classFeatures: [{ gainSubclassFeature: true, classFeature: 'Warlock Subclass|Warlock|XPHB|3' }],
+	},
+	{
+		entryType: 'class',
+		name: 'Wizard',
+		source: 'XPHB',
+		subclassTitle: 'Wizard Subclass',
+		hd: { number: 1, faces: 6 },
+		preparedSpellsChange: 'level',
+		cantripProgression: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5],
+		preparedSpellsProgression: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15],
+		classFeatureIds: ['cf|wizard subclass|wizard|xphb|3|xphb', 'cf|ability score improvement|wizard|xphb|4|xphb'],
+		classFeatures: [{ gainSubclassFeature: true, classFeature: 'Wizard Subclass|Wizard|XPHB|3' }],
+	},
+	{
+		entryType: 'class',
 		name: 'Cleric',
 		source: 'XPHB',
 		subclassTitle: 'Cleric Subclass',
@@ -102,6 +126,11 @@ const CF = [
 	{ id: 'cf|sorcerer subclass|sorcerer|xphb|3|xphb', name: 'Sorcerer Subclass', className: 'Sorcerer', classSource: 'XPHB', level: 3, entries: ['You gain a subclass.'] },
 	{ id: 'cf|ability score improvement|sorcerer|xphb|4|xphb', name: 'Ability Score Improvement', className: 'Sorcerer', classSource: 'XPHB', level: 4, entries: ['Take the ASI feat.'] },
 	{ id: 'cf|cleric subclass|cleric|xphb|3|xphb', name: 'Cleric Subclass', className: 'Cleric', classSource: 'XPHB', level: 3, entries: ['You gain a subclass.'] },
+	{ id: 'cf|warlock subclass|warlock|xphb|3|xphb', name: 'Warlock Subclass', className: 'Warlock', classSource: 'XPHB', level: 3, entries: ['You gain a subclass.'] },
+	{ id: 'cf|ability score improvement|warlock|xphb|4|xphb', name: 'Ability Score Improvement', className: 'Warlock', classSource: 'XPHB', level: 4, entries: ['Take the ASI feat.'] },
+	{ id: 'cf|ability score improvement|warlock|xphb|8|xphb', name: 'Ability Score Improvement', className: 'Warlock', classSource: 'XPHB', level: 8, entries: ['Take the ASI feat.'] },
+	{ id: 'cf|wizard subclass|wizard|xphb|3|xphb', name: 'Wizard Subclass', className: 'Wizard', classSource: 'XPHB', level: 3, entries: ['You gain a subclass.'] },
+	{ id: 'cf|ability score improvement|wizard|xphb|4|xphb', name: 'Ability Score Improvement', className: 'Wizard', classSource: 'XPHB', level: 4, entries: ['Take the ASI feat.'] },
 ]
 
 const SCF = [

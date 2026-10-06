@@ -354,6 +354,10 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 	const fightingStylesError = describeFightingStylesError(fightingStyles)
 	if (fightingStylesError) throw new ImportValidationError(`Fighting style could not be saved: ${fightingStylesError}.`)
 	assertValidPortrait(portrait)
+	// D328: across classes the history is what max HP and ASI levels read, so a mismatch is refused rather than silently dropped.
+	if (levelOrder && classes.length > 1 && !isConsistentLevelOrder(levelOrder, classes)) {
+		throw new ImportValidationError(`The level history could not be saved: ${levelOrderMismatch(levelOrder, classes)}.`)
+	}
 
 	const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
 	const storedPlay = storedPlayState(storedCurrentHp, play)
@@ -401,6 +405,12 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(notes ? { notes } : {}),
 		...(portrait ? { portrait } : {}),
 	}
+}
+
+function levelOrderMismatch(levelOrder: readonly CharacterLevelOrderEntry[], classes: readonly CharacterClass[]): string {
+	const counted = (className: string, classSource: string) => levelOrder.filter((entry) => entry.className === className && entry.classSource === classSource).length
+	const history = [...new Map(levelOrder.map((entry) => [`${entry.className}|${entry.classSource}`, entry])).values()]
+	return `classes are ${classes.map((c) => `${c.className} ${c.level}`).join(' / ')}, but the history has ${history.map((e) => `${e.className} ${counted(e.className, e.classSource)}`).join(' / ') || 'no levels'}`
 }
 
 function assertValidPortrait(portrait: string | undefined): void {

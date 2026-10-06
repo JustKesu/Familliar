@@ -82,6 +82,9 @@ function gain(status: LevelGain['status']): LevelGain {
 /** Fighter 3 → 4 as levelGainsFor answers it: one more weapon mastery on the class step, no subclass and no fighting style. */
 const fighterFour: LevelGains = {
 	level: 4,
+	classLevel: 4,
+	className: 'Fighter',
+	classSource: 'XPHB',
 	unresolved: null,
 	newFeatures: [],
 	steps: Object.fromEntries(

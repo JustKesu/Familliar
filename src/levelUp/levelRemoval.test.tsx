@@ -9,7 +9,7 @@ import type { Character, SpentSpellSlots } from '../storage/character'
 import { CharacterStore, type CharacterCreateInput, type KeyValueStorage } from '../storage/characterStore'
 import { levelGainsFor } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
-import { characterUpdateInput, levelRemovalPlan, levelRemovalTarget, type LevelRemovalPlan } from './levelRemoval'
+import { characterUpdateInput, levelRemovalCore, levelRemovalPlan, levelRemovalTarget, type LevelRemovalPlan } from './levelRemoval'
 import { levelUpStepConditions } from './levelUpSteps'
 import { RemoveLevelButton } from './RemoveLevelButton'
 
@@ -64,7 +64,7 @@ describe('a level up followed by removing that level', () => {
 		})
 		const before = storage.raw()
 
-		const gains = levelGainsFor(created, 5, CLASSES, RESOLVER)
+		const gains = levelGainsFor(created, created.classes[0], CLASSES, RESOLVER)
 		const seed = wizardDataFromCharacter(created, lookups)
 		const data = {
 			...seed,
@@ -104,7 +104,7 @@ describe('a level up followed by removing that level', () => {
 		})
 		const before = storage.raw()
 
-		const gains = levelGainsFor(created, 5, CLASSES, RESOLVER)
+		const gains = levelGainsFor(created, created.classes[0], CLASSES, RESOLVER)
 		const seed = wizardDataFromCharacter(created, lookups)
 		const data = { ...seed, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 }, hitPointLevels: [...seed.hitPointLevels, { level: 5, kind: 'roll' as const, dieResult: 9 }] }
 		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5)
@@ -126,7 +126,7 @@ describe('a level up followed by removing that level', () => {
 		})
 		const before = storage.raw()
 
-		const gains = levelGainsFor(created, 4, CLASSES, RESOLVER)
+		const gains = levelGainsFor(created, created.classes[0], CLASSES, RESOLVER)
 		const seed = wizardDataFromCharacter(created, lookups)
 		const data = {
 			...seed,
@@ -147,7 +147,7 @@ describe('level history (M1a, D317)', () => {
 	const FIGHTER = { className: 'Fighter', classSource: 'XPHB' }
 
 	function levelUpFighter4(store: CharacterStore, created: Character): void {
-		const gains = levelGainsFor(created, 5, CLASSES, RESOLVER)
+		const gains = levelGainsFor(created, created.classes[0], CLASSES, RESOLVER)
 		const seed = wizardDataFromCharacter(created, lookups)
 		const data = { ...seed, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 }, hitPointLevels: [...seed.hitPointLevels, { level: 5, kind: 'roll' as const, dieResult: 9 }] }
 		saveCharacter(store, data, undefined, { ...levelUpStepConditions(gains), characterLevel: 5, featAsiEligibleLevelCount: 1, hitDieFaces: 10 }, undefined, created, 5)
@@ -190,6 +190,57 @@ describe('level history (M1a, D317)', () => {
 		expect('levelOrder' in store.list()[0]).toBe(false)
 		removeTopLevel(store, created.id)
 		expect('levelOrder' in store.list()[0]).toBe(false)
+	})
+})
+
+describe('levelRemovalCore on two level axes (D328)', () => {
+	const WIZARD = { className: 'Wizard', classSource: 'XPHB' }
+	const FIGHTER = { className: 'Fighter', classSource: 'XPHB' }
+	// classes order differs from levelOrder order on purpose: the top level is Fighter's, not classes[0]'s.
+	const wizardFighter: Character = {
+		id: 'm6',
+		name: 'Split',
+		createdAtLevel: 1,
+		classes: [
+			{ ...WIZARD, subclass: null, level: 1 },
+			{ ...FIGHTER, subclass: null, level: 2 },
+		],
+		levelOrder: [WIZARD, FIGHTER, FIGHTER],
+		masteries: [{ name: 'Longsword', level: 2 }, { name: 'Rapier', level: 3 }],
+		classFeatureChoices: [
+			{ ...FIGHTER, featureName: 'Fighter Two', grantedAtLevel: 2, optionName: 'A' },
+			{ ...WIZARD, featureName: 'Wizard Two', grantedAtLevel: 2, optionName: 'B' },
+		],
+		hitPointLevels: [2, 3].map((level) => ({ level, kind: 'average' as const, dieResult: 6 })),
+	}
+
+	function core(character: Character) {
+		const result = levelRemovalCore(character, CLASSES, RESOLVER, null)
+		if ('reason' in result) throw new Error(result.reason)
+		return result
+	}
+
+	it('lowers the class of levelOrder.at(-1), drops its class-level-2 choice and the character-level-3 picks', () => {
+		const { level, result } = core(wizardFighter)
+		expect(level).toBe(3)
+		expect(result.classes).toEqual([
+			{ ...WIZARD, subclass: null, level: 1 },
+			{ ...FIGHTER, subclass: null, level: 1 },
+		])
+		expect(result.levelOrder).toEqual([WIZARD, FIGHTER])
+		expect(result.classFeatureChoices?.map((choice) => choice.featureName)).toEqual(['Wizard Two'])
+		expect(result.masteries).toEqual([{ name: 'Longsword', level: 2 }])
+		expect(result.hitPointLevels).toEqual([{ level: 2, kind: 'average', dieResult: 6 }])
+	})
+
+	it('refuses to take a class to level 0', () => {
+		expect(levelRemovalCore({ ...wizardFighter, levelOrder: [FIGHTER, FIGHTER, WIZARD] }, CLASSES, RESOLVER, null)).toEqual({
+			reason: 'Removing the last level of a class is build order step M8.',
+		})
+	})
+
+	it('the gate still refuses more than one class (D316)', () => {
+		expect(levelRemovalPlan(wizardFighter, CLASSES, RESOLVER, null)).toEqual({ reason: expect.stringContaining('Multiclass') })
 	})
 })
 
@@ -405,7 +456,8 @@ describe('resource uses on a level removal', () => {
 describe('spent spell slots on a level removal', () => {
 	/* Sorcerer's real level 1-5 rows, plus a Warlock carrying Pact Magic's own two columns (1 slot to level 1, 2 from 2). */
 	const SLOT_CLASSES = [
-		...CLASSES.map((entry) =>
+		// The shared fixture's Warlock has no Pact Magic columns; this one replaces it.
+		...CLASSES.filter((entry) => !(entry.entryType === 'class' && entry.name === 'Warlock')).map((entry) =>
 			entry.entryType === 'class' && entry.name === 'Sorcerer'
 				? {
 						...entry,

@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { levelGainsFor, type LevelGains } from './levelGains'
+import { levelGainsFor, type LevelGains, type LevelUpClass } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
 import { levelUpStepConditions, unknownLevelUpSteps } from './levelUpSteps'
 import { overwrittenHeldPicks } from './heldPicks'
@@ -19,13 +19,17 @@ function single(className: string, subclass: string | null, level: number): Char
 	return { id: 'c1', name: 'Aria', classes: [{ className, classSource: 'XPHB', subclass, level }] }
 }
 
+function gainsOf(character: Character): LevelGains {
+	return levelGainsFor(character, character.classes[0], CLASSES, RESOLVER)
+}
+
 function walkedSteps(character: Character): readonly string[] {
-	const gains = levelGainsFor(character, character.classes[0].level + 1, CLASSES, RESOLVER)
+	const gains = gainsOf(character)
 	return visibleSteps({ ...levelUpStepConditions(gains), characterLevel: gains.level })
 }
 
-async function fixtureGains(character: Character, level: number): Promise<LevelGains> {
-	return levelGainsFor(character, level, CLASSES, RESOLVER)
+async function fixtureGains(character: Character, target: LevelUpClass): Promise<LevelGains> {
+	return levelGainsFor(character, target, CLASSES, RESOLVER)
 }
 
 describe('which steps a level up walks', () => {
@@ -36,7 +40,7 @@ describe('which steps a level up walks', () => {
 	it('walks only hit points and review for a Fighter going from 4 to 5, and lists Extra Attack as granted', () => {
 		const fighter = single('Fighter', 'Champion', 4)
 		expect(walkedSteps(fighter)).toEqual(['hitPoints', 'review'])
-		expect(levelGainsFor(fighter, 5, CLASSES, RESOLVER).newFeatures.map((feature) => feature.name)).toEqual(['Extra Attack'])
+		expect(gainsOf(fighter).newFeatures.map((feature) => feature.name)).toEqual(['Extra Attack'])
 	})
 
 	it('walks the class step for a character reaching its subclass level', () => {
@@ -44,7 +48,7 @@ describe('which steps a level up walks', () => {
 	})
 
 	it('walks an unknown step rather than hiding it, with the reason the app cannot answer', () => {
-		const gains = levelGainsFor(single('Fighter', 'Psi Warrior', 4), 5, CLASSES, RESOLVER)
+		const gains = gainsOf(single('Fighter', 'Psi Warrior', 4))
 		const steps = visibleSteps(levelUpStepConditions(gains))
 		expect(steps).toContain('class')
 		expect(steps).toContain('spells')
@@ -103,7 +107,7 @@ describe('the hit points step during a level up', () => {
 	/* Build order step 8, slice 8d5: a level-up walk asks about only the new level, leaving older levels without a stored entry on their D92 defaults. */
 	it('completes once the single new-level entry is recorded, for a character with no stored hit point history', () => {
 		const character = single('Fighter', 'Champion', 9)
-		const gains = levelGainsFor(character, 10, CLASSES, RESOLVER)
+		const gains = gainsOf(character)
 		const conditions = { ...levelUpStepConditions(gains), characterLevel: 10, hitDieFaces: 10 }
 		expect(conditions.levelUpTargetLevel).toBe(10)
 
@@ -154,7 +158,7 @@ describe('saving a level up', () => {
 	}
 
 	function conditions(character: Character) {
-		return { ...levelUpStepConditions(levelGainsFor(character, 4, CLASSES, RESOLVER)), featAsiEligibleLevelCount: 1, characterLevel: 4, hitDieFaces: 10 }
+		return { ...levelUpStepConditions(gainsOf(character)), featAsiEligibleLevelCount: 1, characterLevel: 4, hitDieFaces: 10 }
 	}
 
 	it('writes the new level once, and every pick made during the walk carries that level', () => {
