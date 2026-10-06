@@ -22,7 +22,7 @@
  * matched by feature name, never by class, species or subclass name.
  */
 
-import type { Character } from '../storage/character'
+import { type Character, isConsistentLevelOrder } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
 import { totalCharacterLevel } from './characterLevel'
 import type { FeatEffectEntry } from './featEffects'
@@ -32,9 +32,7 @@ import { type Calculated, type Contribution, known, unknown } from './types'
 
 /**
  * Which level a bonus' per-level part multiplies. Draconic Resilience scales on
- * SORCERER level, not character level; today the app is single-class so the two
- * always agree, but multiclass is build order step 10 and an axis the table
- * never recorded could not be recovered then.
+ * SORCERER level, not character level — the two differ for a multiclass character.
  */
 export type HitPointBonusAxis = { kind: 'characterLevel' } | { kind: 'classLevel'; className: string; classSource: string }
 
@@ -75,6 +73,32 @@ function levelOnAxis(character: Character, axis: HitPointBonusAxis): number | nu
 	return entry ? entry.level : null
 }
 
+export interface LevelHitDie {
+	/** Character level, 1..total. */
+	level: number
+	className: string
+	classSource: string
+	faces: number
+}
+
+/** D323: the hit die of every character level — the one class for every level, or per Character.levelOrder (D317) across more than one. */
+export function hitDiePerLevel(character: Character, classData: readonly ClassHitDie[]): Calculated<LevelHitDie[]> {
+	const pool = computeHitDicePool(character.classes, [...classData])
+	if (pool.status === 'unknown') return unknown(pool.reason)
+	const order =
+		pool.value.length === 1
+			? Array.from({ length: pool.value[0].count }, () => pool.value[0])
+			: character.levelOrder && isConsistentLevelOrder(character.levelOrder, character.classes)
+				? character.levelOrder
+				: null
+	if (!order) return unknown('Cannot tell which class each level came from (no level history). Set a manual maximum.')
+	const levels = order.map(({ className, classSource }, index) => {
+		const die = pool.value.find((entry) => entry.className === className && entry.classSource === classSource)!
+		return { level: index + 1, className, classSource, faces: die.faces }
+	})
+	return known(levels, pool.breakdown)
+}
+
 /**
  * `bonusFeatureNames` is every feature name the character has from any source —
  * granted class/subclass features, taken feats, species traits. Only the three
@@ -98,13 +122,12 @@ export function computeMaxHitPoints(
 		])
 	}
 
-	const pool = computeHitDicePool(character.classes, [...classData])
-	if (pool.status === 'unknown') return unknown(pool.reason)
-	if (pool.value.length > 1) {
-		return unknown('Maximum hit points across more than one class is build order step 10 (multiclass).')
-	}
-
-	const { faces, count: totalLevel } = pool.value[0]
+	const perLevel = hitDiePerLevel(character, classData)
+	if (perLevel.status === 'unknown') return unknown(perLevel.reason)
+	const totalLevel = perLevel.value.length
+	// Single-class rows keep their pre-M4 wording; across classes each row names its class (D323).
+	const multiclass = character.classes.length > 1
+	const die = (level: LevelHitDie): string => (multiclass ? `${level.className} d${level.faces}` : `d${level.faces}`)
 	const constitution = computeAbilityScore('constitution', character, feats, itemAbilityGrants)
 	if (constitution.status === 'unknown') return unknown(constitution.reason)
 
@@ -119,18 +142,19 @@ export function computeMaxHitPoints(
 		})
 	}
 
-	for (let level = 1; level <= totalLevel; level++) {
+	for (const levelDie of perLevel.value) {
+		const { level, faces } = levelDie
 		// Level 1 is the die maximum by rule — never rolled, never averaged — so a stored entry for it cannot change the amount.
 		if (level === 1) {
-			breakdown.push({ source: `level 1 (d${faces} maximum)`, amount: faces })
+			breakdown.push({ source: `level 1 (${die(levelDie)} maximum)`, amount: faces })
 			continue
 		}
 		const entry = stored.find((candidate) => candidate.level === level)
 		if (!entry) {
-			breakdown.push({ source: `level ${level} (d${faces} average${usingDefaults ? '' : ', no choice recorded'})`, amount: fixedAverage(faces) })
+			breakdown.push({ source: `level ${level} (${die(levelDie)} average${usingDefaults ? '' : ', no choice recorded'})`, amount: fixedAverage(faces) })
 			continue
 		}
-		breakdown.push({ source: `level ${level} (${entry.kind})`, amount: entry.dieResult })
+		breakdown.push({ source: `level ${level} (${multiclass ? `${levelDie.className} ` : ''}${entry.kind})`, amount: entry.dieResult })
 		// D43: a result a d8 cannot produce is shown rather than silently trusted or silently dropped.
 		if (entry.dieResult > faces) {
 			breakdown.push({ source: `level ${level}`, amount: 0, note: `recorded as ${entry.dieResult}, which a d${faces} cannot roll — counted as stored` })

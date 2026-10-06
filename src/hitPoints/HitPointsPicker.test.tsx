@@ -14,7 +14,11 @@ import type { Character, CharacterHitPointLevel } from '../storage/character'
  */
 
 vi.mock('../sheet/sheetData', () => ({
-	loadHitDiceClassData: vi.fn(async () => [{ className: 'Fighter', classSource: 'XPHB', faces: 10 }]),
+	loadHitDiceClassData: vi.fn(async () => [
+		{ className: 'Fighter', classSource: 'XPHB', faces: 10 },
+		{ className: 'Warlock', classSource: 'XPHB', faces: 8 },
+		{ className: 'Sorcerer', classSource: 'XPHB', faces: 6 },
+	]),
 	loadFeatEffectEntries: vi.fn(async () => []),
 }))
 vi.mock('../sheet/grantedClassFeatures', () => ({
@@ -179,12 +183,57 @@ describe('HitPointsPicker', () => {
 	it('shows only the level being gained during a level-up walk, and hides the apply-to-every-level control', async () => {
 		render(<HitPointsPicker character={fighter(5)} value={[]} onChange={() => {}} levelUpLevel={5} />)
 
-		expect(await screen.findByText('Level 1')).toBeTruthy()
-		expect(screen.getByText('Level 5')).toBeTruthy()
+		expect(await screen.findByText('Level 5')).toBeTruthy()
+		// D323: no read-only Level 1 row in a level-up walk.
+		expect(screen.queryByText('Level 1')).toBeNull()
 		expect(screen.queryByText('Level 2')).toBeNull()
 		expect(screen.queryByText('Level 3')).toBeNull()
 		expect(screen.queryByText('Level 4')).toBeNull()
 		expect(screen.queryByRole('button', { name: /Use the average/ })).toBeNull()
+	})
+
+	it('M4: a multiclass draft gives every row its own class and die, and averages each with its own die', async () => {
+		const user = userEvent.setup()
+		const onChange = vi.fn()
+		const warlock = { className: 'Warlock', classSource: 'XPHB' }
+		const sorcerer = { className: 'Sorcerer', classSource: 'XPHB' }
+		const multi: Character = {
+			id: '',
+			name: 'Aria',
+			classes: [
+				{ ...warlock, subclass: null, level: 2 },
+				{ ...sorcerer, subclass: null, level: 1 },
+			],
+			levelOrder: [warlock, sorcerer, warlock],
+		}
+		render(<HitPointsPicker character={multi} value={[]} onChange={onChange} />)
+
+		expect(await screen.findByText('Level 1 · Warlock')).toBeTruthy()
+		expect(screen.getByText('Maximum die (d8)')).toBeTruthy()
+		expect(screen.getByText('Level 2 · Sorcerer')).toBeTruthy()
+		expect(screen.getByText('Level 3 · Warlock')).toBeTruthy()
+		expect(screen.getByLabelText('Roll (d6)')).toBeTruthy()
+		expect(screen.getByLabelText('Roll (d8)')).toBeTruthy()
+		await user.click(screen.getByRole('button', { name: /Use the average/ }))
+		expect(onChange).toHaveBeenCalledWith([
+			{ level: 2, kind: 'average', dieResult: 4 },
+			{ level: 3, kind: 'average', dieResult: 5 },
+		])
+	})
+
+	it('M4: a multiclass draft without a level history shows the reason instead of the table', async () => {
+		const multi: Character = {
+			id: '',
+			name: 'Aria',
+			classes: [
+				{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 2 },
+				{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 1 },
+			],
+		}
+		render(<HitPointsPicker character={multi} value={[]} onChange={() => {}} />)
+
+		expect(await screen.findByText(/Cannot tell which class each level came from/)).toBeTruthy()
+		expect(screen.queryByRole('table')).toBeNull()
 	})
 
 	it('still lets the level-up row be set the same three ways', async () => {

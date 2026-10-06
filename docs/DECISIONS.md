@@ -4924,3 +4924,13 @@ její tabulka dává první slot (EK/AT od 3). Řádek tabulky = `rowsSpellProgr
 tabulkou v knize). `spentSpellSlots.ordinary` zůstává jeden sdílený pool po úrovních slotu. Všichni čtenáři maxim berou
 `characterSpellSlotMaxima` (spellSlots.ts). Mimo rozsah (M5): které úrovně kouzel třída smí připravit, `spellLimitReason`,
 `highestCastableLevel` po třídách, Hit/DC multiclass kouzel, volba poolu u CAST, upcast do pact slotů. Task M3, 6. 10. 2026.
+
+## D323 — Maximum HP po úrovních z historie úrovní (M4, schéma zůstává 59)
+
+Kostka každé úrovně postavy = kostka třídy té úrovně: jedna třída = ta třída pro všechny úrovně, víc tříd = podle
+`Character.levelOrder` (D317). Jediná implementace `hitDiePerLevel` (maxHitPoints.ts) pro `computeMaxHitPoints` i
+`HitPointsPicker`. Úroveň 1 = maximum kostky první třídy, další úrovně = uložená hodnota, jinak pevný průměr kostky té
+úrovně; poznámka D43 „nelze hodit“ se porovnává s kostkou té úrovně. Víc tříd bez platné historie = nevyřešeno s textem
+„Cannot tell which class each level came from (no level history). Set a manual maximum.“; `maxHpOverride` vyhrává dál.
+Krok Hit points při level-upu už neukazuje řádek Level 1, jen novou úroveň (rozhodl Daniel); creation a Edit ho
+ukazují dál. Brána `hitDieKey` a průběžné max HP wizardu zůstávají jednotřídní do M7. Task M4, 6. 10. 2026.

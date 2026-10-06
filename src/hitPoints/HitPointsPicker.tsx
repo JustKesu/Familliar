@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { computeHitDicePool, type ClassHitDie } from '../calculation/hitDice'
-import { computeMaxHitPoints, fixedAverage } from '../calculation/maxHitPoints'
+import type { ClassHitDie } from '../calculation/hitDice'
+import { computeMaxHitPoints, fixedAverage, hitDiePerLevel } from '../calculation/maxHitPoints'
 import { characterFeats, type FeatEffectEntry } from '../calculation/featEffects'
 import type { ItemAbilityGrant } from '../calculation/itemAbilityScores'
 import type { Contribution } from '../calculation/types'
@@ -17,7 +17,8 @@ import type { Character, CharacterHitPointLevel, HitPointLevelKind } from '../st
  * Hit points wizard step (build order step 8, slice 8b). Level 1 is never
  * shown here — the wizard hides the whole step at level 1 (D92) — so this
  * component only ever renders levels 2 and up, plus a read-only level-1 row
- * so the running total visibly adds up.
+ * in creation and edit walks so the running total visibly adds up (a level-up
+ * walk shows only the new level, D323).
  *
  * The running total is computeMaxHitPoints itself, called against a draft
  * Character carrying the in-progress picks — never a second sum written here
@@ -85,9 +86,7 @@ export function HitPointsPicker({
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the class/species/feat identity via the parent's own draft-character rebuild, not on every keystroke.
 	}, [
-		character.classes[0]?.className,
-		character.classes[0]?.classSource,
-		character.classes[0]?.level,
+		character.classes.map((c) => `${c.className}|${c.classSource}|${c.level}`).join(),
 		character.species?.name,
 		character.background?.name,
 		character.background?.source,
@@ -116,26 +115,24 @@ export function HitPointsPicker({
 	}
 	if (!loaded) return <p>Loading…</p>
 
-	const pool = computeHitDicePool(character.classes, loaded.classData)
-	if (pool.status === 'unknown') return <p className="error">Could not determine your hit die: {pool.reason}</p>
-	if (pool.value.length > 1) return <p className="error">Hit points across more than one class is build order step 10 (multiclass).</p>
+	const perLevel = hitDiePerLevel(character, loaded.classData)
+	if (perLevel.status === 'unknown') return <p className="error">Could not determine your hit die: {perLevel.reason}</p>
 
-	const { faces, count: totalLevel } = pool.value[0]
+	const dice = perLevel.value
+	const multiclass = character.classes.length > 1
+	const facesAt = (level: number): number => dice[level - 1]?.faces ?? 0
 
 	function setLevel(level: number, kind: HitPointLevelKind, dieResult: number): void {
 		onChange([...value.filter((entry) => entry.level !== level), { level, kind, dieResult }].sort((a, b) => a.level - b.level))
 	}
 
 	function applyAverageToAll(): void {
-		const average = fixedAverage(faces)
-		const levels: CharacterHitPointLevel[] = []
-		for (let level = 2; level <= totalLevel; level++) levels.push({ level, kind: 'average', dieResult: average })
-		onChange(levels)
+		onChange(dice.slice(1).map(({ level, faces }) => ({ level, kind: 'average', dieResult: fixedAverage(faces) })))
 	}
 
-	const levels = levelUpLevel !== undefined ? [levelUpLevel] : Array.from({ length: Math.max(0, totalLevel - 1) }, (_, index) => index + 2)
+	const levels = levelUpLevel !== undefined ? [levelUpLevel] : dice.slice(1).map(({ level }) => level)
 	// An invalid row (empty Manual, legacy value) must not feed the total: it is left out, so the breakdown shows it as "no choice recorded".
-	const isUnset = (entry: CharacterHitPointLevel): boolean => levels.includes(entry.level) && !isValidHitPointEntry(entry, faces)
+	const isUnset = (entry: CharacterHitPointLevel): boolean => levels.includes(entry.level) && !isValidHitPointEntry(entry, facesAt(entry.level))
 	const anyUnset = value.some(isUnset)
 	const draftCharacter: Character = { ...character, hitPointLevels: value.filter((entry) => !isUnset(entry)) }
 	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats, loaded.itemBonuses, loaded.itemAbilityGrants)
@@ -165,15 +162,24 @@ export function HitPointsPicker({
 						</tr>
 					</thead>
 					<tbody>
-						<tr>
-							<td className="hit-points-picker__level">Level 1</td>
-							<td>Maximum die (d{faces})</td>
-							<td className="hit-points-picker__result">
-								<span className="hit-points-picker__value">{faces}</span>
-							</td>
-						</tr>
+						{levelUpLevel === undefined && (
+							<tr>
+								<td className="hit-points-picker__level">Level 1{multiclass ? ` · ${dice[0].className}` : ''}</td>
+								<td>Maximum die (d{dice[0].faces})</td>
+								<td className="hit-points-picker__result">
+									<span className="hit-points-picker__value">{dice[0].faces}</span>
+								</td>
+							</tr>
+						)}
 						{levels.map((level) => (
-							<HitPointLevelRow key={level} level={level} faces={faces} entry={value.find((candidate) => candidate.level === level)} onSet={setLevel} />
+							<HitPointLevelRow
+								key={level}
+								level={level}
+								faces={facesAt(level)}
+								className={multiclass ? dice[level - 1]?.className : undefined}
+								entry={value.find((candidate) => candidate.level === level)}
+								onSet={setLevel}
+							/>
 						))}
 					</tbody>
 				</table>

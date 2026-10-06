@@ -8,6 +8,7 @@ const classData: ClassHitDie[] = [
 	{ className: 'Fighter', classSource: 'XPHB', faces: 10 },
 	{ className: 'Sorcerer', classSource: 'XPHB', faces: 6 },
 	{ className: 'Wizard', classSource: 'XPHB', faces: 6 },
+	{ className: 'Warlock', classSource: 'XPHB', faces: 8 },
 ]
 
 function character(overrides: Partial<Character> = {}): Character {
@@ -254,16 +255,56 @@ describe('computeMaxHitPoints — D43 unresolved states', () => {
 		expect(computeMaxHitPoints(rest, classData).status).toBe('unknown')
 	})
 
-	it('more than one class waits for build order step 10', () => {
-		const multi = character({
-			classes: [
-				{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 3 },
-				{ className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 2 },
-			],
-		})
-		const result = computeMaxHitPoints(multi, classData)
-		expect(result.status).toBe('unknown')
-		if (result.status === 'unknown') expect(result.reason).toContain('multiclass')
+})
+
+describe('computeMaxHitPoints — more than one class (M4, D323)', () => {
+	const WARLOCK = { className: 'Warlock', classSource: 'XPHB' }
+	const SORCERER = { className: 'Sorcerer', classSource: 'XPHB' }
+	const classes = [
+		{ ...WARLOCK, subclass: null, level: 6 },
+		{ ...SORCERER, subclass: null, level: 3 },
+	]
+	const inOrder = [...Array.from({ length: 6 }, () => WARLOCK), SORCERER, SORCERER, SORCERER]
+	const multi = (overrides: Partial<Character> = {}): Character => character({ classes, levelOrder: inOrder, ...overrides })
+
+	it('Warlock 6 then Sorcerer 3: level 1 d8 maximum, 2-6 d8 average, 7-9 d6 average, CON × 9', () => {
+		const result = computeMaxHitPoints(multi(), classData)
+		expect(total(result)).toBe(8 + 5 * 5 + 3 * 4 + 9 * 2)
+		expect(sources(result)).toEqual([
+			'per-level hit points',
+			'level 1 (Warlock d8 maximum)',
+			...[2, 3, 4, 5, 6].map((level) => `level ${level} (Warlock d8 average)`),
+			...[7, 8, 9].map((level) => `level ${level} (Sorcerer d6 average)`),
+			'constitution modifier (+2) × 9 levels',
+		])
+	})
+
+	it('an interleaved history uses the d6 for a Sorcerer level 2', () => {
+		const interleaved = [WARLOCK, SORCERER, WARLOCK, WARLOCK, WARLOCK, WARLOCK, WARLOCK, SORCERER, SORCERER]
+		const result = computeMaxHitPoints(multi({ levelOrder: interleaved }), classData)
+		expect(sources(result)).toContain('level 2 (Sorcerer d6 average)')
+		expect(sources(result)).toContain('level 7 (Warlock d8 average)')
+	})
+
+	it('a stored roll on a Sorcerer level above 6 is checked against the d6 (D43)', () => {
+		const result = computeMaxHitPoints(multi({ hitPointLevels: [{ level: 8, kind: 'roll', dieResult: 7 }] }), classData)
+		expect(sources(result)).toContain('level 8 (Sorcerer roll)')
+		expect(notes(result)).toEqual(['recorded as 7, which a d6 cannot roll — counted as stored'])
+	})
+
+	it('without a level history the maximum is unknown, with the manual-maximum hint', () => {
+		const { levelOrder: _dropped, ...noHistory } = multi()
+		expect(computeMaxHitPoints(noHistory, classData)).toEqual(unknown('Cannot tell which class each level came from (no level history). Set a manual maximum.'))
+	})
+
+	it('the manual override still wins without a level history', () => {
+		const { levelOrder: _dropped, ...noHistory } = multi({ maxHpOverride: 50 })
+		expect(total(computeMaxHitPoints(noHistory, classData))).toBe(50)
+	})
+
+	it('Draconic Resilience counts Sorcerer levels only', () => {
+		const base = total(computeMaxHitPoints(multi(), classData))
+		expect(total(computeMaxHitPoints(multi(), classData, ['Draconic Resilience'])) - base).toBe(3)
 	})
 })
 

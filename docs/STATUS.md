@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2 done (see the entries below).
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4 done (see the entries below).
 
 ## Co appka umí navíc k build orderu
 
@@ -1153,6 +1153,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - `e2e/multiclassProficiencies.spec.ts` — M2 a–b (Warlock 6 / Sorcerer 3, Warlock first: WIS/CHA saves only, no
   Sorcerer in the Saving throws drawer; Wizard 1 / Fighter 1: medium armor, shields, martial weapons "Fighter
   (multiclass)", no heavy armor, Longsword to hit +4).
+- `e2e/multiclassHitPoints.spec.ts` — M4 a–c (Warlock 6 / Sorcerer 3 with levelOrder: max HP 54, drawer rows
+  "Warlock d8 maximum" / "Sorcerer d6 average", Long Rest enabled; without levelOrder: max "—", reason in the drawer,
+  Long Rest disabled; Fighter level up 1 → 2: Level 2 row, no Level 1 row).
 
 ## Dočasné scaffolding
 
@@ -1907,6 +1910,16 @@ the sheet (Spells tab sections/boxes, upcast rows, CAST, Manage Spells summary a
 "Multiclass Spellcaster (caster level N)" section when combined) and level removal's spent-slot clamp. Long Rest still
 clears all spent slots. Not done (M5): per-class castable levels, `spellLimitReason`, Hit/DC, CAST pool choice. Unit
 `spellSlots.test.ts`; E2E `multiclassSlots.spec.ts`.
+
+M4 done (D323). No schema change (59). `hitDiePerLevel(character, classData)` (maxHitPoints.ts): class + faces of every
+character level — one class for all levels, 2+ classes from a consistent `levelOrder`, else unknown "Cannot tell which
+class each level came from (no level history). Set a manual maximum." Read by `computeMaxHitPoints` (level 1 = first
+class's die max, later levels stored entry or that level's own fixed average, D43 note against that level's die;
+multiclass breakdown rows name the class, single-class wording unchanged) and `HitPointsPicker` (per-row die and
+"Level N · Class", average-all per die; multiclass refusal removed). Level-up walk no longer shows the read-only Level 1
+row. Multiclass with levelOrder now gets a known max, so Long Rest is enabled. Wizard `hitDieKey` gate and draft max HP
+stay single-class (M7). Unit `maxHitPoints.test.ts`, `HitPointsPicker.test.tsx`; E2E `multiclassHitPoints.spec.ts`,
+`wizardW6.spec.ts` (W-6 a/e).
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

@@ -1,28 +1,29 @@
-# REPORT — M3: společné sloty kouzel multiclass sesilatele (D322)
+# REPORT — M4: maximum HP multiclass postavy z historie úrovní (D323)
+
+Pozn.: lokální `main` byl na začátku za `origin/main` (chyběly F-8, M2, M3, schéma 57 místo 59). Proveden `git merge --ff-only origin/main` (bez konfliktů, moje změny se s nimi nepřekrývaly), pak práce na schématu 59. `npm ci` / `e2e:install` nespouštěny — lokální stroj, závislosti a Chromium už byly.
 
 ## Co se změnilo
-- `src/calculation/spellSlots.ts`: nová `characterSpellSlotMaxima(character, classData): Calculated<{ ordinary, pact, casterLevel, ordinaryBreakdown }>`. Spellcasting třída = záznam s nenulovým ordinary řádkem (EK/AT řádky 1–2 jsou nuly, takže se počítají od 3 bez jmen). 2+ takové třídy → caster level (full ×1, artificer ⌈/2⌉, 1/3 ⌊/3⌋, jiné ⌊/2⌋) a řádek Wizard XPHB; jinak `spellSlotMaxima` beze změny. Pact beze změny. `computeSpellSlots` a `spellSlotMaxima` nezměněny (jen komentáře).
-- Čtenáři přepojeni: `CharacterSheet.tsx` (`slotMaxima` → sekce Spells tabu, boxy, upcast řádky, CAST, Manage Spells summary + boxy; drawer Spell Slots ukazuje při kombinaci jednu sekci „Multiclass Spellcaster (caster level N)“ s rozpadem po třídách místo tabulek jednotlivých tříd), `levelRemoval.ts` (clamp spent slotů).
-- Long Rest (`afterLongRest`) maže `spentSpellSlots` celé, maxima nečte → beze změny.
-- `CharacterWizard.tsx` volá `computeSpellSlots` jen pro jednu třídu (tvorba), nesahal jsem.
-
-## STEP 1 nálezy
-- casterProgression: "full" (Bard, Cleric, Druid, Sorcerer, Wizard), "artificer" (Artificer EFA, Paladin, Ranger), "pact" (Warlock), "1/3" jen na podtřídách EK/AT (`casterProgression`, `subclassTableGroups[].rowsSpellProgression`). Žádná jiná hodnota → STOP podmínka nenastala.
-- Wizard XPHB: 20 řádků × 9 čísel; ř.1 `2 0…`, ř.5 `4 3 2 0…`, ř.20 `4 3 3 3 3 2 2 1 1`.
-- Inventura: všichni čtenáři maxim šli přes `spellSlotMaxima` (sheet, levelRemoval); `spellLevelFilter.ts`/`ManageSpellsPanel` čtou per-class `ordinarySlots` pro limity úrovní kouzel = M5, nechány.
+- `src/calculation/maxHitPoints.ts`: nové `hitDiePerLevel(character, classData): Calculated<LevelHitDie[]>` ({ level, className, classSource, faces } pro úrovně 1..N). 1 třída = ta pro všechny úrovně; 2+ = `levelOrder` ověřené `isConsistentLevelOrder`; jinak unknown „Cannot tell which class each level came from (no level history). Set a manual maximum.“
+- `computeMaxHitPoints` jede přes `hitDiePerLevel`: L1 = max kostky první třídy, další = uložená hodnota / průměr kostky té úrovně, D43 poznámka proti kostce té úrovně. Multiclass řádky: `level 1 (Warlock d8 maximum)`, `level 7 (Sorcerer d6 average)`, `level 8 (Sorcerer roll)`. Single-class text beze změny. Override, CON × level, bonusová tabulka a item bonusy beze změny.
+- `src/hitPoints/HitPointsPicker.tsx`: odmítnutí multiclassu pryč; kostka po řádcích, „Use the average…“ po kostkách, buňka Level „Level N · Class“ jen u 2+ tříd (nový volitelný prop `className` v `HitPointLevelRow`). Level-up walk (`levelUpLevel`) nemá řádek Level 1. Unknown mapování = text důvodu místo tabulky. Deps načítání klíčované na všechny třídy, ne jen `classes[0]`.
+- Sheet bez ručních změn: multiclass s `levelOrder` má známé max → Long Rest povolen (ověřeno e2e M4 a).
+- Docs: D323 (DECISIONS), STATUS (M4 záznam, e2e seznam, krok 10).
 
 ## Ověřeno
-- `npm run typecheck` OK, `npm test` 3079/3079, `npm run validate-data` 174/174, `npm run e2e` 434/434 (4.8 min — nad limitem ~3 min).
-- Unit `spellSlots.test.ts` › characterSpellSlotMaxima: W3/C3 = 4/3/3; Pal5/Fig1 = 4/2; Wiz1/Pal1 = CL2 → 3; EK3/Wiz1 = CL2; Fig2/Wiz1 = 2; Wlk6/Sor3 = 4/2 + pact 2; Rgr3/Dru2 = CL4; single class = `spellSlotMaxima`.
-- E2E `multiclassSlots.spec.ts`: M3 a (W3/C3: sekce 1st/2nd/3rd se 4/3/3 boxy, žádná 4th; utracený 3rd slot se vrátí po Long Rest), M3 b (Wlk6/Sor3: 1st 4, 2nd 2, pact 3rd 2 boxy bez ordinary skupiny).
-- Žádný existující test neměnil očekávání (žádný netestoval staré multiclass maximum).
+- `npm run typecheck` OK; `npm test` 167 souborů / 3086 testů OK; `npm run validate-data` 174/174; `npm run e2e` 437 passed za 1.5 min (ne 5).
+- Unit `maxHitPoints.test.ts` „more than one class (M4, D323)“: Warlock 6 → Sorcerer 3 (= 63, přesné řádky), interleaved d6 na L2, roll 7 na Sorcerer L8 s D43 poznámkou, bez historie přesný unknown, override vyhrává, Draconic Resilience +3 (jen Sorcerer úrovně). Starý test „waits for build order step 10“ odstraněn.
+- Unit `HitPointsPicker.test.tsx`: level-up bez „Level 1“ (upravený 8d5 test), creation s ním (beze změny), „M4: multiclass draft…“ (Level N · Class, d6/d8, average-all 4/5), „M4: … without a level history“ (důvod, žádná tabulka).
+- E2E `multiclassHitPoints.spec.ts`: M4 a (max 54 = 8+5×5+3×4+9×1 při CON 13, drawer obsahuje „Warlock d8 maximum“ a „Sorcerer d6 average“, Long Rest enabled), M4 b (bez levelOrder: karta „/ —“, důvod v drawer Hit Points, Long Rest disabled), M4 c (Fighter 1→2: řádek Level 2, žádný Level 1). `wizardW6.spec.ts`: W-6 a nově ověřuje read-only Level 1 při creation Fighter 3; W-6 e (level-up 3→4) teď čeká 0 řádků Level 1.
 
-## Rozhodnuto / obejito při práci
-- „Má Spellcasting“ určeno daty (nenulový řádek vlastní tabulky), ne jmény.
-- Chybí-li Wizard XPHB řádek, funkce vrací `unknown`; sheet pak ukáže nulová ordinary maxima (s reálnými daty nenastane).
-- E2E M3 a seeduje `maxHpOverride: 40`: max HP pro multiclass s různými kostkami je `unknown` („build order step 10“) a Long Rest je pak zablokovaný. To je otevřená mezera kroku 10 mimo tento task.
-- Nechané pro M5: `spellLimitReason` (u multiclass stále „Cannot tell…“), `highestCastableLevel`/`unavailableAboveLevel`, `filterSpellsByLevel` per class, Hit/DC, volba poolu u CAST, upcast do pact.
+## Rozhodnutí / odchylky
+- Text důvodu se v hlavičce nezobrazuje — karta HP ukazuje jen „— / —“; důvod je v drawer „Hit points details“ (UnresolvedValue), tam ho M4 b ověřuje. Neměnil jsem kartu.
+- `hitDiePerLevel` je v maxHitPoints.ts (ne nový soubor); vrací breakdown hit dice poolu (nevyužitý).
+- `e2e/multiclassSlots.spec.ts` ponechán s `maxHpOverride: 40` (komentář „not computed yet“ je teď zastaralý; nechal jsem dle zadání).
+
+## Otevřené pro M7
+- Brána wizardu `hitDieKey` (CharacterWizard.tsx / wizardState.ts) a průběžné max HP draftu jsou dál jednotřídní; M7 je musí přepnout na třídu, která se právě zvyšuje (a draft `levelOrder` musí nést novou úroveň, aby `hitDiePerLevel` znal její kostku).
+- Level-up multiclass postavy je dál blokovaný (M0), takže per-class řádky v level-up walku zatím nejdou proklikat.
 
 ## Manual browser check for the user
-- Spells tab u multiclass sesilatele (např. Wizard 3 / Cleric 3): nově se objeví sekce „3rd Level“ se 3 boxy a „2nd Level“ má 3 boxy — zkontrolovat zalomení/rozložení hlaviček sekcí.
-- Drawer Spell Slots (tlačítko „Spell Slots“ ve Spells tabu) u téže postavy: nová sekce „Multiclass Spellcaster (caster level 6)“ — vzhled řádku „1st 4 · 2nd 3 · 3rd 3“ a rozpadu.
+- https://familliar.vercel.app — import Warlock 6 / Sorcerer 3 s `levelOrder`: sheet → „Hit points details“ drawer: řádky breakdownu s názvy tříd se nezalamují ošklivě.
+- Wizard → Hit points krok u multiclass draftu zatím nejde otevřít (M0), takže „Level N · Class“ v buňce Level posoudit nelze; u single-class Fighter level-upu zkontrolovat, že tabulka jen s jedním řádkem (bez Level 1) nevypadá prázdně/rozbitě.

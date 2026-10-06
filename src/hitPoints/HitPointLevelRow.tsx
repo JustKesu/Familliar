@@ -24,12 +24,15 @@ function Pill({ name, label, checked, onSelect, reapply = false }: { name: strin
 export function HitPointLevelRow({
 	level,
 	faces,
+	className,
 	entry,
 	onSet,
 	random,
 }: {
 	level: number
 	faces: number
+	/** Set only for a multiclass character: the class this level belongs to (D323). */
+	className?: string
 	entry: CharacterHitPointLevel | undefined
 	onSet: (level: number, kind: HitPointLevelKind, dieResult: number) => void
 	random?: RandomSource
@@ -43,7 +46,10 @@ export function HitPointLevelRow({
 
 	return (
 		<tr>
-			<td className="hit-points-picker__level">Level {level}</td>
+			<td className="hit-points-picker__level">
+				Level {level}
+				{className ? ` · ${className}` : ''}
+			</td>
 			<td>
 				<div className="hit-points-picker__method">
 					<div className="hit-points-picker__pills" role="radiogroup" aria-label={`Level ${level} hit points method`} aria-describedby={invalid ? hintId : undefined}>

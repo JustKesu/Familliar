@@ -44,6 +44,10 @@ test('W-6 a: Fighter 3 — big maximum with its breakdown, three pills per level
   await expect(page.getByText('Maximum hit points', { exact: true })).toBeVisible()
   await expect(maximumBox(page)).toHaveText(/^\d+$/)
   await expect(page.getByTestId('hit-points-running-total').getByRole('listitem').first()).toBeVisible()
+  const levelOne = page.getByRole('row', { name: /^Level 1 / })
+  await expect(levelOne).toContainText('Maximum die (d10)')
+  await expect(levelOne.getByRole('radio')).toHaveCount(0)
+  await expect(levelOne.getByRole('spinbutton')).toHaveCount(0)
   for (const level of [2, 3]) {
     await expect(method(page, level).getByRole('radio')).toHaveCount(3)
     await expect(pill(page, level, 'Roll (d10)')).not.toBeChecked()
@@ -144,7 +148,7 @@ test('W-6 d: "Use the average for every level" puts every row back on AVERAGE', 
   await expect(nextButton(page)).toBeEnabled()
 })
 
-test('W-6 e: level up Fighter 3 → 4 — Level 1 is read-only, only the level 4 row is editable, no apply-to-all button', async ({ page }) => {
+test('W-6 e: level up Fighter 3 → 4 — only the level 4 row, no Level 1 row (D323), no apply-to-all button', async ({ page }) => {
   await createFighter(page, { name: 'Leveller', level: 3, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 4' }).click()
   await takeFighterLevel4Mastery(page)
@@ -156,11 +160,7 @@ test('W-6 e: level up Fighter 3 → 4 — Level 1 is read-only, only the level 4
   await expect(page.getByRole('radiogroup', { name: /hit points method/ })).toHaveCount(1)
   await expect(method(page, 4).getByRole('radio')).toHaveCount(3)
   await expect(method(page, 2)).toHaveCount(0)
-  const levelOne = page.getByRole('row', { name: /^Level 1 / })
-  await expect(levelOne).toContainText('Maximum die (d10)')
-  await expect(levelOne.getByRole('radio')).toHaveCount(0)
-  await expect(levelOne.getByRole('textbox')).toHaveCount(0)
-  await expect(levelOne.getByRole('spinbutton')).toHaveCount(0)
+  await expect(page.getByRole('row', { name: /^Level 1 / })).toHaveCount(0)
   await expect(averageAll(page)).toHaveCount(0)
   await expect(nextButton(page)).toBeDisabled()
   await pill(page, 4, 'Average (6)').check()
