@@ -22,6 +22,7 @@ import type {
 	CharacterToolChoice,
 	CharacterSubclassSkill,
 	CharacterExpertiseSkill,
+	CharacterFightingStyle,
 	CharacterGrantedFeat,
 	CharacterMastery,
 	CharacterOptionalFeatureChoice,
@@ -31,7 +32,8 @@ import type {
 	FeatAsiChoice,
 	LeveledChoice,
 } from '../storage/character'
-import { choiceNames, singleClassLevelOrder } from '../storage/character'
+import { choiceNames, fightingStyleFor, singleClassLevelOrder } from '../storage/character'
+import type { PickSourceLookup } from '../optionalFeatures/pickSources'
 import { isValidHitPointEntry } from '../hitPoints/hitPointEntry'
 import type { AbilityBonusDistribution } from '../backgrounds/abilityBonus'
 import type { CharacterStore } from '../storage/characterStore'
@@ -631,7 +633,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		speciesCantrip: character.speciesCantrip ?? null,
 		expertiseSkills: choiceNames(character.expertiseSkills),
 		masteries: choiceNames(character.masteries),
-		fightingStyle: character.fightingStyle ?? null,
+		fightingStyle: fightingStyleFor(character.fightingStyles, characterClass)?.name ?? null,
 		subclass,
 		optionalFeatureChoices: subclassFeatureType
 			? choiceNames(storedOptionalFeatures.find((entry) => entry.featureType === subclassFeatureType)?.choices)
@@ -1220,6 +1222,8 @@ export function saveCharacter(
 	existing?: Character,
 	levelUpTo?: number,
 	computedCurrentHp?: number,
+	/** D318: resolves the source a sourceless fighting style or optional-feature pick is saved with; without it, such picks stay sourceless. */
+	pickSources?: PickSourceLookup,
 ): Character {
 	if (!isReadyToSave(data, conditions)) {
 		throw new Error('Cannot save a character before every step is complete.')
@@ -1293,6 +1297,25 @@ export function saveCharacter(
 	const subclassSkills = heldSubclassSkills.length > 0 ? heldSubclassSkills : undefined
 	const speciesSkills = data.speciesExtraSkill !== null && isKhoravar(data.speciesChoice) ? [...data.speciesSkills, data.speciesExtraSkill] : data.speciesSkills
 
+	// D318: a pick without a source gets the one its name resolves to today (first same-named row), so the save records what the sheet already showed.
+	const withPickSource = <T extends { name: string; source?: string }>(featureType: string, pick: T): T => {
+		if (pick.source !== undefined) return pick
+		const source = pickSources?.(featureType, pick.name)
+		return source === undefined ? pick : { ...pick, source }
+	}
+
+	const heldStyle = existing ? fightingStyleFor(existing.fightingStyles, existing.classes[0]) : undefined
+	const fightingStyles: CharacterFightingStyle[] | undefined =
+		data.fightingStyle === null
+			? undefined
+			: [
+					withPickSource('FS', {
+						...(data.classChoice ? { className: data.classChoice.className, classSource: data.classChoice.classSource } : {}),
+						name: data.fightingStyle,
+						...(heldStyle?.name === data.fightingStyle && heldStyle.source !== undefined ? { source: heldStyle.source } : {}),
+					}),
+				]
+
 	/**
 	 * Tagged with the subclass's own featureType (D21) so more than one
 	 * progression's picks could coexist later without ambiguity — see
@@ -1311,7 +1334,7 @@ export function saveCharacter(
 							data.optionalFeatureChoices,
 							existing?.optionalFeatureChoices?.find((entry) => entry.featureType === data.subclass!.featureType)?.choices,
 							levelUpTo,
-						),
+						).map((choice) => withPickSource(data.subclass!.featureType!, choice)),
 					},
 				]
 			: []
@@ -1319,11 +1342,12 @@ export function saveCharacter(
 	const classOptionalFeatureChoices = data.classOptionalFeatureChoices
 		.filter((entry) => entry.choices.length > 0)
 		.map((entry) => {
-			if (levelUpTo === undefined) return entry
+			const sourced = { ...entry, choices: entry.choices.map((choice) => withPickSource(entry.featureType, choice)) }
+			if (levelUpTo === undefined) return sourced
 			const held = new Set(choiceNames(existing?.optionalFeatureChoices?.find((stored) => stored.featureType === entry.featureType)?.choices))
 			return {
-				...entry,
-				choices: entry.choices.map((choice) => (choice.level !== undefined || held.has(choice.name) ? choice : { ...choice, level: levelUpTo })),
+				...sourced,
+				choices: sourced.choices.map((choice) => (choice.level !== undefined || held.has(choice.name) ? choice : { ...choice, level: levelUpTo })),
 			}
 		})
 	const optionalFeatureChoices: CharacterOptionalFeatureChoice[] | undefined =
@@ -1397,7 +1421,7 @@ export function saveCharacter(
 		languages,
 		classSkills: data.classSkills,
 		masteries,
-		fightingStyle: data.fightingStyle,
+		fightingStyles,
 		optionalFeatureChoices,
 		speciesSkills,
 		expertiseSkills,

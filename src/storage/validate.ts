@@ -18,6 +18,7 @@ import type {
 	CharacterToolChoice,
 	SubclassSkillSource,
 	ToolChoiceSource,
+	CharacterFightingStyle,
 	CharacterOptionalFeatureChoice,
 	CharacterSpecies,
 	CharacterSpellChoice,
@@ -371,13 +372,41 @@ export function describeMasteriesError(value: unknown): string | null {
 	return describeLeveledChoicesError(value, 'masteries')
 }
 
-/** Validates an optional `fightingStyle` field. Returns null if the field is absent (it's optional). */
-export function describeFightingStyleError(value: unknown): string | null {
-	if (value === undefined || value === null) return null
-	if (typeof value !== 'string' || value.trim().length === 0) {
-		return `fightingStyle must be a string or null`
+function isOptionalNonEmptyString(value: unknown): boolean {
+	return value === undefined || isNonEmptyString(value)
+}
+
+/** Validates an optional `fightingStyles` field (D318). Returns null if the field is absent (it's optional). */
+export function describeFightingStylesError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `fightingStyles must be an array`
+	const owners = new Set<string>()
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `fightingStyles[${i}] is not an object`
+		if (!isNonEmptyString(entry['name'])) return `fightingStyles[${i}].name is missing or not a string`
+		if (!isOptionalNonEmptyString(entry['source'])) return `fightingStyles[${i}].source must be a non-empty string`
+		const className = entry['className']
+		const classSource = entry['classSource']
+		if (!isOptionalNonEmptyString(className) || !isOptionalNonEmptyString(classSource) || (className === undefined) !== (classSource === undefined)) {
+			return `fightingStyles[${i}] must name both className and classSource, or neither`
+		}
+		const owner = className === undefined ? '' : `${String(className)}|${String(classSource)}`
+		if (owners.has(owner)) return `fightingStyles has more than one entry for ${className === undefined ? 'no class' : String(className)}`
+		owners.add(owner)
 	}
 	return null
+}
+
+function toCharacterFightingStyles(value: unknown[]): CharacterFightingStyle[] {
+	return value.map((entry) => {
+		const record = entry as Record<string, unknown>
+		return {
+			...(typeof record['className'] === 'string' ? { className: record['className'], classSource: record['classSource'] as string } : {}),
+			name: record['name'] as string,
+			...(typeof record['source'] === 'string' ? { source: record['source'] } : {}),
+		}
+	})
 }
 
 /** Validates an optional `optionalFeatureChoices` field. Returns null if the field is absent (it's optional). */
@@ -394,6 +423,9 @@ export function describeOptionalFeatureChoicesError(value: unknown): string | nu
 		if (entry['choices'] === undefined) return `optionalFeatureChoices[${i}].choices must be an array`
 		const choicesError = describeLeveledChoicesError(entry['choices'], `optionalFeatureChoices[${i}].choices`)
 		if (choicesError) return choicesError
+		const choices = entry['choices'] as Record<string, unknown>[]
+		const badSource = choices.findIndex((choice) => !isOptionalNonEmptyString(choice['source']))
+		if (badSource !== -1) return `optionalFeatureChoices[${i}].choices[${badSource}].source must be a non-empty string`
 		const spellChoicesError = describeOptionalFeatureSpellChoicesError(entry['spellChoices'], i)
 		if (spellChoicesError) return spellChoicesError
 	}
@@ -427,7 +459,11 @@ function toCharacterOptionalFeatureChoices(value: unknown[]): CharacterOptionalF
 		const spellChoices = record['spellChoices'] as CharacterOptionalFeatureChoice['spellChoices']
 		return {
 			featureType: record['featureType'] as string,
-			choices: toLeveledChoices(record['choices'] as unknown[]),
+			choices: (record['choices'] as Record<string, unknown>[]).map((choice) => ({
+				name: choice['name'] as string,
+				...(typeof choice['level'] === 'number' ? { level: choice['level'] } : {}),
+				...(typeof choice['source'] === 'string' ? { source: choice['source'] } : {}),
+			})),
 			...(spellChoices === undefined ? {} : { spellChoices }),
 		}
 	})
@@ -1233,8 +1269,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (expertiseSkillsError) return `[${index}].${expertiseSkillsError}`
 	const masteriesError = describeMasteriesError(value['masteries'])
 	if (masteriesError) return `[${index}].${masteriesError}`
-	const fightingStyleError = describeFightingStyleError(value['fightingStyle'])
-	if (fightingStyleError) return `[${index}].${fightingStyleError}`
+	const fightingStylesError = describeFightingStylesError(value['fightingStyles'])
+	if (fightingStylesError) return `[${index}].${fightingStylesError}`
 	const optionalFeatureChoicesError = describeOptionalFeatureChoicesError(value['optionalFeatureChoices'])
 	if (optionalFeatureChoicesError) return `[${index}].${optionalFeatureChoicesError}`
 	const featAsiChoicesError = describeFeatAsiChoicesError(value['featAsiChoices'])
@@ -1359,7 +1395,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 	const speciesSkills = value['speciesSkills']
 	const expertiseSkills = value['expertiseSkills']
 	const masteries = value['masteries']
-	const fightingStyle = value['fightingStyle']
+	const fightingStyles = value['fightingStyles']
 	const optionalFeatureChoices = value['optionalFeatureChoices']
 	const featAsiChoices = value['featAsiChoices']
 	const grantedFeats = value['grantedFeats']
@@ -1395,7 +1431,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(speciesSkills) ? { speciesSkills: speciesSkills as string[] } : {}),
 		...(Array.isArray(expertiseSkills) ? { expertiseSkills: toLeveledChoices(expertiseSkills) } : {}),
 		...(Array.isArray(masteries) ? { masteries: toLeveledChoices(masteries) } : {}),
-		...(fightingStyle !== undefined ? { fightingStyle: fightingStyle as string | null } : {}),
+		...(Array.isArray(fightingStyles) && fightingStyles.length > 0 ? { fightingStyles: toCharacterFightingStyles(fightingStyles) } : {}),
 		...(Array.isArray(optionalFeatureChoices)
 			? { optionalFeatureChoices: toCharacterOptionalFeatureChoices(optionalFeatureChoices) }
 			: {}),

@@ -517,6 +517,28 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			return { ...record, levelOrder, schemaVersion: 57 }
 		},
 	},
+	{
+		from: 57,
+		to: 58,
+		/*
+		 * 58 replaces Character.fightingStyle with fightingStyles (M1b, D318) and lets an
+		 * optional-feature pick carry a source; old picks keep none. With one class the
+		 * owner is certain; with several (or none) it is unknown and left off, never guessed.
+		 * A malformed old value moves across as it is, so validation rejects it as before.
+		 */
+		migrate: (record) => {
+			const { fightingStyle, ...rest } = record
+			if (fightingStyle === undefined || fightingStyle === null) return { ...rest, schemaVersion: 58 }
+			if (typeof fightingStyle !== 'string' || fightingStyle.trim().length === 0) return { ...rest, fightingStyles: fightingStyle, schemaVersion: 58 }
+			const classes = record['classes']
+			const only = Array.isArray(classes) && classes.length === 1 ? (classes[0] as Record<string, unknown> | null) : null
+			const owner =
+				typeof only === 'object' && only !== null && typeof only['className'] === 'string' && typeof only['classSource'] === 'string'
+					? { className: only['className'], classSource: only['classSource'] }
+					: {}
+			return { ...rest, fightingStyles: [{ ...owner, name: fightingStyle }], schemaVersion: 58 }
+		},
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

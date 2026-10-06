@@ -51,6 +51,7 @@ import { loadSubclassLevelFor, loadSubclassesFor } from '../subclass/subclassDat
 import { loadMasteryCountFor } from '../masteries/masteryData'
 import { loadFightingStyleGrantLevel } from '../fightingStyle/fightingStyleData'
 import { loadOptionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
+import { loadPickSourceLookup, type PickSourceLookup } from '../optionalFeatures/pickSources'
 import { SpeciesCard } from '../species/SpeciesCard'
 import { StartingEquipmentPicker } from '../inventory/StartingEquipmentPicker'
 import {
@@ -244,6 +245,8 @@ export function CharacterWizard({
 	const [subclassSpellChoiceSlotCount, setSubclassSpellChoiceSlotCount] = useState(0)
 	const [classOptionalFeatureGroups, setClassOptionalFeatureGroups] = useState<ClassOptionalFeatureGroup[]>([])
 	const [classFeatureChoices, setClassFeatureChoices] = useState<ClassFeatureChoice[]>([])
+	/** D318: what saveCharacter records as a pick's source; a failed load only leaves picks sourceless, read by name as before. */
+	const [pickSources, setPickSources] = useState<PickSourceLookup | undefined>(undefined)
 	/** The two starting-equipment offers (step 7 slice a2) and the items every category element could be filled with. Reloaded when the class or background changes; a failure is shown on the step and blocks it, rather than saving a character with no equipment. */
 	const [classEquipmentOffer, setClassEquipmentOffer] = useState<StartingEquipmentOffer | null>(null)
 	const [classEquipmentError, setClassEquipmentError] = useState<string | null>(null)
@@ -736,6 +739,21 @@ export function CharacterWizard({
 			})
 			.catch(() => {
 				/* Spell text still renders; only ref* links inside it stay unresolved. */
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
+
+	useEffect(() => {
+		let cancelled = false
+		loadPickSourceLookup()
+			.then((lookup) => {
+				// Wrapped: a bare function would be taken as a state updater.
+				if (!cancelled) setPickSources(() => lookup)
+			})
+			.catch(() => {
+				/* Picks then save without a source and keep reading by name (D318). */
 			})
 		return () => {
 			cancelled = true
@@ -1405,6 +1423,7 @@ export function CharacterWizard({
 				character,
 				levelUp?.level,
 				computedCurrentHp(),
+				pickSources,
 			)
 			setSaveError(null)
 			onSaved(saved)

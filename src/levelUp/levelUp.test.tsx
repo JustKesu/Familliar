@@ -229,7 +229,7 @@ describe('saving a level up', () => {
 		function heldFighter(): Character {
 			return {
 				...storedFighter(),
-				fightingStyle: 'Defense',
+				fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense' }],
 				expertiseSkills: [{ name: 'athletics' }],
 				featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
 				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Repelling Blast' }] }],

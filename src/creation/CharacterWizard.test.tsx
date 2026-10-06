@@ -836,7 +836,7 @@ describe('CharacterWizard — storage', () => {
 			],
 			classSkills: ['intimidation', 'perception'],
 			masteries: [{ name: 'Longsword' }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte' }, { name: 'Parry' }] }],
 			speciesSkills: [],
 			expertiseSkills: [],

@@ -653,12 +653,57 @@ describe('the migration chain (D69)', () => {
 		const rogueEntry = { className: 'Rogue', classSource: 'XPHB' }
 		const base = { schemaVersion: 56, id: '1', name: 'Aria' }
 
-		expect(migrateToCurrent({ ...base, classes: [] })).toEqual({ ...base, classes: [], levelOrder: [], schemaVersion: 57 })
-		expect(migrateToCurrent({ ...base, classes: [rogue] })).toEqual({ ...base, classes: [rogue], levelOrder: [rogueEntry, rogueEntry, rogueEntry], schemaVersion: 57 })
+		expect(migrateToCurrent({ ...base, classes: [] })).toEqual({ ...base, classes: [], levelOrder: [], schemaVersion: 58 })
+		expect(migrateToCurrent({ ...base, classes: [rogue] })).toEqual({ ...base, classes: [rogue], levelOrder: [rogueEntry, rogueEntry, rogueEntry], schemaVersion: 58 })
 		const multi = migrateToCurrent({ ...base, classes: [rogue, wizard] })
-		expect(multi).toEqual({ ...base, classes: [rogue, wizard], schemaVersion: 57 })
+		expect(multi).toEqual({ ...base, classes: [rogue, wizard], schemaVersion: 58 })
 		expect('levelOrder' in (multi as object)).toBe(false)
-		expect(CURRENT_SCHEMA_VERSION).toBe(57)
+	})
+
+	/* M1b (D318): the style gets its class only when that is certain; old optional-feature picks stay sourceless. */
+	describe('version 57 to 58', () => {
+		const fighter = { className: 'Fighter', classSource: 'XPHB', subclass: null, level: 2 }
+		const paladin = { className: 'Paladin', classSource: 'XPHB', subclass: null, level: 2 }
+		const base = { schemaVersion: 57, id: '1', name: 'Aria' }
+
+		it('drops a null or absent style', () => {
+			expect(migrateToCurrent({ ...base, classes: [fighter], levelOrder: [] })).toEqual({ ...base, classes: [fighter], levelOrder: [], schemaVersion: 58 })
+			const fromNull = migrateToCurrent({ ...base, classes: [fighter], fightingStyle: null }) as Record<string, unknown>
+			expect(fromNull).toEqual({ ...base, classes: [fighter], schemaVersion: 58 })
+			expect('fightingStyles' in fromNull || 'fightingStyle' in fromNull).toBe(false)
+		})
+
+		it('assigns the style to the one class', () => {
+			expect(migrateToCurrent({ ...base, classes: [fighter], fightingStyle: 'Archery' })).toEqual({
+				...base,
+				classes: [fighter],
+				fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
+				schemaVersion: 58,
+			})
+		})
+
+		it('leaves the style unassigned with two classes or none', () => {
+			expect(migrateToCurrent({ ...base, classes: [fighter, paladin], fightingStyle: 'Defense' })).toEqual({
+				...base,
+				classes: [fighter, paladin],
+				fightingStyles: [{ name: 'Defense' }],
+				schemaVersion: 58,
+			})
+			expect(migrateToCurrent({ ...base, classes: [], fightingStyle: 'Defense' })).toEqual({ ...base, classes: [], fightingStyles: [{ name: 'Defense' }], schemaVersion: 58 })
+		})
+
+		it('leaves optional-feature picks as they are', () => {
+			const optionalFeatureChoices = [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', level: 3 }, { name: 'Riposte' }] }]
+			expect(migrateToCurrent({ ...base, classes: [], optionalFeatureChoices })).toEqual({ ...base, classes: [], optionalFeatureChoices, schemaVersion: 58 })
+		})
+
+		it('carries a malformed style across for validation to reject', () => {
+			expect(migrateToCurrent({ ...base, classes: [fighter], fightingStyle: 5 })).toEqual({ ...base, classes: [fighter], fightingStyles: 5, schemaVersion: 58 })
+		})
+
+		it('is the last step', () => {
+			expect(CURRENT_SCHEMA_VERSION).toBe(58)
+		})
 	})
 
 	/* Reporting what is actually wrong with such a value is the validator's job, not this one's. */

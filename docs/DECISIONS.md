@@ -4854,3 +4854,19 @@ poškozené pole se při čtení uložených dat i při importu zahodí (postava
 seznam ani import; export ho nese. Zápis: vytvoření a Edit (jen jedna třída od M0, Edit může třídu změnit) ho přestaví
 jako uloženou třídu `level`krát, level up přidá položku na konec, Remove level odebere poslední; bez historie zůstává bez
 ní. Zatím ho nic nečte (M4, M6, M8). Task M1a, rozhodl Daniel 4. 10. 2026.
+
+## D318 — Styl boje po třídách a zdroj voleb (M1b, schéma 58)
+
+`Character.fightingStyle?: string | null` nahrazuje `fightingStyles?: { className?, classSource?, name, source? }[]`,
+nejvýš jedna položka na třídu (className + classSource); className a classSource jsou buď obě, nebo žádná. Každá volba
+v `CharacterOptionalFeatureChoice.choices` (manévry, runy, Arcane Shot, styly College of Swords i třídní Eldritch
+Invocations, Metamagic) má volitelný `source` ve vlastním typu `CharacterOptionalFeaturePick`; sdílený `LeveledChoice`
+(masteries, expertise) se nemění. Jedno pravidlo shody v jednom místě (choiceMatch.ts), které používají všichni čtenáři:
+volba se zdrojem sedí na jméno A zdroj, volba bez zdroje jen na jméno, první shoda, přesně jako dřív. Migrace 57→58:
+null/chybějící → pole chybí; jedna třída → položka s tou třídou, bez zdroje; víc tříd (importovaný multiclass, pořadí
+neznáme) nebo žádná třída → jedna položka bez className/classSource (nepřiřazená, čte se jako dřív, pro libovolnou třídu);
+staré volby beze změny. Poškozený `fightingStyles` v uložených datech je chyba validace jako dřív `fightingStyle`; neznámé
+klíče uvnitř položek se při čtení zahodí jako u ostatních vnořených polí. Každé nové uložení z průvodce (vytvoření, Edit,
+level up) zapíše třídu stylu a zdroj; volbě bez zdroje doplní zdroj řádku, na který ji jméno dnes vede (první shoda), takže
+se uloží to, co list už ukazoval. `CharacterClass.subclass` zůstává záměrně jen jménem: classes.json nemá žádné jméno
+podtřídy s víc než jedním zdrojem (DATA.md) a změna by zasáhla 26 souborů. Task M1b, rozhodl Daniel 6. 10. 2026.

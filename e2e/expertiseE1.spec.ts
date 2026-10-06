@@ -30,7 +30,7 @@ async function seedHumanRogue(page: Page, expertise: string[]): Promise<void> {
       const all = JSON.parse(localStorage.getItem(key) ?? '[]')
       for (const character of all) {
         character.classes = [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 1 }]
-        delete character.fightingStyle
+        delete character.fightingStyles
         character.masteries = [{ name: 'Dagger' }, { name: 'Shortsword' }]
         character.classSkills = ['perception', 'acrobatics', 'deception', 'athletics']
         character.languages = [...character.languages, { name: 'Draconic', source: 'XPHB', grantedBy: 'thievesCant' }]

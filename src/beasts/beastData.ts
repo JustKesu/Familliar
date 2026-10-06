@@ -11,7 +11,8 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { choiceNames, type LeveledChoice } from '../storage/character'
+import type { CharacterOptionalFeaturePick } from '../storage/character'
+import { matchesPick } from '../storage/choiceMatch'
 
 /** One named block of stat-block prose: a trait, action, bonus action or reaction. */
 export interface BeastEntryBlock {
@@ -164,7 +165,8 @@ export function hasFindFamiliar(spells: { name: string }[]): boolean {
 	return spells.some((spell) => spell.name.toLowerCase() === FIND_FAMILIAR_NAME)
 }
 
-const PACT_OF_THE_CHAIN_NAME = 'pact of the chain'
+// optional-features.json has exactly one row of this name, XPHB (M1b survey, DATA.md).
+const PACT_OF_THE_CHAIN = { name: 'Pact of the Chain', source: 'XPHB' }
 
 /**
  * True when the creature is of type Beast. Every entry in beasts.json used to
@@ -189,10 +191,8 @@ export function pactOfTheChainForms(beasts: Beast[]): Beast[] {
  * Invocations are stored as an optionalFeatureChoices entry naming the option
  * (optionalFeatureData.ts), so no data file has to be read to answer this.
  */
-export function hasPactOfTheChain(optionalFeatureChoices: { choices: readonly LeveledChoice[] }[]): boolean {
-	return optionalFeatureChoices.some((entry) =>
-		choiceNames(entry.choices).some((name) => name.trim().toLowerCase() === PACT_OF_THE_CHAIN_NAME),
-	)
+export function hasPactOfTheChain(optionalFeatureChoices: { choices: readonly CharacterOptionalFeaturePick[] }[]): boolean {
+	return optionalFeatureChoices.some((entry) => entry.choices.some((pick) => matchesPick(pick, PACT_OF_THE_CHAIN)))
 }
 
 /** Where a familiar form comes from — the spell's own list, or the invocation that adds to it. */

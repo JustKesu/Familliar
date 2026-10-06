@@ -48,7 +48,8 @@
  */
 
 import { featInstances, loadBackgroundOriginFeat, type FeatRef } from '../featAsi/featInstances'
-import { choiceNames, type Character, type CharacterOptionalFeatureChoice } from '../storage/character'
+import type { Character, CharacterOptionalFeatureChoice } from '../storage/character'
+import { findPicked } from '../storage/choiceMatch'
 import { isRecord } from '../spells/subclassPreparedSpells'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { hasSubclassBySource } from '../calculation/featureGrants'
@@ -155,13 +156,9 @@ export function extractOptionalFeatureGrantedSenses(parsedOptionalFeatures: unkn
 	const result: GrantedSense[] = []
 
 	for (const stored of selection) {
-		for (const chosenName of choiceNames(stored.choices)) {
-			const option = entries.find(
-				(candidate) =>
-					candidate.name.toLowerCase() === chosenName.toLowerCase() &&
-					Array.isArray(candidate.featureType) &&
-					candidate.featureType.includes(stored.featureType),
-			)
+		const scoped = entries.filter((candidate) => Array.isArray(candidate.featureType) && candidate.featureType.includes(stored.featureType))
+		for (const pick of stored.choices) {
+			const option = findPicked(scoped, pick)
 			if (!option) continue
 			for (const { senseType, range } of parseSenses(option.senses)) {
 				result.push({ senseType, range, origin: 'optionalFeature', name: option.name })
@@ -175,7 +172,7 @@ export function extractOptionalFeatureGrantedSenses(parsedOptionalFeatures: unkn
 /** R14c1: an item's invocation grants its sense as a Warlock pick would, labelled "Invocation — Item". */
 export function extractItemInvocationSenses(parsedOptionalFeatures: unknown, grants: readonly ItemInvocationGrant[]): GrantedSense[] {
 	return grants.flatMap((grant) =>
-		extractOptionalFeatureGrantedSenses(parsedOptionalFeatures, [{ featureType: ITEM_INVOCATION_FEATURE_TYPE, choices: [{ name: grant.name }] }]).map((sense) => ({
+		extractOptionalFeatureGrantedSenses(parsedOptionalFeatures, [{ featureType: ITEM_INVOCATION_FEATURE_TYPE, choices: [{ name: grant.name, source: grant.source }] }]).map((sense) => ({
 			...sense,
 			name: `${sense.name} — ${grant.itemName}`,
 		})),

@@ -42,7 +42,7 @@ test('F-1 a (D251): a new Fighter 3 Battle Master lowered to level 1 saves witho
   const stored = await storedCharacter(page)
   expect(stored.classes[0]!.subclass ?? null).toBeNull()
   expect((stored.optionalFeatureChoices as unknown[] | undefined) ?? []).toEqual([])
-  expect(stored.fightingStyle).toBe('Defense')
+  expect(stored.fightingStyles).toEqual([{ className: 'Fighter', classSource: 'XPHB', name: 'Defense', source: expect.any(String) }])
 })
 
 test('F-1 b (D251): a new Paladin 2 with a fighting style lowered to level 1 saves without it', async ({ page }) => {
@@ -83,7 +83,7 @@ test('F-1 b (D251): a new Paladin 2 with a fighting style lowered to level 1 sav
   await wizardNav(page).getByRole('button', { name: 'Create character' }).click()
   await expect(page).toHaveURL(/#\/character\/[^/]+$/)
 
-  expect((await storedCharacter(page)).fightingStyle ?? null).toBeNull()
+  expect((await storedCharacter(page)).fightingStyles ?? null).toBeNull()
 })
 
 test('F-1 d: Esc in the Remove level dialog closes only the dialog, not an open drawer', async ({ page }) => {

@@ -16,7 +16,8 @@
 
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { itemInvocationGrants, type ItemInvocationGrant } from '../inventory/customItemGrants'
-import { choiceNames, type CharacterInventoryItem, type LeveledChoice } from '../storage/character'
+import { choiceNames, type CharacterInventoryItem, type CharacterOptionalFeaturePick } from '../storage/character'
+import { findPicked, type StoredPick } from '../storage/choiceMatch'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -556,8 +557,13 @@ export function classOptionalFeatureGroupsFor(
 /** One featureType's picks, the shape Character.optionalFeatureChoices stores — no schema change was needed for class-level picks. */
 export interface OptionalFeatureSelection {
 	featureType: string
-	/** Each pick carries the level it was made at (D99); every reader below matches on the name alone. */
-	choices: readonly LeveledChoice[]
+	/** Each pick carries the level it was made at (D99) and, since schema 58, its source; readers match through choiceMatch.ts (D318). */
+	choices: readonly CharacterOptionalFeaturePick[]
+}
+
+/** The rows a featureType's stored picks resolve to (D318), in pick order; a pick the data no longer offers is skipped (D43). */
+function pickedOptions<T extends { name: string; source: string }>(options: readonly T[], picks: readonly StoredPick[] | undefined): T[] {
+	return (picks ?? []).map((pick) => findPicked(options, pick)).filter((option): option is T => option !== undefined)
 }
 
 /** Everything about a prerequisite EXCEPT the two fields that depend on which group is being evaluated. */
@@ -588,15 +594,17 @@ export function evaluateClassOptionalFeatureGroups(
 	base: ClassOptionalFeatureContextBase,
 ): EvaluatedClassOptionalFeatureGroup[] {
 	return groups.map((group) => {
-		const chosen = choiceNames(selection.find((entry) => entry.featureType === group.featureType)?.choices)
+		const picks = selection.find((entry) => entry.featureType === group.featureType)?.choices
+		const chosen = choiceNames(picks)
+		const picked = pickedOptions(group.options, picks)
 		const ctx: OptionalFeaturePrerequisiteContext = {
 			...base,
-			chosenOptions: group.options.filter((option) => chosen.includes(option.name)).map(({ name, source }) => ({ name, source })),
+			chosenOptions: picked.map(({ name, source }) => ({ name, source })),
 			availableOptions: group.options.map(({ name, source }) => ({ name, source })),
 		}
 		const evaluated = evaluateOptionalFeatureOptions(group.options, ctx)
 		const invalidChosen = evaluated
-			.filter((entry) => !entry.eligible && chosen.includes(entry.option.name))
+			.filter((entry) => !entry.eligible && picked.includes(entry.option))
 			.map((entry) => ({ name: entry.option.name, reasons: entry.reasons }))
 		return { ...group, chosen, remaining: group.count - chosen.length, evaluated, invalidChosen }
 	})
@@ -630,12 +638,9 @@ export function chosenClassOptionalFeatures(
 	const groups: ChosenClassOptionalFeatureGroup[] = []
 	for (const characterClass of classes) {
 		for (const grant of classOptionalFeatureGrantsFor(parsedClasses, characterClass.className, characterClass.classSource, characterClass.level)) {
-			const chosen = choiceNames(selection.find((entry) => entry.featureType === grant.featureType)?.choices)
-			if (chosen.length === 0) continue
-			const all = optionsForFeatureType(parsedOptionalFeatures, parsedFeats, grant.featureType)
-			const options = chosen
-				.map((name) => all.find((option) => normalizeName(option.name) === normalizeName(name)))
-				.filter((option): option is OptionalFeatureOption => option !== undefined)
+			const picks = selection.find((entry) => entry.featureType === grant.featureType)?.choices
+			if (!picks || picks.length === 0) continue
+			const options = pickedOptions(optionsForFeatureType(parsedOptionalFeatures, parsedFeats, grant.featureType), picks)
 			if (options.length > 0) groups.push({ featureType: grant.featureType, name: grant.name, options })
 		}
 	}
@@ -646,8 +651,8 @@ export function chosenClassOptionalFeatures(
  * Every option the character actually took, across EVERY stored featureType —
  * the class's own progressions (Metamagic, Eldritch Invocations) and a
  * subclass's alike (Maneuvers, Arcane Shot, Runes, College of Swords fighting
- * styles) — plus the class-level fighting style, which is stored as a bare name
- * outside `optionalFeatureChoices` but resolves against the same D12 FS list.
+ * styles) — plus the class-level fighting styles, which are stored outside
+ * `optionalFeatureChoices` (D318) but resolve against the same D12 FS list.
  *
  * Distinct from chosenClassOptionalFeatures above, which asks which progression
  * granted a featureType so it can head a group with the progression's name. A
@@ -658,34 +663,28 @@ export function chosenOptionalFeatureOptions(
 	parsedOptionalFeatures: unknown,
 	parsedFeats: unknown,
 	selection: OptionalFeatureSelection[],
-	fightingStyle?: string | null,
+	fightingStyles: readonly StoredPick[] = [],
 ): OptionalFeatureOption[] {
 	const out: OptionalFeatureOption[] = []
 	for (const entry of selection) {
-		const all = optionsForFeatureType(parsedOptionalFeatures, parsedFeats, entry.featureType)
-		for (const name of choiceNames(entry.choices)) {
-			// D43: a stored pick the data no longer offers is skipped, not faked.
-			const option = all.find((candidate) => normalizeName(candidate.name) === normalizeName(name))
-			if (option) out.push({ ...option, featureType: entry.featureType })
+		// D43: a stored pick the data no longer offers is skipped, not faked.
+		for (const option of pickedOptions(optionsForFeatureType(parsedOptionalFeatures, parsedFeats, entry.featureType), entry.choices)) {
+			out.push({ ...option, featureType: entry.featureType })
 		}
 	}
-	if (fightingStyle) {
-		const style = fightingStyleFeats(parsedFeats).find((candidate) => normalizeName(candidate.name) === normalizeName(fightingStyle))
-		if (style) out.push({ ...style, featureType: 'FS' })
-	}
+	for (const style of pickedOptions(fightingStyleFeats(parsedFeats), fightingStyles)) out.push({ ...style, featureType: 'FS' })
 	return out
 }
 
 /** Fetches optional-features.json and feats.json and returns chosenOptionalFeatureOptions' result. */
 export async function loadChosenOptionalFeatureOptions(
 	selection: OptionalFeatureSelection[],
-	fightingStyle?: string | null,
+	fightingStyles: readonly StoredPick[] = [],
 ): Promise<OptionalFeatureOption[]> {
-	if (selection.length === 0 && !fightingStyle) return []
+	if (selection.length === 0 && fightingStyles.length === 0) return []
 	const [optionalFeatures, feats] = await Promise.all([loadDataFile('data/optional-features.json'), loadDataFile('data/feats.json')])
-	return chosenOptionalFeatureOptions(optionalFeatures, feats, selection, fightingStyle)
+	return chosenOptionalFeatureOptions(optionalFeatures, feats, selection, fightingStyles)
 }
-
 /** R14c1 (D218): what a custom item can grant — the Eldritch Invocations. */
 export const ITEM_INVOCATION_FEATURE_TYPE = 'EI'
 

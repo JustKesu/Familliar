@@ -168,10 +168,8 @@ export interface Character {
 	 * bare weapon names since schema version 31 — see CharacterMastery (D97).
 	 */
 	masteries?: CharacterMastery[]
-	/**
-	 * Optional for the same reason as abilityScores above.
-	 */
-	fightingStyle?: string | null
+	/** D318: at most one entry per class; a style migrated from a pre-58 multiclass save carries no class. */
+	fightingStyles?: CharacterFightingStyle[]
 	/**
 	 * Optional for the same reason as abilityScores above. A subclass's own
 	 * optionalfeatureProgression picks (D21) — Battle Master maneuvers, Rune
@@ -929,10 +927,34 @@ export interface OptionalFeatureSpellChoice {
  * takes Metamagic at 3, 10 and 17, all under `MM` — so an entry-level field
  * would be wrong for all but one of them.
  */
+/** D318: `source` is absent on a pick saved before schema 58; matched through choiceMatch.ts. */
+export interface CharacterOptionalFeaturePick {
+	name: string
+	level?: number
+	source?: string
+}
+
+/** D318: `className`/`classSource` are both absent on a style whose class a pre-58 save could not tell. */
+export interface CharacterFightingStyle {
+	className?: string
+	classSource?: string
+	name: string
+	source?: string
+}
+
+/** D318: the style this class's own feature granted, else the unassigned one, read as before schema 58. */
+export function fightingStyleFor(
+	styles: readonly CharacterFightingStyle[] | undefined,
+	owner: { className: string; classSource: string } | undefined,
+): CharacterFightingStyle | undefined {
+	const all = styles ?? []
+	return all.find((style) => owner !== undefined && style.className === owner.className && style.classSource === owner.classSource) ?? all.find((style) => style.className === undefined)
+}
+
 export interface CharacterOptionalFeatureChoice {
 	featureType: string
 	/** Objects rather than bare option names since schema version 33 — see LeveledChoice (D99, following D97/D98). */
-	choices: LeveledChoice[]
+	choices: CharacterOptionalFeaturePick[]
 	/**
 	 * Present only for options that let the player pick spells (step 6a). One
 	 * entry per such option chosen; absent entirely for every other progression.
@@ -1083,7 +1105,7 @@ export type CharacterGrantedFeat = {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 57
+export const CURRENT_SCHEMA_VERSION = 58
 
 export interface CharacterLevelOrderEntry {
 	className: string

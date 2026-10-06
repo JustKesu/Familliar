@@ -1,5 +1,5 @@
 import type { WizardData } from '../creation/wizardState'
-import { choiceNames, type Character, type CharacterOptionalFeatureChoice, type FeatAsiChoice } from '../storage/character'
+import { choiceNames, fightingStyleFor, type Character, type CharacterOptionalFeatureChoice, type FeatAsiChoice } from '../storage/character'
 
 /**
  * D108/D110: the class-step, expertise, feat/ASI and class-optional-feature
@@ -27,7 +27,7 @@ export interface HeldPicks {
 export function heldPicksFrom(character: Character, subclassFeatureType: string | null): HeldPicks {
 	return {
 		subclass: character.classes[0]?.subclass ?? null,
-		fightingStyle: character.fightingStyle ?? null,
+		fightingStyle: fightingStyleFor(character.fightingStyles, character.classes[0])?.name ?? null,
 		classSkills: character.classSkills ?? [],
 		masteries: choiceNames(character.masteries),
 		expertiseSkills: choiceNames(character.expertiseSkills),

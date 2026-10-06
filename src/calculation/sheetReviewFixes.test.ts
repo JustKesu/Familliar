@@ -36,7 +36,7 @@ const gear = (over: Partial<EquippedGear> = {}): EquippedGear => ({ armour: null
 
 describe('A2 Fighting Style', () => {
 	it('Archery adds +2 to a ranged weapon only, as its own row', () => {
-		const attacks = computeWeaponAttacks(character('Fighter', 1, {}, { fightingStyle: 'Archery' }), [held(longbow), held(longsword)], grants)
+		const attacks = computeWeaponAttacks(character('Fighter', 1, {}, { fightingStyles: [{ name: 'Archery' }] }), [held(longbow), held(longsword)], grants)
 		const bow = named(attacks, 'Longbow').toHit
 		expect(bow.status === 'known' && bow.value).toBe(3 + 2 + 2)
 		expect(bow.status === 'known' && bow.breakdown).toContainEqual({ source: 'Archery (Fighting Style)', amount: 2 })
@@ -45,15 +45,15 @@ describe('A2 Fighting Style', () => {
 	})
 
 	it('Dueling and Thrown Weapon Fighting are named, not counted', () => {
-		const dueling = named(computeWeaponAttacks(character('Fighter', 1, {}, { fightingStyle: 'Dueling' }), [held(longsword)], grants), 'Longsword').damage
+		const dueling = named(computeWeaponAttacks(character('Fighter', 1, {}, { fightingStyles: [{ name: 'Dueling' }] }), [held(longsword)], grants), 'Longsword').damage
 		expect(dueling.status === 'known' && dueling.value.modifier).toBe(0)
 		expect(dueling.status === 'known' && dueling.breakdown.find((row) => row.source === 'Dueling (Fighting Style)')?.note).toMatch(/not included/)
-		const thrown = named(computeWeaponAttacks(character('Fighter', 1, {}, { fightingStyle: 'Thrown Weapon Fighting' }), [held(dagger)], grants), 'Dagger').damage
+		const thrown = named(computeWeaponAttacks(character('Fighter', 1, {}, { fightingStyles: [{ name: 'Thrown Weapon Fighting' }] }), [held(dagger)], grants), 'Dagger').damage
 		expect(thrown.status === 'known' && thrown.breakdown.find((row) => row.source === 'Thrown Weapon Fighting (Fighting Style)')?.note).toMatch(/not included/)
 	})
 
 	it('Defense: +1 AC in armour (Chain Mail 17), nothing unarmoured', () => {
-		const defender = character('Fighter', 1, {}, { fightingStyle: 'Defense' })
+		const defender = character('Fighter', 1, {}, { fightingStyles: [{ name: 'Defense' }] })
 		const armoured = computeArmourClass(defender, gear({ armour: chainMail }))
 		expect(armoured.status === 'known' && armoured.value.value).toBe(17)
 		expect(armoured.status === 'known' && armoured.breakdown).toContainEqual({ source: 'Defense (Fighting Style)', amount: 1 })

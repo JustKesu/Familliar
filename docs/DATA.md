@@ -1213,6 +1213,14 @@ name occurs with more than one `source`. `CharacterClass.subclass`, stored by na
 unambiguous on today's data; a future source reusing a name would make it ambiguous.
 Found in M1b (2026-10-05, scripts/investigate-subclass-names.js, consumed).
 
+### Option names across books — none twice today (M1b)
+
+feats.json's 10 category-FS entries have 10 distinct names (case-insensitive, trimmed), and in
+optional-features.json no `featureType` (11 codes) lists one name with two sources. So a pick stored
+without a source (before schema 58, D318) resolves to exactly one row today, and the source a save
+records for it is that row's. "Pact of the Chain" is one row, XPHB `EI` (beastData.ts relies on it).
+Found in M1b (2026-10-06, scripts/investigate-same-name-options.js, consumed).
+
 ### Frázové vyhledávání v `entries` musí nejdřív stripnout 5etools markup
 
 5etools tagy rozdělují frázi na dvě části, které nikdy neleží vedle sebe v

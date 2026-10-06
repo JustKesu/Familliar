@@ -70,7 +70,7 @@ const battleMaster: Character = {
 	name: 'Aria',
 	classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 }],
 	classSkills: ['athletics', 'perception'],
-	fightingStyle: 'Defense',
+	fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense' }],
 	masteries: [{ name: 'Longsword' }],
 	optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte', level: 3 }] }],
 }

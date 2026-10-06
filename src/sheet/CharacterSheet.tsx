@@ -152,6 +152,7 @@ import { RollModeContext, RollsNavSlot, RollToast } from '../dice/RollUi'
 import type { RollMode } from '../dice/roll'
 import { parseDiceExpression, type DiceRoll } from '../dice/roll'
 import type { CharacterTextField, HitPointFields, RestFields } from '../storage/characterStore'
+import { matchesPick } from '../storage/choiceMatch'
 import { UnresolvedValue, ValueBreakdown } from './ValueBreakdown'
 import { CalculatedNumber, CalculatedValueOnly, formatModifier } from './calculatedValue'
 import { ArmourClassNotes, FireIcon, formatSpeed, SheetHeader, type StatCard } from './SheetHeader'
@@ -1986,7 +1987,7 @@ function CharacterSheetBody({
 		let cancelled = false
 		// D43: an empty result on failure, same as the granted-feature source the
 		// actions table already has — a missing row never claims the feature is passive.
-		Promise.all([loadChosenOptionalFeatureOptions(character.optionalFeatureChoices ?? [], character.fightingStyle ?? null), loadItemInvocationOptions(character.inventory)])
+		Promise.all([loadChosenOptionalFeatureOptions(character.optionalFeatureChoices ?? [], character.fightingStyles), loadItemInvocationOptions(character.inventory)])
 			.then(([options, fromItems]) => {
 				if (cancelled) return
 				setChosenOptionalFeatures(options)
@@ -2412,7 +2413,7 @@ function CharacterSheetBody({
 		if (fromItems) return fromItems.itemNames.join(', ')
 		if (!singleClass || classOptionalFeaturesError) return null
 		const name = option.name.toLowerCase()
-		if (classOptionNames.has(name) || name === character.fightingStyle?.toLowerCase()) return singleClass.className
+		if (classOptionNames.has(name) || (character.fightingStyles ?? []).some((style) => matchesPick(style, option))) return singleClass.className
 		return singleClass.subclass
 	}
 	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, actionOptions, optionOrigin, speciesTraits, character.species?.name ?? null)
@@ -2644,7 +2645,7 @@ function CharacterSheetBody({
 	const familiarForms = knowsFindFamiliar
 		? familiarFormOptions(
 				beasts,
-				hasPactOfTheChain([...(character.optionalFeatureChoices ?? []), { choices: itemInvocations.map(({ option }) => ({ name: option.name })) }]),
+				hasPactOfTheChain([...(character.optionalFeatureChoices ?? []), { choices: itemInvocations.map(({ option }) => ({ name: option.name, source: option.source })) }]),
 			)
 		: []
 	/* beasts.json starts as [] and is never empty once loaded, so this is "fetch in flight". */

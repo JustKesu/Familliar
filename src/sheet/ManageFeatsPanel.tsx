@@ -28,6 +28,7 @@ import { ResolvedEntries, type ResolverData } from '../featureResolver'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import type { KnownSpell } from '../spells/knownSpells'
 import { choiceNames, type AbilityIncreaseMap, type Character, type FeatChoiceDetails } from '../storage/character'
+import { findPicked } from '../storage/choiceMatch'
 import { DrawerSection } from './Drawer'
 import type { FeatureTabRow } from './featuresTabData'
 import type { FeatTextEntry } from './sheetData'
@@ -226,8 +227,12 @@ export function ManageFeatsPanel({
 	const textOf = (feat: FeatRef) => featTexts.find((text) => text.name === feat.name && text.source === feat.source)?.entries
 	const rowOf = (instance: FeatInstance) => featRows.find((row) => row.key === `feat|${instance.key}`)
 
-	const fightingStyle = character.fightingStyle && loaded ? loaded.feats.find((feat) => feat.category === 'FS' && feat.name.toLowerCase() === character.fightingStyle?.toLowerCase()) : undefined
-	const held: FeatRef[] = [...instances, ...(fightingStyle ? [fightingStyle] : [])]
+	const styleFeats = loaded ? loaded.feats.filter((feat) => feat.category === 'FS') : []
+	const fightingStyles = (character.fightingStyles ?? []).flatMap((style) => {
+		const feat = findPicked(styleFeats, style)
+		return feat ? [{ style, feat }] : []
+	})
+	const held: FeatRef[] = [...instances, ...fightingStyles.map(({ feat }) => feat)]
 
 	/** D160: what the character has apart from the feat at `key` — same shape FeatAsiPicker's heldForFeat builds for the wizard, but read straight off the saved character instead of wizard draft state. */
 	function heldForFeat(key: FeatInstanceKey): FeatChoiceHeld {
@@ -346,12 +351,12 @@ export function ManageFeatsPanel({
 	const myFeats = [
 		...instances.filter((instance) => instance.origin === 'background' || instance.origin === 'species').map(instanceRow),
 		...levelRows,
-		...(fightingStyle && loaded?.fightingStyleClass
-			? [
-					<FeatRow key="fighting-style" name={fightingStyle.name} chip={`From ${loaded.fightingStyleClass}`}>
-						<FeatText entries={textOf(fightingStyle)} name={fightingStyle.name} resolverData={resolverData} />
-					</FeatRow>,
-				]
+		...(loaded?.fightingStyleClass
+			? fightingStyles.map(({ style, feat }) => (
+					<FeatRow key={`fighting-style|${style.className ?? ''}|${style.classSource ?? ''}`} name={feat.name} chip={`From ${style.className ?? loaded.fightingStyleClass}`}>
+						<FeatText entries={textOf(feat)} name={feat.name} resolverData={resolverData} />
+					</FeatRow>
+				))
 			: []),
 		...instances.filter((instance) => instance.origin === 'manual').map(instanceRow),
 		...instances.filter((instance) => instance.origin === 'item').map(instanceRow),

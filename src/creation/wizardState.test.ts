@@ -180,7 +180,7 @@ describe('isStepComplete', () => {
 					name: 'Aria',
 					classes: [{ className: 'Fighter', classSource: 'XPHB', level: 4, subclass: 'Champion' }],
 					classSkills: ['athletics', 'perception'],
-					fightingStyle: 'Defense',
+					fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense' }],
 					masteries: [{ name: 'Longsword', level: 1 }, { name: 'Greatsword', level: 1 }],
 				} as Character,
 				{ subclasses: [{ name: 'Champion', source: 'XPHB', featureType: null }], spellLevels: [] },
@@ -858,7 +858,7 @@ describe('saveCharacter', () => {
 			],
 			classSkills: ['athletics', 'intimidation'],
 			masteries: [{ name: 'Longsword' }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Precision Attack' }] }],
 			speciesSkills: ['perception'],
 			expertiseSkills: [],
@@ -936,7 +936,7 @@ describe('saveCharacter', () => {
 			],
 			classSkills: ['athletics', 'intimidation'],
 			masteries: [{ name: 'Longsword' }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Precision Attack' }] }],
 			speciesSkills: ['perception'],
 			expertiseSkills: [],
@@ -976,7 +976,7 @@ describe('saveCharacter', () => {
 			],
 			classSkills: ['athletics', 'intimidation'],
 			masteries: [{ name: 'Longsword' }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			optionalFeatureChoices: undefined,
 			speciesSkills: ['perception'],
 			expertiseSkills: [],
@@ -1019,7 +1019,7 @@ describe('saveCharacter', () => {
 			],
 			classSkills: ['athletics', 'intimidation'],
 			masteries: [{ name: 'Longsword' }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Precision Attack' }] }],
 			speciesSkills: ['perception'],
 			// A creation pick carries no level, exactly as masteries does (D98 following D97).
@@ -1262,7 +1262,7 @@ describe('editing an existing character', () => {
 			classSkills: ['acrobatics', 'survival'],
 			masteries: [{ name: 'Longsword', level: 4 }, { name: 'Greataxe' }],
 			expertiseSkills: [{ name: 'acrobatics', level: 3 }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			optionalFeatureChoices: [
 				{ featureType: 'MV:B', choices: [{ name: 'Precision Attack', level: 3 }, { name: 'Riposte' }] },
 				{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', level: 2 }] },
@@ -1383,6 +1383,44 @@ describe('editing an existing character', () => {
 			featureType: 'MV:B',
 			choices: [{ name: 'Precision Attack', level: 3 }, { name: 'Riposte' }, { name: 'Trip Attack' }],
 		})
+	})
+
+	/* M1b (D318): a save records the class of the style and the source of every pick, held ones included, without touching names or levels. */
+	it('records class and source on save, keeping a source already stored', () => {
+		const store = editStore()
+		const character = storedCharacter()
+		const stored = {
+			...character,
+			optionalFeatureChoices: [
+				{ featureType: 'MV:B', choices: [{ name: 'Precision Attack', level: 3, source: 'TCE' }, { name: 'Riposte' }] },
+				{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', level: 2 }] },
+			],
+		}
+		const data = wizardDataFromCharacter(stored, lookups)
+		const pickSources = (featureType: string, name: string) => (name === 'Agonizing Blast' && featureType === 'EI' ? 'XPHB' : featureType === 'FS' || featureType === 'MV:B' ? 'XPHB' : undefined)
+
+		saveCharacter(store, { ...data, optionalFeatureChoices: [...data.optionalFeatureChoices, 'Trip Attack'] }, ['athletics', 'intimidation'], editConditions, undefined, stored, undefined, undefined, pickSources)
+
+		const input = vi.mocked(store.update).mock.calls[0][1]
+		expect(input.fightingStyles).toEqual([{ className: 'Fighter', classSource: 'XPHB', name: 'Archery', source: 'XPHB' }])
+		expect(input.optionalFeatureChoices).toEqual([
+			{ featureType: 'MV:B', choices: [{ name: 'Precision Attack', level: 3, source: 'TCE' }, { name: 'Riposte', source: 'XPHB' }, { name: 'Trip Attack', source: 'XPHB' }] },
+			{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', level: 2, source: 'XPHB' }] },
+		])
+	})
+
+	it('a new wizard save writes the style with its class and source, and each pick with its source', () => {
+		const store = editStore()
+		saveCharacter(store, completeData(), ['athletics', 'intimidation'], {}, undefined, undefined, undefined, undefined, () => 'XPHB')
+		const input = vi.mocked(store.create).mock.calls[0][0]
+		expect(input.fightingStyles).toEqual([{ className: 'Fighter', classSource: 'XPHB', name: 'Archery', source: 'XPHB' }])
+		expect(input.optionalFeatureChoices).toEqual([{ featureType: 'MV:B', choices: [{ name: 'Precision Attack', source: 'XPHB' }] }])
+	})
+
+	it('without a lookup a save still writes the class and leaves sources off', () => {
+		const store = editStore()
+		saveCharacter(store, completeData(), ['athletics', 'intimidation'])
+		expect(vi.mocked(store.create).mock.calls[0][0].fightingStyles).toEqual([{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }])
 	})
 
 	it('refuses a level below the character’s own', () => {

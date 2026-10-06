@@ -89,7 +89,7 @@ export function FightingStylePicker({
 	const { grantLevel, options } = state.grantLevel !== null ? state : { grantLevel: null, options: [] }
 	if (grantLevel === null || level < grantLevel) return null
 
-	// The style is stored by name only, so of two books' same-named rows only the first reads as chosen; the other cannot be picked over it.
+	// The wizard holds the style by name and saveCharacter records the first same-named row's source (D318), so only that row reads as chosen; the other cannot be picked over it.
 	const chosenOption = options.find((option) => option.name === value)
 	const searchableOptions: SearchableOption[] = options.map((option) => ({
 		key: optionKey(option),

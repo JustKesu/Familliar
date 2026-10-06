@@ -113,7 +113,7 @@ export function OptionalFeaturePicker({
 	}
 
 	const searchableOptions: SearchableOption[] = options.map((option) => {
-		// Picks are stored by name only: of two books' same-named rows only the first reads as chosen, the other stays unpickable.
+		// The wizard holds picks by name and saveCharacter records the first same-named row's source (D318): only that row reads as chosen, the other stays unpickable.
 		const taken = value.includes(option.name)
 		const checked = taken && options.find((candidate) => candidate.name === option.name) === option
 		return {

@@ -17,6 +17,7 @@ import type {
 	CharacterSubclassSkill,
 	CharacterExpertiseSkill,
 	CharacterMastery,
+	CharacterFightingStyle,
 	CharacterOptionalFeatureChoice,
 	CharacterPlayState,
 	CharacterSpecies,
@@ -41,6 +42,7 @@ import {
 } from './errors'
 import { migrateToCurrent } from './migrations'
 import {
+	describeFightingStylesError,
 	describeHitPointLevelsError,
 	describePortraitError,
 	describeStoredCharacterError,
@@ -169,7 +171,7 @@ export interface CharacterCreateInput {
 	languages?: CharacterLanguage[]
 	classSkills?: string[]
 	masteries?: CharacterMastery[]
-	fightingStyle?: string | null
+	fightingStyles?: CharacterFightingStyle[]
 	optionalFeatureChoices?: CharacterOptionalFeatureChoice[]
 	speciesSkills?: string[]
 	expertiseSkills?: CharacterExpertiseSkill[]
@@ -306,7 +308,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		languages,
 		classSkills,
 		masteries,
-		fightingStyle,
+		fightingStyles,
 		optionalFeatureChoices,
 		speciesSkills,
 		expertiseSkills,
@@ -339,6 +341,8 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 	// W20: list() rejects the whole character list on a bad value, so a write must never produce one.
 	const hitPointLevelsError = describeHitPointLevelsError(hitPointLevels)
 	if (hitPointLevelsError) throw new ImportValidationError(`Hit points could not be saved: ${hitPointLevelsError}.`)
+	const fightingStylesError = describeFightingStylesError(fightingStyles)
+	if (fightingStylesError) throw new ImportValidationError(`Fighting style could not be saved: ${fightingStylesError}.`)
 	assertValidPortrait(portrait)
 
 	const storedCurrentHp = currentHp === undefined ? undefined : Math.max(0, currentHp)
@@ -355,7 +359,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(languages ? { languages } : {}),
 		...(classSkills && classSkills.length > 0 ? { classSkills } : {}),
 		...(masteries && masteries.length > 0 ? { masteries } : {}),
-		...(fightingStyle ? { fightingStyle } : {}),
+		...(fightingStyles && fightingStyles.length > 0 ? { fightingStyles } : {}),
 		...(optionalFeatureChoices && optionalFeatureChoices.length > 0 ? { optionalFeatureChoices } : {}),
 		...(speciesSkills && speciesSkills.length > 0 ? { speciesSkills } : {}),
 		...(expertiseSkills && expertiseSkills.length > 0 ? { expertiseSkills } : {}),

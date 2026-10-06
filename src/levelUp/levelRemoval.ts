@@ -12,7 +12,7 @@ import { extractFeatTextEntries } from '../sheet/sheetData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
 import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
-import type { Character, LeveledChoice } from '../storage/character'
+import { fightingStyleFor, type Character, type LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
 import { subclassLevelFor } from '../subclass/subclassData'
 import { totalCharacterLevel } from '../calculation/characterLevel'
@@ -50,7 +50,7 @@ function resourceFeaturesFor(character: Character, parsedClasses: unknown, resol
 	return [
 		...grantedClassFeaturesFrom(character, parsedClasses, resolverData),
 		...feats,
-		...chosenOptionalFeatureOptions(resolverData.optionalFeatures, resolverData.feats, character.optionalFeatureChoices ?? [], character.fightingStyle ?? null),
+		...chosenOptionalFeatureOptions(resolverData.optionalFeatures, resolverData.feats, character.optionalFeatureChoices ?? [], character.fightingStyles),
 	]
 }
 
@@ -100,10 +100,11 @@ export function levelRemovalPlan(
 		}
 	}
 
-	let fightingStyle = character.fightingStyle
+	let fightingStyles = character.fightingStyles
+	const fightingStyle = fightingStyleFor(fightingStyles, characterClass)
 	if (fightingStyle && grantsFightingStyleAt(resolverData.classFeatures, className, classSource) === level) {
-		dropped.push(`Fighting style: ${fightingStyle}`)
-		fightingStyle = null
+		dropped.push(`Fighting style: ${fightingStyle.name}`)
+		fightingStyles = fightingStyles?.filter((style) => style !== fightingStyle)
 	}
 
 	const masteries = withoutLevel(character.masteries, level)
@@ -183,7 +184,7 @@ export function levelRemovalPlan(
 		...withoutPlay,
 		...(character.play ? { play: character.play } : {}),
 		classes: [{ ...characterClass, subclass, level: characterClass.level - 1 }],
-		fightingStyle,
+		fightingStyles,
 		masteries: masteries.kept,
 		expertiseSkills: expertiseSkills.kept,
 		optionalFeatureChoices,

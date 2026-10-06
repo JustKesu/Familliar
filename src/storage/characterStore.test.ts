@@ -199,11 +199,11 @@ describe('CharacterStore.update', () => {
 	/* Everything but the id comes from the input, so a field left out is genuinely removed. */
 	it('drops a field the input does not carry', () => {
 		const store = new CharacterStore(new MemoryStorage())
-		const created = store.create({ name: 'Aria', fightingStyle: 'Archery', currentHp: 12 })
+		const created = store.create({ name: 'Aria', fightingStyles: [{ name: 'Archery' }], currentHp: 12 })
 
 		const updated = store.update(created.id, { name: 'Aria', currentHp: 12 })
 
-		expect(updated.fightingStyle).toBeUndefined()
+		expect(updated.fightingStyles).toBeUndefined()
 		expect(updated.currentHp).toBe(12)
 	})
 
@@ -353,7 +353,7 @@ describe('CharacterStore.create with class choices', () => {
 			background,
 			classSkills: ['acrobatics', 'perception'],
 			masteries: [{ name: 'longsword' }, { name: 'shortbow' }],
-			fightingStyle: 'Dueling',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Dueling' }],
 		})
 
 		expect(character.classes[0]?.subclass).toBe('Champion')
@@ -362,7 +362,7 @@ describe('CharacterStore.create with class choices', () => {
 		// A creation pick carries no level (D97) — the wizard chooses all of them in one step.
 		expect(character.masteries).toEqual([{ name: 'longsword' }, { name: 'shortbow' }])
 		expect(choiceNames(character.masteries)).toEqual(['longsword', 'shortbow'])
-		expect(character.fightingStyle).toBe('Dueling')
+		expect(character.fightingStyles).toEqual([{ className: 'Fighter', classSource: 'XPHB', name: 'Dueling' }])
 
 		const reloaded = store.list().find((c) => c.id === character.id)
 		expect(reloaded).toEqual(character)
@@ -373,7 +373,7 @@ describe('CharacterStore.create with class choices', () => {
 		const character = store.create({ name: 'Cato' })
 		expect(character.classSkills).toBeUndefined()
 		expect(character.masteries).toBeUndefined()
-		expect(character.fightingStyle).toBeUndefined()
+		expect(character.fightingStyles).toBeUndefined()
 	})
 })
 
@@ -2426,9 +2426,9 @@ describe('Character.levelOrder (M1a, D317)', () => {
 	}
 
 	it('a full schema-56 single-class character loads exactly as before, plus its level history', () => {
-		const { schemaVersion: _v, ...before } = schema56Fighter()
+		const { schemaVersion: _v, fightingStyle, ...before } = schema56Fighter()
 		const [loaded] = storeWith([schema56Fighter()]).list()
-		expect(loaded).toEqual({ ...before, levelOrder: [FIGHTER, FIGHTER, FIGHTER, FIGHTER, FIGHTER] })
+		expect(loaded).toEqual({ ...before, fightingStyles: [{ ...FIGHTER, name: fightingStyle }], levelOrder: [FIGHTER, FIGHTER, FIGHTER, FIGHTER, FIGHTER] })
 	})
 
 	it.each([
@@ -2469,5 +2469,138 @@ describe('Character.levelOrder (M1a, D317)', () => {
 	it('a write never stores an inconsistent history', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		expect('levelOrder' in store.create({ name: 'Aria', classes: [fighter(2)], levelOrder: [FIGHTER] })).toBe(false)
+	})
+})
+
+describe('fightingStyles and option sources (M1b, D318)', () => {
+	const FIGHTER = { className: 'Fighter', classSource: 'XPHB' }
+	const PALADIN = { className: 'Paladin', classSource: 'XPHB' }
+
+	function storeWith(records: unknown[]): CharacterStore {
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify(records))
+		return new CharacterStore(backing)
+	}
+
+	/** Realistic schema-57 saves: every field in the shape toCharacter keeps verbatim. */
+	function schema57Fighter() {
+		return {
+			schemaVersion: 57,
+			id: 'f5',
+			name: 'Aria',
+			classes: [{ ...FIGHTER, subclass: 'Champion', level: 5 }],
+			abilityScores: { method: 'standardArray', scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 } },
+			species: { name: 'Elf', source: 'XPHB' },
+			background: { name: 'Soldier', source: 'XPHB', skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+			abilityBonus: { strength: 2, constitution: 1 },
+			classSkills: ['acrobatics', 'survival'],
+			masteries: [{ name: 'Longsword', level: 4 }, { name: 'Greataxe' }],
+			fightingStyle: 'Archery',
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Alert', source: 'XPHB' }],
+			hitPointLevels: [2, 3, 4, 5].map((level) => ({ level, kind: 'average', dieResult: 6 })),
+			currentHp: 30,
+			createdAtLevel: 1,
+			levelOrder: [FIGHTER, FIGHTER, FIGHTER, FIGHTER, FIGHTER],
+		}
+	}
+
+	function schema57BattleMaster() {
+		return {
+			schemaVersion: 57,
+			id: 'bm3',
+			name: 'Brakka',
+			classes: [{ ...FIGHTER, subclass: 'Battle Master', level: 3 }],
+			classSkills: ['athletics', 'perception'],
+			masteries: [{ name: 'Longsword' }],
+			fightingStyle: 'Defense',
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte', level: 3 }, { name: 'Parry', level: 3 }] }],
+			toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
+			levelOrder: [FIGHTER, FIGHTER, FIGHTER],
+		}
+	}
+
+	it('a schema-57 Fighter 5 with a style loads as before, the style now tagged with its class', () => {
+		const { schemaVersion: _v, fightingStyle, ...before } = schema57Fighter()
+		const [loaded] = storeWith([schema57Fighter()]).list()
+		expect(loaded).toEqual({ ...before, fightingStyles: [{ ...FIGHTER, name: fightingStyle }] })
+	})
+
+	it('a schema-57 Battle Master 3 keeps every maneuver exactly, with no source invented', () => {
+		const { schemaVersion: _v, fightingStyle, ...before } = schema57BattleMaster()
+		const [loaded] = storeWith([schema57BattleMaster()]).list()
+		expect(loaded).toEqual({ ...before, fightingStyles: [{ ...FIGHTER, name: fightingStyle }] })
+		expect(loaded.optionalFeatureChoices![0].choices.every((choice) => !('source' in choice))).toBe(true)
+	})
+
+	it('saves and reloads styles for two classes and picks with a source', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const fightingStyles = [
+			{ ...FIGHTER, name: 'Archery', source: 'XPHB' },
+			{ ...PALADIN, name: 'Defense', source: 'XPHB' },
+		]
+		const optionalFeatureChoices = [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', level: 3, source: 'XPHB' }, { name: 'Riposte' }] }]
+		const created = store.create({ name: 'Aria', classes: [{ ...FIGHTER, subclass: null, level: 1 }, { ...PALADIN, subclass: null, level: 2 }], fightingStyles, optionalFeatureChoices })
+		expect(store.list()).toEqual([created])
+		expect(created.fightingStyles).toEqual(fightingStyles)
+		expect(created.optionalFeatureChoices).toEqual(optionalFeatureChoices)
+	})
+
+	it('export then import keeps class, source and pick sources', () => {
+		const source = new CharacterStore(new MemoryStorage())
+		const created = source.create({
+			name: 'Aria',
+			classes: [{ ...FIGHTER, subclass: 'Battle Master', level: 3 }],
+			fightingStyles: [{ ...FIGHTER, name: 'Archery', source: 'XPHB' }],
+			optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', source: 'XPHB' }] }],
+		})
+		const [imported] = new CharacterStore(new MemoryStorage()).import(source.exportCharacter(created.id))
+		expect(imported.fightingStyles).toEqual(created.fightingStyles)
+		expect(imported.optionalFeatureChoices).toEqual(created.optionalFeatureChoices)
+	})
+
+	it('imports a schema-57 file through the migration', () => {
+		const [imported] = new CharacterStore(new MemoryStorage()).import(JSON.stringify([schema57BattleMaster()]))
+		expect(imported.fightingStyles).toEqual([{ ...FIGHTER, name: 'Defense' }])
+	})
+
+	it.each([
+		['not an array', 'Archery'],
+		['an entry without a name', [{ ...FIGHTER }]],
+		['a class without its source', [{ className: 'Fighter', name: 'Archery' }]],
+		['an empty source', [{ ...FIGHTER, name: 'Archery', source: '' }]],
+		['two entries for one class', [{ ...FIGHTER, name: 'Archery' }, { ...FIGHTER, name: 'Defense' }]],
+		['two unassigned entries', [{ name: 'Archery' }, { name: 'Defense' }]],
+	])('rejects stored fightingStyles that are %s, as the old field was', (_label, fightingStyles) => {
+		expect(() => storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], fightingStyles }]).list()).toThrow(CorruptDataError)
+	})
+
+	it('rejects a schema-57 save whose old style is malformed, as before', () => {
+		expect(() => storeWith([{ schemaVersion: 57, id: '1', name: 'Aria', classes: [], fightingStyle: 5 }]).list()).toThrow(CorruptDataError)
+	})
+
+	it('rejects a pick whose source is not a non-empty string', () => {
+		const optionalFeatureChoices = [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', source: 7 }] }]
+		expect(() => storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], optionalFeatureChoices }]).list()).toThrow(CorruptDataError)
+	})
+
+	it('drops unknown extra keys on a style and a pick, as every other nested field does', () => {
+		const [loaded] = storeWith([
+			{
+				schemaVersion: CURRENT_SCHEMA_VERSION,
+				id: '1',
+				name: 'Aria',
+				classes: [],
+				fightingStyles: [{ name: 'Archery', note: 'x' }],
+				optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', source: 'XPHB', extra: true }] }],
+			},
+		]).list()
+		expect(loaded.fightingStyles).toEqual([{ name: 'Archery' }])
+		expect(loaded.optionalFeatureChoices).toEqual([{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', source: 'XPHB' }] }])
+	})
+
+	it('a write never stores two styles for one class', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		expect(() => store.create({ name: 'Aria', fightingStyles: [{ ...FIGHTER, name: 'Archery' }, { ...FIGHTER, name: 'Defense' }] })).toThrow(ImportValidationError)
+		expect(store.list()).toEqual([])
 	})
 })

@@ -1858,6 +1858,17 @@ Migration 56→57: 0 classes → `[]`, 1 class → repeated `level` times, >1 �
 `saveCharacter` (create/Edit rebuild, level up appends or keeps absent), `levelRemovalPlan` (drops last). Nothing reads
 it yet; no visible change. E2E `levelOrder.spec.ts`.
 
+M1b done (D318). Schema 58: `Character.fightingStyles?: CharacterFightingStyle[]` ({ className?, classSource?, name,
+source? }, one per class) replaces `fightingStyle`; `CharacterOptionalFeatureChoice.choices` is
+`CharacterOptionalFeaturePick[]` (optional `source`). Migration 57→58: style of a 1-class save gets that class, else it
+stays unassigned; picks untouched. Matching rule `matchesPick`/`findPicked` (storage/choiceMatch.ts), used by
+optionalFeatureData, optionalFeatureSpells, grantedSenses, beastData (`hasPactOfTheChain`), fightingStyles,
+ManageFeatsPanel, CharacterSheet. `fightingStyleFor` (character.ts) picks a class's style or the unassigned one.
+`describeFightingStylesError` (fatal on list(), as before; `buildCharacter` refuses a bad write). `saveCharacter`
+takes a trailing `PickSourceLookup` (optionalFeatures/pickSources.ts, loaded by CharacterWizard) and writes class +
+source; a sourceless held pick gets the first same-named row's source. Pickers still hold names. No visible change.
+E2E `choiceSources.spec.ts`.
+
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
 read `{@damage}` (and `{@dice}` for `{@scaledice}` spells) from entries and scale

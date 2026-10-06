@@ -4670,7 +4670,7 @@ describe('CharacterSheet', () => {
 				...character,
 				id: 'act-style',
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
-				fightingStyle: 'Defense',
+				fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense' }],
 			}
 			const container = await renderFor(fighter)
 
@@ -4734,7 +4734,7 @@ describe('CharacterSheet', () => {
 				...character,
 				id: 'act-style-text',
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 5 }],
-				fightingStyle: 'Defense',
+				fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense' }],
 			}
 			const container = await renderFor(fighter)
 			await waitFor(() => expect(rowNames(container)).toContain('Second Wind'))
@@ -5000,7 +5000,7 @@ describe('CharacterSheet', () => {
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 4 }],
 				species: { name: 'Elf', source: 'XPHB' },
 				background: { name: 'Farmer', source: 'XPHB', skillProficiencies: ['animalHandling', 'nature'], toolProficiency: "Carpenter's Tools" },
-				fightingStyle: 'Defense',
+				fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense' }],
 				optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte' }] }],
 				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history'], tools: ["thieves' tools"] } }],
 				...(play ? { play } : {}),

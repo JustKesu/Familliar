@@ -40,6 +40,7 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { itemInvocationGrants, type ItemInvocationGrant } from '../inventory/customItemGrants'
 import { ITEM_INVOCATION_FEATURE_TYPE } from '../optionalFeatures/optionalFeatureData'
 import { choiceNames, type CharacterInventoryItem, type CharacterOptionalFeatureChoice } from '../storage/character'
+import { findPicked } from '../storage/choiceMatch'
 import { chosenSpellUsageFor } from './chosenSpellUsage'
 import {
 	extractRefsWithUsage,
@@ -121,8 +122,9 @@ function dedupeWithinOption(spells: OptionalFeatureGrantedSpell[]): OptionalFeat
  * the parsed optional-features.json / spells.json arrays; returns the spells
  * those picks grant. Fetches nothing.
  *
- * A stored pick carries only the option's NAME plus the featureType it was
- * picked under, so the option is matched on both — the featureType scopes the
+ * A stored pick carries the option's NAME (and, since schema 58, its source —
+ * matched through choiceMatch.ts, D318) plus the featureType it was picked
+ * under, so the option is matched on both — the featureType scopes the
  * lookup the same way the picker's own list was scoped, rather than trusting
  * a bare name to be unique across every featureType. A pick whose featureType
  * resolves elsewhere (an `FS:*` code, which D12 sends to feats.json) simply
@@ -150,13 +152,9 @@ export function extractOptionalFeatureGrantedSpells(
 	const result: OptionalFeatureGrantedSpell[] = []
 
 	for (const stored of selection) {
-		for (const chosenName of choiceNames(stored.choices)) {
-			const option = entries.find(
-				(candidate) =>
-					candidate.name.toLowerCase() === chosenName.toLowerCase() &&
-					Array.isArray(candidate.featureType) &&
-					candidate.featureType.includes(stored.featureType),
-			)
+		const scoped = entries.filter((candidate) => Array.isArray(candidate.featureType) && candidate.featureType.includes(stored.featureType))
+		for (const pick of stored.choices) {
+			const option = findPicked(scoped, pick)
 			if (!option || !Array.isArray(option.additionalSpells)) continue
 
 			const granted: OptionalFeatureGrantedSpell[] = []
@@ -273,7 +271,7 @@ export async function loadOptionalFeatureGrantedSpells(character: {
 /** R14c1: an item's invocation grants its fixed spells as a Warlock pick would; it has no stored spell picks (Pact of the Tome's stay empty). */
 export function extractItemInvocationSpells(parsedOptionalFeatures: unknown, parsedSpells: unknown, grants: readonly ItemInvocationGrant[]): OptionalFeatureGrantedSpell[] {
 	return grants.flatMap((grant) =>
-		extractOptionalFeatureGrantedSpells(parsedOptionalFeatures, parsedSpells, [{ featureType: ITEM_INVOCATION_FEATURE_TYPE, choices: [{ name: grant.name }] }]).map((spell) => ({
+		extractOptionalFeatureGrantedSpells(parsedOptionalFeatures, parsedSpells, [{ featureType: ITEM_INVOCATION_FEATURE_TYPE, choices: [{ name: grant.name, source: grant.source }] }]).map((spell) => ({
 			...spell,
 			itemName: grant.itemName,
 		})),

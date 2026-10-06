@@ -54,7 +54,7 @@ describe('a level up followed by removing that level', () => {
 			classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 4 }],
 			classSkills: ['athletics', 'perception'],
 			masteries: [{ name: 'Longsword' }, { name: 'Greataxe' }, { name: 'Shortbow' }, { name: 'Rapier' }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
 			// Key order as storage reads it back (toCharacterHitPointLevels) — the level up rewrites held entries in that order.
 			hitPointLevels: [2, 3, 4].map((level) => ({ level, dieResult: 6, kind: 'average' as const })),
@@ -93,7 +93,7 @@ describe('a level up followed by removing that level', () => {
 			grantedFeats: [speciesFeat],
 			classSkills: ['athletics', 'perception'],
 			masteries: [{ name: 'Longsword' }, { name: 'Greataxe' }, { name: 'Shortbow' }, { name: 'Rapier' }],
-			fightingStyle: 'Archery',
+			fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }],
 			featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
 			hitPointLevels: [2, 3, 4].map((level) => ({ level, dieResult: 6, kind: 'average' as const })),
 			createdAtLevel: 4,
@@ -251,8 +251,10 @@ describe('what removing a level drops', () => {
 			...RESOLVER,
 			classFeatures: [...(RESOLVER.classFeatures as unknown[]), { name: 'Fighting Style', className: 'Paladin', classSource: 'XPHB', level: 2, entries: [] }],
 		}
-		expect(plan({ ...single('Paladin', null, 2, 1), fightingStyle: 'Defense' }, withPaladin).result.fightingStyle).toBeNull()
-		expect(plan({ ...single('Fighter', null, 2, 1), fightingStyle: 'Archery' }, withPaladin).result.fightingStyle).toBe('Archery')
+		const defense = { className: 'Paladin', classSource: 'XPHB', name: 'Defense' }
+		const archery = { className: 'Fighter', classSource: 'XPHB', name: 'Archery' }
+		expect(plan({ ...single('Paladin', null, 2, 1), fightingStyles: [defense] }, withPaladin).result.fightingStyles).toEqual([])
+		expect(plan({ ...single('Fighter', null, 2, 1), fightingStyles: [archery] }, withPaladin).result.fightingStyles).toEqual([archery])
 	})
 
 	it('needs no work for spell slots: they follow the level down', () => {
