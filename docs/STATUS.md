@@ -1161,6 +1161,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   unavailable, Warlock Counterspell not; "Sorcerer cantrips: 5 known, 4 allowed."; Sorcerer Manage Spells up to 2nd).
 - `e2e/multiclassCast.spec.ts` — M5b a–d2 (Warlock 3 / Sorcerer 3: 2nd-level Slot / Pact spend their own pool, Pact
   disabled when spent, Burning Hands "1st" upcast row with both buttons; single-class Warlock / Sorcerer one CAST).
+- `e2e/multiclassLevelUp.spec.ts` — M7a a–g (Warlock 6 / Sorcerer 3 with levelOrder: class window "Warlock 6 → 7" /
+  "Sorcerer 3 → 4", Cancel; Sorcerer → 4: Spells, level-10 ASI card, Level 10 · Sorcerer HP row, sheet Sorcerer 4 /
+  Warlock 6, STR 10, max HP 54 → 59, Warlock spells and invocations kept; Warlock → 7: Devil's Sight, Sorcerer spells
+  unchanged; F5 keeps the class route; without levelOrder Level up disabled with the reason; single Fighter no window;
+  Edit and Remove level disabled).
 
 ## Dočasné scaffolding
 
@@ -1958,6 +1963,25 @@ the class of `levelOrder.at(-1)` on both axes; `levelRemovalPlan`/`levelRemovalT
 `levelOrderAfterLevelUp` (characterLevel.ts) appends the raised class. `characterStore` refuses a multiclass write whose
 `levelOrder` is inconsistent. Not done: choosing the class at level up and multiclass prerequisites (M7), removing a
 class's last level (M8).
+
+M7a done (D329). No schema change (59). Level up of an existing class of a multiclass character. `levelUpClassOptions`
+/ `levelUpTarget(character, chosen?)` (levelUpSteps.ts): 2+ classes need a consistent `levelOrder`, else "Cannot tell which
+class each level came from (no level history)."; a class at 20 is not offered. `LevelUpButton` loads gains for every
+class; with 2+ classes the click opens `LevelUpClassDialog` ("Level up which class?", "<Class> n → n+1" + Cancel, `useModal`
+focus). Route `#/character/<id>/level-up/<className>/<classSource>` (single class keeps `/level-up`); a missing or unknown
+class bounces to the sheet. Wizard: `wizardDataFromCharacter` with `lookups.activeClass` seeds subclass, style, spells,
+class-feature choices, subclass spells, Wild Shape forms and the class's own optional-feature types from that class only
+(`WizardData.activeClassFeatureTypes`); `classChoice.level` = class level, character level from `levelUp.level`. `saveCharacter`
+raises only that class (`checkOneClassRaised`, multiclassLevelUp.ts), passes the other classes' records through
+(`otherClassRecords`, `otherFightingStyles`, `otherOptionalFeatureChoices`), keepHeld* over all classes, `levelOrder` appends the
+class. `heldPicksFrom`/`overwrittenHeldPicks` take the active class. Masteries/Expertise: required = held + (class count at new
+level − at old level) (`MasteryPicker`/`ExpertisePicker` `countOffset`; held Expertise exempt from Scholar). Hit points draft has
+all classes + new `levelOrder`; Review shows every class's dice and "Warlock 6 / Sorcerer 4". ASI/feat cards in a multiclass
+level up from `featAsiCharacterLevels`; feat prerequisites (armor/weapons via `prerequisiteClassProficiencies`, now in
+classProficiencies.ts; spellcasting and fighting style from any class) and the mastery pool (`classProficiencyGrants`) read every
+class (review M2–M4 finding 2). Creation and single-class paths unchanged. Edit (M9) and Remove level (M8) stay blocked. Not done
+(M7b): entering a new class, prerequisites, multiclass skill/tool picks. Unit `multiclassLevelUp.test.tsx`, `route.test.ts`;
+E2E `multiclassLevelUp.spec.ts`.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

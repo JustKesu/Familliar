@@ -322,7 +322,13 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onRest={(rest) => handleRest(character.id, rest)}
 					onEditPortrait={(portrait) => handleEditPortrait(character.id, portrait)}
 					onEditCharacter={() => navigate({ view: 'edit', id: character.id })}
-					onLevelUp={() => navigate({ view: 'level-up', id: character.id })}
+					onLevelUp={(gains) =>
+						navigate(
+							isMulticlass(character.classes)
+								? { view: 'level-up', id: character.id, levelClass: { className: gains.className, classSource: gains.classSource } }
+								: { view: 'level-up', id: character.id },
+						)
+					}
 					onRemoveLevel={(result) => {
 						/* D107: currentHp drops by the same amount maxHp drops, only when it was already set. */
 						if (character.currentHp === undefined) {
@@ -369,6 +375,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 				<LevelUpWizardGate
 					store={characterStore}
 					character={character}
+					levelClass={route.levelClass}
 					onSaved={handleWizardSaved}
 					onCancel={() => navigate({ view: 'sheet', id: character.id }, { replace: true })}
 					onUnavailable={() => navigate({ view: 'sheet', id: character.id }, { replace: true })}

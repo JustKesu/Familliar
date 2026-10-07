@@ -1,43 +1,53 @@
-# REPORT — M6 (step 10): level gains on class and character level axes (D328)
+# REPORT — M7a (step 10): level up an existing class of a multiclass character (D329)
+
+## STEP 1 inventory
+| Place | Did | M7a |
+|---|---|---|
+| levelUpSteps `levelUpTarget` | blocked 2+ classes, else `classes[0]` | `levelUpClassOptions` + `levelUpTarget(c, chosen?)`; no-history reason; class < 20 |
+| LevelUpButton / LevelUpWizardGate | one target from `classes[0]` | gains per class, `LevelUpClassDialog`; gate takes route class |
+| route.ts / CharacterManager | `/level-up` only | `/level-up/<class>/<source>` for 2+ classes |
+| heldPicks `heldPicksFrom`/`overwrittenHeldPicks` | `classes[0]`, all classFeatureChoices / non-subclass optional features | active class + its featureTypes |
+| wizardState `wizardDataFromCharacter` | `classes[0]`, every class's spells/choices/forms | `lookups.activeClass`: per-class fields of that class only |
+| wizardState `saveCharacter` guard, `classes`, keepHeld*, style ~1307, spell/feature/subclass-spell/forms/optional records | single class rebuilt | raise one class (`checkOneClassRaised`), others' records passed through, keepHeld* over all classes |
+| wizardState `wizardToolGrants`/`wizardSubclassSkillGrants`, featAsi completeness | grant level = `levelUpTargetLevel` (character) | grant level = class level; filter-choice counts at character level |
+| CharacterWizard seed ~298, header ~1528 | `classes[0]`, level = character level | active class, `classChoice.level` = class level |
+| CharacterWizard draft max HP ~1160, HP step `hitDieKey` | single-class draft | all classes + new `levelOrder`; die/gate = active class (unchanged code) |
+| CharacterWizard `loadFeatAsiGrants` ~926 / `useFeatAsiStepData` | class levels read as character levels | multiclass: `featAsiCharacterLevels` over the draft |
+| featAsiLevels `loadClassPrereqInfo` | one class's starting armor/weapons | multiclass: `prerequisiteClassProficiencies` (moved to classProficiencies.ts), any-class spellcasting/style |
+| masteryData ~194 | one class's starting weapons | multiclass: `classProficiencyGrants` |
+| expertisePool / Expertise + Mastery counts | count = active class's | held + (new − old class count); held Expertise exempt from Scholar |
+| ReviewStep | "Class N", `Nd faces` | "Warlock 6 / Sorcerer 4", every class's dice; What's new / ASI row already on character level |
+No STOP: every rule came from the prompt or D316–D328.
 
 ## Changed
-- `levelGains.ts`: `levelGainsFor(character, target: LevelUpClass, …)`; `level` = total + 1, `classLevel` = target's level + 1
-  (new class 1); `LevelGains` + `classLevel`/`className`/`classSource`. `characterAtLevel` changes only the target entry
-  (before = without it at class level 1). Class step, expertise, languages/tools/skills, class optional features, featAsi,
-  spells read `classLevel`; spell delta sums only the target's `SpellCountEntry`s; hit points on character level.
-  Unresolved: no class, character level > 20, class level > 20, class missing from classes.json. Multiclass block removed.
-- New class at class level 1 excludes the non-subclass `CLASS_TOOL_CHOICE_GRANTS` (starting proficiencies, D170):
-  Bard XPHB (3 instruments), Monk XPHB (1 artisan tool or instrument), Artificer EFA (1 artisan tool). Saves, starting
-  equipment and class skills are not level-up steps, so nothing to exclude there. M7 comment placed in `languagesStepGain`.
-- `levelUpSteps.levelUpTarget` now holds the D316 block (same text) after the level-20 check, and returns the class;
-  `LevelUpButton` / `LevelUpWizardGate` pass it to `loadLevelGainsFor(character, target)`.
-- New `featAsi/featAsiCharacterLevels.ts` (+ test): class-level ASI/Epic Boon → character level via `levelOrder`; single
-  class without history OK; multiclass without consistent history → unknown with the specified reason. Not wired in.
-- `levelRemoval.ts`: `levelRemovalPlan` = unchanged gate + new exported `levelRemovalCore` (class of `levelOrder.at(-1)`,
-  else the only class). Character axis: masteries, expertise, optional features, featAsi, hit points. Class axis (that
-  class's level): subclass, fighting style, `classFeatureChoices` / `subclassSpellChoices` of that class only, language/
-  skill/tool grants. Class to 0 → "Removing the last level of a class is build order step M8."
-- `characterLevel.ts`: `raisedClass`, `levelOrderAfterLevelUp`; `wizardState.saveCharacter` appends the raised class.
-- `characterStore.buildCharacter`: multiclass + inconsistent `levelOrder` throws `ImportValidationError` ("The level
-  history could not be saved: classes are Wizard 1 / Fighter 2, but the history has Wizard 1 / Fighter 3."). Single class
-  and import/read unchanged.
-- Tests: `levelGains.fixtures.ts` + Warlock and Wizard XPHB (PHB 2024 counts, ASI 4/8 and 4). `levelGains.test.ts` calls
-  go through `gainsAt` (stored one level below the asked level, which the old signature passed separately), expectations
-  unchanged; the old "multiclass is unresolved" test now checks `levelUpTarget` + a named-class answer. New: Sorcerer 3→4
-  ASI and spell delta, Warlock 6→7 no ASI, Warlock 6 + Sorcerer 1, Warlock 6 + Bard 1 (no instruments), Fighter 4 + Wizard
-  1 (no Fighter mastery), level 21. `levelRemoval.test.tsx`: core on [Wizard 1, Fighter 2] / [W, F, F], level-0 refusal,
-  gate; slot test filters the new fixture Warlock. `characterStore.test.ts`, `characterLevel.test.ts` additions.
+- New: `levelUp/LevelUpClassDialog.tsx`, `levelUp/multiclassLevelUp.ts`, CSS `.level-up-class*`.
+- `WizardData.activeClassFeatureTypes` (set only in a multiclass level up) tells the raised class's optional-feature entries from the others'.
+- `MasteryPicker` (`multiclass`, `countOffset`), `ExpertisePicker` (`countOffset`, `restrictionExempt`) — props unused outside multiclass level up.
+- Creation, Edit and single-class level up take the old code paths (no multiclass branch entered).
 
 ## Verified
-- typecheck, test (169 files / 3122), validate-data (175/175), e2e 449 passed (4.4 min; multiclassGuard green).
+- typecheck OK; test 170 files / 3141 OK; validate-data 175/175; e2e 456/456 (5.2 min — over the ~3 min guideline).
+- Unit `levelUp/multiclassLevelUp.test.tsx`: seed per active class; Sorcerer 3→4 in W6/S3 keeps Warlock spellChoices,
+  fightingStyles, EI optional features, classFeatureChoices byte-identical, Sorcerer 4, levelOrder +Sorcerer; class +2 throws;
+  `checkOneClassRaised` (two classes, +2, reorder, other subclass); `levelUpTarget`; dialog (labels, focus, Cancel, choice);
+  Wizard 3/Fighter 1 → Wizard 4: medium armor, Heavily Armored eligible, ASI card at character level 5; single Wizard 4 unchanged;
+  Rogue 3/Fighter 1 mastery pool gets Greataxe. `route.test.ts` class route round trip + invalid shapes.
+- Changed expectations (old multiclass block text): `levelUp.test.tsx` "offers no usable button for a multiclass character" now
+  expects the no-history reason; `levelGains.test.ts` D316/D328 case now calls `levelUpTarget(c, Rogue)` → no-history reason.
+- E2E `multiclassLevelUp.spec.ts` M7a a–g (window/Cancel/focus, Sorcerer walk to sheet incl. STR 10 and HP 54→59, Warlock walk +
+  Devil's Sight, F5, no-history reason, single Fighter without window, Edit/Remove disabled). `multiclassGuard.spec.ts` unchanged
+  and green (its migrated schema-56 import has no levelOrder, so Level up is still disabled).
 
 ## Decisions taken / questions worked around
-- Prompt listed "a stored subclass missing from classes.json" as unresolved; the existing test (`unresolved` null, class and
-  spells steps unknown) was kept as is, since expectations were not to change. Your call if it should become unresolved.
-- `levelUpTarget` checks level 20 before multiclass so a level-20 multiclass keeps its old text.
-- Class-feature language picks at class level 1 (`CLASS_FEATURE_LANGUAGE_GRANTS`) still count for a new class; they are
-  class features, not starting proficiencies.
-- `fightingStyleFor` falls back to a style with no owner class; in multiclass that may attribute it to the removed class (M8).
+- Masteries/Expertise across classes are one list each (no class tag): required = held + this class's increase. A character with
+  two mastery classes therefore works, but nothing records which class a held mastery came from.
+- A fighting style stored without a class (pre-58 multiclass) is attributed to the raised class if `fightingStyleFor` falls back to
+  it; such characters have no levelOrder, so they cannot reach this path today.
+- `LevelUpButton` loads gains for every class; a class whose gains are unresolved is disabled in the window with its reason as tooltip.
+- Classes' own non-class-axis creation picks (classSkills, toolChoices, featureLanguages, subclassSkills) stay whole in WizardData;
+  slot pickers replace only their own `grantedBy`, save keeps them via grants of all classes.
 
 ## Manual browser check for the user
-Nothing new to check by eye: no UI change in this task.
+- Class window (sheet header → Level up on a multiclass character with history, e.g. Warlock 6 / Sorcerer 3): look, button width
+  and alignment, focus ring on the first class button and on Cancel, dark and light theme, 1366 and 1920 wide.
+- Review step of a multiclass level up: identity line "Warlock 6 / Sorcerer 4" and Hit dice "6d8 + 4d6" wrapping.

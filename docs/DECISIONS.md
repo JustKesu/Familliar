@@ -4981,3 +4981,19 @@ zůstává úrovní postavy; karty ASI/featů se na úrovně postavy mapují př
 bez historie = neznámé. Remove level: jádro odebírá úroveň třídě z `levelOrder.at(-1)` na obou osách, brána D316 trvá;
 level up připíše do `levelOrder` třídu, jejíž úroveň vzrostla. Zápis víc tříd s nekonzistentním `levelOrder` je chyba,
 čtení a import beze změny (D317). Task M6, rozhodl Daniel 6. 10. 2026.
+
+## D329 — Level up existující třídy multiclass postavy (M7a, schéma zůstává 59)
+
+Zpřesňuje D316 a D328. Level up postavy se dvěma a více třídami otevře před průvodcem malé okno „Level up which class?“
+s tlačítkem na každou třídu („Warlock 6 → 7“) a Cancel; třída na úrovni 20 se nenabízí. Jedna třída jde rovnou do
+průvodce jako dřív (okno vždy a „+ New class…“ až M7b). Zvolená třída je v adrese
+`#/character/<id>/level-up/<className>/<classSource>`, takže F5 ji drží; multiclass adresa bez třídy nebo s třídou, kterou
+postava nemá, vrací na list. Multiclass bez konzistentního `levelOrder` nemůže levelovat: tlačítko je vypnuté s důvodem
+„Cannot tell which class each level came from (no level history).“ Průvodce plní všechna pole po třídách (podtřída, styl
+boje, kouzla, volby rysů, kouzla podtřídy, Wild Shape, vlastní optional features třídy a její podtřídy) jen z levelované
+třídy; uložení zvedne jen ji o 1 (ostatní třídy a pořadí beze změny), záznamy ostatních tříd předá beze změny a připíše
+třídu do `levelOrder`. Pole na ose postavy (masteries, expertise, featAsiChoices, hitPointLevels) drží své položky a přidají
+novou úroveň; počet masteries/expertise = držené + přírůstek levelované třídy. Karty ASI/featů v multiclass level upu jdou
+přes `featAsiCharacterLevels`. Prerekvizity featů v kroku ASI/Feat a pool weapon mastery čtou zdatnosti všech tříd
+z `classProficiencyGrants` (D321), stejně jako Manage Feats. Edit (M9) a Remove level (M8) pro víc tříd zůstávají
+zablokované. Task M7a, rozhodl Daniel 7. 10. 2026.

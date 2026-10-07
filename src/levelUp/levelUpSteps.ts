@@ -1,25 +1,41 @@
 import { WIZARD_STEPS, type WizardStep, type WizardStepConditions } from '../creation/wizardState'
 import { totalCharacterLevel } from '../calculation/characterLevel'
-import type { Character } from '../storage/character'
-import type { LevelGains } from './levelGains'
+import { isConsistentLevelOrder, type Character, type CharacterClass } from '../storage/character'
+import type { LevelGains, LevelUpClass } from './levelGains'
 
 export const MAX_CHARACTER_LEVEL = 20
+
+export const NO_LEVEL_HISTORY_REASON = 'Cannot tell which class each level came from (no level history).'
+
+/** The classes a Level up may raise, or why none. More than one class needs a consistent levelOrder (D329). */
+export function levelUpClassOptions(character: Character): { options: CharacterClass[] } | { reason: string } {
+	if (character.classes.length === 0) return { reason: 'This character has no class yet.' }
+	if (totalCharacterLevel(character.classes) >= MAX_CHARACTER_LEVEL) return { reason: `Level ${MAX_CHARACTER_LEVEL} is the highest character level.` }
+	if (character.classes.length > 1 && !(character.levelOrder && isConsistentLevelOrder(character.levelOrder, character.classes))) {
+		return { reason: NO_LEVEL_HISTORY_REASON }
+	}
+	const options = character.classes.filter((entry) => entry.level < MAX_CHARACTER_LEVEL)
+	return options.length > 0 ? { options } : { reason: `Level ${MAX_CHARACTER_LEVEL} is the highest class level.` }
+}
 
 /**
  * The level a Level up would take this character to, or why there is none.
  * Only what can be told without the data: whether a level-up is answerable at
  * all (a class missing from classes.json) is levelGainsFor's `unresolved`.
+ * D329: a multiclass character names the class (`chosen`); a single class may omit it.
  */
-export function levelUpTarget(character: Character): { level: number; className: string; classSource: string } | { reason: string } {
-	if (character.classes.length === 0) return { reason: 'This character has no class yet.' }
-	const level = totalCharacterLevel(character.classes)
-	if (level >= MAX_CHARACTER_LEVEL) return { reason: `Level ${MAX_CHARACTER_LEVEL} is the highest character level.` }
-	// D316/D328: levelGainsFor answers any class, but choosing which one is M7, so more than one class stays blocked here.
-	if (character.classes.length > 1) {
-		return { reason: `Multiclass characters are build order step 10: this character has ${character.classes.length} classes and nothing records which one the new level belongs to.` }
+export function levelUpTarget(character: Character, chosen?: LevelUpClass): { level: number; className: string; classSource: string } | { reason: string } {
+	const allowed = levelUpClassOptions(character)
+	if ('reason' in allowed) return allowed
+	const level = totalCharacterLevel(character.classes) + 1
+	if (chosen === undefined) {
+		if (character.classes.length > 1) return { reason: 'Choose which class gains the level.' }
+		const { className, classSource } = character.classes[0]
+		return { level, className, classSource }
 	}
-	const { className, classSource } = character.classes[0]
-	return { level: level + 1, className, classSource }
+	const held = allowed.options.find((entry) => entry.className === chosen.className && entry.classSource === chosen.classSource)
+	if (!held) return { reason: `This character has no ${chosen.className} (${chosen.classSource}) class below level ${MAX_CHARACTER_LEVEL}.` }
+	return { level, className: held.className, classSource: held.classSource }
 }
 
 /**

@@ -79,7 +79,7 @@ describe('LevelUpButton', () => {
 		expect(button.hasAttribute('title')).toBe(false)
 	})
 
-	it('offers no usable button for a multiclass character and says why', async () => {
+	it('D329: offers no usable button for a multiclass character without a level history and says why', async () => {
 		const multiclass: Character = {
 			id: 'c2',
 			name: 'Bree',
@@ -90,8 +90,9 @@ describe('LevelUpButton', () => {
 		}
 		render(<LevelUpButton character={multiclass} onLevelUp={() => {}} loadGains={fixtureGains} />)
 
-		const button = await screen.findByRole('button', { name: /multiclass/i })
+		const button = await screen.findByRole('button', { name: /no level history/i })
 		expect((button as HTMLButtonElement).disabled).toBe(true)
+		expect(button.textContent).toContain('Cannot tell which class each level came from (no level history).')
 	})
 
 	it('hands the next level’s gains to the walk when clicked', async () => {

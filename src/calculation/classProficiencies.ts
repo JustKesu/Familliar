@@ -29,6 +29,17 @@ function proficienciesGained(parsedClasses: unknown, className: string, classSou
 
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [])
 
+/** D321: the same class proficiencies the Proficiencies card shows, as a feat prerequisite reads them (Manage Feats and, D329, the wizard's feat step). */
+export function prerequisiteClassProficiencies(character: Pick<Character, 'classes' | 'levelOrder'>, rawClasses: unknown): { armorProficiencies: string[]; weaponProficiencies: string[] } {
+	const classGrants = classProficiencyGrants(character, rawClasses)
+	return {
+		armorProficiencies: [...new Set(classGrants.armor.map(({ token }) => token))],
+		weaponProficiencies: [
+			...new Set(classGrants.weapons.flatMap(({ grant }) => (grant.kind === 'category' && !grant.anyOfProperties && !grant.ranged && !grant.melee ? [grant.category] : []))),
+		],
+	}
+}
+
 /**
  * D321: the first class gives its starting armor and weapons; every other class only the fixed part of its
  * multiclassing.proficienciesGained (choices wait for M7). The Proficiencies card and weapon attacks both read this (D178).

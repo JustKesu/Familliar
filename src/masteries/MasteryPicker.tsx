@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { loadMasteryCountFor, loadMasteryWeaponsFor, MASTERY_DESCRIPTIONS, type MasteryWeapon } from './masteryData'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import type { FeatRef } from '../featAsi/featInstances'
+import type { Character } from '../storage/character'
 
 /** Stable empty default so an omitted `feats` prop doesn't re-trigger the load effect. */
 const NO_FEATS: readonly FeatRef[] = []
@@ -46,6 +47,8 @@ export function MasteryPicker({
 	onChange,
 	feats = NO_FEATS,
 	lockedValues = NO_LOCKED_VALUES,
+	multiclass,
+	countOffset = 0,
 }: {
 	className: string
 	classSource: string
@@ -55,18 +58,23 @@ export function MasteryPicker({
 	feats?: readonly FeatRef[]
 	/** D108: during a level up, the picks the character already had — shown selected and not removable. */
 	lockedValues?: readonly string[]
+	/** D329: a multiclass level up's classes and history — the pool reads every class's weapon proficiencies. */
+	multiclass?: Pick<Character, 'classes' | 'levelOrder'>
+	/** D329: masteries held from the character's other classes, added to this class's own count. */
+	countOffset?: number
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
+	const multiclassKey = multiclass ? JSON.stringify([multiclass.classes, multiclass.levelOrder]) : null
 
 	useEffect(() => {
 		let cancelled = false
 		setState({ status: 'loading' })
 		Promise.all([
 			loadMasteryCountFor(className, classSource, level),
-			loadMasteryWeaponsFor(className, classSource, feats),
+			multiclass ? loadMasteryWeaponsFor(className, classSource, feats, multiclass) : loadMasteryWeaponsFor(className, classSource, feats),
 		])
 			.then(([count, weapons]) => {
-				if (!cancelled) setState({ status: 'ready', count, weapons })
+				if (!cancelled) setState({ status: 'ready', count: count === null ? null : count + countOffset, weapons })
 			})
 			.catch((error: unknown) => {
 				if (!cancelled) {
@@ -79,7 +87,9 @@ export function MasteryPicker({
 		return () => {
 			cancelled = true
 		}
-	}, [className, classSource, level, feats])
+		// `multiclass` is read through multiclassKey; the draft object is rebuilt on every render.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [className, classSource, level, feats, multiclassKey, countOffset])
 
 	if (state.status === 'loading') return <p>Loading weapon masteries…</p>
 	if (state.status === 'error') {

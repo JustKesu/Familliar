@@ -143,7 +143,10 @@ export function ReviewStep({
 	steps,
 	onGoTo,
 	saveError,
+	classLine,
 }: {
+	/** D329: every class with its level after a multiclass level up ("Warlock 6 / Sorcerer 4"); absent shows the wizard's one class. */
+	classLine?: string
 	data: WizardData
 	/** The seeded data of an edit or level up, for "spells added in this level up". */
 	baseline: WizardData
@@ -188,7 +191,7 @@ export function ReviewStep({
 	const entries = useFeatureEntries(draft, levelUp !== undefined && levelUp.newFeatures.length > 0)
 
 	const classChoice = data.classChoice
-	const identity = [speciesLabel, classChoice ? `${classChoice.className} ${classChoice.level}` : '', data.backgroundChoice?.name ?? ''].filter((part) => part !== '')
+	const identity = [speciesLabel, classLine ?? (classChoice ? `${classChoice.className} ${classChoice.level}` : ''), data.backgroundChoice?.name ?? ''].filter((part) => part !== '')
 
 	const pickKey = (pick: { name: string; source: string }) => `${pick.name}|${pick.source}`
 	const optionSpells = data.classOptionalFeatureChoices.flatMap((entry) => (entry.spellChoices ?? []).flatMap((choice) => [...choice.cantrips.map((spell) => ({ ...spell, level: 0 })), ...choice.spells.map((spell) => ({ ...spell, level: 1 }))]))

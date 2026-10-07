@@ -8,6 +8,8 @@ describe('route parse/format round trip', () => {
 		{ route: { view: 'sheet', id: 'abc-123' }, hash: '#/character/abc-123' },
 		{ route: { view: 'edit', id: 'abc-123' }, hash: '#/character/abc-123/edit' },
 		{ route: { view: 'level-up', id: 'abc-123' }, hash: '#/character/abc-123/level-up' },
+		{ route: { view: 'level-up', id: 'abc-123', levelClass: { className: 'Sorcerer', classSource: 'XPHB' } }, hash: '#/character/abc-123/level-up/Sorcerer/XPHB' },
+		{ route: { view: 'level-up', id: 'abc', levelClass: { className: 'Blood Hunter', classSource: 'A/B' } }, hash: '#/character/abc/level-up/Blood%20Hunter/A%2FB' },
 		{ route: { view: 'markup-demo' }, hash: '#/markup-demo' },
 	]
 
@@ -36,6 +38,8 @@ describe('route parse — invalid and trailing-slash hashes fall back to the lis
 		'#/character/abc/',
 		'#/character/abc/edit/',
 		'#/character/abc/level-up/',
+		'#/character/abc/level-up/Sorcerer',
+		'#/character/abc/level-up/Sorcerer/XPHB/',
 		'#/character//edit',
 		'#/nope',
 		'#/new/',

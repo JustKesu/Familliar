@@ -23,11 +23,22 @@ export interface HeldPicks {
 	classOptionalFeatureChoices: readonly CharacterOptionalFeatureChoice[]
 }
 
+/** D329: the class a level up raises; `featureTypes` are its own optionalfeatureProgression codes, absent for a single class. */
+export interface ActiveClass {
+	className: string
+	classSource: string
+	featureTypes?: readonly string[]
+}
+
+const sameClass = (entry: { className: string; classSource: string }, active: ActiveClass | undefined): boolean =>
+	active === undefined || (entry.className === active.className && entry.classSource === active.classSource)
+
 /** `subclassFeatureType` tells the subclass's optional-feature entry apart from the class's own — storage carries no other marker. */
-export function heldPicksFrom(character: Character, subclassFeatureType: string | null): HeldPicks {
+export function heldPicksFrom(character: Character, subclassFeatureType: string | null, active?: ActiveClass): HeldPicks {
+	const characterClass = active ? character.classes.find((entry) => sameClass(entry, active)) : character.classes[0]
 	return {
-		subclass: character.classes[0]?.subclass ?? null,
-		fightingStyle: fightingStyleFor(character.fightingStyles, character.classes[0])?.name ?? null,
+		subclass: characterClass?.subclass ?? null,
+		fightingStyle: fightingStyleFor(character.fightingStyles, characterClass)?.name ?? null,
 		classSkills: character.classSkills ?? [],
 		masteries: choiceNames(character.masteries),
 		expertiseSkills: choiceNames(character.expertiseSkills),
@@ -35,9 +46,11 @@ export function heldPicksFrom(character: Character, subclassFeatureType: string 
 			subclassFeatureType === null
 				? []
 				: choiceNames(character.optionalFeatureChoices?.find((entry) => entry.featureType === subclassFeatureType)?.choices),
-		classFeatureChoices: (character.classFeatureChoices ?? []).map((choice) => choice.featureName),
+		classFeatureChoices: (character.classFeatureChoices ?? []).filter((choice) => sameClass(choice, active)).map((choice) => choice.featureName),
 		featAsiChoices: character.featAsiChoices ?? [],
-		classOptionalFeatureChoices: (character.optionalFeatureChoices ?? []).filter((entry) => entry.featureType !== subclassFeatureType),
+		classOptionalFeatureChoices: (character.optionalFeatureChoices ?? []).filter(
+			(entry) => entry.featureType !== subclassFeatureType && (active?.featureTypes === undefined || active.featureTypes.includes(entry.featureType)),
+		),
 	}
 }
 
@@ -57,8 +70,8 @@ function describeFeatAsi(choice: FeatAsiChoice): string {
 }
 
 /** Every held pick `data` would drop or change, worded for an error message. Empty when the walk only adds. */
-export function overwrittenHeldPicks(character: Character, data: WizardData): string[] {
-	const held = heldPicksFrom(character, data.subclass?.featureType ?? null)
+export function overwrittenHeldPicks(character: Character, data: WizardData, active?: ActiveClass): string[] {
+	const held = heldPicksFrom(character, data.subclass?.featureType ?? null, active)
 	const problems: string[] = []
 
 	if (held.subclass !== null && held.subclass.toLowerCase() !== (data.subclass?.name ?? '').toLowerCase()) {
@@ -74,7 +87,7 @@ export function overwrittenHeldPicks(character: Character, data: WizardData): st
 	missing('weapon mastery', held.masteries, data.masteries)
 	missing('expertise', held.expertiseSkills, data.expertiseSkills)
 	missing('option', held.subclassOptionalFeatures, data.optionalFeatureChoices)
-	for (const stored of character.classFeatureChoices ?? []) {
+	for (const stored of (character.classFeatureChoices ?? []).filter((choice) => sameClass(choice, active))) {
 		const now = data.classFeatureChoices.find((choice) => choice.featureName === stored.featureName)
 		if (now?.optionName !== stored.optionName) problems.push(`${stored.featureName} ${stored.optionName}`)
 	}

@@ -2,13 +2,15 @@ import { useEffect, useState, type ReactNode } from 'react'
 import type { Character } from '../storage/character'
 import { loadLevelGainsFor, type LevelGains, type LevelUpClass } from './levelGains'
 import { totalCharacterLevel } from '../calculation/characterLevel'
-import { levelUpTarget, MAX_CHARACTER_LEVEL } from './levelUpSteps'
+import { levelUpClassOptions, MAX_CHARACTER_LEVEL } from './levelUpSteps'
+import { LevelUpClassDialog } from './LevelUpClassDialog'
 
-type ButtonState = { kind: 'checking' } | { kind: 'ready'; gains: LevelGains } | { kind: 'unavailable'; reason: string }
+type ButtonState = { kind: 'checking' } | { kind: 'ready'; choices: LevelGains[] } | { kind: 'unavailable'; reason: string }
 
 /**
- * Raises the character by exactly one level in the class it already has (slice
+ * Raises the character by exactly one level in a class it already has (slice
  * 8d3). D43: an unavailable level up names its reason on the control itself.
+ * D329: with more than one class, a click first asks which class.
  */
 export function LevelUpButton({
 	character,
@@ -19,18 +21,20 @@ export function LevelUpButton({
 	onLevelUp: (gains: LevelGains) => void
 	loadGains?: (character: Character, target: LevelUpClass) => Promise<LevelGains>
 }): ReactNode {
-	const target = levelUpTarget(character)
+	const allowed = levelUpClassOptions(character)
 	const [state, setState] = useState<ButtonState>({ kind: 'checking' })
+	const [choosing, setChoosing] = useState(false)
 
 	useEffect(() => {
-		const next = levelUpTarget(character)
-		if (!('level' in next)) return
+		const next = levelUpClassOptions(character)
+		if ('reason' in next) return
 		let cancelled = false
 		setState({ kind: 'checking' })
-		loadGains(character, { className: next.className, classSource: next.classSource })
-			.then((gains) => {
+		Promise.all(next.options.map((option) => loadGains(character, { className: option.className, classSource: option.classSource })))
+			.then((choices) => {
 				if (cancelled) return
-				setState(gains.unresolved === null ? { kind: 'ready', gains } : { kind: 'unavailable', reason: gains.unresolved })
+				const resolved = choices.find((gains) => gains.unresolved === null)
+				setState(resolved ? { kind: 'ready', choices } : { kind: 'unavailable', reason: choices[0]?.unresolved ?? 'Nothing to level up.' })
 			})
 			.catch((error: unknown) => {
 				if (!cancelled) setState({ kind: 'unavailable', reason: `Could not read what the next level adds: ${error instanceof Error ? error.message : String(error)}` })
@@ -40,14 +44,31 @@ export function LevelUpButton({
 		}
 	}, [character, loadGains])
 
-	const current: ButtonState = 'reason' in target ? { kind: 'unavailable', reason: target.reason } : state
+	const current: ButtonState = 'reason' in allowed ? { kind: 'unavailable', reason: allowed.reason } : state
 
 	if (current.kind === 'ready') {
+		const multiclass = character.classes.length > 1
 		return (
-			<button type="button" className="sheet__level-up sheet__header-button" onClick={() => onLevelUp(current.gains)}>
-				<UpArrowIcon />
-				Level up to {current.gains.level}
-			</button>
+			<>
+				<button
+					type="button"
+					className="sheet__level-up sheet__header-button"
+					onClick={() => (multiclass ? setChoosing(true) : onLevelUp(current.choices[0]))}
+				>
+					<UpArrowIcon />
+					Level up to {current.choices[0].level}
+				</button>
+				{choosing && (
+					<LevelUpClassDialog
+						choices={current.choices}
+						onChoose={(gains) => {
+							setChoosing(false)
+							onLevelUp(gains)
+						}}
+						onCancel={() => setChoosing(false)}
+					/>
+				)}
+			</>
 		)
 	}
 	const atMaximum = totalCharacterLevel(character.classes) >= MAX_CHARACTER_LEVEL

@@ -21,6 +21,8 @@
 
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { FeatRef } from '../featAsi/featInstances'
+import type { Character } from '../storage/character'
+import { classProficiencyGrants } from '../calculation/classProficiencies'
 import {
 	extractFeatWeaponProficiencyEntries,
 	isProficientWithWeapon,
@@ -173,6 +175,8 @@ export function masteryWeaponsFor(
 	classSource: string,
 	takenFeats: readonly FeatRef[] = [],
 	feats: FeatWeaponProficiencyEntry[] = [],
+	/** D329 / review M2-M4 finding 2: a multiclass character's classes; the class part of the pool is then classProficiencyGrants over all of them. */
+	character?: Pick<Character, 'classes' | 'levelOrder'>,
 ): MasteryWeapon[] {
 	if (!Array.isArray(parsedItems)) {
 		throw new Error('items.json: expected a top-level array.')
@@ -191,7 +195,9 @@ export function masteryWeaponsFor(
 	const ordinaryWeapons = masteryItems.filter((item) => item.rarity === 'none')
 
 	const grants = [
-		...weaponProficiencyGrantsForClass(parsedClasses, className, classSource),
+		...(character && character.classes.length > 1
+			? classProficiencyGrants(character, parsedClasses).weapons.map(({ grant }) => grant)
+			: weaponProficiencyGrantsForClass(parsedClasses, className, classSource)),
 		...weaponProficiencyGrantsForFeats(takenFeats, feats),
 	]
 	const filtered = ordinaryWeapons.filter((item) => isProficientWithWeapon(item, grants))
@@ -217,11 +223,16 @@ export async function loadMasteryCountFor(className: string, classSource: string
  * wizard passes its in-progress ones); a feat that grants weapon proficiency
  * (Martial Weapon Training, Gunner) widens the pool accordingly.
  */
-export async function loadMasteryWeaponsFor(className: string, classSource: string, takenFeats: readonly FeatRef[] = []): Promise<MasteryWeapon[]> {
+export async function loadMasteryWeaponsFor(
+	className: string,
+	classSource: string,
+	takenFeats: readonly FeatRef[] = [],
+	character?: Pick<Character, 'classes' | 'levelOrder'>,
+): Promise<MasteryWeapon[]> {
 	const [items, classes, feats] = await Promise.all([
 		loadDataFile('data/items.json'),
 		loadDataFile('data/classes.json'),
 		loadDataFile('data/feats.json'),
 	])
-	return masteryWeaponsFor(items, classes, className, classSource, takenFeats, extractFeatWeaponProficiencyEntries(feats))
+	return masteryWeaponsFor(items, classes, className, classSource, takenFeats, extractFeatWeaponProficiencyEntries(feats), character)
 }

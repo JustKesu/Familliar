@@ -86,12 +86,12 @@ describe('levelGainsFor', () => {
 		expect(gains.steps.class.status).toBe('none')
 	})
 
-	it('D316/D328: Level up refuses a multiclass character at levelUpTarget, while levelGainsFor answers the named class', () => {
+	it('D329: Level up refuses a multiclass character without a level history at levelUpTarget, while levelGainsFor answers the named class', () => {
 		const multiclass = character([
 			{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 3 },
 			{ className: 'Rogue', classSource: 'XPHB', subclass: 'Thief', level: 2 },
 		])
-		expect(levelUpTarget(multiclass)).toEqual({ reason: expect.stringContaining('Multiclass') })
+		expect(levelUpTarget(multiclass, { className: 'Rogue', classSource: 'XPHB' })).toEqual({ reason: 'Cannot tell which class each level came from (no level history).' })
 		const gains = levelGainsFor(multiclass, { className: 'Rogue', classSource: 'XPHB' }, CLASSES, RESOLVER)
 		expect(gains).toMatchObject({ level: 6, classLevel: 3, className: 'Rogue', unresolved: null })
 	})

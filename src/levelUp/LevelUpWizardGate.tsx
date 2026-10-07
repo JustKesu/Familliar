@@ -3,7 +3,7 @@ import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import { CharacterWizard } from '../creation/CharacterWizard'
 import { levelUpTarget } from './levelUpSteps'
-import { loadLevelGainsFor, type LevelGains } from './levelGains'
+import { loadLevelGainsFor, type LevelGains, type LevelUpClass } from './levelGains'
 
 type GateState = { kind: 'loading' } | { kind: 'ready'; gains: LevelGains } | { kind: 'unavailable' }
 
@@ -18,12 +18,15 @@ type GateState = { kind: 'loading' } | { kind: 'ready'; gains: LevelGains } | { 
 export function LevelUpWizardGate({
 	store,
 	character,
+	levelClass,
 	onSaved,
 	onCancel,
 	onUnavailable,
 }: {
 	store: CharacterStore
 	character: Character
+	/** D329: the class from the route; required for more than one class, optional for one. */
+	levelClass?: LevelUpClass
 	onSaved: (character: Character) => void
 	onCancel: () => void
 	/** The character cannot be levelled up right now (already resolved, at level 20, multiclass, …) — the caller decides where that bounces to. */
@@ -32,7 +35,7 @@ export function LevelUpWizardGate({
 	const [state, setState] = useState<GateState>({ kind: 'loading' })
 
 	useEffect(() => {
-		const target = levelUpTarget(character)
+		const target = levelUpTarget(character, levelClass)
 		if (!('level' in target)) {
 			onUnavailable()
 			return
@@ -50,7 +53,9 @@ export function LevelUpWizardGate({
 		return () => {
 			cancelled = true
 		}
-	}, [character, onUnavailable])
+		// The class is read through its name and source; the route object changes identity on every render.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [character, onUnavailable, levelClass?.className, levelClass?.classSource])
 
 	if (state.kind === 'ready') {
 		return <CharacterWizard store={store} character={character} levelUp={state.gains} onSaved={onSaved} onCancel={onCancel} />

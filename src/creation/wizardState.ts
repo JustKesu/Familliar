@@ -60,6 +60,7 @@ import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { overwrittenHeldPicks } from '../levelUp/heldPicks'
+import { checkOneClassRaised, isClass, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 
 /**
@@ -366,14 +367,15 @@ export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | 
 		...data.toolChoices.filter((choice) => choice.grantedBy !== 'artificerSubclass').map((choice) => choice.name),
 	]
 	const grants = classToolGrantsFor([cls], heldElsewhere)
-	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === levelUpTargetLevel)
+	// D329: grant levels are class levels; in a level up classChoice.level is the raised class's new level.
+	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === cls.level)
 }
 
 /** D177: the subclass skill picks the languages step collects; a level-up walk asks only for the ones that level brings. */
 export function wizardSubclassSkillGrants(data: WizardData, levelUpTargetLevel: number | null): SubclassSkillGrant[] {
 	const cls = wizardClass(data)
 	const grants = cls ? subclassSkillGrantsFor([cls]).filter((grant) => grant.choice) : []
-	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === levelUpTargetLevel)
+	return levelUpTargetLevel === null || !cls ? grants : grants.filter((grant) => grant.level === cls.level)
 }
 
 /** D177: species picks are creation picks, so a level-up walk never asks for them. */
@@ -504,6 +506,8 @@ export interface WizardData {
 	startingEquipment: StartingEquipmentChoice
 	/** W-8: the cropped portrait data URL. Keyed to nothing, so no class/background/subclass reset prunes it; absent = none. */
 	portrait?: string
+	/** D329: set only while levelling one class of a multiclass character — that class's own optionalfeatureProgression codes, which tell its picks from the other classes'. */
+	activeClassFeatureTypes?: string[]
 }
 
 export function emptyWizardData(): WizardData {
@@ -554,6 +558,8 @@ export interface WizardSeedLookups {
 	subclasses: readonly { name: string; source: string; featureType: string | null }[]
 	/** Every spell's level — SpellPick carries it for the step's own cantrip/leveled counts, and saveCharacter drops it on the way to storage. */
 	spellLevels: readonly { name: string; source: string; level: number }[]
+	/** D329: the class a multiclass level up raises, with its own optionalfeatureProgression codes; every per-class field is seeded from it alone. */
+	activeClass?: { className: string; classSource: string; featureTypes: readonly string[] }
 }
 
 /** A stored +2/+1 or +1/+1/+1 map read back as the chooser's own state, so an edited background reopens showing which mode was taken rather than an empty chooser beside a filled bonus. */
@@ -581,7 +587,11 @@ function distributionFromBonusMap(abilityBonus: AbilityBonusMap | undefined): Ab
  * inventory is carried through untouched instead.
  */
 export function wizardDataFromCharacter(character: Character, lookups: WizardSeedLookups): WizardData {
-	const characterClass = character.classes[0]
+	// D329: a multiclass level up seeds every per-class field from the raised class only; the others pass through saveCharacter.
+	const active = isMulticlass(character.classes) ? lookups.activeClass : undefined
+	const ofActive = (entry: { className: string; classSource: string }): boolean =>
+		active === undefined || (entry.className === active.className && entry.classSource === active.classSource)
+	const characterClass = active ? character.classes.find(ofActive) : character.classes[0]
 	const storedSubclassName = characterClass?.subclass ?? null
 	// A subclass missing from the loaded list keeps its name but carries no featureType,
 	// which sends its optional-feature picks through classOptionalFeatureChoices below —
@@ -638,19 +648,22 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		optionalFeatureChoices: subclassFeatureType
 			? choiceNames(storedOptionalFeatures.find((entry) => entry.featureType === subclassFeatureType)?.choices)
 			: [],
-		classOptionalFeatureChoices: storedOptionalFeatures.filter((entry) => entry.featureType !== subclassFeatureType),
+		classOptionalFeatureChoices: storedOptionalFeatures.filter(
+			(entry) => entry.featureType !== subclassFeatureType && (active === undefined || active.featureTypes.includes(entry.featureType)),
+		),
 		featAsiChoices: character.featAsiChoices ?? [],
 		grantedFeats: character.grantedFeats ?? [],
 		backgroundOriginFeatOverride: character.background?.originFeatOverride ?? null,
-		spellChoices: (character.spellChoices ?? []).flatMap((entry) =>
+		spellChoices: (character.spellChoices ?? []).filter(ofActive).flatMap((entry) =>
 			entry.spells.map((spell) => ({ name: spell.name, source: spell.source, level: spellLevelOf(spell) })),
 		),
-		subclassSpellChoices: (character.subclassSpellChoices ?? []).flatMap((entry) => entry.picks),
-		classFeatureChoices: character.classFeatureChoices ?? [],
-		wildShapeForms: (character.wildShapeForms ?? []).flatMap((entry) => entry.forms),
+		subclassSpellChoices: (character.subclassSpellChoices ?? []).filter(ofActive).flatMap((entry) => entry.picks),
+		classFeatureChoices: (character.classFeatureChoices ?? []).filter(ofActive),
+		wildShapeForms: (character.wildShapeForms ?? []).filter(ofActive).flatMap((entry) => entry.forms),
 		hitPointLevels: character.hitPointLevels ?? [],
 		startingEquipment: emptyStartingEquipmentChoice(),
 		...(character.portrait ? { portrait: character.portrait } : {}),
+		...(active ? { activeClassFeatureTypes: [...active.featureTypes] } : {}),
 	}
 }
 
@@ -805,7 +818,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				featAsiChoicesValid &&
 				data.featAsiChoices.length === featAsiEligibleLevelCount &&
 				data.featAsiChoices.every((choice) =>
-					isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice, data.classChoice?.level ?? 0),
+					isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice, levelUpTargetLevel ?? data.classChoice?.level ?? 0),
 				)
 			)
 		case 'hitPoints':
@@ -1237,32 +1250,33 @@ export function saveCharacter(
 	if (existing && levelUpTo === undefined && (data.classChoice?.level ?? 0) !== existingLevel) {
 		throw new Error(`Editing a character cannot change its level: this character is level ${existingLevel}.`)
 	}
+	// D329: a level up of one class of a multiclass character; every record of the other classes passes through unchanged.
+	const activeClass = levelUpTo !== undefined && existing && isMulticlass(existing.classes) && data.classChoice ? data.classChoice : undefined
 	if (levelUpTo !== undefined) {
-		const existingClass = existing?.classes.length === 1 ? existing.classes[0] : undefined
-		const sameClass =
-			existingClass !== undefined &&
-			data.classChoice !== null &&
-			existingClass.className === data.classChoice.className &&
-			existingClass.classSource === data.classChoice.classSource
-		if (!sameClass || existingLevel !== levelUpTo - 1 || data.classChoice?.level !== levelUpTo) {
+		const existingClass = existing?.classes.find((entry) => data.classChoice !== null && isClass(entry, data.classChoice))
+		if (!existingClass || existingLevel !== levelUpTo - 1 || data.classChoice?.level !== existingClass.level + 1) {
 			throw new Error(`A level up raises one existing class by exactly one level, to level ${levelUpTo}.`)
 		}
-		const overwritten = overwrittenHeldPicks(existing!, data)
+		const overwritten = overwrittenHeldPicks(
+			existing!,
+			data,
+			activeClass && { className: activeClass.className, classSource: activeClass.classSource, featureTypes: data.activeClassFeatureTypes ?? [] },
+		)
 		if (overwritten.length > 0) {
 			throw new Error(`A level up only adds picks; it cannot change one made at an earlier level: ${overwritten.join(', ')}.`)
 		}
 	}
 
-	const classes: CharacterClass[] = data.classChoice
-		? [
-				{
-					className: data.classChoice.className,
-					classSource: data.classChoice.classSource,
-					subclass: data.subclass?.name ?? null,
-					level: data.classChoice.level,
-				},
-			]
-		: []
+	const ownClass: CharacterClass | null = data.classChoice
+		? {
+				className: data.classChoice.className,
+				classSource: data.classChoice.classSource,
+				subclass: data.subclass?.name ?? null,
+				level: data.classChoice.level,
+			}
+		: null
+	const classes: CharacterClass[] = activeClass ? existing!.classes.map((entry) => (isClass(entry, activeClass) ? ownClass! : entry)) : ownClass ? [ownClass] : []
+	if (activeClass) checkOneClassRaised(existing!.classes, classes, levelUpTo!)
 
 	const background: CharacterBackground | undefined =
 		data.backgroundChoice && backgroundSkillProficiencies && data.backgroundToolProficiency
@@ -1304,7 +1318,7 @@ export function saveCharacter(
 		return source === undefined ? pick : { ...pick, source }
 	}
 
-	const heldStyle = existing ? fightingStyleFor(existing.fightingStyles, existing.classes[0]) : undefined
+	const heldStyle = existing ? fightingStyleFor(existing.fightingStyles, activeClass ?? existing.classes[0]) : undefined
 	const fightingStyles: CharacterFightingStyle[] | undefined =
 		data.fightingStyle === null
 			? undefined
@@ -1411,6 +1425,23 @@ export function saveCharacter(
 				]
 			: undefined
 
+	const orNone = <T,>(list: T[]): T[] | undefined => (list.length > 0 ? list : undefined)
+	const activeFeatureTypes = [
+		...(data.subclass?.featureType ? [data.subclass.featureType] : []),
+		...(data.activeClassFeatureTypes ?? []),
+		...data.classOptionalFeatureChoices.map((entry) => entry.featureType),
+	]
+	const perClass = activeClass
+		? {
+				fightingStyles: orNone([...otherFightingStyles(existing!.fightingStyles, activeClass, data.fightingStyle === null ? undefined : heldStyle), ...(fightingStyles ?? [])]),
+				optionalFeatureChoices: orNone([...otherOptionalFeatureChoices(existing!.optionalFeatureChoices, activeFeatureTypes), ...(optionalFeatureChoices ?? [])]),
+				spellChoices: orNone([...otherClassRecords(existing!.spellChoices, activeClass), ...(spellChoices ?? [])]),
+				subclassSpellChoices: orNone([...otherClassRecords(existing!.subclassSpellChoices, activeClass), ...(subclassSpellChoices ?? [])]),
+				classFeatureChoices: orNone([...otherClassRecords(existing!.classFeatureChoices, activeClass), ...(classFeatureChoices ?? [])]),
+				wildShapeForms: orNone([...otherClassRecords(existing!.wildShapeForms, activeClass), ...(wildShapeForms ?? [])]),
+			}
+		: { fightingStyles, optionalFeatureChoices, spellChoices, subclassSpellChoices, classFeatureChoices, wildShapeForms }
+
 	const input = {
 		name: data.name,
 		classes,
@@ -1421,16 +1452,16 @@ export function saveCharacter(
 		languages,
 		classSkills: data.classSkills,
 		masteries,
-		fightingStyles,
-		optionalFeatureChoices,
+		fightingStyles: perClass.fightingStyles,
+		optionalFeatureChoices: perClass.optionalFeatureChoices,
 		speciesSkills,
 		expertiseSkills,
 		featAsiChoices: data.featAsiChoices,
 		grantedFeats: data.grantedFeats.length > 0 ? data.grantedFeats : undefined,
-		spellChoices,
-		subclassSpellChoices,
-		classFeatureChoices,
-		wildShapeForms,
+		spellChoices: perClass.spellChoices,
+		subclassSpellChoices: perClass.subclassSpellChoices,
+		classFeatureChoices: perClass.classFeatureChoices,
+		wildShapeForms: perClass.wildShapeForms,
 		// Editing keeps what the character carries: the equipment step is not part of an edit.
 		inventory: existing ? existing.inventory : startingEquipment?.inventory,
 		currencyCopper: existing ? existing.currencyCopper : startingEquipment?.currencyCopper,

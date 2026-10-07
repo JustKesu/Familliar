@@ -3229,6 +3229,24 @@ button:disabled {
   font-weight: 600;
 }
 
+.level-up-class {
+  max-width: 360px;
+}
+
+.level-up-class__options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.level-up-class__option {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: left;
+}
+
 .counts {
   display: flex;
   flex-wrap: wrap;

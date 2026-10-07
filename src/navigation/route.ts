@@ -10,7 +10,8 @@ export type CharacterRoute =
 	| { view: 'new' }
 	| { view: 'sheet'; id: string }
 	| { view: 'edit'; id: string }
-	| { view: 'level-up'; id: string }
+	/** D329: the class gaining the level rides in the URL for a multiclass character, so F5 keeps it. */
+	| { view: 'level-up'; id: string; levelClass?: { className: string; classSource: string } }
 
 export type Route = CharacterRoute | { view: 'markup-demo' }
 
@@ -32,6 +33,15 @@ export function parseRoute(hash: string): Route {
 	const levelUpMatch = /^\/character\/([^/]+)\/level-up$/.exec(path)
 	if (levelUpMatch) return { view: 'level-up', id: decodeURIComponent(levelUpMatch[1]) }
 
+	const levelUpClassMatch = /^\/character\/([^/]+)\/level-up\/([^/]+)\/([^/]+)$/.exec(path)
+	if (levelUpClassMatch) {
+		return {
+			view: 'level-up',
+			id: decodeURIComponent(levelUpClassMatch[1]),
+			levelClass: { className: decodeURIComponent(levelUpClassMatch[2]), classSource: decodeURIComponent(levelUpClassMatch[3]) },
+		}
+	}
+
 	return LIST_ROUTE
 }
 
@@ -48,6 +58,8 @@ export function formatRoute(route: Route): string {
 		case 'edit':
 			return `#/character/${encodeURIComponent(route.id)}/edit`
 		case 'level-up':
-			return `#/character/${encodeURIComponent(route.id)}/level-up`
+			return route.levelClass
+				? `#/character/${encodeURIComponent(route.id)}/level-up/${encodeURIComponent(route.levelClass.className)}/${encodeURIComponent(route.levelClass.classSource)}`
+				: `#/character/${encodeURIComponent(route.id)}/level-up`
 	}
 }

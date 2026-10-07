@@ -77,7 +77,7 @@ import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeHitDicePool } from '../calculation/hitDice'
-import { totalCharacterLevel } from '../calculation/characterLevel'
+import { isMulticlass, levelOrderAfterLevelUp, totalCharacterLevel } from '../calculation/characterLevel'
 import { loadHitDiceClassData } from '../sheet/sheetData'
 import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
@@ -96,11 +96,12 @@ import { computeSpellCounts } from '../calculation/spellCounts'
 import { computeSpellSlots } from '../calculation/spellSlots'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
 import type { ClassSpellSlotsData } from '../calculation/spellSlots'
-import { choiceNames, type Character, type CharacterBackground, type CharacterOptionalFeatureChoice } from '../storage/character'
+import { choiceNames, type Character, type CharacterBackground, type CharacterClass, type CharacterOptionalFeatureChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import type { LevelGains } from '../levelUp/levelGains'
-import { levelUpStepConditions, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
+import { levelUpStepConditions, MAX_CHARACTER_LEVEL, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
 import { heldPicksFrom } from '../levelUp/heldPicks'
+import { isClass } from '../levelUp/multiclassLevelUp'
 import { ConfirmDialog } from '../app/ConfirmDialog'
 import { WizardNavButtons, WizardStepList } from './WizardShell'
 import {
@@ -202,12 +203,23 @@ export function CharacterWizard({
 	const [state, dispatch] = useReducer(wizardReducer, undefined, initialControllerState)
 	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp, state.data.subclass?.name ?? null) : {}
 	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp, state.data.subclass?.name ?? null) : {}
-	const held = levelUp && character ? heldPicksFrom(character, state.data.subclass?.featureType ?? null) : null
+	// D329: a level up of one class of a multiclass character — per-class picks belong to that class, character-wide ones to all.
+	const multiclassLevelUp = levelUp !== undefined && character !== undefined && isMulticlass(character.classes)
+	const activeClassScope = multiclassLevelUp ? { className: levelUp.className, classSource: levelUp.classSource, featureTypes: state.data.activeClassFeatureTypes ?? [] } : undefined
+	const held = levelUp && character ? heldPicksFrom(character, state.data.subclass?.featureType ?? null, activeClassScope) : null
 	const wizardClassChoice = wizardClass(state.data)
+	const ownDraftClass: CharacterClass | null = wizardClassChoice
+		? { className: wizardClassChoice.className, classSource: wizardClassChoice.classSource, subclass: wizardClassChoice.subclass, level: wizardClassChoice.level }
+		: null
+	const draftClasses: CharacterClass[] =
+		multiclassLevelUp && ownDraftClass ? character.classes.map((entry) => (isClass(entry, ownDraftClass) ? ownDraftClass : entry)) : ownDraftClass ? [ownDraftClass] : []
+	const multiclassDraft = multiclassLevelUp ? { classes: draftClasses, levelOrder: levelOrderAfterLevelUp(character, draftClasses) } : undefined
+	/** The character level this run ends at; in a level up classChoice.level is the raised class's own level. */
+	const draftCharacterLevel = levelUp?.level ?? state.data.classChoice?.level ?? null
 	const featureLanguageGrants = wizardClassChoice ? classFeatureLanguageGrantsFor([wizardClassChoice]) : []
 	const toolGrants = [...wizardToolGrants(state.data, levelUp?.level ?? null), ...wizardSpeciesToolGrants(state.data, levelUp?.level ?? null)]
 	const subclassSkillGrants = wizardSubclassSkillGrants(state.data, levelUp?.level ?? null)
-	const heldSubclassGrants = wizardClassChoice ? subclassSkillGrantsFor([wizardClassChoice]) : []
+	const heldSubclassGrants = wizardClassChoice ? subclassSkillGrantsFor(multiclassLevelUp ? draftClasses : [wizardClassChoice]) : []
 	/** D175: the chosen species' sizes, tagged like speciesSkillShape — the completion check needs them before the picker's panel would mount. */
 	const [speciesSizeShape, setSpeciesSizeShape] = useState<{ key: string; sizes: string[] } | null>(null)
 	const [saveError, setSaveError] = useState<string | null>(null)
@@ -295,16 +307,20 @@ export function CharacterWizard({
 	useEffect(() => {
 		if (character === undefined || seeded) return
 		let cancelled = false
-		const characterClass = character.classes[0]
+		// D329: a multiclass level up seeds from the class it raises.
+		const multiclassLevelUp = levelUp !== undefined && isMulticlass(character.classes)
+		const characterClass = multiclassLevelUp ? character.classes.find((entry) => isClass(entry, levelUp)) : character.classes[0]
 		Promise.all([
 			characterClass ? loadSubclassesFor(characterClass.className, characterClass.classSource) : Promise.resolve([]),
 			loadSpellDetails(),
+			multiclassLevelUp && characterClass ? loadClassOptionalFeatureGroups(characterClass.className, characterClass.classSource, MAX_CHARACTER_LEVEL) : Promise.resolve([]),
 		])
-			.then(([subclassOptions, details]) => {
+			.then(([subclassOptions, details, classGroups]) => {
 				if (cancelled) return
-				const seed = wizardDataFromCharacter(character, { subclasses: subclassOptions, spellLevels: details })
+				const activeClass = multiclassLevelUp && characterClass ? { className: characterClass.className, classSource: characterClass.classSource, featureTypes: classGroups.map((group) => group.featureType) } : undefined
+				const seed = wizardDataFromCharacter(character, { subclasses: subclassOptions, spellLevels: details, activeClass })
 				// Nothing is stored until the save at the end, so the raised level lives only in this run's state.
-				const data = levelUp && seed.classChoice ? { ...seed, classChoice: { ...seed.classChoice, level: levelUp.level } } : seed
+				const data = levelUp && seed.classChoice ? { ...seed, classChoice: { ...seed.classChoice, level: levelUp.classLevel } } : seed
 				dispatch({ type: 'seed', data, conditions: levelUp ? levelUpStepConditions(levelUp) : {} })
 				setBaseline(data)
 				setSeeded(true)
@@ -608,6 +624,33 @@ export function CharacterWizard({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [classPickKey])
 
+	/** D329: the raised class's own mastery and Expertise counts one level lower — the held picks above them came from the other classes. */
+	const [previousClassCounts, setPreviousClassCounts] = useState<{ key: string; mastery: number | null; expertise: number | null } | null>(null)
+	const previousCountsKey = multiclassLevelUp ? `${levelUp.className}|${levelUp.classSource}|${levelUp.classLevel - 1}` : null
+	useEffect(() => {
+		if (previousCountsKey === null || !levelUp) return
+		let cancelled = false
+		void Promise.allSettled([
+			loadMasteryCountFor(levelUp.className, levelUp.classSource, levelUp.classLevel - 1),
+			loadExpertiseEligibility(levelUp.className, levelUp.classSource, levelUp.classLevel - 1),
+		]).then(([mastery, expertise]) => {
+			if (cancelled) return
+			setPreviousClassCounts({
+				key: previousCountsKey,
+				mastery: mastery.status === 'fulfilled' ? (mastery.value ?? 0) : null,
+				expertise: expertise.status === 'fulfilled' ? (expertise.value?.count ?? 0) : null,
+			})
+		})
+		return () => {
+			cancelled = true
+		}
+		// levelUp is read through previousCountsKey.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [previousCountsKey])
+	const previousCounts = previousClassCounts?.key === previousCountsKey ? previousClassCounts : null
+	const masteryOffset = held && previousCounts?.mastery != null ? held.masteries.length - previousCounts.mastery : 0
+	const expertiseOffset = held && previousCounts?.expertise != null ? held.expertiseSkills.length - previousCounts.expertise : 0
+
 	/**
 	 * The number of subclass spell-choice slots unlocked at the chosen class
 	 * level (build order step 6, slice d6b) — needed synchronously for the
@@ -827,16 +870,7 @@ export function CharacterWizard({
 		loadFeatGrantedSpells({
 			id: '',
 			name: state.data.name,
-			classes: state.data.classChoice
-				? [
-						{
-							className: state.data.classChoice.className,
-							classSource: state.data.classChoice.classSource,
-							subclass: state.data.subclass?.name ?? null,
-							level: state.data.classChoice.level,
-						},
-					]
-				: [],
+			classes: draftClasses,
 			featAsiChoices: state.data.featAsiChoices,
 			...(draftBackground ? { background: draftBackground } : {}),
 			...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}),
@@ -1005,7 +1039,7 @@ export function CharacterWizard({
 	 */
 	// D177: a skill a subclass already gives expertise in (Scout) is never offered again.
 	const featFixedExpertise = (instances: readonly FeatRef[]): string[] => instances.flatMap((instance) => proficiencyData.fixedExpertise[`${instance.name}|${instance.source}`] ?? [])
-	const fixedExpertise = [...(wizardClassChoice ? subclassExpertiseSkills([wizardClassChoice], state.data.subclassSkills) : []), ...featFixedExpertise(draftFeatInstances)]
+	const fixedExpertise = [...(wizardClassChoice ? subclassExpertiseSkills(multiclassLevelUp ? draftClasses : [wizardClassChoice], state.data.subclassSkills) : []), ...featFixedExpertise(draftFeatInstances)]
 	/** E-1: Expertise draws on every skill proficiency, not only class/background/species; kept apart from proficientSkills, which heldForFeat reads as "held outside the feat being edited". */
 	const expertiseSourceSkills: DisabledSkill[] = [
 		...proficientSkills,
@@ -1018,8 +1052,15 @@ export function CharacterWizard({
 		taken: expertiseTaken,
 		pool: expertisePool,
 		stale: staleExpertise,
-	} = expertisePoolOf({ sourceSkills: expertiseSourceSkills, fixedExpertise, feats: draftFeatInstances, restrictedTo: expertiseEligibility?.restrictedTo, picked: state.data.expertiseSkills })
-	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count, expertisePool.length) : null
+	} = expertisePoolOf({
+		sourceSkills: expertiseSourceSkills,
+		fixedExpertise,
+		feats: draftFeatInstances,
+		// D329: the raised class's restriction (Scholar) does not reach picks another class granted.
+		restrictedTo: multiclassLevelUp && held && expertiseEligibility?.restrictedTo ? [...expertiseEligibility.restrictedTo, ...held.expertiseSkills] : expertiseEligibility?.restrictedTo,
+		picked: state.data.expertiseSkills,
+	})
+	const expertiseRequiredCount = expertiseEligibility ? Math.min(expertiseEligibility.count + expertiseOffset, expertisePool.length) : null
 	const expertiseSkillsAvailable = state.data.expertiseSkills.every((skill) => expertisePool.some((entry) => entry.skill === skill))
 
 	/**
@@ -1060,7 +1101,9 @@ export function CharacterWizard({
 	const draftCharacterForHitPoints: Character = {
 		id: '',
 		name: state.data.name,
-		classes: draftCharacterForSpells.classes,
+		// D329: every class and the history with the new level, so hitDiePerLevel knows each level's die.
+		classes: draftClasses,
+		...(multiclassDraft?.levelOrder ? { levelOrder: multiclassDraft.levelOrder } : {}),
 		...(state.data.speciesChoice ? { species: state.data.speciesChoice } : {}),
 		...(state.data.abilityScores ? { abilityScores: state.data.abilityScores } : {}),
 		...(state.data.backgroundChoice && Object.keys(state.data.backgroundChoice.abilityBonus).length > 0
@@ -1102,7 +1145,9 @@ export function CharacterWizard({
 		state.data.speciesChoice?.name ?? null,
 		state.data.speciesChoice?.source ?? null,
 		state.data.speciesSize,
+		multiclassDraft,
 	)
+	const featAsiEligibleLevelCount = multiclassLevelUp ? (featAsiLoad.status === 'ready' ? featAsiLoad.data.grants.length : 0) : featAsiGrantCount
 	const heldFeatAsiLevels = useMemo(() => (levelUp && character ? (character.featAsiChoices ?? []).map((choice) => choice.level) : undefined), [levelUp, character])
 	/** D254: an invalid feat choice locks the step's Next, except at a level a level up cannot change. Still loading keeps the step incomplete; a failed load relaxes it (the picker shows the error). */
 	const featAsiChoicesValid = useMemo(
@@ -1157,9 +1202,8 @@ export function CharacterWizard({
 	 */
 	// W-9: Constitution reaches the maximum, hence the scores and bonus in the key. F-6: a result is only used while its key still matches, so a Save or Review never reads the previous inputs' maximum.
 	const maxHpKey = JSON.stringify([
-		draftCharacterForMaxHp.classes[0]?.className,
-		draftCharacterForMaxHp.classes[0]?.classSource,
-		draftCharacterForMaxHp.classes[0]?.level,
+		draftCharacterForMaxHp.classes.map(({ className, classSource, level }) => [className, classSource, level]),
+		draftCharacterForMaxHp.levelOrder,
 		draftCharacterForMaxHp.species?.name,
 		draftCharacterForMaxHp.background?.name,
 		draftCharacterForMaxHp.background?.source,
@@ -1206,6 +1250,28 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [hitDieKey, hitDieAttempt])
+
+	/** D329: the Review's hit dice line for a multiclass level up — every class's own dice. */
+	const [multiclassHitDice, setMulticlassHitDice] = useState<{ key: string; text: string } | null>(null)
+	const multiclassHitDiceKey = multiclassLevelUp ? JSON.stringify(draftClasses.map(({ className, classSource, level }) => [className, classSource, level])) : null
+	useEffect(() => {
+		if (multiclassHitDiceKey === null) return
+		let cancelled = false
+		const classes = draftClasses
+		loadHitDiceClassData()
+			.then((classData) => {
+				const pool = computeHitDicePool(classes, classData)
+				if (!cancelled && pool.status === 'known') setMulticlassHitDice({ key: multiclassHitDiceKey, text: pool.value.map((entry) => `${entry.count}d${entry.faces}`).join(' + ') })
+			})
+			.catch(() => {
+				/* The Review shows "—" for the dice, as for a single class whose data failed. */
+			})
+		return () => {
+			cancelled = true
+		}
+		// draftClasses is read through multiclassHitDiceKey.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [multiclassHitDiceKey])
 
 	const spellSlotsResult = computeSpellSlots(draftCharacterForSpells, spellSlotsClassData)
 	const spellCountsResult = computeSpellCounts(draftCharacterForSpells, spellCountClassData)
@@ -1362,7 +1428,7 @@ export function CharacterWizard({
 	const stepConditions: WizardStepConditions = {
 		expertiseRequiredCount,
 		expertiseSkillsAvailable,
-		featAsiEligibleLevelCount: featAsiGrantCount,
+		featAsiEligibleLevelCount,
 		featsRequiringAbilityChoice: featsNeedingAbilityChoice,
 		featAsiChoicesValid,
 		spellRequirement,
@@ -1380,14 +1446,21 @@ export function CharacterWizard({
 		classPickRequirements:
 			state.data.classChoice === null
 				? undefined
-				: classPickShape?.key === classPickKey
-					? { ...classPickShape.requirements, skillCount: held && held.classSkills.length > 0 ? null : classPickShape.requirements.skillCount }
+				: classPickShape?.key === classPickKey && (!multiclassLevelUp || previousCounts !== null)
+					? {
+							...classPickShape.requirements,
+							skillCount: held && held.classSkills.length > 0 ? null : classPickShape.requirements.skillCount,
+							// D329: the other classes' masteries are held on top of the raised class's own count.
+							...(multiclassLevelUp
+								? { masteryCount: classPickShape.requirements.masteryCount === null || previousCounts?.mastery == null ? null : classPickShape.requirements.masteryCount + masteryOffset }
+								: {}),
+						}
 					: null,
 		startingEquipmentCategoryPicksComplete,
 		// Stays incomplete until backgrounds.json has loaded, like speciesSkillsComplete.
 		backgroundOriginFeatComplete: state.data.backgroundChoice === null || (selectedBackground !== undefined && (selectedBackground.originFeat !== null || backgroundFeatOverride !== null)),
 		speciesOriginFeatComplete: speciesOriginFeatComplete(speciesFeatLoad, speciesFeatEntry, speciesFeatTaken, originFeatLinks !== null),
-		characterLevel: state.data.classChoice?.level ?? null,
+		characterLevel: draftCharacterLevel,
 		hitDieFaces: hitDie?.key === hitDieKey ? hitDie.faces : null,
 		editingExistingCharacter: character !== undefined,
 		...levelUpConditions,
@@ -1525,7 +1598,7 @@ export function CharacterWizard({
 					{/* A level up never asks for a name or a class: it raises the class the character has by exactly one level. */}
 					{levelUp && state.data.classChoice ? (
 						<p className="wizard__level-up-class">
-							Level up: {state.data.classChoice.className} {levelUp.level - 1} → {levelUp.level}
+							Level up: {state.data.classChoice.className} {levelUp.classLevel - 1} → {levelUp.classLevel}
 						</p>
 					) : (
 						<>
@@ -1570,6 +1643,7 @@ export function CharacterWizard({
 								onChange={(weapons) => dispatch({ type: 'setMasteries', weapons })}
 								feats={draftFeatInstances}
 								lockedValues={held?.masteries}
+								{...(multiclassDraft ? { multiclass: multiclassDraft, countOffset: masteryOffset } : {})}
 							/>
 							{(held === null || held.fightingStyle === null) && (
 								<FightingStylePicker
@@ -1740,6 +1814,7 @@ export function CharacterWizard({
 							value={state.data.expertiseSkills}
 							onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
 							lockedValues={held?.expertiseSkills}
+							{...(multiclassLevelUp && held ? { countOffset: expertiseOffset, restrictionExempt: held.expertiseSkills } : {})}
 						/>
 					</section>
 				</div>
@@ -1899,7 +1974,7 @@ export function CharacterWizard({
 					{knownSpellsIncompleteNotice}
 					<FeatAsiPicker
 						load={featAsiLoad}
-						level={state.data.classChoice.level}
+						level={draftCharacterLevel ?? state.data.classChoice.level}
 						alreadyKnown={alreadyKnownSpells}
 						value={state.data.featAsiChoices}
 						onChange={(choices) => dispatch({ type: 'setFeatAsiChoices', choices })}
@@ -1956,13 +2031,22 @@ export function CharacterWizard({
 							: (state.data.speciesChoice?.name ?? '')
 					}
 					levelUp={levelUp}
+					{...(multiclassLevelUp ? { classLine: draftClasses.map((entry) => `${entry.className} ${entry.level}`).join(' / ') } : {})}
 					draft={draftCharacterForSpells}
 					abilityDraft={abilityTableDraft}
 					resolverData={resolverData}
 					proficiencies={reviewProficiencies()}
 					feats={draftFeatInstances}
 					maxHp={maxHp?.current.status === 'known' ? maxHp.current.value : null}
-					hitDice={hitDie?.key === hitDieKey && state.data.classChoice ? `${state.data.classChoice.level}d${hitDie.faces}` : null}
+					hitDice={
+						multiclassLevelUp
+							? multiclassHitDice?.key === multiclassHitDiceKey
+								? multiclassHitDice.text
+								: null
+							: hitDie?.key === hitDieKey && state.data.classChoice
+								? `${state.data.classChoice.level}d${hitDie.faces}`
+								: null
+					}
 					hpGain={levelUp && maxHp?.current.status === 'known' && maxHp.previous?.status === 'known' ? maxHp.current.value - maxHp.previous.value : null}
 					// Not part of an edit: starting equipment is a one-time creation grant and the character's inventory is left as it is.
 					startingInventory={character === undefined ? buildStartingInventory(classEquipmentOffer, backgroundEquipmentOffer, state.data.startingEquipment) : null}

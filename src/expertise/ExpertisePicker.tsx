@@ -42,6 +42,8 @@ export function ExpertisePicker({
 	value,
 	onChange,
 	lockedValues = NO_LOCKED_VALUES,
+	countOffset = 0,
+	restrictionExempt = NO_LOCKED_VALUES,
 }: {
 	className: string
 	classSource: string
@@ -51,6 +53,10 @@ export function ExpertisePicker({
 	onChange: (skills: string[]) => void
 	/** D108: during a level up, the picks the character already had — shown checked and not removable. */
 	lockedValues?: readonly string[]
+	/** D329: Expertise held from the character's other classes, added to this class's own count. */
+	countOffset?: number
+	/** D329: held picks another class granted, which this class's restriction (Scholar) does not apply to. */
+	restrictionExempt?: readonly string[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 
@@ -84,8 +90,9 @@ export function ExpertisePicker({
 		return <p className="error">Could not load expertise: {state.message}</p>
 	}
 
-	const { count, restrictedTo } = state
-	const pool = restrictedTo ? proficientSkills.filter((p) => restrictedTo.includes(p.skill)) : proficientSkills
+	const count = state.count + countOffset
+	const { restrictedTo } = state
+	const pool = restrictedTo ? proficientSkills.filter((p) => restrictedTo.includes(p.skill) || restrictionExempt.includes(p.skill)) : proficientSkills
 	// F-5: a stored pick outside the pool (not proficient any more) stays listed so it can be unchecked; the step stays incomplete until it is.
 	const stale = value.filter((skill) => !pool.some((p) => p.skill === skill))
 

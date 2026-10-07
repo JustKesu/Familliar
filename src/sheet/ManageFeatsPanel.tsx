@@ -4,7 +4,7 @@ import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { subclassSkillSourceNames } from '../classSkills/subclassSkillGrants'
 import { firstClass, totalCharacterLevel } from '../calculation/characterLevel'
-import { classProficiencyGrants } from '../calculation/classProficiencies'
+import { prerequisiteClassProficiencies } from '../calculation/classProficiencies'
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type ProficiencyItem } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { AsiSubPicker } from '../featAsi/FeatAsiPicker'
@@ -73,16 +73,7 @@ type Loaded = {
 	featProficiencyEntries: ReturnType<typeof extractFeatProficiencyEntries>
 }
 
-/** D321: the same class proficiencies the Proficiencies card shows. */
-export function prerequisiteClassProficiencies(character: Pick<Character, 'classes' | 'levelOrder'>, rawClasses: unknown): { armorProficiencies: string[]; weaponProficiencies: string[] } {
-	const classGrants = classProficiencyGrants(character, rawClasses)
-	return {
-		armorProficiencies: [...new Set(classGrants.armor.map(({ token }) => token))],
-		weaponProficiencies: [
-			...new Set(classGrants.weapons.flatMap(({ grant }) => (grant.kind === 'category' && !grant.anyOfProperties && !grant.ranged && !grant.melee ? [grant.category] : []))),
-		],
-	}
-}
+export { prerequisiteClassProficiencies }
 
 /** Same subclass rule as the sheet's tool slots (M2): the first class, not classes[0]. */
 export function heldToolsOf(character: Pick<Character, 'classes' | 'levelOrder'>, tools: readonly ProficiencyItem[]): string[] {
