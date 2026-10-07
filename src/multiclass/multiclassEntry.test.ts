@@ -262,4 +262,14 @@ describe('validate multiclassPicks (schema 60)', () => {
 		expect('multiclassPicks' in read).toBe(false)
 		expect(describeStoredCharacterError(read, 0)).toBeNull()
 	})
+
+	it('finding 4 (M8): reading drops only the picks of a class the character no longer has', () => {
+		const kept = { className: 'Rogue', classSource: XPHB, kind: 'skill', name: 'stealth' }
+		const record = { schemaVersion: 60, id: '1', name: 'Aria', classes, multiclassPicks: [{ className: 'Bard', classSource: XPHB, kind: 'skill', name: 'insight' }, kept] }
+		const read = withoutMalformedDroppableFields(record) as Record<string, unknown>
+		expect(read['multiclassPicks']).toEqual([kept])
+		expect(describeStoredCharacterError(read, 0)).toBeNull()
+		const broken = { ...record, multiclassPicks: [kept, { className: 'Rogue', classSource: XPHB, kind: 'spell', name: 'x' }] }
+		expect('multiclassPicks' in (withoutMalformedDroppableFields(broken) as Record<string, unknown>)).toBe(false)
+	})
 })

@@ -200,9 +200,9 @@ test('M7a f (D330): a single-class Fighter level up opens the class window too, 
   await expect(page).toHaveURL(/\/level-up$/)
 })
 
-test('M7a g: Edit and Remove level stay blocked for a multiclass character with a level history', async ({ page }) => {
+test('M7a g: Edit stays blocked for a multiclass character with a level history; Remove level is available (M8, D332)', async ({ page }) => {
   await openSheet(page, warlockSorcerer('m7a-g'))
   await expect(levelUpButton(page)).toBeEnabled()
   await expect(page.locator('.sheet__edit-character')).toBeDisabled()
-  await expect(page.locator('.sheet__remove-level')).toBeDisabled()
+  await expect(page.locator('.sheet__remove-level')).toBeEnabled()
 })

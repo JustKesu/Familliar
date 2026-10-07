@@ -12,10 +12,12 @@ import { extractFeatTextEntries } from '../sheet/sheetData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
 import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
-import { fightingStyleFor, type Character, type LeveledChoice } from '../storage/character'
+import { fightingStyleFor, isConsistentLevelOrder, type Character, type LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
+import { matchesConcentration } from '../storage/choiceMatch'
 import { subclassLevelFor } from '../subclass/subclassData'
 import { totalCharacterLevel } from '../calculation/characterLevel'
+import { NO_LEVEL_HISTORY_REASON } from './levelUpSteps'
 
 /**
  * The level a Remove level would take off, or why there is none. Only what can
@@ -24,8 +26,8 @@ import { totalCharacterLevel } from '../calculation/characterLevel'
  */
 export function levelRemovalTarget(character: Character): { level: number } | { reason: string } {
 	if (character.classes.length === 0) return { reason: 'This character has no class yet.' }
-	if (character.classes.length > 1) {
-		return { reason: `Multiclass characters are build order step 10: nothing records which of the ${character.classes.length} classes the last level belongs to.` }
+	if (character.classes.length > 1 && !(character.levelOrder && isConsistentLevelOrder(character.levelOrder, character.classes))) {
+		return { reason: NO_LEVEL_HISTORY_REASON }
 	}
 	const level = totalCharacterLevel(character.classes)
 	if (level <= 1) return { reason: 'Level 1 is the lowest character level.' }
@@ -56,6 +58,8 @@ function resourceFeaturesFor(character: Character, parsedClasses: unknown, resol
 
 export interface LevelRemovalPlan {
 	level: number
+	/** D332: the class this removal takes to level 0 and drops from the character, if any. */
+	removedClass?: string
 	/** One line per thing the removal deletes, for the confirmation to show. */
 	dropped: string[]
 	result: Character
@@ -87,8 +91,8 @@ export function levelRemovalPlan(
 
 /**
  * D328: the top character level removed from the class that took it — levelOrder.at(-1), or the only class.
- * Character-axis choices go by character level, class-axis ones by that class's own level. Ungated: callers go
- * through levelRemovalPlan, whose levelRemovalTarget still refuses more than one class (D316).
+ * Character-axis choices go by character level, class-axis ones by that class's own level. D332: a class taken
+ * to 0 leaves the character with every record it owns. Ungated: callers go through levelRemovalPlan.
  */
 export function levelRemovalCore(
 	character: Character,
@@ -104,14 +108,18 @@ export function levelRemovalCore(
 			? character.classes[0]
 			: undefined
 	if (!characterClass) return { reason: 'Cannot tell which class the last level belongs to (no level history).' }
-	if (characterClass.level <= 1) return { reason: 'Removing the last level of a class is build order step M8.' }
 	const { className, classSource } = characterClass
 	const classLevel = characterClass.level
+	const classRemoved = classLevel <= 1
+	if (classRemoved && character.classes.length === 1) return { reason: 'Level 1 is the lowest character level.' }
 	const dropped: string[] = []
 
 	// Derived, not stored (D101): the subclass and the fighting style belong to the level the class grants them at.
 	let subclass = characterClass.subclass
-	if (subclass !== null) {
+	if (subclass !== null && classRemoved) {
+		dropped.push(`Subclass: ${subclass}`)
+		subclass = null
+	} else if (subclass !== null) {
 		const subclassLevel = subclassLevelFor(parsedClasses, resolverData.classFeatures, className, classSource)
 		if (subclassLevel === null) {
 			return { reason: `Cannot tell at which level "${className}" (${classSource}) chooses a subclass, so whether "${subclass}" goes with level ${level} is unknown.` }
@@ -128,6 +136,14 @@ export function levelRemovalCore(
 		dropped.push(`Fighting style: ${fightingStyle.name}`)
 		fightingStyles = fightingStyles?.filter((style) => style !== fightingStyle)
 	}
+	const ofClass = (entry: { className?: string; classSource?: string }): boolean => entry.className === className && entry.classSource === classSource
+	if (classRemoved) {
+		fightingStyles = fightingStyles?.filter((style) => {
+			if (!ofClass(style)) return true
+			dropped.push(`Fighting style: ${style.name}`)
+			return false
+		})
+	}
 
 	const masteries = withoutLevel(character.masteries, level)
 	dropped.push(...masteries.dropped.map((choice) => `Weapon mastery: ${choice.name}`))
@@ -135,12 +151,23 @@ export function levelRemovalCore(
 	const expertiseSkills = withoutLevel(character.expertiseSkills, level)
 	dropped.push(...expertiseSkills.dropped.map((choice) => `Expertise: ${choice.name}`))
 
+	const droppedSpells: { name: string; source: string }[] = []
 	const optionalFeatureChoices = (character.optionalFeatureChoices ?? []).flatMap((entry) => {
 		const choices = withoutLevel(entry.choices, level)
 		dropped.push(...choices.dropped.map((choice) => `${entry.featureType} option: ${choice.name}`))
-		// Nested spell picks are spells, which removal leaves alone; the entry stays while it still holds any.
-		if (choices.kept.length === 0 && (entry.spellChoices ?? []).length === 0) return []
-		return [{ ...entry, choices: choices.kept }]
+		// Nested spell picks are spells, which removal leaves alone unless their option leaves with a removed class (D332).
+		let spellChoices = entry.spellChoices
+		if (classRemoved && spellChoices) {
+			const lostOptions = new Set(choices.dropped.map((choice) => choice.name))
+			spellChoices = spellChoices.filter((pick) => {
+				if (!lostOptions.has(pick.optionName)) return true
+				for (const spell of [...pick.cantrips, ...pick.spells]) dropped.push(`${pick.optionName} spell: ${spell.name}`)
+				droppedSpells.push(...pick.cantrips, ...pick.spells)
+				return false
+			})
+		}
+		if (choices.kept.length === 0 && (spellChoices ?? []).length === 0) return []
+		return [{ ...entry, choices: choices.kept, ...(spellChoices ? { spellChoices } : {}) }]
 	})
 
 	const featAsiChoices = (character.featAsiChoices ?? []).filter((choice) => {
@@ -149,10 +176,8 @@ export function levelRemovalCore(
 		return false
 	})
 
-	const ofClass = (entry: { className: string; classSource: string }): boolean => entry.className === className && entry.classSource === classSource
-
 	const classFeatureChoices = (character.classFeatureChoices ?? []).filter((choice) => {
-		if (!ofClass(choice) || choice.grantedAtLevel !== classLevel) return true
+		if (!ofClass(choice) || (choice.grantedAtLevel !== classLevel && !classRemoved)) return true
 		dropped.push(`${choice.featureName}: ${choice.optionName}`)
 		return false
 	})
@@ -160,11 +185,30 @@ export function levelRemovalCore(
 	const subclassSpellChoices = (character.subclassSpellChoices ?? []).flatMap((entry) => {
 		if (!ofClass(entry)) return [entry]
 		const picks = entry.picks.filter((pick) => {
-			if (pick.grantedAtLevel !== classLevel) return true
+			if (pick.grantedAtLevel !== classLevel && !classRemoved) return true
 			dropped.push(`${entry.subclassName} spell choice: ${pick.name}`)
+			droppedSpells.push(pick)
 			return false
 		})
 		return picks.length > 0 ? [{ ...entry, picks }] : []
+	})
+
+	// D332: records that carry no level belong to the class as a whole, so they go only with its last level.
+	const spellChoices = character.spellChoices?.filter((entry) => {
+		if (!classRemoved || !ofClass(entry)) return true
+		dropped.push(...entry.spells.map((spell) => `${className} spell: ${spell.name}`))
+		droppedSpells.push(...entry.spells)
+		return false
+	})
+	const wildShapeForms = character.wildShapeForms?.filter((entry) => {
+		if (!classRemoved || !ofClass(entry)) return true
+		dropped.push(...entry.forms.map((form) => `Wild Shape form: ${form.name}`))
+		return false
+	})
+	const multiclassPicks = character.multiclassPicks?.filter((pick) => {
+		if (!classRemoved || !ofClass(pick)) return true
+		dropped.push(`${pick.kind === 'skill' ? 'Skill' : 'Tool'} proficiency: ${pick.name} (${className} multiclass)`)
+		return false
 	})
 
 	// D172: derived like the subclass — a feature's language picks belong to the level the feature arrives at.
@@ -204,11 +248,32 @@ export function levelRemovalCore(
 		return false
 	})
 
+	// D332: concentration on a spell the removed class held ends, unless another stored pick still holds that spell.
+	let play = character.play
+	const concentratingOn = play?.concentratingOn
+	if (classRemoved && concentratingOn && droppedSpells.some((spell) => matchesConcentration(concentratingOn, spell))) {
+		const stillHeld = [
+			...(spellChoices ?? []).flatMap((entry) => entry.spells),
+			...subclassSpellChoices.flatMap((entry) => entry.picks),
+			...optionalFeatureChoices.flatMap((entry) => (entry.spellChoices ?? []).flatMap((pick) => [...pick.cantrips, ...pick.spells])),
+		].some((spell) => matchesConcentration(concentratingOn, spell))
+		if (!stillHeld) {
+			dropped.push(`Concentration: ${concentratingOn.name}`)
+			const { concentratingOn: _concentration, ...restOfPlay } = play ?? {}
+			play = Object.keys(restOfPlay).length > 0 ? restOfPlay : undefined
+		}
+	}
+
 	const { play: _play, ...withoutPlay } = character
 	const result: Character = {
 		...withoutPlay,
-		...(character.play ? { play: character.play } : {}),
-		classes: character.classes.map((entry) => (entry === characterClass ? { ...characterClass, subclass, level: classLevel - 1 } : entry)),
+		...(play ? { play } : {}),
+		classes: classRemoved
+			? character.classes.filter((entry) => entry !== characterClass)
+			: character.classes.map((entry) => (entry === characterClass ? { ...characterClass, subclass, level: classLevel - 1 } : entry)),
+		...(spellChoices ? { spellChoices } : {}),
+		...(wildShapeForms ? { wildShapeForms } : {}),
+		...(multiclassPicks ? { multiclassPicks } : {}),
 		fightingStyles,
 		masteries: masteries.kept,
 		expertiseSkills: expertiseSkills.kept,
@@ -231,12 +296,20 @@ export function levelRemovalCore(
 	const storedUses = character.play?.resourceUses
 	if (storedUses !== undefined) {
 		const resources = computeCharacterResources(result, parsedClasses, resourceFeaturesFor(result, parsedClasses, resolverData, backgroundOriginFeat))
-		const clamped = resourceUsesWithinMaxima(storedUses, resources)
+		let clamped = resourceUsesWithinMaxima(storedUses, resources)
+		if (classRemoved && clamped) {
+			// D332: a pool the removed class gave has no maximum left to clamp against, so its count goes with the class.
+			const before = computeCharacterResources(character, parsedClasses, resourceFeaturesFor(character, parsedClasses, resolverData, backgroundOriginFeat))
+			const after = new Set(resources.map((resource) => resource.name))
+			const gone = new Set(before.map((resource) => resource.name).filter((name) => !after.has(name)))
+			const kept = Object.fromEntries(Object.entries(clamped).filter(([name]) => !gone.has(name)))
+			clamped = Object.keys(kept).length > 0 ? kept : undefined
+		}
 		for (const [name, spent] of Object.entries(storedUses)) {
 			const now = clamped?.[name] ?? 0
 			if (now < spent) dropped.push(`${name}: ${spent} spent, now ${now}`)
 		}
-		const { resourceUses: _uses, ...restOfPlay } = character.play ?? {}
+		const { resourceUses: _uses, ...restOfPlay } = result.play ?? {}
 		const play = { ...restOfPlay, ...(clamped ? { resourceUses: clamped } : {}) }
 		delete result.play
 		if (Object.keys(play).length > 0) result.play = play
@@ -288,7 +361,7 @@ export function levelRemovalCore(
 		if (Object.keys(play).length > 0) result.play = play
 	}
 
-	return { level, dropped, result }
+	return { level, ...(classRemoved ? { removedClass: className } : {}), dropped, result }
 }
 
 /** The store's update input for a whole character — everything but the id, which `update` keeps. */

@@ -73,9 +73,14 @@ export function RemoveLevelButton({
 						safeLabel="Keep level"
 						destructiveLabel="Remove level"
 						onSafe={() => setState({ kind: 'ready' })}
-						onDestructive={() => onRemoveLevel(plan.result)}
+						onDestructive={() => {
+							// Closed first: a character that can lose another level would otherwise keep showing this, now stale, plan.
+							setState({ kind: 'ready' })
+							onRemoveLevel(plan.result)
+						}}
 					>
 						<div className="confirm-dialog__extra">
+							{plan.removedClass && <p className="confirm-dialog__warning">{plan.removedClass} will be removed from this character.</p>}
 							<p>
 								The character goes back to level {plan.level - 1}.
 								{plan.dropped.length > 0 ? ' This deletes:' : ' Nothing stored carries this level.'}
@@ -87,7 +92,7 @@ export function RemoveLevelButton({
 									))}
 								</ul>
 							)}
-							<p>Known and prepared spells are kept.</p>
+							<p>{plan.removedClass ? 'Known and prepared spells of the other classes are kept.' : 'Known and prepared spells are kept.'}</p>
 						</div>
 					</ConfirmDialog>
 				)}

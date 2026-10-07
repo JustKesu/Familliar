@@ -233,14 +233,151 @@ describe('levelRemovalCore on two level axes (D328)', () => {
 		expect(result.hitPointLevels).toEqual([{ level: 2, kind: 'average', dieResult: 6 }])
 	})
 
-	it('refuses to take a class to level 0', () => {
-		expect(levelRemovalCore({ ...wizardFighter, levelOrder: [FIGHTER, FIGHTER, WIZARD] }, CLASSES, RESOLVER, null)).toEqual({
-			reason: 'Removing the last level of a class is build order step M8.',
-		})
+	it('the gate lets a multiclass character with a consistent history through (D332)', () => {
+		const result = levelRemovalPlan(wizardFighter, CLASSES, RESOLVER, null)
+		expect('reason' in result).toBe(false)
+	})
+})
+
+/* M8 (D332): the last level of the history removes its class when that class was at 1. */
+describe('removing the last level of a class (D332)', () => {
+	const FIGHTER = { className: 'Fighter', classSource: 'XPHB' }
+	const ROGUE = { className: 'Rogue', classSource: 'XPHB' }
+	const WIZARD = { className: 'Wizard', classSource: 'XPHB' }
+	const CLERIC = { className: 'Cleric', classSource: 'XPHB' }
+	const fighterRogue: Character = {
+		id: 'm8',
+		name: 'Split',
+		createdAtLevel: 4,
+		classes: [
+			{ ...FIGHTER, subclass: 'Champion', level: 4 },
+			{ ...ROGUE, subclass: null, level: 1 },
+		],
+		levelOrder: [FIGHTER, FIGHTER, FIGHTER, FIGHTER, ROGUE],
+		classSkills: ['athletics', 'perception'],
+		fightingStyles: [{ ...FIGHTER, name: 'Archery', source: 'XPHB' }],
+		masteries: [{ name: 'Longsword' }, { name: 'Greataxe' }, { name: 'Shortbow' }, { name: 'Rapier' }],
+		expertiseSkills: [{ name: 'stealth', level: 5 }, { name: 'athletics', level: 5 }],
+		featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
+		multiclassPicks: [{ ...ROGUE, kind: 'skill', name: 'stealth' }],
+		classFeatureChoices: [{ ...ROGUE, featureName: 'Rogue One', grantedAtLevel: 1, optionName: 'A' }],
+		languages: [{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' }, { name: 'Elvish', source: 'XPHB', grantedBy: 'thievesCant' }],
+		hitPointLevels: [2, 3, 4, 5].map((level) => ({ level, kind: 'average' as const, dieResult: level === 5 ? 5 : 6 })),
+		play: { spentHitDice: { 'Rogue|XPHB': 1, 'Fighter|XPHB': 2 } },
+	}
+
+	function core(character: Character): LevelRemovalPlan {
+		const result = levelRemovalPlan(character, CLASSES, RESOLVER, null)
+		if ('reason' in result) throw new Error(result.reason)
+		return result
+	}
+
+	it('Fighter 4 / Rogue 1, Rogue last: Rogue and everything it owns go, Fighter records stay (finding 4)', () => {
+		const { level, removedClass, dropped, result } = core(fighterRogue)
+		expect(level).toBe(5)
+		expect(removedClass).toBe('Rogue')
+		expect(result.classes).toEqual([{ ...FIGHTER, subclass: 'Champion', level: 4 }])
+		expect(result.levelOrder).toEqual([FIGHTER, FIGHTER, FIGHTER, FIGHTER])
+		expect(result.multiclassPicks).toEqual([])
+		expect(result.expertiseSkills).toEqual([])
+		expect(result.classFeatureChoices).toEqual([])
+		expect(result.languages).toEqual([{ name: 'Common', source: 'XPHB', grantedBy: 'automatic' }])
+		expect(result.hitPointLevels?.map((entry) => entry.level)).toEqual([2, 3, 4])
+		expect(result.play).toEqual({ spentHitDice: { 'Fighter|XPHB': 2 } })
+		expect(result).toMatchObject({ fightingStyles: fighterRogue.fightingStyles, masteries: fighterRogue.masteries, featAsiChoices: fighterRogue.featAsiChoices, classSkills: fighterRogue.classSkills })
+		expect(dropped).toEqual(
+			expect.arrayContaining(['Skill proficiency: stealth (Rogue multiclass)', 'Expertise: stealth', 'Rogue One: A', 'Language: Elvish', 'Rogue hit dice: 1 spent, now 0']),
+		)
 	})
 
-	it('the gate still refuses more than one class (D316)', () => {
-		expect(levelRemovalPlan(wizardFighter, CLASSES, RESOLVER, null)).toEqual({ reason: expect.stringContaining('Multiclass') })
+	it('the saved result passes the write check and is an ordinary single-class character', () => {
+		const store = new CharacterStore(memoryStorage())
+		const { id: _id, ...input } = fighterRogue
+		const created = store.create(input)
+		store.update(created.id, characterUpdateInput(core(store.list()[0]).result))
+		const [saved] = store.list()
+		expect(saved.classes).toEqual([{ ...FIGHTER, subclass: 'Champion', level: 4 }])
+		expect(saved.levelOrder).toEqual([FIGHTER, FIGHTER, FIGHTER, FIGHTER])
+		expect('multiclassPicks' in saved).toBe(false)
+		expect(levelRemovalTarget(saved)).toEqual({ reason: expect.stringContaining('created at level 4') })
+	})
+
+	it('drops the class spells, subclass spell picks, Wild Shape forms, its fighting style and the Tome spells of a dropped option', () => {
+		const character: Character = {
+			id: 'm8b',
+			name: 'Caster',
+			createdAtLevel: 3,
+			classes: [
+				{ ...WIZARD, subclass: null, level: 3 },
+				{ ...CLERIC, subclass: null, level: 1 },
+			],
+			levelOrder: [WIZARD, WIZARD, WIZARD, CLERIC],
+			spellChoices: [
+				{ ...WIZARD, spells: [{ name: 'Shield', source: 'XPHB' }] },
+				{ ...CLERIC, spells: [{ name: 'Bless', source: 'XPHB' }, { name: 'Guidance', source: 'XPHB' }] },
+			],
+			wildShapeForms: [{ ...CLERIC, forms: [{ name: 'Wolf', source: 'XMM' }] }],
+			subclassSpellChoices: [{ subclassName: 'Lore', subclassSource: 'XPHB', ...CLERIC, picks: [{ grantedAtLevel: 3, slotIndex: 0, name: 'Command', source: 'XPHB' }] }],
+			fightingStyles: [{ ...CLERIC, name: 'Defense' }],
+			optionalFeatureChoices: [
+				{ featureType: 'EI', choices: [{ name: 'Pact of the Tome', level: 4 }], spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Light', source: 'XPHB' }], spells: [] }] },
+			],
+			play: { concentratingOn: { name: 'Bless', source: 'XPHB' }, temporaryHitPoints: 3 },
+		}
+		const { removedClass, dropped, result } = core(character)
+		expect(removedClass).toBe('Cleric')
+		expect(result.spellChoices).toEqual([{ ...WIZARD, spells: [{ name: 'Shield', source: 'XPHB' }] }])
+		expect(result.wildShapeForms).toEqual([])
+		expect(result.subclassSpellChoices).toEqual([])
+		expect(result.fightingStyles).toEqual([])
+		expect(result.optionalFeatureChoices).toEqual([])
+		expect(result.play).toEqual({ temporaryHitPoints: 3 })
+		expect(dropped).toEqual(
+			expect.arrayContaining(['Cleric spell: Bless', 'Cleric spell: Guidance', 'Wild Shape form: Wolf', 'Fighting style: Defense', 'Pact of the Tome spell: Light', 'Concentration: Bless']),
+		)
+	})
+
+	it('keeps concentration on a spell another class still holds, and on a spell of a kept class', () => {
+		const both: Character = {
+			id: 'm8c',
+			name: 'Both',
+			createdAtLevel: 3,
+			classes: [
+				{ ...WIZARD, subclass: null, level: 3 },
+				{ ...CLERIC, subclass: null, level: 1 },
+			],
+			levelOrder: [WIZARD, WIZARD, WIZARD, CLERIC],
+			spellChoices: [
+				{ ...WIZARD, spells: [{ name: 'Detect Magic', source: 'XPHB' }] },
+				{ ...CLERIC, spells: [{ name: 'Detect Magic', source: 'XPHB' }] },
+			],
+			play: { concentratingOn: { name: 'Detect Magic', source: 'XPHB' } },
+		}
+		expect(core(both).result.play).toEqual(both.play)
+	})
+
+	it('removing a non-last level of a multiclass class keeps its levelless records (Warlock 6 / Sorcerer 3)', () => {
+		const SORCERER = { className: 'Sorcerer', classSource: 'XPHB' }
+		const WARLOCK = { className: 'Warlock', classSource: 'XPHB' }
+		const character: Character = {
+			id: 'm8d',
+			name: 'Pact',
+			createdAtLevel: 6,
+			classes: [
+				{ ...WARLOCK, subclass: null, level: 6 },
+				{ ...SORCERER, subclass: null, level: 3 },
+			],
+			levelOrder: [...Array.from({ length: 6 }, () => WARLOCK), SORCERER, SORCERER, SORCERER],
+			spellChoices: [{ ...SORCERER, spells: [{ name: 'Shield', source: 'XPHB' }] }],
+			multiclassPicks: [],
+		}
+		const { removedClass, result } = core(character)
+		expect(removedClass).toBeUndefined()
+		expect(result.classes).toEqual([
+			{ ...WARLOCK, subclass: null, level: 6 },
+			{ ...SORCERER, subclass: null, level: 2 },
+		])
+		expect(result.spellChoices).toEqual(character.spellChoices)
 	})
 })
 
@@ -388,7 +525,7 @@ describe('subclass skill picks on a level removal (D177)', () => {
 })
 
 describe('when a level cannot be removed', () => {
-	it('refuses at level 1, at the created-at level, without a created-at level, and for a multiclass character', () => {
+	it('refuses at level 1, at the created-at level, without a created-at level, and for a multiclass character without history', () => {
 		expect(levelRemovalTarget(single('Fighter', null, 1, 1))).toEqual({ reason: expect.stringContaining('Level 1') })
 		expect(levelRemovalTarget(single('Fighter', 'Champion', 5, 5))).toEqual({ reason: expect.stringContaining('created at level 5') })
 		expect(levelRemovalTarget(single('Fighter', 'Champion', 5))).toEqual({ reason: expect.stringContaining('not known') })
@@ -399,7 +536,7 @@ describe('when a level cannot be removed', () => {
 				{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 2 },
 			],
 		}
-		expect(levelRemovalTarget(multiclass)).toEqual({ reason: expect.stringContaining('Multiclass') })
+		expect(levelRemovalTarget(multiclass)).toEqual({ reason: 'Cannot tell which class each level came from (no level history).' })
 	})
 })
 
@@ -449,6 +586,25 @@ describe('resource uses on a level removal', () => {
 
 		expect(result.result.play?.resourceUses).toEqual({ 'Second Wind': 1, 'Superiority Die': 9 })
 		expect(result.dropped.some((line) => line.includes('spent'))).toBe(false)
+	})
+
+	it('D332: a pool of a removed class goes with it; a count whose maximum was never known stays', () => {
+		const ROGUE = { className: 'Rogue', classSource: 'XPHB' }
+		const FIGHTER = { className: 'Fighter', classSource: 'XPHB' }
+		const character: Character = {
+			...single('Rogue', null, 4, 4),
+			classes: [
+				{ ...ROGUE, subclass: null, level: 4 },
+				{ ...FIGHTER, subclass: null, level: 1 },
+			],
+			levelOrder: [ROGUE, ROGUE, ROGUE, ROGUE, FIGHTER],
+			play: { resourceUses: { 'Second Wind': 1, 'Superiority Die': 9 } },
+		}
+		const result = levelRemovalPlan(character, RESOURCE_CLASSES, RESOURCE_RESOLVER, null)
+		if ('reason' in result) throw new Error(result.reason)
+
+		expect(result.result.play?.resourceUses).toEqual({ 'Superiority Die': 9 })
+		expect(result.dropped).toContain('Second Wind: 1 spent, now 0')
 	})
 })
 
@@ -573,7 +729,7 @@ describe('RemoveLevelButton', () => {
 		expect(button.title).toContain('not known')
 	})
 
-	it('refuses a multiclass character on the control', () => {
+	it('refuses a multiclass character without level history on the control', () => {
 		const multiclass: Character = {
 			...single('Fighter', 'Champion', 3, 1),
 			classes: [
@@ -586,7 +742,30 @@ describe('RemoveLevelButton', () => {
 		const button = screen.getByRole('button', { name: /remove level/i }) as HTMLButtonElement
 		expect(button.disabled).toBe(true)
 		expect(button.textContent).toBe('Remove level')
-		expect(button.title).toContain('Multiclass')
+		expect(button.title).toBe('Remove level unavailable: Cannot tell which class each level came from (no level history).')
+	})
+
+	it('D332: names the class that leaves above the list of lost records', async () => {
+		const user = userEvent.setup()
+		const FIGHTER = { className: 'Fighter', classSource: 'XPHB' }
+		const ROGUE = { className: 'Rogue', classSource: 'XPHB' }
+		const multiclass: Character = {
+			...single('Fighter', 'Champion', 4, 4),
+			classes: [
+				{ ...FIGHTER, subclass: 'Champion', level: 4 },
+				{ ...ROGUE, subclass: null, level: 1 },
+			],
+			levelOrder: [FIGHTER, FIGHTER, FIGHTER, FIGHTER, ROGUE],
+			multiclassPicks: [{ ...ROGUE, kind: 'skill', name: 'stealth' }],
+		}
+		render(<RemoveLevelButton character={multiclass} onRemoveLevel={() => {}} loadPlan={fixturePlan} />)
+
+		await user.click(await screen.findByRole('button', { name: 'Remove level 5' }))
+		const dialog = await screen.findByRole('alertdialog')
+		const paragraphs = [...dialog.querySelectorAll('.confirm-dialog__extra p')].map((p) => p.textContent)
+		expect(paragraphs[0]).toBe('Rogue will be removed from this character.')
+		expect(paragraphs.indexOf('Rogue will be removed from this character.')).toBeLessThan(paragraphs.findIndex((text) => text?.startsWith('The character goes back')))
+		expect(within(dialog).getByText('Skill proficiency: stealth (Rogue multiclass)')).toBeTruthy()
 	})
 
 	it('stays clickable across a save and confirms a plan built from the latest character (F-7b)', async () => {

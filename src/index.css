@@ -3210,6 +3210,11 @@ button:disabled {
   margin: 8px 0 0;
 }
 
+.confirm-dialog__extra .confirm-dialog__warning {
+  font-weight: 700;
+  color: var(--text);
+}
+
 .confirm-dialog__extra ul {
   margin: 4px 0 0;
   padding-left: 1.25rem;

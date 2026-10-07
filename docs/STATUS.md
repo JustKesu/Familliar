@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10 done (see the entries below); M8 next.
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8 done (see the entries below); M9 next.
 
 ## Co appka umí navíc k build orderu
 
@@ -2026,6 +2026,16 @@ features resolve their owner via `sheet/optionOwners.ts` (stored fighting style 
 progression offers the featureType) for the Actions origin and for the group of an unlinked option; an ASI feat reads "From <class> n"
 from `levelOrder` (`featSource`). Unit `classSpellLimits.test.ts`, `proficiencies.test.ts`, `levelUp.test.tsx`,
 `featuresTabData.test.ts`, `optionOwners.test.ts`, `heldPreparedSpells.test.ts`; E2E `reviewFixes.spec.ts` a–g.
+
+M8 done (D332). No schema change (60). Remove level for a multiclass character with a consistent `levelOrder` removes
+`levelOrder.at(-1)` (`levelRemovalTarget` gate: no history → `NO_LEVEL_HISTORY_REASON`). `levelRemovalCore`: a class at 1 is removed
+from `classes` with its `spellChoices`, `subclassSpellChoices`, `classFeatureChoices`, `wildShapeForms`, `multiclassPicks`, own
+`fightingStyles` entry, Tome spells of dropped options, resource uses of pools that vanish, spent hit dice; `play.concentratingOn` is
+cleared when the spell left with the class and no other stored pick holds it. `LevelRemovalPlan.removedClass` → dialog line
+"<Class> will be removed from this character." (`.confirm-dialog__warning`). Confirming closes the dialog before the save (it used to
+stay open with a stale plan whenever another level was removable). Read repair drops only `multiclassPicks` of classes not held
+(review finding 4). Unit `levelRemoval.test.tsx`, `multiclassEntry.test.ts`; E2E `multiclassLevelRemoval.spec.ts` a–f,
+`multiclassLevelUp.spec.ts` g updated. Not done: Edit for multiclass (M9).
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

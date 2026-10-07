@@ -5025,3 +5025,18 @@ limitu třídy A, výběr třídy A se do limitu A počítá jako dřív. Stejn�
 jeden řádek. V kroku Spells ve wizardu i v Manage Spells má řádek kouzla, které jiná držená třída už má vždy připravené, krátkou
 poznámku „Already prepared by <Class>“; výběr zůstává povolený. Záložní text „could belong to more than one casting class“ zůstává
 jen pro případy, které opravdu nejdou přiřadit. Jednotřídní postava se chová beze změny. Task F-10, rozhodl Daniel 7. 10. 2026.
+
+## D332 — Remove level multiclass postavy z historie úrovní (M8, schéma zůstává 60)
+
+Zpřesňuje D316, D328 a D329. Remove level vždy odebere poslední úroveň historie, `levelOrder.at(-1)`: ta třída ztratí jednu
+úroveň třídy, postava jednu úroveň postavy; volba třídy není. Multiclass bez konzistentního `levelOrder` má tlačítko vypnuté
+s důvodem „Cannot tell which class each level came from (no level history).“ (jako Level up). Třída, která klesne na 0, zmizí
+z `classes` i se vším, co jí patří: `spellChoices`, `subclassSpellChoices`, `classFeatureChoices`, `wildShapeForms`,
+`multiclassPicks` a položka `fightingStyles` té třídy (záznamy bez úrovně), plus vše, co nese úroveň postavy nebo třídy, jako
+u každého odebrání (masteries, expertise, volby optional features, jazyky a nástroje rysů, HP té úrovně). Kouzla z Pact of the
+Tome odpadnou s odebranou volbou. Spotřeba zdroje, který po odebrání úplně zmizí, se smaže; utracené kostky a sloty se ořežou
+jako dřív. `play.concentratingOn` se vynuluje, když kouzlo odešlo s třídou a žádná jiná uložená volba ho nedrží. Okno potvrzení
+má nahoře výrazný řádek „<Class> will be removed from this character.“ nad seznamem ztrát. Zůstane-li jedna třída, je to běžná
+jednotřídní postava a `levelOrder` se drží. Odebrání úrovně třídy, která zůstane na 1+, funguje pro víc tříd stejně jako pro
+jednu. Čtení uložených dat zahodí jen položky `multiclassPicks` třídy, kterou postava nemá (review M5–M7 nález 4). Edit pro víc
+tříd zůstává zablokovaný (M9). Task M8, rozhodl Daniel 7. 10. 2026.

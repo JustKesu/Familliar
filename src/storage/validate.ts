@@ -1459,8 +1459,18 @@ export function withoutMalformedDroppableFields(value: unknown): unknown {
 		...rest,
 		...(portrait !== undefined && isValidPortrait(portrait) ? { portrait } : {}),
 		...(speciesCantrip !== undefined && isValidSpeciesCantrip(speciesCantrip) ? { speciesCantrip } : {}),
-		...(multiclassPicks !== undefined && describeMulticlassPicksError(multiclassPicks, rest['classes']) === null ? { multiclassPicks } : {}),
+		...withoutStaleMulticlassPicks(multiclassPicks, rest['classes']),
 	}
+}
+
+/** Finding 4 (M8): a pick of a class the character no longer has goes alone; any other fault still drops the list. */
+function withoutStaleMulticlassPicks(multiclassPicks: unknown, classes: unknown): { multiclassPicks?: unknown } {
+	if (multiclassPicks === undefined) return {}
+	const held = (entry: unknown) =>
+		!isRecord(entry) || (Array.isArray(classes) && classes.some((c) => isRecord(c) && c['className'] === entry['className'] && c['classSource'] === entry['classSource']))
+	const kept = Array.isArray(multiclassPicks) ? multiclassPicks.filter(held) : multiclassPicks
+	if (describeMulticlassPicksError(kept, classes) !== null || (Array.isArray(kept) && kept.length === 0)) return {}
+	return { multiclassPicks: kept }
 }
 
 /** Validates the full wire record, including the version tag. */
