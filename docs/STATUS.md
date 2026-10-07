@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8 done (see the entries below); M9 next.
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a done (see the entries below); M9b next.
 
 ## Co appka umí navíc k build orderu
 
@@ -2036,6 +2036,20 @@ cleared when the spell left with the class and no other stored pick holds it. `L
 stay open with a stale plan whenever another level was removable). Read repair drops only `multiclassPicks` of classes not held
 (review finding 4). Unit `levelRemoval.test.tsx`, `multiclassEntry.test.ts`; E2E `multiclassLevelRemoval.spec.ts` a–f,
 `multiclassLevelUp.spec.ts` g updated. Not done: Edit for multiclass (M9).
+
+M9a done (no decision yet; D333 comes with M9b). No schema change (60). Save core of Edit for a multiclass character; Edit stays
+gated (sheet button, route), UI unchanged. `WizardData.otherClasses?: ClassStash[]` holds every held class but the active one
+(`ClassFields`: classChoice, subclass, fightingStyle, optional/class optional features, spells, subclass spells, class feature
+choices, Wild Shape forms, activeClassFeatureTypes); reducer `switchClass` swaps the active class with its stash, shared fields stay.
+`setSubclass` keeps the other held classes' subclass skills/languages. `wizardDataFromCharacter` without `activeClass` on a
+multiclass seeds `classes[0]` active + stash (`WizardSeedLookups.heldClasses`: subclasses + featureTypes per class); an
+optional-feature entry no held class claims rides with `classes[0]`; an untagged fighting style goes to no class. `saveCharacter`:
+multiclass Edit needs a consistent `levelOrder` ("Cannot tell which class each level came from (no level history)."), the active class
++ stash must be exactly `existing.classes`, `checkNoClassRaised` (multiclassLevelUp.ts: identity, order, levels), per-class records via
+`classRecordsFor` (also used by creation/single Edit/level up), untagged style passed through, `levelOrder` written unchanged,
+`multiclassPicks` written (refused on a class not held or the first class). `unfinishedHeldClasses(data, conditionsFor)` lists held
+classes with unfinished per-class picks ("choose 2 more spells"); `WizardStepConditions.heldClassesComplete` blocks `isReadyToSave`.
+Unit `wizardState.test.ts` "multiclass Edit (M9a)". Next: M9b (UI, gates, Review listing, multiclass pick slots in Edit, D333).
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

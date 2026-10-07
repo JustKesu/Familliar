@@ -1,61 +1,41 @@
-# REPORT — M9: Edit Character pro multiclass — STOP po inventuře (krok 1)
+# REPORT — M9a: jádro uložení Editu multiclass postavy (Edit dál zamčený)
 
-Stav: nic neimplementováno, kód beze změny. Inventura má 31 míst se skutečnou změnou (> ~25) → podle zadání STOP a návrh rozdělení M9a/M9b. Typecheck/test/e2e se nespouštěly (jen tento soubor).
+Brány 1 a 2 zavřené → UI beze změny, Edit multiclassu nedosažitelný. Bez změny schématu (60). DECISIONS.md beze změny (D333 až s M9b).
 
-## Inventura: místa, která v Editu předpokládají jednu třídu
+## Inventura (stav po M9a)
 
-| # | Místo | Dnes | Plánovaná změna |
-|---|---|---|---|
-| 1 | `CharacterSheet.tsx:2855` tlačítko Edit | multiclass vždy vypnuto „…cannot be edited yet“ | vypnuto jen bez konzistentního `levelOrder`, důvod „Cannot tell which class each level came from (no level history).“ |
-| 2 | `CharacterManager.tsx:353` route edit | multiclass → BounceToSheet | bounce jen bez konzistentního `levelOrder` |
-| 3 | `saveCharacter` `wizardState.ts:1261` | throw pro multiclass | povolit při konzistentním `levelOrder`, jinak throw dál |
-| 4 | `saveCharacter:1266` kontrola úrovně | `classChoice.level` = celková úroveň | v multiclass Editu porovnat úroveň aktivní třídy s její uloženou |
-| 5 | `saveCharacter:1272` `activeClass` | jen level up | i multiclass Edit; per-class záznamy všech tříd ze stashe (níže), ne z `existing` |
-| 6 | `saveCharacter:1303` `classes` | `classesAfterLevelUp` / `[ownClass]` | `existing.classes` s podtřídou každé třídy ze stashe; nový assert „žádná třída nezvednuta“ (identita, pořadí, úrovně) |
-| 7 | `saveCharacter:1346–1451` stavba per-class záznamů | jen z `data` jedné třídy | vytáhnout do funkce, volat pro každou třídu (aktivní z `data`, ostatní ze stashe) |
-| 8 | `saveCharacter:1513` `levelOrder` | Edit přestaví z `classes` (jednotřídní) | multiclass Edit: `existing.levelOrder` beze změny |
-| 9 | `saveCharacter:1433–1436` masteries/expertise úrovně | `keepRecordedLevels` | beze změny (osa postavy), jen ověřit |
-| 10 | `WizardData` | jedna třída | nové pole stash per-class dat ostatních tříd (subclass, fightingStyle, optional/class optional features, spells, subclassSpells, classFeatureChoices, wildShapeForms, activeClassFeatureTypes) |
-| 11 | reducer: nová akce přepnutí třídy | — | uloží per-class pole aktivní třídy do stashe, načte cílovou; globální pole nechá |
-| 12 | reducer `setSubclass:1150` | maže VŠECHNY `subclassSkills` a jazyky podtříd | mazat jen granty podtřídy aktivní třídy |
-| 13 | `wizardDataFromCharacter` | seed jedné (aktivní) třídy | seed aktivní (první v `classes`) + stash ostatních |
-| 14 | seed effect `CharacterWizard.tsx:314` | `loadSubclassesFor` + optional groups jen jedné třídy | načíst pro každou drženou třídu |
-| 15 | `multiclassLevelUp`/`activeClassScope` `:212` | jen level up | obecný „multiclass scope“ i pro Edit |
-| 16 | `draftClasses`/`multiclassDraft` `:219` | Edit = `[ownDraftClass]` | všechny třídy, podtřídy ze stashe, uložený `levelOrder` |
-| 17 | `draftCharacterLevel` `:224` | `classChoice.level` | součet úrovní |
-| 18 | `featureLanguageGrants`, `wizardToolGrants`, `wizardSubclassSkillGrants`, `heldSubclassGrants` `:225–228` | `[wizardClassChoice]` | `draftClasses` |
-| 19 | krok Class: `ClassPicker` `:1670` | třídu i úroveň lze měnit | multiclass: přepínač tříd (nová komponenta), třída/úroveň zamčené |
-| 20 | `WeaponMasteryPicker` `:1700` počet | pool jedné třídy | součet všech tříd (jako `countOffset` M7a, ale bez přírůstku) |
-| 21 | `ExpertisePicker` `:1859–1871` počet + `restrictedTo` | jedna třída | součet všech tříd, restrikce sjednoceně |
-| 22 | `classSkillsSource` `:1054` | Edit = `classChoice` | `firstClass` (D321) |
-| 23 | `featAsiEligibleLevelCount` `:1200` + loader `:1004` | granty jedné třídy | granty všech tříd přes `featAsiCharacterLevels` |
-| 24 | krok featAsi `:2056` `level` | `classChoice.level` | celková úroveň |
-| 25 | krok Hit points `:2078`, `hitDieKey :1286` | jedna kostka | `hitDiePerLevel` z `levelOrder` (D323), `multiclassHitDiceKey` i pro Edit |
-| 26 | průběžné max HP `:1155` | `draftClasses` jen level up | i Edit |
-| 27 | krok Spells `:1989` + `heldPrepared :897` | jedna třída; ostatní jen v level upu | aktivní třída; „Already prepared by“ i v Editu (others = ostatní třídy) |
-| 28 | completeness `isReadyToSave` | jen data aktivní třídy | kontrola i stashovaných tříd (otázka 1) |
-| 29 | krok Abilities | — | tlumená poznámka přes `unmetMulticlassPrerequisite` pro každou drženou třídu |
-| 30 | krok Languages `MulticlassPickSlots :1932` | jen při vstupu do třídy | otázka 2 |
-| 31 | Review `:2117–2131` | `classLine`/kostky jen level up | i multiclass Edit |
-| 32 | Cancel baseline `:234` | jen `data` | porovnávat i stash |
-| 33 | effects per třída (`:696, 723, 751, 849, 877, 981`) | klíč `classChoice` | beze změny — přepnutí mění `classChoice`, načtou se znovu |
-| 34 | wildShape `:1468`, damaging cantrips `:1403` | aktivní třída | beze změny |
+| # | Místo | Stav |
+|---|---|---|
+| 1, 2 | brány Edit (sheet tlačítko, route) | M9b |
+| 3 | `saveCharacter` throw pro multiclass | **M9a** — povoleno při konzistentním `levelOrder`, jinak „Cannot tell which class each level came from (no level history).“ |
+| 4 | kontrola úrovně | **M9a** — v multiclass Editu per třída (`checkNoClassRaised`) místo celkové úrovně |
+| 5 | `activeClass` | **M9a** — multiclass Edit má vlastní větev (`heldClassFields`: aktivní z `data`, ostatní ze stashe, musí to být přesně `existing.classes`) |
+| 6 | `classes` | **M9a** — z `existing.classes` pořadí, podtřída každé třídy z jejích polí; assert identita/pořadí/úrovně |
+| 7 | stavba per-class záznamů | **M9a** — `classRecordsFor`, volá ji i tvorba, jednotřídní Edit a level up |
+| 8 | `levelOrder` | **M9a** — multiclass Edit zapisuje `existing.levelOrder` beze změny |
+| 9 | masteries/expertise úrovně | beze změny (osa postavy) |
+| 10 | `WizardData` stash | **M9a** — `otherClasses?: ClassStash[]` (`ClassFields`) |
+| 11 | akce přepnutí třídy | **M9a** — `switchClass` |
+| 12 | `setSubclass` | **M9a** — drží subclass skills/jazyky ostatních držených tříd |
+| 13 | `wizardDataFromCharacter` | **M9a** — multiclass bez `activeClass`: aktivní `classes[0]` + stash; `WizardSeedLookups.heldClasses` (subclasses + featureTypes per třída) |
+| 14–27, 29–32 | seed effect, scope, draft, kroky Class/Masteries/Expertise/featAsi/HP/Spells/Abilities/Languages/Review, Cancel baseline | M9b |
+| 28 | completeness | **M9a** — `unfinishedHeldClasses(data, conditionsFor)` → `{className, classSource, missing: ["choose 2 more spells", …]}`; podmínka `heldClassesComplete` blokuje `isReadyToSave` (a tedy save). Výpis v Review = M9b |
+| 33, 34 | effects per třída, wildShape/cantrips | beze změny |
 
-Skutečná změna: 1–8, 10–32 (31 míst). Beze změny: 9, 33, 34.
+`multiclassPicks` (odpověď 2): multiclass Edit je zapisuje vždy (změněné i nezměněné); odmítne pick třídy, která není držená, nebo první třídy (`firstClass`). Sloty v UI = M9b.
 
-## Návrh rozdělení
+## Ověřeno
 
-- **M9a — jádro uložení, Edit dál zamčený.** Místa 3–8, 10–13, 28 (+ unit testy save každého per-class záznamu, assert „žádná třída nezvednuta“). Brány 1, 2 zůstávají → UI se nemění, Edit je bezpečný. Lze ověřit jen unit testy (`saveCharacter` + reducer).
-- **M9b — UI a odemčení.** Místa 1, 2, 14–27, 29–32, D333, odstranění textů „cannot be edited yet“, e2e a)–e). Odemčení až tady, kdy všechny kroky na ose postavy (masteries, expertise, ASI/feat, HP) počítají se všemi třídami — dřív by Edit multiclassu mohl zahodit featAsiChoices/expertise.
+- `npm run typecheck` OK, `npm run test` 3195/3195, `npm run validate-data` 175/175, `npm run e2e` 477/477 (5,4 min — nad limitem ~3 min).
+- Nové unit testy `wizardState.test.ts` „multiclass Edit (M9a)“ (Fighter 3 BM / Druid 2 / Warlock 2 / Wizard 3 Bladesinger): seed aktivní + stash; nedotčený save = všechny per-class záznamy, `classes`, `levelOrder`, `multiclassPicks` beze změny; přepínání tříd drží stash a save píše každou třídu z jejích polí; `switchClass` na nedrženou třídu = no-op; `setSubclass` maže jen granty aktivní třídy; změna podtřídy se uloží jen u své třídy; assert (úroveň stashe, úroveň aktivní, chybějící/cizí třída, bez/nekonzistentní `levelOrder`); `multiclassPicks` změna + odmítnutí na první třídě; `unfinishedHeldClasses` hlásí neúplnou stashovanou třídu a save je blokovaný. Původní test D316 přepsán na novou chybovou hlášku.
+- Jednotřídní Edit a level up: všechny dosavadní unit i e2e testy prošly beze změny.
+- Prostředí: e2e potřebovalo Chromium headless shell 1243; v sandboxu vytvořena kopie z 1194 v `/opt/pw-browsers` (mimo repo).
 
-## Otázky pro uživatele
+## Rozhodnutí přijatá během práce (k potvrzení v D333)
 
-1. **Neúplná ne-aktivní třída při uložení.** Uživatel změní podtřídu Clerica, nevybere nová kouzla, přepne na Wizarda a dá Save. (a) Save vypnutý, Review vypíše, která třída má nedokončené volby — **doporučuji**; (b) přepnutí blokovat, dokud aktivní třída není kompletní (jednodušší, ale svazuje); (c) uložit neúplné (proti dnešnímu „nic se neuloží neúplné“).
-2. **`multiclassPicks` „jako dnes“.** Dnes se upravují jen při vstupu do třídy v Level upu; Edit jednotřídní postavy je nemá. (a) V Editu ukázat sloty pro každou ne-první třídu s volbou a dovolit změnu — **doporučuji**; (b) v Editu jen přenést beze změny.
-
-## Rozhodnutí přijatá během práce
-
-Žádná. DECISIONS.md, STATUS.md beze změny (nic neexistuje nového).
+- Fighting style bez třídy (D318, jen pre-58 multiclass) se při seedu nepřiřadí žádné třídě a save ho přenese beze změny.
+- Optional-feature záznam, který si žádná držená třída ani podtřída nenárokuje (chybějící lookup), jede s `classes[0]` — stejně jako v jednotřídním Editu, takže se neztratí.
+- Texty `missing` v `unfinishedHeldClasses` jsou anglické krátké fráze („choose N more cantrips/spells“, „remove N …“, „choose a subclass“, „requirements still loading“); finální formát řádku v Review rozhodne M9b.
 
 ## Manual browser check for the user
 

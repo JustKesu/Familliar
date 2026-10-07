@@ -41,6 +41,13 @@ export function checkOneClassRaised(before: readonly CharacterClass[], after: re
 	if (raised !== 1 || after.reduce((sum, entry) => sum + entry.level, 0) !== levelUpTo) fail()
 }
 
+/** M9: an Edit keeps every class, their order and their levels; only a subclass may change. */
+export function checkNoClassRaised(before: readonly CharacterClass[], after: readonly CharacterClass[]): void {
+	if (after.length !== before.length || after.some((entry, index) => !isClass(entry, before[index]) || entry.level !== before[index].level)) {
+		throw new Error('Editing a character cannot change its classes, their order or their levels.')
+	}
+}
+
 /**
  * D330: the history a level up appends to. Entering a second class needs one; a single class without it (older save)
  * can always be told, so it is rebuilt. Otherwise the stored one, "not known" included (D317).

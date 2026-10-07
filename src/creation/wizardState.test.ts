@@ -9,6 +9,7 @@ import {
 	isSpeciesCantripComplete,
 	isStepComplete,
 	saveCharacter,
+	unfinishedHeldClasses,
 	visibleSteps,
 	wizardDataFromCharacter,
 	wizardReducer,
@@ -808,7 +809,7 @@ describe('saveCharacter', () => {
 		expect(store.create).not.toHaveBeenCalled()
 	})
 
-	it('refuses to edit a multiclass character (D316)', () => {
+	it('refuses to edit a multiclass character without a level history (M9)', () => {
 		const existing = {
 			id: 'x',
 			name: 'Aria',
@@ -818,7 +819,7 @@ describe('saveCharacter', () => {
 			],
 		} as Character
 		expect(() => saveCharacter(fakeStore(), completeData(), ['athletics', 'intimidation'], {}, undefined, existing)).toThrow(
-			'Editing a multiclass character is not supported yet',
+			'Cannot tell which class each level came from (no level history).',
 		)
 	})
 
@@ -1523,5 +1524,228 @@ describe('wizardReducer setClassChoice', () => {
 		expect(next.data.optionalFeatureChoices).toEqual([])
 		expect(next.data.hitPointLevels).toEqual([])
 		expect(next.data.startingEquipment.classOptionKey).toBeNull()
+	})
+})
+
+describe('multiclass Edit (M9a)', () => {
+	const X = 'XPHB'
+	const FIGHTER = { className: 'Fighter', classSource: X }
+	const DRUID = { className: 'Druid', classSource: X }
+	const WARLOCK = { className: 'Warlock', classSource: X }
+	const WIZARD = { className: 'Wizard', classSource: X }
+
+	function editStore(): CharacterStore {
+		return { update: vi.fn((id: string) => ({ id, name: 'Mira', classes: [] })) } as unknown as CharacterStore
+	}
+
+	function stored(): Character {
+		return {
+			id: 'm1',
+			name: 'Mira',
+			classes: [
+				{ ...FIGHTER, subclass: 'Battle Master', level: 3 },
+				{ ...DRUID, subclass: null, level: 2 },
+				{ ...WARLOCK, subclass: null, level: 2 },
+				{ ...WIZARD, subclass: 'Bladesinger', level: 3 },
+			],
+			levelOrder: [FIGHTER, FIGHTER, FIGHTER, DRUID, DRUID, WARLOCK, WARLOCK, WIZARD, WIZARD, WIZARD],
+			abilityScores: { method: 'standardArray', scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 } },
+			species: { name: 'Elf', source: X },
+			background: { name: 'Soldier', source: X, skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+			abilityBonus: { strength: 2, constitution: 1 },
+			languages: [
+				{ name: 'Common', source: X, grantedBy: 'automatic' },
+				{ name: 'Draconic', source: X, grantedBy: 'creation' },
+				{ name: 'Dwarvish', source: X, grantedBy: 'creation' },
+			],
+			toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
+			subclassSkills: [
+				{ grantedBy: 'battleMaster', name: 'history' },
+				{ grantedBy: 'bladesinger', name: 'performance' },
+			],
+			classSkills: ['acrobatics', 'survival'],
+			speciesSkills: ['perception'],
+			masteries: [{ name: 'Longsword', level: 1 }],
+			fightingStyles: [{ ...FIGHTER, name: 'Archery', source: X }],
+			optionalFeatureChoices: [
+				{ featureType: 'MV:B', choices: [{ name: 'Precision Attack', level: 3 }] },
+				{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', level: 7 }] },
+				{ featureType: 'ZZ', choices: [{ name: 'Mystery' }] },
+			],
+			spellChoices: [
+				{ ...DRUID, spells: [{ name: 'Guidance', source: X }, { name: 'Cure Wounds', source: X }] },
+				{ ...WARLOCK, spells: [{ name: 'Eldritch Blast', source: X }] },
+				{ ...WIZARD, spells: [{ name: 'Fire Bolt', source: X }, { name: 'Shield', source: X }] },
+			],
+			subclassSpellChoices: [{ subclassName: 'Bladesinger', subclassSource: X, ...WIZARD, picks: [{ grantedAtLevel: 3, slotIndex: 0, name: 'Sleep', source: X }] }],
+			classFeatureChoices: [{ ...DRUID, featureName: 'Primal Order', grantedAtLevel: 1, optionName: 'Warden' }],
+			wildShapeForms: [{ ...DRUID, forms: [{ name: 'Wolf', source: 'XMM' }] }],
+			multiclassPicks: [{ ...WARLOCK, kind: 'skill', name: 'arcana' }],
+		}
+	}
+
+	const spellLevels = [
+		{ name: 'Guidance', source: X, level: 0 },
+		{ name: 'Cure Wounds', source: X, level: 1 },
+		{ name: 'Eldritch Blast', source: X, level: 0 },
+		{ name: 'Fire Bolt', source: X, level: 0 },
+		{ name: 'Shield', source: X, level: 1 },
+		{ name: 'Hex', source: X, level: 1 },
+	]
+	const lookups = {
+		subclasses: [],
+		spellLevels,
+		heldClasses: [
+			{ ...FIGHTER, subclasses: [{ name: 'Battle Master', source: X, featureType: 'MV:B' }], featureTypes: [] },
+			{ ...DRUID, subclasses: [], featureTypes: [] },
+			{ ...WARLOCK, subclasses: [], featureTypes: ['EI'] },
+			{ ...WIZARD, subclasses: [{ name: 'Bladesinger', source: X, featureType: null }], featureTypes: [] },
+		],
+	}
+	const conditions = { characterLevel: 1, editingExistingCharacter: true }
+	const seeded = (): WizardControllerState => ({ step: 'class', data: wizardDataFromCharacter(stored(), lookups) })
+	const save = (data: WizardData, existing = stored()) => {
+		const store = editStore()
+		saveCharacter(store, data, ['athletics', 'intimidation'], conditions, undefined, existing)
+		return vi.mocked(store.update).mock.calls[0][1]
+	}
+	const switchTo = (state: WizardControllerState, to: { className: string; classSource: string }) => wizardReducer(state, { type: 'switchClass', to })
+
+	it('seeds classes[0] as the active class and stashes the others with their own picks', () => {
+		const data = seeded().data
+		expect(data.classChoice).toEqual({ ...FIGHTER, level: 3 })
+		expect(data.subclass).toEqual({ name: 'Battle Master', source: X, featureType: 'MV:B' })
+		expect(data.fightingStyle).toBe('Archery')
+		expect(data.optionalFeatureChoices).toEqual(['Precision Attack'])
+		// An entry no held class claims rides with classes[0].
+		expect(data.classOptionalFeatureChoices).toEqual([{ featureType: 'ZZ', choices: [{ name: 'Mystery' }] }])
+		expect(data.spellChoices).toEqual([])
+		expect(data.otherClasses?.map((stash) => stash.classChoice)).toEqual([
+			{ ...DRUID, level: 2 },
+			{ ...WARLOCK, level: 2 },
+			{ ...WIZARD, level: 3 },
+		])
+		const [druid, warlock, wizard] = data.otherClasses!
+		expect(druid.wildShapeForms).toEqual([{ name: 'Wolf', source: 'XMM' }])
+		expect(druid.classFeatureChoices).toHaveLength(1)
+		expect(druid.spellChoices).toEqual([
+			{ name: 'Guidance', source: X, level: 0 },
+			{ name: 'Cure Wounds', source: X, level: 1 },
+		])
+		expect(warlock.classOptionalFeatureChoices).toEqual([{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', level: 7 }] }])
+		expect(warlock.activeClassFeatureTypes).toEqual(['EI'])
+		expect(wizard.subclass).toEqual({ name: 'Bladesinger', source: X, featureType: null })
+		expect(wizard.subclassSpellChoices).toHaveLength(1)
+		expect(wizard.fightingStyle).toBeNull()
+	})
+
+	it('saves an untouched multiclass Edit with every per-class record, class, level history and multiclass pick unchanged', () => {
+		const existing = stored()
+		const input = save(seeded().data, existing)
+		expect(input.classes).toEqual(existing.classes)
+		expect(input.levelOrder).toEqual(existing.levelOrder)
+		expect(input.multiclassPicks).toEqual(existing.multiclassPicks)
+		expect(input.fightingStyles).toEqual(existing.fightingStyles)
+		expect(input.spellChoices).toEqual(existing.spellChoices)
+		expect(input.subclassSpellChoices).toEqual(existing.subclassSpellChoices)
+		expect(input.classFeatureChoices).toEqual(existing.classFeatureChoices)
+		expect(input.wildShapeForms).toEqual(existing.wildShapeForms)
+		expect(input.optionalFeatureChoices).toEqual(expect.arrayContaining(existing.optionalFeatureChoices!))
+		expect(input.optionalFeatureChoices).toHaveLength(3)
+		expect(input.subclassSkills).toEqual(existing.subclassSkills)
+		expect(input.masteries).toEqual(existing.masteries)
+	})
+
+	it('switching classes keeps the stash of every other class, and the save writes each class from its own fields', () => {
+		let state = switchTo(seeded(), WARLOCK)
+		expect(state.data.classChoice).toEqual({ ...WARLOCK, level: 2 })
+		expect(state.data.classOptionalFeatureChoices).toEqual([{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', level: 7 }] }])
+		const fighterStash = state.data.otherClasses!.find((stash) => stash.classChoice.className === 'Fighter')!
+		expect(fighterStash.fightingStyle).toBe('Archery')
+		expect(fighterStash.optionalFeatureChoices).toEqual(['Precision Attack'])
+		expect(state.data.masteries).toEqual(['Longsword'])
+
+		state = wizardReducer(state, {
+			type: 'setSpellChoices',
+			choices: [
+				{ name: 'Eldritch Blast', source: X, level: 0 },
+				{ name: 'Hex', source: X, level: 1 },
+			],
+		})
+		state = switchTo(state, DRUID)
+		state = wizardReducer(state, { type: 'setWildShapeForms', forms: [{ name: 'Cat', source: 'XMM' }] })
+		state = switchTo(state, FIGHTER)
+		state = wizardReducer(state, { type: 'setFightingStyle', style: 'Defense' })
+
+		const input = save(state.data)
+		expect(input.classes).toEqual(stored().classes)
+		expect(input.fightingStyles).toEqual([{ ...FIGHTER, name: 'Defense' }])
+		expect(input.spellChoices).toEqual([
+			stored().spellChoices![0],
+			{ ...WARLOCK, spells: [{ name: 'Eldritch Blast', source: X }, { name: 'Hex', source: X }] },
+			stored().spellChoices![2],
+		])
+		expect(input.wildShapeForms).toEqual([{ ...DRUID, forms: [{ name: 'Cat', source: 'XMM' }] }])
+		expect(input.classFeatureChoices).toEqual(stored().classFeatureChoices)
+		expect(input.subclassSpellChoices).toEqual(stored().subclassSpellChoices)
+	})
+
+	it('switchClass ignores a class that is not held', () => {
+		const state = seeded()
+		expect(switchTo(state, { className: 'Rogue', classSource: X })).toBe(state)
+	})
+
+	it('setSubclass clears only the active class’s subclass grants', () => {
+		const state = wizardReducer(seeded(), { type: 'setSubclass', subclass: { name: 'Champion', source: X, featureType: null } })
+		expect(state.data.subclassSkills).toEqual([{ grantedBy: 'bladesinger', name: 'performance' }])
+		expect(state.data.optionalFeatureChoices).toEqual([])
+		expect(state.data.otherClasses!.find((stash) => stash.classChoice.className === 'Wizard')!.subclassSpellChoices).toHaveLength(1)
+	})
+
+	it('a subclass change is saved on its own class only', () => {
+		let state = switchTo(seeded(), WIZARD)
+		state = wizardReducer(state, { type: 'setSubclass', subclass: { name: 'Evoker', source: X, featureType: null } })
+		state = switchTo(state, FIGHTER)
+		const input = save(state.data)
+		expect(input.classes?.map((entry) => entry.subclass)).toEqual(['Battle Master', null, null, 'Evoker'])
+		expect(input.subclassSpellChoices).toBeUndefined()
+		expect(input.subclassSkills).toEqual([{ grantedBy: 'battleMaster', name: 'history' }])
+	})
+
+	it('asserts no class is raised: identity, order and levels stay, levelOrder is required and kept', () => {
+		const data = seeded().data
+		const otherLevel = { ...data, otherClasses: data.otherClasses!.map((stash, index) => (index === 0 ? { ...stash, classChoice: { ...stash.classChoice, level: 3 } } : stash)) }
+		expect(() => save(otherLevel)).toThrow('Editing a character cannot change its classes, their order or their levels.')
+		expect(() => save({ ...data, classChoice: { ...FIGHTER, level: 4 } })).toThrow('cannot change its classes')
+		const missing = { ...data, otherClasses: data.otherClasses!.slice(1) }
+		expect(() => save(missing)).toThrow('must hold every one of its classes')
+		const foreign = { ...data, otherClasses: [...data.otherClasses!.slice(1), { ...data.otherClasses![0], classChoice: { className: 'Rogue', classSource: X, level: 2 } }] }
+		expect(() => save(foreign)).toThrow('must hold every one of its classes')
+		const { levelOrder: _dropped, ...noHistory } = stored()
+		expect(() => save(data, noHistory)).toThrow('Cannot tell which class each level came from')
+		expect(() => save(data, { ...stored(), levelOrder: stored().levelOrder!.slice(1) })).toThrow('Cannot tell which class each level came from')
+	})
+
+	it('writes changed multiclass picks, and refuses one on the first class', () => {
+		const data = seeded().data
+		const changed = [{ ...WARLOCK, kind: 'skill' as const, name: 'religion' }]
+		expect(save({ ...data, multiclassPicks: changed }).multiclassPicks).toEqual(changed)
+		expect(() => save({ ...data, multiclassPicks: [{ ...FIGHTER, kind: 'skill', name: 'history' }] })).toThrow('other than the first')
+	})
+
+	it('reports an unfinished stashed class, and blocks the save while one is reported', () => {
+		const data = seeded().data
+		const unfinished = unfinishedHeldClasses(data, (cls) =>
+			cls.classChoice.className === 'Druid'
+				? { spellRequirement: { cantripCount: 2, leveledSpellCount: 3, label: 'prepared' }, wildShapeFormCount: 1 }
+				: { subclassSpellChoiceSlotCount: cls.subclassSpellChoices.length },
+		)
+		expect(unfinished).toEqual([{ ...DRUID, missing: ['choose 1 more cantrip', 'choose 2 more spells'] }])
+		expect(unfinishedHeldClasses({ ...data, otherClasses: undefined }, () => ({ wildShapeFormCount: 2 }))).toEqual([])
+		expect(isReadyToSave(data, { ...conditions, heldClassesComplete: false })).toBe(false)
+		expect(isReadyToSave(data, conditions)).toBe(true)
+		expect(() => saveCharacter(editStore(), data, ['athletics', 'intimidation'], { ...conditions, heldClassesComplete: false }, undefined, stored())).toThrow(
+			'before every step is complete',
+		)
 	})
 })
