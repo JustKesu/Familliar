@@ -74,6 +74,48 @@ describe('chosen spells per class (D325)', () => {
 		expect('reason' in result ? result.reason : result.save.dc).toBe(12)
 	})
 
+	const dcOf = (entry: Parameters<typeof casterFor>[0], classes: SpellcastingEntry[]) => {
+		const result = casterFor(entry, classes, [], [])
+		return 'reason' in result ? result.reason : result.save.dc
+	}
+	const grant = (subclassName: string, className: string, ...names: string[]) => ({ subclassName, className, classSource: 'XPHB', spells: names.map((name) => ({ name, source: 'XPHB' })) })
+
+	it('D331: two subclass owners of different classes give one row each, each with its own class DC', () => {
+		const entries = combineSpellEntries([], [grant('Light Domain', 'Cleric', 'Burning Hands'), grant('Fiend Patron', 'Warlock', 'Burning Hands')])
+		expect(entries).toHaveLength(2)
+		expect(new Set(entries.map(spellEntryKey)).size).toBe(2)
+		expect(entries.map((entry) => entry.subclassOrigins)).toEqual([['Light Domain'], ['Fiend Patron']])
+		expect(entries.map((entry) => dcOf(entry, [cleric, warlock]))).toEqual([12, 14])
+	})
+
+	it('D331: a spell chosen by Wizard and always prepared by Cleric is two rows; only the Wizard row counts against the Wizard', () => {
+		const entries = combineSpellEntries([pick('Wizard', 'Burning Hands')], [grant('Light Domain', 'Cleric', 'Burning Hands')])
+		expect(entries).toHaveLength(2)
+		const picked = entries.find((entry) => entry.chosen)!
+		const granted = entries.find((entry) => !entry.chosen)!
+		expect(picked.chosenBy?.className).toBe('Wizard')
+		expect(picked.subclassOrigins).toEqual([])
+		expect(granted.subclassOrigins).toEqual(['Light Domain'])
+		expect(dcOf(picked, [wizard, cleric])).toBe(13)
+		expect(dcOf(granted, [wizard, cleric])).toBe(12)
+		const wizardCharacter: Character = { id: '1', name: 'T', classes: [{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 3 }, { className: 'Cleric', classSource: 'XPHB', subclass: 'Light Domain', level: 3 }] }
+		const limits = classSpellLimits(wizardCharacter, [], [], entries, [detail('Burning Hands', 1)])
+		expect(limits.map((limit) => limit.leveledSpellsStored)).toEqual([1, 0])
+	})
+
+	it('D331: a class record grant of another class (Druid) is its own row beside the Wizard pick', () => {
+		const entries = combineSpellEntries([pick('Wizard', 'Speak with Animals')], [], [], [], [], [{ className: 'Druid', spells: [{ name: 'Speak with Animals', source: 'XPHB' }] }])
+		expect(entries.map((entry) => [entry.chosen, entry.classOrigins])).toEqual([
+			[false, ['Druid']],
+			[true, []],
+		])
+	})
+
+	it('D331: the same class granting and choosing stays one row', () => {
+		const entries = combineSpellEntries([pick('Wizard', 'Burning Hands')], [grant('Evoker', 'Wizard', 'Burning Hands')])
+		expect(entries).toHaveLength(1)
+	})
+
 	it('keeps a grant merged into the choosing class row', () => {
 		const entries = combineSpellEntries([pick('Cleric', 'Bless')], [{ subclassName: 'Life Domain', className: 'Cleric', classSource: 'XPHB', spells: [{ name: 'Bless', source: 'XPHB' }] }])
 		expect(entries).toHaveLength(1)

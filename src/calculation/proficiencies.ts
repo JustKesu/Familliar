@@ -1,6 +1,6 @@
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
-import { classToolGrantsFor } from '../toolProficiencies/classToolChoices'
+import { classToolGrantsFor, subclassToolGrantsForAll } from '../toolProficiencies/classToolChoices'
 import { firstClass } from './characterLevel'
 import { classProficiencyGrants } from './classProficiencies'
 import { FEATURE_GRANTS } from './featureGrants'
@@ -127,6 +127,11 @@ function weaponRank(key: string): number {
 	if (key === 'firearms') return 3
 	if (key === 'improvised') return 4
 	return 2
+}
+
+/** F-10: the tools a feat gives (fixed or stored picks), for a pool that must not offer the same tool twice. */
+export function toolsFromFeats(tools: readonly ProficiencyItem[]): string[] {
+	return tools.filter((item) => !item.pending && item.sources.some((source) => source.kind === 'feat')).map((item) => item.label)
 }
 
 /** D176: the tools held from a source other than the subclass — what an Artificer subclass's replacement count reads. */
@@ -287,8 +292,7 @@ export function computeProficiencies(
 
 	// D174: a subclass's own pick (Battle Master), pending until a slot stores it. After every other tool source,
 	// since D176's Artificer replacement count is the subclass tools the character also has from elsewhere.
-	for (const grant of classToolGrantsFor(startingClasses, toolsHeldElsewhere([...tools.values()], startingClass?.subclass ?? null))) {
-		if (!grant.subclass) continue
+	for (const grant of subclassToolGrantsForAll(character.classes, (subclass) => toolsHeldElsewhere([...tools.values()], subclass))) {
 		const source: ProficiencySource = { kind: 'subclass', name: grant.owner }
 		const picks = (character.toolChoices ?? []).filter((choice) => choice.grantedBy === grant.grantedBy)
 		picks.slice(0, grant.count).forEach((choice) => addTool(choice.name, source))

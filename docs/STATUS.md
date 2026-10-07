@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b done (see the entries below).
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10 done (see the entries below); M8 next.
 
 ## Co appka umí navíc k build orderu
 
@@ -1171,6 +1171,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   both classes; Sorcerer/Monk disabled with reasons; Rogue: masteries, Expertise sees the multiclass Stealth, Thieves' Cant
   language, Stealth proficient, Thieves' Tools — Rogue (multiclass); Bard: skill + instrument; Fighter 20 and Fighter 19 /
   Wizard 1 disabled).
+- `e2e/reviewFixes.spec.ts` — F-10 a–g (Wizard 5 / Fighter 3 Battle Master: Student of War tool on the Proficiencies card, pending
+  line without it; Cleric 3 Light / Warlock 3 Fiend: Burning Hands two rows with DC 13 / 14 on Spells and Actions; Wizard 3 / Cleric 3
+  Light with a Wizard pick: DC 13 / 12, Wizard prepared 1/n; Manage Spells notice "Already prepared by Cleric"; Warlock 6 / Sorcerer 3:
+  invocation row labelled Warlock on Actions, "From Sorcerer 5" feat; CAST disabled on the over-cap Fireball; Fighter 4 → 5 keeps
+  invocations and maneuvers).
 
 ## Dočasné scaffolding
 
@@ -2006,6 +2011,21 @@ drawer, feat prerequisites), the wizard's proficient-skill list (Expertise pool,
 Wizard class skills are labelled with the first class. Unit `multiclass/multiclassEntry.test.ts`; E2E `multiclassEntry.spec.ts`
 a–g; every single-class level-up spec now clicks "<Class> n → n+1" in the window. Not done: Remove level of a class's last level
 (M8), Edit for multiclass (M9).
+
+F-10 done (D331), review fixes for M5–M7 (finding 4 left for M8). No schema change (60). `combineSpellEntries` gives a spell one
+row per holding class: a pick of class A and the always-prepared copy of class B (class record or subclass) are two rows, two
+subclass owners of different classes are two rows (`holderOf`/`sameHolder`, grant rows carry a `rowKey` ending `|grant`); the
+grant row is not `chosen`, so only the pick counts against A's limit; single class unchanged. `casterFor` fallback text no longer
+cites build step 10. Notice "Already prepared by <Class>" on the Add Spells row of `ClassSpellsManager` (prop `preparedByOther`,
+`spells/heldPreparedSpells.ts`; the wizard loads the held classes' grants with `loadHeldClassPrepared`). Subclass tool grants run
+for every class with a subclass (`subclassToolGrantsForAll`, used by `computeProficiencies` and the Proficiencies card slots); Manage
+Feats held tools follow from the tool list. `LevelUpButton` loads held classes with `allSettled`: a failing or unresolved class is a
+disabled row with its reason (`ClassFailure`), "+ New class…" stays reachable, the button always reads "Level up to <character
+level + 1>". The Bard multiclass instrument pool also holds tools from feats (`toolsFromFeats`). Multiclass labels: chosen optional
+features resolve their owner via `sheet/optionOwners.ts` (stored fighting style `className`, else the class/subclass whose
+progression offers the featureType) for the Actions origin and for the group of an unlinked option; an ASI feat reads "From <class> n"
+from `levelOrder` (`featSource`). Unit `classSpellLimits.test.ts`, `proficiencies.test.ts`, `levelUp.test.tsx`,
+`featuresTabData.test.ts`, `optionOwners.test.ts`, `heldPreparedSpells.test.ts`; E2E `reviewFixes.spec.ts` a–g.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

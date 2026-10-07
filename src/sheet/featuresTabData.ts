@@ -56,6 +56,8 @@ export interface FeatsTabFeat {
 
 export interface FeaturesTabInput {
 	classes: readonly { className: string; level: number }[]
+	/** One entry per character level, the class that took it (Character.levelOrder). */
+	levelOrder?: readonly { className: string; classSource: string }[]
 	speciesName: string | null
 	granted: readonly GrantedFeature[]
 	classFeatureChoices: readonly ChosenClassFeatureChoice[]
@@ -64,6 +66,8 @@ export interface FeaturesTabInput {
 	itemOptions?: readonly ItemInvocationOption[]
 	/** Where an option no feature could be linked to came from, as its own row labels it (the Actions tab's optionOrigin). */
 	optionOrigin: (option: OptionalFeatureOption) => string | null
+	/** With several classes: the class an unlinked option belongs to, so its row lands in that class's group (F-10). */
+	optionClassName?: (option: OptionalFeatureOption) => string | null
 	speciesTraits: readonly SpeciesTrait[]
 	feats: readonly FeatsTabFeat[]
 }
@@ -99,13 +103,17 @@ function titleCase(text: string): string {
 }
 
 /** A feat row's source text; null when it cannot be told (report). */
-export function featSource(instance: Pick<FeatInstance, 'origin' | 'level' | 'itemName'>, classes: FeaturesTabInput['classes']): string | null {
+export function featSource(instance: Pick<FeatInstance, 'origin' | 'level' | 'itemName'>, classes: FeaturesTabInput['classes'], levelOrder?: FeaturesTabInput['levelOrder']): string | null {
 	if (instance.origin === 'background') return 'From Background'
 	if (instance.origin === 'species') return 'From Species'
 	if (instance.origin === 'manual') return 'Added manually'
 	if (instance.origin === 'item') return featOriginLabel(instance)
-	// FeatAsiChoice stores the character level only; which class paid for the ASI is knowable with one class.
-	return classes.length === 1 ? `From ${classes[0].className} ${instance.level}` : null
+	// FeatAsiChoice stores the character level only; with one class that is the class level, with several levelOrder says which class took that level (F-10).
+	if (classes.length === 1) return `From ${classes[0].className} ${instance.level}`
+	const taken = instance.level === undefined ? undefined : levelOrder?.[instance.level - 1]
+	if (!taken || instance.level === undefined) return null
+	const classLevel = levelOrder!.slice(0, instance.level).filter((entry) => entry.className === taken.className && entry.classSource === taken.classSource).length
+	return `From ${taken.className} ${classLevel}`
 }
 
 /** The sub-choices stored on a feat, one line each; none of them carries text of its own. */
@@ -178,13 +186,15 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		if (host) host.row.options.push(optionItem(option))
 		else unlinked.push(option)
 	}
-	// Which class an unlinked pick belongs to is not recorded (D99); with more than one class it lands in the first group (docs/REPORT.md).
-	classGroups[0]?.items.push(
-		...unlinked.map((option) => ({
+	// Which class an unlinked pick belongs to is not stored (D99); optionClassName resolves it from the progression, else the first group.
+	for (const option of unlinked) {
+		const owner = input.optionClassName?.(option)
+		const group = (owner ? classGroups.find((candidate) => candidate.characterClass.className === owner) : undefined) ?? classGroups[0]
+		group?.items.push({
 			level: Infinity,
 			row: { key: `option|${option.name}|${option.source}`, name: option.name, source: input.optionOrigin(option), entries: option.entries, resourceName: resourceCandidateName(option), options: [] },
-		})),
-	)
+		})
+	}
 
 	const groups: FeatureTabGroup[] = classGroups.map(({ characterClass, items }) => ({
 		key: `class|${characterClass.className}`,
@@ -234,7 +244,7 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		rows: input.feats.map(({ instance, text, pending }) => ({
 			key: `feat|${instance.key}`,
 			name: instance.name,
-			source: featSource(instance, input.classes),
+			source: featSource(instance, input.classes, input.levelOrder),
 			entries: text?.entries ?? null,
 			resourceName: text ? resourceCandidateName(text) : null,
 			options: featSubChoiceItems(instance),

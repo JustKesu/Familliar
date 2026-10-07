@@ -73,7 +73,7 @@ import { OriginFeatSwapPicker } from '../featAsi/OriginFeatSwapPicker'
 import { SpeciesOriginFeatPicker } from '../featAsi/SpeciesOriginFeatPicker'
 import { speciesOriginFeatComplete, useSpeciesOriginFeat } from '../featAsi/speciesOriginFeat'
 import { backgroundOriginFeatFrom, featInstances,loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
-import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
+import { computeProficiencies, extractFeatProficiencyEntries, toolsFromFeats, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeHitDicePool } from '../calculation/hitDice'
@@ -85,6 +85,7 @@ import { loadCharacterMaxHp } from '../hitPoints/hpDefault'
 import { ClassSpellsManager } from '../sheet/ManageSpellsPanel'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { loadClassAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import { loadHeldClassPrepared, preparedByOtherClass, type ClassPreparedSpells } from '../spells/heldPreparedSpells'
 import { loadFeatGrantedSpells, type FeatGrantedSpell } from '../spells/featSpells'
 import { loadOptionalFeatureGrantedSpells, type OptionalFeatureGrantedSpell } from '../spells/optionalFeatureSpells'
 import { collectKnownSpells } from '../spells/knownSpells'
@@ -279,6 +280,7 @@ export function CharacterWizard({
 	/** The three grant sources the shared "already has it" set needs (knownSpells.ts); the other two (class picks, subclass filter-choice picks) are wizard state already. */
 	const [subclassAlwaysPrepared, setSubclassAlwaysPrepared] = useState<AlwaysPreparedSpell[]>([])
 	const [classAlwaysPrepared, setClassAlwaysPrepared] = useState<AlwaysPreparedSpell[]>([])
+	const [heldPrepared, setHeldPrepared] = useState<ClassPreparedSpells[]>([])
 	const [featGrantedSpells, setFeatGrantedSpells] = useState<FeatGrantedSpell[]>([])
 	const [optionalFeatureGrantedSpells, setOptionalFeatureGrantedSpells] = useState<OptionalFeatureGrantedSpell[]>([])
 	/**
@@ -888,6 +890,22 @@ export function CharacterWizard({
 			cancelled = true
 		}
 	}, [state.data.classChoice])
+
+	/** D331: what the character's other held classes already have always prepared, for the notice on a spell pick. */
+	useEffect(() => {
+		let cancelled = false
+		const others = character && levelUp ? character.classes.filter((entry) => !isClass(entry, levelUp)) : []
+		if (others.length === 0) {
+			setHeldPrepared([])
+			return
+		}
+		loadHeldClassPrepared(others).then((groups) => {
+			if (!cancelled) setHeldPrepared(groups)
+		})
+		return () => {
+			cancelled = true
+		}
+	}, [character, levelUp])
 
 	/** Feat-granted spells — fixed grants AND the player's own Magic Initiate / filter-choice picks, both keyed to the granting feat by featSpells.ts. */
 	useEffect(() => {
@@ -1926,7 +1944,11 @@ export function CharacterWizard({
 								...state.data.subclassSkills.map((pick) => pick.name),
 								...heldSubclassGrants.flatMap((grant) => grant.fixed ?? []),
 							]}
-							heldTools={[...(state.data.backgroundToolProficiency ? [state.data.backgroundToolProficiency] : []), ...state.data.toolChoices.map((choice) => choice.name)]}
+							heldTools={[
+								...(state.data.backgroundToolProficiency ? [state.data.backgroundToolProficiency] : []),
+								...state.data.toolChoices.map((choice) => choice.name),
+								...toolsFromFeats(computeProficiencies(draftCharacterForProficiencies, proficiencyData.classes, draftFeatInstances, proficiencyData.feats).tools),
+							]}
 							onChange={(picks) => dispatch({ type: 'setMulticlassPicks', picks })}
 						/>
 					)}
@@ -1984,6 +2006,7 @@ export function CharacterWizard({
 							alwaysPrepared: [...classAlwaysPrepared, ...subclassAlwaysPrepared],
 						}}
 						alreadyKnown={alreadyKnownSpells}
+						preparedByOther={preparedByOtherClass(heldPrepared, state.data.classChoice.className)}
 						details={spellDetails}
 						resolverData={resolverData}
 						onChange={(picks) =>

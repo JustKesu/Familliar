@@ -104,6 +104,8 @@ import {
 	loadSubclassSource,
 	type FeatTextEntry,
 } from './sheetData'
+import { preparedByOtherClass } from '../spells/heldPreparedSpells'
+import { loadOptionOwners, multiclassOptionOwner, type OptionOwner } from './optionOwners'
 import { combineSpellEntries, provenanceLabel, SpellDetailBody } from './SpellList'
 import { chosenSpellCap, classSpellLimits } from './classSpellLimits'
 import {
@@ -133,7 +135,7 @@ import { BREATH_WEAPON, BREATH_WEAPON_AREAS, type BreathWeapon, computeBreathWea
 import { FeatureLanguageSlots } from '../languages/FeatureLanguageSlots'
 import { classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { ClassToolSlots } from '../toolProficiencies/ClassToolSlots'
-import { classToolGrantsFor } from '../toolProficiencies/classToolChoices'
+import { classToolGrantsFor, subclassToolGrantsForAll } from '../toolProficiencies/classToolChoices'
 import {
 	type AbilityIncreaseMap,
 	type Character,
@@ -1790,6 +1792,8 @@ function CharacterSheetBody({
 	 * Master's maneuvers and an Arcane Archer's shots are absent from it.
 	 */
 	const [chosenOptionalFeatures, setChosenOptionalFeatures] = useState<OptionalFeatureOption[]>([])
+	/** Multiclass only: which held class (or subclass) offers each stored featureType, for the labels of chosen options. */
+	const [optionOwners, setOptionOwners] = useState<OptionOwner[]>([])
 	/** R14c1 (D218): invocations granted by custom items right now — the Features tab's "From items" group, and extra actions/resources rows. */
 	const [itemInvocations, setItemInvocations] = useState<ItemInvocationOption[]>([])
 	/** Spells granted BY those picks (step 6a final slice) — separate from the option text above, which classOptionalFeatures already renders. */
@@ -2029,6 +2033,24 @@ function CharacterSheetBody({
 			cancelled = true
 		}
 	}, [character])
+
+	useEffect(() => {
+		if (character.classes.length < 2) {
+			setOptionOwners([])
+			return
+		}
+		let cancelled = false
+		loadOptionOwners(character.classes)
+			.then((owners) => {
+				if (!cancelled) setOptionOwners(owners)
+			})
+			.catch(() => {
+				if (!cancelled) setOptionOwners([])
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [character.classes])
 
 	useEffect(() => {
 		let cancelled = false
@@ -2418,7 +2440,7 @@ function CharacterSheetBody({
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
 	/*
 	 * An option is the class's when the class's own progression resolved it (Class options) or it is the class-level fighting
-	 * style, otherwise the subclass's (D88's split). One class only: which class a pick belongs to under multiclassing is step 10.
+	 * style, otherwise the subclass's (D88's split). With several classes optionOwners says which one offers the option (F-10).
 	 */
 	const singleClass = character.classes.length === 1 ? character.classes[0] : null
 	const classOptionNames = new Set(classOptionalFeatures.flatMap((group) => group.options.map((option) => option.name.toLowerCase())))
@@ -2429,7 +2451,8 @@ function CharacterSheetBody({
 	function optionOrigin(option: OptionalFeatureOption): string | null {
 		const fromItems = itemOnlyInvocations.find((entry) => entry.option.name === option.name)
 		if (fromItems) return fromItems.itemNames.join(', ')
-		if (!singleClass || classOptionalFeaturesError) return null
+		if (classOptionalFeaturesError) return null
+		if (!singleClass) return multiclassOptionOwner(option, character.fightingStyles ?? [], optionOwners)?.label ?? null
 		const name = option.name.toLowerCase()
 		if (classOptionNames.has(name) || (character.fightingStyles ?? []).some((style) => matchesPick(style, option))) return singleClass.className
 		return singleClass.subclass
@@ -2605,12 +2628,14 @@ function CharacterSheetBody({
 	/* D184: every chosen option (class- and subclass-level, fighting style) sits under the feature that grants it; D88's separate option sections are gone. */
 	const featureGroups = featuresTabGroups({
 		classes: character.classes,
+		...(character.levelOrder ? { levelOrder: character.levelOrder } : {}),
 		speciesName: character.species?.name ?? null,
 		granted: grantedFeatures,
 		classFeatureChoices,
 		chosenOptions: chosenOptionalFeatures,
 		itemOptions: itemInvocations,
 		optionOrigin,
+		optionClassName: (option) => (singleClass ? null : (multiclassOptionOwner(option, character.fightingStyles ?? [], optionOwners)?.className ?? null)),
 		speciesTraits,
 		feats: chosenFeats.map((instance) => ({
 			instance,
@@ -2645,6 +2670,7 @@ function CharacterSheetBody({
 		})
 		return [{ characterClass: c, counts, alreadyKnown, holdings: { picks, subclassChoicePicks: choicePicks, alwaysPrepared: [...classFixed, ...subclassFixed] } }]
 	})
+	const preparedGroups = managedClasses.map((managed) => ({ className: managed.characterClass.className, spells: managed.holdings.alwaysPrepared }))
 	const canManageSpells = onEditSpellChoices !== undefined && managedClasses.length > 0
 	// Finding 8: Manage Feats' spell sub-pickers see what Manage Spells sees, across every class, once per source.
 	const featPanelKnown = [
@@ -3516,6 +3542,7 @@ function CharacterSheetBody({
 							featChoices={chosenFeats.map((feat) => ({ name: feat.name, source: feat.source }))}
 							holdings={holdings}
 							alreadyKnown={alreadyKnown}
+							preparedByOther={preparedByOtherClass(preparedGroups, characterClass.className)}
 							details={spellDetails}
 							resolverData={resolverData}
 							onChange={(picks) => onEditSpellChoices(withClassPicks(character.spellChoices ?? [], characterClass.className, characterClass.classSource, picks))}
@@ -3665,7 +3692,13 @@ function CharacterSheetBody({
 							)}
 							{category === 'tools' && weaponAttackData !== null && onEditToolChoices && (
 								<ClassToolSlots
-									grants={classToolGrantsFor(startingClasses, toolsHeldElsewhere(weaponAttackData.proficiencies.tools, startingClasses[0]?.subclass ?? null))}
+									grants={[
+										...classToolGrantsFor(startingClasses, toolsHeldElsewhere(weaponAttackData.proficiencies.tools, startingClasses[0]?.subclass ?? null)),
+										...subclassToolGrantsForAll(
+											character.classes.filter((cls) => cls !== startingClass),
+											(subclass) => toolsHeldElsewhere(weaponAttackData.proficiencies.tools, subclass),
+										),
+									]}
 									value={character.toolChoices ?? []}
 									known={weaponAttackData.proficiencies.tools.filter((item) => !item.pending).map((item) => item.label)}
 									onChange={onEditToolChoices}

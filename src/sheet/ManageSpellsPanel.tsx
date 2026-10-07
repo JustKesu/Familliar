@@ -98,6 +98,7 @@ export function ClassSpellsManager({
 	featChoices,
 	holdings,
 	alreadyKnown,
+	preparedByOther,
 	details,
 	resolverData,
 	onChange,
@@ -112,6 +113,8 @@ export function ClassSpellsManager({
 	featChoices: readonly SpellRef[]
 	holdings: ClassSpellHoldings
 	alreadyKnown: readonly KnownSpell[]
+	/** D331: spells another held class has always prepared (identity key to class name); a pick here still counts for this class. */
+	preparedByOther?: ReadonlyMap<string, string>
 	details: SpellDetail[]
 	resolverData: ResolverData
 	/** A newly added pick carries its level (the wizard stores it, D210); picks passed in come back untouched. */
@@ -166,6 +169,9 @@ export function ClassSpellsManager({
 		const picked = isPicked(spell)
 		const known = picked ? null : knownSpellReason(alreadyKnown, spell, CLASS_SPELL_PICKER_KEY)
 		const full = spell.level === 0 ? cantripsFull : preparedFull
+		const otherClass = preparedByOther?.get(spellIdentityKey(spell.name, spell.source))
+		const otherNote = otherClass !== undefined ? `Already prepared by ${otherClass}` : null
+		const knownNote = known !== null ? knownSpellNote(known) : null
 		return (
 			<ManagedSpellRow
 				key={`${spell.name}|${spell.source}`}
@@ -173,7 +179,7 @@ export function ClassSpellsManager({
 				level={spell.level}
 				flags={spell}
 				magicalSecrets={isSecret(spell)}
-				note={known !== null ? knownSpellNote(known) : undefined}
+				note={knownNote !== null && otherNote !== null ? `${knownNote} · ${otherNote}` : (knownNote ?? otherNote ?? undefined)}
 				action={<PickButton spell={spell} picked={picked} disabled={!picked && (full || known !== null)} onClick={() => (picked ? remove(spell) : add(spell))} />}
 				detail={findSpellDetail(details, spell.name, spell.source)}
 				resolverData={resolverData}

@@ -75,6 +75,14 @@ export function classToolGrantsFor(classes: readonly Pick<CharacterClass, 'class
 	).map((grant) => (grant.replaces ? { ...grant, count: grant.replaces.filter((tool) => held.has(tool.toLowerCase())).length } : grant))
 }
 
+/** Subclass grants of every class that has its own subclass; `heldFor` gets the class's subclass so its own picks do not count as "elsewhere". */
+export function subclassToolGrantsForAll(
+	classes: readonly Pick<CharacterClass, 'className' | 'classSource' | 'level' | 'subclass'>[],
+	heldFor: (subclass: string | null) => readonly string[] = () => [],
+): ClassToolChoiceGrant[] {
+	return classes.flatMap((cls) => classToolGrantsFor([cls], heldFor(cls.subclass)).filter((grant) => grant.subclass !== undefined))
+}
+
 /** Stored picks whose grant no longer applies (class changed, subclass changed, level lowered) are dropped. */
 export function keepHeldToolChoices(choices: readonly CharacterToolChoice[], grants: readonly ClassToolChoiceGrant[]): CharacterToolChoice[] {
 	const held = new Set(grants.map((grant) => grant.grantedBy))

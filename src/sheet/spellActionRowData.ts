@@ -132,7 +132,7 @@ export function casterFor(
 	if (classEntries.length === 0) {
 		return { reason: `No spellcasting ability is known for "${entry.name}" — nothing grants this character a spell attack bonus or save DC.` }
 	}
-	return { reason: `"${entry.name}" could belong to more than one casting class, and the spell list does not record which — multiclass is build order step 10.` }
+	return { reason: `"${entry.name}" could belong to more than one casting class, and the spell list does not record which class holds it.` }
 }
 
 export function unresolvedCaster(entry: SheetSpellEntry): { reason: string } {

@@ -76,4 +76,35 @@ describe('featSource', () => {
 		expect(featSource({ origin: 'asi', level: 4 }, [{ className: 'Fighter', level: 4 }])).toBe('From Fighter 4')
 		expect(featSource({ origin: 'asi', level: 4 }, [{ className: 'Fighter', level: 2 }, { className: 'Rogue', level: 2 }])).toBeNull()
 	})
+
+	it('F-10: names the class and class level of an ASI feat of a multiclass character from its level history', () => {
+		const order = [
+			...Array(3).fill({ className: 'Fighter', classSource: 'XPHB' }),
+			{ className: 'Rogue', classSource: 'XPHB' },
+			{ className: 'Fighter', classSource: 'XPHB' },
+			{ className: 'Rogue', classSource: 'XPHB' },
+		]
+		const classes = [{ className: 'Fighter', level: 4 }, { className: 'Rogue', level: 2 }]
+		expect(featSource({ origin: 'asi', level: 5 }, classes, order)).toBe('From Fighter 4')
+		expect(featSource({ origin: 'asi', level: 6 }, classes, order)).toBe('From Rogue 2')
+		expect(featSource({ origin: 'asi', level: 9 }, classes, order)).toBeNull()
+	})
+})
+
+describe('featuresTabGroups — unlinked option of a multiclass character (F-10)', () => {
+	it('lands in the group of the class that offers it, not the first group', () => {
+		const groups = featuresTabGroups({
+			speciesName: null,
+			classFeatureChoices: [],
+			speciesTraits: [],
+			feats: [],
+			classes: [{ className: 'Sorcerer', level: 3 }, { className: 'Warlock', level: 6 }],
+			granted: [],
+			chosenOptions: [{ name: 'Agonizing Blast', source: 'XPHB', entries: [], featureType: 'EI' }],
+			optionOrigin: () => 'Warlock',
+			optionClassName: () => 'Warlock',
+		})
+		expect(groups[0].rows).toEqual([])
+		expect(groups[1].rows.map((row) => [row.name, row.source])).toEqual([['Agonizing Blast', 'Warlock']])
+	})
 })

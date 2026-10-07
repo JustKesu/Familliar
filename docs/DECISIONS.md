@@ -5015,3 +5015,13 @@ beze změny (M7a). Jednotřídní postava bez `levelOrder` (starší save) ho m�
 tu třídu `level`krát; levelování držené třídy ho dál nechává „neznámé“. Hit points nové úrovně = kostka nové třídy,
 průměr nebo hod, nikdy maximum. Bez záchranných hodů, startovního vybavení, startovních dovedností a startovních voleb
 nástrojů (D328). Task M7b, rozhodl Daniel 7. 10. 2026.
+
+## D331 — Kouzlo držené přes dvě třídy = jeden řádek na třídu (F-10)
+
+Zobecňuje D325. Kouzlo, které postava drží přes víc tříd, má řádek za každou třídu a každý řádek počítá s čísly své třídy
+(DC, útok, vlastnost): vybral ho Wizard a Cleric ho má vždy připravené (třída nebo subclass), nebo ho vždy připravují subclassy
+dvou různých tříd (Cleric Light Domain a Warlock Fiend Patron: Burning Hands). Vždy připravená kopie třídy B se nepočítá do
+limitu třídy A, výběr třídy A se do limitu A počítá jako dřív. Stejná třída, která kouzlo vybrala i má vždy připravené, zůstává
+jeden řádek. V kroku Spells ve wizardu i v Manage Spells má řádek kouzla, které jiná držená třída už má vždy připravené, krátkou
+poznámku „Already prepared by <Class>“; výběr zůstává povolený. Záložní text „could belong to more than one casting class“ zůstává
+jen pro případy, které opravdu nejdou přiřadit. Jednotřídní postava se chová beze změny. Task F-10, rozhodl Daniel 7. 10. 2026.

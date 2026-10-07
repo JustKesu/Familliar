@@ -7,18 +7,28 @@ import type { LevelGains, LevelUpClass } from './levelGains'
 /** The "+ New class…" list: loading, failed, or the offered classes. */
 export type NewClassList = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; options: readonly NewClassOption[] }
 
+/** A held class whose next level could not be read: its row is disabled with the reason. */
+export interface ClassFailure {
+	className: string
+	classSource: string
+	classLevel: number
+	reason: string
+}
+
 /**
  * D329: which class takes the new level, asked before the wizard opens.
  * D330: shown for every character; "+ New class…" lists the classes not held, an unmet prerequisite disabled with its reason.
  */
 export function LevelUpClassDialog({
 	choices,
+	failures = [],
 	newClasses,
 	onChoose,
 	onChooseNew,
 	onCancel,
 }: {
 	choices: readonly LevelGains[]
+	failures?: readonly ClassFailure[]
 	newClasses: NewClassList
 	onChoose: (gains: LevelGains) => void
 	/** Resolves to why the class cannot be levelled into after all (its level gains unreadable), or null once handed on. */
@@ -71,6 +81,17 @@ export function LevelUpClassDialog({
 							onClick={() => onChoose(gains)}
 						>
 							{gains.className} {gains.classLevel - 1} → {gains.classLevel}
+						</button>
+					))}
+					{failures.map((failure) => (
+						<button
+							key={`${failure.className}|${failure.classSource}`}
+							type="button"
+							className="btn--accent-outline level-up-class__option"
+							disabled
+							title={failure.reason}
+						>
+							{failure.className} {failure.classLevel - 1} → {failure.classLevel}
 						</button>
 					))}
 					<button type="button" className="btn--accent-outline level-up-class__new-toggle" aria-expanded={listing} onClick={() => setListing((open) => !open)}>

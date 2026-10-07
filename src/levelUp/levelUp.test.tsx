@@ -73,14 +73,62 @@ describe('LevelUpButton', () => {
 	})
 
 	it('keeps the maximum-level tooltip off a button that is only unavailable for another reason', async () => {
-		const unavailable = vi.fn(async () => {
-			throw new Error('offline')
-		})
-		render(<LevelUpButton character={single('Fighter', 'Champion', 4)} onLevelUp={() => {}} loadGains={unavailable} />)
+		const noHistory: Character = {
+			id: 'c3',
+			name: 'Cal',
+			classes: [
+				{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 3 },
+				{ className: 'Rogue', classSource: 'XPHB', subclass: 'Thief', level: 2 },
+			],
+		}
+		render(<LevelUpButton character={noHistory} onLevelUp={() => {}} loadGains={fixtureGains} />)
 
-		const button = await screen.findByRole('button', { name: /could not read/i })
+		const button = await screen.findByRole('button', { name: /no level history/i })
 		expect((button as HTMLButtonElement).disabled).toBe(true)
 		expect(button.hasAttribute('title')).toBe(false)
+	})
+
+	it('F-10: a held class whose load rejects disables only its own row, the other class and "+ New class…" stay reachable', async () => {
+		const multiclass: Character = {
+			id: 'c4',
+			name: 'Dee',
+			classes: [
+				{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 3 },
+				{ className: 'Rogue', classSource: 'XPHB', subclass: 'Thief', level: 2 },
+			],
+			levelOrder: [
+				{ className: 'Fighter', classSource: 'XPHB' },
+				{ className: 'Fighter', classSource: 'XPHB' },
+				{ className: 'Fighter', classSource: 'XPHB' },
+				{ className: 'Rogue', classSource: 'XPHB' },
+				{ className: 'Rogue', classSource: 'XPHB' },
+			],
+		}
+		const loadGains = vi.fn(async (character: Character, target: LevelUpClass) => {
+			if (target.className === 'Rogue') throw new Error('offline')
+			return fixtureGains(character, target)
+		})
+		render(<LevelUpButton character={multiclass} onLevelUp={() => {}} loadGains={loadGains} loadNewClasses={noNewClasses} />)
+
+		const user = userEvent.setup()
+		await user.click(await screen.findByRole('button', { name: 'Level up to 6' }))
+		const rogue = screen.getByRole('button', { name: 'Rogue 2 → 3' }) as HTMLButtonElement
+		expect(rogue.disabled).toBe(true)
+		expect(rogue.title).toContain('offline')
+		expect((screen.getByRole('button', { name: 'Fighter 3 → 4' }) as HTMLButtonElement).disabled).toBe(false)
+		expect((screen.getByRole('button', { name: '+ New class…' }) as HTMLButtonElement).disabled).toBe(false)
+	})
+
+	it('F-10: when every held class fails to load the button stays usable for "+ New class…"', async () => {
+		const failing = vi.fn(async () => {
+			throw new Error('offline')
+		})
+		render(<LevelUpButton character={single('Fighter', 'Champion', 4)} onLevelUp={() => {}} loadGains={failing} loadNewClasses={noNewClasses} />)
+
+		const user = userEvent.setup()
+		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
+		expect((screen.getByRole('button', { name: 'Fighter 4 → 5' }) as HTMLButtonElement).disabled).toBe(true)
+		expect((screen.getByRole('button', { name: '+ New class…' }) as HTMLButtonElement).disabled).toBe(false)
 	})
 
 	it('D329: offers no usable button for a multiclass character without a level history and says why', async () => {

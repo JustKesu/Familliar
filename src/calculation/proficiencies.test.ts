@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Character, CharacterClassFeatureChoice } from '../storage/character'
-import { computeProficiencies, extractFeatProficiencyEntries, type Proficiencies, type TakenFeat } from './proficiencies'
+import { computeProficiencies, extractFeatProficiencyEntries, toolsFromFeats, type Proficiencies, type TakenFeat } from './proficiencies'
 
 const MONK_PROSE = 'Martial weapons that have the {@filter Light|items|type=martial weapon|property=light} property'
 const ROGUE_PROSE = 'Martial weapons that have the {@filter Finesse or Light|items|type=martial weapon|property=finesse;light} property'
@@ -272,6 +272,27 @@ describe('computeProficiencies', () => {
 				const l3 = tools(withPicks(character('Fighter', { level: 3, subclass: 'Battle Master' }), picked))
 				expect(labels(l3)).toEqual(["Smith's Tools"])
 				expect(sources(l3[0])).toEqual(['Battle Master'])
+			})
+
+			it('F-10: a second class with Battle Master shows its stored tool and owes one while none is stored; the first class stays untouched', () => {
+				const wizardFighter: Character = {
+					...character('Wizard', { level: 5 }),
+					classes: [
+						{ className: 'Wizard', classSource: 'XPHB', subclass: null, level: 5 },
+						{ className: 'Fighter', classSource: 'XPHB', subclass: 'Battle Master', level: 3 },
+					],
+					levelOrder: [...Array(5).fill({ className: 'Wizard', classSource: 'XPHB' }), ...Array(3).fill({ className: 'Fighter', classSource: 'XPHB' })],
+				}
+				expect(labels(tools(wizardFighter))).toEqual(["1 artisan's tool (Battle Master) — not chosen"])
+				const stored = tools(withPicks(wizardFighter, [{ grantedBy: 'battleMaster', name: "Smith's Tools" }]))
+				expect(labels(stored)).toEqual(["Smith's Tools"])
+				expect(sources(stored[0])).toEqual(['Battle Master'])
+			})
+
+			it('F-10: toolsFromFeats lists only tools a feat gives, fixed or stored', () => {
+				const result = tools(character('Fighter'), [{ name: 'Musician', source: 'XPHB', proficiencies: { tools: ['Lute', 'Flute', 'Drum'] } }, { name: 'Chef', source: 'XPHB' }])
+				expect(toolsFromFeats(result).sort()).toEqual(["Cook's Utensils", 'Drum', 'Flute', 'Lute'])
+				expect(toolsFromFeats(tools(withPicks(character('Bard'), [{ grantedBy: 'bard', name: 'Lute' }])))).toEqual([])
 			})
 
 			it('a pick whose class no longer holds it is ignored', () => {

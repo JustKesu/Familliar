@@ -127,6 +127,20 @@ function sameClass(a: SpellClassRef, b: SpellClassRef): boolean {
 	return a.className === b.className && a.classSource === b.classSource
 }
 
+/** A class grant knows only the class name, so the source may be missing. */
+type HolderRef = { className: string; classSource?: string }
+
+function sameHolder(a: HolderRef, b: HolderRef): boolean {
+	return a.className === b.className && (a.classSource === undefined || b.classSource === undefined || a.classSource === b.classSource)
+}
+
+/** The class a row belongs to (D331); undefined for a row only a feat, species or invocation holds. */
+function holderOf(row: SheetSpellEntry): HolderRef | undefined {
+	if (row.chosenBy) return row.chosenBy
+	if (row.subclassOwners?.[0]) return row.subclassOwners[0]
+	return row.classOrigins[0] ? { className: row.classOrigins[0] } : undefined
+}
+
 function emptyEntry(name: string, source: string, chosen: boolean): SheetSpellEntry {
 	return { name, source, chosen, subclassOrigins: [], classOrigins: [], featOrigins: [], optionalFeatureOrigins: [], itemInvocationOrigins: [], speciesOrigins: [], usages: [], unresolvedAbilityReasons: [], grants: [] }
 }
@@ -151,15 +165,32 @@ export function combineSpellEntries(
 	raceGrantedSpells: { speciesName: string; name: string; source: string; usage?: SpellUsage | null; unresolvedAbilityReason?: string }[] = [],
 	classAlwaysPrepared: { className: string; spells: { name: string; source: string; usage?: SpellUsage | null }[] }[] = [],
 ): SheetSpellEntry[] {
-	const map = new Map<string, SheetSpellEntry>()
+	const all: SheetSpellEntry[] = []
+	const byKey = new Map<string, SheetSpellEntry[]>()
+	const rowsOf = (key: string) => byKey.get(key) ?? []
+	const addRow = (key: string, row: SheetSpellEntry): SheetSpellEntry => {
+		all.push(row)
+		byKey.set(key, [...rowsOf(key), row])
+		return row
+	}
+	// The row a source without its own class (feat, species, invocation) joins: the first one, as before.
+	const baseRow = (key: string, name: string, source: string) => rowsOf(key)[0] ?? addRow(key, emptyEntry(name, source, false))
+	// D331: a class holding the spell (pick, class grant, subclass grant) has its own row; the rows of one spell key apart by class.
+	const grantRow = (key: string, name: string, source: string, holder: HolderRef | undefined) => {
+		const rows = rowsOf(key)
+		const exact = holder && rows.find((row) => holderOf(row) !== undefined && sameHolder(holderOf(row)!, holder))
+		const open = rows.find((row) => holderOf(row) === undefined)
+		if (exact || open) return (exact || open)!
+		if (rows.length === 0) return addRow(key, emptyEntry(name, source, false))
+		return addRow(key, { ...emptyEntry(name, source, false), rowKey: `${key}|${holder?.className ?? ''}|grant` })
+	}
 
 	for (const group of classAlwaysPrepared) {
 		for (const spell of group.spells) {
 			const key = keyOf(spell.name, spell.source)
-			const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+			const entry = grantRow(key, spell.name, spell.source, { className: group.className })
 			if (!entry.classOrigins.includes(group.className)) entry.classOrigins.push(group.className)
 			mergeUsage(entry, 'class', group.className, spell.usage)
-			map.set(key, entry)
 		}
 	}
 
@@ -167,16 +198,17 @@ export function combineSpellEntries(
 		const chooser = choice.className !== undefined && choice.classSource !== undefined ? { className: choice.className, classSource: choice.classSource } : undefined
 		for (const spell of choice.spells) {
 			const key = keyOf(spell.name, spell.source)
-			const existing = map.get(key)
-			if (!existing) {
-				map.set(key, { ...emptyEntry(spell.name, spell.source, true), ...(chooser ? { chosenBy: chooser } : {}) })
-			} else if (!existing.chosen) {
-				existing.chosen = true
-				if (chooser) existing.chosenBy = chooser
-			} else if (chooser && existing.chosenBy && !sameClass(existing.chosenBy, chooser)) {
-				// D325: grants stay merged into the first chooser's row; the second class gets a pick-only row.
-				const rowKey = `${key}|${chooser.className}|${chooser.classSource}`
-				if (!map.has(rowKey)) map.set(rowKey, { ...emptyEntry(spell.name, spell.source, true), chosenBy: chooser, rowKey })
+			const rows = rowsOf(key)
+			if (rows.some((row) => row.chosen && (!chooser || !row.chosenBy || sameClass(row.chosenBy, chooser)))) continue
+			const open = rows.find((row) => !row.chosen && (!chooser || holderOf(row) === undefined || sameHolder(holderOf(row)!, chooser)))
+			if (open) {
+				open.chosen = true
+				if (chooser) open.chosenBy = chooser
+			} else if (rows.length === 0) {
+				addRow(key, { ...emptyEntry(spell.name, spell.source, true), ...(chooser ? { chosenBy: chooser } : {}) })
+			} else {
+				// D325/D331: a pick of another class than the row's holder is a pick-only row of its own.
+				addRow(key, { ...emptyEntry(spell.name, spell.source, true), ...(chooser ? { chosenBy: chooser } : {}), rowKey: `${key}|${chooser?.className ?? ''}|${chooser?.classSource ?? ''}` })
 			}
 		}
 	}
@@ -185,48 +217,44 @@ export function combineSpellEntries(
 		const owner = group.className !== undefined && group.classSource !== undefined ? { className: group.className, classSource: group.classSource } : undefined
 		for (const spell of group.spells) {
 			const key = keyOf(spell.name, spell.source)
-			const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+			const entry = grantRow(key, spell.name, spell.source, owner)
 			if (!entry.subclassOrigins.includes(group.subclassName)) entry.subclassOrigins.push(group.subclassName)
 			if (owner && !(entry.subclassOwners ?? []).some((known) => sameClass(known, owner))) entry.subclassOwners = [...(entry.subclassOwners ?? []), owner]
 			mergeUsage(entry, 'subclass', group.subclassName, spell.usage)
-			map.set(key, entry)
 		}
 	}
 
 	for (const spell of featGrantedSpells) {
 		const key = keyOf(spell.name, spell.source)
-		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+		const entry = baseRow(key, spell.name, spell.source)
 		if (!entry.featOrigins.includes(spell.featName)) entry.featOrigins.push(spell.featName)
 		mergeUsage(entry, 'feat', spell.featName, spell.usage, spell.featInstance)
 		if (spell.unresolvedAbilityReason && !entry.unresolvedAbilityReasons.includes(spell.unresolvedAbilityReason)) {
 			entry.unresolvedAbilityReasons.push(spell.unresolvedAbilityReason)
 		}
-		map.set(key, entry)
 	}
 
 	for (const spell of optionalFeatureGrantedSpells) {
 		const key = keyOf(spell.name, spell.source)
-		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+		const entry = baseRow(key, spell.name, spell.source)
 		const originName = spell.itemName === undefined ? spell.optionName : `${spell.optionName} — ${spell.itemName}`
 		const origins = spell.itemName === undefined ? entry.optionalFeatureOrigins : entry.itemInvocationOrigins
 		if (!origins.includes(originName)) origins.push(originName)
 		mergeUsage(entry, spell.itemName === undefined ? 'optionalFeature' : 'item', originName, spell.usage)
-		map.set(key, entry)
 	}
 
 	for (const spell of raceGrantedSpells) {
 		const key = keyOf(spell.name, spell.source)
-		const entry = map.get(key) ?? emptyEntry(spell.name, spell.source, false)
+		const entry = baseRow(key, spell.name, spell.source)
 		if (!entry.speciesOrigins.includes(spell.speciesName)) entry.speciesOrigins.push(spell.speciesName)
 		mergeUsage(entry, 'species', spell.speciesName, spell.usage)
 		// A spell the player ALSO picked, or that a class source grants, already has numbers — the species' unmade ability choice is not a gap there.
 		if (spell.unresolvedAbilityReason && !entry.unresolvedAbilityReasons.includes(spell.unresolvedAbilityReason)) {
 			entry.unresolvedAbilityReasons.push(spell.unresolvedAbilityReason)
 		}
-		map.set(key, entry)
 	}
 
-	return [...map.values()]
+	return all
 }
 
 /** A spell's text as the Spells tab shows it — also the Actions tab's expanded spell row (R5c). */
