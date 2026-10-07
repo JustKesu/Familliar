@@ -1,49 +1,62 @@
-# REPORT — M8: Remove level pro multiclass z historie úrovní
+# REPORT — M9: Edit Character pro multiclass — STOP po inventuře (krok 1)
 
-Stav: typecheck, `npm run test` (173 souborů, 3186 testů), validate-data (175/175), `npm run e2e` (477 testů, 5,0 min) zelené. Bez změny schématu (60). D332 zapsáno do DECISIONS.md (na žádost zadání).
+Stav: nic neimplementováno, kód beze změny. Inventura má 31 míst se skutečnou změnou (> ~25) → podle zadání STOP a návrh rozdělení M9a/M9b. Typecheck/test/e2e se nespouštěly (jen tento soubor).
 
-## Inventura: záznamy patřící třídě (a) třída ztratí ne-poslední úroveň, (b) třída klesne na 0
+## Inventura: místa, která v Editu předpokládají jednu třídu
 
-| Záznam | Vlastník | (a) | (b) | Test |
-|---|---|---|---|---|
-| `classes` | className+classSource | level −1, podtřída pryč na své úrovni | položka odstraněna | unit D332 a, e2e a,b |
-| `levelOrder` | historie | `slice(0,-1)` | `slice(0,-1)`, zůstává i u 1 třídy | unit, e2e a,e |
-| `spellChoices` | třída | beze změny | položka třídy pryč | unit b, e2e c |
-| `subclassSpellChoices` | třída + grantedAtLevel | picky té úrovně třídy | celá položka pryč | unit b |
-| `classFeatureChoices` | třída + grantedAtLevel | ta úroveň třídy | všechny té třídy | unit a |
-| `optionalFeatureChoices.choices` (EI, MV, MM…) | úroveň postavy | `level` = úroveň postavy | totéž (třída na 1 má volby jen z této úrovně) | unit b |
-| `optionalFeatureChoices.spellChoices` (Tome) | volba | beze změny | pryč s odebranou volbou | unit b |
-| `fightingStyles` | třída | grant úroveň (D318) | položka třídy pryč | unit b |
-| `multiclassPicks` | třída | beze změny | položky třídy pryč | unit a, e2e a |
-| `wildShapeForms` | třída | beze změny | položka třídy pryč | unit b |
-| `toolChoices` / `subclassSkills` / `languages` z rysů | grant úroveň třídy | ta úroveň | totéž (Thieves' Cant 1) | unit a |
-| `classSkills` | první třída | beze změny | nedotčeno (první třída nikdy neklesne na 0) | — |
-| `expertiseSkills`, `masteries` | úroveň postavy | ta úroveň | ta úroveň | unit a |
-| `featAsiChoices` | úroveň postavy | ta úroveň | ta úroveň | stávající |
-| `grantedFeats` | background/species/manual | — | — | — |
-| `hitPointLevels` | úroveň postavy | ta úroveň | ta úroveň | unit a, e2e b |
-| `play.resourceUses` | jméno zdroje | ořez na nové maximum | + smazání zdroje, který zmizel | unit resource D332 |
-| `play.spentSpellSlots` | pool | ořez na nová maxima | totéž | e2e b |
-| `play.spentHitDice` | `Class\|Source` | ořez | klíč třídy pryč | unit a |
-| `play.concentratingOn` | kouzlo | beze změny | null, když kouzlo odešlo s třídou a jiná uložená volba ho nedrží | unit b+c, e2e c |
-| `currentHp` | — | D107: klesne o pokles max HP | totéž | stávající |
-| `familiar`, `inventory` | bez vlastníka | — | — | — |
+| # | Místo | Dnes | Plánovaná změna |
+|---|---|---|---|
+| 1 | `CharacterSheet.tsx:2855` tlačítko Edit | multiclass vždy vypnuto „…cannot be edited yet“ | vypnuto jen bez konzistentního `levelOrder`, důvod „Cannot tell which class each level came from (no level history).“ |
+| 2 | `CharacterManager.tsx:353` route edit | multiclass → BounceToSheet | bounce jen bez konzistentního `levelOrder` |
+| 3 | `saveCharacter` `wizardState.ts:1261` | throw pro multiclass | povolit při konzistentním `levelOrder`, jinak throw dál |
+| 4 | `saveCharacter:1266` kontrola úrovně | `classChoice.level` = celková úroveň | v multiclass Editu porovnat úroveň aktivní třídy s její uloženou |
+| 5 | `saveCharacter:1272` `activeClass` | jen level up | i multiclass Edit; per-class záznamy všech tříd ze stashe (níže), ne z `existing` |
+| 6 | `saveCharacter:1303` `classes` | `classesAfterLevelUp` / `[ownClass]` | `existing.classes` s podtřídou každé třídy ze stashe; nový assert „žádná třída nezvednuta“ (identita, pořadí, úrovně) |
+| 7 | `saveCharacter:1346–1451` stavba per-class záznamů | jen z `data` jedné třídy | vytáhnout do funkce, volat pro každou třídu (aktivní z `data`, ostatní ze stashe) |
+| 8 | `saveCharacter:1513` `levelOrder` | Edit přestaví z `classes` (jednotřídní) | multiclass Edit: `existing.levelOrder` beze změny |
+| 9 | `saveCharacter:1433–1436` masteries/expertise úrovně | `keepRecordedLevels` | beze změny (osa postavy), jen ověřit |
+| 10 | `WizardData` | jedna třída | nové pole stash per-class dat ostatních tříd (subclass, fightingStyle, optional/class optional features, spells, subclassSpells, classFeatureChoices, wildShapeForms, activeClassFeatureTypes) |
+| 11 | reducer: nová akce přepnutí třídy | — | uloží per-class pole aktivní třídy do stashe, načte cílovou; globální pole nechá |
+| 12 | reducer `setSubclass:1150` | maže VŠECHNY `subclassSkills` a jazyky podtříd | mazat jen granty podtřídy aktivní třídy |
+| 13 | `wizardDataFromCharacter` | seed jedné (aktivní) třídy | seed aktivní (první v `classes`) + stash ostatních |
+| 14 | seed effect `CharacterWizard.tsx:314` | `loadSubclassesFor` + optional groups jen jedné třídy | načíst pro každou drženou třídu |
+| 15 | `multiclassLevelUp`/`activeClassScope` `:212` | jen level up | obecný „multiclass scope“ i pro Edit |
+| 16 | `draftClasses`/`multiclassDraft` `:219` | Edit = `[ownDraftClass]` | všechny třídy, podtřídy ze stashe, uložený `levelOrder` |
+| 17 | `draftCharacterLevel` `:224` | `classChoice.level` | součet úrovní |
+| 18 | `featureLanguageGrants`, `wizardToolGrants`, `wizardSubclassSkillGrants`, `heldSubclassGrants` `:225–228` | `[wizardClassChoice]` | `draftClasses` |
+| 19 | krok Class: `ClassPicker` `:1670` | třídu i úroveň lze měnit | multiclass: přepínač tříd (nová komponenta), třída/úroveň zamčené |
+| 20 | `WeaponMasteryPicker` `:1700` počet | pool jedné třídy | součet všech tříd (jako `countOffset` M7a, ale bez přírůstku) |
+| 21 | `ExpertisePicker` `:1859–1871` počet + `restrictedTo` | jedna třída | součet všech tříd, restrikce sjednoceně |
+| 22 | `classSkillsSource` `:1054` | Edit = `classChoice` | `firstClass` (D321) |
+| 23 | `featAsiEligibleLevelCount` `:1200` + loader `:1004` | granty jedné třídy | granty všech tříd přes `featAsiCharacterLevels` |
+| 24 | krok featAsi `:2056` `level` | `classChoice.level` | celková úroveň |
+| 25 | krok Hit points `:2078`, `hitDieKey :1286` | jedna kostka | `hitDiePerLevel` z `levelOrder` (D323), `multiclassHitDiceKey` i pro Edit |
+| 26 | průběžné max HP `:1155` | `draftClasses` jen level up | i Edit |
+| 27 | krok Spells `:1989` + `heldPrepared :897` | jedna třída; ostatní jen v level upu | aktivní třída; „Already prepared by“ i v Editu (others = ostatní třídy) |
+| 28 | completeness `isReadyToSave` | jen data aktivní třídy | kontrola i stashovaných tříd (otázka 1) |
+| 29 | krok Abilities | — | tlumená poznámka přes `unmetMulticlassPrerequisite` pro každou drženou třídu |
+| 30 | krok Languages `MulticlassPickSlots :1932` | jen při vstupu do třídy | otázka 2 |
+| 31 | Review `:2117–2131` | `classLine`/kostky jen level up | i multiclass Edit |
+| 32 | Cancel baseline `:234` | jen `data` | porovnávat i stash |
+| 33 | effects per třída (`:696, 723, 751, 849, 877, 981`) | klíč `classChoice` | beze změny — přepnutí mění `classChoice`, načtou se znovu |
+| 34 | wildShape `:1468`, damaging cantrips `:1403` | aktivní třída | beze změny |
 
-## Změny
-- `levelRemoval.ts`: brána pustí multiclass s konzistentním `levelOrder`, bez něj `NO_LEVEL_HISTORY_REASON`; `levelRemovalCore` už neodmítá úroveň 1 třídy, odebere třídu a záznamy dle tabulky; `LevelRemovalPlan.removedClass`. Texty „build order step M8/10“ odstraněny.
-- `RemoveLevelButton.tsx`: řádek „<Class> will be removed from this character.“ nahoře (`.confirm-dialog__warning`, tučně v index.css); u odebrané třídy „Known and prepared spells of the other classes are kept.“.
-- Oprava chyby: potvrzení zavře dialog před uložením. Dřív zůstal otevřený se starým plánem, kdykoli šla odebrat další úroveň (i jednotřídní Fighter 5 vytvořený na 1; dosavadní e2e končily na úrovni, kde už odebrat nešlo).
-- `validate.ts` (nález 4): čtení zahodí jen položky `multiclassPicks` nedržené třídy; jiná vada dál zahodí celý seznam.
+Skutečná změna: 1–8, 10–32 (31 míst). Beze změny: 9, 33, 34.
 
-## Testy
-- Unit `levelRemoval.test.tsx`: blok „removing the last level of a class (D332)“ (5 testů), zdroj zmizelé třídy, dialog s řádkem, důvod bez historie; `multiclassEntry.test.ts` nález 4.
-- E2E `multiclassLevelRemoval.spec.ts` M8 a–f; `multiclassLevelUp.spec.ts` M7a g upraven (Remove level teď povolen).
+## Návrh rozdělení
+
+- **M9a — jádro uložení, Edit dál zamčený.** Místa 3–8, 10–13, 28 (+ unit testy save každého per-class záznamu, assert „žádná třída nezvednuta“). Brány 1, 2 zůstávají → UI se nemění, Edit je bezpečný. Lze ověřit jen unit testy (`saveCharacter` + reducer).
+- **M9b — UI a odemčení.** Místa 1, 2, 14–27, 29–32, D333, odstranění textů „cannot be edited yet“, e2e a)–e). Odemčení až tady, kdy všechny kroky na ose postavy (masteries, expertise, ASI/feat, HP) počítají se všemi třídami — dřív by Edit multiclassu mohl zahodit featAsiChoices/expertise.
+
+## Otázky pro uživatele
+
+1. **Neúplná ne-aktivní třída při uložení.** Uživatel změní podtřídu Clerica, nevybere nová kouzla, přepne na Wizarda a dá Save. (a) Save vypnutý, Review vypíše, která třída má nedokončené volby — **doporučuji**; (b) přepnutí blokovat, dokud aktivní třída není kompletní (jednodušší, ale svazuje); (c) uložit neúplné (proti dnešnímu „nic se neuloží neúplné“).
+2. **`multiclassPicks` „jako dnes“.** Dnes se upravují jen při vstupu do třídy v Level upu; Edit jednotřídní postavy je nemá. (a) V Editu ukázat sloty pro každou ne-první třídu s volbou a dovolit změnu — **doporučuji**; (b) v Editu jen přenést beze změny.
 
 ## Rozhodnutí přijatá během práce
-- Spotřeba zdroje, který po odebrání třídy zmizí, se smaže (jinak by zůstal neviditelný počet); jen při odebrání třídy, jednotřídní chování beze změny.
-- Kouzla Pact of the Tome se mažou jen s odebranou třídou; u ne-poslední úrovně zůstávají jako dřív.
-- Koncentrace se maže jen podle uložených voleb kouzel; kouzlo, které postava drží jen odvozeně (feat, druh, podtřída jiné třídy), koncentraci nezachrání.
-- Nepřiřazený styl boje (bez className, pre-58) se řídí dosavadním pravidlem úrovně grantu.
+
+Žádná. DECISIONS.md, STATUS.md beze změny (nic neexistuje nového).
 
 ## Manual browser check for the user
-- Sheet → Remove level u multiclass postavy, jejíž poslední úroveň je jediná úroveň třídy: vzhled tučného řádku „<Class> will be removed from this character.“ nad seznamem a zalamování dlouhého seznamu na mobilu.
+
+Nic — žádná změna UI.
