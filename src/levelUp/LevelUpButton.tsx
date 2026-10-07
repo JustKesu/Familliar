@@ -3,27 +3,46 @@ import type { Character } from '../storage/character'
 import { loadLevelGainsFor, type LevelGains, type LevelUpClass } from './levelGains'
 import { totalCharacterLevel } from '../calculation/characterLevel'
 import { levelUpClassOptions, MAX_CHARACTER_LEVEL } from './levelUpSteps'
-import { LevelUpClassDialog } from './LevelUpClassDialog'
+import { LevelUpClassDialog, type NewClassList } from './LevelUpClassDialog'
+import { loadNewClassOptions, type NewClassOption } from '../multiclass/multiclassPrerequisites'
 
 type ButtonState = { kind: 'checking' } | { kind: 'ready'; choices: LevelGains[] } | { kind: 'unavailable'; reason: string }
 
 /**
- * Raises the character by exactly one level in a class it already has (slice
- * 8d3). D43: an unavailable level up names its reason on the control itself.
- * D329: with more than one class, a click first asks which class.
+ * Raises the character by exactly one level (slice 8d3). D43: an unavailable level up names its reason on the control itself.
+ * D329/D330: a click first asks which class — one held, or a new one through "+ New class…".
  */
 export function LevelUpButton({
 	character,
 	onLevelUp,
 	loadGains = loadLevelGainsFor,
+	loadNewClasses = loadNewClassOptions,
 }: {
 	character: Character
 	onLevelUp: (gains: LevelGains) => void
 	loadGains?: (character: Character, target: LevelUpClass) => Promise<LevelGains>
+	loadNewClasses?: (character: Character) => Promise<NewClassOption[]>
 }): ReactNode {
 	const allowed = levelUpClassOptions(character)
 	const [state, setState] = useState<ButtonState>({ kind: 'checking' })
 	const [choosing, setChoosing] = useState(false)
+	const [newClasses, setNewClasses] = useState<NewClassList>({ kind: 'loading' })
+
+	useEffect(() => {
+		if (!choosing) return
+		let cancelled = false
+		setNewClasses({ kind: 'loading' })
+		loadNewClasses(character)
+			.then((options) => {
+				if (!cancelled) setNewClasses({ kind: 'ready', options })
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) setNewClasses({ kind: 'error', message: error instanceof Error ? error.message : String(error) })
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [choosing, character, loadNewClasses])
 
 	useEffect(() => {
 		const next = levelUpClassOptions(character)
@@ -47,23 +66,30 @@ export function LevelUpButton({
 	const current: ButtonState = 'reason' in allowed ? { kind: 'unavailable', reason: allowed.reason } : state
 
 	if (current.kind === 'ready') {
-		const multiclass = character.classes.length > 1
 		return (
 			<>
-				<button
-					type="button"
-					className="sheet__level-up sheet__header-button"
-					onClick={() => (multiclass ? setChoosing(true) : onLevelUp(current.choices[0]))}
-				>
+				<button type="button" className="sheet__level-up sheet__header-button" onClick={() => setChoosing(true)}>
 					<UpArrowIcon />
 					Level up to {current.choices[0].level}
 				</button>
 				{choosing && (
 					<LevelUpClassDialog
 						choices={current.choices}
+						newClasses={newClasses}
 						onChoose={(gains) => {
 							setChoosing(false)
 							onLevelUp(gains)
+						}}
+						onChooseNew={async (target) => {
+							try {
+								const gains = await loadGains(character, target)
+								if (gains.unresolved !== null) return gains.unresolved
+								setChoosing(false)
+								onLevelUp(gains)
+								return null
+							} catch (error) {
+								return `Could not read what the next level adds: ${error instanceof Error ? error.message : String(error)}`
+							}
 						}}
 						onCancel={() => setChoosing(false)}
 					/>

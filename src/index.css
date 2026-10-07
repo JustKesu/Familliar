@@ -3240,11 +3240,40 @@ button:disabled {
   margin-top: 12px;
 }
 
-.level-up-class__option {
+.level-up-class__option,
+.level-up-class__new-toggle,
+.level-up-class__new-option {
   padding: 8px 14px;
   border-radius: 8px;
   font-weight: 600;
   text-align: left;
+}
+
+/* D330: the class list stays inside the dialog on a short window. */
+.level-up-class__new {
+  margin-top: 12px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.level-up-class__new-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.level-up-class__new-option {
+  width: 100%;
+}
+
+.level-up-class__reason {
+  margin: 4px 0 0;
+  color: var(--text-sub);
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .counts {

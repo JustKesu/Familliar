@@ -123,6 +123,7 @@ test('R14e2 e: Level up shows the base Strength, not the custom item', async ({ 
   await open(page, fighter('r14e2-e', [glove], {}, { classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: 'Champion', level: 3 }] }))
   await expect(score(page, 'strength')).toHaveText('21')
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await takeAllFighterLevel4Picks(page)
   const level4 = page.getByRole('group', { name: 'Level 4' })
   for (let steps = 0; steps < 8 && !(await level4.isVisible()); steps++) await next(page)

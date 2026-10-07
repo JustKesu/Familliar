@@ -338,6 +338,8 @@ export interface Character {
 	toolChoices?: CharacterToolChoice[]
 	/** D177: subclass skill picks (Battle Master, Order, Peace, Arcane Archer, Cavalier, Samurai). Fixed subclass skills are derived, never stored. */
 	subclassSkills?: CharacterSubclassSkill[]
+	/** D330: the skill/tool pick of multiclassing.proficienciesGained, one per pick, tagged with the class entered. Absent = none. */
+	multiclassPicks?: CharacterMulticlassPick[]
 	/**
 	 * The character level the creation wizard made this character at (slice 8e).
 	 * Set once, never changed afterwards. It is the floor for removing a level:
@@ -1090,7 +1092,7 @@ export interface ConcentrationRef {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1114,11 +1116,18 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 59
+export const CURRENT_SCHEMA_VERSION = 60
 
 export interface CharacterLevelOrderEntry {
 	className: string
 	classSource: string
+}
+
+export interface CharacterMulticlassPick {
+	className: string
+	classSource: string
+	kind: 'skill' | 'tool'
+	name: string
 }
 
 /** D317: valid only when it has one entry per character level and each class appears exactly its `level` times. */

@@ -1,4 +1,5 @@
 import { classPrereqInfoFor } from '../featAsi/featAsiData'
+import { isPickOf, multiclassToolPicks } from '../multiclass/multiclassPicks'
 import type { Character } from '../storage/character'
 import { weaponProficiencyGrantsForClass, type WeaponProficiencyGrant } from '../weapons/weaponProficiency'
 import { firstClass } from './characterLevel'
@@ -44,7 +45,7 @@ export function prerequisiteClassProficiencies(character: Pick<Character, 'class
  * D321: the first class gives its starting armor and weapons; every other class only the fixed part of its
  * multiclassing.proficienciesGained (choices wait for M7). The Proficiencies card and weapon attacks both read this (D178).
  */
-export function classProficiencyGrants(character: Pick<Character, 'classes' | 'levelOrder'>, parsedClasses: unknown): ClassProficiencyGrants {
+export function classProficiencyGrants(character: Pick<Character, 'classes' | 'levelOrder' | 'multiclassPicks'>, parsedClasses: unknown): ClassProficiencyGrants {
 	const result: ClassProficiencyGrants = { armor: [], weapons: [], tools: [] }
 	const start = firstClass(character)
 	if (!start) return result
@@ -54,12 +55,14 @@ export function classProficiencyGrants(character: Pick<Character, 'classes' | 'l
 
 	for (const cls of character.classes) {
 		if (cls === start) continue
+		const source: ProficiencySource = { kind: 'class', name: `${cls.className} (multiclass)` }
+		// D330: the stored instrument pick (Bard) of this class.
+		for (const pick of multiclassToolPicks(character)) if (isPickOf(pick, cls)) result.tools.push({ name: pick.name, source })
 		const gained = proficienciesGained(parsedClasses, cls.className, cls.classSource)
 		if (!gained) continue
-		const source: ProficiencySource = { kind: 'class', name: `${cls.className} (multiclass)` }
 		for (const token of strings(gained['armor'])) result.armor.push({ token, source })
 		for (const token of strings(gained['weapons'])) if (token === 'simple' || token === 'martial') result.weapons.push({ grant: { kind: 'category', category: token }, source })
-		// The text-only `tools` field is ignored; a numeric value (Bard's anyMusicalInstrument) is a choice, deferred to M7.
+		// The text-only `tools` field is ignored; a numeric value (Bard's anyMusicalInstrument) is the choice stored above.
 		for (const entry of Array.isArray(gained['toolProficiencies']) ? gained['toolProficiencies'].filter(isRecord) : []) {
 			for (const [token, granted] of Object.entries(entry)) if (granted === true) result.tools.push({ name: titleCase(token), source })
 		}

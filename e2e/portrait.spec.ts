@@ -223,6 +223,7 @@ test('W-8 f: Edit Character shows and keeps the portrait; a level up keeps it an
   expect(await storedPortrait(page)).toBe(stored)
 
   await page.getByRole('button', { name: 'Level up to 2' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   const saveLevel = wizardNav(page).getByRole('button', { name: 'Save level 2' })
   for (let steps = 0; steps < 8 && !(await saveLevel.isVisible()); steps++) {
     await expect(square(page)).toHaveCount(0)

@@ -110,6 +110,7 @@ test('W-2 e + g: Edit Character shows the saved picks CHOSEN; a level up locks t
 
   await test.step('g: Level up to 4', async () => {
     await page.getByRole('button', { name: 'Level up to 4' }).click()
+    await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
     await expectStep(page, 'Class and level')
     for (const weapon of ['Longsword', 'Greatsword', 'Handaxe']) {
       await expect(chooseButton(page, weapon)).toHaveAttribute('aria-pressed', 'true')

@@ -233,6 +233,7 @@ test('R14b h: the level-up Hit points step shows the maximum with the item bonus
   await open(page, character)
 
   await page.getByRole('button', { name: 'Level up to 5' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   const saveButton = wizardNav(page).getByRole('button', { name: 'Save level 5' })
   let checkedTotal = false
   for (let steps = 0; steps < 8 && !(await saveButton.isVisible()); steps++) {

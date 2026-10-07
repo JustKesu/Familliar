@@ -4997,3 +4997,21 @@ novou úroveň; počet masteries/expertise = držené + přírůstek levelované
 přes `featAsiCharacterLevels`. Prerekvizity featů v kroku ASI/Feat a pool weapon mastery čtou zdatnosti všech tříd
 z `classProficiencyGrants` (D321), stejně jako Manage Feats. Edit (M9) a Remove level (M8) pro víc tříd zůstávají
 zablokované. Task M7a, rozhodl Daniel 7. 10. 2026.
+
+## D330 — Vstup do nové třídy přes Level up (M7b, schéma 60)
+
+Zpřesňuje D329. Okno „Level up which class?“ se otevře pro každou postavu, i jednotřídní: tlačítko na každou drženou
+třídu a „+ New class…“, které ukáže třídy z výběru tříd při tvorbě kromě držených. Multiclass vzniká jen přes Level up,
+nikdy při tvorbě. Prerekvizita (XPHB „Multiclassing > Prerequisites“): 13 v primární vlastnosti nové třídy A každé
+držené třídy, z top-level `primaryAbility` (pole = NEBO, klíče v jednom objektu = A). Skóre = základ + background +
+druh + featy/ASI, předměty nikdy (jako D253). Nesplněná třída je v seznamu vypnutá s důvodem („Needs Charisma 13
+(Sorcerer). You have 12.“, u držené „…, a class you already have“); tvrdý blok bez výjimky, platí i pro přímou adresu.
+Adresa `/level-up/<className>/<classSource>` s nedrženou třídou = nová třída na úrovni třídy 1. Volba dovednosti/nástroje
+z `multiclassing.proficienciesGained` (Bard: dovednost + hudební nástroj, Ranger/Rogue/Artificer: dovednost ze seznamu)
+se dělá v kroku Languages a ukládá do `Character.multiclassPicks?: { className, classSource, kind: 'skill'|'tool', name }[]`
+(schéma 60, migrace 59→60 nic nepřidá; špatná hodnota se při čtení zahodí, import ji odmítne), aby Remove level (M8)
+věděl, co smazat. Nová třída se připíše na KONEC `classes` (úroveň 1) a do `levelOrder`; záznamy ostatních tříd projdou
+beze změny (M7a). Jednotřídní postava bez `levelOrder` (starší save) ho má při vstupu do druhé třídy přestavěný jako
+tu třídu `level`krát; levelování držené třídy ho dál nechává „neznámé“. Hit points nové úrovně = kostka nové třídy,
+průměr nebo hod, nikdy maximum. Bez záchranných hodů, startovního vybavení, startovních dovedností a startovních voleb
+nástrojů (D328). Task M7b, rozhodl Daniel 7. 10. 2026.

@@ -21,6 +21,7 @@ import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { Character } from '../storage/character'
 import { choiceNames } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
+import { multiclassSkillNames } from '../multiclass/multiclassPicks'
 import { isSubclassSkillChoiceMade, subclassExpertiseSkills, subclassSkillGrantsFor, subclassSkillSourceNames } from '../classSkills/subclassSkillGrants'
 import {
 	featFixedExpertiseNames,
@@ -115,6 +116,7 @@ function proficiencySources(skill: Skill, character: Character, feats: FeatEffec
 	sources.push(...featFixedSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
 	sources.push(...featStoredSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
 	sources.push(...subclassSkillSourceNames(skill, character).map((name) => `subclass (${name})`))
+	sources.push(...multiclassSkillNames(character).flatMap((pick) => (pick.name === skill ? [`${pick.className} (multiclass)`] : [])))
 	return sources
 }
 

@@ -48,6 +48,7 @@ import { extractSpellCountClassData } from '../spells/spellCountClassData'
 import { subclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
 import type { Character, CharacterClass } from '../storage/character'
 import { subclassLevelFor } from '../subclass/subclassData'
+import { multiclassPickShape, type MulticlassPickShape } from '../multiclass/multiclassPicks'
 import { totalCharacterLevel } from '../calculation/characterLevel'
 import { MAX_CHARACTER_LEVEL as MAX_LEVEL } from './levelUpSteps'
 
@@ -240,7 +241,7 @@ export function levelGainsFor(character: Character, target: LevelUpClass, parsed
 			background: never('A background, its ability-bonus distribution and its tool proficiency are all chosen at creation.'),
 			expertise: expertiseStepGain(resolverData, className, classSource, classLevel, previous),
 			// D172: the creation picks never grow; a class feature's free picks (Deft Explorer at Ranger 2) arrive with its level.
-			languages: languagesStepGain(className, classSource, classLevel, subclassGrantLevel, characterClass.subclass, isNewClass),
+			languages: languagesStepGain(className, classSource, classLevel, subclassGrantLevel, characterClass.subclass, isNewClass, parsedClasses),
 			abilities: never('Ability scores are set at creation. A later level raises them only through the featAsi step, never through this one.'),
 			spells: spellsStepGain(before, now, parsedClasses, classLevel, previous, {
 				subclassGrantLevel,
@@ -264,12 +265,30 @@ export function levelGainsFor(character: Character, target: LevelUpClass, parsed
  * D174: so do the class tool picks — and a subclass's (Battle Master at 3), which the stored character cannot show yet
  * while the subclass is still to be chosen at this very level, so that case is walked as unknown rather than skipped.
  */
-function languagesStepGain(className: string, classSource: string, level: number, subclassGrantLevel: number | null, subclass: string | null, isNewClass: boolean): LevelGain {
+function languagesStepGain(
+	className: string,
+	classSource: string,
+	level: number,
+	subclassGrantLevel: number | null,
+	subclass: string | null,
+	isNewClass: boolean,
+	parsedClasses: unknown[],
+): LevelGain {
 	const start = { className, classSource, level, subclass }
 	// D328: a class's own (non-subclass) tool picks are its starting proficiencies (D170), which a class joined later never gets.
 	const toolGrants = classToolGrantsFor([start]).filter((grant) => !isNewClass || grant.subclass !== undefined)
-	// D328: the multiclass skill/tool pick of multiclassing.proficienciesGained (D321) joins here in M7.
+	let multiclass: MulticlassPickShape | null = null
+	if (isNewClass) {
+		try {
+			multiclass = multiclassPickShape(parsedClasses, className, classSource)
+		} catch (error) {
+			return unknownGain(error instanceof Error ? error.message : String(error))
+		}
+	}
 	const parts: LevelGainPart[] = [
+		// D330: the multiclass skill/tool pick of multiclassing.proficienciesGained.
+		{ name: `${className} multiclass skill`, count: multiclass?.skills?.count ?? 0 },
+		{ name: `${className} multiclass instrument`, count: multiclass?.tools?.count ?? 0 },
 		...classFeatureLanguageGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: grant.featureName, count: grant.choice.count }] : [])),
 		...toolGrants.flatMap((grant) => (grant.level === level ? [{ name: `${grant.owner} tool`, count: grant.count }] : [])),
 		...subclassSkillGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: `${grant.subclass} skill`, count: subclassSkillChoiceCount(grant) }] : [])),

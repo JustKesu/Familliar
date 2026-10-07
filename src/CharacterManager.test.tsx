@@ -188,6 +188,7 @@ describe('CharacterManager level up (slice 8d3, rework R1b)', () => {
 		render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
+		await user.click(screen.getByRole('button', { name: 'Fighter 4 → 5' }))
 
 		// Fighter 4 → 5 walks only hit points and review; the walk opens on hit points.
 		expect(await screen.findByText('1. Hit points')).not.toBeNull()
@@ -209,6 +210,7 @@ describe('CharacterManager level up (slice 8d3, rework R1b)', () => {
 		render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
+		await user.click(screen.getByRole('button', { name: 'Fighter 4 → 5' }))
 
 		expect(await screen.findByText('1. Hit points')).not.toBeNull()
 		expect(screen.queryByRole('button', { name: 'Edit character' })).toBeNull()

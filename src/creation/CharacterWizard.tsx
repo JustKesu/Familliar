@@ -77,7 +77,7 @@ import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeHitDicePool } from '../calculation/hitDice'
-import { isMulticlass, levelOrderAfterLevelUp, totalCharacterLevel } from '../calculation/characterLevel'
+import { firstClass, isMulticlass, levelOrderAfterLevelUp, totalCharacterLevel } from '../calculation/characterLevel'
 import { loadHitDiceClassData } from '../sheet/sheetData'
 import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
@@ -101,7 +101,9 @@ import type { CharacterStore } from '../storage/characterStore'
 import type { LevelGains } from '../levelUp/levelGains'
 import { levelUpStepConditions, MAX_CHARACTER_LEVEL, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
 import { heldPicksFrom } from '../levelUp/heldPicks'
-import { isClass } from '../levelUp/multiclassLevelUp'
+import { classesAfterLevelUp, isClass, levelOrderBeforeLevelUp } from '../levelUp/multiclassLevelUp'
+import { loadMulticlassPickShape, multiclassSkillSources, type MulticlassPickShape } from '../multiclass/multiclassPicks'
+import { MulticlassPickSlots } from '../multiclass/MulticlassPickSlots'
 import { ConfirmDialog } from '../app/ConfirmDialog'
 import { WizardNavButtons, WizardStepList } from './WizardShell'
 import {
@@ -204,16 +206,19 @@ export function CharacterWizard({
 	const levelUpConditions = levelUp ? levelUpStepConditions(levelUp, state.data.subclass?.name ?? null) : {}
 	const unknownStepReasons = levelUp ? unknownLevelUpSteps(levelUp, state.data.subclass?.name ?? null) : {}
 	// D329: a level up of one class of a multiclass character — per-class picks belong to that class, character-wide ones to all.
-	const multiclassLevelUp = levelUp !== undefined && character !== undefined && isMulticlass(character.classes)
+	// D330: entering a new class is a multiclass level up of that class from class level 0.
+	const enteringClass = levelUp !== undefined && character !== undefined && !character.classes.some((entry) => isClass(entry, levelUp))
+	const multiclassLevelUp = levelUp !== undefined && character !== undefined && (isMulticlass(character.classes) || enteringClass)
 	const activeClassScope = multiclassLevelUp ? { className: levelUp.className, classSource: levelUp.classSource, featureTypes: state.data.activeClassFeatureTypes ?? [] } : undefined
 	const held = levelUp && character ? heldPicksFrom(character, state.data.subclass?.featureType ?? null, activeClassScope) : null
 	const wizardClassChoice = wizardClass(state.data)
 	const ownDraftClass: CharacterClass | null = wizardClassChoice
 		? { className: wizardClassChoice.className, classSource: wizardClassChoice.classSource, subclass: wizardClassChoice.subclass, level: wizardClassChoice.level }
 		: null
-	const draftClasses: CharacterClass[] =
-		multiclassLevelUp && ownDraftClass ? character.classes.map((entry) => (isClass(entry, ownDraftClass) ? ownDraftClass : entry)) : ownDraftClass ? [ownDraftClass] : []
-	const multiclassDraft = multiclassLevelUp ? { classes: draftClasses, levelOrder: levelOrderAfterLevelUp(character, draftClasses) } : undefined
+	const draftClasses: CharacterClass[] = multiclassLevelUp && ownDraftClass ? classesAfterLevelUp(character.classes, ownDraftClass) : ownDraftClass ? [ownDraftClass] : []
+	const multiclassDraft = multiclassLevelUp
+		? { classes: draftClasses, levelOrder: levelOrderAfterLevelUp(levelOrderBeforeLevelUp(character, draftClasses), draftClasses), multiclassPicks: state.data.multiclassPicks }
+		: undefined
 	/** The character level this run ends at; in a level up classChoice.level is the raised class's own level. */
 	const draftCharacterLevel = levelUp?.level ?? state.data.classChoice?.level ?? null
 	const featureLanguageGrants = wizardClassChoice ? classFeatureLanguageGrantsFor([wizardClassChoice]) : []
@@ -307,9 +312,12 @@ export function CharacterWizard({
 	useEffect(() => {
 		if (character === undefined || seeded) return
 		let cancelled = false
-		// D329: a multiclass level up seeds from the class it raises.
-		const multiclassLevelUp = levelUp !== undefined && isMulticlass(character.classes)
-		const characterClass = multiclassLevelUp ? character.classes.find((entry) => isClass(entry, levelUp)) : character.classes[0]
+		// D329: a multiclass level up seeds from the class it raises. D330: a class entered has no stored record yet.
+		const entering = levelUp !== undefined && !character.classes.some((entry) => isClass(entry, levelUp))
+		const multiclassLevelUp = levelUp !== undefined && (isMulticlass(character.classes) || entering)
+		const characterClass = multiclassLevelUp
+			? (character.classes.find((entry) => isClass(entry, levelUp)) ?? (entering ? { className: levelUp.className, classSource: levelUp.classSource, subclass: null, level: 0 } : undefined))
+			: character.classes[0]
 		Promise.all([
 			characterClass ? loadSubclassesFor(characterClass.className, characterClass.classSource) : Promise.resolve([]),
 			loadSpellDetails(),
@@ -648,6 +656,28 @@ export function CharacterWizard({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [previousCountsKey])
 	const previousCounts = previousClassCounts?.key === previousCountsKey ? previousClassCounts : null
+	/** D330: the multiclass skill/tool pick the entered class owes on the Languages step. */
+	const [multiclassShape, setMulticlassShape] = useState<{ key: string; shape: MulticlassPickShape | null; error: string | null } | null>(null)
+	const multiclassShapeKey = levelUp && enteringClass ? `${levelUp.className}|${levelUp.classSource}` : null
+	useEffect(() => {
+		if (multiclassShapeKey === null || !levelUp) return
+		let cancelled = false
+		loadMulticlassPickShape(levelUp.className, levelUp.classSource)
+			.then((shape) => {
+				if (!cancelled) setMulticlassShape({ key: multiclassShapeKey, shape, error: null })
+			})
+			.catch((error: unknown) => {
+				if (!cancelled) setMulticlassShape({ key: multiclassShapeKey, shape: null, error: error instanceof Error ? error.message : String(error) })
+			})
+		return () => {
+			cancelled = true
+		}
+		// levelUp is read through multiclassShapeKey.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [multiclassShapeKey])
+	const enteredShape = multiclassShape?.key === multiclassShapeKey ? multiclassShape : null
+	const multiclassPickCount = multiclassShapeKey === null ? 0 : enteredShape?.shape ? (enteredShape.shape.skills?.count ?? 0) + (enteredShape.shape.tools?.count ?? 0) : null
+
 	const masteryOffset = held && previousCounts?.mastery != null ? held.masteries.length - previousCounts.mastery : 0
 	const expertiseOffset = held && previousCounts?.expertise != null ? held.expertiseSkills.length - previousCounts.expertise : 0
 
@@ -1002,9 +1032,9 @@ export function CharacterWizard({
 		: []
 
 	/** D18/D44: what the class step has already granted, shown to the species and background steps. */
-	const classSkillsAsDisabled: DisabledSkill[] = state.data.classChoice
-		? state.data.classSkills.map((skill) => ({ skill, source: state.data.classChoice!.className }))
-		: []
+	// D321: class skills are the first class's, whichever class this level up raises or enters.
+	const classSkillsSource = levelUp && character ? firstClass(character)?.className : state.data.classChoice?.className
+	const classSkillsAsDisabled: DisabledSkill[] = classSkillsSource ? state.data.classSkills.map((skill) => ({ skill, source: classSkillsSource })) : []
 
 	/**
 	 * D44: species is chosen before background, so by the time the player
@@ -1028,6 +1058,8 @@ export function CharacterWizard({
 		...classSkillsAsDisabled,
 		...backgroundSkillsAsDisabled,
 		...speciesSkillsAsDisabled,
+		// D330: a multiclass skill pick is a held skill proficiency like the others.
+		...multiclassSkillSources(state.data.multiclassPicks),
 	].filter((entry, index, all) => all.findIndex((other) => other.skill === entry.skill) === index)
 
 	/**
@@ -1165,6 +1197,7 @@ export function CharacterWizard({
 	const draftCharacterForProficiencies: Character = {
 		...draftCharacterForHitPoints,
 		toolChoices: state.data.toolChoices,
+		...(state.data.multiclassPicks ? { multiclassPicks: state.data.multiclassPicks } : {}),
 		languages: [
 			{ ...AUTOMATIC_LANGUAGE, grantedBy: 'automatic' },
 			...state.data.languageChoice.map((language) => ({ ...language, grantedBy: 'creation' as const })),
@@ -1463,6 +1496,7 @@ export function CharacterWizard({
 		characterLevel: draftCharacterLevel,
 		hitDieFaces: hitDie?.key === hitDieKey ? hitDie.faces : null,
 		editingExistingCharacter: character !== undefined,
+		multiclassPickCount,
 		...levelUpConditions,
 	}
 
@@ -1598,7 +1632,9 @@ export function CharacterWizard({
 					{/* A level up never asks for a name or a class: it raises the class the character has by exactly one level. */}
 					{levelUp && state.data.classChoice ? (
 						<p className="wizard__level-up-class">
-							Level up: {state.data.classChoice.className} {levelUp.classLevel - 1} → {levelUp.classLevel}
+							{enteringClass
+								? `Level up: new class ${state.data.classChoice.className} 1`
+								: `Level up: ${state.data.classChoice.className} ${levelUp.classLevel - 1} → ${levelUp.classLevel}`}
 						</p>
 					) : (
 						<>
@@ -1852,7 +1888,11 @@ export function CharacterWizard({
 					<ClassToolSlots
 						grants={toolGrants}
 						value={state.data.toolChoices}
-						known={state.data.backgroundToolProficiency ? [state.data.backgroundToolProficiency] : []}						onChange={(choices) => dispatch({ type: 'setToolChoices', choices })}
+						known={[
+							...(state.data.backgroundToolProficiency ? [state.data.backgroundToolProficiency] : []),
+							...(state.data.multiclassPicks ?? []).flatMap((pick) => (pick.kind === 'tool' ? [pick.name] : [])),
+						]}
+						onChange={(choices) => dispatch({ type: 'setToolChoices', choices })}
 					/>
 					{/* D177: subclass skill picks join this step, as the tool and language picks did. */}
 					<SubclassSkillSlots
@@ -1865,10 +1905,31 @@ export function CharacterWizard({
 							...state.data.speciesSkills,
 							...(state.data.speciesExtraSkill ? [state.data.speciesExtraSkill] : []),
 							...heldSubclassGrants.flatMap((grant) => grant.fixed ?? []),
+							...(state.data.multiclassPicks ?? []).flatMap((pick) => (pick.kind === 'skill' ? [pick.name] : [])),
 						]}
 						knownLanguages={[AUTOMATIC_LANGUAGE.name, ...state.data.languageChoice.map((language) => language.name), ...featureLanguageGrants.flatMap((grant) => (grant.fixed ? [grant.fixed] : []))]}
 						onChange={(skills, languages) => dispatch({ type: 'setSubclassSkills', skills, languages })}
 					/>
+					{/* D330: the entered class's multiclass skill/tool pick sits with the other class picks. */}
+					{levelUp && enteringClass && (
+						<MulticlassPickSlots
+							className={levelUp.className}
+							classSource={levelUp.classSource}
+							shape={enteredShape?.shape ?? null}
+							error={enteredShape?.error ?? null}
+							picks={state.data.multiclassPicks ?? []}
+							heldSkills={[
+								...state.data.classSkills,
+								...backgroundSkillsAsDisabled.map((entry) => entry.skill),
+								...state.data.speciesSkills,
+								...(state.data.speciesExtraSkill ? [state.data.speciesExtraSkill] : []),
+								...state.data.subclassSkills.map((pick) => pick.name),
+								...heldSubclassGrants.flatMap((grant) => grant.fixed ?? []),
+							]}
+							heldTools={[...(state.data.backgroundToolProficiency ? [state.data.backgroundToolProficiency] : []), ...state.data.toolChoices.map((choice) => choice.name)]}
+							onChange={(picks) => dispatch({ type: 'setMulticlassPicks', picks })}
+						/>
+					)}
 					{!levelUp && isKhoravar(state.data.speciesChoice) && (
 						<SpeciesSkillOrToolSlot
 							owner="Khoravar"

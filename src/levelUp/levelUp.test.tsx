@@ -32,6 +32,10 @@ async function fixtureGains(character: Character, target: LevelUpClass): Promise
 	return levelGainsFor(character, target, CLASSES, RESOLVER)
 }
 
+async function noNewClasses(): Promise<[]> {
+	return []
+}
+
 describe('which steps a level up walks', () => {
 	it('walks the feat/ASI step for a Fighter going from 3 to 4', () => {
 		expect(walkedSteps(single('Fighter', 'Champion', 3))).toEqual(['class', 'featAsi', 'hitPoints', 'review'])
@@ -97,9 +101,12 @@ describe('LevelUpButton', () => {
 
 	it('hands the next level’s gains to the walk when clicked', async () => {
 		const onLevelUp = vi.fn()
-		render(<LevelUpButton character={single('Fighter', 'Champion', 4)} onLevelUp={onLevelUp} loadGains={fixtureGains} />)
+		render(<LevelUpButton character={single('Fighter', 'Champion', 4)} onLevelUp={onLevelUp} loadGains={fixtureGains} loadNewClasses={noNewClasses} />)
 
-		await userEvent.setup().click(await screen.findByRole('button', { name: 'Level up to 5' }))
+		const user = userEvent.setup()
+		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
+		// D330: a single class opens the class window too.
+		await user.click(screen.getByRole('button', { name: 'Fighter 4 → 5' }))
 		expect(onLevelUp).toHaveBeenCalledWith(expect.objectContaining({ level: 5, unresolved: null }))
 	})
 })

@@ -261,6 +261,7 @@ const ABERRANT_ROGUE = {
 test("D203 i: Level up — the class expertise picker does not offer Aberrant Anatomy's Perception", async ({ page }) => {
   await open(page, 'aberrant-up', ABERRANT_ROGUE)
   await page.getByRole('button', { name: 'Level up to 6' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await expectStep(page, 'Expertise')
   await expect(page.getByRole('checkbox', { name: /^Deception/ })).toHaveCount(1)
   await expect(page.getByRole('checkbox', { name: /^Perception/ })).toHaveCount(0)

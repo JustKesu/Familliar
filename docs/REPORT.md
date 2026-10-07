@@ -1,53 +1,61 @@
-# REPORT — M7a (step 10): level up an existing class of a multiclass character (D329)
+# REPORT — M7b (step 10): enter a new class on Level up, prerequisites, multiclass picks (D330, schema 60)
 
-## STEP 1 inventory
-| Place | Did | M7a |
-|---|---|---|
-| levelUpSteps `levelUpTarget` | blocked 2+ classes, else `classes[0]` | `levelUpClassOptions` + `levelUpTarget(c, chosen?)`; no-history reason; class < 20 |
-| LevelUpButton / LevelUpWizardGate | one target from `classes[0]` | gains per class, `LevelUpClassDialog`; gate takes route class |
-| route.ts / CharacterManager | `/level-up` only | `/level-up/<class>/<source>` for 2+ classes |
-| heldPicks `heldPicksFrom`/`overwrittenHeldPicks` | `classes[0]`, all classFeatureChoices / non-subclass optional features | active class + its featureTypes |
-| wizardState `wizardDataFromCharacter` | `classes[0]`, every class's spells/choices/forms | `lookups.activeClass`: per-class fields of that class only |
-| wizardState `saveCharacter` guard, `classes`, keepHeld*, style ~1307, spell/feature/subclass-spell/forms/optional records | single class rebuilt | raise one class (`checkOneClassRaised`), others' records passed through, keepHeld* over all classes |
-| wizardState `wizardToolGrants`/`wizardSubclassSkillGrants`, featAsi completeness | grant level = `levelUpTargetLevel` (character) | grant level = class level; filter-choice counts at character level |
-| CharacterWizard seed ~298, header ~1528 | `classes[0]`, level = character level | active class, `classChoice.level` = class level |
-| CharacterWizard draft max HP ~1160, HP step `hitDieKey` | single-class draft | all classes + new `levelOrder`; die/gate = active class (unchanged code) |
-| CharacterWizard `loadFeatAsiGrants` ~926 / `useFeatAsiStepData` | class levels read as character levels | multiclass: `featAsiCharacterLevels` over the draft |
-| featAsiLevels `loadClassPrereqInfo` | one class's starting armor/weapons | multiclass: `prerequisiteClassProficiencies` (moved to classProficiencies.ts), any-class spellcasting/style |
-| masteryData ~194 | one class's starting weapons | multiclass: `classProficiencyGrants` |
-| expertisePool / Expertise + Mastery counts | count = active class's | held + (new − old class count); held Expertise exempt from Scholar |
-| ReviewStep | "Class N", `Nd faces` | "Warlock 6 / Sorcerer 4", every class's dice; What's new / ASI row already on character level |
-No STOP: every rule came from the prompt or D316–D328.
+## STEP 1 data check (`scripts/investigate-multiclass-entry.js`, removed after push)
+```
+Artificer|EFA|primary=int|skills=[{choose:{from:7,count:1}}]|tools=[{tinker's tools:true}]
+Bard|XPHB|primary=cha|skills=[{choose:{from:18,count:1}}]|tools=[{anyMusicalInstrument:1}]
+Fighter|XPHB|primary=str OR dex   Monk|XPHB|primary=dex+wis   Paladin=str+cha   Ranger=dex+wis|skills from:8
+Rogue|XPHB|primary=dex|skills=[{choose:{from:10,count:1}}]|tools=[{thieves' tools:true}]   others: one ability, no picks
+```
+All 13 offered classes have primaryAbility; only the allowed choice shapes occur → no STOP. Recorded in DATA.md.
 
 ## Changed
-- New: `levelUp/LevelUpClassDialog.tsx`, `levelUp/multiclassLevelUp.ts`, CSS `.level-up-class*`.
-- `WizardData.activeClassFeatureTypes` (set only in a multiclass level up) tells the raised class's optional-feature entries from the others'.
-- `MasteryPicker` (`multiclass`, `countOffset`), `ExpertisePicker` (`countOffset`, `restrictionExempt`) — props unused outside multiclass level up.
-- Creation, Edit and single-class level up take the old code paths (no multiclass branch entered).
+- Schema 60 `Character.multiclassPicks` (character.ts, migration 59→60 tag only, validate.ts `describeMulticlassPicksError`,
+  dropped on read like portrait/speciesCantrip, refused on Import and on write in `buildCharacter`, `toCharacter` carries it).
+- New `src/multiclass/`: `multiclassPrerequisites.ts` (primaryAbility OR/AND, reasons, `loadNewClassOptions`),
+  `multiclassPicks.ts` (`multiclassPickShape`, readers), `MulticlassPickSlots.tsx` (Languages step selects).
+- `LevelUpClassDialog`/`LevelUpButton`: window for every character, "+ New class…" list (lazy-loaded on open), disabled rows
+  with the reason as text + `aria-describedby`. `LevelUpWizardGate` re-checks the prerequisite for a typed/reloaded route.
+- `levelUpTarget` accepts a class not held; `CharacterManager` routes an entered class (classLevel 1) with the class.
+- `levelGainsFor` languages step: "<Class> multiclass skill" / "<Class> multiclass instrument" parts for a new class.
+- Wizard: entered class = M7a multiclass path from class level 0; `wizardToolGrants` drops starting tool picks at class level 1
+  in a level up; `multiclassPickCount` gates Languages; `saveCharacter` appends the class (`classesAfterLevelUp`), rebuilds
+  `levelOrder` for an old single-class save (`levelOrderBeforeLevelUp`), `checkOneClassRaised` accepts +1 existing or one new
+  class at 1 appended last; held multiclass picks are protected (`overwrittenHeldPicks`), new ones only for the entered class.
+- Readers: `skills.ts` source "<Class> (multiclass)", `classProficiencyGrants` tool picks, wizard proficient skills (Expertise
+  pool, feat pickers, Review), other skill pickers' held lists, Manage Feats held skills.
+- Side fix: wizard class skills in any level up are labelled with the first class (were labelled with the raised class).
+- Schema-bump fix: `characterStore` read-repair (D320) ran only for `schemaVersion === CURRENT`; with 60 a stored schema-59
+  character needing repair would have made the whole list unreadable. Now `>= 59` (`REPAIRED_FROM_SCHEMA`), as D320 states.
+  Found by `e2e/storageRepair.spec.ts`; `stableIds`/`levelOrder` specs now expect stored schema 60.
+- 21 e2e specs: every single-class "Level up to N" click now also clicks the held class in the window.
 
 ## Verified
-- typecheck OK; test 170 files / 3141 OK; validate-data 175/175; e2e 456/456 (5.2 min — over the ~3 min guideline).
-- Unit `levelUp/multiclassLevelUp.test.tsx`: seed per active class; Sorcerer 3→4 in W6/S3 keeps Warlock spellChoices,
-  fightingStyles, EI optional features, classFeatureChoices byte-identical, Sorcerer 4, levelOrder +Sorcerer; class +2 throws;
-  `checkOneClassRaised` (two classes, +2, reorder, other subclass); `levelUpTarget`; dialog (labels, focus, Cancel, choice);
-  Wizard 3/Fighter 1 → Wizard 4: medium armor, Heavily Armored eligible, ASI card at character level 5; single Wizard 4 unchanged;
-  Rogue 3/Fighter 1 mastery pool gets Greataxe. `route.test.ts` class route round trip + invalid shapes.
-- Changed expectations (old multiclass block text): `levelUp.test.tsx` "offers no usable button for a multiclass character" now
-  expects the no-history reason; `levelGains.test.ts` D316/D328 case now calls `levelUpTarget(c, Rogue)` → no-history reason.
-- E2E `multiclassLevelUp.spec.ts` M7a a–g (window/Cancel/focus, Sorcerer walk to sheet incl. STR 10 and HP 54→59, Warlock walk +
-  Devil's Sight, F5, no-history reason, single Fighter without window, Edit/Remove disabled). `multiclassGuard.spec.ts` unchanged
-  and green (its migrated schema-56 import has no levelOrder, so Level up is still disabled).
+- typecheck OK; test 171 files / 3163 OK; validate-data 175/175; e2e full run 459/462 (5.4 min, over the ~3 min guideline):
+  the 3 failures were the schema-bump issue above; after the fix those 3 specs pass (5/5). The full suite was not re-run.
+- Unit `src/multiclass/multiclassEntry.test.ts`: primaryAbility Fighter/Monk; prerequisites (STR-or-DEX, DEX-and-WIS, held
+  class unmet blocks Wizard/Sorcerer/Cleric, ASI counted, item half-feat ignored); pick shapes and level gains (Bard instrument,
+  no starting Bard tools); seed at class level 0; save appends Wizard 1, rebuilt levelOrder, Fighter records byte-identical,
+  Rogue pick stored; guards (class level 2, pick for a non-entered class, checkOneClassRaised cases); Languages completion with
+  `multiclassPickCount`; sheet skill source, Expertise pool, Thieves' Tools once / Bard Lute / no Wizard armor; validation.
+  Migration 59→60 in `migrations.test.ts`. Changed expectations: `levelUp.test.tsx`, `App.test.tsx`, `CharacterManager.test.tsx`
+  click "Fighter 4 → 5"; `multiclassLevelUp.test.tsx` levelUpTarget with a class not held now enters it.
+- E2E `multiclassEntry.spec.ts` M7b a–g (a window; b+f Wizard without levelOrder: header, level 5, saves STR/CON only, cantrips,
+  HP 40 → 47, Proficiencies card unchanged, then window "Fighter 4 → 5" / "Wizard 1 → 2"; c Sorcerer/Monk reasons; d Rogue incl.
+  Expertise showing "Stealth (from Rogue (multiclass))", Thieves' Tools — Rogue (multiclass); e Bard skill + instrument; g Fighter
+  20 and Fighter 19 / Wizard 1 disabled). `multiclassLevelUp.spec.ts` M7a f now expects the window for a single class.
 
 ## Decisions taken / questions worked around
-- Masteries/Expertise across classes are one list each (no class tag): required = held + this class's increase. A character with
-  two mastery classes therefore works, but nothing records which class a held mastery came from.
-- A fighting style stored without a class (pre-58 multiclass) is attributed to the raised class if `fightingStyleFor` falls back to
-  it; such characters have no levelOrder, so they cannot reach this path today.
-- `LevelUpButton` loads gains for every class; a class whose gains are unresolved is disabled in the window with its reason as tooltip.
-- Classes' own non-class-axis creation picks (classSkills, toolChoices, featureLanguages, subclassSkills) stay whole in WizardData;
-  slot pickers replace only their own `grantedBy`, save keeps them via grants of all classes.
+- Reason text for an OR/AND class names every ability: "Needs Strength 13 or Dexterity 13 (Fighter, a class you already
+  have). You have Strength 11, Dexterity 11."; several unmet classes are joined in one line, new class first.
+- A typed route to a class not held but failing the prerequisite bounces to the sheet (same as other unavailable routes).
+- Background origin feat ability bonuses are not counted by the prerequisite (as `abilityScoresBelowLevel`; XPHB origin feats
+  give none).
+- Held tools for the instrument pick = background tool + stored tool choices (not item/feat tools).
 
 ## Manual browser check for the user
-- Class window (sheet header → Level up on a multiclass character with history, e.g. Warlock 6 / Sorcerer 3): look, button width
-  and alignment, focus ring on the first class button and on Cancel, dark and light theme, 1366 and 1920 wide.
-- Review step of a multiclass level up: identity line "Warlock 6 / Sorcerer 4" and Hit dice "6d8 + 4d6" wrapping.
+- Class window (sheet header → Level up on any character, e.g. a Fighter 4): "+ New class…" button under the held class,
+  the opened class list (scrolls inside the dialog), disabled rows and their reason lines (wrapping of the long OR/AND
+  reasons, e.g. Monk, and of a held-class reason), focus ring on the first enabled class; dark and light theme, 1366 and 1920.
+- Languages ("Proficiencies") step after choosing Rogue or Bard in that list: the "Rogue multiclass skill" / "Bard multiclass
+  skill" and "Bard multiclass instrument" selects beside the other picks; both themes, 1366 and 1920.

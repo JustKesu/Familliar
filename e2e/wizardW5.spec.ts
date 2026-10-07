@@ -155,6 +155,7 @@ test('W-5 g: Edit Character on a Fighter 4 with a feat — the card is collapsed
 test('W-5 h: Level up Fighter 3 → 4 — one open card for level 4 that works like a new character', async ({ page }) => {
   await createFighter(page, { name: 'Leveller', level: 3, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await takeFighterLevel4Mastery(page)
   for (let steps = 0; steps < 8 && !(await levelCard(page, 4).isVisible()); steps++) await next(page)
   await expect(cards(page)).toHaveCount(1)

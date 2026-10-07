@@ -1,4 +1,4 @@
-import type { CharacterClass, CharacterFightingStyle, CharacterOptionalFeatureChoice } from '../storage/character'
+import { singleClassLevelOrder, type Character, type CharacterClass, type CharacterFightingStyle, type CharacterOptionalFeatureChoice } from '../storage/character'
 
 interface ClassRef {
 	className: string
@@ -7,10 +7,28 @@ interface ClassRef {
 
 export const isClass = (entry: ClassRef, target: ClassRef): boolean => entry.className === target.className && entry.classSource === target.classSource
 
-/** D329: a level up raises exactly one existing class by one, keeps every other class and their order, and ends at `levelUpTo`. */
+/** D330: the raised class replaced in place, or a class entered appended last. */
+export function classesAfterLevelUp(before: readonly CharacterClass[], raised: CharacterClass): CharacterClass[] {
+	return before.some((entry) => isClass(entry, raised)) ? before.map((entry) => (isClass(entry, raised) ? raised : entry)) : [...before, raised]
+}
+
+/**
+ * D329: a level up raises exactly one existing class by one, keeps every other class and their order, and ends at `levelUpTo`.
+ * D330: or it keeps every class and appends one new class at level 1.
+ */
 export function checkOneClassRaised(before: readonly CharacterClass[], after: readonly CharacterClass[], levelUpTo: number): void {
 	const fail = (): never => {
 		throw new Error(`A level up raises one existing class by exactly one level, to level ${levelUpTo}.`)
+	}
+	const total = after.reduce((sum, entry) => sum + entry.level, 0)
+	if (after.length === before.length + 1) {
+		const added = after[after.length - 1]
+		if (added.level !== 1 || before.some((entry) => isClass(entry, added)) || total !== levelUpTo) fail()
+		before.forEach((old, index) => {
+			const entry = after[index]
+			if (!isClass(entry, old) || entry.level !== old.level || entry.subclass !== old.subclass) fail()
+		})
+		return
 	}
 	if (after.length !== before.length) fail()
 	let raised = 0
@@ -21,6 +39,15 @@ export function checkOneClassRaised(before: readonly CharacterClass[], after: re
 		else if (entry.level !== old.level || entry.subclass !== old.subclass) fail()
 	})
 	if (raised !== 1 || after.reduce((sum, entry) => sum + entry.level, 0) !== levelUpTo) fail()
+}
+
+/**
+ * D330: the history a level up appends to. Entering a second class needs one; a single class without it (older save)
+ * can always be told, so it is rebuilt. Otherwise the stored one, "not known" included (D317).
+ */
+export function levelOrderBeforeLevelUp(existing: Pick<Character, 'classes' | 'levelOrder'>, after: readonly CharacterClass[]): Pick<Character, 'classes' | 'levelOrder'> {
+	if (existing.levelOrder || existing.classes.length !== 1 || after.length <= existing.classes.length) return existing
+	return { classes: existing.classes, levelOrder: singleClassLevelOrder(existing.classes) }
 }
 
 /** The records of every class but `active`, unchanged. */

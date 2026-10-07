@@ -38,7 +38,8 @@ export function heldPicksFrom(character: Character, subclassFeatureType: string 
 	const characterClass = active ? character.classes.find((entry) => sameClass(entry, active)) : character.classes[0]
 	return {
 		subclass: characterClass?.subclass ?? null,
-		fightingStyle: fightingStyleFor(character.fightingStyles, characterClass)?.name ?? null,
+		// D330: a class being entered has no style yet, not the unassigned one.
+		fightingStyle: active && !characterClass ? null : (fightingStyleFor(character.fightingStyles, characterClass)?.name ?? null),
 		classSkills: character.classSkills ?? [],
 		masteries: choiceNames(character.masteries),
 		expertiseSkills: choiceNames(character.expertiseSkills),
@@ -94,6 +95,11 @@ export function overwrittenHeldPicks(character: Character, data: WizardData, act
 	for (const heldEntry of held.classOptionalFeatureChoices) {
 		const nowNames = choiceNames(data.classOptionalFeatureChoices.find((entry) => entry.featureType === heldEntry.featureType)?.choices)
 		missing('class option', choiceNames(heldEntry.choices), nowNames)
+	}
+	for (const pick of character.multiclassPicks ?? []) {
+		if (!(data.multiclassPicks ?? []).some((now) => now.className === pick.className && now.classSource === pick.classSource && now.kind === pick.kind && now.name === pick.name)) {
+			problems.push(`${pick.className} multiclass ${pick.kind} ${pick.name}`)
+		}
 	}
 	for (const heldChoice of held.featAsiChoices) {
 		const nowChoice = data.featAsiChoices.find((choice) => choice.level === heldChoice.level)

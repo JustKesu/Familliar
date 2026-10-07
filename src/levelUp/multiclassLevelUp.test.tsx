@@ -144,11 +144,11 @@ describe('checkOneClassRaised', () => {
 })
 
 describe('levelUpTarget (D329)', () => {
-	it('needs the class for a multiclass character and refuses one it does not have', () => {
+	it('needs the class for a multiclass character; a class it does not have is entered (D330)', () => {
 		const character = warlockSorcerer()
 		expect(levelUpTarget(character)).toEqual({ reason: 'Choose which class gains the level.' })
 		expect(levelUpTarget(character, { className: 'Sorcerer', classSource: XPHB })).toEqual({ level: 10, className: 'Sorcerer', classSource: XPHB })
-		expect(levelUpTarget(character, { className: 'Bard', classSource: XPHB })).toHaveProperty('reason')
+		expect(levelUpTarget(character, { className: 'Bard', classSource: XPHB })).toEqual({ level: 10, className: 'Bard', classSource: XPHB })
 	})
 
 	it('refuses a multiclass character whose level history does not match its classes', () => {

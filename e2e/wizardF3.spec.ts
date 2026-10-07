@@ -92,6 +92,7 @@ test('F-3 3 (D260): a new Fighter 8 with Roll on every level, lowered to level 4
   expect(stored).toEqual([2, 3, 4])
 
   await page.getByRole('button', { name: 'Level up to 5' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   for (let steps = 0; steps < 8 && (await page.locator('[aria-current="step"]').filter({ hasText: 'Hit points' }).count()) === 0; steps++) await next(page)
   await expectStep(page, 'Hit points')
   await expect(page.getByRole('radiogroup', { name: 'Level 5 hit points method', exact: true }).getByRole('radio', { name: 'Roll (d10)', exact: true })).not.toBeChecked()

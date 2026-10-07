@@ -106,6 +106,7 @@ test('W-3 d: Edit Character on a Fighter 3 saved without a subclass locks Next a
 test('W-3 e: a level up that keeps its held picks asks only for what the new level adds', async ({ page }) => {
   await createFighter(page, { name: 'Edda', level: 3, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await expectStep(page, 'Class and level')
 
   // Fighter 4 knows one more mastery than Fighter 3; the three held ones and the subclass and style are not asked again.

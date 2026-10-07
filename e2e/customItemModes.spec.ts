@@ -106,6 +106,7 @@ test('R14a2 d: a Max HP +1 per level item at full HP — Level up to 5 leaves cu
   await expect(hitPoints(page)).toHaveText('36 / 36')
 
   await page.getByRole('button', { name: 'Level up to 5' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   const save = wizardNav(page).getByRole('button', { name: 'Save level 5' })
   for (let steps = 0; steps < 8 && !(await save.isVisible()); steps++) {
     const average = page.getByRole('radio', { name: 'Average (6)' })

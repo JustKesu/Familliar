@@ -25,6 +25,7 @@ import type {
 	CharacterFightingStyle,
 	CharacterGrantedFeat,
 	CharacterMastery,
+	CharacterMulticlassPick,
 	CharacterOptionalFeatureChoice,
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
@@ -60,7 +61,7 @@ import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { overwrittenHeldPicks } from '../levelUp/heldPicks'
-import { checkOneClassRaised, isClass, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
+import { checkOneClassRaised, classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 
 /**
@@ -185,6 +186,8 @@ export interface WizardStepConditions {
 	levelUpTargetLevel?: number | null
 	/** W20: the class's hit die size, so 'hitPoints' can check each value against it. `null` while loading. */
 	hitDieFaces?: number | null
+	/** D330: how many multiclass skill/tool picks the class entered in this level up owes on 'languages'; `null` while its data loads. */
+	multiclassPickCount?: number | null
 }
 
 /**
@@ -304,6 +307,7 @@ function resolveConditions(conditions: WizardStepConditions): Required<Omit<Wiza
 		levelUpSteps: conditions.levelUpSteps ?? null,
 		levelUpTargetLevel: conditions.levelUpTargetLevel ?? null,
 		hitDieFaces: conditions.hitDieFaces ?? null,
+		multiclassPickCount: conditions.multiclassPickCount === undefined ? 0 : conditions.multiclassPickCount,
 	}
 }
 
@@ -368,7 +372,8 @@ export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | 
 	]
 	const grants = classToolGrantsFor([cls], heldElsewhere)
 	// D329: grant levels are class levels; in a level up classChoice.level is the raised class's new level.
-	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === cls.level)
+	// D328/D330: class level 1 in a level up is a class being entered, which never gets the starting tool picks.
+	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === cls.level && (cls.level > 1 || grant.subclass !== undefined))
 }
 
 /** D177: the subclass skill picks the languages step collects; a level-up walk asks only for the ones that level brings. */
@@ -508,6 +513,8 @@ export interface WizardData {
 	portrait?: string
 	/** D329: set only while levelling one class of a multiclass character — that class's own optionalfeatureProgression codes, which tell its picks from the other classes'. */
 	activeClassFeatureTypes?: string[]
+	/** D330: every multiclass skill/tool pick — the held ones seeded from the character, plus the class entered in this level up. */
+	multiclassPicks?: CharacterMulticlassPick[]
 }
 
 export function emptyWizardData(): WizardData {
@@ -588,10 +595,12 @@ function distributionFromBonusMap(abilityBonus: AbilityBonusMap | undefined): Ab
  */
 export function wizardDataFromCharacter(character: Character, lookups: WizardSeedLookups): WizardData {
 	// D329: a multiclass level up seeds every per-class field from the raised class only; the others pass through saveCharacter.
-	const active = isMulticlass(character.classes) ? lookups.activeClass : undefined
+	const entering = lookups.activeClass !== undefined && !character.classes.some((entry) => isClass(entry, lookups.activeClass!))
+	const active = isMulticlass(character.classes) || entering ? lookups.activeClass : undefined
 	const ofActive = (entry: { className: string; classSource: string }): boolean =>
 		active === undefined || (entry.className === active.className && entry.classSource === active.classSource)
-	const characterClass = active ? character.classes.find(ofActive) : character.classes[0]
+	// D330: a class entered in a level up starts at class level 0 with nothing chosen; the wizard raises it to 1.
+	const characterClass = active ? (character.classes.find(ofActive) ?? (entering ? { className: active.className, classSource: active.classSource, subclass: null, level: 0 } : undefined)) : character.classes[0]
 	const storedSubclassName = characterClass?.subclass ?? null
 	// A subclass missing from the loaded list keeps its name but carries no featureType,
 	// which sends its optional-feature picks through classOptionalFeatureChoices below —
@@ -643,7 +652,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		speciesCantrip: character.speciesCantrip ?? null,
 		expertiseSkills: choiceNames(character.expertiseSkills),
 		masteries: choiceNames(character.masteries),
-		fightingStyle: fightingStyleFor(character.fightingStyles, characterClass)?.name ?? null,
+		fightingStyle: entering ? null : (fightingStyleFor(character.fightingStyles, characterClass)?.name ?? null),
 		subclass,
 		optionalFeatureChoices: subclassFeatureType
 			? choiceNames(storedOptionalFeatures.find((entry) => entry.featureType === subclassFeatureType)?.choices)
@@ -664,6 +673,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		startingEquipment: emptyStartingEquipmentChoice(),
 		...(character.portrait ? { portrait: character.portrait } : {}),
 		...(active ? { activeClassFeatureTypes: [...active.featureTypes] } : {}),
+		...(character.multiclassPicks ? { multiclassPicks: character.multiclassPicks } : {}),
 	}
 }
 
@@ -738,6 +748,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		speciesOriginFeatComplete,
 		levelUpTargetLevel,
 		hitDieFaces,
+		multiclassPickCount,
 	} = resolveConditions(conditions)
 	switch (step) {
 		case 'class':
@@ -798,6 +809,8 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 					(grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length >= grant.count,
 				) &&
 				wizardSubclassSkillGrants(data, levelUpTargetLevel).every((grant) => isSubclassSkillChoiceMade(grant, data.subclassSkills, data.featureLanguages)) &&
+				// D330: only a class entered in this level up (class level 1) owes its multiclass picks here.
+				(levelUpTargetLevel === null || cls === null || cls.level > 1 || (data.multiclassPicks ?? []).filter((pick) => isClass(pick, cls)).length === multiclassPickCount) &&
 				(levelUpTargetLevel !== null || !isKhoravar(data.speciesChoice) || data.speciesExtraSkill !== null || data.toolChoices.some((choice) => choice.grantedBy === 'khoravar'))
 			)
 		}
@@ -957,6 +970,7 @@ export type WizardAction =
 	| { type: 'setFeatureLanguages'; languages: CharacterLanguage[] }
 	| { type: 'setToolChoices'; choices: CharacterToolChoice[] }
 	| { type: 'setSubclassSkills'; skills: CharacterSubclassSkill[]; languages: CharacterLanguage[] }
+	| { type: 'setMulticlassPicks'; picks: CharacterMulticlassPick[] }
 	| { type: 'setSpeciesSkillOrTool'; skill: string | null; tool: string | null }
 	| { type: 'setSpeciesSize'; size: string | null }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
@@ -1113,6 +1127,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, toolChoices: action.choices } }
 		case 'setSubclassSkills':
 			return { ...state, data: { ...state.data, subclassSkills: action.skills, featureLanguages: action.languages } }
+		case 'setMulticlassPicks':
+			return { ...state, data: { ...state.data, multiclassPicks: action.picks } }
 		case 'setSpeciesSkillOrTool': {
 			const others = state.data.toolChoices.filter((choice) => choice.grantedBy !== 'khoravar')
 			return {
@@ -1250,12 +1266,15 @@ export function saveCharacter(
 	if (existing && levelUpTo === undefined && (data.classChoice?.level ?? 0) !== existingLevel) {
 		throw new Error(`Editing a character cannot change its level: this character is level ${existingLevel}.`)
 	}
+	// D330: a level up into a class the character does not have yet; it joins at class level 1.
+	const entering = levelUpTo !== undefined && existing !== undefined && data.classChoice !== null && !existing.classes.some((entry) => isClass(entry, data.classChoice!))
 	// D329: a level up of one class of a multiclass character; every record of the other classes passes through unchanged.
-	const activeClass = levelUpTo !== undefined && existing && isMulticlass(existing.classes) && data.classChoice ? data.classChoice : undefined
+	const activeClass = levelUpTo !== undefined && existing && (isMulticlass(existing.classes) || entering) && data.classChoice ? data.classChoice : undefined
 	if (levelUpTo !== undefined) {
 		const existingClass = existing?.classes.find((entry) => data.classChoice !== null && isClass(entry, data.classChoice))
-		if (!existingClass || existingLevel !== levelUpTo - 1 || data.classChoice?.level !== existingClass.level + 1) {
-			throw new Error(`A level up raises one existing class by exactly one level, to level ${levelUpTo}.`)
+		const fromLevel = entering ? 0 : existingClass?.level
+		if (!existing || fromLevel === undefined || existingLevel !== levelUpTo - 1 || data.classChoice?.level !== fromLevel + 1) {
+			throw new Error(`A level up raises one existing class by exactly one level, or adds one new class at level 1, to level ${levelUpTo}.`)
 		}
 		const overwritten = overwrittenHeldPicks(
 			existing!,
@@ -1264,6 +1283,12 @@ export function saveCharacter(
 		)
 		if (overwritten.length > 0) {
 			throw new Error(`A level up only adds picks; it cannot change one made at an earlier level: ${overwritten.join(', ')}.`)
+		}
+		// D330: held picks are kept above; anything else must belong to the class entered now.
+		const heldMulticlassPicks = existing!.multiclassPicks ?? []
+		const addedPicks = (data.multiclassPicks ?? []).filter((pick) => !heldMulticlassPicks.some((held) => isClass(held, pick) && held.kind === pick.kind && held.name === pick.name))
+		if (addedPicks.some((pick) => !entering || !isClass(pick, data.classChoice!))) {
+			throw new Error('Only a class entered in this level up takes multiclass picks.')
 		}
 	}
 
@@ -1275,7 +1300,7 @@ export function saveCharacter(
 				level: data.classChoice.level,
 			}
 		: null
-	const classes: CharacterClass[] = activeClass ? existing!.classes.map((entry) => (isClass(entry, activeClass) ? ownClass! : entry)) : ownClass ? [ownClass] : []
+	const classes: CharacterClass[] = activeClass ? classesAfterLevelUp(existing!.classes, ownClass!) : ownClass ? [ownClass] : []
 	if (activeClass) checkOneClassRaised(existing!.classes, classes, levelUpTo!)
 
 	const background: CharacterBackground | undefined =
@@ -1318,7 +1343,7 @@ export function saveCharacter(
 		return source === undefined ? pick : { ...pick, source }
 	}
 
-	const heldStyle = existing ? fightingStyleFor(existing.fightingStyles, activeClass ?? existing.classes[0]) : undefined
+	const heldStyle = existing && !entering ? fightingStyleFor(existing.fightingStyles, activeClass ?? existing.classes[0]) : undefined
 	const fightingStyles: CharacterFightingStyle[] | undefined =
 		data.fightingStyle === null
 			? undefined
@@ -1485,7 +1510,9 @@ export function saveCharacter(
 		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,
 		// D317: create and Edit (single-class since M0, may change the class) rebuild it; a level up appends, and keeps "not known" as it is.
 		// D328: what a level up appends is the class whose level rose, not classes[0].
-		levelOrder: levelUpTo === undefined ? singleClassLevelOrder(classes) : existing && levelOrderAfterLevelUp(existing, classes),
+		levelOrder: levelUpTo === undefined ? singleClassLevelOrder(classes) : existing && levelOrderAfterLevelUp(levelOrderBeforeLevelUp(existing, classes), classes),
+		// D330: every class's multiclass picks; only the entered class's may be new (overwrittenHeldPicks keeps the others).
+		multiclassPicks: data.multiclassPicks && data.multiclassPicks.length > 0 ? data.multiclassPicks : undefined,
 		// Slice 9d2: sheet-only text the wizard never shows, carried across so an edit or a level up does not erase it.
 		appearance: existing?.appearance,
 		backstory: existing?.backstory,

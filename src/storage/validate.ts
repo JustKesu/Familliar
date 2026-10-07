@@ -250,6 +250,23 @@ export function describeSubclassSkillsError(value: unknown): string | null {
 	return null
 }
 
+/** D330: an optional `multiclassPicks` field — each pick names a class the character has. */
+export function describeMulticlassPicksError(value: unknown, classes: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `multiclassPicks is not an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `multiclassPicks[${i}] is not an object`
+		for (const key of ['className', 'classSource', 'name'] as const) {
+			if (!isNonEmptyString(entry[key])) return `multiclassPicks[${i}].${key} is missing or not a string`
+		}
+		if (entry['kind'] !== 'skill' && entry['kind'] !== 'tool') return `multiclassPicks[${i}].kind must be one of skill, tool`
+		const held = Array.isArray(classes) && classes.some((c) => isRecord(c) && c['className'] === entry['className'] && c['classSource'] === entry['classSource'])
+		if (!held) return `multiclassPicks[${i}] names a class the character does not have`
+	}
+	return null
+}
+
 /** Validates an optional `toolChoices` field (D174). */
 export function describeToolChoicesError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -1329,6 +1346,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (toolChoicesError) return `[${index}].${toolChoicesError}`
 	const subclassSkillsError = describeSubclassSkillsError(value['subclassSkills'])
 	if (subclassSkillsError) return `[${index}].${subclassSkillsError}`
+	const multiclassPicksError = describeMulticlassPicksError(value['multiclassPicks'], classes)
+	if (multiclassPicksError) return `[${index}].${multiclassPicksError}`
 	if (value['speciesSize'] !== undefined && !isNonEmptyString(value['speciesSize'])) return `[${index}].speciesSize must be a non-empty string`
 	const createdAtLevel = value['createdAtLevel']
 	if (createdAtLevel !== undefined && (typeof createdAtLevel !== 'number' || !Number.isInteger(createdAtLevel) || createdAtLevel < 1 || createdAtLevel > 20)) {
@@ -1432,14 +1451,15 @@ export function withRepairedFields(value: unknown): unknown {
 	}
 }
 
-/** W-8 (D266), F-5: a bad portrait or species cantrip in already stored data must never make the whole character list unreadable, so reading drops it. */
+/** W-8 (D266), F-5, D330: a bad portrait, species cantrip or multiclass pick list in already stored data must never make the whole character list unreadable, so reading drops it. */
 export function withoutMalformedDroppableFields(value: unknown): unknown {
 	if (!isRecord(value)) return value
-	const { portrait, speciesCantrip, ...rest } = withoutInconsistentLevelOrder(value) as Record<string, unknown>
+	const { portrait, speciesCantrip, multiclassPicks, ...rest } = withoutInconsistentLevelOrder(value) as Record<string, unknown>
 	return {
 		...rest,
 		...(portrait !== undefined && isValidPortrait(portrait) ? { portrait } : {}),
 		...(speciesCantrip !== undefined && isValidSpeciesCantrip(speciesCantrip) ? { speciesCantrip } : {}),
+		...(multiclassPicks !== undefined && describeMulticlassPicksError(multiclassPicks, rest['classes']) === null ? { multiclassPicks } : {}),
 	}
 }
 
@@ -1543,6 +1563,16 @@ export function toCharacter(value: Record<string, unknown>): Character {
 		...(Array.isArray(toolChoices) ? { toolChoices: toCharacterToolChoices(toolChoices) } : {}),
 		...(Array.isArray(subclassSkills)
 			? { subclassSkills: subclassSkills.map((entry) => ({ grantedBy: (entry as Record<string, unknown>)['grantedBy'] as SubclassSkillSource, name: (entry as Record<string, unknown>)['name'] as string })) }
+			: {}),
+		...(Array.isArray(value['multiclassPicks']) && value['multiclassPicks'].length > 0
+			? {
+					multiclassPicks: (value['multiclassPicks'] as Record<string, unknown>[]).map((entry) => ({
+						className: entry['className'] as string,
+						classSource: entry['classSource'] as string,
+						kind: entry['kind'] as 'skill' | 'tool',
+						name: entry['name'] as string,
+					})),
+				}
 			: {}),
 		...(typeof speciesSize === 'string' ? { speciesSize } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),

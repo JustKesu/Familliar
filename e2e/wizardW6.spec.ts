@@ -151,6 +151,7 @@ test('W-6 d: "Use the average for every level" puts every row back on AVERAGE', 
 test('W-6 e: level up Fighter 3 → 4 — only the level 4 row, no Level 1 row (D323), no apply-to-all button', async ({ page }) => {
   await createFighter(page, { name: 'Leveller', level: 3, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await takeFighterLevel4Mastery(page)
   await next(page)
   await expectStep(page, 'ASI / Feat')

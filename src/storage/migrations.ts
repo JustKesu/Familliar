@@ -566,6 +566,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 			}
 		},
 	},
+	{
+		from: 59,
+		to: 60,
+		/* 60 adds Character.multiclassPicks (M7b, D330). A version-59 character has none — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 60 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

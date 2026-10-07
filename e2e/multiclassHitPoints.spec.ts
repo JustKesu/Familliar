@@ -64,6 +64,7 @@ test('M4 b: the same character without a level history — the maximum is unknow
 test('M4 c: level up Fighter 1 → 2 — the Hit points step has a Level 2 row and no Level 1 row', async ({ page }) => {
   await createFighter(page, { name: 'Climber', level: 1, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 2' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await expectStep(page, 'Hit points')
   await expect(page.getByRole('radiogroup', { name: 'Level 2 hit points method', exact: true })).toBeVisible()
   await expect(page.getByRole('row', { name: /^Level 1 / })).toHaveCount(0)

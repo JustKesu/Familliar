@@ -1164,8 +1164,13 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - `e2e/multiclassLevelUp.spec.ts` — M7a a–g (Warlock 6 / Sorcerer 3 with levelOrder: class window "Warlock 6 → 7" /
   "Sorcerer 3 → 4", Cancel; Sorcerer → 4: Spells, level-10 ASI card, Level 10 · Sorcerer HP row, sheet Sorcerer 4 /
   Warlock 6, STR 10, max HP 54 → 59, Warlock spells and invocations kept; Warlock → 7: Devil's Sight, Sorcerer spells
-  unchanged; F5 keeps the class route; without levelOrder Level up disabled with the reason; single Fighter no window;
-  Edit and Remove level disabled).
+  unchanged; F5 keeps the class route; without levelOrder Level up disabled with the reason; single Fighter window with
+  "Fighter 1 → 2" keeps `/level-up`; Edit and Remove level disabled).
+- `e2e/multiclassEntry.spec.ts` — M7b a–g (Fighter 4 window "Fighter 4 → 5" + "+ New class…"; Wizard entered without
+  levelOrder: Fighter 4 / Wizard 1, saves STR/CON only, cantrips, HP 40 → 47, Proficiencies card unchanged, then window offers
+  both classes; Sorcerer/Monk disabled with reasons; Rogue: masteries, Expertise sees the multiclass Stealth, Thieves' Cant
+  language, Stealth proficient, Thieves' Tools — Rogue (multiclass); Bard: skill + instrument; Fighter 20 and Fighter 19 /
+  Wizard 1 disabled).
 
 ## Dočasné scaffolding
 
@@ -1982,6 +1987,25 @@ classProficiencies.ts; spellcasting and fighting style from any class) and the m
 class (review M2–M4 finding 2). Creation and single-class paths unchanged. Edit (M9) and Remove level (M8) stay blocked. Not done
 (M7b): entering a new class, prerequisites, multiclass skill/tool picks. Unit `multiclassLevelUp.test.tsx`, `route.test.ts`;
 E2E `multiclassLevelUp.spec.ts`.
+
+M7b done (D330). Schema 60: `Character.multiclassPicks?: { className, classSource, kind: 'skill'|'tool', name }[]` (migration
+59→60 tags only; `describeMulticlassPicksError` — strings, kind, class held; a bad list is dropped on read, refused on Import and
+on write). The class window opens for every character, single class too: held classes plus "+ New class…", which lists the
+creation picker's classes (`loadBaseClasses`) not held, each disabled with its reason when the prerequisite fails
+(`src/multiclass/multiclassPrerequisites.ts`: `primaryAbilityOf` OR/AND, `unmetMulticlassPrerequisite` for the new class and every
+held class, scores from `abilityScoresBelowLevel` without items). A chosen new class routes to `/level-up/<class>/<source>`; the
+gate re-checks the prerequisite. `levelUpTarget` accepts a class not held. `levelGainsFor` adds "<Class> multiclass skill" /
+"<Class> multiclass instrument" to the Languages step (`multiclassPickShape`, `src/multiclass/multiclassPicks.ts`). Wizard: an
+entered class seeds at class level 0 → 1 with nothing chosen and runs the M7a multiclass path; `wizardToolGrants` drops starting
+tool picks at class level 1 in a level up; `MulticlassPickSlots` on the Languages step (held skills/tools not offered, multiclass
+skills block other skill pickers); `multiclassPickCount` gates the step. `saveCharacter` appends the class last
+(`classesAfterLevelUp`), rebuilds `levelOrder` for an old single-class save before appending (`levelOrderBeforeLevelUp`),
+`checkOneClassRaised` accepts exactly one class +1 or one new class at 1, held multiclass picks are kept and new ones only for the
+entered class. Readers: skills (`proficiencySources`, "<Class> (multiclass)"), `classProficiencyGrants` tools (Proficiencies card,
+drawer, feat prerequisites), the wizard's proficient-skill list (Expertise pool, feat pickers, Review), Manage Feats held skills.
+Wizard class skills are labelled with the first class. Unit `multiclass/multiclassEntry.test.ts`; E2E `multiclassEntry.spec.ts`
+a–g; every single-class level-up spec now clicks "<Class> n → n+1" in the window. Not done: Remove level of a class's last level
+(M8), Edit for multiclass (M9).
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

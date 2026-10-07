@@ -4,6 +4,7 @@ import type { CharacterStore } from '../storage/characterStore'
 import { CharacterWizard } from '../creation/CharacterWizard'
 import { levelUpTarget } from './levelUpSteps'
 import { loadLevelGainsFor, type LevelGains, type LevelUpClass } from './levelGains'
+import { loadUnmetMulticlassPrerequisite } from '../multiclass/multiclassPrerequisites'
 
 type GateState = { kind: 'loading' } | { kind: 'ready'; gains: LevelGains } | { kind: 'unavailable' }
 
@@ -41,10 +42,13 @@ export function LevelUpWizardGate({
 			return
 		}
 		let cancelled = false
-		loadLevelGainsFor(character, { className: target.className, classSource: target.classSource })
-			.then((gains) => {
+		const classRef = { className: target.className, classSource: target.classSource }
+		const entering = !character.classes.some((entry) => entry.className === target.className && entry.classSource === target.classSource)
+		// D330: a typed or reloaded route into a new class still meets the prerequisite, a hard block.
+		Promise.all([loadLevelGainsFor(character, classRef), entering ? loadUnmetMulticlassPrerequisite(character, classRef) : Promise.resolve(null)])
+			.then(([gains, unmet]) => {
 				if (cancelled) return
-				if (gains.unresolved === null) setState({ kind: 'ready', gains })
+				if (gains.unresolved === null && unmet === null) setState({ kind: 'ready', gains })
 				else onUnavailable()
 			})
 			.catch(() => {

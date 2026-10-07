@@ -71,6 +71,7 @@ async function storedFeatAsiLevels(page: Page): Promise<number[]> {
 
 async function levelUpToAsi(page: Page, level: number): Promise<void> {
   await page.getByRole('button', { name: `Level up to ${level}` }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   for (let steps = 0; steps < 8 && !(await levelCard(page, level).isVisible()); steps++) await next(page)
   await expect(levelCard(page, level)).toBeVisible()
 }

@@ -324,7 +324,8 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onEditCharacter={() => navigate({ view: 'edit', id: character.id })}
 					onLevelUp={(gains) =>
 						navigate(
-							isMulticlass(character.classes)
+							// D330: a class entered (class level 1) is named in the route too.
+							isMulticlass(character.classes) || gains.classLevel === 1
 								? { view: 'level-up', id: character.id, levelClass: { className: gains.className, classSource: gains.classSource } }
 								: { view: 'level-up', id: character.id },
 						)

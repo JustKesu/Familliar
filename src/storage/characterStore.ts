@@ -29,7 +29,7 @@ import type {
 	SpentSpellSlots,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
-import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, type CharacterLevelOrderEntry } from './character'
+import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, type CharacterLevelOrderEntry, type CharacterMulticlassPick } from './character'
 import { isValidAbilityIncrease } from '../featAsi/featAsiData'
 import { manualFeatKey, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
@@ -46,6 +46,7 @@ import {
 	describeCharacterError,
 	describeFightingStylesError,
 	describeHitPointLevelsError,
+	describeMulticlassPicksError,
 	describePortraitError,
 	describeStoredCharacterError,
 	describeImportedCharacterError,
@@ -125,11 +126,11 @@ function parseStoredCharacters(raw: string, dropMalformedFields: boolean): Store
 	// D69: an older but supported save is carried forward here, so everything
 	// below this line only ever sees the current shape.
 	const migrated = parsed.map(migrateToCurrent)
-	// D320: only a character already at the current schema is repaired; an older one keeps being rejected as before.
+	// D320: only a character saved at schema 59 or later is repaired; an older one keeps being rejected as before.
 	const records = migrated.map((entry, i) => {
 		const dropped = dropMalformedFields ? withoutMalformedDroppableFields(entry) : withoutInconsistentLevelOrder(entry)
 		const original: unknown = parsed[i]
-		return isRecordWithSchemaVersion(original) && original.schemaVersion === CURRENT_SCHEMA_VERSION ? withRepairedFields(dropped) : dropped
+		return isRecordWithSchemaVersion(original) && typeof original.schemaVersion === 'number' && original.schemaVersion >= REPAIRED_FROM_SCHEMA ? withRepairedFields(dropped) : dropped
 	})
 
 	for (let i = 0; i < records.length; i++) {
@@ -146,6 +147,9 @@ function parseStoredCharacters(raw: string, dropMalformedFields: boolean): Store
 
 	return (records as Record<string, unknown>[]).map(toStoredCharacter)
 }
+
+/** D320: the schema whose saves read-repair applies to, and every later one. */
+const REPAIRED_FROM_SCHEMA = 59
 
 function isRecordWithSchemaVersion(value: unknown): value is { schemaVersion: unknown } {
 	return typeof value === 'object' && value !== null && 'schemaVersion' in value
@@ -196,6 +200,8 @@ export interface CharacterCreateInput {
 	speciesSize?: string
 	toolChoices?: CharacterToolChoice[]
 	subclassSkills?: CharacterSubclassSkill[]
+	/** D330: the multiclass skill/tool picks, each with the class it came with. */
+	multiclassPicks?: CharacterMulticlassPick[]
 	hitPointLevels?: CharacterHitPointLevel[]
 	/*
 	 * Play-time state the wizard never collects: the hand-set current hit points
@@ -335,6 +341,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		speciesSize,
 		toolChoices,
 		subclassSkills,
+		multiclassPicks,
 		hitPointLevels,
 		currentHp,
 		maxHpOverride,
@@ -354,6 +361,8 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 	const fightingStylesError = describeFightingStylesError(fightingStyles)
 	if (fightingStylesError) throw new ImportValidationError(`Fighting style could not be saved: ${fightingStylesError}.`)
 	assertValidPortrait(portrait)
+	const multiclassPicksError = describeMulticlassPicksError(multiclassPicks, classes)
+	if (multiclassPicksError) throw new ImportValidationError(`Multiclass picks could not be saved: ${multiclassPicksError}.`)
 	// D328: across classes the history is what max HP and ASI levels read, so a mismatch is refused rather than silently dropped.
 	if (levelOrder && classes.length > 1 && !isConsistentLevelOrder(levelOrder, classes)) {
 		throw new ImportValidationError(`The level history could not be saved: ${levelOrderMismatch(levelOrder, classes)}.`)
@@ -390,6 +399,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(speciesSize ? { speciesSize } : {}),
 		...(toolChoices && toolChoices.length > 0 ? { toolChoices } : {}),
 		...(subclassSkills && subclassSkills.length > 0 ? { subclassSkills } : {}),
+		...(multiclassPicks && multiclassPicks.length > 0 ? { multiclassPicks } : {}),
 		...(hitPointLevels &&hitPointLevels.length > 0 ? { hitPointLevels } : {}),
 		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
 		...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),

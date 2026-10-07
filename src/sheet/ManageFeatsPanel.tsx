@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Ability } from '../abilities/abilityScores'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
+import { multiclassSkillSources } from '../multiclass/multiclassPicks'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { subclassSkillSourceNames } from '../classSkills/subclassSkillGrants'
 import { firstClass, totalCharacterLevel } from '../calculation/characterLevel'
@@ -249,6 +250,7 @@ export function ManageFeatsPanel({
 			...(character.speciesSkills ?? []).map((skill) => ({ skill, source: 'species' })),
 			...(character.background?.skillProficiencies ?? []).map((skill) => ({ skill, source: 'background' })),
 			...(character.subclassSkills ?? []).map((entry) => ({ skill: entry.name, source: entry.grantedBy })),
+			...multiclassSkillSources(character.multiclassPicks),
 			...ALL_SKILLS.flatMap((skill) => subclassSkillSourceNames(skill, character).map((source) => ({ skill, source }))),
 			...others.flatMap((instance) => (instance.proficiencies?.skills ?? []).map((skill) => ({ skill, source: instance.name }))),
 		]

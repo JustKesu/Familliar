@@ -104,6 +104,7 @@ test('D204 a: Edit Character — Watchers asks for a spellcasting ability (Int/W
 test('D204 a: Level up — a Dark Gift asks for its spellcasting ability there too', async ({ page }) => {
   await createFighter(page, { name: 'Leveller', level: 3, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await takeFighterLevel4Mastery(page)
   const level4 = page.getByRole('group', { name: 'Level 4' })
   for (let steps = 0; steps < 8 && !(await level4.isVisible()); steps++) await next(page)

@@ -108,6 +108,7 @@ test('W-9 d: a level up to 2 opens Review with the "What\'s new" card; headings 
   const oldMax = Number(/\/\s*(\d+)/.exec(await page.locator('.sheet__hit-points-value').first().innerText())![1])
 
   await page.getByRole('button', { name: 'Level up to 2' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   let newMax = 0
   for (let steps = 0; steps < 8 && !(await step(page).textContent())?.includes('Review and save'); steps++) {
     const average = page.getByRole('radio', { name: 'Average (6)' })
@@ -207,6 +208,7 @@ test('F-6: a level up whose walk has no Expertise step explains a stale Expertis
   )
   await page.goto('/#/character/f6-rogue')
   await page.getByRole('button', { name: 'Level up to 5' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   for (let steps = 0; steps < 8 && !(await step(page).textContent())?.includes('Review and save'); steps++) {
     const average = page.getByRole('radio', { name: /^Average/ })
     if (await average.isVisible()) await average.check()

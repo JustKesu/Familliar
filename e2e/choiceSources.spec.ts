@@ -78,6 +78,7 @@ async function expectArcheryShown(page: Page): Promise<void> {
 
 async function levelUp(page: Page, level: number, onClassStep?: () => Promise<void>): Promise<void> {
   await page.getByRole('button', { name: `Level up to ${level}` }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   const save = wizardNav(page).getByRole('button', { name: `Save level ${level}` })
   let picked = onClassStep === undefined
   for (let steps = 0; steps < 10 && !(await save.isVisible()); steps++) {

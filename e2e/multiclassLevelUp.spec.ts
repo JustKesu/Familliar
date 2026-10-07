@@ -191,9 +191,10 @@ test('M7a e: the same character without a level history — Level up disabled wi
   await expect(levelUpButton(page)).toHaveText('Level up unavailable: Cannot tell which class each level came from (no level history).')
 })
 
-test('M7a f: a single-class Fighter level up opens no class window', async ({ page }) => {
+test('M7a f (D330): a single-class Fighter level up opens the class window too, and raising the held class keeps the plain route', async ({ page }) => {
   await createFighter(page, { name: 'Solo', level: 1, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 2' }).click()
+  await classWindow(page).getByRole('button', { name: 'Fighter 1 → 2', exact: true }).click()
   await expectStep(page, 'Hit points')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page).toHaveURL(/\/level-up$/)

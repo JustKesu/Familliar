@@ -927,6 +927,19 @@ v top-level poli `proficiency` — NE ve `startingProficiencies.savingThrows`,
 které neexistuje. Dvouprvkové pole malými písmeny: ["str", "con"].
 Stejný tvar u všech 13 základních tříd.
 
+### Multiclass prerequisites and picks — `primaryAbility`, `multiclassing.proficienciesGained` (M7b, D330)
+
+Survey `scripts/investigate-multiclass-entry.js` over the 13 classes the creation picker offers (12 XPHB + Artificer EFA):
+
+- Every class has a top-level `primaryAbility`: an array of objects, keys are 3-letter codes with `true`. Array = OR,
+  keys inside one object = AND. Fighter `[{str},{dex}]` = STR or DEX; Monk `[{dex,wis}]` and Ranger `[{dex,wis}]` =
+  DEX and WIS; Paladin `[{str,cha}]` = STR and CHA; the rest one ability (Artificer int, Barbarian str, Bard cha, Cleric
+  wis, Druid wis, Rogue dex, Sorcerer cha, Warlock cha, Wizard int). `multiclassing.requirements` does not occur.
+- The choice part of `proficienciesGained` has two shapes only: `skills: [{choose:{from,count:1}}]` (Artificer 7, Bard
+  18 = every skill, Ranger 8, Rogue 10 skills, lowercase like class skills) and `toolProficiencies: [{anyMusicalInstrument:1}]`
+  (Bard). Every other `toolProficiencies` key is a fixed `true` (Rogue thieves' tools, Artificer tinker's tools).
+  Barbarian, Cleric, Druid, Fighter, Monk, Paladin, Sorcerer, Warlock, Wizard choose nothing.
+
 ### Warlock patron spells keyed by pact slot rank
 Warlock patron spells keyed by pact slot rank. Celestial, Hexblade, and Fathomless keep their always-prepared patron spells under `additionalSpells.expanded` keyed by PACT SLOT RANK ("s1".."s5") rather than by character level, unlike every other always-prepared source. Rank R unlocks at the character level where the Warlock's Pact Magic slot level first reaches R (1st→s1, 3rd→s2, 5th→s3, 7th→s4, 9th→s5). Code resolving these must translate rank to character level via the Pact Magic slot progression (src/calculation/spellSlots.ts) rather than treating the key as a character level. The Genie uses a different, per-genie-kind shape and is not covered by this.
 

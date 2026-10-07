@@ -190,6 +190,7 @@ test('S1 f: an older Human without the species feat shows the not-chosen line, a
 test('S1 g: the species feat is taken at an ASI level — disabled on level up, flagged "(Species)" when the edit makes them clash', async ({ page }) => {
   await createFighter(page, human('Level Human', { level: 3, speciesFeat: 'Alert' }))
   await page.getByRole('button', { name: 'Level up to 4' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await takeFighterLevel4Mastery(page)
   for (let steps = 0; steps < 8 && !(await levelCard(page, 4).isVisible()); steps++) await next(page)
   await expect(featOption(page, 4, 'Alert')).toHaveJSProperty('disabled', true)

@@ -121,6 +121,7 @@ describe('App routing (rework R1b, D151)', () => {
 		render(<App />)
 		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('button', { name: 'Level up to 5' }))
+		await user.click(screen.getByRole('button', { name: 'Fighter 4 → 5' }))
 
 		expect(await screen.findByText('1. Hit points')).not.toBeNull()
 		expect(screen.queryByRole('button', { name: 'Edit character' })).toBeNull()

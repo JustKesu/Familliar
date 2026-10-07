@@ -87,7 +87,7 @@ test('M1c b: concentration started on the Spells tab is stored with its source, 
 
   await expect(concentrationCard(page)).toContainText('Bless')
   await expect.poll(async () => (await stored(page)).play?.concentratingOn).toEqual({ name: 'Bless', source: 'XPHB' })
-  expect((await stored(page)).schemaVersion).toBe(59)
+  expect((await stored(page)).schemaVersion).toBe(60)
 
   await page.reload()
   await expect(concentrationCard(page)).toContainText('Bless')

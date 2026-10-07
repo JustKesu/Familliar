@@ -89,6 +89,7 @@ test('F-1 b (D251): a new Paladin 2 with a fighting style lowered to level 1 sav
 test('F-1 d: Esc in the Remove level dialog closes only the dialog, not an open drawer', async ({ page }) => {
   await createFighter(page, { name: 'Drawer Esc', level: 1, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 2' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await page.getByRole('radio', { name: /^Average/ }).check()
   await next(page)
   await wizardNav(page).getByRole('button', { name: 'Save level 2' }).click()
@@ -198,6 +199,7 @@ test('F-1 e (finding 9): Edit Character and level up — Cancel without changes 
   await expect(page.getByRole('heading', { level: 1, name: 'Quiet Cancel' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Level up to 2' }).click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
   await expectStep(page, 'Hit points')
   await wizardNav(page).getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('alertdialog')).toHaveCount(0)

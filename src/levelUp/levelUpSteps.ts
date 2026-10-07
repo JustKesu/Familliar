@@ -22,7 +22,7 @@ export function levelUpClassOptions(character: Character): { options: CharacterC
  * The level a Level up would take this character to, or why there is none.
  * Only what can be told without the data: whether a level-up is answerable at
  * all (a class missing from classes.json) is levelGainsFor's `unresolved`.
- * D329: a multiclass character names the class (`chosen`); a single class may omit it.
+ * D329: a multiclass character names the class (`chosen`); a single class may omit it. D330: `chosen` may be a class not held yet.
  */
 export function levelUpTarget(character: Character, chosen?: LevelUpClass): { level: number; className: string; classSource: string } | { reason: string } {
 	const allowed = levelUpClassOptions(character)
@@ -33,9 +33,10 @@ export function levelUpTarget(character: Character, chosen?: LevelUpClass): { le
 		const { className, classSource } = character.classes[0]
 		return { level, className, classSource }
 	}
-	const held = allowed.options.find((entry) => entry.className === chosen.className && entry.classSource === chosen.classSource)
-	if (!held) return { reason: `This character has no ${chosen.className} (${chosen.classSource}) class below level ${MAX_CHARACTER_LEVEL}.` }
-	return { level, className: held.className, classSource: held.classSource }
+	const held = character.classes.find((entry) => entry.className === chosen.className && entry.classSource === chosen.classSource)
+	if (held && held.level >= MAX_CHARACTER_LEVEL) return { reason: `This character has no ${chosen.className} (${chosen.classSource}) class below level ${MAX_CHARACTER_LEVEL}.` }
+	// D330: a class not held is entered at class level 1; its prerequisite needs the data and is checked by the caller.
+	return { level, className: chosen.className, classSource: chosen.classSource }
 }
 
 /**
