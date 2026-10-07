@@ -32,7 +32,8 @@ All 13 offered classes have primaryAbility; only the allowed choice shapes occur
 
 ## Verified
 - typecheck OK; test 171 files / 3163 OK; validate-data 175/175; e2e full run 459/462 (5.4 min, over the ~3 min guideline):
-  the 3 failures were the schema-bump issue above; after the fix those 3 specs pass (5/5). The full suite was not re-run.
+  the 3 failures were the schema-bump issue above; after the fix those 3 specs pass (5/5).
+- Full e2e rerun after the read-repair fix: 462/462 passed (5.3 min).
 - Unit `src/multiclass/multiclassEntry.test.ts`: primaryAbility Fighter/Monk; prerequisites (STR-or-DEX, DEX-and-WIS, held
   class unmet blocks Wizard/Sorcerer/Cleric, ASI counted, item half-feat ignored); pick shapes and level gains (Bard instrument,
   no starting Bard tools); seed at class level 0; save appends Wizard 1, rebuilt levelOrder, Fighter records byte-identical,
