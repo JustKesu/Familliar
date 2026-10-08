@@ -302,10 +302,11 @@ export function levelRemovalCore(
 			poolGrantingClassNames(pool, result, parsedClasses),
 		)
 		let clamped = resourceUsesWithinMaxima(storedUses, resources)
-		if (classRemoved && clamped) {
-			// D332: a pool the removed class gave has no maximum left to clamp against, so its count goes with the class.
-			const after = new Set(resources.map((resource) => resource.name))
-			const gone = new Set(before.map((resource) => resource.name).filter((name) => !after.has(name)))
+		const after = new Set(resources.map((resource) => resource.name))
+		// D332: a pool the removed class gave has no maximum left to clamp against, so its count goes with the class.
+		// D336: so does a class's own share of a split pool once that class drops below the pool's level; regaining it starts full.
+		const gone = new Set(before.filter((resource) => !after.has(resource.name) && (classRemoved || resource.className !== undefined)).map((resource) => resource.name))
+		if (gone.size > 0 && clamped) {
 			const kept = Object.fromEntries(Object.entries(clamped).filter(([name]) => !gone.has(name)))
 			clamped = Object.keys(kept).length > 0 ? kept : undefined
 		}

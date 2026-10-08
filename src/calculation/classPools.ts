@@ -40,6 +40,31 @@ export function withLegacyPoolUses(
 }
 
 /**
+ * D336: a level up that splits a pool (a second class starts granting it) moves the
+ * count under the plain key to the class that held the pool alone before, capped at
+ * its maximum; the new class's pool starts full. Done at save, so withLegacyPoolUses
+ * only ever meets old saves.
+ */
+export function poolUsesAfterSplit(
+	uses: Record<string, number>,
+	after: readonly PoolResource[],
+	grantersBefore: (pool: string) => readonly string[],
+): Record<string, number> {
+	let result = uses
+	for (const pool of new Set(after.flatMap((resource) => (resource.pool ? [resource.pool] : [])))) {
+		const spent = result[pool]
+		const holders = grantersBefore(pool)
+		const target = holders.length === 1 ? after.find((resource) => resource.pool === pool && resource.className === holders[0]) : undefined
+		if (spent === undefined || target === undefined) continue
+		const { [pool]: _plain, ...rest } = result
+		const total = (rest[target.name] ?? 0) + spent
+		const next = target.max.status === 'known' ? Math.min(total, target.max.value) : total
+		result = next > 0 ? { ...rest, [target.name]: next } : rest
+	}
+	return result
+}
+
+/**
  * D336 rule 2 after a level change: a split pool that only one class still
  * grants goes back to its plain key, carrying that class's spent count. Another
  * class's key is left as it is, for resourceUsesWithinMaxima and D332 to treat

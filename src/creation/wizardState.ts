@@ -1510,6 +1510,8 @@ export function saveCharacter(
 	computedCurrentHp?: number,
 	/** D318: resolves the source a sourceless fighting style or optional-feature pick is saved with; without it, such picks stay sourceless. */
 	pickSources?: PickSourceLookup,
+	/** D336: a level up's spent resource counts after a pool split (resourceUsesAfterLevelUp); absent keeps `existing`'s. */
+	levelUpResourceUses?: Record<string, number>,
 ): Character {
 	if (!isReadyToSave(data, conditions)) {
 		throw new Error('Cannot save a character before every step is complete.')
@@ -1717,7 +1719,7 @@ export function saveCharacter(
 		 * D110: play state, not a level-time choice — an edit or a level up carries it across unchanged.
 		 * D111: the store keeps the death saves only while the resulting current is 0, so a level up that raises it clears them by itself.
 		 */
-		play: existing?.play,
+		play: levelUpTo !== undefined && levelUpResourceUses !== undefined ? playWithResourceUses(existing?.play, levelUpResourceUses) : existing?.play,
 		familiar: existing?.familiar,
 		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".
 		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,
@@ -1738,7 +1740,13 @@ export function saveCharacter(
 	return existing ? store.update(existing.id, input) : store.create(input)
 }
 
-type WithPickSource = <T extends { name: string; source?: string }>(featureType: string, pick: T) => T
+function playWithResourceUses(play: Character['play'], resourceUses: Record<string, number>): Character['play'] {
+	const { resourceUses: _old, ...rest } = play ?? {}
+	const next = { ...rest, ...(Object.keys(resourceUses).length > 0 ? { resourceUses } : {}) }
+	return Object.keys(next).length > 0 ? next : undefined
+}
+
+type WithPickSource =<T extends { name: string; source?: string }>(featureType: string, pick: T) => T
 
 // D318: a pick without a source gets the one its name resolves to today (first same-named row), so the save records what the sheet already showed.
 function pickSourceResolver(pickSources: PickSourceLookup | undefined): WithPickSource {

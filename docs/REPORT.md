@@ -1,4 +1,11 @@
-# M10b — Channel Divinity po třídách a třída u level featů v Manage Feats (D336)
+# M10b follow-up — pool pod úrovní a rozdělení poolu při level upu (D336)
+
+Odpovědi na obě otázky M10b zapracovány, D336 aktualizováno (bod 5 a nový 5b).
+- Remove level: třída, která klesne pod úroveň poolu, ztratí svůj klíč `"<pool> (<třída>)"` (`levelRemoval.ts`, stejná větev jako D332; ve výpisu dialogu „Channel Divinity (Paladin): N spent, now 0“).
+- Level up, který pool rozdělí: `poolUsesAfterSplit` (classPools.ts) + `resourceUsesAfterLevelUp` (multiclassLevelUp.ts, jen tabulky classes.json); `CharacterWizard` ho předá novým parametrem `levelUpResourceUses` do `saveCharacter`. Prostý počet jde jediné předchozí granting třídě (cap na maximum), nová třída plná. Handover při čtení (`withLegacyPoolUses`) zůstává jen pro staré savy; když první třída pool nedává, dál první granting třída v pořadí `classes`.
+- Ověřeno: `npm run typecheck` OK, `npm test` 176 souborů / 3235 testů, `npm run e2e` 507/507 (5,7 min, nad limitem ~3 min). Nové unit: `classPools.test.ts` (split v obou pořadích, cap, bez splitu/bez jediného držitele nic, `resourceUsesAfterLevelUp`), `levelRemoval.test.tsx` (Paladin 3 → 2 ztratí klíč). E2E `multiclassPools.spec.ts` f2 rozšířen (klíč Paladina zmizí), nový h (Paladin 2 / Cleric 3, Paladin první, level up Paladina přes skutečný wizard: Cleric 1 spent, Paladin 0, uloženo `{"Channel Divinity (Cleric)": 1}`).
+- Fixture h potřebuje `abilityBonus`, třídní skilly a fighting style Paladina, jinak save level upu zapíše `abilityBonus: {}` a čtení postavu odmítne (stávající chování validace, ne změna tohoto tasku).
+
 
 ## Krok 1: inventura (10 míst, bez dělení a/b, bez změny schématu)
 Klíč per-class poolu = viditelný název: `` `${pool} (${className})` `` → `"Channel Divinity (Cleric)"`, `"Channel Divinity (Paladin)"`. Jen když pool dávají tabulky ≥ 2 držených tříd; jinak prostý `"Channel Divinity"`.

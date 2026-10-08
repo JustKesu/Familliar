@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { afterShortRest } from '../rest/rest'
 import type { Character, CharacterClass } from '../storage/character'
-import { classPoolKey, poolUsesAfterLevelChange, resourceKeyFor, withLegacyPoolUses } from './classPools'
+import { classPoolKey, poolUsesAfterLevelChange, poolUsesAfterSplit, resourceKeyFor, withLegacyPoolUses } from './classPools'
+import { resourceUsesAfterLevelUp } from '../levelUp/multiclassLevelUp'
 import { computeCharacterResources, poolGrantingClassNames, type ResourceFeature } from './resources'
 import { levelFeatChip } from '../sheet/ManageFeatsPanel'
 
@@ -70,6 +71,28 @@ describe('D336 per-class pools', () => {
 			'Channel Divinity (Paladin)': 2,
 		})
 		expect(poolUsesAfterLevelChange(uses, before, before, () => ['Cleric', 'Paladin'])).toEqual(uses)
+	})
+
+	it('a level up that splits a pool gives the plain count to the class that held it, capped; the new class starts full', () => {
+		for (const order of [[cls('Cleric', 3), cls('Paladin', 2)], [cls('Paladin', 2), cls('Cleric', 3)]]) {
+			const before = character(...order)
+			const after = computeCharacterResources(character(...order.map((entry) => (entry.className === 'Paladin' ? { ...entry, level: 3 } : entry))), CLASSES, FEATURES)
+			const grantersBefore = (pool: string) => poolGrantingClassNames(pool, before, CLASSES)
+			expect(poolUsesAfterSplit({ 'Channel Divinity': 1, Rage: 2 }, after, grantersBefore)).toEqual({ 'Channel Divinity (Cleric)': 1, Rage: 2 })
+			expect(poolUsesAfterSplit({ 'Channel Divinity': 5 }, after, grantersBefore)).toEqual({ 'Channel Divinity (Cleric)': 2 })
+		}
+		// No split, or no single holder before: nothing moves.
+		const single = computeCharacterResources(character(cls('Cleric', 4)), CLASSES, FEATURES)
+		expect(poolUsesAfterSplit({ 'Channel Divinity': 1 }, single, () => ['Cleric'])).toEqual({ 'Channel Divinity': 1 })
+		const split = computeCharacterResources(character(cls('Cleric', 3), cls('Paladin', 3)), CLASSES, FEATURES)
+		expect(poolUsesAfterSplit({ 'Channel Divinity': 1 }, split, () => [])).toEqual({ 'Channel Divinity': 1 })
+	})
+
+	it('resourceUsesAfterLevelUp splits at the level-up save', () => {
+		const before: Character = { ...character(cls('Paladin', 2), cls('Cleric', 3)), play: { resourceUses: { 'Channel Divinity': 1 } } }
+		expect(resourceUsesAfterLevelUp(before, [cls('Paladin', 3), cls('Cleric', 3)], CLASSES)).toEqual({ 'Channel Divinity (Cleric)': 1 })
+		expect(resourceUsesAfterLevelUp(before, [cls('Paladin', 2), cls('Cleric', 4)], CLASSES)).toEqual({ 'Channel Divinity': 1 })
+		expect(resourceUsesAfterLevelUp(character(cls('Cleric', 3)), [cls('Cleric', 4)], CLASSES)).toBeUndefined()
 	})
 })
 

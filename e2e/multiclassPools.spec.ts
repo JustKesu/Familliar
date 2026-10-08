@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { chooseButton, next, nextButton, wizardNav } from './wizard.ts'
 
 /* M10b (D336): one Channel Divinity pool per granting class; the Manage Feats level chip names the class. Seeded at schema 60. */
 const STORAGE_KEY = 'familliar:characters'
@@ -135,14 +136,74 @@ test('M10b f: Cleric 3 / Paladin 1, Paladin last — Remove level leaves the Cle
   await expect(used(page, 'Channel Divinity')).toHaveCount(1)
 })
 
-test('M10b f2: Cleric 3 / Paladin 3, Paladin last — the Paladin counter goes, the Cleric count returns to the plain key', async ({ page }) => {
-  await openSheet(page, seeded('m10b-f2', [['Cleric', null, 3], ['Paladin', null, 3]], { play: { resourceUses: { [CLERIC]: 1 } } }))
+test('M10b f2: Cleric 3 / Paladin 3, Paladin last — the Paladin counter and its key go, the Cleric count returns to the plain key', async ({ page }) => {
+  await openSheet(page, seeded('m10b-f2', [['Cleric', null, 3], ['Paladin', null, 3]], { play: { resourceUses: { [CLERIC]: 1, [PALADIN]: 1 } } }))
   await removeLevel(page, 6)
   await expect(page.locator('.sheet__classes')).toHaveText('Cleric 3 / Paladin 2')
   expect(await storedUses(page)).toEqual({ 'Channel Divinity': 1 })
   await openActions(page)
   await expect(used(page, 'Channel Divinity')).toHaveCount(1)
   await expect(actions(page).getByRole('group', { name: `${PALADIN} uses` })).toHaveCount(0)
+})
+
+/** Fills the Spells step's counters with the first offered spells; a counter the class does not have is skipped. */
+async function fillSpells(page: Page): Promise<void> {
+  const addSpells = page.getByRole('region', { name: 'Add Spells' })
+  for (const [label, button] of [
+    ['Cantrips', /^Add /],
+    ['Prepared', /^Prepare /],
+  ] as const) {
+    const counter = page.locator('.manage-spells__counter', { hasText: new RegExp(`^${label}:`) })
+    if ((await counter.count()) === 0) continue
+    for (;;) {
+      const [, have, max] = (await counter.innerText()).match(/(\d+)\/(\d+)/)!.map(Number)
+      if (have! >= max!) break
+      await addSpells.getByRole('button', { name: button, disabled: false }).first().click()
+      await expect(counter).toHaveText(new RegExp(`^${label}: ${have! + 1}/`))
+    }
+  }
+}
+
+test('M10b h: Paladin 2 / Cleric 3, Paladin first, 1 Channel Divinity spent — levelling Paladin to 3 keeps the count with Cleric, the Paladin pool starts full', async ({ page }) => {
+  // What a real Paladin 2 holds, so the level-up walk and its save accept the character.
+  const paladinPicks = {
+    abilityBonus: { wisdom: 2, charisma: 1 },
+    classSkills: ['athletics', 'persuasion'],
+    fightingStyles: [{ className: 'Paladin', classSource: XPHB, name: 'Defense', source: XPHB }],
+  }
+  await openSheet(page, seeded('m10b-h', [['Paladin', null, 2], ['Cleric', null, 3]], { ...paladinPicks, play: { resourceUses: { 'Channel Divinity': 1 } } }))
+  await page.locator('.sheet__level-up').click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).getByRole('button', { name: 'Paladin 2 → 3', exact: true }).click()
+  await expect(page).toHaveURL(/\/level-up\/Paladin\/XPHB$/)
+
+  const current = page.locator('[aria-current="step"]')
+  for (let walked = 0; walked < 8; walked++) {
+    const step = await current.innerText()
+    // The step bar is uppercased by CSS, so innerText comes back in capitals.
+    const is = (label: string) => step.toLowerCase().includes(label)
+    if (is('review')) break
+    if (is('class')) {
+      // The seed can land after a first click and clear it, so the pick is retried until it holds.
+      await expect(async () => {
+        const oath = chooseButton(page, 'Oath of Devotion')
+        if ((await oath.getAttribute('aria-pressed')) !== 'true') await oath.click()
+        await expect(oath).toHaveAttribute('aria-pressed', 'true', { timeout: 1000 })
+        await expect(nextButton(page)).toBeEnabled({ timeout: 2000 })
+      }).toPass({ timeout: 20_000 })
+    }
+    if (is('spells')) await fillSpells(page)
+    if (is('hit points')) await page.getByRole('radiogroup', { name: 'Level 6 hit points method', exact: true }).getByRole('radio', { name: /^Average/ }).check()
+    await next(page)
+    await expect(current).not.toHaveText(step)
+  }
+  await wizardNav(page).getByRole('button', { name: 'Save level 6' }).click()
+  await expect(page).toHaveURL(/#\/character\/m10b-h$/)
+  await expect(page.locator('.sheet__classes')).toContainText('Paladin 3')
+
+  expect(await storedUses(page)).toEqual({ [CLERIC]: 1 })
+  await openActions(page)
+  await expect(used(page, CLERIC)).toHaveCount(1)
+  await expect(used(page, PALADIN)).toHaveCount(0)
 })
 
 async function manageFeatsChip(page: Page, name: string): Promise<Locator> {

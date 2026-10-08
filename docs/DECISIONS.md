@@ -5099,7 +5099,10 @@ postavy a jejich savy se nemění. (3) Rys nebo volba, která pool utrácí, utr
 feature; nenavázaná volba ve Features podle vlastníka volby). (4) Starý save s rozděleným poolem a počtem pod prostým klíčem: při
 čtení se počet přidělí poolu první třídy (`firstClass`, jinak první granting třídě v pořadí `classes`), oříznutý na její maximum;
 další zápis uloží nový klíč. (5) Remove level: odebraná třída si bere svůj pool i počet (D332); dává-li pool po odebrání už jen
-jedna třída, její počet se vrátí pod prostý klíč. Klesne-li třída jen pod úroveň poolu, její klíč zůstává jako nenárokovaný
-(slice 9b1). (6) Manage Feats: chip ASI řádku a featu z úrovně u multiclass postavy ukazuje totéž co Features tab (`featSource`,
+jedna třída, její počet se vrátí pod prostý klíč. Klesne-li třída jen pod úroveň poolu (Paladin 3 → 2), její klíč „Channel Divinity
+(Paladin)“ se z `play.resourceUses` smaže stejně jako u odebrané třídy (D332); znovuzískaná úroveň začíná s plným poolem. (5b) Level
+up, který pool rozdělí (Cleric 3 / Paladin 2 → Paladin 3, i když je Paladin první třída): počet pod prostým klíčem „Channel Divinity“
+připadne třídě, která prostý pool držela před level upem (do té doby jediná granting třída), oříznutý na její maximum; pool nové
+třídy začíná plný. Děje se při uložení level upu, takže handover z bodu 4 platí jen pro staré savy. (6) Manage Feats: chip ASI řádku a featu z úrovně u multiclass postavy ukazuje totéž co Features tab (`featSource`,
 „From Wizard 4“ z `levelOrder`); bez určení zůstává „From level N“, jednotřídní postava beze změny. Task M10b, rozhodl Daniel
 8. 10. 2026.

@@ -1,4 +1,15 @@
 import { singleClassLevelOrder, type Character, type CharacterClass, type CharacterFightingStyle, type CharacterOptionalFeatureChoice } from '../storage/character'
+import { poolUsesAfterSplit } from '../calculation/classPools'
+import { computeCharacterResources, poolGrantingClassNames } from '../calculation/resources'
+
+/** D336: the play.resourceUses a level up to `afterClasses` writes — a pool it splits keeps the plain count with the class that held it. */
+export function resourceUsesAfterLevelUp(before: Character, afterClasses: readonly CharacterClass[], parsedClasses: unknown): Record<string, number> | undefined {
+	const uses = before.play?.resourceUses
+	if (uses === undefined || !Array.isArray(parsedClasses)) return uses
+	// Table-granted pools need no feature list; only their split is decided here.
+	const after = computeCharacterResources({ ...before, classes: [...afterClasses] }, parsedClasses, [])
+	return poolUsesAfterSplit(uses, after, (pool) => poolGrantingClassNames(pool, before, parsedClasses))
+}
 
 interface ClassRef {
 	className: string

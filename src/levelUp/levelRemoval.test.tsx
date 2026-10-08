@@ -677,6 +677,30 @@ describe('a resource pool two classes share (F-11, review finding 6)', () => {
 		expect(result.result.play?.resourceUses).toEqual({ 'Channel Divinity': 1 })
 		expect(result.dropped).toContain('Channel Divinity (Paladin): 2 spent, now 0')
 	})
+
+	it('D336: a class that drops below the level of its pool loses its own key; the other class keeps its count', () => {
+		// Paladin's real table: no Channel Divinity before level 3.
+		const classes = POOL_CLASSES.map((entry) =>
+			entry.entryType === 'class' && entry.name === 'Paladin' ? { ...entry, classTableGroups: [{ colLabels: ['Channel Divinity'], rows: [[0], [0], [2], [2], [2]] }] } : entry,
+		)
+		const character: Character = {
+			id: 'm10b2',
+			name: 'Twin pool',
+			createdAtLevel: 3,
+			classes: [
+				{ ...CLERIC, subclass: null, level: 3 },
+				{ ...PALADIN, subclass: null, level: 3 },
+			],
+			levelOrder: [CLERIC, CLERIC, CLERIC, PALADIN, PALADIN, PALADIN],
+			play: { resourceUses: { 'Channel Divinity (Cleric)': 1, 'Channel Divinity (Paladin)': 1 } },
+		}
+		const result = levelRemovalPlan(character, classes, RESOLVER, null)
+		if ('reason' in result) throw new Error(result.reason)
+
+		expect(result.result.classes.map((entry) => entry.level)).toEqual([3, 2])
+		expect(result.result.play?.resourceUses).toEqual({ 'Channel Divinity': 1 })
+		expect(result.dropped).toContain('Channel Divinity (Paladin): 1 spent, now 0')
+	})
 })
 
 /* Slice 9b3: the same invariant as the block above, one pool over — and D11's two pools clamp separately. */

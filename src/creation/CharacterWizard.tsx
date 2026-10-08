@@ -102,7 +102,7 @@ import type { CharacterStore } from '../storage/characterStore'
 import type { LevelGains } from '../levelUp/levelGains'
 import { levelUpStepConditions, MAX_CHARACTER_LEVEL, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
 import { heldPicksFrom } from '../levelUp/heldPicks'
-import { classesAfterLevelUp, isClass, levelOrderBeforeLevelUp } from '../levelUp/multiclassLevelUp'
+import { classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, resourceUsesAfterLevelUp } from '../levelUp/multiclassLevelUp'
 import { ownedPicks } from './heldClassPicks'
 import { loadMulticlassPickShape, multiclassSkillSources, type MulticlassPickShape } from '../multiclass/multiclassPicks'
 import { MulticlassPickSlots } from '../multiclass/MulticlassPickSlots'
@@ -1728,6 +1728,7 @@ export function CharacterWizard({
 				levelUp?.level,
 				computedCurrentHp(),
 				pickSources,
+				levelUp && character ? resourceUsesAfterLevelUp(character, draftClasses, proficiencyData.classes) : undefined,
 			)
 			setSaveError(null)
 			onSaved(saved)
