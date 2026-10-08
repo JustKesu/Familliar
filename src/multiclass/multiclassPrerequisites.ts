@@ -38,14 +38,18 @@ export function primaryAbilityOf(parsedClasses: unknown, target: ClassRef): Abil
 	return alternatives.every((all) => all.length > 0) ? alternatives : null
 }
 
+const meetsAll = (all: Ability[], scores: Partial<Record<Ability, number>>): boolean => all.every((ability) => (scores[ability] ?? 0) >= MULTICLASS_MINIMUM_SCORE)
+
+const neededText = (alternatives: Ability[][]): string =>
+	alternatives.map((all) => all.map((ability) => `${ABILITY_NAMES[ability]} ${MULTICLASS_MINIMUM_SCORE}`).join(' and ')).join(' or ')
+
 /** Why one class's prerequisite is not met by `scores`, or null when it is. */
 function unmetFor(target: ClassRef, held: boolean, parsedClasses: unknown, scores: Partial<Record<Ability, number>>): string | null {
 	const alternatives = primaryAbilityOf(parsedClasses, target)
 	const owner = held ? `${target.className}, a class you already have` : target.className
 	if (alternatives === null) return `Cannot tell the multiclass prerequisite of ${owner}: no primary ability in classes.json.`
-	const meets = (all: Ability[]): boolean => all.every((ability) => (scores[ability] ?? 0) >= MULTICLASS_MINIMUM_SCORE)
-	if (alternatives.some(meets)) return null
-	const needed = alternatives.map((all) => all.map((ability) => `${ABILITY_NAMES[ability]} ${MULTICLASS_MINIMUM_SCORE}`).join(' and ')).join(' or ')
+	if (alternatives.some((all) => meetsAll(all, scores))) return null
+	const needed = neededText(alternatives)
 	const named = [...new Set(alternatives.flat())]
 	const have = (ability: Ability): string => (scores[ability] === undefined ? 'no score' : String(scores[ability]))
 	const youHave = named.length === 1 ? have(named[0]) : named.map((ability) => `${ABILITY_NAMES[ability]} ${have(ability)}`).join(', ')
@@ -61,6 +65,16 @@ export function unmetMulticlassPrerequisite(character: Character, target: ClassR
 		(reason): reason is string => reason !== null,
 	)
 	return reasons.length > 0 ? reasons.join(' ') : null
+}
+
+/**
+ * D333: a held class of a multiclass Edit whose prerequisite `scores` fall below — a note, never a block. Null when it
+ * is met or classes.json names no primary ability.
+ */
+export function heldClassPrerequisiteNote(target: ClassRef, parsedClasses: unknown, scores: Partial<Record<Ability, number>>): string | null {
+	const alternatives = primaryAbilityOf(parsedClasses, target)
+	if (alternatives === null || alternatives.some((all) => meetsAll(all, scores))) return null
+	return `Below the multiclass prerequisite of ${target.className} (${neededText(alternatives)}). Rules check this only when entering a class.`
 }
 
 /** The scores the prerequisite reads: every ASI/feat taken, no items. */

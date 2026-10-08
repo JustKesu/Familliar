@@ -12,7 +12,7 @@ import { loadFeatEffectEntries } from '../../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../../sheet/grantedClassFeatures'
 import { UnresolvedValue } from '../../sheet/ValueBreakdown'
 import type { AbilityIncreaseMap, Character, CharacterInventoryItem, FeatAsiChoice } from '../../storage/character'
-import type { WizardData, WizardStep } from '../wizardState'
+import type { UnfinishedClass, WizardData, WizardStep } from '../wizardState'
 
 /** W-9 (D295–D300): the Review step — a portrait header, then one card per part of the character. Display only; every value is computed by CharacterWizard. */
 export interface ReviewProficiencies {
@@ -144,9 +144,12 @@ export function ReviewStep({
 	onGoTo,
 	saveError,
 	classLine,
+	unfinishedClasses = [],
 }: {
 	/** D329: every class with its level after a multiclass level up ("Warlock 6 / Sorcerer 4"); absent shows the wizard's one class. */
 	classLine?: string
+	/** D333: the held classes of a multiclass Edit whose own picks are unfinished; any blocks the save. */
+	unfinishedClasses?: readonly UnfinishedClass[]
 	data: WizardData
 	/** The seeded data of an edit or level up, for "spells added in this level up". */
 	baseline: WizardData
@@ -248,6 +251,12 @@ export function ReviewStep({
 					)}
 				</p>
 			)}
+
+			{unfinishedClasses.map((cls) => (
+				<p key={`${cls.className}|${cls.classSource}`} className="review__unfinished" role="alert">
+					{cls.className} has unfinished choices: {cls.missing.join(', ')}. Switch to {cls.className} in step Class to finish them.
+				</p>
+			))}
 
 			{levelUp && (
 				<section className="review__card" aria-label={`Level ${levelUp.level} — What's new`}>

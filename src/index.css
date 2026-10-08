@@ -2642,6 +2642,42 @@ button:disabled {
   margin: 0;
 }
 
+/* D333: a multiclass Edit's held class with unfinished picks, and the class switcher of step Class. */
+.review__unfinished {
+  margin: 0;
+  color: var(--damage);
+  overflow-wrap: anywhere;
+}
+
+.class-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.class-switcher__tab {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--text);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.class-switcher__tab[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.class-switcher__hint,
+.ability-prerequisite-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
 .review__card > h3,
 .wizard__panel > section.starting-equipment__summary .start-table__header h3 {
   margin: 0 0 6px;

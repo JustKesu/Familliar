@@ -17,6 +17,7 @@ import { Fragment, useContext, useEffect, useRef, useState, type ComponentProps,
 import { createPortal } from 'react-dom'
 import { LevelUpButton } from '../levelUp/LevelUpButton'
 import { RemoveLevelButton } from '../levelUp/RemoveLevelButton'
+import { editCharacterBlockedReason } from '../levelUp/levelUpSteps'
 import { firstClass, isMulticlass, totalCharacterLevel } from '../calculation/characterLevel'
 import type { LevelGains } from '../levelUp/levelGains'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
@@ -2417,6 +2418,7 @@ function CharacterSheetBody({
 	const spellCountEntries = spellCounts.status === 'known' ? spellCounts.value : []
 	/* Slice 8e2 (D106), per class since D325: what each class's picks store against what that class alone allows. Only CHOSEN spells count (D104). */
 	const multiclassed = isMulticlass(character.classes)
+	const editBlockedReason = editCharacterBlockedReason(character)
 	const spellLimits = classSpellLimits(character, spellSlotsClassData, spellCountClassData, combinedSpells, spellDetails)
 	const featSpellcasting = computeFeatSpellcasting(character, featSpells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
@@ -2852,9 +2854,9 @@ function CharacterSheetBody({
 						</p>
 
 						{onEditCharacter &&
-							(isMulticlass(character.classes) ? (
-								<button type="button" className="sheet__edit-character sheet__header-button" disabled>
-									Edit unavailable: multiclass characters cannot be edited yet
+							(editBlockedReason !== null ? (
+								<button type="button" className="sheet__edit-character sheet__header-button" disabled title={`Edit unavailable: ${editBlockedReason}`}>
+									Edit character
 								</button>
 							) : (
 								<button type="button" className="sheet__edit-character sheet__header-button" onClick={onEditCharacter}>

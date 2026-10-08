@@ -190,6 +190,12 @@ export interface WizardStepConditions {
 	multiclassPickCount?: number | null
 	/** M9 (question 1): false while unfinishedHeldClasses reports a class of a multiclass Edit; blocks the save, not a step. */
 	heldClassesComplete?: boolean
+	/** D333: a multiclass Edit's classes in stored order; the languages step's class grants read all of them. Absent = the wizard's one class. */
+	heldClasses?: readonly CharacterClass[] | null
+	/** D333: a multiclass Edit's hit die per character level (index 0 = level 1); `null` while loading. Absent = `hitDieFaces` for every level of the one class. */
+	hitDieFacesByLevel?: readonly number[] | null
+	/** D333: false while a multiclass Edit's multiclass skill/tool slots are not all filled (or still loading). */
+	multiclassPicksComplete?: boolean
 }
 
 /**
@@ -282,7 +288,9 @@ function pruneClassOptionalFeatures(state: WizardControllerState, featureTypes: 
 }
 
 /** The omitted-field values, in one place, so every entry point agrees on them. */
-function resolveConditions(conditions: WizardStepConditions): Required<Omit<WizardStepConditions, 'classPickRequirements'>> & Pick<WizardStepConditions, 'classPickRequirements'> {
+function resolveConditions(
+	conditions: WizardStepConditions,
+): Required<Omit<WizardStepConditions, 'classPickRequirements' | 'hitDieFacesByLevel'>> & Pick<WizardStepConditions, 'classPickRequirements' | 'hitDieFacesByLevel'> {
 	return {
 		expertiseRequiredCount: conditions.expertiseRequiredCount ?? null,
 		expertiseSkillsAvailable: conditions.expertiseSkillsAvailable ?? true,
@@ -311,6 +319,9 @@ function resolveConditions(conditions: WizardStepConditions): Required<Omit<Wiza
 		hitDieFaces: conditions.hitDieFaces ?? null,
 		multiclassPickCount: conditions.multiclassPickCount === undefined ? 0 : conditions.multiclassPickCount,
 		heldClassesComplete: conditions.heldClassesComplete ?? true,
+		heldClasses: conditions.heldClasses ?? null,
+		hitDieFacesByLevel: conditions.hitDieFacesByLevel,
+		multiclassPicksComplete: conditions.multiclassPicksComplete ?? true,
 	}
 }
 
@@ -365,7 +376,7 @@ export function visibleSteps(conditions: WizardStepConditions = {}): readonly Wi
 }
 
 /** D174: the class/subclass tool picks the languages step collects. A level-up walk asks only for the ones that level brings (Battle Master at 3). */
-export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | null): ClassToolChoiceGrant[] {
+export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | null, heldClasses: readonly CharacterClass[] | null = null): ClassToolChoiceGrant[] {
 	const cls = wizardClass(data)
 	if (!cls) return []
 	// D176: as D174, the wizard sees the background tool and the other slots' picks, not feat tools.
@@ -373,16 +384,17 @@ export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | 
 		...(data.backgroundToolProficiency ? [data.backgroundToolProficiency] : []),
 		...data.toolChoices.filter((choice) => choice.grantedBy !== 'artificerSubclass').map((choice) => choice.name),
 	]
-	const grants = classToolGrantsFor([cls], heldElsewhere)
+	// D333: as saveCharacter keeps them, the stored first class's grants.
+	const grants = classToolGrantsFor(heldClasses ?? [cls], heldElsewhere)
 	// D329: grant levels are class levels; in a level up classChoice.level is the raised class's new level.
 	// D328/D330: class level 1 in a level up is a class being entered, which never gets the starting tool picks.
 	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === cls.level && (cls.level > 1 || grant.subclass !== undefined))
 }
 
 /** D177: the subclass skill picks the languages step collects; a level-up walk asks only for the ones that level brings. */
-export function wizardSubclassSkillGrants(data: WizardData, levelUpTargetLevel: number | null): SubclassSkillGrant[] {
+export function wizardSubclassSkillGrants(data: WizardData, levelUpTargetLevel: number | null, heldClasses: readonly CharacterClass[] | null = null): SubclassSkillGrant[] {
 	const cls = wizardClass(data)
-	const grants = cls ? subclassSkillGrantsFor([cls]).filter((grant) => grant.choice) : []
+	const grants = cls ? subclassSkillGrantsFor(heldClasses ?? [cls]).filter((grant) => grant.choice) : []
 	return levelUpTargetLevel === null || !cls ? grants : grants.filter((grant) => grant.level === cls.level)
 }
 
@@ -823,6 +835,10 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		levelUpTargetLevel,
 		hitDieFaces,
 		multiclassPickCount,
+		heldClasses,
+		hitDieFacesByLevel,
+		multiclassPicksComplete,
+		characterLevel,
 	} = resolveConditions(conditions)
 	switch (step) {
 		case 'class':
@@ -874,15 +890,16 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			// A level-up walk only collects the new level's feature picks; the creation picks are not its to demand.
 			const creationComplete = levelUpTargetLevel !== null || data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
 			const cls = wizardClass(data)
-			const grants = cls ? classFeatureLanguageGrantsFor([cls]) : []
+			const grants = cls ? classFeatureLanguageGrantsFor(heldClasses ?? [cls]) : []
 			return (
 				creationComplete &&
+				multiclassPicksComplete &&
 				grants.every((grant) => !grant.choice || data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length === grant.choice.count) &&
 				// D176: at least the count — a surplus Artificer replacement pick is kept, not demanded away.
-				[...wizardToolGrants(data, levelUpTargetLevel), ...wizardSpeciesToolGrants(data, levelUpTargetLevel)].every(
+				[...wizardToolGrants(data, levelUpTargetLevel, heldClasses), ...wizardSpeciesToolGrants(data, levelUpTargetLevel)].every(
 					(grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length >= grant.count,
 				) &&
-				wizardSubclassSkillGrants(data, levelUpTargetLevel).every((grant) => isSubclassSkillChoiceMade(grant, data.subclassSkills, data.featureLanguages)) &&
+				wizardSubclassSkillGrants(data, levelUpTargetLevel, heldClasses).every((grant) => isSubclassSkillChoiceMade(grant, data.subclassSkills, data.featureLanguages)) &&
 				// D330: only a class entered in this level up (class level 1) owes its multiclass picks here.
 				(levelUpTargetLevel === null || cls === null || cls.level > 1 || (data.multiclassPicks ?? []).filter((pick) => isClass(pick, cls)).length === multiclassPickCount) &&
 				(levelUpTargetLevel !== null || !isKhoravar(data.speciesChoice) || data.speciesExtraSkill !== null || data.toolChoices.some((choice) => choice.grantedBy === 'khoravar'))
@@ -905,7 +922,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				featAsiChoicesValid &&
 				data.featAsiChoices.length === featAsiEligibleLevelCount &&
 				data.featAsiChoices.every((choice) =>
-					isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice, levelUpTargetLevel ?? data.classChoice?.level ?? 0),
+					isCompleteFeatAsiChoice(choice, featsRequiringAbilityChoice, levelUpTargetLevel ?? (heldClasses ? characterLevel : data.classChoice?.level) ?? 0),
 				)
 			)
 		case 'hitPoints':
@@ -915,6 +932,10 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			// A level-up walk (D103) narrows that to the single level being gained — the levels
 			// below it are left on whatever they already had, not demanded here.
 			// W20: "recorded" also means valid for its method (isValidHitPointEntry).
+			// D333: a multiclass Edit checks every level against that level's own die (D323).
+			if (hitDieFacesByLevel !== undefined) {
+				return hitDieFacesByLevel !== null && hitDieFacesByLevel.every((faces, index) => index === 0 || data.hitPointLevels.some((entry) => entry.level === index + 1 && isValidHitPointEntry(entry, faces)))
+			}
 			return levelUpTargetLevel !== null
 				? data.hitPointLevels.some((entry) => entry.level === levelUpTargetLevel && isValidHitPointEntry(entry, hitDieFaces))
 				: isCompleteHitPointLevels(data.hitPointLevels, data.classChoice?.level ?? 1, hitDieFaces)
@@ -1048,6 +1069,34 @@ export function unfinishedHeldClasses(data: WizardData, conditionsFor: (cls: Cla
 		const missing = missingClassPicks(cls, conditionsFor(cls))
 		return missing.length > 0 ? [{ className: cls.classChoice.className, classSource: cls.classChoice.classSource, missing }] : []
 	})
+}
+
+/** D333 (M9 place 32): equal data, whichever held class of a multiclass Edit is active. */
+export function sameWizardData(a: WizardData, b: WizardData): boolean {
+	const canonical = (data: WizardData): unknown => {
+		if (!data.classChoice || !data.otherClasses) return data
+		const {
+			otherClasses,
+			classChoice,
+			subclass: _subclass,
+			fightingStyle: _fightingStyle,
+			optionalFeatureChoices: _optionalFeatureChoices,
+			classOptionalFeatureChoices: _classOptionalFeatureChoices,
+			spellChoices: _spellChoices,
+			subclassSpellChoices: _subclassSpellChoices,
+			classFeatureChoices: _classFeatureChoices,
+			wildShapeForms: _wildShapeForms,
+			activeClassFeatureTypes: _activeClassFeatureTypes,
+			...shared
+		} = data
+		const key = (stash: ClassStash): string => `${stash.classChoice.className}|${stash.classChoice.classSource}`
+		return { shared, classes: [stashOf(data, classChoice), ...otherClasses].sort((x, y) => key(x).localeCompare(key(y))) }
+	}
+	const stable = (value: unknown): string =>
+		JSON.stringify(value, (_key, entry: unknown) =>
+			entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([x], [y]) => x.localeCompare(y))) : entry,
+		)
+	return stable(canonical(a)) === stable(canonical(b))
 }
 
 function missingClassPicks(cls: ClassStash, conditions: HeldClassConditions): string[] {

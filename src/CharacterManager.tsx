@@ -23,6 +23,7 @@ import { characterUpdateInput } from './levelUp/levelRemoval'
 import { currentHpAfterMaxHpChange } from './calculation/maxHitPoints'
 import { loadCharacterMaxHp } from './hitPoints/hpDefault'
 import { isMulticlass } from './calculation/characterLevel'
+import { editCharacterBlockedReason } from './levelUp/levelUpSteps'
 import type { CharacterRoute } from './navigation/route'
 import type { Navigate } from './navigation/useRoute'
 
@@ -350,7 +351,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	}
 
 	if (route.view === 'edit') {
-		if (isMulticlass(character.classes)) {
+		if (editCharacterBlockedReason(character) !== null) {
 			return <BounceToSheet onBounce={() => navigate({ view: 'sheet', id: character.id }, { replace: true })} />
 		}
 		return (
@@ -386,7 +387,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	)
 }
 
-/** D316: a typed #/edit/<id> for a multiclass character never shows the wizard. */
+/** D333: a typed #/edit/<id> for a multiclass character without a level history never shows the wizard. */
 function BounceToSheet({ onBounce }: { onBounce: () => void }): null {
 	useEffect(onBounce, [onBounce])
 	return null

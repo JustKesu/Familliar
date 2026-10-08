@@ -7,6 +7,12 @@ export const MAX_CHARACTER_LEVEL = 20
 
 export const NO_LEVEL_HISTORY_REASON = 'Cannot tell which class each level came from (no level history).'
 
+/** D333: why Edit Character cannot open, or null. A multiclass Edit needs a consistent levelOrder, like Level up. */
+export function editCharacterBlockedReason(character: Character): string | null {
+	if (character.classes.length > 1 && !(character.levelOrder && isConsistentLevelOrder(character.levelOrder, character.classes))) return NO_LEVEL_HISTORY_REASON
+	return null
+}
+
 /** The classes a Level up may raise, or why none. More than one class needs a consistent levelOrder (D329). */
 export function levelUpClassOptions(character: Character): { options: CharacterClass[] } | { reason: string } {
 	if (character.classes.length === 0) return { reason: 'This character has no class yet.' }

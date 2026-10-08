@@ -22,17 +22,17 @@ async function importFile(page: Page, entry: unknown): Promise<void> {
   await page.locator('input[type="file"]').setInputFiles({ name: 'c.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify([entry])) })
 }
 
-test('M0 a: an imported Warlock 6 / Sorcerer 3 has Edit, Level up and Remove level disabled', async ({ page }) => {
+test('M0 a: an imported Warlock 6 / Sorcerer 3 without a level history has Edit (D333), Level up and Remove level disabled', async ({ page }) => {
   await page.goto('/#/')
   await importFile(page, multi('Multi', [6, 3]))
   await page.locator('.char-grid').getByRole('button', { name: 'Multi', exact: true }).click()
   await expect(page.locator('.sheet__edit-character')).toBeDisabled()
-  await expect(page.locator('.sheet__edit-character')).toHaveText('Edit unavailable: multiclass characters cannot be edited yet')
+  await expect(page.locator('.sheet__edit-character')).toHaveAttribute('title', 'Edit unavailable: Cannot tell which class each level came from (no level history).')
   await expect(page.locator('.sheet__level-up')).toBeDisabled()
   await expect(page.locator('.sheet__remove-level')).toBeDisabled()
 })
 
-test('M0 b: #/edit/<id> for a multiclass character lands on its sheet with no wizard', async ({ page }) => {
+test('M0 b: #/edit/<id> for a multiclass character without a level history lands on its sheet with no wizard', async ({ page }) => {
   await page.goto('/#/')
   await importFile(page, multi('Multi', [6, 3]))
   await page.locator('.char-grid').getByRole('button', { name: 'Multi', exact: true }).click()

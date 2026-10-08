@@ -5040,3 +5040,22 @@ má nahoře výrazný řádek „<Class> will be removed from this character.“
 jednotřídní postava a `levelOrder` se drží. Odebrání úrovně třídy, která zůstane na 1+, funguje pro víc tříd stejně jako pro
 jednu. Čtení uložených dat zahodí jen položky `multiclassPicks` třídy, kterou postava nemá (review M5–M7 nález 4). Edit pro víc
 tříd zůstává zablokovaný (M9). Task M8, rozhodl Daniel 7. 10. 2026.
+
+## D333 — Edit Character multiclass postavy (M9, schéma zůstává 60)
+
+Zpřesňuje D316 a D329. Edit postavy s víc třídami je povolený, má-li konzistentní `levelOrder`; jinak je tlačítko Edit vypnuté
+s důvodem „Cannot tell which class each level came from (no level history).“ a adresa editu vrací na list. Jednotřídní Edit beze
+změny (třídu smí změnit). V multiclass Editu jsou třídy, jejich pořadí, úrovně i `levelOrder` zamčené, třídu nelze přidat ani
+odebrat. Krok Class má přepínač tříd (tlačítko na drženou třídu); aktivní třída ukazuje podtřídu, volby rysů třídy, optional
+features a v kroku Spells svá kouzla. Přepnutí drží neuložené změny ostatních tříd. Podtřídu lze změnit jako v jednotřídním Editu
+(staré volby podtřídy odpadnou, nové se nabídnou). Druh, background, vlastnosti, featy, jazyky, skilly, expertise a HP jako dnes;
+weapon masteries, expertise, ASI/feat a krok Hit points počítají se všemi drženými třídami na ose postavy jako level up. Vlastnost
+pod multiclass prerekvizitou držené třídy uložení nebrání; krok Abilities ukáže tlumenou poznámku za každou takovou třídu, např.
+„Below the multiclass prerequisite of Rogue (Dexterity 13). Rules check this only when entering a class.“ (OR/AND jako D330).
+Neúplná neaktivní třída: Save vypnutý a Review vypíše řádek „<Class> has unfinished choices: <fráze, …>. Switch to <Class> in step
+Class to finish them.“; fráze jsou anglické krátké („choose 2 more spells“, „choose a subclass“, „requirements still loading“…).
+Přepínání tříd zůstává volné. `multiclassPicks`: krok Proficiencies ukáže sloty každé ne-první třídy s volbou a lze je změnit.
+Poznámka „Already prepared by <Class>“ i v Editu (ostatní držené třídy); Review ukazuje řádek tříd a kostek jako multiclass level up
+(„Warlock 6 / Sorcerer 3“, „6d8 + 3d6“). Cancel porovnává i neuložené změny ostatních tříd. Potvrzuje rozhodnutí M9a: fighting
+style bez třídy (pre-58) se při seedu nepřiřadí žádné třídě a uloží se beze změny; optional-feature záznam, který si žádná držená
+třída nenárokuje, jede s `classes[0]`. Task M9b, rozhodl Daniel 8. 10. 2026.

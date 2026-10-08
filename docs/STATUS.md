@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a done (see the entries below); M9b next.
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b done (see the entries below); next slice not scoped yet.
 
 ## Co appka umí navíc k build orderu
 
@@ -1165,7 +1165,14 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   "Sorcerer 3 → 4", Cancel; Sorcerer → 4: Spells, level-10 ASI card, Level 10 · Sorcerer HP row, sheet Sorcerer 4 /
   Warlock 6, STR 10, max HP 54 → 59, Warlock spells and invocations kept; Warlock → 7: Devil's Sight, Sorcerer spells
   unchanged; F5 keeps the class route; without levelOrder Level up disabled with the reason; single Fighter window with
-  "Fighter 1 → 2" keeps `/level-up`; Edit and Remove level disabled).
+  "Fighter 1 → 2" keeps `/level-up`; with levelOrder Edit (D333), Level up and Remove level enabled).
+- `e2e/multiclassEdit.spec.ts` — M9b a–h (D333: Warlock 6 / Sorcerer 3 Edit swaps an invocation and a Metamagic option through
+  the class switcher, "Already prepared by Warlock" on Sorcerer Suggestion, Review "Warlock 6 / Sorcerer 3" and "6d8 + 3d6",
+  classes/levelOrder unchanged in storage; Wizard 3 / Cleric 3 Life → Light Domain, new Cleric spells, Light rows shown, Life gone,
+  Wizard spells unchanged; Fighter 4 / Rogue 1 STR 10 / DEX 11 → both prerequisite notes, save works; no levelOrder → Edit
+  disabled with the title reason, edit URL bounces; stashed unfinished Cleric → Save disabled, Review line, finishing enables
+  Save; Rogue multiclass skill Stealth → Deception saved; Cancel without a change vs. with a stashed change; single-class Edit
+  changes Fighter → Rogue, level select disabled).
 - `e2e/multiclassEntry.spec.ts` — M7b a–g (Fighter 4 window "Fighter 4 → 5" + "+ New class…"; Wizard entered without
   levelOrder: Fighter 4 / Wizard 1, saves STR/CON only, cantrips, HP 40 → 47, Proficiencies card unchanged, then window offers
   both classes; Sorcerer/Monk disabled with reasons; Rogue: masteries, Expertise sees the multiclass Stealth, Thieves' Cant
@@ -2049,7 +2056,23 @@ multiclass Edit needs a consistent `levelOrder` ("Cannot tell which class each l
 `classRecordsFor` (also used by creation/single Edit/level up), untagged style passed through, `levelOrder` written unchanged,
 `multiclassPicks` written (refused on a class not held or the first class). `unfinishedHeldClasses(data, conditionsFor)` lists held
 classes with unfinished per-class picks ("choose 2 more spells"); `WizardStepConditions.heldClassesComplete` blocks `isReadyToSave`.
-Unit `wizardState.test.ts` "multiclass Edit (M9a)". Next: M9b (UI, gates, Review listing, multiclass pick slots in Edit, D333).
+Unit `wizardState.test.ts` "multiclass Edit (M9a)".
+
+M9b done (D333). No schema change (60). Edit of a multiclass character is open when its `levelOrder` is consistent
+(`editCharacterBlockedReason`, levelUpSteps.ts: sheet button disabled with title "Edit unavailable: <reason>", route bounces);
+the "cannot be edited yet" text is gone. Step Class of a multiclass Edit: `ClassSwitcher` (tab per held class, `switchClass`)
+instead of `ClassPicker`; class skills are the first class's (D321); one MasteryPicker / ExpertisePicker for every held class
+(counts summed per class at its locked level, `sharedMasteryCount`/`sharedExpertise` in CharacterWizard; Expertise unrestricted
+when any granting class is, else the lists joined). `draftClasses` = stored classes with the stash's subclasses; `multiclassDraft`
+= them + stored `levelOrder` (featAsi via `featAsiCharacterLevels`, HP draft, masteries pool). New `WizardStepConditions`:
+`heldClasses` (languages step reads class language/tool/subclass-skill grants of all held classes; tools of the stored first class,
+as save keeps them), `hitDieFacesByLevel` (every level against its own die, `hitDiePerLevel`), `multiclassPicksComplete`. Step
+Languages: `MulticlassPickSlots` for every non-first class. Step Abilities: `HeldClassPrerequisiteNotes`
+(`heldClassPrerequisiteNote`). Spells: "Already prepared by" from the other held classes. Review: class line, hit dice line,
+`.review__unfinished` per class from `unfinishedHeldClasses` (conditions of a stashed class = those recorded when it was last
+active; never active = as stored; subclass changed and not loaded = "requirements still loading"). Cancel compares with
+`sameWizardData` (active class order ignored). Unit `multiclassEdit.test.ts`; E2E `multiclassEdit.spec.ts` a–h,
+`multiclassGuard.spec.ts` a–b and `multiclassLevelUp.spec.ts` g updated.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)
