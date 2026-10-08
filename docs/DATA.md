@@ -538,6 +538,14 @@ This is the first place in this project where a column's label and its key
 differ — a lookup that reads the label finds nothing; it must read the tag's
 second segment instead.
 
+Only one pool is tabled by two classes (M10b, D336): Channel Divinity, in Cleric XPHB
+(above 0 from level 2: 2, 3 at 6, 4 at 18) and Paladin XPHB (above 0 from level 3: 2, 3 at
+11). Every other pool has exactly one table owner. All 30 Channel Divinity spenders are
+class or subclass feature records with a `className`; no feat or optional feature spends
+it, so each spend can be tied to its granting class. "Guided Strike" spends it under two
+classes (Cleric War XPHB and Paladin Conquest XGE). A Paladin below level 3 has no
+Channel Divinity, so removing a Paladin's only level never removes a Paladin pool.
+
 Separately, `consumes.name` on a feature is singular while the matching table
 column label is plural ("Sorcery Point" against "Sorcery Points"), so any
 lookup between the two needs normalisation.

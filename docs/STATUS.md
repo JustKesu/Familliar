@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b, F-11, M10a done (see the entries below); next M10b.
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b, F-11, M10a, M10b done (M10 complete, see the entries below); next M11 end-to-end multiclass e2e.
 
 ## Co appka umí navíc k build orderu
 
@@ -1179,6 +1179,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   earlier row). M10a a–f (D335: Wizard 3 / Rogue 1 Wizard picker offers only Arcana/Investigation, Rogue picker 2 with its own
   picks; untouched save keeps stamps; Arcana → Investigation stamped 2; removed Rogue Expertise blocks Save with the Review line;
   Fighter 4 / Rogue 1 mastery pickers 4 and 2 split by stamps, save keeps them; legacy unstamped Expertise lands by the rule).
+- `e2e/multiclassPools.spec.ts` — M10b a–g2 (D336: Cleric 3 / Paladin 3 two counters "Channel Divinity (Cleric)/(Paladin)", a Cleric
+  use leaves Paladin alone; Cleric 6 / Paladin 3 maxima 3 and 2; Sacred Weapon spends Paladin, Preserve Life Cleric; Short Rest −1
+  each, Long Rest empties both; Cleric 3 plain key; legacy plain count lands on Cleric; Remove level Cleric 3 / Paladin 1 and
+  Cleric 3 / Paladin 3 → plain key keeps the Cleric count; Manage Feats "From Wizard 4" vs Fighter 4 "From level 4").
 - `e2e/multiclassEntry.spec.ts` — M7b a–g (Fighter 4 window "Fighter 4 → 5" + "+ New class…"; Wizard entered without
   levelOrder: Fighter 4 / Wizard 1, saves STR/CON only, cantrips, HP 40 → 47, Proficiencies card unchanged, then window offers
   both classes; Sorcerer/Monk disabled with reasons; Rogue: masteries, Expertise sees the multiclass Stealth, Thieves' Cant
@@ -2102,6 +2106,16 @@ whole lists. Seed lookups gain `expertiseGrant` / `masteryGrant` (counts per cla
 an unpaired new pick takes the class's first free grant slot. `HeldClassConditions.masteryCount` / `expertise` make a stashed
 class's short or stale picks an unfinished-class line. `MasteryPicker.excluded`. Unit `heldClassPicks.test.ts`; E2E
 `multiclassEdit.spec.ts` M10a a–f, F-11 c now switches to Rogue first.
+
+M10b done (D336) — **M10 complete**. No schema change (60). `computeCharacterResources` splits a pool that two or more held
+classes' tables count above 0 into one resource per class (`name` = `<pool> (<class>)`, `pool`, `className`; max from that
+class's own table at its level, Short Rest recovery from that class's features only); one granting class keeps the plain name.
+New `calculation/classPools.ts`: `classPoolKey`, `resourceKeyFor` (spender → its class's pool), `withLegacyPoolUses` (plain
+count on a split pool → first class's pool, capped; sheet read and level removal), `poolUsesAfterLevelChange` (split → single
+returns the count to the plain key). `resources.ts` exports `poolGrantingClassNames`; `ResourceFeature.className`.
+`featureActionRows` takes `resourceKey` and keeps one row per class pool (deduped by name + pool); `FeaturesTabInput.resourceKey`.
+Manage Feats `levelFeatChip` (multiclass → `featSource`, else "From level N"). Unit `classPools.test.ts`, `levelRemoval.test.tsx`
+D336; E2E `multiclassPools.spec.ts` M10b a–g2. Next: M11 end-to-end multiclass e2e.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

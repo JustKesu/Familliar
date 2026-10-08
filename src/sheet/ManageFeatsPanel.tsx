@@ -32,12 +32,18 @@ import type { KnownSpell } from '../spells/knownSpells'
 import { choiceNames, type AbilityIncreaseMap, type Character, type FeatChoiceDetails } from '../storage/character'
 import { findPicked } from '../storage/choiceMatch'
 import { DrawerSection } from './Drawer'
-import type { FeatureTabRow } from './featuresTabData'
+import { featSource, type FeatureTabRow } from './featuresTabData'
 import type { FeatTextEntry } from './sheetData'
 
 const CATEGORY_ORDER = Object.keys(FEAT_CATEGORY_LABELS)
 
 const titleCase = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1)
+
+/** D336: a level feat's chip names the class that took the level on a multiclass character, as the Features tab does. */
+export function levelFeatChip(level: number | undefined, character: Pick<Character, 'classes' | 'levelOrder'>): string {
+	const fallback = `From level ${level}`
+	return character.classes.length > 1 ? (featSource({ origin: 'asi', level }, character.classes, character.levelOrder) ?? fallback) : fallback
+}
 
 /** The current ability scores minus one ASI level's own increases — AsiSubPicker's cap check needs the scores WITHOUT that level's contribution. */
 function withoutIncreases(scores: Partial<Record<Ability, number>>, increases: AbilityIncreaseMap): Partial<Record<Ability, number>> {
@@ -273,7 +279,7 @@ export function ManageFeatsPanel({
 				: instance.origin === 'species'
 					? 'From Species'
 					: instance.origin === 'asi'
-						? `From level ${instance.level}`
+						? levelFeatChip(instance.level, character)
 						: instance.origin === 'item'
 							? featOriginLabel(instance)
 							: undefined
@@ -351,7 +357,7 @@ export function ManageFeatsPanel({
 				return instance && instanceRow(instance)
 			}
 			return (
-				<FeatRow key={`asi:${choice.level}`} name="Ability Score Improvement" chip={`From level ${choice.level}`}>
+				<FeatRow key={`asi:${choice.level}`} name="Ability Score Improvement" chip={levelFeatChip(choice.level, character)}>
 					<AsiRow level={choice.level} increases={choice.increases} abilityScores={abilityScores} onEdit={onEditAsiIncreases} />
 				</FeatRow>
 			)

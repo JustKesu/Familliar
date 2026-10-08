@@ -658,6 +658,25 @@ describe('a resource pool two classes share (F-11, review finding 6)', () => {
 		expect(result.result.play?.resourceUses).toEqual({ 'Channel Divinity': 2 })
 		expect(result.dropped).toContain('Channel Divinity: 3 spent, now 2')
 	})
+
+	it('D336: removing the class takes its own pool and count; the other class keeps its count under the plain key', () => {
+		const character: Character = {
+			id: 'm10b',
+			name: 'Twin pool',
+			createdAtLevel: 3,
+			classes: [
+				{ ...CLERIC, subclass: null, level: 3 },
+				{ ...PALADIN, subclass: null, level: 1 },
+			],
+			levelOrder: [CLERIC, CLERIC, CLERIC, PALADIN],
+			play: { resourceUses: { 'Channel Divinity (Cleric)': 1, 'Channel Divinity (Paladin)': 2 } },
+		}
+		const result = levelRemovalPlan(character, POOL_CLASSES, RESOLVER, null)
+		if ('reason' in result) throw new Error(result.reason)
+
+		expect(result.result.play?.resourceUses).toEqual({ 'Channel Divinity': 1 })
+		expect(result.dropped).toContain('Channel Divinity (Paladin): 2 spent, now 0')
+	})
 })
 
 /* Slice 9b3: the same invariant as the block above, one pool over — and D11's two pools clamp separately. */

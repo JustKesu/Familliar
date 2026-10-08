@@ -70,6 +70,8 @@ export interface FeaturesTabInput {
 	optionClassName?: (option: OptionalFeatureOption) => string | null
 	speciesTraits: readonly SpeciesTrait[]
 	feats: readonly FeatsTabFeat[]
+	/** D336: the key a class's feature spends a resource under (resourceKeyFor); identity when absent. */
+	resourceKey?: (candidate: string, className: string | null) => string
 }
 
 /**
@@ -143,7 +145,14 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 			.map((feature) => ({
 				level: feature.level,
 				record: feature,
-				row: { key: `feature|${feature.id}`, name: feature.name, source: grantedFeatureOrigin(feature), entries: feature.entries, resourceName: resourceCandidateName(feature), options: [] },
+				row: {
+					key: `feature|${feature.id}`,
+					name: feature.name,
+					source: grantedFeatureOrigin(feature),
+					entries: feature.entries,
+					resourceName: input.resourceKey ? input.resourceKey(resourceCandidateName(feature), feature.className) : resourceCandidateName(feature),
+					options: [],
+				},
 			}))
 
 		// D87 rule 3 keeps a D21 parent (Divine Order…) out of the granted list, so its row is built from the pick.
@@ -192,7 +201,14 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		const group = (owner ? classGroups.find((candidate) => candidate.characterClass.className === owner) : undefined) ?? classGroups[0]
 		group?.items.push({
 			level: Infinity,
-			row: { key: `option|${option.name}|${option.source}`, name: option.name, source: input.optionOrigin(option), entries: option.entries, resourceName: resourceCandidateName(option), options: [] },
+			row: {
+				key: `option|${option.name}|${option.source}`,
+				name: option.name,
+				source: input.optionOrigin(option),
+				entries: option.entries,
+				resourceName: input.resourceKey ? input.resourceKey(resourceCandidateName(option), owner ?? null) : resourceCandidateName(option),
+				options: [],
+			},
 		})
 	}
 

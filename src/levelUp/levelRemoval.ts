@@ -1,5 +1,6 @@
 import { spentHitDiceWithinMaxima } from '../calculation/hitDice'
-import { computeCharacterResources, resourceUsesWithinMaxima, type ResourceFeature } from '../calculation/resources'
+import { poolUsesAfterLevelChange, withLegacyPoolUses } from '../calculation/classPools'
+import { computeCharacterResources, poolGrantingClassNames, resourceUsesWithinMaxima, type ResourceFeature } from '../calculation/resources'
 import { characterSpellSlotMaxima, spentSpellSlotsWithinMaxima } from '../calculation/spellSlots'
 import { extractSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { loadDataFile } from '../dataLoader/dataLoader'
@@ -16,7 +17,7 @@ import { fightingStyleFor, isConsistentLevelOrder, type Character, type LeveledC
 import type { CharacterCreateInput } from '../storage/characterStore'
 import { matchesConcentration } from '../storage/choiceMatch'
 import { subclassLevelFor } from '../subclass/subclassData'
-import { totalCharacterLevel } from '../calculation/characterLevel'
+import { firstClass, totalCharacterLevel } from '../calculation/characterLevel'
 import { NO_LEVEL_HISTORY_REASON } from './levelUpSteps'
 
 /**
@@ -293,13 +294,16 @@ export function levelRemovalCore(
 	 * against the old maximum can now exceed the new one. Computed against the
 	 * REDUCED character — the point is the maximum it has after this removal.
 	 */
-	const storedUses = character.play?.resourceUses
-	if (storedUses !== undefined) {
+	if (character.play?.resourceUses !== undefined) {
 		const resources = computeCharacterResources(result, parsedClasses, resourceFeaturesFor(result, parsedClasses, resolverData, backgroundOriginFeat))
+		const before = computeCharacterResources(character, parsedClasses, resourceFeaturesFor(character, parsedClasses, resolverData, backgroundOriginFeat))
+		const classOrder = [firstClass(character)?.className, ...character.classes.map((entry) => entry.className)].filter((name) => name !== undefined)
+		const storedUses = poolUsesAfterLevelChange(withLegacyPoolUses(character.play.resourceUses, before, classOrder, false), before, resources, (pool) =>
+			poolGrantingClassNames(pool, result, parsedClasses),
+		)
 		let clamped = resourceUsesWithinMaxima(storedUses, resources)
 		if (classRemoved && clamped) {
 			// D332: a pool the removed class gave has no maximum left to clamp against, so its count goes with the class.
-			const before = computeCharacterResources(character, parsedClasses, resourceFeaturesFor(character, parsedClasses, resolverData, backgroundOriginFeat))
 			const after = new Set(resources.map((resource) => resource.name))
 			const gone = new Set(before.map((resource) => resource.name).filter((name) => !after.has(name)))
 			const kept = Object.fromEntries(Object.entries(clamped).filter(([name]) => !gone.has(name)))

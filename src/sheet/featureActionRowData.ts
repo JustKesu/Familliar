@@ -107,23 +107,27 @@ export function featureActionRows(
 	optionOrigin: (option: OptionalFeatureOption) => string | null = () => null,
 	speciesTraits: readonly SpeciesTrait[] = [],
 	speciesName: string | null = null,
+	resourceKey: (candidate: string, className: string | null) => string = (candidate) => candidate,
 ): FeatureActionData[] {
 	const rows: FeatureActionData[] = []
 	const seen = new Set<string>()
 
 	// D182: D86's set, plus any feature R-phrase places in Action/Bonus Action/Reaction (Cunning Action, Uncanny Dodge).
-	function add(kind: 'feature' | 'feat' | 'option' | 'species',name: string, record: { name: string; consumes?: unknown; entries: unknown[] }, origin: string | null): void {
+	function add(kind: 'feature' | 'feat' | 'option' | 'species',name: string, record: { name: string; consumes?: unknown; entries: unknown[] }, origin: string | null, className: string | null = null): void {
 		const actionType = classifyActionType(record)
 		// D186: a species trait needs an R-phrase group or a tracked use count; a bare rest mention (Trance) is not enough.
 		const qualifies = kind === 'species' ? actionType !== 'other' || speciesTraitUses(record) !== null : isActionTableFeature(record) || actionType !== 'other'
 		if (!qualifies) return
-		const key = name.toLowerCase()
+		const candidate = resourceCandidateName(record)
+		const resourceName = resourceKey(candidate, className)
+		// D336: two classes' Channel Divinity are two rows, one per pool.
+		const key = resourceName === candidate ? name.toLowerCase() : `${name.toLowerCase()}|${className?.toLowerCase()}`
 		if (seen.has(key)) return
 		seen.add(key)
-		rows.push({ key: `${kind}|${key}`, name, resourceName: resourceCandidateName(record), origin, actionType, entries: record.entries })
+		rows.push({ key: `${kind}|${key}`, name, resourceName, origin, actionType, entries: record.entries })
 	}
 
-	for (const feature of granted) add('feature', feature.name, feature, grantedFeatureOrigin(feature))
+	for (const feature of granted) add('feature', feature.name, feature, grantedFeatureOrigin(feature), feature.className)
 
 	for (const choice of chosenFeats) {
 		// D43: a feat whose text is missing cannot be tested, so it gets no row —

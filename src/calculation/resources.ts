@@ -34,6 +34,7 @@
 
 import { hasRestTag } from '../actions/actionTableFeatureData'
 import type { Character, CharacterClass } from '../storage/character'
+import { classPoolKey } from './classPools'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
@@ -46,6 +47,8 @@ export interface ResourceFeature {
 	name: string
 	entries?: unknown
 	consumes?: unknown
+	/** GrantedFeature's class; a feat or option has none. */
+	className?: string
 }
 
 export interface CharacterResource {
@@ -57,6 +60,9 @@ export interface CharacterResource {
 	max: Calculated<number>
 	/** What a Short Rest gives back (slice 9b5), from the feature text; null is "nothing until a Long Rest". */
 	shortRest: RestRecovery | null
+	/** D336: set only on one class's own share of a pool two or more held classes grant — the pool's plain name, and that class. */
+	pool?: string
+	className?: string
 }
 
 /** How much of a pool one rest returns — the two amounts the 2024 feature text uses, never a fraction. */
@@ -280,20 +286,27 @@ function isSubclassEntry(entry: unknown, characterClass: CharacterClass): entry 
 
 const POOL_NAMES = ['Arcane Shot', 'Channel Divinity', 'Focus Point', 'Ki', 'Psionic Energy Die', 'Sorcery Point', 'Superiority Die', 'Wild Shape']
 
+function poolGrantingClasses(pool: string, character: Character, parsedClasses: unknown[]): CharacterClass[] {
+	return character.classes.filter((characterClass) =>
+		parsedClasses.some((entry) => {
+			const hit = isClassEntry(entry, characterClass)
+				? lookupInTableGroups(entry, 'classTableGroups', pool, characterClass.level)
+				: isSubclassEntry(entry, characterClass)
+					? lookupInTableGroups(entry, 'subclassTableGroups', pool, characterClass.level)
+					: null
+			return (cellCount(hit?.cell) ?? 0) > 0
+		}),
+	)
+}
+
+/** The held classes whose own class/subclass table counts `pool` above zero at their level (D336). */
+export function poolGrantingClassNames(pool: string, character: Character, parsedClasses: unknown): string[] {
+	return Array.isArray(parsedClasses) ? poolGrantingClasses(pool, character, parsedClasses).map((characterClass) => characterClass.className) : []
+}
+
 /** D196: the pools the character's own tables count above zero at their level — a pool spent only in prose (Beasts of Ill Omen) has no `consumes` to find it by. */
 function tableGrantedPools(character: Character, parsedClasses: unknown[]): string[] {
-	return POOL_NAMES.filter((pool) =>
-		character.classes.some((characterClass) =>
-			parsedClasses.some((entry) => {
-				const hit = isClassEntry(entry, characterClass)
-					? lookupInTableGroups(entry, 'classTableGroups', pool, characterClass.level)
-					: isSubclassEntry(entry, characterClass)
-						? lookupInTableGroups(entry, 'subclassTableGroups', pool, characterClass.level)
-						: null
-				return (cellCount(hit?.cell) ?? 0) > 0
-			}),
-		),
-	)
+	return POOL_NAMES.filter((pool) => poolGrantingClasses(pool, character, parsedClasses).length > 0)
 }
 
 /** The maximum for one resource, from the first of the character's class/subclass tables that names it. */
@@ -455,17 +468,31 @@ export function computeCharacterResources(
 	})
 
 	return [...found.entries()]
-		.map(([name, dataNames]): CharacterResource => {
+		.flatMap(([name, dataNames]): CharacterResource[] => {
+			const granters = pools.has(name) ? poolGrantingClasses(name, character, parsedClasses) : []
+			// D336: one pool per granting class, each from its own table at its own level and its own features' recovery.
+			if (granters.length > 1) {
+				return granters.map((characterClass) => ({
+					name: classPoolKey(name, characterClass.className),
+					dataNames,
+					max: computeResourceMax(name, { ...character, classes: [characterClass] }, parsedClasses, false),
+					shortRest: shortRestRecovery([name, ...dataNames], features.filter((feature) => feature.className === characterClass.className)),
+					pool: name,
+					className: characterClass.className,
+				}))
+			}
 			const text = (ownText.get(name) ?? []).join(' ')
 			const impliedSingleUse = !pools.has(name) && isImplicitSingleUse(name, text)
 			// A recharge-sentence feature's uses are its whole pool, whether one or level-scaled (D120).
 			const rechargesAsWhole = impliedSingleUse || name in LEVEL_SCALED_USES
-			return {
-				name,
-				dataNames,
-				max: computeResourceMax(name, character, parsedClasses, impliedSingleUse),
-				shortRest: shortRestRecovery([name, ...dataNames], features) ?? (rechargesAsWhole && singleUseRechargesOnShortRest(text) ? 'all' : null),
-			}
+			return [
+				{
+					name,
+					dataNames,
+					max: computeResourceMax(name, character, parsedClasses, impliedSingleUse),
+					shortRest: shortRestRecovery([name, ...dataNames], features) ?? (rechargesAsWhole && singleUseRechargesOnShortRest(text) ? 'all' : null),
+				},
+			]
 		})
 		.concat(speciesResources)
 		.sort((a, b) => a.name.localeCompare(b.name))

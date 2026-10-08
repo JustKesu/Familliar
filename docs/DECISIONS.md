@@ -5088,3 +5088,18 @@ převezme úroveň odebrané volby téže třídy (párování D334 jen uvnitř 
 první dosud neobsazené místo té volby. Neúplná Expertise nebo Mastery neaktivní třídy blokuje Save jako ostatní neúplné volby
 („choose 1 more Expertise skill“, „choose 2 more weapon masteries“). Jednotřídní Edit, tvorba a level up beze změny. Task M10a,
 rozhodl Daniel 8. 10. 2026.
+
+## D336 — Channel Divinity po třídách a třída u level featů v Manage Feats (M10b, schéma zůstává 60)
+
+Nahrazuje D334 bod 6 (sdílený název zdroje). (1) Pool, který tabulky dvou a více držených tříd počítají na jejich úrovni nad nulou
+(obecně, v datech dnes jen Channel Divinity), má každá taková třída vlastní: maximum z vlastní tabulky na vlastní úrovni třídy,
+obnova při Short Rest podle textu vlastních rysů té třídy. Klíč v `play.resourceUses` i viditelný název je `<pool> (<třída>)`,
+např. „Channel Divinity (Cleric)“. (2) Dává-li pool jen jedna třída, zůstává prostý název a klíč „Channel Divinity“; jednotřídní
+postavy a jejich savy se nemění. (3) Rys nebo volba, která pool utrácí, utrácí pool třídy, která rys dává (`className` granted
+feature; nenavázaná volba ve Features podle vlastníka volby). (4) Starý save s rozděleným poolem a počtem pod prostým klíčem: při
+čtení se počet přidělí poolu první třídy (`firstClass`, jinak první granting třídě v pořadí `classes`), oříznutý na její maximum;
+další zápis uloží nový klíč. (5) Remove level: odebraná třída si bere svůj pool i počet (D332); dává-li pool po odebrání už jen
+jedna třída, její počet se vrátí pod prostý klíč. Klesne-li třída jen pod úroveň poolu, její klíč zůstává jako nenárokovaný
+(slice 9b1). (6) Manage Feats: chip ASI řádku a featu z úrovně u multiclass postavy ukazuje totéž co Features tab (`featSource`,
+„From Wizard 4“ z `levelOrder`); bez určení zůstává „From level N“, jednotřídní postava beze změny. Task M10b, rozhodl Daniel
+8. 10. 2026.

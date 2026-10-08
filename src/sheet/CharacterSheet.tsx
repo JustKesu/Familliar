@@ -35,6 +35,7 @@ import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
+import { resourceKeyFor, withLegacyPoolUses } from '../calculation/classPools'
 import { canSpendResource, freeCastResources, remainingUses, withFreeCastResources, withLegacyFreeCastUses } from '../calculation/freeCastResources'
 import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
@@ -2459,7 +2460,6 @@ function CharacterSheetBody({
 		if (classOptionNames.has(name) || (character.fightingStyles ?? []).some((style) => matchesPick(style, option))) return singleClass.className
 		return singleClass.subclass
 	}
-	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, actionOptions, optionOrigin, speciesTraits, character.species?.name ?? null)
 	/*
 	 * Slice 9b2: the same three feature sources computeCharacterResources asks for
 	 * (its own doc comment) — granted features, the chosen feats' own text, and the
@@ -2476,6 +2476,8 @@ function CharacterSheetBody({
 		computeCharacterResources(character, resourceClassData, resourceFeatures, speciesTraits),
 		freeCastResources(combinedSpells, abilityScores),
 	)
+	const resourceKey = (candidate: string, className: string | null) => resourceKeyFor(candidate, className, characterResources)
+	const featureActions = featureActionRows(grantedFeatures, chosenFeats, featTextEntries, actionOptions, optionOrigin, speciesTraits, character.species?.name ?? null, resourceKey)
 	// D219: an item spell's counter joins these maps under its per-render key; its spent count is read from, and written to, its inventory row.
 	const itemSpellCounters = itemSpells.filter((spell) => spell.max !== null)
 	const resourceMaxima = new Map([
@@ -2487,7 +2489,8 @@ function CharacterSheetBody({
 		...characterResources.map((resource) => [resource.name, resource.shortRest ? 'Short Rest' : 'Long Rest'] as const),
 		...itemSpellCounters.map((spell) => [spell.key, spell.usage.kind === 'perShortRest' ? 'Short Rest' : 'Long Rest'] as const),
 	])
-	const storedResourceUses = withLegacyFreeCastUses(character.play?.resourceUses ?? {}, combinedSpells)
+	const poolClassOrder = [firstClass(character)?.className, ...character.classes.map((c) => c.className)].filter((name) => name !== undefined)
+	const storedResourceUses = withLegacyPoolUses(withLegacyFreeCastUses(character.play?.resourceUses ?? {}, combinedSpells), characterResources, poolClassOrder)
 	const resourceUses = { ...storedResourceUses, ...Object.fromEntries(itemSpellCounters.map((spell) => [spell.key, spell.grant.spent])) }
 	function spendResource(name: string, delta: number): void {
 		const max = resourceMaxima.get(name)
@@ -2639,6 +2642,7 @@ function CharacterSheetBody({
 		optionOrigin,
 		optionClassName: (option) => (singleClass ? null : (multiclassOptionOwner(option, character.fightingStyles ?? [], optionOwners)?.className ?? null)),
 		speciesTraits,
+		resourceKey,
 		feats: chosenFeats.map((instance) => ({
 			instance,
 			text: featTextEntries.find((f) => f.name === instance.name && f.source === instance.source),
