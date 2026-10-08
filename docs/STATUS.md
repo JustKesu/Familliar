@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b done (see the entries below); next slice not scoped yet.
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b, F-11 done (see the entries below); next slice not scoped yet (M10 takes the Expertise looseness of a multiclass Edit).
 
 ## Co appka umí navíc k build orderu
 
@@ -1172,7 +1172,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Wizard spells unchanged; Fighter 4 / Rogue 1 STR 10 / DEX 11 → both prerequisite notes, save works; no levelOrder → Edit
   disabled with the title reason, edit URL bounces; stashed unfinished Cleric → Save disabled, Review line, finishing enables
   Save; Rogue multiclass skill Stealth → Deception saved; Cancel without a change vs. with a stashed change; single-class Edit
-  changes Fighter → Rogue, level select disabled).
+  changes Fighter → Rogue, level select disabled). F-11 a–d (D334: Rogue 1 / Fighter 3 Battle Master keeps its Smith's Tools
+  pick through an untouched Edit; Fighter 3 / Rogue 1 with an untagged style saves one Fighter-tagged style; Fighter 4 / Rogue 1
+  swaps Expertise Stealth → Athletics, Remove level of Rogue then drops Athletics; Warlock 6 / Sorcerer 3 → 4 level up shows the
+  Level 4 + Level 10 ASI cards and one Hit points row, the Edit of the result shows the same Level 10 card and row plus every
+  earlier row).
 - `e2e/multiclassEntry.spec.ts` — M7b a–g (Fighter 4 window "Fighter 4 → 5" + "+ New class…"; Wizard entered without
   levelOrder: Fighter 4 / Wizard 1, saves STR/CON only, cantrips, HP 40 → 47, Proficiencies card unchanged, then window offers
   both classes; Sorcerer/Monk disabled with reasons; Rogue: masteries, Expertise sees the multiclass Stealth, Thieves' Cant
@@ -2073,6 +2077,18 @@ Languages: `MulticlassPickSlots` for every non-first class. Step Abilities: `Hel
 active; never active = as stored; subclass changed and not loaded = "requirements still loading"). Cancel compares with
 `sameWizardData` (active class order ignored). Unit `multiclassEdit.test.ts`; E2E `multiclassEdit.spec.ts` a–h,
 `multiclassGuard.spec.ts` a–b and `multiclassLevelUp.spec.ts` g updated.
+
+F-11 done (D334), review fixes for M8–M9b. No schema change (60). (1) `toolGrantsForHeldClasses` (classToolChoices.ts): first class's
+grants + `subclassToolGrantsForAll` of the others, used by `saveCharacter` (every path) and `wizardToolGrants`, as the sheet slots do.
+(2) `WizardSeedLookups.heldClasses[].fightingStyleLevel`; a multiclass Edit seed gives an untagged style to the first held class
+without a tagged style whose level has reached its Fighting Style level; save tags it and drops the untagged record (no
+qualifying class: carried unchanged). (3) `keepRecordedLevels` in an Edit (no `levelUpTo`): a new pick takes the stamp of the removed
+pick it replaces, paired in order (masteries, expertise, subclass optional features; single-class Edit too). (4) an optional-feature
+`featureType` listed by two held classes is stashed on the first only. (5) `classRecordsFor` keeps the stored `subclassSource` of a
+subclass spell record with the same class and subclass name. Current behaviour recorded by tests, unchanged: a pool name two classes
+share (Channel Divinity) is clamped, not deleted, when one class is removed; concentration on a spell a feat also grants ends with
+the removed class's pick. Unit `multiclassEdit.test.ts` "F-11", `levelRemoval.test.tsx`, `wizardState.test.ts` (untouched Edit save
+compares tools, languages, expertise, feats, HP, optional features exactly); E2E `multiclassEdit.spec.ts` F-11 a–d.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

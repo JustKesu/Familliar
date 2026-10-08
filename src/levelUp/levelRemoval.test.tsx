@@ -356,6 +356,28 @@ describe('removing the last level of a class (D332)', () => {
 		expect(core(both).result.play).toEqual(both.play)
 	})
 
+	it('current behaviour (F-11, review f): concentration on a spell a feat also grants still ends with the removed class, because only stored class picks count as holding it', () => {
+		const character: Character = {
+			id: 'm8f',
+			name: 'Feated',
+			createdAtLevel: 3,
+			classes: [
+				{ ...WIZARD, subclass: null, level: 3 },
+				{ ...CLERIC, subclass: null, level: 1 },
+			],
+			levelOrder: [WIZARD, WIZARD, WIZARD, CLERIC],
+			spellChoices: [{ ...CLERIC, spells: [{ name: 'Bless', source: 'XPHB' }] }],
+			grantedFeats: [
+				{ origin: 'manual', id: 'mi1', name: 'Magic Initiate', source: 'XPHB', magicInitiate: { ...CLERIC, cantrips: [], spell: { name: 'Bless', source: 'XPHB' } } },
+			],
+			play: { concentratingOn: { name: 'Bless', source: 'XPHB' } },
+		}
+		const { dropped, result } = core(character)
+		expect(result.play?.concentratingOn).toBeUndefined()
+		expect(dropped).toContain('Concentration: Bless')
+		expect(result.grantedFeats).toEqual(character.grantedFeats)
+	})
+
 	it('removing a non-last level of a multiclass class keeps its levelless records (Warlock 6 / Sorcerer 3)', () => {
 		const SORCERER = { className: 'Sorcerer', classSource: 'XPHB' }
 		const WARLOCK = { className: 'Warlock', classSource: 'XPHB' }
@@ -605,6 +627,36 @@ describe('resource uses on a level removal', () => {
 
 		expect(result.result.play?.resourceUses).toEqual({ 'Superiority Die': 9 })
 		expect(result.dropped).toContain('Second Wind: 1 spent, now 0')
+	})
+})
+
+describe('a resource pool two classes share (F-11, review finding 6)', () => {
+	const CLERIC = { className: 'Cleric', classSource: 'XPHB' }
+	const PALADIN = { className: 'Paladin', classSource: 'XPHB' }
+	const channelDivinity = (uses: number) => [{ colLabels: ['Channel Divinity'], rows: Array.from({ length: 10 }, () => [uses]) }]
+	const POOL_CLASSES = [
+		...CLASSES.map((entry) => (entry.entryType === 'class' && entry.name === 'Cleric' ? { ...entry, classTableGroups: channelDivinity(2) } : entry)),
+		{ entryType: 'class', name: 'Paladin', source: 'XPHB', hd: { number: 1, faces: 10 }, classFeatureIds: [], classFeatures: [], classTableGroups: channelDivinity(3) },
+	]
+
+	it('current behaviour: the pool keeps its name while another class still gives it, so the count is clamped to that class’s maximum, not deleted', () => {
+		const character: Character = {
+			id: 'm8p',
+			name: 'Twin pool',
+			createdAtLevel: 3,
+			classes: [
+				{ ...CLERIC, subclass: null, level: 3 },
+				{ ...PALADIN, subclass: null, level: 1 },
+			],
+			levelOrder: [CLERIC, CLERIC, CLERIC, PALADIN],
+			play: { resourceUses: { 'Channel Divinity': 3 } },
+		}
+		const result = levelRemovalPlan(character, POOL_CLASSES, RESOLVER, null)
+		if ('reason' in result) throw new Error(result.reason)
+
+		expect(result.result.classes.map((entry) => entry.className)).toEqual(['Cleric'])
+		expect(result.result.play?.resourceUses).toEqual({ 'Channel Divinity': 2 })
+		expect(result.dropped).toContain('Channel Divinity: 3 spent, now 2')
 	})
 })
 

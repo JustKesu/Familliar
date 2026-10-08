@@ -348,3 +348,156 @@ test('M9b g: single-class Edit still changes the class (the level stays fixed) a
   await expect(page.locator('.sheet__classes')).toHaveText('Rogue 1')
   await expect.poll(() => skillStatus(page, 'Stealth')).toBe('expertise')
 })
+
+/* F-11 (D334): fixes from the review of M8 to M9b. */
+const SCORES = { method: 'standardArray', scores: { strength: 15, dexterity: 14, constitution: 13, intelligence: 12, wisdom: 10, charisma: 8 } }
+const toolsCard = (page: Page): Locator => page.locator('section', { has: page.getByRole('heading', { name: 'Proficiencies' }) }).getByRole('listitem').filter({ hasText: 'TOOLS' })
+
+test('F-11 a: Rogue 1 / Fighter 3 Battle Master with a Smith’s Tools pick — Edit, Save unchanged, the pick and the proficiency stay', async ({ page }) => {
+  const seed = build('f11-a', [['Rogue', null, 1], ['Fighter', 'Battle Master', 3]], {
+    abilityScores: SCORES,
+    classSkills: ['acrobatics', 'deception', 'insight', 'stealth'],
+    expertiseSkills: [{ name: 'stealth', level: 1 }, { name: 'acrobatics', level: 1 }],
+    masteries: ['Dagger', 'Shortsword', 'Longsword', 'Greatsword', 'Handaxe'].map((name) => ({ name })),
+    fightingStyles: [{ className: 'Fighter', classSource: XPHB, name: 'Defense', source: XPHB }],
+    optionalFeatureChoices: [{ featureType: 'MV:B', choices: refs(['Parry', 'Precision Attack', 'Riposte']).map((pick) => ({ ...pick, level: 3 })) }],
+    toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
+    subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }],
+    languages: [
+      { name: 'Common', source: XPHB, grantedBy: 'automatic' },
+      { name: 'Dwarvish', source: XPHB, grantedBy: 'creation' },
+      { name: 'Elvish', source: XPHB, grantedBy: 'creation' },
+      { name: 'Giant', source: XPHB, grantedBy: 'thievesCant' },
+    ],
+  })
+  await openSheet(page, seed)
+  await expect(toolsCard(page)).toContainText("Smith's Tools")
+  await editButton(page).click()
+  await goToStep(page, /Proficiencies/)
+  await expectStep(page, 'Proficiencies')
+  await expect(select(page, 'Battle Master tool:')).toHaveValue("Smith's Tools")
+  await saveEdit(page, 'f11-a')
+
+  await expect(toolsCard(page)).toContainText("Smith's Tools")
+  expect((await stored(page, 'f11-a'))['toolChoices']).toEqual([{ grantedBy: 'battleMaster', name: "Smith's Tools" }])
+})
+
+test('F-11 b: Fighter 3 / Rogue 1 with a style stored without a class (pre-58) — Edit saves unchanged, one style tagged with the Fighter', async ({ page }) => {
+  const seed = build('f11-b', [['Fighter', 'Champion', 3], ['Rogue', null, 1]], {
+    abilityScores: SCORES,
+    classSkills: ['perception', 'history'],
+    masteries: ['Longsword', 'Greatsword', 'Handaxe', 'Dagger', 'Shortsword'].map((name) => ({ name })),
+    fightingStyles: [{ name: 'Defense' }],
+    expertiseSkills: [{ name: 'perception' }, { name: 'athletics' }],
+    multiclassPicks: [{ className: 'Rogue', classSource: XPHB, kind: 'skill', name: 'stealth' }],
+    languages: [
+      { name: 'Common', source: XPHB, grantedBy: 'automatic' },
+      { name: 'Dwarvish', source: XPHB, grantedBy: 'creation' },
+      { name: 'Elvish', source: XPHB, grantedBy: 'creation' },
+      { name: 'Giant', source: XPHB, grantedBy: 'thievesCant' },
+    ],
+  })
+  await openSheet(page, seed)
+  await editButton(page).click()
+  await expectStep(page, 'Class and level')
+  await expect(nextButton(page)).toBeEnabled()
+  await saveEdit(page, 'f11-b')
+
+  const styles = (await stored(page, 'f11-b'))['fightingStyles'] as { className?: string; name: string }[]
+  expect(styles).toHaveLength(1)
+  expect(styles[0]).toMatchObject({ className: 'Fighter', classSource: XPHB, name: 'Defense' })
+  await page.getByRole('tab', { name: 'Features & Traits' }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Features & Traits' }).getByText('Defense').first()).toBeVisible()
+})
+
+test('F-11 c: Fighter 4 / Rogue 1 — Expertise Stealth swapped to Athletics in Edit, then Remove level of Rogue takes Athletics expertise with it', async ({ page }) => {
+  const seed: Record<string, unknown> & { id: string } = { ...fighterRogue('f11-c'), expertiseSkills: [{ name: 'perception', level: 5 }, { name: 'stealth', level: 5 }] }
+  await openSheet(page, seed)
+  await editButton(page).click()
+  await goToStep(page, /Expertise/)
+  await expectStep(page, 'Expertise')
+  await page.getByRole('checkbox', { name: /^Stealth / }).uncheck()
+  await page.getByRole('checkbox', { name: /^Athletics / }).check()
+  await saveEdit(page, 'f11-c')
+  expect((await stored(page, 'f11-c'))['expertiseSkills']).toEqual([{ name: 'perception', level: 5 }, { name: 'athletics', level: 5 }])
+
+  await page.getByRole('button', { name: 'Remove level 5', exact: true }).click()
+  const dialog = page.getByRole('alertdialog', { name: 'Remove level 5?' })
+  await expect(dialog.locator('li', { hasText: 'Expertise: athletics' })).toHaveCount(1)
+  await dialog.getByRole('button', { name: 'Remove level', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+
+  await expect(page.locator('.sheet__classes')).toHaveText('Fighter 4 (Champion)')
+  expect(JSON.stringify((await stored(page, 'f11-c'))['expertiseSkills'] ?? [])).not.toContain('athletics')
+})
+
+test('F-11 d: Warlock 6 / Sorcerer 3 → 4 level up — the ASI / Feat step shows the Level 4 and Level 10 cards and Hit points the new level only', async ({ page }) => {
+  const extras = (featAsiChoices: unknown[]) => ({
+    abilityScores: { method: 'standardArray', scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 10, wisdom: 12, charisma: 15 } },
+    classSkills: ['arcana', 'deception'],
+    spellChoices: [
+      { className: 'Warlock', classSource: XPHB, spells: refs(WARLOCK_SPELLS) },
+      { className: 'Sorcerer', classSource: XPHB, spells: refs(SORCERER_SPELLS) },
+    ],
+    optionalFeatureChoices: [
+      { featureType: 'EI', choices: refs(INVOCATIONS) },
+      { featureType: 'MM', choices: refs(['Careful Spell', 'Quickened Spell']) },
+    ],
+    featAsiChoices,
+  })
+  const asi = (level: number) => ({ level, kind: 'asi', increases: { charisma: 2 } })
+  const level10Row = (target: Page) => target.getByRole('radiogroup', { name: 'Level 10 hit points method', exact: true })
+  const cards = (target: Page) => target.getByRole('group', { name: /^Level \d+$/ })
+
+  // The level up of Sorcerer 3 → 4 on its own: one card, one row.
+  await openSheet(page, build('f11-d-up', [['Warlock', 'Fiend Patron', 6], ['Sorcerer', 'Wild Magic Sorcery', 3]], extras([asi(4)])))
+  await page.locator('.sheet__level-up').click()
+  await page.getByRole('dialog', { name: 'Level up which class?' }).getByRole('button', { name: 'Sorcerer 3 → 4', exact: true }).click()
+  await expectStep(page, 'Spells')
+  await fillSpells(page)
+  await nextButton(page).click()
+  await expectStep(page, 'ASI / Feat')
+  // The ASI step lists every ASI level the character has, as Edit does; only Hit points narrows to the new level.
+  await expect(cards(page)).toHaveCount(2)
+  await expect(page.getByRole('group', { name: 'Level 4', exact: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Level 10', exact: true })).toBeVisible()
+  await page.getByRole('combobox', { name: 'Level 10 feat or ASI', exact: true }).selectOption('asi')
+  await page.getByRole('combobox', { name: 'Level 10 +2 ability', exact: true }).selectOption('strength')
+  await nextButton(page).click()
+  await expectStep(page, 'Hit points')
+  await expect(page.getByRole('cell', { name: 'Level 10 · Sorcerer' })).toBeVisible()
+  await expect(page.locator('.hit-points-picker__table tbody tr')).toHaveCount(1)
+  await level10Row(page).getByRole('radio', { name: 'Average (4)' }).check()
+  await expect(level10Row(page).getByRole('radio', { name: 'Average (4)' })).toBeChecked()
+})
+
+test('F-11 d: the character that level up produces — Edit shows the same Level 10 card and row, plus Level 4 and every earlier Hit points row', async ({ page }) => {
+  const seed = build('f11-d', [['Warlock', 'Fiend Patron', 6], ['Sorcerer', 'Wild Magic Sorcery', 4]], {
+    abilityScores: { method: 'standardArray', scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 10, wisdom: 12, charisma: 15 } },
+    classSkills: ['arcana', 'deception'],
+    spellChoices: [
+      { className: 'Warlock', classSource: XPHB, spells: refs(WARLOCK_SPELLS) },
+      { className: 'Sorcerer', classSource: XPHB, spells: refs(SORCERER_SPELLS) },
+    ],
+    optionalFeatureChoices: [
+      { featureType: 'EI', choices: refs(INVOCATIONS) },
+      { featureType: 'MM', choices: refs(['Careful Spell', 'Quickened Spell']) },
+    ],
+    featAsiChoices: [4, 10].map((level) => ({ level, kind: 'asi', increases: { charisma: 2 } })),
+  })
+  await openSheet(page, seed)
+  await editButton(page).click()
+  await goToStep(page, /ASI \/ Feat/)
+  await expectStep(page, 'ASI / Feat')
+  await expect(page.getByRole('group', { name: /^Level \d+$/ })).toHaveCount(2)
+  await expect(page.getByRole('group', { name: 'Level 4', exact: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Level 10', exact: true })).toBeVisible()
+  await goToStep(page, /Hit points/)
+  await expectStep(page, 'Hit points')
+  await expect(page.getByRole('cell', { name: 'Level 4 · Warlock' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Level 7 · Sorcerer' })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Level 10 · Sorcerer' })).toBeVisible()
+  // Level 1 plus levels 2 to 10.
+  await expect(page.locator('.hit-points-picker__table tbody tr')).toHaveCount(10)
+  await expect(page.getByRole('radiogroup', { name: 'Level 10 hit points method', exact: true }).getByRole('radio', { name: 'Average (4)' })).toBeChecked()
+})

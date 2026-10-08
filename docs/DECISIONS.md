@@ -5059,3 +5059,17 @@ Poznámka „Already prepared by <Class>“ i v Editu (ostatní držené třídy
 („Warlock 6 / Sorcerer 3“, „6d8 + 3d6“). Cancel porovnává i neuložené změny ostatních tříd. Potvrzuje rozhodnutí M9a: fighting
 style bez třídy (pre-58) se při seedu nepřiřadí žádné třídě a uloží se beze změny; optional-feature záznam, který si žádná držená
 třída nenárokuje, jede s `classes[0]`. Task M9b, rozhodl Daniel 8. 10. 2026.
+
+## D334 — Opravy z review M8–M9b (F-11, schéma zůstává 60)
+
+Zpřesňuje D333 (část o fighting style bez třídy je nahrazena bodem 2). (1) Tool picky podtříd drží save i krok Languages stejně
+jako sheet: nástroje první třídy plus podtřídní nástroje všech ostatních držených tříd. (2) Fighting style bez třídy (pre-58) se
+v multiclass Editu při seedu přiřadí první držené třídě bez vlastního stylu, jejíž úroveň dosáhla úrovně rysu Fighting Style;
+save ho zapíše s tagem té třídy a netagovaný záznam nahradí. Žádná třída nevyhoví → zůstane netagovaný beze změny. (3) V Editu
+(jednotřídním i multiclass) nově zvolená mastery, expertise nebo volba optional feature podtřídy převezme úroveň odebrané volby,
+kterou nahrazuje (párování v pořadí); nezměněné volby si úrovně drží, takže Remove level je najde. (4) Typ optional feature, který
+uvádí víc držených tříd, patří první z nich. (5) Uložený `subclassSource` záznamu kouzel podtřídy se při save nepřepisuje
+vyhledáním, dokud se podtřída nezměnila. Beze změny kódu zůstává (6): sdílený název zdroje (Channel Divinity u Clerica i
+Paladina) se při odebrání jedné třídy ořízne, nesmaže, a koncentrace na kouzlo, které drží i feat, s odebranou třídou končí; obojí
+pokrývá test. Volnější Expertise v multiclass Editu než při level upu se nemění a přechází na M10. Task F-11, rozhodl Daniel
+8. 10. 2026.

@@ -83,6 +83,13 @@ export function subclassToolGrantsForAll(
 	return classes.flatMap((cls) => classToolGrantsFor([cls], heldFor(cls.subclass)).filter((grant) => grant.subclass !== undefined))
 }
 
+/** D334: the first class's starting and subclass grants plus the subclass grants of every other held class — the rule the sheet's slots use. */
+export function toolGrantsForHeldClasses(classes: readonly Pick<CharacterClass, 'className' | 'classSource' | 'level' | 'subclass'>[], heldElsewhere: readonly string[] = []): ClassToolChoiceGrant[] {
+	const [start, ...others] = classes
+	if (!start) return []
+	return [...classToolGrantsFor([start], heldElsewhere), ...subclassToolGrantsForAll(others, () => heldElsewhere)]
+}
+
 /** Stored picks whose grant no longer applies (class changed, subclass changed, level lowered) are dropped. */
 export function keepHeldToolChoices(choices: readonly CharacterToolChoice[], grants: readonly ClassToolChoiceGrant[]): CharacterToolChoice[] {
 	const held = new Set(grants.map((grant) => grant.grantedBy))

@@ -44,7 +44,7 @@ import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
 import { classFeatureLanguageGrantsFor, keepHeldFeatureLanguages } from '../languages/classFeatureLanguages'
-import { classToolGrantsFor, keepHeldToolChoices, type ClassToolChoiceGrant, type ToolSlotGrant } from '../toolProficiencies/classToolChoices'
+import { classToolGrantsFor, keepHeldToolChoices, toolGrantsForHeldClasses, type ClassToolChoiceGrant, type ToolSlotGrant } from '../toolProficiencies/classToolChoices'
 import { isKhoravar, isSpeciesToolChoice, keepHeldSpeciesToolChoices, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
 import {
 	SUBCLASS_LANGUAGE_SOURCES,
@@ -385,7 +385,7 @@ export function wizardToolGrants(data: WizardData, levelUpTargetLevel: number | 
 		...data.toolChoices.filter((choice) => choice.grantedBy !== 'artificerSubclass').map((choice) => choice.name),
 	]
 	// D333: as saveCharacter keeps them, the stored first class's grants.
-	const grants = classToolGrantsFor(heldClasses ?? [cls], heldElsewhere)
+	const grants = toolGrantsForHeldClasses(heldClasses ?? [cls], heldElsewhere)
 	// D329: grant levels are class levels; in a level up classChoice.level is the raised class's new level.
 	// D328/D330: class level 1 in a level up is a class being entered, which never gets the starting tool picks.
 	return levelUpTargetLevel === null ? grants : grants.filter((grant) => grant.level === cls.level && (cls.level > 1 || grant.subclass !== undefined))
@@ -626,6 +626,8 @@ export interface HeldClassLookup {
 	classSource: string
 	subclasses: WizardSeedLookups['subclasses']
 	featureTypes: readonly string[]
+	/** The class level its Fighting Style feature comes at; null for a class without one, absent when not looked up. */
+	fightingStyleLevel?: number | null
 }
 
 /** A stored +2/+1 or +1/+1/+1 map read back as the chooser's own state, so an edited background reopens showing which mode was taken rather than an empty chooser beside a filled bonus. */
@@ -734,17 +736,29 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		return { entry, featureTypes: lookup?.featureTypes ?? [], subclass: subclassChoiceFor(entry.subclass, lookup?.subclasses ?? []) }
 	})
 	const claimed = new Set(held.flatMap(({ featureTypes, subclass }) => [...featureTypes, ...(subclass?.featureType ? [subclass.featureType] : [])]))
+	const storedStyles = character.fightingStyles ?? []
+	const taggedStyleOf = (entry: CharacterClass): CharacterFightingStyle | undefined => storedStyles.find((style) => style.className === entry.className && style.classSource === entry.classSource)
+	const untaggedStyle = storedStyles.find((style) => style.className === undefined)
+	// D334: a pre-58 style goes to the first class with no tagged style whose Fighting Style level its level has reached (the fightingStyleFor rule); none qualifies, it stays untagged.
+	const untaggedOwner = untaggedStyle
+		? held.findIndex(({ entry }) => {
+				const grantLevel = lookups.heldClasses?.find((candidate) => isClass(candidate, entry))?.fightingStyleLevel
+				return taggedStyleOf(entry) === undefined && grantLevel !== undefined && grantLevel !== null && grantLevel <= entry.level
+			})
+		: -1
+	// D334: a feature type two held classes list belongs to the first of them.
+	const featureTypeOwner = new Map<string, number>()
+	held.forEach(({ featureTypes }, index) => featureTypes.forEach((featureType) => !featureTypeOwner.has(featureType) && featureTypeOwner.set(featureType, index)))
 	const [first, ...others] = held.map(({ entry, featureTypes, subclass }, index): ClassStash => {
 		const ofClass = (record: { className: string; classSource: string }): boolean => isClass(record, entry)
 		const ownFeatureType = subclass?.featureType ?? null
 		return {
 			classChoice: { className: entry.className, classSource: entry.classSource, level: entry.level },
 			subclass,
-			// D318: a style no class is tagged on is given to none of them; save carries it through unchanged.
-			fightingStyle: (character.fightingStyles ?? []).find((style) => style.className === entry.className && style.classSource === entry.classSource)?.name ?? null,
+			fightingStyle: taggedStyleOf(entry)?.name ?? (index === untaggedOwner ? (untaggedStyle?.name ?? null) : null),
 			optionalFeatureChoices: ownFeatureType ? choiceNames(storedOptionalFeatures.find((stored) => stored.featureType === ownFeatureType)?.choices) : [],
 			classOptionalFeatureChoices: storedOptionalFeatures.filter(
-				(stored) => stored.featureType !== ownFeatureType && (featureTypes.includes(stored.featureType) || (index === 0 && !claimed.has(stored.featureType))),
+				(stored) => stored.featureType !== ownFeatureType && (featureTypeOwner.get(stored.featureType) === index || (index === 0 && !claimed.has(stored.featureType))),
 			),
 			spellChoices: (character.spellChoices ?? []).filter(ofClass).flatMap((stored) => stored.spells.map((spell) => ({ name: spell.name, source: spell.source, level: spellLevelOf(spell) }))),
 			subclassSpellChoices: (character.subclassSpellChoices ?? []).filter(ofClass).flatMap((stored) => stored.picks),
@@ -1544,7 +1558,7 @@ export function saveCharacter(
 		...keepHeldSubclassLanguages(data.featureLanguages, subclassSkillGrantsFor(classes)),
 	]
 	const languages = allLanguages.length > 0 ? allLanguages : undefined
-	const heldToolChoices = [...keepHeldToolChoices(data.toolChoices, classToolGrantsFor(classes)), ...keepHeldSpeciesToolChoices(data.toolChoices, data.speciesChoice)]
+	const heldToolChoices = [...keepHeldToolChoices(data.toolChoices, toolGrantsForHeldClasses(classes)), ...keepHeldSpeciesToolChoices(data.toolChoices, data.speciesChoice)]
 	const toolChoices = heldToolChoices.length > 0 ? heldToolChoices : undefined
 	const heldSubclassSkills = keepHeldSubclassSkills(data.subclassSkills, subclassSkillGrantsFor(classes))
 	const subclassSkills = heldSubclassSkills.length > 0 ? heldSubclassSkills : undefined
@@ -1574,19 +1588,24 @@ export function saveCharacter(
 		...(data.activeClassFeatureTypes ?? []),
 		...data.classOptionalFeatureChoices.map((entry) => entry.featureType),
 	]
+	const storedStyles = existing?.fightingStyles ?? []
+	const hadTaggedStyle = (cls: ClassFields): boolean => storedStyles.some((style) => style.className === cls.classChoice!.className && style.classSource === cls.classChoice!.classSource)
 	const held = heldClasses?.map((cls) =>
 		classRecordsFor(
 			cls,
-			(existing!.fightingStyles ?? []).find((style) => style.className === cls.classChoice!.className && style.classSource === cls.classChoice!.classSource),
+			// D334: a class with no tagged style may have adopted the untagged one at seed, so its source carries over.
+			fightingStyleFor(storedStyles, cls.classChoice!),
 			existing,
 			undefined,
 			withPickSource,
 		),
 	)
+	// D334: a class that had no tagged style and now writes one adopted the pre-58 untagged style; that record is replaced, not duplicated.
+	const adoptedUntagged = heldClasses?.some((cls) => cls.fightingStyle !== null && !hadTaggedStyle(cls)) ?? false
 	const perClass = held
 		? {
-				// D318: a style tagged on no class was given to none at seed, so it stays as it was.
-				fightingStyles: orNone([...(existing!.fightingStyles ?? []).filter((style) => style.className === undefined), ...held.flatMap((records) => records.fightingStyles)]),
+				// D318: an untagged style no class adopted stays as it was.
+				fightingStyles: orNone([...storedStyles.filter((style) => style.className === undefined).slice(adoptedUntagged ? 1 : 0), ...held.flatMap((records) => records.fightingStyles)]),
 				optionalFeatureChoices: orNone(held.flatMap((records) => records.optionalFeatureChoices)),
 				spellChoices: orNone(held.flatMap((records) => records.spellChoices)),
 				subclassSpellChoices: orNone(held.flatMap((records) => records.subclassSpellChoices)),
@@ -1758,6 +1777,11 @@ function classRecordsFor(
 			}
 		})
 
+	// D334: an unchanged subclass keeps the source it was stored with; the seed's lookup may be missing or a same-named subclass of another source.
+	const storedSubclassSource = classTag && cls.subclass
+		? existing?.subclassSpellChoices?.find((stored) => stored.className === classTag.className && stored.classSource === classTag.classSource && stored.subclassName.toLowerCase() === cls.subclass!.name.toLowerCase())?.subclassSource
+		: undefined
+
 	return {
 		fightingStyles,
 		optionalFeatureChoices: [...subclassOptionalFeatureChoices, ...classOptionalFeatureChoices],
@@ -1766,7 +1790,7 @@ function classRecordsFor(
 		/** Tagged with both the subclass's own identity and the class it belongs to (D11), same reasoning as spellChoices/optionalFeatureChoices. */
 		subclassSpellChoices:
 			cls.subclassSpellChoices.length > 0 && classTag && cls.subclass
-				? [{ subclassName: cls.subclass.name, subclassSource: cls.subclass.source, ...classTag, picks: cls.subclassSpellChoices }]
+				? [{ subclassName: cls.subclass.name, subclassSource: storedSubclassSource ?? cls.subclass.source, ...classTag, picks: cls.subclassSpellChoices }]
 				: [],
 		/** Already storage-shaped in WizardData (D22's level is recorded on each entry by the picker), so it passes straight through. */
 		classFeatureChoices: cls.classFeatureChoices,
@@ -1783,9 +1807,14 @@ function classRecordsFor(
  * unless the run is a level up, where it records the level it was taken at.
  */
 function keepRecordedLevels(names: readonly string[], previous: readonly LeveledChoice[] | undefined, newPickLevel?: number): LeveledChoice[] {
+	// D334: in an Edit a new pick takes the stamp of the pick it replaced, paired in order (removed i-th with added i-th), so Remove level still finds it.
+	const replaced = newPickLevel === undefined ? (previous ?? []).filter((choice) => !names.includes(choice.name)) : []
+	let nextReplaced = 0
 	return names.map((name) => {
 		const recorded = (previous ?? []).find((choice) => choice.name === name)
 		if (recorded) return { ...recorded }
-		return newPickLevel === undefined ? { name } : { name, level: newPickLevel }
+		if (newPickLevel !== undefined) return { name, level: newPickLevel }
+		const slot = replaced[nextReplaced++]
+		return slot?.level === undefined ? { name } : { name, level: slot.level }
 	})
 }

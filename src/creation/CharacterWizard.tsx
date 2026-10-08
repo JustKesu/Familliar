@@ -346,8 +346,12 @@ export function CharacterWizard({
 			multiclassEdit
 				? Promise.all(
 						character.classes.map(async (entry) => {
-							const [subclasses, groups] = await Promise.all([loadSubclassesFor(entry.className, entry.classSource), loadClassOptionalFeatureGroups(entry.className, entry.classSource, MAX_CHARACTER_LEVEL)])
-							return { className: entry.className, classSource: entry.classSource, subclasses, featureTypes: groups.map((group) => group.featureType) }
+							const [subclasses, groups, fightingStyleLevel] = await Promise.all([
+								loadSubclassesFor(entry.className, entry.classSource),
+								loadClassOptionalFeatureGroups(entry.className, entry.classSource, MAX_CHARACTER_LEVEL),
+								loadFightingStyleGrantLevel(entry.className, entry.classSource),
+							])
+							return { className: entry.className, classSource: entry.classSource, subclasses, featureTypes: groups.map((group) => group.featureType), fightingStyleLevel }
 						}),
 					)
 				: Promise.resolve(undefined),

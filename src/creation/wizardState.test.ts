@@ -1581,6 +1581,10 @@ describe('multiclass Edit (M9a)', () => {
 			classFeatureChoices: [{ ...DRUID, featureName: 'Primal Order', grantedAtLevel: 1, optionName: 'Warden' }],
 			wildShapeForms: [{ ...DRUID, forms: [{ name: 'Wolf', source: 'XMM' }] }],
 			multiclassPicks: [{ ...WARLOCK, kind: 'skill', name: 'arcana' }],
+			expertiseSkills: [{ name: 'perception', level: 4 }],
+			featAsiChoices: [{ level: 4, kind: 'feat', name: 'Tough', source: X }],
+			grantedFeats: [{ origin: 'background', name: 'Soldier', source: X }],
+			hitPointLevels: [2, 3, 4].map((level) => ({ level, kind: 'average' as const, dieResult: 6 })),
 		}
 	}
 
@@ -1650,10 +1654,17 @@ describe('multiclass Edit (M9a)', () => {
 		expect(input.subclassSpellChoices).toEqual(existing.subclassSpellChoices)
 		expect(input.classFeatureChoices).toEqual(existing.classFeatureChoices)
 		expect(input.wildShapeForms).toEqual(existing.wildShapeForms)
-		expect(input.optionalFeatureChoices).toEqual(expect.arrayContaining(existing.optionalFeatureChoices!))
-		expect(input.optionalFeatureChoices).toHaveLength(3)
+		// Saved per class in class order, so the entries are compared by feature type, not by stored position.
+		const byType = <T extends { featureType: string }>(entries: T[] | undefined) => [...(entries ?? [])].sort((a, b) => a.featureType.localeCompare(b.featureType))
+		expect(byType(input.optionalFeatureChoices)).toEqual(byType(existing.optionalFeatureChoices))
 		expect(input.subclassSkills).toEqual(existing.subclassSkills)
 		expect(input.masteries).toEqual(existing.masteries)
+		expect(input.toolChoices).toEqual(existing.toolChoices)
+		expect(input.languages).toEqual(existing.languages)
+		expect(input.expertiseSkills).toEqual(existing.expertiseSkills)
+		expect(input.featAsiChoices).toEqual(existing.featAsiChoices)
+		expect(input.grantedFeats).toEqual(existing.grantedFeats)
+		expect(input.hitPointLevels).toEqual(existing.hitPointLevels)
 	})
 
 	it('switching classes keeps the stash of every other class, and the save writes each class from its own fields', () => {

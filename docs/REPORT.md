@@ -1,35 +1,41 @@
-# REPORT — M9b: UI Editu multiclass postavy, Edit odemčený (D333)
+# F-11 — opravy z review M8–M9b (D334)
 
-Krok 1: všechna místa 1, 2, 14–27, 29–32 z inventury M9 existují, pokrytá rozhodnutími → bez STOP. Schéma 60 beze změny.
+## Co se změnilo
+1. Tool picky podtříd: nová `toolGrantsForHeldClasses` (`classToolChoices.ts`) = `classToolGrantsFor([první])` + `subclassToolGrantsForAll(ostatní)`.
+   Používá ji `saveCharacter` (všechny cesty) i `wizardToolGrants` (multiclass Edit). Level up Fightera na 3 jako 2. třídy kroku Languages
+   nabídne pick a save ho drží (to už wizard uměl, ztrácel ho save).
+2. Netagovaný styl: `WizardSeedLookups.heldClasses[].fightingStyleLevel` (CharacterWizard ho načítá `loadFightingStyleGrantLevel`).
+   Seed dá styl první držené třídě bez vlastního tagovaného stylu, jejíž úroveň ≥ úrovni rysu; save ho zapíše s tagem a netagovaný
+   záznam nahradí (zdroj stylu se přenese). Nikdo nevyhovuje → beze změny.
+3. Razítka: `keepRecordedLevels` bez `levelUpTo` páruje odebrané picky s přidanými v pořadí a přidaný dědí `level`. Platí pro
+   masteries, expertise i optional features podtřídy, single-class Edit také.
+4. `featureTypeOwner` v seedu: typ uvedený dvěma třídami patří první.
+5. `classRecordsFor`: `subclassSource` se bere z uloženého záznamu stejné třídy a stejnojmenné podtřídy, jinak z lookupu.
+6. Beze změny kódu, jen testy: sdílený pool (Channel Divinity Cleric+Paladin) se po odebrání Paladina ořízne na max Clerica (3 → 2),
+   nesmaže se; koncentrace na kouzlo, které drží i feat (Magic Initiate), s odebranou třídou končí (verdikt f, současné chování).
+Verdikt b) (volnější Expertise v multiclass Editu) nedotčen → M10.
 
-## Změny po místech
-- **1, 2** `editCharacterBlockedReason` (levelUpSteps.ts): tlačítko Edit vypnuté jen u multiclass bez konzistentního `levelOrder`, text „Edit character“, `title` „Edit unavailable: Cannot tell…“; route bounce jen tehdy. Text „cannot be edited yet“ pryč.
-- **14** seed effect načte subclasses + featureTypes každé držené třídy (`WizardSeedLookups.heldClasses`).
-- **15–17** `multiclassEdit`; `draftClasses` = uložené třídy s podtřídami ze stashe (`heldDraftClasses`), `multiclassDraft` = ty + uložený `levelOrder`; `draftCharacterLevel` = součet.
-- **18** jazykové/subclass-skill granty ze všech tříd; tool granty první uložené třídy (`classes[0]`, jak je drží save). Nová podmínka `heldClasses`.
-- **19** `ClassSwitcher.tsx` místo `ClassPicker`; class skills = první třída (D321).
-- **20, 21** jeden MasteryPicker/ExpertisePicker pro všechny třídy, počty sečtené per třída na zamčené úrovni (`sharedMasteryCount`, `sharedExpertise`).
-- **22–26** classSkillsSource = firstClass; featAsi přes `multiclassDraft` + celková úroveň; HP: `hitDieFacesByLevel` (každá úroveň proti své kostce), průběžné max HP s historií.
-- **27** „Already prepared by“ z ostatních držených tříd. **29** `HeldClassPrerequisiteNotes.tsx` + `heldClassPrerequisiteNote`. **30** `MulticlassPickSlots` pro každou ne-první třídu, podmínka `multiclassPicksComplete`.
-- **31** Review: řádek tříd, kostky, `.review__unfinished` z `unfinishedHeldClasses`. **32** Cancel přes `sameWizardData` (pořadí aktivní třídy ignoruje).
+## Ověřeno
+- `npm run typecheck`, `npm run test` (174 souborů, 3213 testů), `npm run validate-data` (175/175) prošly.
+- `npm run e2e`: 490 passed, 5,6 min (nad hranicí 3 min z CLAUDE.md, jak bylo předem známo).
+- Unit: `multiclassEdit.test.ts` blok "F-11" (po jednom bloku na nálezy 1–5; nález 1 = untouched Edit, level up jiné třídy, level up
+  non-first Fightera na 3; nález 3 včetně řetězce Edit → `levelRemovalCore`), `levelRemoval.test.tsx` (nález 6, koncentrace f),
+  `wizardState.test.ts` (untouched Edit teď přesně porovnává toolChoices, languages, expertise, featAsi, grantedFeats, HP, optional
+  features; ty se řadí podle featureType, protože save je píše po třídách).
+- E2E `multiclassEdit.spec.ts` F-11 a–d (a: Smith's Tools po Edit/Save; b: jeden tagovaný styl v localStorage; c: swap expertise →
+  Remove level odebere Athletics; d: level up Sorcerera 3→4 vs. Edit výsledku).
 
-## Ověření
-- typecheck OK; test 3199/3199 (nový `multiclassEdit.test.ts`); validate-data 175/175; e2e 485/485 za 5,3 min (nad ~3 min, známé).
-- `e2e/multiclassEdit.spec.ts` a–h: a) invokace + Metamagic přes přepínač, „Already prepared by Warlock“, Review „Warlock 6 / Sorcerer 3“ + „6d8 + 3d6“, classes/levelOrder v localStorage beze změny; b) Life → Light, nová Cleric kouzla, Light řádky, Life pryč, Wizard kouzla beze změny; c) STR i DEX pod 13 (obě poznámky Fighter OR + Rogue), Save funguje; d) bez levelOrder: disabled + title, URL zpět; e) neúplný Cleric ve stashi: Save vypnutý, řádek „Cleric has unfinished choices: choose 3 more cantrips, choose 6 more spells. Switch to Cleric in step Class to finish them.“, po doplnění Save zapnutý; f) Rogue multiclass skill Stealth → Deception; g) jednotřídní Fighter → Rogue; h) Cancel bez změny / se změnou ve stashi.
-- Upraveny `multiclassGuard.spec.ts` a–b (title místo textu), `multiclassLevelUp.spec.ts` g (Edit povolený).
+## Rozhodnuto při práci
+- Netagovaný styl dostane jen třída, která nemá vlastní tagovaný (jinak by `fightingStyleFor` vrátil její vlastní).
+- Dědění razítka jsem nechal ve sdíleném `keepRecordedLevels`, takže se týká i optional features podtřídy v Editu (zadání jmenovalo
+  masteries a expertise).
+- Zadání končilo uprostřed bodu testů ("Unit (wizardState.test."); testy jsem odvodil z popisů nálezů a ze zbytku zadání.
+- E2E d: ASI krok level upu ukazuje karty Level 4 i Level 10 (ne jen novou úroveň), na rozdíl od Hit points (jen Level 10); Edit
+  výsledku ukazuje stejné karty a 10 řádků HP. "Stejné počty" jsem proto ověřil na kartách a na řádku Level 10 (Average (4)).
 
-## Rozhodnutí během práce / k posouzení
-- g): úroveň v jednotřídním Editu měnit nejde (dosavadní `fixedLevel` + throw v `saveCharacter`); test ověřuje vypnutý select Level. Zadání „změnit třídu a úroveň“ tak platí jen pro třídu.
-- Expertise: neomezená, má-li ji kterákoli třída neomezenou, jinak sjednocené seznamy (M9 místo 21).
-- Mastery/Expertise picker se ukazuje za aktivní třídu, nemá-li žádnou, za první třídu s grantem.
-- Stashovaná třída se posuzuje podmínkami z doby, kdy byla naposled aktivní; nikdy aktivní = jako uložená; změněná podtřída, jejíž data se nestihla načíst = „requirements still loading“, dokud se na ni nepřepne.
-- Neúspěšné načtení multiclass slotů požadavek uvolní (chybu ukáže slot), jako F-1.
-- Otázka: save drží tool granty `classes[0]`, kdežto multiclass picky řeší `firstClass` podle `levelOrder`; u postavy, kde se to liší, by subclass nástroj ne-první třídy (Battle Master) Edit zahodil. Nechal jsem jako dřív.
-- DECISIONS.md: přidán D333 (vč. potvrzení dvou rozhodnutí M9a a formátu řádku Review). STATUS.md aktualizován. DATA.md beze změny (žádné nové zjištění o datech).
+## Poznámky / otázky pro uživatele
+- D333 větu o netagovaném stylu ("žádné třídě") jsem nepřepsal (SPEC/DECISIONS jsou tvoje); D334 ji zpřesňuje. Zvaž úpravu D333.
+- Konkurence stylu: přiřazení neřeší více netagovaných stylů (bere první).
 
 ## Manual browser check for the user
-- Edit multiclass postavy, krok **Class and level**: přepínač tříd (tlačítka „Warlock 6 (Fiend Patron)“…) při 1366 a 1920 px a na šířce telefonu, tmavé i světlé téma — zalamování, zvýraznění aktivní, text nápovědy pod ním.
-- Krok **Ability scores**: tlumená poznámka pod tabulkou (velikost, barva).
-- Krok **Review and save**: řádek „<Class> has unfinished choices…“ (barva, zalamování).
-- Krok **Proficiencies**: sloty „Rogue multiclass skill:“ v Editu vedle ostatních slotů.
-- Sheet multiclass postavy bez historie: tooltip vypnutého tlačítka Edit character.
+Nic vizuálního se nezměnilo (žádné CSS ani nové prvky); chování pokrývají scénáře F-11 a–d. Nic k ručnímu ověření.
