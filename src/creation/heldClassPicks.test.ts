@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import { assignHeldPicks, grantSlots, type HeldPickGrant } from './heldClassPicks'
-import { activeClassPicks, saveCharacter, unfinishedHeldClasses, wizardDataFromCharacter, wizardReducer, type WizardControllerState, type WizardData } from './wizardState'
+import { activeClassPicks, sameWizardData, saveCharacter, unfinishedHeldClasses, wizardDataFromCharacter, wizardReducer, type WizardControllerState, type WizardData } from './wizardState'
 
 const X = 'XPHB'
 const WIZARD = { className: 'Wizard', classSource: X }
@@ -108,6 +108,38 @@ describe('multiclass Edit per-class Expertise (D335)', () => {
 		const existing = stored([{ name: 'history' }, { name: 'stealth' }, { name: 'investigation' }])
 		const data = wizardReducer({ step: 'class', data: wizardDataFromCharacter(existing, lookups) }, { type: 'setActiveClassPicks', field: 'expertiseSkills', picks: ['arcana'] }).data
 		expect(save(data, existing)).toEqual([{ name: 'stealth' }, { name: 'investigation' }, { name: 'arcana', level: 2 }])
+	})
+
+	it('D337: a kept pick without a stamp holds the lowest slot of its class, so a new pick takes the next one', () => {
+		const existing: Character = {
+			...stored([{ name: 'history', level: 2 }, { name: 'stealth' }]),
+			classes: [
+				{ ...WIZARD, subclass: 'Evoker', level: 3 },
+				{ ...ROGUE, subclass: null, level: 2 },
+			],
+			levelOrder: [...LEVEL_ORDER, ROGUE],
+			hitPointLevels: [2, 3, 4, 5].map((level) => ({ level, kind: 'average' as const, dieResult: 4 })),
+		}
+		// Rogue slots at character levels 4 and 5.
+		const twoLevelLookups = { ...lookups, heldClasses: [lookups.heldClasses[0]!, { ...lookups.heldClasses[1]!, expertiseGrant: { countsByLevel: [1, 2], allowed: null } }] }
+		let state: WizardControllerState = { step: 'class', data: wizardDataFromCharacter(existing, twoLevelLookups) }
+		state = wizardReducer(wizardReducer(state, { type: 'switchClass', to: ROGUE }), { type: 'setActiveClassPicks', field: 'expertiseSkills', picks: ['stealth', 'perception'] })
+		state = wizardReducer(state, { type: 'switchClass', to: WIZARD })
+		expect(save(state.data, existing)).toEqual([{ name: 'history', level: 2 }, { name: 'stealth' }, { name: 'perception', level: 5 }])
+	})
+
+	it('D337: a pick added and removed again leaves the data equal to its seed', () => {
+		const seed = wizardDataFromCharacter(stored(STAMPED), lookups)
+		const added = wizardReducer({ step: 'class', data: seed }, { type: 'setActiveClassPicks', field: 'expertiseSkills', picks: ['history', 'arcana'] })
+		const removed = wizardReducer(added, { type: 'setActiveClassPicks', field: 'expertiseSkills', picks: ['history'] })
+		expect(sameWizardData(added.data, seed)).toBe(false)
+		expect(sameWizardData(removed.data, seed)).toBe(true)
+	})
+
+	it('D337: a class whose grant failed to load keeps the picks stamped with its levels', () => {
+		const failed = { ...lookups, heldClasses: [lookups.heldClasses[0]!, { ...ROGUE, subclasses: [], featureTypes: [], grantLoadFailed: true }] }
+		const data = wizardDataFromCharacter(stored(STAMPED), failed)
+		expect(data.pickOwners?.expertiseSkills.owners).toEqual({ history: 'Wizard|XPHB', stealth: 'Rogue|XPHB', investigation: 'Rogue|XPHB' })
 	})
 
 	it('a stashed class short of its Expertise is unfinished', () => {

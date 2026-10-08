@@ -94,6 +94,16 @@ describe('D336 per-class pools', () => {
 		expect(resourceUsesAfterLevelUp(before, [cls('Paladin', 2), cls('Cleric', 4)], CLASSES)).toEqual({ 'Channel Divinity': 1 })
 		expect(resourceUsesAfterLevelUp(character(cls('Cleric', 3)), [cls('Cleric', 4)], CLASSES)).toBeUndefined()
 	})
+
+	it('resourceUsesAfterLevelUp leaves a single-class level up’s keys unchanged', () => {
+		const uses = { 'Channel Divinity': 1, Rage: 2 }
+		expect(resourceUsesAfterLevelUp({ ...character(cls('Cleric', 3)), play: { resourceUses: uses } }, [cls('Cleric', 4)], CLASSES)).toEqual(uses)
+	})
+
+	it('a level up of a legacy save whose pool is already split keeps the plain key for the sheet handover', () => {
+		const legacy: Character = { ...character(cls('Cleric', 3), cls('Paladin', 3)), play: { resourceUses: { 'Channel Divinity': 1 } } }
+		expect(resourceUsesAfterLevelUp(legacy, [cls('Cleric', 4), cls('Paladin', 3)], CLASSES)).toEqual({ 'Channel Divinity': 1 })
+	})
 })
 
 describe('D336 Manage Feats level chip', () => {

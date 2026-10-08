@@ -1,49 +1,45 @@
-# M10b follow-up — pool pod úrovní a rozdělení poolu při level upu (D336)
-
-Odpovědi na obě otázky M10b zapracovány, D336 aktualizováno (bod 5 a nový 5b).
-- Remove level: třída, která klesne pod úroveň poolu, ztratí svůj klíč `"<pool> (<třída>)"` (`levelRemoval.ts`, stejná větev jako D332; ve výpisu dialogu „Channel Divinity (Paladin): N spent, now 0“).
-- Level up, který pool rozdělí: `poolUsesAfterSplit` (classPools.ts) + `resourceUsesAfterLevelUp` (multiclassLevelUp.ts, jen tabulky classes.json); `CharacterWizard` ho předá novým parametrem `levelUpResourceUses` do `saveCharacter`. Prostý počet jde jediné předchozí granting třídě (cap na maximum), nová třída plná. Handover při čtení (`withLegacyPoolUses`) zůstává jen pro staré savy; když první třída pool nedává, dál první granting třída v pořadí `classes`.
-- Ověřeno: `npm run typecheck` OK, `npm test` 176 souborů / 3235 testů, `npm run e2e` 507/507 (5,7 min, nad limitem ~3 min). Nové unit: `classPools.test.ts` (split v obou pořadích, cap, bez splitu/bez jediného držitele nic, `resourceUsesAfterLevelUp`), `levelRemoval.test.tsx` (Paladin 3 → 2 ztratí klíč). E2E `multiclassPools.spec.ts` f2 rozšířen (klíč Paladina zmizí), nový h (Paladin 2 / Cleric 3, Paladin první, level up Paladina přes skutečný wizard: Cleric 1 spent, Paladin 0, uloženo `{"Channel Divinity (Cleric)": 1}`).
-- Fixture h potřebuje `abilityBonus`, třídní skilly a fighting style Paladina, jinak save level upu zapíše `abilityBonus: {}` a čtení postavu odmítne (stávající chování validace, ne změna tohoto tasku).
-
-
-## Krok 1: inventura (10 míst, bez dělení a/b, bez změny schématu)
-Klíč per-class poolu = viditelný název: `` `${pool} (${className})` `` → `"Channel Divinity (Cleric)"`, `"Channel Divinity (Paladin)"`. Jen když pool dávají tabulky ≥ 2 držených tříd; jinak prostý `"Channel Divinity"`.
-
-| Soubor | Funkce | Změna |
-|---|---|---|
-| src/calculation/resources.ts | `computeCharacterResources`, `tableGrantedPools` | split poolu na zdroj per třída (`pool`, `className`, max z vlastní tabulky, short rest z rysů té třídy); `poolGrantingClassNames`; `ResourceFeature.className` |
-| src/calculation/classPools.ts (nový) | `classPoolKey`, `resourceKeyFor`, `withLegacyPoolUses`, `poolUsesAfterLevelChange` | klíč, mapování spendera, legacy handover, návrat na prostý klíč |
-| src/sheet/featureActionRowData.ts | `featureActionRows` | param `resourceKey`; dedupe jméno + pool (dvě řádky „Channel Divinity“) |
-| src/sheet/featuresTabData.ts | `featuresTabGroups` | `resourceKey` pro granted rysy a nenavázané volby |
-| src/sheet/CharacterSheet.tsx | `featureActions`, `storedResourceUses`, `featureGroups` | resources počítané před řádky; legacy handover při čtení |
-| src/levelUp/levelRemoval.ts | blok `resourceUses` | handover (bez capu) → návrat na prostý klíč → clamp → D332 |
-| src/sheet/ManageFeatsPanel.tsx | `levelFeatChip`, `instanceRow`, ASI řádek | „From Wizard 4“ přes `featSource` |
-| src/rest/rest.ts | `afterShortRest`/`afterLongRest` | beze změny (per-class zdroje nesou vlastní `shortRest`) |
-| src/storage/validate.ts | read repair | beze změny (klíče jsou libovolné stringy; handover potřebuje classes.json, proto v sheetu) |
-| src/actions/actionTableFeatureData.ts | — | beze změny |
-
-Všech 30 spenderů Channel Divinity jsou class/subclass rysy s `className` (skript, DATA.md) → spend je vždy navázaný.
+# REPORT — F-12: opravy z review M10 (D337)
 
 ## Co se změnilo
-Viz tabulka. Single-class postava: žádný nový klíč ani pole (unit + e2e d). D334 bod 6 nahrazen v D336.
+- **Nález 1:** `saveCharacter` (`wizardState.ts`) zapíše `abilityBonus` jen neprázdný, jinak `existing?.abilityBonus` (chybějící zůstane chybět).
+- **1b (výsledek):** třídní skilly ani fighting style při level upu nic, co validace odmítne, nezapíšou. `classSkills` chybějící → `[]`
+  (validate prázdné pole přijme). Fighting style: jednotřídní level up zapíše nejvýš jeden; multiclass `otherFightingStyles` + vlastní
+  styl nikdy nedá dva záznamy stejného vlastníka. Fixture h je potřebovala kvůli průchodu wizardem (krok Class chce skilly/styl),
+  ne kvůli zápisu. Kód beze změny, ověřeno testem (Paladin 2 / Cleric 2 bez skillů, stylu a bonusu → `describeCharacterError` null).
+  Mimo scope, jen pro informaci: u Paladin/Fighter s netagovaným stylem (pre-58), kde raised třída nemá vlastní tag, si level up
+  netagovaný styl přivlastní (D318/D329) — validní, ale druhá třída styl ztratí.
+- **Nález 2:** `keepHeldClassLevels` seřadí volné sloty a odebere z nich tolik nejnižších, kolik má třída ponechaných voleb bez razítka.
+- **Nález 3:** seed multiclass Editu označí třídu s neúspěšným loadem grantu (`HeldClassLookup.grantLoadFailed`). `assignHeldPicks`
+  jí nechá volby orazítkované jejími úrovněmi (`HeldPickGrant.loadFailed`), `heldPickConditions` se jí na nic neptá. Save je blokovaný;
+  text „<Class> data failed to load. Reload the page and try again.“ je na Review (`ReviewStep.loadErrors`) a vedle Save
+  (`WizardNavButtons.note`, nová třída `.wizard__nav-note`). Aktivní třída s neúspěšným grantem se ptá podle vlastních loadů kroku
+  Class jako dřív (ty sdílejí stejné soubory, takže v praxi selže celý seed).
+- **Nález 4:** `withOwnedPicks(names, held, cls, picks)` maže záznamy jmen, která nejsou ve výsledných jménech ani v `seeded`.
+- **Nález 5:** jen záznam v QUESTIONS.md (Psionic Energy Die Psi Warrior + Soulknife).
+- Docs: D337 v DECISIONS.md, QUESTIONS.md, STATUS.md.
 
-## Ověření
-- `npm run typecheck` OK; `npm run validate-data` 175/175.
-- `npm test` 176 souborů / 3232 testů OK. Jeden běh dřív padl na `CharacterSheet.test.tsx` „hides itself after the timeout“ (toast D165, časování pod zátěží), samostatně i v dalším plném běhu prošel — s touto změnou nesouvisí.
-- `npm run e2e` 506/506 (5.6 min, nad limitem ~3 min). Nové `e2e/multiclassPools.spec.ts`: M10b a, a2, b, c, d, e, f, f2, g, g2.
-- Unit: `classPools.test.ts` (split, prostý klíč, `resourceKeyFor`, handover s capem, short rest per pool, návrat na prostý klíč, chip), `levelRemoval.test.tsx` D336.
+## Ověřeno
+- `npm run typecheck` OK; `npm test` 176 souborů / 3245 testů OK; `npm run validate-data` 175/175; `npm run e2e` 510/510 (5,7 min).
+- Unit: `multiclassEntry.test.ts` D337 (Fighter 4 → 5 bez abilityBonus, uložený bonus zůstane, 1b Paladin/Cleric);
+  `heldClassPicks.test.ts` D337 (nová volba dostane slot 5 místo 4; přidání+odebrání → `sameWizardData` true; selhaný grant drží
+  orazítkované volby); `classPools.test.ts` (jednotřídní level up beze změny klíčů; legacy save s rozděleným poolem si prostý klíč
+  nechá); `levelRemoval.test.tsx` (legacy prostý klíč → Cleric, clamp 3 → 2, řádek dropped); `ReviewStep.test.tsx` D337 (alert
+  na Review, text vedle zakázaného Save).
+- E2E `reviewFixesM10.spec.ts`: F-12 a (Fighter 4 bez abilityBonus → level up oknem „Fighter 4 → 5“, sheet i seznam), c, d.
+- **b není e2e:** granty (`class-features.json`, `classes.json`) sdílí všechny třídy i loady podtříd a `loadDataFile` je cachuje,
+  takže úzké selhání jen pro Rogue přes `page.route` nejde; selhání souboru shodí celý seed. Pokryto unit + render testy výše
+  (vlastnictví voleb, hláška, zakázané Save); samotné propojení `grantLoadError` → `readyToSave` v CharacterWizard test nemá.
+- **c:** Oath of Conquest (XGE) na Paladinovi XPHB na sheetu žádný řádek Guided Strike (ani Conquering Presence) neukáže, jen
+  always-prepared kouzla. Scénář proto používá dva stejnojmenné řádky „Channel Divinity“ (Cleric 2 a Paladin 3), každý utrácí svůj pool.
+  Proč se Conquest Channel Divinity rysy neukazují, nezkoumáno — kandidát na samostatný task.
 
-## Rozhodnutí přijatá při práci / otázky
-- Scénář f podle zadání (Cleric 3 / Paladin 1) žádný Paladin pool nemá: Paladin dostává Channel Divinity až na úrovni 3. Přidán f2: Cleric 3 / Paladin 3 → Paladin 2, Cleric počet se vrací pod prostý klíč. Pravidlo 5 tedy v reálných datech nikdy neodebere Paladin pool odebráním třídy.
-- Klesne-li třída jen pod úroveň poolu (Paladin 3 → 2), její klíč `(Paladin)` zůstává uložený jako nenárokovaný (konvence slice 9b1), nesmaže se. Potvrď, nebo chceš mazat.
-- Legacy handover, když první třída pool nedává (např. Wizard první): připadne první granting třídě v pořadí `classes`.
-- Level up, který pool rozdělí (Paladin 2 → 3), stávající prostý počet nepřesouvá; při čtení ho handover dá první třídě, i když ho utratil Cleric a první třída je Paladin. Otázka pro QUESTIONS.md.
-- Akční řádky optional features (Actions tab) se na per-class pool nemapují (nemají třídu); v datech žádná volba Channel Divinity neutrácí.
-- D334 bod 6 je teď zastaralý; D336 ho výslovně nahrazuje.
+## Rozhodnutí / k řešení
+- Rozhodnuto při práci: zpráva vedle Save je v obou navigacích wizardu (horní lišta i spodek), jako tlačítko samo.
+- Netrackovaný `scripts/investigate-m10b-pools.mjs` existoval už před taskem, necommitnut, nesmazán (git clean v tomto tasku zakázán).
 
 ## Manual browser check for the user
 Na https://familliar.vercel.app, šířky 1366 a 1920, tmavé i světlé téma:
-- Actions tab, Cleric 3 / Paladin 3: dvě řádky „Channel Divinity“ (zdroj „Cleric 2“ a „Paladin 3“) a jejich use boxy s „/ Short Rest“ se nezalamují.
-- Features & Traits, skupiny Cleric Features a Paladin Features: řádek „Channel Divinity“ s use boxy zarovnaný jako ostatní.
-- Features & Traits → Manage Feats, Wizard 4 / Cleric 1: chip „From Wizard 4“ u Ability Score Improvement se vejde vedle názvu, nepřetéká.
+- Krok Review a spodní/horní lišta s tlačítkem Save changes: červený text vedle Save — zarovnání s tlačítky, zalomení dlouhého
+  textu, nepřetéká. Stav selhání grantu jde vyvolat jen umělým výpadkem sítě (DevTools → blokovat `class-features.json` po načtení
+  sheetu nedává smysl, protože selže celý seed); pokud to nejde navodit, bod přeskoč.
+- Lišta wizardu bez hlášky (běžný Edit/level up): Back/Save vypadají jako dřív (`.wizard__nav-main` má nově `flex-wrap` a `align-items: center`).

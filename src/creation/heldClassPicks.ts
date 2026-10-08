@@ -11,6 +11,8 @@ export interface HeldPickGrantData {
 	countsByLevel: readonly (number | null)[]
 	/** null = any name; otherwise the only names the class may pick (Scholar). */
 	allowed: readonly string[] | null
+	/** D337: the grant could not be loaded; the class still keeps the picks stamped with its own levels. */
+	loadFailed?: boolean
 }
 
 export type HeldPickGrant = ClassRef & HeldPickGrantData
@@ -52,7 +54,7 @@ export function assignHeldPicks(picks: readonly LeveledChoice[], levelOrder: rea
 	const unstamped: LeveledChoice[] = []
 	for (const pick of picks) {
 		const taker = pick.level === undefined ? undefined : levelOrder[pick.level - 1]
-		const grant = taker && granting.find((candidate) => sameClass(candidate, taker))
+		const grant = taker && (granting.find((candidate) => sameClass(candidate, taker)) ?? grants.find((candidate) => candidate.loadFailed && sameClass(candidate, taker)))
 		if (grant) take(pick.name, grant)
 		else unstamped.push(pick)
 	}
@@ -88,14 +90,15 @@ export function ownedPicks(names: readonly string[], owners: Readonly<Record<str
 /** D335: replaces one class's picks; the other classes' keep their place in the list. */
 export function withOwnedPicks(
 	names: readonly string[],
-	owners: Readonly<Record<string, string>>,
+	held: Pick<HeldPickOwners, 'owners' | 'seeded'>,
 	cls: ClassRef,
 	picks: readonly string[],
 ): { names: string[]; owners: Record<string, string> } {
 	const key = classKey(cls)
-	const kept = names.filter((name) => owners[name] !== key || picks.includes(name))
-	return {
-		names: [...kept, ...picks.filter((name) => !kept.includes(name))],
-		owners: { ...owners, ...Object.fromEntries(picks.map((name) => [name, key])) },
-	}
+	const kept = names.filter((name) => held.owners[name] !== key || picks.includes(name))
+	const nextNames = [...kept, ...picks.filter((name) => !kept.includes(name))]
+	const owners = { ...held.owners, ...Object.fromEntries(picks.map((name) => [name, key])) }
+	// D337: an owner entry for a pick added and removed again in this run goes, so the data matches its seed again.
+	for (const name of Object.keys(owners)) if (!nextNames.includes(name) && !(name in held.seeded)) delete owners[name]
+	return { names: nextNames, owners }
 }

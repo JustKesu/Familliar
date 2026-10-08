@@ -10,7 +10,7 @@ import { loadResolverData } from '../featureResolver'
 import { checkOneClassRaised } from '../levelUp/multiclassLevelUp'
 import type { Character, CharacterClass, CharacterMulticlassPick } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
-import { describeMulticlassPicksError, describeStoredCharacterError, withoutMalformedDroppableFields } from '../storage/validate'
+import { describeCharacterError, describeMulticlassPicksError, describeStoredCharacterError, withoutMalformedDroppableFields } from '../storage/validate'
 import { multiclassPickShape, multiclassSkillSources } from './multiclassPicks'
 import { multiclassPrerequisiteScores, primaryAbilityOf, unmetMulticlassPrerequisite } from './multiclassPrerequisites'
 
@@ -198,6 +198,51 @@ describe('saveCharacter entering a class', () => {
 		expect(isStepComplete('languages', entering(existing, 'Bard', 8, [skill]), conditions)).toBe(false)
 		expect(isStepComplete('languages', entering(existing, 'Bard', 8, [skill, lute]), conditions)).toBe(true)
 		expect(isStepComplete('languages', entering(existing, 'Bard', 8, [skill, lute]), { ...conditions, multiclassPickCount: null })).toBe(false)
+	})
+})
+
+describe('a level up of a character stored without abilityBonus, class skills or fighting style (D337)', () => {
+	const levelUpSave = (existing: Character, active: CharacterClass, faces: number): Record<string, unknown> => {
+		const multiclass = existing.classes.length > 1
+		const seed = wizardDataFromCharacter(existing, { subclasses: [], spellLevels: [], ...(multiclass ? { activeClass: { ...ref(active.className), featureTypes: [] } } : {}) })
+		const data: WizardData = {
+			...seed,
+			classChoice: { ...ref(active.className), level: active.level + 1 },
+			hitPointLevels: [...seed.hitPointLevels, { level: 5, kind: 'average', dieResult: faces / 2 + 1 }],
+		}
+		const characterStore = store()
+		saveCharacter(characterStore, data, undefined, walked(['hitPoints', 'review'], { hitDieFaces: faces }), undefined, existing, 5)
+		// What the store would write: undefined fields drop out of the JSON.
+		return JSON.parse(JSON.stringify({ id: existing.id, ...vi.mocked(characterStore.update).mock.calls[0][1] })) as Record<string, unknown>
+	}
+
+	it('Fighter 4 → 5 keeps abilityBonus absent, and the result is a readable character', () => {
+		const existing = fighter4({ levelOrder: fighterOrder(4) })
+		expect(existing.abilityBonus).toBeUndefined()
+		const saved = levelUpSave(existing, existing.classes[0]!, 10)
+		expect(saved).not.toHaveProperty('abilityBonus')
+		expect(describeCharacterError(saved, 0)).toBeNull()
+	})
+
+	it('keeps a stored abilityBonus', () => {
+		const existing = fighter4({ levelOrder: fighterOrder(4), abilityBonus: { strength: 2, constitution: 1 } })
+		expect(levelUpSave(existing, existing.classes[0]!, 10)['abilityBonus']).toEqual({ strength: 2, constitution: 1 })
+	})
+
+	it('Paladin 2 / Cleric 2 with no class skills or fighting style stored: raising Cleric writes nothing validate rejects', () => {
+		const existing = character(
+			{ strength: 13, wisdom: 13, charisma: 13 },
+			{
+				classes: [cls('Paladin', 2), cls('Cleric', 2)],
+				levelOrder: [ref('Paladin'), ref('Paladin'), ref('Cleric'), ref('Cleric')],
+				hitPointLevels: [2, 3, 4].map((level) => ({ level, kind: 'average' as const, dieResult: 5 })),
+			},
+		)
+		const saved = levelUpSave(existing, existing.classes[1]!, 8)
+		expect(saved).not.toHaveProperty('abilityBonus')
+		expect(saved).not.toHaveProperty('fightingStyles')
+		expect(saved['classSkills']).toEqual([])
+		expect(describeCharacterError(saved, 0)).toBeNull()
 	})
 })
 

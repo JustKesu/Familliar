@@ -422,3 +422,16 @@ na dvojí počítání: Favored Enemy má vlastní boxy a Hunter's Mark by je m�
 
 Nalezeno při R7b-0, zapsáno v R7b-1 (25. 9. 2026).
 STATUS: vyřešeno D192/D193; Bard Magical Secrets → Manage Spells.
+
+### Psionic Energy Die u Psi Warrior (Fighter) + Soulknife (Rogue) — jeden pool
+
+D336 dělí pool po třídách, jen když ho počítají tabulky dvou držených tříd
+(`poolGrantingClasses` v `resources.ts`). Soulknife má sloupec „Soulknife Energy
+Die Number“, ne „Psionic Energy Die Number“ (DATA.md), takže granting třída je
+jen Fighter. Postava Psi Warrior + Soulknife má proto jeden pool s Fighterovým
+maximem a rysy Soulknife utrácí ten. Správně by asi měla mít dva pooly (každá
+podtřída svůj), ale nejdřív je potřeba datová investigace: jak spolehlivě poznat,
+že sloupec s jiným jménem patří ke stejnému poolu.
+
+Nalezeno při review M10, zapsáno v F-12 (8. 10. 2026, D337).
+STATUS: nerozhodnuto, čeká na datovou investigaci.

@@ -145,7 +145,10 @@ export function ReviewStep({
 	saveError,
 	classLine,
 	unfinishedClasses = [],
+	loadErrors = [],
 }: {
+	/** D337: data a multiclass Edit could not load; any blocks the save. */
+	loadErrors?: readonly string[]
 	/** D329: every class with its level after a multiclass level up ("Warlock 6 / Sorcerer 4"); absent shows the wizard's one class. */
 	classLine?: string
 	/** D333: the held classes of a multiclass Edit whose own picks are unfinished; any blocks the save. */
@@ -251,6 +254,12 @@ export function ReviewStep({
 					)}
 				</p>
 			)}
+
+			{loadErrors.map((message) => (
+				<p key={message} className="review__unfinished" role="alert">
+					{message}
+				</p>
+			))}
 
 			{unfinishedClasses.map((cls) => (
 				<p key={`${cls.className}|${cls.classSource}`} className="review__unfinished" role="alert">

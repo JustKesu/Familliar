@@ -7,6 +7,7 @@ import type { Character } from '../../storage/character'
 import type { LevelGains } from '../../levelUp/levelGains'
 import { emptyWizardData, type WizardData, type WizardStep } from '../wizardState'
 import { ReviewStep } from './ReviewStep'
+import { WizardNavButtons } from '../WizardShell'
 
 vi.mock('../../abilities/AbilityScoreTable', () => ({ AbilityScoreTable: () => null }))
 vi.mock('../../sheet/sheetData', () => ({ loadFeatEffectEntries: vi.fn(async () => []) }))
@@ -107,6 +108,20 @@ describe('ReviewStep level up and header', () => {
 	it('makes the Equipment card a named region', () => {
 		renderReview({ startingInventory: { inventory: [], currencyCopper: 0 } })
 		expect(screen.getByRole('region', { name: 'Equipment' })).toBeTruthy()
+	})
+})
+
+describe('ReviewStep failed class data (D337)', () => {
+	it('shows each load error as an alert; the nav shows the same text beside a disabled Save', () => {
+		const message = 'Rogue data failed to load. Reload the page and try again.'
+		renderReview({ loadErrors: [message] })
+		expect(screen.getByRole('alert').textContent).toBe(message)
+		cleanup()
+
+		render(<WizardNavButtons label="Step navigation" onCancel={() => {}} onBack={() => {}} backDisabled={false} primaryLabel="Save changes" onPrimary={() => {}} primaryDisabled isSave note={message} />)
+		const nav = screen.getByRole('group', { name: 'Step navigation' })
+		expect(within(nav).getByText(message)).toBeTruthy()
+		expect((within(nav).getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(true)
 	})
 })
 

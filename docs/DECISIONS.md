@@ -5106,3 +5106,16 @@ připadne třídě, která prostý pool držela před level upem (do té doby je
 třídy začíná plný. Děje se při uložení level upu, takže handover z bodu 4 platí jen pro staré savy. (6) Manage Feats: chip ASI řádku a featu z úrovně u multiclass postavy ukazuje totéž co Features tab (`featSource`,
 „From Wizard 4“ z `levelOrder`); bez určení zůstává „From level N“, jednotřídní postava beze změny. Task M10b, rozhodl Daniel
 8. 10. 2026.
+
+## D337 — Opravy z review M10 (F-12, schéma zůstává 60)
+
+Zpřesňuje D335. (1) Save zapíše `abilityBonus` jen neprázdný; jinak nechá uložený (chybějící zůstane chybět). Level up neprochází
+krokem Background, takže postava uložená bez `abilityBonus` by jinak dostala `{}`, které validace odmítne. Stejně se kontroluje
+třídní skilly a fighting style při level upu: ani jeden nezapíše hodnotu, kterou validace odmítne. (2) Ponechaná volba Expertise
+nebo mastery bez razítka úrovně zabírá místo své třídy: před přidělením nejnižšího volného místa nové volbě se z volných míst
+odebere tolik nejnižších, kolik má třída ponechaných voleb bez razítka. (3) Multiclass Edit: když se držené třídě nenačtou data
+grantu Expertise nebo mastery, Save je zablokovaný a krok Review i místo vedle tlačítka Save ukazují „<Class> data failed to load.
+Reload the page and try again.“ Uložené volby té třídy se neskrývají (volby s razítkem její úrovně jí zůstanou) a nové se od ní
+nechtějí. (4) Volba přidaná a znovu odebraná v jednom běhu nenechá záznam ve vlastnících voleb, takže Cancel se neptá zbytečně.
+(5) Psionic Energy Die u Psi Warrior + Soulknife zůstává jeden pool s Fighterovým maximem (sloupec Soulknife má jiné jméno);
+nerozhodnuto, otázka v QUESTIONS.md. Task F-12, rozhodl Daniel 8. 10. 2026.

@@ -40,6 +40,7 @@ export function WizardNavButtons({
 	onPrimary,
 	primaryDisabled,
 	isSave,
+	note = null,
 }: {
 	label: string
 	onCancel: () => void
@@ -49,6 +50,8 @@ export function WizardNavButtons({
 	onPrimary: () => void
 	primaryDisabled: boolean
 	isSave: boolean
+	/** Why the primary button is disabled, shown beside it; null shows nothing. */
+	note?: string | null
 }): ReactNode {
 	return (
 		<div className="wizard__nav" role="group" aria-label={label}>
@@ -56,6 +59,7 @@ export function WizardNavButtons({
 				Cancel
 			</button>
 			<div className="wizard__nav-main">
+				{note !== null && <p className="wizard__nav-note">{note}</p>}
 				<button type="button" className="btn--accent-outline" onClick={onBack} disabled={backDisabled}>
 					Back
 				</button>

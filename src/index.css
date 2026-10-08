@@ -2374,7 +2374,15 @@ button:disabled {
 
 .wizard__nav-main {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.wizard__nav-note {
+  margin: 0;
+  color: var(--damage);
+  overflow-wrap: anywhere;
 }
 
 .wizard__nav button {

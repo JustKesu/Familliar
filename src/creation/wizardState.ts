@@ -639,6 +639,8 @@ export interface HeldClassLookup {
 	/** D335: the class's Expertise and mastery grants; absent when not looked up or the load failed (then it grants neither). */
 	expertiseGrant?: HeldPickGrantData
 	masteryGrant?: HeldPickGrantData
+	/** D337: a grant load failed; the class keeps the picks stamped with its levels and the Edit cannot save. */
+	grantLoadFailed?: boolean
 }
 
 /** A stored +2/+1 or +1/+1/+1 map read back as the chooser's own state, so an edited background reopens showing which mode was taken rather than an empty chooser beside a filled bonus. */
@@ -781,8 +783,15 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 	const levelOrder = character.levelOrder ?? []
 	const grants = (field: 'expertiseGrant' | 'masteryGrant') =>
 		character.classes.map((entry) => {
-			const grant = lookups.heldClasses?.find((candidate) => isClass(candidate, entry))?.[field]
-			return { className: entry.className, classSource: entry.classSource, countsByLevel: grant?.countsByLevel ?? [], allowed: grant?.allowed ?? null }
+			const lookup = lookups.heldClasses?.find((candidate) => isClass(candidate, entry))
+			const grant = lookup?.[field]
+			return {
+				className: entry.className,
+				classSource: entry.classSource,
+				countsByLevel: grant?.countsByLevel ?? [],
+				allowed: grant?.allowed ?? null,
+				...(grant === undefined && lookup?.grantLoadFailed ? { loadFailed: true } : {}),
+			}
 		})
 	const pickOwners = {
 		expertiseSkills: heldPickOwners(character.expertiseSkills ?? [], levelOrder, grants('expertiseGrant')),
@@ -1339,7 +1348,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setActiveClassPicks': {
 			const { classChoice, pickOwners } = state.data
 			if (!classChoice || !pickOwners) return { ...state, data: { ...state.data, [action.field]: action.picks } }
-			const next = withOwnedPicks(state.data[action.field], pickOwners[action.field].owners, classChoice, action.picks)
+			const next = withOwnedPicks(state.data[action.field], pickOwners[action.field], classChoice, action.picks)
 			return { ...state, data: { ...state.data, [action.field]: next.names, pickOwners: { ...pickOwners, [action.field]: { ...pickOwners[action.field], owners: next.owners } } } }
 		}
 		case 'setBackgroundChoice': {
@@ -1590,7 +1599,9 @@ export function saveCharacter(
 				}
 			: undefined
 
-	const abilityBonus: AbilityBonusMap | undefined = data.backgroundChoice?.abilityBonus
+	// D337: a level up never passes the Background step, so a character stored without abilityBonus is seeded with {}, which validate rejects.
+	const chosenBonus = data.backgroundChoice?.abilityBonus
+	const abilityBonus: AbilityBonusMap | undefined = chosenBonus && Object.keys(chosenBonus).length > 0 ? chosenBonus : existing?.abilityBonus
 
 	/**
 	 * Common is added here, not in the picker's own value — the picker only
@@ -1887,11 +1898,14 @@ function keepHeldClassLevels(names: readonly string[], previous: readonly Levele
 		const own = names.filter((name) => held.owners[name] === key)
 		const before = (previous ?? []).filter((choice) => held.seeded[choice.name] === key)
 		const choices = keepRecordedLevels(own, before)
-		const free = [...(key === undefined ? [] : (held.slots[key] ?? []))]
+		const free = [...(key === undefined ? [] : (held.slots[key] ?? []))].sort((a, b) => a - b)
 		for (const choice of choices) {
 			const index = choice.level === undefined ? -1 : free.indexOf(choice.level)
 			if (index !== -1) free.splice(index, 1)
 		}
+		// D337: a kept pick without a stamp still holds a slot of its class; it is taken to hold the lowest ones.
+		const keptUnstamped = choices.filter((choice) => choice.level === undefined && before.some((stored) => stored.name === choice.name)).length
+		free.splice(0, keptUnstamped)
 		for (const choice of choices) {
 			const fresh = choice.level === undefined && !before.some((stored) => stored.name === choice.name)
 			kept.set(choice.name, fresh && free.length > 0 ? { ...choice, level: free.shift()! } : choice)

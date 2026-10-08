@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b, F-11, M10a, M10b done (M10 complete, see the entries below); next M11 end-to-end multiclass e2e.
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b, F-11, M10a, M10b, F-12 done (M10 complete, see the entries below); next M11 end-to-end multiclass e2e.
 
 ## Co appka umí navíc k build orderu
 
@@ -1183,6 +1183,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   use leaves Paladin alone; Cleric 6 / Paladin 3 maxima 3 and 2; Sacred Weapon spends Paladin, Preserve Life Cleric; Short Rest −1
   each, Long Rest empties both; Cleric 3 plain key; legacy plain count lands on Cleric; Remove level Cleric 3 / Paladin 1 and
   Cleric 3 / Paladin 3 → plain key keeps the Cleric count; Manage Feats "From Wizard 4" vs Fighter 4 "From level 4").
+- `e2e/reviewFixesM10.spec.ts` — F-12 a, c, d (D337: Fighter 4 without abilityBonus levels to 5 through the wizard, opens and stays
+  in the list; Cleric 3 War / Paladin 3 Conquest two "Channel Divinity" rows spend their own pools; Fighter 4 / Rogue 1 Edit: the
+  Fighter's Handaxe is not offered in the Rogue mastery picker, Sickle is).
 - `e2e/multiclassEntry.spec.ts` — M7b a–g (Fighter 4 window "Fighter 4 → 5" + "+ New class…"; Wizard entered without
   levelOrder: Fighter 4 / Wizard 1, saves STR/CON only, cantrips, HP 40 → 47, Proficiencies card unchanged, then window offers
   both classes; Sorcerer/Monk disabled with reasons; Rogue: masteries, Expertise sees the multiclass Stealth, Thieves' Cant
@@ -2116,6 +2119,15 @@ returns the count to the plain key). `resources.ts` exports `poolGrantingClassNa
 `featureActionRows` takes `resourceKey` and keeps one row per class pool (deduped by name + pool); `FeaturesTabInput.resourceKey`.
 Manage Feats `levelFeatChip` (multiclass → `featSource`, else "From level N"). Unit `classPools.test.ts`, `levelRemoval.test.tsx`
 D336; E2E `multiclassPools.spec.ts` M10b a–g2. Next: M11 end-to-end multiclass e2e.
+
+F-12 done (D337), review fixes for M10. No schema change (60). `saveCharacter` writes `abilityBonus` only when non-empty, else
+keeps `existing.abilityBonus` (a level up of a character stored without it stays readable). `keepHeldClassLevels`: kept unstamped
+picks of a class take its lowest free slots before a new pick is stamped. `withOwnedPicks(names, held, cls, picks)` drops owner
+entries of names neither picked nor seeded. Multiclass Edit: `HeldClassLookup.grantLoadFailed` / `HeldPickGrant.loadFailed` (a
+failed class keeps its stamped picks, asks nothing); the save is blocked and the message shows on Review (`ReviewStep.loadErrors`)
+and beside Save (`WizardNavButtons.note`, `.wizard__nav-note`). Unit `heldClassPicks.test.ts`, `multiclassEntry.test.ts`,
+`classPools.test.ts`, `levelRemoval.test.tsx`, `ReviewStep.test.tsx` D337; E2E `reviewFixesM10.spec.ts` F-12 a, c, d.
+Next: M11 end-to-end multiclass e2e.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

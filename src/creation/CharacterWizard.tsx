@@ -248,6 +248,10 @@ export function CharacterWizard({
 	/** D175: the chosen species' sizes, tagged like speciesSkillShape — the completion check needs them before the picker's panel would mount. */
 	const [speciesSizeShape, setSpeciesSizeShape] = useState<{ key: string; sizes: string[] } | null>(null)
 	const [saveError, setSaveError] = useState<string | null>(null)
+	/** D337: held classes of a multiclass Edit whose Expertise or mastery grant failed to load; any blocks the save. */
+	const [failedGrantClasses, setFailedGrantClasses] = useState<{ className: string; classSource: string }[]>([])
+	const grantLoadMessages = failedGrantClasses.map((cls) => `${cls.className} data failed to load. Reload the page and try again.`)
+	const grantLoadError = grantLoadMessages.length > 0 ? grantLoadMessages.join(' ') : null
 	const [hitDie, setHitDie] = useState<{ key: string; faces: number } | null>(null)
 	const [hitDieAttempt, setHitDieAttempt] = useState(0)
 	/** W23: what Cancel compares against — the empty draft, or the seed once it is dispatched. */
@@ -366,6 +370,7 @@ export function CharacterWizard({
 								...(expertise ? { expertiseGrant: { countsByLevel: expertise.map((eligibility) => eligibility?.count ?? null), allowed: expertise[expertise.length - 1]?.restrictedTo ?? null } } : {}),
 								// D329: a multiclass character's mastery pool is every class's proficiencies, so no class narrows the names.
 								...(masteries ? { masteryGrant: { countsByLevel: masteries, allowed: null } } : {}),
+								...(expertise && masteries ? {} : { grantLoadFailed: true }),
 							}
 						}),
 					)
@@ -378,6 +383,7 @@ export function CharacterWizard({
 				// Nothing is stored until the save at the end, so the raised level lives only in this run's state.
 				const data = levelUp && seed.classChoice ? { ...seed, classChoice: { ...seed.classChoice, level: levelUp.classLevel } } : seed
 				dispatch({ type: 'seed', data, conditions: levelUp ? levelUpStepConditions(levelUp) : {} })
+				setFailedGrantClasses((heldClasses ?? []).filter((cls) => cls.grantLoadFailed).map(({ className, classSource }) => ({ className, classSource })))
 				setBaseline(data)
 				setSeeded(true)
 			})
@@ -1635,7 +1641,8 @@ export function CharacterWizard({
 	/** D335: a stashed class's own Expertise and mastery asks; a grant still loading or failed asks nothing here. */
 	const heldPickConditions = (entry: { className: string; classSource: string }): HeldClassConditions => {
 		const counts = heldData?.classes.find((cls) => isClass(cls.entry, entry))
-		if (!counts) return {}
+		// D337: a class whose grant failed asks for nothing; the save is blocked instead.
+		if (!counts || failedGrantClasses.some((cls) => isClass(cls, entry))) return {}
 		const own = ownedPicks(state.data.expertiseSkills, state.data.pickOwners?.expertiseSkills.owners ?? {}, entry)
 		const eligibility = counts.expertise
 		const pool = eligibility ? classExpertisePool(eligibility.restrictedTo, own, state.data.expertiseSkills.filter((skill) => !own.includes(skill))) : null
@@ -1738,7 +1745,7 @@ export function CharacterWizard({
 	}
 
 	const canGoNext = isStepComplete(state.step, state.data, stepConditions)
-	const readyToSave = state.step === 'review' && isReadyToSave(state.data, stepConditions)
+	const readyToSave = state.step === 'review' && grantLoadError === null && isReadyToSave(state.data, stepConditions)
 	const reachable = reachableSteps(state.step, state.data, stepConditions)
 
 	function handleCancel(): void {
@@ -1763,6 +1770,7 @@ export function CharacterWizard({
 			onPrimary={onReview ? handleSave : () => dispatch({ type: 'next', conditions: stepConditions })}
 			primaryDisabled={onReview ? !readyToSave : !canGoNext}
 			isSave={onReview}
+			note={onReview ? grantLoadError : null}
 		/>
 	)
 
@@ -2358,6 +2366,7 @@ export function CharacterWizard({
 					levelUp={levelUp}
 					{...(multiclassLevelUp || multiclassEdit ? { classLine: draftClasses.map((entry) => `${entry.className} ${entry.level}`).join(' / ') } : {})}
 					unfinishedClasses={unfinishedClasses}
+					loadErrors={grantLoadMessages}
 					draft={draftCharacterForSpells}
 					abilityDraft={abilityTableDraft}
 					resolverData={resolverData}
