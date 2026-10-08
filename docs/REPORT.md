@@ -1,45 +1,42 @@
-# REPORT — F-12: opravy z review M10 (D337)
+# REPORT — M11a: multiclass end-to-end e2e (Warlock/Sorcerer, Cleric/Paladin, Fighter/Rogue)
 
-## Co se změnilo
-- **Nález 1:** `saveCharacter` (`wizardState.ts`) zapíše `abilityBonus` jen neprázdný, jinak `existing?.abilityBonus` (chybějící zůstane chybět).
-- **1b (výsledek):** třídní skilly ani fighting style při level upu nic, co validace odmítne, nezapíšou. `classSkills` chybějící → `[]`
-  (validate prázdné pole přijme). Fighting style: jednotřídní level up zapíše nejvýš jeden; multiclass `otherFightingStyles` + vlastní
-  styl nikdy nedá dva záznamy stejného vlastníka. Fixture h je potřebovala kvůli průchodu wizardem (krok Class chce skilly/styl),
-  ne kvůli zápisu. Kód beze změny, ověřeno testem (Paladin 2 / Cleric 2 bez skillů, stylu a bonusu → `describeCharacterError` null).
-  Mimo scope, jen pro informaci: u Paladin/Fighter s netagovaným stylem (pre-58), kde raised třída nemá vlastní tag, si level up
-  netagovaný styl přivlastní (D318/D329) — validní, ale druhá třída styl ztratí.
-- **Nález 2:** `keepHeldClassLevels` seřadí volné sloty a odebere z nich tolik nejnižších, kolik má třída ponechaných voleb bez razítka.
-- **Nález 3:** seed multiclass Editu označí třídu s neúspěšným loadem grantu (`HeldClassLookup.grantLoadFailed`). `assignHeldPicks`
-  jí nechá volby orazítkované jejími úrovněmi (`HeldPickGrant.loadFailed`), `heldPickConditions` se jí na nic neptá. Save je blokovaný;
-  text „<Class> data failed to load. Reload the page and try again.“ je na Review (`ReviewStep.loadErrors`) a vedle Save
-  (`WizardNavButtons.note`, nová třída `.wizard__nav-note`). Aktivní třída s neúspěšným grantem se ptá podle vlastních loadů kroku
-  Class jako dřív (ty sdílejí stejné soubory, takže v praxi selže celý seed).
-- **Nález 4:** `withOwnedPicks(names, held, cls, picks)` maže záznamy jmen, která nejsou ve výsledných jménech ani v `seeded`.
-- **Nález 5:** jen záznam v QUESTIONS.md (Psionic Energy Die Psi Warrior + Soulknife).
-- Docs: D337 v DECISIONS.md, QUESTIONS.md, STATUS.md.
+## Výsledek
+- Celá e2e sada: **513 passed, 1 skipped (fixme), 0 failed**, 5,1 min (2 workery). `npm run typecheck` OK, `npm test` 3245 passed.
+- Nový `e2e/multiclassEndToEnd.spec.ts`: 3 passed + 1 fixme; samostatný běh 39,5 s (2 workery). `src/` beze změny.
+- Testy: `M11a A` (Warlock 1 → W3/S3), `M11a B` (Cleric 1 → C3/P3), `M11a C` (wizard Fighter 1 → F3/R2), `M11a finding 1` (fixme).
+  Každý: level upy přes okno Level up / „+ New class…“, kontroly listu, Export → Import (kopie: stejný řádek tříd a max HP),
+  Edit přes přepínač tříd (změna jedné volby druhé třídy, reload, volby první třídy beze změny), Remove level (poslední úroveň
+  z `levelOrder`, hodnoty listu), pak odebírání do zmizení druhé třídy (řádek tříd, kouzla/pooly/skilly/featury pryč, `levelOrder`).
 
-## Ověřeno
-- `npm run typecheck` OK; `npm test` 176 souborů / 3245 testů OK; `npm run validate-data` 175/175; `npm run e2e` 510/510 (5,7 min).
-- Unit: `multiclassEntry.test.ts` D337 (Fighter 4 → 5 bez abilityBonus, uložený bonus zůstane, 1b Paladin/Cleric);
-  `heldClassPicks.test.ts` D337 (nová volba dostane slot 5 místo 4; přidání+odebrání → `sameWizardData` true; selhaný grant drží
-  orazítkované volby); `classPools.test.ts` (jednotřídní level up beze změny klíčů; legacy save s rozděleným poolem si prostý klíč
-  nechá); `levelRemoval.test.tsx` (legacy prostý klíč → Cleric, clamp 3 → 2, řádek dropped); `ReviewStep.test.tsx` D337 (alert
-  na Review, text vedle zakázaného Save).
-- E2E `reviewFixesM10.spec.ts`: F-12 a (Fighter 4 bez abilityBonus → level up oknem „Fighter 4 → 5“, sheet i seznam), c, d.
-- **b není e2e:** granty (`class-features.json`, `classes.json`) sdílí všechny třídy i loady podtříd a `loadDataFile` je cachuje,
-  takže úzké selhání jen pro Rogue přes `page.route` nejde; selhání souboru shodí celý seed. Pokryto unit + render testy výše
-  (vlastnictví voleb, hláška, zakázané Save); samotné propojení `grantLoadError` → `readyToSave` v CharacterWizard test nemá.
-- **c:** Oath of Conquest (XGE) na Paladinovi XPHB na sheetu žádný řádek Guided Strike (ani Conquering Presence) neukáže, jen
-  always-prepared kouzla. Scénář proto používá dva stejnojmenné řádky „Channel Divinity“ (Cleric 2 a Paladin 3), každý utrácí svůj pool.
-  Proč se Conquest Channel Divinity rysy neukazují, nezkoumáno — kandidát na samostatný task.
+## Nálezy
+| # | Kombinace | Kroky | Očekávané (zdroj) | Skutečné | Posouzení |
+|---|---|---|---|---|---|
+| 1 | A, B (každý level up na úroveň podtřídy) | seed Warlock 1 → Level up „Warlock 1 → 2“ (Hellish Rebuke, 2 invokace) → Level up „Warlock 2 → 3“ → Fiend Patron → Next | Spells drží picky Warlock 2: Cantrips 2/2, Prepared 3/4 (tabulka Warlock; PHB 2024 level up kouzla neodebírá) | Cantrips 0/2, Prepared 0/4, v Prepared Spells jen always-prepared Fiend kouzla; po Save má třída jen znovu vybraná kouzla | app bug. `setSubclass` (`src/creation/wizardState.ts:1422`) nastaví `spellChoices: []`; v Editu při změně podtřídy záměr (M9b b), v level upu (null → podtřída) ne. Stejně Sorcerer 2→3, Cleric 2→3, Paladin 2→3. Test `M11a finding 1` je `test.fixme`; ověřeno jedním během bez fixme (selhal na „Prepared: 0/4“). Hlavní toky A a B kouzla po výběru podtřídy vyberou znovu (komentář „M11a finding 1“). |
 
-## Rozhodnutí / k řešení
-- Rozhodnuto při práci: zpráva vedle Save je v obou navigacích wizardu (horní lišta i spodek), jako tlačítko samo.
-- Netrackovaný `scripts/investigate-m10b-pools.mjs` existoval už před taskem, necommitnut, nesmazán (git clean v tomto tasku zakázán).
+## Očekávané hodnoty a zdroje
+Tabulky = `data/classes.json` XPHB přes `scripts/investigate-m11a-tables.js` (necommitnutý). HP: PHB 2024 — úroveň 1 maximum kostky, dál pevný průměr (d6 4, d8 5, d10 6) + CON mod za úroveň; XPHB Dwarf Dwarven Toughness +1 za úroveň (všechny tři postavy jsou Dwarf).
+- A saves WIS+CHA: Warlock `proficiency ["wis","cha"]`; PHB multiclass: savy jen z první třídy.
+- A sloty: Warlock L3 `Spell Slots 2, Slot Level 2` → Pact 2× 2nd; Sorcerer L3 `1st 4, 2nd 2` (jediná třída se Spellcasting → její tabulka, PHB). Po odebrání L6: Sorcerer L2 `1st 3`, 2nd 0.
+- A HP: d8 8 + 5 + 4 + 4 + 5 + 4 = 30, CON 13 +6, Dwarf +6 = **42**; po odebrání L6 **36**; Warlock 2 **17**.
+- A počty: invokace L1 1 / L2 3 / L3 3; Warlock cantrips 2, prepared 2/3/4; Sorcerer cantrips 4, prepared 2/4/6; Metamagic 2 na Sorcerer 2 (PHB).
+- B saves WIS+CHA: Cleric `proficiency ["wis","cha"]`.
+- B sloty: caster level 3 + ceil(3/2) = 5 (PHB 2024 zaokrouhlení nahoru) → řádek 5 plné tabulky (Cleric L5 `4,3,2`); po odebrání L6: 3 + 1 = 4 → `4,3`; Cleric 2: `3`.
+- B Channel Divinity: Cleric L3 2, Paladin L3 2 (L2 0) → dva pooly po 2; po odebrání Paladin 3 jen „Channel Divinity“ 2 s utracenou 1.
+- B HP: d8 8 + 5 + 6 + 6 + 5 + 6 = 36, +6 CON, +6 Dwarf = **48**; po odebrání L6 **40**; Cleric 2 **17**.
+- B zbroj: Paladin `multiclassing.proficienciesGained` armor light/medium/shield, weapons martial; Cleric 2 (Thaumaturge) Martial weapons nemá.
+- C saves STR+CON: Fighter `["str","con"]`; Rogue `proficienciesGained` saves nemá.
+- C mastery: Fighter tabulka `Weapon Mastery 3` (L1–3); Rogue 2 (PHB Rogue L1, sloupec v tabulce není). Expertise 2 na Rogue 1, multiclass skill 1 + Thieves' Tools (`proficienciesGained`). Sneak Attack R1, Cunning Action R2, Second Wind F1, Action Surge F2 (PHB).
+- C HP: d10 10 + 6 + 5 + 5 + 6 = 32, +5 CON, +5 Dwarf = **42**; po odebrání L5 **34**; Fighter 2 **20**.
+
+## Seedy a rozhodnutí
+- Seed (schema 60, `levelOrder` 1, `createdAtLevel` 1) jen A Warlock 1 a B Cleric 1 — wizard helpery umí jen Fightera. Obojí Dwarf, Soldier
+  (origin feat Savage Attacker bez podvoleb; Acolyte má Magic Initiate s podvolbami), standard array, +2 STR +1 DEX, Common/Dwarvish/Elvish.
+  A: CHA 15, skilly arcana/deception, Eldritch Blast, Minor Illusion, Hex, Armor of Agathys, invokace Armor of Shadows (level 1).
+  B: STR 12→14, WIS 15, CHA 14, skilly history/insight, Divine Order Thaumaturge (4 cantripy; Protector by dal Martial weapons a zakryl Paladina), 4 cantripy + 4 kouzla.
+- C přes skutečný wizard (`createFighter`, Acolyte): DEX 14 stačí, žádný seed ani background navíc.
+- Paladin vstup: krok Class vybere Longsword/Warhammer jen pokud seznam mastery existuje — test neověřuje, zda ho app nabídla.
+- Počty mastery u C ověřeny v Editu („All 3 / All 2 weapon masteries chosen.“) a v uložených datech, ne na listu.
+- Rozhodnutí pro uživatele: oprava nálezu 1 (zachovat `spellChoices` při prvním výběru podtřídy v level upu).
 
 ## Manual browser check for the user
-Na https://familliar.vercel.app, šířky 1366 a 1920, tmavé i světlé téma:
-- Krok Review a spodní/horní lišta s tlačítkem Save changes: červený text vedle Save — zarovnání s tlačítky, zalomení dlouhého
-  textu, nepřetéká. Stav selhání grantu jde vyvolat jen umělým výpadkem sítě (DevTools → blokovat `class-features.json` po načtení
-  sheetu nedává smysl, protože selže celý seed); pokud to nejde navodit, bod přeskoč.
-- Lišta wizardu bez hlášky (běžný Edit/level up): Back/Save vypadají jako dřív (`.wizard__nav-main` má nově `flex-wrap` a `align-items: center`).
+- Nic — úloha přidává jen e2e testy, UI se nezměnilo.
