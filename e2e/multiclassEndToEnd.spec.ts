@@ -134,6 +134,14 @@ interface LevelPlan {
   options?: string[]
   expertise?: string[]
   proficiencies?: (page: Page) => Promise<void>
+  /** D338: what the Spells and option steps must still hold from earlier levels, checked before anything is added. */
+  kept?: { counters?: string[]; spells?: string[]; options?: string[] }
+}
+
+async function expectKeptSpells(page: Page, kept: LevelPlan['kept'] = {}): Promise<void> {
+  for (const text of kept.counters ?? []) await expect(page.locator('.manage-spells__counter', { hasText: new RegExp(`^${text.split(':')[0]}:`) })).toHaveText(text)
+  const prepared = page.getByRole('region', { name: 'Prepared Spells' })
+  for (const name of kept.spells ?? []) await expect(prepared.locator('.manage-spells__name', { hasText: new RegExp(`^${escape(name)}$`) }).first()).toBeVisible()
 }
 
 /** Walks the level-up wizard from its first step to "Save level N", taking the average hit points. */
@@ -148,8 +156,15 @@ async function walkLevelUp(page: Page, level: number, plan: LevelPlan = {}): Pro
         await expect(nextButton(page)).toBeEnabled({ timeout: 2000 })
       }).toPass({ timeout: 20_000 })
     }
-    if (step.includes('spells')) await fillSpells(page, plan.spells)
-    if (step.includes('invocations') || step.includes('metamagic')) await pickAll(page, plan.options ?? [])
+    if (step.includes('spells')) {
+      await expectKeptSpells(page, plan.kept)
+      await fillSpells(page, plan.spells)
+    }
+    if (step.includes('invocations') || step.includes('metamagic')) {
+      await expandOptionLists(page)
+      for (const name of plan.kept?.options ?? []) await expect(chooseButton(page, name).first()).toHaveAttribute('aria-pressed', 'true')
+      await pickAll(page, plan.options ?? [])
+    }
     if (step.includes('expertise')) for (const skill of plan.expertise ?? []) await page.getByRole('checkbox', { name: new RegExp(`^${skill} `) }).check()
     if (step.includes('proficiencies')) await plan.proficiencies?.(page)
     if (step.includes('hit points')) await page.getByRole('radiogroup', { name: `Level ${level} hit points method`, exact: true }).getByRole('radio', { name: /^Average/ }).check()
@@ -262,11 +277,17 @@ test('M11a A: Warlock 1 → Warlock 3 / Sorcerer 3 through Level up; saves, slot
     await enterClass(page, 'Sorcerer', 3, { spells: [...SORCERER_CANTRIPS, 'Burning Hands', 'Shield'] })
     await expect(classes(page)).toHaveText('Warlock 2 / Sorcerer 1')
     await levelUp(page, 'Sorcerer 1 → 2', 4, { spells: ['Magic Missile', 'Sleep'], options: ['Careful Spell', 'Quickened Spell'] })
-    // M11a finding 1: picking the subclass empties the class's earlier spell picks, so they are chosen again here.
-    await levelUp(page, 'Warlock 2 → 3', 5, { classStep: (p) => pickAll(p, ['Fiend Patron']), spells: [...WARLOCK_2_SPELLS, 'Hold Person'] })
+    // D338: the subclass pick keeps the class's earlier spells and invocations. Warlock 3: cantrips 2, prepared 4 (3 held).
+    await levelUp(page, 'Warlock 2 → 3', 5, {
+      classStep: (p) => pickAll(p, ['Fiend Patron']),
+      kept: { counters: ['Cantrips: 2/2', 'Prepared: 3/4'], spells: WARLOCK_2_SPELLS, options: ['Armor of Shadows', "Devil's Sight", 'Mask of Many Faces'] },
+      spells: ['Hold Person'],
+    })
+    // Sorcerer 3: cantrips 4, prepared 6 (4 held).
     await levelUp(page, 'Sorcerer 2 → 3', 6, {
       classStep: (p) => pickAll(p, ['Wild Magic Sorcery']),
-      spells: [...SORCERER_CANTRIPS, 'Burning Hands', 'Shield', 'Magic Missile', 'Sleep', 'Scorching Ray', 'Mirror Image'],
+      kept: { counters: ['Cantrips: 4/4', 'Prepared: 4/6'], spells: [...SORCERER_CANTRIPS, 'Burning Hands', 'Shield', 'Magic Missile', 'Sleep'] },
+      spells: ['Scorching Ray', 'Mirror Image'],
     })
     await expect(classes(page)).toHaveText('Warlock 3 (Fiend Patron) / Sorcerer 3 (Wild Magic Sorcery)')
     expect((await stored(page, id))['levelOrder']).toEqual(order(['Warlock', 'Warlock', 'Sorcerer', 'Sorcerer', 'Warlock', 'Sorcerer']))
@@ -355,9 +376,8 @@ test('M11a A: Warlock 1 → Warlock 3 / Sorcerer 3 through Level up; saves, slot
   })
 })
 
-// M11a finding 1: setSubclass empties spellChoices, so the class's earlier picks are gone when its subclass level is gained.
-// Fails today with "Prepared: 0/4"; enable once the level up keeps the picks.
-test.fixme('M11a finding 1: Warlock 2 → 3 with Fiend Patron — the Spells step still holds the Warlock 2 picks', async ({ page }) => {
+// D338 (M11a finding 1): the first subclass pick keeps the class's earlier spell picks.
+test('M11a finding 1: Warlock 2 → 3 with Fiend Patron — the Spells step still holds the Warlock 2 picks', async ({ page }) => {
   await openSheet(page, warlock1('m11a-f1'))
   await levelUp(page, 'Warlock 1 → 2', 2, { spells: ['Hellish Rebuke'], options: ["Devil's Sight", 'Mask of Many Faces'] })
   await levelUpButton(page).click()
@@ -370,10 +390,48 @@ test.fixme('M11a finding 1: Warlock 2 → 3 with Fiend Patron — the Spells ste
   await expect(page.locator('.manage-spells__counter', { hasText: /^Cantrips:/ })).toHaveText('Cantrips: 2/2')
 })
 
+test('F-13: single-class Wizard 2 → 3 — choosing the subclass keeps the spellbook picks on the Spells step', async ({ page }) => {
+  const id = 'f13-wizard'
+  const wizardSpells = ['Fire Bolt', 'Mage Hand', 'Prestidigitation', 'Magic Missile', 'Shield', 'Detect Magic', 'Mage Armor', 'Sleep']
+  // Standard array, INT 15. Wizard 2 holds 3 cantrips and 5 prepared, Scholar Expertise at level 2.
+  const seed = {
+    ...level1(id, 'Wizard', { strength: 8, dexterity: 14, constitution: 13, intelligence: 15, wisdom: 12, charisma: 10 }, {
+      classSkills: ['arcana', 'history'],
+      expertiseSkills: [{ name: 'arcana', level: 2 }],
+      spellChoices: [{ className: 'Wizard', classSource: XPHB, spells: refs(wizardSpells) }],
+      hitPointLevels: [{ level: 2, kind: 'average', dieResult: 4 }],
+    }),
+    classes: [{ className: 'Wizard', classSource: XPHB, subclass: null, level: 2 }],
+    levelOrder: order(['Wizard', 'Wizard']),
+  }
+  await openSheet(page, seed)
+  await expect(classes(page)).toHaveText('Wizard 2')
+  await levelUpButton(page).click()
+  await classWindow(page).getByRole('button', { name: 'Wizard 2 → 3', exact: true }).click()
+  await expect(async () => {
+    await pickAll(page, ['Bladesinger'])
+    await expect(nextButton(page)).toBeEnabled({ timeout: 2000 })
+  }).toPass({ timeout: 20_000 })
+  const current = page.locator('[aria-current="step"]')
+  for (let walked = 0; walked < 4 && !/spells/i.test(await current.innerText()); walked++) {
+    // Bladesinger's skill pick, if its step comes first.
+    for (const choice of await page.locator('.wizard__panel select').all()) {
+      if ((await choice.inputValue()) === '') await choice.selectOption({ index: 1 })
+    }
+    const step = await current.innerText()
+    await next(page)
+    await expect(current).not.toHaveText(step)
+  }
+  await expectStep(page, 'Spells')
+  // Wizard table: cantrips 3 at levels 2 and 3, prepared 5 → 6.
+  await expectKeptSpells(page, { counters: ['Cantrips: 3/3', 'Prepared: 5/6'], spells: wizardSpells })
+})
+
 test('M11a B: Cleric 1 → Cleric 3 / Paladin 3 through Level up; saves, slots, two Channel Divinity pools, HP, armor; export, edit, remove', async ({ page }) => {
   test.setTimeout(240_000)
   const id = 'm11a-b'
-  const CLERIC_1_SPELLS = ['Guidance', 'Light', 'Sacred Flame', 'Thaumaturgy', 'Bless', 'Command', 'Cure Wounds', 'Healing Word']
+  // No pick that Life Domain or Oath of Devotion later grants: such a pick blocks Next on the level up (see docs/REPORT.md, F-13).
+  const CLERIC_1_SPELLS = ['Guidance', 'Light', 'Sacred Flame', 'Thaumaturgy', 'Command', 'Detect Magic', 'Guiding Bolt', 'Healing Word']
   // Standard array STR 12 DEX 10 CON 13 INT 8 WIS 15 CHA 14; Soldier +2 STR +1 DEX → STR 14, WIS 15, CHA 14 meet Cleric and Paladin. CON +1.
   const seed = level1(id, 'Cleric', { strength: 12, dexterity: 10, constitution: 13, intelligence: 8, wisdom: 15, charisma: 14 }, {
     classSkills: ['history', 'insight'],
@@ -394,13 +452,17 @@ test('M11a B: Cleric 1 → Cleric 3 / Paladin 3 through Level up; saves, slots, 
         await expandOptionLists(p)
         if ((await chooseButton(p, 'Longsword').count()) > 0) await pickAll(p, ['Longsword', 'Warhammer'])
       },
-      spells: ['Divine Favor', 'Shield of Faith'],
+      spells: ['Divine Favor', 'Compelled Duel'],
     })
     await expect(classes(page)).toHaveText('Cleric 2 / Paladin 1')
     await levelUp(page, 'Paladin 1 → 2', 4, { classStep: (p) => pickAll(p, ['Defense']), spells: ['Heroism'] })
-    // M11a finding 1: the subclass pick empties the class's earlier spell picks; they are chosen again.
-    await levelUp(page, 'Cleric 2 → 3', 5, { classStep: (p) => pickAll(p, ['Life Domain']), spells: [...CLERIC_2_SPELLS, 'Aid'] })
-    await levelUp(page, 'Paladin 2 → 3', 6, { classStep: (p) => pickAll(p, ['Oath of Devotion']), spells: ['Divine Favor', 'Shield of Faith', 'Heroism', 'Searing Smite'] })
+    // D338: the subclass pick keeps the earlier spells. Cleric cantrips 3 + 1 Thaumaturge.
+    await levelUp(page, 'Cleric 2 → 3', 5, { classStep: (p) => pickAll(p, ['Life Domain']), kept: { counters: ['Cantrips: 4/4', 'Prepared: 5/6'], spells: CLERIC_2_SPELLS } })
+    await levelUp(page, 'Paladin 2 → 3', 6, {
+      classStep: (p) => pickAll(p, ['Oath of Devotion']),
+      kept: { counters: ['Prepared: 3/4'], spells: ['Divine Favor', 'Compelled Duel', 'Heroism'] },
+      spells: ['Searing Smite'],
+    })
     await expect(classes(page)).toHaveText('Cleric 3 (Life Domain) / Paladin 3 (Oath of Devotion)')
     expect((await stored(page, id))['levelOrder']).toEqual(order(['Cleric', 'Cleric', 'Paladin', 'Paladin', 'Cleric', 'Paladin']))
   })
@@ -483,7 +545,7 @@ test('M11a B: Cleric 1 → Cleric 3 / Paladin 3 through Level up; saves, slots, 
     await expect(proficiencies(page)).not.toContainText('Martial weapons')
     await expect(actionsPanel(page)).not.toContainText('Lay on Hands')
     await openTab(page, 'Spells')
-    for (const name of ['Divine Favor', 'Shield of Faith']) await expect(spellRows(spellsPanel(page), name)).toHaveCount(0)
+    for (const name of ['Divine Favor', 'Compelled Duel']) await expect(spellRows(spellsPanel(page), name)).toHaveCount(0)
     // Cleric 2 alone: 1st ×3.
     await expect(ordinarySlots(page, 1)).toHaveCount(3)
     await expect(ordinarySlots(page, 2)).toHaveCount(0)

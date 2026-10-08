@@ -500,7 +500,7 @@ describe('wizardReducer navigation', () => {
 	it('clears the Wild Shape forms when the class or the subclass changes', () => {
 		const picked: WizardControllerState = {
 			step: 'class',
-			data: { ...emptyWizardData(), wildShapeForms: [{ name: 'Wolf', source: 'XMM' }] },
+			data: { ...emptyWizardData(), subclass: { name: 'Circle of the Land', source: 'XPHB', featureType: null }, wildShapeForms: [{ name: 'Wolf', source: 'XMM' }] },
 		}
 
 		const afterClass = wizardReducer(picked, {
@@ -514,6 +514,39 @@ describe('wizardReducer navigation', () => {
 			subclass: { name: 'Circle of the Moon', source: 'XPHB', featureType: null },
 		})
 		expect(afterSubclass.data.wildShapeForms).toEqual([])
+	})
+
+	/* D338: the level that grants the subclass picks it for the first time; nothing chosen before depends on it. */
+	it('a first subclass pick keeps spells, subclass options and Wild Shape forms; a change still clears them', () => {
+		const spellChoices = [
+			{ name: 'Eldritch Blast', source: 'XPHB', level: 0 },
+			{ name: 'Hex', source: 'XPHB', level: 1 },
+		]
+		const invocations = [{ featureType: 'EI', choices: [{ name: 'Armor of Shadows', source: 'XPHB', level: 1 }] }]
+		const before: WizardControllerState = {
+			step: 'class',
+			data: {
+				...emptyWizardData(),
+				spellChoices,
+				optionalFeatureChoices: ['Trip Attack'],
+				classOptionalFeatureChoices: invocations,
+				wildShapeForms: [{ name: 'Wolf', source: 'XMM' }],
+				subclassSpellChoices: [{ grantedAtLevel: 3, slotIndex: 0, name: 'Shield', source: 'XPHB' }],
+			},
+		}
+
+		const first = wizardReducer(before, { type: 'setSubclass', subclass: { name: 'Fiend Patron', source: 'XPHB', featureType: null } })
+		expect(first.data.spellChoices).toEqual(spellChoices)
+		expect(first.data.optionalFeatureChoices).toEqual(['Trip Attack'])
+		expect(first.data.classOptionalFeatureChoices).toEqual(invocations)
+		expect(first.data.wildShapeForms).toEqual([{ name: 'Wolf', source: 'XMM' }])
+		expect(first.data.subclassSpellChoices).toEqual([])
+
+		const changed = wizardReducer(first, { type: 'setSubclass', subclass: { name: 'Celestial Patron', source: 'XPHB', featureType: null } })
+		expect(changed.data.spellChoices).toEqual([])
+		expect(changed.data.optionalFeatureChoices).toEqual([])
+		expect(changed.data.wildShapeForms).toEqual([])
+		expect(changed.data.classOptionalFeatureChoices).toEqual(invocations)
 	})
 
 	/* Build order step 8, slice 8b. */

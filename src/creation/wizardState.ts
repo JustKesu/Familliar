@@ -1412,16 +1412,18 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 				(state.data.otherClasses ?? []).map((stash) => ({ ...stash.classChoice, subclass: stash.subclass?.name ?? null })),
 			)
 			const othersLanguages = keepHeldSubclassLanguages(state.data.featureLanguages, othersGrants)
+			// D338: a first pick (no subclass before) invalidates none of these; only a change of subclass does (M9b).
+			const firstPick = state.data.subclass === null
 			return {
 				...state,
-				// wildShapeForms clears here too: Circle of the Moon's Circle Forms raises the CR cap, so the legal pool is subclass-dependent.
+				// wildShapeForms clears on a change: Circle of the Moon's Circle Forms raises the CR cap, so the legal pool is subclass-dependent.
 				data: {
 					...state.data,
 					subclass: action.subclass,
-					optionalFeatureChoices: [],
-					spellChoices: [],
+					optionalFeatureChoices: firstPick ? state.data.optionalFeatureChoices : [],
+					spellChoices: firstPick ? state.data.spellChoices : [],
 					subclassSpellChoices: [],
-					wildShapeForms: [],
+					wildShapeForms: firstPick ? state.data.wildShapeForms : [],
 					subclassSkills: keepHeldSubclassSkills(state.data.subclassSkills, othersGrants),
 					featureLanguages: state.data.featureLanguages.filter((language) => !SUBCLASS_LANGUAGE_SOURCES.has(language.grantedBy) || othersLanguages.includes(language)),
 				},

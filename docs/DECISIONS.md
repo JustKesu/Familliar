@@ -5119,3 +5119,8 @@ Reload the page and try again.“ Uložené volby té třídy se neskrývají (v
 nechtějí. (4) Volba přidaná a znovu odebraná v jednom běhu nenechá záznam ve vlastnících voleb, takže Cancel se neptá zbytečně.
 (5) Psionic Energy Die u Psi Warrior + Soulknife zůstává jeden pool s Fighterovým maximem (sloupec Soulknife má jiné jméno);
 nerozhodnuto, otázka v QUESTIONS.md. Task F-12, rozhodl Daniel 8. 10. 2026.
+
+## D338 — První výběr podtřídy při level upu nemaže dřívější volby (F-13, schéma zůstává 60)
+
+První výběr podtřídy při level upu (podtřída null → zvolená) zachová vybraná kouzla, invokace a Wild Shape formy. Mazání zůstává jen
+při změně už existující podtřídy (Edit, M9b). Nález 1 z M11a. Task F-13, rozhodl Daniel 8. 10. 2026.
