@@ -49,6 +49,7 @@ export function MasteryPicker({
 	lockedValues = NO_LOCKED_VALUES,
 	multiclass,
 	countOffset = 0,
+	excluded = NO_LOCKED_VALUES,
 }: {
 	className: string
 	classSource: string
@@ -62,6 +63,8 @@ export function MasteryPicker({
 	multiclass?: Pick<Character, 'classes' | 'levelOrder'>
 	/** D329: masteries held from the character's other classes, added to this class's own count. */
 	countOffset?: number
+	/** D335: weapons another held class of a multiclass Edit already masters — not offered here. */
+	excluded?: readonly string[]
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const multiclassKey = multiclass ? JSON.stringify([multiclass.classes, multiclass.levelOrder]) : null
@@ -110,7 +113,7 @@ export function MasteryPicker({
 		}
 	}
 
-	const options: SearchableOption[] = weapons.map((weapon) => {
+	const options: SearchableOption[] = weapons.filter((weapon) => !excluded.includes(weapon.name)).map((weapon) => {
 		const selected = value.includes(weapon.name)
 		return {
 			key: weaponKey(weapon),

@@ -103,6 +103,7 @@ import type { LevelGains } from '../levelUp/levelGains'
 import { levelUpStepConditions, MAX_CHARACTER_LEVEL, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
 import { heldPicksFrom } from '../levelUp/heldPicks'
 import { classesAfterLevelUp, isClass, levelOrderBeforeLevelUp } from '../levelUp/multiclassLevelUp'
+import { ownedPicks } from './heldClassPicks'
 import { loadMulticlassPickShape, multiclassSkillSources, type MulticlassPickShape } from '../multiclass/multiclassPicks'
 import { MulticlassPickSlots } from '../multiclass/MulticlassPickSlots'
 import { HeldClassPrerequisiteNotes } from '../multiclass/HeldClassPrerequisiteNotes'
@@ -118,6 +119,7 @@ import {
 	sameWizardData,
 	saveCharacter,
 	unfinishedHeldClasses,
+	activeClassPicks,
 	type ClassPickRequirements,
 	type HeldClassConditions,
 	stepIndex,
@@ -346,12 +348,25 @@ export function CharacterWizard({
 			multiclassEdit
 				? Promise.all(
 						character.classes.map(async (entry) => {
-							const [subclasses, groups, fightingStyleLevel] = await Promise.all([
+							const classLevels = Array.from({ length: entry.level }, (_, index) => index + 1)
+							const [subclasses, groups, fightingStyleLevel, expertise, masteries] = await Promise.all([
 								loadSubclassesFor(entry.className, entry.classSource),
 								loadClassOptionalFeatureGroups(entry.className, entry.classSource, MAX_CHARACTER_LEVEL),
 								loadFightingStyleGrantLevel(entry.className, entry.classSource),
+								// D335: a failed grant load leaves the class owning no pick, rather than blocking the Edit.
+								Promise.all(classLevels.map((level) => loadExpertiseEligibility(entry.className, entry.classSource, level))).catch(() => null),
+								Promise.all(classLevels.map((level) => loadMasteryCountFor(entry.className, entry.classSource, level))).catch(() => null),
 							])
-							return { className: entry.className, classSource: entry.classSource, subclasses, featureTypes: groups.map((group) => group.featureType), fightingStyleLevel }
+							return {
+								className: entry.className,
+								classSource: entry.classSource,
+								subclasses,
+								featureTypes: groups.map((group) => group.featureType),
+								fightingStyleLevel,
+								...(expertise ? { expertiseGrant: { countsByLevel: expertise.map((eligibility) => eligibility?.count ?? null), allowed: expertise[expertise.length - 1]?.restrictedTo ?? null } } : {}),
+								// D329: a multiclass character's mastery pool is every class's proficiencies, so no class narrows the names.
+								...(masteries ? { masteryGrant: { countsByLevel: masteries, allowed: null } } : {}),
+							}
 						}),
 					)
 				: Promise.resolve(undefined),
@@ -746,8 +761,12 @@ export function CharacterWizard({
 	}, [heldDataKey])
 	const heldData = heldClassData?.key === heldDataKey ? heldClassData.data : null
 	const isActiveClass = (entry: { className: string; classSource: string }): boolean => state.data.classChoice !== null && isClass(entry, state.data.classChoice)
-	const editMastery = heldData ? sharedMasteryCount(heldData.classes, isActiveClass) : null
-	const editExpertise = heldData ? sharedExpertise(heldData.classes, isActiveClass) : null
+	/** D335: the active class's own grants in a multiclass Edit, and every pick split into its own and the other classes'. */
+	const activeHeldCounts = heldData?.classes.find((cls) => isActiveClass(cls.entry))
+	const ownExpertise = activeClassPicks(state.data, 'expertiseSkills')
+	const otherExpertise = state.data.expertiseSkills.filter((skill) => !ownExpertise.includes(skill))
+	const ownMasteries = activeClassPicks(state.data, 'masteries')
+	const otherMasteries = state.data.masteries.filter((weapon) => !ownMasteries.includes(weapon))
 	/** D333: each later class's multiclass slots filled; a shape still loading keeps the step incomplete, a failed one asks for nothing (its slots show the error). */
 	const editMulticlassPicksComplete =
 		!multiclassEdit ||
@@ -1185,30 +1204,31 @@ export function CharacterWizard({
 		...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
 		...featSkillSources(draftFeatInstances, proficiencyData.fixedSkills),
 	].filter((entry, index, all) => all.findIndex((other) => other.skill === entry.skill) === index)
+	/** D335: one class's Expertise pool leaves out the skills another held class already took. */
+	const classExpertisePool = (restrictedTo: readonly string[] | null | undefined, own: readonly string[], others: readonly string[]) =>
+		expertisePoolOf({ sourceSkills: expertiseSourceSkills.filter((entry) => !others.includes(entry.skill)), fixedExpertise, feats: draftFeatInstances, restrictedTo, picked: own })
 	const {
 		taken: expertiseTaken,
 		pool: expertisePool,
 		stale: staleExpertise,
-	} = expertisePoolOf({
-		sourceSkills: expertiseSourceSkills,
-		fixedExpertise,
-		feats: draftFeatInstances,
-		// D329: the raised class's restriction (Scholar) does not reach picks another class granted.
-		restrictedTo: multiclassEdit
-			? editExpertise?.eligibility.restrictedTo
-			: multiclassLevelUp && held && expertiseEligibility?.restrictedTo
+	} = classExpertisePool(
+		multiclassEdit
+			? activeHeldCounts?.expertise?.restrictedTo
+			: // D329: the raised class's restriction (Scholar) does not reach picks another class granted.
+				multiclassLevelUp && held && expertiseEligibility?.restrictedTo
 				? [...expertiseEligibility.restrictedTo, ...held.expertiseSkills]
 				: expertiseEligibility?.restrictedTo,
-		picked: state.data.expertiseSkills,
-	})
+		ownExpertise,
+		otherExpertise,
+	)
 	const expertiseRequiredCount = multiclassEdit
-		? editExpertise
-			? Math.min(editExpertise.eligibility.count, expertisePool.length)
+		? activeHeldCounts?.expertise
+			? Math.min(activeHeldCounts.expertise.count, expertisePool.length)
 			: null
 		: expertiseEligibility
 			? Math.min(expertiseEligibility.count + expertiseOffset, expertisePool.length)
 			: null
-	const expertiseSkillsAvailable = state.data.expertiseSkills.every((skill) => expertisePool.some((entry) => entry.skill === skill))
+	const expertiseSkillsAvailable = ownExpertise.every((skill) => expertisePool.some((entry) => entry.skill === skill))
 
 	/**
 	 * Slots (slice b) and counts (slice d2) via the calculation layer,
@@ -1589,12 +1609,10 @@ export function CharacterWizard({
 						...classPickShape.requirements,
 						// D333 (D321): a multiclass Edit's class skills are the first class's.
 						skillCount: multiclassEdit ? (heldData?.firstSkillCount ?? null) : held && held.classSkills.length > 0 ? null : classPickShape.requirements.skillCount,
-						// D329: the other classes' masteries are held on top of the raised class's own count. D333: every held class's count.
+						// D329: the other classes' masteries are held on top of the raised class's own count. D335: a multiclass Edit asks the active class's own count.
 						...(multiclassLevelUp
 							? { masteryCount: classPickShape.requirements.masteryCount === null || previousCounts?.mastery == null ? null : classPickShape.requirements.masteryCount + masteryOffset }
-							: multiclassEdit
-								? { masteryCount: editMastery?.total ?? null }
-								: {}),
+							: {}),
 					}
 				: null
 
@@ -1614,15 +1632,30 @@ export function CharacterWizard({
 		if (!multiclassEdit || activeHeldKey === null || classPickRequirements === null) return
 		setRecordedHeldConditions((recorded) => (recorded[activeHeldKey] === activeHeldJson ? recorded : { ...recorded, [activeHeldKey]: activeHeldJson }))
 	}, [multiclassEdit, activeHeldKey, activeHeldJson, classPickRequirements])
+	/** D335: a stashed class's own Expertise and mastery asks; a grant still loading or failed asks nothing here. */
+	const heldPickConditions = (entry: { className: string; classSource: string }): HeldClassConditions => {
+		const counts = heldData?.classes.find((cls) => isClass(cls.entry, entry))
+		if (!counts) return {}
+		const own = ownedPicks(state.data.expertiseSkills, state.data.pickOwners?.expertiseSkills.owners ?? {}, entry)
+		const eligibility = counts.expertise
+		const pool = eligibility ? classExpertisePool(eligibility.restrictedTo, own, state.data.expertiseSkills.filter((skill) => !own.includes(skill))) : null
+		return {
+			...(counts.mastery === undefined ? {} : { masteryCount: counts.mastery ?? 0 }),
+			...(eligibility === undefined ? {} : { expertise: eligibility && pool ? { count: Math.min(eligibility.count, pool.pool.length), stale: pool.stale.length } : { count: 0, stale: 0 } }),
+		}
+	}
 	const unfinishedClasses = multiclassEdit
 		? unfinishedHeldClasses(state.data, (cls) => {
 				if (isActiveClass(cls.classChoice)) return activeHeldConditions
 				const recorded = recordedHeldConditions[heldConditionsKey(cls.classChoice, cls.subclass)]
-				if (recorded !== undefined) return JSON.parse(recorded) as HeldClassConditions
+				if (recorded !== undefined) return { ...(JSON.parse(recorded) as HeldClassConditions), ...heldPickConditions(cls.classChoice) }
 				// Never active in this run: its picks are as stored, unless its subclass was changed and not yet loaded.
-				return heldDraftClasses([{ ...cls.classChoice, subclass: null }], baseline)[0]?.subclass === (cls.subclass?.name ?? null)
-					? { wildShapeFormCount: cls.wildShapeForms.length, subclassSpellChoiceSlotCount: cls.subclassSpellChoices.length }
-					: { classPickRequirements: null }
+				return {
+					...(heldDraftClasses([{ ...cls.classChoice, subclass: null }], baseline)[0]?.subclass === (cls.subclass?.name ?? null)
+						? { wildShapeFormCount: cls.wildShapeForms.length, subclassSpellChoiceSlotCount: cls.subclassSpellChoices.length }
+						: { classPickRequirements: null }),
+					...heldPickConditions(cls.classChoice),
+				}
 			})
 		: []
 
@@ -1841,18 +1874,16 @@ export function CharacterWizard({
 								/>
 							)}
 							{multiclassEdit ? (
-								editMastery?.base && (
-									<MasteryPicker
-										className={editMastery.base.entry.className}
-										classSource={editMastery.base.entry.classSource}
-										level={editMastery.base.entry.level}
-										value={state.data.masteries}
-										onChange={(weapons) => dispatch({ type: 'setMasteries', weapons })}
-										feats={draftFeatInstances}
-										multiclass={multiclassDraft!}
-										countOffset={editMastery.total === null ? 0 : editMastery.total - (editMastery.base.mastery ?? 0)}
-									/>
-								)
+								<MasteryPicker
+									className={state.data.classChoice.className}
+									classSource={state.data.classChoice.classSource}
+									level={state.data.classChoice.level}
+									value={ownMasteries}
+									onChange={(weapons) => dispatch({ type: 'setActiveClassPicks', field: 'masteries', picks: weapons })}
+									feats={draftFeatInstances}
+									multiclass={multiclassDraft!}
+									excluded={otherMasteries}
+								/>
 							) : (
 								<MasteryPicker
 									className={state.data.classChoice.className}
@@ -2025,21 +2056,17 @@ export function CharacterWizard({
 			{state.step === 'expertise' && state.data.classChoice && (
 				<div className="wizard__panel">
 					<section className="wizard__card">
-						<h3>Expertise skills</h3>
-						{/* D333: one picker for every held class's Expertise, shown for the class editExpertise names. */}
+						<h3>Expertise skills{multiclassEdit && ` — ${state.data.classChoice.className}`}</h3>
+						{/* D335: the active class's own picker; the other held classes' picks are not offered. */}
 						{multiclassEdit ? (
-							editExpertise && (
-								<ExpertisePicker
-									className={editExpertise.base.entry.className}
-									classSource={editExpertise.base.entry.classSource}
-									level={editExpertise.base.entry.level}
-									proficientSkills={expertiseSourceSkills.filter((entry) => !expertiseTaken.includes(entry.skill))}
-									value={state.data.expertiseSkills}
-									onChange={(skills) => dispatch({ type: 'setExpertiseSkills', skills })}
-									countOffset={editExpertise.eligibility.count - editExpertise.base.expertise.count}
-									restrictionExempt={editExpertise.exempt}
-								/>
-							)
+							<ExpertisePicker
+								className={state.data.classChoice.className}
+								classSource={state.data.classChoice.classSource}
+								level={state.data.classChoice.level}
+								proficientSkills={expertiseSourceSkills.filter((entry) => !expertiseTaken.includes(entry.skill) && !otherExpertise.includes(entry.skill))}
+								value={ownExpertise}
+								onChange={(skills) => dispatch({ type: 'setActiveClassPicks', field: 'expertiseSkills', picks: skills })}
+							/>
 						) : (
 							<ExpertisePicker
 								className={state.data.classChoice.className}
@@ -2399,31 +2426,6 @@ function heldDraftClasses(classes: readonly CharacterClass[], data: WizardData):
 		const fields = data.classChoice && isClass(entry, data.classChoice) ? data : data.otherClasses?.find((stash) => isClass(stash.classChoice, entry))
 		return fields ? { ...entry, subclass: fields.subclass?.name ?? null } : entry
 	})
-}
-
-/** D333: the masteries of every held class together, shown by one picker — the active class's when it grants any. `total` null = a count failed to load. */
-function sharedMasteryCount(classes: readonly HeldClassCounts[], isActive: (entry: CharacterClass) => boolean): { total: number | null; base: HeldClassCounts | undefined } {
-	const total = classes.some((cls) => cls.mastery === undefined) ? null : classes.reduce((sum, cls) => sum + (cls.mastery ?? 0), 0)
-	const granting = classes.filter((cls) => cls.mastery != null)
-	return { total, base: granting.find((cls) => isActive(cls.entry)) ?? granting[0] }
-}
-
-/**
- * D333: the Expertise of every held class together. Unrestricted when any granting class is (M9 place 21: restrictions
- * joined); the picker is shown for an unrestricted class when there is one, and the other classes' lists are exempt.
- */
-function sharedExpertise(
-	classes: readonly HeldClassCounts[],
-	isActive: (entry: CharacterClass) => boolean,
-): { eligibility: ExpertiseEligibility; base: HeldClassCounts & { expertise: ExpertiseEligibility }; exempt: string[] } | null {
-	const granting = classes.filter((cls): cls is HeldClassCounts & { expertise: ExpertiseEligibility } => cls.expertise != null)
-	if (granting.length === 0) return null
-	const unrestricted = granting.filter((cls) => cls.expertise.restrictedTo === null)
-	const base = unrestricted.find((cls) => isActive(cls.entry)) ?? unrestricted[0] ?? granting.find((cls) => isActive(cls.entry)) ?? granting[0]!
-	const count = granting.reduce((sum, cls) => sum + cls.expertise.count, 0)
-	const restrictedTo = unrestricted.length > 0 ? null : [...new Set(granting.flatMap((cls) => cls.expertise.restrictedTo ?? []))]
-	const exempt = granting.filter((cls) => cls !== base).flatMap((cls) => cls.expertise.restrictedTo ?? [])
-	return { eligibility: { count, restrictedTo }, base, exempt }
 }
 
 export default CharacterWizard

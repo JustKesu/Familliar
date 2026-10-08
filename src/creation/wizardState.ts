@@ -61,6 +61,7 @@ import { isMagicInitiateFeat } from '../featAsi/featAsiData'
 import { emptyStartingEquipmentChoice, type StartingEquipmentChoice } from '../inventory/startingEquipmentData'
 import { filterChoiceRequiredCounts, isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { overwrittenHeldPicks } from '../levelUp/heldPicks'
+import { heldPickOwners, ownedPicks, withOwnedPicks, type HeldPickGrantData, type HeldPickOwners } from './heldClassPicks'
 import { checkNoClassRaised, checkOneClassRaised, classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 
@@ -220,7 +221,7 @@ export function classPicksComplete(data: WizardData, required: ClassPickRequirem
 		(required.skillCount === null || data.classSkills.length === required.skillCount) &&
 		(required.subclass === null || (data.subclass !== null) === required.subclass) &&
 		(required.fightingStyle === null || (data.fightingStyle !== null) === required.fightingStyle) &&
-		(required.masteryCount === null || data.masteries.length === required.masteryCount) &&
+		(required.masteryCount === null || activeClassPicks(data, 'masteries').length === required.masteryCount) &&
 		(required.optionalFeatureCount === null || data.optionalFeatureChoices.length === required.optionalFeatureCount) &&
 		(featureNames === null || data.classFeatureChoices.every((choice) => featureNames.includes(choice.featureName)))
 	)
@@ -532,6 +533,13 @@ export interface WizardData {
 	multiclassPicks?: CharacterMulticlassPick[]
 	/** M9: a multiclass Edit holds every class but the active one here; switchClass swaps them. */
 	otherClasses?: ClassStash[]
+	/** D335: a multiclass Edit's owner of each Expertise and mastery pick; expertiseSkills and masteries stay the whole lists. */
+	pickOwners?: { expertiseSkills: HeldPickOwners; masteries: HeldPickOwners }
+}
+
+/** D335: the active class's own picks in a multiclass Edit; every pick otherwise. */
+export function activeClassPicks(data: WizardData, field: 'expertiseSkills' | 'masteries'): string[] {
+	return data.pickOwners && data.classChoice ? ownedPicks(data[field], data.pickOwners[field].owners, data.classChoice) : data[field]
 }
 
 /** M9: the per-class fields of WizardData. Everything else (masteries, expertise, ASI/feat, hit points, languages, tools, skills) is on the character axis and shared. */
@@ -628,6 +636,9 @@ export interface HeldClassLookup {
 	featureTypes: readonly string[]
 	/** The class level its Fighting Style feature comes at; null for a class without one, absent when not looked up. */
 	fightingStyleLevel?: number | null
+	/** D335: the class's Expertise and mastery grants; absent when not looked up or the load failed (then it grants neither). */
+	expertiseGrant?: HeldPickGrantData
+	masteryGrant?: HeldPickGrantData
 }
 
 /** A stored +2/+1 or +1/+1/+1 map read back as the chooser's own state, so an edited background reopens showing which mode was taken rather than an empty chooser beside a filled bonus. */
@@ -767,7 +778,17 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 			activeClassFeatureTypes: [...featureTypes],
 		}
 	})
-	return { ...seeded, ...first, otherClasses: others }
+	const levelOrder = character.levelOrder ?? []
+	const grants = (field: 'expertiseGrant' | 'masteryGrant') =>
+		character.classes.map((entry) => {
+			const grant = lookups.heldClasses?.find((candidate) => isClass(candidate, entry))?.[field]
+			return { className: entry.className, classSource: entry.classSource, countsByLevel: grant?.countsByLevel ?? [], allowed: grant?.allowed ?? null }
+		})
+	const pickOwners = {
+		expertiseSkills: heldPickOwners(character.expertiseSkills ?? [], levelOrder, grants('expertiseGrant')),
+		masteries: heldPickOwners(character.masteries ?? [], levelOrder, grants('masteryGrant')),
+	}
+	return { ...seeded, ...first, otherClasses: others, pickOwners }
 }
 
 /** A subclass missing from the loaded list keeps its name but carries no featureType, which sends its optional-feature picks through classOptionalFeatureChoices — where they pass through save unchanged rather than being dropped. */
@@ -899,7 +920,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				speciesOriginFeatComplete
 			)
 		case 'expertise':
-			return expertiseRequiredCount === null || (data.expertiseSkills.length === expertiseRequiredCount && expertiseSkillsAvailable)
+			return expertiseRequiredCount === null || (activeClassPicks(data, 'expertiseSkills').length === expertiseRequiredCount && expertiseSkillsAvailable)
 		case 'languages': {
 			// A level-up walk only collects the new level's feature picks; the creation picks are not its to demand.
 			const creationComplete = levelUpTargetLevel !== null || data.languageChoice.length === CHOSEN_LANGUAGE_COUNT
@@ -1064,6 +1085,10 @@ export interface HeldClassConditions {
 	spellRequirement?: SpellRequirement | null
 	subclassSpellChoiceSlotCount?: number
 	classOptionalFeaturesComplete?: boolean
+	/** D335: the class's own mastery count; absent = not checked here (the active class's is the Class step's). */
+	masteryCount?: number
+	/** D335: the class's own Expertise count (capped by its pool) and how many of its picks fall outside that pool. */
+	expertise?: { count: number; stale: number }
 }
 
 export interface UnfinishedClass {
@@ -1080,7 +1105,9 @@ export interface UnfinishedClass {
 export function unfinishedHeldClasses(data: WizardData, conditionsFor: (cls: ClassStash) => HeldClassConditions): UnfinishedClass[] {
 	if (!data.classChoice || !data.otherClasses) return []
 	return [stashOf(data, data.classChoice), ...data.otherClasses].flatMap((cls) => {
-		const missing = missingClassPicks(cls, conditionsFor(cls))
+		const conditions = conditionsFor(cls)
+		const owned = (field: 'expertiseSkills' | 'masteries'): number => (data.pickOwners ? ownedPicks(data[field], data.pickOwners[field].owners, cls.classChoice).length : 0)
+		const missing = [...missingClassPicks(cls, conditions), ...missingHeldPicks(owned('expertiseSkills'), owned('masteries'), conditions)]
 		return missing.length > 0 ? [{ className: cls.classChoice.className, classSource: cls.classChoice.classSource, missing }] : []
 	})
 }
@@ -1113,12 +1140,23 @@ export function sameWizardData(a: WizardData, b: WizardData): boolean {
 	return stable(canonical(a)) === stable(canonical(b))
 }
 
+const countPhrase = (have: number, need: number, one: string, many: string): string[] => {
+	const diff = Math.abs(need - have)
+	const noun = diff === 1 ? one : many
+	return have < need ? [`choose ${diff} more ${noun}`] : have > need ? [`remove ${diff} ${noun}`] : []
+}
+
+function missingHeldPicks(expertise: number, masteries: number, conditions: HeldClassConditions): string[] {
+	const stale = conditions.expertise?.stale ?? 0
+	return [
+		...(conditions.masteryCount === undefined ? [] : countPhrase(masteries, conditions.masteryCount, 'weapon mastery', 'weapon masteries')),
+		...(conditions.expertise === undefined ? [] : countPhrase(expertise, conditions.expertise.count, 'Expertise skill', 'Expertise skills')),
+		...(stale > 0 ? [`replace ${stale} Expertise skill${stale === 1 ? '' : 's'} it no longer allows`] : []),
+	]
+}
+
 function missingClassPicks(cls: ClassStash, conditions: HeldClassConditions): string[] {
-	const count = (have: number, need: number, one: string, many: string): string[] => {
-		const diff = Math.abs(need - have)
-		const noun = diff === 1 ? one : many
-		return have < need ? [`choose ${diff} more ${noun}`] : have > need ? [`remove ${diff} ${noun}`] : []
-	}
+	const count = countPhrase
 	const required = conditions.classPickRequirements
 	if (required === null) return ['requirements still loading']
 	const missing: string[] = []
@@ -1162,6 +1200,8 @@ export type WizardAction =
 	| { type: 'setSpeciesSpellcastingAbility'; ability: Ability | null }
 	| { type: 'setSpeciesCantrip'; cantrip: { name: string; source: string } | null }
 	| { type: 'setExpertiseSkills'; skills: string[] }
+	/** D335: the active class's own Expertise or mastery picks in a multiclass Edit; the other classes' stay. */
+	| { type: 'setActiveClassPicks'; field: 'expertiseSkills' | 'masteries'; picks: string[] }
 	| { type: 'setBackgroundChoice'; choice: BackgroundChoice | null }
 	| { type: 'setBackgroundToolProficiency'; tool: string | null }
 	| { type: 'setLanguageChoice'; choice: LanguageChoice }
@@ -1296,6 +1336,12 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, speciesSpellcastingAbility: action.ability } }
 		case 'setExpertiseSkills':
 			return { ...state, data: { ...state.data, expertiseSkills: action.skills } }
+		case 'setActiveClassPicks': {
+			const { classChoice, pickOwners } = state.data
+			if (!classChoice || !pickOwners) return { ...state, data: { ...state.data, [action.field]: action.picks } }
+			const next = withOwnedPicks(state.data[action.field], pickOwners[action.field].owners, classChoice, action.picks)
+			return { ...state, data: { ...state.data, [action.field]: next.names, pickOwners: { ...pickOwners, [action.field]: { ...pickOwners[action.field], owners: next.owners } } } }
+		}
 		case 'setBackgroundChoice': {
 			// The picker now reports through this action on every sub-step of the
 			// choice (background picked, then each ability-bonus pick), so tool
@@ -1574,10 +1620,14 @@ export function saveCharacter(
 	 * belonged to which level. WizardData keeps bare names because the picker
 	 * is a name-based control; the shape is put on here, at the storage edge.
 	 */
-	const masteries: CharacterMastery[] = keepRecordedLevels(data.masteries, existing?.masteries, levelUpTo)
+	const masteries: CharacterMastery[] =
+		multiclassEdit && data.pickOwners ? keepHeldClassLevels(data.masteries, existing.masteries, data.pickOwners.masteries) : keepRecordedLevels(data.masteries, existing?.masteries, levelUpTo)
 
 	/** No level is recorded, for exactly the reason masteries records none (D98 following D97). */
-	const expertiseSkills: CharacterExpertiseSkill[] = keepRecordedLevels(data.expertiseSkills, existing?.expertiseSkills, levelUpTo)
+	const expertiseSkills: CharacterExpertiseSkill[] =
+		multiclassEdit && data.pickOwners
+			? keepHeldClassLevels(data.expertiseSkills, existing.expertiseSkills, data.pickOwners.expertiseSkills)
+			: keepRecordedLevels(data.expertiseSkills, existing?.expertiseSkills, levelUpTo)
 
 	/** Passes straight through to storage (build order step 8, slice 8b) — already exactly Character.hitPointLevels' own shape, one entry per level from 2 up. */
 	const hitPointLevels: CharacterHitPointLevel[] | undefined = data.hitPointLevels.length > 0 ? data.hitPointLevels : undefined
@@ -1817,4 +1867,27 @@ function keepRecordedLevels(names: readonly string[], previous: readonly Leveled
 		const slot = replaced[nextReplaced++]
 		return slot?.level === undefined ? { name } : { name, level: slot.level }
 	})
+}
+
+/**
+ * D335: keepRecordedLevels within each held class of a multiclass Edit. A new pick that inherits no stamp takes the
+ * class's earliest grant slot no other pick of that class holds.
+ */
+function keepHeldClassLevels(names: readonly string[], previous: readonly LeveledChoice[] | undefined, held: HeldPickOwners): LeveledChoice[] {
+	const kept = new Map<string, LeveledChoice>()
+	for (const key of new Set(names.map((name) => held.owners[name]))) {
+		const own = names.filter((name) => held.owners[name] === key)
+		const before = (previous ?? []).filter((choice) => held.seeded[choice.name] === key)
+		const choices = keepRecordedLevels(own, before)
+		const free = [...(key === undefined ? [] : (held.slots[key] ?? []))]
+		for (const choice of choices) {
+			const index = choice.level === undefined ? -1 : free.indexOf(choice.level)
+			if (index !== -1) free.splice(index, 1)
+		}
+		for (const choice of choices) {
+			const fresh = choice.level === undefined && !before.some((stored) => stored.name === choice.name)
+			kept.set(choice.name, fresh && free.length > 0 ? { ...choice, level: free.shift()! } : choice)
+		}
+	}
+	return names.map((name) => kept.get(name)!)
 }

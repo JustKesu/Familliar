@@ -414,6 +414,8 @@ test('F-11 c: Fighter 4 / Rogue 1 — Expertise Stealth swapped to Athletics in 
   const seed: Record<string, unknown> & { id: string } = { ...fighterRogue('f11-c'), expertiseSkills: [{ name: 'perception', level: 5 }, { name: 'stealth', level: 5 }] }
   await openSheet(page, seed)
   await editButton(page).click()
+  // D335: the Expertise step belongs to the active class; the Fighter grants none.
+  await switchTo(page, 'Rogue')
   await goToStep(page, /Expertise/)
   await expectStep(page, 'Expertise')
   await page.getByRole('checkbox', { name: /^Stealth / }).uncheck()
@@ -500,4 +502,126 @@ test('F-11 d: the character that level up produces — Edit shows the same Level
   // Level 1 plus levels 2 to 10.
   await expect(page.locator('.hit-points-picker__table tbody tr')).toHaveCount(10)
   await expect(page.getByRole('radiogroup', { name: 'Level 10 hit points method', exact: true }).getByRole('radio', { name: 'Average (4)' })).toBeChecked()
+})
+
+/* M10a (D335): each held class has its own Expertise and Weapon Mastery picker. */
+const ROGUE_LANGUAGES = [
+  { name: 'Common', source: XPHB, grantedBy: 'automatic' },
+  { name: 'Dwarvish', source: XPHB, grantedBy: 'creation' },
+  { name: 'Elvish', source: XPHB, grantedBy: 'creation' },
+  { name: 'Giant', source: XPHB, grantedBy: 'thievesCant' },
+]
+const WIZARD_ROGUE_EXPERTISE = [{ name: 'arcana', level: 2 }, { name: 'stealth', level: 4 }, { name: 'athletics', level: 4 }]
+const wizardRogue = (id: string, expertiseSkills: Record<string, unknown>[] = WIZARD_ROGUE_EXPERTISE) =>
+  build(id, [['Wizard', 'Bladesinger', 3], ['Rogue', null, 1]], {
+    abilityScores: { method: 'standardArray', scores: { strength: 8, dexterity: 14, constitution: 13, intelligence: 15, wisdom: 12, charisma: 10 } },
+    classSkills: ['arcana', 'investigation'],
+    subclassSkills: [{ grantedBy: 'bladesinger', name: 'acrobatics' }],
+    expertiseSkills,
+    masteries: [{ name: 'Dagger', level: 4 }, { name: 'Quarterstaff', level: 4 }],
+    multiclassPicks: [{ className: 'Rogue', classSource: XPHB, kind: 'skill', name: 'stealth' }],
+    spellChoices: [{ className: 'Wizard', classSource: XPHB, spells: refs(WIZARD_SPELLS) }],
+    languages: ROGUE_LANGUAGES,
+  })
+
+const expertiseHeading = (page: Page): Locator => page.getByRole('heading', { name: /^Expertise skills/ })
+const expertiseOptions = (page: Page): Locator => page.locator('.expertise-picker__item')
+const expertiseBox = (page: Page, skill: string): Locator => page.getByRole('checkbox', { name: new RegExp(`^${skill} `) })
+
+async function openExpertise(page: Page, className: string): Promise<void> {
+  await switchTo(page, className)
+  await goToStep(page, /Expertise/)
+  await expectStep(page, 'Expertise')
+  await expect(expertiseHeading(page)).toHaveText(`Expertise skills — ${className}`)
+}
+
+test('M10a a: Wizard 3 / Rogue 1 — the Wizard picker offers only proficient Scholar skills, the Rogue picker counts 2 with its own picks', async ({ page }) => {
+  await openSheet(page, wizardRogue('m10a-a'))
+  await editButton(page).click()
+  await openExpertise(page, 'Wizard')
+  await expect(expertiseOptions(page)).toHaveCount(2)
+  await expect(expertiseBox(page, 'Arcana')).toBeChecked()
+  await expect(expertiseBox(page, 'Investigation')).not.toBeChecked()
+  await expect(expertiseBox(page, 'Stealth')).toHaveCount(0)
+  await expect(page.locator('.expertise-picker__remaining')).toHaveText('All 1 Expertise skill chosen.')
+
+  await openExpertise(page, 'Rogue')
+  await expect(page.locator('.expertise-picker__remaining')).toHaveText('All 2 Expertise skills chosen.')
+  await expect(expertiseBox(page, 'Stealth')).toBeChecked()
+  await expect(expertiseBox(page, 'Athletics')).toBeChecked()
+  // The Wizard's Arcana is not offered a second time.
+  await expect(expertiseBox(page, 'Arcana')).toHaveCount(0)
+})
+
+test('M10a b: Wizard 3 / Rogue 1 saved without changes — every Expertise keeps its name and stamp', async ({ page }) => {
+  await openSheet(page, wizardRogue('m10a-b'))
+  await editButton(page).click()
+  await expectStep(page, 'Class and level')
+  await saveEdit(page, 'm10a-b')
+  const saved = await stored(page, 'm10a-b')
+  expect(saved['expertiseSkills']).toEqual(WIZARD_ROGUE_EXPERTISE)
+  expect(saved['masteries']).toEqual([{ name: 'Dagger', level: 4 }, { name: 'Quarterstaff', level: 4 }])
+})
+
+test('M10a c: Wizard 3 / Rogue 1 — the Wizard Expertise replaced by another Scholar skill carries a Wizard level stamp', async ({ page }) => {
+  await openSheet(page, wizardRogue('m10a-c'))
+  await editButton(page).click()
+  await openExpertise(page, 'Wizard')
+  await expertiseBox(page, 'Arcana').uncheck()
+  await expertiseBox(page, 'Investigation').check()
+  await saveEdit(page, 'm10a-c')
+  expect((await stored(page, 'm10a-c'))['expertiseSkills']).toEqual([{ name: 'stealth', level: 4 }, { name: 'athletics', level: 4 }, { name: 'investigation', level: 2 }])
+})
+
+test('M10a d: a Rogue Expertise removed, then the Wizard made active — Save blocked, Review names the Rogue Expertise', async ({ page }) => {
+  await openSheet(page, wizardRogue('m10a-d'))
+  await editButton(page).click()
+  await openExpertise(page, 'Rogue')
+  await expertiseBox(page, 'Athletics').uncheck()
+  await switchTo(page, 'Wizard')
+  await goToStep(page, /Review and save/)
+  await expectStep(page, 'Review and save')
+  await expect(saveButton(page)).toBeDisabled()
+  await expect(page.locator('.review__unfinished')).toHaveText('Rogue has unfinished choices: choose 1 more Expertise skill. Switch to Rogue in step Class to finish them.')
+})
+
+test('M10a e: Fighter 4 / Rogue 1 — each class has its own mastery picker and count, picks split by stamp; Save keeps the stamps', async ({ page }) => {
+  const masteries = [
+    ...['Longsword', 'Greatsword', 'Handaxe'].map((name) => ({ name, level: 1 })),
+    { name: 'Battleaxe', level: 4 },
+    ...['Dagger', 'Shortsword'].map((name) => ({ name, level: 5 })),
+  ]
+  const seed = { ...fighterRogue('m10a-e'), masteries, expertiseSkills: [{ name: 'perception', level: 5 }, { name: 'athletics', level: 5 }] }
+  await openSheet(page, seed)
+  await editButton(page).click()
+  const count = page.locator('.option-list__toggle', { hasText: 'Weapon masteries' })
+
+  await switchTo(page, 'Fighter')
+  await expect(count).toContainText('All 4 weapon masteries chosen.')
+  await openOptionList(page, /^Weapon masteries/)
+  for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe']) await expect(chooseButton(page, weapon).first()).toHaveAttribute('aria-pressed', 'true')
+  await expect(chooseButton(page, 'Dagger')).toHaveCount(0)
+
+  await switchTo(page, 'Rogue')
+  await expect(count).toContainText('All 2 weapon masteries chosen.')
+  await openOptionList(page, /^Weapon masteries/)
+  for (const weapon of ['Dagger', 'Shortsword']) await expect(chooseButton(page, weapon).first()).toHaveAttribute('aria-pressed', 'true')
+  await expect(chooseButton(page, 'Longsword')).toHaveCount(0)
+
+  await saveEdit(page, 'm10a-e')
+  expect((await stored(page, 'm10a-e'))['masteries']).toEqual(masteries)
+})
+
+test('M10a f: legacy Expertise without stamps — the picks land by the D335 rule and Edit opens and saves', async ({ page }) => {
+  const legacy = [{ name: 'stealth' }, { name: 'arcana' }, { name: 'athletics' }]
+  await openSheet(page, wizardRogue('m10a-f', legacy))
+  await editButton(page).click()
+  await openExpertise(page, 'Wizard')
+  await expect(expertiseBox(page, 'Arcana')).toBeChecked()
+  await expect(page.locator('.expertise-picker__remaining')).toHaveText('All 1 Expertise skill chosen.')
+  await openExpertise(page, 'Rogue')
+  await expect(expertiseBox(page, 'Stealth')).toBeChecked()
+  await expect(expertiseBox(page, 'Athletics')).toBeChecked()
+  await saveEdit(page, 'm10a-f')
+  expect((await stored(page, 'm10a-f'))['expertiseSkills']).toEqual(legacy)
 })

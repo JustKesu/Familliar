@@ -903,7 +903,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `ResizeObserver` prvních 2 s. Test: 1 v `CharacterManager.test.tsx`
      (jsdom nemá `ResizeObserver`, ověřuje jedno volání na `.char-create`).
    - Zbytek kroku 9: nic dalšího v tomhle výčtu; otevřené otázky jsou v posledním REPORT.md.
-10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b, F-11 done (see the entries below); next slice not scoped yet (M10 takes the Expertise looseness of a multiclass Edit).
+10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b, F-11, M10a done (see the entries below); next M10b.
 
 ## Co appka umí navíc k build orderu
 
@@ -1176,7 +1176,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   pick through an untouched Edit; Fighter 3 / Rogue 1 with an untagged style saves one Fighter-tagged style; Fighter 4 / Rogue 1
   swaps Expertise Stealth → Athletics, Remove level of Rogue then drops Athletics; Warlock 6 / Sorcerer 3 → 4 level up shows the
   Level 4 + Level 10 ASI cards and one Hit points row, the Edit of the result shows the same Level 10 card and row plus every
-  earlier row).
+  earlier row). M10a a–f (D335: Wizard 3 / Rogue 1 Wizard picker offers only Arcana/Investigation, Rogue picker 2 with its own
+  picks; untouched save keeps stamps; Arcana → Investigation stamped 2; removed Rogue Expertise blocks Save with the Review line;
+  Fighter 4 / Rogue 1 mastery pickers 4 and 2 split by stamps, save keeps them; legacy unstamped Expertise lands by the rule).
 - `e2e/multiclassEntry.spec.ts` — M7b a–g (Fighter 4 window "Fighter 4 → 5" + "+ New class…"; Wizard entered without
   levelOrder: Fighter 4 / Wizard 1, saves STR/CON only, cantrips, HP 40 → 47, Proficiencies card unchanged, then window offers
   both classes; Sorcerer/Monk disabled with reasons; Rogue: masteries, Expertise sees the multiclass Stealth, Thieves' Cant
@@ -2089,6 +2091,17 @@ subclass spell record with the same class and subclass name. Current behaviour r
 share (Channel Divinity) is clamped, not deleted, when one class is removed; concentration on a spell a feat also grants ends with
 the removed class's pick. Unit `multiclassEdit.test.ts` "F-11", `levelRemoval.test.tsx`, `wizardState.test.ts` (untouched Edit save
 compares tools, languages, expertise, feats, HP, optional features exactly); E2E `multiclassEdit.spec.ts` F-11 a–d.
+
+M10a done (D335). No schema change (60). Multiclass Edit has one Expertise and one Weapon Mastery picker per held class, shown for
+the class active in the switcher, with that class's own count and list; `sharedExpertise` / `sharedMasteryCount` removed.
+`heldClassPicks.ts`: `assignHeldPicks` (stamp → class of `levelOrder[level-1]` if it grants; else first granting class in
+levelOrder order that allows the name and has room; else first granting class; none → unowned, passed through), `grantSlots`,
+`withOwnedPicks`. `WizardData.pickOwners` (owners, seed owners, grant slots per class); `expertiseSkills` / `masteries` stay the
+whole lists. Seed lookups gain `expertiseGrant` / `masteryGrant` (counts per class level). Action `setActiveClassPicks`;
+`activeClassPicks` used by the class-step mastery count and the Expertise step. Save: `keepHeldClassLevels` pairs within one class,
+an unpaired new pick takes the class's first free grant slot. `HeldClassConditions.masteryCount` / `expertise` make a stashed
+class's short or stale picks an unfinished-class line. `MasteryPicker.excluded`. Unit `heldClassPicks.test.ts`; E2E
+`multiclassEdit.spec.ts` M10a a–f, F-11 c now switches to Rogue first.
 
 R8a (D206): leveled spell dice in Effect (Spells tab) and Damage (Actions tab).
 `leveledSpellDice(detail, slotLevel)` + `isScaledHealing` (spellActionRowData.ts)

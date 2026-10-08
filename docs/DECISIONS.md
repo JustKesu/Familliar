@@ -5073,3 +5073,18 @@ vyhledáním, dokud se podtřída nezměnila. Beze změny kódu zůstává (6): 
 Paladina) se při odebrání jedné třídy ořízne, nesmaže, a koncentrace na kouzlo, které drží i feat, s odebranou třídou končí; obojí
 pokrývá test. Volnější Expertise v multiclass Editu než při level upu se nemění a přechází na M10. Task F-11, rozhodl Daniel
 8. 10. 2026.
+
+## D335 — Expertise a Weapon Mastery po třídách v multiclass Editu (M10a, schéma zůstává 60)
+
+Nahrazuje část D333 o expertise a weapon masteries na ose postavy (sčítání počtů a uvolnění restrikce Scholar neomezenou třídou).
+Multiclass Edit ukazuje zvlášť picker Expertise a zvlášť picker Weapon Mastery pro třídu aktivní v přepínači kroku Class, s jejím
+vlastním počtem a seznamem (stejná způsobilost jako level up té třídy: Scholar jen ze svých dovedností, ve kterých má postava
+proficienci). Volby jiných držených tříd picker nenabízí. Krok Expertise se ukáže, jen když ho aktivní třída dává. Volba patří
+třídě, která vzala úroveň postavy uloženou na volbě (`levelOrder`), pokud ta třída volbu dává. Jinak (bez úrovně, nebo úroveň
+třídy, která volbu nedává) připadne první držené třídě v pořadí `levelOrder`, která volbu dává, jméno povoluje a má volné místo;
+žádná taková → první třídě, která volbu dává; žádná třída volbu nedává → nepatří žádné a uloží se beze změny. U masteries jména
+neomezuje žádná třída (pool je u multiclass postavy společný, D329). Save drží úroveň každé volby; nová volba v pickeru třídy X
+převezme úroveň odebrané volby téže třídy (párování D334 jen uvnitř třídy), jinak dostane úroveň postavy, na které třída X získala
+první dosud neobsazené místo té volby. Neúplná Expertise nebo Mastery neaktivní třídy blokuje Save jako ostatní neúplné volby
+(„choose 1 more Expertise skill“, „choose 2 more weapon masteries“). Jednotřídní Edit, tvorba a level up beze změny. Task M10a,
+rozhodl Daniel 8. 10. 2026.
