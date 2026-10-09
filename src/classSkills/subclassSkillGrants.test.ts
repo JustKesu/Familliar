@@ -5,7 +5,18 @@ import { emptyWizardData, isStepComplete, saveCharacter, wizardDataFromCharacter
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import { speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
-import { subclassExpertiseSkills } from './subclassSkillGrants'
+import { classSubclassGrantSources, subclassExpertiseSkills } from './subclassSkillGrants'
+
+/* D340 */
+describe('classSubclassGrantSources', () => {
+	it("names every subclass skill and language source of that class only", () => {
+		const fighter = classSubclassGrantSources('Fighter')
+		for (const source of ['battleMaster', 'arcaneArcher', 'cavalier', 'samurai', 'banneret']) expect(fighter.has(source)).toBe(true)
+		expect(fighter.has('bladesinger')).toBe(false)
+		expect([...classSubclassGrantSources('Wizard')]).toEqual(['bladesinger'])
+		expect(classSubclassGrantSources('Sorcerer').size).toBe(0)
+	})
+})
 
 /* B6c (D177): subclass skill proficiencies and species tool picks. */
 

@@ -174,6 +174,7 @@ async function walkLevelUp(page: Page, level: number, plan: LevelPlan = {}): Pro
       await expectKeptSpells(page, plan.kept)
       await expectDropped(page, plan.dropped)
       await fillSpells(page, plan.spells)
+      await fillSavantSlots(page)
       await expect(nextButton(page)).toBeEnabled()
     }
     if (step.includes('invocations') || step.includes('metamagic')) {
@@ -788,19 +789,23 @@ test('M11b D: Wizard 1 → Wizard 3 / Cleric 3 through Level up; saves, multicla
     await levelUp(page, 'Cleric 1 → 2', 4, { spells: ['Cure Wounds'] })
     // F-13 on a multiclass sheet: Wizard 3 cantrips 3, prepared 6; the Wizard 2 picks (7 + Burning Hands less 3 cantrips = 5 prepared) stay.
     await levelUp(page, 'Wizard 2 → 3', 5, {
-      // Bladesinger, not Evoker: M11b finding 1 — Next stays disabled on the Spells step for the four Savant subclasses.
-      classStep: (p) => pickAll(p, ['Bladesinger']),
-      proficiencies: fillEmptySelects,
+      // Evoker: its two Savant picks are filled by walkLevelUp (D340, M11b finding 1).
+      classStep: (p) => pickAll(p, ['Evoker']),
       kept: { counters: ['Cantrips: 3/3', 'Prepared: 5/6'], spells: [...WIZARD_1_PICKS, 'Burning Hands'] },
       spells: ['Hold Person'],
     })
+    const savant = (await stored(page, id))['subclassSpellChoices']
+    expect(savant).toEqual([expect.objectContaining({ className: 'Wizard', subclassName: 'Evoker', picks: [expect.anything(), expect.anything()] })])
     await levelUp(page, 'Cleric 2 → 3', 6, {
       classStep: (p) => pickAll(p, ['Trickery Domain']),
       kept: { spells: [...CLERIC_PICKS.slice(3), 'Cure Wounds'] },
       spells: ['Hold Person'],
     })
-    await expect(classes(page)).toHaveText('Wizard 3 (Bladesinger) / Cleric 3 (Trickery Domain)')
-    expect((await stored(page, id))['levelOrder']).toEqual(order(['Wizard', 'Wizard', 'Cleric', 'Cleric', 'Wizard', 'Cleric']))
+    await expect(classes(page)).toHaveText('Wizard 3 (Evoker) / Cleric 3 (Trickery Domain)')
+    const after = await stored(page, id)
+    expect(after['levelOrder']).toEqual(order(['Wizard', 'Wizard', 'Cleric', 'Cleric', 'Wizard', 'Cleric']))
+    // D340: the Cleric's subclass pick leaves the Wizard's subclass picks alone.
+    expect(after['subclassSpellChoices']).toEqual(savant)
   })
 
   await test.step('sheet: saves (Wizard first), max HP, earlier Wizard spellbook picks kept', async () => {
@@ -850,25 +855,23 @@ test('M11b D: Wizard 1 → Wizard 3 / Cleric 3 through Level up; saves, multicla
     const before = await stored(page, id)
     await editButton(page).click()
     await switchTo(page, 'Cleric')
-    // M11b finding 2: Cleric 3 dropped the Bladesinger skill, and Edit blocks every step after Proficiencies until it is chosen again.
-    await goToStep(page, /Proficiencies/)
-    await fillEmptySelects(page)
     await goToStep(page, /Spells/)
     await expectStep(page, 'Spells')
     const added = await swapSpell(page, 'Command')
     await saveEdit(page, id)
     await page.reload()
-    await expect(classes(page)).toHaveText('Wizard 3 (Bladesinger) / Cleric 3 (Trickery Domain)')
+    await expect(classes(page)).toHaveText('Wizard 3 (Evoker) / Cleric 3 (Trickery Domain)')
     const after = await stored(page, id)
     expect(spellsOf(after, 'Cleric')).toContain(added)
     expect(spellsOf(after, 'Cleric')).not.toContain('Command')
     expect(spellsOf(after, 'Wizard')).toEqual(spellsOf(before, 'Wizard'))
+    expect(after['subclassSpellChoices']).toEqual(before['subclassSpellChoices'])
     expect(after['expertiseSkills']).toEqual(before['expertiseSkills'])
   })
 
   await test.step('Remove level: Cleric 3 goes first, then levels until the Cleric is gone', async () => {
     await removeLevel(page, 6)
-    await expect(classes(page)).toHaveText('Wizard 3 (Bladesinger) / Cleric 2')
+    await expect(classes(page)).toHaveText('Wizard 3 (Evoker) / Cleric 2')
     expect((await stored(page, id))['levelOrder']).toEqual(order(['Wizard', 'Wizard', 'Cleric', 'Cleric', 'Wizard']))
     // d8 average 5 + CON 2 + Toughness 1 less.
     await expect.poll(() => maxHp(page)).toBe(39)
@@ -1033,9 +1036,24 @@ const wizard2 = (id: string) => ({
   levelOrder: order(['Wizard', 'Wizard']),
 })
 
-// M11b finding 1: with any of Abjurer, Diviner, Evoker, Illusionist (the "Savant" subclasses) Next stays disabled on the Spells step with both counters full.
-test.fixme('M11b finding 1: single-class Wizard 2 → 3 with Evoker — Next is enabled once the Spells counters are full', async ({ page }) => {
-  await openSheet(page, wizard2('m11b-f1'))
+/** D340: the Savant picker (Abjurer, Diviner, Evoker, Illusionist) sits above the class spell list; each empty slot takes the first spell it offers that is still free. */
+async function fillSavantSlots(page: Page): Promise<string[]> {
+  const savant = page.locator('.spell-picker__section--subclass-choice')
+  const chosen: string[] = []
+  for (const slot of await savant.locator('select').all()) {
+    if ((await slot.inputValue()) !== '') continue
+    const free = slot.locator('option:not([disabled])').filter({ hasNotText: /^— choose a spell —$/ })
+    const name = (await free.allTextContents()).map((text) => text.trim()).find((text) => !chosen.includes(text))!
+    await slot.selectOption({ label: name })
+    chosen.push(name)
+  }
+  return chosen
+}
+
+// M11b finding 1: with any of Abjurer, Diviner, Evoker, Illusionist (the "Savant" subclasses) Next waited on the Savant picks, whose picker sat below the whole class spell list.
+test('M11b finding 1: single-class Wizard 2 → 3 with Evoker — the Savant picks are above the class list and Next is enabled once they and the counters are full', async ({ page }) => {
+  const id = 'm11b-f1'
+  await openSheet(page, wizard2(id))
   await levelUpButton(page).click()
   await classWindow(page).getByRole('button', { name: 'Wizard 2 → 3', exact: true }).click()
   await expect(async () => {
@@ -1044,27 +1062,48 @@ test.fixme('M11b finding 1: single-class Wizard 2 → 3 with Evoker — Next is 
   }).toPass({ timeout: 20_000 })
   await next(page)
   await expectStep(page, 'Spells')
+  const savant = page.locator('.spell-picker__section--subclass-choice')
+  await expect(savant).toContainText('0 of 2 Evoker spells chosen.')
+  // Above the class list, not below it.
+  expect(await savant.evaluate((node) => {
+    const list = document.querySelector('.manage-spells__counter')
+    return list !== null && (node.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+  })).toBe(true)
   await fillSpells(page, ['Burning Hands'])
+  await expect(nextButton(page)).toBeDisabled()
+  const chosen = await fillSavantSlots(page)
+  await expect(savant).toContainText('2 of 2 Evoker spells chosen.')
   await expect(nextButton(page)).toBeEnabled()
+  await walkLevelUp(page, 3)
+  await expect(classes(page)).toHaveText('Wizard 3 (Evoker)')
+  const saved = ((await stored(page, id))['subclassSpellChoices'] ?? []) as { picks: { name: string }[] }[]
+  expect(saved.flatMap((entry) => entry.picks.map((pick) => pick.name)).sort()).toEqual([...chosen].sort())
 })
 
-// M11b finding 2: the Bladesinger skill (subclassSkills) chosen at Wizard 3 disappears from the saved character during the Cleric levels; Edit then reports it "not chosen" and disables Ability scores onwards.
-test.fixme('M11b finding 2: Wizard 3 (Bladesinger) / Cleric 3 — the Bladesinger skill survives the Cleric levels', async ({ page }) => {
+// M11b finding 2: the Bladesinger skill (subclassSkills) chosen at Wizard 3 disappeared when Cleric 3 picked its subclass in a level up (D340).
+test('M11b finding 2: Wizard 3 (Bladesinger) / Cleric 3 — the Bladesinger skill survives the Cleric levels', async ({ page }) => {
   test.setTimeout(180_000)
   const id = 'm11b-f2'
   await openSheet(page, wizard2(id))
   await levelUp(page, 'Wizard 2 → 3', 3, { classStep: (p) => pickAll(p, ['Bladesinger']), proficiencies: fillEmptySelects, spells: ['Burning Hands'] })
-  expect((await stored(page, id))['subclassSkills']).toBeDefined()
+  const skills = (await stored(page, id))['subclassSkills']
+  expect(skills).toEqual([expect.objectContaining({ grantedBy: 'bladesinger' })])
   await enterClass(page, 'Cleric', 4, { classStep: (p) => pickIfOffered(p, ['Thaumaturge']), spells: CLERIC_PICKS })
-  expect((await stored(page, id))['subclassSkills'], 'after Cleric 1').toBeDefined()
+  expect((await stored(page, id))['subclassSkills'], 'after Cleric 1').toEqual(skills)
   await levelUp(page, 'Cleric 1 → 2', 5, { spells: ['Cure Wounds'] })
-  expect((await stored(page, id))['subclassSkills'], 'after Cleric 2').toBeDefined()
+  expect((await stored(page, id))['subclassSkills'], 'after Cleric 2').toEqual(skills)
   await levelUp(page, 'Cleric 2 → 3', 6, { classStep: (p) => pickAll(p, ['Trickery Domain']), spells: ['Hold Person'] })
-  expect((await stored(page, id))['subclassSkills'], 'after Cleric 3').toBeDefined()
+  expect((await stored(page, id))['subclassSkills'], 'after Cleric 3').toEqual(skills)
+  // Edit asks nothing again: with the skill gone the steps after Proficiencies were disabled.
+  await editButton(page).click()
+  await switchTo(page, 'Wizard')
+  await goToStep(page, /Spells/)
+  await expectStep(page, 'Spells')
 })
 
 // M11b check F: Paladin's Smite (level 2) makes Divine Smite always prepared; a Divine Smite picked at level 1 is a class-level twin of F-14.
-test.fixme('M11b F (finding 3): Paladin 1 with Divine Smite prepared → Paladin 2 — the Spells counter agrees with what Next accepts', async ({ page }) => {
+// D340: the duplicate pick is dropped with the D339 note, naming the class.
+test('M11b F (finding 3): Paladin 1 with Divine Smite prepared → Paladin 2 — the pick is dropped with a note and the Spells counter agrees with what Next accepts', async ({ page }) => {
   const id = 'm11b-f'
   // Standard array STR 15, CHA 14, CON 13, WIS 12, DEX 10, INT 8; Soldier +2 STR +1 DEX.
   const seed = level1(id, 'Paladin', { strength: 15, dexterity: 10, constitution: 13, intelligence: 8, wisdom: 12, charisma: 14 }, {
@@ -1084,10 +1123,19 @@ test.fixme('M11b F (finding 3): Paladin 1 with Divine Smite prepared → Paladin
     await expect(current).not.toHaveText(step)
   }
   await expectStep(page, 'Spells')
-  // Paladin prepared 2 at level 1, 3 at level 2 (class table). Seen: the counter opens at 1/3 with Divine Smite and Bless both listed, no dropped-pick note.
+  // Paladin prepared 2 at level 1, 3 at level 2 (class table). Bless stays the one pick; Divine Smite is the class's own grant.
   await expect(page.locator('.manage-spells__counter', { hasText: /^Prepared:/ })).toHaveText('Prepared: 1/3')
-  await expect(page.getByRole('region', { name: 'Prepared Spells' }).getByRole('button', { name: /^Unprepare / })).toHaveCount(2)
+  await expectDropped(page, { note: 'Divine Smite is always prepared by Paladin and was removed from your picks.', spells: ['Divine Smite'] })
+  await expect(page.getByRole('region', { name: 'Prepared Spells' }).getByRole('button', { name: /^Unprepare / })).toHaveCount(1)
   await fillSpells(page)
-  // Seen: counter 3/3 with 4 spells listed, Next disabled.
+  await expect(page.locator('.manage-spells__counter', { hasText: /^Prepared:/ })).toHaveText('Prepared: 3/3')
   await expect(nextButton(page)).toBeEnabled()
+  await walkLevelUp(page, 2, { dropped: { note: 'Divine Smite is always prepared by Paladin and was removed from your picks.', spells: ['Divine Smite'] } })
+  await expect(classes(page)).toHaveText('Paladin 2')
+  const picks = spellsOf(await stored(page, id), 'Paladin')
+  expect(picks).toContain('Bless')
+  expect(picks).not.toContain('Divine Smite')
+  expect(picks).toHaveLength(3)
+  await openTab(page, 'Spells')
+  await expect(spellKindRow(page, 'Divine Smite', 'cast')).toHaveCount(1)
 })

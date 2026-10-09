@@ -89,6 +89,15 @@ export function keepHeldSubclassSkills(skills: readonly CharacterSubclassSkill[]
 	return skills.filter((pick) => held.has(pick.grantedBy))
 }
 
+/** The grantedBy keys of every subclass grant of `className`, whichever subclass — what a new subclass pick for that class invalidates (D340). */
+export function classSubclassGrantSources(className: string): ReadonlySet<string> {
+	return new Set(
+		SUBCLASS_SKILL_GRANTS.filter((grant) => grant.className === className).flatMap((grant) =>
+			grant.choice ? [grant.choice.grantedBy, ...(grant.choice.orLanguage ? [grant.choice.orLanguage] : [])] : [],
+		),
+	)
+}
+
 /** The same for a skill-or-language grant's language. */
 export function keepHeldSubclassLanguages(languages: readonly CharacterLanguage[], grants: readonly SubclassSkillGrant[]): CharacterLanguage[] {
 	const held = new Set<string>(grants.flatMap((grant) => (grant.choice?.orLanguage ? [grant.choice.orLanguage] : [])))

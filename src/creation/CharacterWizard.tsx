@@ -986,7 +986,10 @@ export function CharacterWizard({
 		}
 		loadClassAlwaysPreparedSpells(classChoice.className, classChoice.classSource, classChoice.level)
 			.then((spells) => {
-				if (!cancelled) setClassAlwaysPrepared(spells)
+				if (cancelled) return
+				setClassAlwaysPrepared(spells)
+				// D340: a class grant arriving at a later level (Divine Smite at Paladin 2) drops the same pick, as D339 does for a subclass.
+				dispatch({ type: 'dropAlwaysPreparedPicks', className: classChoice.className, classSource: classChoice.classSource, subclassName: null, alwaysPrepared: spells })
 			})
 			.catch(() => {
 				if (!cancelled) setClassAlwaysPrepared([])
@@ -2240,6 +2243,19 @@ export function CharacterWizard({
 			{state.step === 'spells' && state.data.classChoice && spellRequirement && (
 				<div className="wizard__panel">
 					{knownSpellsIncompleteNotice}
+					{/* D340: above the class list — below it the Savant picks sat out of sight while Next waited on them. */}
+					{state.data.subclass && isSubclassSpellChoice(state.data.subclass) && (
+						<SubclassSpellChoicePicker
+							subclassName={state.data.subclass.name}
+							subclassSource={state.data.subclass.source}
+							className={state.data.classChoice.className}
+							classSource={state.data.classChoice.classSource}
+							classLevel={state.data.classChoice.level}
+							value={state.data.subclassSpellChoices}
+							onChange={(picks) => dispatch({ type: 'setSubclassSpellChoices', picks })}
+							alreadyKnown={alreadyKnownSpells}
+						/>
+					)}
 					{/* D210: the sheet's class section; Next still needs the exact counts (isCompleteSpellChoices). */}
 					<section className="wizard__card">
 					<DroppedAlwaysPreparedNote
@@ -2247,7 +2263,7 @@ export function CharacterWizard({
 							(entry) =>
 								entry.className === state.data.classChoice?.className &&
 								entry.classSource === state.data.classChoice.classSource &&
-								entry.subclassName === state.data.subclass?.name,
+								(entry.subclassName === null || entry.subclassName === state.data.subclass?.name),
 						)}
 					/>
 					<ClassSpellsManager
@@ -2276,18 +2292,6 @@ export function CharacterWizard({
 						}
 					/>
 					</section>
-					{state.data.subclass && isSubclassSpellChoice(state.data.subclass) && (
-						<SubclassSpellChoicePicker
-							subclassName={state.data.subclass.name}
-							subclassSource={state.data.subclass.source}
-							className={state.data.classChoice.className}
-							classSource={state.data.classChoice.classSource}
-							classLevel={state.data.classChoice.level}
-							value={state.data.subclassSpellChoices}
-							onChange={(picks) => dispatch({ type: 'setSubclassSpellChoices', picks })}
-							alreadyKnown={alreadyKnownSpells}
-						/>
-					)}
 				</div>
 			)}
 

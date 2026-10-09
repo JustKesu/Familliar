@@ -611,6 +611,66 @@ describe('wizardReducer navigation', () => {
 			const once = wizardReducer(cleric, { ...drop, alwaysPrepared: [...grants] })
 			expect(wizardReducer(once, { ...drop, alwaysPrepared: [...grants] })).toBe(once)
 		})
+
+		/* D340: Paladin's Divine Smite (class level 2) — the class's own grant, whatever the subclass. */
+		it('a class grant (subclassName null) drops the same pick with no subclass held', () => {
+			const paladin: WizardControllerState = {
+				step: 'spells',
+				data: {
+					...emptyWizardData(),
+					classChoice: { className: 'Paladin', classSource: 'XPHB', level: 2 },
+					spellChoices: [
+						{ name: 'Divine Smite', source: 'XPHB', level: 1 },
+						{ name: 'Bless', source: 'XPHB', level: 1 },
+					],
+				},
+			}
+			const after = wizardReducer(paladin, { type: 'dropAlwaysPreparedPicks', className: 'Paladin', classSource: 'XPHB', subclassName: null, alwaysPrepared: [{ name: 'Divine Smite', source: 'XPHB' }] })
+			expect(after.data.spellChoices.map((pick) => pick.name)).toEqual(['Bless'])
+			expect(after.droppedAlwaysPrepared).toEqual([{ className: 'Paladin', classSource: 'XPHB', subclassName: null, spellNames: ['Divine Smite'] }])
+		})
+	})
+
+	/* D340 (M11b finding 1): full class counters are not enough; the Savant picks (shown above the class list) are owed too. */
+	it('the Spells step waits on every unlocked Savant slot', () => {
+		const data: WizardData = {
+			...emptyWizardData(),
+			classChoice: { className: 'Wizard', classSource: 'XPHB', level: 3 },
+			subclass: { name: 'Evoker', source: 'XPHB', featureType: null },
+		}
+		const conditions = { spellRequirement: null, subclassSpellChoiceSlotCount: 2 }
+		expect(isStepComplete('spells', data, conditions)).toBe(false)
+		const picks = [
+			{ grantedAtLevel: 3, slotIndex: 0, name: 'Shatter', source: 'XPHB' },
+			{ grantedAtLevel: 3, slotIndex: 1, name: 'Thunderwave', source: 'XPHB' },
+		]
+		expect(isStepComplete('spells', { ...data, subclassSpellChoices: picks }, conditions)).toBe(true)
+	})
+
+	/* D340 (M11b finding 2): a Cleric subclass picked in a level up has no otherClasses stash, and the Wizard's Bladesinger skill must stay. */
+	it("a subclass pick for one class keeps another class's subclass skills and languages, and drops its own class's", () => {
+		const before: WizardControllerState = {
+			step: 'class',
+			data: {
+				...emptyWizardData(),
+				classChoice: { className: 'Cleric', classSource: 'XPHB', level: 3 },
+				subclassSkills: [
+					{ grantedBy: 'bladesinger', name: 'performance' },
+					{ grantedBy: 'orderDomain', name: 'persuasion' },
+				],
+				featureLanguages: [{ grantedBy: 'cavalier', name: 'Elvish', source: 'XPHB' }],
+			},
+		}
+		const after = wizardReducer(before, { type: 'setSubclass', subclass: { name: 'Trickery Domain', source: 'XPHB', featureType: null } })
+		expect(after.data.subclassSkills).toEqual([{ grantedBy: 'bladesinger', name: 'performance' }])
+		expect(after.data.featureLanguages).toEqual(before.data.featureLanguages)
+
+		const fighter = wizardReducer({ ...before, data: { ...before.data, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 } } }, {
+			type: 'setSubclass',
+			subclass: { name: 'Champion', source: 'XPHB', featureType: null },
+		})
+		expect(fighter.data.featureLanguages).toEqual([])
+		expect(fighter.data.subclassSkills).toHaveLength(2)
 	})
 
 	/* Build order step 8, slice 8b. */

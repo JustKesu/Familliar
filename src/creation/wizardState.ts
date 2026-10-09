@@ -48,7 +48,7 @@ import { classFeatureLanguageGrantsFor, keepHeldFeatureLanguages } from '../lang
 import { classToolGrantsFor, keepHeldToolChoices, toolGrantsForHeldClasses, type ClassToolChoiceGrant, type ToolSlotGrant } from '../toolProficiencies/classToolChoices'
 import { isKhoravar, isSpeciesToolChoice, keepHeldSpeciesToolChoices, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
 import {
-	SUBCLASS_LANGUAGE_SOURCES,
+	classSubclassGrantSources,
 	isSubclassSkillChoiceMade,
 	keepHeldSubclassLanguages,
 	keepHeldSubclassSkills,
@@ -818,7 +818,8 @@ export interface WizardControllerState {
 export interface DroppedAlwaysPrepared {
 	className: string
 	classSource: string
-	subclassName: string
+	/** Null: the class itself grants them (D340). */
+	subclassName: string | null
 	spellNames: string[]
 }
 
@@ -1243,7 +1244,7 @@ export type WizardAction =
 	| { type: 'setBackgroundOriginFeatOverride'; feat: { name: string; source: string } | null }
 	| { type: 'setSpellChoices'; choices: SpellPick[] }
 	/** D339: dispatched once per load of the subclass's always-prepared list; a list for another class or subclass than the current one is ignored. */
-	| { type: 'dropAlwaysPreparedPicks'; className: string; classSource: string; subclassName: string; alwaysPrepared: { name: string; source: string }[] }
+	| { type: 'dropAlwaysPreparedPicks'; className: string; classSource: string; subclassName: string | null; alwaysPrepared: { name: string; source: string }[] }
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
 	| { type: 'setClassFeatureChoices'; choices: CharacterClassFeatureChoice[] }
 	| { type: 'setWildShapeForms'; forms: { name: string; source: string }[] }
@@ -1419,11 +1420,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setFightingStyle':
 			return { ...state, data: { ...state.data, fightingStyle: action.style } }
 		case 'setSubclass': {
-			// M9: in a multiclass Edit the other held classes' subclass picks stay.
-			const othersGrants = subclassSkillGrantsFor(
-				(state.data.otherClasses ?? []).map((stash) => ({ ...stash.classChoice, subclass: stash.subclass?.name ?? null })),
-			)
-			const othersLanguages = keepHeldSubclassLanguages(state.data.featureLanguages, othersGrants)
+			// M9/D340: only this class's own subclass picks go; another held class's stay, in a level up (no otherClasses stash) as in Edit.
+			const ownSources = classSubclassGrantSources(state.data.classChoice?.className ?? '')
 			// D338: a first pick (no subclass before) invalidates none of these; only a change of subclass does (M9b).
 			const firstPick = state.data.subclass === null
 			return {
@@ -1436,8 +1434,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					spellChoices: firstPick ? state.data.spellChoices : [],
 					subclassSpellChoices: [],
 					wildShapeForms: firstPick ? state.data.wildShapeForms : [],
-					subclassSkills: keepHeldSubclassSkills(state.data.subclassSkills, othersGrants),
-					featureLanguages: state.data.featureLanguages.filter((language) => !SUBCLASS_LANGUAGE_SOURCES.has(language.grantedBy) || othersLanguages.includes(language)),
+					subclassSkills: state.data.subclassSkills.filter((pick) => !ownSources.has(pick.grantedBy)),
+					featureLanguages: state.data.featureLanguages.filter((language) => !ownSources.has(language.grantedBy)),
 				},
 			}
 		}
@@ -1458,7 +1456,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, spellChoices: action.choices } }
 		case 'dropAlwaysPreparedPicks': {
 			const { classChoice, subclass } = state.data
-			if (!classChoice || classChoice.className !== action.className || classChoice.classSource !== action.classSource || subclass?.name !== action.subclassName) return state
+			if (!classChoice || classChoice.className !== action.className || classChoice.classSource !== action.classSource || (action.subclassName !== null && subclass?.name !== action.subclassName)) return state
 			const { kept, removed } = splitAlwaysPreparedPicks(state.data.spellChoices, action.alwaysPrepared)
 			if (removed.length === 0) return state
 			const dropped: DroppedAlwaysPrepared = {

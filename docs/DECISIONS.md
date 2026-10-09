@@ -5130,3 +5130,12 @@ při změně už existující podtřídy (Edit, M9b). Nález 1 z M11a. Task F-13
 Když podtřída dává kouzlo jako always prepared a hráč ho už má mezi vybranými kouzly téže třídy, wizard ho z výběru sám odebere
 a ukáže poznámku nad počítadlem. Vybrané kouzlo jiné třídy zůstává. Uložené postavy se nemigrují. Nález z F-13. Task F-14,
 rozhodl Daniel 9. 10. 2026.
+
+## D340 — Nálezy M11b: Savant kouzla, subclass skills jiné třídy, always prepared od třídy (F-15)
+
+(1) Výběr dvou Savant kouzel (Abjurer, Diviner, Evoker, Illusionist) je na kroku Spells nad seznamem kouzel třídy, ne pod ním;
+Next na ně dál čeká. (2) Výběr podtřídy jedné třídy maže jen subclass skills a jazyky podtříd té třídy; skills a jazyky jiné
+držené třídy zůstávají v level upu i v Editu. (3) Kouzlo, které dává sama třída jako always prepared od pozdější úrovně (Divine
+Smite u Paladina 2, stejně Find Familiar Druid 2, Find Steed Paladin 5, Contact Other Plane Warlock 9, Power Word Heal/Kill
+Bard 20), wizard z výběru téže třídy odebere stejně jako D339 a poznámka jmenuje třídu: „Divine Smite is always prepared by
+Paladin and was removed from your picks.“ Uložené postavy se nemigrují. Nálezy M11b. Task F-15, rozhodl Daniel 9. 10. 2026.
