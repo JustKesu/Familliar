@@ -549,6 +549,70 @@ describe('wizardReducer navigation', () => {
 		expect(changed.data.classOptionalFeatureChoices).toEqual(invocations)
 	})
 
+	describe('dropAlwaysPreparedPicks (D339)', () => {
+		const lifeDomain = { name: 'Life Domain', source: 'XPHB', featureType: null }
+		const grants = [
+			{ name: 'Aid', source: 'XPHB' },
+			{ name: 'Bless', source: 'XPHB' },
+			{ name: 'Cure Wounds', source: 'XPHB' },
+			{ name: 'Lesser Restoration', source: 'XPHB' },
+		]
+		const druidCure = { name: 'Cure Wounds', source: 'XPHB', level: 1 }
+		const cleric: WizardControllerState = {
+			step: 'spells',
+			data: {
+				...emptyWizardData(),
+				classChoice: { className: 'Cleric', classSource: 'XPHB', level: 3 },
+				subclass: lifeDomain,
+				spellChoices: [
+					{ name: 'Guidance', source: 'XPHB', level: 0 },
+					{ name: 'Bless', source: 'XPHB', level: 1 },
+					{ name: 'Bless', source: 'PHB', level: 1 },
+					{ name: 'Command', source: 'XPHB', level: 1 },
+					{ name: 'Cure Wounds', source: 'XPHB', level: 1 },
+				],
+				otherClasses: [
+					{
+						classChoice: { className: 'Druid', classSource: 'XPHB', level: 2 },
+						subclass: null,
+						fightingStyle: null,
+						optionalFeatureChoices: [],
+						classOptionalFeatureChoices: [],
+						spellChoices: [druidCure],
+						subclassSpellChoices: [],
+						classFeatureChoices: [],
+						wildShapeForms: [],
+						activeClassFeatureTypes: [],
+					},
+				],
+			},
+		}
+		const drop = { type: 'dropAlwaysPreparedPicks', className: 'Cleric', classSource: 'XPHB', subclassName: 'Life Domain', alwaysPrepared: grants } as const
+
+		it('removes the overlapping picks by name and source, keeps the rest, and records what it removed', () => {
+			const after = wizardReducer(cleric, { ...drop, alwaysPrepared: [...grants] })
+			expect(after.data.spellChoices.map((pick) => `${pick.name}|${pick.source}`)).toEqual(['Guidance|XPHB', 'Bless|PHB', 'Command|XPHB'])
+			expect(after.droppedAlwaysPrepared).toEqual([{ className: 'Cleric', classSource: 'XPHB', subclassName: 'Life Domain', spellNames: ['Bless', 'Cure Wounds'] }])
+		})
+
+		it("keeps another class's pick of the same spell", () => {
+			const after = wizardReducer(cleric, { ...drop, alwaysPrepared: [...grants] })
+			expect(after.data.otherClasses?.[0]?.spellChoices).toEqual([druidCure])
+		})
+
+		it('is a no-op for an empty list, no overlap, or a list for another class or subclass', () => {
+			expect(wizardReducer(cleric, { ...drop, alwaysPrepared: [] })).toBe(cleric)
+			expect(wizardReducer(cleric, { ...drop, alwaysPrepared: [{ name: 'Aid', source: 'XPHB' }] })).toBe(cleric)
+			expect(wizardReducer(cleric, { ...drop, className: 'Druid', alwaysPrepared: [...grants] })).toBe(cleric)
+			expect(wizardReducer(cleric, { ...drop, subclassName: 'Light Domain', alwaysPrepared: [...grants] })).toBe(cleric)
+		})
+
+		it('a second load of the same list changes nothing', () => {
+			const once = wizardReducer(cleric, { ...drop, alwaysPrepared: [...grants] })
+			expect(wizardReducer(once, { ...drop, alwaysPrepared: [...grants] })).toBe(once)
+		})
+	})
+
 	/* Build order step 8, slice 8b. */
 	it('setHitPointLevels records the picks', () => {
 		const state: WizardControllerState = { step: 'hitPoints', data: emptyWizardData() }

@@ -36,6 +36,7 @@ import type {
 import { choiceNames, fightingStyleFor, isConsistentLevelOrder, singleClassLevelOrder } from '../storage/character'
 import type { PickSourceLookup } from '../optionalFeatures/pickSources'
 import { isValidHitPointEntry } from '../hitPoints/hitPointEntry'
+import { splitAlwaysPreparedPicks } from './alwaysPreparedOverlap'
 import type { AbilityBonusDistribution } from '../backgrounds/abilityBonus'
 import type { CharacterStore } from '../storage/characterStore'
 import type { ClassLevelChoice } from '../classes/ClassPicker'
@@ -810,6 +811,15 @@ function subclassChoiceFor(storedName: string | null, subclasses: WizardSeedLook
 export interface WizardControllerState {
 	step: WizardStep
 	data: WizardData
+	/** D339: picks this wizard run dropped because the class's subclass grants them as always prepared; never saved. */
+	droppedAlwaysPrepared?: DroppedAlwaysPrepared[]
+}
+
+export interface DroppedAlwaysPrepared {
+	className: string
+	classSource: string
+	subclassName: string
+	spellNames: string[]
 }
 
 export function initialControllerState(): WizardControllerState {
@@ -1232,6 +1242,8 @@ export type WizardAction =
 	| { type: 'setGrantedFeat'; feat: CharacterGrantedFeat }
 	| { type: 'setBackgroundOriginFeatOverride'; feat: { name: string; source: string } | null }
 	| { type: 'setSpellChoices'; choices: SpellPick[] }
+	/** D339: dispatched once per load of the subclass's always-prepared list; a list for another class or subclass than the current one is ignored. */
+	| { type: 'dropAlwaysPreparedPicks'; className: string; classSource: string; subclassName: string; alwaysPrepared: { name: string; source: string }[] }
 	| { type: 'setSubclassSpellChoices'; picks: CharacterSubclassSpellChoicePick[] }
 	| { type: 'setClassFeatureChoices'; choices: CharacterClassFeatureChoice[] }
 	| { type: 'setWildShapeForms'; forms: { name: string; source: string }[] }
@@ -1444,6 +1456,19 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			}
 		case 'setSpellChoices':
 			return { ...state, data: { ...state.data, spellChoices: action.choices } }
+		case 'dropAlwaysPreparedPicks': {
+			const { classChoice, subclass } = state.data
+			if (!classChoice || classChoice.className !== action.className || classChoice.classSource !== action.classSource || subclass?.name !== action.subclassName) return state
+			const { kept, removed } = splitAlwaysPreparedPicks(state.data.spellChoices, action.alwaysPrepared)
+			if (removed.length === 0) return state
+			const dropped: DroppedAlwaysPrepared = {
+				className: action.className,
+				classSource: action.classSource,
+				subclassName: action.subclassName,
+				spellNames: removed.map((pick) => pick.name),
+			}
+			return { ...state, data: { ...state.data, spellChoices: kept }, droppedAlwaysPrepared: [...(state.droppedAlwaysPrepared ?? []), dropped] }
+		}
 		case 'setSubclassSpellChoices':
 			return { ...state, data: { ...state.data, subclassSpellChoices: action.picks } }
 		case 'setClassFeatureChoices':

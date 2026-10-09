@@ -906,6 +906,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 10. [in progress] Multiclass — M0, M1a–c, F-8, M2, M3, M4, F-9, M5a, M5b, M6, M7a, M7b, F-10, M8, M9a, M9b, F-11, M10a, M10b, F-12 done (M10 complete, see the entries below); next M11 end-to-end multiclass e2e.
    - M11a end to end e2e for Warlock/Sorcerer, Cleric/Paladin, Fighter/Rogue (multiclassEndToEnd.spec.ts)
    - F-13 (D338): the first subclass pick on a level up keeps spellChoices, subclass options and Wild Shape forms; a subclass change still clears them (multiclassEndToEnd.spec.ts "M11a finding 1", "F-13" Wizard 2 → 3)
+   - F-14 (D339): once the subclass's always-prepared list loads, the wizard drops the active class's picks it grants (name + source) and shows a note above the Spells counter (`dropAlwaysPreparedPicks`, `DroppedAlwaysPreparedNote`; multiclassEndToEnd.spec.ts "F-14 a", "F-14 b", M11a B with Bless/Cure Wounds and Shield of Faith again)
 
 ## Co appka umí navíc k build orderu
 

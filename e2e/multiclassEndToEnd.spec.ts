@@ -136,12 +136,26 @@ interface LevelPlan {
   proficiencies?: (page: Page) => Promise<void>
   /** D338: what the Spells and option steps must still hold from earlier levels, checked before anything is added. */
   kept?: { counters?: string[]; spells?: string[]; options?: string[] }
+  /** D339: picks the subclass grants as always prepared, dropped with a note on the Spells step. */
+  dropped?: { note: string; spells: string[] }
 }
+
+const droppedNote = (page: Page): Locator => page.locator('.dropped-always-prepared-note')
 
 async function expectKeptSpells(page: Page, kept: LevelPlan['kept'] = {}): Promise<void> {
   for (const text of kept.counters ?? []) await expect(page.locator('.manage-spells__counter', { hasText: new RegExp(`^${text.split(':')[0]}:`) })).toHaveText(text)
   const prepared = page.getByRole('region', { name: 'Prepared Spells' })
   for (const name of kept.spells ?? []) await expect(prepared.locator('.manage-spells__name', { hasText: new RegExp(`^${escape(name)}$`) }).first()).toBeVisible()
+}
+
+async function expectDropped(page: Page, dropped: LevelPlan['dropped']): Promise<void> {
+  if (!dropped) {
+    await expect(droppedNote(page)).toHaveCount(0)
+    return
+  }
+  await expect(droppedNote(page)).toHaveText(dropped.note)
+  const prepared = page.getByRole('region', { name: 'Prepared Spells' })
+  for (const name of dropped.spells) await expect(prepared.getByRole('button', { name: `Unprepare ${name}`, exact: true })).toHaveCount(0)
 }
 
 /** Walks the level-up wizard from its first step to "Save level N", taking the average hit points. */
@@ -158,7 +172,9 @@ async function walkLevelUp(page: Page, level: number, plan: LevelPlan = {}): Pro
     }
     if (step.includes('spells')) {
       await expectKeptSpells(page, plan.kept)
+      await expectDropped(page, plan.dropped)
       await fillSpells(page, plan.spells)
+      await expect(nextButton(page)).toBeEnabled()
     }
     if (step.includes('invocations') || step.includes('metamagic')) {
       await expandOptionLists(page)
@@ -427,11 +443,74 @@ test('F-13: single-class Wizard 2 → 3 — choosing the subclass keeps the spel
   await expectKeptSpells(page, { counters: ['Cantrips: 3/3', 'Prepared: 5/6'], spells: wizardSpells })
 })
 
+const LIFE_DOMAIN_NOTE = 'Bless and Cure Wounds are always prepared by Life Domain and were removed from your picks.'
+const CLERIC_2_PICKS = ['Guidance', 'Light', 'Sacred Flame', 'Thaumaturgy', 'Bless', 'Command', 'Cure Wounds', 'Healing Word', 'Sanctuary']
+
+// Cleric 2 with Thaumaturge: 4 cantrips, 5 prepared. Same scores as M11a B.
+const cleric2 = (id: string) => ({
+  ...level1(id, 'Cleric', { strength: 12, dexterity: 10, constitution: 13, intelligence: 8, wisdom: 15, charisma: 14 }, {
+    classSkills: ['history', 'insight'],
+    classFeatureChoices: [{ className: 'Cleric', classSource: XPHB, featureName: 'Divine Order', grantedAtLevel: 1, optionName: 'Thaumaturge' }],
+    spellChoices: [{ className: 'Cleric', classSource: XPHB, spells: refs(CLERIC_2_PICKS) }],
+    hitPointLevels: [{ level: 2, kind: 'average', dieResult: 5 }],
+  }),
+  classes: [{ className: 'Cleric', classSource: XPHB, subclass: null, level: 2 }],
+  levelOrder: order(['Cleric', 'Cleric']),
+})
+
+test('F-14 a: Cleric 2 → 3 Life Domain drops the Bless and Cure Wounds picks; Next enabled; the sheet lists each once as always prepared', async ({ page }) => {
+  const id = 'f14-cleric'
+  await openSheet(page, cleric2(id))
+  await expect(classes(page)).toHaveText('Cleric 2')
+  // Cleric table: cantrips 3 at level 3 (+1 Thaumaturge), prepared 6; 5 held picks less the 2 dropped.
+  await levelUp(page, 'Cleric 2 → 3', 3, {
+    classStep: (p) => pickAll(p, ['Life Domain']),
+    kept: { counters: ['Cantrips: 4/4', 'Prepared: 3/6'], spells: ['Command', 'Healing Word', 'Sanctuary'] },
+    dropped: { note: LIFE_DOMAIN_NOTE, spells: ['Bless', 'Cure Wounds'] },
+  })
+  await expect(classes(page)).toHaveText('Cleric 3 (Life Domain)')
+  const picks = spellsOf(await stored(page, id), 'Cleric')
+  expect(picks).toHaveLength(10)
+  for (const name of ['Bless', 'Cure Wounds']) expect(picks).not.toContain(name)
+  await openTab(page, 'Spells')
+  // Once in its own level's section; higher sections repeat a spell as an upcast row.
+  for (const name of ['Bless', 'Cure Wounds']) {
+    const rows = spellRows(section(page, '1st Level'), name)
+    await expect(rows).toHaveCount(1)
+    await rows.getByRole('button', { name, exact: true }).click()
+    await expect(rows.locator('.sheet__spell-provenance')).toContainText('always prepared (Life Domain)')
+  }
+})
+
+test("F-14 b: Cleric 2 / Paladin 1 → Cleric 3 Life Domain drops only the Cleric's Bless and Cure Wounds; the Paladin's stay", async ({ page }) => {
+  test.setTimeout(120_000)
+  const id = 'f14-multiclass'
+  await openSheet(page, cleric2(id))
+  await expect(classes(page)).toHaveText('Cleric 2')
+  await enterClass(page, 'Paladin', 3, {
+    classStep: async (p) => {
+      await expandOptionLists(p)
+      if ((await chooseButton(p, 'Longsword').count()) > 0) await pickAll(p, ['Longsword', 'Warhammer'])
+    },
+    spells: ['Bless', 'Cure Wounds'],
+  })
+  await expect(classes(page)).toHaveText('Cleric 2 / Paladin 1')
+  expect(spellsOf(await stored(page, id), 'Paladin')).toEqual(['Bless', 'Cure Wounds'])
+  await levelUp(page, 'Cleric 2 → 3', 4, {
+    classStep: (p) => pickAll(p, ['Life Domain']),
+    kept: { counters: ['Cantrips: 4/4', 'Prepared: 3/6'] },
+    dropped: { note: LIFE_DOMAIN_NOTE, spells: ['Bless', 'Cure Wounds'] },
+  })
+  await expect(classes(page)).toHaveText('Cleric 3 (Life Domain) / Paladin 1')
+  const saved = await stored(page, id)
+  expect(spellsOf(saved, 'Paladin')).toEqual(['Bless', 'Cure Wounds'])
+  for (const name of ['Bless', 'Cure Wounds']) expect(spellsOf(saved, 'Cleric')).not.toContain(name)
+})
+
 test('M11a B: Cleric 1 → Cleric 3 / Paladin 3 through Level up; saves, slots, two Channel Divinity pools, HP, armor; export, edit, remove', async ({ page }) => {
   test.setTimeout(240_000)
   const id = 'm11a-b'
-  // No pick that Life Domain or Oath of Devotion later grants: such a pick blocks Next on the level up (see docs/REPORT.md, F-13).
-  const CLERIC_1_SPELLS = ['Guidance', 'Light', 'Sacred Flame', 'Thaumaturgy', 'Command', 'Detect Magic', 'Guiding Bolt', 'Healing Word']
+  const CLERIC_1_SPELLS = ['Guidance', 'Light', 'Sacred Flame', 'Thaumaturgy', 'Bless', 'Command', 'Cure Wounds', 'Healing Word']
   // Standard array STR 12 DEX 10 CON 13 INT 8 WIS 15 CHA 14; Soldier +2 STR +1 DEX → STR 14, WIS 15, CHA 14 meet Cleric and Paladin. CON +1.
   const seed = level1(id, 'Cleric', { strength: 12, dexterity: 10, constitution: 13, intelligence: 8, wisdom: 15, charisma: 14 }, {
     classSkills: ['history', 'insight'],
@@ -452,17 +531,26 @@ test('M11a B: Cleric 1 → Cleric 3 / Paladin 3 through Level up; saves, slots, 
         await expandOptionLists(p)
         if ((await chooseButton(p, 'Longsword').count()) > 0) await pickAll(p, ['Longsword', 'Warhammer'])
       },
-      spells: ['Divine Favor', 'Compelled Duel'],
+      spells: ['Divine Favor', 'Shield of Faith'],
     })
     await expect(classes(page)).toHaveText('Cleric 2 / Paladin 1')
     await levelUp(page, 'Paladin 1 → 2', 4, { classStep: (p) => pickAll(p, ['Defense']), spells: ['Heroism'] })
-    // D338: the subclass pick keeps the earlier spells. Cleric cantrips 3 + 1 Thaumaturge.
-    await levelUp(page, 'Cleric 2 → 3', 5, { classStep: (p) => pickAll(p, ['Life Domain']), kept: { counters: ['Cantrips: 4/4', 'Prepared: 5/6'], spells: CLERIC_2_SPELLS } })
+    // D338: the subclass pick keeps the earlier spells; D339 drops Bless and Cure Wounds, which Life Domain grants. Cleric cantrips 3 + 1 Thaumaturge, prepared 6.
+    await levelUp(page, 'Cleric 2 → 3', 5, {
+      classStep: (p) => pickAll(p, ['Life Domain']),
+      kept: { counters: ['Cantrips: 4/4', 'Prepared: 3/6'], spells: CLERIC_2_SPELLS.filter((name) => name !== 'Bless' && name !== 'Cure Wounds') },
+      dropped: { note: 'Bless and Cure Wounds are always prepared by Life Domain and were removed from your picks.', spells: ['Bless', 'Cure Wounds'] },
+    })
+    // F-14 c: Oath of Devotion grants Shield of Faith. Paladin prepared 4 at level 3.
     await levelUp(page, 'Paladin 2 → 3', 6, {
       classStep: (p) => pickAll(p, ['Oath of Devotion']),
-      kept: { counters: ['Prepared: 3/4'], spells: ['Divine Favor', 'Compelled Duel', 'Heroism'] },
+      kept: { counters: ['Prepared: 2/4'], spells: ['Divine Favor', 'Heroism'] },
+      dropped: { note: 'Shield of Faith is always prepared by Oath of Devotion and was removed from your picks.', spells: ['Shield of Faith'] },
       spells: ['Searing Smite'],
     })
+    const saved = await stored(page, id)
+    for (const name of ['Bless', 'Cure Wounds']) expect(spellsOf(saved, 'Cleric')).not.toContain(name)
+    expect(spellsOf(saved, 'Paladin')).not.toContain('Shield of Faith')
     await expect(classes(page)).toHaveText('Cleric 3 (Life Domain) / Paladin 3 (Oath of Devotion)')
     expect((await stored(page, id))['levelOrder']).toEqual(order(['Cleric', 'Cleric', 'Paladin', 'Paladin', 'Cleric', 'Paladin']))
   })
@@ -545,7 +633,7 @@ test('M11a B: Cleric 1 → Cleric 3 / Paladin 3 through Level up; saves, slots, 
     await expect(proficiencies(page)).not.toContainText('Martial weapons')
     await expect(actionsPanel(page)).not.toContainText('Lay on Hands')
     await openTab(page, 'Spells')
-    for (const name of ['Divine Favor', 'Compelled Duel']) await expect(spellRows(spellsPanel(page), name)).toHaveCount(0)
+    for (const name of ['Divine Favor', 'Shield of Faith']) await expect(spellRows(spellsPanel(page), name)).toHaveCount(0)
     // Cleric 2 alone: 1st ×3.
     await expect(ordinarySlots(page, 1)).toHaveCount(3)
     await expect(ordinarySlots(page, 2)).toHaveCount(0)

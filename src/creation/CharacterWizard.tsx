@@ -83,6 +83,7 @@ import { currentHpAfterMaxHpChange, hitDiePerLevel } from '../calculation/maxHit
 import type { Calculated } from '../calculation/types'
 import { loadCharacterMaxHp } from '../hitPoints/hpDefault'
 import { ClassSpellsManager } from '../sheet/ManageSpellsPanel'
+import { DroppedAlwaysPreparedNote } from './DroppedAlwaysPreparedNote'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { loadClassAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
 import { loadHeldClassPrepared, preparedByOtherClass, type ClassPreparedSpells } from '../spells/heldPreparedSpells'
@@ -964,6 +965,7 @@ export function CharacterWizard({
 				if (cancelled) return
 				setSubclassAlwaysPrepared(spells)
 				setSubclassAlwaysPreparedError(null)
+				dispatch({ type: 'dropAlwaysPreparedPicks', className: classChoice.className, classSource: classChoice.classSource, subclassName: subclass.name, alwaysPrepared: spells })
 			})
 			.catch((error: unknown) => {
 				// D43: keep the failure visible — AlwaysPreparedSpellsList shows this instead of an empty list.
@@ -2240,6 +2242,14 @@ export function CharacterWizard({
 					{knownSpellsIncompleteNotice}
 					{/* D210: the sheet's class section; Next still needs the exact counts (isCompleteSpellChoices). */}
 					<section className="wizard__card">
+					<DroppedAlwaysPreparedNote
+						dropped={(state.droppedAlwaysPrepared ?? []).filter(
+							(entry) =>
+								entry.className === state.data.classChoice?.className &&
+								entry.classSource === state.data.classChoice.classSource &&
+								entry.subclassName === state.data.subclass?.name,
+						)}
+					/>
 					<ClassSpellsManager
 						className={state.data.classChoice.className}
 						classSource={state.data.classChoice.classSource}

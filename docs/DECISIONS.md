@@ -5124,3 +5124,9 @@ nerozhodnuto, otázka v QUESTIONS.md. Task F-12, rozhodl Daniel 8. 10. 2026.
 
 První výběr podtřídy při level upu (podtřída null → zvolená) zachová vybraná kouzla, invokace a Wild Shape formy. Mazání zůstává jen
 při změně už existující podtřídy (Edit, M9b). Nález 1 z M11a. Task F-13, rozhodl Daniel 8. 10. 2026.
+
+## D339 — Kouzlo, které podtřída dává jako always prepared, wizard z výběru téže třídy odebere (F-14)
+
+Když podtřída dává kouzlo jako always prepared a hráč ho už má mezi vybranými kouzly téže třídy, wizard ho z výběru sám odebere
+a ukáže poznámku nad počítadlem. Vybrané kouzlo jiné třídy zůstává. Uložené postavy se nemigrují. Nález z F-13. Task F-14,
+rozhodl Daniel 9. 10. 2026.

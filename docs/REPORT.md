@@ -1,39 +1,30 @@
-# REPORT — F-13: první výběr podtřídy při level upu nemaže dřívější volby (D338)
+# REPORT — F-14: wizard odebere picky, které podtřída dává jako always prepared (D339)
 
-## Inventura `setSubclass` (`src/creation/wizardState.ts`)
-| Pole | Závisí na podtřídě? | Před F-13 | Po F-13 (předchozí podtřída null) |
-|---|---|---|---|
-| `spellChoices` | jen u third-casterů (EK/AT) a rozšířených seznamů; při prvním výběru zůstávají picky ze základního seznamu platné | mazalo | ponechá |
-| `optionalFeatureChoices` (volby podtřídy: manévry, runy…) | ano, ale bez podtřídy picker není, takže je prázdné | mazalo | ponechá |
-| `wildShapeForms` | ano (Moon zvedá CR limit); první výběr limit jen zvedne nebo nechá | mazalo | ponechá |
-| `subclassSpellChoices` | ano (savant/Lore sloty) | maže | maže |
-| `subclassSkills`, `featureLanguages` z podtřídy | ano | maže (kromě ostatních držených tříd, M9) | beze změny |
-| `classOptionalFeatureChoices` (invokace, Metamagic) | ne | nemaže | nemaže — invokace nebyly zasažené ani před opravou |
-
-- Jednotřídní level up byl zasažený stejně (stejný reducer): `M11a finding 1` jde jednotřídní cestou `/level-up` (Warlock 2 → 3) a nový test Wizard 2 → 3.
-- Tvorba na úrovni 3+: krok Spells je za krokem Class, takže při prvním výběru obvykle nic vybráno není; když hráč jde zpět a podtřídu vybere až po kouzlech, kouzla teď zůstanou (neškodné).
-- Změna podtřídy (Edit, M9b, i `pruneClassPicks` podtřída → null) maže dál jako dřív. Stash ostatních tříd (`otherClasses`) beze změny.
+## Inventura
+- Načtení: `CharacterWizard.tsx` efekt nad `loadSubclassAlwaysPreparedSpells` (deps `classChoice`, `subclass`, `spellSlotsClassData`) → `subclassAlwaysPrepared`; chyba → `subclassAlwaysPreparedError`.
+- Počítadlo: `ClassSpellsManager` → `preparedSpellRows` + `pickCounts` (`sheet/manageSpellsData.ts`, F-7b `alsoGranted`). Validace: `isCompleteSpellChoices` (`wizardState.ts`) počítá všechny `data.spellChoices`.
+- `data.spellChoices` drží jen aktivní třídu (level up: `ofActive`; multiclass Edit: ostatní třídy v `otherClasses`), takže odebrání z nich nikdy nesahá na pick jiné třídy.
+- Toky: tvorba 3+ (Spells je za Class; překryv jen přes Back), jednotřídní level up, multiclass level up, multiclass Edit (přepnutí třídy změní `subclass` → efekt znovu), Edit se změnou podtřídy (`setSubclass` picky stejně maže, M9b). Oprava = 4 místa, bez změny schématu.
 
 ## Co se změnilo
-- `wizardState.ts` `setSubclass`: `firstPick = state.data.subclass === null` → `spellChoices`, `optionalFeatureChoices`, `wildShapeForms` zůstanou. Jedno místo, bez změny schématu.
-- `wizardState.test.ts`: test „clears the Wild Shape forms…“ začíná z existující podtřídy (Circle of the Land → Moon); nový test „a first subclass pick keeps…; a change still clears them“.
-- `e2e/multiclassEndToEnd.spec.ts`: `M11a finding 1` bez `test.fixme`. A a B už kouzla po výběru podtřídy znovu nevybírají; `walkLevelUp` má `kept` a před doplněním ověří počítadla, jména v Prepared Spells a vybrané invokace:
-  Warlock 2→3 `Cantrips: 2/2`, `Prepared: 3/4` + 3 invokace; Sorcerer 2→3 `4/4`, `4/6`; Cleric 2→3 `4/4`, `5/6`; Paladin 2→3 `Prepared: 3/4`.
-  Nový test `F-13: single-class Wizard 2 → 3` (seed Wizard 2, schema 60, `levelOrder` 2, Scholar Arcana, Bladesinger): Spells `Cantrips: 3/3`, `Prepared: 5/6` (Wizard tabulka cantrips 3/3/3, prepared 4/5/6).
-- Seed B: Cleric bez Bless a Cure Wounds, Paladin Compelled Duel místo Shield of Faith — kvůli nálezu níže.
-- `docs/DECISIONS.md` D338, `docs/STATUS.md` řádek F-13.
+- `src/creation/alwaysPreparedOverlap.ts`: `splitAlwaysPreparedPicks(picks, alwaysPrepared)` → `{ kept, removed }`, shoda jménem + zdrojem.
+- `wizardState.ts`: akce `dropAlwaysPreparedPicks` (className, classSource, subclassName, alwaysPrepared). Ignoruje seznam pro jinou třídu/podtřídu; bez překryvu vrací tentýž stav. Odebrané zapisuje do `WizardControllerState.droppedAlwaysPrepared` (mimo `data`, neukládá se; `seed` ho vynuluje).
+- `CharacterWizard.tsx`: dispatch jednou v `.then` úspěšného načtení (ne při loading/chybě/zrušení); nová poznámka nad `ClassSpellsManager` filtrovaná na aktivní třídu a podtřídu.
+- `src/creation/DroppedAlwaysPreparedNote.tsx`: `<p class="manage-spells__empty dropped-always-prepared-note">`, text např. „Bless and Cure Wounds are always prepared by Life Domain and were removed from your picks.“
+- Edit postavy, jejíž uložené picky už překryv mají, je při otevření taky odebere (stejný efekt); uložená data se mění až uložením Editu.
+- `e2e/multiclassEndToEnd.spec.ts`: seed B vrácen (Cleric s Bless a Cure Wounds, Paladin se Shield of Faith); `walkLevelUp` má `dropped` (poznámka + žádné `Unprepare X`) a po vyplnění ověří povolený Next.
+- `docs/DECISIONS.md` D339, `docs/STATUS.md` řádek F-14.
 
-## Výsledky
-- `npm run typecheck` OK; `npm test` 3246 passed (176 souborů).
-- `npm run e2e` celá sada **515 passed**, 0 failed, 0 skipped, 5,4 min.
+## Testy
+- Unit: `alwaysPreparedOverlap.test.ts` (2), `wizardState.test.ts` „dropAlwaysPreparedPicks (D339)“ (4: překryv pryč vč. PHB Bless ponechané, pick Druida v `otherClasses` zůstává, prázdný/nepřekrývající/cizí třída/podtřída = tentýž stav, druhé načtení nic nemění).
+- e2e `F-14 a`: seed Cleric 2 (Thaumaturge, 4 cantripy + Bless, Command, Cure Wounds, Healing Word, Sanctuary) → Cleric 2 → 3 Life Domain: poznámka, `Cantrips: 4/4`, `Prepared: 3/6` (Cleric tabulka prepared 6 na úrovni 3; 5 picků − 2 odebrané), doplnění, Next povolen, uloženo 10 picků bez Bless/Cure Wounds, na sheetu oba jednou v sekci 1st Level s „always prepared (Life Domain)“.
+- e2e `F-14 b`: Cleric 2 → + Paladin 1 s Bless a Cure Wounds → Cleric 2 → 3 Life Domain: odebrány jen Clericovy, Paladin má dál `['Bless', 'Cure Wounds']`. Zadání chtělo Wizard 3, ale Wizard seznam XPHB nemá žádné z Life Domain kouzel (Aid, Bless, Cure Wounds, Lesser Restoration), proto Paladin.
+- e2e c) v `M11a B`: Paladin 2 → 3 Oath of Devotion — poznámka ke Shield of Faith, `Prepared: 2/4` (Paladin prepared 4 na úrovni 3; Divine Favor + Heroism), Next povolen. Cleric 2 → 3 v B: `Prepared: 3/6`.
+- `npm run typecheck` OK; `npm test` 3252 passed (177 souborů); `npm run e2e` 517 passed, 5,6 min (první běh: 1 fail ve vlastním testu F-14 a — sheet opakuje Bless jako upcast v 2nd Level, test zúžen na sekci 1st Level).
 
-## Nový nález (potřebuje rozhodnutí)
-Rozpor počítadla a validace, dosud skrytý, protože level up kouzla mazal. Kroky: seed Cleric 1 s Bless a Cure Wounds → Level up Cleric 1→2 →
-„Cleric 2 → 3“ → Life Domain → Spells. Počítadlo nepočítá pick, který podtřída dává jako always-prepared (F-7b, `pickCounts`), takže ukáže
-`Prepared: 3/6`; po doplnění `6/6 · full` je Next zakázaný, protože `isCompleteSpellChoices` počítá všech 8 picků ≠ 6. Hráč se dostane dál jen
-tak, že Bless a Cure Wounds sám odebere (Unprepare), nic mu to neřekne. Totéž Paladin se Shield of Faith → Oath of Devotion. V Editu
-pravděpodobně stejně (neověřeno). Možnosti: (a) validace počítá jako `pickCounts` (bez picků, které podtřída dává) — wizard by potřeboval
-always-prepared seznam ve validaci; (b) při výběru podtřídy překrývající se picky odebrat; (c) nechat a ukázat hlášku u počítadla.
+## Rozhodnutí během práce
+- Poznámka se ukazuje jen pro aktuální třídu + podtřídu (po změně podtřídy stará poznámka zmizí).
+- Řeší jen always-prepared podtřídy (D62), ne class always-prepared (D192) ani subclass filter-choice picky, které `pickCounts` taky vynechává (`alsoGranted`) — tam může stejný rozpor počítadla a Next zůstat; neověřeno.
 
 ## Manual browser check for the user
-- Nic vizuálního se nezměnilo.
+- Vzhled poznámky: importuj Cleric 2 se seedem jako `cleric2` v `e2e/multiclassEndToEnd.spec.ts` (nebo vlastní Cleric 2 s Bless a Cure Wounds) → Level up „Cleric 2 → 3“ → Life Domain → krok Spells: šedá poznámka nad sekcí Prepared Spells — velikost, zalomení na telefonu, odsazení od karty.
