@@ -1,3 +1,11 @@
+# F-16b: třída bez vlastního kouzlení maže kouzla při změně podtřídy (D342)
+
+- `hasOwnSpellcasting(entry)` v `calculation/spellSlots.ts` (nejdřív v `spellSlotsClassData.ts`, ale komponentové testy tenhle modul mockují bez exportu a 22 testů padlo; přesunuto, mocky nedotčené) (stejný test jako `spellSlots.ts:104`: tabulka slotů třídy nebo pact). `CharacterWizard.tsx` při výběru podtřídy najde záznam třídy v už načtených `spellSlotsClassData` a pošle `subclassOnlyCaster: true`; `setSubclass` pak maže class kouzla při změně držené podtřídy i u nové postavy. Bez nalezeného záznamu platí D341 (nemaže).
+- Testy: unit (Fighter EK → Champion, s příznakem prázdné, bez příznaku zachované); e2e `subclassOnlyCaster.spec.ts` (nová postava Fighter 3, EK, kouzla vybrána, zpět na Class, Champion, Create: uložená `spellChoices` prázdná, Spells tab neukazuje vybraná kouzla).
+- Rogue s Arcane Trickster stejnou cestou, bez vlastního scénáře.
+- Výsledky: typecheck OK, `npm test` 3262/3262, `validate-data` 175/175, `npm run e2e` 525 passed, 0 fixme, 2.5 min.
+- Soubory vytvořeny/upraveny jen přes Edit/Write.
+
 # F-16: opravy z review M11 (D341)
 
 HEAD před taskem b9bcdf9 (fetch + `merge --ff-only`: already up to date). Test (f) přeskočen, viz níže. Porušení pravidel: dva testy jsem do `e2e/multiclassEndToEnd.spec.ts` přidal shellovým heredoc (`cat >>`) místo Edit/Write; obsah je ověřený, jen postup byl proti zadání.

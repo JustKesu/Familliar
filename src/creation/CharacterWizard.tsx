@@ -97,7 +97,7 @@ import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
 import { computeSpellCounts } from '../calculation/spellCounts'
 import { computeSpellSlots } from '../calculation/spellSlots'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
-import type { ClassSpellSlotsData } from '../calculation/spellSlots'
+import { hasOwnSpellcasting, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { choiceNames, type Character, type CharacterBackground, type CharacterClass, type CharacterOptionalFeatureChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import type { LevelGains } from '../levelUp/levelGains'
@@ -1934,12 +1934,14 @@ export function CharacterWizard({
 									classSource={state.data.classChoice.classSource}
 									level={state.data.classChoice.level}
 									value={state.data.subclass}
-									onChange={(found) =>
+									onChange={(found) => {
+										const entry = spellSlotsClassData.find((candidate) => candidate.className === state.data.classChoice?.className && candidate.classSource === state.data.classChoice.classSource)
 										dispatch({
 											type: 'setSubclass',
 											subclass: found ? { name: found.name, source: found.source, featureType: found.featureType } : null,
+											...(entry && !hasOwnSpellcasting(entry) ? { subclassOnlyCaster: true } : {}),
 										})
-									}
+									}}
 								/>
 							)}
 							{state.data.subclass && (

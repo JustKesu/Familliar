@@ -5147,3 +5147,10 @@ přepnutí A → B v jednom běhu level upu nebo tvorby je nemaže (upřesňuje 
 (2) Remove level pod úroveň, od které třída nebo podtřída dává kouzlo jako always prepared, odebraný pick (D339, D340) nevrací; místo
 zůstane prázdné a hráč ho doplní v Manage Spells. (3) Poznámka „removed from your picks“ (D339, D340) se ukazuje i tehdy, když wizard
 odebere duplikát, který už byl uložený (postavy před F-14), v Editu i level upu. Task F-16, rozhodl Daniel 10. 10. 2026.
+
+## D342 — Třída bez vlastního kouzlení maže kouzla i u nové postavy při změně podtřídy (F-16b)
+
+U třídy, která sama nekouzlí a kouzla dostává jen od podtřídy (Fighter s Eldritch Knight, Rogue s Arcane Trickster), změna podtřídy
+ve wizardu smaže vybraná kouzla třídy i u nové postavy (výjimka z D341 bod 1). „Bez vlastního kouzlení“ se bere z načtených dat
+tříd (`hasOwnSpellcasting`: žádná tabulka slotů třídy a ne pact), ne ze jmen tříd. Třídy s vlastním kouzlením zůstávají podle D341.
+Task F-16b, rozhodl Daniel 11. 10. 2026.

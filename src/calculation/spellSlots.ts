@@ -55,6 +55,11 @@ export interface ClassSpellSlotsData {
 	subclasses?: SubclassSpellSlotsData[]
 }
 
+/** D342: false for a class whose slots come only from a subclass (Fighter, Rogue) or that has none; the test computeSpellSlots applies before it looks at the subclass (D46). */
+export function hasOwnSpellcasting(entry: ClassSpellSlotsData): boolean {
+	return entry.spellSlotsByLevel !== null || entry.casterProgression === 'pact'
+}
+
 export interface PactSlots {
 	count: number
 	slotLevel: number

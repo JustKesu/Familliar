@@ -577,6 +577,23 @@ describe('wizardReducer navigation', () => {
 		expect(changed.data.wildShapeForms).toEqual([])
 	})
 
+	/* D342: Fighter and Rogue have no spellcasting of their own; their class spell picks all belong to the subclass. */
+	it('a new character of a class without own spellcasting loses its spell picks on a subclass switch', () => {
+		const spellChoices = [{ name: 'Shield', source: 'XPHB', level: 1 }]
+		const knight: WizardControllerState = {
+			step: 'class',
+			data: {
+				...emptyWizardData(),
+				classChoice: { className: 'Fighter', classSource: 'XPHB', level: 3 },
+				subclass: { name: 'Eldritch Knight', source: 'XPHB', featureType: null },
+				spellChoices,
+			},
+		}
+		const champion = { name: 'Champion', source: 'XPHB', featureType: null }
+		expect(wizardReducer(knight, { type: 'setSubclass', subclass: champion, subclassOnlyCaster: true }).data.spellChoices).toEqual([])
+		expect(wizardReducer(knight, { type: 'setSubclass', subclass: champion }).data.spellChoices).toEqual(spellChoices)
+	})
+
 	it('level up from no subclass: picking A and then B keeps the seeded spell picks', () => {
 		const spellChoices = [{ name: 'Magic Missile', source: 'XPHB', level: 1 }]
 		let state = wizardReducer(

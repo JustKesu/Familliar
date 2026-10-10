@@ -1239,7 +1239,8 @@ export type WizardAction =
 	| { type: 'setClassSkills'; skills: string[] }
 	| { type: 'setMasteries'; weapons: string[] }
 	| { type: 'setFightingStyle'; style: string | null }
-	| { type: 'setSubclass'; subclass: SubclassChoice | null }
+	/** D342: set for a class with no spellcasting of its own, whose class spell picks all come from the subclass. */
+	| { type: 'setSubclass'; subclass: SubclassChoice | null; subclassOnlyCaster?: boolean }
 	| { type: 'setOptionalFeatureChoices'; choices: string[] }
 	| { type: 'setClassOptionalFeatureChoices'; choices: CharacterOptionalFeatureChoice[] }
 	| { type: 'setFeatAsiChoices'; choices: FeatAsiChoice[] }
@@ -1439,7 +1440,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			const nothingHeld = state.data.subclass === null
 			// Dropping the subclass (level lowered below it, D251) still clears: what hung on it, such as Eldritch Knight spells, is meaningless without it.
 			const hadSubclass =
-				(classChoice !== null && classKey(classChoice.className, classChoice.classSource) in (state.initialSubclasses ?? {})) || (action.subclass === null && !nothingHeld)
+				(classChoice !== null && classKey(classChoice.className, classChoice.classSource) in (state.initialSubclasses ?? {})) || ((action.subclass === null || action.subclassOnlyCaster === true) && !nothingHeld)
 			return {
 				...state,
 				// wildShapeForms clears on a change: Circle of the Moon's Circle Forms raises the CR cap, so the legal pool is subclass-dependent.
