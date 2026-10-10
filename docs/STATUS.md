@@ -909,6 +909,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    - F-14 (D339): once the subclass's always-prepared list loads, the wizard drops the active class's picks it grants (name + source) and shows a note above the Spells counter (`dropAlwaysPreparedPicks`, `DroppedAlwaysPreparedNote`; multiclassEndToEnd.spec.ts "F-14 a", "F-14 b", M11a B with Bless/Cure Wounds and Shield of Faith again)
    - M11b end to end e2e for Wizard/Cleric, Monk/Ranger (multiclassEndToEnd.spec.ts)
    - F-15 (D340): Savant picker above the class spell list on the Spells step; setSubclass drops only the active class's subclass skills/languages (`classSubclassGrantSources`); class always-prepared grants (Divine Smite etc.) drop the same pick via `dropAlwaysPreparedPicks` with `subclassName: null`, note names the class (multiclassEndToEnd.spec.ts "M11b finding 1", "M11b finding 2", "M11b F (finding 3)", M11b D with Evoker)
+   - F-16 (D341): class spell picks and Wild Shape forms clear on a subclass change only when the loaded character already had a subclass for that class (`initialSubclasses` in the controller state, seeded by `seed`); the always-prepared note (`droppedAlwaysPrepared`) keeps one entry per class/subclass and follows the grant level; Paladin entry asserts weapon mastery (multiclassEndToEnd.spec.ts "F-16 a", "F-16 d", extended "M11b finding 2", "F-14 b", M11a B)
 
 ## Co appka umí navíc k build orderu
 

@@ -500,12 +500,18 @@ describe('wizardReducer navigation', () => {
 	it('clears the Wild Shape forms when the class or the subclass changes', () => {
 		const picked: WizardControllerState = {
 			step: 'class',
-			data: { ...emptyWizardData(), subclass: { name: 'Circle of the Land', source: 'XPHB', featureType: null }, wildShapeForms: [{ name: 'Wolf', source: 'XMM' }] },
+			data: {
+				...emptyWizardData(),
+				classChoice: { className: 'Druid', classSource: 'XPHB', level: 4 },
+				subclass: { name: 'Circle of the Land', source: 'XPHB', featureType: null },
+				wildShapeForms: [{ name: 'Wolf', source: 'XMM' }],
+			},
+			initialSubclasses: { 'Druid|XPHB': 'Circle of the Land' },
 		}
 
 		const afterClass = wizardReducer(picked, {
 			type: 'setClassChoice',
-			choice: { className: 'Druid', classSource: 'XPHB', level: 4 },
+			choice: { className: 'Fighter', classSource: 'XPHB', level: 4 },
 		})
 		expect(afterClass.data.wildShapeForms).toEqual([])
 
@@ -542,11 +548,44 @@ describe('wizardReducer navigation', () => {
 		expect(first.data.wildShapeForms).toEqual([{ name: 'Wolf', source: 'XMM' }])
 		expect(first.data.subclassSpellChoices).toEqual([])
 
-		const changed = wizardReducer(first, { type: 'setSubclass', subclass: { name: 'Celestial Patron', source: 'XPHB', featureType: null } })
+		// D341: A -> B in the same run is still not a change of an existing subclass; the subclass's own options go, the class's spells and forms stay.
+		const switched = wizardReducer(first, { type: 'setSubclass', subclass: { name: 'Celestial Patron', source: 'XPHB', featureType: null } })
+		expect(switched.data.spellChoices).toEqual(spellChoices)
+		expect(switched.data.wildShapeForms).toEqual([{ name: 'Wolf', source: 'XMM' }])
+		expect(switched.data.optionalFeatureChoices).toEqual([])
+		expect(switched.data.classOptionalFeatureChoices).toEqual(invocations)
+	})
+
+	/* D338/D341: Edit of a character that already has a subclass; changing it still clears the class's spell picks and forms. */
+	it('changing a subclass the loaded character already had clears spells and Wild Shape forms', () => {
+		const spellChoices = [{ name: 'Hex', source: 'XPHB', level: 1 }]
+		const loaded: WizardControllerState = wizardReducer(
+			{ step: 'class', data: emptyWizardData() },
+			{
+				type: 'seed',
+				data: {
+					...emptyWizardData(),
+					classChoice: { className: 'Warlock', classSource: 'XPHB', level: 3 },
+					subclass: { name: 'Fiend Patron', source: 'XPHB', featureType: null },
+					spellChoices,
+					wildShapeForms: [{ name: 'Wolf', source: 'XMM' }],
+				},
+			},
+		)
+		const changed = wizardReducer(loaded, { type: 'setSubclass', subclass: { name: 'Celestial Patron', source: 'XPHB', featureType: null } })
 		expect(changed.data.spellChoices).toEqual([])
-		expect(changed.data.optionalFeatureChoices).toEqual([])
 		expect(changed.data.wildShapeForms).toEqual([])
-		expect(changed.data.classOptionalFeatureChoices).toEqual(invocations)
+	})
+
+	it('level up from no subclass: picking A and then B keeps the seeded spell picks', () => {
+		const spellChoices = [{ name: 'Magic Missile', source: 'XPHB', level: 1 }]
+		let state = wizardReducer(
+			{ step: 'class', data: emptyWizardData() },
+			{ type: 'seed', data: { ...emptyWizardData(), classChoice: { className: 'Wizard', classSource: 'XPHB', level: 3 }, spellChoices } },
+		)
+		state = wizardReducer(state, { type: 'setSubclass', subclass: { name: 'Bladesinger', source: 'XPHB', featureType: null } })
+		state = wizardReducer(state, { type: 'setSubclass', subclass: { name: 'Evoker', source: 'XPHB', featureType: null } })
+		expect(state.data.spellChoices).toEqual(spellChoices)
 	})
 
 	describe('dropAlwaysPreparedPicks (D339)', () => {
@@ -628,6 +667,27 @@ describe('wizardReducer navigation', () => {
 			const after = wizardReducer(paladin, { type: 'dropAlwaysPreparedPicks', className: 'Paladin', classSource: 'XPHB', subclassName: null, alwaysPrepared: [{ name: 'Divine Smite', source: 'XPHB' }] })
 			expect(after.data.spellChoices.map((pick) => pick.name)).toEqual(['Bless'])
 			expect(after.droppedAlwaysPrepared).toEqual([{ className: 'Paladin', classSource: 'XPHB', subclassName: null, spellNames: ['Divine Smite'] }])
+		})
+
+		/* D341: the note follows the grant — gone when the level drops below it, one entry when the pick is dropped again. */
+		it('lowering the level removes the class note, and a second drop keeps one entry', () => {
+			const paladin: WizardControllerState = {
+				step: 'spells',
+				data: {
+					...emptyWizardData(),
+					classChoice: { className: 'Paladin', classSource: 'XPHB', level: 2 },
+					spellChoices: [{ name: 'Divine Smite', source: 'XPHB', level: 1 }],
+				},
+			}
+			const smite = [{ name: 'Divine Smite', source: 'XPHB' }]
+			const base = { type: 'dropAlwaysPreparedPicks', className: 'Paladin', classSource: 'XPHB', subclassName: null } as const
+			const dropped = wizardReducer(paladin, { ...base, alwaysPrepared: smite })
+			const lowered = wizardReducer(dropped, { ...base, alwaysPrepared: [] })
+			expect(lowered.droppedAlwaysPrepared).toEqual([])
+
+			const repicked = wizardReducer(dropped, { type: 'setSpellChoices', choices: [{ name: 'Divine Smite', source: 'XPHB', level: 1 }] })
+			const again = wizardReducer(repicked, { ...base, alwaysPrepared: smite })
+			expect(again.droppedAlwaysPrepared).toEqual([{ className: 'Paladin', classSource: 'XPHB', subclassName: null, spellNames: ['Divine Smite'] }])
 		})
 	})
 

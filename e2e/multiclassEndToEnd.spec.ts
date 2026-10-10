@@ -3,7 +3,7 @@ import { chooseButton, createFighter, expectStep, next, nextButton, select, step
 
 /*
  * M11a: three multiclass builds from level 1 through the real UI — Level up, "+ New class…", Edit, Remove level.
- * Only the level 1 Warlock and Cleric are seeded (schema 60), as the wizard saves them. Expected values: docs/REPORT.md.
+ * Only the level 1 Warlock and Cleric are seeded (schema 60), as the wizard saves them. Expected values: the class tables in data/classes.json.
  */
 const STORAGE_KEY = 'familliar:characters'
 const XPHB = 'XPHB'
@@ -490,12 +490,13 @@ test("F-14 b: Cleric 2 / Paladin 1 → Cleric 3 Life Domain drops only the Cleri
   await expect(classes(page)).toHaveText('Cleric 2')
   await enterClass(page, 'Paladin', 3, {
     classStep: async (p) => {
-      await expandOptionLists(p)
-      if ((await chooseButton(p, 'Longsword').count()) > 0) await pickAll(p, ['Longsword', 'Warhammer'])
+      await pickAll(p, ['Longsword', 'Warhammer'])
     },
     spells: ['Bless', 'Cure Wounds'],
   })
   await expect(classes(page)).toHaveText('Cleric 2 / Paladin 1')
+  // Paladin level 1 Weapon Mastery: two weapons, and the save keeps them.
+  expect(((await stored(page, id))['masteries'] ?? []) as { name: string }[]).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'Longsword' }), expect.objectContaining({ name: 'Warhammer' })]))
   expect(spellsOf(await stored(page, id), 'Paladin')).toEqual(['Bless', 'Cure Wounds'])
   await levelUp(page, 'Cleric 2 → 3', 4, {
     classStep: (p) => pickAll(p, ['Life Domain']),
@@ -528,13 +529,11 @@ test('M11a B: Cleric 1 → Cleric 3 / Paladin 3 through Level up; saves, slots, 
     await levelUp(page, 'Cleric 1 → 2', 2, { spells: ['Sanctuary'] })
     await expect(proficiencies(page)).not.toContainText('Martial weapons')
     await enterClass(page, 'Paladin', 3, {
-      classStep: async (p) => {
-        await expandOptionLists(p)
-        if ((await chooseButton(p, 'Longsword').count()) > 0) await pickAll(p, ['Longsword', 'Warhammer'])
-      },
+      classStep: (p) => pickAll(p, ['Longsword', 'Warhammer']),
       spells: ['Divine Favor', 'Shield of Faith'],
     })
     await expect(classes(page)).toHaveText('Cleric 2 / Paladin 1')
+    expect(((await stored(page, id))['masteries'] ?? []) as { name: string }[]).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'Longsword' }), expect.objectContaining({ name: 'Warhammer' })]))
     await levelUp(page, 'Paladin 1 → 2', 4, { classStep: (p) => pickAll(p, ['Defense']), spells: ['Heroism'] })
     // D338: the subclass pick keeps the earlier spells; D339 drops Bless and Cure Wounds, which Life Domain grants. Cleric cantrips 3 + 1 Thaumaturge, prepared 6.
     await levelUp(page, 'Cleric 2 → 3', 5, {
@@ -1082,7 +1081,7 @@ test('M11b finding 1: single-class Wizard 2 → 3 with Evoker — the Savant pic
 
 // M11b finding 2: the Bladesinger skill (subclassSkills) chosen at Wizard 3 disappeared when Cleric 3 picked its subclass in a level up (D340).
 test('M11b finding 2: Wizard 3 (Bladesinger) / Cleric 3 — the Bladesinger skill survives the Cleric levels', async ({ page }) => {
-  test.setTimeout(180_000)
+  test.setTimeout(300_000)
   const id = 'm11b-f2'
   await openSheet(page, wizard2(id))
   await levelUp(page, 'Wizard 2 → 3', 3, { classStep: (p) => pickAll(p, ['Bladesinger']), proficiencies: fillEmptySelects, spells: ['Burning Hands'] })
@@ -1099,6 +1098,15 @@ test('M11b finding 2: Wizard 3 (Bladesinger) / Cleric 3 — the Bladesinger skil
   await switchTo(page, 'Wizard')
   await goToStep(page, /Spells/)
   await expectStep(page, 'Spells')
+  // F-16 e (review finding 6, D340 point 2): changing the Cleric's subclass in Edit leaves the Wizard's Bladesinger skill alone.
+  await switchTo(page, 'Cleric')
+  await pickAll(page, ['Life Domain'])
+  await goToStep(page, /Spells/)
+  await fillSpells(page)
+  await saveEdit(page, id)
+  await expect(classes(page)).toHaveText('Wizard 3 (Bladesinger) / Cleric 3 (Life Domain)')
+  expect((await stored(page, id))['subclassSkills'], 'after the Cleric subclass change in Edit').toEqual(skills)
+  expect(await skillStatus(page, (skills as { name: string }[])[0]!.name)).toBe('proficient')
 })
 
 // M11b check F: Paladin's Smite (level 2) makes Divine Smite always prepared; a Divine Smite picked at level 1 is a class-level twin of F-14.
@@ -1138,4 +1146,50 @@ test('M11b F (finding 3): Paladin 1 with Divine Smite prepared → Paladin 2 —
   expect(picks).toHaveLength(3)
   await openTab(page, 'Spells')
   await expect(spellKindRow(page, 'Divine Smite', 'cast')).toHaveCount(1)
+})
+
+// D341 (review M11 finding 1): the first subclass pick of a level up may be changed within the same run; the saved character's spells stay.
+test('F-16 a: Wizard 2 → 3 — Bladesinger and then Evoker on the Class step; the spellbook picks are still on the Spells step and saved', async ({ page }) => {
+  const id = 'f16-wizard'
+  await openSheet(page, wizard2(id))
+  await levelUpButton(page).click()
+  await classWindow(page).getByRole('button', { name: 'Wizard 2 → 3', exact: true }).click()
+  await expect(async () => {
+    await pickAll(page, ['Bladesinger'])
+    await pickAll(page, ['Evoker'])
+    await expect(nextButton(page)).toBeEnabled({ timeout: 2000 })
+  }).toPass({ timeout: 20_000 })
+  // Wizard table: cantrips 3 at levels 2 and 3, prepared 5 → 6.
+  await walkLevelUp(page, 3, { kept: { counters: ['Cantrips: 3/3', 'Prepared: 5/6'], spells: WIZARD_2_SPELLS }, spells: ['Burning Hands'] })
+  await expect(classes(page)).toHaveText('Wizard 3 (Evoker)')
+  expect(spellsOf(await stored(page, id), 'Wizard')).toEqual(expect.arrayContaining(WIZARD_2_SPELLS))
+})
+
+// Wild Shape forms known: 4 at levels 2 and 3 (Druid table); Moon's Circle Forms only raises the CR cap.
+const DRUID_FORMS = ['Badger', 'Cat', 'Rat', 'Wolf']
+const DRUID_2_PICKS = ['Entangle', 'Faerie Fire', 'Goodberry', 'Healing Word', 'Thunderwave']
+const druid2 = (id: string) => ({
+  ...level1(id, 'Druid', { strength: 8, dexterity: 13, constitution: 14, intelligence: 10, wisdom: 15, charisma: 12 }, {
+    classSkills: ['nature', 'perception'],
+    classFeatureChoices: [{ className: 'Druid', classSource: XPHB, featureName: 'Primal Order', grantedAtLevel: 1, optionName: 'Warden' }],
+    spellChoices: [{ className: 'Druid', classSource: XPHB, spells: refs(['Druidcraft', 'Guidance', ...DRUID_2_PICKS]) }],
+    wildShapeForms: [{ className: 'Druid', classSource: XPHB, forms: DRUID_FORMS.map((name) => ({ name, source: 'XMM' })) }],
+    hitPointLevels: [{ level: 2, kind: 'average', dieResult: 5 }],
+  }),
+  classes: [{ className: 'Druid', classSource: XPHB, subclass: null, level: 2 }],
+  levelOrder: order(['Druid', 'Druid']),
+})
+
+test('F-16 d: Druid 2 → 3 Circle of the Moon keeps the Wild Shape forms and the spells through Save', async ({ page }) => {
+  const id = 'f16-druid'
+  await openSheet(page, druid2(id))
+  await expect(classes(page)).toHaveText('Druid 2')
+  // Druid table: cantrips 2, prepared 5 → 6.
+  await levelUp(page, 'Druid 2 → 3', 3, {
+    classStep: (p) => pickAll(p, ['Circle of the Moon']),
+    kept: { counters: ['Cantrips: 2/2', 'Prepared: 5/6'], spells: DRUID_2_PICKS },
+  })
+  await expect(classes(page)).toHaveText('Druid 3 (Circle of the Moon)')
+  const forms = (((await stored(page, id))['wildShapeForms'] ?? []) as { forms: { name: string }[] }[]).flatMap((entry) => entry.forms.map((form) => form.name))
+  expect(forms).toEqual(DRUID_FORMS)
 })

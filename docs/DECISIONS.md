@@ -5139,3 +5139,11 @@ držené třídy zůstávají v level upu i v Editu. (3) Kouzlo, které dává s
 Smite u Paladina 2, stejně Find Familiar Druid 2, Find Steed Paladin 5, Contact Other Plane Warlock 9, Power Word Heal/Kill
 Bard 20), wizard z výběru téže třídy odebere stejně jako D339 a poznámka jmenuje třídu: „Divine Smite is always prepared by
 Paladin and was removed from your picks.“ Uložené postavy se nemigrují. Nálezy M11b. Task F-15, rozhodl Daniel 9. 10. 2026.
+
+## D341 — Změna podtřídy v level upu, Remove level pod grant, poznámka u uložených duplikátů (F-16)
+
+(1) Kouzla třídy a Wild Shape formy se při změně podtřídy mažou jen tehdy, když načtená postava už podtřídu této třídy měla (Edit);
+přepnutí A → B v jednom běhu level upu nebo tvorby je nemaže (upřesňuje D338). Volby patřící podtřídě samé se mažou při každé změně.
+(2) Remove level pod úroveň, od které třída nebo podtřída dává kouzlo jako always prepared, odebraný pick (D339, D340) nevrací; místo
+zůstane prázdné a hráč ho doplní v Manage Spells. (3) Poznámka „removed from your picks“ (D339, D340) se ukazuje i tehdy, když wizard
+odebere duplikát, který už byl uložený (postavy před F-14), v Editu i level upu. Task F-16, rozhodl Daniel 10. 10. 2026.

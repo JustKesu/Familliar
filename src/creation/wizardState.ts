@@ -813,7 +813,11 @@ export interface WizardControllerState {
 	data: WizardData
 	/** D339: picks this wizard run dropped because the class's subclass grants them as always prepared; never saved. */
 	droppedAlwaysPrepared?: DroppedAlwaysPrepared[]
+	/** D338/D341: subclass of each held class as loaded, keyed "name|source"; only a class that already had one loses its spell picks on a change. */
+	initialSubclasses?: Record<string, string>
 }
+
+const classKey = (className: string, classSource: string) => `${className}|${classSource}`
 
 export interface DroppedAlwaysPrepared {
 	className: string
@@ -1260,7 +1264,15 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 	switch (action.type) {
 		case 'seed':
 			// A level-up walk may leave out the class step, so it starts on the first step that level actually offers.
-			return { step: visibleSteps(action.conditions ?? {})[0], data: action.data }
+			return {
+				step: visibleSteps(action.conditions ?? {})[0],
+				data: action.data,
+				initialSubclasses: Object.fromEntries(
+					[{ classChoice: action.data.classChoice, subclass: action.data.subclass }, ...(action.data.otherClasses ?? [])].flatMap(({ classChoice, subclass }) =>
+						classChoice && subclass ? [[classKey(classChoice.className, classChoice.classSource), subclass.name]] : [],
+					),
+				),
+			}
 		case 'next': {
 			const conditions = action.conditions ?? {}
 			if (!isStepComplete(state.step, state.data, conditions)) return state
@@ -1422,18 +1434,22 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 		case 'setSubclass': {
 			// M9/D340: only this class's own subclass picks go; another held class's stay, in a level up (no otherClasses stash) as in Edit.
 			const ownSources = classSubclassGrantSources(state.data.classChoice?.className ?? '')
-			// D338: a first pick (no subclass before) invalidates none of these; only a change of subclass does (M9b).
-			const firstPick = state.data.subclass === null
+			// D338/D341: class spell picks and Wild Shape forms go only when the loaded character already had a subclass (Edit), not on a switch A -> B within one run.
+			const { classChoice } = state.data
+			const nothingHeld = state.data.subclass === null
+			// Dropping the subclass (level lowered below it, D251) still clears: what hung on it, such as Eldritch Knight spells, is meaningless without it.
+			const hadSubclass =
+				(classChoice !== null && classKey(classChoice.className, classChoice.classSource) in (state.initialSubclasses ?? {})) || (action.subclass === null && !nothingHeld)
 			return {
 				...state,
 				// wildShapeForms clears on a change: Circle of the Moon's Circle Forms raises the CR cap, so the legal pool is subclass-dependent.
 				data: {
 					...state.data,
 					subclass: action.subclass,
-					optionalFeatureChoices: firstPick ? state.data.optionalFeatureChoices : [],
-					spellChoices: firstPick ? state.data.spellChoices : [],
+					optionalFeatureChoices: nothingHeld ? state.data.optionalFeatureChoices : [],
+					spellChoices: hadSubclass ? [] : state.data.spellChoices,
 					subclassSpellChoices: [],
-					wildShapeForms: firstPick ? state.data.wildShapeForms : [],
+					wildShapeForms: hadSubclass ? [] : state.data.wildShapeForms,
 					subclassSkills: state.data.subclassSkills.filter((pick) => !ownSources.has(pick.grantedBy)),
 					featureLanguages: state.data.featureLanguages.filter((language) => !ownSources.has(language.grantedBy)),
 				},
@@ -1458,14 +1474,19 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			const { classChoice, subclass } = state.data
 			if (!classChoice || classChoice.className !== action.className || classChoice.classSource !== action.classSource || (action.subclassName !== null && subclass?.name !== action.subclassName)) return state
 			const { kept, removed } = splitAlwaysPreparedPicks(state.data.spellChoices, action.alwaysPrepared)
-			if (removed.length === 0) return state
-			const dropped: DroppedAlwaysPrepared = {
-				className: action.className,
-				classSource: action.classSource,
-				subclassName: action.subclassName,
-				spellNames: removed.map((pick) => pick.name),
-			}
-			return { ...state, data: { ...state.data, spellChoices: kept }, droppedAlwaysPrepared: [...(state.droppedAlwaysPrepared ?? []), dropped] }
+			const granted = new Set(action.alwaysPrepared.map((spell) => spell.name))
+			const isThis = (entry: DroppedAlwaysPrepared) => entry.className === action.className && entry.classSource === action.classSource && entry.subclassName === action.subclassName
+			const before = state.droppedAlwaysPrepared ?? []
+			// The note follows the grant: a name the current level no longer grants is not "removed" any more, and one entry serves a class/subclass.
+			const names = new Set([...before.filter(isThis).flatMap((entry) => entry.spellNames.filter((name) => granted.has(name))), ...removed.map((pick) => pick.name)])
+			const note: DroppedAlwaysPrepared = { className: action.className, classSource: action.classSource, subclassName: action.subclassName, spellNames: [...names] }
+			const notes = before.some(isThis)
+				? before.flatMap((entry) => (isThis(entry) ? (names.size > 0 ? [note] : []) : [entry]))
+				: names.size > 0
+					? [...before, note]
+					: before
+			if (removed.length === 0 && JSON.stringify(notes) === JSON.stringify(before)) return state
+			return { ...state, data: removed.length > 0 ? { ...state.data, spellChoices: kept } : state.data, droppedAlwaysPrepared: notes }
 		}
 		case 'setSubclassSpellChoices':
 			return { ...state, data: { ...state.data, subclassSpellChoices: action.picks } }
