@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Ability } from '../abilities/abilityScores'
+import { compareText } from '../text/compareText'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import { multiclassSkillSources } from '../multiclass/multiclassPicks'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
@@ -387,7 +388,7 @@ export function ManageFeatsPanel({
 	const needle = search.trim().toLowerCase()
 	const shown = offered
 		.filter(({ feat }) => feat.name.toLowerCase().includes(needle) && (category === null || feat.category === category))
-		.sort((a, b) => a.feat.name.localeCompare(b.feat.name))
+		.sort((a, b) => compareText(a.feat.name, b.feat.name))
 	const available = shown.filter(({ result }) => result.eligible)
 	const unavailable = shown.filter(({ result }) => !result.eligible)
 

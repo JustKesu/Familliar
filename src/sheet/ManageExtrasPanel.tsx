@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { formKey, type Beast, type FamiliarFormOption } from '../beasts/beastData'
+import { compareText } from '../text/compareText'
 import { wildShapeForms as wildShapePool, wildShapeHint, type WildShapeLimits } from '../beasts/wildShapeData'
 import type { CharacterFamiliar, CharacterWildShapeForms } from '../storage/character'
 import { BeastStatBody, beastKind } from './BeastStatBlock'
@@ -123,7 +124,7 @@ export function ManageExtrasPanel({
 			: category === 'wildShape' && wildShape
 				? wildShapePool(beasts, wildShape.limits).map((beast) => ({ beast }))
 				: []
-	const shown = offered.filter(({ beast }) => beast.name.toLowerCase().includes(needle)).sort((a, b) => a.beast.name.localeCompare(b.beast.name))
+	const shown = offered.filter(({ beast }) => beast.name.toLowerCase().includes(needle)).sort((a, b) => compareText(a.beast.name, b.beast.name))
 
 	function renderAction(beast: Beast): ReactNode {
 		if (category === 'familiar') {

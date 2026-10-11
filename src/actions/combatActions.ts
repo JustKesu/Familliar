@@ -1,4 +1,5 @@
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 import type { ActionType } from './actionTableFeatureData'
 
 /** One data/actions.json entry for the Actions tab's "Actions in Combat" line (D187). */
@@ -29,7 +30,7 @@ export function extractCombatActions(parsed: unknown): CombatAction[] {
 		if (typeof record['name'] !== 'string') continue
 		actions.push({ name: record['name'], group: groupOfTime(record['time']), entries: Array.isArray(record['entries']) ? record['entries'] : [] })
 	}
-	return actions.sort((a, b) => a.name.localeCompare(b.name))
+	return actions.sort((a, b) => compareText(a.name, b.name))
 }
 
 export async function loadCombatActions(): Promise<CombatAction[]> {

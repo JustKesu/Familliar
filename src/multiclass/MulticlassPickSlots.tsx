@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CharacterMulticlassPick } from '../storage/character'
 import { toolChoiceOptions } from '../toolProficiencies/classToolChoices'
+import { compareText } from '../text/compareText'
 import { loadToolCategoryOptions } from '../toolProficiencies/toolProficiencyData'
 import { isPickOf, type MulticlassPickShape } from './multiclassPicks'
 
@@ -40,7 +41,7 @@ export function MulticlassPickSlots({
 		let cancelled = false
 		loadToolCategoryOptions(category)
 			.then((names) => {
-				if (!cancelled) setTools({ category, names: [...names].sort((a, b) => a.localeCompare(b)) })
+				if (!cancelled) setTools({ category, names: [...names].sort(compareText) })
 			})
 			.catch((reason: unknown) => {
 				if (!cancelled) setToolError(reason instanceof Error ? reason.message : String(reason))

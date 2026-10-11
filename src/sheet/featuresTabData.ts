@@ -4,6 +4,7 @@
  */
 
 import type { ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
+import { compareText } from '../text/compareText'
 import { featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { ItemInvocationOption, OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
@@ -182,7 +183,7 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 			})
 		}
 
-		items.sort((a, b) => a.level - b.level || a.row.name.localeCompare(b.row.name))
+		items.sort((a, b) => a.level - b.level || compareText(a.row.name, b.row.name))
 		return { characterClass, items }
 	})
 

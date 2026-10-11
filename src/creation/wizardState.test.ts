@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { featsRequiringAbilityChoice } from '../featAsi/featAsiData'
+import { compareText } from '../text/compareText'
 import type { Character, CharacterHitPointLevel } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import {
@@ -1889,7 +1890,7 @@ describe('multiclass Edit (M9a)', () => {
 		expect(input.classFeatureChoices).toEqual(existing.classFeatureChoices)
 		expect(input.wildShapeForms).toEqual(existing.wildShapeForms)
 		// Saved per class in class order, so the entries are compared by feature type, not by stored position.
-		const byType = <T extends { featureType: string }>(entries: T[] | undefined) => [...(entries ?? [])].sort((a, b) => a.featureType.localeCompare(b.featureType))
+		const byType = <T extends { featureType: string }>(entries: T[] | undefined) => [...(entries ?? [])].sort((a, b) => compareText(a.featureType, b.featureType))
 		expect(byType(input.optionalFeatureChoices)).toEqual(byType(existing.optionalFeatureChoices))
 		expect(input.subclassSkills).toEqual(existing.subclassSkills)
 		expect(input.masteries).toEqual(existing.masteries)

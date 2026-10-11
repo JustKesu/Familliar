@@ -5,6 +5,7 @@ import type { CharacterLanguage, CharacterSubclassSkill } from '../storage/chara
 import { toolChoiceOptions } from '../toolProficiencies/classToolChoices'
 import { ANY_TOOL_CATEGORIES } from '../toolProficiencies/speciesToolChoices'
 import { loadToolCategoryOptions } from '../toolProficiencies/toolProficiencyData'
+import { compareText } from '../text/compareText'
 import { ALL_SKILLS } from './classSkillData'
 import type { SubclassSkillGrant } from './subclassSkillGrants'
 
@@ -135,7 +136,7 @@ export function SpeciesSkillOrToolSlot({
 	heldTools: readonly string[]
 	onChange: (pick: { skill: string | null; tool: string | null }) => void
 }): ReactNode {
-	const loaded = useLoaded(true, async () => (await Promise.all(ANY_TOOL_CATEGORIES.map(loadToolCategoryOptions))).flat().sort((a, b) => a.localeCompare(b)))
+	const loaded = useLoaded(true, async () => (await Promise.all(ANY_TOOL_CATEGORIES.map(loadToolCategoryOptions))).flat().sort(compareText))
 
 	if (loaded.error) return <p className="error">Could not load tools: {loaded.error}</p>
 	if (!loaded.value) return <p>Loading tools…</p>

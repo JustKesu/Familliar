@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { featCampaignNote, loadFeats, type FeatEntry } from './featAsiData'
+import { compareText } from '../text/compareText'
 import type { FeatRef } from './featInstances'
 
 /**
@@ -24,7 +25,7 @@ export function OriginFeatSwapPicker({
 		let cancelled = false
 		loadFeats()
 			.then((feats) => {
-				if (!cancelled) setDarkGifts(feats.filter((feat) => feat.category === 'DG').sort((a, b) => a.name.localeCompare(b.name)))
+				if (!cancelled) setDarkGifts(feats.filter((feat) => feat.category === 'DG').sort((a, b) => compareText(a.name, b.name)))
 			})
 			.catch((reason: unknown) => {
 				if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason))

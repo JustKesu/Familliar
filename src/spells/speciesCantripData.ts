@@ -1,4 +1,5 @@
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 import { extractClassSpellList } from './classSpellListData'
 import { findChooseNodes, parseChooseString } from './featSpellChoiceData'
 import { isRecord } from './subclassPreparedSpells'
@@ -41,7 +42,7 @@ export function speciesCantripOptions(parsedSpells: unknown, slot: SpeciesCantri
 			else byKey.set(key, { name: spell.name, source: spell.source, classNames: [className] })
 		}
 	}
-	return [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name))
+	return [...byKey.values()].sort((a, b) => compareText(a.name, b.name))
 }
 
 /** The slot plus its options, or null for a species without the grant. */

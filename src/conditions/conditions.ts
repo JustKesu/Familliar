@@ -1,4 +1,5 @@
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 
 export const EXHAUSTION = 'Exhaustion'
 export const MAX_EXHAUSTION = 6
@@ -41,7 +42,7 @@ export function extractConditionRules(parsed: unknown): ConditionRule[] {
 		if (typeof record['name'] !== 'string') continue
 		rules.push({ name: record['name'], entries: Array.isArray(record['entries']) ? record['entries'] : [] })
 	}
-	return rules.sort((a, b) => a.name.localeCompare(b.name))
+	return rules.sort((a, b) => compareText(a.name, b.name))
 }
 
 export async function loadConditionRules(): Promise<ConditionRule[]> {

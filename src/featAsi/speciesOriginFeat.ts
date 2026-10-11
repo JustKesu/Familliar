@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import type { CharacterGrantedFeat } from '../storage/character'
+import { compareText } from '../text/compareText'
 import { loadFeats, sameFeatName, type FeatEntry } from './featAsiData'
 import type { GrantedFeat } from './featAsiLevels'
 import type { FeatRef } from './featInstances'
@@ -56,7 +57,7 @@ export function useSpeciesOriginFeat(species: FeatRef | null): SpeciesOriginFeat
 		loadSpeciesGrantsOriginFeat(species)
 			.then(async (grants) => {
 				const feats = grants ? await loadFeats() : []
-				settle({ status: 'ready', grants, originFeats: feats.filter((feat) => feat.category === 'O').sort((a, b) => a.name.localeCompare(b.name)) })
+				settle({ status: 'ready', grants, originFeats: feats.filter((feat) => feat.category === 'O').sort((a, b) => compareText(a.name, b.name)) })
 			})
 			.catch((error: unknown) => settle({ status: 'error', message: error instanceof Error ? error.message : String(error) }))
 		return () => {

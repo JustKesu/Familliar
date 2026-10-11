@@ -33,6 +33,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 import { copperToCoins } from './currency'
 import { inventoryRowKey, type ItemRef } from './inventoryData'
 import type { CharacterInventoryItem } from '../storage/character'
@@ -177,7 +178,7 @@ export function itemCategoryOptions(parsedItems: unknown, categories: readonly E
 		if (!categories.some((category) => CATEGORY_FILTERS[category](entry))) continue
 		refs.set(`${entry['name']}|${entry['source']}`, { name: entry['name'], source: entry['source'] })
 	}
-	return [...refs.values()].sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source))
+	return [...refs.values()].sort((a, b) => compareText(a.name, b.name) || compareText(a.source, b.source))
 }
 
 /**
@@ -284,7 +285,7 @@ function asCategory(value: string): EquipmentCategory {
 
 function parseOptionRow(row: Record<string, unknown>, index: ItemIndex): StartingEquipmentOption[] {
 	const options: StartingEquipmentOption[] = []
-	for (const key of Object.keys(row).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))) {
+	for (const key of Object.keys(row).sort((a, b) => compareText(a.toLowerCase(), b.toLowerCase()))) {
 		const value = row[key]
 		if (!Array.isArray(value)) {
 			throw new Error(`startingEquipment: option "${key}" is not an array`)
@@ -427,7 +428,7 @@ export function buildStartingInventory(
 	}
 
 	return {
-		inventory: [...merged.values()].sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source)),
+		inventory: [...merged.values()].sort((a, b) => compareText(a.name, b.name) || compareText(a.source, b.source)),
 		currencyCopper,
 	}
 }

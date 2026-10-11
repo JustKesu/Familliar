@@ -36,6 +36,7 @@ import type { Ability } from '../abilities/abilityScores'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { featProficiencyChoiceShape, type FeatEffectEntry, type FeatProficiencyChoiceShape } from '../calculation/featEffects'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { FEATURE_LANGUAGE_TYPES } from '../languages/classFeatureLanguages'
 import { loadLanguages, type LanguageEntry } from '../languages/languageData'
@@ -284,7 +285,7 @@ export async function loadFeatProficiencyChoice(name: string, source: string): P
 	const toolOptions = toolLists
 		.flat()
 		.filter((tool) => !only || only.includes(tool.toLowerCase()))
-		.sort((a, b) => a.localeCompare(b))
+		.sort(compareText)
 	return { shape, toolOptions, languages, spellcastingAbilityOptions: featSpellcastingAbilityOptions(entry as FeatEffectEntry) }
 }
 

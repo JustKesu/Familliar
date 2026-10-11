@@ -34,6 +34,7 @@
 
 import { hasRestTag } from '../actions/actionTableFeatureData'
 import type { Character, CharacterClass } from '../storage/character'
+import { compareText } from '../text/compareText'
 import { classPoolKey } from './classPools'
 import { computeProficiencyBonus } from './proficiencyBonus'
 import { type Calculated, type Contribution, known, unknown } from './types'
@@ -495,7 +496,7 @@ export function computeCharacterResources(
 			]
 		})
 		.concat(speciesResources)
-		.sort((a, b) => a.name.localeCompare(b.name))
+		.sort((a, b) => compareText(a.name, b.name))
 }
 
 /**

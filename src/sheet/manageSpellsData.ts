@@ -1,5 +1,6 @@
 import type { CharacterSpellChoice } from '../storage/character'
 import { spellIdentityKey } from '../spells/subclassPreparedSpells'
+import { compareText } from '../text/compareText'
 
 export interface SpellRef {
 	name: string
@@ -40,7 +41,7 @@ export function preparedSpellRows(holdings: ClassSpellHoldings, levelOf: (spell:
 	// F-7b: a pick the class or subclass now grants anyway is prepared without the pick, so it must not eat a prepared slot.
 	const granted = new Set([...holdings.subclassChoicePicks, ...holdings.alwaysPrepared].map((spell) => spellIdentityKey(spell.name, spell.source)))
 	for (const [key, row] of rows) if (row.kind === 'pick' && granted.has(key)) row.alsoGranted = true
-	return [...rows.values()].sort((a, b) => (a.level ?? 99) - (b.level ?? 99) || a.name.localeCompare(b.name))
+	return [...rows.values()].sort((a, b) => (a.level ?? 99) - (b.level ?? 99) || compareText(a.name, b.name))
 }
 
 /** The panel's two counters (D208): only the class's own picks count; a pick whose level is unknown counts toward neither, as the sheet's D106 notice does. */

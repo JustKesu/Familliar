@@ -65,6 +65,7 @@ import { overwrittenHeldPicks } from '../levelUp/heldPicks'
 import { heldPickOwners, ownedPicks, withOwnedPicks, type HeldPickGrantData, type HeldPickOwners } from './heldClassPicks'
 import { checkNoClassRaised, checkOneClassRaised, classesAfterLevelUp, isClass, levelOrderBeforeLevelUp, otherClassRecords, otherFightingStyles, otherOptionalFeatureChoices } from '../levelUp/multiclassLevelUp'
 import { wildShapeLimits } from '../beasts/wildShapeData'
+import { compareText } from '../text/compareText'
 
 /**
  * The chosen subclass, name and source together — carrying `featureType`
@@ -1155,11 +1156,11 @@ export function sameWizardData(a: WizardData, b: WizardData): boolean {
 			...shared
 		} = data
 		const key = (stash: ClassStash): string => `${stash.classChoice.className}|${stash.classChoice.classSource}`
-		return { shared, classes: [stashOf(data, classChoice), ...otherClasses].sort((x, y) => key(x).localeCompare(key(y))) }
+		return { shared, classes: [stashOf(data, classChoice), ...otherClasses].sort((x, y) => compareText(key(x), key(y))) }
 	}
 	const stable = (value: unknown): string =>
 		JSON.stringify(value, (_key, entry: unknown) =>
-			entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([x], [y]) => x.localeCompare(y))) : entry,
+			entry !== null && typeof entry === 'object' && !Array.isArray(entry) ? Object.fromEntries(Object.entries(entry).sort(([x], [y]) => compareText(x, y))) : entry,
 		)
 	return stable(canonical(a)) === stable(canonical(b))
 }

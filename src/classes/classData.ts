@@ -11,6 +11,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 
 export interface HitDie {
 	number: number
@@ -65,5 +66,5 @@ export function extractBaseClasses(parsed: unknown): BaseClass[] {
 /** Fetches classes.json and returns the base classes only, sorted by name. */
 export async function loadBaseClasses(): Promise<BaseClass[]> {
 	const parsed = await loadDataFile('data/classes.json')
-	return extractBaseClasses(parsed).sort((a, b) => a.name.localeCompare(b.name))
+	return extractBaseClasses(parsed).sort((a, b) => compareText(a.name, b.name))
 }

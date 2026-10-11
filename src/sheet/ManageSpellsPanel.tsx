@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import type { ResolverData } from '../featureResolver'
+import { compareText } from '../text/compareText'
 import type { SpellSlotsEntry } from '../calculation/spellSlots'
 import type { ClassSpellListSpell } from '../spells/classSpellListData'
 import { expandedSpellListClassFor, spellListClassFor } from '../spells/classSpellListData'
@@ -156,7 +157,7 @@ export function ClassSpellsManager({
 	const needle = search.trim().toLowerCase()
 	const shown = offered
 		.filter((spell) => (levels.size === 0 || levels.has(spell.level)) && spell.name.toLowerCase().includes(needle))
-		.sort((a, b) => a.name.localeCompare(b.name))
+		.sort((a, b) => compareText(a.name, b.name))
 
 	function toggleLevel(level: number): void {
 		const next = new Set(levels)

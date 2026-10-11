@@ -1,5 +1,6 @@
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
+import { compareText } from '../text/compareText'
 import { classToolGrantsFor, subclassToolGrantsForAll } from '../toolProficiencies/classToolChoices'
 import { firstClass } from './characterLevel'
 import { classProficiencyGrants } from './classProficiencies'
@@ -320,9 +321,9 @@ export function computeProficiencies(
 	return {
 		armor: ARMOR_ORDER.flatMap((key) => armor.get(key) ?? []),
 		weapons: [...[...weapons.values()].sort((a, b) => weaponRank(a.key) - weaponRank(b.key)), ...pendingWeapons],
-		tools: [...[...tools.values()].sort((a, b) => a.label.localeCompare(b.label)), ...pendingTools],
+		tools: [...[...tools.values()].sort((a, b) => compareText(a.label, b.label)), ...pendingTools],
 		languages: [
-			...[...languages.values()].sort((a, b) => Number(b.key === 'common') - Number(a.key === 'common') || a.label.localeCompare(b.label)),
+			...[...languages.values()].sort((a, b) => Number(b.key === 'common') - Number(a.key === 'common') || compareText(a.label, b.label)),
 			...pending,
 		],
 	}

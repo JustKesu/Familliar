@@ -26,6 +26,7 @@
  * are in src/damageResponses/featureDamageResponses.ts (D70).
  */
 
+import { compareText } from '../text/compareText'
 import type { Contribution } from './types'
 
 export type DamageResponseKind = 'resistance' | 'immunity' | 'vulnerability'
@@ -186,7 +187,7 @@ export function computeDamageResponses(grants: readonly DamageResponseGrant[]): 
 		}
 	}
 
-	const byType = (a: DamageResponse, b: DamageResponse): number => a.damageType.localeCompare(b.damageType) || a.kind.localeCompare(b.kind)
+	const byType = (a: DamageResponse, b: DamageResponse): number => compareText(a.damageType, b.damageType) || compareText(a.kind, b.kind)
 
 	return {
 		unconditional: unconditional.sort(byType),

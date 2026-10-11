@@ -20,6 +20,7 @@ import { DAMAGE_TYPES } from '../calculation/damageResponses'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import { CONDITION_NAMES, EXHAUSTION } from '../conditions/conditions'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 import { describeFeatChoiceDetailsError } from '../storage/validate'
 import type {
 	CharacterInventoryItem,
@@ -659,7 +660,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...(Array.isArray(entries) && entries.length > 0 ? { entries } : {}),
 			}
 		})
-		.sort((a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source))
+		.sort((a, b) => compareText(a.name, b.name) || compareText(a.source, b.source))
 }
 
 export async function loadItemRefs(): Promise<ItemRef[]> {

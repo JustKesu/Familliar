@@ -912,6 +912,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    - F-16 (D341): class spell picks and Wild Shape forms clear on a subclass change only when the loaded character already had a subclass for that class (`initialSubclasses` in the controller state, seeded by `seed`); the always-prepared note (`droppedAlwaysPrepared`) keeps one entry per class/subclass and follows the grant level; Paladin entry asserts weapon mastery (multiclassEndToEnd.spec.ts "F-16 a", "F-16 d", extended "M11b finding 2", "F-14 b", M11a B)
    - F-16b (D342): `setSubclass` gets `subclassOnlyCaster` from `hasOwnSpellcasting` (calculation/spellSlots.ts) for classes without own slot table (Fighter, Rogue); a subclass switch then clears their class spell picks also for a new character (wizardState.test.ts; e2e/subclassOnlyCaster.spec.ts)
    - F-17 (D343): `buildFeatureReachTest` joins subclass records by className + subclassShortName + subclassSource without classSource, so the 41 older subclasses on XPHB classes show their 265 PHB-filed records (Features & Traits, Actions, pools, `featureNamesFor`); class records stay strict (featureReach.test.ts; e2e/olderSubclassFeatures.spec.ts)
+   - F-18: all string sorting in src/ goes through `compareText` (src/text/compareText.ts, `Intl.Collator('en')`), so lists sort the same on a Czech system; a unit test fails on any `.localeCompare(` in src/ (compareText.test.ts; e2e/sortOrder.spec.ts)
 
 ## Co appka umí navíc k build orderu
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CharacterToolChoice } from '../storage/character'
+import { compareText } from '../text/compareText'
 import { toolChoiceOptions, type ToolSlotGrant } from './classToolChoices'
 import { loadToolCategoryOptions } from './toolProficiencyData'
 
@@ -49,7 +50,7 @@ export function ClassToolSlots({
 		<ul className="language-picker__list">
 			{grants.flatMap((grant) => {
 				const picks = value.filter((choice) => choice.grantedBy === grant.grantedBy)
-				const all = grant.options ?? [...new Set(grant.categories.flatMap((category) => options?.[category] ?? []))].sort((a, b) => a.localeCompare(b))
+				const all = grant.options ?? [...new Set(grant.categories.flatMap((category) => options?.[category] ?? []))].sort(compareText)
 				const choose = (slot: number, name: string): void => {
 					const next: (CharacterToolChoice | undefined)[] = [...picks]
 					next[slot] = name ? { grantedBy: grant.grantedBy, name } : undefined

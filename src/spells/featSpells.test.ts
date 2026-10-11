@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { Ability } from '../abilities/abilityScores'
 import type { Character, MagicInitiateChoice } from '../storage/character'
+import { compareText } from '../text/compareText'
 import { extractFeatGrantedSpells, extractFixedFeatSpells } from './featSpells'
 
 describe('Strixhaven Initiate named blocks (D200)', () => {
@@ -39,7 +40,7 @@ describe('D204 feat spell grants — against the generated data', () => {
 	const grant = (name: string, source: string, chosenAbility?: 'int' | 'wis' | 'cha') =>
 		extractFixedFeatSpells(realFeats, realSpells, name, source, 20, chosenAbility)
 			.map((s) => ({ name: s.name, level: s.level, usage: s.usage ?? null, ability: s.ability }))
-			.sort((a, b) => a.name.localeCompare(b.name))
+			.sort((a, b) => compareText(a.name, b.name))
 
 	it.each([
 		['Gathered Whispers', 'RHW', [{ name: 'Augury', level: 2, usage: LR }, { name: 'Message', level: 0, usage: null }]],

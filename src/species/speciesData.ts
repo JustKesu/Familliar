@@ -29,6 +29,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 
 /** A selectable species entry, after the reprintedAs filter. */
 export interface SpeciesEntry {
@@ -183,7 +184,7 @@ export function extractSpeciesOptions(parsed: unknown): SpeciesOption[] {
 			})),
 		})
 	}
-	return options.sort((a, b) => a.displayName.localeCompare(b.displayName))
+	return options.sort((a, b) => compareText(a.displayName, b.displayName))
 }
 
 /** Where a stored `{ name, source }` sits in the list — the species, and the variant if one was chosen. Null when the stored species is not in the data at all. */

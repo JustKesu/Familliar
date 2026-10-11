@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
+import { compareText } from '../text/compareText'
 import { SKILL_LABELS, SKILLS, type Skill } from '../calculation/skills'
 import { CUSTOM_CONDITION_NAMES, CUSTOM_PROFICIENCY_ARMOR, CUSTOM_WEAPON_CATEGORIES, customProficiencyKey, type ItemRef } from '../inventory/inventoryData'
 import { FEATURE_LANGUAGE_TYPES } from '../languages/classFeatureLanguages'
@@ -98,7 +99,7 @@ function baseWeaponOptions(itemRefs: readonly ItemRef[]): Option[] {
 	return itemRefs
 		.filter((ref) => ref.weapon === true)
 		.map((ref) => ({ value: `${ref.name}|${ref.source}`, label: `${ref.name} (${ref.source})` }))
-		.sort((a, b) => a.label.localeCompare(b.label))
+		.sort((a, b) => compareText(a.label, b.label))
 }
 
 function namesToOptions(names: readonly string[] | null): Option[] {
@@ -127,7 +128,7 @@ function useLoadedNames(needed: boolean, load: () => Promise<string[]>): string[
 
 const loadAllTools = async (): Promise<string[]> => {
 	const lists = await Promise.all(TOOL_CATEGORIES.map((category) => loadToolCategoryOptions(category)))
-	return [...new Set(lists.flat())].sort((a, b) => a.localeCompare(b))
+	return [...new Set(lists.flat())].sort(compareText)
 }
 const loadAllLanguages = async (): Promise<string[]> => (await loadLanguages(FEATURE_LANGUAGE_TYPES)).map((language) => language.name)
 

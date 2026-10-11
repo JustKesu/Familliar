@@ -31,6 +31,7 @@
 
 import type { Ability } from '../abilities/abilityScores'
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 import {
 	buildItemIndex,
 	parseBackgroundStartingEquipment,
@@ -217,5 +218,5 @@ export function extractBackgrounds(parsed: unknown, index: ItemIndex): Backgroun
 /** Fetches backgrounds.json and items.json and returns the selectable backgrounds, sorted by name. */
 export async function loadBackgrounds(): Promise<BackgroundEntry[]> {
 	const [parsedBackgrounds, parsedItems] = await Promise.all([loadDataFile('data/backgrounds.json'), loadDataFile('data/items.json')])
-	return extractBackgrounds(parsedBackgrounds, buildItemIndex(parsedItems)).sort((a, b) => a.name.localeCompare(b.name))
+	return extractBackgrounds(parsedBackgrounds, buildItemIndex(parsedItems)).sort((a, b) => compareText(a.name, b.name))
 }

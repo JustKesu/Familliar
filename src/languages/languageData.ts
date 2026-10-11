@@ -14,6 +14,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 
 /**
  * PHB 2024 rule (book prose, not present anywhere in data/): a character
@@ -76,5 +77,5 @@ export function extractSelectableLanguages(parsed: unknown, types: readonly stri
 /** Fetches languages.json and returns the selectable languages, sorted by name. */
 export async function loadLanguages(types?: readonly string[]): Promise<LanguageEntry[]> {
 	const parsed = await loadDataFile('data/languages.json')
-	return extractSelectableLanguages(parsed, types).sort((a, b) => a.name.localeCompare(b.name))
+	return extractSelectableLanguages(parsed, types).sort((a, b) => compareText(a.name, b.name))
 }

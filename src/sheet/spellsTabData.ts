@@ -5,6 +5,7 @@
  */
 
 import { freeCastCounter } from '../calculation/freeCastResources'
+import { compareText } from '../text/compareText'
 import { resolveResourceName } from '../calculation/resources'
 import type { FeatSpellcastingEntry, SpeciesSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
 import { alsoCastableWithSlot } from '../spells/alsoCastableWithSlot'
@@ -91,7 +92,7 @@ function buildSections<R extends SpellsTabRow>(
 
 	// D207: unbadged rows first (by name), then badged rows by badge level ascending, then by name.
 	for (const found of sections.values())
-		found.rows.sort((a, b) => (a.badgeLevel ?? -1) - (b.badgeLevel ?? -1) || a.entry.name.localeCompare(b.entry.name) || a.key.localeCompare(b.key))
+		found.rows.sort((a, b) => (a.badgeLevel ?? -1) - (b.badgeLevel ?? -1) || compareText(a.entry.name, b.entry.name) || compareText(a.key, b.key))
 	return [...sections.values()].sort((a, b) => {
 		if (a.key === UNRESOLVED_SECTION) return 1
 		if (b.key === UNRESOLVED_SECTION) return -1

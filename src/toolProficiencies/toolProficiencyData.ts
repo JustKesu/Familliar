@@ -21,6 +21,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 
 /** 'anyOtherTool' is not a data key: with the other three it makes up a species' `{any: 1}` tool pick (D177). */
 export type ToolCategory = 'anyArtisansTool' | 'anyMusicalInstrument' | 'anyGamingSet' | 'anyOtherTool'
@@ -63,7 +64,7 @@ export function extractToolCategoryOptions(parsedItems: unknown, category: strin
 		.filter((entry): entry is Record<string, unknown> => isRecord(entry) && typeof entry['name'] === 'string')
 		.filter(filter)
 		.map((entry) => entry['name'] as string)
-	return [...new Set(names)].sort((a, b) => a.localeCompare(b))
+	return [...new Set(names)].sort(compareText)
 }
 
 /** Fetches items.json and returns the tool names offered by the given category key. */

@@ -48,6 +48,7 @@ import {
 	type ResolverData,
 } from '../featureResolver'
 import type { Character } from '../storage/character'
+import { compareText } from '../text/compareText'
 import { buildFeatureReachTest } from './featureReach'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -282,7 +283,7 @@ export function grantedClassFeaturesFrom(character: Character, parsedClasses: un
 		}
 	}
 
-	return [...result.values()].sort((a, b) => a.level - b.level || a.name.localeCompare(b.name) || a.kind.localeCompare(b.kind))
+	return [...result.values()].sort((a, b) => a.level - b.level || compareText(a.name, b.name) || compareText(a.kind, b.kind))
 }
 
 /** classes.json is a second fetch here (it is not part of ResolverData); the shared loader caches it, so the rest of the sheet's classes.json reads are free (D39). */

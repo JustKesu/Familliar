@@ -4,6 +4,7 @@ import { AbilityScoreTable } from '../abilities/AbilityScoreTable'
 import type { FeatEffectEntry } from '../calculation/featEffects'
 import { ResolvedEntries, type ResolverData } from '../featureResolver'
 import { Entries } from '../markup'
+import { compareText } from '../text/compareText'
 import type { Character, FeatAsiChoice, FilterChoiceSpellsChoice } from '../storage/character'
 import {
 	isFilterChoiceFeat,
@@ -370,7 +371,7 @@ function FeatOrAsiSelect({
 }): ReactNode {
 	// D116: built only while the card is open, and once per change of the step's choices.
 	const { groups, categories } = useMemo(() => {
-		const offers = featAsiLevelOffers(levels, grant.level).sort((a, b) => a.feat.name.localeCompare(b.feat.name))
+		const offers = featAsiLevelOffers(levels, grant.level).sort((a, b) => compareText(a.feat.name, b.feat.name))
 		const groups = new Map<string, FeatOffer[]>()
 		for (const offer of offers) {
 			const group = groups.get(offer.feat.category)
@@ -379,7 +380,7 @@ function FeatOrAsiSelect({
 		}
 		const order = Object.keys(FEAT_CATEGORY_LABELS)
 		const rank = (category: string) => (grant.kind === 'epicBoon' && category === 'EB' ? -1 : order.includes(category) ? order.indexOf(category) : order.length)
-		return { groups, categories: [...groups.keys()].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)) }
+		return { groups, categories: [...groups.keys()].sort((a, b) => rank(a) - rank(b) || compareText(a, b)) }
 	}, [levels, grant])
 	const missingFeat = value !== '' && value !== 'asi' && ![...groups.values()].some((group) => group.some((offer) => `${offer.feat.name}|${offer.feat.source}` === value))
 

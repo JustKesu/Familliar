@@ -19,6 +19,7 @@
  */
 
 import { loadResolverData, resolveRef, type ResolverData } from '../featureResolver'
+import { compareText } from '../text/compareText'
 // Type-only: this module still fetches nothing on anyone's behalf (D38).
 import type { CharacterClassFeatureChoice } from '../storage/character'
 
@@ -121,7 +122,7 @@ export function classFeatureChoicesFrom(
 		})
 	}
 
-	return choices.sort((a, b) => a.grantedAtLevel - b.grantedAtLevel || a.featureName.localeCompare(b.featureName))
+	return choices.sort((a, b) => a.grantedAtLevel - b.grantedAtLevel || compareText(a.featureName, b.featureName))
 }
 
 /** class-features.json is read straight off ResolverData — loadResolverData already fetches it, so there is no second request to make (D39). */

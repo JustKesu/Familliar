@@ -26,6 +26,7 @@ import type { FeatSpellcastingEntry, SpeciesSpellcastingEntry, SpellcastingEntry
 import type { Contribution } from '../calculation/types'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import { findSpellDetail } from '../spells/spellDetailData'
+import { compareText } from '../text/compareText'
 import { spellEntryKey, type SheetSpellEntry, type SpellGrant } from './SpellList'
 import { formatRange } from './spellFormatting'
 
@@ -240,7 +241,7 @@ export function spellGroupRows(entries: SheetSpellEntry[], details: SpellDetail[
 		const unit = detail.time[0]?.unit
 		if (unit === 'bonus' || unit === 'reaction') rows.push({ key: spellEntryKey(entry), entry, detail, actionType: unit })
 	}
-	return rows.sort((a, b) => a.detail.level - b.detail.level || a.entry.name.localeCompare(b.entry.name))
+	return rows.sort((a, b) => a.detail.level - b.detail.level || compareText(a.entry.name, b.entry.name))
 }
 
 /**
@@ -272,7 +273,7 @@ export function spellActionRows(
 		if (row) rows.push(row)
 	}
 
-	return rows.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
+	return rows.sort((a, b) => a.level - b.level || compareText(a.name, b.name))
 }
 
 /** One actions-table row, or null for a spell with neither an attack roll nor a save; leveled dice at `castLevel` (D206). */
