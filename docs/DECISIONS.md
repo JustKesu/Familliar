@@ -5154,3 +5154,10 @@ U třídy, která sama nekouzlí a kouzla dostává jen od podtřídy (Fighter s
 ve wizardu smaže vybraná kouzla třídy i u nové postavy (výjimka z D341 bod 1). „Bez vlastního kouzlení“ se bere z načtených dat
 tříd (`hasOwnSpellcasting`: žádná tabulka slotů třídy a ne pact), ne ze jmen tříd. Třídy s vlastním kouzlením zůstávají podle D341.
 Task F-16b, rozhodl Daniel 11. 10. 2026.
+
+## D343 — Prvky podtřídy se párují bez classSource (F-17)
+
+Záznam podtřídy (má `subclassShortName`) je dosažen, když sedí `className`, úroveň a `subclassShortName` + `subclassSource`
+na podtřídu postavy; `classSource` se u něj nekontroluje, protože starší podtřídy (XGE, TCE) na třídách XPHB mají záznamy
+vedené pod PHB (DATA.md). Záznamy třídy (bez `subclassShortName`) zůstávají přísně na `classSource`. Postava třídy PHB
+se nemění (0 záznamů navíc). Task F-17, rozhodl Daniel 11. 10. 2026.

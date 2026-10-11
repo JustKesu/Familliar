@@ -1,52 +1,32 @@
-# REPORT – Investigace: skryté prvky staršího podtřídy na třídě 2024
+# REPORT – F-17: prvky starších podtříd na třídách 2024 (D343)
 
-HEAD při startu: f100a59 (fetch + ff-merge OK, "Already up to date"). Změněno jen docs/REPORT.md, docs/DATA.md, jeden skript.
+HEAD při startu: c1b507a (fetch + ff-merge „Already up to date“).
 
-## Příčina (hypotéza z zadání vyvrácena)
-Zanořené reference NEJSOU příčina. Skript replikuje pravidla 1–2 z `grantedClassFeatures.ts`: z Oath of Conquest se pouhým plain-text closure dosáhne všech 9 záznamů včetně Channel Divinity, Conquering Presence a Guided Strike. Žádný `refSubclassFeature` v datech podtříd není uvnitř počítaného `options` uzlu (0 skrytých). `header 1` ani `consumes` nic nefiltrují (kód je nečte).
+## Změna
+- `src/sheet/featureReach.ts`: záznam podtřídy (má `subclassShortName`) se páruje přes `className` + úroveň + `subclassShortName`/`subclassSource` bez `classSource`; záznam třídy zůstává přísně na `classSource`. Opraveno jedním místem pro `grantedClassFeaturesFrom` (Features & Traits, Actions, pooly) i `featureNamesFor`.
+- e2e/reviewFixesM10.spec.ts: jen zastaralý komentář u F-12 c (tvrdil, že Conquest nemá Guided Strike); aserce beze změny.
 
-Skutečná příčina: **nesoulad `classSource`**. classes.json vede Oath of Conquest (XGE) pod třídou Paladin **XPHB**, ale záznamy v subclass-features.json mají `classSource` **PHB** (edice, pro kterou byly vydány). Seed (pravidlo 1) filtruje `reached(record)`:
-- `src/sheet/featureReach.ts:40` – `feature.classSource !== characterClass.classSource` → false (PHB ≠ XPHB)
-- `src/sheet/grantedClassFeatures.ts:257` – seed `subclassFeatures` se tím vyřadí, closure (řádky 260–283) tak nikdy nezačne.
-Tedy mizí CELÁ podtřída (Oath of Conquest, Aura, Scornful Rebuke, Invincible Conqueror, Tenets, Channel Divinity, oba Guided Strike/Conquering Presence), ne jen vnořené děti. Zbývají jen spelly přísahy (jdou jinou cestou). Stejný test používá `featureNamesFor` (`weaponAttackData.ts:192`) → i útoky/odolnosti z těchto podtříd. Průvodce podtřídou už tento nesoulad zná: `subclassData.ts:221–230` má fallback bez `classSource`; `featureReach.ts` ho nemá.
-Neověřeno v běžícím UI (zákaz browseru); závěr je z kódu + dat.
+## Data (scripts/check-f17-duplicates.js, smazán po pushi)
+- 41 dotčených podtříd, 265 záznamů nově dosažitelných (souhlasí s investigací), z toho 16 pool spenderů (Channel Divinity, Wild Shape, Ki→Focus Point, Sorcery Point).
+- Duplicity: 0 dvojic stejného jména+úrovně pod oběma classSource v jedné podtřídě → krok 1 prošel.
+- Postavy tříd mimo XPHB (PHB 2014): 0 záznamů navíc → chování beze změny.
+- Očekávané hodnoty e2e: Paladin XPHB L3 Channel Divinity 2, Druid XPHB L3 Wild Shape 2 (classes.json). Circle of Wildfire je částečná podtřída (seed „Circle of Wildfire“ XPHB, ostatní PHB).
 
-## Rozsah (scripts/investigate-hidden-nested-subclass-features.js)
-| třída XPHB | podtříd | zahozených záznamů | s consumes |
-|---|---|---|---|
-| Barbarian | 4 | 30 | 0 |
-| Bard | 4 | 25 | 0 |
-| Cleric | 4 | 17 | 0 |
-| Druid | 4 | 20 | 2 |
-| Fighter | 4 | 37 | 0 |
-| Monk | 4 | 26 | 7 |
-| Paladin | 3 | 27 | 6 |
-| Ranger | 3 | 20 | 0 |
-| Rogue | 4 | 25 | 0 |
-| Sorcerer | 2 | 11 | 1 |
-| Warlock | 3 | 17 | 0 |
-| Wizard | 2 | 10 | 0 |
-| **Celkem** | **41** (XGE 25, TCE 16) | **265** | **16** |
+## Testy
+- Unit `src/sheet/featureReach.test.ts`: PHB záznam podtřídy na XPHB postavě dosažen; PHB záznam třídy ne (XPHB ano); jiná podtřída ne; nad úrovní ne.
+- e2e `e2e/olderSubclassFeatures.spec.ts`:
+  - F-17 a: Paladin 3 Oath of Conquest – Conquering Presence a Guided Strike v Paladin Features právě jednou, Aura of Conquest (L7) ne; řádek Guided Strike v Actions, Use sníží Channel Divinity (2 boxy) o 1.
+  - F-17 b: Druid 3 Circle of Wildfire – řádek Summon Wildfire Spirit, Use utratí Wild Shape (2 boxy); Enhanced Bond (L6) není ve Features.
+- Žádná existující aserce nebyla upravena ani označena fixme.
+- typecheck OK, test 3266/3266, validate-data 175/175, e2e 527/527 (2,5 min).
 
-- Actions-řádek (proxy: `consumes` NEBO `{@action}` v textu): 30 záznamů. Proxy je hrubý, skutečné řádky určuje akční tabulka.
-- 15 ze 41 podtříd je částečných (část seedů XPHB, část PHB) → ty zobrazí jen část prvků.
-- class-features.json: stejný vzor nehledán u třídních prvků (nemají `subclassShortName`, třídy 2024 mají vlastní XPHB záznamy); nezjištěno nic skrytého.
-- Channel Divinity spenders z DATA.md ř. 541: z 30 je **6 skrytých**, všechny Paladin PHB (Conquest, Watchers…). Cleric War XPHB v pořádku.
-
-## Srovnání
-Cleric War XPHB: seedy i Guided Strike mají `classSource` XPHB = třída → `reached` projde; tvar dat (Channel Divinity → Guided Strike, header 1, consumes) je stejný jako u Conquest. Jediný rozdíl je `classSource`.
-
-## Varianty opravy (neimplementováno)
-1. **Reach test: při neshodě `classSource` povolit podtřídní záznam, jehož (className, subclassShortName, subclassSource) sedí na zvolenou podtřídu** (jen pro záznamy s `subclassShortName`). `featureReach.ts`, tj. +1 řádek logiky; opraví i `featureNamesFor`. Riziko: duplicity jen při podtřídě, která má OBĚ edice se stejným shortName+source – skript investigate-subclass-join-collisions.js tvrdí, že kolize nejsou. Nové děti nepřidává (closure beze změny). E2E: Paladin XPHB + Conquest L3 → řádek Guided Strike v Actions a spotřeba Channel Divinity; Features zobrazí Conquering Presence jednou.
-2. **Normalizace v extract-data.js** (přepsat `classSource` PHB→XPHB u záznamů starších podtříd). Čistší u zdroje, ale mění data/, rozbíjí guard v `subclassData.ts` a hrozí kolize pro podtřídy s oběma edicemi; vyžaduje re-extract. Nedoporučuji.
-3. Fallback jen v `grantedClassFeatures.ts`. Nechá `featureNamesFor` rozbitý. Nedoporučuji.
-
-**Doporučení: varianta 1.** Doplnit unit test na `buildFeatureReachTest` (PHB-záznam, XPHB třída) a e2e výše; pokrýt i částečnou podtřídu (Druid/Sorcerer).
-
-## Otevřené otázky
-- Má se oprava týkat i PHB(2014) postavy s podtřídou z XGE (dnes funguje, nesmí se rozbít)? Předpokládám ano, varianta 1 to zachovává.
-- Zdokumentovat jako D-záznam? (DECISIONS.md je Vaše.)
-- Až po opravě: vyroste počet řádků v Actions/Features u 41 podtříd; je žádoucí zkontrolovat vizuálně.
+## Rozhodnutí / poznámky
+- D343 doplněno do DECISIONS.md (zadáno v promptu); STATUS.md a sekce DATA.md („fixed in F-17“) aktualizovány.
+- Nesledované soubory z dřívějška (docs/REPORT-REVIEW-*.md, docs/REPORT-MULTICLASS.md, docs/REPORT-SPECIES.md, CLAUDE-1.md, „Claude outputs/“) necommitnuty, jako v předchozích taskech; rozhodněte, zda je verzovat nebo smazat.
+- Investigační skript z c1b507a (`scripts/investigate-hidden-nested-subclass-features.js`) byl nesledovaný, `git clean -fd scripts` ho po pushi odstraní spolu s novým skriptem.
 
 ## Manual browser check for the user
-Nic nezměněno v kódu; není co kontrolovat.
+Na https://familliar.vercel.app:
+- Paladin 3 (XPHB), Oath of Conquest, záložka Features & Traits: skupina Paladin Features – zalomení dlouhých řádků (Tenets of Conquest, Conquering Presence, Guided Strike) a štítků původu „Conquest, Paladin 3“.
+- Stejná postava, záložka Actions: řádek Guided Strike s boxy Channel Divinity – zarovnání a šířka na mobilu.
+- Druid 3 (XPHB), Circle of Wildfire, záložka Actions: řádek Summon Wildfire Spirit s boxy Wild Shape – zalomení dlouhého jména.

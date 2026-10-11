@@ -71,7 +71,7 @@ const actions = (page: Page): Locator => page.getByRole('tabpanel', { name: 'Act
 const CLERIC = 'Channel Divinity (Cleric)'
 const PALADIN = 'Channel Divinity (Paladin)'
 
-// Oath of Conquest (XGE) on an XPHB Paladin shows no Guided Strike row on the sheet, so the two same-named rows are the classes' own "Channel Divinity".
+// Rows named exactly "Channel Divinity": each class's own, Guided Strike (War and Conquest, D343) is not counted.
 test('F-12 c: Cleric 3 (War Domain) / Paladin 3 (Oath of Conquest) — two "Channel Divinity" rows, each spends its own pool', async ({ page }) => {
   await openSheet(page, seeded('f12-c', [['Cleric', 'War Domain', 3], ['Paladin', 'Oath of Conquest', 3]]))
   await page.getByRole('tab', { name: 'Actions' }).click()

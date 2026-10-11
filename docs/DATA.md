@@ -1792,7 +1792,12 @@ subset); nothing named "Concentration" exists there.
   conditions"; **Incapacitated**: "Your Concentration is broken." Together with
   sleep, a Long Rest ends Concentration.
 
-## Older subclasses on 2024 classes: classSource mismatch (investigation, no code change)
+## Older subclasses on 2024 classes: classSource mismatch (fixed in F-17, D343)
+
+Fixed in F-17: `buildFeatureReachTest` joins subclass records without `classSource`. Measured
+by the F-17 check: 0 same-name pairs filed under both classSources within one subclass, and 0
+records gained by a non-XPHB class's subclass, so the join adds no duplicates and leaves 2014
+classes as they were.
 
 classes.json files an older subclass (XGE/TCE) under the 2024 class (`classSource` "XPHB"),
 but its records in subclass-features.json keep the class edition they were PUBLISHED for

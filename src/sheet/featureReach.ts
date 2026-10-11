@@ -37,9 +37,10 @@ export function buildFeatureReachTest(character: Character, parsedClasses: unkno
 
 	return (feature) =>
 		reaches.some(({ characterClass, subclass }) => {
-			if (feature.className !== characterClass.className || feature.classSource !== characterClass.classSource) return false
+			if (feature.className !== characterClass.className) return false
 			if (feature.level > characterClass.level) return false
-			if (feature.subclassShortName === undefined) return true
+			if (feature.subclassShortName === undefined) return feature.classSource === characterClass.classSource
+			// Older subclasses on XPHB classes keep their records under classSource PHB, so a subclass record joins without it (D343).
 			return subclass !== null && feature.subclassShortName === subclass.shortName && feature.subclassSource === subclass.source
 		})
 }
