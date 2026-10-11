@@ -5,6 +5,8 @@ import {
 	type ClassOptionalFeatureContextBase,
 	type ClassOptionalFeatureGroup,
 } from './optionalFeatureData'
+import { SWAPPABLE_CLASS_OPTION_TYPES } from './optionSwap'
+import { ReplaceOptionControl } from './ReplaceOptionControl'
 import { Entries } from '../markup'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
@@ -172,16 +174,19 @@ export function ClassOptionalFeaturePicker({
 					// D19: an ineligible option is disabled and reasoned, never hidden — including the 3
 					// Talisman invocations, whose boon this data has no option for. An already-chosen one
 					// stays toggleable so the player can undo it themselves — unless D110 locked it.
-					const disabled = !checked && (!eligible || group.remaining <= 0)
+					// D345: the option swapped out stays out; "Keep" in ReplaceOptionControl brings it back with its sub-choices.
+					const swappedOut = !checked && lockedNames.includes(option.name)
+					const disabled = !checked && (!eligible || group.remaining <= 0 || swappedOut)
+					const shownReasons = swappedOut ? ['Being replaced in this level up.'] : reasons
 					return {
 						key: `${option.name}|${option.source}`,
 						name: option.name,
 						book: option.source,
 						// W5: reasons stay visible on the collapsed row (D71/D19), the rule text folds away.
 						disabledReason:
-							reasons.length > 0 ? (
+							shownReasons.length > 0 ? (
 								<ul className="class-optional-feature-picker__reasons">
-									{reasons.map((reason, index) => (
+									{shownReasons.map((reason, index) => (
 										<li key={index}>{reason}</li>
 									))}
 								</ul>
@@ -208,6 +213,9 @@ export function ClassOptionalFeaturePicker({
 				})
 				return (
 					<section key={group.featureType} className="class-optional-feature-picker__group">
+						{SWAPPABLE_CLASS_OPTION_TYPES.includes(group.featureType) && (
+							<ReplaceOptionControl group={group} value={value} held={lockedChoices} contextBase={contextBase} onChange={onChange} />
+						)}
 						{group.invalidChosen.length > 0 && (
 							<ul className="class-optional-feature-picker__warnings">
 								{group.invalidChosen.map((invalid) => (

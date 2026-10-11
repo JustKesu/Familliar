@@ -61,6 +61,7 @@ export function levelUpStepConditions(gains: LevelGains, chosenSubclass: string 
 		(step) =>
 			ALWAYS_WALKED.includes(step) ||
 			gains.steps[step].status === 'adds' ||
+			gains.steps[step].swappable === true ||
 			(gains.steps[step].status === 'unknown' && !answeredByChosenSubclass(gains, step, chosenSubclass)),
 	)
 	return { levelUpSteps: new Set(walked), levelUpTargetLevel: gains.level }

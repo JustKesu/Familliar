@@ -1,4 +1,5 @@
 import type { WizardData } from '../creation/wizardState'
+import { SWAPPABLE_CLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
 import { choiceNames, fightingStyleFor, type Character, type CharacterOptionalFeatureChoice, type FeatAsiChoice } from '../storage/character'
 
 /**
@@ -94,7 +95,10 @@ export function overwrittenHeldPicks(character: Character, data: WizardData, act
 	}
 	for (const heldEntry of held.classOptionalFeatureChoices) {
 		const nowNames = choiceNames(data.classOptionalFeatureChoices.find((entry) => entry.featureType === heldEntry.featureType)?.choices)
-		missing('class option', choiceNames(heldEntry.choices), nowNames)
+		const lost = choiceNames(heldEntry.choices).filter((name) => !nowNames.includes(name))
+		// D345: one held option of a swappable kind may be replaced per level up.
+		const allowed = SWAPPABLE_CLASS_OPTION_TYPES.includes(heldEntry.featureType) ? 1 : 0
+		if (lost.length > allowed) missing('class option', choiceNames(heldEntry.choices), nowNames)
 	}
 	for (const pick of character.multiclassPicks ?? []) {
 		if (!(data.multiclassPicks ?? []).some((now) => now.className === pick.className && now.classSource === pick.classSource && now.kind === pick.kind && now.name === pick.name)) {

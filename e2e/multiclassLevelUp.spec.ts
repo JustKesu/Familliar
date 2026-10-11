@@ -114,6 +114,10 @@ test('M7a b: choosing Sorcerer — Sorcerer 4, Warlock 6, level 10, the Sorcerer
   await fillSpells(page)
   await next(page)
 
+  // D345: Metamagic is held, so its step is walked for an optional swap.
+  await expectStep(page, 'Metamagic')
+  await next(page)
+
   await expectStep(page, 'ASI / Feat')
   await expect(levelCard(page, 10)).toBeVisible()
   await chooseLevelAsi(page, 10, 'strength')

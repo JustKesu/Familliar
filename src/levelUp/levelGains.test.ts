@@ -72,6 +72,14 @@ describe('levelGainsFor', () => {
 		expect(gainsAt(sorcerer, 9, CLASSES, RESOLVER).steps.classOptionalFeatures.status).toBe('none')
 	})
 
+	it('D345: walks the Metamagic step at Sorcerer 9 when Metamagic is held, so one can be replaced', () => {
+		const withMetamagic = { ...sorcerer, optionalFeatureChoices: [{ featureType: 'MM', choices: [{ name: 'Quickened Spell' }, { name: 'Twinned Spell' }] }] }
+		const gains = gainsAt(withMetamagic, 9, CLASSES, RESOLVER)
+		expect(gains.steps.classOptionalFeatures).toMatchObject({ status: 'none', swappable: true })
+		expect(levelUpStepConditions(gains).levelUpSteps?.has('classOptionalFeatures')).toBe(true)
+		expect(levelUpStepConditions(gainsAt(sorcerer, 9, CLASSES, RESOLVER)).levelUpSteps?.has('classOptionalFeatures')).toBe(false)
+	})
+
 	it('reports the subclass choice at the level the class chooses one, under the title the data gives it', () => {
 		const gains = gainsAt(cleric, 3, CLASSES, RESOLVER)
 		expect(partCount(gains.steps.class, 'Cleric Subclass')).toBe(1)

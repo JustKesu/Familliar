@@ -44,6 +44,7 @@ import { SUBCLASS_SKILL_GRANTS, subclassSkillChoiceCount, subclassSkillGrantsFor
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { masteryCountFor } from '../masteries/masteryData'
 import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
+import { holdsSwappableOption } from '../optionalFeatures/optionSwap'
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractSpellCountClassData } from '../spells/spellCountClassData'
 import { subclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
@@ -77,6 +78,8 @@ export interface LevelGain {
 	reason?: string
 	/** D177: on the languages step's 'unknown', the subclasses whose choice at this level would owe a pick. */
 	owingSubclasses?: readonly string[]
+	/** D345: a held option of this step may be replaced at this level, so the step is walked even at 'none'. */
+	swappable?: boolean
 }
 
 /** A class or subclass feature the character gains at this level. No wizard step collects these; they are what the level grants outright. */
@@ -252,7 +255,7 @@ export function levelGainsFor(character: Character, target: LevelUpClass, parsed
 				classSource,
 				subclassName: characterClass.subclass,
 			}),
-			classOptionalFeatures: classOptionalFeaturesStepGain(parsedClasses, className, classSource, classLevel, previous),
+			classOptionalFeatures: classOptionalFeaturesStepGain(parsedClasses, className, classSource, classLevel, previous, character),
 			featAsi: featAsiStepGain(resolverData, className, classSource, classLevel),
 			hitPoints: hitPointsStepGain(level),
 			equipment: never('Starting equipment is a one-time grant taken at creation (D100); the inventory after that is play state the sheet edits.'),
@@ -471,14 +474,16 @@ function spellsStepGain(
 	return adds(parts)
 }
 
-function classOptionalFeaturesStepGain(parsedClasses: unknown[], className: string, classSource: string, level: number, previous: number): LevelGain {
+function classOptionalFeaturesStepGain(parsedClasses: unknown[], className: string, classSource: string, level: number, previous: number, character: Character): LevelGain {
 	const grantsBefore = classOptionalFeatureGrantsFor(parsedClasses, className, classSource, previous)
-	return adds(
+	const gain = adds(
 		classOptionalFeatureGrantsFor(parsedClasses, className, classSource, level).map((grant) => ({
 			name: grant.name ?? grant.featureType,
 			count: grant.count - (grantsBefore.find((earlier) => earlier.featureType === grant.featureType)?.count ?? 0),
 		})),
 	)
+	const swappable = grantsBefore.some((grant) => holdsSwappableOption(character.optionalFeatureChoices, grant.featureType))
+	return swappable ? { ...gain, swappable } : gain
 }
 
 /** D16/D19: which levels grant an ASI-or-feat choice is per-class, so the grants at exactly this level are read from the data rather than tested against 4/8/12/16/19. */

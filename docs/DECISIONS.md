@@ -5173,3 +5173,22 @@ z úrovně N maže volby s `level` N. `elegantCourtierSave: 'intelligence' | 'ch
 Samurai 7+ a list ho čte jen tehdy, když má postava Wisdom save z jiného zdroje; jinak dává Elegant Courtier Wisdom.
 Remove level Fightera ze 7 ho maže. Ve wizardu obojí na kroku Proficiencies a blokuje Next jako subclass tool/skill
 volby; level up se ptá jen na sloty dané úrovně. Task F-19.
+
+## D345 — Výměna jedné známé volby při level upu (F-20)
+
+1. Druhy: Eldritch Invocations `EI` a Metamagic `MM` (F-20a). Runy `RN` (Rune Knight), manévry `MV:B` (Battle Master)
+   a Fighting Style feat Fightera následují v F-20b.
+2. Výměna je volitelná, nejvýš jedna na druh a level up, jen u třídy, která úroveň získává. Edit a nová postava ji nemají.
+3. Volbu, kterou jiná držená volba vyžaduje jako prerekvizitu (Pact of the Blade → Thirsting Blade), nelze vyměnit;
+   je zobrazena zakázaná s důvodem, který jmenuje závislou volbu.
+4. Náhrada musí splnit prerekvizity na NOVÉ úrovni a nesmí být už držená (pokud ji data nedovolují opakovat).
+   Pod-volby vyměněné volby (dnes jen kouzla Pact of the Tome) odcházejí s ní; pod-volby náhrady se volí ve stejném kroku.
+5. Remove level výměnu nevrací. Náhrada přebírá level stamp vyměněné volby (i chybějící stamp volby z tvorby), takže
+   Remove level dál maže podle stampu.
+6. Krok, kde se druh vybírá (classOptionalFeatures), se prochází při KAŽDÉM level upu té třídy, jakmile postava drží
+   aspoň jednu volbu daného druhu, i když úroveň nic nepřidává (Warlock 5 → 6). Bez přírůstku a bez výměny je Next
+   hned povolené.
+7. (F-20b) Battle Master smí vyměnit jeden manévr při KAŽDÉM level upu Fightera, ne jen na úrovních, které manévry
+   přidávají. Vědomě volnější než text featury (house rule).
+
+Rozhodl Daniel 11. 10. 2026, task F-20a.

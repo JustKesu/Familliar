@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest'
+import { evaluateClassOptionalFeatureGroups, type ClassOptionalFeatureContextBase, type ClassOptionalFeatureGroup, type OptionalFeatureOption } from './optionalFeatureData'
+import { inheritSwapStamp, swapBlockedBy, swapOut, swappedOut, undoSwap } from './optionSwap'
+import type { CharacterOptionalFeatureChoice } from '../storage/character'
+
+const warlockLevel = (level: number) => ({ level, class: { name: 'Warlock', source: 'XPHB' } })
+const option = (name: string, prerequisite?: OptionalFeatureOption['prerequisite']): OptionalFeatureOption => ({ name, source: 'XPHB', entries: [], prerequisite })
+
+const group: ClassOptionalFeatureGroup = {
+	featureType: 'EI',
+	name: 'Eldritch Invocations',
+	count: 3,
+	options: [
+		option('Pact of the Blade'),
+		option('Pact of the Tome'),
+		option('Armor of Shadows'),
+		option('Thirsting Blade', [{ level: warlockLevel(5), pact: 'Blade' }]),
+		option('Ascendant Step', [{ level: warlockLevel(5) }]),
+	],
+}
+const base = (level: number): ClassOptionalFeatureContextBase => ({
+	classLevels: [{ className: 'Warlock', level, subclassName: null }],
+	knownSpellNames: [],
+	hasFightingStyleFeature: false,
+})
+const tomeSpells = { optionName: 'Pact of the Tome', cantrips: [{ name: 'Guidance', source: 'XPHB' }], spells: [] }
+const held: CharacterOptionalFeatureChoice[] = [
+	{
+		featureType: 'EI',
+		choices: [{ name: 'Pact of the Blade' }, { name: 'Thirsting Blade', level: 5 }, { name: 'Pact of the Tome', level: 2 }],
+		spellChoices: [tomeSpells],
+	},
+]
+
+describe('D345 option swap', () => {
+	it('blocks swapping out an option another held option requires, naming it', () => {
+		expect(swapBlockedBy(group, held, base(6), 'Pact of the Blade')).toEqual(['Thirsting Blade'])
+		expect(swapBlockedBy(group, held, base(6), 'Thirsting Blade')).toEqual([])
+	})
+
+	it('checks the replacement at the new level', () => {
+		const dropped = swapOut(held, 'EI', 'Pact of the Tome')
+		const eligible = (level: number) =>
+			evaluateClassOptionalFeatureGroups([group], dropped, base(level))[0].evaluated.find((entry) => entry.option.name === 'Ascendant Step')!.eligible
+		expect(eligible(4)).toBe(false)
+		expect(eligible(5)).toBe(true)
+	})
+
+	it('drops the swapped-out option with its own spell picks, and Keep restores both', () => {
+		const dropped = swapOut(held, 'EI', 'Pact of the Tome')
+		expect(dropped[0].choices.map((choice) => choice.name)).toEqual(['Pact of the Blade', 'Thirsting Blade'])
+		expect(dropped[0].spellChoices).toBeUndefined()
+		expect(swappedOut(dropped, held, 'EI')).toEqual({ name: 'Pact of the Tome', level: 2 })
+		const restored = undoSwap([{ ...dropped[0], choices: [...dropped[0].choices, { name: 'Armor of Shadows' }] }], held, 'EI', 3)
+		expect(restored[0].choices.map((choice) => choice.name)).toEqual(['Pact of the Blade', 'Thirsting Blade', 'Pact of the Tome'])
+		expect(restored[0].spellChoices).toEqual([tomeSpells])
+	})
+
+	it('gives the replacement the swapped-out pick\'s stamp, or none for a creation pick', () => {
+		const stored = [{ name: 'Agonizing Blast' }, { name: 'Armor of Shadows', level: 3 }]
+		const fromCreation = inheritSwapStamp([{ name: 'Repelling Blast' }, { name: 'Armor of Shadows', level: 3 }, { name: 'Ascendant Step' }], stored)
+		expect(fromCreation.replacement).toBe('Repelling Blast')
+		expect(fromCreation.choices[0]).toEqual({ name: 'Repelling Blast' })
+		const fromLevel = inheritSwapStamp([{ name: 'Agonizing Blast' }, { name: 'Repelling Blast' }], stored)
+		expect(fromLevel.choices[1]).toEqual({ name: 'Repelling Blast', level: 3 })
+		expect(inheritSwapStamp(stored, stored).replacement).toBeNull()
+	})
+})

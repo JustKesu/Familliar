@@ -38,6 +38,7 @@ import type {
 import { hasElegantCourtier, heldKenseiWeapons, kenseiSlotsFilled, kenseiSlotsFor, type KenseiSlot } from '../kensei/kensei'
 import { choiceNames, fightingStyleFor, isConsistentLevelOrder, singleClassLevelOrder } from '../storage/character'
 import type { PickSourceLookup } from '../optionalFeatures/pickSources'
+import { inheritSwapStamp } from '../optionalFeatures/optionSwap'
 import { isValidHitPointEntry } from '../hitPoints/hitPointEntry'
 import { splitAlwaysPreparedPicks } from './alwaysPreparedOverlap'
 import type { AbilityBonusDistribution } from '../backgrounds/abilityBonus'
@@ -1920,10 +1921,14 @@ function classRecordsFor(
 		.map((entry) => {
 			const sourced = { ...entry, choices: entry.choices.map((choice) => withPickSource(entry.featureType, choice)) }
 			if (levelUpTo === undefined) return sourced
-			const held = new Set(choiceNames(existing?.optionalFeatureChoices?.find((stored) => stored.featureType === entry.featureType)?.choices))
+			const stored = existing?.optionalFeatureChoices?.find((candidate) => candidate.featureType === entry.featureType)?.choices
+			const held = new Set(choiceNames(stored))
+			const swapped = inheritSwapStamp(sourced.choices, stored)
 			return {
 				...sourced,
-				choices: sourced.choices.map((choice) => (choice.level !== undefined || held.has(choice.name) ? choice : { ...choice, level: levelUpTo })),
+				choices: swapped.choices.map((choice) =>
+					choice.name === swapped.replacement || choice.level !== undefined || held.has(choice.name) ? choice : { ...choice, level: levelUpTo },
+				),
 			}
 		})
 

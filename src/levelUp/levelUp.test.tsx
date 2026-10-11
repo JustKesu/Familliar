@@ -304,8 +304,9 @@ describe('saving a level up', () => {
 			['an expertise', (data) => ({ ...data, expertiseSkills: ['perception'] })],
 			['a feat/ASI pick', (data) => ({ ...data, featAsiChoices: [{ level: 4, kind: 'feat' as const, name: 'Alert', source: 'XPHB' }] })],
 			[
+				// D345 allows one swap per kind, so two lost picks are the overwrite.
 				'a class optional-feature pick',
-				(data) => ({ ...data, classOptionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }] }),
+				(data) => ({ ...data, classOptionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Armor of Shadows' }] }] }),
 			],
 		]
 
@@ -338,19 +339,26 @@ describe('saving a level up', () => {
 		it('a feat/ASI pick or a class optional-feature pick', () => {
 			const character: Character = {
 				...single('Warlock', null, 4),
-				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }] }],
+				optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Armor of Shadows' }] }],
 				featAsiChoices: [{ level: 4, kind: 'asi', increases: { charisma: 2 } }],
 			}
 			const seed = wizardDataFromCharacter(character, { subclasses: [], spellLevels: [] })
 			const data = { ...seed, classChoice: { className: 'Warlock', classSource: 'XPHB', level: 5 } }
 
 			expect(overwrittenHeldPicks(character, data)).toEqual([])
+			// D345: one invocation may be replaced per level up, not two.
+			expect(
+				overwrittenHeldPicks(character, {
+					...data,
+					classOptionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Repelling Blast' }, { name: 'Armor of Shadows' }] }],
+				}),
+			).toEqual([])
 			expect(
 				overwrittenHeldPicks(character, {
 					...data,
 					classOptionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Repelling Blast' }] }],
 				}),
-			).toEqual(['class option Agonizing Blast'])
+			).toEqual(['class option Agonizing Blast', 'class option Armor of Shadows'])
 			expect(
 				overwrittenHeldPicks(character, {
 					...data,

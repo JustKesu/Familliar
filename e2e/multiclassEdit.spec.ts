@@ -458,6 +458,9 @@ test('F-11 d: Warlock 6 / Sorcerer 3 → 4 level up — the ASI / Feat step show
   await expectStep(page, 'Spells')
   await fillSpells(page)
   await nextButton(page).click()
+  // D345: Metamagic is held, so its step is walked for an optional swap.
+  await expectStep(page, 'Metamagic')
+  await nextButton(page).click()
   await expectStep(page, 'ASI / Feat')
   // The ASI step lists every ASI level the character has, as Edit does; only Hit points narrows to the new level.
   await expect(cards(page)).toHaveCount(2)
