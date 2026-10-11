@@ -1,53 +1,52 @@
-# F-16b: třída bez vlastního kouzlení maže kouzla při změně podtřídy (D342)
+# REPORT – Investigace: skryté prvky staršího podtřídy na třídě 2024
 
-- `hasOwnSpellcasting(entry)` v `calculation/spellSlots.ts` (nejdřív v `spellSlotsClassData.ts`, ale komponentové testy tenhle modul mockují bez exportu a 22 testů padlo; přesunuto, mocky nedotčené) (stejný test jako `spellSlots.ts:104`: tabulka slotů třídy nebo pact). `CharacterWizard.tsx` při výběru podtřídy najde záznam třídy v už načtených `spellSlotsClassData` a pošle `subclassOnlyCaster: true`; `setSubclass` pak maže class kouzla při změně držené podtřídy i u nové postavy. Bez nalezeného záznamu platí D341 (nemaže).
-- Testy: unit (Fighter EK → Champion, s příznakem prázdné, bez příznaku zachované); e2e `subclassOnlyCaster.spec.ts` (nová postava Fighter 3, EK, kouzla vybrána, zpět na Class, Champion, Create: uložená `spellChoices` prázdná, Spells tab neukazuje vybraná kouzla).
-- Rogue s Arcane Trickster stejnou cestou, bez vlastního scénáře.
-- Výsledky: typecheck OK, `npm test` 3262/3262, `validate-data` 175/175, `npm run e2e` 525 passed, 0 fixme, 2.5 min.
-- Soubory vytvořeny/upraveny jen přes Edit/Write.
+HEAD při startu: f100a59 (fetch + ff-merge OK, "Already up to date"). Změněno jen docs/REPORT.md, docs/DATA.md, jeden skript.
 
-# F-16: opravy z review M11 (D341)
+## Příčina (hypotéza z zadání vyvrácena)
+Zanořené reference NEJSOU příčina. Skript replikuje pravidla 1–2 z `grantedClassFeatures.ts`: z Oath of Conquest se pouhým plain-text closure dosáhne všech 9 záznamů včetně Channel Divinity, Conquering Presence a Guided Strike. Žádný `refSubclassFeature` v datech podtříd není uvnitř počítaného `options` uzlu (0 skrytých). `header 1` ani `consumes` nic nefiltrují (kód je nečte).
 
-HEAD před taskem b9bcdf9 (fetch + `merge --ff-only`: already up to date). Test (f) přeskočen, viz níže. Porušení pravidel: dva testy jsem do `e2e/multiclassEndToEnd.spec.ts` přidal shellovým heredoc (`cat >>`) místo Edit/Write; obsah je ověřený, jen postup byl proti zadání.
+Skutečná příčina: **nesoulad `classSource`**. classes.json vede Oath of Conquest (XGE) pod třídou Paladin **XPHB**, ale záznamy v subclass-features.json mají `classSource` **PHB** (edice, pro kterou byly vydány). Seed (pravidlo 1) filtruje `reached(record)`:
+- `src/sheet/featureReach.ts:40` – `feature.classSource !== characterClass.classSource` → false (PHB ≠ XPHB)
+- `src/sheet/grantedClassFeatures.ts:257` – seed `subclassFeatures` se tím vyřadí, closure (řádky 260–283) tak nikdy nezačne.
+Tedy mizí CELÁ podtřída (Oath of Conquest, Aura, Scornful Rebuke, Invincible Conqueror, Tenets, Channel Divinity, oba Guided Strike/Conquering Presence), ne jen vnořené děti. Zbývají jen spelly přísahy (jdou jinou cestou). Stejný test používá `featureNamesFor` (`weaponAttackData.ts:192`) → i útoky/odolnosti z těchto podtříd. Průvodce podtřídou už tento nesoulad zná: `subclassData.ts:221–230` má fallback bez `classSource`; `featureReach.ts` ho nemá.
+Neověřeno v běžícím UI (zákaz browseru); závěr je z kódu + dat.
 
-## Inventář změn
+## Rozsah (scripts/investigate-hidden-nested-subclass-features.js)
+| třída XPHB | podtříd | zahozených záznamů | s consumes |
+|---|---|---|---|
+| Barbarian | 4 | 30 | 0 |
+| Bard | 4 | 25 | 0 |
+| Cleric | 4 | 17 | 0 |
+| Druid | 4 | 20 | 2 |
+| Fighter | 4 | 37 | 0 |
+| Monk | 4 | 26 | 7 |
+| Paladin | 3 | 27 | 6 |
+| Ranger | 3 | 20 | 0 |
+| Rogue | 4 | 25 | 0 |
+| Sorcerer | 2 | 11 | 1 |
+| Warlock | 3 | 17 | 0 |
+| Wizard | 2 | 10 | 0 |
+| **Celkem** | **41** (XGE 25, TCE 16) | **265** | **16** |
 
-| Místo | Proč |
-|---|---|
-| `wizardState.ts` `WizardControllerState.initialSubclasses` + `classKey` | podtřída každé držené třídy tak, jak byla načtena |
-| `wizardState.ts` `case 'seed'` | naplní `initialSubclasses` z aktivní třídy a `otherClasses` |
-| `wizardState.ts` `case 'setSubclass'` | spellChoices a wildShapeForms se mažou jen při `initialSubclasses` pro třídu (nebo při `subclass: null`); optionalFeatureChoices, Savant, subclass skills dál při každé změně |
-| `wizardState.ts` `case 'dropAlwaysPreparedPicks'` | jeden záznam na třídu/podtřídu, jména, která aktuální úroveň už nedává, se z poznámky odstraní, prázdný záznam zmizí |
-| `e2e/multiclassEndToEnd.spec.ts` | hlavička (nález 5), bez `count > 0` (g), testy a, d, e |
-| `wizardState.test.ts` | testy a, b, c, úprava dvou stávajících (viz níže) |
-| `DECISIONS.md` D341, `STATUS.md` | zadáno |
+- Actions-řádek (proxy: `consumes` NEBO `{@action}` v textu): 30 záznamů. Proxy je hrubý, skutečné řádky určuje akční tabulka.
+- 15 ze 41 podtříd je částečných (část seedů XPHB, část PHB) → ty zobrazí jen část prvků.
+- class-features.json: stejný vzor nehledán u třídních prvků (nemají `subclassShortName`, třídy 2024 mají vlastní XPHB záznamy); nezjištěno nic skrytého.
+- Channel Divinity spenders z DATA.md ř. 541: z 30 je **6 skrytých**, všechny Paladin PHB (Conquest, Watchers…). Cleric War XPHB v pořádku.
 
-Rozsah v mezích limitu, `CharacterWizard.tsx` beze změny: efekty na `classChoice` se při změně úrovně spouští znovu a čistění poznámky řeší reducer.
+## Srovnání
+Cleric War XPHB: seedy i Guided Strike mají `classSource` XPHB = třída → `reached` projde; tvar dat (Channel Divinity → Guided Strike, header 1, consumes) je stejný jako u Conquest. Jediný rozdíl je `classSource`.
 
-## Co se změnilo
-- Nález 1: "první výběr" se už neodvozuje od posledního kliknutí. Mazání spellChoices a Wild Shape forem jen když načtená postava měla podtřídu téže třídy. Nová postava nikdy nemaže class kouzla při přepnutí A → B.
-- Nález 2: viz řádek `dropAlwaysPreparedPicks`. Efekt `CharacterWizard.tsx:987` po snížení úrovně pošle nový seznam grantů, reducer podle něj poznámku ořízne.
-- Nález 5: hlavička ukazuje na `data/classes.json`.
-- D341 zapsán (Remove level nevrací pick; poznámka i u uložených duplikátů zůstává). Beze změny kódu.
+## Varianty opravy (neimplementováno)
+1. **Reach test: při neshodě `classSource` povolit podtřídní záznam, jehož (className, subclassShortName, subclassSource) sedí na zvolenou podtřídu** (jen pro záznamy s `subclassShortName`). `featureReach.ts`, tj. +1 řádek logiky; opraví i `featureNamesFor`. Riziko: duplicity jen při podtřídě, která má OBĚ edice se stejným shortName+source – skript investigate-subclass-join-collisions.js tvrdí, že kolize nejsou. Nové děti nepřidává (closure beze změny). E2E: Paladin XPHB + Conquest L3 → řádek Guided Strike v Actions a spotřeba Channel Divinity; Features zobrazí Conquering Presence jednou.
+2. **Normalizace v extract-data.js** (přepsat `classSource` PHB→XPHB u záznamů starších podtříd). Čistší u zdroje, ale mění data/, rozbíjí guard v `subclassData.ts` a hrozí kolize pro podtřídy s oběma edicemi; vyžaduje re-extract. Nedoporučuji.
+3. Fallback jen v `grantedClassFeatures.ts`. Nechá `featureNamesFor` rozbitý. Nedoporučuji.
 
-## Ověření
-- typecheck OK, `npm test` 3261/3261, `validate-data` 175/175, `npm run e2e` 524 passed, 0 fixme, 2.0 min.
-- Nové/rozšířené: unit a (A → B v level upu), b (Edit, uložená podtřída maže dál), c (snížení úrovně maže poznámku, druhý drop = jeden záznam); e2e "F-16 a" (Wizard 2 → 3 Bladesinger pak Evoker, kouzla na kroku i v uloženém), "F-16 d" (Druid 2 → 3 Circle of the Moon, formy Badger, Cat, Rat, Wolf po Save), "M11b finding 2" rozšířen o Edit změny podtřídy Clerica (Bladesinger skill zůstane v uložení i na listu), (g) F-14 b a M11a B bez guardu, mastery Longsword a Warhammer ve `masteries` po vstupu do Paladina: app je nabízí, `fixme` netřeba.
-- Očekávané hodnoty z tabulek tříd: Wizard 3 cantrips 3, prepared 6; Druid 3 cantrips 2, prepared 6.
+**Doporučení: varianta 1.** Doplnit unit test na `buildFeatureReachTest` (PHB-záznam, XPHB třída) a e2e výše; pokrýt i částečnou podtřídu (Druid/Sorcerer).
 
-## Test (f) přeskočen
-Find Familiar (Druid 2) i Find Steed (Paladin 5) jsou class always prepared podle D340, ale pick téhož kouzla stejnou třídou před grantem aplikace nevyrobí: Find Steed je kouzlo 2. úrovně a Paladin ho získá na 5, kde se zároveň grantuje; Find Familiar nepatří na seznam Druida (nezkoumáno v datech, nesmím je otevřít). Seed by nebyl stav, který app umí vyrobit. Divine Smite zůstává jediný pokrytý případ (M11b F).
-
-## Úpravy stávajících unit testů
-- Test Wild Shape forem (okolo 500): doplněn `initialSubclasses` a třída Druid, "změna třídy" používá Fightera, jinak by se změnila na same-class.
-- Test D338 (okolo 520): druhá změna A → B nově kouzla a formy zachová, optionalFeatureChoices maže dál.
-
-## Rozhodnutí během práce
-- `setSubclass` s `subclass: null` (snížení úrovně pod podtřídu, D251) maže class kouzla i u nové postavy, jinak padal test D251 a zůstala by kouzla závislá na podtřídě.
-- Poznámka se slučuje do jednoho záznamu (sjednocení jmen) místo prosté náhrady.
-
-## Otevřená otázka
-Nová postava Fighter: Eldritch Knight (vybraná kouzla) → přepnutí na Champion nově kouzla EK ponechá v `spellChoices` (pravidlo D341 "nová postava nikdy nemaže"). Edit takové postavy kouzla smaže. Chceš pro nové postavy výjimku pro třídy, které kouzla dostávají jen od podtřídy (Fighter, Rogue)? Nezkoušeno v UI, jen z kódu.
+## Otevřené otázky
+- Má se oprava týkat i PHB(2014) postavy s podtřídou z XGE (dnes funguje, nesmí se rozbít)? Předpokládám ano, varianta 1 to zachovává.
+- Zdokumentovat jako D-záznam? (DECISIONS.md je Vaše.)
+- Až po opravě: vyroste počet řádků v Actions/Features u 41 podtříd; je žádoucí zkontrolovat vizuálně.
 
 ## Manual browser check for the user
-Chování pokrývají scénáře výše. Jen oko na https://familliar.vercel.app: v Editu Paladina s Divine Smite mezi picky zvýšit úroveň na 2, na kroku Spells poznámka "Divine Smite is always prepared by Paladin…" nad počítadlem; po návratu na Class a snížení úrovně na 1 poznámka zmizí, po opětovném zvýšení je jen jednou. Vzhled a umístění poznámky. Změnu úrovně v Editu žádný scénář neprochází, jen unit test reduceru (c).
+Nic nezměněno v kódu; není co kontrolovat.

@@ -1791,3 +1791,24 @@ subset); nothing named "Concentration" exists there.
 - **Unconscious** (condition): "You have the Incapacitated and Prone
   conditions"; **Incapacitated**: "Your Concentration is broken." Together with
   sleep, a Long Rest ends Concentration.
+
+## Older subclasses on 2024 classes: classSource mismatch (investigation, no code change)
+
+classes.json files an older subclass (XGE/TCE) under the 2024 class (`classSource` "XPHB"),
+but its records in subclass-features.json keep the class edition they were PUBLISHED for
+(`classSource` "PHB"). Seed ids in `subclassFeatureIds` point at those PHB records
+(`scf|...|paladin|phb|conquest|xge|...`). Measured by
+scripts/investigate-hidden-nested-subclass-features.js:
+
+- 41 subclasses (XGE 25, TCE 16) have at least one seed record whose `classSource` differs
+  from the subclass entry's; 15 of them only partly (some seeds XPHB, some PHB). Spread over
+  all 12 XPHB classes, 2 to 4 each (Paladin 3).
+- Records reachable from those seeds that carry the foreign `classSource`: 265; 16 carry
+  `consumes`, 30 carry `consumes` or an `{@action}` tag. Cleric War XPHB is not affected (its
+  records are XPHB).
+- Nesting is NOT the cause. Oath of Conquest: seed "Oath of Conquest" (L3, 3 refs) ->
+  "Channel Divinity" -> "Conquering Presence", "Guided Strike" (header 1, consumes Channel
+  Divinity) are all reached by a plain-text transitive closure (9 records); the closure
+  sees no ref inside a counted `options` node anywhere in the subclass data (0 hidden).
+- 6 of the 30 Channel Divinity spenders are in the affected set, all Paladin PHB records:
+  e.g. Conquest "Conquering Presence", Watchers "Watcher's Will" and "Abjure the Extraplanar".
