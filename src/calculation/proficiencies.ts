@@ -4,7 +4,7 @@ import { compareText } from '../text/compareText'
 import { classToolGrantsFor, subclassToolGrantsForAll } from '../toolProficiencies/classToolChoices'
 import { firstClass } from './characterLevel'
 import { classProficiencyGrants } from './classProficiencies'
-import { FEATURE_GRANTS } from './featureGrants'
+import { chosenWeaponGrants, FEATURE_GRANTS } from './featureGrants'
 import type { ItemProficiencyGrant } from './itemProficiencies'
 import { isKhoravar, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
 import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
@@ -239,7 +239,10 @@ export function computeProficiencies(
 		grant.weapons.forEach((weapon) => addWeapon(weapon, grant.source))
 		grant.tools?.forEach((tool) => addTool(titleCase(tool), grant.source))
 		grant.languages?.forEach((language) => addLanguage(language, grant.source))
-		if (grant.pendingWeapons) pendingWeapons.push({ key: `pending:weapons:${grant.source.name}`, label: `${grant.pendingWeapons} — not chosen`, sources: [grant.source], pending: true })
+		chosenWeaponGrants(grant, character).forEach((weapon) => addWeapon(weapon, grant.source))
+		if (grant.pendingWeapons && grant.pendingWeapons.picks(character).owed > 0) {
+			pendingWeapons.push({ key: `pending:weapons:${grant.source.name}`, label: `${grant.pendingWeapons.label} — not chosen`, sources: [grant.source], pending: true })
+		}
 	}
 
 	const featureLanguageSource = (grant: (typeof CLASS_FEATURE_LANGUAGE_GRANTS)[number]) => `${grant.subclass ?? grant.className} — ${grant.featureName}`

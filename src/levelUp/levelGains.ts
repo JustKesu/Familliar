@@ -38,6 +38,7 @@ import { expertiseEligibilityFor } from '../expertise/expertiseData'
 import { featAsiGrantsFor } from '../featAsi/featAsiData'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
+import { ELEGANT_COURTIER_LEVEL, hasElegantCourtier, kenseiSlotsFor } from '../kensei/kensei'
 import { CLASS_TOOL_CHOICE_GRANTS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import { SUBCLASS_SKILL_GRANTS, subclassSkillChoiceCount, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
@@ -292,6 +293,9 @@ function languagesStepGain(
 		...classFeatureLanguageGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: grant.featureName, count: grant.choice.count }] : [])),
 		...toolGrants.flatMap((grant) => (grant.level === level ? [{ name: `${grant.owner} tool`, count: grant.count }] : [])),
 		...subclassSkillGrantsFor([start]).flatMap((grant) => (grant.choice && grant.level === level ? [{ name: `${grant.subclass} skill`, count: subclassSkillChoiceCount(grant) }] : [])),
+		// D344: Kensei's 6/11/17 weapon; level 3's pair rides on the Kensei tool grant's subclass pending below.
+		{ name: 'Kensei weapon', count: kenseiSlotsFor([start]).filter((slot) => slot.level === level).length },
+		{ name: 'Elegant Courtier save (only if Wisdom saves are already proficient)', count: level === ELEGANT_COURTIER_LEVEL && hasElegantCourtier([start]) ? 1 : 0 },
 	]
 	const gain = adds(parts)
 	if (gain.status === 'adds' || subclass !== null || subclassGrantLevel !== level) return gain

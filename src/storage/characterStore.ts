@@ -29,7 +29,14 @@ import type {
 	SpentSpellSlots,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
-import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, type CharacterLevelOrderEntry, type CharacterMulticlassPick } from './character'
+import {
+	CURRENT_SCHEMA_VERSION,
+	isConsistentLevelOrder,
+	type CharacterKenseiWeapon,
+	type CharacterLevelOrderEntry,
+	type CharacterMulticlassPick,
+	type ElegantCourtierSave,
+} from './character'
 import { isValidAbilityIncrease } from '../featAsi/featAsiData'
 import { manualFeatKey, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { deathSavesAfterHitPointChange } from '../hitPoints/deathSaves'
@@ -46,6 +53,7 @@ import {
 	describeCharacterError,
 	describeFightingStylesError,
 	describeHitPointLevelsError,
+	describeKenseiWeaponsError,
 	describeMulticlassPicksError,
 	describePortraitError,
 	describeStoredCharacterError,
@@ -202,6 +210,8 @@ export interface CharacterCreateInput {
 	subclassSkills?: CharacterSubclassSkill[]
 	/** D330: the multiclass skill/tool picks, each with the class it came with. */
 	multiclassPicks?: CharacterMulticlassPick[]
+	kenseiWeapons?: CharacterKenseiWeapon[]
+	elegantCourtierSave?: ElegantCourtierSave
 	hitPointLevels?: CharacterHitPointLevel[]
 	/*
 	 * Play-time state the wizard never collects: the hand-set current hit points
@@ -342,6 +352,8 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		toolChoices,
 		subclassSkills,
 		multiclassPicks,
+		kenseiWeapons,
+		elegantCourtierSave,
 		hitPointLevels,
 		currentHp,
 		maxHpOverride,
@@ -363,6 +375,8 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 	assertValidPortrait(portrait)
 	const multiclassPicksError = describeMulticlassPicksError(multiclassPicks, classes)
 	if (multiclassPicksError) throw new ImportValidationError(`Multiclass picks could not be saved: ${multiclassPicksError}.`)
+	const kenseiWeaponsError = describeKenseiWeaponsError(kenseiWeapons)
+	if (kenseiWeaponsError) throw new ImportValidationError(`Kensei weapons could not be saved: ${kenseiWeaponsError}.`)
 	// D328: across classes the history is what max HP and ASI levels read, so a mismatch is refused rather than silently dropped.
 	if (levelOrder && classes.length > 1 && !isConsistentLevelOrder(levelOrder, classes)) {
 		throw new ImportValidationError(`The level history could not be saved: ${levelOrderMismatch(levelOrder, classes)}.`)
@@ -400,6 +414,8 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(toolChoices && toolChoices.length > 0 ? { toolChoices } : {}),
 		...(subclassSkills && subclassSkills.length > 0 ? { subclassSkills } : {}),
 		...(multiclassPicks && multiclassPicks.length > 0 ? { multiclassPicks } : {}),
+		...(kenseiWeapons && kenseiWeapons.length > 0 ? { kenseiWeapons } : {}),
+		...(elegantCourtierSave ? { elegantCourtierSave } : {}),
 		...(hitPointLevels &&hitPointLevels.length > 0 ? { hitPointLevels } : {}),
 		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
 		...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),

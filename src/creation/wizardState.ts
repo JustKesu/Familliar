@@ -17,6 +17,7 @@ import type {
 	CharacterClassFeatureChoice,
 	CharacterHitPointLevel,
 	CharacterInventoryItem,
+	CharacterKenseiWeapon,
 	CharacterWildShapeForms,
 	CharacterLanguage,
 	CharacterToolChoice,
@@ -30,9 +31,11 @@ import type {
 	CharacterSpellChoice,
 	CharacterSubclassSpellChoice,
 	CharacterSubclassSpellChoicePick,
+	ElegantCourtierSave,
 	FeatAsiChoice,
 	LeveledChoice,
 } from '../storage/character'
+import { hasElegantCourtier, heldKenseiWeapons, kenseiSlotsFilled, kenseiSlotsFor, type KenseiSlot } from '../kensei/kensei'
 import { choiceNames, fightingStyleFor, isConsistentLevelOrder, singleClassLevelOrder } from '../storage/character'
 import type { PickSourceLookup } from '../optionalFeatures/pickSources'
 import { isValidHitPointEntry } from '../hitPoints/hitPointEntry'
@@ -199,6 +202,8 @@ export interface WizardStepConditions {
 	hitDieFacesByLevel?: readonly number[] | null
 	/** D333: false while a multiclass Edit's multiclass skill/tool slots are not all filled (or still loading). */
 	multiclassPicksComplete?: boolean
+	/** D344: false while Elegant Courtier needs its Intelligence/Charisma pick (or Wisdom proficiency is still being worked out). */
+	elegantCourtierComplete?: boolean
 }
 
 /**
@@ -325,6 +330,7 @@ function resolveConditions(
 		heldClasses: conditions.heldClasses ?? null,
 		hitDieFacesByLevel: conditions.hitDieFacesByLevel,
 		multiclassPicksComplete: conditions.multiclassPicksComplete ?? true,
+		elegantCourtierComplete: conditions.elegantCourtierComplete ?? true,
 	}
 }
 
@@ -401,6 +407,13 @@ export function wizardSubclassSkillGrants(data: WizardData, levelUpTargetLevel: 
 	return levelUpTargetLevel === null || !cls ? grants : grants.filter((grant) => grant.level === cls.level)
 }
 
+/** D344: the Kensei slots the languages step collects; a level-up walk asks only for the ones that Monk level brings. */
+export function wizardKenseiSlots(data: WizardData, levelUpTargetLevel: number | null): KenseiSlot[] {
+	const cls = wizardClass(data)
+	const slots = cls ? kenseiSlotsFor([cls]) : []
+	return levelUpTargetLevel === null || !cls ? slots : slots.filter((slot) => slot.level === cls.level)
+}
+
 /** D177: species picks are creation picks, so a level-up walk never asks for them. */
 export function wizardSpeciesToolGrants(data: WizardData, levelUpTargetLevel: number | null): ToolSlotGrant[] {
 	return levelUpTargetLevel === null ? speciesToolGrantsFor(data.speciesChoice) : []
@@ -446,6 +459,10 @@ export interface WizardData {
 	toolChoices: CharacterToolChoice[]
 	/** D177: subclass skill picks, already shaped like storage. Clears whenever the class or subclass changes. */
 	subclassSkills: CharacterSubclassSkill[]
+	/** D344: Kensei weapon picks, shaped like storage. A pick no slot of the saved classes holds is dropped at save. */
+	kenseiWeapons: CharacterKenseiWeapon[]
+	/** D344: the Elegant Courtier save when Wisdom was already proficient. Saved only while the classes include Samurai 7. */
+	elegantCourtierSave: ElegantCourtierSave | null
 	/** D177: Khoravar's skill-or-tool pick when it is a skill. Saved into speciesSkills; clears whenever the species changes. */
 	speciesExtraSkill: string | null
 	abilityScores: CharacterAbilityScores | null
@@ -588,6 +605,8 @@ export function emptyWizardData(): WizardData {
 		featureLanguages: [],
 		toolChoices: [],
 		subclassSkills: [],
+		kenseiWeapons: [],
+		elegantCourtierSave: null,
 		speciesExtraSkill: null,
 		abilityScores: null,
 		classSkills: [],
@@ -709,6 +728,8 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		featureLanguages: (character.languages ?? []).filter((language) => language.grantedBy !== 'automatic' && language.grantedBy !== 'creation'),
 		toolChoices: character.toolChoices ?? [],
 		subclassSkills: character.subclassSkills ?? [],
+		kenseiWeapons: character.kenseiWeapons ?? [],
+		elegantCourtierSave: character.elegantCourtierSave ?? null,
 		// D177: Khoravar has no structured species skill, so a stored one is its skill-or-tool pick.
 		speciesExtraSkill: isKhoravar(character.species) ? (character.speciesSkills?.[0] ?? null) : null,
 		abilityScores: character.abilityScores ?? null,
@@ -898,6 +919,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		heldClasses,
 		hitDieFacesByLevel,
 		multiclassPicksComplete,
+		elegantCourtierComplete,
 		characterLevel,
 	} = resolveConditions(conditions)
 	switch (step) {
@@ -960,6 +982,9 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 					(grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length >= grant.count,
 				) &&
 				wizardSubclassSkillGrants(data, levelUpTargetLevel, heldClasses).every((grant) => isSubclassSkillChoiceMade(grant, data.subclassSkills, data.featureLanguages)) &&
+				// D344: Kensei weapons and the Elegant Courtier save block like the subclass tool and skill picks beside them.
+				kenseiSlotsFilled(wizardKenseiSlots(data, levelUpTargetLevel), data.kenseiWeapons) &&
+				elegantCourtierComplete &&
 				// D330: only a class entered in this level up (class level 1) owes its multiclass picks here.
 				(levelUpTargetLevel === null || cls === null || cls.level > 1 || (data.multiclassPicks ?? []).filter((pick) => isClass(pick, cls)).length === multiclassPickCount) &&
 				(levelUpTargetLevel !== null || !isKhoravar(data.speciesChoice) || data.speciesExtraSkill !== null || data.toolChoices.some((choice) => choice.grantedBy === 'khoravar'))
@@ -1234,6 +1259,8 @@ export type WizardAction =
 	| { type: 'setToolChoices'; choices: CharacterToolChoice[] }
 	| { type: 'setSubclassSkills'; skills: CharacterSubclassSkill[]; languages: CharacterLanguage[] }
 	| { type: 'setMulticlassPicks'; picks: CharacterMulticlassPick[] }
+	| { type: 'setKenseiWeapons'; picks: CharacterKenseiWeapon[] }
+	| { type: 'setElegantCourtierSave'; save: ElegantCourtierSave | null }
 	| { type: 'setSpeciesSkillOrTool'; skill: string | null; tool: string | null }
 	| { type: 'setSpeciesSize'; size: string | null }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
@@ -1416,6 +1443,10 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, subclassSkills: action.skills, featureLanguages: action.languages } }
 		case 'setMulticlassPicks':
 			return { ...state, data: { ...state.data, multiclassPicks: action.picks } }
+		case 'setKenseiWeapons':
+			return { ...state, data: { ...state.data, kenseiWeapons: action.picks } }
+		case 'setElegantCourtierSave':
+			return { ...state, data: { ...state.data, elegantCourtierSave: action.save } }
 		case 'setSpeciesSkillOrTool': {
 			const others = state.data.toolChoices.filter((choice) => choice.grantedBy !== 'khoravar')
 			return {
@@ -1769,6 +1800,8 @@ export function saveCharacter(
 		speciesSize: data.speciesSize ?? undefined,
 		toolChoices,
 		subclassSkills,
+		kenseiWeapons: orNone(heldKenseiWeapons(classes, data.kenseiWeapons)),
+		elegantCourtierSave: hasElegantCourtier(classes) ? (data.elegantCourtierSave ?? undefined) : undefined,
 		hitPointLevels,
 		// Play state the wizard has no control over, carried across an update that replaces every field.
 		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.

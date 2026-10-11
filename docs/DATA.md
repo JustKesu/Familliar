@@ -1817,3 +1817,22 @@ scripts/investigate-hidden-nested-subclass-features.js:
   sees no ref inside a counted `options` node anywhere in the subclass data (0 hidden).
 - 6 of the 30 Channel Divinity spenders are in the affected set, all Paladin PHB records:
   e.g. Conquest "Conquering Presence", Watchers "Watcher's Will" and "Abjure the Extraplanar".
+
+## Weapon properties for Kensei weapons (F-19, D344)
+
+Measured by an F-19 survey script over items.json:
+
+- 49 ordinary weapons (rarity "none", `weaponCategory` simple/martial): XPHB 41, XDMG 8 (the
+  futuristic/modern firearms: Antimatter Rifle, Automatic Rifle, Hunting Rifle, Laser Pistol,
+  Laser Rifle, Revolver, Semiautomatic Pistol, Shotgun). One entry per name, so a name is a key.
+- `propertyFull` values on them: Ammunition, Reload, Two-Handed, Burst Fire, Versatile, Loading,
+  Light, Finesse, Thrown, Heavy (9), Reach. There is no "Special" property on any of them; the
+  Special check in `kenseiWeaponOptions` is the rule text, not data.
+- XPHB Longbow is Heavy (`Ammunition/Heavy/Two-Handed`, type `R`). The XGE Kensei text
+  ("lacks the heavy and special properties. The longbow is also a valid choice.", in
+  subclass-features.json) is why it is offered anyway. Heavy XPHB weapons: Glaive, Greataxe,
+  Greatsword, Halberd, Heavy Crossbow, Lance, Longbow, Maul, Pike.
+- Result: 41 Kensei options, 17 of them ranged (`type` starting "R").
+- The Samurai Elegant Courtier text is in subclass-features.json under `classSource` "PHB"
+  (the F-17 mismatch above): "gain proficiency in Wisdom saving throws. If you already have
+  this proficiency, you instead gain proficiency in Intelligence or Charisma saving throws".

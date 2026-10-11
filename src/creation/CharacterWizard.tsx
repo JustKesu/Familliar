@@ -109,6 +109,10 @@ import { loadMulticlassPickShape, multiclassSkillSources, type MulticlassPickSha
 import { MulticlassPickSlots } from '../multiclass/MulticlassPickSlots'
 import { HeldClassPrerequisiteNotes } from '../multiclass/HeldClassPrerequisiteNotes'
 import { ClassSwitcher } from './ClassSwitcher'
+import { ELEGANT_COURTIER_LEVEL, hasElegantCourtier } from '../kensei/kensei'
+import { KenseiWeaponSlots } from '../kensei/KenseiWeaponSlots'
+import { ElegantCourtierChoice } from '../kensei/ElegantCourtierChoice'
+import { useWisdomSaveHeld } from '../kensei/useWisdomSaveHeld'
 import { ConfirmDialog } from '../app/ConfirmDialog'
 import { WizardNavButtons, WizardStepList } from './WizardShell'
 import {
@@ -128,6 +132,7 @@ import {
 	wizardDataFromCharacter,
 	wizardReducer,
 	wizardClass,
+	wizardKenseiSlots,
 	wizardSpeciesToolGrants,
 	wizardSubclassSkillGrants,
 	wizardToolGrants,
@@ -1351,6 +1356,15 @@ export function CharacterWizard({
 		],
 	}
 
+	const kenseiSlots = wizardKenseiSlots(state.data, levelUp?.level ?? null)
+	const courtierClass = wizardClass(state.data)
+	// D344: a level up asks only on the level that brings Elegant Courtier.
+	const courtierOffered = courtierClass !== null && hasElegantCourtier([courtierClass]) && (!levelUp || courtierClass.level === ELEGANT_COURTIER_LEVEL)
+	const wisdomSaveHeld = useWisdomSaveHeld(draftCharacterForProficiencies, courtierOffered)
+	useEffect(() => {
+		if (wisdomSaveHeld === false && state.data.elegantCourtierSave !== null) dispatch({ type: 'setElegantCourtierSave', save: null })
+	}, [wisdomSaveHeld, state.data.elegantCourtierSave])
+
 	/** D160: everything the character has apart from the feat at `key` — the other feats' picks included. */
 	function heldForFeat(key: FeatInstanceKey): FeatChoiceHeld {
 		const others = draftFeatInstances.filter((instance) => instance.key !== key)
@@ -1698,6 +1712,7 @@ export function CharacterWizard({
 		hitDieFaces: hitDie?.key === hitDieKey ? hitDie.faces : null,
 		editingExistingCharacter: character !== undefined,
 		multiclassPickCount,
+		elegantCourtierComplete: !courtierOffered || wisdomSaveHeld === false || (wisdomSaveHeld === true && state.data.elegantCourtierSave !== null),
 		...(multiclassEdit
 			? {
 					heldClasses: draftClasses,
@@ -2153,6 +2168,11 @@ export function CharacterWizard({
 						knownLanguages={[AUTOMATIC_LANGUAGE.name, ...state.data.languageChoice.map((language) => language.name), ...featureLanguageGrants.flatMap((grant) => (grant.fixed ? [grant.fixed] : []))]}
 						onChange={(skills, languages) => dispatch({ type: 'setSubclassSkills', skills, languages })}
 					/>
+					{/* D344: Kensei weapons and the Elegant Courtier save sit with the other subclass picks. */}
+					<KenseiWeaponSlots slots={kenseiSlots} value={state.data.kenseiWeapons} onChange={(picks) => dispatch({ type: 'setKenseiWeapons', picks })} />
+					{courtierOffered && wisdomSaveHeld === true && (
+						<ElegantCourtierChoice value={state.data.elegantCourtierSave} onChange={(save) => dispatch({ type: 'setElegantCourtierSave', save })} />
+					)}
 					{/* D330: the entered class's multiclass skill/tool pick sits with the other class picks. */}
 					{levelUp && enteringClass && (
 						<MulticlassPickSlots

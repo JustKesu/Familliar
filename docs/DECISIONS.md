@@ -5161,3 +5161,15 @@ Záznam podtřídy (má `subclassShortName`) je dosažen, když sedí `className
 na podtřídu postavy; `classSource` se u něj nekontroluje, protože starší podtřídy (XGE, TCE) na třídách XPHB mají záznamy
 vedené pod PHB (DATA.md). Záznamy třídy (bez `subclassShortName`) zůstávají přísně na `classSource`. Postava třídy PHB
 se nemění (0 záznamů navíc). Task F-17, rozhodl Daniel 11. 10. 2026.
+
+## D344 — Kensei zbraně a Elegant Courtier: uložení a vlastnictví (F-19)
+
+Schéma 61 přidává dvě volitelná pole na úrovni postavy. `kenseiWeapons: { name, level }[]`: `name` je jméno základní
+zbraně z items.json, `level` je úroveň Monka, jejíž slot volba plní (3, 3, 6, 11, 17; na 3 jedna melee a jedna ranged).
+Nabídka: obyčejné zbraně (rarity „none“) kategorie simple/martial bez Heavy a Special, plus Longbow podle textu
+featury; jedna položka na jméno. Volba dává zdatnost se zbraní a zbraň se počítá jako monk weapon (DEX a Martial Arts die
+přes stávající logiku). Platí jen dokud má postava Monka XPHB s Way of the Kensei na úrovni volby; Remove level Monka
+z úrovně N maže volby s `level` N. `elegantCourtierSave: 'intelligence' | 'charisma'` se ukládá jen pro Fighter XPHB
+Samurai 7+ a list ho čte jen tehdy, když má postava Wisdom save z jiného zdroje; jinak dává Elegant Courtier Wisdom.
+Remove level Fightera ze 7 ho maže. Ve wizardu obojí na kroku Proficiencies a blokuje Next jako subclass tool/skill
+volby; level up se ptá jen na sloty dané úrovně. Task F-19.

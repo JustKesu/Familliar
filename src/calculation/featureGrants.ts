@@ -1,3 +1,4 @@
+import { heldKenseiWeapons, KENSEI_SUBCLASS, kenseiWeaponsOwed } from '../kensei/kensei'
 import { ARTIFICER_SUBCLASS_TOOLS } from '../toolProficiencies/classToolChoices'
 import type { Character } from '../storage/character'
 import type { ProficiencySource } from './proficiencies'
@@ -12,8 +13,8 @@ export interface FeatureGrant {
 	weapons: WeaponProficiencyGrant[]
 	tools?: string[]
 	languages?: string[]
-	/** D176: a weapon choice with no picker yet, shown as one pending row. It grants nothing to attacks. */
-	pendingWeapons?: string
+	/** D176/D344: a weapon choice; its stored picks grant proficiency by name, and while any are owed one pending row shows. */
+	pendingWeapons?: { label: string; picks: (character: Character) => { names: string[]; owed: number } }
 }
 
 const MARTIAL: WeaponProficiencyGrant = { kind: 'category', category: 'martial' }
@@ -111,7 +112,15 @@ export const FEATURE_GRANTS: FeatureGrant[] = [
 	subclassGrant('Druid', 'Circle of the Shepherd', 'XGE', { languages: ['Sylvan'] }),
 	subclassGrant('Fighter', 'Rune Knight', 'TCE', { tools: ["Smith's Tools"], languages: ['Giant'] }),
 	subclassGrant('Monk', 'Way of the Drunken Master', 'XGE', { tools: ["Brewer's Supplies"] }),
-	subclassGrant('Monk', 'Way of the Kensei', 'XGE', { pendingWeapons: 'Kensei weapons' }),
+	subclassGrant('Monk', KENSEI_SUBCLASS, 'XGE', {
+		pendingWeapons: {
+			label: 'Kensei weapons',
+			picks: (character) => ({
+				names: heldKenseiWeapons(character.classes, character.kenseiWeapons).map((pick) => pick.name),
+				owed: kenseiWeaponsOwed(character.classes, character.kenseiWeapons),
+			}),
+		},
+	}),
 	subclassGrant('Rogue', 'Mastermind', 'XGE', { tools: ['Disguise Kit', 'Forgery Kit'] }),
 	subclassGrant('Sorcerer', 'Storm Sorcery', 'XGE', { languages: ['Primordial'] }),
 	subclassGrant('Warlock', 'The Hexblade', 'XGE', { armor: ['medium', 'shield'], weapons: [MARTIAL] }),
@@ -123,5 +132,9 @@ export const FEATURE_GRANTS: FeatureGrant[] = [
 
 /** The weapon grants of every feature the character currently has (D178). */
 export function featureWeaponGrantsFor(character: Character, parsedClasses: unknown): WeaponProficiencyGrant[] {
-	return FEATURE_GRANTS.filter((grant) => grant.applies(character, parsedClasses)).flatMap((grant) => grant.weapons)
+	return FEATURE_GRANTS.filter((grant) => grant.applies(character, parsedClasses)).flatMap((grant) => [...grant.weapons, ...chosenWeaponGrants(grant, character)])
+}
+
+export function chosenWeaponGrants(grant: FeatureGrant, character: Character): WeaponProficiencyGrant[] {
+	return (grant.pendingWeapons?.picks(character).names ?? []).map((name) => ({ kind: 'named', name }))
 }

@@ -41,6 +41,8 @@ function completeData(): WizardData {
 		featureLanguages: [],
 		toolChoices: [],
 		subclassSkills: [],
+		kenseiWeapons: [],
+		elegantCourtierSave: null,
 		speciesExtraSkill: null,
 		abilityScores: {
 			method: 'standardArray',

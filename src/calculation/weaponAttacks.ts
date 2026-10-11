@@ -28,6 +28,7 @@
 
 import type { Ability } from '../abilities/abilityScores'
 import { TOTAL_ATTACKS_BY_FEATURE_NAME, totalAttacksAmong } from '../attacks/extraAttackData'
+import { heldKenseiWeapons } from '../kensei/kensei'
 import { choiceNames, type Character, type WeaponGrip } from '../storage/character'
 import { isProficientWithWeapon, type WeaponProficiencyGrant } from '../weapons/weaponProficiency'
 import { computeAbilityScore } from './abilityScores'
@@ -147,7 +148,9 @@ function hasProperty(weapon: ResolvedWeapon, property: string): boolean {
  * Martial Melee weapon with the Light property. Melee is the type code "M"
  * (docs/DATA.md). Never taken from the feature's prose.
  */
-function isMonkWeapon(weapon: ResolvedWeapon): boolean {
+function isMonkWeapon(weapon: ResolvedWeapon, kenseiWeapons: readonly string[]): boolean {
+	// D344, XGE: "Weapons of the chosen types are monk weapons for you."
+	if (kenseiWeapons.includes(weapon.name)) return true
 	if (weapon.typeCode !== MELEE_TYPE_CODE) return false
 	if (weapon.weaponCategory === 'simple') return true
 	if (weapon.weaponCategory === 'martial') return hasProperty(weapon, LIGHT)
@@ -173,7 +176,7 @@ function abilityFor(
 	weapon: ResolvedWeapon,
 	modifiers: Record<Ability, number>,
 	chosen: Ability | null,
-	hasMartialArts: boolean,
+	monkWeapon: boolean,
 ): { using: Ability; choice: WeaponAttack['abilityChoice']; reason: string | null } {
 	const higher: Ability = modifiers.dexterity > modifiers.strength ? 'dexterity' : 'strength'
 
@@ -182,7 +185,7 @@ function abilityFor(
 		return { using, choice: { using, options: ['strength', 'dexterity'], isDefault: chosen === null }, reason: null }
 	}
 
-	if (hasMartialArts && isMonkWeapon(weapon)) {
+	if (monkWeapon) {
 		const using = chosen ?? higher
 		return { using, choice: null, reason: using === 'dexterity' ? MARTIAL_ARTS_REASON : null }
 	}
@@ -301,6 +304,7 @@ export function computeWeaponAttacks(
 	// Same signal slice c reads for the die: a non-null die means at least one Monk level, so the ability clause and the die never disagree (D77).
 	const hasMartialArts = martialArtsDie !== null
 	const masteredKinds = new Set(choiceNames(character.masteries))
+	const kenseiWeapons = heldKenseiWeapons(character.classes, character.kenseiWeapons).map((pick) => pick.name)
 	const archery = hasFightingStyle(character, feats, 'Archery')
 	const dueling = hasFightingStyle(character, feats, 'Dueling')
 	const thrownWeaponFighting = hasFightingStyle(character, feats, 'Thrown Weapon Fighting')
@@ -315,7 +319,8 @@ export function computeWeaponAttacks(
 
 		const weapon = row.weapon
 		const proficient = isProficientWithWeapon(weapon, grants)
-		const { using, choice, reason } = abilityFor(weapon, modifiers, row.chosenAbility, hasMartialArts)
+		const monkWeapon = hasMartialArts && isMonkWeapon(weapon, kenseiWeapons)
+		const { using, choice, reason } = abilityFor(weapon, modifiers, row.chosenAbility, monkWeapon)
 		/*
 		 * Every weapon in items.json carries `dmg1`; only a custom one can be a
 		 * weapon with no dice on it (slice e2b). The attack line is still worth
@@ -333,7 +338,7 @@ export function computeWeaponAttacks(
 				? [{ source: 'Thrown Weapon Fighting (Fighting Style)', amount: 0, note: 'considered (+2) — not included: only on a ranged attack made by throwing it' }]
 				: []),
 		]
-		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, [...itemBonuses.damage, ...styleDamage], hasMartialArts && isMonkWeapon(weapon) ? martialArtsDie : null)
+		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, [...itemBonuses.damage, ...styleDamage], monkWeapon ? martialArtsDie : null)
 		return {
 			key,
 			name: row.magicBonus.label,

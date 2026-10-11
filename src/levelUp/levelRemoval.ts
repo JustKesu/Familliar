@@ -12,6 +12,7 @@ import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractFeatTextEntries } from '../sheet/sheetData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
+import { ELEGANT_COURTIER_LEVEL } from '../kensei/kensei'
 import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
 import { fightingStyleFor, isConsistentLevelOrder, type Character, type LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
@@ -243,6 +244,15 @@ export function levelRemovalCore(
 		return false
 	})
 
+	// D344: Monk owns the Kensei picks by Monk level, Fighter 7 the Elegant Courtier save.
+	const kenseiWeapons = character.kenseiWeapons?.filter((pick) => {
+		if (className !== 'Monk' || classSource !== 'XPHB' || pick.level !== classLevel) return true
+		dropped.push(`Kensei weapon: ${pick.name}`)
+		return false
+	})
+	const losesCourtier = character.elegantCourtierSave !== undefined && className === 'Fighter' && classSource === 'XPHB' && classLevel === ELEGANT_COURTIER_LEVEL
+	if (losesCourtier) dropped.push(`Elegant Courtier save: ${character.elegantCourtierSave}`)
+
 	const hitPointLevels = (character.hitPointLevels ?? []).filter((entry) => {
 		if (entry.level !== level) return true
 		dropped.push(`Hit points for level ${level}`)
@@ -265,9 +275,11 @@ export function levelRemovalCore(
 		}
 	}
 
-	const { play: _play, ...withoutPlay } = character
+	const { play: _play, kenseiWeapons: _kensei, elegantCourtierSave, ...withoutPlay } = character
 	const result: Character = {
 		...withoutPlay,
+		...(kenseiWeapons && kenseiWeapons.length > 0 ? { kenseiWeapons } : {}),
+		...(elegantCourtierSave && !losesCourtier ? { elegantCourtierSave } : {}),
 		...(play ? { play } : {}),
 		classes: classRemoved
 			? character.classes.filter((entry) => entry !== characterClass)

@@ -761,12 +761,23 @@ describe('the migration chain (D69)', () => {
 		it('adds nothing and changes nothing else', () => {
 			const before = { schemaVersion: 59, id: '1', name: 'Aria', classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 4 }], levelOrder: [] }
 			const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
-			expect(migrated).toEqual({ ...before, schemaVersion: 60 })
+			expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 			expect('multiclassPicks' in migrated).toBe(false)
+		})
+	})
+
+	/* F-19 (D344): kenseiWeapons and elegantCourtierSave are new and optional, so the step only tags. */
+	describe('version 60 to 61', () => {
+		it('adds nothing and changes nothing else', () => {
+			const before = { schemaVersion: 60, id: '1', name: 'Aria', classes: [{ className: 'Monk', classSource: 'XPHB', subclass: 'Way of the Kensei', level: 3 }] }
+			const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
+			expect(migrated).toEqual({ ...before, schemaVersion: 61 })
+			expect('kenseiWeapons' in migrated).toBe(false)
+			expect('elegantCourtierSave' in migrated).toBe(false)
 		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(60)
+			expect(CURRENT_SCHEMA_VERSION).toBe(61)
 		})
 	})
 

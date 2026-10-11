@@ -267,6 +267,21 @@ export function describeMulticlassPicksError(value: unknown, classes: unknown): 
 	return null
 }
 
+const KENSEI_WEAPON_LEVELS: readonly number[] = [3, 6, 11, 17]
+
+/** D344: an optional `kenseiWeapons` field — named picks, each stamped with the Monk level of its slot. */
+export function describeKenseiWeaponsError(value: unknown): string | null {
+	if (value === undefined) return null
+	if (!Array.isArray(value)) return `kenseiWeapons is not an array`
+	for (let i = 0; i < value.length; i++) {
+		const entry: unknown = value[i]
+		if (!isRecord(entry)) return `kenseiWeapons[${i}] is not an object`
+		if (!isNonEmptyString(entry['name'])) return `kenseiWeapons[${i}].name is missing or not a string`
+		if (!KENSEI_WEAPON_LEVELS.includes(entry['level'] as number)) return `kenseiWeapons[${i}].level must be one of ${KENSEI_WEAPON_LEVELS.join(', ')}`
+	}
+	return null
+}
+
 /** Validates an optional `toolChoices` field (D174). */
 export function describeToolChoicesError(value: unknown): string | null {
 	if (value === undefined) return null
@@ -1348,6 +1363,10 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (subclassSkillsError) return `[${index}].${subclassSkillsError}`
 	const multiclassPicksError = describeMulticlassPicksError(value['multiclassPicks'], classes)
 	if (multiclassPicksError) return `[${index}].${multiclassPicksError}`
+	const kenseiWeaponsError = describeKenseiWeaponsError(value['kenseiWeapons'])
+	if (kenseiWeaponsError) return `[${index}].${kenseiWeaponsError}`
+	const courtier = value['elegantCourtierSave']
+	if (courtier !== undefined && courtier !== 'intelligence' && courtier !== 'charisma') return `[${index}].elegantCourtierSave must be one of intelligence, charisma`
 	if (value['speciesSize'] !== undefined && !isNonEmptyString(value['speciesSize'])) return `[${index}].speciesSize must be a non-empty string`
 	const createdAtLevel = value['createdAtLevel']
 	if (createdAtLevel !== undefined && (typeof createdAtLevel !== 'number' || !Number.isInteger(createdAtLevel) || createdAtLevel < 1 || createdAtLevel > 20)) {
@@ -1584,6 +1603,10 @@ export function toCharacter(value: Record<string, unknown>): Character {
 					})),
 				}
 			: {}),
+		...(Array.isArray(value['kenseiWeapons']) && value['kenseiWeapons'].length > 0
+			? { kenseiWeapons: (value['kenseiWeapons'] as Record<string, unknown>[]).map((entry) => ({ name: entry['name'] as string, level: entry['level'] as number })) }
+			: {}),
+		...(value['elegantCourtierSave'] === 'intelligence' || value['elegantCourtierSave'] === 'charisma' ? { elegantCourtierSave: value['elegantCourtierSave'] } : {}),
 		...(typeof speciesSize === 'string' ? { speciesSize } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),
 		...(typeof appearance === 'string' && appearance.length > 0 ? { appearance } : {}),

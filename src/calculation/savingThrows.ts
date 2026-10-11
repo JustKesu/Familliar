@@ -13,6 +13,7 @@
  */
 
 import { ABILITIES, type Ability } from '../abilities/abilityScores'
+import { hasElegantCourtier } from '../kensei/kensei'
 import type { Character, CharacterClass } from '../storage/character'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from './abilityAbbreviations'
 import { computeAbilityScore } from './abilityScores'
@@ -59,24 +60,14 @@ export interface SavingThrowValue {
 	modifier: number
 }
 
-export function computeSavingThrow(
+/** Every save proficiency source but Elegant Courtier, which depends on whether Wisdom is among these (D344). */
+export function saveProficiencySources(
 	ability: Ability,
 	character: Character,
 	classData: ClassSavingThrowProficiencies[],
-	feats: FeatEffectEntry[] = [],
-	/** Slice h: `bonusSavingThrow` from a worn magic item (Cloak of Protection). Applies to every save alike — no item in the data limits it to some of them. */
-	itemBonuses: Contribution[] = [],
-	/** R14b: proficiencies a custom item grants (D217). */
+	feats: FeatEffectEntry[],
 	itemProficiencies: readonly ItemProficiencyGrant[] = [],
-	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
-): Calculated<SavingThrowValue> {
-	const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
-	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
-
-	if (character.classes.length === 0) {
-		return unknown('Character has no classes yet.')
-	}
-
+): { granting: string[]; redundantNotes: Contribution[]; fromItems: ReturnType<typeof itemSaveProficiency> } | { reason: string } {
 	const abbreviation = ABILITY_ABBREVIATIONS[ability]
 	const grantingSources: string[] = []
 	// D321 (XPHB Multiclassing): save proficiencies come from the first class only.
@@ -84,7 +75,7 @@ export function computeSavingThrow(
 	if (startingClass) {
 		const proficiencies = findClassProficiencies(startingClass, classData)
 		if (!proficiencies) {
-			return unknown(`No saving throw data for class "${startingClass.className}" (${startingClass.classSource}).`)
+			return { reason: `No saving throw data for class "${startingClass.className}" (${startingClass.classSource}).` }
 		}
 		if (proficiencies.abilities.includes(abbreviation)) {
 			grantingSources.push(startingClass.className)
@@ -110,6 +101,40 @@ export function computeSavingThrow(
 			? subclassGrants.map((grant) => ({ source: grant.featureName, amount: 0, note: `already proficient in ${ability[0].toUpperCase()}${ability.slice(1)} saves — choose another save (not tracked)` }))
 			: []
 	if (grantingSources.length === 0) grantingSources.push(...subclassGrants.map((grant) => `subclass (${grant.subclass})`))
+	return { granting: grantingSources, redundantNotes, fromItems }
+}
+
+export function computeSavingThrow(
+	ability: Ability,
+	character: Character,
+	classData: ClassSavingThrowProficiencies[],
+	feats: FeatEffectEntry[] = [],
+	/** Slice h: `bonusSavingThrow` from a worn magic item (Cloak of Protection). Applies to every save alike — no item in the data limits it to some of them. */
+	itemBonuses: Contribution[] = [],
+	/** R14b: proficiencies a custom item grants (D217). */
+	itemProficiencies: readonly ItemProficiencyGrant[] = [],
+	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
+): Calculated<SavingThrowValue> {
+	const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
+	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
+
+	if (character.classes.length === 0) {
+		return unknown('Character has no classes yet.')
+	}
+
+	const sources = saveProficiencySources(ability, character, classData, feats, itemProficiencies)
+	if ('reason' in sources) return unknown(sources.reason)
+	const { fromItems, redundantNotes } = sources
+	const grantingSources = [...sources.granting]
+	// D344, XGE Samurai 7: Wisdom, or Intelligence/Charisma (stored pick) when Wisdom is already held from elsewhere.
+	if (hasElegantCourtier(character.classes)) {
+		const wisdom = ability === 'wisdom' ? sources : saveProficiencySources('wisdom', character, classData, feats, itemProficiencies)
+		const wisdomHeld = !('reason' in wisdom) && wisdom.granting.length > 0
+		if (!wisdomHeld ? ability === 'wisdom' : character.elegantCourtierSave === ability) grantingSources.push('Elegant Courtier')
+		else if (wisdomHeld && ability === 'wisdom' && character.elegantCourtierSave === undefined) {
+			redundantNotes.push({ source: 'Elegant Courtier', amount: 0, note: 'already proficient in Wisdom saves — Intelligence or Charisma not chosen' })
+		}
+	}
 
 	const status: SavingThrowProficiencyStatus = grantingSources.length > 0 ? 'proficient' : 'none'
 	const breakdown: Contribution[] = [{ source: `${ability} modifier`, amount: abilityResult.value.modifier }]
