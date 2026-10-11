@@ -1836,3 +1836,24 @@ Measured by an F-19 survey script over items.json:
 - The Samurai Elegant Courtier text is in subclass-features.json under `classSource` "PHB"
   (the F-17 mismatch above): "gain proficiency in Wisdom saving throws. If you already have
   this proficiency, you instead gain proficiency in Intelligence or Charisma saving throws".
+
+## Replacing a known option on gaining a class level (F-20 survey)
+
+Measured over class-features.json and subclass-features.json (markup stripped). Features whose
+text lets a known option be replaced when the class gains a level:
+
+| Kind | Where | Phrase |
+|---|---|---|
+| Eldritch Invocations (optional feature `EI`) | Warlock XPHB L1 | "Whenever you gain a Warlock level, you can replace one of your invocations with another one for which you qualify." + "You can't replace an invocation if it's a prerequisite for another invocation that you have" |
+| Metamagic (`MM`) | Sorcerer XPHB L2, repeated at L10, L17 | "Whenever you gain a Sorcerer level, you can replace one of your Metamagic options with one you don't know." |
+| Runes (`RN`) | Fighter Rune Knight TCE, Rune Carver L3 | "each time you gain a level in this class, you can replace one rune you know with a …" (survey truncated) |
+| Maneuvers (`MV:B`) | Fighter Battle Master XPHB, Combat Superiority L3 | "Each time you learn new maneuvers, you can also replace one maneuver you know with a different one" — only at levels that add maneuvers, not every Fighter level |
+| Fighting Style feat (feats.json category `FS`, not an optional feature) | Fighter XPHB L1 | "Whenever you gain a Fighter level, you can replace the feat you chose with a different Fighting Style feat." |
+
+Same phrasing, but for spells, not options: cantrips of Bard, Cleric, Druid, Sorcerer, Warlock
+(Pact Magic), Eldritch Knight, Arcane Trickster (except Mage Hand), Moon bard Primal Lore
+(FRHoF); Warlock Mystic Arcanum spells (L11); Lore bard Magical Discoveries spells. Artificer
+EFA Replicate Magic Item plans also swap, but plans are not picked anywhere in the app.
+
+No swap text: Arcane Archer shots (`AS`), College of Swords fighting style (`FS:B`). Paladin and
+Ranger XPHB Fighting Style features carry no replace sentence; only the Fighter's does.

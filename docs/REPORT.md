@@ -1,43 +1,40 @@
-# F-19: Kensei weapons picker a Samurai Elegant Courtier (D344)
+# REPORT — F-20: výměna známé volby při zvýšení úrovně — ZASTAVENO po STEP 1
 
-**Repo:** `git fetch` + `merge --ff-only` OK (už aktuální), HEAD 9c39bae.
+**STOP: kvalifikuje se 5 druhů voleb (limit zadání je 4).** Kód nezměněn, D345 nezapsáno, e2e nepsáno.
+Repo bylo aktuální (`git merge --ff-only` → Already up to date, HEAD `ec1cd20`).
 
-## Inventura (17 souborů, ~24 míst — pod hranicí pro split)
-| Oblast | Soubor / funkce |
-|---|---|
-| Úložiště, schéma 61 | `storage/character.ts` (`kenseiWeapons`, `elegantCourtierSave`, typy, `CURRENT_SCHEMA_VERSION`) |
-| Migrace 60→61 (jen tag) | `storage/migrations.ts` |
-| Validace / čtení | `storage/validate.ts` (`describeKenseiWeaponsError`, `describeCharacterError`, `toCharacter`) |
-| Zápis (create/update/Import) | `storage/characterStore.ts` `buildCharacter` + vstupní typ; Export/Import jdou přes ně, jinak beze změny |
-| Pravidla | nový `kensei/kensei.ts` (sloty, nabídka z items.json, `heldKenseiWeapons`, `hasElegantCourtier`) |
-| Zdatnost se zbraní | `calculation/featureGrants.ts` (`pendingWeapons` → label + picks, `chosenWeaponGrants`), `calculation/proficiencies.ts` |
-| Útoky | `calculation/weaponAttacks.ts` `isMonkWeapon` (Kensei jméno = monk weapon; DEX + Martial Arts die stávající logikou) |
-| Saves | `calculation/savingThrows.ts` (`saveProficiencySources` vyčleněno, Elegant Courtier) |
-| Wizard stav | `creation/wizardState.ts` (WizardData, seed, reducer, `wizardKenseiSlots`, krok `languages`, `saveCharacter`) |
-| Wizard UI | `creation/CharacterWizard.tsx`; nové `kensei/KenseiWeaponSlots.tsx`, `kensei/ElegantCourtierChoice.tsx`, `kensei/useWisdomSaveHeld.ts` |
-| Level up | `levelUp/levelGains.ts` (krok Proficiencies se projde na Monk 6/11/17 Kensei a Fighter 7 Samurai) |
-| Remove level | `levelUp/levelRemoval.ts` |
+## Inventura (survey `scripts/investigate-f20-swap.js`, detail v DATA.md)
 
-## Co se změnilo
-- Kensei: na kroku Proficiencies (new, level up, Edit) selecty „Kensei melee/ranged weapon (Monk 3)“ a „Kensei weapon (Monk 6/11/17)“. Volba dává pojmenovanou zdatnost a počítá se jako monk weapon. Řádek „Kensei weapons — not chosen“ zůstává, jen dokud je některý slot prázdný.
-- Nabídka z items.json: 41 zbraní (obyčejné simple/martial bez Heavy/Special + Longbow podle textu featury), 17 ranged. Detaily v DATA.md.
-- Elegant Courtier: Fighter XPHB Samurai 7+ má Wisdom save se zdrojem „Elegant Courtier“. Má‑li Wisdom už odjinud (první třída, Resilient, …), ukáže se volba Intelligence/Charisma a uloží se; bez volby je ve Wisdom breakdownu poznámka.
-- Remove level: Monk z úrovně N maže volby s `level` N; Fighter ze 7 maže `elegantCourtierSave`. Pod 3 zmizí podtřída i volby úrovně 3.
+| Druh | Třída/podtřída, zdroj | Fráze | Kde se vybírá při level upu | Uloženo |
+|---|---|---|---|---|
+| Eldritch Invocations `EI` | Warlock XPHB L1 | „Whenever you gain a Warlock level, you can replace one…“ | krok `classOptionalFeatures`, `ClassOptionalFeaturePicker` (CharacterWizard.tsx:2324), held = `lockedChoices` | `optionalFeatureChoices[EI].choices{name,level,source}` + `spellChoices` (Tome) |
+| Metamagic `MM` | Sorcerer XPHB L2/L10/L17 | „…replace one of your Metamagic options with one you don't know.“ | totéž | `optionalFeatureChoices[MM]` |
+| Runes `RN` | Rune Knight TCE (Fighter) L3 | „each time you gain a level in this class, you can replace one rune…“ | krok `class`, `OptionalFeaturePicker` (CharacterWizard.tsx:1963), `lockedValues` | `optionalFeatureChoices[RN]` |
+| Maneuvers `MV:B` | Battle Master XPHB L3 | „Each time you learn new maneuvers, you can also replace one…“ — jen na úrovních, které manévry přidávají | totéž | `optionalFeatureChoices[MV:B]` |
+| Fighting Style **feat** (feats.json `FS`, ne optional feature) | Fighter XPHB L1 | „Whenever you gain a Fighter level, you can replace the feat you chose…“ | krok `class`, `FightingStylePicker` (CharacterWizard.tsx:1929) — při level upu skrytý, je-li styl držen | `fightingStyles[]{className,classSource,name,source}` — **bez level stampu** |
 
-## Ověřeno
-- `typecheck`, `test` (181 souborů, 3278 testů), `validate-data` (175/175), `e2e`: 532/534 v plném běhu (2.5 min); 2 pády byly natvrdo zapsané `schemaVersion` 60 v `levelOrder.spec.ts` a `stableIds.spec.ts`, přepsáno na 61 a obě spec soubory znovu prošly (4/4).
-- Unit `src/kensei/kensei.test.ts`: počet nabídky 41/17, Longbow in, Greatsword a Heavy Crossbow out; sloty 3/6/17; pravidlo save (Wis na 7, ne na 6; s Resilient Cha jen po volbě; uložená volba bez Wis odjinud se ignoruje); validace a čtení schématu 61. `migrations.test.ts`: 60→61.
-- E2E `e2e/kenseiSamurai.spec.ts` a–g: Monk 2→3 Kensei Longsword+Longbow (Next blokuje do obou voleb, zdatnost, žádný pending řádek, Longsword +5 / 1d8 + 3, breakdown „Martial Arts“); Greatsword/Heavy Crossbow nenabízeny; Monk 5→6 Whip (1d8 Martial Arts die); Remove level 6→5 maže jen Whip; Fighter 6→7 Wis +4 se zdrojem bez volby; s Resilient volba Cha → Cha +2; Export/Import zachová obě pole.
+Mimo „volby“ (jde o kouzla): výměna cantripů (Bard, Cleric, Druid, Sorcerer, Warlock, EK, AT, Moon bard), Mystic Arcanum, Lore Magical Discoveries. Artificer plány: app je nevybírá.
+Lessons of the First Ones nemá v appce žádnou uloženou pod-volbu (grep bez nálezu) — jediné pod-volby k zahození jsou `spellChoices` (Pact of the Tome).
 
-## Rozhodnutí přijatá v práci
-- Úložiště a vlastnictví zapsáno jako D344. Pole na úrovni postavy (ne `classFeatureChoices` — ty wizard filtruje podle featur z dat a Kensei volby by zahodil).
-- Blokování Next: Kensei sloty i Courtier volba blokují stejně jako subclass tool/skill volby (stávající pravidlo kroku `languages`).
-- Do nabídky patří i 8 XDMG palných zbraní (Laser Pistol, Antimatter Rifle…): splňují text pravidla a mastery picker je bere jako obyčejné zbraně taky. Pokud je nechceš, je to jeden filtr — rozhodni.
-- Úroveň „už zdatný ve Wisdom“ se počítá ze všech zdrojů kromě custom itemů (wizard je nenačítá); list je počítá i s nimi.
-- Shrnutí level upu Fightera 7 Samurai hlásí „Elegant Courtier save (only if Wisdom saves are already proficient)“ i tehdy, když se volba nakonec nezobrazí.
+## Odhad míst se skutečnou změnou (~14, pod limitem 25)
+
+levelGains.ts (krok walked i bez přírůstku: EI/MM každou úrovní, RN každou úrovní Fighteru), levelUpSteps.ts, wizardState.ts (akce swap + reducer + completion počty), heldPicks.ts (`missing()` dnes hlídá, že held volba nezmizí — swap ji musí povolit), CharacterWizard.tsx ×2–3 místa, ClassOptionalFeaturePicker, OptionalFeaturePicker, FightingStylePicker, ukládání level upu (převzetí stampu), nová komponenta, unit testy, e2e.
+
+## Otázky pro uživatele
+
+1. **Rozsah druhů.** (a) Jen optional feature typy EI, MM, RN, MV:B = 4 → lze pokračovat v jednom úkolu; Fighting Style feat zvlášť. (b) Všech 5 → navrhuji split: **F-20a** = EI + MM (krok classOptionalFeatures, Pact of the Tome, prerekvizity, e2e a–e + Metamagic); **F-20b** = RN + MV:B + Fighting Style (krok class). Pravidlo 5 (stamp) u FS triviálně platí — styl stamp nemá.
+2. **Battle Master.** Text dovoluje výměnu jen „each time you learn new maneuvers“ (Fighter BM 3, 7, 10, 15), ne při každé úrovni Fighteru. Omezit swap na tyto úrovně? (doporučuji ano — doslovně dle dat)
+3. **Krok bez přírůstku.** Warlock 5→6 nepřidává invokaci, krok `classOptionalFeatures` se dnes nezobrazí. Má se kvůli „Replace one“ zobrazit při každém level upu Warlocku/Sorcereru (od úrovně, kdy volby drží)? To mění průchod wizardem (scénář e „behaves exactly as before“). Varianty: (a) ano, krok vždy walked, swap volitelný; (b) swap jen na úrovních, kdy krok beztak běží (porušuje „Whenever you gain a level“).
+
+## Ověření
+
+Bez změny kódu: typecheck/test/validate-data/e2e nespuštěny. Survey výstup je zdrojem tabulky.
+
+## Rozhodnutí během práce
+
+- Necommitnuté `docs/REPORT-*.md`, `CLAUDE-1.md`, `Claude outputs/` (untracked, přetrvávají přes předchozí commity) ponechány mimo commit.
+- Commit má jinou zprávu než předepsanou (úkol nedokončen): „F-20 survey: …“.
 
 ## Manual browser check for the user
-Na https://familliar.vercel.app:
-1. Vytvoř Monka 2 (Way of the Kensei se volí až na 3), Level up → „Monk 2 → 3“, na kroku Class zvol Way of the Kensei, krok **Proficiencies**: dva selecty „Kensei melee/ranged weapon (Monk 3)“ pod Kensei tool selectem — zarovnání, šířka selectu, zalamování popisku na mobilu.
-2. Fighter 6 Samurai s featem Resilient (Wisdom) na úrovni 4 → Level up „Fighter 6 → 7“, krok **Proficiencies**: rámeček „Elegant Courtier (Samurai) …“ se dvěma radii — vzhled legendy a mezery.
-3. U Monka z bodu 1 (Longsword jako Kensei zbraň): Inventory → Manage Inventory, přidej Longsword a vezmi do ruky; záložka **Actions**: řádek Longsword a jeho breakdown s „Martial Arts“ — čitelnost.
+
+Nic — UI se nezměnilo.
