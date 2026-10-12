@@ -18,7 +18,7 @@ HEAD při startu `a93655e`. Počet míst se skutečnou změnou ~9, styl boje bez
 - e2e `levelUpSwap.spec.ts` g+k (Battle Master 4→5, Parry → Feinting Attack se stampem 3, Remove level 5 ho ponechá), h (Rune Knight), i (Archery → Defense, AC + luk), j (Fighter/Paladin).
 - Odchylky od zadání: h je Rune Knight 4→5 a i Fighter 4→5 (ne 3→4 / 2→3): úroveň 4 žádá ASI+mastery a úroveň 3 výběr podtřídy, výměna je stejná.
 - Upravené existující e2e (krok „Class and level“ se na Fighter level upu prochází, +1 Next): `multiclassHitPoints` M4 c, `multiclassLevelUp` M7a f, `wizardF1` F-1 d a F-1 e, `wizardShell` W23 f (2×), `reviewFixes` F-10 g. Dále seed doplněn o `classSkills` (`levelOrder` M1a) a o `classSkills` + Fighterův styl (`reviewFixes` F-10 g): jejich dřívější seed nebyl stav, který app vyrobí, a krok třídy by blokoval Next.
-- typecheck, test (3287), validate-data zelené. Plný e2e (543): 536 prošlo, 7 pádů byly právě výše uvedené specy; po úpravě je 6 souborů (32 testů) a `reviewFixes` (9) zelených, `levelUpSwap` 9/9. Plný běh po úpravě nebyl opakován (~8 min).
+- typecheck, test (3287), validate-data zelené. Plný e2e (543) po všech úpravách: 543 prošlo, 0 pádů, 7.2 min (první běh před úpravou: 536 prošlo, 7 pádů v výše uvedených specech).
 
 ## Rozhodnutí během práce (D346)
 - Runy/manévry nemají prerekvizity → žádný blok; styl a runa/manévr jsou nezávislé výměny na jednom kroku (dvě „Replace one“ skupiny u Battle Mastera).
