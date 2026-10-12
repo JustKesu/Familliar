@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { loadFightingStyleGrantLevel, fightingStyleOptions, type FightingStyleOption } from './fightingStyleData'
 import { Entries } from '../markup'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
+import { ReplaceNamedPickControl } from '../optionalFeatures/ReplaceOptionControl'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 
 /*
@@ -37,12 +38,15 @@ export function FightingStylePicker({
 	level,
 	value,
 	onChange,
+	heldStyle = null,
 }: {
 	className: string
 	classSource: string
 	level: number
 	value: string | null
 	onChange: (style: string | null) => void
+	/** D345: the style a level up already holds; the picker then offers "Replace one" and shows the list only while it is being replaced. */
+	heldStyle?: string | null
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
@@ -97,11 +101,16 @@ export function FightingStylePicker({
 		book: option.source,
 		detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
 		selected: option === chosenOption,
-		disabled: option !== chosenOption && option.name === value,
+		disabled: option !== chosenOption && (option.name === value || option.name === heldStyle),
+		...(option !== chosenOption && option.name === heldStyle ? { disabledReason: 'Being replaced in this level up.' } : {}),
 	}))
 
 	return (
 		<div className="fighting-style-picker">
+			{heldStyle !== null && (
+				<ReplaceNamedPickControl label="Fighting Style" held={[heldStyle]} value={value === null ? [] : [value]} count={1} onChange={(names) => onChange(names[0] ?? null)} />
+			)}
+			{(heldStyle === null || value !== heldStyle) && (
 			<SearchableOptionList
 				legend="Fighting style"
 				name="fighting-style"
@@ -115,6 +124,7 @@ export function FightingStylePicker({
 					if (option) onChange(option.name)
 				}}
 			/>
+			)}
 		</div>
 	)
 }

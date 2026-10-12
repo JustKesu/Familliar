@@ -298,7 +298,8 @@ describe('saving a level up', () => {
 
 		const overwrites: [string, (data: ReturnType<typeof levelledData>) => ReturnType<typeof levelledData>][] = [
 			['the subclass', (data) => ({ ...data, subclass: { name: 'Battle Master', source: 'XPHB', featureType: 'MV:B' } })],
-			['the fighting style', (data) => ({ ...data, fightingStyle: 'Archery' })],
+			// D345 (F-20b): the Fighter may swap its style for another, but not leave the step without one.
+			['the fighting style, removed', (data) => ({ ...data, fightingStyle: null })],
 			['a class skill', (data) => ({ ...data, classSkills: ['athletics', 'intimidation'] })],
 			['a weapon mastery', (data) => ({ ...data, masteries: ['Longsword', 'Greataxe', 'Rapier'] })],
 			['an expertise', (data) => ({ ...data, expertiseSkills: ['perception'] })],
@@ -330,10 +331,24 @@ describe('saving a level up', () => {
 			const data = { ...seed, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 4 } }
 
 			expect(overwrittenHeldPicks(character, data)).toEqual([])
-			expect(overwrittenHeldPicks(character, { ...data, optionalFeatureChoices: ['Trip Attack', 'Parry'] })).toEqual(['option Riposte'])
+			// D345 (F-20b): one maneuver may be replaced per level up, not two.
+			expect(overwrittenHeldPicks(character, { ...data, optionalFeatureChoices: ['Trip Attack', 'Parry'] })).toEqual([])
+			expect(overwrittenHeldPicks(character, { ...data, optionalFeatureChoices: ['Parry', 'Feinting Attack'] })).toEqual(['option Trip Attack', 'option Riposte'])
 			expect(
 				overwrittenHeldPicks(character, { ...data, classFeatureChoices: [{ ...character.classFeatureChoices![0], optionName: 'Second' }] }),
 			).toEqual(['Test Order First'])
+		})
+
+		it('D345 (F-20b): the Fighter may replace its own style, a Paladin may not', () => {
+			const fighterWithStyle: Character = { ...single('Fighter', 'Champion', 4), fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }] }
+			const seed = wizardDataFromCharacter(fighterWithStyle, { subclasses: [], spellLevels: [] })
+			const data = { ...seed, classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 } }
+			expect(overwrittenHeldPicks(fighterWithStyle, { ...data, fightingStyle: 'Defense' })).toEqual([])
+			expect(overwrittenHeldPicks(fighterWithStyle, { ...data, fightingStyle: null })).toEqual(['fighting style Archery'])
+
+			const paladin: Character = { ...single('Paladin', 'Oath of Devotion', 4), fightingStyles: [{ className: 'Paladin', classSource: 'XPHB', name: 'Archery' }] }
+			const paladinData = { ...wizardDataFromCharacter(paladin, { subclasses: [], spellLevels: [] }), classChoice: { className: 'Paladin', classSource: 'XPHB', level: 5 } }
+			expect(overwrittenHeldPicks(paladin, { ...paladinData, fightingStyle: 'Defense' })).toEqual(['fighting style Archery'])
 		})
 
 		it('a feat/ASI pick or a class optional-feature pick', () => {

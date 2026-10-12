@@ -90,6 +90,7 @@ test('F-1 d: Esc in the Remove level dialog closes only the dialog, not an open 
   await createFighter(page, { name: 'Drawer Esc', level: 1, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 2' }).click()
   await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
+  await next(page) // F-20b: the class step is walked at every Fighter level up
   await page.getByRole('radio', { name: /^Average/ }).check()
   await next(page)
   await wizardNav(page).getByRole('button', { name: 'Save level 2' }).click()
@@ -200,6 +201,7 @@ test('F-1 e (finding 9): Edit Character and level up — Cancel without changes 
 
   await page.getByRole('button', { name: 'Level up to 2' }).click()
   await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
+  await next(page) // F-20b: the class step is walked at every Fighter level up
   await expectStep(page, 'Hit points')
   await wizardNav(page).getByRole('button', { name: 'Cancel' }).click()
   await expect(page.getByRole('alertdialog')).toHaveCount(0)

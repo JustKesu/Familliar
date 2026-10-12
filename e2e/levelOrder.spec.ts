@@ -15,6 +15,8 @@ const saved = {
   species: { name: 'Human', source: 'XPHB' },
   speciesSize: 'M',
   fightingStyle: 'Archery',
+  // F-20b: the class step is now walked at Fighter 2, and its Next needs the class skills a real Fighter has.
+  classSkills: ['athletics', 'perception'],
   masteries: [{ name: 'Longsword' }, { name: 'Greataxe' }, { name: 'Shortbow' }],
   spellChoices: [],
 }

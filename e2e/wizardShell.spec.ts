@@ -101,6 +101,7 @@ test('W23 f + W28 g: level-up Cancel asks and changes nothing; Remove level asks
   await test.step('f: Cancel level up → Discard keeps level 1', async () => {
     await page.getByRole('button', { name: 'Level up to 2' }).click()
     await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
+    await next(page) // F-20b: the class step is walked at every Fighter level up
     await expectStep(page, 'Hit points')
     await page.getByRole('radio', { name: /^Average/ }).check()
     await wizardNav(page).getByRole('button', { name: 'Cancel' }).click()
@@ -113,6 +114,7 @@ test('W23 f + W28 g: level-up Cancel asks and changes nothing; Remove level asks
   await test.step('level up for real', async () => {
     await page.getByRole('button', { name: 'Level up to 2' }).click()
     await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
+    await next(page) // F-20b: the class step is walked at every Fighter level up
     await page.getByRole('radio', { name: /^Average/ }).check()
     await next(page)
     await wizardNav(page).getByRole('button', { name: 'Save level 2' }).click()

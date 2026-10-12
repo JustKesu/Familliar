@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { loadOptionalFeatureChoicesFor, type OptionalFeatureOption } from './optionalFeatureData'
 import { Entries } from '../markup'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
+import { ReplaceNamedPickControl } from './ReplaceOptionControl'
 import { loadResolverData, ResolvedEntries, type ResolverData } from '../featureResolver'
 
 /*
@@ -45,6 +46,7 @@ export function OptionalFeaturePicker({
 	value,
 	onChange,
 	lockedValues = NO_LOCKED_VALUES,
+	replaceable = false,
 }: {
 	className: string
 	classSource: string
@@ -55,6 +57,8 @@ export function OptionalFeaturePicker({
 	onChange: (choices: string[]) => void
 	/** D108: during a level up, the picks the character already had — shown selected and not removable. */
 	lockedValues?: readonly string[]
+	/** D345: offer "Replace one" of the locked picks (Rune Knight runes, Battle Master maneuvers). */
+	replaceable?: boolean
 }): ReactNode {
 	const [state, setState] = useState<LoadState>({ status: 'loading' })
 	const [resolverData, setResolverData] = useState<ResolverData | null>(null)
@@ -116,19 +120,22 @@ export function OptionalFeaturePicker({
 		// The wizard holds picks by name and saveCharacter records the first same-named row's source (D318): only that row reads as chosen, the other stays unpickable.
 		const taken = value.includes(option.name)
 		const checked = taken && options.find((candidate) => candidate.name === option.name) === option
+		const swappedOut = replaceable && !taken && lockedValues.includes(option.name)
 		return {
 			key: optionKey(option),
 			name: option.name,
 			book: option.source,
 			detail: resolverData ? <ResolvedEntries entries={option.entries} data={resolverData} /> : <Entries entries={option.entries} />,
 			selected: checked,
-			disabled: !checked && (taken || remaining <= 0),
+			disabled: !checked && (taken || remaining <= 0 || swappedOut),
+			...(swappedOut ? { disabledReason: 'Being replaced in this level up.' } : {}),
 			locked: checked && lockedValues.includes(option.name),
 		}
 	})
 
 	return (
 		<div className="optional-feature-picker">
+			{replaceable && <ReplaceNamedPickControl label="options" held={lockedValues} value={value} count={count} onChange={onChange} />}
 			<SearchableOptionList
 				legend="Options"
 				name="optional-feature"

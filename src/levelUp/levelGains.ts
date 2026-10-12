@@ -44,11 +44,11 @@ import { SUBCLASS_SKILL_GRANTS, subclassSkillChoiceCount, subclassSkillGrantsFor
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { masteryCountFor } from '../masteries/masteryData'
 import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
-import { holdsSwappableOption } from '../optionalFeatures/optionSwap'
+import { holdsSwappableOption, holdsSwappableSubclassOption, SWAPPABLE_STYLE_CLASS, SWAPPABLE_SUBCLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractSpellCountClassData } from '../spells/spellCountClassData'
 import { subclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
-import type { Character, CharacterClass } from '../storage/character'
+import { fightingStyleFor, type Character, type CharacterClass } from '../storage/character'
 import { subclassLevelFor } from '../subclass/subclassData'
 import { multiclassPickShape, type MulticlassPickShape } from '../multiclass/multiclassPicks'
 import { totalCharacterLevel } from '../calculation/characterLevel'
@@ -232,14 +232,18 @@ export function levelGainsFor(character: Character, target: LevelUpClass, parsed
 		unresolved: null,
 		newFeatures: newFeaturesBetween(before, now, parsedClasses, resolverData),
 		steps: {
-			class: classStepGain(
+			class: withClassStepSwap(
+				classStepGain(
+					characterClass,
+					classLevel,
+					previous,
+					parsedClasses,
+					resolverData,
+					{ subclassGrantLevel, subclassSource, subclassUnreadable },
+					classEntry?.subclassTitle ?? null,
+				),
+				character,
 				characterClass,
-				classLevel,
-				previous,
-				parsedClasses,
-				resolverData,
-				{ subclassGrantLevel, subclassSource, subclassUnreadable },
-				classEntry?.subclassTitle ?? null,
 			),
 			species: never('A species, its variant, its skills and its spellcasting ability are all chosen at creation; nothing in species.json is keyed to character level.'),
 			background: never('A background, its ability-bonus distribution and its tool proficiency are all chosen at creation.'),
@@ -472,6 +476,14 @@ function spellsStepGain(
 	}
 
 	return adds(parts)
+}
+
+/** D345 (F-20b): the Fighter's own style, rune or maneuver can be replaced at any Fighter level up, so the class step is walked even when it adds nothing. */
+function withClassStepSwap(gain: LevelGain, character: Character, characterClass: CharacterClass): LevelGain {
+	if (characterClass.className !== SWAPPABLE_STYLE_CLASS || characterClass.level === 0) return gain
+	const holdsStyle = fightingStyleFor(character.fightingStyles, characterClass) !== undefined
+	const holdsOption = SWAPPABLE_SUBCLASS_OPTION_TYPES.some((featureType) => holdsSwappableSubclassOption(character.optionalFeatureChoices, featureType))
+	return holdsStyle || holdsOption ? { ...gain, swappable: true } : gain
 }
 
 function classOptionalFeaturesStepGain(parsedClasses: unknown[], className: string, classSource: string, level: number, previous: number, character: Character): LevelGain {

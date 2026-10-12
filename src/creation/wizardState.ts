@@ -1901,16 +1901,17 @@ function classRecordsFor(
 	 * enough to tell them apart later (chosenClassOptionalFeatures).
 	 */
 	const subclassFeatureType = cls.subclass?.featureType
+	const storedSubclassPicks = subclassFeatureType ? existing?.optionalFeatureChoices?.find((entry) => entry.featureType === subclassFeatureType)?.choices : undefined
 	const subclassOptionalFeatureChoices: CharacterOptionalFeatureChoice[] =
 		cls.optionalFeatureChoices.length > 0 && subclassFeatureType
 			? // D99, as D97: a creation pick records no level — the wizard makes every pick in one step.
 				[
 					{
 						featureType: subclassFeatureType,
-						choices: keepRecordedLevels(
-							cls.optionalFeatureChoices,
-							existing?.optionalFeatureChoices?.find((entry) => entry.featureType === subclassFeatureType)?.choices,
-							levelUpTo,
+						// D345 rule 5 (F-20b): a replaced rune or maneuver hands its stamp to the new one.
+						choices: (levelUpTo === undefined
+							? keepRecordedLevels(cls.optionalFeatureChoices, storedSubclassPicks, levelUpTo)
+							: inheritSwapStamp(keepRecordedLevels(cls.optionalFeatureChoices, storedSubclassPicks, levelUpTo), storedSubclassPicks).choices
 						).map((choice) => withPickSource(subclassFeatureType, choice)),
 					},
 				]

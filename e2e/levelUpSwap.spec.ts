@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { chooseButton, wizardNav } from './wizard.ts'
 
-/* F-20a (D345): replacing one Eldritch Invocation or Metamagic option on a level up. Seeded at schema 61. */
+/* F-20a/F-20b (D345): replacing one invocation, metamagic, maneuver, rune or Fighter style on a level up. Seeded at schema 61. */
 const STORAGE_KEY = 'familliar:characters'
 const XPHB = 'XPHB'
 const refs = (names: string[]) => names.map((name) => ({ name, source: XPHB }))
@@ -83,7 +83,7 @@ async function openOptionList(page: Page, legend: string): Promise<void> {
 }
 
 /** Opens Level up, takes `label` ("Warlock 4 → 5"), walks to the save; `options` runs on the class-options step. Returns the steps seen. */
-async function levelUp(page: Page, label: string, level: number, options?: (page: Page) => Promise<void>): Promise<string[]> {
+async function levelUp(page: Page, label: string, level: number, options?: (page: Page) => Promise<void>, optionStep = /Eldritch Invocations|Metamagic/): Promise<string[]> {
   await page.locator('.sheet__level-up').click()
   await page.getByRole('dialog', { name: 'Level up which class?' }).getByRole('button', { name: label, exact: true }).click()
   await expect(page).toHaveURL(/\/level-up/)
@@ -97,7 +97,7 @@ async function levelUp(page: Page, label: string, level: number, options?: (page
       return seen
     }
     if (/Spells/.test(step)) await fillSpells(page)
-    if (/Eldritch Invocations|Metamagic/.test(step)) await options?.(page)
+    if (optionStep.test(step)) await options?.(page)
     if (/Hit points/.test(step)) {
       await page.getByRole('radiogroup', { name: `Level ${level} hit points method`, exact: true }).getByRole('radio', { name: /^Average/ }).check()
     }
@@ -211,4 +211,151 @@ test('F-20a f: Sorcerer 4 → 5 replaces Careful Spell with Distant Spell', asyn
   const metamagic = featureOptions(page).filter({ hasText: 'Quickened Spell' })
   await expect(metamagic).toContainText('Distant Spell')
   await expect(metamagic).not.toContainText('Careful Spell')
+})
+
+const CLASS_STEP = /Class and level/
+const FIGHTER_MASTERIES = ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe']
+
+/** Fighter 4 as the wizard saves it: ASI at 4, four masteries, one style. */
+function fighter(id: string, subclass: string, extra: Record<string, unknown>) {
+  return seeded(id, 'Fighter', subclass, 4, {
+    createdAtLevel: 1,
+    classSkills: ['athletics', 'perception'],
+    masteries: FIGHTER_MASTERIES.map((name) => ({ name })),
+    fightingStyles: [{ className: 'Fighter', classSource: XPHB, name: 'Defense', source: XPHB }],
+    featAsiChoices: [{ level: 4, kind: 'asi', increases: { strength: 2 } }],
+    hitPointLevels: [2, 3, 4].map((level) => ({ level, kind: 'average', dieResult: 6 })),
+    ...extra,
+  })
+}
+
+const battleMaster = (id: string, extra: Record<string, unknown> = {}) =>
+  fighter(id, 'Battle Master', {
+    optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', source: XPHB }, { name: 'Riposte', source: XPHB }, { name: 'Parry', level: 3, source: XPHB }] }],
+    toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
+    subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }],
+    ...extra,
+  })
+
+const names = (picks: { name: string }[]): string[] => picks.map((pick) => pick.name)
+
+test('F-20b g, k: Battle Master 4 → 5 adds no maneuver yet replaces Parry; Remove level 5 keeps the new maneuver', async ({ page }) => {
+  await openSheet(page, battleMaster('f20b-g'))
+  await levelUp(
+    page,
+    'Fighter 4 → 5',
+    5,
+    async (p) => {
+      // The Fighting Style has its own "Replace one" on the same step; the maneuver one is the group naming a maneuver.
+      const maneuvers = replaceGroup(p).filter({ hasText: 'Parry' })
+      await maneuvers.getByRole('button', { name: 'Replace Parry', exact: true }).click()
+      await expect(maneuvers).toContainText('Replacing Parry')
+      await expect(nextOf(p)).toBeDisabled()
+      await openOptionList(p, 'Options')
+      await chooseButton(p, 'Feinting Attack').first().click()
+      await expect(nextOf(p)).toBeEnabled()
+    },
+    CLASS_STEP,
+  )
+
+  // Maneuvers stay at 3 (the count changes at 7); the replacement took Parry's level 3 stamp, not 5.
+  const maneuvers = (await storedOptions(page, 'f20b-g', 'MV:B')).choices
+  expect(names(maneuvers)).toEqual(['Trip Attack', 'Riposte', 'Feinting Attack'])
+  expect(maneuvers.find((pick) => pick.name === 'Feinting Attack')!.level).toBe(3)
+  await page.getByRole('tab', { name: 'Features & Traits' }).click()
+  const listed = featureOptions(page).filter({ hasText: 'Trip Attack' })
+  await expect(listed).toContainText('Feinting Attack')
+  await expect(listed).not.toContainText('Parry')
+
+  await page.getByRole('button', { name: 'Remove level 5', exact: true }).click()
+  const dialog = page.getByRole('alertdialog', { name: 'Remove level 5?' })
+  await dialog.getByRole('button', { name: 'Remove level', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(names((await storedOptions(page, 'f20b-g', 'MV:B')).choices)).toEqual(['Trip Attack', 'Riposte', 'Feinting Attack'])
+  await expect(featureOptions(page).filter({ hasText: 'Trip Attack' })).toContainText('Feinting Attack')
+})
+
+test('F-20b h: Rune Knight 4 → 5 replaces Stone Rune with Fire Rune', async ({ page }) => {
+  await openSheet(page, fighter('f20b-h', 'Rune Knight', { optionalFeatureChoices: [{ featureType: 'RN', choices: [{ name: 'Cloud Rune', source: 'TCE' }, { name: 'Stone Rune', source: 'TCE' }] }] }))
+  await levelUp(
+    page,
+    'Fighter 4 → 5',
+    5,
+    async (p) => {
+      await replaceGroup(p).getByRole('button', { name: 'Replace Stone Rune', exact: true }).click()
+      await expect(nextOf(p)).toBeDisabled()
+      await openOptionList(p, 'Options')
+      await chooseButton(p, 'Fire Rune').first().click()
+      await expect(nextOf(p)).toBeEnabled()
+    },
+    CLASS_STEP,
+  )
+
+  expect(names((await storedOptions(page, 'f20b-h', 'RN')).choices)).toEqual(['Cloud Rune', 'Fire Rune'])
+  await page.getByRole('tab', { name: 'Features & Traits' }).click()
+  // Runes are listed as their own rows, not in a .sheet__feature-options line.
+  await expect(page.getByRole('button', { name: 'Fire Rune', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cloud Rune', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Stone Rune', exact: true })).toHaveCount(0)
+})
+
+test('F-20b i: Fighter 4 replaces Archery with Defense — AC gains Defense, the bow loses Archery', async ({ page }) => {
+  const gear = [
+    { name: 'Longbow', source: XPHB, quantity: 1, equipped: 'held' },
+    { name: 'Chain Mail', source: XPHB, quantity: 1, equipped: 'worn' },
+  ]
+  await openSheet(page, fighter('f20b-i', 'Champion', { fightingStyles: [{ className: 'Fighter', classSource: XPHB, name: 'Archery', source: XPHB }], inventory: gear }))
+  await levelUp(
+    page,
+    'Fighter 4 → 5',
+    5,
+    async (p) => {
+      await replaceGroup(p).getByRole('button', { name: 'Replace Archery', exact: true }).click()
+      await expect(nextOf(p)).toBeDisabled()
+      await openOptionList(p, 'Fighting style')
+      await chooseButton(p, 'Defense').click()
+      await expect(nextOf(p)).toBeEnabled()
+    },
+    CLASS_STEP,
+  )
+
+  expect((await stored(page, 'f20b-i'))['fightingStyles']).toEqual([{ className: 'Fighter', classSource: XPHB, name: 'Defense', source: XPHB }])
+  await page.getByRole('button', { name: 'Armour Class breakdown', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('Defense (Fighting Style): +1')
+  await page.keyboard.press('Escape')
+  await page.getByRole('tab', { name: 'Actions' }).click()
+  await page.getByRole('button', { name: 'Longbow breakdown', exact: true }).click()
+  await expect(page.getByRole('dialog')).not.toContainText('Archery')
+})
+
+test('F-20b j: levelling the Fighter of a Fighter/Paladin offers only the Fighter style', async ({ page }) => {
+  await openSheet(
+    page,
+    fighter('f20b-j', 'Champion', {
+      classes: [
+        { className: 'Fighter', classSource: XPHB, subclass: 'Champion', level: 4 },
+        { className: 'Paladin', classSource: XPHB, subclass: null, level: 2 },
+      ],
+      levelOrder: [...Array.from({ length: 4 }, () => ({ className: 'Fighter', classSource: XPHB })), ...Array.from({ length: 2 }, () => ({ className: 'Paladin', classSource: XPHB }))],
+      abilityScores: { method: 'standardArray', scores: { strength: 15, dexterity: 8, constitution: 13, intelligence: 10, wisdom: 12, charisma: 14 } },
+      fightingStyles: [
+        { className: 'Fighter', classSource: XPHB, name: 'Defense', source: XPHB },
+        { className: 'Paladin', classSource: XPHB, name: 'Dueling', source: XPHB },
+      ],
+      hitPointLevels: [2, 3, 4, 5, 6].map((level) => ({ level, kind: 'average', dieResult: 6 })),
+    }),
+  )
+  await levelUp(
+    page,
+    'Fighter 4 → 5',
+    7,
+    async (p) => {
+      await expect(replaceGroup(p).getByRole('button', { name: 'Replace Defense', exact: true })).toBeVisible()
+      await expect(replaceGroup(p).getByRole('button')).toHaveCount(1)
+      await expect(replaceGroup(p)).not.toContainText('Dueling')
+    },
+    CLASS_STEP,
+  )
+  const styles = (await stored(page, 'f20b-j'))['fightingStyles'] as { className: string; name: string }[]
+  expect(styles.map((style) => `${style.className}:${style.name}`).sort()).toEqual(['Fighter:Defense', 'Paladin:Dueling'])
 })

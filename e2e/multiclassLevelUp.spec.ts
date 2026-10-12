@@ -199,6 +199,7 @@ test('M7a f (D330): a single-class Fighter level up opens the class window too, 
   await createFighter(page, { name: 'Solo', level: 1, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 2' }).click()
   await classWindow(page).getByRole('button', { name: 'Fighter 1 → 2', exact: true }).click()
+  await next(page) // F-20b: the class step is walked at every Fighter level up
   await expectStep(page, 'Hit points')
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page).toHaveURL(/\/level-up$/)

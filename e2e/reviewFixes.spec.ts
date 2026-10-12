@@ -169,10 +169,14 @@ test('F-10 g (finding 8): Warlock 3 invocations and Fighter 4 Battle Master mane
       { featureType: 'MV:B', choices: [{ name: 'Parry' }, { name: 'Riposte' }, { name: 'Rally' }] },
     ],
     toolChoices: [{ grantedBy: 'battleMaster', name: "Smith's Tools" }],
+    // F-20b: the Fighter class step is now walked, so the seed needs the picks that step asks for.
+    classSkills: ['arcana', 'deception'],
+    fightingStyles: [{ className: 'Fighter', classSource: XPHB, name: 'Defense', source: XPHB }],
   })
   await open(page, character)
   await page.locator('.sheet__level-up').click()
   await page.getByRole('dialog', { name: 'Level up which class?' }).getByRole('button', { name: 'Fighter 4 → 5', exact: true }).click()
+  await next(page) // F-20b: the class step is walked at every Fighter level up
   await expectStep(page, 'Hit points')
   await page.getByRole('radiogroup', { name: 'Level 8 hit points method', exact: true }).getByRole('radio', { name: /^Average/ }).check()
   await next(page)

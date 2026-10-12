@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { createFighter, expectStep } from './wizard.ts'
+import { createFighter, expectStep, next } from './wizard.ts'
 
 /* M4 (D323): maximum hit points per level from Character.levelOrder. Seeded at schema 59, a state import can produce. */
 const STORAGE_KEY = 'familliar:characters'
@@ -65,6 +65,7 @@ test('M4 c: level up Fighter 1 → 2 — the Hit points step has a Level 2 row a
   await createFighter(page, { name: 'Climber', level: 1, species: 'Dwarf|XPHB' })
   await page.getByRole('button', { name: 'Level up to 2' }).click()
   await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()
+  await next(page) // F-20b: the class step is walked at every Fighter level up
   await expectStep(page, 'Hit points')
   await expect(page.getByRole('radiogroup', { name: 'Level 2 hit points method', exact: true })).toBeVisible()
   await expect(page.getByRole('row', { name: /^Level 1 / })).toHaveCount(0)

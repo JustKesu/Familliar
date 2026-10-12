@@ -5,8 +5,30 @@ import {
 } from './optionalFeatureData'
 import { choiceNames, type CharacterOptionalFeatureChoice, type CharacterOptionalFeaturePick } from '../storage/character'
 
-/** D345: the class option kinds a level up may replace one of (F-20a). Runes, maneuvers and the Fighter style follow in F-20b. */
+/** D345: the class option kinds a level up may replace one of (F-20a). */
 export const SWAPPABLE_CLASS_OPTION_TYPES: readonly string[] = ['EI', 'MM']
+
+/** D345 (F-20b): the subclass option kinds — Rune Knight runes and Battle Master maneuvers. */
+export const SWAPPABLE_SUBCLASS_OPTION_TYPES: readonly string[] = ['RN', 'MV:B']
+
+/** D345 (F-20b): only the Fighter's own style is replaceable; Paladin and Ranger styles are not. */
+export const SWAPPABLE_STYLE_CLASS = 'Fighter'
+
+export function holdsSwappableSubclassOption(stored: readonly CharacterOptionalFeatureChoice[] | undefined, featureType: string): boolean {
+	return SWAPPABLE_SUBCLASS_OPTION_TYPES.includes(featureType) && (stored ?? []).some((entry) => entry.featureType === featureType && entry.choices.length > 0)
+}
+
+/** The held name the walk dropped from a name-list pick (maneuvers, runes, the style), or null. */
+export function droppedName(value: readonly string[], held: readonly string[]): string | null {
+	return held.find((name) => !value.includes(name)) ?? null
+}
+
+/** Puts the dropped name back and trims whatever replaced it beyond the level's own count. */
+export function undoNameSwap(value: readonly string[], held: readonly string[], count: number): string[] {
+	const kept = value.filter((name) => held.includes(name))
+	const fresh = value.filter((name) => !held.includes(name)).slice(0, Math.max(0, count - held.length))
+	return [...kept, ...held.filter((name) => !value.includes(name)), ...fresh]
+}
 
 export function holdsSwappableOption(stored: readonly CharacterOptionalFeatureChoice[] | undefined, featureType: string): boolean {
 	return SWAPPABLE_CLASS_OPTION_TYPES.includes(featureType) && (stored ?? []).some((entry) => entry.featureType === featureType && entry.choices.length > 0)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateClassOptionalFeatureGroups, type ClassOptionalFeatureContextBase, type ClassOptionalFeatureGroup, type OptionalFeatureOption } from './optionalFeatureData'
-import { inheritSwapStamp, swapBlockedBy, swapOut, swappedOut, undoSwap } from './optionSwap'
+import { droppedName, holdsSwappableSubclassOption, inheritSwapStamp, swapBlockedBy, swapOut, swappedOut, undoNameSwap, undoSwap } from './optionSwap'
 import type { CharacterOptionalFeatureChoice } from '../storage/character'
 
 const warlockLevel = (level: number) => ({ level, class: { name: 'Warlock', source: 'XPHB' } })
@@ -64,5 +64,21 @@ describe('D345 option swap', () => {
 		const fromLevel = inheritSwapStamp([{ name: 'Agonizing Blast' }, { name: 'Repelling Blast' }], stored)
 		expect(fromLevel.choices[1]).toEqual({ name: 'Repelling Blast', level: 3 })
 		expect(inheritSwapStamp(stored, stored).replacement).toBeNull()
+	})
+
+	it('F-20b: name-list swap for maneuvers, runes and the Fighter style', () => {
+		const heldNames = ['Parry', 'Riposte', 'Trip Attack']
+		expect(droppedName(heldNames, heldNames)).toBeNull()
+		expect(droppedName(['Parry', 'Trip Attack', 'Feinting Attack'], heldNames)).toBe('Riposte')
+		expect(undoNameSwap(['Parry', 'Trip Attack', 'Feinting Attack'], heldNames, 3)).toEqual(['Parry', 'Trip Attack', 'Riposte'])
+		// A level that adds two picks keeps the two new ones beside the restored one.
+		expect(undoNameSwap(['Parry', 'Trip Attack', 'A', 'B', 'C'], heldNames, 5)).toEqual(['Parry', 'Trip Attack', 'Riposte', 'A', 'B'])
+		expect(undoNameSwap(['Defense'], ['Archery'], 1)).toEqual(['Archery'])
+	})
+
+	it('F-20b: only runes and maneuvers count as held swappable subclass options', () => {
+		expect(holdsSwappableSubclassOption([{ featureType: 'MV:B', choices: [{ name: 'Parry' }] }], 'MV:B')).toBe(true)
+		expect(holdsSwappableSubclassOption([{ featureType: 'RN', choices: [] }], 'RN')).toBe(false)
+		expect(holdsSwappableSubclassOption([{ featureType: 'AI', choices: [{ name: 'Curving Shot' }] }], 'AI')).toBe(false)
 	})
 })

@@ -1,5 +1,5 @@
 import type { WizardData } from '../creation/wizardState'
-import { SWAPPABLE_CLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
+import { SWAPPABLE_CLASS_OPTION_TYPES, SWAPPABLE_STYLE_CLASS, SWAPPABLE_SUBCLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
 import { choiceNames, fightingStyleFor, type Character, type CharacterOptionalFeatureChoice, type FeatAsiChoice } from '../storage/character'
 
 /**
@@ -79,7 +79,9 @@ export function overwrittenHeldPicks(character: Character, data: WizardData, act
 	if (held.subclass !== null && held.subclass.toLowerCase() !== (data.subclass?.name ?? '').toLowerCase()) {
 		problems.push(`subclass ${held.subclass}`)
 	}
-	if (held.fightingStyle !== null && held.fightingStyle !== data.fightingStyle) {
+	// D345 (F-20b): the Fighter may replace its own style, never leave the class step without one.
+	const styleSwappable = (active?.className ?? character.classes[0]?.className) === SWAPPABLE_STYLE_CLASS && data.fightingStyle !== null
+	if (held.fightingStyle !== null && held.fightingStyle !== data.fightingStyle && !styleSwappable) {
 		problems.push(`fighting style ${held.fightingStyle}`)
 	}
 	const missing = (label: string, before: readonly string[], after: readonly string[]): void => {
@@ -88,7 +90,11 @@ export function overwrittenHeldPicks(character: Character, data: WizardData, act
 	missing('class skill', held.classSkills, data.classSkills)
 	missing('weapon mastery', held.masteries, data.masteries)
 	missing('expertise', held.expertiseSkills, data.expertiseSkills)
-	missing('option', held.subclassOptionalFeatures, data.optionalFeatureChoices)
+	const lostOptions = held.subclassOptionalFeatures.filter((name) => !data.optionalFeatureChoices.includes(name))
+	// D345 (F-20b): one rune or maneuver may be replaced per level up.
+	if (lostOptions.length > (SWAPPABLE_SUBCLASS_OPTION_TYPES.includes(data.subclass?.featureType ?? '') ? 1 : 0)) {
+		missing('option', held.subclassOptionalFeatures, data.optionalFeatureChoices)
+	}
 	for (const stored of (character.classFeatureChoices ?? []).filter((choice) => sameClass(choice, active))) {
 		const now = data.classFeatureChoices.find((choice) => choice.featureName === stored.featureName)
 		if (now?.optionName !== stored.optionName) problems.push(`${stored.featureName} ${stored.optionName}`)

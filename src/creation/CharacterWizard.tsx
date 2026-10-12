@@ -31,6 +31,7 @@ import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
 import { SubclassPicker } from '../subclass/SubclassPicker'
 import { OptionalFeaturePicker } from '../optionalFeatures/OptionalFeaturePicker'
 import { ClassOptionalFeaturePicker } from '../optionalFeatures/ClassOptionalFeaturePicker'
+import { SWAPPABLE_STYLE_CLASS, SWAPPABLE_SUBCLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
 import {
 	areClassOptionalFeaturesComplete,
 	evaluateClassOptionalFeatureGroups,
@@ -1925,13 +1926,14 @@ export function CharacterWizard({
 									{...(multiclassDraft ? { multiclass: multiclassDraft, countOffset: masteryOffset } : {})}
 								/>
 							)}
-							{(held === null || held.fightingStyle === null) && (
+							{(held === null || held.fightingStyle === null || state.data.classChoice.className === SWAPPABLE_STYLE_CLASS) && (
 								<FightingStylePicker
 									className={state.data.classChoice.className}
 									classSource={state.data.classChoice.classSource}
 									level={state.data.classChoice.level}
 									value={state.data.fightingStyle}
 									onChange={(style) => dispatch({ type: 'setFightingStyle', style })}
+									heldStyle={state.data.classChoice.className === SWAPPABLE_STYLE_CLASS ? (held?.fightingStyle ?? null) : null}
 								/>
 							)}
 							{/* D13 — a class feature's own "pick one version" choice belongs to the class step; none of the three depends on spells, so D64's exception does not apply. */}
@@ -1969,6 +1971,7 @@ export function CharacterWizard({
 									value={state.data.optionalFeatureChoices}
 									onChange={(choices) => dispatch({ type: 'setOptionalFeatureChoices', choices })}
 									lockedValues={held?.subclassOptionalFeatures}
+									replaceable={SWAPPABLE_SUBCLASS_OPTION_TYPES.includes(state.data.subclass.featureType ?? '')}
 								/>
 							)}
 							{/* After the subclass picker on purpose: Circle of the Moon raises the CR cap, so the legal pool is not known until the subclass is. */}

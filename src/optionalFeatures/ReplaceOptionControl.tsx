@@ -1,7 +1,54 @@
 import type { ReactNode } from 'react'
 import type { ClassOptionalFeatureContextBase, ClassOptionalFeatureGroup } from './optionalFeatureData'
-import { swapBlockedBy, swapOut, swappedOut, undoSwap } from './optionSwap'
+import { droppedName, swapBlockedBy, swapOut, swappedOut, undoNameSwap, undoSwap } from './optionSwap'
 import type { CharacterOptionalFeatureChoice } from '../storage/character'
+
+/**
+ * D345 (F-20b): the same "Replace one" for picks held as bare names — maneuvers, runes, the Fighter style.
+ * None of them has a prerequisite or sub-choice, so there is nothing that blocks a swap.
+ */
+export function ReplaceNamedPickControl({
+	label,
+	held,
+	value,
+	count,
+	onChange,
+}: {
+	label: string
+	held: readonly string[]
+	value: readonly string[]
+	count: number
+	onChange: (names: string[]) => void
+}): ReactNode {
+	if (held.length === 0) return null
+	const dropped = droppedName(value, held)
+	return (
+		<fieldset className="replace-option">
+			<legend>Replace one</legend>
+			{dropped ? (
+				<p>
+					Replacing {dropped}. Pick the new option in the list below.{' '}
+					<button type="button" onClick={() => onChange(undoNameSwap(value, held, count))}>
+						Keep {dropped}
+					</button>
+				</p>
+			) : (
+				<>
+					<p>You may replace one of your {label} with another one.</p>
+					<ul className="replace-option__list">
+						{held.map((name) => (
+							<li key={name}>
+								<button type="button" onClick={() => onChange(value.filter((entry) => entry !== name))}>
+									Replace {name}
+								</button>
+							</li>
+						))}
+					</ul>
+				</>
+			)}
+		</fieldset>
+	)
+}
 
 /**
  * D345: during a level up, drops one held option of `group` so the normal list beside it can take its replacement.

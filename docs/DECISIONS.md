@@ -5192,3 +5192,13 @@ volby; level up se ptá jen na sloty dané úrovně. Task F-19.
    přidávají. Vědomě volnější než text featury (house rule).
 
 Rozhodl Daniel 11. 10. 2026, task F-20a.
+
+## D346 — Provedení výměny runy, manévru a stylu boje (F-20b)
+
+1. Rune a manévry nemají prerekvizity ani pod-volby, takže nic nebrání jejich výměně (bod 3 D345 se jich netýká).
+2. Fighter může při jednom level upu vyměnit jednu runu NEBO manévr (podle podtřídy) a k tomu svůj Fighting Style;
+   každý druh je nezávislý a má vlastní „Replace one“ na kroku třídy.
+3. Vyměnit lze jen styl, který patří Fighterovi (className Fighter); styl Paladina nebo Rangera zůstává zamčený.
+   Styl nemá level stamp, takže bod 5 D345 se ho netýká.
+
+Provedeno v tasku F-20b, v rámci rozhodnutí D345 (Daniel 11. 10. 2026).

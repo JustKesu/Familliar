@@ -80,6 +80,23 @@ describe('levelGainsFor', () => {
 		expect(levelUpStepConditions(gainsAt(sorcerer, 9, CLASSES, RESOLVER)).levelUpSteps?.has('classOptionalFeatures')).toBe(false)
 	})
 
+	it('D345 (F-20b): walks the class step at every Fighter level up once a style, rune or maneuver is held', () => {
+		expect(gainsAt(fighter, 5, CLASSES, RESOLVER).steps.class.swappable).toBeUndefined()
+
+		const withStyle = { ...fighter, fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Archery' }] }
+		const styled = gainsAt(withStyle, 5, CLASSES, RESOLVER)
+		expect(styled.steps.class).toMatchObject({ status: 'none', swappable: true })
+		expect(levelUpStepConditions(styled).levelUpSteps?.has('class')).toBe(true)
+
+		const withManeuvers = { ...fighter, optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Parry' }] }] }
+		expect(gainsAt(withManeuvers, 5, CLASSES, RESOLVER).steps.class.swappable).toBe(true)
+		const withRunes = { ...fighter, optionalFeatureChoices: [{ featureType: 'RN', choices: [{ name: 'Cloud Rune' }] }] }
+		expect(gainsAt(withRunes, 5, CLASSES, RESOLVER).steps.class.swappable).toBe(true)
+
+		const paladinStyle = { ...cleric, fightingStyles: [{ className: 'Cleric', classSource: 'XPHB', name: 'Archery' }] }
+		expect(gainsAt(paladinStyle, 5, CLASSES, RESOLVER).steps.class.swappable).toBeUndefined()
+	})
+
 	it('reports the subclass choice at the level the class chooses one, under the title the data gives it', () => {
 		const gains = gainsAt(cleric, 3, CLASSES, RESOLVER)
 		expect(partCount(gains.steps.class, 'Cleric Subclass')).toBe(1)
