@@ -44,8 +44,32 @@ describe('Kensei slots', () => {
 		]
 		expect(heldKenseiWeapons(monk(5), picks).map((pick) => pick.name)).toEqual(['Longsword', 'Longbow'])
 		expect(kenseiWeaponsOwed(monk(6), picks.slice(0, 2))).toBe(1)
-		expect(kenseiSlotsFilled(kenseiSlotsFor(monk(6)), picks)).toBe(true)
-		expect(kenseiSlotsFilled(kenseiSlotsFor(monk(6)), picks.slice(1))).toBe(false)
+		expect(kenseiSlotsFilled(kenseiSlotsFor(monk(6)), picks, isRanged)).toBe(true)
+		expect(kenseiSlotsFilled(kenseiSlotsFor(monk(6)), picks.slice(1), isRanged)).toBe(false)
+	})
+
+	const isRanged = (name: string): boolean => name === 'Longbow' || name === 'Shortbow'
+
+	it('F-22 item 3: two melee picks on Monk 3 leave the ranged slot open', () => {
+		const twoMelee = [
+			{ name: 'Longsword', level: 3 },
+			{ name: 'Spear', level: 3 },
+		]
+		expect(kenseiSlotsFilled(kenseiSlotsFor(monk(3)), twoMelee, isRanged)).toBe(false)
+		expect(kenseiSlotsFilled(kenseiSlotsFor(monk(3)), [twoMelee[0], { name: 'Shortbow', level: 3 }], isRanged)).toBe(true)
+		expect(kenseiSlotsFilled(kenseiSlotsFor(monk(3)), [twoMelee[0], { name: 'Shortbow', level: 3 }], null)).toBe(false)
+		expect(kenseiSlotsFilled(kenseiSlotsFor(monk(2, null)), [], null)).toBe(true)
+	})
+
+	it('F-22 item 3: holds at most as many picks per level as that level has slots', () => {
+		const three = [
+			{ name: 'Longsword', level: 3 },
+			{ name: 'Spear', level: 3 },
+			{ name: 'Shortbow', level: 3 },
+			{ name: 'Dagger', level: 6 },
+		]
+		expect(heldKenseiWeapons(monk(6), three).map((pick) => pick.name)).toEqual(['Longsword', 'Spear', 'Dagger'])
+		expect(kenseiWeaponsOwed(monk(6), three)).toBe(0)
 	})
 })
 

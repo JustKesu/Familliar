@@ -5202,3 +5202,30 @@ Rozhodl Daniel 11. 10. 2026, task F-20a.
    Styl nemá level stamp, takže bod 5 D345 se ho netýká.
 
 Provedeno v tasku F-20b, v rámci rozhodnutí D345 (Daniel 11. 10. 2026).
+
+## D347 — Remove level kaskádově odebere volby bez prerekvizity (F-22)
+
+Po odebrání voleb podle level stampu Remove level odebere i každou volbu class optional feature (invokace a další
+vyměnitelné druhy), která na nové úrovni třídy nebo se zbylými volbami přestala splňovat prerekvizity (Thirsting Blade
+pod Warlock 5 nebo bez Pact of the Blade); opakuje se, dokud se nic nemění. Každá takto odebraná volba je v okně
+potvrzení Remove level jako ostatní ztráty. Pod-volby odebrané volby (kouzla Pact of the Tome, familiar Pact of the
+Chain podle D348) odcházejí s ní. Upřesňuje D345 bod 5. Task F-22, rozhodl Daniel (review F-17–F-21, nález 1).
+
+## D348 — Pact of the Chain se chová jako Pact of the Tome (F-22)
+
+Když se Pact of the Chain vymění (level up) nebo odebere (Remove level), odchází s ním i uložený familiar. Ze dvou
+povolených variant (smazat / nechat obyčejný Find Familiar) je provedeno smazání familiara v jakékoli formě: úložiště
+drží jen jméno a zdroj formy a zda postava má Find Familiar z jiného zdroje, ví jen list, takže „žádný familiar“ je
+jediný stav, který je vždy platný; hráč ho v Extras zvolí znovu. Zůstává, dokud Pact of the Chain dává předmět.
+„Keep“ u výměny ho vrátí. Rozšiřuje D345 bod 4. Task F-22, rozhodl Daniel (review F-17–F-21, nález 4).
+
+## D349 — Multiclass Edit: neúplné Kensei zbraně neaktivního Monka blokují Save (F-22)
+
+V multiclass Editu blokují neúplné Kensei zbraně neaktivního Monka uložení stejně jako Expertise, Mastery, nástroje
+a subclass skills (D335): sloty se počítají přes držené třídy jako u `wizardSubclassSkillGrants` a Review hlásí
+„<Class> has unfinished choices“. Task F-22, rozhodl Daniel (review F-17–F-21, nález 2).
+
+## D350 — Výměna voleb platí i pro třídy PHB 2014 (F-22)
+
+Výměna invokací, metamagie, manévrů, run a stylu boje (D345, D346) zůstává dostupná i pro třídy PHB 2014. Bez změny
+kódu, jen záznam rozhodnutí. Task F-22, rozhodl Daniel (review F-17–F-21, nález 5).

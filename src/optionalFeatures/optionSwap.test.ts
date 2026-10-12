@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateClassOptionalFeatureGroups, type ClassOptionalFeatureContextBase, type ClassOptionalFeatureGroup, type OptionalFeatureOption } from './optionalFeatureData'
-import { droppedName, holdsSwappableSubclassOption, inheritSwapStamp, swapBlockedBy, swapOut, swappedOut, undoNameSwap, undoSwap } from './optionSwap'
-import type { CharacterOptionalFeatureChoice } from '../storage/character'
+import {
+	droppedName,
+	familiarAfterOptionChange,
+	holdsSwappableSubclassOption,
+	inheritSwapStamp,
+	swapBlockedBy,
+	swapOut,
+	swappableFightingStyle,
+	swappedOut,
+	undoNameSwap,
+	undoSwap,
+} from './optionSwap'
+import type { CharacterInventoryItem, CharacterOptionalFeatureChoice } from '../storage/character'
 
 const warlockLevel = (level: number) => ({ level, class: { name: 'Warlock', source: 'XPHB' } })
 const option = (name: string, prerequisite?: OptionalFeatureOption['prerequisite']): OptionalFeatureOption => ({ name, source: 'XPHB', entries: [], prerequisite })
@@ -74,6 +85,36 @@ describe('D345 option swap', () => {
 		// A level that adds two picks keeps the two new ones beside the restored one.
 		expect(undoNameSwap(['Parry', 'Trip Attack', 'A', 'B', 'C'], heldNames, 5)).toEqual(['Parry', 'Trip Attack', 'Riposte', 'A', 'B'])
 		expect(undoNameSwap(['Defense'], ['Archery'], 1)).toEqual(['Archery'])
+	})
+
+	it('F-22 item 7: Keep restores the spell picks even when their optionName differs in case', () => {
+		const lower = { optionName: 'pact of the tome', cantrips: [{ name: 'Guidance', source: 'XPHB' }], spells: [] }
+		const stored: CharacterOptionalFeatureChoice[] = [{ ...held[0], spellChoices: [lower] }]
+		const dropped = swapOut(stored, 'EI', 'Pact of the Tome')
+		expect(dropped[0].spellChoices).toBeUndefined()
+		const restored = undoSwap([{ ...dropped[0], choices: [...dropped[0].choices, { name: 'Armor of Shadows' }] }], stored, 'EI', 3)
+		expect(restored[0].choices.map((choice) => choice.name)).toEqual(['Pact of the Blade', 'Thirsting Blade', 'Pact of the Tome'])
+		expect(restored[0].spellChoices).toEqual([lower])
+	})
+
+	it('D348: swapping out Pact of the Chain takes the familiar; Keep (the boon back) or a granting item keeps it', () => {
+		const imp = { name: 'Imp', source: 'XMM' }
+		const chain: CharacterOptionalFeatureChoice[] = [{ featureType: 'EI', choices: [{ name: 'Pact of the Chain' }, { name: 'Armor of Shadows', level: 2 }] }]
+		const swapped = swapOut(chain, 'EI', 'Pact of the Chain')
+		expect(familiarAfterOptionChange(imp, chain, swapped, undefined)).toBeUndefined()
+		expect(familiarAfterOptionChange(imp, chain, undoSwap(swapped, chain, 'EI', 2), undefined)).toEqual(imp)
+		const item: CharacterInventoryItem[] = [
+			{ name: 'Chain Ring', source: 'custom', quantity: 1, custom: { name: 'Chain Ring', kind: 'worn', invocations: [{ name: 'Pact of the Chain', source: 'XPHB' }] } },
+		]
+		expect(familiarAfterOptionChange(imp, chain, swapped, item)).toEqual(imp)
+		expect(familiarAfterOptionChange(imp, swapped, swapped, undefined)).toEqual(imp)
+	})
+
+	it('F-22 item 6 (D346 rule 3): only a style tagged Fighter is swappable, never the untagged pre-58 one', () => {
+		const fighter = { className: 'Fighter', classSource: 'XPHB' }
+		expect(swappableFightingStyle([{ name: 'Archery' }], fighter)).toBeUndefined()
+		expect(swappableFightingStyle([{ name: 'Archery' }, { ...fighter, name: 'Defense' }], fighter)?.name).toBe('Defense')
+		expect(swappableFightingStyle([{ className: 'Paladin', classSource: 'XPHB', name: 'Defense' }], { className: 'Paladin', classSource: 'XPHB' })).toBeUndefined()
 	})
 
 	it('F-20b: only runes and maneuvers count as held swappable subclass options', () => {

@@ -1,24 +1,30 @@
-# F-21: fokus na nadpis kroku průvodce
+# REPORT — F-22: opravy z review F-17 až F-21 (D347–D350)
 
 ## Co se změnilo
-- `src/creation/CharacterWizard.tsx`: `h2.wizard__title` má `ref` a `tabIndex={-1}`. `useEffect` na `state.step` (umístěný před předčasnými `return`, běží až po `seeded`) přesune fokus na nadpis (`preventScroll: true`, scroll se tedy nemění). Poslední zobrazený krok drží `useRef`; první zobrazený krok fokus nedostane. Zablokované Next krok nemění, takže se fokus nehýbe. Stejná cesta platí pro nový průvodce, level up i Edit.
-- `src/index.css`: `.wizard__title:focus { outline: none }`. Nadpis není interaktivní prvek a kroužek na textu by byl šum. Ostatní `:focus-visible` styly jsou beze změny.
-- `docs/STATUS.md`: jeden řádek F-21.
+Inventura: 9 souborů src, ~14 míst (pod limitem, bez dělení na F-22a/b).
+1. **Remove level kaskáda (D347).** `levelRemovalCore` po mazání podle stampu volá `cascadePrerequisiteLoss` (optionSwap.ts) nad skupinami snižované třídy (`classOptionalFeatureGroupsFor` na staré úrovni): odebere volby, které před odebráním prerekvizity splňovaly a po něm (nižší úroveň třídy, zbylé volby, případně podtřída/třída pryč) ne; opakuje do ustálení. Řádek „`EI option: X (prerequisite no longer met)`“ + jejich Tome kouzla. Kontext nese jen `classLevels`; kouzlové prerekvizity se díky porovnání před/po neprojeví (volba neplatná už předtím zůstává).
+2. **Pact of the Chain (D348).** `familiarAfterOptionChange`: když Chain zmizí z voleb (save v `saveCharacter`, Remove level), smaže se `familiar` v jakékoli formě, pokud Chain nedává custom item. Keep vrací Chain → familiar zůstává. Remove level vypíše „Familiar: <jméno>“.
+3. **Multiclass Edit Kensei (D349).** `wizardKenseiSlots(data, level, heldClasses)` — krok Proficiencies ukáže a vyžaduje sloty neaktivního Monka; `unfinishedHeldClasses(…, kenseiRangedWeapons)` přidá „choose N more Kensei weapons“.
+4. **D350** jen záznam, bez kódu.
+5. **Kensei po druzích.** `pairKenseiPicks` (párování slot→pick podle druhu, sdílí picker i kontrola); `kenseiSlotsFilled(slots, picks, isRanged | null)` — null (items.json se načítá) = neúplné. Wizard načte ranged jména (`kenseiRangedWeapons` v podmínkách). Picker při změně zahodí picky zobrazených úrovní, které se nespárovaly. `heldKenseiWeapons` ořezává na počet slotů úrovně (v pořadí uložení).
+6. **Styl Fightera.** `swappableFightingStyle` (jen styl s className Fighter); `HeldPicks.swappableFightingStyle` řídí picker, `overwrittenHeldPicks` i `withClassStepSwap`.
+7. **`undoSwap`** porovnává `optionName` bez ohledu na velikost písmen jako `swapOut`.
+8. **Fokus** po změně kroku bez `preventScroll`; pravidla F-21 beze změny.
 
-## Testy
-- Unit: `CharacterWizard.test.tsx` (nový `describe` F-21): první render bez fokusu na nadpisu, zablokované Next bez fokusu, po Next i Back je `document.activeElement` nadpis.
-- e2e `e2e/wizardFocus.spec.ts`:
-  - a/b/d: otevření průvodce nefokusuje nadpis; Back na Species a Next na Background fokusují nadpis; po Tab je fokus uvnitř `.wizard__content`, ne v `.wizard__bar`; klik na krok v liště fokusuje nadpis.
-  - Zablokované Next fokus nehýbe.
-  - c: level up Fighter 3 → 4 (postaveného přes UI, ne seedem schématu 61), Next fokusuje nadpis.
-- `typecheck` OK, `validate-data` OK (175/175), `npm run test` prošel mimo 1 chybu v mém novém unit testu (živě čtený `textContent` sdíleného uzlu), opraveno a soubor znovu prošel (35/35). Celé e2e: 545 prošlo, 1 padl můj nový spec (test fokusoval po vyplnění kroku Background, kde už fokus drží ovládací prvek). Spec jsem opravil a znovu pustil samostatně: 3/3. Zbytek sady jsem po úpravě specu už znovu nepouštěl, protože se změnil jen tento spec. Celé e2e trvá cca 7,6 min.
+## Ověřeno
+- typecheck OK; test 182 souborů / 3300 OK; validate-data 175/175 OK; e2e plná sada — viz poslední řádek.
+- Unit: levelRemoval.test.tsx „D347/D348 …“ (obě pořadí kliknutí, Eldritch Smite po Pact of the Blade, neplatná už předtím, familiar); optionSwap.test.ts „F-22 item 7“, „D348 …“, „F-22 item 6“; kensei.test.ts „F-22 item 3“ ×2; heldClassPicks.test.ts „D349 …“ ×2; levelUp.test.tsx (untagged styl).
+- E2E: levelUpSwap „F-22 1a“, „1b“, „2a“, „2b“, „2c“, „6“, „7“; kenseiSamurai „F-22 2 (D349)“, „F-22 3“; wizardFocus „F-22 8“.
+- Plná e2e sada: 556 passed (6.6 min, nad limitem ~3 min).
 
-## Rozhodnutí
-- Level up v e2e jde přes `createFighter` + dialog místo ručně seedovaného schématu 61 (méně křehké, stejný průchod aplikací). D-záznam nevznikl.
-- Nadpis bez kroužku (`outline: none`) i při programovém fokusu; viditelný fokus zůstává na tlačítkách a polích.
+## Rozhodnuto během práce / otázky
+- D348: zvolena varianta „familiar smazat vždy“ (úložiště nezná, zda Find Familiar má jiný zdroj; „žádný familiar“ je vždy platný). Zapsáno v D348.
+- D349: Kensei neaktivního Monka blokuje už krok Proficiencies (jako nástroje/subclass skills přes heldClasses), takže Review s řádkem „Monk has unfinished choices: … Kensei weapons“ je v praxi nedosažitelné (step bar nepustí za neúplný krok). Řádek je naprogramován dle zadání; potvrdit, zda stačí blokace kroku.
+- Kouzla Pact of the Tome odebraného podle stampu (ne kaskádou) dál zůstávají, pokud třída nezmizí (D332 komentář); kaskádou odebraná volba je bere s sebou (D347). Nesoulad — otázka pro Daniela, zda sjednotit.
+- Nález 6: save level upu dál označí převzatý neoznačený styl jako Fighterův (D318/D334), takže při DALŠÍM level upu už výměnu nabídne. Bod 7 e2e: `optionName` jiné velikosti písmen app neuloží, proto jen unit test; e2e testuje Keep u Tome normálně.
+- Seed „F-22 3“ (dvě melee na Monk 3) vzniká jen importem ručně upraveného souboru (validátor ho přijme).
 
 ## Manual browser check for the user
-Na https://familliar.vercel.app:
-- Nová postava, klik na Next, pak Tab: je kroužek na prvním prvku obsahu kroku (ne v horní liště)?
-- Nadpis kroku po kliku na Next/Back nemá žádný divný obrys nebo rámeček?
-- Při přechodu mezi kroky se stránka neposkočí na jiné místo než dřív?
+- Postava Warlock 5 po výměně za Thirsting Blade → sheet, tlačítko „Remove level 5“: okno potvrzení — řádek „EI option: Thirsting Blade (prerequisite no longer met)“ se zalomí/vejde stejně jako ostatní řádky.
+- Multiclass Monk (Kensei) / Fighter → Edit → aktivní Fighter → krok Proficiencies: Kensei selecty Monka (Monk 3 ranged, Monk 6) vedle Fighterových voleb — rozložení a popisky. (Review řádek pro Kensei viz výše, v praxi nedosažitelný.)
+- Nový charakter na úzkém okně: Next z dolní části kroku Species → nadpis Background viditelný nahoře, posun nepůsobí trhaně.

@@ -31,7 +31,7 @@ import { FightingStylePicker } from '../fightingStyle/FightingStylePicker'
 import { SubclassPicker } from '../subclass/SubclassPicker'
 import { OptionalFeaturePicker } from '../optionalFeatures/OptionalFeaturePicker'
 import { ClassOptionalFeaturePicker } from '../optionalFeatures/ClassOptionalFeaturePicker'
-import { SWAPPABLE_STYLE_CLASS, SWAPPABLE_SUBCLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
+import { SWAPPABLE_SUBCLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
 import {
 	areClassOptionalFeaturesComplete,
 	evaluateClassOptionalFeatureGroups,
@@ -110,7 +110,7 @@ import { loadMulticlassPickShape, multiclassSkillSources, type MulticlassPickSha
 import { MulticlassPickSlots } from '../multiclass/MulticlassPickSlots'
 import { HeldClassPrerequisiteNotes } from '../multiclass/HeldClassPrerequisiteNotes'
 import { ClassSwitcher } from './ClassSwitcher'
-import { ELEGANT_COURTIER_LEVEL, hasElegantCourtier } from '../kensei/kensei'
+import { ELEGANT_COURTIER_LEVEL, hasElegantCourtier, loadKenseiWeaponOptions } from '../kensei/kensei'
 import { KenseiWeaponSlots } from '../kensei/KenseiWeaponSlots'
 import { ElegantCourtierChoice } from '../kensei/ElegantCourtierChoice'
 import { useWisdomSaveHeld } from '../kensei/useWisdomSaveHeld'
@@ -1357,7 +1357,22 @@ export function CharacterWizard({
 		],
 	}
 
-	const kenseiSlots = wizardKenseiSlots(state.data, levelUp?.level ?? null)
+	const kenseiSlots = wizardKenseiSlots(state.data, levelUp?.level ?? null, heldClassesCondition)
+	const kenseiWanted = kenseiSlots.length > 0
+	const [kenseiRangedWeapons, setKenseiRangedWeapons] = useState<ReadonlySet<string> | null>(null)
+	useEffect(() => {
+		if (!kenseiWanted || kenseiRangedWeapons !== null) return
+		let cancelled = false
+		// A failed load keeps the set null, so the step stays blocked; KenseiWeaponSlots shows the error itself.
+		loadKenseiWeaponOptions()
+			.then((options) => {
+				if (!cancelled) setKenseiRangedWeapons(new Set(options.filter((option) => option.ranged).map((option) => option.name)))
+			})
+			.catch(() => {})
+		return () => {
+			cancelled = true
+		}
+	}, [kenseiWanted, kenseiRangedWeapons])
 	const courtierClass = wizardClass(state.data)
 	// D344: a level up asks only on the level that brings Elegant Courtier.
 	const courtierOffered = courtierClass !== null && hasElegantCourtier([courtierClass]) && (!levelUp || courtierClass.level === ELEGANT_COURTIER_LEVEL)
@@ -1683,7 +1698,7 @@ export function CharacterWizard({
 						: { classPickRequirements: null }),
 					...heldPickConditions(cls.classChoice),
 				}
-			})
+			}, kenseiRangedWeapons)
 		: []
 
 	/** Assembled once so navigation, the Next gate and the save gate cannot drift apart. */
@@ -1714,6 +1729,7 @@ export function CharacterWizard({
 		editingExistingCharacter: character !== undefined,
 		multiclassPickCount,
 		elegantCourtierComplete: !courtierOffered || wisdomSaveHeld === false || (wisdomSaveHeld === true && state.data.elegantCourtierSave !== null),
+		kenseiRangedWeapons,
 		...(multiclassEdit
 			? {
 					heldClasses: draftClasses,
@@ -1800,7 +1816,8 @@ export function CharacterWizard({
 	const shownStep = useRef<WizardStep | null>(null)
 	useEffect(() => {
 		if (!seeded || seedError !== null) return
-		if (shownStep.current !== null && shownStep.current !== state.step) titleRef.current?.focus({ preventScroll: true })
+		// F-22: the browser scrolls the focused heading into view, so Next from the bottom of a long step lands on the new one.
+		if (shownStep.current !== null && shownStep.current !== state.step) titleRef.current?.focus()
 		shownStep.current = state.step
 	}, [state.step, seeded, seedError])
 
@@ -1935,14 +1952,14 @@ export function CharacterWizard({
 									{...(multiclassDraft ? { multiclass: multiclassDraft, countOffset: masteryOffset } : {})}
 								/>
 							)}
-							{(held === null || held.fightingStyle === null || state.data.classChoice.className === SWAPPABLE_STYLE_CLASS) && (
+							{(held === null || held.fightingStyle === null || held.swappableFightingStyle !== null) && (
 								<FightingStylePicker
 									className={state.data.classChoice.className}
 									classSource={state.data.classChoice.classSource}
 									level={state.data.classChoice.level}
 									value={state.data.fightingStyle}
 									onChange={(style) => dispatch({ type: 'setFightingStyle', style })}
-									heldStyle={state.data.classChoice.className === SWAPPABLE_STYLE_CLASS ? (held?.fightingStyle ?? null) : null}
+									heldStyle={held?.swappableFightingStyle ?? null}
 								/>
 							)}
 							{/* D13 — a class feature's own "pick one version" choice belongs to the class step; none of the three depends on spells, so D64's exception does not apply. */}

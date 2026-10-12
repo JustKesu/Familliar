@@ -32,6 +32,21 @@ test('F-21 a/b/d: new character — opening does not focus, Next and Back and th
   await expect(heading(page)).toBeFocused()
 })
 
+test('F-22 8: Next from the bottom of a long step shows the new step heading', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 500 })
+  await page.goto('/#/new')
+  await fillUpToBackground(page, { name: 'Wren', level: 1, species: 'Dwarf|XPHB' })
+  await wizardNav(page).getByRole('button', { name: 'Back', exact: true }).click()
+  await expectStep(page, 'Species')
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  await expect(heading(page)).not.toBeInViewport()
+
+  await next(page)
+  await expectStep(page, 'Background')
+  await expect(heading(page)).toBeFocused()
+  await expect(heading(page)).toBeInViewport()
+})
+
 test('F-21 blocked Next does not move focus', async ({ page }) => {
   await page.goto('/#/new')
   await expectStep(page, 'Class and level')

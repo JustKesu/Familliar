@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { chooseButton, next, wizardNav } from './wizard.ts'
+import { chooseButton, next, stepBar, wizardNav } from './wizard.ts'
 
 /* F-19 (D344): Kensei weapons (Monk 3/6/11/17) and Samurai's Elegant Courtier save (Fighter 7). Seeded at schema 61. */
 const STORAGE_KEY = 'familliar:characters'
@@ -206,6 +206,88 @@ test('F-19 f: Fighter 6 Samurai with Resilient (Wisdom) → 7 — Intelligence o
   // CHA -1, PB +3.
   await expect(save(page, 'Charisma')).toHaveText('+2')
   await expect(await saveBreakdown(page, 'Charisma')).toContainText('Elegant Courtier')
+})
+
+/* F-22: Edit runs over a complete character, so these seeds carry the creation picks too (Dwarf, Soldier, Common + 2). */
+function editableMonk(id: string, held: [className: string, subclass: string | null, level: number][], extra: Record<string, unknown>) {
+  const levelOrder = held.flatMap(([className, , level]) => Array.from({ length: level }, () => ({ className, classSource: XPHB })))
+  const hitDie: Record<string, number> = { Monk: 8, Fighter: 10 }
+  return {
+    ...monk(id, 'Way of the Kensei', held[0]![2], extra),
+    classes: held.map(([className, subclass, level]) => ({ className, classSource: XPHB, subclass, level })),
+    levelOrder,
+    species: { name: 'Dwarf', source: XPHB },
+    background: { name: 'Soldier', source: XPHB, skillProficiencies: ['athletics', 'intimidation'], toolProficiency: 'Dice Set' },
+    abilityBonus: { strength: 2, dexterity: 1 },
+    languages: [
+      { name: 'Common', source: XPHB, grantedBy: 'automatic' },
+      { name: 'Dwarvish', source: XPHB, grantedBy: 'creation' },
+      { name: 'Elvish', source: XPHB, grantedBy: 'creation' },
+    ],
+    hitPointLevels: levelOrder.slice(1).map((entry, index) => ({ level: index + 2, kind: 'average', dieResult: hitDie[entry.className]! / 2 + 1 })),
+  }
+}
+
+const editButton = (page: Page): Locator => page.locator('.sheet__edit-character')
+const saveChanges = (page: Page): Locator => wizardNav(page).getByRole('button', { name: 'Save changes' })
+
+async function openProficienciesInEdit(page: Page): Promise<void> {
+  await editButton(page).click()
+  await expect(currentStep(page)).toContainText('Class and level')
+  await stepBar(page).getByRole('button', { name: /Proficiencies/ }).click()
+  await expect(currentStep(page)).toContainText('Proficiencies')
+}
+
+async function saveEdit(page: Page, id: string): Promise<void> {
+  for (let steps = 0; steps < 12 && !(await saveChanges(page).isVisible()); steps++) await next(page)
+  await saveChanges(page).click()
+  await expect(page).toHaveURL(new RegExp(`#/character/${id}$`))
+}
+
+test('F-22 3: Monk 3 Kensei imported with two melee weapons — Edit leaves the ranged slot open and blocks Next until it is filled', async ({ page }) => {
+  await openSheet(page, [editableMonk('f22-3', [['Monk', 'Way of the Kensei', 3]], { kenseiWeapons: [{ name: 'Longsword', level: 3 }, { name: 'Spear', level: 3 }] })])
+  await openProficienciesInEdit(page)
+  await expect(kenseiSelect(page, /^Kensei melee weapon \(Monk 3\)/)).toHaveValue('Longsword')
+  await expect(kenseiSelect(page, /^Kensei ranged weapon \(Monk 3\)/)).toHaveValue('')
+  await expect(nextOf(page)).toBeDisabled()
+  await kenseiSelect(page, /^Kensei ranged weapon \(Monk 3\)/).selectOption('Longbow')
+  await expect(nextOf(page)).toBeEnabled()
+  await saveEdit(page, 'f22-3')
+  expect((await stored(page, 'f22-3'))['kenseiWeapons']).toEqual(LEVEL_3_PICKS)
+  await expect(proficiencies(page)).not.toContainText('Spear')
+})
+
+test('F-22 2 (D349): multiclass Edit with the Fighter active still asks for the Monk Kensei weapons before saving', async ({ page }) => {
+  const id = 'f22-2'
+  await openSheet(page, [
+    editableMonk(
+      id,
+      [
+        ['Monk', 'Way of the Kensei', 6],
+        ['Fighter', null, 1],
+      ],
+      {
+        kenseiWeapons: [{ name: 'Longsword', level: 3 }],
+        masteries: ['Longsword', 'Greatsword', 'Handaxe'].map((name) => ({ name, level: 7 })),
+        fightingStyles: [{ className: 'Fighter', classSource: XPHB, name: 'Defense', source: XPHB }],
+      },
+    ),
+  ])
+  await editButton(page).click()
+  const switcher = page.getByRole('group', { name: 'Class to edit' })
+  await switcher.getByRole('button', { name: /^Fighter \d+/ }).click()
+  await expect(switcher.getByRole('button', { name: /^Fighter \d+/ })).toHaveAttribute('aria-pressed', 'true')
+  await stepBar(page).getByRole('button', { name: /Proficiencies/ }).click()
+  await expect(currentStep(page)).toContainText('Proficiencies')
+
+  await expect(kenseiSelect(page, /^Kensei ranged weapon \(Monk 3\)/)).toHaveValue('')
+  await expect(nextOf(page)).toBeDisabled()
+  await kenseiSelect(page, /^Kensei ranged weapon \(Monk 3\)/).selectOption('Longbow')
+  await expect(nextOf(page)).toBeDisabled()
+  await kenseiSelect(page, /^Kensei weapon \(Monk 6\)/).selectOption('Whip')
+  await expect(nextOf(page)).toBeEnabled()
+  await saveEdit(page, id)
+  expect((await stored(page, id))['kenseiWeapons']).toEqual([...LEVEL_3_PICKS, { name: 'Whip', level: 6 }])
 })
 
 test('F-19 g: Export then Import keeps the Kensei weapons and the Elegant Courtier save', async ({ page }) => {

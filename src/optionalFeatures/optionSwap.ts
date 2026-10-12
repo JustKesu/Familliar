@@ -3,7 +3,16 @@ import {
 	type ClassOptionalFeatureContextBase,
 	type ClassOptionalFeatureGroup,
 } from './optionalFeatureData'
-import { choiceNames, type CharacterOptionalFeatureChoice, type CharacterOptionalFeaturePick } from '../storage/character'
+import { hasPactOfTheChain } from '../beasts/beastData'
+import { itemInvocationGrants } from '../inventory/customItemGrants'
+import {
+	choiceNames,
+	type CharacterFamiliar,
+	type CharacterFightingStyle,
+	type CharacterInventoryItem,
+	type CharacterOptionalFeatureChoice,
+	type CharacterOptionalFeaturePick,
+} from '../storage/character'
 
 /** D345: the class option kinds a level up may replace one of (F-20a). */
 export const SWAPPABLE_CLASS_OPTION_TYPES: readonly string[] = ['EI', 'MM']
@@ -84,16 +93,84 @@ export function undoSwap(
 		if (entry.featureType !== featureType) return entry
 		const heldNames = choiceNames(heldEntry.choices)
 		const fresh = entry.choices.filter((choice) => !heldNames.includes(choice.name)).slice(0, Math.max(0, count - heldNames.length))
-		const freshNames = choiceNames(fresh)
+		const keptNames = [...choiceNames(fresh), ...heldNames].map((name) => name.toLowerCase())
 		const spellChoices = [
-			...(entry.spellChoices ?? []).filter((pick) => freshNames.includes(pick.optionName) || heldNames.includes(pick.optionName)),
-			...(heldEntry.spellChoices ?? []).filter((pick) => pick.optionName === dropped.name),
+			...(entry.spellChoices ?? []).filter((pick) => keptNames.includes(pick.optionName.toLowerCase()) && pick.optionName.toLowerCase() !== dropped.name.toLowerCase()),
+			...(heldEntry.spellChoices ?? []).filter((pick) => pick.optionName.toLowerCase() === dropped.name.toLowerCase()),
 		]
 		const restored: CharacterOptionalFeatureChoice = { ...entry, choices: [...entry.choices.filter((choice) => heldNames.includes(choice.name)), dropped, ...fresh] }
 		if (spellChoices.length > 0) restored.spellChoices = spellChoices
 		else delete restored.spellChoices
 		return restored
 	})
+}
+
+/** D346 rule 3: the style the Fighter's own feature granted; an untagged pre-58 style is never offered for a swap. */
+export function swappableFightingStyle(
+	styles: readonly CharacterFightingStyle[] | undefined,
+	owner: { className: string; classSource: string } | undefined,
+): CharacterFightingStyle | undefined {
+	if (owner?.className !== SWAPPABLE_STYLE_CLASS) return undefined
+	return (styles ?? []).find((style) => style.className === owner.className && style.classSource === owner.classSource)
+}
+
+/**
+ * D348: a familiar outlives Pact of the Chain only while the invocation is still held (a pick or a granting item).
+ * The familiar goes whatever its form: without the boon the Find Familiar spell may be gone too, and no familiar is
+ * always a valid state the Extras tab can refill. Keeping the swap restores the boon, so the familiar stays.
+ */
+export function familiarAfterOptionChange(
+	familiar: CharacterFamiliar | undefined,
+	before: readonly CharacterOptionalFeatureChoice[] | undefined,
+	after: readonly CharacterOptionalFeatureChoice[] | undefined,
+	inventory: readonly CharacterInventoryItem[] | undefined,
+): CharacterFamiliar | undefined {
+	if (!familiar || !hasPactOfTheChain([...(before ?? [])])) return familiar
+	return hasPactOfTheChain([...(after ?? []), { choices: itemInvocationGrants(inventory) }]) ? familiar : undefined
+}
+
+/**
+ * D347: the picks of `groups` that held their prerequisites in `before` and stop holding them once the selection and
+ * the class levels are those of `after`, removed until nothing more falls (Thirsting Blade below Warlock 5, or after
+ * Pact of the Blade went). A pick already failing before is left alone — the context may not answer everything.
+ * Removed options take their own spell sub-choices with them (D345 rule 4).
+ */
+export function cascadePrerequisiteLoss(
+	groups: ClassOptionalFeatureGroup[],
+	before: { selection: CharacterOptionalFeatureChoice[]; base: ClassOptionalFeatureContextBase },
+	after: { selection: CharacterOptionalFeatureChoice[]; base: ClassOptionalFeatureContextBase },
+): { selection: CharacterOptionalFeatureChoice[]; removed: { featureType: string; name: string; spells: string[] }[] } {
+	const key = (featureType: string, name: string): string => `${featureType}|${name.toLowerCase()}`
+	const validBefore = new Set(
+		evaluateClassOptionalFeatureGroups(groups, before.selection, before.base).flatMap((group) => {
+			const invalid = new Set(group.invalidChosen.map((entry) => entry.name.toLowerCase()))
+			return group.chosen.filter((name) => !invalid.has(name.toLowerCase())).map((name) => key(group.featureType, name))
+		}),
+	)
+	let selection = after.selection
+	const removed: { featureType: string; name: string; spells: string[] }[] = []
+	for (;;) {
+		const falling = evaluateClassOptionalFeatureGroups(groups, selection, after.base).flatMap((group) =>
+			group.invalidChosen.filter((entry) => validBefore.has(key(group.featureType, entry.name))).map((entry) => key(group.featureType, entry.name)),
+		)
+		if (falling.length === 0) return { selection, removed }
+		selection = selection.flatMap((entry) => {
+			const choices = entry.choices.filter((choice) => {
+				if (!falling.includes(key(entry.featureType, choice.name))) return true
+				const spells = (entry.spellChoices ?? [])
+					.filter((pick) => pick.optionName.toLowerCase() === choice.name.toLowerCase())
+					.flatMap((pick) => [...pick.cantrips, ...pick.spells].map((spell) => spell.name))
+				removed.push({ featureType: entry.featureType, name: choice.name, spells })
+				return false
+			})
+			if (choices.length === entry.choices.length) return [entry]
+			const spellChoices = (entry.spellChoices ?? []).filter((pick) => !falling.includes(key(entry.featureType, pick.optionName)))
+			const updated: CharacterOptionalFeatureChoice = { ...entry, choices }
+			if (spellChoices.length > 0) updated.spellChoices = spellChoices
+			else delete updated.spellChoices
+			return choices.length === 0 && spellChoices.length === 0 ? [] : [updated]
+		})
+	}
 }
 
 /**

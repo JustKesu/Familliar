@@ -328,6 +328,112 @@ test('F-20b i: Fighter 4 replaces Archery with Defense — AC gains Defense, the
   await expect(page.getByRole('dialog')).not.toContainText('Archery')
 })
 
+/* F-22 (D347): Remove level also removes what lost its prerequisite; D348: Pact of the Chain takes its familiar along. */
+const removeLevel = async (page: Page, level: number, expected: { listed: string[]; unlisted?: string[] }): Promise<void> => {
+  await page.getByRole('button', { name: `Remove level ${level}`, exact: true }).click()
+  const dialog = page.getByRole('alertdialog', { name: `Remove level ${level}?` })
+  for (const line of expected.listed) await expect(dialog.locator('li', { hasText: line })).toHaveCount(1)
+  for (const text of expected.unlisted ?? []) await expect(dialog).not.toContainText(text)
+  await dialog.getByRole('button', { name: 'Remove level', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+}
+
+const swapToThirstingBlade = (order: string[]) => async (p: Page) => {
+  await replaceGroup(p).getByRole('button', { name: 'Replace Agonizing Blast', exact: true }).click()
+  await openOptionList(p, 'Eldritch Invocations')
+  for (const name of order) await chooseButton(p, name).click()
+  await expect(nextOf(p)).toBeEnabled()
+}
+
+test('F-22 1a: Warlock 4 → 5 swaps into Thirsting Blade before the new picks; Remove level 5 lists and removes it', async ({ page }) => {
+  await openSheet(page, warlock('f22-1a', 4, ['Pact of the Blade', 'Agonizing Blast', 'Armor of Shadows']))
+  await levelUp(page, 'Warlock 4 → 5', 5, swapToThirstingBlade(['Thirsting Blade', "Devil's Sight", 'Mask of Many Faces']))
+  const after = (await storedOptions(page, 'f22-1a', 'EI')).choices
+  // The replacement clicked first inherits Agonizing Blast's (absent) creation stamp.
+  expect(after.find((choice) => choice.name === 'Thirsting Blade')!.level).toBeUndefined()
+
+  await removeLevel(page, 5, { listed: ["EI option: Devil's Sight", 'EI option: Mask of Many Faces', 'EI option: Thirsting Blade (prerequisite no longer met)'] })
+  expect(names((await storedOptions(page, 'f22-1a', 'EI')).choices)).toEqual(['Pact of the Blade', 'Armor of Shadows'])
+  await page.getByRole('tab', { name: 'Features & Traits' }).click()
+  await expect(featureOptions(page).filter({ hasText: 'Armor of Shadows' })).not.toContainText('Thirsting Blade')
+})
+
+test('F-22 1b: the other click order — Thirsting Blade carries the level 5 stamp and Remove level 5 cascades nothing', async ({ page }) => {
+  await openSheet(page, warlock('f22-1b', 4, ['Pact of the Blade', 'Agonizing Blast', 'Armor of Shadows']))
+  await levelUp(page, 'Warlock 4 → 5', 5, swapToThirstingBlade(["Devil's Sight", 'Thirsting Blade', 'Mask of Many Faces']))
+  expect((await storedOptions(page, 'f22-1b', 'EI')).choices.find((choice) => choice.name === 'Thirsting Blade')!.level).toBe(5)
+
+  await removeLevel(page, 5, { listed: ['EI option: Thirsting Blade', 'EI option: Mask of Many Faces'], unlisted: ['prerequisite no longer met', "Devil's Sight"] })
+  expect(names((await storedOptions(page, 'f22-1b', 'EI')).choices)).toEqual(['Pact of the Blade', 'Armor of Shadows', "Devil's Sight"])
+})
+
+const IMP = { name: 'Imp', source: 'XMM' }
+const CHAIN_INVOCATIONS = ['Pact of the Chain', 'Agonizing Blast', 'Armor of Shadows', "Devil's Sight", 'Mask of Many Faces']
+
+test('F-22 2a (D348): swapping out Pact of the Chain on Warlock 5 → 6 removes the Imp familiar', async ({ page }) => {
+  await openSheet(page, warlock('f22-2a', 5, CHAIN_INVOCATIONS, { familiar: IMP }))
+  await levelUp(page, 'Warlock 5 → 6', 6, async (p) => {
+    await replaceGroup(p).getByRole('button', { name: 'Replace Pact of the Chain', exact: true }).click()
+    await openOptionList(p, 'Eldritch Invocations')
+    await chooseButton(p, 'Pact of the Blade').click()
+    await expect(nextOf(p)).toBeEnabled()
+  })
+  const saved = await stored(page, 'f22-2a')
+  expect(names((saved['optionalFeatureChoices'] as { choices: { name: string }[] }[])[0]!.choices)).not.toContain('Pact of the Chain')
+  expect(saved['familiar']).toBeUndefined()
+})
+
+test('F-22 2b (D348): Keep after Replace Pact of the Chain keeps the familiar', async ({ page }) => {
+  await openSheet(page, warlock('f22-2b', 5, CHAIN_INVOCATIONS, { familiar: IMP }))
+  await levelUp(page, 'Warlock 5 → 6', 6, async (p) => {
+    await replaceGroup(p).getByRole('button', { name: 'Replace Pact of the Chain', exact: true }).click()
+    await replaceGroup(p).getByRole('button', { name: 'Keep Pact of the Chain', exact: true }).click()
+    await expect(nextOf(p)).toBeEnabled()
+  })
+  const saved = await stored(page, 'f22-2b')
+  expect(saved['familiar']).toEqual(IMP)
+  expect(names((saved['optionalFeatureChoices'] as { choices: { name: string }[] }[])[0]!.choices)).toContain('Pact of the Chain')
+})
+
+test('F-22 2c (D348): Remove level that drops Pact of the Chain lists and removes the familiar', async ({ page }) => {
+  const choices = [...refs(['Agonizing Blast', 'Armor of Shadows', "Devil's Sight"]), { name: 'Pact of the Chain', source: XPHB, level: 5 }, { name: 'Mask of Many Faces', source: XPHB, level: 5 }]
+  await openSheet(page, warlock('f22-2c', 5, [], { createdAtLevel: 4, optionalFeatureChoices: [{ featureType: 'EI', choices }], familiar: IMP }))
+  await removeLevel(page, 5, { listed: ['EI option: Pact of the Chain', 'Familiar: Imp'] })
+  expect((await stored(page, 'f22-2c'))['familiar']).toBeUndefined()
+})
+
+test('F-22 7: Keep after Replace Pact of the Tome restores its spells', async ({ page }) => {
+  const tome = { optionName: 'Pact of the Tome', cantrips: refs(['Guidance', 'Light', 'Sacred Flame']), spells: refs(['Detect Magic', 'Find Familiar']) }
+  const held = refs(['Pact of the Tome', 'Agonizing Blast', 'Armor of Shadows', "Devil's Sight", 'Mask of Many Faces'])
+  await openSheet(page, warlock('f22-7', 5, [], { optionalFeatureChoices: [{ featureType: 'EI', choices: held, spellChoices: [tome] }] }))
+  await levelUp(page, 'Warlock 5 → 6', 6, async (p) => {
+    await replaceGroup(p).getByRole('button', { name: 'Replace Pact of the Tome', exact: true }).click()
+    await replaceGroup(p).getByRole('button', { name: 'Keep Pact of the Tome', exact: true }).click()
+    await expect(nextOf(p)).toBeEnabled()
+  })
+  expect((await storedOptions(page, 'f22-7', 'EI')).spellChoices).toEqual([tome])
+  await page.getByRole('tab', { name: 'Spells' }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Spells' })).toContainText('Guidance')
+})
+
+test('F-22 6 (D346 rule 3): a Fighter whose style was saved untagged (before schema 58) is not offered to replace it', async ({ page }) => {
+  const untagged = [{ name: 'Archery', source: XPHB }]
+  await openSheet(page, fighter('f22-6', 'Champion', { fightingStyles: untagged }))
+  const steps = await levelUp(
+    page,
+    'Fighter 4 → 5',
+    5,
+    async (p) => {
+      await expect(p.getByRole('button', { name: 'Replace Archery', exact: true })).toHaveCount(0)
+    },
+    CLASS_STEP,
+  )
+  // Fighter 5 adds nothing to the class step, so with no swappable style it is not walked at all.
+  expect(steps.some((step) => CLASS_STEP.test(step))).toBe(false)
+  // The save tags the adopted style as the Fighter's (D318/D334); it is kept, not replaced.
+  expect(names((await stored(page, 'f22-6'))['fightingStyles'] as { name: string }[])).toEqual(['Archery'])
+})
+
 test('F-20b j: levelling the Fighter of a Fighter/Paladin offers only the Fighter style', async ({ page }) => {
   await openSheet(
     page,

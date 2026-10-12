@@ -44,11 +44,11 @@ import { SUBCLASS_SKILL_GRANTS, subclassSkillChoiceCount, subclassSkillGrantsFor
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
 import { masteryCountFor } from '../masteries/masteryData'
 import { classOptionalFeatureGrantsFor, optionalFeatureChoicesFor } from '../optionalFeatures/optionalFeatureData'
-import { holdsSwappableOption, holdsSwappableSubclassOption, SWAPPABLE_STYLE_CLASS, SWAPPABLE_SUBCLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
+import { holdsSwappableOption, holdsSwappableSubclassOption, SWAPPABLE_STYLE_CLASS, SWAPPABLE_SUBCLASS_OPTION_TYPES, swappableFightingStyle } from '../optionalFeatures/optionSwap'
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractSpellCountClassData } from '../spells/spellCountClassData'
 import { subclassSpellChoiceShape, unlockedSubclassSpellChoiceSlots } from '../spells/subclassSpellChoiceData'
-import { fightingStyleFor, type Character, type CharacterClass } from '../storage/character'
+import type { Character, CharacterClass } from '../storage/character'
 import { subclassLevelFor } from '../subclass/subclassData'
 import { multiclassPickShape, type MulticlassPickShape } from '../multiclass/multiclassPicks'
 import { totalCharacterLevel } from '../calculation/characterLevel'
@@ -481,7 +481,7 @@ function spellsStepGain(
 /** D345 (F-20b): the Fighter's own style, rune or maneuver can be replaced at any Fighter level up, so the class step is walked even when it adds nothing. */
 function withClassStepSwap(gain: LevelGain, character: Character, characterClass: CharacterClass): LevelGain {
 	if (characterClass.className !== SWAPPABLE_STYLE_CLASS || characterClass.level === 0) return gain
-	const holdsStyle = fightingStyleFor(character.fightingStyles, characterClass) !== undefined
+	const holdsStyle = swappableFightingStyle(character.fightingStyles, characterClass) !== undefined
 	const holdsOption = SWAPPABLE_SUBCLASS_OPTION_TYPES.some((featureType) => holdsSwappableSubclassOption(character.optionalFeatureChoices, featureType))
 	return holdsStyle || holdsOption ? { ...gain, swappable: true } : gain
 }

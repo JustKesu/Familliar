@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { levelGainsFor, type LevelGains, type LevelUpClass } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
 import { levelUpStepConditions, unknownLevelUpSteps } from './levelUpSteps'
-import { overwrittenHeldPicks } from './heldPicks'
+import { heldPicksFrom, overwrittenHeldPicks } from './heldPicks'
 import { LevelUpButton } from './LevelUpButton'
 import { isStepComplete, saveCharacter, visibleSteps, wizardDataFromCharacter } from '../creation/wizardState'
 import type { Character, FeatAsiChoice } from '../storage/character'
@@ -349,6 +349,13 @@ describe('saving a level up', () => {
 			const paladin: Character = { ...single('Paladin', 'Oath of Devotion', 4), fightingStyles: [{ className: 'Paladin', classSource: 'XPHB', name: 'Archery' }] }
 			const paladinData = { ...wizardDataFromCharacter(paladin, { subclasses: [], spellLevels: [] }), classChoice: { className: 'Paladin', classSource: 'XPHB', level: 5 } }
 			expect(overwrittenHeldPicks(paladin, { ...paladinData, fightingStyle: 'Defense' })).toEqual(['fighting style Archery'])
+
+			// F-22 item 6: an untagged pre-58 style is not the Fighter's own, so it stays locked.
+			const untagged: Character = { ...single('Fighter', 'Champion', 4), fightingStyles: [{ name: 'Archery' }] }
+			const untaggedData = { ...wizardDataFromCharacter(untagged, { subclasses: [], spellLevels: [] }), classChoice: { className: 'Fighter', classSource: 'XPHB', level: 5 } }
+			expect(heldPicksFrom(untagged, null).swappableFightingStyle).toBeNull()
+			expect(heldPicksFrom(fighterWithStyle, null).swappableFightingStyle).toBe('Archery')
+			expect(overwrittenHeldPicks(untagged, { ...untaggedData, fightingStyle: 'Defense' })).toEqual(['fighting style Archery'])
 		})
 
 		it('a feat/ASI pick or a class optional-feature pick', () => {

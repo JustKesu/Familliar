@@ -42,15 +42,37 @@ export function kenseiSlotsFor(classes: readonly CharacterClass[]): KenseiSlot[]
 	return monk ? KENSEI_SLOTS.filter((slot) => slot.level <= monk.level) : []
 }
 
-/** The stored picks that still count: the character is a Kensei Monk and has reached the pick's level. */
+/** The stored picks that still count: the character is a Kensei Monk, has reached the pick's level, and that level has a slot left for it. */
 export function heldKenseiWeapons(classes: readonly CharacterClass[], picks: readonly CharacterKenseiWeapon[] | undefined): CharacterKenseiWeapon[] {
 	const slots = kenseiSlotsFor(classes)
-	return (picks ?? []).filter((pick) => slots.some((slot) => slot.level === pick.level))
+	const taken = new Map<number, number>()
+	return (picks ?? []).filter((pick) => {
+		const room = slots.filter((slot) => slot.level === pick.level).length
+		const used = taken.get(pick.level) ?? 0
+		if (used >= room) return false
+		taken.set(pick.level, used + 1)
+		return true
+	})
 }
 
-/** Each slot level has as many picks stamped with it as it has slots; the picker keeps level 3's melee/ranged split. */
-export function kenseiSlotsFilled(slots: readonly KenseiSlot[], picks: readonly CharacterKenseiWeapon[]): boolean {
-	return slots.every((slot) => picks.filter((pick) => pick.level === slot.level).length >= slots.filter((other) => other.level === slot.level).length)
+/** Each slot paired with the first unused pick of its level and kind, in slot order — the picker's own pairing. */
+export function pairKenseiPicks(
+	slots: readonly KenseiSlot[],
+	picks: readonly CharacterKenseiWeapon[],
+	isRanged: (name: string) => boolean,
+): { slot: KenseiSlot; pick: CharacterKenseiWeapon | undefined }[] {
+	const used = new Set<CharacterKenseiWeapon>()
+	return slots.map((slot) => {
+		const pick = picks.find((candidate) => !used.has(candidate) && candidate.level === slot.level && (slot.kind === 'any' || isRanged(candidate.name) === (slot.kind === 'ranged')))
+		if (pick) used.add(pick)
+		return { slot, pick }
+	})
+}
+
+/** Every slot holds a pick of its own kind (two melee picks on Monk 3 leave the ranged slot open). `null` = the weapon list is still loading. */
+export function kenseiSlotsFilled(slots: readonly KenseiSlot[], picks: readonly CharacterKenseiWeapon[], isRanged: ((name: string) => boolean) | null): boolean {
+	if (slots.length === 0) return true
+	return isRanged !== null && pairKenseiPicks(slots, picks, isRanged).every((paired) => paired.pick !== undefined)
 }
 
 export function kenseiWeaponsOwed(classes: readonly CharacterClass[], picks: readonly CharacterKenseiWeapon[] | undefined): number {

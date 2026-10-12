@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CharacterKenseiWeapon } from '../storage/character'
-import { loadKenseiWeaponOptions, type KenseiSlot, type KenseiWeaponOption } from './kensei'
+import { loadKenseiWeaponOptions, pairKenseiPicks, type KenseiSlot, type KenseiWeaponOption } from './kensei'
 
 /**
  * D344: one select per Kensei weapon slot in `slots`. `value` holds every stored pick, including slots this run
@@ -39,17 +39,18 @@ export function KenseiWeaponSlots({
 	if (!options) return <p>Loading the Kensei weapons…</p>
 
 	const isRanged = (name: string): boolean => options.some((option) => option.name === name && option.ranged)
-	// Level 3 holds one melee and one ranged pick; every later level holds one pick of either kind.
-	const pickFor = (slot: KenseiSlot): CharacterKenseiWeapon | undefined =>
-		value.find((pick) => pick.level === slot.level && (slot.kind === 'any' || isRanged(pick.name) === (slot.kind === 'ranged')))
+	const paired = pairKenseiPicks(slots, value, isRanged)
+	const shownLevels = new Set(slots.map((slot) => slot.level))
+	const otherLevels = value.filter((pick) => !shownLevels.has(pick.level))
 
 	return (
 		<ul className="language-picker__list">
-			{slots.map((slot) => {
-				const current = pickFor(slot)
-				const taken = new Set(value.filter((pick) => pick !== current).map((pick) => pick.name))
+			{paired.map(({ slot, pick: current }, index) => {
+				const kept = paired.flatMap((entry, other) => (other !== index && entry.pick ? [entry.pick] : []))
+				const taken = new Set([...otherLevels, ...kept].map((pick) => pick.name))
 				const offered = options.filter((option) => !taken.has(option.name) && (slot.kind === 'any' || option.ranged === (slot.kind === 'ranged')))
-				const choose = (name: string): void => onChange([...value.filter((pick) => pick !== current), ...(name ? [{ name, level: slot.level }] : [])])
+				// A pick of the shown levels that pairs with no slot (two melee on Monk 3) goes with the next change.
+				const choose = (name: string): void => onChange([...otherLevels, ...kept, ...(name ? [{ name, level: slot.level }] : [])])
 				return (
 					<li key={`${slot.level}:${slot.kind}`}>
 						<label>

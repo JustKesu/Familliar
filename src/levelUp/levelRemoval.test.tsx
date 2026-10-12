@@ -821,6 +821,73 @@ describe('spent hit dice on a level removal', () => {
 	})
 })
 
+describe('D347/D348: options that lose their prerequisites go with the level (F-22)', () => {
+	const EI_PROGRESSION = [1, 3, 3, 3, 5, 5, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10]
+	const classes = (CLASSES as Record<string, unknown>[]).map((entry) =>
+		entry['name'] === 'Warlock' ? { ...entry, optionalfeatureProgression: [{ name: 'Eldritch Invocations', featureType: ['EI'], progression: EI_PROGRESSION }] } : entry,
+	)
+	const warlock = (level: number) => ({ level, class: { name: 'Warlock', source: 'XPHB' } })
+	const invocation = (name: string, prerequisite?: unknown[]) => ({ name, source: 'XPHB', featureType: ['EI'], entries: [], ...(prerequisite ? { prerequisite } : {}) })
+	const resolver: ResolverData = {
+		...RESOLVER,
+		optionalFeatures: [
+			invocation('Pact of the Blade', [{ level: warlock(1) }]),
+			invocation('Pact of the Chain', [{ level: warlock(1) }]),
+			invocation('Armor of Shadows'),
+			invocation('Misty Visions'),
+			invocation('Thirsting Blade', [{ level: warlock(5), pact: 'Blade' }]),
+			invocation('Eldritch Smite', [{ level: warlock(5), pact: 'Blade' }]),
+			invocation('Agonizing Blast', [{ level: warlock(2), spell: [{ choose: 'level=0|class=Warlock' }] }]),
+		],
+	}
+	const warlockAt = (level: number, createdAtLevel: number, picks: { name: string; level?: number }[], extra: Partial<Character> = {}): Character => ({
+		...single('Warlock', null, level, createdAtLevel),
+		optionalFeatureChoices: [{ featureType: 'EI', choices: picks }],
+		...extra,
+	})
+	const remove = (character: Character): LevelRemovalPlan => {
+		const result = levelRemovalPlan(character, classes, resolver, null)
+		if ('reason' in result) throw new Error(result.reason)
+		return result
+	}
+	const names = (character: Character) => character.optionalFeatureChoices?.flatMap((entry) => entry.choices.map((choice) => choice.name))
+
+	it('swap into Thirsting Blade clicked first (it inherits the L2 stamp): Remove level 5 cascades it and lists it', () => {
+		const { dropped, result } = remove(warlockAt(5, 4, [{ name: 'Pact of the Blade' }, { name: 'Armor of Shadows', level: 2 }, { name: 'Thirsting Blade', level: 2 }, { name: 'Misty Visions', level: 5 }]))
+		expect(names(result)).toEqual(['Pact of the Blade', 'Armor of Shadows'])
+		expect(dropped).toEqual(expect.arrayContaining(['EI option: Misty Visions', 'EI option: Thirsting Blade (prerequisite no longer met)']))
+	})
+
+	it('the other click order (Thirsting Blade stamped 5): Remove level 5 drops it by stamp and cascades nothing', () => {
+		const { dropped, result } = remove(warlockAt(5, 4, [{ name: 'Pact of the Blade' }, { name: 'Armor of Shadows', level: 2 }, { name: 'Misty Visions', level: 2 }, { name: 'Thirsting Blade', level: 5 }]))
+		expect(names(result)).toEqual(['Pact of the Blade', 'Armor of Shadows', 'Misty Visions'])
+		expect(dropped).toContain('EI option: Thirsting Blade')
+		expect(dropped.some((line) => line.includes('prerequisite no longer met'))).toBe(false)
+	})
+
+	it('a pick whose prerequisite was another removed pick goes too (Eldritch Smite after Pact of the Blade)', () => {
+		const { dropped, result } = remove(warlockAt(6, 5, [{ name: 'Armor of Shadows' }, { name: 'Eldritch Smite', level: 5 }, { name: 'Pact of the Blade', level: 6 }]))
+		expect(names(result)).toEqual(['Armor of Shadows'])
+		expect(dropped).toEqual(expect.arrayContaining(['EI option: Pact of the Blade', 'EI option: Eldritch Smite (prerequisite no longer met)']))
+	})
+
+	it('leaves a pick that already failed before the removal (a check the context cannot answer)', () => {
+		const { result } = remove(warlockAt(5, 4, [{ name: 'Agonizing Blast' }, { name: 'Armor of Shadows', level: 5 }]))
+		expect(names(result)).toEqual(['Agonizing Blast'])
+	})
+
+	it('D348: Pact of the Chain leaving takes the familiar; a familiar without the boon stays', () => {
+		const imp = { name: 'Imp', source: 'XMM' }
+		const withChain = remove(warlockAt(5, 4, [{ name: 'Armor of Shadows' }, { name: 'Pact of the Chain', level: 5 }], { familiar: imp }))
+		expect(withChain.result.familiar).toBeUndefined()
+		expect(withChain.dropped).toContain('Familiar: Imp')
+		const kept = remove(warlockAt(5, 4, [{ name: 'Pact of the Chain' }, { name: 'Armor of Shadows', level: 5 }], { familiar: imp }))
+		expect(kept.result.familiar).toEqual(imp)
+		const cat = remove(warlockAt(5, 4, [{ name: 'Armor of Shadows', level: 5 }], { familiar: { name: 'Cat', source: 'XMM' } }))
+		expect(cat.result.familiar).toEqual({ name: 'Cat', source: 'XMM' })
+	})
+})
+
 describe('RemoveLevelButton', () => {
 	const fixturePlan = async (character: Character) => levelRemovalPlan(character, CLASSES, RESOLVER, null)
 

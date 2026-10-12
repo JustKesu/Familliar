@@ -35,10 +35,10 @@ import type {
 	FeatAsiChoice,
 	LeveledChoice,
 } from '../storage/character'
-import { hasElegantCourtier, heldKenseiWeapons, kenseiSlotsFilled, kenseiSlotsFor, type KenseiSlot } from '../kensei/kensei'
+import { hasElegantCourtier, heldKenseiWeapons, kenseiSlotsFilled, kenseiSlotsFor, pairKenseiPicks, type KenseiSlot } from '../kensei/kensei'
 import { choiceNames, fightingStyleFor, isConsistentLevelOrder, singleClassLevelOrder } from '../storage/character'
 import type { PickSourceLookup } from '../optionalFeatures/pickSources'
-import { inheritSwapStamp } from '../optionalFeatures/optionSwap'
+import { familiarAfterOptionChange, inheritSwapStamp } from '../optionalFeatures/optionSwap'
 import { isValidHitPointEntry } from '../hitPoints/hitPointEntry'
 import { splitAlwaysPreparedPicks } from './alwaysPreparedOverlap'
 import type { AbilityBonusDistribution } from '../backgrounds/abilityBonus'
@@ -205,6 +205,8 @@ export interface WizardStepConditions {
 	multiclassPicksComplete?: boolean
 	/** D344: false while Elegant Courtier needs its Intelligence/Charisma pick (or Wisdom proficiency is still being worked out). */
 	elegantCourtierComplete?: boolean
+	/** Item 3 (F-22): the ranged Kensei weapon names, to pair picks with the melee and ranged slots; `null` while items.json loads. */
+	kenseiRangedWeapons?: ReadonlySet<string> | null
 }
 
 /**
@@ -332,6 +334,7 @@ function resolveConditions(
 		hitDieFacesByLevel: conditions.hitDieFacesByLevel,
 		multiclassPicksComplete: conditions.multiclassPicksComplete ?? true,
 		elegantCourtierComplete: conditions.elegantCourtierComplete ?? true,
+		kenseiRangedWeapons: conditions.kenseiRangedWeapons === undefined ? null : conditions.kenseiRangedWeapons,
 	}
 }
 
@@ -408,10 +411,10 @@ export function wizardSubclassSkillGrants(data: WizardData, levelUpTargetLevel: 
 	return levelUpTargetLevel === null || !cls ? grants : grants.filter((grant) => grant.level === cls.level)
 }
 
-/** D344: the Kensei slots the languages step collects; a level-up walk asks only for the ones that Monk level brings. */
-export function wizardKenseiSlots(data: WizardData, levelUpTargetLevel: number | null): KenseiSlot[] {
+/** D344: the Kensei slots the languages step collects; a level-up walk asks only for the ones that Monk level brings. D349: a multiclass Edit's Monk counts while another class is active. */
+export function wizardKenseiSlots(data: WizardData, levelUpTargetLevel: number | null, heldClasses: readonly CharacterClass[] | null = null): KenseiSlot[] {
 	const cls = wizardClass(data)
-	const slots = cls ? kenseiSlotsFor([cls]) : []
+	const slots = cls ? kenseiSlotsFor(heldClasses ?? [cls]) : []
 	return levelUpTargetLevel === null || !cls ? slots : slots.filter((slot) => slot.level === cls.level)
 }
 
@@ -921,6 +924,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		hitDieFacesByLevel,
 		multiclassPicksComplete,
 		elegantCourtierComplete,
+		kenseiRangedWeapons,
 		characterLevel,
 	} = resolveConditions(conditions)
 	switch (step) {
@@ -984,7 +988,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				) &&
 				wizardSubclassSkillGrants(data, levelUpTargetLevel, heldClasses).every((grant) => isSubclassSkillChoiceMade(grant, data.subclassSkills, data.featureLanguages)) &&
 				// D344: Kensei weapons and the Elegant Courtier save block like the subclass tool and skill picks beside them.
-				kenseiSlotsFilled(wizardKenseiSlots(data, levelUpTargetLevel), data.kenseiWeapons) &&
+				kenseiSlotsFilled(wizardKenseiSlots(data, levelUpTargetLevel, heldClasses), data.kenseiWeapons, kenseiRangedWeapons && ((name) => kenseiRangedWeapons.has(name))) &&
 				elegantCourtierComplete &&
 				// D330: only a class entered in this level up (class level 1) owes its multiclass picks here.
 				(levelUpTargetLevel === null || cls === null || cls.level > 1 || (data.multiclassPicks ?? []).filter((pick) => isClass(pick, cls)).length === multiclassPickCount) &&
@@ -1153,12 +1157,25 @@ export interface UnfinishedClass {
  * M9 (question 1): the held classes of a multiclass Edit whose own picks are unfinished — the stashed ones and the
  * active one alike. Only the per-class fields are checked; the shared ones belong to their own steps.
  */
-export function unfinishedHeldClasses(data: WizardData, conditionsFor: (cls: ClassStash) => HeldClassConditions): UnfinishedClass[] {
+export function unfinishedHeldClasses(
+	data: WizardData,
+	conditionsFor: (cls: ClassStash) => HeldClassConditions,
+	kenseiRangedWeapons: ReadonlySet<string> | null = null,
+): UnfinishedClass[] {
 	if (!data.classChoice || !data.otherClasses) return []
 	return [stashOf(data, data.classChoice), ...data.otherClasses].flatMap((cls) => {
 		const conditions = conditionsFor(cls)
 		const owned = (field: 'expertiseSkills' | 'masteries'): number => (data.pickOwners ? ownedPicks(data[field], data.pickOwners[field].owners, cls.classChoice).length : 0)
-		const missing = [...missingClassPicks(cls, conditions), ...missingHeldPicks(owned('expertiseSkills'), owned('masteries'), conditions)]
+		// D349: the Kensei weapons block the save like the class's Expertise and masteries.
+		const kenseiSlots = kenseiSlotsFor([{ ...cls.classChoice, subclass: cls.subclass?.name ?? null }])
+		const kenseiOpen = kenseiRangedWeapons
+			? pairKenseiPicks(kenseiSlots, data.kenseiWeapons, (name) => kenseiRangedWeapons.has(name)).filter((paired) => paired.pick === undefined).length
+			: Math.max(0, kenseiSlots.length - data.kenseiWeapons.length)
+		const missing = [
+			...missingClassPicks(cls, conditions),
+			...missingHeldPicks(owned('expertiseSkills'), owned('masteries'), conditions),
+			...(kenseiOpen > 0 ? [`choose ${kenseiOpen} more Kensei ${kenseiOpen === 1 ? 'weapon' : 'weapons'}`] : []),
+		]
 		return missing.length > 0 ? [{ className: cls.classChoice.className, classSource: cls.classChoice.classSource, missing }] : []
 	})
 }
@@ -1813,7 +1830,7 @@ export function saveCharacter(
 		 * D111: the store keeps the death saves only while the resulting current is 0, so a level up that raises it clears them by itself.
 		 */
 		play: levelUpTo !== undefined && levelUpResourceUses !== undefined ? playWithResourceUses(existing?.play, levelUpResourceUses) : existing?.play,
-		familiar: existing?.familiar,
+		familiar: familiarAfterOptionChange(existing?.familiar, existing?.optionalFeatureChoices, perClass.optionalFeatureChoices, existing?.inventory),
 		// Slice 8e: set by the creation run only. An edit or a level up keeps what the character had, including "not known".
 		createdAtLevel: existing ? existing.createdAtLevel : data.classChoice?.level,
 		// D317: create and Edit (single-class since M0, may change the class) rebuild it; a level up appends, and keeps "not known" as it is.

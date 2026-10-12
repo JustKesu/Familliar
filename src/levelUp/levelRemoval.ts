@@ -7,14 +7,15 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { featInstances, loadBackgroundOriginFeat, type FeatRef } from '../featAsi/featInstances'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
-import { chosenOptionalFeatureOptions } from '../optionalFeatures/optionalFeatureData'
+import { chosenOptionalFeatureOptions, classOptionalFeatureGroupsFor, type ClassOptionalFeatureContextBase } from '../optionalFeatures/optionalFeatureData'
+import { cascadePrerequisiteLoss, familiarAfterOptionChange } from '../optionalFeatures/optionSwap'
 import { grantedClassFeaturesFrom } from '../sheet/grantedClassFeatures'
 import { extractFeatTextEntries } from '../sheet/sheetData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
 import { ELEGANT_COURTIER_LEVEL } from '../kensei/kensei'
 import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
-import { fightingStyleFor, isConsistentLevelOrder, type Character, type LeveledChoice } from '../storage/character'
+import { fightingStyleFor, isConsistentLevelOrder, type Character, type CharacterClass, type LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
 import { matchesConcentration } from '../storage/choiceMatch'
 import { subclassLevelFor } from '../subclass/subclassData'
@@ -154,7 +155,7 @@ export function levelRemovalCore(
 	dropped.push(...expertiseSkills.dropped.map((choice) => `Expertise: ${choice.name}`))
 
 	const droppedSpells: { name: string; source: string }[] = []
-	const optionalFeatureChoices = (character.optionalFeatureChoices ?? []).flatMap((entry) => {
+	const optionalFeatureChoicesByStamp = (character.optionalFeatureChoices ?? []).flatMap((entry) => {
 		const choices = withoutLevel(entry.choices, level)
 		dropped.push(...choices.dropped.map((choice) => `${entry.featureType} option: ${choice.name}`))
 		// Nested spell picks are spells, which removal leaves alone unless their option leaves with a removed class (D332).
@@ -171,6 +172,29 @@ export function levelRemovalCore(
 		if (choices.kept.length === 0 && (spellChoices ?? []).length === 0) return []
 		return [{ ...entry, choices: choices.kept, ...(spellChoices ? { spellChoices } : {}) }]
 	})
+
+	// D347: the class's own options whose prerequisites the lower level or the removed picks no longer meet go too.
+	const levelsOf = (classes: readonly CharacterClass[]): ClassOptionalFeatureContextBase => ({
+		classLevels: classes.map((entry) => ({ className: entry.className, level: entry.level, subclassName: entry.subclass })),
+		knownSpellNames: [],
+		hasFightingStyleFeature: false,
+	})
+	const reducedClasses = classRemoved
+		? character.classes.filter((entry) => entry !== characterClass)
+		: character.classes.map((entry) => (entry === characterClass ? { ...characterClass, subclass, level: classLevel - 1 } : entry))
+	const cascade = cascadePrerequisiteLoss(
+		classOptionalFeatureGroupsFor(parsedClasses, resolverData.optionalFeatures, resolverData.feats, className, classSource, classLevel),
+		{ selection: character.optionalFeatureChoices ?? [], base: levelsOf(character.classes) },
+		{ selection: optionalFeatureChoicesByStamp, base: levelsOf(reducedClasses) },
+	)
+	const optionalFeatureChoices = cascade.selection
+	for (const lost of cascade.removed) {
+		dropped.push(`${lost.featureType} option: ${lost.name} (prerequisite no longer met)`)
+		dropped.push(...lost.spells.map((spell) => `${lost.name} spell: ${spell}`))
+	}
+	// D348: the familiar goes with Pact of the Chain.
+	const familiar = familiarAfterOptionChange(character.familiar, character.optionalFeatureChoices, optionalFeatureChoices, character.inventory)
+	if (character.familiar && !familiar) dropped.push(`Familiar: ${character.familiar.name}`)
 
 	const featAsiChoices = (character.featAsiChoices ?? []).filter((choice) => {
 		if (choice.level !== level) return true
@@ -275,15 +299,14 @@ export function levelRemovalCore(
 		}
 	}
 
-	const { play: _play, kenseiWeapons: _kensei, elegantCourtierSave, ...withoutPlay } = character
+	const { play: _play, kenseiWeapons: _kensei, elegantCourtierSave, familiar: _familiar, ...withoutPlay } = character
 	const result: Character = {
 		...withoutPlay,
 		...(kenseiWeapons && kenseiWeapons.length > 0 ? { kenseiWeapons } : {}),
 		...(elegantCourtierSave && !losesCourtier ? { elegantCourtierSave } : {}),
+		...(familiar ? { familiar } : {}),
 		...(play ? { play } : {}),
-		classes: classRemoved
-			? character.classes.filter((entry) => entry !== characterClass)
-			: character.classes.map((entry) => (entry === characterClass ? { ...characterClass, subclass, level: classLevel - 1 } : entry)),
+		classes: reducedClasses,
 		...(spellChoices ? { spellChoices } : {}),
 		...(wildShapeForms ? { wildShapeForms } : {}),
 		...(multiclassPicks ? { multiclassPicks } : {}),

@@ -2,7 +2,18 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Character } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import { assignHeldPicks, grantSlots, type HeldPickGrant } from './heldClassPicks'
-import { activeClassPicks, sameWizardData, saveCharacter, unfinishedHeldClasses, wizardDataFromCharacter, wizardReducer, type WizardControllerState, type WizardData } from './wizardState'
+import { kenseiSlotsFilled } from '../kensei/kensei'
+import {
+	activeClassPicks,
+	sameWizardData,
+	saveCharacter,
+	unfinishedHeldClasses,
+	wizardDataFromCharacter,
+	wizardKenseiSlots,
+	wizardReducer,
+	type WizardControllerState,
+	type WizardData,
+} from './wizardState'
 
 const X = 'XPHB'
 const WIZARD = { className: 'Wizard', classSource: X }
@@ -149,5 +160,54 @@ describe('multiclass Edit per-class Expertise (D335)', () => {
 		state = wizardReducer(state, { type: 'switchClass', to: WIZARD })
 		const unfinished = unfinishedHeldClasses(state.data, (cls) => (cls.classChoice.className === 'Rogue' ? { expertise: { count: 2, stale: 0 } } : {}))
 		expect(unfinished).toEqual([{ ...ROGUE, missing: ['choose 1 more Expertise skill'] }])
+	})
+})
+
+describe('D349: multiclass Edit with a Kensei Monk that is not the active class (F-22 item 2)', () => {
+	const MONK = { className: 'Monk', classSource: X }
+	const FIGHTER = { className: 'Fighter', classSource: X }
+	const ranged = new Set(['Longbow', 'Shortbow'])
+	const stored = (kenseiWeapons: Character['kenseiWeapons']): Character => ({
+		id: 'k1',
+		name: 'Kai',
+		classes: [
+			{ ...MONK, subclass: 'Way of the Kensei', level: 6 },
+			{ ...FIGHTER, subclass: null, level: 1 },
+		],
+		levelOrder: [MONK, MONK, MONK, MONK, MONK, MONK, FIGHTER],
+		kenseiWeapons,
+	})
+	const lookups = {
+		subclasses: [],
+		spellLevels: [],
+		heldClasses: [
+			{ ...MONK, subclasses: [{ name: 'Way of the Kensei', source: 'XGE', featureType: null }], featureTypes: [] },
+			{ ...FIGHTER, subclasses: [], featureTypes: [] },
+		],
+	}
+	const fighterActive = (character: Character): WizardData =>
+		wizardReducer({ step: 'review', data: wizardDataFromCharacter(character, lookups) }, { type: 'switchClass', to: FIGHTER }).data
+	const heldClasses = stored(undefined).classes
+
+	it('a single stored Kensei weapon leaves the Monk unfinished and the Proficiencies step incomplete', () => {
+		const data = fighterActive(stored([{ name: 'Longsword', level: 3 }]))
+		expect(data.classChoice?.className).toBe('Fighter')
+		expect(unfinishedHeldClasses(data, () => ({}), ranged)).toEqual([{ ...MONK, missing: ['choose 2 more Kensei weapons'] }])
+		const slots = wizardKenseiSlots(data, null, heldClasses)
+		expect(slots).toHaveLength(3)
+		expect(kenseiSlotsFilled(slots, data.kenseiWeapons, (name) => ranged.has(name))).toBe(false)
+		expect(wizardKenseiSlots(data, null)).toEqual([])
+	})
+
+	it('all three weapons let the save through', () => {
+		const data = fighterActive(
+			stored([
+				{ name: 'Longsword', level: 3 },
+				{ name: 'Longbow', level: 3 },
+				{ name: 'Spear', level: 6 },
+			]),
+		)
+		expect(unfinishedHeldClasses(data, () => ({}), ranged)).toEqual([])
+		expect(kenseiSlotsFilled(wizardKenseiSlots(data, null, heldClasses), data.kenseiWeapons, (name) => ranged.has(name))).toBe(true)
 	})
 })

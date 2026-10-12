@@ -1,5 +1,5 @@
 import type { WizardData } from '../creation/wizardState'
-import { SWAPPABLE_CLASS_OPTION_TYPES, SWAPPABLE_STYLE_CLASS, SWAPPABLE_SUBCLASS_OPTION_TYPES } from '../optionalFeatures/optionSwap'
+import { SWAPPABLE_CLASS_OPTION_TYPES, SWAPPABLE_SUBCLASS_OPTION_TYPES, swappableFightingStyle } from '../optionalFeatures/optionSwap'
 import { choiceNames, fightingStyleFor, type Character, type CharacterOptionalFeatureChoice, type FeatAsiChoice } from '../storage/character'
 
 /**
@@ -11,6 +11,8 @@ import { choiceNames, fightingStyleFor, type Character, type CharacterOptionalFe
 export interface HeldPicks {
 	subclass: string | null
 	fightingStyle: string | null
+	/** D346 rule 3: the Fighter's own tagged style, the only one a level up may replace; null otherwise. */
+	swappableFightingStyle: string | null
 	classSkills: readonly string[]
 	masteries: readonly string[]
 	expertiseSkills: readonly string[]
@@ -41,6 +43,7 @@ export function heldPicksFrom(character: Character, subclassFeatureType: string 
 		subclass: characterClass?.subclass ?? null,
 		// D330: a class being entered has no style yet, not the unassigned one.
 		fightingStyle: active && !characterClass ? null : (fightingStyleFor(character.fightingStyles, characterClass)?.name ?? null),
+		swappableFightingStyle: swappableFightingStyle(character.fightingStyles, characterClass)?.name ?? null,
 		classSkills: character.classSkills ?? [],
 		masteries: choiceNames(character.masteries),
 		expertiseSkills: choiceNames(character.expertiseSkills),
@@ -80,7 +83,7 @@ export function overwrittenHeldPicks(character: Character, data: WizardData, act
 		problems.push(`subclass ${held.subclass}`)
 	}
 	// D345 (F-20b): the Fighter may replace its own style, never leave the class step without one.
-	const styleSwappable = (active?.className ?? character.classes[0]?.className) === SWAPPABLE_STYLE_CLASS && data.fightingStyle !== null
+	const styleSwappable = held.swappableFightingStyle !== null && data.fightingStyle !== null
 	if (held.fightingStyle !== null && held.fightingStyle !== data.fightingStyle && !styleSwappable) {
 		problems.push(`fighting style ${held.fightingStyle}`)
 	}
