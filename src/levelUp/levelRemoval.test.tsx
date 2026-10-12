@@ -902,6 +902,24 @@ describe('D347/D348: options that lose their prerequisites go with the level (F-
 		const kept = remove(withTome())
 		expect(kept.result.optionalFeatureChoices?.[0]?.spellChoices).toEqual(tomeSpells.spellChoices)
 	})
+
+	it('D352: concentration on a spell removed with its option ends; the same spell held from another source keeps it', () => {
+		const tome = {
+			spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [], spells: [{ name: 'Find Familiar', source: 'XPHB' }] }],
+		}
+		const concentrating = { play: { concentratingOn: { name: 'Find Familiar', source: 'XPHB' } } }
+		const withTome = (extra: Partial<Character> = {}): Character => ({
+			...single('Warlock', null, 5, 4),
+			optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Armor of Shadows' }, { name: 'Pact of the Tome', level: 5 }], ...tome }],
+			...concentrating,
+			...extra,
+		})
+		const ended = remove(withTome())
+		expect(ended.result.play).toBeUndefined()
+		expect(ended.dropped).toContain('Concentration: Find Familiar')
+		const held = remove(withTome({ spellChoices: [{ className: 'Warlock', classSource: 'XPHB', spells: [{ name: 'Find Familiar', source: 'XPHB' }] }] }))
+		expect(held.result.play?.concentratingOn).toEqual({ name: 'Find Familiar', source: 'XPHB' })
+	})
 })
 
 describe('RemoveLevelButton', () => {

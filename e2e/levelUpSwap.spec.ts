@@ -419,6 +419,18 @@ test('F-23 (D351): Remove level that drops Pact of the Tome by its stamp lists a
   for (const spell of ['Guidance', 'Sacred Flame', 'Detect Magic', 'Find Familiar']) await expect(spells).not.toContainText(spell)
 })
 
+test('F-24 (D352): Remove level that drops Pact of the Tome by its stamp ends concentration on a Tome spell', async ({ page }) => {
+  const tome = { optionName: 'Pact of the Tome', cantrips: refs(['Guidance', 'Light', 'Sacred Flame']), spells: refs(['Detect Magic', 'Find Familiar']) }
+  const choices = [...refs(['Agonizing Blast', 'Armor of Shadows', "Devil's Sight"]), { name: 'Pact of the Tome', source: XPHB, level: 5 }, { name: 'Mask of Many Faces', source: XPHB, level: 5 }]
+  const concentrationCard = page.locator('.sheet__status-row .sheet__concentration')
+  await openSheet(page, warlock('f24', 5, [], { createdAtLevel: 4, optionalFeatureChoices: [{ featureType: 'EI', choices, spellChoices: [tome] }], play: { concentratingOn: { name: 'Detect Magic', source: XPHB } } }))
+  await expect(concentrationCard).toContainText('Detect Magic')
+
+  await removeLevel(page, 5, { listed: ['Pact of the Tome spell: Detect Magic', 'Concentration: Detect Magic'] })
+  await expect(concentrationCard).not.toContainText('Detect Magic')
+  expect((await stored(page, 'f24'))['play']).toBeUndefined()
+})
+
 test('F-22 7: Keep after Replace Pact of the Tome restores its spells', async ({ page }) => {
   const tome = { optionName: 'Pact of the Tome', cantrips: refs(['Guidance', 'Light', 'Sacred Flame']), spells: refs(['Detect Magic', 'Find Familiar']) }
   const held = refs(['Pact of the Tome', 'Agonizing Blast', 'Armor of Shadows', "Devil's Sight", 'Mask of Many Faces'])

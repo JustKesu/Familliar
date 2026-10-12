@@ -5236,3 +5236,10 @@ Každá volba class optional feature, kterou Remove level odebere, ať podle lev
 s sebou své pod-volby: kouzla Pact of the Tome a familiar Pact of the Chain (D348), i když třída zůstává. Okno potvrzení
 vypíše tato kouzla jako u kaskády („Pact of the Tome spell: …“). Nahrazuje chování z D332, kdy kouzla odebrané volby
 odcházela jen s odebranou třídou. Task F-23, rozhodl Daniel.
+
+## D352 — Remove level ukončí koncentraci na odebraném kouzle (F-24)
+
+Kdykoli Remove level odebere kouzlo postavě, ať s třídou, podle level stampu, nebo kaskádou (D347), a postava se na něj
+soustředí, koncentrace skončí (`play.concentratingOn` se smaže, okno potvrzení vypíše „Concentration: <kouzlo>“) — ledaže
+postava stejné kouzlo po odebrání drží z jiného uloženého zdroje (stejné pravidlo jako D332). Rozšiřuje D332 a D351.
+Task F-24, rozhodl Daniel.

@@ -284,10 +284,15 @@ export function levelRemovalCore(
 		return false
 	})
 
-	// D332: concentration on a spell the removed class held ends, unless another stored pick still holds that spell.
+	// D332, D352: concentration on a spell removed by any path ends, unless another stored pick still holds that spell.
+	// The D347 cascade reports spell names only, so every option spell held before counts as a candidate; the held check below filters out those that stay.
 	let play = character.play
 	const concentratingOn = play?.concentratingOn
-	if (classRemoved && concentratingOn && droppedSpells.some((spell) => matchesConcentration(concentratingOn, spell))) {
+	const candidateSpells = [
+		...droppedSpells,
+		...(character.optionalFeatureChoices ?? []).flatMap((entry) => (entry.spellChoices ?? []).flatMap((pick) => [...pick.cantrips, ...pick.spells])),
+	]
+	if (concentratingOn && candidateSpells.some((spell) => matchesConcentration(concentratingOn, spell))) {
 		const stillHeld = [
 			...(spellChoices ?? []).flatMap((entry) => entry.spells),
 			...subclassSpellChoices.flatMap((entry) => entry.picks),

@@ -1,20 +1,20 @@
-# REPORT — F-23: Remove level bere kouzla Pact of the Tome s volbou (D351)
+# REPORT — F-24: Remove level ukončí koncentraci na odebraném kouzle (D352)
 
 ## Co se změnilo
 Inventura: 1 místo v kódu (`levelRemovalCore`, src/levelUp/levelRemoval.ts), bez dělení.
-- Větev mazání podle stampu: `spellChoices` volby odebrané podle level stampu se mažou vždy, ne jen při `classRemoved`. Řádky „Pact of the Tome spell: …“ v okně potvrzení stejně jako u kaskády D347. Komentář D332 nahrazen citací D351.
-- Vyprázdněné `spellChoices` se vynechá (shodně s `swapOut`/`cascadePrerequisiteLoss` v optionSwap.ts), místo uložení `[]`.
-- Familiar Pact of the Chain při odebrání podle stampu už fungoval (D348, `familiarAfterOptionChange` nad výsledkem), beze změny.
-- Docs: D351 v DECISIONS.md, řádek F-23 v STATUS.md.
+- Blok D332 pro `play.concentratingOn` už nevyžaduje `classRemoved`. Kandidáti = `droppedSpells` (třída, level stamp, subclass picky) + všechna kouzla z `optionalFeatureChoices[].spellChoices` před odebráním. Důvod druhé množiny: kaskáda D347 (`cascadePrerequisiteLoss`) vrací jen jména kouzel bez zdroje; kouzlo, které zůstalo, vyřadí kontrola „still held“ nad výsledným stavem (stejná kontrola jako u D332, jedna cesta, žádná kopie).
+- Řádek v okně potvrzení: „Concentration: <kouzlo>“ (stejný jako u D332).
+- Docs: D352 v DECISIONS.md, řádek F-24 v STATUS.md.
 
 ## Ověřeno
-- typecheck OK; test 182 souborů / 3301 OK; validate-data 175/175 OK; e2e plná sada 557 passed (6.8 min, nad limitem ~3 min).
-- Unit: levelRemoval.test.tsx „D351: Pact of the Tome removed by its stamp takes its spells while the class stays; a kept Tome keeps them“. Testy D347/D348 beze změny zelené.
-- E2E: levelUpSwap „F-23 (D351): Remove level that drops Pact of the Tome by its stamp lists and removes its spells“ — seed Warlock 5 (vytvořen na 4, Tome + Mask of Many Faces se stampem 5, Tome cantripy a rituály), okno vypíše volbu i 5 kouzel, po potvrzení zmizí z úložiště i ze záložky Spells.
+- typecheck OK; test 182 souborů / 3302 OK; validate-data 175/175 OK; e2e plná sada 558 passed (6.6 min, nad limitem ~3 min).
+- Unit: levelRemoval.test.tsx „D352: concentration on a spell removed with its option ends; the same spell held from another source keeps it“ (Tome Find Familiar odebrán stampem 5 → `play` pryč + řádek v dropped; stejné kouzlo i v Warlock `spellChoices` → koncentrace zůstává).
+- E2E: levelUpSwap „F-24 (D352): Remove level that drops Pact of the Tome by its stamp ends concentration on a Tome spell“ — seed Warlock 5 (schéma 61, vytvořen na 4, Tome stamp 5), koncentrace na Detect Magic; karta Concentration ho před ukazuje, okno vypíše „Pact of the Tome spell: Detect Magic“ a „Concentration: Detect Magic“, po potvrzení karta kouzlo nemá a `play` je v úložišti pryč.
+- Cesta přes kaskádu D347 (ne stamp) nemá vlastní test; sdílí stejný blok kódu, kandidáti pocházejí z množiny před odebráním.
 
 ## Rozhodnuto během práce / otázky
-- Ukončení koncentrace (`play.concentratingOn`) na kouzlu odebraném s volbou dál běží jen při odebrání třídy (D332). Tome kouzla odebraná podle stampu tak koncentraci neukončí. Otázka pro Daniela, zda D351 má zahrnout i to.
-- Párování `optionName` při mazání podle stampu zůstává přesné (case-sensitive), na rozdíl od `swapOut`/`undoSwap`; app jiné velikosti písmen neukládá.
+- Kandidátní množina pro kaskádu = všechna kouzla voleb před odebráním (viz výše), protože kaskáda nevrací zdroj kouzla; chování ve výsledku odpovídá D352.
+- Test F-11 „concentration on a spell a feat also grants still ends with the removed class“ platí beze změny (uložené jsou jen class/subclass/option picky).
 
 ## Manual browser check for the user
-- Warlock s Pact of the Tome zvoleným na nejvyšší úrovni → sheet, tlačítko „Remove level N“: okno potvrzení — řádky „Pact of the Tome spell: …“ pod „EI option: Pact of the Tome“, zalomení a délka seznamu.
+- Warlock s Pact of the Tome zvoleným na nejvyšší úrovni a soustředěním na jeho kouzlo (např. Detect Magic) → „Remove level N“: v okně potvrzení řádek „Concentration: …“ pod kouzly Tome (zalomení, pořadí); po potvrzení karta Concentration na sheetu to kouzlo neukazuje.
