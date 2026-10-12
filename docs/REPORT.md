@@ -1,20 +1,38 @@
-# REPORT — F-24: Remove level ukončí koncentraci na odebraném kouzle (D352)
+# REPORT — F-25a: každý zápis postavy se ověří (D353)
+
+HEAD na začátku: fc11ef4 (OK, není starší).
+
+## STEP 1 — inventář (zhuštěně)
+
+| Metoda | Cesta před | Mění | Vstup už očištěn? |
+|---|---|---|---|
+| create | writeAll | 1 nová | ne (buildCharacter) |
+| update | writeAll | 1 podle indexu | ne |
+| rename, setFamiliar, setFamiliarHitPoints, setInventory, setText, setPortrait, setCurrency, setLanguages, setToolChoices, setSpellChoices, setWildShapeForms | writeAll | 1 podle indexu | ne (setPortrait má vlastní assertValidPortrait, ostatní nic) |
+| writeFeatAsiChoices (setFeatChoiceDetails asi:, setAsiIncreases) | writeAll | 1 podle indexu | částečně (isValidAbilityIncrease) |
+| setHitPoints, setResourceUses, setSpentSpellSlots, setSpentHitDice, setConcentration, setHeroicInspiration, writePlay (setConditions, setExhaustion), applyRest, removeManualFeat, writeGrantedFeats (addManualFeat, setFeatChoiceDetails manual/background/species) | writeChanged | 1 | — beze změny |
+| setFeatChoiceDetails item: | přes setInventory | 1 | — |
+| delete | writeAll | smaže 1, bez validace (zůstává) | — |
+| import | writeAll | N nových | vlastní parseStoredCharacters (zůstává) |
+
+UI volající: všechny settery v CharacterManager.tsx jdou přes `withErrorHandling` (try/catch → `setActionError(describeError(error))`), `update` také (řádky 337–346). Průvodce: `CharacterWizard.handleSave` má try/catch → `setSaveError`. Žádný volající nepadá na neošetřenou výjimku → mimo characterStore.ts nebylo třeba měnit nic.
+`describeCharacterError` nad charakterem vráceným z list() (už sanitizovaným) nic nezamítá; potvrzeno: celých 3308 unit testů prošlo beze změny.
 
 ## Co se změnilo
-Inventura: 1 místo v kódu (`levelRemovalCore`, src/levelUp/levelRemoval.ts), bez dělení.
-- Blok D332 pro `play.concentratingOn` už nevyžaduje `classRemoved`. Kandidáti = `droppedSpells` (třída, level stamp, subclass picky) + všechna kouzla z `optionalFeatureChoices[].spellChoices` před odebráním. Důvod druhé množiny: kaskáda D347 (`cascadePrerequisiteLoss`) vrací jen jména kouzel bez zdroje; kouzlo, které zůstalo, vyřadí kontrola „still held“ nad výsledným stavem (stejná kontrola jako u D332, jedna cesta, žádná kopie).
-- Řádek v okně potvrzení: „Concentration: <kouzlo>“ (stejný jako u D332).
-- Docs: D352 v DECISIONS.md, řádek F-24 v STATUS.md.
+- characterStore.ts: 13 míst `writeAll(updated)` → `writeChanged(updated, index)` (update, rename, setFamiliar, setFamiliarHitPoints, setInventory, setText, setPortrait, setCurrency, setLanguages, setToolChoices, setSpellChoices, setWildShapeForms, writeFeatAsiChoices); create validuje novou postavu přes writeChanged. `writeAll` se volá jen z writeChanged, delete a import.
+- docs/DECISIONS.md: D353 (česky). docs/STATUS.md: řádek F-25a.
 
-## Ověřeno
-- typecheck OK; test 182 souborů / 3302 OK; validate-data 175/175 OK; e2e plná sada 558 passed (6.6 min, nad limitem ~3 min).
-- Unit: levelRemoval.test.tsx „D352: concentration on a spell removed with its option ends; the same spell held from another source keeps it“ (Tome Find Familiar odebrán stampem 5 → `play` pryč + řádek v dropped; stejné kouzlo i v Warlock `spellChoices` → koncentrace zůstává).
-- E2E: levelUpSwap „F-24 (D352): Remove level that drops Pact of the Tome by its stamp ends concentration on a Tome spell“ — seed Warlock 5 (schéma 61, vytvořen na 4, Tome stamp 5), koncentrace na Detect Magic; karta Concentration ho před ukazuje, okno vypíše „Pact of the Tome spell: Detect Magic“ a „Concentration: Detect Magic“, po potvrzení karta kouzlo nemá a `play` je v úložišti pryč.
-- Cesta přes kaskádu D347 (ne stamp) nemá vlastní test; sdílí stejný blok kódu, kandidáti pocházejí z množiny před odebráním.
+## Testy
+- Nový blok „every write validates the changed character (D353)“ (characterStore.test.ts, konec souboru), 6 případů přes it.each: setInventory, setText, setLanguages, setSpellChoices, setFamiliar, create. Každý: vyhodí ImportValidationError, surový localStorage řetězec před/po je shodný, list() nevyhodí a vrací obě postavy (pokrývá i „po zamítnutém zápisu list() nepadá“).
+- typecheck, test (182 souborů, 3308 testů), validate-data (175/175): OK.
+- e2e: 558 passed (6,8 min).
 
-## Rozhodnuto během práce / otázky
-- Kandidátní množina pro kaskádu = všechna kouzla voleb před odebráním (viz výše), protože kaskáda nevrací zdroj kouzla; chování ve výsledku odpovídá D352.
-- Test F-11 „concentration on a spell a feat also grants still ends with the removed class“ platí beze změny (uložené jsou jen class/subclass/option picky).
+## Chování při chybě, které se změnilo
+Settery výše dřív při neplatné hodnotě zapsaly a rozbily list(); nyní vyhodí ImportValidationError „The change could not be saved: …“, který UI zobrazí stávajícím vzorem (actionError / saveError). Texty na úspěšných cestách beze změny.
+
+## Rozhodnutí / otázky
+- Rozhodnutí: create validuje přes writeChanged (stejná zpráva „The change could not be saved“), ne vlastní text. Zpráva pro novou postavu tedy říká „change“; změna textu je triviální, pokud ji chceš jinak.
+- Čtení tolerující už rozbitou uloženou postavu zůstává F-25b.
 
 ## Manual browser check for the user
-- Warlock s Pact of the Tome zvoleným na nejvyšší úrovni a soustředěním na jeho kouzlo (např. Detect Magic) → „Remove level N“: v okně potvrzení řádek „Concentration: …“ pod kouzly Tome (zalomení, pořadí); po potvrzení karta Concentration na sheetu to kouzlo neukazuje.
+Nic viditelného — UI nemůže neplatné hodnoty vyrobit, úspěšné cesty se nemění.

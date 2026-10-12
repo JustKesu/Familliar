@@ -5243,3 +5243,10 @@ Kdykoli Remove level odebere kouzlo postavě, ať s třídou, podle level stampu
 soustředí, koncentrace skončí (`play.concentratingOn` se smaže, okno potvrzení vypíše „Concentration: <kouzlo>“) — ledaže
 postava stejné kouzlo po odebrání drží z jiného uloženého zdroje (stejné pravidlo jako D332). Rozšiřuje D332 a D351.
 Task F-24, rozhodl Daniel.
+
+## D353 — Každý zápis postavy se před uložením ověří (F-25a)
+
+Každá cesta, která postavu ukládá (create, update i všechny settery), nejdřív ověří měněnou nebo novou postavu
+(`describeCharacterError`) a při chybě vyhodí `ImportValidationError` bez zápisu. Rozšiřuje D320: jedna špatná hodnota
+tak nemůže znečitelnit celý seznam postav. Čtení, které toleruje už poškozenou uloženou postavu, je samostatný task F-25b.
+Task F-25a, rozhodl Daniel.

@@ -2813,3 +2813,31 @@ describe('concentration source and stable manual feat ids (M1c, D319)', () => {
 		expect(imported.grantedFeats?.map((entry) => entry.id)).toEqual([undefined, '0', '1'])
 	})
 })
+
+describe('every write validates the changed character (D353)', () => {
+	function twoCharacters(): { backing: MemoryStorage; store: CharacterStore; id: string } {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const first = store.create({ name: 'Aria' })
+		store.create({ name: 'Bryn' })
+		return { backing, store, id: first.id }
+	}
+
+	const rejected: [string, (store: CharacterStore, id: string) => void][] = [
+		['setInventory', (store, id) => store.setInventory(id, [{ bogus: true } as never])],
+		['setText', (store, id) => store.setText(id, 'notes', ['not text'] as never)],
+		['setLanguages', (store, id) => store.setLanguages(id, [{ bogus: true } as never])],
+		['setSpellChoices', (store, id) => store.setSpellChoices(id, [{ bogus: true } as never])],
+		['setFamiliar', (store, id) => store.setFamiliar(id, { name: '', source: '' })],
+		['create', (store) => store.create({ name: 'Cleo', classes: [{ bogus: true }] as never })],
+	]
+
+	it.each(rejected)('%s with an invalid value throws, leaves storage untouched and keeps list() readable', (_name, write) => {
+		const { backing, store, id } = twoCharacters()
+		const before = backing.getItem(STORAGE_KEY)
+		expect(() => write(store, id)).toThrow(ImportValidationError)
+		expect(backing.getItem(STORAGE_KEY)).toBe(before)
+		expect(() => store.list()).not.toThrow()
+		expect(store.list().map((character) => character.name)).toEqual(['Aria', 'Bryn'])
+	})
+})

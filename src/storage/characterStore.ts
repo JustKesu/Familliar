@@ -481,7 +481,7 @@ export class CharacterStore {
 		}
 	}
 
-	/** D320: a narrow setter must never write what list() would reject (W20), so the changed character is validated first. */
+	/** D320, D353: no write path may store what list() would reject (W20), so the changed or new character is validated first. */
 	private writeChanged(characters: Character[], index: number): void {
 		const error = describeCharacterError(characters[index], index)
 		if (error) throw new ImportValidationError(`The change could not be saved: ${error}.`)
@@ -492,7 +492,8 @@ export class CharacterStore {
 		if (!input.name.trim()) throw new ImportValidationError('A character needs a name.')
 
 		const character = buildCharacter(newId(), input)
-		this.writeAll([...this.list(), character])
+		const characters = [...this.list(), character]
+		this.writeChanged(characters, characters.length - 1)
 		return character
 	}
 
@@ -513,7 +514,7 @@ export class CharacterStore {
 		const character = buildCharacter(id, input)
 		const updated = [...characters]
 		updated[index] = character
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 		return character
 	}
 
@@ -527,7 +528,7 @@ export class CharacterStore {
 
 		const updated = [...characters]
 		updated[index] = { ...characters[index], name: trimmed }
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -544,7 +545,7 @@ export class CharacterStore {
 		const updated = [...characters]
 		// D213: a new form always starts at full hit points, so whatever hit points the caller's object carries are not kept.
 		updated[index] = familiar ? { ...rest, familiar: { name: familiar.name, source: familiar.source } } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -569,7 +570,7 @@ export class CharacterStore {
 				...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
 			},
 		}
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -587,7 +588,7 @@ export class CharacterStore {
 		const { inventory: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = inventory.length > 0 ? { ...rest, inventory } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -603,7 +604,7 @@ export class CharacterStore {
 		const { [field]: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = text.length > 0 ? { ...rest, [field]: text } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/** Sets (or, with null, removes) the portrait (W-8) — a targeted write like setText. */
@@ -616,7 +617,7 @@ export class CharacterStore {
 		const { portrait: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = portrait ? { ...rest, portrait } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -632,7 +633,7 @@ export class CharacterStore {
 		const { currencyCopper: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = currencyCopper > 0 ? { ...rest, currencyCopper } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
@@ -767,7 +768,7 @@ export class CharacterStore {
 		const { languages: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = languages.length > 0 ? { ...rest, languages } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/** Replaces the class/subclass tool picks (D174: the drawer's slots). An empty list clears the field. */
@@ -779,7 +780,7 @@ export class CharacterStore {
 		const { toolChoices: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = toolChoices.length > 0 ? { ...rest, toolChoices } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/** Replaces the class spell picks (R9a, D208: the Manage Spells drawer). An empty list clears the field. */
@@ -791,7 +792,7 @@ export class CharacterStore {
 		const { spellChoices: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = spellChoices.length > 0 ? { ...rest, spellChoices } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/** Replaces the known Wild Shape forms (R11a, D212: the Manage Extras panel). A class left with no forms is dropped, and an empty result clears the field. */
@@ -804,7 +805,7 @@ export class CharacterStore {
 		const { wildShapeForms: _previous, ...rest } = characters[index]
 		const updated = [...characters]
 		updated[index] = kept.length > 0 ? { ...rest, wildShapeForms: kept } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/** Adds a feat the DM granted (R13a, D215) as a 'manual' grantedFeats entry; a repeatable feat may be added again. */
@@ -873,7 +874,7 @@ export class CharacterStore {
 		const next = change(featAsiChoices ?? [])
 		const updated = [...characters]
 		updated[index] = next.length > 0 ? { ...rest, featAsiChoices: next } : rest
-		this.writeAll(updated)
+		this.writeChanged(updated, index)
 	}
 
 	/**
