@@ -5229,3 +5229,10 @@ a subclass skills (D335): sloty se počítají přes držené třídy jako u `wi
 
 Výměna invokací, metamagie, manévrů, run a stylu boje (D345, D346) zůstává dostupná i pro třídy PHB 2014. Bez změny
 kódu, jen záznam rozhodnutí. Task F-22, rozhodl Daniel (review F-17–F-21, nález 5).
+
+## D351 — Remove level bere pod-volby s každou odebranou volbou (F-23)
+
+Každá volba class optional feature, kterou Remove level odebere, ať podle level stampu, nebo kaskádou (D347), bere
+s sebou své pod-volby: kouzla Pact of the Tome a familiar Pact of the Chain (D348), i když třída zůstává. Okno potvrzení
+vypíše tato kouzla jako u kaskády („Pact of the Tome spell: …“). Nahrazuje chování z D332, kdy kouzla odebrané volby
+odcházela jen s odebranou třídou. Task F-23, rozhodl Daniel.

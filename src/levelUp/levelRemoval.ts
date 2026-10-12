@@ -158,9 +158,9 @@ export function levelRemovalCore(
 	const optionalFeatureChoicesByStamp = (character.optionalFeatureChoices ?? []).flatMap((entry) => {
 		const choices = withoutLevel(entry.choices, level)
 		dropped.push(...choices.dropped.map((choice) => `${entry.featureType} option: ${choice.name}`))
-		// Nested spell picks are spells, which removal leaves alone unless their option leaves with a removed class (D332).
+		// D351: an option removed by its stamp takes its nested spell picks with it, as the D347 cascade does.
 		let spellChoices = entry.spellChoices
-		if (classRemoved && spellChoices) {
+		if (spellChoices) {
 			const lostOptions = new Set(choices.dropped.map((choice) => choice.name))
 			spellChoices = spellChoices.filter((pick) => {
 				if (!lostOptions.has(pick.optionName)) return true
@@ -170,7 +170,8 @@ export function levelRemovalCore(
 			})
 		}
 		if (choices.kept.length === 0 && (spellChoices ?? []).length === 0) return []
-		return [{ ...entry, choices: choices.kept, ...(spellChoices ? { spellChoices } : {}) }]
+		const { spellChoices: _spellChoices, ...rest } = entry
+		return [{ ...rest, choices: choices.kept, ...(spellChoices && spellChoices.length > 0 ? { spellChoices } : {}) }]
 	})
 
 	// D347: the class's own options whose prerequisites the lower level or the removed picks no longer meet go too.

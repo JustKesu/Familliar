@@ -886,6 +886,22 @@ describe('D347/D348: options that lose their prerequisites go with the level (F-
 		const cat = remove(warlockAt(5, 4, [{ name: 'Armor of Shadows', level: 5 }], { familiar: { name: 'Cat', source: 'XMM' } }))
 		expect(cat.result.familiar).toEqual({ name: 'Cat', source: 'XMM' })
 	})
+
+	it('D351: Pact of the Tome removed by its stamp takes its spells while the class stays; a kept Tome keeps them', () => {
+		const tomeSpells = {
+			spellChoices: [{ optionName: 'Pact of the Tome', cantrips: [{ name: 'Guidance', source: 'XPHB' }], spells: [{ name: 'Find Familiar', source: 'XPHB' }] }],
+		}
+		const withTome = (stamp?: number): Character => ({
+			...single('Warlock', null, 5, 4),
+			optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Armor of Shadows' }, { name: 'Pact of the Tome', ...(stamp ? { level: stamp } : {}) }], ...tomeSpells }],
+		})
+		const { dropped, result } = remove(withTome(5))
+		expect(result.classes).toHaveLength(1)
+		expect(result.optionalFeatureChoices).toEqual([{ featureType: 'EI', choices: [{ name: 'Armor of Shadows' }] }])
+		expect(dropped).toEqual(expect.arrayContaining(['EI option: Pact of the Tome', 'Pact of the Tome spell: Guidance', 'Pact of the Tome spell: Find Familiar']))
+		const kept = remove(withTome())
+		expect(kept.result.optionalFeatureChoices?.[0]?.spellChoices).toEqual(tomeSpells.spellChoices)
+	})
 })
 
 describe('RemoveLevelButton', () => {

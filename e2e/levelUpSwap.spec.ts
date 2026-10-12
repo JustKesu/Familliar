@@ -402,6 +402,23 @@ test('F-22 2c (D348): Remove level that drops Pact of the Chain lists and remove
   expect((await stored(page, 'f22-2c'))['familiar']).toBeUndefined()
 })
 
+test('F-23 (D351): Remove level that drops Pact of the Tome by its stamp lists and removes its spells', async ({ page }) => {
+  const tome = { optionName: 'Pact of the Tome', cantrips: refs(['Guidance', 'Light', 'Sacred Flame']), spells: refs(['Detect Magic', 'Find Familiar']) }
+  const choices = [...refs(['Agonizing Blast', 'Armor of Shadows', "Devil's Sight"]), { name: 'Pact of the Tome', source: XPHB, level: 5 }, { name: 'Mask of Many Faces', source: XPHB, level: 5 }]
+  await openSheet(page, warlock('f23', 5, [], { createdAtLevel: 4, optionalFeatureChoices: [{ featureType: 'EI', choices, spellChoices: [tome] }] }))
+  await page.getByRole('tab', { name: 'Spells' }).click()
+  await expect(page.getByRole('tabpanel', { name: 'Spells' })).toContainText('Guidance')
+
+  const tomeLines = ['Guidance', 'Light', 'Sacred Flame', 'Detect Magic', 'Find Familiar'].map((spell) => `Pact of the Tome spell: ${spell}`)
+  await removeLevel(page, 5,{ listed: ['EI option: Pact of the Tome', ...tomeLines] })
+  const after = await storedOptions(page, 'f23', 'EI')
+  expect(names(after.choices)).toEqual(['Agonizing Blast', 'Armor of Shadows', "Devil's Sight"])
+  expect(after.spellChoices).toBeUndefined()
+  await page.getByRole('tab', { name: 'Spells' }).click()
+  const spells = page.getByRole('tabpanel', { name: 'Spells' })
+  for (const spell of ['Guidance', 'Sacred Flame', 'Detect Magic', 'Find Familiar']) await expect(spells).not.toContainText(spell)
+})
+
 test('F-22 7: Keep after Replace Pact of the Tome restores its spells', async ({ page }) => {
   const tome = { optionName: 'Pact of the Tome', cantrips: refs(['Guidance', 'Light', 'Sacred Flame']), spells: refs(['Detect Magic', 'Find Familiar']) }
   const held = refs(['Pact of the Tome', 'Agonizing Blast', 'Armor of Shadows', "Devil's Sight", 'Mask of Many Faces'])
