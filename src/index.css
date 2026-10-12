@@ -2435,6 +2435,11 @@ button:disabled {
   color: var(--text);
 }
 
+/* F-21: the heading takes focus only programmatically on a step change; a ring on plain text would be noise. */
+.wizard__title:focus {
+  outline: none;
+}
+
 .wizard__content legend,
 .wizard__content h3 {
   margin: 0 0 8px;

@@ -1161,3 +1161,29 @@ describe('CharacterWizard — expertise step', () => {
 		expect((screen.getByLabelText(/Intimidation/) as HTMLInputElement).checked).toBe(false)
 	})
 })
+
+describe('CharacterWizard — focus on step change (F-21)', () => {
+	it('focuses the step heading after Next and Back, not on first render or when Next is blocked', async () => {
+		const user = userEvent.setup()
+		renderWizard()
+
+		const heading = await screen.findByRole('heading', { level: 2 })
+		const classTitle = heading.textContent
+		expect(document.activeElement).not.toBe(heading)
+
+		await goNext(user) // blocked: nothing filled in
+		expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(classTitle)
+		expect(document.activeElement).not.toBe(screen.getByRole('heading', { level: 2 }))
+
+		await fillClassStep(user)
+		await goNext(user)
+		await screen.findByLabelText('Species')
+		const speciesHeading = screen.getByRole('heading', { level: 2 })
+		expect(speciesHeading.textContent).not.toBe(classTitle)
+		expect(document.activeElement).toBe(speciesHeading)
+
+		await goBack(user)
+		await screen.findByLabelText('Class')
+		expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2 }))
+	})
+})

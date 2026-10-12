@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
 import { ClassPicker } from '../classes/ClassPicker'
 import { WizardPortrait } from '../portrait/WizardPortrait'
 import { ReviewStep, type ReviewProficiencies } from './review/ReviewStep'
@@ -1795,6 +1795,15 @@ export function CharacterWizard({
 		/>
 	)
 
+	// F-21: focus follows a step change to the heading; the first shown step keeps today's behaviour.
+	const titleRef = useRef<HTMLHeadingElement>(null)
+	const shownStep = useRef<WizardStep | null>(null)
+	useEffect(() => {
+		if (!seeded || seedError !== null) return
+		if (shownStep.current !== null && shownStep.current !== state.step) titleRef.current?.focus({ preventScroll: true })
+		shownStep.current = state.step
+	}, [state.step, seeded, seedError])
+
 	if (seedError !== null) {
 		return (
 			<div className="wizard">
@@ -1845,7 +1854,7 @@ export function CharacterWizard({
 			</div>
 
 			<div className="wizard__content">
-			<h2 className="wizard__title">{stepLabel(state.step, classOptionalFeatureGroups)}</h2>
+			<h2 className="wizard__title" ref={titleRef} tabIndex={-1}>{stepLabel(state.step, classOptionalFeatureGroups)}</h2>
 
 			{levelUp && unknownStepReasons[state.step] !== undefined && (
 				<p className="wizard__level-up-unknown">
