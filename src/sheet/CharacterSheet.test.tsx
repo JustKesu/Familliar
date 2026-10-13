@@ -685,7 +685,7 @@ describe('CharacterSheet', () => {
 				} finally {
 					vi.useRealTimers()
 				}
-			})
+			}, 30000) // the real-timer render + findByRole share the 5 s default, which a loaded full-suite run can exceed
 
 			it('closes on the × button', async () => {
 				const user = userEvent.setup()

@@ -1,33 +1,22 @@
-# F-26 — opravy z review F-25a/F-25b (D355)
+# REPORT – F-27: flaky unit testy
 
-HEAD na začátku 323f389 (OK). Commit a push proběhly, pokud zde není poznámka o odmítnutí.
+Změny pouze v testech, kód v `src/` mimo testy nedotčen. HEAD před úkolem: bef3d75.
 
-## Změny
-- `UnreadableCharacterCard.tsx`: karta Damaged ukazuje „This character could not be read. Export it to keep a copy.“; technická zpráva v `title` téže věty a ve skrytém `<span hidden>` přes `aria-describedby` (`useId`). Karta newer beze změny.
-- `characterStore.ts`: `UnreadableCharacter.id` = uložené `id`, pokud je neprázdný string, jinak `null` (`storedId`).
-- `CharacterManager.tsx`: route guard (sheet/edit/level-up) při id patřícím nečitelné položce nastaví `redirectNotice` „<name ?? 'This character'> could not be opened - see its card below.“; seznam ho zobrazí v existujícím `p.error` řádku jako `actionError ?? redirectNotice`. Mazání při New/Open. Neznámé id dál potichu.
-- DECISIONS D355 (CZ), STATUS F-26.
+## Příčiny
+a) `dataCoverage.test.tsx` "renders every entry structure…": jeden test renderuje všechny entries z `data/` (JSON.parse všech souborů + >1000 renderToStaticMarkup). Samostatně 1,06–1,18 s (soubor 1,45–1,8 s), tj. flake se v izolaci nereprodukoval. Při plné sadě (paralelní workery, `tests 171 s` součet) se protahuje přes výchozí 5 s timeout. Žádný `testTimeout` v repu není. Příčina = timeout, ne logika.
+b) `CharacterSheet.test.tsx:671` "hides itself after the timeout": `vi.useFakeTimers()` se zapíná až po `await renderKnown()`. Toastový `setTimeout` se registruje až při `fireEvent.click` (uvnitř `act`), tedy už pod fake timers – pořadí je deterministické a 5900/6100 ms logika je správná. Izolovaně test běží 0,38–0,57 s. Zbývá jediný nedeterministický kus: reálný render celého sheetu + `findByRole` (reálné timery) se počítají do 5s timeoutu testu; při zatížení plné sady (soubor sám trvá ~93 s) to timeout přesáhne. Příčina je v testu (timeout, ne časování fake timerů). Flake jsem NEREPRODUKOVAL (ani 1× v plném souboru ani v plné sadě), závěr je odvozen z kódu, ne z pozorovaného selhání.
 
-## Testy
-Unit (`characterStore.test.ts`, blok F-25b):
-- klasifikace `null`, pole, chybějící / stringový (`"61"`) / necelý (`60.5`) `schemaVersion` → damaged, `list()` nehází;
-- migrace, která hodí (`vi.doMock('./migrations')` + dynamický import, po testu `doUnmock`/`resetModules`) → damaged se zprávou výjimky;
-- schéma 1 a 2: `message` === zpráva `UnknownSchemaVersionError(n)` (náhrada ztracené kontroly);
-- `expectUnreadable` zpřísněn: přesný počet + druhy v `listUnreadable()` (default 1) a žádné id nečitelné položky v `list()`; všech ~60 volání prošlo bez úprav;
-- přežití nečitelných přes `rename`, `update`, `setHitPoints`, `setFamiliar` (bajtově);
-- `deleteUnreadable` po změně storage v „druhém tabu“: předřazená jiná damaged položka → smaže se totožná; už odstraněná → `CharacterNotFoundError`, storage beze změny;
-- import souboru s chybou v záznamech [1] a [2] → `That file could not be imported: …[1]…`, [2] se nehlásí (hlásí se první vadný záznam), storage beze změny;
-- `id` nečitelné položky (`'bad'`, `'future'`; `null` pro ne-objekt a prázdné id).
-
-e2e `unreadableCharacters.spec.ts`: f (věta + `title` + accessible description obsahují technickou zprávu), g (sheet → přepis položky přes `page.evaluate` → reload → seznam, hláška „Good One could not be opened - see its card below.“, karta Damaged), h (položka odstraněna „druhým tabem“ → Delete → `p.error` „No character with id…“, karta zůstane) — h šlo vyvolat v e2e, render test nebyl potřeba.
+## Oprava (2 místa, 2 soubory)
+- `src/markup/dataCoverage.test.tsx`: 3. argument `it()` = 30000 + jednořádkový komentář.
+- `src/sheet/CharacterSheet.test.tsx` (test na ř. 671): totéž. Význam testu beze změny (viditelný při 5900 ms, pryč po 6100 ms), fake timers dál po renderu, `finally` vrací real timers. Fake timers před renderem jsem nezvolil: `findByRole`/`waitFor` v RTL s vitest fake timers visí.
 
 ## Ověření
-typecheck OK; test 182 souborů / 3328 testů OK; validate-data 175/175 OK; e2e 566 passed (6.9 min, nad limitem ~3 min z CLAUDE.md).
+- dataCoverage 5× po sobě: vše pass, 1,45–1,61 s.
+- Toast test (`-t "hides itself after the timeout"`) 5× po sobě: vše pass, 4,38–5,75 s (z toho tests 377–567 ms; zbytek transform/import).
+- typecheck: OK. `npm test`: 182 souborů / 3328 testů pass, 99 s. validate-data: 175/175. e2e: 566 pass, 6,7 min.
 
-## Rozhodnutí během práce
-- Hláška přesměrování jde do existujícího řádku `p.error` (stejný styl jako actionError), ne do nového prvku; přednost má skutečná `actionError`.
-- `UnreadableCharacter` dostal pole `id` (potřebné pro shodu route guardu); prázdné id = `null`.
-- DATA.md nezměněn: výhrady round-tripu JSON se týkají localStorage, ne dat 5etools; zapsány jen do D355 dle zadání.
+## K rozhodnutí
+- Fix je ochranný (timeout), ne důkaz odstranění flake; pokud se toast test objeví znovu, příčina je jinde (pak fake timers před renderem + `act`/`waitFor` bez RTL async utilit).
+- STATUS.md flaky testy nezmiňuje, nezměněn. Žádné nezodpovězené otázky.
 
-## Manual browser check for the user
-none - the planning chat checks the looks from screenshots. Změněné obrazovky: seznam postav (text na kartě Damaged; řádek hlášky nad kartami po přesměrování z nečitelné postavy).
+Manual browser check for the user: none - test-only change, no screens changed.

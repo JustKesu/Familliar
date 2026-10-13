@@ -99,5 +99,5 @@ describe('rendering the whole of data/', () => {
 		expect(rendered).toBeGreaterThan(1000)
 		expect(warn.mock.calls.map((call) => String(call[0]))).toEqual([])
 		expect(error).not.toHaveBeenCalled()
-	})
+	}, 30000) // renders all of data/ in one test; a loaded full-suite run can pass the 5 s default
 })
