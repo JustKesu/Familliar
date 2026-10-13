@@ -96,3 +96,46 @@ test('F-25b e: a write on the valid character keeps both unreadable cards after 
   expect(stored).toContainEqual(damaged)
   expect(stored).toContainEqual(newer)
 })
+
+/* F-26 (D355) */
+test('F-26 f: the damaged card shows a human sentence and keeps the technical message in its tooltip', async ({ page }) => {
+  await seed(page)
+  await page.goto('/#/')
+  const sentence = damagedCard(page).getByText('This character could not be read. Export it to keep a copy.', { exact: true })
+  await expect(sentence).toBeVisible()
+  await expect(sentence).toHaveAttribute('title', /classes/)
+  await expect(sentence).toHaveAccessibleDescription(/classes/)
+  await expect(newerCard(page)).not.toContainText('could not be read')
+})
+
+test('F-26 g: an open sheet whose entry became unreadable returns to the list with a notice', async ({ page }) => {
+  await seed(page)
+  await page.goto('/#/character/f25b-good')
+  await expect(page.getByRole('button', { name: 'Long Rest', exact: true })).toBeVisible()
+  await page.evaluate(
+    ({ key, broken }) => {
+      const entries = JSON.parse(localStorage.getItem(key) ?? '[]') as { id: string }[]
+      localStorage.setItem(key, JSON.stringify(entries.map((entry) => (entry.id === broken.id ? broken : entry))))
+    },
+    { key: STORAGE_KEY, broken: { ...valid, classes: 'nope' } },
+  )
+  await page.reload()
+  await expect(page).toHaveURL(/#\/$/)
+  await expect(page.locator('p.error')).toHaveText('Good One could not be opened - see its card below.')
+  await expect(cards(page).filter({ hasText: 'Good One' })).toContainText('Damaged')
+})
+
+test('F-26 h: a failed Delete on a damaged card shows the error line and keeps the card', async ({ page }) => {
+  await seed(page)
+  await page.goto('/#/')
+  await expect(damagedCard(page)).toHaveCount(1)
+  // Another tab removed the entry after this one listed it.
+  await page.evaluate((key) => {
+    const entries = JSON.parse(localStorage.getItem(key) ?? '[]') as { id: string }[]
+    localStorage.setItem(key, JSON.stringify(entries.filter((entry) => entry.id !== 'f25b-bad')))
+  }, STORAGE_KEY)
+  await damagedCard(page).getByRole('button', { name: /Delete/ }).click()
+  await page.getByRole('alertdialog', { name: 'Delete Broken One?' }).getByRole('button', { name: 'Delete' }).click()
+  await expect(page.locator('p.error')).toContainText('No character with id')
+  await expect(damagedCard(page)).toHaveCount(1)
+})

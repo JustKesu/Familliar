@@ -66,6 +66,8 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	const [charactersLoaded, setCharactersLoaded] = useState(false)
 	const [loadError, setLoadError] = useState<string | null>(null)
 	const [actionError, setActionError] = useState<string | null>(null)
+	/** D355: why the list replaced a sheet/wizard route whose character became unreadable; cleared on leaving the list. */
+	const [redirectNotice, setRedirectNotice] = useState<string | null>(null)
 
 	function refresh(): void {
 		if (!store.store) return
@@ -87,8 +89,10 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		if (!charactersLoaded) return
 		if (route.view !== 'sheet' && route.view !== 'edit' && route.view !== 'level-up') return
 		if (characters.some((character) => character.id === route.id)) return
+		const turnedUnreadable = unreadable.find((entry) => entry.id === route.id)
+		if (turnedUnreadable) setRedirectNotice(`${turnedUnreadable.name ?? 'This character'} could not be opened - see its card below.`)
 		navigate({ view: 'list' }, { replace: true })
-	}, [charactersLoaded, route, characters, navigate])
+	}, [charactersLoaded, route, characters, unreadable, navigate])
 
 	function withErrorHandling(action: () => void): void {
 		try {
@@ -289,9 +293,15 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 				characters={characters}
 				unreadable={unreadable}
 				loadError={loadError}
-				actionError={actionError}
-				onNew={() => navigate({ view: 'new' })}
-				onOpen={(id) => navigate({ view: 'sheet', id })}
+				actionError={actionError ?? redirectNotice}
+				onNew={() => {
+					setRedirectNotice(null)
+					navigate({ view: 'new' })
+				}}
+				onOpen={(id) => {
+					setRedirectNotice(null)
+					navigate({ view: 'sheet', id })
+				}}
 				onRename={handleRename}
 				onExport={handleExport}
 				onDelete={handleDelete}

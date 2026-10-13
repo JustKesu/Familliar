@@ -18,8 +18,11 @@ import {
 const STORAGE_KEY = 'familliar:characters'
 
 /** D354: a broken entry no longer throws from list(); it is left out and reported as unreadable. */
-function expectUnreadable(store: CharacterStore, kind: UnreadableKind = 'damaged'): void {
-	expect(store.listUnreadable().map((entry) => entry.kind)).toContain(kind)
+function expectUnreadable(store: CharacterStore, kind: UnreadableKind = 'damaged', count = 1): void {
+	const unreadable = store.listUnreadable()
+	expect(unreadable.map((entry) => entry.kind)).toEqual(Array.from({ length: count }, () => kind))
+	const ids = unreadable.map((entry) => entry.id)
+	expect(store.list().filter((character) => ids.includes(character.id))).toEqual([])
 }
 
 class MemoryStorage implements KeyValueStorage {
@@ -2939,5 +2942,103 @@ describe('unreadable saved characters (F-25b, D354)', () => {
 	it('keeps unreadable keys stable across a reload', () => {
 		const { backing, store } = seeded()
 		expect(new CharacterStore(backing).listUnreadable().map((entry) => entry.key)).toEqual(store.listUnreadable().map((entry) => entry.key))
+	})
+
+	it.each([
+		['null', null],
+		['an array', [1, 2]],
+		['a missing schemaVersion', { id: 'x', name: 'X', classes: [] }],
+		['a string schemaVersion', { schemaVersion: String(CURRENT_SCHEMA_VERSION), id: 'x', name: 'X', classes: [] }],
+		['a fractional schemaVersion', { schemaVersion: CURRENT_SCHEMA_VERSION - 0.5, id: 'x', name: 'X', classes: [] }],
+	])('classifies %s as damaged without list() throwing', (_name, entry) => {
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([entry]))
+		const store = new CharacterStore(backing)
+		expect(() => store.list()).not.toThrow()
+		expect(store.list()).toEqual([])
+		expectUnreadable(store)
+	})
+
+	it('classifies an entry whose migration throws as damaged without list() throwing', async () => {
+		vi.resetModules()
+		vi.doMock('./migrations', async (original) => ({
+			...(await original<typeof import('./migrations')>()),
+			migrateToCurrent: () => {
+				throw new Error('migration blew up')
+			},
+		}))
+		try {
+			const { CharacterStore: MockedStore } = await import('./characterStore')
+			const backing = new MemoryStorage()
+			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: 'x', name: 'X', classes: [] }]))
+			const store = new MockedStore(backing)
+			expect(() => store.list()).not.toThrow()
+			expect(store.list()).toEqual([])
+			expect(store.listUnreadable().map((entry) => [entry.kind, entry.message])).toEqual([['damaged', 'migration blew up']])
+		} finally {
+			vi.doUnmock('./migrations')
+			vi.resetModules()
+		}
+	})
+
+	it.each([1, 2])('names the schema version in the message of an unsupported older save (schema %i)', (schemaVersion) => {
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion, id: 'old', name: 'Old', classes: [] }]))
+		const store = new CharacterStore(backing)
+		expectUnreadable(store)
+		expect(store.listUnreadable()[0].message).toBe(new UnknownSchemaVersionError(schemaVersion).message)
+	})
+
+	it('carries the stored id of an unreadable entry, or null when it has none', () => {
+		const { store } = seeded()
+		expect(store.listUnreadable().map((entry) => entry.id)).toEqual(['bad', 'future'])
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([42, { schemaVersion: CURRENT_SCHEMA_VERSION, id: '', name: 'X' }]))
+		expect(new CharacterStore(backing).listUnreadable().map((entry) => entry.id)).toEqual([null, null])
+	})
+
+	it('keeps both unreadable entries byte for byte through rename, update, setHitPoints and setFamiliar', () => {
+		const { backing, store, aria } = seeded()
+		const expected = [JSON.stringify(damaged), JSON.stringify(newer)]
+		const keptUnreadable = () => rawEntries(backing).filter((entry) => expected.includes(entry))
+
+		store.rename(aria.id, 'Aria Two')
+		expect(keptUnreadable()).toEqual(expected)
+		store.update(aria.id, { name: 'Aria Three' })
+		expect(keptUnreadable()).toEqual(expected)
+		store.setHitPoints(aria.id, { currentHp: 3 })
+		expect(keptUnreadable()).toEqual(expected)
+		store.setFamiliar(aria.id, { name: 'Owl', source: 'XMM' })
+		expect(keptUnreadable()).toEqual(expected)
+		expect(store.listUnreadable().map((entry) => entry.kind)).toEqual(['damaged', 'newer'])
+	})
+
+	it('deleteUnreadable after another tab changed storage removes the identical entry or throws, never a different one', () => {
+		const { backing, store } = seeded()
+		const [damagedEntry] = store.listUnreadable()
+		const otherDamaged = { schemaVersion: CURRENT_SCHEMA_VERSION, id: 'other', name: 'Other', classes: 'nope' }
+
+		// The other tab put a different damaged entry in front of it: the key still names the identical entry.
+		const reordered = JSON.parse(backing.getItem(STORAGE_KEY) ?? '[]') as unknown[]
+		backing.setItem(STORAGE_KEY, JSON.stringify([otherDamaged, ...reordered]))
+		store.deleteUnreadable(damagedEntry.key)
+		expect(rawEntries(backing)).toContain(JSON.stringify(otherDamaged))
+		expect(rawEntries(backing)).not.toContain(JSON.stringify(damaged))
+
+		// The other tab already removed it: nothing else is deleted.
+		const before = backing.getItem(STORAGE_KEY)
+		expect(() => store.deleteUnreadable(damagedEntry.key)).toThrow(CharacterNotFoundError)
+		expect(backing.getItem(STORAGE_KEY)).toBe(before)
+	})
+
+	it('reports the first broken entry of an imported file with errors in two entries', () => {
+		const { backing, store, aria } = seeded()
+		const before = backing.getItem(STORAGE_KEY)
+		const good = JSON.parse(store.exportCharacter(aria.id)) as unknown[]
+		const file = JSON.stringify([...good, { ...damaged, id: 'b1' }, { schemaVersion: CURRENT_SCHEMA_VERSION, id: 'b2', name: 'Nameless', classes: [], currentHp: -1 }])
+		expect(() => store.import(file)).toThrow(ImportValidationError)
+		expect(() => store.import(file)).toThrow(/^That file could not be imported: .*\[1\]/)
+		expect(() => store.import(file)).not.toThrow(/\[2\]/)
+		expect(backing.getItem(STORAGE_KEY)).toBe(before)
 	})
 })

@@ -163,6 +163,8 @@ export interface UnreadableCharacter {
 	kind: UnreadableKind
 	/** The stored name when it is a non-empty string. */
 	name: string | null
+	/** The stored id when it is a non-empty string; lets an open route recognise its character turned unreadable. */
+	id: string | null
 	message: string
 }
 
@@ -197,6 +199,11 @@ function readEntryOrDescribe(raw: unknown, index: number): { stored: StoredChara
 function storedName(raw: unknown): string | null {
 	if (typeof raw !== 'object' || raw === null || !('name' in raw)) return null
 	return typeof raw.name === 'string' && raw.name.trim() ? raw.name : null
+}
+
+function storedId(raw: unknown): string | null {
+	if (typeof raw !== 'object' || raw === null || !('id' in raw)) return null
+	return typeof raw.id === 'string' && raw.id ? raw.id : null
 }
 
 /** D320: the schema whose saves read-repair applies to, and every later one. */
@@ -529,7 +536,7 @@ export class CharacterStore {
 			const hash = entryHash(raw)
 			const occurrence = seen.get(hash) ?? 0
 			seen.set(hash, occurrence + 1)
-			unreadable.push({ key: `${hash}#${occurrence}`, kind: result.kind, name: storedName(raw), message: result.message, raw, index })
+			unreadable.push({ key: `${hash}#${occurrence}`, kind: result.kind, name: storedName(raw), id: storedId(raw), message: result.message, raw, index })
 		})
 		return { characters, unreadable }
 	}

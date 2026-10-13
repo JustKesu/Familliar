@@ -5259,3 +5259,12 @@ vyšší než appka umí, „Reload the page to open it.“, pouze Export — ab
 nejde otevřít. Export vrací surovou uloženou položku v poli. Vadné položky zůstávají v úložišti beze změny při každém
 zápisu (create, import, delete i settery jiných postav). Špatný JSON nebo úložiště, které není pole, dál končí chybou
 celého seznamu. `import()` zůstává přísný: špatný soubor se odmítne celý. Rozšiřuje D353. Task F-25b, rozhodl Daniel.
+
+## D355 — Lidský text na kartě „Damaged“ a vysvětlení přesměrování (F-26)
+
+Karta „Damaged“ ukazuje větu „This character could not be read. Export it to keep a copy.“; technická zpráva je jen
+v tooltipu (`title`) a v popisu přes `aria-describedby`. Karta „Saved by a newer version“ beze změny. Když otevřená
+karta / edit / level-up patří postavě, která je teď nečitelná (shoda podle uloženého `id`), seznam nad kartami ukáže
+„<jméno nebo 'This character'> could not be opened - see its card below.“; neznámé id přesměruje dál potichu. Export
+nečitelné položky je obsahově shodný, ne bajtově: round-trip JSON mění velká čísla (> 2^53, `1e400` → `null`) a
+z duplicitních klíčů nechá poslední. Upřesňuje D354. Task F-26, rozhodl Daniel.
