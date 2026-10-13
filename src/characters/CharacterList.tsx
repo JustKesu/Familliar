@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '../app/ConfirmDialog'
 import type { Character } from '../storage/character'
+import type { UnreadableCharacter } from '../storage/characterStore'
 import { CharacterCard } from './CharacterCard'
+import { UnreadableCharacterCard } from './UnreadableCharacterCard'
 
 export function CharacterList({
 	characters,
+	unreadable,
 	loadError,
 	actionError,
 	onNew,
@@ -12,9 +15,12 @@ export function CharacterList({
 	onRename,
 	onExport,
 	onDelete,
+	onExportUnreadable,
+	onDeleteUnreadable,
 	onImportFile,
 }: {
 	characters: Character[]
+	unreadable: UnreadableCharacter[]
 	loadError: string | null
 	actionError: string | null
 	onNew: () => void
@@ -22,13 +28,17 @@ export function CharacterList({
 	onRename: (id: string, name: string) => void
 	onExport: (id: string) => void
 	onDelete: (id: string) => void
+	onExportUnreadable: (key: string) => void
+	onDeleteUnreadable: (key: string) => void
 	onImportFile: (file: File) => void
 }): ReactNode {
 	const [deletingId, setDeletingId] = useState<string | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const newRef = useRef<HTMLButtonElement>(null)
 	const focusNewAfterRender = useRef(false)
+	const [deletingUnreadableKey, setDeletingUnreadableKey] = useState<string | null>(null)
 	const deleting = characters.find((character) => character.id === deletingId)
+	const deletingUnreadable = unreadable.find((entry) => entry.key === deletingUnreadableKey)
 
 	// Runs after the dialog's own focus-restore (it points at a card that is gone by then).
 	useEffect(() => {
@@ -81,8 +91,12 @@ export function CharacterList({
 					characters.map((character) => (
 						<CharacterCard key={character.id} character={character} onOpen={onOpen} onRename={onRename} onExport={onExport} onRequestDelete={setDeletingId} />
 					))}
+				{!loadError &&
+					unreadable.map((entry) => (
+						<UnreadableCharacterCard key={entry.key} entry={entry} onExport={onExportUnreadable} onRequestDelete={setDeletingUnreadableKey} />
+					))}
 			</ul>
-			{!loadError && characters.length === 0 && <p className="char-empty">No characters yet.</p>}
+			{!loadError && characters.length === 0 && unreadable.length === 0 && <p className="char-empty">No characters yet.</p>}
 
 			{deleting && (
 				<ConfirmDialog
@@ -95,6 +109,20 @@ export function CharacterList({
 						focusNewAfterRender.current = true
 						setDeletingId(null)
 						onDelete(deleting.id)
+					}}
+				/>
+			)}
+			{deletingUnreadable && (
+				<ConfirmDialog
+					title={`Delete ${deletingUnreadable.name ?? 'Unnamed character'}?`}
+					body="This removes the damaged entry from this browser. It cannot be undone."
+					safeLabel="Keep"
+					destructiveLabel="Delete"
+					onSafe={() => setDeletingUnreadableKey(null)}
+					onDestructive={() => {
+						focusNewAfterRender.current = true
+						setDeletingUnreadableKey(null)
+						onDeleteUnreadable(deletingUnreadable.key)
 					}}
 				/>
 			)}

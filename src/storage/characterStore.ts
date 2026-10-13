@@ -131,29 +131,72 @@ function parseStoredCharacters(raw: string, dropMalformedFields: boolean): Store
 		}
 	}
 
+	return parsed.map((entry: unknown, i) => readStoredEntry(entry, i, dropMalformedFields))
+}
+
+/** Throws a plain `Error` (or `UnknownSchemaVersionError`) when this one entry cannot be read. */
+function readStoredEntry(entry: unknown, index: number, dropMalformedFields: boolean): StoredCharacter {
 	// D69: an older but supported save is carried forward here, so everything
 	// below this line only ever sees the current shape.
-	const migrated = parsed.map(migrateToCurrent)
+	const migrated = migrateToCurrent(entry)
+	const dropped = dropMalformedFields ? withoutMalformedDroppableFields(migrated) : withoutInconsistentLevelOrder(migrated)
 	// D320: only a character saved at schema 59 or later is repaired; an older one keeps being rejected as before.
-	const records = migrated.map((entry, i) => {
-		const dropped = dropMalformedFields ? withoutMalformedDroppableFields(entry) : withoutInconsistentLevelOrder(entry)
-		const original: unknown = parsed[i]
-		return isRecordWithSchemaVersion(original) && typeof original.schemaVersion === 'number' && original.schemaVersion >= REPAIRED_FROM_SCHEMA ? withRepairedFields(dropped) : dropped
-	})
+	const record = isRecordWithSchemaVersion(entry) && typeof entry.schemaVersion === 'number' && entry.schemaVersion >= REPAIRED_FROM_SCHEMA ? withRepairedFields(dropped) : dropped
 
-	for (let i = 0; i < records.length; i++) {
-		const error = describeStoredCharacterError(records[i], i)
-		if (error) throw new Error(`Entry ${error} is malformed.`)
-	}
+	const error = describeStoredCharacterError(record, index)
+	if (error) throw new Error(`Entry ${error} is malformed.`)
 	if (!dropMalformedFields) {
 		// D316: the import path only; stored data is deliberately not checked.
-		for (let i = 0; i < records.length; i++) {
-			const error = describeImportedCharacterError(records[i], i)
-			if (error) throw new Error(error)
-		}
+		const importError = describeImportedCharacterError(record, index)
+		if (importError) throw new Error(importError)
 	}
 
-	return (records as Record<string, unknown>[]).map(toStoredCharacter)
+	return toStoredCharacter(record as Record<string, unknown>)
+}
+
+/** D354: a saved entry list() cannot read. `damaged` fails validation; `newer` was saved by a later version of the app. */
+export type UnreadableKind = 'damaged' | 'newer'
+
+export interface UnreadableCharacter {
+	/** Stable across reloads: a hash of the raw entry plus its occurrence among identical entries. */
+	key: string
+	kind: UnreadableKind
+	/** The stored name when it is a non-empty string. */
+	name: string | null
+	message: string
+}
+
+interface RawUnreadable extends UnreadableCharacter {
+	raw: unknown
+	index: number
+}
+
+function entryHash(raw: unknown): string {
+	const text = JSON.stringify(raw) ?? 'undefined'
+	let hash = 0x811c9dc5
+	for (let i = 0; i < text.length; i++) {
+		hash ^= text.charCodeAt(i)
+		hash = Math.imul(hash, 0x01000193)
+	}
+	return `${(hash >>> 0).toString(16)}-${text.length}`
+}
+
+function readEntryOrDescribe(raw: unknown, index: number): { stored: StoredCharacter } | { kind: UnreadableKind; message: string } {
+	const version = isRecordWithSchemaVersion(raw) ? raw.schemaVersion : undefined
+	if (typeof version === 'number' && version > CURRENT_SCHEMA_VERSION) {
+		return { kind: 'newer', message: `Saved with schema version ${version}; this app supports up to ${CURRENT_SCHEMA_VERSION}.` }
+	}
+	try {
+		if (typeof version === 'number' && !isSupportedVersion(version)) throw new UnknownSchemaVersionError(version)
+		return { stored: readStoredEntry(raw, index, true) }
+	} catch (error) {
+		return { kind: 'damaged', message: error instanceof Error ? error.message : String(error) }
+	}
+}
+
+function storedName(raw: unknown): string | null {
+	if (typeof raw !== 'object' || raw === null || !('name' in raw)) return null
+	return typeof raw.name === 'string' && raw.name.trim() ? raw.name : null
 }
 
 /** D320: the schema whose saves read-repair applies to, and every later one. */
@@ -451,8 +494,8 @@ export class CharacterStore {
 		this.storage = storage ?? getBrowserStorage()
 	}
 
-	/** All saved characters. Empty array if nothing has been saved yet. */
-	list(): Character[] {
+	/** The stored value as an array of raw entries; throws when it is not valid JSON or not an array (whole-list problems only, D354). */
+	private readRawEntries(): unknown[] {
 		let raw: string | null
 		try {
 			raw = this.storage.getItem(STORAGE_KEY)
@@ -462,17 +505,67 @@ export class CharacterStore {
 
 		if (raw === null) return []
 
+		let parsed: unknown
 		try {
-			return parseStoredCharacters(raw, true).map(toCharacter)
-		} catch (error) {
-			if (error instanceof UnknownSchemaVersionError) throw error
-			const message = error instanceof Error ? error.message : String(error)
-			throw new CorruptDataError(`Saved character data is corrupted: ${message}`)
+			parsed = JSON.parse(raw)
+		} catch {
+			throw new CorruptDataError('Saved character data is corrupted: The data is not valid JSON.')
 		}
+		if (!Array.isArray(parsed)) throw new CorruptDataError('Saved character data is corrupted: The data is not a list of characters.')
+		return parsed
+	}
+
+	/** D354: entries are read one by one, so a broken one never hides the others. */
+	private readAll(entries: unknown[] = this.readRawEntries()): { characters: Character[]; unreadable: RawUnreadable[] } {
+		const characters: Character[] = []
+		const unreadable: RawUnreadable[] = []
+		const seen = new Map<string, number>()
+		entries.forEach((raw, index) => {
+			const result = readEntryOrDescribe(raw, index)
+			if ('stored' in result) {
+				characters.push(toCharacter(result.stored))
+				return
+			}
+			const hash = entryHash(raw)
+			const occurrence = seen.get(hash) ?? 0
+			seen.set(hash, occurrence + 1)
+			unreadable.push({ key: `${hash}#${occurrence}`, kind: result.kind, name: storedName(raw), message: result.message, raw, index })
+		})
+		return { characters, unreadable }
+	}
+
+	/** All readable saved characters. Empty array if nothing has been saved yet. */
+	list(): Character[] {
+		return this.readAll().characters
+	}
+
+	/** D354: the saved entries `list()` leaves out. */
+	listUnreadable(): UnreadableCharacter[] {
+		return this.readAll().unreadable.map(({ raw: _raw, index: _index, ...entry }) => entry)
+	}
+
+	/** D354: removes exactly one damaged entry; a newer-version entry is never deletable. */
+	deleteUnreadable(key: string): void {
+		const entries = this.readRawEntries()
+		const target = this.readAll(entries).unreadable.find((entry) => entry.key === key)
+		if (!target || target.kind !== 'damaged') throw new CharacterNotFoundError(key)
+		this.writePayload(JSON.stringify(entries.filter((_, i) => i !== target.index)))
+	}
+
+	/** D354: the raw stored entry, unchanged, wrapped in an array like a normal export. */
+	exportUnreadable(key: string): string {
+		const target = this.readAll().unreadable.find((entry) => entry.key === key)
+		if (!target) throw new CharacterNotFoundError(key)
+		return JSON.stringify([target.raw], null, 2)
 	}
 
 	private writeAll(characters: Character[]): void {
-		const payload = JSON.stringify(toStoredCharacters(characters))
+		// D354: unreadable entries are not Characters, so every write carries them over untouched.
+		const kept = this.readAll().unreadable.map((entry) => entry.raw)
+		this.writePayload(JSON.stringify([...toStoredCharacters(characters), ...kept]))
+	}
+
+	private writePayload(payload: string): void {
 		try {
 			this.storage.setItem(STORAGE_KEY, payload)
 		} catch (error) {

@@ -5,7 +5,7 @@ import { featInstances } from '../featAsi/featInstances'
 import { applyHealing } from '../hitPoints/damageHealing'
 import { choiceNames, CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
 import type { Character } from './character'
-import { CharacterStore, type KeyValueStorage } from './characterStore'
+import { CharacterStore, type KeyValueStorage, type UnreadableKind } from './characterStore'
 import {
 	CharacterNotFoundError,
 	CorruptDataError,
@@ -16,6 +16,11 @@ import {
 } from './errors'
 
 const STORAGE_KEY = 'familliar:characters'
+
+/** D354: a broken entry no longer throws from list(); it is left out and reported as unreadable. */
+function expectUnreadable(store: CharacterStore, kind: UnreadableKind = 'damaged'): void {
+	expect(store.listUnreadable().map((entry) => entry.kind)).toContain(kind)
+}
 
 class MemoryStorage implements KeyValueStorage {
 	private data = new Map<string, string>()
@@ -80,24 +85,25 @@ describe('CharacterStore.list', () => {
 		expect(() => store.list()).toThrow(CorruptDataError)
 	})
 
-	it('throws CorruptDataError when a saved character is missing required fields', () => {
+	it('leaves out a saved character that is missing required fields and reports it as damaged', () => {
 		const backing = new MemoryStorage()
 		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', classes: [] }]))
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(CorruptDataError)
+		expect(store.list()).toEqual([])
+		expectUnreadable(store)
 	})
 
-	it('throws UnknownSchemaVersionError when a saved character has an unsupported version', () => {
+	it('reports a saved character with a newer version as unreadable (newer)', () => {
 		const backing = new MemoryStorage()
 		backing.setItem(
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: 999, id: '1', name: 'Aria', classes: [] }]),
 		)
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
+		expectUnreadable(store, 'newer')
 	})
 
-	it('throws UnknownSchemaVersionError for a character saved under the old languages shape (schema version 1)', () => {
+	it('reports a character saved under the old languages shape (schema version 1) as damaged', () => {
 		// Before this change, `languages` held only the two chosen entries as
 		// { name, source } pairs (book source), with no Common and no
 		// `grantedBy`. That shape is not migrated (see CURRENT_SCHEMA_VERSION
@@ -120,10 +126,10 @@ describe('CharacterStore.list', () => {
 			]),
 		)
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
+		expectUnreadable(store)
 	})
 
-	it('throws UnknownSchemaVersionError for a character saved at schema version 2 (before class-choice fields existed) and leaves the store unchanged', () => {
+	it('reports a character saved at schema version 2 (before class-choice fields existed) as damaged and leaves the store unchanged', () => {
 		// Before this change, background had no skillProficiencies and there
 		// was no classSkills/masteries/fightingStyle at all. That shape is not
 		// migrated (see CURRENT_SCHEMA_VERSION in character.ts) — a version-2
@@ -142,7 +148,7 @@ describe('CharacterStore.list', () => {
 			]),
 		)
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
+		expectUnreadable(store)
 		expect(backing.getItem(STORAGE_KEY)).toBe(
 			JSON.stringify([
 				{
@@ -294,7 +300,7 @@ describe('CharacterStore.create with ability scores', () => {
 			]),
 		)
 		const badStore = new CharacterStore(backing)
-		expect(() => badStore.list()).toThrow(CorruptDataError)
+		expectUnreadable(badStore)
 	})
 })
 
@@ -335,7 +341,7 @@ describe('CharacterStore.create with languages', () => {
 			]),
 		)
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(CorruptDataError)
+		expectUnreadable(store)
 	})
 })
 
@@ -427,7 +433,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(bad).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(bad))
 	})
 
 	it('leaves classFeatureChoices undefined when none were provided (old-save compatibility)', () => {
@@ -464,7 +470,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(bad).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(bad))
 	})
 
 	it('leaves wildShapeForms undefined when none were provided (old-save compatibility)', () => {
@@ -486,7 +492,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 			// No source — name alone cannot identify a stat block, same rule as a Wild Shape form.
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Conjurer', classes: [], familiar: { name: 'Owl' } }]),
 		)
-		expect(() => new CharacterStore(bad).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(bad))
 	})
 
 	it('sets, replaces and clears the familiar on a saved character', () => {
@@ -560,7 +566,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		for (const bad of [{ currentHp: -1 }, { currentHp: 1.5 }, { temporaryHitPoints: -2 }, { currentHp: '3' }]) {
 			const storage = new MemoryStorage()
 			storage.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Conjurer', classes: [], familiar: { name: 'Imp', source: 'XMM', ...bad } }]))
-			expect(() => new CharacterStore(storage).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(storage))
 		}
 	})
 
@@ -604,7 +610,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 			]),
 		)
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(CorruptDataError)
+		expectUnreadable(store)
 	})
 
 	/** Pact of the Tome's picks (build order step 6a) ride on the same entry, so they validate with it. */
@@ -646,7 +652,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 			]),
 		)
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(CorruptDataError)
+		expectUnreadable(store)
 	})
 
 	it('rejects a spellChoices entry missing optionName', () => {
@@ -664,7 +670,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 			]),
 		)
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(CorruptDataError)
+		expectUnreadable(store)
 	})
 
 	/*
@@ -719,7 +725,7 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		]
 		backing.setItem(STORAGE_KEY, JSON.stringify(v3Payload))
 		const store = new CharacterStore(backing)
-		expect(() => store.list()).toThrow(UnknownSchemaVersionError)
+		expectUnreadable(store)
 		expect(backing.getItem(STORAGE_KEY)).toBe(JSON.stringify(v3Payload))
 	})
 
@@ -814,7 +820,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 					{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], inventory: [{ name: 'Torch', source: 'XPHB', quantity }] },
 				]),
 			)
-			expect(() => new CharacterStore(badQuantity).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(badQuantity))
 		}
 
 		const badCurrency = new MemoryStorage()
@@ -822,7 +828,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], currencyCopper: 12.5 }]),
 		)
-		expect(() => new CharacterStore(badCurrency).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badCurrency))
 	})
 
 	it('keeps an inventory item whose data cannot be resolved — validation is structural only, never a lookup against items.json', () => {
@@ -887,7 +893,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], inventory: [{ name: 'Shield', source: 'XPHB', quantity: 1, equipped: 'hand' }] },
 			]),
 		)
-		expect(() => new CharacterStore(badSlot).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badSlot))
 
 		const twoSuits = new MemoryStorage()
 		twoSuits.setItem(
@@ -905,7 +911,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(twoSuits).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(twoSuits))
 	})
 
 	/* D69: the 18 -> 19 bump ships a migration, so a version-18 save is carried forward with its inventory unequipped. */
@@ -954,7 +960,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(badAbility).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badAbility))
 	})
 
 	/* D69: the 19 -> 20 bump ships a migration, so a version-19 save keeps its equipped state and picks no ability. */
@@ -1000,7 +1006,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(badGrip).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badGrip))
 	})
 
 	it('round-trips an attunement flag and refuses any value but true (step 7 slice d)', () => {
@@ -1024,7 +1030,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(badFlag).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badFlag))
 	})
 
 	/* D69: the 20 -> 21 bump ships a migration, so a version-20 save keeps its inventory and is attuned to nothing. */
@@ -1068,7 +1074,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(badBonus).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badBonus))
 	})
 
 	/* D69: the 21 -> 22 bump ships a migration, so a version-21 save keeps its inventory and carries no player-set bonus. */
@@ -1185,7 +1191,7 @@ describe('CharacterStore inventory and currency (step 7 slice a1)', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(notAnObject).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(notAnObject))
 	})
 })
 
@@ -1337,7 +1343,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 
 		const wrongType = new MemoryStorage()
 		wrongType.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], play: { heroicInspiration: 'yes' } }]))
-		expect(() => new CharacterStore(wrongType).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(wrongType))
 	})
 
 	/* R12 (D214): conditions and exhaustion follow the same absence convention as every play field. */
@@ -1370,7 +1376,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 		for (const play of [{ conditions: ['Sleepy'] }, { conditions: ['Prone', 'Prone'] }, { conditions: 'Prone' }, { exhaustion: 0 }, { exhaustion: 7 }, { exhaustion: 1.5 }, { exhaustion: '2' }]) {
 			const stored = new MemoryStorage()
 			stored.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], play }]))
-			expect(() => new CharacterStore(stored).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(stored))
 		}
 	})
 
@@ -1492,14 +1498,14 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], currentHp: -1 }]),
 		)
-		expect(() => new CharacterStore(negative).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(negative))
 
 		const fractional = new MemoryStorage()
 		fractional.setItem(
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], maxHpOverride: 12.5 }]),
 		)
-		expect(() => new CharacterStore(fractional).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(fractional))
 	})
 
 	/* Slice 9a2 (D111): the progress is bound to the current, so the store is where the pair can never go wrong. */
@@ -1535,7 +1541,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], currentHp: 0, play: { deathSaves: { successes: 4, failures: 0 } } }]),
 		)
-		expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(backing))
 	})
 
 	it('round-trips death saves at 0 hit points', () => {
@@ -1576,7 +1582,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], hitPointLevels: [{ level: 1, dieResult: 10, kind: 'guess' }] },
 			]),
 		)
-		expect(() => new CharacterStore(badKind).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badKind))
 
 		const badLevel = new MemoryStorage()
 		badLevel.setItem(
@@ -1585,7 +1591,7 @@ describe('CharacterStore hand-set hit points (persistent-header slice 1; the max
 				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], hitPointLevels: [{ level: 0, dieResult: 10, kind: 'maximum' }] },
 			]),
 		)
-		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badLevel))
 	})
 })
 
@@ -1612,14 +1618,14 @@ describe('stored weapon masteries (D97)', () => {
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], masteries: ['Longsword'] }]),
 		)
-		expect(() => new CharacterStore(bareName).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(bareName))
 
 		const badLevel = new MemoryStorage()
 		badLevel.setItem(
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], masteries: [{ name: 'Longsword', level: 0 }] }]),
 		)
-		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badLevel))
 	})
 
 	it('returns the plain names from the stored shape', () => {
@@ -1650,7 +1656,7 @@ describe('stored expertise skills (D98)', () => {
 			STORAGE_KEY,
 			JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], expertiseSkills: ['stealth'] }]),
 		)
-		expect(() => new CharacterStore(bareName).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(bareName))
 
 		const badLevel = new MemoryStorage()
 		badLevel.setItem(
@@ -1659,7 +1665,7 @@ describe('stored expertise skills (D98)', () => {
 				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], expertiseSkills: [{ name: 'stealth', level: 21 }] },
 			]),
 		)
-		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badLevel))
 	})
 
 	it('saves a creation pick with no level and reloads it unchanged', () => {
@@ -1694,7 +1700,7 @@ describe('stored optional-feature picks (D99)', () => {
 				{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], optionalFeatureChoices: [{ featureType: 'MM', choices: ['Careful Spell'] }] },
 			]),
 		)
-		expect(() => new CharacterStore(bareName).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(bareName))
 
 		const badLevel = new MemoryStorage()
 		badLevel.setItem(
@@ -1709,7 +1715,7 @@ describe('stored optional-feature picks (D99)', () => {
 				},
 			]),
 		)
-		expect(() => new CharacterStore(badLevel).list()).toThrow(CorruptDataError)
+		expectUnreadable(new CharacterStore(badLevel))
 	})
 
 	it('saves a creation pick with no level and reloads it unchanged', () => {
@@ -1811,7 +1817,7 @@ describe('CharacterStore free-text fields (slice 9d2)', () => {
 		for (const field of ['appearance', 'backstory', 'notes']) {
 			const backing = new MemoryStorage()
 			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], [field]: 7 }]))
-			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(backing))
 		}
 	})
 })
@@ -1868,7 +1874,7 @@ describe('stored granted feats (D156)', () => {
 		for (const grantedFeats of bad) {
 			const backing = new MemoryStorage()
 			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats }]))
-			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(backing))
 		}
 	})
 })
@@ -1887,7 +1893,7 @@ describe('manual feats (R13a, D215)', () => {
 		for (const bad of [{ origin: 'manual', source: 'XPHB' }, { origin: 'manual', name: 'Tough', source: 'XPHB', chosenAbility: 'luck' }]) {
 			const badBacking = new MemoryStorage()
 			badBacking.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats: [bad] }]))
-			expect(() => new CharacterStore(badBacking).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(badBacking))
 		}
 	})
 
@@ -2004,7 +2010,7 @@ describe('background origin-feat override (D205)', () => {
 		for (const originFeatOverride of [{ name: 'Gathered Whispers' }, 'Gathered Whispers', { name: '', source: 'RHW' }]) {
 			const backing = new MemoryStorage()
 			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], background: { ...background, originFeatOverride } }]))
-			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(backing))
 		}
 	})
 })
@@ -2059,7 +2065,7 @@ describe('stored feat proficiency picks (task A2)', () => {
 			const backing = new MemoryStorage()
 			const featAsiChoices = [{ level: 4, kind: 'feat', name: 'Keen Mind', source: 'XPHB', proficiencies }]
 			backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], featAsiChoices }]))
-			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(backing))
 		}
 	})
 })
@@ -2584,7 +2590,7 @@ describe('fightingStyles and option sources (M1b, D318)', () => {
 	})
 
 	it('rejects stored fightingStyles that are not an array, as the old field was', () => {
-		expect(() => storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], fightingStyles: 'Archery' }]).list()).toThrow(CorruptDataError)
+		expectUnreadable(storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], fightingStyles: 'Archery' }]))
 	})
 
 	// D320: a bad entry in a stored list is repaired on read, not fatal.
@@ -2600,12 +2606,12 @@ describe('fightingStyles and option sources (M1b, D318)', () => {
 	})
 
 	it('rejects a schema-57 save whose old style is malformed, as before', () => {
-		expect(() => storeWith([{ schemaVersion: 57, id: '1', name: 'Aria', classes: [], fightingStyle: 5 }]).list()).toThrow(CorruptDataError)
+		expectUnreadable(storeWith([{ schemaVersion: 57, id: '1', name: 'Aria', classes: [], fightingStyle: 5 }]))
 	})
 
 	it('rejects a pick whose source is not a non-empty string', () => {
 		const optionalFeatureChoices = [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack', source: 7 }] }]
-		expect(() => storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], optionalFeatureChoices }]).list()).toThrow(CorruptDataError)
+		expectUnreadable(storeWith([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], optionalFeatureChoices }]))
 	})
 
 	it('drops unknown extra keys on a style and a pick, as every other nested field does', () => {
@@ -2742,7 +2748,7 @@ describe('concentration source and stable manual feat ids (M1c, D319)', () => {
 		it('still rejects what is not repairable: a bad shape inside a granted feat', () => {
 			const backing = new MemoryStorage()
 			backing.setItem(STORAGE_KEY, JSON.stringify([{ ...current, grantedFeats: [{ origin: 'manual', source: 'XPHB' }] }]))
-			expect(() => new CharacterStore(backing).list()).toThrow(CorruptDataError)
+			expectUnreadable(new CharacterStore(backing))
 		})
 	})
 
@@ -2839,5 +2845,99 @@ describe('every write validates the changed character (D353)', () => {
 		expect(backing.getItem(STORAGE_KEY)).toBe(before)
 		expect(() => store.list()).not.toThrow()
 		expect(store.list().map((character) => character.name)).toEqual(['Aria', 'Bryn'])
+	})
+})
+
+describe('unreadable saved characters (F-25b, D354)', () => {
+	const damaged = { schemaVersion: CURRENT_SCHEMA_VERSION, id: 'bad', name: 'Broken', classes: 'nope' }
+	const newer = { schemaVersion: CURRENT_SCHEMA_VERSION + 1, id: 'future', name: 'Tomorrow', anything: [1, 2] }
+
+	function seeded() {
+		const backing = new MemoryStorage()
+		const store = new CharacterStore(backing)
+		const aria = store.create({ name: 'Aria' })
+		const bryn = store.create({ name: 'Bryn' })
+		const valid = JSON.parse(backing.getItem(STORAGE_KEY) ?? '[]') as unknown[]
+		backing.setItem(STORAGE_KEY, JSON.stringify([valid[0], damaged, newer, valid[1]]))
+		return { backing, store, aria, bryn }
+	}
+
+	function rawEntries(backing: MemoryStorage): string[] {
+		return (JSON.parse(backing.getItem(STORAGE_KEY) ?? '[]') as unknown[]).map((entry) => JSON.stringify(entry))
+	}
+
+	it('lists the valid characters and reports the other two with their kinds', () => {
+		const { store } = seeded()
+		expect(store.list().map((character) => character.name)).toEqual(['Aria', 'Bryn'])
+		const unreadable = store.listUnreadable()
+		expect(unreadable.map((entry) => [entry.kind, entry.name])).toEqual([
+			['damaged', 'Broken'],
+			['newer', 'Tomorrow'],
+		])
+		expect(unreadable[0].message).not.toBe('')
+	})
+
+	it('has no name for an entry that is not an object, and keeps identical entries apart', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([42, 42]))
+		const unreadable = new CharacterStore(backing).listUnreadable()
+		expect(unreadable.map((entry) => entry.name)).toEqual([null, null])
+		expect(new Set(unreadable.map((entry) => entry.key)).size).toBe(2)
+	})
+
+	it('keeps both unreadable entries byte for byte through setText, create, delete and import', () => {
+		const { backing, store, aria, bryn } = seeded()
+		const expected = [JSON.stringify(damaged), JSON.stringify(newer)]
+		const keptUnreadable = () => rawEntries(backing).filter((entry) => expected.includes(entry))
+
+		store.setText(aria.id, 'notes', 'hello')
+		expect(keptUnreadable()).toEqual(expected)
+		const created = store.create({ name: 'Cleo' })
+		expect(keptUnreadable()).toEqual(expected)
+		store.delete(bryn.id)
+		expect(keptUnreadable()).toEqual(expected)
+		store.import(store.exportCharacter(created.id))
+		expect(keptUnreadable()).toEqual(expected)
+		expect(store.list().map((character) => character.name).sort()).toEqual(['Aria', 'Cleo', 'Cleo'])
+		expect(store.listUnreadable()).toHaveLength(2)
+	})
+
+	it('keeps them when a strict import is rejected', () => {
+		const { backing, store } = seeded()
+		const before = backing.getItem(STORAGE_KEY)
+		expect(() => store.import(JSON.stringify([damaged]))).toThrow(ImportValidationError)
+		expect(backing.getItem(STORAGE_KEY)).toBe(before)
+	})
+
+	it('deletes only the damaged entry and refuses to delete a newer-version one', () => {
+		const { backing, store } = seeded()
+		const [damagedEntry, newerEntry] = store.listUnreadable()
+		expect(() => store.deleteUnreadable(newerEntry.key)).toThrow(CharacterNotFoundError)
+		const before = rawEntries(backing)
+		store.deleteUnreadable(damagedEntry.key)
+		expect(rawEntries(backing)).toEqual(before.filter((entry) => entry !== JSON.stringify(damaged)))
+		expect(store.list()).toHaveLength(2)
+		expect(store.listUnreadable().map((entry) => entry.kind)).toEqual(['newer'])
+	})
+
+	it('removes one of two identical damaged entries, not both', () => {
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([damaged, damaged]))
+		const store = new CharacterStore(backing)
+		store.deleteUnreadable(store.listUnreadable()[1].key)
+		expect(rawEntries(backing)).toEqual([JSON.stringify(damaged)])
+	})
+
+	it('exports the raw stored entry, wrapped in an array', () => {
+		const { store } = seeded()
+		const [damagedEntry, newerEntry] = store.listUnreadable()
+		expect(JSON.parse(store.exportUnreadable(damagedEntry.key))).toEqual([damaged])
+		expect(JSON.parse(store.exportUnreadable(newerEntry.key))).toEqual([newer])
+		expect(() => store.exportUnreadable('missing#0')).toThrow(CharacterNotFoundError)
+	})
+
+	it('keeps unreadable keys stable across a reload', () => {
+		const { backing, store } = seeded()
+		expect(new CharacterStore(backing).listUnreadable().map((entry) => entry.key)).toEqual(store.listUnreadable().map((entry) => entry.key))
 	})
 })

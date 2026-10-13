@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CharacterList } from './characters/CharacterList'
-import { CharacterStore, type CharacterTextField, type HitPointFields, type RestFields } from './storage/characterStore'
+import { CharacterStore, type CharacterTextField, type HitPointFields, type RestFields, type UnreadableCharacter } from './storage/characterStore'
 import { StorageError } from './storage/errors'
 import type {
 	AbilityIncreaseMap,
@@ -61,6 +61,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 	})
 
 	const [characters, setCharacters] = useState<Character[]>([])
+	const [unreadable, setUnreadable] = useState<UnreadableCharacter[]>([])
 	/** Set once `refresh` has run at least once — guards the route-validation effect below against the initial render, where `characters` is still `[]` and a valid id would otherwise look unknown (see R1b report). */
 	const [charactersLoaded, setCharactersLoaded] = useState(false)
 	const [loadError, setLoadError] = useState<string | null>(null)
@@ -70,6 +71,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		if (!store.store) return
 		try {
 			setCharacters(store.store.list())
+			setUnreadable(store.store.listUnreadable())
 			setLoadError(null)
 		} catch (error) {
 			setLoadError(describeError(error))
@@ -228,17 +230,36 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.delete(id))
 	}
 
-	function handleExport(id: string): void {
-		if (!store.store) return
+	function exportFile(name: string | undefined, getJson: () => string): void {
 		try {
-			const json = store.store.exportCharacter(id)
-			const character = characters.find((c) => c.id === id)
-			const filename = `${character?.name ?? 'character'}.json`.replace(/[\\/:*?"<>|]/g, '_')
+			const json = getJson()
+			const filename = `${name ?? 'character'}.json`.replace(/[\\/:*?"<>|]/g, '_')
 			download(filename, json)
 			setActionError(null)
 		} catch (error) {
 			setActionError(describeError(error))
 		}
+	}
+
+	function handleExport(id: string): void {
+		if (!store.store) return
+		exportFile(
+			characters.find((c) => c.id === id)?.name,
+			() => store.store?.exportCharacter(id) ?? '',
+		)
+	}
+
+	function handleExportUnreadable(key: string): void {
+		if (!store.store) return
+		exportFile(
+			unreadable.find((entry) => entry.key === key)?.name ?? undefined,
+			() => store.store?.exportUnreadable(key) ?? '',
+		)
+	}
+
+	function handleDeleteUnreadable(key: string): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.deleteUnreadable(key))
 	}
 
 	function handleImportFile(file: File): void {
@@ -266,6 +287,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		return (
 			<CharacterList
 				characters={characters}
+				unreadable={unreadable}
 				loadError={loadError}
 				actionError={actionError}
 				onNew={() => navigate({ view: 'new' })}
@@ -273,6 +295,8 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 				onRename={handleRename}
 				onExport={handleExport}
 				onDelete={handleDelete}
+				onExportUnreadable={handleExportUnreadable}
+				onDeleteUnreadable={handleDeleteUnreadable}
 				onImportFile={handleImportFile}
 			/>
 		)

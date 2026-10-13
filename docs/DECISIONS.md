@@ -5250,3 +5250,12 @@ Každá cesta, která postavu ukládá (create, update i všechny settery), nejd
 (`describeCharacterError`) a při chybě vyhodí `ImportValidationError` bez zápisu. Rozšiřuje D320: jedna špatná hodnota
 tak nemůže znečitelnit celý seznam postav. Čtení, které toleruje už poškozenou uloženou postavu, je samostatný task F-25b.
 Task F-25a, rozhodl Daniel.
+
+## D354 — Nečitelná uložená postava je samostatná karta, ne chyba celého seznamu (F-25b)
+
+Uložené postavy se čtou po jedné. Platné se načtou normálně; vadná položka se nezahodí, ale zobrazí se jako karta
+„Damaged“ (neprošla validací, text chyby, tlačítka Export a Delete) nebo „Saved by a newer version“ (schemaVersion
+vyšší než appka umí, „Reload the page to open it.“, pouze Export — aby ji zastaralá záložka nemohla smazat). Karta
+nejde otevřít. Export vrací surovou uloženou položku v poli. Vadné položky zůstávají v úložišti beze změny při každém
+zápisu (create, import, delete i settery jiných postav). Špatný JSON nebo úložiště, které není pole, dál končí chybou
+celého seznamu. `import()` zůstává přísný: špatný soubor se odmítne celý. Rozšiřuje D353. Task F-25b, rozhodl Daniel.
