@@ -237,9 +237,9 @@ const SHEET_TABS: readonly { id: SheetTabId; label: string }[] = [
 
 /** The Notes tab's sections (slice 9d2), in display order — each one Character field. */
 const TEXT_SECTIONS: readonly { field: CharacterTextField; label: string }[] = [
-	{ field: 'appearance', label: 'Vzhled' },
-	{ field: 'backstory', label: 'Příběh' },
-	{ field: 'notes', label: 'Poznámky' },
+	{ field: 'appearance', label: 'Appearance' },
+	{ field: 'backstory', label: 'Backstory' },
+	{ field: 'notes', label: 'Notes' },
 ]
 
 function messageOf(error: unknown): string {

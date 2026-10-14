@@ -1379,7 +1379,7 @@ button:disabled {
   overflow-y: auto;
 }
 
-/* Slice 9d2: the free-text fields of the "Vzhled a poznámky" tab. */
+/* Slice 9d2: the free-text fields of the Notes tab. */
 .sheet__text-section {
   margin-bottom: 0.75rem;
 }

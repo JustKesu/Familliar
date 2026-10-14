@@ -83,8 +83,8 @@ test('F-7b c: a Long Rest ends Concentration', async ({ page }) => {
 test('F-7b e: text typed in Notes survives the first click on Remove level, and confirming keeps it', async ({ page }) => {
   await open(page, seeded('f7b-remove', 'Fighter', 2))
   await page.getByRole('tab', { name: 'Notes' }).click()
-  await page.getByText('Poznámky', { exact: true }).click()
-  await page.getByRole('textbox', { name: 'Poznámky' }).fill('written just before')
+  await page.locator('summary', { hasText: /^Notes$/ }).click()
+  await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('written just before')
 
   const remove = page.getByRole('button', { name: 'Remove level 2' })
   await expect(remove).toBeEnabled()
@@ -96,8 +96,8 @@ test('F-7b e: text typed in Notes survives the first click on Remove level, and 
 
   await page.reload()
   await page.getByRole('tab', { name: 'Notes' }).click()
-  await page.getByText('Poznámky', { exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'Poznámky' })).toHaveValue('written just before')
+  await page.locator('summary', { hasText: /^Notes$/ }).click()
+  await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue('written just before')
 })
 
 test('F-7b f: Manage Spells takes focus on open and gives it back to its button on close', async ({ page }) => {

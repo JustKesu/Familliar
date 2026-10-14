@@ -278,8 +278,8 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 		await user.click(await screen.findByRole('button', { name: 'Aria' }))
 		await user.click(await screen.findByRole('tab', { name: 'Notes' }))
 
-		await user.type(screen.getByRole('textbox', { name: 'Příběh' }), '- Raised by owls{Enter}  - Left at dawn  ')
-		await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato 5 gp')
+		await user.type(screen.getByRole('textbox', { name: 'Backstory' }), '- Raised by owls{Enter}  - Left at dawn  ')
+		await user.type(screen.getByRole('textbox', { name: /^Notes$/ }), 'Owes Cato 5 gp')
 		await user.tab()
 
 		const stored = store.list().find((character) => character.id === created.id)
@@ -290,11 +290,11 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 		unmount()
 		window.location.hash = `#/character/${created.id}`
 		render(<Harness />)
-		expect((await screen.findByRole('textbox', { name: 'Příběh' })) as HTMLTextAreaElement).toHaveProperty(
+		expect((await screen.findByRole('textbox', { name: 'Backstory' })) as HTMLTextAreaElement).toHaveProperty(
 			'value',
 			'- Raised by owls\n  - Left at dawn  ',
 		)
-		expect((screen.getByRole('textbox', { name: 'Vzhled' }) as HTMLTextAreaElement).value).toBe('')
+		expect((screen.getByRole('textbox', { name: 'Appearance' }) as HTMLTextAreaElement).value).toBe('')
 	})
 
 	it('does not carry one character\'s text over to another when navigating back through the list', async () => {
@@ -305,7 +305,7 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 		const user = userEvent.setup()
 		render(<Harness />)
 		await user.click(await screen.findByRole('button', { name: 'Aria' }))
-		await user.type(await screen.findByRole('textbox', { name: 'Poznámky' }), 'Aria only')
+		await user.type(await screen.findByRole('textbox', { name: /^Notes$/ }), 'Aria only')
 		await user.tab()
 
 		goTo('#/')
@@ -313,7 +313,7 @@ describe('CharacterManager appearance and notes (slice 9d2)', () => {
 
 		// A fresh CharacterSheet mount for Bree — no sheet state, tab included, survives from Aria's.
 		await user.click(await screen.findByRole('tab', { name: 'Notes' }))
-		expect((await screen.findByRole('textbox', { name: 'Poznámky' })) as HTMLTextAreaElement).toHaveProperty('value', '')
+		expect((await screen.findByRole('textbox', { name: /^Notes$/ })) as HTMLTextAreaElement).toHaveProperty('value', '')
 		expect(store.list().find((character) => character.name === 'Bree')?.notes).toBeUndefined()
 		expect(store.list().find((character) => character.name === 'Aria')?.notes).toBe('Aria only')
 	})

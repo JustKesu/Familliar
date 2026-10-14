@@ -355,7 +355,7 @@ export interface Character {
 	/** D317: entry i is the class that took character level i+1. Absent = order not known (e.g. a migrated multiclass character). */
 	levelOrder?: CharacterLevelOrderEntry[]
 	/**
-	 * The three free-text fields of the "Vzhled a poznámky" tab (slice 9d2), each
+	 * The three free-text fields of the Notes tab (slice 9d2), each
 	 * exactly what the player typed — line breaks and spacing included, nothing
 	 * parsed or trimmed. They describe the character rather than a play session,
 	 * so they live here and not under `play`: a rest never touches them. Absent

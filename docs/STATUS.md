@@ -984,7 +984,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   Klientský stav, výchozí `stats`, bez URL routingu. Panely zůstávají
   mountnuté, neaktivní skrývá `.sheet__panel` CSS. Nový blok testů `sheet
   tabs (rebuild slice 2)`. Od slice 9d2 je záložek šest: za `Akce` přibyla
-  `Vzhled a poznámky` (tři volná textová pole).
+  `Notes` (tři volná textová pole; sekce Appearance / Backstory / Notes od
+  F-28, D356).
 - Tabulka akcí (přestavba sheetu, slice 3) — `ActionsSection` v
   `src/sheet/CharacterSheet.tsx`. `<table class="sheet__actions-table">`,
   sloupce Name · Range · To Hit · Damage · Notes, řádek na drženou zbraň +

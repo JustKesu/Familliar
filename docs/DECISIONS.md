@@ -5268,3 +5268,8 @@ karta / edit / level-up patří postavě, která je teď nečitelná (shoda podl
 „<jméno nebo 'This character'> could not be opened - see its card below.“; neznámé id přesměruje dál potichu. Export
 nečitelné položky je obsahově shodný, ne bajtově: round-trip JSON mění velká čísla (> 2^53, `1e400` → `null`) a
 z duplicitních klíčů nechá poslední. Upřesňuje D354. Task F-26, rozhodl Daniel.
+
+## D356 — Popisky sekcí záložky Notes jsou anglicky (F-28)
+
+Sekce záložky Notes se nově jmenují Appearance / Backstory / Notes (dříve Vzhled / Příběh / Poznámky). Mění se jen
+viditelný popisek; pole `appearance`, `backstory`, `notes` a uložená data beze změny. Dokončuje D148. Task F-28.

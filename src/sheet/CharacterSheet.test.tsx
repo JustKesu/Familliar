@@ -8553,7 +8553,7 @@ describe('sheet tabs (rebuild slice 2; R3 dissolves the stats tab, D123; R3b app
 })
 
 /* Slice 9d2: three plain textareas, each in its own independently collapsible <details>, each written to its own Character field. */
-describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
+describe('the Notes tab (slice 9d2; section labels in English since D356)', () => {
 	const MULTI_LINE = '- first\n\n  indented   \n* second\n'
 
 	/* Holds the character in state the way CharacterManager does, so the sheet re-reads what it wrote. */
@@ -8592,11 +8592,11 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 		expect(container.querySelector('#sheet-panel-actions')!.className).not.toContain('sheet__panel--active')
 	})
 
-	it('holds Vzhled, Příběh and Poznámky in that order, each with exactly one textarea', async () => {
+	it('holds Appearance, Backstory and Notes in that order, each with exactly one textarea', async () => {
 		const { container } = await openNotesTab()
 
 		const sections = sectionDetails(container)
-		expect(sections.map((section) => section.querySelector('summary')!.textContent)).toEqual(['Vzhled', 'Příběh', 'Poznámky'])
+		expect(sections.map((section) => section.querySelector('summary')!.textContent)).toEqual(['Appearance', 'Backstory', 'Notes'])
 		for (const section of sections) expect(section.querySelectorAll('textarea')).toHaveLength(1)
 		expect(container.querySelectorAll('#sheet-panel-notes textarea')).toHaveLength(3)
 	})
@@ -8608,16 +8608,16 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 
 		expect(openStates()).toEqual([false, false, false])
 
-		await user.click(screen.getByText('Příběh', { selector: 'summary' }))
+		await user.click(screen.getByText('Backstory', { selector: 'summary' }))
 		expect(openStates()).toEqual([false, true, false])
 
-		await user.click(screen.getByText('Vzhled', { selector: 'summary' }))
+		await user.click(screen.getByText('Appearance', { selector: 'summary' }))
 		expect(openStates()).toEqual([true, true, false])
 
-		await user.click(screen.getByText('Příběh', { selector: 'summary' }))
+		await user.click(screen.getByText('Backstory', { selector: 'summary' }))
 		expect(openStates()).toEqual([true, false, false])
 
-		await user.click(screen.getByText('Poznámky', { selector: 'summary' }))
+		await user.click(screen.getByText('Notes', { selector: 'summary' }))
 		expect(openStates()).toEqual([true, false, true])
 	})
 
@@ -8625,22 +8625,22 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 		const { user, onEdit } = await openNotesTab()
 
 		// Tab leaves the field, which is what commits (D116).
-		await user.type(screen.getByRole('textbox', { name: 'Vzhled' }), 'Tall{Enter}Green eyes')
+		await user.type(screen.getByRole('textbox', { name: 'Appearance' }), 'Tall{Enter}Green eyes')
 		await user.tab()
 		expect(onEdit).toHaveBeenLastCalledWith('appearance', 'Tall\nGreen eyes')
 
-		await user.type(screen.getByRole('textbox', { name: 'Příběh' }), '- Raised by owls{Enter}  - Left at dawn  ')
+		await user.type(screen.getByRole('textbox', { name: 'Backstory' }), '- Raised by owls{Enter}  - Left at dawn  ')
 		await user.tab()
 		expect(onEdit).toHaveBeenLastCalledWith('backstory', '- Raised by owls\n  - Left at dawn  ')
 
-		await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato 5 gp')
+		await user.type(screen.getByRole('textbox', { name: /^Notes$/ }), 'Owes Cato 5 gp')
 		await user.tab()
 		expect(onEdit).toHaveBeenLastCalledWith('notes', 'Owes Cato 5 gp')
 
 		// Each textarea shows its own text and nothing of the other two.
-		expect((screen.getByRole('textbox', { name: 'Vzhled' }) as HTMLTextAreaElement).value).toBe('Tall\nGreen eyes')
-		expect((screen.getByRole('textbox', { name: 'Příběh' }) as HTMLTextAreaElement).value).toBe('- Raised by owls\n  - Left at dawn  ')
-		expect((screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement).value).toBe('Owes Cato 5 gp')
+		expect((screen.getByRole('textbox', { name: 'Appearance' }) as HTMLTextAreaElement).value).toBe('Tall\nGreen eyes')
+		expect((screen.getByRole('textbox', { name: 'Backstory' }) as HTMLTextAreaElement).value).toBe('- Raised by owls\n  - Left at dawn  ')
+		expect((screen.getByRole('textbox', { name: /^Notes$/ }) as HTMLTextAreaElement).value).toBe('Owes Cato 5 gp')
 		const fields = new Set(onEdit.mock.calls.map(([field]) => field))
 		expect(fields).toEqual(new Set(['appearance', 'backstory', 'notes']))
 	})
@@ -8648,15 +8648,15 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 	it('shows stored text back in the matching textarea, multi-line text intact', async () => {
 		await openNotesTab({ ...character, appearance: MULTI_LINE, notes: 'Only a note' })
 
-		expect((screen.getByRole('textbox', { name: 'Vzhled' }) as HTMLTextAreaElement).value).toBe(MULTI_LINE)
-		expect((screen.getByRole('textbox', { name: 'Příběh' }) as HTMLTextAreaElement).value).toBe('')
-		expect((screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement).value).toBe('Only a note')
+		expect((screen.getByRole('textbox', { name: 'Appearance' }) as HTMLTextAreaElement).value).toBe(MULTI_LINE)
+		expect((screen.getByRole('textbox', { name: 'Backstory' }) as HTMLTextAreaElement).value).toBe('')
+		expect((screen.getByRole('textbox', { name: /^Notes$/ }) as HTMLTextAreaElement).value).toBe('Only a note')
 	})
 
 	it('reports an emptied textarea as the empty string, which the store reads as none', async () => {
 		const { user, onEdit } = await openNotesTab({ ...character, notes: 'x' })
 
-		await user.clear(screen.getByRole('textbox', { name: 'Poznámky' }))
+		await user.clear(screen.getByRole('textbox', { name: /^Notes$/ }))
 		await user.tab()
 
 		expect(onEdit).toHaveBeenLastCalledWith('notes', '')
@@ -8668,7 +8668,7 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 
 		it('keeps typing local and writes once, with the final text, after the idle delay', async () => {
 			const { user, onEdit } = await openNotesTab()
-			const field = screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement
+			const field = screen.getByRole('textbox', { name: /^Notes$/ }) as HTMLTextAreaElement
 
 			await user.type(field, 'Owes Cato')
 
@@ -8681,7 +8681,7 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 		it('commits on blur at once, and the pending idle write does not repeat it', async () => {
 			const { user, onEdit } = await openNotesTab()
 
-			await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato')
+			await user.type(screen.getByRole('textbox', { name: /^Notes$/ }), 'Owes Cato')
 			expect(onEdit).not.toHaveBeenCalled()
 			await user.tab()
 			expect(onEdit).toHaveBeenCalledTimes(1)
@@ -8694,7 +8694,7 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 		it('does not write on blur when nothing was typed', async () => {
 			const { user, onEdit } = await openNotesTab({ ...character, notes: 'Stored' })
 
-			await user.click(screen.getByRole('textbox', { name: 'Poznámky' }))
+			await user.click(screen.getByRole('textbox', { name: /^Notes$/ }))
 			await user.tab()
 
 			expect(onEdit).not.toHaveBeenCalled()
@@ -8706,7 +8706,7 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 			const { unmount } = render(<Harness initial={character} onEdit={onEdit} />)
 			await screen.findByRole('heading', { name: 'Aria' })
 			await user.click(screen.getByRole('tab', { name: 'Notes' }))
-			await user.type(screen.getByRole('textbox', { name: 'Příběh' }), 'Left at dawn')
+			await user.type(screen.getByRole('textbox', { name: 'Backstory' }), 'Left at dawn')
 			expect(onEdit).not.toHaveBeenCalled()
 
 			unmount()
@@ -8718,7 +8718,7 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 		it.each(['beforeunload', 'pagehide'])('flushes pending text when the page goes away (%s) without a blur', async (event) => {
 			const { user, onEdit } = await openNotesTab()
 
-			await user.type(screen.getByRole('textbox', { name: 'Poznámky' }), 'Owes Cato')
+			await user.type(screen.getByRole('textbox', { name: /^Notes$/ }), 'Owes Cato')
 			expect(onEdit).not.toHaveBeenCalled()
 
 			fireEvent(window, new Event(event))
@@ -8744,7 +8744,7 @@ describe('the Notes tab ("Vzhled a poznámky" until R3b, slice 9d2)', () => {
 		render(<CharacterSheet character={{ ...character, notes: 'Stored' }} />)
 		await screen.findByRole('heading', { name: 'Aria' })
 
-		const field = screen.getByRole('textbox', { name: 'Poznámky' }) as HTMLTextAreaElement
+		const field = screen.getByRole('textbox', { name: /^Notes$/ }) as HTMLTextAreaElement
 		expect(field.readOnly).toBe(true)
 		expect(field.value).toBe('Stored')
 	})

@@ -1857,3 +1857,10 @@ EFA Replicate Magic Item plans also swap, but plans are not picked anywhere in t
 
 No swap text: Arcane Archer shots (`AS`), College of Swords fighting style (`FS:B`). Paladin and
 Ranger XPHB Fighting Style features carry no replace sentence; only the Fighter's does.
+
+## Optional features that carry stored spell picks have no prerequisite (F-28 survey)
+
+Of 120 entries in optional-features.json, 3 grant a `choose` spell slot via `additionalSpells`: Pact of
+the Tome XPHB (`EI`), Blessed Warrior TCE (`FS:P`), Druidic Warrior TCE (`FS:R`). All three have no
+`prerequisite`. The D347 cascade only removes picks whose prerequisite stops holding, so a real
+option with stored `spellChoices` is never dropped by the cascade, only by its own level stamp (D351).
