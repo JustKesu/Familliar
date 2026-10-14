@@ -5273,3 +5273,20 @@ z duplicitních klíčů nechá poslední. Upřesňuje D354. Task F-26, rozhodl 
 
 Sekce záložky Notes se nově jmenují Appearance / Backstory / Notes (dříve Vzhled / Příběh / Poznámky). Mění se jen
 viditelný popisek; pole `appearance`, `backstory`, `notes` a uložená data beze změny. Dokončuje D148. Task F-28.
+
+## D357 — Přirozená zbroj druhu je kandidát na AC; zákaz zbroje jen varuje (S5)
+
+Přirozená zbroj (Lizardfolk 13 + Dex, Tortle 17 bez Dex; ručně mapováno podle name|source, protože data
+mají jen prózu) je další kandidát na AC vedle nošené zbroje a vzorců (Unarmored Defense atd.). Vyhrává
+nejlepší, rozpis jmenuje vítěze a ukáže, co by dali ostatní. Štít se přičítá, jak říká text druhu (u obou
+ano). Tortle smí zbroj mít vybavenou, ale rozpis ukáže varovný řádek, že ji podle pravidel nosit nesmí;
+Defense (Fighting Style) se přičítá jen když vyhrává nošená zbroj. Task S5, rozhodl Daniel.
+
+## D358 — Přirozené zbraně druhu mají vlastní řádek v Akcích (S5)
+
+Druh s přirozenou zbraní (Aarakocra Talons, Centaur Hooves, Lizardfolk Bite, Minotaur Horns, Satyr Ram,
+Tabaxi Cat's Claws, Tortle Claws, Shifter Longtooth Elongated Fangs) dostane řádek vedle prostého
+Unarmed Strike: 1d6 + Str, typ škody z textu druhu, vždy zdatný. Monk bere vyšší z kostky druhu a Martial
+Arts a Dex, když je vyšší (jako D77). Longtooth nese poznámku „only while shifted" (stav Shifting se
+nesleduje). Lupin Feral Pounce mění typ škody prostého Unarmed Strike na slashing; Shove rider se
+neimplementuje. Task S5, rozhodl Daniel.

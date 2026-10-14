@@ -23,6 +23,7 @@ import type { FeatEffectEntry } from './featEffects'
 import { hasFightingStyle } from './fightingStyles'
 import type { ItemAbilityGrant } from './itemAbilityScores'
 import type { MagicBonus } from './magicBonus'
+import { type NaturalArmour, naturalArmourOf } from './speciesNatural'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 export type ArmourCategory = 'light' | 'medium' | 'heavy'
@@ -146,6 +147,15 @@ interface Candidate {
 	/** How the candidate reads in a losing row: "10 + Dex + Con = 15". */
 	formula: string
 	notAppliedReason?: string
+	/** True for the worn suit, the only candidate Defense (Fighting Style) adds to. */
+	worn?: boolean
+}
+
+function naturalArmourCandidate(natural: NaturalArmour, dexterity: number): Candidate {
+	const rows: Contribution[] = [{ source: natural.label, amount: natural.base, note: natural.note }]
+	if (natural.addsDexterity) rows.push({ source: 'dexterity modifier', amount: dexterity })
+	const total = rows.reduce((sum, row) => sum + row.amount, 0)
+	return { label: natural.label, total, rows, formula: natural.addsDexterity ? `${natural.base} + Dex = ${total}` : `${natural.base} = ${total}` }
 }
 
 function abilityAbbreviation(ability: Ability): string {
@@ -169,7 +179,7 @@ function armourCandidate(armour: EquippedArmour, dexterity: number): Candidate {
 
 	const total = rows.reduce((sum, row) => sum + row.amount, 0)
 	const magic = armour.magicBonus.applied === 0 ? '' : ` + ${armour.magicBonus.applied}`
-	return { label: armour.name, total, rows, formula: `${armour.ac} + Dex${magic} = ${total}` }
+	return { label: armour.name, total, rows, formula: `${armour.ac} + Dex${magic} = ${total}`, worn: true }
 }
 
 /** "Bone Plate is equipped, but its Armour Class is not set" — the one wording, used by the breakdown note and by the section's own line. */
@@ -253,6 +263,10 @@ export function computeArmourClass(
 		candidates.push(candidate)
 	}
 
+	// D357: natural armour competes with worn armour and the formulas; the best one wins.
+	const natural = naturalArmourOf(character.species)
+	if (natural) candidates.push(naturalArmourCandidate(natural, modifiers.dexterity))
+
 	const applicable = candidates.filter((candidate) => candidate.notAppliedReason === undefined)
 	let winner = applicable[0]
 	for (const candidate of applicable) if (candidate.total > winner.total) winner = candidate
@@ -273,7 +287,10 @@ export function computeArmourClass(
 		breakdown.push(...gear.shield.magicBonus.contributions)
 	}
 	// XPHB Defense: "While you're wearing Light, Medium, or Heavy armor, you gain a +1 bonus to Armor Class."
-	if (gear.armour && hasFightingStyle(character, feats, 'Defense')) breakdown.push({ source: 'Defense (Fighting Style)', amount: 1 })
+	if (natural?.forbidsArmour && gear.armour) {
+		breakdown.push({ source: `${gear.armour.name} worn`, amount: 0, note: `warning: by the rules a ${character.species?.name} cannot wear armor` })
+	}
+	if (winner.worn && hasFightingStyle(character, feats, 'Defense')) breakdown.push({ source: 'Defense (Fighting Style)', amount: 1 })
 	breakdown.push(...wornItemBonuses)
 
 	const value = breakdown.reduce((sum, row) => sum + row.amount, 0)

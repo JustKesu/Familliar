@@ -926,6 +926,13 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Co appka umí navíc k build orderu
 
+- Přirozená zbroj a přirozené zbraně druhů (S5, D357, D358) — ručně mapováno v
+  `src/calculation/speciesNatural.ts` (name|source): Lizardfolk 13 + Dex a Tortle 17 jsou
+  kandidát na AC vedle nošené zbroje a vzorců (vyhrává nejlepší, ostatní „considered");
+  Tortle se zbrojí dostane varovný řádek. Řádek v Akcích: Talons, Hooves, Bite, Horns, Ram,
+  Cat's Claws, Claws a Elongated Fangs (Longtooth, poznámka „only while shifted"); Lupin
+  mění typ škody prostého Unarmed Strike na slashing. Bez změny schématu.
+
 - Data extrakce + validace (`npm run validate-data`) — běží při každé
   změně, hlídá i ruční opravy dat proti PHB 2024 tam, kde 5etools nese
   starý (2014) tvar (D68, D80).

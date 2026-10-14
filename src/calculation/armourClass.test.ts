@@ -272,3 +272,44 @@ describe('armourSpeedPenalty', () => {
 		expect(computeSpeed(human, species)).toMatchObject({ status: 'known', value: { walk: 30 } })
 	})
 })
+
+describe('computeArmourClass — species natural armour (D357)', () => {
+	const lizardfolk: Character = { ...fighter5, abilityScores: nimble, species: { name: 'Lizardfolk', source: 'MPMM' } }
+	const tortle: Character = { ...lizardfolk, species: { name: 'Tortle', source: 'MPMM' } }
+	const value = (result: ReturnType<typeof computeArmourClass>) => (result.status === 'known' ? result.value.value : NaN)
+
+	it('Lizardfolk unarmoured: 13 + Dex beats 10 + Dex and is named', () => {
+		const result = computeArmourClass(lizardfolk, gear())
+		expect(value(result)).toBe(16)
+		expect(sources(result)).toContain('Natural Armor (Lizardfolk)')
+		expect(noteFor(result, 'unarmoured')).toContain('not applied')
+	})
+
+	it('Lizardfolk in leather keeps the higher natural armour and lists both', () => {
+		const result = computeArmourClass(lizardfolk, gear({ armour: leather }))
+		expect(value(result)).toBe(16)
+		expect(noteFor(result, 'Leather Armor')).toContain('Natural Armor (Lizardfolk) gives 16')
+	})
+
+	it('worn armour wins when it is better, and Lizardfolk is listed as considered', () => {
+		const result = computeArmourClass(lizardfolk, gear({ armour: { ...chainMail, strengthRequirement: null } }))
+		expect(value(result)).toBe(16)
+		expect(noteFor(result, 'Natural Armor (Lizardfolk)')).toContain('Chain Mail gives 16')
+	})
+
+	it('Tortle is a flat 17 with no Dexterity, and a shield adds on top', () => {
+		expect(value(computeArmourClass(tortle, gear()))).toBe(17)
+		expect(value(computeArmourClass(tortle, gear({ shield })))).toBe(19)
+		expect(value(computeArmourClass(lizardfolk, gear({ shield })))).toBe(18)
+	})
+
+	it('Tortle wearing armour is allowed but warned about, and the suit does not win', () => {
+		const result = computeArmourClass(tortle, gear({ armour: leather }))
+		expect(value(result)).toBe(17)
+		expect(noteFor(result, 'Leather Armor worn')).toContain('cannot wear armor')
+	})
+
+	it('Lizardfolk gets no armour warning', () => {
+		expect(sources(computeArmourClass(lizardfolk, gear({ armour: leather }))).some((source) => source.endsWith('worn'))).toBe(false)
+	})
+})

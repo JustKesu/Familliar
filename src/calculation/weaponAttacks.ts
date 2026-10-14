@@ -37,6 +37,7 @@ import { hasFightingStyle } from './fightingStyles'
 import type { ItemAbilityGrant } from './itemAbilityScores'
 import type { MagicBonus } from './magicBonus'
 import { computeProficiencyBonus } from './proficiencyBonus'
+import { type NaturalWeapon, naturalWeaponOf, unarmedDamageTypeOf } from './speciesNatural'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 /** One items.json weapon, reduced to the fields an attack line needs. `weaponCategory`, `propertyFull` and `firearm` are also what `isProficientWithWeapon` matches on. */
@@ -352,7 +353,10 @@ export function computeWeaponAttacks(
 		}
 	})
 
-	attacks.push(unarmedStrike(modifiers, proficiencyBonus, martialArtsDie, scoresUnknown))
+	attacks.push(unarmedStrike(modifiers, proficiencyBonus, martialArtsDie, scoresUnknown, unarmedDamageTypeOf(character.species)))
+	// D358: a species' natural weapon is its own row beside the plain Unarmed Strike.
+	const natural = naturalWeaponOf(character.species)
+	if (natural) attacks.push(unarmedStrike(modifiers, proficiencyBonus, martialArtsDie, scoresUnknown, natural.damageType, natural))
 	return attacks
 }
 
@@ -366,13 +370,25 @@ export function computeWeaponAttacks(
  * and damage rolls when it is higher (D77). A non-null die is the same signal
  * slice c uses, so the die and the ability clause never disagree.
  */
-function unarmedStrike(modifiers: Record<Ability, number>, proficiencyBonus: Calculated<number>, martialArtsDie: string | null, scoresUnknown: string | null): WeaponAttack {
-	const name = 'Unarmed Strike'
+function unarmedStrike(
+	modifiers: Record<Ability, number>,
+	proficiencyBonus: Calculated<number>,
+	martialArtsDie: string | null,
+	scoresUnknown: string | null,
+	damageType = 'bludgeoning',
+	/** Set for a species' natural weapon: its own name and die, which a Monk replaces with the larger Martial Arts die (D358). */
+	natural: NaturalWeapon | null = null,
+): WeaponAttack {
+	const name = natural?.name ?? 'Unarmed Strike'
+	const key = natural ? `natural-weapon-${natural.name}` : UNARMED_STRIKE_KEY
 	const notes = martialArtsDie ? [`Martial Arts die (Monk): ${martialArtsDie}`] : []
-	if (scoresUnknown) return { key: UNARMED_STRIKE_KEY, name, kind: 'unarmed', range: null, toHit: unknown(scoresUnknown), damage: unknown(scoresUnknown), notes, abilityChoice: null }
+	if (natural?.note) notes.push(natural.note)
+	if (scoresUnknown) return { key, name, kind: 'unarmed', range: null, toHit: unknown(scoresUnknown), damage: unknown(scoresUnknown), notes, abilityChoice: null }
 	if (proficiencyBonus.status === 'unknown') {
-		return { key: UNARMED_STRIKE_KEY, name, kind: 'unarmed', range: null, toHit: unknown(proficiencyBonus.reason), damage: unknown(proficiencyBonus.reason), notes, abilityChoice: null }
+		return { key, name, kind: 'unarmed', range: null, toHit: unknown(proficiencyBonus.reason), damage: unknown(proficiencyBonus.reason), notes, abilityChoice: null }
 	}
+	const useMartialArts = martialArtsDie !== null && (natural === null || averageOf(martialArtsDie) > averageOf(natural.die))
+	const die = useMartialArts ? martialArtsDie : (natural?.die ?? null)
 
 	const hasMartialArts = martialArtsDie !== null
 	const using: Ability = hasMartialArts && modifiers.dexterity > modifiers.strength ? 'dexterity' : 'strength'
@@ -383,20 +399,24 @@ function unarmedStrike(modifiers: Record<Ability, number>, proficiencyBonus: Cal
 		{ source: 'proficiency bonus', amount: proficiencyBonus.value },
 	]
 	const damageBreakdown: Contribution[] = [
-		{ source: martialArtsDie ? 'Martial Arts die' : 'unarmed strike base', amount: 0, note: martialArtsDie ?? '1' },
+		{
+			source: useMartialArts ? 'Martial Arts die' : natural ? `${name} damage die` : 'unarmed strike base',
+			amount: 0,
+			note: useMartialArts && natural ? `${die} (in place of ${natural.die})` : (die ?? '1'),
+		},
 		{ source: abilityLabel(using, reason), amount: modifiers[using] },
 	]
-	if (!martialArtsDie && 1 + modifiers[using] < 0) damageBreakdown.push({ source: 'minimum damage', amount: 0, note: 'damage is never below 0' })
+	if (!die && 1 + modifiers[using] < 0) damageBreakdown.push({ source: 'minimum damage', amount: 0, note: 'damage is never below 0' })
 	const damage: AttackDamage = {
-		dice: martialArtsDie,
+		dice: die,
 		modifier: modifiers[using],
-		damageType: 'bludgeoning',
-		text: damageText(martialArtsDie, modifiers[using], 'bludgeoning'),
+		damageType,
+		text: damageText(die, modifiers[using], damageType),
 		grip: null,
 		breakdown: damageBreakdown,
 	}
 	return {
-		key: UNARMED_STRIKE_KEY,
+		key,
 		name,
 		kind: 'unarmed',
 		range: null,

@@ -511,3 +511,45 @@ describe('computeAttacksPerAction', () => {
 		expect(computeAttacksPerAction(['Extra Attack'])).toMatchObject({ status: 'known', value: 2 })
 	})
 })
+
+describe('computeWeaponAttacks — species natural weapons (D358)', () => {
+	const withSpecies = (base: Character, name: string, source: string): Character => ({ ...base, species: { name, source } })
+
+	it('Aarakocra gets a Talons row beside Unarmed Strike: 1d6 + Str slashing, proficient', () => {
+		const attacks = computeWeaponAttacks(withSpecies(character('Fighter', 1), 'Aarakocra', 'MPMM'), [], martialGrants)
+		const talons = attackNamed(attacks, 'Talons')
+		expect(talons.key).toBe('natural-weapon-Talons')
+		expect(toHitOf(talons)).toBe(5)
+		expect(damageTextOf(talons)).toBe('1d6 + 3 slashing')
+		expect(damageTextOf(attackNamed(attacks, 'Unarmed Strike'))).toBe('1 + 3 bludgeoning')
+	})
+
+	it('a species without a natural weapon adds no row', () => {
+		expect(computeWeaponAttacks(withSpecies(character('Fighter', 1), 'Human', 'XPHB'), [], martialGrants)).toHaveLength(1)
+	})
+
+	it('a Monk uses the larger Martial Arts die and Dexterity over the species die', () => {
+		const monk = withSpecies(character('Monk', 5, nimbleScores), 'Centaur', 'MPMM')
+		const hooves = attackNamed(computeWeaponAttacks(monk, [], martialGrants, [], '1d8'), 'Hooves')
+		expect(damageTextOf(hooves)).toBe('1d8 + 4 bludgeoning')
+		expect(toHitOf(hooves)).toBe(7)
+		expect(hooves.damage.status === 'known' && hooves.damage.breakdown[0]).toMatchObject({ source: 'Martial Arts die', note: '1d8 (in place of 1d6)' })
+	})
+
+	it('a Monk keeps the species die when the Martial Arts die is not larger', () => {
+		const monk = withSpecies(character('Monk', 1, nimbleScores), 'Centaur', 'MPMM')
+		expect(damageTextOf(attackNamed(computeWeaponAttacks(monk, [], martialGrants, [], '1d6'), 'Hooves'))).toBe('1d6 + 4 bludgeoning')
+	})
+
+	it('Lupin turns the plain Unarmed Strike slashing', () => {
+		const attacks = computeWeaponAttacks(withSpecies(character('Fighter', 1), 'Lupin', 'RHW'), [], martialGrants)
+		expect(damageTextOf(attackNamed(attacks, 'Unarmed Strike'))).toMatch(/slashing$/)
+		expect(attacks).toHaveLength(1)
+	})
+
+	it('Shifter; Longtooth gets a fangs row noted as only while shifted', () => {
+		const fangs = attackNamed(computeWeaponAttacks(withSpecies(character('Fighter', 1), 'Shifter; Longtooth', 'EFA'), [], martialGrants), 'Elongated Fangs')
+		expect(damageTextOf(fangs)).toBe('1d6 + 3 piercing')
+		expect(fangs.notes).toContain('only while shifted')
+	})
+})
