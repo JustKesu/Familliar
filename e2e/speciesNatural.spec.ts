@@ -90,3 +90,11 @@ test('S5 f: Monk 5 Centaur — Hooves use the larger Martial Arts die and Dexter
   await expect(page.getByRole('button', { name: 'Roll Hooves to hit' })).toHaveText('+6')
   await expect(actionRow(page, 'Hooves')).toContainText('1d8 + 3 bludgeoning')
 })
+
+test('F-29: Lizardfolk Fighter with Defense in Leather Armor — natural armour 16 wins, Defense adds 1', async ({ page }) => {
+  await open(page, seeded('f29-defense', 'Fighter', 1, 'Lizardfolk', { currentHp: 11, fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense', source: 'XPHB' }], inventory: [item('Leather Armor', 'worn')] }))
+  await expect(armourClass(page)).toHaveText('17')
+  const dialog = await breakdown(page, 'Armour Class breakdown')
+  await expect(dialog).toContainText('Natural Armor (Lizardfolk)')
+  await expect(dialog).toContainText('Defense (Fighting Style): +1')
+})

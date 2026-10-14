@@ -929,7 +929,8 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 - Přirozená zbroj a přirozené zbraně druhů (S5, D357, D358) — ručně mapováno v
   `src/calculation/speciesNatural.ts` (name|source): Lizardfolk 13 + Dex a Tortle 17 jsou
   kandidát na AC vedle nošené zbroje a vzorců (vyhrává nejlepší, ostatní „considered");
-  Tortle se zbrojí dostane varovný řádek. Řádek v Akcích: Talons, Hooves, Bite, Horns, Ram,
+  Tortle se zbrojí dostane varovný řádek; Defense +1 platí při jakékoli nošené zbroji, i když
+  vyhraje přirozená (F-29, D359). Řádek v Akcích: Talons, Hooves, Bite, Horns, Ram,
   Cat's Claws, Claws a Elongated Fangs (Longtooth, poznámka „only while shifted"); Lupin
   mění typ škody prostého Unarmed Strike na slashing. Bez změny schématu.
 

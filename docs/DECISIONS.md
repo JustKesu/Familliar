@@ -5290,3 +5290,9 @@ Unarmed Strike: 1d6 + Str, typ škody z textu druhu, vždy zdatný. Monk bere vy
 Arts a Dex, když je vyšší (jako D77). Longtooth nese poznámku „only while shifted" (stav Shifting se
 nesleduje). Lupin Feral Pounce mění typ škody prostého Unarmed Strike na slashing; Shove rider se
 neimplementuje. Task S5, rozhodl Daniel.
+
+## D359 — Defense +1 platí při nošené zbroji, i když vyhraje přirozená zbroj (F-29)
+
+Defense (Fighting Style) přičte +1 k AC vždy, když postava nosí lehkou, střední nebo těžkou zbroj (text XPHB),
+bez ohledu na to, který kandidát na AC vyhrál; samotný štít se nepočítá. Doplňuje D357: Lizardfolk s Defense
+v Leather Armor má přirozenou zbroj 16 + 1 = 17. Task F-29, rozhodl Daniel.

@@ -1,24 +1,21 @@
-# REPORT — S5 (přirozená zbroj a zbraně druhů)
+# REPORT — F-29 (Defense a přirozená zbroj)
 
-HEAD na startu 644c794 (OK). Průzkum v předchozím běhu (commit 2d2e630) zastavil na 2 záznamech; Daniel rozhodl: Lupin = slashing na prostém Unarmed Strike, Longtooth = řádek s poznámkou „only while shifted".
+HEAD na startu 46135a5 (OK, ff-only už aktuální).
 
-## Průzkum (viz DATA.md)
-Armor 2: Lizardfolk|MPMM 13+Dex, štít ano; Tortle|MPMM 17 bez Dex, štít ano, zakazuje zbroj (jediný). Zbraně 9: 7 čistých 1d6+Str (Aarakocra Talons, Centaur Hooves, Lizardfolk Bite, Minotaur Horns, Satyr Ram, Tabaxi Cat's Claws, Tortle Claws) + Lupin Feral Pounce + Shifter; Longtooth.
-
-## Změněno (bez schématu, ~6 míst)
-- `src/calculation/speciesNatural.ts` (nový): ručně psané tabulky name|source → zbroj / zbraň / typ škody Unarmed Strike. Důvod ruční tabulky: data jsou jen próza, 9 záznamů; parser by byl křehčí než tabulka.
-- `armourClass.ts`: kandidát „Natural Armor (…)" vedle zbroje a vzorců; varovný řádek „<zbroj> worn" při zakázané zbroji; Defense (Fighting Style) se nově přičítá jen když vyhrává nošená zbroj (dříve při jakékoli nošené zbroji; změna chování jen pro případ, kdy přirozená zbroj vyhraje nad nošenou).
-- `weaponAttacks.ts`: `unarmedStrike` zobecněn (jméno, kostka, typ); řádek `natural-weapon-<jméno>`; Monk bere větší z kostek a Dex.
-- Ručně mapováno: všech 2 + 8 řádků + Lupin. Riders vynechány: Lupin Shove po zásahu, Shifter bonusová akce/stav Shifting (jen poznámka).
-- Varování zbroje: Tortle je jediný zakazující záznam.
+## Změněno (3 místa v kódu, bez schématu)
+- `src/calculation/armourClass.ts`: Defense (Fighting Style) +1 se přičítá podle `gear.armour` (nošená lehká/střední/těžká zbroj), ne podle vítězného kandidáta. Odstraněn příznak `Candidate.worn` zavedený v S5 (už nepotřebný). Komentář u pole opraven na D359. Štít sám Defense nespouští (`gear.armour` je jen zbroj).
+- Opraveno chování z S5 (v REPORTu S5 jsem ho hlásil jako vedlejší důsledek).
 
 ## Testy
-- Unit: `armourClass.test.ts` „species natural armour (D357)" (6), `weaponAttacks.test.ts` „species natural weapons (D358)" (6).
-- E2E `e2e/speciesNatural.spec.ts`: S5 a (Tortle 17), b (Lizardfolk 16, po nasazení Leather Armor stále 16, oba v rozpisu), c (Tortle + štít 19), d (varování), e (Aarakocra Talons +4, 1d6 + 2 slashing), f (Monk 5 Centaur Hooves +6, 1d8 + 3).
-- Výsledky: typecheck OK, `npm test` 182 souborů / 3340 testů OK, validate-data 175/175, e2e 572 OK za 1,9 min.
+- Unit `armourClass.test.ts`: „Defense adds +1 for a worn suit even when natural armour wins (D359)" — Lizardfolk Fighter s Defense, DEX 16: v Leather Armor 17 (oba řádky v rozpisu), bez zbroje 16 bez řádku Defense, se štítem 18. Stávající Defense testy projdou.
+- E2E `e2e/speciesNatural.spec.ts` „F-29": AC 17, rozpis obsahuje „Natural Armor (Lizardfolk)" a „Defense (Fighting Style): +1" (seed `fightingStyles` ve schématu 61, currentHp 11 = max).
+- Výsledky: typecheck OK; `npm test` 182 souborů / 3341 testů OK; validate-data 175/175; e2e 573 OK za 2,8 min.
+- Poznámka: první běh `npm test` měl 2 selhání v `CharacterSheet.test.tsx` (toast po timeoutu; „Pact of the Chain" v Notes) — nesouvisí s AC, v izolaci i v druhém plném běhu prošly (zdá se flaky pod zátěží, běh ~100 s).
+
+## Docs
+- DECISIONS.md D359 (výslovně zadáno), STATUS.md (řádek u S5 doplněn; stará zmínka o Defense u Fighting Style už platila).
 
 ## Rozhodnutí / otázky
-- Rozhodnuto v kódu: Defense se přičítá jen při vítězné nošené zbroji (viz výše) — vedlejší důsledek D357; dej vědět, jestli to chceš jinak.
-- Docs: D357, D358 (výslovně zadáno), DATA.md (nález z průzkumu), STATUS.md.
+- Žádné nové.
 
-Manual browser check for the user: none - the planning chat checks the looks from screenshots. Changed screens: sheet header Armour Class + its breakdown dialog; Actions tab (extra row for natural weapons).
+Manual browser check for the user: none - the planning chat checks the looks from screenshots. Changed screens: Armour Class breakdown dialog on the sheet (Defense line next to Natural Armor).

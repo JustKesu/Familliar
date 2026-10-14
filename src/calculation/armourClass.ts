@@ -147,8 +147,6 @@ interface Candidate {
 	/** How the candidate reads in a losing row: "10 + Dex + Con = 15". */
 	formula: string
 	notAppliedReason?: string
-	/** True for the worn suit, the only candidate Defense (Fighting Style) adds to. */
-	worn?: boolean
 }
 
 function naturalArmourCandidate(natural: NaturalArmour, dexterity: number): Candidate {
@@ -179,7 +177,7 @@ function armourCandidate(armour: EquippedArmour, dexterity: number): Candidate {
 
 	const total = rows.reduce((sum, row) => sum + row.amount, 0)
 	const magic = armour.magicBonus.applied === 0 ? '' : ` + ${armour.magicBonus.applied}`
-	return { label: armour.name, total, rows, formula: `${armour.ac} + Dex${magic} = ${total}`, worn: true }
+	return { label: armour.name, total, rows, formula: `${armour.ac} + Dex${magic} = ${total}` }
 }
 
 /** "Bone Plate is equipped, but its Armour Class is not set" — the one wording, used by the breakdown note and by the section's own line. */
@@ -290,7 +288,8 @@ export function computeArmourClass(
 	if (natural?.forbidsArmour && gear.armour) {
 		breakdown.push({ source: `${gear.armour.name} worn`, amount: 0, note: `warning: by the rules a ${character.species?.name} cannot wear armor` })
 	}
-	if (winner.worn && hasFightingStyle(character, feats, 'Defense')) breakdown.push({ source: 'Defense (Fighting Style)', amount: 1 })
+	// D359: it follows the suit being worn, not the winning candidate - natural armour can win over a suit that is still worn.
+	if (gear.armour && hasFightingStyle(character, feats, 'Defense')) breakdown.push({ source: 'Defense (Fighting Style)', amount: 1 })
 	breakdown.push(...wornItemBonuses)
 
 	const value = breakdown.reduce((sum, row) => sum + row.amount, 0)

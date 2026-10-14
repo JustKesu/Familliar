@@ -309,6 +309,18 @@ describe('computeArmourClass — species natural armour (D357)', () => {
 		expect(noteFor(result, 'Leather Armor worn')).toContain('cannot wear armor')
 	})
 
+	it('Defense adds +1 for a worn suit even when natural armour wins (D359)', () => {
+		const defender: Character = { ...lizardfolk, fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense', source: 'XPHB' }] }
+		const worn = computeArmourClass(defender, gear({ armour: leather }))
+		expect(value(worn)).toBe(17)
+		expect(sources(worn)).toContain('Natural Armor (Lizardfolk)')
+		expect(sources(worn)).toContain('Defense (Fighting Style)')
+		const bare = computeArmourClass(defender, gear())
+		expect(value(bare)).toBe(16)
+		expect(sources(bare)).not.toContain('Defense (Fighting Style)')
+		expect(value(computeArmourClass(defender, gear({ shield })))).toBe(18)
+	})
+
 	it('Lizardfolk gets no armour warning', () => {
 		expect(sources(computeArmourClass(lizardfolk, gear({ armour: leather }))).some((source) => source.endsWith('worn'))).toBe(false)
 	})
