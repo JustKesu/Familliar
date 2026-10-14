@@ -1864,3 +1864,17 @@ Of 120 entries in optional-features.json, 3 grant a `choose` spell slot via `add
 the Tome XPHB (`EI`), Blessed Warrior TCE (`FS:P`), Druidic Warrior TCE (`FS:R`). All three have no
 `prerequisite`. The D347 cascade only removes picks whose prerequisite stops holding, so a real
 option with stored `spellChoices` is never dropped by the cascade, only by its own level stamp (D351).
+
+## Species natural armor and natural weapons are prose only (S5 survey)
+
+species.json (all non-XPHB, no structured field; 3-segment tags show the last segment):
+- Natural armor, 2 traits: Lizardfolk MPMM "Natural Armor" (base AC 13 + Dex, shield applies, may be used
+  when armor would give less) and Tortle MPMM "Natural Armor" (flat 17, Dex does not apply, "can't wear
+  light, medium, or heavy armor", shield applies). Tortle is the only record that forbids armor.
+- Natural weapons, 7 plain: Aarakocra Talons (slashing), Centaur Hooves (bludgeoning), Lizardfolk Bite
+  (slashing), Minotaur Horns (piercing), Satyr Ram (bludgeoning), Tabaxi Cat's Claws (slashing), Tortle
+  Claws (slashing); all "1d6 + your Strength modifier ... instead of the bludgeoning damage normal for an
+  unarmed strike".
+- Not plain: Lupin RHW "Feral Pounce" (all Unarmed Strikes become slashing + a Shove rider, no die) and
+  Shifter; Longtooth EFA "Shifting (Longtooth)" (piercing 1d6 + Str, only while shifted, bonus action).
+  Shifter EFA has no weapon option in its base trait text.
