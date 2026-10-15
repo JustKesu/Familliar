@@ -1,13 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { skillLabel } from '../calculation/skills'
 import type { CharacterMulticlassPick } from '../storage/character'
 import { toolChoiceOptions } from '../toolProficiencies/classToolChoices'
 import { compareText } from '../text/compareText'
 import { loadToolCategoryOptions } from '../toolProficiencies/toolProficiencyData'
 import { isPickOf, type MulticlassPickShape } from './multiclassPicks'
-
-function capitalize(word: string): string {
-	return word.charAt(0).toUpperCase() + word.slice(1)
-}
 
 /**
  * D330: one select per multiclass skill/tool pick of the class entered in this level up. `picks` holds every
@@ -82,7 +79,7 @@ export function MulticlassPickSlots({
 								<option value="">— not chosen —</option>
 								{shape.skills!.from.filter((name) => name === current || !takenSkills.has(name)).map((name) => (
 									<option key={name} value={name}>
-										{capitalize(name)}
+										{skillLabel(name)}
 									</option>
 								))}
 							</select>

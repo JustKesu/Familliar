@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ABILITIES, type Ability } from '../../abilities/abilityScores'
 import { AbilityScoreTable } from '../../abilities/AbilityScoreTable'
 import { ABILITY_ABBREVIATIONS } from '../../calculation/abilityAbbreviations'
+import { skillLabel } from '../../calculation/skills'
 import type { FeatEffectEntry } from '../../calculation/featEffects'
 import { featOriginLabel, type FeatInstance } from '../../featAsi/featInstances'
 import { ResolvedEntries } from '../../featureResolver/ResolvedEntries'
@@ -24,10 +25,6 @@ export interface ReviewProficiencies {
 	languages: string[]
 }
 
-function capitalize(word: string): string {
-	return word.charAt(0).toUpperCase() + word.slice(1)
-}
-
 function signed(value: number): string {
 	return value >= 0 ? `+${value}` : `−${Math.abs(value)}`
 }
@@ -38,7 +35,7 @@ function listOf(names: readonly string[]): string {
 
 /** D307: a lost proficiency is worded as before; the other two reasons name what is actually wrong. */
 function staleExpertiseText(stale: readonly { skill: string; reason: 'proficiency' | 'taken' | 'restricted' }[]): string {
-	const of = (reason: 'proficiency' | 'taken' | 'restricted') => stale.filter((entry) => entry.reason === reason).map((entry) => capitalize(entry.skill))
+	const of = (reason: 'proficiency' | 'taken' | 'restricted') => stale.filter((entry) => entry.reason === reason).map((entry) => skillLabel(entry.skill))
 	const lost = of('proficiency')
 	const taken = of('taken')
 	const restricted = of('restricted')
@@ -294,8 +291,8 @@ export function ReviewStep({
 
 			<section className="review__card" aria-label="Proficiencies">
 				<CardHeading title="Proficiencies" step="languages" steps={steps} onGoTo={onGoTo} />
-				<Row label="Skills">{listOf(proficiencies.skills.map(capitalize))}</Row>
-				<Row label="Expertise">{listOf(proficiencies.expertise.map(capitalize))}</Row>
+				<Row label="Skills">{listOf(proficiencies.skills.map(skillLabel))}</Row>
+				<Row label="Expertise">{listOf(proficiencies.expertise.map(skillLabel))}</Row>
 				<Row label="Armor">{listOf(proficiencies.armor)}</Row>
 				<Row label="Weapons">{listOf(proficiencies.weapons)}</Row>
 				<Row label="Tools">{listOf(proficiencies.tools)}</Row>

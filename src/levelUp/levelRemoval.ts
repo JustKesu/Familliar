@@ -1,3 +1,4 @@
+import { skillLabel } from '../calculation/skills'
 import { spentHitDiceWithinMaxima } from '../calculation/hitDice'
 import { poolUsesAfterLevelChange, withLegacyPoolUses } from '../calculation/classPools'
 import { computeCharacterResources, poolGrantingClassNames, resourceUsesWithinMaxima, type ResourceFeature } from '../calculation/resources'
@@ -152,7 +153,7 @@ export function levelRemovalCore(
 	dropped.push(...masteries.dropped.map((choice) => `Weapon mastery: ${choice.name}`))
 
 	const expertiseSkills = withoutLevel(character.expertiseSkills, level)
-	dropped.push(...expertiseSkills.dropped.map((choice) => `Expertise: ${choice.name}`))
+	dropped.push(...expertiseSkills.dropped.map((choice) => `Expertise: ${skillLabel(choice.name)}`))
 
 	const droppedSpells: { name: string; source: string }[] = []
 	const optionalFeatureChoicesByStamp = (character.optionalFeatureChoices ?? []).flatMap((entry) => {
@@ -234,7 +235,7 @@ export function levelRemovalCore(
 	})
 	const multiclassPicks = character.multiclassPicks?.filter((pick) => {
 		if (!classRemoved || !ofClass(pick)) return true
-		dropped.push(`${pick.kind === 'skill' ? 'Skill' : 'Tool'} proficiency: ${pick.name} (${className} multiclass)`)
+		dropped.push(`${pick.kind === 'skill' ? 'Skill' : 'Tool'} proficiency: ${pick.kind === 'skill' ? skillLabel(pick.name) : pick.name} (${className} multiclass)`)
 		return false
 	})
 
@@ -250,7 +251,7 @@ export function levelRemovalCore(
 	const lostSkillSources = new Set(lostSubclassSkillGrants.map((grant) => grant.choice?.grantedBy))
 	const subclassSkills = character.subclassSkills?.filter((pick) => {
 		if (!lostSkillSources.has(pick.grantedBy)) return true
-		dropped.push(`Skill proficiency: ${pick.name}`)
+		dropped.push(`Skill proficiency: ${skillLabel(pick.name)}`)
 		return false
 	})
 	const languages = character.languages?.filter((language) => {

@@ -24,7 +24,7 @@ const options = (slot: HTMLElement) => within(slot).getAllByRole('option').map((
 describe('SubclassSkillSlots (D177)', () => {
 	it('Cavalier: one select offering its skills minus those held, and languages minus those known', async () => {
 		render(<SubclassSkillSlots grants={cavalier} skills={[]} languages={[]} heldSkills={['history']} knownLanguages={['Dwarvish']} onChange={vi.fn()} />)
-		expect(options(await screen.findByRole('combobox', { name: /Cavalier skill or language/ }))).toEqual(['— not chosen —', 'Animal handling', 'Insight', 'Performance', 'Persuasion', 'Elvish'])
+		expect(options(await screen.findByRole('combobox', { name: /Cavalier skill or language/ }))).toEqual(['— not chosen —', 'Animal Handling', 'Insight', 'Performance', 'Persuasion', 'Elvish'])
 	})
 
 	it('Cavalier: storing a language removes the stored skill, and storing a skill removes the language', async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { Ability } from '../abilities/abilityScores'
+import { skillLabel } from '../calculation/skills'
 import { ALL_SKILLS } from '../classSkills/classSkillData'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { featureLanguageOptions } from '../languages/classFeatureLanguages'
@@ -47,10 +48,6 @@ export function magicInitiateListsOf(others: readonly FeatInstance[]): { classNa
 		const className = instance.magicInitiate?.className ?? magicInitiateFixedClass(instance)?.className
 		return className ? [{ className, origin: featOriginLabel(instance) }] : []
 	})
-}
-
-function capitalize(word: string): string {
-	return word.charAt(0).toUpperCase() + word.slice(1)
 }
 
 /** Slot `index` set to `pick` (or emptied); the list stays gap-free. */
@@ -197,7 +194,7 @@ function ProficiencySlots({
 			const source = heldSkill(skill)
 			return (
 				<option key={skill} value={skill} disabled={skill !== own && (source !== undefined || skills.includes(skill))}>
-					{capitalize(skill)}
+					{skillLabel(skill)}
 					{source ? ` (from ${source.source})` : ''}
 				</option>
 			)
@@ -252,7 +249,7 @@ function ProficiencySlots({
 									const source = heldSkill(skill)
 									return (
 										<option key={skill} value={`skill:${skill}`} disabled={own !== `skill:${skill}` && (source !== undefined || skills.includes(skill))}>
-											{capitalize(skill)}
+											{skillLabel(skill)}
 											{source ? ` (from ${source.source})` : ''}
 										</option>
 									)
@@ -298,7 +295,7 @@ function ProficiencySlots({
 						<option value="">— expertise not chosen —</option>
 						{expertisePool.map((skill) => (
 							<option key={skill} value={skill} disabled={skill !== expertise[index] && expertise.includes(skill)}>
-								{capitalize(skill)}
+								{skillLabel(skill)}
 							</option>
 						))}
 					</select>

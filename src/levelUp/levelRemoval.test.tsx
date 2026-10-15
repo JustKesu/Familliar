@@ -286,7 +286,7 @@ describe('removing the last level of a class (D332)', () => {
 		expect(result.play).toEqual({ spentHitDice: { 'Fighter|XPHB': 2 } })
 		expect(result).toMatchObject({ fightingStyles: fighterRogue.fightingStyles, masteries: fighterRogue.masteries, featAsiChoices: fighterRogue.featAsiChoices, classSkills: fighterRogue.classSkills })
 		expect(dropped).toEqual(
-			expect.arrayContaining(['Skill proficiency: stealth (Rogue multiclass)', 'Expertise: stealth', 'Rogue One: A', 'Language: Elvish', 'Rogue hit dice: 1 spent, now 0']),
+			expect.arrayContaining(['Skill proficiency: Stealth (Rogue multiclass)', 'Expertise: Stealth', 'Rogue One: A', 'Language: Elvish', 'Rogue hit dice: 1 spent, now 0']),
 		)
 	})
 
@@ -536,7 +536,7 @@ describe('subclass skill picks on a level removal (D177)', () => {
 		const removed = plan({ ...single('Fighter', 'Cavalier', 3, 1), subclassSkills, languages: [cavalierLanguage] })
 		expect(removed.result.subclassSkills).toEqual([])
 		expect(removed.result.languages).toEqual([])
-		expect(removed.dropped).toEqual(expect.arrayContaining(['Skill proficiency: history', 'Language: Elvish']))
+		expect(removed.dropped).toEqual(expect.arrayContaining(['Skill proficiency: History', 'Language: Elvish']))
 	})
 
 	it('removing Fighter level 4 keeps them', () => {
@@ -981,7 +981,7 @@ describe('RemoveLevelButton', () => {
 		const paragraphs = [...dialog.querySelectorAll('.confirm-dialog__extra p')].map((p) => p.textContent)
 		expect(paragraphs[0]).toBe('Rogue will be removed from this character.')
 		expect(paragraphs.indexOf('Rogue will be removed from this character.')).toBeLessThan(paragraphs.findIndex((text) => text?.startsWith('The character goes back')))
-		expect(within(dialog).getByText('Skill proficiency: stealth (Rogue multiclass)')).toBeTruthy()
+		expect(within(dialog).getByText('Skill proficiency: Stealth (Rogue multiclass)')).toBeTruthy()
 	})
 
 	it('stays clickable across a save and confirms a plan built from the latest character (F-7b)', async () => {

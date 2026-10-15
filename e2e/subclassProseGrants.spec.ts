@@ -197,7 +197,7 @@ test('D203 e: College of the Moon offers only its list, minus a skill already he
     toolChoices: ['Lute', 'Flute', 'Drum'].map((name) => ({ grantedBy: 'bard', name })),
   })
   await editToStep(page, 'Proficiencies')
-  await expect(offered(skillSelect(page, /^College of the Moon skill/))).toHaveText(['Animal handling', 'Medicine', 'Nature', 'Perception', 'Survival'])
+  await expect(offered(skillSelect(page, /^College of the Moon skill/))).toHaveText(['Animal Handling', 'Medicine', 'Nature', 'Perception', 'Survival'])
 })
 
 test('D203 f: College of Spirits — Playing Cards on the card, not in the inventory', async ({ page }) => {
@@ -240,7 +240,7 @@ test('D203 h: removing level 3 deletes the Banneret skill and language picks', a
   })
   await page.getByRole('button', { name: 'Remove level 3' }).click()
   const dialog = page.getByRole('alertdialog', { name: 'Remove level 3?' })
-  await expect(dialog).toContainText('Skill proficiency: persuasion')
+  await expect(dialog).toContainText('Skill proficiency: Persuasion')
   await expect(dialog).toContainText('Language: Giant')
   await dialog.getByRole('button', { name: 'Remove level', exact: true }).click()
   await expect(skillRow(page, 'Persuasion')).not.toContainText('●')

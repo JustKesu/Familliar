@@ -4,6 +4,7 @@
  */
 
 import type { ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
+import { skillLabel } from '../calculation/skills'
 import { compareText } from '../text/compareText'
 import { featDisplayName, featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { ItemInvocationOption, OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
@@ -131,10 +132,10 @@ function featSubChoiceItems(instance: FeatInstance): FeatureTabOption[] {
 	}
 	if (instance.filterChoiceSpells) lines.push(['filter-spells', `Spells: ${names([...instance.filterChoiceSpells.cantrips, ...instance.filterChoiceSpells.spells])}`])
 	const proficiencies = instance.proficiencies
-	if (proficiencies?.skills?.length) lines.push(['skills', `Skills: ${proficiencies.skills.map(titleCase).join(', ')}`])
+	if (proficiencies?.skills?.length) lines.push(['skills', `Skills: ${proficiencies.skills.map(skillLabel).join(', ')}`])
 	if (proficiencies?.tools?.length) lines.push(['tools', `Tools: ${proficiencies.tools.map(titleCase).join(', ')}`])
 	if (proficiencies?.languages?.length) lines.push(['languages', `Languages: ${names(proficiencies.languages)}`])
-	if (proficiencies?.expertise?.length) lines.push(['expertise', `Expertise: ${proficiencies.expertise.map(titleCase).join(', ')}`])
+	if (proficiencies?.expertise?.length) lines.push(['expertise', `Expertise: ${proficiencies.expertise.map(skillLabel).join(', ')}`])
 	return lines.filter(([, text]) => !text.endsWith(': ')).map(([key, name]) => ({ key, name, entries: null }))
 }
 

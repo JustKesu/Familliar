@@ -1045,7 +1045,7 @@ function SpellTabRow({
 					</div>
 					<div className="sheet__spell-notes">
 						{counter}
-						{spellNotes(entry, detail)}
+						{spellNotes(entry, detail, action.kind !== 'cast')}
 					</div>
 				</>
 			) : (

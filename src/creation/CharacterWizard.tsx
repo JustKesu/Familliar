@@ -1213,11 +1213,13 @@ export function CharacterWizard({
 	// D177: a skill a subclass already gives expertise in (Scout) is never offered again.
 	const featFixedExpertise = (instances: readonly FeatRef[]): string[] => instances.flatMap((instance) => proficiencyData.fixedExpertise[`${instance.name}|${instance.source}`] ?? [])
 	const fixedExpertise = [...(wizardClassChoice ? subclassExpertiseSkills(multiclassLevelUp || multiclassEdit ? draftClasses : [wizardClassChoice], state.data.subclassSkills) : []), ...featFixedExpertise(draftFeatInstances)]
+	// A pick's own grant names its subclass; state.data.subclass is empty while a multiclass edit holds the subclass in the drafted classes.
+	const subclassPickSource = (pick: { grantedBy: string }): string => heldSubclassGrants.find((grant) => grant.choice?.grantedBy === pick.grantedBy)?.subclass ?? state.data.subclass?.name ?? ''
 	/** E-1: Expertise draws on every skill proficiency, not only class/background/species; kept apart from proficientSkills, which heldForFeat reads as "held outside the feat being edited". */
 	const expertiseSourceSkills: DisabledSkill[] = [
 		...proficientSkills,
 		...(state.data.speciesExtraSkill && state.data.speciesChoice ? [{ skill: state.data.speciesExtraSkill, source: state.data.speciesChoice.name }] : []),
-		...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: state.data.subclass?.name ?? '' })),
+		...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: subclassPickSource(pick) })),
 		...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
 		...featSkillSources(draftFeatInstances, proficiencyData.fixedSkills),
 	].filter((entry, index, all) => all.findIndex((other) => other.skill === entry.skill) === index)
@@ -1385,12 +1387,11 @@ export function CharacterWizard({
 	function heldForFeat(key: FeatInstanceKey): FeatChoiceHeld {
 		const others = draftFeatInstances.filter((instance) => instance.key !== key)
 		const proficiencies = computeProficiencies(draftCharacterForProficiencies, proficiencyData.classes, others, proficiencyData.feats)
-		const subclassName = state.data.subclass?.name ?? ''
 		return {
 			heldSkills: [
 				...proficientSkills,
 				...(state.data.speciesExtraSkill && state.data.speciesChoice ? [{ skill: state.data.speciesExtraSkill, source: state.data.speciesChoice.name }] : []),
-				...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: subclassName })),
+				...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: subclassPickSource(pick) })),
 				...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
 				...others.flatMap((instance) => (instance.proficiencies?.skills ?? []).map((skill) => ({ skill, source: instance.name }))),
 			],

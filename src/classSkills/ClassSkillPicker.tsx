@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { skillLabel } from '../calculation/skills'
 import { loadClassSkillChoice, type ClassSkillChoice } from './classSkillData'
 
 /*
@@ -14,10 +15,6 @@ type LoadState =
 export interface DisabledSkill {
 	skill: string
 	source: string
-}
-
-function capitalize(word: string): string {
-	return word.charAt(0).toUpperCase() + word.slice(1)
 }
 
 function findDisabled(skill: string, disabledSkills: DisabledSkill[]): DisabledSkill | undefined {
@@ -109,7 +106,7 @@ export function ClassSkillPicker({
 									disabled={Boolean(disabled) || atLimit}
 									onChange={() => toggle(skill)}
 								/>
-								{capitalize(skill)}
+								{skillLabel(skill)}
 								{disabled && (
 									<span className="class-skill-picker__disabled-reason">
 										{' '}

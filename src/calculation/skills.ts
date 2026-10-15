@@ -84,6 +84,11 @@ export const SKILL_LABELS: Record<Skill, string> = {
 	survival: 'Survival',
 }
 
+/** Display label for a stored lower-case skill name; non-skill strings get a plain first-letter capital. */
+export function skillLabel(name: string): string {
+	return SKILL_LABELS[name.toLowerCase() as Skill] ?? name.charAt(0).toUpperCase() + name.slice(1)
+}
+
 /** D45 — must tolerate a further status being added later; not a boolean. */
 export type SkillProficiencyStatus = 'none' | 'half' | 'proficient' | 'expertise'
 

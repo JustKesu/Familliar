@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { skillLabel } from '../calculation/skills'
 import { loadSpeciesSkillProficiencies, type SpeciesSkillProficiencies } from './speciesSkillData'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 
@@ -13,10 +14,6 @@ type LoadState =
 	| { status: 'loading' }
 	| { status: 'ready'; proficiencies: SpeciesSkillProficiencies | null }
 	| { status: 'error'; message: string }
-
-function capitalize(word: string): string {
-	return word.charAt(0).toUpperCase() + word.slice(1)
-}
 
 function findDisabled(skill: string, disabledSkills: DisabledSkill[]): DisabledSkill | undefined {
 	return disabledSkills.find((d) => d.skill.toLowerCase() === skill.toLowerCase())
@@ -89,7 +86,7 @@ export function SpeciesSkillPicker({
 		return (
 			<div className="species-skill-picker">
 				<p className="species-skill-picker__fixed">
-					Species grants: {state.proficiencies.skills.map((skill) => capitalize(skill)).join(', ')}
+					Species grants: {state.proficiencies.skills.map(skillLabel).join(', ')}
 				</p>
 			</div>
 		)
@@ -128,7 +125,7 @@ export function SpeciesSkillPicker({
 									disabled={Boolean(disabled) || atLimit}
 									onChange={() => toggle(skill)}
 								/>
-								{capitalize(skill)}
+								{skillLabel(skill)}
 								{disabled && (
 									<span className="species-skill-picker__disabled-reason">
 										{' '}

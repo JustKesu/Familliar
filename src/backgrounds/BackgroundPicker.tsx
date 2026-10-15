@@ -7,6 +7,7 @@ import {
 	type AbilityBonusDistribution,
 } from './abilityBonus'
 import type { Ability } from '../abilities/abilityScores'
+import { skillLabel } from '../calculation/skills'
 import { Markup } from '../markup'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
@@ -28,10 +29,6 @@ const ABILITY_LABELS: Record<Ability, string> = {
 	intelligence: 'Intelligence',
 	wisdom: 'Wisdom',
 	charisma: 'Charisma',
-}
-
-function capitalize(word: string): string {
-	return word.charAt(0).toUpperCase() + word.slice(1)
 }
 
 type LoadState =
@@ -188,8 +185,8 @@ function BackgroundGrants({
 					.map((skill) => {
 						const disabled = findDisabled(skill, disabledSkills)
 						return disabled
-							? `${capitalize(skill)} (already granted by ${disabled.source})`
-							: capitalize(skill)
+							? `${skillLabel(skill)} (already granted by ${disabled.source})`
+							: skillLabel(skill)
 					})
 					.join(', ')}
 			</p>

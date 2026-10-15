@@ -355,12 +355,12 @@ export function shortCastingTime(detail: SpellDetail): string {
 	return formatCastingTime(detail.time.map((time) => ({ ...time, condition: undefined })))
 }
 
-/** Usage terms · "V, S, M" · duration without the concentration prefix (the subtitle names it). */
-export function spellNotes(entry: SheetSpellEntry, detail: SpellDetail): string {
+/** Usage terms · "V, S, M" · duration without the concentration prefix (the subtitle names it). A CAST row spends a slot, so the no-slot usage terms belong to the USE row only. */
+export function spellNotes(entry: SheetSpellEntry, detail: SpellDetail, withUsage = true): string {
 	const components = detail.components
 	const letters = components ? [components.v && 'V', components.s && 'S', components.m && 'M'].filter(Boolean).join(', ') : ''
 	const duration = formatDuration(detail.duration.map((d) => ({ ...d, concentration: false })))
-	return [...entry.usages.map(formatSpellUsage), letters, duration].filter((part) => part !== '').join(' · ')
+	return [...(withUsage ? entry.usages.map(formatSpellUsage) : []), letters, duration].filter((part) => part !== '').join(' · ')
 }
 
 /** Short sources plus the flags; the chosen source is the casting class when there is exactly one. */

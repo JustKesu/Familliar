@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { skillLabel } from '../calculation/skills'
 import { FEATURE_LANGUAGE_TYPES, featureLanguageOptions } from '../languages/classFeatureLanguages'
 import { loadLanguages, type LanguageEntry } from '../languages/languageData'
 import type { CharacterLanguage, CharacterSubclassSkill } from '../storage/character'
@@ -8,10 +9,6 @@ import { loadToolCategoryOptions } from '../toolProficiencies/toolProficiencyDat
 import { compareText } from '../text/compareText'
 import { ALL_SKILLS } from './classSkillData'
 import type { SubclassSkillGrant } from './subclassSkillGrants'
-
-function capitalize(word: string): string {
-	return word.charAt(0).toUpperCase() + word.slice(1)
-}
 
 /** Loads once, only while `wanted`; `null` until then. */
 function useLoaded<T>(wanted: boolean, load: () => Promise<T>): { value: T | null; error: string | null } {
@@ -97,7 +94,7 @@ export function SubclassSkillSlots({
 									<optgroup label="Skill">
 										{skillOptions.map((name) => (
 											<option key={name} value={`skill:${name}`}>
-												{capitalize(name)}
+												{skillLabel(name)}
 											</option>
 										))}
 									</optgroup>
@@ -155,7 +152,7 @@ export function SpeciesSkillOrToolSlot({
 						<optgroup label="Skill">
 							{ALL_SKILLS.filter((name) => name === skill || !heldSkills.includes(name)).map((name) => (
 								<option key={name} value={`skill:${name}`}>
-									{capitalize(name)}
+									{skillLabel(name)}
 								</option>
 							))}
 						</optgroup>

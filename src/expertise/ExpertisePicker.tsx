@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { skillLabel } from '../calculation/skills'
 import { loadExpertiseEligibility } from './expertiseData'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 
@@ -16,10 +17,6 @@ type LoadState =
 	| { status: 'error'; message: string }
 
 const NO_LOCKED_VALUES: readonly string[] = []
-
-function capitalize(word: string): string {
-	return word.charAt(0).toUpperCase() + word.slice(1)
-}
 
 /**
  * Lets the player name which skill proficiencies (already granted from
@@ -123,7 +120,7 @@ export function ExpertisePicker({
 			)}
 			{stale.length > 0 ? (
 				<p className="expertise-picker__stale" role="alert">
-					Not proficient in {stale.map(capitalize).join(', ')} any more — uncheck {stale.length === 1 ? 'it' : 'them'} and choose another skill for Expertise.
+					Not proficient in {stale.map(skillLabel).join(', ')} any more — uncheck {stale.length === 1 ? 'it' : 'them'} and choose another skill for Expertise.
 				</p>
 			) : (
 				<p className="expertise-picker__remaining">
@@ -137,7 +134,7 @@ export function ExpertisePicker({
 					<li key={skill} className="expertise-picker__item">
 						<label>
 							<input type="checkbox" checked onChange={() => toggle(skill)} />
-							{capitalize(skill)}
+							{skillLabel(skill)}
 							<span className="expertise-picker__source"> (not proficient)</span>
 						</label>
 					</li>
@@ -150,8 +147,8 @@ export function ExpertisePicker({
 						<li key={skill} className="expertise-picker__item">
 							<label>
 								<input type="checkbox" checked={checked} disabled={atLimit || locked} onChange={() => toggle(skill)} />
-								{capitalize(skill)}
-								<span className="expertise-picker__source"> (from {source})</span>
+								{skillLabel(skill)}
+								{source && <span className="expertise-picker__source"> (from {source})</span>}
 								{locked && <span className="expertise-picker__locked"> (chosen at an earlier level)</span>}
 							</label>
 						</li>

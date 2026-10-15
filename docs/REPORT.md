@@ -1,34 +1,25 @@
-# F-31a — textové opravy (6, 15, 8, 21, 3, 1, CSS)
+# REPORT — F-31b: názvy skillů, zdroj Expertise, poznámka CAST
 
-Setup: ff-only merge OK, HEAD byl f29470b. F-31b (20/14, 12, 26/40, e2e b a c) je odložené na samostatný task po schválení rozdělení.
-
-## STEP 1 — tabulka (rozsah F-31a)
-| # | Kde | Změna |
-|---|-----|-------|
-| 6 | `featAsi/featInstances.ts` (`featDisplayName`), `sheet/featuresTabData.ts` (řádek Feats), `sheet/featureActionRowData.ts` (jen kind 'feat'), `sheet/ManageFeatsPanel.tsx` (`FeatRow name`) | „Magic Initiate (Cleric)" |
-| 15 | `featAsi/featAsiData.ts:611` | D → Dragonmark, FS:P / FS:R → Fighting Style (Paladin/Ranger) |
-| 8 | `optionalFeatures/ReplaceOptionControl.tsx`, `OptionalFeaturePicker.tsx` (mapa Battle Master/Rune Knight → Maneuvers/Runes, text i legend), `fightingStyle/FightingStylePicker.tsx` | množné číslo |
-| 1 | `levelUp/RemoveLevelButton.tsx` (`keptSpellsText`) | „Other known…", když `dropped` obsahuje řádek `spell: ` / `spell choice: ` |
-| 3 | `calculation/weaponAttacks.ts` `damageText` | bez kostek součet 1+mod, min 0 (i kladný: „4" místo „1 + 3") |
-| 21 | `storage/characterStore.ts` (`readableEntryError`) | „Character N in the file could not be imported: <path>." |
-| CSS | `index.css` @media 600 px, `.ability-table th[scope='row']` | width 72px, padding-right 6px, overflow-wrap |
+Jen zobrazení; uložené hodnoty, klíče a schéma (61) beze změny.
 
 ## Co se změnilo
-- Změněné existující testy: CharacterSheet.test (Magic Initiate název, Unarmed „3"), weaponAttacks.test (3×), sheetReviewFixes.test, characterStore.test (číslování), OptionalFeaturePicker.test (label hledání), CharacterWizard.test (/Maneuvers/); e2e: manageFeats, featuresTab (escape závorek v `row`), featSubChoices, choiceSources, levelUpSwap (legend Maneuvers/Runes).
-- Nové: `src/textFixesF31.test.tsx` (6, 15, 8, 1, 3, 21), `e2e/textFixesF31.spec.ts` (a, d, e).
+- `skillLabel(name)` v `src/calculation/skills.ts` (SKILL_LABELS, fallback = první písmeno velké). Nahrazuje lokální `capitalize` v ExpertisePicker, ClassSkillPicker, SkillChoiceSlots, MulticlassPickSlots, SpeciesSkillPicker, FeatSubChoicePicker, BackgroundPicker, ReviewStep; `featuresTabData.ts` používá `skillLabel` pro `proficiencies.skills/expertise` (nástroje dál `titleCase`). `capitalize` pro jazyky/nástroje nedotčeno.
+- `levelRemoval.ts`: „Expertise: …", „Skill proficiency: …" i multiclass varianta „(X multiclass)" přes `skillLabel` (3 místa).
+- Inventář: 8 UI souborů + featuresTabData + levelRemoval + CharacterWizard + spellsTabData + CharacterSheet = 13 míst (pod limitem 15).
+- Bod 12: příčina v `CharacterWizard.tsx` — zdroj picků podtřídy bral `state.data.subclass?.name`, které je při multiclass Edit prázdné (podtřída je v `draftClasses`). Nově `subclassPickSource(pick)` bere jméno z odpovídajícího grantu (`heldSubclassGrants`), fallback na `state.data.subclass`. Platí pro Expertise pool i `heldForFeat`. ExpertisePicker navíc nikdy nevykreslí „(from )" (prázdný zdroj → bez závorky).
+- Body 26/40: `spellNotes(entry, detail, withUsage)`; CharacterSheet předává `action.kind !== 'cast'`. CAST řádek si ponechá V/S/M a trvání, USE a label řádky poznámku o použití.
+- Upravená očekávání ve starých testech (velká písmena): SkillChoiceSlots.test, levelRemoval.test (3×).
 
 ## Ověřeno
-typecheck, test (3347), validate-data (175), e2e (581 passed, 2.2 min) — všechno jednou na konci, všechno prošlo.
+- typecheck OK; `npm test` 184 souborů / 3350 testů OK; validate-data 175/175 OK.
+- Nové unit/render testy `src/textFixesF31b.test.tsx`: skillLabel, prázdný zdroj v ExpertisePicker, spellNotes bez usage.
+- e2e `e2e/textFixesF31b.spec.ts`: (b) Paladin 2 — CAST Divine Smite bez „(no slot)", USE s ním; (c) Warlock 5 se stampem Pact of the Tome — dialog obsahuje „Other known and prepared spells are kept." a žádný řádek „Expertise: x"/„Skill proficiency: x" malým písmenem. Celé e2e: 581/583 napoprvé (~2,2 min); 2 selhání byla stará očekávání malých písmen v `e2e/subclassProseGrants.spec.ts` (D203 e, h) — opravena, oba soubory pak 18/18 zelené.
 
-## Rozhodnutí v kódu
-- `featDisplayName` je jen zobrazení; klíče řádků a uložená jména beze změny. `aria-label` „Remove <jméno>" v Manage Feats zůstal se starým jménem.
-- Položka 3 aplikována obecně (i „1 + 3" → „4"), protože zadání říká „flat number plus modifier → computed number".
-- Legend seznamu Battle Master / Rune Knight je „Maneuvers (Battle Master)" / „Runes (Rune Knight)" i mimo level up.
-- e2e e: assert proti pravému okraji textu labelu, ne boxu buňky (buňky tabulky sdílejí hranu vždy).
+## Nedostatky / rozhodnutí
+- (c) Pro Warlocka neexistuje cesta, která by vyrobila řádek Expertise/skill v dialogu → pravopis skillů v dialogu pokrývá jen test `skillLabel` a aktualizované testy levelRemoval (Rogue/Cavalier); e2e hlídá jen absenci malých písmen. Seed Tome stampu na úrovni 5 (jako F-23), ne <3 — reálný stamp aplikace.
+- Rozhodnutí: pro prázdný zdroj nezobrazuji závorku; jméno podtřídy doplněno z grantu (vnitřní detail, bez dopadu na data).
+- Průzkum kategorií featů bez štítku a jmen se „; " (volitelný, přes scripts/) nebyl proveden — neudělán, nic nezjištěno.
 
-## Otevřené
-- Kategorie featů bez labelu a zobrazená jména s „; " mimo featy nezjištěny (potřeba skript; F-31b).
-- Atributy `FeatText name=` v Manage Feats a hláška „already have it from the Magic Initiate; Cleric feat" (Manage Spells) pořád ukazují uložené jméno.
-
-Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Dotčené obrazovky: Features & Traits (Feats), Actions (Other), Manage Feats (My Feats, chipy kategorií), level-up/wizard krok s Maneuvers/Runes/Fighting Style (Replace one), Remove level dialog, Actions (Unarmed Strike damage), import chyba, wizard Ability scores při 390 px.
+## Manuální kontrola v prohlížeči (https://familliar.vercel.app)
+- Vzhled „Animal Handling" / „Sleight of Hand" v seznamech a Review (zalamování řádků).
+- Multiclass Edit, Rogue Expertise: u Acrobatics z Bladesingeru stojí „(from Bladesinger)" — chování pokrývá jen unit test na prázdný zdroj, konkrétní multiclass cestu pokrývá jen kód (bez e2e: nelze snadno seedovat).

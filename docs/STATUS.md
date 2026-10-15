@@ -933,7 +933,10 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   Maneuvers / Runes; Remove level píše „Other known and prepared spells…", když seznam mazání
   obsahuje kouzla; Unarmed Strike bez kostek ukazuje součet (min. 0); chyba importu je jedna
   věta s číslováním od 1; popisek BACKGROUND v tabulce vlastností na 390 px má mezeru.
-  Zbývá F-31b: skilly s velkým písmenem všude, „(from )" v Expertise, CAST řádek bez „(no slot)".
+  F-31b (stejně jen zobrazení): jména skillů jdou přes `skillLabel` (`SKILL_LABELS`, např.
+  „Animal Handling") ve výběrech, Review, Features tabu i v dialogu Remove level; Expertise
+  picker u skillu z podtřídy v multiclass Edit píše jméno podtřídy a při prázdném zdroji
+  nevypisuje „(from )"; CAST řádek kouzla ze slotu nemá poznámku „(no slot)" (patří řádku USE).
 
 - Přirozená zbroj a přirozené zbraně druhů (S5, D357, D358) — ručně mapováno v
   `src/calculation/speciesNatural.ts` (name|source): Lizardfolk 13 + Dex a Tortle 17 jsou
