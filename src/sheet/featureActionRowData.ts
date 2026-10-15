@@ -27,7 +27,7 @@
 
 import { type ActionType, classifyActionType, isActionTableFeature } from '../actions/actionTableFeatureData'
 import { resolveResourceName, speciesTraitUses } from '../calculation/resources'
-import { featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
+import { featDisplayName, featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import type { GrantedFeature } from './grantedClassFeatures'
 import type { FeatTextEntry } from './sheetData'
@@ -124,7 +124,7 @@ export function featureActionRows(
 		const key = resourceName === candidate ? name.toLowerCase() : `${name.toLowerCase()}|${className?.toLowerCase()}`
 		if (seen.has(key)) return
 		seen.add(key)
-		rows.push({ key: `${kind}|${key}`, name, resourceName, origin, actionType, entries: record.entries })
+		rows.push({ key: `${kind}|${key}`, name: kind === 'feat' ? featDisplayName(name) : name, resourceName, origin, actionType, entries: record.entries })
 	}
 
 	for (const feature of granted) add('feature', feature.name, feature, grantedFeatureOrigin(feature), feature.className)

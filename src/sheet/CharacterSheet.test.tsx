@@ -1826,7 +1826,7 @@ describe('CharacterSheet', () => {
 			expect(screen.getByRole('button', { name: 'Roll Longsword to hit' }).textContent).toBe('+5')
 			expect(screen.getByRole('button', { name: 'Roll Longsword damage' }).textContent).toBe('1d8 + 2')
 			// Flat damage is not a button.
-			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-flat')!.textContent).toBe('1 + 2')
+			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-flat')!.textContent).toBe('3')
 		})
 
 		it('R5a (D166 pattern): a row name opens its to-hit and damage breakdowns in the drawer; no inline breakdown in the table', async () => {
@@ -1842,7 +1842,7 @@ describe('CharacterSheet', () => {
 		})
 		it('shows the unarmed strike every character has, and the attacks-per-action count from the feature table', async () => {
 			const { container } = await renderSheet(character)
-			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-damage')!.textContent).toBe('1 + 2 bludgeoning')
+			expect(attackRow(container, 'Unarmed Strike').querySelector('.sheet__action-damage')!.textContent).toBe('3 bludgeoning')
 			// The stub grants "Extra Attack"; the count belongs to the character's turn, not to a weapon row.
 			expect(attacksSection(container).querySelector('.sheet__actions-per-action')!.textContent).toContain('2')
 		})
@@ -8391,7 +8391,7 @@ describe('the persistent header (rebuild slice 1)', () => {
 		it("shows a background Magic Initiate's unmade picks as pending (D57), under its row while collapsed", async () => {
 			vi.mocked(loadFeatEffectEntries).mockResolvedValueOnce([{ name: 'Magic Initiate; Cleric', source: 'XPHB', grantedByBackgrounds: [{ name: 'Farmer', source: 'XPHB' }] }])
 			await renderSheet(farmer)
-			const row = featureRow(await featureGroup('Feats', 'Magic Initiate; Cleric'), 'Magic Initiate; Cleric')
+			const row = featureRow(await featureGroup('Feats', 'Magic Initiate (Cleric)'), 'Magic Initiate (Cleric)')
 			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('From Background')
 			expect(row.querySelector('.sheet__feat-pending')!.textContent).toBe('Choices not made yet: ability, spells — make them in Manage Feats.')
 		})

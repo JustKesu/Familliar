@@ -23,7 +23,7 @@ test('A3a+b: origin feat choices can wait; the sheet names them as not made yet'
   // R6 (D184): the pending line sits under the feat's row, shown while the row is collapsed.
   const feats = page.getByRole('region', { name: 'Feats', exact: true })
   await expect(feats.locator('.sheet__group-row', { hasText: 'Skilled' }).locator('.sheet__group-row-source')).toHaveText('From Fighter 4')
-  await expect(feats.locator('.sheet__group-row', { hasText: 'Magic Initiate; Cleric' }).locator('.sheet__group-row-source')).toHaveText('From Background')
+  await expect(feats.locator('.sheet__group-row', { hasText: 'Magic Initiate (Cleric)' }).locator('.sheet__group-row-source')).toHaveText('From Background')
   await expect(feats.getByText(PENDING)).toHaveCount(2)
 })
 

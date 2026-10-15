@@ -926,6 +926,15 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
 
 ## Co appka umí navíc k build orderu
 
+- Textové opravy ze screenshot review (F-31a, jen zobrazení, schéma 61 beze změny): feat
+  „Magic Initiate; Cleric" se ukazuje jako „Magic Initiate (Cleric)" (`featDisplayName`,
+  uložené jméno beze změny); štítky kategorií D / FS:P / FS:R; „Replace one" píše množné číslo
+  (Fighting Styles, maneuvers, runes) a seznam Battle Master / Rune Knight se jmenuje
+  Maneuvers / Runes; Remove level píše „Other known and prepared spells…", když seznam mazání
+  obsahuje kouzla; Unarmed Strike bez kostek ukazuje součet (min. 0); chyba importu je jedna
+  věta s číslováním od 1; popisek BACKGROUND v tabulce vlastností na 390 px má mezeru.
+  Zbývá F-31b: skilly s velkým písmenem všude, „(from )" v Expertise, CAST řádek bez „(no slot)".
+
 - Přirozená zbroj a přirozené zbraně druhů (S5, D357, D358) — ručně mapováno v
   `src/calculation/speciesNatural.ts` (name|source): Lizardfolk 13 + Dex a Tortle 17 jsou
   kandidát na AC vedle nošené zbroje a vzorců (vyhrává nejlepší, ostatní „considered");

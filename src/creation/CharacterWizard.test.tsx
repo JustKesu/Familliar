@@ -693,7 +693,7 @@ describe('CharacterWizard — selections survive back-navigation', () => {
 		await goBack(user)
 
 		// All three picks auto-collapse the list; reopen it.
-		await user.click(await screen.findByRole('button', { name: /Options/ }))
+		await user.click(await screen.findByRole('button', { name: /Maneuvers/ }))
 		expect(isChosen(await screen.findByRole('button', { name: 'Choose Trip Attack' }))).toBe(true)
 	})
 

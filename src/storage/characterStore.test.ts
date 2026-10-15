@@ -3037,8 +3037,8 @@ describe('unreadable saved characters (F-25b, D354)', () => {
 		const good = JSON.parse(store.exportCharacter(aria.id)) as unknown[]
 		const file = JSON.stringify([...good, { ...damaged, id: 'b1' }, { schemaVersion: CURRENT_SCHEMA_VERSION, id: 'b2', name: 'Nameless', classes: [], currentHp: -1 }])
 		expect(() => store.import(file)).toThrow(ImportValidationError)
-		expect(() => store.import(file)).toThrow(/^That file could not be imported: .*\[1\]/)
-		expect(() => store.import(file)).not.toThrow(/\[2\]/)
+		expect(() => store.import(file)).toThrow(/^That file could not be imported: Character 2 in the file/)
+		expect(() => store.import(file)).not.toThrow(/Character 3/)
 		expect(backing.getItem(STORAGE_KEY)).toBe(before)
 	})
 })

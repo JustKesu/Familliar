@@ -1,35 +1,34 @@
-# REPORT — F-30 (layout ze screenshot review)
+# F-31a — textové opravy (6, 15, 8, 21, 3, 1, CSS)
 
-HEAD na startu 6edff97 (ff-only: už aktuální).
+Setup: ff-only merge OK, HEAD byl f29470b. F-31b (20/14, 12, 26/40, e2e b a c) je odložené na samostatný task po schválení rozdělení.
 
-## Inventura (krok 1) — 7 míst, vše `src/index.css`, žádná logika
+## STEP 1 — tabulka (rozsah F-31a)
+| # | Kde | Změna |
+|---|-----|-------|
+| 6 | `featAsi/featInstances.ts` (`featDisplayName`), `sheet/featuresTabData.ts` (řádek Feats), `sheet/featureActionRowData.ts` (jen kind 'feat'), `sheet/ManageFeatsPanel.tsx` (`FeatRow name`) | „Magic Initiate (Cleric)" |
+| 15 | `featAsi/featAsiData.ts:611` | D → Dragonmark, FS:P / FS:R → Fighting Style (Paladin/Ranger) |
+| 8 | `optionalFeatures/ReplaceOptionControl.tsx`, `OptionalFeaturePicker.tsx` (mapa Battle Master/Rune Knight → Maneuvers/Runes, text i legend), `fightingStyle/FightingStylePicker.tsx` | množné číslo |
+| 1 | `levelUp/RemoveLevelButton.tsx` (`keptSpellsText`) | „Other known…", když `dropped` obsahuje řádek `spell: ` / `spell choice: ` |
+| 3 | `calculation/weaponAttacks.ts` `damageText` | bez kostek součet 1+mod, min 0 (i kladný: „4" místo „1 + 3") |
+| 21 | `storage/characterStore.ts` (`readableEntryError`) | „Character N in the file could not be imported: <path>." |
+| CSS | `index.css` @media 600 px, `.ability-table th[scope='row']` | width 72px, padding-right 6px, overflow-wrap |
 
-| Nález | Soubor | Změna |
-|---|---|---|
-| 1 ASI legend roztahuje stránku | index.css `.feat-asi-card__legend` | `.wizard__content legend {float; width:100%}` přebíjelo sr-only; selektor zesílen + float:none, margin -1px, padding/border 0; `position: relative` na `.feat-asi-card__body` |
-| 2 Character name 416 px na 390 | index.css (nové `.wizard__field`) | `min-width:0` na labelu, input `max-width:100%`, `box-sizing` |
-| 3 save advantages uříznuté | index.css (nové `.sheet__save-advantages`) | zrušen 2sloupcový grid z `.sheet__saving-throws ul`, li `display:block; white-space:normal`, 12px `--text-sub` |
-| 4 tabulka vlastností na telefonu | index.css `@media (max-width: 600px)` | `min-width:0`, řádkový popisek 64 px se zalomením, padding 4px 1px, select padding 2px 0 |
-| 5a Replace one | index.css (nové `.replace-option`) | `margin-bottom: 14px` když není poslední, mezera 6 px mezi tlačítky |
-| 5b ASI rádia | index.css (nové `.feat-asi-picker__asi`) | flex-wrap, gap 8px 16px |
-| 5c sloty Proficiencies | index.css `.language-picker__list li > label:has(> select)` | grid `minmax(0,14rem) minmax(0,1fr)`; ≤600 px jeden sloupec |
-
-## Změněno
-- Vše dle tabulky, jen CSS + nový `e2e/layoutF30.spec.ts`. Navíc oproti tabulce: `.wizard__field` potřeboval i `white-space: normal` (globální `label {nowrap}` držel input na řádku s textem → 416 px i s max-width).
-- Příčina 3: `.sheet__saving-throws ul` (2sloupcový grid) a `.sheet__left-column li` (flex, nowrap) platily i pro `ul.sheet__save-advantages`. Drawer dostává stejný styl (`.sheet__save-advantages` bez rodiče).
-- 5c pokrývá všechny jednovýběrové sloty se stejným markupem (ClassToolSlots, KenseiWeaponSlots, FeatureLanguageSlots, SkillChoiceSlots, MulticlassPickSlots); checkboxové labely LanguagePickeru netknuté (`:has(> select)`).
-- 4: první `@media` pro telefon v index.css (`max-width: 600px`); desktop beze změny pravidel.
-- Edit Character používá stejný `label.wizard__field` v CharacterWizard → oprava 2 platí i tam.
+## Co se změnilo
+- Změněné existující testy: CharacterSheet.test (Magic Initiate název, Unarmed „3"), weaponAttacks.test (3×), sheetReviewFixes.test, characterStore.test (číslování), OptionalFeaturePicker.test (label hledání), CharacterWizard.test (/Maneuvers/); e2e: manageFeats, featuresTab (escape závorek v `row`), featSubChoices, choiceSources, levelUpSwap (legend Maneuvers/Runes).
+- Nové: `src/textFixesF31.test.tsx` (6, 15, 8, 1, 3, 21), `e2e/textFixesF31.spec.ts` (a, d, e).
 
 ## Ověřeno
-- typecheck OK; test 182 souborů / 3341 OK; validate-data 175/175; e2e 578/578 (8,0 min — nad 3 min).
-- `layoutF30.spec.ts` a–e: všech 5 selhalo na původním index.css (1586 > 1366; 416 > 390; li pravý okraj 425 > karta 335; tabulka 460 > 314 ×2), na novém projdou.
-- 5a/5b/5c (mezery, zarovnání) nemají e2e — čistě vizuální, viz níže.
-- Prostředí: Playwright chtěl chromium_headless_shell-1243, k dispozici 1194 → symlink v /opt/pw-browsers (mimo repo).
+typecheck, test (3347), validate-data (175), e2e (581 passed, 2.2 min) — všechno jednou na konci, všechno prošlo.
 
 ## Rozhodnutí v kódu
-- Breakpoint telefonu 600 px (nikde dosud nedefinován).
-- Sloupec popisku slotů 14rem.
+- `featDisplayName` je jen zobrazení; klíče řádků a uložená jména beze změny. `aria-label` „Remove <jméno>" v Manage Feats zůstal se starým jménem.
+- Položka 3 aplikována obecně (i „1 + 3" → „4"), protože zadání říká „flat number plus modifier → computed number".
+- Legend seznamu Battle Master / Rune Knight je „Maneuvers (Battle Master)" / „Runes (Rune Knight)" i mimo level up.
+- e2e e: assert proti pravému okraji textu labelu, ne boxu buňky (buňky tabulky sdílejí hranu vždy).
 
-## Manual browser check for the user
-None - the planning chat checks the looks from screenshots. Změněné obrazovky: wizard ASI / Feat (karta, řádek rádií), Class and level na telefonu (Character name, i Edit Character), Ability scores a Review na telefonu (tabulka), Proficiencies (sloty nástrojů/Kensei/jazyků), level up kroky s „Replace one“ (manévry, runy, styl, invocations), sheet Saving Throws karta + drawer.
+## Otevřené
+- Kategorie featů bez labelu a zobrazená jména s „; " mimo featy nezjištěny (potřeba skript; F-31b).
+- Atributy `FeatText name=` v Manage Feats a hláška „already have it from the Magic Initiate; Cleric feat" (Manage Spells) pořád ukazují uložené jméno.
+
+Manual browser check for the user: none - the planning chat checks the looks from screenshots.
+Dotčené obrazovky: Features & Traits (Feats), Actions (Other), Manage Feats (My Feats, chipy kategorií), level-up/wizard krok s Maneuvers/Runes/Fighting Style (Replace one), Remove level dialog, Actions (Unarmed Strike damage), import chyba, wizard Ability scores při 390 px.

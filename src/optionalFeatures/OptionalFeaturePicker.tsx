@@ -23,6 +23,8 @@ type LoadState =
 
 const NO_LOCKED_VALUES: readonly string[] = []
 
+const SUBCLASS_OPTION_NOUN: Record<string, string> = { 'Battle Master': 'Maneuvers', 'Rune Knight': 'Runes' }
+
 function optionKey(option: OptionalFeatureOption): string {
 	return `${option.name}|${option.source}`
 }
@@ -133,11 +135,12 @@ export function OptionalFeaturePicker({
 		}
 	})
 
+	const noun = SUBCLASS_OPTION_NOUN[subclassName]
 	return (
 		<div className="optional-feature-picker">
-			{replaceable && <ReplaceNamedPickControl label="options" held={lockedValues} value={value} count={count} onChange={onChange} />}
+			{replaceable && <ReplaceNamedPickControl label={noun?.toLowerCase() ?? 'options'} held={lockedValues} value={value} count={count} onChange={onChange} />}
 			<SearchableOptionList
-				legend="Options"
+				legend={noun ? `${noun} (${subclassName})` : 'Options'}
 				name="optional-feature"
 				inputType="checkbox"
 					variant="choose"

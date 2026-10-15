@@ -125,7 +125,7 @@ describe('A5/A6 saving throws', () => {
 describe('A8 unarmed damage floor', () => {
 	it('a flat 1 with a modifier below -1 reads 0', () => {
 		expect(damageText(null, -2, 'bludgeoning')).toBe('0 bludgeoning')
-		expect(damageText(null, -1, 'bludgeoning')).toBe('1 - 1 bludgeoning')
+		expect(damageText(null, -1, 'bludgeoning')).toBe('0 bludgeoning')
 		const unarmed = named(computeWeaponAttacks(character('Fighter', 1, { strength: 6 }), [], grants), 'Unarmed Strike').damage
 		expect(unarmed.status === 'known' && unarmed.value.text).toBe('0 bludgeoning')
 	})

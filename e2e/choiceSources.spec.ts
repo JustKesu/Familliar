@@ -82,7 +82,7 @@ async function levelUp(page: Page, level: number, onClassStep?: () => Promise<vo
   const save = wizardNav(page).getByRole('button', { name: `Save level ${level}` })
   let picked = onClassStep === undefined
   for (let steps = 0; steps < 10 && !(await save.isVisible()); steps++) {
-    if (!picked && (await page.getByRole('button', { name: /^Options/ }).isVisible())) {
+    if (!picked && (await page.getByRole('button', { name: /^(Options|Maneuvers|Runes)/ }).isVisible())) {
       await onClassStep!()
       picked = true
     }
@@ -114,7 +114,7 @@ test('M1b b: a schema-57 Battle Master shows its maneuvers as before; a maneuver
   await expect(featureRow(fighterFeatures(page), 'Fighting Style').locator('.sheet__feature-options')).toContainText('Defense')
 
   await levelUp(page, 7, async () => {
-    const list = page.getByRole('button', { name: /^Options/ })
+    const list = page.getByRole('button', { name: /^(Options|Maneuvers|Runes)/ })
     if ((await list.getAttribute('aria-expanded')) === 'false') await list.click()
     for (const maneuver of ['Precision Attack', 'Pushing Attack']) await chooseButton(page, maneuver).first().click()
   })

@@ -3112,10 +3112,12 @@ button:disabled {
   }
 
   .ability-table th[scope='row'] {
-    width: 64px;
+    width: 72px;
+    padding-right: 6px;
     font-size: 10px;
     letter-spacing: 0.02em;
     white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .ability-table .ability-picker__control {

@@ -184,7 +184,7 @@ describe('OptionalFeaturePicker', () => {
 			/>,
 		)
 
-		await user.type(await screen.findByLabelText('Search Options'), 'Maneuver 20')
+		await user.type(await screen.findByLabelText('Search Maneuvers (Battle Master)'), 'Maneuver 20')
 
 		expect(chooseButton('Maneuver 20')).toBeTruthy()
 		expect(queryChooseButton('Maneuver 2')).toBeNull()

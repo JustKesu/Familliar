@@ -5,7 +5,7 @@
 
 import type { ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
 import { compareText } from '../text/compareText'
-import { featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
+import { featDisplayName, featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
 import type { ItemInvocationOption, OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { grantedFeatureOrigin, resourceCandidateName } from './featureActionRowData'
@@ -260,7 +260,7 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		label: 'Feats',
 		rows: input.feats.map(({ instance, text, pending }) => ({
 			key: `feat|${instance.key}`,
-			name: instance.name,
+			name: featDisplayName(instance.name),
 			source: featSource(instance, input.classes, input.levelOrder),
 			entries: text?.entries ?? null,
 			resourceName: text ? resourceCandidateName(text) : null,

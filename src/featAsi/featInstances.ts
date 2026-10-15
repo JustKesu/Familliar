@@ -30,6 +30,11 @@ export interface FeatInstance extends FeatChoiceDetails {
 	itemName?: string
 }
 
+/** Display only: feats.json stores "Magic Initiate; Cleric", the sheet shows "Magic Initiate (Cleric)". Never use it for matching. */
+export function featDisplayName(name: string): string {
+	return name.replace(/^([^;]+);\s*(.+)$/, '$1 ($2)')
+}
+
 /** Where the feat came from, as the sheet labels it: "Background", "Species", "Added manually", "From item (…)" or "level 4". */
 export function featOriginLabel(instance: Pick<FeatInstance, 'origin' | 'level' | 'itemName'>): string {
 	if (instance.origin === 'background') return 'Background'

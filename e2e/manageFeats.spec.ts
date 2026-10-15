@@ -70,7 +70,7 @@ test('R13a a: level, background and Fighting Style feats are locked; an ASI leve
   }
 
   const panel = await openManage(page, 'r13a-a1')
-  await expect(row(mine(panel), 'Magic Initiate; Cleric')).toContainText('From Background')
+  await expect(row(mine(panel), 'Magic Initiate (Cleric)')).toContainText('From Background')
   await expect(row(mine(panel), 'Alert')).toContainText('From level 4')
   await expect(row(mine(panel), 'Archery')).toContainText('From Fighter')
   await expect(mine(panel).getByRole('button', { name: /^Remove / })).toHaveCount(0)
@@ -233,8 +233,8 @@ test('R13b c: picking a manually added Skilled\'s three skills in the panel make
 test('R13b d: changing a background Magic Initiate cantrip in the panel updates the Spells tab', async ({ page }) => {
   await seed(page, [ACOLYTE_WITH_MAGIC_INITIATE('r13b-d')])
   const panel = await openManage(page, 'r13b-d')
-  const magicInitiate = row(mine(panel), 'Magic Initiate; Cleric')
-  await magicInitiate.getByRole('button', { name: 'Magic Initiate; Cleric text' }).click()
+  const magicInitiate = row(mine(panel), 'Magic Initiate (Cleric)')
+  await magicInitiate.getByRole('button', { name: 'Magic Initiate (Cleric) text' }).click()
   await magicInitiate.getByRole('checkbox', { name: 'Guidance', exact: true }).uncheck()
   await magicInitiate.getByRole('checkbox', { name: 'Toll the Dead', exact: true }).check()
   await closeManage(page)

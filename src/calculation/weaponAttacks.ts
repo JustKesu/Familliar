@@ -134,9 +134,8 @@ function signed(amount: number): string {
 }
 
 export function damageText(dice: string | null, modifier: number, damageType: string): string {
-	const head = dice ?? '1'
-	// A8: a flat 1 + a negative modifier deals no damage rather than negative damage.
-	const withModifier = dice === null && 1 + modifier < 0 ? '0' : modifier === 0 ? head : `${head} ${signed(modifier)}`
+	// A8: a flat 1 + a modifier is shown as the sum, never below 0.
+	const withModifier = dice === null ? String(Math.max(0, 1 + modifier)) : modifier === 0 ? dice : `${dice} ${signed(modifier)}`
 	return damageType ? `${withModifier} ${damageType}` : withModifier
 }
 

@@ -173,7 +173,7 @@ describe('computeWeaponAttacks — a custom item’s weapon attack/damage bonus 
 	it('leaves the Unarmed Strike alone (D216)', () => {
 		const unarmed = attackNamed(computeWeaponAttacks(character('Fighter', 1), [], martialGrants, [], null, itemBonuses), 'Unarmed Strike')
 		expect(toHitOf(unarmed)).toBe(5)
-		expect(damageTextOf(unarmed)).toBe('1 + 3 bludgeoning')
+		expect(damageTextOf(unarmed)).toBe('4 bludgeoning')
 	})
 })
 
@@ -316,7 +316,7 @@ describe('computeWeaponAttacks — unarmed strike', () => {
 		expect(unarmed.key).toBe(UNARMED_STRIKE_KEY)
 		expect(unarmed.name).toBe('Unarmed Strike')
 		expect(toHitOf(unarmed)).toBe(5)
-		expect(damageTextOf(unarmed)).toBe('1 + 3 bludgeoning')
+		expect(damageTextOf(unarmed)).toBe('4 bludgeoning')
 		expect(unarmed.notes).toEqual([])
 	})
 
@@ -521,7 +521,7 @@ describe('computeWeaponAttacks — species natural weapons (D358)', () => {
 		expect(talons.key).toBe('natural-weapon-Talons')
 		expect(toHitOf(talons)).toBe(5)
 		expect(damageTextOf(talons)).toBe('1d6 + 3 slashing')
-		expect(damageTextOf(attackNamed(attacks, 'Unarmed Strike'))).toBe('1 + 3 bludgeoning')
+		expect(damageTextOf(attackNamed(attacks, 'Unarmed Strike'))).toBe('4 bludgeoning')
 	})
 
 	it('a species without a natural weapon adds no row', () => {

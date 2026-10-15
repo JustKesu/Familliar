@@ -14,7 +14,7 @@ async function createBattleMaster(page: Page): Promise<void> {
     species: 'Dwarf|XPHB',
     subclass: 'Battle Master',
     onClassStep: async (p) => {
-      const list = p.getByRole('button', { name: /^Options/ })
+      const list = p.getByRole('button', { name: /^(Options|Maneuvers|Runes)/ })
       if ((await list.getAttribute('aria-expanded')) === 'false') await list.click()
       for (const maneuver of MANEUVERS) await chooseButton(p, maneuver).first().click()
     },
@@ -40,7 +40,7 @@ function group(page: Page, name: string): Locator {
 }
 
 function row(scope: Locator, name: string): Locator {
-  return scope.locator('.sheet__group-row').filter({ has: scope.page().locator('.sheet__group-row-name', { hasText: new RegExp(`^${name}$`) }) })
+  return scope.locator('.sheet__group-row').filter({ has: scope.page().locator('.sheet__group-row-name', { hasText: new RegExp(`^${name.replace(/[()]/g, '\\$&')}$`) }) })
 }
 
 async function openFeatures(page: Page): Promise<void> {
@@ -110,7 +110,7 @@ test('R6 d: a Second Wind use marked here shows in Actions; Finish Short Rest re
 })
 
 test('R6 e: the background origin feat reads "From Background"', async ({ page }) => {
-  const feat = row(group(page, 'Feats'), 'Magic Initiate; Cleric')
+  const feat = row(group(page, 'Feats'), 'Magic Initiate (Cleric)')
   await expect(feat.locator('.sheet__group-row-source')).toHaveText('From Background')
 })
 

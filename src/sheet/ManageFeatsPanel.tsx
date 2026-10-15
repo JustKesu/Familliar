@@ -25,7 +25,7 @@ import {
 	type PrerequisiteContext,
 	type FeatOffer,
 } from '../featAsi/featAsiData'
-import { featOriginLabel, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
+import { featDisplayName, featOriginLabel, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { FeatSubChoicePicker, magicInitiateListsOf, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { ResolvedEntries, type ResolverData } from '../featureResolver'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
@@ -292,7 +292,7 @@ export function ManageFeatsPanel({
 		return (
 			<FeatRow
 				key={instance.key}
-				name={instance.name}
+				name={featDisplayName(instance.name)}
 				chip={chip}
 				action={
 					instance.origin === 'manual' && (

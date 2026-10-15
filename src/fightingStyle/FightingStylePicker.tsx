@@ -108,7 +108,7 @@ export function FightingStylePicker({
 	return (
 		<div className="fighting-style-picker">
 			{heldStyle !== null && (
-				<ReplaceNamedPickControl label="Fighting Style" held={[heldStyle]} value={value === null ? [] : [value]} count={1} onChange={(names) => onChange(names[0] ?? null)} />
+				<ReplaceNamedPickControl label="Fighting Styles" held={[heldStyle]} value={value === null ? [] : [value]} count={1} onChange={(names) => onChange(names[0] ?? null)} />
 			)}
 			{(heldStyle === null || value !== heldStyle) && (
 			<SearchableOptionList

@@ -251,7 +251,7 @@ test('F-20b g, k: Battle Master 4 → 5 adds no maneuver yet replaces Parry; Rem
       await maneuvers.getByRole('button', { name: 'Replace Parry', exact: true }).click()
       await expect(maneuvers).toContainText('Replacing Parry')
       await expect(nextOf(p)).toBeDisabled()
-      await openOptionList(p, 'Options')
+      await openOptionList(p, 'Maneuvers')
       await chooseButton(p, 'Feinting Attack').first().click()
       await expect(nextOf(p)).toBeEnabled()
     },
@@ -284,7 +284,7 @@ test('F-20b h: Rune Knight 4 → 5 replaces Stone Rune with Fire Rune', async ({
     async (p) => {
       await replaceGroup(p).getByRole('button', { name: 'Replace Stone Rune', exact: true }).click()
       await expect(nextOf(p)).toBeDisabled()
-      await openOptionList(p, 'Options')
+      await openOptionList(p, 'Runes')
       await chooseButton(p, 'Fire Rune').first().click()
       await expect(nextOf(p)).toBeEnabled()
     },

@@ -608,7 +608,7 @@ export function unmetPrerequisiteText(result: PrerequisiteResult): string {
 		.join(' or ')
 }
 
-export const FEAT_CATEGORY_LABELS: Record<string, string> = { O: 'Origin', G: 'General', FS: 'Fighting Style', EB: 'Epic Boon', DG: 'Dark Gift' }
+export const FEAT_CATEGORY_LABELS: Record<string, string> = { O: 'Origin', G: 'General', FS: 'Fighting Style', EB: 'Epic Boon', DG: 'Dark Gift', D: 'Dragonmark', 'FS:P': 'Fighting Style (Paladin)', 'FS:R': 'Fighting Style (Ranger)' }
 
 export const featCategoryLabel = (code: string): string => FEAT_CATEGORY_LABELS[code] ?? code
 

@@ -92,7 +92,7 @@ export function RemoveLevelButton({
 									))}
 								</ul>
 							)}
-							<p>{plan.removedClass ? 'Known and prepared spells of the other classes are kept.' : 'Known and prepared spells are kept.'}</p>
+							<p>{keptSpellsText(plan.dropped, Boolean(plan.removedClass))}</p>
 						</div>
 					</ConfirmDialog>
 				)}
@@ -110,6 +110,12 @@ export function RemoveLevelButton({
 			Remove level
 		</button>
 	)
+}
+
+/** A dropped line for a spell ("Pact of the Tome spell: X", "<Subclass> spell choice: X") makes "spells are kept" read as a contradiction. */
+export function keptSpellsText(dropped: readonly string[], removedClass: boolean): string {
+	const other = dropped.some((line) => /spell( choice)?: /.test(line)) ? 'Other known' : 'Known'
+	return removedClass ? `${other} and prepared spells of the other classes are kept.` : `${other} and prepared spells are kept.`
 }
 
 function DownArrowIcon(): ReactNode {
