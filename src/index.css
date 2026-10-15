@@ -533,6 +533,17 @@ button:disabled {
   gap: 16px;
 }
 
+/* F-30: the name input shrinks with the row instead of widening a phone page. */
+.wizard__field {
+  min-width: 0;
+  white-space: normal;
+}
+
+.wizard__field input {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
 .wizard-portrait {
   display: flex;
   flex: none;
@@ -1232,6 +1243,28 @@ button:disabled {
   grid-template-rows: repeat(3, auto);
   grid-auto-flow: column;
   column-gap: 16px;
+}
+
+.sheet__save-advantages {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+/* Beats the two-column grid above and `.sheet__left-column li` (flex, nowrap), which cut the lines off (F-30). */
+.sheet__saving-throws .sheet__save-advantages {
+  display: block;
+  margin-top: 8px;
+}
+
+.sheet__save-advantages li,
+.sheet__left-column .sheet__save-advantages li {
+  display: block;
+  padding: 2px 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* R4b: rows are one line — dot, name, value — so nothing wraps into the next row. */
@@ -3066,6 +3099,31 @@ button:disabled {
   color: var(--text-sub);
 }
 
+/* F-30: all six columns fit a 390 px phone without a horizontal scroll. */
+@media (max-width: 600px) {
+  .ability-table {
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .ability-table th,
+  .ability-table td {
+    padding: 4px 1px;
+  }
+
+  .ability-table th[scope='row'] {
+    width: 64px;
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    white-space: normal;
+  }
+
+  .ability-table .ability-picker__control {
+    padding: 2px 0;
+    font-size: 13px;
+  }
+}
+
 /* W6: species traits card — stats row, then each trait's full text. */
 .species-card {
   display: flex;
@@ -3168,6 +3226,7 @@ button:disabled {
 }
 
 .wizard__content .feat-asi-card__body {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -3190,13 +3249,31 @@ button:disabled {
   min-width: 0;
 }
 
-.feat-asi-card__legend {
+/* The extra class beats `.wizard__content legend` (float, width: 100%), which otherwise widened the page (F-30). */
+.feat-asi-card__legend,
+.wizard__content .feat-asi-card__legend {
   position: absolute;
+  float: none;
   width: 1px;
   height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.feat-asi-picker__asi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.feat-asi-picker__asi select {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .feat-asi-card__missing {
@@ -3235,6 +3312,39 @@ button:disabled {
 
 .wizard__content .option-list {
   margin: 0;
+}
+
+.replace-option:not(:last-child) {
+  margin-bottom: 14px;
+}
+
+.replace-option__list li + li {
+  margin-top: 6px;
+}
+
+/* F-30: one-select slots (class tool, Kensei weapon, feature language) line up label and select in two columns. */
+.language-picker__list li > label:has(> select) {
+  display: grid;
+  grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 12px;
+  white-space: normal;
+}
+
+.language-picker__list li > label > select {
+  justify-self: start;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.language-picker__list li + li {
+  margin-top: 6px;
+}
+
+@media (max-width: 600px) {
+  .language-picker__list li > label:has(> select) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* W1: no bullets before checkboxes and radios; rendered rules text (.mk-list) keeps its own. */
