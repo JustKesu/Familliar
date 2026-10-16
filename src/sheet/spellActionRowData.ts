@@ -170,6 +170,18 @@ export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntr
 	return lines
 }
 
+/**
+ * A cantrip's dice at `characterLevel`. XPHB Eldritch Blast and Magic Stone
+ * carry no `scalingLevelDice`, only a `{@damage}` tag in entries (DATA.md), so
+ * those dice are shown with the one damage type.
+ */
+export function cantripDamage(detail: SpellDetail, characterLevel: number): string[] {
+	if (detail.scalingLevelDice.length > 0) return cantripDamageAtLevel(detail.scalingLevelDice, characterLevel)
+	const type = detail.damageInflict.length === 1 ? ` ${detail.damageInflict[0]!.charAt(0).toUpperCase()}${detail.damageInflict[0]!.slice(1)}` : ''
+	const dice = [...JSON.stringify(detail.entries).matchAll(/\{@damage ([^}|]*)[^}]*\}/g)].map((match) => match[1]!.trim())
+	return [...new Set(dice)].map((line) => `${line}${type}`)
+}
+
 const SCALE_TAG = /\{@scale(damage|dice) ([^}]*)\}/g
 
 /** "3-9" or Spirit Shroud's "3,5,7,9": the slot levels at which one more INC applies (the first adds none). */
@@ -300,7 +312,7 @@ export function spellActionData(
 		range: formatRange(detail.range),
 		attack: hasAttack && resolved ? resolved.attack : null,
 		save: saveAbilities.length > 0 && resolved ? { ...resolved.save, abilities: saveAbilities } : null,
-		damage: detail.level === 0 ? cantripDamageAtLevel(detail.scalingLevelDice, characterLevel) : leveledSpellDice(detail, castLevel),
+		damage: detail.level === 0 ? cantripDamage(detail, characterLevel) : leveledSpellDice(detail, castLevel),
 		unresolved: 'reason' in caster ? caster.reason : null,
 	}
 }

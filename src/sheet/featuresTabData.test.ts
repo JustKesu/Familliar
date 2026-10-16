@@ -68,6 +68,22 @@ describe('featuresTabGroups (D184)', () => {
 		const groups = featuresTabGroups({ ...base, classes: [{ className: 'Fighter', level: 1 }, { className: 'Rogue', level: 1 }], granted: [], chosenOptions: [] })
 		expect(groups.map((group) => group.label)).toEqual(['Fighter Features', 'Rogue Features', 'Species Traits', 'Feats'])
 	})
+
+	it('hides an older subclass feature named like a class feature, keeping the class row (F-32a)', () => {
+		const conquest = (name: string, olderSubclass: boolean): GrantedFeature => ({ ...feature(name, 3, [], 'Paladin'), id: `sf|${name}`, kind: 'subclass', subclassShortName: 'Conquest', ...(olderSubclass ? { olderSubclass: true as const } : {}) })
+		const groups = featuresTabGroups({
+			...base,
+			classes: [{ className: 'Paladin', level: 3 }],
+			granted: [feature('Channel Divinity', 3, [], 'Paladin'), conquest('Channel Divinity', true), conquest('Oath of Conquest Spells', true)],
+			chosenOptions: [],
+		})
+		expect(groups[0].rows.map((row) => [row.name, row.source])).toEqual([
+			['Channel Divinity', 'Paladin 3'],
+			['Oath of Conquest Spells', 'Conquest, Paladin 3'],
+		])
+		const sameEdition = featuresTabGroups({ ...base, classes: [{ className: 'Paladin', level: 3 }], granted: [feature('Channel Divinity', 3, [], 'Paladin'), conquest('Channel Divinity', false)], chosenOptions: [] })
+		expect(sameEdition[0].rows).toHaveLength(2)
+	})
 })
 
 describe('featSource', () => {

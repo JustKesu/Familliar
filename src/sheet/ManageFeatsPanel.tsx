@@ -146,8 +146,8 @@ function FeatRow({ name, meta, note, chip, action, children }: { name: string; m
 	)
 }
 
-function FeatText({ entries, name, resolverData }: { entries: unknown[] | null | undefined; name: string; resolverData: ResolverData }): ReactNode {
-	return entries ? <ResolvedEntries entries={entries} data={resolverData} /> : <p>No text found for “{name}”.</p>
+export function FeatText({ entries, name, resolverData }: { entries: unknown[] | null | undefined; name: string; resolverData: ResolverData }): ReactNode {
+	return entries ? <ResolvedEntries entries={entries} data={resolverData} /> : <p>No text found for “{featDisplayName(name)}”.</p>
 }
 
 /**

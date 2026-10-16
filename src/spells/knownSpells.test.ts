@@ -55,6 +55,12 @@ describe('collectKnownSpells', () => {
 		expect(known[1]).toEqual({ name: 'Mage Hand', source: 'XPHB', label: 'Pact of the Tome', pickerKey: optionalFeatureSpellPickerKey('Pact of the Tome') })
 	})
 
+	it('shows a stored "Feat; Variant" name as "Feat (Variant)" (F-32a)', () => {
+		const known = collectKnownSpells(inputs({ featGrantedSpells: [{ ...mistyStep, featName: 'Magic Initiate; Cleric' }] }))
+		expect(known[0]!.label).toBe('the Magic Initiate (Cleric) feat')
+		expect(known[0]!.pickerKey).toBe(featSpellPickerKey('Magic Initiate; Cleric'))
+	})
+
 	it('keeps every source of the same spell (D44 spirit), but not the same source twice', () => {
 		const known = collectKnownSpells(
 			inputs({

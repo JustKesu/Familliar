@@ -103,6 +103,8 @@ describe('cell texts', () => {
 		const fireBolt = detail('Fire Bolt', 0, { damageInflict: ['fire'], scalingLevelDice: [{ label: 'fire damage', scaling: { '1': '1d10', '5': '2d10' } }] })
 		expect(spellEffect(fireBolt, 5)).toEqual({ dice: ['2d10 fire damage'], text: null })
 		expect(spellEffect(detail('Eldritch Blast', 0, { damageInflict: ['force'] }), 5)).toEqual({ dice: [], text: 'Force' })
+		const eldritchBlast = detail('Eldritch Blast', 0, { damageInflict: ['force'], entries: ['On a hit, the target takes {@damage 1d10} Force damage.'] })
+		expect(spellEffect(eldritchBlast, 5)).toEqual({ dice: ['1d10 Force'], text: null })
 		expect(spellEffect(detail('Ice Knife', 1, { damageInflict: ['piercing', 'cold'] }), 5)).toEqual({ dice: [], text: 'Piercing, Cold' })
 		expect(spellEffect(detail('Hold Person', 2, { conditionInflict: ['paralyzed'] }), 5)).toEqual({ dice: [], text: 'Paralyzed' })
 		expect(spellEffect(detail('Bless', 1, { entries: ['roll a {@dice 1d4}'] }), 5)).toBeNull()

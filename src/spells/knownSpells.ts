@@ -1,3 +1,4 @@
+import { featDisplayName } from '../featAsi/featInstances'
 import { spellIdentityKey } from './subclassPreparedSpells'
 
 /*
@@ -79,7 +80,7 @@ export function collectKnownSpells(inputs: KnownSpellInputs): KnownSpell[] {
 		for (const pick of inputs.subclassSpellChoicePicks) add(pick.name, pick.source, inputs.subclassName, SUBCLASS_SPELL_CHOICE_PICKER_KEY)
 	}
 
-	for (const spell of inputs.featGrantedSpells) add(spell.name, spell.source, `the ${spell.featName} feat`, featSpellPickerKey(spell.featName))
+	for (const spell of inputs.featGrantedSpells) add(spell.name, spell.source, `the ${featDisplayName(spell.featName)} feat`, featSpellPickerKey(spell.featName))
 
 	for (const spell of inputs.optionalFeatureGrantedSpells) add(spell.name, spell.source, spell.optionName, optionalFeatureSpellPickerKey(spell.optionName))
 

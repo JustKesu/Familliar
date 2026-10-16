@@ -148,7 +148,7 @@ test('R9a g: a Magic Initiate (Cleric) spell stays out of the class section and 
   await expect(row(prepared(panel), 'Healing Word')).toHaveCount(0)
   const offered = row(addSpells(panel), 'Healing Word')
   await expect(offered.getByRole('button', { name: 'Prepare Healing Word', exact: true })).toBeDisabled()
-  await expect(offered).toContainText('(already have it from the Magic Initiate; Cleric feat)')
+  await expect(offered).toContainText('(already have it from the Magic Initiate (Cleric) feat)')
 })
 
 test('R9a h: a slot box clicked in the drawer fills the same box in the Spells tab heading', async ({ page }) => {

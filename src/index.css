@@ -3111,13 +3111,18 @@ button:disabled {
     padding: 4px 1px;
   }
 
+  /* F-32a: breaks only between words; BACKGROUND and MODIFIER fit on one line.
+     The header's empty first cell sets the column under table-layout: fixed, so it carries the width too. */
+  .ability-table thead td:first-child {
+    width: 76px;
+  }
+
   .ability-table th[scope='row'] {
-    width: 72px;
+    width: 76px;
     padding-right: 6px;
-    font-size: 10px;
-    letter-spacing: 0.02em;
+    font-size: 9px;
+    letter-spacing: 0;
     white-space: normal;
-    overflow-wrap: anywhere;
   }
 
   .ability-table .ability-picker__control {

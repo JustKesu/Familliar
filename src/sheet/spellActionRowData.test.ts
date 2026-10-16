@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { FeatSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import type { SheetSpellEntry } from './SpellList'
-import { cantripDamageAtLevel, isScaledHealing, leveledSpellDice, spellActionRows } from './spellActionRowData'
+import { cantripDamage, cantripDamageAtLevel, isScaledHealing, leveledSpellDice, spellActionRows } from './spellActionRowData'
 
 function detail(over: Partial<SpellDetail> & { name: string }): SpellDetail {
 	return {
@@ -199,5 +199,14 @@ describe('cantripDamageAtLevel', () => {
 	it('omits an entry whose lowest threshold is above the character level', () => {
 		expect(cantripDamageAtLevel(booming, 4)).toEqual(['1d8 thunder damage on hit'])
 		expect(cantripDamageAtLevel(booming, 5)).toEqual(['2d8 thunder damage on hit', '1d8 thunder damage on moving'])
+	})
+})
+
+describe('cantripDamage', () => {
+	it('falls back to the {@damage} dice and the one damage type when there is no scalingLevelDice (XPHB Eldritch Blast)', () => {
+		const eldritchBlast = detail({ name: 'Eldritch Blast', level: 0, spellAttack: ['R'], damageInflict: ['force'], entries: ['On a hit, the target takes {@damage 1d10} Force damage.'] })
+		expect(cantripDamage(eldritchBlast, 5)).toEqual(['1d10 Force'])
+		const [row] = spellActionRows([entry('Eldritch Blast')], [eldritchBlast], 5, [{ ...wizard, className: 'Warlock' }], [])
+		expect(row?.damage).toEqual(['1d10 Force'])
 	})
 })

@@ -14,7 +14,7 @@ import { findSpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
 import { spellEntryKey, type SheetSpellEntry, type SpellGrant } from './SpellList'
 import {
-	cantripDamageAtLevel,
+	cantripDamage,
 	casterFor,
 	isScaledHealing,
 	leveledSpellDice,
@@ -341,7 +341,7 @@ function capitalise(word: string): string {
  */
 export function spellEffect(detail: SpellDetail, characterLevel: number, castLevel = detail.level): { dice: string[]; text: string | null } | null {
 	if (detail.level === 0) {
-		const dice = cantripDamageAtLevel(detail.scalingLevelDice, characterLevel)
+		const dice = cantripDamage(detail, characterLevel)
 		if (dice.length > 0) return { dice, text: null }
 	}
 	const dice = detail.level === 0 ? [] : leveledSpellDice(detail, castLevel)

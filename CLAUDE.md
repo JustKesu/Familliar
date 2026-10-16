@@ -43,6 +43,16 @@ One task per session. Do not expand scope beyond what was asked. If a prompt
 appears to contain several separate tasks, do the first one and tell the user
 the rest need their own session.
 
+## Subagents
+
+A subagent (the Agent/Task tool) is allowed when it keeps this session's
+context small: a wide search across many files, or an independent check of
+the finished work. At most ONE subagent at a time, never several in
+parallel, and only a few per task. Give it a narrow question and ask for a
+short answer. Every rule in this file binds the subagent too (data files,
+one plain command per call, no browser). Say in REPORT.md what it was used
+for.
+
 ## Data files
 
 The only way to look at that data is a script in `scripts/` that prints a

@@ -982,6 +982,13 @@ A spell's `damageInflict` (array of damage types, absent when the spell deals no
 
 `conditionInflict` is kept in `spells.json` too (the spell extractor keeps whole records): 98 of 489 spells, always an array of lowercase condition names ("paralyzed", "unconscious"), absent otherwise. 165 leveled spells carry `damageInflict`; 55 more leveled spells carry only `conditionInflict`. `scalingLevelDice` is not on every damage cantrip: XPHB Eldritch Blast has none (its extra beams are prose). R7a reads both arrays for the Spells tab's Effect column (D189; `scripts/investigate-spell-condition-inflict.js`, not kept).
 
+F-32a survey (`scripts/investigate-cantrip-no-scaling-dice.js`, not kept): 47 cantrips, 28 with `damageInflict`, exactly 2 of those without `scalingLevelDice`, both with a single `{@damage}` tag in `entries` and one damage type:
+
+- **Eldritch Blast (XPHB)**: `{@damage 1d10}`, `["force"]`, `spellAttack ["R"]`; `entriesHigherLevel` is a "Cantrip Upgrade" prose entry (2/3/4 beams at 5/11/17), no tag carries the beam count.
+- **Magic Stone (XGE)**: `{@damage 1d6}` (+ spellcasting modifier in prose), `["bludgeoning"]`, no `entriesHigherLevel`.
+
+The sheet shows such a cantrip's `{@damage}` dice plus its one damage type ("1d10 Force"), at every character level.
+
 ### Leveled spell dice — `{@damage}` in entries, `{@scale…}` in entriesHigherLevel (R8a, D206)
 
 Survey of data/spells.json (`scripts/investigate-leveled-spell-dice.js`), 465 leveled spells:

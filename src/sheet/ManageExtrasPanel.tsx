@@ -80,8 +80,11 @@ export function ManageExtrasPanel({
 	onEditWildShapeForms?: (forms: CharacterWildShapeForms[]) => void
 }): ReactNode {
 	const categories: Category[] = [...(familiarAvailable && onChooseFamiliar ? (['familiar'] as const) : []), ...(wildShape && onEditWildShapeForms ? (['wildShape'] as const) : [])]
-	const [chosenCategory, setCategory] = useState<Category>('familiar')
-	const category = categories.includes(chosenCategory) ? chosenCategory : categories[0]
+	// Chosen once on opening, so deleting the familiar does not switch the tab under the user.
+	const [chosenCategory, setCategory] = useState<Category | undefined>(() =>
+		familiar && categories.includes('familiar') ? 'familiar' : categories.includes('wildShape') ? 'wildShape' : categories[0],
+	)
+	const category = chosenCategory && categories.includes(chosenCategory) ? chosenCategory : categories[0]
 	/* D116: the search never reaches the character. */
 	const [search, setSearch] = useState('')
 

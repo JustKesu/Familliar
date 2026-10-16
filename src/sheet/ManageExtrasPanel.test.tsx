@@ -87,6 +87,18 @@ describe('ManageExtrasPanel — categories', () => {
 		panel({ onChooseFamiliar: undefined })
 		expect(screen.queryByRole('region', { name: 'Add an Extra' })).toBeNull()
 	})
+
+	it('opens on Familiar only when one exists, else on Wild Shape when offered, else on the first category (F-32a)', () => {
+		const selected = () => (screen.getByRole('combobox', { name: 'Category' }) as HTMLSelectElement).value
+		panel({ wildShape: WILD_SHAPE })
+		expect(selected()).toBe('wildShape')
+		cleanup()
+		panel({ wildShape: WILD_SHAPE, familiar: { name: 'Owl', source: 'XMM' } })
+		expect(selected()).toBe('familiar')
+		cleanup()
+		panel()
+		expect(selected()).toBe('familiar')
+	})
 })
 
 describe('ManageExtrasPanel — Familiar', () => {

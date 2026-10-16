@@ -70,6 +70,8 @@ export interface GrantedFeature {
 	/** The record's own class, and for a subclass feature its subclass short name — what the sheet labels a feature's origin with. */
 	className: string
 	subclassShortName?: string
+	/** A subclass record filed under another classSource than the character's class (a PHB subclass on an XPHB class, D343). */
+	olderSubclass?: true
 	/*
 	 * Carried through unread by this module, for D86's actions-table test: 72 of
 	 * the 215 qualifying class/subclass features (Stunning Strike, Deflect
@@ -223,6 +225,8 @@ export function grantedClassFeaturesFrom(character: Character, parsedClasses: un
 	const subclassFeatures = featureRecords(resolverData.subclassFeatures)
 	const { grantedClassIds, grantedSubclassIds, gainSubclassIds } = grantSetsFrom(parsedClasses)
 	const reached = buildFeatureReachTest(character, parsedClasses)
+	const isOlderSubclassRecord = (record: FeatureRecord) =>
+		character.classes.some((characterClass) => characterClass.className === record.className && characterClass.classSource !== record.classSource)
 
 	// Lowercased-id index: featureIdForRef defaults empty uid segments and lowercases,
 	// so a closure lookup by ref uid has to compare against lowercased record ids (D87 rule 2 — id/uid, never name).
@@ -248,6 +252,7 @@ export function grantedClassFeaturesFrom(character: Character, parsedClasses: un
 			kind,
 			className: record.className,
 			...(record.subclassShortName !== undefined ? { subclassShortName: record.subclassShortName } : {}),
+			...(kind === 'subclass' && isOlderSubclassRecord(record) ? { olderSubclass: true as const } : {}),
 			...(record.consumes !== undefined ? { consumes: record.consumes } : {}),
 		})
 		frontier.push(record.entries)

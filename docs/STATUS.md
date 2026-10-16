@@ -937,6 +937,13 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   „Animal Handling") ve výběrech, Review, Features tabu i v dialogu Remove level; Expertise
   picker u skillu z podtřídy v multiclass Edit píše jméno podtřídy a při prázdném zdroji
   nevypisuje „(from )"; CAST řádek kouzla ze slotu nemá poznámku „(no slot)" (patří řádku USE).
+  F-32a: cantrip bez `scalingLevelDice` (Eldritch Blast XPHB, Magic Stone XGE) ukazuje kostky
+  ze `{@damage}` + typ („1d10 Force") ve Spells Effect i Actions Damage (`cantripDamage`);
+  Features tab skryje řádek starší podtřídy (`GrantedFeature.olderSubclass`), když třída má
+  feature stejného jména (Conquest Channel Divinity), Actions/boxy beze změny; Manage Extras
+  otevírá Familiar jen s existujícím familiarem, jinak Wild Shape, jinak první kategorii;
+  „already have it from …" a „No text found" v Manage Feats přes `featDisplayName`; hlavičky
+  řádků tabulky vlastností na ≤600 px 9 px bez `overflow-wrap`, slova se nelámou.
 
 - Přirozená zbroj a přirozené zbraně druhů (S5, D357, D358) — ručně mapováno v
   `src/calculation/speciesNatural.ts` (name|source): Lizardfolk 13 + Dex a Tortle 17 jsou
@@ -1236,6 +1243,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Light with a Wizard pick: DC 13 / 12, Wizard prepared 1/n; Manage Spells notice "Already prepared by Cleric"; Warlock 6 / Sorcerer 3:
   invocation row labelled Warlock on Actions, "From Sorcerer 5" feat; CAST disabled on the over-cap Fireball; Fighter 4 → 5 keeps
   invocations and maneuvers).
+- `e2e/logicFixesF32a.spec.ts` — F-32a a–d (Warlock 5 Eldritch Blast 1d10 in Spells Effect and Actions; Paladin 3 Conquest one
+  Features row "Channel Divinity" with 2 boxes; Druid 2 without familiar opens Manage Extras on Wild Shape; 390 px BACKGROUND and
+  MODIFIER row headers on one line).
 
 ## Dočasné scaffolding
 
