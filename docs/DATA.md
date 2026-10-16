@@ -1893,3 +1893,30 @@ species.json (all non-XPHB, no structured field; 3-segment tags show the last se
 - Not plain: Lupin RHW "Feral Pounce" (all Unarmed Strikes become slashing + a Shove rider, no die) and
   Shifter; Longtooth EFA "Shifting (Longtooth)" (piercing 1d6 + Str, only while shifted, bonus action).
   Shifter EFA has no weapon option in its base trait text.
+
+## Spell damage/healing that adds the spellcasting ability modifier is prose only
+
+spells.json, 512 spells, markup stripped, sentence-level match (scripts/investigate-spell-ability-modifier.js,
+consumed, 2026-10-16):
+- 26 spells (XPHB 14, other 12) name "your spellcasting ability modifier" in a sentence about damage,
+  Hit Points or healing. Wording: "plus your spellcasting ability modifier" 17 (XPHB 11), "+ your
+  spellcasting ability modifier" 3 (all non-XPHB: Green-Flame Blade TCE, Healing Spirit XGE, Magic Stone
+  XGE), usually inside "equal to …" (21). Never a named ability ("your Wisdom modifier") and never
+  "spellcasting modifier" without "ability".
+- Literal "XdY + / plus your spellcasting ability modifier": 16 (XPHB 10: Bigby's Hand, Conjure Celestial,
+  Conjure Fey, Cure Wounds, Flame Blade, Healing Word, Mass Cure Wounds, Mass Healing Word, Mordenkainen's
+  Sword, Spiritual Weapon; other 6: Alustriel's Mooncloak, Backlash, Conjure Constructs (temp HP), Holy Star
+  of Mystra FRHoF, Green-Flame Blade TCE, Magic Stone XGE). In all 16 the phrase follows the `{@damage}` /
+  `{@dice}` tag directly in the raw text; it is never inside a tag.
+- The other 10 use the modifier differently (no dice + mod): a count (Healing Spirit, Sorcerous Burst extra
+  dice), a Hit Die roll + mod (Arcane Vigor, Wither and Bloom), temp HP = mod (Heroism), a creature's or
+  weapon's attack/damage (Danse Macabre, Tasha's Otherworldly Guise, Alter Self), Temple of the Gods,
+  Simbul's Synostodweomer. Shillelagh and True Strike XPHB say "your spellcasting ability" (no "modifier")
+  for weapon attack and damage rolls.
+- No structured field: no top-level key names a modifier. One exception: Green-Flame Blade TCE
+  `scalingLevelDice` holds the placeholder `{{spellcasting_mod}}` (secondary entry "{{spellcasting_mod}}"
+  below 5, "1d8 + {{spellcasting_mod}}" from 5); the only `{{…}}` placeholder in spells.json.
+- entriesHigherLevel: 17 of the 26 have one; none repeats the modifier — `{@scaledice}`/`{@scaledamage}`
+  raise only the dice, the modifier is added once at any slot level.
+- Other added terms in damage/healing sentences: proficiency bonus 0, character/class level 0, spell/slot
+  level 0; flat "XdY + N" 5, all XPHB (Disintegrate, False Life, Finger of Death, Magic Missile, Regenerate).
