@@ -2360,7 +2360,7 @@ function CharacterSheetBody({
 			equippedGear.shield,
 		),
 		...buildItemSpeedAdjustments(character.inventory ?? [], itemRefs ?? []),
-	], buildItemSpeedModeGrants(character.inventory ?? [], itemRefs ?? []))
+	], buildItemSpeedModeGrants(character.inventory ?? [], itemRefs ?? []), { conditions: character.play?.conditions ?? [], exhaustion: character.play?.exhaustion ?? 0 })
 	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
 	const heldWeapons = buildHeldWeapons(character.inventory ?? [], itemRefs ?? [])
 	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null, {

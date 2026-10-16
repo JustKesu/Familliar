@@ -944,6 +944,11 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   otevírá Familiar jen s existujícím familiarem, jinak Wild Shape, jinak první kategorii;
   „already have it from …" a „No text found" v Manage Feats přes `featDisplayName`; hlavičky
   řádků tabulky vlastností na ≤600 px 9 px bez `overflow-wrap`, slova se nelámou.
+  F-32b: stavy mění Speed (D360) — `computeSpeed` má pátý parametr `SpeedConditions`
+  (`play.conditions`, `play.exhaustion`), `applyConditionSpeed` v `calculation/conditionSpeed.ts`
+  běží po všech zdrojích na walk/fly/swim/climb; řádek breakdownu „Exhaustion N: −5N ft." /
+  „Restrained: Speed 0"; `formatSpeed` vypisuje i mód s hodnotou 0. Multiclass Edit, Class krok
+  s ne-první třídou aktivní: nad skill pickerem nadpis „<První třída> skills (first class)".
 
 - Přirozená zbroj a přirozené zbraně druhů (S5, D357, D358) — ručně mapováno v
   `src/calculation/speciesNatural.ts` (name|source): Lizardfolk 13 + Dex a Tortle 17 jsou
@@ -1246,6 +1251,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - `e2e/logicFixesF32a.spec.ts` — F-32a a–d (Warlock 5 Eldritch Blast 1d10 in Spells Effect and Actions; Paladin 3 Conquest one
   Features row "Channel Divinity" with 2 boxes; Druid 2 without familiar opens Manage Extras on Wild Shape; 390 px BACKGROUND and
   MODIFIER row headers on one line).
+- `e2e/logicFixesF32b.spec.ts` — F-32b a–c (Restrained on/off Speed 0 ↔ 30; Exhaustion 3 Speed 15 with breakdown line
+  "Exhaustion 3: −15 ft."; Fighter 1 / Rogue 1 Edit heading "Fighter skills (first class)" only with Rogue active).
 
 ## Dočasné scaffolding
 

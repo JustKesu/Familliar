@@ -5296,3 +5296,10 @@ neimplementuje. Task S5, rozhodl Daniel.
 Defense (Fighting Style) přičte +1 k AC vždy, když postava nosí lehkou, střední nebo těžkou zbroj (text XPHB),
 bez ohledu na to, který kandidát na AC vyhrál; samotný štít se nepočítá. Doplňuje D357: Lizardfolk s Defense
 v Leather Armor má přirozenou zbroj 16 + 1 = 17. Task F-29, rozhodl Daniel.
+
+## D360 — Stavy, které mění rychlost, se počítají do Speed (F-32b)
+
+Grappled, Restrained, Paralyzed, Petrified a Unconscious dávají Speed 0; Exhaustion snižuje Speed o 5 ft
+za úroveň, nikdy pod 0 (texty XPHB, DATA.md). Platí pro každý zobrazený pohyb (walk, fly, swim, climb),
+Speed 0 vyhrává nad každým bonusem. Breakdown Speed má řádek se jménem stavu; řádek stavů na kartě se
+nemění. Mění D214 jen v části rychlosti (d20 postih Exhaustion zůstává textem). Task F-32b, rozhodl Daniel.

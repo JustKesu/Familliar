@@ -416,6 +416,14 @@ and `basicRules2024` are dropped). `entries` is a string plus nested
 by src/markup/tags.ts. The sheet's Exhaustion chip text "−2N d20 · −5N ft" is
 computed in code, not read from data (D214).
 
+Speed in the XPHB texts (F-32b survey, markup stripped, sentences containing
+"Speed"): Grappled, Paralyzed, Petrified, Restrained, Unconscious each carry a
+"Speed 0." block — "Your Speed is 0 and can't increase."; Exhaustion: "Your
+Speed is reduced by a number of feet equal to 5 times your Exhaustion level."
+Prone mentions Speed (crawling, half Speed to stand up, can't stand at Speed 0)
+but sets no number. No other condition mentions Speed. The five-name list is
+hand-kept in src/calculation/conditionSpeed.ts (D360).
+
 ### rules.json (R15, D223)
 
 One object, not an array: `{ variantrule, sense, skill }`, each a list of

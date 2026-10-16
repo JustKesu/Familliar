@@ -1921,6 +1921,9 @@ export function CharacterWizard({
 					{state.data.classChoice && (
 						<>
 							{/* D108: a level up never reopens a single-value pick the character already has — it is hidden, not shown editable. */}
+							{(held === null || held.classSkills.length === 0) && multiclassEdit && classSkillsClass && classSkillsClass.className !== state.data.classChoice.className && (
+								<h3>{classSkillsClass.className} skills (first class)</h3>
+							)}
 							{(held === null || held.classSkills.length === 0) && (
 								<ClassSkillPicker
 									className={multiclassEdit && classSkillsClass ? classSkillsClass.className : state.data.classChoice.className}

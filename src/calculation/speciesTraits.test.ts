@@ -23,6 +23,51 @@ function withSpecies(name: string, source: string): Character {
 	return { id: '1', name: 'Test', classes: [], species: { name, source } }
 }
 
+describe('computeSpeed — conditions (D360)', () => {
+	const noAdjustments: [] = []
+	for (const name of ['Grappled', 'Paralyzed', 'Petrified', 'Restrained', 'Unconscious']) {
+		it(`${name} sets Speed to 0 with a breakdown line naming it`, () => {
+			const speed = computeSpeed(withSpecies('Elf', 'XPHB'), speciesData, noAdjustments, [], { conditions: [name], exhaustion: 0 })
+			expect(speed).toEqual({
+				status: 'known',
+				value: { walk: 0 },
+				breakdown: [{ source: 'Elf', amount: 30 }, { source: name, amount: -30, note: 'Speed 0' }],
+			})
+		})
+	}
+
+	it('a condition that does not touch Speed changes nothing', () => {
+		const speed = computeSpeed(withSpecies('Elf', 'XPHB'), speciesData, noAdjustments, [], { conditions: ['Prone', 'Poisoned'], exhaustion: 0 })
+		expect(speed.status === 'known' && speed.value).toEqual({ walk: 30 })
+	})
+
+	it('Exhaustion 3 on 30 ft. leaves 15 ft. with a line naming Exhaustion', () => {
+		const speed = computeSpeed(withSpecies('Elf', 'XPHB'), speciesData, noAdjustments, [], { conditions: [], exhaustion: 3 })
+		expect(speed).toEqual({
+			status: 'known',
+			value: { walk: 15 },
+			breakdown: [{ source: 'Elf', amount: 30 }, { source: 'Exhaustion 3', amount: -15, note: '−15 ft.' }],
+		})
+	})
+
+	it('Exhaustion 7 floors at 0', () => {
+		const speed = computeSpeed(withSpecies('Elf', 'XPHB'), speciesData, noAdjustments, [], { conditions: [], exhaustion: 7 })
+		expect(speed.status === 'known' && speed.value).toEqual({ walk: 0 })
+		expect(speed.status === 'known' && speed.breakdown.at(-1)).toEqual({ source: 'Exhaustion 7', amount: -30, note: '−35 ft. (not below 0)' })
+	})
+
+	it('Exhaustion reduces every movement mode', () => {
+		const speed = computeSpeed(withSpecies('Aarakocra', 'MPMM'), speciesData, noAdjustments, [], { conditions: [], exhaustion: 2 })
+		expect(speed.status === 'known' && speed.value).toEqual({ walk: 20, fly: 20 })
+	})
+
+	it('Restrained with a fly speed and a speed bonus is 0 in every mode', () => {
+		const speed = computeSpeed(withSpecies('Aarakocra', 'MPMM'), speciesData, [{ source: 'Speedy', amount: 10 }], [{ mode: 'swim', range: 40, name: 'Cap of Water Breathing' }], { conditions: ['Restrained'], exhaustion: 1 })
+		expect(speed.status === 'known' && speed.value).toEqual({ walk: 0, fly: 0, swim: 0 })
+		expect(speed.status === 'known' && speed.breakdown.reduce((sum, line) => sum + line.amount, 0)).toBe(0)
+	})
+})
+
 describe('computeSpeed', () => {
 	it('reads a plain-number speed', () => {
 		expect(computeSpeed(withSpecies('Elf', 'XPHB'), speciesData)).toEqual({

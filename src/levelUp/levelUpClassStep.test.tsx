@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { CharacterWizard } from '../creation/CharacterWizard'
 import { chooseButton, isChosen } from '../pickers/choiceTestHelpers'
 import { WIZARD_STEPS, type WizardStep } from '../creation/wizardState'
@@ -98,6 +98,36 @@ function renderWizard(levelUp?: LevelGains): { onCancel: ReturnType<typeof vi.fn
 	render(<CharacterWizard store={store} character={battleMaster} levelUp={levelUp} onSaved={() => {}} onCancel={onCancel} />)
 	return { onCancel }
 }
+
+describe('multiclass Edit: first class skills heading (F-32b)', () => {
+	const fighterRogue: Character = {
+		id: 'fr',
+		name: 'Aria',
+		classes: [
+			{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 },
+			{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 1 },
+		],
+		levelOrder: [
+			{ className: 'Fighter', classSource: 'XPHB' },
+			{ className: 'Rogue', classSource: 'XPHB' },
+		],
+		classSkills: ['athletics', 'perception'],
+	}
+	const heading = { name: 'Fighter skills (first class)' }
+
+	it('shows the heading while Rogue is active, not while Fighter is', async () => {
+		const store = { create: vi.fn(), update: vi.fn() } as unknown as CharacterStore
+		render(<CharacterWizard store={store} character={fighterRogue} onSaved={() => {}} onCancel={() => {}} />)
+		const switcher = await screen.findByRole('group', { name: 'Class to edit' })
+		const tab = (name: string) => within(switcher).getByRole('button', { name: new RegExp(`^${name} \\d+`) })
+		fireEvent.click(tab('Fighter'))
+		expect(screen.queryByRole('heading', heading)).toBeNull()
+		fireEvent.click(tab('Rogue'))
+		expect(await screen.findByRole('heading', heading)).toBeTruthy()
+		fireEvent.click(tab('Fighter'))
+		expect(screen.queryByRole('heading', heading)).toBeNull()
+	})
+})
 
 describe('Cancel without changes (F-1, finding 9)', () => {
 	it('Edit Character leaves at once, with no dialog, once every picker has loaded', async () => {

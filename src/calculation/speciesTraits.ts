@@ -21,6 +21,7 @@
  */
 
 import type { Character } from '../storage/character'
+import { applyConditionSpeed, type SpeedConditions } from './conditionSpeed'
 import { type Calculated, type Contribution, known, unknown } from './types'
 
 export type RawSpeciesSpeed = number | { walk: number; fly?: true; swim?: true; climb?: true }
@@ -115,7 +116,13 @@ function applyModeGrants(value: SpeedValue, grants: GrantedSpeedMode[]): Contrib
 	return lines
 }
 
-export function computeSpeed(character: Pick<Character, 'species'> & Partial<Character>, speciesData: SpeciesTraitsData[], adjustments: Contribution[] = [], modeGrants: GrantedSpeedMode[] = []): Calculated<SpeedValue> {
+export function computeSpeed(
+	character: Pick<Character, 'species'> & Partial<Character>,
+	speciesData: SpeciesTraitsData[],
+	adjustments: Contribution[] = [],
+	modeGrants: GrantedSpeedMode[] = [],
+	speedConditions: SpeedConditions = { conditions: [], exhaustion: 0 },
+): Calculated<SpeedValue> {
 	const lookup = findCharacterSpeciesEntry(character, speciesData)
 	if (!lookup) return unknown('Species has not been chosen for this character yet.')
 	if (lookup.status === 'unknown') return unknown(lookup.reason)
@@ -138,7 +145,8 @@ export function computeSpeed(character: Pick<Character, 'species'> & Partial<Cha
 		if (raw.climb) value.climb = walk
 	}
 
-	return known(value, [...breakdown, ...applyModeGrants(value, modeGrants)])
+	const grantLines = applyModeGrants(value, modeGrants)
+	return known(value, [...breakdown, ...grantLines, ...applyConditionSpeed(value, speedConditions)])
 }
 
 /** The sizes a species offers — more than one means the player chooses (D175). Empty when the species is unknown. */

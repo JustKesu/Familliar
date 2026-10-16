@@ -28,7 +28,7 @@ export interface ConditionRule {
 	entries: unknown[]
 }
 
-/** D214: shown as text only, never applied to a roll or to speed. */
+/** D214: shown as text only, never applied to a roll; D360 applies the speed part in computeSpeed. */
 export function exhaustionPenaltyText(level: number): string {
 	return `−${2 * level} d20 · −${5 * level} ft`
 }

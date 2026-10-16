@@ -32,9 +32,10 @@ export type StatCard = 'proficiency' | 'speed' | 'initiative' | 'armour'
 
 export function formatSpeed(speed: SpeedValue): string {
 	const parts = [`${speed.walk} ft.`]
-	if (speed.fly) parts.push(`fly ${speed.fly} ft.`)
-	if (speed.swim) parts.push(`swim ${speed.swim} ft.`)
-	if (speed.climb) parts.push(`climb ${speed.climb} ft.`)
+	// D360: a mode a condition dropped to 0 stays listed, as 0.
+	if (speed.fly !== undefined) parts.push(`fly ${speed.fly} ft.`)
+	if (speed.swim !== undefined) parts.push(`swim ${speed.swim} ft.`)
+	if (speed.climb !== undefined) parts.push(`climb ${speed.climb} ft.`)
 	return parts.join(', ')
 }
 
