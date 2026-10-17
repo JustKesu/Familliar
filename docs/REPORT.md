@@ -20,7 +20,7 @@ typecheck OK; `npm test` 3373/3373; validate-data 175/175; e2e 598/598 (2.9 min)
 Nepoužity.
 
 ## Cleanup
-Po pushi `git clean -fd scripts`; odstraněné soubory viz zpráva v konverzaci.
+`git clean -fd scripts` byl agentovi dvakrát odmítnut (permission), spustil ho uživatel ručně po pushi. Odstraněno (untracked): investigate-f20-swap.js, investigate-f20a-seeds.js, investigate-f34-genasi.mjs, investigate-s5-natural.mjs, investigate-s5-texts.mjs.
 
 ## Manual browser check for the user
 none - the planning chat checks the looks from screenshots.
