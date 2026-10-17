@@ -5303,3 +5303,13 @@ Grappled, Restrained, Paralyzed, Petrified a Unconscious dávají Speed 0; Exhau
 za úroveň, nikdy pod 0 (texty XPHB, DATA.md). Platí pro každý zobrazený pohyb (walk, fly, swim, climb),
 Speed 0 vyhrává nad každým bonusem. Breakdown Speed má řádek se jménem stavu; řádek stavů na kartě se
 nemění. Mění D214 jen v části rychlosti (d20 postih Exhaustion zůstává textem). Task F-32b, rozhodl Daniel.
+
+## D361 — Modifier sesílací vlastnosti v kostkách damage a léčení kouzla (F-33)
+
+Aplikace smí číst text hned za tagem `{@damage}`/`{@dice}`, ale jen úzký vzor „plus" / „+" následovaný
+„your spellcasting ability modifier" (markup stripnutý, DATA.md); výjimka z D206 a D21. Zasahuje 16 kouzel
+(DATA.md). Modifier se přičte jednou, upcast zvedá jen kostky. Zobrazení: „1d8 + 3", záporný „1d8 − 1",
+při 0 jen „1d8"; neznámý modifier (nevyřešený caster, předmět s pevným DC) „1d8 + mod" a hod jen kostkami.
+Placeholder `{{spellcasting_mod}}` u Green-Flame Blade se nahradí stejně. Mimo rozsah: ostatní netypická
+kouzla (Healing Spirit, Arcane Vigor, Heroism, Danse Macabre a podobná), Shillelagh a True Strike.
+Task F-33, rozhodl Daniel.

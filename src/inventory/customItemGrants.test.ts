@@ -63,7 +63,7 @@ describe('item invocations (R14c1)', () => {
 		expect(provenanceLabel(both[0])).toContain('from invocation (Mire the Mind); from invocation (Mire the Mind — Ring of Eyes)')
 
 		const [itemOnly] = combineSpellEntries([], [], [], itemSpells)
-		expect(casterFor(itemOnly, [warlock], [], [])).toEqual({ attack: expect.anything(), save: expect.objectContaining({ dc: 14 }) })
+		expect(casterFor(itemOnly, [warlock], [], [])).toEqual({ attack: expect.anything(), save: expect.objectContaining({ dc: 14 }), abilityModifier: null })
 		expect(casterFor(itemOnly, [{ ...warlock, className: 'Wizard' }], [], [])).toEqual({ reason: expect.stringContaining('no Warlock level') })
 	})
 })

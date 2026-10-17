@@ -339,12 +339,17 @@ function capitalise(word: string): string {
  * alone; a leveled spell's dice at `castLevel` (D206) above its damage types,
  * else conditions, or "Healing".
  */
-export function spellEffect(detail: SpellDetail, characterLevel: number, castLevel = detail.level): { dice: string[]; text: string | null } | null {
+export function spellEffect(
+	detail: SpellDetail,
+	characterLevel: number,
+	castLevel = detail.level,
+	abilityModifier: number | null = null,
+): { dice: string[]; text: string | null } | null {
 	if (detail.level === 0) {
-		const dice = cantripDamage(detail, characterLevel)
+		const dice = cantripDamage(detail, characterLevel, abilityModifier)
 		if (dice.length > 0) return { dice, text: null }
 	}
-	const dice = detail.level === 0 ? [] : leveledSpellDice(detail, castLevel)
+	const dice = detail.level === 0 ? [] : leveledSpellDice(detail, castLevel, abilityModifier)
 	const names = detail.damageInflict.length > 0 ? detail.damageInflict : detail.conditionInflict
 	const text = isScaledHealing(detail) ? 'Healing' : names.length > 0 ? names.map(capitalise).join(', ') : null
 	return dice.length > 0 || text !== null ? { dice, text } : null

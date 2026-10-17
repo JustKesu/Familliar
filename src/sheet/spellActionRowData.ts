@@ -15,7 +15,8 @@
  *   row can show a to-hit AND a DC. 252 spells have neither and get no row.
  * - Leveled spells carry their dice only as `{@damage XdY}` tags inside
  *   `entries`; D206 reads those tags (not the prose around them) together with
- *   the `{@scale…}` tags of entriesHigherLevel. Cantrips use `scalingLevelDice`
+ *   the `{@scale…}` tags of entriesHigherLevel; D361's one exception is the
+ *   "plus your spellcasting ability modifier" right after a tag. Cantrips use `scalingLevelDice`
  *   (24), whose own `label` already names the damage type ("Fire damage",
  *   "thunder damage on hit"), shown as-is at the character's level.
  * - "Half damage on a save" is prose only — no top-level field anywhere marks
@@ -74,7 +75,12 @@ export interface SpellActionData {
  * — that ability is not what the species casts with — so it resolves to the
  * stated reason instead, and the row appears saying so (D43/D58).
  */
-export type SpellCaster = { attack: SpellActionAttack; save: SpellActionSave } | { reason: string }
+export type SpellCaster = { attack: SpellActionAttack; save: SpellActionSave; abilityModifier: number | null } | { reason: string }
+
+/** D361: null where no ability stands behind the numbers (an unresolved caster, an item's fixed DC). */
+export function casterAbilityModifier(caster: SpellCaster): number | null {
+	return 'reason' in caster ? null : caster.abilityModifier
+}
 
 /**
  * A2-4: the one answer to "who casts this spell" for the Actions row, the Spells
@@ -142,12 +148,46 @@ export function unresolvedCaster(entry: SheetSpellEntry): { reason: string } {
 }
 
 export function toCaster(
-	source: Pick<SpellcastingEntry, 'spellAttackBonus' | 'spellAttackBreakdown' | 'spellSaveDC' | 'spellSaveDCBreakdown'>,
-): { attack: SpellActionAttack; save: SpellActionSave } {
+	source: Pick<SpellcastingEntry, 'ability' | 'spellAttackBonus' | 'spellAttackBreakdown' | 'spellSaveDC' | 'spellSaveDCBreakdown'>,
+): { attack: SpellActionAttack; save: SpellActionSave; abilityModifier: number | null } {
 	return {
 		attack: { bonus: source.spellAttackBonus, breakdown: source.spellAttackBreakdown },
 		save: { dc: source.spellSaveDC, breakdown: source.spellSaveDCBreakdown, abilities: [] },
+		// computeAbilitySpellcasting names this line; it is the only place the modifier itself survives.
+		abilityModifier: source.spellAttackBreakdown.find((line) => line.source === `${source.ability} modifier`)?.amount ?? null,
 	}
+}
+
+/** D361: "1d8 + 3", "1d8 − 1", "1d8" at 0; "1d8 + mod" when the modifier is unknown (the roll then uses the dice only). */
+export function withSpellcastingModifier(dice: string, modifier: number | null): string {
+	if (modifier === null) return `${dice} + mod`
+	if (modifier === 0) return dice
+	return `${dice} ${modifier < 0 ? '−' : '+'} ${Math.abs(modifier)}`
+}
+
+// D361: the one prose read allowed next to a dice tag; markup is stripped first (DATA.md).
+const SPELLCASTING_MODIFIER_AFTER = /^\s*(?:\+|plus)\s+your spellcasting ability modifier\b/i
+
+function addsSpellcastingModifier(json: string, from: number): boolean {
+	const end = json.indexOf('"', from)
+	const rest = json.slice(from, end === -1 ? undefined : end)
+	return SPELLCASTING_MODIFIER_AFTER.test(rest.replace(/\{@\w+\s+([^|}]*)[^}]*\}/g, '$1'))
+}
+
+/** Every `{@damage}` / `{@dice}` tag of `entries` in text order, and whether D361's phrase follows it. */
+export function diceTags(entries: unknown): { kind: string; dice: string; plusModifier: boolean }[] {
+	const json = JSON.stringify(entries)
+	return [...json.matchAll(/\{@(damage|dice) ([^}|]*)[^}]*\}/g)].map((match) => ({
+		kind: match[1]!,
+		dice: match[2]!.trim(),
+		plusModifier: addsSpellcastingModifier(json, match.index + match[0].length),
+	}))
+}
+
+function resolveModifierPlaceholder(dice: string, modifier: number | null): string {
+	const added = /^(.*?)\s*\+\s*\{\{spellcasting_mod\}\}$/.exec(dice)
+	if (added) return withSpellcastingModifier(added[1]!, modifier)
+	return dice.replace('{{spellcasting_mod}}', modifier === null ? 'mod' : modifier < 0 ? `−${-modifier}` : String(modifier))
 }
 
 /**
@@ -156,7 +196,7 @@ export function toCaster(
  * 5/11/17 for a second entry that only starts existing at 5) — an entry whose
  * lowest threshold is above the character's level contributes nothing.
  */
-export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntry[], characterLevel: number): string[] {
+export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntry[], characterLevel: number, abilityModifier: number | null = null): string[] {
 	const lines: string[] = []
 	for (const entry of scalingLevelDice) {
 		const reached = Object.keys(entry.scaling)
@@ -165,7 +205,8 @@ export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntr
 			.sort((a, b) => a - b)
 		const at = reached[reached.length - 1]
 		if (at === undefined) continue
-		lines.push(`${entry.scaling[String(at)]} ${entry.label}`)
+		// Green-Flame Blade TCE is the one `{{spellcasting_mod}}` placeholder in spells.json (DATA.md).
+		lines.push(`${resolveModifierPlaceholder(entry.scaling[String(at)]!, abilityModifier)} ${entry.label}`)
 	}
 	return lines
 }
@@ -175,10 +216,12 @@ export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntr
  * carry no `scalingLevelDice`, only a `{@damage}` tag in entries (DATA.md), so
  * those dice are shown with the one damage type.
  */
-export function cantripDamage(detail: SpellDetail, characterLevel: number): string[] {
-	if (detail.scalingLevelDice.length > 0) return cantripDamageAtLevel(detail.scalingLevelDice, characterLevel)
+export function cantripDamage(detail: SpellDetail, characterLevel: number, abilityModifier: number | null = null): string[] {
+	if (detail.scalingLevelDice.length > 0) return cantripDamageAtLevel(detail.scalingLevelDice, characterLevel, abilityModifier)
 	const type = detail.damageInflict.length === 1 ? ` ${detail.damageInflict[0]!.charAt(0).toUpperCase()}${detail.damageInflict[0]!.slice(1)}` : ''
-	const dice = [...JSON.stringify(detail.entries).matchAll(/\{@damage ([^}|]*)[^}]*\}/g)].map((match) => match[1]!.trim())
+	const dice = diceTags(detail.entries)
+		.filter((tag) => tag.kind === 'damage')
+		.map((tag) => (tag.plusModifier ? withSpellcastingModifier(tag.dice, abilityModifier) : tag.dice))
 	return [...new Set(dice)].map((line) => `${line}${type}`)
 }
 
@@ -211,17 +254,20 @@ const sameDice = (a: string, b: string) => a.replace(/\s+/g, '') === b.replace(/
  * tag of its entries in text order (plus `{@dice}` for `{@scaledice}` spells),
  * each raised by the `{@scale…}` tags of entriesHigherLevel (DATA.md).
  */
-export function leveledSpellDice(detail: SpellDetail, slotLevel: number): string[] {
+export function leveledSpellDice(detail: SpellDetail, slotLevel: number, abilityModifier: number | null = null): string[] {
 	const scales = [...JSON.stringify(detail.entriesHigherLevel).matchAll(SCALE_TAG)].flatMap((match) => {
 		const [bases = '', range = '', increment = ''] = match[2]!.split('|')
 		const times = scaleLevels(range).filter((level) => level <= slotLevel).length - 1
 		return bases.split(';').map((base) => ({ base: base.trim(), value: addIncrements(base.trim(), increment.trim(), times), kind: match[1] }))
 	})
 	const withDice = scales.some((scale) => scale.kind === 'dice')
-	const lines = [...JSON.stringify(detail.entries).matchAll(/\{@(damage|dice) ([^}|]*)[^}]*\}/g)]
-		.filter((match) => match[1] === 'damage' || withDice)
-		.map((match) => match[2]!.trim())
-	const scaled = lines.map((line) => scales.find((scale) => sameDice(scale.base, line))?.value ?? line)
+	const tags = diceTags(detail.entries).filter((tag) => tag.kind === 'damage' || withDice)
+	const lines = tags.map((tag) => tag.dice)
+	// D361: upcasting raises only the dice; the modifier is added once, after the scaling.
+	const scaled = tags.map((tag) => {
+		const value = scales.find((scale) => sameDice(scale.base, tag.dice))?.value ?? tag.dice
+		return tag.plusModifier ? withSpellcastingModifier(value, abilityModifier) : value
+	})
 	const unmatched = scales.filter((scale) => !lines.some((line) => sameDice(scale.base, line))).map((scale) => scale.value)
 	// D207: the same dice named twice in entries (Backlash, Wall of Light) scale identically — one line, not two.
 	return [...new Set([...scaled, ...unmatched])]
@@ -312,7 +358,7 @@ export function spellActionData(
 		range: formatRange(detail.range),
 		attack: hasAttack && resolved ? resolved.attack : null,
 		save: saveAbilities.length > 0 && resolved ? { ...resolved.save, abilities: saveAbilities } : null,
-		damage: detail.level === 0 ? cantripDamage(detail, characterLevel) : leveledSpellDice(detail, castLevel),
+		damage: detail.level === 0 ? cantripDamage(detail, characterLevel, resolved?.abilityModifier ?? null) : leveledSpellDice(detail, castLevel, resolved?.abilityModifier ?? null),
 		unresolved: 'reason' in caster ? caster.reason : null,
 	}
 }

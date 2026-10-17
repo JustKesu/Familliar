@@ -1920,3 +1920,10 @@ consumed, 2026-10-16):
   raise only the dice, the modifier is added once at any slot level.
 - Other added terms in damage/healing sentences: proficiency bonus 0, character/class level 0, spell/slot
   level 0; flat "XdY + N" 5, all XPHB (Disintegrate, False Life, Finger of Death, Magic Missile, Regenerate).
+- Parsing pattern the app uses (D361, F-33, `diceTags` in src/sheet/spellActionRowData.ts): the text of the
+  same entry string right after a `{@damage}`/`{@dice}` tag, markup stripped (`{@tag text|…}` → `text`),
+  must match `^\s*(?:\+|plus)\s+your spellcasting ability modifier\b` (case-insensitive). Over spells.json
+  this catches exactly the 16 spells above, and equals a stripped-prose scan for
+  "XdY +/plus your spellcasting ability modifier" — guarded by spellActionRowData.test.ts against data/.
+  Alustriel's Mooncloak and Holy Star of Mystra match but show no dice (their tag is `{@dice}` without a
+  `{@scaledice}`, so D206 never displays it).

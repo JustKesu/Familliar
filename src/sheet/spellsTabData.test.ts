@@ -123,6 +123,19 @@ describe('cell texts', () => {
 		expect(spellEffect(detail('Aura of Vitality', 3, { miscTags: ['HL'], entries: ['regain {@dice 2d6}'] }), 5)).toBeNull()
 	})
 
+	it('spellEffect: D361 spellcasting modifier after the dice tag, added once at any slot level', () => {
+		const cure = detail('Cure Wounds', 1, {
+			miscTags: ['HL'],
+			entries: ['regains a number of Hit Points equal to {@dice 2d8} plus your spellcasting ability modifier.'],
+			entriesHigherLevel: [{ type: 'entries', entries: ['{@scaledice 2d8|1-9|2d8}'] }],
+		})
+		expect(spellEffect(cure, 5, 1, 3)).toEqual({ dice: ['2d8 + 3'], text: 'Healing' })
+		expect(spellEffect(cure, 5, 2, 3)).toEqual({ dice: ['4d8 + 3'], text: 'Healing' })
+		expect(spellEffect(cure, 5, 1, 0)).toEqual({ dice: ['2d8'], text: 'Healing' })
+		expect(spellEffect(cure, 5, 1, -1)).toEqual({ dice: ['2d8 − 1'], text: 'Healing' })
+		expect(spellEffect(cure, 5, 1, null)).toEqual({ dice: ['2d8 + mod'], text: 'Healing' })
+	})
+
 	it('shortUsageLabel', () => {
 		expect(shortUsageLabel({ kind: 'onceFreePerLongRest' })).toBe('1/LR')
 		expect(shortUsageLabel({ kind: 'onceFreePerShortOrLongRest' })).toBe('1/SR')
@@ -156,7 +169,7 @@ describe('USE row texts (D191)', () => {
 	})
 
 	it('rowHitDc: nothing for a spell with neither attack nor save, the reason for an unresolved caster', () => {
-		const caster = { attack: { bonus: 5, breakdown: [] }, save: { dc: 13, abilities: [], breakdown: [] } }
+		const caster = { attack: { bonus: 5, breakdown: [] }, save: { dc: 13, abilities: [], breakdown: [] }, abilityModifier: 3 }
 		expect(rowHitDc(detail('Bless', 1), caster)).toBeNull()
 		expect(rowHitDc(detail('Hex', 1, { spellAttack: ['R'] }), caster)).toMatchObject({ attack: { bonus: 5 }, save: null, unresolved: null })
 		expect(rowHitDc(detail('Hold', 2, { savingThrow: ['wisdom'] }), caster)).toMatchObject({ save: { dc: 13, abilities: ['wisdom'] } })

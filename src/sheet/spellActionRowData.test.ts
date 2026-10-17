@@ -1,8 +1,9 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import type { FeatSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import type { SheetSpellEntry } from './SpellList'
-import { cantripDamage, cantripDamageAtLevel, isScaledHealing, leveledSpellDice, spellActionRows } from './spellActionRowData'
+import { cantripDamage, cantripDamageAtLevel, diceTags, isScaledHealing, leveledSpellDice, spellActionRows, toCaster, withSpellcastingModifier } from './spellActionRowData'
 
 function detail(over: Partial<SpellDetail> & { name: string }): SpellDetail {
 	return {
@@ -208,5 +209,92 @@ describe('cantripDamage', () => {
 		expect(cantripDamage(eldritchBlast, 5)).toEqual(['1d10 Force'])
 		const [row] = spellActionRows([entry('Eldritch Blast')], [eldritchBlast], 5, [{ ...wizard, className: 'Warlock' }], [])
 		expect(row?.damage).toEqual(['1d10 Force'])
+	})
+})
+
+describe('spellcasting ability modifier in damage and healing (D361)', () => {
+	const cleric: SpellcastingEntry = {
+		className: 'Cleric',
+		classSource: 'XPHB',
+		ability: 'wisdom',
+		spellAttackBonus: 5,
+		spellAttackBreakdown: [
+			{ source: 'wisdom modifier', amount: 3 },
+			{ source: 'proficiency bonus', amount: 2 },
+		],
+		spellSaveDC: 13,
+		spellSaveDCBreakdown: [],
+	}
+	const spiritualWeapon = detail({
+		name: 'Spiritual Weapon',
+		level: 2,
+		spellAttack: ['M'],
+		entries: ['the target takes Force damage equal to {@damage 1d8} plus your spellcasting ability modifier.'],
+		entriesHigherLevel: higher('{@scaledamage 1d8|2-9|1d8}'),
+	})
+
+	it('toCaster carries the modifier named in the attack breakdown', () => {
+		expect(toCaster(cleric).abilityModifier).toBe(3)
+		expect(toCaster({ ...cleric, spellAttackBreakdown: [] }).abilityModifier).toBeNull()
+	})
+
+	it('adds it once after the scaled dice; 0 drops it, negative uses the sheet minus, unknown reads "mod"', () => {
+		expect(leveledSpellDice(spiritualWeapon, 2, 3)).toEqual(['1d8 + 3'])
+		expect(leveledSpellDice(spiritualWeapon, 3, 3)).toEqual(['2d8 + 3'])
+		expect(leveledSpellDice(spiritualWeapon, 2, 0)).toEqual(['1d8'])
+		expect(leveledSpellDice(spiritualWeapon, 2, -1)).toEqual(['1d8 − 1'])
+		expect(leveledSpellDice(spiritualWeapon, 2, null)).toEqual(['1d8 + mod'])
+		expect(withSpellcastingModifier('2d4', 4)).toBe('2d4 + 4')
+	})
+
+	it('only for the phrase right after the tag, "+" or "plus", markup stripped', () => {
+		expect(diceTags(['{@damage 1d6} + your {@variantrule spellcasting ability|XPHB} modifier']).map((tag) => tag.plusModifier)).toEqual([true])
+		expect(diceTags(['{@damage 1d6} Fire damage, plus your spellcasting ability modifier']).map((tag) => tag.plusModifier)).toEqual([false])
+		expect(diceTags(['{@dice 1d4} plus your Wisdom modifier']).map((tag) => tag.plusModifier)).toEqual([false])
+	})
+
+	it('reaches the Actions row from the caster; an unresolved caster shows "+ mod"', () => {
+		expect(spellActionRows([entry('Spiritual Weapon')], [spiritualWeapon], 5, [cleric], [])[0]!.damage).toEqual(['1d8 + 3'])
+		expect(spellActionRows([entry('Spiritual Weapon')], [spiritualWeapon], 5, [], [])[0]!.damage).toEqual(['1d8 + mod'])
+	})
+
+	it('cantrips: the {@damage} fallback (Magic Stone) and the Green-Flame Blade placeholder', () => {
+		const magicStone = detail({ name: 'Magic Stone', source: 'XGE', level: 0, spellAttack: ['R'], damageInflict: ['bludgeoning'], entries: ['deals bludgeoning damage equal to {@damage 1d6} + your spellcasting ability modifier'] })
+		expect(cantripDamage(magicStone, 5, 3)).toEqual(['1d6 + 3 Bludgeoning'])
+		const greenFlame: SpellScalingLevelDiceEntry[] = [
+			{ label: 'fire damage', scaling: { '1': '0', '5': '1d8' } },
+			{ label: 'fire damage to secondary creature', scaling: { '1': '{{spellcasting_mod}}', '5': '1d8 + {{spellcasting_mod}}' } },
+		]
+		expect(cantripDamageAtLevel(greenFlame, 1, 3)).toEqual(['0 fire damage', '3 fire damage to secondary creature'])
+		expect(cantripDamageAtLevel(greenFlame, 5, 3)).toEqual(['1d8 fire damage', '1d8 + 3 fire damage to secondary creature'])
+		expect(cantripDamageAtLevel(greenFlame, 5, 0)).toEqual(['1d8 fire damage', '1d8 fire damage to secondary creature'])
+		expect(cantripDamageAtLevel(greenFlame, 5, null)).toEqual(['1d8 fire damage', '1d8 + mod fire damage to secondary creature'])
+	})
+
+	it('against data/spells.json: exactly the 16 spells, and every stripped "XdY plus your spellcasting ability modifier" is caught', () => {
+		const spells = (JSON.parse(readFileSync('data/spells.json', 'utf8')) as { name: string; entries?: unknown }[])
+		const caught = spells.filter((spell) => diceTags(spell.entries).some((tag) => tag.plusModifier)).map((spell) => spell.name)
+		const prose = spells
+			.filter((spell) => /\d+d\d+\s*(?:\+|plus)\s+your spellcasting ability modifier/i.test(JSON.stringify(spell.entries ?? []).replace(/\{@\w+\s+([^|}]*)[^}]*\}/g, '$1')))
+			.map((spell) => spell.name)
+		expect(caught).toEqual(prose)
+		expect([...caught].sort()).toEqual([
+			"Alustriel's Mooncloak",
+			'Backlash',
+			"Bigby's Hand",
+			'Conjure Celestial',
+			'Conjure Constructs',
+			'Conjure Fey',
+			'Cure Wounds',
+			'Flame Blade',
+			'Green-Flame Blade',
+			'Healing Word',
+			'Holy Star of Mystra',
+			'Magic Stone',
+			'Mass Cure Wounds',
+			'Mass Healing Word',
+			"Mordenkainen's Sword",
+			'Spiritual Weapon',
+		])
 	})
 })

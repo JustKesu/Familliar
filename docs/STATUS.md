@@ -949,6 +949,11 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   běží po všech zdrojích na walk/fly/swim/climb; řádek breakdownu „Exhaustion N: −5N ft." /
   „Restrained: Speed 0"; `formatSpeed` vypisuje i mód s hodnotou 0. Multiclass Edit, Class krok
   s ne-první třídou aktivní: nad skill pickerem nadpis „<První třída> skills (first class)".
+  F-33 (D361): kostky kouzla s „plus your spellcasting ability modifier" hned za tagem nesou
+  modifier sesílací vlastnosti („1d8 + 3", „1d8 − 1", při 0 jen kostky, neznámý „+ mod" a hod
+  jen kostkami) ve Spells Effect i Actions Damage; `SpellCaster.abilityModifier` (z `toCaster`,
+  null u předmětu s pevným DC), `diceTags`/`withSpellcastingModifier` ve spellActionRowData.ts;
+  Green-Flame Blade nahrazuje `{{spellcasting_mod}}`; `SpellDamageLine` hází i s „−" a „+ mod".
 
 - Přirozená zbroj a přirozené zbraně druhů (S5, D357, D358) — ručně mapováno v
   `src/calculation/speciesNatural.ts` (name|source): Lizardfolk 13 + Dex a Tortle 17 jsou
@@ -1253,6 +1258,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   MODIFIER row headers on one line).
 - `e2e/logicFixesF32b.spec.ts` — F-32b a–c (Restrained on/off Speed 0 ↔ 30; Exhaustion 3 Speed 15 with breakdown line
   "Exhaustion 3: −15 ft."; Fighter 1 / Rogue 1 Edit heading "Fighter skills (first class)" only with Rogue active).
+- `e2e/spellModifierF33.spec.ts` — F-33 a–d (Cleric 5 WIS 16 Spiritual Weapon 1d8 + 3 / 2d8 + 3 at 3rd and 1d8 + 3 in Actions;
+  Cure Wounds 2d8 + 3 and the roll adds 3; Wizard 5 Green-Flame Blade TCE 1d8 + 3 without "{{"; WIS 10 Cure Wounds 2d8 alone).
 
 ## Dočasné scaffolding
 

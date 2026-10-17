@@ -29,6 +29,7 @@ function fixedCaster(spell: CustomItemSpell, fixed: { saveDc?: number; attackBon
 	return {
 		attack: { bonus: fixed.attackBonus ?? 0, breakdown: [{ source, amount: fixed.attackBonus ?? 0 }] },
 		save: { dc: fixed.saveDc ?? 0, abilities: [], breakdown: [{ source, amount: fixed.saveDc ?? 0 }] },
+		abilityModifier: null,
 	}
 }
 

@@ -76,10 +76,10 @@ test('R8a b: Warlock 5 — Hellish Rebuke in the 3rd-level pact section with a "
   await expect(rebuke.locator('.sheet__spell-effect').getByRole('button', { name: 'Roll Hellish Rebuke damage' })).toHaveText('4d10')
 })
 
-test('R8a c: Cleric 3 — Cure Wounds shows 2d8 and "Healing"', async ({ page }) => {
+test('R8a c: Cleric 3 — Cure Wounds shows 2d8 + 3 (WIS 16, D361) and "Healing"', async ({ page }) => {
   await openSaved(page, CLERIC, 'Spells')
   const effect = castRow(section(page, '1st Level'), 'Cure Wounds').locator('.sheet__spell-effect')
-  await expect(effect.getByRole('button', { name: 'Roll Cure Wounds healing' })).toHaveText('2d8')
+  await expect(effect.getByRole('button', { name: 'Roll Cure Wounds healing' })).toHaveText('2d8 + 3')
   await expect(effect).toContainText('Healing')
 })
 

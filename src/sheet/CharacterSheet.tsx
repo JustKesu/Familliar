@@ -129,7 +129,7 @@ import {
 	type SpellsTabFilter,
 } from './spellsTabData'
 import { featureActionRows, type FeatureActionData } from './featureActionRowData'
-import { isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
+import { casterAbilityModifier, isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
 import { formatRange, spellLevelLabel } from './spellFormatting'
@@ -502,14 +502,15 @@ function AmmoTracker({ weapon, entries, onSpend }: { weapon: string; entries: Am
  * Notes is empty for every spell row for the same reason ("half on a save" is
  * prose, not a flag).
  */
-/** "2d10 fire damage" / "1d4 + 1": the dice are the roll button, a trailing label stays text; anything else ("2d8 + 1d6") is only text (D206). D207: a scaled-healing spell's roll is labelled "healing", not "damage". */
+/** "2d10 fire damage" / "1d4 + 1": the dice are the roll button, a trailing label stays text; anything else ("2d8 + 1d6") is only text (D206). D207: a scaled-healing spell's roll is labelled "healing", not "damage". D361: "1d8 + mod" rolls the dice alone. */
 function SpellDamageLine({ line, spellName, healing, onRoll }: { line: string; spellName: string; healing?: boolean; onRoll: (report: RollReport) => void }): ReactNode {
-	const match = /^(\d+)d(\d+)(?:\s*\+\s*(\d+))?(?: ([A-Za-z].*))?$/.exec(line)
+	const match = /^(\d+)d(\d+)(?:\s*([+−])\s*(\d+|mod))?(?: ([A-Za-z].*))?$/.exec(line)
 	if (!match || Number(match[1]) === 0) return <span>{line}</span>
-	const label = match[4]
+	const label = match[5]
+	const flat = match[4] === undefined || match[4] === 'mod' ? 0 : Number(match[4])
 	return (
 		<span>
-			<DamageRollButton count={Number(match[1])} sides={Number(match[2])} modifier={Number(match[3] ?? 0)} label={`${spellName} ${healing ? 'healing' : 'damage'}`} onRoll={onRoll}>
+			<DamageRollButton count={Number(match[1])} sides={Number(match[2])} modifier={match[3] === '−' ? -flat : flat} label={`${spellName} ${healing ? 'healing' : 'damage'}`} onRoll={onRoll}>
 				{label === undefined ? line : line.slice(0, -label.length - 1)}
 			</DamageRollButton>
 			{label !== undefined && <span className="sheet__action-damage-type"> {label}</span>}
@@ -919,7 +920,9 @@ function SpellTabRow({
 	const [open, setOpen] = useState(false)
 	const { entry, detail, action } = row
 	// D206: a CAST row is worked out at its section's slot level (a D189 pact row too), every other row at the spell's own.
-	const effect = detail ? spellEffect(detail, characterLevel, row.item?.castLevel ?? (action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level)) : null
+	const effect = detail
+		? spellEffect(detail, characterLevel, row.item?.castLevel ?? (action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level), casterAbilityModifier(caster))
+		: null
 	const hitDc = detail ? rowHitDc(detail, caster) : null
 	let use: ReactNode = null
 	let counter: ReactNode = null
