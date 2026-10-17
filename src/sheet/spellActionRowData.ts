@@ -209,7 +209,8 @@ export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntr
 		// Green-Flame Blade TCE is the one `{{spellcasting_mod}}` placeholder in spells.json (DATA.md).
 		lines.push(`${resolveModifierPlaceholder(entry.scaling[String(at)]!, abilityModifier)} ${entry.label}`)
 	}
-	return lines
+	// Data lists Green-Flame Blade's secondary-creature entry first; show the on-hit damage before it.
+	return [...lines.filter((l) => !l.includes('secondary creature')), ...lines.filter((l) => l.includes('secondary creature'))]
 }
 
 /**

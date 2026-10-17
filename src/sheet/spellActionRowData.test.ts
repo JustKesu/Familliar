@@ -271,6 +271,7 @@ describe('spellcasting ability modifier in damage and healing (D361)', () => {
 		expect(cantripDamageAtLevel(greenFlame, 5, 3)).toEqual(['1d8 fire damage', '1d8 + 3 fire damage to secondary creature'])
 		expect(cantripDamageAtLevel(greenFlame, 5, 0)).toEqual(['1d8 fire damage', '1d8 fire damage to secondary creature'])
 		expect(cantripDamageAtLevel(greenFlame, 5, null)).toEqual(['1d8 fire damage', '1d8 + mod fire damage to secondary creature'])
+		expect(cantripDamageAtLevel([...greenFlame].reverse(), 5, 3)).toEqual(['1d8 fire damage', '1d8 + 3 fire damage to secondary creature'])
 	})
 
 	it('against data/spells.json: exactly the 16 spells, and every stripped "XdY plus your spellcasting ability modifier" is caught', () => {

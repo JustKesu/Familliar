@@ -58,9 +58,26 @@ test('F-34 c: Wizard 1 INT 16 — Green-Flame Blade shows no "0" damage line, th
   await expect(row).not.toContainText('0 fire damage')
 })
 
+test('F-35 b: Wizard 5 INT 16 — Green-Flame Blade lists the on-hit damage before the secondary creature line', async ({ page }) => {
+  await open(page, seeded('f35-b', 'Wizard', 5, { spellChoices: [{ className: 'Wizard', classSource: XPHB, spells: [{ name: 'Green-Flame Blade', source: 'TCE' }] }] }))
+  await page.getByRole('tab', { name: 'Spells' }).click()
+  const effect = page
+    .getByRole('tabpanel', { name: 'Spells' })
+    .getByRole('region', { name: 'Cantrips', exact: true })
+    .locator('.sheet__spell-row', { has: page.locator('.sheet__spell-name', { hasText: /^Green-Flame Blade$/ }) })
+    .locator('.sheet__spell-effect')
+  const text = await effect.innerText()
+  expect(text).toContain('1d8 + 3 fire damage to secondary creature')
+  expect(text.indexOf('1d8 fire damage')).toBeGreaterThanOrEqual(0)
+  expect(text.indexOf('1d8 fire damage')).toBeLessThan(text.indexOf('secondary creature'))
+})
+
 test('F-34 d: an Air Genasi shows "Genasi (Air)" in the sheet header and on the start screen; the stored name stays "Air"', async ({ page }) => {
   await open(page, seeded('f34-d', 'Fighter', 1, { species: { name: 'Air', source: 'MPMM' } }))
   await expect(page.locator('.sheet__species')).toContainText('Genasi (Air)')
+  const identity = (await page.locator('.sheet__identity').innerText()).replace(/\s+/g, ' ')
+  expect(identity).toContain('Genasi (Air) · Medium')
+  expect(identity).not.toMatch(/\) ?\(/)
   expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0].species.name, STORAGE_KEY)).toBe('Air')
 
   await page.goto('/#/')

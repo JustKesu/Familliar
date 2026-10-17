@@ -2834,9 +2834,8 @@ function CharacterSheetBody({
 								{character.species ? formatSpeciesName(character.species.name, character.species.source) : <UnresolvedValue reason="No species chosen yet." />}
 								{character.species && (
 									<span className="sheet__size">
-										{' ('}
+										{' · '}
 										{size.status === 'unknown' ? <UnresolvedValue reason={size.reason} /> : (SIZE_LABELS[size.value] ?? size.value)}
-										{')'}
 									</span>
 								)}
 							</span>
