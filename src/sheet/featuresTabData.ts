@@ -139,14 +139,19 @@ function featSubChoiceItems(instance: FeatInstance): FeatureTabOption[] {
 	return lines.filter(([, text]) => !text.endsWith(': ')).map(([key, name]) => ({ key, name, entries: null }))
 }
 
+export function isRefWrapper(entries: readonly unknown[]): boolean {
+	const isRef = (entry: unknown) => typeof entry === 'object' && entry !== null && (entry as { type?: unknown }).type === 'refSubclassFeature'
+	return entries.some(isRef) && entries.every((entry) => typeof entry === 'string' || isRef(entry))
+}
+
 /** A chosen option no feature could be linked to becomes its own row at the end of a class group. */
 export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 	const classGroups = input.classes.map((characterClass) => {
 		const ofClass = input.granted.filter((feature) => feature.className === characterClass.className)
 		const classFeatureNames = new Set(ofClass.filter((feature) => feature.kind === 'class').map((feature) => feature.name))
 		const items: { level: number; row: FeatureTabRow; record?: GrantedFeature }[] = ofClass
-			// F-32a: an older subclass's copy of a class feature (Conquest's Channel Divinity on the XPHB Paladin) would be a second row.
-			.filter((feature) => !(feature.olderSubclass && classFeatureNames.has(feature.name)))
+			// F-32a: an older subclass's copy of a class feature (Conquest's Channel Divinity on the XPHB Paladin) would be a second row. Only a wrapper (refs to other subclass features, at most intro strings) is hidden; own text stays.
+			.filter((feature) => !(feature.olderSubclass && classFeatureNames.has(feature.name) && isRefWrapper(feature.entries)))
 			.map((feature) => ({
 				level: feature.level,
 				record: feature,

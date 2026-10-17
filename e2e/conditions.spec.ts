@@ -61,16 +61,16 @@ test('R12 c: × on a chip removes it', async ({ page }) => {
   await expect(chip(page, 'Prone')).toHaveCount(1)
 })
 
-test('R12 d: Exhaustion + twice gives "Exhaustion 2 −4 d20 · −10 ft" and leaves Speed alone', async ({ page }) => {
-  await openSheet(page, character('r12-d'))
-  const speedBefore = await speed(page).innerText()
+test('R12 d: Exhaustion + twice on a Human gives "Exhaustion 2 −4 d20 · −10 ft" and Speed 20 ft (30 − 10)', async ({ page }) => {
+  await openSheet(page, character('r12-d', { species: { name: 'Human', source: 'XPHB' } }))
+  await expect(speed(page)).toContainText('30 ft')
   await openPanel(page)
   await panel(page).getByRole('button', { name: 'Increase Exhaustion' }).click()
   await panel(page).getByRole('button', { name: 'Increase Exhaustion' }).click()
   await expect(panel(page).getByLabel('Exhaustion level')).toHaveText('2')
   await expect(chip(page, 'Exhaustion 2')).toContainText('−4 d20')
   await expect(chip(page, 'Exhaustion 2')).toContainText('−10 ft')
-  expect(await speed(page).innerText()).toBe(speedBefore)
+  await expect(speed(page)).toContainText('20 ft')
 
   await page.keyboard.press('Escape')
   await chip(page, 'Exhaustion 2').getByRole('button', { name: 'Remove Exhaustion' }).click()

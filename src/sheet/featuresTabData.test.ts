@@ -70,11 +70,12 @@ describe('featuresTabGroups (D184)', () => {
 	})
 
 	it('hides an older subclass feature named like a class feature, keeping the class row (F-32a)', () => {
-		const conquest = (name: string, olderSubclass: boolean): GrantedFeature => ({ ...feature(name, 3, [], 'Paladin'), id: `sf|${name}`, kind: 'subclass', subclassShortName: 'Conquest', ...(olderSubclass ? { olderSubclass: true as const } : {}) })
+		const wrapper = [{ type: 'refSubclassFeature', subclassFeature: 'Conquering Presence|Paladin||Conquest|PHB|3' }]
+		const conquest = (name: string, olderSubclass: boolean, entries: unknown[] = wrapper): GrantedFeature => ({ ...feature(name, 3, entries, 'Paladin'), id: `sf|${name}`, kind: 'subclass', subclassShortName: 'Conquest', ...(olderSubclass ? { olderSubclass: true as const } : {}) })
 		const groups = featuresTabGroups({
 			...base,
 			classes: [{ className: 'Paladin', level: 3 }],
-			granted: [feature('Channel Divinity', 3, [], 'Paladin'), conquest('Channel Divinity', true), conquest('Oath of Conquest Spells', true)],
+			granted: [feature('Channel Divinity', 3, [], 'Paladin'), conquest('Channel Divinity', true), conquest('Oath of Conquest Spells', true, [])],
 			chosenOptions: [],
 		})
 		expect(groups[0].rows.map((row) => [row.name, row.source])).toEqual([
@@ -83,6 +84,8 @@ describe('featuresTabGroups (D184)', () => {
 		])
 		const sameEdition = featuresTabGroups({ ...base, classes: [{ className: 'Paladin', level: 3 }], granted: [feature('Channel Divinity', 3, [], 'Paladin'), conquest('Channel Divinity', false)], chosenOptions: [] })
 		expect(sameEdition[0].rows).toHaveLength(2)
+		const ownText = featuresTabGroups({ ...base, classes: [{ className: 'Paladin', level: 3 }], granted: [feature('Channel Divinity', 3, [], 'Paladin'), conquest('Channel Divinity', true, [{ type: 'entries', name: 'Own', entries: ['Own rules text.'] }])], chosenOptions: [] })
+		expect(ownText[0].rows).toHaveLength(2)
 	})
 })
 

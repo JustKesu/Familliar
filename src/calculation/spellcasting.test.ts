@@ -99,6 +99,7 @@ describe('computeSpellcasting', () => {
 				className: 'Wizard',
 				classSource: 'XPHB',
 				ability: 'intelligence',
+				abilityModifier: 3,
 				spellAttackBonus: 6,
 				spellAttackBreakdown: [
 					{ source: 'intelligence modifier', amount: 3 },
@@ -123,6 +124,7 @@ describe('computeSpellcasting', () => {
 				className: 'Paladin',
 				classSource: 'XPHB',
 				ability: 'charisma',
+				abilityModifier: 3,
 				spellAttackBonus: 6,
 				spellAttackBreakdown: [
 					{ source: 'charisma modifier', amount: 3 },
@@ -214,6 +216,7 @@ describe('computeSpellcasting', () => {
 				className: 'Fighter',
 				classSource: 'XPHB',
 				ability: 'intelligence',
+				abilityModifier: 1,
 				spellAttackBonus: 4,
 				spellAttackBreakdown: [
 					{ source: 'intelligence modifier', amount: 1 },
@@ -238,6 +241,7 @@ describe('computeSpellcasting', () => {
 				className: 'Rogue',
 				classSource: 'XPHB',
 				ability: 'intelligence',
+				abilityModifier: 2,
 				spellAttackBonus: 5,
 				spellAttackBreakdown: [
 					{ source: 'intelligence modifier', amount: 2 },
@@ -280,6 +284,7 @@ describe('computeFeatSpellcasting', () => {
 				featName: 'Magic Initiate',
 				featKey: 'Magic Initiate',
 				ability: 'charisma',
+				abilityModifier: 3,
 				spellAttackBonus: 6,
 				spellAttackBreakdown: [
 					{ source: 'charisma modifier', amount: 3 },
@@ -313,6 +318,7 @@ describe('computeFeatSpellcasting', () => {
 				featName: 'Drow High Magic',
 				featKey: 'Drow High Magic',
 				ability: 'charisma',
+				abilityModifier: 2,
 				spellAttackBonus: 5,
 				spellAttackBreakdown: [
 					{ source: 'charisma modifier', amount: 2 },
@@ -414,6 +420,7 @@ describe('computeFeatSpellcasting — fed the REAL featSpells.ts extraction (not
 				featName: 'Magic Initiate',
 				featKey: 'asi:4',
 				ability: 'charisma',
+				abilityModifier: 3,
 				spellAttackBonus: 5,
 				spellAttackBreakdown: [
 					{ source: 'charisma modifier', amount: 3 },

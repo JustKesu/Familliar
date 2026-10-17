@@ -50,6 +50,8 @@ export interface SpellcastingEntry {
 	className: string
 	classSource: string
 	ability: Ability
+	/** D361: the casting ability's modifier, kept as a number so spell damage need not parse the breakdown. */
+	abilityModifier?: number
 	spellAttackBonus: number
 	spellAttackBreakdown: Contribution[]
 	spellSaveDC: number
@@ -127,6 +129,7 @@ export interface FeatSpellcastingEntry {
 	/** A2-1: the feat instance (featInstances.ts key), or the feat name for a spell that carries none. Two Magic Initiates are two entries. */
 	featKey: string
 	ability: Ability
+	abilityModifier?: number
 	spellAttackBonus: number
 	spellAttackBreakdown: Contribution[]
 	spellSaveDC: number
@@ -207,13 +210,14 @@ export function computeAbilitySpellcasting(
 		...spellSaveDcItemBonuses,
 	]
 	const sum = (breakdown: Contribution[]) => breakdown.reduce((total, contribution) => total + contribution.amount, 0)
-	const value = { ability, spellAttackBonus: sum(spellAttackBreakdown), spellAttackBreakdown, spellSaveDC: sum(spellSaveDCBreakdown), spellSaveDCBreakdown }
+	const value = { ability, abilityModifier: abilityResult.value.modifier, spellAttackBonus: sum(spellAttackBreakdown), spellAttackBreakdown, spellSaveDC: sum(spellSaveDCBreakdown), spellSaveDCBreakdown }
 	return known(value, [{ source: ability, amount: value.spellAttackBonus }])
 }
 
 export interface SpeciesSpellcastingEntry {
 	speciesName: string
 	ability: Ability
+	abilityModifier?: number
 	spellAttackBonus: number
 	spellAttackBreakdown: Contribution[]
 	spellSaveDC: number

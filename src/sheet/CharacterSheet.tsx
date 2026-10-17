@@ -90,6 +90,7 @@ import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from '.
 import { loadGrantedClassFeatures, type GrantedFeature } from './grantedClassFeatures'
 import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from './damageResponseData'
 import { buildItemConditionGrants, buildItemProficiencyGrants, conditionAdvantageLines, conditionsGranted } from './itemProficiencyData'
+import { formatSpeciesName } from '../species/speciesData'
 import { speciesSaveAdvantageLines } from './speciesSaveAdvantages'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
@@ -2830,7 +2831,7 @@ function CharacterSheetBody({
 					<div className="sheet__header">
 						<p className="sheet__identity">
 							<span className="sheet__species">
-								{character.species ? character.species.name : <UnresolvedValue reason="No species chosen yet." />}
+								{character.species ? formatSpeciesName(character.species.name, character.species.source) : <UnresolvedValue reason="No species chosen yet." />}
 								{character.species && (
 									<span className="sheet__size">
 										{' ('}

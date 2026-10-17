@@ -3,7 +3,7 @@ import { ClassPicker } from '../classes/ClassPicker'
 import { WizardPortrait } from '../portrait/WizardPortrait'
 import { ReviewStep, type ReviewProficiencies } from './review/ReviewStep'
 import { SpeciesPicker } from '../species/SpeciesPicker'
-import { findSpeciesSelection, loadSpeciesOptions, type SpeciesOption } from '../species/speciesData'
+import { findSpeciesSelection, formatSpeciesName, loadSpeciesOptions, type SpeciesOption } from '../species/speciesData'
 import { BackgroundPicker } from '../backgrounds/BackgroundPicker'
 import { AbilityScorePicker } from '../abilities/AbilityScorePicker'
 import { LanguagePicker } from '../languages/LanguagePicker'
@@ -2430,7 +2430,7 @@ export function CharacterWizard({
 					speciesLabel={
 						speciesSelection
 							? `${speciesSelection.option.displayName}${speciesSelection.variant ? ` — ${speciesSelection.variant.optionName}` : ''}`
-							: (state.data.speciesChoice?.name ?? '')
+							: formatSpeciesName(state.data.speciesChoice?.name ?? '', state.data.speciesChoice?.source)
 					}
 					levelUp={levelUp}
 					{...(multiclassLevelUp || multiclassEdit ? { classLine: draftClasses.map((entry) => `${entry.className} ${entry.level}`).join(' / ') } : {})}

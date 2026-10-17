@@ -954,6 +954,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
   jen kostkami) ve Spells Effect i Actions Damage; `SpellCaster.abilityModifier` (z `toCaster`,
   null u předmětu s pevným DC), `diceTags`/`withSpellcastingModifier` ve spellActionRowData.ts;
   Green-Flame Blade nahrazuje `{{spellcasting_mod}}`; `SpellDamageLine` hází i s „−" a „+ mod".
+  F-34 (D362, opravy z review F-31 až F-33): modifier je číselné pole `abilityModifier` v
+  `computeAbilitySpellcasting` (ne text breakdownu); Green-Flame Blade bez řádku „0 fire damage"
+  pod 5. úrovní; `olderSubclass` skrývá jen wrapper z refů (`isRefWrapper`); Remove ve Manage Feats
+  se jmenuje podle `featDisplayName`; chyba uloženého záznamu říká „could not be read";
+  `formatSpeciesName(name, source?)` ve speciesData.ts: „Genasi (Air)", „Elf (Drow Lineage)"
+  v hlavičce listu, kartě postavy, pickeru a Review (uložené jméno beze změny).
 
 - Přirozená zbroj a přirozené zbraně druhů (S5, D357, D358) — ručně mapováno v
   `src/calculation/speciesNatural.ts` (name|source): Lizardfolk 13 + Dex a Tortle 17 jsou
@@ -1260,6 +1266,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   "Exhaustion 3: −15 ft."; Fighter 1 / Rogue 1 Edit heading "Fighter skills (first class)" only with Rogue active).
 - `e2e/spellModifierF33.spec.ts` — F-33 a–d (Cleric 5 WIS 16 Spiritual Weapon 1d8 + 3 / 2d8 + 3 at 3rd and 1d8 + 3 in Actions;
   Cure Wounds 2d8 + 3 and the roll adds 3; Wizard 5 Green-Flame Blade TCE 1d8 + 3 without "{{"; WIS 10 Cure Wounds 2d8 alone).
+- `e2e/reviewF34.spec.ts` — F-34 a, c, d (Remove button "Remove Magic Initiate (Cleric)"; Wizard 1 Green-Flame Blade without a "0" line;
+  Air Genasi "Genasi (Air)" in sheet header and start card, stored name "Air"); F-34 b is `conditions.spec.ts` R12 d (Human, Exhaustion 2, 20 ft).
 
 ## Dočasné scaffolding
 

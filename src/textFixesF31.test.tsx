@@ -6,6 +6,7 @@ import { featDisplayName } from './featAsi/featInstances'
 import { FEAT_CATEGORY_LABELS, featCategoryLabel } from './featAsi/featAsiData'
 import { keptSpellsText } from './levelUp/RemoveLevelButton'
 import { ReplaceNamedPickControl } from './optionalFeatures/ReplaceOptionControl'
+import { formatSpeciesName } from './species/speciesData'
 import { readableEntryError } from './storage/characterStore'
 
 afterEach(cleanup)
@@ -43,5 +44,11 @@ describe('F-31a text fixes', () => {
 		expect(readableEntryError('[0].hitPointLevels[19].level must be a whole number from 1 to 20')).toBe(
 			'Character 1 in the file could not be imported: hitPointLevels[19].level must be a whole number from 1 to 20.',
 		)
+		expect(readableEntryError('[0].name is missing', 'read')).toBe('Character 1 in storage could not be read: name is missing.')
+		expect(formatSpeciesName('Genasi; Air')).toBe('Genasi (Air)')
+		expect(formatSpeciesName('Elf; Drow Lineage')).toBe('Elf (Drow Lineage)')
+		expect(formatSpeciesName('Air', 'MPMM')).toBe('Genasi (Air)')
+		expect(formatSpeciesName('Air')).toBe('Air')
+		expect(formatSpeciesName('Human')).toBe('Human')
 	})
 })

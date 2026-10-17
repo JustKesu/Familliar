@@ -135,11 +135,12 @@ function parseStoredCharacters(raw: string, dropMalformedFields: boolean): Store
 }
 
 /** validate.ts messages start with "[<index>]" counted from 0; the user counts from 1. */
-export function readableEntryError(message: string): string {
+export function readableEntryError(message: string, verb: 'imported' | 'read' = 'imported'): string {
+	const where = verb === 'read' ? 'in storage' : 'in the file'
 	const match = /^\[(\d+)\](\.)?(.*)$/.exec(message)
-	if (!match) return `A character in the file could not be imported: ${message}.`
+	if (!match) return `A character ${where} could not be ${verb}: ${message}.`
 	const [, index, dot, rest] = match
-	return `Character ${Number(index) + 1} in the file could not be imported: ${dot ? rest : `the entry${rest}`}.`
+	return `Character ${Number(index) + 1} ${where} could not be ${verb}: ${dot ? rest : `the entry${rest}`}.`
 }
 
 /** Throws a plain `Error` (or `UnknownSchemaVersionError`) when this one entry cannot be read. */
@@ -152,7 +153,7 @@ function readStoredEntry(entry: unknown, index: number, dropMalformedFields: boo
 	const record = isRecordWithSchemaVersion(entry) && typeof entry.schemaVersion === 'number' && entry.schemaVersion >= REPAIRED_FROM_SCHEMA ? withRepairedFields(dropped) : dropped
 
 	const error = describeStoredCharacterError(record, index)
-	if (error) throw new Error(readableEntryError(error))
+	if (error) throw new Error(readableEntryError(error, dropMalformedFields ? 'read' : 'imported'))
 	if (!dropMalformedFields) {
 		// D316: the import path only; stored data is deliberately not checked.
 		const importError = describeImportedCharacterError(record, index)

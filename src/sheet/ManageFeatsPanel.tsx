@@ -296,7 +296,7 @@ export function ManageFeatsPanel({
 				chip={chip}
 				action={
 					instance.origin === 'manual' && (
-						<button type="button" className="manage-spells__button" aria-label={`Remove ${instance.name}`} onClick={() => onRemove(instance.key)}>
+						<button type="button" className="manage-spells__button" aria-label={`Remove ${featDisplayName(instance.name)}`} onClick={() => onRemove(instance.key)}>
 							Remove
 						</button>
 					)

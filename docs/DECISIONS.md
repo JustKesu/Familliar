@@ -5313,3 +5313,11 @@ při 0 jen „1d8"; neznámý modifier (nevyřešený caster, předmět s pevný
 Placeholder `{{spellcasting_mod}}` u Green-Flame Blade se nahradí stejně. Mimo rozsah: ostatní netypická
 kouzla (Healing Spirit, Arcane Vigor, Heroism, Danse Macabre a podobná), Shillelagh a True Strike.
 Task F-33, rozhodl Daniel.
+
+## D362 — Jména druhů se zobrazují s rodičem a variantou v závorce (F-34)
+
+Jméno druhu s „; " (Elf; Drow Lineage) a podpodoba Genasi (uložená jako „Air", MPMM) se hráči ukazují
+jako „Elf (Drow Lineage)" a „Genasi (Air)" — v hlavičce listu, na kartě postavy, v pickeru druhů a ve
+Review. Uložené jméno se nemění (jen zobrazení, stejně jako `featDisplayName` u featů); nikdy se
+nepoužívá k párování. Green-Flame Blade pod 5. úrovní skrývá řádek „0 … damage", řádek
+pro sekundární cíl zůstává. Task F-34, rozhodl Daniel.

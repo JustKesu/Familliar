@@ -148,13 +148,12 @@ export function unresolvedCaster(entry: SheetSpellEntry): { reason: string } {
 }
 
 export function toCaster(
-	source: Pick<SpellcastingEntry, 'ability' | 'spellAttackBonus' | 'spellAttackBreakdown' | 'spellSaveDC' | 'spellSaveDCBreakdown'>,
+	source: Pick<SpellcastingEntry, 'abilityModifier' | 'spellAttackBonus' | 'spellAttackBreakdown' | 'spellSaveDC' | 'spellSaveDCBreakdown'>,
 ): { attack: SpellActionAttack; save: SpellActionSave; abilityModifier: number | null } {
 	return {
 		attack: { bonus: source.spellAttackBonus, breakdown: source.spellAttackBreakdown },
 		save: { dc: source.spellSaveDC, breakdown: source.spellSaveDCBreakdown, abilities: [] },
-		// computeAbilitySpellcasting names this line; it is the only place the modifier itself survives.
-		abilityModifier: source.spellAttackBreakdown.find((line) => line.source === `${source.ability} modifier`)?.amount ?? null,
+		abilityModifier: source.abilityModifier ?? null,
 	}
 }
 
@@ -205,6 +204,8 @@ export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntr
 			.sort((a, b) => a - b)
 		const at = reached[reached.length - 1]
 		if (at === undefined) continue
+		// Green-Flame Blade is "0" below level 5: the weapon's own damage, so a "0 damage" line is noise; the secondary line stays.
+		if (entry.scaling[String(at)] === '0') continue
 		// Green-Flame Blade TCE is the one `{{spellcasting_mod}}` placeholder in spells.json (DATA.md).
 		lines.push(`${resolveModifierPlaceholder(entry.scaling[String(at)]!, abilityModifier)} ${entry.label}`)
 	}

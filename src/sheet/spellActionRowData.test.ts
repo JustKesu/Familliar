@@ -217,6 +217,7 @@ describe('spellcasting ability modifier in damage and healing (D361)', () => {
 		className: 'Cleric',
 		classSource: 'XPHB',
 		ability: 'wisdom',
+		abilityModifier: 3,
 		spellAttackBonus: 5,
 		spellAttackBreakdown: [
 			{ source: 'wisdom modifier', amount: 3 },
@@ -233,9 +234,10 @@ describe('spellcasting ability modifier in damage and healing (D361)', () => {
 		entriesHigherLevel: higher('{@scaledamage 1d8|2-9|1d8}'),
 	})
 
-	it('toCaster carries the modifier named in the attack breakdown', () => {
-		expect(toCaster(cleric).abilityModifier).toBe(3)
-		expect(toCaster({ ...cleric, spellAttackBreakdown: [] }).abilityModifier).toBeNull()
+	it('toCaster carries the modifier field, not the breakdown text', () => {
+		expect(toCaster({ ...cleric, spellAttackBreakdown: [] }).abilityModifier).toBe(3)
+		const { abilityModifier: _omitted, ...withoutField } = cleric
+		expect(toCaster(withoutField).abilityModifier).toBeNull()
 	})
 
 	it('adds it once after the scaled dice; 0 drops it, negative uses the sheet minus, unknown reads "mod"', () => {
@@ -265,7 +267,7 @@ describe('spellcasting ability modifier in damage and healing (D361)', () => {
 			{ label: 'fire damage', scaling: { '1': '0', '5': '1d8' } },
 			{ label: 'fire damage to secondary creature', scaling: { '1': '{{spellcasting_mod}}', '5': '1d8 + {{spellcasting_mod}}' } },
 		]
-		expect(cantripDamageAtLevel(greenFlame, 1, 3)).toEqual(['0 fire damage', '3 fire damage to secondary creature'])
+		expect(cantripDamageAtLevel(greenFlame, 1, 3)).toEqual(['3 fire damage to secondary creature'])
 		expect(cantripDamageAtLevel(greenFlame, 5, 3)).toEqual(['1d8 fire damage', '1d8 + 3 fire damage to secondary creature'])
 		expect(cantripDamageAtLevel(greenFlame, 5, 0)).toEqual(['1d8 fire damage', '1d8 fire damage to secondary creature'])
 		expect(cantripDamageAtLevel(greenFlame, 5, null)).toEqual(['1d8 fire damage', '1d8 + mod fire damage to secondary creature'])

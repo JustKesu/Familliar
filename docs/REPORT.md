@@ -1,32 +1,43 @@
-# REPORT — F-33: modifier sesílací vlastnosti v damage a léčení kouzel (D361)
+# F-34: opravy z review F-31 až F-33 (D362)
 
-Setup: fetch, `merge --ff-only origin/main` → HEAD 3835f67 (požadovaný). Investigace z 3835f67:docs/REPORT.md přečtena.
+Setup: `git fetch`, `git merge --ff-only origin/main` → už aktuální, HEAD `072f24f`. Subagent nepoužit.
 
-## Krok 1 — místa změny (13, bez dělení)
-spellActionRowData.ts: `SpellCaster` (+`abilityModifier`), `toCaster`, `cantripDamageAtLevel`, `cantripDamage`, `leveledSpellDice`, `spellActionData`, nové `diceTags`/`withSpellcastingModifier`/`casterAbilityModifier`; itemSpellRows.ts `fixedCaster`; spellsTabData.ts `spellEffect`; CharacterSheet.tsx:922 (volání spellEffect) a `SpellDamageLine`. Bonus Action skupina (CharacterSheet.tsx:862) kostky neukazuje (jen text kouzla) → beze změny; Healing Word dostane modifier ve Spells Effect.
+## Co se změnilo (STEP 1: 14 míst, pod limitem 15)
 
-## Co se změnilo
-- `diceTags(entries)`: každý `{@damage}`/`{@dice}` tag + příznak, zda zbytek téhož řetězce (markup stripnutý) začíná `(+|plus) your spellcasting ability modifier`. `leveledSpellDice` přičte modifier po `{@scale…}` (upcast zvedá jen kostky), `cantripDamage` před typ škody („1d6 + 3 Bludgeoning").
-- `withSpellcastingModifier`: „1d8 + 3", „1d8 − 1" (U+2212 jako RollButton), 0 → „1d8", null → „1d8 + mod".
-- `toCaster` bere modifier z řádku breakdownu `<ability> modifier` (computeAbilitySpellcasting); bez něj null. `fixedCaster` null (pravidlo b), `{reason}` caster → null.
-- Green-Flame Blade: `{{spellcasting_mod}}` v `scalingLevelDice` nahrazeno („1d8 + 3", pod úr. 5 „3").
-- `SpellDamageLine`: regex bere `+`/`−` a `mod`; „+ mod" hází jen kostkami, „− 1" se odečte.
+| Oprava | Místo | Změna |
+|---|---|---|
+| 1 | `ManageFeatsPanel.tsx:299` | aria-label `Remove ${featDisplayName(name)}` |
+| 2 | `e2e/conditions.spec.ts` R12 d | seed Human XPHB, Speed 30 ft → s Exhaustion 2 `20 ft`; test přejmenován |
+| 3 | `spellcasting.ts` | `abilityModifier?: number` v `SpellcastingEntry`, `FeatSpellcastingEntry`, `SpeciesSpellcastingEntry`; `computeAbilitySpellcasting` ho vrací |
+| 3 | `spellActionRowData.ts` `toCaster` | čte pole, ne text breakdownu |
+| 4 | `characterStore.ts` `readableEntryError` | druhý parametr `verb`; načtení z úložiště: „Character N in storage could not be read", import beze změny |
+| 5 | `featuresTabData.ts` | `isRefWrapper`; `olderSubclass` skrývá jen wrapper |
+| 6 | `spellActionRowData.ts` `cantripDamageAtLevel` | řádek s doslovnou hodnotou `'0'` se vynechá (Actions i Spells) |
+| 7 | `speciesData.ts` | `speciesDisplayName` + nová `formatSpeciesName(name, source?)` |
+| 7 | `CharacterSheet.tsx` (hlavička), `characterSummary.ts` (karta), `CharacterWizard.tsx` (Review fallback) | volají `formatSpeciesName` |
+| 7 | `docs/DECISIONS.md` D362, `docs/STATUS.md` | zápis |
+
+Picker druhů používá `displayName` ze `speciesDisplayName`, tedy se změnil automaticky.
 
 ## Ověřeno
-- typecheck OK; `npm test` 185 souborů / 3373 testů OK (jeden existující test v customItemGrants.test.ts doplněn o `abilityModifier: null`).
-- Guard nad data/spells.json (spellActionRowData.test.ts): `diceTags` chytí přesně 16 kouzel ze zadání a shoduje se se stripnutým frázovým scanem „XdY +/plus your spellcasting ability modifier". Pravidla b/c v unit testech (spellActionRowData.test.ts, spellsTabData.test.ts).
-- validate-data 175/175 OK.
-- e2e: plný běh 593/594, padl jen nový F-33 c na chybném lokátoru (cantrip řádek není `--cast`; snapshot ukázal „1d8 + 3" správně); po opravě spellModifierF33 + spellDice 15/15 OK. Plný suite trvá ~2,2 min.
-- Nový `e2e/spellModifierF33.spec.ts` a–d (Spiritual Weapon 1d8 + 3 / 2d8 + 3 na 3. úr. / Actions 1d8 + 3; Cure Wounds 2d8 + 3 a toast „+ 3 ="; Green-Flame Blade TCE 1d8 + 3 bez „{{"; WIS 10 → „2d8" bez „+ 0"). `spellDice.spec.ts` R8a c upraven na „2d8 + 3" (WIS 16).
+
+- `npm run typecheck` OK; `npm test` 185 souborů / 3373 testů OK; `npm run validate-data` 175/175; `npm run e2e` 597 passed (1,9 min).
+- Unit: `toCaster` čte pole i při prázdném breakdownu (spellActionRowData.test), 7 `toEqual` v spellcasting.test doplněno o `abilityModifier`; `readableEntryError(…, 'read')` + `formatSpeciesName` (textFixesF31.test); `featuresTabGroups` wrapper skrytý / vlastní text zůstane (featuresTabData.test); Green-Flame Blade na L1 bez „0 fire damage" (spellActionRowData.test); speciesData.test aktualizován na nový formát.
+- E2E: `e2e/reviewF34.spec.ts` a (Remove Magic Initiate (Cleric)), c (GFB L1), d (Air Genasi v hlavičce i na kartě, uložené jméno `Air`); b = `conditions.spec.ts` R12 d.
 
 ## Rozhodnutí v kódu
-- Modifier se odvozuje z breakdownu místo nového pole v `SpellcastingEntry`/`FeatSpellcastingEntry`/`SpeciesSpellcastingEntry` — menší zásah, jediný producent je computeAbilitySpellcasting.
-- Samotný placeholder Green-Flame Blade pod úr. 5 ukazuje číslo („3 fire damage to secondary creature"), při neznámém modifieru „mod"; při 0 „0".
-- Alustriel's Mooncloak a Holy Star of Mystra parser chytí, ale kostky dál nezobrazují (`{@dice}` bez `{@scaledice}`, D206) — beze změny.
 
-## Pro uživatele
-- Necommitnuté untracked soubory z dřívějška (docs/REPORT-*.md kromě REPORT.md, CLAUDE-1.md, scripts/investigate-*) jsem nechal stranou: jsou untracked napříč předchozími tasky a zadání velí stage po cestách. Pokud mají jít do gitu, je to samostatný krok. `git clean -fd scripts` jsem nespouštěl — žádný skript jsem nepsal a smazal by ty cizí.
-- Subagent nepoužit.
+- Genasi: uložené jméno je jen „Air" (+ MPMM), takže „Genasi (Air)" nejde odvodit ze stringu. `formatSpeciesName` má pevnou čtveřici Air/Earth/Fire/Water pro zdroj MPMM (bez async načtení species.json u každé karty). Zjištěno `scripts/investigate-f34-genasi.mjs`: Genasi MPMM + 4 podpodoby s `raceName`; 24 jmen se „; ".
+- `isRefWrapper` povoluje vedle `refSubclassFeature` i prosté řetězce (úvodní věta wrapperu); jakýkoli jiný objekt (vlastní `entries`) feature ponechá viditelnou. Doslovné „jen refy" jsem nezvolil, protože reálný text Conquest wrapperu neznám (data se nesmí číst).
+- `abilityModifier` je volitelné pole, aby ručně skládané fixtury nepadaly; chybějící → `null` jako dřív.
+- Řádek GFB se skrývá jen při doslovné hodnotě `'0'`; sekundární řádek se skrývá nikdy.
+- Review fallback větev (`speciesSelection` bez shody) používá `formatSpeciesName`; větev s výběrem dál ukazuje „Genasi (Air) — Air"-styl `displayName — optionName` beze změny.
+
+## K rozhodnutí uživatele
+
+- Guard 16 kouzel (review nález 1 / otázka C) nebyl v zadání; neřešeno.
+- `scripts/investigate-f34-genasi.mjs` zůstává neuklizený a necommitnutý (zadání zakazuje `git clean`).
 
 ## Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: Spells tab (sloupec Effect u 16 kouzel, Green-Flame Blade), Actions tab (sloupec Damage u Spiritual Weapon, Flame Blade, Mordenkainen's Sword, Bigby's Hand, Backlash, Magic Stone, Green-Flame Blade).
+
+Změněné obrazovky: hlavička listu (jméno druhu), karta postavy na startovní obrazovce (podřádek), wizard Review (řádek identity), Manage Feats (tlačítko Remove), záložky Spells a Actions (Green-Flame Blade), karta Speed s Exhaustion, záložka Features (Conquest/Paladin).

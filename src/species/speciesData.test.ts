@@ -91,7 +91,7 @@ describe('extractSpeciesOptions', () => {
 		const parsed = [{ name: 'Air', source: 'MPMM', raceName: 'Genasi', raceSource: 'MPMM' }]
 		const options = extractSpeciesOptions(parsed)
 		expect(options).toHaveLength(1)
-		expect(options[0].displayName).toBe('Genasi; Air')
+		expect(options[0].displayName).toBe('Genasi (Air)')
 		expect(options[0].variants).toEqual([])
 	})
 
@@ -142,15 +142,15 @@ describe('findSpeciesSelection', () => {
 describe('speciesDisplayName', () => {
 	it('prefixes the parent name for Genasi subraces', () => {
 		expect(speciesDisplayName({ name: 'Air', source: 'MPMM', raceName: 'Genasi', raceSource: 'MPMM' })).toBe(
-			'Genasi; Air',
+			'Genasi (Air)',
 		)
 		expect(speciesDisplayName({ name: 'Water', source: 'MPMM', raceName: 'Genasi', raceSource: 'MPMM' })).toBe(
-			'Genasi; Water',
+			'Genasi (Water)',
 		)
 	})
 
-	it('displays the stored name unchanged for entries without raceName', () => {
-		expect(speciesDisplayName({ name: 'Elf; Drow Lineage', source: 'XPHB' })).toBe('Elf; Drow Lineage')
+	it('shows a "; " name with the variant in parentheses and leaves other names alone (D362)', () => {
+		expect(speciesDisplayName({ name: 'Elf; Drow Lineage', source: 'XPHB' })).toBe('Elf (Drow Lineage)')
 		expect(speciesDisplayName({ name: 'Aasimar', source: 'XPHB' })).toBe('Aasimar')
 	})
 })

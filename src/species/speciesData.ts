@@ -85,7 +85,18 @@ function isRawSpeciesEntry(value: unknown): value is RawSpeciesEntry {
  * unchanged, since `_versions` variants already name themselves fully.
  */
 export function speciesDisplayName(entry: SpeciesEntry): string {
-	return entry.raceName ? `${entry.raceName}; ${entry.name}` : entry.name
+	return formatSpeciesName(entry.raceName ? `${entry.raceName}; ${entry.name}` : entry.name)
+}
+
+const GENASI_SUBRACES = new Set(['Air', 'Earth', 'Fire', 'Water'])
+
+/**
+ * D362: display only — "Genasi; Air" and "Elf; Drow Lineage" read "Genasi (Air)" and "Elf (Drow Lineage)". Never use it for matching.
+ * A stored Genasi subrace is just "Air" (MPMM, raceName in species.json), so with `source` the four are recognised without loading the data.
+ */
+export function formatSpeciesName(name: string, source?: string): string {
+	if (source === 'MPMM' && GENASI_SUBRACES.has(name)) return `Genasi (${name})`
+	return name.replace(/^([^;]+);\s*(.+)$/, '$1 ($2)')
 }
 
 /**
