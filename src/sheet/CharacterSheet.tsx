@@ -592,7 +592,7 @@ function UseBoxes({ name, spent, max, recharge, onChange }: { name: string; spen
 					<button type="button" disabled={!onChange || spent <= 0} onClick={() => onChange?.(-1)} aria-label={`Undo a use of ${name}`}>
 						−
 					</button>
-					{spent} / {max}
+					<span className="sheet__nowrap">{spent} / {max}</span>
 					<button type="button" disabled={!onChange || spent >= max} onClick={() => onChange?.(1)} aria-label={`Use ${name}`}>
 						+
 					</button>
@@ -981,7 +981,7 @@ function SpellTabRow({
 		else if (action.grant.usage?.kind === 'resource') {
 			counter = (
 				<span className="sheet__spell-counter">
-					{action.counterKey} {remainingUses(max, spent)} / {max}
+					{action.counterKey} <span className="sheet__nowrap">{remainingUses(max, spent)} / {max}</span>
 				</span>
 			)
 		} else {

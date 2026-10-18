@@ -1883,7 +1883,20 @@ button:disabled {
 }
 
 .sheet__spell-slots-button {
-  margin-bottom: 8px;
+  display: block;
+  align-self: flex-start;
+  justify-self: start;
+  margin: 0 auto 8px 0;
+  padding: 0.2rem 0.65rem;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: inherit;
+}
+
+.sheet__spell-slots-button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 .sheet__spells-toolbar {
@@ -2064,6 +2077,10 @@ button:disabled {
 }
 
 /* A USE row's counter opens Notes; the text after it wraps under it, never over it. */
+.sheet__nowrap {
+  white-space: nowrap;
+}
+
 .sheet__spell-counter {
   display: flex;
   flex-wrap: wrap;
@@ -2278,7 +2295,7 @@ button:disabled {
 
 .char-card__name {
   font: 600 16px/1.2 var(--font-heading);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .char-card__name-input {
@@ -2366,7 +2383,7 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 24px;
+  gap: 8px 16px;
   margin-bottom: 20px;
   background: var(--bg);
   border-bottom: 1px solid var(--line);
@@ -2381,7 +2398,7 @@ button:disabled {
 .wizard__steps {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 22px;
+  column-gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -2394,8 +2411,8 @@ button:disabled {
   border-radius: 0;
   background: transparent;
   color: var(--text-sub);
-  font: 600 13px/1.2 var(--font-body);
-  letter-spacing: 0.04em;
+  font: 600 12px/1.2 var(--font-body);
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
@@ -3321,12 +3338,31 @@ button:disabled {
   margin: 0;
 }
 
+/* F-36: a long sentence legend reads badly in capitals. */
+.wizard__content .feat-sub-choices--sentence > legend {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+}
+
 .replace-option:not(:last-child) {
   margin-bottom: 14px;
 }
 
 .replace-option__list li + li {
   margin-top: 6px;
+}
+
+.species-picker__field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.species-picker__field > select {
+  max-width: 100%;
 }
 
 /* F-30: one-select slots (class tool, Kensei weapon, feature language) line up label and select in two columns. */
@@ -3352,6 +3388,54 @@ button:disabled {
   .language-picker__list li > label:has(> select) {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* F-36: the picker's own first paragraph carries a default top margin that stacks on the heading's. */
+.wizard__content h3 + .class-skill-picker > :first-child {
+  margin-top: 0;
+}
+
+/* F-36: Primal Order and other class-feature choices get the same card frame as the other choice lists. */
+.wizard__content .class-feature-choice-picker__group {
+  min-width: 0;
+  margin: 0 0 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+/* F-36: the background detail is a card like the other wizard detail blocks. */
+.background-picker__grants {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.background-picker__grants p {
+  margin: 0 0 6px;
+}
+
+/* F-36: origin-feat radios stack with normal spacing; the campaign note sits tight under its radio. */
+.feat-asi-picker__level > label,
+.feat-asi-picker__feat > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: normal;
+}
+
+.feat-asi-picker__level > label + label,
+.feat-asi-picker__feat + .feat-asi-picker__feat {
+  margin-top: 6px;
+}
+
+.feat-asi-picker__note {
+  margin: 2px 0 0 24px;
+  font-size: 13px;
+  color: var(--text-sub);
 }
 
 /* W1: no bullets before checkboxes and radios; rendered rules text (.mk-list) keeps its own. */

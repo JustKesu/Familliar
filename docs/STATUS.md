@@ -1270,6 +1270,7 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Air Genasi "Genasi (Air)" in sheet header and start card, stored name "Air"); F-34 b is `conditions.spec.ts` R12 d (Human, Exhaustion 2, 20 ft).
 - F-35: header shows size after a middle dot ("Genasi (Air) · Medium · …"); `cantripDamageAtLevel` puts "secondary creature" lines last
   (Green-Flame Blade at level 5: on-hit first). Covered by `reviewF34.spec.ts` F-35 b and the F-34 d header assertion.
+- F-36: cosmetic layout fixes (CSS plus two wrapper classes): species label spacing, step bar on one line at 1366, Spell Slots button, character card name wrapping, nowrap use counters, background/origin-feat cards, Primal Order frame.
 
 ## Dočasné scaffolding
 

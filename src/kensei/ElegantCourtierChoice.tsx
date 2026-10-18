@@ -4,7 +4,7 @@ import type { ElegantCourtierSave } from '../storage/character'
 /** D344: shown only when Wisdom saves are already proficient, so Elegant Courtier grants Intelligence or Charisma instead. */
 export function ElegantCourtierChoice({ value, onChange }: { value: ElegantCourtierSave | null; onChange: (save: ElegantCourtierSave | null) => void }): ReactNode {
 	return (
-		<fieldset className="feat-sub-choices">
+		<fieldset className="feat-sub-choices feat-sub-choices--sentence">
 			<legend>Elegant Courtier (Samurai): already proficient in Wisdom saves — choose another save</legend>
 			{(['intelligence', 'charisma'] as const).map((save) => (
 				<label key={save}>
