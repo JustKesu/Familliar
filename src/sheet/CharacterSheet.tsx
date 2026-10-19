@@ -3132,9 +3132,11 @@ function CharacterSheetBody({
 						</div>
 					)}
 					{(hasSpellSlots || slotMaximaReason !== null) && (
-						<button type="button" className="sheet__actions-per-action-label sheet__spell-slots-button" onClick={() => setDrawer({ kind: 'spellSlots' })}>
-							Spell Slots
-						</button>
+						<div className="sheet__spell-slots-row">
+							<button type="button" className="sheet__actions-per-action-label sheet__spell-slots-button" onClick={() => setDrawer({ kind: 'spellSlots' })}>
+								Spell Slots
+							</button>
+						</div>
 					)}
 				</div>
 			)}

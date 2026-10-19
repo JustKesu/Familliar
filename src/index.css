@@ -1882,11 +1882,12 @@ button:disabled {
   color: var(--accent);
 }
 
-.sheet__spell-slots-button {
-  /* The parent is a wrapping flex row: a 100% basis forces its own line, max-width keeps the button its natural size. */
+.sheet__spell-slots-row {
+  /* The parent is a wrapping flex row: a 100% basis on a wrapper forces its own line while the button inside keeps its natural width. */
   flex: 0 0 100%;
-  max-width: max-content;
-  align-self: flex-start;
+}
+
+.sheet__spell-slots-button {
   margin: 0 0 8px;
   padding: 0.2rem 0.65rem;
   border: 1px solid var(--line);
