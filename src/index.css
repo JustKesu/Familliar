@@ -1883,10 +1883,11 @@ button:disabled {
 }
 
 .sheet__spell-slots-button {
-  display: block;
+  /* The parent is a wrapping flex row: a 100% basis forces its own line, max-width keeps the button its natural size. */
+  flex: 0 0 100%;
+  max-width: max-content;
   align-self: flex-start;
-  justify-self: start;
-  margin: 0 auto 8px 0;
+  margin: 0 0 8px;
   padding: 0.2rem 0.65rem;
   border: 1px solid var(--line);
   background: var(--surface-2);
@@ -2087,6 +2088,11 @@ button:disabled {
   align-items: center;
   margin-bottom: 4px;
   color: var(--text);
+}
+
+/* F-36b: plain text counter — flex would turn the label and the nowrap span into separate lines and drop the space between. */
+.sheet__spell-counter--text {
+  display: block;
 }
 
 .sheet__spell-unresolved {

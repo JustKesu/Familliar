@@ -46,6 +46,9 @@ async function featureBoxes(page: Page, resource: string): Promise<Locator> {
 test('A-S2 a: Ranger 1 — USE Hunter\'s Mark spends a Favored Enemy box; at none USE is disabled, CAST still works; Long Rest restores', async ({ page }) => {
   await openSaved(page, character('as2-ranger', 'Ranger', 1, 'wisdom'))
   await expect(kindRow(page, "Hunter's Mark", 'use').locator('.sheet__spell-notes')).toContainText('Favored Enemy 2 / 2')
+  // innerText, not textContent: a flex parent drops the space textContent still has (F-36b).
+  const counter = kindRow(page, "Hunter's Mark", 'use').locator('.sheet__spell-notes .sheet__spell-counter')
+  expect(await counter.evaluate((el) => (el as HTMLElement).innerText)).toBe('Favored Enemy 2 / 2')
 
   await useButton(page, "Hunter's Mark").click()
   await expect(kindRow(page, "Hunter's Mark", 'use').locator('.sheet__spell-notes')).toContainText('Favored Enemy 1 / 2')

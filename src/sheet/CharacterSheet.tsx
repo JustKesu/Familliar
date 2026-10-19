@@ -980,7 +980,7 @@ function SpellTabRow({
 		if (max === undefined) counter = <UnresolvedValue reason="The number of uses is not known yet." />
 		else if (action.grant.usage?.kind === 'resource') {
 			counter = (
-				<span className="sheet__spell-counter">
+				<span className="sheet__spell-counter sheet__spell-counter--text">
 					{action.counterKey} <span className="sheet__nowrap">{remainingUses(max, spent)} / {max}</span>
 				</span>
 			)
