@@ -670,9 +670,12 @@ describe('CharacterSheet', () => {
 
 			it('hides itself after the timeout', async () => {
 				await renderKnown()
-				vi.useFakeTimers()
+				// F-38: let the sheet's loads settle on real timers, then fake only the toast's setTimeout so nothing else lands on the fake clock.
+				const rollButton = await screen.findByRole('button', { name: 'Roll Athletics check' })
+				await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+				vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 				try {
-					fireEvent.click(screen.getByRole('button', { name: 'Roll Athletics check' }))
+					fireEvent.click(rollButton)
 					expect(toastElement()).not.toBeNull()
 					act(() => {
 						vi.advanceTimersByTime(5900)
@@ -7871,9 +7874,10 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={chainWarlock({ name: 'Imp', source: 'XMM' })} />)
 			await screen.findByRole('heading', { name: 'Chainer' })
 
-			await waitFor(() => expect(extrasRowsOf(container)).toHaveLength(1))
+			// The extras rows wait on several loads after the heading; a loaded full run can exceed waitFor's 1 s default (F-38).
+			await waitFor(() => expect(extrasRowsOf(container)).toHaveLength(1), { timeout: 5000 })
 			expect(extrasRowsOf(container)[0].querySelector('.extras-tab__notes')!.textContent).toBe('CR 1, Pact of the Chain')
-		})
+		}, 30000)
 
 		/** A chain Warlock has two forms in the pool (Owl from the spell, Imp from the pact) — enough to filter. */
 		function chainWarlock(familiar?: CharacterFamiliar): Character {
