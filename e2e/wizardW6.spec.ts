@@ -117,6 +117,19 @@ test('F-2b: while Manual is empty the big maximum is a dash, and a typed 7 bring
   await expect(maximumBox(page)).toHaveText(String(before - 6 + 7))
 })
 
+test('F-37 e: while Manual is empty the breakdown names level 2 as "enter a value", not as an average', async ({ page }) => {
+  await reachHitPoints(page, 3)
+  await averageAll(page).click()
+  await pill(page, 2, 'Manual').check()
+  const breakdown = page.getByTestId('hit-points-running-total').getByRole('listitem')
+  await expect(breakdown.filter({ hasText: /^level 2: enter a value$/ })).toHaveCount(1)
+  await expect(breakdown.filter({ hasText: /^level 2 \(/ })).toHaveCount(0)
+  await expect(page.getByTestId('hit-points-running-total')).not.toContainText('no choice recorded')
+  await expect(maximumBox(page)).toHaveText('—')
+  await manualInput(page, 2).fill('7')
+  await expect(breakdown.filter({ hasText: /^level 2 \(manual\): \+7$/ })).toHaveCount(1)
+})
+
 test('F-2b: Manual "1e1" is not a whole number — the row stays invalid and Next stays locked', async ({ page }) => {
   await reachHitPoints(page, 3)
   await averageAll(page).click()

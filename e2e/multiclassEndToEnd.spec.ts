@@ -1063,6 +1063,12 @@ test('M11b finding 1: single-class Wizard 2 → 3 with Evoker — the Savant pic
   await expectStep(page, 'Spells')
   const savant = page.locator('.spell-picker__section--subclass-choice')
   await expect(savant).toContainText('0 of 2 Evoker spells chosen.')
+  // F-37 a: its own card, named after the feature, the two level-3 slots told apart.
+  await expect(savant).toHaveClass(/wizard__card/)
+  await expect(savant.getByRole('heading', { name: 'Evocation Savant', exact: true })).toBeVisible()
+  await expect(savant).toContainText('These spells are added to your spellbook for free.')
+  await expect(savant.getByLabel('Level 3, choice 1:')).toHaveCount(1)
+  await expect(savant.getByLabel('Level 3, choice 2:')).toHaveCount(1)
   // Above the class list, not below it.
   expect(await savant.evaluate((node) => {
     const list = document.querySelector('.manage-spells__counter')

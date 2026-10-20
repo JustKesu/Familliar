@@ -1271,6 +1271,7 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - F-35: header shows size after a middle dot ("Genasi (Air) · Medium · …"); `cantripDamageAtLevel` puts "secondary creature" lines last
   (Green-Flame Blade at level 5: on-hit first). Covered by `reviewF34.spec.ts` F-35 b and the F-34 d header assertion.
 - F-36: cosmetic layout fixes (CSS plus two wrapper classes): species label spacing, step bar on one line at 1366, Spell Slots button, character card name wrapping, nowrap use counters, background/origin-feat cards, Primal Order frame.
+- F-37: Savant/Magical Discoveries picks in their own wizard card with the feature name ("Level 3, choice 1/2"); subclasses sorted by name (compareText); HP breakdown shows "level N: enter a value" for an invalid row. Effect-cell dice labels not done (30 spells, no single rule).
 
 ## Dočasné scaffolding
 

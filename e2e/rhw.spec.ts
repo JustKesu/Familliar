@@ -27,6 +27,17 @@ test('D194 b: Cleric 3 offers one Grave Domain, Rogue 3 one Phantom, Wizard 3 no
   await expect(radio('Bladesinging')).toHaveCount(0)
 })
 
+test('F-37 c: Fighter 3 lists its subclasses alphabetically', async ({ page }) => {
+  await subclassRadios(page, 'Fighter|XPHB')
+  const buttons = page.locator('.subclass-picker').getByRole('button', { name: /^Choose / })
+  await expect(buttons.first()).toBeAttached()
+  const names = (await buttons.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('aria-label') ?? ''))).map((name) =>
+    name.replace(/^Choose /, '').replace(/ \([A-Z]+\)$/, ''),
+  )
+  expect(names.length).toBeGreaterThan(3)
+  expect(names).toEqual([...names].sort(new Intl.Collator('en').compare))
+})
+
 test('D194 f: Artificer 3 offers Reanimator', async ({ page }) => {
   const radio = await subclassRadios(page, 'Artificer|EFA')
   await expect(radio('Reanimator')).toHaveCount(1)

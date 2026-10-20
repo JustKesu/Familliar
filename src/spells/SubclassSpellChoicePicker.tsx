@@ -30,6 +30,15 @@ function pickKey(grantedAtLevel: number, slotIndex: number): string {
 	return `${grantedAtLevel}|${slotIndex}`
 }
 
+// XPHB feature names and their free-spell wording, keyed like SUBCLASS_SPELL_CHOICE_KEYS.
+const FEATURE_BY_SUBCLASS: Record<string, { name: string; note: string }> = {
+	'College of Lore|XPHB': { name: 'Magical Discoveries', note: 'These spells are always prepared and count as Bard spells for you.' },
+	'Abjurer|XPHB': { name: 'Abjuration Savant', note: 'These spells are added to your spellbook for free.' },
+	'Diviner|XPHB': { name: 'Divination Savant', note: 'These spells are added to your spellbook for free.' },
+	'Evoker|XPHB': { name: 'Evocation Savant', note: 'These spells are added to your spellbook for free.' },
+	'Illusionist|XPHB': { name: 'Illusion Savant', note: 'These spells are added to your spellbook for free.' },
+}
+
 export function SubclassSpellChoicePicker({
 	subclassName,
 	subclassSource,
@@ -88,8 +97,13 @@ export function SubclassSpellChoicePicker({
 		onChange([...withoutSlot, { grantedAtLevel, slotIndex, name: candidate.name, source: candidate.source }])
 	}
 
+	const feature = FEATURE_BY_SUBCLASS[`${subclassName}|${subclassSource}`]
+	const slotsAtLevel = (level: number): number => offers.filter((o) => o.slot.grantedAtLevel === level).length
+
 	return (
-		<div className="spell-picker__section spell-picker__section--subclass-choice">
+		<section className="wizard__card spell-picker__section spell-picker__section--subclass-choice">
+			<h3>{feature?.name ?? subclassName}</h3>
+			{feature && <p>{feature.note}</p>}
 			<p className="spell-picker__remaining">
 				{value.length} of {offers.length} {subclassName} spell{offers.length === 1 ? '' : 's'} chosen.
 			</p>
@@ -99,7 +113,8 @@ export function SubclassSpellChoicePicker({
 					return (
 						<li key={pickKey(slot.grantedAtLevel, slot.slotIndex)} className="spell-picker__item">
 							<label>
-								Level {slot.grantedAtLevel} choice:{' '}
+								Level {slot.grantedAtLevel}
+								{slotsAtLevel(slot.grantedAtLevel) > 1 ? `, choice ${slot.slotIndex + 1}` : ''}:{' '}
 								<select
 									value={current ? `${current.name}|${current.source}` : ''}
 									onChange={(event) => {
@@ -134,6 +149,6 @@ export function SubclassSpellChoicePicker({
 					)
 				})}
 			</ul>
-		</div>
+		</section>
 	)
 }

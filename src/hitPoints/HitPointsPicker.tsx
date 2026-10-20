@@ -131,11 +131,23 @@ export function HitPointsPicker({
 	}
 
 	const levels = levelUpLevel !== undefined ? [levelUpLevel] : dice.slice(1).map(({ level }) => level)
-	// An invalid row (empty Manual, legacy value) must not feed the total: it is left out, so the breakdown shows it as "no choice recorded".
+	// An invalid row (empty Manual, legacy value) must not feed the total: it is left out of the calculation.
 	const isUnset = (entry: CharacterHitPointLevel): boolean => levels.includes(entry.level) && !isValidHitPointEntry(entry, facesAt(entry.level))
 	const anyUnset = value.some(isUnset)
 	const draftCharacter: Character = { ...character, hitPointLevels: value.filter((entry) => !isUnset(entry)) }
 	const maxHitPoints = computeMaxHitPoints(draftCharacter, loaded.classData, loaded.bonusFeatureNames, loaded.feats, loaded.itemBonuses, loaded.itemAbilityGrants)
+	// The left-out invalid rows would read as counted averages; name them as still missing instead.
+	const unsetLevels = value.filter(isUnset).map((entry) => entry.level)
+	const breakdown =
+		maxHitPoints.status === 'known' && anyUnset
+			? maxHitPoints.breakdown.flatMap((contribution): Contribution[] => {
+					if (contribution.source === 'per-level hit points') return []
+					const level = unsetLevels.find((candidate) => contribution.source.startsWith(`level ${candidate} (`))
+					return level === undefined ? [contribution] : [{ source: `level ${level}`, amount: 0, note: 'enter a value' }]
+				})
+			: maxHitPoints.status === 'known'
+				? maxHitPoints.breakdown
+				: []
 
 	return (
 		<div className="hit-points-picker">
@@ -145,7 +157,7 @@ export function HitPointsPicker({
 					<span className="hit-points-picker__label">Maximum hit points</span>
 					{maxHitPoints.status === 'unknown' ? <UnresolvedValue reason={maxHitPoints.reason} /> : <span className="hit-points-picker__number" data-testid="hit-points-max">{anyUnset ? '—' : maxHitPoints.value}</span>}
 				</div>
-				{maxHitPoints.status === 'known' && <ValueBreakdown breakdown={maxHitPoints.breakdown} open />}
+				{maxHitPoints.status === 'known' && <ValueBreakdown breakdown={breakdown} open />}
 			</div>
 			{levelUpLevel === undefined && (
 				<button type="button" className="btn--accent-outline hit-points-picker__average-all" onClick={applyAverageToAll}>

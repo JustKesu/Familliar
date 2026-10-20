@@ -40,6 +40,7 @@
  */
 
 import { loadDataFile } from '../dataLoader/dataLoader'
+import { compareText } from '../text/compareText'
 
 const ALLOWED_CLASS_SOURCES = ['XPHB', 'EFA']
 const ALLOWED_SOURCES = ['XPHB', 'XGE', 'TCE', 'EFA', 'XDMG', 'MPMM', 'RHW', 'FRHoF']
@@ -235,7 +236,7 @@ export function subclassesFor(
 				undefined,
 			)
 		return { name: sc.name, source: sc.source, entries: feature?.entries ?? [], featureType: subclassFeatureType(sc) }
-	})
+	}).sort((a, b) => compareText(a.name, b.name))
 }
 
 /** Fetches classes.json and class-features.json and returns subclassLevelFor's result. */
