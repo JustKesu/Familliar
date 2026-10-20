@@ -27,7 +27,7 @@
  */
 
 import type { Ability } from '../abilities/abilityScores'
-import { TOTAL_ATTACKS_BY_FEATURE_NAME, totalAttacksAmong } from '../attacks/extraAttackData'
+import { invocationAttackGrants, TOTAL_ATTACKS_BY_FEATURE_NAME } from '../attacks/extraAttackData'
 import { heldKenseiWeapons } from '../kensei/kensei'
 import { choiceNames, type Character, type WeaponGrip } from '../storage/character'
 import { isProficientWithWeapon, type WeaponProficiencyGrant } from '../weapons/weaponProficiency'
@@ -436,14 +436,18 @@ function unarmedStrike(
  * rather than stacking — a Fighter at 11 holds both "Extra Attack" and "Two
  * Extra Attacks" — so the loser is a zero-amount note saying what it would
  * have given (D60's mechanism, the same way armourClass.ts reconciles its
- * formulas).
+ * formulas). Thirsting/Devouring Blade compete the same way; the number
+ * includes them although they cover the pact weapon only (D363).
  */
-export function computeAttacksPerAction(featureNames: readonly string[]): Calculated<number> {
-	const granting = featureNames
-		.map((name) => ({ name, total: TOTAL_ATTACKS_BY_FEATURE_NAME[name] }))
-		.filter((entry): entry is { name: string; total: number } => entry.total !== undefined)
+export function computeAttacksPerAction(featureNames: readonly string[], invocationNames: readonly string[] = []): Calculated<number> {
+	const granting = [
+		...featureNames
+			.map((name) => ({ name, total: TOTAL_ATTACKS_BY_FEATURE_NAME[name] }))
+			.filter((entry): entry is { name: string; total: number } => entry.total !== undefined),
+		...invocationAttackGrants(invocationNames).map((entry) => ({ ...entry, name: `${entry.name} (pact weapon only)` })),
+	]
 
-	const total = totalAttacksAmong(featureNames)
+	const total = Math.max(1, ...granting.map((entry) => entry.total))
 	const winner = granting.find((entry) => entry.total === total)
 
 	const breakdown: Contribution[] = [{ source: 'the Attack action', amount: 1 }]

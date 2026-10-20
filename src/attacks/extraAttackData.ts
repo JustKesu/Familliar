@@ -34,6 +34,27 @@ export const TOTAL_ATTACKS_BY_FEATURE_NAME: Record<string, number> = {
 	'Three Extra Attacks': 4,
 }
 
+/**
+ * D363: Eldritch Invocations that set the attack count, same hand-table rule
+ * as above. The data holds only the XPHB printings:
+ *
+ *  "Thirsting Blade": "You gain the Extra Attack feature for your pact weapon only."
+ *  "Devouring Blade": "The Extra Attack of your Thirsting Blade invocation confers two extra attacks rather than one."
+ */
+export const TOTAL_ATTACKS_BY_INVOCATION_NAME: Record<string, number> = {
+	'Thirsting Blade': 2,
+	'Devouring Blade': 3,
+}
+
+/** Invocations among `invocationNames` that grant attacks. Devouring Blade only upgrades Thirsting Blade, so alone it grants nothing. */
+export function invocationAttackGrants(invocationNames: readonly string[]): { name: string; total: number }[] {
+	const holdsThirsting = invocationNames.includes('Thirsting Blade')
+	return invocationNames
+		.filter((name) => name !== 'Devouring Blade' || holdsThirsting)
+		.map((name) => ({ name, total: TOTAL_ATTACKS_BY_INVOCATION_NAME[name] }))
+		.filter((entry): entry is { name: string; total: number } => entry.total !== undefined)
+}
+
 /** Total attacks the named feature grants per Attack action, or null when the name isn't one this table records. */
 export function totalAttacksForFeatureName(featureName: string): number | null {
 	return TOTAL_ATTACKS_BY_FEATURE_NAME[featureName] ?? null

@@ -2371,7 +2371,10 @@ function CharacterSheetBody({
 		attack: itemFlatBonuses.weaponAttack,
 		damage: itemFlatBonuses.weaponDamage,
 	}, itemAbilityGrants)
-	const attacksPerAction = computeAttacksPerAction(weaponAttackData?.featureNames ?? [])
+	const attacksPerAction = computeAttacksPerAction(
+		weaponAttackData?.featureNames ?? [],
+		(character.optionalFeatureChoices ?? []).filter((entry) => entry.featureType === 'EI').flatMap((entry) => entry.choices.map((pick) => pick.name)),
+	)
 	/* Step 7 slice d: the limit needs the character's own levels only, so it is not waiting on any fetch. */
 	const attunementLimit = computeAttunementLimit(character)
 	/* Step 7 slice f: every source in one list. Items are gated on attunement inside buildItemGrants; species/feats/features arrive from the effect above. */

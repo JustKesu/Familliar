@@ -510,6 +510,40 @@ describe('computeAttacksPerAction', () => {
 	it('gives two attacks for Extra Attack alone', () => {
 		expect(computeAttacksPerAction(['Extra Attack'])).toMatchObject({ status: 'known', value: 2 })
 	})
+
+	it('gives a Warlock 5 with Thirsting Blade two attacks, noted as pact weapon only (D363)', () => {
+		const result = computeAttacksPerAction(['Pact Magic', 'Eldritch Invocations'], ['Pact of the Blade', 'Thirsting Blade'])
+		expect(result).toMatchObject({ status: 'known', value: 2 })
+		expect(result.status === 'known' && result.breakdown).toEqual([
+			{ source: 'the Attack action', amount: 1 },
+			{ source: 'Thirsting Blade (pact weapon only)', amount: 1 },
+		])
+	})
+
+	it('gives a Warlock 12 with Thirsting and Devouring Blade three attacks; Thirsting Blade is a considered row', () => {
+		const result = computeAttacksPerAction([], ['Pact of the Blade', 'Thirsting Blade', 'Devouring Blade'])
+		expect(result).toMatchObject({ status: 'known', value: 3 })
+		expect(result.status === 'known' && result.breakdown).toEqual([
+			{ source: 'the Attack action', amount: 1 },
+			{ source: 'Devouring Blade (pact weapon only)', amount: 2 },
+			{ source: 'Thirsting Blade (pact weapon only)', amount: 0, note: 'considered (2 attacks) — not applied: Devouring Blade (pact weapon only) gives 3' },
+		])
+	})
+
+	it('does not stack Extra Attack with Thirsting Blade for a Fighter 5 / Warlock 5', () => {
+		const result = computeAttacksPerAction(['Extra Attack'], ['Pact of the Blade', 'Thirsting Blade'])
+		expect(result).toMatchObject({ status: 'known', value: 2 })
+		expect(result.status === 'known' && result.breakdown).toEqual([
+			{ source: 'the Attack action', amount: 1 },
+			{ source: 'Extra Attack', amount: 1 },
+			{ source: 'Thirsting Blade (pact weapon only)', amount: 0, note: 'considered (2 attacks) — not applied: Extra Attack gives 2' },
+		])
+	})
+
+	it('gives a Warlock without the invocation one attack, and ignores Devouring Blade without Thirsting Blade', () => {
+		expect(computeAttacksPerAction([], ['Pact of the Blade', 'Agonizing Blast'])).toMatchObject({ status: 'known', value: 1 })
+		expect(computeAttacksPerAction([], ['Devouring Blade'])).toMatchObject({ status: 'known', value: 1 })
+	})
 })
 
 describe('computeWeaponAttacks — species natural weapons (D358)', () => {

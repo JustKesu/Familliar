@@ -1,39 +1,38 @@
-# REPORT F-38: stabilizace dvou flaky unit testů v CharacterSheet.test.tsx
+# REPORT F-39: Thirsting Blade a Devouring Blade v Attacks per Action (D363)
 
-Setup: HEAD = 8c4ade2 (ff-only bez změny). Změněn jen `src/sheet/CharacterSheet.test.tsx`, žádný jiný soubor v `src/`.
+Setup: HEAD = ccb9931 (ff-only bez změny). V `scripts/` leží cizí neverzovaný `investigate-multi-dice-spells.js` z dřívějška — nedotčen, necommitnut.
 
-## Reprodukce (STEP 1)
-3× plný `npm test` před změnou: 185/185 souborů, 3373/3373 testů pass (110,5 s / 107,5 s / 106,6 s). **Nereprodukováno.** F-29 REPORT zaznamenal jen „2 selhání (toast po timeoutu; Pact of the Chain)“ bez assertion/chybové hlášky, takže přesná chyba není známa.
+## STEP 1 — data (`node -e` souhrn nad `data/optional-features.json`)
 
-## a) „hides itself after the timeout“ (l. 671)
-Příčina — **odvozeno z kódu, nereprodukováno**:
-- `renderKnown()` čeká jen na nadpis `Aria`; roll tlačítko existuje až po vyřešení modifikátoru (viz test „offers no roll where the modifier is unresolved“), tj. až po dalších loadech. `getByRole` se volal až po přepnutí na fake timers.
-- `vi.useFakeTimers()` bez parametrů fakuje i `setImmediate`, `setInterval`, `Date`, `performance` — tedy i to, na čem běží dobíhající loady a React scheduler pro updaty mimo `act`. Pod zátěží loady doběhnou až po přepnutí a jejich práce visí na fake hodinách / vyřeší se uprostřed advance.
-- `RollToast` (`src/dice/RollUi.tsx`) je mimo podmíněné větve sheetu, nepřemontovává se; timer `ROLL_TOAST_MS = 6000` vzniká v `useEffect` po kliku. Tato část je deterministická.
+| name | source | featureType | prerequisite | věta |
+|---|---|---|---|---|
+| Thirsting Blade | XPHB | EI | Warlock 5 + Pact of the Blade | "You gain the Extra Attack feature for your pact weapon only. … attack twice …" |
+| Devouring Blade | XPHB | EI | Warlock 12 + Thirsting Blade | "The Extra Attack of your Thirsting Blade invocation confers two extra attacks rather than one." |
 
-Fix: po `renderKnown()` `await screen.findByRole('button', { name: 'Roll Athletics check' })`, pak `await act(() => new Promise(r => setTimeout(r, 0)))` (doběhnutí čekajících loadů na reálných timerech), teprve pak `vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })` — fakuje se jen to, co používá toast. Kontrola 5900 ms viditelný / 6100 ms pryč beze změny, `useRealTimers()` v `finally` zůstává, 30 s timeout testu zůstává.
+Jen XPHB, starší tisk v datech není. Devouring Blade = 3 útoky potvrzeno. Zapsáno do DATA.md.
 
-## b) „shows "Pact of the Chain" in the Notes of a familiar taken from the invocation“ (nyní l. 7870)
-Příčina — **odvozeno z kódu, nereprodukováno**: `waitFor` na extras řádky s výchozím 1 s timeoutem hned po renderu celého sheetu; řádky čekají na několik loadů po nadpisu, při zátěži plné sady může 1 s nestačit.
-Fix: `waitFor(..., { timeout: 5000 })`, test timeout 30000, jednořádkový komentář. Assertions beze změny.
+## Změny
+- `src/attacks/extraAttackData.ts:42` — `TOTAL_ATTACKS_BY_INVOCATION_NAME` (Thirsting 2, Devouring 3) a `invocationAttackGrants` (:50; Devouring jen s Thirsting).
+- `src/calculation/weaponAttacks.ts:442` — `computeAttacksPerAction(featureNames, invocationNames = [])`; invokace jdou do stejného výběru maxima, zdroj `"<jméno> (pact weapon only)"`, poražení zůstávají jako considered řádky. Import `totalAttacksAmong` odstraněn (funkce zůstává, má vlastní testy).
+- `src/sheet/CharacterSheet.tsx:2374` — předává jména z `optionalFeatureChoices` s featureType `EI`.
+- `src/calculation/weaponAttacks.test.ts:514+` — 4 nové testy (Warlock 5 = 2, Warlock 12 = 3 + considered Thirsting, Fighter 5/Warlock 5 = 2 + considered Thirsting, bez invokace = 1 a Devouring bez Thirsting = 1).
+- `e2e/thirstingBlade.spec.ts` — seed schema 61, Warlock 5 Fiend Patron, 5 invokací vč. Pact of the Blade + Thirsting Blade, 9 kouzel, ASI 4, hitPointLevels, currentHp 38; Actions → „Attacks per Action" = 2, drawer obsahuje „Thirsting Blade (pact weapon only)".
+- Docs: D363 (DECISIONS.md), STATUS.md (odstavec R5a), DATA.md (nová sekce o invokacích).
 
-## Ověření (STEP 3)
-- `npm run typecheck`: pass.
-- `npm test` 3× po sobě: vše 185/185, 3373/3373 pass (102,2 s / 104,8 s / 104,9 s).
-- `npm run e2e`: 600/600 pass, **7,0 min** (nad limitem ~3 min z CLAUDE.md; netýká se této změny).
+## Ověření
+- `npm run typecheck` OK.
+- `npm test`: 185 souborů, 3377 testů, vše prošlo.
+- `npm run validate-data`: 175/175 PASS.
+- `npm run e2e`: 601 passed, trvání 7,2 min (nad 3 min limitem z CLAUDE.md).
 
-## Stejný vzor jinde (neměněno)
-`await waitFor(...)` s výchozím timeoutem hned po `findByRole('heading', ...)` plného renderu sheetu — 30 dalších míst (řádek `waitFor` v aktuálním souboru):
-1495, 1630, 1800, 1957, 2446, 2622, 2928, 3032, 3169, 3541, 4356, 4814, 5784, 5909, 6371, 6523, 6558, 7748, 7773, 7804, 7819, 7985, 8061, 8130, 8213, 8241, 8254, 8469, 8484, 8548.
-(7748/7804/7819/7985 čekají na extras řádky stejně jako test b.) Celkem je v souboru 134 `await waitFor(`; ostatní jsem nekontroloval.
-
-## Rozhodnutí / otázky
-- Rozhodnutí: zúžení `toFake` na `setTimeout`/`clearTimeout` místo navrhovaného `shouldAdvanceTime` — `shouldAdvanceTime` posouvá fake hodiny reálným časem, takže pod zátěží by mezi klikem a advance mohl uplynout reálný čas a rozbít hranici 5900/6100 ms.
-- Otázka pro uživatele: plošně zvýšit výchozí `asyncUtilTimeout` (RTL `configure`) místo lokálních timeoutů? Dotklo by se všech 30 míst výše.
+## Rozhodnutí v kódu
+- Při shodě (Fighter 5 / Warlock 5) vyhrává Extra Attack, protože schopnosti jdou v seznamu před invokacemi; Thirsting Blade je considered řádek.
+- Klíč tabulky je jen jméno (ne name+source), stejně jako u Extra Attack; data mají jediný tisk.
 
 ## Subagent
 Nepoužit.
 
-Pozn.: v pracovním stromu je nesledovaný `scripts/investigate-multi-dice-spells.js` z dřívější session; necommitován, `git clean` nespuštěn (dle zadání).
+## Manual browser check for the user
+None - the planning chat checks the looks from screenshots.
 
-Manual browser check for the user: none - test-only change, no screens changed.
+Změněné obrazovky: záložka Actions (hodnota „Attacks per Action"), drawer „Attacks per Action" (nový řádek „… (pact weapon only)").

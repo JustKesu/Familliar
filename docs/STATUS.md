@@ -1567,7 +1567,12 @@ card text 14px.
 
 R5a (D181): Actions tab restyled. Filter row: pills All / Attack (local
 `useState`, never stored) and "Attacks per Action: N" (label opens the breakdown
-drawer); the `Actions` heading is gone. Attack table is a CSS grid over table
+drawer); the `Actions` heading is gone. F-39 (D363): the count also takes the
+held Eldritch Invocations Thirsting Blade (2) and Devouring Blade (3, only with
+Thirsting Blade) via `TOTAL_ATTACKS_BY_INVOCATION_NAME`
+(`src/attacks/extraAttackData.ts`); highest of features and invocations wins,
+the rest are zero-amount "considered" rows; invocation rows read
+"<name> (pact weapon only)". Attack table is a CSS grid over table
 markup (rows are subgrids): ATTACK (name button → drawer with to-hit/damage or
 spell attack/DC breakdowns, subtitle Melee/Ranged Weapon · Unarmed · spell level
 + Concentration/Ritual, Finesse select), RANGE, HIT / DC (to-hit is the

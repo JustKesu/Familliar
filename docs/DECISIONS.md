@@ -5321,3 +5321,11 @@ jako „Elf (Drow Lineage)" a „Genasi (Air)" — v hlavičce listu, na kartě 
 Review. Uložené jméno se nemění (jen zobrazení, stejně jako `featDisplayName` u featů); nikdy se
 nepoužívá k párování. Green-Flame Blade pod 5. úrovní skrývá řádek „0 … damage", řádek
 pro sekundární cíl zůstává. Task F-34, rozhodl Daniel.
+
+## D363 — Thirsting Blade a Devouring Blade se počítají do Attacks per Action (F-39)
+
+Držené invokace Thirsting Blade (2 útoky) a Devouring Blade (3 útoky, jen spolu s Thirsting Blade)
+vstupují do „Attacks per Action" stejně jako Extra Attack: nesčítají se, platí nejvyšší, ostatní
+zůstávají jako řádky „considered" s nulou. Aplikace neví, která zbraň je pact weapon, proto číslo
+invokaci ZAHRNUJE a řádek rozpisu to říká: „Thirsting Blade (pact weapon only)". Ruční tabulka
+podle přesného jména (D70), data mají jen XPHB verze. Task F-39, rozhodl Daniel.

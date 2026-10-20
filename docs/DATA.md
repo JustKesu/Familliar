@@ -1312,6 +1312,16 @@ in the granting feature's own text (R6, D184):
 Sorcery Incarnate (Sorcerer 7) also carries the MM filter; the lowest-level
 match is the granter. Found by an investigation script in R6 (not kept).
 
+### Invocations that set the attack count (F-39, D363)
+
+`optional-features.json` holds one printing each, both XPHB, featureType EI.
+The attack count is in prose only, no numeric field:
+
+| name | prerequisite | sentence |
+|---|---|---|
+| Thirsting Blade | Warlock 5, Pact of the Blade | "You gain the Extra Attack feature for your pact weapon only." |
+| Devouring Blade | Warlock 12, Thirsting Blade | "The Extra Attack of your Thirsting Blade invocation confers two extra attacks rather than one." |
+
 ### Armor / weapon / tool / language proficiency sources
 
 - Classes: `startingProficiencies.armor` tokens are `light`, `medium`, `heavy`,
