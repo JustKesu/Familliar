@@ -14,7 +14,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 	{ id: 'wildShape', label: 'Wild Shape' },
 ]
 
-/** R11a (D212): the Extras tab — the familiar and the Wild Shape forms as one table. Read-only; every edit is in Manage Extras. The filter is tab state only (D116). */
+/** R11a (D212): the Extras tab — the familiar and the Wild Shape forms as one table. Read-only except Transform (D364); every other edit is in Manage Extras. The filter is tab state only (D116). */
 export function ExtrasTab({
 	familiar,
 	familiarForms,
@@ -28,6 +28,7 @@ export function ExtrasTab({
 	familiarBonuses,
 	onManageExtras,
 	onOpenFamiliarHitPoints,
+	wildShapeTransform,
 }: {
 	familiar: CharacterFamiliar | null
 	familiarForms: FamiliarFormOption[]
@@ -44,6 +45,8 @@ export function ExtrasTab({
 	onManageExtras?: () => void
 	/** D213: opens the familiar's Hit Points drawer. Absent shows the numbers without the button. */
 	onOpenFamiliarHitPoints?: () => void
+	/** D364: Transform on each Wild Shape row. Absent (no XPHB Wild Shape) shows no button. */
+	wildShapeTransform?: { canSpend: boolean; onTransform: () => void }
 }): ReactNode {
 	const [filter, setFilter] = useState<Filter>('all')
 	const rows = extraRows({ familiar, familiarForms, wildShapeForms, beasts, pending: beastsLoading || beastsError !== null, familiarBonuses })
@@ -111,7 +114,20 @@ export function ExtrasTab({
 									<span className="extras-tab__cell">{row.beast ? row.beast.ac.join('/') : '—'}</span>
 									<span className={row.kind === 'wildShape' ? 'extras-tab__cell extras-tab__cell--mute' : 'extras-tab__cell'}>
 										{row.kind === 'wildShape' ? (
-												'Uses your HP'
+												<>
+														Uses your HP
+														{wildShapeTransform && (
+															<button
+																type="button"
+																className="btn--accent-outline sheet__spell-cast"
+																aria-label={`Transform into ${row.name}`}
+																disabled={!wildShapeTransform.canSpend}
+																onClick={wildShapeTransform.onTransform}
+															>
+																Transform
+															</button>
+														)}
+													</>
 											) : row.hitPoints ? (
 												<>
 													{onOpenFamiliarHitPoints ? (

@@ -30,7 +30,7 @@ import { featureSpeedAdjustments } from '../calculation/featureSpeed'
 import { missingFeatSubChoices } from './featSubChoices'
 import { computeHitDicePool, hitDiceKey, type ClassHitDie, type HitDiceEntry } from '../calculation/hitDice'
 import { deathSavesAfterHitPointChange, describeDeathSaveRoll, type DeathSaveRollResult } from '../hitPoints/deathSaves'
-import { applyHealing } from '../hitPoints/damageHealing'
+import { applyHealing, grantTemporaryHitPoints } from '../hitPoints/damageHealing'
 import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeInitiative } from '../calculation/initiative'
 import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
@@ -48,7 +48,8 @@ import { itemSpellAbilityOf, itemSpellActionRows, itemSpells as buildItemSpells 
 import { characterSpellSlotMaxima, computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
 import { loadSpellCountClassData } from '../spells/spellCountClassData'
-import { wildShapeLimitsFor } from '../beasts/wildShapeData'
+import { WILD_SHAPE_CLASS_NAME, wildShapeLimitsFor } from '../beasts/wildShapeData'
+import { wildShapeTemporaryHitPoints } from '../beasts/wildShapeTransform'
 import { computeDarkvision, computeSize, computeSpeed, type GrantedDarkvision, type SpeciesTraitsData } from '../calculation/speciesTraits'
 import { type Calculated } from '../calculation/types'
 import { computeAttacksPerAction, computeWeaponAttacks, damageText, type WeaponAttack } from '../calculation/weaponAttacks'
@@ -2578,6 +2579,20 @@ function CharacterSheetBody({
 		}
 		spendHitDie(hitDiceKey(entry.className, entry.classSource), entry.count)
 	}
+	// D364: the same use the Wild Shape boxes spend, plus the form's temporary hit points; two writes for the reason given at spendHitDie.
+	const wildShapeTempHp = wildShapeTemporaryHitPoints(character.classes, grantedFeatures)
+	const wildShapeKey = resourceKey('Wild Shape', WILD_SHAPE_CLASS_NAME)
+	const wildShapeTransform =
+		wildShapeTempHp !== null && onEditResourceUses && onEditHitPoints
+			? {
+					canSpend: canSpendResource(resourceMaxima.get(wildShapeKey), resourceUses[wildShapeKey] ?? 0, 1),
+					onTransform: () => {
+						spendResource(wildShapeKey, 1)
+						const granted = grantTemporaryHitPoints({ currentHp: currentHp ?? 0, temporaryHitPoints: character.play?.temporaryHitPoints ?? 0 }, wildShapeTempHp)
+						onEditHitPoints({ currentHp, maxHpOverride: character.maxHpOverride, temporaryHitPoints: granted.temporaryHitPoints, deathSaves: character.play?.deathSaves })
+					},
+				}
+			: undefined
 	/* Slice 9d1: absent and null are both "none" (Character.play.concentratingOn). Clicking the active spell again drops it; any other replaces it without asking. */
 	const storedConcentration: ConcentrationRef | null = character.play?.concentratingOn ?? null
 	/*
@@ -3275,6 +3290,7 @@ function CharacterSheetBody({
 				familiarBonuses={familiarBonuses}
 				onManageExtras={canManageExtras ? () => setDrawer({ kind: 'manageExtras' }) : undefined}
 				onOpenFamiliarHitPoints={() => setDrawer({ kind: 'familiarHitPoints' })}
+				wildShapeTransform={wildShapeTransform}
 			/>
 			</div>
 

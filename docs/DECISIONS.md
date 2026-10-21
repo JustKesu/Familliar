@@ -5329,3 +5329,14 @@ vstupují do „Attacks per Action" stejně jako Extra Attack: nesčítají se, 
 zůstávají jako řádky „considered" s nulou. Aplikace neví, která zbraň je pact weapon, proto číslo
 invokaci ZAHRNUJE a řádek rozpisu to říká: „Thirsting Blade (pact weapon only)". Ruční tabulka
 podle přesného jména (D70), data mají jen XPHB verze. Task F-39, rozhodl Daniel.
+
+## D364 — Tlačítko Transform u forem Wild Shape dává dočasné HP (F-40)
+
+Každý řádek formy Wild Shape na záložce Extras (ne řádek familiara) má tlačítko „Transform"
+(přístupné jméno „Transform into <forma>"). Jedno kliknutí utratí jedno použití Wild Shape stejnou
+cestou jako zaškrtnutí políčka (`spendResource`) a dá dočasné HP přes `grantTemporaryHitPoints`
+do `play.temporaryHitPoints` (platí vyšší hodnota, nesčítají se). Množství: úroveň Druida (Wild
+Shape, XPHB); s Circle Forms (Circle of the Moon, XPHB) trojnásobek. U multiclassu jen úrovně
+Druida. Bez volného použití je tlačítko vypnuté. Jen pro postavu, která drží XPHB Wild Shape —
+Druid PHB 2014 tlačítko nemá (jeho pravidla dočasné HP nedávají). Výjimka z D212: Extras zůstává
+jen pro čtení kromě tohoto tlačítka. Task F-40, rozhodl Daniel.

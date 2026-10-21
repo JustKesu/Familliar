@@ -2323,6 +2323,12 @@ max" button (+ "+N temp"), max = stat block average (`familiarHitPoints` in
 "disappears" text at 0 HP). Manage Extras is also offered when a familiar or
 Wild Shape form is stored but its category is no longer available (Current Extras
 only). E2E `manageExtras.spec.ts` R11b a–g.
+F-40 (D364): each Wild Shape row's HP cell has a TRANSFORM button ("Transform
+into <form>", only with the XPHB Wild Shape feature): spends one Wild Shape use
+via `spendResource` and grants temp HP (`wildShapeTemporaryHitPoints` in
+`src/beasts/wildShapeTransform.ts`: Druid level, ×3 with XPHB Circle Forms) via
+`grantTemporaryHitPoints` into `play.temporaryHitPoints`; disabled at no uses
+left. E2E `wildShapeTransform.spec.ts` a–d.
 
 R12 (D214) done — Conditions only (Heroic Inspiration D167 and Defenses R4c were
 already in). New `data/conditions.json` (15 XPHB, `extractConditions`, checked in
