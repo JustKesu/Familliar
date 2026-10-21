@@ -5340,3 +5340,11 @@ Shape, XPHB); s Circle Forms (Circle of the Moon, XPHB) trojnásobek. U multicla
 Druida. Bez volného použití je tlačítko vypnuté. Jen pro postavu, která drží XPHB Wild Shape —
 Druid PHB 2014 tlačítko nemá (jeho pravidla dočasné HP nedávají). Výjimka z D212: Extras zůstává
 jen pro čtení kromě tohoto tlačítka. Task F-40, rozhodl Daniel.
+
+## D365 — Homebrew The Griffon's Saddlebag, Book 2 (TGS2-1)
+
+Z homebrew souboru homebrew/griffons-saddlebag-2.json se berou jen podtřídy Path of the Infernal,
+College of the Mercantile, Steel Hawk, Way of the Aether, Oath of the Spelldrinker, Rocborne, Grim
+Surgeon a druhy Etherean a Geleton. Podtřídy dostávají classSource XPHB, ASI druhů se zahazuje,
+Geleton má velikost S nebo M, tagy kouzel, stavů a předmětů bez zdroje nebo s PHB míří na XPHB.
+Předměty, monstra a tabulky z knihy se neberou. Rozhodl Daniel.

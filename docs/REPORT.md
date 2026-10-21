@@ -1,38 +1,36 @@
-# REPORT — F-40: Wild Shape Transform s dočasnými HP (D364)
+# REPORT — TGS2-1: extrakce Griffon's Saddlebag 2 (D365)
 
-HEAD před úlohou: 7e8a370 (podmínka splněna).
+HEAD po `git merge --ff-only origin/main`: e49066d (podmínka splněna). homebrew/griffons-saddlebag-2.json existuje, D365 dřív neexistovalo.
 
-## STEP 1 — místa změn
-| Soubor:řádek | Změna |
+## Co se změnilo
+- scripts/extract-data.js: `GriffonsSaddlebag2` v ALLOWED_SOURCES; `HOMEBREW_FILES`, `HOMEBREW_KEEP` a `loadHomebrew()` (whitelist, classSource podtřídy PHB→XPHB, `ability` pryč, Geleton size V→["S","M"], tagy spell/condition/item PHB|bez zdroje→XPHB, `additionalSpells` "x|PHB"→XPHB). Homebrew se přidá do `raw` v extractClasses a do rawSpecies v extractSpecies; filtr druhů má klauzuli pro source GriffonsSaddlebag2 (rasy nemají `edition`). Chybějící jméno z whitelistu = throw.
+- scripts/validate-data.js, src/subclass/subclassData.ts: allowlist + GriffonsSaddlebag2. EXPECTED_COUNTS: species +2, classes +7, subclass-features 734→780 (komentáře D365).
+- data/: classes.json +7 podtříd, subclass-features.json +46 záznamů, species.json +2. Jiné soubory v data/ beze změny (diff jen přidání).
+- CLAUDE.md pravidlo 1: + `homebrew/`. DATA.md nová sekce „Homebrew: The Griffon's Saddlebag, Book 2“, STATUS.md, DECISIONS.md D365 (text podle zadání).
+- scripts/investigate-tgs2.js: cesta na homebrew/, nový režim `names`.
+
+## Počty
+| kategorie | přidáno |
 |---|---|
-| src/sheet/CharacterSheet.tsx:2502 `spendResource` | dnešní cesta utrácení (UseBoxes :572 → `onSpendResource` :3270); znovu použita, beze změny |
-| src/sheet/CharacterSheet.tsx:33, 51–52 | importy |
-| src/sheet/CharacterSheet.tsx:2582–2596 | `wildShapeTransform` (spendResource + grantTemporaryHitPoints → onEditHitPoints) |
-| src/sheet/CharacterSheet.tsx:3293 | prop do ExtrasTab |
-| src/sheet/ExtrasTab.tsx:17, 31, 48–49, 117–129 | doc, prop, tlačítko v HP buňce řádku Wild Shape |
-| src/beasts/wildShapeTransform.ts (nový) + .test.ts | výpočet temp HP |
-| e2e/wildShapeTransform.spec.ts (nový) | scénáře a–d |
-| docs/DECISIONS.md, STATUS.md, REPORT.md | D364, Extras, report |
+| podtřídy | 7 |
+| prvky podtříd | 46 (0 dangling) |
+| druhy | 2 |
+| tagy → XPHB | 38 (0 bez XPHB cíle) |
+| additionalSpells → XPHB | 15/15 |
 
-## Změny
-- `wildShapeTemporaryHitPoints(classes, grantedFeatures)`: null bez feature id `cf|wild shape|druid|xphb|2|xphb`; jinak součet úrovní Druida, ×3 když drží subclass feature `scf|circle forms|druid|xphb|*|xphb|…` (PHB 2014 Circle Forms se nepočítá).
-- Transform: `spendResource(resourceKey('Wild Shape','Druid'), 1)` + `onEditHitPoints` s `grantTemporaryHitPoints`; currentHp, maxHpOverride a deathSaves beze změny. Dva zápisy, oba čtou čerstvé úložiště (stejně jako hit dice). `canSpend` = `canSpendResource(max, spent, 1)`.
-- Tlačítko jen když existuje XPHB Wild Shape a oba zápisové callbacky; třída `btn--accent-outline sheet__spell-cast` (žádné CSS změny).
+Join: všech 7 podtříd se spojilo, žádná kolize jmen (validace: no duplicate, 750 referencí resolve). Syrový markup: žádný nový nález; `{@action grapple}` a `{@action Use an Object}` zůstaly dle zadání (nemají XPHB cíl).
 
 ## Ověření
-- typecheck OK; `npm test` 186 souborů / 3383 testů OK (nové: 6 v wildShapeTransform.test.ts — úroveň, Moon ×3, Druid 2/Fighter 5 = 2, PHB 2014 null, PHB Circle Forms ignorován, vyšší temp zůstává); validate-data 175/175 OK.
-- `npm run e2e` 605/605 OK za 7,9 min (nad 3 min). Nové F-40 a (Druid 4: temp 4, `resourceUses {Wild Shape:1}`, 1 z 2 boxů), b (Moon 3: temp 9), c (2/2 utraceno: disabled), d (temp 10 zůstává, použití utraceno).
+- validate-data 177/177 PASS; typecheck OK; test 186 souborů / 3383 testů PASS; e2e 608 PASS (2.0 min).
+- e2e/tgs2Extraction.spec.ts: a) krok Species má Etherean|GriffonsSaddlebag2 a Geleton|GriffonsSaddlebag2; b) seed Barbarian 3 Path of the Infernal (schema 61) — Features & Traits ukazují Hellborn a Hellfire Claw, ne Infernal Warrior; c) level up Fighter 2→3 nabízí Steel Hawk.
 
-## Decisions taken
-- Umístění tlačítka: v buňce Hit points vedle „Uses your HP" (vizuální, neviditelné v datech).
-- Moon se pozná podle held feature Circle Forms (XPHB), ne podle jména subclassu.
-- Nevyřešeno/otevřené: Transform nemění řádek ani neukládá aktuální formu; nic dalšího (návrat z formy apod.) se neimplementovalo.
+## Rozhodnutí / nálezy
+- Jméno v souboru je „College of Mercantile“, ne „College of the Mercantile“ jako v D365 → whitelist používá jméno ze souboru (zadání: „exact names as found in the file“). Text D365 nechán podle zadání; případnou opravu textu rozhodne uživatel.
+- XPHB cíle tagů se hledají ve zdrojových 5etools souborech (spells-xphb, conditionsdiseases, items + items-base), ne v data/ — extrakce položek a stavů běží až po třídách; XPHB záznamy jsou v data/ všechny.
+- Odchylka od nebezpečí z průzkumu: e2e reviewFixesM10 (počítá řádky „Channel Divinity“) prošel.
 
-## Ostatní
-- Subagent nepoužit.
-- `scripts/investigate-multi-dice-spells.js` byl nesledovaný už před úlohou; nechán být, necommitnut (git clean zakázán zadáním).
+## Subagent
+Nepoužit.
 
-## Manual browser check for the user
-none - the planning chat checks the looks from screenshots.
-
-Změněné obrazovky: záložka Extras — řádky Wild Shape (tlačítko Transform v buňce Hit points); karta Hit Points (Temp) po kliknutí.
+Manual browser check for the user: none - the planning chat checks the looks from screenshots.
+Změněné obrazovky: wizard krok Species (2 nové druhy), výběr podtřídy ve wizardu a level-upu (Barbarian, Bard, Fighter, Monk, Paladin, Ranger, Rogue), záložka Features & Traits u těchto podtříd.

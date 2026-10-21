@@ -12406,5 +12406,309 @@
 			"scf|song of defense|wizard|xphb|bladesinger|frhof|10|frhof",
 			"scf|song of victory|wizard|xphb|bladesinger|frhof|14|frhof"
 		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "College of Mercantile",
+		"shortName": "Mercantile",
+		"source": "GriffonsSaddlebag2",
+		"className": "Bard",
+		"classSource": "XPHB",
+		"page": 210,
+		"subclassFeatures": [
+			"College of Mercantile|Bard|PHB|Mercantile|GriffonsSaddlebag2|3",
+			"Money Talks|Bard|PHB|Mercantile|GriffonsSaddlebag2|6",
+			"Shrewd Consumer|Bard|PHB|Mercantile|GriffonsSaddlebag2|14"
+		],
+		"fluff": {
+			"images": [
+				{
+					"type": "image",
+					"href": {
+						"type": "external",
+						"url": "https://raw.githubusercontent.com/TheGiddyLimit/homebrew-img/main/img/GriffonsSaddlebag2/Subclasses/College-of-Mercantile.webp"
+					},
+					"width": 1239,
+					"height": 1632
+				}
+			]
+		},
+		"subclassFeatureIds": [
+			"scf|college of mercantile|bard|phb|mercantile|griffonssaddlebag2|3|griffonssaddlebag2",
+			"scf|money talks|bard|phb|mercantile|griffonssaddlebag2|6|griffonssaddlebag2",
+			"scf|shrewd consumer|bard|phb|mercantile|griffonssaddlebag2|14|griffonssaddlebag2"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Grim Surgeon",
+		"shortName": "Grim Surgeon",
+		"source": "GriffonsSaddlebag2",
+		"className": "Rogue",
+		"classSource": "XPHB",
+		"page": 224,
+		"subclassFeatures": [
+			"Grim Surgeon|Rogue|PHB|Grim Surgeon|GriffonsSaddlebag2|3",
+			"Field Surgeon|Rogue|PHB|Grim Surgeon|GriffonsSaddlebag2|9",
+			"Toxic Shock|Rogue|PHB|Grim Surgeon|GriffonsSaddlebag2|13",
+			"Bloodbound|Rogue|PHB|Grim Surgeon|GriffonsSaddlebag2|17"
+		],
+		"fluff": {
+			"images": [
+				{
+					"type": "image",
+					"href": {
+						"type": "external",
+						"url": "https://raw.githubusercontent.com/TheGiddyLimit/homebrew-img/main/img/GriffonsSaddlebag2/Subclasses/Grim-Surgeon.webp"
+					},
+					"width": 1150,
+					"height": 1761
+				}
+			]
+		},
+		"subclassFeatureIds": [
+			"scf|grim surgeon|rogue|phb|grim surgeon|griffonssaddlebag2|3|griffonssaddlebag2",
+			"scf|field surgeon|rogue|phb|grim surgeon|griffonssaddlebag2|9|griffonssaddlebag2",
+			"scf|toxic shock|rogue|phb|grim surgeon|griffonssaddlebag2|13|griffonssaddlebag2",
+			"scf|bloodbound|rogue|phb|grim surgeon|griffonssaddlebag2|17|griffonssaddlebag2"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Oath of the Spelldrinker",
+		"shortName": "Spelldrinker",
+		"source": "GriffonsSaddlebag2",
+		"className": "Paladin",
+		"classSource": "XPHB",
+		"page": 220,
+		"additionalSpells": [
+			{
+				"prepared": {
+					"3": [
+						"bane|XPHB",
+						"detect magic|XPHB"
+					],
+					"5": [
+						"Nystul's Magic Aura|XPHB",
+						"hold person|XPHB"
+					],
+					"9": [
+						"dispel magic|XPHB",
+						"slow|XPHB"
+					],
+					"13": [
+						"dimension door|XPHB",
+						"Otiluke's Resilient Sphere|XPHB"
+					],
+					"17": [
+						"dominate person|XPHB",
+						"scrying|XPHB"
+					]
+				}
+			}
+		],
+		"subclassSpells": [
+			"Bane",
+			"Detect Magic",
+			"Dimension Door",
+			"Dispel Magic",
+			"Dominate Person",
+			"Hold Person",
+			"Nystul's Magic Aura",
+			"Otiluke's Resilient Sphere",
+			"Scrying",
+			"Slow"
+		],
+		"subclassFeatures": [
+			"Oath of the Spelldrinker|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|3",
+			"Aura of Disruption|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|7",
+			"Armored Focus|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|15",
+			"Arcane Conduit|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|20"
+		],
+		"fluff": {
+			"images": [
+				{
+					"type": "image",
+					"href": {
+						"type": "external",
+						"url": "https://raw.githubusercontent.com/TheGiddyLimit/homebrew-img/main/img/GriffonsSaddlebag2/Subclasses/Oath-of-the-Spelldrinker.webp"
+					},
+					"width": 1084,
+					"height": 1756
+				}
+			]
+		},
+		"subclassFeatureIds": [
+			"scf|oath of the spelldrinker|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2",
+			"scf|aura of disruption|paladin|phb|spelldrinker|griffonssaddlebag2|7|griffonssaddlebag2",
+			"scf|armored focus|paladin|phb|spelldrinker|griffonssaddlebag2|15|griffonssaddlebag2",
+			"scf|arcane conduit|paladin|phb|spelldrinker|griffonssaddlebag2|20|griffonssaddlebag2"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Path of the Infernal",
+		"shortName": "Infernal",
+		"source": "GriffonsSaddlebag2",
+		"className": "Barbarian",
+		"classSource": "XPHB",
+		"page": 209,
+		"subclassFeatures": [
+			"Path of the Infernal|Barbarian|PHB|Infernal|GriffonsSaddlebag2|3",
+			"Infernal Warrior|Barbarian|PHB|Infernal|GriffonsSaddlebag2|6",
+			"Planar Conspirator|Barbarian|PHB|Infernal|GriffonsSaddlebag2|10",
+			"Incinerating Wrath|Barbarian|PHB|Infernal|GriffonsSaddlebag2|14"
+		],
+		"fluff": {
+			"images": [
+				{
+					"type": "image",
+					"href": {
+						"type": "external",
+						"url": "https://raw.githubusercontent.com/TheGiddyLimit/homebrew-img/main/img/GriffonsSaddlebag2/Subclasses/Path-of-the-Infernal.webp"
+					},
+					"width": 1110,
+					"height": 1618
+				}
+			]
+		},
+		"subclassFeatureIds": [
+			"scf|path of the infernal|barbarian|phb|infernal|griffonssaddlebag2|3|griffonssaddlebag2",
+			"scf|infernal warrior|barbarian|phb|infernal|griffonssaddlebag2|6|griffonssaddlebag2",
+			"scf|planar conspirator|barbarian|phb|infernal|griffonssaddlebag2|10|griffonssaddlebag2",
+			"scf|incinerating wrath|barbarian|phb|infernal|griffonssaddlebag2|14|griffonssaddlebag2"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Rocborne",
+		"shortName": "Rocborne",
+		"source": "GriffonsSaddlebag2",
+		"className": "Ranger",
+		"classSource": "XPHB",
+		"page": 222,
+		"additionalSpells": [
+			{
+				"known": {
+					"3": [
+						"feather fall|XPHB"
+					],
+					"5": [
+						"gust of wind|XPHB"
+					],
+					"9": [
+						"lightning bolt|XPHB"
+					],
+					"13": [
+						"ice storm|XPHB"
+					],
+					"17": [
+						"legend lore|XPHB"
+					]
+				}
+			}
+		],
+		"subclassSpells": [
+			"Feather Fall",
+			"Gust of Wind",
+			"Ice Storm",
+			"Legend Lore",
+			"Lightning Bolt"
+		],
+		"subclassFeatures": [
+			"Rocborne|Ranger|PHB|Rocborne|GriffonsSaddlebag2|3",
+			"Windswept|Ranger|PHB|Rocborne|GriffonsSaddlebag2|7",
+			"Soar|Ranger|PHB|Rocborne|GriffonsSaddlebag2|11",
+			"Hurricane|Ranger|PHB|Rocborne|GriffonsSaddlebag2|15"
+		],
+		"fluff": {
+			"images": [
+				{
+					"type": "image",
+					"href": {
+						"type": "external",
+						"url": "https://raw.githubusercontent.com/TheGiddyLimit/homebrew-img/main/img/GriffonsSaddlebag2/Subclasses/Rocborne.webp"
+					},
+					"width": 1278,
+					"height": 1342
+				}
+			]
+		},
+		"subclassFeatureIds": [
+			"scf|rocborne|ranger|phb|rocborne|griffonssaddlebag2|3|griffonssaddlebag2",
+			"scf|windswept|ranger|phb|rocborne|griffonssaddlebag2|7|griffonssaddlebag2",
+			"scf|soar|ranger|phb|rocborne|griffonssaddlebag2|11|griffonssaddlebag2",
+			"scf|hurricane|ranger|phb|rocborne|griffonssaddlebag2|15|griffonssaddlebag2"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Steel Hawk",
+		"shortName": "Steel Hawk",
+		"source": "GriffonsSaddlebag2",
+		"className": "Fighter",
+		"classSource": "XPHB",
+		"page": 216,
+		"subclassFeatures": [
+			"Steel Hawk|Fighter|PHB|Steel Hawk|GriffonsSaddlebag2|3",
+			"Steel Grace|Fighter|PHB|Steel Hawk|GriffonsSaddlebag2|7",
+			"Eagle Eye|Fighter|PHB|Steel Hawk|GriffonsSaddlebag2|10",
+			"Predatory Instinct|Fighter|PHB|Steel Hawk|GriffonsSaddlebag2|15",
+			"Improved Launch|Fighter|PHB|Steel Hawk|GriffonsSaddlebag2|18"
+		],
+		"fluff": {
+			"images": [
+				{
+					"type": "image",
+					"href": {
+						"type": "external",
+						"url": "https://raw.githubusercontent.com/TheGiddyLimit/homebrew-img/main/img/GriffonsSaddlebag2/Subclasses/Steelhawk.webp"
+					},
+					"width": 1033,
+					"height": 1674
+				}
+			]
+		},
+		"subclassFeatureIds": [
+			"scf|steel hawk|fighter|phb|steel hawk|griffonssaddlebag2|3|griffonssaddlebag2",
+			"scf|steel grace|fighter|phb|steel hawk|griffonssaddlebag2|7|griffonssaddlebag2",
+			"scf|eagle eye|fighter|phb|steel hawk|griffonssaddlebag2|10|griffonssaddlebag2",
+			"scf|predatory instinct|fighter|phb|steel hawk|griffonssaddlebag2|15|griffonssaddlebag2",
+			"scf|improved launch|fighter|phb|steel hawk|griffonssaddlebag2|18|griffonssaddlebag2"
+		]
+	},
+	{
+		"entryType": "subclass",
+		"name": "Way of the Aether",
+		"shortName": "Aether",
+		"source": "GriffonsSaddlebag2",
+		"className": "Monk",
+		"classSource": "XPHB",
+		"page": 218,
+		"subclassFeatures": [
+			"Way of the Aether|Monk|PHB|Aether|GriffonsSaddlebag2|3",
+			"Spectral Guide|Monk|PHB|Aether|GriffonsSaddlebag2|6",
+			"Ghost Walker|Monk|PHB|Aether|GriffonsSaddlebag2|11",
+			"Sight Beyond Sight|Monk|PHB|Aether|GriffonsSaddlebag2|17"
+		],
+		"fluff": {
+			"images": [
+				{
+					"type": "image",
+					"href": {
+						"type": "external",
+						"url": "https://raw.githubusercontent.com/TheGiddyLimit/homebrew-img/main/img/GriffonsSaddlebag2/Subclasses/Way-of-the-Aether.webp"
+					},
+					"width": 1067,
+					"height": 1523
+				}
+			]
+		},
+		"subclassFeatureIds": [
+			"scf|way of the aether|monk|phb|aether|griffonssaddlebag2|3|griffonssaddlebag2",
+			"scf|spectral guide|monk|phb|aether|griffonssaddlebag2|6|griffonssaddlebag2",
+			"scf|ghost walker|monk|phb|aether|griffonssaddlebag2|11|griffonssaddlebag2",
+			"scf|sight beyond sight|monk|phb|aether|griffonssaddlebag2|17|griffonssaddlebag2"
+		]
 	}
 ]

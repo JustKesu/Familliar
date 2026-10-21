@@ -39,7 +39,7 @@ const { isAdditiveAbility } = require("./extract-data.js");
 const OUTPUT_DIR = path.join(__dirname, "..", "data");
 
 // Must match ALLOWED_SOURCES in extract-data.js.
-const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM", "RHW", "SCC", "FRHoF"];
+const ALLOWED_SOURCES = ["XPHB", "XGE", "TCE", "EFA", "XDMG", "MPMM", "RHW", "SCC", "FRHoF", "GriffonsSaddlebag2"];
 
 // D199/D200: Mascot must stay in HIDDEN_FEAT_KEYS (src/featAsi/featAsiData.ts, exact name); Initiate is offered and named in NAMED_BLOCK_FEAT_KEYS.
 const SCC_HIDDEN_FEATS = ["Strixhaven Initiate", "Strixhaven Mascot"];
@@ -113,6 +113,7 @@ const EXPECTED_COUNTS = {
 		EFA: 9,
 		RHW: 3,
 		SCC: 0, // Owlin|SCC has no `edition`, dropped by the same filter as Dhampir (D199)
+		GriffonsSaddlebag2: 2, // homebrew Etherean + Geleton (D365)
 	},
 	backgrounds: {
 		XPHB: 16,
@@ -132,6 +133,7 @@ const EXPECTED_COUNTS = {
 		EFA: 6, // 1 class (Artificer) + 5 subclasses
 		RHW: 7,
 		FRHoF: 8, // subclasses only; Bladesinging|TCE (17 -> 16) drops as reprinted (D201)
+		GriffonsSaddlebag2: 7, // homebrew subclasses only (D365)
 	},
 	// TCE dropped from 47 to 38: nine TCE optional features were superseded
 	// by their XPHB reprint (removeSuperseded).
@@ -326,7 +328,7 @@ const VALID_LANGUAGE_TYPES = ["standard", "rare"];
 // 786 -> 685 (D194): +44 RHW, -145 of the 19 superseded subclasses.
 const EXPECTED_FEATURE_TOTALS = {
 	"class-features": 302,
-	"subclass-features": 734, // D201: +56 FRHoF, -7 Bladesinging|TCE
+	"subclass-features": 780, // D201: +56 FRHoF, -7 Bladesinging|TCE; D365: +46 GriffonsSaddlebag2
 };
 
 // Fields every class / subclass must carry for character building to work.

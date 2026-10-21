@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.join(__dirname, "..");
-const HB = JSON.parse(fs.readFileSync(path.join(ROOT, "data-source", "homebrew", "griffons-saddlebag-2.json"), "utf8"));
+const HB = JSON.parse(fs.readFileSync(path.join(ROOT, "homebrew", "griffons-saddlebag-2.json"), "utf8"));
 const DATA = path.join(ROOT, "data");
 const load = (name) => JSON.parse(fs.readFileSync(path.join(DATA, name), "utf8"));
 const mode = process.argv[2] || "overview";
@@ -26,6 +26,19 @@ function walkStrings(node, cb) {
 	if (typeof node === "string") cb(node);
 	else if (Array.isArray(node)) node.forEach((n) => walkStrings(n, cb));
 	else if (node && typeof node === "object") Object.values(node).forEach((n) => walkStrings(n, cb));
+}
+
+if (mode === "names") {
+	for (const s of pickedSubclasses()) console.log(`SUB "${s.name}" short="${s.shortName}" class=${s.className}|${s.classSource} src=${s.source} features=${(s.subclassFeatures || []).length}`);
+	console.log("features picked:", pickedFeatures().length, "levels:", pickedFeatures().map((f) => `${f.subclassShortName}:${f.level}`).slice(0, 3).join(","));
+	for (const r of pickedRaces()) console.log(`RACE "${r.name}" raceName=${r.raceName ?? "-"} src=${r.source} size=${JSON.stringify(r.size)} ability=${r.ability ? "yes" : "no"}`);
+	console.log("subrace list:", (HB.subrace || []).length, " race list:", (HB.race || []).length);
+	const sub = pickedSubclasses().find((s) => s.shortName === "Infernal");
+	console.log("Infernal refs:", (sub.subclassFeatures || []).map((r) => (typeof r === "string" ? r : r.subclassFeature)).join(" ; "));
+	console.log("Infernal L3 records:", pickedFeatures().filter((f) => f.subclassShortName === "Infernal" && f.level === 3).map((f) => f.name).join(" ; "));
+	const addl = [];
+	for (const s of pickedSubclasses()) walkStrings(s.additionalSpells || [], (x) => addl.push(x));
+	console.log("additionalSpells strings:", addl.length, "examples:", addl.slice(0, 3).join(" ; "));
 }
 
 if (mode === "overview") {

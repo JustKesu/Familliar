@@ -9807,6 +9807,576 @@
 		"id": "scf|illusory reality|wizard|xphb|illusionist|xphb|14|xphb"
 	},
 	{
+		"name": "Path of the Infernal",
+		"source": "GriffonsSaddlebag2",
+		"page": 209,
+		"className": "Barbarian",
+		"classSource": "PHB",
+		"subclassShortName": "Infernal",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 1,
+		"entries": [
+			"You have found the conduit for your rage in something scarier than anything you'd find on the Material Plane. Your inner fury burns from the hells themselves, manifesting itself as a series of fiendish transformations and flames whenever you enter a rage. The origin of this power may have been a near-death experience that showed you the Lower Planes, or perhaps it came from a soul-binding contract with a powerful devil. Some tieflings may find that this strength has resided within themselves all along as part of their infernal heritage. Regardless of your reason for having these abilities, one thing is certain: hell hath no fury quite like you.",
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Hellfire Claw|Barbarian|PHB|Infernal|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Hellborn|Barbarian|PHB|Infernal|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			}
+		],
+		"id": "scf|path of the infernal|barbarian|phb|infernal|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Infernal Warrior",
+		"source": "GriffonsSaddlebag2",
+		"page": 209,
+		"className": "Barbarian",
+		"classSource": "PHB",
+		"subclassShortName": "Infernal",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 6,
+		"header": 2,
+		"entries": [
+			"By 6th level, the infernal fire within you burns hot even while you're not raging. You gain resistance to fire damage.",
+			"In addition, when you use the {@action Attack} action to {@action grapple} a creature while you're raging, the target takes your Hellfire Claw's fire damage if your grapple check succeeds, and again at the end of each of that creature's turns while it remains {@condition grappled|XPHB}."
+		],
+		"id": "scf|infernal warrior|barbarian|phb|infernal|griffonssaddlebag2|6|griffonssaddlebag2"
+	},
+	{
+		"name": "Planar Conspirator",
+		"source": "GriffonsSaddlebag2",
+		"page": 209,
+		"className": "Barbarian",
+		"classSource": "PHB",
+		"subclassShortName": "Infernal",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 10,
+		"header": 2,
+		"entries": [
+			"At 10th level, you can make minor deals with an interested archfiend or similar power to peer into the minds of other creatures and exploit their fears. You can use an action to spend 2 Hit Dice, without regaining any hit points, to cast the {@spell detect thoughts|XPHB} spell. The DC for this spell is equal to 8 + your proficiency bonus + your Constitution modifier."
+		],
+		"id": "scf|planar conspirator|barbarian|phb|infernal|griffonssaddlebag2|10|griffonssaddlebag2"
+	},
+	{
+		"name": "Incinerating Wrath",
+		"source": "GriffonsSaddlebag2",
+		"page": 209,
+		"className": "Barbarian",
+		"classSource": "PHB",
+		"subclassShortName": "Infernal",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 14,
+		"header": 2,
+		"entries": [
+			"Starting at 14th level, when you take damage from a creature that you can see within 60 feet of you while you're raging, you can use your reaction to release a punishing flame from your claw toward them, duplicating the effect of the {@spell hellish rebuke|XPHB} spell (3rd-level version, DC 8 + your proficiency bonus + your Constitution modifier). You can use this ability twice per rage."
+		],
+		"id": "scf|incinerating wrath|barbarian|phb|infernal|griffonssaddlebag2|14|griffonssaddlebag2"
+	},
+	{
+		"name": "College of Mercantile",
+		"source": "GriffonsSaddlebag2",
+		"page": 210,
+		"className": "Bard",
+		"classSource": "PHB",
+		"subclassShortName": "Mercantile",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 1,
+		"entries": [
+			"Bards of the College of Mercantile are well versed in the artistry of cutting deals and enemies alike in order to come out ahead. Talented merchants, smugglers, and tradesmen alike all learn from this college in some form or another, using both silvered words and sharp cunning to inspire their allies and subvert competition. These calculated risk-takers travel the world to make their mark—and their fortune—by navigating treacherous landscapes, economies, and people. With even just a copper to their name, these bards are always worth their weight in gold.",
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Coin Flip|Bard|PHB|Mercantile|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Magic Coin|Bard|PHB|Mercantile|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			}
+		],
+		"id": "scf|college of mercantile|bard|phb|mercantile|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Money Talks",
+		"source": "GriffonsSaddlebag2",
+		"page": 211,
+		"className": "Bard",
+		"classSource": "PHB",
+		"subclassShortName": "Mercantile",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 6,
+		"header": 2,
+		"entries": [
+			"By 6th level, you've learned how to briefly enchant a coin with divination magic. You can enchant a mundane copper, silver, electrum, gold, or platinum piece that you're holding in this way using an action. A creature holding the coin that knows at least one language can understand the meaning of any word you speak, and when it speaks, you understand what it says. In addition, you have advantage on the first Charisma ({@skill Persuasion}) check you make when negotiating the value of a good or service with a creature that's holding or carrying the enchanted coin.",
+			"Alternatively, you can use an action to see and hear through the enchanted coin until the start of your next turn as if you were in the coin's space. During this time, you are {@condition deafened|XPHB|deaf} and {@condition blinded|XPHB|blind} with regard to your own senses.",
+			"The coin remains enchanted for 10 minutes or until you end the effect early (no action required). You can use this feature a number of times equal to your Charisma modifier (a minimum of once). You regain all expended uses when you finish a long rest."
+		],
+		"id": "scf|money talks|bard|phb|mercantile|griffonssaddlebag2|6|griffonssaddlebag2"
+	},
+	{
+		"name": "Shrewd Consumer",
+		"source": "GriffonsSaddlebag2",
+		"page": 211,
+		"className": "Bard",
+		"classSource": "PHB",
+		"subclassShortName": "Mercantile",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 14,
+		"header": 2,
+		"entries": [
+			"Starting at 14th level, whenever you cast a spell that consumes a material component, drink a potion, or use a spell scroll that's worth no more than 500 gp, there is a {@chance 50|50 percent} chance that the component, potion, or scroll isn't consumed. In addition, you can use a bonus action to take the {@action Use an Object} action or drink a potion."
+		],
+		"id": "scf|shrewd consumer|bard|phb|mercantile|griffonssaddlebag2|14|griffonssaddlebag2"
+	},
+	{
+		"name": "Steel Hawk",
+		"source": "GriffonsSaddlebag2",
+		"page": 216,
+		"className": "Fighter",
+		"classSource": "PHB",
+		"subclassShortName": "Steel Hawk",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 1,
+		"entries": [
+			"Powerful, nimble soldiers from the mountain city of Heavensteppe, Steel Hawks use explosive bursts of speed to launch themselves great distances in order to reach faraway threats. Despite their often heavy armor, those who follow this archetype leap and strike with the agility of seasoned assassins, becoming every inch the fearsome birds of prey their name would suggest.",
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Launch|Fighter|PHB|Steel Hawk|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Nimble Lancer|Fighter|PHB|Steel Hawk|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Bird Caller|Fighter|PHB|Steel Hawk|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			}
+		],
+		"id": "scf|steel hawk|fighter|phb|steel hawk|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Steel Grace",
+		"source": "GriffonsSaddlebag2",
+		"page": 217,
+		"className": "Fighter",
+		"classSource": "PHB",
+		"subclassShortName": "Steel Hawk",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 7,
+		"header": 2,
+		"entries": [
+			"Starting at 7th level, wearing armor doesn't impose disadvantage on your Dexterity ({@skill Stealth}) checks. In addition, whenever you make a Dexterity saving throw, you can use your Launch feature as a reaction. When you do so, you take no damage if you succeed on the saving throw, and only half damage if you fail."
+		],
+		"id": "scf|steel grace|fighter|phb|steel hawk|griffonssaddlebag2|7|griffonssaddlebag2"
+	},
+	{
+		"name": "Eagle Eye",
+		"source": "GriffonsSaddlebag2",
+		"page": 217,
+		"className": "Fighter",
+		"classSource": "PHB",
+		"subclassShortName": "Steel Hawk",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 10,
+		"header": 2,
+		"entries": [
+			"Beginning at 10th level, your attack made immediately after or during your Launch scores a critical hit on a roll of 19 or 20. If you hit a flying creature with this attack, it must also make a Strength saving throw (DC equal to 8 + your proficiency bonus + your Strength modifier). On a failed save, its speed is reduced to 0 feet until the start of its next turn.",
+			"In addition, you gain proficiency in the {@skill Perception} skill if you don't already have it, and your proficiency bonus is doubled for any Wisdom ({@skill Perception}) check you make that relies on sight."
+		],
+		"id": "scf|eagle eye|fighter|phb|steel hawk|griffonssaddlebag2|10|griffonssaddlebag2"
+	},
+	{
+		"name": "Predatory Instinct",
+		"source": "GriffonsSaddlebag2",
+		"page": 217,
+		"className": "Fighter",
+		"classSource": "PHB",
+		"subclassShortName": "Steel Hawk",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 15,
+		"header": 2,
+		"entries": [
+			"Starting at 15th level, you have advantage on initiative rolls, and when you roll initiative and have no uses of Launch remaining, you regain one use."
+		],
+		"id": "scf|predatory instinct|fighter|phb|steel hawk|griffonssaddlebag2|15|griffonssaddlebag2"
+	},
+	{
+		"name": "Improved Launch",
+		"source": "GriffonsSaddlebag2",
+		"page": 217,
+		"className": "Fighter",
+		"classSource": "PHB",
+		"subclassShortName": "Steel Hawk",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 18,
+		"header": 2,
+		"entries": [
+			"Starting at 18th level, when you hit a creature with a melee weapon attack immediately after or during your Launch, it must also succeed on a Strength saving throw (save DC equal to 8 + your proficiency bonus + your Strength modifier) or be knocked {@condition prone|XPHB}.",
+			"In addition, you can push yourself beyond your normal limits when you use your Launch feature. When you do, your leap can total a maximum of 90 feet, instead of 30, and you don't suffer any damage from falling until you land again. Once you use this feature, you shouldn't do so again before you finish a short or long rest. Each time you do, you suffer one level of {@condition exhaustion|XPHB}. You can't use this feature in this way if you're suffering from two or more levels of {@condition exhaustion|XPHB}."
+		],
+		"id": "scf|improved launch|fighter|phb|steel hawk|griffonssaddlebag2|18|griffonssaddlebag2"
+	},
+	{
+		"name": "Way of the Aether",
+		"source": "GriffonsSaddlebag2",
+		"page": 218,
+		"className": "Monk",
+		"classSource": "PHB",
+		"subclassShortName": "Aether",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 1,
+		"entries": [
+			"Monks of the Way of the Aether tap into the energy of spirits and the Ethereal Plane. This energy is the fifth element, aether, which is contained by every living—and nonliving—soul. Sometimes called ghostfists, monks of this tradition explore the Material and Ethereal Planes on lifelong missions to give the souls of the dead a final resting place. By aligning the ki and aether within themselves, monks of this tradition treat their spirit as an extension of their physical bodies and move through the world unimpeded by material obstacles like a ghost.",
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Spirit Strike|Monk|PHB|Aether|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Spirit Hand|Monk|PHB|Aether|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			}
+		],
+		"id": "scf|way of the aether|monk|phb|aether|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Spectral Guide",
+		"source": "GriffonsSaddlebag2",
+		"page": 218,
+		"className": "Monk",
+		"classSource": "PHB",
+		"subclassShortName": "Aether",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 6,
+		"header": 2,
+		"entries": [
+			"Starting at 6th level, you can't be possessed by ghosts or similar undead creatures, and you can use an action to spend 2 ki points to cast either the {@spell gentle repose|XPHB} or {@spell see invisibility|XPHB} spell, without providing material components. You also gain the {@spell spare the dying|XPHB} cantrip if you don't already know it.",
+			"Furthermore, you learn how to free certain souls from their undead vessels when you harness your ki. You gain the following ability:",
+			{
+				"type": "entries",
+				"name": "Dismiss Undead",
+				"entries": [
+					"When you hit an undead with one of the attacks granted by your Flurry of Blows, you can force it to make a Wisdom saving throw against your ki save DC. On a failed save, its spirit leaves and is put to rest, causing the creature to either vanish or become an unmoving corpse once more. If the creature's challenge rating is above the threshold shown in the following table, it automatically succeeds on the saving throw.",
+					{
+						"type": "table",
+						"colLabels": [
+							"Monk Level",
+							"CR Threshold"
+						],
+						"colStyles": [
+							"col-3 text-center",
+							"col-9 text-left"
+						],
+						"rows": [
+							[
+								"6th",
+								"1/2 or lower"
+							],
+							[
+								"8th",
+								"1 or lower"
+							],
+							[
+								"11th",
+								"2 or lower"
+							],
+							[
+								"14th",
+								"3 or lower"
+							],
+							[
+								"17th",
+								"4 or lower"
+							]
+						]
+					},
+					"If a creature has a bonus or penalty against any effect that turns undead, that bonus or penalty also applies to this effect."
+				]
+			}
+		],
+		"id": "scf|spectral guide|monk|phb|aether|griffonssaddlebag2|6|griffonssaddlebag2"
+	},
+	{
+		"name": "Ghost Walker",
+		"source": "GriffonsSaddlebag2",
+		"page": 219,
+		"className": "Monk",
+		"classSource": "PHB",
+		"subclassShortName": "Aether",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 11,
+		"header": 2,
+		"entries": [
+			"Beginning at 11th level, you are familiar with how ghosts and creatures of the Border Ethereal meld into the Material Plane. You can choose to partially slip into the Ethereal Plane, granting you the following benefits:",
+			{
+				"type": "entries",
+				"name": "Etherstep",
+				"entries": [
+					"You can spend 1 ki point as a bonus action to turn {@condition invisible|XPHB} until the end of your next turn, or until you make an attack or cast a spell.",
+					"Alternatively, you can spend an extra ki point as part of your Step of the Wind to gain this benefit. When you do, you can also move through hostile creatures and solid objects no more than 4 inches thick for as long as you remain {@condition invisible|XPHB}."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Phase",
+				"entries": [
+					"When you are hit by an attack, you can use your reaction to reduce the attack's damage against you by an amount equal to your monk level as you partially slip into the Border Ethereal. You can use this ability a number of times equal to your Wisdom modifier (a minimum of once), and you regain all expended uses when you finish a long rest."
+				]
+			}
+		],
+		"id": "scf|ghost walker|monk|phb|aether|griffonssaddlebag2|11|griffonssaddlebag2"
+	},
+	{
+		"name": "Sight Beyond Sight",
+		"source": "GriffonsSaddlebag2",
+		"page": 219,
+		"className": "Monk",
+		"classSource": "PHB",
+		"subclassShortName": "Aether",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 17,
+		"header": 2,
+		"entries": [
+			"At 17th level, you gain {@sense truesight} and telepathy out to 60 feet, as you are able to clearly see the world and connect to the souls within it using aether.",
+			"In addition, you can use an action to cast the {@spell etherealness|XPHB} spell. When you do, the spell has a duration of 1 minute. Once you cast this spell, you can't cast it again until you finish a long rest."
+		],
+		"id": "scf|sight beyond sight|monk|phb|aether|griffonssaddlebag2|17|griffonssaddlebag2"
+	},
+	{
+		"name": "Oath of the Spelldrinker",
+		"source": "GriffonsSaddlebag2",
+		"page": 220,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 1,
+		"entries": [
+			"The Oath of the Spelldrinker is devoted to ridding the world of renegade mages, such as liches or the occult, in order to protect the helpless from the forces of evil magic. The paladins who swear this oath believe in maintaining the balance of power between the ordinary and the extraordinary, including themselves. These paladins are resourceful and quick to remember their own mortality and privilege, often choosing to pursue mundane solutions before magical ones. Despite their caution, these wardens of balance are exemplary arcanists who can feel the weave of magic in the world as keenly as some of the finest sorcerers.",
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Tenets of the Spelldrinker|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Oath Spells|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Channel Divinity|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Bonus Proficiency|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			}
+		],
+		"id": "scf|oath of the spelldrinker|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Aura of Disruption",
+		"source": "GriffonsSaddlebag2",
+		"page": 221,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 7,
+		"header": 2,
+		"entries": [
+			"Beginning at 7th level, the arcane energy that hangs around you is volatile to enemy spellcasters. Whenever a hostile creature ends its turn within 10 feet of you while concentrating on a spell, it must succeed on a Constitution saving throw against your paladin spell save DC or lose concentration on the spell. In addition, you and friendly creatures within 10 feet of you can't be perceived through magical scrying sensors.",
+			"At 18th level, the range of this aura increases to 30 feet."
+		],
+		"id": "scf|aura of disruption|paladin|phb|spelldrinker|griffonssaddlebag2|7|griffonssaddlebag2"
+	},
+	{
+		"name": "Armored Focus",
+		"source": "GriffonsSaddlebag2",
+		"page": 221,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 15,
+		"header": 2,
+		"entries": [
+			"Starting at 15th level, while you are concentrating on a paladin spell, your concentration can't be broken as a result of taking damage."
+		],
+		"id": "scf|armored focus|paladin|phb|spelldrinker|griffonssaddlebag2|15|griffonssaddlebag2"
+	},
+	{
+		"name": "Arcane Conduit",
+		"source": "GriffonsSaddlebag2",
+		"page": 221,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 20,
+		"header": 2,
+		"entries": [
+			"At 20th level, as an action, you can emanate a field of crackling magic in a 30-foot radius. For 1 minute, you gain the following benefits:",
+			{
+				"type": "list",
+				"items": [
+					"You have resistance to damage from spells and have advantage on saving throws against spells.",
+					"Whenever a creature hits you with a melee attack, that creature takes force damage equal to your Charisma modifier (minimum of 1) as magical energy lashes out at them.",
+					"When you expend a spell slot of 1st level or higher, friendly creatures in the field regain a number of hit points equal to your Charisma modifier (minimum of 1), while hostile ones take force damage equal to the same amount instead."
+				]
+			},
+			"Once you use this feature, you can't use it again until you finish a long rest."
+		],
+		"id": "scf|arcane conduit|paladin|phb|spelldrinker|griffonssaddlebag2|20|griffonssaddlebag2"
+	},
+	{
+		"name": "Rocborne",
+		"source": "GriffonsSaddlebag2",
+		"page": 222,
+		"className": "Ranger",
+		"classSource": "PHB",
+		"subclassShortName": "Rocborne",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 1,
+		"entries": [
+			"The Rocborne are nomads of the sky who travel the world on the backs of ancestral rocs. These travelers understand that the air and wind aren't just one force but the collective effort of untold numbers of spirits that are carried along by it. By listening to the wind the same way a medium beckons to the dead, a Rocborne can learn more about the weather, their path forward, and even themselves. Many Rocborne grow up and live in this culture for their entire lives, but some have been known to begin their own journeys. Alternatively, your path may have been crossed by a powerful windborne spirit later on in life, allowing you to suddenly feel and heed the guiding wind inside you.",
+			"By calling on the spirits of the wind to aid them, rangers of this archetype can exert a degree of control over both wind and weather. These skills were passed down from the rocs to the first Rocborne and continue to live on through the dedicated instruction of Rocborne elders, both living and dead. You may be taught these skills or have them passed on to you through the guidance of Rocborne spirits in whispers, dreams, or in moments of deep meditation.",
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Rocborne Magic|Ranger|PHB|Rocborne|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Guiding Wind|Ranger|PHB|Rocborne|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Whispers of Knowledge|Ranger|PHB|Rocborne|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			}
+		],
+		"id": "scf|rocborne|ranger|phb|rocborne|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Windswept",
+		"source": "GriffonsSaddlebag2",
+		"page": 223,
+		"className": "Ranger",
+		"classSource": "PHB",
+		"subclassShortName": "Rocborne",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 7,
+		"header": 2,
+		"entries": [
+			"By 7th level, the wind clears a path for you and ushers you forward. Your walking speed increases by 5 feet, you ignore any movement penalty caused by strong wind, and you can't be pushed because of strong wind against your will.",
+			"In addition, you have resistance to cold damage, and you're acclimated to high altitudes, including elevations above 20,000 feet."
+		],
+		"id": "scf|windswept|ranger|phb|rocborne|griffonssaddlebag2|7|griffonssaddlebag2"
+	},
+	{
+		"name": "Soar",
+		"source": "GriffonsSaddlebag2",
+		"page": 223,
+		"className": "Ranger",
+		"classSource": "PHB",
+		"subclassShortName": "Rocborne",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 11,
+		"header": 2,
+		"entries": [
+			"At 11th level, you can use a bonus action immediately after you make a running jump to grow a pair of spectral, roc-like wings that last until the end of your next turn or until you touch the ground again. While the wings are present, you have a flying speed equal to your walking speed."
+		],
+		"id": "scf|soar|ranger|phb|rocborne|griffonssaddlebag2|11|griffonssaddlebag2"
+	},
+	{
+		"name": "Hurricane",
+		"source": "GriffonsSaddlebag2",
+		"page": 223,
+		"className": "Ranger",
+		"classSource": "PHB",
+		"subclassShortName": "Rocborne",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 15,
+		"header": 2,
+		"entries": [
+			"At 15th level, your connection to the wind is so strong that its spirits can come to your defense as a magical, buffeting tempest. When you take damage, you can use your reaction to give yourself resistance to that damage, or take no damage instead if it was falling damage. When you do, each creature of your choice within 15 feet of you must make a Strength saving throw against your ranger spell save DC. On a failed save, a creature takes bludgeoning damage equal to your ranger level and is knocked {@condition prone|XPHB}. On a successful save, a creature takes half as much damage and isn't knocked {@condition prone|XPHB}.",
+			"When you use this feature, you can choose to allow the wind spirits to immediately fly you to an unoccupied space that you can see within 30 feet of you, without provoking opportunity attacks.",
+			"Once you use this feature, you can't use it again until you finish a short or long rest."
+		],
+		"id": "scf|hurricane|ranger|phb|rocborne|griffonssaddlebag2|15|griffonssaddlebag2"
+	},
+	{
+		"name": "Grim Surgeon",
+		"source": "GriffonsSaddlebag2",
+		"page": 224,
+		"className": "Rogue",
+		"classSource": "PHB",
+		"subclassShortName": "Grim Surgeon",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 1,
+		"entries": [
+			"You've developed a unique familiarity with knives, bodies, and blood in your line of work. Like a tinkerer's knowledge of clockwork and gears, you've come to an understanding of how bodies are put together instead. Medical experts in rough or war-torn cities and villages may follow this archetype, but so do rogues who take a particular interest in either clerical or necromantic magic. A grim surgeon uses medical knowledge and strange blood magic to dismantle foes, restore allies, and control bodies like puppets.",
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Medic|Rogue|PHB|Grim Surgeon|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			},
+			{
+				"type": "refSubclassFeature",
+				"subclassFeature": "Transfusion|Rogue|PHB|Grim Surgeon|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
+			}
+		],
+		"id": "scf|grim surgeon|rogue|phb|grim surgeon|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Field Surgeon",
+		"source": "GriffonsSaddlebag2",
+		"page": 224,
+		"className": "Rogue",
+		"classSource": "PHB",
+		"subclassShortName": "Grim Surgeon",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 9,
+		"header": 2,
+		"entries": [
+			"By 9th level, your medical expertise and blood magic allow you to painlessly mend an ally's wounds using surgical techniques. You decide to use this feature at the start of a short rest, choosing a willing creature within your reach when you do. Roll your Sneak Attack dice and record the result. At the end of the short rest, that creature regains a number of hit points equal to the total of your Sneak Attack dice roll. Once a creature regains hit points from this feature, it can't do so again until it finishes a long rest."
+		],
+		"id": "scf|field surgeon|rogue|phb|grim surgeon|griffonssaddlebag2|9|griffonssaddlebag2"
+	},
+	{
+		"name": "Toxic Shock",
+		"source": "GriffonsSaddlebag2",
+		"page": 224,
+		"className": "Rogue",
+		"classSource": "PHB",
+		"subclassShortName": "Grim Surgeon",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 13,
+		"header": 2,
+		"entries": [
+			"At 13th level, when you gain temporary hit points from your Transfusion feature, the target of the attack is overcome by a wave of sickness. Until the end of its next turn, the target's speed is reduced by 10 feet, and it has disadvantage on the next attack roll or ability check that it makes before the end of its next turn."
+		],
+		"id": "scf|toxic shock|rogue|phb|grim surgeon|griffonssaddlebag2|13|griffonssaddlebag2"
+	},
+	{
+		"name": "Bloodbound",
+		"source": "GriffonsSaddlebag2",
+		"page": 224,
+		"className": "Rogue",
+		"classSource": "PHB",
+		"subclassShortName": "Grim Surgeon",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 17,
+		"header": 2,
+		"entries": [
+			"By 17th level, you can command the blood inside certain creatures. Immediately after you deal Sneak Attack damage to a beast or humanoid, you can force that creature to make a Constitution saving throw. The DC is equal to 8 + your proficiency bonus + your Wisdom modifier. On a failed save, that creature is under the effect of the {@spell dominate beast|XPHB} or {@spell dominate person|XPHB} spell, respectively, for 1 minute or until you choose to end the effect (no action required).",
+			"Once you use this feature, you can't use it again until you finish a short or long rest."
+		],
+		"id": "scf|bloodbound|rogue|phb|grim surgeon|griffonssaddlebag2|17|griffonssaddlebag2"
+	},
+	{
 		"name": "Tools of the Trade",
 		"source": "EFA",
 		"page": 12,
@@ -17245,6 +17815,397 @@
 			"You also know the {@spell Minor Illusion|XPHB} cantrip. If you already know it, you learn a different Wizard cantrip of your choice. The cantrip doesn't count against your number of cantrips known. You can create both a sound and an image with a single casting of {@spell Minor Illusion|XPHB}, and you can cast it as a {@variantrule Bonus Action|XPHB}."
 		],
 		"id": "scf|improved illusions|wizard|xphb|illusionist|xphb|3|xphb"
+	},
+	{
+		"name": "Hellfire Claw",
+		"source": "GriffonsSaddlebag2",
+		"page": 209,
+		"className": "Barbarian",
+		"classSource": "PHB",
+		"subclassShortName": "Infernal",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Starting when you choose this path at 3rd level, one of your hands transforms into a large, fiery claw whenever you enter your rage. The claw remains for the duration of your rage. If you're wielding a weapon with the clawed hand, its flames harmlessly spread to the weapon it's holding and wreath it in magical flames. The first target you hit with this fiery weapon on each of your turns takes an extra {@dice 1d6} fire damage.",
+			"If you don't deal this fire damage with a weapon attack on your turn, you can use a bonus action to make an unarmed strike with the claw, provided it's empty. On a hit, the target takes the normal damage from your unarmed strike, which can be either bludgeoning or slashing damage (your choice), plus an extra {@dice 1d6} fire damage.",
+			"The claw's fire damage increases when you reach certain levels in this class, increasing to {@dice 1d8} at 6th level, {@dice 1d10} at 10th level, and {@dice 1d12} at 14th level."
+		],
+		"id": "scf|hellfire claw|barbarian|phb|infernal|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Hellborn",
+		"source": "GriffonsSaddlebag2",
+		"page": 209,
+		"className": "Barbarian",
+		"classSource": "PHB",
+		"subclassShortName": "Infernal",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"At 3rd level, you learn to speak, read, and write either {@language Abyssal} or {@language Infernal} (your choice). In addition, you can add your Strength modifier to any Charisma ({@skill Intimidation}) or Charisma ({@skill Persuasion}) check you make when interacting with fiends.",
+			"When you reach 10th level in this class, you can add your Strength modifier to any Charisma ({@skill Intimidation}) check you make when interacting with any creature, instead of only fiends."
+		],
+		"id": "scf|hellborn|barbarian|phb|infernal|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Coin Flip",
+		"source": "GriffonsSaddlebag2",
+		"page": 210,
+		"className": "Bard",
+		"classSource": "PHB",
+		"subclassShortName": "Mercantile",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Starting when you join the College of Mercantile at 3rd level, a creature that uses a Bardic Inspiration die from you can choose to forgo rolling the die to flip a coin instead. If it's heads, the creature treats the Bardic Inspiration die as if it rolled its maximum number. If it's tails, the GM takes the Bardic Inspiration die and can use it when another creature of the GM's choice makes an ability check, attack roll, or saving throw instead. The GM can have multiple Bardic Inspiration dice at a time in this way, but can still only add one of them to a roll at a time. When you finish a long rest, the GM loses any of these taken Bardic Inspiration dice."
+		],
+		"id": "scf|coin flip|bard|phb|mercantile|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Magic Coin",
+		"source": "GriffonsSaddlebag2",
+		"page": 210,
+		"className": "Bard",
+		"classSource": "PHB",
+		"subclassShortName": "Mercantile",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Also at 3rd level, you know that coins can be just as powerful as the most enthralling rhetoric. Whereas other bards may use words and song as their means for conjuring spells, you instead use a simple coin. You can use any coin worth at least 1 cp as a spellcasting focus for your bard spells.",
+			"In addition, you can use an action to magically fling a coin from your hand at a target within 60 feet of you. Make a ranged spell attack with the coin, using your Charisma modifier for the attack roll. On a hit, the target takes 1 bludgeoning damage plus {@dice 1d12} thunder damage. Immediately after the attack, the coin returns to your hand. If you roll a 20 on the attack roll against a hostile creature using a nonmagical copper, silver, electrum, or gold piece, the coin is magically duplicated when it returns to your hand. The new coin can appear in your hand, at your feet, or in a coin pouch on your person (your choice).",
+			"The coin's thunder damage increases by {@dice 1d12} when you reach 6th level ({@dice 2d12}) and 14th level ({@dice 3d12})."
+		],
+		"id": "scf|magic coin|bard|phb|mercantile|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Launch",
+		"source": "GriffonsSaddlebag2",
+		"page": 216,
+		"className": "Fighter",
+		"classSource": "PHB",
+		"subclassShortName": "Steel Hawk",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"When you choose this archetype at 3rd level, you learn to magically launch yourself with a mighty leap. While standing on a solid surface, you can use a bonus action to leap horizontally, vertically, or a combination of both, up to a combined distance that totals no more than 15 feet. For example, you can choose to leap 10 feet horizontally and 5 feet vertically, potentially allowing you to avoid a dangerous trap or barricade blocking your path. When you reach 7th level in this class, the leap's distance can total up to 30 feet instead.",
+			"You can't use this feature if your speed is 0, and if you leap completely horizontally, you still leap 1 foot off the ground. Leaping in this way doesn't provoke opportunity attacks, and if you fall immediately after using this feature, you can subtract up to 30 feet from the fall when calculating falling damage.",
+			"You can use this feature three times, and you regain all expended uses of it when you finish a short or long rest. Beginning at 7th level, you can use this feature four times between rests, and beginning at 15th level, you can use it five times between rests.",
+			"Leaping in this way can also strengthen your strikes by using the force of your momentum. If you make a melee weapon attack immediately after using Launch, you have advantage on the attack roll, and if the attack hits, the target takes an extra {@damage 1d8} damage of the weapon's type. At 10th level, this extra damage becomes {@dice 1d10}, and at 18th level, it becomes {@dice 1d12}. The attack can be made immediately after you land at the end of the leap or during the leap's movement."
+		],
+		"id": "scf|launch|fighter|phb|steel hawk|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Nimble Lancer",
+		"source": "GriffonsSaddlebag2",
+		"page": 216,
+		"className": "Fighter",
+		"classSource": "PHB",
+		"subclassShortName": "Steel Hawk",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Starting at 3rd level, you are remarkably light on your feet and capable of counterbalancing even some of the most awkward of equipment. Lances have the versatile property for you while you're not mounted, dealing {@damage 1d8} piercing damage on a hit when held with one hand and {@damage 1d12} piercing damage when wielded with two. When you use your Launch feature and immediately hit with a melee attack using a lance, it counts as if you're wielding it with two hands.",
+			"If you hit a creature within 5 feet of you using a lance, you can immediately move up to 5 feet away from it, without provoking an opportunity attack from the target. You must be standing and have movement remaining in order to move in this way."
+		],
+		"id": "scf|nimble lancer|fighter|phb|steel hawk|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Bird Caller",
+		"source": "GriffonsSaddlebag2",
+		"page": 217,
+		"className": "Fighter",
+		"classSource": "PHB",
+		"subclassShortName": "Steel Hawk",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Also at 3rd level, you learn to identify common birds by their calls, and you have advantage on Wisdom ({@skill Animal Handling}) checks when interacting with any {@filter beast that has an innate flying speed|bestiary|type=beast|speed type=fly}. In addition, you gain the ability to cast the {@spell animal messenger|XPHB} spell, but only as a ritual and only targeting a beast that has an innate flying speed."
+		],
+		"id": "scf|bird caller|fighter|phb|steel hawk|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Spirit Strike",
+		"source": "GriffonsSaddlebag2",
+		"page": 218,
+		"className": "Monk",
+		"classSource": "PHB",
+		"subclassShortName": "Aether",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"When you choose this tradition at 3rd level, you learn to send out blue flashes of spiritual energy to attack your foes. Whenever you make an unarmed strike, you can choose to make a melee spell attack with your spirit instead. You are proficient with this attack, which has a reach of 30 feet, and you add your Wisdom modifier to its attack and damage rolls. Its damage type is force, and its damage die is a {@dice d4}. This die changes as you gain monk levels, as shown in the Martial Arts column of the Monk table.",
+			"When you reach 6th level in this class, you can use your Stunning Strike feature when you hit a creature with your Spirit Strike."
+		],
+		"id": "scf|spirit strike|monk|phb|aether|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Spirit Hand",
+		"source": "GriffonsSaddlebag2",
+		"page": 218,
+		"className": "Monk",
+		"classSource": "PHB",
+		"subclassShortName": "Aether",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Also at 3rd level, you learn the {@spell mage hand|XPHB} cantrip, which you can cast and control as a bonus action. When you cast it, it doesn't require verbal or somatic components. The hand from the spell appears as a blue, spiritual copy of your own."
+		],
+		"id": "scf|spirit hand|monk|phb|aether|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Tenets of the Spelldrinker",
+		"source": "GriffonsSaddlebag2",
+		"page": 220,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"The tenets of the Oath of the Spelldrinker were written and passed down by cautious guardians set to rid the world of evil mages. They emphasize balance within oneself through the following tenets:",
+			{
+				"type": "entries",
+				"name": "Be the Sword",
+				"entries": [
+					" Be a stalwart champion of fairness and equality among all. The sword doesn't cheat fate: it dances with it."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Be the Shield",
+				"entries": [
+					"Defend the innocent against the forces of rampant magic. The shield is patient and unwavering in the face of the unknown."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Be the Spell",
+				"entries": [
+					"Use your power to provide balance and guidance. The spell can lead to prosperity as easily as it can to ruin: you must always choose the righteous path."
+				]
+			}
+		],
+		"id": "scf|tenets of the spelldrinker|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Oath Spells",
+		"source": "GriffonsSaddlebag2",
+		"page": 220,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"You gain oath spells at the paladin levels listed.",
+			{
+				"type": "table",
+				"colLabels": [
+					"Paladin Level",
+					"Spells"
+				],
+				"colStyles": [
+					"col-3 text-center",
+					"col-9 text-left"
+				],
+				"rows": [
+					[
+						"3rd",
+						"{@spell bane|XPHB}, {@spell detect magic|XPHB}"
+					],
+					[
+						"5th",
+						"{@spell nystul's magic aura|XPHB|arcanist's magic aura}, {@spell hold person|XPHB}"
+					],
+					[
+						"9th",
+						"{@spell dispel magic|XPHB}, {@spell slow|XPHB}"
+					],
+					[
+						"13th",
+						"{@spell dimension door|XPHB}, {@spell otiluke's resilient sphere|XPHB|resilient sphere}"
+					],
+					[
+						"17th",
+						"{@spell dominate person|XPHB}, {@spell scrying|XPHB}"
+					]
+				]
+			}
+		],
+		"id": "scf|oath spells|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Channel Divinity",
+		"source": "GriffonsSaddlebag2",
+		"page": 220,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"When you take this oath at 3rd level, you gain the following two Channel Divinity options.",
+			{
+				"type": "entries",
+				"name": "Absorb Magic",
+				"entries": [
+					"You can refute certain spells and use them to nourish yourself. Using your Channel Divinity, you can interrupt a creature you can see within 30 feet of you casting a spell. You can use a reaction when you see a creature within range casting a spell to present your holy symbol and interrupt it. The spell fails and has no effect if it is of a level no higher than 1 + your paladin level divided by 3 (rounded up), to a maximum of 6th-level spells. When it does, you gain a number of temporary hit points equal to your Charisma modifier, plus 5 times the spell's level."
+				]
+			},
+			{
+				"type": "entries",
+				"name": "Expeditious Command",
+				"entries": [
+					"You can use your Channel Divinity to issue a word of power and release a wave of invigorating energy from your holy symbol. As a bonus action, choose a number of creatures within 30 feet of you up to your Charisma modifier (minimum one creature). Until the start of your next turn, the chosen creatures can use a bonus action to take either {@action Dash} or {@action Disengage} action. As part of using your Channel Divinity in this way, you can also take either the {@action Dash} or {@action Disengage} action."
+				]
+			}
+		],
+		"id": "scf|channel divinity|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Bonus Proficiency",
+		"source": "GriffonsSaddlebag2",
+		"page": 221,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Starting at 3rd level, you gain proficiency in the {@skill Arcana} skill."
+		],
+		"id": "scf|bonus proficiency|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Rocborne Magic",
+		"source": "GriffonsSaddlebag2",
+		"page": 222,
+		"className": "Ranger",
+		"classSource": "PHB",
+		"subclassShortName": "Rocborne",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Starting at 3rd level, you learn an additional spell when you reach certain levels in this class, as shown in the Rocborne Spells table. The spell counts as a ranger spell for you, but it doesn't count against the number of ranger spells you know.",
+			{
+				"type": "table",
+				"colLabels": [
+					"Ranger Level",
+					"Spell"
+				],
+				"colStyles": [
+					"col-3 text-center",
+					"col-9 text-left"
+				],
+				"rows": [
+					[
+						"3rd",
+						"{@spell feather fall|XPHB}"
+					],
+					[
+						"5th",
+						"{@spell gust of wind|XPHB}"
+					],
+					[
+						"9th",
+						"{@spell lightning bolt|XPHB}"
+					],
+					[
+						"13th",
+						"{@spell ice storm|XPHB}"
+					],
+					[
+						"17th",
+						"{@spell legend lore|XPHB}"
+					]
+				]
+			}
+		],
+		"id": "scf|rocborne magic|ranger|phb|rocborne|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Guiding Wind",
+		"source": "GriffonsSaddlebag2",
+		"page": 223,
+		"className": "Ranger",
+		"classSource": "PHB",
+		"subclassShortName": "Rocborne",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Starting at 3rd level, when you make an attack, you can whisper to the wind to have it aid your strikes. Once on each of your turns, you can choose to gain one of the following benefits:",
+			{
+				"type": "list",
+				"items": [
+					"When you hit with a weapon attack, the target takes an extra {@dice 1d4} damage of the weapon's type. When you reach 11th level in this class, the extra damage increases to {@dice 1d8}.",
+					"When you miss with a weapon attack, you can change its trajectory to attack a different target up to 5 feet away from the original one and within range of your weapon. When you do, your attack roll against the new target is equal to the original attack roll plus your Wisdom modifier (minimum of +0). When you reach 11th level in this class, the new target can be up to 15 feet away as long as it's still within range of your weapon."
+				]
+			}
+		],
+		"id": "scf|guiding wind|ranger|phb|rocborne|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Whispers of Knowledge",
+		"source": "GriffonsSaddlebag2",
+		"page": 223,
+		"className": "Ranger",
+		"classSource": "PHB",
+		"subclassShortName": "Rocborne",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Also at 3rd level, you can seek knowledge through meditation by calling upon the spirits carried on the wind. You can spend 10 minutes communing with these spirits to gain proficiency in one skill or tool of your choice that you don't already have proficiency in, as a traveling spirit shares its knowledge with you. You lose this proficiency the next time you use this feature or finish a short or long rest.",
+			"You can use this feature a number of times equal to your Wisdom modifier (a minimum of once). You regain all expended uses when you finish a long rest."
+		],
+		"id": "scf|whispers of knowledge|ranger|phb|rocborne|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Medic",
+		"source": "GriffonsSaddlebag2",
+		"page": 224,
+		"className": "Rogue",
+		"classSource": "PHB",
+		"subclassShortName": "Grim Surgeon",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"When you choose this archetype at 3rd level, you gain proficiency in the {@skill Medicine} skill if you don't already have it. Your proficiency bonus is doubled for any ability check you make that uses this skill.",
+			"In addition, your familiarity with blood has become magical, giving you some degree of control over it. As a result, you can use a bonus action to magically stabilize an {@condition unconscious|XPHB} creature within 5 feet of you.",
+			"You can use this same magic when you apply traditional healing techniques. You can use a bonus action to expend one use of a {@item healer's kit|XPHB} on a creature. When you do, that creature regains hit points equal {@dice 1d4} + your proficiency bonus. The creature can't regain hit points from this feature again until it finishes a short or long rest."
+		],
+		"id": "scf|medic|rogue|phb|grim surgeon|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Transfusion",
+		"source": "GriffonsSaddlebag2",
+		"page": 224,
+		"className": "Rogue",
+		"classSource": "PHB",
+		"subclassShortName": "Grim Surgeon",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"entries": [
+			"Starting at 3rd level, once on each of your turns when you deal Sneak Attack damage to a creature that isn't a construct or an undead, you gain temporary hit points equal to your Wisdom modifier (minimum 1). When you reach 13th level, you gain temporary hit points equal to twice your Wisdom modifier instead. These temporary hit points last until the start of your next turn."
+		],
+		"id": "scf|transfusion|rogue|phb|grim surgeon|griffonssaddlebag2|3|griffonssaddlebag2"
 	},
 	{
 		"name": "Dreadnaught",

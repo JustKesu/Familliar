@@ -6,7 +6,7 @@ This project runs on a personal token budget and that budget is the binding
 constraint. Breaking any of these four either burns the budget or interrupts
 the user; everything below them is about doing the work well.
 
-1. **Never open a file in `data/`, `data-source/` or `public/data/`.** Not
+1. **Never open a file in `data/`, `data-source/`, `homebrew/` or `public/data/`.** Not
    with the file tool, not with `cat` or `Get-Content`, not "just the first
    few lines", not to check one field. One read of `items.json` costs more
    than a whole task. The only route is a script that prints a summary — see

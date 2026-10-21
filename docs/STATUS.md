@@ -1153,6 +1153,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Wizard spell step picks Wardaway; level 19 Fighter sees an FRHoF Epic Boon and
   no FRHoF O / faction / Cold Caster feat in any feat group; no FRHoF background
   or language).
+- `e2e/tgs2Extraction.spec.ts` — TGS2-1 a–c (D365: species step lists Etherean and
+  Geleton; seeded Barbarian 3 Path of the Infernal shows Hellborn and Hellfire Claw;
+  Fighter 2 → 3 level up offers Steel Hawk).
 - `e2e/manageSpells.spec.ts` — R9a a–k (seeded Cleric 3 / Life Domain / Magic
   Initiate Cleric, Warlock 3, Sorcerer 1, Fighter 1: drawer layout and counters,
   Prepare/Unprepare live + after reload, full counters disable, level pills +
@@ -1272,6 +1275,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   (Green-Flame Blade at level 5: on-hit first). Covered by `reviewF34.spec.ts` F-35 b and the F-34 d header assertion.
 - F-36: cosmetic layout fixes (CSS plus two wrapper classes): species label spacing, step bar on one line at 1366, Spell Slots button, character card name wrapping, nowrap use counters, background/origin-feat cards, Primal Order frame.
 - F-37: Savant/Magical Discoveries picks in their own wizard card with the feature name ("Level 3, choice 1/2"); subclasses sorted by name (compareText); HP breakdown shows "level N: enter a value" for an invalid row. Effect-cell dice labels not done (30 spells, no single rule).
+- TGS2-1 (D365): homebrew The Griffon's Saddlebag, Book 2 (`homebrew/griffons-saddlebag-2.json`, source GriffonsSaddlebag2) extracted — 7 subclasses
+  (Infernal, Mercantile, Steel Hawk, Aether, Spelldrinker, Rocborne, Grim Surgeon) with 46 feature records, species Etherean and Geleton (S/M).
+  Open (TGS2-2..5): 2014 race blocks in entries, resource pools (no rest tags), feature spells/Channel Divinity `consumes`, grapple/ki prose, resistances.
 
 ## Dočasné scaffolding
 

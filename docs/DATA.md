@@ -49,6 +49,30 @@ A second copy of ALLOWED_SOURCES lives in src/subclass/subclassData.ts and one
 in scripts/validate-data.js; without the src copy the app does not offer a new
 book's subclasses. The src copy has no SCC (the book has no subclasses).
 
+### Homebrew: The Griffon's Saddlebag, Book 2 (TGS2-1, D365)
+
+File: `homebrew/griffons-saddlebag-2.json` (tracked, 2.8 MB, source code `GriffonsSaddlebag2`; never
+opened directly — summaries via scripts/investigate-tgs2.js). Listed in `HOMEBREW_FILES` in
+extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into the 5etools lists before
+`prepareEntries`, so the normal filters, ids and ref walk apply.
+- Kept: 7 subclasses (exact names in the file: Path of the Infernal, College of Mercantile — not "of the
+  Mercantile" —, Steel Hawk, Way of the Aether, Oath of the Spelldrinker, Rocborne, Grim Surgeon), all 46
+  of their `subclassFeature` records, races Etherean and Geleton. A whitelisted name missing from the file
+  throws.
+- Skipped: the other 5 subclasses, 519 `item`, 31 `magicvariant`, 97 monsters, 60 tables (2014 item type
+  codes, magicvariant not expanded by the pipeline).
+- Normalization: subclass `classSource` PHB → XPHB (the subclass filter and `resolveSubclassShortName`
+  compare it); feature records keep `classSource` PHB — the subclass's reference strings say PHB too, so
+  `subclassFeatureIds` join (0 dangling). Race `ability` deleted. Races have no `edition`; the species
+  filter keeps source GriffonsSaddlebag2 explicitly. Geleton `size` "V" (varies) → ["S","M"].
+- Tags: `{@spell}`, `{@condition}`, `{@item}` with source PHB or none → XPHB when an XPHB entry of that
+  name exists in the 5etools source (spells-xphb, conditionsdiseases, items + items-base): 38 rewritten,
+  0 without target. `additionalSpells` "x|PHB" → "x|XPHB": 15 of 15.
+- Left as found (later tasks): `{@action grapple}` and `{@action Use an Object}` (no XPHB target), ki and
+  Hit Dice prose, Channel Divinity without `consumes`, 2014 race blocks in `entries` (Ability Score
+  Increase, Age, Alignment, Size, Speed, Languages), rest phrases without `{@variantrule}` tag (so no
+  feature becomes a resource pool).
+
 ### RHW, FRHoF, SCC — what the three books contain (survey 2026-09, D194)
 
 Raw data before any filter (`scripts/investigate-books.mjs`, untracked):

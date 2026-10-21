@@ -78,7 +78,25 @@ const ALLOWED_SOURCES = [
 	"RHW", // Ravenloft: The Horrors Within (2024 rules, D194)
 	"SCC", // Strixhaven: A Curriculum of Chaos (2014 rules; spells, items, hidden feats — D199)
 	"FRHoF", // Heroes of Faerûn (2024 rules; reduced scope — D201)
+	"GriffonsSaddlebag2", // homebrew, whitelisted entries only (HOMEBREW_KEEP, D365)
 ];
+
+// D365: homebrew JSON files merged into the 5etools lists before filtering.
+const HOMEBREW_FILES = [path.join(__dirname, "..", "homebrew", "griffons-saddlebag-2.json")];
+
+// D365: the only homebrew entries kept; everything else in the file is skipped.
+const HOMEBREW_KEEP = {
+	subclass: [
+		"Barbarian|Path of the Infernal",
+		"Bard|College of Mercantile",
+		"Fighter|Steel Hawk",
+		"Monk|Way of the Aether",
+		"Paladin|Oath of the Spelldrinker",
+		"Ranger|Rocborne",
+		"Rogue|Grim Surgeon",
+	],
+	race: ["Etherean", "Geleton"],
+};
 
 /*
  * Books whose BACKGROUNDS stay out even though the book is in ALLOWED_SOURCES.
@@ -1418,11 +1436,101 @@ function extractSpells(featKeptKeys, optionalFeatureKeptKeys) {
  * Genasi subraces (Air, Earth, Fire, Water) that would otherwise be lost.
  * Both lists are loaded together so `_copy` targets resolve across them.
  */
+/*
+ * HOMEBREW (D365)
+ *
+ * Only the HOMEBREW_KEEP entries survive. Homebrew subclasses are printed
+ * against the 2014 classes; their classSource is moved to XPHB so they attach
+ * to the 2024 class, while their feature records keep PHB — the feature ids
+ * still join through the subclass's own reference strings (DATA.md).
+ */
+let homebrewCache = null;
+function loadHomebrew() {
+	if (homebrewCache) return homebrewCache;
+
+	const spellIndex = readJson(path.join(SOURCE_DATA_DIR, "spells", "index.json"));
+	const xphbNames = (list) => new Set(list.filter((entry) => entry.source === "XPHB").map((entry) => entry.name.toLowerCase()));
+	const targets = {
+		spell: xphbNames(readJson(path.join(SOURCE_DATA_DIR, "spells", spellIndex.XPHB)).spell),
+		condition: xphbNames(readJson(path.join(SOURCE_DATA_DIR, "conditionsdiseases.json")).condition),
+		item: xphbNames([
+			...readJson(path.join(SOURCE_DATA_DIR, "items.json")).item,
+			...readJson(path.join(SOURCE_DATA_DIR, "items-base.json")).baseitem,
+		]),
+	};
+	const stats = { tagsRedirected: 0, tagsLeft: 0, additionalSpellsRedirected: 0 };
+
+	// An unsourced {@spell}/{@condition}/{@item} tag means PHB in 5etools.
+	const redirectTags = (text) =>
+		text.replace(/\{@(spell|condition|item) ([^}]+)\}/g, (whole, tag, body) => {
+			const parts = body.split("|");
+			const source = (parts[1] || "").toUpperCase();
+			if (source !== "" && source !== "PHB") return whole;
+			if (!targets[tag].has(parts[0].trim().toLowerCase())) {
+				stats.tagsLeft++;
+				return whole;
+			}
+			parts[1] = "XPHB";
+			stats.tagsRedirected++;
+			return `{@${tag} ${parts.join("|")}}`;
+		});
+	const redirectSpellRef = (text) => {
+		const match = /^([^|#]+)\|phb(.*)$/i.exec(text);
+		if (!match || !targets.spell.has(match[1].trim().toLowerCase())) return text;
+		stats.additionalSpellsRedirected++;
+		return `${match[1]}|XPHB${match[2]}`;
+	};
+	const mapStrings = (node, fn) => {
+		if (typeof node === "string") return fn(node);
+		if (Array.isArray(node)) return node.map((child) => mapStrings(child, fn));
+		if (node && typeof node === "object") {
+			for (const key of Object.keys(node)) node[key] = mapStrings(node[key], fn);
+		}
+		return node;
+	};
+
+	const result = { subclass: [], subclassFeature: [], race: [] };
+	for (const file of HOMEBREW_FILES) {
+		const data = readJson(file);
+		const subclasses = (data.subclass || []).filter((entry) => HOMEBREW_KEEP.subclass.includes(`${entry.className}|${entry.name}`));
+		const features = (data.subclassFeature || []).filter((feature) =>
+			subclasses.some((sub) => feature.className === sub.className && feature.subclassShortName === sub.shortName && feature.subclassSource === sub.source),
+		);
+		const races = (data.race || []).filter((entry) => HOMEBREW_KEEP.race.includes(entry.name));
+
+		for (const entry of subclasses) {
+			entry.classSource = "XPHB";
+			if (entry.additionalSpells) entry.additionalSpells = mapStrings(entry.additionalSpells, redirectSpellRef);
+		}
+		for (const entry of races) {
+			delete entry.ability;
+			// "V" is 5etools' "varies"; Geleton's text says Medium or Small (D365).
+			if (Array.isArray(entry.size) && entry.size.includes("V")) entry.size = ["S", "M"];
+		}
+		for (const entry of [...subclasses, ...features, ...races]) mapStrings(entry, redirectTags);
+
+		result.subclass.push(...subclasses);
+		result.subclassFeature.push(...features);
+		result.race.push(...races);
+	}
+
+	const missing = [
+		...HOMEBREW_KEEP.subclass.filter((key) => !result.subclass.some((entry) => `${entry.className}|${entry.name}` === key)),
+		...HOMEBREW_KEEP.race.filter((name) => !result.race.some((entry) => entry.name === name)),
+	];
+	if (missing.length) throw new Error(`Homebrew entries not found: ${missing.join(", ")}`);
+
+	console.log(`Homebrew kept: ${result.subclass.length} subclasses, ${result.subclassFeature.length} subclass features, ${result.race.length} races`);
+	console.log(`Homebrew tags -> XPHB: ${stats.tagsRedirected} (left as-is: ${stats.tagsLeft}); additionalSpells -> XPHB: ${stats.additionalSpellsRedirected}`);
+	homebrewCache = result;
+	return result;
+}
+
 function extractSpecies() {
 	console.log("\n--- SPECIES ---");
 
 	const data = readJson(path.join(SOURCE_DATA_DIR, "races.json"));
-	const rawSpecies = [...(data.race || []), ...(data.subrace || [])];
+	const rawSpecies = [...(data.race || []), ...(data.subrace || []), ...loadHomebrew().race];
 	console.log(`Loaded "race" entries:        ${(data.race || []).length}`);
 	console.log(`Loaded "subrace" entries:     ${(data.subrace || []).length}`);
 
@@ -1447,7 +1555,11 @@ function extractSpecies() {
 	 * ALLOWED_SOURCES, so it fails both halves of the test.
 	 */
 	let kept = resolved.filter(
-		(entry) => (entry.edition === "one" && ALLOWED_SOURCES.includes(entry.source)) || entry.source === "MPMM",
+		(entry) =>
+			(entry.edition === "one" && ALLOWED_SOURCES.includes(entry.source)) ||
+			entry.source === "MPMM" ||
+			// D365: homebrew races carry no `edition`; loadHomebrew already whitelisted them.
+			entry.source === "GriffonsSaddlebag2",
 	);
 
 	/*
@@ -2042,6 +2154,9 @@ function extractClasses() {
 			if (Array.isArray(data[listName])) raw[listName].push(...data[listName]);
 		}
 	}
+	const homebrew = loadHomebrew();
+	raw.subclass.push(...homebrew.subclass);
+	raw.subclassFeature.push(...homebrew.subclassFeature);
 	console.log(`Loaded: ${raw.class.length} classes, ${raw.subclass.length} subclasses, ${raw.classFeature.length} class features, ${raw.subclassFeature.length} subclass features`);
 
 	/*

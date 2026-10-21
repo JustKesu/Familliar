@@ -43,7 +43,7 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { compareText } from '../text/compareText'
 
 const ALLOWED_CLASS_SOURCES = ['XPHB', 'EFA']
-const ALLOWED_SOURCES = ['XPHB', 'XGE', 'TCE', 'EFA', 'XDMG', 'MPMM', 'RHW', 'FRHoF']
+const ALLOWED_SOURCES = ['XPHB', 'XGE', 'TCE', 'EFA', 'XDMG', 'MPMM', 'RHW', 'FRHoF', 'GriffonsSaddlebag2']
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
