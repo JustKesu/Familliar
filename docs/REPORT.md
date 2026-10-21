@@ -1,42 +1,35 @@
-# REPORT — TGS2-2: bloky pravidel 2014 z Etherean a Geleton (D366)
+# REPORT — TGS2-3: ZASTAVENO po STEP 1 (text se liší od zadání)
 
-HEAD po `git merge --ff-only origin/main`: ff9d81f (podmínka splněna, „Already up to date"). D366 dřív neexistovalo.
+HEAD po `git merge --ff-only origin/main`: 115051f („Already up to date“). Nic neimplementováno: extract-data.js, data/, src/, e2e/, DATA.md, STATUS.md, DECISIONS.md beze změny. Část B nezačata (zadání ji řadí za část A). Typecheck/test/validate/e2e nespuštěny — kód se neměnil.
 
-## Co se změnilo
+## STEP 1 — souhrn (scripts/tgs2-pools.js, nesledovaný, necommitnut)
+| prvek | podtřída, úroveň | text (bez markupu) | odpovídá zadání |
+|---|---|---|---|
+| Launch | Fighter / Steel Hawk 3 | „You can use this feature three times, and you regain all expended uses of it when you finish a short or long rest.“ + „Beginning at 7th level … four times between rests, and beginning at 15th level … five times“ | ano (3/4/5, 3/7/15, SR) |
+| Improved Launch | Fighter / Steel Hawk 18 | „Once you use this feature, you **shouldn't do so again before** you finish a short or long rest.“ | počet ano; formulace jiná |
+| Bloodbound | **Rogue / Grim Surgeon 17** | „Once you use this feature, you can't use it again until you finish a short or long rest.“ | počet ano; **třída ne** (zadání e2e c) říká Barbarian) |
+| Sight Beyond Sight | Monk / Aether 17 | „Once you **cast this spell**, you can't **cast it again** until you finish a long rest.“ | počet ano; formulace jiná |
 
-- `scripts/extract-data.js`: konstanta `HOMEBREW_RACE_2014_BLOCKS`; v `loadHomebrew()` se z `entries` homebrew ras
-  odfiltrují bloky podle jména (Ability Score Increase, Age, Alignment, Size, Speed, Languages, `Creating Your…`).
-- `data/species.json` přegenerováno (`npm run extract-data`). Počty beze změny, EXPECTED_COUNTS nesahány.
-- Vnořené pojmenované traity v odstraňovaných blocích: žádné (kontrola skriptem, viz níže) — nebylo co hlásit.
-- Traity před → po (`node scripts/tgs2-race-blocks.js`, neverzovaný):
-  - Etherean: ASI | Age | Alignment | Size | Speed | Darkvision | Misty Sight | Veil Shift | Languages | Creating Your Etherean
-    → **Darkvision | Misty Sight | Veil Shift** (+1 nepojmenovaný úvodní odstavec)
-  - Geleton: … → **Darkvision | Limited Blindsight | Symbiotic Fortitude | Wakeful** (+1 nepojmenovaný odstavec)
-- Velikost Geletonu: wizard ji nabízí stejnou cestou jako XPHB druhy se dvěma velikostmi —
-  `loadSpeciesSizeOptions` → `speciesSizeOptions` (pole `size` ze species.json, bez rozlišení zdroje) →
-  `SpeciesSizePicker` při ≥ 2 možnostech; `speciesSizeComplete` blokuje Next. Nic nechybělo, kód UI beze změny.
-- `e2e/tgs2Extraction.spec.ts`: test a rozšířen (karty bez Age / Alignment / Ability Score Increase, Veil Shift a
-  Wakeful viditelné), nové TGS2-2 b (Geleton: rádia Small + Medium, Small → `speciesSize: "S"`, hlavička
-  „Geleton · Small"), TGS2-2 c (Etherean: žádné rádio velikosti, hlavička „Etherean · Medium").
-- Docs: DATA.md (odstraněné bloky, zbylé traity, `languageProficiencies`), STATUS.md, DECISIONS.md D366 (česky)
-  a oprava v D365 „College of the Mercantile" → „College of Mercantile".
+Jiné prvky z 46 s pevným počtem a odpočinkem:
+- **Ranger / Rocborne 15 Hurricane**: „Once you use this feature, you can't use it again until you finish a short or long rest.“ — stejný vzor jako Bloodbound, mimo seznam → podmínka STOP.
+- Paladin / Spelldrinker 20 Arcane Conduit: totéž, ale „long rest“ (1/LR).
+- Monk / Aether 11 Ghost Walker: počet = WIS mod (D43 unknown, ne pevný). Rogue / Grim Surgeon 9 Field Surgeon: limit per tvor, ne pool.
 
-## Ověření
+## Proč nestačí jen přepsat slova na tagy
+`isSelfLimitedFeature` (resources.ts:114) chce rest tag A frázi `EXPENDED_USES`; `isImplicitSingleUse` chce `SINGLE_USE_RECHARGE` = „can't (do so|use it|use this feature|use this benefit) again until you finish a … Rest“.
+- Launch, Bloodbound (a Hurricane, Arcane Conduit) po přepisu tagů projdou stávající cestou.
+- Improved Launch („shouldn't do so again before“) a Sight Beyond Sight („can't cast it again“) **neprojdou** — nevzniknou jako pool. Zadání pro tento případ říká STOP.
 
-- `npm run typecheck` OK; `npm run test` 186 souborů / 3383 testů OK; `npm run validate-data` 177/177 PASS;
-  `npm run e2e` 610/610 OK (2.0 min).
+## Otázky pro uživatele
+1. Hurricane (1/SR) a Arcane Conduit (1/LR): přidat do D367 také, nebo nechat bez počítadla? Přidání = dva další trackery zdarma (stávající cesta je přečte po přepisu tagů).
+2. Improved Launch a Sight Beyond Sight: (a) v normalizaci přepsat i jejich větu na znění, které app zná („you can't use it again until you finish a Short or Long Rest“ / „… a Long Rest“) — žádný nový kód v src/, ale mění se homebrew text; (b) rozšířit `SINGLE_USE_RECHARGE`/`EXPENDED_USES` v resources.ts o „shouldn't do so again before“ a „can't cast it again“ — nová logika v src/, týká se jen těchto dvou textů; (c) bez počítadla.
+3. Bloodbound je Rogue (Grim Surgeon 17), ne Barbarian — e2e c) přepsat na Rogue 17 Grim Surgeon? (předpokládám ano, jen chyba v zadání).
 
-## Rozhodnutí a nálezy
+## Rozhodnutí během práce
+- Nic neimplementováno; Launch tabulka a tagy čekají na odpovědi výše.
+- Nesledované docs/REPORT-*.md, CLAUDE-1.md aj. ponechány mimo commit (ležely nesledované i přes předchozí commity).
 
-- Obě rasy dál nesou `languageProficiencies: [{"common":true,"any":1}]` (tvar 2014). Appka to pole čte jen u featů
-  (`proficiencies.ts`), u druhů ne — dnes bez efektu; ponecháno, jak bylo. Otázka pro tebe, jestli ho zahodit.
-- Nepojmenovaný úvodní odstavec u obou ras ponechán (zadání mluví jen o pojmenovaných blocích).
-- Neverzované `docs/REPORT-*.md`, `CLAUDE-1.md` aj. z git status nejsou součástí commitu (zadání: stage po cestách);
-  nebyly to změny verzovaných souborů.
-- Subagent: nepoužit.
+## Subagent
+Nepoužit.
 
-## Manual browser check for the user
-
-Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: wizard krok Species (karta Etherean / Geleton bez bloků 2014; Geleton s výběrem Small/Medium);
-hlavička listu postavy pro Etherean / Geleton (velikost za tečkou).
+Manual browser check for the user: none - nothing changed in the app.
