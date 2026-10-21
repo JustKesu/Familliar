@@ -65,12 +65,17 @@ extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into th
   compare it); feature records keep `classSource` PHB — the subclass's reference strings say PHB too, so
   `subclassFeatureIds` join (0 dangling). Race `ability` deleted. Races have no `edition`; the species
   filter keeps source GriffonsSaddlebag2 explicitly. Geleton `size` "V" (varies) → ["S","M"].
+- Race `entries` (TGS2-2, D366): top-level blocks named Ability Score Increase, Age, Alignment, Size,
+  Speed, Languages and "Creating Your …" are removed by name — 2014 rule text that contradicts the 2024
+  build (ASI from background) or duplicates the `size`/`speed` fields. None of them holds a nested named
+  trait. Left: Etherean — Darkvision, Misty Sight, Veil Shift; Geleton — Darkvision, Limited
+  Blindsight, Symbiotic Fortitude, Wakeful (plus one unnamed lead paragraph each). The
+  `languageProficiencies` field stays as found: `[{"common":true,"any":1}]` on both (2014 shape).
 - Tags: `{@spell}`, `{@condition}`, `{@item}` with source PHB or none → XPHB when an XPHB entry of that
   name exists in the 5etools source (spells-xphb, conditionsdiseases, items + items-base): 38 rewritten,
   0 without target. `additionalSpells` "x|PHB" → "x|XPHB": 15 of 15.
 - Left as found (later tasks): `{@action grapple}` and `{@action Use an Object}` (no XPHB target), ki and
-  Hit Dice prose, Channel Divinity without `consumes`, 2014 race blocks in `entries` (Ability Score
-  Increase, Age, Alignment, Size, Speed, Languages), rest phrases without `{@variantrule}` tag (so no
+  Hit Dice prose, Channel Divinity without `consumes`, rest phrases without `{@variantrule}` tag (so no
   feature becomes a resource pool).
 
 ### RHW, FRHoF, SCC — what the three books contain (survey 2026-09, D194)

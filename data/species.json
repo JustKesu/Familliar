@@ -6255,41 +6255,6 @@
 			"Your etherean character has a variety of traits as a result of their unique plane of origin.",
 			{
 				"type": "entries",
-				"name": "Ability Score Increase",
-				"entries": [
-					"Your Charisma score increases by 2, and one other ability score of your choice increases by 1."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Age",
-				"entries": [
-					"Ethereans mature at the same rate as humans but live a few years longer."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Alignment",
-				"entries": [
-					"Because of the strict code of conduct that's necessary when living in etherean society, most ethereans are lawful out of a sense of honor or decency. However, many ethereans enjoy setting silly pranks, provided that they aren't mean-spirited, in order to fulfill some of their more chaotic leanings. They have no particular inclination toward evil or good, although many that survive in the more untamed corners of the Ethereal Plane will end up evil out of necessity."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Size",
-				"entries": [
-					"Ethereans are about the same size as humans and have willowy builds. Your size is Medium."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Speed",
-				"entries": [
-					"Your base walking speed is 30 feet. While on the Ethereal Plane, it increases to 35 feet."
-				]
-			},
-			{
-				"type": "entries",
 				"name": "Darkvision",
 				"entries": [
 					"Accustomed to the chaotic and often unavoidable lighting of the Border Ethereal, you have superior vision in dark and dim conditions. You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray."
@@ -6308,22 +6273,6 @@
 				"name": "Veil Shift",
 				"entries": [
 					"You can use an action while on the Material Plane to slip into the Ethereal Plane, and vice versa, until the start of your next turn. Any object you take while on this other plane of existence is left there when you return to your original one. While on the Ethereal Plane in this way, you can only affect and be affected by other creatures on that plane, and you still move as if you were on the Material Plane. Creatures that aren't on the Ethereal Plane can't perceive you or interact with you while you're there, unless a special ability or magic has given them the ability to do so, although you can still see and hear them. Once you use this trait, you can't use it again until you finish a long rest."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Languages",
-				"entries": [
-					"You can speak, read, and write Common and one other language of your choice. Ethereans tend to learn the languages of neighboring creatures from the Material Plane."
-				]
-			},
-			{
-				"type": "inset",
-				"name": "Creating Your Etherean",
-				"entries": [
-					"When creating your etherean character, use these traits as a guide, rather than a rule. A typical etherean is naturally charismatic, which is reflected in the Ability Score Increase trait, but yours may be quiet or reserved by comparison. In this case, increase one ability score of your choice by 2 and another by 1, or choose three different ability scores to increase by 1.",
-					"Similarly, your etherean may never have ascribed to the rigors of etherean society and has fully embraced their chaotic leanings. And, like all humanoids, size is hardly a defining factor: when you select this race, you can choose to be Small, instead of Medium.",
-					"Lastly, the suggested age trait is just that: a suggestion. In your world, the ethereans' fey ancestry may be more evident, resulting in a longer life span. Regardless, the life span of most player characters in fifth edition is about a century—presuming they don't meet a violent end on an adventure."
 				]
 			}
 		],
@@ -6421,41 +6370,6 @@
 			"Your geleton character has a variety of unusual traits that it shares with other geletons.",
 			{
 				"type": "entries",
-				"name": "Ability Score Increase",
-				"entries": [
-					"Your Constitution score increases by 2, and one other ability score of your choice increases by 1—potentially something indicative of your previous life's capabilities."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Age",
-				"entries": [
-					"Geletons come to life fully matured but may resemble a younger or older creature. Their full life span is unknown, but in general they live for about a century."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Alignment",
-				"entries": [
-					"Geletons are as likely to be good as they are to be evil. Their personality is molded by the company they keep and the environment around them, especially during the formative months following their Synthesis. Many geletons end up at least partly neutral."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Size",
-				"entries": [
-					"A geleton's size depends on the skeleton inside of it. You can choose to be either Medium or Small when you select this race."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Speed",
-				"entries": [
-					"Your base walking speed is 30 feet."
-				]
-			},
-			{
-				"type": "entries",
 				"name": "Darkvision",
 				"entries": [
 					"Your eyes were magically formed from ooze through the process of your creation, granting you a degree of vision in dark and dim conditions. You can see in dim light within 30 feet of you as if it were bright light, and in darkness as if it were dim light. You can't discern color in darkness, only shades of gray."
@@ -6480,21 +6394,6 @@
 				"name": "Wakeful",
 				"entries": [
 					"Geletons only need to sleep for a short time each day. Even while sleeping, you remain aware of your immediate surroundings thanks to your limited blindsight. After sleeping for 4 hours, you gain the same benefit that a human does from 8 hours of sleep."
-				]
-			},
-			{
-				"type": "entries",
-				"name": "Languages",
-				"entries": [
-					"You can speak, read, and write Common and one extra language of your choice. This extra language may be one you remember from a previous life."
-				]
-			},
-			{
-				"type": "inset",
-				"name": "Creating Your Geleton",
-				"entries": [
-					"When creating your geleton character, use these traits as a guide, rather than a rule. Geletons are naturally resilient thanks to their ooze heritage, which is reflected in the Ability Score Increase and Symbiotic Fortitude traits, but yours may have different strengths. In this case, increase one ability score of your choice by 2 and another by 1, or choose three different ability scores to increase by 1.",
-					"If you feel that 5 feet of blindsight is too powerful for your game, consider instead granting your player's geleton a skill and tool proficiency of their choice. As mentioned in the Ability Score Increase trait, this proficiency could be related to what your geleton did or knew in a previous life."
 				]
 			}
 		],

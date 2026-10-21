@@ -97,6 +97,7 @@ const HOMEBREW_KEEP = {
 	],
 	race: ["Etherean", "Geleton"],
 };
+const HOMEBREW_RACE_2014_BLOCKS = ["Ability Score Increase", "Age", "Alignment", "Size", "Speed", "Languages"];
 
 /*
  * Books whose BACKGROUNDS stay out even though the book is in ALLOWED_SOURCES.
@@ -1506,6 +1507,8 @@ function loadHomebrew() {
 			delete entry.ability;
 			// "V" is 5etools' "varies"; Geleton's text says Medium or Small (D365).
 			if (Array.isArray(entry.size) && entry.size.includes("V")) entry.size = ["S", "M"];
+			// 2014 rule blocks; speed and size come from the data fields (D366).
+			entry.entries = (entry.entries || []).filter((block) => !(block && block.name && (HOMEBREW_RACE_2014_BLOCKS.includes(block.name) || block.name.startsWith("Creating Your"))));
 		}
 		for (const entry of [...subclasses, ...features, ...races]) mapStrings(entry, redirectTags);
 

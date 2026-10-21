@@ -5344,7 +5344,13 @@ jen pro čtení kromě tohoto tlačítka. Task F-40, rozhodl Daniel.
 ## D365 — Homebrew The Griffon's Saddlebag, Book 2 (TGS2-1)
 
 Z homebrew souboru homebrew/griffons-saddlebag-2.json se berou jen podtřídy Path of the Infernal,
-College of the Mercantile, Steel Hawk, Way of the Aether, Oath of the Spelldrinker, Rocborne, Grim
+College of Mercantile, Steel Hawk, Way of the Aether, Oath of the Spelldrinker, Rocborne, Grim
 Surgeon a druhy Etherean a Geleton. Podtřídy dostávají classSource XPHB, ASI druhů se zahazuje,
 Geleton má velikost S nebo M, tagy kouzel, stavů a předmětů bez zdroje nebo s PHB míří na XPHB.
 Předměty, monstra a tabulky z knihy se neberou. Rozhodl Daniel.
+
+## D366 — Z homebrew druhů Etherean a Geleton se odstraňují bloky pravidel 2014 (TGS2-2)
+
+Z homebrew druhů Etherean a Geleton se při extrakci odstraňují bloky pravidel 2014 (Ability Score
+Increase, Age, Alignment, Size, Speed, Languages, Creating Your…). Rychlost a velikost appka bere
+z polí dat. Task TGS2-2, rozhodl Daniel.

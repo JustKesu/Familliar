@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { chooseButton, expectStep, next, select } from './wizard.ts'
+import { chooseButton, createFighter, expectStep, next, select } from './wizard.ts'
 
 /* TGS2-1 (D365): homebrew The Griffon's Saddlebag, Book 2 — 7 subclasses and 2 species. Seeds at schema 61. */
 const STORAGE_KEY = 'familliar:characters'
@@ -33,7 +33,7 @@ async function openSheet(page: Page, character: { id: string }): Promise<void> {
   await page.goto(`/#/character/${character.id}`)
 }
 
-test('TGS2-1 a: the wizard species step lists Etherean and Geleton', async ({ page }) => {
+test('TGS2-1 a / TGS2-2 a: the wizard species step lists Etherean and Geleton without 2014 blocks',async ({ page }) => {
   await page.goto('/#/new')
   await page.getByLabel('Character name').fill('TGS2 species')
   await select(page, 'Class').selectOption('Fighter|XPHB')
@@ -47,6 +47,46 @@ test('TGS2-1 a: the wizard species step lists Etherean and Geleton', async ({ pa
   for (const name of ['Etherean', 'Geleton']) {
     await expect(select(page, 'Species').locator(`option[value="${name}|GriffonsSaddlebag2"]`)).toHaveCount(1)
   }
+
+  // TGS2-2 (D366): the 2014 rule blocks are gone from both species cards.
+  const card = page.locator('.species-card')
+  for (const [name, trait] of [['Etherean', 'Veil Shift'], ['Geleton', 'Wakeful']]) {
+    await select(page, 'Species').selectOption(`${name}|GriffonsSaddlebag2`)
+    await expect(card.getByRole('heading', { name: trait, exact: true })).toBeVisible()
+    for (const removed of ['Age', 'Alignment', 'Ability Score Increase']) {
+      await expect(card.getByRole('heading', { name: removed, exact: true })).toHaveCount(0)
+    }
+    await expect(card).not.toContainText('Ability Score Increase')
+  }
+})
+
+test('TGS2-2 b: Geleton offers Small and Medium; Small is saved and shown in the sheet header', async ({ page }) => {
+  await createFighter(page, {
+    name: 'Geleton small',
+    level: 1,
+    species: 'Geleton|GriffonsSaddlebag2',
+    onSpeciesStep: async (p) => {
+      await expect(p.getByRole('radio', { name: 'Medium', exact: true })).toHaveCount(1)
+      await p.getByRole('radio', { name: 'Small', exact: true }).check()
+    },
+  })
+  const identity = (await page.locator('.sheet__identity').innerText()).replace(/\s+/g, ' ')
+  expect(identity).toContain('Geleton · Small')
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '[]')[0].speciesSize, STORAGE_KEY)).toBe('S')
+})
+
+test('TGS2-2 c: Etherean has no size choice and the sheet shows Medium', async ({ page }) => {
+  await createFighter(page, {
+    name: 'Etherean medium',
+    level: 1,
+    species: 'Etherean|GriffonsSaddlebag2',
+    onSpeciesStep: async (p) => {
+      await expect(p.getByRole('radio', { name: 'Small', exact: true })).toHaveCount(0)
+      await expect(p.getByRole('radio', { name: 'Medium', exact: true })).toHaveCount(0)
+    },
+  })
+  const identity = (await page.locator('.sheet__identity').innerText()).replace(/\s+/g, ' ')
+  expect(identity).toContain('Etherean · Medium')
 })
 
 test('TGS2-1 b: Barbarian 3 Path of the Infernal shows its level 3 features', async ({ page }) => {

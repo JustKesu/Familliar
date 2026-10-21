@@ -1,36 +1,42 @@
-# REPORT — TGS2-1: extrakce Griffon's Saddlebag 2 (D365)
+# REPORT — TGS2-2: bloky pravidel 2014 z Etherean a Geleton (D366)
 
-HEAD po `git merge --ff-only origin/main`: e49066d (podmínka splněna). homebrew/griffons-saddlebag-2.json existuje, D365 dřív neexistovalo.
+HEAD po `git merge --ff-only origin/main`: ff9d81f (podmínka splněna, „Already up to date"). D366 dřív neexistovalo.
 
 ## Co se změnilo
-- scripts/extract-data.js: `GriffonsSaddlebag2` v ALLOWED_SOURCES; `HOMEBREW_FILES`, `HOMEBREW_KEEP` a `loadHomebrew()` (whitelist, classSource podtřídy PHB→XPHB, `ability` pryč, Geleton size V→["S","M"], tagy spell/condition/item PHB|bez zdroje→XPHB, `additionalSpells` "x|PHB"→XPHB). Homebrew se přidá do `raw` v extractClasses a do rawSpecies v extractSpecies; filtr druhů má klauzuli pro source GriffonsSaddlebag2 (rasy nemají `edition`). Chybějící jméno z whitelistu = throw.
-- scripts/validate-data.js, src/subclass/subclassData.ts: allowlist + GriffonsSaddlebag2. EXPECTED_COUNTS: species +2, classes +7, subclass-features 734→780 (komentáře D365).
-- data/: classes.json +7 podtříd, subclass-features.json +46 záznamů, species.json +2. Jiné soubory v data/ beze změny (diff jen přidání).
-- CLAUDE.md pravidlo 1: + `homebrew/`. DATA.md nová sekce „Homebrew: The Griffon's Saddlebag, Book 2“, STATUS.md, DECISIONS.md D365 (text podle zadání).
-- scripts/investigate-tgs2.js: cesta na homebrew/, nový režim `names`.
 
-## Počty
-| kategorie | přidáno |
-|---|---|
-| podtřídy | 7 |
-| prvky podtříd | 46 (0 dangling) |
-| druhy | 2 |
-| tagy → XPHB | 38 (0 bez XPHB cíle) |
-| additionalSpells → XPHB | 15/15 |
-
-Join: všech 7 podtříd se spojilo, žádná kolize jmen (validace: no duplicate, 750 referencí resolve). Syrový markup: žádný nový nález; `{@action grapple}` a `{@action Use an Object}` zůstaly dle zadání (nemají XPHB cíl).
+- `scripts/extract-data.js`: konstanta `HOMEBREW_RACE_2014_BLOCKS`; v `loadHomebrew()` se z `entries` homebrew ras
+  odfiltrují bloky podle jména (Ability Score Increase, Age, Alignment, Size, Speed, Languages, `Creating Your…`).
+- `data/species.json` přegenerováno (`npm run extract-data`). Počty beze změny, EXPECTED_COUNTS nesahány.
+- Vnořené pojmenované traity v odstraňovaných blocích: žádné (kontrola skriptem, viz níže) — nebylo co hlásit.
+- Traity před → po (`node scripts/tgs2-race-blocks.js`, neverzovaný):
+  - Etherean: ASI | Age | Alignment | Size | Speed | Darkvision | Misty Sight | Veil Shift | Languages | Creating Your Etherean
+    → **Darkvision | Misty Sight | Veil Shift** (+1 nepojmenovaný úvodní odstavec)
+  - Geleton: … → **Darkvision | Limited Blindsight | Symbiotic Fortitude | Wakeful** (+1 nepojmenovaný odstavec)
+- Velikost Geletonu: wizard ji nabízí stejnou cestou jako XPHB druhy se dvěma velikostmi —
+  `loadSpeciesSizeOptions` → `speciesSizeOptions` (pole `size` ze species.json, bez rozlišení zdroje) →
+  `SpeciesSizePicker` při ≥ 2 možnostech; `speciesSizeComplete` blokuje Next. Nic nechybělo, kód UI beze změny.
+- `e2e/tgs2Extraction.spec.ts`: test a rozšířen (karty bez Age / Alignment / Ability Score Increase, Veil Shift a
+  Wakeful viditelné), nové TGS2-2 b (Geleton: rádia Small + Medium, Small → `speciesSize: "S"`, hlavička
+  „Geleton · Small"), TGS2-2 c (Etherean: žádné rádio velikosti, hlavička „Etherean · Medium").
+- Docs: DATA.md (odstraněné bloky, zbylé traity, `languageProficiencies`), STATUS.md, DECISIONS.md D366 (česky)
+  a oprava v D365 „College of the Mercantile" → „College of Mercantile".
 
 ## Ověření
-- validate-data 177/177 PASS; typecheck OK; test 186 souborů / 3383 testů PASS; e2e 608 PASS (2.0 min).
-- e2e/tgs2Extraction.spec.ts: a) krok Species má Etherean|GriffonsSaddlebag2 a Geleton|GriffonsSaddlebag2; b) seed Barbarian 3 Path of the Infernal (schema 61) — Features & Traits ukazují Hellborn a Hellfire Claw, ne Infernal Warrior; c) level up Fighter 2→3 nabízí Steel Hawk.
 
-## Rozhodnutí / nálezy
-- Jméno v souboru je „College of Mercantile“, ne „College of the Mercantile“ jako v D365 → whitelist používá jméno ze souboru (zadání: „exact names as found in the file“). Text D365 nechán podle zadání; případnou opravu textu rozhodne uživatel.
-- XPHB cíle tagů se hledají ve zdrojových 5etools souborech (spells-xphb, conditionsdiseases, items + items-base), ne v data/ — extrakce položek a stavů běží až po třídách; XPHB záznamy jsou v data/ všechny.
-- Odchylka od nebezpečí z průzkumu: e2e reviewFixesM10 (počítá řádky „Channel Divinity“) prošel.
+- `npm run typecheck` OK; `npm run test` 186 souborů / 3383 testů OK; `npm run validate-data` 177/177 PASS;
+  `npm run e2e` 610/610 OK (2.0 min).
 
-## Subagent
-Nepoužit.
+## Rozhodnutí a nálezy
+
+- Obě rasy dál nesou `languageProficiencies: [{"common":true,"any":1}]` (tvar 2014). Appka to pole čte jen u featů
+  (`proficiencies.ts`), u druhů ne — dnes bez efektu; ponecháno, jak bylo. Otázka pro tebe, jestli ho zahodit.
+- Nepojmenovaný úvodní odstavec u obou ras ponechán (zadání mluví jen o pojmenovaných blocích).
+- Neverzované `docs/REPORT-*.md`, `CLAUDE-1.md` aj. z git status nejsou součástí commitu (zadání: stage po cestách);
+  nebyly to změny verzovaných souborů.
+- Subagent: nepoužit.
+
+## Manual browser check for the user
 
 Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: wizard krok Species (2 nové druhy), výběr podtřídy ve wizardu a level-upu (Barbarian, Bard, Fighter, Monk, Paladin, Ranger, Rogue), záložka Features & Traits u těchto podtříd.
+Změněné obrazovky: wizard krok Species (karta Etherean / Geleton bez bloků 2014; Geleton s výběrem Small/Medium);
+hlavička listu postavy pro Etherean / Geleton (velikost za tečkou).
