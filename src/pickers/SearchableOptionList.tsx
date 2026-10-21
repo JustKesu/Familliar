@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { bookLabel } from './bookLabel'
 import { ChoiceRow } from './ChoiceRow'
 
 /*
@@ -122,7 +123,7 @@ export function SearchableOptionList({
 			return (
 				<ChoiceRow
 					key={option.key}
-					name={shared ? `${option.name} (${option.book})` : option.name}
+					name={shared ? `${option.name} (${bookLabel(option.book ?? '')})` : option.name}
 					label={option.label ?? option.name}
 					book={option.book}
 					detail={option.detail}

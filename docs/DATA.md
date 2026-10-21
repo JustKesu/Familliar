@@ -71,6 +71,16 @@ extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into th
   trait. Left: Etherean — Darkvision, Misty Sight, Veil Shift; Geleton — Darkvision, Limited
   Blindsight, Symbiotic Fortitude, Wakeful (plus one unnamed lead paragraph each). The
   `languageProficiencies` field stays as found: `[{"common":true,"any":1}]` on both (2014 shape).
+- Rest wording (TGS2-3, D367): homebrew writes plain lowercase "short rest" / "long rest" / "short or
+  long rest", never `{@variantrule}`, so resources.ts's REST_TAG sees no feature. Of the 46 features, 9
+  state a rest: Launch ("three times", regain all on short or long rest; prose "four times" at 7th,
+  "five times" at 15th — no table in the file), Improved Launch ("shouldn't do so again before you
+  finish a short or long rest" — 2014 phrasing), Bloodbound and Hurricane ("can't use it again until …
+  short or long rest"), Sight Beyond Sight ("can't cast it again until … long rest"), Arcane Conduit
+  ("can't use it again until … long rest"), Ghost Walker (WIS-mod uses, long rest), Field Surgeon (per
+  creature, not a pool). Bloodbound is Rogue / Grim Surgeon 17. `HOMEBREW_REST_FEATURES` tags the first
+  six, swaps the two non-2024 recharge sentences, and Steel Hawk gets `subclassTableGroups`
+  `[{colLabels:["Launch"], rows:[0,0,3,3,3,3,4,…,4,5,…]}]` (20 rows).
 - Tags: `{@spell}`, `{@condition}`, `{@item}` with source PHB or none → XPHB when an XPHB entry of that
   name exists in the 5etools source (spells-xphb, conditionsdiseases, items + items-base): 38 rewritten,
   0 without target. `additionalSpells` "x|PHB" → "x|XPHB": 15 of 15.

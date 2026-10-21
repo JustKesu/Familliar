@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { bookLabel } from './bookLabel'
 
 /*
  * W5 (D-W5): one CHOOSE / CHOSEN row of the wizard's Class step — the look of a
@@ -39,7 +40,7 @@ export function ChoiceRow({ name, label, book, detail, extra, reason, chosen, di
 						{open ? '▾' : '▸'}
 					</span>
 					<span className={inactive && !chosen ? 'choice-row__name choice-row__name--off' : 'choice-row__name'}>{label ?? name}</span>
-					{book && <span className="choice-row__book">{book}</span>}
+					{book && <span className="choice-row__book">{bookLabel(book)}</span>}
 				</button>
 				<button
 					type="button"

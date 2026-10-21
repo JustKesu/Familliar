@@ -1158,6 +1158,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Fighter 2 → 3 level up offers Steel Hawk); TGS2-2 a–c (D366: species cards without
   Age / Alignment / Ability Score Increase; Geleton offers Small/Medium, Small saved and in the
   sheet header; Etherean no size choice, header Medium).
+- `e2e/tgs2Pools.spec.ts` — TGS2-3 a–g (D367: Launch 3 boxes at Fighter 3, 4 at 7; Launch
+  restored by Short Rest; Bloodbound (Rogue 17) and Hurricane (Ranger 15) 1 box, Short Rest
+  restores; Sight Beyond Sight (Monk 17) and Arcane Conduit (Paladin 20) 1 box, only Long Rest
+  restores; species option "Geleton (TGS2)").
 - `e2e/manageSpells.spec.ts` — R9a a–k (seeded Cleric 3 / Life Domain / Magic
   Initiate Cleric, Warlock 3, Sorcerer 1, Fighter 1: drawer layout and counters,
   Prepare/Unprepare live + after reload, full counters disable, level pills +
@@ -1281,7 +1285,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   (Infernal, Mercantile, Steel Hawk, Aether, Spelldrinker, Rocborne, Grim Surgeon) with 46 feature records, species Etherean and Geleton (S/M).
 - TGS2-2 (D366): 2014 blocks (Ability Score Increase, Age, Alignment, Size, Speed, Languages, Creating Your…) removed from
   Etherean and Geleton `entries` in `loadHomebrew()`; Geleton S/M choice uses the standard SpeciesSizePicker (D175).
-  Open (TGS2-3..5): resource pools (no rest tags), feature spells/Channel Divinity `consumes`, grapple/ki prose, resistances.
+- TGS2-3 (D367): usage trackers — Launch 3/4/5 (Fighter 3/7/15, Short Rest, `subclassTableGroups` column "Launch" added in
+  `loadHomebrew()`), Improved Launch, Bloodbound, Hurricane (1, Short Rest), Sight Beyond Sight, Arcane Conduit (1, Long Rest)
+  through the existing resources.ts path after rest-tag rewrite (`HOMEBREW_REST_FEATURES`). Source GriffonsSaddlebag2 shown as
+  "TGS2" in pickers (`src/pickers/bookLabel.ts`: ChoiceRow, SearchableOptionList, SpeciesPicker).
+  Open (TGS2-4..5): feature spells/Channel Divinity `consumes`, grapple/ki prose, resistances.
 
 ## Dočasné scaffolding
 

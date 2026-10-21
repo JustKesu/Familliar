@@ -98,6 +98,19 @@ const HOMEBREW_KEEP = {
 	race: ["Etherean", "Geleton"],
 };
 const HOMEBREW_RACE_2014_BLOCKS = ["Ability Score Increase", "Age", "Alignment", "Size", "Speed", "Languages"];
+// D367: features whose plain "short/long rest" becomes the variantrule tags resources.ts reads; `sentence` swaps a 2014 recharge phrasing for the 2024 one.
+const HOMEBREW_REST_FEATURES = {
+	"Steel Hawk|Launch": {},
+	"Steel Hawk|Improved Launch": { sentence: ["you shouldn't do so again before you finish", "you can't use it again until you finish"] },
+	"Grim Surgeon|Bloodbound": {},
+	"Rocborne|Hurricane": {},
+	"Aether|Sight Beyond Sight": { sentence: ["you can't cast it again until you finish", "you can't use it again until you finish"] },
+	"Spelldrinker|Arcane Conduit": {},
+};
+// D367: Launch's uses are stated in prose only (3, then 4 at 7th, 5 at 15th); the table is where resources.ts reads a maximum.
+const HOMEBREW_SUBCLASS_TABLES = {
+	"Fighter|Steel Hawk": [{ colLabels: ["Launch"], rows: Array.from({ length: 20 }, (_, i) => [i + 1 < 3 ? 0 : i + 1 < 7 ? 3 : i + 1 < 15 ? 4 : 5]) }],
+};
 
 /*
  * Books whose BACKGROUNDS stay out even though the book is in ALLOWED_SOURCES.
@@ -1459,7 +1472,7 @@ function loadHomebrew() {
 			...readJson(path.join(SOURCE_DATA_DIR, "items-base.json")).baseitem,
 		]),
 	};
-	const stats = { tagsRedirected: 0, tagsLeft: 0, additionalSpellsRedirected: 0 };
+	const stats = { tagsRedirected: 0, tagsLeft: 0, additionalSpellsRedirected: 0, restFeatures: 0 };
 
 	// An unsourced {@spell}/{@condition}/{@item} tag means PHB in 5etools.
 	const redirectTags = (text) =>
@@ -1499,8 +1512,26 @@ function loadHomebrew() {
 		);
 		const races = (data.race || []).filter((entry) => HOMEBREW_KEEP.race.includes(entry.name));
 
+		for (const feature of features) {
+			const rest = HOMEBREW_REST_FEATURES[`${feature.subclassShortName}|${feature.name}`];
+			if (!rest) continue;
+			let swapped = !rest.sentence;
+			feature.entries = mapStrings(feature.entries, (text) => {
+				if (rest.sentence && text.includes(rest.sentence[0])) {
+					text = text.replace(rest.sentence[0], rest.sentence[1]);
+					swapped = true;
+				}
+				return text.replace(/\b(short or long|short|long) rest\b/gi, (_, kind) =>
+					kind.toLowerCase() === "short or long" ? "{@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}" : `{@variantrule ${kind[0].toUpperCase()}${kind.slice(1).toLowerCase()} Rest|XPHB}`,
+				);
+			});
+			if (!swapped) throw new Error(`Homebrew recharge sentence not found in ${feature.name}`);
+			stats.restFeatures++;
+		}
 		for (const entry of subclasses) {
 			entry.classSource = "XPHB";
+			const table = HOMEBREW_SUBCLASS_TABLES[`${entry.className}|${entry.name}`];
+			if (table) entry.subclassTableGroups = table;
 			if (entry.additionalSpells) entry.additionalSpells = mapStrings(entry.additionalSpells, redirectSpellRef);
 		}
 		for (const entry of races) {
@@ -1522,9 +1553,10 @@ function loadHomebrew() {
 		...HOMEBREW_KEEP.race.filter((name) => !result.race.some((entry) => entry.name === name)),
 	];
 	if (missing.length) throw new Error(`Homebrew entries not found: ${missing.join(", ")}`);
+	if (stats.restFeatures !== Object.keys(HOMEBREW_REST_FEATURES).length) throw new Error(`Homebrew rest features tagged: ${stats.restFeatures} of ${Object.keys(HOMEBREW_REST_FEATURES).length}`);
 
 	console.log(`Homebrew kept: ${result.subclass.length} subclasses, ${result.subclassFeature.length} subclass features, ${result.race.length} races`);
-	console.log(`Homebrew tags -> XPHB: ${stats.tagsRedirected} (left as-is: ${stats.tagsLeft}); additionalSpells -> XPHB: ${stats.additionalSpellsRedirected}`);
+	console.log(`Homebrew tags -> XPHB: ${stats.tagsRedirected} (left as-is: ${stats.tagsLeft}); additionalSpells -> XPHB: ${stats.additionalSpellsRedirected}; rest-tagged features: ${stats.restFeatures}`);
 	homebrewCache = result;
 	return result;
 }

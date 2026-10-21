@@ -5354,3 +5354,11 @@ Předměty, monstra a tabulky z knihy se neberou. Rozhodl Daniel.
 Z homebrew druhů Etherean a Geleton se při extrakci odstraňují bloky pravidel 2014 (Ability Score
 Increase, Age, Alignment, Size, Speed, Languages, Creating Your…). Rychlost a velikost appka bere
 z polí dat. Task TGS2-2, rozhodl Daniel.
+
+## D367 — Počítadla použití u homebrew TGS2 (TGS2-3)
+
+Počítadla použití u homebrew TGS2: Launch (3/4/5 na úrovni Fightera 3/7/15), Improved Launch,
+Bloodbound a Hurricane (1, krátký nebo dlouhý odpočinek), Sight Beyond Sight a Arcane Conduit (1,
+dlouhý odpočinek). Extrakce doplní tagy odpočinku, tabulku Launch a u Improved Launch a Sight Beyond
+Sight přepíše větu o obnově na znění 2024. Zdroj GriffonsSaddlebag2 se v appce zobrazuje jako TGS2.
+Task TGS2-3, rozhodl Daniel.

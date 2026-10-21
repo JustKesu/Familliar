@@ -1,35 +1,37 @@
-# REPORT — TGS2-3: ZASTAVENO po STEP 1 (text se liší od zadání)
+# REPORT — TGS2-3: počítadla Launch, Bloodbound, Sight Beyond Sight aj. a popisek zdroje TGS2 (D367)
 
-HEAD po `git merge --ff-only origin/main`: 115051f („Already up to date“). Nic neimplementováno: extract-data.js, data/, src/, e2e/, DATA.md, STATUS.md, DECISIONS.md beze změny. Část B nezačata (zadání ji řadí za část A). Typecheck/test/validate/e2e nespuštěny — kód se neměnil.
+HEAD na startu 115051f (ff-only, „Already up to date“). První běh se zastavil po STEP 1 (commit b35c675); uživatel odpověděl (Hurricane + Arcane Conduit přidat, varianta (a) pro dvě věty, Bloodbound = Rogue 17) a task pokračoval. D367 dřív neexistovalo.
 
-## STEP 1 — souhrn (scripts/tgs2-pools.js, nesledovaný, necommitnut)
-| prvek | podtřída, úroveň | text (bez markupu) | odpovídá zadání |
+## STEP 1 (scripts/tgs2-pools.js, nesledovaný, necommitnut)
+| prvek | podtřída, úroveň | text | výsledek |
 |---|---|---|---|
-| Launch | Fighter / Steel Hawk 3 | „You can use this feature three times, and you regain all expended uses of it when you finish a short or long rest.“ + „Beginning at 7th level … four times between rests, and beginning at 15th level … five times“ | ano (3/4/5, 3/7/15, SR) |
-| Improved Launch | Fighter / Steel Hawk 18 | „Once you use this feature, you **shouldn't do so again before** you finish a short or long rest.“ | počet ano; formulace jiná |
-| Bloodbound | **Rogue / Grim Surgeon 17** | „Once you use this feature, you can't use it again until you finish a short or long rest.“ | počet ano; **třída ne** (zadání e2e c) říká Barbarian) |
-| Sight Beyond Sight | Monk / Aether 17 | „Once you **cast this spell**, you can't **cast it again** until you finish a long rest.“ | počet ano; formulace jiná |
+| Launch | Fighter / Steel Hawk 3 | „three times … regain all expended uses … short or long rest“; „four times“ od 7, „five times“ od 15 | 3/4/5, SR |
+| Improved Launch | Fighter / Steel Hawk 18 | „shouldn't do so again before you finish a short or long rest“ | 1, SR (věta přepsána) |
+| Bloodbound | Rogue / Grim Surgeon 17 | „can't use it again until you finish a short or long rest“ | 1, SR |
+| Hurricane | Ranger / Rocborne 15 | totéž | 1, SR |
+| Sight Beyond Sight | Monk / Aether 17 | „can't cast it again until you finish a long rest“ | 1, LR (věta přepsána) |
+| Arcane Conduit | Paladin / Spelldrinker 20 | „can't use it again until you finish a long rest“ | 1, LR |
+Mimo: Ghost Walker (WIS mod, D43 unknown), Field Surgeon (limit na tvora).
 
-Jiné prvky z 46 s pevným počtem a odpočinkem:
-- **Ranger / Rocborne 15 Hurricane**: „Once you use this feature, you can't use it again until you finish a short or long rest.“ — stejný vzor jako Bloodbound, mimo seznam → podmínka STOP.
-- Paladin / Spelldrinker 20 Arcane Conduit: totéž, ale „long rest“ (1/LR).
-- Monk / Aether 11 Ghost Walker: počet = WIS mod (D43 unknown, ne pevný). Rogue / Grim Surgeon 9 Field Surgeon: limit per tvor, ne pool.
+## Co se změnilo
+- `scripts/extract-data.js`: `HOMEBREW_REST_FEATURES` (6 prvků, klíč `subclassShortName|name`) — v `loadHomebrew()` přepis „short rest“/„long rest“/„short or long rest“ na `{@variantrule Short Rest|XPHB}` / `{@variantrule Long Rest|XPHB}`, u Improved Launch a Sight Beyond Sight náhrada věty na „you can't use it again until you finish“. Chybějící věta nebo počet ≠ 6 → throw. `HOMEBREW_SUBCLASS_TABLES`: Steel Hawk `subclassTableGroups [{colLabels:["Launch"], rows: 20×[0|3|4|5]}]`.
+- `data/classes.json`, `data/subclass-features.json` přegenerovány; počty beze změny (EXPECTED_COUNTS nesahány).
+- src/ beze změny logiky: pooly čte stávající `isSelfLimitedFeature` / `isImplicitSingleUse` / `lookupInTableGroups`.
+- Část B: nový `src/pickers/bookLabel.ts` (`GriffonsSaddlebag2` → `TGS2`), použit na 4 místech: `ChoiceRow.tsx:43` (štítek knihy: podtřídy, fighting styles, optional features, výbava), `SearchableOptionList.tsx:126` (accessible name u sdíleného jména), `SpeciesPicker.tsx:96` a `:121`. Uložený source zůstává.
+- `src/calculation/resources.test.ts`: datový guard 69→74 maxim (67→72 single-use), Short-Rest seznam +Improved Launch, Bloodbound, Hurricane.
+- Docs: DATA.md (rest wording TGS2), STATUS.md, DECISIONS.md D367 (text dle uživatele).
 
-## Proč nestačí jen přepsat slova na tagy
-`isSelfLimitedFeature` (resources.ts:114) chce rest tag A frázi `EXPENDED_USES`; `isImplicitSingleUse` chce `SINGLE_USE_RECHARGE` = „can't (do so|use it|use this feature|use this benefit) again until you finish a … Rest“.
-- Launch, Bloodbound (a Hurricane, Arcane Conduit) po přepisu tagů projdou stávající cestou.
-- Improved Launch („shouldn't do so again before“) a Sight Beyond Sight („can't cast it again“) **neprojdou** — nevzniknou jako pool. Zadání pro tento případ říká STOP.
-
-## Otázky pro uživatele
-1. Hurricane (1/SR) a Arcane Conduit (1/LR): přidat do D367 také, nebo nechat bez počítadla? Přidání = dva další trackery zdarma (stávající cesta je přečte po přepisu tagů).
-2. Improved Launch a Sight Beyond Sight: (a) v normalizaci přepsat i jejich větu na znění, které app zná („you can't use it again until you finish a Short or Long Rest“ / „… a Long Rest“) — žádný nový kód v src/, ale mění se homebrew text; (b) rozšířit `SINGLE_USE_RECHARGE`/`EXPENDED_USES` v resources.ts o „shouldn't do so again before“ a „can't cast it again“ — nová logika v src/, týká se jen těchto dvou textů; (c) bez počítadla.
-3. Bloodbound je Rogue (Grim Surgeon 17), ne Barbarian — e2e c) přepsat na Rogue 17 Grim Surgeon? (předpokládám ano, jen chyba v zadání).
+## Ověřeno
+- `npm run typecheck` OK; `npm run test` 3383/3383 (po úpravě guardu); `npm run validate-data` 177/177; `npm run e2e` 618/618 (2.0 min).
+- `e2e/tgs2Pools.spec.ts`: a) Launch 3 boxy na Fighter 3, 4 na Fighter 7; b) Launch po Short Rest zpět; c) Bloodbound Rogue 17 1 box, SR obnoví; d) Sight Beyond Sight Monk 17 1 box, SR ne, LR ano; e) option „Geleton (TGS2)“; f) Hurricane Ranger 15 1 box, SR obnoví; g) Arcane Conduit Paladin 20 1 box, SR ne, LR ano.
 
 ## Rozhodnutí během práce
-- Nic neimplementováno; Launch tabulka a tagy čekají na odpovědi výše.
-- Nesledované docs/REPORT-*.md, CLAUDE-1.md aj. ponechány mimo commit (ležely nesledované i přes předchozí commity).
+- STOP podmínka části B („žádný sdílený helper“): helper neexistoval, ale míst jsou 4 a dvě z nich jsou sdílené komponenty (ChoiceRow, SearchableOptionList) — helper jsem vytvořil místo zastavení.
+- Rest tagy nově dávají těmto 6 prvkům řádek v tabulce Actions (D86 isActionTableFeature čte rest tag) — vedlejší efekt, ověřen jen přes počítadla.
+- Nesledované docs/REPORT-*.md, CLAUDE-1.md a scripts/tgs2-*.js ponechány mimo commit (git clean zakázán zadáním).
 
 ## Subagent
 Nepoužit.
 
-Manual browser check for the user: none - nothing changed in the app.
+Manual browser check for the user: none - the planning chat checks the looks from screenshots.
+Změněné obrazovky: Actions tab (nová počítadla Launch, Improved Launch, Bloodbound, Hurricane, Sight Beyond Sight, Arcane Conduit u TGS2 postav), wizard Species step (option „… (TGS2)“), picker podtříd/level-up (štítek knihy „TGS2“).

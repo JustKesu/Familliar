@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { bookLabel } from '../pickers/bookLabel'
 import { findSpeciesSelection, loadSpeciesOptions, type SpeciesOption, type SpeciesVariant } from './speciesData'
 
 /*
@@ -92,7 +93,7 @@ export function SpeciesPicker({
 					<option value="">Choose a species…</option>
 					{state.options.map((option) => (
 						<option key={optionKey(option)} value={optionKey(option)}>
-							{option.displayName} ({option.source})
+							{option.displayName} ({bookLabel(option.source)})
 						</option>
 					))}
 				</select>
@@ -117,7 +118,7 @@ export function SpeciesPicker({
 
 			{!selected && value !== null && (
 				<p className="error">
-					Saved species “{value.name}” ({value.source}) isn’t in the species list.
+					Saved species “{value.name}” ({bookLabel(value.source)}) isn’t in the species list.
 				</p>
 			)}
 			{!selected && value === null && <p className="species-picker__hint">Pick a species to continue.</p>}

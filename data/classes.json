@@ -12669,6 +12669,75 @@
 				}
 			]
 		},
+		"subclassTableGroups": [
+			{
+				"colLabels": [
+					"Launch"
+				],
+				"rows": [
+					[
+						0
+					],
+					[
+						0
+					],
+					[
+						3
+					],
+					[
+						3
+					],
+					[
+						3
+					],
+					[
+						3
+					],
+					[
+						4
+					],
+					[
+						4
+					],
+					[
+						4
+					],
+					[
+						4
+					],
+					[
+						4
+					],
+					[
+						4
+					],
+					[
+						4
+					],
+					[
+						4
+					],
+					[
+						5
+					],
+					[
+						5
+					],
+					[
+						5
+					],
+					[
+						5
+					],
+					[
+						5
+					],
+					[
+						5
+					]
+				]
+			}
+		],
 		"subclassFeatureIds": [
 			"scf|steel hawk|fighter|phb|steel hawk|griffonssaddlebag2|3|griffonssaddlebag2",
 			"scf|steel grace|fighter|phb|steel hawk|griffonssaddlebag2|7|griffonssaddlebag2",
