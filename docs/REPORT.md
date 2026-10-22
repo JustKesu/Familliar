@@ -1,37 +1,67 @@
-# REPORT — TGS2-3: počítadla Launch, Bloodbound, Sight Beyond Sight aj. a popisek zdroje TGS2 (D367)
+# REPORT — P-TGS2-4: inventura kouzel, ki, Channel Divinity a 2014 pojmů v TGS2
 
-HEAD na startu 115051f (ff-only, „Already up to date“). První běh se zastavil po STEP 1 (commit b35c675); uživatel odpověděl (Hurricane + Arcane Conduit přidat, varianta (a) pro dvě věty, Bloodbound = Rogue 17) a task pokračoval. D367 dřív neexistovalo.
+HEAD 69f698b (ověřeno po `git merge --ff-only`). Jen průzkum: nový `scripts/investigate-tgs2-4.js` (režimy `sentences|feature|subclass|shapes|cd|markup|targets|monkdc`, čte extrahovaná data v `data/`), tento report. Testy/e2e nespuštěny (kód beze změny). Subagent nepoužit.
 
-## STEP 1 (scripts/tgs2-pools.js, nesledovaný, necommitnut)
-| prvek | podtřída, úroveň | text | výsledek |
+## 1. Kouzla z prózy (dnes 0 z prvků; jen Spelldrinker `prepared` a Rocborne `known` na podtřídě)
+Cesty v app: `additionalSpells` se čte jen na PODTŘÍDĚ (`extractSubclassAlwaysPreparedSpells`, subclassPreparedSpells.ts:528 → `collectFixedGrants` :417). Obal: `will` :389, `daily{1}` :391/`parseDailySubkey` :349 (1×/LR), `ritual` :396, `resource{N}`+`resourceName` :398 (utrácí existující pool, freeCastResources.ts:107; ki→Focus Point přes RESOURCE_NAME_ALIASES, resources.ts:77). Vzory v data/: Monk Shadow|XPHB `innate.resource{1}` Focus Point, Sun Soul|XGE `innate.resource{2}` Ki, Wild Heart|XPHB `innate.ritual`, Psi Warrior|XPHB `innate.daily{1}`, 12 podtříd `known` bare. Sdílení počítadla s existujícím trackerem: `SHARED_OWNERS`, freeCastResources.ts:27.
+| prvek (podtř., úr.) | věta | kouzlo / jak | cesta → doporučení | míst |
+|---|---|---|---|---|
+| Spirit Hand (Aether 3) | "you learn the mage hand cantrip, which you can cast … as a bonus action" | mage hand, známý cantrip | `known{"3"}` bare; BA jen text | 2 |
+| Spectral Guide (Aether 6) | "spend 2 ki points to cast either the gentle repose or see invisibility spell" | 2 Focus | `innate{"6":{resource:{"2":[…]}}}`, `resourceName:"Focus Point"` | 2 |
+| Spectral Guide (Aether 6) | "You also gain the spare the dying cantrip" | cantrip | `known{"6"}` bare | 1 |
+| Sight Beyond Sight (Aether 17) | "you can use an action to cast the etherealness spell … can't use it again until … Long Rest" | 1×/LR | `innate.daily{1}` + SHARED_OWNERS "Way of the Aether"→"Sight Beyond Sight" (už pool z TGS2-3; jinak 2 počítadla) | 3 |
+| Bird Caller (Steel Hawk 3) | "cast the animal messenger spell, but only as a ritual" | jen rituál | `innate{"3":{ritual:[…]}}`; omezení na létající bestii jen text | 2 |
+| Planar Conspirator (Infernal 10) | "spend 2 Hit Dice, without regaining any hit points, to cast the detect thoughts spell" | stojí Hit Dice | **no path** (Hit Dice v `play.spentHitDice`, `resource` utrácí jen `play.resourceUses`) → nechat prózu, nebo nový `SpellUsage` ~8 míst | 0/8 |
+| Incinerating Wrath (Infernal 14) | "use your reaction … duplicating the effect of the hellish rebuke spell (3rd-level version…)" | reakce, není seslání | no path (bare grant = slotové seslání, chybně) → próza | 0 |
+| Bloodbound (Grim Surgeon 17) | "under the effect of the dominate beast or dominate person spell" | efekt, ne seslání | próza (pool už z TGS2-3) | 0 |
+Mimo: Shrewd Consumer ("whenever you cast a spell that consumes…") a Oath Spells/Rocborne Magic (už v `additionalSpells`) — nic.
+
+## 2. Ki (jen Aether; 6 vět)
+| prvek | věta | změna při ki→Focus | míst |
 |---|---|---|---|
-| Launch | Fighter / Steel Hawk 3 | „three times … regain all expended uses … short or long rest“; „four times“ od 7, „five times“ od 15 | 3/4/5, SR |
-| Improved Launch | Fighter / Steel Hawk 18 | „shouldn't do so again before you finish a short or long rest“ | 1, SR (věta přepsána) |
-| Bloodbound | Rogue / Grim Surgeon 17 | „can't use it again until you finish a short or long rest“ | 1, SR |
-| Hurricane | Ranger / Rocborne 15 | totéž | 1, SR |
-| Sight Beyond Sight | Monk / Aether 17 | „can't cast it again until you finish a long rest“ | 1, LR (věta přepsána) |
-| Arcane Conduit | Paladin / Spelldrinker 20 | „can't use it again until you finish a long rest“ | 1, LR |
-Mimo: Ghost Walker (WIS mod, D43 unknown), Field Surgeon (limit na tvora).
+| Way of the Aether (h1) | "aligning the ki and aether within themselves" | jen text (flavor) — doporučuji nechat | 0–1 |
+| Spectral Guide | "spend 2 ki points to cast …" | text + cena čitelná app (bod 1, `resourceName`) | 1 (+2 z b.1) |
+| Spectral Guide | "when you harness your ki" | jen text | 1 |
+| Spectral Guide / Dismiss Undead | "Wisdom saving throw against your ki save DC" | text: XPHB Monk's Focus "The save DC equals 8 plus your Wisdom modifier and Proficiency Bonus" (pojmenované DC v XPHB není) | 1 |
+| Ghost Walker / Etherstep | "spend 1 ki point as a bonus action to turn invisible" | text; `consumes:{name:"Focus Point"}` by app četla (resources.ts:450, featureActionRowData.ts:67), ale řádek pak utrácí Focus místo vlastních použití Phase → doporučuji jen text | 1 |
+| Ghost Walker / Etherstep | "spend an extra ki point as part of your Step of the Wind" | jen text | 1 |
+Mechanismus pro všechny textové výměny: tabulka vět v extract-data.js jako `HOMEBREW_REST_FEATURES` (:102, uplatněno :1516).
 
-## Co se změnilo
-- `scripts/extract-data.js`: `HOMEBREW_REST_FEATURES` (6 prvků, klíč `subclassShortName|name`) — v `loadHomebrew()` přepis „short rest“/„long rest“/„short or long rest“ na `{@variantrule Short Rest|XPHB}` / `{@variantrule Long Rest|XPHB}`, u Improved Launch a Sight Beyond Sight náhrada věty na „you can't use it again until you finish“. Chybějící věta nebo počet ≠ 6 → throw. `HOMEBREW_SUBCLASS_TABLES`: Steel Hawk `subclassTableGroups [{colLabels:["Launch"], rows: 20×[0|3|4|5]}]`.
-- `data/classes.json`, `data/subclass-features.json` přegenerovány; počty beze změny (EXPECTED_COUNTS nesahány).
-- src/ beze změny logiky: pooly čte stávající `isSelfLimitedFeature` / `isImplicitSingleUse` / `lookupInTableGroups`.
-- Část B: nový `src/pickers/bookLabel.ts` (`GriffonsSaddlebag2` → `TGS2`), použit na 4 místech: `ChoiceRow.tsx:43` (štítek knihy: podtřídy, fighting styles, optional features, výbava), `SearchableOptionList.tsx:126` (accessible name u sdíleného jména), `SpeciesPicker.tsx:96` a `:121`. Uložený source zůstává.
-- `src/calculation/resources.test.ts`: datový guard 69→74 maxim (67→72 single-use), Short-Rest seznam +Improved Launch, Bloodbound, Hurricane.
-- Docs: DATA.md (rest wording TGS2), STATUS.md, DECISIONS.md D367 (text dle uživatele).
+## 3. Oath of the Spelldrinker — Channel Divinity
+- Homebrew: 1 záznam "Channel Divinity" (L3, header 2), možnosti jako vnořené `entries` "Absorb Magic" (reakce, ruší kouzlo ≤ ⌈(1+lvl)/3⌉, max 6; temp HP = CHA + 5×úr.) a "Expeditious Command" (BA, CHA-mod tvorů Dash/Disengage). Žádné `consumes`.
+- XGE/TCE vzor: rodič "Channel Divinity" bez `consumes`, jen `refSubclassFeature` na samostatné záznamy možností, každá `consumes:{"name":"Channel Divinity"}` (XGE 4, TCE 2). XPHB: 5 prvků s `consumes:{"name":"Channel Divinity"}` přímo (Sacred Weapon, Nature's Wrath…).
+- Pool: sloupec "Channel Divinity" v tabulce Paladin|XPHB → `tableGrantedPools` (resources.ts:461); spender přes `consumedPoolName` (resources.ts:94/450) a řádek akce `consumedResourceName` (featureActionRowData.ts:67); multiclass split `resourceKeyFor` (classPools.ts:11, D336).
+- Chybí: `consumes` a samostatné záznamy možností. Varianta A (rozdělit jako XGE: 2 nové záznamy + 2 refy v rodiči, ids) ~6 míst; varianta B (`consumes` na rodiči, 1 řádek) ~3 místa. Riziko: e2e reviewFixesM10 počítá řádky "Channel Divinity".
 
-## Ověřeno
-- `npm run typecheck` OK; `npm run test` 3383/3383 (po úpravě guardu); `npm run validate-data` 177/177; `npm run e2e` 618/618 (2.0 min).
-- `e2e/tgs2Pools.spec.ts`: a) Launch 3 boxy na Fighter 3, 4 na Fighter 7; b) Launch po Short Rest zpět; c) Bloodbound Rogue 17 1 box, SR obnoví; d) Sight Beyond Sight Monk 17 1 box, SR ne, LR ano; e) option „Geleton (TGS2)“; f) Hurricane Ranger 15 1 box, SR obnoví; g) Arcane Conduit Paladin 20 1 box, SR ne, LR ano.
+## 4. 2014 pojmy
+| prvek | věta | 2024 znění | míst |
+|---|---|---|---|
+| Infernal Warrior (Infernal 6) | "when you use the Attack action to grapple a creature … if your grapple check succeeds" + `{@action grapple}` (cíl v data/ neexistuje) | "when you use the Grapple option of your Unarmed Strike … if the target fails its saving throw" (`{@condition Grappled|XPHB}`; XPHB Unarmed Strike v data/ jako tag-cíl není, jen "Escape a Grapple|XPHB") | 1 |
+| Shrewd Consumer (Mercantile 14) | "take the Use an Object action or drink a potion" | `{@action Utilize|XPHB}` (existuje) | 1 |
+| Planar Conspirator (Infernal 10) | "spend 2 Hit Dice" | "Hit Point Dice" (+ "use an action to cast" → Magic action) | 1 |
+| Medic (Grim Surgeon 3) | "Your proficiency bonus is doubled for any ability check … this skill" | = Expertise (2024); app expertise z prózy nečte — text | 1 |
+| Eagle Eye (Steel Hawk 10) | "proficiency bonus is doubled for any Wisdom (Perception) check … relies on sight" | podmíněné, ne Expertise → nechat | 0 |
+| Incinerating Wrath | "(3rd-level version…)" | "level 3 version" — kosmetika | 1 |
+| Spectral Guide, Sight Beyond Sight, Planar Conspirator | "use an action to cast" | "take the Magic action to cast" — kosmetika | 3 |
 
-## Rozhodnutí během práce
-- STOP podmínka části B („žádný sdílený helper“): helper neexistoval, ale míst jsou 4 a dvě z nich jsou sdílené komponenty (ChoiceRow, SearchableOptionList) — helper jsem vytvořil místo zastavení.
-- Rest tagy nově dávají těmto 6 prvkům řádek v tabulce Actions (D86 isActionTableFeature čte rest tag) — vedlejší efekt, ověřen jen přes počítadla.
-- Nesledované docs/REPORT-*.md, CLAUDE-1.md a scripts/tgs2-*.js ponechány mimo commit (git clean zakázán zadáním).
+## 5. Syrový markup
+46 prvků + 2 druhy: neznámé tagy 0 (proti 47 jménům v src/markup/tags.ts), typy entries refSubclassFeature/entries/table/list — všechny v Markup.tsx, zbytky závorek 0. Jediné tagy bez cíle: `{@action grapple}` (Infernal Warrior), `{@action Use an Object}` (Shrewd Consumer) → řeší bod 4.
 
-## Subagent
-Nepoužit.
+## 6. Návrh rozdělení TGS2-4
+1. **TGS2-4a kouzla** (~10): `HOMEBREW_SUBCLASS_SPELLS` v extract-data.js (Aether: known 3/6, innate.resource{2} 6, innate.daily{1} 17; Steel Hawk innate.ritual 3) + slučování do `additionalSpells`, SHARED_OWNERS etherealness, DATA.md, STATUS.md, e2e Spells tab (USE řádek 2 FP, rituál, 1×/LR sdílený s trackerem).
+2. **TGS2-4b Channel Divinity** (~6 A / ~3 B) + e2e utracení poolu, kontrola reviewFixesM10.
+3. **TGS2-4c textové výměny** (~12): ki→Focus (5 vět), grapple, Utilize, Hit Point Dice, Medic, volitelně Magic action/level 3; tabulka vět v extract-data.js, DATA.md, e2e na text.
+4. (volitelně, po rozhodnutí) detect thoughts za Hit Dice jako tlačítko (~8, nový druh ceny).
 
-Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: Actions tab (nová počítadla Launch, Improved Launch, Bloodbound, Hurricane, Sight Beyond Sight, Arcane Conduit u TGS2 postav), wizard Species step (option „… (TGS2)“), picker podtříd/level-up (štítek knihy „TGS2“).
+## Decisions taken / noticed
+- Efekty "duplicating the effect of"/"under the effect of" (hellish rebuke, dominate) beru jako ne-seslání → próza.
+- Ghost Walker: `consumes` nedoporučuji (přebil by vlastní počítadlo Phase).
+
+## Open questions for the user
+1. **Ki → Focus Points v textu:** pravidla 2024 říkají mnichovým bodům „Focus Points“, homebrew píše „ki“. Přepsat text (list mluví jednotně), nebo nechat původní znění? Cena 2 bodů u Spectral Guide se bude z poolu Focus odečítat v obou případech.
+2. **Channel Divinity Spelldrinkera:** ukazovat dva řádky (Absorb Magic, Expeditious Command — každý ubere použití, jako oficiální přísahy), nebo jeden řádek „Channel Divinity“, který ubere použití a možnosti jsou jen v textu?
+3. **Detect thoughts za 2 Hit Dice:** jen text (hráč si kostky odškrtne ručně), nebo tlačítko, které Hit Dice samo utratí (větší nová práce)?
+4. **Grapple u Infernal Warrior:** přepsat na pravidla 2024 (úchop přes Unarmed Strike, cíl hází záchranný hod; oheň zraní, když hod nevyjde), nebo nechat 2014 „grapple check“ (u stolu nesedí s 2024 pravidly)?
+5. **Kosmetika:** přepsat i „use an action“ → „Magic action“, „3rd-level“ → „level 3“ a Medic → „Expertise“, nebo jen věci, které mění hru (ki, grapple, Use an Object, Hit Dice)?
+
+Manual browser check for the user: none - investigation only.
