@@ -121,7 +121,7 @@ const HOMEBREW_SUBCLASS_SPELLS = {
 			ability: "wis",
 		},
 	],
-	"Fighter|Steel Hawk": [{ innate: { 3: { ritual: ["animal messenger|xphb"] } } }],
+	"Fighter|Steel Hawk": [{ innate: { 3: { ritual: ["animal messenger|xphb"] } }, ability: "wis" }],
 };
 
 /*

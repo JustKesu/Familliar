@@ -42,6 +42,7 @@ import { loadDataFile } from '../dataLoader/dataLoader'
 import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/proficiencies'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILL_LABELS, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
+import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { computeAbilitySpellcasting, computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import { itemSpellGrants, withItemSpellSpent } from '../inventory/customItemGrants'
 import { itemSpellAbilityOf, itemSpellActionRows, itemSpells as buildItemSpells } from './itemSpellRows'
@@ -96,7 +97,13 @@ import { speciesSaveAdvantageLines } from './speciesSaveAdvantages'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
-import { dedupeAlwaysPreparedSpells, loadClassAlwaysPreparedSpells, loadSubclassAlwaysPreparedSpells, type AlwaysPreparedSpell } from '../spells/subclassPreparedSpells'
+import {
+	dedupeAlwaysPreparedSpells,
+	loadClassAlwaysPreparedSpells,
+	loadSubclassAlwaysPreparedSpells,
+	loadSubclassSpellcastingAbility,
+	type AlwaysPreparedSpell,
+} from '../spells/subclassPreparedSpells'
 import { loadSubclassChosenSpells } from '../spells/subclassSpellChoiceData'
 import {
 	loadFeatEffectEntries,
@@ -1784,7 +1791,9 @@ function CharacterSheetBody({
 	const [ruleTexts, setRuleTexts] = useState<RuleTexts | null>(null)
 
 	/** One entry per class carrying a subclass — resolved and fetched separately from the main load (it depends on `character`, not just static data), starts empty rather than blocking the rest of the sheet on the D46-style subclass source resolution (sheetData.ts). */
-	const [subclassSpellInfo, setSubclassSpellInfo] = useState<{ subclassName: string; className: string; classSource: string; alwaysPrepared: AlwaysPreparedSpell[] }[]>([])
+	const [subclassSpellInfo, setSubclassSpellInfo] = useState<
+		{ subclassName: string; className: string; classSource: string; alwaysPrepared: AlwaysPreparedSpell[]; ability: AbilityAbbreviation | null }[]
+	>([])
 	/** D192: class-record always-prepared grants, one group per class. */
 	const [classSpellInfo, setClassSpellInfo] = useState<{ className: string; spells: AlwaysPreparedSpell[] }[]>([])
 	/** Fixed feat-granted spells (d5a) — depends on the character's feats (featInstances, D156), fetched separately from the main load same as subclassSpellInfo. */
@@ -1978,8 +1987,9 @@ function CharacterSheetBody({
 					(choice) => choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass && choice.subclassSource === source,
 				)
 				const chosen = matchingChoices.length > 0 ? await loadSubclassChosenSpells(matchingChoices) : []
+				const ability = source ? await loadSubclassSpellcastingAbility(c.subclass, source, c.className, c.classSource) : null
 				// dedupeAlwaysPreparedSpells: a d6b picked spell could in principle coincide with the subclass's own fixed grant — same "spell reachable via two paths" reasoning as subclassPreparedSpells.ts's own dedup, applied again here since this concatenation happens outside that module.
-				return { subclassName: c.subclass, className: c.className, classSource: c.classSource, alwaysPrepared: dedupeAlwaysPreparedSpells([...alwaysPrepared, ...chosen]) }
+				return { subclassName: c.subclass, className: c.className, classSource: c.classSource, alwaysPrepared: dedupeAlwaysPreparedSpells([...alwaysPrepared, ...chosen]), ability }
 			}),
 		)
 		Promise.all([classGrants, subclassGrants])
@@ -2433,6 +2443,13 @@ function CharacterSheetBody({
 	const featSpellcastingEntries = featSpellcasting.status === 'known' ? featSpellcasting.value : []
 	const speciesSpellcasting = computeSpeciesSpellcasting(character, raceSpells.spells, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 	const speciesSpellcastingEntries = speciesSpellcasting.status === 'known' ? speciesSpellcasting.value : []
+	// D371: a subclass's own ability counts only for a class with no spellcasting of its own (Steel Hawk, Warrior of Shadow).
+	const subclassSpellcastingEntries = subclassSpellInfo.flatMap((info) => {
+		if (info.ability === null || spellcastingEntries.some((e) => e.className === info.className && e.classSource === info.classSource)) return []
+		const ability = ABILITIES.find((a) => ABILITY_ABBREVIATIONS[a] === info.ability)!
+		const own = computeAbilitySpellcasting(character, ability, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
+		return own.status === 'known' ? [{ className: info.className, classSource: info.classSource, ...own.value }] : []
+	})
 	/* R14c2 (D219): a custom item's spells stand beside the combined list, never merged into it — own rows, own numbers, own counters. */
 	const itemSpells = buildItemSpells(itemSpellGrants(character.inventory), spellDetails, (ability) => {
 		const own = computeAbilitySpellcasting(character, ability, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
@@ -2447,6 +2464,7 @@ function CharacterSheetBody({
 		featSpellcastingEntries,
 		speciesSpellcastingEntries,
 		itemSpellActionRows(itemSpells, totalCharacterLevel(character.classes)),
+		subclassSpellcastingEntries,
 	)
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
 	/*
@@ -3163,7 +3181,7 @@ function CharacterSheetBody({
 			{(isCaster || combinedSpells.length > 0 || itemSpells.length > 0 || spellLoadErrors.length > 0 || raceSpells.notes.length > 0) && (
 				<SpellsSection
 					sections={spellSections}
-					casterOf={(row) => spellsTabRowCaster(row, spellcastingEntries, featSpellcastingEntries, speciesSpellcastingEntries)}
+					casterOf={(row) => spellsTabRowCaster(row, spellcastingEntries, featSpellcastingEntries, speciesSpellcastingEntries, subclassSpellcastingEntries)}
 					characterLevel={totalCharacterLevel(character.classes)}
 					castingClassName={spellcastingEntries.length === 1 ? spellcastingEntries[0]!.className : null}
 				multiclass={multiclassed}

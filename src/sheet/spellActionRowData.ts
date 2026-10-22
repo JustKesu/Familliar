@@ -95,6 +95,8 @@ export function casterFor(
 	featEntries: FeatSpellcastingEntry[],
 	speciesEntries: SpeciesSpellcastingEntry[],
 	grant: SpellGrant | null = null,
+	/** D371: per owning class without spellcasting of its own, the numbers from its subclass's `additionalSpells` ability. */
+	subclassEntries: SpellcastingEntry[] = [],
 ): SpellCaster {
 	if (grant?.origin === 'feat') {
 		const own = featEntries.find((f) => f.featKey === (grant.instanceKey ?? grant.originName))
@@ -126,6 +128,8 @@ export function casterFor(
 			(c) => entry.classOrigins.includes(c.className) || owners.some((owner) => owner.className === c.className && owner.classSource === c.classSource),
 		)
 		if (own.length === 1) return toCaster(own[0]!)
+		const bySubclass = subclassEntries.filter((s) => owners.some((owner) => owner.className === s.className && owner.classSource === s.classSource))
+		if (own.length === 0 && bySubclass.length === 1) return toCaster(bySubclass[0]!)
 	}
 	if (featEntry && !grantedByClass) return toCaster(featEntry)
 	if (speciesEntry && !grantedByClass) return toCaster(speciesEntry)
@@ -321,13 +325,14 @@ export function spellActionRows(
 	speciesEntries: SpeciesSpellcastingEntry[] = [],
 	/** R14c2: rows built elsewhere (a custom item's spells) sorted in with these. */
 	extraRows: SpellActionData[] = [],
+	subclassEntries: SpellcastingEntry[] = [],
 ): SpellActionData[] {
 	const rows: SpellActionData[] = [...extraRows]
 
 	for (const entry of entries) {
 		const detail = findSpellDetail(details, entry.name, entry.source)
 		if (!detail) continue
-		const row = spellActionData(spellEntryKey(entry), entry.name, detail, () => casterFor(entry, classEntries, featEntries, speciesEntries), characterLevel)
+		const row = spellActionData(spellEntryKey(entry), entry.name, detail, () => casterFor(entry, classEntries, featEntries, speciesEntries, null, subclassEntries), characterLevel)
 		// D325: with two casting classes a pick's row names its class, so a spell both chose reads as two rows.
 		if (row && entry.chosen && entry.chosenBy && classEntries.length > 1) row.origin = entry.chosenBy.className
 		if (row) rows.push(row)

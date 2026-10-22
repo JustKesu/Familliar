@@ -261,9 +261,10 @@ export function spellsTabRowCaster(
 	classEntries: SpellcastingEntry[],
 	featEntries: FeatSpellcastingEntry[],
 	speciesEntries: SpeciesSpellcastingEntry[],
+	subclassEntries: SpellcastingEntry[] = [],
 ): SpellCaster {
 	if (row.item) return row.item.caster
-	return casterFor(row.entry, classEntries, featEntries, speciesEntries, row.action.kind === 'use' ? row.action.grant : null)
+	return casterFor(row.entry, classEntries, featEntries, speciesEntries, row.action.kind === 'use' ? row.action.grant : null, subclassEntries)
 }
 
 /** The Hit / DC cell: null for a spell with neither an attack roll nor a save (D43: an unresolved caster says why instead of a number). */

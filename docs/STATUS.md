@@ -1166,7 +1166,7 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   details with origin; Ranger 7 Rocborne Cold; Barbarian 5 no Fire).
 - `e2e/tgs2Spells.spec.ts` — TGS2-4a a–d (D370: Monk 3 Aether Mage Hand, no Spare the Dying; Monk 6 Gentle Repose /
   See Invisibility USE 2 Focus Points, 6/6 → 4/6; Monk 17 Etherealness USE spends Sight Beyond Sight, Long Rest restores;
-  Fighter 3 Steel Hawk Animal Messenger ritual label only).
+  Fighter 3 Steel Hawk Animal Messenger ritual label only; TGS2-4a2 D371: its DC 11 CHA from Wisdom, no "unresolved").
 - `e2e/itemCostWeight.spec.ts` — F-41 a–d (D368: Battleaxe ×3 without a description expands to
   "Cost: 10 gp · Weight: 4 lb."; Rope line above its description; +1 Wand of the War Mage "Weight: 1 lb."
   without "Cost:"; custom item valueCopper 150 "Cost: 1 gp 5 sp").
@@ -1304,6 +1304,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Gentle Repose / See Invisibility for 2 Focus Points (6), Etherealness 1/Long Rest (17) spending the Sight Beyond Sight record
   (`SHARED_OWNERS` in freeCastResources.ts), and Steel Hawk Animal Messenger as ritual only (3). Both ruled not castable with
   a slot in `alsoCastableWithSlot.ts`.
+- TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
+  becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
+  for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:
+  Animal Messenger DC 8 + PB + WIS.
 - F-41 (D368): Inventory tab item detail shows "Cost: … · Weight: … lb." above the description, per single item
   (`ItemRef.weight` from items.json `weight`; `formatCopperPrice` in `currency.ts`). ▸ appears also for an item with
   cost or weight but no description. Carrying capacity not computed.

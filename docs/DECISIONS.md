@@ -5383,3 +5383,10 @@ v extract-data.js (tvar jako Warrior of Shadow a Path of the Wild Heart). Way of
 dlouhý odpočinek (17) — to použití je totéž počítadlo jako Sight Beyond Sight (D190). Steel Hawk: Animal
 Messenger jen jako rituál (3). Mage Hand jako bonusová akce a omezení na létající zvíře zůstávají jen
 textem. Má-li podtřída v datech už `additionalSpells`, extrakce spadne. Rozhodl Daniel.
+
+## D371 — Sesílací vlastnost podtřídy u nesesílající třídy (TGS2-4a2)
+
+Vlastnost `ability` z `additionalSpells` podtřídy se čte u všech podtříd, ale použije se jen tehdy,
+když třída, která podtřídu vlastní, sama sesílat neumí (Steel Hawk, Warrior of Shadow, Way of the
+Aether). Třída se sesíláním si svou vlastnost ponechá. Steel Hawk sesílá Animal Messenger s Wisdom —
+rozhodl uživatel, kniha vlastnost neuvádí. Rozhodl Daniel.

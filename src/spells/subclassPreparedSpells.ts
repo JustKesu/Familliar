@@ -599,6 +599,31 @@ export function extractSubclassAlwaysPreparedSpells(
 	return dedupeAlwaysPreparedSpells(result)
 }
 
+/** D371: the ability a subclass's `additionalSpells` names (Warrior of Shadow, Steel Hawk), or null. */
+export function extractSubclassSpellcastingAbility(
+	parsedClasses: unknown,
+	subclassName: string,
+	subclassSource: string,
+	className: string,
+	classSource: string,
+): AbilityAbbreviation | null {
+	if (!Array.isArray(parsedClasses)) throw new Error('classes.json: expected a top-level array.')
+	const subclass = parsedClasses.find(
+		(candidate): candidate is RawSubclassEntry =>
+			isRawSubclassEntry(candidate) && candidate.name === subclassName && candidate.source === subclassSource && candidate.className === className && candidate.classSource === classSource,
+	)
+	if (!subclass || !Array.isArray(subclass.additionalSpells)) return null
+	const ability = subclass.additionalSpells
+		.filter(isRecord)
+		.map((entry) => entry['ability'])
+		.find((value): value is AbilityAbbreviation => (['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).includes(value as AbilityAbbreviation))
+	return ability ?? null
+}
+
+export async function loadSubclassSpellcastingAbility(subclassName: string, subclassSource: string, className: string, classSource: string): Promise<AbilityAbbreviation | null> {
+	return extractSubclassSpellcastingAbility(await loadDataFile('data/classes.json'), subclassName, subclassSource, className, classSource)
+}
+
 /**
  * Fetches classes.json, spells.json and class-features.json and returns the
  * subclass's always-prepared spells at or below `classLevel`. `pactSlotsByLevel`

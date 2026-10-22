@@ -1,29 +1,26 @@
-# REPORT — TGS2-4a2: ZASTAVENO, DC Animal Messenger se po změně dat nevyřeší
+# REPORT — TGS2-4a2: sesílací vlastnost podtřídy u nesesílající třídy, Steel Hawk Wisdom (D371)
 
-HEAD před úkolem: 0617a5a. Commit obsahuje jen tento report; kód, data i e2e jsou vrácené do stavu 0617a5a.
+HEAD před úkolem: 541b7c6 (stop report předchozího pokusu).
 
-## Co jsem udělal
-- `ability: "wis"` doplněno do `"Fighter|Steel Hawk"` v `HOMEBREW_SUBCLASS_SPELLS`, `npm run extract-data`, souhrn potvrdil `[{"innate":{"3":{"ritual":["animal messenger|xphb"]}},"ability":"wis"}]`.
-- e2e d rozšířeno o `DC 11 CHA` (WIS 12 → +1, PB +2). Výsledek: selhalo, buňka HIT/DC dál ukazuje
-  `unresolved — No spellcasting ability is known for "Animal Messenger" — nothing grants this character a spell attack bonus or save DC.`
-- Podle zadání STOP: změnu extraktoru a e2e jsem vrátil, `data/classes.json` obnoven z gitu (`git checkout`). D370 nedoplněno.
-
-## Proč se to nevyřeší
-- `src/spells/subclassPreparedSpells.ts` pole `ability` z `additionalSpells` podtřídy vůbec nečte (Grep: žádný výskyt); `AlwaysPreparedSpell` vlastnost nenese.
-- `casterFor` (`src/sheet/spellActionRowData.ts:122-129`, D192/D325): grant podtřídy sesílá s vlastností třídy, která podtřídu vlastní, tj. ze `classEntries`. Fighter bez Eldritch Knight žádný záznam sesílání nemá → spadne na „unresolved“.
-- U Way of the Aether se problém neprojeví jen proto, že žádné z jejích kouzel nemá útok ani záchranný hod. Stejně by dopadla každá podtřída nesesílající třídy s kouzlem se záchranou.
-
-## Možnosti (rozhodnutí uživatele)
-1. Číst `additionalSpells[].ability` podtřídy (subclassPreparedSpells → SheetSpellEntry) a v `casterFor` ho použít, když vlastnící třída nemá sesílání. Mění sheet kód; obecné pro všechny podtřídy, data už tvar mají (Warrior of Shadow `ability: "wis"`).
-2. Totéž, ale jen pro podtřídy z ruční tabulky TGS2 (užší, ale zvláštní případ v kódu).
-3. Nechat „unresolved“ (stav po TGS2-4a).
+## Co se změnilo
+- `scripts/extract-data.js`: `ability: "wis"` u `"Fighter|Steel Hawk"`; `data/classes.json` přegenerováno. Souhrn: `[{"innate":{"3":{"ritual":["animal messenger|xphb"]}},"ability":"wis"}]`, ostatní TGS2 podtřídy beze změny.
+- `src/spells/subclassPreparedSpells.ts`: `extractSubclassSpellcastingAbility` / `loadSubclassSpellcastingAbility` — první platný kód vlastnosti z `additionalSpells` podtřídy, jinak null.
+- `src/sheet/CharacterSheet.tsx`: `subclassSpellInfo` nese `ability`; nový `subclassSpellcastingEntries` (přes `computeAbilitySpellcasting`) jen pro třídu bez vlastního záznamu v `spellcastingEntries`; předává se do `spellActionRows` a `spellsTabRowCaster`.
+- `src/sheet/spellActionRowData.ts`: `casterFor` má volitelný poslední parametr `subclassEntries`; ve větvi vlastníka podtřídy se použije, jen když žádná třída vlastníka nemá vlastní záznam. `spellActionRows` ho předává; `spellsTabData.ts` `spellsTabRowCaster` taky.
+- Testy: unit `casterFor — subclass ability (D371)` ve `spellActionRowData.test.ts` (Fighter 3 Steel Hawk WIS → DC 11; bez záznamu dál „No spellcasting ability is known“; Wizard 3 / Fighter 3 Steel Hawk: výběr Wizarda INT DC 15, Animal Messenger WIS DC 11; třída se sesíláním má přednost před vlastností podtřídy). e2e `tgs2Spells.spec.ts` d: `DC 11 CHA`, žádné „unresolved“.
+- Docs: D371, DATA.md (Steel Hawk ability), STATUS.md.
 
 ## Ověření
-- Spuštěno jen `npm run extract-data`, souhrnný skript a `npm run e2e -- e2e/tgs2Spells.spec.ts` (3 OK, d selhalo dle výše). Typecheck/test/validate-data/celé e2e nespuštěny — po vrácení je strom shodný s 0617a5a, kde prošly.
+- typecheck OK; test 186 souborů / 3390 testů OK; validate-data 177/177 OK; e2e celý suite exit 0 (spec tgs2Spells 4/4).
+
+## Rozhodnutí v kódu
+- Podtřídní záznamy nejdou do `spellcastingEntries`, ale do samostatného seznamu jen pro `casterFor` — karta sesílání, `isCaster` a záložní větve podle počtu tříd (`classEntries.length === 1`) se nemění. Fighter Steel Hawk tak nezíská kartu sesílání.
+- Vlastnost se čte z prvního záznamu `additionalSpells`, který ji uvádí (všechny dnešní podtřídy ji mají nanejvýš v jednom tvaru).
+- Monk (Warrior of Shadow, Way of the Aether) teď také dostává WIS čísla pro řádky svých kouzel; viditelné jen u kouzla s útokem nebo záchranou (neověřoval jsem, zda nějaké takové mají).
 
 ## Subagent
 Nepoužit.
 
 Manual browser check for the user: none - the planning chat checks the looks from screenshots.
 
-Změněné obrazovky: žádné.
+Změněné obrazovky: list postavy → záložka Spells a Actions (Fighter Steel Hawk: Animal Messenger ukazuje DC místo „unresolved“).

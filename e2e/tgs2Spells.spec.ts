@@ -89,10 +89,13 @@ test('TGS2-4a c: Monk 17 Way of the Aether — Etherealness USE 1/LR spends the 
   await expect(kindRow(page, 'Etherealness', 'use').getByRole('button', { name: 'Use Etherealness', exact: true })).toBeEnabled()
 })
 
-test('TGS2-4a d: Fighter 3 Steel Hawk lists Animal Messenger as a ritual only, with no slot cast', async ({ page }) => {
+test('TGS2-4a d: Fighter 3 Steel Hawk lists Animal Messenger as a ritual only, with no slot cast, DC 11 CHA from Wisdom', async ({ page }) => {
   await openSpells(page, fighter('tgs2-4a-d'))
   await expect(row(page, 'Animal Messenger')).toHaveCount(1)
   await expect(row(page, 'Animal Messenger')).toContainText('Ritual')
   await expect(kindRow(page, 'Animal Messenger', 'cast')).toHaveCount(0)
   await expect(kindRow(page, 'Animal Messenger', 'use')).toHaveCount(0)
+  // D371: cast with the subclass Wisdom — WIS 12 (+1), PB +2.
+  await expect(row(page, 'Animal Messenger').locator('.sheet__action-to-hit')).toContainText('DC 11 CHA')
+  await expect(row(page, 'Animal Messenger')).not.toContainText(/unresolved/i)
 })

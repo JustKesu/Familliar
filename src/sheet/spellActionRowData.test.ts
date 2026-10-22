@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { FeatSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import type { SheetSpellEntry } from './SpellList'
-import { cantripDamage, cantripDamageAtLevel, diceTags, isScaledHealing, leveledSpellDice, spellActionRows, toCaster, withSpellcastingModifier } from './spellActionRowData'
+import { cantripDamage, cantripDamageAtLevel, casterFor, diceTags, isScaledHealing, leveledSpellDice, spellActionRows, toCaster, withSpellcastingModifier } from './spellActionRowData'
 
 function detail(over: Partial<SpellDetail> & { name: string }): SpellDetail {
 	return {
@@ -56,6 +56,27 @@ const details = [
 	detail({ name: 'Transmute Rock', level: 5, savingThrow: ['strength', 'dexterity'] }),
 	detail({ name: 'Detect Magic', level: 1, ritual: true, concentration: true }),
 ]
+
+describe('casterFor — subclass ability (D371)', () => {
+	const steelHawkWis: SpellcastingEntry = { ...wizard, className: 'Fighter', ability: 'wisdom', spellAttackBonus: 3, spellSaveDC: 11 }
+	const animalMessenger = (owner: string) =>
+		entry('Animal Messenger', { chosen: false, subclassOrigins: ['Steel Hawk'], subclassOwners: [{ className: owner, classSource: 'XPHB' }], grants: [{ origin: 'subclass', originName: 'Steel Hawk', usage: { kind: 'ritual' } }] })
+	const dc = (caster: ReturnType<typeof casterFor>) => ('reason' in caster ? caster.reason : caster.save.dc)
+
+	it('Fighter 3 Steel Hawk: Animal Messenger casts with the subclass Wisdom', () => {
+		expect(dc(casterFor(animalMessenger('Fighter'), [], [], [], null, [steelHawkWis]))).toBe(11)
+		expect(dc(casterFor(animalMessenger('Fighter'), [], [], []))).toMatch(/No spellcasting ability is known/)
+	})
+
+	it('Wizard 3 / Fighter 3 Steel Hawk: the Wizard pick keeps Intelligence, the Steel Hawk spell takes Wisdom', () => {
+		expect(dc(casterFor(entry('Fireball', { chosenBy: { className: 'Wizard', classSource: 'XPHB' } }), [wizard], [], [], null, [steelHawkWis]))).toBe(15)
+		expect(dc(casterFor(animalMessenger('Fighter'), [wizard], [], [], null, [steelHawkWis]))).toBe(11)
+	})
+
+	it('a class with spellcasting of its own keeps its ability over a subclass ability', () => {
+		expect(dc(casterFor(animalMessenger('Wizard'), [wizard], [], [], null, [{ ...steelHawkWis, className: 'Wizard' }]))).toBe(15)
+	})
+})
 
 describe('spellActionRows', () => {
 	it('gives a row only to a spell with an attack roll or a save, sorted by level then name', () => {
