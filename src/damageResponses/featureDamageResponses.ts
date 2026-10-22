@@ -187,6 +187,21 @@ export const FEATURE_DAMAGE_RESPONSES: readonly FeatureDamageResponse[] = [
 		damageTypes: ['psychic'],
 		quote: 'You also have Resistance to Psychic damage.',
 	},
+	// D369: homebrew TGS2, same unconditional rule as the rest of the table.
+	{
+		feature: 'Infernal Warrior',
+		origin: 'Barbarian (Path of the Infernal)',
+		kind: 'resistance',
+		damageTypes: ['fire'],
+		quote: 'You gain resistance to fire damage.',
+	},
+	{
+		feature: 'Windswept',
+		origin: 'Ranger (Rocborne)',
+		kind: 'resistance',
+		damageTypes: ['cold'],
+		quote: "In addition, you have resistance to cold damage, and you're acclimated to high altitudes, including elevations above 20,000 feet.",
+	},
 ]
 
 /**

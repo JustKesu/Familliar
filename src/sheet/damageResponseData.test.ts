@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildFeatGrants, buildFeatureGrants, buildItemGrants, buildSpeciesGrants } from './damageResponseData'
+import { featureNamesFor } from './weaponAttackData'
 import type { ItemRef } from '../inventory/inventoryData'
 import { CUSTOM_ITEM_SOURCE, type Character, type CharacterInventoryItem } from '../storage/character'
 
@@ -228,5 +229,32 @@ describe('buildFeatureGrants', () => {
 
 	it('grants nothing for a feature the table does not record', () => {
 		expect(buildFeatureGrants(['Second Wind', 'Nature’s Ward'])).toEqual([])
+	})
+
+	/* D369: two TGS2 subclass features, reached through the same level/subclass join the sheet uses. */
+	describe('TGS2 unconditional resistances (D369)', () => {
+		const classes: unknown[] = [
+			{ entryType: 'subclass', name: 'Path of the Infernal', shortName: 'Infernal', source: 'GriffonsSaddlebag2', className: 'Barbarian', classSource: 'XPHB' },
+			{ entryType: 'subclass', name: 'Rocborne', shortName: 'Rocborne', source: 'GriffonsSaddlebag2', className: 'Ranger', classSource: 'XPHB' },
+		]
+		const classFeatures: unknown[] = []
+		const subclassFeatures: unknown[] = [
+			{ name: 'Infernal Warrior', className: 'Barbarian', classSource: 'XPHB', subclassShortName: 'Infernal', subclassSource: 'GriffonsSaddlebag2', level: 6 },
+			{ name: 'Windswept', className: 'Ranger', classSource: 'XPHB', subclassShortName: 'Rocborne', subclassSource: 'GriffonsSaddlebag2', level: 7 },
+		]
+		const grantsAt = (className: string, subclass: string, level: number) =>
+			buildFeatureGrants(featureNamesFor(character({ classes: [{ className, classSource: 'XPHB', subclass, level }] }), classFeatures, subclassFeatures, classes))
+
+		it('Path of the Infernal 6 has fire resistance from Infernal Warrior, level 5 has none', () => {
+			expect(grantsAt('Barbarian', 'Path of the Infernal', 6)).toEqual([
+				{ kind: 'resistance', sourceName: 'Infernal Warrior (Barbarian (Path of the Infernal))', damageTypes: ['fire'] },
+			])
+			expect(grantsAt('Barbarian', 'Path of the Infernal', 5)).toEqual([])
+		})
+
+		it('Rocborne 7 has cold resistance from Windswept, level 6 has none', () => {
+			expect(grantsAt('Ranger', 'Rocborne', 7)).toEqual([{ kind: 'resistance', sourceName: 'Windswept (Ranger (Rocborne))', damageTypes: ['cold'] }])
+			expect(grantsAt('Ranger', 'Rocborne', 6)).toEqual([])
+		})
 	})
 })

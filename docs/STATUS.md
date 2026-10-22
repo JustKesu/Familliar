@@ -1162,6 +1162,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   restored by Short Rest; Bloodbound (Rogue 17) and Hurricane (Ranger 15) 1 box, Short Rest
   restores; Sight Beyond Sight (Monk 17) and Arcane Conduit (Paladin 20) 1 box, only Long Rest
   restores; species option "Geleton (TGS2)").
+- `e2e/tgs2Resistances.spec.ts` — TGS2-5a a–c (D369: Barbarian 6 Path of the Infernal Fire on the Defenses card and in the
+  details with origin; Ranger 7 Rocborne Cold; Barbarian 5 no Fire).
 - `e2e/itemCostWeight.spec.ts` — F-41 a–d (D368: Battleaxe ×3 without a description expands to
   "Cost: 10 gp · Weight: 4 lb."; Rope line above its description; +1 Wand of the War Mage "Weight: 1 lb."
   without "Cost:"; custom item valueCopper 150 "Cost: 1 gp 5 sp").
@@ -1292,7 +1294,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `loadHomebrew()`), Improved Launch, Bloodbound, Hurricane (1, Short Rest), Sight Beyond Sight, Arcane Conduit (1, Long Rest)
   through the existing resources.ts path after rest-tag rewrite (`HOMEBREW_REST_FEATURES`). Source GriffonsSaddlebag2 shown as
   "TGS2" in pickers (`src/pickers/bookLabel.ts`: ChoiceRow, SearchableOptionList, SpeciesPicker).
-  Open (TGS2-4..5): feature spells/Channel Divinity `consumes`, grapple/ki prose, resistances.
+  Open (TGS2-4..5): feature spells/Channel Divinity `consumes`, grapple/ki prose, Geleton acid resistance (extractor).
+- TGS2-5a (D369): `FEATURE_DAMAGE_RESPONSES` gained Infernal Warrior (Barbarian, Path of the Infernal 6, fire) and Windswept
+  (Ranger, Rocborne 7, cold), both unconditional. Arcane Conduit stays text only.
 - F-41 (D368): Inventory tab item detail shows "Cost: … · Weight: … lb." above the description, per single item
   (`ItemRef.weight` from items.json `weight`; `formatCopperPrice` in `currency.ts`). ▸ appears also for an item with
   cost or weight but no description. Carrying capacity not computed.

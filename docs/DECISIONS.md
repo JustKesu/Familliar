@@ -5367,3 +5367,10 @@ Task TGS2-3, rozhodl Daniel.
 
 Řádek „Cost: … · Weight: … lb.“ nad popisem, za jeden kus, bez řádku, když data hodnotu nemají.
 Rozkliknout jde i předmět bez popisu, který má cenu nebo váhu. Nosnost se nepočítá. Rozhodl Daniel.
+
+## D369 — Odolnosti z homebrew TGS2 v ruční tabulce (TGS2-5a)
+
+Do ruční tabulky `FEATURE_DAMAGE_RESPONSES` přibyly dva bezpodmínečné řádky: Infernal Warrior
+(Barbarian, Path of the Infernal, úroveň 6, oheň) a Windswept (Ranger, Rocborne, úroveň 7, chlad).
+Arcane Conduit (odolnost vůči škodě ze kouzel, ne vůči typu škody) zůstává jen jako text. Odolnost
+druhu Geleton (kyselina) přijde později přes extraktor. Rozhodl Daniel.
