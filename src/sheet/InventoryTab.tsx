@@ -3,7 +3,7 @@ import { BASE_ATTUNEMENT_LIMIT, countAttuned } from '../calculation/attunement'
 import { resolveMagicBonus } from '../calculation/magicBonus'
 import { type Calculated } from '../calculation/types'
 import { Entries } from '../markup'
-import { copperToCoins } from '../inventory/currency'
+import { copperToCoins, formatCopperPrice } from '../inventory/currency'
 import { toggleEquip } from '../inventory/equipActions'
 import { buildInventoryResolver, equipSlotOf, inventoryRowKey, itemFilterKindsOf, itemMagicBonusOf, type ItemRef } from '../inventory/inventoryData'
 import { resolveItemEntryRefs, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
@@ -18,6 +18,12 @@ const FILTERS: { id: Filter; label: string }[] = [
 	{ id: 'attunement', label: 'Attunement' },
 	{ id: 'other', label: 'Other possessions' },
 ]
+
+/** D368: per single item — quantity does not multiply it. */
+function costWeightLine(ref: ItemRef | null): string {
+	const cost = ref?.value !== undefined ? formatCopperPrice(ref.value) : ''
+	return [cost && `Cost: ${cost}`, ref?.weight !== undefined && `Weight: ${ref.weight} lb.`].filter(Boolean).join(' · ')
+}
 
 /** R10b (D211): the Inventory tab. Read-only except the ACTIVE checkbox, which is Equip/Put down from the panel (shared in equipActions.ts). Search, filter and open rows are tab state only (D116). */
 export function InventoryTab({
@@ -152,7 +158,8 @@ export function InventoryTab({
 						]
 							.filter(Boolean)
 							.join(', ')
-						const hasDescription = ref?.entries !== undefined
+						const costWeight = costWeightLine(ref)
+						const hasDescription = ref?.entries !== undefined || costWeight !== ''
 						const expanded = open.has(key)
 						return (
 							<li key={key} className="inventory-tab__item">
@@ -190,9 +197,10 @@ export function InventoryTab({
 										{notes}
 									</span>
 								</div>
-								{expanded && ref?.entries && (
+								{expanded && ref && hasDescription && (
 									<div className="inventory-tab__description">
-										<Entries entries={resolveItemEntryRefs(ref.entries, ref, itemEntryTemplates)} />
+										{costWeight && <p className="inventory-tab__cost-weight">{costWeight}</p>}
+										{ref.entries && <Entries entries={resolveItemEntryRefs(ref.entries, ref, itemEntryTemplates)} />}
 									</div>
 								)}
 							</li>

@@ -185,6 +185,8 @@ export interface ItemRef {
 	 * and read by nothing: spending money on an item is a later slice.
 	 */
 	value?: number
+	/** items.json `weight` in pounds, may be fractional (on 447 of the 947 items, F-41). Shown in the item detail only; carrying capacity is not computed (D368). */
+	weight?: number
 	/**
 	 * Feet added to (or taken off) the walking speed, reaching computeSpeed
 	 * through its `adjustments` parameter (slice e2b). extractItemRefs sets it
@@ -619,6 +621,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 			const reqAttune = entry['reqAttune']
 			const entries = entry['entries']
 			const value = entry['value']
+			const weight = entry['weight']
 			return {
 				name: entry.name,
 				source: entry.source,
@@ -631,6 +634,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...(typeof ac === 'number' ? { ac } : {}),
 				...(typeof strength === 'string' ? { strength } : {}),
 				...(typeof value === 'number' ? { value } : {}),
+				...(typeof weight === 'number' ? { weight } : {}),
 				...(entry['stealth'] === true ? { stealth: true } : {}),
 				...stringField(entry, 'weaponCategory'),
 				...stringField(entry, 'dmg1'),

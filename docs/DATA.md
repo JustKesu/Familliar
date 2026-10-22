@@ -877,6 +877,17 @@ předmětů) pro filtry panelu Add Items:
 - ItemRef nese `wondrous`, `staff` a `rarity`; třídění dělá
   `itemFilterKindsOf` / `isMagicItem` (src/inventory/inventoryData.ts).
 
+### Item cost and weight (F-41)
+
+Průzkum F-41 nad data/items.json (947 předmětů):
+- `value` (číslo v měďácích) má 382 předmětů, `weight` (číslo v librách) 447, oboje 209.
+- `weight` je vždy číslo, nikdy 0; 60 hodnot je zlomkových. Nejmenší Needle|XPHB 0.02,
+  Arrow|XPHB 0.05, Bolt|XPHB 0.075; největší Apparatus of Kwalish|XDMG 500,
+  Carriage|XPHB 600, Covered Wagon|FRHoF 1300.
+- 63 obyčejných XPHB předmětů má cenu i váhu, ale žádné `entries` (např. Battleaxe,
+  Blowgun, Breastplate). Magické XDMG předměty s `entries` nemají `value` v 432 případech.
+- ItemRef nese `value` i `weight`; zobrazuje je detail na záložce Inventory (D368).
+
 ### Ammunition and charges — the only structured spend-and-refresh fields
 `ammoType` on a weapon names the exact ammunition item code that weapon
 consumes — a direct item-to-item link, no name matching needed.

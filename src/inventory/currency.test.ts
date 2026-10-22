@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { coinsToCopper, copperToCoins, platinumToCopper } from './currency'
+import { coinsToCopper, copperToCoins, formatCopperPrice, platinumToCopper } from './currency'
 
 describe('currency conversion', () => {
 	it('splits a copper total into gp/sp/cp the way a player reads it', () => {
@@ -37,5 +37,13 @@ describe('currency conversion', () => {
 		expect(coinsToCopper({ gp: -5, sp: 0, cp: 0 })).toBe(0)
 		expect(coinsToCopper({ gp: 1.9, sp: 0, cp: 0 })).toBe(100)
 		expect(copperToCoins(-40)).toEqual({ gp: 0, sp: 0, cp: 0 })
+	})
+
+	it('formats an item price as its nonzero coins in gp, sp, cp order (F-41)', () => {
+		expect(formatCopperPrice(1500)).toBe('15 gp')
+		expect(formatCopperPrice(150)).toBe('1 gp 5 sp')
+		expect(formatCopperPrice(5)).toBe('5 cp')
+		expect(formatCopperPrice(1203)).toBe('12 gp 3 cp')
+		expect(formatCopperPrice(0)).toBe('')
 	})
 })

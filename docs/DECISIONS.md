@@ -5362,3 +5362,8 @@ Bloodbound a Hurricane (1, krátký nebo dlouhý odpočinek), Sight Beyond Sight
 dlouhý odpočinek). Extrakce doplní tagy odpočinku, tabulku Launch a u Improved Launch a Sight Beyond
 Sight přepíše větu o obnově na znění 2024. Zdroj GriffonsSaddlebag2 se v appce zobrazuje jako TGS2.
 Task TGS2-3, rozhodl Daniel.
+
+## D368 — Cena a váha předmětu v detailu na záložce Inventory (F-41)
+
+Řádek „Cost: … · Weight: … lb.“ nad popisem, za jeden kus, bez řádku, když data hodnotu nemají.
+Rozkliknout jde i předmět bez popisu, který má cenu nebo váhu. Nosnost se nepočítá. Rozhodl Daniel.

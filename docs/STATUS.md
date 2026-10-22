@@ -1162,6 +1162,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   restored by Short Rest; Bloodbound (Rogue 17) and Hurricane (Ranger 15) 1 box, Short Rest
   restores; Sight Beyond Sight (Monk 17) and Arcane Conduit (Paladin 20) 1 box, only Long Rest
   restores; species option "Geleton (TGS2)").
+- `e2e/itemCostWeight.spec.ts` — F-41 a–d (D368: Battleaxe ×3 without a description expands to
+  "Cost: 10 gp · Weight: 4 lb."; Rope line above its description; +1 Wand of the War Mage "Weight: 1 lb."
+  without "Cost:"; custom item valueCopper 150 "Cost: 1 gp 5 sp").
 - `e2e/manageSpells.spec.ts` — R9a a–k (seeded Cleric 3 / Life Domain / Magic
   Initiate Cleric, Warlock 3, Sorcerer 1, Fighter 1: drawer layout and counters,
   Prepare/Unprepare live + after reload, full counters disable, level pills +
@@ -1290,6 +1293,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   through the existing resources.ts path after rest-tag rewrite (`HOMEBREW_REST_FEATURES`). Source GriffonsSaddlebag2 shown as
   "TGS2" in pickers (`src/pickers/bookLabel.ts`: ChoiceRow, SearchableOptionList, SpeciesPicker).
   Open (TGS2-4..5): feature spells/Channel Divinity `consumes`, grapple/ki prose, resistances.
+- F-41 (D368): Inventory tab item detail shows "Cost: … · Weight: … lb." above the description, per single item
+  (`ItemRef.weight` from items.json `weight`; `formatCopperPrice` in `currency.ts`). ▸ appears also for an item with
+  cost or weight but no description. Carrying capacity not computed.
 
 ## Dočasné scaffolding
 

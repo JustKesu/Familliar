@@ -36,6 +36,15 @@ export function copperToCoins(totalCopper: number): Coins {
 	}
 }
 
+/** An item's price as its nonzero coins, e.g. "1 gp 5 sp" (F-41). Empty for zero. */
+export function formatCopperPrice(totalCopper: number): string {
+	const coins = copperToCoins(totalCopper)
+	return (['gp', 'sp', 'cp'] as const)
+		.filter((unit) => coins[unit] !== 0)
+		.map((unit) => `${coins[unit]} ${unit}`)
+		.join(' ')
+}
+
 /** Recombines gp/sp/cp into a copper total. */
 export function coinsToCopper({ gp, sp, cp }: Coins): number {
 	return whole(gp) * 100 + whole(sp) * 10 + whole(cp)
