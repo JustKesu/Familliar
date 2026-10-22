@@ -1,35 +1,29 @@
-# REPORT — TGS2-4a: kouzla podtříd Way of the Aether a Steel Hawk (D370)
+# REPORT — TGS2-4a2: ZASTAVENO, DC Animal Messenger se po změně dat nevyřeší
 
-HEAD před úkolem: 36f8109 (fast-forward z 69f698b, podmínka splněna).
+HEAD před úkolem: 0617a5a. Commit obsahuje jen tento report; kód, data i e2e jsou vrácené do stavu 0617a5a.
 
-## Co se změnilo
-- `scripts/extract-data.js`: tabulka `HOMEBREW_SUBCLASS_SPELLS` vedle `HOMEBREW_SUBCLASS_TABLES`, tvary přesně podle zadání; v cyklu podtříd `loadHomebrew()` se přiřadí, a pokud podtřída už `additionalSpells` má, extrakce hodí chybu.
-- `src/calculation/freeCastResources.ts`: `SHARED_OWNERS['Way of the Aether'] = { etherealness: 'Sight Beyond Sight' }`. Ověřeno předem: `originName` podtřídního grantu je `group.subclassName` (SpellList.tsx:223) = „Way of the Aether“; klíč počítadla „Sight Beyond Sight“ (tgs2Pools.spec.ts:85); `daily {"1"}` → `onceFreePerLongRest`, což větev SHARED_OWNERS obsluhuje.
-- `src/spells/alsoCastableWithSlot.ts`: `'Way of the Aether': false`, `'Steel Hawk': false` — vynutil to krycí test (každý dosažitelný zdroj volného seslání musí mít verdikt).
-- `data/classes.json` přegenerováno (`npm run extract-data`).
-- Souhrn `scripts/tgs2-4a-spells.js` (7 podtříd TGS2): Aether a Steel Hawk mají tvary dle tabulky; Spelldrinker `prepared`, Rocborne `known` beze změny; Mercantile, Grim Surgeon, Infernal `null`.
-- Testy: unit v `freeCastResources.test.ts` (Aether 6: Gentle Repose a See Invisibility → `{key: 'Focus Point', cost: 2}`, cantripy bez počítadla; Aether 17: Etherealness → `{key: 'Sight Beyond Sight', cost: 1}`). Nový `e2e/tgs2Spells.spec.ts` a–d.
-- Docs: D370 (DECISIONS), DATA.md homebrew sekce, STATUS.md.
+## Co jsem udělal
+- `ability: "wis"` doplněno do `"Fighter|Steel Hawk"` v `HOMEBREW_SUBCLASS_SPELLS`, `npm run extract-data`, souhrn potvrdil `[{"innate":{"3":{"ritual":["animal messenger|xphb"]}},"ability":"wis"}]`.
+- e2e d rozšířeno o `DC 11 CHA` (WIS 12 → +1, PB +2). Výsledek: selhalo, buňka HIT/DC dál ukazuje
+  `unresolved — No spellcasting ability is known for "Animal Messenger" — nothing grants this character a spell attack bonus or save DC.`
+- Podle zadání STOP: změnu extraktoru a e2e jsem vrátil, `data/classes.json` obnoven z gitu (`git checkout`). D370 nedoplněno.
 
-## Ověření (jednou, na konci)
-- typecheck OK; test 186 souborů / 3387 testů OK (po doplnění alsoCastableWithSlot); validate-data 177/177 OK.
-- e2e: celý běh 629 testů — selhaly jen tgs2Spells b a c na mém očekávání popisku („2 FP“, „1/LR“); app ukazuje „2 Focus Point“ a „1/long rest (no slot)“. Opraveno, `npm run e2e -- e2e/tgs2Spells.spec.ts` 4/4 OK. Celý suite jsem znovu nespouštěl (ostatní soubory beze změny vůči běhu).
-- e2e c navíc ověřuje, že řádek USE Etherealness na Spells obsahuje skupinu „Sight Beyond Sight uses“ (jeden záznam).
+## Proč se to nevyřeší
+- `src/spells/subclassPreparedSpells.ts` pole `ability` z `additionalSpells` podtřídy vůbec nečte (Grep: žádný výskyt); `AlwaysPreparedSpell` vlastnost nenese.
+- `casterFor` (`src/sheet/spellActionRowData.ts:122-129`, D192/D325): grant podtřídy sesílá s vlastností třídy, která podtřídu vlastní, tj. ze `classEntries`. Fighter bez Eldritch Knight žádný záznam sesílání nemá → spadne na „unresolved“.
+- U Way of the Aether se problém neprojeví jen proto, že žádné z jejích kouzel nemá útok ani záchranný hod. Stejně by dopadla každá podtřída nesesílající třídy s kouzlem se záchranou.
 
-## Seedy
-- Schema 61, podtřída jen jménem jako v tgs2Pools/tgs2Resistances (zdroj GriffonsSaddlebag2 se dohledá). Monk: classSkills, toolChoices (Smith's Tools), ASI +2 WIS na 4/8/12/16. Fighter 3: classSkills, 3 masteries, Defense. `spellChoices: []`.
+## Možnosti (rozhodnutí uživatele)
+1. Číst `additionalSpells[].ability` podtřídy (subclassPreparedSpells → SheetSpellEntry) a v `casterFor` ho použít, když vlastnící třída nemá sesílání. Mění sheet kód; obecné pro všechny podtřídy, data už tvar mají (Warrior of Shadow `ability: "wis"`).
+2. Totéž, ale jen pro podtřídy z ruční tabulky TGS2 (užší, ale zvláštní případ v kódu).
+3. Nechat „unresolved“ (stav po TGS2-4a).
+
+## Ověření
+- Spuštěno jen `npm run extract-data`, souhrnný skript a `npm run e2e -- e2e/tgs2Spells.spec.ts` (3 OK, d selhalo dle výše). Typecheck/test/validate-data/celé e2e nespuštěny — po vrácení je strom shodný s 0617a5a, kde prošly.
 
 ## Subagent
 Nepoužit.
 
-## Rozhodnutí v kódu
-- Way of the Aether a Steel Hawk: nelze seslat i slotem (`alsoCastableWithSlot` false), stejně jako Warrior of Shadow a Path of the Wild Heart. Viditelné jen u multiclassu se sloty — ke kontrole uživatelem.
-- Unit test staví vlastní fixture podtřídy (pravidlo 1), skutečná data pokrývá e2e.
-
-## K rozhodnutí uživatele
-- STATUS.md řádek „Open (TGS2-4..5)“ u TGS2-3 nechávám; kouzla podtříd jsou teď hotová jen pro Aether a Steel Hawk.
-- Nesledované `docs/REPORT-*.md`, `CLAUDE-1.md` a skripty `scripts/tgs2-*.js` z dřívějška necommituji (zadání: stage jen změněné soubory; `git clean` zakázán). `scripts/tgs2-4a-spells.js` zůstává nesledovaný.
-
 Manual browser check for the user: none - the planning chat checks the looks from screenshots.
 
-Změněné obrazovky: list postavy → záložka Spells (Monk Aether: Mage Hand, Spare the Dying, USE řádky Gentle Repose / See Invisibility / Etherealness; Fighter Steel Hawk: Animal Messenger s popiskem Ritual) a Actions (počítadlo Sight Beyond Sight sdílené s Etherealness).
+Změněné obrazovky: žádné.
