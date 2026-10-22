@@ -81,6 +81,13 @@ extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into th
   creature, not a pool). Bloodbound is Rogue / Grim Surgeon 17. `HOMEBREW_REST_FEATURES` tags the first
   six, swaps the two non-2024 recharge sentences, and Steel Hawk gets `subclassTableGroups`
   `[{colLabels:["Launch"], rows:[0,0,3,3,3,3,4,…,4,5,…]}]` (20 rows).
+- Subclass spells (TGS2-4a, D370): in the file only Spelldrinker (`prepared`) and Rocborne (`known`)
+  carry `additionalSpells`; Aether and Steel Hawk state theirs in prose only. `HOMEBREW_SUBCLASS_SPELLS`
+  (key "Class|Subclass name") sets them in `loadHomebrew()` and throws if the entry already has
+  `additionalSpells`. Aether: `known` 3 mage hand, 6 spare the dying; `innate` 6 `resource {"2": gentle
+  repose, see invisibility}`, 17 `daily {"1": etherealness}`; `resourceName` "Focus Point", ability wis.
+  Steel Hawk: `innate` 3 `ritual: [animal messenger]`. Refs are written `|xphb`, so the PHB→XPHB
+  redirect does not touch them. Mercantile, Grim Surgeon, Infernal: no `additionalSpells`.
 - Tags: `{@spell}`, `{@condition}`, `{@item}` with source PHB or none → XPHB when an XPHB entry of that
   name exists in the 5etools source (spells-xphb, conditionsdiseases, items + items-base): 38 rewritten,
   0 without target. `additionalSpells` "x|PHB" → "x|XPHB": 15 of 15.

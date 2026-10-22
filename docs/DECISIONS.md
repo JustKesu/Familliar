@@ -5374,3 +5374,12 @@ Do ruční tabulky `FEATURE_DAMAGE_RESPONSES` přibyly dva bezpodmínečné řá
 (Barbarian, Path of the Infernal, úroveň 6, oheň) a Windswept (Ranger, Rocborne, úroveň 7, chlad).
 Arcane Conduit (odolnost vůči škodě ze kouzel, ne vůči typu škody) zůstává jen jako text. Odolnost
 druhu Geleton (kyselina) přijde později přes extraktor. Rozhodl Daniel.
+
+## D370 — Kouzla podtříd Way of the Aether a Steel Hawk v ruční tabulce (TGS2-4a)
+
+Homebrew uvádí tato kouzla jen v textu, proto je doplní ruční tabulka `HOMEBREW_SUBCLASS_SPELLS`
+v extract-data.js (tvar jako Warrior of Shadow a Path of the Wild Heart). Way of the Aether: Mage Hand
+(3), Spare the Dying (6), Gentle Repose a See Invisibility za 2 Focus Pointy (6), Etherealness 1× za
+dlouhý odpočinek (17) — to použití je totéž počítadlo jako Sight Beyond Sight (D190). Steel Hawk: Animal
+Messenger jen jako rituál (3). Mage Hand jako bonusová akce a omezení na létající zvíře zůstávají jen
+textem. Má-li podtřída v datech už `additionalSpells`, extrakce spadne. Rozhodl Daniel.

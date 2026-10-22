@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Ability } from '../abilities/abilityScores'
-import type { SpellUsage } from '../spells/subclassPreparedSpells'
+import { extractSubclassAlwaysPreparedSpells, type SpellUsage } from '../spells/subclassPreparedSpells'
 import type { AbilityScoreValue } from './abilityScores'
 import { canSpendResource, freeCastCounter, freeCastResources, remainingUses, withFreeCastResources, type FreeCastSpell } from './freeCastResources'
 import type { CharacterResource } from './resources'
@@ -84,6 +84,38 @@ describe('freeCastResources (D190)', () => {
 			['Restorative Reagents', 2, null],
 			['Steps of the Fey', 3, null],
 		])
+	})
+
+	it('TGS2 Way of the Aether (D370): 2 Focus Points for Gentle Repose and See Invisibility at 6; Etherealness at 17 spends Sight Beyond Sight', () => {
+		const aether = {
+			entryType: 'subclass',
+			name: 'Way of the Aether',
+			source: 'GriffonsSaddlebag2',
+			className: 'Monk',
+			classSource: 'XPHB',
+			additionalSpells: [
+				{
+					known: { '3': ['mage hand|xphb#c'], '6': ['spare the dying|xphb#c'] },
+					innate: { '6': { resource: { '2': ['gentle repose|xphb', 'see invisibility|xphb'] } }, '17': { daily: { '1': ['etherealness|xphb'] } } },
+					resourceName: 'Focus Point',
+					ability: 'wis',
+				},
+			],
+		}
+		const raw = (name: string, level: number) => ({ name, source: 'XPHB', level, duration: [{ type: 'instant' }], meta: {} })
+		const spells = [raw('Mage Hand', 0), raw('Spare the Dying', 0), raw('Gentle Repose', 2), raw('See Invisibility', 2), raw('Etherealness', 7)]
+		const counters = (level: number) =>
+			extractSubclassAlwaysPreparedSpells([aether], spells, 'Way of the Aether', 'GriffonsSaddlebag2', 'Monk', 'XPHB', level).map((s) => [
+				s.name,
+				freeCastCounter(s, { origin: 'subclass', originName: 'Way of the Aether', usage: s.usage ?? null }),
+			])
+		expect(counters(6)).toEqual([
+			['Mage Hand', null],
+			['Spare the Dying', null],
+			['Gentle Repose', { key: 'Focus Point', cost: 2 }],
+			['See Invisibility', { key: 'Focus Point', cost: 2 }],
+		])
+		expect(counters(17)).toContainEqual(['Etherealness', { key: 'Sight Beyond Sight', cost: 1 }])
 	})
 
 	it('the same spell from the same source twice (Magic Initiate taken twice) shares one counter', () => {

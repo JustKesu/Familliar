@@ -12738,6 +12738,17 @@
 				]
 			}
 		],
+		"additionalSpells": [
+			{
+				"innate": {
+					"3": {
+						"ritual": [
+							"animal messenger|xphb"
+						]
+					}
+				}
+			}
+		],
 		"subclassFeatureIds": [
 			"scf|steel hawk|fighter|phb|steel hawk|griffonssaddlebag2|3|griffonssaddlebag2",
 			"scf|steel grace|fighter|phb|steel hawk|griffonssaddlebag2|7|griffonssaddlebag2",
@@ -12773,6 +12784,37 @@
 				}
 			]
 		},
+		"additionalSpells": [
+			{
+				"known": {
+					"3": [
+						"mage hand|xphb#c"
+					],
+					"6": [
+						"spare the dying|xphb#c"
+					]
+				},
+				"innate": {
+					"6": {
+						"resource": {
+							"2": [
+								"gentle repose|xphb",
+								"see invisibility|xphb"
+							]
+						}
+					},
+					"17": {
+						"daily": {
+							"1": [
+								"etherealness|xphb"
+							]
+						}
+					}
+				},
+				"resourceName": "Focus Point",
+				"ability": "wis"
+			}
+		],
 		"subclassFeatureIds": [
 			"scf|way of the aether|monk|phb|aether|griffonssaddlebag2|3|griffonssaddlebag2",
 			"scf|spectral guide|monk|phb|aether|griffonssaddlebag2|6|griffonssaddlebag2",

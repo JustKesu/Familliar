@@ -122,6 +122,9 @@ const ALSO_CASTABLE_WITH_SLOT: Record<string, boolean> = {
 	// "spend 2 ki points to cast …" / Focus Points
 	'Way of the Sun Soul': false,
 	'Warrior of Shadow': false,
+	// D370: TGS2 hand table, ruled like Warrior of Shadow and Path of the Wild Heart (Focus Points; ritual only).
+	'Way of the Aether': false,
+	'Steel Hawk': false,
 	// "You can spend 3 Sorcery Points to cast Summon Beast … without expending a spell slot, without preparing the spell …" (Beasts of Ill Omen, RHW)
 	'Shadow Sorcery': false,
 }

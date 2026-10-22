@@ -1164,6 +1164,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   restores; species option "Geleton (TGS2)").
 - `e2e/tgs2Resistances.spec.ts` — TGS2-5a a–c (D369: Barbarian 6 Path of the Infernal Fire on the Defenses card and in the
   details with origin; Ranger 7 Rocborne Cold; Barbarian 5 no Fire).
+- `e2e/tgs2Spells.spec.ts` — TGS2-4a a–d (D370: Monk 3 Aether Mage Hand, no Spare the Dying; Monk 6 Gentle Repose /
+  See Invisibility USE 2 Focus Points, 6/6 → 4/6; Monk 17 Etherealness USE spends Sight Beyond Sight, Long Rest restores;
+  Fighter 3 Steel Hawk Animal Messenger ritual label only).
 - `e2e/itemCostWeight.spec.ts` — F-41 a–d (D368: Battleaxe ×3 without a description expands to
   "Cost: 10 gp · Weight: 4 lb."; Rope line above its description; +1 Wand of the War Mage "Weight: 1 lb."
   without "Cost:"; custom item valueCopper 150 "Cost: 1 gp 5 sp").
@@ -1297,6 +1300,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Open (TGS2-4..5): feature spells/Channel Divinity `consumes`, grapple/ki prose, Geleton acid resistance (extractor).
 - TGS2-5a (D369): `FEATURE_DAMAGE_RESPONSES` gained Infernal Warrior (Barbarian, Path of the Infernal 6, fire) and Windswept
   (Ranger, Rocborne 7, cold), both unconditional. Arcane Conduit stays text only.
+- TGS2-4a (D370): `HOMEBREW_SUBCLASS_SPELLS` in extract-data.js gives Way of the Aether Mage Hand (3), Spare the Dying (6),
+  Gentle Repose / See Invisibility for 2 Focus Points (6), Etherealness 1/Long Rest (17) spending the Sight Beyond Sight record
+  (`SHARED_OWNERS` in freeCastResources.ts), and Steel Hawk Animal Messenger as ritual only (3). Both ruled not castable with
+  a slot in `alsoCastableWithSlot.ts`.
 - F-41 (D368): Inventory tab item detail shows "Cost: … · Weight: … lb." above the description, per single item
   (`ItemRef.weight` from items.json `weight`; `formatCopperPrice` in `currency.ts`). ▸ appears also for an item with
   cost or weight but no description. Carrying capacity not computed.

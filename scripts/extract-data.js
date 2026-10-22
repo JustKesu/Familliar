@@ -111,6 +111,18 @@ const HOMEBREW_REST_FEATURES = {
 const HOMEBREW_SUBCLASS_TABLES = {
 	"Fighter|Steel Hawk": [{ colLabels: ["Launch"], rows: Array.from({ length: 20 }, (_, i) => [i + 1 < 3 ? 0 : i + 1 < 7 ? 3 : i + 1 < 15 ? 4 : 5]) }],
 };
+// D370: these spells are stated in prose only; shapes copy Warrior of Shadow|XPHB and Path of the Wild Heart|XPHB.
+const HOMEBREW_SUBCLASS_SPELLS = {
+	"Monk|Way of the Aether": [
+		{
+			known: { 3: ["mage hand|xphb#c"], 6: ["spare the dying|xphb#c"] },
+			innate: { 6: { resource: { 2: ["gentle repose|xphb", "see invisibility|xphb"] } }, 17: { daily: { 1: ["etherealness|xphb"] } } },
+			resourceName: "Focus Point",
+			ability: "wis",
+		},
+	],
+	"Fighter|Steel Hawk": [{ innate: { 3: { ritual: ["animal messenger|xphb"] } } }],
+};
 
 /*
  * Books whose BACKGROUNDS stay out even though the book is in ALLOWED_SOURCES.
@@ -1532,7 +1544,10 @@ function loadHomebrew() {
 			entry.classSource = "XPHB";
 			const table = HOMEBREW_SUBCLASS_TABLES[`${entry.className}|${entry.name}`];
 			if (table) entry.subclassTableGroups = table;
-			if (entry.additionalSpells) entry.additionalSpells = mapStrings(entry.additionalSpells, redirectSpellRef);
+			const spells = HOMEBREW_SUBCLASS_SPELLS[`${entry.className}|${entry.name}`];
+			if (spells && entry.additionalSpells) throw new Error(`Homebrew ${entry.name} already has additionalSpells`);
+			if (spells) entry.additionalSpells = spells;
+			else if (entry.additionalSpells) entry.additionalSpells = mapStrings(entry.additionalSpells, redirectSpellRef);
 		}
 		for (const entry of races) {
 			delete entry.ability;
