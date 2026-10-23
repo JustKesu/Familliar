@@ -4,7 +4,7 @@ import { freeCastCounter, remainingUses } from '../calculation/freeCastResources
 import { featInstances } from '../featAsi/featInstances'
 import { applyHealing } from '../hitPoints/damageHealing'
 import { choiceNames, CURRENT_SCHEMA_VERSION, CUSTOM_ITEM_SOURCE, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
-import type { Character } from './character'
+import type { Character, CharacterBackground } from './character'
 import { CharacterStore, type KeyValueStorage, type UnreadableKind } from './characterStore'
 import {
 	CharacterNotFoundError,
@@ -411,6 +411,15 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const character = store.create({ name: 'Cato' })
 		expect(character.optionalFeatureChoices).toBeUndefined()
+	})
+
+	it('D385: drops an extra copy of a non-repeatable invocation on read and keeps both copies of a repeatable one', () => {
+		const choices = [{ name: 'Eldritch Mind' }, { name: 'Agonizing Blast' }, { name: 'Eldritch Mind', level: 5 }, { name: 'Agonizing Blast', level: 5 }]
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], optionalFeatureChoices: [{ featureType: 'EI', choices }] }]))
+		const store = new CharacterStore(backing)
+		expect(store.listUnreadable()).toEqual([])
+		expect(store.list()[0].optionalFeatureChoices).toEqual([{ featureType: 'EI', choices: [{ name: 'Eldritch Mind' }, { name: 'Agonizing Blast' }, { name: 'Agonizing Blast', level: 5 }] }])
 	})
 
 	/** The D21 class-feature choices are their own field, validated alongside the rest. */
@@ -2225,6 +2234,21 @@ describe('CharacterStore.exportCharacter / import', () => {
 	it('throws CharacterNotFoundError when exporting an unknown id', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		expect(() => store.exportCharacter('missing')).toThrow(CharacterNotFoundError)
+	})
+
+	it('round-trips a custom background and the Chain Master familiar choices unchanged', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const background: CharacterBackground = { name: 'Temple Scholar', source: 'custom', skillProficiencies: ['history', 'insight'], toolProficiency: "Thieves' Tools", originFeatOverride: { name: 'Alert', source: 'XPHB' }, abilityChoices: ['intelligence', 'wisdom', 'charisma'] }
+		const created = store.create({ name: 'Aria', background })
+		store.setFamiliar(created.id, { name: 'Imp', source: 'XMM' })
+		store.setFamiliarChainMaster(created.id, { form: 'aquatic' })
+		store.setFamiliarChainMaster(created.id, { damage: 'radiant' })
+		const original = store.list()[0]
+
+		const [imported] = new CharacterStore(new MemoryStorage()).import(store.exportCharacter(created.id))
+		expect(imported.background).toEqual(background)
+		expect(imported.familiar).toEqual({ name: 'Imp', source: 'XMM', chainMasterForm: 'aquatic', chainMasterDamage: 'radiant' })
+		expect({ ...imported, id: original.id }).toEqual(original)
 	})
 
 	it('imports a character as a new one with a fresh id, never overwriting', () => {

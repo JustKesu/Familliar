@@ -5508,3 +5508,9 @@ g) Uložení: `CharacterBackground` se `source: 'custom'`, jménem, skills, nás
 a) Odškrtnutí skillu vlastního backgroundu smaže Expertise na tomto skillu; ostatní Expertise zůstanou.
 b) Jméno vlastního backgroundu se při uložení ořízne (trim); při psaní se nemění.
 c) Jméno vlastního backgroundu nespouští přepočet max HP.
+
+## D385 — Duplicitní neopakovatelná invokace se při čtení zahodí (F-CB2)
+
+Uložená nebo importovaná postava s dvěma kopiemi neopakovatelné invokace (mimo čtyři z D382 a) se už neodmítá celá.
+Při čtení zůstane první kopie, další se zahodí a postava se načte normálně. Opakovatelné invokace si nechají všechny
+kopie. Mění kontrolu z I-1 (R-CB nález 3, rozhodl Daniel).

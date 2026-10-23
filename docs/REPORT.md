@@ -1,27 +1,34 @@
-# F-CB1: opravy z review R-CB (D384)
+# REPORT — F-CB2: opravy a testy z review R-CB (D385)
 
-Setup: `git fetch` + `merge --ff-only` = již aktuální, HEAD 21d2665. Bez subagentů.
+Setup: `git fetch` + `git merge --ff-only origin/main` → „Already up to date“, HEAD 291df35.
 
-## Co se změnilo
-- `wizardState.ts` `setBackgroundChoice`: při změně `custom.skills` se z `expertiseSkills` odstraní jen skill, který byl odškrtnut (původní custom skills minus nové). Ostatní Expertise zůstávají. Pool (`expertiseSourceSkills`) žije ve wizardu, reducer ho nezná; picker custom nenabízí skill, který už dává třída/druh, takže odškrtnutý skill nemůže být profi z jiného zdroje.
-- Trim jména: v sestavení `CharacterBackground` při uložení (`name.trim()`), ne v reduceru (trim při psaní by znemožnil mezeru mezi slovy).
-- Max HP klíč: `CharacterWizard.tsx` (`maxHpKey`) a deps `HitPointsPicker.tsx` pro `source === 'custom'` místo jména dávají `''`.
-- `e2e/currentHpFollowsMaxH1.spec.ts`: smazán `settle()` (500 ms). H-1 c čeká `expect.poll(storedCurrentHp)`, H-1 d běží bez čekání (předtím už čekal na `20/40`).
-- CSS `index.css`: `minmax(min(100%, 240px), 1fr)` + `min-width: 0; overflow-wrap: anywhere` na položkách `.background-picker__custom .class-skill-picker__list` a `.tool-proficiency-picker__list`.
-- Docs: STATUS.md, DECISIONS.md D384.
+## Změny
+- Nález 4: skript `scripts/fcb2-repeatable-sources.js` — data/ i public/data/ `optional-features.json` (120 záznamů)
+  mají čtyři opakovatelné invokace jen jako XPHB `EI`. Kód beze změny; zjištění zapsáno do DATA.md
+  („Option names across books“).
+- Nález 3 (D385): `describeOptionalFeatureChoicesError` už duplicitní neopakovatelnou EI neodmítá;
+  `toCharacterOptionalFeatureChoices` (validate.ts) nechá první kopii a další zahodí. Opakovatelné kopie zůstávají.
+  Platí pro uložení i import (obojí jde přes `toCharacter`).
+- Testy (characterStore.test.ts): D385 čtení (Eldritch Mind 2× → 1×, Agonizing Blast 2× → 2×, nic „unreadable“);
+  export → import custom backgroundu (`source 'custom'`, `abilityChoices`, `originFeatOverride`) a familiara
+  s `chainMasterForm`/`chainMasterDamage` — celý záznam kromě id shodný.
+- optionSwap.test.ts: test validátoru přepsán — opakovaná Eldritch Mind teď projde validací (D385).
+- DECISIONS.md D385, DATA.md, STATUS.md (I-1 řádek + F-CB2).
 
-## Ověřeno
-- `npm run typecheck` OK; `npm run test` 3439/3439; `npm run validate-data` 177/177.
-- `npm run e2e` (679): jediný pád byl můj pokus o `hpPair` v H-1 c (tvar `0/31` na sheetu nesedí); odstraněn. Poté znovu jen `currentHpFollowsMaxH1` + `customBackgroundCB1`: 13/13. Celá sada se po této opravě nespustila znovu (zbytek v prvním běhu prošel).
-- Nové scénáře v `customBackgroundCB1.spec.ts`:
-  - e: Rogue (Scholar převeden seedem jako v expertiseE1: schema aktuální, jen třída/classSkills/expertise) s Expertise History+Perception; Edit → odškrtnout History, zaškrtnout Arcana → krok Expertise nenabízí History, Perception zůstává, Next disabled; po výběru Arcany enabled; po uložení History není expertise ani proficient, Arcana expertise.
-  - f: jméno `"  Temple Scholar  "` se uloží jako `Temple Scholar` (kontrola localStorage + sheet).
-- Slabina: H-1 c/d "zůstává beze změny" nelze web-first dokázat zcela; c čeká na pozitivní signál (max 31 v draweru), pak poll na uložené HP 0. Poll prochází hned, takže pozdní zápis by nezachytil.
+## Nález 6c — ZASTAVENO, nic nenapsáno
+Požadovaný výsledek („po odebrání levelu zase dvě kopie“) žádná reálná cesta v aplikaci nedává. D345 bod 5:
+„Remove level výměnu nevrací“ — náhrada přebírá level stamp vyměněné kopie (`inheritSwapStamp`), `levelRemoval`
+maže jen podle stampu (`withoutLevel`). Po swapu Agonizing Blast → X na levelu N a odebrání levelu N zůstane
+1× Agonizing Blast + X. Test s výsledkem „dvě kopie“ by vymýšlel chování proti D345.
+Možnosti pro uživatele: (a) test současného chování podle D345.5 (1 kopie + náhrada, nic dalšího neztraceno);
+(b) nové rozhodnutí, že Remove level swap vrací — změna kódu i D345; (c) nechat bez testu.
+
+## Ověření
+- typecheck OK; test 188 souborů / 3441 testů OK; validate-data 177/177 OK; e2e 679/679 OK (3,7 min, nad 3 min).
 
 ## Rozhodnutí v kódu
-- Smaže se jen odškrtnutý skill (ne celé Expertise) — D384a.
-- Trim při uložení, ne při psaní — D384b.
+- Duplicita se porovnává přesným jménem (jako dosavadní validátor), ne case-insensitive.
+- Zahozená kopie se do `dropped`/upozornění nehlásí — čtení je tiché, stejně jako ostatní opravy při čtení.
 
 ## Manual browser check for the user
-none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: Wizard/Edit → krok Background → Custom background (mřížka skills a nástrojů); krok Expertise v Edit.
+Žádná — beze změny UI.

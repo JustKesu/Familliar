@@ -1336,6 +1336,12 @@ without a source (before schema 58, D318) resolves to exactly one row today, and
 records for it is that row's. "Pact of the Chain" is one row, XPHB `EI` (beastData.ts relies on it).
 Found in M1b (2026-10-06, scripts/investigate-same-name-options.js, consumed).
 
+The four repeatable invocations of D382 (Agonizing Blast, Eldritch Spear, Lessons of the First Ones,
+Repelling Blast) exist only as XPHB `EI` rows in optional-features.json (data/ and public/data/, 120
+entries each); no PHB'14 or other copy. So `isRepeatableOption` matching by name alone cannot make a
+2014 invocation repeatable today. Re-check if a source with 2014 invocations is ever added.
+Found in F-CB2 (2026-10-24, scripts/fcb2-repeatable-sources.js, consumed).
+
 ### Frázové vyhledávání v `entries` musí nejdřív stripnout 5etools markup
 
 5etools tagy rozdělují frázi na dvě části, které nikdy neleží vedle sebe v

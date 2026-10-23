@@ -473,11 +473,6 @@ export function describeOptionalFeatureChoicesError(value: unknown): string | nu
 		const choices = entry['choices'] as Record<string, unknown>[]
 		const badSource = choices.findIndex((choice) => !isOptionalNonEmptyString(choice['source']))
 		if (badSource !== -1) return `optionalFeatureChoices[${i}].choices[${badSource}].source must be a non-empty string`
-		// D382: only the four repeatable invocations may be held twice; other kinds are left as they always were.
-		if (entry['featureType'] === 'EI') {
-			const repeated = choices.findIndex((choice, index) => !isRepeatableOption('EI', choice['name'] as string) && choices.findIndex((other) => other['name'] === choice['name']) !== index)
-			if (repeated !== -1) return `optionalFeatureChoices[${i}].choices[${repeated}] repeats ${String(choices[repeated]['name'])}, which cannot be taken more than once`
-		}
 		const spellChoicesError = describeOptionalFeatureSpellChoicesError(entry['spellChoices'], i)
 		if (spellChoicesError) return spellChoicesError
 	}
@@ -509,9 +504,14 @@ function toCharacterOptionalFeatureChoices(value: unknown[]): CharacterOptionalF
 	return value.map((entry) => {
 		const record = entry as Record<string, unknown>
 		const spellChoices = record['spellChoices'] as CharacterOptionalFeatureChoice['spellChoices']
+		const choices = record['choices'] as Record<string, unknown>[]
+		// D382, D385: only the four repeatable invocations may be held twice; an extra copy of any other is dropped, not rejected.
+		const kept = record['featureType'] !== 'EI'
+			? choices
+			: choices.filter((choice, index) => isRepeatableOption('EI', choice['name'] as string) || choices.findIndex((other) => other['name'] === choice['name']) === index)
 		return {
 			featureType: record['featureType'] as string,
-			choices: (record['choices'] as Record<string, unknown>[]).map((choice) => ({
+			choices: kept.map((choice) => ({
 				name: choice['name'] as string,
 				...(typeof choice['level'] === 'number' ? { level: choice['level'] } : {}),
 				...(typeof choice['source'] === 'string' ? { source: choice['source'] } : {}),

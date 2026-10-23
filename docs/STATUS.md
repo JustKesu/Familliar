@@ -1360,7 +1360,7 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   counts copies (`SearchableOptionList.chosenCount`). optionSwap per copy (`copiesOf`, `lostCopies`, `withoutOneCopy`,
   `countedNames`, `withCopies`); swap/Keep/stamp inheritance, heldPicks and level-up stamping count copies. Sheet:
   `chosenOptionalFeatureOptions` collapses copies into one option with `copies`; Features tab shows "(xN)". Review card and
-  "Options added" use `countedNames`. validate refuses a repeated non-repeatable EI. No schema change. Item copies are not
+  "Options added" use `countedNames`. A repeated non-repeatable EI is dropped on read (D385). No schema change. Item copies are not
   in the "(xN)" (they stay under "From items"). `e2e/repeatableInvocationsI1.spec.ts` a–d.
 - CB-1 (D383): custom background in the wizard. Schema 64: `CharacterBackground.abilityChoices` (only with `source:
   'custom'`, `CUSTOM_BACKGROUND_SOURCE`); validate demands `originFeatOverride` and 3 distinct abilities for 'custom'.
@@ -1377,6 +1377,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   trimmed in `buildCharacter` (wizardState); max HP key (`CharacterWizard`, `HitPointsPicker`) ignores the custom name;
   custom skill/tool grids use `minmax(min(100%, 240px), 1fr)` with wrapping labels. H-1 e2e no longer waits a fixed
   500 ms. `e2e/customBackgroundCB1.spec.ts` e, f.
+- F-CB2 (D385): validate no longer refuses a repeated non-repeatable EI; `toCharacterOptionalFeatureChoices` keeps the
+  first copy and drops the rest on read (repeatable ones keep all copies). Unit tests in characterStore.test.ts: D385
+  read, and export → import round-trip of a custom background plus Chain Master familiar choices.
 
 ## Dočasné scaffolding
 

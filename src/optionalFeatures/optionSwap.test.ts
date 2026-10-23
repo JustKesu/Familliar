@@ -155,9 +155,9 @@ describe('D382 repeated invocations', () => {
 		expect(withoutOneCopy([{ name: 'A', level: 2 }, { name: 'A' }], 'A')).toEqual([{ name: 'A', level: 2 }])
 	})
 
-	it('validate accepts the four repeatable invocations twice and refuses any other', () => {
+	it('validate accepts any repeated invocation — D385 drops the extra non-repeatable copy on read instead', () => {
 		expect(describeOptionalFeatureChoicesError(twice)).toBeNull()
 		expect(describeOptionalFeatureChoicesError([{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Agonizing Blast', level: 5 }] }])).toBeNull()
-		expect(describeOptionalFeatureChoicesError([{ featureType: 'EI', choices: [{ name: 'Eldritch Mind' }, { name: 'Eldritch Mind', level: 5 }] }])).toMatch(/repeats Eldritch Mind/)
+		expect(describeOptionalFeatureChoicesError([{ featureType: 'EI', choices: [{ name: 'Eldritch Mind' }, { name: 'Eldritch Mind', level: 5 }] }])).toBeNull()
 	})
 })
