@@ -498,9 +498,16 @@ export type CharacterMastery = LeveledChoice
 /** One skill named as Expertise (slice 8c2, D98). `name` is the skill key skills.ts matches on. */
 export type CharacterExpertiseSkill = LeveledChoice
 
-/** The names alone, for readers that only match on names. Derived — a name is never stored twice. */
+/** The names alone, for readers that only match on names. Derived — a name is stored twice only for a repeatable invocation (D382). */
 export function choiceNames(choices: readonly LeveledChoice[] | undefined): string[] {
 	return (choices ?? []).map((choice) => choice.name)
+}
+
+/** D382: the only invocations the data's prose lets a Warlock take more than once ("more than once"); there is no isRepeatable field (DATA.md). */
+export const REPEATABLE_INVOCATIONS: readonly string[] = ['Agonizing Blast', 'Eldritch Spear', 'Lessons of the First Ones', 'Repelling Blast']
+
+export function isRepeatableOption(featureType: string, name: string): boolean {
+	return featureType === 'EI' && REPEATABLE_INVOCATIONS.some((repeatable) => repeatable.toLowerCase() === name.toLowerCase())
 }
 
 /**

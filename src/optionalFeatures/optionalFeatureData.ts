@@ -118,6 +118,8 @@ export interface OptionalFeatureOption {
 	consumes?: unknown
 	/** Set on a CHOSEN option only (chosenOptionalFeatureOptions): the stored featureType, or "FS" for the class fighting style — what the Features tab links it to its granting feature by (D184). */
 	featureType?: string
+	/** D382: set on a CHOSEN option held more than once (a repeatable invocation) — one record, the count shown beside its name. */
+	copies?: number
 }
 
 export interface OptionalFeatureChoice {
@@ -668,8 +670,10 @@ export function chosenOptionalFeatureOptions(
 	const out: OptionalFeatureOption[] = []
 	for (const entry of selection) {
 		// D43: a stored pick the data no longer offers is skipped, not faked.
-		for (const option of pickedOptions(optionsForFeatureType(parsedOptionalFeatures, parsedFeats, entry.featureType), entry.choices)) {
-			out.push({ ...option, featureType: entry.featureType })
+		const picked = pickedOptions(optionsForFeatureType(parsedOptionalFeatures, parsedFeats, entry.featureType), entry.choices)
+		for (const option of new Set(picked)) {
+			const copies = picked.filter((other) => other === option).length
+			out.push({ ...option, featureType: entry.featureType, ...(copies > 1 ? { copies } : {}) })
 		}
 	}
 	for (const style of pickedOptions(fightingStyleFeats(parsedFeats), fightingStyles)) out.push({ ...style, featureType: 'FS' })

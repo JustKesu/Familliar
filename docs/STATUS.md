@@ -1354,6 +1354,14 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   after)` (hpDefault.ts; undefined when the override changed) → `currentHpFollowingMaxHp` (maxHitPoints.ts; 0 stays 0,
   clamp 0) → `setHitPoints` on the latest stored character. Edit Character save does the same through the wizard's
   `maxHp.previous/current`. Level up/removal keep D107. `e2e/currentHpFollowsMaxH1.spec.ts` a–d.
+- I-1 (D382): repeatable invocations, count only. `REPEATABLE_INVOCATIONS`/`isRepeatableOption` (character.ts): Agonizing
+  Blast, Eldritch Spear, Lessons of the First Ones, Repelling Blast; a copy is one more `{name}` entry in the EI `choices`
+  with its own level stamp. Picker: "Take again" / "Remove one" under a chosen repeatable row, label "Name (xN)", counter
+  counts copies (`SearchableOptionList.chosenCount`). optionSwap per copy (`copiesOf`, `lostCopies`, `withoutOneCopy`,
+  `countedNames`, `withCopies`); swap/Keep/stamp inheritance, heldPicks and level-up stamping count copies. Sheet:
+  `chosenOptionalFeatureOptions` collapses copies into one option with `copies`; Features tab shows "(xN)". Review card and
+  "Options added" use `countedNames`. validate refuses a repeated non-repeatable EI. No schema change. Item copies are not
+  in the "(xN)" (they stay under "From items"). `e2e/repeatableInvocationsI1.spec.ts` a–d.
 
 ## Dočasné scaffolding
 

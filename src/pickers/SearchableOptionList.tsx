@@ -58,6 +58,7 @@ export function SearchableOptionList({
 	emptyLabel,
 	pinSelected = true,
 	variant = 'input',
+	chosenCount,
 }: {
 	/** Group heading, also the basis of the search field's accessible name. */
 	legend: string
@@ -90,8 +91,10 @@ export function SearchableOptionList({
 	 * radios/checkboxes. `inputType` then only says single (radio) or multi (checkbox).
 	 */
 	variant?: 'input' | 'choose'
+	/** D382: picks counted by the caller when one row stands for several (a repeated invocation); defaults to the selected rows. */
+	chosenCount?: number
 }): ReactNode {
-	const chosen = options.filter((option) => option.selected).length
+	const chosen = chosenCount ?? options.filter((option) => option.selected).length
 	const [open, setOpen] = useState(defaultOpen ?? chosen < required)
 	const [query, setQuery] = useState('')
 

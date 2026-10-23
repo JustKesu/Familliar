@@ -39,7 +39,7 @@ import type {
 	WeaponGrip,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
-import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
+import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, isRepeatableOption, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
 import { canMigrateToCurrent } from './migrations'
 import type { StoredCharacter } from './wireFormat'
 
@@ -458,6 +458,11 @@ export function describeOptionalFeatureChoicesError(value: unknown): string | nu
 		const choices = entry['choices'] as Record<string, unknown>[]
 		const badSource = choices.findIndex((choice) => !isOptionalNonEmptyString(choice['source']))
 		if (badSource !== -1) return `optionalFeatureChoices[${i}].choices[${badSource}].source must be a non-empty string`
+		// D382: only the four repeatable invocations may be held twice; other kinds are left as they always were.
+		if (entry['featureType'] === 'EI') {
+			const repeated = choices.findIndex((choice, index) => !isRepeatableOption('EI', choice['name'] as string) && choices.findIndex((other) => other['name'] === choice['name']) !== index)
+			if (repeated !== -1) return `optionalFeatureChoices[${i}].choices[${repeated}] repeats ${String(choices[repeated]['name'])}, which cannot be taken more than once`
+		}
 		const spellChoicesError = describeOptionalFeatureSpellChoicesError(entry['spellChoices'], i)
 		if (spellChoicesError) return spellChoicesError
 	}

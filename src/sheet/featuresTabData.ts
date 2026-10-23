@@ -8,6 +8,7 @@ import { skillLabel } from '../calculation/skills'
 import { compareText } from '../text/compareText'
 import { featDisplayName, featOriginLabel, LESSONS_OF_THE_FIRST_ONES, type FeatInstance } from '../featAsi/featInstances'
 import type { ItemInvocationOption, OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
+import { withCopies } from '../optionalFeatures/optionSwap'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { grantedFeatureOrigin, resourceCandidateName } from './featureActionRowData'
 import type { GrantedFeature } from './grantedClassFeatures'
@@ -101,7 +102,7 @@ export function grantsFeatureType(entries: readonly unknown[], featureType: stri
 export const ORIGIN_FEAT_MISSING = 'Origin feat not chosen yet — choose it in Edit Character.'
 
 function optionItem(option: OptionalFeatureOption): FeatureTabOption {
-	return { key: `${option.name}|${option.source}`, name: option.name, entries: option.entries }
+	return { key: `${option.name}|${option.source}`, name: withCopies(option.name, option.copies ?? 1), entries: option.entries }
 }
 
 function titleCase(text: string): string {
@@ -220,7 +221,7 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 			level: Infinity,
 			row: {
 				key: `option|${option.name}|${option.source}`,
-				name: option.name,
+				name: withCopies(option.name, option.copies ?? 1),
 				source: input.optionOrigin(option),
 				entries: option.entries,
 				resourceName: input.resourceKey ? input.resourceKey(resourceCandidateName(option), owner ?? null) : resourceCandidateName(option),

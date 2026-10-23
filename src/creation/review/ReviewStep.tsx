@@ -12,8 +12,8 @@ import type { LevelGains } from '../../levelUp/levelGains'
 import { loadFeatEffectEntries } from '../../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../../sheet/grantedClassFeatures'
 import { UnresolvedValue } from '../../sheet/ValueBreakdown'
-import { compareText } from '../../text/compareText'
-import type { AbilityIncreaseMap, Character, CharacterInventoryItem, FeatAsiChoice } from '../../storage/character'
+import { countedNames, lostCopies } from '../../optionalFeatures/optionSwap'
+import { choiceNames, type AbilityIncreaseMap, type Character, type CharacterInventoryItem, type FeatAsiChoice } from '../../storage/character'
 import type { UnfinishedClass, WizardData, WizardStep } from '../wizardState'
 
 /** W-9 (D295–D300): the Review step — a portrait header, then one card per part of the character. Display only; every value is computed by CharacterWizard. */
@@ -219,10 +219,13 @@ export function ReviewStep({
 
 	const classOptions = data.classOptionalFeatureChoices
 		.filter((entry) => entry.choices.length > 0)
-		.map((entry) => ({ featureType: entry.featureType, label: classOptionLabels[entry.featureType] ?? 'Class options', names: entry.choices.map((choice) => choice.name).sort(compareText) }))
-	const optionKey = (featureType: string, name: string) => `${featureType}|${name}`
-	const optionsBefore = new Set(baseline.classOptionalFeatureChoices.flatMap((entry) => entry.choices.map((choice) => optionKey(entry.featureType, choice.name))))
-	const optionsAdded = classOptions.flatMap((entry) => entry.names.filter((name) => !optionsBefore.has(optionKey(entry.featureType, name))))
+		.map((entry) => ({ featureType: entry.featureType, label: classOptionLabels[entry.featureType] ?? 'Class options', names: countedNames(choiceNames(entry.choices)) }))
+	// D382: per copy, so a second Lessons of the First Ones counts as added.
+	const optionsAdded = countedNames(
+		data.classOptionalFeatureChoices.flatMap((entry) =>
+			lostCopies(choiceNames(entry.choices), choiceNames(baseline.classOptionalFeatureChoices.find((before) => before.featureType === entry.featureType)?.choices)),
+		),
+	)
 
 	const increaseText = (increases: AbilityIncreaseMap): string =>
 		Object.entries(increases)

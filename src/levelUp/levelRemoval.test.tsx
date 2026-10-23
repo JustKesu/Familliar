@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { computeSpellSlots, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { saveCharacter, wizardDataFromCharacter } from '../creation/wizardState'
 import type { ResolverData } from '../featureResolver'
+import { featInstances } from '../featAsi/featInstances'
 import type { Character, SpentSpellSlots } from '../storage/character'
 import { CharacterStore, type CharacterCreateInput, type KeyValueStorage } from '../storage/characterStore'
 import { levelGainsFor } from './levelGains'
@@ -919,6 +920,20 @@ describe('D347/D348: options that lose their prerequisites go with the level (F-
 		expect(ended.dropped).toContain('Concentration: Find Familiar')
 		const held = remove(withTome({ spellChoices: [{ className: 'Warlock', classSource: 'XPHB', spells: [{ name: 'Find Familiar', source: 'XPHB' }] }] }))
 		expect(held.result.play?.concentratingOn).toEqual({ name: 'Find Familiar', source: 'XPHB' })
+	})
+
+	it('D382: removing the level of the second Lessons of the First Ones drops only that copy; its feat sleeps (D376)', () => {
+		const grantedFeats = [
+			{ origin: 'invocation' as const, id: 'a', name: 'Alert', source: 'XPHB' },
+			{ origin: 'invocation' as const, id: 'b', name: 'Tough', source: 'XPHB' },
+		]
+		const { dropped, result } = remove(
+			warlockAt(5, 4, [{ name: 'Armor of Shadows' }, { name: 'Lessons of the First Ones', level: 2 }, { name: 'Lessons of the First Ones', level: 5 }], { grantedFeats }),
+		)
+		expect(names(result)).toEqual(['Armor of Shadows', 'Lessons of the First Ones'])
+		expect(dropped).toContain('EI option: Lessons of the First Ones')
+		expect(result.grantedFeats).toEqual(grantedFeats)
+		expect(featInstances(result, null).filter((instance) => instance.origin === 'invocation').map((instance) => instance.name)).toEqual(['Alert'])
 	})
 })
 

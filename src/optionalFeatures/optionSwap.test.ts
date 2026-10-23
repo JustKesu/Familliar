@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { evaluateClassOptionalFeatureGroups, type ClassOptionalFeatureContextBase, type ClassOptionalFeatureGroup, type OptionalFeatureOption } from './optionalFeatureData'
 import {
+	countedNames,
 	droppedName,
+	lostCopies,
+	withoutOneCopy,
 	familiarAfterOptionChange,
 	holdsSwappableSubclassOption,
 	inheritSwapStamp,
@@ -13,6 +16,7 @@ import {
 	undoSwap,
 } from './optionSwap'
 import type { CharacterInventoryItem, CharacterOptionalFeatureChoice } from '../storage/character'
+import { describeOptionalFeatureChoicesError } from '../storage/validate'
 
 const warlockLevel = (level: number) => ({ level, class: { name: 'Warlock', source: 'XPHB' } })
 const option = (name: string, prerequisite?: OptionalFeatureOption['prerequisite']): OptionalFeatureOption => ({ name, source: 'XPHB', entries: [], prerequisite })
@@ -121,5 +125,39 @@ describe('D345 option swap', () => {
 		expect(holdsSwappableSubclassOption([{ featureType: 'MV:B', choices: [{ name: 'Parry' }] }], 'MV:B')).toBe(true)
 		expect(holdsSwappableSubclassOption([{ featureType: 'RN', choices: [] }], 'RN')).toBe(false)
 		expect(holdsSwappableSubclassOption([{ featureType: 'AI', choices: [{ name: 'Curving Shot' }] }], 'AI')).toBe(false)
+	})
+})
+
+describe('D382 repeated invocations', () => {
+	const twice: CharacterOptionalFeatureChoice[] = [
+		{ featureType: 'EI', choices: [{ name: 'Pact of the Blade' }, { name: 'Lessons of the First Ones', level: 2 }, { name: 'Lessons of the First Ones', level: 5 }] },
+	]
+
+	it('swaps one copy out and Keep puts that copy back', () => {
+		const dropped = swapOut(twice, 'EI', 'Lessons of the First Ones')
+		expect(dropped[0].choices).toEqual([{ name: 'Pact of the Blade' }, { name: 'Lessons of the First Ones', level: 2 }])
+		expect(swappedOut(dropped, twice, 'EI')).toEqual({ name: 'Lessons of the First Ones', level: 5 })
+		const restored = undoSwap([{ ...dropped[0], choices: [...dropped[0].choices, { name: 'Armor of Shadows' }] }], twice, 'EI', 3)
+		expect(restored[0].choices).toEqual(twice[0].choices)
+	})
+
+	it('treats a second copy taken in this walk as fresh, not held', () => {
+		const withThird = [{ ...twice[0], choices: [...twice[0].choices, { name: 'Lessons of the First Ones' }] }]
+		expect(swappedOut(withThird, twice, 'EI')).toBeNull()
+		const swapped = inheritSwapStamp([{ name: 'Pact of the Blade' }, { name: 'Lessons of the First Ones', level: 2 }, { name: 'Agonizing Blast' }], twice[0].choices)
+		expect(swapped.choices[2]).toEqual({ name: 'Agonizing Blast', level: 5 })
+	})
+
+	it('counts lost and added copies per copy', () => {
+		expect(lostCopies(['A', 'A', 'B'], ['A', 'B'])).toEqual(['A'])
+		expect(lostCopies(['A', 'B'], ['B', 'A'])).toEqual([])
+		expect(countedNames(['Lessons of the First Ones', 'Agonizing Blast', 'Lessons of the First Ones'])).toEqual(['Agonizing Blast', 'Lessons of the First Ones (x2)'])
+		expect(withoutOneCopy([{ name: 'A', level: 2 }, { name: 'A' }], 'A')).toEqual([{ name: 'A', level: 2 }])
+	})
+
+	it('validate accepts the four repeatable invocations twice and refuses any other', () => {
+		expect(describeOptionalFeatureChoicesError(twice)).toBeNull()
+		expect(describeOptionalFeatureChoicesError([{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Agonizing Blast', level: 5 }] }])).toBeNull()
+		expect(describeOptionalFeatureChoicesError([{ featureType: 'EI', choices: [{ name: 'Eldritch Mind' }, { name: 'Eldritch Mind', level: 5 }] }])).toMatch(/repeats Eldritch Mind/)
 	})
 })

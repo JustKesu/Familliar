@@ -1,5 +1,5 @@
 import type { WizardData } from '../creation/wizardState'
-import { SWAPPABLE_CLASS_OPTION_TYPES, SWAPPABLE_SUBCLASS_OPTION_TYPES, swappableFightingStyle } from '../optionalFeatures/optionSwap'
+import { lostCopies, SWAPPABLE_CLASS_OPTION_TYPES, SWAPPABLE_SUBCLASS_OPTION_TYPES, swappableFightingStyle } from '../optionalFeatures/optionSwap'
 import { choiceNames, fightingStyleFor, type Character, type CharacterOptionalFeatureChoice, type FeatAsiChoice } from '../storage/character'
 
 /**
@@ -104,10 +104,11 @@ export function overwrittenHeldPicks(character: Character, data: WizardData, act
 	}
 	for (const heldEntry of held.classOptionalFeatureChoices) {
 		const nowNames = choiceNames(data.classOptionalFeatureChoices.find((entry) => entry.featureType === heldEntry.featureType)?.choices)
-		const lost = choiceNames(heldEntry.choices).filter((name) => !nowNames.includes(name))
+		// D382: counted per copy — losing one of two held Agonizing Blasts is a lost option.
+		const lost = lostCopies(choiceNames(heldEntry.choices), nowNames)
 		// D345: one held option of a swappable kind may be replaced per level up.
 		const allowed = SWAPPABLE_CLASS_OPTION_TYPES.includes(heldEntry.featureType) ? 1 : 0
-		if (lost.length > allowed) missing('class option', choiceNames(heldEntry.choices), nowNames)
+		if (lost.length > allowed) for (const name of lost) problems.push(`class option ${name}`)
 	}
 	for (const pick of character.multiclassPicks ?? []) {
 		if (!(data.multiclassPicks ?? []).some((now) => now.className === pick.className && now.classSource === pick.classSource && now.kind === pick.kind && now.name === pick.name)) {

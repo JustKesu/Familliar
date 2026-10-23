@@ -86,7 +86,8 @@ export function ReplaceOptionControl({
 				<>
 					<p>You may replace one of your {label} options with another one you qualify for.</p>
 					<ul className="replace-option__list">
-						{heldChoices.map((choice) => {
+						{/* D382: one button per name; a repeated invocation is replaced one copy at a time. */}
+						{heldChoices.filter((choice, index) => heldChoices.findIndex((other) => other.name === choice.name) === index).map((choice) => {
 							const blockers = swapBlockedBy(group, value, contextBase, choice.name)
 							return (
 								<li key={choice.name}>

@@ -5,7 +5,7 @@ import {
 	type ClassOptionalFeatureContextBase,
 	type ClassOptionalFeatureGroup,
 } from './optionalFeatureData'
-import { SWAPPABLE_CLASS_OPTION_TYPES } from './optionSwap'
+import { copiesOf, SWAPPABLE_CLASS_OPTION_TYPES, withCopies, withoutOneCopy } from './optionSwap'
 import { ReplaceOptionControl } from './ReplaceOptionControl'
 import { Entries } from '../markup'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
@@ -19,7 +19,7 @@ import {
 } from '../spells/optionalFeatureSpellChoiceData'
 import { knownSpellNote, knownSpellReason, optionalFeatureSpellPickerKey, type KnownSpell } from '../spells/knownSpells'
 import type { FilterChoiceCandidateSpell } from '../spells/featSpellChoiceData'
-import { choiceNames, type CharacterOptionalFeatureChoice, type OptionalFeatureSpellChoice } from '../storage/character'
+import { choiceNames, isRepeatableOption, type CharacterOptionalFeatureChoice, type OptionalFeatureSpellChoice } from '../storage/character'
 
 /*
  * Picker for a CLASS's own optionalfeatureProgression (Sorcerer Metamagic,
@@ -156,6 +156,14 @@ export function ClassOptionalFeaturePicker({
 		onChange([...others, updated])
 	}
 
+	/** D382: takes a repeatable invocation once more, or drops its last copy — the one this walk added. */
+	function changeCopies(featureType: string, optionName: string, add: boolean): void {
+		const current = value.find((entry) => entry.featureType === featureType)
+		if (!current) return
+		const choices = add ? [...current.choices, { name: optionName }] : withoutOneCopy(current.choices, optionName)
+		onChange(value.map((entry) => (entry === current ? { ...current, choices } : entry)))
+	}
+
 	/** Records one option's spell picks, leaving `choices` and every other option's picks exactly as they were. */
 	function setSpellChoice(featureType: string, pick: OptionalFeatureSpellChoice): void {
 		const current = value.find((entry) => entry.featureType === featureType)
@@ -178,9 +186,13 @@ export function ClassOptionalFeaturePicker({
 					const swappedOut = !checked && lockedNames.includes(option.name)
 					const disabled = !checked && (!eligible || group.remaining <= 0 || swappedOut)
 					const shownReasons = swappedOut ? ['Being replaced in this level up.'] : reasons
+					const copies = copiesOf(value.find((entry) => entry.featureType === group.featureType)?.choices, option.name)
+					const lockedCopies = lockedNames.filter((name) => name === option.name).length
+					const repeatable = checked && isRepeatableOption(group.featureType, option.name)
 					return {
 						key: `${option.name}|${option.source}`,
 						name: option.name,
+						label: withCopies(option.name, copies),
 						book: option.source,
 						// W5: reasons stay visible on the collapsed row (D71/D19), the rule text folds away.
 						disabledReason:
@@ -198,13 +210,33 @@ export function ClassOptionalFeaturePicker({
 						),
 						// Outside `detail` so a collapsed row never hides a spell pick that Next waits on.
 						extra: checked ? (
-							<OptionalFeatureSpellSubPicker
-								featureType={group.featureType}
-								optionName={option.name}
-								alreadyKnown={alreadyKnown}
-								value={value.find((entry) => entry.featureType === group.featureType)?.spellChoices?.find((p) => p.optionName === option.name)}
-								onChange={(pick) => setSpellChoice(group.featureType, pick)}
-							/>
+							<>
+								{repeatable && (
+									<div className="class-optional-feature-picker__copies">
+										<button
+											type="button"
+											aria-label={`Take ${option.name} again`}
+											// A copy swapped out in this walk comes back through "Keep", which restores its stamp (D345).
+											disabled={group.remaining <= 0 || copies < lockedCopies}
+											onClick={() => changeCopies(group.featureType, option.name, true)}
+										>
+											Take again
+										</button>
+										{copies > Math.max(1, lockedCopies) && (
+											<button type="button" aria-label={`Remove one ${option.name}`} onClick={() => changeCopies(group.featureType, option.name, false)}>
+												Remove one
+											</button>
+										)}
+									</div>
+								)}
+								<OptionalFeatureSpellSubPicker
+									featureType={group.featureType}
+									optionName={option.name}
+									alreadyKnown={alreadyKnown}
+									value={value.find((entry) => entry.featureType === group.featureType)?.spellChoices?.find((p) => p.optionName === option.name)}
+									onChange={(pick) => setSpellChoice(group.featureType, pick)}
+								/>
+							</>
 						) : undefined,
 						selected: checked,
 						disabled,
@@ -232,6 +264,7 @@ export function ClassOptionalFeaturePicker({
 							variant="choose"
 							options={options}
 							required={group.count}
+							chosenCount={group.chosen.length}
 							renderCount={({ chosen, required }) => {
 								const left = required - chosen
 								return left > 0 ? `Choose ${left} more option${left === 1 ? '' : 's'}.` : 'All options chosen.'

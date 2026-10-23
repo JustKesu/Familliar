@@ -1940,13 +1940,24 @@ function classRecordsFor(
 			const sourced = { ...entry, choices: entry.choices.map((choice) => withPickSource(entry.featureType, choice)) }
 			if (levelUpTo === undefined) return sourced
 			const stored = existing?.optionalFeatureChoices?.find((candidate) => candidate.featureType === entry.featureType)?.choices
-			const held = new Set(choiceNames(stored))
+			// D382: matched per copy, so a second copy of a held invocation is new to this walk and gets stamped.
+			const unmatched = choiceNames(stored)
 			const swapped = inheritSwapStamp(sourced.choices, stored)
+			let replacementLeft = swapped.replacement !== null
 			return {
 				...sourced,
-				choices: swapped.choices.map((choice) =>
-					choice.name === swapped.replacement || choice.level !== undefined || held.has(choice.name) ? choice : { ...choice, level: levelUpTo },
-				),
+				choices: swapped.choices.map((choice) => {
+					const index = unmatched.indexOf(choice.name)
+					if (index !== -1) {
+						unmatched.splice(index, 1)
+						return choice
+					}
+					if (replacementLeft) {
+						replacementLeft = false
+						return choice
+					}
+					return choice.level !== undefined ? choice : { ...choice, level: levelUpTo }
+				}),
 			}
 		})
 

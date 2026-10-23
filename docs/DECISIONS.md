@@ -5480,3 +5480,15 @@ b) Zůstává D107/D110: clamp na 0, nenastavený `currentHp` zůstane nenastave
    Dočasné HP se nemění. Familiar mimo rozsah.
 c) Ruční nastavení/změna `maxHpOverride` `currentHp` neposouvá (ruční úprava, D9).
 d) Postava na 0 HP zůstane na 0 i při vyšším maximu.
+
+## D382 — Opakovatelné invokace, jen počet (I-1)
+
+a) Víckrát lze vzít jen Agonizing Blast, Eldritch Spear, Lessons of the First Ones a Repelling Blast (XPHB) — pevný
+   seznam podle prózy („more than once“), data nemají `isRepeatable`. Každá jiná invokace jen jednou.
+b) Jen počet: neukládá se, ke kterému cantripu se kopie Agonizing/Repelling/Spear váže (D372 platí). Agonizing přidává
+   k Eldritch Blast jednou, nikdy dvakrát; Repelling a Spear nic nezdvojují.
+c) Každá kopie Lessons of the First Ones = jeden další origin feat slot (model B-4b/B-4c počítá držené kopie).
+d) Každá kopie zabírá jeden slot z Invocations Known.
+e) V pickeru držená opakovatelná invokace nabízí vzít ji znovu, dokud jsou volné sloty; kopie se odebírá/vyměňuje po
+   jedné. Zobrazení „Název (xN)“ v pickeru, na sheetu, v Review „Class options“ a v level up „Options added“.
+f) Kopie z vlastního předmětu se přičítají ke kopiím z třídy (jako D372/D373).
