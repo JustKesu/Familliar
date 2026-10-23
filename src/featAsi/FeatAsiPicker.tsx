@@ -52,7 +52,7 @@ import { FeatSubChoicePicker, type FeatChoiceHeld } from './FeatSubChoicePicker'
 const ASI_TEXT = 'Increase one ability score by 2, or two ability scores by 1 each. No score can go above 20.'
 
 const NO_LOCKED_LEVELS: readonly number[] = []
-const NO_MANUAL_FEATS: readonly FeatRef[] = []
+const NO_MANUAL_FEATS: readonly (FeatRef & { label?: string })[] = []
 
 export function FeatAsiPicker({
 	load,
@@ -84,7 +84,7 @@ export function FeatAsiPicker({
 	/** D271: the species' origin feat (Human Versatile) — taken, same as the background's. */
 	speciesFeat?: FeatRef | null
 	/** Feats added manually (R13b, D215: grantedFeats origin 'manual') — count as already taken and in the prerequisite context, same as featOffers in the Manage Feats panel. */
-	manualFeats?: readonly FeatRef[]
+	manualFeats?: readonly (FeatRef & { label?: string })[]
 	/** R14c1 (D218): feats an item grants right now — count as already taken; never in the ability scores (D253). */
 	itemFeats?: readonly (FeatRef & { itemName?: string })[]
 	/** D160: what the character has apart from the feat at this instance key. */

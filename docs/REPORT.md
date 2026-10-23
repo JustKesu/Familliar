@@ -1,29 +1,23 @@
-# Report — B-5: volby class options v Review průvodce (D378)
+# F-B1: opravy z review bloku B (D379)
 
-HEAD před úkolem: fetch + `merge --ff-only origin/main` → „Already up to date“, 197adf3. Větev nezměněna.
+Setup: fetch + `merge --ff-only` = již aktuální, HEAD 51f669f. Krok 1 (tabulka míst): 10 zdrojových míst (+ testy, docs), pod limitem 20.
 
-## Změny (6 souborů)
-- `src/creation/review/ReviewStep.tsx`: karta „Class options“ mezi Spells a Feats, řádek na featureType s volbami
-  (popisek z nového propu `classOptionLabels`, fallback „Class options“; jména přes `compareText`), nadpis přes
-  `CardHeading` na krok `classOptionalFeatures` (D298). Bez voleb karta chybí. What's new: řádek „Options added“
-  (volby podle featureType|name, které nejsou v `baseline`), počítáno jako `spellsAdded`.
-- `src/creation/CharacterWizard.tsx`: předává `classOptionLabels` z `classOptionalFeatureGroups` (stejná jména jako `stepLabel`).
-- `e2e/reviewClassOptions.spec.ts` (nový): a) nový Warlock 2 průvodcem → karta s 3 invokacemi, odkaz nadpisu vede na
-  krok; b) seed schema 62 Warlock 4 → 5 → „Options added: Mask of Many Faces, Pact of the Blade“; c) Fighter 1 → karta chybí.
-- `docs/DECISIONS.md` D378, `docs/STATUS.md` B-5.
+## Co se změnilo
+- **Nález 1** — wizard (level up, Edit): `draftFeatInstances` teď nese `optionalFeatureChoices` (aktivní třída + stashe `otherClasses` + uložené typy, které wizard nedrží), takže feat z Lessons je vzhůru a `featAsiManualFeats` ho předá do `grantedFeatsOf` s popiskem „From Lessons of the First Ones“ (nový volitelný `label`). Blokuje opakování na ASI úrovni i u species/background feat.
+- **Nález 2** — `setInvocationFeat(…, null)` smaže všechny uložené záznamy `'invocation'` (i spící) a jejich `#invocation:<id>:` čítače; chyba „No invocation feat at position n“ platí dál.
+- **Nález 3** — výměna za jiný feat smaže čítače původního záznamu (stejný feat je nechá). `writeWithoutFeat` bere seznam klíčů.
+- **Nález 4** — `heldInvocations(character)` (featInstances.ts) je jediná sbírka: slots, Agonizing Blast, Eldritch Mind, attacks per action (CharacterSheet.tsx). Thirsting Blade z předmětu se tím počítá.
+- **Nález 5** — `SpellCaster` má volitelné `className` (z `toCaster`); `agonizingBlastFor(caster, held)` vyžaduje `className === 'Warlock'` (spellActionData i SpellTabRow). EB od Wizarda/featu/druhu/předmětu bonus nemá; EB z předmětu-invokace počítaný s Warlock čísly (D325/R14c1) ho má, protože sesílatelem je Warlock.
+- D379 v DECISIONS.md, STATUS.md doplněn. Bez změny schématu.
 
-## Ověřeno
-- `npm run typecheck` OK, `npm run test` 187 souborů / 3413 testů OK, `npm run validate-data` 177/177 OK.
-- `npm run e2e`: 651/651 OK, 3,3 min (mírně nad ~3 min).
-- Nový spec napoprvé spadl na mé chybě (Acolyte nemá +1 Constitution), po opravě 3/3. Unit guard F-18 odhalil
-  `localeCompare`, nahrazeno `compareText`.
+## Co se ověřilo
+- typecheck OK; test 187 souborů / 3417 OK (jedna očekávaná úprava `customItemGrants.test.ts` o `className`); validate-data 177/177; e2e 656/656 za 2,3 min.
+- Nové unit testy: store (Clear maže i spící + čítače; výměna maže čítače jen při jiném featu), `heldInvocations`, `agonizingBlastFor`.
+- Nové e2e `e2e/reviewFixesB1.spec.ts`: a) Edit Warlocka 4 s Alertem z Lessons — Alert na ASI úrovni disabled „already taken“; b) dva uložené záznamy, Clear — čekající řádek, nic se nevrátí, `grantedFeats` undefined; c) Thirsting Blade jen z předmětu — Attacks per Action 2; d) Wizard s Agonizing z předmětu — EB bez `+`; d2) Warlock — „1d10 + 3“.
 
-## K rozhodnutí / poznámky
-- Zadání uvádí „dvě invokace“ u Warlocka 2; data (EI progrese) dávají na úrovni 2 tři — test vybírá tři.
-- „Options replaced“ vynecháno: WizardData má vyměněnou starou volbu (baseline − data, D110), ale ne vazbu,
-  která nová ji nahradila (při 4 → 5 přibudou dvě, nelze říct která). Kdyby se mělo ukazovat, potřebuje to
-  rozhodnutí: buď jen „Replaced: Agonizing Blast“ bez nové, nebo ukládat párování ve swap stavu kroku.
-- Subclass volby (manévry, runy) a fighting styles do karty nepatří — jsou mimo `classOptionalFeatureChoices`; neřešeno.
+## Rozhodnutí a poznámky
+- Wizard drží u multiclass level upu jen uložené picks typů, které žádná aktivní/stashnutá třída neobsahuje; Lessons zvolená v téže session v nestashnuté třídě se bere z wizardu (aktivní třída). Dostačuje; hraniční případ jiné třídy s EI neexistuje (EI má jen Warlock).
+- Nálezy 6 a 7 ponechány dle zadání.
 
 ## Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: Review průvodce (nová karta Class options; v level upu řádek Options added ve What's new).
+Změněné obrazovky: Manage Feats (Clear u Lessons feat), ASI / Feat krok v Edit/level up (Alert „already taken“ u Lessons feat), Spells a Actions (Eldritch Blast bez bonusu mimo Warlocka), Actions (Attacks per Action z Thirsting Blade předmětu).

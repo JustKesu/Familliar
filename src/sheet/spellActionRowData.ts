@@ -77,11 +77,16 @@ export interface SpellActionData {
  * — that ability is not what the species casts with — so it resolves to the
  * stated reason instead, and the row appears saying so (D43/D58).
  */
-export type SpellCaster = { attack: SpellActionAttack; save: SpellActionSave; abilityModifier: number | null } | { reason: string }
+export type SpellCaster = { attack: SpellActionAttack; save: SpellActionSave; abilityModifier: number | null; className?: string } | { reason: string }
 
 /** D361: null where no ability stands behind the numbers (an unresolved caster, an item's fixed DC). */
 export function casterAbilityModifier(caster: SpellCaster): number | null {
 	return 'reason' in caster ? null : caster.abilityModifier
+}
+
+/** D379: Agonizing Blast reaches only rows cast with the Warlock class's numbers, not a feat's, a species', an item's or another class's. */
+export function agonizingBlastFor(caster: SpellCaster, held: boolean): boolean {
+	return held && !('reason' in caster) && caster.className === 'Warlock'
 }
 
 /**
@@ -154,12 +159,13 @@ export function unresolvedCaster(entry: SheetSpellEntry): { reason: string } {
 }
 
 export function toCaster(
-	source: Pick<SpellcastingEntry, 'abilityModifier' | 'spellAttackBonus' | 'spellAttackBreakdown' | 'spellSaveDC' | 'spellSaveDCBreakdown'>,
-): { attack: SpellActionAttack; save: SpellActionSave; abilityModifier: number | null } {
+	source: Pick<SpellcastingEntry, 'abilityModifier' | 'spellAttackBonus' | 'spellAttackBreakdown' | 'spellSaveDC' | 'spellSaveDCBreakdown'> & { className?: string },
+): { attack: SpellActionAttack; save: SpellActionSave; abilityModifier: number | null; className?: string } {
 	return {
 		attack: { bonus: source.spellAttackBonus, breakdown: source.spellAttackBreakdown },
 		save: { dc: source.spellSaveDC, breakdown: source.spellSaveDCBreakdown, abilities: [] },
 		abilityModifier: source.abilityModifier ?? null,
+		...(source.className !== undefined ? { className: source.className } : {}),
 	}
 }
 
@@ -386,7 +392,7 @@ export function spellActionData(
 		range: formatRange(detail.range),
 		attack: hasAttack && resolved ? resolved.attack : null,
 		save: saveAbilities.length > 0 && resolved ? { ...resolved.save, abilities: saveAbilities } : null,
-		damage: detail.level === 0 ? cantripDamage(detail, characterLevel, resolved?.abilityModifier ?? null, agonizingBlast) :leveledSpellDice(detail, castLevel, resolved?.abilityModifier ?? null),
+		damage: detail.level === 0 ? cantripDamage(detail, characterLevel, resolved?.abilityModifier ?? null, agonizingBlastFor(caster, agonizingBlast)) : leveledSpellDice(detail, castLevel, resolved?.abilityModifier ?? null),
 		unresolved: 'reason' in caster ? caster.reason : null,
 	}
 }

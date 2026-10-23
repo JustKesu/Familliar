@@ -5449,3 +5449,12 @@ z dat (jako titul kroku, „Eldritch Invocations“, „Metamagic“), jinak „
 Nadpis vede na krok jen, když je v průchodu (D298). Bez voleb se karta neukáže. Level up: řádek „Options
 added“ v What's new = volby, které nejsou v baseline. „Options replaced“ není: WizardData neukládá, která
 nová volba nahradila vyměněnou (D345). Bez změny schématu.
+
+## D379 — Opravy z review bloku B (F-B1)
+
+Clear u featu z Lessons of the First Ones smaže všechny uložené záznamy `'invocation'`, i spící, a jejich
+čítače `#invocation:<id>:`; slot je pak jasně čekající (mění D376/D377: spící záznam se po Clear nevrací).
+Výměna za jiný feat smaže čítače původního záznamu. Wizard (level up, Edit) počítá probuzený feat z Lessons
+jako držený a nedovolí ho vzít znovu. Agonizing Blast přidá modifikátor jen řádku Eldritch Blast, jehož sesílatel
+je třída Warlock (mění D372: EB z jiné třídy, featu nebo předmětu bonus nedostane). Jedna sbírka invokací
+`heldInvocations`. Bez změny schématu.

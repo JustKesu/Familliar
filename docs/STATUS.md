@@ -1336,6 +1336,12 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - B-5 (D378): ReviewStep has a "Class options" card (between Spells and Feats; one row per featureType, label from
   `classOptionLabels` = CharacterWizard's `classOptionalFeatureGroups` names) and a What's new "Options added" row
   (picks not in the baseline). No "Options replaced" row. No schema change. `e2e/reviewClassOptions.spec.ts` a–c.
+- F-B1 (D379): review fixes. The wizard's draft carries `optionalFeatureChoices` (active + stashed classes, stored for the rest),
+  so awake Lessons feats reach `featAsiManualFeats` (label "From Lessons of the First Ones") and block a repeat at ASI levels
+  and as species/background feat. `setInvocationFeat` Clear removes every stored `'invocation'` entry and their counters; a
+  replace by another feat drops the old counters. `heldInvocations(character)` (featInstances.ts) is the one invocation
+  collection (slots, Agonizing Blast, Eldritch Mind, attacks per action). Agonizing Blast only on rows whose caster
+  has `className: 'Warlock'` (`agonizingBlastFor`). `e2e/reviewFixesB1.spec.ts` a–d2.
 
 ## Dočasné scaffolding
 

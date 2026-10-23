@@ -1977,6 +1977,33 @@ describe('Lessons of the First Ones feats (B-4b, D376)', () => {
 		expect(store.list()[0].play?.resourceUses).toEqual({ Rage: 2 })
 	})
 
+	it('clearing removes every stored invocation entry, sleeping ones too, with all their counters (D379)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		store.setInvocationFeat(id, 0, { name: 'Magic Initiate; Cleric', source: 'XPHB' })
+		store.setInvocationFeat(id, 1, { name: 'Magic Initiate; Wizard', source: 'XPHB' })
+		store.addManualFeat(id, { name: 'Alert', source: 'XPHB' })
+		const [first, second] = store.list()[0].grantedFeats!
+		store.setResourceUses(id, { [`spell:feat:Magic Initiate; Cleric#invocation:${first.id}:bless|XPHB`]: 1, [`spell:feat:Magic Initiate; Wizard#invocation:${second.id}:shield|XPHB`]: 1, Rage: 2 })
+		store.setInvocationFeat(id, 0, null)
+		expect(store.list()[0].grantedFeats!.map((entry) => entry.origin)).toEqual(['manual'])
+		expect(store.list()[0].play?.resourceUses).toEqual({ Rage: 2 })
+	})
+
+	it('replacing by another feat drops the old counters; the same feat keeps them (D379)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		store.setInvocationFeat(id, 0, { name: 'Magic Initiate; Cleric', source: 'XPHB' })
+		const featId = store.list()[0].grantedFeats![0].id
+		const own = `spell:feat:Magic Initiate; Cleric#invocation:${featId}:bless|XPHB`
+		store.setResourceUses(id, { [own]: 1 })
+		store.setInvocationFeat(id, 0, { name: 'Magic Initiate; Cleric', source: 'XPHB' })
+		expect(store.list()[0].play?.resourceUses).toEqual({ [own]: 1 })
+		store.setInvocationFeat(id, 0, { name: 'Alert', source: 'XPHB' })
+		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'invocation', id: featId, name: 'Alert', source: 'XPHB' }])
+		expect(store.list()[0].play?.resourceUses ?? {}).toEqual({})
+	})
+
 	it('sets, replaces keeping the id, and clears the invocation feat', () => {
 		const store = new CharacterStore(new MemoryStorage())
 		const { id } = store.create({ name: 'Aria', grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB' }] })

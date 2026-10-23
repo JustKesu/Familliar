@@ -944,13 +944,14 @@ export class CharacterStore {
 		this.writeWithoutFeat(characters, index, grantedFeats, key, (name) => !stillHeld && name.startsWith(legacyPrefix))
 	}
 
-	/** Writes `grantedFeats` with one feat gone, dropping the resourceUses counters of its instance `key` (D319, D377) and any `alsoDrop` names. */
-	private writeWithoutFeat(characters: Character[], index: number, grantedFeats: CharacterGrantedFeat[], key: string, alsoDrop: (name: string) => boolean = () => false): void {
+	/** Writes `grantedFeats`, dropping the resourceUses counters of the instance `keys` (D319, D377) and any `alsoDrop` names. */
+	private writeWithoutFeat(characters: Character[], index: number, grantedFeats: CharacterGrantedFeat[], keys: string | readonly string[], alsoDrop: (name: string) => boolean = () => false): void {
+		const dropKeys = typeof keys === 'string' ? [keys] : keys
 		const { currentHp, play, grantedFeats: _previous, ...rest } = characters[index]
 		const resourceUses = play?.resourceUses
 		// freeCastResources.ts: an instance's own counters are `spell:<origin>:<originName>#<instanceKey>:<spell>|<SOURCE>`.
 		const kept = resourceUses
-			? Object.fromEntries(Object.entries(resourceUses).filter(([name]) => !(name.startsWith('spell:') && (name.includes(`#${key}:`) || alsoDrop(name)))))
+			? Object.fromEntries(Object.entries(resourceUses).filter(([name]) => !(name.startsWith('spell:') && (dropKeys.some((key) => name.includes(`#${key}:`)) || alsoDrop(name)))))
 			: undefined
 		const usesChanged = resourceUses !== undefined && kept !== undefined && Object.keys(kept).length !== Object.keys(resourceUses).length
 		const storedPlay = usesChanged ? storedPlayState(currentHp, { ...play, resourceUses: kept }) : play
@@ -967,30 +968,31 @@ export class CharacterStore {
 	/**
 	 * Sets, replaces or (feat null) clears the n-th 'invocation' feat entry (D376) with its sub-choices.
 	 * A replace keeps the entry's id; n equal to the stored count appends a new entry.
+	 * D379: Clear removes every stored 'invocation' entry, the sleeping ones too, so the slot is plainly pending; both Clear
+	 * and a replace by another feat drop the removed entries' `#invocation:<id>:` counters.
 	 */
 	setInvocationFeat(id: string, n: number, feat: FeatRef | null, details: FeatChoiceDetails = {}): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+		const current = characters[index].grantedFeats ?? []
+		const stored = current.filter((entry) => entry.origin === 'invocation')
+		const keyOf = (entry: CharacterGrantedFeat, position: number): string => `invocation:${entry.id ?? position}`
+
 		if (!feat) {
-			const characters = this.list()
-			const index = characters.findIndex((character) => character.id === id)
-			if (index === -1) throw new CharacterNotFoundError(id)
-			const current = characters[index].grantedFeats ?? []
-			const target = current.filter((entry) => entry.origin === 'invocation')[n]
-			if (!target) throw new Error(`No invocation feat at position ${n}.`)
-			this.writeWithoutFeat(
-				characters,
-				index,
-				current.filter((entry) => entry !== target),
-				`invocation:${target.id ?? n}`,
-			)
+			if (!stored[n]) throw new Error(`No invocation feat at position ${n}.`)
+			this.writeWithoutFeat(characters, index, current.filter((entry) => entry.origin !== 'invocation'), stored.map(keyOf))
 			return
 		}
-		this.writeGrantedFeats(id, (grantedFeats) => {
-			const stored = grantedFeats.filter((entry) => entry.origin === 'invocation')
-			if (n < 0 || n > stored.length) throw new Error(`No invocation feat at position ${n}.`)
-			if (n === stored.length) return [...grantedFeats, { origin: 'invocation', id: newId(), name: feat.name, source: feat.source, ...details }]
-			const target = stored[n]
-			return grantedFeats.map((entry) => (entry === target ? { origin: 'invocation' as const, id: target.id ?? newId(), name: feat.name, source: feat.source, ...details } : entry))
-		})
+		if (n < 0 || n > stored.length) throw new Error(`No invocation feat at position ${n}.`)
+		if (n === stored.length) {
+			this.writeWithoutFeat(characters, index, [...current, { origin: 'invocation', id: newId(), name: feat.name, source: feat.source, ...details }], [])
+			return
+		}
+		const target = stored[n]!
+		const changed = target.name !== feat.name || target.source !== feat.source
+		const next = current.map((entry) => (entry === target ? { origin: 'invocation' as const, id: target.id ?? newId(), name: feat.name, source: feat.source, ...details } : entry))
+		this.writeWithoutFeat(characters, index, next, changed ? [keyOf(target, n)] : [])
 	}
 
 	private writeGrantedFeats(id: string, change: (grantedFeats: CharacterGrantedFeat[]) => CharacterGrantedFeat[]): void {

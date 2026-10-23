@@ -73,7 +73,7 @@ import { featFixedExpertiseSkills, featProficiencyChoiceShape, type FeatEffectEn
 import { OriginFeatSwapPicker } from '../featAsi/OriginFeatSwapPicker'
 import { SpeciesOriginFeatPicker } from '../featAsi/SpeciesOriginFeatPicker'
 import { speciesOriginFeatComplete, useSpeciesOriginFeat } from '../featAsi/speciesOriginFeat'
-import { backgroundOriginFeatFrom, featInstances,loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
+import { backgroundOriginFeatFrom, featInstances, featOriginLabel, loadBackgroundOriginFeatLinks, type BackgroundOriginFeatLink, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { computeProficiencies, extractFeatProficiencyEntries, toolsFromFeats, toolsHeldElsewhere, type FeatProficiencyEntry } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
@@ -472,6 +472,12 @@ export function CharacterWizard({
 			}
 		: undefined
 	const draftGrantedFeats = state.data.grantedFeats.length > 0 ? state.data.grantedFeats : undefined
+	// D379: the Lessons of the First Ones feats wake only with the invocation held, so the draft carries the options of the active class, the stashed classes and, for a type neither holds, the stored ones.
+	const draftOptionalFeatureChoices = useMemo(() => {
+		const drafted = [...state.data.classOptionalFeatureChoices, ...(state.data.otherClasses ?? []).flatMap((stash) => stash.classOptionalFeatureChoices)]
+		const stored = (character?.optionalFeatureChoices ?? []).filter((entry) => !drafted.some((entry2) => entry2.featureType === entry.featureType))
+		return [...drafted, ...stored]
+	}, [state.data.classOptionalFeatureChoices, state.data.otherClasses, character?.optionalFeatureChoices])
 	const draftFeatInstances = useMemo(
 		() =>
 			featInstances(
@@ -481,12 +487,13 @@ export function CharacterWizard({
 					classes: [],
 					featAsiChoices: state.data.featAsiChoices,
 					...(draftGrantedFeats ? { grantedFeats: draftGrantedFeats } : {}),
+					...(draftOptionalFeatureChoices.length > 0 ? { optionalFeatureChoices: draftOptionalFeatureChoices } : {}),
 					...(character?.inventory !== undefined ? { inventory: character.inventory } : {}),
 				},
 				backgroundOriginFeat,
 			),
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the origin feat's identity, not the object rebuilt each render.
-		[state.data.featAsiChoices, draftGrantedFeats, character?.inventory, backgroundOriginFeat?.name, backgroundOriginFeat?.source],
+		[state.data.featAsiChoices, draftGrantedFeats, draftOptionalFeatureChoices, character?.inventory, backgroundOriginFeat?.name, backgroundOriginFeat?.source],
 	)
 
 	/**
@@ -1311,7 +1318,14 @@ export function CharacterWizard({
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- draftCharacterForHitPoints is rebuilt every render; only these parts of it reach a score (the name, hit points and classes do not).
 		[state.data.abilityScores, state.data.backgroundChoice, state.data.grantedFeats, state.data.featAsiChoices, draftBackground?.name, draftBackground?.source, backgroundFeatOverride],
 	)
-	const featAsiManualFeats = useMemo(() => state.data.grantedFeats.filter((feat) => feat.origin === 'manual'), [state.data.grantedFeats])
+	// D379: a Lessons of the First Ones feat that is awake blocks a repeat like a manual one, under its own label.
+	const featAsiManualFeats = useMemo(
+		() => [
+			...state.data.grantedFeats.filter((feat) => feat.origin === 'manual'),
+			...draftFeatInstances.filter((instance) => instance.origin === 'invocation').map((instance) => ({ name: instance.name, source: instance.source, label: featOriginLabel(instance) })),
+		],
+		[state.data.grantedFeats, draftFeatInstances],
+	)
 	const featAsiItemFeats = useMemo(() => draftFeatInstances.filter((instance) => instance.origin === 'item'), [draftFeatInstances])
 	const speciesFeatEntry = state.data.grantedFeats.find((feat) => feat.origin === 'species')
 	const speciesFeat = useMemo(

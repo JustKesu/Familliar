@@ -18,13 +18,17 @@ export function manualFeatKey(entry: Pick<CharacterGrantedFeat, 'id'>, n: number
 
 export const LESSONS_OF_THE_FIRST_ONES: FeatRef = { name: 'Lessons of the First Ones', source: 'XPHB' }
 
-/** D376: how many Lessons of the First Ones the character holds now — Warlock picks plus custom-item grants. */
-export function invocationFeatSlots(character: Pick<Character, 'optionalFeatureChoices' | 'inventory'>): number {
-	const invocations = [
+/** D379: the one collection of invocations the character holds now — Warlock picks plus custom-item grants; B-1, B-2, attacks per action and the Lessons slots all read it. */
+export function heldInvocations(character: Pick<Character, 'optionalFeatureChoices' | 'inventory'>): { name: string; source?: string | undefined }[] {
+	return [
 		...(character.optionalFeatureChoices ?? []).filter((entry) => entry.featureType === 'EI').flatMap((entry) => entry.choices),
 		...itemInvocationGrants(character.inventory),
 	]
-	return invocations.filter((invocation) => invocation.name === LESSONS_OF_THE_FIRST_ONES.name && (invocation.source ?? 'XPHB') === LESSONS_OF_THE_FIRST_ONES.source).length
+}
+
+/** D376: how many Lessons of the First Ones the character holds now — Warlock picks plus custom-item grants. */
+export function invocationFeatSlots(character: Pick<Character, 'optionalFeatureChoices' | 'inventory'>): number {
+	return heldInvocations(character).filter((invocation) => invocation.name === LESSONS_OF_THE_FIRST_ONES.name && (invocation.source ?? 'XPHB') === LESSONS_OF_THE_FIRST_ONES.source).length
 }
 
 /** D377: Lessons held now with no stored feat yet — each one a pending choice in Manage Feats. */

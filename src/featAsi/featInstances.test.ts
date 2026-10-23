@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { CUSTOM_ITEM_SOURCE, type Character } from '../storage/character'
-import { featInstances, featOriginLabel, invocationFeatSlots } from './featInstances'
+import { featInstances, featOriginLabel, heldInvocations, invocationFeatSlots } from './featInstances'
+
+describe('heldInvocations (D379)', () => {
+	it('joins the Warlock picks of featureType EI and the custom-item grants, and nothing else', () => {
+		const ring = { name: 'Ring', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Ring', kind: 'other', invocations: [{ name: 'Thirsting Blade', source: 'XPHB' }] } }
+		const character = {
+			optionalFeatureChoices: [
+				{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', source: 'XPHB' }] },
+				{ featureType: 'MM', choices: [{ name: 'Quickened Spell' }] },
+			],
+			inventory: [ring],
+		} as Pick<Character, 'optionalFeatureChoices' | 'inventory'>
+		expect(heldInvocations(character).map((invocation) => invocation.name)).toEqual(['Agonizing Blast', 'Thirsting Blade'])
+		expect(heldInvocations({})).toEqual([])
+	})
+})
 
 describe('featInstances — Lessons of the First Ones feats (D376)', () => {
 	const lessons = { featureType: 'EI', choices: [{ name: 'Lessons of the First Ones', source: 'XPHB', level: 2 }] }

@@ -44,7 +44,7 @@ import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThr
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILL_LABELS, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { computeAbilitySpellcasting, computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
-import { itemInvocationGrants, itemSpellGrants, withItemSpellSpent } from '../inventory/customItemGrants'
+import { itemSpellGrants, withItemSpellSpent } from '../inventory/customItemGrants'
 import { itemSpellAbilityOf, itemSpellActionRows, itemSpells as buildItemSpells } from './itemSpellRows'
 import { characterSpellSlotMaxima, computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
@@ -139,7 +139,7 @@ import {
 	type SpellsTabFilter,
 } from './spellsTabData'
 import { featureActionRows, type FeatureActionData } from './featureActionRowData'
-import { casterAbilityModifier, hasAgonizingBlast, isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
+import { agonizingBlastFor, casterAbilityModifier, hasAgonizingBlast, isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
 import { formatRange, spellLevelLabel } from './spellFormatting'
@@ -162,7 +162,7 @@ import {
 	type SpentSpellSlots,
 	type WeaponAttackAbility,
 } from '../storage/character'
-import { pendingInvocationFeats, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
+import { heldInvocations, pendingInvocationFeats, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { afterLongRest, afterShortRest } from '../rest/rest'
 import { DamageRollButton, RollButton } from '../dice/RollButton'
 import { addRollHistoryEntry, RollHistory, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
@@ -933,7 +933,7 @@ function SpellTabRow({
 	const { entry, detail, action } = row
 	// D206: a CAST row is worked out at its section's slot level (a D189 pact row too), every other row at the spell's own.
 	const effect = detail
-		? spellEffect(detail, characterLevel, row.item?.castLevel ?? (action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level), casterAbilityModifier(caster), agonizingBlast)
+		? spellEffect(detail, characterLevel, row.item?.castLevel ?? (action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level), casterAbilityModifier(caster), agonizingBlastFor(caster, agonizingBlast))
 		: null
 	const hitDc = detail ? rowHitDc(detail, caster) : null
 	let use: ReactNode = null
@@ -2394,7 +2394,7 @@ function CharacterSheetBody({
 	}, itemAbilityGrants)
 	const attacksPerAction = computeAttacksPerAction(
 		weaponAttackData?.featureNames ?? [],
-		(character.optionalFeatureChoices ?? []).filter((entry) => entry.featureType === 'EI').flatMap((entry) => entry.choices.map((pick) => pick.name)),
+		heldInvocations(character).map((pick) => pick.name),
 	)
 	/* Step 7 slice d: the limit needs the character's own levels only, so it is not waiting on any fetch. */
 	const attunementLimit = computeAttunementLimit(character)
@@ -2465,10 +2465,7 @@ function CharacterSheetBody({
 		const own = computeAbilitySpellcasting(character, ability, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 		return own.status === 'known' ? toCaster(own.value) : { reason: own.reason }
 	})
-	const invocations = [
-		...(character.optionalFeatureChoices ?? []).filter((entry) => entry.featureType === 'EI').flatMap((entry) => entry.choices),
-		...itemInvocationGrants(character.inventory),
-	]
+	const invocations = heldInvocations(character)
 	const agonizingBlast = hasAgonizingBlast(invocations)
 	const saveAdvantages = [...traitSaveAdvantages, ...concentrationSaveAdvantageLines(invocations, chosenFeats)]
 	/* Sheet rebuild slice 4: the SAME combined spell list the Kouzla tab shows, filtered to the spells that carry an attack roll or a save — never re-derived from the grants. */

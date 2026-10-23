@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { FeatSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import type { SheetSpellEntry } from './SpellList'
-import { beamNote, cantripDamage, cantripDamageAtLevel, casterFor, diceTags, hasAgonizingBlast,isScaledHealing, leveledSpellDice, spellActionRows, toCaster, withSpellcastingModifier } from './spellActionRowData'
+import { agonizingBlastFor, beamNote, cantripDamage, cantripDamageAtLevel, casterFor, diceTags, hasAgonizingBlast,isScaledHealing, leveledSpellDice, spellActionRows, toCaster, withSpellcastingModifier } from './spellActionRowData'
 
 function detail(over: Partial<SpellDetail> & { name: string }): SpellDetail {
 	return {
@@ -246,6 +246,15 @@ describe('Agonizing Blast and beams (D372)', () => {
 		const [blast] = spellActionRows([entry('Eldritch Blast')], [eldritchBlast], 5, [warlock], [], [], [], [], true)
 		expect(blast?.damage).toEqual(['1d10 + 3 Force'])
 		expect(blast?.notes).toBe('2 beams')
+	})
+
+	it('adds the modifier only on a row cast with the Warlock class numbers (D379)', () => {
+		const [fromWizard] = spellActionRows([entry('Eldritch Blast')], [eldritchBlast], 5, [wizard], [], [], [], [], true)
+		expect(fromWizard?.damage).toEqual(['1d10 Force'])
+		expect(agonizingBlastFor(toCaster(warlock), true)).toBe(true)
+		expect(agonizingBlastFor(toCaster(warlock), false)).toBe(false)
+		expect(agonizingBlastFor(toCaster(wizard), true)).toBe(false)
+		expect(agonizingBlastFor({ reason: 'unknown' }, true)).toBe(false)
 	})
 
 	it('reads the XPHB invocation from picks and item grants', () => {
