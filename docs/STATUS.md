@@ -1315,6 +1315,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   adds the row caster's modifier to XPHB Eldritch Blast damage on Actions and Spells (`cantripDamage` `agonizingBlast`).
   `beamNote`: "2/3/4 beams" at character level 5/11/17 first in the Spells Notes and as the Actions Notes; damage stays
   per beam. Spell action breakdown drawer has no damage section, unchanged. `e2e/agonizingBlastB1.spec.ts` a–d.
+- B-2 (D373): Saving throws panel and drawer list "Advantage on Constitution saves to maintain Concentration (Eldritch
+  Mind)" / "(War Caster)" after the item and species lines (`concentrationSaveAdvantages.ts`; invocations from the same
+  list as `hasAgonizingBlast`, feats from `characterFeats`). Text only. `e2e/concentrationAdvantageB2.spec.ts` a–d.
 
 ## Dočasné scaffolding
 

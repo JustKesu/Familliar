@@ -1,33 +1,28 @@
-# B-1: Agonizing Blast na Eldritch Blast a počet paprsků (D372)
+# REPORT — B-2: Eldritch Mind a War Caster, výhoda na koncentraci (D373)
 
-Setup: fetch, ff-only merge (už aktuální), npm ci, e2e:install; HEAD edfe462 (OK).
+HEAD před úkolem: 88d970b.
 
-## Místa změn (STEP 1, 12 míst)
-| Soubor | Změna |
-|---|---|
-| spellActionRowData.ts | `cantripDamage` param `agonizingBlast`; nové `hasAgonizingBlast`, `beamNote`, `isEldritchBlast`; `SpellActionData.notes?`; `spellActionData`/`spellActionRows` param |
-| itemSpellRows.ts | `itemSpellActionRows` param (EB z předmětu taky) |
-| spellsTabData.ts | `spellEffect` param; `spellNotes` param `characterLevel`, beam note první |
-| CharacterSheet.tsx | `agonizingBlast` z `optionalFeatureChoices` EI + `itemInvocationGrants(inventory)`; props SpellsSection → SpellTabRow; `spellActionRow` notes |
+## Změny
+- `src/sheet/concentrationSaveAdvantages.ts` (nový): ruční tabulka (Eldritch Mind XPHB invokace, War Caster XPHB feat),
+  `concentrationSaveAdvantageLines(invocations, feats)` → „Advantage on Constitution saves to maintain Concentration (…)";
+  invokace bez `source` = XPHB (stejně jako `hasAgonizingBlast`). WHY komentář cituje D373.
+- `CharacterSheet.tsx`: seznam invokací z B-1 vytažen do `invocations` (EI výběry + `itemInvocationGrants`), sdílí ho
+  `hasAgonizingBlast` i nový řádek — žádný druhý kolektor. Featy z `chosenFeats` (`characterFeats`: ASI, background,
+  species, manual, item). Původní `saveAdvantages` přejmenováno na `traitSaveAdvantages`; `saveAdvantages` =
+  předměty + druh + koncentrace, definováno u `agonizingBlast` (potřebuje `chosenFeats`). Panel i drawer beze změny JSX.
+- Unit test `concentrationSaveAdvantages.test.ts` (2 případy).
+- `e2e/concentrationAdvantageB2.spec.ts` a–d (schema 61): a) Warlock 2 + Eldritch Mind → řádek; b) bez něj → žádné
+  „maintain Concentration"; c) jen z vlastního předmětu → řádek; d) War Caster na ASI 4
+  (`featAsiChoices: [{ level: 4, kind: 'feat', name: 'War Caster', source: 'XPHB', chosenAbility: 'charisma' }]`) → řádek.
+- Docs: DECISIONS.md D373, STATUS.md B-2.
 
-Modifikátor = modifikátor casteru řádku (`resolved.abilityModifier`), u Warlockova EB tedy CHA Warlocka. Neznámý → „1d10 + mod". Breakdown „Eldritch Blast breakdown" nemá sekci poškození (jen Spell attack) → beze změny.
+## Ověření
+- typecheck OK; test 187 souborů / 3395 testů OK; validate-data 177/177 OK; e2e 637 passed za 7.7 min (nad 3 min).
 
-## Ověřeno
-- typecheck OK; test 186 souborů / 3393 testů OK (nové: describe „Agonizing Blast and beams (D372)" ve spellActionRowData.test.ts); validate-data 177/177.
-- e2e 633/633 OK, ale celá sada trvá 8,0 min (> 3 min).
-- Nové `e2e/agonizingBlastB1.spec.ts`: a) Warlock 5 + AB, CHA 16 → „1d10 + 3" Actions i Spells, Notes „2 beams"; b) bez AB (Repelling Blast) → bez „+", „2 beams"; c) Warlock 1 → žádné „beams"; d) AB jen z vlastního předmětu (`custom.invocations`) → „1d10 + 3".
-- F-32a beze změny a zelené (`toContainText('1d10')` sedí i na „1d10 + 3"/notes).
-
-## Rozhodnutí přijatá při práci
-- Pick bez `source` (starší uložení) se počítá jako XPHB Agonizing Blast podle jména; PHB zdroj ne.
-- Shoda jen pro Eldritch Blast XPHB (beam count i AB) — podle zadání a DATA.md.
-- Modifikátor bere caster řádku, ne natvrdo Warlocka (u ne-Warlocka s AB z předmětu a EB z featu to bude modifikátor featu). Pokud má být vždy Warlockův, je to otázka pro plánování.
-- Beam note na Spells je první část Notes („2 beams · V, S · Instantaneous").
-
-## Poznámky
-- V `scripts/` leží dva netrackované soubory, které tento task nevytvořil (investigate-item-weight.js, investigate-multi-dice-spells.js); necommitnuty, git clean nespuštěn (zakázáno zadáním).
-- Jednou jsem omylem četl konec DECISIONS.md přes `tail` (shell) místo Read.
-- DATA.md beze změny — počet paprsků už je zapsán (Eldritch Blast XPHB, řádek „Cantrip Upgrade").
+## Pro uživatele
+- Nesledované `scripts/investigate-item-weight.js` a `scripts/investigate-multi-dice-spells.js` z dřívějška zůstaly
+  (necommitnuty, git clean podle zadání nespuštěn).
+- Rozhodnutí během práce: pořadí řádků předměty → druh → Eldritch Mind → War Caster.
 
 ## Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: list postavy → záložka Actions (řádek Eldritch Blast: Damage, Notes); záložka Spells (řádek Eldritch Blast: Effect, Notes).
+Změněné obrazovky: list postavy, karta Saving throws a drawer Saving throws (nový řádek pod hody).

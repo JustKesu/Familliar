@@ -5397,3 +5397,10 @@ Má-li postava invokaci Agonizing Blast (XPHB; výběr Warlocka nebo vlastní p�
 Eldritch Blast dostane + sesílací modifikátor („1d10 + 3 Force") na záložkách Actions i Spells.
 Data říkají „vyber jeden Warlock cantrip"; aplikace tu volbu neukládá a ukládat nebude. Kdo
 invokaci používá na jiný cantrip, přičte modifikátor sám. Rozhodl Daniel.
+
+## D373 — Eldritch Mind a War Caster jako řádek pod Saving throws (B-2)
+
+Invokace Eldritch Mind (XPHB; výběr Warlocka nebo vlastní předmět) a feat War Caster (XPHB; z
+jakéhokoli zdroje, který list počítá jako feat) přidají pod Saving throws řádek „Advantage on
+Constitution saves to maintain Concentration (Eldritch Mind / War Caster)". Jen text, hod se nemění.
+Má-li postava obojí, jsou dva řádky.

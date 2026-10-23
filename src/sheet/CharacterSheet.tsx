@@ -94,6 +94,7 @@ import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from
 import { buildItemConditionGrants, buildItemProficiencyGrants, conditionAdvantageLines, conditionsGranted } from './itemProficiencyData'
 import { formatSpeciesName } from '../species/speciesData'
 import { speciesSaveAdvantageLines } from './speciesSaveAdvantages'
+import { concentrationSaveAdvantageLines } from './concentrationSaveAdvantages'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
 import { loadSpellSlotsClassData } from '../spells/spellSlotsClassData'
@@ -2358,7 +2359,7 @@ function CharacterSheetBody({
 	const itemProficiencyGrants = buildItemProficiencyGrants(character.inventory ?? [], itemRefs ?? [])
 	const itemConditionGrants = buildItemConditionGrants(character.inventory ?? [], itemRefs ?? [])
 	const conditionImmunities = conditionsGranted(itemConditionGrants, 'immune')
-	const saveAdvantages = [...conditionAdvantageLines(itemConditionGrants), ...speciesSaveAdvantageLines(character.species)]
+	const traitSaveAdvantages = [...conditionAdvantageLines(itemConditionGrants), ...speciesSaveAdvantageLines(character.species)]
 	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor, itemProficiencyGrants, itemAbilityGrants)
 	const startingClass = firstClass(character)
 	const startingClasses = startingClass ? [startingClass] : []
@@ -2461,10 +2462,12 @@ function CharacterSheetBody({
 		const own = computeAbilitySpellcasting(character, ability, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 		return own.status === 'known' ? toCaster(own.value) : { reason: own.reason }
 	})
-	const agonizingBlast = hasAgonizingBlast([
+	const invocations = [
 		...(character.optionalFeatureChoices ?? []).filter((entry) => entry.featureType === 'EI').flatMap((entry) => entry.choices),
 		...itemInvocationGrants(character.inventory),
-	])
+	]
+	const agonizingBlast = hasAgonizingBlast(invocations)
+	const saveAdvantages = [...traitSaveAdvantages, ...concentrationSaveAdvantageLines(invocations, chosenFeats)]
 	/* Sheet rebuild slice 4: the SAME combined spell list the Kouzla tab shows, filtered to the spells that carry an attack roll or a save — never re-derived from the grants. */
 	const spellActions = spellActionRows(
 		combinedSpells,
