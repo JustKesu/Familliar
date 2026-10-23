@@ -5404,3 +5404,9 @@ Invokace Eldritch Mind (XPHB; výběr Warlocka nebo vlastní předmět) a feat W
 jakéhokoli zdroje, který list počítá jako feat) přidají pod Saving throws řádek „Advantage on
 Constitution saves to maintain Concentration (Eldritch Mind / War Caster)". Jen text, hod se nemění.
 Má-li postava obojí, jsou dva řádky.
+
+## D374 — Innate Sorcery: 2 použití na Long Rest v LEVEL_SCALED_USES (B-3)
+
+Innate Sorcery (Sorcerer 1, XPHB) má 2 použití, obnova jen při Long Rest. Počet je jen v próze,
+proto je v ruční tabulce `LEVEL_SCALED_USES` (resources.ts) vedle Action Surge a Indomitable —
+stejný důvod jako D120 (D43: prózu neparsujeme). Úroveň se čte ze Sorcerera, i u multiclassu.

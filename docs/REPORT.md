@@ -1,28 +1,31 @@
-# REPORT — B-2: Eldritch Mind a War Caster, výhoda na koncentraci (D373)
+# REPORT — B-3: Innate Sorcery uses tracker (D374)
 
-HEAD před úkolem: 88d970b.
+HEAD před úkolem: d2eb7b1 (fetch + ff-only: already up to date).
 
 ## Změny
-- `src/sheet/concentrationSaveAdvantages.ts` (nový): ruční tabulka (Eldritch Mind XPHB invokace, War Caster XPHB feat),
-  `concentrationSaveAdvantageLines(invocations, feats)` → „Advantage on Constitution saves to maintain Concentration (…)";
-  invokace bez `source` = XPHB (stejně jako `hasAgonizingBlast`). WHY komentář cituje D373.
-- `CharacterSheet.tsx`: seznam invokací z B-1 vytažen do `invocations` (EI výběry + `itemInvocationGrants`), sdílí ho
-  `hasAgonizingBlast` i nový řádek — žádný druhý kolektor. Featy z `chosenFeats` (`characterFeats`: ASI, background,
-  species, manual, item). Původní `saveAdvantages` přejmenováno na `traitSaveAdvantages`; `saveAdvantages` =
-  předměty + druh + koncentrace, definováno u `agonizingBlast` (potřebuje `chosenFeats`). Panel i drawer beze změny JSX.
-- Unit test `concentrationSaveAdvantages.test.ts` (2 případy).
-- `e2e/concentrationAdvantageB2.spec.ts` a–d (schema 61): a) Warlock 2 + Eldritch Mind → řádek; b) bez něj → žádné
-  „maintain Concentration"; c) jen z vlastního předmětu → řádek; d) War Caster na ASI 4
-  (`featAsiChoices: [{ level: 4, kind: 'feat', name: 'War Caster', source: 'XPHB', chosenAbility: 'charisma' }]`) → řádek.
-- Docs: DECISIONS.md D373, STATUS.md B-2.
+- `src/calculation/resources.ts`: `LEVEL_SCALED_USES` + `'Innate Sorcery': { className: 'Sorcerer', steps: [[1, 2]] }`,
+  komentář cituje D374. Recovery bez zásahu: věta „regain all expended uses … Long Rest" → `shortRestRecovery` null,
+  `singleUseRechargesOnShortRest` nematchuje (žádné „can't … again until") → shortRest null. STOP podmínka nenastala.
+- Unit test `resources.test.ts`: Sorcerer 1/3/20 → max 2 s breakdownem, shortRest null; Warlock 6 / Sorcerer 3 → 2.
+- `e2e/innateSorcery.spec.ts` (schema 61): a) Sorcerer 1 → skupina „Innate Sorcery uses", 2 boxy; b) spend → Short Rest
+  1 used → Long Rest 0; c) Warlock 6 / Sorcerer 3 → 2 boxy.
+- Docs: DECISIONS.md D374, STATUS.md B-3, DATA.md (nález inventury níže).
+
+## Další kandidáti
+Skript `scripts/investigate-b3-prose-counts.mjs` (necommitnut) reimplementuje self-limited test, implicit single use,
+LEVEL_SCALED_USES a match na sloupce tabulek; kontrola: Innate Sorcery XPHB jím projde. Zbylé features s unknown max
+a „twice|thrice|N times" v textu: 3, všechny jsou násobitele, ne počty použití:
+- Spell-Storing Item [Artificer] EFA: „twice your Intelligence modifier"
+- Soul of Artifice [Artificer] EFA: „20 times the number of magic items"
+- Perfected Armor [Artificer / Armorer] EFA: „twice your Speed"
+Žádný další kandidát pro LEVEL_SCALED_USES.
 
 ## Ověření
-- typecheck OK; test 187 souborů / 3395 testů OK; validate-data 177/177 OK; e2e 637 passed za 7.7 min (nad 3 min).
+- typecheck OK; test 187 souborů / 3399 testů OK; validate-data 177/177 OK; e2e 640 passed za 7.8 min (nad 3 min).
 
 ## Pro uživatele
-- Nesledované `scripts/investigate-item-weight.js` a `scripts/investigate-multi-dice-spells.js` z dřívějška zůstaly
-  (necommitnuty, git clean podle zadání nespuštěn).
-- Rozhodnutí během práce: pořadí řádků předměty → druh → Eldritch Mind → War Caster.
+- Nesledovaný `scripts/investigate-b3-prose-counts.mjs` zůstává (git clean podle zadání nespuštěn).
+- Push: větev session byla `claude/dazzling-mayer-esxluu`; commit pushnut na `origin/main` podle zadání.
 
 ## Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: list postavy, karta Saving throws a drawer Saving throws (nový řádek pod hody).
+Změněné obrazovky: list postavy, záložka Actions (řádek Innate Sorcery s 2 boxy).

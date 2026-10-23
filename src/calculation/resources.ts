@@ -147,11 +147,13 @@ const TWO_INDEPENDENT_LIMITS = new Set(['Aberrant Dragonmark', 'Natural Recovery
 /*
  * Level breakpoints read off the feature text, which states them in prose only
  * (Action Surge: "twice before a rest" at 17; Indomitable: twice at 13, three
- * times at 17). A named exception, not a prose parser (D120).
+ * times at 17; Innate Sorcery: twice per Long Rest). A named exception, not a
+ * prose parser (D120, D374).
  */
 const LEVEL_SCALED_USES: Record<string, { className: string; steps: [level: number, uses: number][] }> = {
 	'Action Surge': { className: 'Fighter', steps: [[2, 1], [17, 2]] },
 	Indomitable: { className: 'Fighter', steps: [[9, 1], [13, 2], [17, 3]] },
+	'Innate Sorcery': { className: 'Sorcerer', steps: [[1, 2]] },
 }
 
 function levelScaledMax(name: string, character: Character): Calculated<number> | null {

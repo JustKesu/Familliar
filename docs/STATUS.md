@@ -1318,6 +1318,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - B-2 (D373): Saving throws panel and drawer list "Advantage on Constitution saves to maintain Concentration (Eldritch
   Mind)" / "(War Caster)" after the item and species lines (`concentrationSaveAdvantages.ts`; invocations from the same
   list as `hasAgonizingBlast`, feats from `characterFeats`). Text only. `e2e/concentrationAdvantageB2.spec.ts` a–d.
+- B-3 (D374): Innate Sorcery has 2 use boxes from Sorcerer 1 (`LEVEL_SCALED_USES` in resources.ts, Sorcerer level also in
+  a multiclass); a Short Rest returns none, a Long Rest all. `e2e/innateSorcery.spec.ts` a–c.
 
 ## Dočasné scaffolding
 

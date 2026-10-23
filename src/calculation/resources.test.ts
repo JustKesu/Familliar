@@ -505,6 +505,27 @@ describe('Action Surge and Indomitable — a hand-written level table (D120)', (
 	})
 })
 
+describe('Innate Sorcery — two uses per Long Rest (D374)', () => {
+	const INNATE_SORCERY: ResourceFeature = {
+		name: 'Innate Sorcery',
+		className: 'Sorcerer',
+		entries: ['You can use this feature twice, and you regain all expended uses of it when you finish a {@variantrule Long Rest|XPHB}.'],
+	}
+
+	it.each([1, 3, 20])('Sorcerer %i: 2 uses, none back on a Short Rest', (level) => {
+		const [innate] = computeCharacterResources(character('Sorcerer', level), CLASSES, [INNATE_SORCERY])
+		expect(innate.max).toEqual({ status: 'known', value: 2, breakdown: [{ source: `Sorcerer level ${level}: Innate Sorcery`, amount: 2 }] })
+		expect(innate.shortRest).toBeNull()
+	})
+
+	it('reads the Sorcerer level on a Warlock 6 / Sorcerer 3', () => {
+		const multiclass: Character = { id: 'c1', name: 'Test', classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 6 }, { className: 'Sorcerer', classSource: 'XPHB', subclass: null, level: 3 }] }
+		const innate = computeCharacterResources(multiclass, CLASSES, [INNATE_SORCERY]).find((r) => r.name === 'Innate Sorcery')
+		expect(innate?.max.status === 'known' && innate.max.value).toBe(2)
+		expect(innate?.shortRest).toBeNull()
+	})
+})
+
 /*
  * D119 was verified against the real data before it was written; this guard keeps
  * that verification running. No class table is passed, so every known maximum here

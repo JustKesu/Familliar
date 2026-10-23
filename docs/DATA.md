@@ -739,6 +739,16 @@ the first two bullets are single-use (46 in all); Magic Item Tinker joins
 Fighter-level table, `LEVEL_SCALED_USES` (D120): 1/2 at 2/17 and 1/2/3 at
 9/13/17.
 
+B-3 (D374): Innate Sorcery|XPHB ("You can use this feature twice, and you regain
+all expended uses of it when you finish a Long Rest") passes the self-limited test
+with no table column and no recharge sentence, so its max was unknown; it joins
+`LEVEL_SCALED_USES` as Sorcerer 1: 2. Its regain sentence names only a Long Rest,
+so `shortRestRecovery` gives null. Survey of class, subclass and feat features
+still unknown after that whose text has "twice|thrice|N times": 3, all
+multipliers, not use counts — Spell-Storing Item ("twice your Intelligence
+modifier"), Soul of Artifice ("20 times the number of magic items"), Perfected
+Armor ("twice your Speed"), all EFA Artificer.
+
 9 recharge on a Short Rest: the 7 below plus Action Surge and Psi-Powered
 Leap ("… until you finish a Short Rest or Long Rest"), for which the whole pool
 comes back. Indomitable's recharge is Long Rest only.
