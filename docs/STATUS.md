@@ -1297,7 +1297,7 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `loadHomebrew()`), Improved Launch, Bloodbound, Hurricane (1, Short Rest), Sight Beyond Sight, Arcane Conduit (1, Long Rest)
   through the existing resources.ts path after rest-tag rewrite (`HOMEBREW_REST_FEATURES`). Source GriffonsSaddlebag2 shown as
   "TGS2" in pickers (`src/pickers/bookLabel.ts`: ChoiceRow, SearchableOptionList, SpeciesPicker).
-  Open (TGS2-4..5): feature spells/Channel Divinity `consumes`, grapple/ki prose, Geleton acid resistance (extractor).
+  Open: TGS2-4b Spelldrinker Channel Divinity, TGS2-4c texts and Geleton acid resistance (extractor), Psi Warrior XPHB Telekinesis shows "unresolved" (data has no ability, rules say Intelligence, extractor fix).
 - TGS2-5a (D369): `FEATURE_DAMAGE_RESPONSES` gained Infernal Warrior (Barbarian, Path of the Infernal 6, fire) and Windswept
   (Ranger, Rocborne 7, cold), both unconditional. Arcane Conduit stays text only.
 - TGS2-4a (D370): `HOMEBREW_SUBCLASS_SPELLS` in extract-data.js gives Way of the Aether Mage Hand (3), Spare the Dying (6),

@@ -180,9 +180,9 @@ export interface ItemRef {
 	detail1?: string
 	detail2?: string
 	/**
-	 * items.json `value`, always a number in COPPER (on 364 of the 900 items —
-	 * the survey in scripts/investigate-inventory-shapes.js). Shown on the row
-	 * and read by nothing: spending money on an item is a later slice.
+	 * items.json `value`, always a number in COPPER (on 382 of the 947 items, F-41).
+	 * Shown as "Cost" in the item detail (InventoryTab) and copied by customItemFromRef;
+	 * spending money on an item is a later slice.
 	 */
 	value?: number
 	/** items.json `weight` in pounds, may be fractional (on 447 of the 947 items, F-41). Shown in the item detail only; carrying capacity is not computed (D368). */
