@@ -216,3 +216,13 @@ export function currentHpAfterMaxHpChange(currentHp: number | undefined, before:
 	const delta = maxHitPointsDelta(before, after)
 	return delta === undefined ? undefined : Math.max(0, currentHp + delta)
 }
+
+/**
+ * D381: `currentHp` after any other change moved the maximum by `delta` (a feat,
+ * an item, an ability score, an Edit). At 0 it stays 0 — a dying character is
+ * not brought back by a bigger maximum. Same undefined/clamp rules as D107/D110.
+ */
+export function currentHpFollowingMaxHp(currentHp: number | undefined, delta: number | undefined): number | undefined {
+	if (currentHp === undefined || delta === undefined) return undefined
+	return currentHp === 0 ? 0 : Math.max(0, currentHp + delta)
+}

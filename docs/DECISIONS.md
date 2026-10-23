@@ -5471,3 +5471,12 @@ c) Save DC: každé save DC v trait/action/bonus/reaction = spell save DC Warloc
 d) Quick Attack (Bonus Action: příkaz k akci Attack) a reakce Resistance: jen textové řádky na kartě.
 e) Obě hodnoty na `CharacterFamiliar` (`chainMasterForm`, `chainMasterDamage`), schéma 62 → 63 s migrací.
    Bez invokace hodnoty spí (jako D156), nemažou se, a karta z invokace nic neukáže.
+
+## D381 — Aktuální HP sleduje každou změnu maxima (H-1)
+
+a) Kdykoli se spočtené maximum HP změní z jakéhokoli důvodu (feat, předmět, attunement, ability score, Edit),
+   `currentHp` se posune o stejnou hodnotu nahoru i dolů (jako D&D Beyond). 50/81, sundat předmět +6: 44/75; vrátit: 50/81.
+b) Zůstává D107/D110: clamp na 0, nenastavený `currentHp` zůstane nenastavený, nevyřešená změna = beze změny.
+   Dočasné HP se nemění. Familiar mimo rozsah.
+c) Ruční nastavení/změna `maxHpOverride` `currentHp` neposouvá (ruční úprava, D9).
+d) Postava na 0 HP zůstane na 0 i při vyšším maximu.

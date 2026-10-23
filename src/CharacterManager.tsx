@@ -20,8 +20,8 @@ import { CharacterWizard } from './creation/CharacterWizard'
 import { CharacterSheet } from './sheet/CharacterSheet'
 import { LevelUpWizardGate } from './levelUp/LevelUpWizardGate'
 import { characterUpdateInput } from './levelUp/levelRemoval'
-import { currentHpAfterMaxHpChange } from './calculation/maxHitPoints'
-import { loadCharacterMaxHp } from './hitPoints/hpDefault'
+import { currentHpAfterMaxHpChange, currentHpFollowingMaxHp } from './calculation/maxHitPoints'
+import { loadCharacterMaxHp, maxHpShift } from './hitPoints/hpDefault'
 import { isMulticlass } from './calculation/characterLevel'
 import { editCharacterBlockedReason } from './levelUp/levelUpSteps'
 import type { CharacterRoute } from './navigation/route'
@@ -104,6 +104,25 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		}
 	}
 
+	/** D381: a write that can move the computed maximum; current HP then moves by the same amount, applied to whatever current is stored once the maximum resolves. */
+	function withMaxHpFollow(id: string, action: () => void): void {
+		const find = () => store.store?.list().find((character) => character.id === id)
+		const before = find()
+		withErrorHandling(action)
+		const after = find()
+		if (!before || !after || before.currentHp === undefined) return
+		maxHpShift(before, after)
+			.then((delta) => {
+				const latest = find()
+				const currentHp = currentHpFollowingMaxHp(latest?.currentHp, delta)
+				if (!latest || currentHp === undefined || currentHp === latest.currentHp) return
+				withErrorHandling(() =>
+					store.store?.setHitPoints(id, { currentHp, maxHpOverride: latest.maxHpOverride, temporaryHitPoints: latest.play?.temporaryHitPoints, deathSaves: latest.play?.deathSaves }),
+				)
+			})
+			.catch(() => {})
+	}
+
 	function handleWizardSaved(character: Character): void {
 		refresh()
 		navigate({ view: 'sheet', id: character.id }, { replace: true })
@@ -131,7 +150,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 
 	function handleEditInventory(id: string, inventory: CharacterInventoryItem[]): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.setInventory(id, inventory))
+		withMaxHpFollow(id, () => store.store?.setInventory(id, inventory))
 	}
 
 	function handleEditCurrency(id: string, copper: number): void {
@@ -181,27 +200,27 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 
 	function handleAddManualFeat(id: string, feat: { name: string; source: string }): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.addManualFeat(id, feat))
+		withMaxHpFollow(id, () => store.store?.addManualFeat(id, feat))
 	}
 
 	function handleRemoveManualFeat(id: string, key: string): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.removeManualFeat(id, key))
+		withMaxHpFollow(id, () => store.store?.removeManualFeat(id, key))
 	}
 
 	function handleEditFeatChoice(id: string, key: FeatInstanceKey, feat: FeatRef, details: FeatChoiceDetails): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.setFeatChoiceDetails(id, key, feat, details))
+		withMaxHpFollow(id, () => store.store?.setFeatChoiceDetails(id, key, feat, details))
 	}
 
 	function handleSetInvocationFeat(id: string, n: number, feat: FeatRef | null): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.setInvocationFeat(id, n, feat))
+		withMaxHpFollow(id, () => store.store?.setInvocationFeat(id, n, feat))
 	}
 
 	function handleEditAsiIncreases(id: string, level: number, increases: AbilityIncreaseMap): void {
 		if (!store.store) return
-		withErrorHandling(() => store.store?.setAsiIncreases(id, level, increases))
+		withMaxHpFollow(id, () => store.store?.setAsiIncreases(id, level, increases))
 	}
 
 	function handleEditLanguages(id: string, languages: CharacterLanguage[]): void {

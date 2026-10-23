@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { currentHpAfterMaxHpChange } from '../calculation/maxHitPoints'
+import { currentHpAfterMaxHpChange, currentHpFollowingMaxHp } from '../calculation/maxHitPoints'
 import { CUSTOM_ITEM_SOURCE, type Character } from '../storage/character'
-import { loadCharacterMaxHp } from './hpDefault'
+import { loadCharacterMaxHp, maxHpShift } from './hpDefault'
 
 vi.mock('../sheet/sheetData', () => ({
 	loadHitDiceClassData: vi.fn(async () => [{ className: 'Fighter', classSource: 'XPHB', faces: 10 }]),
@@ -54,5 +54,41 @@ describe('loadCharacterMaxHp with item bonuses (R14a2)', () => {
 		const [before, after] = await Promise.all([loadCharacterMaxHp(fighter(3, gated)), loadCharacterMaxHp(fighter(4, gated))])
 		expect(currentHpAfterMaxHpChange(25, before, after)).toBe(32)
 		expect(await loadCharacterMaxHp(fighter(4, gated, true))).toMatchObject({ value: 36 })
+	})
+})
+
+describe('maxHpShift + currentHpFollowingMaxHp (D381)', () => {
+	const tough = (character: Character): Character => ({ ...character, grantedFeats: [{ origin: 'manual', id: 'm', name: 'Tough', source: 'XPHB' }] }) as Character
+
+	it('Tough added raises current by the same amount, removed lowers it back', async () => {
+		const up = await maxHpShift(fighter(3), tough(fighter(3)))
+		expect(up).toBe(6)
+		expect(currentHpFollowingMaxHp(25, up)).toBe(31)
+		const down = await maxHpShift(tough(fighter(3)), fighter(3))
+		expect(currentHpFollowingMaxHp(31, down)).toBe(25)
+	})
+
+	it('a +6 custom item attuned and unattuned moves current +6 then -6', async () => {
+		const item = { requiresAttunement: true, bonuses: [{ target: 'maxHitPoints', amount: 6 }] }
+		const on = await maxHpShift(fighter(3, item), fighter(3, item, true))
+		expect(currentHpFollowingMaxHp(19, on)).toBe(25)
+		const off = await maxHpShift(fighter(3, item, true), fighter(3, item))
+		expect(currentHpFollowingMaxHp(25, off)).toBe(19)
+	})
+
+	it('Constitution raised in Edit moves current by the modifier change times the level', async () => {
+		const raised = { ...fighter(3), abilityScores: { method: 'standardArray', scores: { strength: 15, dexterity: 14, constitution: 15, intelligence: 8, wisdom: 12, charisma: 10 } } } as Character
+		expect(currentHpFollowingMaxHp(10, await maxHpShift(fighter(3), raised))).toBe(13)
+	})
+
+	it('a hand-set override is not followed', async () => {
+		expect(await maxHpShift(fighter(3), { ...fighter(3), maxHpOverride: 40 })).toBeUndefined()
+	})
+
+	it('keeps 0 at 0, clamps at 0, leaves undefined and unresolved alone', () => {
+		expect(currentHpFollowingMaxHp(0, 6)).toBe(0)
+		expect(currentHpFollowingMaxHp(4, -6)).toBe(0)
+		expect(currentHpFollowingMaxHp(undefined, 6)).toBeUndefined()
+		expect(currentHpFollowingMaxHp(10, undefined)).toBeUndefined()
 	})
 })

@@ -10,7 +10,7 @@
 
 import { totalCharacterLevel } from '../calculation/characterLevel'
 import { characterFeats } from '../calculation/featEffects'
-import { computeMaxHitPoints } from '../calculation/maxHitPoints'
+import { computeMaxHitPoints, maxHitPointsDelta } from '../calculation/maxHitPoints'
 import type { Calculated, Contribution } from '../calculation/types'
 import { loadItemRefs } from '../inventory/inventoryData'
 import type { Character } from '../storage/character'
@@ -50,4 +50,11 @@ export async function loadCharacterMaxHp(character: Character): Promise<Calculat
 	])
 	const bonusFeatureNames = [...grantedFeatures.map((feature) => feature.name), ...characterFeats(character, feats).map((choice) => choice.name), ...speciesTraitNames]
 	return computeMaxHitPoints(character, classData, bonusFeatureNames, feats, itemBonuses, itemAbilityGrants)
+}
+
+/** D381: how far a write that took `before` to `after` moved the maximum; undefined when unresolved or when the override itself was edited (a manual edit, D9). */
+export async function maxHpShift(before: Character, after: Character): Promise<number | undefined> {
+	if (before.maxHpOverride !== after.maxHpOverride) return undefined
+	const [beforeMax, afterMax] = await Promise.all([loadCharacterMaxHp(before), loadCharacterMaxHp(after)])
+	return maxHitPointsDelta(beforeMax, afterMax)
 }

@@ -1349,6 +1349,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   fly/swim 40 unless already ≥ 40, B/P/S → chosen type in `{@atkr}` text, `{@actSave} {@dc N}` → the DC). `extraRows`
   applies it before the item bonuses. Extras familiar row gets a card: Form / Damage-type pill groups, a hint while no form
   is chosen, Quick Attack and Resistance lines; absent without the invocation. `e2e/chainMasterC1.spec.ts` 1–5.
+- H-1 (D381): current HP follows every change of the computed maximum. `CharacterManager.withMaxHpFollow` wraps
+  setInventory, add/removeManualFeat, setFeatChoiceDetails, setInvocationFeat, setAsiIncreases: `maxHpShift(before,
+  after)` (hpDefault.ts; undefined when the override changed) → `currentHpFollowingMaxHp` (maxHitPoints.ts; 0 stays 0,
+  clamp 0) → `setHitPoints` on the latest stored character. Edit Character save does the same through the wizard's
+  `maxHp.previous/current`. Level up/removal keep D107. `e2e/currentHpFollowsMaxH1.spec.ts` a–d.
 
 ## Dočasné scaffolding
 

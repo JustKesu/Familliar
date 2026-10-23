@@ -80,7 +80,7 @@ import { HitPointsPicker } from '../hitPoints/HitPointsPicker'
 import { computeHitDicePool } from '../calculation/hitDice'
 import { firstClass, isMulticlass, levelOrderAfterLevelUp, totalCharacterLevel } from '../calculation/characterLevel'
 import { loadHitDiceClassData } from '../sheet/sheetData'
-import { currentHpAfterMaxHpChange, hitDiePerLevel } from '../calculation/maxHitPoints'
+import { currentHpAfterMaxHpChange, currentHpFollowingMaxHp, hitDiePerLevel, maxHitPointsDelta } from '../calculation/maxHitPoints'
 import type { Calculated } from '../calculation/types'
 import { loadCharacterMaxHp } from '../hitPoints/hpDefault'
 import { ClassSpellsManager } from '../sheet/ManageSpellsPanel'
@@ -1760,9 +1760,9 @@ export function CharacterWizard({
 	 * D107: the default `currentHp` this save should write, already resolved
 	 * from `maxHp` state so the save itself stays synchronous. Creation (no
 	 * `character`) defaults to the fresh maximum; a level up raises whatever
-	 * `currentHp` already holds by the increase; anything else (a plain edit,
-	 * or `maxHp` not resolved yet) changes nothing, matching what leaving this
-	 * `undefined` already does in saveCharacter.
+	 * `currentHp` already holds by the increase, a plain edit by the change
+	 * (D381); `maxHp` not resolved yet changes nothing, matching what leaving
+	 * this `undefined` already does in saveCharacter.
 	 */
 	function computedCurrentHp(): number | undefined {
 		if (!maxHp) return undefined
@@ -1772,7 +1772,8 @@ export function CharacterWizard({
 		if (levelUp !== undefined && maxHp.previous) {
 			return currentHpAfterMaxHpChange(character.currentHp, maxHp.previous, maxHp.current)
 		}
-		return undefined
+		// D381: a plain edit (species, class, scores) moves current by the maximum's change too.
+		return maxHp.previous ? currentHpFollowingMaxHp(character.currentHp, maxHitPointsDelta(maxHp.previous, maxHp.current)) : undefined
 	}
 
 	function handleSave(): void {
