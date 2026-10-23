@@ -1379,7 +1379,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   500 ms. `e2e/customBackgroundCB1.spec.ts` e, f.
 - F-CB2 (D385): validate no longer refuses a repeated non-repeatable EI; `toCharacterOptionalFeatureChoices` keeps the
   first copy and drops the rest on read (repeatable ones keep all copies). Unit tests in characterStore.test.ts: D385
-  read, and export → import round-trip of a custom background plus Chain Master familiar choices.
+  read, and export → import round-trip of a custom background plus Chain Master familiar choices. levelRemoval.test.tsx:
+  a swapped Agonizing Blast copy stays swapped after Remove level (D345.5 + D382).
 
 ## Dočasné scaffolding
 

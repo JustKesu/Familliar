@@ -15,16 +15,17 @@ Setup: `git fetch` + `git merge --ff-only origin/main` → „Already up to date
 - optionSwap.test.ts: test validátoru přepsán — opakovaná Eldritch Mind teď projde validací (D385).
 - DECISIONS.md D385, DATA.md, STATUS.md (I-1 řádek + F-CB2).
 
-## Nález 6c — ZASTAVENO, nic nenapsáno
-Požadovaný výsledek („po odebrání levelu zase dvě kopie“) žádná reálná cesta v aplikaci nedává. D345 bod 5:
-„Remove level výměnu nevrací“ — náhrada přebírá level stamp vyměněné kopie (`inheritSwapStamp`), `levelRemoval`
-maže jen podle stampu (`withoutLevel`). Po swapu Agonizing Blast → X na levelu N a odebrání levelu N zůstane
-1× Agonizing Blast + X. Test s výsledkem „dvě kopie“ by vymýšlel chování proti D345.
-Možnosti pro uživatele: (a) test současného chování podle D345.5 (1 kopie + náhrada, nic dalšího neztraceno);
-(b) nové rozhodnutí, že Remove level swap vrací — změna kódu i D345; (c) nechat bez testu.
+## Nález 6c — test podle D345 bodu 5 (volba uživatele)
+Původně zadaný výsledek („zase dvě kopie“) odporuje D345.5 (Remove level výměnu nevrací; náhrada přebírá stamp
+vyměněné kopie). Uživatel zvolil test současného chování. levelRemoval.test.tsx „D345.5 + D382“: Warlock 4
+[Agonizing Blast, Agonizing Blast(2), Armor of Shadows(2)] → level 5 přes `swapOut` + `inheritSwapStamp`
+(Agonizing Blast → Misty Visions, ta dědí stamp 2) + Pact of the Blade(5), Eldritch Smite(5) → Remove level 5.
+Výsledek: 1× Agonizing Blast + Misty Visions(2) + Armor of Shadows(2), jinak shodný s Warlockem 4
+(`toMatchObject`; removal navíc zapisuje prázdná pole), odebrány jen dvě volby s levelem 5, žádná kaskáda.
 
 ## Ověření
-- typecheck OK; test 188 souborů / 3441 testů OK; validate-data 177/177 OK; e2e 679/679 OK (3,7 min, nad 3 min).
+- typecheck OK; test 188 souborů / 3442 testů OK; validate-data 177/177 OK; e2e 679/679 OK (3,8 min, nad 3 min).
+- Commit 86f11d6 (nálezy 3, 4, 6b) + druhý commit s testem 6c.
 
 ## Rozhodnutí v kódu
 - Duplicita se porovnává přesným jménem (jako dosavadní validátor), ne case-insensitive.

@@ -12,6 +12,7 @@ import { levelGainsFor } from './levelGains'
 import { CLASSES, RESOLVER } from './levelGains.fixtures'
 import { characterUpdateInput, levelRemovalCore, levelRemovalPlan, levelRemovalTarget, type LevelRemovalPlan } from './levelRemoval'
 import { levelUpStepConditions } from './levelUpSteps'
+import { inheritSwapStamp, swapOut } from '../optionalFeatures/optionSwap'
 import { RemoveLevelButton } from './RemoveLevelButton'
 
 /* Build order step 8, slice 8e: removing a level. */
@@ -934,6 +935,19 @@ describe('D347/D348: options that lose their prerequisites go with the level (F-
 		expect(dropped).toContain('EI option: Lessons of the First Ones')
 		expect(result.grantedFeats).toEqual(grantedFeats)
 		expect(featInstances(result, null).filter((instance) => instance.origin === 'invocation').map((instance) => instance.name)).toEqual(['Alert'])
+	})
+
+	it('D345.5 + D382: a copy of Agonizing Blast swapped at level 5 stays swapped after Remove level 5; only the level-5 picks go', () => {
+		const held = [{ name: 'Agonizing Blast' }, { name: 'Agonizing Blast', level: 2 }, { name: 'Armor of Shadows', level: 2 }]
+		const afterSwap = swapOut([{ featureType: 'EI', choices: held }], 'EI', 'Agonizing Blast')[0].choices
+		const settled = inheritSwapStamp([...afterSwap, { name: 'Misty Visions' }, { name: 'Pact of the Blade' }, { name: 'Eldritch Smite' }], held)
+		expect(settled.replacement).toBe('Misty Visions')
+		const levelUpPicks = settled.choices.map((choice) => (choice.name === 'Pact of the Blade' || choice.name === 'Eldritch Smite' ? { ...choice, level: 5 } : choice))
+		const levelFour = warlockAt(4, 1, held)
+
+		const { dropped, result } = remove(warlockAt(5, 1, levelUpPicks))
+		expect(result).toMatchObject({ ...levelFour, optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast' }, { name: 'Armor of Shadows', level: 2 }, { name: 'Misty Visions', level: 2 }] }] })
+		expect(dropped.filter((line) => line.startsWith('EI option'))).toEqual(['EI option: Pact of the Blade', 'EI option: Eldritch Smite'])
 	})
 })
 
