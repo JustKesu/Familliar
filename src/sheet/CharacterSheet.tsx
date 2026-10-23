@@ -44,7 +44,7 @@ import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThr
 import { computePassiveInsight, computePassiveInvestigation, computePassivePerception, computeSkills, SKILL_ABILITIES, SKILL_LABELS, SKILLS, type Skill, type SkillValue } from '../calculation/skills'
 import { ABILITY_ABBREVIATIONS, type AbilityAbbreviation } from '../calculation/abilityAbbreviations'
 import { computeAbilitySpellcasting, computeFeatSpellcasting, computeSpeciesSpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
-import { itemSpellGrants, withItemSpellSpent } from '../inventory/customItemGrants'
+import { itemInvocationGrants, itemSpellGrants, withItemSpellSpent } from '../inventory/customItemGrants'
 import { itemSpellAbilityOf, itemSpellActionRows, itemSpells as buildItemSpells } from './itemSpellRows'
 import { characterSpellSlotMaxima, computeSpellSlots, spellSlotMaxima, type ClassSpellSlotsData } from '../calculation/spellSlots'
 import { computeSpellCounts, type ClassSpellCountData } from '../calculation/spellCounts'
@@ -138,7 +138,7 @@ import {
 	type SpellsTabFilter,
 } from './spellsTabData'
 import { featureActionRows, type FeatureActionData } from './featureActionRowData'
-import { casterAbilityModifier, isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
+import { casterAbilityModifier, hasAgonizingBlast, isScaledHealing, spellActionRows, spellGroupRows, toCaster, type SpellActionData, type SpellCaster, type SpellGroupData } from './spellActionRowData'
 import type { ActionType } from '../actions/actionTableFeatureData'
 import { holdsTwoLightWeapons, loadCombatActions, visibleCombatActions, type CombatAction } from '../actions/combatActions'
 import { formatRange, spellLevelLabel } from './spellFormatting'
@@ -568,7 +568,7 @@ function spellActionRow(spell: SpellActionData, onRoll: (report: RollReport) => 
 					))}
 				</span>
 			) : null,
-		notes: null,
+		notes: spell.notes ?? null,
 	}
 }
 
@@ -892,6 +892,7 @@ function SpellTabRow({
 	multiclass,
 	caster,
 	characterLevel,
+	agonizingBlast,
 	ordinaryLeft,
 	pactLeft,
 	concentrating,
@@ -911,6 +912,7 @@ function SpellTabRow({
 	multiclass: boolean
 	caster: SpellCaster
 	characterLevel: number
+	agonizingBlast: boolean
 	/** Free slots of the section's ordinary level and of Pact Magic. */
 	ordinaryLeft: number
 	pactLeft: number
@@ -930,7 +932,7 @@ function SpellTabRow({
 	const { entry, detail, action } = row
 	// D206: a CAST row is worked out at its section's slot level (a D189 pact row too), every other row at the spell's own.
 	const effect = detail
-		? spellEffect(detail, characterLevel, row.item?.castLevel ?? (action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level), casterAbilityModifier(caster))
+		? spellEffect(detail, characterLevel, row.item?.castLevel ?? (action.kind === 'cast' && typeof section.key === 'number' ? section.key : detail.level), casterAbilityModifier(caster), agonizingBlast)
 		: null
 	const hitDc = detail ? rowHitDc(detail, caster) : null
 	let use: ReactNode = null
@@ -1057,7 +1059,7 @@ function SpellTabRow({
 					</div>
 					<div className="sheet__spell-notes">
 						{counter}
-						{spellNotes(entry, detail, action.kind !== 'cast')}
+						{spellNotes(entry, detail, action.kind !== 'cast', characterLevel)}
 					</div>
 				</>
 			) : (
@@ -1096,6 +1098,7 @@ function SpellsSection({
 	notices,
 	casterOf,
 	characterLevel,
+	agonizingBlast,
 	castingClassName,
 	multiclass,
 	spentSpellSlots,
@@ -1118,6 +1121,8 @@ function SpellsSection({
 	notices: ReactNode
 	casterOf: (row: SpellsTabActionRow) => SpellCaster
 	characterLevel: number
+	/** D372: adds the modifier to Eldritch Blast's damage. */
+	agonizingBlast: boolean
 	castingClassName: string | null
 	multiclass: boolean
 	spentSpellSlots: SpentSpellSlots
@@ -1228,6 +1233,7 @@ function SpellsSection({
 											multiclass={multiclass}
 												caster={casterOf(row)}
 												characterLevel={characterLevel}
+												agonizingBlast={agonizingBlast}
 												ordinaryLeft={ordinaryLeft}
 												pactLeft={pactLeft}
 												concentrating={concentratingOn !== null && matchesConcentration(concentratingOn, row.entry)}
@@ -2455,6 +2461,10 @@ function CharacterSheetBody({
 		const own = computeAbilitySpellcasting(character, ability, feats, itemFlatBonuses.spellAttack, itemFlatBonuses.spellSaveDc, itemAbilityGrants)
 		return own.status === 'known' ? toCaster(own.value) : { reason: own.reason }
 	})
+	const agonizingBlast = hasAgonizingBlast([
+		...(character.optionalFeatureChoices ?? []).filter((entry) => entry.featureType === 'EI').flatMap((entry) => entry.choices),
+		...itemInvocationGrants(character.inventory),
+	])
 	/* Sheet rebuild slice 4: the SAME combined spell list the Kouzla tab shows, filtered to the spells that carry an attack roll or a save — never re-derived from the grants. */
 	const spellActions = spellActionRows(
 		combinedSpells,
@@ -2463,8 +2473,9 @@ function CharacterSheetBody({
 		spellcastingEntries,
 		featSpellcastingEntries,
 		speciesSpellcastingEntries,
-		itemSpellActionRows(itemSpells, totalCharacterLevel(character.classes)),
+		itemSpellActionRows(itemSpells, totalCharacterLevel(character.classes), agonizingBlast),
 		subclassSpellcastingEntries,
+		agonizingBlast,
 	)
 	/* Sheet rebuild slice 5: the D87 feature list, the character's feats and their chosen optional features, filtered to the ones D86 calls usable — the same records the Features tab shows, never a second resolution. */
 	/*
@@ -3183,6 +3194,7 @@ function CharacterSheetBody({
 					sections={spellSections}
 					casterOf={(row) => spellsTabRowCaster(row, spellcastingEntries, featSpellcastingEntries, speciesSpellcastingEntries, subclassSpellcastingEntries)}
 					characterLevel={totalCharacterLevel(character.classes)}
+					agonizingBlast={agonizingBlast}
 					castingClassName={spellcastingEntries.length === 1 ? spellcastingEntries[0]!.className : null}
 				multiclass={multiclassed}
 					spentSpellSlots={spentSpellSlots}

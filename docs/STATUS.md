@@ -1311,6 +1311,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - F-41 (D368): Inventory tab item detail shows "Cost: … · Weight: … lb." above the description, per single item
   (`ItemRef.weight` from items.json `weight`; `formatCopperPrice` in `currency.ts`). ▸ appears also for an item with
   cost or weight but no description. Carrying capacity not computed.
+- B-1 (D372): Agonizing Blast XPHB (EI pick, source-less pick by name, or custom item `invocations`; `hasAgonizingBlast`)
+  adds the row caster's modifier to XPHB Eldritch Blast damage on Actions and Spells (`cantripDamage` `agonizingBlast`).
+  `beamNote`: "2/3/4 beams" at character level 5/11/17 first in the Spells Notes and as the Actions Notes; damage stays
+  per beam. Spell action breakdown drawer has no damage section, unchanged. `e2e/agonizingBlastB1.spec.ts` a–d.
 
 ## Dočasné scaffolding
 

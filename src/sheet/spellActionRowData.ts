@@ -58,6 +58,8 @@ export interface SpellActionData {
 	unresolved: string | null
 	/** R14c2: the item a custom item's spell row comes from. */
 	origin?: string
+	/** Eldritch Blast's beam count (beamNote). */
+	notes?: string
 }
 
 /**
@@ -222,13 +224,28 @@ export function cantripDamageAtLevel(scalingLevelDice: SpellScalingLevelDiceEntr
  * carry no `scalingLevelDice`, only a `{@damage}` tag in entries (DATA.md), so
  * those dice are shown with the one damage type.
  */
-export function cantripDamage(detail: SpellDetail, characterLevel: number, abilityModifier: number | null = null): string[] {
+export function cantripDamage(detail: SpellDetail, characterLevel: number, abilityModifier: number | null = null, agonizingBlast = false): string[] {
 	if (detail.scalingLevelDice.length > 0) return cantripDamageAtLevel(detail.scalingLevelDice, characterLevel, abilityModifier)
 	const type = detail.damageInflict.length === 1 ? ` ${detail.damageInflict[0]!.charAt(0).toUpperCase()}${detail.damageInflict[0]!.slice(1)}` : ''
+	const plusModifier = agonizingBlast && isEldritchBlast(detail)
 	const dice = diceTags(detail.entries)
 		.filter((tag) => tag.kind === 'damage')
-		.map((tag) => (tag.plusModifier ? withSpellcastingModifier(tag.dice, abilityModifier) : tag.dice))
+		.map((tag) => (tag.plusModifier || plusModifier ? withSpellcastingModifier(tag.dice, abilityModifier) : tag.dice))
 	return [...new Set(dice)].map((line) => `${line}${type}`)
+}
+
+const isEldritchBlast = (detail: Pick<SpellDetail, 'name' | 'source'>): boolean => detail.name === 'Eldritch Blast' && detail.source === 'XPHB'
+
+/** D372: the XPHB invocation, picked by a Warlock or granted by a custom item; a pick saved without a source counts by name. */
+export function hasAgonizingBlast(invocations: readonly { name: string; source?: string }[]): boolean {
+	return invocations.some((invocation) => invocation.name === 'Agonizing Blast' && (invocation.source ?? 'XPHB') === 'XPHB')
+}
+
+/** "2 beams" from character level 5 (3 at 11, 4 at 17); the count is prose only in entriesHigherLevel (DATA.md). */
+export function beamNote(detail: Pick<SpellDetail, 'name' | 'source'>, characterLevel: number): string | null {
+	if (!isEldritchBlast(detail)) return null
+	const beams = characterLevel >= 17 ? 4 : characterLevel >= 11 ? 3 : characterLevel >= 5 ? 2 : 1
+	return beams > 1 ? `${beams} beams` : null
 }
 
 const SCALE_TAG = /\{@scale(damage|dice) ([^}]*)\}/g
@@ -326,13 +343,14 @@ export function spellActionRows(
 	/** R14c2: rows built elsewhere (a custom item's spells) sorted in with these. */
 	extraRows: SpellActionData[] = [],
 	subclassEntries: SpellcastingEntry[] = [],
+	agonizingBlast = false,
 ): SpellActionData[] {
 	const rows: SpellActionData[] = [...extraRows]
 
 	for (const entry of entries) {
 		const detail = findSpellDetail(details, entry.name, entry.source)
 		if (!detail) continue
-		const row = spellActionData(spellEntryKey(entry), entry.name, detail, () => casterFor(entry, classEntries, featEntries, speciesEntries, null, subclassEntries), characterLevel)
+		const row = spellActionData(spellEntryKey(entry), entry.name, detail, () => casterFor(entry, classEntries, featEntries, speciesEntries, null, subclassEntries), characterLevel, detail.level, agonizingBlast)
 		// D325: with two casting classes a pick's row names its class, so a spell both chose reads as two rows.
 		if (row && entry.chosen && entry.chosenBy && classEntries.length > 1) row.origin = entry.chosenBy.className
 		if (row) rows.push(row)
@@ -349,6 +367,7 @@ export function spellActionData(
 	casterOf: () => SpellCaster,
 	characterLevel: number,
 	castLevel = detail.level,
+	agonizingBlast = false,
 ): SpellActionData | null {
 	const hasAttack = (detail.spellAttack?.length ?? 0) > 0
 	const saveAbilities = detail.savingThrow ?? []
@@ -356,7 +375,9 @@ export function spellActionData(
 
 	const caster = casterOf()
 	const resolved = 'reason' in caster ? null : caster
+	const notes = beamNote(detail, characterLevel)
 	return {
+		...(notes ? { notes } : {}),
 		key,
 		name,
 		level: detail.level,
@@ -365,7 +386,7 @@ export function spellActionData(
 		range: formatRange(detail.range),
 		attack: hasAttack && resolved ? resolved.attack : null,
 		save: saveAbilities.length > 0 && resolved ? { ...resolved.save, abilities: saveAbilities } : null,
-		damage: detail.level === 0 ? cantripDamage(detail, characterLevel, resolved?.abilityModifier ?? null) : leveledSpellDice(detail, castLevel, resolved?.abilityModifier ?? null),
+		damage: detail.level === 0 ? cantripDamage(detail, characterLevel, resolved?.abilityModifier ?? null, agonizingBlast) :leveledSpellDice(detail, castLevel, resolved?.abilityModifier ?? null),
 		unresolved: 'reason' in caster ? caster.reason : null,
 	}
 }

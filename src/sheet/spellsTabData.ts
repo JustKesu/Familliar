@@ -14,6 +14,7 @@ import { findSpellDetail } from '../spells/spellDetailData'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
 import { spellEntryKey, type SheetSpellEntry, type SpellGrant } from './SpellList'
 import {
+	beamNote,
 	cantripDamage,
 	casterFor,
 	isScaledHealing,
@@ -345,9 +346,10 @@ export function spellEffect(
 	characterLevel: number,
 	castLevel = detail.level,
 	abilityModifier: number | null = null,
+	agonizingBlast = false,
 ): { dice: string[]; text: string | null } | null {
 	if (detail.level === 0) {
-		const dice = cantripDamage(detail, characterLevel, abilityModifier)
+		const dice = cantripDamage(detail, characterLevel, abilityModifier, agonizingBlast)
 		if (dice.length > 0) return { dice, text: null }
 	}
 	const dice = detail.level === 0 ? [] : leveledSpellDice(detail, castLevel, abilityModifier)
@@ -362,11 +364,11 @@ export function shortCastingTime(detail: SpellDetail): string {
 }
 
 /** Usage terms · "V, S, M" · duration without the concentration prefix (the subtitle names it). A CAST row spends a slot, so the no-slot usage terms belong to the USE row only. */
-export function spellNotes(entry: SheetSpellEntry, detail: SpellDetail, withUsage = true): string {
+export function spellNotes(entry: SheetSpellEntry, detail: SpellDetail, withUsage = true, characterLevel = 1): string {
 	const components = detail.components
 	const letters = components ? [components.v && 'V', components.s && 'S', components.m && 'M'].filter(Boolean).join(', ') : ''
 	const duration = formatDuration(detail.duration.map((d) => ({ ...d, concentration: false })))
-	return [...(withUsage ? entry.usages.map(formatSpellUsage) : []), letters, duration].filter((part) => part !== '').join(' · ')
+	return [beamNote(detail, characterLevel) ?? '', ...(withUsage ? entry.usages.map(formatSpellUsage) : []), letters, duration].filter((part) => part !== '').join(' · ')
 }
 
 /** Short sources plus the flags; the chosen source is the casting class when there is exactly one. */

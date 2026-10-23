@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { FeatSpellcastingEntry, SpellcastingEntry } from '../calculation/spellcasting'
 import type { SpellDetail, SpellScalingLevelDiceEntry } from '../spells/spellDetailData'
 import type { SheetSpellEntry } from './SpellList'
-import { cantripDamage, cantripDamageAtLevel, casterFor, diceTags, isScaledHealing, leveledSpellDice, spellActionRows, toCaster, withSpellcastingModifier } from './spellActionRowData'
+import { beamNote, cantripDamage, cantripDamageAtLevel, casterFor, diceTags, hasAgonizingBlast,isScaledHealing, leveledSpellDice, spellActionRows, toCaster, withSpellcastingModifier } from './spellActionRowData'
 
 function detail(over: Partial<SpellDetail> & { name: string }): SpellDetail {
 	return {
@@ -230,6 +230,34 @@ describe('cantripDamage', () => {
 		expect(cantripDamage(eldritchBlast, 5)).toEqual(['1d10 Force'])
 		const [row] = spellActionRows([entry('Eldritch Blast')], [eldritchBlast], 5, [{ ...wizard, className: 'Warlock' }], [])
 		expect(row?.damage).toEqual(['1d10 Force'])
+	})
+})
+
+describe('Agonizing Blast and beams (D372)', () => {
+	const eldritchBlast = detail({ name: 'Eldritch Blast', level: 0, spellAttack: ['R'], damageInflict: ['force'], entries: ['On a hit, the target takes {@damage 1d10} Force damage.'] })
+	const warlock = { ...wizard, className: 'Warlock', ability: 'charisma' as const, abilityModifier: 3 }
+
+	it('adds the modifier to Eldritch Blast only', () => {
+		expect(cantripDamage(eldritchBlast, 5, 3, true)).toEqual(['1d10 + 3 Force'])
+		expect(cantripDamage(eldritchBlast, 5, 3)).toEqual(['1d10 Force'])
+		const fireBolt = details[0]!
+		const [row] = spellActionRows([entry('Fire Bolt')], [fireBolt], 5, [warlock], [], [], [], [], true)
+		expect(row?.damage).toEqual(['2d10 fire damage'])
+		const [blast] = spellActionRows([entry('Eldritch Blast')], [eldritchBlast], 5, [warlock], [], [], [], [], true)
+		expect(blast?.damage).toEqual(['1d10 + 3 Force'])
+		expect(blast?.notes).toBe('2 beams')
+	})
+
+	it('reads the XPHB invocation from picks and item grants', () => {
+		expect(hasAgonizingBlast([{ name: 'Agonizing Blast', source: 'XPHB' }])).toBe(true)
+		expect(hasAgonizingBlast([{ name: 'Agonizing Blast' }])).toBe(true)
+		expect(hasAgonizingBlast([{ name: 'Agonizing Blast', source: 'PHB' }])).toBe(false)
+		expect(hasAgonizingBlast([{ name: 'Repelling Blast', source: 'XPHB' }])).toBe(false)
+	})
+
+	it('counts beams by character level', () => {
+		expect([1, 4, 5, 10, 11, 16, 17, 20].map((level) => beamNote(eldritchBlast, level))).toEqual([null, null, '2 beams', '2 beams', '3 beams', '3 beams', '4 beams', '4 beams'])
+		expect(beamNote({ name: 'Fire Bolt', source: 'XPHB' }, 17)).toBeNull()
 	})
 })
 

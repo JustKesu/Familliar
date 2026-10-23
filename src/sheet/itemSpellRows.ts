@@ -74,9 +74,9 @@ export function itemSpells(grants: readonly ItemSpellGrant[], details: SpellDeta
 }
 
 /** The Actions table rows: the Spells tab's numbers and dice at the cast level. */
-export function itemSpellActionRows(spells: readonly ItemSpell[], characterLevel: number): SpellActionData[] {
+export function itemSpellActionRows(spells: readonly ItemSpell[], characterLevel: number, agonizingBlast = false): SpellActionData[] {
 	return spells.flatMap(({ key, entry, detail, caster, castLevel, grant }) => {
-		const row = detail ? spellActionData(key, entry.name, detail, () => caster, characterLevel, castLevel) : null
+		const row = detail ? spellActionData(key, entry.name, detail, () => caster, characterLevel, castLevel, agonizingBlast) : null
 		return row ? [{ ...row, origin: grant.itemName }] : []
 	})
 }

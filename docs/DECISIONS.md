@@ -5390,3 +5390,10 @@ Vlastnost `ability` z `additionalSpells` podtřídy se čte u všech podtříd, 
 když třída, která podtřídu vlastní, sama sesílat neumí (Steel Hawk, Warrior of Shadow, Way of the
 Aether). Třída se sesíláním si svou vlastnost ponechá. Steel Hawk sesílá Animal Messenger s Wisdom —
 rozhodl uživatel, kniha vlastnost neuvádí. Rozhodl Daniel.
+
+## D372 — Agonizing Blast automaticky jen na Eldritch Blast (B-1)
+
+Má-li postava invokaci Agonizing Blast (XPHB; výběr Warlocka nebo vlastní předmět), poškození
+Eldritch Blast dostane + sesílací modifikátor („1d10 + 3 Force") na záložkách Actions i Spells.
+Data říkají „vyber jeden Warlock cantrip"; aplikace tu volbu neukládá a ukládat nebude. Kdo
+invokaci používá na jiný cantrip, přičte modifikátor sám. Rozhodl Daniel.
