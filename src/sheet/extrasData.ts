@@ -1,6 +1,7 @@
 import { formKey, type Beast, type FamiliarFormOption } from '../beasts/beastData'
 import { wildShapeLimits } from '../beasts/wildShapeData'
 import type { CharacterClass, CharacterFamiliar, CharacterWildShapeForms } from '../storage/character'
+import { applyChainMaster, type ChainMasterEffect } from './chainMaster'
 import { applyFamiliarBonuses, NO_FAMILIAR_BONUSES, type FamiliarItemBonuses } from './familiarItemBonuses'
 
 /*
@@ -48,6 +49,7 @@ export function extraRows({
 	beasts,
 	pending,
 	familiarBonuses = NO_FAMILIAR_BONUSES,
+	chainMaster = null,
 }: {
 	familiar: CharacterFamiliar | null
 	familiarForms: FamiliarFormOption[]
@@ -56,11 +58,14 @@ export function extraRows({
 	pending: boolean
 	/** R14d (D220): item bonuses for the familiar's row only — Wild Shape rows and the Manage Extras panel pass none. */
 	familiarBonuses?: FamiliarItemBonuses
+	/** D380: Investment of the Chain Master, only while the invocation is held. */
+	chainMaster?: ChainMasterEffect | null
 }): ExtraRow[] {
 	const rows: ExtraRow[] = []
 	if (familiar) {
 		const option = familiarForms.find((candidate) => formKey(candidate.beast) === formKey(familiar))
-		const beast = option ? applyFamiliarBonuses(option.beast, familiarBonuses) : null
+		// D380: the invocation rewrites the data's words first; the item bonuses then move its numbers.
+		const beast = option ? applyFamiliarBonuses(chainMaster ? applyChainMaster(option.beast, chainMaster) : option.beast, familiarBonuses) : null
 		rows.push({
 			key: `familiar|${formKey(familiar)}`,
 			kind: 'familiar',

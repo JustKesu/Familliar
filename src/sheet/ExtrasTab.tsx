@@ -1,12 +1,59 @@
 import { useState, type ReactNode } from 'react'
 import type { Beast, FamiliarFormOption } from '../beasts/beastData'
-import type { CharacterClass, CharacterFamiliar, CharacterWildShapeForms } from '../storage/character'
+import type { ChainMasterDamage, ChainMasterForm, CharacterClass, CharacterFamiliar, CharacterWildShapeForms } from '../storage/character'
 import { beastAverageHp, beastKind, formatSpeed } from './BeastStatBlock'
+import { chainMasterEffect } from './chainMaster'
 import { extraNotes, extraRows, wildShapeNotices, type ExtraKind } from './extrasData'
 import type { FamiliarItemBonuses } from './familiarItemBonuses'
 import { UnresolvedValue } from './ValueBreakdown'
 
 type Filter = 'all' | ExtraKind
+
+export interface ChainMasterControls {
+	saveDc: number | null
+	onChange: (choices: { form?: ChainMasterForm | null; damage?: ChainMasterDamage | null }) => void
+}
+
+const FORMS: { id: ChainMasterForm; label: string }[] = [
+	{ id: 'aerial', label: 'Aerial (Fly 40 ft.)' },
+	{ id: 'aquatic', label: 'Aquatic (Swim 40 ft.)' },
+]
+
+const DAMAGE: { id: ChainMasterDamage | null; label: string }[] = [
+	{ id: null, label: 'Original' },
+	{ id: 'necrotic', label: 'Necrotic' },
+	{ id: 'radiant', label: 'Radiant' },
+]
+
+function ChainMasterCard({ familiar, controls }: { familiar: CharacterFamiliar; controls: ChainMasterControls }): ReactNode {
+	const damage = familiar.chainMasterDamage ?? null
+	return (
+		<div className="extras-tab__chain-master">
+			<strong>Investment of the Chain Master</strong>
+			<div className="sheet__actions-filters" role="group" aria-label="Familiar form">
+				{FORMS.map(({ id, label }) => (
+					<button key={id} type="button" className={familiar.chainMasterForm === id ? 'pill pill--active' : 'pill'} aria-pressed={familiar.chainMasterForm === id} onClick={() => controls.onChange({ form: id })}>
+						{label}
+					</button>
+				))}
+			</div>
+			{!familiar.chainMasterForm && <p className="extras-tab__chain-master-hint">Choose Aerial or Aquatic for the familiar's extra speed.</p>}
+			<div className="sheet__actions-filters" role="group" aria-label="Familiar damage type">
+				{DAMAGE.map(({ id, label }) => (
+					<button key={label} type="button" className={damage === id ? 'pill pill--active' : 'pill'} aria-pressed={damage === id} onClick={() => controls.onChange({ damage: id })}>
+						{label}
+					</button>
+				))}
+			</div>
+			<p>
+				<strong>Quick Attack.</strong> As a Bonus Action, you can command the familiar to take the Attack action.
+			</p>
+			<p>
+				<strong>Resistance.</strong> When the familiar takes damage, you can take a Reaction to give it Resistance to that damage.
+			</p>
+		</div>
+	)
+}
 
 const FILTERS: { id: Filter; label: string }[] = [
 	{ id: 'all', label: 'All' },
@@ -29,6 +76,7 @@ export function ExtrasTab({
 	onManageExtras,
 	onOpenFamiliarHitPoints,
 	wildShapeTransform,
+	chainMaster,
 }: {
 	familiar: CharacterFamiliar | null
 	familiarForms: FamiliarFormOption[]
@@ -47,9 +95,19 @@ export function ExtrasTab({
 	onOpenFamiliarHitPoints?: () => void
 	/** D364: Transform on each Wild Shape row. Absent (no XPHB Wild Shape) shows no button. */
 	wildShapeTransform?: { canSpend: boolean; onTransform: () => void }
+	/** D380: present only while Investment of the Chain Master is held; absent shows nothing from it. */
+	chainMaster?: ChainMasterControls
 }): ReactNode {
 	const [filter, setFilter] = useState<Filter>('all')
-	const rows = extraRows({ familiar, familiarForms, wildShapeForms, beasts, pending: beastsLoading || beastsError !== null, familiarBonuses })
+	const rows = extraRows({
+		familiar,
+		familiarForms,
+		wildShapeForms,
+		beasts,
+		pending: beastsLoading || beastsError !== null,
+		familiarBonuses,
+		chainMaster: familiar && chainMaster ? chainMasterEffect(familiar, chainMaster.saveDc) : null,
+	})
 	const visible = rows.filter((row) => filter === 'all' || row.kind === filter)
 
 	return (
@@ -150,6 +208,7 @@ export function ExtrasTab({
 									<span className="extras-tab__cell">{row.beast ? formatSpeed(row.beast.speed) : '—'}</span>
 									<span className="extras-tab__notes">{extraNotes(row)}</span>
 								</div>
+								{row.kind === 'familiar' && familiar && chainMaster && <ChainMasterCard familiar={familiar} controls={chainMaster} />}
 							</li>
 						))}
 					</ul>

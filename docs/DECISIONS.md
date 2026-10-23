@@ -5458,3 +5458,16 @@ Výměna za jiný feat smaže čítače původního záznamu. Wizard (level up, 
 jako držený a nedovolí ho vzít znovu. Agonizing Blast přidá modifikátor jen řádku Eldritch Blast, jehož sesílatel
 je třída Warlock (mění D372: EB z jiné třídy, featu nebo předmětu bonus nedostane). Jedna sbírka invokací
 `heldInvocations`. Bez změny schématu.
+
+## D380 — Investment of the Chain Master na familiaru (C-1)
+
+Invokace platí, když ji vrací `heldInvocations` (volby třídy i custom předmět, jako D372/D373).
+a) Aerial/Aquatic: přepínač na kartě familiara v Extras. Přidá Fly 40 ft / Swim 40 ft; má-li forma tu rychlost
+   už ≥ 40, zůstane vyšší. Nic nezvoleno = krátká výzva k volbě, rychlost se nepřidá.
+b) Typ zranění: přepínač Original / Necrotic / Radiant. Necrotic/Radiant nahradí každé Bludgeoning, Piercing a
+   Slashing v textu útoků familiara. Kopie Beast jako `applyFamiliarBonuses` (D220), data se nemění.
+c) Save DC: každé save DC v trait/action/bonus/reaction = spell save DC Warlocka; bez třídy Warlock (invokace
+   jen z předmětu) nejvyšší spell save DC postavy; žádné = DC z dat.
+d) Quick Attack (Bonus Action: příkaz k akci Attack) a reakce Resistance: jen textové řádky na kartě.
+e) Obě hodnoty na `CharacterFamiliar` (`chainMasterForm`, `chainMasterDamage`), schéma 62 → 63 s migrací.
+   Bez invokace hodnoty spí (jako D156), nemažou se, a karta z invokace nic neukáže.

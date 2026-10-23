@@ -182,7 +182,8 @@ import { loadRuleTexts, type RuleTexts } from '../rules/ruleTexts'
 import { CustomItemHint, GrantedSenseSections, RuleTextRow } from './RuleText'
 import { ClassSpellsManager } from './ManageSpellsPanel'
 import { InventoryTab } from './InventoryTab'
-import { ExtrasTab } from './ExtrasTab'
+import { chainMasterEffect, chainMasterSaveDc, holdsChainMaster } from './chainMaster'
+import { ExtrasTab, type ChainMasterControls } from './ExtrasTab'
 import { FamiliarHitPointsPanel, type FamiliarHitPointFields } from './FamiliarHitPointsPanel'
 import { extraRows } from './extrasData'
 import { familiarBonusLines, familiarItemBonuses } from './familiarItemBonuses'
@@ -1678,6 +1679,7 @@ function CharacterSheetBody({
 	character,
 	onChooseFamiliar,
 	onEditFamiliarHitPoints,
+	onEditFamiliarChainMaster,
 	onEditWildShapeForms,
 	onEditInventory,
 	onEditCurrency,
@@ -1710,6 +1712,8 @@ function CharacterSheetBody({
 	onChooseFamiliar?: (familiar: CharacterFamiliar | null) => void
 	/** The familiar's own hit points from its Extras drawer (R11b, D213). Absent leaves the numbers without controls. */
 	onEditFamiliarHitPoints?: (hitPoints: FamiliarHitPointFields) => void
+	/** D380: the Investment of the Chain Master switches on the familiar's Extras card. Absent shows no switches. */
+	onEditFamiliarChainMaster?: ChainMasterControls['onChange']
 	/** Replaces the known Wild Shape forms from the Manage Extras drawer (R11a, D212). Absent leaves Wild Shape out of the drawer. */
 	onEditWildShapeForms?: (forms: CharacterWildShapeForms[]) => void
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
@@ -2759,6 +2763,8 @@ function CharacterSheetBody({
 		: []
 	/* beasts.json starts as [] and is never empty once loaded, so this is "fetch in flight". */
 	const beastsLoading = needsBeasts && beasts.length === 0 && beastsError === null
+	const chainMaster: ChainMasterControls | undefined =
+		onEditFamiliarChainMaster && holdsChainMaster(character) ? { saveDc: chainMasterSaveDc(spellcastingSources), onChange: onEditFamiliarChainMaster } : undefined
 	/* R14d (D220): custom item bonuses for the familiar; the character carries the item, so this reads the whole inventory. */
 	const familiarBonuses = familiarItemBonuses(
 		character.inventory ?? [],
@@ -2772,6 +2778,7 @@ function CharacterSheetBody({
 		beasts,
 		pending: beastsLoading || beastsError !== null,
 		familiarBonuses,
+		chainMaster: character.familiar && chainMaster ? chainMasterEffect(character.familiar, chainMaster.saveDc) : null,
 	})[0]
 	// The Manage Extras button needs a category the character has AND the callback that edits it.
 	// R11b (D213): stored extras keep the button too, so a familiar or Wild Shape form left behind by a lost spell/class can still be deleted.
@@ -3325,6 +3332,7 @@ function CharacterSheetBody({
 				onManageExtras={canManageExtras ? () => setDrawer({ kind: 'manageExtras' }) : undefined}
 				onOpenFamiliarHitPoints={() => setDrawer({ kind: 'familiarHitPoints' })}
 				wildShapeTransform={wildShapeTransform}
+				chainMaster={chainMaster}
 			/>
 			</div>
 

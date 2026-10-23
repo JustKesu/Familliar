@@ -4428,6 +4428,22 @@ button:disabled {
   white-space: nowrap;
 }
 
+.extras-tab__chain-master {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 12px;
+  font-size: 13px;
+}
+
+.extras-tab__chain-master p {
+  margin: 0;
+}
+
+.extras-tab__chain-master-hint {
+  color: var(--text-mute);
+}
+
 .familiar-hp {
   display: flex;
   flex-direction: column;

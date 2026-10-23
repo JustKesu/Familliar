@@ -816,16 +816,20 @@ export function describeFamiliarError(value: unknown): string | null {
 		const hp = value[field]
 		if (hp !== undefined && (typeof hp !== 'number' || !Number.isInteger(hp) || hp < 0)) return `familiar.${field} must be a non-negative whole number`
 	}
+	if (value['chainMasterForm'] !== undefined && value['chainMasterForm'] !== 'aerial' && value['chainMasterForm'] !== 'aquatic') return `familiar.chainMasterForm must be "aerial" or "aquatic"`
+	if (value['chainMasterDamage'] !== undefined && value['chainMasterDamage'] !== 'necrotic' && value['chainMasterDamage'] !== 'radiant') return `familiar.chainMasterDamage must be "necrotic" or "radiant"`
 	return null
 }
 
 function toCharacterFamiliar(value: Record<string, unknown>): CharacterFamiliar {
-	const { currentHp, temporaryHitPoints } = value
+	const { currentHp, temporaryHitPoints, chainMasterForm, chainMasterDamage } = value
 	return {
 		name: value['name'] as string,
 		source: value['source'] as string,
 		...(typeof currentHp === 'number' ? { currentHp } : {}),
 		...(typeof temporaryHitPoints === 'number' && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
+		...(chainMasterForm !== undefined ? { chainMasterForm: chainMasterForm as CharacterFamiliar['chainMasterForm'] } : {}),
+		...(chainMasterDamage !== undefined ? { chainMasterDamage: chainMasterDamage as CharacterFamiliar['chainMasterDamage'] } : {}),
 	}
 }
 

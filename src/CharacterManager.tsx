@@ -340,6 +340,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					character={character}
 					onChooseFamiliar={(familiar) => handleChooseFamiliar(character.id, familiar)}
 					onEditFamiliarHitPoints={(hitPoints) => handleEditFamiliarHitPoints(character.id, hitPoints)}
+					onEditFamiliarChainMaster={(choices) => store.store && withErrorHandling(() => store.store?.setFamiliarChainMaster(character.id, choices))}
 					onEditWildShapeForms={(forms) => handleEditWildShapeForms(character.id, forms)}
 					onEditInventory={(inventory) => handleEditInventory(character.id, inventory)}
 					onEditCurrency={(copper) => handleEditCurrency(character.id, copper)}

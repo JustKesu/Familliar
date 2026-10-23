@@ -771,7 +771,7 @@ describe('the migration chain (D69)', () => {
 		it('adds nothing and changes nothing else', () => {
 			const before = { schemaVersion: 60, id: '1', name: 'Aria', classes: [{ className: 'Monk', classSource: 'XPHB', subclass: 'Way of the Kensei', level: 3 }] }
 			const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
-			expect(migrated).toEqual({ ...before, schemaVersion: 62 })
+			expect(migrated).toEqual({ ...before, schemaVersion: 63 })
 			expect('kenseiWeapons' in migrated).toBe(false)
 			expect('elegantCourtierSave' in migrated).toBe(false)
 		})
@@ -787,11 +787,25 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 2 }],
 				grantedFeats: [{ origin: 'manual', id: 'm', name: 'Alert', source: 'XPHB' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 62 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 63 })
+		})
+	})
+
+	/* C-1 (D380): the Chain Master familiar fields are new, so the step only tags. */
+	describe('version 62 to 63', () => {
+		it('adds nothing and changes nothing else', () => {
+			const before = {
+				schemaVersion: 62,
+				id: '1',
+				name: 'Aria',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 6 }],
+				familiar: { name: 'Pseudodragon', source: 'XMM', currentHp: 3 },
+			}
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 63 })
 		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(62)
+			expect(CURRENT_SCHEMA_VERSION).toBe(63)
 		})
 	})
 

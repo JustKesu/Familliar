@@ -1342,6 +1342,13 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   replace by another feat drops the old counters. `heldInvocations(character)` (featInstances.ts) is the one invocation
   collection (slots, Agonizing Blast, Eldritch Mind, attacks per action). Agonizing Blast only on rows whose caster
   has `className: 'Warlock'` (`agonizingBlastFor`). `e2e/reviewFixesB1.spec.ts` a–d2.
+- C-1 (D380): Investment of the Chain Master. Schema 63: `CharacterFamiliar.chainMasterForm` ('aerial'|'aquatic') and
+  `.chainMasterDamage` ('necrotic'|'radiant'), `characterStore.setFamiliarChainMaster` (wired as `onEditFamiliarChainMaster`);
+  `setFamiliar`, `setFamiliarHitPoints` and the Long Rest reset keep both. `sheet/chainMaster.ts`: `holdsChainMaster`
+  (via `heldInvocations`), `chainMasterSaveDc` (Warlock, else highest source, else null), `applyChainMaster` (a COPY:
+  fly/swim 40 unless already ≥ 40, B/P/S → chosen type in `{@atkr}` text, `{@actSave} {@dc N}` → the DC). `extraRows`
+  applies it before the item bonuses. Extras familiar row gets a card: Form / Damage-type pill groups, a hint while no form
+  is chosen, Quick Attack and Resistance lines; absent without the invocation. `e2e/chainMasterC1.spec.ts` 1–5.
 
 ## Dočasné scaffolding
 

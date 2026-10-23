@@ -565,6 +565,25 @@ describe('CharacterStore.create with optionalFeatureChoices', () => {
 		expect(store.list()[0].familiar).toEqual({ name: 'Imp', source: 'XMM' })
 	})
 
+	it('D380: stores the Chain Master choices, keeps them through hit points, a Long Rest and a new form, and clears one with null', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const character = store.create({ name: 'Conjurer' })
+		store.setFamiliarChainMaster(character.id, { form: 'aquatic' })
+		expect(store.list()[0].familiar).toBeUndefined()
+
+		store.setFamiliar(character.id, { name: 'Imp', source: 'XMM' })
+		store.setFamiliarChainMaster(character.id, { form: 'aquatic' })
+		store.setFamiliarChainMaster(character.id, { damage: 'radiant' })
+		store.setFamiliarHitPoints(character.id, { currentHp: 3 })
+		store.applyRest(character.id, { resourceUses: {}, spentSpellSlots: {}, spentHitDice: {}, resetFamiliarHp: true })
+		store.setFamiliar(character.id, { name: 'Sprite', source: 'XMM' })
+		expect(store.list()[0].familiar).toEqual({ name: 'Sprite', source: 'XMM', chainMasterForm: 'aquatic', chainMasterDamage: 'radiant' })
+
+		store.setFamiliarChainMaster(character.id, { damage: null })
+		expect(store.list()[0].familiar).toEqual({ name: 'Sprite', source: 'XMM', chainMasterForm: 'aquatic' })
+		expect(() => store.setFamiliarChainMaster('nope', { form: 'aerial' })).toThrow(CharacterNotFoundError)
+	})
+
 	it('rejects a familiar hit-point field that is negative or not a whole number', () => {
 		for (const bad of [{ currentHp: -1 }, { currentHp: 1.5 }, { temporaryHitPoints: -2 }, { currentHp: '3' }]) {
 			const storage = new MemoryStorage()

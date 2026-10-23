@@ -851,7 +851,14 @@ export interface CharacterFamiliar {
 	currentHp?: number
 	/** D213: absent or 0 is none. */
 	temporaryHitPoints?: number
+	/** D380: Investment of the Chain Master's form; absent is not chosen. Kept (asleep) while the invocation is not held. */
+	chainMasterForm?: ChainMasterForm
+	/** D380: absent is the stat block's own damage type. */
+	chainMasterDamage?: ChainMasterDamage
 }
+
+export type ChainMasterForm = 'aerial' | 'aquatic'
+export type ChainMasterDamage = 'necrotic' | 'radiant'
 
 /**
  * One class's known Wild Shape forms. `forms` names each pick (name + source)
@@ -1099,7 +1106,7 @@ export interface ConcentrationRef {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 62 for the 'invocation' grantedFeats origin (B-4b, D376); 61 for Character.kenseiWeapons and .elegantCourtierSave (F-19, D344); 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 63 for CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380); 62 for the 'invocation' grantedFeats origin (B-4b, D376); 61 for Character.kenseiWeapons and .elegantCourtierSave (F-19, D344); 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1123,7 +1130,7 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 62
+export const CURRENT_SCHEMA_VERSION = 63
 
 export interface CharacterLevelOrderEntry {
 	className: string

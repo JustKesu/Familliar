@@ -8,6 +8,8 @@ import type {
 	CharacterClassFeatureChoice,
 	CharacterDeathSaves,
 	CharacterFamiliar,
+	ChainMasterDamage,
+	ChainMasterForm,
 	CharacterGrantedFeat,
 	CharacterHitPointLevel,
 	CharacterInventoryItem,
@@ -346,6 +348,13 @@ export interface RestFields {
  * do not go with this current (D111), a spent count of 0 — and a play object left
  * with nothing in it is itself dropped.
  */
+function chainMasterFields(familiar: CharacterFamiliar | undefined): Pick<CharacterFamiliar, 'chainMasterForm' | 'chainMasterDamage'> {
+	return {
+		...(familiar?.chainMasterForm ? { chainMasterForm: familiar.chainMasterForm } : {}),
+		...(familiar?.chainMasterDamage ? { chainMasterDamage: familiar.chainMasterDamage } : {}),
+	}
+}
+
 function storedPlayState(currentHp: number | undefined, play: CharacterPlayState | undefined): CharacterPlayState | undefined {
 	const temporaryHitPoints = play?.temporaryHitPoints
 	const deathSaves = deathSavesAfterHitPointChange(currentHp, play?.deathSaves)
@@ -650,10 +659,10 @@ export class CharacterStore {
 		const index = characters.findIndex((character) => character.id === id)
 		if (index === -1) throw new CharacterNotFoundError(id)
 
-		const { familiar: _previous, ...rest } = characters[index]
+		const { familiar: previous, ...rest } = characters[index]
 		const updated = [...characters]
-		// D213: a new form always starts at full hit points, so whatever hit points the caller's object carries are not kept.
-		updated[index] = familiar ? { ...rest, familiar: { name: familiar.name, source: familiar.source } } : rest
+		// D213: a new form always starts at full hit points, so whatever hit points the caller's object carries are not kept. D380: the Chain Master choices stay with the familiar across forms.
+		updated[index] = familiar ? { ...rest, familiar: { name: familiar.name, source: familiar.source, ...chainMasterFields(previous) } } : rest
 		this.writeChanged(updated, index)
 	}
 
@@ -677,7 +686,27 @@ export class CharacterStore {
 				source: familiar.source,
 				...(currentHp !== undefined ? { currentHp } : {}),
 				...(temporaryHitPoints !== undefined && temporaryHitPoints > 0 ? { temporaryHitPoints } : {}),
+				...chainMasterFields(familiar),
 			},
+		}
+		this.writeChanged(updated, index)
+	}
+
+	/** D380: sets the Investment of the Chain Master choices; null clears one. Does nothing when there is no familiar. */
+	setFamiliarChainMaster(id: string, choices: { form?: ChainMasterForm | null; damage?: ChainMasterDamage | null }): void {
+		const characters = this.list()
+		const index = characters.findIndex((character) => character.id === id)
+		if (index === -1) throw new CharacterNotFoundError(id)
+
+		const { familiar } = characters[index]
+		if (!familiar) return
+		const { chainMasterForm: _form, chainMasterDamage: _damage, ...base } = familiar
+		const form = choices.form === undefined ? familiar.chainMasterForm : (choices.form ?? undefined)
+		const damage = choices.damage === undefined ? familiar.chainMasterDamage : (choices.damage ?? undefined)
+		const updated = [...characters]
+		updated[index] = {
+			...characters[index],
+			familiar: { ...base, ...(form ? { chainMasterForm: form } : {}), ...(damage ? { chainMasterDamage: damage } : {}) },
 		}
 		this.writeChanged(updated, index)
 	}
@@ -1178,7 +1207,7 @@ export class CharacterStore {
 		const updated = [...characters]
 		updated[index] = {
 			...unchanged,
-			...(familiar ? { familiar: rest.resetFamiliarHp ? { name: familiar.name, source: familiar.source } : familiar } : {}),
+			...(familiar ? { familiar: rest.resetFamiliarHp ? { name: familiar.name, source: familiar.source, ...chainMasterFields(familiar) } : familiar } : {}),
 			...(rest.currentHp !== undefined ? { currentHp: rest.currentHp } : {}),
 			...(storedPlay ? { play: storedPlay } : {}),
 			...(rest.inventory ? { inventory: rest.inventory } : {}),

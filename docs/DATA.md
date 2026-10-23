@@ -1201,6 +1201,16 @@ damage" (Scorpion, Spider). The one save-based action (Pseudodragon Sting,
 the ability modifier for every ability the form's `save` map does not list (the
 Owl has no `save` at all).
 
+Damage types and DCs in the same 32 forms (C-1 survey, scripts/c1-chain-master-markup.js,
+consumed): every Bludgeoning/Piercing/Slashing (5/22/6) sits in an `{@atkr}` action string,
+capitalised, as "<Type> damage" — after a bare `{@h}N` (18) or after `({@damage …})` (16); none in
+traits, bonus actions, reactions or riders, and the other types after a dice tag are Poison (6).
+Save DCs are only `{@actSave <ab>} {@dc N}` (3, all Pact of the Chain forms: Pseudodragon con 12,
+Sprite cha 10, Quasit wis 10), never plain "DC N". The one other `{@dc}` is a CHECK, not a save
+(Raven trait Mimicry, "{@dc 10} Wisdom (Insight)"), so a save DC is matched only right after
+`{@actSave}`. No `spellcasting` block carries a DC. Forms with both a B/P/S attack and a save DC:
+Pseudodragon, Sprite, Quasit (XMM).
+
 ### Feats — čím pole `senses` a `speed` NEJSOU
 
 Žádný ze 128 featů nemá pole `speed`. Pole `senses` má jen 3 featy

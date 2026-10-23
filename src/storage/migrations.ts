@@ -584,6 +584,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 62 adds the 'invocation' grantedFeats origin (B-4b, D376). A version-61 character has none — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 62 }),
 	},
+	{
+		from: 62,
+		to: 63,
+		/* 63 adds CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380). A version-62 familiar has neither — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 63 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [
