@@ -5502,3 +5502,9 @@ d) 1 Origin feat volně ze stejného seznamu jako Human Versatile (kategorie O, 
 e) Ability: hráč vybere 3 ability, pak +2/+1 nebo +1/+1/+1 mezi nimi.
 f) Startovní vybavení jen 50 GP. Žádné jazyky.
 g) Uložení: `CharacterBackground` se `source: 'custom'`, jménem, skills, nástrojem, `originFeatOverride` = zvolený feat a `abilityChoices` (trojice). Schema 64.
+
+## D384 — Úpravy vlastního backgroundu po review (F-CB1)
+
+a) Odškrtnutí skillu vlastního backgroundu smaže Expertise na tomto skillu; ostatní Expertise zůstanou.
+b) Jméno vlastního backgroundu se při uložení ořízne (trim); při psaní se nemění.
+c) Jméno vlastního backgroundu nespouští přepočet max HP.

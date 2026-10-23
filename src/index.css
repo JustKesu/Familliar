@@ -3434,7 +3434,13 @@ label.wizard__field {
 .background-picker__custom .class-skill-picker__list,
 .tool-proficiency-picker__list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+}
+
+.background-picker__custom .class-skill-picker__list > *,
+.tool-proficiency-picker__list > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .background-picker__ability-bonus {

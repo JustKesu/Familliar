@@ -1446,7 +1446,10 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					...state.data,
 					backgroundChoice: action.choice,
 					backgroundToolProficiency: sameBackground ? state.data.backgroundToolProficiency : null,
-					expertiseSkills: sameBackground ? state.data.expertiseSkills : [],
+					// D384: unchecking a custom skill drops expertise on it (the picker never offers a skill another source grants).
+						expertiseSkills: sameBackground
+							? state.data.expertiseSkills.filter((skill) => !(prev.custom?.skills ?? []).some((old) => old === skill && !(action.choice?.custom?.skills ?? []).includes(old)))
+							: [],
 					grantedFeats: sameBackground ? state.data.grantedFeats : state.data.grantedFeats.filter((feat) => feat.origin !== 'background'),
 					backgroundOriginFeatOverride: sameBackground ? state.data.backgroundOriginFeatOverride : null,
 					startingEquipment: sameBackground
@@ -1694,7 +1697,7 @@ export function saveCharacter(
 	const background: CharacterBackground | undefined =
 		data.backgroundChoice && backgroundSkillProficiencies && data.backgroundToolProficiency
 			? {
-					name: data.backgroundChoice.name,
+					name: data.backgroundChoice.name.trim(),
 					source: data.backgroundChoice.source,
 					skillProficiencies: backgroundSkillProficiencies,
 					toolProficiency: data.backgroundToolProficiency,

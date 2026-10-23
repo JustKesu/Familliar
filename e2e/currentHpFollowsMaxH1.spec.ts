@@ -36,11 +36,6 @@ async function openInventory(page: Page): Promise<Locator> {
   return page.getByRole('dialog', { name: 'Manage Inventory' })
 }
 
-/* "Stays" can only be seen after the follow-up write would have landed; the maximum is shown first, then a short settle. */
-async function settle(page: Page): Promise<void> {
-  await page.waitForTimeout(500)
-}
-
 test('H-1 a: at full HP, Tough taken in Manage Feats raises current with the maximum', async ({ page }) => {
   await open(page, fighter('h1-a', { currentHp: 25 }))
   await expect.poll(() => hpPair(page)).toBe('25/25')
@@ -72,8 +67,7 @@ test('H-1 c: at 0 HP a higher maximum leaves current at 0', async ({ page }) => 
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'Hit points details' }).first().click()
   await expect(page.locator('.drawer__value').first()).toHaveText('0 / 31')
-  await settle(page)
-  expect(await storedCurrentHp(page)).toBe(0)
+  await expect.poll(() => storedCurrentHp(page)).toBe(0)
 })
 
 test('H-1 d: setting Max HP override by hand does not move current', async ({ page }) => {
@@ -85,6 +79,5 @@ test('H-1 d: setting Max HP override by hand does not move current', async ({ pa
   await override.press('Enter')
   await page.keyboard.press('Escape')
   await expect.poll(() => hpPair(page)).toBe('20/40')
-  await settle(page)
   expect(await storedCurrentHp(page)).toBe(20)
 })

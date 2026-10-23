@@ -1429,7 +1429,7 @@ export function CharacterWizard({
 		draftCharacterForMaxHp.classes.map(({ className, classSource, level }) => [className, classSource, level]),
 		draftCharacterForMaxHp.levelOrder,
 		draftCharacterForMaxHp.species?.name,
-		draftCharacterForMaxHp.background?.name,
+		draftCharacterForMaxHp.background?.source === CUSTOM_BACKGROUND_SOURCE ? '' : draftCharacterForMaxHp.background?.name, // D384: a typed custom name never reaches max HP
 		draftCharacterForMaxHp.background?.source,
 		draftCharacterForMaxHp.featAsiChoices,
 		draftCharacterForMaxHp.abilityScores,

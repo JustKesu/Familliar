@@ -88,7 +88,7 @@ export function HitPointsPicker({
 	}, [
 		character.classes.map((c) => `${c.className}|${c.classSource}|${c.level}`).join(),
 		character.species?.name,
-		character.background?.name,
+		character.background?.source === 'custom' ? '' : character.background?.name,
 		character.background?.source,
 		character.featAsiChoices,
 		character.inventory,

@@ -1373,6 +1373,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   by CB-2 a–d in `e2e/customBackgroundCB1.spec.ts`. CSS: `label.wizard__field` stacks label over input (Character name,
   Background name); custom skill list and tool lists in an auto-fill grid; ability bonus framed; optional-feature copy
   buttons spaced.
+- F-CB1 (D384): `setBackgroundChoice` drops `expertiseSkills` on a custom skill that was unchecked; the custom name is
+  trimmed in `buildCharacter` (wizardState); max HP key (`CharacterWizard`, `HitPointsPicker`) ignores the custom name;
+  custom skill/tool grids use `minmax(min(100%, 240px), 1fr)` with wrapping labels. H-1 e2e no longer waits a fixed
+  500 ms. `e2e/customBackgroundCB1.spec.ts` e, f.
 
 ## Dočasné scaffolding
 

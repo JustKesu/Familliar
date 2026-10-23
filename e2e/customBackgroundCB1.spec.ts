@@ -16,9 +16,9 @@ async function chooseCustom(page: Page): Promise<void> {
   await page.getByRole('radio', { name: 'Custom background' }).check()
 }
 
-async function fillCustom(page: Page): Promise<void> {
+async function fillCustom(page: Page, name = 'Temple Scholar'): Promise<void> {
   await expect(nextButton(page)).toBeDisabled()
-  await nameField(page).fill('Temple Scholar')
+  await nameField(page).fill(name)
   await expect(nextButton(page)).toBeDisabled()
   await skills(page).getByRole('checkbox', { name: 'History', exact: true }).check()
   await skills(page).getByRole('checkbox', { name: 'Insight', exact: true }).check()
@@ -35,9 +35,9 @@ async function fillCustom(page: Page): Promise<void> {
   await expect(nextButton(page)).toBeEnabled()
 }
 
-async function createScholar(page: Page): Promise<void> {
+async function createScholar(page: Page, name?: string): Promise<void> {
   await chooseCustom(page)
-  await fillCustom(page)
+  await fillCustom(page, name)
   await finishFromBackground(page, OPTIONS)
 }
 
@@ -143,6 +143,54 @@ test('CB-2 b: Edit from Acolyte to a custom background gates Next and saves it',
   await fillCustom(page)
   await saveEdit(page)
   await expectScholarSheet(page)
+})
+
+/** The app only creates Fighters (see expertiseE1.spec.ts), so the saved Scholar becomes a level-1 Rogue with Expertise in History and Perception. */
+async function turnIntoRogue(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const key = 'familliar:characters'
+    const all = JSON.parse(localStorage.getItem(key) ?? '[]')
+    for (const character of all) {
+      character.classes = [{ className: 'Rogue', classSource: 'XPHB', subclass: null, level: 1 }]
+      delete character.fightingStyles
+      character.masteries = [{ name: 'Dagger' }, { name: 'Shortsword' }]
+      character.classSkills = ['perception', 'acrobatics', 'deception', 'athletics']
+      character.languages = [...character.languages, { name: 'Draconic', source: 'XPHB', grantedBy: 'thievesCant' }]
+      character.expertiseSkills = [{ name: 'history' }, { name: 'perception' }]
+    }
+    localStorage.setItem(key, JSON.stringify(all))
+  })
+  await page.reload()
+}
+
+const skillStatus = (page: Page, skill: string): Promise<string | null> =>
+  page.locator('.sheet__skills .sheet__row', { hasText: skill }).locator('.sheet__prof-mark').getAttribute('data-status')
+
+test('CB-1 e: unchecking a custom skill drops its Expertise; Next waits for a replacement', async ({ page }) => {
+  await createScholar(page)
+  await turnIntoRogue(page)
+  await expect.poll(() => skillStatus(page, 'History')).toBe('expertise')
+  await editToBackground(page)
+  await skills(page).getByRole('checkbox', { name: 'History', exact: true }).uncheck()
+  await skills(page).getByRole('checkbox', { name: 'Arcana', exact: true }).check()
+  await expect(nextButton(page)).toBeEnabled()
+  await next(page)
+  await expectStep(page, 'Expertise')
+  await expect(page.getByRole('checkbox', { name: /^History/ })).toHaveCount(0)
+  await expect(page.getByRole('checkbox', { name: /^Perception/ })).toBeChecked()
+  await expect(nextButton(page)).toBeDisabled()
+  await page.getByRole('checkbox', { name: /^Arcana/ }).check()
+  await expect(nextButton(page)).toBeEnabled()
+  await saveEdit(page)
+  await expect.poll(() => skillStatus(page, 'History')).not.toMatch(/expertise|proficient/)
+  await expect.poll(() => skillStatus(page, 'Arcana')).toBe('expertise')
+})
+
+test('CB-1 f: the custom background name is trimmed when saved', async ({ page }) => {
+  await createScholar(page, '  Temple Scholar  ')
+  await expectScholarSheet(page)
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('familliar:characters') ?? '[]')[0].background.name)
+  expect(stored).toBe('Temple Scholar')
 })
 
 test('CB-2 d: levelling the custom-background Fighter 1 → 2 keeps the background', async ({ page }) => {
