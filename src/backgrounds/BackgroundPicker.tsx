@@ -1,5 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { loadBackgrounds, type BackgroundEntry } from './backgroundData'
+import { resolveBackgroundEntry } from './customBackground'
+import { ABILITIES } from '../abilities/abilityScores'
+import { CUSTOM_BACKGROUND_SOURCE } from '../storage/character'
 import type { StartingEquipmentElement } from '../inventory/startingEquipmentData'
 import {
 	abilityBonusDistributionToMap,
@@ -7,7 +10,7 @@ import {
 	type AbilityBonusDistribution,
 } from './abilityBonus'
 import type { Ability } from '../abilities/abilityScores'
-import { skillLabel } from '../calculation/skills'
+import { SKILLS, skillLabel } from '../calculation/skills'
 import { Markup } from '../markup'
 import type { DisabledSkill } from '../classSkills/ClassSkillPicker'
 import { SearchableOptionList, type SearchableOption } from '../pickers/SearchableOptionList'
@@ -54,10 +57,92 @@ export interface BackgroundChoice {
 	 * first touches the chooser.
 	 */
 	abilityBonusDistribution: AbilityBonusDistribution | null
+	/** D383: only when `source` is 'custom' — the player's own skills and the three abilities the bonus goes among. */
+	custom?: CustomBackgroundPicks
 }
+
+export interface CustomBackgroundPicks {
+	skills: string[]
+	abilityChoices: Ability[]
+}
+
+const CUSTOM_KEY = CUSTOM_BACKGROUND_SOURCE
 
 function backgroundKey(entry: BackgroundEntry): string {
 	return `${entry.name}|${entry.source}`
+}
+
+function choiceKey(choice: BackgroundChoice): string {
+	return choice.source === CUSTOM_BACKGROUND_SOURCE ? CUSTOM_KEY : `${choice.name}|${choice.source}`
+}
+
+/** D383: name, two free skills (D18: the class's and species' are disabled) and the three abilities. */
+function CustomBackgroundFields({
+	value,
+	picks,
+	disabledSkills,
+	onChange,
+}: {
+	value: BackgroundChoice
+	picks: CustomBackgroundPicks
+	disabledSkills: DisabledSkill[]
+	onChange: (choice: BackgroundChoice) => void
+}): ReactNode {
+	const toggled = <T,>(list: T[], item: T): T[] => (list.includes(item) ? list.filter((other) => other !== item) : [...list, item])
+	return (
+		<div className="background-picker__custom">
+			<label>
+				Background name{' '}
+				<input type="text" value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} />
+			</label>
+			<fieldset aria-label="Custom background skills">
+				<legend>Skill proficiencies (choose 2)</legend>
+				<ul className="class-skill-picker__list">
+					{SKILLS.map((skill) => {
+						const disabled = findDisabled(skill, disabledSkills)
+						const checked = picks.skills.includes(skill)
+						return (
+							<li key={skill} className="class-skill-picker__item">
+								<label>
+									<input
+										type="checkbox"
+										checked={checked}
+										disabled={Boolean(disabled) || (!checked && picks.skills.length >= 2)}
+										onChange={() => onChange({ ...value, custom: { ...picks, skills: toggled(picks.skills, skill) } })}
+									/>
+									{skillLabel(skill)}
+									{disabled && <span className="class-skill-picker__disabled-reason"> (already granted by {disabled.source})</span>}
+								</label>
+							</li>
+						)
+					})}
+				</ul>
+			</fieldset>
+			<fieldset aria-label="Custom background abilities">
+				<legend>Abilities for the bonus (choose 3)</legend>
+				{ABILITIES.map((ability) => {
+					const checked = picks.abilityChoices.includes(ability)
+					return (
+						<label key={ability}>
+							<input
+								type="checkbox"
+								checked={checked}
+								disabled={!checked && picks.abilityChoices.length >= 3}
+								// A changed trio invalidates the distribution made among the old one.
+								onChange={() =>
+									onChange({ ...value, abilityBonus: {}, abilityBonusDistribution: null, custom: { ...picks, abilityChoices: toggled(picks.abilityChoices, ability) } })
+								}
+							/>
+							{ABILITY_LABELS[ability]}
+						</label>
+					)
+				})}
+			</fieldset>
+			<p>
+				<strong>Starting equipment:</strong> 50 gp
+			</p>
+		</div>
+	)
 }
 
 function findDisabled(skill: string, disabledSkills: DisabledSkill[]): DisabledSkill | undefined {
@@ -263,11 +348,16 @@ export function BackgroundPicker({
 	}
 
 	const { backgrounds } = state
-	const selectedKey = value ? `${value.name}|${value.source}` : ''
-	const selected = backgrounds.find((b) => backgroundKey(b) === selectedKey)
+	const selectedKey = value ? choiceKey(value) : ''
+	const selected = resolveBackgroundEntry(value, backgrounds)
+	const custom = value?.source === CUSTOM_BACKGROUND_SOURCE ? (value.custom ?? { skills: [], abilityChoices: [] }) : null
 
 	function handleSelect(nextKey: string): void {
 		if (nextKey === selectedKey) return
+		if (nextKey === CUSTOM_KEY) {
+			onChange({ name: '', source: CUSTOM_BACKGROUND_SOURCE, abilityBonus: {}, abilityBonusDistribution: null, custom: { skills: [], abilityChoices: [] } })
+			return
+		}
 		const entry = backgrounds.find((b) => backgroundKey(b) === nextKey)
 		if (!entry) return
 		// A fresh background starts with the distribution untouched; the wizard's
@@ -278,19 +368,22 @@ export function BackgroundPicker({
 	function handleDistribution(next: AbilityBonusDistribution): void {
 		if (!selected || !value) return
 		onChange({
-			name: value.name,
-			source: value.source,
+			...value,
 			abilityBonusDistribution: next,
 			abilityBonus: abilityBonusDistributionToMap(next, selected.abilityChoices),
 		})
 	}
 
-	const options: SearchableOption[] = backgrounds.map((entry) => ({
-		key: backgroundKey(entry),
-		name: entry.name,
-		label: `${entry.name} (${entry.source})`,
-		selected: backgroundKey(entry) === selectedKey,
-	}))
+	const options: SearchableOption[] = [
+		...backgrounds.map((entry) => ({
+			key: backgroundKey(entry),
+			name: entry.name,
+			label: `${entry.name} (${entry.source})`,
+			selected: backgroundKey(entry) === selectedKey,
+		})),
+		{ key: CUSTOM_KEY, name: 'Custom background', selected: selectedKey === CUSTOM_KEY },
+	]
+	const trioChosen = selected !== undefined && new Set(selected.abilityChoices).size === 3
 
 	return (
 		<div className="background-picker">
@@ -308,13 +401,19 @@ export function BackgroundPicker({
 
 			{selected && (
 				<>
-					<BackgroundGrants background={selected} disabledSkills={disabledSkills} />
-					<AbilityBonusChooser
-						offered={selected.abilityChoices}
-						distribution={value?.abilityBonusDistribution ?? null}
-						onChange={handleDistribution}
-					/>
-					{!isAbilityBonusDistributionComplete(value?.abilityBonusDistribution ?? null, selected.abilityChoices) && (
+					{value && custom ? (
+						<CustomBackgroundFields value={value} picks={custom} disabledSkills={disabledSkills} onChange={onChange} />
+					) : (
+						<BackgroundGrants background={selected} disabledSkills={disabledSkills} />
+					)}
+					{trioChosen && (
+						<AbilityBonusChooser
+							offered={selected.abilityChoices}
+							distribution={value?.abilityBonusDistribution ?? null}
+							onChange={handleDistribution}
+						/>
+					)}
+					{trioChosen && !isAbilityBonusDistributionComplete(value?.abilityBonusDistribution ?? null, selected.abilityChoices) && (
 						<p className="background-picker__hint">Choose how to distribute the ability bonus.</p>
 					)}
 				</>

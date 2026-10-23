@@ -23,6 +23,9 @@ export interface CharacterSpecies {
 	source: string
 }
 
+/** D383: the `source` of a background the player built instead of taking one from backgrounds.json. */
+export const CUSTOM_BACKGROUND_SOURCE = 'custom'
+
 /** Identifies a backgrounds.json entry unambiguously — enough to look it back up later. */
 export interface CharacterBackground {
 	name: string
@@ -44,6 +47,8 @@ export interface CharacterBackground {
 	toolProficiency: string
 	/** D205: the Dark Gift feat the player took instead of the background's origin feat; featInstances reads it in place of the derived feat. */
 	originFeatOverride?: { name: string; source: string }
+	/** D383: only on a custom background (source 'custom') — the three abilities its +2/+1 or +1/+1/+1 is chosen among. */
+	abilityChoices?: [Ability, Ability, Ability]
 }
 
 /**
@@ -1113,7 +1118,7 @@ export interface ConcentrationRef {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 63 for CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380); 62 for the 'invocation' grantedFeats origin (B-4b, D376); 61 for Character.kenseiWeapons and .elegantCourtierSave (F-19, D344); 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 64 for CharacterBackground.abilityChoices (CB-1, D383); 63 for CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380); 62 for the 'invocation' grantedFeats origin (B-4b, D376); 61 for Character.kenseiWeapons and .elegantCourtierSave (F-19, D344); 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1137,7 +1142,7 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 63
+export const CURRENT_SCHEMA_VERSION = 64
 
 export interface CharacterLevelOrderEntry {
 	className: string

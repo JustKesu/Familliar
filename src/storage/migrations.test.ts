@@ -771,7 +771,7 @@ describe('the migration chain (D69)', () => {
 		it('adds nothing and changes nothing else', () => {
 			const before = { schemaVersion: 60, id: '1', name: 'Aria', classes: [{ className: 'Monk', classSource: 'XPHB', subclass: 'Way of the Kensei', level: 3 }] }
 			const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
-			expect(migrated).toEqual({ ...before, schemaVersion: 63 })
+			expect(migrated).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 			expect('kenseiWeapons' in migrated).toBe(false)
 			expect('elegantCourtierSave' in migrated).toBe(false)
 		})
@@ -787,7 +787,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 2 }],
 				grantedFeats: [{ origin: 'manual', id: 'm', name: 'Alert', source: 'XPHB' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 63 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
 		})
 	})
 
@@ -801,11 +801,25 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 6 }],
 				familiar: { name: 'Pseudodragon', source: 'XMM', currentHp: 3 },
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 63 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: CURRENT_SCHEMA_VERSION })
+		})
+	})
+
+	/* CB-1 (D383): CharacterBackground.abilityChoices is new and optional, so the step only tags. */
+	describe('version 63 to 64', () => {
+		it('adds nothing and changes nothing else', () => {
+			const before = {
+				schemaVersion: 63,
+				id: '1',
+				name: 'Aria',
+				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
+				background: { name: 'Acolyte', source: 'XPHB', skillProficiencies: ['insight', 'religion'], toolProficiency: "Calligrapher's Supplies" },
+			}
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 64 })
 		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(63)
+			expect(CURRENT_SCHEMA_VERSION).toBe(64)
 		})
 	})
 

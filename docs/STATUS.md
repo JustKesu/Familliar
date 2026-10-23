@@ -1362,6 +1362,13 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `chosenOptionalFeatureOptions` collapses copies into one option with `copies`; Features tab shows "(xN)". Review card and
   "Options added" use `countedNames`. validate refuses a repeated non-repeatable EI. No schema change. Item copies are not
   in the "(xN)" (they stay under "From items"). `e2e/repeatableInvocationsI1.spec.ts` a–d.
+- CB-1 (D383): custom background in the wizard. Schema 64: `CharacterBackground.abilityChoices` (only with `source:
+  'custom'`, `CUSTOM_BACKGROUND_SOURCE`); validate demands `originFeatOverride` and 3 distinct abilities for 'custom'.
+  `BackgroundChoice.custom {skills, abilityChoices}`; `resolveBackgroundEntry` (src/backgrounds/customBackground.ts)
+  replaces both wizard lookups, so draft, save, D18, tool picker, feat gate and equipment take a custom background as a
+  BackgroundEntry (tool category `anyPhbTool` = 37 XPHB tools, `originFeat: null`, equipment 50 gp). BackgroundPicker:
+  "Custom background" option with name, 2 skills, 3 abilities; OriginFeatSwapPicker `custom` lists Origin feats
+  (`originFeatsOf`, shared with the species feat). Edit seeds the picks back. `e2e/customBackgroundCB1.spec.ts` a–d.
 
 ## Dočasné scaffolding
 

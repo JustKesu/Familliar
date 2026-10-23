@@ -1530,6 +1530,12 @@ items.json type `T` (rarity none) is exactly 6 items: Disguise Kit, Forgery Kit,
 Herbalism Kit, Navigator's Tools, Poisoner's Kit, Thieves' Tools — with AT, GS
 and mundane INS the pool of an untyped `{any:1}` tool pick.
 
+Mundane INS (rarity none) is 13 items, not 10: XPHB 10 plus 3 FRHoF instruments
+(names not printed), which `anyMusicalInstrument` and `{any:1}` picks currently
+offer too. The PHB 2024 tool list is the XPHB items only: AT 17, GS 4,
+INS 10, T 6 = 37 distinct names, all XPHB — the pool of a custom background's
+tool (D383). Checked in task CB-1 (2026-10-23, `scripts/cb1-tools.js`, consumed).
+
 Found in task B6c (2026-09-24, `scripts/investigate-b6c-skill-grants.js`, consumed).
 
 ### Species `size` — array of letters, a choice when it has two

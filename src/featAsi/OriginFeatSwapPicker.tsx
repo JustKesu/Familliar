@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { featCampaignNote, loadFeats, type FeatEntry } from './featAsiData'
 import { compareText } from '../text/compareText'
 import type { FeatRef } from './featInstances'
+import { originFeatsOf } from './speciesOriginFeat'
 
 /**
  * D205: "whenever you would gain a feat from the Origin category, you can instead
@@ -12,10 +13,13 @@ export function OriginFeatSwapPicker({
 	namedFeat,
 	value,
 	onChange,
+	custom = false,
 }: {
 	namedFeat: FeatRef | null
 	value: FeatRef | null
 	onChange: (feat: FeatRef | null) => void
+	/** D383: a custom background picks any Origin feat instead of a Dark Gift. */
+	custom?: boolean
 }): ReactNode {
 	const [darkGifts, setDarkGifts] = useState<FeatEntry[] | null>(null)
 	const [error, setError] = useState<string | null>(null)
@@ -25,7 +29,7 @@ export function OriginFeatSwapPicker({
 		let cancelled = false
 		loadFeats()
 			.then((feats) => {
-				if (!cancelled) setDarkGifts(feats.filter((feat) => feat.category === 'DG').sort((a, b) => compareText(a.name, b.name)))
+				if (!cancelled) setDarkGifts(custom ? originFeatsOf(feats) : feats.filter((feat) => feat.category === 'DG').sort((a, b) => compareText(a.name, b.name)))
 			})
 			.catch((reason: unknown) => {
 				if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason))
@@ -33,13 +37,14 @@ export function OriginFeatSwapPicker({
 		return () => {
 			cancelled = true
 		}
-	}, [])
+	}, [custom])
 
 	const showList = namedFeat === null || wantsDarkGift
+	const kind = custom ? 'Origin' : 'Dark Gift'
 
 	return (
 		<fieldset className="feat-asi-picker__level">
-			<legend>{namedFeat ? 'Origin feat' : 'Origin feat: choose a Dark Gift feat'}</legend>
+			<legend>{namedFeat ? 'Origin feat' : `Origin feat: choose ${custom ? 'an Origin' : 'a Dark Gift'} feat`}</legend>
 			{namedFeat && (
 				<>
 					<label>
@@ -60,9 +65,9 @@ export function OriginFeatSwapPicker({
 					</label>
 				</>
 			)}
-			{showList && error !== null && <p className="error">Could not load the Dark Gift feats: {error}</p>}
+			{showList && error !== null && <p className="error">Could not load the {kind} feats: {error}</p>}
 			{showList && darkGifts && (
-				<ul className="feat-asi-picker__feats" aria-label="Dark Gift feats">
+				<ul className="feat-asi-picker__feats" aria-label={`${kind} feats`}>
 					{darkGifts.map((feat) => {
 						const campaignNote = featCampaignNote(feat)
 						return (
@@ -74,7 +79,7 @@ export function OriginFeatSwapPicker({
 										checked={value?.name === feat.name && value.source === feat.source}
 										onChange={() => onChange({ name: feat.name, source: feat.source })}
 									/>
-									{feat.name} — Dark Gift
+									{custom ? feat.name : `${feat.name} — Dark Gift`}
 								</label>
 								{campaignNote && <p className="feat-asi-picker__note">{campaignNote}</p>}
 							</li>

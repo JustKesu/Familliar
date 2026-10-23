@@ -590,6 +590,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 63 adds CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380). A version-62 familiar has neither — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 63 }),
 	},
+	{
+		from: 63,
+		to: 64,
+		/* 64 adds CharacterBackground.abilityChoices for a custom background (CB-1, D383). A version-63 character has none — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 64 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

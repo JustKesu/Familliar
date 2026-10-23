@@ -22,6 +22,7 @@
 
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { compareText } from '../text/compareText'
+import { ANY_PHB_TOOL } from '../backgrounds/customBackground'
 
 /** 'anyOtherTool' is not a data key: with the other three it makes up a species' `{any: 1}` tool pick (D177). */
 export type ToolCategory = 'anyArtisansTool' | 'anyMusicalInstrument' | 'anyGamingSet' | 'anyOtherTool'
@@ -56,10 +57,16 @@ export function extractToolCategoryOptions(parsedItems: unknown, category: strin
 	if (!Array.isArray(parsedItems)) {
 		throw new Error('items.json: expected a top-level array.')
 	}
-	if (!isToolCategory(category)) {
+	// D383: a custom background's tool is any tool of the PHB 2024 list — XPHB only, which leaves out FRHoF's 3 instruments (DATA.md).
+	const filter =
+		category === ANY_PHB_TOOL
+			? (item: Record<string, unknown>) => item['source'] === 'XPHB' && Object.values(CATEGORY_FILTERS).some((categoryFilter) => categoryFilter(item))
+			: isToolCategory(category)
+				? CATEGORY_FILTERS[category]
+				: null
+	if (!filter) {
 		throw new Error(`toolProficiencies: unrecognised category "${category}"`)
 	}
-	const filter = CATEGORY_FILTERS[category]
 	const names = parsedItems
 		.filter((entry): entry is Record<string, unknown> => isRecord(entry) && typeof entry['name'] === 'string')
 		.filter(filter)

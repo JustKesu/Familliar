@@ -2,7 +2,49 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { extractBackgrounds } from './backgroundData'
+import { ANY_PHB_TOOL, isCustomBackgroundComplete, resolveBackgroundEntry } from './customBackground'
 import { buildItemIndex, type ItemIndex } from '../inventory/startingEquipmentData'
+import { extractToolCategoryOptions } from '../toolProficiencies/toolProficiencyData'
+import { describeBackgroundError } from '../storage/validate'
+
+describe('custom background (D383)', () => {
+	const choice = {
+		name: 'Temple Scholar',
+		source: 'custom',
+		abilityBonus: {},
+		abilityBonusDistribution: null,
+		custom: { skills: ['history', 'insight'], abilityChoices: ['intelligence', 'wisdom', 'charisma'] as const },
+	}
+	const picks = (skills: string[], abilityChoices: readonly string[]) => ({ ...choice, custom: { skills, abilityChoices: [...abilityChoices] as never } })
+
+	it('resolves to an entry with the picks, any tool, no fixed feat and 50 gp', () => {
+		const entry = resolveBackgroundEntry(picks(choice.custom.skills, choice.custom.abilityChoices), [])
+		expect(entry).toMatchObject({ name: 'Temple Scholar', source: 'custom', skillProficiencies: ['history', 'insight'], originFeat: null })
+		expect(entry?.toolProficiency).toBe(resolveBackgroundEntry(choice as never, [])?.toolProficiency)
+		expect(entry?.startingEquipment.options[0]?.elements).toEqual([{ kind: 'coins', copper: 5000, label: '50 gp' }])
+	})
+
+	it('is complete only with a name, two skills and three abilities', () => {
+		expect(isCustomBackgroundComplete(picks(['history', 'insight'], ['intelligence', 'wisdom', 'charisma']))).toBe(true)
+		expect(isCustomBackgroundComplete({ ...picks(['history', 'insight'], ['intelligence', 'wisdom', 'charisma']), name: ' ' })).toBe(false)
+		expect(isCustomBackgroundComplete(picks(['history'], ['intelligence', 'wisdom', 'charisma']))).toBe(false)
+		expect(isCustomBackgroundComplete(picks(['history', 'insight'], ['intelligence', 'wisdom']))).toBe(false)
+	})
+
+	it('validate demands the feat and three distinct abilities', () => {
+		const stored = { name: 'Temple Scholar', source: 'custom', skillProficiencies: ['history', 'insight'], toolProficiency: "Thieves' Tools", originFeatOverride: { name: 'Alert', source: 'XPHB' }, abilityChoices: ['intelligence', 'wisdom', 'charisma'] }
+		expect(describeBackgroundError(stored)).toBeNull()
+		expect(describeBackgroundError({ ...stored, originFeatOverride: undefined })).toMatch(/originFeatOverride is required/)
+		expect(describeBackgroundError({ ...stored, abilityChoices: ['wisdom', 'wisdom', 'charisma'] })).toMatch(/3 distinct/)
+		expect(describeBackgroundError({ ...stored, source: 'XPHB' })).toMatch(/only allowed on a custom/)
+	})
+
+	it('offers the 37 PHB 2024 tools (DATA.md)', () => {
+		const tools = extractToolCategoryOptions(JSON.parse(readFileSync(join(__dirname, '..', '..', 'data', 'items.json'), 'utf8')), ANY_PHB_TOOL)
+		expect(tools).toHaveLength(37)
+		expect(tools).toEqual(expect.arrayContaining(["Thieves' Tools", 'Herbalism Kit', "Smith's Tools", 'Lute', 'Dice Set']))
+	})
+})
 
 function loadRealBackgrounds(): unknown {
 	const raw = readFileSync(join(__dirname, '..', '..', 'data', 'backgrounds.json'), 'utf8')

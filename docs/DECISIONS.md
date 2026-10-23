@@ -5492,3 +5492,13 @@ d) Každá kopie zabírá jeden slot z Invocations Known.
 e) V pickeru držená opakovatelná invokace nabízí vzít ji znovu, dokud jsou volné sloty; kopie se odebírá/vyměňuje po
    jedné. Zobrazení „Název (xN)“ v pickeru, na sheetu, v Review „Class options“ a v level up „Options added“.
 f) Kopie z vlastního předmětu se přičítají ke kopiím z třídy (jako D372/D373).
+
+## D383 — Vlastní background ve wizardu (CB-1)
+
+a) Krok Background nabízí „Custom background“ vedle knižních. Jméno povinné, neprázdné, smí se shodovat s knižním. Bez popisu.
+b) 2 skills volně; skills, které postava už má od třídy nebo druhu, jsou zakázané (jako D18).
+c) 1 nástroj volně ze seznamu nástrojů PHB 2024: artisan's tools, hudební nástroje, gaming sets a ostatní (Thieves' Tools, Herbalism Kit…).
+d) 1 Origin feat volně ze stejného seznamu jako Human Versatile (kategorie O, bez Dark Gifts, D272); sub-choices jako u feat každého backgroundu.
+e) Ability: hráč vybere 3 ability, pak +2/+1 nebo +1/+1/+1 mezi nimi.
+f) Startovní vybavení jen 50 GP. Žádné jazyky.
+g) Uložení: `CharacterBackground` se `source: 'custom'`, jménem, skills, nástrojem, `originFeatOverride` = zvolený feat a `abilityChoices` (trojice). Schema 64.

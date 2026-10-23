@@ -40,6 +40,11 @@ export function speciesOriginFeatProblem(feat: FeatEntry, held: readonly Granted
 	return { text: `${feat.name} is already taken (${taker.origin}) — choose another feat.`, blocking: true }
 }
 
+/** D272: the Origin feats a free pick offers — category "O" only, so no Dark Gift. Also a custom background's feat (D383). */
+export function originFeatsOf(feats: readonly FeatEntry[]): FeatEntry[] {
+	return feats.filter((feat) => feat.category === 'O').sort((a, b) => compareText(a.name, b.name))
+}
+
 export type SpeciesOriginFeatLoad =
 	| { status: 'loading' }
 	| { status: 'error'; message: string }
@@ -57,7 +62,7 @@ export function useSpeciesOriginFeat(species: FeatRef | null): SpeciesOriginFeat
 		loadSpeciesGrantsOriginFeat(species)
 			.then(async (grants) => {
 				const feats = grants ? await loadFeats() : []
-				settle({ status: 'ready', grants, originFeats: feats.filter((feat) => feat.category === 'O').sort((a, b) => compareText(a.name, b.name)) })
+				settle({ status: 'ready', grants, originFeats: originFeatsOf(feats) })
 			})
 			.catch((error: unknown) => settle({ status: 'error', message: error instanceof Error ? error.message : String(error) }))
 		return () => {

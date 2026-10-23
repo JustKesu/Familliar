@@ -39,7 +39,7 @@ import type {
 	WeaponGrip,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
-import { CURRENT_SCHEMA_VERSION, isConsistentLevelOrder, isRepeatableOption, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
+import { CURRENT_SCHEMA_VERSION, CUSTOM_BACKGROUND_SOURCE, isConsistentLevelOrder, isRepeatableOption, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
 import { canMigrateToCurrent } from './migrations'
 import type { StoredCharacter } from './wireFormat'
 
@@ -185,6 +185,20 @@ export function describeBackgroundError(value: unknown): string | null {
 	if (override !== undefined && (!isRecord(override) || !isNonEmptyString(override['name']) || !isNonEmptyString(override['source']))) {
 		return `background.originFeatOverride must be an object with a name and a source`
 	}
+	const abilityChoices = value['abilityChoices']
+	if (value['source'] === CUSTOM_BACKGROUND_SOURCE) {
+		if (override === undefined) return `background.originFeatOverride is required for a custom background`
+		if (
+			!Array.isArray(abilityChoices) ||
+			abilityChoices.length !== 3 ||
+			new Set(abilityChoices).size !== 3 ||
+			!abilityChoices.every((ability) => ABILITIES.includes(ability as Ability))
+		) {
+			return `background.abilityChoices must be 3 distinct abilities for a custom background`
+		}
+	} else if (abilityChoices !== undefined) {
+		return `background.abilityChoices is only allowed on a custom background`
+	}
 	return null
 }
 
@@ -197,6 +211,7 @@ function toCharacterBackground(value: Record<string, unknown>): CharacterBackgro
 		skillProficiencies,
 		toolProficiency: value['toolProficiency'] as string,
 		...(override ? { originFeatOverride: { name: override['name'] as string, source: override['source'] as string } } : {}),
+		...(Array.isArray(value['abilityChoices']) ? { abilityChoices: [...value['abilityChoices']] as [Ability, Ability, Ability] } : {}),
 	}
 }
 

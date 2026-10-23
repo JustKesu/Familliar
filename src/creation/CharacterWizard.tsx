@@ -48,6 +48,7 @@ import { ExpertisePicker } from '../expertise/ExpertisePicker'
 import { expertisePoolOf, featSkillSources } from './expertisePool'
 import { loadExpertiseEligibility, type ExpertiseEligibility } from '../expertise/expertiseData'
 import { loadBackgrounds, type BackgroundEntry } from '../backgrounds/backgroundData'
+import { CUSTOM_BACKGROUND_EQUIPMENT, resolveBackgroundEntry } from '../backgrounds/customBackground'
 import { loadSubclassLevelFor, loadSubclassesFor } from '../subclass/subclassData'
 import { loadMasteryCountFor } from '../masteries/masteryData'
 import { loadFightingStyleGrantLevel } from '../fightingStyle/fightingStyleData'
@@ -99,7 +100,7 @@ import { computeSpellCounts } from '../calculation/spellCounts'
 import { computeSpellSlots } from '../calculation/spellSlots'
 import type { ClassSpellCountData } from '../calculation/spellCounts'
 import { hasOwnSpellcasting, type ClassSpellSlotsData } from '../calculation/spellSlots'
-import { choiceNames, type Character, type CharacterBackground, type CharacterClass, type CharacterOptionalFeatureChoice } from '../storage/character'
+import { choiceNames, CUSTOM_BACKGROUND_SOURCE, type Character, type CharacterBackground, type CharacterClass, type CharacterOptionalFeatureChoice } from '../storage/character'
 import type { CharacterStore } from '../storage/characterStore'
 import type { LevelGains } from '../levelUp/levelGains'
 import { levelUpStepConditions, MAX_CHARACTER_LEVEL, unknownLevelUpSteps } from '../levelUp/levelUpSteps'
@@ -459,9 +460,7 @@ export function CharacterWizard({
 	const derivedBackgroundFeat = backgroundOriginFeatFrom(originFeatLinks ?? [], state.data.backgroundChoice)
 	const backgroundFeatOverride = state.data.backgroundOriginFeatOverride
 	const backgroundOriginFeat = backgroundFeatOverride ?? derivedBackgroundFeat
-	const draftBackgroundEntry = state.data.backgroundChoice
-		? backgrounds.find((b) => b.name === state.data.backgroundChoice!.name && b.source === state.data.backgroundChoice!.source)
-		: undefined
+	const draftBackgroundEntry = resolveBackgroundEntry(state.data.backgroundChoice, backgrounds)
 	const draftBackground: CharacterBackground | undefined = draftBackgroundEntry
 		? {
 				name: draftBackgroundEntry.name,
@@ -642,13 +641,18 @@ export function CharacterWizard({
 		}
 	}, [equipmentClassName, equipmentClassSource])
 
-	const equipmentBackgroundName = state.data.backgroundChoice?.name ?? null
+	// D383: a custom background's name is typed letter by letter; its offer does not depend on it.
+	const equipmentBackgroundName = state.data.backgroundChoice?.source === CUSTOM_BACKGROUND_SOURCE ? '' : (state.data.backgroundChoice?.name ?? null)
 	const equipmentBackgroundSource = state.data.backgroundChoice?.source ?? null
 	useEffect(() => {
 		let cancelled = false
 		setBackgroundEquipmentOffer(null)
 		setBackgroundEquipmentError(null)
 		if (equipmentBackgroundName === null || equipmentBackgroundSource === null) return
+		if (equipmentBackgroundSource === CUSTOM_BACKGROUND_SOURCE) {
+			setBackgroundEquipmentOffer(CUSTOM_BACKGROUND_EQUIPMENT)
+			return
+		}
 		loadBackgroundStartingEquipment(equipmentBackgroundName, equipmentBackgroundSource)
 			.then((offer) => {
 				if (!cancelled) setBackgroundEquipmentOffer(offer)
@@ -1167,11 +1171,7 @@ export function CharacterWizard({
 		}
 	}, [])
 
-	const selectedBackground = state.data.backgroundChoice
-		? backgrounds.find(
-				(b) => b.name === state.data.backgroundChoice!.name && b.source === state.data.backgroundChoice!.source,
-			)
-		: undefined
+	const selectedBackground = draftBackgroundEntry
 
 	/** D18: the background's two fixed skills are shown to the class skill picker as already granted, not offered again. */
 	const backgroundSkillsAsDisabled: DisabledSkill[] = selectedBackground
@@ -2096,7 +2096,8 @@ export function CharacterWizard({
 					</section>
 					{selectedBackground && (
 						<OriginFeatSwapPicker
-							key={`${selectedBackground.name}|${selectedBackground.source}`}
+							key={selectedBackground.source === CUSTOM_BACKGROUND_SOURCE ? CUSTOM_BACKGROUND_SOURCE : `${selectedBackground.name}|${selectedBackground.source}`}
+							custom={selectedBackground.source === CUSTOM_BACKGROUND_SOURCE}
 							namedFeat={selectedBackground.originFeat ? (derivedBackgroundFeat ?? selectedBackground.originFeat) : null}
 							value={backgroundFeatOverride}
 							onChange={(feat) => dispatch({ type: 'setBackgroundOriginFeatOverride', feat })}

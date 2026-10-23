@@ -36,7 +36,8 @@ import type {
 	LeveledChoice,
 } from '../storage/character'
 import { hasElegantCourtier, heldKenseiWeapons, kenseiSlotsFilled, kenseiSlotsFor, pairKenseiPicks, type KenseiSlot } from '../kensei/kensei'
-import { choiceNames, fightingStyleFor, isConsistentLevelOrder, singleClassLevelOrder } from '../storage/character'
+import { choiceNames, CUSTOM_BACKGROUND_SOURCE, fightingStyleFor, isConsistentLevelOrder, singleClassLevelOrder } from '../storage/character'
+import { isCustomBackgroundComplete } from '../backgrounds/customBackground'
 import type { PickSourceLookup } from '../optionalFeatures/pickSources'
 import { familiarAfterOptionChange, inheritSwapStamp } from '../optionalFeatures/optionSwap'
 import { isValidHitPointEntry } from '../hitPoints/hitPointEntry'
@@ -722,6 +723,9 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 					source: character.background.source,
 					abilityBonus: character.abilityBonus ?? {},
 					abilityBonusDistribution: distributionFromBonusMap(character.abilityBonus),
+					...(character.background.abilityChoices
+						? { custom: { skills: [...character.background.skillProficiencies], abilityChoices: [...character.background.abilityChoices] } }
+						: {}),
 				}
 			: null,
 		backgroundToolProficiency: character.background?.toolProficiency ?? null,
@@ -966,6 +970,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			// so a non-empty map is exactly "the distribution is done".
 			return (
 				data.backgroundChoice !== null &&
+				(data.backgroundChoice.source !== CUSTOM_BACKGROUND_SOURCE || isCustomBackgroundComplete(data.backgroundChoice)) &&
 				Object.keys(data.backgroundChoice.abilityBonus).length > 0 &&
 				data.backgroundToolProficiency !== null &&
 				backgroundOriginFeatComplete &&
@@ -1429,10 +1434,11 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			// proficiency and expertise — keyed to a specific background — clear only
 			// when the background's identity changes, not when its distribution does.
 			const prev = state.data.backgroundChoice
+			// D383: a custom background stays the same one while its name is typed.
 			const sameBackground =
 				prev !== null &&
 				action.choice !== null &&
-				prev.name === action.choice.name &&
+				(prev.name === action.choice.name || prev.source === CUSTOM_BACKGROUND_SOURCE) &&
 				prev.source === action.choice.source
 			return {
 				...state,
@@ -1693,6 +1699,9 @@ export function saveCharacter(
 					skillProficiencies: backgroundSkillProficiencies,
 					toolProficiency: data.backgroundToolProficiency,
 					...(data.backgroundOriginFeatOverride ? { originFeatOverride: data.backgroundOriginFeatOverride } : {}),
+					...(data.backgroundChoice.source === CUSTOM_BACKGROUND_SOURCE && data.backgroundChoice.custom
+						? { abilityChoices: data.backgroundChoice.custom.abilityChoices as [Ability, Ability, Ability] }
+						: {}),
 				}
 			: undefined
 
