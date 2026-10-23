@@ -1369,6 +1369,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   BackgroundEntry (tool category `anyPhbTool` = 37 XPHB tools, `originFeat: null`, equipment 50 gp). BackgroundPicker:
   "Custom background" option with name, 2 skills, 3 abilities; OriginFeatSwapPicker `custom` lists Origin feats
   (`originFeatsOf`, shared with the species feat). Edit seeds the picks back. `e2e/customBackgroundCB1.spec.ts` a–d.
+- CB-2: custom ↔ book background in Edit and level up of a custom-background character work without code change; covered
+  by CB-2 a–d in `e2e/customBackgroundCB1.spec.ts`. CSS: `label.wizard__field` stacks label over input (Character name,
+  Background name); custom skill list and tool lists in an auto-fill grid; ability bonus framed; optional-feature copy
+  buttons spaced.
 
 ## Dočasné scaffolding
 

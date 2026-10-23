@@ -91,8 +91,8 @@ function CustomBackgroundFields({
 	const toggled = <T,>(list: T[], item: T): T[] => (list.includes(item) ? list.filter((other) => other !== item) : [...list, item])
 	return (
 		<div className="background-picker__custom">
-			<label>
-				Background name{' '}
+			<label className="wizard__field">
+				Background name
 				<input type="text" value={value.name} onChange={(event) => onChange({ ...value, name: event.target.value })} />
 			</label>
 			<fieldset aria-label="Custom background skills">

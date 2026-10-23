@@ -539,6 +539,12 @@ button:disabled {
   white-space: normal;
 }
 
+label.wizard__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .wizard__field input {
   box-sizing: border-box;
   max-width: 100%;
@@ -3423,6 +3429,24 @@ button:disabled {
 
 .background-picker__grants p {
   margin: 0 0 6px;
+}
+
+.background-picker__custom .class-skill-picker__list,
+.tool-proficiency-picker__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.background-picker__ability-bonus {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.class-optional-feature-picker__copies {
+  display: flex;
+  gap: 8px;
 }
 
 /* F-36: origin-feat radios stack with normal spacing; the campaign note sits tight under its radio. */
