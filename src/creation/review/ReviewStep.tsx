@@ -12,6 +12,7 @@ import type { LevelGains } from '../../levelUp/levelGains'
 import { loadFeatEffectEntries } from '../../sheet/sheetData'
 import { loadGrantedClassFeatures } from '../../sheet/grantedClassFeatures'
 import { UnresolvedValue } from '../../sheet/ValueBreakdown'
+import { compareText } from '../../text/compareText'
 import type { AbilityIncreaseMap, Character, CharacterInventoryItem, FeatAsiChoice } from '../../storage/character'
 import type { UnfinishedClass, WizardData, WizardStep } from '../wizardState'
 
@@ -143,7 +144,10 @@ export function ReviewStep({
 	classLine,
 	unfinishedClasses = [],
 	loadErrors = [],
+	classOptionLabels = {},
 }: {
+	/** D378: the option step's title per featureType ("Eldritch Invocations"); a type missing here or without a name reads "Class options". */
+	classOptionLabels?: Readonly<Record<string, string | null>>
 	/** D337: data a multiclass Edit could not load; any blocks the save. */
 	loadErrors?: readonly string[]
 	/** D329: every class with its level after a multiclass level up ("Warlock 6 / Sorcerer 4"); absent shows the wizard's one class. */
@@ -213,6 +217,13 @@ export function ReviewStep({
 	const knownBefore = new Set([...baseline.spellChoices, ...baseline.subclassSpellChoices, ...optionSpellsOf(baseline)].map(pickKey))
 	const spellsAdded = [...data.spellChoices, ...data.subclassSpellChoices, ...optionSpellsOf(data)].filter((pick) => !knownBefore.has(pickKey(pick))).map((pick) => pick.name)
 
+	const classOptions = data.classOptionalFeatureChoices
+		.filter((entry) => entry.choices.length > 0)
+		.map((entry) => ({ featureType: entry.featureType, label: classOptionLabels[entry.featureType] ?? 'Class options', names: entry.choices.map((choice) => choice.name).sort(compareText) }))
+	const optionKey = (featureType: string, name: string) => `${featureType}|${name}`
+	const optionsBefore = new Set(baseline.classOptionalFeatureChoices.flatMap((entry) => entry.choices.map((choice) => optionKey(entry.featureType, choice.name))))
+	const optionsAdded = classOptions.flatMap((entry) => entry.names.filter((name) => !optionsBefore.has(optionKey(entry.featureType, name))))
+
 	const increaseText = (increases: AbilityIncreaseMap): string =>
 		Object.entries(increases)
 			.map(([ability, amount]) => `${ABILITY_ABBREVIATIONS[ability as Ability].toUpperCase()} ${signed(amount)}`)
@@ -280,6 +291,7 @@ export function ReviewStep({
 						hpGain !== null && maxHp !== null && <Row label="Hit points">{`${signed(hpGain)} → ${maxHp}`}</Row>
 					)}
 					{spellsAdded.length > 0 && <Row label="Spells added">{spellsAdded.join(', ')}</Row>}
+					{optionsAdded.length > 0 && <Row label="Options added">{optionsAdded.join(', ')}</Row>}
 					{levelChoiceText && <Row label={levelChoice?.kind === 'asi' ? 'Ability score improvement' : 'Feat'}>{levelChoiceText}</Row>}
 				</section>
 			)}
@@ -310,6 +322,17 @@ export function ReviewStep({
 					))}
 					{optionLeveled.length > 0 && <Row label="From class options">{optionLeveled.join(', ')}</Row>}
 					{subclassSpells.length > 0 && <Row label="Subclass">{subclassSpells.join(', ')}</Row>}
+				</section>
+			)}
+
+			{classOptions.length > 0 && (
+				<section className="review__card" aria-label="Class options">
+					<CardHeading title="Class options" step="classOptionalFeatures" steps={steps} onGoTo={onGoTo} />
+					{classOptions.map((entry) => (
+						<Row key={entry.featureType} label={entry.label}>
+							{entry.names.join(', ')}
+						</Row>
+					))}
 				</section>
 			)}
 

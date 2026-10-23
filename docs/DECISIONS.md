@@ -5441,3 +5441,11 @@ Schváleno uživatelem z reportu B-4b:
   zvlášť v rámci originu), postava zůstane čitelná.
 - `setFeatChoiceDetails` přijímá klíč `invocation:<id>` a zapisuje do téhož záznamu.
 - Clear smaže i čítače `resourceUses` s `#invocation:<id>:`, jako `removeManualFeat`.
+
+## D378 — Review ukazuje volby class options (B-5)
+
+Karta „Class options“ mezi Spells a Feats: jeden řádek na featureType s volbami, popisek = jméno progrese
+z dat (jako titul kroku, „Eldritch Invocations“, „Metamagic“), jinak „Class options“; jména abecedně.
+Nadpis vede na krok jen, když je v průchodu (D298). Bez voleb se karta neukáže. Level up: řádek „Options
+added“ v What's new = volby, které nejsou v baseline. „Options replaced“ není: WizardData neukládá, která
+nová volba nahradila vyměněnou (D345). Bez změny schématu.

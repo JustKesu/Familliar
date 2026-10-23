@@ -1333,6 +1333,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   prerequisites disabled). A chosen feat is a normal row with the same select (replace keeps the id) and Clear, no Remove.
   Features & Traits shows a pending "Origin feat" row. `setFeatChoiceDetails` takes `invocation:<id>`; clearing drops its
   `#invocation:<id>:` counters; D320 repair covers `'invocation'` ids. `e2e/lessonsFeatB4c.spec.ts` a–d.
+- B-5 (D378): ReviewStep has a "Class options" card (between Spells and Feats; one row per featureType, label from
+  `classOptionLabels` = CharacterWizard's `classOptionalFeatureGroups` names) and a What's new "Options added" row
+  (picks not in the baseline). No "Options replaced" row. No schema change. `e2e/reviewClassOptions.spec.ts` a–c.
 
 ## Dočasné scaffolding
 

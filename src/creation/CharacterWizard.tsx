@@ -2436,6 +2436,7 @@ export function CharacterWizard({
 					{...(multiclassLevelUp || multiclassEdit ? { classLine: draftClasses.map((entry) => `${entry.className} ${entry.level}`).join(' / ') } : {})}
 					unfinishedClasses={unfinishedClasses}
 					loadErrors={grantLoadMessages}
+					classOptionLabels={Object.fromEntries(classOptionalFeatureGroups.map((group) => [group.featureType, group.name]))}
 					draft={draftCharacterForSpells}
 					abilityDraft={abilityTableDraft}
 					resolverData={resolverData}

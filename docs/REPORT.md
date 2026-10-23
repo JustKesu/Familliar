@@ -1,38 +1,29 @@
-# Report — B-4c: výběr featu z Lessons of the First Ones v Manage Feats (D377)
+# Report — B-5: volby class options v Review průvodce (D378)
 
-HEAD před úkolem: fetch + `merge --ff-only origin/main` → „Already up to date“, d3e9cf3. Větev nezměněna.
+HEAD před úkolem: fetch + `merge --ff-only origin/main` → „Already up to date“, 197adf3. Větev nezměněna.
 
-## Změny (13 souborů)
-- `ManageFeatsPanel.tsx`: čekající slot = otevřený řádek „Origin feat“ + chip „From Lessons of the First Ones“ se selectem
-  (aria „Lessons of the First Ones feat“). Nabídka `addableFeatOffers` (držené bez aktuálního featu), filtr na kategorie
-  z `loadFeatProgressionCategories(LESSONS)`, nesplněné předpoklady `disabled` s důvodem v textu. Vybraný feat: běžný řádek,
-  chip, týž select (výměna), tlačítko Clear, podvolby přes `FeatSubChoicePicker` / `onEditFeatChoice`. Bez Remove.
-- `featInstances.ts`: `pendingInvocationFeats(c)` = max(0, sloty − uložené `'invocation'`).
-- `featuresTabData.ts`: input `pendingInvocationFeats`; skupina Feats dostane řádek „Origin feat“ (zdroj „From Lessons…“,
-  text invokace, `pending: ['feat']`) → „Choices not made yet: feat — make them in Manage Feats.“
-- `characterStore.ts`: `setFeatChoiceDetails` větev `manual|invocation`; `setInvocationFeat(…, null)` maže i čítače
-  `#invocation:<id>:`; společná `writeWithoutFeat` (z `removeManualFeat`, chování beze změny).
-- `validate.ts`: `repairedGrantedFeats` opraví id zvlášť pro `'manual'` a `'invocation'`.
-- `CharacterManager.tsx`, `CharacterSheet.tsx`: prop `onSetInvocationFeat(n, feat|null)`.
-- Docs: D377 (DECISIONS), STATUS (B-4c).
+## Změny (6 souborů)
+- `src/creation/review/ReviewStep.tsx`: karta „Class options“ mezi Spells a Feats, řádek na featureType s volbami
+  (popisek z nového propu `classOptionLabels`, fallback „Class options“; jména přes `compareText`), nadpis přes
+  `CardHeading` na krok `classOptionalFeatures` (D298). Bez voleb karta chybí. What's new: řádek „Options added“
+  (volby podle featureType|name, které nejsou v `baseline`), počítáno jako `spellsAdded`.
+- `src/creation/CharacterWizard.tsx`: předává `classOptionLabels` z `classOptionalFeatureGroups` (stejná jména jako `stepLabel`).
+- `e2e/reviewClassOptions.spec.ts` (nový): a) nový Warlock 2 průvodcem → karta s 3 invokacemi, odkaz nadpisu vede na
+  krok; b) seed schema 62 Warlock 4 → 5 → „Options added: Mask of Many Faces, Pact of the Blade“; c) Fighter 1 → karta chybí.
+- `docs/DECISIONS.md` D378, `docs/STATUS.md` B-5.
 
-## Ověření
-- `npm run typecheck` OK; `npm run test` 187 souborů / 3413 OK; `npm run validate-data` 177/177; `npm run e2e` 648 passed (3.2 min,
-  těsně nad 3 min).
-- Unit: B-4b test „rejects invocation bez id / s opakovaným id“ přepsán na opravu (`'0'`, `['a','1']`, id unikátní per origin);
-  `setFeatChoiceDetails('invocation:<id>')`; Clear maže jen vlastní čítače; pending řádek ve featuresTabGroups.
-- `e2e/lessonsFeatB4c.spec.ts`: a) pending řádek ve F&T + otevřený řádek, Tough → max HP +4, chip; b) Skilled, 3 selecty,
-  dovednosti proficient, uložený záznam; c) uložený Tough bez invokace spí (bez řádku, HP beze změny), předmět s Lessons → HP +4,
-  řádek zpět; c2) spící Skilled se vrátí i s dovednostmi; d) Clear → pending znovu, `grantedFeats` zmizí.
+## Ověřeno
+- `npm run typecheck` OK, `npm run test` 187 souborů / 3413 testů OK, `npm run validate-data` 177/177 OK.
+- `npm run e2e`: 651/651 OK, 3,3 min (mírně nad ~3 min).
+- Nový spec napoprvé spadl na mé chybě (Acolyte nemá +1 Constitution), po opravě 3/3. Unit guard F-18 odhalil
+  `localeCompare`, nahrazeno `compareText`.
 
-## Rozhodnutí během práce / otázky
-- Výměna featu ve selectu podvolby nuluje (staré nepatří novému featu); id zůstává.
-- Více čekajících slotů (dnes nemožné, k ≤ 1) by každý připojil nový záznam (n = počet uložených).
-- Pending řádek ve F&T je samostatný řádek „Origin feat“ ve skupině Feats, ne řádek pod invokací v Class Features.
-
-## Necommitnuté
-- `scripts/b4b-featprogression.js`, `scripts/tgs2-*.js`, `docs/REPORT-*.md`, `CLAUDE-1.md` aj. — ležely tu před úkolem, nechány.
+## K rozhodnutí / poznámky
+- Zadání uvádí „dvě invokace“ u Warlocka 2; data (EI progrese) dávají na úrovni 2 tři — test vybírá tři.
+- „Options replaced“ vynecháno: WizardData má vyměněnou starou volbu (baseline − data, D110), ale ne vazbu,
+  která nová ji nahradila (při 4 → 5 přibudou dvě, nelze říct která). Kdyby se mělo ukazovat, potřebuje to
+  rozhodnutí: buď jen „Replaced: Agonizing Blast“ bez nové, nebo ukládat párování ve swap stavu kroku.
+- Subclass volby (manévry, runy) a fighting styles do karty nepatří — jsou mimo `classOptionalFeatureChoices`; neřešeno.
 
 ## Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: Manage Feats → My Feats (řádek „Origin feat“ se selectem; řádek featu z Lessons se selectem a Clear);
-Features & Traits → Feats (řádek „Origin feat“ s čekající volbou).
+Změněné obrazovky: Review průvodce (nová karta Class options; v level upu řádek Options added ve What's new).
