@@ -6,7 +6,7 @@
 import type { ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
 import { skillLabel } from '../calculation/skills'
 import { compareText } from '../text/compareText'
-import { featDisplayName, featOriginLabel, type FeatInstance } from '../featAsi/featInstances'
+import { featDisplayName, featOriginLabel, LESSONS_OF_THE_FIRST_ONES, type FeatInstance } from '../featAsi/featInstances'
 import type { ItemInvocationOption, OptionalFeatureOption } from '../optionalFeatures/optionalFeatureData'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
 import { grantedFeatureOrigin, resourceCandidateName } from './featureActionRowData'
@@ -72,6 +72,8 @@ export interface FeaturesTabInput {
 	optionClassName?: (option: OptionalFeatureOption) => string | null
 	speciesTraits: readonly SpeciesTrait[]
 	feats: readonly FeatsTabFeat[]
+	/** D377: Lessons of the First Ones held with no feat chosen yet (pendingInvocationFeats). */
+	pendingInvocationFeats?: number
 	/** D336: the key a class's feature spends a resource under (resourceKeyFor); identity when absent. */
 	resourceKey?: (candidate: string, className: string | null) => string
 }
@@ -268,19 +270,32 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		})),
 	})
 
+	const lessons = [...input.chosenOptions, ...(input.itemOptions ?? []).map((item) => item.option)].find((option) => option.name === LESSONS_OF_THE_FIRST_ONES.name)
 	groups.push({
 		key: 'feats',
 		kind: 'feats',
 		label: 'Feats',
-		rows: input.feats.map(({ instance, text, pending }) => ({
-			key: `feat|${instance.key}`,
-			name: featDisplayName(instance.name),
-			source: featSource(instance, input.classes, input.levelOrder),
-			entries: text?.entries ?? null,
-			resourceName: text ? resourceCandidateName(text) : null,
-			options: featSubChoiceItems(instance),
-			...(pending.length > 0 ? { pending, pendingEditableInManageFeats: featEditableInManageFeats(instance) } : {}),
-		})),
+		rows: [
+			...input.feats.map(({ instance, text, pending }) => ({
+				key: `feat|${instance.key}`,
+				name: featDisplayName(instance.name),
+				source: featSource(instance, input.classes, input.levelOrder),
+				entries: text?.entries ?? null,
+				resourceName: text ? resourceCandidateName(text) : null,
+				options: featSubChoiceItems(instance),
+				...(pending.length > 0 ? { pending, pendingEditableInManageFeats: featEditableInManageFeats(instance) } : {}),
+			})),
+			...Array.from({ length: input.pendingInvocationFeats ?? 0 }, (_, n) => ({
+				key: `invocation-feat-pending|${n}`,
+				name: 'Origin feat',
+				source: featOriginLabel({ origin: 'invocation' }),
+				entries: lessons?.entries ?? null,
+				resourceName: null,
+				options: [],
+				pending: ['feat'],
+				pendingEditableInManageFeats: true,
+			})),
+		],
 	})
 
 	return groups

@@ -25,7 +25,8 @@ import {
 	type PrerequisiteContext,
 	type FeatOffer,
 } from '../featAsi/featAsiData'
-import { featDisplayName, featOriginLabel, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
+import { featDisplayName, featOriginLabel, LESSONS_OF_THE_FIRST_ONES, pendingInvocationFeats, type FeatInstance, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
+import { loadFeatProgressionCategories } from '../optionalFeatures/optionalFeatureData'
 import { FeatSubChoicePicker, magicInitiateListsOf, type FeatChoiceHeld } from '../featAsi/FeatSubChoicePicker'
 import { ResolvedEntries, type ResolverData } from '../featureResolver'
 import { isFilterChoiceFeat, isNamedBlockFeat } from '../spells/featSpellChoiceData'
@@ -79,6 +80,8 @@ type Loaded = {
 	/** D160, via computeProficiencies — what heldForFeat needs for tools/languages. */
 	rawClasses: unknown
 	featProficiencyEntries: ReturnType<typeof extractFeatProficiencyEntries>
+	/** D376: the feat categories Lessons of the First Ones allows. */
+	invocationFeatCategories: string[]
 }
 
 export { prerequisiteClassProficiencies }
@@ -90,7 +93,7 @@ export function heldToolsOf(character: Pick<Character, 'classes' | 'levelOrder'>
 
 async function loadPanelData(character: Character): Promise<Loaded> {
 	const species = character.species
-	const [feats, classInfo, speciesInfo, rawClasses, rawFeats] = await Promise.all([
+	const [feats, classInfo, speciesInfo, rawClasses, rawFeats, invocationFeatCategories] = await Promise.all([
 		loadFeats(),
 		Promise.all(
 			character.classes.map(async (c) => ({
@@ -102,9 +105,11 @@ async function loadPanelData(character: Character): Promise<Loaded> {
 		species ? loadSpeciesPrereqInfo(species.name, species.source) : Promise.resolve(null),
 		loadDataFile('data/classes.json'),
 		loadDataFile('data/feats.json'),
+		loadFeatProgressionCategories(LESSONS_OF_THE_FIRST_ONES),
 	])
 	return {
 		feats,
+		invocationFeatCategories,
 		fightingStyleClass: classInfo.find((c) => c.fightingStyle)?.className ?? null,
 		rawClasses,
 		featProficiencyEntries: extractFeatProficiencyEntries(rawFeats),
@@ -202,6 +207,7 @@ export function ManageFeatsPanel({
 	onAdd,
 	onRemove,
 	onEditFeatChoice,
+	onSetInvocationFeat,
 	onEditAsiIncreases,
 }: {
 	character: Character
@@ -218,6 +224,8 @@ export function ManageFeatsPanel({
 	onRemove: (key: string) => void
 	/** Replaces one feat instance's sub-choices (R13b, D215). Absent leaves My Feats' ▸ read-only. */
 	onEditFeatChoice?: (key: FeatInstanceKey, feat: FeatRef, details: FeatChoiceDetails) => void
+	/** Sets, replaces or (null) clears the n-th Lessons of the First Ones feat (D377). Absent leaves those rows without the select. */
+	onSetInvocationFeat?: (n: number, feat: FeatRef | null) => void
 	/** Replaces one ASI level's ability increases (R13b, D215). Absent leaves the Ability Score Improvement row read-only. */
 	onEditAsiIncreases?: (level: number, increases: AbilityIncreaseMap) => void
 }): ReactNode {
@@ -276,6 +284,44 @@ export function ManageFeatsPanel({
 		}
 	}
 
+	const invocationInstances = instances.filter((instance) => instance.origin === 'invocation')
+
+	/** D377: the n-th Lessons of the First Ones feat, from its featProgression categories; taken feats are left out and unmet prerequisites disabled, as in Add Feats. */
+	function invocationFeatSelect(n: number, current?: FeatInstance): ReactNode {
+		if (!loaded || !onSetInvocationFeat) return null
+		const ctx = { ...loaded.ctx, characterLevel: totalCharacterLevel(character.classes), abilityScores }
+		const offers = addableFeatOffers(
+			loaded.feats,
+			held.filter((feat) => feat !== current),
+			ctx,
+		)
+			.filter(({ feat }) => loaded.invocationFeatCategories.includes(feat.category))
+			.sort((a, b) => compareText(a.feat.name, b.feat.name))
+		const set = onSetInvocationFeat
+		return (
+			<label className="feat-asi-picker__feat-ability">
+				Feat
+				<select
+					aria-label="Lessons of the First Ones feat"
+					value={current ? featRefKey(current) : ''}
+					onChange={(event) => {
+						const offer = offers.find(({ feat }) => featRefKey(feat) === event.target.value)
+						if (offer) set(n, { name: offer.feat.name, source: offer.feat.source })
+					}}
+				>
+					<option value="" disabled>
+						Choose a feat
+					</option>
+					{offers.map(({ feat, result }) => (
+						<option key={featRefKey(feat)} value={featRefKey(feat)} disabled={!result.eligible}>
+							{result.eligible ? featDisplayName(feat.name) : `${featDisplayName(feat.name)} (${result.reasons.join(' ')})`}
+						</option>
+					))}
+				</select>
+			</label>
+		)
+	}
+
 	function instanceRow(instance: FeatInstance): ReactNode {
 		const row = rowOf(instance)
 		const chip =
@@ -285,9 +331,10 @@ export function ManageFeatsPanel({
 					? 'From Species'
 					: instance.origin === 'asi'
 						? levelFeatChip(instance.level, character)
-						: instance.origin === 'item'
+						: instance.origin === 'item' || instance.origin === 'invocation'
 							? featOriginLabel(instance)
 							: undefined
+		const invocationN = invocationInstances.indexOf(instance)
 		/* R13b (D215): everything FeatSubChoicePicker covers is editable here, including on a locked (level/background/species, D275) feat. D375: so are Strixhaven Initiate and the 8 filter-choice feats, except at an ASI level (Edit Character). */
 		const editable = featEditableInManageFeats(instance)
 		const filterChoice = editable && isFilterChoiceFeat(instance)
@@ -304,13 +351,21 @@ export function ManageFeatsPanel({
 				chip={chip}
 				defaultOpen={!!row?.pending}
 				action={
-					instance.origin === 'manual' && (
+					instance.origin === 'manual' ? (
 						<button type="button" className="manage-spells__button" aria-label={`Remove ${featDisplayName(instance.name)}`} onClick={() => onRemove(instance.key)}>
 							Remove
 						</button>
+					) : (
+						invocationN >= 0 &&
+						onSetInvocationFeat && (
+							<button type="button" className="manage-spells__button" aria-label={`Clear ${featDisplayName(instance.name)}`} onClick={() => onSetInvocationFeat(invocationN, null)}>
+								Clear
+							</button>
+						)
 					)
 				}
 			>
+				{invocationN >= 0 && invocationFeatSelect(invocationN, instance)}
 				<FeatText entries={row?.entries} name={instance.name} resolverData={resolverData} />
 				{editable && onEditFeatChoice ? (
 					<>
@@ -410,6 +465,13 @@ export function ManageFeatsPanel({
 				))
 			: []),
 		...instances.filter((instance) => instance.origin === 'manual').map(instanceRow),
+		...invocationInstances.map(instanceRow),
+		...Array.from({ length: pendingInvocationFeats(character) }, (_, i) => (
+			<FeatRow key={`invocation-pending|${i}`} name="Origin feat" chip={featOriginLabel({ origin: 'invocation' })} defaultOpen>
+				{/* Every pending slot appends: setInvocationFeat's n is the stored count. */}
+				{invocationFeatSelect(invocationInstances.length)}
+			</FeatRow>
+		)),
 		...instances.filter((instance) => instance.origin === 'item').map(instanceRow),
 	]
 

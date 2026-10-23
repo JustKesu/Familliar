@@ -1436,11 +1436,16 @@ function repairedFightingStyles(value: unknown[]): unknown[] {
  * D320: manual feats whose id is missing, malformed or a repeat get a deterministic one. The first entry
  * holding a valid id keeps it. The rule is the 58→59 migration's (the entry's position among manual feats),
  * and when that is taken, `repaired-<n>`, then `repaired-<n>-2`, … — never a collision, since `used` holds every kept id.
+ * D377: 'invocation' entries the same way, numbered among themselves.
  */
 function repairedGrantedFeats(value: unknown[]): unknown[] {
+	return repairedFeatIds(repairedFeatIds(value, 'manual'), 'invocation')
+}
+
+function repairedFeatIds(value: unknown[], origin: 'manual' | 'invocation'): unknown[] {
 	const used = new Set<string>()
 	const keeps = value.map((entry) => {
-		if (!isRecord(entry) || entry['origin'] !== 'manual') return false
+		if (!isRecord(entry) || entry['origin'] !== origin) return false
 		const id = entry['id']
 		if (!isValidManualFeatId(id) || used.has(id)) return false
 		used.add(id)
@@ -1448,7 +1453,7 @@ function repairedGrantedFeats(value: unknown[]): unknown[] {
 	})
 	let n = -1
 	return value.map((entry, i) => {
-		if (!isRecord(entry) || entry['origin'] !== 'manual') return entry
+		if (!isRecord(entry) || entry['origin'] !== origin) return entry
 		n++
 		if (keeps[i]) return entry
 		let id = String(n)

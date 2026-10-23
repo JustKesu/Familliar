@@ -5429,3 +5429,15 @@ invokace ani odebrání úrovně nic nemaže a nepotřebuje kód; vrácení invo
 Slot s k=1 bez záznamu je čekající „Origin feat from Lessons of the First Ones“ (zobrazí B-4c). Povolené
 featy jsou Origin (kategorie O) a čtou se z `featProgression` invokace, kategorie není natvrdo v kódu.
 Schéma 61 → 62, migrace jen mění verzi.
+
+## D377 — Výběr featu z Lessons of the First Ones v Manage Feats (B-4c)
+
+Čekající slot je v My Feats otevřený řádek „Origin feat – From Lessons of the First Ones“ se selectem featů;
+nabídka jako Add Feats (už držené featy chybí, nesplněné předpoklady jsou zakázané), omezená na kategorie
+z `featProgression`. Vybraný feat je běžný řádek s podvolbami, stejným selectem (výměna zachová id, podvolby
+se vynulují) a tlačítkem Clear; Remove nemá. Features & Traits ukazuje čekající řádek s odkazem na Manage Feats.
+Schváleno uživatelem z reportu B-4b:
+- Oprava D320 platí i pro origin `'invocation'`: chybějící, vadné nebo opakované id se opraví (číslováno
+  zvlášť v rámci originu), postava zůstane čitelná.
+- `setFeatChoiceDetails` přijímá klíč `invocation:<id>` a zapisuje do téhož záznamu.
+- Clear smaže i čítače `resourceUses` s `#invocation:<id>:`, jako `removeManualFeat`.

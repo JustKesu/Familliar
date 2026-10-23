@@ -1934,7 +1934,7 @@ describe('manual feats (R13a, D215)', () => {
 })
 
 describe('Lessons of the First Ones feats (B-4b, D376)', () => {
-	it('loads invocation entries with ids, and rejects one without an id or with a repeated id', () => {
+	it('loads invocation entries with ids, and repairs one without an id or with a repeated id (D377)', () => {
 		const grantedFeats = [
 			{ origin: 'manual', id: 'a', name: 'Alert', source: 'XPHB' },
 			{ origin: 'invocation', id: 'a', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } },
@@ -1944,12 +1944,37 @@ describe('Lessons of the First Ones feats (B-4b, D376)', () => {
 		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats }]))
 		expect(new CharacterStore(backing).list()[0].grantedFeats).toEqual(grantedFeats)
 
-		const bads = [[{ origin: 'invocation', name: 'Tough', source: 'XPHB' }], [grantedFeats[1], { ...grantedFeats[2], id: 'a' }]]
-		for (const bad of bads) {
+		const repaired = (bad: object[]) => {
 			const badBacking = new MemoryStorage()
 			badBacking.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats: bad }]))
-			expectUnreadable(new CharacterStore(badBacking))
+			return new CharacterStore(badBacking).list()[0].grantedFeats!.map((entry) => entry.id)
 		}
+		expect(repaired([{ origin: 'invocation', name: 'Tough', source: 'XPHB' }])).toEqual(['0'])
+		expect(repaired([grantedFeats[1], { ...grantedFeats[2], id: 'a' }])).toEqual(['a', '1'])
+		// Ids are unique per origin: a manual '0' does not push the invocation one aside.
+		expect(repaired([{ origin: 'manual', name: 'Alert', source: 'XPHB' }, { origin: 'invocation', id: 'x:y', name: 'Tough', source: 'XPHB' }])).toEqual(['0', '0'])
+	})
+
+	it('edits an invocation feat’s sub-choices through setFeatChoiceDetails, keeping its id (D377)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		store.setInvocationFeat(id, 0, { name: 'Skilled', source: 'XPHB' })
+		const featId = store.list()[0].grantedFeats![0].id
+		store.setFeatChoiceDetails(id, `invocation:${featId}`, { name: 'Skilled', source: 'XPHB' }, { proficiencies: { skills: ['arcana'] } })
+		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'invocation', id: featId, name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } }])
+		expect(() => store.setFeatChoiceDetails(id, 'invocation:nope', { name: 'Skilled', source: 'XPHB' }, {})).toThrow()
+	})
+
+	it('clearing an invocation feat drops its own resourceUses counters only (D377)', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria' })
+		store.setInvocationFeat(id, 0, { name: 'Magic Initiate; Cleric', source: 'XPHB' })
+		const featId = store.list()[0].grantedFeats![0].id
+		const own = `spell:feat:Magic Initiate; Cleric#invocation:${featId}:bless|XPHB`
+		store.setResourceUses(id, { [own]: 1, Rage: 2 })
+		store.setInvocationFeat(id, 0, null)
+		expect(store.list()[0].grantedFeats).toBeUndefined()
+		expect(store.list()[0].play?.resourceUses).toEqual({ Rage: 2 })
 	})
 
 	it('sets, replaces keeping the id, and clears the invocation feat', () => {

@@ -1328,6 +1328,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   first k entries, k = `invocationFeatSlots` (Lessons of the First Ones XPHB from EI picks + `itemInvocationGrants`); the rest
   sleep. Counts in featEffects like a manual feat. Store `setInvocationFeat(id, n, feat|null, details)`. Allowed categories
   from `featProgressionCategories` (optionalFeatureData.ts). No UI yet (B-4c: picker + pending row when k > stored).
+- B-4c (D377): Manage Feats My Feats has an open "Origin feat · From Lessons of the First Ones" row with a feat select per
+  pending slot (`pendingInvocationFeats`; offers like `addableFeatOffers`, limited to the featProgression categories, unmet
+  prerequisites disabled). A chosen feat is a normal row with the same select (replace keeps the id) and Clear, no Remove.
+  Features & Traits shows a pending "Origin feat" row. `setFeatChoiceDetails` takes `invocation:<id>`; clearing drops its
+  `#invocation:<id>:` counters; D320 repair covers `'invocation'` ids. `e2e/lessonsFeatB4c.spec.ts` a–d.
 
 ## Dočasné scaffolding
 

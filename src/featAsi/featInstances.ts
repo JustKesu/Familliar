@@ -27,7 +27,13 @@ export function invocationFeatSlots(character: Pick<Character, 'optionalFeatureC
 	return invocations.filter((invocation) => invocation.name === LESSONS_OF_THE_FIRST_ONES.name && (invocation.source ?? 'XPHB') === LESSONS_OF_THE_FIRST_ONES.source).length
 }
 
-export type FeatInstanceOrigin = 'asi' | GrantedFeatOrigin | 'item'
+/** D377: Lessons held now with no stored feat yet — each one a pending choice in Manage Feats. */
+export function pendingInvocationFeats(character: Pick<Character, 'optionalFeatureChoices' | 'inventory' | 'grantedFeats'>): number {
+	const stored = (character.grantedFeats ?? []).filter((entry) => entry.origin === 'invocation').length
+	return Math.max(0, invocationFeatSlots(character) - stored)
+}
+
+export type FeatInstanceOrigin ='asi' | GrantedFeatOrigin | 'item'
 
 /** One feat the character has, whatever granted it (D156). */
 export interface FeatInstance extends FeatChoiceDetails {

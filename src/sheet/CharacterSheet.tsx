@@ -162,7 +162,7 @@ import {
 	type SpentSpellSlots,
 	type WeaponAttackAbility,
 } from '../storage/character'
-import type { FeatInstanceKey, FeatRef } from '../featAsi/featInstances'
+import { pendingInvocationFeats, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
 import { afterLongRest, afterShortRest } from '../rest/rest'
 import { DamageRollButton, RollButton } from '../dice/RollButton'
 import { addRollHistoryEntry, RollHistory, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
@@ -1692,6 +1692,7 @@ function CharacterSheetBody({
 	onAddManualFeat,
 	onRemoveManualFeat,
 	onEditFeatChoice,
+	onSetInvocationFeat,
 	onEditAsiIncreases,
 	onEditLanguages,
 	onEditToolChoices,
@@ -1733,6 +1734,8 @@ function CharacterSheetBody({
 	onRemoveManualFeat?: (key: string) => void
 	/** Replaces one feat instance's sub-choices from the Manage Feats drawer's My Feats (R13b, D215). Absent leaves a feat's sub-choices read-only there. */
 	onEditFeatChoice?: (key: FeatInstanceKey, feat: FeatRef, details: FeatChoiceDetails) => void
+	/** Sets, replaces or (null) clears the n-th Lessons of the First Ones feat (D377). Absent leaves those slots read-only. */
+	onSetInvocationFeat?: (n: number, feat: FeatRef | null) => void
 	/** Replaces one ASI level's ability increases from the Manage Feats drawer (R13b, D215). Absent leaves the Ability Score Improvement row read-only. */
 	onEditAsiIncreases?: (level: number, increases: AbilityIncreaseMap) => void
 	/** Replaces the known languages — the Proficiencies drawer's class-feature picks (D172). Absent leaves the drawer without the selects. */
@@ -2702,6 +2705,7 @@ function CharacterSheetBody({
 			text: featTextEntries.find((f) => f.name === instance.name && f.source === instance.source),
 			pending: missingFeatSubChoices(instance, feats),
 		})),
+		pendingInvocationFeats: pendingInvocationFeats(character),
 	})
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.
 	const isCaster = spellcastingEntries.length > 0 || spellSlotsEntries.length > 0 || featSpellcastingEntries.length > 0 || speciesSpellcastingEntries.length > 0
@@ -3660,6 +3664,7 @@ function CharacterSheetBody({
 						onAdd={onAddManualFeat}
 						onRemove={onRemoveManualFeat}
 						onEditFeatChoice={onEditFeatChoice}
+						onSetInvocationFeat={onSetInvocationFeat}
 						onEditAsiIncreases={onEditAsiIncreases}
 					/>
 				</Drawer>

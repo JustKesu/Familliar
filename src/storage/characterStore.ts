@@ -941,14 +941,16 @@ export class CharacterStore {
 			(character.featAsiChoices ?? []).some((choice) => choice.kind === 'feat' && choice.name === removed.name) ||
 			(character.inventory ?? []).some((item) => item.custom?.feats?.some((feat) => feat.name === removed.name))
 		const legacyPrefix = `spell:feat:${removed.name}:`
+		this.writeWithoutFeat(characters, index, grantedFeats, key, (name) => !stillHeld && name.startsWith(legacyPrefix))
+	}
 
-		const { currentHp, play, grantedFeats: _previous, ...rest } = character
+	/** Writes `grantedFeats` with one feat gone, dropping the resourceUses counters of its instance `key` (D319, D377) and any `alsoDrop` names. */
+	private writeWithoutFeat(characters: Character[], index: number, grantedFeats: CharacterGrantedFeat[], key: string, alsoDrop: (name: string) => boolean = () => false): void {
+		const { currentHp, play, grantedFeats: _previous, ...rest } = characters[index]
 		const resourceUses = play?.resourceUses
 		// freeCastResources.ts: an instance's own counters are `spell:<origin>:<originName>#<instanceKey>:<spell>|<SOURCE>`.
 		const kept = resourceUses
-			? Object.fromEntries(
-					Object.entries(resourceUses).filter(([name]) => !(name.startsWith('spell:') && (name.includes(`#${key}:`) || (!stillHeld && name.startsWith(legacyPrefix))))),
-				)
+			? Object.fromEntries(Object.entries(resourceUses).filter(([name]) => !(name.startsWith('spell:') && (name.includes(`#${key}:`) || alsoDrop(name)))))
 			: undefined
 		const usesChanged = resourceUses !== undefined && kept !== undefined && Object.keys(kept).length !== Object.keys(resourceUses).length
 		const storedPlay = usesChanged ? storedPlayState(currentHp, { ...play, resourceUses: kept }) : play
@@ -967,12 +969,26 @@ export class CharacterStore {
 	 * A replace keeps the entry's id; n equal to the stored count appends a new entry.
 	 */
 	setInvocationFeat(id: string, n: number, feat: FeatRef | null, details: FeatChoiceDetails = {}): void {
+		if (!feat) {
+			const characters = this.list()
+			const index = characters.findIndex((character) => character.id === id)
+			if (index === -1) throw new CharacterNotFoundError(id)
+			const current = characters[index].grantedFeats ?? []
+			const target = current.filter((entry) => entry.origin === 'invocation')[n]
+			if (!target) throw new Error(`No invocation feat at position ${n}.`)
+			this.writeWithoutFeat(
+				characters,
+				index,
+				current.filter((entry) => entry !== target),
+				`invocation:${target.id ?? n}`,
+			)
+			return
+		}
 		this.writeGrantedFeats(id, (grantedFeats) => {
 			const stored = grantedFeats.filter((entry) => entry.origin === 'invocation')
-			if (n < 0 || n > stored.length || (n === stored.length && !feat)) throw new Error(`No invocation feat at position ${n}.`)
-			if (n === stored.length) return [...grantedFeats, { origin: 'invocation', id: newId(), name: feat!.name, source: feat!.source, ...details }]
+			if (n < 0 || n > stored.length) throw new Error(`No invocation feat at position ${n}.`)
+			if (n === stored.length) return [...grantedFeats, { origin: 'invocation', id: newId(), name: feat.name, source: feat.source, ...details }]
 			const target = stored[n]
-			if (!feat) return grantedFeats.filter((entry) => entry !== target)
 			return grantedFeats.map((entry) => (entry === target ? { origin: 'invocation' as const, id: target.id ?? newId(), name: feat.name, source: feat.source, ...details } : entry))
 		})
 	}
@@ -1024,16 +1040,21 @@ export class CharacterStore {
 			return
 		}
 
-		if (/^manual:.+$/.test(key)) {
+		// D377: `invocation:<id>` is keyed like `manual:<id>` (featInstances).
+		const grantedMatch = /^(manual|invocation):.+$/.exec(key)
+		if (grantedMatch) {
+			const origin = grantedMatch[1] as 'manual' | 'invocation'
 			this.writeGrantedFeats(id, (grantedFeats) => {
 				let n = -1
 				let found = false
 				const next = grantedFeats.map((entry) => {
-					if (entry.origin !== 'manual' || manualFeatKey(entry, ++n) !== key) return entry
+					if (entry.origin !== origin) return entry
+					n++
+					if (`${origin}:${entry.id ?? n}` !== key) return entry
 					found = true
-					return { origin: 'manual' as const, ...(entry.id !== undefined ? { id: entry.id } : {}), name: entry.name, source: entry.source, ...details }
+					return { origin, ...(entry.id !== undefined ? { id: entry.id } : {}), name: entry.name, source: entry.source, ...details }
 				})
-				if (!found) throw new Error(`No manual feat at key: ${key}`)
+				if (!found) throw new Error(`No ${origin} feat at key: ${key}`)
 				return next
 			})
 			return

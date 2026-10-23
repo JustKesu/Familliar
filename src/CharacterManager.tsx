@@ -194,6 +194,11 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 		withErrorHandling(() => store.store?.setFeatChoiceDetails(id, key, feat, details))
 	}
 
+	function handleSetInvocationFeat(id: string, n: number, feat: FeatRef | null): void {
+		if (!store.store) return
+		withErrorHandling(() => store.store?.setInvocationFeat(id, n, feat))
+	}
+
 	function handleEditAsiIncreases(id: string, level: number, increases: AbilityIncreaseMap): void {
 		if (!store.store) return
 		withErrorHandling(() => store.store?.setAsiIncreases(id, level, increases))
@@ -349,6 +354,7 @@ function CharacterManager({ route, navigate }: { route: CharacterRoute; navigate
 					onAddManualFeat={(feat) => handleAddManualFeat(character.id, feat)}
 					onRemoveManualFeat={(key) => handleRemoveManualFeat(character.id, key)}
 					onEditFeatChoice={(key, feat, details) => handleEditFeatChoice(character.id, key, feat, details)}
+					onSetInvocationFeat={(n, feat) => handleSetInvocationFeat(character.id, n, feat)}
 					onEditAsiIncreases={(level, increases) => handleEditAsiIncreases(character.id, level, increases)}
 					onEditLanguages={(languages) => handleEditLanguages(character.id, languages)}
 					onEditToolChoices={(toolChoices) => handleEditToolChoices(character.id, toolChoices)}

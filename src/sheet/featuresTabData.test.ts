@@ -64,6 +64,15 @@ describe('featuresTabGroups (D184)', () => {
 		])
 	})
 
+	it('adds one pending Origin feat row per Lessons of the First Ones without a feat (D377)', () => {
+		const lessons = { name: 'Lessons of the First Ones', source: 'XPHB', entries: ['Gain an Origin feat.'], featureType: 'EI' }
+		const groups = featuresTabGroups({ ...base, classes: [{ className: 'Warlock', level: 2 }], granted: [], chosenOptions: [lessons], pendingInvocationFeats: 1 })
+		const rows = groups.find((group) => group.kind === 'feats')!.rows
+		expect(rows.map((row) => [row.name, row.source, row.entries, row.pending, row.pendingEditableInManageFeats])).toEqual([
+			['Origin feat', 'From Lessons of the First Ones', ['Gain an Origin feat.'], ['feat'], true],
+		])
+	})
+
 	it('builds one class group per class, in the character’s order', () => {
 		const groups = featuresTabGroups({ ...base, classes: [{ className: 'Fighter', level: 1 }, { className: 'Rogue', level: 1 }], granted: [], chosenOptions: [] })
 		expect(groups.map((group) => group.label)).toEqual(['Fighter Features', 'Rogue Features', 'Species Traits', 'Feats'])
