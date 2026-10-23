@@ -1959,6 +1959,14 @@ the Tome XPHB (`EI`), Blessed Warrior TCE (`FS:P`), Druidic Warrior TCE (`FS:R`)
 `prerequisite`. The D347 cascade only removes picks whose prerequisite stops holding, so a real
 option with stored `spellChoices` is never dropped by the cascade, only by its own level stamp (D351).
 
+## featProgression: Lessons of the First Ones is the only optional feature granting a feat (P-B4, read in B-4b)
+
+`featProgression` appears 15× in the data: once in optional-features.json, on Lessons of the First Ones XPHB
+(`EI`, prereq Warlock 2): `[{"name":"Origin Feat","category":["O"],"progression":{"*":1}}]`; the other 14 are in
+classes.json (Epic Boon, Fighting Style…). Repeatability is prose only ("more than once"), no `isRepeatable`;
+other repeatable EI: Agonizing Blast, Eldritch Spear, Repelling Blast. B-4b reads the category from this field
+(`featProgressionCategories`, D376); the classes.json ones are still unread.
+
 ## Species natural armor and natural weapons are prose only (S5 survey)
 
 species.json (all non-XPHB, no structured field; 3-segment tags show the last segment):

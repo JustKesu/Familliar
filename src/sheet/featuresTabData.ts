@@ -116,7 +116,7 @@ export function featSource(instance: Pick<FeatInstance, 'origin' | 'level' | 'it
 	if (instance.origin === 'background') return 'From Background'
 	if (instance.origin === 'species') return 'From Species'
 	if (instance.origin === 'manual') return 'Added manually'
-	if (instance.origin === 'item') return featOriginLabel(instance)
+	if (instance.origin === 'item' || instance.origin === 'invocation') return featOriginLabel(instance)
 	// FeatAsiChoice stores the character level only; with one class that is the class level, with several levelOrder says which class took that level (F-10).
 	if (classes.length === 1) return `From ${classes[0].className} ${instance.level}`
 	const taken = instance.level === undefined ? undefined : levelOrder?.[instance.level - 1]

@@ -42,6 +42,13 @@ describe('loadCharacterMaxHp with item bonuses (R14a2)', () => {
 		expect(await loadCharacterMaxHp(human)).toMatchObject({ status: 'known', value: 25 + 6 })
 	})
 
+	it('D376: Tough from Lessons of the First Ones reaches the maximum only while the invocation is held', async () => {
+		const withFeat = { ...fighter(3), grantedFeats: [{ origin: 'invocation' as const, id: 'a', name: 'Tough', source: 'XPHB' }] }
+		const lessons = [{ featureType: 'EI', choices: [{ name: 'Lessons of the First Ones', source: 'XPHB', level: 2 }] }]
+		expect(await loadCharacterMaxHp({ ...withFeat, optionalFeatureChoices: lessons })).toMatchObject({ status: 'known', value: 25 + 6 })
+		expect(await loadCharacterMaxHp(withFeat)).toMatchObject({ status: 'known', value: 25 })
+	})
+
 	it('leaves an unattuned attunement item out of the shift (D76)', async () => {
 		const gated = { ...perLevel, requiresAttunement: true }
 		const [before, after] = await Promise.all([loadCharacterMaxHp(fighter(3, gated)), loadCharacterMaxHp(fighter(4, gated))])

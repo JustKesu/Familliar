@@ -1,6 +1,6 @@
 import { parseOriginFeat } from '../backgrounds/backgroundData'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { itemFeatGrants } from '../inventory/customItemGrants'
+import { itemFeatGrants, itemInvocationGrants } from '../inventory/customItemGrants'
 import type { Character, CharacterBackground, CharacterGrantedFeat, FeatChoiceDetails, GrantedFeatOrigin } from '../storage/character'
 
 export interface FeatRef {
@@ -9,11 +9,22 @@ export interface FeatRef {
 }
 
 /** `item:<inventory row>:<n>` — the n-th entry of that row's custom.feats (R14c1). */
-export type FeatInstanceKey = `asi:${number}` | 'background' | 'species' | `manual:${string}` | `item:${number}:${number}`
+export type FeatInstanceKey = `asi:${number}` | 'background' | 'species' | `manual:${string}` | `invocation:${string}` | `item:${number}:${number}`
 
 /** D319: a stored manual entry always has an id; the position is only for an unsaved in-memory character. */
 export function manualFeatKey(entry: Pick<CharacterGrantedFeat, 'id'>, n: number): `manual:${string}` {
 	return `manual:${entry.id ?? n}`
+}
+
+export const LESSONS_OF_THE_FIRST_ONES: FeatRef = { name: 'Lessons of the First Ones', source: 'XPHB' }
+
+/** D376: how many Lessons of the First Ones the character holds now — Warlock picks plus custom-item grants. */
+export function invocationFeatSlots(character: Pick<Character, 'optionalFeatureChoices' | 'inventory'>): number {
+	const invocations = [
+		...(character.optionalFeatureChoices ?? []).filter((entry) => entry.featureType === 'EI').flatMap((entry) => entry.choices),
+		...itemInvocationGrants(character.inventory),
+	]
+	return invocations.filter((invocation) => invocation.name === LESSONS_OF_THE_FIRST_ONES.name && (invocation.source ?? 'XPHB') === LESSONS_OF_THE_FIRST_ONES.source).length
 }
 
 export type FeatInstanceOrigin = 'asi' | GrantedFeatOrigin | 'item'
@@ -40,6 +51,7 @@ export function featOriginLabel(instance: Pick<FeatInstance, 'origin' | 'level' 
 	if (instance.origin === 'background') return 'Background'
 	if (instance.origin === 'species') return 'Species'
 	if (instance.origin === 'manual') return 'Added manually'
+	if (instance.origin === 'invocation') return 'From Lessons of the First Ones'
 	if (instance.origin === 'item') return `From item (${instance.itemName})`
 	return `level ${instance.level}`
 }
@@ -99,6 +111,10 @@ export function featInstances(character: Character, derivedBackgroundFeat: FeatR
 
 	const manual = (character.grantedFeats ?? []).filter((entry) => entry.origin === 'manual')
 	manual.forEach((entry, n) => instances.push({ key: manualFeatKey(entry, n), origin: 'manual', name: entry.name, source: entry.source, ...choiceDetails(entry) }))
+
+	// D376: entries beyond the Lessons held now sleep, like a stale background entry (D156).
+	const invocation = (character.grantedFeats ?? []).filter((entry) => entry.origin === 'invocation').slice(0, invocationFeatSlots(character))
+	invocation.forEach((entry, n) => instances.push({ key: `invocation:${entry.id ?? n}`, origin: 'invocation', name: entry.name, source: entry.source, ...choiceDetails(entry) }))
 
 	for (const { row, n, itemName, feat } of itemFeatGrants(character.inventory)) {
 		instances.push({ key: `item:${row}:${n}`, origin: 'item', itemName, name: feat.name, source: feat.source, ...choiceDetails(feat) })

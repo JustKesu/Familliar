@@ -1324,6 +1324,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   arrives). Strixhaven Initiate and the 8 filter-choice feats are editable there for manual, item, background and species
   feats (`NamedBlockSubPicker` / `FilterChoiceSpellSubPicker` exported from FeatAsiPicker.tsx; `featEditableInManageFeats`
   in featuresTabData.ts); at an ASI level they stay in Edit Character. No schema change. `e2e/manageFeats.spec.ts` B-4a a–c.
+- B-4b (D376): schema 62, `grantedFeats` origin `'invocation'` with `id` (key `invocation:<id>`). `featInstances` shows the
+  first k entries, k = `invocationFeatSlots` (Lessons of the First Ones XPHB from EI picks + `itemInvocationGrants`); the rest
+  sleep. Counts in featEffects like a manual feat. Store `setInvocationFeat(id, n, feat|null, details)`. Allowed categories
+  from `featProgressionCategories` (optionalFeatureData.ts). No UI yet (B-4c: picker + pending row when k > stored).
 
 ## Dočasné scaffolding
 

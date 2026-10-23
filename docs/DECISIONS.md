@@ -5417,3 +5417,15 @@ stejný důvod jako D120 (D43: prózu neparsujeme). Úroveň se čte ze Sorcerer
 Strixhaven Initiate a 8 filter-choice featů se v Manage Feats editují u každého zdroje (ruční, z předmětu,
 pozadí, druh) stejnými pickery jako na ASI úrovni; D215 tím v tomto bodě neplatí. Feat vzatý na ASI úrovni
 zůstává u těchto featů v Edit Character. Bez změny schématu.
+
+## D376 — Feat z Lessons of the First Ones: grantedFeats origin 'invocation' (B-4b)
+
+Varianta A z P-B4. `grantedFeats` má nový origin `'invocation'` s `id` (jako `'manual'`, D319), drží feat
+i jeho `FeatChoiceDetails`. `featInstances` ukáže prvních k takových záznamů; k = počet Lessons of the First
+Ones (XPHB), které postava právě drží: Warlock volby (`optionalFeatureChoices` featureType EI) plus invokace
+z vlastních předmětů (stejná sbírka jako B-1/B-2). Dnes je k 0 nebo 1 — opakované vzetí invokace zatím není.
+Záznamy nad k zůstávají uložené a spí (nezobrazí se, nepočítají se), jako záznam pozadí v D156: výměna
+invokace ani odebrání úrovně nic nemaže a nepotřebuje kód; vrácení invokace vrátí feat i s volbami.
+Slot s k=1 bez záznamu je čekající „Origin feat from Lessons of the First Ones“ (zobrazí B-4c). Povolené
+featy jsou Origin (kategorie O) a čtou se z `featProgression` invokace, kategorie není natvrdo v kódu.
+Schéma 61 → 62, migrace jen mění verzi.

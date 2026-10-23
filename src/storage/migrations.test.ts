@@ -771,13 +771,27 @@ describe('the migration chain (D69)', () => {
 		it('adds nothing and changes nothing else', () => {
 			const before = { schemaVersion: 60, id: '1', name: 'Aria', classes: [{ className: 'Monk', classSource: 'XPHB', subclass: 'Way of the Kensei', level: 3 }] }
 			const migrated = migrateToCurrent({ ...before }) as Record<string, unknown>
-			expect(migrated).toEqual({ ...before, schemaVersion: 61 })
+			expect(migrated).toEqual({ ...before, schemaVersion: 62 })
 			expect('kenseiWeapons' in migrated).toBe(false)
 			expect('elegantCourtierSave' in migrated).toBe(false)
 		})
+	})
+
+	/* B-4b (D376): the 'invocation' grantedFeats origin is new, so the step only tags. */
+	describe('version 61 to 62', () => {
+		it('adds nothing and changes nothing else', () => {
+			const before = {
+				schemaVersion: 61,
+				id: '1',
+				name: 'Aria',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 2 }],
+				grantedFeats: [{ origin: 'manual', id: 'm', name: 'Alert', source: 'XPHB' }],
+			}
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 62 })
+		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(61)
+			expect(CURRENT_SCHEMA_VERSION).toBe(62)
 		})
 	})
 

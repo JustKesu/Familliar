@@ -1,6 +1,48 @@
 import { describe, expect, it } from 'vitest'
-import type { Character } from '../storage/character'
-import { featInstances, featOriginLabel } from './featInstances'
+import { CUSTOM_ITEM_SOURCE, type Character } from '../storage/character'
+import { featInstances, featOriginLabel, invocationFeatSlots } from './featInstances'
+
+describe('featInstances — Lessons of the First Ones feats (D376)', () => {
+	const lessons = { featureType: 'EI', choices: [{ name: 'Lessons of the First Ones', source: 'XPHB', level: 2 }] }
+	const base: Character = {
+		id: '1',
+		name: 'A',
+		classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 2 }],
+		grantedFeats: [
+			{ origin: 'invocation', id: 'x', name: 'Alert', source: 'XPHB' },
+			{ origin: 'invocation', id: 'y', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } },
+		],
+	}
+	const shown = (character: Character) => featInstances(character, null).map((feat) => [feat.key, feat.origin, feat.name])
+
+	it('k=0: stored entries sleep while no Lessons is held', () => {
+		expect(invocationFeatSlots(base)).toBe(0)
+		expect(shown(base)).toEqual([])
+	})
+
+	it('k=1: the first entry shows, the second sleeps', () => {
+		const character = { ...base, optionalFeatureChoices: [lessons] }
+		expect(invocationFeatSlots(character)).toBe(1)
+		expect(shown(character)).toEqual([['invocation:x', 'invocation', 'Alert']])
+	})
+
+	it('counts a Lessons granted by a custom item, and ignores other invocations', () => {
+		const ring = { name: 'Ring', source: CUSTOM_ITEM_SOURCE, quantity: 1, custom: { name: 'Ring', kind: 'other', invocations: [{ name: 'Lessons of the First Ones', source: 'XPHB' }] } }
+		const character = { ...base, optionalFeatureChoices: [{ featureType: 'EI', choices: [{ name: 'Agonizing Blast', source: 'XPHB' }] }], inventory: [ring] } as Character
+		expect(invocationFeatSlots(character)).toBe(1)
+		expect(shown(character)).toEqual([['invocation:x', 'invocation', 'Alert']])
+	})
+
+	it('k=1 with no entry yet shows nothing (pending for B-4c)', () => {
+		const character = { ...base, grantedFeats: undefined, optionalFeatureChoices: [lessons] }
+		expect(invocationFeatSlots(character)).toBe(1)
+		expect(shown(character)).toEqual([])
+	})
+
+	it('labels the feat by the invocation', () => {
+		expect(featOriginLabel({ origin: 'invocation' })).toBe('From Lessons of the First Ones')
+	})
+})
 
 describe('featInstances — manual feats (D215)', () => {
 	it('lists manual entries after the level feats, keyed by their order among manual entries only', () => {

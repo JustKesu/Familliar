@@ -1933,6 +1933,45 @@ describe('manual feats (R13a, D215)', () => {
 	})
 })
 
+describe('Lessons of the First Ones feats (B-4b, D376)', () => {
+	it('loads invocation entries with ids, and rejects one without an id or with a repeated id', () => {
+		const grantedFeats = [
+			{ origin: 'manual', id: 'a', name: 'Alert', source: 'XPHB' },
+			{ origin: 'invocation', id: 'a', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } },
+			{ origin: 'invocation', id: 'b', name: 'Tough', source: 'XPHB' },
+		]
+		const backing = new MemoryStorage()
+		backing.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats }]))
+		expect(new CharacterStore(backing).list()[0].grantedFeats).toEqual(grantedFeats)
+
+		const bads = [[{ origin: 'invocation', name: 'Tough', source: 'XPHB' }], [grantedFeats[1], { ...grantedFeats[2], id: 'a' }]]
+		for (const bad of bads) {
+			const badBacking = new MemoryStorage()
+			badBacking.setItem(STORAGE_KEY, JSON.stringify([{ schemaVersion: CURRENT_SCHEMA_VERSION, id: '1', name: 'Aria', classes: [], grantedFeats: bad }]))
+			expectUnreadable(new CharacterStore(badBacking))
+		}
+	})
+
+	it('sets, replaces keeping the id, and clears the invocation feat', () => {
+		const store = new CharacterStore(new MemoryStorage())
+		const { id } = store.create({ name: 'Aria', grantedFeats: [{ origin: 'background', name: 'Alert', source: 'XPHB' }] })
+		store.setInvocationFeat(id, 0, { name: 'Tough', source: 'XPHB' })
+		const featId = store.list()[0].grantedFeats![1].id
+		expect(featId).toEqual(expect.any(String))
+
+		store.setInvocationFeat(id, 0, { name: 'Skilled', source: 'XPHB' }, { proficiencies: { skills: ['arcana'] } })
+		expect(store.list()[0].grantedFeats).toEqual([
+			{ origin: 'background', name: 'Alert', source: 'XPHB' },
+			{ origin: 'invocation', id: featId, name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana'] } },
+		])
+
+		store.setInvocationFeat(id, 0, null)
+		expect(store.list()[0].grantedFeats).toEqual([{ origin: 'background', name: 'Alert', source: 'XPHB' }])
+		expect(() => store.setInvocationFeat(id, 0, null)).toThrow()
+		expect(() => store.setInvocationFeat(id, 1, { name: 'Tough', source: 'XPHB' })).toThrow()
+	})
+})
+
 describe('editing feat choices and ASI increases (R13b, D215)', () => {
 	it("replaces an asi:N feat choice's sub-choices, keeping its name/source", () => {
 		const store = new CharacterStore(new MemoryStorage())

@@ -9,6 +9,7 @@ import {
 	evaluateClassOptionalFeatureGroups,
 	evaluateOptionalFeatureOptions,
 	evaluateOptionalFeaturePrerequisites,
+	featProgressionCategories,
 	optionsForFeatureType,
 	type ClassOptionalFeatureContextBase,
 	type OptionalFeatureOption,
@@ -89,6 +90,14 @@ describe('classOptionalFeatureGrantsFor — classes with no progression', () => 
 // the count derived from `progression` must equal the class table's own
 // "Invocations Known" column at EVERY level. A reader that mistook this array
 // for a level-keyed object would be off by one at every level.
+describe('featProgressionCategories (D376)', () => {
+	it('reads Origin feats for Lessons of the First Ones from the real data, nothing for another invocation', () => {
+		const parsed = JSON.parse(readFileSync(join(__dirname, '..', '..', 'data', 'optional-features.json'), 'utf8')) as unknown
+		expect(featProgressionCategories(parsed, { name: 'Lessons of the First Ones', source: 'XPHB' })).toEqual(['O'])
+		expect(featProgressionCategories(parsed, { name: 'Agonizing Blast', source: 'XPHB' })).toEqual([])
+	})
+})
+
 describe('classOptionalFeatureGrantsFor — Warlock against the real classTableGroups column', () => {
 	const raw = readFileSync(join(__dirname, '..', '..', 'data', 'classes.json'), 'utf8')
 	const parsed = JSON.parse(raw) as Record<string, unknown>[]

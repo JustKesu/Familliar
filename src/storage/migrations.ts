@@ -578,6 +578,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 61 adds Character.kenseiWeapons and Character.elegantCourtierSave (F-19, D344). A version-60 character has neither — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 61 }),
 	},
+	{
+		from: 61,
+		to: 62,
+		/* 62 adds the 'invocation' grantedFeats origin (B-4b, D376). A version-61 character has none — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 62 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

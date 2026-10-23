@@ -600,7 +600,8 @@ function isStringArray(value: unknown): value is string[] {
 	return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
 
-const GRANTED_FEAT_ORIGINS: readonly GrantedFeatOrigin[] = ['background', 'species', 'manual']
+const GRANTED_FEAT_ORIGINS: readonly GrantedFeatOrigin[] = ['background', 'species', 'manual', 'invocation']
+const REPEATABLE_GRANTED_FEAT_ORIGINS: readonly unknown[] = ['manual', 'invocation']
 
 /** C (F-8, D320): the id sits inside `manual:<id>` keys and resourceUses keys, where `:`, `#` and `|` are separators. */
 function isValidManualFeatId(value: unknown): value is string {
@@ -612,19 +613,21 @@ export function describeGrantedFeatsError(value: unknown): string | null {
 	if (value === undefined) return null
 	if (!Array.isArray(value)) return `grantedFeats must be an array`
 	const seenOrigins = new Set<unknown>()
-	const seenManualIds = new Set<string>()
+	const seenIds = new Set<string>()
 	for (let i = 0; i < value.length; i++) {
 		const entry: unknown = value[i]
 		if (!isRecord(entry)) return `grantedFeats[${i}] is not an object`
-		if (!GRANTED_FEAT_ORIGINS.includes(entry['origin'] as GrantedFeatOrigin)) return `grantedFeats[${i}].origin must be "background", "species" or "manual"`
-		if (entry['origin'] !== 'manual' && seenOrigins.has(entry['origin'])) return `grantedFeats[${i}].origin "${String(entry['origin'])}" appears more than once`
+		if (!GRANTED_FEAT_ORIGINS.includes(entry['origin'] as GrantedFeatOrigin)) return `grantedFeats[${i}].origin must be "background", "species", "manual" or "invocation"`
+		const repeatable = REPEATABLE_GRANTED_FEAT_ORIGINS.includes(entry['origin'])
+		if (!repeatable && seenOrigins.has(entry['origin'])) return `grantedFeats[${i}].origin "${String(entry['origin'])}" appears more than once`
 		seenOrigins.add(entry['origin'])
 		if (!isNonEmptyString(entry['name'])) return `grantedFeats[${i}].name is missing or not a string`
 		if (!isNonEmptyString(entry['source'])) return `grantedFeats[${i}].source is missing or not a string`
-		if (entry['origin'] === 'manual') {
+		if (repeatable) {
 			if (!isValidManualFeatId(entry['id'])) return `grantedFeats[${i}].id is missing, or not a string without ":", "#" or "|"`
-			if (seenManualIds.has(entry['id'])) return `grantedFeats[${i}].id "${entry['id']}" appears more than once`
-			seenManualIds.add(entry['id'])
+			const seenKey = `${String(entry['origin'])}:${entry['id']}`
+			if (seenIds.has(seenKey)) return `grantedFeats[${i}].id "${entry['id']}" appears more than once`
+			seenIds.add(seenKey)
 		}
 		const detailsError = describeFeatChoiceDetailsError(entry)
 		if (detailsError) return `grantedFeats[${i}].${detailsError}`
@@ -1291,7 +1294,7 @@ function toCharacterGrantedFeats(value: unknown[]): CharacterGrantedFeat[] {
 			origin: record['origin'] as GrantedFeatOrigin,
 			name: record['name'] as string,
 			source: record['source'] as string,
-			...(record['origin'] === 'manual' && typeof record['id'] === 'string' ? { id: record['id'] } : {}),
+			...(REPEATABLE_GRANTED_FEAT_ORIGINS.includes(record['origin']) && typeof record['id'] === 'string' ? { id: record['id'] } : {}),
 			...toFeatChoiceDetails(record),
 		}
 	})

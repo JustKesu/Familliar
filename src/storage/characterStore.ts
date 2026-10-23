@@ -962,6 +962,21 @@ export class CharacterStore {
 		this.writeChanged(updated, index)
 	}
 
+	/**
+	 * Sets, replaces or (feat null) clears the n-th 'invocation' feat entry (D376) with its sub-choices.
+	 * A replace keeps the entry's id; n equal to the stored count appends a new entry.
+	 */
+	setInvocationFeat(id: string, n: number, feat: FeatRef | null, details: FeatChoiceDetails = {}): void {
+		this.writeGrantedFeats(id, (grantedFeats) => {
+			const stored = grantedFeats.filter((entry) => entry.origin === 'invocation')
+			if (n < 0 || n > stored.length || (n === stored.length && !feat)) throw new Error(`No invocation feat at position ${n}.`)
+			if (n === stored.length) return [...grantedFeats, { origin: 'invocation', id: newId(), name: feat!.name, source: feat!.source, ...details }]
+			const target = stored[n]
+			if (!feat) return grantedFeats.filter((entry) => entry !== target)
+			return grantedFeats.map((entry) => (entry === target ? { origin: 'invocation' as const, id: target.id ?? newId(), name: feat.name, source: feat.source, ...details } : entry))
+		})
+	}
+
 	private writeGrantedFeats(id: string, change: (grantedFeats: CharacterGrantedFeat[]) => CharacterGrantedFeat[]): void {
 		const characters = this.list()
 		const index = characters.findIndex((character) => character.id === id)

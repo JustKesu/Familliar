@@ -715,6 +715,19 @@ export async function loadAllInvocations(): Promise<OptionalFeatureOption[]> {
 	return optionalFeaturesByType(await loadDataFile('data/optional-features.json'), ITEM_INVOCATION_FEATURE_TYPE)
 }
 
+/** D376: the feat categories an optional feature's featProgression allows (Lessons of the First Ones: ["O"]); empty when it grants no feat. */
+export function featProgressionCategories(parsedOptionalFeatures: unknown, ref: { name: string; source: string }): string[] {
+	if (!Array.isArray(parsedOptionalFeatures)) throw new Error('optional-features.json: expected a top-level array.')
+	const entry = parsedOptionalFeatures.find((candidate) => candidate?.name === ref.name && candidate?.source === ref.source)
+	const progression: unknown = entry?.featProgression
+	if (!Array.isArray(progression)) return []
+	return progression.flatMap((step) => (Array.isArray(step?.category) ? step.category.filter((code: unknown) => typeof code === 'string') : []))
+}
+
+export async function loadFeatProgressionCategories(ref: { name: string; source: string }): Promise<string[]> {
+	return featProgressionCategories(await loadDataFile('data/optional-features.json'), ref)
+}
+
 export async function loadItemInvocationOptions(inventory: readonly CharacterInventoryItem[] | undefined): Promise<ItemInvocationOption[]> {
 	const grants = itemInvocationGrants(inventory)
 	if (grants.length === 0) return []
