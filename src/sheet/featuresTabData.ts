@@ -106,6 +106,11 @@ function titleCase(text: string): string {
 	return text.replace(/\b[a-z]/g, (letter) => letter.toUpperCase())
 }
 
+/** D375: Manage Feats edits every feat's sub-choices except Strixhaven Initiate and the filter-choice feats at an ASI level, which stay in Edit Character. */
+export function featEditableInManageFeats(instance: Pick<FeatInstance, 'origin' | 'name' | 'source'>): boolean {
+	return instance.origin !== 'asi' || (!isNamedBlockFeat(instance) && !isFilterChoiceFeat(instance))
+}
+
 /** A feat row's source text; null when it cannot be told (report). */
 export function featSource(instance: Pick<FeatInstance, 'origin' | 'level' | 'itemName'>, classes: FeaturesTabInput['classes'], levelOrder?: FeaturesTabInput['levelOrder']): string | null {
 	if (instance.origin === 'background') return 'From Background'
@@ -274,7 +279,7 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 			entries: text?.entries ?? null,
 			resourceName: text ? resourceCandidateName(text) : null,
 			options: featSubChoiceItems(instance),
-			...(pending.length > 0 ? { pending, pendingEditableInManageFeats: !isNamedBlockFeat(instance) && !isFilterChoiceFeat(instance) } : {}),
+			...(pending.length > 0 ? { pending, pendingEditableInManageFeats: featEditableInManageFeats(instance) } : {}),
 		})),
 	})
 

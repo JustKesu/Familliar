@@ -213,7 +213,8 @@ test('R13b c: picking a manually added Skilled\'s three skills in the panel make
   await search(panel, 'Skilled')
   await add(panel).getByRole('button', { name: 'Add Skilled', exact: true }).click()
   const skilled = row(mine(panel), 'Skilled')
-  await skilled.getByRole('button', { name: 'Skilled text' }).click()
+  // D375: the row has open choices, so it starts expanded — no click on the toggle.
+  await expect(skilled.getByRole('button', { name: 'Skilled text' })).toHaveAttribute('aria-expanded', 'true')
   for (const [slot, skill] of [
     ['1', 'arcana'],
     ['2', 'history'],
@@ -228,6 +229,64 @@ test('R13b c: picking a manually added Skilled\'s three skills in the panel make
 
   const feats = page.getByRole('tabpanel', { name: 'Features & Traits' }).getByRole('region', { name: 'Feats', exact: true })
   await expect(feats.locator('.sheet__group-row', { hasText: 'Skilled' })).not.toContainText('Choices not made yet')
+})
+
+const fighter61 = (id: string, extra: Record<string, unknown> = {}) => ({ ...fighter(id, 4, extra), schemaVersion: 61 })
+const featsOnFeaturesTab = (page: Page): Locator => page.getByRole('tabpanel', { name: 'Features & Traits' }).getByRole('region', { name: 'Feats', exact: true })
+
+test('B-4a a: a manually added Skilled opens with its three selects; after closing and reopening the row is collapsed and the Features tab lists the skills', async ({ page }) => {
+  await seed(page, [fighter61('b4a-a')])
+  const panel = await openManage(page, 'b4a-a')
+  await search(panel, 'Skilled')
+  await add(panel).getByRole('button', { name: 'Add Skilled', exact: true }).click()
+  const skilled = row(mine(panel), 'Skilled')
+  for (const slot of ['1', '2', '3']) await expect(skilled.getByLabel(`Skilled skill or tool ${slot}`, { exact: true })).toBeVisible()
+  for (const [slot, skill] of [
+    ['1', 'arcana'],
+    ['2', 'history'],
+    ['3', 'nature'],
+  ] as const) {
+    await skilled.getByLabel(`Skilled skill or tool ${slot}`, { exact: true }).selectOption(`skill:${skill}`)
+  }
+  await closeManage(page)
+
+  const reopened = await openManage(page, 'b4a-a')
+  await expect(row(mine(reopened), 'Skilled').getByRole('button', { name: 'Skilled text' })).toHaveAttribute('aria-expanded', 'false')
+  await closeManage(page)
+  await expect(featsOnFeaturesTab(page).getByText('Skills: Arcana, History, Nature')).toBeVisible()
+  await expect(featsOnFeaturesTab(page)).not.toContainText('Choices not made yet')
+})
+
+test('B-4a b: a manually added Fey-Touched — its ability and spell are chosen in Manage Feats and the pending line leaves the Features tab', async ({ page }) => {
+  await seed(page, [fighter61('b4a-b')])
+  const panel = await openManage(page, 'b4a-b')
+  await search(panel, 'Fey-Touched')
+  await add(panel).getByRole('button', { name: 'Add Fey-Touched', exact: true }).click()
+  const feyTouched = row(mine(panel), 'Fey-Touched')
+  await expect(feyTouched.getByRole('button', { name: 'Fey-Touched text' })).toHaveAttribute('aria-expanded', 'true')
+  await feyTouched.getByRole('combobox', { name: 'Ability', exact: true }).selectOption('wisdom')
+  await feyTouched.getByRole('checkbox').first().check()
+  await expect(feyTouched.getByText('1 of 1 spell chosen.')).toBeVisible()
+  await closeManage(page)
+
+  await expect(featsOnFeaturesTab(page).locator('.sheet__group-row', { hasText: 'Fey-Touched' })).not.toContainText('Choices not made yet')
+  await expect(featsOnFeaturesTab(page).getByText(/^Spells: /)).toBeVisible()
+})
+
+test('B-4a c: a manually added Strixhaven Initiate — college, cantrip pair, ability and spell are chosen in Manage Feats', async ({ page }) => {
+  await seed(page, [fighter61('b4a-c')])
+  const panel = await openManage(page, 'b4a-c')
+  await search(panel, 'Strixhaven Initiate')
+  await add(panel).getByRole('button', { name: 'Add Strixhaven Initiate', exact: true }).click()
+  const initiate = row(mine(panel), 'Strixhaven Initiate')
+  await initiate.getByRole('radio', { name: 'Quandrix' }).check()
+  await initiate.getByRole('radio', { name: 'Druidcraft + Mage Hand' }).check()
+  await initiate.getByLabel('Spellcasting ability').selectOption('wisdom')
+  await initiate.getByRole('checkbox', { name: 'Entangle', exact: true }).check()
+  await closeManage(page)
+
+  await expect(featsOnFeaturesTab(page).getByText('Choice: Quandrix 2')).toBeVisible()
+  await expect(featsOnFeaturesTab(page).locator('.sheet__group-row', { hasText: 'Strixhaven Initiate' })).not.toContainText('Choices not made yet')
 })
 
 test('R13b d: changing a background Magic Initiate cantrip in the panel updates the Spells tab', async ({ page }) => {

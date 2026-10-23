@@ -208,7 +208,6 @@ test('S1 h: Manage Feats edits the sub-choices of Skilled taken as the species f
   const panel = await openManageFeats(page)
   const skilled = manageRow(panel, 'Skilled')
   await expect(skilled).toContainText('From Species')
-  await skilled.getByRole('button', { name: 'Skilled text' }).click()
   for (const [slot, skill] of [['1', 'arcana'], ['2', 'history'], ['3', 'nature']]) {
     await skilled.getByLabel(`Skilled skill or tool ${slot}`, { exact: true }).selectOption(`skill:${skill}`)
   }

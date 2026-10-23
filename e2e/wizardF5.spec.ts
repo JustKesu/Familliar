@@ -214,7 +214,6 @@ test('F-5 (findings 1 + 8): Manage Feats — a manual Magic Initiate cannot reus
   await page.getByRole('tab', { name: 'Features & Traits' }).click()
   await page.getByRole('button', { name: 'Manage Feats', exact: true }).click()
   const row = manageRow(page.getByRole('dialog', { name: 'Manage Feats' }), 'Magic Initiate')
-  await row.getByRole('button', { name: 'Magic Initiate text' }).click()
   const wizard = row.getByRole('radio', { name: /^Wizard/ })
   await expect(wizard).toBeDisabled()
   await expect(row.locator('label', { has: page.getByRole('radio', { name: /^Wizard/ }) })).toHaveText('Wizard (already chosen: Background)')

@@ -1361,7 +1361,7 @@ function FeaturesSection({
 											{row.pending && (
 												<li className="sheet__feat-pending">
 													Choices not made yet: {row.pending.join(', ')}
-													{/* R13b (D215): Manage Feats now makes most feats' choices; Edit Character stays the only place for Strixhaven Initiate/the filter-choice feats, and a manual feat was never in Edit Character at all. */}
+													{/* D375: Manage Feats makes every feat's choices; only Strixhaven Initiate/the filter-choice feats taken at an ASI level stay in Edit Character. */}
 													{row.pendingEditableInManageFeats ? ' — make them in Manage Feats.' : row.key.startsWith('feat|manual:') || row.key.startsWith('feat|item:') ? '.' : ' — make them in Edit Character.'}
 												</li>
 											)}

@@ -460,7 +460,7 @@ function HalfFeatAbilitySelect({
  * ability. Only the block name is stored; the L1 spell is the ordinary
  * filter-choice pick below, and a college change drops it (another class list).
  */
-function NamedBlockSubPicker({
+export function NamedBlockSubPicker({
 	featName,
 	featSource,
 	grantLevel,
@@ -471,7 +471,8 @@ function NamedBlockSubPicker({
 }: {
 	featName: string
 	featSource: string
-	grantLevel: number
+	/** Only keeps the radio groups of two cards apart; the Manage Feats panel (D375) passes the instance key. */
+	grantLevel: number | string
 	blockName: string | undefined
 	chosenAbility: Ability | undefined
 	onSelectBlock: (blockName: string | undefined, resetSpells: boolean) => void
@@ -561,7 +562,7 @@ type FilterChoiceLoadState =
  * these 8 feats' filter is fixed by the feat itself, only the individual
  * spells are the player's choice.
  */
-function FilterChoiceSpellSubPicker({
+export function FilterChoiceSpellSubPicker({
 	featName,
 	featSource,
 	blockName,

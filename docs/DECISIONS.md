@@ -5410,3 +5410,10 @@ Má-li postava obojí, jsou dva řádky.
 Innate Sorcery (Sorcerer 1, XPHB) má 2 použití, obnova jen při Long Rest. Počet je jen v próze,
 proto je v ruční tabulce `LEVEL_SCALED_USES` (resources.ts) vedle Action Surge a Indomitable —
 stejný důvod jako D120 (D43: prózu neparsujeme). Úroveň se čte ze Sorcerera, i u multiclassu.
+
+## D375 — Manage Feats: řádek s nevybranými volbami je rozbalený, filter-choice a Strixhaven Initiate jdou editovat (B-4a)
+
+Řádek featu s nevybranými podvolbami se v Manage Feats otevře sám, ovládací prvky nejsou za šipkou.
+Strixhaven Initiate a 8 filter-choice featů se v Manage Feats editují u každého zdroje (ruční, z předmětu,
+pozadí, druh) stejnými pickery jako na ASI úrovni; D215 tím v tomto bodě neplatí. Feat vzatý na ASI úrovni
+zůstává u těchto featů v Edit Character. Bez změny schématu.

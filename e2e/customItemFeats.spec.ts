@@ -97,7 +97,6 @@ test('R14c1 b: Skilled from an item — its three skills chosen in Manage Feats 
   const mine = await openFeats(page)
   const skilled = featRow(mine, 'Skilled')
   await expect(skilled).toContainText('From item (Skill Charm)')
-  await skilled.getByRole('button', { name: 'Skilled text' }).click()
   for (const [slot, skill] of [
     ['1', 'arcana'],
     ['2', 'history'],

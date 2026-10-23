@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { featSource, featuresTabGroups, grantsFeatureType } from './featuresTabData'
+import { featEditableInManageFeats, featSource, featuresTabGroups, grantsFeatureType } from './featuresTabData'
 import type { GrantedFeature } from './grantedClassFeatures'
 
 const feature = (name: string, level: number, entries: unknown[], className = 'Sorcerer'): GrantedFeature => ({
@@ -107,6 +107,18 @@ describe('featSource', () => {
 		expect(featSource({ origin: 'asi', level: 5 }, classes, order)).toBe('From Fighter 4')
 		expect(featSource({ origin: 'asi', level: 6 }, classes, order)).toBe('From Rogue 2')
 		expect(featSource({ origin: 'asi', level: 9 }, classes, order)).toBeNull()
+	})
+})
+
+describe('featEditableInManageFeats (D375)', () => {
+	it('filter-choice and Strixhaven Initiate are editable from every source but an ASI level', () => {
+		for (const origin of ['manual', 'item', 'background', 'species'] as const) {
+			expect(featEditableInManageFeats({ origin, name: 'Fey-Touched', source: 'XPHB' })).toBe(true)
+			expect(featEditableInManageFeats({ origin, name: 'Strixhaven Initiate', source: 'SCC' })).toBe(true)
+		}
+		expect(featEditableInManageFeats({ origin: 'asi', name: 'Fey-Touched', source: 'XPHB' })).toBe(false)
+		expect(featEditableInManageFeats({ origin: 'asi', name: 'Strixhaven Initiate', source: 'SCC' })).toBe(false)
+		expect(featEditableInManageFeats({ origin: 'asi', name: 'Skilled', source: 'XPHB' })).toBe(true)
 	})
 })
 

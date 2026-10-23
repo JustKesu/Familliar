@@ -9,7 +9,7 @@ import { firstClass, totalCharacterLevel } from '../calculation/characterLevel'
 import { prerequisiteClassProficiencies } from '../calculation/classProficiencies'
 import { computeProficiencies, extractFeatProficiencyEntries, toolsHeldElsewhere, type ProficiencyItem } from '../calculation/proficiencies'
 import { loadDataFile } from '../dataLoader/dataLoader'
-import { AsiSubPicker } from '../featAsi/FeatAsiPicker'
+import { AsiSubPicker, FilterChoiceSpellSubPicker, NamedBlockSubPicker } from '../featAsi/FeatAsiPicker'
 import {
 	FEAT_CATEGORY_LABELS,
 	featAbilityChoiceOptions,
@@ -33,7 +33,7 @@ import type { KnownSpell } from '../spells/knownSpells'
 import { choiceNames, type AbilityIncreaseMap, type Character, type FeatChoiceDetails } from '../storage/character'
 import { findPicked } from '../storage/choiceMatch'
 import { DrawerSection } from './Drawer'
-import { featSource, type FeatureTabRow } from './featuresTabData'
+import { featEditableInManageFeats, featSource, type FeatureTabRow } from './featuresTabData'
 import type { FeatTextEntry } from './sheetData'
 
 const CATEGORY_ORDER = Object.keys(FEAT_CATEGORY_LABELS)
@@ -125,8 +125,12 @@ export function addableFeatOffers(feats: readonly FeatEntry[], held: readonly Fe
 }
 
 /** One row laid out like a Manage Spells row; ▸ opens its text. D116: which rows are open is panel state only. */
-function FeatRow({ name, meta, note, chip, action, children }: { name: string; meta?: string; note?: string; chip?: string; action?: ReactNode; children: ReactNode }): ReactNode {
-	const [open, setOpen] = useState(false)
+function FeatRow({ name, meta, note, chip, action, defaultOpen = false, children }: { name: string; meta?: string; note?: string; chip?: string; action?: ReactNode; defaultOpen?: boolean; children: ReactNode }): ReactNode {
+	const [open, setOpen] = useState(defaultOpen)
+	// D375: the pending list arrives after the feat data loads, so a row can start collapsed and must open once it turns out to have choices left.
+	useEffect(() => {
+		if (defaultOpen) setOpen(true)
+	}, [defaultOpen])
 	return (
 		<li className="manage-spells__row">
 			<div className="manage-spells__line">
@@ -284,8 +288,12 @@ export function ManageFeatsPanel({
 						: instance.origin === 'item'
 							? featOriginLabel(instance)
 							: undefined
-		/* R13b (D215): everything FeatSubChoicePicker covers is editable here, including on a locked (level/background/species, D275) feat — Strixhaven Initiate and the 8 filter-choice feats aren't, and stay read-only. */
-		const editable = !isNamedBlockFeat(instance) && !isFilterChoiceFeat(instance)
+		/* R13b (D215): everything FeatSubChoicePicker covers is editable here, including on a locked (level/background/species, D275) feat. D375: so are Strixhaven Initiate and the 8 filter-choice feats, except at an ASI level (Edit Character). */
+		const editable = featEditableInManageFeats(instance)
+		const filterChoice = editable && isFilterChoiceFeat(instance)
+		const namedBlock = editable && isNamedBlockFeat(instance)
+		const details = choiceDetailsOf(instance)
+		const edit = (next: FeatChoiceDetails): void => onEditFeatChoice?.(instance.key, { name: instance.name, source: instance.source }, next)
 		const entry = loaded?.feats.find((feat) => feat.name === instance.name && feat.source === instance.source)
 		/* A half-feat's plain ability choice — FeatSubChoicePicker doesn't render it (that select lives in FeatAsiPicker's own FeatSubPicker, alongside choosing the feat itself); Magic Initiate/spellcasting-ability feats never have this field set, so there's no double select (featSpellcastingAbilityOptions). */
 		const abilityOptions = editable && entry ? featAbilityChoiceOptions(entry) : null
@@ -294,6 +302,7 @@ export function ManageFeatsPanel({
 				key={instance.key}
 				name={featDisplayName(instance.name)}
 				chip={chip}
+				defaultOpen={!!row?.pending}
 				action={
 					instance.origin === 'manual' && (
 						<button type="button" className="manage-spells__button" aria-label={`Remove ${featDisplayName(instance.name)}`} onClick={() => onRemove(instance.key)}>
@@ -333,6 +342,32 @@ export function ManageFeatsPanel({
 							alreadyKnown={alreadyKnown}
 							idPrefix={`manage-feats-${instance.key}`}
 						/>
+						{namedBlock && (
+							<NamedBlockSubPicker
+								featName={instance.name}
+								featSource={instance.source}
+								grantLevel={instance.key}
+								blockName={instance.blockName}
+								chosenAbility={instance.chosenAbility}
+								onSelectBlock={(blockName, resetSpells) => {
+									const { blockName: _block, filterChoiceSpells, ...rest } = details
+									edit({ ...rest, ...(resetSpells || !filterChoiceSpells ? {} : { filterChoiceSpells }), ...(blockName ? { blockName } : {}) })
+								}}
+								onSelectAbility={(ability) => edit({ ...details, chosenAbility: ability })}
+							/>
+						)}
+						{filterChoice && (!namedBlock || instance.blockName !== undefined) && (
+							<FilterChoiceSpellSubPicker
+								featName={instance.name}
+								featSource={instance.source}
+								blockName={instance.blockName}
+								characterLevel={totalCharacterLevel(character.classes)}
+								chosenAbility={instance.chosenAbility}
+								alreadyKnown={alreadyKnown}
+								filterChoiceSpells={instance.filterChoiceSpells ?? null}
+								onChange={(filterChoiceSpells) => edit({ ...details, filterChoiceSpells })}
+							/>
+						)}
 					</>
 				) : (
 					row &&
