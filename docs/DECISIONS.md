@@ -5553,3 +5553,8 @@ když po nahrazení zůstane `from` kdekoli v záznamu. Tabulka se při neshodě
 Review při level upu ukazuje řádek „Options removed“ = volby z baseline, které po průchodu chybí (po kopiích),
 u všech vyměnitelných druhů včetně stylu boje. Párování „X → Y“ se nedělá, WizardData ho neukládá (D378).
 Bez změny schématu. Rozhodl Daniel 24. 10. 2026.
+
+## D391 — „Options added“ v Review při level upu počítá i runy, manévry a styl boje (RV-1b)
+
+„Options added“ v Review při level upu počítá i runy, manévry (RN, MV:B) a styl boje Fightera, stejně jako
+„Options removed“ (D390). Doplňuje D378. Rozhodl Daniel 24. 10. 2026.

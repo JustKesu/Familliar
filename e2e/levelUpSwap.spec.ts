@@ -379,6 +379,7 @@ test('RV-1 c: Battle Master swaps a maneuver and the Fighting Style — one row 
     CLASS_STEP,
     async (p) => {
       await expect(whatsNew(p)).toContainText(/Options removed\s*:?\s*Defense, Parry/)
+      await expect(whatsNew(p)).toContainText(/Options added\s*:?\s*Archery, Feinting Attack/)
     },
   )
 })

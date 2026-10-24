@@ -221,11 +221,14 @@ export function ReviewStep({
 		.filter((entry) => entry.choices.length > 0)
 		.map((entry) => ({ featureType: entry.featureType, label: classOptionLabels[entry.featureType] ?? 'Class options', names: countedNames(choiceNames(entry.choices)) }))
 	// D382: per copy, so a second Lessons of the First Ones counts as added.
-	const optionsAdded = countedNames(
-		data.classOptionalFeatureChoices.flatMap((entry) =>
+	// D391: symmetric with optionsRemoved below (runes, maneuvers, Fighting Style).
+	const optionsAdded = countedNames([
+		...data.classOptionalFeatureChoices.flatMap((entry) =>
 			lostCopies(choiceNames(entry.choices), choiceNames(baseline.classOptionalFeatureChoices.find((before) => before.featureType === entry.featureType)?.choices)),
 		),
-	)
+		...lostCopies(data.optionalFeatureChoices, baseline.optionalFeatureChoices),
+		...(data.fightingStyle !== null && baseline.fightingStyle !== data.fightingStyle ? [data.fightingStyle] : []),
+	])
 
 	// D390: what a swap took away, per copy; WizardData does not store which pick replaced which (D378).
 	const optionsRemoved = countedNames([

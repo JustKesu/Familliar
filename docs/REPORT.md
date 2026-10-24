@@ -1,30 +1,24 @@
-# RV-1 — "Options removed" row in level-up Review (D390)
+# RV-1b — "Options added" covers runes, maneuvers and Fighting Style (D391)
 
-Setup: `git fetch`, `git merge --ff-only origin/main` → already up to date, HEAD 08c3903. Branch unchanged (main).
+HEAD at start: 447f7e8 (`git fetch` + `merge --ff-only`: already up to date).
 
-## STEP 1 — where each kind lives
+## Changed
+- `src/creation/review/ReviewStep.tsx`: `optionsAdded` now = class options (EI/MM, as before) + `lostCopies(data.optionalFeatureChoices, baseline.optionalFeatureChoices)` (RN, MV:B) + current `fightingStyle` when it differs from baseline. Same `countedNames`, alphabetical. Mirror of `optionsRemoved` (D390). No schema/storage change.
+- Consequence (intended): a Fighting Style taken at a level that grants one now appears in "Options added".
+- `e2e/levelUpSwap.spec.ts` RV-1 c: also expects "Options added: Archery, Feinting Attack".
+- `docs/DECISIONS.md` D391; `docs/STATUS.md` RV-1b line.
 
-| Kind | WizardData | Baseline (same shape, `baseline: WizardData`) |
-|---|---|---|
-| Class options EI, MM | `classOptionalFeatureChoices[featureType].choices` | same field on `baseline` |
-| Subclass options RN, MV:B | `optionalFeatureChoices: string[]` | same field on `baseline` |
-| Fighting Style | `fightingStyle: string \| null` | same field on `baseline` |
-
-Everything was already on `baseline`; no new data path. One touched place in code (ReviewStep), well under the ~10 limit.
-
-## What changed
-- `src/creation/review/ReviewStep.tsx`: `optionsRemoved` = `countedNames` of `lostCopies(baseline, data)` for class options (per featureType), subclass options, plus the baseline Fighting Style when it differs from the current one. Row "Options removed" follows "Options added", inside the `levelUp` card, so only in a level up; hidden when empty. No schema or storage change.
-- `e2e/levelUpSwap.spec.ts`: `levelUp()` takes an optional `onReview` callback run before Save; scenarios RV-1 a (Warlock swap: added + removed), b (no swap: no row), c (Battle Master Parry + Defense style: one row "Defense, Parry"), d (Replace then Keep: no row).
-- `docs/DECISIONS.md` D390; `docs/STATUS.md` B-5 line amended and RV-1 entry added.
+## Not done
+- The extra scenario (no-swap level up that only gains runes/maneuvers, no "Options removed" row) is NOT added. Per the brief, no existing seed reaches it: every Battle Master / Rune Knight seed in `e2e/` is Fighter 4→5 (`levelUpSwap`, `reviewFixes`, `choiceSources`, `multiclassEdit`), and maneuver/rune counts only rise at Fighter 7. A new Fighter 6→7 seed would be invented, so I stopped there. Decision for you: approve a Fighter 6 Battle Master / Rune Knight seed in a follow-up.
 
 ## Verified
-typecheck clean; vitest 3444/3444; validate-data 177/177; e2e 693/693 (2.5 min).
+- `npm run typecheck`: clean.
+- `npm run test`: 188 files, 3444 tests passed.
+- `npm run validate-data`: 177/177.
+- `npm run e2e`: 693 passed (2.4m), including the extended RV-1 c.
 
 ## Decisions / questions
-- Fighting Style removed = baseline style differs from current (no per-copy semantics; one style per class step). In a multiclass level up `baseline.fightingStyle` is the active class's style as seeded — not separately tested.
-- No subagent used.
+- Decision taken: skipped the new scenario rather than invent a seed (see above).
 
 ## Manual browser check for the user
-None - the planning chat checks the looks from screenshots.
-
-Changed screens: level-up Review, "Level N — What's new" card (new "Options removed" row).
+None — the planning chat checks the looks from screenshots; changed screen: level-up Review "What's new" card.
