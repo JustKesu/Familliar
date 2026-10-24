@@ -18058,18 +18058,12 @@
 		"entries": [
 			"When you take this oath at 3rd level, you gain the following two Channel Divinity options.",
 			{
-				"type": "entries",
-				"name": "Absorb Magic",
-				"entries": [
-					"You can refute certain spells and use them to nourish yourself. Using your Channel Divinity, you can interrupt a creature you can see within 30 feet of you casting a spell. You can use a reaction when you see a creature within range casting a spell to present your holy symbol and interrupt it. The spell fails and has no effect if it is of a level no higher than 1 + your paladin level divided by 3 (rounded up), to a maximum of 6th-level spells. When it does, you gain a number of temporary hit points equal to your Charisma modifier, plus 5 times the spell's level."
-				]
+				"type": "refSubclassFeature",
+				"subclassFeature": "Absorb Magic|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
 			},
 			{
-				"type": "entries",
-				"name": "Expeditious Command",
-				"entries": [
-					"You can use your Channel Divinity to issue a word of power and release a wave of invigorating energy from your holy symbol. As a bonus action, choose a number of creatures within 30 feet of you up to your Charisma modifier (minimum one creature). Until the start of your next turn, the chosen creatures can use a bonus action to take either {@action Dash} or {@action Disengage} action. As part of using your Channel Divinity in this way, you can also take either the {@action Dash} or {@action Disengage} action."
-				]
+				"type": "refSubclassFeature",
+				"subclassFeature": "Expeditious Command|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|3|GriffonsSaddlebag2"
 			}
 		],
 		"id": "scf|channel divinity|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
@@ -18902,5 +18896,41 @@
 			"Once during each of your turns when you hit with an attack roll, you can deal extra damage to the target equal to your proficiency bonus. The type of this damage is determined by your patron: bludgeoning (dao), thunder (djinni), fire (efreeti), or cold (marid)."
 		],
 		"id": "scf|genie's wrath|warlock|phb|genie|tce|1|tce"
+	},
+	{
+		"name": "Absorb Magic",
+		"source": "GriffonsSaddlebag2",
+		"page": 220,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"consumes": {
+			"name": "Channel Divinity"
+		},
+		"entries": [
+			"You can refute certain spells and use them to nourish yourself. Using your Channel Divinity, you can interrupt a creature you can see within 30 feet of you casting a spell. You can use a reaction when you see a creature within range casting a spell to present your holy symbol and interrupt it. The spell fails and has no effect if it is of a level no higher than 1 + your paladin level divided by 3 (rounded up), to a maximum of 6th-level spells. When it does, you gain a number of temporary hit points equal to your Charisma modifier, plus 5 times the spell's level."
+		],
+		"id": "scf|absorb magic|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
+	},
+	{
+		"name": "Expeditious Command",
+		"source": "GriffonsSaddlebag2",
+		"page": 220,
+		"className": "Paladin",
+		"classSource": "PHB",
+		"subclassShortName": "Spelldrinker",
+		"subclassSource": "GriffonsSaddlebag2",
+		"level": 3,
+		"header": 2,
+		"consumes": {
+			"name": "Channel Divinity"
+		},
+		"entries": [
+			"You can use your Channel Divinity to issue a word of power and release a wave of invigorating energy from your holy symbol. As a bonus action, choose a number of creatures within 30 feet of you up to your Charisma modifier (minimum one creature). Until the start of your next turn, the chosen creatures can use a bonus action to take either {@action Dash} or {@action Disengage} action. As part of using your Channel Divinity in this way, you can also take either the {@action Dash} or {@action Disengage} action."
+		],
+		"id": "scf|expeditious command|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
 	}
 ]

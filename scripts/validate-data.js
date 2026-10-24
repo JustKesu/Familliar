@@ -328,7 +328,7 @@ const VALID_LANGUAGE_TYPES = ["standard", "rare"];
 // 786 -> 685 (D194): +44 RHW, -145 of the 19 superseded subclasses.
 const EXPECTED_FEATURE_TOTALS = {
 	"class-features": 302,
-	"subclass-features": 780, // D201: +56 FRHoF, -7 Bladesinging|TCE; D365: +46 GriffonsSaddlebag2
+	"subclass-features": 782, // D201: +56 FRHoF, -7 Bladesinging|TCE; D365: +46 GriffonsSaddlebag2; D386: +2 split Channel Divinity options
 };
 
 // Fields every class / subclass must carry for character building to work.

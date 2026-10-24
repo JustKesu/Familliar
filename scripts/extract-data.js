@@ -107,6 +107,10 @@ const HOMEBREW_REST_FEATURES = {
 	"Aether|Sight Beyond Sight": { sentence: ["you can't cast it again until you finish", "you can't use it again until you finish"] },
 	"Spelldrinker|Arcane Conduit": {},
 };
+// D386: options nested as `entries` blocks become separate pool-spending records, the XGE/TCE Channel Divinity shape.
+const HOMEBREW_SPLIT_OPTIONS = {
+	"Spelldrinker|Channel Divinity": { consumes: "Channel Divinity", options: ["Absorb Magic", "Expeditious Command"] },
+};
 // D367: Launch's uses are stated in prose only (3, then 4 at 7th, 5 at 15th); the table is where resources.ts reads a maximum.
 const HOMEBREW_SUBCLASS_TABLES = {
 	"Fighter|Steel Hawk": [{ colLabels: ["Launch"], rows: Array.from({ length: 20 }, (_, i) => [i + 1 < 3 ? 0 : i + 1 < 7 ? 3 : i + 1 < 15 ? 4 : 5]) }],
@@ -1484,7 +1488,7 @@ function loadHomebrew() {
 			...readJson(path.join(SOURCE_DATA_DIR, "items-base.json")).baseitem,
 		]),
 	};
-	const stats = { tagsRedirected: 0, tagsLeft: 0, additionalSpellsRedirected: 0, restFeatures: 0 };
+	const stats = { tagsRedirected: 0, tagsLeft: 0, additionalSpellsRedirected: 0, restFeatures: 0, splitOptions: 0 };
 
 	// An unsourced {@spell}/{@condition}/{@item} tag means PHB in 5etools.
 	const redirectTags = (text) =>
@@ -1524,6 +1528,21 @@ function loadHomebrew() {
 		);
 		const races = (data.race || []).filter((entry) => HOMEBREW_KEEP.race.includes(entry.name));
 
+		for (const feature of [...features]) {
+			const split = HOMEBREW_SPLIT_OPTIONS[`${feature.subclassShortName}|${feature.name}`];
+			if (!split) continue;
+			const { entries, ...shape } = feature;
+			for (const name of split.options) {
+				const index = entries.findIndex((block) => block && block.type === "entries" && block.name === name);
+				if (index < 0) throw new Error(`Homebrew option ${name} not found in ${feature.name}`);
+				features.push({ ...shape, name, consumes: { name: split.consumes }, entries: entries[index].entries });
+				entries[index] = {
+					type: "refSubclassFeature",
+					subclassFeature: [name, feature.className, feature.classSource, feature.subclassShortName, feature.subclassSource, feature.level, feature.source].join("|"),
+				};
+				stats.splitOptions++;
+			}
+		}
 		for (const feature of features) {
 			const rest = HOMEBREW_REST_FEATURES[`${feature.subclassShortName}|${feature.name}`];
 			if (!rest) continue;
@@ -1569,9 +1588,11 @@ function loadHomebrew() {
 	];
 	if (missing.length) throw new Error(`Homebrew entries not found: ${missing.join(", ")}`);
 	if (stats.restFeatures !== Object.keys(HOMEBREW_REST_FEATURES).length) throw new Error(`Homebrew rest features tagged: ${stats.restFeatures} of ${Object.keys(HOMEBREW_REST_FEATURES).length}`);
+	const splitExpected = Object.values(HOMEBREW_SPLIT_OPTIONS).reduce((sum, split) => sum + split.options.length, 0);
+	if (stats.splitOptions !== splitExpected) throw new Error(`Homebrew options split: ${stats.splitOptions} of ${splitExpected}`);
 
 	console.log(`Homebrew kept: ${result.subclass.length} subclasses, ${result.subclassFeature.length} subclass features, ${result.race.length} races`);
-	console.log(`Homebrew tags -> XPHB: ${stats.tagsRedirected} (left as-is: ${stats.tagsLeft}); additionalSpells -> XPHB: ${stats.additionalSpellsRedirected}; rest-tagged features: ${stats.restFeatures}`);
+	console.log(`Homebrew tags -> XPHB: ${stats.tagsRedirected} (left as-is: ${stats.tagsLeft}); additionalSpells -> XPHB: ${stats.additionalSpellsRedirected}; rest-tagged features: ${stats.restFeatures}; options split: ${stats.splitOptions}`);
 	homebrewCache = result;
 	return result;
 }

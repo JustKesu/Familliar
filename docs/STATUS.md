@@ -1162,6 +1162,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   restored by Short Rest; Bloodbound (Rogue 17) and Hurricane (Ranger 15) 1 box, Short Rest
   restores; Sight Beyond Sight (Monk 17) and Arcane Conduit (Paladin 20) 1 box, only Long Rest
   restores; species option "Geleton (TGS2)").
+- `e2e/tgs2ChannelDivinity.spec.ts` — TGS2-4b a–d (D386: Paladin 3 Spelldrinker Actions rows Absorb Magic and
+  Expeditious Command, 2 "Use Channel Divinity" boxes each; a use on one shows on both; empty pool leaves no
+  Use box on either; Features one Channel Divinity row, each option row and text once).
 - `e2e/tgs2Resistances.spec.ts` — TGS2-5a a–c (D369: Barbarian 6 Path of the Infernal Fire on the Defenses card and in the
   details with origin; Ranger 7 Rocborne Cold; Barbarian 5 no Fire).
 - `e2e/tgs2Spells.spec.ts` — TGS2-4a a–d (D370: Monk 3 Aether Mage Hand, no Spare the Dying; Monk 6 Gentle Repose /
@@ -1297,13 +1300,16 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `loadHomebrew()`), Improved Launch, Bloodbound, Hurricane (1, Short Rest), Sight Beyond Sight, Arcane Conduit (1, Long Rest)
   through the existing resources.ts path after rest-tag rewrite (`HOMEBREW_REST_FEATURES`). Source GriffonsSaddlebag2 shown as
   "TGS2" in pickers (`src/pickers/bookLabel.ts`: ChoiceRow, SearchableOptionList, SpeciesPicker).
-  Open: TGS2-4b Spelldrinker Channel Divinity, TGS2-4c texts and Geleton acid resistance (extractor), Psi Warrior XPHB Telekinesis shows "unresolved" (data has no ability, rules say Intelligence, extractor fix).
+  Open: TGS2-4c texts and Geleton acid resistance (extractor), Psi Warrior XPHB Telekinesis shows "unresolved" (data has no ability, rules say Intelligence, extractor fix).
 - TGS2-5a (D369): `FEATURE_DAMAGE_RESPONSES` gained Infernal Warrior (Barbarian, Path of the Infernal 6, fire) and Windswept
   (Ranger, Rocborne 7, cold), both unconditional. Arcane Conduit stays text only.
 - TGS2-4a (D370): `HOMEBREW_SUBCLASS_SPELLS` in extract-data.js gives Way of the Aether Mage Hand (3), Spare the Dying (6),
   Gentle Repose / See Invisibility for 2 Focus Points (6), Etherealness 1/Long Rest (17) spending the Sight Beyond Sight record
   (`SHARED_OWNERS` in freeCastResources.ts), and Steel Hawk Animal Messenger as ritual only (3). Both ruled not castable with
   a slot in `alsoCastableWithSlot.ts`.
+- TGS2-4b (D386): `HOMEBREW_SPLIT_OPTIONS` in `loadHomebrew()` splits Spelldrinker's Channel Divinity options Absorb Magic and
+  Expeditious Command into their own records with `consumes` Channel Divinity (XGE/TCE shape; 48 homebrew feature records).
+  Two Actions rows spending the Paladin Channel Divinity pool; no sheet code changed.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

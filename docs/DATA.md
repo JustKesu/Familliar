@@ -89,6 +89,14 @@ extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into th
   Steel Hawk: `innate` 3 `ritual: [animal messenger]`, ability wis (TGS2-4a2, D371: the book names no
   ability; the user chose Wisdom). Refs are written `|xphb`, so the PHB→XPHB
   redirect does not touch them. Mercantile, Grim Surgeon, Infernal: no `additionalSpells`.
+- Channel Divinity options (TGS2-4b, D386): Spelldrinker's level-3 "Channel Divinity" holds its two
+  options Absorb Magic and Expeditious Command as nested `entries` blocks with no `consumes`, so no
+  record spends the pool. XGE/TCE file each option as its own subclassFeature (same name/source/class/
+  level/header fields as the parent, plus `consumes: {"name":"Channel Divinity"}`) and the parent's
+  `entries` hold `refSubclassFeature` refs to them. `HOMEBREW_SPLIT_OPTIONS` (key "Subclass short
+  name|Feature name") rebuilds that shape: the block becomes a new record, its place in the parent a ref
+  in the homebrew's 7-part uid form (`Name|Paladin|PHB|Spelldrinker|GriffonsSaddlebag2|3|GriffonsSaddlebag2`).
+  Throws if an option block is missing or fewer options are split than listed. Feature records: 46 → 48.
 - Tags: `{@spell}`, `{@condition}`, `{@item}` with source PHB or none → XPHB when an XPHB entry of that
   name exists in the 5etools source (spells-xphb, conditionsdiseases, items + items-base): 38 rewritten,
   0 without target. `additionalSpells` "x|PHB" → "x|XPHB": 15 of 15.

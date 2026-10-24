@@ -5514,3 +5514,10 @@ c) Jméno vlastního backgroundu nespouští přepočet max HP.
 Uložená nebo importovaná postava s dvěma kopiemi neopakovatelné invokace (mimo čtyři z D382 a) se už neodmítá celá.
 Při čtení zůstane první kopie, další se zahodí a postava se načte normálně. Opakovatelné invokace si nechají všechny
 kopie. Mění kontrolu z I-1 (R-CB nález 3, rozhodl Daniel).
+
+## D386 — Channel Divinity u Oath of the Spelldrinker jako dva řádky (TGS2-4b)
+
+Volby Absorb Magic a Expeditious Command jsou dva samostatné záznamy subclassFeature s `consumes: {"name":
+"Channel Divinity"}`, rodičovský Channel Divinity si nechá úvodní text a odkazy `refSubclassFeature` na ně — vzor
+XGE/TCE (Oath of Conquest). Na záložce Actions jsou dva řádky, oba čerpají pool Channel Divinity Paladina.
+Úprava v extrakci (`HOMEBREW_SPLIT_OPTIONS`). Task TGS2-4b, rozhodl Daniel 22. 10.
