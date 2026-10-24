@@ -5585,3 +5585,9 @@ nepočítá). Ostatní třídy beze změny. Rozhodl Daniel 24. 10. 2026.
 Ruční tabulka `CLASS_SAVE_ADVANTAGES` (src/sheet/classSaveAdvantages.ts) se 7 rysy XPHB povolání a podtříd, řádky jako D314
 pod Saving Throws a v draweru s názvem rysu v závorce; podmíněné s podmínkou v textu (Rage: „while raging“). Rysy, které dávají
 výhodu jiným tvorům, se neuvádějí. Rozhodl Daniel 24. 10. 2026.
+
+## D396 — Uložená mastery mimo aktuální pool (F-RB)
+
+Hodnota v `masteries`, která už není v poolu (Longbow u Barbariana, Staff, Wooden Staff, Psychic Blade), se v MasteryPickeru
+vykreslí jako vybraná s poznámkou „no longer eligible“, aby šla odznačit. Nikdy se nezahazuje automaticky; po odznačení se už
+nenabízí. Rozhodl Daniel 25. 10. 2026.

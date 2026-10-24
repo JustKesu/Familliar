@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CLASS_FEATURE_LANGUAGE_GRANTS, featureLanguageOptions, featureLanguageSlotCount } from './classFeatureLanguages'
+import { CLASS_FEATURE_LANGUAGE_GRANTS, featureLanguageOptions, featureLanguageSlotCount, otherFeatureLanguageNames } from './classFeatureLanguages'
 
 const LANGUAGES = ['Abyssal', 'Druidic', 'Elvish', "Thieves' Cant"].map((name) => ({ name }))
 
@@ -24,5 +24,15 @@ describe('featureLanguageSlotCount (D392)', () => {
 
 	it('a grant without a list keeps its count', () => {
 		expect(featureLanguageSlotCount(grant('Deft Explorer'), ['Elvish'])).toBe(2)
+	})
+
+	it('otherFeatureLanguageNames lists picks of other grants, so Hellborn owes no slot beside a Mastermind Abyssal', () => {
+		const picks = [
+			{ name: 'Abyssal', source: 'XPHB', grantedBy: 'mastermind' },
+			{ name: 'Infernal', source: 'XPHB', grantedBy: 'hellborn' },
+		] as const
+		const others = otherFeatureLanguageNames(picks, 'hellborn')
+		expect(others).toEqual(['Abyssal'])
+		expect(featureLanguageSlotCount(grant('Hellborn'), ['Infernal', ...others])).toBe(0)
 	})
 })

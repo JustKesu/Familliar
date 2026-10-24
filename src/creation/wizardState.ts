@@ -49,7 +49,7 @@ import type { SpeciesChoice } from '../species/SpeciesPicker'
 import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
-import { classFeatureLanguageGrantsFor, featureLanguageSlotCount, keepHeldFeatureLanguages } from '../languages/classFeatureLanguages'
+import { classFeatureLanguageGrantsFor, CLASS_FEATURE_LANGUAGE_GRANTS, featureLanguageSlotCount, keepHeldFeatureLanguages, otherFeatureLanguageNames } from '../languages/classFeatureLanguages'
 import { classToolGrantsFor, keepHeldToolChoices, toolGrantsForHeldClasses, type ClassToolChoiceGrant, type ToolSlotGrant } from '../toolProficiencies/classToolChoices'
 import { isKhoravar, isSpeciesToolChoice, keepHeldSpeciesToolChoices, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
 import {
@@ -990,7 +990,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 					if (!grant.choice) return true
 					const picks = data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length
 					// D392: Hellborn owes no pick when both its languages are known; a pick made before that still counts.
-					const known = [AUTOMATIC_LANGUAGE.name, ...data.languageChoice.map((language) => language.name)]
+					const known = [AUTOMATIC_LANGUAGE.name, ...data.languageChoice.map((language) => language.name), ...otherFeatureLanguageNames(data.featureLanguages, grant.choice.grantedBy)]
 					return picks >= featureLanguageSlotCount(grant, known) && picks <= grant.choice.count
 				}) &&
 				// D176: at least the count — a surplus Artificer replacement pick is kept, not demanded away.
@@ -1499,7 +1499,10 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, fightingStyle: action.style } }
 		case 'setSubclass': {
 			// M9/D340: only this class's own subclass picks go; another held class's stay, in a level up (no otherClasses stash) as in Edit.
-			const ownSources = classSubclassGrantSources(state.data.classChoice?.className ?? '')
+			const ownSources = new Set<string>(classSubclassGrantSources(state.data.classChoice?.className ?? ''))
+			// Subclass language grants (Hellborn, Mastermind, Banneret) go with the subclass; Primal Knowledge has none and stays.
+			for (const grant of CLASS_FEATURE_LANGUAGE_GRANTS)
+				if (grant.subclass && grant.choice && grant.className === state.data.classChoice?.className) ownSources.add(grant.choice.grantedBy)
 			// D338/D341: class spell picks and Wild Shape forms go only when the loaded character already had a subclass (Edit), not on a switch A -> B within one run.
 			const { classChoice } = state.data
 			const nothingHeld = state.data.subclass === null

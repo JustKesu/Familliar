@@ -210,6 +210,10 @@ download Chromium) rather than invoking tools directly via
 `npx`. The npm scripts are pre-approved in `.claude/settings.json`; `npx` is
 not, so every `npx` call costs a permission prompt.
 
+To run a single e2e file use exactly `npm run e2e -- e2e/<file>.spec.ts`.
+Never `npx playwright` or any other `npx` call: it is not on the allowlist and
+is refused automatically when nobody is at the computer.
+
 Prefer one command that answers the question over several exploratory ones. If
 you find yourself running more than about 10 commands to answer one question,
 stop and tell the user what you are stuck on instead.

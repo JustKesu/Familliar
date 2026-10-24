@@ -18,6 +18,8 @@ type LoadState =
 	| { status: 'ready'; count: number | null; weapons: MasteryWeapon[] }
 	| { status: 'error'; message: string }
 
+const STALE_PREFIX = 'stale|'
+
 function weaponKey(weapon: MasteryWeapon): string {
 	return `${weapon.name}|${weapon.source}|${weapon.masteryFull}`
 }
@@ -113,7 +115,25 @@ export function MasteryPicker({
 		}
 	}
 
-	const options: SearchableOption[] = weapons.filter((weapon) => !excluded.includes(weapon.name)).map((weapon) => {
+	// D396: a saved pick outside the current pool stays visible and removable; once unchecked it is gone for good.
+		const poolNames = new Set(weapons.map((weapon) => weapon.name))
+		const stale: SearchableOption[] = value
+			.filter((name) => !poolNames.has(name))
+			.map((name) => ({
+				key: `${STALE_PREFIX}${name}`,
+				name,
+				label: (
+					<>
+						<strong>{name}</strong> — no longer eligible
+					</>
+				),
+				detail: 'No longer eligible for this class; uncheck it to choose another weapon.',
+				selected: true,
+				disabled: false,
+				locked: lockedValues.includes(name),
+			}))
+
+		const options: SearchableOption[] = weapons.filter((weapon) => !excluded.includes(weapon.name)).map((weapon) => {
 		const selected = value.includes(weapon.name)
 		return {
 			key: weaponKey(weapon),
@@ -136,7 +156,7 @@ export function MasteryPicker({
 			name="weapon-mastery"
 			inputType="checkbox"
 				variant="choose"
-			options={options}
+			options={[...stale, ...options]}
 			required={count}
 			renderCount={({ chosen, required }) => {
 				const left = required - chosen
@@ -145,6 +165,7 @@ export function MasteryPicker({
 					: `All ${required} weapon masteries chosen.`
 			}}
 			onToggle={(key) => {
+					if (key.startsWith(STALE_PREFIX)) return toggle(key.slice(STALE_PREFIX.length))
 				const weapon = weapons.find((candidate) => weaponKey(candidate) === key)
 				if (weapon) toggle(weapon.name)
 			}}

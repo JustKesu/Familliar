@@ -32,6 +32,11 @@ export function featureLanguageSlotCount(grant: ClassFeatureLanguageGrant, known
 	return Math.min(count, from.filter((name) => !knownLower.has(name.toLowerCase())).length)
 }
 
+/** Names picked through feature grants other than `grantedBy`: known for the slot count of that grant. */
+export function otherFeatureLanguageNames(languages: readonly CharacterLanguage[], grantedBy: string): string[] {
+	return languages.filter((language) => language.grantedBy !== grantedBy).map((language) => language.name)
+}
+
 // D172: the picks come "from the language tables in chapter 2" — Standard AND Rare (DATA.md).
 export const FEATURE_LANGUAGE_TYPES: readonly string[] = ['standard', 'rare']
 

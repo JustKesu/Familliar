@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CharacterLanguage } from '../storage/character'
-import { FEATURE_LANGUAGE_TYPES, featureLanguageOptions, featureLanguageSlotCount, type ClassFeatureLanguageGrant } from './classFeatureLanguages'
+import { FEATURE_LANGUAGE_TYPES, featureLanguageOptions, featureLanguageSlotCount, otherFeatureLanguageNames, type ClassFeatureLanguageGrant } from './classFeatureLanguages'
 import { loadLanguages, type LanguageEntry } from './languageData'
 
 /**
@@ -55,7 +55,7 @@ export function FeatureLanguageSlots({
 					onChange([...value.filter((language) => language.grantedBy !== choice.grantedBy), ...next.filter((pick) => pick !== undefined)])
 				}
 				const ownNames = picks.map((pick) => pick.name)
-				const slots = Math.max(featureLanguageSlotCount(grant, known.filter((name) => !ownNames.includes(name))), picks.length)
+				const slots = Math.max(featureLanguageSlotCount(grant, [...known.filter((name) => !ownNames.includes(name)), ...otherFeatureLanguageNames(value, choice.grantedBy)]), picks.length)
 				return Array.from({ length: slots }, (_, slot) => {
 					const current = picks[slot]
 					const options = featureLanguageOptions(languages, taken, current?.name).filter((language) => !choice.from || choice.from.includes(language.name))

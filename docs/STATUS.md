@@ -1332,6 +1332,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Rocborne Whispers of Knowledge not done (temporary skill-or-tool pick). `masteryWeaponsFor` drops Psychic Blade and SCF items
   (Staff, Wooden Staff); Barbarian XPHB gets melee (`type` M) only. `classSaveAdvantageLines` (src/sheet/classSaveAdvantages.ts,
   7 XPHB features) adds to the Saving Throws card and drawer next to the species lines. `e2e/rb2.spec.ts`.
+- F-RB (D396): Hellborn slot count (FeatureLanguageSlots, `isStepComplete` languages) also treats languages picked by other
+  feature grants as known (`otherFeatureLanguageNames`). MasteryPicker shows a saved pick outside the pool as checked with
+  "no longer eligible" so it can be unchecked. `setSubclass` also clears the language picks of this class's subclass grants
+  (Hellborn, Mastermind, Banneret); Primal Knowledge stays. `e2e/rbFixes.spec.ts` a–d.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:
