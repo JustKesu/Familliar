@@ -5547,3 +5547,9 @@ Každý záznam tabulek `HOMEBREW_WORDING`, `HOMEBREW_REST_FEATURES`, `HOMEBREW_
 `HOMEBREW_SUBCLASS_SPELLS` a `HOMEBREW_RACE_2014_BLOCKS`, který se neuplatní, shodí extrakci (chybová zpráva nese tabulku
 a klíč). `HOMEBREW_WORDING` nahrazuje všechny výskyty `from` ve featuře (D387 to tak myslel), počítá je a shodí extrakci,
 když po nahrazení zůstane `from` kdekoli v záznamu. Tabulka se při neshodě neupravuje bez rozhodnutí uživatele.
+
+## D390 — Řádek „Options removed“ v Review při level upu (RV-1)
+
+Review při level upu ukazuje řádek „Options removed“ = volby z baseline, které po průchodu chybí (po kopiích),
+u všech vyměnitelných druhů včetně stylu boje. Párování „X → Y“ se nedělá, WizardData ho neukládá (D378).
+Bez změny schématu. Rozhodl Daniel 24. 10. 2026.

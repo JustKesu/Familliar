@@ -1349,7 +1349,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `#invocation:<id>:` counters; D320 repair covers `'invocation'` ids. `e2e/lessonsFeatB4c.spec.ts` a–d.
 - B-5 (D378): ReviewStep has a "Class options" card (between Spells and Feats; one row per featureType, label from
   `classOptionLabels` = CharacterWizard's `classOptionalFeatureGroups` names) and a What's new "Options added" row
-  (picks not in the baseline). No "Options replaced" row. No schema change. `e2e/reviewClassOptions.spec.ts` a–c.
+  (picks not in the baseline). No "Options replaced" row (no X → Y pairing). No schema change. `e2e/reviewClassOptions.spec.ts` a–c.
+- RV-1 (D390): level-up What's new has an "Options removed" row right after "Options added": baseline picks the walk no longer
+  holds, per copy (class options EI/MM, subclass options RN/MV:B, Fighting Style). Level up only. `e2e/levelUpSwap.spec.ts` RV-1 a–d.
 - F-B1 (D379): review fixes. The wizard's draft carries `optionalFeatureChoices` (active + stashed classes, stored for the rest),
   so awake Lessons feats reach `featAsiManualFeats` (label "From Lessons of the First Ones") and block a repeat at ASI levels
   and as species/background feat. `setInvocationFeat` Clear removes every stored `'invocation'` entry and their counters; a

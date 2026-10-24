@@ -227,6 +227,15 @@ export function ReviewStep({
 		),
 	)
 
+	// D390: what a swap took away, per copy; WizardData does not store which pick replaced which (D378).
+	const optionsRemoved = countedNames([
+		...baseline.classOptionalFeatureChoices.flatMap((before) =>
+			lostCopies(choiceNames(before.choices), choiceNames(data.classOptionalFeatureChoices.find((entry) => entry.featureType === before.featureType)?.choices)),
+		),
+		...lostCopies(baseline.optionalFeatureChoices, data.optionalFeatureChoices),
+		...(baseline.fightingStyle !== null && baseline.fightingStyle !== data.fightingStyle ? [baseline.fightingStyle] : []),
+	])
+
 	const increaseText = (increases: AbilityIncreaseMap): string =>
 		Object.entries(increases)
 			.map(([ability, amount]) => `${ABILITY_ABBREVIATIONS[ability as Ability].toUpperCase()} ${signed(amount)}`)
@@ -295,6 +304,7 @@ export function ReviewStep({
 					)}
 					{spellsAdded.length > 0 && <Row label="Spells added">{spellsAdded.join(', ')}</Row>}
 					{optionsAdded.length > 0 && <Row label="Options added">{optionsAdded.join(', ')}</Row>}
+					{optionsRemoved.length > 0 && <Row label="Options removed">{optionsRemoved.join(', ')}</Row>}
 					{levelChoiceText && <Row label={levelChoice?.kind === 'asi' ? 'Ability score improvement' : 'Feat'}>{levelChoiceText}</Row>}
 				</section>
 			)}

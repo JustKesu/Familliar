@@ -83,7 +83,7 @@ async function openOptionList(page: Page, legend: string): Promise<void> {
 }
 
 /** Opens Level up, takes `label` ("Warlock 4 → 5"), walks to the save; `options` runs on the class-options step. Returns the steps seen. */
-async function levelUp(page: Page, label: string, level: number, options?: (page: Page) => Promise<void>, optionStep = /Eldritch Invocations|Metamagic/): Promise<string[]> {
+async function levelUp(page: Page, label: string, level: number, options?: (page: Page) => Promise<void>, optionStep = /Eldritch Invocations|Metamagic/, onReview?: (page: Page) => Promise<void>): Promise<string[]> {
   await page.locator('.sheet__level-up').click()
   await page.getByRole('dialog', { name: 'Level up which class?' }).getByRole('button', { name: label, exact: true }).click()
   await expect(page).toHaveURL(/\/level-up/)
@@ -92,6 +92,7 @@ async function levelUp(page: Page, label: string, level: number, options?: (page
     const step = (await currentStep(page).textContent()) ?? ''
     seen.push(step)
     if (/Review and save/.test(step)) {
+      await onReview?.(page)
       await wizardNav(page).getByRole('button', { name: `Save level ${level}` }).click()
       await expect(page).not.toHaveURL(/\/level-up/)
       return seen
@@ -326,6 +327,78 @@ test('F-20b i: Fighter 4 replaces Archery with Defense — AC gains Defense, the
   await page.getByRole('tab', { name: 'Actions' }).click()
   await page.getByRole('button', { name: 'Longbow breakdown', exact: true }).click()
   await expect(page.getByRole('dialog')).not.toContainText('Archery')
+})
+
+/* RV-1 (D390): the level-up Review lists what a swap took away. */
+const whatsNew = (page: Page): Locator => page.getByRole('region', { name: /What.s new/ })
+
+test('RV-1 a: Warlock swap — Review shows Options added and Options removed', async ({ page }) => {
+  await openSheet(page, warlock('rv1-a', 4, ['Agonizing Blast', 'Armor of Shadows', "Devil's Sight"]))
+  await levelUp(
+    page,
+    'Warlock 4 → 5',
+    5,
+    async (p) => {
+      await replaceGroup(p).getByRole('button', { name: 'Replace Agonizing Blast', exact: true }).click()
+      await openOptionList(p, 'Eldritch Invocations')
+      await chooseButton(p, 'Repelling Blast').click()
+      await chooseButton(p, 'Pact of the Blade').click()
+      await chooseButton(p, 'Mask of Many Faces').click()
+    },
+    undefined,
+    async (p) => {
+      await expect(whatsNew(p)).toContainText(/Options added\s*:?\s*Mask of Many Faces, Pact of the Blade, Repelling Blast/)
+      await expect(whatsNew(p)).toContainText(/Options removed\s*:?\s*Agonizing Blast/)
+    },
+  )
+})
+
+test('RV-1 b: no swap — no Options removed row', async ({ page }) => {
+  await openSheet(page, warlock('rv1-b', 5, ['Agonizing Blast', 'Armor of Shadows', "Devil's Sight", 'Mask of Many Faces', 'Repelling Blast']))
+  await levelUp(page, 'Warlock 5 → 6', 6, undefined, undefined, async (p) => {
+    await expect(whatsNew(p)).toBeVisible()
+    await expect(whatsNew(p)).not.toContainText('Options removed')
+  })
+})
+
+test('RV-1 c: Battle Master swaps a maneuver and the Fighting Style — one row names both', async ({ page }) => {
+  await openSheet(page, battleMaster('rv1-c'))
+  await levelUp(
+    page,
+    'Fighter 4 → 5',
+    5,
+    async (p) => {
+      await replaceGroup(p).filter({ hasText: 'Parry' }).getByRole('button', { name: 'Replace Parry', exact: true }).click()
+      await openOptionList(p, 'Maneuvers')
+      await chooseButton(p, 'Feinting Attack').first().click()
+      await replaceGroup(p).filter({ hasText: 'Defense' }).getByRole('button', { name: 'Replace Defense', exact: true }).click()
+      await openOptionList(p, 'Fighting style')
+      await chooseButton(p, 'Archery').click()
+      await expect(nextOf(p)).toBeEnabled()
+    },
+    CLASS_STEP,
+    async (p) => {
+      await expect(whatsNew(p)).toContainText(/Options removed\s*:?\s*Defense, Parry/)
+    },
+  )
+})
+
+test('RV-1 d: Keep before Review — no Options removed row', async ({ page }) => {
+  await openSheet(page, warlock('rv1-d', 5, ['Agonizing Blast', 'Armor of Shadows', "Devil's Sight", 'Mask of Many Faces', 'Repelling Blast']))
+  await levelUp(
+    page,
+    'Warlock 5 → 6',
+    6,
+    async (p) => {
+      await replaceGroup(p).getByRole('button', { name: 'Replace Agonizing Blast', exact: true }).click()
+      await replaceGroup(p).getByRole('button', { name: 'Keep Agonizing Blast', exact: true }).click()
+      await expect(nextOf(p)).toBeEnabled()
+    },
+    undefined,
+    async (p) => {
+      await expect(whatsNew(p)).not.toContainText('Options removed')
+    },
+  )
 })
 
 /* F-22 (D347): Remove level also removes what lost its prerequisite; D348: Pact of the Chain takes its familiar along. */
