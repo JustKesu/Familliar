@@ -1,4 +1,5 @@
 import type { Character, CharacterClass, CharacterLanguage, CharacterSubclassSkill, FeatureLanguageSource, SubclassSkillSource } from '../storage/character'
+import { ALL_SKILLS } from './classSkillData'
 
 export interface SubclassSkillGrant {
 	className: string
@@ -49,6 +50,10 @@ export const SUBCLASS_SKILL_GRANTS: readonly SubclassSkillGrant[] = [
 		level: 3,
 		choice: { grantedBy: 'collegeOfTheMoon', from: ['animal handling', 'insight', 'medicine', 'nature', 'perception', 'survival'] },
 	},
+	// D393: Bonus Proficiencies, "three skills of your choice".
+	{ className: 'Bard', subclass: 'College of Lore', level: 3, choice: { grantedBy: 'collegeOfLore', from: ALL_SKILLS, count: 3 } },
+	// D393: Otherworldly Glamour.
+	{ className: 'Ranger', subclass: 'Fey Wanderer', level: 3, choice: { grantedBy: 'feyWanderer', from: ['deception', 'performance', 'persuasion'] } },
 	// D392: "from the skill list available to Barbarians at level 1" — XPHB Barbarian's startingProficiencies.skills.
 	{
 		className: 'Barbarian',

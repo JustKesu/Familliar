@@ -141,7 +141,11 @@ interface RawItem {
 	masteryFull?: unknown
 	weaponCategory?: unknown
 	rarity?: unknown
+	/** "M|XPHB" melee, "R|XPHB" ranged, "SCF|XPHB" spellcasting focus. */
+	type?: unknown
 }
+
+const MELEE_ONLY_MASTERY: ReadonlySet<string> = new Set(['Barbarian|XPHB'])
 
 function isRawItemWithMastery(
 	value: unknown,
@@ -192,7 +196,18 @@ export function masteryWeaponsFor(
 	 * / tier / baseItem / bonusWeapon (scripts/investigate-mastery-magic-marker.js).
 	 * The other 43 are magic items (Sun Blade, Scimitar of Speed, Blackrazor…).
 	 */
-	const ordinaryWeapons = masteryItems.filter((item) => item.rarity === 'none')
+	/*
+	 * D394: Staff / Wooden Staff are spellcasting focuses (type SCF) duplicating Quarterstaff; Psychic Blade's mastery
+	 * "doesn't count against the number" (its own note), so it is never a pick. XPHB Barbarian: "Simple or Martial Melee weapons".
+	 */
+	const meleeOnly = MELEE_ONLY_MASTERY.has(`${className}|${classSource}`)
+	const ordinaryWeapons = masteryItems.filter(
+		(item) =>
+			item.rarity === 'none' &&
+			item.name !== 'Psychic Blade' &&
+			!String(item.type ?? '').startsWith('SCF') &&
+			(!meleeOnly || String(item.type ?? '').startsWith('M')),
+	)
 
 	const grants = [
 		...(character && character.classes.length > 1

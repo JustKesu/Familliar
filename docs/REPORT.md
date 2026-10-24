@@ -1,50 +1,61 @@
-# REPORT — RB-1: Primal Knowledge a Hellborn
+# REPORT — RB-2: volby Lore a Fey Wanderer, pool masteries, výhody na záchranné hody z povolání
 
-Setup: `git fetch` + `git merge --ff-only origin/main` → „Already up to date“, HEAD `bc551de`.
+Setup: `git fetch` + `git merge --ff-only origin/main` → „Already up to date“, HEAD `893c437`.
 
-## Změny (STEP 1 inventář, provedeno)
+## STEP 1 — Část A (D393), skript `scripts/rb2-survey.js`
 
-| Soubor:řádek | Změna |
-|---|---|
-| src/storage/character.ts:69, :75–87, :1146 | `'hellborn'` ve FeatureLanguageSource, `'primalKnowledge'` v SubclassSkillSource, schéma 65 |
-| src/storage/validate.ts:218, :239–252 | nové grantedBy hodnoty povolené |
-| src/storage/migrations.ts:599 | krok 64→65, jen značí |
-| src/languages/classFeatureLanguages.ts:11, :22–34 | `choice.from`, řádek Hellborn, `featureLanguageSlotCount` |
-| src/languages/FeatureLanguageSlots.tsx:48–61 | počet slotů dle `featureLanguageSlotCount`, nabídka omezená na `from` |
-| src/classSkills/subclassSkillGrants.ts | `subclass?` + `featureName?`, řádek Primal Knowledge, `subclassSkillGrantOwner/Source`, `subclassSkillGrantsGiving`; `classSubclassGrantSources` vynechá řádky bez podtřídy (změna podtřídy pick nemaže) |
-| src/classSkills/SkillChoiceSlots.tsx:54 | popisek „Primal Knowledge skill“ |
-| src/calculation/skills.ts:123, :133 | zdroj „Barbarian (Primal Knowledge)“ |
-| src/calculation/proficiencies.ts:254, :263 | pending poznámka respektuje `from` |
-| src/levelUp/levelGains.ts:302 | název části přes owner |
-| src/creation/wizardState.ts:989 | dokončení kroku: `slotCount ≤ picks ≤ count` |
-| src/creation/CharacterWizard.tsx:1224, :1233, :1412 | owner místo `grant.subclass` |
-| e2e/wizard.ts | `FighterOptions.classStep` (jiná třída než Fighter) |
-| e2e/primalHellbornRB1.spec.ts | nový, 8 scénářů |
-| e2e/levelOrder.spec.ts, e2e/stableIds.spec.ts | schemaVersion 65 |
-| src/storage/migrations.test.ts, src/languages/classFeatureLanguages.test.ts | krok 64→65, `featureLanguageSlotCount` |
+| Rys | Znění | Výsledek |
+|---|---|---|
+| College of Lore — Bonus Proficiencies (XPHB 3) | „three skills of your choice“ | řádek `count: 3`, `from: ALL_SKILLS`, `grantedBy: 'collegeOfLore'` |
+| Fey Wanderer — Otherworldly Glamour (XPHB 3) | „one of … Deception, Performance, or Persuasion“ | řádek, `grantedBy: 'feyWanderer'` |
+| Rocborne — Whispers of Knowledge (TGS2, classSource PHB) | „one skill **or tool** of your choice that you don't already have“, ztratí se při dalším použití / odpočinku, použití = WIS mod | **STOP** — neodpovídá žádnému vzoru (dovednost NEBO nástroj, dočasné, opakované). Nepřidáno. |
 
-## Další prose-only volby chybějící v obou tabulkách (neopraveno)
+Soubory: src/classSkills/subclassSkillGrants.ts:2, :53–56; src/storage/character.ts:88–89, :1148 (schéma 66); src/storage/validate.ts:252–253;
+src/storage/migrations.ts:605–610 (65→66, jen značí); src/storage/migrations.test.ts:818, :832, nový krok 65→66; e2e/levelOrder.spec.ts:41, e2e/stableIds.spec.ts:90.
 
-Skript `scripts/rb1-prose-choices.js` (regex nad textem bez markupu):
-- Bard College of Lore — Bonus Proficiencies (3, dovednosti)
-- Ranger Fey Wanderer — Otherworldly Glamour (3, dovednost)
-- Ranger Rocborne (TGS2) — Whispers of Knowledge (3, dovednost)
+## STEP 1 — Část B (D394)
 
-Ostatní zásahy (Deft Explorer, Thieves' Cant, Knowledge, Banneret, Battle Master, Noble Genies, Bladesinger) už v tabulkách jsou. Neověřeno, zda Lore/Fey Wanderer nemají strukturované pole, které appka čte jinde — v src se jejich názvy nevyskytují. Zapsáno do DATA.md.
+| Třída | Znění Weapon Mastery | Omezení |
+|---|---|---|
+| Barbarian XPHB | „Simple or Martial Melee weapons“ | jen `type` M (nově) |
+| Fighter XPHB | „Simple or Martial weapons“ | žádné |
+| Paladin / Ranger / Rogue XPHB | „weapons … with which you have proficiency“ | jen proficiency (už bylo) |
+
+Původ: Staff = items.json XPHB, `type: SCF`, scfType arcane, `staff: true`, simple, Topple; Wooden Staff = `SCF`, druid, simple, Topple —
+oba fokusy duplikující Quarterstaff → odebrány (jediné SCF s mastery). Psychic Blade = XPHB item Soulknife (`type: M`, range 60/120, mastery
+jako objekt s poznámkou „doesn't count against the number“) → odebrán vždy (poznámka sama říká, že se nevybírá). Soubor: src/masteries/masteryData.ts:144–148, :200–211; test masteryData.test.ts.
+
+## STEP 1 — Část C (D395), 7 rysů (< 15)
+
+| Rys | Třída / podtřída, úroveň | Řádek |
+|---|---|---|
+| Rage | Barbarian 1 | Advantage on Strength saves while raging |
+| Danger Sense | Barbarian 2 | Advantage on Dexterity saves unless Incapacitated |
+| Survivor | Champion 18 | Advantage on Death Saving Throws |
+| Holy Nimbus | Oath of Devotion 20 | Advantage on saves forced by a Fiend or an Undead while Holy Nimbus is active |
+| Beguiling Twist | Fey Wanderer 7 | Advantage on saves to avoid or end Charmed or Frightened |
+| Psychic Defenses | Aberrant Sorcery 6 | totéž |
+| Spell Resistance | Abjurer 14 | Advantage on saves against spells |
+
+Vynecháno: Zealous Presence, Fortifying Soul (výhoda pro jiné tvory). Soubory: nový src/sheet/classSaveAdvantages.ts (+ .test.ts), src/sheet/CharacterSheet.tsx:97, :2370.
+Celkem ~22 míst.
 
 ## Ověření
 
-typecheck OK; test: celý běh 3444/3446, 2 selhání v migrations.test.ts (očekávaná verze 64) → test opraven a přidán krok 64→65, opakovaný běh migrations.test.ts + src/languages 77/77 OK (celá sada znovu nespuštěna); validate-data 177/177; e2e 702 passed (3.6 min). RB-1 a–e: `e2e/primalHellbornRB1.spec.ts` (a průvodce Barbarian 4 Infernal → Survival ●, Infernal na kartě; b jen Abyssal/Infernal, jen neznámý, bez slotu při obou známých; c level up 2→3; d Edit drží oba picky i po uložení; e Barbarian 2 bez obou, Berserker 3 jen Primal Knowledge).
+typecheck OK; test 3451/3451; validate-data 177/177; e2e 708 passed (3.5 min, nad limitem ~3 min). `e2e/rb2.spec.ts`: a) Bard 3 Lore (seed + Edit: Next čeká na 3 picky, Arcana/Nature/Medicine ● na sheetu, Edit drží hodnoty);
+b) Ranger 3 Fey Wanderer (jen 3 dovednosti, uloženo `feyWanderer`); Rocborne vynechán (část A STOP); c) Barbarian: Longsword ano, Longbow/Pistol/Psychic Blade/Staff/Wooden Staff ne; Fighter Longbow ano;
+d) Barbarian 2 Danger Sense pod Saving Throws i v draweru, Barbarian 1 ne; e) Rage s podmínkou „while raging“.
 
 ## Rozhodnutí během práce
 
-- D392 zapsáno (DECISIONS.md) dle zadání.
-- Starý Hellborn pick, když jsou pak oba jazyky známé, se dál zobrazí a počítá (krok nezablokuje).
-- `levelGains` hlásí Hellborn jako 1 jazyk i při obou známých (shrnutí level upu); průvodce pak slot nemá. Ponecháno.
-- Primal Knowledge zdroj na sheetu: „Barbarian (Primal Knowledge)“.
+- Scénář a) jde přes Edit uloženého Barda 3, ne přes nového: tvorba Barda 3 v průvodci by vyžadovala kouzla a expertízy; krok Proficiencies je tentýž.
+- Psychic Blade odebrán i Soulknifovi (jeho mastery se do počtu nepočítá, tak ho nevybírá nikdo).
+- Barbarian v multiclassu: omezení podle třídy, jejíž mastery se vybírá (`className` parametr).
+- Rage řádek se ukazuje trvale s podmínkou (stav „raging“ appka nesleduje), jako Shell Defense.
+- Otázka pro uživatele: Rocborne Whispers of Knowledge — jen poznámka na sheetu, nebo nic? Nyní nic.
 
 Subagent nepoužit.
 
 ## Manual browser check for the user
 
-none - the planning chat checks the looks from screenshots. Změněné obrazovky: průvodce/level up/Edit krok Proficiencies (selecty „Primal Knowledge skill“, „Hellborn language“), sheet Skills (Survival) a karta Languages.
+none - the planning chat checks the looks from screenshots. Změněné obrazovky: Edit/průvodce krok Proficiencies (selecty „College of Lore skill 1–3“, „Fey Wanderer skill“), krok Class and level (seznam Weapon masteries u Barbariana), sheet karta Saving Throws a její drawer (řádky Rage / Danger Sense apod.).

@@ -149,6 +149,20 @@ describe('masteryWeaponsFor', () => {
 		expect(offeredNames('Rogue', MARTIAL_WEAPON_TRAINING)).not.toContain('Sun Blade')
 	})
 
+	/* D394 */
+	it('a Barbarian is offered melee weapons only; focuses and Psychic Blade are never offered', () => {
+		const items = [
+			{ name: 'Longsword', source: 'XPHB', type: 'M|XPHB', rarity: 'none', weaponCategory: 'martial', masteryFull: ['Sap'] },
+			{ name: 'Longbow', source: 'XPHB', type: 'R|XPHB', rarity: 'none', weaponCategory: 'martial', masteryFull: ['Slow'] },
+			{ name: 'Quarterstaff', source: 'XPHB', type: 'M|XPHB', rarity: 'none', weaponCategory: 'simple', masteryFull: ['Topple'] },
+			{ name: 'Staff', source: 'XPHB', type: 'SCF|XPHB', rarity: 'none', weaponCategory: 'simple', masteryFull: ['Topple'] },
+			{ name: 'Psychic Blade', source: 'XPHB', type: 'M', rarity: 'none', weaponCategory: 'simple', masteryFull: ['Vex'] },
+		]
+		const names = (className: string) => masteryWeaponsFor(items, CLASSES, className, 'XPHB').map((weapon) => weapon.name)
+		expect(names('Barbarian')).toEqual(['Longsword', 'Quarterstaff'])
+		expect(names('Fighter')).toEqual(['Longsword', 'Longbow', 'Quarterstaff'])
+	})
+
 	it('one entry per mastery property a weapon carries, and non-weapons are never offered', () => {
 		expect(masteryWeaponsFor(ITEMS, CLASSES, 'Rogue', 'XPHB')).toEqual([
 			{ name: 'Dagger', source: 'XPHB', masteryFull: 'Nick' },

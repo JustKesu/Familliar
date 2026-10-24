@@ -1327,6 +1327,11 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `choice.from` Abyssal/Infernal (`grantedBy: 'hellborn'`); `featureLanguageSlotCount` drops the slot when both are known
   (wizard completion, FeatureLanguageSlots, pending note). `e2e/primalHellbornRB1.spec.ts` a–e; `FighterOptions.classStep`
   in `e2e/wizard.ts` creates another class.
+- RB-2 (D393–D395): schema 66. College of Lore Bonus Proficiencies (3 skills from all 18, `grantedBy: 'collegeOfLore'`) and
+  Fey Wanderer Otherworldly Glamour (Deception/Performance/Persuasion, `'feyWanderer'`) are `SUBCLASS_SKILL_GRANTS` rows.
+  Rocborne Whispers of Knowledge not done (temporary skill-or-tool pick). `masteryWeaponsFor` drops Psychic Blade and SCF items
+  (Staff, Wooden Staff); Barbarian XPHB gets melee (`type` M) only. `classSaveAdvantageLines` (src/sheet/classSaveAdvantages.ts,
+  7 XPHB features) adds to the Saving Throws card and drawer next to the species lines. `e2e/rb2.spec.ts`.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

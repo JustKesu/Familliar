@@ -5566,3 +5566,22 @@ výběr z dovedností Barbariana na úrovni 1 minus už držené; nový výběr 
 TGS2, 3) je řádek `CLASS_FEATURE_LANGUAGE_GRANTS` s `from: ['Abyssal', 'Infernal']`, `grantedBy: 'hellborn'`; nabízí jen
 neznámé, při obou známých slot není. Místo voleb jako D172/D177 (krok Proficiencies v průvodci, level up, Edit).
 Schéma 65, migrace jen značí. Rozhodl Daniel 24. 10. 2026.
+
+## D393 — College of Lore a Fey Wanderer jako volby dovedností (RB-2)
+
+Bonus Proficiencies (College of Lore 3) je řádek `SUBCLASS_SKILL_GRANTS` s `count: 3` ze všech 18 dovedností
+(`grantedBy: 'collegeOfLore'`), Otherworldly Glamour (Fey Wanderer 3) jeden výběr z Deception/Performance/Persuasion
+(`'feyWanderer'`), podle vzoru D392. Rocborne Whispers of Knowledge (TGS2) se nepřidává: dočasná volba dovednosti nebo
+nástroje, žádný vzor. Schéma 66, migrace jen značí. Rozhodl Daniel 24. 10. 2026.
+
+## D394 — Omezení poolu Weapon Mastery (RB-2)
+
+Barbarian XPHB vybírá jen zbraně na blízko (items.json `type` M), dle „Simple or Martial Melee weapons“. Z poolu všech tříd
+vypadávají Staff a Wooden Staff (fokusy `SCF`, duplikát Quarterstaff) a Psychic Blade (podle vlastní poznámky se do počtu
+nepočítá). Ostatní třídy beze změny. Rozhodl Daniel 24. 10. 2026.
+
+## D395 — Výhody na záchranné hody z povolání (RB-2)
+
+Ruční tabulka `CLASS_SAVE_ADVANTAGES` (src/sheet/classSaveAdvantages.ts) se 7 rysy XPHB povolání a podtříd, řádky jako D314
+pod Saving Throws a v draweru s názvem rysu v závorce; podmíněné s podmínkou v textu (Rage: „while raging“). Rysy, které dávají
+výhodu jiným tvorům, se neuvádějí. Rozhodl Daniel 24. 10. 2026.

@@ -94,6 +94,7 @@ import { buildItemGrants, loadDamageResponseData, type DamageResponseData } from
 import { buildItemConditionGrants, buildItemProficiencyGrants, conditionAdvantageLines, conditionsGranted } from './itemProficiencyData'
 import { formatSpeciesName } from '../species/speciesData'
 import { speciesSaveAdvantageLines } from './speciesSaveAdvantages'
+import { classSaveAdvantageLines } from './classSaveAdvantages'
 import { concentrationSaveAdvantageLines } from './concentrationSaveAdvantages'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
@@ -2366,7 +2367,7 @@ function CharacterSheetBody({
 	const itemProficiencyGrants = buildItemProficiencyGrants(character.inventory ?? [], itemRefs ?? [])
 	const itemConditionGrants = buildItemConditionGrants(character.inventory ?? [], itemRefs ?? [])
 	const conditionImmunities = conditionsGranted(itemConditionGrants, 'immune')
-	const traitSaveAdvantages = [...conditionAdvantageLines(itemConditionGrants), ...speciesSaveAdvantageLines(character.species)]
+	const traitSaveAdvantages = [...conditionAdvantageLines(itemConditionGrants), ...speciesSaveAdvantageLines(character.species), ...classSaveAdvantageLines(character.classes)]
 	const savingThrows = computeSavingThrows(character, savingThrowClassData, feats, itemFlatBonuses.savingThrow, itemFlatBonuses.savingThrowFor, itemProficiencyGrants, itemAbilityGrants)
 	const startingClass = firstClass(character)
 	const startingClasses = startingClass ? [startingClass] : []

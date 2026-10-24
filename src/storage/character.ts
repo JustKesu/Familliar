@@ -85,6 +85,8 @@ export type SubclassSkillSource =
 	| 'nobleGenies'
 	| 'collegeOfTheMoon'
 	| 'primalKnowledge'
+	| 'collegeOfLore'
+	| 'feyWanderer'
 
 export interface CharacterSubclassSkill {
 	grantedBy: SubclassSkillSource
@@ -1143,7 +1145,7 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 65
+export const CURRENT_SCHEMA_VERSION = 66
 
 export interface CharacterLevelOrderEntry {
 	className: string

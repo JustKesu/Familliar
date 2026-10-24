@@ -249,6 +249,8 @@ const SUBCLASS_SKILL_SOURCES: readonly SubclassSkillSource[] = [
 	'nobleGenies',
 	'collegeOfTheMoon',
 	'primalKnowledge',
+	'collegeOfLore',
+	'feyWanderer',
 ]
 
 /** Validates an optional `subclassSkills` field (D177). */

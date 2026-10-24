@@ -1530,6 +1530,19 @@ Found in investigation B6a and checked in B6b (2026-09-24, scripts consumed).
   Envoy, Student of War, Genie's Splendor, Fey Wanderer Otherworldly Glamour, Training in War and Song. TGS2: Hellborn
   (Infernal 3, Abyssal or Infernal) and Rocborne Whispers of Knowledge (3, skill). Not in a hand table after RB-1: Lore
   Bonus Proficiencies, Otherworldly Glamour, Whispers of Knowledge.
+- RB-2 (2026-10-24): Lore Bonus Proficiencies = "three skills of your choice" (any). Otherworldly Glamour = "one of these
+  skills of your choice: Deception, Performance, or Persuasion". Rocborne (TGS2) is filed under classSource PHB and its
+  Whispers of Knowledge is "one skill or tool of your choice that you don't already have", lost at the next use or any rest.
+  XPHB Weapon Mastery wording: Barbarian "Simple or Martial Melee weapons", Fighter "Simple or Martial weapons", Paladin,
+  Ranger, Rogue "weapons … with which you have proficiency". No homebrew class has Weapon Mastery.
+- items.json rarity-"none" mastery items: Staff (type `SCF`, scfType arcane, `staff: true`) and Wooden Staff (`SCF`, druid)
+  are simple weapons with Topple like Quarterstaff (type `M`); they are the only SCF ones. Psychic Blade (type `M` without
+  source suffix, range 60/120) carries mastery as an object `{uid: "Vex|XPHB", note: "… doesn't count against the number of
+  properties you can use with Weapon Mastery"}`. 18 ordinary mastery items are ranged (type `R`), firearms included.
+- XPHB class/subclass features with Advantage on the character's own saving throws (regex over stripped text): Rage
+  (Strength), Danger Sense (Dexterity unless Incapacitated), Champion Survivor (Death Saving Throws), Devotion Holy Nimbus
+  (forced by Fiend or Undead, while active), Fey Wanderer Beguiling Twist and Aberrant Psychic Defenses (Charmed/Frightened),
+  Abjurer Spell Resistance (spells). Zealous Presence and Winter Walker Fortifying Soul grant it to other creatures.
 
 ### Class and subclass senses — prose only (D195)
 

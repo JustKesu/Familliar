@@ -815,7 +815,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
 				background: { name: 'Acolyte', source: 'XPHB', skillProficiencies: ['insight', 'religion'], toolProficiency: "Calligrapher's Supplies" },
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 65 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 66 })
 		})
 	})
 
@@ -829,11 +829,25 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 2 }],
 				subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 65 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 66 })
+		})
+	})
+
+	/* RB-2 (D393): new grantedBy values only, so the step only tags. */
+	describe('version 65 to 66', () => {
+		it('adds nothing and changes nothing else', () => {
+			const before = {
+				schemaVersion: 65,
+				id: '1',
+				name: 'Aria',
+				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 3 }],
+				subclassSkills: [{ grantedBy: 'primalKnowledge', name: 'survival' }],
+			}
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 66 })
 		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(65)
+			expect(CURRENT_SCHEMA_VERSION).toBe(66)
 		})
 	})
 

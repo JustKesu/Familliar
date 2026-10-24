@@ -602,6 +602,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 65 adds the 'primalKnowledge' subclassSkills and 'hellborn' languages grantedBy values (RB-1, D392). A version-64 character has neither — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 65 }),
 	},
+	{
+		from: 65,
+		to: 66,
+		/* 66 adds the 'collegeOfLore' and 'feyWanderer' subclassSkills grantedBy values (RB-2, D393). A version-65 character has neither — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 66 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [
