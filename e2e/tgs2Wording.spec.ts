@@ -60,6 +60,19 @@ test('TGS2-4c c: Paladin 3 Spelldrinker — Absorb Magic is a Reaction, Expediti
   }
 })
 
+test('SM-1: Bard 6 Mercantile — Money Talks uses the Magic action wording and is under Action', async ({ page }) => {
+  const character = build('sm1-money-talks', 'Bard', 'College of Mercantile', 6)
+  await openSheet(page, character, 'Features & Traits')
+  const bard = page.getByRole('tabpanel', { name: 'Features & Traits' }).getByRole('region', { name: 'Bard Features', exact: true })
+  const row = featureRow(bard, page, 'Money Talks')
+  await row.locator('.sheet__group-row-toggle').click()
+  await expect(row).toContainText('the Magic action')
+  await expect(row).not.toContainText('use an action')
+  await page.getByRole('tab', { name: 'Actions' }).click()
+  const action = page.getByRole('tabpanel', { name: 'Actions' }).getByRole('region', { name: 'Action', exact: true })
+  await expect(action.locator('.sheet__group-row', { hasText: 'Money Talks' }).first()).toBeVisible()
+})
+
 test('TGS2-4c d: Bard 14 Mercantile — Shrewd Consumer links Utilize', async ({ page }) => {
   await openSheet(page, build('tgs2-w-bard', 'Bard', 'College of Mercantile', 14), 'Features & Traits')
   const bard = page.getByRole('tabpanel', { name: 'Features & Traits' }).getByRole('region', { name: 'Bard Features', exact: true })

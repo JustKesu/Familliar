@@ -115,6 +115,9 @@ extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into th
   `{@action Magic|XPHB}` for Magic Coin, Money Talks (2) and Etherean Veil Shift: 28 pairs; extraction throws when
   one is not found and when "ki point" survives anywhere. Trap: `mapStrings` returns a new array for an array
   root, so the result must be assigned back (strings directly in `entries` were otherwise left untouched).
+- SM-1: official XPHB tags only "Unarmed Strike" in its Grapple text (`{@variantrule Unarmed Strike|XPHB}`, 2 strings;
+  "Grapple" / "Grapple option" stays plain text; survey over markup-stripped strings). The Infernal Warrior replacement
+  uses the same shape. Money Talks is a level 6 Bard/Mercantile subclass feature.
 - Homebrew guards (F-TGS2, D389): `loadHomebrew()` throws when a `HOMEBREW_WORDING` pair replaces 0 times or its old text
   survives, when a `HOMEBREW_REST_FEATURES` feature has no short/long rest text, when a `HOMEBREW_SUBCLASS_TABLES` /
   `HOMEBREW_SUBCLASS_SPELLS` key matches no kept subclass (tables: or the subclass already has `subclassTableGroups`), and when

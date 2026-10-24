@@ -72,7 +72,9 @@ test('S5 c: natural armour plus a Shield — the shield adds as the species text
 test('S5 d: a Tortle wearing armour is allowed, with a warning line in the breakdown', async ({ page }) => {
   await open(page, seeded('s5-tortle-armour', 'Fighter', 1, 'Tortle', { currentHp: 11, inventory: [item('Leather Armor', 'worn')] }))
   await expect(armourClass(page)).toHaveText('17')
-  await expect(await breakdown(page, 'Armour Class breakdown')).toContainText('cannot wear armor')
+  const dialog = await breakdown(page, 'Armour Class breakdown')
+  await expect(dialog).toContainText('cannot wear armor')
+  expect(((await dialog.innerText()).match(/warning/gi) ?? []).length).toBe(1)
 })
 
 test('S5 e: Aarakocra gets a Talons row — 1d6 + STR slashing, to hit STR + PB', async ({ page }) => {

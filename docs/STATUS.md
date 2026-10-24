@@ -1318,6 +1318,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - F-TGS2 (D389): `loadHomebrew()` guards for wording (all occurrences replaced, leftover `from` throws), rest features, subclass
   tables/spells and 2014 race blocks; unit tests for Psi Warrior + Wizard (Telekinesis, INT) and Paladin Spelldrinker + Cleric
   (Paladin Channel Divinity pool). Data unchanged.
+- SM-1: Infernal Warrior text now tags `{@variantrule Unarmed Strike|XPHB}` (as official XPHB does); Money Talks has its own
+  scenario in `e2e/tgs2Wording.spec.ts`; the Tortle AC breakdown has an assertion that "warning" appears once. The Character name
+  gap is unchanged (already 4px like the other wizard labelled inputs).
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

@@ -126,7 +126,7 @@ const HOMEBREW_WORDING = {
 	"Infernal|Infernal Warrior": [
 		[
 			"when you use the {@action Attack} action to {@action grapple} a creature while you're raging, the target takes your Hellfire Claw's fire damage if your grapple check succeeds,",
-			"when you use the Grapple option of your Unarmed Strike on a creature while you're raging, the target takes your Hellfire Claw's fire damage if it fails its saving throw,",
+			"when you use the Grapple option of your {@variantrule Unarmed Strike|XPHB} on a creature while you're raging, the target takes your Hellfire Claw's fire damage if it fails its saving throw,",
 		],
 		["{@condition grappled}", "{@condition Grappled|XPHB}"],
 	],
