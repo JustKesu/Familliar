@@ -398,7 +398,7 @@ pact slotem z vyšší úrovně). Patří ke kroku 10 multiclass, spolu s
 „Utracené spell sloty (9b3) sdílí klíč jen podle úrovně kouzla".
 
 Nalezeno při R7a (25. 9. 2026).
-STATUS: nerozhodnuto, čeká na krok 10.
+STATUS: vyřešeno D326 — CAST nabízí výběr poolu a upcast do pact sekce.
 
 ### Aberrant Dragonmark, Natural Recovery, Magic Item Tinker — dva nezávislé limity v jedné featuře
 

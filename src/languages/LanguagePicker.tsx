@@ -5,9 +5,9 @@ import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT, loadLanguages, type Language
  * Character creation, languages slice (PHASE1.md build order step 3).
  * Common is known automatically and is not part of the choice — see
  * languageData.ts. The player picks exactly CHOSEN_LANGUAGE_COUNT more from
- * the standard languages. Once that many are picked, every unpicked
- * checkbox is disabled rather than merely warning after the fact, so a
- * third can never be selected in the first place.
+ * the standard languages; once that many are picked, unpicked checkboxes are
+ * disabled. Languages from other sources (class features, D172) arrive via
+ * `exclude` and are hidden here.
  *
  * Each known language's source is shown while picking, not only in the
  * summary afterward: Common is listed above the choices marked "automatic",
@@ -31,8 +31,7 @@ function languageKey(entry: LanguageEntry): string {
 }
 
 /**
- * Lets the player pick exactly CHOSEN_LANGUAGE_COUNT languages in addition
- * to Common. Displays `value` — the choice as the caller currently has it —
+ * Displays `value` — the choice as the caller currently has it —
  * and reports every change upward via `onChange`, matching every other
  * picker in the wizard: the caller owns the selection, so it survives this
  * component unmounting and remounting.

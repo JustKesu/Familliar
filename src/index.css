@@ -1388,17 +1388,6 @@ label.wizard__field {
   margin-top: 0.4rem;
 }
 
-.sheet__stat-value {
-  display: inline-block;
-  min-width: 2.2rem;
-  padding: 0 0.35rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface);
-  text-align: center;
-  font-weight: 600;
-}
-
 .sheet__right-panel {
   flex: 1;
   min-width: 0;
