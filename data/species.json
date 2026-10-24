@@ -6265,7 +6265,7 @@
 				"name": "Misty Sight",
 				"entries": [
 					"Your eyes are naturally attuned to the Border Ethereal, allowing you to always see out to your normal range while on the Ethereal Plane.",
-					"You can also use a bonus action to focus on seeing the unseen. For 1 minute, or until your concentration ends (as if concentrating on a spell), you can see {@condition invisible|XPHB} creatures and objects as if they were visible, and you can see into the Ethereal Plane. Once you use this trait, you can't use it again until you finish a short or long rest."
+					"You can also use a {@variantrule Bonus Action|XPHB} to focus on seeing the unseen. For 1 minute, or until your concentration ends (as if concentrating on a spell), you can see {@condition invisible|XPHB} creatures and objects as if they were visible, and you can see into the Ethereal Plane. Once you use this trait, you can't use it again until you finish a short or long rest."
 				]
 			},
 			{

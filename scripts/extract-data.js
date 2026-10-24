@@ -107,6 +107,49 @@ const HOMEBREW_REST_FEATURES = {
 	"Aether|Sight Beyond Sight": { sentence: ["you can't cast it again until you finish", "you can't use it again until you finish"] },
 	"Spelldrinker|Arcane Conduit": {},
 };
+// D387: the homebrew is 2014 text; exact old -> new pairs per "<subclassShortName>|<feature name>" (or the race name twice), each must match or extraction throws.
+const BA = "{@variantrule Bonus Action|XPHB}";
+const RE = "{@variantrule Reaction|XPHB}";
+const HOMEBREW_WORDING = {
+	"Aether|Spectral Guide": [
+		["you can use an action to spend 2 ki points to cast", "you can take the {@action Magic|XPHB} action and spend 2 Focus Points to cast"],
+		["when you harness your ki", "when you harness your Focus"],
+		["against your ki save DC", "against a DC equal to 8 plus your Wisdom modifier and Proficiency Bonus"],
+	],
+	"Aether|Ghost Walker": [
+		["You can spend 1 ki point as a bonus action", `You can spend 1 Focus Point as a ${BA}`],
+		["an extra ki point", "an extra Focus Point"],
+		["you can use your reaction", `you can use your ${RE}`],
+	],
+	"Aether|Spirit Hand": [["as a bonus action", `as a ${BA}`]],
+	"Aether|Sight Beyond Sight": [["you can use an action to cast", "you can take the {@action Magic|XPHB} action to cast"]],
+	"Infernal|Infernal Warrior": [
+		[
+			"when you use the {@action Attack} action to {@action grapple} a creature while you're raging, the target takes your Hellfire Claw's fire damage if your grapple check succeeds,",
+			"when you use the Grapple option of your Unarmed Strike on a creature while you're raging, the target takes your Hellfire Claw's fire damage if it fails its saving throw,",
+		],
+		["{@condition grappled}", "{@condition Grappled|XPHB}"],
+	],
+	"Infernal|Hellfire Claw": [["you can use a bonus action", `you can use a ${BA}`]],
+	"Infernal|Planar Conspirator": [["You can use an action to spend 2 Hit Dice", "You can take the {@action Magic|XPHB} action to spend 2 Hit Point Dice"]],
+	"Infernal|Incinerating Wrath": [
+		["you can use your reaction", `you can use your ${RE}`],
+		["(3rd-level version", "(level 3 version"],
+	],
+	"Mercantile|Shrewd Consumer": [["you can use a bonus action to take the {@action Use an Object} action", `you can use a ${BA} to take the {@action Utilize|XPHB} action`]],
+	"Steel Hawk|Launch": [["you can use a bonus action", `you can use a ${BA}`]],
+	"Steel Hawk|Steel Grace": [["as a reaction", `as a ${RE}`]],
+	"Spelldrinker|Absorb Magic": [["You can use a reaction", `You can use a ${RE}`]],
+	"Spelldrinker|Expeditious Command": [["As a bonus action", `As a ${BA}`]],
+	"Rocborne|Soar": [["you can use a bonus action", `you can use a ${BA}`]],
+	"Rocborne|Hurricane": [["you can use your reaction", `you can use your ${RE}`]],
+	"Grim Surgeon|Medic": [
+		["Your proficiency bonus is doubled for any ability check you make that uses this skill.", "You have Expertise in this skill."],
+		["you can use a bonus action to magically", `you can use a ${BA} to magically`],
+		["You can use a bonus action to expend", `You can use a ${BA} to expend`],
+	],
+	"Etherean|Etherean": [["You can also use a bonus action", `You can also use a ${BA}`]],
+};
 // D386: options nested as `entries` blocks become separate pool-spending records, the XGE/TCE Channel Divinity shape.
 const HOMEBREW_SPLIT_OPTIONS = {
 	"Spelldrinker|Channel Divinity": { consumes: "Channel Divinity", options: ["Absorb Magic", "Expeditious Command"] },
@@ -1488,7 +1531,7 @@ function loadHomebrew() {
 			...readJson(path.join(SOURCE_DATA_DIR, "items-base.json")).baseitem,
 		]),
 	};
-	const stats = { tagsRedirected: 0, tagsLeft: 0, additionalSpellsRedirected: 0, restFeatures: 0, splitOptions: 0 };
+	const stats = { tagsRedirected: 0, tagsLeft: 0, additionalSpellsRedirected: 0, restFeatures: 0, splitOptions: 0, wording: 0 };
 
 	// An unsourced {@spell}/{@condition}/{@item} tag means PHB in 5etools.
 	const redirectTags = (text) =>
@@ -1543,6 +1586,23 @@ function loadHomebrew() {
 				stats.splitOptions++;
 			}
 		}
+		const applyWording = (key, node) => {
+			const pairs = HOMEBREW_WORDING[key];
+			if (!pairs) return node;
+			for (const [from, to] of pairs) {
+				let found = false;
+				node = mapStrings(node, (text) => {
+					if (found || !text.includes(from)) return text;
+					found = true;
+					return text.replace(from, () => to);
+				});
+				if (!found) throw new Error(`Homebrew wording not found in ${key}: ${from}`);
+				stats.wording++;
+			}
+			return node;
+		};
+		for (const feature of features) feature.entries = applyWording(`${feature.subclassShortName}|${feature.name}`, feature.entries);
+		for (const entry of races) entry.entries = applyWording(`${entry.name}|${entry.name}`, entry.entries);
 		for (const feature of features) {
 			const rest = HOMEBREW_REST_FEATURES[`${feature.subclassShortName}|${feature.name}`];
 			if (!rest) continue;
@@ -1591,7 +1651,12 @@ function loadHomebrew() {
 	const splitExpected = Object.values(HOMEBREW_SPLIT_OPTIONS).reduce((sum, split) => sum + split.options.length, 0);
 	if (stats.splitOptions !== splitExpected) throw new Error(`Homebrew options split: ${stats.splitOptions} of ${splitExpected}`);
 
-	console.log(`Homebrew kept: ${result.subclass.length} subclasses, ${result.subclassFeature.length} subclass features, ${result.race.length} races`);
+	const wordingExpected = Object.values(HOMEBREW_WORDING).reduce((sum, pairs) => sum + pairs.length, 0);
+	if (stats.wording !== wordingExpected) throw new Error(`Homebrew wording pairs applied: ${stats.wording} of ${wordingExpected}`);
+	const kiLeft = /.{40}\bki points?\b.{20}/i.exec(JSON.stringify(result));
+	if (kiLeft) throw new Error(`Homebrew records still mention a ki point (D387): ${kiLeft[0]}`);
+
+	console.log(`Homebrew kept:${result.subclass.length} subclasses, ${result.subclassFeature.length} subclass features, ${result.race.length} races`);
 	console.log(`Homebrew tags -> XPHB: ${stats.tagsRedirected} (left as-is: ${stats.tagsLeft}); additionalSpells -> XPHB: ${stats.additionalSpellsRedirected}; rest-tagged features: ${stats.restFeatures}; options split: ${stats.splitOptions}`);
 	homebrewCache = result;
 	return result;

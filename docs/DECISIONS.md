@@ -5521,3 +5521,13 @@ Volby Absorb Magic a Expeditious Command jsou dva samostatné záznamy subclassF
 "Channel Divinity"}`, rodičovský Channel Divinity si nechá úvodní text a odkazy `refSubclassFeature` na ně — vzor
 XGE/TCE (Oath of Conquest). Na záložce Actions jsou dva řádky, oba čerpají pool Channel Divinity Paladina.
 Úprava v extrakci (`HOMEBREW_SPLIT_OPTIONS`). Task TGS2-4b, rozhodl Daniel 22. 10.
+
+## D387 — Znění 2024 a značky akcí v textu TGS2 (TGS2-4c)
+
+Homebrew text je ve znění 2014; `HOMEBREW_WORDING` v `loadHomebrew()` ho přepisuje dvojicemi starý → nový (klíč
+"subclassShortName|název featury", u rasy "Etherean|Etherean"), extrakce spadne, když se dvojice nenajde. Ki → Focus
+(Way of the Aether; úvodní "ki and aether" zůstává), Infernal Warrior přes volbu Grapple u Unarmed Strike a záchranný
+hod, Use an Object → Utilize, Hit Dice → Hit Point Dice, Medic = Expertise, "use an action to cast" → akce Magic,
+"3rd-level version" → "level 3 version" (rozhodl Daniel 21.–22. 10.). Nezačarované "bonus action" a "reaction" dostaly
+značky `{@variantrule Bonus Action|XPHB}` / `{@variantrule Reaction|XPHB}`, aby `classifyActionType` zařadil řádky do
+skupin (rozhodl Daniel 24. 10.). Kontrola v extrakci: žádné "ki point" ve výsledných záznamech.

@@ -9841,7 +9841,7 @@
 		"header": 2,
 		"entries": [
 			"By 6th level, the infernal fire within you burns hot even while you're not raging. You gain resistance to fire damage.",
-			"In addition, when you use the {@action Attack} action to {@action grapple} a creature while you're raging, the target takes your Hellfire Claw's fire damage if your grapple check succeeds, and again at the end of each of that creature's turns while it remains {@condition grappled|XPHB}."
+			"In addition, when you use the Grapple option of your Unarmed Strike on a creature while you're raging, the target takes your Hellfire Claw's fire damage if it fails its saving throw, and again at the end of each of that creature's turns while it remains {@condition Grappled|XPHB}."
 		],
 		"id": "scf|infernal warrior|barbarian|phb|infernal|griffonssaddlebag2|6|griffonssaddlebag2"
 	},
@@ -9856,7 +9856,7 @@
 		"level": 10,
 		"header": 2,
 		"entries": [
-			"At 10th level, you can make minor deals with an interested archfiend or similar power to peer into the minds of other creatures and exploit their fears. You can use an action to spend 2 Hit Dice, without regaining any hit points, to cast the {@spell detect thoughts|XPHB} spell. The DC for this spell is equal to 8 + your proficiency bonus + your Constitution modifier."
+			"At 10th level, you can make minor deals with an interested archfiend or similar power to peer into the minds of other creatures and exploit their fears. You can take the {@action Magic|XPHB} action to spend 2 Hit Point Dice, without regaining any hit points, to cast the {@spell detect thoughts|XPHB} spell. The DC for this spell is equal to 8 + your proficiency bonus + your Constitution modifier."
 		],
 		"id": "scf|planar conspirator|barbarian|phb|infernal|griffonssaddlebag2|10|griffonssaddlebag2"
 	},
@@ -9871,7 +9871,7 @@
 		"level": 14,
 		"header": 2,
 		"entries": [
-			"Starting at 14th level, when you take damage from a creature that you can see within 60 feet of you while you're raging, you can use your reaction to release a punishing flame from your claw toward them, duplicating the effect of the {@spell hellish rebuke|XPHB} spell (3rd-level version, DC 8 + your proficiency bonus + your Constitution modifier). You can use this ability twice per rage."
+			"Starting at 14th level, when you take damage from a creature that you can see within 60 feet of you while you're raging, you can use your {@variantrule Reaction|XPHB} to release a punishing flame from your claw toward them, duplicating the effect of the {@spell hellish rebuke|XPHB} spell (level 3 version, DC 8 + your proficiency bonus + your Constitution modifier). You can use this ability twice per rage."
 		],
 		"id": "scf|incinerating wrath|barbarian|phb|infernal|griffonssaddlebag2|14|griffonssaddlebag2"
 	},
@@ -9926,7 +9926,7 @@
 		"level": 14,
 		"header": 2,
 		"entries": [
-			"Starting at 14th level, whenever you cast a spell that consumes a material component, drink a potion, or use a spell scroll that's worth no more than 500 gp, there is a {@chance 50|50 percent} chance that the component, potion, or scroll isn't consumed. In addition, you can use a bonus action to take the {@action Use an Object} action or drink a potion."
+			"Starting at 14th level, whenever you cast a spell that consumes a material component, drink a potion, or use a spell scroll that's worth no more than 500 gp, there is a {@chance 50|50 percent} chance that the component, potion, or scroll isn't consumed. In addition, you can use a {@variantrule Bonus Action|XPHB} to take the {@action Utilize|XPHB} action or drink a potion."
 		],
 		"id": "scf|shrewd consumer|bard|phb|mercantile|griffonssaddlebag2|14|griffonssaddlebag2"
 	},
@@ -9968,7 +9968,7 @@
 		"level": 7,
 		"header": 2,
 		"entries": [
-			"Starting at 7th level, wearing armor doesn't impose disadvantage on your Dexterity ({@skill Stealth}) checks. In addition, whenever you make a Dexterity saving throw, you can use your Launch feature as a reaction. When you do so, you take no damage if you succeed on the saving throw, and only half damage if you fail."
+			"Starting at 7th level, wearing armor doesn't impose disadvantage on your Dexterity ({@skill Stealth}) checks. In addition, whenever you make a Dexterity saving throw, you can use your Launch feature as a {@variantrule Reaction|XPHB}. When you do so, you take no damage if you succeed on the saving throw, and only half damage if you fail."
 		],
 		"id": "scf|steel grace|fighter|phb|steel hawk|griffonssaddlebag2|7|griffonssaddlebag2"
 	},
@@ -10053,13 +10053,13 @@
 		"level": 6,
 		"header": 2,
 		"entries": [
-			"Starting at 6th level, you can't be possessed by ghosts or similar undead creatures, and you can use an action to spend 2 ki points to cast either the {@spell gentle repose|XPHB} or {@spell see invisibility|XPHB} spell, without providing material components. You also gain the {@spell spare the dying|XPHB} cantrip if you don't already know it.",
-			"Furthermore, you learn how to free certain souls from their undead vessels when you harness your ki. You gain the following ability:",
+			"Starting at 6th level, you can't be possessed by ghosts or similar undead creatures, and you can take the {@action Magic|XPHB} action and spend 2 Focus Points to cast either the {@spell gentle repose|XPHB} or {@spell see invisibility|XPHB} spell, without providing material components. You also gain the {@spell spare the dying|XPHB} cantrip if you don't already know it.",
+			"Furthermore, you learn how to free certain souls from their undead vessels when you harness your Focus. You gain the following ability:",
 			{
 				"type": "entries",
 				"name": "Dismiss Undead",
 				"entries": [
-					"When you hit an undead with one of the attacks granted by your Flurry of Blows, you can force it to make a Wisdom saving throw against your ki save DC. On a failed save, its spirit leaves and is put to rest, causing the creature to either vanish or become an unmoving corpse once more. If the creature's challenge rating is above the threshold shown in the following table, it automatically succeeds on the saving throw.",
+					"When you hit an undead with one of the attacks granted by your Flurry of Blows, you can force it to make a Wisdom saving throw against a DC equal to 8 plus your Wisdom modifier and Proficiency Bonus. On a failed save, its spirit leaves and is put to rest, causing the creature to either vanish or become an unmoving corpse once more. If the creature's challenge rating is above the threshold shown in the following table, it automatically succeeds on the saving throw.",
 					{
 						"type": "table",
 						"colLabels": [
@@ -10115,15 +10115,15 @@
 				"type": "entries",
 				"name": "Etherstep",
 				"entries": [
-					"You can spend 1 ki point as a bonus action to turn {@condition invisible|XPHB} until the end of your next turn, or until you make an attack or cast a spell.",
-					"Alternatively, you can spend an extra ki point as part of your Step of the Wind to gain this benefit. When you do, you can also move through hostile creatures and solid objects no more than 4 inches thick for as long as you remain {@condition invisible|XPHB}."
+					"You can spend 1 Focus Point as a {@variantrule Bonus Action|XPHB} to turn {@condition invisible|XPHB} until the end of your next turn, or until you make an attack or cast a spell.",
+					"Alternatively, you can spend an extra Focus Point as part of your Step of the Wind to gain this benefit. When you do, you can also move through hostile creatures and solid objects no more than 4 inches thick for as long as you remain {@condition invisible|XPHB}."
 				]
 			},
 			{
 				"type": "entries",
 				"name": "Phase",
 				"entries": [
-					"When you are hit by an attack, you can use your reaction to reduce the attack's damage against you by an amount equal to your monk level as you partially slip into the Border Ethereal. You can use this ability a number of times equal to your Wisdom modifier (a minimum of once), and you regain all expended uses when you finish a long rest."
+					"When you are hit by an attack, you can use your {@variantrule Reaction|XPHB} to reduce the attack's damage against you by an amount equal to your monk level as you partially slip into the Border Ethereal. You can use this ability a number of times equal to your Wisdom modifier (a minimum of once), and you regain all expended uses when you finish a long rest."
 				]
 			}
 		],
@@ -10141,7 +10141,7 @@
 		"header": 2,
 		"entries": [
 			"At 17th level, you gain {@sense truesight} and telepathy out to 60 feet, as you are able to clearly see the world and connect to the souls within it using aether.",
-			"In addition, you can use an action to cast the {@spell etherealness|XPHB} spell. When you do, the spell has a duration of 1 minute. Once you cast this spell, you can't use it again until you finish a {@variantrule Long Rest|XPHB}."
+			"In addition, you can take the {@action Magic|XPHB} action to cast the {@spell etherealness|XPHB} spell. When you do, the spell has a duration of 1 minute. Once you cast this spell, you can't use it again until you finish a {@variantrule Long Rest|XPHB}."
 		],
 		"id": "scf|sight beyond sight|monk|phb|aether|griffonssaddlebag2|17|griffonssaddlebag2"
 	},
@@ -10286,7 +10286,7 @@
 		"level": 11,
 		"header": 2,
 		"entries": [
-			"At 11th level, you can use a bonus action immediately after you make a running jump to grow a pair of spectral, roc-like wings that last until the end of your next turn or until you touch the ground again. While the wings are present, you have a flying speed equal to your walking speed."
+			"At 11th level, you can use a {@variantrule Bonus Action|XPHB} immediately after you make a running jump to grow a pair of spectral, roc-like wings that last until the end of your next turn or until you touch the ground again. While the wings are present, you have a flying speed equal to your walking speed."
 		],
 		"id": "scf|soar|ranger|phb|rocborne|griffonssaddlebag2|11|griffonssaddlebag2"
 	},
@@ -10301,7 +10301,7 @@
 		"level": 15,
 		"header": 2,
 		"entries": [
-			"At 15th level, your connection to the wind is so strong that its spirits can come to your defense as a magical, buffeting tempest. When you take damage, you can use your reaction to give yourself resistance to that damage, or take no damage instead if it was falling damage. When you do, each creature of your choice within 15 feet of you must make a Strength saving throw against your ranger spell save DC. On a failed save, a creature takes bludgeoning damage equal to your ranger level and is knocked {@condition prone|XPHB}. On a successful save, a creature takes half as much damage and isn't knocked {@condition prone|XPHB}.",
+			"At 15th level, your connection to the wind is so strong that its spirits can come to your defense as a magical, buffeting tempest. When you take damage, you can use your {@variantrule Reaction|XPHB} to give yourself resistance to that damage, or take no damage instead if it was falling damage. When you do, each creature of your choice within 15 feet of you must make a Strength saving throw against your ranger spell save DC. On a failed save, a creature takes bludgeoning damage equal to your ranger level and is knocked {@condition prone|XPHB}. On a successful save, a creature takes half as much damage and isn't knocked {@condition prone|XPHB}.",
 			"When you use this feature, you can choose to allow the wind spirits to immediately fly you to an unoccupied space that you can see within 30 feet of you, without provoking opportunity attacks.",
 			"Once you use this feature, you can't use it again until you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}."
 		],
@@ -17828,7 +17828,7 @@
 		"header": 2,
 		"entries": [
 			"Starting when you choose this path at 3rd level, one of your hands transforms into a large, fiery claw whenever you enter your rage. The claw remains for the duration of your rage. If you're wielding a weapon with the clawed hand, its flames harmlessly spread to the weapon it's holding and wreath it in magical flames. The first target you hit with this fiery weapon on each of your turns takes an extra {@dice 1d6} fire damage.",
-			"If you don't deal this fire damage with a weapon attack on your turn, you can use a bonus action to make an unarmed strike with the claw, provided it's empty. On a hit, the target takes the normal damage from your unarmed strike, which can be either bludgeoning or slashing damage (your choice), plus an extra {@dice 1d6} fire damage.",
+			"If you don't deal this fire damage with a weapon attack on your turn, you can use a {@variantrule Bonus Action|XPHB} to make an unarmed strike with the claw, provided it's empty. On a hit, the target takes the normal damage from your unarmed strike, which can be either bludgeoning or slashing damage (your choice), plus an extra {@dice 1d6} fire damage.",
 			"The claw's fire damage increases when you reach certain levels in this class, increasing to {@dice 1d8} at 6th level, {@dice 1d10} at 10th level, and {@dice 1d12} at 14th level."
 		],
 		"id": "scf|hellfire claw|barbarian|phb|infernal|griffonssaddlebag2|3|griffonssaddlebag2"
@@ -17892,7 +17892,7 @@
 		"level": 3,
 		"header": 2,
 		"entries": [
-			"When you choose this archetype at 3rd level, you learn to magically launch yourself with a mighty leap. While standing on a solid surface, you can use a bonus action to leap horizontally, vertically, or a combination of both, up to a combined distance that totals no more than 15 feet. For example, you can choose to leap 10 feet horizontally and 5 feet vertically, potentially allowing you to avoid a dangerous trap or barricade blocking your path. When you reach 7th level in this class, the leap's distance can total up to 30 feet instead.",
+			"When you choose this archetype at 3rd level, you learn to magically launch yourself with a mighty leap. While standing on a solid surface, you can use a {@variantrule Bonus Action|XPHB} to leap horizontally, vertically, or a combination of both, up to a combined distance that totals no more than 15 feet. For example, you can choose to leap 10 feet horizontally and 5 feet vertically, potentially allowing you to avoid a dangerous trap or barricade blocking your path. When you reach 7th level in this class, the leap's distance can total up to 30 feet instead.",
 			"You can't use this feature if your speed is 0, and if you leap completely horizontally, you still leap 1 foot off the ground. Leaping in this way doesn't provoke opportunity attacks, and if you fall immediately after using this feature, you can subtract up to 30 feet from the fall when calculating falling damage.",
 			"You can use this feature three times, and you regain all expended uses of it when you finish a {@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}. Beginning at 7th level, you can use this feature four times between rests, and beginning at 15th level, you can use it five times between rests.",
 			"Leaping in this way can also strengthen your strikes by using the force of your momentum. If you make a melee weapon attack immediately after using Launch, you have advantage on the attack roll, and if the attack hits, the target takes an extra {@damage 1d8} damage of the weapon's type. At 10th level, this extra damage becomes {@dice 1d10}, and at 18th level, it becomes {@dice 1d12}. The attack can be made immediately after you land at the end of the leap or during the leap's movement."
@@ -17957,7 +17957,7 @@
 		"level": 3,
 		"header": 2,
 		"entries": [
-			"Also at 3rd level, you learn the {@spell mage hand|XPHB} cantrip, which you can cast and control as a bonus action. When you cast it, it doesn't require verbal or somatic components. The hand from the spell appears as a blue, spiritual copy of your own."
+			"Also at 3rd level, you learn the {@spell mage hand|XPHB} cantrip, which you can cast and control as a {@variantrule Bonus Action|XPHB}. When you cast it, it doesn't require verbal or somatic components. The hand from the spell appears as a blue, spiritual copy of your own."
 		],
 		"id": "scf|spirit hand|monk|phb|aether|griffonssaddlebag2|3|griffonssaddlebag2"
 	},
@@ -18180,9 +18180,9 @@
 		"level": 3,
 		"header": 2,
 		"entries": [
-			"When you choose this archetype at 3rd level, you gain proficiency in the {@skill Medicine} skill if you don't already have it. Your proficiency bonus is doubled for any ability check you make that uses this skill.",
-			"In addition, your familiarity with blood has become magical, giving you some degree of control over it. As a result, you can use a bonus action to magically stabilize an {@condition unconscious|XPHB} creature within 5 feet of you.",
-			"You can use this same magic when you apply traditional healing techniques. You can use a bonus action to expend one use of a {@item healer's kit|XPHB} on a creature. When you do, that creature regains hit points equal {@dice 1d4} + your proficiency bonus. The creature can't regain hit points from this feature again until it finishes a short or long rest."
+			"When you choose this archetype at 3rd level, you gain proficiency in the {@skill Medicine} skill if you don't already have it. You have Expertise in this skill.",
+			"In addition, your familiarity with blood has become magical, giving you some degree of control over it. As a result, you can use a {@variantrule Bonus Action|XPHB} to magically stabilize an {@condition unconscious|XPHB} creature within 5 feet of you.",
+			"You can use this same magic when you apply traditional healing techniques. You can use a {@variantrule Bonus Action|XPHB} to expend one use of a {@item healer's kit|XPHB} on a creature. When you do, that creature regains hit points equal {@dice 1d4} + your proficiency bonus. The creature can't regain hit points from this feature again until it finishes a short or long rest."
 		],
 		"id": "scf|medic|rogue|phb|grim surgeon|griffonssaddlebag2|3|griffonssaddlebag2"
 	},
@@ -18911,7 +18911,7 @@
 			"name": "Channel Divinity"
 		},
 		"entries": [
-			"You can refute certain spells and use them to nourish yourself. Using your Channel Divinity, you can interrupt a creature you can see within 30 feet of you casting a spell. You can use a reaction when you see a creature within range casting a spell to present your holy symbol and interrupt it. The spell fails and has no effect if it is of a level no higher than 1 + your paladin level divided by 3 (rounded up), to a maximum of 6th-level spells. When it does, you gain a number of temporary hit points equal to your Charisma modifier, plus 5 times the spell's level."
+			"You can refute certain spells and use them to nourish yourself. Using your Channel Divinity, you can interrupt a creature you can see within 30 feet of you casting a spell. You can use a {@variantrule Reaction|XPHB} when you see a creature within range casting a spell to present your holy symbol and interrupt it. The spell fails and has no effect if it is of a level no higher than 1 + your paladin level divided by 3 (rounded up), to a maximum of 6th-level spells. When it does, you gain a number of temporary hit points equal to your Charisma modifier, plus 5 times the spell's level."
 		],
 		"id": "scf|absorb magic|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
 	},
@@ -18929,7 +18929,7 @@
 			"name": "Channel Divinity"
 		},
 		"entries": [
-			"You can use your Channel Divinity to issue a word of power and release a wave of invigorating energy from your holy symbol. As a bonus action, choose a number of creatures within 30 feet of you up to your Charisma modifier (minimum one creature). Until the start of your next turn, the chosen creatures can use a bonus action to take either {@action Dash} or {@action Disengage} action. As part of using your Channel Divinity in this way, you can also take either the {@action Dash} or {@action Disengage} action."
+			"You can use your Channel Divinity to issue a word of power and release a wave of invigorating energy from your holy symbol. As a {@variantrule Bonus Action|XPHB}, choose a number of creatures within 30 feet of you up to your Charisma modifier (minimum one creature). Until the start of your next turn, the chosen creatures can use a bonus action to take either {@action Dash} or {@action Disengage} action. As part of using your Channel Divinity in this way, you can also take either the {@action Dash} or {@action Disengage} action."
 		],
 		"id": "scf|expeditious command|paladin|phb|spelldrinker|griffonssaddlebag2|3|griffonssaddlebag2"
 	}

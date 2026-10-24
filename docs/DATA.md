@@ -100,8 +100,15 @@ extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into th
 - Tags: `{@spell}`, `{@condition}`, `{@item}` with source PHB or none → XPHB when an XPHB entry of that
   name exists in the 5etools source (spells-xphb, conditionsdiseases, items + items-base): 38 rewritten,
   0 without target. `additionalSpells` "x|PHB" → "x|XPHB": 15 of 15.
-- Left as found (later tasks): `{@action grapple}` and `{@action Use an Object}` (no XPHB target), ki and
-  Hit Dice prose, Channel Divinity without `consumes`, rest phrases without `{@variantrule}` tag (so no
+- 2024 wording (TGS2-4c, D387): the homebrew prose is 2014. `HOMEBREW_WORDING` (key "Subclass short name|
+  Feature name", the race as "Etherean|Etherean"; run after the split, so Absorb Magic / Expeditious Command
+  have their own keys) holds exact substring old → new pairs: ki → Focus Points (Aether), Infernal Warrior
+  grapple check → Unarmed Strike Grapple + saving throw, Use an Object → Utilize, Hit Dice → Hit Point Dice,
+  Medic doubled proficiency → Expertise, "use an action to cast" → Magic action, and bare "bonus action" /
+  "reaction" → `{@variantrule … |XPHB}` (classifyActionType reads only tags). 24 pairs; extraction throws when
+  one is not found and when "ki point" survives anywhere. Trap: `mapStrings` returns a new array for an array
+  root, so the result must be assigned back (strings directly in `entries` were otherwise left untouched).
+- Left as found (later tasks): rest phrases without `{@variantrule}` tag (so no
   feature becomes a resource pool).
 
 ### RHW, FRHoF, SCC — what the three books contain (survey 2026-09, D194)

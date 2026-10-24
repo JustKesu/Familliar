@@ -1310,6 +1310,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - TGS2-4b (D386): `HOMEBREW_SPLIT_OPTIONS` in `loadHomebrew()` splits Spelldrinker's Channel Divinity options Absorb Magic and
   Expeditious Command into their own records with `consumes` Channel Divinity (XGE/TCE shape; 48 homebrew feature records).
   Two Actions rows spending the Paladin Channel Divinity pool; no sheet code changed.
+- TGS2-4c (D387): `HOMEBREW_WORDING` in `loadHomebrew()` rewrites 24 sentences of the TGS2 text to 2024 wording (Focus Points,
+  Utilize, Magic action, Expertise, Hit Point Dice…) and tags bare bonus action / reaction as `{@variantrule … |XPHB}` so the Actions
+  tab groups Launch, Steel Grace, Absorb Magic, Expeditious Command etc. `e2e/tgs2Wording.spec.ts` covers it.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:
