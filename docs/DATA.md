@@ -1523,6 +1523,14 @@ species, Monk-tool and language lines are B1's and were not re-checked.
 
 Found in investigation B6a and checked in B6b (2026-09-24, scripts consumed).
 
+- RB-1 survey (2026-10-24, markup stripped, regex "skill(s) of your choice" / "learn … language … choice"):
+  XPHB class features with a prose skill/language pick are Primal Knowledge (Barbarian 3, skills from
+  startingProficiencies: animal handling, athletics, intimidation, nature, perception, survival), Deft Explorer and
+  Thieves' Cant. XPHB-class subclass features: Lore Bonus Proficiencies, Knowledge Blessings of Knowledge, Knightly
+  Envoy, Student of War, Genie's Splendor, Fey Wanderer Otherworldly Glamour, Training in War and Song. TGS2: Hellborn
+  (Infernal 3, Abyssal or Infernal) and Rocborne Whispers of Knowledge (3, skill). Not in a hand table after RB-1: Lore
+  Bonus Proficiencies, Otherworldly Glamour, Whispers of Knowledge.
+
 ### Class and subclass senses — prose only (D195)
 
 - No class-features.json or subclass-features.json record carries a `senses`

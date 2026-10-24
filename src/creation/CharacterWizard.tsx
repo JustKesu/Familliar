@@ -23,7 +23,7 @@ import { ToolProficiencyPicker } from '../toolProficiencies/ToolProficiencyPicke
 import { ClassToolSlots } from '../toolProficiencies/ClassToolSlots'
 import { isKhoravar } from '../toolProficiencies/speciesToolChoices'
 import { SpeciesSkillOrToolSlot, SubclassSkillSlots } from '../classSkills/SkillChoiceSlots'
-import { subclassExpertiseSkills, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
+import { subclassExpertiseSkills, subclassSkillGrantOwner, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
 import { SpeciesSizePicker } from '../species/SpeciesSizePicker'
 import { loadSpeciesSizeOptions } from '../species/speciesSizeData'
 import { MasteryPicker } from '../masteries/MasteryPicker'
@@ -1221,13 +1221,16 @@ export function CharacterWizard({
 	const featFixedExpertise = (instances: readonly FeatRef[]): string[] => instances.flatMap((instance) => proficiencyData.fixedExpertise[`${instance.name}|${instance.source}`] ?? [])
 	const fixedExpertise = [...(wizardClassChoice ? subclassExpertiseSkills(multiclassLevelUp || multiclassEdit ? draftClasses : [wizardClassChoice], state.data.subclassSkills) : []), ...featFixedExpertise(draftFeatInstances)]
 	// A pick's own grant names its subclass; state.data.subclass is empty while a multiclass edit holds the subclass in the drafted classes.
-	const subclassPickSource = (pick: { grantedBy: string }): string => heldSubclassGrants.find((grant) => grant.choice?.grantedBy === pick.grantedBy)?.subclass ?? state.data.subclass?.name ?? ''
+	const subclassPickSource = (pick: { grantedBy: string }): string => {
+		const grant = heldSubclassGrants.find((candidate) => candidate.choice?.grantedBy === pick.grantedBy)
+		return grant ? subclassSkillGrantOwner(grant) : (state.data.subclass?.name ?? '')
+	}
 	/** E-1: Expertise draws on every skill proficiency, not only class/background/species; kept apart from proficientSkills, which heldForFeat reads as "held outside the feat being edited". */
 	const expertiseSourceSkills: DisabledSkill[] = [
 		...proficientSkills,
 		...(state.data.speciesExtraSkill && state.data.speciesChoice ? [{ skill: state.data.speciesExtraSkill, source: state.data.speciesChoice.name }] : []),
 		...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: subclassPickSource(pick) })),
-		...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
+		...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: subclassSkillGrantOwner(grant) }))),
 		...featSkillSources(draftFeatInstances, proficiencyData.fixedSkills),
 	].filter((entry, index, all) => all.findIndex((other) => other.skill === entry.skill) === index)
 	/** D335: one class's Expertise pool leaves out the skills another held class already took. */
@@ -1406,7 +1409,7 @@ export function CharacterWizard({
 				...proficientSkills,
 				...(state.data.speciesExtraSkill && state.data.speciesChoice ? [{ skill: state.data.speciesExtraSkill, source: state.data.speciesChoice.name }] : []),
 				...state.data.subclassSkills.map((pick) => ({ skill: pick.name, source: subclassPickSource(pick) })),
-				...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: grant.subclass }))),
+				...heldSubclassGrants.flatMap((grant) => (grant.fixed ?? []).map((skill) => ({ skill, source: subclassSkillGrantOwner(grant) }))),
 				...others.flatMap((instance) => (instance.proficiencies?.skills ?? []).map((skill) => ({ skill, source: instance.name }))),
 			],
 			heldExpertise: [...state.data.expertiseSkills, ...fixedExpertise, ...featFixedExpertise(others), ...others.flatMap((instance) => instance.proficiencies?.expertise ?? [])],

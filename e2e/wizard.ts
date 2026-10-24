@@ -131,6 +131,8 @@ export interface FighterOptions {
   laterFeat?: { level: number; feat: string; onFeatStep?: (page: Page) => Promise<void> }
   /** The class's first starting-equipment option (Fighter: Greatsword, Flail, Javelins…) instead of the last. */
   classGear?: boolean
+  /** RB-1: another class (`className` is the Class select's option value) with its own Class-step picks in place of the Fighter's skills, masteries and style. */
+  classStep?: { className: string; pick: (page: Page) => Promise<void> }
   /** Subclass radio at level 3+; Champion when absent. */
   subclass?: string
   /** Runs on the class step after the subclass is picked (its own options). */
@@ -156,16 +158,20 @@ export async function fillUpToBackground(page: Page, options: FighterOptions): P
   await page.goto('/#/new')
   await expectStep(page, 'Class and level')
   await page.getByLabel('Character name').fill(options.name)
-  await select(page, 'Class').selectOption('Fighter|XPHB')
+  await select(page, 'Class').selectOption(options.classStep?.className ?? 'Fighter|XPHB')
   await select(page, 'Level').selectOption(String(options.level))
-  await page.getByRole('checkbox', { name: 'Athletics', exact: true }).check()
-  await page.getByRole('checkbox', { name: 'Perception', exact: true }).check()
-  // W-3: the step's Next needs the exact mastery count — Fighter gets 3, 4 from level 4, 5 from 10, 6 from 16.
-  const masteryCount = options.level >= 16 ? 6 : options.level >= 10 ? 5 : options.level >= 4 ? 4 : 3
-  for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe', 'Flail', 'Glaive'].slice(0, masteryCount)) {
-    await chooseButton(page, weapon).first().click()
+  if (options.classStep) {
+    await options.classStep.pick(page)
+  } else {
+    await page.getByRole('checkbox', { name: 'Athletics', exact: true }).check()
+    await page.getByRole('checkbox', { name: 'Perception', exact: true }).check()
+    // W-3: the step's Next needs the exact mastery count — Fighter gets 3, 4 from level 4, 5 from 10, 6 from 16.
+    const masteryCount = options.level >= 16 ? 6 : options.level >= 10 ? 5 : options.level >= 4 ? 4 : 3
+    for (const weapon of ['Longsword', 'Greatsword', 'Handaxe', 'Battleaxe', 'Flail', 'Glaive'].slice(0, masteryCount)) {
+      await chooseButton(page, weapon).first().click()
+    }
+    await chooseButton(page, 'Defense').click()
   }
-  await chooseButton(page, 'Defense').click()
   if (options.level >= 3) await chooseButton(page, options.subclass ?? 'Champion').click()
   await options.onClassStep?.(page)
   await next(page)

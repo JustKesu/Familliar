@@ -1,4 +1,4 @@
-import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
+import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor, featureLanguageSlotCount } from '../languages/classFeatureLanguages'
 import type { FeatRef } from '../featAsi/featInstances'
 import { compareText } from '../text/compareText'
 import { classToolGrantsFor, subclassToolGrantsForAll } from '../toolProficiencies/classToolChoices'
@@ -7,7 +7,7 @@ import { classProficiencyGrants } from './classProficiencies'
 import { chosenWeaponGrants, FEATURE_GRANTS } from './featureGrants'
 import type { ItemProficiencyGrant } from './itemProficiencies'
 import { isKhoravar, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
-import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
+import { SUBCLASS_SKILL_GRANTS, subclassSkillGrantOwner } from '../classSkills/subclassSkillGrants'
 import type { Character, FeatChoiceDetails } from '../storage/character'
 import {
 	extractFeatWeaponProficiencyEntries,
@@ -251,7 +251,7 @@ export function computeProficiencies(
 		const grant = CLASS_FEATURE_LANGUAGE_GRANTS.find((candidate) => candidate.choice?.grantedBy === language.grantedBy)
 		const subclassGrant = SUBCLASS_SKILL_GRANTS.find((candidate) => candidate.choice?.orLanguage === language.grantedBy)
 		if (grant) addLanguage(language.name, { kind: 'classFeatureChoice', name: featureLanguageSource(grant) })
-		else if (subclassGrant) addLanguage(language.name, { kind: 'subclass', name: subclassGrant.subclass })
+		else if (subclassGrant) addLanguage(language.name, { kind: 'subclass', name: subclassSkillGrantOwner(subclassGrant) })
 		else addLanguage(language.name, { kind: 'creation', name: language.grantedBy === 'automatic' ? 'Every character' : 'Chosen at creation' })
 	}
 
@@ -260,7 +260,8 @@ export function computeProficiencies(
 		if (!grant.choice) continue
 		const { count, grantedBy } = grant.choice
 		// D172: a partial choice leaves only the remainder pending.
-		const missing = count - (character.languages ?? []).filter((language) => language.grantedBy === grantedBy).length
+		const otherKnown = (character.languages ?? []).filter((language) => language.grantedBy !== grantedBy).map((language) => language.name)
+		const missing = featureLanguageSlotCount(grant, otherKnown) - (character.languages ?? []).filter((language) => language.grantedBy === grantedBy).length
 		const label = count === 1 ? `Extra language (${grant.featureName})` : `${missing} extra ${missing === 1 ? 'language' : 'languages'} (${grant.featureName})`
 		addPending(missing, featureLanguageSource(grant), grant.subclass ? 'subclass' : 'class', label)
 	}

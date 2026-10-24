@@ -2,7 +2,9 @@ import type { Character, CharacterClass, CharacterLanguage, CharacterSubclassSki
 
 export interface SubclassSkillGrant {
 	className: string
-	subclass: string
+	/** Absent for a class feature (Primal Knowledge, D392), which `featureName` names instead. */
+	subclass?: string
+	featureName?: string
 	/** Class level the grant arrives at: 3 for every entry, whatever level the 2014 feature carries (D176). */
 	level: number
 	fixed?: readonly string[]
@@ -47,17 +49,34 @@ export const SUBCLASS_SKILL_GRANTS: readonly SubclassSkillGrant[] = [
 		level: 3,
 		choice: { grantedBy: 'collegeOfTheMoon', from: ['animal handling', 'insight', 'medicine', 'nature', 'perception', 'survival'] },
 	},
+	// D392: "from the skill list available to Barbarians at level 1" — XPHB Barbarian's startingProficiencies.skills.
+	{
+		className: 'Barbarian',
+		featureName: 'Primal Knowledge',
+		level: 3,
+		choice: { grantedBy: 'primalKnowledge', from: ['animal handling', 'athletics', 'intimidation', 'nature', 'perception', 'survival'] },
+	},
 ]
 
 export function subclassSkillChoiceCount(grant: SubclassSkillGrant): number {
 	return grant.choice?.count ?? 1
 }
 
+/** The subclass, or the class feature for a grant without one. */
+export function subclassSkillGrantOwner(grant: SubclassSkillGrant): string {
+	return grant.subclass ?? grant.featureName ?? grant.className
+}
+
+/** How a skill's proficiency source names the grant. */
+export function subclassSkillGrantSource(grant: SubclassSkillGrant): string {
+	return grant.subclass ? `subclass (${grant.subclass})` : `${grant.className} (${grant.featureName ?? ''})`
+}
+
 export const SUBCLASS_LANGUAGE_SOURCES: ReadonlySet<string> = new Set(SUBCLASS_SKILL_GRANTS.flatMap((grant) => (grant.choice?.orLanguage ? [grant.choice.orLanguage] : [])))
 
 export function subclassSkillGrantsFor(classes: readonly ClassRef[]): SubclassSkillGrant[] {
 	return SUBCLASS_SKILL_GRANTS.filter((grant) =>
-		classes.some((cls) => cls.className === grant.className && cls.classSource === 'XPHB' && cls.subclass === grant.subclass && cls.level >= grant.level),
+		classes.some((cls) => cls.className === grant.className && cls.classSource === 'XPHB' && (!grant.subclass || cls.subclass === grant.subclass) && cls.level >= grant.level),
 	)
 }
 
@@ -68,11 +87,16 @@ export function isSubclassSkillChoiceMade(grant: SubclassSkillGrant, skills: rea
 	return skills.filter((pick) => pick.grantedBy === choice.grantedBy).length >= subclassSkillChoiceCount(grant) || (choice.orLanguage !== undefined && languages.some((language) => language.grantedBy === choice.orLanguage))
 }
 
-/** The subclasses whose fixed grant or stored pick gives `skill`. */
+/** The grants whose fixed skill or stored pick gives `skill`. */
+export function subclassSkillGrantsGiving(skill: string, character: Character): SubclassSkillGrant[] {
+	return subclassSkillGrantsFor(character.classes).filter(
+		(grant) => grant.fixed?.includes(skill) || (grant.choice && (character.subclassSkills ?? []).some((pick) => pick.grantedBy === grant.choice?.grantedBy && pick.name === skill)),
+	)
+}
+
+/** The subclasses (or class features) whose fixed grant or stored pick gives `skill`. */
 export function subclassSkillSourceNames(skill: string, character: Character): string[] {
-	return subclassSkillGrantsFor(character.classes)
-		.filter((grant) => grant.fixed?.includes(skill) || (grant.choice && (character.subclassSkills ?? []).some((pick) => pick.grantedBy === grant.choice?.grantedBy && pick.name === skill)))
-		.map((grant) => grant.subclass)
+	return subclassSkillGrantsGiving(skill, character).map(subclassSkillGrantOwner)
 }
 
 /** Skills a subclass gives expertise in outright (Scout) or through its own pick (Knowledge Domain) — never offered by an expertise picker. */
@@ -92,7 +116,7 @@ export function keepHeldSubclassSkills(skills: readonly CharacterSubclassSkill[]
 /** The grantedBy keys of every subclass grant of `className`, whichever subclass — what a new subclass pick for that class invalidates (D340). */
 export function classSubclassGrantSources(className: string): ReadonlySet<string> {
 	return new Set(
-		SUBCLASS_SKILL_GRANTS.filter((grant) => grant.className === className).flatMap((grant) =>
+		SUBCLASS_SKILL_GRANTS.filter((grant) => grant.className === className && grant.subclass).flatMap((grant) =>
 			grant.choice ? [grant.choice.grantedBy, ...(grant.choice.orLanguage ? [grant.choice.orLanguage] : [])] : [],
 		),
 	)

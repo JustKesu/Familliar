@@ -215,7 +215,7 @@ function toCharacterBackground(value: Record<string, unknown>): CharacterBackgro
 	}
 }
 
-const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer', 'mastermind', 'cavalier', 'samurai', 'banneret']
+const LANGUAGE_GRANT_SOURCES: readonly LanguageGrantSource[] = ['automatic', 'creation', 'thievesCant', 'deftExplorer', 'mastermind', 'cavalier', 'samurai', 'banneret', 'hellborn']
 
 /** Validates an optional `languages` field. Returns null if the field is absent (it's optional). */
 export function describeLanguagesError(value: unknown): string | null {
@@ -248,6 +248,7 @@ const SUBCLASS_SKILL_SOURCES: readonly SubclassSkillSource[] = [
 	'banneret',
 	'nobleGenies',
 	'collegeOfTheMoon',
+	'primalKnowledge',
 ]
 
 /** Validates an optional `subclassSkills` field (D177). */

@@ -5558,3 +5558,11 @@ Bez změny schématu. Rozhodl Daniel 24. 10. 2026.
 
 „Options added“ v Review při level upu počítá i runy, manévry (RN, MV:B) a styl boje Fightera, stejně jako
 „Options removed“ (D390). Doplňuje D378. Rozhodl Daniel 24. 10. 2026.
+
+## D392 — Primal Knowledge a Hellborn jako volby z ručních tabulek (RB-1)
+
+Primal Knowledge (Barbarian XPHB 3) je řádek `SUBCLASS_SKILL_GRANTS` bez `subclass`, `grantedBy: 'primalKnowledge'`,
+výběr z dovedností Barbariana na úrovni 1 minus už držené; nový výběr podtřídy ho nemaže. Hellborn (Path of the Infernal,
+TGS2, 3) je řádek `CLASS_FEATURE_LANGUAGE_GRANTS` s `from: ['Abyssal', 'Infernal']`, `grantedBy: 'hellborn'`; nabízí jen
+neznámé, při obou známých slot není. Místo voleb jako D172/D177 (krok Proficiencies v průvodci, level up, Edit).
+Schéma 65, migrace jen značí. Rozhodl Daniel 24. 10. 2026.

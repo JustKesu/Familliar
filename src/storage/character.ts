@@ -66,7 +66,7 @@ export interface CharacterBackground {
 export type LanguageGrantSource = 'automatic' | 'creation' | FeatureLanguageSource
 
 /** D177 adds Cavalier's and Samurai's skill-or-language pick when it is a language; D203 Banneret's language. */
-export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer' | 'mastermind' | 'cavalier' | 'samurai' | 'banneret'
+export type FeatureLanguageSource = 'thievesCant' | 'deftExplorer' | 'mastermind' | 'cavalier' | 'samurai' | 'banneret' | 'hellborn'
 
 /** D174: which class or subclass grant a stored tool pick fills; D176 adds the non-XPHB subclass picks, D177 the species picks, D203 Knowledge Domain. */
 export type ToolChoiceSource = 'bard' | 'monk' | 'artificer' | 'battleMaster' | 'mastermind' | 'kensei' | 'artificerSubclass' | 'warforged' | 'satyr' | 'khoravar' | 'knowledgeDomain'
@@ -84,6 +84,7 @@ export type SubclassSkillSource =
 	| 'banneret'
 	| 'nobleGenies'
 	| 'collegeOfTheMoon'
+	| 'primalKnowledge'
 
 export interface CharacterSubclassSkill {
 	grantedBy: SubclassSkillSource
@@ -1142,7 +1143,7 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 64
+export const CURRENT_SCHEMA_VERSION = 65
 
 export interface CharacterLevelOrderEntry {
 	className: string

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CharacterLanguage } from '../storage/character'
-import { FEATURE_LANGUAGE_TYPES, featureLanguageOptions, type ClassFeatureLanguageGrant } from './classFeatureLanguages'
+import { FEATURE_LANGUAGE_TYPES, featureLanguageOptions, featureLanguageSlotCount, type ClassFeatureLanguageGrant } from './classFeatureLanguages'
 import { loadLanguages, type LanguageEntry } from './languageData'
 
 /**
@@ -45,7 +45,8 @@ export function FeatureLanguageSlots({
 
 	return (
 		<ul className="language-picker__list">
-			{choiceGrants.flatMap(({ featureName, choice }) => {
+			{choiceGrants.flatMap((grant) => {
+				const { featureName, choice } = grant
 				const picks = value.filter((language) => language.grantedBy === choice.grantedBy)
 				const choose = (slot: number, key: string): void => {
 					const entry = languages.find((language) => `${language.name}|${language.source}` === key)
@@ -53,9 +54,11 @@ export function FeatureLanguageSlots({
 					next[slot] = entry ? { ...entry, grantedBy: choice.grantedBy } : undefined
 					onChange([...value.filter((language) => language.grantedBy !== choice.grantedBy), ...next.filter((pick) => pick !== undefined)])
 				}
-				return Array.from({ length: choice.count }, (_, slot) => {
+				const ownNames = picks.map((pick) => pick.name)
+				const slots = Math.max(featureLanguageSlotCount(grant, known.filter((name) => !ownNames.includes(name))), picks.length)
+				return Array.from({ length: slots }, (_, slot) => {
 					const current = picks[slot]
-					const options = featureLanguageOptions(languages, taken, current?.name)
+					const options = featureLanguageOptions(languages, taken, current?.name).filter((language) => !choice.from || choice.from.includes(language.name))
 					return (
 						<li key={`${choice.grantedBy}:${slot}`}>
 							<label>

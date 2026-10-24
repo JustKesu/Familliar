@@ -22,7 +22,7 @@ import type { Character } from '../storage/character'
 import { choiceNames } from '../storage/character'
 import { computeAbilityScore } from './abilityScores'
 import { multiclassSkillNames } from '../multiclass/multiclassPicks'
-import { isSubclassSkillChoiceMade, subclassExpertiseSkills, subclassSkillGrantsFor, subclassSkillSourceNames } from '../classSkills/subclassSkillGrants'
+import { isSubclassSkillChoiceMade, subclassExpertiseSkills, subclassSkillGrantSource, subclassSkillGrantsFor, subclassSkillGrantsGiving } from '../classSkills/subclassSkillGrants'
 import {
 	featFixedExpertiseNames,
 	featFixedSkillProficiencyNames,
@@ -120,7 +120,7 @@ function proficiencySources(skill: Skill, character: Character, feats: FeatEffec
 	if (character.speciesSkills?.includes(skill)) sources.push('species')
 	sources.push(...featFixedSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
 	sources.push(...featStoredSkillProficiencyNames(skill, character, feats).map((name) => `feat (${name})`))
-	sources.push(...subclassSkillSourceNames(skill, character).map((name) => `subclass (${name})`))
+	sources.push(...subclassSkillGrantsGiving(skill, character).map(subclassSkillGrantSource))
 	sources.push(...multiclassSkillNames(character).flatMap((pick) => (pick.name === skill ? [`${pick.className} (multiclass)`] : [])))
 	return sources
 }
@@ -130,7 +130,7 @@ function subclassSkillChoiceAwaitingNotes(skill: Skill, character: Character, is
 	if (isProficient) return []
 	return subclassSkillGrantsFor(character.classes)
 		.filter((grant) => grant.choice?.from.includes(skill) && !isSubclassSkillChoiceMade(grant, character.subclassSkills ?? [], character.languages ?? []))
-		.map((grant) => skillChoiceAwaitingNote(`subclass (${grant.subclass})`))
+		.map((grant) => skillChoiceAwaitingNote(subclassSkillGrantSource(grant)))
 }
 
 /**

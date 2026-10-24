@@ -49,7 +49,7 @@ import type { SpeciesChoice } from '../species/SpeciesPicker'
 import type { BackgroundChoice } from '../backgrounds/BackgroundPicker'
 import type { LanguageChoice } from '../languages/LanguagePicker'
 import { AUTOMATIC_LANGUAGE, CHOSEN_LANGUAGE_COUNT } from '../languages/languageData'
-import { classFeatureLanguageGrantsFor, keepHeldFeatureLanguages } from '../languages/classFeatureLanguages'
+import { classFeatureLanguageGrantsFor, featureLanguageSlotCount, keepHeldFeatureLanguages } from '../languages/classFeatureLanguages'
 import { classToolGrantsFor, keepHeldToolChoices, toolGrantsForHeldClasses, type ClassToolChoiceGrant, type ToolSlotGrant } from '../toolProficiencies/classToolChoices'
 import { isKhoravar, isSpeciesToolChoice, keepHeldSpeciesToolChoices, speciesToolGrantsFor } from '../toolProficiencies/speciesToolChoices'
 import {
@@ -986,7 +986,13 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 			return (
 				creationComplete &&
 				multiclassPicksComplete &&
-				grants.every((grant) => !grant.choice || data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length === grant.choice.count) &&
+				grants.every((grant) => {
+					if (!grant.choice) return true
+					const picks = data.featureLanguages.filter((language) => language.grantedBy === grant.choice?.grantedBy).length
+					// D392: Hellborn owes no pick when both its languages are known; a pick made before that still counts.
+					const known = [AUTOMATIC_LANGUAGE.name, ...data.languageChoice.map((language) => language.name)]
+					return picks >= featureLanguageSlotCount(grant, known) && picks <= grant.choice.count
+				}) &&
 				// D176: at least the count — a surplus Artificer replacement pick is kept, not demanded away.
 				[...wizardToolGrants(data, levelUpTargetLevel, heldClasses), ...wizardSpeciesToolGrants(data, levelUpTargetLevel)].every(
 					(grant) => data.toolChoices.filter((choice) => choice.grantedBy === grant.grantedBy).length >= grant.count,

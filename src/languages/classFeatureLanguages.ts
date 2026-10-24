@@ -8,7 +8,7 @@ export interface ClassFeatureLanguageGrant {
 	level: number
 	fixed?: string
 	/** D172: free picks, stored in Character.languages under `grantedBy`. */
-	choice?: { count: number; grantedBy: FeatureLanguageSource }
+	choice?: { count: number; grantedBy: FeatureLanguageSource; from?: readonly string[] }
 }
 
 // D171: XPHB class features that grant languages — prose only (DATA.md), hence a hand table. D176: Mastermind (XGE), D203: Banneret (FRHoF), keyed by name as in classToolChoices.ts.
@@ -19,7 +19,18 @@ export const CLASS_FEATURE_LANGUAGE_GRANTS: readonly ClassFeatureLanguageGrant[]
 	{ className: 'Rogue', subclass: 'Mastermind', featureName: 'Master of Intrigue', level: 3, choice: { count: 2, grantedBy: 'mastermind' } },
 	// D203: the swap after a Long Rest is not modelled.
 	{ className: 'Fighter', subclass: 'Banneret', featureName: 'Knightly Envoy', level: 3, choice: { count: 1, grantedBy: 'banneret' } },
+	// D392: TGS2 homebrew subclass on the XPHB Barbarian.
+	{ className: 'Barbarian', subclass: 'Path of the Infernal', featureName: 'Hellborn', level: 3, choice: { count: 1, grantedBy: 'hellborn', from: ['Abyssal', 'Infernal'] } },
 ]
+
+/** D392: a `from` grant has a slot only for each of its languages not already `known`; both known means no slot. */
+export function featureLanguageSlotCount(grant: ClassFeatureLanguageGrant, known: readonly string[]): number {
+	if (!grant.choice) return 0
+	const { count, from } = grant.choice
+	if (!from) return count
+	const knownLower = new Set(known.map((name) => name.toLowerCase()))
+	return Math.min(count, from.filter((name) => !knownLower.has(name.toLowerCase())).length)
+}
 
 // D172: the picks come "from the language tables in chapter 2" — Standard AND Rare (DATA.md).
 export const FEATURE_LANGUAGE_TYPES: readonly string[] = ['standard', 'rare']

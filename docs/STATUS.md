@@ -1321,6 +1321,12 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - SM-1: Infernal Warrior text now tags `{@variantrule Unarmed Strike|XPHB}` (as official XPHB does); Money Talks has its own
   scenario in `e2e/tgs2Wording.spec.ts`; the Tortle AC breakdown has an assertion that "warning" appears once. The Character name
   gap is unchanged (already 4px like the other wizard labelled inputs).
+- RB-1 (D392): schema 65. Primal Knowledge (Barbarian XPHB 3) = `SUBCLASS_SKILL_GRANTS` row without `subclass`
+  (`grantedBy: 'primalKnowledge'`, Barbarian level-1 skills; `subclassSkillGrantOwner` / `subclassSkillGrantSource` label it,
+  sheet source "Barbarian (Primal Knowledge)"). Hellborn (Path of the Infernal 3) = `CLASS_FEATURE_LANGUAGE_GRANTS` row with
+  `choice.from` Abyssal/Infernal (`grantedBy: 'hellborn'`); `featureLanguageSlotCount` drops the slot when both are known
+  (wizard completion, FeatureLanguageSlots, pending note). `e2e/primalHellbornRB1.spec.ts` a–e; `FighterOptions.classStep`
+  in `e2e/wizard.ts` creates another class.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

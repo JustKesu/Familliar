@@ -8,7 +8,7 @@ import { ANY_TOOL_CATEGORIES } from '../toolProficiencies/speciesToolChoices'
 import { loadToolCategoryOptions } from '../toolProficiencies/toolProficiencyData'
 import { compareText } from '../text/compareText'
 import { ALL_SKILLS } from './classSkillData'
-import type { SubclassSkillGrant } from './subclassSkillGrants'
+import { subclassSkillGrantOwner, type SubclassSkillGrant } from './subclassSkillGrants'
 
 /** Loads once, only while `wanted`; `null` until then. */
 function useLoaded<T>(wanted: boolean, load: () => Promise<T>): { value: T | null; error: string | null } {
@@ -51,7 +51,7 @@ export function SubclassSkillSlots({
 	knownLanguages: readonly string[]
 	onChange: (skills: CharacterSubclassSkill[], languages: CharacterLanguage[]) => void
 }): ReactNode {
-	const choiceGrants = grants.flatMap((grant) => (grant.choice ? [{ subclass: grant.subclass, choice: grant.choice }] : []))
+	const choiceGrants = grants.flatMap((grant) => (grant.choice ? [{ subclass: subclassSkillGrantOwner(grant), choice: grant.choice }] : []))
 	const wantsLanguages = choiceGrants.some((grant) => grant.choice.orLanguage)
 	const loaded = useLoaded(wantsLanguages, () => loadLanguages(FEATURE_LANGUAGE_TYPES))
 

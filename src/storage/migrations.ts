@@ -596,6 +596,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 64 adds CharacterBackground.abilityChoices for a custom background (CB-1, D383). A version-63 character has none — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 64 }),
 	},
+	{
+		from: 64,
+		to: 65,
+		/* 65 adds the 'primalKnowledge' subclassSkills and 'hellborn' languages grantedBy values (RB-1, D392). A version-64 character has neither — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 65 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [
