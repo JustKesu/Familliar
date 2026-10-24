@@ -47,6 +47,18 @@ describe('D336 per-class pools', () => {
 		expect(resourceKeyFor('Channel Divinity', 'Cleric', single)).toBe('Channel Divinity')
 	})
 
+	it('D386: Spelldrinker options under a Paladin consume the Paladin pool in a Paladin / Cleric multiclass', () => {
+		const split = computeCharacterResources(character(cls('Paladin', 3), cls('Cleric', 3)), CLASSES, FEATURES)
+		const spelldrinker = [
+			{ name: 'Absorb Magic', className: 'Paladin', consumes: { name: 'Channel Divinity' } },
+			{ name: 'Expeditious Command', className: 'Paladin', consumes: { name: 'Channel Divinity' } },
+		]
+		for (const option of spelldrinker) {
+			expect(resourceKeyFor(option.consumes.name, option.className, split)).toBe('Channel Divinity (Paladin)')
+			expect(resourceKeyFor(option.consumes.name, option.className, split)).not.toBe(classPoolKey('Channel Divinity', 'Cleric'))
+		}
+	})
+
 	it('hands a legacy plain count to the first class pool, capped at its maximum', () => {
 		const split = computeCharacterResources(character(cls('Cleric', 3), cls('Paladin', 3)), CLASSES, FEATURES)
 		expect(withLegacyPoolUses({ 'Channel Divinity': 1, Rage: 2 }, split, ['Cleric', 'Cleric', 'Paladin'])).toEqual({ 'Channel Divinity (Cleric)': 1, Rage: 2 })

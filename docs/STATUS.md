@@ -1315,6 +1315,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - TGS2-4d (D388): Geleton `resist: ["acid"]` (Defenses: Resistant: Acid); Psi Warrior|XPHB `additionalSpells` `ability: "int"`
   (`OFFICIAL_SUBCLASS_SPELL_ABILITY` in `extractClasses()`; Telekinesis at 18 shows DC from INT); Magic Coin, Money Talks and
   Veil Shift tagged `{@action Magic|XPHB}` (Actions → Action; 28 wording pairs). `e2e/tgs2Fixes4d.spec.ts` covers it.
+- F-TGS2 (D389): `loadHomebrew()` guards for wording (all occurrences replaced, leftover `from` throws), rest features, subclass
+  tables/spells and 2014 race blocks; unit tests for Psi Warrior + Wizard (Telekinesis, INT) and Paladin Spelldrinker + Cleric
+  (Paladin Channel Divinity pool). Data unchanged.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

@@ -73,6 +73,20 @@ describe('casterFor — subclass ability (D371)', () => {
 		expect(dc(casterFor(animalMessenger('Fighter'), [wizard], [], [], null, [steelHawkWis]))).toBe(11)
 	})
 
+	it('Fighter 18 Psi Warrior / Wizard 1: Telekinesis is one row with the subclass Intelligence DC, not the Wizard one', () => {
+		const psiWarriorInt: SpellcastingEntry = { ...wizard, className: 'Fighter', ability: 'intelligence', spellAttackBonus: 9, spellSaveDC: 17 }
+		const telekinesis = entry('Telekinesis', {
+			chosen: false,
+			subclassOrigins: ['Psi Warrior'],
+			subclassOwners: [{ className: 'Fighter', classSource: 'XPHB' }],
+			grants: [{ origin: 'subclass', originName: 'Psi Warrior', usage: { kind: 'ritual' } }],
+		})
+		const rows = spellActionRows([telekinesis], [detail({ name: 'Telekinesis', level: 5, savingThrow: ['strength'] })], 19, [wizard], [], [], [], [psiWarriorInt])
+		expect(rows).toHaveLength(1)
+		expect(rows[0]).toMatchObject({ name: 'Telekinesis', save: { dc: 17, abilities: ['strength'] } })
+		expect(rows[0]!.save!.breakdown).toEqual(psiWarriorInt.spellSaveDCBreakdown)
+	})
+
 	it('a class with spellcasting of its own keeps its ability over a subclass ability', () => {
 		expect(dc(casterFor(animalMessenger('Wizard'), [wizard], [], [], null, [{ ...steelHawkWis, className: 'Wizard' }]))).toBe(15)
 	})

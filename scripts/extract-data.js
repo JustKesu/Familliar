@@ -1602,13 +1602,15 @@ function loadHomebrew() {
 			const pairs = HOMEBREW_WORDING[key];
 			if (!pairs) return node;
 			for (const [from, to] of pairs) {
-				let found = false;
+				let replaced = 0;
 				node = mapStrings(node, (text) => {
-					if (found || !text.includes(from)) return text;
-					found = true;
-					return text.replace(from, () => to);
+					const parts = text.split(from);
+					replaced += parts.length - 1;
+					return parts.join(to);
 				});
-				if (!found) throw new Error(`Homebrew wording not found in ${key}: ${from}`);
+				if (!replaced) throw new Error(`HOMEBREW_WORDING ${key}: pair replaced 0 times: ${from}`);
+				if (JSON.stringify(node).includes(from)) throw new Error(`HOMEBREW_WORDING ${key}: old text still present after replacing: ${from}`);
+				if (replaced > 1) console.log(`Homebrew wording ${key}: "${from}" replaced ${replaced} times`);
 				stats.wording++;
 			}
 			return node;
@@ -1619,21 +1621,25 @@ function loadHomebrew() {
 			const rest = HOMEBREW_REST_FEATURES[`${feature.subclassShortName}|${feature.name}`];
 			if (!rest) continue;
 			let swapped = !rest.sentence;
+			let hits = 0;
 			feature.entries = mapStrings(feature.entries, (text) => {
 				if (rest.sentence && text.includes(rest.sentence[0])) {
 					text = text.replace(rest.sentence[0], rest.sentence[1]);
 					swapped = true;
 				}
-				return text.replace(/\b(short or long|short|long) rest\b/gi, (_, kind) =>
-					kind.toLowerCase() === "short or long" ? "{@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}" : `{@variantrule ${kind[0].toUpperCase()}${kind.slice(1).toLowerCase()} Rest|XPHB}`,
-				);
+				return text.replace(/\b(short or long|short|long) rest\b/gi, (_, kind) => {
+					hits++;
+					return kind.toLowerCase() === "short or long" ? "{@variantrule Short Rest|XPHB} or {@variantrule Long Rest|XPHB}" : `{@variantrule ${kind[0].toUpperCase()}${kind.slice(1).toLowerCase()} Rest|XPHB}`;
+				});
 			});
 			if (!swapped) throw new Error(`Homebrew recharge sentence not found in ${feature.name}`);
+			if (!hits) throw new Error(`HOMEBREW_REST_FEATURES ${feature.subclassShortName}|${feature.name}: no short/long rest text matched`);
 			stats.restFeatures++;
 		}
 		for (const entry of subclasses) {
 			entry.classSource = "XPHB";
 			const table = HOMEBREW_SUBCLASS_TABLES[`${entry.className}|${entry.name}`];
+			if (table && entry.subclassTableGroups) throw new Error(`HOMEBREW_SUBCLASS_TABLES ${entry.className}|${entry.name}: subclass already has subclassTableGroups`);
 			if (table) entry.subclassTableGroups = table;
 			const spells = HOMEBREW_SUBCLASS_SPELLS[`${entry.className}|${entry.name}`];
 			if (spells && entry.additionalSpells) throw new Error(`Homebrew ${entry.name} already has additionalSpells`);
@@ -1648,7 +1654,9 @@ function loadHomebrew() {
 			if (resist && entry.resist) throw new Error(`Homebrew ${entry.name} already has resist`);
 			if (resist) entry.resist = resist;
 			// 2014 rule blocks; speed and size come from the data fields (D366).
+			const before = (entry.entries || []).length;
 			entry.entries = (entry.entries || []).filter((block) => !(block && block.name && (HOMEBREW_RACE_2014_BLOCKS.includes(block.name) || block.name.startsWith("Creating Your"))));
+			if (entry.entries.length === before) throw new Error(`HOMEBREW_RACE_2014_BLOCKS ${entry.name}: no 2014 block removed`);
 		}
 		for (const entry of [...subclasses, ...features, ...races]) mapStrings(entry, redirectTags);
 
@@ -1662,7 +1670,10 @@ function loadHomebrew() {
 		...HOMEBREW_KEEP.race.filter((name) => !result.race.some((entry) => entry.name === name)),
 	];
 	if (missing.length) throw new Error(`Homebrew entries not found: ${missing.join(", ")}`);
-	const resistMissing = Object.keys(HOMEBREW_RACE_RESIST).filter((name) => !result.race.some((entry) => entry.name === name && entry.resist));
+	for (const [table, keys] of [["HOMEBREW_SUBCLASS_TABLES", Object.keys(HOMEBREW_SUBCLASS_TABLES)], ["HOMEBREW_SUBCLASS_SPELLS", Object.keys(HOMEBREW_SUBCLASS_SPELLS)]]) {
+		for (const key of keys) if (!result.subclass.some((entry) => `${entry.className}|${entry.name}` === key)) throw new Error(`${table} ${key}: no kept subclass matches`);
+	}
+	const resistMissing =Object.keys(HOMEBREW_RACE_RESIST).filter((name) => !result.race.some((entry) => entry.name === name && entry.resist));
 	if (resistMissing.length) throw new Error(`Homebrew resist not applied: ${resistMissing.join(", ")}`);
 	if (stats.restFeatures !== Object.keys(HOMEBREW_REST_FEATURES).length) throw new Error(`Homebrew rest features tagged: ${stats.restFeatures} of ${Object.keys(HOMEBREW_REST_FEATURES).length}`);
 	const splitExpected = Object.values(HOMEBREW_SPLIT_OPTIONS).reduce((sum, split) => sum + split.options.length, 0);

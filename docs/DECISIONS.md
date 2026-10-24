@@ -5540,3 +5540,10 @@ sesílací vlastnost těchto kouzel); jde o opravu oficiálních dat, proto vlas
 v `extractClasses()`. Magic Coin, Money Talks (2×) a Veil Shift (Etherean) mají "use an action" přepsané na akci
 `{@action Magic|XPHB}` v `HOMEBREW_WORDING`, aby šly do skupiny Action (rozhodl Daniel 24. 10.). Každá oprava shodí
 extrakci, když se neuplatní.
+
+## D389 — Guardy v loadHomebrew() (F-TGS2)
+
+Každý záznam tabulek `HOMEBREW_WORDING`, `HOMEBREW_REST_FEATURES`, `HOMEBREW_SUBCLASS_TABLES`,
+`HOMEBREW_SUBCLASS_SPELLS` a `HOMEBREW_RACE_2014_BLOCKS`, který se neuplatní, shodí extrakci (chybová zpráva nese tabulku
+a klíč). `HOMEBREW_WORDING` nahrazuje všechny výskyty `from` ve featuře (D387 to tak myslel), počítá je a shodí extrakci,
+když po nahrazení zůstane `from` kdekoli v záznamu. Tabulka se při neshodě neupravuje bez rozhodnutí uživatele.
