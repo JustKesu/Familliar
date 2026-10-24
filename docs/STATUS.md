@@ -1300,7 +1300,6 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   `loadHomebrew()`), Improved Launch, Bloodbound, Hurricane (1, Short Rest), Sight Beyond Sight, Arcane Conduit (1, Long Rest)
   through the existing resources.ts path after rest-tag rewrite (`HOMEBREW_REST_FEATURES`). Source GriffonsSaddlebag2 shown as
   "TGS2" in pickers (`src/pickers/bookLabel.ts`: ChoiceRow, SearchableOptionList, SpeciesPicker).
-  Open: TGS2-4c texts and Geleton acid resistance (extractor), Psi Warrior XPHB Telekinesis shows "unresolved" (data has no ability, rules say Intelligence, extractor fix).
 - TGS2-5a (D369): `FEATURE_DAMAGE_RESPONSES` gained Infernal Warrior (Barbarian, Path of the Infernal 6, fire) and Windswept
   (Ranger, Rocborne 7, cold), both unconditional. Arcane Conduit stays text only.
 - TGS2-4a (D370): `HOMEBREW_SUBCLASS_SPELLS` in extract-data.js gives Way of the Aether Mage Hand (3), Spare the Dying (6),
@@ -1313,6 +1312,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - TGS2-4c (D387): `HOMEBREW_WORDING` in `loadHomebrew()` rewrites 24 sentences of the TGS2 text to 2024 wording (Focus Points,
   Utilize, Magic action, Expertise, Hit Point Dice…) and tags bare bonus action / reaction as `{@variantrule … |XPHB}` so the Actions
   tab groups Launch, Steel Grace, Absorb Magic, Expeditious Command etc. `e2e/tgs2Wording.spec.ts` covers it.
+- TGS2-4d (D388): Geleton `resist: ["acid"]` (Defenses: Resistant: Acid); Psi Warrior|XPHB `additionalSpells` `ability: "int"`
+  (`OFFICIAL_SUBCLASS_SPELL_ABILITY` in `extractClasses()`; Telekinesis at 18 shows DC from INT); Magic Coin, Money Talks and
+  Veil Shift tagged `{@action Magic|XPHB}` (Actions → Action; 28 wording pairs). `e2e/tgs2Fixes4d.spec.ts` covers it.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

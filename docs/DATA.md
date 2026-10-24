@@ -64,7 +64,13 @@ extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into th
 - Normalization: subclass `classSource` PHB → XPHB (the subclass filter and `resolveSubclassShortName`
   compare it); feature records keep `classSource` PHB — the subclass's reference strings say PHB too, so
   `subclassFeatureIds` join (0 dangling). Race `ability` deleted. Races have no `edition`; the species
-  filter keeps source GriffonsSaddlebag2 explicitly. Geleton `size` "V" (varies) → ["S","M"].
+  filter keeps source GriffonsSaddlebag2 explicitly. Geleton `size` "V" (varies) → ["S","M"]. Geleton has no
+  `resist` although its text grants acid resistance; `HOMEBREW_RACE_RESIST` adds `["acid"]` (D388), the plain-string
+  shape official species use (33 species carry `resist`, e.g. Aasimar MPMM `["necrotic","radiant"]`).
+- Official-data patch (D388, not homebrew): Psi Warrior|XPHB `additionalSpells` (Telekinesis 1/day at 18) has no
+  `ability`, so a Fighter (no own spellcasting) left its DC unresolved; `OFFICIAL_SUBCLASS_SPELL_ABILITY` in
+  `extractClasses()` adds `ability: "int"` (2024 rule) and throws if the subclass is missing or already has one.
+  The TCE PHB-class version has the same gap and is not extracted.
 - Race `entries` (TGS2-2, D366): top-level blocks named Ability Score Increase, Age, Alignment, Size,
   Speed, Languages and "Creating Your …" are removed by name — 2014 rule text that contradicts the 2024
   build (ASI from background) or duplicates the `size`/`speed` fields. None of them holds a nested named
@@ -105,7 +111,8 @@ extract-data.js; `loadHomebrew()` merges the whitelist (`HOMEBREW_KEEP`) into th
   have their own keys) holds exact substring old → new pairs: ki → Focus Points (Aether), Infernal Warrior
   grapple check → Unarmed Strike Grapple + saving throw, Use an Object → Utilize, Hit Dice → Hit Point Dice,
   Medic doubled proficiency → Expertise, "use an action to cast" → Magic action, and bare "bonus action" /
-  "reaction" → `{@variantrule … |XPHB}` (classifyActionType reads only tags). 24 pairs; extraction throws when
+  "reaction" → `{@variantrule … |XPHB}` (classifyActionType reads only tags). TGS2-4d (D388) added "use an action" →
+  `{@action Magic|XPHB}` for Magic Coin, Money Talks (2) and Etherean Veil Shift: 28 pairs; extraction throws when
   one is not found and when "ki point" survives anywhere. Trap: `mapStrings` returns a new array for an array
   root, so the result must be assigned back (strings directly in `entries` were otherwise left untouched).
 - Left as found (later tasks): rest phrases without `{@variantrule}` tag (so no

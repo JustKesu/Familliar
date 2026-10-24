@@ -148,8 +148,20 @@ const HOMEBREW_WORDING = {
 		["you can use a bonus action to magically", `you can use a ${BA} to magically`],
 		["You can use a bonus action to expend", `You can use a ${BA} to expend`],
 	],
-	"Etherean|Etherean": [["You can also use a bonus action", `You can also use a ${BA}`]],
+	"Etherean|Etherean": [
+		["You can also use a bonus action", `You can also use a ${BA}`],
+		["You can use an action while on the Material Plane", "You can take the {@action Magic|XPHB} action while on the Material Plane"],
+	],
+	"Mercantile|Magic Coin": [["you can use an action to magically fling", "you can take the {@action Magic|XPHB} action to magically fling"]],
+	"Mercantile|Money Talks": [
+		["in this way using an action", "in this way by taking the {@action Magic|XPHB} action"],
+		["you can use an action to see and hear", "you can take the {@action Magic|XPHB} action to see and hear"],
+	],
 };
+// D388: Geleton's text grants acid resistance but the record has no `resist`; same shape as official species.
+const HOMEBREW_RACE_RESIST = { Geleton: ["acid"] };
+// D388: official-data patch, not homebrew. 2024 rule: Intelligence is the spellcasting ability for Psi Warrior's Telekinesis.
+const OFFICIAL_SUBCLASS_SPELL_ABILITY = { "Fighter|Psi Warrior|XPHB": "int" };
 // D386: options nested as `entries` blocks become separate pool-spending records, the XGE/TCE Channel Divinity shape.
 const HOMEBREW_SPLIT_OPTIONS = {
 	"Spelldrinker|Channel Divinity": { consumes: "Channel Divinity", options: ["Absorb Magic", "Expeditious Command"] },
@@ -1632,6 +1644,9 @@ function loadHomebrew() {
 			delete entry.ability;
 			// "V" is 5etools' "varies"; Geleton's text says Medium or Small (D365).
 			if (Array.isArray(entry.size) && entry.size.includes("V")) entry.size = ["S", "M"];
+			const resist = HOMEBREW_RACE_RESIST[entry.name];
+			if (resist && entry.resist) throw new Error(`Homebrew ${entry.name} already has resist`);
+			if (resist) entry.resist = resist;
 			// 2014 rule blocks; speed and size come from the data fields (D366).
 			entry.entries = (entry.entries || []).filter((block) => !(block && block.name && (HOMEBREW_RACE_2014_BLOCKS.includes(block.name) || block.name.startsWith("Creating Your"))));
 		}
@@ -1647,6 +1662,8 @@ function loadHomebrew() {
 		...HOMEBREW_KEEP.race.filter((name) => !result.race.some((entry) => entry.name === name)),
 	];
 	if (missing.length) throw new Error(`Homebrew entries not found: ${missing.join(", ")}`);
+	const resistMissing = Object.keys(HOMEBREW_RACE_RESIST).filter((name) => !result.race.some((entry) => entry.name === name && entry.resist));
+	if (resistMissing.length) throw new Error(`Homebrew resist not applied: ${resistMissing.join(", ")}`);
 	if (stats.restFeatures !== Object.keys(HOMEBREW_REST_FEATURES).length) throw new Error(`Homebrew rest features tagged: ${stats.restFeatures} of ${Object.keys(HOMEBREW_REST_FEATURES).length}`);
 	const splitExpected = Object.values(HOMEBREW_SPLIT_OPTIONS).reduce((sum, split) => sum + split.options.length, 0);
 	if (stats.splitOptions !== splitExpected) throw new Error(`Homebrew options split: ${stats.splitOptions} of ${splitExpected}`);
@@ -2336,6 +2353,11 @@ function extractClasses() {
 		(entry) => ALLOWED_CLASS_SOURCES.includes(entry.classSource) && ALLOWED_SOURCES.includes(entry.source),
 	);
 	keptSubclasses = removeSuperseded(keptSubclasses, "subclasses", warnings, subclassReprintKey);
+	for (const [key, ability] of Object.entries(OFFICIAL_SUBCLASS_SPELL_ABILITY)) {
+		const entry = keptSubclasses.find((sub) => `${sub.className}|${sub.name}|${sub.source}` === key);
+		if (!entry || !Array.isArray(entry.additionalSpells) || entry.additionalSpells.some((block) => block.ability)) throw new Error(`Official spell ability patch not applied: ${key}`);
+		for (const block of entry.additionalSpells) block.ability = ability;
+	}
 
 	// Give EVERY feature its stable id first, so we can match against them.
 	for (const entry of prepared.classFeature) entry.id = makeClassFeatureIdFromEntry(entry);

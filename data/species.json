@@ -6272,7 +6272,7 @@
 				"type": "entries",
 				"name": "Veil Shift",
 				"entries": [
-					"You can use an action while on the Material Plane to slip into the Ethereal Plane, and vice versa, until the start of your next turn. Any object you take while on this other plane of existence is left there when you return to your original one. While on the Ethereal Plane in this way, you can only affect and be affected by other creatures on that plane, and you still move as if you were on the Material Plane. Creatures that aren't on the Ethereal Plane can't perceive you or interact with you while you're there, unless a special ability or magic has given them the ability to do so, although you can still see and hear them. Once you use this trait, you can't use it again until you finish a long rest."
+					"You can take the {@action Magic|XPHB} action while on the Material Plane to slip into the Ethereal Plane, and vice versa, until the start of your next turn. Any object you take while on this other plane of existence is left there when you return to your original one. While on the Ethereal Plane in this way, you can only affect and be affected by other creatures on that plane, and you still move as if you were on the Material Plane. Creatures that aren't on the Ethereal Plane can't perceive you or interact with you while you're there, unless a special ability or magic has given them the ability to do so, although you can still see and hear them. Once you use this trait, you can't use it again until you finish a long rest."
 				]
 			}
 		],
@@ -6449,6 +6449,9 @@
 					"height": 2125
 				}
 			]
-		}
+		},
+		"resist": [
+			"acid"
+		]
 	}
 ]

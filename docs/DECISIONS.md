@@ -5531,3 +5531,12 @@ hod, Use an Object → Utilize, Hit Dice → Hit Point Dice, Medic = Expertise, 
 "3rd-level version" → "level 3 version" (rozhodl Daniel 21.–22. 10.). Nezačarované "bonus action" a "reaction" dostaly
 značky `{@variantrule Bonus Action|XPHB}` / `{@variantrule Reaction|XPHB}`, aby `classifyActionType` zařadil řádky do
 skupin (rozhodl Daniel 24. 10.). Kontrola v extrakci: žádné "ki point" ve výsledných záznamech.
+
+## D388 — Geleton odolnost proti kyselině, Psi Warrior INT, značky akce Magic (TGS2-4d)
+
+Geleton dostává v `loadHomebrew()` `resist: ["acid"]` (`HOMEBREW_RACE_RESIST`, stejný tvar jako oficiální druhy; rozhodl
+Daniel 22. 10.). Psi Warrior|XPHB dostává do `additionalSpells` `ability: "int"` podle pravidla 2024 (Intelligence je
+sesílací vlastnost těchto kouzel); jde o opravu oficiálních dat, proto vlastní tabulka `OFFICIAL_SUBCLASS_SPELL_ABILITY`
+v `extractClasses()`. Magic Coin, Money Talks (2×) a Veil Shift (Etherean) mají "use an action" přepsané na akci
+`{@action Magic|XPHB}` v `HOMEBREW_WORDING`, aby šly do skupiny Action (rozhodl Daniel 24. 10.). Každá oprava shodí
+extrakci, když se neuplatní.

@@ -9028,7 +9028,8 @@
 							]
 						}
 					}
-				}
+				},
+				"ability": "int"
 			}
 		],
 		"subclassTableGroups": [
