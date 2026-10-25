@@ -28,6 +28,35 @@ const FIELD_TARGETS: readonly { read: (ref: ItemRef) => number | null; target: F
 
 const NOT_ATTUNED = 'requires attunement and you are not attuned to it'
 
+/* D403: each item's text limits its bonus to one class's spells ("spell attack rolls and saving throw DCs of your warlock spells"), D70-style table by exact name. */
+const ALL_PURPOSE_TOOL = ['Artificer']
+const ARCANE_GRIMOIRE = ['Wizard']
+const BLOODWELL_VIAL = ['Sorcerer']
+const MOON_SICKLE = ['Druid', 'Ranger']
+const BARD = ['Bard']
+const ROD_OF_THE_PACT_KEEPER = ['Warlock']
+export const CLASS_LIMITED_SPELL_BONUS: Readonly<Record<string, readonly string[]>> = {
+	'+1 All-Purpose Tool': ALL_PURPOSE_TOOL,
+	'+2 All-Purpose Tool': ALL_PURPOSE_TOOL,
+	'+3 All-Purpose Tool': ALL_PURPOSE_TOOL,
+	'+1 Arcane Grimoire': ARCANE_GRIMOIRE,
+	'+2 Arcane Grimoire': ARCANE_GRIMOIRE,
+	'+3 Arcane Grimoire': ARCANE_GRIMOIRE,
+	'+1 Bloodwell Vial': BLOODWELL_VIAL,
+	'+2 Bloodwell Vial': BLOODWELL_VIAL,
+	'+3 Bloodwell Vial': BLOODWELL_VIAL,
+	'+1 Moon Sickle': MOON_SICKLE,
+	'+2 Moon Sickle': MOON_SICKLE,
+	'+3 Moon Sickle': MOON_SICKLE,
+	"+1 Rhythm-Maker's Drum": BARD,
+	"+2 Rhythm-Maker's Drum": BARD,
+	"+3 Rhythm-Maker's Drum": BARD,
+	"Reveler's Concertina": BARD,
+	'+1 Rod of the Pact Keeper': ROD_OF_THE_PACT_KEEPER,
+	'+2 Rod of the Pact Keeper': ROD_OF_THE_PACT_KEEPER,
+	'+3 Rod of the Pact Keeper': ROD_OF_THE_PACT_KEEPER,
+}
+
 /**
  * Every worn item's flat bonuses. Quantity is ignored on purpose — a second
  * Cloak of Protection in the pack is not a second +1.
@@ -75,10 +104,12 @@ export function buildItemFlatBonusGrants(inventory: readonly CharacterInventoryI
 
 		const label = magicItemLabel(ref.name, item.magicBonus ?? 0)
 		const withheld = ref.requiresAttunement === true && !isAttuned(item)
+		const onlyForClasses = CLASS_LIMITED_SPELL_BONUS[ref.name]
 		for (const { read, target } of FIELD_TARGETS) {
 			const amount = read(ref)
 			if (amount === null || amount === 0) continue
-			grants.push({ sourceName: label, target, amount, ...(withheld ? { withheldReason: NOT_ATTUNED } : {}) })
+			const limited = onlyForClasses && (target === 'spellAttack' || target === 'spellSaveDc') ? { onlyForClasses } : {}
+			grants.push({ sourceName: label, target, amount, ...(withheld ? { withheldReason: NOT_ATTUNED } : {}), ...limited })
 		}
 		/* R14a1: customItemRef keeps only the targets items.json has no field for here; the key's spelling is FlatBonusTarget's, apart from the unqualified ones. */
 		for (const bonus of ref.customBonuses ?? []) {

@@ -37,24 +37,6 @@ neumí (raceSpells.ts, `deferredChoiceNote`).
 Není bojově relevantní — je to bonusový cantrip, ne útok/DC.
 STATUS: Daniel 25. 10.: řešit, task naplánován.
 
-### Bonus ke kouzlům se přičítá všem kouzlům, i když ho předmět váže na jednu třídu
-
-Rod of the Pact Keeper mluví o warlockových kouzlech, Arcane Grimoire o svých,
-Moon Sickle o druidských. To omezení je ale jen v próze (D21), takže appka
-`bonusSpellAttack` a `bonusSpellSaveDc` přičte ke každému sesílání, které
-postava má — třídnímu i z featu.
-
-Dnes to skoro nevadí: takový předmět si postava jiné třídy obvykle nevezme,
-a i kdyby, naladění se podle podmínky ve slovech nevynucuje (D78). Vadit to
-začne u multiclass postavy v kroku 10, kde Warlock/Wizard dostane warlockův
-bonus i na wizardí kouzla.
-
-Bonus je vlastní pojmenovaný řádek v rozkladu, takže hráč aspoň vidí, co si má
-odmyslet. Rozhodnout, až se bude řešit multiclass.
-
-Nalezeno ve slice 7h.
-STATUS: Daniel 25. 10.: řešit, task naplánován.
-
 ### Boon of Fortitude — jednorázových +40 na úrovni 19
 
 Tenhle epic boon maximum hit pointů skutečně zvyšuje: o 40, jednou. Není to

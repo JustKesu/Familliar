@@ -6,22 +6,23 @@ import { computeInitiative } from '../calculation/initiative'
 import { computeMaxHitPoints } from '../calculation/maxHitPoints'
 import { computeSavingThrow, computeSavingThrows, type ClassSavingThrowProficiencies } from '../calculation/savingThrows'
 import { computePassiveInsight, computePassivePerception, computeSkill, computeSkills } from '../calculation/skills'
-import { computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
+import { computeAbilitySpellcasting, computeSpellcasting, type ClassSpellcastingAbility } from '../calculation/spellcasting'
 import type { ItemRef } from '../inventory/inventoryData'
 import { CUSTOM_ITEM_SOURCE, type Character, type CharacterInventoryItem } from '../storage/character'
-import { buildItemFlatBonusGrants } from './itemFlatBonusData'
+import { buildItemFlatBonusGrants, CLASS_LIMITED_SPELL_BONUS } from './itemFlatBonusData'
 
 /** The real fields, as scripts/investigate-worn-bonuses.js found them: every carrier requires attunement, and the values are "+N" strings parsed to numbers. */
 const cloakOfProtection: ItemRef = { name: 'Cloak of Protection', source: 'XDMG', requiresAttunement: true, bonusAc: 1, bonusSavingThrow: 1 }
 const ringOfProtection: ItemRef = { name: 'Ring of Protection', source: 'XDMG', typeCode: 'RG', requiresAttunement: true, bonusAc: 1, bonusSavingThrow: 1 }
 const rodOfThePactKeeper: ItemRef = { name: '+2 Rod of the Pact Keeper', source: 'XDMG', typeCode: 'RD', requiresAttunement: true, bonusSpellAttack: 2, bonusSpellSaveDc: 2 }
-const stoneOfGoodLuck: ItemRef = { name: 'Stone of Good Luck', source: 'XDMG', requiresAttunement: true, bonusSavingThrow: 1, bonusAbilityCheck: 1 }
+const robeOfTheArchmagi: ItemRef = { name: 'Robe of the Archmagi', source: 'XDMG', requiresAttunement: true, bonusSpellAttack: 2, bonusSpellSaveDc: 2 }
+const stoneOfGoodLuck: ItemRef ={ name: 'Stone of Good Luck', source: 'XDMG', requiresAttunement: true, bonusSavingThrow: 1, bonusAbilityCheck: 1 }
 const iounStoneOfMastery: ItemRef = { name: 'Ioun Stone, Mastery', source: 'XDMG', requiresAttunement: true, bonusProficiencyBonus: 1 }
 /** The only two carriers of any of the six keys that need no attunement, and both are armour — slice e already applies their bonusAc through the armour role. */
 const glamouredStuddedLeather: ItemRef = { name: 'Glamoured Studded Leather', source: 'XDMG', typeCode: 'LA', ac: 12, bonusAc: 1 }
 const repulsionShield: ItemRef = { name: 'Repulsion Shield', source: 'EFA', typeCode: 'S', ac: 2, bonusAc: 1 }
 
-const itemRefs = [cloakOfProtection, ringOfProtection, rodOfThePactKeeper, stoneOfGoodLuck, iounStoneOfMastery, glamouredStuddedLeather, repulsionShield]
+const itemRefs = [cloakOfProtection, ringOfProtection, rodOfThePactKeeper, robeOfTheArchmagi,stoneOfGoodLuck, iounStoneOfMastery, glamouredStuddedLeather, repulsionShield]
 
 function row(name: string, source: string, extra: Partial<CharacterInventoryItem> = {}): CharacterInventoryItem {
 	return { name, source, quantity: 1, ...extra }
@@ -113,15 +114,55 @@ describe('a worn bonus and the AC formula that won', () => {
 
 describe('spell attack and spell save DC', () => {
 	it('each get their own bonus from the same item', () => {
-		const applied = bonuses([row('+2 Rod of the Pact Keeper', 'XDMG', { attuned: true })])
+		const applied = bonuses([row('Robe of the Archmagi', 'XDMG', { attuned: true })])
 		const result = computeSpellcasting(wizard5, [wizardAbility], [], applied.spellAttack, applied.spellSaveDc)
 
 		expect(result.status).toBe('known')
 		const entry = result.status === 'known' ? result.value[0] : null
 		expect(entry?.spellAttackBonus).toBe(8)
 		expect(entry?.spellSaveDC).toBe(16)
-		expect(entry?.spellAttackBreakdown).toContainEqual({ source: '+2 Rod of the Pact Keeper', amount: 2 })
-		expect(entry?.spellSaveDCBreakdown).toContainEqual({ source: '+2 Rod of the Pact Keeper', amount: 2 })
+		expect(entry?.spellAttackBreakdown).toContainEqual({ source: 'Robe of the Archmagi', amount: 2 })
+		expect(entry?.spellSaveDCBreakdown).toContainEqual({ source: 'Robe of the Archmagi', amount: 2 })
+	})
+})
+
+describe('D403: a class-limited spell bonus', () => {
+	/** INT 16 (+3), CHA 14 (+2), level 5 → PB +3. */
+	const warlockWizard: Character = { ...wizard5, classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 2 }, { className: 'Wizard', classSource: 'XPHB', subclass: null, level: 3 }], abilityScores: { method: 'standardArray', scores: { strength: 8, dexterity: 13, constitution: 12, intelligence: 16, wisdom: 10, charisma: 14 } } }
+	const casters: ClassSpellcastingAbility[] = [{ className: 'Warlock', classSource: 'XPHB', ability: 'cha' }, wizardAbility]
+	const entries = (inventory: CharacterInventoryItem[]) => {
+		const applied = bonuses(inventory)
+		const result = computeSpellcasting(warlockWizard, casters, [], applied.spellAttack, applied.spellSaveDc)
+		return result.status === 'known' ? Object.fromEntries(result.value.map((entry) => [entry.className, entry])) : {}
+	}
+
+	it('names every +1/+2/+3 version of the seven items', () => {
+		expect(Object.keys(CLASS_LIMITED_SPELL_BONUS)).toHaveLength(19)
+		expect(CLASS_LIMITED_SPELL_BONUS['+3 Moon Sickle']).toEqual(['Druid', 'Ranger'])
+		expect(CLASS_LIMITED_SPELL_BONUS["Reveler's Concertina"]).toEqual(['Bard'])
+		expect(CLASS_LIMITED_SPELL_BONUS['Robe of the Archmagi']).toBeUndefined()
+	})
+
+	it('reaches the named class entry only, with its named line', () => {
+		const { Warlock, Wizard } = entries([row('+2 Rod of the Pact Keeper', 'XDMG', { attuned: true })])
+		expect(Warlock?.spellAttackBonus).toBe(7)
+		expect(Warlock?.spellSaveDC).toBe(15)
+		expect(Warlock?.spellAttackBreakdown).toContainEqual(expect.objectContaining({ source: '+2 Rod of the Pact Keeper', amount: 2 }))
+		expect(Wizard?.spellAttackBonus).toBe(6)
+		expect(Wizard?.spellSaveDC).toBe(14)
+		expect(Wizard?.spellAttackBreakdown.map((line) => line.source)).not.toContain('+2 Rod of the Pact Keeper')
+	})
+
+	it('adds no not-attuned line to a class that would not get it', () => {
+		const { Warlock, Wizard } = entries([row('+2 Rod of the Pact Keeper', 'XDMG')])
+		expect(Warlock?.spellAttackBreakdown).toContainEqual(expect.objectContaining({ source: '+2 Rod of the Pact Keeper', amount: 0 }))
+		expect(Wizard?.spellSaveDCBreakdown.map((line) => line.source)).not.toContain('+2 Rod of the Pact Keeper')
+	})
+
+	it('gives a feat, species or item source (no class) nothing', () => {
+		const applied = bonuses([row('+2 Rod of the Pact Keeper', 'XDMG', { attuned: true }), row('Robe of the Archmagi', 'XDMG', { attuned: true })])
+		const result = computeAbilitySpellcasting(warlockWizard, 'charisma', [], applied.spellAttack, applied.spellSaveDc)
+		expect(result.status === 'known' && result.value.spellAttackBreakdown.map((line) => line.source)).toEqual(['charisma modifier', 'proficiency bonus', 'Robe of the Archmagi'])
 	})
 })
 

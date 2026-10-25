@@ -1345,6 +1345,10 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - PW-1 (D401): pact weapon flag, Improved Pact Weapon and Lifedrinker on the marked weapon only. `e2e/pactWeapon.spec.ts` a–f.
 - BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
   `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
+- IB-1 (D403): spell attack / save DC bonus of the 19 rows in `CLASS_LIMITED_SPELL_BONUS` (itemFlatBonusData.ts; All-Purpose
+  Tool, Arcane Grimoire, Bloodwell Vial, Moon Sickle, Rhythm-Maker's Drum, Reveler's Concertina, Rod of the Pact Keeper) reaches
+  only the named class's spellcasting entry (`Contribution.onlyForClasses`, filtered in `computeAbilitySpellcasting`); feat,
+  species and item casting get no line. Other items unchanged. `e2e/itemSpellBonusClass.spec.ts` a–e.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

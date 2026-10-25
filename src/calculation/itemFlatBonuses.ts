@@ -72,6 +72,8 @@ export interface ItemFlatBonusGrant {
 	withheldReason?: string
 	/** Set when the row's (name, source) is not in items.json at all, so what it grants is unknowable (D43). */
 	unresolvedReason?: string
+	/** D403: spellAttack/spellSaveDc only — the bonus counts only for these classes' spells. */
+	onlyForClasses?: readonly string[]
 }
 
 /**
@@ -105,15 +107,16 @@ export function flatBonusContributions(target: FlatBonusTarget, grants: readonly
 		}
 		const amount = grant.perLevel ? grant.amount * characterLevel : grant.amount
 		const source = grant.perLevel ? `${grant.sourceName} (${signed(grant.amount)} per level × ${characterLevel})` : grant.sourceName
+		const limit = grant.onlyForClasses ? { onlyForClasses: grant.onlyForClasses } : {}
 		if (grant.withheldReason !== undefined) {
-			contributions.push({ source, amount: 0, note: `considered (${signed(amount)}) — not applied: ${grant.withheldReason}` })
+			contributions.push({ source, amount: 0, note: `considered (${signed(amount)}) — not applied: ${grant.withheldReason}`, ...limit })
 			continue
 		}
 		if (target === 'proficiencyBonus') {
 			contributions.push({ source, amount: 0, note: `considered (${signed(amount)}) — not applied: ${PROFICIENCY_BONUS_UNHANDLED}` })
 			continue
 		}
-		contributions.push({ source, amount })
+		contributions.push({ source, amount, ...limit })
 	}
 	return contributions
 }

@@ -5644,3 +5644,23 @@ ostatní zbraně nedostanou nic. Brána je stejná jako u ostatních bonusů z p
 attunementem, nošení se nekontroluje. Proficiency s oběma luky z Bracers se NEPŘIDÁVÁ: cesta pro zbraňovou proficiency z
 předmětů existuje jen pro vlastní předměty (`customProficiencies`), katalogový předmět ji nemá a stavět ji se nezadalo —
 zůstává otevřené. Rozhodl Daniel 25. 10. 2026.
+
+## D403 — Bonus předmětu k útoku kouzlem a DC jen pro jmenovanou třídu (IB-1)
+
+Text těchto předmětů omezuje bonus na kouzla jedné třídy; data to neznají, proto ruční tabulka podle přesného jména (styl D70),
+`CLASS_LIMITED_SPELL_BONUS` v `itemFlatBonusData.ts`, všechny verze +1/+2/+3:
+
+| Předmět | Třída |
+|---|---|
+| All-Purpose Tool (TCE) | Artificer |
+| Arcane Grimoire (TCE) | Wizard |
+| Bloodwell Vial (TCE) | Sorcerer |
+| Moon Sickle (TCE) | Druid, Ranger |
+| Rhythm-Maker's Drum (TCE) | Bard |
+| Reveler's Concertina (TCE, jen DC) | Bard |
+| Rod of the Pact Keeper (XDMG) | Warlock |
+
+Bonus se přičte jen ke spellcasting záznamu té třídy (včetně kouzel podtřídy) a její rozklad ukazuje pojmenovaný řádek předmětu;
+kouzla z featů, druhu, předmětů a ostatních tříd nedostanou nic a žádný řádek (ani „not attuned“). Ostatní předměty (Amulet of
+the Devout, Robe of the Archmagi, Wand of the War Mage, hole, talismany) se přičítají všem jako dosud. Brána attunementu beze
+změny. Uzavírá otázku „Bonus ke kouzlům se přičítá všem kouzlům“. Rozhodl Daniel 25. 10. 2026.

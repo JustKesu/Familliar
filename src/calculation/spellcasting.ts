@@ -75,12 +75,9 @@ function findSubclassSpellcastingAbility(
 }
 
 /*
- * Slice h: `bonusSpellAttack` and `bonusSpellSaveDc` from a worn magic item.
- * They apply to EVERY entry alike. Many of the 30 carriers word the bonus for
- * one class's spells ("your artificer spells"), but that restriction lives in
- * the item's prose and nowhere in a field, so reading it would mean parsing
- * prose (D21). The bonus is shown as its own named line, so a player whose item
- * is class-specific can see exactly what to ignore.
+ * Slice h: `bonusSpellAttack` and `bonusSpellSaveDc` from a worn magic item
+ * apply to every entry alike, except a line carrying `onlyForClasses` (D403),
+ * which reaches only those classes' entries.
  */
 export function computeSpellcasting(
 	character: Character,
@@ -114,7 +111,7 @@ export function computeSpellcasting(
 		}
 		if (abilityAbbreviation === null) continue
 
-		const numbers = computeAbilitySpellcasting(character, ABILITY_BY_ABBREVIATION[abilityAbbreviation], feats, spellAttackItemBonuses, spellSaveDcItemBonuses, itemAbilityGrants)
+		const numbers = computeAbilitySpellcasting(character, ABILITY_BY_ABBREVIATION[abilityAbbreviation], feats, spellAttackItemBonuses, spellSaveDcItemBonuses, itemAbilityGrants, characterClass.className)
 		if (numbers.status === 'unknown') return numbers
 
 		value.push({ className: characterClass.className, classSource: characterClass.classSource, ...numbers.value })
@@ -193,21 +190,24 @@ export function computeAbilitySpellcasting(
 	spellAttackItemBonuses: Contribution[] = [],
 	spellSaveDcItemBonuses: Contribution[] = [],
 	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
+	/** The casting class, or undefined for a feat, species or item source — which no class-limited item line reaches (D403). */
+	className?: string,
 ): Calculated<Omit<FeatSpellcastingEntry, 'featName' | 'featKey'>> {
 	const bonusResult = computeProficiencyBonus(character.classes)
 	if (bonusResult.status === 'unknown') return unknown(bonusResult.reason)
 	const abilityResult = computeAbilityScore(ability, character, feats, itemAbilityGrants)
 	if (abilityResult.status === 'unknown') return unknown(abilityResult.reason)
+	const reaches = ({ onlyForClasses }: Contribution) => !onlyForClasses || (className !== undefined && onlyForClasses.includes(className))
 	const spellAttackBreakdown: Contribution[] = [
 		{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
 		{ source: 'proficiency bonus', amount: bonusResult.value },
-		...spellAttackItemBonuses,
+		...spellAttackItemBonuses.filter(reaches),
 	]
 	const spellSaveDCBreakdown: Contribution[] = [
 		{ source: 'base', amount: 8 },
 		{ source: `${ability} modifier`, amount: abilityResult.value.modifier },
 		{ source: 'proficiency bonus', amount: bonusResult.value },
-		...spellSaveDcItemBonuses,
+		...spellSaveDcItemBonuses.filter(reaches),
 	]
 	const sum = (breakdown: Contribution[]) => breakdown.reduce((total, contribution) => total + contribution.amount, 0)
 	const value = { ability, abilityModifier: abilityResult.value.modifier, spellAttackBonus: sum(spellAttackBreakdown), spellAttackBreakdown, spellSaveDC: sum(spellSaveDCBreakdown), spellSaveDCBreakdown }

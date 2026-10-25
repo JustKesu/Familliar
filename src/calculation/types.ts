@@ -18,6 +18,8 @@ export interface Contribution {
 	 * breakdown says a feat touches this value, and which one.
 	 */
 	note?: string
+	/** D403: a spell attack / save DC line that counts only for these classes' spellcasting entries. */
+	onlyForClasses?: readonly string[]
 }
 
 export type Calculated<T> = { status: 'known'; value: T; breakdown: Contribution[] } | { status: 'unknown'; reason: string }
