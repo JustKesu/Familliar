@@ -99,7 +99,7 @@ vyžadující 15 jí wizard nenabídne.
 Po uložení a znovunačtení je to v pořádku — problém je jen uvnitř
 jednoho průchodu. Rozhodnout, jestli to řešit hned, nebo až s level-upem
 (krok 8).
-STATUS: nerozhodnuto.
+STATUS: vyřešeno D253 — prerekvizity čtou skóre pod úrovní karty.
 
 ### Výběr dovednosti u featu se nemá kam uložit
 
@@ -118,7 +118,7 @@ STATUS: vyřešeno taskem A3 (D179).
 Human (XPHB) má dostat jeden Origin feat podle vlastní volby. Wizard ho
 nenabízí, takže Human má o feat méně. Tvar dat existuje
 (`grantedFeats`, `origin: 'species'`, D157), picker ne.
-STATUS: odloženo na přestavbu wizardu.
+STATUS: vyřešeno D274 (S1) — feat druhu se vybírá v kroku Background.
 
 ### Warlock The Genie — deferred
 
@@ -311,7 +311,7 @@ u útoku na sheetu". Tam jde o to, že hráč nevidí, co vlastnost dělá; tady
 že se vlastnost zobrazuje i tam, kam nepatří.
 
 Nalezeno při slice 8c1 (Cowork, 12. 9.).
-STATUS: nerozhodnuto.
+STATUS: vyřešeno D181 — mastery jen u ovládnutých zbraní.
 
 ### Play state jako plochá pole na `Character`, nebo jeden pod-objekt?
 
@@ -355,7 +355,8 @@ slot, který multiclass součet ve skutečnosti nedává.
 `casterProgression` tabulky, viz D11) patří do kroku 10 multiclass, ne dřív.
 
 Nalezeno při stavbě 9b3 (Cowork, 17. 9. 2026).
-STATUS: nerozhodnuto, čeká na krok 10.
+STATUS: vyřešeno D322 — podle pravidel multiclassu je to jeden společný pool
+slotů po úrovních, klíč jen úrovní je správně. Volba poolu u CAST D326.
 
 ### Sheet nikdy nezobrazoval Proficiencies (Armor / Weapons / Tools / Languages)
 

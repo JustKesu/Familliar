@@ -4,6 +4,8 @@
  */
 
 import type { ChosenClassFeatureChoice } from '../classFeatureChoices/classFeatureChoiceData'
+import type { Ability } from '../abilities/abilityScores'
+import { ABILITY_ABBREVIATIONS } from '../calculation/abilityAbbreviations'
 import { skillLabel } from '../calculation/skills'
 import { compareText } from '../text/compareText'
 import { featDisplayName, featOriginLabel, LESSONS_OF_THE_FIRST_ONES, type FeatInstance } from '../featAsi/featInstances'
@@ -73,6 +75,10 @@ export interface FeaturesTabInput {
 	optionClassName?: (option: OptionalFeatureOption) => string | null
 	speciesTraits: readonly SpeciesTrait[]
 	feats: readonly FeatsTabFeat[]
+	/** D397: the levels taken as Ability Score Improvement, each a row of the Feats group. */
+	asiChoices?: readonly { level: number; increases: Partial<Record<Ability, number>> }[]
+	/** The XPHB "Ability Score Improvement" feat's text; absent leaves those rows with their increases only. */
+	asiText?: unknown[] | null
 	/** D377: Lessons of the First Ones held with no feat chosen yet (pendingInvocationFeats). */
 	pendingInvocationFeats?: number
 	/** D336: the key a class's feature spends a resource under (resourceKeyFor); identity when absent. */
@@ -128,6 +134,20 @@ export function featSource(instance: Pick<FeatInstance, 'origin' | 'level' | 'it
 	return `From ${taken.className} ${classLevel}`
 }
 
+/** D336: a level feat's chip names the class that took the level on a multiclass character, as the Features tab does. */
+export function levelFeatChip(level: number | undefined, character: { classes: FeaturesTabInput['classes']; levelOrder?: FeaturesTabInput['levelOrder'] }): string {
+	const fallback = `From level ${level}`
+	return character.classes.length > 1 ? (featSource({ origin: 'asi', level }, character.classes, character.levelOrder) ?? fallback) : fallback
+}
+
+/** "STR +1, CON +1" — the Features tab's short form of an ASI level's increases. */
+export function asiIncreasesLabel(increases: Partial<Record<Ability, number>>): string {
+	return Object.entries(increases)
+		.filter(([, amount]) => amount)
+		.map(([ability, amount]) => `${ABILITY_ABBREVIATIONS[ability as Ability].toUpperCase()} +${amount}`)
+		.join(', ')
+}
+
 /** The sub-choices stored on a feat, one line each; none of them carries text of its own. */
 function featSubChoiceItems(instance: FeatInstance): FeatureTabOption[] {
 	const names = (list: readonly { name: string }[]) => list.map((entry) => entry.name).join(', ')
@@ -150,6 +170,37 @@ function featSubChoiceItems(instance: FeatInstance): FeatureTabOption[] {
 export function isRefWrapper(entries: readonly unknown[]): boolean {
 	const isRef = (entry: unknown) => typeof entry === 'object' && entry !== null && (entry as { type?: unknown }).type === 'refSubclassFeature'
 	return entries.some(isRef) && entries.every((entry) => typeof entry === 'string' || isRef(entry))
+}
+
+/** D397: feat rows with an ASI level's row among the level feats, by level. Background/species stay first, the rest after (stable sort). */
+function featRowsWithAsi(input: FeaturesTabInput): FeatureTabRow[] {
+	const keyed: { sortKey: number; row: FeatureTabRow }[] = input.feats.map(({ instance, text, pending }) => ({
+		sortKey: instance.origin === 'background' || instance.origin === 'species' ? -1 : instance.origin === 'asi' ? (instance.level ?? Infinity) : Infinity,
+		row: {
+			key: `feat|${instance.key}`,
+			name: featDisplayName(instance.name),
+			source: featSource(instance, input.classes, input.levelOrder),
+			entries: text?.entries ?? null,
+			resourceName: text ? resourceCandidateName(text) : null,
+			options: featSubChoiceItems(instance),
+			...(pending.length > 0 ? { pending, pendingEditableInManageFeats: featEditableInManageFeats(instance) } : {}),
+		},
+	}))
+	for (const choice of input.asiChoices ?? []) {
+		const increases = asiIncreasesLabel(choice.increases)
+		keyed.push({
+			sortKey: choice.level,
+			row: {
+				key: `asi|${choice.level}`,
+				name: 'Ability Score Improvement',
+				source: levelFeatChip(choice.level, input),
+				entries: input.asiText ?? [],
+				resourceName: null,
+				options: increases ? [{ key: 'increases', name: increases, entries: null }] : [],
+			},
+		})
+	}
+	return keyed.sort((a, b) => a.sortKey - b.sortKey).map(({ row }) => row)
 }
 
 /** A chosen option no feature could be linked to becomes its own row at the end of a class group. */
@@ -277,15 +328,7 @@ export function featuresTabGroups(input: FeaturesTabInput): FeatureTabGroup[] {
 		kind: 'feats',
 		label: 'Feats',
 		rows: [
-			...input.feats.map(({ instance, text, pending }) => ({
-				key: `feat|${instance.key}`,
-				name: featDisplayName(instance.name),
-				source: featSource(instance, input.classes, input.levelOrder),
-				entries: text?.entries ?? null,
-				resourceName: text ? resourceCandidateName(text) : null,
-				options: featSubChoiceItems(instance),
-				...(pending.length > 0 ? { pending, pendingEditableInManageFeats: featEditableInManageFeats(instance) } : {}),
-			})),
+			...featRowsWithAsi(input),
 			...Array.from({ length: input.pendingInvocationFeats ?? 0 }, (_, n) => ({
 				key: `invocation-feat-pending|${n}`,
 				name: 'Origin feat',

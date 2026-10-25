@@ -4995,7 +4995,7 @@ describe('CharacterSheet', () => {
 		const FS_FEATS = [{ name: 'Defense', source: 'XPHB', category: 'FS', entries: ['While you are wearing armor, you gain a +1 bonus to AC.'] }]
 
 		/** Saved through CharacterStore, so the sheet reads what storage actually keeps. */
-		function savedBattleMaster(play?: Character['play']): Character {
+		function savedBattleMaster(play?: Character['play'], levelChoices?: Character['featAsiChoices']): Character {
 			const memory = new Map<string, string>()
 			const store = new CharacterStore({ getItem: (key) => memory.get(key) ?? null, setItem: (key, value) => void memory.set(key, value), removeItem: (key) => void memory.delete(key) })
 			store.create({
@@ -5005,14 +5005,14 @@ describe('CharacterSheet', () => {
 				background: { name: 'Farmer', source: 'XPHB', skillProficiencies: ['animalHandling', 'nature'], toolProficiency: "Carpenter's Tools" },
 				fightingStyles: [{ className: 'Fighter', classSource: 'XPHB', name: 'Defense' }],
 				optionalFeatureChoices: [{ featureType: 'MV:B', choices: [{ name: 'Trip Attack' }, { name: 'Riposte' }] }],
-				featAsiChoices: [{ level: 4, kind: 'feat', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history'], tools: ["thieves' tools"] } }],
+				featAsiChoices: levelChoices ?? [{ level: 4, kind: 'feat', name: 'Skilled', source: 'XPHB', proficiencies: { skills: ['arcana', 'history'], tools: ["thieves' tools"] } }],
 				...(play ? { play } : {}),
 			})
 			return store.list()[0]!
 		}
 
-		async function renderBattleMaster(play?: Character['play'], onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void): Promise<HTMLElement> {
-			const subject = savedBattleMaster(play)
+		async function renderBattleMaster(play?: Character['play'], onEditResourceUses?: (resourceUses: Record<string, number> | undefined) => void, levelChoices?: Character['featAsiChoices']): Promise<HTMLElement> {
+			const subject = savedBattleMaster(play, levelChoices)
 			vi.mocked(loadResolverData).mockResolvedValue(RESOLVER)
 			vi.mocked(loadGrantedClassFeatures).mockResolvedValue(grantedClassFeaturesFrom(subject, CLASSES, RESOLVER))
 			vi.mocked(loadDataFile).mockImplementation(async (path: string) => (path === 'data/classes.json' ? CLASSES : []))
@@ -5021,6 +5021,7 @@ describe('CharacterSheet', () => {
 			vi.mocked(loadFeatTextEntries).mockResolvedValue([
 				{ name: 'Tough', source: 'XPHB', entries: ['Your Hit Point maximum increases.'] },
 				{ name: 'Skilled', source: 'XPHB', entries: ['You gain proficiency in any combination of three skills or tools.'] },
+				{ name: 'Ability Score Improvement', source: 'XPHB', entries: ['Increase one ability score by 2, or two by 1.'] },
 			])
 			vi.mocked(loadSpeciesTraits).mockResolvedValue([
 				{ name: 'Elven Lineage', entries: ['You are part of a lineage.'] },
@@ -5029,7 +5030,7 @@ describe('CharacterSheet', () => {
 			const { container } = render(<CharacterSheet character={subject} onEditResourceUses={onEditResourceUses} />)
 			await openFeaturesTab()
 			await featureGroup('Fighter Features', 'Combat Superiority')
-			await featureGroup('Feats', 'Skilled')
+			await featureGroup('Feats', levelChoices ? 'Ability Score Improvement' : 'Skilled')
 			return container
 		}
 
@@ -5082,6 +5083,23 @@ describe('CharacterSheet', () => {
 			expect(skilled.querySelector('.sheet__group-row-source')!.textContent).toBe('From Fighter 4')
 			expect(skilled.querySelector('.sheet__feature-options')!.textContent).toContain('Skills: Arcana, History')
 			expect(skilled.querySelector('.sheet__feature-options')!.textContent).toContain("Tools: Thieves' Tools")
+		})
+
+		it('D397: a level taken as Ability Score Improvement is a Feats row with its chip, increases and text; a level feat gets none', async () => {
+			await renderBattleMaster(undefined, undefined, [{ level: 4, kind: 'asi', increases: { strength: 1, constitution: 1 } }])
+			const feats = screen.getByRole('region', { name: 'Feats' })
+			expect(rowNamesIn(feats)).toEqual(['Tough', 'Ability Score Improvement'])
+			const row = featureRow(feats, 'Ability Score Improvement')
+			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('From level 4')
+			expect(row.querySelector('.sheet__feature-options')!.textContent).toBe('STR +1, CON +1')
+			fireEvent.click(within(row).getByRole('button', { name: 'Ability Score Improvement' }))
+			expect(within(feats).getByText(/Increase one ability score/)).toBeTruthy()
+			expect(feats.textContent).not.toContain('No feats chosen yet.')
+		})
+
+		it('no Ability Score Improvement row when the level took a feat', async () => {
+			await renderBattleMaster()
+			expect(rowNamesIn(screen.getByRole('region', { name: 'Feats' }))).toEqual(['Tough', 'Skilled'])
 		})
 
 		it('a feature name opens its text and a second click closes it', async () => {

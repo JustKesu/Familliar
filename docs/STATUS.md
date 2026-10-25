@@ -1336,6 +1336,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   feature grants as known (`otherFeatureLanguageNames`). MasteryPicker shows a saved pick outside the pool as checked with
   "no longer eligible" so it can be unchecked. `setSubclass` also clears the language picks of this class's subclass grants
   (Hellborn, Mastermind, Banneret); Primal Knowledge stays. `e2e/rbFixes.spec.ts` a–d.
+- A-1 (D397): every `asi` level in `featAsiChoices` is a Feats-group row (`featRowsWithAsi` in featuresTabData.ts): chip via
+  `levelFeatChip` (moved there, re-exported from ManageFeatsPanel), increases as `asiIncreasesLabel` ("STR +1, CON +1") under the
+  row, XPHB feat text when feats.json has it, sorted by level among the level feats. `e2e/asiFeatRow.spec.ts` a–c.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

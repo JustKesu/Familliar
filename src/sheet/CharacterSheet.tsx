@@ -2707,6 +2707,8 @@ function CharacterSheetBody({
 			text: featTextEntries.find((f) => f.name === instance.name && f.source === instance.source),
 			pending: missingFeatSubChoices(instance, feats),
 		})),
+		asiChoices: (character.featAsiChoices ?? []).flatMap((choice) => (choice.kind === 'asi' ? [{ level: choice.level, increases: choice.increases }] : [])),
+		asiText: featTextEntries.find((f) => f.name === 'Ability Score Improvement' && f.source === 'XPHB')?.entries ?? null,
 		pendingInvocationFeats: pendingInvocationFeats(character),
 	})
 	// D46-style: a class with no spellcasting ability (spellcasting.ts) but slots via a subclass table (spellSlots.ts's EK/AT fallback) still counts as a caster for section visibility, even though its attack/DC entry is empty — see docs/REPORT.md.

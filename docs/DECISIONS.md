@@ -5591,3 +5591,10 @@ výhodu jiným tvorům, se neuvádějí. Rozhodl Daniel 24. 10. 2026.
 Hodnota v `masteries`, která už není v poolu (Longbow u Barbariana, Staff, Wooden Staff, Psychic Blade), se v MasteryPickeru
 vykreslí jako vybraná s poznámkou „no longer eligible“, aby šla odznačit. Nikdy se nezahazuje automaticky; po odznačení se už
 nenabízí. Rozhodl Daniel 25. 10. 2026.
+
+## D397 — Úroveň vzatá jako ASI je řádek v sekci Feats (A-1)
+
+Každá úroveň s `featAsiChoices` druhu `asi` má v sekci Feats na záložce Features & Traits vlastní řádek „Ability Score
+Improvement“: štítek jako u level featů („From level 4“, u multiclassu třída, `levelFeatChip`), navýšení pod řádkem („STR +2“,
+„STR +1, CON +1“), text feat XPHB „Ability Score Improvement“, řazení podle úrovně mezi level featy. Filtr Feats řádek ukazuje,
+„No feats chosen yet.“ se při samotném ASI nezobrazí. Úložiště se nemění. Rozhodl Daniel 25. 10. 2026.
