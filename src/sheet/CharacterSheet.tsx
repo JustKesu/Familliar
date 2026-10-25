@@ -2437,7 +2437,7 @@ function CharacterSheetBody({
 	const chosenFeats = characterFeats(character, feats)
 	// D186: a trait whose text starts at a character level is absent below it, on every tab.
 	const speciesTraits = speciesTraitsAtLevel(loadedSpeciesTraits, totalCharacterLevel(character.classes))
-	/* Slice 8a: every feature name the character has, from the three sources that can carry a max-HP bonus. computeMaxHitPoints reads only the three names its table knows, so no filtering is needed here. */
+	/* Slice 8a: every feature name the character has, from the three sources that can carry a max-HP bonus. computeMaxHitPoints reads only the names its table knows, so no filtering is needed here. */
 	const maxHitPoints = computeMaxHitPoints(
 		character,
 		hitDiceClassData,

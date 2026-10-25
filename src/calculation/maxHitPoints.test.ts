@@ -161,8 +161,17 @@ describe('computeMaxHitPoints — stored contributions', () => {
 })
 
 describe('computeMaxHitPoints — the bonus table', () => {
-	it('has exactly the three per-level sources the investigation found', () => {
-		expect(Object.keys(HIT_POINT_BONUS_RULES).sort()).toEqual(['Draconic Resilience', 'Dwarven Toughness', 'Tough'])
+	it('has exactly the three per-level sources the investigation found, plus Boon of Fortitude (D404)', () => {
+		expect(Object.keys(HIT_POINT_BONUS_RULES).sort()).toEqual(['Boon of Fortitude', 'Draconic Resilience', 'Dwarven Toughness', 'Tough'])
+	})
+
+	it('Boon of Fortitude: a flat +40 that does not grow with level (D404)', () => {
+		const at = (level: number) => character({ classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level }] })
+		for (const level of [5, 19, 20]) {
+			const result = computeMaxHitPoints(at(level), classData, ['Boon of Fortitude'])
+			expect(total(result) - total(computeMaxHitPoints(at(level), classData))).toBe(40)
+			expect(sources(result)).toContain('Boon of Fortitude (+40)')
+		}
 	})
 
 	it('Tough: +2 per character level', () => {

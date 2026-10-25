@@ -45,17 +45,18 @@ export interface HitPointBonusRule {
 }
 
 /**
- * The three features in the whole data set that raise the maximum once per
- * level. Keyed by the feature's own name as the data writes it; all three names
- * are unique across feats.json, subclass-features.json and the species traits
- * (scripts/investigate-hp-bonus-names.js). Boon of Fortitude's one-off +40 at
- * level 19 is deliberately absent — see docs/QUESTIONS.md.
+ * The four features in the whole data set that raise the maximum: three once
+ * per level, Boon of Fortitude once (D404). Keyed by the feature's own name as
+ * the data writes it; the names are unique across feats.json,
+ * subclass-features.json and the species traits
+ * (scripts/investigate-hp-bonus-names.js).
  */
 export const HIT_POINT_BONUS_RULES: Readonly<Record<string, HitPointBonusRule>> = {
 	Tough: { flat: 0, perLevel: 2, axis: { kind: 'characterLevel' } },
 	'Dwarven Toughness': { flat: 0, perLevel: 1, axis: { kind: 'characterLevel' } },
 	// "increases by 3, and by 1 whenever you gain another Sorcerer level" from level 3 = the Sorcerer level itself.
 	'Draconic Resilience': { flat: 0, perLevel: 1, axis: { kind: 'classLevel', className: 'Sorcerer', classSource: 'XPHB' } },
+	'Boon of Fortitude': { flat: 40, perLevel: 0, axis: { kind: 'characterLevel' } },
 }
 
 /** The PHB's fixed value for a level that is neither rolled nor maximised: half the die rounded down, plus one. */
@@ -101,7 +102,7 @@ export function hitDiePerLevel(character: Character, classData: readonly ClassHi
 
 /**
  * `bonusFeatureNames` is every feature name the character has from any source —
- * granted class/subclass features, taken feats, species traits. Only the three
+ * granted class/subclass features, taken feats, species traits. Only the
  * names in HIT_POINT_BONUS_RULES are read from it; the rest are ignored, so the
  * caller can pass its whole list without filtering.
  */

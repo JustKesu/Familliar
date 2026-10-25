@@ -227,7 +227,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      přesouvá, `currentHp` zůstává ruční a nedotčené (D9). Úroveň 1 je vždy
      maximum kostky (D92); postava bez uložených příspěvků (dnes každá) spadne
      na maximum + pevný průměr a rozklad to označí za výchozí hodnoty, ne volbu.
-     Tabulka tří bonusů (Tough, Dwarven Toughness, Draconic Resilience) je
+     Tabulka bonusů (Tough, Dwarven Toughness, Draconic Resilience; od D404 i Boon of Fortitude +40) je
      ručně psaná jen v ČÁSTCE (D93); zda je postava má, se rozhoduje
      strukturálně z D87 featur, vzatých featů a pojmenovaných rysů rasy — ty
      dodává nový `src/sheet/speciesTraitNames.ts`. Každá položka si pamatuje
@@ -1349,6 +1349,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   Tool, Arcane Grimoire, Bloodwell Vial, Moon Sickle, Rhythm-Maker's Drum, Reveler's Concertina, Rod of the Pact Keeper) reaches
   only the named class's spellcasting entry (`Contribution.onlyForClasses`, filtered in `computeAbilitySpellcasting`); feat,
   species and item casting get no line. Other items unchanged. `e2e/itemSpellBonusClass.spec.ts` a–e.
+- BF-1 (D404): Boon of Fortitude is the fourth `HIT_POINT_BONUS_RULES` row (flat +40, no per-level part), breakdown line
+  "Boon of Fortitude (+40)"; current HP follows via D381. Extra healing stays text. `e2e/boonOfFortitude.spec.ts` a–c.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

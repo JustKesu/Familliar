@@ -5664,3 +5664,12 @@ Bonus se přičte jen ke spellcasting záznamu té třídy (včetně kouzel podt
 kouzla z featů, druhu, předmětů a ostatních tříd nedostanou nic a žádný řádek (ani „not attuned“). Ostatní předměty (Amulet of
 the Devout, Robe of the Archmagi, Wand of the War Mage, hole, talismany) se přičítají všem jako dosud. Brána attunementu beze
 změny. Uzavírá otázku „Bonus ke kouzlům se přičítá všem kouzlům“. Rozhodl Daniel 25. 10. 2026.
+
+## D404 — Boon of Fortitude: +40 k maximu HP jednorázově (BF-1)
+
+Boon of Fortitude (XPHB, epic boon) je čtvrtá položka tabulky `HIT_POINT_BONUS_RULES` v `maxHitPoints.ts`: `flat: 40`,
+`perLevel: 0`, tedy +40 jednou, bez růstu s úrovní; rozklad ukazuje řádek „Boon of Fortitude (+40)“. Zdroj jména je stejný
+jako u ostatních tří (featy včetně featu na ASI úrovni, granted features, rasové traity). Aktuální HP sleduje nové maximum
+přes D381. Léčení navíc (CON modifikátor jednou za tah) zůstává jen text. Uzavírá otázku „Boon of Fortitude“ a s ní i otázku
+„Magic Initiate parent entry“ (plánovací chat 25. 10. ověřil, že seznam featů nabízí jediný „Magic Initiate“ s volbou
+Cleric/Druid/Wizard). Rozhodl Daniel 25. 10. 2026.
