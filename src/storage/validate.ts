@@ -919,6 +919,10 @@ export function describeInventoryError(value: unknown): string | null {
 		if (attuned !== undefined && attuned !== true) {
 			return `inventory[${i}].attuned must be true when present`
 		}
+		const pactWeapon = entry['pactWeapon']
+		if (pactWeapon !== undefined && pactWeapon !== true) {
+			return `inventory[${i}].pactWeapon must be true when present`
+		}
 		const magicBonus = entry['magicBonus']
 		if (magicBonus !== undefined && magicBonus !== 1 && magicBonus !== 2 && magicBonus !== 3) {
 			return `inventory[${i}].magicBonus must be 1, 2 or 3 when present`
@@ -1148,6 +1152,7 @@ function toCharacterInventory(value: unknown[]): CharacterInventoryItem[] {
 			// Carried through as-is: its fields are the resolver's to check, not this layer's (see describeInventoryError).
 			...(custom !== undefined ? { custom: custom as CustomItemDefinition } : {}),
 			...(record['spellUses'] !== undefined ? { spellUses: record['spellUses'] as Record<string, number> } : {}),
+			...(record['pactWeapon'] === true ? { pactWeapon: true as const } : {}),
 		}
 	})
 }

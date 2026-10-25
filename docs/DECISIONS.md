@@ -5625,3 +5625,11 @@ Daniel prošel QUESTIONS.md a rozhodl nechat tyto body tak, jak jsou; z QUESTION
 - Storm Herald: prostředí zůstává jen text.
 - Mastery texty zůstávají ručně v `masteryData.ts`.
 - Boon of Siberys zůstává skrytý.
+
+## D401 — Pact weapon označuje hráč v inventáři (PW-1)
+
+Hráč označí pact weapon přepínačem „Pact weapon“ u řádku zbraně v Manage Inventory; přepínač se ukazuje jen s invokací Pact of
+the Blade a nejvýš jeden řádek nese příznak (`CharacterInventoryItem.pactWeapon`, schéma 67). Improved Pact Weapon (XGE) dává
++1 k útoku a damage jako vlastní řádek rozkladu, ne zbrani, která už má magický bonus; Lifedrinker (XPHB) přidává do textu
+damage „+ 1d6 Necrotic, Psychic, or Radiant“ bez započtení do průměru. Obojí platí jen pro označenou zbraň; bez označené zbraně se
+nic nemění. Thirsting Blade a Devouring Blade zůstávají podle D363. Rozhodl Daniel 25. 10. 2026.

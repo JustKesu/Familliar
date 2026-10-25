@@ -815,7 +815,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Fighter', classSource: 'XPHB', subclass: null, level: 1 }],
 				background: { name: 'Acolyte', source: 'XPHB', skillProficiencies: ['insight', 'religion'], toolProficiency: "Calligrapher's Supplies" },
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 66 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 67 })
 		})
 	})
 
@@ -829,7 +829,7 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 2 }],
 				subclassSkills: [{ grantedBy: 'battleMaster', name: 'history' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 66 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 67 })
 		})
 	})
 
@@ -843,11 +843,25 @@ describe('the migration chain (D69)', () => {
 				classes: [{ className: 'Barbarian', classSource: 'XPHB', subclass: null, level: 3 }],
 				subclassSkills: [{ grantedBy: 'primalKnowledge', name: 'survival' }],
 			}
-			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 66 })
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 67 })
+		})
+	})
+
+	/* PW-1 (D401): CharacterInventoryItem.pactWeapon is new and optional, so the step only tags. */
+	describe('version 66 to 67', () => {
+		it('adds nothing and changes nothing else', () => {
+			const before = {
+				schemaVersion: 66,
+				id: '1',
+				name: 'Aria',
+				classes: [{ className: 'Warlock', classSource: 'XPHB', subclass: null, level: 3 }],
+				inventory: [{ name: 'Mace', source: 'XPHB', quantity: 1 }],
+			}
+			expect(migrateToCurrent(structuredClone(before))).toEqual({ ...before, schemaVersion: 67 })
 		})
 
 		it('is the last step', () => {
-			expect(CURRENT_SCHEMA_VERSION).toBe(66)
+			expect(CURRENT_SCHEMA_VERSION).toBe(67)
 		})
 	})
 

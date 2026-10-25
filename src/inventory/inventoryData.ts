@@ -493,6 +493,7 @@ export function inventoryRowKey(item: CharacterInventoryItem): string {
 		item.grip ?? '',
 		item.attackAbility ?? '',
 		item.attuned ? 'attuned' : '',
+		item.pactWeapon ? 'pact' : '',
 		customDefinitionKey(item.custom),
 	].join('|')
 }

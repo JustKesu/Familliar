@@ -153,6 +153,7 @@ export function InventoryTab({
 							item.equipped,
 							item.grip === 'two-handed' && item.equipped === 'held' && 'two-handed',
 							item.attuned && 'attuned',
+							item.pactWeapon && 'pact weapon',
 							ref?.requiresAttunement && `requires attunement${ref.attunementCondition ? ` ${ref.attunementCondition}` : ''}`,
 							item.custom !== undefined && 'custom',
 						]

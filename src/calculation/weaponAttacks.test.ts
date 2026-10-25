@@ -226,6 +226,45 @@ describe('computeWeaponAttacks — magic bonuses (slice e)', () => {
 	})
 })
 
+describe('computeWeaponAttacks — pact weapon (D401)', () => {
+	const both = { improvedPactWeapon: true, lifedrinker: true }
+	const pact = (weapon: ResolvedWeapon, magicBonus?: MagicBonus): HeldWeapon => ({ ...held(weapon, null, magicBonus), pactWeapon: true })
+
+	it('Improved Pact Weapon adds +1 to hit and damage on the marked weapon only, as its own line', () => {
+		const attacks = computeWeaponAttacks(character('Warlock', 9), [pact(longsword), held(dagger)], martialGrants, [], null, undefined, [], { improvedPactWeapon: true, lifedrinker: false })
+		const sword = attackNamed(attacks, 'Longsword')
+		expect(toHitOf(sword)).toBe(8)
+		expect(sword.toHit.status === 'known' && sword.toHit.breakdown).toContainEqual({ source: 'Improved Pact Weapon', amount: 1 })
+		expect(damageTextOf(sword)).toBe('1d8 + 4 slashing')
+		expect(sword.damage.status === 'known' && sword.damage.breakdown).toContainEqual({ source: 'Improved Pact Weapon', amount: 1 })
+		expect(toHitOf(attackNamed(attacks, 'Dagger'))).toBe(7)
+		expect(damageTextOf(attackNamed(attacks, 'Dagger'))).toBe('1d4 + 3 piercing')
+	})
+
+	it('Improved Pact Weapon gives nothing to a weapon that already has a magic bonus, and says so', () => {
+		const bonus = resolveMagicBonus({ name: 'Longsword', itemBonus: 1, playerBonus: null, requiresAttunement: false, attuned: false })
+		const sword = attackNamed(computeWeaponAttacks(character('Warlock', 9), [pact(longsword, bonus)], martialGrants, [], null, undefined, [], both), 'Longsword +1')
+		expect(toHitOf(sword)).toBe(8)
+		expect(sword.toHit.status === 'known' && sword.toHit.breakdown.find((row) => row.source === 'Improved Pact Weapon')?.amount).toBe(0)
+		expect(damageTextOf(sword)).toBe('1d8 + 4 slashing + 1d6 Necrotic, Psychic, or Radiant')
+	})
+
+	it('Lifedrinker adds its dice to the marked weapon’s damage text only, never to the modifier', () => {
+		const attacks = computeWeaponAttacks(character('Warlock', 9), [pact(longsword), held(dagger)], martialGrants, [], null, undefined, [], { improvedPactWeapon: false, lifedrinker: true })
+		const sword = attackNamed(attacks, 'Longsword')
+		expect(damageTextOf(sword)).toBe('1d8 + 3 slashing + 1d6 Necrotic, Psychic, or Radiant')
+		expect(sword.damage.status === 'known' && sword.damage.value.modifier).toBe(3)
+		const daggerDamage = attackNamed(attacks, 'Dagger').damage
+		expect(daggerDamage.status === 'known' && daggerDamage.value.extraDamage).toBeUndefined()
+	})
+
+	it('changes nothing when no weapon is marked', () => {
+		const attacks = computeWeaponAttacks(character('Warlock', 9), [held(longsword)], martialGrants, [], null, undefined, [], both)
+		expect(damageTextOf(attackNamed(attacks, 'Longsword'))).toBe('1d8 + 3 slashing')
+		expect(toHitOf(attackNamed(attacks, 'Longsword'))).toBe(7)
+	})
+})
+
 describe('computeWeaponAttacks — finesse', () => {
 	it('defaults to whichever of Strength and Dexterity is higher', () => {
 		const strong = attackNamed(computeWeaponAttacks(character('Rogue', 1), [held(rapier)], martialGrants), 'Rapier')

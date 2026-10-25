@@ -75,7 +75,18 @@ export interface HeldWeapon {
 	grip: WeaponGrip
 	/** The magic bonus, already reconciled against the item's own and against attunement by the caller (slice e). */
 	magicBonus: MagicBonus
+	/** D401: the row the player marked as the pact weapon. */
+	pactWeapon?: boolean
 }
+
+/** D401: the held invocations that change the marked pact weapon's attack line. */
+export interface PactWeaponEffects {
+	improvedPactWeapon: boolean
+	lifedrinker: boolean
+}
+
+/** XPHB Lifedrinker: extra damage on a hit, not part of the modifier or the average. */
+const LIFEDRINKER_DAMAGE = '1d6 Necrotic, Psychic, or Radiant'
 
 export interface AttackDamage {
 	/** The dice expression, or null for an Unarmed Strike's flat 1. */
@@ -87,6 +98,8 @@ export interface AttackDamage {
 	/** The grip the dice above came from, or null when the weapon is not Versatile and has no grip to choose. */
 	grip: WeaponGrip | null
 	breakdown: Contribution[]
+	/** Extra dice printed after the damage type ("1d6 Necrotic, Psychic, or Radiant"); never in `modifier`. */
+	extraDamage?: string
 }
 
 /**
@@ -287,6 +300,7 @@ export function computeWeaponAttacks(
 	/** R14a1: a custom item's bonus to every weapon attack's to-hit / damage — never the Unarmed Strike (D216). */
 	itemBonuses: { attack: readonly Contribution[]; damage: readonly Contribution[] } = { attack: [], damage: [] },
 	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
+	pactEffects: PactWeaponEffects = { improvedPactWeapon: false, lifedrinker: false },
 ): WeaponAttack[] {
 	const abilities: Ability[] = ['strength', 'dexterity']
 	const modifiers = {} as Record<Ability, number>
@@ -338,13 +352,27 @@ export function computeWeaponAttacks(
 				? [{ source: 'Thrown Weapon Fighting (Fighting Style)', amount: 0, note: 'considered (+2) — not included: only on a ranged attack made by throwing it' }]
 				: []),
 		]
-		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, [...itemBonuses.damage, ...styleDamage], monkWeapon ? martialArtsDie : null)
+		// XGE Improved Pact Weapon: "+1 bonus to its attack and damage rolls, unless it is a magic weapon that already has a bonus to those rolls."
+		const improved: Contribution[] =
+			row.pactWeapon && pactEffects.improvedPactWeapon
+				? [
+						row.magicBonus.carried !== 0
+							? { source: 'Improved Pact Weapon', amount: 0, note: `considered (+1) — not applied: ${row.magicBonus.label} already has a magic bonus` }
+							: { source: 'Improved Pact Weapon', amount: 1 },
+					]
+				: []
+		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, [...itemBonuses.damage, ...styleDamage, ...improved], monkWeapon ? martialArtsDie : null)
+		if (row.pactWeapon && pactEffects.lifedrinker) {
+			damage.extraDamage = LIFEDRINKER_DAMAGE
+			damage.text = `${damage.text} + ${LIFEDRINKER_DAMAGE}`
+			damage.breakdown.push({ source: 'Lifedrinker', amount: 0, note: `+ ${LIFEDRINKER_DAMAGE}, once per turn — not in the average` })
+		}
 		return {
 			key,
 			name: row.magicBonus.label,
 			kind: weapon.typeCode === RANGED_TYPE_CODE ? 'ranged' : 'melee',
 			range: weapon.range ?? null,
-			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus, [...styleAttack, ...itemBonuses.attack]),
+			toHit: scoresUnknown ? unknown(scoresUnknown) : toHitFor(weapon, using, modifiers, proficiencyBonus, proficient, reason, row.magicBonus, [...styleAttack, ...itemBonuses.attack, ...improved]),
 			damage: scoresUnknown ? unknown(scoresUnknown) : noDice ? unknown(noDice) : known(damage, damage.breakdown),
 			notes: noDice ? [...notesFor(weapon, proficient, masteredKinds), noDice] : notesFor(weapon, proficient, masteredKinds),
 			abilityChoice: choice,

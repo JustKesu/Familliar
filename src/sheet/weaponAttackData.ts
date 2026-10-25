@@ -76,6 +76,7 @@ export function buildHeldWeapons(inventory: CharacterInventoryItem[], itemRefs: 
 				requiresAttunement: ref?.requiresAttunement === true,
 				attuned: isAttuned(item),
 			}),
+			...(item.pactWeapon ? { pactWeapon: true } : {}),
 		})
 	}
 	return held

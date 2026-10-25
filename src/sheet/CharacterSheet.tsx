@@ -164,6 +164,7 @@ import {
 	type WeaponAttackAbility,
 } from '../storage/character'
 import { heldInvocations, pendingInvocationFeats, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
+import { pactWeaponInvocations } from './pactWeapon'
 import { afterLongRest, afterShortRest } from '../rest/rest'
 import { DamageRollButton, RollButton } from '../dice/RollButton'
 import { addRollHistoryEntry, RollHistory, type RollHistoryEntry, type RollReport } from '../dice/RollHistory'
@@ -452,6 +453,7 @@ function weaponAttackRow(
 								<span className="sheet__action-damage-type">{attack.damage.value.damageType}</span>
 							</>
 						)}
+						{attack.damage.value.extraDamage && <span className="sheet__action-extra-damage"> + {attack.damage.value.extraDamage}</span>}
 					</span>
 					{/* The die above already follows the grip; this says which grip that was (slice b-fix). */}
 					{attack.damage.value.grip && (
@@ -2393,10 +2395,11 @@ function CharacterSheetBody({
 	], buildItemSpeedModeGrants(character.inventory ?? [], itemRefs ?? []), { conditions: character.play?.conditions ?? [], exhaustion: character.play?.exhaustion ?? 0 })
 	/* Step 7 slice c: only the weapons in hand become attack lines; everything else stays in the inventory. */
 	const heldWeapons = buildHeldWeapons(character.inventory ?? [], itemRefs ?? [])
+	const pactInvocations = pactWeaponInvocations(character)
 	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null, {
 		attack: itemFlatBonuses.weaponAttack,
 		damage: itemFlatBonuses.weaponDamage,
-	}, itemAbilityGrants)
+	}, itemAbilityGrants, pactInvocations)
 	const attacksPerAction = computeAttacksPerAction(
 		weaponAttackData?.featureNames ?? [],
 		heldInvocations(character).map((pick) => pick.name),
@@ -3636,6 +3639,7 @@ function CharacterSheetBody({
 						itemEntryTemplates={itemEntryTemplates}
 						attunementLimit={attunementLimit}
 						defaultSpellAbility={spellcastingEntries[0] ? itemSpellAbilityOf(spellcastingEntries[0].ability) : null}
+						pactOfTheBlade={pactInvocations.pactOfTheBlade}
 						onEditInventory={onEditInventory}
 						onEditCurrency={onEditCurrency}
 					/>

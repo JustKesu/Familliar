@@ -608,6 +608,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 66 adds the 'collegeOfLore' and 'feyWanderer' subclassSkills grantedBy values (RB-2, D393). A version-65 character has neither — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 66 }),
 	},
+	{
+		from: 66,
+		to: 67,
+		/* 67 adds CharacterInventoryItem.pactWeapon (PW-1, D401). A version-66 character has marked no pact weapon — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 67 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

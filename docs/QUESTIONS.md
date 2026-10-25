@@ -23,40 +23,6 @@ STATUS: Daniel 25. 10.: řešit, task naplánován.
 Two spells referenced but absent from the data. Two spells granted by other content (e.g. Branding Smite via a Warlock patron) are not present in this app's extracted spell data, so they are silently skipped where granted. Undecided whether this is a source-filtering gap needing re-extraction. Not blocking.
 STATUS: Daniel 25. 10.: řešit, task naplánován.
 
-### Invokace a features měnící útok — zkontrolovat při krocích 7 a 8
-
-Improved Pact Weapon dává +1 k útoku i k damage, Lifedrinker přidává
-damage, Thirsting Blade dává útok navíc, Eldritch Smite je zvláštní
-útok. Nic z toho se dnes nepočítá, protože útoky zbraněmi v appce
-neexistují.
-
-Až se budou stavět, musí projít i vybrané class-level optional features,
-ne jen zbraň, feat a fighting style. Platí tu stejný princip jako
-u prózových featů (D55): co se neumí spočítat, musí se aspoň ohlásit
-v rozkladu, aby si to hráč přičetl sám a věděl proč.
-
-Nalezeno při ručním proklikání Warlocka (Hexblade, Improved Pact Weapon).
-STATUS: Daniel 25. 10.: řešit, task naplánován. Thirsting Blade je hotový (D363); zbývá Improved Pact Weapon a Lifedrinker.
-
-### Kouzla z rasy nikam nevedou
-
-V `src/spells/` je modul pro kouzla ze třídy, z podtřídy, z featu i z optional
-feature. **Pro rasu žádný není.** Dvacet devět ras nese v `additionalSpells`
-kouzla a na sheet nedoručí nic — ani je nezobrazí, ani neřekne, že něco chybí.
-
-Prakticky: Elf přichází o cantrip z linie a o kouzla na 3. a 5. úrovni, stejně
-tak Tiefling; Gnome o cantripy a o Speak with Animals u Forest Gnoma.
-
-Není to únik ani spolknutá volba, je to chybějící cesta — na rozdíl od
-odolností a velikosti, které nevyřešenou volbu hlásí nahlas. Chce to vlastní
-slici, postavenou podle vzoru těch čtyř modulů, které už existují.
-
-Nalezeno při průzkumu kódu wizardu (Cowork, 3. 9.), potvrzeno v reportu ze
-slice na rasové volby.
-STATUS: hotovo z většiny — granty a zobrazení (D89) i uložená volba sesílací
-vlastnosti (D90) jsou hotové. Zbývá jen volba cantripu ze seznamu třídy u 5
-záznamů, viz níže.
-
 ### Pět rasových záznamů nabízí volbu cantripu ze seznamu třídy — bez pickeru
 
 Elf (základ) + Elf; High Elf Lineage, Khoravar, Kobold (základ) + Kobold;

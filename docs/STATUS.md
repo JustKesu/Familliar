@@ -1342,6 +1342,7 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - PSI-1 (D398): `lookupInTableGroups` reads Soulknife's "Soulknife Energy Die Number" column as the Psionic Energy Die pool, so a
   lone Soulknife has a maximum and Psi Warrior + Soulknife split into "Psionic Energy Die (Fighter)" / "(Rogue)" by the D336
   mechanism, unchanged. `e2e/psionicPools.spec.ts` a–c. D399 records the A-1b ASI chip wording.
+- PW-1 (D401): pact weapon flag, Improved Pact Weapon and Lifedrinker on the marked weapon only. `e2e/pactWeapon.spec.ts` a–f.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:
@@ -1722,7 +1723,13 @@ held Eldritch Invocations Thirsting Blade (2) and Devouring Blade (3, only with
 Thirsting Blade) via `TOTAL_ATTACKS_BY_INVOCATION_NAME`
 (`src/attacks/extraAttackData.ts`); highest of features and invocations wins,
 the rest are zero-amount "considered" rows; invocation rows read
-"<name> (pact weapon only)". Attack table is a CSS grid over table
+"<name> (pact weapon only)". PW-1 (D401): `CharacterInventoryItem.pactWeapon`
+(schema 67) marks one row via the "Pact weapon" toggle in Manage Inventory (weapon
+rows, only with Pact of the Blade; `src/sheet/pactWeapon.ts`); on that row only,
+Improved Pact Weapon (XGE) adds a +1 "Improved Pact Weapon" line to to-hit and
+damage (zero-amount considered line on a weapon with its own magic bonus) and
+Lifedrinker (XPHB) appends "+ 1d6 Necrotic, Psychic, or Radiant" to the damage
+(`AttackDamage.extraDamage`, not in the roll/average). Attack table is a CSS grid over table
 markup (rows are subgrids): ATTACK (name button → drawer with to-hit/damage or
 spell attack/DC breakdowns, subtitle Melee/Ranged Weapon · Unarmed · spell level
 + Concentration/Ritual, Finesse select), RANGE, HIT / DC (to-hit is the

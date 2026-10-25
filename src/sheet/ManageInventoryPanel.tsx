@@ -19,6 +19,7 @@ import {
 	inventoryRowKey,
 	isMagicItem,
 	isVersatileWeapon,
+	isWeapon,
 	ITEM_FILTER_KINDS,
 	itemFilterKindsOf,
 	itemKey,
@@ -50,6 +51,7 @@ import { mapItemSpellUses } from '../inventory/customItemGrants'
 import { loadFeats } from '../featAsi/featAsiData'
 import { loadAllInvocations } from '../optionalFeatures/optionalFeatureData'
 import { DrawerSection } from './Drawer'
+import { togglePactWeapon } from './pactWeapon'
 
 /**
  * A number input that commits only on blur or Enter, not on every keystroke.
@@ -829,6 +831,7 @@ export function ManageInventoryPanel({
 	itemEntryTemplates,
 	attunementLimit,
 	defaultSpellAbility = null,
+	pactOfTheBlade = false,
 	onEditInventory: inventoryCallback,
 	onEditCurrency: currencyCallback,
 }: {
@@ -840,6 +843,8 @@ export function ManageInventoryPanel({
 	attunementLimit: Calculated<number>
 	/** D219: the first casting class's ability, preselected in a spell row set to "Use my own". */
 	defaultSpellAbility?: CustomItemSpellAbility | null
+	/** D401: the Pact weapon toggle is offered only while the character holds Pact of the Blade. */
+	pactOfTheBlade?: boolean
 	/** Either callback may be absent; its sections are then left out, as the tab's controls were before R10a. */
 	onEditInventory?: (inventory: CharacterInventoryItem[]) => void
 	onEditCurrency?: (copper: number) => void
@@ -1072,7 +1077,7 @@ export function ManageInventoryPanel({
 									requiresAttunement: ref?.requiresAttunement === true,
 									attuned: item.attuned === true,
 								})
-								const meta = [item.custom !== undefined && 'custom', item.equipped, item.attuned && 'attuned'].filter(Boolean).join(', ')
+								const meta = [item.custom !== undefined && 'custom', item.equipped, item.attuned && 'attuned', item.pactWeapon && 'pact weapon'].filter(Boolean).join(', ')
 								// Two rows can legitimately end up identical (the same item set to the same bonus twice), so the position keeps the key unique.
 								return (
 									<ItemRow
@@ -1123,6 +1128,16 @@ export function ManageInventoryPanel({
 													))}
 												</select>
 											</label>
+										)}
+										{pactOfTheBlade && ref !== null && isWeapon(ref) && (
+											<button
+												type="button"
+												aria-pressed={item.pactWeapon === true}
+												aria-label={`Pact weapon: ${bonus.label}`}
+												onClick={() => onEditInventory(togglePactWeapon(inventory, index))}
+											>
+												Pact weapon
+											</button>
 										)}
 										{attunable && (
 											<button type="button" aria-label={`${item.attuned ? 'End attunement to' : 'Attune to'} ${bonus.label}`} onClick={() => toggleAttune(index)}>
