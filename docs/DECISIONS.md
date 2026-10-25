@@ -5685,3 +5685,12 @@ bez limitu. Bezplatné seslání Aberrant Dragonmark spotřebovává týž klí�
 (vzor D190), ať hráč vybral jakékoli kouzlo. Řádky se ukážou na Actions i Features & Traits pod featurou; `TWO_INDEPENDENT_LIMITS`
 zrušeno. Staré hodnoty pod holým jménem (a starý `spell:` klíč Dragonmarku) se zahazují: nic je nečte, nejbližší Long Rest
 je smaže, bez zvýšení schemaVersion. Rozhodl Daniel 25. 10. 2026.
+
+## D406 — Dva nerozlišitelné odkazy na kouzla mapované na XPHB (SR-1)
+
+Jediné dva `additionalSpells` odkazy v datech, které se nenajdou: „branding smite“ (The Hexblade|XGE) a „summon
+elemental|tce“ (The Fathomless). `findSpell` v `subclassPreparedSpells.ts` má malou tabulku aliasů, kterou čte jen když
+běžné hledání nic nenajde: „branding smite“ (jakýkoli zdroj) → Shining Smite|XPHB (přejmenováno v PHB 2024), „summon
+elemental“ se zdrojem TCE → Summon Elemental|XPHB. Vrací se XPHB kouzlo pod svým skutečným jménem a zdrojem. Platí pro
+všechny volající (rasy, featy, optional features, subclassy). Uzavírá otázku „Two spells referenced but absent from the
+data“. Rozhodl Daniel 25. 10. 2026.

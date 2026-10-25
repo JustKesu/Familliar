@@ -1353,6 +1353,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   species and item casting get no line. Other items unchanged. `e2e/itemSpellBonusClass.spec.ts` a–e.
 - BF-1 (D404): Boon of Fortitude is the fourth `HIT_POINT_BONUS_RULES` row (flat +40, no per-level part), breakdown line
   "Boon of Fortitude (+40)"; current HP follows via D381. Extra healing stays text. `e2e/boonOfFortitude.spec.ts` a–c.
+- SR-1 (D406): `findSpell` (subclassPreparedSpells.ts) falls back to `SPELL_REF_ALIASES` when nothing matches: "branding smite"
+  → Shining Smite|XPHB (Hexblade), "summon elemental|tce" → Summon Elemental|XPHB (Fathomless). No unresolved
+  additionalSpells ref left in the data. `e2e/spellAliases.spec.ts` a–b.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

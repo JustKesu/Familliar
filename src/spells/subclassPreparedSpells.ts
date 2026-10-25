@@ -95,9 +95,10 @@
  *   this follow-up. The Genie's 4-entries-per-subclass ambiguity (3) is
  *   guarded structurally (a subclass with more than one additionalSpells
  *   entry is skipped for rank grants), not by name, and stays deferred.
- * - Two of 406 string references don't resolve against this app's filtered
- *   spells.json (e.g. "branding smite", not present in any allowed source)
- *   — skipped cleanly (D43), not an error.
+ * - Two of 406 string references ("branding smite", "summon elemental|tce")
+ *   don't resolve by exact name/source against this app's filtered
+ *   spells.json; findSpell now resolves them via its alias table to the XPHB
+ *   spells (D406). Any other unresolved ref is still skipped cleanly (D43).
  *
  * Bug fix (this task): a spell reachable via TWO grant paths was emitted
  * twice. Confirmed real for College of Glamour (Bard, XPHB) — "Command" sits
@@ -264,8 +265,21 @@ export function parseSpellRef(ref: string): { name: string; source: string | nul
 	return { name: namePart.split('#')[0].toLowerCase(), source }
 }
 
-export function findSpell(spells: RawSpell[], ref: { name: string; source: string | null }): RawSpell | undefined {
+// D406: the only two additionalSpells refs in the data that resolve to nothing (DATA.md). Source null = any source.
+const SPELL_REF_ALIASES: { name: string; source: string | null; to: { name: string; source: string } }[] = [
+	{ name: 'branding smite', source: null, to: { name: 'shining smite', source: 'XPHB' } },
+	{ name: 'summon elemental', source: 'TCE', to: { name: 'summon elemental', source: 'XPHB' } },
+]
+
+function findSpellExact(spells: RawSpell[], ref: { name: string; source: string | null }): RawSpell | undefined {
 	return spells.find((s) => s.name.toLowerCase() === ref.name && (ref.source === null || s.source.toUpperCase() === ref.source))
+}
+
+export function findSpell(spells: RawSpell[], ref: { name: string; source: string | null }): RawSpell | undefined {
+	const found = findSpellExact(spells, ref)
+	if (found) return found
+	const alias = SPELL_REF_ALIASES.find((a) => a.name === ref.name && (a.source === null || a.source === ref.source))
+	return alias ? findSpellExact(spells, alias.to) : undefined
 }
 
 /** The fixed-grant keys this module derives spells from. `expanded` is deliberately excluded — see module comment. */

@@ -212,6 +212,7 @@ const fathomless = {
 				s1: ['create or destroy water', 'thunderwave'],
 				s2: ['gust of wind', 'silence'],
 				s3: ['lightning bolt', 'sleet storm'],
+				s4: ['summon elemental|tce', 'no such spell'],
 			},
 		},
 	],
@@ -347,7 +348,8 @@ const clairvoyance = { name: 'Clairvoyance', source: 'XPHB', level: 3, duration:
 const shield = { name: 'Shield', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
 const wrathfulSmite = { name: 'Wrathful Smite', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
 const blur = { name: 'Blur', source: 'XPHB', level: 2, duration: [{ type: 'timed', duration: { type: 'minute', amount: 1 }, concentration: true }], meta: {} }
-const brandingSmite = { name: 'Branding Smite', source: 'XPHB', level: 2, duration: [{ type: 'instant' }], meta: {} }
+const shiningSmite = { name: 'Shining Smite', source: 'XPHB', level: 2, duration: [{ type: 'instant' }], meta: {} }
+const summonElemental = { name: 'Summon Elemental', source: 'XPHB', level: 4, duration: [{ type: 'instant' }], meta: {} }
 const blink = { name: 'Blink', source: 'XPHB', level: 3, duration: [{ type: 'instant' }], meta: {} }
 const elementalWeapon = { name: 'Elemental Weapon', source: 'XPHB', level: 3, duration: [{ type: 'instant' }], meta: {} }
 const createOrDestroyWater = { name: 'Create or Destroy Water', source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} }
@@ -381,7 +383,8 @@ const spells = [
 	shield,
 	wrathfulSmite,
 	blur,
-	brandingSmite,
+	shiningSmite,
+	summonElemental,
 	blink,
 	elementalWeapon,
 	createOrDestroyWater,
@@ -533,8 +536,19 @@ describe('extractSubclassAlwaysPreparedSpells', () => {
 	describe('pact-slot-rank-keyed `expanded` grant (Hexblade/Fathomless follow-up)', () => {
 		it('Hexblade at pact slot rank 2 (character level 3): rank-1 and rank-2 spells present, rank-3 not yet', () => {
 			const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'The Hexblade', 'XGE', 'Warlock', 'XPHB', 3, warlockPactSlotsByLevel)
-			expect(result.map((s) => s.name).sort()).toEqual(['Blur', 'Branding Smite', 'Shield', 'Wrathful Smite'])
+			expect(result.map((s) => s.name).sort()).toEqual(['Blur', 'Shield', 'Shining Smite', 'Wrathful Smite'])
 			expect(result.every((s) => s.origin === 'subclass')).toBe(true)
+		})
+
+		it('D406: "branding smite" (no such spell in any allowed source) resolves to Shining Smite|XPHB', () => {
+			const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'The Hexblade', 'XGE', 'Warlock', 'XPHB', 3, warlockPactSlotsByLevel)
+			expect(result.find((s) => s.name === 'Shining Smite')?.source).toBe('XPHB')
+		})
+
+		it('D406: "summon elemental|tce" resolves to Summon Elemental|XPHB; an unknown ref is still skipped', () => {
+			const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'The Fathomless', 'TCE', 'Warlock', 'XPHB', 9, warlockPactSlotsByLevel)
+			expect(result.find((s) => s.name === 'Summon Elemental')?.source).toBe('XPHB')
+			expect(result.map((s) => s.name).sort()).toEqual(['Create or Destroy Water', 'Gust of Wind', 'Silence', 'Summon Elemental', 'Thunderwave'])
 		})
 
 		it('Fathomless at pact slot rank 2 (character level 3): its own rank-1 and rank-2 spells present, rank-3 not yet', () => {

@@ -2128,3 +2128,14 @@ consumed, 2026-10-16):
   "XdY +/plus your spellcasting ability modifier" — guarded by spellActionRowData.test.ts against data/.
   Alustriel's Mooncloak and Holy Star of Mystra match but show no dice (their tag is `{@dice}` without a
   `{@scaledice}`, so D206 never displays it).
+
+## Only two additionalSpells refs do not resolve (SR-1, D406)
+
+Every `additionalSpells` string ref in data/ and homebrew/ resolves by name (and source, when given) against
+data/spells.json except two (planning-chat summary script, 2026-10-25):
+- "branding smite" — The Hexblade|XGE, rank-keyed `expanded` s2. XPHB renamed it Shining Smite (present as
+  Shining Smite|XPHB); no Branding Smite exists in any allowed source.
+- "summon elemental|tce" — The Fathomless|TCE, rank-keyed `expanded`. Only Summon Elemental|XPHB is in
+  spells.json, so the exact-source match fails.
+Both now resolve through `findSpell`'s alias table (src/spells/subclassPreparedSpells.ts); before D406 they
+were skipped silently (D43).
