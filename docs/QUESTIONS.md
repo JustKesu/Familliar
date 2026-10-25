@@ -55,20 +55,6 @@ odmyslet. Rozhodnout, až se bude řešit multiclass.
 Nalezeno ve slice 7h.
 STATUS: Daniel 25. 10.: řešit, task naplánován.
 
-### `bonusWeaponDamage` nečte nikdo
-
-Nese ho jediný předmět — Bracers of Archery (+2) — a nezapadá nikam: do cesty
-pro zbraně ze slice 7e ne, protože je to nošený předmět bez `bonusWeapon`, a
-mezi šest polí ze slice 7h taky ne, protože je to poškození zbraně.
-
-Přičíst ho naplocho by bylo špatně: platí jen pro luky a kuše, a to omezení je
-v próze. Chce to podmíněné bonusy, které v appce zatím neexistují.
-
-Pro lučištníka je to běžný předmět, takže to není akademická díra.
-
-Nalezeno ve slice 7h.
-STATUS: Daniel 25. 10.: řešit, task naplánován.
-
 ### Boon of Fortitude — jednorázových +40 na úrovni 19
 
 Tenhle epic boon maximum hit pointů skutečně zvyšuje: o 40, jednou. Není to

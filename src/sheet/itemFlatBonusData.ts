@@ -11,6 +11,8 @@
 import { isAttuned } from '../calculation/attunement'
 import { BROAD_FLAT_BONUS_TARGETS, type FlatBonusTarget, type ItemFlatBonusGrant } from '../calculation/itemFlatBonuses'
 import { magicItemLabel } from '../calculation/magicBonus'
+import type { Contribution } from '../calculation/types'
+import { BRACERS_OF_ARCHERY } from '../calculation/weaponAttacks'
 import { buildInventoryResolver, customBonusKey, isFamiliarBonusTarget, wornAcBonusOf, type ItemRef } from '../inventory/inventoryData'
 import type { CharacterInventoryItem } from '../storage/character'
 
@@ -38,6 +40,15 @@ const NOT_ATTUNED = 'requires attunement and you are not attuned to it'
  * since the missing entry could have carried any bonus it is named on every
  * broad target (a single save or skill already shows the all-saves/all-checks line).
  */
+export function buildBracersOfArcheryBonus(inventory: readonly CharacterInventoryItem[], itemRefs: readonly ItemRef[]): Contribution[] {
+	const resolve = buildInventoryResolver(itemRefs)
+	for (const item of inventory) {
+		const { ref } = resolve(item)
+		if (ref?.name === BRACERS_OF_ARCHERY && ref.bonusWeaponDamage && isAttuned(item)) return [{ source: BRACERS_OF_ARCHERY, amount: ref.bonusWeaponDamage }]
+	}
+	return []
+}
+
 export function buildItemFlatBonusGrants(inventory: readonly CharacterInventoryItem[], itemRefs: readonly ItemRef[]): ItemFlatBonusGrant[] {
 	const resolve = buildInventoryResolver(itemRefs)
 	const grants: ItemFlatBonusGrant[] = []

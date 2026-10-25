@@ -145,6 +145,8 @@ export interface ItemRef {
 	bonusAbilityCheck?: number
 	/** On 1 item (Ioun Stone of Mastery). Parsed but deliberately not applied — see src/calculation/itemFlatBonuses.ts. */
 	bonusProficiencyBonus?: number
+	/** On 1 item (Bracers of Archery). Applied by name, only to the two bows — see BRACERS_OF_ARCHERY in src/calculation/weaponAttacks.ts (D402). */
+	bonusWeaponDamage?: number
 	/** items.json `ability` (D221): `static` → set, the additive shape → add with the extractor's `abilityMax`. `from` (Deck of Many Things) is not read. */
 	abilityEffects?: { ability: Ability; effect: ItemAbilityEffect }[]
 	/** `ability.choose` — the player picks the ability (Book of Vile Darkness); not supported, only named. */
@@ -654,6 +656,7 @@ export function extractItemRefs(parsed: unknown): ItemRef[] {
 				...bonusField(entry, 'bonusSpellSaveDc'),
 				...bonusField(entry, 'bonusAbilityCheck'),
 				...bonusField(entry, 'bonusProficiencyBonus'),
+				...bonusField(entry, 'bonusWeaponDamage'),
 				...abilityFields(entry['ability'], entry['abilityMax']),
 				...damageTypeArrayField(entry, 'resist'),
 				...damageTypeArrayField(entry, 'immune'),

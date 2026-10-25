@@ -79,6 +79,10 @@ export interface HeldWeapon {
 	pactWeapon?: boolean
 }
 
+/** D402, XDMG Bracers of Archery: "you gain a +2 bonus to damage rolls made with such weapons" — "such" is the Longbow and Shortbow it grants proficiency with; the data has only the bare bonusWeaponDamage "+2". */
+export const BRACERS_OF_ARCHERY = 'Bracers of Archery'
+const BRACERS_BOWS = ['Longbow', 'Shortbow']
+
 /** D401: the held invocations that change the marked pact weapon's attack line. */
 export interface PactWeaponEffects {
 	improvedPactWeapon: boolean
@@ -301,6 +305,8 @@ export function computeWeaponAttacks(
 	itemBonuses: { attack: readonly Contribution[]; damage: readonly Contribution[] } = { attack: [], damage: [] },
 	itemAbilityGrants: readonly ItemAbilityGrant[] = [],
 	pactEffects: PactWeaponEffects = { improvedPactWeapon: false, lifedrinker: false },
+	/** D402: the attuned Bracers of Archery' damage line, empty otherwise; applied to the two bows only. */
+	bracers: readonly Contribution[] = [],
 ): WeaponAttack[] {
 	const abilities: Ability[] = ['strength', 'dexterity']
 	const modifiers = {} as Record<Ability, number>
@@ -361,7 +367,7 @@ export function computeWeaponAttacks(
 							: { source: 'Improved Pact Weapon', amount: 1 },
 					]
 				: []
-		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, [...itemBonuses.damage, ...styleDamage, ...improved], monkWeapon ? martialArtsDie : null)
+		const damage = damageFor(weapon, using, modifiers, reason, row.magicBonus, row.grip, [...itemBonuses.damage, ...(BRACERS_BOWS.includes(weapon.name) && weapon.source === 'XPHB' ? bracers : []), ...styleDamage, ...improved], monkWeapon ? martialArtsDie : null)
 		if (row.pactWeapon && pactEffects.lifedrinker) {
 			damage.extraDamage = LIFEDRINKER_DAMAGE
 			damage.text = `${damage.text} + ${LIFEDRINKER_DAMAGE}`

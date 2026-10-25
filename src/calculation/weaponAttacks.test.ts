@@ -265,6 +265,25 @@ describe('computeWeaponAttacks — pact weapon (D401)', () => {
 	})
 })
 
+describe('computeWeaponAttacks — Bracers of Archery (D402)', () => {
+	const bracers = [{ source: 'Bracers of Archery', amount: 2 }]
+	const longbow: ResolvedWeapon = { ...shortbow, name: 'Longbow', weaponCategory: 'martial', dmg1: '1d8' }
+	const modifierOf = (attack: WeaponAttack) => (attack.damage.status === 'known' ? attack.damage.value.modifier : NaN)
+	const run = (weapons: ResolvedWeapon[], withBracers: boolean) =>
+		computeWeaponAttacks(character('Fighter', 1), weapons.map((weapon) => held(weapon)), martialGrants, [], null, undefined, [], undefined, withBracers ? bracers : [])
+
+	it('adds a named +2 damage line to the Longbow and the Shortbow only', () => {
+		const base = run([longbow, shortbow, longsword], false)
+		const withBracers = run([longbow, shortbow, longsword], true)
+		for (const name of ['Longbow', 'Shortbow']) {
+			const attack = attackNamed(withBracers, name)
+			expect(modifierOf(attack)).toBe(modifierOf(attackNamed(base, name)) + 2)
+			expect(attack.damage.status === 'known' && attack.damage.breakdown).toContainEqual({ source: 'Bracers of Archery', amount: 2 })
+		}
+		expect(modifierOf(attackNamed(withBracers, 'Longsword'))).toBe(modifierOf(attackNamed(base, 'Longsword')))
+	})
+})
+
 describe('computeWeaponAttacks — finesse', () => {
 	it('defaults to whichever of Strength and Dexterity is higher', () => {
 		const strong = attackNamed(computeWeaponAttacks(character('Rogue', 1), [held(rapier)], martialGrants), 'Rapier')

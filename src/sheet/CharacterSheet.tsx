@@ -85,7 +85,7 @@ import {
 import { ammoEntriesFor, autoSpendEntry, canSpendAmmo, spendAmmo, type AmmoEntry } from '../inventory/ammunition'
 import { loadItemEntryTemplates, type ItemEntryTemplate } from '../inventory/itemEntryResolver'
 import { buildEquippedGear, hasMageArmor, loadAcFormulaKeys } from './armourClassData'
-import { buildItemFlatBonusGrants } from './itemFlatBonusData'
+import { buildBracersOfArcheryBonus, buildItemFlatBonusGrants } from './itemFlatBonusData'
 import { buildItemAbilityGrants } from './itemAbilityScoreData'
 import { buildItemDarkvisionGrants, buildItemSenseGrants, buildItemSpeedAdjustments, buildItemSpeedModeGrants } from './itemEffectData'
 import { buildHeldWeapons, loadWeaponAttackData, type WeaponAttackData } from './weaponAttackData'
@@ -2399,7 +2399,7 @@ function CharacterSheetBody({
 	const weaponAttacks = computeWeaponAttacks(character, heldWeapons, weaponAttackData?.grants ?? [], feats, weaponAttackData?.martialArtsDie ?? null, {
 		attack: itemFlatBonuses.weaponAttack,
 		damage: itemFlatBonuses.weaponDamage,
-	}, itemAbilityGrants, pactInvocations)
+	}, itemAbilityGrants, pactInvocations, buildBracersOfArcheryBonus(character.inventory ?? [], itemRefs ?? []))
 	const attacksPerAction = computeAttacksPerAction(
 		weaponAttackData?.featureNames ?? [],
 		heldInvocations(character).map((pick) => pick.name),

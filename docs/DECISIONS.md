@@ -5633,3 +5633,14 @@ the Blade a nejvýš jeden řádek nese příznak (`CharacterInventoryItem.pactW
 +1 k útoku a damage jako vlastní řádek rozkladu, ne zbrani, která už má magický bonus; Lifedrinker (XPHB) přidává do textu
 damage „+ 1d6 Necrotic, Psychic, or Radiant“ bez započtení do průměru. Obojí platí jen pro označenou zbraň; bez označené zbraně se
 nic nemění. Thirsting Blade a Devouring Blade zůstávají podle D363. Rozhodl Daniel 25. 10. 2026.
+
+## D402 — Bracers of Archery: +2 damage jen Longbow a Shortbow (BA-1)
+
+`bonusWeaponDamage` („+2“) nese jediný předmět, Bracers of Archery (XDMG, vyžaduje attunement). Text říká „+2 bonus to damage
+rolls made with such weapons“, tedy s Longbow a Shortbow; data to omezení neznají, proto je ruční pravidlo podle přesného jména
+(styl D70): `BRACERS_OF_ARCHERY` a seznam dvou luků v `weaponAttacks.ts`, zbraň musí být XPHB Longbow/Shortbow (magické varianty
+jsou stejný řádek s `magicBonus`, takže se řeší samy). Bonus je vlastní řádek rozkladu „Bracers of Archery“ na řádcích Actions;
+ostatní zbraně nedostanou nic. Brána je stejná jako u ostatních bonusů z předmětů (`itemFlatBonusData.ts`): počítá se jen s
+attunementem, nošení se nekontroluje. Proficiency s oběma luky z Bracers se NEPŘIDÁVÁ: cesta pro zbraňovou proficiency z
+předmětů existuje jen pro vlastní předměty (`customProficiencies`), katalogový předmět ji nemá a stavět ji se nezadalo —
+zůstává otevřené. Rozhodl Daniel 25. 10. 2026.

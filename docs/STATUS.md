@@ -1343,6 +1343,8 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
   lone Soulknife has a maximum and Psi Warrior + Soulknife split into "Psionic Energy Die (Fighter)" / "(Rogue)" by the D336
   mechanism, unchanged. `e2e/psionicPools.spec.ts` a–c. D399 records the A-1b ASI chip wording.
 - PW-1 (D401): pact weapon flag, Improved Pact Weapon and Lifedrinker on the marked weapon only. `e2e/pactWeapon.spec.ts` a–f.
+- BA-1 (D402): attuned Bracers of Archery add a named +2 damage line to Longbow/Shortbow rows only (`buildBracersOfArcheryBonus`,
+  `BRACERS_OF_ARCHERY`). Bow proficiency from the Bracers is NOT granted (no catalog-item weapon proficiency path). `e2e/bracersOfArchery.spec.ts`.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:
