@@ -625,7 +625,8 @@ second segment instead.
 
 Only one pool is tabled by two classes (M10b, D336): Channel Divinity, in Cleric XPHB
 (above 0 from level 2: 2, 3 at 6, 4 at 18) and Paladin XPHB (above 0 from level 3: 2, 3 at
-11). Every other pool has exactly one table owner. All 30 Channel Divinity spenders are
+11). Every other pool has exactly one table owner, except Psionic Energy Die, which
+Soulknife tables under another name (P-PSI, below). All 30 Channel Divinity spenders are
 class or subclass feature records with a `className`; no feat or optional feature spends
 it, so each spend can be tied to its granting class. "Guided Strike" spends it under two
 classes (Cleric War XPHB and Paladin Conquest XGE). A Paladin below level 3 has no
@@ -644,6 +645,30 @@ but tables it as "Soulknife Energy Die Number": the column carries the
 subclass's name, not the pool's, so no normalisation reaches it and a
 Soulknife's maximum reads as not in the data. Two subclasses, two conventions,
 one pool name.
+
+P-PSI (`scripts/p-psi.js`, 2026-10-25). Both XPHB tables are identical in value
+(Fighter / Rogue level 3: d6 ×4, 5: d8 ×6, 9: d8 ×8, 11: d10 ×8, 13: d10 ×10,
+17: d12 ×12); only the `{@tip}` second segments differ ("Psionic Energy Die
+Size/Number" vs "Soulknife Energy Die Size/Number"). The prose names the tables a
+third way: Psi Warrior's Psionic Power says "The Psi Warrior Energy Dice table",
+Soulknife's "The Soulknife Energy Dice table". Every spender in both subclasses
+says "Psionic Energy Die"; "Soulknife Energy Die" occurs in no feature text
+outside that one table reference. Spenders: Psi Warrior 7 with `consumes`
+(Protective Field, Psionic Strike, Telekinetic Movement, Psi-Powered Leap,
+Guarded Mind, Bulwark of Force, Telekinetic Master); Soulknife 5 with `consumes`
+(Psi-Bolstered Knack, Psychic Whispers, Homing Strikes, Psychic Teleportation,
+Psychic Veil) plus Rend Mind in prose (3 dice). Both Psionic Power features carry
+the same two rules sentences: "regain one … when you finish a Short Rest, and …
+all of them when you finish a Long Rest", and "Any features in this subclass that
+use a Psionic Energy Die use only the dice from this subclass." So the rules make
+the two pools separate, each with its own count and die size. No other refresh
+trigger exists; Psychic Whispers' first use after a Long Rest costs no die. No
+sentence in the 15 data files pairs "multiclass" with Extra Attack, Channel
+Divinity, Unarmored Defense or "same name" — the PHB multiclass rules are not in
+the data. Across classes.json, the consumes names and the homebrew file, the
+Soulknife column is the only count column no `consumes.name` reaches ("Bardic
+Die" is a die size); TGS2 subclasses have no table groups and no `consumes`, and
+no "expend a/one … Die/Dice/Points" pool in prose.
 
 Only the `{@tip}` tag puts its key in the SECOND segment. Every resource
 column outside those two subclasses is a bare string ("Rages", "Focus Points",
