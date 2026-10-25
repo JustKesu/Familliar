@@ -768,9 +768,24 @@ Recovery, is 40:
   a Long-Rest-only ability and a separate Short-or-Long-Rest spell use, Natural
   Recovery a free Circle-spell cast and a separate slot-recovery recharge — so a
   max-1 tracker would conflate them. Natural Recovery was in the first 24 and is
-  now removed. Both stay "not in the data" until a feature can carry more than
-  one resource. The exclusion is by name (`TWO_INDEPENDENT_LIMITS`), since nothing
-  in the text tells them apart from a genuine single use.
+  now removed. The exclusion is by name, since nothing in the text tells them
+  apart from a genuine single use. Since D405 they and Magic Item Tinker are
+  tracked as two one-use sub-limits each (`TWO_LIMIT_FEATURES`, below).
+
+TL-1 (D405), texts as the data has them (one record each, markup stripped):
+
+- Aberrant Dragonmark|EFA (feat): "Once you've used this benefit, you can't use
+  it again until you finish a Long Rest." and, for the 1st-level spell, "You can
+  cast it once without a spell slot, and you regain the ability to cast it in
+  that way when you finish a Short Rest or Long Rest." → benefit 1/LR, spell 1/SR.
+- Natural Recovery|XPHB (Druid, Land, level 6): a level 1+ Circle spell "without
+  expending a spell slot, and you must finish a Long Rest before you do so
+  again"; slot recovery happens on a Short Rest but "Once you recover spell slots
+  with this feature, you can't do so again until you finish a Long Rest." →
+  both 1/LR.
+- Magic Item Tinker|EFA (Artificer 6): three sub-entries; Charge has no limit,
+  Drain and Transmute each end "Once you use this feature, you can't do so again
+  until you finish a Long Rest." → both 1/LR.
 
 The 9 "count" features, re-examined (D120). Only 2 state a real count of their
 own uses: Action Surge ("twice before a rest" from 17) and Indomitable ("twice
@@ -791,7 +806,7 @@ matched on something else:
 `STATES_A_COUNT` now matches only "number of times|uses", "twice|thrice|N
 times" not followed by "your", and "N uses" not followed by "of". The 6 of
 the first two bullets are single-use (46 in all); Magic Item Tinker joins
-`TWO_INDEPENDENT_LIMITS`. Action Surge and Indomitable read a hand-written
+the two-limit set (since D405 `TWO_LIMIT_FEATURES`). Action Surge and Indomitable read a hand-written
 Fighter-level table, `LEVEL_SCALED_USES` (D120): 1/2 at 2/17 and 1/2/3 at
 9/13/17.
 

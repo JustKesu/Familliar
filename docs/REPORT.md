@@ -1,33 +1,31 @@
-# REPORT — BF-1: Boon of Fortitude max HP (D404)
+# TL-1 — two use limits per feature (D405)
 
-Setup: `git fetch origin` + `git merge --ff-only origin/main` → already up to date, HEAD fee4d51.
+Setup: fetch + `merge --ff-only` → "Already up to date", HEAD bef24fc. No subagent used.
 
-## Changed
-- `src/calculation/maxHitPoints.ts`: `'Boon of Fortitude': { flat: 40, perLevel: 0, axis: characterLevel }` added to
-  `HIT_POINT_BONUS_RULES`; table comment now says four features and no longer points to QUESTIONS.md; "three names" wording in
-  the `computeMaxHitPoints` doc comment dropped. No code path change was needed: the loop already builds the label from
-  `flat > 0` / `perLevel > 0` parts, so the breakdown line is `Boon of Fortitude (+40): +40`.
-- `src/sheet/CharacterSheet.tsx`: one comment ("three names" → "names") above the unchanged call.
-- Source path check: all three callers (`CharacterSheet.tsx`, `hpDefault.ts`, `HitPointsPicker.tsx`) pass granted features +
-  `characterFeats()` names + species traits; `characterFeats` → `featInstances` includes `featAsiChoices` kind `feat`, so a
-  level-19 ASI-slot feat reaches `bonusFeatureNames` like Tough does. Manual (Manage Feats) feats too.
-- Current HP follow (D381) untouched; covered by e2e c.
-- Docs: D404 (Czech) in DECISIONS.md; QUESTIONS.md entries "Magic Initiate parent entry" and "Boon of Fortitude" removed;
-  STATUS.md: BF-1 line + the 8a table description.
+## STEP 1 findings (scripts/tl1-texts.js, one record each, all split into exactly two limits)
+- Aberrant Dragonmark|EFA: "Once you've used this benefit … until you finish a Long Rest" → **benefit** 1/LR; 1st-level spell "once without a spell slot … regain … Short Rest or Long Rest" → **spell** 1/SR.
+- Natural Recovery|XPHB (Land 6): free Circle spell "must finish a Long Rest before you do so again" → **free spell** 1/LR; slot recovery (done on a Short Rest) "can't do so again until you finish a Long Rest" → **slot recovery** 1/LR.
+- Magic Item Tinker|EFA (Artificer 6): Charge unlimited; **Drain** 1/LR, **Transmute** 1/LR.
+- Old `resourceUses["Natural Recovery"]`: nothing reads a bare key any more; `afterLongRest` empties `resourceUses`, unclaimed keys are already left alone elsewhere (resourceUsesWithinMaxima, afterShortRest). Option chosen: **drop**, no mapping (a conflated max-1 count has no single target), no schema bump.
 
-## Tests
-- Unit `maxHitPoints.test.ts`: table-keys test now expects four names; new test: +40 at levels 5, 19, 20 (no growth), source
-  `Boon of Fortitude (+40)`.
-- e2e `e2e/boonOfFortitude.spec.ts` (Fighter 19, CON 13, seeded schema 63 via localStorage; boon's +1 put on STR so CON is
-  unchanged): a) boon as level-19 `featAsiChoices` feat → 177/177 and dialog line `Boon of Fortitude (+40): +40`;
-  b) without it → 137/137, no boon line; c) 130/137, boon added in Manage Feats → 170/177 (D381 follow).
-- typecheck clean; test 190 files / 3472 passed; validate-data 177/177; e2e 732 passed (2.6 min).
+## Changed places (9)
+- `src/calculation/resources.ts`: `TWO_INDEPENDENT_LIMITS` → exported `TWO_LIMIT_FEATURES` table (labels + rest, text cited), `subLimitKey`, `subLimitKeys`; `computeCharacterResources` emits two resources `Name (label)`, max known 1, own `shortRest`.
+- `src/calculation/freeCastResources.ts`: `SHARED_OWNER_ANY_SPELL` — Aberrant Dragonmark's free cast spends `Aberrant Dragonmark (spell)` whichever spell was picked (D190 pattern), so the spell row and the feature row share one counter. The old `spell:feat:Aberrant Dragonmark…` key is dropped the same way.
+- `src/sheet/CharacterSheet.tsx`: new `FeatureUses` component, used by Actions groups and Features & Traits; one plain `UseBoxes` for normal features, a labelled stack for two-limit ones.
+- `src/index.css`: `.sheet__use-limits`, `.sheet__use-limit`, `.sheet__use-limit-label`.
+- `scripts/validate-data.js`: HP bonus guard names list + comment now include Boon of Fortitude (4 names resolve).
+- Tests: `resources.test.ts`, `freeCastResources.test.ts`, new `e2e/twoLimits.spec.ts`.
+- Docs: D405 (DECISIONS), QUESTIONS entry removed, DATA.md texts, STATUS.md.
 
-## Decisions / notes
-- None taken in code beyond the prompt.
-- `validate-data`'s "hit point bonus table guard (D93/D95)" still checks its own list of 3 names; it was not extended to
-  Boon of Fortitude (not asked). Planning chat may want the guard to cover the fourth row.
-- No subagent used.
+## Verified
+- typecheck clean; unit 3474/3474; validate-data 177/177; e2e 736/736 (2.5 min).
+- Unit: sub-limit names/max/rest for all three; `subLimitKeys` null for others; real-data guard now 80 known maxima (78 single uses, +6), `Aberrant Dragonmark (spell)` in the Short Rest set; Dragonmark free cast key.
+- e2e `twoLimits.spec.ts`: a) Land Druid 6 — two Natural Recovery rows, one box each, labels, no bare counter, also on Features & Traits; b) using free spell leaves slot recovery, stored `{ "Natural Recovery (free spell)": 1 }`; c) Short Rest keeps both, Long Rest clears both; d) Wild Resurgence keeps its single unlabelled set, an old bare `Natural Recovery: 1` shows nowhere.
+
+## Decisions taken in code
+- Labels: benefit / spell, free spell / slot recovery, Drain / Transmute.
+- Dragonmark spell limit shares the free-cast counter rather than a second independent box (avoids two counters for one limit).
+- Old values dropped, not mapped; cleared at the next Long Rest.
 
 ## Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Changed screens: Hit points details dialog (new "Boon of Fortitude (+40)" line when the boon is taken); sheet HP value.
+Changed screens: Actions and Features & Traits rows of Natural Recovery (Land Druid 6+), Aberrant Dragonmark (feat), Magic Item Tinker (Artificer 6+) — two labelled box lines right-aligned in the row.

@@ -5673,3 +5673,15 @@ jako u ostatních tří (featy včetně featu na ASI úrovni, granted features, 
 přes D381. Léčení navíc (CON modifikátor jednou za tah) zůstává jen text. Uzavírá otázku „Boon of Fortitude“ a s ní i otázku
 „Magic Initiate parent entry“ (plánovací chat 25. 10. ověřil, že seznam featů nabízí jediný „Magic Initiate“ s volbou
 Cleric/Druid/Wizard). Rozhodl Daniel 25. 10. 2026.
+
+## D405 — Dva limity použití = dva řádky boxů (TL-1)
+
+Aberrant Dragonmark, Natural Recovery a Magic Item Tinker nesou v jednom záznamu dva nezávislé limity (D119, D120). Místo
+žádného trackeru má každý limit vlastní řádek s vlastním boxem: ručně psaná tabulka `TWO_LIMIT_FEATURES` v
+`calculation/resources.ts` (přesné jméno featury → dva štítky z jejího textu, každý max 1 a vlastní rest), klíč v
+`play.resourceUses` je „Jméno (štítek)“. Aberrant Dragonmark (benefit) Long Rest, (spell) Short nebo Long Rest; Natural
+Recovery (free spell) a (slot recovery) obojí Long Rest; Magic Item Tinker (Drain) a (Transmute) obojí Long Rest, Charge
+bez limitu. Bezplatné seslání Aberrant Dragonmark spotřebovává týž klíč „Aberrant Dragonmark (spell)“ jako řádek featury
+(vzor D190), ať hráč vybral jakékoli kouzlo. Řádky se ukážou na Actions i Features & Traits pod featurou; `TWO_INDEPENDENT_LIMITS`
+zrušeno. Staré hodnoty pod holým jménem (a starý `spell:` klíč Dragonmarku) se zahazují: nic je nečte, nejbližší Long Rest
+je smaže, bez zvýšení schemaVersion. Rozhodl Daniel 25. 10. 2026.

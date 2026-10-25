@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, type CharacterResource, type ResourceFeature } from './resources'
+import { computeCharacterResources, resolveResourceName, resourceUsesWithinMaxima, shortRestRecovery, speciesTraitUses, subLimitKeys, type CharacterResource, type ResourceFeature } from './resources'
 import type { Character } from '../storage/character'
 import { canSpendResource, freeCastCounter } from './freeCastResources'
 
@@ -304,12 +304,25 @@ describe('one use where the text states only a recharge', () => {
 		}
 	})
 
-	it('leaves Aberrant Dragonmark and Natural Recovery untracked — two independent limits in one record (D119)', () => {
-		for (const feature of [ABERRANT_DRAGONMARK, NATURAL_RECOVERY]) {
-			const [resource] = computeCharacterResources(character('Druid', 5), CLASSES, [feature])
-			expect(resource.max.status).toBe('unknown')
-			expect(resource.shortRest).toBeNull()
-		}
+	it('gives Aberrant Dragonmark and Natural Recovery one row per limit, each with its own rest (D405)', () => {
+		const rows = (feature: ResourceFeature) =>
+			computeCharacterResources(character('Druid', 6), CLASSES, [feature]).map((r) => [r.name, r.max.status === 'known' && r.max.value, r.shortRest])
+		expect(rows(ABERRANT_DRAGONMARK)).toEqual([
+			['Aberrant Dragonmark (benefit)', 1, null],
+			['Aberrant Dragonmark (spell)', 1, 'all'],
+		])
+		expect(rows(NATURAL_RECOVERY)).toEqual([
+			['Natural Recovery (free spell)', 1, null],
+			['Natural Recovery (slot recovery)', 1, null],
+		])
+	})
+
+	it('names the sub-limit keys only for the three two-limit features', () => {
+		expect(subLimitKeys('Natural Recovery')).toEqual([
+			{ label: 'free spell', key: 'Natural Recovery (free spell)' },
+			{ label: 'slot recovery', key: 'Natural Recovery (slot recovery)' },
+		])
+		expect(subLimitKeys('Rage')).toBeNull()
 	})
 
 	it('stays unknown where the text states a count', () => {
@@ -325,10 +338,12 @@ describe('one use where the text states only a recharge', () => {
 		},
 	)
 
-	it('leaves Magic Item Tinker untracked — two independent limits in one record (D120)', () => {
-		const [tinker] = computeCharacterResources(character('Artificer', 20), CLASSES, [MAGIC_ITEM_TINKER])
-		expect(tinker.max.status).toBe('unknown')
-		expect(tinker.shortRest).toBeNull()
+	it('splits Magic Item Tinker into Drain and Transmute, once per Long Rest each (D405)', () => {
+		const tinker = computeCharacterResources(character('Artificer', 20), CLASSES, [MAGIC_ITEM_TINKER])
+		expect(tinker.map((r) => [r.name, r.max.status === 'known' && r.max.value, r.shortRest])).toEqual([
+			['Magic Item Tinker (Drain)', 1, null],
+			['Magic Item Tinker (Transmute)', 1, null],
+		])
 	})
 
 	it('gives 1 to a "can’t use this benefit again" recharge nested in a named sub-entry, under the record’s name (D197)', () => {
@@ -579,8 +594,13 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 		expect(max?.status === 'known' && max.value).toBe(1)
 	})
 
-	it.each(['Aberrant Dragonmark', 'Natural Recovery', 'Magic Item Tinker'])('%s: no tracker', (name) => {
-		expect(byName.get(name)?.max.status).toBe('unknown')
+	it.each(['Aberrant Dragonmark', 'Natural Recovery', 'Magic Item Tinker'])('%s: two one-use sub-limits, no bare-name tracker (D405)', (name) => {
+		expect(byName.has(name)).toBe(false)
+		for (const { key } of subLimitKeys(name) ?? []) {
+			const max = byName.get(key)?.max
+			expect(max?.status === 'known' && max.value).toBe(1)
+		}
+		expect(subLimitKeys(name)).toHaveLength(2)
 	})
 
 	it('reads Action Surge and Indomitable at Fighter 20 from the level table (D120)', () => {
@@ -600,9 +620,9 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 	// Umbral Form, Necrotic Husk, Survivor), -2 with their superseded subclasses (Telekinetic Master|TCE, Strength of the Grave|XGE).
 	// D201: +12 FRHoF (subclass features, Epic Boons, Genie Magic), 3 of them Short Rest (Boon of Terror, Boon of the Soul Drinker, Group Recovery).
 	// D367: +5 TGS2 (Improved Launch, Bloodbound, Hurricane on a Short Rest; Sight Beyond Sight, Arcane Conduit on a Long Rest).
-	it('holds 74 known maxima: 72 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197, +12 of D201, +5 of D367) and the 2 level-table ones', () => {
-		expect(singleUse).toHaveLength(74)
-		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(72)
+	it('holds 80 known maxima: 78 single uses (the 40 of D119, the 6 of D120, net +7 of D194, +2 of D197, +12 of D201, +5 of D367, the 6 sub-limits of D405) and the 2 level-table ones', () => {
+		expect(singleUse).toHaveLength(80)
+		expect(singleUse.filter((resource) => resource.max.status === 'known' && resource.max.value === 1)).toHaveLength(78)
 	})
 
 	it('returns the whole pool on a Short Rest for exactly the ones whose recharge sentence names one', () => {
@@ -613,6 +633,7 @@ describe('the implicit single-use set — against the generated data (D119)', ()
 				'Unbreakable Majesty', 'Divine Reaper', 'Empowered Channeling', 'Necrotic Husk',
 				'Boon of Terror', 'Boon of the Soul Drinker', 'Group Recovery',
 				'Improved Launch', 'Bloodbound', 'Hurricane',
+				'Aberrant Dragonmark (spell)',
 			].sort(),
 		)
 	})

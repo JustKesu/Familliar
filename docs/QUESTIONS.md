@@ -29,13 +29,3 @@ neumí (raceSpells.ts, `deferredChoiceNote`).
 Není bojově relevantní — je to bonusový cantrip, ne útok/DC.
 STATUS: Daniel 25. 10.: řešit, task naplánován.
 
-### Aberrant Dragonmark, Natural Recovery, Magic Item Tinker — dva nezávislé limity v jedné featuře
-
-D119/D120: tyhle tři featury nesou v jednom datovém záznamu dva nezávislé
-rest limity (např. Natural Recovery: bezplatné seslání kouzla Kruhu na
-Long Rest + zvlášť obnova slotů). Jeden max-1 tracker by je tiše slil,
-takže zůstávají v `TWO_INDEPENDENT_LIMITS` bez trackeru vůbec. Řešení
-by znamenalo umět modelovat víc než jeden Uses zdroj na jednu featuru —
-appka to dnes neumí nikde. Rozhodnout, až se na to dojde (možná víc
-featur má stejný tvar, mezi zbylými ~48 se to nekontrolovalo).
-STATUS: Daniel 25. 10.: řešit, task naplánován.

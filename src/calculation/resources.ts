@@ -135,14 +135,35 @@ const STATES_A_COUNT = new RegExp(
 )
 
 /*
- * One record, two independent limits: a single max-1 tracker would conflate
- * them. Aberrant Dragonmark is a Long-Rest-only ability plus a separate
- * Short-or-Long-Rest spell use; Natural Recovery is a free Circle-spell cast
- * plus a separate slot-recovery recharge; Magic Item Tinker's Drain and Transmute
- * are each once per Long Rest. Left unknown until a resource can be modelled
- * twice per feature (D119, D120).
+ * One record, two independent limits, each one use tracked under its own key
+ * (D405; D119, D120 left them untracked). Labels are the feature's own words.
  */
-const TWO_INDEPENDENT_LIMITS = new Set(['Aberrant Dragonmark', 'Natural Recovery', 'Magic Item Tinker'])
+export const TWO_LIMIT_FEATURES: Record<string, readonly { label: string; shortRest: RestRecovery | null }[]> = {
+	// EFA: "Once you've used this benefit, you can't use it again until you finish a Long Rest." / "cast it once without a spell slot … when you finish a Short Rest or Long Rest."
+	'Aberrant Dragonmark': [
+		{ label: 'benefit', shortRest: null },
+		{ label: 'spell', shortRest: 'all' },
+	],
+	// XPHB: "without expending a spell slot, and you must finish a Long Rest before you do so again" / "Once you recover spell slots with this feature, you can't do so again until you finish a Long Rest."
+	'Natural Recovery': [
+		{ label: 'free spell', shortRest: null },
+		{ label: 'slot recovery', shortRest: null },
+	],
+	// EFA: Drain and Transmute each end "Once you use this feature, you can't do so again until you finish a Long Rest."; Charge is unlimited.
+	'Magic Item Tinker': [
+		{ label: 'Drain', shortRest: null },
+		{ label: 'Transmute', shortRest: null },
+	],
+}
+
+export function subLimitKey(name: string, label: string): string {
+	return `${name} (${label})`
+}
+
+/** The keys a two-limit feature's uses are stored under, or null for any other feature. */
+export function subLimitKeys(name: string): { label: string; key: string }[] | null {
+	return TWO_LIMIT_FEATURES[name]?.map(({ label }) => ({ label, key: subLimitKey(name, label) })) ?? null
+}
 
 /*
  * Level breakpoints read off the feature text, which states them in prose only
@@ -167,7 +188,7 @@ function levelScaledMax(name: string, character: Character): Calculated<number> 
 }
 
 function isImplicitSingleUse(name: string, text: string): boolean {
-	return !TWO_INDEPENDENT_LIMITS.has(name) && SINGLE_USE_RECHARGE.test(text) && !STATES_A_COUNT.test(text)
+	return !(name in TWO_LIMIT_FEATURES) && SINGLE_USE_RECHARGE.test(text) && !STATES_A_COUNT.test(text)
 }
 
 /*
@@ -205,7 +226,7 @@ export interface SpeciesTraitUses {
 	shortRest: boolean
 }
 
-/** A species trait's own tracked uses, or null. A trait stating both (Merge with Stone) has two independent limits and gets neither, as TWO_INDEPENDENT_LIMITS does for class features. */
+/** A species trait's own tracked uses, or null. A trait stating both (Merge with Stone) has two independent limits and gets neither. */
 export function speciesTraitUses(trait: ResourceFeature): SpeciesTraitUses | null {
 	const text = plainText(trait.entries).join(' ')
 	const byProficiency = text.match(SPECIES_PROFICIENCY_USES)
@@ -474,6 +495,13 @@ export function computeCharacterResources(
 
 	return [...found.entries()]
 		.flatMap(([name, dataNames]): CharacterResource[] => {
+			const limits = TWO_LIMIT_FEATURES[name]
+			if (limits && !pools.has(name)) {
+				return limits.map(({ label, shortRest }) => {
+					const key = subLimitKey(name, label)
+					return { name: key, dataNames, max: known(1, [{ source: `${key}: once per rest`, amount: 1 }]), shortRest }
+				})
+			}
 			const granters = pools.has(name) ? poolGrantingClasses(name, character, parsedClasses) : []
 			// D336: one pool per granting class, each from its own table at its own level and its own features' recovery.
 			if (granters.length > 1) {

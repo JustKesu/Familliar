@@ -2,7 +2,7 @@ import type { Ability } from '../abilities/abilityScores'
 import type { SpellUsage } from '../spells/subclassPreparedSpells'
 import { ABILITY_ABBREVIATIONS } from './abilityAbbreviations'
 import type { AbilityScoreValue } from './abilityScores'
-import { type CharacterResource, resolveResourceName } from './resources'
+import { type CharacterResource, resolveResourceName, subLimitKey } from './resources'
 import { type Calculated, known, unknown } from './types'
 
 /** One source's grant of a spell (SpellList.tsx's SpellGrant). */
@@ -37,6 +37,9 @@ const SHARED_OWNERS: Record<string, Record<string, string>> = {
 	Warlock: { 'contact other plane': 'Contact Patron' },
 }
 
+// D405: the feat's free cast is its own second limit, whichever spell the player picked.
+const SHARED_OWNER_ANY_SPELL: Record<string, string> = { 'Aberrant Dragonmark': subLimitKey('Aberrant Dragonmark', 'spell') }
+
 const ABILITY_BY_ABBREVIATION = Object.fromEntries(Object.entries(ABILITY_ABBREVIATIONS).map(([ability, abbreviation]) => [abbreviation, ability])) as Record<
 	string,
 	Ability
@@ -60,7 +63,7 @@ export function freeCastCounter(spell: { name: string; source: string }, grant: 
 		case 'freePerLongRestByAbility':
 		case 'freePerLongRestByProficiencyBonus': {
 			const spellName = spell.name.toLowerCase()
-			const shared = SHARED_OWNERS[grant.originName]?.[spellName]
+			const shared = SHARED_OWNERS[grant.originName]?.[spellName] ?? SHARED_OWNER_ANY_SPELL[grant.originName]
 			if (shared) return { key: shared, cost: 1 }
 			const legacyKey = `spell:${grant.origin}:${grant.originName}:${spellName}|${spell.source.toUpperCase()}`
 			if (grant.instanceKey === undefined) return { key: legacyKey, cost: 1 }

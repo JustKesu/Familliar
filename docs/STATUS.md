@@ -849,9 +849,12 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
      `proficiency` ho neblokuje (D119 — byl to vždy DC nebo vzorec, ne počet).
      `isImplicitSingleUse` v `calculation/resources.ts`, rozklad „X: can't be
      used again until a rest, no count stated". 40 z 92 jmen v datech (seznam
-     v DATA.md), UI beze změny — `UsesTracker` se ukáže sám. Aberrant Dragonmark
-     a Natural Recovery jsou vyňaté jménem (`TWO_INDEPENDENT_LIMITS`, D119): dva
-     nezávislé limity v jednom záznamu, tracker nemají. Testy: blok „one use
+     v DATA.md), UI beze změny — `UsesTracker` se ukáže sám. Aberrant Dragonmark,
+     Natural Recovery a Magic Item Tinker mají od D405 dva řádky boxů, jeden na
+     každý limit (`TWO_LIMIT_FEATURES`, klíč „Jméno (štítek)“, max 1, vlastní
+     rest; komponenta `FeatureUses` na Actions i Features & Traits; free cast
+     Dragonmarku sdílí klíč „Aberrant Dragonmark (spell)“). Staré hodnoty pod
+     holým jménem nic nečte, smaže je Long Rest. e2e `twoLimits.spec.ts`. Testy: blok „one use
      where the text states only a recharge" a hlídač proti reálným datům v
      `resources.test.ts`. Ověřeno v prohlížeči (Monk 2: Uncanny Metabolism
      `Uses: 0 / 1`).
@@ -869,8 +872,7 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    - D120: `STATES_A_COUNT` chytá jen počet vlastních použití (ne „twice your
      X", ne „uses of Rage/Wild Shape") → Superior Atlas, Undying Sentinel,
      Psi-Powered Leap, Persistent Rage, Wild Resurgence, Archdruid mají max 1
-     (46 jednoduchých použití). Magic Item Tinker v `TWO_INDEPENDENT_LIMITS`,
-     bez trackeru. Action Surge (1, od Fighter 17 → 2) a Indomitable (1, od 13
+     (46 jednoduchých použití). Magic Item Tinker dva řádky (D405). Action Surge (1, od Fighter 17 → 2) a Indomitable (1, od 13
      → 2, od 17 → 3) z ručně psané `LEVEL_SCALED_USES`. Short Rest vrací celý
      pool i Action Surge a Psi-Powered Leap (9 jmen celkem); Indomitable jen
      Long Rest. 48 známých maxim bez tabulky. Testy v `resources.test.ts`

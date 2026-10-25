@@ -50,6 +50,11 @@ describe('freeCastResources (D190)', () => {
 		expect(summary(freeCastResources([archfey], noScores))).toEqual([['Steps of the Fey', 'Ability scores have not been set for this character yet.', null]])
 	})
 
+	it("Aberrant Dragonmark's free cast spends the feat's own spell sub-limit, whichever spell was picked (D405)", () => {
+		const grant = { origin: 'feat', originName: 'Aberrant Dragonmark', usage: { kind: 'onceFreePerShortOrLongRest' } as SpellUsage, instanceKey: 'asi:4' }
+		expect(freeCastCounter({ name: 'Shield', source: 'XPHB' }, grant)).toEqual({ key: 'Aberrant Dragonmark (spell)', cost: 1 })
+	})
+
 	it('grants with no counter add nothing: a slot cast, no slot, ritual, at will, and a resource cost', () => {
 		const spells = [
 			spell('Hex', 'subclass', 'Fiend Patron', null),

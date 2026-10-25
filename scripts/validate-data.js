@@ -278,7 +278,7 @@ const PACT_OF_THE_CHAIN_FORMS = [
  * TypeScript build; if a name changes there without changing here, the
  * "resolves to exactly one entry" check below catches it.
  */
-const HIT_POINT_BONUS_TABLE_NAMES = ["Tough", "Dwarven Toughness", "Draconic Resilience"];
+const HIT_POINT_BONUS_TABLE_NAMES = ["Tough", "Dwarven Toughness", "Draconic Resilience", "Boon of Fortitude"];
 
 /*
  * The full set of entries a phrase scan for "hit point maximum" (in any of its
@@ -294,8 +294,7 @@ const HIT_POINT_BONUS_TABLE_NAMES = ["Tough", "Dwarven Toughness", "Draconic Res
  *   Unearthly Recovery   healing computed from the maximum
  *   Searing Vengeance     healing computed from the maximum (the XGE copy left
  *                         with its superseded subclass, D194)
- *   Boon of Fortitude    a real but ONE-OFF +40 at level 19, out of scope
- *                        (docs/QUESTIONS.md)
+ *   Boon of Fortitude    a real but ONE-OFF +40, now the table's fourth row (D404)
  *
  * A candidate outside this set is a hit point source nobody has classified
  * yet; a known one that vanishes means a name or a book changed underneath

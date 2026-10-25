@@ -37,7 +37,7 @@ import { flatBonusesByTarget } from '../calculation/itemFlatBonuses'
 import { computeProficiencyBonus } from '../calculation/proficiencyBonus'
 import { resourceKeyFor, withLegacyPoolUses } from '../calculation/classPools'
 import { canSpendResource, freeCastResources, remainingUses, withFreeCastResources, withLegacyFreeCastUses } from '../calculation/freeCastResources'
-import { computeCharacterResources, shortRestRecovery, type ResourceFeature } from '../calculation/resources'
+import { computeCharacterResources, shortRestRecovery, subLimitKeys, type ResourceFeature } from '../calculation/resources'
 import { loadDataFile } from '../dataLoader/dataLoader'
 import { toolsHeldElsewhere, type ProficiencyCategory } from '../calculation/proficiencies'
 import { computeSavingThrows, type ClassSavingThrowProficiencies, type SavingThrowValue } from '../calculation/savingThrows'
@@ -616,6 +616,45 @@ function UseBoxes({ name, spent, max, recharge, onChange }: { name: string; spen
 	)
 }
 
+/** A feature row's use boxes: one set, or one labelled set per limit for a two-limit feature (D405). */
+function FeatureUses({
+	resourceName,
+	resourceMaxima,
+	resourceUses,
+	resourceRecharge,
+	onSpendResource,
+}: {
+	resourceName: string
+	resourceMaxima: ReadonlyMap<string, number>
+	resourceUses: Record<string, number>
+	resourceRecharge: ReadonlyMap<string, string>
+	onSpendResource?: (name: string, delta: 1 | -1) => void
+}): ReactNode {
+	const keys: { label: string | null; key: string }[] = subLimitKeys(resourceName) ?? [{ label: null, key: resourceName }]
+	const limits = keys.filter(({ key }) => resourceMaxima.has(key))
+	if (limits.length === 0) return null
+	const boxes = (key: string) => (
+		<UseBoxes
+			name={key}
+			spent={resourceUses[key] ?? 0}
+			max={resourceMaxima.get(key) ?? 0}
+			recharge={resourceRecharge.get(key)}
+			onChange={onSpendResource ? (delta) => onSpendResource(key, delta) : undefined}
+		/>
+	)
+	if (limits[0].label === null) return boxes(resourceName)
+	return (
+		<span className="sheet__use-limits">
+			{limits.map(({ label, key }) => (
+				<span key={key} className="sheet__use-limit">
+					<span className="sheet__use-limit-label">{label}</span>
+					{boxes(key)}
+				</span>
+			))}
+		</span>
+	)
+}
+
 /** One collapsible Actions-group row (D182): ▸ name source … uses, the full text below when open. Open state is this row's own UI state (D116). */
 /** D313: Breath Weapon's range, save and damage, in the formats a spell row uses. */
 function BreathWeaponCells({ breathWeapon, onRoll }: { breathWeapon: BreathWeapon; onRoll: (report: RollReport) => void }): ReactNode {
@@ -851,7 +890,6 @@ function ActionsSection({
 							<h3>{group.label}</h3>
 							<ul>
 								{group.features.map((feature) => {
-									const max = resourceMaxima.get(feature.resourceName)
 									return (
 										<ActionGroupRow
 											key={feature.key}
@@ -859,15 +897,13 @@ function ActionsSection({
 											source={feature.origin}
 											cells={feature.key === `species|${BREATH_WEAPON.toLowerCase()}` && <BreathWeaponCells breathWeapon={breathWeapon} onRoll={onRoll} />}
 											uses={
-												max !== undefined && (
-													<UseBoxes
-														name={feature.resourceName}
-														spent={resourceUses[feature.resourceName] ?? 0}
-														max={max}
-														recharge={resourceRecharge.get(feature.resourceName)}
-														onChange={onSpendResource ? (delta) => onSpendResource(feature.resourceName, delta) : undefined}
-													/>
-												)
+												<FeatureUses
+													resourceName={feature.resourceName}
+													resourceMaxima={resourceMaxima}
+													resourceUses={resourceUses}
+													resourceRecharge={resourceRecharge}
+													onSpendResource={onSpendResource}
+												/>
 											}
 										>
 											<ResolvedEntries entries={feature.entries} data={resolverData} />
@@ -1341,21 +1377,19 @@ function FeaturesSection({
 			) : (
 				<ul>
 					{group.rows.map((row) => {
-						const max = row.resourceName !== null ? resourceMaxima.get(row.resourceName) : undefined
-						const resourceName = row.resourceName ?? ''
 						return (
 							<ActionGroupRow
 								key={row.key}
 								name={row.name}
 								source={row.source}
 								uses={
-									max !== undefined && (
-										<UseBoxes
-											name={resourceName}
-											spent={resourceUses[resourceName] ?? 0}
-											max={max}
-											recharge={resourceRecharge.get(resourceName)}
-											onChange={onSpendResource ? (delta) => onSpendResource(resourceName, delta) : undefined}
+									row.resourceName !== null && (
+										<FeatureUses
+											resourceName={row.resourceName}
+											resourceMaxima={resourceMaxima}
+											resourceUses={resourceUses}
+											resourceRecharge={resourceRecharge}
+											onSpendResource={onSpendResource}
 										/>
 									)
 								}
