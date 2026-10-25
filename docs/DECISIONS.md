@@ -5611,3 +5611,17 @@ rysy utrácejí pool třídy, která je dává (D336). Sloupec „Soulknife Ener
 
 Upravuje D397: štítek řádku Ability Score Improvement používá `levelFeatChip` stejně jako level featy a u multiclassu uvádí
 třídu („From Wizard 4“); jednotřídní postava má „From level N“. Task A-1b, commit db37335. Rozhodl Daniel 25. 10. 2026.
+
+## D400 - Průchod QUESTIONS.md 25. 10. 2026: nechat
+
+Daniel prošel QUESTIONS.md a rozhodl nechat tyto body tak, jak jsou; z QUESTIONS.md zmizely:
+
+- Fluff/lore texty se neextrahují.
+- College of Swords nabízí všech 10 stylů (FS:B).
+- Armor of Vulnerability bez AC (D43 drží).
+- Osm magických nástrojů bez `type: "INS"` (drží filtr rarity).
+- Nevyřešený odkaz v textu: neřešit, dokud nevznikne.
+- Počet pozadí EFA: neověřovat.
+- Storm Herald: prostředí zůstává jen text.
+- Mastery texty zůstávají ručně v `masteryData.ts`.
+- Boon of Siberys zůstává skrytý.

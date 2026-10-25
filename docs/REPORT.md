@@ -1,25 +1,23 @@
-# REPORT — PSI-1: oddělené pooly Psionic Energy Die a maximum Soulknife (D398)
+# REPORT — Q-1: QUESTIONS cleanup and D400
 
-Setup: `git fetch`, `git merge --ff-only origin/main` → už aktuální, HEAD 5ae454f. Bez změny větve.
+Documentation only. Modified: docs/QUESTIONS.md, docs/DECISIONS.md, docs/REPORT.md. No code, no npm scripts. Setup: `git fetch origin` done, `git merge --ff-only origin/main` already up to date, HEAD f23bce8.
 
-## Co se změnilo
-- `src/calculation/resources.ts` `lookupInTableGroups`: jeden pojmenovaný alias, pool `Psionic Energy Die` bere i sloupec `Soulknife Energy Die Number` (komentář odkazuje na DATA.md/D398). Sloupec `… Size` se dál nečte. Žádný jiný zdrojový soubor se nedotkl; D336 dělení, utrácení, rest a legacy klíče zůstaly beze změny.
-- Výsledek: a) Rogue 3 Soulknife sám: pool „Psionic Energy Die“ max 4 (dřív „not in the data“), Short Rest vrací jednu kostku, Long Rest všechny. b) Fighter 3 Psi Warrior + Rogue 3 Soulknife: „Psionic Energy Die (Fighter)“ a „(Rogue)“, 4 + 4; Protective Field utrácí Fighter, Psi-Bolstered Knack Rogue. c) Psi Warrior sám beze změny.
-- Testy: `resources.test.ts` (Soulknife fixture, alias, ne-Size sloupec, max 4 na L3 a 6 na L5), `classPools.test.ts` (split 4+4 s `shortRest` „one“, klíče spenderů, jednotřídní Soulknife i Psi Warrior bez `pool`), `e2e/psionicPools.spec.ts` a, b, b2, c (schema 66 seed s `currentHp`; spend, Short Rest, Long Rest).
-- Docs: D398 (nahrazuje D337 bod 5), D399 (štítek ASI řádku „From <třída> N“, A-1b db37335, upravuje D397), QUESTIONS.md STATUS vyřešeno D398, DATA.md řádek o aliasu, STATUS.md.
+## Removed from QUESTIONS.md (24)
+Step 1 (15): Volba velikosti (D175), ASI v téže session (D253), Výběr dovednosti u featu (D179), Human Versatile (D274), Delete přes confirm() (D311), Sheet ukazuje mistrovství (D181), Play state plochá pole, Utracené spell sloty (D322), CAST s oběma pooly (D326), Class additionalSpells (D192/D193), Psionic Energy Die (D398), Koncentrace CON save (D373), Sheet nezobrazoval Proficiencies (D170-D174), D22 formát úrovně, Fighting Style detekce.
+Step 2 (9, zapsáno do D400): Fluff, EFA background count, Mastery rule text, College of Swords, Nevyřešený odkaz, Storm Herald, Armor of Vulnerability, Osm magických nástrojů, Boon of Siberys.
 
-## Ověřeno (jednou na konci)
-- `npm run typecheck` čistý. `npm run test`: 3458/3458 (první běh 1 chyba v mém novém testu — breakdown nese jméno podtřídy „Soulknife level 5“, ne třídy; opraveno v testu, druhý běh zelený). `npm run validate-data`: 177/177. `npm run e2e`: 719/719, 2,3 min.
-- Před finálním během jednou spuštěn samotný `e2e/psionicPools.spec.ts`: 4/4.
+## Kept, STATUS replaced
+"Daniel 25. 10.: řešit, task naplánován.": Invokace a features měnící útok (+ poznámka: Thirsting Blade D363 hotový, zbývá Improved Pact Weapon a Lifedrinker), Pět rasových záznamů, bonusWeaponDamage, Bonus ke kouzlům, Boon of Fortitude, Aberrant Dragonmark/Natural Recovery/Magic Item Tinker, Warlock The Genie, Two spells absent from the data (poslední dva neměly STATUS, přidán).
+Magic Initiate parent entry: "Daniel 25. 10.: plánovací chat ověří, jestli se obecný feat ještě nabízí."
 
-## Rozhodnutí a otázky
-- Rozhodnutí v běhu: žádné nad rámec zadání. Poznámka: DECISIONS.md D337 bod 5 nechán beze změny, D398 ho nahrazuje novým záznamem.
-- Otázka k povšimnutí: jména pooly u rozdělení nesou třídu, ne podtřídu („(Rogue)“, ne „(Soulknife)“); to je D336 a zadání, nezměněno.
+## Not matched by steps 1-3 (left unchanged)
+- "Kouzla z rasy nikam nevedou" — STATUS "hotovo z většiny…" zůstal; zbývající část je entry "Pět rasových záznamů". Plánovací chat rozhodne, jestli entry odstranit.
 
-## Subagent use
-Žádný subagent nepoužit.
+## DECISIONS.md
+Přidáno D400 na konec.
 
-`scripts/p-psi.js` z minulé investigace zůstává nesledovaný; `git clean -fd scripts` nespuštěn (zadání zakazuje).
+## Decisions taken / questions worked around
+None.
 
-Manual browser check for the user: none - the planning chat checks the looks from screenshots.
-Změněné obrazovky: záložka Actions (počítadla „Psionic Energy Die“ / „(Fighter)“ / „(Rogue)“) a okno Short Rest u Psi Warrior / Soulknife postav.
+## Manual browser check for the user
+Žádný — jen dokumentace.
