@@ -5090,7 +5090,7 @@ describe('CharacterSheet', () => {
 			const feats = screen.getByRole('region', { name: 'Feats' })
 			expect(rowNamesIn(feats)).toEqual(['Tough', 'Ability Score Improvement'])
 			const row = featureRow(feats, 'Ability Score Improvement')
-			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('From level 4')
+			expect(row.querySelector('.sheet__group-row-source')!.textContent).toBe('From Fighter 4')
 			expect(row.querySelector('.sheet__feature-options')!.textContent).toBe('STR +1, CON +1')
 			fireEvent.click(within(row).getByRole('button', { name: 'Ability Score Improvement' }))
 			expect(within(feats).getByText(/Increase one ability score/)).toBeTruthy()

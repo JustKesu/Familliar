@@ -46,7 +46,7 @@ const barbarian = () => seeded('asi-barb', 'Barbarian', 'Path of the Berserker',
 test('A-1 a: Barbarian 4 with an ASI shows the row beside the background feat Tough', async ({ page }) => {
   const feats = await openFeats(page, barbarian())
   const asi = feats.locator('li', { hasText: 'Ability Score Improvement' })
-  await expect(asi).toContainText('From level 4')
+  await expect(asi).toContainText('From Barbarian 4')
   await expect(asi).toContainText('STR +2')
   await expect(feats.locator('li', { hasText: 'Tough' })).toBeVisible()
   await expect(feats).not.toContainText('No feats chosen yet.')

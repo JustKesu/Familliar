@@ -193,7 +193,7 @@ function featRowsWithAsi(input: FeaturesTabInput): FeatureTabRow[] {
 			row: {
 				key: `asi|${choice.level}`,
 				name: 'Ability Score Improvement',
-				source: levelFeatChip(choice.level, input),
+				source: featSource({ origin: 'asi', level: choice.level }, input.classes, input.levelOrder),
 				entries: input.asiText ?? [],
 				resourceName: null,
 				options: increases ? [{ key: 'increases', name: increases, entries: null }] : [],
