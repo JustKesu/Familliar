@@ -43,6 +43,19 @@ const CLASSES = [
 			},
 		],
 	},
+	{
+		entryType: 'subclass',
+		name: 'Soulknife',
+		shortName: 'Soulknife',
+		className: 'Rogue',
+		classSource: 'XPHB',
+		subclassTableGroups: [
+			{
+				colLabels: ['{@tip Die Size|Soulknife Energy Die Size}', '{@tip Number|Soulknife Energy Die Number}'],
+				rows: [[6, 4], [6, 4], [6, 4], [6, 4], [8, 6]],
+			},
+		],
+	},
 ]
 
 function character(className: string, level: number, subclass: string | null = null): Character {
@@ -113,6 +126,12 @@ describe('the maximum, from the per-level tables (slice 9b1)', () => {
 	it('reads a subclass table, keyed by the {@tip} tag’s second segment and the " Number" suffix', () => {
 		const [psi] = computeCharacterResources(character('Fighter', 5, 'Psi Warrior'), CLASSES, [GUARDED_MIND])
 		expect(psi.max).toEqual({ status: 'known', value: 6, breakdown: [{ source: 'Psi Warrior level 5: Psionic Energy Die Number', amount: 6 }] })
+	})
+
+	it('D398: reads Soulknife’s "Soulknife Energy Die Number" column as the Psionic Energy Die pool, never its Size column', () => {
+		const [psi] = computeCharacterResources(character('Rogue', 5, 'Soulknife'), CLASSES, [GUARDED_MIND])
+		expect(psi.max).toEqual({ status: 'known', value: 6, breakdown: [{ source: 'Soulknife level 5: Soulknife Energy Die Number', amount: 6 }] })
+		expect(computeCharacterResources(character('Rogue', 3, 'Soulknife'), CLASSES, [])[0].max).toMatchObject({ status: 'known', value: 4 })
 	})
 
 	it('reports a pool with no column as not in the data rather than guessing (D43)', () => {

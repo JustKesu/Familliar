@@ -1339,6 +1339,9 @@ Aktivní krok wizardu nese `aria-current="step"` (selektor scénářů).
 - A-1 (D397): every `asi` level in `featAsiChoices` is a Feats-group row (`featRowsWithAsi` in featuresTabData.ts): chip via
   `levelFeatChip` (moved there, re-exported from ManageFeatsPanel), increases as `asiIncreasesLabel` ("STR +1, CON +1") under the
   row, XPHB feat text when feats.json has it, sorted by level among the level feats. `e2e/asiFeatRow.spec.ts` a–c.
+- PSI-1 (D398): `lookupInTableGroups` reads Soulknife's "Soulknife Energy Die Number" column as the Psionic Energy Die pool, so a
+  lone Soulknife has a maximum and Psi Warrior + Soulknife split into "Psionic Energy Die (Fighter)" / "(Rogue)" by the D336
+  mechanism, unchanged. `e2e/psionicPools.spec.ts` a–c. D399 records the A-1b ASI chip wording.
 - TGS2-4a2 (D371): a subclass's `additionalSpells` `ability` (`extractSubclassSpellcastingAbility` in subclassPreparedSpells.ts)
   becomes a caster entry for its owning class only when that class has no spellcasting of its own; `casterFor` falls back to it
   for subclass grants (Spells and Actions tabs). Not added to the class spellcasting card. Steel Hawk `ability: "wis"`:

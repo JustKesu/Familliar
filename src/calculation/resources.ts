@@ -258,6 +258,8 @@ interface TableLookup {
  */
 function lookupInTableGroups(entry: Record<string, unknown>, groupsKey: string, name: string, level: number): TableLookup | null {
 	const wanted = normalizeResourceName(name)
+	// XPHB Soulknife tables the Psionic Energy Die pool under its own name (DATA.md, P-PSI, D398).
+	const alias = name === 'Psionic Energy Die' ? normalizeResourceName('Soulknife Energy Die Number') : null
 	const groups = entry[groupsKey]
 	if (!Array.isArray(groups)) return null
 	for (const group of groups) {
@@ -270,7 +272,7 @@ function lookupInTableGroups(entry: Record<string, unknown>, groupsKey: string, 
 			const label = columnLabel(labels[i])
 			if (label === null) continue
 			const key = normalizeResourceName(label)
-			if (key !== wanted && key !== normalizeResourceName(`${name} Number`)) continue
+			if (key !== wanted && key !== normalizeResourceName(`${name} Number`) && key !== alias) continue
 			return { label, cell: row[i] }
 		}
 	}

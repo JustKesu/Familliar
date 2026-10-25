@@ -5598,3 +5598,16 @@ Každá úroveň s `featAsiChoices` druhu `asi` má v sekci Feats na záložce F
 Improvement“: štítek jako u level featů („From level 4“, u multiclassu třída, `levelFeatChip`), navýšení pod řádkem („STR +2“,
 „STR +1, CON +1“), text feat XPHB „Ability Score Improvement“, řazení podle úrovně mezi level featy. Filtr Feats řádek ukazuje,
 „No feats chosen yet.“ se při samotném ASI nezobrazí. Úložiště se nemění. Rozhodl Daniel 25. 10. 2026.
+
+## D398 — Psionic Energy Die: pool zvlášť pro Psi Warrior a Soulknife (PSI-1)
+
+Nahrazuje D337 bod 5. Psi Warrior (Fighter) a Soulknife (Rogue) mají každý vlastní pool Psionic Energy Die, jak říká XPHB („use
+only the dice from this subclass“): u postavy s oběma „Psionic Energy Die (Fighter)“ a „(Rogue)“, každý s maximem ze své tabulky,
+rysy utrácejí pool třídy, která je dává (D336). Sloupec „Soulknife Energy Die Number“ se čte jako pool Psionic Energy Die,
+úzký pojmenovaný alias v `lookupInTableGroups`; jednotřídní Soulknife tak má maximum (dřív „not in the data“). Rozhodl Daniel
+25. 10. 2026.
+
+## D399 — Řádek ASI v sekci Feats nese štítek úrovně „From <třída> N“ (A-1b)
+
+Upravuje D397: štítek řádku Ability Score Improvement používá `levelFeatChip` stejně jako level featy a u multiclassu uvádí
+třídu („From Wizard 4“); jednotřídní postava má „From level N“. Task A-1b, commit db37335. Rozhodl Daniel 25. 10. 2026.

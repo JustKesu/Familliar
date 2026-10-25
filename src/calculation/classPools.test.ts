@@ -20,6 +20,47 @@ const TURN_UNDEAD: ResourceFeature = { name: 'Turn Undead', className: 'Cleric',
 const PALADIN_CD: ResourceFeature = { name: 'Channel Divinity', className: 'Paladin', entries: ['You can use this feature twice. You regain all expended uses when you finish a {@variantrule Long Rest|XPHB}.'] }
 const FEATURES = [CLERIC_CD, TURN_UNDEAD, PALADIN_CD]
 
+const PSI_TABLE = (label: string) => [{ colLabels: [`{@tip Die Size|${label} Die Size}`, `{@tip Number|${label} Die Number}`], rows: [[6, 4], [6, 4], [6, 4]] }]
+const PSI_CLASSES = [
+	{ entryType: 'subclass', name: 'Psi Warrior', shortName: 'Psi Warrior', className: 'Fighter', classSource: 'XPHB', subclassTableGroups: PSI_TABLE('Psionic Energy') },
+	{ entryType: 'subclass', name: 'Soulknife', shortName: 'Soulknife', className: 'Rogue', classSource: 'XPHB', subclassTableGroups: PSI_TABLE('Soulknife Energy') },
+]
+const sub = (className: string, subclass: string, level: number): CharacterClass => ({ className, classSource: 'XPHB', subclass, level })
+const PSIONIC_POWER_TEXT = ['You regain one of your expended Psionic Energy Dice when you finish a {@variantrule Short Rest|XPHB}, and you regain all of them when you finish a {@variantrule Long Rest|XPHB}.']
+const PSI_FEATURES: ResourceFeature[] = [
+	{ name: 'Psionic Power', className: 'Fighter', entries: PSIONIC_POWER_TEXT },
+	{ name: 'Protective Field', className: 'Fighter', consumes: { name: 'Psionic Energy Die' }, entries: [] },
+	{ name: 'Psionic Power', className: 'Rogue', entries: PSIONIC_POWER_TEXT },
+	{ name: 'Psi-Bolstered Knack', className: 'Rogue', consumes: { name: 'Psionic Energy Die' }, entries: [] },
+]
+
+describe('D398 Psionic Energy Die pools per subclass', () => {
+	it('gives Psi Warrior 3 / Soulknife 3 two pools of 4, each recovering one die on a Short Rest', () => {
+		const resources = computeCharacterResources(character(sub('Fighter', 'Psi Warrior', 3), sub('Rogue', 'Soulknife', 3)), PSI_CLASSES, PSI_FEATURES)
+		expect(resources.map((r) => [r.name, r.pool, r.className, r.max.status === 'known' ? r.max.value : null, r.shortRest])).toEqual([
+			['Psionic Energy Die (Fighter)', 'Psionic Energy Die', 'Fighter', 4, 'one'],
+			['Psionic Energy Die (Rogue)', 'Psionic Energy Die', 'Rogue', 4, 'one'],
+		])
+	})
+
+	it('files Protective Field under the Fighter pool and Psi-Bolstered Knack under the Rogue pool', () => {
+		const split = computeCharacterResources(character(sub('Fighter', 'Psi Warrior', 3), sub('Rogue', 'Soulknife', 3)), PSI_CLASSES, PSI_FEATURES)
+		expect(resourceKeyFor('Psionic Energy Die', 'Fighter', split)).toBe('Psionic Energy Die (Fighter)')
+		expect(resourceKeyFor('Psionic Energy Die', 'Rogue', split)).toBe('Psionic Energy Die (Rogue)')
+	})
+
+	it('keeps one plain pool for a lone Soulknife (4 dice) and a lone Psi Warrior', () => {
+		for (const [held, features] of [
+			[sub('Rogue', 'Soulknife', 3), PSI_FEATURES.slice(2)],
+			[sub('Fighter', 'Psi Warrior', 3), PSI_FEATURES.slice(0, 2)],
+		] as const) {
+			const resources = computeCharacterResources(character(held), PSI_CLASSES, features)
+			expect(resources.map((r) => [r.name, r.max.status === 'known' ? r.max.value : null, r.shortRest])).toEqual([['Psionic Energy Die', 4, 'one']])
+			expect(resources[0]).not.toHaveProperty('pool')
+		}
+	})
+})
+
 describe('D336 per-class pools', () => {
 	it('splits a pool two held classes grant, each with its own maximum and recovery', () => {
 		const resources = computeCharacterResources(character(cls('Cleric', 6), cls('Paladin', 3)), CLASSES, FEATURES)

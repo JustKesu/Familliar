@@ -435,4 +435,5 @@ podtřída svůj), ale nejdřív je potřeba datová investigace: jak spolehliv�
 že sloupec s jiným jménem patří ke stejnému poolu.
 
 Nalezeno při review M10, zapsáno v F-12 (8. 10. 2026, D337).
+STATUS: vyřešeno D398.
 STATUS: nerozhodnuto, čeká na datovou investigaci.

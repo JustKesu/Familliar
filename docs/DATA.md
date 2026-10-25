@@ -669,6 +669,7 @@ the data. Across classes.json, the consumes names and the homebrew file, the
 Soulknife column is the only count column no `consumes.name` reaches ("Bardic
 Die" is a die size); TGS2 subclasses have no table groups and no `consumes`, and
 no "expend a/one … Die/Dice/Points" pool in prose.
+Since PSI-1 (D398) `lookupInTableGroups` in resources.ts aliases "Soulknife Energy Die Number" to the Psionic Energy Die pool.
 
 Only the `{@tip}` tag puts its key in the SECOND segment. Every resource
 column outside those two subclasses is a bare string ("Rages", "Focus Points",
