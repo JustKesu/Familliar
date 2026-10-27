@@ -93,8 +93,8 @@
  *   only the one, XPHB-classSource'd subclass entry each, and it genuinely
  *   only carries the rank-keyed `expanded` grant — so both are handled by
  *   this follow-up. The Genie's 4-entries-per-subclass ambiguity (3) is
- *   guarded structurally (a subclass with more than one additionalSpells
- *   entry is skipped for rank grants), not by name, and stays deferred.
+ *   resolved by Character.genieKind (D407): only the entry named by the
+ *   chosen kind gets rank grants; its "9" (Wish) key is not a rank key.
  * - Two of 406 string references ("branding smite", "summon elemental|tce")
  *   don't resolve by exact name/source against this app's filtered
  *   spells.json; findSpell now resolves them via its alias table to the XPHB
@@ -530,8 +530,9 @@ export async function loadClassAlwaysPreparedSpells(className: string, classSour
  * subclass's always-prepared spells granted at or below that level, from
  * the `prepared`/`known`/`innate` shapes (D62, d6a) plus (this task) a
  * pact-slot-RANK-keyed `expanded` grant (Hexblade/Fathomless) — every other
- * use of `expanded` (pool-widening, Genie's per-kind ambiguity) still
- * yields nothing (see module comment). `pactSlotsByLevel` (optional —
+ * use of `expanded` (pool-widening) still yields nothing (see module
+ * comment). `chosenEntryName` picks the one rank-granting entry of a
+ * multi-entry subclass (The Genie's kind, D407). `pactSlotsByLevel` (optional —
  * absent for a non-Warlock class) is the Warlock's own Pact Magic slot
  * table (spellSlots.ts), needed only to translate a rank grant's level.
  * `subclassGrantLevel` (optional) is the level `className`/`classSource`
@@ -549,6 +550,7 @@ export function extractSubclassAlwaysPreparedSpells(
 	classLevel: number,
 	pactSlotsByLevel?: PactSlots[],
 	subclassGrantLevel?: number | null,
+	chosenEntryName?: string | null,
 ): AlwaysPreparedSpell[] {
 	if (!Array.isArray(parsedClasses)) {
 		throw new Error('classes.json: expected a top-level array.')
@@ -575,10 +577,9 @@ export function extractSubclassAlwaysPreparedSpells(
 
 		result.push(...collectFixedGrants(entry, spells, classLevel, 'subclass', subclassGrantLevel))
 
-		// Pact-slot-rank-keyed `expanded` grant (Hexblade/Fathomless). Guarded to a subclass with exactly ONE additionalSpells
-		// entry — Warlock The Genie's 4 per-genie-kind entries share this same "s1".."s5" shape but nothing stores which kind
-		// the player picked, so a subclass with more than one entry is skipped here structurally (not by name).
-		if (pactSlotsByLevel && subclass.additionalSpells.length === 1) {
+		// Pact-slot-rank-keyed `expanded` grant (Hexblade/Fathomless). A subclass with several entries (The Genie, one per kind)
+		// grants only the entry the character chose (D407); with nothing chosen, none.
+		if (pactSlotsByLevel && (subclass.additionalSpells.length === 1 || (chosenEntryName != null && entry['name'] === chosenEntryName))) {
 			const expanded = entry['expanded']
 			if (isRecord(expanded)) {
 				for (const [levelKey, value] of Object.entries(expanded)) {
@@ -654,6 +655,7 @@ export async function loadSubclassAlwaysPreparedSpells(
 	classSource: string,
 	classLevel: number,
 	pactSlotsByLevel?: PactSlots[],
+	chosenEntryName?: string | null,
 ): Promise<AlwaysPreparedSpell[]> {
 	const [parsedClasses, parsedSpells, parsedClassFeatures] = await Promise.all([
 		loadDataFile('data/classes.json'),
@@ -671,5 +673,6 @@ export async function loadSubclassAlwaysPreparedSpells(
 		classLevel,
 		pactSlotsByLevel,
 		subclassGrantLevel,
+		chosenEntryName,
 	)
 }

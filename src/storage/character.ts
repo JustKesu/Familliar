@@ -352,6 +352,8 @@ export interface Character {
 	kenseiWeapons?: CharacterKenseiWeapon[]
 	/** D344: Samurai's Elegant Courtier save, stored only when Wisdom saves were already proficient. Absent = Wisdom (or not chosen yet). */
 	elegantCourtierSave?: ElegantCourtierSave
+	/** D407: Warlock The Genie's genie kind; picks which additionalSpells entry grants expanded spells. Absent = not chosen yet. */
+	genieKind?: GenieKind
 	/**
 	 * The character level the creation wizard made this character at (slice 8e).
 	 * Set once, never changed afterwards. It is the floor for removing a level:
@@ -1123,7 +1125,7 @@ export interface ConcentrationRef {
 
 /**
  * Schema version for the persisted/exported character wire format
- * (see wireFormat.ts). Bumped to 67 for CharacterInventoryItem.pactWeapon (PW-1, D401); 64 for CharacterBackground.abilityChoices (CB-1, D383); 63 for CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380); 62 for the 'invocation' grantedFeats origin (B-4b, D376); 61 for Character.kenseiWeapons and .elegantCourtierSave (F-19, D344); 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
+ * (see wireFormat.ts). Bumped to 68 for Character.genieKind (GN-1, D407); 67 for CharacterInventoryItem.pactWeapon (PW-1, D401); 64 for CharacterBackground.abilityChoices (CB-1, D383); 63 for CharacterFamiliar.chainMasterForm and .chainMasterDamage (C-1, D380); 62 for the 'invocation' grantedFeats origin (B-4b, D376); 61 for Character.kenseiWeapons and .elegantCourtierSave (F-19, D344); 60 for Character.multiclassPicks (M7b, D330); 59 for play.concentratingOn's source and manual feat ids (M1c, D319); 57 for Character.levelOrder (M1a, D317); 56 for Character.speciesCantrip (S2); 55 for Character.portrait (W-8); 54 for CustomItemDefinition.bonuses (R14a1,
  * D216); 53 for the 'manual' grantedFeats origin
  * (R13a, D215); 52 for Character.play.conditions and
  * .exhaustion (R12, D214); 51 for CharacterFamiliar.currentHp and
@@ -1147,7 +1149,7 @@ export interface ConcentrationRef {
  * not rejected. Versions 15 and older are still rejected outright with
  * UnknownSchemaVersionError — D69 explicitly does not backfill the chain.
  */
-export const CURRENT_SCHEMA_VERSION = 67
+export const CURRENT_SCHEMA_VERSION = 68
 
 export interface CharacterLevelOrderEntry {
 	className: string
@@ -1161,6 +1163,10 @@ export interface CharacterKenseiWeapon {
 }
 
 export type ElegantCourtierSave = 'intelligence' | 'charisma'
+
+/** D407: the additionalSpells entry names of The Genie (TCE). */
+export const GENIE_KINDS = ['Dao', 'Djinni', 'Efreeti', 'Marid'] as const
+export type GenieKind = (typeof GENIE_KINDS)[number]
 
 export interface CharacterMulticlassPick {
 	className: string

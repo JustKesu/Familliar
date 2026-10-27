@@ -38,6 +38,7 @@ import {
 	type CharacterLevelOrderEntry,
 	type CharacterMulticlassPick,
 	type ElegantCourtierSave,
+	type GenieKind,
 } from './character'
 import { isValidAbilityIncrease } from '../featAsi/featAsiData'
 import { manualFeatKey, type FeatInstanceKey, type FeatRef } from '../featAsi/featInstances'
@@ -273,6 +274,7 @@ export interface CharacterCreateInput {
 	multiclassPicks?: CharacterMulticlassPick[]
 	kenseiWeapons?: CharacterKenseiWeapon[]
 	elegantCourtierSave?: ElegantCourtierSave
+	genieKind?: GenieKind
 	hitPointLevels?: CharacterHitPointLevel[]
 	/*
 	 * Play-time state the wizard never collects: the hand-set current hit points
@@ -422,6 +424,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		multiclassPicks,
 		kenseiWeapons,
 		elegantCourtierSave,
+		genieKind,
 		hitPointLevels,
 		currentHp,
 		maxHpOverride,
@@ -484,6 +487,7 @@ function buildCharacter(id: string, input: CharacterCreateInput): Character {
 		...(multiclassPicks && multiclassPicks.length > 0 ? { multiclassPicks } : {}),
 		...(kenseiWeapons && kenseiWeapons.length > 0 ? { kenseiWeapons } : {}),
 		...(elegantCourtierSave ? { elegantCourtierSave } : {}),
+		...(genieKind ? { genieKind } : {}),
 		...(hitPointLevels &&hitPointLevels.length > 0 ? { hitPointLevels } : {}),
 		// D110: negative hit points mean nothing under the 2024 rules, so the store never holds any, whichever path wrote them.
 		...(storedCurrentHp !== undefined ? { currentHp: storedCurrentHp } : {}),

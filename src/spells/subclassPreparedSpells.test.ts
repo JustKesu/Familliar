@@ -237,7 +237,18 @@ const celestialPatron = {
 	],
 }
 
-/** Warlock The Genie: 4 additionalSpells entries (one per genie kind), each with its own rank-keyed `expanded` — nothing stores which kind was picked, so this must stay deferred (guarded structurally: more than one entry). */
+/** Warlock The Genie (real shape, DATA.md): 4 additionalSpells entries named by genie kind, each rank-keyed s1..s5 plus "9": ["wish"]; only Character.genieKind's entry is granted (D407). */
+const genieKindEntry = (name: string, own: [string, string, string, string, string]) => ({
+	name,
+	expanded: {
+		s1: ['detect evil and good', own[0]],
+		s2: ['phantasmal force', own[1]],
+		s3: ['create food and water', own[2]],
+		s4: ['phantasmal killer', own[3]],
+		s5: ['creation', own[4]],
+		'9': ['wish'],
+	},
+})
 const genie = {
 	entryType: 'subclass',
 	name: 'The Genie',
@@ -245,8 +256,10 @@ const genie = {
 	className: 'Warlock',
 	classSource: 'XPHB',
 	additionalSpells: [
-		{ name: 'Dao', expanded: { s1: ['sanctuary'] } },
-		{ name: 'Djinni', expanded: { s1: ['thunderwave'] } },
+		genieKindEntry('Dao', ['sanctuary', 'spike growth', 'meld into stone', 'stone shape', 'wall of stone']),
+		genieKindEntry('Djinni', ['thunderwave', 'gust of wind', 'wind wall', 'greater invisibility', 'seeming']),
+		genieKindEntry('Efreeti', ['burning hands', 'scorching ray', 'fireball', 'fire shield', 'flame strike']),
+		genieKindEntry('Marid', ['fog cloud', 'blur', 'sleet storm', 'control water', 'cone of cold']),
 	],
 }
 
@@ -400,6 +413,10 @@ const spells = [
 	bless,
 	bane,
 	protectionFromEvilAndGood,
+	...['Detect Evil and Good', 'Sanctuary', 'Fog Cloud'].map((name) => ({ name, source: 'XPHB', level: 1, duration: [{ type: 'instant' }], meta: {} })),
+	...['Phantasmal Force', 'Scorching Ray', 'Spike Growth'].map((name) => ({ name, source: 'XPHB', level: 2, duration: [{ type: 'instant' }], meta: {} })),
+	...['Create Food and Water', 'Fireball', 'Wind Wall'].map((name) => ({ name, source: 'XPHB', level: 3, duration: [{ type: 'instant' }], meta: {} })),
+	{ name: 'Wish', source: 'XPHB', level: 9, duration: [{ type: 'instant' }], meta: {} },
 ]
 
 describe('extractSubclassAlwaysPreparedSpells', () => {
@@ -577,9 +594,26 @@ describe('extractSubclassAlwaysPreparedSpells', () => {
 			expect(result.map((s) => s.name).sort()).toEqual(['Cure Wounds', 'Sacred Flame'])
 		})
 
-		it("Warlock The Genie's 4 per-kind `expanded` entries stay deferred (structurally ambiguous — more than one additionalSpells entry)", () => {
+		it('The Genie without a chosen kind grants none of its 4 per-kind `expanded` entries (D407)', () => {
 			const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'The Genie', 'TCE', 'Warlock', 'XPHB', 20, warlockPactSlotsByLevel)
 			expect(result).toEqual([])
+		})
+
+		it('The Genie with Efreeti at Warlock 5: Efreeti and shared ranks 1-3 only, nothing from Dao/Djinni/Marid (D407)', () => {
+			const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'The Genie', 'TCE', 'Warlock', 'XPHB', 5, warlockPactSlotsByLevel, 3, 'Efreeti')
+			expect(result.map((s) => s.name).sort()).toEqual(['Burning Hands', 'Create Food and Water', 'Detect Evil and Good', 'Fireball', 'Phantasmal Force', 'Scorching Ray'])
+			const djinni = extractSubclassAlwaysPreparedSpells(classes, spells, 'The Genie', 'TCE', 'Warlock', 'XPHB', 5, warlockPactSlotsByLevel, 3, 'Djinni').map((s) => s.name)
+			expect(djinni).toEqual(expect.arrayContaining(['Thunderwave', 'Gust of Wind', 'Wind Wall']))
+			for (const other of ['Sanctuary', 'Spike Growth', 'Thunderwave', 'Gust of Wind', 'Wind Wall', 'Fog Cloud', 'Blur']) expect(result.map((s) => s.name)).not.toContain(other)
+		})
+
+		it('The Genie never grants Wish (its "9" key), at any level (D407)', () => {
+			for (const kind of ['Dao', 'Djinni', 'Efreeti', 'Marid']) {
+				for (let level = 1; level <= 20; level++) {
+					const result = extractSubclassAlwaysPreparedSpells(classes, spells, 'The Genie', 'TCE', 'Warlock', 'XPHB', level, warlockPactSlotsByLevel, 3, kind)
+					expect(result.map((s) => s.name)).not.toContain('Wish')
+				}
+			}
 		})
 
 		it('a non-patron subclass (Forge Domain) is unaffected by the pactSlotsByLevel parameter being supplied', () => {

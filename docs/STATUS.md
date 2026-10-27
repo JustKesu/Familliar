@@ -66,9 +66,11 @@ Zkráceno z deníku na stav — stará podoba zůstává v historii gitu.
    picker, kouzla udělená subclassou/featem/optional feature/rasou (všechny
    pevné tvary grantu), popisky použití (bez slotu / na den / rituál / zdroj
    / PB za dlouhý odpočinek), hlídání kolizí napříč všemi pickery kouzel.
-   Trvalé odklady: Warlock The Genie (chybí uložená volba džina), Boon of
-   Siberys (schovaný), Eberron marks (nedosažitelné bez trackingu kampaně),
-   2 kouzla chybí v datech — viz QUESTIONS.md.
+   Trvalé odklady: Boon of Siberys (schovaný), Eberron marks (nedosažitelné
+   bez trackingu kampaně). GN-1 (D407): The Genie — `Character.genieKind`
+   (schema 68, `src/genie/`), volba v kroku Proficiencies (wizard, level up
+   na úrovni podtřídy, Edit); rank kouzla s1..s5 jen zvoleného druhu, Wish
+   ne; bez volby poznámka na záložce Spells.
 6c. [done] Kouzla z rasy (D89, D90) — `src/spells/raceSpells.ts`, pátý
     konzument `additionalSpells`. Granty se dohledávají přímo na uložené
     (už vyřešené) variantě rasy, řadí se do téže složené množiny jako
@@ -2933,9 +2935,8 @@ Domain) se ve výpisu ukazuje jako běžný řádek vedle featur, které uvádí
 strukturální způsob, jak wrapper poznat, a jmenný seznam výjimek je přesně to,
 čemu se projekt vyhýbá (D21). Znovu zvážit až po revizi skutečného sheetu.
 
-Kouzla z rasy jsou hotová až na jednu mezeru (6c výš, D89/D90): picker
-cantripu ze seznamu třídy pro 5 záznamů, které dnes jen hlásí, že appka to
-neumí (QUESTIONS.md).
+Kouzla z rasy jsou hotová, včetně cantripu ze seznamu třídy (S2,
+D278–D280, `Character.speciesCantrip`).
 
-Pickery tří podtříd (Storm Herald, The Genie, Divine Soul) potřebují
-rozhodnutí — viz QUESTIONS.md.
+Pickery dvou podtříd (Storm Herald, Divine Soul) zatím nejsou (v
+QUESTIONS.md k nim položka není). The Genie je hotový (D407).

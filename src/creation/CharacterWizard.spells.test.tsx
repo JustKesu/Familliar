@@ -840,6 +840,7 @@ describe('CharacterWizard — spells step', () => {
 			'XPHB',
 			5,
 			spellSlotsData.find((entry) => entry.className === 'Warlock')!.pactSlotsByLevel,
+			null,
 		)
 	})
 

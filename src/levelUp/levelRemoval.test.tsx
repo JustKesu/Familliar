@@ -530,6 +530,18 @@ describe('class tool picks on a level removal (D174)', () => {
 	})
 })
 
+describe('Genie kind on a level removal (D407)', () => {
+	it('removing Warlock level 3 drops The Genie and its kind', () => {
+		const removed = plan({ ...single('Warlock', 'The Genie', 3, 1), genieKind: 'Efreeti' })
+		expect(removed.result.genieKind).toBeUndefined()
+		expect(removed.dropped).toContain('Genie kind: Efreeti')
+	})
+
+	it('removing Warlock level 4 keeps it', () => {
+		expect(plan({ ...single('Warlock', 'The Genie', 4, 1), genieKind: 'Efreeti' }).result.genieKind).toBe('Efreeti')
+	})
+})
+
 describe('subclass skill picks on a level removal (D177)', () => {
 	const subclassSkills: Character['subclassSkills'] = [{ grantedBy: 'cavalier', name: 'history' }]
 	const cavalierLanguage = { name: 'Elvish', source: 'XPHB', grantedBy: 'cavalier' as const }

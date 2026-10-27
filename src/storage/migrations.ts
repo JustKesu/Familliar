@@ -614,6 +614,12 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
 		/* 67 adds CharacterInventoryItem.pactWeapon (PW-1, D401). A version-66 character has marked no pact weapon — the step only tags. */
 		migrate: (record) => ({ ...record, schemaVersion: 67 }),
 	},
+	{
+		from: 67,
+		to: 68,
+		/* 68 adds Character.genieKind (GN-1, D407). A version-67 Genie character has not chosen a kind — the step only tags. */
+		migrate: (record) => ({ ...record, schemaVersion: 68 }),
+	},
 ]
 
 const LEGACY_CUSTOM_BONUS_FIELDS = [

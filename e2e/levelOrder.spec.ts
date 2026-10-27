@@ -38,7 +38,7 @@ test('M1a: a schema-56 Fighter gains a level history on its first save; Level up
   await page.locator('summary', { hasText: /^Notes$/ }).click()
   await page.getByRole('textbox', { name: 'Notes', exact: true }).fill('saved once')
   await expect.poll(async () => (await stored(page)).levelOrder).toEqual([FIGHTER])
-  expect((await stored(page)).schemaVersion).toBe(67)
+  expect((await stored(page)).schemaVersion).toBe(68)
 
   await page.getByRole('button', { name: 'Level up to 2' }).click()
   await page.getByRole('dialog', { name: 'Level up which class?' }).locator('.level-up-class__option').click()

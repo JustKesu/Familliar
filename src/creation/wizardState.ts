@@ -33,8 +33,10 @@ import type {
 	CharacterSubclassSpellChoicePick,
 	ElegantCourtierSave,
 	FeatAsiChoice,
+	GenieKind,
 	LeveledChoice,
 } from '../storage/character'
+import { GENIE_SUBCLASS, hasGenie } from '../genie/genie'
 import { hasElegantCourtier, heldKenseiWeapons, kenseiSlotsFilled, kenseiSlotsFor, pairKenseiPicks, type KenseiSlot } from '../kensei/kensei'
 import { choiceNames, CUSTOM_BACKGROUND_SOURCE, fightingStyleFor, isConsistentLevelOrder, singleClassLevelOrder } from '../storage/character'
 import { isCustomBackgroundComplete } from '../backgrounds/customBackground'
@@ -206,6 +208,8 @@ export interface WizardStepConditions {
 	multiclassPicksComplete?: boolean
 	/** D344: false while Elegant Courtier needs its Intelligence/Charisma pick (or Wisdom proficiency is still being worked out). */
 	elegantCourtierComplete?: boolean
+	/** D407: false while The Genie, offered here, has no kind chosen. */
+	genieKindComplete?: boolean
 	/** Item 3 (F-22): the ranged Kensei weapon names, to pair picks with the melee and ranged slots; `null` while items.json loads. */
 	kenseiRangedWeapons?: ReadonlySet<string> | null
 }
@@ -335,6 +339,7 @@ function resolveConditions(
 		hitDieFacesByLevel: conditions.hitDieFacesByLevel,
 		multiclassPicksComplete: conditions.multiclassPicksComplete ?? true,
 		elegantCourtierComplete: conditions.elegantCourtierComplete ?? true,
+		genieKindComplete: conditions.genieKindComplete ?? true,
 		kenseiRangedWeapons: conditions.kenseiRangedWeapons === undefined ? null : conditions.kenseiRangedWeapons,
 	}
 }
@@ -468,6 +473,8 @@ export interface WizardData {
 	kenseiWeapons: CharacterKenseiWeapon[]
 	/** D344: the Elegant Courtier save when Wisdom was already proficient. Saved only while the classes include Samurai 7. */
 	elegantCourtierSave: ElegantCourtierSave | null
+	/** D407: The Genie's kind. Saved only while the classes include Warlock The Genie; clears when the Warlock's subclass changes away. */
+	genieKind: GenieKind | null
 	/** D177: Khoravar's skill-or-tool pick when it is a skill. Saved into speciesSkills; clears whenever the species changes. */
 	speciesExtraSkill: string | null
 	abilityScores: CharacterAbilityScores | null
@@ -612,6 +619,7 @@ export function emptyWizardData(): WizardData {
 		subclassSkills: [],
 		kenseiWeapons: [],
 		elegantCourtierSave: null,
+		genieKind: null,
 		speciesExtraSkill: null,
 		abilityScores: null,
 		classSkills: [],
@@ -738,6 +746,7 @@ export function wizardDataFromCharacter(character: Character, lookups: WizardSee
 		subclassSkills: character.subclassSkills ?? [],
 		kenseiWeapons: character.kenseiWeapons ?? [],
 		elegantCourtierSave: character.elegantCourtierSave ?? null,
+		genieKind: character.genieKind ?? null,
 		// D177: Khoravar has no structured species skill, so a stored one is its skill-or-tool pick.
 		speciesExtraSkill: isKhoravar(character.species) ? (character.speciesSkills?.[0] ?? null) : null,
 		abilityScores: character.abilityScores ?? null,
@@ -928,6 +937,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 		hitDieFacesByLevel,
 		multiclassPicksComplete,
 		elegantCourtierComplete,
+		genieKindComplete,
 		kenseiRangedWeapons,
 		characterLevel,
 	} = resolveConditions(conditions)
@@ -1001,6 +1011,7 @@ export function isStepComplete(step: WizardStep, data: WizardData, conditions: W
 				// D344: Kensei weapons and the Elegant Courtier save block like the subclass tool and skill picks beside them.
 				kenseiSlotsFilled(wizardKenseiSlots(data, levelUpTargetLevel, heldClasses), data.kenseiWeapons, kenseiRangedWeapons && ((name) => kenseiRangedWeapons.has(name))) &&
 				elegantCourtierComplete &&
+				genieKindComplete &&
 				// D330: only a class entered in this level up (class level 1) owes its multiclass picks here.
 				(levelUpTargetLevel === null || cls === null || cls.level > 1 || (data.multiclassPicks ?? []).filter((pick) => isClass(pick, cls)).length === multiclassPickCount) &&
 				(levelUpTargetLevel !== null || !isKhoravar(data.speciesChoice) || data.speciesExtraSkill !== null || data.toolChoices.some((choice) => choice.grantedBy === 'khoravar'))
@@ -1290,6 +1301,7 @@ export type WizardAction =
 	| { type: 'setMulticlassPicks'; picks: CharacterMulticlassPick[] }
 	| { type: 'setKenseiWeapons'; picks: CharacterKenseiWeapon[] }
 	| { type: 'setElegantCourtierSave'; save: ElegantCourtierSave | null }
+	| { type: 'setGenieKind'; kind: GenieKind | null }
 	| { type: 'setSpeciesSkillOrTool'; skill: string | null; tool: string | null }
 	| { type: 'setSpeciesSize'; size: string | null }
 	| { type: 'setAbilityScores'; scores: CharacterAbilityScores | null }
@@ -1480,6 +1492,8 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 			return { ...state, data: { ...state.data, kenseiWeapons: action.picks } }
 		case 'setElegantCourtierSave':
 			return { ...state, data: { ...state.data, elegantCourtierSave: action.save } }
+		case 'setGenieKind':
+			return { ...state, data: { ...state.data, genieKind: action.kind } }
 		case 'setSpeciesSkillOrTool': {
 			const others = state.data.toolChoices.filter((choice) => choice.grantedBy !== 'khoravar')
 			return {
@@ -1521,6 +1535,7 @@ export function wizardReducer(state: WizardControllerState, action: WizardAction
 					wildShapeForms: hadSubclass ? [] : state.data.wildShapeForms,
 					subclassSkills: state.data.subclassSkills.filter((pick) => !ownSources.has(pick.grantedBy)),
 					featureLanguages: state.data.featureLanguages.filter((language) => !ownSources.has(language.grantedBy)),
+					genieKind: classChoice?.className === 'Warlock' && action.subclass?.name !== GENIE_SUBCLASS ? null : state.data.genieKind,
 				},
 			}
 		}
@@ -1841,6 +1856,7 @@ export function saveCharacter(
 		subclassSkills,
 		kenseiWeapons: orNone(heldKenseiWeapons(classes, data.kenseiWeapons)),
 		elegantCourtierSave: hasElegantCourtier(classes) ? (data.elegantCourtierSave ?? undefined) : undefined,
+		genieKind: hasGenie(classes) ? (data.genieKind ?? undefined) : undefined,
 		hitPointLevels,
 		// Play state the wizard has no control over, carried across an update that replaces every field.
 		// D107: a caller-resolved default (creation's fresh maximum, a level up's raised amount) wins when given.

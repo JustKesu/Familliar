@@ -39,6 +39,7 @@ import { featAsiGrantsFor } from '../featAsi/featAsiData'
 import { loadResolverData, type ResolverData } from '../featureResolver'
 import { CLASS_FEATURE_LANGUAGE_GRANTS, classFeatureLanguageGrantsFor } from '../languages/classFeatureLanguages'
 import { ELEGANT_COURTIER_LEVEL, hasElegantCourtier, kenseiSlotsFor } from '../kensei/kensei'
+import { GENIE_SUBCLASS } from '../genie/genie'
 import { CLASS_TOOL_CHOICE_GRANTS, classToolGrantsFor } from '../toolProficiencies/classToolChoices'
 import { SUBCLASS_SKILL_GRANTS, subclassSkillChoiceCount, subclassSkillGrantOwner, subclassSkillGrantsFor } from '../classSkills/subclassSkillGrants'
 import { grantsFightingStyleAt } from '../fightingStyle/fightingStyleData'
@@ -311,11 +312,13 @@ function languagesStepGain(
 		...CLASS_TOOL_CHOICE_GRANTS.filter((grant) => grant.className === className && grant.classSource === classSource).map((grant) => ({ ...grant, conditional: grant.replaces !== undefined })),
 		...CLASS_FEATURE_LANGUAGE_GRANTS.filter((grant) => grant.choice && grant.className === className && classSource === 'XPHB').map((grant) => ({ ...grant, conditional: false })),
 		...SUBCLASS_SKILL_GRANTS.filter((grant) => grant.choice && grant.className === className && classSource === 'XPHB').map((grant) => ({ ...grant, conditional: false })),
+		// D407: The Genie's kind is picked on the languages step, like the Elegant Courtier save.
+		...(className === 'Warlock' && classSource === 'XPHB' ? [{ subclass: GENIE_SUBCLASS, level, conditional: false }] : []),
 	].filter((grant) => grant.subclass && grant.level === level)
 	if (pending.length === 0) return gain
 	const names = [...new Set(pending.map((grant) => (grant.conditional ? `${grant.subclass} (only for a subclass tool already held)` : grant.subclass)))]
 	return {
-		...unknownGain(`The subclass is chosen at this level, and ${names.join(' / ')} grants a tool, language or skill pick.`),
+		...unknownGain(`The subclass is chosen at this level, and ${names.join(' / ')} grants a tool, language, skill or genie kind pick.`),
 		owingSubclasses: [...new Set(pending.flatMap((grant) => (grant.subclass ? [grant.subclass] : [])))],
 	}
 }

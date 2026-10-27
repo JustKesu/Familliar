@@ -114,6 +114,8 @@ import { ClassSwitcher } from './ClassSwitcher'
 import { ELEGANT_COURTIER_LEVEL, hasElegantCourtier, loadKenseiWeaponOptions } from '../kensei/kensei'
 import { KenseiWeaponSlots } from '../kensei/KenseiWeaponSlots'
 import { ElegantCourtierChoice } from '../kensei/ElegantCourtierChoice'
+import { GenieKindChoice } from '../genie/GenieKindChoice'
+import { genieEntryFor, isGenieClass } from '../genie/genie'
 import { useWisdomSaveHeld } from '../kensei/useWisdomSaveHeld'
 import { ConfirmDialog } from '../app/ConfirmDialog'
 import { WizardNavButtons, WizardStepList } from './WizardShell'
@@ -977,7 +979,8 @@ export function CharacterWizard({
 		const pactSlotsByLevel =
 			spellSlotsClassData.find((entry) => entry.className === classChoice.className && entry.classSource === classChoice.classSource)?.pactSlotsByLevel ??
 			undefined
-		loadSubclassAlwaysPreparedSpells(subclass.name, subclass.source, classChoice.className, classChoice.classSource, classChoice.level, pactSlotsByLevel)
+		const genieEntry = genieEntryFor({ className: classChoice.className, classSource: classChoice.classSource, subclass: subclass.name }, state.data.genieKind)
+		loadSubclassAlwaysPreparedSpells(subclass.name, subclass.source, classChoice.className, classChoice.classSource, classChoice.level, pactSlotsByLevel, genieEntry)
 			.then((spells) => {
 				if (cancelled) return
 				setSubclassAlwaysPrepared(spells)
@@ -991,7 +994,7 @@ export function CharacterWizard({
 		return () => {
 			cancelled = true
 		}
-	}, [state.data.classChoice, state.data.subclass, spellSlotsClassData])
+	}, [state.data.classChoice, state.data.subclass, state.data.genieKind, spellSlotsClassData])
 
 	/** D192: the class record's own always-prepared grants; a failed load leaves the list empty, like the other best-effort grant loads. */
 	useEffect(() => {
@@ -1399,6 +1402,8 @@ export function CharacterWizard({
 	useEffect(() => {
 		if (wisdomSaveHeld === false && state.data.elegantCourtierSave !== null) dispatch({ type: 'setElegantCourtierSave', save: null })
 	}, [wisdomSaveHeld, state.data.elegantCourtierSave])
+	// D407: a level up asks only when it brings the subclass; creation and Edit always ask.
+	const genieOffered = courtierClass !== null && isGenieClass(courtierClass) && (held === null || held.subclass === null)
 
 	/** D160: everything the character has apart from the feat at `key` — the other feats' picks included. */
 	function heldForFeat(key: FeatInstanceKey): FeatChoiceHeld {
@@ -1747,6 +1752,7 @@ export function CharacterWizard({
 		editingExistingCharacter: character !== undefined,
 		multiclassPickCount,
 		elegantCourtierComplete: !courtierOffered || wisdomSaveHeld === false || (wisdomSaveHeld === true && state.data.elegantCourtierSave !== null),
+		genieKindComplete: !genieOffered || state.data.genieKind !== null,
 		kenseiRangedWeapons,
 		...(multiclassEdit
 			? {
@@ -2225,6 +2231,7 @@ export function CharacterWizard({
 					{courtierOffered && wisdomSaveHeld === true && (
 						<ElegantCourtierChoice value={state.data.elegantCourtierSave} onChange={(save) => dispatch({ type: 'setElegantCourtierSave', save })} />
 					)}
+					{genieOffered && <GenieKindChoice value={state.data.genieKind} onChange={(kind) => dispatch({ type: 'setGenieKind', kind })} />}
 					{/* D330: the entered class's multiclass skill/tool pick sits with the other class picks. */}
 					{levelUp && enteringClass && (
 						<MulticlassPickSlots

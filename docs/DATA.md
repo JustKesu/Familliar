@@ -1940,6 +1940,13 @@ filter hides them. Cantrips never appear (`level=1..9` only). Read by
 heal/kill at 20) is not read here. Sourced from the same-source class lists
 (XPHB Cleric/Druid/Wizard).
 
+**The Genie|TCE (classSource XPHB) `expanded` is per genie kind (GN-1, D407).** Four
+`additionalSpells` entries, each with `name` Dao / Djinni / Efreeti / Marid and
+`expanded` keys `s1`..`s5` (pact slot rank, two bare spell refs each: one shared by
+all four kinds, one kind-specific) plus `"9": ["wish"]`. The `"9"` key is not a rank
+key (`parsePactSlotRankKey` reads only `s1`..`s5`), so Wish is never granted. Only
+the entry whose `name` equals `Character.genieKind` is read; no kind = none.
+
 **Same spell from another source** (11): Hunter's Mark — Oath of Vengeance,
 Mark of Finding; Speak with Animals — Wild Heart, Oath of the Ancients, Mark of
 Handling, Forest Gnome; Find Familiar — Mark of Handling, Pact of the Chain;

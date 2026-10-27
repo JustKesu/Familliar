@@ -6545,7 +6545,7 @@ describe('CharacterSheet', () => {
 			expect(shieldSummary.textContent).toContain('always prepared (The Hexblade)')
 
 			// The Warlock's own pactSlotsByLevel table (from the already-loaded spellSlotsClassData) must reach the resolver, not be silently dropped.
-			expect(loadSubclassAlwaysPreparedSpells).toHaveBeenCalledWith('The Hexblade', 'XGE', 'Warlock', 'XPHB', 3, spellSlots[0].pactSlotsByLevel)
+			expect(loadSubclassAlwaysPreparedSpells).toHaveBeenCalledWith('The Hexblade', 'XGE', 'Warlock', 'XPHB', 3, spellSlots[0].pactSlotsByLevel, null)
 		})
 
 		it('an Archfey Warlock at level 3 shows its "_"-keyed patron spell (Misty Step) on the sheet, named for the subclass (this task)', async () => {

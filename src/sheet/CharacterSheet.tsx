@@ -95,6 +95,7 @@ import { buildItemConditionGrants, buildItemProficiencyGrants, conditionAdvantag
 import { formatSpeciesName } from '../species/speciesData'
 import { speciesSaveAdvantageLines } from './speciesSaveAdvantages'
 import { classSaveAdvantageLines } from './classSaveAdvantages'
+import { GENIE_KIND_NOT_CHOSEN, genieEntryFor, hasGenie } from '../genie/genie'
 import { concentrationSaveAdvantageLines } from './concentrationSaveAdvantages'
 import { loadGrantedSenses, type GrantedSense } from './grantedSenses'
 import { combineSenseEntries, SensesList } from './SensesList'
@@ -2032,7 +2033,7 @@ function CharacterSheetBody({
 				// Only Warlock's own Pact Magic table applies to a rank-keyed patron grant (subclassPreparedSpells.ts) — any other class's table would be the wrong shape's numbers entirely.
 				// spellSlotsClassData loads in parallel via a separate effect — undefined here on an early run just means no rank grant yet; this effect re-runs (dep below) once it's in, same as any other race in this file.
 				const pactSlotsByLevel = spellSlotsClassData?.find((d) => d.className === c.className && d.classSource === c.classSource)?.pactSlotsByLevel ?? undefined
-				const alwaysPrepared = source ? await loadSubclassAlwaysPreparedSpells(c.subclass, source, c.className, c.classSource, c.level, pactSlotsByLevel) : []
+				const alwaysPrepared = source ? await loadSubclassAlwaysPreparedSpells(c.subclass, source, c.className, c.classSource, c.level, pactSlotsByLevel, genieEntryFor(c, character.genieKind)) : []
 				/** The subclass filter-choice spell picker's own picks (d6b) — same "always prepared (subclass)" provenance label as the fixed grants above, merged into the same group rather than a separate one (CharacterSheet.tsx module comment, SpellList.tsx). */
 				const matchingChoices = (character.subclassSpellChoices ?? []).filter(
 					(choice) => choice.className === c.className && choice.classSource === c.classSource && choice.subclassName === c.subclass && choice.subclassSource === source,
@@ -3276,6 +3277,12 @@ function CharacterSheetBody({
 							<UnresolvedValue reason={note.text} />
 						</p>
 					))}
+					{/* D407: The Genie with no stored kind grants no expanded spells. */}
+					{hasGenie(character.classes) && character.genieKind === undefined && (
+						<p className="sheet__spells-note">
+							<UnresolvedValue reason={GENIE_KIND_NOT_CHOSEN} />
+						</p>
+					)}
 					{/* D324: unknown slot maxima say why instead of showing zero slots. */}
 					{slotMaximaReason !== null && (
 						<p className="sheet__spell-slots-unknown">

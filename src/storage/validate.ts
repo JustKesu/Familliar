@@ -10,6 +10,7 @@ import type {
 	CharacterGrantedFeat,
 	CharacterHitPointLevel,
 	CharacterLevelOrderEntry,
+	GenieKind,
 	CharacterPlayState,
 	SpentSpellSlots,
 	CharacterInventoryItem,
@@ -39,7 +40,7 @@ import type {
 	WeaponGrip,
 } from './character'
 import { CONDITION_NAMES, MAX_EXHAUSTION } from '../conditions/conditions'
-import { CURRENT_SCHEMA_VERSION, CUSTOM_BACKGROUND_SOURCE, isConsistentLevelOrder, isRepeatableOption, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
+import { CURRENT_SCHEMA_VERSION, CUSTOM_BACKGROUND_SOURCE, GENIE_KINDS, isConsistentLevelOrder, isRepeatableOption, isValidPortrait, PORTRAIT_MAX_LENGTH, PORTRAIT_PREFIX } from './character'
 import { canMigrateToCurrent } from './migrations'
 import type { StoredCharacter } from './wireFormat'
 
@@ -1402,6 +1403,8 @@ export function describeCharacterError(value: unknown, index: number): string | 
 	if (kenseiWeaponsError) return `[${index}].${kenseiWeaponsError}`
 	const courtier = value['elegantCourtierSave']
 	if (courtier !== undefined && courtier !== 'intelligence' && courtier !== 'charisma') return `[${index}].elegantCourtierSave must be one of intelligence, charisma`
+	const genieKind = value['genieKind']
+	if (genieKind !== undefined && !(GENIE_KINDS as readonly unknown[]).includes(genieKind)) return `[${index}].genieKind must be one of ${GENIE_KINDS.join(', ')}`
 	if (value['speciesSize'] !== undefined && !isNonEmptyString(value['speciesSize'])) return `[${index}].speciesSize must be a non-empty string`
 	const createdAtLevel = value['createdAtLevel']
 	if (createdAtLevel !== undefined && (typeof createdAtLevel !== 'number' || !Number.isInteger(createdAtLevel) || createdAtLevel < 1 || createdAtLevel > 20)) {
@@ -1647,6 +1650,7 @@ export function toCharacter(value: Record<string, unknown>): Character {
 			? { kenseiWeapons: (value['kenseiWeapons'] as Record<string, unknown>[]).map((entry) => ({ name: entry['name'] as string, level: entry['level'] as number })) }
 			: {}),
 		...(value['elegantCourtierSave'] === 'intelligence' || value['elegantCourtierSave'] === 'charisma' ? { elegantCourtierSave: value['elegantCourtierSave'] } : {}),
+		...((GENIE_KINDS as readonly unknown[]).includes(value['genieKind']) ? { genieKind: value['genieKind'] as GenieKind } : {}),
 		...(typeof speciesSize === 'string' ? { speciesSize } : {}),
 		...(typeof createdAtLevel === 'number' ? { createdAtLevel } : {}),
 		...(typeof appearance === 'string' && appearance.length > 0 ? { appearance } : {}),

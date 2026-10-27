@@ -15,6 +15,7 @@ import { extractFeatTextEntries } from '../sheet/sheetData'
 import { CLASS_FEATURE_LANGUAGE_GRANTS } from '../languages/classFeatureLanguages'
 import { CLASS_TOOL_CHOICE_GRANTS } from '../toolProficiencies/classToolChoices'
 import { ELEGANT_COURTIER_LEVEL } from '../kensei/kensei'
+import { isGenieClass } from '../genie/genie'
 import { SUBCLASS_SKILL_GRANTS } from '../classSkills/subclassSkillGrants'
 import { fightingStyleFor, isConsistentLevelOrder, type Character, type CharacterClass, type LeveledChoice } from '../storage/character'
 import type { CharacterCreateInput } from '../storage/characterStore'
@@ -278,6 +279,9 @@ export function levelRemovalCore(
 	})
 	const losesCourtier = character.elegantCourtierSave !== undefined && className === 'Fighter' && classSource === 'XPHB' && classLevel === ELEGANT_COURTIER_LEVEL
 	if (losesCourtier) dropped.push(`Elegant Courtier save: ${character.elegantCourtierSave}`)
+	// D407: the Genie kind goes with The Genie subclass.
+	const losesGenieKind = character.genieKind !== undefined && isGenieClass(characterClass) && subclass === null
+	if (losesGenieKind) dropped.push(`Genie kind: ${character.genieKind}`)
 
 	const hitPointLevels = (character.hitPointLevels ?? []).filter((entry) => {
 		if (entry.level !== level) return true
@@ -306,11 +310,12 @@ export function levelRemovalCore(
 		}
 	}
 
-	const { play: _play, kenseiWeapons: _kensei, elegantCourtierSave, familiar: _familiar, ...withoutPlay } = character
+	const { play: _play, kenseiWeapons: _kensei, elegantCourtierSave, genieKind, familiar: _familiar, ...withoutPlay } = character
 	const result: Character = {
 		...withoutPlay,
 		...(kenseiWeapons && kenseiWeapons.length > 0 ? { kenseiWeapons } : {}),
 		...(elegantCourtierSave && !losesCourtier ? { elegantCourtierSave } : {}),
+		...(genieKind && !losesGenieKind ? { genieKind } : {}),
 		...(familiar ? { familiar } : {}),
 		...(play ? { play } : {}),
 		classes: reducedClasses,

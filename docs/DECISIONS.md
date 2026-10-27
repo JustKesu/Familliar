@@ -5694,3 +5694,13 @@ běžné hledání nic nenajde: „branding smite“ (jakýkoli zdroj) → Shini
 elemental“ se zdrojem TCE → Summon Elemental|XPHB. Vrací se XPHB kouzlo pod svým skutečným jménem a zdrojem. Platí pro
 všechny volající (rasy, featy, optional features, subclassy). Uzavírá otázku „Two spells referenced but absent from the
 data“. Rozhodl Daniel 25. 10. 2026.
+
+## D407 — The Genie: uložený druh džina a jeho rozšířená kouzla (GN-1)
+
+Nové pole `Character.genieKind`: 'Dao' | 'Djinni' | 'Efreeti' | 'Marid' (jména čtyř `additionalSpells` záznamů
+The Genie|TCE). Schema 68, migrace 67 → 68 jen přeznačí; validate.ts odmítne jinou hodnotu. Volba (radio) je ve
+wizardu v kroku Proficiencies vedle Elegant Courtier (vzor D344), při level upu jen na úrovni, kde podtřída přibyla,
+a v Edit Character. Bez volby: žádná Genie kouzla a jedna poznámka na záložce Spells. S volbou se kouzla s1..s5
+jen zvoleného záznamu přidávají stejně jako u Hexblade/Fathomless (levelForPactSlotRank). Klíč "9" (Wish) se
+nepřidává. Změna podtřídy Warlocka pryč z The Genie a Remove level pod úroveň podtřídy pole maže; okno Remove level
+ho vypíše. Rozhodl Daniel 27. 10. 2026.
